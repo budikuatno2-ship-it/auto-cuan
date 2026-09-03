@@ -144,7 +144,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/daytrade-intraday-validation-coverage.js` | 64 | BELUM | 0 | |
 | `lib/daytrade-ohlcv-cache.js` | 319 | SELESAI | 1 | **BUG-033 (MEDIUM) DIPERBAIKI PR #510** — TTL 12 jam di luar jam bursa tidak pernah berlaku. Sisanya bersih: `safeTicker` melucuti ke `[A-Z0-9_-]` sebelum membangun path (tidak ada path traversal lewat ticker), fetch Yahoo dibatasi `AbortController`, parser Yahoo memvalidasi KELIMA kaki OHLCV — pola benar yang sama dengan `fetchDayTradeCandles` dan yang absen di parser NK (BUG-022). Konversi WIB memakai pola geser-lalu-baca-UTC yang benar, tidak ada offset ganda. |
 | `lib/daytrade-outcome-collector-guard.js` | 49 | BELUM | 0 | |
-| `lib/daytrade-outcome-collector.js` | 535 | BELUM | 0 | |
+| `lib/daytrade-outcome-collector.js` | 535 | SELESAI | 0 | Alat bukti offline ber-ack. Validasi path (anti-symlink, wajib di luar repo), waktu (UTC ketat, akhir pekan Jakarta, horizon selesai), OHLC, dan urutan bar. Bersih. |
 | `lib/daytrade-outcome-contract.js` | 56 | BELUM | 0 | |
 | `lib/daytrade-outcome-evaluator.js` | 23 | BELUM | 0 | |
 | `lib/daytrade-outcome-logger.js` | 13 | BELUM | 0 | |
@@ -200,7 +200,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/subscription-capability.js` | 57 | BELUM | 0 | |
 | `lib/subscription-catalog.js` | 45 | BELUM | 0 | |
 | `lib/subscription-identity.js` | 18 | BELUM | 0 | |
-| `lib/subscription-manual-handler.js` | 337 | BELUM | 0 | |
+| `lib/subscription-manual-handler.js` | 337 | SELESAI | 2 | BUG-034 host header injection ke tombol review admin, BUG-035 notifikasi admin tak terbatas pada submit ulang. PR #511. |
 | `lib/subscription-voucher-claim.js` | 177 | BELUM | 0 | |
 | `lib/subscription-voucher-handler.js` | 68 | BELUM | 0 | |
 | `lib/swing-nk-rr-warning.js` | 140 | BELUM | 0 | |
@@ -212,7 +212,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/telegram-templates.js` | 760 | SELESAI | 0 | **Bersih**. Satu catatan konsistensi tampilan (rentang entry dirender tiga cara: `:414` tinggi-dulu, `:281` rendah-dulu, `:691` hanya batas atas) — format kartu sinyal sengaja dikunci `test/telegram-templates.test.js:162,169`, jadi tidak saya ubah. Diperiksa: `getWibTimeStr` (`:216`) memakai pola geser-lalu-baca-UTC yang benar, tidak ada offset ganda; `safe()` melucuti tag dan baris baru; seluruh blok Trade Plan V2 di belakang flag mati. |
 | `lib/telegram-transient-message.js` | 69 | BELUM | 0 | |
 | `lib/telegram-unified-general.js` | 216 | BELUM | 0 | |
-| `lib/telegram-unified-subscription.js` | 332 | BELUM | 0 | |
+| `lib/telegram-unified-subscription.js` | 332 | SELESAI | 0 | Gate admin Telegram, chat privat, chat.id===from.id. Kunci idempotensi deterministik per update_id. Bersih; satu catatan asimetri tipe voucher. |
 | `lib/telegram-verification.js` | 1527 | SELESAI | 0 | **Bersih** — modul paling sadar-keamanan yang saya baca setelah `idx-tick-normalization`. Diperiksa baris demi baris: entropi kode (`crypto.randomInt` tanpa bias, 40 bit), HMAC fail-closed tanpa secret, kode mentah tidak pernah disimpan/di-log, rate limit pengirim sebelum hashing, klaim/complete webhook bertoken (idempoten), gerbang `chat_join_request` gagal-tertutup pada identitas + kecocokan link + revoked + kedaluwarsa, pesan penolakan netral tanpa membocorkan keberadaan akun, outbox notifikasi at-least-once, dan pembersihan tombol yang sudah dipakai. |
 | `lib/telegram-verify-bot.js` | 186 | SELESAI | 0 | **Bersih**. Isolasi token benar (`TELEGRAM_VERIFY_BOT_TOKEN` saja, tanpa fallback), `AbortSignal.timeout(5000)` membatasi SETIAP panggilan, error hanya kode kasar — token dan body Telegram tidak pernah bocor. Satu hipotesis dibantah: `creates_join_request: true` memang dikirim (`:131`), jadi tombol undangan tidak menambahkan anggota langsung dan gerbang join-request tetap berlaku. |
 | `lib/telegram-voucher-admin-continuation.js` | 145 | BELUM | 0 | |
@@ -230,9 +230,9 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/trade-plan-v2-sweep-diagnostic.js` | 475 | BELUM | 0 | |
 | `lib/trade-plan-v2.js` | 1319 | SELESAI | 0 | Bersih sebagai mesin. Seluruh modul hanya aktif di belakang `TRADE_PLAN_V2_SHADOW_ENABLED`/`TRADE_PLAN_V2_PUBLIC_ENABLED` (default mati). Alias entry di `:743-744` **dijaga** penukar `:745-747`. Diperiksa: profil per-screener, hierarki support/resistance, buffer volatilitas, TP1 cap, gate TP2 (butuh breakout terkonfirmasi), trailing ratchet, resolusi status/RR. |
 | `lib/user-watchlist-service.js` | 550 | SELESAI | 1 | **BUG-031 (HIGH) DIPERBAIKI PR #508** — `notification_chat_id` dan `watchlist_id` diterima dari body permintaan tanpa pemeriksaan; alert bisa diarahkan ke chat Telegram pengguna lain. Sisanya diperiksa: `normalizeTicker`, resolusi harga multi-sumber berjenjang, `deleteAlert` difilter `user_id`, `getUserWatchlist` difilter `user_id`. |
-| `lib/voucher-admin-bot.js` | 333 | BELUM | 0 | |
+| `lib/voucher-admin-bot.js` | 333 | SELESAI | 0 | Gate admin ketat, dedupe update, klaim/prepare/deliver/finalize per chunk dengan jalur uncertain. Bersih; DOCUMENT_BYTES konstanta mati. |
 | `lib/voucher-admin-sender.js` | 28 | BELUM | 0 | |
-| `lib/vouchers.js` | 12 | BELUM | 0 | |
+| `lib/vouchers.js` | 12 | SELESAI | 0 | Kode 12 karakter dari alfabet 31 simbol (~59 bit), HMAC ber-pepper, fail-closed bila pepper <16 karakter. Bersih. |
 | `lib/weekly-timeframe.js` | 170 | BELUM | 0 | |
 | `package-lock.json` | 117 | BELUM | 0 | |
 | `package.json` | 18 | SELESAI | 0 | bersih |

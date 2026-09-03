@@ -3492,3 +3492,280 @@ tepat 2 gagal. Tujuh yang lolos di kedua sisi — termasuk semua kasus "tidak
 berubah" dan ketiga batas — itulah yang membuktikan perbaikannya sempit.
 
 Suite: **320 berkas uji lolos**, sebelum dan sesudah. Delta +1 berkas, +9 uji.
+
+---
+
+## BUG-034 — Host header dari klien menentukan tautan review di Telegram admin
+
+**Severity:** MEDIUM
+**Area:** Subscription / pembayaran manual — notifikasi admin
+**Status:** SUDAH DIPERBAIKI — PR #511
+
+### Lokasi
+
+`lib/subscription-manual-handler.js:45-51` (kode asli)
+
+```js
+function publicBaseUrl(req) {
+  const configured = String(process.env.SUBSCRIPTION_PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
+  if (configured) return configured;
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').trim();
+  const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
+  return host ? proto + '://' + host : 'https://autocuan.web.id';
+}
+```
+
+Dipakai di `lib/subscription-manual-handler.js:142`:
+
+```js
+const reviewUrl = publicBaseUrl(req) + '/dashboard?paymentReview=' + encodeURIComponent(row.payment_reference);
+```
+
+dan dikirim sebagai tombol inline ke Telegram admin di `:144-146`:
+
+```js
+const sent = await sender.sendMessage(ADMIN_TELEGRAM_ID, paymentAdminText(row, username, 'submitted'), {
+  reply_markup:{ inline_keyboard:[[{ text:'Buka & Konfirmasi', url:reviewUrl }]] }
+});
+```
+
+### Gejala
+
+Tombol "Buka & Konfirmasi" di chat admin dapat mengarah ke origin sembarang yang
+ditentukan oleh orang yang mengirim permintaan `submit`.
+
+### Root cause
+
+`X-Forwarded-Host` dan `Host` sepenuhnya dikendalikan pengirim pada klien
+non-browser. Satu-satunya guard adalah `isSameOrigin()` di
+`lib/admin-session.js:164-176`, yang hanya membandingkan `Origin`/`Referer`
+dengan `Host`:
+
+```js
+const u = new URL(candidate);
+return u.host === host;
+```
+
+Menyetel keduanya ke nilai palsu yang **sama** akan lolos. Guard itu memang
+dirancang melawan CSRF dari browser, bukan melawan pemalsuan header oleh klien
+langsung — dan untuk CSRF ia bekerja. Yang keliru adalah menyimpulkan darinya
+bahwa `Host` layak dipercaya.
+
+### Dampak
+
+Setiap akun yang sudah login dan tidak diblokir dapat memicunya. Ambang aksesnya
+rendah: `requireSubscriptionOnboardingUser` di `lib/subscription-auth.js:120-126`
+hanya menuntut sesi valid, username cocok, dan `is_blocked !== true` —
+persetujuan (`is_approved`) tidak diperlukan, sesi onboarding pun cukup.
+
+Tautan phishing tiba lewat kanal admin milik aplikasi sendiri, jadi tampak
+tepercaya. Ini bukan pengambilalihan langsung, tetapi menempatkan tautan pilihan
+penyerang di tempat yang paling dipercaya admin.
+
+**Belum pasti:** apakah Vercel menimpa `x-forwarded-host` yang datang dari klien.
+Saya tidak dapat memverifikasinya dari lingkungan ini — preview Vercel tidak
+terjangkau lewat proxy. Terlepas dari itu, kode ini tidak seharusnya memercayai
+header tersebut: mitigasi platform bukan sesuatu yang kita kendalikan, tidak kita
+uji, dan bisa berubah tanpa kita ketahui.
+
+### Perbaikan
+
+Base URL kini diambil berurutan dari: `SUBSCRIPTION_PUBLIC_BASE_URL` (divalidasi
+sebagai URL http/https sungguhan), lalu host dari header **hanya bila** ada di
+allowlist (`autocuan.web.id`, `www.autocuan.web.id`, ditambah
+`SUBSCRIPTION_ALLOWED_HOSTS`), lalu origin produksi kanonik.
+
+### Risiko
+
+Rendah. Bila `SUBSCRIPTION_PUBLIC_BASE_URL` sudah diset di produksi, perilaku
+tidak berubah sama sekali. Bila tidak diset, deployment preview akan menaut ke
+produksi alih-alih ke host preview — untuk tautan yang dikirim ke admin, itu
+justru perilaku yang diinginkan.
+
+### Verifikasi
+
+6 dari 11 uji di `test/subscription-manual-admin-notification.test.js`; empat di
+antaranya khusus untuk bug ini. Suite penuh 320 berkas lolos.
+
+---
+
+## BUG-035 — Notifikasi admin tak terbatas pada submit ulang pembayaran
+
+**Severity:** MEDIUM
+**Area:** Subscription / pembayaran manual — notifikasi admin
+**Status:** SUDAH DIPERBAIKI — PR #511
+
+### Lokasi
+
+`lib/subscription-manual-handler.js:319-321` (kode asli)
+
+```js
+if (submitted.error || !submitted.data) return res.status(409).json({ success:false, error:'Konfirmasi transfer belum dapat dikirim.' });
+const row = await paymentRow(db, reference);
+const notified = row ? await notifyAdminSubmitted(req, db, row) : false;
+```
+
+### Gejala
+
+Memanggil `submit` berulang kali dengan referensi yang sama mengirim pesan
+Telegram baru ke admin setiap kali, tanpa batas.
+
+### Root cause
+
+Fungsi SQL `submit_manual_subscription_payment` bersifat idempoten. Untuk baris
+yang sudah `submitted` ia mengembalikan data **tanpa mengubah apa pun** —
+`supabase/subscription-manual-payment-migration.sql:166-168`:
+
+```sql
+IF m.status='submitted' THEN
+  RETURN jsonb_build_object('payment_reference',m.payment_reference,'status',m.status,'submitted_at',m.submitted_at);
+END IF;
+```
+
+Payload itu truthy, sehingga penjaga `if (submitted.error || !submitted.data)` di
+`:319` lolos dan handler memperlakukannya seperti submit pertama.
+
+Ini pola struktural yang sama yang sudah berulang dalam audit ini, dan kini yang
+**ketujuh** kalinya: lapisan inti ditulis benar — SQL-nya idempoten dengan sengaja
+— tetapi lapisan yang memakainya tidak ikut membaca sinyal idempotensi itu.
+Bandingkan BUG-022, BUG-014, BUG-021, BUG-028, BUG-029, BUG-032.
+
+### Dampak
+
+1. Spam tak terbatas ke chat admin, dipicu oleh akun pengguna biasa.
+2. Setiap pengiriman menimpa `admin_telegram_message_id` di `:149`. Akibatnya
+   `updateAdminNotification()` (`:157-166`) saat approve/reject hanya menyunting
+   pesan **terakhir**. Pesan "KONFIRMASI PEMBAYARAN" yang lebih lama tertinggal
+   di chat admin dengan tombol yang masih hidup, meski pembayarannya sudah
+   diputuskan — admin bisa membuka dan memproses ulang sesuatu yang sudah selesai.
+3. Digabung dengan BUG-034, tautan yang dikendalikan penyerang dapat dibanjirkan,
+   bukan dikirim sekali.
+
+### Perbaikan
+
+Notifikasi dilewati bila `admin_telegram_message_id` sudah tercatat. Pengiriman
+yang gagal tidak mencatat id apa pun, sehingga percobaan ulang tetap diizinkan —
+perilaku berguna itu sengaja dipertahankan dan diuji terpisah.
+
+### Risiko
+
+Rendah, dengan satu batas yang saya sebutkan terang-terangan: **sisa race yang
+sempit masih ada.** Dua permintaan `submit` bersamaan yang sama-sama membaca
+`admin_telegram_message_id` masih null dapat menghasilkan dua notifikasi. Itu
+terbatas pada beberapa pesan, bukan tak terbatas. Perbaikan yang sepenuhnya
+atomik menuntut kolom klaim baru, yaitu migrasi skema — tidak saya lakukan tanpa
+persetujuan Anda (aturan 6).
+
+### Verifikasi
+
+2 dari 6 uji yang gagal sebelum perbaikan menyasar bug ini langsung; dua uji lain
+memotret perilaku yang harus dipertahankan (submit pertama tetap memberi
+notifikasi, percobaan ulang setelah kegagalan pengiriman tetap diizinkan). Suite
+penuh 320 berkas lolos.
+
+### Pertanyaan data (read-only, belum dijalankan)
+
+```sql
+SELECT payment_reference, status, admin_telegram_message_id, submitted_at, reviewed_at
+FROM public.subscription_manual_payments
+WHERE status = 'submitted' AND admin_telegram_message_id IS NOT NULL
+ORDER BY submitted_at DESC
+LIMIT 50;
+```
+
+---
+
+## Modul yang dibaca penuh dan bersih pada putaran ini
+
+### `lib/daytrade-outcome-collector.js` (535 baris) — bersih
+
+Alat bukti offline yang dijalankan manual, bukan jalur web. Yang saya periksa:
+
+- **Path.** `assertExternalPath` (`:107-124`) menolak path relatif, root, symlink
+  di komponen mana pun (`assertNoSymlinkComponents`, `:97-105`), dan menolak
+  target yang berada **di dalam** repo lewat `fs.realpathSync.native`. Ketat.
+- **Ack berlapis.** `--execute`, `--market-day-confirmed`,
+  `--continuous-segment-confirmed` semuanya wajib (`:141-143`).
+- **Waktu.** `strictUtc` (`:126-131`) menuntut format UTC eksak, bukan sekadar
+  `Date.parse`. Akhir pekan Jakarta ditolak dua kali — untuk tanggal bursa
+  (`:152`) dan untuk saat eksekusi (`:394`). Horizon wajib sudah lewat (`:395`).
+- **Validasi bar** (`:290-317`): ticker cocok, rentang di dalam horizon,
+  urutan tidak mundur dan tidak tumpang tindih, `source_as_of` berada di antara
+  akhir bar dan batas bukti, OHLC positif dan konsisten (`low` benar-benar
+  terendah, `high` benar-benar tertinggi).
+- **Anti duplikasi finalisasi** berlapis: kunci semantik (`:239-250`), audit
+  pohon sebelum **dan** sesudah persiapan (`:399`, `:471-473`), serta deteksi
+  tabrakan dalam satu batch (`:470`).
+
+Satu catatan, bukan bug: `manifest.relative_path` di `:212` dan `:262` dipakai
+lewat `path.resolve(root, ...)` tanpa dipastikan tetap di dalam `root`. Manifest
+berasal dari pohon bukti milik operator sendiri, dan isi berkas tidak pernah
+keluar dari proses (gunzip pada berkas non-gzip melempar dan ditangkap), jadi
+tidak ada kanal kebocoran. Saya catat sebagai kekerasan defensif yang kurang,
+bukan temuan.
+
+### `lib/voucher-admin-bot.js` (333 baris) — bersih
+
+- `adminUpdate` (`:42-51`) menuntut chat privat, `chat.id === from.id`, id admin
+  Telegram yang tepat, dan menolak pesan yang diteruskan atau dikirim atas nama
+  channel. Gate admin dijalankan **sebelum** dedupe update, sehingga update dari
+  non-admin tidak menghabiskan `update_id`.
+- Pengiriman kode voucher memakai sender mentah, sengaja **tidak** transient
+  (`:252-254`), sementara semua prompt/menu bersifat transient. Pesan kode tidak
+  pernah membawa `reply_markup`, jadi tidak pernah menjadi `q.message` dan tidak
+  bisa terhapus oleh `cleanupOrigin`. Saya periksa titik ini secara khusus karena
+  penghapusan yang salah akan menghilangkan kode voucher yang sudah dibuat.
+- Siklus klaim → prepare → deliver → record → finalize menutup kasus tidak pasti
+  lewat `markAttemptUncertain`, termasuk saat pencatatan sukses tetapi finalisasi
+  gagal (`:277-282`).
+
+Dua catatan kecil, bukan bug: konstanta `DOCUMENT_BYTES` (`:12`) tidak pernah
+dipakai; dan jumlah voucher tidak dibatasi atas — `/^[1-9][0-9]*$/` di `:138` dan
+`p_requested_quantity > 0` di
+`supabase/subscription-phase-5c-voucher-admin-migration.sql:252` sama-sama tanpa
+batas atas. Hanya admin yang bisa memicunya, terhadap datanya sendiri, dan chunk
+diklaim 100 per penekanan tombol sehingga tidak ada proses liar. Saya catat
+sebagai kebersihan operasional, bukan celah.
+
+### `lib/telegram-unified-subscription.js` (332 baris) — bersih
+
+- `privateMessage` (`:20-28`) menuntut chat privat dan `chat.id === from.id`.
+- Kunci idempotensi diturunkan deterministik dari `update_id` dengan namespace
+  terpisah untuk `trial`, `voucher-quote`, dan `voucher-redeem` (`:44-50`),
+  sehingga pengiriman ulang webhook Telegram tidak menggandakan entitlement —
+  dipasangkan dengan penjaga di
+  `supabase/subscription-phase-2-migration.sql:224`.
+- Gate admin voucher tetap `isVoucherAdminTelegramUser` (`:290`), meski
+  klasifikasi `v:` diarahkan lebih dulu.
+
+Satu catatan asimetri, bukan bug hari ini: pada `:242` voucher dianggap
+"perlu bayar" hanya bila tipenya `PERCENT_30`/`PERCENT_50`, selebihnya langsung
+ditebus. Di `lib/subscription-manual-handler.js:294` logikanya kebalikan dan
+fail-closed. Untuk keempat tipe yang ada sekarang keduanya menghasilkan perilaku
+benar; asimetri ini baru berbahaya bila tipe voucher baru ditambahkan. Saya
+sebutkan agar tidak terlewat saat itu terjadi, bukan sebagai temuan.
+
+### `lib/vouchers.js` (12 baris) — bersih
+
+Kode `AC-` + 12 karakter dari alfabet 31 simbol tanpa karakter ambigu ≈ 59 bit;
+brute force lewat `/voucher` tidak layak. `voucherCodeHash` fail-closed bila
+`VOUCHER_CODE_PEPPER` tidak ada atau lebih pendek dari 16 karakter (`:8`), jadi
+tidak ada mode diam-diam tanpa pepper.
+
+### Catatan tentang SQL yang saya baca sambil lalu
+
+`supabase/subscription-phase-2-migration.sql:226-228` menempatkan pemeriksaan
+`IF NOT FOUND` **setelah** satu pernyataan `IF` lain. Dalam PL/pgSQL `FOUND` tidak
+diubah oleh `IF` biasa, jadi perilakunya benar hari ini, dan voucher yang tidak
+ada tetap berujung `voucher unavailable`. Saya sebutkan hanya sebagai urutan yang
+rapuh, bukan bug — dan saya tidak mengusulkan mengubah migrasi yang sudah jalan.
+
+---
+
+## Koreksi angka cakupan
+
+Laporan saya sebelumnya menyebut 54 SELESAI / 8 SEDANG / 716 BELUM. Angka
+sebenarnya pada branch ini sebelum putaran ini adalah **52 SELESAI / 7 SEDANG /
+719 BELUM** (total 778). Setelah putaran ini: **57 SELESAI / 7 SEDANG / 714
+BELUM**. Angka yang benar adalah yang dihitung langsung dari `AUDIT_COVERAGE.md`
+di atas.
