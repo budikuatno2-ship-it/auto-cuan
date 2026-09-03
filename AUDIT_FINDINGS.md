@@ -2664,3 +2664,123 @@ mengeluarkan HTML. Mengubahnya bukan perbaikan bug, dan aturan 7 Anda menyuruh
 saya mencatatnya sebagai rekomendasi, bukan menjalankannya. Kalau Anda mau ini
 dikerjakan, saya sarankan bertahap: mulai dari jalur chat bebas (paling tidak
 bergantung template), bukan dari jalur analisis penuh.
+
+---
+
+## BUG-029 — Angka apa pun di pesan dibaca sebagai harga saham
+
+- **Severity** : **HIGH** (jalur produksi aktif, terlihat pengguna, prioritas P1 Anda)
+- **Area** : Analisis Saham — kartu deterministik `stock_fixed_report` dan `ihsg_fixed_report`
+- **Lokasi** : `lib/analyze-legacy.js:201` (saham) dan `:138` (IHSG)
+- **Status** : **SUDAH DIPERBAIKI** — PR #506 (`fix/analyze-price-scraped-from-any-number`), draft
+
+### Gejala
+
+Kartu Analisis Saham bisa menampilkan harga yang sama sekali bukan harga saham
+itu — dan seluruh level teknikalnya kosong (`—`) padahal seharusnya terisi.
+
+### Root cause
+
+Kartu deterministik dibangun dari blok `[Auto-Cuan Market Data]` yang ditempel
+browser. Blok itu **hanya ada kalau fetch quote di browser berhasil**:
+
+```js
+// public/index.html:5597-5598
+var quoteCtx = await fetchQuoteContext(ticker);
+if (quoteCtx) enrichedMsg += quoteCtx;
+```
+
+Kalau gagal, server jatuh ke aturan ini:
+
+```js
+// lib/analyze-legacy.js:201
+var priceMatch = chatMessage.match(/\b(\d{2,6})\b/);
+if (priceMatch) extractedPrice = parseFloat(priceMatch[1]);
+```
+
+```js
+// lib/analyze-legacy.js:138
+var ihsgPriceMatch = chatMessage.match(/\b(\d{4,5}(?:\.\d+)?)\b/);
+```
+
+Angka 2–6 digit **pertama di mana pun dalam pesan** menjadi harga:
+
+| Pesan pengguna | Harga yang dipakai | Seharusnya |
+|---|---|---|
+| `beli 100 lot BBCA harga sekarang 9250` | **100** | 9250 |
+| `BBCA gimana prospek 2026?` | **2026** | (tidak ada) |
+| `IHSG proyeksi 2026 gimana?` | **2026** | (tidak ada) |
+
+### Dampak — yang membuatnya HIGH dan bukan sekadar angka salah
+
+Server mengambil quote otoritatifnya sendiri **hanya kalau ia masih belum punya
+harga**:
+
+```js
+// lib/analyze-legacy.js:211-212
+// Server-side fallback: fetch stock quote directly only if still no data
+if (!stockData || !stockData.last) {
+  var ssStockQuote = await fetchServerSideQuote(detectedStockTicker);
+```
+
+Jumlah lot yang terpungut **memenuhi** syarat itu. Jadi `fetchServerSideQuote`
+dilewati — padahal itu satu-satunya sumber yang akan mengembalikan harga benar
+**berikut** MA20/50/100/200, RSI14, support dan resistance.
+
+Jadi bug ini mengubah situasi yang sepenuhnya bisa dipulihkan (quote browser
+gagal → server ambil sendiri → kartu lengkap dan benar) menjadi kartu dengan
+harga salah dan seluruh level teknikal `—`.
+
+**Yang TIDAK terjadi, supaya saya tidak melebih-lebihkan:** entry/SL/TP tidak
+dikarang dari harga palsu itu. Saya periksa `buildStockFixedTemplate`
+(`:1095-1200`): tanpa `support1`/`resistance1`/`ma20` semua level jadi `—`, dan
+keputusannya jatuh ke cabang netral `Tunggu Konfirmasi / Watchlist`. Jadi yang
+salah adalah **harga yang ditampilkan** dan **kelengkapan kartu**, bukan angka
+rencana trading. Saya tetap menilai HIGH karena harga yang ditampilkan adalah
+angka paling dasar di halaman itu, dan `quote_last_used` yang dikembalikan API
+ikut salah.
+
+### Urutan sumber yang terbalik
+
+`body.context.currentPrice` — harga dari analisis **sebelumnya** — dulu diperiksa
+sebelum quote server (`:203-205`). Jadi harga basi bisa mendahului harga hidup.
+
+### Perbaikan
+
+`extractStatedPrice(message, ticker)` hanya menerima harga yang benar-benar
+**dinyatakan**: berlabel (`harga sekarang`, `harganya`, `di harga`, …), atau
+ticker yang langsung diikuti angka (`BBCA 9250`), atau satu-satunya angka dalam
+pesan yang tidak mengandung apa pun lain yang bisa dikira harga. Blok
+`[Info: ...]` dan `[Auto-Cuan ...]` tidak pernah ditambang.
+
+Kalau tidak ada yang memenuhi syarat hasilnya `null` — dan `null` itulah yang
+membuat quote otoritatif akhirnya diambil.
+
+**Repo ini sudah punya obatnya, di browser.** `detectPrice()`
+(`public/index.html:5199`) sudah menyelesaikan masalah ini dengan benar sejak
+awal, dengan prioritas berlabel lalu `TICKER <angka>`. Perbaikannya meniru
+aturan itu, sehingga divergensi antara "apa yang browser anggap harga" dan "apa
+yang server anggap harga" hilang. Ini pola yang sama untuk **kelima** kalinya di
+audit ini: yang benar sudah ditulis di satu tempat, yang salah adalah tiruan
+yang lebih kasar di tempat lain.
+
+Urutan sumber sekarang: blok Market Data → harga yang dinyatakan → quote server →
+`context.currentPrice` (terakhir).
+
+Sekalian: pemisah ribuan dan desimal dibedakan, jadi `"7.850,25"` tidak lagi
+menjadi `785025`.
+
+### Verifikasi
+
+`test/analyze-stated-price-extraction.test.js`, **19 uji**. Uji 0 menerapkan
+aturan lama secara harfiah untuk mendokumentasikan cacatnya. Suite:
+**320 berkas uji lolos**, sebelum dan sesudah. Delta +1 berkas, +19 uji.
+
+### Yang perlu Anda putuskan
+
+Sekarang pertanyaan seperti `"BBCA gimana prospek 2026?"` — tanpa quote browser
+**dan** dengan quote server ikut gagal — berakhir tanpa harga sama sekali,
+sehingga tidak ada kartu template dan jalur AI yang menjawab. Sebelumnya selalu
+ada kartu, tapi kartu yang berbohong. Saya memilih tidak menebak. Kalau Anda
+lebih suka selalu ada kartu, saya bisa tambahkan pesan eksplisit "harga belum
+tersedia" alih-alih diam — bilang saja.

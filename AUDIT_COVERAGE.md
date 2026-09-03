@@ -103,7 +103,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/ai-runtime-grounding-v2.js` | 65 | BELUM | 0 | |
 | `lib/ai-runtime-grounding.js` | 237 | BELUM | 0 | |
 | `lib/ai-telemetry.js` | 75 | BELUM | 0 | |
-| `lib/analyze-legacy.js` | 1769 | SELESAI | 3 | BUG-005 (5 fetch tanpa timeout) DIPERBAIKI; BUG-007 (tidak ada SSE) dicatat |
+| `lib/analyze-legacy.js` | 1769 | SELESAI | 4 | BUG-005 (5 fetch tanpa timeout) DIPERBAIKI; BUG-007 (tidak ada SSE) dicatat; **BUG-029 (HIGH) DIPERBAIKI PR #506** — angka apa pun di pesan dibaca sebagai harga; REKOMENDASI-01 (`sanitizeOutput` `:836` bukan sanitizer keamanan). Dibaca ulang: routeIntent, template IHSG/saham, urutan sumber quote, buildStockFixedTemplate. |
 | `lib/atr-report-helpers.js` | 339 | BELUM | 0 | |
 | `lib/auth-recovery.js` | 406 | BELUM | 0 | |
 | `lib/candle-pattern-engine.js` | 379 | BELUM | 0 | |
