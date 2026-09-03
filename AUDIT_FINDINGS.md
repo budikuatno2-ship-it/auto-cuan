@@ -933,3 +933,119 @@ Sebagian besar penulis menormalkannya lewat `normalizeForeignTicker`
 seluruh penulis `telegram_daily_picks` sampai tuntas, jadi saya belum bisa menyatakan
 setiap baris ticker pasti tersaring. Karena itu ini saya catat sebagai rekomendasi
 pengerasan (awali sel yang dimulai `= + - @` dengan `'`), bukan temuan kerentanan.
+
+---
+
+## BUG-019 — Diagnostik gate Top 5 melaporkan "unknown" untuk dua penyebab penolakan yang nyata
+
+- **Severity** : LOW (hanya diagnostik — tidak mengubah gate)
+- **Area** : Telegram Top 5 / diagnostik dry-run
+- **Lokasi** : `api/sector-hot.js:4676` (`diagnosePublicSafetyGateRejection`) vs `api/sector-hot.js:4410` (`candidatePassesPublicTelegramSafetyGate`)
+
+**Gejala.** Saat Top 5 kosong dan Anda menjalankan dry-run untuk mencari tahu
+sebabnya, sebagian kandidat dilaporkan sebagai:
+
+```
+category: 'unknown'
+detailed_reason: 'No specific rejection identified (possible logic mismatch)'
+```
+
+padahal gate-nya punya alasan yang jelas.
+
+**Root cause.** `diagnosePublicSafetyGateRejection` adalah salinan manual dari
+seluruh rantai kondisi di `candidatePassesPublicTelegramSafetyGate`. Dua kondisi
+ada di gate tetapi **tidak ikut disalin** ke diagnostiknya:
+
+| kondisi | ada di gate | ada di diagnostik |
+|---|---|---|
+| `corporateActionGuard.applyCorporateActionPriceScaleGuard()` + `corporate_action_guard === 'BLOCKED'` | ya (`:4411-4413`) | **tidak** |
+| `productionEligibility.classifyProductionEligibility(candidate).eligible` | ya (`:4523`) | **tidak** |
+
+Dihitung langsung atas rentang barisnya:
+
+```
+gate      (4410-4675) : corporate_action_guard = 2 kemunculan, classifyProductionEligibility = 1
+diagnostik(4676-4840) : corporate_action_guard = 0 kemunculan, classifyProductionEligibility = 0
+```
+
+Diagnostiknya memang memeriksa `isDataQualityRiskStatus(dataQualityStatus)`, yang
+**bertumpang tindih sebagian** dengan `classifyProductionEligibility` tapi bukan
+panggilan yang sama — jadi kandidat yang ditolak oleh kebijakan bersama itu lewat
+tanpa terdeteksi diagnostiknya, lalu jatuh ke cabang terakhir `'unknown'`.
+
+**Dampak.** Terbatas dan tidak menyentuh sinyal yang dipublikasikan: fungsi ini
+dipanggil hanya di tiga tempat (`:6151`, `:6177`, `:6216`), semuanya jalur
+diagnostik, dan komentarnya sendiri sudah menyatakan *"Does NOT change gating
+behavior. Only used for dry_run/manual diagnostics"*. Yang rusak adalah **jalur
+penelusurannya**: justru saat Anda paling butuh tahu kenapa Top 5 kosong, dua
+penyebab nyata dilaporkan sebagai "tidak diketahui".
+
+Perlu dicatat bahwa penulisnya sudah mengantisipasi ini — string cadangannya
+berbunyi *"possible logic mismatch"*.
+
+**Perbaikan yang diusulkan (minimal).** Tambahkan kedua pemeriksaan itu ke
+`diagnosePublicSafetyGateRejection` **pada urutan yang sama** dengan gate, sehingga
+kategori yang dilaporkan sama dengan alasan yang benar-benar menolak lebih dulu.
+Perubahan ini murni aditif pada string diagnostik dan tidak bisa menyentuh gate.
+
+**Utang teknis (tidak saya eksekusi — aturan No. 7).** Akar masalahnya bukan dua
+kondisi yang terlewat, melainkan dua fungsi ~250 baris yang menyalin ~20 kondisi
+yang sama secara manual dan pasti akan menyimpang lagi. Perbaikan yang tahan lama:
+satu daftar aturan berurutan `[{ id, test, reason }]` yang dipakai gate (ambil
+`.some()`) dan diagnostik (ambil yang pertama cocok). Itu refactor, bukan bug fix,
+jadi saya catat sebagai rekomendasi.
+
+**Risiko.** Sangat rendah untuk perbaikan minimalnya — tidak ada gate yang berubah,
+hanya string kategori pada keluaran dry-run.
+
+**Verifikasi.** Test yang memberi kandidat dengan `corporate_action_guard = 'BLOCKED'`
+dan kandidat yang gagal `classifyProductionEligibility`, lalu memastikan gate menolak
+**dan** diagnostiknya tidak lagi mengembalikan `'unknown'`.
+
+**Status** : DITEMUKAN — belum diperbaiki. Saya sengaja belum membuat PR untuk ini:
+nilainya rendah dibanding melanjutkan pembacaan, dan sudah ada sembilan PR terbuka.
+Katakan saja kalau Anda mau ini dikerjakan sekarang.
+
+---
+
+## Modul bersih tambahan — gate keselamatan publik `api/sector-hot.js:4285-5085`
+
+Rentang ini saya baca utuh dan **bersih**. Yang diperiksa khusus:
+
+- **Arah kegagalan.** Seluruh gate (`candidatePassesPublicTelegramSafetyGate`,
+  `candidatePassesTop5WatchlistGate`, `candidateTelegramEligible`) gagal **tertutup**:
+  field yang hilang, grade kosong, atau plan tidak lengkap menghasilkan `return false`,
+  bukan lolos. Contoh: `candidatePassesTop5WatchlistGate:5041` menolak grade kosong
+  karena `''` tidak lolos cek `A`/`B`/`A+` maupun cabang `C`.
+
+- **Prototype pollution pada lookup objek.** Ada belasan pola
+  `{ CHASE_RISK: true, EXTENDED: true, ... }[status]` yang memakai objek literal
+  sebagai himpunan. Pola ini biasanya rawan (`status = '__proto__'` atau
+  `'constructor'` mengembalikan nilai truthy dari prototipe). Di sini **tidak
+  terjangkau**: setiap kunci himpunannya HURUF BESAR dan setiap nilai yang dicari
+  di-`.toUpperCase()` lebih dulu, sedangkan seluruh nama properti prototipe
+  (`__proto__`, `constructor`, `toString`, `valueOf`, `hasOwnProperty`) huruf kecil
+  atau camelCase. `'__PROTO__'`, `'CONSTRUCTOR'`, `'TOSTRING'` semuanya
+  `undefined`. Saya catat justru karena kelas bug ini mudah muncul kalau nanti ada
+  yang menghapus `.toUpperCase()`-nya.
+
+- **`buildGateCalibrationDiagnostics:4350`** memakai `Object.hasOwn` — bukan
+  `hasOwnProperty` lewat instance — jadi aman dari kunci bermasalah.
+
+- **`candidatePassesTelegramCandidateDigestGate:4966`** memvalidasi geometri plan
+  secara eksplisit (`tp1 <= entry1` dan `sl >= entry1` ditolak), bukan sekadar
+  memeriksa keberadaan field.
+
+Satu **asimetri yang disengaja** saya catat tanpa mengubahnya: di
+`candidatePassesPublicTelegramSafetyGate:4672`,
+
+```js
+if (mode !== 'daytrade') return applyFinalTopQualityGate(candidate, mode || 'public_telegram').pass;
+return true;
+```
+
+`applyFinalTopQualityGate` **tidak** dijalankan untuk `mode === 'daytrade'`.
+Diagnostiknya di `:4820` mencerminkan asimetri yang sama, jadi keduanya konsisten —
+ini tampak sengaja, bukan terlewat. Saya tidak menyentuhnya: mengubah gate mana yang
+berlaku untuk Day Trade adalah perubahan perilaku bisnis (aturan No. 8), dan itu
+keputusan Anda, bukan saya.
