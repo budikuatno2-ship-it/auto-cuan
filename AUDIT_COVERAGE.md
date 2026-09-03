@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 8 SELESAI, 3 SEDANG, 767 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 11 SELESAI, 3 SEDANG, 764 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -63,7 +63,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `_disabled_api_backup/seed-review.js` | 95 | BELUM | 0 | |
 | `api/admin-logs.js` | 106 | BELUM | 0 | |
 | `api/admin-users.js` | 474 | BELUM | 0 | |
-| `api/analyze.js` | 129 | BELUM | 0 | |
+| `api/analyze.js` | 129 | SELESAI | 0 | bersih; premium gate + routing chat_mode->legacy, followup->v7 |
 | `api/candles.js` | 306 | BELUM | 0 | |
 | `api/log.js` | 194 | BELUM | 0 | |
 | `api/login-user.js` | 568 | SELESAI | 0 | bersih; webhook secret constant-time, same-origin gate, anti-enumeration, device binding, migrasi kredensial CAS |
@@ -103,7 +103,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/ai-runtime-grounding-v2.js` | 65 | BELUM | 0 | |
 | `lib/ai-runtime-grounding.js` | 237 | BELUM | 0 | |
 | `lib/ai-telemetry.js` | 75 | BELUM | 0 | |
-| `lib/analyze-legacy.js` | 1769 | BELUM | 0 | |
+| `lib/analyze-legacy.js` | 1769 | SELESAI | 3 | BUG-005 (5 fetch tanpa timeout) DIPERBAIKI; BUG-007 (tidak ada SSE) dicatat |
 | `lib/atr-report-helpers.js` | 339 | BELUM | 0 | |
 | `lib/auth-recovery.js` | 406 | BELUM | 0 | |
 | `lib/candle-pattern-engine.js` | 379 | BELUM | 0 | |
@@ -288,7 +288,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `public/premium-workstation.css` | 7 | BELUM | 0 | |
 | `public/screener-lifecycle-ui.js` | 173 | BELUM | 0 | |
 | `public/security-admin-runtime.js` | 198 | BELUM | 0 | |
-| `public/stock-analysis-ai.js` | 694 | BELUM | 0 | |
+| `public/stock-analysis-ai.js` | 694 | SELESAI | 0 | bersih; describeFailure jadi acuan kontrak error untuk index.html |
 | `public/subscription-access-gate-v1.js` | 145 | BELUM | 0 | |
 | `public/subscription-manual-payment-v1.js` | 438 | BELUM | 0 | |
 | `public/subscription-voucher-claim-v1.js` | 61 | BELUM | 0 | |

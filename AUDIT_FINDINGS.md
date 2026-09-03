@@ -97,6 +97,128 @@ Modul yang sudah dibaca penuh dan bersih dicatat di bagian "Modul Bersih".
 
 ---
 
+## BUG-003
+
+- **Severity** : HIGH
+- **Area** : AI-Analisis (P1)
+- **Lokasi** : `public/index.html` — `runAnalisisFromDashboard()`, blok fetch dan penanganan respons (sebelum perbaikan: baris 3288-3348 dan catch di 3380-3384)
+- **Gejala** : Setiap kegagalan dari server muncul sebagai satu pesan yang sama: **"Analisis belum berhasil. Coba lagi."** Pengguna tidak pernah tahu alasan sebenarnya — sesi habis, belum berlangganan, kena rate limit, atau AI belum dikonfigurasi.
+- **Root cause** : Handler tidak pernah memeriksa `response.ok`. Ia hanya membaca `data.html || data.reply`:
+
+  ```js
+  var data = await response.json();
+  rawOutput = data.html || data.reply || '';
+  ...
+  if (rawOutput) { /* render */ } else { throw new Error('Tidak ada hasil.'); }
+  ```
+
+  Padahal `api/analyze.js:31-38` menolak permintaan dengan alasan yang jelas:
+
+  ```js
+  res.status(access.status || 403).json({
+    success:false,
+    code:access.code || 'PREMIUM_ACCESS_DENIED',
+    error:access.error || 'Akses premium diperlukan.',
+    access_level:access.access_level || 'free'
+  });
+  ```
+
+  Karena body penolakan tidak punya `html` maupun `reply`, `rawOutput` menjadi `''` dan semuanya jatuh ke `catch` generik.
+
+- **Dampak** : Fitur Analisis Saham terlihat "rusak total" bagi pengguna, padahal servernya bekerja benar. Lebih buruk lagi, saran "Coba lagi" **salah** untuk kasus yang tidak bisa diperbaiki dengan mengulang: menekan ulang saat belum berlangganan tidak akan pernah berhasil, dan mengulang saat kena rate limit justru memperburuk.
+
+  Ini kemungkinan besar juga yang dialami pelapor: karena BUG-001 membuat login mustahil, tidak ada sesi, `/api/analyze` menjawab 401/403, dan yang terlihat hanyalah "Analisis belum berhasil. Coba lagi."
+
+- **Bukti reproduksi (Chromium sungguhan, stub server mengembalikan body asli)** :
+
+  | jawaban server | yang dilihat pengguna (sebelum) | yang dilihat pengguna (sesudah) |
+  |---|---|---|
+  | `403 PREMIUM_ACCESS_DENIED` + `"Akses premium diperlukan. Aktifkan langganan untuk memakai AI."` | Analisis belum berhasil. Coba lagi. | Akses premium diperlukan. Aktifkan langganan untuk memakai AI. |
+  | `401` | Analisis belum berhasil. Coba lagi. | Sesi kamu sudah berakhir. Muat ulang halaman dan login lagi. |
+  | `429` + `retry_after_seconds: 42` | Analisis belum berhasil. Coba lagi. | Terlalu banyak permintaan analisis dalam waktu singkat. Coba lagi sekitar 42 detik lagi. |
+  | `200` + html | analisis tampil normal | tidak berubah |
+
+- **Perbaikan** : `describeAnalisisFailure()` mencerminkan `describeFailure()` di `public/stock-analysis-ai.js:157-179`. Keduanya memanggil endpoint yang sama, jadi ada test yang memastikan keduanya tidak boleh berbeda pendapat soal `retryable`. Pesan dirender lewat `textContent`, tidak pernah digabung ke `innerHTML`, karena isinya berasal dari server.
+- **Risiko** : Rendah. Jalur sukses tidak disentuh sama sekali (terbukti: keluaran probe `200` identik).
+- **Verifikasi** : `test/ai-stock-analysis-failure-and-race.test.js` + probe browser di atas.
+- **Status** : DIPERBAIKI (PR #497)
+
+---
+
+## BUG-004
+
+- **Severity** : HIGH
+- **Area** : AI-Analisis (P1)
+- **Lokasi** : `public/index.html` — `runAnalisisFromDashboard()`, seluruh badan fungsi
+- **Gejala** : Berpindah ticker dengan cepat membuat panel menampilkan analisis **emiten yang salah**.
+- **Root cause** : Tidak ada penanda generasi permintaan. Fungsi ini `async` dan menulis `resultArea.innerHTML` tanpa syarat setelah `await`, sehingga respons lama yang datang belakangan menimpa respons baru.
+- **Bukti reproduksi (Chromium sungguhan)** : BBCA dijawab terlambat 3 detik, BBRI dijawab langsung.
+
+  ```
+  yang terakhir diminta pengguna : BBRI
+  yang tampil di panel           : "ANALYSIS FOR BBCA"
+                                   + tombol "Lihat Chart BBCA" / "Lihat News BBCA"
+                                   + updateAnalysisContext() mengarahkan chat lanjutan ke BBCA
+  ```
+
+- **Dampak** : Untuk aplikasi trading ini adalah kegagalan paling berbahaya di layar tersebut — analisis satu emiten tampil di bawah ticker emiten lain. Chat lanjutan kemudian membahas BBCA sementara pengguna yakin sedang menanyakan BBRI.
+- **Perbaikan** : Setiap pemanggilan mengambil nomor urut **sebelum `await` pertama**, dan hanya boleh menyentuh DOM atau konteks chat selama masih memegang nomor terbaru. Pemanggilan yang sudah usang juga membatalkan stream reader-nya, bukan menghabiskannya.
+- **Risiko** : Rendah, tetapi ini perubahan alur kontrol — ditutup oleh test yang mengeksekusi fungsi aslinya.
+- **Verifikasi** : test "a slow earlier analysis never overwrites the ticker the user asked for last" (mengeksekusi fungsi sungguhan, bukan regex sumber) + probe browser.
+- **Status** : DIPERBAIKI (PR #497)
+
+---
+
+## BUG-005
+
+- **Severity** : MEDIUM
+- **Area** : AI-Analisis (P1) / Infra
+- **Lokasi** : `lib/analyze-legacy.js` — sebelum perbaikan baris 547 (`handleChartDeepSeek`), 594 (`handleChartVision`), 711 (`callGroq`), 1518 (`handleOrderbook`), 1599 (`handleBrokerSummary`)
+- **Gejala** : Upload chart / orderbook / broker summary bisa menggantung sampai fungsi Vercel mati, lalu browser menerima halaman error HTML, bukan JSON.
+- **Root cause** : Lima panggilan provider tanpa timeout, padahal tiga saudaranya sudah dibatasi 20 detik dengan komentar yang menjelaskan persis alasannya (`lib/analyze-legacy.js:423-426`):
+
+  ```js
+  // Bounded so a stuck upstream response can't hold the whole request open
+  // until the platform's own function timeout (60s for this route) kills it.
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 20000);
+  ```
+
+  Jalur chart memanggil dua di antaranya berurutan (`handleChartDeepSeek` lalu `handleChartVision`, lihat `lib/analyze-legacy.js:46-53`), jadi keduanya bisa menghabiskan seluruh anggaran 60 detik.
+
+- **Dampak** : Satu provider yang macet menghabiskan durasi fungsi, dan kegagalannya sampai ke pengguna sebagai error generik tanpa alasan.
+- **Perbaikan** : Helper `fetchWithTimeout()`. Dua panggilan berantai dibatasi 22 detik masing-masing (22 + 22 < 60); sisanya memakai 20 detik yang sudah ada. Ada test yang mengambil batas 60 detik langsung dari `vercel.json`, jadi tetap benar bila `maxDuration` diubah.
+- **Risiko** : Panggilan yang sangat lambat kini gagal lebih cepat dan terkendali, bukan mati bersama seluruh fungsi. Menurut saya ini lebih baik, tapi ini memang perubahan perilaku — saya sebutkan eksplisit.
+- **Verifikasi** : test `fetchWithTimeout aborts a stalled upstream...` dan `no upstream provider call in lib/analyze-legacy.js is left unbounded` (memindai sumber sungguhan; gagal pada kode sebelum perbaikan).
+- **Status** : DIPERBAIKI (PR #497)
+
+---
+
+## BUG-006
+
+- **Severity** : MEDIUM
+- **Area** : AI-Analisis (P1)
+- **Lokasi** : `public/index.html` — fetch di `runAnalisisFromDashboard()`
+- **Gejala** : Spinner "Mengambil data teknikal..." berputar selamanya bila platform atau provider menggantung.
+- **Root cause** : Tidak ada `AbortController` sama sekali, padahal saudaranya `public/stock-analysis-ai.js:13,209-211` memakai batas 70 detik.
+- **Perbaikan** : Batas 70 detik yang sama, dan `AbortError` diklasifikasikan sebagai "Analisis dihentikan karena terlalu lama" alih-alih pesan generik.
+- **Status** : DIPERBAIKI (PR #497)
+
+---
+
+## BUG-007
+
+- **Severity** : LOW
+- **Area** : AI-Analisis / kode mati
+- **Lokasi** : `public/index.html` (cabang streaming di `runAnalisisFromDashboard`) vs `api/analyze.js:113-117` dan `lib/analyze-legacy.js`
+- **Gejala** : Tidak ada gejala bagi pengguna. Indikator "real-time" yang dijanjikan tidak pernah muncul pada analisis awal.
+- **Root cause** : Frontend mengirim `stream: true` dan `Accept: text/event-stream`, tetapi `api/analyze.js` merutekan `source: 'chat_mode'` ke `lib/analyze-legacy.js`, yang sama sekali tidak punya dukungan SSE — `stream: false` di-hardcode pada payload provider dan tidak ada satu pun `res.write` atau `text/event-stream` di file itu. Jadi `isStreamResponse` selalu `false` dan seluruh blok pembaca SSE tidak pernah dieksekusi.
+- **Dampak** : Kode mati yang menyesatkan pembaca berikutnya. Tidak merusak apa pun.
+- **Perbaikan** : **Sengaja tidak diubah.** Menghapusnya adalah pembersihan, bukan perbaikan bug, dan cabang itu akan bekerja benar bila handler legacy suatu saat mendukung SSE. Saya hanya membuatnya ikut patuh pada penjaga staleness yang baru. Diserahkan ke pemilik repo sebagai keputusan.
+- **Status** : DITEMUKAN (tidak diperbaiki, disengaja)
+
+---
+
 ## Modul Bersih (sudah diperiksa, tidak ditemukan bug)
 
 ### Hipotesis "import yatim ke modul AI yang dihapus" — TIDAK TERBUKTI
