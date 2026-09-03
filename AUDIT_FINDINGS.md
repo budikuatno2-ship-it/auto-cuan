@@ -48,7 +48,31 @@ Modul yang sudah dibaca penuh dan bersih dicatat di bagian "Modul Bersih".
 - **Dampak** : 100% pengguna yang belum login, di semua platform dan semua browser. Login, registrasi, dan self-service reset password semuanya tidak dapat dijangkau. Perbaikan terms-acceptance di PR #491 benar tetapi tidak pernah terlihat efeknya, karena form pendaftarannya sendiri tidak pernah tampil.
 - **Perbaikan** : Memindahkan blok markup `#loginModal`, `#registerModal`, dan `#selfResetModal` keluar dari `#dashboardScreen`, menjadi anak langsung `<body>` dan bersebelahan dengan `#dashboardScreen` (persis seperti `#authChoiceModal` yang selama ini memang berfungsi). Murni relokasi markup — tidak ada satu baris logika, handler, id, atau class yang diubah.
 - **Risiko** : Rendah. Ketiga modal berposisi `fixed inset-0 z-[9999]`, sehingga posisinya dalam alur dokumen tidak mempengaruhi tata letak. Tidak ada selector yang men-scope ke `#dashboardScreen ...` untuk ketiga modal ini. Rollback = `git revert` pada satu commit.
-- **Verifikasi** : `test/auth-modals-outside-dashboard-screen.test.js` — merekonstruksi pohon elemen nyata dari `public/index.html`, menjalankan `setTopLevelView()` dan `open*Modal()` yang asli di dalam `vm`, lalu memastikan modal beserta field-nya tidak berada di bawah leluhur `display:none` maupun `inert`. Test ini **gagal 4/6 pada markup sebelum perbaikan** dan hijau setelahnya.
+- **Verifikasi** :
+  1. `test/auth-modals-outside-dashboard-screen.test.js` — merekonstruksi pohon elemen nyata dari `public/index.html`, menjalankan `setTopLevelView()` dan `open*Modal()` yang asli di dalam `vm`, lalu memastikan modal beserta field-nya tidak berada di bawah leluhur `display:none` maupun `inert`. Test ini **gagal 4/6 pada markup sebelum perbaikan** dan hijau setelahnya.
+  2. Verifikasi browser sungguhan (Chromium headless, desktop 1440x900 dan profil mobile Pixel 5),
+     menyajikan `public/` secara lokal dengan hanya `/api/maintenance-settings` di-stub ke
+     `maintenanceMode:false`, lalu mengklik pemicu Login yang benar-benar terlihat dan mengetik
+     ke field-nya:
+
+     | | sebelum perbaikan | sesudah perbaikan |
+     |---|---|---|
+     | leluhur `#loginModal` | `["dashboardScreen"]` | `[]` |
+     | computed `display` modal | `flex` | `flex` |
+     | kotak `#loginUsername` | **0 x 0** | **311 x 46** |
+     | kotak `#loginBtn` | **0 x 0** | **311 x 48** |
+     | `fill('#loginUsername')` | **timeout 30 detik** | berhasil mengetik |
+     | `click('#loginBtn')` | **timeout 8 detik** | terkirim |
+     | `#loginError` setelah submit | tetap tersembunyi, kosong | pesan server tampil |
+
+     Dua detail penting: (a) `display` modal itu sendiri memang sudah `flex` sebelum perbaikan —
+     `openLoginModal()` bekerja persis seperti niatnya; elemennya hanya berukuran 0x0 karena
+     leluhurnya `display:none`. Pemeriksaan yang hanya melihat class/style modal itu sendiri akan
+     menyimpulkan "tidak ada masalah". (b) `#loginError` tetap tersembunyi setelah klik, jadi
+     pengguna tidak mendapat umpan balik apa pun — cocok dengan gejala "tombol Login ditekan, tidak
+     terjadi apa-apa", bukan "login gagal".
+     Pola yang sama pada registrasi: `#regTermsAccepted` berukuran 0x0 dan `check()` timeout sebelum
+     perbaikan; 13x16 dan berhasil dicentang setelahnya.
 - **Status** : DIPERBAIKI (PR P0)
 
 ---
@@ -70,3 +94,39 @@ Modul yang sudah dibaca penuh dan bersih dicatat di bagian "Modul Bersih".
 - **Dampak** : Cakupan CI lebih kecil dari yang terlihat.
 - **Perbaikan** : (diusulkan, belum dieksekusi di PR ini) tambahkan validator yang menggagalkan build bila ada `test/*.test.js` yang tidak terdaftar, atau daftarkan sisa file yang belum masuk.
 - **Status** : DITEMUKAN
+
+---
+
+## Modul Bersih (sudah diperiksa, tidak ditemukan bug)
+
+### Hipotesis "import yatim ke modul AI yang dihapus" — TIDAK TERBUKTI
+
+Brief audit mencurigai adanya sisa import ke `lib/portfolio-ai.js`,
+`lib/context-ai-router.js`, `-v2`, `-v3` setelah PR #434. Saya sapu seluruh repo
+(`*.js`, `*.json`, `*.html`, `*.yml`, `*.md`, `*.sh`, di luar `node_modules`):
+
+- **Tidak ada** satu pun `require()` atau import dinamis ke `lib/portfolio-ai`,
+  `lib/context-ai-router` (tanpa suffix), `-v2`, atau `-v3`.
+- Semua kecocokan string `portfolio-ai` menunjuk ke file **frontend yang ada**:
+  `public/portfolio-ai-runtime-v2.js`, `public/portfolio-ai-workspace-v1.js`,
+  `public/portfolio-ai-workspace-v1.css`. Bukan modul server yang dihapus.
+
+Koreksi atas asumsi di brief: `lib/context-ai-router-v4.js`, `-v5.js`, dan `-v6.js`
+**masih ada dan masih hidup**, bukan kode mati. Mereka membentuk rantai delegasi:
+
+```
+api/analyze.js:4          require('../lib/context-ai-router-v7')
+lib/context-ai-router-v7.js:14   require('./context-ai-router-v6')
+lib/context-ai-router-v6.js:15   require('./context-ai-router-v5')
+lib/context-ai-router-v5.js      delegasi ke v4 (lihat komentar lib/context-ai-router-v4.js:257)
+```
+
+Jadi menghapus v4/v5/v6 akan merusak runtime. Ini dicatat supaya tidak ada yang
+"membersihkan" file itu dengan asumsi keliru.
+
+### Perlu diperiksa lebih lanjut (belum pasti)
+
+`tools/apply-production-hotfixes.js:349` dan `test/approved-website-access-shell.test.js:22`
+menyebut `public/portfolio-ai-recovery.js`, dan file itu **tidak ada** di repo. Build
+tetap hijau, jadi kemungkinan besar keduanya menanganinya sebagai opsional — tetapi
+saya belum membaca kedua file itu utuh, jadi belum bisa saya sebut aman maupun bug.
