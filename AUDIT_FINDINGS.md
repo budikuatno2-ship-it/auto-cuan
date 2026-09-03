@@ -1552,3 +1552,96 @@ penyebutnya (`entryHigh` vs `lastPrice`). Keduanya lalu dipakai untuk memilih la
 adalah keduanya memang mengukur hal yang berbeda. Menyamakannya akan mengubah label
 Day Trade, yaitu perilaku bisnis (aturan No. 8). Saya catat supaya Anda tahu
 keduanya tidak sebanding kalau suatu saat dibandingkan berdampingan.
+
+---
+
+## BUG-024 — Pencocokan substring `ARA`/`ARB` terlalu longgar di `getDayTradeRadarStatus` (laten)
+
+- **Severity** : LOW (laten — tidak ada string produksi yang memicunya saat ini, lihat pengukurannya di bawah)
+- **Area** : Day Trade — pemilihan alasan radar dan penjaga blok fatal
+- **Lokasi** : `api/sector-hot.js:12242`
+
+**Kode asli.**
+
+```js
+if (raw.indexOf('ARA_ARB') >= 0 || raw.indexOf('ARA') >= 0 || raw.indexOf('ARB') >= 0) found.ARA_ARB_MONITOR = true;
+```
+
+`raw` adalah teks status/verdict/reason yang sudah di-`toUpperCase()` dan spasi/tanda
+hubungnya diganti `_`. Pencocokannya substring polos, tanpa batas kata.
+
+**Kenapa ini berbahaya kalau terpicu.** `ARA_ARB_MONITOR` adalah **prioritas
+tertinggi** dalam daftar:
+
+```js
+var priority = ['ARA_ARB_MONITOR', 'CHASE_RISK_MONITOR', 'RADAR', 'WAIT_PULLBACK', ...];
+```
+
+jadi ia menimpa setiap alasan radar lain yang lebih tepat. Lebih penting lagi, ia
+membuka penjaga fatal di `hasFatalDayTradeRadarBlock` (`api/sector-hot.js:12291`):
+
+```js
+if (r.buy_execution_realistic === false && !getDayTradeRadarStatus(r)) return true;
+```
+
+Kandidat dengan `buy_execution_realistic === false` (eksekusi tidak realistis)
+seharusnya diblokir. Tapi kalau `getDayTradeRadarStatus` mengembalikan sesuatu —
+termasuk hasil cocokan palsu — ekspresinya jadi false dan kandidat itu **lolos**.
+Penjaga yang dimaksudkan gagal-tertutup menjadi gagal-terbuka.
+
+**Terbukti terlalu longgar.** Saya jalankan fungsinya (diekstrak apa adanya) atas
+kata-kata Indonesia sehari-hari:
+
+| teks | hasil |
+|---|---|
+| `Harga dekat/mentok ARA; jangan chase agresif.` | ARA_ARB_MONITOR ✅ benar |
+| `Narrow range/doji, pasar belum putuskan **arah**` | ARA_ARB_MONITOR ❌ |
+| `Setup **sementara** belum layak entry` | ARA_ARB_MONITOR ❌ |
+| `Penurunan cukup **parah**, hindari dulu` | ARA_ARB_MONITOR ❌ |
+| `Harga bergerak **antara** support dan resistance` | ARA_ARB_MONITOR ❌ |
+| `Belum ada **cara** masuk yang aman` | ARA_ARB_MONITOR ❌ |
+| `Bergerak ke **utara**` | ARA_ARB_MONITOR ❌ |
+| `**Barang** masih ditahan bandar` | ARA_ARB_MONITOR ❌ |
+
+8 dari 8 kata umum cocok palsu (`bARAng`, `sementARA`, `pARAh`, `antARA`, `cARA`,
+`utARA`, `ARAh`).
+
+**Jangkauan — dan di sini saya menahan diri, bukan melebihkan.** Kata-kata di atas
+saya karang sendiri, jadi belum membuktikan apa pun soal produksi. Karena itu saya
+sapu seluruh repo (`api/`, `lib/`, `public/`, `tools/`) untuk **setiap literal string
+yang benar-benar di-assign ke salah satu dari 19 field** yang dibaca fungsi ini —
+437 nilai. Hasilnya:
+
+- **Tidak satu pun literal produksi di jalur Day Trade yang memicu cocokan palsu.**
+- Yang tersaring hanya konstanta sah (`NEAR_ARA`, `NEAR_ARB` di
+  `lib/idx-tick-normalization.js`), fixture test, dan satu string di
+  `public/portfolio-ai-runtime-v2.js` ("gangguan **sementara**") yang berada di
+  subsistem berbeda dan tidak masuk ke kandidat Day Trade.
+
+Jadi statusnya **laten**, bukan aktif.
+
+**Yang tidak bisa saya buktikan.** Sapuan itu hanya menjangkau *literal*. Beberapa
+field ini juga menerima teks yang dirangkai saat runtime — misalnya
+`statusReason = metricLine + '.' + entryNote + ' ' + statusReason`
+(`api/sector-hot.js:10850`) dan `excluded_reason` dari gate yang isinya gabungan.
+Teks semacam itu tidak bisa saya enumerasi secara statis, jadi saya **tidak bisa
+menyatakan tidak mungkin terpicu** — hanya bahwa tidak ada literal yang memicunya.
+
+**Perbaikan yang diusulkan.** Teksnya sudah dinormalkan (`[\s-]+` → `_`), jadi cukup
+cocokkan sebagai token utuh, bukan substring:
+
+```js
+if (/(^|_)(ARA|ARB|ARA_ARB)(_|$)/.test(raw)) found.ARA_ARB_MONITOR = true;
+```
+
+**Risiko.** Karena tidak ada pemicu produksi yang ditemukan, perbaikannya no-op pada
+data sekarang — dan menutup celah gagal-terbuka di `hasFatalDayTradeRadarBlock` kalau
+suatu saat ada yang menulis "arah" atau "sementara" ke salah satu field itu.
+
+**Verifikasi (kalau disetujui).** Test dengan kedelapan kata di atas plus ARA/ARB
+asli, memastikan hanya yang asli yang cocok — dan satu test yang memastikan kandidat
+`buy_execution_realistic === false` dengan teks berisi "sementara" tetap diblokir
+`hasFatalDayTradeRadarBlock`.
+
+**Status** : DITEMUKAN — belum diperbaiki (laten; digabung ke PR pembersihan bersama
+BUG-021 kalau Anda setuju)
