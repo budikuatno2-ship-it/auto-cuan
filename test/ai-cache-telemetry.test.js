@@ -378,4 +378,3 @@ test('PR 7: lib/ai-analysis-cache re-exports all telemetry functions', () => {
   assert.equal(typeof cacheModule.recordGeminiCall, 'function');
   assert.equal(typeof cacheModule.recordLocalFallback, 'function');
 });
-
