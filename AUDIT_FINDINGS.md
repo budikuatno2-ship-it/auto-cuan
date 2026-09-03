@@ -814,11 +814,11 @@ Sisa keluarga yang sama dan **belum** disentuh: empat `fetch` ke Supabase REST d
 
 - **Severity** : LOW (laten — tidak terjangkau pada jalur mana pun yang saya baca)
 - **Area** : normalisasi level entry
-- **Lokasi** : `api/sector-hot.js:4024-4025`, `api/sector-hot.js:6843-6844`, `api/sector-hot.js:7789-7790`
+- **Lokasi** : `api/sector-hot.js:4024-4025`, `:6843-6844`, `:7789-7790`, `:13230`, `:13245-13246`, `:13341` — **enam tempat**
 
-Semula saya catat sebagai catatan tunggal. Setelah menemukan pola yang sama di dua
-tempat lain, saya naikkan jadi temuan bernomor — tiga kemunculan bukan lagi
-kekhilafan sekali, melainkan pola.
+Semula saya catat sebagai catatan tunggal. Setelah menyelesaikan pembacaan seluruh
+file (13.902 baris), jumlahnya menjadi **enam** — jelas sebuah pola, bukan
+kekhilafan sekali.
 
 **Konvensi yang berlaku di file ini** (dinyatakan di `api/sector-hot.js:3519-3520`):
 
@@ -864,11 +864,42 @@ Pada ketiganya, kalau cabang terakhir yang terpakai, `entry1` menerima nilai
   Jadi cabang terakhirnya butuh baris tanpa `entry1` di kolom **maupun** di
   `raw_payload` — tidak saya temukan produsen yang menghasilkan bentuk itu.
 
-**Yang membuatnya layak dicatat.** Di `:7789-7790` konsekuensinya paling tidak
-sepele kalau cabang itu sampai jalan: `getHistoryEntryUsage` (`:7668`) menguji
-`low <= entry2` lebih dulu, jadi entry yang terbalik akan melaporkan "Entry 2"
-tersentuh padahal Entry 1 yang tersentuh, dan `return_from_entry_pct` dihitung dari
-batas yang salah.
+**Tiga tempat tambahan yang ditemukan di bagian akhir file** (jalur monitor swing):
+
+```js
+// :13230 — getSwingMonitorTp1UpsidePct
+var entryHigh = toNum(candidate.entry_high || candidate.entry2 || candidate.entry || candidate.entry1);
+```
+
+```js
+// :13245-13246 — diagnoseSwingMonitorCandidate
+var entryLow  = toNum(candidate && (candidate.entry_low  || candidate.entry1 || candidate.entry));
+var entryHigh = toNum(candidate && (candidate.entry_high || candidate.entry2 || candidate.entry));
+```
+
+```js
+// :13341 — formatSwingMonitorFallbackTelegramMessage
+lines.push('Entry: ' + fmtPrice(c.entry_low || c.entry1 || c.entry) + ' - ' + fmtPrice(c.entry_high || c.entry2 || c.entry));
+```
+
+**Yang membuatnya layak dicatat.** Konsekuensinya berbeda-beda kalau cabang fallback
+sampai jalan:
+
+- `:7789-7790` — `getHistoryEntryUsage` (`:7668`) menguji `low <= entry2` lebih dulu,
+  jadi entry terbalik akan melaporkan "Entry 2" tersentuh padahal Entry 1 yang
+  tersentuh, dan `return_from_entry_pct` dihitung dari batas yang salah.
+- `:13230` — `upside` dihitung dari batas **bawah**, sehingga membesar. Nilai itu
+  langsung menjadi gate: `else if (upside == null || upside < 5) reason = 'below_min_tp1_upside'`
+  (`:13273`). Kandidat yang seharusnya gagal ambang bisa lolos.
+- `:13341` — ini **terlihat pengguna**: rentangnya dirender ke Telegram dengan
+  pemisah `' - '`, jadi kalau fallback jalan, pesan monitor Swing mencetak rentang
+  entry terbalik — gejala yang sama dengan BUG-016, tapi di Telegram, bukan web.
+
+Ketiganya tetap tidak terjangkau pada jalur yang saya baca: `selectSafeSwingMonitorCandidates`
+(`:13327`) dan `buildSwingMonitorFallbackDiagnostics` (`:13288`) sama-sama memanggil
+`normalizeCandidateEntryAliases(c, category)` lebih dulu, dan baris sumbernya
+(`swing_screener_latest`, `swing_screener_non_konglo_latest`) punya kolom
+`entry_low`/`entry_high`.
 
 **Perbaikan yang diusulkan.** Pakai `Math.min`/`Math.max`, seperti yang **sudah
 dilakukan file ini sendiri** di setidaknya tiga tempat lain:
@@ -895,7 +926,8 @@ Jadi polanya sudah ada di rumah sendiri; tiga tempat itu saja yang belum ikut.
 sekarang, dan menjadi benar kalau suatu saat ada produsen baris berbentuk lain.
 
 **Status** : DITEMUKAN — belum diperbaiki (laten; digabung saja ke PR pembersihan
-berikutnya kalau Anda setuju)
+berikutnya kalau Anda setuju). Dengan enam kemunculan dan satu di antaranya
+terlihat di Telegram, saya condong menyarankan ini **dikerjakan**, bukan dibiarkan.
 
 ---
 
