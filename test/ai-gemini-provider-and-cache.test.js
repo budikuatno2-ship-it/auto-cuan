@@ -262,7 +262,9 @@ test('PR 6: handleContextAIV7 uses cache hit when available and does not call ex
 
 test('PR 6: handleContextAIV7 calls direct Gemini API and caches response on success (mocked fetch)', async () => {
   const origKey = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+  const origLegacy = process.env.PORTFOLIO_AI_API_KEY;
   process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = 'mock-valid-gemini-key';
+  delete process.env.PORTFOLIO_AI_API_KEY;
 
   const origFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
@@ -297,13 +299,17 @@ test('PR 6: handleContextAIV7 calls direct Gemini API and caches response on suc
     assert.equal(state.payload.reply, 'Respon live Gemini untuk BBCA');
   } finally {
     globalThis.fetch = origFetch;
+    if (origLegacy !== undefined) process.env.PORTFOLIO_AI_API_KEY = origLegacy;
+    else delete process.env.PORTFOLIO_AI_API_KEY;
     delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   }
 });
 
 test('PR 6: handleContextAIV7 degrades gracefully to local deterministic response when Gemini fails', async () => {
   const origKey = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+  const origLegacy = process.env.PORTFOLIO_AI_API_KEY;
   process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = 'invalid-key-that-will-fail';
+  delete process.env.PORTFOLIO_AI_API_KEY;
   const origFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
     throw new Error('Network timeout');
@@ -331,11 +337,15 @@ test('PR 6: handleContextAIV7 degrades gracefully to local deterministic respons
     assert.ok(state.payload.reply.includes('BBCA'));
   } finally {
     globalThis.fetch = origFetch;
+    if (origLegacy !== undefined) process.env.PORTFOLIO_AI_API_KEY = origLegacy;
+    else delete process.env.PORTFOLIO_AI_API_KEY;
     delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   }
 });
 
 test('PR 6: handleContextAIV7 respects GEMINI_AI_DISABLED toggle', async () => {
+  const origLegacy = process.env.PORTFOLIO_AI_API_KEY;
+  delete process.env.PORTFOLIO_AI_API_KEY;
   process.env.GEMINI_AI_DISABLED = 'true';
   process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = 'valid-key';
   try {
@@ -357,6 +367,8 @@ test('PR 6: handleContextAIV7 respects GEMINI_AI_DISABLED toggle', async () => {
     assert.equal(state.payload.local_fallback, true);
     assert.ok(state.payload.reply.includes('Evaluasi Portofolio'));
   } finally {
+    if (origLegacy !== undefined) process.env.PORTFOLIO_AI_API_KEY = origLegacy;
+    else delete process.env.PORTFOLIO_AI_API_KEY;
     delete process.env.GEMINI_AI_DISABLED;
     delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   }
