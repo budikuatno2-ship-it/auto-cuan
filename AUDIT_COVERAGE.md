@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 30 SELESAI, 4 SEDANG, 744 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 34 SELESAI, 4 SEDANG, 740 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -220,15 +220,15 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/track-record-service.js` | 265 | SELESAI | 0 | Dibaca baris 1-265. Bersih. Diperiksa: `classifyOutcome` menghormati kronologi TP-sebelum-SL (`lib/report-helpers.js:68-80`), `resolved_win_rate` tidak menghitung ganda TP2 di dalam TP1, baris terarsip dilewati (:99), `calculateGainPct` memakai entry konservatif (entry1=batas atas). Meneruskan `entry1`/`entry2` apa adanya — benar; kekeliruan urutan ada di sisi render (BUG-016) |
 | `lib/trade-plan-v2-candle-structure.js` | 397 | BELUM | 0 | |
 | `lib/trade-plan-v2-daytrade-diagnostic.js` | 521 | BELUM | 0 | |
-| `lib/trade-plan-v2-flags.js` | 128 | BELUM | 0 | |
+| `lib/trade-plan-v2-flags.js` | 128 | SELESAI | 0 | Bersih. Keempat flag default `false`; hanya menyala untuk `true`/`1`/`yes`/`on`. Fail-closed. |
 | `lib/trade-plan-v2-formatter.js` | 301 | BELUM | 0 | |
 | `lib/trade-plan-v2-gap-areas.js` | 261 | BELUM | 0 | |
-| `lib/trade-plan-v2-integration.js` | 675 | BELUM | 0 | |
+| `lib/trade-plan-v2-integration.js` | 675 | SELESAI | 1 | BUG-021 (situs baru `:135-136`, laten). Sisanya bersih: gating flag benar-benar fail-closed, `selectCanonicalTradePlan` memisahkan konteks publik vs intraday dengan tepat, `computePlanLockId` deterministik dan sengaja tidak memuat field volatil. |
 | `lib/trade-plan-v2-liquidity-sweep.js` | 449 | BELUM | 0 | |
 | `lib/trade-plan-v2-replay-preview.js` | 261 | BELUM | 0 | |
-| `lib/trade-plan-v2-source-adapters.js` | 498 | BELUM | 0 | |
+| `lib/trade-plan-v2-source-adapters.js` | 498 | SELESAI | 1 | BUG-021 (situs baru `:129-130`, `:209-210`, `:338-339`). Konsekuensinya lebih berat di sini karena nilai dipakai memilih struktur sebelum penjaga tukar mesin bekerja — tapi tetap laten: tabel sumber punya kolom `entry_low`/`entry_high`. |
 | `lib/trade-plan-v2-sweep-diagnostic.js` | 475 | BELUM | 0 | |
-| `lib/trade-plan-v2.js` | 1319 | BELUM | 0 | |
+| `lib/trade-plan-v2.js` | 1319 | SELESAI | 0 | Bersih sebagai mesin. Seluruh modul hanya aktif di belakang `TRADE_PLAN_V2_SHADOW_ENABLED`/`TRADE_PLAN_V2_PUBLIC_ENABLED` (default mati). Alias entry di `:743-744` **dijaga** penukar `:745-747`. Diperiksa: profil per-screener, hierarki support/resistance, buffer volatilitas, TP1 cap, gate TP2 (butuh breakout terkonfirmasi), trailing ratchet, resolusi status/RR. |
 | `lib/user-watchlist-service.js` | 550 | BELUM | 0 | |
 | `lib/voucher-admin-bot.js` | 333 | BELUM | 0 | |
 | `lib/voucher-admin-sender.js` | 28 | BELUM | 0 | |

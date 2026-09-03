@@ -810,11 +810,11 @@ Sisa keluarga yang sama dan **belum** disentuh: empat `fetch` ke Supabase REST d
 
 ---
 
-## BUG-021 — Fallback alias entry tertukar di tiga tempat (laten)
+## BUG-021 — Fallback alias entry tertukar di sebelas tempat (laten)
 
 - **Severity** : LOW (laten — tidak terjangkau pada jalur mana pun yang saya baca)
 - **Area** : normalisasi level entry
-- **Lokasi** : `api/sector-hot.js:4024-4025`, `:6843-6844`, `:7789-7790`, `:13230`, `:13245-13246`, `:13341`, dan `lib/idx-tick-normalization.js:965` — **tujuh tempat**
+- **Lokasi** : `api/sector-hot.js:4024-4025`, `:6843-6844`, `:7789-7790`, `:13230`, `:13245-13246`, `:13341`, `lib/idx-tick-normalization.js:965`, `lib/trade-plan-v2-integration.js:135-136`, dan `lib/trade-plan-v2-source-adapters.js:129-130`, `:209-210`, `:338-339` — **sebelas tempat**
 
 Semula saya catat sebagai catatan tunggal. Setelah menyelesaikan pembacaan seluruh
 file (13.902 baris), jumlahnya menjadi **enam** — jelas sebuah pola, bukan
@@ -960,7 +960,85 @@ Jadi polanya sudah ada di rumah sendiri; tiga tempat itu saja yang belum ikut.
 **Risiko.** Rendah — karena tidak terjangkau, perbaikannya no-op pada data yang ada
 sekarang, dan menjadi benar kalau suatu saat ada produsen baris berbentuk lain.
 
-**Status** : DITEMUKAN — belum diperbaiki. Dengan tujuh kemunculan, satu terlihat di
+### Tambahan setelah membaca modul Trade Plan V2 — empat lokasi lagi (total **sebelas**)
+
+Pola yang sama muncul lagi di keluarga `trade-plan-v2`, dan kali ini pada modul yang
+**seluruhnya** ada di belakang flag mati-secara-default (`TRADE_PLAN_V2_SHADOW_ENABLED`
+/ `TRADE_PLAN_V2_PUBLIC_ENABLED`, `lib/trade-plan-v2-flags.js:59-66`) atau di alat CLI
+offline. Jadi tidak ada satupun yang aktif di produksi hari ini — tetapi keempatnya
+membaca `entry1` sebagai batas bawah:
+
+```js
+// lib/trade-plan-v2-integration.js:135-136 — buildLegacyTradePlan
+entry_low: pick(['entry_low', 'entry1', 'entry_1']),
+entry_high: pick(['entry_high', 'entry2', 'entry_2']),
+```
+
+```js
+// lib/trade-plan-v2-source-adapters.js:129-130 — adaptDayTrade
+const entryLow = pickNum(gen, ['entry_low', 'entry1', 'entry_1']);
+const entryHigh = pickNum(gen, ['entry_high', 'entry2', 'entry_2']);
+```
+
+```js
+// lib/trade-plan-v2-source-adapters.js:209-210 — adaptSwingKonglo
+const entryLow = pickNum(gen, ['entry_low', 'entry1']);
+const entryHigh = pickNum(gen, ['entry_high', 'entry2']);
+```
+
+```js
+// lib/trade-plan-v2-source-adapters.js:338-339 — adaptSwingNonKonglo
+const entryLow = pickNum(gen, ['entry_low', 'entry1']);
+const entryHigh = pickNum(gen, ['entry_high', 'entry2']);
+```
+
+**Kenapa keempat ini lebih penting daripada tujuh yang pertama, seandainya flag-nya
+dinyalakan.** Di tujuh lokasi sebelumnya nilai terbalik hanya *ditampilkan* atau masuk
+ke satu gate. Di adapter, nilainya dipakai untuk **memilih struktur pasar**, dan itu
+terjadi **sebelum** penjaga tukar milik mesin (`lib/trade-plan-v2.js:743-745`) sempat
+bekerja:
+
+```js
+// lib/trade-plan-v2-source-adapters.js:216-222 — batas atas dipakai sebagai plafon swing low
+const confirmedSwingLow = getLatestConfirmedSwingLow(source.candles, entryLow, CONFIRMED_PIVOT_LOOKBACK);
+```
+
+```js
+// lib/trade-plan-v2-source-adapters.js:230-234 — batas bawah dipakai sebagai lantai resistance
+const confirmedResistance = getNearestConfirmedResistance(source.candles, entryHigh, CONFIRMED_PIVOT_LOOKBACK);
+if (confirmedResistance && confirmedResistance.local_resistance > entryHigh) {
+```
+
+Kalau alias terbalik terpakai, pivot yang berada **di dalam zona entry** lolos sebagai
+`local_resistance`. Mesin lalu memotong TP1 di bawah/di dalam zona entry
+(`lib/trade-plan-v2.js:1046-1052`), `tp1` jadi `null`, dan rencana turun ke WARNING
+tanpa TP1 — padahal strukturnya sebenarnya sehat.
+
+**Jangkauan cabang alias itu, diperiksa satu per satu:**
+
+- `adaptDayTrade` dan kedua adapter swing dipanggil dari `buildPlanFromSource`
+  (`lib/trade-plan-v2-integration.js:187`), dan satu-satunya pemakainya di produksi
+  adalah `attachShadowTradePlanV2` — yang keluar lebih dulu kalau flag shadow mati
+  (`:293`). Tabel sumbernya (`daytrade_screener_latest`, `swing_screener_latest`,
+  `swing_screener_non_konglo_latest`) punya kolom `entry_low`/`entry_high`
+  (`supabase/daytrade-screener-migration.sql:45`, `supabase/swing-screener-migration.sql:25`,
+  `supabase/swing-screener-non-konglo.sql:30`), jadi alias `entry1` tidak terpakai.
+- `adaptStoredRow` (`lib/trade-plan-v2-source-adapters.js:449-457`) dipakai alat
+  offline `tools/run-trade-plan-v2-replay-preview.js` atas file ekspor. **Di sinilah
+  cabang alias benar-benar bisa jalan**: `telegram_daily_picks` menyimpan `entry1`/`entry2`
+  dan **tidak** punya `entry_low`/`entry_high` (`supabase/telegram-daily-picks-migration.sql:12-13`).
+  Kalau operator mengekspor tabel itu dan menjalankan replay, laporan
+  perbandingannya salah batas. Alat baca-saja, tidak menulis apa pun.
+- `buildLegacyTradePlan` dipakai `resolvePublicTradePlan`, tapi payload legacy-nya
+  hanya dirender kalau `source === 'trade_plan_v2'` (`lib/telegram-templates.js:396`),
+  yang butuh flag publik menyala.
+
+Ini **tidak mengubah severity** keseluruhan (masih LOW, masih laten di produksi), tapi
+menambah bobot rekomendasi: satu perbaikan alias yang seragam menutup sebelas lokasi
+sekaligus, termasuk keempat yang akan langsung aktif begitu rollout Trade Plan V2
+dinyalakan.
+
+**Status** : DITEMUKAN — belum diperbaiki. Dengan sebelas kemunculan, satu terlihat di
 Telegram (`:13341`), satu melemahkan penjaga ARA (`idx-tick-normalization.js:965`), dan
 obatnya sudah tertulis empat kali di modul bersama repo ini sendiri, **saya
 merekomendasikan ini dikerjakan**. Perbaikannya no-op pada data yang ada sekarang
