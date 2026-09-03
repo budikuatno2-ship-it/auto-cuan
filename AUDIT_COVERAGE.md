@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 25 SELESAI, 3 SEDANG, 750 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 25 SELESAI, 4 SEDANG, 749 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -72,7 +72,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `api/register-user.js` | 206 | SELESAI | 0 | bersih; rate limit, validasi hash, terms acceptance, rollback registrasi |
 | `api/reset-password.js` | 68 | SELESAI | 0 | bersih; gateway routing saja |
 | `api/review-access.js` | 117 | SELESAI | 1 | BUG-013: token default + hash password akun review ada di sumber, repo publik |
-| `api/sector-hot.js` | 13902 | BELUM | 0 | |
+| `api/sector-hot.js` | 13902 | SEDANG | 0 | baris 1-2100 dari 13902 dibaca. Gate premium/cron per-action diverifikasi; allowlist aksi menutup fallthrough. Menguatkan pola BUG-014 (volume_ratio_avg20=0 saat tidak diketahui, dipakai sebagai HARD FILTER di :2016) |
 | `deploy/ai-eval-once.env.example` | 23 | BELUM | 0 | |
 | `deploy/vps/run-daily-market-context-collector.sh` | 100 | BELUM | 0 | |
 | `deploy/vps/telegram-monitor-local.sh` | 27 | BELUM | 0 | |
