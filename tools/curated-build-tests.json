@@ -18,6 +18,7 @@
   "test/portfolio-supabase-persistence.test.js",
   "test/repo-security-hardening.test.js",
   "test/desktop-header-center.test.js",
+  "test/review-access-fail-closed.test.js",
   "test/ui-bugfix-pack-v1.test.js",
   "test/runtime-hardening-regressions.test.js",
   "test/residual-audit-hardening.test.js",

@@ -2152,21 +2152,35 @@ async function retryServiceStatus() {
 }
 
 // ===== REVIEW MODE =====
-function isValidReviewMode() {
+// The review token is supplied in the reviewer's URL and forwarded to the
+// server, which is the only side that knows the expected value.
+//
+// This page used to carry the expected token as a literal and compare against
+// it here, then send that same literal to /api/review-access — so the gate's
+// secret shipped inside the public page (and the public repository) and was
+// readable by anyone. The page now knows no secret at all: it only checks that
+// a plausible token is present and lets the server decide.
+function reviewModeToken() {
     var params = new URLSearchParams(window.location.search);
     var pathname = window.location.pathname;
     var isReviewPath = (pathname === '/review' || pathname === '/review/');
     var isReviewQuery = params.get('mode') === 'review';
-    var token = params.get('token');
-    return (isReviewPath || isReviewQuery) && token === 'autocuan-review-2026';
+    if (!isReviewPath && !isReviewQuery) return '';
+    var token = String(params.get('token') || '').trim();
+    return (token.length >= 8 && token.length <= 200) ? token : '';
+}
+function isValidReviewMode() {
+    return reviewModeToken() !== '';
 }
 async function enterReviewMode() {
+    // Read the token BEFORE replaceState strips the query string off the URL.
+    var reviewToken = reviewModeToken();
     localStorage.removeItem('autocuan_blocked_until');
     document.getElementById('blockedScreen').classList.add('hidden');
     document.getElementById('maintenanceScreen').classList.add('hidden');
     window.history.replaceState({}, document.title, window.location.pathname);
     try {
-        var response = await fetch('/api/review-access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: 'autocuan-review-2026' }) });
+        var response = await fetch('/api/review-access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: reviewToken }) });
         var data = await response.json();
         if (!data.success) {
             document.getElementById('blockedScreen').classList.remove('hidden');
