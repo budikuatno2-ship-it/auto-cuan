@@ -1884,9 +1884,21 @@ function isValidPassword(password) {
 }
 
 // ===== WIB DATE UTILITY =====
+// Returns the calendar date in Asia/Jakarta (UTC+7) as YYYY-MM-DD.
+//
+// The previous form subtracted getTimezoneOffset() as well as adding 7 hours:
+//   new Date(now.getTime() + 7h - (now.getTimezoneOffset() * 60000))
+// getTimezoneOffset() is (UTC - local) in minutes, so a browser already in WIB
+// reports -420 and the subtraction added a SECOND seven hours. toISOString()
+// then read that in UTC, putting the result 7 hours ahead: from 17:00 WIB
+// onwards it returned tomorrow's date. The old form was only correct for a
+// browser running in UTC — that is, not the users this app is for.
+//
+// getTime() is already an absolute epoch value, independent of the local zone,
+// so shifting it by exactly +7h and reading the UTC date is all that is needed.
 function getWIBDateString() {
     var now = new Date();
-    var wib = new Date(now.getTime() + (7 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
+    var wib = new Date(now.getTime() + (7 * 60 * 60 * 1000));
     return wib.toISOString().slice(0, 10);
 }
 
