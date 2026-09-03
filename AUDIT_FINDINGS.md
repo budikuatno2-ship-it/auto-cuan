@@ -455,6 +455,48 @@ Brief meminta ini diperiksa. Hasil sapuan seluruh repo dan riwayat git:
 
 ---
 
+## BUG-014
+
+- **Severity** : LOW (laten — lihat bagian "yang menutupinya"; saya sengaja tidak menaikkannya karena tidak bisa menunjukkan kasus hidup)
+- **Area** : Screener / gate
+- **Lokasi** : `lib/daytrade-screener-engine.js:229-230` (produsen) vs `lib/idx-tick-normalization.js:1081` dan `:1091` (gate)
+- **Gejala** : Dua modul tidak sepakat soal nilai penanda untuk "rasio volume tidak diketahui". Produsen memakai `0`; gate ditulis dengan asumsi `null`.
+- **Root cause** : Produsen menggabungkan "tidak diketahui" menjadi `0`:
+
+  ```js
+  var vol20 = calcMA(volumes, 20);                      // null bila < 20 candle
+  var avg_volume_20d = (vol20 && Number.isFinite(vol20) && vol20 > 0) ? round0(vol20) : 0;
+  var volume_ratio_20d = (avg_volume_20d > 0 && Number.isFinite(volume_today / avg_volume_20d)) ? round2(volume_today / avg_volume_20d) : 0;
+  ```
+
+  Sementara gate secara eksplisit membedakan "tidak diketahui" dari sebuah angka:
+
+  ```js
+  var isA = ... && (p.volume_ratio_20d == null || toNum(p.volume_ratio_20d, 0) >= 0.8);
+  ...
+  if (p.volume_ratio_20d != null && toNum(p.volume_ratio_20d, 0) < 0.8) bReason.push('volume kurang');
+  ```
+
+  Klausa `p.volume_ratio_20d == null ||` jelas ditulis supaya kasus "tidak diketahui" **tidak** dihukum. Nilai `0` dari produsen tidak akan pernah memenuhi `>= 0.8`, jadi kandidat itu turun dari grade A dan diberi label "volume kurang".
+
+  Modul saudaranya melakukan hal yang benar — `lib/analyze-legacy.js:1398` mengembalikan `null`:
+
+  ```js
+  var volumeVsAvg20 = volAvg20 > 0 ? Math.round((candles[lastIdx].volume / volAvg20) * 100) / 100 : null;
+  ```
+
+  Jadi ketidakkonsistenan ini nyata di dalam repo, bukan tafsiran saya.
+
+- **Yang menutupinya (dan kenapa saya beri LOW, bukan HIGH)** : Kasus "rata-rata tidak diketahui" hanya terjadi bila candle < 20, dan kondisi itu sudah ditandai `SHORT_HISTORY` oleh `deriveDataQualityStatus` (`lib/daytrade-screener-engine.js:56-58`). `SHORT_HISTORY` termasuk status yang **mengeluarkan kandidat dari produksi** (`lib/intraday-production-eligibility.js:28-35`). Jadi jalur yang saya khawatirkan sudah tersaring lebih dulu oleh filter lain.
+
+  Sisa ambiguitasnya: `volume_ratio_20d === 0` juga bisa berarti "hari ini benar-benar nol volume padahal rata-ratanya diketahui" — dan dalam kasus itu `0` memang benar dan gate memang seharusnya menghukumnya. Satu nilai memikul dua arti yang berbeda.
+
+- **Yang TIDAK bisa saya buktikan** : sebuah kasus hidup di produksi di mana kandidat `SHORT_HISTORY` benar-benar sampai ke fungsi grading. Karena itu saya laporkan sebagai **laten**, bukan bug yang sedang menggigit.
+- **Perbaikan yang diusulkan** : samakan penanda — produsen mengembalikan `null` saat rata-rata tidak diketahui, seperti yang sudah dilakukan `analyze-legacy.js`. **Belum dieksekusi**: ini menyentuh gate/grading, dan aturan Anda meminta saya bertanya dulu sebelum mengubah perilaku bisnis.
+- **Status** : DITEMUKAN — menunggu keputusan
+
+---
+
 ## Modul Bersih (sudah diperiksa, tidak ditemukan bug)
 
 ### Hipotesis "import yatim ke modul AI yang dihapus" — TIDAK TERBUKTI

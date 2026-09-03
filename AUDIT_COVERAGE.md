@@ -61,11 +61,11 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `_disabled_api_backup/lib/prompt-builder.js` | 269 | BELUM | 0 | |
 | `_disabled_api_backup/lib/response-mode.js` | 102 | BELUM | 0 | |
 | `_disabled_api_backup/seed-review.js` | 95 | BELUM | 0 | |
-| `api/admin-logs.js` | 106 | BELUM | 0 | |
+| `api/admin-logs.js` | 106 | SELESAI | 0 | bersih; sesi admin + same-origin, query berbatas limit |
 | `api/admin-users.js` | 474 | SELESAI | 0 | bersih; setiap aksi privileged lewat requireBudiAdmin (same-origin + sesi admin + cek username) |
 | `api/analyze.js` | 129 | SELESAI | 0 | bersih; premium gate + routing chat_mode->legacy, followup->v7 |
-| `api/candles.js` | 306 | BELUM | 0 | |
-| `api/log.js` | 194 | BELUM | 0 | |
+| `api/candles.js` | 306 | SELESAI | 0 | bersih; ticker divalidasi regex sebelum masuk URL, timeout 10s, rate limit, pattern data digate ke admin |
+| `api/log.js` | 194 | SELESAI | 0 | bersih; identitas dari sesi bertanda tangan, is_admin server-side, cap panjang, strip control char, rate limit dari nilai yang diamati server |
 | `api/login-user.js` | 568 | SELESAI | 0 | bersih; webhook secret constant-time, same-origin gate, anti-enumeration, device binding, migrasi kredensial CAS |
 | `api/maintenance-settings.js` | 229 | SELESAI | 0 | bersih; write op butuh admin session + same-origin |
 | `api/quote.js` | 2747 | BELUM | 0 | |
