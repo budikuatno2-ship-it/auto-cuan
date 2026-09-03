@@ -3393,3 +3393,102 @@ diperbaiki lebih dulu. Aturan 7 Anda menyuruh saya mencatat utang seperti ini
 sebagai rekomendasi, bukan mengeksekusinya — dan menghapus kode dari
 `api/sector-hot.js` bukan keputusan yang pantas saya ambil sendiri. Bilang saja
 kalau Anda mau salah satunya dikerjakan.
+
+---
+
+## BUG-033 — TTL 12 jam di luar jam bursa tidak pernah benar-benar berlaku
+
+- **Severity** : **MEDIUM** (beban upstream, bukan kesalahan data)
+- **Area** : cache OHLCV Day Trade (VPS/lokal)
+- **Lokasi** : `lib/daytrade-ohlcv-cache.js:253-260`
+- **Status** : **SUDAH DIPERBAIKI** — PR #510 (`fix/ohlcv-cache-offhours-ttl`), draft
+
+### Gejala
+
+Di luar jam bursa dan akhir pekan, setiap scan tetap menembak Yahoo lagi setiap
+15 menit untuk data yang tidak mungkin berubah.
+
+### Root cause
+
+Modulnya menyatakan maksudnya sendiri:
+
+```js
+// lib/daytrade-ohlcv-cache.js:182-186
+ * During IDX market hours (Mon-Fri 09:00-15:30 WIB), use the configured TTL.
+ * Outside market hours, extend TTL significantly (12 hours)
+ * since data won't change.
+```
+
+Tapi pemeriksaan sadar-jam-bursa itu dikurung **di dalam** pemeriksaan mentah:
+
+```js
+// lib/daytrade-ohlcv-cache.js:253-260 (sebelum perbaikan)
+if (cached.hit && !cached.stale && cached.candles.length >= 20) {
+  // Re-check with market-aware freshness
+  if (isCacheFresh(cached.updatedAtMs, nowMs, ttlMs)) {
+    stats.cacheHit++;
+    return cached.candles;
+  }
+}
+```
+
+Sementara `cached.stale` dihitung terhadap `ttlMs` **mentah**, tanpa tahu jam
+bursa:
+
+```js
+// lib/daytrade-ohlcv-cache.js:85-87
+var age = nowMs - updatedAtMs;
+var stale = !updatedAtMs || age > ttlMs;
+```
+
+Gerbang luar selalu lebih ketat daripada gerbang dalam, jadi jendela 12 jam tidak
+pernah bisa melebarkan apa pun.
+
+### Dampak
+
+Bukan kesalahan data — di luar jam bursa candle memang tidak berubah, jadi
+angka yang dipakai sama saja. Yang salah adalah **bebannya**: panggilan Yahoo
+yang seharusnya tidak perlu, pada scan batch lintas banyak ticker.
+
+Itu bukan biaya netral di sistem ini: timeout upstream pada provider yang sama
+persis adalah isi BUG-018 (PR #502). Semakin banyak panggilan, semakin besar
+paparan terhadap timeout dan rate limit yang sudah pernah menggigit.
+
+### Perbaikan
+
+Kesegaran diputuskan hanya oleh `isCacheFresh`, yang memang sudah menerapkan
+`getEffectiveTtl`. Di dalam jam bursa perilakunya tidak berubah sama sekali.
+
+### Dua uji lama ikut berubah — dan saya perlu menyatakannya terang
+
+`test/daytrade-ohlcv-cache.test.js` punya dua uji yang memundurkan timestamp
+cache 20 menit dan 1 jam lalu memastikan Yahoo dipanggil — memakai **jam dinding
+sungguhan**. Keduanya sudah bergantung waktu sejak awal, dan selama ini lolos di
+jam berapa pun **justru karena cabang sadar-jam-bursa itu tidak terjangkau**.
+Begitu cabangnya hidup, keduanya gagal ketika dijalankan di luar jam bursa
+(persis yang terjadi: 06:20 WIB).
+
+Jamnya saya patok ke Kamis 11:00 WIB, sehingga "basi" berarti persis seperti yang
+uji itu maksudkan. Maksud aslinya utuh; yang hilang hanya flake laten. Saya tidak
+melemahkan, melewatkan, atau mengarantina uji apa pun.
+
+### Catatan proses — harness uji pertama saya salah
+
+Percobaan pertama saya menambal `module.exports.readCache`, padahal
+`fetchWithCache` memanggil binding tingkat-modul, sehingga tambalannya tidak
+berpengaruh. Hasilnya menyesatkan: enam uji gagal, termasuk beberapa yang
+seharusnya lolos pada kode saat itu. Saya tidak memakai hasil itu — saya tulis
+ulang harness-nya memakai direktori cache sementara sungguhan di disk, dan
+barulah gambarannya benar: **tepat dua** yang gagal, keduanya kasus di luar jam
+bursa.
+
+Saya catat ini karena hasil pertama itu, kalau dipercaya, akan membuat saya
+melaporkan cacat yang lebih besar daripada yang sebenarnya ada.
+
+### Verifikasi
+
+`test/daytrade-ohlcv-cache-offhours-ttl.test.js`, **9 uji**. Sebelum perbaikan
+tepat 2 gagal. Tujuh yang lolos di kedua sisi — termasuk semua kasus "tidak
+berubah" dan ketiga batas — itulah yang membuktikan perbaikannya sempit.
+
+Suite: **320 berkas uji lolos**, sebelum dan sesudah. Delta +1 berkas, +9 uji.

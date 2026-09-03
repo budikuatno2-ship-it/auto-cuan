@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 52 SELESAI, 8 SEDANG, 718 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 54 SELESAI, 8 SEDANG, 716 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -142,7 +142,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/daytrade-intraday-staged-enable-runbook.js` | 439 | BELUM | 0 | |
 | `lib/daytrade-intraday-validation-aggregate.js` | 249 | BELUM | 0 | |
 | `lib/daytrade-intraday-validation-coverage.js` | 64 | BELUM | 0 | |
-| `lib/daytrade-ohlcv-cache.js` | 319 | BELUM | 0 | |
+| `lib/daytrade-ohlcv-cache.js` | 319 | SELESAI | 1 | **BUG-033 (MEDIUM) DIPERBAIKI PR #510** — TTL 12 jam di luar jam bursa tidak pernah berlaku. Sisanya bersih: `safeTicker` melucuti ke `[A-Z0-9_-]` sebelum membangun path (tidak ada path traversal lewat ticker), fetch Yahoo dibatasi `AbortController`, parser Yahoo memvalidasi KELIMA kaki OHLCV — pola benar yang sama dengan `fetchDayTradeCandles` dan yang absen di parser NK (BUG-022). Konversi WIB memakai pola geser-lalu-baca-UTC yang benar, tidak ada offset ganda. |
 | `lib/daytrade-outcome-collector-guard.js` | 49 | BELUM | 0 | |
 | `lib/daytrade-outcome-collector.js` | 535 | BELUM | 0 | |
 | `lib/daytrade-outcome-contract.js` | 56 | BELUM | 0 | |
@@ -169,7 +169,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/intraday-fast-watcher-pool.js` | 396 | BELUM | 0 | |
 | `lib/intraday-fast-watcher-publisher.js` | 464 | SEDANG | 0 | baris 160-240 dibaca untuk menelusuri konvensi entry1/entry2 pada penulisan `telegram_daily_picks` (:211-212 konsisten entry1=high). Sisa file belum dibaca |
 | `lib/intraday-fast-watcher-radar-publisher.js` | 301 | BELUM | 0 | |
-| `lib/intraday-fast-watcher.js` | 509 | BELUM | 0 | |
+| `lib/intraday-fast-watcher.js` | 509 | SELESAI | 0 | **Bersih**. Shadow-only dan menegakkannya sendiri (`mode !== 'shadow'` diblokir; keluarannya menyatakan `telegram_attempted: false`, `source_files_mutated: false`). Diperiksa: zona entry terbalik ditolak eksplisit (`entry_low > entry_high` → INVALID_DATA), gerbang anti-chase 6%, konfirmasi 2×, kunci berbasis file yang gagal-aman pada lock rusak (`isPidAlive` memperlakukan EPERM sebagai hidup), tulis atomik temp+rename mode 0600. |
 | `lib/intraday-production-eligibility.js` | 91 | BELUM | 0 | |
 | `lib/intraday-sample-lifecycle.js` | 296 | BELUM | 0 | |
 | `lib/intraday-sample-summary.js` | 404 | BELUM | 0 | |
