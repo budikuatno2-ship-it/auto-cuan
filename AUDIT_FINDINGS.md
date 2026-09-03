@@ -1094,3 +1094,104 @@ Diagnostiknya di `:4820` mencerminkan asimetri yang sama, jadi keduanya konsiste
 ini tampak sengaja, bukan terlewat. Saya tidak menyentuhnya: mengubah gate mana yang
 berlaku untuk Day Trade adalah perubahan perilaku bisnis (aturan No. 8), dan itu
 keputusan Anda, bukan saya.
+
+---
+
+## BUG-020 — Observasi harga tanpa timestamp dianggap SEGAR, bukan basi (monitor entry/TP/SL)
+
+- **Severity** : MEDIUM jika terjangkau — **jangkauannya belum bisa saya pastikan** (butuh akses DB, lihat di bawah)
+- **Area** : Auto Monitor — pencatatan hit Entry/TP1/TP2/SL
+- **Lokasi** : `api/sector-hot.js:6678`
+
+**Kode asli.**
+
+```js
+// api/sector-hot.js:6678-6679
+var priceTimestampStale = !!(px && px.at && isMonitorTimestampStale(px.at));
+var priceObservationUsable = !!(px && px.last != null && !px.bestEffort && !priceTimestampStale);
+```
+
+**Root cause.** `px.at &&` melakukan short-circuit. Kalau `px.at` bernilai `null`,
+seluruh ekspresi menjadi `false` — artinya **"tidak basi"**. Padahal fungsi yang
+dipanggilnya menjawab sebaliknya untuk masukan yang sama:
+
+```js
+// api/sector-hot.js:7224-7226
+function isMonitorTimestampStale(value, sourceLabel) {
+  if (!value) return true;
+```
+
+Jadi `isMonitorTimestampStale(null)` berkata **basi**, tetapi baris `:6678` justru
+menyimpulkan **segar** — karena fungsinya tidak pernah dipanggil untuk kasus itu.
+
+**Dampak.** `priceTimestampStale` adalah salah satu dari dua penjaga di gerbang
+transisi (`api/sector-hot.js:6709`):
+
+```js
+if (px.bestEffort || priceTimestampStale) {
+  ...
+  if (activeBefore) return result(status, ..., 'Harga monitor perlu revalidasi; status aktif dipertahankan tanpa hit baru.', ...);
+  return result('NEEDS_REVALIDATION', ..., 'Timestamp harga monitor tidak cukup segar untuk membuat transisi baru.', ...);
+}
+```
+
+Observasi dengan `at === null` dan `bestEffort === false` **lolos dari penjaga ini**
+dan masuk ke logika transisi penuh — sehingga `SL_HIT`, `TP1_HIT`, atau `TP2_HIT`
+bisa dicatat dari observasi yang umurnya tidak diketahui sama sekali.
+
+Itu justru kebalikan dari maksud yang dinyatakan kode di sekitarnya. Komentar di
+`:6712-6713` berbunyi: *"Preserve an already-active lifecycle state, but never
+create a new transition from a stale or close-only observation."* Penjaga ini
+dirancang gagal-tertutup; pada kasus timestamp hilang ia gagal-terbuka.
+
+Karena hasil monitor mengalir ke `telegram_daily_picks` lalu ke Track Record
+(`lib/track-record-service.js`), hit yang tercatat dari observasi tak bertanggal
+akan ikut menghitung win-rate.
+
+**Jangkauan — ini yang belum pasti, dan saya tidak akan memolesnya jadi kesimpulan.**
+Kasusnya menuntut baris DB dengan `last_price` terisi tetapi kolom timestamp-nya
+kosong. `fetchLatestPriceForMonitor` (`api/sector-hot.js:6597`) mengambil `at` dari:
+
+| sumber | kolom `at` |
+|---|---|
+| `daytrade_screener_latest` | `calculated_at` |
+| `swing_screener_latest` | `price_asof \|\| calculated_at \|\| price_date` |
+| `swing_screener_non_konglo_latest` | `price_asof \|\| calculated_at \|\| price_date` |
+
+Jalur swing punya tiga lapis cadangan, jadi praktis kecil kemungkinannya kosong.
+Jalur Day Trade hanya bergantung pada `calculated_at` — satu kolom, tanpa cadangan.
+**Saya tidak punya akses ke database produksi**, jadi saya tidak bisa menyatakan
+apakah `daytrade_screener_latest.calculated_at` pernah `NULL` di sana. Kalau tidak
+pernah, perbaikannya no-op; kalau pernah, ia mengubah outcome yang tercatat.
+
+**Yang bisa Anda cek dalam satu kueri** (read-only, tidak mengubah apa pun):
+
+```sql
+select count(*) from daytrade_screener_latest
+where last_price is not null and calculated_at is null;
+```
+
+**Perbaikan yang diusulkan.** Selaraskan `:6678` dengan jawaban fungsinya sendiri:
+
+```js
+var priceTimestampStale = !!(px && (!px.at || isMonitorTimestampStale(px.at)));
+```
+
+(`px` dijamin non-null dan `px.last != null` di titik ini, karena penjaga
+`if (!px || px.last == null)` di `:6703` sudah `return` lebih dulu.)
+
+**Risiko.** Perbaikan ini membuat monitor **lebih ketat**: observasi tanpa timestamp
+akan menghasilkan `NEEDS_REVALIDATION` alih-alih mencatat hit. Itu memang maksud
+kode aslinya, tapi efeknya menyentuh angka yang tercatat di Track Record — dan
+karena itu menyentuh perilaku bisnis.
+
+**Karena itu saya belum mengerjakannya.** Aturan No. 8 Anda meminta saya bertanya
+lebih dulu sebelum mengubah perilaku bisnis, dan saya juga belum bisa membuktikan
+kasusnya terjadi di produksi. Dua hal itu bersama-sama membuat "tunggu keputusan"
+jadi jawaban yang benar, bukan "langsung perbaiki".
+
+**Verifikasi (kalau disetujui).** Test unit atas `evaluateMonitorStatus` dengan
+`px = { last: <harga>, high: <di atas TP1>, low: ..., at: null, bestEffort: false }`,
+memastikan hasilnya `NEEDS_REVALIDATION` dan bukan `TP1_HIT`.
+
+**Status** : DITEMUKAN — menunggu keputusan Anda (dan idealnya hasil kueri di atas)
