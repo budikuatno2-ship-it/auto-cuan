@@ -7037,8 +7037,10 @@ async function loadWebsiteSettings() {
     try {
         var response = await fetch('/api/maintenance-settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get' }) });
         var data = await response.json();
-        var config = (data.success && data.config) ? data.config : { maintenanceMode: false, message: 'Auto-Cuan sedang tidak dapat diakses sementara.' };
+        var config = (data.success && data.config) ? data.config : { maintenanceMode: false, geminiAiEnabled: true, message: 'Auto-Cuan sedang tidak dapat diakses sementara.' };
         var html = '<div class="space-y-5"><h3 class="text-base font-bold text-purple-400">Website Settings</h3>';
+        html += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333] space-y-3"><div class="flex items-center justify-between"><div><p class="text-sm font-semibold text-white">Direct Gemini AI & Response Cache</p><p class="text-xs text-gray-500">Jika aktif, sistem menggunakan direct Google Gemini API dan database response cache (4 jam TTL).</p></div>';
+        html += '<label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="settingsGeminiAiToggle" class="sr-only peer" ' + (config.geminiAiEnabled !== false ? 'checked' : '') + '><div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div></label></div></div>';
         html += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333] space-y-3"><div class="flex items-center justify-between"><div><p class="text-sm font-semibold text-white">Maintenance Mode</p><p class="text-xs text-gray-500">Jika aktif, user biasa dan guest akan melihat halaman maintenance.</p></div>';
         html += '<label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="settingsMaintenanceToggle" class="sr-only peer" ' + (config.maintenanceMode ? 'checked' : '') + '><div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div></label></div></div>';
         html += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333] space-y-2"><label class="text-sm font-semibold text-white">Pesan Maintenance</label><textarea id="settingsMaintenanceMsg" rows="3" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-purple-500 text-sm resize-none">' + (config.message || '') + '</textarea></div>';
@@ -7050,8 +7052,13 @@ async function loadWebsiteSettings() {
 }
 async function saveWebsiteSettings() {
     var toggle = document.getElementById('settingsMaintenanceToggle');
+    var toggleGemini = document.getElementById('settingsGeminiAiToggle');
     var msgEl = document.getElementById('settingsMaintenanceMsg');
-    var config = { maintenanceMode: toggle ? toggle.checked : false, message: msgEl ? msgEl.value.trim() : 'Auto-Cuan sedang tidak dapat diakses sementara.' };
+    var config = {
+        maintenanceMode: toggle ? toggle.checked : false,
+        geminiAiEnabled: toggleGemini ? toggleGemini.checked : true,
+        message: msgEl ? msgEl.value.trim() : 'Auto-Cuan sedang tidak dapat diakses sementara.'
+    };
     try {
         var adminName = localStorage.getItem('autocuan_user') || '';
         var response = await fetch('/api/maintenance-settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminName: adminName, action: 'save', config: config }) });

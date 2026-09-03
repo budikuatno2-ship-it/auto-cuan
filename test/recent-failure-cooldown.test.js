@@ -129,7 +129,7 @@ test('findSimilarRecentSlHit requires entry, sl, AND tp1 to all match within tol
 
 test('notification pipeline queries recent SL_HIT cooldown rows exactly once per execution (no duplicate query)', async () => {
   let slHitQueryCount = 0;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const nowIso = new Date().toISOString();
   const mockRows = [
     {
