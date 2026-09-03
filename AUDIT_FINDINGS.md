@@ -2567,3 +2567,100 @@ tidak dipakai sebagai dasar pembersihan.
 Satu-satunya rujukan yang memang tinggal nama ada di
 `tools/apply-production-hotfixes.js:57-58`, dan itu daftar berkas untuk sebuah
 alat hotfix, bukan `require`.
+
+---
+
+## REKOMENDASI-01 — HTML buatan model dikirim mentah lalu dibersihkan dengan regex (utang teknis)
+
+- **Sifat** : rekomendasi arsitektural, **bukan** temuan bug. Saya **tidak** menemukan bypass yang berhasil pada kode setelah PR sanitizer saya.
+- **Lokasi** : `lib/analyze-legacy.js:836` (`sanitizeOutput`) dan `public/index.html:10560` (`sanitizeAIHtml`)
+
+### Apa yang saya lihat
+
+Jalur Analisis Saham lama mengembalikan **HTML yang ditulis model** apa adanya:
+
+```js
+// lib/analyze-legacy.js:360
+return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, ... });
+```
+
+Nama `sanitizeOutput` menyesatkan. Isinya pembersih **format dan konten**, bukan
+keamanan — ia mengurus bintang markdown, guard FCA, header laporan yang bocor,
+paragraf kosong. Ia **tidak pernah** menyentuh `<script>`, atribut `on*`,
+`javascript:`, `<iframe>`, atau `<base>`. Satu-satunya lapisan keamanan ada di
+klien: `sanitizeAIHtml` (`public/index.html:10560`).
+
+### Hipotesis yang dibantah
+
+Saya menduga ada jalur render yang melewati sanitizer. Tiga tempat memakai
+`data.html` tanpa memanggil `sanitizeAIHtml` secara langsung
+(`public/index.html:5607`, `:5748`, `:5818`) — tapi ketiganya lewat
+`addAIBubble`, dan `addAIBubble` membersihkan di dalamnya:
+
+```js
+// public/index.html:6040 — di dalam addAIBubble
+var sanitizedHtml = sanitizeAIHtml(clientSanitizeFCA(html));
+```
+
+Dua jalur sisanya (`:3354`, `:3830`) memanggilnya langsung. Jadi **tidak ada
+jalur render yang melewati sanitizer**. Saya catat supaya tidak ditelusuri ulang.
+
+### Kenapa tetap saya angkat
+
+Dua hal yang tidak berubah walau semua jalur sudah tertutup:
+
+**Pertama, sanitizer berbasis regex rapuh secara struktural.** Repo ini sudah
+membuktikannya sendiri dua kali. Komentar di `public/index.html:10569`
+mencatat bypass entity-encoding yang pernah lolos, dan PR
+`fix/ai-html-sanitizer-handler-bypass` menutup tiga bentuk pemisah atribut yang
+diterima tokenizer HTML tetapi tidak oleh regex lama:
+
+```html
+<img/src=x/onerror=...>
+<img src=x/onerror=...>
+<img src="x"onerror=...>
+```
+
+Dua bypass yang sudah ditemukan pada satu fungsi yang sama adalah pola, bukan
+kebetulan.
+
+**Kedua, ada transformasi yang berjalan SESUDAH sanitizer.**
+
+```js
+// public/index.html:6041-6043
+sanitizedHtml = normalizeFinalStockHtml(sanitizedHtml);
+```
+
+`normalizeFinalStockHtml` (`:10385`) menyisipkan `<br>` dan spasi ke dalam
+string yang sudah dibersihkan. Menulis ulang string HTML setelah sanitasi adalah
+pola yang secara umum melahirkan mutation-XSS. **Saya sudah mencoba dan tidak
+berhasil membuat bypass lewat jalur ini** — sisipannya hanya `<br>` dan spasi,
+dan di dalam nilai atribut (berkutip maupun tidak) karakter `<` tetap literal
+menurut tokenizer. Jadi ini saya sebut sebagai risiko struktural, **bukan
+kerentanan**. Saya menolak menaikkannya menjadi temuan tanpa PoC yang jalan.
+
+### Yang saya sarankan (tidak saya kerjakan)
+
+Repo ini **sudah punya jawabannya**, di modul yang lebih baru:
+`public/ai-chat-renderer.js` tidak pernah mempercayai HTML dari model. Ia
+menerima **teks**, meng-escape lebih dulu, baru menerapkan markdown:
+
+```js
+// public/ai-chat-renderer.js:110-117 — inlineFormat
+function inlineFormat(value) {
+  var html = escapeHtml(value);
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+```
+
+Dengan urutan itu tidak ada regex yang perlu menebak apa yang berbahaya —
+tidak ada markup model yang pernah menjadi markup. Menyeragamkan jalur Analisis
+Saham lama ke pola yang sama akan menghapus seluruh kelas masalah ini.
+
+**Kenapa tidak saya kerjakan sekarang.** Ini refactor besar yang menyentuh
+tampilan produksi: template `decision-card`/`decision-grid`, guard FCA, dan
+belasan normalizer label teknikal semuanya bergantung pada model yang benar-benar
+mengeluarkan HTML. Mengubahnya bukan perbaikan bug, dan aturan 7 Anda menyuruh
+saya mencatatnya sebagai rekomendasi, bukan menjalankannya. Kalau Anda mau ini
+dikerjakan, saya sarankan bertahap: mulai dari jalur chat bebas (paling tidak
+bergantung template), bukan dari jalur analisis penuh.

@@ -255,7 +255,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `public/daytrade-runtime.js` | 377 | BELUM | 0 | |
 | `public/fast-watcher-live-refresh.js` | 152 | BELUM | 0 | |
 | `public/index-shell.css` | 738 | BELUM | 0 | |
-| `public/index.html` | 11127 | SEDANG | 1 | BUG-001 (auth modals di dalam dashboardScreen) - DIPERBAIKI; baris 1-2800 sudah dibaca, sisanya berjalan |
+| `public/index.html` | 11127 | SEDANG | 2 | BUG-001 (auth modals di dalam dashboardScreen) DIPERBAIKI; bypass handler `on*` pada `sanitizeAIHtml` DIPERBAIKI (PR `fix/ai-html-sanitizer-handler-bypass`); REKOMENDASI-01. Baris 1-2800 dibaca; ditambah blok sanitizer/renderer `:5600-5830`, `:6012-6060`, `:10378-10640` dibaca penuh. Sisanya berjalan. |
 | `public/maintenance-auth-guard.js` | 36 | BELUM | 0 | |
 | `public/market-feature-runtime.js` | 1095 | BELUM | 0 | |
 | `public/methodology.html` | 46 | BELUM | 0 | |
