@@ -3155,3 +3155,113 @@ where a.notification_chat_id is not null
 ```
 
 Kalau hasilnya kosong, tidak ada yang pernah memakainya.
+
+---
+
+## BUG-032 — Reset password oleh admin menyimpan hash mentah tanpa validasi
+
+- **Severity** : **MEDIUM** (kualitas penyimpanan kredensial + kemungkinan akun terkunci diam-diam)
+- **Area** : admin — aksi `reset_password`
+- **Lokasi** : `lib/admin-users-handler.js:246-289`
+- **Status** : **SUDAH DIPERBAIKI** — PR #509 (`fix/admin-reset-password-unprotected`), draft
+
+### Gejala
+
+Dua hal, keduanya diam:
+
+1. Akun yang password-nya direset admin tersimpan dalam bentuk yang **bisa
+   diputar ulang** sebagai hash login, sampai pemiliknya kebetulan login lagi.
+2. Kalau nilai yang dikirim bukan 64-hex, akun itu **tidak bisa login lagi** —
+   tanpa error di mana pun.
+
+### Root cause
+
+```js
+// lib/admin-users-handler.js:249-251 (sebelum perbaikan)
+if (!newPasswordHash) {
+  return res.status(400).json({ success: false, error: 'Password hash diperlukan.' });
+}
+```
+
+```js
+// lib/admin-users-handler.js:284-287 (sebelum perbaikan)
+const { error: updateError } = await supabase
+  .from('app_users')
+  .update({ password_hash: newPasswordHash })
+  .eq('id', user.id);
+```
+
+Hanya dicek "tidak kosong", lalu ditulis apa adanya.
+
+### Kenapa itu salah — repo ini menyatakan alasannya sendiri
+
+```js
+// lib/password-credential.js:5-8
+// The leading "k" makes the stored value fail the public 64-hex client-hash
+// validator, so a database value cannot be replayed directly as a login hash.
+```
+
+Dan ketiga jalur tulis kredensial lainnya memang memakainya:
+
+| jalur | baris |
+|---|---|
+| daftar akun baru | `api/register-user.js:147` |
+| upgrade saat login | `api/login-user.js:428` |
+| reset via Telegram | `lib/reset-password-legacy-handler.js:252` |
+
+Baris hasil reset admin justru mendarat di cabang **legacy**:
+
+```js
+// lib/password-credential.js:68-72 — verifyStoredCredential
+const legacy = normalizeClientHash(stored);
+if (!legacy) return { ok: false, needsUpgrade: false };
+const ok = safeEqualText(legacy, clientHash);
+return { ok, needsUpgrade: ok };
+```
+
+Nilai di kolom `password_hash` sama persis dengan yang dikirim klien saat login,
+jadi siapa pun yang bisa membaca kolom itu (kunci service-role, backup, atau
+kebocoran SQL di tempat lain) bisa memakainya langsung untuk login.
+
+Validator yang tepat pun sudah ada dua berkas di sebelah
+(`lib/reset-password-legacy-handler.js:72-75`).
+
+### Batasnya, supaya tidak dilebih-lebihkan
+
+Ini **bukan** eskalasi hak akses. Pemicunya harus sudah punya sesi admin, dan
+admin memang berhak menetapkan password akun lain. Yang memburuk adalah
+**kualitas penyimpanan** kredensial untuk akun yang direset admin — dan
+kemungkinan terkunci diam-diam kalau nilainya malformed.
+
+### Perbaikan
+
+Body wajib membawa hash **klien** (64 hex); bentuk `k1...` yang sudah
+terlindungi pun ditolak karena itu bentuk simpanan, bukan masukan. Yang ditulis
+adalah hasil `protectClientHash`.
+
+**Ini kali keenam pola yang sama muncul di audit ini**: hal yang benar sudah
+ditulis di tiga tempat, satu tempat tidak ikut. Daftar sejauh ini —
+`fetchDayTradeCandles` vs parser NK (BUG-022), `Number.isFinite` vs `|| 50`
+(BUG-014), penjaga tukar entry ×4 vs 11 lokasi (BUG-021), `requestKey` v4/v5 vs
+cache v7 (BUG-028), `detectPrice` browser vs regex server (BUG-029), dan
+sekarang `protectClientHash` ×3 vs reset admin (BUG-032).
+
+### Verifikasi
+
+`test/admin-reset-password-credential.test.js`, **8 uji**. Sebelum perbaikan 5
+gagal. Uji 3, 7 dan 8 lolos di kedua sisi (password salah tetap ditolak, hash
+kosong tetap 400, akun `budi` tetap tidak bisa direset). Uji 2 membuktikan
+perbaikannya tidak memutus login.
+
+Suite: **320 berkas uji lolos**, sebelum dan sesudah. Delta +1 berkas, +8 uji.
+
+### Yang perlu Anda putuskan
+
+Baris yang sudah terlanjur tersimpan dalam bentuk legacy tidak diubah PR #509 —
+saya tidak menyentuh data produksi. Baris itu akan ter-upgrade sendiri saat
+pemiliknya login (`api/login-user.js:428`). Query **baca-saja** untuk
+menghitungnya:
+
+```sql
+select count(*) from app_users where password_hash !~ '^k1[a-f0-9]{62}$';
+```
