@@ -320,6 +320,93 @@ Brief meminta pengecekan IDOR ("user A bisa akses portofolio user B"). Sudah say
 
 ---
 
+## BUG-011
+
+- **Severity** : MEDIUM
+- **Area** : Keamanan / UI (self-XSS persisten)
+- **Lokasi** : `public/index.html` — `sanitizeAIHtml()`, sebelum perbaikan baris 10565-10566
+- **Gejala** : Handler event inline lolos dari sanitizer dan **benar-benar dieksekusi** ketika hasil AI dipasang lewat `innerHTML`.
+- **Root cause** : Kedua aturan penghapus handler mensyaratkan **spasi** sebelum nama handler:
+
+  ```js
+  output = output.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
+  output = output.replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '');
+  ```
+
+  Tokenizer HTML lebih longgar: `/` sah sebagai pemisah atribut, dan sebuah atribut boleh dimulai persis setelah nilai berkutip. Terverifikasi di Chromium sungguhan pada origin http dengan gambar yang memang gagal dimuat:
+
+  ```
+  inert     <img src="/x.png" onerror=...>     (kasus yang memang tertangkap aturan lama)
+  EXECUTED  <img/src="/x.png"/onerror=...>
+  EXECUTED  <img src="/x.png"/onerror=...>
+  EXECUTED  <img src="/x.png"onerror=...>
+  ```
+
+- **Jangkauan — saya sebutkan apa adanya, tidak dibesar-besarkan** : Sink-nya adalah balasan model AI itu sendiri, yang dirender dengan `innerHTML`, dan transkrip chat disimpan di `localStorage` lalu dirender ulang saat halaman dimuat. Pengguna yang mengarahkan model untuk menuliskan payload semacam itu mendapat eksekusi skrip **di sesinya sendiri**, dan berulang setiap reload.
+
+  Saya mencari jalur lintas-pengguna dan **tidak menemukannya**: share mode merender baris screener, bukan HTML AI, dan `sanitizeAIHtml` hanya dipanggil atas keluaran AI milik pengguna yang sedang aktif. Jadi ini **self-XSS yang persisten, bukan lubang lintas-pengguna** — MEDIUM, bukan CRITICAL.
+
+  Tetap penting: CSP aplikasi (`vercel.json`) hanya menyetel `base-uri`, `object-src`, dan `frame-ancestors`, **tanpa `script-src`**, jadi tidak ada lapisan lain yang menahan begitu sebuah handler lolos. Cookie sesi `HttpOnly` sehingga tidak bisa dibaca langsung, tetapi skrip yang tersuntik berjalan same-origin dan bisa memanggil `/api/*` sebagai pengguna itu.
+
+- **Cacat kedua dari aturan yang sama (sudah ada sebelumnya)** : kedua aturan itu tidak dibatasi ke dalam tag, sehingga teks biasa ikut rusak:
+
+  ```
+  masuk  : <p>Strategi buy on weakness: onclick= bukan atribut di sini.</p>
+  keluar : <p>Strategi buy on weakness: atribut di sini.</p>
+  ```
+
+  Saya verifikasi ini sudah terjadi sebelum perubahan saya, dengan menjalankan sanitizer yang belum diubah.
+
+- **Perbaikan** : Mencocokkan **per tag**, menerima setiap pemisah yang diterima parser, dan tidak pernah menyentuh teks isi. Aturan baru menggantikan kedua aturan lama, jadi keduanya dihapus.
+- **Verifikasi** : 15 payload di Chromium sungguhan (slash, double slash, kutip menempel untuk kedua jenis kutip, newline, tab, formfeed, nilai tanpa kutip, campuran huruf besar-kecil, serta handler pada `body`/`details`/`input`/`svg`) — **0 dari 15 dieksekusi**. `test/ai-html-sanitizer-event-handlers.test.js` mengunci ini, termasuk test penjaga yang memastikan kumpulan payload masih memuat kasus yang dilewatkan aturan lama.
+- **Status** : DIPERBAIKI (PR #499)
+
+---
+
+## BUG-012
+
+- **Severity** : LOW
+- **Area** : Zona waktu / kuota
+- **Lokasi** : `public/index.html:1887-1891` (`getWIBDateString`), dipakai di `:1979` (`getAIUsageKey`)
+- **Gejala** : Kuota AI gratis untuk tamu (3 per hari WIB) me-reset pukul **17:00 WIB**, bukan tengah malam.
+- **Root cause** : Offset dihitung dua kali:
+
+  ```js
+  var now = new Date();
+  var wib = new Date(now.getTime() + (7 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
+  return wib.toISOString().slice(0, 10);
+  ```
+
+  `getTimezoneOffset()` untuk peramban di WIB bernilai `-420`, jadi `- (-420 * 60000)` menambah 7 jam **lagi** di atas 7 jam yang sudah ditambahkan. Totalnya `now + 14 jam`, lalu `toISOString()` (UTC). Yang benar cukup `now + 7 jam`.
+
+  Terverifikasi:
+
+  ```
+  Waktu nyata            : 2026-09-03 18:00 WIB
+  Browser di WIB (-420)  : 2026-09-04   <-- keliru, besok
+  Browser di UTC (0)     : 2026-09-03
+  Tanggal WIB yang benar : 2026-09-03
+  ```
+
+  Perhatikan bahwa rumus ini hanya benar untuk peramban yang berjalan di UTC — yaitu justru bukan pengguna Indonesia.
+
+- **Dampak** : Terbatas. Nilai ini hanya membentuk kunci `localStorage` untuk kuota tamu 3/hari; bukan kontrol keamanan (gate premium ada di server). Efeknya tamu mendapat reset kuota gratis ~7 jam lebih awal setiap hari.
+- **Perbaikan** : Belum dieksekusi — akan digabung ke PR temuan minor berikutnya, karena bukan kelompok masalah yang sama dengan PR yang sedang terbuka.
+- **Status** : DITEMUKAN
+
+---
+
+## Diperiksa dan bersih — rahasia yang ter-commit
+
+Brief meminta ini diperiksa. Hasil sapuan seluruh repo dan riwayat git:
+
+- Tidak ada pola kunci API yang cocok (`AIza…`, `sk-…`, `ghp_…`, `xox[baprs]-…`, JWT, token bot Telegram `NNNNNNNN:AA…`) di file mana pun yang di-track.
+- Tidak ada file `.env` yang pernah di-commit. Satu-satunya yang ada adalah `tools/streamlit_runner/.env.example`, dan isinya murni placeholder (`your-cron-secret-here`, `https://your-preview-url.vercel.app`) — tidak ada nilai asli.
+- Tidak ada `process.env` di file mana pun di `public/`, jadi tidak ada rahasia yang bocor ke bundle klien.
+- Tidak ada nilai literal panjang yang di-assign ke variabel bernama `API_KEY`/`SECRET`/`TOKEN`/`PASSWORD` di `public/`.
+
+---
+
 ## Modul Bersih (sudah diperiksa, tidak ditemukan bug)
 
 ### Hipotesis "import yatim ke modul AI yang dihapus" — TIDAK TERBUKTI
