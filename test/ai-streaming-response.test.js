@@ -125,7 +125,9 @@ test('PR 8: handleContextAIV7 streams SSE response and caches accumulated text w
 
   const origLegacy = process.env.PORTFOLIO_AI_API_KEY;
   const origKey = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+  const origGemini = process.env.GEMINI_API_KEY;
   delete process.env.PORTFOLIO_AI_API_KEY;
+  delete process.env.GEMINI_API_KEY;
   process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = 'mock-stream-api-key';
 
   const origFetch = globalThis.fetch;
@@ -174,7 +176,10 @@ test('PR 8: handleContextAIV7 streams SSE response and caches accumulated text w
     assert.equal(stats.gemini_calls, 1);
   } finally {
     globalThis.fetch = origFetch;
-    delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+    if (origKey !== undefined) process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = origKey;
+    else delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+    if (origGemini !== undefined) process.env.GEMINI_API_KEY = origGemini;
+    else delete process.env.GEMINI_API_KEY;
     if (origLegacy !== undefined) process.env.PORTFOLIO_AI_API_KEY = origLegacy;
     else delete process.env.PORTFOLIO_AI_API_KEY;
   }
@@ -184,43 +189,63 @@ test('PR 8: handleContextAIV7 streams immediate cache hit when stream: true', as
   resetAiTelemetryStats();
   clearMemoryCache();
 
-  await setCachedAnalysis({
-    ticker: 'TLKM',
-    analysisType: 'portfolio_chat',
-    prompt: 'TLKM aman?',
-    payloadResponse: { reply: 'TLKM aman di support.', model: 'gemini-cached' },
-    ttlSeconds: 3600
-  });
+  const origLegacy = process.env.PORTFOLIO_AI_API_KEY;
+  const origKey = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+  const origGemini = process.env.GEMINI_API_KEY;
+  delete process.env.PORTFOLIO_AI_API_KEY;
+  delete process.env.GEMINI_API_KEY;
+  delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
 
-  const req = {
-    method: 'POST',
-    headers: { accept: 'text/event-stream' },
-    body: {
-      source: 'portfolio_chat',
-      chatMessage: 'TLKM aman?',
-      context: { ticker: 'TLKM', plans: [] }
-    }
-  };
-  const { state, res } = mockRes();
-  await handleContextAIV7(req, res);
+  try {
+    await setCachedAnalysis({
+      ticker: 'TLKM',
+      analysisType: 'portfolio_chat',
+      prompt: 'TLKM aman?',
+      payloadResponse: { reply: 'TLKM aman di support.', model: 'gemini-cached' },
+      ttlSeconds: 3600
+    });
 
-  assert.equal(state.headers['content-type'], 'text/event-stream');
-  assert.equal(state.ended, true);
+    const req = {
+      method: 'POST',
+      headers: { accept: 'text/event-stream' },
+      body: {
+        source: 'portfolio_chat',
+        chatMessage: 'TLKM aman?',
+        context: { ticker: 'TLKM', plans: [] }
+      }
+    };
+    const { state, res } = mockRes();
+    await handleContextAIV7(req, res);
 
-  const fullWritten = state.chunks.join('');
-  assert.ok(fullWritten.includes('TLKM aman di support.'));
-  assert.ok(fullWritten.includes('data: [DONE]'));
+    assert.equal(state.headers['content-type'], 'text/event-stream');
+    assert.equal(state.ended, true);
 
-  const stats = getAiTelemetryStats();
-  assert.equal(stats.total_requests, 1);
-  assert.equal(stats.cache_hits, 1);
+    const fullWritten = state.chunks.join('');
+    assert.ok(fullWritten.includes('TLKM aman di support.'));
+    assert.ok(fullWritten.includes('data: [DONE]'));
+
+    const stats = getAiTelemetryStats();
+    assert.equal(stats.total_requests, 1);
+    assert.equal(stats.cache_hits, 1);
+  } finally {
+    if (origKey !== undefined) process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = origKey;
+    else delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+    if (origGemini !== undefined) process.env.GEMINI_API_KEY = origGemini;
+    else delete process.env.GEMINI_API_KEY;
+    if (origLegacy !== undefined) process.env.PORTFOLIO_AI_API_KEY = origLegacy;
+    else delete process.env.PORTFOLIO_AI_API_KEY;
+  }
 });
 
 test('PR 8: handleContextAIV7 falls back to standard JSON when stream is false', async () => {
   resetAiTelemetryStats();
   clearMemoryCache();
 
+  const origKey = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+  const origGemini = process.env.GEMINI_API_KEY;
   const origLegacy = process.env.PORTFOLIO_AI_API_KEY;
+  delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+  delete process.env.GEMINI_API_KEY;
   delete process.env.PORTFOLIO_AI_API_KEY;
 
   try {
@@ -242,6 +267,10 @@ test('PR 8: handleContextAIV7 falls back to standard JSON when stream is false',
     assert.equal(state.payload.success, true);
     assert.equal(state.payload.local_fallback, true);
   } finally {
+    if (origKey !== undefined) process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = origKey;
+    else delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+    if (origGemini !== undefined) process.env.GEMINI_API_KEY = origGemini;
+    else delete process.env.GEMINI_API_KEY;
     if (origLegacy !== undefined) process.env.PORTFOLIO_AI_API_KEY = origLegacy;
     else delete process.env.PORTFOLIO_AI_API_KEY;
   }
