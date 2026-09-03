@@ -10027,6 +10027,33 @@ async function updateNkMeta(supabase, fields) {
   await supabase.from('swing_screener_non_konglo_meta').upsert([updateData], { onConflict: 'id' });
 }
 
+// Builds the Non-Konglo candle series from Yahoo's independent OHLCV arrays.
+//
+// A day is kept only when every leg is present and finite. This is not
+// defensive padding: Yahoo returns each series independently, so a session can
+// carry a close and a volume while its high/low are null (halts, and gaps in
+// the vendor feed). `support` below is Math.min(...lows) and JavaScript coerces
+// null to 0, so ONE null low collapses support to 0 for a stock trading in the
+// thousands — and support drives the Fib 0.382 pullback zone, setupType,
+// entry_low, and stop_loss. The published plan would then be derived from a
+// price that does not exist.
+//
+// The other Yahoo parsers in this file (fetchScreenerCandles, fetchChartOhlcRows)
+// already require the full OHLC set; this brings the NK parser in line with them.
+function parseNkValidDays(timestamps, opens, highs, lows, closes, volumes) {
+  timestamps = timestamps || [];
+  opens = opens || []; highs = highs || []; lows = lows || [];
+  closes = closes || []; volumes = volumes || [];
+  var out = [];
+  for (var i = 0; i < timestamps.length; i++) {
+    var o = opens[i], h = highs[i], l = lows[i], c = closes[i], v = volumes[i];
+    if (o == null || h == null || l == null || c == null || v == null) continue;
+    if (!isFinite(o) || !isFinite(h) || !isFinite(l) || !isFinite(c) || !isFinite(v)) continue;
+    out.push({ ts: timestamps[i], open: o, high: h, low: l, close: c, volume: v });
+  }
+  return out;
+}
+
 // --- DATA FETCH: Yahoo 60d OHLCV ---
 async function fetchNkQuoteData(ticker) {
   try {
@@ -10056,13 +10083,7 @@ async function fetchNkQuoteData(ticker) {
     const closes = quote.close || [];
     const volumes = quote.volume || [];
 
-    // Filter out null days
-    const validDays = [];
-    for (let i = 0; i < timestamps.length; i++) {
-      if (closes[i] != null && volumes[i] != null) {
-        validDays.push({ ts: timestamps[i], open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: volumes[i] });
-      }
-    }
+    const validDays = parseNkValidDays(timestamps, opens, highs, lows, closes, volumes);
 
     if (validDays.length < 20) return null;
 
@@ -13777,6 +13798,7 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 }
 
 module.exports.__test = {
+  parseNkValidDays: parseNkValidDays,
   isDashboardScreenerLoggedIn: isDashboardScreenerLoggedIn,
   isDashboardAdminUser: isDashboardAdminUser,
   lookupDashboardAdminAppUser: lookupDashboardAdminAppUser,
