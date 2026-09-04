@@ -289,6 +289,7 @@ function calcRSI(closes, period) {
   var avgGain = gains / period;
   var avgLoss = losses / period;
   if (!Number.isFinite(avgGain) || !Number.isFinite(avgLoss)) return null;
+  if (avgGain === 0 && avgLoss === 0) return 50;
   if (avgLoss === 0) return 100;
   var rs = avgGain / avgLoss;
   if (!Number.isFinite(rs)) return 100;
@@ -304,3 +305,8 @@ function calcVolumeRatio(volumeArr, latestVol, period) {
   var ratio = vol / avg;
   return Number.isFinite(ratio) ? Math.round(ratio * 100) / 100 : 0;
 }
+
+module.exports.__test = {
+  calcRSI: calcRSI,
+  calcVolumeRatio: calcVolumeRatio
+};

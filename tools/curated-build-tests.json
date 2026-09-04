@@ -339,5 +339,6 @@
   "test/daily-history-previous-close-trim.test.js",
   "test/daily-volume-7d-window-partial.test.js",
   "test/idx-calendar-source-window.test.js",
-  "test/includes-any-length-diagnostic.test.js"
+  "test/includes-any-length-diagnostic.test.js",
+  "test/rsi-zero-division-neutral-50.test.js"
 ]

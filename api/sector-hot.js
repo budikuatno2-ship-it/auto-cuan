@@ -2893,6 +2893,7 @@ function calcScreenerRSI(closes, period) {
   }
   var avgGain = gains / period;
   var avgLoss = losses / period;
+  if (avgGain === 0 && avgLoss === 0) return 50;
   if (avgLoss === 0) return 100;
   var rs = avgGain / avgLoss;
   return 100 - (100 / (1 + rs));
@@ -10952,6 +10953,7 @@ function nkCalcRSI(closes, period) {
   const avgGain = gains / period;
   const avgLoss = losses / period;
 
+  if (avgGain === 0 && avgLoss === 0) return 50;
   if (avgLoss === 0) return 100;
   const rs = avgGain / avgLoss;
   return 100 - (100 / (1 + rs));
@@ -14024,5 +14026,7 @@ module.exports.__test = {
   SWING_NK_HIGH_RR_WARNING_THRESHOLD: swingNkRrWarning.SWING_NK_HIGH_RR_WARNING_THRESHOLD,
   includesAny: includesAny,
   getIncludesAnyDiagnostics: getIncludesAnyDiagnostics,
-  resetIncludesAnyDiagnostics: resetIncludesAnyDiagnostics
+  resetIncludesAnyDiagnostics: resetIncludesAnyDiagnostics,
+  calcScreenerRSI: calcScreenerRSI,
+  nkCalcRSI: nkCalcRSI
 };
