@@ -6,6 +6,9 @@
   "type": "commonjs",
   "scripts": {
     "build": "node tools/run-build-test-suite.js",
+    "test": "node tools/run-build-test-suite.js --full",
+    "test:smoke": "node tools/run-build-test-suite.js --smoke",
+    "test:full": "node tools/run-build-test-suite.js --full",
     "start": "vercel dev",
     "aftermarket:top5-lock": "node tools/run-after-market-top5-lock.js"
   },
