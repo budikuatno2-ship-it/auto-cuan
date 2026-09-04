@@ -4046,8 +4046,9 @@ function deriveRiskReasonDetails(row, category) {
   var rr = toNum(r.risk_reward);
   var rrMin = getMinRRForCategory(category);
   var last = toNum(r.last_price || r.current_price || r.close);
-  var entryLow = toNum(r.entry_low || r.entry1 || r.entry_1);
-  var entryHigh = toNum(r.entry_high || r.entry2 || r.entry_2 || entryLow);
+  var entryLow = toNum(r.entry_low || r.entry2 || r.entry_2);
+  var entryHigh = toNum(r.entry_high || r.entry1 || r.entry_1 || entryLow);
+  if (entryLow != null && entryHigh != null && entryLow > entryHigh) { var _tmpEL = entryLow; entryLow = entryHigh; entryHigh = _tmpEL; }
   var stop = toNum(r.stop_loss || r.sl);
   var vol = toNum(r.volume_ratio_20d || r.volume_ratio_avg20 || r.volume_today_vs_7d || r.volume_today_vs_3d || r.volume_ratio);
   var value = toNum(r.value_today || r.tx_value_1d || r.avg_tx_value_7d || r.avg_value_7d);
@@ -6880,8 +6881,8 @@ function buildDashboardPickRow(row, rank, px) {
     plan_label: raw.plan_label || null,
     plan_reason: raw.plan_reason || raw.plan_quality_note || null,
     plan_priority: raw.plan_priority || null,
-    entry1: toNum(row.entry1 != null ? row.entry1 : (raw.entry1 != null ? raw.entry1 : raw.entry_low)),
-    entry2: toNum(row.entry2 != null ? row.entry2 : (raw.entry2 != null ? raw.entry2 : raw.entry_high)),
+    entry1: toNum(row.entry1 != null ? row.entry1 : (raw.entry1 != null ? raw.entry1 : raw.entry_high)),
+    entry2: toNum(row.entry2 != null ? row.entry2 : (raw.entry2 != null ? raw.entry2 : raw.entry_low)),
     sl: toNum(row.sl != null ? row.sl : (raw.sl != null ? raw.sl : raw.stop_loss)),
     tp1: toNum(row.tp1 != null ? row.tp1 : (raw.tp1 != null ? raw.tp1 : raw.tp1n)),
     tp2: toNum(row.tp2 != null ? row.tp2 : (raw.tp2 != null ? raw.tp2 : raw.tp2n)),
@@ -6920,7 +6921,7 @@ function buildFallbackDashboardPickRow(candidate, rank) {
     var score = webPickScore(raw) || 0;
     raw.top5_reason = 'Skor screener ' + (score ? score.toFixed(0) : '-') + (rr ? ' · RR ' + rr.toFixed(1) : '') + (raw.category ? ' · ' + raw.category : '');
   }
-  return buildDashboardPickRow({ date: getJakartaDateString(), ticker: raw.ticker, category: raw.category || raw.source || '-', entry1: raw.entry1 != null ? raw.entry1 : raw.entry_low, entry2: raw.entry2 != null ? raw.entry2 : raw.entry_high, sl: raw.sl != null ? raw.sl : raw.stop_loss, tp1: raw.tp1n != null ? raw.tp1n : raw.tp1, tp2: raw.tp2n != null ? raw.tp2n : raw.tp2, raw_payload: raw }, rank, { last: toNum(raw.lastn || raw.last_price || raw.current_price) || null });
+  return buildDashboardPickRow({ date: getJakartaDateString(), ticker: raw.ticker, category: raw.category || raw.source || '-', entry1: raw.entry1 != null ? raw.entry1 : raw.entry_high, entry2: raw.entry2 != null ? raw.entry2 : raw.entry_low, sl: raw.sl != null ? raw.sl : raw.stop_loss, tp1: raw.tp1n != null ? raw.tp1n : raw.tp1, tp2: raw.tp2n != null ? raw.tp2n : raw.tp2, raw_payload: raw }, rank, { last: toNum(raw.lastn || raw.last_price || raw.current_price) || null });
 }
 
 function getMonitorEntryBasis(row, px, ev) {
@@ -7798,8 +7799,8 @@ function buildWebTop5HistoryRow(row, rank, px, ev) {
     date: row.date || null,
     ticker: row.ticker || raw.ticker || null,
     category: row.category || raw.category || raw.source || '-',
-    entry1: toNum(row.entry1 != null ? row.entry1 : (raw.entry1 != null ? raw.entry1 : raw.entry_low)),
-    entry2: toNum(row.entry2 != null ? row.entry2 : (raw.entry2 != null ? raw.entry2 : raw.entry_high)),
+    entry1: toNum(row.entry1 != null ? row.entry1 : (raw.entry1 != null ? raw.entry1 : raw.entry_high)),
+    entry2: toNum(row.entry2 != null ? row.entry2 : (raw.entry2 != null ? raw.entry2 : raw.entry_low)),
     sl: toNum(row.sl != null ? row.sl : (raw.sl != null ? raw.sl : raw.stop_loss)),
     tp1: toNum(row.tp1 != null ? row.tp1 : (raw.tp1 != null ? raw.tp1 : raw.tp1n)),
     tp2: toNum(row.tp2 != null ? row.tp2 : (raw.tp2 != null ? raw.tp2 : raw.tp2n)),
@@ -12251,7 +12252,7 @@ function getDayTradeRadarStatus(candidate) {
     if (raw.indexOf('MOMENTUM') >= 0) found.MOMENTUM_CONTINUATION = true;
     if (raw.indexOf('RECLAIM') >= 0) found.RECLAIM_CANDIDATE = true;
     if (raw.indexOf('CHASE_RISK') >= 0 || raw.indexOf('CHASE') >= 0) found.CHASE_RISK_MONITOR = true;
-    if (raw.indexOf('ARA_ARB') >= 0 || raw.indexOf('ARA') >= 0 || raw.indexOf('ARB') >= 0) found.ARA_ARB_MONITOR = true;
+    if (/(?:^|_)(ARA_ARB|ARA|ARB)(?:_|$)/.test(raw)) found.ARA_ARB_MONITOR = true;
     if (raw.indexOf('DATA_NEEDS_REVALIDATION') >= 0 || raw.indexOf('NEEDS_REVALIDATION') >= 0) found.DATA_NEEDS_REVALIDATION = true;
     if (raw.indexOf('WATCHLIST') >= 0 || raw.indexOf('WATCH') >= 0 || raw.indexOf('PANTAU') >= 0) found.WATCHLIST = true;
   }
@@ -13331,7 +13332,7 @@ function getSwingMonitorTp1UpsidePct(candidate) {
   var explicit = toNum(candidate.tp1_upside_pct || candidate.upside_to_tp1_pct || candidate.tp1_pct || candidate.target1_upside_pct);
   if (explicit != null) return explicit;
   var tp1 = toNum(candidate.tp1 || candidate.target1 || candidate.tp1n);
-  var entryHigh = toNum(candidate.entry_high || candidate.entry2 || candidate.entry || candidate.entry1);
+  var entryHigh = toNum(candidate.entry_high || candidate.entry1 || candidate.entry || candidate.entry2);
   if (!tp1 || !entryHigh) return null;
   return ((tp1 - entryHigh) / entryHigh) * 100;
 }
@@ -13341,8 +13342,9 @@ function diagnoseSwingMonitorCandidate(candidate) {
   if (candidate && candidate.corporate_action_guard === 'BLOCKED') return { passed: false, reason: 'price_scale_mismatch', ticker: candidate.ticker, status: candidate.status, latest_price_used: candidate.latest_price_used };
   var status = String((candidate && (candidate.status || candidate.final_status || candidate.swing_tier)) || '').trim();
   var normalizedStatus = status.toUpperCase().replace(/[\s-]+/g, '_');
-  var entryLow = toNum(candidate && (candidate.entry_low || candidate.entry1 || candidate.entry));
-  var entryHigh = toNum(candidate && (candidate.entry_high || candidate.entry2 || candidate.entry));
+  var entryLow = toNum(candidate && (candidate.entry_low || candidate.entry2 || candidate.entry));
+  var entryHigh = toNum(candidate && (candidate.entry_high || candidate.entry1 || candidate.entry));
+  if (entryLow != null && entryHigh != null && entryLow > entryHigh) { var _sw = entryLow; entryLow = entryHigh; entryHigh = _sw; }
   var stopLoss = toNum(candidate && (candidate.stop_loss || candidate.sl));
   var tp1 = toNum(candidate && (candidate.tp1 || candidate.target1 || candidate.tp1n));
   var upside = candidate ? getSwingMonitorTp1UpsidePct(candidate) : null;
@@ -13485,7 +13487,10 @@ function formatSwingMonitorFallbackTelegramMessage(candidates, label) {
     lines.push('', (idx + 1) + '. ' + safeTelegramText(c.ticker, 16, '-'));
     lines.push('Status: ' + safeTelegramText(c.status || c.final_status || '-', 40, '-'));
     lines.push('Score: ' + (toNum(c.score || c.combined_score) != null ? (toNum(c.score || c.combined_score)).toFixed(0) : '-'));
-    lines.push('Entry: ' + fmtPrice(c.entry_low || c.entry1 || c.entry) + ' - ' + fmtPrice(c.entry_high || c.entry2 || c.entry));
+    var eLow = toNum(c.entry_low || c.entry2 || c.entry);
+    var eHigh = toNum(c.entry_high || c.entry1 || c.entry);
+    if (eLow != null && eHigh != null && eLow > eHigh) { var _swp = eLow; eLow = eHigh; eHigh = _swp; }
+    lines.push('Entry: ' + fmtPrice(eLow) + ' - ' + fmtPrice(eHigh));
     lines.push('SL: ' + fmtPrice(c.stop_loss || c.sl) + ' | TP1: ' + fmtPrice(c.tp1 || c.target1 || c.tp1n) + ' (+' + (upside != null ? upside.toFixed(1) : '-') + '%)');
     lines.push('Risk: ' + safeTelegramText(c.risk_label || c.risk_label_v2 || '-', 40, '-'));
     if (trigger) lines.push('Trigger: ' + safeTelegramText(trigger, 120, '-'));
