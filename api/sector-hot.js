@@ -4206,6 +4206,7 @@ function deriveFinalTopQualityGate(candidate, context) {
   var tpLabel = String(r.tp_quality_label || '').toLowerCase();
   var entryLabel = String(r.entry_status_label || r.entry_quality_label || '').toLowerCase();
   var noteText = joinTelegramTexts([r.notes, r.status_reason, r.entry_timing, r.time_plan, r.chase_risk_label, r.setup_expiry_note, r.breakout_confirmation_label]).toLowerCase();
+  var chaseCheckText = joinTelegramTexts([r.notes, r.status_reason, r.chase_risk_label, r.setup_expiry_note, r.breakout_confirmation_label]).toLowerCase().replace(/(?:jangan|anti|tidak|no)[ -]chase\b/g, ' ');
 
   if (respect === 'valid respect') addChip('Valid Respect', 8);
   if (respect === 'strong respect') addChip('Strong Respect', 10);
@@ -4224,7 +4225,7 @@ function deriveFinalTopQualityGate(candidate, context) {
   if (rrLabel.indexOf('sehat') >= 0 || (toNum(r.risk_reward) || 0) >= getMinRRForCategory(r.category)) addChip('Healthy RR', 4);
   if (tpLabel.indexOf('realistis') >= 0) addChip('TP realistic', 3);
 
-  if (includesAny(noteText, ['chase', 'extended', 'telat', 'late'])) addChip('Chase risk / Extended', -12);
+  if (includesAny(chaseCheckText, ['chase', 'extended', 'telat', 'late'])) addChip('Chase risk / Extended', -12);
   if (includesAny(noteText, ['needs close confirmation', 'close confirmation'])) addChip('Needs Close Confirmation', -5);
   if (volumeLabel === 'weak volume' || volumeLabel.indexOf('lemah') >= 0) addChip('Weak Volume', -7);
   if (trend === 'weak trend') addChip('Weak Trend', -7);
@@ -4577,8 +4578,9 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
     candidate.invalidation_distance_label,
     candidate.invalidation_note
   ]);
-  if (publicTelegramSafetyTextHasReject(guardText)) return false;
-  if (includesAny(guardText.toLowerCase(), ['level belum rapi', 'invalid plan', 'plan invalid', 'chase', 'extended', 'tp near', 'tp1 near'])) return false;
+  var cleanGuardText = guardText.toLowerCase().replace(/(?:jangan|anti|tidak|no)[ -]chase\b/g, ' ');
+  if (publicTelegramSafetyTextHasReject(cleanGuardText)) return false;
+  if (includesAny(cleanGuardText, ['level belum rapi', 'invalid plan', 'plan invalid', 'chase', 'extended', 'tp near', 'tp1 near'])) return false;
 
   if (mode !== 'daytrade') return applyFinalTopQualityGate(candidate, mode || 'public_telegram').pass;
   return true;
@@ -4821,11 +4823,12 @@ function diagnosePublicSafetyGateRejection(candidate, mode) {
     candidate.plan_quality_note, candidate.entry_timing, candidate.time_plan, candidate.entry_status_label,
     candidate.entry_status_note, candidate.invalidation_distance_label, candidate.invalidation_note
   ]);
-  if (publicTelegramSafetyTextHasReject(guardText)) {
-    return { category: 'guard_text_reject', detailed_reason: 'Guard text reject: ' + safeTelegramText(guardText, 80, '') };
+  var cleanGuardText = guardText.toLowerCase().replace(/(?:jangan|anti|tidak|no)[ -]chase\b/g, ' ');
+  if (publicTelegramSafetyTextHasReject(cleanGuardText)) {
+    return { category: 'guard_text_reject', detailed_reason: 'Guard text reject: ' + safeTelegramText(cleanGuardText, 80, '') };
   }
-  if (includesAny(guardText.toLowerCase(), ['level belum rapi','invalid plan','plan invalid','chase','extended','tp near','tp1 near'])) {
-    var gMatch = ['level belum rapi','invalid plan','plan invalid','chase','extended','tp near','tp1 near'].find(function(kw) { return guardText.toLowerCase().indexOf(kw) >= 0; }) || 'guard_keyword';
+  if (includesAny(cleanGuardText, ['level belum rapi','invalid plan','plan invalid','chase','extended','tp near','tp1 near'])) {
+    var gMatch = ['level belum rapi','invalid plan','plan invalid','chase','extended','tp near','tp1 near'].find(function(kw) { return cleanGuardText.indexOf(kw) >= 0; }) || 'guard_keyword';
     return { category: 'guard_text_reject', detailed_reason: 'Guard text contains: ' + gMatch };
   }
 
