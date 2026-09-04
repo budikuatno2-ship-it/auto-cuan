@@ -325,5 +325,6 @@
   "test/npm-audit-gate.test.js",
   "test/wib-date-string.test.js",
   "test/sector-hot-upstream-timeout.test.js",
-  "test/nk-quote-null-ohlc.test.js"
+  "test/nk-quote-null-ohlc.test.js",
+  "test/telegram-delivery-per-row-status.test.js"
 ]

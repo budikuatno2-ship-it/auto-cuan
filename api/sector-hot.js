@@ -5919,6 +5919,15 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
   }
   var detailSent = 0;
   var detailResults = [];
+  /*
+   * One entry per candidate in the INPUT `picks` array, aligned to it by index,
+   * carrying that candidate's own send result (null when it was filtered out by
+   * the digest gate and never sent). This is what lets the delivery layer record
+   * each prepared row's state from ITS OWN message instead of from the batch
+   * aggregate — the header and footer are not candidate rows and must not drag
+   * delivered candidates down with them.
+   */
+  var perCandidateResults = new Array((picks || []).length).fill(null);
   for (var i = 0; i < safePicks.length; i++) {
     // Use new premium signal card for detail messages
     var detailText = telegramTemplates.formatSignalCard(safePicks[i], i + 1, /day/i.test(safePicks[i].category || '') ? 'daytrade' : 'swing');
@@ -5964,6 +5973,8 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
     var finalDetailText = detailText + (candidateAiNote ? '\n\nCatatan AI:\n' + candidateAiNote : '');
     var detailResult = await telegramNotifier.sendTelegramMessage(finalDetailText, { timeout_ms: 2500 });
     telegramResults.push(detailResult);
+    var candidateIndex = (picks || []).indexOf(safePicks[i]);
+    if (candidateIndex >= 0) perCandidateResults[candidateIndex] = detailResult;
     var detailEntry = { ticker: safePicks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null, ai_note_appended: !!candidateAiNote };
     if (candidateNarrationDiag) detailEntry.ai_narration = candidateNarrationDiag;
     detailResults.push(detailEntry);
@@ -5976,7 +5987,7 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
     telegramResults.push(footerResult);
   }
 
-  return { telegram_results: telegramResults, header: sendResult, detail_sent_count: detailSent, detail_results: detailResults, sent_count: (sendResult.sent ? 1 : 0) + detailSent, public_picks: safePicks, public_filtered_count: (picks || []).length - safePicks.length, watchlist_mode: isWatchlistMode };
+  return { telegram_results: telegramResults, per_candidate_results: perCandidateResults, header: sendResult, detail_sent_count: detailSent, detail_results: detailResults, sent_count: (sendResult.sent ? 1 : 0) + detailSent, public_picks: safePicks, public_filtered_count: (picks || []).length - safePicks.length, watchlist_mode: isWatchlistMode };
 }
 
 async function handleTelegramDailyPicks(req, res, supabase) {
@@ -6537,7 +6548,11 @@ async function handleTelegramDailyPicks(req, res, supabase) {
           supabase: supabase,
           preparation: top5DeliveryPrep,
           send_results:
-            notifier.telegram_results || []
+            notifier.telegram_results || [],
+          // Aligned to top5DeliveryPrep.send_candidates (the array passed to the
+          // notifier), so each prepared row records the outcome of its own card.
+          row_results:
+            notifier.per_candidate_results || null
         });
 
       telegramDelivery.attachDeliveryTelemetry(
