@@ -85,7 +85,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/admin-command-login.js` | 278 | SELESAI | 0 | **Bersih**. `canonicalBaseUrl` (`:49-58`) hanya menerima `https://autocuan.web.id` dan selebihnya jatuh ke konstanta — disiplin yang persis hilang di BUG-034. Token 32 byte CSPRNG, hanya hash tersimpan, TTL 2 menit, dan `adminContext` diperiksa sebelum grant dibuat di kedua jalur. |
 | `lib/admin-command-zero-link-browser.js` | 221 | SELESAI | 1 | Rahasia 32 byte CSPRNG, hanya hash yang tersimpan, IP hanya dari `x-vercel-forwarded-for`. Ikut menyumbang BUG-037: endpoint poll dapat dicapai tanpa autentikasi dan baris di-*recycle* per cookie sehingga melewati limiter per-IP. |
 | `lib/admin-command-zero-link-pairing.js` | 323 | SELESAI | 1 | Gate identitas ada di SQL (`approve_admin_command_pair_request` menuntut binding Telegram admin terverifikasi) — diperiksa langsung, bukan diasumsikan. BUG-037: hitungan ambiguitas bersifat global sehingga orang luar bisa memblokir pairing laptop admin. |
-| `lib/admin-foreign-upload.js` | 305 | BELUM | 0 | |
+| `lib/admin-foreign-upload.js` | 305 | SELESAI | 1 | BUG-038: pass retensi (`:216-221`) tidak punya `.limit()` maupun anggaran baris, padahal repo ini sudah pernah kena truncation PostgREST. Sisanya bersih: parser CSV menangani kutip berpasangan, batas 3 MB dan 5.000 baris, duplikat `tanggal|ticker` ditolak, dan gate `requireBudiAdmin` ada di `api/admin-users.js:158`. |
 | `lib/admin-fundamentals-upload.js` | 240 | BELUM | 0 | |
 | `lib/admin-maintenance-code-browser.js` | 356 | SELESAI | 0 | **Bersih**. Kode 6 digit dijaga berlapis: wajib mode maintenance, maksimal 5 percobaan per grant, TTL 2 menit, sekali pakai, dan username `budi` dicek ulang di JS (`:236`). `notify`/`cleanup` menuntut sesi admin **dan** kepemilikan baris (`loadOwnedGrant` membatasi dengan `user_id`). |
 | `lib/admin-maintenance-code.js` | 249 | SELESAI | 0 | **Bersih**. `generateCode` memakai `crypto.randomInt` (CSPRNG, seragam); `hashCode` HMAC ber-pepper `SESSION_SECRET` dan fail-closed bila tidak ada. Kode hanya terbit untuk admin terverifikasi dan hanya saat maintenance. `cleanupOldMessages` sengaja mengecualikan grant berjalan (`.neq('id', keepGrantId)`), jadi tidak bisa menghapus OTP yang baru dikirim. |
@@ -114,7 +114,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/context-ai-router-v6.js` | 226 | SELESAI | 0 | **Bersih**. Fallback deterministik untuk follow-up saham; hanya mengutip angka yang sudah ada di snapshot. Satu catatan gaya: `escapeHtml` (`:37`) dideklarasikan tapi tidak dipakai — kode mati, bukan bug. `normalizeText` mendekode entitas SETELAH melucuti tag, tapi hasilnya selalu di-escape lagi oleh `inlineFormat` di klien, jadi bukan jalur XSS (lihat baris `public/ai-chat-renderer.js`). |
 | `lib/context-ai-router-v7.js` | 535 | SELESAI | 2 | BUG-010 DIPERBAIKI; BUG-028 (CRITICAL) DIPERBAIKI PR #505. Dibaca ulang penuh: validasi sumber, guard SSRF `normalizeSecondaryBaseUrl` (tolak non-https, kredensial di URL, host privat/loopback), budget waktu failover sekunder, jalur SSE, fallback deterministik lokal — bersih. |
 | `lib/corporate-action-price-scale-guard.js` | 88 | BELUM | 0 | |
-| `lib/daily-foreign-context.js` | 101 | BELUM | 0 | |
+| `lib/daily-foreign-context.js` | 101 | SELESAI | 0 | **Bersih**. Sesi yang hilang dihitung `missing`, bukan nol — `sessions_missing` dan `foreign_net_7d_data_quality` membuat kualitas data terlihat pemanggil, bukan disembunyikan. Semua jendela dibatasi `slice`, jadi baris basi tidak pernah ikut terhitung. |
 | `lib/daily-history-collector.js` | 372 | BELUM | 0 | |
 | `lib/daily-market-context-builder.js` | 355 | BELUM | 0 | |
 | `lib/daily-market-context-constants.js` | 34 | BELUM | 0 | |
@@ -155,7 +155,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/entitlements.js` | 68 | SELESAI | 0 | bersih; review TIDAK premium, budi admin, error penyimpanan tidak pernah jadi premium |
 | `lib/fast-watcher-daily-context-shadow.js` | 53 | BELUM | 0 | |
 | `lib/fibonacci-confluence.js` | 317 | BELUM | 0 | |
-| `lib/foreign-flow-store.js` | 73 | BELUM | 0 | |
+| `lib/foreign-flow-store.js` | 73 | SELESAI | 0 | **Bersih**, dan justru jadi pembanding untuk BUG-038: `SAFE_QUERY_ROW_BUDGET = 900`, ukuran batch dihitung dari `count`, dan `.limit(fetchLimit)` eksplisit. Komentar `:15-18` mencatat insiden nyata saat cap 1.000 baris membuat "Foreign 7D" sama dengan "Foreign Terbaru". |
 | `lib/free-user-approval.js` | 84 | BELUM | 0 | |
 | `lib/idx-holidays-2026-seed-data.js` | 69 | BELUM | 0 | |
 | `lib/idx-tick-normalization.js` | 1124 | SELESAI | 1 | Dibaca utuh baris 1-1124. BUG-027 (HIGH - teks nasihat "JANGAN chase" di time_plan dibaca sebagai bukti chase, :837 + :881). Modul paling sentral dan paling rapi di repo: penjaga tukar entry low/high di :86, :211, :370 dan Math.min/max di :244-250 (obat BUG-021, ditulis 4x); :368-370 satu-satunya tempat dengan urutan alias yang BENAR (entryLow<-entry2, entryHigh<-entry1); normalizeTradingPlanLevels :430 memakai min/max sehingga kebal konvensi; deriveSetupFreshness :360 sengaja mengecualikan updated_at/last_checked_at agar rekomendasi lama tidak tampak baru. Satu-satunya alias tak terjaga: deriveCandlePotentialRange :965 (instance BUG-021 ke-7) |

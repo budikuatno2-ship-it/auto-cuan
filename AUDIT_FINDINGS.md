@@ -4323,3 +4323,184 @@ galat penyimpanan menghasilkan `available: false`, bukan diam-diam "tidak sedang
 maintenance"; dan hanya `maintenanceMode === true` yang persis yang menyalakan.
 Pemanggil di `admin-maintenance-code-browser.js:181-187` memang membedakan
 keduanya: `available:false` → 503, `enabled:false` → 409.
+
+---
+
+## BUG-038 — Retensi 7 hari foreign flow diam-diam tidak pernah benar-benar berlaku
+
+**Severity:** LOW
+**Area:** Ingestion foreign flow — admin CSV upload
+**Status:** **MENUNGGU KEPUTUSAN ANDA — belum saya perbaiki** (alasannya: aturan 6)
+
+### Lokasi
+
+`lib/admin-foreign-upload.js:216-221`
+
+```js
+for (const tickerBatch of chunk(tickers, RETENTION_TICKER_BATCH_SIZE)) {
+  const lookup = await supabase
+    .from('foreign_watchlist_daily')
+    .select('id,ticker,trade_date')
+    .in('ticker', tickerBatch)
+    .order('trade_date', { ascending: false });
+```
+
+Tidak ada `.limit()`, tidak ada anggaran baris, dan `RETENTION_TICKER_BATCH_SIZE`
+tetap 50 tanpa memperhitungkan berapa tanggal per ticker.
+
+### Root cause
+
+Respons PostgREST dipotong di sisi server. Ini **bukan dugaan saya** — repo ini
+sudah pernah kena, dan mencatatnya sendiri di `lib/foreign-flow-store.js:15-18`:
+
+```js
+// Keep every request comfortably below common PostgREST/Supabase max-row
+// response caps. The old whole-universe query asked for ~7 * 771 rows in one
+// response; a server-side 1,000-row cap could silently return only the newest
+// session for most tickers, which made Foreign 7D equal Foreign Terbaru.
+const SAFE_QUERY_ROW_BUDGET = 900;
+```
+
+Pembacanya sudah dibetulkan: batch dihitung dari `count`, dan `.limit(fetchLimit)`
+dipasang eksplisit (`:41`, `:51`). Penulis retensinya tidak ikut dibetulkan.
+
+Ini kemunculan **kesembilan** dari pola struktural yang sama dalam audit ini —
+dan kali ini repo bahkan sudah punya catatan post-mortem tertulis yang menempel
+pada implementasi yang benar, sementara implementasi yang salah ada di berkas
+sebelah.
+
+### Kapan ini benar-benar terjadi
+
+Bukan teori. Satu upload boleh berisi sampai `MAX_ROWS = 5000` baris (`:6`).
+Upload 50 ticker × 100 tanggal = 5.000 baris:
+
+1. `upsertRows` menulis semuanya.
+2. `enforceRetention` untuk 50 ticker pertama butuh 5.000 baris, tapi hanya
+   menerima ~1.000 yang terbaru.
+3. Per ticker terlihat ~20 tanggal: 7 disimpan, ~13 dihapus.
+4. Sekitar 80 tanggal per ticker **tidak pernah terlihat**, jadi tidak pernah
+   dihapus — dan pada upload berikutnya urutannya sama, jadi mereka tertinggal
+   selamanya.
+
+Dalam kondisi mapan (≤7 tanggal per ticker → 350 baris) tidak ada masalah.
+Masalahnya muncul begitu tabel sempat menumpuk.
+
+### Dampak — sengaja saya batasi, bukan saya besar-besarkan
+
+**Arah kegagalannya aman: kode ini menghapus terlalu sedikit, tidak pernah
+terlalu banyak.** Pemotongan membuang baris paling lama dari hasil, dan baris
+yang tidak terlihat tidak masuk `deleteIds`.
+
+**Konsumennya juga tidak terpengaruh.** `lib/foreign-flow-store.js:58` hanya
+mengambil `count` baris terbaru per ticker, dan
+`lib/daily-foreign-context.js` membatasi setiap jendela dengan `slice(0, n)`.
+Jadi baris basi **tidak pernah** ikut masuk ke perhitungan Foreign 3D/5D/7D,
+streak, atau apa pun yang menyentuh keputusan trading.
+
+Yang tersisa: pertumbuhan penyimpanan, dan janji "retensi 7 hari" yang tidak
+ditepati. Itu saja. Saya catat LOW karena memang segitu, bukan lebih.
+
+### Perbaikan yang saya usulkan (belum diterapkan)
+
+Samakan dengan disiplin pembacanya — hitung anggaran baris, dan paginasi sampai
+habis:
+
+```js
+const RETENTION_KEEP_DATES = 7;
+const RETENTION_ROW_BUDGET = 900;
+
+// Sejajar dengan lib/foreign-flow-store.js: jangan pernah bergantung pada satu
+// respons besar yang bisa dipotong PostgREST tanpa memberi tahu.
+const perTickerBudget = Math.max(RETENTION_KEEP_DATES + 1, 32);
+const tickerBatchSize = Math.max(1, Math.floor(RETENTION_ROW_BUDGET / perTickerBudget));
+
+for (const tickerBatch of chunk(tickers, tickerBatchSize)) {
+  let offset = 0;
+  const collected = [];
+  for (;;) {
+    const lookup = await supabase
+      .from('foreign_watchlist_daily')
+      .select('id,ticker,trade_date')
+      .in('ticker', tickerBatch)
+      .order('trade_date', { ascending: false })
+      .order('id', { ascending: true })     // urutan stabil saat tanggal seri
+      .range(offset, offset + RETENTION_ROW_BUDGET - 1);
+    if (lookup.error) throw new Error(`Retention lookup gagal: ${lookup.error.message}`);
+    const batch = lookup.data || [];
+    collected.push(...batch);
+    if (batch.length < RETENTION_ROW_BUDGET) break;
+    offset += RETENTION_ROW_BUDGET;
+  }
+  // ... sisanya seperti sekarang, memakai `collected`
+}
+```
+
+Catatan: `order('id')` sekunder itu penting. Tanpa urutan tie-break yang stabil,
+paginasi pada tanggal yang seri bisa melewatkan atau menggandakan baris di batas
+halaman — dan kode sekarang pun tidak punya tie-break.
+
+### Kenapa saya TIDAK menerapkannya sendiri
+
+Karena efek nyatanya di produksi adalah **menghapus baris yang selama ini
+menumpuk**. Itu masuk aturan 6 Anda: jangan menghapus data produksi tanpa
+persetujuan. Secara niat, kode ini memang sudah seharusnya menghapusnya — tapi
+"sudah seharusnya" bukan izin, dan jumlah yang terhapus pada upload berikutnya
+bisa jauh lebih besar dari yang pernah terjadi selama ini.
+
+Saya siapkan patch-nya, dan menunggu Anda.
+
+### Kueri read-only untuk melihat berapa yang akan terhapus
+
+Belum saya jalankan.
+
+```sql
+WITH ranked AS (
+  SELECT id, ticker, trade_date,
+         dense_rank() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rnk
+  FROM public.foreign_watchlist_daily
+)
+SELECT count(*) AS baris_di_luar_7_hari,
+       count(DISTINCT ticker) AS ticker_terdampak,
+       min(trade_date) AS tanggal_terlama
+FROM ranked
+WHERE rnk > 7;
+```
+
+---
+
+## Yang bersih pada putaran ini
+
+### `lib/admin-foreign-upload.js` — selain BUG-038
+
+- **Gate admin ada, dan saya periksa di pemanggilnya**, bukan diasumsikan:
+  `api/admin-users.js:158` memanggil `requireBudiAdmin(req)` sebelum
+  `handleAdminForeignUpload`. Modul ini sendiri memang tidak punya cek auth, dan
+  itu benar — tapi hanya karena pemanggilnya punya.
+- Parser CSV (`:23-65`) menangani kutip berpasangan (`""`), CRLF, dan melempar
+  bila kutip tidak ditutup — tidak diam-diam menerima baris rusak.
+- Batas berlapis: 3 MB (`:113`), 5.000 baris (`:137`), ticker maksimal 12
+  karakter dan hanya `[A-Z0-9]` (`:86-97`).
+- Duplikat `tanggal|ticker` **ditolak** dengan galat (`:150-152`), bukan
+  ditimpa diam-diam.
+- `normalizeDate` memverifikasi ulang lewat round-trip
+  `parsed.toISOString().slice(0,10) !== iso` (`:80`), jadi tanggal seperti
+  `2026-02-31` tertolak, bukan bergeser diam-diam ke 3 Maret.
+
+Satu catatan kecil, bukan bug: `foreign_net: close * nbsa` (`:163`) tidak
+diperiksa `Number.isFinite` setelah perkalian, walaupun kedua faktornya sudah
+diperiksa. Hanya bisa dipicu admin yang mengunggah angka absurd, dan hasilnya
+galat penyimpanan, bukan data salah yang diam-diam masuk.
+
+### `lib/foreign-flow-store.js` (73) — bersih
+
+Justru menjadi pembanding untuk BUG-038: anggaran baris eksplisit, ukuran batch
+diturunkan dari `count`, `.limit(fetchLimit)` terpasang, dan alasannya
+didokumentasikan dengan insiden nyata. Ini contoh yang benar; masalahnya ada di
+berkas sebelah yang tidak ikut dibetulkan.
+
+### `lib/daily-foreign-context.js` (101) — bersih
+
+Yang layak disebut: sesi yang hilang dihitung sebagai **missing**, bukan nol.
+`sessions_missing` dan `foreign_net_7d_data_quality` ikut dikembalikan, sehingga
+"tidak ada data" tidak pernah menyamar jadi "arus asing nol". Itu perbedaan yang
+sering diabaikan dan di sini ditangani benar.
