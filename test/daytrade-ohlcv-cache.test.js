@@ -36,6 +36,24 @@ function make90DCandles(baseClose) {
   return candles;
 }
 
+// The cache TTL is market-aware: the configured TTL during IDX hours
+// (Mon-Fri 09:00-15:30 WIB) and 12 hours outside them, because the exchange is
+// shut and the candles cannot change. A test about STALE handling therefore has
+// to say WHEN it is running, otherwise "20 minutes old" means stale in the
+// morning and fresh at night. These two tests used the real wall clock and were
+// clock-dependent; they only ever passed at any hour because the market-aware
+// branch was unreachable (see lib/daytrade-ohlcv-cache.js fetchWithCache).
+// Pinning the clock to a trading-hours instant preserves their intent exactly
+// and removes the latent flake.
+// 2026-09-03 is a Thursday; 11:00 WIB is inside 09:00-15:30.
+const MARKET_HOURS_NOW = Date.parse('2026-09-03T04:00:00Z'); // 11:00 WIB
+
+function freezeClockDuringMarketHours(t) {
+  const realNow = Date.now;
+  Date.now = () => MARKET_HOURS_NOW;
+  t.after(() => { Date.now = realNow; });
+}
+
 async function tmpdir() {
   return fs.mkdtemp(path.join(os.tmpdir(), 'ohlcv-cache-test-'));
 }
@@ -79,7 +97,8 @@ test('fresh cache is used without calling Yahoo fetch', async () => {
 // TEST: Stale cache triggers Yahoo refresh
 // ============================================================
 
-test('stale cache triggers Yahoo refresh and updates cache', async () => {
+test('stale cache triggers Yahoo refresh and updates cache', async (t) => {
+  freezeClockDuringMarketHours(t);
   const dir = await tmpdir();
   const oldCandles = make90DCandles(100);
 
@@ -121,7 +140,8 @@ test('stale cache triggers Yahoo refresh and updates cache', async () => {
 // TEST: Yahoo failure falls back to stale cache
 // ============================================================
 
-test('Yahoo failure falls back to stale cache with staleFallback stat', async () => {
+test('Yahoo failure falls back to stale cache with staleFallback stat', async (t) => {
+  freezeClockDuringMarketHours(t);
   const dir = await tmpdir();
   const oldCandles = make90DCandles(300);
 

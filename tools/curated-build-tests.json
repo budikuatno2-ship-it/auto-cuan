@@ -332,5 +332,6 @@
   "test/analyze-stated-price-extraction.test.js",
   "test/track-record-entry-range-order.test.js",
   "test/watchlist-alert-notification-target.test.js",
-  "test/admin-reset-password-credential.test.js"
+  "test/admin-reset-password-credential.test.js",
+  "test/daytrade-ohlcv-cache-offhours-ttl.test.js"
 ]
