@@ -171,6 +171,24 @@ function buttonUrl(entry) {
   return keyboard && keyboard[0] && keyboard[0][0] ? keyboard[0][0].url : null;
 }
 
+// Assertions below compare the parsed host, never a substring of the URL.
+// A substring check such as !url.includes('evil.example.com') would pass for
+// https://autocuan.web.id/dashboard?paymentReview=evil.example.com and, more
+// importantly, would not actually pin WHERE the admin's button points.
+function reviewTarget(entry) {
+  const raw = buttonUrl(entry);
+  assert.ok(raw, 'admin notification must carry a review button');
+  const parsed = new URL(raw);
+  return {
+    raw,
+    origin: parsed.origin,
+    protocol: parsed.protocol,
+    host: parsed.host,
+    pathname: parsed.pathname,
+    reference: parsed.searchParams.get('paymentReview')
+  };
+}
+
 // ---------------------------------------------------------------------------
 // 1. Host-header injection into the admin review button.
 // ---------------------------------------------------------------------------
@@ -180,31 +198,36 @@ test('review button ignores a forged X-Forwarded-Host', async () => {
   const res = await submit({ 'x-forwarded-host': 'evil.example.com', host: 'evil.example.com', origin: 'https://evil.example.com' });
   assert.equal(res.statusCode, 200);
   assert.equal(state.sent.length, 1);
-  const url = buttonUrl(state.sent[0]);
-  assert.ok(url, 'admin notification must carry a review button');
-  assert.ok(!url.includes('evil.example.com'), 'forged host leaked into the admin button URL: ' + url);
+  const target = reviewTarget(state.sent[0]);
+  assert.equal(target.host, 'autocuan.web.id', 'forged host reached the admin button: ' + target.raw);
+  assert.equal(target.protocol, 'https:');
+  assert.equal(target.pathname, '/dashboard');
+  assert.equal(target.reference, 'PAY-0123456789AB');
 });
 
 test('review button ignores a forged Host header', async () => {
   resetState();
   const res = await submit({ host: 'attacker.test', origin: 'https://attacker.test' });
   assert.equal(res.statusCode, 200);
-  const url = buttonUrl(state.sent[0]);
-  assert.ok(!url.includes('attacker.test'), 'forged host leaked into the admin button URL: ' + url);
+  const target = reviewTarget(state.sent[0]);
+  assert.equal(target.host, 'autocuan.web.id', 'forged host reached the admin button: ' + target.raw);
 });
 
 test('review button falls back to the canonical production origin', async () => {
   resetState();
   await submit({ host: 'attacker.test', origin: 'https://attacker.test' });
-  const url = buttonUrl(state.sent[0]);
-  assert.ok(url.startsWith('https://autocuan.web.id/dashboard?paymentReview='), 'unexpected fallback URL: ' + url);
+  const target = reviewTarget(state.sent[0]);
+  assert.equal(target.origin, 'https://autocuan.web.id');
+  assert.equal(target.pathname, '/dashboard');
+  assert.equal(target.reference, 'PAY-0123456789AB');
 });
 
 test('review button keeps the real host when it is the known production host', async () => {
   resetState();
   await submit({ host: 'autocuan.web.id', origin: 'https://autocuan.web.id' });
-  const url = buttonUrl(state.sent[0]);
-  assert.ok(url.startsWith('https://autocuan.web.id/dashboard?paymentReview='), 'unexpected URL: ' + url);
+  const target = reviewTarget(state.sent[0]);
+  assert.equal(target.origin, 'https://autocuan.web.id');
+  assert.equal(target.pathname, '/dashboard');
 });
 
 test('SUBSCRIPTION_PUBLIC_BASE_URL still wins over request headers', async () => {
@@ -212,8 +235,9 @@ test('SUBSCRIPTION_PUBLIC_BASE_URL still wins over request headers', async () =>
   process.env.SUBSCRIPTION_PUBLIC_BASE_URL = 'https://staging.autocuan.web.id';
   try {
     await submit({ 'x-forwarded-host': 'evil.example.com', host: 'evil.example.com', origin: 'https://evil.example.com' });
-    const url = buttonUrl(state.sent[0]);
-    assert.ok(url.startsWith('https://staging.autocuan.web.id/dashboard?paymentReview='), 'unexpected URL: ' + url);
+    const target = reviewTarget(state.sent[0]);
+    assert.equal(target.origin, 'https://staging.autocuan.web.id');
+    assert.equal(target.pathname, '/dashboard');
   } finally {
     delete process.env.SUBSCRIPTION_PUBLIC_BASE_URL;
   }
@@ -224,9 +248,9 @@ test('a malformed SUBSCRIPTION_PUBLIC_BASE_URL does not produce a broken URL', a
   process.env.SUBSCRIPTION_PUBLIC_BASE_URL = 'not a url';
   try {
     await submit();
-    const url = buttonUrl(state.sent[0]);
-    assert.ok(/^https:\/\//.test(url), 'unexpected URL: ' + url);
-    assert.ok(!url.includes('not a url'), 'unvalidated base URL leaked: ' + url);
+    const target = reviewTarget(state.sent[0]);
+    assert.equal(target.protocol, 'https:');
+    assert.equal(target.host, 'autocuan.web.id', 'unvalidated base URL reached the button: ' + target.raw);
   } finally {
     delete process.env.SUBSCRIPTION_PUBLIC_BASE_URL;
   }
