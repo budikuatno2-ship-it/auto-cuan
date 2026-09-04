@@ -259,7 +259,9 @@ module.exports.__test = {
   setClassicPatternDetector: function(detector) { classicPatternDetector = detector; },
   resetClassicPatternDetector: function() { classicPatternDetector = require('../lib/classic-chart-patterns').detectClassicChartPatterns; },
   hasPatternMapAccess: hasPatternMapAccess,
-  responseForRequest: responseForRequest
+  responseForRequest: responseForRequest,
+  calcRSI: calcRSI,
+  calcVolumeRatio: calcVolumeRatio
 };
 
 function calcMA(prices, period) {
@@ -305,8 +307,3 @@ function calcVolumeRatio(volumeArr, latestVol, period) {
   var ratio = vol / avg;
   return Number.isFinite(ratio) ? Math.round(ratio * 100) / 100 : 0;
 }
-
-module.exports.__test = {
-  calcRSI: calcRSI,
-  calcVolumeRatio: calcVolumeRatio
-};
