@@ -1,6 +1,7 @@
 [
   "test/ai-eval-once.test.js",
   "test/ai-eval-final-contract-output.test.js",
+  "test/ai-stock-analysis-failure-and-race.test.js",
   "test/openagentic-stream-reassembly.test.js",
   "test/ai-eval-live-progress.test.js",
   "test/ai-eval-derived-grounding.test.js",
