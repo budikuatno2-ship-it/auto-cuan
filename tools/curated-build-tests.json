@@ -344,5 +344,6 @@
   "test/daytrade-volume-sentinel-null.test.js",
   "test/latent-aliases-radar-dead-code-cleanup.test.js",
   "test/daytrade-prespike-branch-order.test.js",
-  "test/anti-chase-advice-trigger-leak.test.js"
+  "test/anti-chase-advice-trigger-leak.test.js",
+  "test/candle-hammer-hanging-man-trend.test.js"
 ]
