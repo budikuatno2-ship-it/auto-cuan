@@ -4907,3 +4907,121 @@ Layak disebut karena godaannya besar untuk berbuat sebaliknya: modul ini
 `shares > 0`. Bila tidak ada, seluruh field `null` dan `data_available: false` —
 bukan 0, bukan tebakan. Docstring-nya pun menyatakan tabelnya memang masih
 kosong sampai ada alat admin yang mengisinya.
+
+---
+
+## BUG-041 — Kalender libur yang sudah di-seed dilaporkan "fallback akhir pekan saja"
+
+**Severity:** LOW (observability — tidak ada keputusan trading yang berubah)
+**Area:** Daily Market Context — kalender bursa IDX
+**Status:** SUDAH DIPERBAIKI — PR #515
+
+### Lokasi
+
+`lib/idx-trading-calendar.js:162-177` (kode asli)
+
+```js
+if (options.fromDate) query = query.gte('trade_date', toDateKey(options.fromDate));
+if (options.toDate) query = query.lte('trade_date', toDateKey(options.toDate));
+...
+source: rows.length ? 'db' : 'weekend_only_fallback',
+```
+
+### Root cause
+
+Label `source` diputuskan dari hasil query yang sudah difilter tanggal. Hasil
+kosong di jendela sempit berarti "tidak ada libur dalam waktu dekat", **bukan**
+"kalender tidak tersedia" — dan setelah filternya dipasang, keduanya tidak bisa
+dibedakan.
+
+### Dampak
+
+`marketDayGuard` memakai jendela ±3 hari, jadi pada setiap minggu biasa kalender
+yang sudah terisi penuh dilaporkan sebagai fallback, dan
+`scripts/collect-daily-market-context.js:122` mencetak
+`calendar_source=weekend_only_fallback` ke operator.
+
+Repo ini menyertakan `scripts/seed-idx-holidays-2026.js` justru supaya tabel itu
+bisa diisi. Jadi satu-satunya umpan balik yang dimiliki operator untuk
+memastikan seeding-nya berhasil justru mengatakan sebaliknya.
+
+Keputusan trading tidak terpengaruh: `shouldRun` dan `isTradingDay` sudah benar
+sejak awal.
+
+### Perbaikan
+
+Kalender diambil tanpa filter tanggal di SQL (tabelnya ~15–20 baris per tahun,
+jadi lebih murah daripada query kedua), dengan **batas baris eksplisit** —
+disiplin yang sama seperti `lib/stock-daily-history-store.js`. Jendela pemanggil
+tetap membentuk `rows`, hanya tidak lagi menentukan kelayakan kalender.
+`holidaySet` kini mencakup semua libur yang diketahui, jadi `isTradingDay` benar
+untuk tanggal apa pun.
+
+### Dua kesalahan saya sendiri, dan bagaimana ketahuan
+
+**Versi perbaikan pertama saya salah.** Saya menandai query berjendela lalu
+melaporkan `'db'` untuk hasil kosong — sekadar menukar satu label keliru dengan
+keliru lainnya, karena tabel yang benar-benar kosong pun jadi `'db'`. Yang
+menangkapnya adalah **uji yang sudah ada**,
+`test/daily-market-context-user-visible-fields.test.js:145`. Uji itu benar dan
+versi saya yang salah. Saya buang dan kerjakan ulang; uji tersebut tidak saya
+ubah dan kini lulus apa adanya.
+
+**Harness uji saya semula tidak menerapkan filter `gte`/`lte`.** Stub-nya
+mengembalikan baris apa pun yang saya berikan, mengabaikan jendela — sehingga
+kode sebelum perbaikan tampak **lulus** pada uji kuncinya. Kegagalan produksinya
+hanya bereproduksi kalau jendelanya benar-benar menyaring. Setelah stub
+diperbaiki, uji ke-7 gagal terhadap kode lama sebagaimana mestinya.
+
+Ini kali **ketiga** dalam audit ini tooling saya sendiri hampir menghasilkan
+kesimpulan keliru (sebelumnya: harness `daytrade-ohlcv-cache`, dan `str.replace`
+Python yang mengganti semua kemunculan). Ketiganya ketahuan karena hasilnya
+diuji terhadap kode lama, bukan dipercaya.
+
+### Verifikasi
+
+`test/idx-calendar-source-window.test.js`, **9 uji**, 3 gagal sebelum perbaikan.
+Lima mengunci hal yang tidak boleh berubah: tabel kosong tetap belum
+terverifikasi, galat query dan client hilang tetap fallback, guard tetap menolak
+akhir pekan dan hari libur ter-seed. Suite penuh **320 berkas lolos**; 22 uji
+kalender lama tidak diubah.
+
+---
+
+## `lib/idx-trading-calendar.js` — matematika kalendernya sendiri bersih
+
+Saya periksa khusus karena repo ini sudah pernah punya bug offset WIB ganda
+(PR #500):
+
+- `jakartaDateKeyFromInstant` (`:40-48`) memakai `Intl.DateTimeFormat` dengan
+  `timeZone: 'Asia/Jakarta'` dan locale `en-CA` (yang memang menghasilkan
+  `YYYY-MM-DD`) — konversi zona yang benar, bukan aritmetika offset manual.
+- `dayOfWeek` (`:50-54`) dan `addDaysToKey` (`:61-65`) memakai UTC **atas tanggal
+  polos**, yang justru tepat: tanggal kalender tidak membawa ambiguitas jam, jadi
+  UTC di sini bebas dari geser zona. Komentarnya menyatakan alasan itu.
+- `getLastTradingDays` punya penjaga iterasi (`maxGuard`) sehingga tidak bisa
+  berputar tanpa henti pada holidaySet yang aneh.
+
+### Satu bahaya laten yang saya catat, bukan laporkan
+
+`toDateKey` (`:32-34`) menerima string dan mengembalikan **awalan tanggalnya**:
+
+```js
+var m = /^(\d{4}-\d{2}-\d{2})/.exec(raw);
+if (m) return m[1];
+```
+
+Jadi `toDateKey('2026-09-04T20:00:00Z')` mengembalikan `'2026-09-04'`, padahal
+saat itu di Jakarta sudah tanggal **5**. Untuk `Date` fungsinya benar (cabang
+`Intl`); hanya cabang string yang memotong tanpa konversi zona.
+
+Saya telusuri seluruh pemanggilnya — `lib/daily-history-collector.js:42`,
+`lib/daily-market-context-builder.js:178,212`, `lib/latest-price-resolver.js:34`,
+dan `marketDayGuard` — **semuanya mengirim objek `Date`**, jadi tidak ada yang
+terkena. **Bukan bug.**
+
+Tapi ini perangkap yang siap menunggu: pemanggil baru yang mengirim timestamp
+ISO (misalnya `row.observed_at`) akan diam-diam mendapat tanggal UTC, salah
+sehari untuk jam 17:00–23:59 UTC. Nama fungsinya dan judul modulnya
+("Asia/Jakarta exchange trading-day helpers") justru menjanjikan sebaliknya.
+Saya sebutkan supaya terlihat kalau itu terjadi.

@@ -159,7 +159,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/free-user-approval.js` | 84 | BELUM | 0 | |
 | `lib/idx-holidays-2026-seed-data.js` | 69 | BELUM | 0 | |
 | `lib/idx-tick-normalization.js` | 1124 | SELESAI | 1 | Dibaca utuh baris 1-1124. BUG-027 (HIGH - teks nasihat "JANGAN chase" di time_plan dibaca sebagai bukti chase, :837 + :881). Modul paling sentral dan paling rapi di repo: penjaga tukar entry low/high di :86, :211, :370 dan Math.min/max di :244-250 (obat BUG-021, ditulis 4x); :368-370 satu-satunya tempat dengan urutan alias yang BENAR (entryLow<-entry2, entryHigh<-entry1); normalizeTradingPlanLevels :430 memakai min/max sehingga kebal konvensi; deriveSetupFreshness :360 sengaja mengecualikan updated_at/last_checked_at agar rekomendasi lama tidak tampak baru. Satu-satunya alias tak terjaga: deriveCandlePotentialRange :965 (instance BUG-021 ke-7) |
-| `lib/idx-trading-calendar.js` | 214 | BELUM | 0 | |
+| `lib/idx-trading-calendar.js` | 214 | SELESAI | 1 | BUG-041: label `source` diputuskan dari query berjendela, sehingga kalender yang sudah di-seed dilaporkan sebagai fallback pada minggu biasa. PR #515. Matematika kalendernya sendiri bersih: `jakartaDateKeyFromInstant` memakai `Intl` zona Asia/Jakarta, `dayOfWeek`/`addDaysToKey` memakai UTC atas tanggal polos sehingga bebas geser zona. |
 | `lib/intraday-collector-vps-audit.js` | 304 | BELUM | 0 | |
 | `lib/intraday-fast-watcher-early-watch-publisher.js` | 338 | BELUM | 0 | |
 | `lib/intraday-fast-watcher-early-watch.js` | 575 | BELUM | 0 | |
