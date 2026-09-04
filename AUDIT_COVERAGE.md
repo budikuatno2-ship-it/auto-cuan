@@ -10,7 +10,9 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 54 SELESAI, 8 SEDANG, 716 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar (200.055 baris) — **88 SELESAI**
+(48.811 baris), **6 SEDANG** (13.511 baris), **684 BELUM** (137.733 baris).
+Rekap per folder dan peta prioritas ada di `AUDIT_CHECKPOINT.md`.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
