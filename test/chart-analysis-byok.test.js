@@ -270,3 +270,25 @@ test('API Endpoint: Routes via api/analyze with surface=chart-analysis within 12
   assert.equal(statusResult, 401);
   assert.equal(jsonResult.code, 'UNAUTHORIZED');
 });
+
+test('UI Location: AI button and result card are placed in Interactive Chart (#chartSection), not modal', () => {
+  const fs = require('node:fs');
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+
+  // Verify chartSection exists
+  assert.ok(indexHtml.includes('id="chartSection"'), 'index.html must include id="chartSection"');
+
+  // Verify button in chart search row and chart container toolbar
+  assert.ok(indexHtml.includes('id="btnInteractiveAiChart"'), 'index.html must include btnInteractiveAiChart in chart section');
+  assert.ok(indexHtml.includes('_ai" onclick="triggerAiChartAnalysis'), 'loadChartPage must include AI analysis button in chart toolbar');
+
+  // Verify result wrapper is inside chartSection
+  const chartSectionIdx = indexHtml.indexOf('id="chartSection"');
+  const wrapIdx = indexHtml.indexOf('id="aiChartAnalysisResultWrap"');
+  assert.ok(wrapIdx > chartSectionIdx, 'aiChartAnalysisResultWrap must be inside or after chartSection');
+
+  // Verify openScrDetail modal does NOT contain the AI button or result card
+  const scrDetailFn = indexHtml.slice(indexHtml.indexOf('function openScrDetail('), indexHtml.indexOf('function closeScrDetail('));
+  assert.ok(!scrDetailFn.includes('btnScrDetailAiChart'), 'openScrDetail must not contain btnScrDetailAiChart');
+  assert.ok(!scrDetailFn.includes('aiChartAnalysisResultWrap'), 'openScrDetail must not contain aiChartAnalysisResultWrap');
+});

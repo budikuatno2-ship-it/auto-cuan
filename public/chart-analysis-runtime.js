@@ -138,10 +138,27 @@
   };
 
   root.triggerAiChartAnalysis = function (ticker) {
+    if (!ticker) {
+      var input = document.getElementById('chartTickerInput');
+      ticker = input ? (input.value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+    }
+    if (!ticker && root._chartPageData && root._chartPageData.ticker) {
+      ticker = root._chartPageData.ticker;
+    }
+    if (!ticker) {
+      if (typeof showToast === 'function') showToast('Ketik ticker chart terlebih dahulu (misal: BBCA, BBRI).', 'warning');
+      else alert('Ketik ticker chart terlebih dahulu (misal: BBCA, BBRI).');
+      return;
+    }
+
     var wrap = document.getElementById('aiChartAnalysisResultWrap');
     if (!wrap) return;
 
     wrap.style.display = 'block';
+    if (typeof wrap.scrollIntoView === 'function') {
+      try { wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+    }
+
     wrap.innerHTML = '<div style="padding:14px;background:rgba(15,23,42,0.6);border:1px solid rgba(59,130,246,0.25);border-radius:12px;text-align:center">' +
       '<div style="font-size:12px;color:#93c5fd;font-weight:600;margin-bottom:6px">Memeriksa konfigurasi AI...</div>' +
       '<div style="font-size:11px;color:#9ca3af">Menyiapkan chart dan kredensial BYOK.</div>' +

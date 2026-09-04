@@ -1068,11 +1068,12 @@
 
 <!-- ===== PAGE: CHART ===== -->
 <div id="page-chart" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
-    <div class="chart-shell p-3 sm:p-5 space-y-4">
+    <div id="chartSection" class="chart-shell p-3 sm:p-5 space-y-4">
         <div><h2 class="text-xl font-extrabold text-white">Chart</h2><p class="text-sm text-gray-400 mt-1">Lihat candlestick, MA, RSI, volume, dan Fibonacci tanpa mengubah sumber data.</p></div>
         <div class="chart-search-row flex items-center gap-2">
             <input id="chartTickerInput" type="text" placeholder="Ketik ticker: BBCA, IHSG..." class="flex-1 px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')loadChartPage()">
             <button onclick="loadChartPage()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all">Lihat Chart</button>
+            <button id="btnInteractiveAiChart" onclick="triggerAiChartAnalysis()" class="px-4 py-2.5 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 font-semibold text-sm hover:bg-blue-600/30 transition-all flex items-center gap-1.5 shrink-0" title="Analisis Chart dengan AI">🤖 Analisis Chart (AI)</button>
         </div>
         <div class="flex flex-wrap gap-2" role="tablist" aria-label="Jenis chart">
             <button id="technicalChartTab" role="tab" aria-selected="true" onclick="showChartTab('technical')" class="px-4 py-2 rounded-lg bg-emerald-500 text-black text-sm font-semibold">Technical Chart</button>
@@ -1092,6 +1093,8 @@
             </div>
         </div>
         <div id="patternPageContainer" role="tabpanel" class="hidden bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden min-w-0"></div>
+        <!-- AI Chart Analysis Result Container in Interactive Chart (#chartSection) -->
+        <div id="aiChartAnalysisResultWrap" style="display:none" class="pt-2"></div>
     </div>
 </div>
 
@@ -4110,6 +4113,7 @@ async function loadChartPage() {
     var _fsIcon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 9V5a1 1 0 011-1h4M20 9V5a1 1 0 00-1-1h-4M4 15v4a1 1 0 001 1h4m11-5v4a1 1 0 01-1 1h-4"/></svg>';
     container.innerHTML = '<div class="px-4 py-3 border-b border-dark-600/30 flex flex-wrap items-center justify-between gap-2"><div class="flex items-center gap-2 min-w-0"><span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span><h2 class="text-sm font-semibold text-gray-200 truncate">Chart ' + ticker + '</h2><span class="text-xs text-gray-500 shrink-0">Data Historis T-1</span></div>' +
         '<div class="flex items-center gap-2 shrink-0">' +
+        '<button id="' + chartId + '_ai" onclick="triggerAiChartAnalysis(\'' + ticker + '\')" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-300 border border-blue-500/30 hover:bg-blue-500/10 transition" aria-label="Analisis chart ' + ticker + ' dengan AI">🤖 Analisis AI</button>' +
         '<button id="' + chartId + '_fs" onclick="openChartPageFullscreen()" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-sky-300 border border-sky-500/30 hover:bg-sky-500/10 transition" aria-label="Buka chart ' + ticker + ' layar penuh">' + _fsIcon + 'Layar Penuh</button>' +
         '<button id="' + chartId + '_dl" onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\',this)" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition" aria-label="Download chart ' + ticker + ' sebagai PNG">' + _dlIcon + 'Download PNG</button></div></div>' +
         '<div id="' + chartId + '_container" style="height:' + _pd.main + 'px;width:100%"><div class="h-full p-4 space-y-3"><div class="skeleton-card h-full flex flex-col justify-end gap-3"><div class="skeleton-line w-2/3"></div><div class="skeleton-line w-full"></div><div class="skeleton-line w-5/6"></div><p class="text-xs text-gray-500 pt-2"><span class="spinner-sm"></span>Memuat chart...</p></div></div></div>' +
@@ -8033,8 +8037,7 @@ function openScrDetail(r, type) {
     var warningText = type === 'daytrade' ? 'Day Trade scan berbasis candle harian sebagai radar awal. Konfirmasi intraday tetap wajib.' : 'Swing screener berbasis analisis teknikal harian. Entry bertahap dan konfirmasi manual tetap wajib.';
     html += '<div style="font-size:10px;color:#6b7280;margin-bottom:16px;padding:10px 12px;background:rgba(234,179,8,0.04);border:1px solid rgba(234,179,8,0.1);border-radius:10px;line-height:1.4">' + warningText + '</div>';
     // Buttons
-    html += '<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="closeScrDetail()" style="flex:1;min-width:80px;padding:12px;border-radius:10px;font-size:12px;font-weight:500;color:#9ca3af;background:#1a1f2b;border:1px solid #2a3444;cursor:pointer;transition:background .2s">Tutup</button><button onclick="closeScrDetail();navigateTo(\'chart\');setTimeout(function(){var i=document.getElementById(\'chartTickerInput\');if(i){i.value=\'' + escapeHtml(r.ticker) + '\';loadChartPage();}},200)" style="flex:1;min-width:100px;padding:12px;border-radius:10px;font-size:12px;font-weight:600;color:#6ee7b7;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);cursor:pointer;transition:background .2s">Buka Chart</button><button id="btnScrDetailAiChart" onclick="triggerAiChartAnalysis(\'' + escapeHtml(r.ticker) + '\')" style="flex:1.2;min-width:130px;padding:12px;border-radius:10px;font-size:12px;font-weight:600;color:#60a5fa;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);cursor:pointer;transition:background .2s">🤖 Analisis Chart (AI)</button></div>';
-    html += '<div id="aiChartAnalysisResultWrap" style="display:none"></div>';
+    html += '<div style="display:flex;gap:10px"><button onclick="closeScrDetail()" style="flex:1;padding:12px;border-radius:10px;font-size:13px;font-weight:500;color:#9ca3af;background:#1a1f2b;border:1px solid #2a3444;cursor:pointer;transition:background .2s">Tutup</button><button onclick="closeScrDetail();navigateTo(\'chart\');setTimeout(function(){var i=document.getElementById(\'chartTickerInput\');if(i){i.value=\'' + escapeHtml(r.ticker) + '\';loadChartPage();}},200)" style="flex:1;padding:12px;border-radius:10px;font-size:13px;font-weight:600;color:#6ee7b7;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);cursor:pointer;transition:background .2s">Buka Chart</button></div>';
     document.getElementById('scrDetailContent').innerHTML = html;
     modal.classList.remove('hidden');
 }
