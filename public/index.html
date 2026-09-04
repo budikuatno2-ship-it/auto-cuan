@@ -322,6 +322,82 @@
     </div>
 </div>
 
+<!-- ===== AUTHENTICATION MODALS (top-level, OUTSIDE #dashboardScreen) =====
+     These three modals are the only entry points a signed-out visitor has.
+     setTopLevelView() hides #dashboardScreen (class="hidden" => display:none)
+     AND marks it inert whenever the landing page is the active view, so any
+     modal nested inside it can never be shown or interacted with from the
+     landing page: openLoginModal()/openRegisterModal()/openSelfResetModal()
+     only clear .hidden on the modal itself, never on the hidden ancestor.
+     They must therefore stay direct children of <body>, as siblings of
+     #dashboardScreen — see test/auth-modals-outside-dashboard-screen.test.js. -->
+
+<!-- LOGIN MODAL -->
+<div id="loginModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 id="loginModalTitle" class="text-base font-bold text-white">Masuk</h3>
+            <button onclick="closeLoginModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal masuk">&times;</button>
+        </div>
+        <div class="space-y-3">
+            <div><label for="loginUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label for="loginPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+            <div id="loginError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
+            <button onclick="doLogin()" id="loginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Masuk</button>
+            <div class="text-center"><button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-blue-400 hover:underline">Lupa Password?</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- REGISTER MODAL -->
+<div id="registerModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="registerModalTitle">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 id="registerModalTitle" class="text-base font-bold text-white">Daftar</h3>
+            <button onclick="closeRegisterModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal daftar">&times;</button>
+        </div>
+        <div id="registerFormFields" class="space-y-3">
+            <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="regPassword" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+            <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+            <label class="flex items-start gap-2 text-xs text-gray-400"><input type="checkbox" id="regTermsAccepted" class="mt-0.5 h-4 w-4 rounded border-gray-700 bg-[#0b0e14] text-emerald-500 focus:ring-emerald-500/50"><span>Saya sudah membaca dan menyetujui Peraturan &amp; Ketentuan Penggunaan Auto-Cuan.</span></label>
+            <div id="registerError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
+            <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1" role="status" aria-live="polite"></div>
+            <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
+        </div>
+        <div id="registerApprovalPanel" class="hidden space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
+            <h4 class="text-lg font-bold text-emerald-300">Pendaftaran berhasil</h4>
+            <p class="text-sm text-gray-300">Akun Anda sedang menunggu persetujuan admin.</p>
+            <p class="text-sm text-gray-300">Kode pengguna: <strong id="registerApprovalCode" class="font-mono tracking-wider text-white"></strong></p>
+            <div class="rounded-xl border border-sky-500/30 bg-sky-500/5 p-3 space-y-1.5">
+                <p class="text-xs font-semibold text-sky-300">Kode verifikasi Telegram (satu kali)</p>
+                <p><strong id="registerVerificationCode" class="font-mono text-lg tracking-widest text-white"></strong></p>
+                <p id="registerVerificationExpiry" class="text-[11px] text-gray-400"></p>
+                <p class="text-[11px] leading-relaxed text-gray-400">Salin kode ini, lalu buka bot verifikasi dan kirim kodenya ke chat bot. Jangan bagikan kode ini ke siapa pun.</p>
+            </div>
+            <div class="space-y-2">
+                <button type="button" id="copyApprovalCodeBtn" onclick="copyRegistrationApprovalCode()" class="w-full rounded-xl border border-emerald-500/40 px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10 transition">Salin Kode Verifikasi</button>
+                <a id="openVerificationBot" class="hidden w-full rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition" target="_blank" rel="noopener noreferrer">Buka Bot Verifikasi Telegram</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SELF-SERVICE RESET PASSWORD MODAL -->
+<div id="selfResetModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="selfResetModalTitle">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <h3 id="selfResetModalTitle" class="text-base font-bold text-white text-center">Reset Password</h3>
+        <p class="text-xs text-gray-500 text-center">Masukkan username dan password baru. Reset hanya bisa dilakukan dari perangkat yang terdaftar.</p>
+        <div><label for="selfResetUsername" class="block text-xs font-medium text-gray-400 mb-1.5">Username</label><input type="text" id="selfResetUsername" placeholder="Username terdaftar" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
+        <div><label for="selfResetPw" class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="selfResetPw" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
+        <div><label for="selfResetPwConfirm" class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="selfResetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doSelfResetPassword()"></div>
+        <div id="selfResetError" class="hidden text-sm text-red-400 text-center" role="alert" aria-live="assertive"></div>
+        <div id="selfResetSuccess" class="hidden text-sm text-emerald-400 text-center" role="status" aria-live="polite"></div>
+        <button id="selfResetSubmitBtn" onclick="doSelfResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
+        <button onclick="closeSelfResetModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
+    </div>
+</div>
+
 <!-- ===== DASHBOARD SCREEN ===== -->
 <div id="dashboardScreen" class="hidden flex flex-col min-h-screen">
 
@@ -1518,57 +1594,6 @@
     </div>
 </div>
 
-<!-- LOGIN MODAL -->
-<div id="loginModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between">
-            <h3 id="loginModalTitle" class="text-base font-bold text-white">Masuk</h3>
-            <button onclick="closeLoginModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal masuk">&times;</button>
-        </div>
-        <div class="space-y-3">
-            <div><label for="loginUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label for="loginPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <div id="loginError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
-            <button onclick="doLogin()" id="loginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Masuk</button>
-            <div class="text-center"><button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-blue-400 hover:underline">Lupa Password?</button></div>
-        </div>
-    </div>
-</div>
-
-<!-- REGISTER MODAL -->
-<div id="registerModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="registerModalTitle">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between">
-            <h3 id="registerModalTitle" class="text-base font-bold text-white">Daftar</h3>
-            <button onclick="closeRegisterModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal daftar">&times;</button>
-        </div>
-        <div id="registerFormFields" class="space-y-3">
-            <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="regPassword" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <label class="flex items-start gap-2 text-xs text-gray-400"><input type="checkbox" id="regTermsAccepted" class="mt-0.5 h-4 w-4 rounded border-gray-700 bg-[#0b0e14] text-emerald-500 focus:ring-emerald-500/50"><span>Saya sudah membaca dan menyetujui Peraturan &amp; Ketentuan Penggunaan Auto-Cuan.</span></label>
-            <div id="registerError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
-            <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1" role="status" aria-live="polite"></div>
-            <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
-        </div>
-        <div id="registerApprovalPanel" class="hidden space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
-            <h4 class="text-lg font-bold text-emerald-300">Pendaftaran berhasil</h4>
-            <p class="text-sm text-gray-300">Akun Anda sedang menunggu persetujuan admin.</p>
-            <p class="text-sm text-gray-300">Kode pengguna: <strong id="registerApprovalCode" class="font-mono tracking-wider text-white"></strong></p>
-            <div class="rounded-xl border border-sky-500/30 bg-sky-500/5 p-3 space-y-1.5">
-                <p class="text-xs font-semibold text-sky-300">Kode verifikasi Telegram (satu kali)</p>
-                <p><strong id="registerVerificationCode" class="font-mono text-lg tracking-widest text-white"></strong></p>
-                <p id="registerVerificationExpiry" class="text-[11px] text-gray-400"></p>
-                <p class="text-[11px] leading-relaxed text-gray-400">Salin kode ini, lalu buka bot verifikasi dan kirim kodenya ke chat bot. Jangan bagikan kode ini ke siapa pun.</p>
-            </div>
-            <div class="space-y-2">
-                <button type="button" id="copyApprovalCodeBtn" onclick="copyRegistrationApprovalCode()" class="w-full rounded-xl border border-emerald-500/40 px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10 transition">Salin Kode Verifikasi</button>
-                <a id="openVerificationBot" class="hidden w-full rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition" target="_blank" rel="noopener noreferrer">Buka Bot Verifikasi Telegram</a>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- ADMIN AI DETAIL MODAL removed: metadata-only mode, no full result display -->
 
 <!-- RESET PASSWORD MODAL -->
@@ -1591,21 +1616,6 @@
         <p class="text-[11px] text-gray-500 text-center">ID perangkat disamarkan demi keamanan.</p>
         <div id="deviceDetailsBody" class="max-h-72 overflow-y-auto"></div>
         <button onclick="closeDeviceModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Tutup</button>
-    </div>
-</div>
-
-<!-- SELF-SERVICE RESET PASSWORD MODAL -->
-<div id="selfResetModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="selfResetModalTitle">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-        <h3 id="selfResetModalTitle" class="text-base font-bold text-white text-center">Reset Password</h3>
-        <p class="text-xs text-gray-500 text-center">Masukkan username dan password baru. Reset hanya bisa dilakukan dari perangkat yang terdaftar.</p>
-        <div><label for="selfResetUsername" class="block text-xs font-medium text-gray-400 mb-1.5">Username</label><input type="text" id="selfResetUsername" placeholder="Username terdaftar" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
-        <div><label for="selfResetPw" class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="selfResetPw" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
-        <div><label for="selfResetPwConfirm" class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="selfResetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doSelfResetPassword()"></div>
-        <div id="selfResetError" class="hidden text-sm text-red-400 text-center" role="alert" aria-live="assertive"></div>
-        <div id="selfResetSuccess" class="hidden text-sm text-emerald-400 text-center" role="status" aria-live="polite"></div>
-        <button id="selfResetSubmitBtn" onclick="doSelfResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
-        <button onclick="closeSelfResetModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
     </div>
 </div>
 
