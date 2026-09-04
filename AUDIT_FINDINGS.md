@@ -5259,3 +5259,153 @@ nilai `confirmation` dari engine ini **tidak dibaca di mana pun** — skoring
 memakai `cp.pattern`, `cp.risk`, dan `cp.note` saja. Jadi dampaknya nol hari ini.
 Saya juga tidak menebak nilai yang "seharusnya", karena menebaknya berarti
 mengarang perilaku yang tidak saya ketahui maksudnya.
+
+---
+
+## BUG-043 — Pengumuman kanal legacy hangus permanen bila pengiriman Telegram gagal
+
+**Severity:** LOW
+**Area:** Telegram — pengumuman kanal legacy (dipicu admin)
+**Status:** **MENUNGGU KEPUTUSAN ANDA — belum saya perbaiki** (perbaikannya butuh migrasi)
+
+### Lokasi
+
+`lib/telegram-lifecycle.js:275-287`
+
+```js
+// Double-submission guard FIRST: only the claiming call may post.
+let claim = { claimed: false };
+try { claim = await claimLegacyChannelAnnouncement(supabase, key); } catch (e) { return { status: 'error', reason: 'claim_failed' }; }
+if (!claim.claimed) return { status: 'duplicate', reason: 'already_announced' };
+
+try {
+  await bot.sendMessage(channelId, buildLegacyAnnouncementMessage(), { reply_markup: legacyAnnouncementButton() });
+  return { status: 'sent' };
+} catch (e) {
+  // Sending failed after claiming; report coarse failure (guard already set).
+  return { status: 'failed', reason: 'send_failed' };
+}
+```
+
+### Root cause
+
+Guard-nya dikonsumsi **sebelum** pengiriman, dan **tidak pernah dilepas** saat
+pengiriman gagal. Tidak ada RPC pelepas: saya periksa
+`supabase/telegram-member-lifecycle-hotfix.sql` — yang ada hanya
+`claim_legacy_channel_announcement` (`:431`), yang meng-INSERT baris dengan
+`ON CONFLICT DO NOTHING`. Tidak ada `release_*` pasangannya.
+
+Yang membuat ini menonjol: **modul ini sendiri sudah menjelaskan kebijakan yang
+benar di headernya** (`:15-23`), dan menerapkannya dengan benar untuk reminder
+dan review request —
+
+> *"a failed Telegram send is fully RETRYABLE and never consumes a delivered
+> attempt ... on a failed send, release_* clears the lease so a later daily run
+> retries."*
+
+Jalur pengumuman melakukan kebalikannya, dan komentarnya menyebut itu sebagai
+fakta ("guard already set"), bukan sebagai masalah.
+
+### Ada lapisan keduanya, dan ini yang membuatnya lebih dari sekadar tidak bisa diulang
+
+Kolom `legacy_notice_sent_at` diberi `DEFAULT now()` pada saat **INSERT**, yaitu
+saat **klaim**, bukan saat kirim
+(`supabase/telegram-member-lifecycle-hotfix.sql:118`). Komentar SQL-nya jujur
+menyebut "first triggered", tetapi **nama kolomnya** `sent_at`, dan
+`lib/telegram-lifecycle.js:157` memaparkannya sebagai `sentAt`.
+
+Jadi ketika pengiriman gagal:
+
+1. pengumuman terkunci permanen; **dan**
+2. barisnya menyatakan pengumuman itu **terkirim** pada waktu tersebut.
+
+Gabungannya: operator kehilangan kemampuan membedakan pengumuman yang berhasil
+dari yang gagal — justru pada satu-satunya kejadian di mana ia perlu tahu.
+
+### Keterjangkauan
+
+Bukan dead code. Dipicu dari `lib/admin-users-handler.js:559-570`, aksi
+`legacy_channel_announcement` dengan `confirm: true`. Tanpa flag itu jalurnya
+dry-run, jadi permintaan nyasar tidak akan memposting — bagian itu sudah benar.
+
+### Dampak
+
+Terbatas: ini pengumuman satu kali untuk pengguna lama. Kalau sudah pernah
+berhasil terkirim, guard-nya justru bekerja sebagaimana mestinya. Kasus buruknya
+sempit tetapi nyata — admin memicu, Telegram gagal sesaat, dan pengumuman itu
+tidak akan pernah bisa dikirim lagi lewat jalur ini.
+
+### Kenapa saya tidak memperbaikinya sendiri
+
+Perbaikan yang benar adalah menambah `release_legacy_channel_announcement` dan
+melepas guard saat gagal — persis seperti reminder dan review. Itu **menuntut
+migrasi**, dan saya tidak menerapkan migrasi ke basis data Anda (aturan 6).
+
+Saya juga menolak dua "perbaikan" yang tampak lebih murah:
+
+- **Membalik urutan (kirim dulu, klaim belakangan)** justru lebih buruk: crash di
+  antara kirim dan klaim membuat pengumuman terkirim **dua kali** ke seluruh
+  kanal. Untuk siaran, duplikat lebih merugikan daripada gagal.
+- **Menghapus guard-nya** jelas tidak — itu perlindungan double-submit yang
+  memang diperlukan.
+
+### Opsi
+
+**Opsi A (rekomendasi saya).** Tambah `release_legacy_channel_announcement(p_key)`
+yang menghapus baris klaim, panggil pada cabang gagal, dan pisahkan
+`claimed_at` dari `sent_at` supaya barisnya jujur. Ini menyamakan jalur
+pengumuman dengan protokol yang sudah dijelaskan modulnya sendiri.
+Saya siapkan migrasinya kalau Anda setuju.
+
+**Opsi B.** Biarkan mekanismenya, tapi perbaiki **penamaannya** saja — `sentAt`
+menjadi `claimedAt` di JS — sehingga setidaknya tidak ada yang mengklaim
+"terkirim" untuk sesuatu yang gagal. Tanpa migrasi, tanpa perubahan perilaku.
+Ini menyelesaikan separuh masalah (diagnosis), bukan separuh lainnya (retry).
+
+**Opsi C.** Biarkan apa adanya. Sah untuk jalur legacy satu kali yang mungkin
+memang sudah selesai dijalankan.
+
+### Kueri read-only untuk melihat keadaannya sekarang
+
+Belum saya jalankan, dan saya tidak menyentuh data.
+
+```sql
+SELECT announcement_key, legacy_notice_sent_at, created_at
+FROM public.telegram_legacy_channel_announcements;
+```
+
+Kalau barisnya ada tetapi Anda ingat pengumumannya tidak pernah benar-benar
+muncul di kanal, itu berarti kasus ini sudah terjadi. Memulihkannya berarti
+menghapus baris itu — perubahan data produksi, jadi keputusan Anda.
+
+---
+
+## `lib/telegram-lifecycle.js` — jalur reminder dan review request bersih
+
+Protokol dua-fase klaim → kirim → commit/release diterapkan benar di kedua
+runner (`:169-207`, `:213-251`):
+
+- klaim tidak memajukan penghitung apa pun;
+- pengiriman gagal memanggil `release_*` sehingga bisa dicoba lagi, dan
+  **tidak** menghitungnya sebagai terkirim;
+- hanya pengiriman yang terkonfirmasi memanggil `commit_*`.
+
+Isolasi yang dijanjikan headernya juga saya cek dan benar: modul ini tidak
+menyentuh `TELEGRAM_BOT_TOKEN`, tidak mengimpor `lib/telegram-notifier`, dan
+seluruh I/O Telegram lewat `bot` yang disuntikkan.
+
+`buildBotDeepLink` (`:59-63`) membersihkan payload ke `[A-Za-z0-9_-]` dan
+memotongnya di 64 karakter, lalu jatuh ke URL bot polos bila kosong — jadi tidak
+ada identitas yang bisa bocor lewat deep link.
+
+### Satu catatan, bukan temuan
+
+Bila pengiriman berhasil tetapi `commit_*` gagal (`:203`, `:247` — keduanya
+`catch (_) {}`), lease-nya kedaluwarsa dan pesan itu akan dikirim ulang pada run
+berikutnya. Jadi klaim di header bahwa *"duplicates are prevented"* sedikit
+terlalu kuat — yang benar adalah at-least-once, bukan exactly-once.
+
+Saya **tidak** melaporkannya sebagai bug karena arahnya memang yang benar:
+mengirim pengingat dua kali jauh lebih ringan daripada tidak mengirimnya sama
+sekali, dan itu tampak sebagai pilihan sadar. Yang berlebihan hanya kalimat di
+komentarnya.
