@@ -200,13 +200,19 @@ test('PR 8: handleContextAIV7 streams immediate cache hit when stream: true', as
   delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
 
   try {
-    await setCachedAnalysis({
-      ticker: 'TLKM',
-      analysisType: 'portfolio_chat',
-      prompt: 'TLKM aman?',
-      payloadResponse: { reply: 'TLKM aman di support.', model: 'gemini-cached' },
-      ttlSeconds: 3600
-    });
+    const streamContext = { ticker: 'TLKM', plans: [] };
+    // The portfolio_chat cache key includes a digest of the portfolio the answer
+    // was computed from, so a seed must be written under the key the router itself
+    // builds for THIS request. Seeding a context-free key would only pass while
+    // two different portfolios still collided — see
+    // test/ai-cache-cross-user-isolation.test.js.
+    await setCachedAnalysis(Object.assign(
+      handleContextAIV7._test.buildCacheParams(
+        { ticker: 'TLKM', analysisType: 'portfolio_chat', prompt: 'TLKM aman?', marketDate: new Date().toISOString().slice(0, 10) },
+        'portfolio_chat', require('../lib/context-ai-router-v4')._test.portfolioContext(streamContext), ''
+      ),
+      { payloadResponse: { reply: 'TLKM aman di support.', model: 'gemini-cached' }, ttlSeconds: 3600 }
+    ));
 
     const req = {
       method: 'POST',
@@ -214,7 +220,7 @@ test('PR 8: handleContextAIV7 streams immediate cache hit when stream: true', as
       body: {
         source: 'portfolio_chat',
         chatMessage: 'TLKM aman?',
-        context: { ticker: 'TLKM', plans: [] }
+        context: streamContext
       }
     };
     const { state, res } = mockRes();
