@@ -5113,3 +5113,149 @@ tree yang tidak terperiksa dianggap aman.
 Ini satu-satunya PR saya yang menyentuh `.github/workflows`, dan tidak ada PR
 lain yang bergantung padanya — kalau Anda lebih suka gate-nya dibiarkan apa
 adanya, cukup tutup #516.
+
+---
+
+## BUG-042 — Hammer dan Hanging Man dibedakan hanya dari warna candle, dan yang bearish memblokir A_PLUS_SETUP
+
+**Severity:** MEDIUM
+**Area:** Day Trade screener — layer konfirmasi candle
+**Status:** **MENUNGGU KEPUTUSAN ANDA — belum saya ubah** (aturan 8: ini menyentuh gate)
+
+### Lokasi
+
+`lib/candle-pattern-engine.js:246-254`
+
+```js
+// Hammer / Hanging Man: long lower shadow, small body near top
+if (lowerShadow >= body * 2 && upperR < 0.15 && bodyRatio < 0.4) {
+  if (bull) return { name: 'Hammer', bias: 'Bullish', weight: 1.5 };
+  return { name: 'Hanging Man', bias: 'Bearish', weight: 1.5 };
+}
+
+// Inverted Hammer / Shooting Star: long upper shadow, small body near bottom
+if (upperShadow >= body * 2 && lowerR < 0.15 && bodyRatio < 0.4) {
+  if (bull) return { name: 'Inverted Hammer', bias: 'Bullish', weight: 1 };
+  return { name: 'Shooting Star', bias: 'Bearish', weight: 1.5 };
+}
+```
+
+Geometrinya identik untuk kedua nama. Satu-satunya pembeda adalah `bull`, yaitu
+`c0.close > c0.open` — **warna candle**.
+
+Secara klasik pembedanya bukan warna, melainkan **posisi dalam tren**: Hammer
+muncul setelah penurunan (reversal bullish), Hanging Man muncul setelah kenaikan
+(reversal bearish). Hammer merah dan Hanging Man hijau keduanya lazim.
+
+Secara struktural engine ini memang tidak bisa melakukannya: `detectSingle(c0)`
+(`:216`) dipanggil **tanpa `ctx`**, jadi `ma20`, `rsi14`, dan `changePct` yang
+sudah tersedia di pemanggil tidak pernah sampai ke sana.
+
+### Kenapa ini bukan sekadar soal penamaan
+
+Karena skornya asimetris, dan sisi bearish-nya **tidak berpagar konteks sama
+sekali** — `lib/daytrade-screener-engine.js`:
+
+```js
+// :1167  bullish — DIPAGARI kedekatan support
+if ((cp.pattern === 'Hammer' || cp.pattern === 'Dragonfly Doji') && data.last_price <= data.support * 1.03) candleScore += 3;
+
+// :1181  bearish — TANPA pagar apa pun
+if (cp.pattern === 'Hanging Man') { candleScore -= 4; candleDowngrade = true; }
+```
+
+Dan `candleDowngrade` bukan sekadar poin. Di `classifyStatus` (`:855`) ia
+**memblokir A_PLUS_SETUP sepenuhnya**:
+
+```js
+if (compositeScore >= DT_INITIAL.a_plus_score && hardFails.length === 0 && !isAfternoon &&
+    ... && !hasDistribution && data.change_pct <= 7.0 && !candleDowngrade) {
+  status = 'A_PLUS_SETUP';
+```
+
+Jadi konsekuensi nyatanya: **satu candle berbentuk hammer yang kebetulan merah,
+di mana pun posisinya, kehilangan 4 poin dan tidak bisa lagi menjadi
+A_PLUS_SETUP** — termasuk hammer merah tepat di support, yang secara klasik
+justru sinyal bullish. Sementara hammer hijau hanya mendapat +3 kalau memang
+dekat support.
+
+Ayunannya 7 poin plus satu gate, ditentukan oleh warna candle.
+
+### Yang perlu adil saya sebutkan
+
+Ini bisa jadi penyederhanaan yang disengaja, bukan kelalaian. Docstring modulnya
+menyatakan tujuannya memang praktis dan ringan ("No AI. No DB. No new columns.
+Pure runtime detection"), dan warna adalah proksi murah yang sering searah dengan
+tren. Saya tidak punya bukti bahwa penulisnya salah paham; yang saya punya adalah
+bukti bahwa hasilnya bisa terbalik pada kasus yang tidak jarang.
+
+### Tiga opsi
+
+**Opsi A — beri konteks tren ke `detectSingle` (rekomendasi saya).**
+Teruskan `ctx` ke `detectSingle`, lalu pilih nama dari tren (`changePct`
+beberapa sesi, atau posisi harga terhadap `ma20`), bukan dari warna.
+
+- Untung: memperbaiki penyebabnya; kedua nama jadi bermakna sesuai definisinya.
+- Rugi: mengubah skor dan klasifikasi pada sebagian kandidat. **Ini perubahan
+  perilaku trading**, jadi butuh persetujuan Anda dan idealnya dibandingkan dulu
+  pada data historis.
+- Ukuran: sedang — satu parameter diteruskan, satu cabang keputusan diubah.
+
+**Opsi B — pagari sisi bearish-nya saja, seperti sisi bullish.**
+Tambahkan syarat konteks pada Hanging Man (misalnya hanya berlaku bila harga
+jauh di atas support, atau `change_pct` beberapa hari terakhir positif), supaya
+tidak lagi menghukum hammer merah di support.
+
+- Untung: perubahan paling kecil, langsung menghilangkan asimetri yang paling
+  tajam.
+- Rugi: tidak memperbaiki penamaannya; hanya membatasi kerusakannya.
+
+**Opsi C — biarkan.**
+Sah bila Anda memang menganggap warna sebagai proksi yang cukup untuk day trade.
+Kalau begitu, saya sarankan setidaknya menuliskannya sebagai keputusan sadar di
+komentar modul, supaya tidak terbaca sebagai kekeliruan oleh pembaca berikutnya.
+
+**Rekomendasi saya: Opsi A**, tapi **jangan diterapkan tanpa perbandingan
+historis** — ini menyentuh klasifikasi kandidat, dan saya tidak akan mengubah
+strategi trading Anda atas dasar kebenaran tekstual dari buku pola saja.
+
+---
+
+## Yang bersih di `lib/candle-pattern-engine.js`
+
+Saya periksa geometri setiap pola satu per satu, bukan hanya membaca namanya:
+
+- **Bullish/Bearish Harami** (`:136,141`) — arah perbandingannya benar untuk
+  masing-masing warna candle induk. Saya cek keduanya terpisah karena mudah
+  tertukar: untuk induk merah, badan anak harus `>= c1.close` dan `<= c1.open`;
+  untuk induk hijau, kebalikannya. Kodenya benar.
+- **Three White Soldiers / Three Black Crows** (`:92,104`) — syarat `opensInBody`
+  juga dibalik dengan benar mengikuti warna induk.
+- **Morning/Evening Star** (`:75,84`) — memakai titik tengah **badan** candle
+  pertama (`(open + close) / 2`), bukan titik tengah range. Itu definisi yang
+  benar.
+- **Pembagian nol** dijaga di semua tempat: `range === 0` ditangani lebih dulu di
+  `detectSingle` (`:219`), dan `detectTwoCandle`/`detectContinuation` menjaga
+  `range > 0` sebelum membagi.
+- **Field yang hilang** menghasilkan `NaN`, dan semua perbandingan dengan `NaN`
+  bernilai false — sehingga hasilnya "tidak ada pola", bukan pola yang salah.
+  Arah kegagalan yang benar.
+
+### Satu catatan kecil, bukan bug
+
+`calcConfirmation` (`:298-299`) berakhir dengan kondisi mati:
+
+```js
+if (hasVol || nearSupport) return 'Bullish confirmation';
+return 'Bullish confirmation';
+```
+
+Kedua cabang mengembalikan string yang sama, jadi `hasVol`/`nearSupport` tidak
+berpengaruh di titik itu. Bentuk `if (X) return A; return A;` hampir pasti sisa
+suntingan — sesuatu dulu berbeda.
+
+Saya **tidak** melaporkannya sebagai temuan karena saya telusuri konsumennya:
+nilai `confirmation` dari engine ini **tidak dibaca di mana pun** — skoring
+memakai `cp.pattern`, `cp.risk`, dan `cp.note` saja. Jadi dampaknya nol hari ini.
+Saya juga tidak menebak nilai yang "seharusnya", karena menebaknya berarti
+mengarang perilaku yang tidak saya ketahui maksudnya.
