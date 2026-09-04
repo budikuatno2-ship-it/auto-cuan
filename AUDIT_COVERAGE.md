@@ -115,7 +115,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/context-ai-router-v7.js` | 535 | SELESAI | 2 | BUG-010 DIPERBAIKI; BUG-028 (CRITICAL) DIPERBAIKI PR #505. Dibaca ulang penuh: validasi sumber, guard SSRF `normalizeSecondaryBaseUrl` (tolak non-https, kredensial di URL, host privat/loopback), budget waktu failover sekunder, jalur SSE, fallback deterministik lokal — bersih. |
 | `lib/corporate-action-price-scale-guard.js` | 88 | BELUM | 0 | |
 | `lib/daily-foreign-context.js` | 101 | SELESAI | 0 | **Bersih**. Sesi yang hilang dihitung `missing`, bukan nol — `sessions_missing` dan `foreign_net_7d_data_quality` membuat kualitas data terlihat pemanggil, bukan disembunyikan. Semua jendela dibatasi `slice`, jadi baris basi tidak pernah ikut terhitung. |
-| `lib/daily-history-collector.js` | 372 | BELUM | 0 | |
+| `lib/daily-history-collector.js` | 372 | SELESAI | 1 | BUG-039: `previous_close` dirantai dari array yang sudah dipangkas, jadi baris tertua di jendela retensi selalu kosong dan run harian menimpanya. PR #513. Sisanya bersih — termasuk `clearTimeout` yang benar di `finally` (kontras dengan BUG-036) dan rekonsiliasi close dari meta Yahoo yang berpagar enam syarat. |
 | `lib/daily-market-context-builder.js` | 355 | BELUM | 0 | |
 | `lib/daily-market-context-constants.js` | 34 | BELUM | 0 | |
 | `lib/daily-pbv.js` | 70 | BELUM | 0 | |
@@ -195,7 +195,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/second-chance-admin-pilot.js` | 292 | BELUM | 0 | |
 | `lib/security-guard.js` | 469 | SELESAI | 0 | **Bersih**. `getMode` default `enforce` di produksi (fail-closed), pepper wajib ≥32 karakter, `getClientIp` mendahulukan `x-vercel-forwarded-for` (diset platform) di atas `x-forwarded-for` (bisa dipalsukan klien) — urutan yang benar. Alert Telegram dibatasi `AbortController` 3 detik. Catatan desain (bukan bug): fail-closed saat pepper/DB tidak tersedia HANYA berlaku untuk akun admin utama; untuk akun lain guard menjadi no-op — konsisten di ketiga tempat dan tampaknya disengaja. |
 | `lib/smart-setup-labels.js` | 238 | BELUM | 0 | |
-| `lib/stock-daily-history-store.js` | 248 | BELUM | 0 | |
+| `lib/stock-daily-history-store.js` | 248 | SELESAI | 0 | **Bersih**, dan menjadi bukti kunci BUG-038: docstring `:54-73` mencatat bug `.limit()` yang hilang ini **sudah pernah terjadi dan diperbaiki di sini** ("confirmed bug — retention was silently a no-op"), lengkap dengan `RETENTION_TRIM_HEADROOM` untuk menguras backlog bertahap. |
 | `lib/subscription-auth.js` | 135 | SELESAI | 0 | bersih; batas identitas server-only |
 | `lib/subscription-capability.js` | 57 | SELESAI | 0 | **Bersih**. Fail-closed di setiap cabang: hanya string `"true"` persis yang mengaktifkan, konfigurasi wajib lengkap, dan `getVoucherAdminCapability` menuntut marker skema `phase5c-complete-v4` yang persis — versi lebih lama tetap tertutup meski tabelnya ada. |
 | `lib/subscription-catalog.js` | 45 | SELESAI | 0 | **Bersih**. Harga wajib bilangan bulat positif, promo wajib punya harga dan waktu mulai, akhir promo wajib setelah mulai. Metadata event dibatasi allowlist field dan tipe. |

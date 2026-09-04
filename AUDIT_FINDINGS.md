@@ -4504,3 +4504,160 @@ Yang layak disebut: sesi yang hilang dihitung sebagai **missing**, bukan nol.
 `sessions_missing` dan `foreign_net_7d_data_quality` ikut dikembalikan, sehingga
 "tidak ada data" tidak pernah menyamar jadi "arus asing nol". Itu perbedaan yang
 sering diabaikan dan di sini ditangani benar.
+
+---
+
+## PEMUTAKHIRAN BUG-038 — buktinya jauh lebih kuat dari yang saya tulis semula
+
+Waktu menulis BUG-038 saya menyebut repo ini "sudah tahu tentang cap PostgREST".
+Setelah membaca `lib/stock-daily-history-store.js`, kenyataannya lebih tajam:
+**bug yang persis sama sudah pernah ditemukan dan diperbaiki di modul saudaranya**,
+lengkap dengan catatan post-mortem. Yang tertinggal hanya satu berkas.
+
+`lib/stock-daily-history-store.js:54-73`, docstring `enforceRetention`:
+
+> *"this lookup query previously had NO `.limit()` at all, so on a deployment
+> where PostgREST caps a single response around ~1,000 rows ... fetching an
+> unbounded 'all history for up to 50 tickers, ordered by date' response would
+> silently get truncated to mostly-recent rows ... **confirmed bug — retention
+> was silently a no-op across the ticker universe** on any deployment large
+> enough to hit the response cap."*
+
+Bandingkan dengan `lib/admin-foreign-upload.js:216-221` hari ini: pola query yang
+sama persis — `.in('ticker', tickerBatch).order('trade_date', {ascending:false})`
+tanpa `.limit()`, dengan `RETENTION_TICKER_BATCH_SIZE = 50` yang juga sama.
+Kalimat "all history for up to 50 tickers, ordered by date" di docstring itu
+menggambarkan kode yang masih hidup di berkas sebelah.
+
+Jadi urutannya: cap 1.000 baris ini sudah memakan korban **tiga kali** di repo
+ini — `getLatestSessionsForTickers` (RSI jadi N/A), `foreign-flow-store`
+(Foreign 7D sama dengan Foreign Terbaru), dan `stock_daily_history`
+`enforceRetention` (retensi jadi no-op). Ketiganya diperbaiki.
+`admin-foreign-upload.js` tidak ikut tersapu.
+
+### Ini mengubah dua hal dalam rekomendasi saya
+
+**Pertama, tingkat keyakinan.** Ini bukan lagi "secara teori bisa terpotong".
+Repo Anda sendiri sudah mengonfirmasinya sebagai bug nyata, dua kali, dengan
+gejala yang tercatat.
+
+**Kedua — dan ini yang penting untuk aturan 6 Anda — kekhawatiran saya soal
+"penghapusan besar sekaligus" ternyata sudah ada jawabannya di repo ini.**
+Perbaikan yang sudah ada tidak menghapus seluruh backlog dalam satu tembakan.
+Ia memakai `RETENTION_TRIM_HEADROOM = 100` (`:23-28`):
+
+> *"How many rows PAST the retention boundary enforceRetention fetches per
+> ticker on each run, so a ticker with an existing backlog ... drains down to
+> the retention target over a handful of daily collector runs instead of at
+> most 1 row/day."*
+
+Artinya perbaikan untuk BUG-038 **bukan desain baru dari saya**, melainkan port
+dari pola yang sudah teruji di repo ini — dan pola itu memang dirancang untuk
+menguras backlog **bertahap**, bukan sekaligus. Itu memperkecil risiko yang
+tadinya membuat saya berhenti.
+
+### Rekomendasi saya sekarang: perbaiki
+
+Sebelumnya saya netral. Sekarang saya merekomendasikan memperbaikinya, dengan
+mem-port `enforceRetention` dari `stock-daily-history-store.js` apa adanya
+(anggaran baris + `.limit(fetchLimit)` + headroom), bukan patch karangan saya
+sendiri di catatan BUG-038 sebelumnya.
+
+**Tetap saya tunggu persetujuan Anda**, karena efek nyatanya tetap penghapusan
+baris produksi, dan aturan 6 Anda tidak membedakan apakah penghapusan itu "sudah
+seharusnya terjadi". Bedanya sekarang: penghapusannya bertahap, polanya sudah
+terbukti di produksi Anda sendiri, dan kueri read-only di catatan BUG-038 bisa
+dipakai menghitung dulu berapa banyak yang akan terkena.
+
+---
+
+## BUG-039 — Baris tertua di jendela retensi selalu kehilangan `previous_close`
+
+**Severity:** LOW
+**Area:** Ingestion — `stock_daily_history`
+**Status:** SUDAH DIPERBAIKI — PR #513
+
+### Lokasi
+
+`lib/daily-history-collector.js:283-285` (kode asli)
+
+```js
+var trimmed = candles.slice(-retention);
+return trimmed.map(function(candle, index) {
+  var priorCandle = index > 0 ? trimmed[index - 1] : null;
+```
+
+### Root cause
+
+Deret dipangkas dulu, lalu `previous_close` dirantai dari array yang **sudah
+dipangkas**. `trimmed[0]` karena itu selalu `null`, padahal sesi sebelumnya yang
+sungguhan masih ada di `candles` — hanya di luar potongan.
+
+Bertentangan dengan docstring fungsinya sendiri (`:270-274`): *"chained from the
+prior candle in the SAME fetched series (a real prior trading session, never a
+fabricated placeholder)."* Sesi itu ada; ia hanya tidak dipakai.
+
+### Dampak
+
+1. Baris tertua di jendela selalu berkolom kosong.
+2. **Data tersimpan ikut mundur:** collector jalan harian di atas jendela
+   bergulir, jadi tiap run menulis ulang baris yang baru jadi tertua dengan
+   `null`, menimpa nilai benar dari run sebelumnya.
+
+Saya batasi penilaiannya dengan jujur: konsumen utamanya
+(`lib/daily-market-context-builder.js:115`) membaca `previous_close` dari baris
+**terbaru**, dan `getLatestSessionsForTickers` mengembalikan terbaru lebih dulu.
+Jadi kolom yang dikosongkan itu praktis tidak pernah terbaca hari ini. Yang
+diperbaiki adalah kebenaran data tersimpan, bukan gejala yang sedang Anda alami.
+
+### Verifikasi
+
+`test/daily-history-previous-close-trim.test.js`, **6 uji**, 3 gagal sebelum
+perbaikan. Salah satunya mensimulasi dua run collector berturut-turut untuk
+menangkap penimpaan itu secara langsung.
+
+Tiga yang sudah lulus sebelum perbaikan mengunci hal yang tidak boleh berubah —
+terutama bahwa candle pertama sungguhan **tetap** `null`, sehingga jelas
+perbaikannya tidak mengarang placeholder.
+
+Uji lama di tiga berkas terkait tidak saya ubah dan tetap hijau (27 uji). Uji
+lama `candlesToHistoryRows chains previous_close...` memakai 3 candle tanpa
+pemangkasan, jadi memang tidak pernah menyentuh kasus ini — itulah celah cakupan
+yang PR #513 tutup.
+
+Suite penuh **320 berkas lolos**.
+
+---
+
+## Yang bersih pada putaran ini
+
+### `lib/daily-history-collector.js` — selain BUG-039
+
+- **`clearTimeout(timer)` ada di blok `finally`** (`:189`), jadi timeout menutupi
+  `response.json()` dan seluruh parsing. Ini justru **kebalikan** dari BUG-036 di
+  `lib/ai-gemini-provider.js`, dan saya periksa khusus karena sudah pernah
+  ketemu bentuk salahnya. Datapoint kesepuluh: satu lapisan benar, lapisan lain
+  meniru keliru.
+- **Rekonsiliasi `close` dari metadata Yahoo** (`:78-96`) berpagar **enam** syarat
+  sekaligus: harus baris terakhir, tanggal baris == tanggal meta, O/H/L/V semua
+  finite, harga+volume meta finite, volume meta **sama persis** dengan volume
+  baris, dan harga meta berada di dalam rentang low–high. Bila satu saja gagal,
+  hasilnya `null` dan barisnya ditolak. Nilai hasil rekonsiliasi pun ditandai
+  `yahoo_meta_reconciled` / `estimated`, tidak menyamar jadi data biasa. Ini
+  contoh yang benar dari "jangan mengarang harga".
+- **RSI dihitung dari deret penuh ~1 tahun sebelum dipangkas** (`:365-...`), dan
+  komentarnya menjelaskan kenapa: Wilder butuh puluhan iterasi smoothing untuk
+  konvergen, dan menghitungnya dari 15 close terakhir di DB memberi **nol**
+  iterasi. Disebut sebagai akar masalah selisih RSI BELL/TIRA terhadap chart
+  eksternal. Sama untuk 52-week high/low.
+- Konvensi tanggal `.toISOString().slice(0,10)` atas timestamp harian Yahoo saya
+  periksa khusus karena rawan geser sehari. Konsisten di 5+ tempat
+  (`api/quote.js`, `api/sector-hot.js`, `lib/daytrade-ohlcv-cache.js`), dan untuk
+  sesi IDX (09:00–15:30 WIB = 02:00–08:30 UTC) tanggal UTC memang sama dengan
+  tanggal WIB. **Bukan temuan.**
+
+### `lib/stock-daily-history-store.js` — bersih
+
+Anggaran baris eksplisit, `.limit(fetchLimit)` di setiap lookup, dan
+`RETENTION_TRIM_HEADROOM` untuk konvergensi bertahap. Ini implementasi rujukan
+yang seharusnya diikuti `admin-foreign-upload.js`.
