@@ -335,5 +335,6 @@
   "test/admin-reset-password-credential.test.js",
   "test/daytrade-ohlcv-cache-offhours-ttl.test.js",
   "test/subscription-manual-admin-notification.test.js",
-  "test/ai-gemini-stream-stall-timeout.test.js"
+  "test/ai-gemini-stream-stall-timeout.test.js",
+  "test/daily-history-previous-close-trim.test.js"
 ]
