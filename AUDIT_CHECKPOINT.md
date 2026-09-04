@@ -65,9 +65,32 @@ Anda karena menyentuh gate keselamatan / perilaku bisnis (aturan No. 8).
 
 ### 1.3 PR terbuka
 
-**22 PR milik saya: #495 sampai #516. Semuanya draft. Semuanya HIJAU** — 6 status
-check wajib lulus di setiap PR, diverifikasi ulang satu per satu pada 4 September 2026
-lewat `get_check_runs` pada commit HEAD masing-masing.
+> ⚠️ **PEMUTAKHIRAN 4 September 2026, 09:14 UTC — keadaan berubah setelah §1.3 ini
+> pertama ditulis.** Anda me-merge **PR #516**. Bagian ini sudah saya perbarui;
+> §7 memuat rinciannya.
+
+**Semula 22 PR milik saya (#495–#516). Sekarang: 1 MERGED, 21 masih terbuka,
+semuanya draft.**
+
+- **#516 SUDAH DI-MERGE** oleh pemilik repo pada 2026-09-04T09:14:16Z
+  (commit `3319a5f` di `feat/daytrade-screener-v1`). REKOMENDASI-02 selesai dan
+  sudah masuk base branch.
+- **5 PR HIJAU dan bersih** — #495, #497, #498, #499, #501:
+  6 check wajib lulus, tidak konflik dengan base yang baru.
+- **15 PR SEKARANG KONFLIK** — #500, #502–#515. Semuanya konflik di **satu file
+  yang sama**, `tools/curated-build-tests.json`, karena #516 ikut menambah satu
+  baris di ujung daftar yang sama. **Ini persis tumpang-tindih yang saya
+  peringatkan di §7** — sekarang ia nyata, bukan hipotesis. Bukan kegagalan CI,
+  bukan bug: hanya dua penambahan di baris terakhir file yang sama.
+- **1 PR TERBLOKIR: #496** (dokumentasi, termasuk dokumen ini). Lima check lulus,
+  tetapi **`build-and-focused-tests` tidak pernah dijalankan** dan GitHub
+  melaporkan `mergeable_state: "blocked"`. Check-nya path-filtered dan PR ini
+  hanya menyentuh file `.md` di root, jadi secara struktural check itu **tidak
+  bisa** terpenuhi. Rinciannya di §7.
+
+**Status CI lama (6/6 hijau) diverifikasi pada 4 September 2026 pagi terhadap
+base `63dbfd6`. Base sekarang `3319a5f`, jadi untuk 15 PR di atas status itu
+tidak lagi mewakili keadaan sekarang sampai base yang baru di-merge masuk.**
 
 Ada juga **3 PR dependabot** yang **bukan milik saya**: #464 (`@supabase/supabase-js`
 2.106.1 → 2.112.4), #465 dan #466 (`github/codeql-action` 4.37.7 → 4.37.9). Ketiganya
@@ -795,10 +818,12 @@ Anda mau ini dikerjakan, saya sarankan **bertahap: mulai dari jalur chat bebas**
 
 ---
 
-### REKOMENDASI-02 — `security-gate` merah kalau registry npm sedang gangguan ✅ SELESAI
+### REKOMENDASI-02 — `security-gate` merah kalau registry npm sedang gangguan ✅ SELESAI & TER-MERGE
 
-- **Status: SUDAH DIPERBAIKI — PR #516.** Ini satu-satunya rekomendasi yang sudah
-  dieksekusi, karena ia menyentuh CI, bukan perilaku produksi.
+- **Status: SUDAH DIPERBAIKI dan SUDAH DI-MERGE** — PR #516, di-merge oleh pemilik
+  repo pada 2026-09-04T09:14:16Z (commit `3319a5f` di `feat/daytrade-screener-v1`).
+  Ini satu-satunya rekomendasi yang sudah dieksekusi, karena ia menyentuh CI,
+  bukan perilaku produksi — dan satu-satunya PR audit yang sudah masuk base.
 
 **Apa yang salah.** `security-gate` menjalankan `npm audit` sekali. Kalau registry npm
 sedang tidak bisa dihubungi, gate-nya merah — bukan karena ada kerentanan, tapi karena
@@ -1152,7 +1177,7 @@ Enam check wajib: `security-gate`, `build-and-focused-tests`, `command-login`,
 | PR # | Judul | Isi | Status CI (diverifikasi sekarang) | Draft? | Ketergantungan ke PR lain |
 |---|---|---|---|---|---|
 | #495 | `fix(auth): move login/register/reset modals out of #dashboardScreen` | **BUG-001 CRITICAL (P0)** — `public/index.html` | ✅ HIJAU (6/6) | Draft | ⚠️ `public/index.html` bersama #497, #499, #500, #501 |
-| #496 | `docs(audit): repo-wide audit coverage inventory and findings log` | `AUDIT_COVERAGE.md`, `AUDIT_FINDINGS.md` **(+ dokumen ini)** | ✅ HIJAU (6/6) | Draft | Tidak ada — hanya file dokumentasi |
+| #496 | `docs(audit): repo-wide audit coverage inventory and findings log` | `AUDIT_COVERAGE.md`, `AUDIT_FINDINGS.md` **(+ dokumen ini)** | ⚠️ **5/6 — `build-and-focused-tests` TIDAK PERNAH JALAN** (path-filtered; lihat catatan di bawah tabel). GitHub melaporkan `mergeable_state: "blocked"` | Draft | Tidak ada tumpang-tindih file, tapi **terblokir** — butuh keputusan Anda |
 | #497 | `fix(ai): surface real analyze failures, drop stale results, bound providers` | **BUG-003, 004, 005, 006** — `lib/analyze-legacy.js`, `public/index.html` | ✅ HIJAU (6/6) | Draft | ⚠️ `public/index.html` (×4); `lib/analyze-legacy.js` bersama **#506** |
 | #498 | `fix(portfolio-ai): stop understating portfolio risk and hiding real rejections` | **BUG-008, 009, 010** — `lib/context-ai-router-v7.js`, `public/portfolio-ai-runtime-v2.js` | ✅ HIJAU (6/6) | Draft | ⚠️ `lib/context-ai-router-v7.js` bersama **#505** |
 | #499 | `fix(security): strip inline event handlers on every separator the parser accepts` | **BUG-011** — `public/index.html` | ✅ HIJAU (6/6) | Draft | ⚠️ `public/index.html` (×4) |
@@ -1172,7 +1197,59 @@ Enam check wajib: `security-gate`, `build-and-focused-tests`, `command-login`,
 | #513 | `fix(history): chain previous_close across the retention trim boundary` | **BUG-039** — `lib/daily-history-collector.js` | ✅ HIJAU (6/6) | Draft | Tidak ada |
 | #514 | `fix(volume): give buildVolumeContext the eighth row it needs on a partial session` | **BUG-040** — `lib/daily-market-context-builder.js` | ✅ HIJAU (6/6) | Draft | Tidak ada |
 | #515 | `fix(calendar): stop a quiet holiday window from reading as an unverified calendar` | **BUG-041** — `lib/idx-trading-calendar.js` | ✅ HIJAU (6/6) | Draft | Tidak ada |
-| #516 | `fix(ci): retry the npm audit gate when the registry never answers` | **REKOMENDASI-02** — `.github/workflows/security-gate.yml`, `tools/npm-audit-gate.sh` | ✅ HIJAU (6/6) | Draft | Tidak ada. ⚠️ Mengubah CI itu sendiri — sebaiknya di-merge **pertama** |
+| ~~#516~~ | `fix(ci): retry the npm audit gate when the registry never answers` | **REKOMENDASI-02** — `.github/workflows/security-gate.yml`, `tools/npm-audit-gate.sh` | ✅ **SUDAH DI-MERGE** 2026-09-04T09:14:16Z → commit `3319a5f` | — | — |
+
+> ### 🔴 Kenapa PR #496 terblokir — dan pilihan Anda
+>
+> `build-and-focused-tests` adalah salah satu dari 6 check wajib branch
+> protection, tapi ia didefinisikan di
+> `.github/workflows/web-hardening-regression.yml:7-16` dengan path filter:
+> `public/**`, `api/**`, `lib/**`, `test/**`, `tools/**`, `.agents/**`,
+> `package.json`, `package-lock.json`.
+>
+> PR #496 hanya mengubah tiga file `.md` di root repo. **Tidak satu pun cocok
+> dengan filter itu**, jadi workflow-nya tidak pernah terpicu, check-nya tidak
+> pernah muncul, dan branch protection menunggu selamanya sesuatu yang tidak
+> akan pernah datang. Bukti bahwa ini spesifik #496 dan bukan aturan umum:
+>
+> | PR | draft? | base | `mergeable_state` | `build-and-focused-tests` |
+> |---|---|---|---|---|
+> | #496 (dokumentasi) | ya | `feat/daytrade-screener-v1` | **`blocked`** | **tidak ada** |
+> | #513 (kode) | ya | `feat/daytrade-screener-v1` | `clean` | ada, lulus |
+>
+> **Ini bukan bug di kode Anda dan bukan kegagalan CI** — ini interaksi antara
+> "required check" dan "path filter" yang memang dikenal di GitHub. Tapi
+> akibatnya nyata: **PR dokumentasi apa pun tidak akan pernah bisa di-merge.**
+>
+> **Opsi, tidak satu pun saya kerjakan (semuanya menyentuh kebijakan CI):**
+>
+> - **(a) Tambahkan pola Markdown ke daftar `paths` di
+>   `web-hardening-regression.yml`.** Paling sederhana. Efeknya: setiap PR
+>   dokumentasi ikut menjalankan suite 320 test, termasuk PR yang hanya mengubah
+>   satu kata.
+> - **(b) Tambahkan job pendamping** dengan filter terbalik yang melaporkan
+>   sukses seketika untuk perubahan non-kode. Ini pola resmi GitHub untuk
+>   required check yang path-filtered. Lebih tepat, tapi menambah satu job ke
+>   matriks CI.
+> - **(c) Lepaskan `build-and-focused-tests` dari daftar required check** di
+>   pengaturan branch protection. **Hanya Anda yang bisa** — saya tidak punya
+>   akses ke pengaturan repo, dan saya juga tidak menyarankannya: itu
+>   melemahkan gerbang untuk seluruh PR kode demi satu PR dokumentasi.
+> - **(d) Merge #496 lewat admin override.** Sah untuk PR yang isinya nol kode
+>   dan nol konfigurasi, tapi itu keputusan Anda, bukan saya.
+>
+> **Rekomendasi saya: (b), sebagai PR tersendiri.** (Semula saya menyarankan
+> menggabungkannya ke PR #516 — **itu tidak lagi mungkin, #516 sudah di-merge.**)
+> Opsi (b) memperbaiki kelasnya sekali untuk semua PR dokumentasi berikutnya,
+> tanpa menjalankan suite kode pada perubahan Markdown dan tanpa melemahkan
+> gerbang mana pun. **Belum saya kerjakan** — mengubah definisi gerbang CI bukan
+> keputusan yang pantas saya ambil sendiri.
+>
+> **Sampai salah satu opsi dipilih, `AUDIT_COVERAGE.md`, `AUDIT_FINDINGS.md`
+> dan `AUDIT_CHECKPOINT.md` tetap hidup di branch
+> `docs/audit-coverage-and-findings` dan bisa dibaca di sana — dokumennya tidak
+> hilang, hanya belum bisa masuk ke base branch.**
+>
 
 **PR dependabot (BUKAN milik saya, tidak saya sentuh):**
 
@@ -1198,9 +1275,19 @@ Tumpang-tindih yang sungguh perlu perhatian:
 | `lib/analyze-legacy.js` | **#497, #506** | dua PR |
 | `lib/context-ai-router-v7.js` | **#498, #505** | dua PR |
 
-**Urutan merge yang saya sarankan:** #516 (CI dulu) → #496 (dokumen) → #495 → #497 →
-#499 → #500 → (#501 **hanya setelah env Vercel diset**) → #502 → #504 → #507 → #498 →
-#505 → #506 → sisanya (bebas urutan, tidak ada tumpang-tindih).
+**Urutan merge yang saya sarankan (diperbarui setelah #516 di-merge):**
+~~#516~~ (sudah) → #495 → #497 → #499 → (#501 **hanya setelah env Vercel diset**) →
+#502 → #504 → #507 → #498 → #505 → #506 → #500 → sisanya (bebas urutan).
+#496 menunggu keputusan blocker di atas.
+
+**Tapi sebelum urutan itu bisa dijalankan: 15 PR (#500, #502–#515) harus
+di-merge-kan dulu dengan base yang baru** — semuanya konflik di
+`tools/curated-build-tests.json`. Resolusinya mekanis dan sama untuk semuanya:
+**pertahankan KEDUA entri** (milik #516 dan milik PR bersangkutan). Tidak ada
+logika yang berubah; file itu hanya daftar berkas test yang dijalankan CI.
+**Setiap merge base berikutnya akan memicu konflik yang sama lagi** pada PR yang
+belum di-merge — itu sifat dari 21 PR yang semuanya menambah baris ke ujung satu
+file yang sama.
 
 ---
 
@@ -1272,8 +1359,10 @@ dimuat runtime.
 
 ### 8.3 ⚠️ PERINGATAN — 22 PR draft berbagi satu base branch
 
-**Semua 22 PR (#495–#516) berbasis `feat/daytrade-screener-v1` dan belum ada yang
-di-merge.** Sebelum membuat PR baru:
+**Semula 22 PR. Sekarang #516 sudah di-merge; 21 sisanya (#495–#515) masih
+terbuka dan berbasis `feat/daytrade-screener-v1`.** Merge #516 saja sudah
+membuat **15 dari 21** PR itu konflik — semuanya di `tools/curated-build-tests.json`.
+**Harapkan hal yang sama setiap kali satu PR di-merge.** Sebelum membuat PR baru:
 
 1. **Periksa tumpang-tindih file lebih dulu** dengan tabel di akhir §7. Lima PR
    menyentuh `public/index.html`, tiga menyentuh `api/sector-hot.js`.
