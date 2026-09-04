@@ -24,10 +24,11 @@ test('portfolio core boot does not depend on optional polish assets', () => {
 
   assert.match(critical, /portfolio-supabase-sync\.js/);
   assert.match(critical, /portfolio-command-center\.js/);
-  assert.match(critical, /portfolio-runtime-fix\.js/);
+  assert.doesNotMatch(critical, /portfolio-runtime-fix\.js/);
   assert.doesNotMatch(critical, /ui-stability-fix\.js/);
   assert.doesNotMatch(critical, /ui-bugfix-pack-v1\.js/);
 
+  assert.match(optional, /portfolio-runtime-fix\.js/);
   assert.match(optional, /ui-stability-fix\.js/);
   assert.match(optional, /ui-bugfix-pack-v1\.js/);
   assert.match(optional, /portfolio-ai-workspace-v1\.js/);

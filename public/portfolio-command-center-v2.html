@@ -40,14 +40,14 @@
     '/portfolio-command-center-model.js?v=20260727-v1',
     '/portfolio-supabase-sync.js?v=20260816-v1',
     '/portfolio-command-center.js?v=20260727-v1',
-    '/portfolio-position-scenarios.js?v=20260727-v1',
-    '/portfolio-runtime-fix.js?v=20260728-portfolio-runtime-fix-v1'
+    '/portfolio-position-scenarios.js?v=20260727-v1'
   ];
 
   // Polish/repair layers must never be able to take the whole Portfolio offline.
   // Production previously failed on ui-stability-fix.js after every core asset
   // had already loaded successfully. Load these after reveal, independently.
   var optionalAssets = [
+    '/portfolio-runtime-fix.js?v=20260728-portfolio-runtime-fix-v1',
     '/ui-stability-fix.js?v=20260802-ui-stability-v2',
     '/ui-bugfix-pack-v1.js?v=20260803-v1',
     '/portfolio-ai-workspace-v1.js?v=20260816-v1'

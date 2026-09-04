@@ -35,8 +35,13 @@ test('command center v2 assets parse and route from portfolio-planner', () => {
   assert.equal(route.destination, '/portfolio-command-center-v2.html');
   assert.match(html, /Portfolio Command Center/);
   assert.match(html, /fetch\('\/portfolio-command-center\.html\?v=/);
-  assert.match(html, /\/ui-stability-fix\.js\?v=/);
   assert.match(html, /\/portfolio-runtime-fix\.js\?v=20260728-portfolio-runtime-fix-v1/);
+  const criticalAssetsMatch = html.match(/var criticalAssets\s*=\s*\[([\s\S]*?)\];/);
+  assert.ok(criticalAssetsMatch, 'criticalAssets definition must exist');
+  assert.doesNotMatch(criticalAssetsMatch[1], /portfolio-runtime-fix\.js/, 'portfolio-runtime-fix.js must not be a critical blocking asset');
+  const optionalAssetsMatch = html.match(/var optionalAssets\s*=\s*\[([\s\S]*?)\];/);
+  assert.ok(optionalAssetsMatch, 'optionalAssets definition must exist');
+  assert.match(optionalAssetsMatch[1], /portfolio-runtime-fix\.js/, 'portfolio-runtime-fix.js must be in optionalAssets');
   assert.match(legacyHtml, /Budget-to-Stock Planner/);
   assert.match(legacyHtml, /Skenario Posisi/);
   assert.match(legacyHtml, /Trading Journal/);
