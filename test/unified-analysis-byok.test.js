@@ -11,16 +11,31 @@ const TEST_KEY_APP = 'AIzaSyApp_MasterSystemKey_0011223344';
 const TEST_KEY_USER = 'AQ.UserPersonalKey_AABBCCDDEEFF9988';
 const TEST_KEY_FALLBACK = 'AIzaSyUser_FallbackPersonalKey_77889900';
 
+const savedEnv = {
+  API_KEY_ANALISA_SAHAM_PORTOFOLIO: process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO,
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  PORTFOLIO_AI_API_KEY: process.env.PORTFOLIO_AI_API_KEY
+};
+
 test.beforeEach(() => {
   credentials.clearMemoryStoreForTesting();
   service.clearMemoryStoresForTesting();
   delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   delete process.env.GEMINI_API_KEY;
+  delete process.env.PORTFOLIO_AI_API_KEY;
 });
 
 test.afterEach(() => {
   delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   delete process.env.GEMINI_API_KEY;
+  delete process.env.PORTFOLIO_AI_API_KEY;
+});
+
+test.after(() => {
+  for (const [k, v] of Object.entries(savedEnv)) {
+    if (v !== undefined) process.env[k] = v;
+    else delete process.env[k];
+  }
 });
 
 // --- 1. resolveAiCredentials Unit Tests ---
