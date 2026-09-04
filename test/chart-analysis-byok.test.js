@@ -270,4 +270,3 @@ test('API Endpoint: Routes via api/analyze with surface=chart-analysis within 12
   assert.equal(statusResult, 401);
   assert.equal(jsonResult.code, 'UNAUTHORIZED');
 });
-
