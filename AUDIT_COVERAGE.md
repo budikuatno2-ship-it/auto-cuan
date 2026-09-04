@@ -83,8 +83,8 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/admin-access.js` | 70 | SELESAI | 0 | **Bersih**. Hanya dispatcher: perintah umum → langganan → kode maintenance (butuh `SESSION_SECRET`) → pairing/legacy → lanjutan voucher → legacy. Urutannya berkomentar dan masuk akal (namespace `sub_`/`v:` didahulukan agar deep link langganan tidak tertukar dengan `/start <requestRef>`). |
 | `lib/admin-command-login-browser.js` | 176 | BELUM | 0 | |
 | `lib/admin-command-login.js` | 278 | BELUM | 0 | |
-| `lib/admin-command-zero-link-browser.js` | 221 | BELUM | 0 | |
-| `lib/admin-command-zero-link-pairing.js` | 323 | BELUM | 0 | |
+| `lib/admin-command-zero-link-browser.js` | 221 | SELESAI | 1 | Rahasia 32 byte CSPRNG, hanya hash yang tersimpan, IP hanya dari `x-vercel-forwarded-for`. Ikut menyumbang BUG-037: endpoint poll dapat dicapai tanpa autentikasi dan baris di-*recycle* per cookie sehingga melewati limiter per-IP. |
+| `lib/admin-command-zero-link-pairing.js` | 323 | SELESAI | 1 | Gate identitas ada di SQL (`approve_admin_command_pair_request` menuntut binding Telegram admin terverifikasi) — diperiksa langsung, bukan diasumsikan. BUG-037: hitungan ambiguitas bersifat global sehingga orang luar bisa memblokir pairing laptop admin. |
 | `lib/admin-foreign-upload.js` | 305 | BELUM | 0 | |
 | `lib/admin-fundamentals-upload.js` | 240 | BELUM | 0 | |
 | `lib/admin-maintenance-code-browser.js` | 356 | BELUM | 0 | |

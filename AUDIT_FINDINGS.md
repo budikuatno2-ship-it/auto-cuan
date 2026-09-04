@@ -4041,3 +4041,191 @@ satu di #496 dan tidak saya duplikasi.
 
 Ini kejadian ketiga di dua PR. Usulan penanganannya tetap seperti di
 REKOMENDASI-02, dan tetap menunggu keputusan Anda.
+
+---
+
+## BUG-037 — Orang luar tanpa akun bisa memblokir pairing laptop admin, terus-menerus
+
+**Severity:** MEDIUM
+**Area:** Akses admin — zero-link laptop pairing (jalur P0)
+**Status:** **MENUNGGU KEPUTUSAN ANDA — belum saya perbaiki** (lihat alasannya di bawah)
+
+### Lokasi
+
+`supabase/admin-telegram-zero-link-pairing-migration.sql:277-291` (pencarian
+kandidat) dan `:361-374` (persetujuan). Kedua tempat menghitung permintaan
+pending secara **global**:
+
+```sql
+SELECT count(*)::integer INTO v_count
+  FROM public.admin_command_pair_requests AS pr
+ WHERE pr.state = 'pending'
+   AND pr.expires_at > now();
+
+IF v_count <> 1 THEN
+  RETURN QUERY SELECT 'ambiguous'::text, ...;
+  RETURN;
+END IF;
+```
+
+Tidak ada penyaringan berdasarkan siapa yang membuat permintaan itu — memang
+tidak bisa, karena pembuatnya belum teridentifikasi pada saat itu.
+
+### Gejala
+
+Admin mengirim `/akses`, dan alih-alih tombol "Hubungkan Laptop" selalu muncul
+pesan *"Ada lebih dari satu browser yang sedang meminta pairing."* Pairing laptop
+tidak pernah bisa diselesaikan, tanpa ada yang salah di sisi admin.
+
+### Root cause dan keterjangkauan
+
+Endpoint pendaftaran permintaan pairing dapat dicapai **tanpa autentikasi apa
+pun**. `lib/admin-command-zero-link-browser.js:113-120` hanya menuntut
+`isSameOrigin(req)` dan `pagePath === '/dashboard'`:
+
+```js
+if (!isSameOrigin(req)) return res.status(403).json({ success: false, state: 'rejected' });
+const pagePath = String(req.body && req.body.pagePath || '');
+if (pagePath !== '/dashboard' && pagePath !== '/dashboard/') { ... }
+```
+
+`isSameOrigin` (`lib/admin-session.js:164-176`) hanya membandingkan Origin dengan
+Host, jadi klien non-browser lolos dengan menyetel keduanya sama. Itu memang
+bukan cacat `isSameOrigin` — fungsinya melawan CSRF dari browser, dan untuk itu
+ia bekerja.
+
+**Yang membuat ini murah dan bisa dipertahankan tanpa batas:** limiter per-IP
+(5 per 5 menit, `:189-198`) dan batas global (100 per 5 menit, `:200-207`) hanya
+diperiksa pada jalur "belum ada baris untuk `pair_hash` ini". Bila `pair_hash`
+sudah punya baris, fungsi masuk ke cabang `IF FOUND` dan **mendaur ulang baris
+itu** (`:169-186`) tanpa menyentuh pemeriksaan rate limit sama sekali.
+
+Jadi dua cookie tetap, di-poll setiap kurang dari 2 menit (`PAIR_TTL_MS`), dari
+**satu** alamat IP, cukup untuk menjaga `count(pending) = 2` selamanya — dan
+limiter per-IP tidak pernah ikut berbicara.
+
+### Dampak
+
+Jalur zero-link untuk menghubungkan laptop admin lumpuh selama serangan
+berlangsung. Yang **tidak** terdampak, dan karena itu ini bukan penguncian total:
+
+- tombol "📱 Buka di HP" di menu `/akses` yang sama — memakai grant token
+  langsung, tidak lewat mekanisme pairing ini;
+- jalur tantangan admin yang disetujui lewat Telegram di
+  `lib/admin-access-legacy.js`.
+
+Jadi: penolakan layanan pada satu dari beberapa jalur akses admin, oleh pihak
+tanpa akun, berbiaya hampir nol, dan bisa dipertahankan terus-menerus.
+
+### Mengapa saya TIDAK memperbaikinya sendiri
+
+Aturan `v_count <> 1 → ambiguous` **bukan kelalaian**. Komentar di `:264-265`
+menyatakannya sebagai keputusan sadar: *"multiple requests fail closed instead of
+guessing which browser is the admin's."* Itu arah kegagalan yang benar, dan
+melonggarkannya adalah keputusan keamanan, bukan perbaikan bug. Aturan 8 Anda
+berlaku di sini, jadi saya berhenti dan bertanya.
+
+### Dua opsi, dengan trade-off yang berbeda
+
+**Opsi A — admin memilih di antara beberapa kandidat (rekomendasi saya).**
+Ketika ada lebih dari satu permintaan pending, jangan menolak; tampilkan tombol
+per kandidat berlabel `display_tag` masing-masing. Admin sudah diminta mencocokkan
+ID itu dengan yang tampil di layar laptopnya — teksnya sudah ada di
+`lib/admin-command-zero-link-pairing.js:122`: *"Pastikan ID ini sama dengan yang
+tampil di halaman maintenance laptop."*
+
+- Untung: serangan ini kehilangan dayanya sepenuhnya; permintaan orang luar hanya
+  menjadi tombol yang tidak pernah ditekan admin.
+- Rugi: memindahkan beban pembedaan ke mata admin. Bila admin menekan tanpa
+  membaca ID, ia bisa menyetujui browser penyerang. Hari ini kesalahan itu
+  mustahil karena sistemnya menolak duluan.
+- Ukuran: perubahan sedang, menyentuh SQL **dan** menu Telegram.
+
+**Opsi B — biarkan apa adanya, perbaiki hanya limiternya.**
+Pindahkan pemeriksaan rate limit agar juga berlaku pada jalur daur-ulang, supaya
+serangan menjadi lebih mahal.
+
+- Untung: perubahan kecil, tidak menyentuh perilaku keamanan sama sekali.
+- Rugi: **tidak menyelesaikan masalahnya.** Penyerang cukup memakai beberapa IP.
+  Ini memperlambat, bukan menutup.
+- Ukuran: kecil, hanya SQL.
+
+**Rekomendasi saya: Opsi A**, karena hanya opsi itu yang benar-benar menutup
+jalur serangannya, dan karena verifikasi `display_tag` sudah menjadi bagian dari
+alur yang diminta ke admin — jadi kita tidak menambah kewajiban baru, hanya
+mengandalkan yang sudah ada. Tapi ini menaruh satu keputusan keamanan di tangan
+manusia yang sekarang dijaga mesin, dan itu keputusan Anda, bukan saya.
+
+Kalau Anda tidak ingin keduanya sekarang, itu juga jawaban yang sah — dampaknya
+terbatas pada satu jalur akses dan Anda punya dua jalur lain.
+
+### Kueri read-only untuk melihat apakah ini pernah terjadi
+
+```sql
+SELECT date_trunc('hour', created_at) AS jam,
+       count(*) AS permintaan,
+       count(DISTINCT requester_ip_hash) AS ip_berbeda,
+       count(*) FILTER (WHERE state = 'consumed') AS berhasil
+FROM public.admin_command_pair_requests
+WHERE created_at > now() - interval '30 days'
+GROUP BY 1
+ORDER BY 1 DESC
+LIMIT 100;
+```
+
+Belum saya jalankan.
+
+---
+
+## Yang bersih pada putaran ini
+
+### `lib/admin-command-zero-link-pairing.js` (323 baris)
+
+Sisi Node-nya bersih. Yang saya periksa secara khusus, karena kalau salah akibatnya
+berat: `finishPairCallback` (`:153-203`) **tidak** melakukan cek identitas admin di
+JavaScript — ia langsung meneruskan `callback.from.id` ke RPC. Saya tidak
+menganggap itu aman begitu saja; saya baca SQL-nya. Gate-nya memang ada di
+`supabase/admin-telegram-zero-link-pairing-migration.sql:343-354`: `p_telegram_user_id`
+wajib cocok dengan binding Telegram terverifikasi milik akun `budi`, dan bila tidak
+cocok hasilnya `identity_mismatch`. Jadi pembagian tugasnya benar, bukan lubang.
+
+Selain itu: dedupe webhook di setiap jalur dengan `completeWebhookUpdate` di
+`finally`; `pairRequestRef` memvalidasi bentuk ref sebelum dipakai; dan
+`handleOldLaptopCallback` (`:205-247`) sengaja mendahulukan permintaan browser
+yang hidup di atas binding perangkat lama — itulah jalur pemulihan setelah data
+situs dihapus, dan alasannya ditulis di komentar.
+
+### `lib/admin-command-zero-link-browser.js` (221 baris)
+
+Rahasia 32 byte CSPRNG, hanya hash SHA-256 yang tersimpan (`hashSecret:49-52`),
+cookie `HttpOnly` + `SameSite=Strict` + `Secure` di produksi, dan IP hanya diambil
+dari `x-vercel-forwarded-for` — disiplin yang sama dengan
+`lib/reset-password-legacy-handler.js`, dan di sini diterapkan dengan benar.
+Sesi hanya dibuat bila RPC mengembalikan `ok` **dan** username-nya persis `budi`
+(`:161`), jadi ada dua penjaga, bukan satu.
+
+Berkas ini bersih; keterlibatannya di BUG-037 adalah bahwa endpoint-nya memang
+dirancang terbuka, dan itu memang keharusan alur ini — masalahnya ada di
+penghitungan ambiguitas, bukan di sini.
+
+---
+
+## Catatan CI — CodeQL pada PR #511, sudah diperbaiki
+
+CodeQL menandai berkas uji saya sendiri
+(`test/subscription-manual-admin-notification.test.js`) dengan *"Incomplete URL
+substring sanitization"* pada `!url.includes('evil.example.com')`.
+
+Peringatannya mengenai assertion uji, bukan sanitizer — tetapi kelemahan yang
+dijelaskan CodeQL nyata pada istilahnya sendiri: pemeriksaan itu lolos untuk
+`https://autocuan.web.id/dashboard?paymentReview=evil.example.com`, dan yang lebih
+penting, ia tidak pernah benar-benar mengunci **ke mana** tombol admin menunjuk.
+Regresi yang mengalihkan tombol ke host ketiga akan lolos begitu saja.
+
+Semua assertion URL di berkas itu kini mem-parsing URL dan membandingkan `origin`,
+`protocol`, `host`, `pathname`, dan parameter `paymentReview` secara eksplisit.
+Saya pastikan cakupan regresinya tidak melemah dengan mengembalikan
+`publicBaseUrl()` ke bentuk lama: assertion yang sudah diperkuat tetap
+menggagalkan 4 dari 11 uji. CodeQL kini hijau di head baru.
+
+Ini bukan "menyenangkan linter" — assertion-nya memang lebih kuat sesudahnya.
