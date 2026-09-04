@@ -8,6 +8,28 @@ function formatRp(val) {
     return Number(val).toLocaleString('id-ID');
 }
 
+// Entry bounds, always low-to-high.
+//
+// In `telegram_daily_picks`, entry1 is the UPPER bound and entry2 the LOWER one.
+// All three writers agree on that: api/sector-hot.js:7136-7137, the
+// dailyPickInsertRowFromCandidate path (getEntry1 -> entry_high), and
+// lib/intraday-fast-watcher-publisher.js:211-212. The convention is stated at
+// api/sector-hot.js:3519-3520 ("conservative representative").
+//
+// So rendering entry1 then entry2 with a dash printed the range backwards
+// ("Rp 1.250–Rp 1.200"). The data is correct; only the display order was not.
+// Sorting here rather than swapping the fields keeps this a display-only change
+// and stays correct whichever way round a future row arrives.
+function trEntryBounds(s) {
+    var a = s && s.entry1 != null && isFinite(s.entry1) ? Number(s.entry1) : null;
+    var b = s && s.entry2 != null && isFinite(s.entry2) ? Number(s.entry2) : null;
+    if (a == null && b == null) return [];
+    if (a == null) return [b];
+    if (b == null) return [a];
+    if (a === b) return [a];
+    return a < b ? [a, b] : [b, a];
+}
+
 function trSkeletonHtml() {
     return '<tr><td colspan="10" class="text-center py-10 text-gray-500"><div class="spinner mx-auto mb-2"></div>Memuat data track record sinyal...</td></tr>';
 }
@@ -169,8 +191,8 @@ function renderTrackRecordTable() {
             gainHtml = '<span class="' + colorClass + '">' + (isPos ? '+' : '') + s.gain_pct.toFixed(1) + '%</span>';
         }
 
-        var entryText = s.entry1 ? formatRp(s.entry1) : '—';
-        if (s.entry2 && s.entry2 !== s.entry1) entryText += '–' + formatRp(s.entry2);
+        var entryBounds = trEntryBounds(s);
+        var entryText = entryBounds.length ? entryBounds.map(formatRp).join('–') : '—';
 
         rowsHtml += '<tr class="hover:bg-dark-700/40 transition">' +
             '<td class="px-3 py-2.5 font-bold text-white sticky left-0 bg-dark-800/90 z-10">' +
@@ -234,10 +256,8 @@ function getTrackRecordCsvFilename(d) {
 
 function formatTrackRecordCsvRow(s) {
     if (!s) return [];
-    var entryVal = '—';
-    if (s.entry1 != null) {
-        entryVal = (s.entry2 != null && s.entry2 !== s.entry1) ? (s.entry1 + '-' + s.entry2) : String(s.entry1);
-    }
+    var csvBounds = trEntryBounds(s);
+    var entryVal = csvBounds.length ? csvBounds.join('-') : '—';
     var gainVal = '—';
     if (s.gain_pct != null) {
         gainVal = (s.gain_pct > 0 ? '+' : '') + Number(s.gain_pct).toFixed(1) + '%';
@@ -302,6 +322,7 @@ if (typeof module !== 'undefined' && module.exports) {
         escapeCsvCell: escapeCsvCell,
         getTrackRecordCsvFilename: getTrackRecordCsvFilename,
         formatTrackRecordCsvRow: formatTrackRecordCsvRow,
+        trEntryBounds: trEntryBounds,
         generateTrackRecordCsv: generateTrackRecordCsv,
         exportTrackRecordCsv: exportTrackRecordCsv
     };
