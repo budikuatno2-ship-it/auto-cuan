@@ -321,5 +321,6 @@
   "test/ai-cache-telemetry.test.js",
   "test/ai-streaming-response.test.js",
   "test/daytrade-screener-v1-release-gate.test.js",
-  "test/npm-audit-gate.test.js"
+  "test/npm-audit-gate.test.js",
+  "test/wib-date-string.test.js"
 ]
