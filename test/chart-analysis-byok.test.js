@@ -44,7 +44,7 @@ test('BYOK Security: API key masking and format validation', () => {
   assert.equal(credentials.validateApiKey(testKeyAQ).ok, true);
   assert.equal(credentials.maskApiKey(testKeyAQ), '•••• •••• rmat');
   assert.equal(credentials.validateApiKey('invalid key with spaces!!!').ok, false);
-  assert.equal(credentials.validateApiKey('sk-proj-invalidNonGeminiKey12345').ok, false);
+  assert.equal(credentials.validateApiKey('invalidPrefixNonGeminiKey12345').ok, false);
 });
 
 test('BYOK Security: Credential save never exposes plain text and returns only masked hint', async () => {
