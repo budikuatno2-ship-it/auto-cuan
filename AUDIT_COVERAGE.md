@@ -116,11 +116,11 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/corporate-action-price-scale-guard.js` | 88 | BELUM | 0 | |
 | `lib/daily-foreign-context.js` | 101 | SELESAI | 0 | **Bersih**. Sesi yang hilang dihitung `missing`, bukan nol — `sessions_missing` dan `foreign_net_7d_data_quality` membuat kualitas data terlihat pemanggil, bukan disembunyikan. Semua jendela dibatasi `slice`, jadi baris basi tidak pernah ikut terhitung. |
 | `lib/daily-history-collector.js` | 372 | SELESAI | 1 | BUG-039: `previous_close` dirantai dari array yang sudah dipangkas, jadi baris tertua di jendela retensi selalu kosong dan run harian menimpanya. PR #513. Sisanya bersih — termasuk `clearTimeout` yang benar di `finally` (kontras dengan BUG-036) dan rekonsiliasi close dari meta Yahoo yang berpagar enam syarat. |
-| `lib/daily-market-context-builder.js` | 355 | SELESAI | 0 | **Bersih**. Nyaris saya laporkan sebagai bug RSI (jalur batch mengambil 15 sesi = nol iterasi smoothing Wilder), tapi setelah menelusuri pemanggilnya ternyata tidak terjangkau di produksi — lihat catatan "nyaris temuan" di AUDIT_FINDINGS.md. `priceFreshness` memakai offset WIB eksplisit `+07:00`, bukan waktu lokal. |
+| `lib/daily-market-context-builder.js` | 355 | SELESAI | 1 | **Bersih**. Nyaris saya laporkan sebagai bug RSI (jalur batch mengambil 15 sesi = nol iterasi smoothing Wilder), tapi setelah menelusuri pemanggilnya ternyata tidak terjangkau di produksi — lihat catatan "nyaris temuan" di AUDIT_FINDINGS.md. `priceFreshness` memakai offset WIB eksplisit `+07:00`, bukan waktu lokal. |
 | `lib/daily-market-context-constants.js` | 34 | SELESAI | 0 | **Bersih**. Sumber tunggal ambang RSI/volume/retensi. Flag `FAST_WATCHER_DAILY_CONTEXT_ENABLED` default `false` dan hanya string `"true"` persis yang menyalakan. |
-| `lib/daily-pbv.js` | 70 | BELUM | 0 | |
+| `lib/daily-pbv.js` | 70 | SELESAI | 0 | **Bersih**. Tidak pernah mengarang PBV: `book_value_per_share` wajib > 0, atau `equity`/`shares_outstanding` dengan `shares > 0`. Bila tidak ada, semua field `null` dan `data_available:false`. |
 | `lib/daily-rsi.js` | 117 | SELESAI | 0 | bersih; satu-satunya implementasi RSI yang menangani seri datar dengan benar (return 50) |
-| `lib/daily-volume-context.js` | 110 | BELUM | 0 | |
+| `lib/daily-volume-context.js` | 110 | SELESAI | 1 | BUG-040: cabang sesi partial (`:65`) menjangkau `slice(1, 8)` dan butuh 8 baris, tapi pemanggilnya hanya mengirim 7. Modulnya sendiri benar; perkabelannya yang kurang satu baris. PR #514. Sisanya bersih: `safeRatio`/`pctChange` menjaga pembagi nol, riwayat pendek jadi `null` bukan 0. |
 | `lib/daytrade-adjusted-vs-normal-report.js` | 140 | BELUM | 0 | |
 | `lib/daytrade-cache-audit.js` | 161 | BELUM | 0 | |
 | `lib/daytrade-compare-report.js` | 179 | BELUM | 0 | |

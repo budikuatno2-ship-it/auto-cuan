@@ -4798,3 +4798,112 @@ kunci ber-namespace dan tidak menimpa field mana pun.
 
 Bersih. Sumber tunggal untuk ambang RSI/volume/retensi, dan flag-nya hanya
 menyala pada string `"true"` yang persis.
+
+---
+
+## BUG-040 — Statistik "7 hari" hanya memakai 6 sesi saat sesi berjalan masih terbuka
+
+**Severity:** LOW
+**Area:** Daily Market Context — statistik volume
+**Status:** SUDAH DIPERBAIKI — PR #514
+
+### Lokasi
+
+`lib/daily-volume-context.js:64-65`
+
+```js
+var isTodayPartial = today && today.data_quality_status === 'partial';
+var windowRows = isTodayPartial ? rows.slice(1, 8) : rows.slice(0, 7);
+```
+
+`slice(1, 8)` butuh **8 baris** untuk menyisakan tujuh sesi settle. Pemanggil
+produksinya, `lib/daily-market-context-builder.js:81`, mengirim tepat tujuh:
+
+```js
+var volume = volumeContext.buildVolumeContext(historyRows.slice(0, DISPLAY_TRADING_SESSIONS));
+```
+
+Jadi pada sesi yang masih berjalan, jendelanya hanya **enam**.
+
+### Root cause
+
+Modulnya sendiri benar. Yang salah adalah perkabelannya: kontrak "beri saya satu
+baris lebih dari jendela tampilan" tidak pernah dinyatakan di tanda tangan
+fungsi maupun dipenuhi pemanggilnya. Ini pola struktural yang sama untuk
+**kesebelas** kalinya dalam audit ini — inti benar, lapisan yang memakainya
+tidak ikut benar.
+
+### Dampak
+
+`volume_avg_7d`, `volume_median_7d`, dan `volume_ratio_vs_7d_avg` menjadi angka
+enam sesi yang tetap dinamai, ditampilkan, dan disimpan sebagai 7 hari.
+
+Saya telusuri seluruh konsumennya sebelum menilai: `public/stock-analysis-ai.js:388`
+(kolom "Vol vs 7D") dan `api/quote.js:176` (kunci sortir). **Tidak ada gate
+screener, formula entry/SL/TP, atau ranking kandidat yang membacanya.** Karena
+itu LOW, dan karena itu pula saya perbaiki langsung alih-alih menanyakannya —
+tidak ada perilaku trading yang tersentuh.
+
+### Yang paling penting dari temuan ini: kenapa uji yang ada tidak menangkapnya
+
+Uji unit modulnya **lulus selama ini**, karena ia memberi **delapan** baris —
+`test/daily-volume-context.test.js:50-64`:
+
+```js
+const rows = [
+  row('2026-08-11', 100, 50, 'partial'), // today, partial/intraday
+  row('2026-08-10', 100, 1000),
+  ... // tujuh baris settle di belakangnya, total 8
+];
+assert.equal(ctx.volume_avg_7d, 1000);
+```
+
+Ujinya memvalidasi kontrak yang **tidak dipenuhi pemanggil produksinya**. Ia
+hijau sementara produksi salah, dan tidak ada laporan hijau mana pun yang bisa
+memperlihatkan itu.
+
+Karena itu uji baru saya sengaja menggerakkan `buildContextFromRows` — **titik
+masuk builder**, bukan modul volume langsung — sehingga yang teruji adalah
+perkabelannya. Kalau perkabelan itu mundur lagi, uji ini gagal walaupun uji unit
+modulnya tetap hijau.
+
+Ini catatan proses yang saya anggap penting untuk audit ini secara keseluruhan:
+**cakupan uji per-modul bisa menyembunyikan bug yang justru hidup di sambungan
+antar modul.** Beberapa temuan dalam audit ini (BUG-022, BUG-028, BUG-032,
+BUG-038, dan sekarang BUG-040) semuanya berbentuk itu.
+
+### Verifikasi
+
+`test/daily-volume-7d-window-partial.test.js`, **9 uji**, 3 gagal sebelum
+perbaikan.
+
+Uji pembedanya dirancang agar tidak bisa lulus kebetulan: tujuh sesi settle
+bernilai 1000 dengan sesi kedelapan bernilai 8000, sehingga rata-rata 7 sesi =
+2000 sedangkan jendela 6 sesi tetap 1000.
+
+Enam yang sudah lulus mengunci hal yang tidak boleh berubah — termasuk bahwa
+pada sesi settle baris kedelapan **tetap dikecualikan**, dan `volume_history_7d`
+tetap tujuh baris.
+
+Uji lama di dua berkas terkait tidak diubah dan tetap hijau (23 uji). Suite
+penuh **320 berkas lolos**.
+
+### Risiko
+
+Rendah. Satu baris di pemanggil, tanpa query tambahan (baris kedelapan sudah
+tersedia di kedua jalur: batch mengambil 15 sesi, on-demand 120).
+
+Catatan jujur: baris `stock_daily_features` yang sudah tersimpan dari run
+collector intraday sebelumnya masih memuat angka 6-sesi, dan akan terkoreksi
+sendiri pada run berikutnya. Tidak ada backfill yang saya jalankan.
+
+---
+
+## `lib/daily-pbv.js` (70) — bersih
+
+Layak disebut karena godaannya besar untuk berbuat sebaliknya: modul ini
+**tidak pernah mengarang PBV**. `resolveBookValuePerShare` (`:24-34`) menuntut
+`book_value_per_share > 0`, atau `equity` dan `shares_outstanding` dengan
+`shares > 0`. Bila tidak ada, seluruh field `null` dan `data_available: false` —
+bukan 0, bukan tebakan. Docstring-nya pun menyatakan tabelnya memang masih
+kosong sampai ada alat admin yang mengisinya.
