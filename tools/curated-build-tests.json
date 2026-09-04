@@ -324,5 +324,6 @@
   "test/daytrade-screener-v1-release-gate.test.js",
   "test/npm-audit-gate.test.js",
   "test/wib-date-string.test.js",
-  "test/sector-hot-upstream-timeout.test.js"
+  "test/sector-hot-upstream-timeout.test.js",
+  "test/nk-quote-null-ohlc.test.js"
 ]
