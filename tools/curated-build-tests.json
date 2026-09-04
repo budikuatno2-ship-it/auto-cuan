@@ -1,6 +1,8 @@
 [
   "test/ai-eval-once.test.js",
   "test/ai-eval-final-contract-output.test.js",
+  "test/ai-stock-analysis-failure-and-race.test.js",
+  "test/ai-html-sanitizer-event-handlers.test.js",
   "test/openagentic-stream-reassembly.test.js",
   "test/ai-eval-live-progress.test.js",
   "test/ai-eval-derived-grounding.test.js",
@@ -18,6 +20,7 @@
   "test/portfolio-supabase-persistence.test.js",
   "test/repo-security-hardening.test.js",
   "test/desktop-header-center.test.js",
+  "test/review-access-fail-closed.test.js",
   "test/ui-bugfix-pack-v1.test.js",
   "test/runtime-hardening-regressions.test.js",
   "test/residual-audit-hardening.test.js",
@@ -214,6 +217,7 @@
   "test/recent-failure-cooldown.test.js",
   "test/register-monitor.test.js",
   "test/register-user-device-id.test.js",
+  "test/auth-modals-outside-dashboard-screen.test.js",
   "test/register-terms-acceptance-contract.test.js",
   "test/report-daily-market-context-integrity-tool.test.js",
   "test/report-helpers.test.js",
@@ -318,5 +322,8 @@
   "test/ai-cache-telemetry.test.js",
   "test/ai-streaming-response.test.js",
   "test/daytrade-screener-v1-release-gate.test.js",
+  "test/npm-audit-gate.test.js",
+  "test/wib-date-string.test.js",
+  "test/sector-hot-upstream-timeout.test.js",
   "test/nk-quote-null-ohlc.test.js"
 ]

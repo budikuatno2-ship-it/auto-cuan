@@ -2063,6 +2063,30 @@ function scoreAndClassify(data) {
 }
 
 // ============================================================
+// UPSTREAM FETCH TIMEOUT (BUG-018)
+// ============================================================
+// Node's fetch has no built-in response timeout: an upstream that accepts the
+// connection and then goes quiet is waited on until the serverless function
+// itself is killed. These calls sit inside per-ticker screener loops, so one
+// hung upstream burns the whole run's budget, not just one ticker.
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+  var controller = new AbortController();
+  var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
+  try {
+    return await fetch(url, Object.assign({}, options || {}, { signal: controller.signal }));
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Yahoo chart GET. api/quote.js:488 already runs the same host at 8s in
+// production, so this deliberately sits above a bound proven to work.
+var YAHOO_FETCH_TIMEOUT_MS = 12000;
+// Screener AI confirmation — matches UPSTREAM_TIMEOUT_MS in lib/analyze-legacy.js.
+var SCREENER_AI_TIMEOUT_MS = 20000;
+
+// ============================================================
 // SCREENER: AI CONFIRMATION (server-side only)
 // ============================================================
 
@@ -2085,7 +2109,7 @@ async function callAIConfirmation(candidates) {
   var userPrompt = 'Validate:\n' + inputLines.join('\n');
 
   try {
-    var response = await fetch(baseUrl + '/chat/completions', {
+    var response = await fetchWithTimeout(baseUrl + '/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2100,7 +2124,7 @@ async function callAIConfirmation(candidates) {
         max_tokens: maxTokens,
         temperature: 0
       })
-    });
+    }, SCREENER_AI_TIMEOUT_MS);
 
     if (!response.ok) {
       var errStatus = response.status;
@@ -2307,9 +2331,9 @@ async function fetchScreenerCandles(ticker) {
   var symbol = ticker + '.JK';
   var url = 'https://query2.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) + '?range=90d&interval=1d&includePrePost=false';
 
-  var response = await fetch(url, {
+  var response = await fetchWithTimeout(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-  });
+  }, YAHOO_FETCH_TIMEOUT_MS);
 
   if (!response.ok) return null;
 
@@ -2345,9 +2369,9 @@ async function fetchYahooQuote(ticker) {
   var symbol = ticker + '.JK';
   var url = 'https://query2.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) + '?range=60d&interval=1d&includePrePost=false';
 
-  var response = await fetch(url, {
+  var response = await fetchWithTimeout(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-  });
+  }, YAHOO_FETCH_TIMEOUT_MS);
 
   if (!response.ok) return null;
 
@@ -13799,6 +13823,9 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 
 module.exports.__test = {
   parseNkValidDays: parseNkValidDays,
+  fetchWithTimeout: fetchWithTimeout,
+  YAHOO_FETCH_TIMEOUT_MS: YAHOO_FETCH_TIMEOUT_MS,
+  SCREENER_AI_TIMEOUT_MS: SCREENER_AI_TIMEOUT_MS,
   isDashboardScreenerLoggedIn: isDashboardScreenerLoggedIn,
   isDashboardAdminUser: isDashboardAdminUser,
   lookupDashboardAdminAppUser: lookupDashboardAdminAppUser,
