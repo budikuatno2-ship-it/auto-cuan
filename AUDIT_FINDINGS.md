@@ -4229,3 +4229,97 @@ Saya pastikan cakupan regresinya tidak melemah dengan mengembalikan
 menggagalkan 4 dari 11 uji. CodeQL kini hijau di head baru.
 
 Ini bukan "menyenangkan linter" — assertion-nya memang lebih kuat sesudahnya.
+
+---
+
+## Klaster akses admin selesai — empat berkas terakhir, semuanya bersih
+
+915 baris, dibaca baris pertama sampai terakhir. **Tidak ada temuan.**
+
+### `lib/admin-maintenance-code-browser.js` (356) + `lib/admin-maintenance-code.js` (249)
+
+Ini bentuk paling berisiko di seluruh permukaan autentikasi: **login dengan kode
+6 digit**, ruangnya hanya 10⁶. Saya tidak menganggapnya aman karena "ada
+attempts_remaining di responsnya" — saya baca SQL-nya dan hitung ruang
+serangannya.
+
+Yang benar-benar menjaganya, berlapis:
+
+- **Maksimal 5 percobaan per grant.** `supabase/admin-telegram-maintenance-code-migration.sql:277-294`
+  menaikkan `code_attempts` pada setiap tebakan salah dan mengunci di 5 dengan
+  `state = 'expired'`:
+
+  ```sql
+  IF v_grant.token_hash IS DISTINCT FROM p_token_hash THEN
+    v_attempts := v_grant.code_attempts + 1;
+    UPDATE public.admin_command_login_grants AS g
+       SET code_attempts = v_attempts,
+           state = CASE WHEN v_attempts >= 5 THEN 'expired' ELSE g.state END,
+  ```
+
+- **TTL 2 menit** (`CODE_TTL_MS`), **sekali pakai** (`state = 'consumed'`), dan
+  hanya **satu** grant pending yang pernah dipertimbangkan (`ORDER BY created_at
+  DESC LIMIT 1`).
+- **Kode hanya bisa diterbitkan oleh admin terverifikasi**, lewat `/akses` di
+  Telegram, dan **hanya saat mode maintenance menyala**. Penyerang tidak punya
+  cara menerbitkan grant baru.
+- **Pepper wajib**: `hashCode` (`lib/admin-maintenance-code.js:23-30`) adalah
+  HMAC-SHA256 dengan `SESSION_SECRET`, dan mengembalikan `null` bila secret tidak
+  ada — sehingga fiturnya mati, bukan terbuka.
+- `generateCode` memakai `crypto.randomInt(0, 1000000)` — CSPRNG dan seragam,
+  bukan `Math.random`.
+- Bahkan pada jalur sukses, SQL **memverifikasi ulang** bahwa binding Telegram
+  admin masih ada sebelum mengembalikan `ok` (`:296-309`).
+
+**Hitungan ruang serangannya:** selama satu kode hidup, penyerang punya 5 tebakan
+dari 10⁶ → peluang 0,0005%. Untuk peluang yang berarti ia butuh ratusan ribu
+grant, dan grant hanya lahir dari `/akses` milik admin. Jadi angka 6 digit di
+sini aman **karena** batas percobaan dan penerbitan yang terkunci, bukan karena
+panjang kodenya. Kalau salah satu lapis itu hilang, ini langsung jadi CRITICAL —
+saya catat begitu supaya jelas apa yang sedang menahan beban.
+
+Sisi browser juga rapi: `notify` dan `cleanup` menuntut sesi admin **dan**
+kepemilikan baris — `loadOwnedGrant` (`:150-164`) membatasi dengan `id`,
+`user_id`, **dan** `grant_purpose`, jadi satu ref tidak bisa dipakai menyentuh
+grant milik jalur lain.
+
+Satu detail desain yang saya periksa khusus karena mudah salah:
+`cleanupOldMessages` menghapus pesan Telegram lama **setelah** OTP baru terkirim,
+dan mengecualikan grant berjalan lewat `.neq('id', keepGrantId)`. Jadi
+pembersihan tidak bisa menghapus kode yang baru saja dikirim ke admin.
+
+### `lib/admin-command-login.js` (278)
+
+Bersih. Yang menonjol, dan relevan dengan BUG-034:
+
+```js
+function canonicalBaseUrl() {
+  const configured = String(process.env.AUTH_RECOVERY_BASE_URL || '').trim();
+  if (configured) {
+    try {
+      const u = new URL(configured);
+      if (u.protocol === 'https:' && u.hostname === 'autocuan.web.id') return 'https://autocuan.web.id';
+    } catch (_) {}
+  }
+  return DEFAULT_BASE_URL;
+}
+```
+
+URL login dibangun dari konstanta yang divalidasi, **tidak pernah** dari header
+permintaan — persis disiplin yang hilang di `lib/subscription-manual-handler.js`.
+Ini datapoint **ketiga** dalam repo ini (bersama `reset-password-legacy-handler.js`)
+yang menerapkannya dengan benar, dan makin menegaskan bahwa BUG-034 adalah satu
+tempat yang terlewat, bukan celah pengetahuan.
+
+Selebihnya: identitas diperiksa lewat `adminContext` sebelum grant dibuat di
+kedua jalur (`:129`, `:181`), token 32 byte CSPRNG dengan hanya hash yang
+tersimpan, TTL 2 menit, dan dedupe webhook dengan `completeWebhookUpdate` di
+`finally`.
+
+### `lib/maintenance-state.js` (32)
+
+Bersih, dan fail-closed **dua arah** — yang layak disebut karena mudah keliru:
+galat penyimpanan menghasilkan `available: false`, bukan diam-diam "tidak sedang
+maintenance"; dan hanya `maintenanceMode === true` yang persis yang menyalakan.
+Pemanggil di `admin-maintenance-code-browser.js:181-187` memang membedakan
+keduanya: `available:false` → 503, `enabled:false` → 409.
