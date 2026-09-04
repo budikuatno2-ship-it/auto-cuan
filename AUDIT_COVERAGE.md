@@ -92,7 +92,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/admin-session.js` | 247 | SELESAI | 0 | **Bersih**. HMAC-SHA256, perbandingan timing-safe dengan penjaga panjang, fail-closed tanpa `SESSION_SECRET`, verifikasi tanda tangan SEBELUM `JSON.parse`, penjaga `iat`/`exp` (`Number.isSafeInteger`, umur maksimum, tidak boleh dari masa depan), cookie `HttpOnly`+`SameSite=Strict`+`Secure` di produksi. Token onboarding punya nama cookie, awalan versi (`ob1`) DAN domain HMAC (`ac-onboarding-v1.`) yang terpisah plus cek `typ` — tidak bisa saling diterima. Pencabutan sesi memang tidak ada di token; itu ditangani lapisan otorisasi yang mengecek `is_blocked`/`is_approved` ke DB tiap permintaan. |
 | `lib/admin-users-handler.js` | 580 | SELESAI | 1 | **BUG-032 (MEDIUM) DIPERBAIKI PR #509**. Sisanya bersih dan beberapa bagian justru rapi: `approve` memakai predikat `.eq('is_approved', false)` pada UPDATE sebagai gerbang idempotensi, sehingga hanya permintaan yang benar-benar membalik false→true yang boleh mengirim notifikasi/undangan; kegagalan pengiriman tidak pernah membatalkan approval. Catatan kecil (bukan bug): `reject` menolak `budi` tapi tidak `review` — tidak berbahaya karena `sessionStatus` memang mengecualikan `review` dari syarat approval; dan beberapa jalur mengembalikan `error.message` mentah ke klien — endpoint ini admin-only, jadi audiensnya sudah tepercaya. |
 | `lib/ai-analysis-cache.js` | 220 | SELESAI | 1 | Ikut BUG-028: bentuk kunci `computeCacheKey` (`:24-32`) tidak memuat identitas/konteks — pemanggilnya yang harus mengisi `extra`. Sisanya bersih: TTL, purge kedaluwarsa, invalidasi per-ticker, dan fallback saat Supabase tidak dikonfigurasi. |
-| `lib/ai-answer-contract.js` | 253 | BELUM | 0 | |
+| `lib/ai-answer-contract.js` | 253 | SELESAI | 1 | Kontrak jawaban AI. **Hanya dipakai harness evaluasi (`tools/`), tidak pernah dipanggil dari `lib/` atau `api/`** — jadi ini bukan penjaga runtime. Validasi angka dilewati seluruhnya bila `allowed_numbers` kosong (fail-open), termasuk pemeriksaan `answer.levels`. Lihat catatan arsitektur di AUDIT_FINDINGS.md. |
 | `lib/ai-context-snapshot-store.js` | 230 | SELESAI | 1 | BUG-010 DIPERBAIKI; cap plans 50 sisi server dicatat |
 | `lib/ai-eval-derived-facts.js` | 257 | BELUM | 0 | |
 | `lib/ai-gemini-provider.js` | 309 | SELESAI | 1 | BUG-036 timer abort dimatikan sebelum body dibaca, permintaan AI bisa menggantung selamanya dan fallback lokal tidak pernah jalan. PR #512. |
@@ -100,8 +100,8 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/ai-narration-prompts.js` | 195 | BELUM | 0 | |
 | `lib/ai-narration-validator.js` | 197 | BELUM | 0 | |
 | `lib/ai-narration.js` | 209 | BELUM | 0 | |
-| `lib/ai-runtime-grounding-v2.js` | 65 | BELUM | 0 | |
-| `lib/ai-runtime-grounding.js` | 237 | BELUM | 0 | |
+| `lib/ai-runtime-grounding-v2.js` | 65 | SELESAI | 0 | **Bersih**, dan patut dicatat: `addPerShareFacts` memasangkan `calculation_facts.plans` dengan `context.plans` **berdasarkan ticker, bukan indeks array**, dengan komentar yang menjelaskan persis kenapa — kelas bug yang sama dengan BUG-030, dan di sini sudah dicegah. |
+| `lib/ai-runtime-grounding.js` | 237 | SELESAI | 1 | BUG-044: `moneyFromMessage` hanya menyimpan nominal **terbesar** dari pesan. Selebihnya kuat: aritmetika keterjangkauan dihitung deterministik di luar model, dan `answerPolicy` menegaskan angka hanya boleh dari snapshot/calculation_facts. |
 | `lib/ai-telemetry.js` | 75 | BELUM | 0 | |
 | `lib/analyze-legacy.js` | 1769 | SELESAI | 4 | BUG-005 (5 fetch tanpa timeout) DIPERBAIKI; BUG-007 (tidak ada SSE) dicatat; **BUG-029 (HIGH) DIPERBAIKI PR #506** — angka apa pun di pesan dibaca sebagai harga; REKOMENDASI-01 (`sanitizeOutput` `:836` bukan sanitizer keamanan). Dibaca ulang: routeIntent, template IHSG/saham, urutan sumber quote, buildStockFixedTemplate. |
 | `lib/atr-report-helpers.js` | 339 | BELUM | 0 | |

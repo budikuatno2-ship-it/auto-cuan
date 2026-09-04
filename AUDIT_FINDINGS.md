@@ -5409,3 +5409,179 @@ Saya **tidak** melaporkannya sebagai bug karena arahnya memang yang benar:
 mengirim pengingat dua kali jauh lebih ringan daripada tidak mengirimnya sama
 sekali, dan itu tampak sebagai pilihan sadar. Yang berlebihan hanya kalimat di
 komentarnya.
+
+---
+
+## BUG-044 — Grounding portofolio hanya menyimpan nominal terbesar dari pesan pengguna
+
+**Severity:** LOW
+**Area:** AI Portofolio (P2)
+**Status:** **MENUNGGU KEPUTUSAN ANDA — belum saya ubah**
+**Dampak nyatanya: belum pasti** (alasannya di bawah)
+
+### Lokasi
+
+`lib/ai-runtime-grounding.js:69-82`
+
+```js
+function moneyFromMessage(message) {
+  ...
+  for (const regex of [explicitCurrency, contextualMoney]) {
+    for (const match of text.matchAll(regex)) {
+      const number = parseIndonesianNumber(match[1], match[2]);
+      if (number != null && number > 0) values.push(number);
+    }
+  }
+
+  if (!values.length) return [];
+  return [Math.max(...values)];
+}
+```
+
+Semua nominal dikumpulkan, lalu **hanya yang terbesar** yang dikembalikan.
+
+### Kenapa ini bisa penting
+
+Nilai itu menjadi `available_funds_idr` di `affordabilityFacts` (`:126-179`),
+yang menghasilkan seluruh skenario daya beli — berapa lot yang terjangkau, sisa
+dana, harga maksimum per lembar.
+
+Dan `answerPolicy` (`:191-197`) memerintahkan model:
+
+> *"Angka hanya boleh berasal dari snapshot atau calculation_facts."*
+
+Jadi bila pengguna menulis, misalnya, *"dari modal 10 juta saya mau pakai 2 juta
+untuk saham ini"*, yang sampai ke model hanyalah skenario untuk **10 juta**.
+Model yang patuh pada aturannya sendiri lalu punya tiga pilihan, dan ketiganya
+buruk: menjawab tentang 10 juta (pertanyaan yang salah), menghitung 2 juta
+sendiri (melanggar aturan yang baru saja diberikan), atau menyatakan datanya
+tidak ada.
+
+### Kenapa saya menandainya "belum pasti"
+
+Saya **tidak** mengamati kegagalan ini di produksi. Yang saya punya adalah jalur
+kodenya, bukan contoh jawaban yang salah. Dan `Math.max` bisa saja disengaja:
+setiap nominal menghasilkan satu skenario lengkap **dikali jumlah plan**, jadi
+mengambil semuanya bisa menggelembungkan konteks. Memilih yang terbesar adalah
+heuristik yang masuk akal untuk menebak "modal", meskipun ia membuang nominal
+lain yang disebut pengguna secara eksplisit.
+
+Jadi ini kandidat penyebab untuk keluhan P2 Anda, bukan penyebab yang sudah
+terbukti.
+
+### Opsi
+
+**Opsi A.** Simpan sampai N nominal teratas (misalnya 2–3) alih-alih satu, dan
+biarkan model memilih yang relevan dengan pertanyaannya. Menambah konteks
+secukupnya, tetap terbatas.
+
+**Opsi B.** Prioritaskan nominal yang paling dekat dengan kata kunci niat
+("pakai", "alokasi", "untuk saham ini") daripada sekadar yang terbesar.
+Lebih tepat sasaran, tapi lebih banyak heuristik bahasa.
+
+**Opsi C.** Biarkan, dan jadikan `Math.max` sebagai keputusan tertulis di
+komentar supaya tidak terbaca sebagai kelalaian.
+
+**Rekomendasi saya: Opsi A**, karena paling sederhana dan tidak menambah tebakan
+bahasa baru. Tapi kalau Anda punya contoh percakapan Portofolio yang jawabannya
+meleset, kirimkan — itu akan jauh lebih menentukan daripada tebakan saya, dan
+bisa langsung saya jadikan uji regresi.
+
+---
+
+## Catatan arsitektur — di mana penjaga angka AI benar-benar berlaku
+
+Ini bukan temuan, tetapi menurut saya hal terpenting yang saya pahami tentang
+jalur P1/P2 Anda, dan layak dinyatakan terang-terangan.
+
+**Ada dua lapis, dan keduanya tidak berlaku di tempat yang sama.**
+
+**1. Runtime — `api/analyze.js:100`** memanggil
+`prepareRuntimeGrounding(source, body.chatMessage, context)` sebelum meneruskan
+ke router v7, untuk **kedua** sumber P1 dan P2:
+
+```js
+if (source === 'portfolio_chat' || source === 'stock_analysis_followup') {
+  return await handleContextAI(await prepareContextRequest(req), res);
+}
+```
+
+Yang dilakukannya: menghitung fakta turunan secara deterministik **di luar
+model** (keterjangkauan, loss/gain per lembar), lalu menitipkan aturan
+"angka hanya dari snapshot" sebagai **instruksi prompt**.
+
+**2. Offline — `lib/ai-answer-contract.js`** punya validator keras:
+`validateAnswer` membandingkan setiap angka finansial di jawaban dengan
+`allowed_numbers` dan menolak yang tidak didukung.
+
+**Tetapi validator itu tidak pernah dipanggil dari `lib/` maupun `api/`.** Saya
+telusuri seluruh repo: pemanggilnya hanya `tools/run-ai-eval-cloud.js`,
+`tools/run-ai-eval-cloud-bounded.js`, dan `tools/evaluate-ai-answers.js` — semua
+harness evaluasi.
+
+**Artinya: di produksi, "angka harus berasal dari snapshot" adalah instruksi,
+bukan penegakan.** Kalau model mengarang satu angka, tidak ada yang menolaknya
+sebelum sampai ke pengguna. Yang mengukur itu adalah evaluasi offline.
+
+**Saya tidak menyebutnya bug**, karena ini tampak sebagai pilihan arsitektur yang
+sadar dan punya alasan kuat: menegakkan validasi pada jawaban yang di-*stream*
+menuntut penahanan seluruh jawaban dulu (menghilangkan streaming), dan menolak
+satu jawaban utuh hanya karena satu angka tidak cocok bisa lebih merugikan
+pengguna daripada menampilkannya.
+
+Yang perlu Anda tahu adalah **jaminannya**: nilai evaluasi yang bagus mengukur
+seberapa sering model patuh, bukan menjamin bahwa jawaban yang tidak patuh
+tertahan. Kalau suatu saat Anda ingin penegakan nyata di produksi, itu keputusan
+desain tersendiri — dan saya sarankan membahasnya sebagai perubahan terpisah,
+bukan menyelipkannya ke dalam perbaikan bug.
+
+### Satu catatan tentang `validateAnswer` sendiri
+
+`lib/ai-answer-contract.js:196` membungkus seluruh pemeriksaan angka di dalam
+`if (allowedNumbers.length)`. Bila pemanggil tidak mengirim `allowed_numbers`,
+**seluruh validasi angka dilewati**, termasuk pemeriksaan `answer.levels`
+(entry/SL/TP). Itu fail-open.
+
+Dampaknya nol hari ini karena satu-satunya pemanggil adalah harness evaluasi,
+dan `tools/generate-ai-eval-*.js` menolak baris dataset yang `allowed_numbers`-nya
+kosong (`generate-ai-eval-complete-dataset.js:239`,
+`generate-ai-eval-quality-dataset.js:67`). Jadi jalur fail-open itu tidak
+terjangkau lewat dataset yang ada. Saya catat sebagai perangkap laten: kalau
+validator ini suatu saat dipakai di runtime, cabang itu harus fail-closed lebih
+dulu.
+
+---
+
+## Yang bersih pada putaran ini
+
+### `lib/ai-runtime-grounding-v2.js` (65) — bersih, dan patut disebut
+
+`addPerShareFacts` (`:24-54`) memasangkan `calculation_facts.plans` dengan
+`context.plans` **berdasarkan ticker, bukan indeks array**, dan komentarnya
+menjelaskan persis kenapa:
+
+> *"Match by ticker rather than array position ... pairing them purely by index
+> would silently attach one position's per-share loss/gain figures to a
+> different ticker's fact if the two arrays ever diverge in order or length."*
+
+Ini kelas bug yang **sama persis** dengan BUG-030 (pemasangan berbasis indeks di
+`sendDailyTop5Telegram`), dan di sini sudah dicegah dengan sadar. Layak dicatat
+sebagai bukti bahwa polanya dikenali di repo ini — hanya belum merata.
+
+Fallback `|| plans[index]` memang masih ada bila ticker tidak cocok, tetapi hanya
+sebagai cadangan setelah pencocokan ticker gagal, bukan sebagai jalur utama.
+
+### `lib/ai-runtime-grounding.js` — selebihnya kuat
+
+- **Aritmetika dilakukan di luar model.** `affordabilityFacts` menghitung sendiri
+  jumlah lot terjangkau, sisa dana, dan harga maksimum per lembar, lalu
+  menyerahkannya sebagai fakta. Ini pendekatan yang benar: model tidak diminta
+  berhitung.
+- `SHARES_PER_LOT = 100` dipusatkan, bukan tersebar sebagai angka ajaib.
+- `parseIndonesianNumber` menangani format ribuan Indonesia (`1.000.000` dan
+  `1,5 juta`) dengan urutan pemeriksaan yang benar — titik-dan-koma diperiksa
+  lebih dulu sebelum pola titik-ribuan.
+- `compact()` membuang field null/kosong secara rekursif sebelum konteks dikirim,
+  jadi model tidak melihat lubang data sebagai angka.
+- `policy` di `affordabilityFacts` menegaskan *"Batas daya beli bukan valuasi"* —
+  pembedaan yang justru sering dikacaukan model.
