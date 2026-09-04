@@ -56,5 +56,8 @@ jobs:
       - name: Production build contract
         run: npm run build
 
+      - name: Full regression test suite
+        run: npm run test:full
+
       - name: Diff whitespace check
         run: git diff --check HEAD^ HEAD

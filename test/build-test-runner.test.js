@@ -32,3 +32,21 @@ test('tools/curated-build-tests.json exists and defines a non-empty list of cura
   assert.ok(Array.isArray(list));
   assert.ok(list.length > 250, 'Curated list should contain at least 250 test files');
 });
+
+test('tools/build-smoke-tests.json exists and defines essential smoke/contract tests', () => {
+  const smokePath = path.join(ROOT_DIR, 'tools', 'build-smoke-tests.json');
+  assert.equal(fs.existsSync(smokePath), true, 'tools/build-smoke-tests.json must exist');
+  const list = JSON.parse(fs.readFileSync(smokePath, 'utf8'));
+  assert.ok(Array.isArray(list));
+  assert.ok(list.length >= 40 && list.length <= 60, 'Smoke list should contain between 40 and 60 contract tests');
+  for (const file of list) {
+    assert.equal(fs.existsSync(path.join(ROOT_DIR, file)), true, `Smoke test file must exist: ${file}`);
+  }
+});
+
+test('package.json defines test:full and test:smoke scripts pointing to run-build-test-suite.js', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, 'package.json'), 'utf8'));
+  assert.equal(pkg.scripts['test:full'], 'node tools/run-build-test-suite.js --full');
+  assert.equal(pkg.scripts['test:smoke'], 'node tools/run-build-test-suite.js --smoke');
+  assert.equal(pkg.scripts.test, 'node tools/run-build-test-suite.js --full');
+});
