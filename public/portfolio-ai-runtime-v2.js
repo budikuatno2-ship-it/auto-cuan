@@ -81,6 +81,15 @@
     if (!prices || typeof prices !== 'object' || Array.isArray(prices)) prices = {};
     if (!meta || typeof meta !== 'object' || Array.isArray(meta)) meta = {};
     var now = Date.now();
+    // How many positions are described individually in the prompt. Aggregates and
+    // counts below always cover the ENTIRE portfolio; only this detailed list is
+    // capped, and the summary states how many were left out.
+    //
+    // Declared inside the function, like the '_meta_v1' suffix noted at the top of
+    // this file and for the same reason: the deterministic fixture tests execute
+    // contextNow() in isolation from module scope, so anything it reads has to
+    // live here rather than beside REQUEST_TIMEOUT_MS.
+    var PLAN_DETAIL_LIMIT = 30;
 
     var withPrice = 0;
     var missingRisk = 0;
@@ -88,7 +97,16 @@
     var totalRisk = 0;
     var totalValue = 0;
     var priceMeta = {};
-    var normalized = plans.slice(0, 30).map(function (plan) {
+    // Every position is normalized and counted. Only the DETAILED list handed to
+    // the model is capped, and that cap is disclosed in the summary below.
+    //
+    // This used to be `plans.slice(0, 30)`, which dropped the rest before the
+    // totals were computed: a 45-position portfolio was reported as 30 positions
+    // with a total risk a third lower than the real one, and
+    // total_estimated_risk_is_partial stayed false — asserting the understated
+    // sum was complete. That is the exact thing the comment below, and the one on
+    // "A partial sum is never presented as a complete one", exist to prevent.
+    var normalized = plans.map(function (plan) {
       var ticker = tickerOf(plan && plan.ticker);
       if (!ticker) return null;
       var entry = positive(plan.entryPriceIdr != null ? plan.entryPriceIdr : plan.entry);
@@ -105,18 +123,6 @@
       if (risk === null) missingRisk += 1; else totalRisk += risk;
       if (capital === null) missingValue += 1; else totalValue += capital;
 
-      var entryMeta = meta[ticker] && typeof meta[ticker] === 'object' ? meta[ticker] : null;
-      var capturedMs = entryMeta ? finiteNumber(entryMeta.at) : null;
-      if (current) {
-        priceMeta[ticker] = {
-          at: entryMeta && entryMeta.iso ? String(entryMeta.iso).slice(0, 40) : null,
-          age_minutes: capturedMs != null && capturedMs > 0 ? Math.max(0, Math.round((now - capturedMs) / 60000)) : null,
-          provider_age_hours: entryMeta ? finiteNumber(entryMeta.provider_age_hours) : null,
-          provider_marked_stale: entryMeta && typeof entryMeta.stale === 'boolean' ? entryMeta.stale : null,
-          price_date: entryMeta && entryMeta.price_date ? String(entryMeta.price_date).slice(0, 20) : null
-        };
-      }
-
       return {
         ticker: ticker,
         entryPriceIdr: entry,
@@ -132,12 +138,37 @@
       };
     }).filter(Boolean);
 
+    // The prompt carries the whole context object verbatim
+    // (lib/context-ai-router-v4.js promptFor), so the detailed list stays bounded
+    // while the aggregates above describe the portfolio in full.
+    var detailed = normalized.slice(0, PLAN_DETAIL_LIMIT);
+    var omitted = Math.max(0, normalized.length - detailed.length);
+
+    // Capture metadata only for the positions actually listed; it exists so the
+    // model can judge the age of a price it can see.
+    detailed.forEach(function (row) {
+      if (!row.currentPriceIdr) return;
+      var entryMeta = meta[row.ticker] && typeof meta[row.ticker] === 'object' ? meta[row.ticker] : null;
+      var capturedMs = entryMeta ? finiteNumber(entryMeta.at) : null;
+      priceMeta[row.ticker] = {
+        at: entryMeta && entryMeta.iso ? String(entryMeta.iso).slice(0, 40) : null,
+        age_minutes: capturedMs != null && capturedMs > 0 ? Math.max(0, Math.round((now - capturedMs) / 60000)) : null,
+        provider_age_hours: entryMeta ? finiteNumber(entryMeta.provider_age_hours) : null,
+        provider_marked_stale: entryMeta && typeof entryMeta.stale === 'boolean' ? entryMeta.stale : null,
+        price_date: entryMeta && entryMeta.price_date ? String(entryMeta.price_date).slice(0, 20) : null
+      };
+    });
+
     return {
-      plans: normalized,
+      plans: detailed,
       prices: prices,
       price_meta: priceMeta,
       summary: {
+        // The user's real position count, not the size of the list above.
         plan_count: normalized.length,
+        positions_in_context: detailed.length,
+        positions_omitted_from_context: omitted,
+        position_list_is_partial: omitted > 0,
         positions_with_price: withPrice,
         positions_missing_price: Math.max(0, normalized.length - withPrice),
         positions_missing_risk_value: missingRisk,
@@ -452,8 +483,15 @@
       : null;
     var lines = ['Semua jalur AI sedang tidak bisa dihubungi. Ringkasan berikut dihitung lokal dari data portofolio yang tersimpan, bukan jawaban AI.'];
 
+    // The detailed list is capped (PLAN_DETAIL_LIMIT), so "largest" is only the
+    // largest among the positions actually present here. Saying it is the largest
+    // in the portfolio would be a claim this data cannot support.
+    var omittedFromList = Number(summary.positions_omitted_from_context || 0);
+    var listIsPartial = summary.position_list_is_partial === true || omittedFromList > 0;
     if (largest) {
-      lines.push('**Prioritas perhatian:** ' + largest.ticker + ' memiliki estimasi risiko nominal terbesar yang tercatat, sekitar **' + money(largest.estimatedMaxLossIdr) + '**.');
+      lines.push('**Prioritas perhatian:** ' + largest.ticker + ' memiliki estimasi risiko nominal terbesar '
+        + (listIsPartial ? 'di antara ' + plans.length + ' posisi yang termuat di sini' : 'yang tercatat')
+        + ', sekitar **' + money(largest.estimatedMaxLossIdr) + '**.');
       if (largest.entryPriceIdr && largest.stopLossIdr) {
         var distance = (largest.entryPriceIdr - largest.stopLossIdr) / largest.entryPriceIdr * 100;
         lines.push('Jarak entry ke stop loss sekitar **' + distance.toFixed(2) + '%**. Pastikan level tersebut benar-benar menjadi batas invalidasi.');
@@ -467,6 +505,10 @@
     lines.push('Total estimasi risiko tersimpan adalah **' + money(summary.total_estimated_risk) + '**'
       + (riskPct != null && !summary.total_position_value_is_partial ? ', sekitar **' + riskPct.toFixed(2) + '%** dari nilai posisi.' : '.')
       + (partialRisk ? ' Angka ini belum lengkap: ' + summary.positions_missing_risk_value + ' posisi belum punya nilai risiko tersimpan.' : ''));
+    if (listIsPartial) {
+      lines.push('Catatan: rincian per posisi di atas hanya memuat ' + plans.length + ' dari **' + Number(summary.plan_count || plans.length) + '** posisi kamu. '
+        + 'Total di atas sudah menghitung semuanya, tetapi urutan prioritas belum tentu mewakili ' + omittedFromList + ' posisi yang tidak dirinci.');
+    }
     if (Number(summary.positions_missing_price || 0) > 0) {
       lines.push('Sebagian harga belum tersedia, sehingga P/L berjalan belum dapat dinilai penuh untuk ' + summary.positions_missing_price + ' posisi.');
     }
@@ -493,6 +535,18 @@
     }
     if (status === 403) {
       return { fallback: false, status: (data && data.error) || 'Akses Asisten AI ditolak untuk akun ini.' };
+    }
+    // api/analyze.js answers a non-premium account with 402 SUBSCRIPTION_REQUIRED
+    // (lib/subscription-auth.js requirePremiumEntitlement). That is squarely "a
+    // failure the user can act on", so per this function's own contract it must
+    // be reported as itself rather than answered with a local summary and a
+    // Retry button that can never succeed. public/stock-analysis-ai.js already
+    // classified it; this runtime was the one AI surface still missing it.
+    if (status === 402 || code === 'SUBSCRIPTION_REQUIRED') {
+      return { fallback: false, status: (data && data.error) || 'Subscription aktif diperlukan untuk memakai Asisten AI Portofolio.' };
+    }
+    if (code === 'ACCOUNT_NOT_APPROVED') {
+      return { fallback: false, status: (data && data.error) || 'Akun belum di-approve admin, jadi Asisten AI belum bisa dipakai.' };
     }
     if (status === 429 || code === 'AI_RATE_LIMITED') {
       var wait = Number(data && data.retry_after_seconds);
