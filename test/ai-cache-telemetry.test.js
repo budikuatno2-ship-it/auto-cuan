@@ -248,20 +248,26 @@ test('PR 7: handleContextAIV7 automatically records telemetry on cache hit and f
 
   try {
     // 1. Seed cache
-    await setCachedAnalysis({
-      ticker: 'ASII',
-      analysisType: 'portfolio_chat',
-      prompt: 'Posisi ASII?',
-      payloadResponse: { reply: 'ASII akumulasi' },
-      ttlSeconds: 3600
-    });
+    const hitContext = { ticker: 'ASII', plans: [] };
+    // The portfolio_chat cache key includes a digest of the portfolio the answer
+    // was computed from, so a seed must be written under the key the router itself
+    // builds for THIS request. Seeding a context-free key would only pass while
+    // two different portfolios still collided — see
+    // test/ai-cache-cross-user-isolation.test.js.
+    await setCachedAnalysis(Object.assign(
+      handleContextAIV7._test.buildCacheParams(
+        { ticker: 'ASII', analysisType: 'portfolio_chat', prompt: 'Posisi ASII?', marketDate: new Date().toISOString().slice(0, 10) },
+        'portfolio_chat', require('../lib/context-ai-router-v4')._test.portfolioContext(hitContext), ''
+      ),
+      { payloadResponse: { reply: 'ASII akumulasi' }, ttlSeconds: 3600 }
+    ));
 
     const reqHit = {
       method: 'POST',
       body: {
         source: 'portfolio_chat',
         chatMessage: 'Posisi ASII?',
-        context: { ticker: 'ASII', plans: [] }
+        context: hitContext
       }
     };
     const { state: stateHit, res: resHit } = mockRes();
