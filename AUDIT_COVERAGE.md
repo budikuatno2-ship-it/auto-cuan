@@ -1,0 +1,798 @@
+# AUDIT_COVERAGE
+
+Inventaris seluruh file sumber repo (kecuali `node_modules`, `.git`, `.next`,
+`dist`, `build`, dan aset biner). **Dokumen hidup** — diperbarui setiap kali satu
+file selesai dibaca, jadi isinya berkembang selama audit berjalan.
+
+Arti status:
+
+- `BELUM`   — belum disentuh.
+- `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
+- `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
+
+Ringkasan saat commit ini: 778 file terdaftar (200.055 baris) — **88 SELESAI**
+(48.811 baris), **6 SEDANG** (13.511 baris), **684 BELUM** (137.733 baris).
+Rekap per folder dan peta prioritas ada di `AUDIT_CHECKPOINT.md`.
+
+Temuan lengkap ada di `AUDIT_FINDINGS.md`.
+
+| path | baris | status | temuan | catatan |
+|---|---:|---|---:|---|
+| `.agents/tasks/task-auto-cuan-improvements/context.json` | 22 | BELUM | 0 | |
+| `.agents/tasks/task-auto-cuan-improvements/features/FEAT-001.json` | 24 | BELUM | 0 | |
+| `.agents/tasks/task-auto-cuan-improvements/features/FEAT-002.json` | 34 | BELUM | 0 | |
+| `.agents/tasks/task-auto-cuan-improvements/features/FEAT-003.json` | 37 | BELUM | 0 | |
+| `.agents/tasks/task-auto-cuan-improvements/features/FEAT-004.json` | 33 | BELUM | 0 | |
+| `.agents/tasks/task-auto-cuan-improvements/features/FEAT-005.json` | 31 | BELUM | 0 | |
+| `.agents/tasks/task-auto-cuan-improvements/task.json` | 7 | BELUM | 0 | |
+| `.agents/tasks/task-broker-summary-reader/features/FEAT-001.json` | 34 | BELUM | 0 | |
+| `.agents/tasks/task-broker-summary-reader/features/FEAT-002.json` | 35 | BELUM | 0 | |
+| `.agents/tasks/task-broker-summary-reader/task.json` | 7 | BELUM | 0 | |
+| `.agents/tasks/task-compact-analysis-chat/features/FEAT-001.json` | 37 | BELUM | 0 | |
+| `.agents/tasks/task-compact-analysis-chat/features/FEAT-002.json` | 38 | BELUM | 0 | |
+| `.agents/tasks/task-compact-analysis-chat/task.json` | 12 | BELUM | 0 | |
+| `.agents/tasks/task-fix-chart-validation/features/FEAT-001.json` | 36 | BELUM | 0 | |
+| `.agents/tasks/task-fix-fca-detection/features/FEAT-001.json` | 37 | BELUM | 0 | |
+| `.agents/tasks/task-market-maker-fast-tape/features/FEAT-001.json` | 31 | BELUM | 0 | |
+| `.agents/tasks/task-precision-analysis-ui-improvements/context.json` | 21 | BELUM | 0 | |
+| `.agents/tasks/task-precision-analysis-ui-improvements/features/FEAT-001.json` | 31 | BELUM | 0 | |
+| `.agents/tasks/task-precision-analysis-ui-improvements/features/FEAT-002.json` | 33 | BELUM | 0 | |
+| `.agents/tasks/task-precision-analysis-ui-improvements/features/FEAT-003.json` | 37 | BELUM | 0 | |
+| `.agents/tasks/task-precision-analysis-ui-improvements/features/FEAT-004.json` | 32 | BELUM | 0 | |
+| `.agents/tasks/task-precision-analysis-ui-improvements/features/FEAT-005.json` | 21 | BELUM | 0 | |
+| `.agents/tasks/task-precision-analysis-ui-improvements/task.json` | 7 | BELUM | 0 | |
+| `.github/dependabot.yml` | 22 | BELUM | 0 | |
+| `.github/workflows/account-center-postgres.yml` | 88 | BELUM | 0 | |
+| `.github/workflows/admin-access-postgres.yml` | 138 | BELUM | 0 | |
+| `.github/workflows/admin-command-login-postgres.yml` | 67 | BELUM | 0 | |
+| `.github/workflows/ai-eval-regression.yml` | 60 | BELUM | 0 | |
+| `.github/workflows/codeql-security.yml` | 43 | BELUM | 0 | |
+| `.github/workflows/fast-watcher-regression.yml` | 51 | BELUM | 0 | |
+| `.github/workflows/monitor-picks.yml` | 49 | BELUM | 0 | |
+| `.github/workflows/non-konglo-screener.yml` | 93 | BELUM | 0 | |
+| `.github/workflows/phase5c-postgres.yml` | 229 | BELUM | 0 | |
+| `.github/workflows/portfolio-persistence-postgres.yml` | 51 | BELUM | 0 | |
+| `.github/workflows/security-gate.yml` | 44 | BELUM | 0 | |
+| `.github/workflows/sync-foreign-flow.yml` | 79 | BELUM | 0 | |
+| `.github/workflows/web-hardening-regression.yml` | 60 | BELUM | 0 | |
+| `_disabled_api_backup/analyze.real.js` | 1632 | BELUM | 0 | |
+| `_disabled_api_backup/lib/analysis-context-cache.js` | 104 | BELUM | 0 | |
+| `_disabled_api_backup/lib/evidence-extractor.js` | 154 | BELUM | 0 | |
+| `_disabled_api_backup/lib/intent-router.js` | 228 | BELUM | 0 | |
+| `_disabled_api_backup/lib/output-sanitizer.js` | 198 | BELUM | 0 | |
+| `_disabled_api_backup/lib/prompt-builder.js` | 269 | BELUM | 0 | |
+| `_disabled_api_backup/lib/response-mode.js` | 102 | BELUM | 0 | |
+| `_disabled_api_backup/seed-review.js` | 95 | BELUM | 0 | |
+| `api/admin-logs.js` | 106 | SELESAI | 0 | bersih; sesi admin + same-origin, query berbatas limit |
+| `api/admin-users.js` | 474 | SELESAI | 0 | bersih; setiap aksi privileged lewat requireBudiAdmin (same-origin + sesi admin + cek username) |
+| `api/analyze.js` | 129 | SELESAI | 0 | bersih; premium gate + routing chat_mode->legacy, followup->v7 |
+| `api/candles.js` | 306 | SELESAI | 0 | bersih; ticker divalidasi regex sebelum masuk URL, timeout 10s, rate limit, pattern data digate ke admin |
+| `api/log.js` | 194 | SELESAI | 0 | bersih; identitas dari sesi bertanda tangan, is_admin server-side, cap panjang, strip control char, rate limit dari nilai yang diamati server |
+| `api/login-user.js` | 568 | SELESAI | 0 | bersih; webhook secret constant-time, same-origin gate, anti-enumeration, device binding, migrasi kredensial CAS |
+| `api/maintenance-settings.js` | 229 | SELESAI | 0 | bersih; write op butuh admin session + same-origin |
+| `api/quote.js` | 2747 | SELESAI | 2 | DIBACA UTUH 2747/2747. BUG-015 (RSI datar) + 4 fetch tanpa timeout + instance BUG-014 di :406 vs :442. Bersih: ticker divalidasi sebelum URL, sesi bertanda tangan untuk field lanjutan, cache tidak terkontaminasi redaksi, guard fibonacci/flat-range/pembagian-nol lengkap |
+| `api/register-user.js` | 206 | SELESAI | 0 | bersih; rate limit, validasi hash, terms acceptance, rollback registrasi |
+| `api/reset-password.js` | 68 | SELESAI | 0 | bersih; gateway routing saja |
+| `api/review-access.js` | 117 | SELESAI | 1 | BUG-013: token default + hash password akun review ada di sumber, repo publik |
+| `api/sector-hot.js` | 13902 | SELESAI | 10 | DIBACA UTUH baris 1-13902. Temuan: BUG-018 (DIPERBAIKI #502), BUG-017, BUG-019 (2 instance drift gate/diagnostik), BUG-020 (penjaga staleness timestamp gagal-terbuka :6678), BUG-021 (fallback alias entry tertukar di 6 tempat, laten - satu di antaranya terlihat di Telegram :13341), BUG-025 (HIGH - includesAny memotong teks di 300 karakter sehingga gate keselamatan gagal-terbuka :12856; 53 dari 101 pemanggilan disuapi teks gabungan, satu menggabung 40 field), BUG-024 (pencocokan substring ARA/ARB terlalu longgar :12242, laten), BUG-023 (avg_volume_20d taksiran padahal angka benar sudah dihitung :10905), BUG-022 (DIPERBAIKI #504 - sesi Yahoo tanpa high/low membuat support runtuh jadi 0 di fetchNkQuoteData), sumber data BUG-016 (DIPERBAIKI #503). Verifikasi bersih: gate keselamatan publik :4285-5085 (semua gagal-tertutup; lookup objek literal aman dari prototype pollution karena kunci huruf besar), token share HMAC + expiry WIB :2421-2560, token chart Top5 HMAC + TTL :5628-5650, parser CSV foreign :3440-3560, helper WIB/Jakarta :3320-3480, escapeSvgText :5486, fetchLatestPriceForMonitor :6597 (sengaja tidak mengarang high/low intraday), auth dashboard :7255-7520 (identitas hanya dari cookie ac_sess bertanda tangan; uid DAN username dicocokkan; escape hatch header X-Username sudah dihapus), penjaga ambiguitas urutan intraday :6745 (menolak mengarang menang/kalah saat entry dan TP/SL tersentuh pada observasi high/low yang sama), classifyWebTop5History :7700 (kronologi tersimpan otoritatif; tanpa itu SL didahulukan, tidak mengarang pemenang), dedupeActiveMonitorRows :8218 (namespace plan vs legacy terpisah). Menguatkan BUG-014 (:1482/:2016) dan BUG-015 (calcScreenerRSI :3360, rsiData :5583, nkCalcRSI :10919; instance BUG-014 paling terjangkau di range_position || 50 :11125). Hipotesis diperiksa dan gugur: verifyHighConvictionTelegramSignal dioper `verified` langsung di 3 jalur publish - aman karena verifyTelegramSignal mengembalikan klon utuh (:12898) |
+| `deploy/ai-eval-once.env.example` | 23 | BELUM | 0 | |
+| `deploy/vps/run-daily-market-context-collector.sh` | 100 | BELUM | 0 | |
+| `deploy/vps/telegram-monitor-local.sh` | 27 | BELUM | 0 | |
+| `intraday-sample.sh` | 52 | BELUM | 0 | |
+| `lib/account-profile-handler.js` | 151 | BELUM | 0 | |
+| `lib/account-terms.js` | 32 | SELESAI | 0 | bersih; versi terms cocok dengan REGISTRATION_TERMS_VERSION di index.html:2909 |
+| `lib/admin-access-legacy.js` | 500 | SELESAI | 0 | **Bersih**. Dibaca penuh. Challenge dorman: `requestAccess` (`:151-177`) tidak pernah mengirim Telegram, jadi pemanggil anonim tidak bisa memicu notifikasi. Pesan hanya terkirim lewat `activateFromDeepLink` (`:198-253`) setelah id Telegram pengirim cocok dengan binding admin terverifikasi. Approve/deny (`:318-383`) menyerahkan cek identitas ke SQL. Dedupe webhook di kedua jalur, dengan `completeWebhookUpdate` di `finally`. `consumeAccess` menuntut ref berentropi tinggi **dan** binding browser. |
+| `lib/admin-access.js` | 70 | SELESAI | 0 | **Bersih**. Hanya dispatcher: perintah umum → langganan → kode maintenance (butuh `SESSION_SECRET`) → pairing/legacy → lanjutan voucher → legacy. Urutannya berkomentar dan masuk akal (namespace `sub_`/`v:` didahulukan agar deep link langganan tidak tertukar dengan `/start <requestRef>`). |
+| `lib/admin-command-login-browser.js` | 176 | BELUM | 0 | |
+| `lib/admin-command-login.js` | 278 | SELESAI | 0 | **Bersih**. `canonicalBaseUrl` (`:49-58`) hanya menerima `https://autocuan.web.id` dan selebihnya jatuh ke konstanta — disiplin yang persis hilang di BUG-034. Token 32 byte CSPRNG, hanya hash tersimpan, TTL 2 menit, dan `adminContext` diperiksa sebelum grant dibuat di kedua jalur. |
+| `lib/admin-command-zero-link-browser.js` | 221 | SELESAI | 1 | Rahasia 32 byte CSPRNG, hanya hash yang tersimpan, IP hanya dari `x-vercel-forwarded-for`. Ikut menyumbang BUG-037: endpoint poll dapat dicapai tanpa autentikasi dan baris di-*recycle* per cookie sehingga melewati limiter per-IP. |
+| `lib/admin-command-zero-link-pairing.js` | 323 | SELESAI | 1 | Gate identitas ada di SQL (`approve_admin_command_pair_request` menuntut binding Telegram admin terverifikasi) — diperiksa langsung, bukan diasumsikan. BUG-037: hitungan ambiguitas bersifat global sehingga orang luar bisa memblokir pairing laptop admin. |
+| `lib/admin-foreign-upload.js` | 305 | SELESAI | 1 | BUG-038: pass retensi (`:216-221`) tidak punya `.limit()` maupun anggaran baris, padahal repo ini sudah pernah kena truncation PostgREST. Sisanya bersih: parser CSV menangani kutip berpasangan, batas 3 MB dan 5.000 baris, duplikat `tanggal|ticker` ditolak, dan gate `requireBudiAdmin` ada di `api/admin-users.js:158`. |
+| `lib/admin-fundamentals-upload.js` | 240 | BELUM | 0 | |
+| `lib/admin-maintenance-code-browser.js` | 356 | SELESAI | 0 | **Bersih**. Kode 6 digit dijaga berlapis: wajib mode maintenance, maksimal 5 percobaan per grant, TTL 2 menit, sekali pakai, dan username `budi` dicek ulang di JS (`:236`). `notify`/`cleanup` menuntut sesi admin **dan** kepemilikan baris (`loadOwnedGrant` membatasi dengan `user_id`). |
+| `lib/admin-maintenance-code.js` | 249 | SELESAI | 0 | **Bersih**. `generateCode` memakai `crypto.randomInt` (CSPRNG, seragam); `hashCode` HMAC ber-pepper `SESSION_SECRET` dan fail-closed bila tidak ada. Kode hanya terbit untuk admin terverifikasi dan hanya saat maintenance. `cleanupOldMessages` sengaja mengecualikan grant berjalan (`.neq('id', keepGrantId)`), jadi tidak bisa menghapus OTP yang baru dikirim. |
+| `lib/admin-session.js` | 247 | SELESAI | 0 | **Bersih**. HMAC-SHA256, perbandingan timing-safe dengan penjaga panjang, fail-closed tanpa `SESSION_SECRET`, verifikasi tanda tangan SEBELUM `JSON.parse`, penjaga `iat`/`exp` (`Number.isSafeInteger`, umur maksimum, tidak boleh dari masa depan), cookie `HttpOnly`+`SameSite=Strict`+`Secure` di produksi. Token onboarding punya nama cookie, awalan versi (`ob1`) DAN domain HMAC (`ac-onboarding-v1.`) yang terpisah plus cek `typ` — tidak bisa saling diterima. Pencabutan sesi memang tidak ada di token; itu ditangani lapisan otorisasi yang mengecek `is_blocked`/`is_approved` ke DB tiap permintaan. |
+| `lib/admin-users-handler.js` | 580 | SELESAI | 1 | **BUG-032 (MEDIUM) DIPERBAIKI PR #509**. Sisanya bersih dan beberapa bagian justru rapi: `approve` memakai predikat `.eq('is_approved', false)` pada UPDATE sebagai gerbang idempotensi, sehingga hanya permintaan yang benar-benar membalik false→true yang boleh mengirim notifikasi/undangan; kegagalan pengiriman tidak pernah membatalkan approval. Catatan kecil (bukan bug): `reject` menolak `budi` tapi tidak `review` — tidak berbahaya karena `sessionStatus` memang mengecualikan `review` dari syarat approval; dan beberapa jalur mengembalikan `error.message` mentah ke klien — endpoint ini admin-only, jadi audiensnya sudah tepercaya. |
+| `lib/ai-analysis-cache.js` | 220 | SELESAI | 1 | Ikut BUG-028: bentuk kunci `computeCacheKey` (`:24-32`) tidak memuat identitas/konteks — pemanggilnya yang harus mengisi `extra`. Sisanya bersih: TTL, purge kedaluwarsa, invalidasi per-ticker, dan fallback saat Supabase tidak dikonfigurasi. |
+| `lib/ai-answer-contract.js` | 253 | SELESAI | 1 | Kontrak jawaban AI. **Hanya dipakai harness evaluasi (`tools/`), tidak pernah dipanggil dari `lib/` atau `api/`** — jadi ini bukan penjaga runtime. Validasi angka dilewati seluruhnya bila `allowed_numbers` kosong (fail-open), termasuk pemeriksaan `answer.levels`. Lihat catatan arsitektur di AUDIT_FINDINGS.md. |
+| `lib/ai-context-snapshot-store.js` | 230 | SELESAI | 1 | BUG-010 DIPERBAIKI; cap plans 50 sisi server dicatat |
+| `lib/ai-eval-derived-facts.js` | 257 | BELUM | 0 | |
+| `lib/ai-gemini-provider.js` | 309 | SELESAI | 1 | BUG-036 timer abort dimatikan sebelum body dibaca, permintaan AI bisa menggantung selamanya dan fallback lokal tidak pernah jalan. PR #512. |
+| `lib/ai-narration-cache.js` | 119 | BELUM | 0 | |
+| `lib/ai-narration-prompts.js` | 195 | BELUM | 0 | |
+| `lib/ai-narration-validator.js` | 197 | BELUM | 0 | |
+| `lib/ai-narration.js` | 209 | BELUM | 0 | |
+| `lib/ai-runtime-grounding-v2.js` | 65 | SELESAI | 0 | **Bersih**, dan patut dicatat: `addPerShareFacts` memasangkan `calculation_facts.plans` dengan `context.plans` **berdasarkan ticker, bukan indeks array**, dengan komentar yang menjelaskan persis kenapa — kelas bug yang sama dengan BUG-030, dan di sini sudah dicegah. |
+| `lib/ai-runtime-grounding.js` | 237 | SELESAI | 1 | BUG-044: `moneyFromMessage` hanya menyimpan nominal **terbesar** dari pesan. Selebihnya kuat: aritmetika keterjangkauan dihitung deterministik di luar model, dan `answerPolicy` menegaskan angka hanya boleh dari snapshot/calculation_facts. |
+| `lib/ai-telemetry.js` | 75 | BELUM | 0 | |
+| `lib/analyze-legacy.js` | 1769 | SELESAI | 4 | BUG-005 (5 fetch tanpa timeout) DIPERBAIKI; BUG-007 (tidak ada SSE) dicatat; **BUG-029 (HIGH) DIPERBAIKI PR #506** — angka apa pun di pesan dibaca sebagai harga; REKOMENDASI-01 (`sanitizeOutput` `:836` bukan sanitizer keamanan). Dibaca ulang: routeIntent, template IHSG/saham, urutan sumber quote, buildStockFixedTemplate. |
+| `lib/atr-report-helpers.js` | 339 | BELUM | 0 | |
+| `lib/auth-recovery.js` | 406 | SELESAI | 0 | **Bersih**. Token reset 256 bit (`randomBytes(32)`), hanya hash yang disimpan, HMAC ber-domain (`auth-recovery-v1:<kind>:`), `safeBaseUrl` memaksa https + origin saja sehingga tidak ada open-redirect. Persetujuan reset diverifikasi di SQL terhadap `telegram_user_id` DAN `telegram_private_chat_id` DAN `telegram_verified_at` DAN `is_blocked` (`supabase/auth-recovery-v1-telegram-message-redaction-hotfix.sql:64-73`), gagal-tertutup `identity_mismatch`. Enrolment dikunci ke `username = 'budi'` saja. Catatan: enrolment tidak punya pembatas percobaan seperti alur verifikasi — tapi 40 bit entropi dengan TTL 15 menit membuatnya tidak praktis, jadi bukan temuan. |
+| `lib/candle-pattern-engine.js` | 379 | SELESAI | 1 | BUG-042: Hammer vs Hanging Man (dan Inverted Hammer vs Shooting Star) dibedakan **hanya dari warna candle**, bukan konteks tren — padahal Hanging Man memblokir A_PLUS_SETUP. Menunggu keputusan (aturan 8). Geometri pola lain (engulfing, harami, star, soldiers/crows) diperiksa satu per satu dan benar. |
+| `lib/chart-t1-policy.js` | 76 | BELUM | 0 | |
+| `lib/classic-chart-patterns.js` | 345 | BELUM | 0 | |
+| `lib/context-ai-router-v4.js` | 1161 | SELESAI | 0 | **Bersih** — modul paling disiplin kedua setelah `idx-tick-normalization`. Kunci cache-nya memuat `userId` + seluruh konteks (`:855-859`), yaitu obat BUG-028 yang sudah ada di repo ini sendiri. Diperiksa: rate limit per-user, `verify()` (same-origin + sesi + akun tidak diblokir/sudah approve), timeout per-model & total dengan `attemptSlice`, latch outage provider, probe direktori model, klasifikasi kegagalan, redaksi log. Satu hipotesis dibantah: `timed_out` vs `timedOut` diterjemahkan benar di `:879`. |
+| `lib/context-ai-router-v5.js` | 551 | SELESAI | 0 | **Bersih**. `requestKey` (`:301-305`) juga memuat `userId` + konteks — konfirmasi kedua bahwa obat BUG-028 sudah ada di repo. Diperiksa: redaksi diagnostik (`redactDiagnostic` menutup Bearer, kunci wz/sk, JWT, query token), spillover outage berbatas waktu, pembukuan health untuk rute darurat, koreksi `attempted_count`. Catatan: `installWeizeCompatibilityFetch` menambal `globalThis.fetch` saat modul dimuat — idempoten lewat penanda, dan hanya mengubah body untuk URL chat weizerouter; overhead pada fetch lain hanya satu parse URL. |
+| `lib/context-ai-router-v6.js` | 226 | SELESAI | 0 | **Bersih**. Fallback deterministik untuk follow-up saham; hanya mengutip angka yang sudah ada di snapshot. Satu catatan gaya: `escapeHtml` (`:37`) dideklarasikan tapi tidak dipakai — kode mati, bukan bug. `normalizeText` mendekode entitas SETELAH melucuti tag, tapi hasilnya selalu di-escape lagi oleh `inlineFormat` di klien, jadi bukan jalur XSS (lihat baris `public/ai-chat-renderer.js`). |
+| `lib/context-ai-router-v7.js` | 535 | SELESAI | 2 | BUG-010 DIPERBAIKI; BUG-028 (CRITICAL) DIPERBAIKI PR #505. Dibaca ulang penuh: validasi sumber, guard SSRF `normalizeSecondaryBaseUrl` (tolak non-https, kredensial di URL, host privat/loopback), budget waktu failover sekunder, jalur SSE, fallback deterministik lokal — bersih. |
+| `lib/corporate-action-price-scale-guard.js` | 88 | BELUM | 0 | |
+| `lib/daily-foreign-context.js` | 101 | SELESAI | 0 | **Bersih**. Sesi yang hilang dihitung `missing`, bukan nol — `sessions_missing` dan `foreign_net_7d_data_quality` membuat kualitas data terlihat pemanggil, bukan disembunyikan. Semua jendela dibatasi `slice`, jadi baris basi tidak pernah ikut terhitung. |
+| `lib/daily-history-collector.js` | 372 | SELESAI | 1 | BUG-039: `previous_close` dirantai dari array yang sudah dipangkas, jadi baris tertua di jendela retensi selalu kosong dan run harian menimpanya. PR #513. Sisanya bersih — termasuk `clearTimeout` yang benar di `finally` (kontras dengan BUG-036) dan rekonsiliasi close dari meta Yahoo yang berpagar enam syarat. |
+| `lib/daily-market-context-builder.js` | 355 | SELESAI | 1 | **Bersih**. Nyaris saya laporkan sebagai bug RSI (jalur batch mengambil 15 sesi = nol iterasi smoothing Wilder), tapi setelah menelusuri pemanggilnya ternyata tidak terjangkau di produksi — lihat catatan "nyaris temuan" di AUDIT_FINDINGS.md. `priceFreshness` memakai offset WIB eksplisit `+07:00`, bukan waktu lokal. |
+| `lib/daily-market-context-constants.js` | 34 | SELESAI | 0 | **Bersih**. Sumber tunggal ambang RSI/volume/retensi. Flag `FAST_WATCHER_DAILY_CONTEXT_ENABLED` default `false` dan hanya string `"true"` persis yang menyalakan. |
+| `lib/daily-pbv.js` | 70 | SELESAI | 0 | **Bersih**. Tidak pernah mengarang PBV: `book_value_per_share` wajib > 0, atau `equity`/`shares_outstanding` dengan `shares > 0`. Bila tidak ada, semua field `null` dan `data_available:false`. |
+| `lib/daily-rsi.js` | 117 | SELESAI | 0 | bersih; satu-satunya implementasi RSI yang menangani seri datar dengan benar (return 50) |
+| `lib/daily-volume-context.js` | 110 | SELESAI | 1 | BUG-040: cabang sesi partial (`:65`) menjangkau `slice(1, 8)` dan butuh 8 baris, tapi pemanggilnya hanya mengirim 7. Modulnya sendiri benar; perkabelannya yang kurang satu baris. PR #514. Sisanya bersih: `safeRatio`/`pctChange` menjaga pembagi nol, riwayat pendek jadi `null` bukan 0. |
+| `lib/daytrade-adjusted-vs-normal-report.js` | 140 | BELUM | 0 | |
+| `lib/daytrade-cache-audit.js` | 161 | BELUM | 0 | |
+| `lib/daytrade-compare-report.js` | 179 | BELUM | 0 | |
+| `lib/daytrade-entry-discipline-observability.js` | 69 | BELUM | 0 | |
+| `lib/daytrade-entry-discipline.js` | 84 | BELUM | 0 | |
+| `lib/daytrade-evaluation-adapter.js` | 16 | BELUM | 0 | |
+| `lib/daytrade-execution-ranking.js` | 176 | BELUM | 0 | |
+| `lib/daytrade-experimental-admin-alert.js` | 554 | BELUM | 0 | |
+| `lib/daytrade-full-eligible-universe.js` | 62 | BELUM | 0 | |
+| `lib/daytrade-intraday-adjustment-provider.js` | 115 | BELUM | 0 | |
+| `lib/daytrade-intraday-dry-run-gate.js` | 699 | BELUM | 0 | |
+| `lib/daytrade-intraday-eod-closeout.js` | 146 | BELUM | 0 | |
+| `lib/daytrade-intraday-observe.js` | 293 | BELUM | 0 | |
+| `lib/daytrade-intraday-policy.js` | 572 | BELUM | 0 | |
+| `lib/daytrade-intraday-provider-cache-quality.js` | 152 | BELUM | 0 | |
+| `lib/daytrade-intraday-readiness.js` | 140 | BELUM | 0 | |
+| `lib/daytrade-intraday-score-adjustment.js` | 63 | BELUM | 0 | |
+| `lib/daytrade-intraday-score-impact.js` | 162 | BELUM | 0 | |
+| `lib/daytrade-intraday-staged-enable-runbook.js` | 439 | BELUM | 0 | |
+| `lib/daytrade-intraday-validation-aggregate.js` | 249 | BELUM | 0 | |
+| `lib/daytrade-intraday-validation-coverage.js` | 64 | BELUM | 0 | |
+| `lib/daytrade-ohlcv-cache.js` | 319 | SELESAI | 1 | **BUG-033 (MEDIUM) DIPERBAIKI PR #510** — TTL 12 jam di luar jam bursa tidak pernah berlaku. Sisanya bersih: `safeTicker` melucuti ke `[A-Z0-9_-]` sebelum membangun path (tidak ada path traversal lewat ticker), fetch Yahoo dibatasi `AbortController`, parser Yahoo memvalidasi KELIMA kaki OHLCV — pola benar yang sama dengan `fetchDayTradeCandles` dan yang absen di parser NK (BUG-022). Konversi WIB memakai pola geser-lalu-baca-UTC yang benar, tidak ada offset ganda. |
+| `lib/daytrade-outcome-collector-guard.js` | 49 | BELUM | 0 | |
+| `lib/daytrade-outcome-collector.js` | 535 | SELESAI | 0 | Alat bukti offline ber-ack. Validasi path (anti-symlink, wajib di luar repo), waktu (UTC ketat, akhir pekan Jakarta, horizon selesai), OHLC, dan urutan bar. Bersih. |
+| `lib/daytrade-outcome-contract.js` | 56 | BELUM | 0 | |
+| `lib/daytrade-outcome-evaluator.js` | 23 | BELUM | 0 | |
+| `lib/daytrade-outcome-logger.js` | 13 | BELUM | 0 | |
+| `lib/daytrade-scan-comparison.js` | 291 | BELUM | 0 | |
+| `lib/daytrade-screener-constants.js` | 29 | BELUM | 0 | |
+| `lib/daytrade-screener-engine-v7.js` | 202 | BELUM | 0 | |
+| `lib/daytrade-screener-engine.js` | 2908 | SELESAI | 2 | DIBACA UTUH baris 1-2908. BUG-026 (urutan klasifikasi terbalik :880 vs :887), fetch tanpa timeout :160 (keluarga BUG-018, volume tertinggi di sistem ~760 ticker/scan), salinan BUG-015 ke-9 di calcRSI :2010, catatan laten calcMA membagi dengan period bukan jumlah nilai :1995. Bersih dan justru lebih rapi dari api/sector-hot.js: fetchDayTradeCandles :181 memeriksa kelima kaki OHLCV (pemeriksaan yang hilang di BUG-022), deriveDataQualityStatus :47 memvalidasi integritas candle, range_position :279 memakai Number.isFinite bukan `||`, refineLevelsWithRespectZones :2848 punya fallback penuh ke base levels kalau urutan level jadi tidak valid, detectVolumeProfilePoc :2500 memakai kunci numerik sehingga aman dari prototype pollution. Verifikasi bersih: deriveDataQualityStatus :47 memvalidasi integritas OHLC dengan benar (close>high, close<low, open>high, open<low, high<low, volume<0) - jauh lebih ketat dari parser di api/sector-hot.js; range_position :279 memakai Number.isFinite, bukan `||`, jadi nilai 0 dipertahankan (kontras dengan BUG-014 di api/sector-hot.js:11125); calculateLevels :600 menjaga pembagian nol di setiap perhitungan RR |
+| `lib/entitlements.js` | 68 | SELESAI | 0 | bersih; review TIDAK premium, budi admin, error penyimpanan tidak pernah jadi premium |
+| `lib/fast-watcher-daily-context-shadow.js` | 53 | SELESAI | 0 | **Bersih**. Saat flag mati, mengembalikan **referensi array yang sama persis** tanpa mengalokasikan objek baru — jadi benar-benar no-op pada jalur Fast Watcher yang dibekukan. Saat menyala pun hanya menambah kunci ber-namespace `_shadowDailyContext` dan tidak menulis apa pun ke DB. |
+| `lib/fibonacci-confluence.js` | 317 | BELUM | 0 | |
+| `lib/foreign-flow-store.js` | 73 | SELESAI | 0 | **Bersih**, dan justru jadi pembanding untuk BUG-038: `SAFE_QUERY_ROW_BUDGET = 900`, ukuran batch dihitung dari `count`, dan `.limit(fetchLimit)` eksplisit. Komentar `:15-18` mencatat insiden nyata saat cap 1.000 baris membuat "Foreign 7D" sama dengan "Foreign Terbaru". |
+| `lib/free-user-approval.js` | 84 | BELUM | 0 | |
+| `lib/idx-holidays-2026-seed-data.js` | 69 | BELUM | 0 | |
+| `lib/idx-tick-normalization.js` | 1124 | SELESAI | 1 | Dibaca utuh baris 1-1124. BUG-027 (HIGH - teks nasihat "JANGAN chase" di time_plan dibaca sebagai bukti chase, :837 + :881). Modul paling sentral dan paling rapi di repo: penjaga tukar entry low/high di :86, :211, :370 dan Math.min/max di :244-250 (obat BUG-021, ditulis 4x); :368-370 satu-satunya tempat dengan urutan alias yang BENAR (entryLow<-entry2, entryHigh<-entry1); normalizeTradingPlanLevels :430 memakai min/max sehingga kebal konvensi; deriveSetupFreshness :360 sengaja mengecualikan updated_at/last_checked_at agar rekomendasi lama tidak tampak baru. Satu-satunya alias tak terjaga: deriveCandlePotentialRange :965 (instance BUG-021 ke-7) |
+| `lib/idx-trading-calendar.js` | 214 | SELESAI | 1 | BUG-041: label `source` diputuskan dari query berjendela, sehingga kalender yang sudah di-seed dilaporkan sebagai fallback pada minggu biasa. PR #515. Matematika kalendernya sendiri bersih: `jakartaDateKeyFromInstant` memakai `Intl` zona Asia/Jakarta, `dayOfWeek`/`addDaysToKey` memakai UTC atas tanggal polos sehingga bebas geser zona. |
+| `lib/intraday-collector-vps-audit.js` | 304 | BELUM | 0 | |
+| `lib/intraday-fast-watcher-early-watch-publisher.js` | 338 | BELUM | 0 | |
+| `lib/intraday-fast-watcher-early-watch.js` | 575 | BELUM | 0 | |
+| `lib/intraday-fast-watcher-guarded-live.js` | 179 | BELUM | 0 | |
+| `lib/intraday-fast-watcher-live.js` | 307 | BELUM | 0 | |
+| `lib/intraday-fast-watcher-momentum.js` | 361 | BELUM | 0 | |
+| `lib/intraday-fast-watcher-pool.js` | 396 | BELUM | 0 | |
+| `lib/intraday-fast-watcher-publisher.js` | 464 | SEDANG | 0 | baris 160-240 dibaca untuk menelusuri konvensi entry1/entry2 pada penulisan `telegram_daily_picks` (:211-212 konsisten entry1=high). Sisa file belum dibaca |
+| `lib/intraday-fast-watcher-radar-publisher.js` | 301 | BELUM | 0 | |
+| `lib/intraday-fast-watcher.js` | 509 | SELESAI | 0 | **Bersih**. Shadow-only dan menegakkannya sendiri (`mode !== 'shadow'` diblokir; keluarannya menyatakan `telegram_attempted: false`, `source_files_mutated: false`). Diperiksa: zona entry terbalik ditolak eksplisit (`entry_low > entry_high` → INVALID_DATA), gerbang anti-chase 6%, konfirmasi 2×, kunci berbasis file yang gagal-aman pada lock rusak (`isPidAlive` memperlakukan EPERM sebagai hidup), tulis atomik temp+rename mode 0600. |
+| `lib/intraday-production-eligibility.js` | 91 | BELUM | 0 | |
+| `lib/intraday-sample-lifecycle.js` | 296 | BELUM | 0 | |
+| `lib/intraday-sample-summary.js` | 404 | BELUM | 0 | |
+| `lib/intraday-shadow-scoring-live.js` | 1012 | BELUM | 0 | |
+| `lib/intraday-shadow-scoring.js` | 1261 | BELUM | 0 | |
+| `lib/intraday-shadow-trade-backtest.js` | 1187 | BELUM | 0 | |
+| `lib/intraday-volume-pace.js` | 310 | BELUM | 0 | |
+| `lib/latest-price-resolver.js` | 47 | BELUM | 0 | |
+| `lib/maintenance-state.js` | 32 | SELESAI | 0 | **Bersih**. Fail-closed dua arah: galat penyimpanan menghasilkan `available:false` (bukan "tidak maintenance"), dan hanya `maintenanceMode === true` yang persis yang menyalakan. |
+| `lib/market-regime.js` | 138 | BELUM | 0 | |
+| `lib/password-credential.js` | 83 | SELESAI | 0 | bersih; scrypt k1, timing-safe, migrasi legacy prehash konsisten register<->login |
+| `lib/pattern-abcd-validation.js` | 184 | BELUM | 0 | |
+| `lib/pattern-abcd.js` | 188 | BELUM | 0 | |
+| `lib/portfolio-state-handler.js` | 248 | SELESAI | 0 | bersih; identitas dari sesi bertanda tangan, optimistic concurrency, tidak ada IDOR |
+| `lib/recent-failure-cooldown.js` | 120 | BELUM | 0 | |
+| `lib/report-helpers.js` | 280 | BELUM | 0 | |
+| `lib/request-rate-limit.js` | 67 | BELUM | 0 | |
+| `lib/reset-password-legacy-handler.js` | 431 | SELESAI | 0 | **Bersih**. Webhook: secret dibandingkan timing-safe, body dibatasi 32 KiB, `update_id` divalidasi, dan sengaja melewati `isSameOrigin` (Telegram memang lintas-origin) — diautentikasi header rahasia. `requestPasswordReset` mengembalikan pesan generik yang sama untuk rate-limited, username tidak valid, dan sukses sehingga tidak membocorkan keberadaan akun. `trustedRateLimitIp` hanya mempercayai `x-vercel-forwarded-for`. Satu hipotesis dibantah: `adminAccessPoll` mencetak `ac_sess` dengan `isAdmin: true` tanpa mengecek username sendiri — tapi akunnya dikunci di DUA lapisan (`lib/admin-access-legacy.js:152` `const username = 'budi'`, dan SQL `create_admin_access_request` menolak kalau `username <> 'budi'`), dan `consume_admin_access_request` memverifikasi ulang binding browser, kedaluwarsa, state, akun tidak diblokir/masih approved, serta identitas Telegram yang menyetujui. |
+| `lib/reversal-breakout-lifecycle.js` | 268 | BELUM | 0 | |
+| `lib/screener-evaluation-contract.js` | 99 | BELUM | 0 | |
+| `lib/screener-evaluation-logger.js` | 85 | BELUM | 0 | |
+| `lib/screener-evaluation-retention.js` | 64 | BELUM | 0 | |
+| `lib/second-chance-admin-pilot.js` | 292 | BELUM | 0 | |
+| `lib/security-guard.js` | 469 | SELESAI | 0 | **Bersih**. `getMode` default `enforce` di produksi (fail-closed), pepper wajib ≥32 karakter, `getClientIp` mendahulukan `x-vercel-forwarded-for` (diset platform) di atas `x-forwarded-for` (bisa dipalsukan klien) — urutan yang benar. Alert Telegram dibatasi `AbortController` 3 detik. Catatan desain (bukan bug): fail-closed saat pepper/DB tidak tersedia HANYA berlaku untuk akun admin utama; untuk akun lain guard menjadi no-op — konsisten di ketiga tempat dan tampaknya disengaja. |
+| `lib/smart-setup-labels.js` | 238 | BELUM | 0 | |
+| `lib/stock-daily-history-store.js` | 248 | SELESAI | 0 | **Bersih**, dan menjadi bukti kunci BUG-038: docstring `:54-73` mencatat bug `.limit()` yang hilang ini **sudah pernah terjadi dan diperbaiki di sini** ("confirmed bug — retention was silently a no-op"), lengkap dengan `RETENTION_TRIM_HEADROOM` untuk menguras backlog bertahap. |
+| `lib/subscription-auth.js` | 135 | SELESAI | 0 | bersih; batas identitas server-only |
+| `lib/subscription-capability.js` | 57 | SELESAI | 0 | **Bersih**. Fail-closed di setiap cabang: hanya string `"true"` persis yang mengaktifkan, konfigurasi wajib lengkap, dan `getVoucherAdminCapability` menuntut marker skema `phase5c-complete-v4` yang persis — versi lebih lama tetap tertutup meski tabelnya ada. |
+| `lib/subscription-catalog.js` | 45 | SELESAI | 0 | **Bersih**. Harga wajib bilangan bulat positif, promo wajib punya harga dan waktu mulai, akhir promo wajib setelah mulai. Metadata event dibatasi allowlist field dan tipe. |
+| `lib/subscription-identity.js` | 18 | SELESAI | 0 | **Bersih**. Token 32 byte CSPRNG, hanya HMAC-nya yang tersimpan, pepper wajib >=16 karakter (fail-closed). Metadata event dibatasi allowlist per jenis, newline/tab dibersihkan, dipotong 80 karakter. |
+| `lib/subscription-manual-handler.js` | 337 | SELESAI | 2 | BUG-034 host header injection ke tombol review admin, BUG-035 notifikasi admin tak terbatas pada submit ulang. PR #511. |
+| `lib/subscription-voucher-claim.js` | 177 | SELESAI | 0 | **Bersih**. `activationFacts` (`:63-86`) membatasi pencarian entitlement dengan `id` **dan** `user_id` **dan** `status=active`, sehingga id entitlement milik orang lain tidak pernah dipakai jadi fakta. Semua teks di-escape HTML. |
+| `lib/subscription-voucher-handler.js` | 68 | SELESAI | 0 | **Bersih**. Satu catatan defensif: kunci idempotensi berasal dari klien dan pencarian di `subscription-phase-2-migration.sql:224` tidak dibatasi `user_id`. Tidak dapat dieksploitasi hari ini (frontend selalu `randomUUID()` baru, UUID tidak bisa ditebak, dan `activationFacts` sudah dibatasi user). |
+| `lib/swing-nk-rr-warning.js` | 140 | BELUM | 0 | |
+| `lib/telegram-analytics.js` | 155 | BELUM | 0 | |
+| `lib/telegram-daily-recap.js` | 209 | BELUM | 0 | |
+| `lib/telegram-delivery.js` | 931 | SELESAI | 2 | **BUG-030 (HIGH) DIPERBAIKI PR #507** — satu pesan gagal meracuni seluruh batch Top 5, sehingga sinyal terkirim berhenti dipantau. Plus satu catatan ketahanan (pemasangan baris INSERT berdasarkan indeks, `:611`, tidak terjangkau). Sisanya diperiksa: klasifikasi hasil kirim, klaim baris `DELIVERY_IN_PROGRESS` dengan penjaga konflik, gerbang `monitorRowIsTrackable`/`rowBlocksRetry`, telemetri. |
+| `lib/telegram-lifecycle.js` | 317 | SELESAI | 1 | BUG-043: `sendLegacyChannelAnnouncement` mengklaim guard **sebelum** kirim dan tidak pernah melepasnya, berlawanan dengan protokol dua-fase yang dijelaskan header modulnya sendiri dan diterapkan benar pada reminder/review. Menunggu keputusan (butuh migrasi). Jalur reminder dan review-request-nya sendiri bersih. |
+| `lib/telegram-notifier.js` | 326 | SELESAI | 0 | **Bersih**. Tidak pernah melempar, setiap `fetch` dibatasi `AbortController`, token tidak pernah masuk log, body error dipotong <200 karakter, 429 ditangani dengan `retry_after`. `splitTelegramMessage` diperiksa terhadap infinite loop: `cut` selalu ≥ floor(maxLen/2) atau = maxLen, jadi selalu maju. |
+| `lib/telegram-templates.js` | 760 | SELESAI | 0 | **Bersih**. Satu catatan konsistensi tampilan (rentang entry dirender tiga cara: `:414` tinggi-dulu, `:281` rendah-dulu, `:691` hanya batas atas) — format kartu sinyal sengaja dikunci `test/telegram-templates.test.js:162,169`, jadi tidak saya ubah. Diperiksa: `getWibTimeStr` (`:216`) memakai pola geser-lalu-baca-UTC yang benar, tidak ada offset ganda; `safe()` melucuti tag dan baris baru; seluruh blok Trade Plan V2 di belakang flag mati. |
+| `lib/telegram-transient-message.js` | 69 | BELUM | 0 | |
+| `lib/telegram-unified-general.js` | 216 | BELUM | 0 | |
+| `lib/telegram-unified-subscription.js` | 332 | SELESAI | 0 | Gate admin Telegram, chat privat, chat.id===from.id. Kunci idempotensi deterministik per update_id. Bersih; satu catatan asimetri tipe voucher. |
+| `lib/telegram-verification.js` | 1527 | SELESAI | 0 | **Bersih** — modul paling sadar-keamanan yang saya baca setelah `idx-tick-normalization`. Diperiksa baris demi baris: entropi kode (`crypto.randomInt` tanpa bias, 40 bit), HMAC fail-closed tanpa secret, kode mentah tidak pernah disimpan/di-log, rate limit pengirim sebelum hashing, klaim/complete webhook bertoken (idempoten), gerbang `chat_join_request` gagal-tertutup pada identitas + kecocokan link + revoked + kedaluwarsa, pesan penolakan netral tanpa membocorkan keberadaan akun, outbox notifikasi at-least-once, dan pembersihan tombol yang sudah dipakai. |
+| `lib/telegram-verify-bot.js` | 186 | SELESAI | 0 | **Bersih**. Isolasi token benar (`TELEGRAM_VERIFY_BOT_TOKEN` saja, tanpa fallback), `AbortSignal.timeout(5000)` membatasi SETIAP panggilan, error hanya kode kasar — token dan body Telegram tidak pernah bocor. Satu hipotesis dibantah: `creates_join_request: true` memang dikirim (`:131`), jadi tombol undangan tidak menambahkan anggota langsung dan gerbang join-request tetap berlaku. |
+| `lib/telegram-voucher-admin-continuation.js` | 145 | SELESAI | 0 | **Bersih**. Backstop fail-closed: bentuk perintah admin tersembunyi dari non-admin ditelan (`:78-80`), dan input angka hanya dimiliki saat sesi kuantitas admin benar-benar aktif dan belum kedaluwarsa. |
+| `lib/top5-progress-monitor.js` | 172 | BELUM | 0 | |
+| `lib/track-record-service.js` | 265 | SELESAI | 0 | Dibaca baris 1-265. Bersih. Diperiksa: `classifyOutcome` menghormati kronologi TP-sebelum-SL (`lib/report-helpers.js:68-80`), `resolved_win_rate` tidak menghitung ganda TP2 di dalam TP1, baris terarsip dilewati (:99), `calculateGainPct` memakai entry konservatif (entry1=batas atas). Meneruskan `entry1`/`entry2` apa adanya — benar; kekeliruan urutan ada di sisi render (BUG-016) |
+| `lib/trade-plan-v2-candle-structure.js` | 397 | BELUM | 0 | |
+| `lib/trade-plan-v2-daytrade-diagnostic.js` | 521 | BELUM | 0 | |
+| `lib/trade-plan-v2-flags.js` | 128 | SELESAI | 0 | Bersih. Keempat flag default `false`; hanya menyala untuk `true`/`1`/`yes`/`on`. Fail-closed. |
+| `lib/trade-plan-v2-formatter.js` | 301 | BELUM | 0 | |
+| `lib/trade-plan-v2-gap-areas.js` | 261 | BELUM | 0 | |
+| `lib/trade-plan-v2-integration.js` | 675 | SELESAI | 1 | BUG-021 (situs baru `:135-136`, laten). Sisanya bersih: gating flag benar-benar fail-closed, `selectCanonicalTradePlan` memisahkan konteks publik vs intraday dengan tepat, `computePlanLockId` deterministik dan sengaja tidak memuat field volatil. |
+| `lib/trade-plan-v2-liquidity-sweep.js` | 449 | BELUM | 0 | |
+| `lib/trade-plan-v2-replay-preview.js` | 261 | BELUM | 0 | |
+| `lib/trade-plan-v2-source-adapters.js` | 498 | SELESAI | 1 | BUG-021 (situs baru `:129-130`, `:209-210`, `:338-339`). Konsekuensinya lebih berat di sini karena nilai dipakai memilih struktur sebelum penjaga tukar mesin bekerja — tapi tetap laten: tabel sumber punya kolom `entry_low`/`entry_high`. |
+| `lib/trade-plan-v2-sweep-diagnostic.js` | 475 | BELUM | 0 | |
+| `lib/trade-plan-v2.js` | 1319 | SELESAI | 0 | Bersih sebagai mesin. Seluruh modul hanya aktif di belakang `TRADE_PLAN_V2_SHADOW_ENABLED`/`TRADE_PLAN_V2_PUBLIC_ENABLED` (default mati). Alias entry di `:743-744` **dijaga** penukar `:745-747`. Diperiksa: profil per-screener, hierarki support/resistance, buffer volatilitas, TP1 cap, gate TP2 (butuh breakout terkonfirmasi), trailing ratchet, resolusi status/RR. |
+| `lib/user-watchlist-service.js` | 550 | SELESAI | 1 | **BUG-031 (HIGH) DIPERBAIKI PR #508** — `notification_chat_id` dan `watchlist_id` diterima dari body permintaan tanpa pemeriksaan; alert bisa diarahkan ke chat Telegram pengguna lain. Sisanya diperiksa: `normalizeTicker`, resolusi harga multi-sumber berjenjang, `deleteAlert` difilter `user_id`, `getUserWatchlist` difilter `user_id`. |
+| `lib/voucher-admin-bot.js` | 333 | SELESAI | 0 | Gate admin ketat, dedupe update, klaim/prepare/deliver/finalize per chunk dengan jalur uncertain. Bersih; DOCUMENT_BYTES konstanta mati. |
+| `lib/voucher-admin-sender.js` | 28 | SELESAI | 0 | **Bersih**. Fail-closed bila fitur mati atau token <16 karakter, timeout 8 detik dengan `AbortController`, dan semua galat Telegram diseragamkan jadi satu pesan tanpa membocorkan detail. |
+| `lib/vouchers.js` | 12 | SELESAI | 0 | Kode 12 karakter dari alfabet 31 simbol (~59 bit), HMAC ber-pepper, fail-closed bila pepper <16 karakter. Bersih. |
+| `lib/weekly-timeframe.js` | 170 | BELUM | 0 | |
+| `package-lock.json` | 117 | BELUM | 0 | |
+| `package.json` | 18 | SELESAI | 0 | bersih |
+| `public/404.html` | 30 | BELUM | 0 | |
+| `public/account-center-lazy-loader-v1.js` | 255 | BELUM | 0 | |
+| `public/account-center-v1.css` | 100 | BELUM | 0 | |
+| `public/account-center-v1.js` | 449 | BELUM | 0 | |
+| `public/admin-ai-eval.html` | 141 | BELUM | 0 | |
+| `public/admin-foreign.html` | 303 | BELUM | 0 | |
+| `public/admin-maintenance-code.js` | 482 | BELUM | 0 | |
+| `public/admin-tools-runtime.js` | 142 | BELUM | 0 | |
+| `public/admin-user-delete-enhancement.js` | 110 | BELUM | 0 | |
+| `public/admin-zero-link-pairing.js` | 195 | BELUM | 0 | |
+| `public/ai-chat-renderer.js` | 296 | SELESAI | 0 | **Bersih**. Setiap jalur `renderMarkdown` melewatkan teks lewat `inlineFormat` → `escapeHtml` LEBIH DULU, baru menerapkan markdown — urutan yang benar. `polishNode` membaca `textContent`/`data-ai-raw` lalu merender ulang lewat pipeline yang sama. Tidak ada titik yang memancarkan konten tak-ter-escape. |
+| `public/assets/fca-stocks.js` | 64 | BELUM | 0 | |
+| `public/assets/idx-tickers.js` | 997 | BELUM | 0 | |
+| `public/auth-v2.js` | 434 | BELUM | 0 | |
+| `public/chart-viewer.js` | 371 | BELUM | 0 | |
+| `public/dashboard-top5-only-ui.js` | 77 | BELUM | 0 | |
+| `public/daytrade-runtime.js` | 377 | BELUM | 0 | |
+| `public/fast-watcher-live-refresh.js` | 152 | BELUM | 0 | |
+| `public/index-shell.css` | 738 | BELUM | 0 | |
+| `public/index.html` | 11127 | SEDANG | 2 | BUG-001 (auth modals di dalam dashboardScreen) DIPERBAIKI; bypass handler `on*` pada `sanitizeAIHtml` DIPERBAIKI (PR `fix/ai-html-sanitizer-handler-bypass`); REKOMENDASI-01. Baris 1-2800 dibaca; ditambah blok sanitizer/renderer `:5600-5830`, `:6012-6060`, `:10378-10640` dibaca penuh. Sisanya berjalan. |
+| `public/maintenance-auth-guard.js` | 36 | BELUM | 0 | |
+| `public/market-feature-runtime.js` | 1095 | BELUM | 0 | |
+| `public/methodology.html` | 46 | BELUM | 0 | |
+| `public/mobile-nav.js` | 473 | BELUM | 0 | |
+| `public/mobile-ui-runtime-v5.js` | 434 | BELUM | 0 | |
+| `public/mobile-ui-runtime-v6.js` | 19 | BELUM | 0 | |
+| `public/pattern-direction-safety.js` | 322 | BELUM | 0 | |
+| `public/pattern-map.js` | 363 | BELUM | 0 | |
+| `public/pattern-safety-hardening-v1.js` | 185 | BELUM | 0 | |
+| `public/pattern-screener-extension.js` | 380 | BELUM | 0 | |
+| `public/pattern-stable-runtime.js` | 520 | BELUM | 0 | |
+| `public/pattern-tab-resume-guard.js` | 136 | BELUM | 0 | |
+| `public/pattern-visual.js` | 359 | BELUM | 0 | |
+| `public/portfolio-ai-runtime-v2.js` | 773 | SELESAI | 3 | BUG-008/009 DIPERBAIKI (PR 498) |
+| `public/portfolio-ai-workspace-v1.css` | 74 | BELUM | 0 | |
+| `public/portfolio-ai-workspace-v1.js` | 33 | BELUM | 0 | |
+| `public/portfolio-command-center-model.js` | 230 | BELUM | 0 | |
+| `public/portfolio-command-center-v2.html` | 162 | BELUM | 0 | |
+| `public/portfolio-command-center.css` | 268 | BELUM | 0 | |
+| `public/portfolio-command-center.html` | 312 | BELUM | 0 | |
+| `public/portfolio-command-center.js` | 602 | BELUM | 0 | |
+| `public/portfolio-planner-v1.js` | 239 | BELUM | 0 | |
+| `public/portfolio-planner.html` | 110 | BELUM | 0 | |
+| `public/portfolio-position-scenarios.js` | 317 | BELUM | 0 | |
+| `public/portfolio-runtime-fix.js` | 149 | BELUM | 0 | |
+| `public/portfolio-supabase-sync.js` | 285 | BELUM | 0 | |
+| `public/premium-workstation-core.css` | 2268 | BELUM | 0 | |
+| `public/premium-workstation-v11.css` | 401 | BELUM | 0 | |
+| `public/premium-workstation-v6.css` | 535 | BELUM | 0 | |
+| `public/premium-workstation.css` | 7 | BELUM | 0 | |
+| `public/screener-lifecycle-ui.js` | 173 | BELUM | 0 | |
+| `public/security-admin-runtime.js` | 198 | BELUM | 0 | |
+| `public/stock-analysis-ai.js` | 694 | SELESAI | 0 | bersih; describeFailure jadi acuan kontrak error untuk index.html |
+| `public/subscription-access-gate-v1.js` | 145 | BELUM | 0 | |
+| `public/subscription-manual-payment-v1.js` | 438 | BELUM | 0 | |
+| `public/subscription-voucher-claim-v1.js` | 61 | BELUM | 0 | |
+| `public/tailwind-build.css` | 0 | BELUM | 0 | |
+| `public/track-record-runtime.js` | 308 | SELESAI | 1 | Dibaca baris 1-308. BUG-016 (rentang entry dirender tinggi->rendah, :172-173 dan :239). Tiga hal diperiksa dan sengaja TIDAK dinaikkan jadi bug: kartu ringkasan tetap global saat tab kategori diklik (disengaja menurut markup `public/index.html:1148-1210`), ekspor CSV memakai data penuh bukan yang difilter (:274 — keputusan produk, belum pasti), `escapeCsvCell` tidak menetralkan formula (:218 — pengerasan, tidak ditemukan sel yang dikendalikan penyerang) |
+| `public/trust.html` | 150 | BELUM | 0 | |
+| `public/ui-bugfix-pack-v1.js` | 375 | BELUM | 0 | |
+| `public/ui-stability-fix.js` | 222 | BELUM | 0 | |
+| `public/ui-theme.css` | 2222 | BELUM | 0 | |
+| `public/watchlist-runtime.js` | 387 | BELUM | 0 | |
+| `public/website-approved-access.js` | 49 | BELUM | 0 | |
+| `scripts/apply-auth-reset-telegram-redaction-hotfix.js` | 468 | BELUM | 0 | |
+| `scripts/collect-daily-market-context.js` | 191 | BELUM | 0 | |
+| `scripts/create-budi-telegram-enrollment.js` | 44 | BELUM | 0 | |
+| `scripts/gen-live-shadow-fixtures.js` | 139 | BELUM | 0 | |
+| `scripts/idx-sync/sync_stock_summary_dates.ts` | 275 | BELUM | 0 | |
+| `scripts/refresh-sector-hot.js` | 304 | BELUM | 0 | |
+| `scripts/seed-idx-holidays-2026.js` | 71 | BELUM | 0 | |
+| `supabase/account-profile-terms-migration.sql` | 25 | BELUM | 0 | |
+| `supabase/add-timeframe-context-columns.sql` | 51 | BELUM | 0 | |
+| `supabase/admin-maintenance-code-readonly-status-migration.sql` | 55 | BELUM | 0 | |
+| `supabase/admin-telegram-access-migration.sql` | 885 | SEDANG | 0 | Dibaca sebagian: `create_admin_access_request` (`:251-290`) dan `consume_admin_access_request` (`:781-866`) diperiksa penuh — keduanya menolak akun selain 'budi', mengunci baris `FOR UPDATE`, memeriksa kedaluwarsa/state, dan memverifikasi ulang kelayakan akun serta binding Telegram sebelum `ac_sess` pernah dicetak. Sisanya belum. |
+| `supabase/admin-telegram-command-login-migration.sql` | 445 | BELUM | 0 | |
+| `supabase/admin-telegram-maintenance-code-migration.sql` | 335 | BELUM | 0 | |
+| `supabase/admin-telegram-zero-link-pairing-migration.sql` | 409 | BELUM | 0 | |
+| `supabase/ai-analysis-cache-migration.sql` | 29 | BELUM | 0 | |
+| `supabase/ai-context-snapshots-migration.sql` | 49 | BELUM | 0 | |
+| `supabase/ai-eval-cloud-migration.sql` | 122 | BELUM | 0 | |
+| `supabase/auth-recovery-v1-telegram-message-redaction-hotfix.sql` | 187 | SEDANG | 0 | Dibaca sebagian: `approve_auth_password_reset_request_v2` (`:21-90`) diperiksa penuh — pengikatan identitas ke telegram_user_id + private_chat_id + terverifikasi + tidak diblokir, dengan `FOR UPDATE` dan cek kedaluwarsa. Sisanya belum. |
+| `supabase/auth-telegram-recovery-v1-device-retirement-hotfix.sql` | 86 | BELUM | 0 | |
+| `supabase/auth-telegram-recovery-v1-migration.sql` | 527 | SEDANG | 0 | Dibaca sebagian: `consume_auth_telegram_enrollment` (`:131-200`) diperiksa penuh — `FOR UPDATE`, cek kedaluwarsa, kunci ke username 'budi', tolak kalau Telegram id sudah milik akun lain. Sisanya belum. |
+| `supabase/centralize-primary-admin-identity.sql` | 112 | BELUM | 0 | |
+| `supabase/claim-ai-eval-run-atomically.sql` | 36 | BELUM | 0 | |
+| `supabase/daytrade-screener-migration.sql` | 119 | BELUM | 0 | |
+| `supabase/documentation-only-existing-schema-snapshot.sql` | 94 | BELUM | 0 | |
+| `supabase/foreign-watchlist-daily-migration.sql` | 32 | BELUM | 0 | |
+| `supabase/idx-holidays-2026-seed.sql` | 52 | BELUM | 0 | |
+| `supabase/manual-approval-migration.sql` | 24 | BELUM | 0 | |
+| `supabase/multi-device-migration.sql` | 33 | BELUM | 0 | |
+| `supabase/patch-daytrade-swing-konglo-trade-plan-v2-persistence.sql` | 16 | BELUM | 0 | |
+| `supabase/patch-members-latest-member-type-constraint.sql` | 14 | BELUM | 0 | |
+| `supabase/patch-nk-screener-value-cols.sql` | 20 | BELUM | 0 | |
+| `supabase/patch-sector-hot-group-mapping-v2.sql` | 330 | BELUM | 0 | |
+| `supabase/patch-swing-nk-trade-plan-v2-persistence.sql` | 16 | BELUM | 0 | |
+| `supabase/patch-swing-price-provenance.sql` | 70 | BELUM | 0 | |
+| `supabase/portfolio-state-persistence-migration.sql` | 25 | BELUM | 0 | |
+| `supabase/residual-audit-db-integrity.sql` | 95 | BELUM | 0 | |
+| `supabase/sector-hot-members-patch.sql` | 333 | BELUM | 0 | |
+| `supabase/sector-hot.sql` | 228 | BELUM | 0 | |
+| `supabase/security-phase-1-migration.sql` | 472 | BELUM | 0 | |
+| `supabase/stock-daily-context-migration.sql` | 157 | BELUM | 0 | |
+| `supabase/stock-daily-features-week52-migration.sql` | 29 | BELUM | 0 | |
+| `supabase/subscription-manual-payment-migration.sql` | 257 | BELUM | 0 | |
+| `supabase/subscription-phase-2-migration.sql` | 254 | BELUM | 0 | |
+| `supabase/subscription-phase-5c-admin-command-correction.sql` | 132 | BELUM | 0 | |
+| `supabase/subscription-phase-5c-lifecycle-correction.sql` | 281 | BELUM | 0 | |
+| `supabase/subscription-phase-5c-redemption-correction.sql` | 236 | BELUM | 0 | |
+| `supabase/subscription-phase-5c-voucher-admin-migration.sql` | 404 | BELUM | 0 | |
+| `supabase/swing-screener-migration.sql` | 101 | BELUM | 0 | |
+| `supabase/swing-screener-non-konglo.sql` | 154 | BELUM | 0 | |
+| `supabase/telegram-daily-picks-migration.sql` | 68 | BELUM | 0 | |
+| `supabase/telegram-invite-message-cleanup-hotfix.sql` | 86 | BELUM | 0 | |
+| `supabase/telegram-member-lifecycle-hotfix.sql` | 477 | BELUM | 0 | |
+| `supabase/telegram-transient-message-migration.sql` | 17 | BELUM | 0 | |
+| `supabase/telegram-verification-v2-approval-gate-hotfix.sql` | 339 | BELUM | 0 | |
+| `supabase/telegram-verification-v2-migration.sql` | 561 | BELUM | 0 | |
+| `supabase/user-watchlist-alerts-migration.sql` | 53 | BELUM | 0 | |
+| `tailwind.config.js` | 47 | BELUM | 0 | |
+| `tailwind.src.css` | 3 | BELUM | 0 | |
+| `test-risk-guard.js` | 489 | BELUM | 0 | |
+| `test/account-center-contract.test.js` | 97 | BELUM | 0 | |
+| `test/admin-ai-eval-polling.test.js` | 73 | BELUM | 0 | |
+| `test/admin-approved-users.test.js` | 314 | BELUM | 0 | |
+| `test/admin-command-login.test.js` | 269 | BELUM | 0 | |
+| `test/admin-foreign-upload.test.js` | 157 | BELUM | 0 | |
+| `test/admin-fundamentals-upload.test.js` | 81 | BELUM | 0 | |
+| `test/admin-maintenance-code-login.test.js` | 272 | BELUM | 0 | |
+| `test/admin-session-auth.test.js` | 416 | BELUM | 0 | |
+| `test/admin-telegram-access.test.js` | 1192 | BELUM | 0 | |
+| `test/admin-token-security-fix.test.js` | 158 | BELUM | 0 | |
+| `test/admin-tools-runtime.test.js` | 48 | BELUM | 0 | |
+| `test/admin-zero-link-pairing.test.js` | 239 | BELUM | 0 | |
+| `test/admin-zero-link-rebind.test.js` | 171 | BELUM | 0 | |
+| `test/ai-cache-telemetry.test.js` | 380 | BELUM | 0 | |
+| `test/ai-chat-polish.test.js` | 114 | BELUM | 0 | |
+| `test/ai-context-fixtures-stress.test.js` | 308 | BELUM | 0 | |
+| `test/ai-context-no-fabricated-values.test.js` | 79 | BELUM | 0 | |
+| `test/ai-context-snapshot-ticker-scope.test.js` | 133 | BELUM | 0 | |
+| `test/ai-deterministic-ui-fixtures.test.js` | 191 | BELUM | 0 | |
+| `test/ai-eval-derived-grounding.test.js` | 145 | BELUM | 0 | |
+| `test/ai-eval-failed-retry-control.test.js` | 153 | BELUM | 0 | |
+| `test/ai-eval-final-contract-output.test.js` | 138 | BELUM | 0 | |
+| `test/ai-eval-live-progress.test.js` | 44 | BELUM | 0 | |
+| `test/ai-eval-once.test.js` | 193 | BELUM | 0 | |
+| `test/ai-eval-openagentic-quality.test.js` | 65 | BELUM | 0 | |
+| `test/ai-gemini-provider-and-cache.test.js` | 375 | BELUM | 0 | |
+| `test/ai-model-directory-probe.test.js` | 511 | BELUM | 0 | |
+| `test/ai-model-routing-health.test.js` | 68 | BELUM | 0 | |
+| `test/ai-narration-idx-price-band.test.js` | 99 | BELUM | 0 | |
+| `test/ai-narration.test.js` | 298 | BELUM | 0 | |
+| `test/ai-provider-failover.test.js` | 670 | BELUM | 0 | |
+| `test/ai-provider-outage-spillover.test.js` | 275 | BELUM | 0 | |
+| `test/ai-provider-wide-outage.test.js` | 620 | BELUM | 0 | |
+| `test/ai-runtime-grounding.test.js` | 108 | BELUM | 0 | |
+| `test/ai-streaming-response.test.js` | 289 | BELUM | 0 | |
+| `test/ai-technical-spacing.test.js` | 99 | BELUM | 0 | |
+| `test/ai-ui-failure-states.test.js` | 427 | BELUM | 0 | |
+| `test/api-hardening-cache-and-resilience.test.js` | 91 | BELUM | 0 | |
+| `test/approved-website-access-shell.test.js` | 176 | BELUM | 0 | |
+| `test/ara-arb-execution-reality.test.js` | 74 | BELUM | 0 | |
+| `test/atr-report-helpers.test.js` | 124 | BELUM | 0 | |
+| `test/audit-auth-device-route.test.js` | 26 | BELUM | 0 | |
+| `test/audit-cron-and-top5-lock.test.js` | 33 | BELUM | 0 | |
+| `test/audit-portfolio-concurrency.test.js` | 16 | BELUM | 0 | |
+| `test/auth-modal-and-ai-analysis-ui.test.js` | 211 | BELUM | 0 | |
+| `test/auth-recovery-device-retirement.test.js` | 41 | BELUM | 0 | |
+| `test/auth-recovery-telegram-redaction.test.js` | 121 | BELUM | 0 | |
+| `test/auth-recovery-v2.test.js` | 250 | BELUM | 0 | |
+| `test/auto-swing-telegram-digest.test.js` | 845 | BELUM | 0 | |
+| `test/budi-admin-compatibility.test.js` | 551 | BELUM | 0 | |
+| `test/budi-login-routing.test.js` | 98 | BELUM | 0 | |
+| `test/build-test-runner.test.js` | 34 | BELUM | 0 | |
+| `test/canonical-domain-redirect.test.js` | 182 | BELUM | 0 | |
+| `test/canonical-plan-rollout.test.js` | 181 | BELUM | 0 | |
+| `test/change-display-null-safety.test.js` | 191 | BELUM | 0 | |
+| `test/chart-export-and-responsive.test.js` | 287 | BELUM | 0 | |
+| `test/chart-t1-candles.test.js` | 240 | BELUM | 0 | |
+| `test/chart-viewer.test.js` | 352 | BELUM | 0 | |
+| `test/classic-chart-patterns.test.js` | 148 | BELUM | 0 | |
+| `test/collect-daily-market-context-cli.test.js` | 75 | BELUM | 0 | |
+| `test/context-ai-secondary-provider.test.js` | 71 | BELUM | 0 | |
+| `test/corporate-action-price-scale-guard.test.js` | 45 | BELUM | 0 | |
+| `test/correctness-live-followup-regression.test.js` | 245 | BELUM | 0 | |
+| `test/daily-foreign-context.test.js` | 71 | BELUM | 0 | |
+| `test/daily-history-collector.test.js` | 155 | BELUM | 0 | |
+| `test/daily-history-yahoo-reconcile.test.js` | 92 | BELUM | 0 | |
+| `test/daily-market-context-api.test.js` | 102 | BELUM | 0 | |
+| `test/daily-market-context-builder.test.js` | 213 | BELUM | 0 | |
+| `test/daily-market-context-collector-runtime-bugfix.test.js` | 295 | BELUM | 0 | |
+| `test/daily-market-context-endpoint.test.js` | 164 | BELUM | 0 | |
+| `test/daily-market-context-user-visible-fields.test.js` | 159 | BELUM | 0 | |
+| `test/daily-pbv.test.js` | 35 | BELUM | 0 | |
+| `test/daily-rsi-mature-history-regression.test.js` | 281 | BELUM | 0 | |
+| `test/daily-rsi.test.js` | 59 | BELUM | 0 | |
+| `test/daily-volume-context.test.js` | 81 | BELUM | 0 | |
+| `test/dashboard-label-helpers.test.js` | 75 | BELUM | 0 | |
+| `test/dashboard-loading-guards.test.js` | 105 | BELUM | 0 | |
+| `test/dashboard-top5-locked-display.test.js` | 243 | BELUM | 0 | |
+| `test/dashboard-top5-monitor-loading.test.js` | 424 | BELUM | 0 | |
+| `test/dashboard-top5-note-consistency.test.js` | 166 | BELUM | 0 | |
+| `test/dashboard-top5-render-locked.test.js` | 201 | BELUM | 0 | |
+| `test/data-quality-hygiene.test.js` | 68 | BELUM | 0 | |
+| `test/daytrade-adjusted-vs-normal-report.test.js` | 105 | BELUM | 0 | |
+| `test/daytrade-cache-audit.test.js` | 86 | BELUM | 0 | |
+| `test/daytrade-compare-report.test.js` | 74 | BELUM | 0 | |
+| `test/daytrade-entry-discipline-observability-production-wiring.test.js` | 110 | BELUM | 0 | |
+| `test/daytrade-entry-discipline-observability.test.js` | 37 | BELUM | 0 | |
+| `test/daytrade-entry-discipline.test.js` | 47 | BELUM | 0 | |
+| `test/daytrade-evaluation-adapter.test.js` | 26 | BELUM | 0 | |
+| `test/daytrade-evaluation-local-canary.test.js` | 256 | BELUM | 0 | |
+| `test/daytrade-execution-ranking.test.js` | 85 | BELUM | 0 | |
+| `test/daytrade-experimental-admin-alert.test.js` | 388 | BELUM | 0 | |
+| `test/daytrade-finalizer-schema-contract.test.js` | 19 | BELUM | 0 | |
+| `test/daytrade-full-eligible-universe.test.js` | 33 | BELUM | 0 | |
+| `test/daytrade-intraday-adjustment-provider.test.js` | 121 | BELUM | 0 | |
+| `test/daytrade-intraday-dry-run-gate.test.js` | 762 | BELUM | 0 | |
+| `test/daytrade-intraday-eod-closeout.test.js` | 124 | BELUM | 0 | |
+| `test/daytrade-intraday-observe.test.js` | 353 | BELUM | 0 | |
+| `test/daytrade-intraday-policy.test.js` | 315 | BELUM | 0 | |
+| `test/daytrade-intraday-provider-cache-quality.test.js` | 150 | BELUM | 0 | |
+| `test/daytrade-intraday-readiness.test.js` | 191 | BELUM | 0 | |
+| `test/daytrade-intraday-score-adjustment.test.js` | 99 | BELUM | 0 | |
+| `test/daytrade-intraday-score-impact.test.js` | 98 | BELUM | 0 | |
+| `test/daytrade-intraday-staged-enable-runbook.test.js` | 329 | BELUM | 0 | |
+| `test/daytrade-intraday-validation-aggregate.test.js` | 291 | BELUM | 0 | |
+| `test/daytrade-intraday-validation-bundle.test.js` | 142 | BELUM | 0 | |
+| `test/daytrade-intraday-validation-coverage.test.js` | 83 | BELUM | 0 | |
+| `test/daytrade-ohlcv-cache.test.js` | 424 | BELUM | 0 | |
+| `test/daytrade-outcome-alignment.test.js` | 187 | BELUM | 0 | |
+| `test/daytrade-outcome-collector.test.js` | 283 | BELUM | 0 | |
+| `test/daytrade-outcome-logging.test.js` | 44 | BELUM | 0 | |
+| `test/daytrade-run-mode-window.test.js` | 12 | BELUM | 0 | |
+| `test/daytrade-runtime-fields-not-persisted.test.js` | 33 | BELUM | 0 | |
+| `test/daytrade-scan-comparison.test.js` | 176 | BELUM | 0 | |
+| `test/daytrade-screener-outcome-tracking.test.js` | 171 | BELUM | 0 | |
+| `test/daytrade-screener-v1-release-gate.test.js` | 239 | BELUM | 0 | |
+| `test/daytrade-swing-konglo-trade-plan-v2-persistence.test.js` | 122 | BELUM | 0 | |
+| `test/daytrade-telegram-actionable-dead-sort-regression.test.js` | 68 | BELUM | 0 | |
+| `test/daytrade-trade-plan-v2-intraday-anchor.test.js` | 114 | BELUM | 0 | |
+| `test/daytrade-universe-recovery.test.js` | 74 | BELUM | 0 | |
+| `test/daytrade-volume-pace-recall-v7.test.js` | 138 | BELUM | 0 | |
+| `test/daytrade-vps-worker-observe.test.js` | 89 | BELUM | 0 | |
+| `test/design-system-institutional-pass.test.js` | 184 | BELUM | 0 | |
+| `test/design-system-tokens-typography.test.js` | 38 | BELUM | 0 | |
+| `test/desktop-header-center.test.js` | 29 | BELUM | 0 | |
+| `test/desktop-screener-dashboard-overhaul.test.js` | 55 | BELUM | 0 | |
+| `test/device-block-regression.test.js` | 18 | BELUM | 0 | |
+| `test/display-missing-vs-real-value.test.js` | 145 | BELUM | 0 | |
+| `test/enforce-retention-row-cap-regression.test.js` | 181 | BELUM | 0 | |
+| `test/fast-watcher-daily-context-flag.test.js` | 51 | BELUM | 0 | |
+| `test/fast-watcher-early-watch.test.js` | 1186 | BELUM | 0 | |
+| `test/fast-watcher-guarded-live-v2.test.js` | 212 | BELUM | 0 | |
+| `test/fast-watcher-locked-setup-regression.test.js` | 405 | BELUM | 0 | |
+| `test/fast-watcher-momentum-flow.test.js` | 153 | BELUM | 0 | |
+| `test/fast-watcher-monitor-registration.test.js` | 200 | BELUM | 0 | |
+| `test/fast-watcher-session-boundary-regression.test.js` | 110 | BELUM | 0 | |
+| `test/fast-watcher-telegram-radar.test.js` | 127 | BELUM | 0 | |
+| `test/fast-watcher-v6-structure-regression.test.js` | 105 | BELUM | 0 | |
+| `test/fast-watcher-web-refresh.test.js` | 115 | BELUM | 0 | |
+| `test/fixtures/intraday-shadow-scoring-live/2026-07-21/lifecycle.json` | 13 | BELUM | 0 | |
+| `test/fixtures/intraday-shadow-scoring-live/2026-07-21/summary.json` | 7 | BELUM | 0 | |
+| `test/fixtures/intraday-shadow-scoring/2026-07-20/lifecycle.json` | 1 | BELUM | 0 | |
+| `test/fixtures/intraday-shadow-scoring/2026-07-20/summary.json` | 6 | BELUM | 0 | |
+| `test/fixtures/intraday-shadow-scoring/2026-07-21/lifecycle.json` | 1 | BELUM | 0 | |
+| `test/fixtures/intraday-shadow-scoring/2026-07-21/summary.json` | 6 | BELUM | 0 | |
+| `test/fixtures/intraday-shadow-scoring/2026-07-22/lifecycle.json` | 1 | BELUM | 0 | |
+| `test/fixtures/intraday-shadow-scoring/2026-07-22/summary.json` | 6 | BELUM | 0 | |
+| `test/foreign-upload-batch.test.js` | 75 | BELUM | 0 | |
+| `test/foreign-upload-runner-params.test.js` | 48 | BELUM | 0 | |
+| `test/free-user-approval.test.js` | 734 | BELUM | 0 | |
+| `test/frontend-runtime-decomposition.test.js` | 83 | BELUM | 0 | |
+| `test/head-third-party-resilience.test.js` | 84 | BELUM | 0 | |
+| `test/helpers/fake-supabase.js` | 94 | BELUM | 0 | |
+| `test/holiday-guard.test.js` | 46 | BELUM | 0 | |
+| `test/idx-holidays-2026-seed.test.js` | 70 | BELUM | 0 | |
+| `test/idx-tick-breakout-confirmation.test.js` | 54 | BELUM | 0 | |
+| `test/idx-tick-entry-status.test.js` | 50 | BELUM | 0 | |
+| `test/idx-tick-invalidation-distance.test.js` | 34 | BELUM | 0 | |
+| `test/idx-tick-normalization.test.js` | 155 | BELUM | 0 | |
+| `test/idx-tick-setup-freshness.test.js` | 107 | BELUM | 0 | |
+| `test/idx-trading-calendar.test.js` | 107 | BELUM | 0 | |
+| `test/intraday-collector-vps-audit.test.js` | 144 | BELUM | 0 | |
+| `test/intraday-eligibility-parity-lifecycle.test.js` | 263 | BELUM | 0 | |
+| `test/intraday-fast-watcher-lifecycle-reset.test.js` | 95 | BELUM | 0 | |
+| `test/intraday-fast-watcher-live-state.test.js` | 117 | BELUM | 0 | |
+| `test/intraday-fast-watcher-production-payload.test.js` | 138 | BELUM | 0 | |
+| `test/intraday-fast-watcher-recall.test.js` | 65 | BELUM | 0 | |
+| `test/intraday-fast-watcher-v7-volume-pace.test.js` | 243 | BELUM | 0 | |
+| `test/intraday-fast-watcher.test.js` | 258 | BELUM | 0 | |
+| `test/intraday-plan-lock-decoupling.test.js` | 193 | BELUM | 0 | |
+| `test/intraday-plan-lock.test.js` | 139 | BELUM | 0 | |
+| `test/intraday-sample-collector-date.test.js` | 201 | BELUM | 0 | |
+| `test/intraday-sample-collector.test.js` | 701 | BELUM | 0 | |
+| `test/intraday-sample-eligibility-partition.test.js` | 380 | BELUM | 0 | |
+| `test/intraday-shadow-scoring-live.test.js` | 486 | BELUM | 0 | |
+| `test/intraday-shadow-scoring.test.js` | 459 | BELUM | 0 | |
+| `test/intraday-shadow-trade-backtest.test.js` | 492 | BELUM | 0 | |
+| `test/latest-price-resolver-wib-date-regression.test.js` | 47 | BELUM | 0 | |
+| `test/latest-price-resolver.test.js` | 18 | BELUM | 0 | |
+| `test/log-endpoint-identity.test.js` | 409 | BELUM | 0 | |
+| `test/login-localstorage-resilience.test.js` | 133 | BELUM | 0 | |
+| `test/login-password-toggle.test.js` | 144 | BELUM | 0 | |
+| `test/maintenance-and-hidden-resilience.test.js` | 151 | BELUM | 0 | |
+| `test/maintenance-gate.test.js` | 470 | BELUM | 0 | |
+| `test/major-zone-volume-profile.test.js` | 98 | BELUM | 0 | |
+| `test/manual-latest-snapshot.test.js` | 328 | BELUM | 0 | |
+| `test/manual-previous-trading-day.test.js` | 380 | BELUM | 0 | |
+| `test/manual-subscription-review-flow.test.js` | 136 | BELUM | 0 | |
+| `test/market-regime.test.js` | 52 | BELUM | 0 | |
+| `test/mobile-nav.test.js` | 481 | BELUM | 0 | |
+| `test/mobile-ux-performance.test.js` | 38 | BELUM | 0 | |
+| `test/mobile-viewport.test.js` | 148 | BELUM | 0 | |
+| `test/monitor-active-position-freshness.test.js` | 104 | BELUM | 0 | |
+| `test/monitor-price-source-routing.test.js` | 99 | BELUM | 0 | |
+| `test/one-time-ai-research-all.test.js` | 1367 | BELUM | 0 | |
+| `test/openagentic-stream-reassembly.test.js` | 57 | BELUM | 0 | |
+| `test/password-credential.test.js` | 39 | BELUM | 0 | |
+| `test/pattern-abcd-acquisition.test.js` | 148 | BELUM | 0 | |
+| `test/pattern-abcd-validation.test.js` | 205 | BELUM | 0 | |
+| `test/pattern-abcd.test.js` | 153 | BELUM | 0 | |
+| `test/pattern-direction-safety.test.js` | 101 | BELUM | 0 | |
+| `test/pattern-map-admin-access.test.js` | 254 | BELUM | 0 | |
+| `test/pattern-map-admin-login-refresh.test.js` | 143 | BELUM | 0 | |
+| `test/pattern-map.test.js` | 235 | BELUM | 0 | |
+| `test/pattern-mobile-visibility.test.js` | 232 | BELUM | 0 | |
+| `test/pattern-radar.test.js` | 158 | BELUM | 0 | |
+| `test/pattern-ranking-integration.test.js` | 134 | BELUM | 0 | |
+| `test/pattern-screener-extension.test.js` | 137 | BELUM | 0 | |
+| `test/pattern-tab-resume-guard.test.js` | 66 | BELUM | 0 | |
+| `test/pattern-visual.test.js` | 176 | BELUM | 0 | |
+| `test/phase-b-signal-radar-backend.test.js` | 180 | BELUM | 0 | |
+| `test/phase-b-signal-radar-ui.test.js` | 142 | BELUM | 0 | |
+| `test/plan-entry-quality-separation.test.js` | 99 | BELUM | 0 | |
+| `test/portfolio-ai-workspace-resilience.test.js` | 56 | BELUM | 0 | |
+| `test/portfolio-and-security.test.js` | 651 | BELUM | 0 | |
+| `test/portfolio-command-center.test.js` | 161 | BELUM | 0 | |
+| `test/portfolio-missing-is-not-zero.test.js` | 212 | BELUM | 0 | |
+| `test/portfolio-planner-v1.test.js` | 164 | BELUM | 0 | |
+| `test/portfolio-price-freshness.test.js` | 282 | BELUM | 0 | |
+| `test/portfolio-render-not-gated-by-network.test.js` | 156 | BELUM | 0 | |
+| `test/portfolio-responsive-polish.test.js` | 43 | BELUM | 0 | |
+| `test/portfolio-supabase-persistence.test.js` | 97 | BELUM | 0 | |
+| `test/potential-radar-gate.test.js` | 286 | BELUM | 0 | |
+| `test/premium-workstation-ui.test.js` | 135 | BELUM | 0 | |
+| `test/production-loader-hotfix.test.js` | 106 | BELUM | 0 | |
+| `test/public-identity.test.js` | 112 | BELUM | 0 | |
+| `test/public-safety-gate-diagnostics.test.js` | 466 | BELUM | 0 | |
+| `test/public-screener-share-ranking.test.js` | 86 | BELUM | 0 | |
+| `test/ranking-page-scroll.test.js` | 90 | BELUM | 0 | |
+| `test/ranking-session-label-regression.test.js` | 128 | BELUM | 0 | |
+| `test/recent-failure-cooldown.test.js` | 235 | BELUM | 0 | |
+| `test/register-monitor.test.js` | 192 | BELUM | 0 | |
+| `test/register-terms-acceptance-contract.test.js` | 142 | BELUM | 0 | |
+| `test/register-user-device-id.test.js` | 279 | BELUM | 0 | |
+| `test/repo-security-hardening.test.js` | 75 | BELUM | 0 | |
+| `test/report-daily-market-context-integrity-tool.test.js` | 102 | BELUM | 0 | |
+| `test/report-helpers-monitor-source.test.js` | 31 | BELUM | 0 | |
+| `test/report-helpers.test.js` | 242 | BELUM | 0 | |
+| `test/report-rsi-parity-tool.test.js` | 84 | BELUM | 0 | |
+| `test/report-telegram-outcomes.test.js` | 129 | BELUM | 0 | |
+| `test/residual-audit-hardening.test.js` | 121 | BELUM | 0 | |
+| `test/reversal-breakout-lifecycle.test.js` | 137 | BELUM | 0 | |
+| `test/rich-telegram-format.test.js` | 311 | BELUM | 0 | |
+| `test/route-cache-preload.test.js` | 86 | BELUM | 0 | |
+| `test/run-all-screeners-vps.test.js` | 84 | BELUM | 0 | |
+| `test/run-intraday-experimental-pipeline.test.js` | 400 | BELUM | 0 | |
+| `test/runtime-hardening-regressions.test.js` | 172 | BELUM | 0 | |
+| `test/screener-evaluation-contract.test.js` | 25 | BELUM | 0 | |
+| `test/screener-evaluation-logger.test.js` | 12 | BELUM | 0 | |
+| `test/screener-evaluation-retention.test.js` | 9 | BELUM | 0 | |
+| `test/screener-lifecycle-ui.test.js` | 33 | BELUM | 0 | |
+| `test/screener-price-freshness.test.js` | 92 | BELUM | 0 | |
+| `test/screener-read-session-gate.test.js` | 281 | BELUM | 0 | |
+| `test/screener-upsert-atomic-safety.test.js` | 41 | BELUM | 0 | |
+| `test/second-chance-admin-pilot.test.js` | 224 | BELUM | 0 | |
+| `test/security-guard.test.js` | 201 | BELUM | 0 | |
+| `test/security-phase1.test.js` | 84 | BELUM | 0 | |
+| `test/smart-setup-labels.test.js` | 84 | BELUM | 0 | |
+| `test/sql/account-center/runtime.sql` | 56 | BELUM | 0 | |
+| `test/sql/admin-access/bootstrap.sql` | 37 | BELUM | 0 | |
+| `test/sql/admin-access/concurrent-activation-race.sh` | 95 | BELUM | 0 | |
+| `test/sql/admin-access/runtime.sql` | 539 | BELUM | 0 | |
+| `test/sql/admin-command-login/maintenance-code-runtime.sql` | 171 | BELUM | 0 | |
+| `test/sql/admin-command-login/readonly-status-runtime.sql` | 43 | BELUM | 0 | |
+| `test/sql/admin-command-login/runtime.sql` | 240 | BELUM | 0 | |
+| `test/sql/admin-command-login/zero-link-runtime.sql` | 255 | BELUM | 0 | |
+| `test/sql/manual-subscription-payment-runtime.sql` | 71 | BELUM | 0 | |
+| `test/sql/phase5c/audit-runtime.sql` | 64 | BELUM | 0 | |
+| `test/sql/phase5c/bootstrap.sql` | 28 | BELUM | 0 | |
+| `test/sql/phase5c/command-runtime.sql` | 67 | BELUM | 0 | |
+| `test/sql/phase5c/lifecycle-runtime.sql` | 213 | BELUM | 0 | |
+| `test/sql/phase5c/prepare-contract-runtime.sql` | 180 | BELUM | 0 | |
+| `test/sql/phase5c/prepare-runtime.sql` | 16 | BELUM | 0 | |
+| `test/sql/phase5c/redemption-runtime.sql` | 152 | BELUM | 0 | |
+| `test/sql/phase5c/schema-smoke.sql` | 18 | BELUM | 0 | |
+| `test/sql/portfolio-persistence/runtime.sql` | 143 | BELUM | 0 | |
+| `test/startup-state-ordering.test.js` | 166 | BELUM | 0 | |
+| `test/stock-analysis-ai-stream-failure-handling.test.js` | 214 | BELUM | 0 | |
+| `test/stock-analysis-ai-streaming-contract.test.js` | 165 | BELUM | 0 | |
+| `test/stock-daily-history-store.test.js` | 92 | BELUM | 0 | |
+| `test/subscription-auth.test.js` | 91 | BELUM | 0 | |
+| `test/subscription-enforcement-v1.test.js` | 101 | BELUM | 0 | |
+| `test/subscription-manual-postgres.test.js` | 51 | BELUM | 0 | |
+| `test/subscription-phase2.test.js` | 38 | BELUM | 0 | |
+| `test/subscription-phase3.test.js` | 40 | BELUM | 0 | |
+| `test/subscription-phase4.test.js` | 9 | BELUM | 0 | |
+| `test/subscription-phase5a.test.js` | 9 | BELUM | 0 | |
+| `test/subscription-phase5b.test.js` | 23 | BELUM | 0 | |
+| `test/subscription-phase5c.test.js` | 198 | BELUM | 0 | |
+| `test/subscription-phase6a-access.test.js` | 319 | BELUM | 0 | |
+| `test/subscription-phase6a-runtime.test.js` | 51 | BELUM | 0 | |
+| `test/subscription-phase6a-ui.test.js` | 60 | BELUM | 0 | |
+| `test/swing-konglo-fibonacci-confluence.test.js` | 490 | BELUM | 0 | |
+| `test/swing-konglo-no-saved-rows-heartbeat.test.js` | 73 | BELUM | 0 | |
+| `test/swing-nk-high-rr-warning.test.js` | 351 | BELUM | 0 | |
+| `test/swing-nk-trade-plan-v2-persistence.test.js` | 64 | BELUM | 0 | |
+| `test/swing-non-konglo-atomic-upsert.test.js` | 65 | BELUM | 0 | |
+| `test/swing-non-konglo-fib-confluence.test.js` | 62 | BELUM | 0 | |
+| `test/swing-nonkonglo-notification.test.js` | 95 | BELUM | 0 | |
+| `test/swing-nonkonglo-staging-schema.test.js` | 199 | BELUM | 0 | |
+| `test/swing-price-provenance-persistence.test.js` | 195 | BELUM | 0 | |
+| `test/swing-top5-radar-digest.test.js` | 177 | BELUM | 0 | |
+| `test/telegram-approval-gate.test.js` | 380 | BELUM | 0 | |
+| `test/telegram-candidate-digest-gate.test.js` | 238 | BELUM | 0 | |
+| `test/telegram-command-audit-v1.test.js` | 318 | BELUM | 0 | |
+| `test/telegram-daily-recap.test.js` | 264 | BELUM | 0 | |
+| `test/telegram-invite-button-cleanup.test.js` | 147 | BELUM | 0 | |
+| `test/telegram-join-request-gate.test.js` | 571 | BELUM | 0 | |
+| `test/telegram-member-lifecycle.test.js` | 1011 | BELUM | 0 | |
+| `test/telegram-monitor-dedup.test.js` | 382 | BELUM | 0 | |
+| `test/telegram-monitor-delivery-order.test.js` | 34 | BELUM | 0 | |
+| `test/telegram-monitor-dry-run.test.js` | 475 | BELUM | 0 | |
+| `test/telegram-monitor-dual-gate.test.js` | 118 | BELUM | 0 | |
+| `test/telegram-monitor-hourly-batch.test.js` | 383 | BELUM | 0 | |
+| `test/telegram-monitor-local-runner.test.js` | 40 | BELUM | 0 | |
+| `test/telegram-monitor-plan-identity-migration.test.js` | 16 | BELUM | 0 | |
+| `test/telegram-monitor-plan-identity.test.js` | 145 | BELUM | 0 | |
+| `test/telegram-monitor.test.js` | 359 | BELUM | 0 | |
+| `test/telegram-no-candidate-silence.test.js` | 104 | BELUM | 0 | |
+| `test/telegram-notifier-rate-limit.test.js` | 56 | BELUM | 0 | |
+| `test/telegram-public-safety.test.js` | 165 | BELUM | 0 | |
+| `test/telegram-retry-safe-observability.test.js` | 300 | BELUM | 0 | |
+| `test/telegram-templates.test.js` | 356 | BELUM | 0 | |
+| `test/telegram-unified-subscription.test.js` | 232 | BELUM | 0 | |
+| `test/telegram-verification-v2.test.js` | 1110 | BELUM | 0 | |
+| `test/top10-command-selection.test.js` | 149 | BELUM | 0 | |
+| `test/top5-history-archive.test.js` | 146 | BELUM | 0 | |
+| `test/top5-history-performance.test.js` | 94 | BELUM | 0 | |
+| `test/top5-pipeline-isolation.test.js` | 60 | BELUM | 0 | |
+| `test/top5-progress-monitor.test.js` | 80 | BELUM | 0 | |
+| `test/top5-progress-runner.test.js` | 257 | BELUM | 0 | |
+| `test/top5-response-safety.test.js` | 113 | BELUM | 0 | |
+| `test/top5-safe-backfill.test.js` | 142 | BELUM | 0 | |
+| `test/top5-watchlist-fallback.test.js` | 540 | BELUM | 0 | |
+| `test/top5-watchlist-gate.test.js` | 558 | BELUM | 0 | |
+| `test/tp-history-classification.test.js` | 80 | BELUM | 0 | |
+| `test/tp1-observed-high-publication-guard.test.js` | 241 | BELUM | 0 | |
+| `test/track-record-csv.test.js` | 208 | BELUM | 0 | |
+| `test/track-record-endpoint.test.js` | 160 | BELUM | 0 | |
+| `test/track-record-service.test.js` | 190 | BELUM | 0 | |
+| `test/trade-plan-v2-daytrade-diagnostic.test.js` | 206 | BELUM | 0 | |
+| `test/trade-plan-v2-declared-guards.test.js` | 89 | BELUM | 0 | |
+| `test/trade-plan-v2-integration.test.js` | 418 | BELUM | 0 | |
+| `test/trade-plan-v2-liquidity-sweep.test.js` | 256 | BELUM | 0 | |
+| `test/trade-plan-v2-parity.test.js` | 163 | BELUM | 0 | |
+| `test/trade-plan-v2-source-adapters.test.js` | 855 | BELUM | 0 | |
+| `test/trade-plan-v2-sweep-diagnostic.test.js` | 233 | BELUM | 0 | |
+| `test/trade-plan-v2.test.js` | 675 | BELUM | 0 | |
+| `test/ui-bugfix-pack-v1.test.js` | 172 | BELUM | 0 | |
+| `test/ui-redesign-a11y.test.js` | 341 | BELUM | 0 | |
+| `test/ui-theme-layer.test.js` | 141 | BELUM | 0 | |
+| `test/user-watchlist-evaluator.test.js` | 366 | BELUM | 0 | |
+| `test/user-watchlist-multisource-prices.test.js` | 166 | BELUM | 0 | |
+| `test/user-watchlist-service.test.js` | 492 | BELUM | 0 | |
+| `test/web-runtime-audit.test.js` | 66 | BELUM | 0 | |
+| `test/web-security-boundaries.test.js` | 248 | BELUM | 0 | |
+| `test/website-production-audit.test.js` | 406 | BELUM | 0 | |
+| `test/weekly-timeframe.test.js` | 65 | BELUM | 0 | |
+| `tools/acquire-pattern-abcd-data.js` | 240 | BELUM | 0 | |
+| `tools/ai-eval-once-supervisor.js` | 238 | BELUM | 0 | |
+| `tools/apply-desktop-header-center.js` | 55 | BELUM | 0 | |
+| `tools/apply-production-hotfixes.js` | 358 | BELUM | 0 | |
+| `tools/apply-screener-lifecycle-ui.js` | 34 | BELUM | 0 | |
+| `tools/apply-ui-bugfix-pack-v1.js` | 51 | BELUM | 0 | |
+| `tools/audit-screener-evaluation-retention.js` | 17 | BELUM | 0 | |
+| `tools/build-ai-eval-failed-retry-dataset.js` | 167 | BELUM | 0 | |
+| `tools/build-ai-eval-snapshot-source.js` | 80 | BELUM | 0 | |
+| `tools/control-ai-eval-run.js` | 155 | BELUM | 0 | |
+| `tools/curated-build-tests.json` | 321 | SEDANG | 1 | BUG-002 (test tidak terdaftar tidak pernah jalan) |
+| `tools/daytrade-vps-worker-observe.js` | 482 | BELUM | 0 | |
+| `tools/diagnose-ai-eval-pilot.js` | 122 | BELUM | 0 | |
+| `tools/evaluate-ai-answers.js` | 135 | BELUM | 0 | |
+| `tools/generate-ai-eval-complete-dataset.js` | 362 | BELUM | 0 | |
+| `tools/generate-ai-eval-dataset.js` | 207 | BELUM | 0 | |
+| `tools/generate-ai-eval-quality-dataset.js` | 146 | BELUM | 0 | |
+| `tools/import-foreign-watchlist.js` | 214 | BELUM | 0 | |
+| `tools/import-fundamentals.js` | 79 | BELUM | 0 | |
+| `tools/intraday-sample-collector.js` | 939 | BELUM | 0 | |
+| `tools/intraday-shadow-scoring-live.js` | 171 | BELUM | 0 | |
+| `tools/intraday-shadow-scoring.js` | 155 | BELUM | 0 | |
+| `tools/intraday-shadow-trade-backtest.js` | 195 | BELUM | 0 | |
+| `tools/introspect-schema.js` | 53 | BELUM | 0 | |
+| `tools/one-time-ai-research-all.js` | 1501 | BELUM | 0 | |
+| `tools/openagentic-response-normalizer.js` | 238 | BELUM | 0 | |
+| `tools/prepare-ai-eval-failed-retry.js` | 219 | BELUM | 0 | |
+| `tools/repo-security-audit.js` | 89 | BELUM | 0 | |
+| `tools/report-atr-validation.js` | 158 | BELUM | 0 | |
+| `tools/report-daily-market-context-integrity.js` | 203 | BELUM | 0 | |
+| `tools/report-daytrade-adjusted-vs-normal.js` | 33 | BELUM | 0 | |
+| `tools/report-daytrade-cache-audit.js` | 41 | BELUM | 0 | |
+| `tools/report-daytrade-intraday-dry-run-gate.js` | 53 | BELUM | 0 | |
+| `tools/report-daytrade-intraday-eod-closeout.js` | 21 | BELUM | 0 | |
+| `tools/report-daytrade-intraday-observe.js` | 35 | BELUM | 0 | |
+| `tools/report-daytrade-intraday-policy.js` | 49 | BELUM | 0 | |
+| `tools/report-daytrade-intraday-provider-cache-quality.js` | 33 | BELUM | 0 | |
+| `tools/report-daytrade-intraday-readiness.js` | 33 | BELUM | 0 | |
+| `tools/report-daytrade-intraday-score-impact.js` | 32 | BELUM | 0 | |
+| `tools/report-daytrade-intraday-staged-enable-runbook.js` | 57 | BELUM | 0 | |
+| `tools/report-daytrade-intraday-validation-aggregate.js` | 33 | BELUM | 0 | |
+| `tools/report-daytrade-local-vs-vercel.js` | 82 | BELUM | 0 | |
+| `tools/report-rsi-parity.js` | 304 | BELUM | 0 | |
+| `tools/report-telegram-outcomes.js` | 734 | BELUM | 0 | |
+| `tools/run-after-market-top5-lock.js` | 162 | BELUM | 0 | |
+| `tools/run-ai-eval-batch.js` | 156 | BELUM | 0 | |
+| `tools/run-ai-eval-cloud-bounded.js` | 176 | BELUM | 0 | |
+| `tools/run-ai-eval-cloud.js` | 631 | BELUM | 0 | |
+| `tools/run-ai-eval-once.sh` | 171 | BELUM | 0 | |
+| `tools/run-all-screeners-vps.js` | 21 | BELUM | 0 | |
+| `tools/run-build-test-suite.js` | 108 | BELUM | 0 | |
+| `tools/run-daily-afternoon-recap.js` | 80 | BELUM | 0 | |
+| `tools/run-daytrade-aligned-evaluation-canary.js` | 110 | BELUM | 0 | |
+| `tools/run-daytrade-evaluation-canary.js` | 242 | BELUM | 0 | |
+| `tools/run-daytrade-experimental-admin-alert.js` | 160 | BELUM | 0 | |
+| `tools/run-daytrade-full-universe-intraday-validation.sh` | 170 | BELUM | 0 | |
+| `tools/run-daytrade-intraday-validation-bundle.js` | 278 | BELUM | 0 | |
+| `tools/run-daytrade-outcome-collector.js` | 15 | BELUM | 0 | |
+| `tools/run-intraday-experimental-pipeline.js` | 409 | BELUM | 0 | |
+| `tools/run-intraday-fast-watcher-guarded-live.js` | 49 | BELUM | 0 | |
+| `tools/run-intraday-fast-watcher.js` | 119 | BELUM | 0 | |
+| `tools/run-second-chance-admin-pilot.js` | 12 | BELUM | 0 | |
+| `tools/run-telegram-lifecycle.js` | 98 | BELUM | 0 | |
+| `tools/run-telegram-lifecycle.sh` | 68 | BELUM | 0 | |
+| `tools/run-telegram-monitor-local.js` | 167 | BELUM | 0 | |
+| `tools/run-top5-progress-monitor.js` | 232 | BELUM | 0 | |
+| `tools/run-trade-plan-v2-daytrade-diagnostic.js` | 64 | BELUM | 0 | |
+| `tools/run-trade-plan-v2-replay-preview.js` | 103 | BELUM | 0 | |
+| `tools/run-trade-plan-v2-sweep-diagnostic.js` | 73 | BELUM | 0 | |
+| `tools/streamlit_runner/.env.example` | 15 | BELUM | 0 | |
+| `tools/test-telegram-notifier.js` | 121 | BELUM | 0 | |
+| `tools/upload-ai-eval-shards.js` | 192 | BELUM | 0 | |
+| `tools/validate-ai-eval-once.js` | 103 | BELUM | 0 | |
+| `tools/validate-auth-recovery-v2.js` | 88 | BELUM | 0 | |
+| `tools/validate-pattern-abcd-history.js` | 182 | BELUM | 0 | |
+| `tools/verify-intraday-collector-vps.js` | 158 | BELUM | 0 | |
+| `vercel.json` | 532 | SELESAI | 0 | bersih; header keamanan, cache policy, cron 08:00 WIB |
