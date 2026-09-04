@@ -14,10 +14,20 @@ test('parseArgs extracts --dry-run flag and ticker list independently of order',
 });
 
 test('--dry-run performs zero writes and does not require Supabase credentials', async () => {
-  const result = await run(['BBCA,TLKM', '--dry-run'], { supabaseUrl: '', supabaseKey: '' });
-  assert.equal(result.exitCode, 0);
-  assert.equal(result.dryRun, true);
-  assert.equal(result.tickerCount, 2);
+  const OriginalDate = Date;
+  const fakeNow = new OriginalDate('2026-08-14T02:00:00Z'); // Friday (weekday)
+  global.Date = class extends OriginalDate {
+    constructor(...args) { if (args.length === 0) { super(fakeNow); } else { super(...args); } }
+    static now() { return fakeNow.getTime(); }
+  };
+  try {
+    const result = await run(['BBCA,TLKM', '--dry-run'], { supabaseUrl: '', supabaseKey: '' });
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.dryRun, true);
+    assert.equal(result.tickerCount, 2);
+  } finally {
+    global.Date = OriginalDate;
+  }
 });
 
 test('--dry-run still respects the market-closed guard (Saturday)', async () => {
