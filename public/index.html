@@ -322,6 +322,82 @@
     </div>
 </div>
 
+<!-- ===== AUTHENTICATION MODALS (top-level, OUTSIDE #dashboardScreen) =====
+     These three modals are the only entry points a signed-out visitor has.
+     setTopLevelView() hides #dashboardScreen (class="hidden" => display:none)
+     AND marks it inert whenever the landing page is the active view, so any
+     modal nested inside it can never be shown or interacted with from the
+     landing page: openLoginModal()/openRegisterModal()/openSelfResetModal()
+     only clear .hidden on the modal itself, never on the hidden ancestor.
+     They must therefore stay direct children of <body>, as siblings of
+     #dashboardScreen — see test/auth-modals-outside-dashboard-screen.test.js. -->
+
+<!-- LOGIN MODAL -->
+<div id="loginModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 id="loginModalTitle" class="text-base font-bold text-white">Masuk</h3>
+            <button onclick="closeLoginModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal masuk">&times;</button>
+        </div>
+        <div class="space-y-3">
+            <div><label for="loginUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label for="loginPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+            <div id="loginError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
+            <button onclick="doLogin()" id="loginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Masuk</button>
+            <div class="text-center"><button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-blue-400 hover:underline">Lupa Password?</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- REGISTER MODAL -->
+<div id="registerModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="registerModalTitle">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 id="registerModalTitle" class="text-base font-bold text-white">Daftar</h3>
+            <button onclick="closeRegisterModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal daftar">&times;</button>
+        </div>
+        <div id="registerFormFields" class="space-y-3">
+            <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="regPassword" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+            <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+            <label class="flex items-start gap-2 text-xs text-gray-400"><input type="checkbox" id="regTermsAccepted" class="mt-0.5 h-4 w-4 rounded border-gray-700 bg-[#0b0e14] text-emerald-500 focus:ring-emerald-500/50"><span>Saya sudah membaca dan menyetujui Peraturan &amp; Ketentuan Penggunaan Auto-Cuan.</span></label>
+            <div id="registerError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
+            <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1" role="status" aria-live="polite"></div>
+            <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
+        </div>
+        <div id="registerApprovalPanel" class="hidden space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
+            <h4 class="text-lg font-bold text-emerald-300">Pendaftaran berhasil</h4>
+            <p class="text-sm text-gray-300">Akun Anda sedang menunggu persetujuan admin.</p>
+            <p class="text-sm text-gray-300">Kode pengguna: <strong id="registerApprovalCode" class="font-mono tracking-wider text-white"></strong></p>
+            <div class="rounded-xl border border-sky-500/30 bg-sky-500/5 p-3 space-y-1.5">
+                <p class="text-xs font-semibold text-sky-300">Kode verifikasi Telegram (satu kali)</p>
+                <p><strong id="registerVerificationCode" class="font-mono text-lg tracking-widest text-white"></strong></p>
+                <p id="registerVerificationExpiry" class="text-[11px] text-gray-400"></p>
+                <p class="text-[11px] leading-relaxed text-gray-400">Salin kode ini, lalu buka bot verifikasi dan kirim kodenya ke chat bot. Jangan bagikan kode ini ke siapa pun.</p>
+            </div>
+            <div class="space-y-2">
+                <button type="button" id="copyApprovalCodeBtn" onclick="copyRegistrationApprovalCode()" class="w-full rounded-xl border border-emerald-500/40 px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10 transition">Salin Kode Verifikasi</button>
+                <a id="openVerificationBot" class="hidden w-full rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition" target="_blank" rel="noopener noreferrer">Buka Bot Verifikasi Telegram</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SELF-SERVICE RESET PASSWORD MODAL -->
+<div id="selfResetModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="selfResetModalTitle">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <h3 id="selfResetModalTitle" class="text-base font-bold text-white text-center">Reset Password</h3>
+        <p class="text-xs text-gray-500 text-center">Masukkan username dan password baru. Reset hanya bisa dilakukan dari perangkat yang terdaftar.</p>
+        <div><label for="selfResetUsername" class="block text-xs font-medium text-gray-400 mb-1.5">Username</label><input type="text" id="selfResetUsername" placeholder="Username terdaftar" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
+        <div><label for="selfResetPw" class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="selfResetPw" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
+        <div><label for="selfResetPwConfirm" class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="selfResetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doSelfResetPassword()"></div>
+        <div id="selfResetError" class="hidden text-sm text-red-400 text-center" role="alert" aria-live="assertive"></div>
+        <div id="selfResetSuccess" class="hidden text-sm text-emerald-400 text-center" role="status" aria-live="polite"></div>
+        <button id="selfResetSubmitBtn" onclick="doSelfResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
+        <button onclick="closeSelfResetModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
+    </div>
+</div>
+
 <!-- ===== DASHBOARD SCREEN ===== -->
 <div id="dashboardScreen" class="hidden flex flex-col min-h-screen">
 
@@ -1518,57 +1594,6 @@
     </div>
 </div>
 
-<!-- LOGIN MODAL -->
-<div id="loginModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between">
-            <h3 id="loginModalTitle" class="text-base font-bold text-white">Masuk</h3>
-            <button onclick="closeLoginModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal masuk">&times;</button>
-        </div>
-        <div class="space-y-3">
-            <div><label for="loginUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label for="loginPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <div id="loginError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
-            <button onclick="doLogin()" id="loginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Masuk</button>
-            <div class="text-center"><button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-blue-400 hover:underline">Lupa Password?</button></div>
-        </div>
-    </div>
-</div>
-
-<!-- REGISTER MODAL -->
-<div id="registerModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="registerModalTitle">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between">
-            <h3 id="registerModalTitle" class="text-base font-bold text-white">Daftar</h3>
-            <button onclick="closeRegisterModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal daftar">&times;</button>
-        </div>
-        <div id="registerFormFields" class="space-y-3">
-            <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="regPassword" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <label class="flex items-start gap-2 text-xs text-gray-400"><input type="checkbox" id="regTermsAccepted" class="mt-0.5 h-4 w-4 rounded border-gray-700 bg-[#0b0e14] text-emerald-500 focus:ring-emerald-500/50"><span>Saya sudah membaca dan menyetujui Peraturan &amp; Ketentuan Penggunaan Auto-Cuan.</span></label>
-            <div id="registerError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
-            <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1" role="status" aria-live="polite"></div>
-            <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
-        </div>
-        <div id="registerApprovalPanel" class="hidden space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
-            <h4 class="text-lg font-bold text-emerald-300">Pendaftaran berhasil</h4>
-            <p class="text-sm text-gray-300">Akun Anda sedang menunggu persetujuan admin.</p>
-            <p class="text-sm text-gray-300">Kode pengguna: <strong id="registerApprovalCode" class="font-mono tracking-wider text-white"></strong></p>
-            <div class="rounded-xl border border-sky-500/30 bg-sky-500/5 p-3 space-y-1.5">
-                <p class="text-xs font-semibold text-sky-300">Kode verifikasi Telegram (satu kali)</p>
-                <p><strong id="registerVerificationCode" class="font-mono text-lg tracking-widest text-white"></strong></p>
-                <p id="registerVerificationExpiry" class="text-[11px] text-gray-400"></p>
-                <p class="text-[11px] leading-relaxed text-gray-400">Salin kode ini, lalu buka bot verifikasi dan kirim kodenya ke chat bot. Jangan bagikan kode ini ke siapa pun.</p>
-            </div>
-            <div class="space-y-2">
-                <button type="button" id="copyApprovalCodeBtn" onclick="copyRegistrationApprovalCode()" class="w-full rounded-xl border border-emerald-500/40 px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10 transition">Salin Kode Verifikasi</button>
-                <a id="openVerificationBot" class="hidden w-full rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition" target="_blank" rel="noopener noreferrer">Buka Bot Verifikasi Telegram</a>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- ADMIN AI DETAIL MODAL removed: metadata-only mode, no full result display -->
 
 <!-- RESET PASSWORD MODAL -->
@@ -1591,21 +1616,6 @@
         <p class="text-[11px] text-gray-500 text-center">ID perangkat disamarkan demi keamanan.</p>
         <div id="deviceDetailsBody" class="max-h-72 overflow-y-auto"></div>
         <button onclick="closeDeviceModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Tutup</button>
-    </div>
-</div>
-
-<!-- SELF-SERVICE RESET PASSWORD MODAL -->
-<div id="selfResetModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="selfResetModalTitle">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-        <h3 id="selfResetModalTitle" class="text-base font-bold text-white text-center">Reset Password</h3>
-        <p class="text-xs text-gray-500 text-center">Masukkan username dan password baru. Reset hanya bisa dilakukan dari perangkat yang terdaftar.</p>
-        <div><label for="selfResetUsername" class="block text-xs font-medium text-gray-400 mb-1.5">Username</label><input type="text" id="selfResetUsername" placeholder="Username terdaftar" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
-        <div><label for="selfResetPw" class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="selfResetPw" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
-        <div><label for="selfResetPwConfirm" class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="selfResetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doSelfResetPassword()"></div>
-        <div id="selfResetError" class="hidden text-sm text-red-400 text-center" role="alert" aria-live="assertive"></div>
-        <div id="selfResetSuccess" class="hidden text-sm text-emerald-400 text-center" role="status" aria-live="polite"></div>
-        <button id="selfResetSubmitBtn" onclick="doSelfResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
-        <button onclick="closeSelfResetModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
     </div>
 </div>
 
@@ -3252,6 +3262,51 @@ function quickAnalisis(ticker) {
     input.value = ticker;
     runAnalisisFromDashboard(ticker);
 }
+// ===== ANALISIS SAHAM: REQUEST GENERATION GUARD =====
+// Every run of runAnalisisFromDashboard() claims the next sequence number. A
+// response may only touch the DOM or the follow-up context while it still holds
+// the newest one. Without this, switching ticker quickly let an older, slower
+// response land last and repaint the panel with the WRONG emiten — including
+// its Chart/News buttons and the follow-up chat context.
+var _analisisRequestSeq = 0;
+var ANALISIS_REQUEST_TIMEOUT_MS = 70000;
+
+// Mirrors describeFailure() in public/stock-analysis-ai.js. A non-2xx from
+// /api/analyze carries a real, actionable reason (no session, no subscription,
+// rate limited, AI not configured); collapsing all of them into one generic
+// "coba lagi" hid that reason and told the user to retry even when retrying
+// can never work.
+function describeAnalisisFailure(response, data, error) {
+    var code = data && data.code;
+    var status = response ? response.status : 0;
+    if (error && error.name === 'AbortError') return { retryable: true, text: 'Analisis dihentikan karena terlalu lama. Coba lagi ya.' };
+    if (!response) return { retryable: true, text: 'Koneksi ke server AI gagal. Cek jaringan lalu coba lagi.' };
+    if (status === 401) return { retryable: false, text: 'Sesi kamu sudah berakhir. Muat ulang halaman dan login lagi.' };
+    if (status === 403) return { retryable: false, text: (data && data.error) || 'Akses AI ditolak untuk akun ini.' };
+    if (status === 402 || code === 'SUBSCRIPTION_REQUIRED') return { retryable: false, text: (data && data.error) || 'Subscription aktif diperlukan untuk menggunakan fitur ini.' };
+    if (status === 429 || code === 'AI_RATE_LIMITED') {
+        var wait = Number(data && data.retry_after_seconds);
+        return { retryable: false, text: 'Terlalu banyak permintaan analisis dalam waktu singkat.' + (Number.isFinite(wait) && wait > 0 ? ' Coba lagi sekitar ' + wait + ' detik lagi.' : ' Tunggu sebentar lalu coba lagi.') };
+    }
+    if (code === 'AI_NOT_CONFIGURED') return { retryable: false, text: 'Asisten AI belum diaktifkan di server. Hubungi admin.' };
+    if (code === 'AI_KEY_OR_BALANCE_ERROR') return { retryable: false, text: 'Konfigurasi akses AI di server bermasalah (API key atau saldo). Hubungi admin.' };
+    if (code === 'PREMIUM_ACCESS_UNAVAILABLE') return { retryable: true, text: (data && data.error) || 'Status langganan belum bisa dibaca. Coba lagi sebentar.' };
+    if (status >= 500) return { retryable: true, text: (data && data.error) || 'Server AI sedang bermasalah. Coba lagi sebentar.' };
+    return { retryable: true, text: (data && data.error) || 'Analisis belum berhasil. Coba lagi.' };
+}
+
+function renderAnalisisFailure(resultArea, failure) {
+    if (!resultArea) return;
+    resultArea.innerHTML = '<div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center space-y-2" role="alert">' +
+        '<p class="text-sm text-red-400"></p>' +
+        (failure.retryable ? '<p class="text-xs text-gray-500">Kamu bisa mencoba lagi.</p>' : '') +
+        '</div>';
+    // textContent, never innerHTML: failure.text can carry a server-supplied
+    // message and must never be parsed as markup.
+    var messageEl = resultArea.querySelector('p');
+    if (messageEl) messageEl.textContent = failure.text;
+}
+
 async function runAnalisisFromDashboard(tickerOrQuery) {
     var resultArea = document.getElementById('analisisResult');
     var followUp = document.getElementById('analisisFollowUp');
@@ -3262,6 +3317,12 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
         resultArea.innerHTML = '<div class="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-center"><p class="text-sm text-yellow-400">' + getAnalysisLimitMsg() + '</p></div>';
         return;
     }
+
+    // Claim this run's sequence number BEFORE any await. Anything this run does
+    // to the DOM or the follow-up context afterwards is conditional on still
+    // holding the newest number (see isStaleAnalisisRun below).
+    var analisisRequestId = ++_analisisRequestSeq;
+    function isStaleAnalisisRun() { return analisisRequestId !== _analisisRequestSeq; }
 
     // Show loading
     resultArea.innerHTML = '<div class="flex flex-col items-center justify-center py-12"><div class="spinner"></div><p class="text-sm text-gray-500 mt-4 loading-stage-text">Mengambil data teknikal...</p></div>';
@@ -3297,24 +3358,55 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
             if (quoteCtx) enrichedMsg += quoteCtx;
         }
 
-        var response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'text/event-stream, application/json'
-            },
-            body: JSON.stringify({
-                chatMessage: enrichedMsg,
-                source: 'chat_mode',
-                isInitialAnalysis: true,
-                stream: true,
-                username: localStorage.getItem('autocuan_user') || '',
-                isAdmin: localStorage.getItem('autocuan_is_admin') === 'true',
-                context: (typeof buildContextForApi === 'function') ? buildContextForApi() : {}
-            })
-        });
+        // Bounded, like the follow-up chat in public/stock-analysis-ai.js. Without
+        // this the spinner ran forever whenever the platform or an upstream
+        // provider stalled; api/analyze.js itself is capped at 60s (vercel.json).
+        var analisisAbort = (typeof AbortController === 'function') ? new AbortController() : null;
+        var analisisAbortTimer = analisisAbort
+            ? setTimeout(function () { try { analisisAbort.abort(); } catch (_) {} }, ANALISIS_REQUEST_TIMEOUT_MS)
+            : null;
+
+        var response;
+        try {
+            response = await fetch('/api/analyze', {
+                method: 'POST',
+                credentials: 'same-origin',
+                signal: analisisAbort ? analisisAbort.signal : undefined,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/event-stream, application/json'
+                },
+                body: JSON.stringify({
+                    chatMessage: enrichedMsg,
+                    source: 'chat_mode',
+                    isInitialAnalysis: true,
+                    stream: true,
+                    username: localStorage.getItem('autocuan_user') || '',
+                    isAdmin: localStorage.getItem('autocuan_is_admin') === 'true',
+                    context: (typeof buildContextForApi === 'function') ? buildContextForApi() : {}
+                })
+            });
+        } finally {
+            if (analisisAbortTimer) clearTimeout(analisisAbortTimer);
+        }
 
         clearInterval(stageTimer);
+
+        // A newer analysis was started while this one was in flight. Drop this
+        // response entirely: repainting here would show the previous emiten.
+        if (isStaleAnalisisRun()) return;
+
+        // /api/analyze answers a rejected request with a real reason: 401 no
+        // session, 403/402 no premium entitlement, 429 rate limited,
+        // AI_NOT_CONFIGURED, and so on. This used to be ignored, so every one of
+        // them fell through to `rawOutput === ''` and surfaced as the single
+        // generic "Analisis belum berhasil. Coba lagi." — which is not only
+        // uninformative but actively wrong advice for the non-retryable ones.
+        if (!response.ok) {
+            var failureData = await response.json().catch(function () { return {}; });
+            renderAnalisisFailure(resultArea, describeAnalisisFailure(response, failureData, null));
+            return;
+        }
 
         var contentType = (response.headers && response.headers.get('content-type')) || '';
         var isStreamResponse = contentType.includes('text/event-stream') && response.body && typeof response.body.getReader === 'function';
@@ -3334,6 +3426,8 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
             while (true) {
                 var streamChunk = await reader.read();
                 if (streamChunk.done) break;
+                // A newer analysis started mid-stream: stop consuming and paint nothing.
+                if (isStaleAnalisisRun()) { try { await reader.cancel(); } catch (_) {} return; }
                 streamBuffer += decoder.decode(streamChunk.value, { stream: true });
                 var lines = streamBuffer.split('\n');
                 streamBuffer = lines.pop();
@@ -3355,9 +3449,12 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
                 }
             }
         } else {
-            var data = await response.json();
+            var data = await response.json().catch(function () { return {}; });
+            if (isStaleAnalisisRun()) return;
             rawOutput = data.html || data.reply || '';
         }
+
+        if (isStaleAnalisisRun()) return;
 
         if (rawOutput) {
             var html = rawOutput.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
@@ -3391,8 +3488,11 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
         }
     } catch(e) {
         clearInterval(stageTimer);
-        var errMsg = (typeof isNetworkError === 'function' && isNetworkError(e)) ? 'Koneksi ke server sedang bermasalah.' : 'Analisis belum berhasil. Coba lagi.';
-        resultArea.innerHTML = '<div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center"><p class="text-sm text-red-400">' + errMsg + '</p></div>';
+        // Never repaint over a newer analysis that is already on screen.
+        if (isStaleAnalisisRun()) return;
+        // No response object here: the request never completed. describeAnalisisFailure
+        // separates the client abort (our own 70s cap) from a transport failure.
+        renderAnalisisFailure(resultArea, describeAnalisisFailure(null, {}, e));
     }
 }
 
@@ -10573,9 +10673,31 @@ function sanitizeAIHtml(html) {
     if (!html) return html;
     // Remove script tags (split closing tag to avoid HTML parser issue)
     var output = html.replace(new RegExp('<script[\\s\\S]*?<\\/script>', 'gi'), '');
-    // Remove event handlers
-    output = output.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
-    output = output.replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '');
+    // Remove event handlers.
+    //
+    // This replaces two earlier rules that both required WHITESPACE before the
+    // handler name:
+    //     /\s+on\w+\s*=\s*["'][^"']*["']/gi
+    //     /\s+on\w+\s*=\s*[^\s>]*/gi
+    // The HTML tokenizer is more permissive than that. It accepts `/` as an
+    // attribute separator, and it lets an attribute begin immediately after a
+    // quoted value, so all three of these survived and fired in Chromium:
+    //     <img/src=x/onerror=...>
+    //     <img src=x/onerror=...>
+    //     <img src="x"onerror=...>
+    //
+    // Those rules were also not scoped to the inside of a tag, so ordinary prose
+    // was damaged: "buy on weakness: onclick= bukan atribut" lost the words after
+    // "onclick=". Matching per tag fixes both problems at once — every separator
+    // the parser accepts is handled, and body text is never rewritten.
+    output = output.replace(/<([a-zA-Z][a-zA-Z0-9:-]*)((?:"[^"]*"|'[^']*'|[^>"'])*)>/g,
+        function (whole, tagName, attrs) {
+            var cleaned = attrs.replace(
+                /(^|[\s\/"'])on[a-zA-Z0-9_:.-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi,
+                '$1'
+            );
+            return '<' + tagName + cleaned + '>';
+        });
     // Dangerous URL schemes, resistant to entity encoding.
     //
     // The old rule was a literal match on `href="javascript:..."`, so
