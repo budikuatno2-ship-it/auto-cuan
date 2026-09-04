@@ -36,11 +36,15 @@ test('BYOK Security: API key masking and format validation', () => {
   assert.equal(credentials.maskApiKey(TEST_API_KEY_A), '•••• •••• 5678');
   assert.equal(credentials.maskApiKey(TEST_API_KEY_B), '•••• •••• 4321');
 
-  // Validation
+  // Validation (legacy AIza... and new AQ... Google AI Studio formats)
   assert.equal(credentials.validateApiKey('').ok, false);
   assert.equal(credentials.validateApiKey('short-key').ok, false);
   assert.equal(credentials.validateApiKey(TEST_API_KEY_A).ok, true);
+  const testKeyAQ = 'AQ.AbCdEf1234567890_test.key.format';
+  assert.equal(credentials.validateApiKey(testKeyAQ).ok, true);
+  assert.equal(credentials.maskApiKey(testKeyAQ), '•••• •••• rmat');
   assert.equal(credentials.validateApiKey('invalid key with spaces!!!').ok, false);
+  assert.equal(credentials.validateApiKey('sk-proj-invalidNonGeminiKey12345').ok, false);
 });
 
 test('BYOK Security: Credential save never exposes plain text and returns only masked hint', async () => {
@@ -66,6 +70,8 @@ test('System Prompt: Must contain all 5 required sections and exact mandatory ru
   assert.ok(fullPrompt.includes('BBRI'), 'Prompt must contain the target ticker');
   assert.ok(fullPrompt.includes('ATURAN WAJIB — jangan dilanggar:'));
   assert.ok(fullPrompt.includes('STRUKTUR JAWABAN — ikuti persis lima bagian ini'));
+  assert.ok(fullPrompt.includes('Fibonacci Retracement'), 'Prompt must mention Fibonacci Retracement');
+  assert.ok(fullPrompt.includes('MA20') || fullPrompt.includes('Moving Average'), 'Prompt must mention MA conditional rules');
 
   for (const section of prompt.MANDATORY_SECTIONS) {
     assert.ok(fullPrompt.includes(section), `Prompt must include mandatory section header "${section}"`);
@@ -133,6 +139,45 @@ test('Zero-Dependency Chart PNG: Generates valid PNG buffer with correct magic b
   assert.ok(Buffer.isBuffer(png), 'PNG must be a Node.js Buffer');
   assert.ok(png.length > 5000, 'PNG buffer must have non-trivial size');
   assert.equal(png.slice(0, 8).toString('hex'), '89504e470d0a1a0a', 'Buffer must start with PNG signature');
+});
+
+test('Chart Indicator Rules: Fibonacci Retracement calculated and optional MA gracefully omitted on short data', () => {
+  // 1. Short data (10 candles): MA cannot be computed (needs 20/50), but chart must not throw
+  const shortOhlc = Array.from({ length: 10 }, (_, i) => ({
+    date: '2026-08-' + String(i + 1).padStart(2, '0'),
+    open: 1000 + i * 10,
+    high: 1025 + i * 10,
+    low: 990 + i * 10,
+    close: 1015 + i * 10,
+    volume: 100000 + i * 5000
+  }));
+
+  const pngShort = renderer.buildChartPng('ASII', '2026-08-10', shortOhlc);
+  assert.ok(Buffer.isBuffer(pngShort), 'Short OHLC must produce a valid Buffer');
+  assert.equal(pngShort.slice(0, 8).toString('hex'), '89504e470d0a1a0a', 'Buffer must be valid PNG');
+
+  // 2. Fibonacci levels computed properly
+  const fib = renderer.getChartFibLevels(shortOhlc);
+  assert.ok(fib, 'Fibonacci result must exist');
+  assert.ok(fib.levels.fib_0 > 0, 'Fib 0% level must be positive');
+  assert.ok(fib.levels.fib_382 > 0, 'Fib 38.2% level must be positive');
+  assert.ok(fib.levels.fib_500 > 0, 'Fib 50% level must be positive');
+  assert.ok(fib.levels.fib_618 > 0, 'Fib 61.8% level must be positive');
+  assert.ok(fib.levels.fib_100 > 0, 'Fib 100% level must be positive');
+
+  // 3. Full data (60 candles): both MA20 and MA50 rendered smoothly
+  const fullOhlc = Array.from({ length: 60 }, (_, i) => ({
+    date: '2026-07-' + String((i % 28) + 1).padStart(2, '0'),
+    open: 2000 + (i % 10) * 20,
+    high: 2050 + (i % 10) * 20,
+    low: 1980 + (i % 10) * 20,
+    close: 2020 + (i % 10) * 20,
+    volume: 500000 + i * 10000
+  }));
+
+  const pngFull = renderer.buildChartPng('BBCA', '2026-08-30', fullOhlc);
+  assert.ok(Buffer.isBuffer(pngFull), 'Full OHLC must produce a valid Buffer');
+  assert.equal(pngFull.slice(0, 8).toString('hex'), '89504e470d0a1a0a', 'Buffer must be valid PNG');
 });
 
 test('Analysis Workflow: Rejects when API key is missing with clear user guidance', async () => {

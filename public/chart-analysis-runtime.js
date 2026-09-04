@@ -65,7 +65,7 @@
             if (btnDel) btnDel.style.display = 'inline-block';
           } else {
             if (statusEl) statusEl.innerHTML = 'Status: <span style="color:#fbbf24;font-weight:600">Belum diisi</span>. Dapatkan gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color:#60a5fa;text-decoration:underline">Google AI Studio</a>.';
-            if (input) input.placeholder = 'Tempel Google Gemini API key di sini (AIza...)';
+            if (input) input.placeholder = 'Tempel Google Gemini API key di sini (AIza... atau AQ...)';
             var btnDel2 = document.getElementById('btnDeleteAiApiKey');
             if (btnDel2) btnDel2.style.display = 'none';
           }
