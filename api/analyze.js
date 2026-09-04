@@ -6,6 +6,7 @@ const legacyAnalyze = require('../lib/analyze-legacy');
 const { hydrateContext } = require('../lib/ai-context-snapshot-store');
 const { prepareRuntimeGrounding } = require('../lib/ai-runtime-grounding-v2');
 const { requirePremiumEntitlement } = require('../lib/subscription-auth');
+const handleChartAnalysisEndpoint = require('../lib/chart-analysis-endpoint');
 
 function getSupabase() {
   const url = process.env.SUPABASE_URL;
@@ -105,6 +106,11 @@ async function prepareContextRequest(req) {
 
 module.exports = async function handler(req, res) {
   try {
+    const surface = (req && req.query && req.query.surface) || (req && req.body && req.body.surface);
+    if (surface === 'chart-analysis') {
+      return await handleChartAnalysisEndpoint(req, res);
+    }
+
     if (req && req.method === 'POST') {
       const allowed = await requireAnalyzeAccess(req, res);
       if (!allowed) return;

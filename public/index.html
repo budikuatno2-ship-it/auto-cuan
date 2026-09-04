@@ -1534,6 +1534,47 @@
 </div>
 </div>
 
+<!-- AI API KEY SETTINGS MODAL (BYOK) -->
+<div id="aiApiKeyModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="aiApiKeyModalTitle" onclick="if(event.target===this)closeAiApiKeyModal()">
+    <div class="w-full max-w-md rounded-3xl border border-dark-600/70 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+            <div class="flex items-center gap-2">
+                <span class="text-blue-400 text-lg">🤖</span>
+                <h3 id="aiApiKeyModalTitle" class="text-base font-bold text-white">Pengaturan API Key Gemini (BYOK)</h3>
+            </div>
+            <button onclick="closeAiApiKeyModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal key">&times;</button>
+        </div>
+        <div class="space-y-3 text-xs">
+            <p class="text-gray-300 leading-relaxed">
+                Fitur Analisis Chart AI berjalan dengan model <strong>Google Gemini 2.5 Flash</strong> menggunakan API key pribadi Anda (Bring Your Own Key).
+            </p>
+            <div class="p-3 rounded-xl bg-[#0b0e14] border border-gray-800 space-y-2">
+                <div class="font-semibold text-gray-200">Cara Mendapatkan API Key Gratis:</div>
+                <ol class="list-decimal list-inside text-gray-400 space-y-1">
+                    <li>Kunjungi <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="text-blue-400 underline font-medium">Google AI Studio (aistudio.google.com)</a></li>
+                    <li>Login dengan akun Google Anda</li>
+                    <li>Klik <strong>"Create API key"</strong> lalu salin kodenya</li>
+                </ol>
+            </div>
+            <div>
+                <label for="aiApiKeyInput" class="block text-xs font-medium text-gray-400 mb-1">Google Gemini API Key</label>
+                <input type="password" id="aiApiKeyInput" placeholder="Tempel API key (AIza...)" autocomplete="off" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 font-mono focus:outline-none focus:border-blue-500/50 text-xs">
+                <p id="aiApiKeyStatusText" class="mt-1.5 text-[11px] text-gray-400"></p>
+            </div>
+            <div class="text-[10px] text-gray-500 leading-relaxed border-t border-gray-800/80 pt-2">
+                🔒 <strong>Keamanan:</strong> API key Anda dienkripsi (AES-256-GCM) di server, tidak pernah dicatat dalam log, dan tidak pernah ditampilkan utuh kembali. Kuota harian diberlakukan untuk membatasi beban pemrosesan gambar chart di server.
+            </div>
+        </div>
+        <div class="flex items-center justify-between pt-2 border-t border-gray-800">
+            <button type="button" id="btnDeleteAiApiKey" onclick="deleteUserAiApiKey()" style="display:none" class="px-3 py-2 rounded-xl text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition">Hapus Key</button>
+            <div class="flex gap-2 ml-auto">
+                <button type="button" onclick="closeAiApiKeyModal()" class="px-4 py-2 rounded-xl text-xs font-medium text-gray-400 bg-gray-800 hover:bg-gray-700 transition">Batal</button>
+                <button type="button" id="btnSaveAiApiKey" onclick="saveUserAiApiKey()" class="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 transition shadow-lg shadow-blue-600/20">Simpan Key</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- WATCHLIST CUSTOM ALERT MODAL -->
 <div id="wlAlertModal" class="hidden fixed inset-0 z-[9998] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="wlAlertModalTitle">
     <div class="w-full max-w-sm rounded-3xl border border-dark-600/70 bg-[#111827] p-6 shadow-2xl space-y-4">
@@ -7992,7 +8033,8 @@ function openScrDetail(r, type) {
     var warningText = type === 'daytrade' ? 'Day Trade scan berbasis candle harian sebagai radar awal. Konfirmasi intraday tetap wajib.' : 'Swing screener berbasis analisis teknikal harian. Entry bertahap dan konfirmasi manual tetap wajib.';
     html += '<div style="font-size:10px;color:#6b7280;margin-bottom:16px;padding:10px 12px;background:rgba(234,179,8,0.04);border:1px solid rgba(234,179,8,0.1);border-radius:10px;line-height:1.4">' + warningText + '</div>';
     // Buttons
-    html += '<div style="display:flex;gap:10px"><button onclick="closeScrDetail()" style="flex:1;padding:12px;border-radius:10px;font-size:13px;font-weight:500;color:#9ca3af;background:#1a1f2b;border:1px solid #2a3444;cursor:pointer;transition:background .2s">Tutup</button><button onclick="closeScrDetail();navigateTo(\'chart\');setTimeout(function(){var i=document.getElementById(\'chartTickerInput\');if(i){i.value=\'' + escapeHtml(r.ticker) + '\';loadChartPage();}},200)" style="flex:1;padding:12px;border-radius:10px;font-size:13px;font-weight:600;color:#6ee7b7;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);cursor:pointer;transition:background .2s">Buka Chart</button></div>';
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="closeScrDetail()" style="flex:1;min-width:80px;padding:12px;border-radius:10px;font-size:12px;font-weight:500;color:#9ca3af;background:#1a1f2b;border:1px solid #2a3444;cursor:pointer;transition:background .2s">Tutup</button><button onclick="closeScrDetail();navigateTo(\'chart\');setTimeout(function(){var i=document.getElementById(\'chartTickerInput\');if(i){i.value=\'' + escapeHtml(r.ticker) + '\';loadChartPage();}},200)" style="flex:1;min-width:100px;padding:12px;border-radius:10px;font-size:12px;font-weight:600;color:#6ee7b7;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);cursor:pointer;transition:background .2s">Buka Chart</button><button id="btnScrDetailAiChart" onclick="triggerAiChartAnalysis(\'' + escapeHtml(r.ticker) + '\')" style="flex:1.2;min-width:130px;padding:12px;border-radius:10px;font-size:12px;font-weight:600;color:#60a5fa;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);cursor:pointer;transition:background .2s">🤖 Analisis Chart (AI)</button></div>';
+    html += '<div id="aiChartAnalysisResultWrap" style="display:none"></div>';
     document.getElementById('scrDetailContent').innerHTML = html;
     modal.classList.remove('hidden');
 }
@@ -11228,5 +11270,6 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/screener-lifecycle-ui.js?v=20260816-v1"></script>
 <script src="/track-record-runtime.js"></script>
 <script src="/watchlist-runtime.js"></script>
+<script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
 </body>
 </html>
