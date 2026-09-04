@@ -37,8 +37,11 @@ jobs:
       - name: Reject tracked credentials and high-confidence secret patterns
         run: node tools/repo-security-audit.js
 
+      # Same audit, same --audit-level=high. The wrapper only retries the case
+      # where the registry never answered, and still FAILS if it never does.
+      # See tools/npm-audit-gate.sh for why.
       - name: Production dependency vulnerability gate
-        run: npm audit --omit=dev --audit-level=high
+        run: bash tools/npm-audit-gate.sh
 
       - name: Security boundary regression
         run: node --test test/web-security-boundaries.test.js test/repo-security-hardening.test.js

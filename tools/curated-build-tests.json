@@ -1,6 +1,7 @@
 [
   "test/ai-eval-once.test.js",
   "test/ai-eval-final-contract-output.test.js",
+  "test/ai-stock-analysis-failure-and-race.test.js",
   "test/ai-html-sanitizer-event-handlers.test.js",
   "test/openagentic-stream-reassembly.test.js",
   "test/ai-eval-live-progress.test.js",
@@ -215,6 +216,7 @@
   "test/recent-failure-cooldown.test.js",
   "test/register-monitor.test.js",
   "test/register-user-device-id.test.js",
+  "test/auth-modals-outside-dashboard-screen.test.js",
   "test/register-terms-acceptance-contract.test.js",
   "test/report-daily-market-context-integrity-tool.test.js",
   "test/report-helpers.test.js",
@@ -318,5 +320,6 @@
   "test/ai-gemini-provider-and-cache.test.js",
   "test/ai-cache-telemetry.test.js",
   "test/ai-streaming-response.test.js",
-  "test/daytrade-screener-v1-release-gate.test.js"
+  "test/daytrade-screener-v1-release-gate.test.js",
+  "test/npm-audit-gate.test.js"
 ]
