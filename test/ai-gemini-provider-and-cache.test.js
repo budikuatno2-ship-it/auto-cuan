@@ -235,7 +235,16 @@ test('PR 6: expired cache entry returns null (cache miss)', async () => {
 test('PR 6: handleContextAIV7 uses cache hit when available and does not call external API', async () => {
   const ticker = 'GOTO';
   const prompt = 'Gimana posisi saya?';
-  const cacheKey = computeCacheKey({ ticker, analysisType: 'portfolio_chat', prompt });
+  const context = { ticker, plans: [{ ticker: 'GOTO', lots: 100 }] };
+  // The portfolio_chat cache key includes a digest of the portfolio the answer
+  // was computed from, so a seed must be written under the key the router itself
+  // builds for THIS request. Seeding a context-free key would only pass while
+  // two different portfolios still collided — see
+  // test/ai-cache-cross-user-isolation.test.js.
+  const cacheKey = computeCacheKey(handleContextAIV7._test.buildCacheParams(
+    { ticker, analysisType: 'portfolio_chat', prompt, marketDate: new Date().toISOString().slice(0, 10) },
+    'portfolio_chat', require('../lib/context-ai-router-v4')._test.portfolioContext(context), ''
+  ));
   await setCachedAnalysis({
     cacheKey,
     ticker,
@@ -248,7 +257,7 @@ test('PR 6: handleContextAIV7 uses cache hit when available and does not call ex
     body: {
       source: 'portfolio_chat',
       chatMessage: prompt,
-      context: { ticker, plans: [{ ticker: 'GOTO', lots: 100 }] }
+      context
     }
   };
   const { state, res } = mockRes();
