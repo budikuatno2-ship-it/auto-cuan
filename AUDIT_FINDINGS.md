@@ -4661,3 +4661,140 @@ Suite penuh **320 berkas lolos**.
 Anggaran baris eksplisit, `.limit(fetchLimit)` di setiap lookup, dan
 `RETENTION_TRIM_HEADROOM` untuk konvergensi bertahap. Ini implementasi rujukan
 yang seharusnya diikuti `admin-foreign-upload.js`.
+
+---
+
+## NYARIS TEMUAN — RSI seed di jalur batch, dan kenapa saya tidak melaporkannya
+
+Saya hampir mengajukan ini sebagai temuan HIGH. Setelah menelusuri
+pemanggilnya, ternyata tidak terjangkau di produksi. Saya catat lengkap dengan
+alasannya, karena menahan laporan yang salah sama pentingnya dengan mengirim
+laporan yang benar — dan karena kalau kondisinya berubah, ini langsung menjadi
+bug sungguhan.
+
+### Apa yang saya lihat
+
+`lib/daily-market-context-builder.js:237-241`:
+
+```js
+// Feature snapshots need 15 sessions for RSI14 and only 7 for the volume
+// context. Loading all 120 retained sessions for every ticker wastes DB
+// bandwidth and previously amplified the response-cap truncation problem.
+var historySessions = options.historySessions || Math.max(rsi.RSI_PERIOD + 1, DISPLAY_TRADING_SESSIONS);
+```
+
+`Math.max(15, 7)` = **15 sesi**.
+
+Bila `rsiOverride` tidak ada, `buildContextFromRows` jatuh ke
+`rsi.computeLatestRsi(closesOldestFirst, ...)` atas 15 close itu. Dan dengan
+tepat 15 close, `computeRsiSeries` (`lib/daily-rsi.js:61-65`) memberi **nol
+iterasi smoothing**:
+
+```js
+for (var k = period; k < gains.length; k++) {   // k = 14; 14 < 14 → false
+```
+
+`gains.length` = 14, `period` = 14, jadi loop-nya tidak pernah berjalan.
+Hasilnya seed rata-rata sederhana — persis nilai yang komentar modul itu sendiri
+sebut sebagai *"the confirmed root cause of the BELL/TIRA RSI discrepancy
+against external charts"*.
+
+Lebih buruk lagi di atas kertas: `buildFeatureSnapshotsForTickers` **tidak**
+menuliskan `rsi_source` ke baris fitur (lihat `rows.push({...})` di `:270-303`),
+jadi nilai seed itu tidak akan bisa dibedakan dari nilai matang oleh apa pun di
+hilir.
+
+Dan pembenaran di komentar `:56-66` — bahwa jalur fallback aman *"such as the
+on-demand buildContextForTicker path below (which already requests up to
+HISTORY_RETENTION_TRADING_SESSIONS = 120 persisted sessions)"* — memang **tidak**
+mencakup jalur batch ini.
+
+### Kenapa tetap bukan bug
+
+Karena pemanggil produksinya membuang ticker yang gagal **sebelum** memanggilnya.
+`scripts/collect-daily-market-context.js:150-157`:
+
+```js
+const featureTickers = tickers.filter((ticker) => {
+  const t = String(ticker || '').toUpperCase();
+  return !failedFeatureTickers.has(t) && !skippedFeatureTickers.has(t);
+});
+```
+
+Jadi setiap ticker yang sampai ke `buildFeatureSnapshotsForTickers` pasti
+fetch-nya sukses, dan pasti punya entri di `rsiByTicker` — yang dihitung dari
+deret ~1 tahun penuh. Jalur fallback 15-sesi itu tidak pernah dijalani.
+
+Saya periksa juga dua jalur lain:
+
+- `buildContextForTicker` (fallback API on-demand) meminta 120 sesi → ~105
+  iterasi smoothing. Sesuai komentarnya, benar.
+- `lib/fast-watcher-daily-context-shadow.js:39` memanggilnya **tanpa**
+  `rsiByTicker`, jadi di sana fallback-nya memang jalan. Tapi modul itu digerbang
+  `FAST_WATCHER_DAILY_CONTEXT_ENABLED` (default `false`), mengembalikan
+  referensi array yang sama persis saat mati, dan tidak menulis apa pun ke
+  database — hanya menempelkan kunci ber-namespace `_shadowDailyContext`.
+
+Satu kemungkinan terakhir yang saya uji: bisakah fetch sukses tapi
+`rsiOverride.insufficient_history` bernilai true, sehingga fallback tetap jalan?
+Tidak — `MIN_CANDLES_REQUIRED = 20` sudah menolak ticker dengan candle lebih
+sedikit dari itu, dan 20 close jauh di atas ambang 15.
+
+### Yang tetap perlu diketahui
+
+Ini **bahaya laten**, bukan bug hari ini. Ia menjadi bug sungguhan begitu salah
+satu dari ini terjadi:
+
+1. `FAST_WATCHER_DAILY_CONTEXT_ENABLED` dinyalakan **dan** hasilnya mulai
+   dipersistensikan atau ditampilkan;
+2. filter failed/skipped di `collect-daily-market-context.js:150-157` dilonggarkan;
+3. ada pemanggil baru `buildFeatureSnapshotsForTickers` yang lupa mengirim
+   `rsiByTicker`.
+
+Ketiganya wajar terjadi, dan tidak ada satu pun yang akan memberi peringatan —
+karena `rsi_source` tidak ikut tersimpan. Kalau Anda mau, saya bisa menambahkan
+penjaga murah yang **tidak** mengubah perilaku apa pun hari ini: bila fallback
+dipakai sementara jumlah sesi tidak cukup untuk smoothing yang berarti,
+kembalikan `insufficient_history: true` alih-alih diam-diam mengeluarkan nilai
+seed. Itu perubahan kecil dan searah dengan disiplin modul ini yang lain.
+Saya tidak melakukannya tanpa Anda minta, karena RSI ikut tampil di Ranking
+Harian dan aturan 8 Anda menyebut "ranking".
+
+Ini kejadian **kedua** dalam audit ini saya menahan temuan setelah menelusuri
+pemanggilnya (yang pertama: `getRequestBaseUrl` yang tampak seperti SSRF tapi
+ternyata dead code, jadi REKOMENDASI-03).
+
+---
+
+## Yang bersih pada putaran ini
+
+### `lib/daily-market-context-builder.js` (355)
+
+Selain hal di atas, bersih. Yang saya periksa:
+
+- **`priceFreshness` (`:26-33`) memakai offset WIB eksplisit**:
+  `new Date(asOfTradeDate + 'T16:00:00+07:00')`, bukan parsing waktu lokal yang
+  bergantung timezone server. Saya periksa khusus karena repo ini sudah pernah
+  punya bug offset WIB ganda (PR #500).
+- **52-week high/low tidak pernah dikarang dari data yang tidak cukup**
+  (`:88-93`): nilainya harus datang dari fetch 1 tahun di collector lewat
+  `options.week52`; kalau tidak ada, hasilnya `null`. Komentarnya menyatakan itu
+  eksplisit, dan kodenya benar-benar melakukannya.
+- Semua konsumsi angka lewat `numOrNull`, yang mengembalikan `null` untuk nilai
+  non-finite alih-alih meneruskan `NaN`.
+
+Satu catatan sangat kecil, bukan bug: `week52HighDistPct` (`:94-97`) membagi
+dengan `week52High` tanpa menjaga nilai 0. Harga saham tidak pernah 0, jadi tidak
+terjangkau; saya sebut hanya karena sedang membaca baris itu.
+
+### `lib/fast-watcher-daily-context-shadow.js` (53)
+
+Bersih, dan pantas disebut: saat flag mati ia mengembalikan **referensi array
+yang sama persis** — bukan salinan — sehingga secara harfiah terbukti no-op pada
+jalur Fast Watcher yang dibekukan. Saat menyala pun ia hanya menambahkan satu
+kunci ber-namespace dan tidak menimpa field mana pun.
+
+### `lib/daily-market-context-constants.js`
+
+Bersih. Sumber tunggal untuk ambang RSI/volume/retensi, dan flag-nya hanya
+menyala pada string `"true"` yang persis.
