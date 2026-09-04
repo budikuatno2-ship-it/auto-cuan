@@ -259,7 +259,9 @@ module.exports.__test = {
   setClassicPatternDetector: function(detector) { classicPatternDetector = detector; },
   resetClassicPatternDetector: function() { classicPatternDetector = require('../lib/classic-chart-patterns').detectClassicChartPatterns; },
   hasPatternMapAccess: hasPatternMapAccess,
-  responseForRequest: responseForRequest
+  responseForRequest: responseForRequest,
+  calcRSI: calcRSI,
+  calcVolumeRatio: calcVolumeRatio
 };
 
 function calcMA(prices, period) {
@@ -289,6 +291,7 @@ function calcRSI(closes, period) {
   var avgGain = gains / period;
   var avgLoss = losses / period;
   if (!Number.isFinite(avgGain) || !Number.isFinite(avgLoss)) return null;
+  if (avgGain === 0 && avgLoss === 0) return 50;
   if (avgLoss === 0) return 100;
   var rs = avgGain / avgLoss;
   if (!Number.isFinite(rs)) return 100;

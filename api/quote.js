@@ -1463,6 +1463,7 @@ function calcRSI(closes, period) {
   }
   var avgGain = gains / period;
   var avgLoss = losses / period;
+  if (avgGain === 0 && avgLoss === 0) return 50;
   if (avgLoss === 0) return 100;
   var rs = avgGain / avgLoss;
   return Math.round((100 - (100 / (1 + rs))) * 100) / 100;
@@ -2743,5 +2744,6 @@ module.exports.__test = {
   normalizeRankingSortKey: normalizeRankingSortKey,
   handleDailyMarketContextListAction: handleDailyMarketContextListAction,
   hasVerifiedSession: hasVerifiedSession,
-  redactAdvancedQuoteFields: redactAdvancedQuoteFields
+  redactAdvancedQuoteFields: redactAdvancedQuoteFields,
+  calcRSI: calcRSI
 };
