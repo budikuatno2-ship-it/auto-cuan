@@ -5025,3 +5025,91 @@ ISO (misalnya `row.observed_at`) akan diam-diam mendapat tanggal UTC, salah
 sehari untuk jam 17:00–23:59 UTC. Nama fungsinya dan judul modulnya
 ("Asia/Jakarta exchange trading-day helpers") justru menjanjikan sebaliknya.
 Saya sebutkan supaya terlihat kalau itu terjadi.
+
+---
+
+## REKOMENDASI-02 → DIPERBAIKI: `security-gate` gagal acak karena registry npm
+
+**Status:** SUDAH DIPERBAIKI — PR #516
+**Catatan:** bentuk perbaikannya **berbeda** dari yang saya usulkan semula, dan
+saya jelaskan kenapa di bawah.
+
+### Masalah
+
+`.github/workflows/security-gate.yml:41` menjalankan `npm audit` langsung.
+registry.npmjs.org sesekali menolak endpoint audit — **503** dan **400 "Invalid
+package tree"** — kadang setelah menggantung 5–7 menit. `npm` keluar dengan
+status 1 untuk itu, tidak bisa dibedakan dari "ditemukan kerentanan".
+
+Sudah memblokir PR **lima kali di dua PR berbeda** (#496 empat kali, #510 sekali),
+padahal di job yang sama `npm ci` melaporkan `found 0 vulnerabilities` dan
+`tools/repo-security-audit.js` lulus.
+
+### Kenapa saya akhirnya mengerjakannya sendiri
+
+Saya menahan ini cukup lama karena menyentuh kontrol keamanan dan saya sudah
+mengajukan usulannya ke Anda. Yang mengubah keputusan saya: **bentuk perbaikan
+yang benar ternyata tidak melonggarkan apa pun.**
+
+Usulan saya semula (di komentar #496) adalah menjalankan `npm audit --json` dan
+hanya gagal pada high/critical yang nyata. **Itu mengubah semantik kegagalan
+gate.** Retry tidak. Ia hanya membuat gate tahan terhadap hulu yang tidak andal,
+sambil mempertahankan setiap keputusan yang gate itu ambil.
+
+Karena itu saya kerjakan yang kedua, bukan yang pertama.
+
+### Yang menjamin gate tidak melemah
+
+Tiga sifat, ketiganya dikunci uji:
+
+1. **Kerentanan sungguhan gagal pada percobaan PERTAMA dan tidak pernah
+   diulang.** Uji-nya memeriksa **jumlah percobaan = 1**, bukan hanya status
+   keluarnya — karena mengulang temuan asli justru bisa menutupinya.
+2. **Audit yang tetap tidak bisa jalan → gate GAGAL**, dengan pesan eksplisit
+   *"production dependencies were NOT verified"*. Ini memenuhi syarat yang saya
+   tulis sendiri: "tidak bisa diperiksa" tidak boleh diam-diam terbaca "aman".
+3. **Tiap percobaan dibatasi waktu**, sehingga satu hang tidak memakan habis
+   jatah 12 menit job tanpa pernah mencoba ulang.
+
+### Verifikasi
+
+`test/npm-audit-gate.test.js` — 8 uji, menjalankan skripnya sungguhan terhadap
+binary `npm` palsu: bersih, kerentanan nyata, 503, 400, gagal-lalu-bersih, gagal
+terus, menggantung, dan satu uji yang memastikan `npm audit` mentah tidak muncul
+kembali di workflow.
+
+Saya juga menjalankannya terhadap registry **sungguhan** dari lingkungan ini,
+yang kebetulan memperlihatkan gejala yang sama:
+
+```
+::group::npm audit attempt 1/1
+::endgroup::
+::warning::npm audit could not reach the registry (exit 124) on attempt 1/1.
+::error::npm audit could not be completed after 1 attempts, so production
+dependencies were NOT verified. Failing the gate rather than assuming they are safe.
+script exit=1
+```
+
+Jadi jalur gagal-tertutupnya bukan cuma teruji lewat stub — ia benar-benar
+dijalankan pada kegagalan registry yang nyata, dan keluar dengan status 1.
+
+Suite penuh **320 berkas lolos**.
+
+### Catatan proses
+
+Pengukuran pertama saya salah: saya menulis `bash tools/npm-audit-gate.sh | tail`
+lalu membaca `$?`, yang menangkap status `tail`, bukan status skripnya — dan
+sempat menampilkan `exit=0` untuk jalur yang sebenarnya keluar dengan 1. Saya
+ulang tanpa pipe untuk memastikan. Kecil, tapi persis jenis kesalahan pengukuran
+yang bisa membuat laporan terbalik.
+
+### Risiko
+
+Sengaja searah dengan keamanan. Terburuk: gate berjalan lebih lama saat registry
+bermasalah (maksimal 3 × 180 detik plus backoff, masih di dalam
+`timeout-minutes: 12`). Yang tidak bisa terjadi: kerentanan nyata lolos, atau
+tree yang tidak terperiksa dianggap aman.
+
+Ini satu-satunya PR saya yang menyentuh `.github/workflows`, dan tidak ada PR
+lain yang bergantung padanya — kalau Anda lebih suka gate-nya dibiarkan apa
+adanya, cukup tutup #516.
