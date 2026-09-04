@@ -329,5 +329,6 @@
   "test/nk-quote-null-ohlc.test.js",
   "test/telegram-delivery-per-row-status.test.js",
   "test/ai-cache-cross-user-isolation.test.js",
-  "test/analyze-stated-price-extraction.test.js"
+  "test/analyze-stated-price-extraction.test.js",
+  "test/track-record-entry-range-order.test.js"
 ]
