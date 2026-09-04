@@ -338,5 +338,6 @@
   "test/ai-gemini-stream-stall-timeout.test.js",
   "test/daily-history-previous-close-trim.test.js",
   "test/daily-volume-7d-window-partial.test.js",
-  "test/idx-calendar-source-window.test.js"
+  "test/idx-calendar-source-window.test.js",
+  "test/includes-any-length-diagnostic.test.js"
 ]
