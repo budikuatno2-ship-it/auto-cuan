@@ -11163,7 +11163,7 @@ function deriveDayTradeLabels(r) {
 function deriveDayTradeTimeframeContext(r) {
   var chg = r.change_pct || 0;
   var volR = r.volume_ratio_20d || 0;
-  var rp = r.range_position || 50; // 0=low, 100=high
+  var rp = r.range_position != null && Number.isFinite(Number(r.range_position)) ? Number(r.range_position) : 50; // 0=low, 100=high
   var rsi = r.rsi14 || 50;
   var status = r.status || '';
 
@@ -14028,5 +14028,6 @@ module.exports.__test = {
   getIncludesAnyDiagnostics: getIncludesAnyDiagnostics,
   resetIncludesAnyDiagnostics: resetIncludesAnyDiagnostics,
   calcScreenerRSI: calcScreenerRSI,
-  nkCalcRSI: nkCalcRSI
+  nkCalcRSI: nkCalcRSI,
+  deriveDayTradeTimeframeContext: deriveDayTradeTimeframeContext
 };
