@@ -289,7 +289,17 @@ test('BUG3: one bad ticker does not block a good ticker through the full collect
 // ------------------------------------------------------------
 
 test('run(): --dry-run with the explicit 3-ticker CLI arg resolves to exactly 3 tickers', async () => {
-  const result = await run(['BBCA,BBRI,TLKM', '--dry-run'], { supabaseUrl: '', supabaseKey: '' });
-  assert.equal(result.exitCode, 0);
-  assert.equal(result.tickerCount, 3);
+  const OriginalDate = Date;
+  const fakeNow = new OriginalDate('2026-08-14T02:00:00Z'); // Friday (weekday)
+  global.Date = class extends OriginalDate {
+    constructor(...args) { if (args.length === 0) { super(fakeNow); } else { super(...args); } }
+    static now() { return fakeNow.getTime(); }
+  };
+  try {
+    const result = await run(['BBCA,BBRI,TLKM', '--dry-run'], { supabaseUrl: '', supabaseKey: '' });
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.tickerCount, 3);
+  } finally {
+    global.Date = OriginalDate;
+  }
 });
