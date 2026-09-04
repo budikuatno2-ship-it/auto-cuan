@@ -2063,6 +2063,30 @@ function scoreAndClassify(data) {
 }
 
 // ============================================================
+// UPSTREAM FETCH TIMEOUT (BUG-018)
+// ============================================================
+// Node's fetch has no built-in response timeout: an upstream that accepts the
+// connection and then goes quiet is waited on until the serverless function
+// itself is killed. These calls sit inside per-ticker screener loops, so one
+// hung upstream burns the whole run's budget, not just one ticker.
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+  var controller = new AbortController();
+  var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
+  try {
+    return await fetch(url, Object.assign({}, options || {}, { signal: controller.signal }));
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Yahoo chart GET. api/quote.js:488 already runs the same host at 8s in
+// production, so this deliberately sits above a bound proven to work.
+var YAHOO_FETCH_TIMEOUT_MS = 12000;
+// Screener AI confirmation — matches UPSTREAM_TIMEOUT_MS in lib/analyze-legacy.js.
+var SCREENER_AI_TIMEOUT_MS = 20000;
+
+// ============================================================
 // SCREENER: AI CONFIRMATION (server-side only)
 // ============================================================
 
@@ -2085,7 +2109,7 @@ async function callAIConfirmation(candidates) {
   var userPrompt = 'Validate:\n' + inputLines.join('\n');
 
   try {
-    var response = await fetch(baseUrl + '/chat/completions', {
+    var response = await fetchWithTimeout(baseUrl + '/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2100,7 +2124,7 @@ async function callAIConfirmation(candidates) {
         max_tokens: maxTokens,
         temperature: 0
       })
-    });
+    }, SCREENER_AI_TIMEOUT_MS);
 
     if (!response.ok) {
       var errStatus = response.status;
@@ -2307,9 +2331,9 @@ async function fetchScreenerCandles(ticker) {
   var symbol = ticker + '.JK';
   var url = 'https://query2.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) + '?range=90d&interval=1d&includePrePost=false';
 
-  var response = await fetch(url, {
+  var response = await fetchWithTimeout(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-  });
+  }, YAHOO_FETCH_TIMEOUT_MS);
 
   if (!response.ok) return null;
 
@@ -2345,9 +2369,9 @@ async function fetchYahooQuote(ticker) {
   var symbol = ticker + '.JK';
   var url = 'https://query2.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) + '?range=60d&interval=1d&includePrePost=false';
 
-  var response = await fetch(url, {
+  var response = await fetchWithTimeout(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-  });
+  }, YAHOO_FETCH_TIMEOUT_MS);
 
   if (!response.ok) return null;
 
@@ -5895,6 +5919,15 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
   }
   var detailSent = 0;
   var detailResults = [];
+  /*
+   * One entry per candidate in the INPUT `picks` array, aligned to it by index,
+   * carrying that candidate's own send result (null when it was filtered out by
+   * the digest gate and never sent). This is what lets the delivery layer record
+   * each prepared row's state from ITS OWN message instead of from the batch
+   * aggregate — the header and footer are not candidate rows and must not drag
+   * delivered candidates down with them.
+   */
+  var perCandidateResults = new Array((picks || []).length).fill(null);
   for (var i = 0; i < safePicks.length; i++) {
     // Use new premium signal card for detail messages
     var detailText = telegramTemplates.formatSignalCard(safePicks[i], i + 1, /day/i.test(safePicks[i].category || '') ? 'daytrade' : 'swing');
@@ -5940,6 +5973,8 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
     var finalDetailText = detailText + (candidateAiNote ? '\n\nCatatan AI:\n' + candidateAiNote : '');
     var detailResult = await telegramNotifier.sendTelegramMessage(finalDetailText, { timeout_ms: 2500 });
     telegramResults.push(detailResult);
+    var candidateIndex = (picks || []).indexOf(safePicks[i]);
+    if (candidateIndex >= 0) perCandidateResults[candidateIndex] = detailResult;
     var detailEntry = { ticker: safePicks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null, ai_note_appended: !!candidateAiNote };
     if (candidateNarrationDiag) detailEntry.ai_narration = candidateNarrationDiag;
     detailResults.push(detailEntry);
@@ -5952,7 +5987,7 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
     telegramResults.push(footerResult);
   }
 
-  return { telegram_results: telegramResults, header: sendResult, detail_sent_count: detailSent, detail_results: detailResults, sent_count: (sendResult.sent ? 1 : 0) + detailSent, public_picks: safePicks, public_filtered_count: (picks || []).length - safePicks.length, watchlist_mode: isWatchlistMode };
+  return { telegram_results: telegramResults, per_candidate_results: perCandidateResults, header: sendResult, detail_sent_count: detailSent, detail_results: detailResults, sent_count: (sendResult.sent ? 1 : 0) + detailSent, public_picks: safePicks, public_filtered_count: (picks || []).length - safePicks.length, watchlist_mode: isWatchlistMode };
 }
 
 async function handleTelegramDailyPicks(req, res, supabase) {
@@ -6513,7 +6548,11 @@ async function handleTelegramDailyPicks(req, res, supabase) {
           supabase: supabase,
           preparation: top5DeliveryPrep,
           send_results:
-            notifier.telegram_results || []
+            notifier.telegram_results || [],
+          // Aligned to top5DeliveryPrep.send_candidates (the array passed to the
+          // notifier), so each prepared row records the outcome of its own card.
+          row_results:
+            notifier.per_candidate_results || null
         });
 
       telegramDelivery.attachDeliveryTelemetry(
@@ -10027,6 +10066,33 @@ async function updateNkMeta(supabase, fields) {
   await supabase.from('swing_screener_non_konglo_meta').upsert([updateData], { onConflict: 'id' });
 }
 
+// Builds the Non-Konglo candle series from Yahoo's independent OHLCV arrays.
+//
+// A day is kept only when every leg is present and finite. This is not
+// defensive padding: Yahoo returns each series independently, so a session can
+// carry a close and a volume while its high/low are null (halts, and gaps in
+// the vendor feed). `support` below is Math.min(...lows) and JavaScript coerces
+// null to 0, so ONE null low collapses support to 0 for a stock trading in the
+// thousands — and support drives the Fib 0.382 pullback zone, setupType,
+// entry_low, and stop_loss. The published plan would then be derived from a
+// price that does not exist.
+//
+// The other Yahoo parsers in this file (fetchScreenerCandles, fetchChartOhlcRows)
+// already require the full OHLC set; this brings the NK parser in line with them.
+function parseNkValidDays(timestamps, opens, highs, lows, closes, volumes) {
+  timestamps = timestamps || [];
+  opens = opens || []; highs = highs || []; lows = lows || [];
+  closes = closes || []; volumes = volumes || [];
+  var out = [];
+  for (var i = 0; i < timestamps.length; i++) {
+    var o = opens[i], h = highs[i], l = lows[i], c = closes[i], v = volumes[i];
+    if (o == null || h == null || l == null || c == null || v == null) continue;
+    if (!isFinite(o) || !isFinite(h) || !isFinite(l) || !isFinite(c) || !isFinite(v)) continue;
+    out.push({ ts: timestamps[i], open: o, high: h, low: l, close: c, volume: v });
+  }
+  return out;
+}
+
 // --- DATA FETCH: Yahoo 60d OHLCV ---
 async function fetchNkQuoteData(ticker) {
   try {
@@ -10056,13 +10122,7 @@ async function fetchNkQuoteData(ticker) {
     const closes = quote.close || [];
     const volumes = quote.volume || [];
 
-    // Filter out null days
-    const validDays = [];
-    for (let i = 0; i < timestamps.length; i++) {
-      if (closes[i] != null && volumes[i] != null) {
-        validDays.push({ ts: timestamps[i], open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: volumes[i] });
-      }
-    }
+    const validDays = parseNkValidDays(timestamps, opens, highs, lows, closes, volumes);
 
     if (validDays.length < 20) return null;
 
@@ -13777,6 +13837,10 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 }
 
 module.exports.__test = {
+  parseNkValidDays: parseNkValidDays,
+  fetchWithTimeout: fetchWithTimeout,
+  YAHOO_FETCH_TIMEOUT_MS: YAHOO_FETCH_TIMEOUT_MS,
+  SCREENER_AI_TIMEOUT_MS: SCREENER_AI_TIMEOUT_MS,
   isDashboardScreenerLoggedIn: isDashboardScreenerLoggedIn,
   isDashboardAdminUser: isDashboardAdminUser,
   lookupDashboardAdminAppUser: lookupDashboardAdminAppUser,
