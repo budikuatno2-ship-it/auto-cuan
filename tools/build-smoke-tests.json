@@ -44,5 +44,6 @@
   "test/web-security-boundaries.test.js",
   "test/portfolio-ai-workspace-resilience.test.js",
   "test/chart-analysis-byok.test.js",
-  "test/screener-lifecycle-ui.test.js"
+  "test/screener-lifecycle-ui.test.js",
+  "test/unified-analysis-byok.test.js"
 ]
