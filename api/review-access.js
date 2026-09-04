@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const subscriptionManualHandler = require('../lib/subscription-manual-handler');
 const subscriptionVoucherHandler = require('../lib/subscription-voucher-handler');
 const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+const passwordCredential = require('../lib/password-credential');
 
 // This endpoint's only gate is a static, source-visible token, so it needs a
 // timing-safe comparison and a floor on how often it can be probed — same
@@ -33,10 +34,19 @@ module.exports = async function handler(req, res) {
   try {
     const { token } = req.body || {};
 
-    // Validate token with a timing-safe comparison — a plain !== leaks
-    // early-mismatch timing, and every other secret compare in this codebase
-    // (login-user.js, sector-hot.js cron secret) already uses timingSafeEqual.
-    const EXPECTED_TOKEN = process.env.REVIEW_ACCESS_TOKEN || 'autocuan-review-2026';
+    // Fail closed. This used to fall back to a literal default token, which was
+    // also written twice into public/index.html — so the gate's secret was
+    // readable by anyone who opened the page or the (public) repository. There is
+    // no safe default for a credential: an unset variable now closes the door
+    // rather than opening it with a value everyone knows.
+    const EXPECTED_TOKEN = String(process.env.REVIEW_ACCESS_TOKEN || '');
+    if (!EXPECTED_TOKEN) {
+      return res.status(403).json({ success: false, error: 'Token review tidak valid.' });
+    }
+
+    // Timing-safe comparison — a plain !== leaks early-mismatch timing, and every
+    // other secret compare in this codebase (login-user.js, sector-hot.js cron
+    // secret) already uses timingSafeEqual.
     const tokenBuf = Buffer.from(String(token || ''));
     const expectedBuf = Buffer.from(EXPECTED_TOKEN);
     const tokenValid = tokenBuf.length === expectedBuf.length &&
@@ -56,10 +66,16 @@ module.exports = async function handler(req, res) {
       auth: { persistSession: false, autoRefreshToken: false }
     });
 
-    // Pre-computed SHA-256 hash for the fixed reviewer account. The plaintext
-    // password is intentionally not recorded here or anywhere else in source —
-    // it is out-of-band, shared only with app-store reviewers.
-    const REVIEW_PASSWORD_HASH = '42f38b0fcf1e35d9d2f82c462376f33145d1f450aeb216900db3356338686f2b';
+    // The reviewer credential comes from the environment, never from source.
+    //
+    // The previous constant here was described as safe because the plaintext was
+    // not recorded. It was not safe: the browser hashes passwords client-side
+    // (public/index.html hashPassword), /api/login-user accepts that hash as the
+    // submitted credential, and lib/password-credential.js compares a
+    // legacy-format stored hash against it directly. For a legacy row the hash IS
+    // the credential, so publishing it in a public repository published the
+    // reviewer login. Fail closed when it is not configured.
+    const REVIEW_PASSWORD_HASH = String(process.env.REVIEW_PASSWORD_HASH || '').trim().toLowerCase();
     const REVIEW_DEVICE_ID = 'REVIEW_ANY_DEVICE';
     const REVIEW_USERNAME = 'review';
 
@@ -92,12 +108,19 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, username: REVIEW_USERNAME, isReview: true });
     }
 
-    // User does not exist - create it
+    // User does not exist - create it. Seeding requires the configured credential.
+    if (!passwordCredential.normalizeClientHash(REVIEW_PASSWORD_HASH)) {
+      console.error('review-access: REVIEW_PASSWORD_HASH is not configured');
+      return res.status(503).json({ success: false, error: 'Akses review belum dikonfigurasi.' });
+    }
+
+    // Stored in the protected scrypt form, exactly as api/register-user.js does,
+    // so the row is never a directly replayable legacy hash.
     const { error: insertError } = await supabase
       .from('app_users')
       .insert({
         username: REVIEW_USERNAME,
-        password_hash: REVIEW_PASSWORD_HASH,
+        password_hash: passwordCredential.protectClientHash(REVIEW_PASSWORD_HASH),
         device_id: REVIEW_DEVICE_ID,
         user_agent: 'review_seed',
         is_blocked: false
