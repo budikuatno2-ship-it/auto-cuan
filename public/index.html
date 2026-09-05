@@ -6238,8 +6238,22 @@ function clearInput() { var el = getActiveChatInput(); if (!el) return; el.value
 function disableSend() { isSending = true; ['analysisSendBtn', 'generalSendBtn'].forEach(function(id) { var btn = document.getElementById(id); if (btn) { btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); } }); }
 function enableSend() { isSending = false; ['analysisSendBtn', 'generalSendBtn'].forEach(function(id) { var btn = document.getElementById(id); if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); } }); }
 
+// #aiSection/#chatMessages is legacy markup from before the Unified AI Cockpit
+// (public/index.html) and #aiSection stays permanently `class="hidden"` —
+// nothing in this build ever un-hides it (confirmed by grep: zero other
+// references to #aiSection by id). handleAnalisisFollowUp() already resolves
+// the real, visible container as `document.getElementById('unifiedChatMessages')
+// || document.getElementById('analisisResult')` for text follow-ups; this
+// mirrors that exact fallback so the three bubble renderers below (used by
+// file/image uploads: handleChartUpload, handleBrokerSummaryText,
+// handleTickerQuestion, handleChat) land in the same visible panel instead of
+// silently appending to the hidden section.
+function getActiveMessagesContainer() {
+    return document.getElementById('unifiedChatMessages') || document.getElementById('analisisResult') || document.getElementById('chatMessages');
+}
+
 function addUserBubble(text) {
-    var container = document.getElementById('chatMessages');
+    var container = getActiveMessagesContainer();
     var div = document.createElement('div');
     div.className = 'flex gap-3 justify-end fade-in-up';
     // Long text: show collapsed card
@@ -6282,7 +6296,7 @@ function isNetworkError(e) {
     return msg.indexOf('failed to fetch') !== -1 || msg.indexOf('networkerror') !== -1 || msg.indexOf('network') !== -1 || msg.indexOf('timeout') !== -1 || msg.indexOf('aborted') !== -1 || msg.indexOf('err_connection') !== -1;
 }
 function addLoadingBubble(loadingContext) {
-    var container = document.getElementById('chatMessages');
+    var container = getActiveMessagesContainer();
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up'; div.id = 'loadingBubble';
     // Context-aware initial text and stages
@@ -6318,7 +6332,7 @@ function addLoadingBubble(loadingContext) {
 }
 function removeLoadingBubble() { var el = document.getElementById('loadingBubble'); if (el) { if (el._stageTimer) clearInterval(el._stageTimer); el.remove(); } }
 function addAIBubble(html, isStructured) {
-    var container = document.getElementById('chatMessages');
+    var container = getActiveMessagesContainer();
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up';
     var copyLabel = isStructured ? 'Salin Hasil' : 'Salin';

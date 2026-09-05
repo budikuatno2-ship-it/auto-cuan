@@ -16,6 +16,7 @@
   "test/ai-model-routing-health.test.js",
   "test/ai-ui-failure-states.test.js",
   "test/ai-chat-polish.test.js",
+  "test/chat-upload-visible-container.test.js",
   "test/user-watchlist-alert-edit.test.js",
   "test/portfolio-ai-context-completeness.test.js",
   "test/portfolio-price-freshness.test.js",
