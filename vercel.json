@@ -28,6 +28,10 @@
     {
       "source": "/portfolio-planner",
       "destination": "/portfolio-command-center-v2.html"
+    },
+    {
+      "source": "/analisis-saham",
+      "destination": "/analisis-saham.html"
     }
   ],
   "headers": [
@@ -185,6 +189,32 @@
     },
     {
       "source": "/portfolio-planner.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/analisis-saham",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/analisis-saham.html",
       "headers": [
         {
           "key": "Cache-Control",

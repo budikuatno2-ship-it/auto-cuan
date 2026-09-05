@@ -9,6 +9,42 @@
     });
   }
 
+  // Shared copy-to-clipboard used by every "Salin Hasil" button across the
+  // app (Analisis Saham, Chart Vision, Portfolio AI). navigator.clipboard is
+  // undefined in some non-secure/older-webview contexts — calling
+  // .writeText on it there throws synchronously, before any Promise exists,
+  // so a bare `.then()/.catch()` on it silently does nothing and the button
+  // looks broken. This always resolves true/false instead of throwing, and
+  // falls back to a hidden-textarea + document.execCommand('copy') when the
+  // Clipboard API itself is unavailable.
+  function copyTextToClipboard(text) {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      return navigator.clipboard.writeText(text).then(function () { return true; }).catch(function () {
+        return legacyCopy(text);
+      });
+    }
+    return Promise.resolve(legacyCopy(text));
+  }
+
+  function legacyCopy(text) {
+    try {
+      var textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+      var ok = document.execCommand && document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return Boolean(ok);
+    } catch (_) {
+      return false;
+    }
+  }
+
   function normalizeTone(value) {
     return String(value == null ? '' : value)
       .replace(/\b(bestie|bro|sis)\b[,.!?]?/gi, '')
@@ -275,7 +311,8 @@
     renderMarkdown: renderMarkdown,
     friendlyText: normalizeLines,
     structureLongProse: normalizeLines,
-    polishNode: polishNode
+    polishNode: polishNode,
+    copyText: copyTextToClipboard
   };
 
   var observer = new MutationObserver(function (mutations) {

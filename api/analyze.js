@@ -9,6 +9,7 @@ const { requirePremiumEntitlement } = require('../lib/subscription-auth');
 const subscriptionAuth = require('../lib/subscription-auth');
 const { resolveAiCredentials } = require('../lib/user-ai-credentials');
 const handleChartAnalysisEndpoint = require('../lib/chart-analysis-endpoint');
+const { checkUnifiedAiQuota } = require('../lib/chart-analysis-service');
 
 let customSupabaseClient = null;
 
@@ -101,7 +102,7 @@ function styleInstruction(source) {
   return [
     'Aturan jawaban wajib:',
     ...focus,
-    'Gunakan bahasa Indonesia yang natural, tenang, ringkas, dan enak dibaca; gunakan kata “kamu”.',
+    'Gunakan bahasa Indonesia yang santai dan mengalir, seperti ngobrol dengan teman yang paham saham — tenang, ringkas, dan enak dibaca; gunakan kata “kamu”.',
     'Mulai dengan jawaban langsung. Setelah itu pisahkan secara jelas: fakta/data yang dipakai, analisis atau opini, tindakan praktis, risiko/invalidation, dan data yang masih kurang.',
     'Opini diperbolehkan dan harus berguna, tetapi jangan menyamarkan opini sebagai fakta atau kepastian.',
     'Simulasi diperbolehkan untuk budget, lot, average down, perubahan posisi, dan skenario what-if. Semua asumsi simulasi wajib diberi label SIMULASI dan tidak boleh disebut sebagai transaksi nyata.',
@@ -156,8 +157,9 @@ module.exports = async function handler(req, res) {
       return await handleChartAnalysisEndpoint(req, res);
     }
 
+    let allowed = null;
     if (req && req.method === 'POST') {
-      const allowed = await requireAnalyzeAccess(req, res);
+      allowed = await requireAnalyzeAccess(req, res);
       if (!allowed) return;
       if (allowed.credentials) {
         req.body = req.body || {};
@@ -168,6 +170,20 @@ module.exports = async function handler(req, res) {
 
     const source = req && req.method === 'POST' && req.body && req.body.source;
     if (source === 'portfolio_chat' || source === 'stock_analysis_followup') {
+      const db = getSupabase();
+      if (allowed && allowed.access) {
+        const quotaCheck = await checkUnifiedAiQuota(db, allowed.access);
+        if (!quotaCheck.ok) {
+          return res.status(quotaCheck.status || 429).json({
+            success: false,
+            code: quotaCheck.code || 'QUOTA_EXCEEDED',
+            error: quotaCheck.error,
+            quota: quotaCheck.quota
+          });
+        }
+        req._aiQuota = quotaCheck;
+        req._supabaseDb = db;
+      }
       return await handleContextAI(await prepareContextRequest(req), res);
     }
     return await legacyAnalyze(req, res);

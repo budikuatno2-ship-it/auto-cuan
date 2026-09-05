@@ -262,6 +262,8 @@
   padding-bottom: 8px;
 }
 .ai-system { padding: 12px 14px; border-radius: 11px; font-size: 12.5px; line-height: 1.55; }
+.ai-copy-btn { margin-top: 8px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(148,163,184,.22); background: rgba(148,163,184,.08); color: #9db2c9; font-size: 10.5px; font-weight: 700; cursor: pointer; }
+.ai-copy-btn:hover { background: rgba(148,163,184,.16); color: #cbd5e1; }
 
 @media (max-width: 900px) {
   .ai-shell { grid-template-columns: minmax(0, 1fr); }

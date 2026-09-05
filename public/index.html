@@ -102,6 +102,7 @@
          win over the inline rules above without needing !important. -->
     <link rel="stylesheet" href="/ui-theme.css?v=20260802-ui-theme-v2">
     <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
+    <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
 </head>
 <body class="min-h-screen text-gray-100">
 <a href="#" class="skip-link" onclick="return skipToMainContent(event)">Lewati ke konten utama</a>
@@ -521,7 +522,12 @@
                     <p class="text-sm text-gray-400 mt-1 max-w-2xl">Dashboard ringkas untuk Day Trade, Swing Konglo, dan Swing Non-Konglo. Watchlist/pantau tidak sama dengan BUY agresif.</p>
                 </div>
                 <div class="dashboard-hero-meta flex flex-col sm:items-end gap-2">
-                    <span id="approvedBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">Approved</span>
+                    <div class="flex items-center gap-2">
+                        <span id="approvedBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">Approved</span>
+                        <button type="button" onclick="openAiApiKeyModal()" class="px-3 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/50 text-gray-300 hover:text-amber-300 hover:border-amber-500/40 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0 shadow-sm" title="Kelola Google Gemini API Key (BYOK)">
+                            <span>🔑 API Key (BYOK)</span>
+                        </button>
+                    </div>
                     <div class="text-[11px] text-gray-500">Bukan rekomendasi beli/jual.</div>
                 </div>
             </div>
@@ -552,7 +558,7 @@
                         <span id="ihsgChange" class="market-tile-delta">—</span>
                     </div>
                 </div>
-                <button onclick="navigateTo('analisis');setTimeout(function(){var el=document.getElementById('analisisInput');if(el){el.value='IHSG';handleAnalisisSubmit();}},200)" class="market-tile-link">Buka analisis IHSG &rarr;</button>
+                <button onclick="window.location.assign('/analisis-saham?ticker=IHSG')" class="market-tile-link">Buka analisis IHSG &rarr;</button>
             </div>
             <div class="market-tile">
                 <div class="market-tile-head"><span class="market-tile-label">Radar hari ini</span></div>
@@ -631,64 +637,169 @@
     </div>
 </div>
 
-<!-- ===== PAGE: ANALISIS SAHAM ===== -->
-<div id="page-analisis" class="page-content hidden flex-1 flex flex-col max-w-[1100px] w-full mx-auto px-3 sm:px-5">
-    <!-- Analisis Input -->
-    <div class="py-3 border-b border-dark-600/30 flex-shrink-0">
-        <div class="flex items-center gap-2">
-            <input id="analisisInput" type="text" placeholder="Ketik ticker: BBCA, IHSG, TLKM..." class="flex-1 px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')handleAnalisisSubmit()">
-            <button onclick="handleAnalisisSubmit()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all">Analisis</button>
+<!-- ===== PAGE: ANALISIS SAHAM (Unified AI Cockpit) ===== -->
+<div id="page-analisis" class="page-content hidden flex-1 flex flex-col max-w-[1280px] w-full mx-auto px-3 sm:px-5 py-3">
+    <!-- Top Cockpit Search & Sync Bar -->
+    <div class="unified-top-bar mb-4 flex-shrink-0">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
+                <div class="relative flex-1 min-w-[200px]">
+                    <input id="analisisInput" type="text" placeholder="Ketik ticker: BBCA, BBRI, TLKM..." class="w-full px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm font-semibold tracking-wide" onkeydown="if(event.key==='Enter')UnifiedCockpit.handleUnifiedAnalisisSubmit()">
+                </div>
+                <button onclick="UnifiedCockpit.handleUnifiedAnalisisSubmit()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all flex items-center gap-1.5 shrink-0" title="Jalankan Analisis Saham">
+                    <span>Analisis Saham</span>
+                </button>
+                <button onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="px-4 py-2.5 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 font-semibold text-sm hover:bg-blue-600/30 transition-all flex items-center gap-1.5 shrink-0" title="Analisis Pola Chart dengan AI Vision">
+                    <span>🤖 Analisis Chart (AI)</span>
+                </button>
+                <button onclick="openAiApiKeyModal()" class="px-3 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-300 hover:text-amber-300 hover:border-amber-500/40 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0" title="Kelola Google Gemini API Key (BYOK)">
+                    <span>🔑 API Key</span>
+                </button>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <span class="text-xs text-gray-400">Aktif:</span>
+                <span id="unifiedActiveTickerBadge" class="unified-ticker-badge">BBCA</span>
+            </div>
         </div>
-        <div class="mt-2 flex flex-wrap gap-2">
-            <button onclick="quickAnalisis('IHSG')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">IHSG</button>
-            <button onclick="quickAnalisis('BBCA')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">BBCA</button>
-            <button onclick="quickAnalisis('BBRI')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">BBRI</button>
-            <button onclick="quickAnalisis('TLKM')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">TLKM</button>
+        <!-- Quick Ticker Chips -->
+        <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
+            <span class="text-[11px] text-gray-400 mr-1">Populer:</span>
+            <button onclick="UnifiedCockpit.syncActiveTicker('IHSG', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">IHSG</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('BBRI', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('BMRI', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('TLKM', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('ASII', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">ASII</button>
         </div>
     </div>
-    <!-- Ranking Harian Card — fully independent of the ticker analysis input
-         above: its own fetch, its own search, its own sort state. Never
-         cleared/replaced when #analisisResult re-renders. -->
-    <div class="py-3 border-b border-dark-600/30 flex-shrink-0">
-        <div class="bg-dark-700/40 border border-dark-600/20 rounded-xl overflow-hidden">
-            <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-3 border-b border-dark-600/20">
-                <div>
-                    <h3 class="text-sm font-semibold text-gray-200">Ranking Harian</h3>
-                    <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker &mdash; terpisah dari analisis ticker di atas.</p>
+
+    <!-- 2-Column Unified Cockpit Grid -->
+    <div class="unified-cockpit-grid">
+        <!-- PRIMARY COLUMN (Chart + Analysis Results + Ranking) -->
+        <div class="unified-primary-col">
+            <!-- Candlestick Chart Card -->
+            <div class="unified-card">
+                <div id="unifiedChartContainer" class="unified-chart-box">
+                    <div class="p-8 text-center text-gray-500 text-xs">
+                        <span class="spinner-sm"></span> Menyiapkan chart interaktif...
+                    </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <input id="rankingSearchInput" type="text" placeholder="Cari di tabel..." aria-label="Cari di tabel ranking" class="w-36 sm:w-52 px-3 py-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" oninput="onRankingSearchInput(this.value)">
-                    <button onclick="refreshRankingTable()" class="p-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition flex-shrink-0" title="Muat ulang ranking" aria-label="Muat ulang ranking">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </div>
+
+            <!-- Analysis Results Card with Sub-tabs -->
+            <div class="unified-card">
+                <div class="unified-card-header">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <h2 class="text-sm font-bold text-gray-200">Hasil Analisis</h2>
+                    </div>
+                    <!-- Subtab Buttons -->
+                    <div class="unified-subtabs" role="tablist" aria-label="Format Analisis">
+                        <button id="tabAnalisisText" type="button" role="tab" class="unified-subtab-btn active" onclick="UnifiedCockpit.switchAnalysisSubTab('text')">
+                            <span>📝 Analisis Saham</span>
+                        </button>
+                        <button id="tabAnalisisVision" type="button" role="tab" class="unified-subtab-btn vision-tab" onclick="UnifiedCockpit.switchAnalysisSubTab('vision')">
+                            <span>🤖 Analisis Chart (AI)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-3 sm:p-4">
+                    <!-- Panel 1: Analisis Saham (Text Format) -->
+                    <div id="panelAnalisisText">
+                        <div id="analisisResult" class="overflow-y-auto">
+                            <div class="text-center py-10 text-gray-500">
+                                <svg class="w-10 h-10 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                                <p class="text-sm">Klik tombol <strong>Analisis Saham</strong> untuk ringkasan teknikal, broker &amp; prospek.</p>
+                                <p class="text-xs text-gray-600 mt-1">Atau gunakan tombol <strong>🤖 Analisis Chart (AI)</strong> untuk pembacaan visual AI.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel 2: Analisis Chart Vision (5-Bagian Terstruktur) -->
+                    <div id="panelAnalisisVision" style="display:none">
+                        <div id="unifiedAiChartResultWrap">
+                            <div class="text-center py-10 text-gray-500">
+                                <span class="text-3xl mb-2 block">🤖</span>
+                                <p class="text-sm font-semibold text-gray-300">Belum ada analisis chart visual AI</p>
+                                <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Klik tombol <strong>🤖 Analisis Chart (AI)</strong> di atas untuk menganalisis tren, level kunci, candlestick, volume, dan risiko.</p>
+                                <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="mt-3 px-4 py-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition">Mulai Analisis Chart (AI)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ranking Harian Card (Preserved Context) -->
+            <div id="rankingCardOuterWrap" class="ranking-card-wrapper">
+                <div class="unified-card">
+                    <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-3 border-b border-dark-600/20 bg-black/10">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-200">Ranking Harian</h3>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker &mdash; klik ticker untuk memuat chart.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input id="rankingSearchInput" type="text" placeholder="Cari di tabel..." aria-label="Cari di tabel ranking" class="w-36 sm:w-52 px-3 py-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" oninput="onRankingSearchInput(this.value)">
+                            <button onclick="refreshRankingTable()" class="p-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition flex-shrink-0" title="Muat ulang ranking" aria-label="Muat ulang ranking">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="rankingTableWrap" class="overflow-x-auto">
+                        <div class="text-center py-8 text-gray-500 text-xs">Memuat ranking harian...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COMPANION COLUMN (Chat Lanjutan AI & Upload Media) -->
+        <div class="unified-chat-col">
+            <div class="unified-card flex flex-col h-full">
+                <!-- Companion Header -->
+                <div class="unified-card-header">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                        <h3 class="text-sm font-bold text-gray-200 truncate">Asisten AI Saham</h3>
+                        <span id="chatActiveTickerTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-600/60 text-emerald-300 border border-emerald-500/20">BBCA</span>
+                    </div>
+                    <button type="button" onclick="UnifiedCockpit.clearAnalysisChatHistory()" class="text-[11px] text-gray-400 hover:text-rose-400 transition" title="Bersihkan riwayat chat ticker ini">
+                        Bersihkan
                     </button>
                 </div>
+
+                <!-- Quick Prompts Chips -->
+                <div class="unified-quick-prompts">
+                    <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Entry di harga berapa yang ideal dan aman?')">Entry di mana?</button>
+                    <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Di mana level cut loss / invalidasi setup ini?')">Level cut loss?</button>
+                    <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Bagaimana konfirmasi volume dan tren MA?')">Konfirmasi volume?</button>
+                    <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Lebih cocok untuk swing atau day trade?')">Swing vs Day trade?</button>
+                </div>
+
+                <!-- Chat Messages Stream / Bubbles -->
+                <div id="unifiedChatMessages" class="unified-chat-messages flex-1">
+                    <div class="text-center py-8 text-gray-500 text-xs">
+                        <svg class="w-8 h-8 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                        <p class="font-medium text-gray-400">Tanya seputar ticker atau chart</p>
+                        <p class="text-[11px] text-gray-600 mt-1">Gunakan prompt di atas atau ketik pertanyaan langsung di bawah.</p>
+                    </div>
+                </div>
+
+                <!-- Chat Composer Box (analisisFollowUp preserved ID) -->
+                <div id="analisisFollowUp" class="unified-chat-composer flex-shrink-0">
+                    <div class="flex items-end gap-2">
+                        <input id="analysisFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
+                        <button id="analysisUploadBtn" onclick="openActiveFileInput()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file chart tambahan" aria-label="Upload gambar/file chart tambahan">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                        </button>
+                        <div class="flex-1 relative">
+                            <textarea id="analysisChatInput" rows="1" placeholder="Tanya lanjutan: entry di mana? hold atau cut?" class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
+                        </div>
+                        <button id="analysisSendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim" aria-label="Kirim pesan">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div id="rankingTableWrap" class="overflow-x-auto">
-                <div class="text-center py-8 text-gray-500 text-xs">Memuat ranking harian...</div>
-            </div>
-        </div>
-    </div>
-    <!-- Analisis Result Area (replaces chat for analysis) -->
-    <div id="analisisResult" class="flex-1 py-4 overflow-y-auto">
-        <div class="text-center py-12 text-gray-500">
-            <svg class="w-12 h-12 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-            <p class="text-sm">Ketik ticker di atas untuk mulai analisis.</p>
-            <p class="text-xs text-gray-600 mt-1">Contoh: BBCA, IHSG, TLKM</p>
-        </div>
-    </div>
-    <!-- Chat input area (for follow-up questions) -->
-    <div id="analisisFollowUp" class="hidden border-t border-dark-600/30 p-3 flex-shrink-0">
-        <div class="flex items-end gap-2">
-            <input id="analysisFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
-            <button onclick="openActiveFileInput()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file" aria-label="Upload gambar/file">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
-            </button>
-            <div class="flex-1 relative">
-                <textarea id="analysisChatInput" rows="1" placeholder="Tanya lanjutan: entry di mana? hold atau cut?" class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
-            </div>
-            <button id="analysisSendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim" aria-label="Kirim pesan">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-            </button>
         </div>
     </div>
 </div>
@@ -1549,7 +1660,7 @@
         </div>
         <div class="space-y-3 text-xs">
             <p class="text-gray-300 leading-relaxed">
-                Fitur Analisis Chart AI berjalan dengan model <strong>Google Gemini 2.5 Flash</strong> menggunakan API key pribadi Anda (Bring Your Own Key).
+                Fitur Analisis Chart AI berjalan dengan model <strong>Google Gemini 3 Flash</strong> menggunakan API key pribadi Anda (Bring Your Own Key).
             </p>
             <div class="p-3 rounded-xl bg-[#0b0e14] border border-gray-800 space-y-2">
                 <div class="font-semibold text-gray-200">Cara Mendapatkan API Key Gratis:</div>
@@ -3208,6 +3319,11 @@ function navigateTo(page) {
         if (typeof showToast === 'function') showToast('Fitur ini terbuka setelah login dengan akun yang sudah di-approve admin.', 'warning');
         page = 'dashboard';
     }
+    if (page === 'analisis') {
+        // Analisis Saham lives on its own page (/analisis-saham).
+        window.location.assign('/analisis-saham');
+        return;
+    }
     if (page === 'portofolio') {
         // Portofolio lives on its own page (Decision Center).
         window.location.assign('/portfolio-planner');
@@ -3239,7 +3355,12 @@ function navigateTo(page) {
     else { clearTop5HistoryLoadTimer(); stopDashboardMonitorAutoRefresh(); }
     // Ranking Harian table: fetched independently of the ticker analysis
     // input, loaded once and cached client-side (refresh button reloads it).
-    if (page === 'analisis' && typeof ensureRankingTableLoaded === 'function') ensureRankingTableLoaded();
+    if (page === 'analisis') {
+        if (typeof ensureRankingTableLoaded === 'function') ensureRankingTableLoaded();
+        if (window.UnifiedCockpit && typeof window.UnifiedCockpit.getActiveTicker === 'function') {
+            window.UnifiedCockpit.loadUnifiedChart(window.UnifiedCockpit.getActiveTicker());
+        }
+    }
     if (page === 'sektor') {
         var isLoggedIn = isLoggedInUser();
         var loginGate = document.getElementById('sektorLoginGate');
@@ -3312,13 +3433,18 @@ function handleAnalisisSubmit() {
     var val = (input.value || '').trim().toUpperCase();
     if (!val) return;
     input.value = val;
+    if (window.UnifiedCockpit && typeof window.UnifiedCockpit.syncActiveTicker === 'function') {
+        window.UnifiedCockpit.syncActiveTicker(val, { loadChart: true });
+    }
     // Route to existing analysis logic
     runAnalisisFromDashboard(val);
 }
 function quickAnalisis(ticker) {
-    var input = document.getElementById('analisisInput');
-    input.value = ticker;
-    runAnalisisFromDashboard(ticker);
+    if (ticker) {
+        window.location.assign('/analisis-saham?ticker=' + encodeURIComponent(ticker));
+        return;
+    }
+    window.location.assign('/analisis-saham');
 }
 // ===== ANALISIS SAHAM: REQUEST GENERATION GUARD =====
 // Every run of runAnalisisFromDashboard() claims the next sequence number. A
@@ -3479,6 +3605,7 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
             if (typeof normalizeFinalStockHtml === 'function') html = normalizeFinalStockHtml(html);
             if (isIndex && typeof sanitizeIHSGOutput === 'function') html = sanitizeIHSGOutput(html);
             if (typeof reorderBrokerCTA === 'function') html = reorderBrokerCTA(html, isIndex);
+            if (typeof convertStrayMarkdownBold === 'function') html = convertStrayMarkdownBold(html);
 
             // Render result
             var confluenceHtml = isIndex ? '' : buildManualConfluenceHtml(ticker);
@@ -3526,10 +3653,16 @@ function copyAnalisisResult() {
     // Build clean text from HTML structure
     var html = contentEl.innerHTML;
     var text = htmlToCleanText(html);
-    navigator.clipboard.writeText(text).then(function() {
-        showToast('Hasil berhasil disalin.', 'success');
-    }).catch(function() {
-        showToast('Gagal menyalin. Coba lagi.', 'warning');
+    // navigator.clipboard can be undefined (non-secure context, older
+    // webview) — calling .writeText on it there throws synchronously before
+    // any Promise exists, so the button silently did nothing. AutoCuanAI.copyText
+    // guards that and falls back to document.execCommand('copy').
+    var copyFn = (window.AutoCuanAI && typeof window.AutoCuanAI.copyText === 'function')
+        ? window.AutoCuanAI.copyText
+        : function (t) { return navigator.clipboard ? navigator.clipboard.writeText(t).then(function () { return true; }).catch(function () { return false; }) : Promise.resolve(false); };
+    copyFn(text).then(function (ok) {
+        if (ok) showToast('Hasil berhasil disalin.', 'success');
+        else showToast('Gagal menyalin. Coba lagi.', 'warning');
     });
 }
 
@@ -3604,13 +3737,17 @@ var rankingState = {
     selectedTicker: null
 };
 
+// Same column set as configureRankingColumns() in stock-analysis-ai.js (the
+// dedicated "Ranking" menu page) so the Ranking Harian tab embedded here
+// shows the identical, fuller table instead of a second, simpler one.
 var RANKING_COLUMNS = [
     { key: 'ticker', label: 'Ticker', align: 'left', sortable: true },
     { key: 'last_price', label: 'Harga', align: 'right', fmt: mktCtxFmtPrice },
-    { key: 'change_pct', label: 'Perubahan', align: 'right', fmt: mktCtxFmtPct, colorize: true },
-    { key: 'rsi_14', label: 'RSI 14', align: 'right', fmt: function(v) { return v.toFixed(1); } },
+    { key: 'rsi_14', label: 'RSI 14', align: 'right', fmt: function(v) { return Number(v).toFixed(1); } },
     { key: 'week52_high_dist_pct', label: 'Jarak 52W High', align: 'right', fmt: mktCtxFmtPct },
     { key: 'volume_ratio_vs_7d_avg', label: 'Vol vs 7D', align: 'right', fmt: mktCtxFmtRatio },
+    { key: 'foreign_net_today', label: 'Foreign Terakhir', align: 'right', fmt: mktCtxFmtIDR, colorize: true },
+    { key: 'foreign_net_3d', label: 'Foreign 3D', align: 'right', fmt: mktCtxFmtIDR, colorize: true },
     { key: 'foreign_net_7d', label: 'Foreign 7D', align: 'right', fmt: mktCtxFmtIDR, colorize: true }
 ];
 
@@ -3727,6 +3864,10 @@ function setRankingSort(key) {
 
 async function fetchRankingTable() {
     if (rankingState.loading) return;
+    // Same session-note wiring as the standalone "Ranking" menu page
+    // (stock-analysis-ai.js), so the Ranking Harian tab shows the identical
+    // "catatan sesi" banner instead of nothing.
+    if (typeof wrapRenderRankingTableForSessionLabel === 'function') wrapRenderRankingTableForSessionLabel();
     rankingState.loading = true;
     rankingState.error = null;
     renderRankingTable();
@@ -3905,7 +4046,7 @@ async function openNewsFromAnalisis(ticker) {
 
 // ===== ANALISIS FOLLOW-UP (on analisis page) =====
 async function handleAnalisisFollowUp(msg) {
-    var resultArea = document.getElementById('analisisResult');
+    var resultArea = document.getElementById('unifiedChatMessages') || document.getElementById('analisisResult');
     var input = getActiveChatInput();
     if (!resultArea || !input) return;
 
@@ -4111,15 +4252,20 @@ async function loadChartPage() {
     var _pd = (typeof chartDims === 'function') ? chartDims('page') : { main: 350, rsi: 60 };
     var _dlIcon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>';
     var _fsIcon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 9V5a1 1 0 011-1h4M20 9V5a1 1 0 00-1-1h-4M4 15v4a1 1 0 001 1h4m11-5v4a1 1 0 01-1 1h-4"/></svg>';
-    container.innerHTML = '<div class="px-4 py-3 border-b border-dark-600/30 flex flex-wrap items-center justify-between gap-2"><div class="flex items-center gap-2 min-w-0"><span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span><h2 class="text-sm font-semibold text-gray-200 truncate">Chart ' + ticker + '</h2><span class="text-xs text-gray-500 shrink-0">Data Historis T-1</span></div>' +
+    // Same header/skeleton/legend markup as UnifiedCockpit.loadUnifiedChart()
+    // (public/unified-cockpit-runtime.js) — this is the standalone "Chart" menu
+    // page's counterpart to the "Chart & AI Vision" tab in Analisis Saham, and
+    // both must present the identical chart component, not two hand-drifted copies.
+    container.innerHTML = '<div class="unified-card-header">' +
+        '<div class="flex items-center gap-2 min-w-0"><span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span><h2 class="text-sm font-semibold text-gray-200 truncate">Chart Interaktif ' + ticker + '</h2><span class="text-xs text-gray-500 shrink-0">Data Historis T-1</span></div>' +
         '<div class="flex items-center gap-2 shrink-0">' +
-        '<button id="' + chartId + '_ai" onclick="triggerAiChartAnalysis(\'' + ticker + '\')" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-300 border border-blue-500/30 hover:bg-blue-500/10 transition" aria-label="Analisis chart ' + ticker + ' dengan AI">🤖 Analisis AI</button>' +
-        '<button id="' + chartId + '_fs" onclick="openChartPageFullscreen()" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-sky-300 border border-sky-500/30 hover:bg-sky-500/10 transition" aria-label="Buka chart ' + ticker + ' layar penuh">' + _fsIcon + 'Layar Penuh</button>' +
-        '<button id="' + chartId + '_dl" onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\',this)" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition" aria-label="Download chart ' + ticker + ' sebagai PNG">' + _dlIcon + 'Download PNG</button></div></div>' +
+        '<button id="' + chartId + '_ai" onclick="triggerAiChartAnalysis(\'' + ticker + '\')" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-300 border border-blue-500/30 hover:bg-blue-500/10 transition" aria-label="Analisis chart ' + ticker + ' dengan AI">🤖 Analisis AI</button>' +
+        '<button id="' + chartId + '_fs" onclick="openChartPageFullscreen()" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-sky-300 border border-sky-500/30 hover:bg-sky-500/10 transition" aria-label="Buka chart ' + ticker + ' layar penuh">' + _fsIcon + 'Layar Penuh</button>' +
+        '<button id="' + chartId + '_dl" onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\',this)" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition" aria-label="Download chart ' + ticker + ' sebagai PNG">' + _dlIcon + 'Download PNG</button></div></div>' +
         '<div id="' + chartId + '_container" style="height:' + _pd.main + 'px;width:100%"><div class="h-full p-4 space-y-3"><div class="skeleton-card h-full flex flex-col justify-end gap-3"><div class="skeleton-line w-2/3"></div><div class="skeleton-line w-full"></div><div class="skeleton-line w-5/6"></div><p class="text-xs text-gray-500 pt-2"><span class="spinner-sm"></span>Memuat chart...</p></div></div></div>' +
         '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:' + _pd.rsi + 'px;width:100%"></div>' +
         '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-4 sm:grid-cols-8 gap-1 text-[10px]"></div>' +
-        '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-3 text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span><span class="text-amber-400/80">Fib</span></div>';
+        '<div class="unified-chart-legend"><span class="text-emerald-400 font-semibold">MA20</span><span class="text-yellow-400 font-semibold">MA50</span><span class="text-blue-400 font-semibold">MA100</span><span class="text-purple-400 font-semibold">MA200</span><span class="text-orange-400 font-semibold">RSI14</span><span class="text-amber-400/80 font-semibold">Fibonacci</span></div>';
 
     try {
         var resp = await fetch('/api/candles?ticker=' + encodeURIComponent(ticker));
@@ -4925,392 +5071,9 @@ function buildContextForApi() {
 }
 
 // ===== MARKET DATA CONTEXT FETCHER =====
-// Frontend cache: avoid repeated /api/quote calls for same ticker within 4 minutes
-var _quoteContextCache = {};
-var _quoteInflight = {};
-var QUOTE_CONTEXT_CACHE_TTL = 4 * 60 * 1000;
-
-async function fetchQuoteContext(ticker, forceFresh) {
-    if (!ticker || !isValidTicker(ticker)) return '';
-
-    // Check frontend cache (skipped when forceFresh — initial analysis must match live card)
-    var cacheKey = ticker;
-    if (!forceFresh) {
-        var cached = _quoteContextCache[cacheKey];
-        if (cached && (Date.now() - cached.ts < QUOTE_CONTEXT_CACHE_TTL)) {
-            return cached.ctx;
-        }
-        // Deduplicate inflight requests for same ticker
-        if (_quoteInflight[cacheKey]) {
-            return _quoteInflight[cacheKey];
-        }
-    }
-
-    _quoteInflight[cacheKey] = (async function() {
-    try {
-        var quoteResp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&includeNews=0', { method: 'GET', headers: getAuthHeaders() }).catch(function() { return null; });
-
-        var lines = ['\n[Auto-Cuan Market Data]'];
-        lines.push('Ticker: ' + ticker);
-        lines.push('Basis Data: Data Historis T-1');
-
-        if (quoteResp && quoteResp.ok) {
-            var q = await quoteResp.json();
-            if (q.success) {
-                // Same rule as every other grounding line: absent stays absent.
-                // "Volume: 0" told the model the stock did not trade, and a
-                // missing OHLC field was written as the literal "undefined".
-                [['Last', q.last], ['Open', q.open], ['High', q.high], ['Low', q.low], ['Volume', q.volume]]
-                    .forEach(function(entry) {
-                        if (entry[1] != null && entry[1] !== '') lines.push(entry[0] + ': ' + entry[1]);
-                    });
-                if (q.volumeAvg20 != null) lines.push('Avg Volume 20: ' + q.volumeAvg20);
-                if (q.volumeVsAvg20 != null) lines.push('Volume vs Avg 20: ' + q.volumeVsAvg20 + 'x');
-                if (q.volumeAvg3 != null) lines.push('Avg Volume 3D: ' + q.volumeAvg3);
-                if (q.volumeAvg7 != null) lines.push('Avg Volume 7D: ' + q.volumeAvg7);
-                if (q.volumeVsAvg3 != null) lines.push('Volume vs Avg 3D: ' + q.volumeVsAvg3 + 'x');
-                if (q.volumeVsAvg7 != null) lines.push('Volume vs Avg 7D: ' + q.volumeVsAvg7 + 'x');
-                if (q.prevClose != null) lines.push('Prev Close: ' + q.prevClose);
-                if (q.priceChange1D != null) lines.push('Price Change 1D: ' + q.priceChange1D + '%');
-                if (q.volumeTrend) lines.push('Volume Trend: ' + q.volumeTrend);
-                if (q.priceVolumeReading) lines.push('Price-Volume Reading: ' + q.priceVolumeReading);
-                if (q.ma20 != null) lines.push('MA20: ' + q.ma20);
-                if (q.ma50 != null) lines.push('MA50: ' + q.ma50);
-                if (q.ma100 != null) lines.push('MA100: ' + q.ma100);
-                if (q.ma200 != null) lines.push('MA200: ' + q.ma200);
-                if (q.rsi14 != null) lines.push('RSI14: ' + q.rsi14);
-                // Pivot data from same response
-                if (q.pivot) {
-                    // A missing pivot used to be written into the prompt as the
-                    // literal string "undefined" ("Support 1: undefined").
-                    [['Pivot Point', q.pivot.pivotPoint], ['OHLC Pivot', q.pivot.ohlcPivot],
-                     ['Support 1', q.pivot.support1], ['Support 2', q.pivot.support2],
-                     ['Resistance 1', q.pivot.resistance1], ['Resistance 2', q.pivot.resistance2],
-                     ['Pivot Method', q.pivot.pivotMethod], ['Pivot Source Date', q.pivot.pivotSourceDate]
-                    ].forEach(function(entry) {
-                        if (entry[1] != null && entry[1] !== '') lines.push(entry[0] + ': ' + entry[1]);
-                    });
-                    if (q.pivot.flatRange) lines.push('Note: Range T-1 flat/sempit, level pivot kurang informatif.');
-                }
-
-                // Volume Intelligence context (only for stocks with volume data)
-                if (q.volumeAvg3 != null && q.volumeAvg7 != null && !q.isIndex) {
-                    lines.push('');
-                    lines.push('[Auto-Cuan Volume Intelligence]');
-                    // Every line here is grounding the model reads as fact, so a
-                    // missing field is omitted rather than defaulted. The `|| 0`
-                    // fallbacks this replaces turned an absent 20-day average
-                    // into "Volume vs Avg 20D: 0x" and an absent daily move into
-                    // "Price Change 1D: 0%" — readings the model would then
-                    // reason from as a volume collapse and a flat session. The
-                    // block immediately above already guards the same fields
-                    // with `!= null`; this one did not.
-                    if (q.volume != null) lines.push('Volume Terakhir: ' + formatIndonesianVolume(q.volume));
-                    lines.push('Rata-rata 3 Hari: ' + formatCompactVolume(q.volumeAvg3));
-                    lines.push('Rata-rata 7 Hari: ' + formatCompactVolume(q.volumeAvg7));
-                    if (q.volumeAvg20 != null) lines.push('Rata-rata 20 Hari: ' + formatCompactVolume(q.volumeAvg20));
-                    if (q.volumeVsAvg3 != null) lines.push('Volume vs Avg 3D: ' + String(q.volumeVsAvg3).replace('.', ',') + 'x');
-                    if (q.volumeVsAvg7 != null) lines.push('Volume vs Avg 7D: ' + String(q.volumeVsAvg7).replace('.', ',') + 'x');
-                    if (q.volumeVsAvg20 != null) lines.push('Volume vs Avg 20D: ' + String(q.volumeVsAvg20).replace('.', ',') + 'x');
-                    if (q.priceChange1D != null) lines.push('Price Change 1D: ' + q.priceChange1D + '%');
-                    if (q.volumeTrend) lines.push('Volume Trend: ' + q.volumeTrend);
-                    lines.push('Pembacaan: ' + (q.priceVolumeReading || 'Data tidak cukup untuk pembacaan volume.'));
-                    // Estimated transaction value (optional)
-                    if (q.last && q.volume && q.volume > 0) {
-                        var estTxnValue = q.last * q.volume;
-                        lines.push('Estimasi Nilai Transaksi: ' + formatIndonesianRupiah(estTxnValue));
-                    }
-                }
-
-                // Fibonacci Intelligence context (only if data available)
-                var fib = q.fibonacci;
-                if (fib && fib.swingHigh != null && fib.levels) {
-                    lines.push('');
-                    lines.push('[Auto-Cuan Fibonacci Intelligence]');
-                    lines.push('Swing High: ' + fib.swingHigh);
-                    lines.push('Swing Low: ' + fib.swingLow);
-                    lines.push('Trend Context: ' + humanizeFibTrend(fib.trend));
-                    lines.push('Lookback: ' + fib.lookbackCandles + ' candles');
-                    lines.push('Fib 23.6%: ' + fib.levels.fib236);
-                    lines.push('Fib 38.2%: ' + fib.levels.fib382);
-                    lines.push('Fib 50%: ' + fib.levels.fib500);
-                    lines.push('Fib 61.8%: ' + fib.levels.fib618);
-                    lines.push('Fib 78.6%: ' + fib.levels.fib786);
-                    if (fib.nearestLabel) lines.push('Nearest Fib: ' + fib.nearestLabel + ' (' + fib.nearestLevel + ')');
-                    if (fib.positionReading) lines.push('Reading: ' + fib.positionReading);
-                    if (fib.invalidationLevel) lines.push('Invalidation: ' + (fib.trend === 'upward_retracement' ? 'Breakdown di bawah ' : 'Breakout di atas ') + fib.invalidationLevel + ' melemahkan skenario saat ini.');
-                }
-            } else {
-                lines.push('Data historis belum berhasil diambil.');
-            }
-
-            // Board data from same response
-            var b = q && q.board;
-            if (b) {
-                lines.push('');
-                lines.push('[Auto-Cuan Board Data]');
-                lines.push('Ticker: ' + ticker);
-                if (b.companyName) lines.push('Company: ' + b.companyName);
-                lines.push('Board: ' + (b.board || 'UNKNOWN'));
-                lines.push('FCA: ' + (b.isFca ? 'true' : 'false'));
-                lines.push('Min Price Guard: ' + (b.minPriceGuard != null ? b.minPriceGuard : 50));
-                if (b.note) lines.push('Note: ' + b.note);
-            }
-
-            // News data from same response
-            var newsData = q && q.news;
-            if (newsData && newsData.items && newsData.items.length > 0) {
-                lines.push('');
-                lines.push('[Auto-Cuan News Summary]');
-                lines.push('Ticker: ' + ticker);
-                lines.push('Period: 6 bulan terakhir');
-                for (var ni = 0; ni < newsData.items.length; ni++) {
-                    var news = newsData.items[ni];
-                    lines.push('- ' + (news.date || '?') + ': ' + news.title);
-                    if (news.summary) lines.push('  ' + news.summary);
-                    if (news.possibleImpact) lines.push('  Impact: ' + news.possibleImpact);
-                    if (news.source) lines.push('  Sumber: ' + news.source);
-                }
-                // Store for News panel button (by ticker)
-                if (!window._stockNewsByTicker) window._stockNewsByTicker = {};
-                window._stockNewsByTicker[ticker] = newsData.items;
-            } else {
-                lines.push('');
-                lines.push('[Auto-Cuan News Summary]');
-                lines.push('News Summary: unavailable');
-                window._stockNewsByTicker = window._stockNewsByTicker || {};
-                delete window._stockNewsByTicker[ticker];
-            }
-
-            // === AUTO-CUAN SCORE (from server-side calculation) ===
-            var acs = q.autoCuanScore;
-            if (acs && acs.score != null) {
-                lines.push('');
-                lines.push('[Auto-Cuan Score]');
-                lines.push('Score: ' + acs.score + '/100');
-                lines.push('Grade: ' + acs.grade);
-                lines.push('Confidence: ' + acs.confidence);
-                lines.push('Trend: ' + acs.components.trend + '/25');
-                lines.push('Momentum: ' + acs.components.momentum + '/20');
-                lines.push('Volume: ' + acs.components.volume + '/20');
-                lines.push('Pivot: ' + acs.components.pivot + '/15');
-                lines.push('Catalyst: ' + acs.components.catalyst + '/10');
-                lines.push('Risk: ' + acs.components.risk);
-                if (acs.reasons && acs.reasons.length > 0) lines.push('Reasons: ' + acs.reasons.join('; '));
-                if (acs.warnings && acs.warnings.length > 0) lines.push('Warnings: ' + acs.warnings.join('; '));
-            } else {
-                // Fallback to frontend calculation if server didn't return score
-                var acScore = calculateAutoCuanScore(q, b, newsData);
-                if (acScore) {
-                    lines.push('');
-                    lines.push('[Auto-Cuan Score]');
-                    lines.push('Total: ' + acScore.total + '/100');
-                    lines.push('Category: ' + acScore.category);
-                    lines.push('Trend Score: ' + acScore.trendScore + '/30');
-                    lines.push('RSI Score: ' + acScore.rsiScore + '/20');
-                    lines.push('Volume Score: ' + acScore.volumeScore + '/20');
-                    lines.push('News Score: ' + acScore.newsScore + '/15');
-                    lines.push('Board Risk Score: ' + acScore.boardRiskScore + '/15');
-                    lines.push('Reason: ' + acScore.reason);
-                }
-            }
-
-            // === SETUP LABEL (from server-side calculation) ===
-            var sl = q.setupLabel;
-            if (sl && sl.status) {
-                lines.push('');
-                lines.push('[Auto-Cuan Setup Label]');
-                lines.push('Status: ' + sl.status);
-                lines.push('Confidence: ' + sl.confidence);
-                if (sl.reasons && sl.reasons.length > 0) lines.push('Reasons: ' + sl.reasons.join('; '));
-                lines.push('Valid If: ' + sl.validIf);
-                lines.push('Invalid If: ' + sl.invalidIf);
-                if (sl.flags && sl.flags.length > 0) lines.push('Flags: ' + sl.flags.join(', '));
-            }
-
-            // === BREAKOUT / BREAKDOWN CONFIRMATION (from server-side) ===
-            var bc = q.breakoutConfirmation;
-            if (bc && bc.status) {
-                lines.push('');
-                lines.push('[Auto-Cuan Breakout Confirmation]');
-                lines.push('Status: ' + bc.status);
-                lines.push('Confidence: ' + bc.confidence);
-                if (bc.breakoutLevel != null) lines.push('Breakout Level: ' + bc.breakoutLevel);
-                if (bc.breakdownLevel != null) lines.push('Breakdown Level: ' + bc.breakdownLevel);
-                lines.push('Valid If: ' + bc.validIf);
-                lines.push('Invalid If: ' + bc.invalidIf);
-                if (bc.reasons && bc.reasons.length > 0) lines.push('Reasons: ' + bc.reasons.join('; '));
-                if (bc.warnings && bc.warnings.length > 0) lines.push('Warnings: ' + bc.warnings.join('; '));
-            }
-
-            // === RESPECT ZONE & TRADING PLAN (from server-side) ===
-            if (q.respectZone && q.respectZone.notes && q.respectZone.notes.length > 0) {
-                lines.push('');
-                lines.push('[Auto-Cuan Respect Zone]');
-                q.respectZone.notes.forEach(function(n) { lines.push('- ' + n); });
-            }
-            if (q.tradingPlan) {
-                var tp = q.tradingPlan;
-                lines.push('');
-                lines.push('[Auto-Cuan Trading Plan]');
-                lines.push('Entry 1: ' + (tp.entry_1 || '-'));
-                lines.push('Entry 2: ' + (tp.entry_2 || '-'));
-                lines.push('Stop Loss: ' + (tp.stop_loss || '-'));
-                lines.push('Target 1: ' + (tp.target_1 || '-'));
-                lines.push('Target 2: ' + (tp.target_2 || '-'));
-                lines.push('R/R: ' + (tp.risk_reward || '-'));
-                if (isLoggedInUser() && tp.half_candle_level) lines.push('Half Candle Debt: ' + tp.half_candle_level + ' — ' + (tp.half_candle_label || 'Entry pullback 1/2 candle'));
-                if (isLoggedInUser() && tp.half_candle_note) lines.push('Half Candle Note: ' + tp.half_candle_note);
-                if (isLoggedInUser() && tp.refinement_notes) lines.push('Refinement: ' + tp.refinement_notes);
-                if (isLoggedInUser() && tp.respect_zone_notes) lines.push('Zone Context: ' + tp.respect_zone_notes);
-                if (isLoggedInUser() && tp.respect_quality_label) {
-                    lines.push('Respect v2: ' + tp.respect_quality_label + (tp.respect_quality_score != null ? ' (' + tp.respect_quality_score + '/100)' : ''));
-                    if (tp.respect_quality_factors && tp.respect_quality_factors.length) lines.push('Respect Factors: ' + tp.respect_quality_factors.slice(0, 4).join('; '));
-                    if (tp.respect_invalid_reason) lines.push('Respect Invalid: ' + tp.respect_invalid_reason);
-                    if (tp.bearish_respect_warning) lines.push('Bearish Respect: ' + tp.bearish_respect_warning);
-                }
-            }
-            if (q.bsjpLabel) {
-                lines.push('');
-                lines.push('[Auto-Cuan BSJP]');
-                lines.push(q.bsjpLabel);
-            }
-            // === V6: RISK LABEL (from server-side deterministic calculation) ===
-            if (q.riskLabel && q.riskLabel.risk_label) {
-                lines.push('');
-                lines.push('[Auto-Cuan Risk Label]');
-                lines.push('Risk: ' + q.riskLabel.risk_label);
-                lines.push('Score: ' + q.riskLabel.risk_score + '/100');
-                if (q.riskLabel.risk_notes && q.riskLabel.risk_notes.length > 0) lines.push('Notes: ' + q.riskLabel.risk_notes.join('; '));
-            }
-        } else {
-            lines.push('Data historis belum berhasil diambil.');
-        }
-
-        var ctx = lines.join('\n');
-        _quoteContextCache[cacheKey] = { ctx: ctx, ts: Date.now() };
-        return ctx;
-    } catch (e) {
-        return '\n[Auto-Cuan Market Data]\nData historis belum berhasil diambil.';
-    }
-    })();
-    try { var result = await _quoteInflight[cacheKey]; return result; }
-    finally { delete _quoteInflight[cacheKey]; }
-}
-
-// ===== AUTO-CUAN SCORE CALCULATOR =====
-function calculateAutoCuanScore(q, board, newsData) {
-    if (!q || !q.success) return null;
-
-    var trendScore = 0; // 0-30
-    var rsiScore = 0;   // 0-20
-    var volumeScore = 0; // 0-20
-    var newsScore = 7;  // 0-15 (default neutral)
-    var boardRiskScore = 10; // 0-15 (default medium)
-    var reasons = [];
-
-    // 1. TREND / MA Score (0-30)
-    var last = q.last;
-    var maAbove = 0;
-    var maTotal = 0;
-    if (q.ma20 != null) { maTotal++; if (last >= q.ma20) maAbove++; }
-    if (q.ma50 != null) { maTotal++; if (last >= q.ma50) maAbove++; }
-    if (q.ma100 != null) { maTotal++; if (last >= q.ma100) maAbove++; }
-    if (q.ma200 != null) { maTotal++; if (last >= q.ma200) maAbove++; }
-
-    if (maTotal > 0) {
-        var maRatio = maAbove / maTotal;
-        trendScore = Math.round(maRatio * 30);
-        // Bonus: check MA alignment (MA20 > MA50 > MA100 = bullish)
-        if (q.ma20 != null && q.ma50 != null && q.ma20 > q.ma50) trendScore = Math.min(30, trendScore + 3);
-        if (maAbove === 0) reasons.push('trend bearish (below all MA)');
-        else if (maAbove === maTotal) reasons.push('trend bullish (above all MA)');
-        else reasons.push('trend mixed');
-    } else {
-        trendScore = 10; // no MA data, neutral
-    }
-
-    // 2. RSI / MOMENTUM Score (0-20)
-    var rsi = q.rsi14;
-    if (rsi != null) {
-        if (rsi >= 55 && rsi <= 70) { rsiScore = 17; reasons.push('RSI bullish momentum'); }
-        else if (rsi >= 45 && rsi < 55) { rsiScore = 12; reasons.push('RSI netral'); }
-        else if (rsi > 70) { rsiScore = 8; reasons.push('RSI overbought risk'); }
-        else if (rsi >= 30 && rsi < 45) { rsiScore = 7; reasons.push('RSI weak/bearish'); }
-        else if (rsi < 30) { rsiScore = 5; reasons.push('RSI oversold belum confirm reversal'); }
-        else { rsiScore = 10; }
-    } else {
-        rsiScore = 8; // no RSI data
-    }
-
-    // 3. VOLUME Score (0-20)
-    var volVsAvg = q.volumeVsAvg20;
-    if (volVsAvg != null) {
-        // Determine if last candle was green or red
-        var isGreenCandle = q.last >= q.open;
-        if (volVsAvg >= 1.2 && isGreenCandle) { volumeScore = 18; reasons.push('volume tinggi + price naik'); }
-        else if (volVsAvg >= 1.2 && !isGreenCandle) { volumeScore = 6; reasons.push('volume tinggi tapi price turun (distribusi)'); }
-        else if (volVsAvg >= 0.8 && volVsAvg < 1.2) { volumeScore = 12; reasons.push('volume normal'); }
-        else if (volVsAvg < 0.5) { volumeScore = 4; reasons.push('volume sangat lemah'); }
-        else { volumeScore = 8; reasons.push('volume di bawah rata-rata'); }
-    } else {
-        volumeScore = 8; // no volume data
-    }
-
-    // 4. NEWS / KATALIS Score (0-15)
-    if (newsData && newsData.items && newsData.items.length > 0) {
-        var positiveNews = 0, negativeNews = 0;
-        for (var ni = 0; ni < newsData.items.length; ni++) {
-            var impact = newsData.items[ni].possibleImpact || newsData.items[ni].impact || 'neutral';
-            if (impact === 'positive') positiveNews++;
-            else if (impact === 'negative') negativeNews++;
-        }
-        if (positiveNews > 0 && negativeNews === 0) { newsScore = 13; reasons.push('katalis positif'); }
-        else if (negativeNews > 0 && positiveNews === 0) { newsScore = 3; reasons.push('katalis negatif'); }
-        else if (positiveNews > 0 && negativeNews > 0) { newsScore = 8; reasons.push('katalis mixed'); }
-        else { newsScore = 7; }
-    } else {
-        newsScore = 6; // no news = slightly below neutral
-    }
-
-    // 5. BOARD / RISK Score (0-15)
-    if (board && board.board) {
-        var b = board.board;
-        if (b === 'UTAMA') { boardRiskScore = 14; }
-        else if (b === 'PENGEMBANGAN' || b === 'EKONOMI_BARU') { boardRiskScore = 11; }
-        else if (b === 'AKSELERASI') { boardRiskScore = 6; reasons.push('papan AKSELERASI (likuiditas ketat)'); }
-        else if (b === 'PEMANTAUAN_KHUSUS') { boardRiskScore = 3; reasons.push('Pemantauan Khusus (risk tinggi)'); }
-        else { boardRiskScore = 8; } // UNKNOWN
-        if (board.isFca) { boardRiskScore = Math.min(boardRiskScore, 3); reasons.push('FCA risk'); }
-    }
-
-    // Calculate total
-    var total = trendScore + rsiScore + volumeScore + newsScore + boardRiskScore;
-    total = Math.max(0, Math.min(100, total));
-
-    // Determine category
-    var category;
-    if (total <= 30) category = 'Avoid';
-    else if (total <= 45) category = 'Wait and see';
-    else if (total <= 60) category = 'Watchlist';
-    else if (total <= 75) category = 'Speculative buy';
-    else category = 'Strong setup';
-
-    // Build reason string (max 2 most important)
-    var topReasons = reasons.slice(0, 3).join(', ');
-    if (!topReasons) topReasons = 'Data terbatas';
-
-    return {
-        total: total,
-        category: category,
-        trendScore: trendScore,
-        rsiScore: rsiScore,
-        volumeScore: volumeScore,
-        newsScore: newsScore,
-        boardRiskScore: boardRiskScore,
-        reason: topReasons
-    };
-}
+// fetchQuoteContext() and calculateAutoCuanScore() moved to public/market-feature-runtime.js
+// so this page and analisis-saham-runtime.js share one implementation instead of
+// silently drifting apart (see PR #529 follow-up).
 
 function setActiveTicker(ticker) {
     if (!ticker) return;
@@ -6218,18 +5981,19 @@ function copyBubbleContent(btn) {
     var bubble = btn.closest('.bg-dark-700\\/50') || btn.closest('.bg-emerald-500\\/15') || btn.parentElement.parentElement;
     var contentEl = bubble.querySelector('.ai-content') || bubble.querySelector('p');
     var text = contentEl ? contentEl.innerText : bubble.innerText;
-    navigator.clipboard.writeText(text).then(function() {
+    // navigator.clipboard can be undefined (non-secure context, older
+    // webview) — calling .writeText on it there throws synchronously before
+    // any Promise exists, so the execCommand fallback below never ran.
+    // AutoCuanAI.copyText covers both cases in one place.
+    var copyFn = (window.AutoCuanAI && typeof window.AutoCuanAI.copyText === 'function')
+        ? window.AutoCuanAI.copyText
+        : function (t) { return navigator.clipboard ? navigator.clipboard.writeText(t).then(function () { return true; }).catch(function () { return false; }) : Promise.resolve(false); };
+    copyFn(text).then(function (ok) {
+        if (!ok) return;
         var originalText = btn.textContent;
         btn.textContent = 'Tersalin';
         btn.classList.add('text-emerald-400');
         setTimeout(function() { btn.textContent = originalText; btn.classList.remove('text-emerald-400'); }, 2000);
-    }).catch(function() {
-        // Fallback for older browsers
-        var textarea = document.createElement('textarea');
-        textarea.value = text; textarea.style.position = 'fixed'; textarea.style.opacity = '0';
-        document.body.appendChild(textarea); textarea.select();
-        try { document.execCommand('copy'); btn.textContent = 'Tersalin'; btn.classList.add('text-emerald-400'); setTimeout(function() { btn.textContent = 'Salin'; btn.classList.remove('text-emerald-400'); }, 2000); } catch(e) {}
-        document.body.removeChild(textarea);
     });
 }
 
@@ -8819,12 +8583,11 @@ function screenerStatusShort(status) {
 }
 
 function screenerTickerClick(ticker) {
-    // Navigate to analysis page and trigger analysis
-    navigateTo('analisis');
-    setTimeout(function() {
-        var el = document.getElementById('analisisInput');
-        if (el) { el.value = ticker; handleAnalisisSubmit(); }
-    }, 200);
+    if (ticker) {
+        window.location.assign('/analisis-saham?ticker=' + encodeURIComponent(ticker));
+        return;
+    }
+    window.location.assign('/analisis-saham');
 }
 
 // ===== NON-KONGLO SCREENER FUNCTIONS =====
@@ -10685,6 +10448,14 @@ function stripFollowUpTemplate(html) {
 }
 
 // ===== AI OUTPUT SANITIZER (security) =====
+// Server prompts tell the model to output real HTML and never markdown
+// stars, but LLMs occasionally ignore that and leave literal **bold**
+// markers in otherwise-valid HTML. Converting any that slip through is a
+// no-op when the text is clean, so it's safe to always run.
+function convertStrayMarkdownBold(html) {
+    return String(html || '').replace(/\*\*([^*<>\n]+)\*\*/g, '<strong>$1</strong>');
+}
+
 function sanitizeAIHtml(html) {
     if (!html) return html;
     // Remove script tags (split closing tag to avoid HTML parser issue)
@@ -11274,5 +11045,6 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/track-record-runtime.js"></script>
 <script src="/watchlist-runtime.js"></script>
 <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
+<script src="/unified-cockpit-runtime.js?v=20260905-v1"></script>
 </body>
 </html>

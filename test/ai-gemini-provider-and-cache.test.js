@@ -382,3 +382,40 @@ test('PR 6: handleContextAIV7 respects GEMINI_AI_DISABLED toggle', async () => {
     delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   }
 });
+
+// The primary Gemini path can make up to 3 sequential upstream attempts
+// (primary model, fallback model, backup key), each historically fixed at
+// 25000ms with no cumulative check. 3 * 25000ms can exceed vercel.json's
+// 60s maxDuration for api/analyze.js, so the platform kills the function
+// before it reaches its own local-deterministic fallback - the client then
+// sees a raw timeout/disconnect instead of a graceful degraded reply, which
+// looks exactly like "every AI route is down" even though no model was ever
+// actually rejected. See PR #529 follow-up investigation.
+test('PR529 follow-up: Gemini primary-path attempts respect a cumulative time budget under Vercel maxDuration', () => {
+  const { HARD_HANDLER_BUDGET_MS, GEMINI_ATTEMPT_TIMEOUT_MS, GEMINI_MIN_VIABLE_TIMEOUT_MS, nextGeminiTimeout } = handleContextAIV7._test;
+
+  const VERCEL_MAX_DURATION_MS = 60000;
+  assert.ok(HARD_HANDLER_BUDGET_MS < VERCEL_MAX_DURATION_MS, 'handler budget must leave margin under the platform hard limit');
+
+  // Worst case (3 full-length attempts back to back) must not be allowed to
+  // exceed the handler's own hard budget.
+  assert.ok(3 * GEMINI_ATTEMPT_TIMEOUT_MS > HARD_HANDLER_BUDGET_MS,
+    'sanity check: without budget-aware timeouts, 3 attempts really could exceed the budget');
+
+  // Comfortable budget: the first attempt gets the full per-attempt timeout.
+  const freshStart = Date.now();
+  assert.equal(nextGeminiTimeout(freshStart), GEMINI_ATTEMPT_TIMEOUT_MS);
+
+  // Only a few seconds left (but still above the minimum viable timeout): the
+  // next attempt must be capped to what remains, not allowed to run for the
+  // full fixed timeout.
+  const remainingMs = GEMINI_MIN_VIABLE_TIMEOUT_MS + 2000;
+  const almostOut = Date.now() - (HARD_HANDLER_BUDGET_MS - remainingMs);
+  const cappedTimeout = nextGeminiTimeout(almostOut);
+  assert.ok(cappedTimeout !== null && cappedTimeout <= remainingMs, 'a late attempt must be capped to the remaining budget');
+
+  // Effectively no time left: the attempt must be skipped entirely (null)
+  // rather than handed a token timeout too short for any real HTTP round trip.
+  const exhausted = Date.now() - (HARD_HANDLER_BUDGET_MS - (GEMINI_MIN_VIABLE_TIMEOUT_MS - 1));
+  assert.equal(nextGeminiTimeout(exhausted), null, 'an attempt with less than the minimum viable timeout must be skipped');
+});

@@ -149,9 +149,12 @@ test('9: existing /review and /dashboard rewrites remain intact', () => {
   assert.ok(planner, 'expected /portfolio-planner rewrite');
   // Portfolio Planner v2 rollout: the route now serves the v2 file.
   assert.equal(planner.destination, '/portfolio-command-center-v2.html');
+  var analisis = rewrites.find(function (r) { return r.source === '/analisis-saham'; });
+  assert.ok(analisis, 'expected /analisis-saham rewrite');
+  assert.equal(analisis.destination, '/analisis-saham.html');
   // Routing consolidation onto shared Vercel Function slots (Hobby plan function
-  // limit) added /pattern and the /api/subscription-* -> /api/review-access rewrites.
-  assert.equal(rewrites.length, 6, 'no unexpected extra rewrites were introduced');
+  // limit) added /pattern, /portfolio-planner, and /analisis-saham.
+  assert.equal(rewrites.length, 7, 'no unexpected extra rewrites were introduced');
 });
 
 // 10. Existing Vercel cron remains unchanged.
