@@ -1303,28 +1303,10 @@
         </div>
     </div>
 
-    <!-- Table of Signals -->
+    <!-- Signal Cards -->
     <div class="bg-dark-800/40 border border-dark-600/30 rounded-xl overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-xs border-collapse min-w-[700px]">
-                <thead>
-                    <tr class="bg-dark-700/60 text-gray-400 font-medium border-b border-dark-600/40 text-left">
-                        <th class="px-3 py-2.5 sticky left-0 bg-dark-700/90 z-10">Ticker</th>
-                        <th class="px-3 py-2.5">Kategori</th>
-                        <th class="px-3 py-2.5">Tanggal</th>
-                        <th class="px-3 py-2.5 text-right">Entry</th>
-                        <th class="px-3 py-2.5 text-right">Target 1</th>
-                        <th class="px-3 py-2.5 text-right">Target 2</th>
-                        <th class="px-3 py-2.5 text-right">Stop Loss</th>
-                        <th class="px-3 py-2.5 text-center">Status</th>
-                        <th class="px-3 py-2.5 text-right">Gain / Loss</th>
-                        <th class="px-3 py-2.5 text-right">Durasi</th>
-                    </tr>
-                </thead>
-                <tbody id="trTableBody" class="divide-y divide-dark-600/20 text-gray-300">
-                    <!-- Dynamic rows or skeleton -->
-                </tbody>
-            </table>
+        <div id="trTableBody" class="tr-card-list divide-y divide-dark-600/20 text-gray-300">
+            <!-- Dynamic cards or skeleton -->
         </div>
         <div id="trEmptyState" class="hidden py-12 text-center text-gray-500 text-xs">
             Tidak ada sinyal yang sesuai dengan filter.

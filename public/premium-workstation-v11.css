@@ -399,3 +399,53 @@
     box-shadow: inset 3px 0 0 var(--pw-accent);
   }
 }
+
+/* ------------------------------------------------------------------------
+   Track Record — signal cards (replaces the dense multi-column table).
+   Bounded height with its own internal scroll so the filter bar and summary
+   cards above stay in view instead of requiring a full-page scroll to see
+   more than a handful of signals.
+   ------------------------------------------------------------------------ */
+.tr-card-list {
+  max-height: min(70vh, 900px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.tr-signal-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.tr-signal-levels {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 16px;
+  row-gap: 4px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+
+.tr-signal-levels b {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.tr-signal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+@media (max-width: 480px) {
+  .tr-signal-levels { column-gap: 12px; font-size: 10.5px; }
+}

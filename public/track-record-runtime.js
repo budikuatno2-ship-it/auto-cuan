@@ -31,7 +31,7 @@ function trEntryBounds(s) {
 }
 
 function trSkeletonHtml() {
-    return '<tr><td colspan="10" class="text-center py-10 text-gray-500"><div class="spinner mx-auto mb-2"></div>Memuat data track record sinyal...</td></tr>';
+    return '<div class="text-center py-10 text-gray-500"><div class="spinner mx-auto mb-2"></div>Memuat data track record sinyal...</div>';
 }
 
 async function loadTrackRecord(force) {
@@ -55,14 +55,14 @@ async function loadTrackRecord(force) {
         var data = await res.json();
 
         if (!data || !data.success) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-400">Gagal memuat track record: ' + ((data && data.error) || 'Terjadi kesalahan.') + '</td></tr>';
+            tbody.innerHTML = '<div class="text-center py-8 text-red-400">Gagal memuat track record: ' + ((data && data.error) || 'Terjadi kesalahan.') + '</div>';
             return;
         }
 
         _trData = data;
         renderTrackRecordUI(data);
     } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-400">Gagal terhubung ke server: ' + (err.message || String(err)) + '</td></tr>';
+        tbody.innerHTML = '<div class="text-center py-8 text-red-400">Gagal terhubung ke server: ' + (err.message || String(err)) + '</div>';
     } finally {
         _trInFlight = false;
         if (refreshBtn) refreshBtn.classList.remove('opacity-50', 'pointer-events-none');
@@ -181,45 +181,44 @@ function renderTrackRecordTable() {
 
     if (emptyEl) emptyEl.classList.add('hidden');
 
-    var rowsHtml = '';
+    var cardsHtml = '';
     filtered.forEach(function(s) {
         var gainHtml = '—';
         if (s.gain_pct != null) {
             var isPos = s.gain_pct > 0;
             var isNeg = s.gain_pct < 0;
-            var colorClass = isPos ? 'text-emerald-400 font-bold' : (isNeg ? 'text-red-400 font-bold' : 'text-gray-400');
-            gainHtml = '<span class="' + colorClass + '">' + (isPos ? '+' : '') + s.gain_pct.toFixed(1) + '%</span>';
+            var colorClass = isPos ? 'text-emerald-400' : (isNeg ? 'text-red-400' : 'text-gray-400');
+            gainHtml = '<span class="' + colorClass + ' font-bold">' + (isPos ? '+' : '') + s.gain_pct.toFixed(1) + '%</span>';
         }
 
         var entryBounds = trEntryBounds(s);
         var entryText = entryBounds.length ? entryBounds.map(formatRp).join('–') : '—';
 
-        rowsHtml += '<tr class="hover:bg-dark-700/40 transition">' +
-            '<td class="px-3 py-2.5 font-bold text-white sticky left-0 bg-dark-800/90 z-10">' +
-                '<div class="flex items-center gap-1.5">' +
-                    '<span>' + s.ticker + '</span>' +
+        cardsHtml += '<div class="tr-signal-card hover:bg-dark-700/40 transition px-3 py-2.5">' +
+            '<div class="tr-signal-row-top">' +
+                '<div class="flex items-center gap-1.5 min-w-0">' +
+                    '<span class="font-bold text-white text-sm">' + s.ticker + '</span>' +
                     (s.score ? '<span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-dark-600/60 text-gray-300 border border-dark-500/30">' + s.score + '</span>' : '') +
+                    '<span class="text-[11px] px-2 py-0.5 rounded-md bg-dark-700/60 border border-dark-600/40 text-gray-400 whitespace-nowrap">' + s.source_short + '</span>' +
                 '</div>' +
-            '</td>' +
-            '<td class="px-3 py-2.5 text-gray-400 whitespace-nowrap">' +
-                '<span class="text-[11px] px-2 py-0.5 rounded-md bg-dark-700/60 border border-dark-600/40">' + s.source_short + '</span>' +
-            '</td>' +
-            '<td class="px-3 py-2.5 text-gray-400 whitespace-nowrap font-mono text-[11px]">' + (s.date || '—') + '</td>' +
-            '<td class="px-3 py-2.5 text-right font-mono text-gray-300">' + entryText + '</td>' +
-            '<td class="px-3 py-2.5 text-right font-mono text-emerald-400 font-medium">' + formatRp(s.tp1) + '</td>' +
-            '<td class="px-3 py-2.5 text-right font-mono text-emerald-300">' + formatRp(s.tp2) + '</td>' +
-            '<td class="px-3 py-2.5 text-right font-mono text-red-400">' + formatRp(s.sl) + '</td>' +
-            '<td class="px-3 py-2.5 text-center whitespace-nowrap">' +
-                '<span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide" style="color:' + s.status_tone + ';background-color:' + s.status_bg + ';border:1px solid ' + s.status_border + '">' +
+                '<span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide whitespace-nowrap" style="color:' + s.status_tone + ';background-color:' + s.status_bg + ';border:1px solid ' + s.status_border + '">' +
                     s.status_label +
                 '</span>' +
-            '</td>' +
-            '<td class="px-3 py-2.5 text-right font-mono">' + gainHtml + '</td>' +
-            '<td class="px-3 py-2.5 text-right text-gray-400 whitespace-nowrap text-[11px]">' + (s.duration_text || '—') + '</td>' +
-        '</tr>';
+            '</div>' +
+            '<div class="tr-signal-levels">' +
+                '<span>Entry <b>' + entryText + '</b></span>' +
+                '<span>TP1 <b class="text-emerald-400">' + formatRp(s.tp1) + '</b></span>' +
+                '<span>TP2 <b class="text-emerald-300">' + formatRp(s.tp2) + '</b></span>' +
+                '<span>SL <b class="text-red-400">' + formatRp(s.sl) + '</b></span>' +
+            '</div>' +
+            '<div class="tr-signal-footer">' +
+                '<span>' + (s.date || '—') + ' · ' + (s.duration_text || '—') + '</span>' +
+                '<span class="text-xs">' + gainHtml + '</span>' +
+            '</div>' +
+        '</div>';
     });
 
-    tbody.innerHTML = rowsHtml;
+    tbody.innerHTML = cardsHtml;
 }
 
 // ===== CSV EXPORT TOOL =====
