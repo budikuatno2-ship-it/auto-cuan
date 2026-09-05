@@ -31,6 +31,10 @@
     return String(value == null ? '' : value);
   }
   function currentTicker() {
+    if (window.UnifiedCockpit && typeof window.UnifiedCockpit.getActiveTicker === 'function') {
+      var t = window.UnifiedCockpit.getActiveTicker();
+      if (/^(IHSG|[A-Z]{3,5})$/.test(t)) return t;
+    }
     var active = String(window.activeTicker || '').trim().toUpperCase();
     var input = byId('analisisInput');
     var typed = input ? String(input.value || '').trim().toUpperCase().replace(/\.JK$/i, '') : '';
@@ -39,9 +43,14 @@
   }
   function analysisSnapshot() {
     var root = byId('analisisResult');
-    if (!root) return '';
-    var primary = root.querySelector('.ai-content:not(.ai-followup)') || root.querySelector('.ai-content');
-    if (!primary) return '';
+    var primary = root ? (root.querySelector('.ai-content:not(.ai-followup)') || root.querySelector('.ai-content')) : null;
+    if (!primary) {
+      var visionWrap = byId('unifiedAiChartResultWrap') || byId('aiChartAnalysisResultWrap');
+      if (visionWrap && visionWrap.innerText && visionWrap.innerText.trim().length > 20) {
+        return visionWrap.innerText.trim().slice(0, 18000);
+      }
+      return '';
+    }
     var text = typeof window.htmlToCleanText === 'function' ? window.htmlToCleanText(primary.innerHTML) : primary.textContent;
     return String(text || '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 18000);
   }
@@ -62,17 +71,20 @@
     timers.forEach(function (timer) { clearTimeout(timer); });
     timers = [];
   }
+  function getChatRoot() {
+    return byId('unifiedChatMessages') || byId('analisisResult');
+  }
   function scrollBottom() {
-    var root = byId('analisisResult');
+    var root = getChatRoot();
     if (root) root.scrollTop = root.scrollHeight;
   }
   function appendUser(message) {
-    var root = byId('analisisResult'); if (!root) return;
+    var root = getChatRoot(); if (!root) return;
     root.insertAdjacentHTML('beforeend', '<div class="mt-3 flex justify-end fade-in-up stock-ai-followup"><div class="bg-emerald-500/10 border border-emerald-500/15 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[88%]"><p class="text-sm text-gray-100" style="white-space:pre-wrap">' + escapeHtml(message) + '</p></div></div>');
     scrollBottom();
   }
   function appendLoading() {
-    var root = byId('analisisResult'); if (!root) return;
+    var root = getChatRoot(); if (!root) return;
     root.insertAdjacentHTML('beforeend', '<div id="stockAiLoading" class="mt-3 flex gap-3 fade-in-up stock-ai-followup"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0"><span class="spinner-sm"></span></div><div class="bg-dark-700/60 border border-dark-600/30 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[88%]"><p id="stockAiLoadingText" class="text-sm text-blue-200">Lagi baca datanya dan nyari jalur AI yang paling pas…</p></div></div>');
     timers.push(setTimeout(function () { var el = byId('stockAiLoadingText'); if (el) el.textContent = 'Masih diproses ya, lagi cek jalur cadangan yang sehat…'; }, 9000));
     timers.push(setTimeout(function () { var el = byId('stockAiLoadingText'); if (el) el.textContent = 'Sedikit lebih lama nih—traffic lagi ramai, tapi pertanyaanmu masih jalan…'; }, 20000));
@@ -82,7 +94,7 @@
     clearTimers(); var el = byId('stockAiLoading'); if (el) el.remove();
   }
   function appendAssistant(text, options) {
-    var root = byId('analisisResult'); if (!root) return;
+    var root = getChatRoot(); if (!root) return;
     var local = Boolean(options && options.local);
     // A deterministic snapshot summary is labelled as such. Presenting it as a
     // model answer would make the fallback indistinguishable from the real one.
@@ -96,7 +108,7 @@
     scrollBottom();
   }
   function appendNotice(text, retryable) {
-    var root = byId('analisisResult'); if (!root) return;
+    var root = getChatRoot(); if (!root) return;
     removeRetry();
     var retryHtml = retryable
       ? '<button type="button" id="stockAiRetry" class="mt-2 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-[11px] font-bold text-emerald-300">Coba lagi</button>'
@@ -117,7 +129,7 @@
     if (notice) notice.remove();
   }
   function appendStreamingBubble() {
-    var root = byId('analisisResult'); if (!root) return null;
+    var root = getChatRoot(); if (!root) return null;
     root.insertAdjacentHTML('beforeend', '<div id="stockAiStreamWrap" class="mt-3 flex gap-3 fade-in-up stock-ai-followup"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div id="stockAiStreamBody" class="ai-content ai-followup bg-dark-700/60 border border-dark-600/30 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] whitespace-pre-wrap text-sm text-gray-200"></div></div>');
     scrollBottom();
     return byId('stockAiStreamBody');

@@ -45,5 +45,6 @@
   "test/portfolio-ai-workspace-resilience.test.js",
   "test/chart-analysis-byok.test.js",
   "test/screener-lifecycle-ui.test.js",
-  "test/unified-analysis-byok.test.js"
+  "test/unified-analysis-byok.test.js",
+  "test/unified-cockpit-layout.test.js"
 ]

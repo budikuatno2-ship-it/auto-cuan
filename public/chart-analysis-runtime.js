@@ -139,8 +139,11 @@
 
   root.triggerAiChartAnalysis = function (ticker) {
     if (!ticker) {
-      var input = document.getElementById('chartTickerInput');
+      var input = document.getElementById('chartTickerInput') || document.getElementById('analisisInput');
       ticker = input ? (input.value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+    }
+    if (!ticker && root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function') {
+      ticker = root.UnifiedCockpit.getActiveTicker();
     }
     if (!ticker && root._chartPageData && root._chartPageData.ticker) {
       ticker = root._chartPageData.ticker;
@@ -151,8 +154,16 @@
       return;
     }
 
-    var wrap = document.getElementById('aiChartAnalysisResultWrap');
+    var pageAnalisis = document.getElementById('page-analisis');
+    var isAnalisisPage = pageAnalisis && !pageAnalisis.classList.contains('hidden');
+    var wrap = isAnalisisPage
+      ? (document.getElementById('unifiedAiChartResultWrap') || document.getElementById('aiChartAnalysisResultWrap'))
+      : (document.getElementById('aiChartAnalysisResultWrap') || document.getElementById('unifiedAiChartResultWrap'));
     if (!wrap) return;
+
+    if (isAnalisisPage && root.UnifiedCockpit && typeof root.UnifiedCockpit.switchAnalysisSubTab === 'function') {
+      root.UnifiedCockpit.switchAnalysisSubTab('vision');
+    }
 
     wrap.style.display = 'block';
     if (typeof wrap.scrollIntoView === 'function') {
