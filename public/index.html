@@ -558,7 +558,7 @@
                         <span id="ihsgChange" class="market-tile-delta">—</span>
                     </div>
                 </div>
-                <button onclick="navigateTo('analisis');setTimeout(function(){var el=document.getElementById('analisisInput');if(el){el.value='IHSG';handleAnalisisSubmit();}},200)" class="market-tile-link">Buka analisis IHSG &rarr;</button>
+                <button onclick="window.location.assign('/analisis-saham?ticker=IHSG')" class="market-tile-link">Buka analisis IHSG &rarr;</button>
             </div>
             <div class="market-tile">
                 <div class="market-tile-head"><span class="market-tile-label">Radar hari ini</span></div>
@@ -664,12 +664,12 @@
         <!-- Quick Ticker Chips -->
         <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
             <span class="text-[11px] text-gray-400 mr-1">Populer:</span>
-            <button onclick="UnifiedCockpit.syncActiveTicker('IHSG', { loadChart: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">IHSG</button>
-            <button onclick="UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
-            <button onclick="UnifiedCockpit.syncActiveTicker('BBRI', { loadChart: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
-            <button onclick="UnifiedCockpit.syncActiveTicker('BMRI', { loadChart: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
-            <button onclick="UnifiedCockpit.syncActiveTicker('TLKM', { loadChart: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
-            <button onclick="UnifiedCockpit.syncActiveTicker('ASII', { loadChart: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">ASII</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('IHSG', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">IHSG</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('BBRI', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('BMRI', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('TLKM', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('ASII', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">ASII</button>
         </div>
     </div>
 
@@ -1660,7 +1660,7 @@
         </div>
         <div class="space-y-3 text-xs">
             <p class="text-gray-300 leading-relaxed">
-                Fitur Analisis Chart AI berjalan dengan model <strong>Google Gemini 2.5 Flash</strong> menggunakan API key pribadi Anda (Bring Your Own Key).
+                Fitur Analisis Chart AI berjalan dengan model <strong>Google Gemini 3 Flash</strong> menggunakan API key pribadi Anda (Bring Your Own Key).
             </p>
             <div class="p-3 rounded-xl bg-[#0b0e14] border border-gray-800 space-y-2">
                 <div class="font-semibold text-gray-200">Cara Mendapatkan API Key Gratis:</div>
@@ -3319,6 +3319,11 @@ function navigateTo(page) {
         if (typeof showToast === 'function') showToast('Fitur ini terbuka setelah login dengan akun yang sudah di-approve admin.', 'warning');
         page = 'dashboard';
     }
+    if (page === 'analisis') {
+        // Analisis Saham lives on its own page (/analisis-saham).
+        window.location.assign('/analisis-saham');
+        return;
+    }
     if (page === 'portofolio') {
         // Portofolio lives on its own page (Decision Center).
         window.location.assign('/portfolio-planner');
@@ -3435,12 +3440,11 @@ function handleAnalisisSubmit() {
     runAnalisisFromDashboard(val);
 }
 function quickAnalisis(ticker) {
-    var input = document.getElementById('analisisInput');
-    if (input) input.value = ticker;
-    if (window.UnifiedCockpit && typeof window.UnifiedCockpit.syncActiveTicker === 'function') {
-        window.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: true });
+    if (ticker) {
+        window.location.assign('/analisis-saham?ticker=' + encodeURIComponent(ticker));
+        return;
     }
-    runAnalisisFromDashboard(ticker);
+    window.location.assign('/analisis-saham');
 }
 // ===== ANALISIS SAHAM: REQUEST GENERATION GUARD =====
 // Every run of runAnalisisFromDashboard() claims the next sequence number. A
@@ -8941,12 +8945,11 @@ function screenerStatusShort(status) {
 }
 
 function screenerTickerClick(ticker) {
-    // Navigate to analysis page and trigger analysis
-    navigateTo('analisis');
-    setTimeout(function() {
-        var el = document.getElementById('analisisInput');
-        if (el) { el.value = ticker; handleAnalisisSubmit(); }
-    }, 200);
+    if (ticker) {
+        window.location.assign('/analisis-saham?ticker=' + encodeURIComponent(ticker));
+        return;
+    }
+    window.location.assign('/analisis-saham');
 }
 
 // ===== NON-KONGLO SCREENER FUNCTIONS =====

@@ -348,5 +348,6 @@
   "test/candle-hammer-hanging-man-trend.test.js",
   "test/chart-analysis-byok.test.js",
   "test/unified-analysis-byok.test.js",
-  "test/unified-cockpit-layout.test.js"
+  "test/unified-cockpit-layout.test.js",
+  "test/standalone-analisis-saham.test.js"
 ]

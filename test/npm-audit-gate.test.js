@@ -20,6 +20,15 @@ const path = require('node:path');
 
 const GATE = path.resolve(__dirname, '..', 'tools', 'npm-audit-gate.sh');
 
+const hasBash = (() => {
+  try {
+    const res = spawnSync('bash', ['-c', 'exit 0']);
+    return res.status === 0;
+  } catch (_) {
+    return false;
+  }
+})();
+
 function withFakeNpm(script, run) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'npm-audit-gate-'));
   const bin = path.join(dir, 'npm');
@@ -69,7 +78,7 @@ function countAttempts(stdout) {
   return (stdout.match(/npm audit attempt/g) || []).length;
 }
 
-test('a clean audit passes', () => {
+test('a clean audit passes', { skip: !hasBash ? 'bash is not available on host' : false }, () => {
   withFakeNpm(CLEAN, (bin) => {
     const result = runGate(bin);
     assert.equal(result.status, 0, result.stdout);
@@ -77,7 +86,7 @@ test('a clean audit passes', () => {
   });
 });
 
-test('a real vulnerability fails on the first attempt and is never retried away', () => {
+test('a real vulnerability fails on the first attempt and is never retried away', { skip: !hasBash ? 'bash is not available on host' : false }, () => {
   withFakeNpm(VULNERABLE, (bin) => {
     const result = runGate(bin);
     assert.equal(result.status, 1);
@@ -87,7 +96,7 @@ test('a real vulnerability fails on the first attempt and is never retried away'
   });
 });
 
-test('a 503 from the registry is retried', () => {
+test('a 503 from the registry is retried', { skip: !hasBash ? 'bash is not available on host' : false }, () => {
   const script = registryFailure('npm warn audit 503 Service Unavailable - POST https://registry.npmjs.org/-/npm/v1/security/audits/quick - Service Unavailable');
   withFakeNpm(script, (bin) => {
     const result = runGate(bin, { attempts: 3 });
@@ -95,7 +104,7 @@ test('a 503 from the registry is retried', () => {
   });
 });
 
-test('a 400 Invalid package tree from the registry is retried', () => {
+test('a 400 Invalid package tree from the registry is retried', { skip: !hasBash ? 'bash is not available on host' : false }, () => {
   const script = registryFailure('npm warn audit 400 Bad Request - POST https://registry.npmjs.org/-/npm/v1/security/audits/quick - Bad Request');
   withFakeNpm(script, (bin) => {
     const result = runGate(bin, { attempts: 2 });
@@ -103,7 +112,7 @@ test('a 400 Invalid package tree from the registry is retried', () => {
   });
 });
 
-test('an audit that never runs fails closed, never silently green', () => {
+test('an audit that never runs fails closed, never silently green', { skip: !hasBash ? 'bash is not available on host' : false }, () => {
   const script = registryFailure('npm warn audit 503 Service Unavailable');
   withFakeNpm(script, (bin) => {
     const result = runGate(bin, { attempts: 2 });
@@ -113,7 +122,7 @@ test('an audit that never runs fails closed, never silently green', () => {
   });
 });
 
-test('a transient failure that then succeeds passes', () => {
+test('a transient failure that then succeeds passes', { skip: !hasBash ? 'bash is not available on host' : false }, () => {
   withFakeNpm('', (bin, dir) => {
     const counter = path.join(dir, 'count');
     fs.writeFileSync(bin, [
@@ -135,7 +144,7 @@ test('a transient failure that then succeeds passes', () => {
   });
 });
 
-test('a hanging audit is bounded and retried, not left to stall the job', () => {
+test('a hanging audit is bounded and retried, not left to stall the job', { skip: !hasBash ? 'bash is not available on host' : false }, () => {
   withFakeNpm('#!/bin/sh\nsleep 30\n', (bin) => {
     const started = Date.now();
     const result = runGate(bin, { attempts: 2, timeout: 1 });

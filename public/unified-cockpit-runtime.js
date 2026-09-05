@@ -87,9 +87,17 @@
       }
 
       root._chartPageData = data;
-      if (typeof root.loadLightweightCharts === 'function') await root.loadLightweightCharts();
-      if (typeof root.renderLightweightChart === 'function') {
-        await root.renderLightweightChart(chartId, data.candles, data.metrics || null, safeTicker, { variant: 'page' });
+      var loadLwc = (typeof root.loadLightweightCharts === 'function') ? root.loadLightweightCharts :
+                    (typeof window !== 'undefined' && typeof window.loadLightweightCharts === 'function') ? window.loadLightweightCharts : null;
+      var renderLwc = (typeof root.renderLightweightChart === 'function') ? root.renderLightweightChart :
+                      (typeof window !== 'undefined' && typeof window.renderLightweightChart === 'function') ? window.renderLightweightChart : null;
+
+      if (loadLwc) await loadLwc();
+      if (renderLwc) {
+        await renderLwc(chartId, data.candles, data.metrics || null, safeTicker, { variant: 'page' });
+      } else {
+        var errEl2 = byId(chartId + '_container');
+        if (errEl2) errEl2.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Modul visual chart sedang disiapkan...</div>';
       }
     } catch (e) {
       _loadingChart = false;
@@ -131,12 +139,17 @@
     }
 
     // 5. Trigger analysis if specified
-    if (options.runAnalysis && typeof root.runAnalisisFromDashboard === 'function') {
+    var runFn = (typeof root.runAnalisisFromDashboard === 'function') ? root.runAnalisisFromDashboard :
+                (typeof window !== 'undefined' && typeof window.runAnalisisFromDashboard === 'function') ? window.runAnalisisFromDashboard : null;
+    var visionFn = (typeof root.triggerAiChartAnalysis === 'function') ? root.triggerAiChartAnalysis :
+                   (typeof window !== 'undefined' && typeof window.triggerAiChartAnalysis === 'function') ? window.triggerAiChartAnalysis : null;
+
+    if (options.runAnalysis && runFn) {
       switchAnalysisSubTab('text');
-      root.runAnalisisFromDashboard(ticker);
-    } else if (options.runChartVision && typeof root.triggerAiChartAnalysis === 'function') {
+      runFn(ticker);
+    } else if (options.runChartVision && visionFn) {
       switchAnalysisSubTab('vision');
-      root.triggerAiChartAnalysis(ticker);
+      visionFn(ticker);
     }
   }
 

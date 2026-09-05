@@ -46,5 +46,6 @@
   "test/chart-analysis-byok.test.js",
   "test/screener-lifecycle-ui.test.js",
   "test/unified-analysis-byok.test.js",
-  "test/unified-cockpit-layout.test.js"
+  "test/unified-cockpit-layout.test.js",
+  "test/standalone-analisis-saham.test.js"
 ]
