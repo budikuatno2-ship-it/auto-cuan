@@ -213,6 +213,27 @@
     return '<p>' + div.innerHTML.replace(/\n+/g, '</p><p>') + '</p>';
   }
 
+  // Portfolio AI chat had no copy button at all; add one consistent with the
+  // "Salin Hasil" button on Analisis Saham/Chart Vision.
+  function appendCopyButton(bubble, rawText) {
+    if (!rawText) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ai-copy-btn';
+    btn.textContent = '📋 Salin';
+    btn.addEventListener('click', function () {
+      var copyFn = (window.AutoCuanAI && typeof window.AutoCuanAI.copyText === 'function')
+        ? window.AutoCuanAI.copyText
+        : function (t) { return (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(t).then(function () { return true; }).catch(function () { return false; }) : Promise.resolve(false); };
+      copyFn(rawText).then(function (ok) {
+        var original = btn.textContent;
+        btn.textContent = ok ? '✓ Tersalin' : 'Gagal menyalin';
+        setTimeout(function () { btn.textContent = original; }, 2000);
+      });
+    });
+    bubble.appendChild(btn);
+  }
+
   function renderSummary() {
     var context = contextNow();
     var summary = context.summary;
@@ -317,6 +338,7 @@
         } else {
           bubble.innerHTML = markdown(message.content);
         }
+        appendCopyButton(bubble, message.content);
       }
       host.appendChild(bubble);
     });

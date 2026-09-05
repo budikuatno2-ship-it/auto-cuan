@@ -90,6 +90,19 @@
   box-sizing: border-box;
 }
 
+/* #rankingTableWrap gets its scrollbox from premium-workstation-core.css /
+   -v6.css on index.html, but analisis-saham.html never loads that bundle —
+   so the Ranking Harian tab there had no overflow/max-height at all and the
+   sticky <thead> in analisis-saham-runtime.js's renderRankingTable() stuck to
+   the browser viewport instead of the table panel. Declared here (shared by
+   both pages) so the table scrolls the same way everywhere regardless of
+   which host page's stylesheet bundle is loaded. Values match the dashboard's
+   own #rankingTableWrap rule in premium-workstation-v6.css. */
+#rankingTableWrap {
+  overflow: auto;
+  max-height: min(66vh, 720px);
+}
+
 .unified-card-header {
   display: flex;
   align-items: center;

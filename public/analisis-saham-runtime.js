@@ -16,6 +16,14 @@
     return (temp.textContent || temp.innerText || '').trim();
   }
 
+  // Server prompts tell the model to output real HTML and never markdown
+  // stars, but LLMs occasionally ignore that and leave literal **bold**
+  // markers in otherwise-valid HTML. Converting any that slip through is a
+  // no-op when the text is clean, so it's safe to always run.
+  function convertStrayMarkdownBold(html) {
+    return String(html || '').replace(/\*\*([^*<>\n]+)\*\*/g, '<strong>$1</strong>');
+  }
+
   // ===== TOAST NOTIFICATIONS =====
   root.showToast = function (message, type) {
     var container = byId('toastContainer');
@@ -59,13 +67,17 @@
   };
 
   // ===== RANKING TABLE STATE & LOGIC =====
+  // Same column set as configureRankingColumns() in stock-analysis-ai.js (the
+  // dedicated "Ranking" menu page) so the Ranking Harian tab shows the
+  // identical, fuller table instead of a second, simpler one.
   var RANKING_COLUMNS = [
     { key: 'ticker', label: 'Ticker', align: 'left', sortable: true },
     { key: 'last_price', label: 'Harga', align: 'right', fmt: root.mktCtxFmtPrice },
-    { key: 'change_pct', label: 'Perubahan', align: 'right', fmt: root.mktCtxFmtPct, colorize: true },
     { key: 'rsi_14', label: 'RSI 14', align: 'right', fmt: function(v) { return Number(v).toFixed(1); } },
     { key: 'week52_high_dist_pct', label: 'Jarak 52W High', align: 'right', fmt: root.mktCtxFmtPct },
     { key: 'volume_ratio_vs_7d_avg', label: 'Vol vs 7D', align: 'right', fmt: root.mktCtxFmtRatio },
+    { key: 'foreign_net_today', label: 'Foreign Terakhir', align: 'right', fmt: root.mktCtxFmtIDR, colorize: true },
+    { key: 'foreign_net_3d', label: 'Foreign 3D', align: 'right', fmt: root.mktCtxFmtIDR, colorize: true },
     { key: 'foreign_net_7d', label: 'Foreign 7D', align: 'right', fmt: root.mktCtxFmtIDR, colorize: true }
   ];
   root.RANKING_COLUMNS = RANKING_COLUMNS;
@@ -296,6 +308,10 @@
     }
     updateRankingPaywallUi();
     if (rankingState.loading) return;
+    // Same session-note wiring as the standalone "Ranking" menu page
+    // (stock-analysis-ai.js), so the Ranking Harian tab shows the identical
+    // "catatan sesi" banner instead of nothing.
+    if (typeof root.wrapRenderRankingTableForSessionLabel === 'function') root.wrapRenderRankingTableForSessionLabel();
     rankingState.loading = true;
     rankingState.error = null;
     renderRankingTable();
@@ -403,6 +419,19 @@
       var controller = (typeof AbortController === 'function') ? new AbortController() : null;
       var abortTimer = controller ? setTimeout(function () { try { controller.abort(); } catch (_) {} }, ANALISIS_REQUEST_TIMEOUT_MS) : null;
 
+      // Same enrichment as the Dashboard chat's runAnalisisFromDashboard()
+      // (public/index.html), via the shared fetchQuoteContext() in
+      // public/market-feature-runtime.js: a bare ticker with no [Auto-Cuan
+      // Market Data]/[Auto-Cuan Fibonacci Intelligence] block makes the server
+      // fall back to a 90-day Yahoo-only quote that can't produce MA100/MA200
+      // or a real Fibonacci swing high/low. See PR #529 follow-up.
+      var company = (typeof getCompanyName === 'function') ? getCompanyName(ticker) : null;
+      var enrichedMsg = ticker + (company ? '\n[Info: ' + ticker + ' = ' + company + ']' : '');
+      if (typeof fetchQuoteContext === 'function') {
+        var quoteCtx = await fetchQuoteContext(ticker, true);
+        if (quoteCtx) enrichedMsg += quoteCtx;
+      }
+
       var response;
       try {
         response = await fetch('/api/analyze', {
@@ -414,7 +443,7 @@
             'Accept': 'application/json'
           },
           body: JSON.stringify({
-            chatMessage: ticker,
+            chatMessage: enrichedMsg,
             source: 'chat_mode',
             isInitialAnalysis: true,
             username: localStorage.getItem('autocuan_user') || '',
@@ -440,7 +469,7 @@
 
       var rawOutput = data.html || data.reply || '';
       if (rawOutput) {
-        var html = rawOutput.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+        var html = convertStrayMarkdownBold(rawOutput.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''));
         resultArea.innerHTML = '<div class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl p-4 sm:p-5 fade-in-up">' + html + '</div>' +
           '<div class="mt-3 flex flex-wrap gap-2">' +
           '<button onclick="switchAnalisisTab(\'chart\')" class="px-3 py-1.5 rounded-lg text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition inline-flex items-center gap-1 font-semibold">📈 Buka Chart</button>' +
@@ -478,13 +507,16 @@
     var contentEl = resultArea.querySelector('.ai-content');
     if (!contentEl) return;
     var text = htmlToCleanText(contentEl.innerHTML);
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () {
-        root.showToast('Hasil analisis berhasil disalin ke clipboard.', 'good');
-      }).catch(function () {
-        root.showToast('Gagal menyalin hasil.', 'danger');
-      });
-    }
+    // AutoCuanAI.copyText (public/ai-chat-renderer.js) guards a missing
+    // navigator.clipboard and falls back to document.execCommand('copy'),
+    // same as every other "Salin Hasil" button in the app.
+    var copyFn = (window.AutoCuanAI && typeof window.AutoCuanAI.copyText === 'function')
+      ? window.AutoCuanAI.copyText
+      : function (t) { return (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(t).then(function () { return true; }).catch(function () { return false; }) : Promise.resolve(false); };
+    copyFn(text).then(function (ok) {
+      if (ok) root.showToast('Hasil analisis berhasil disalin ke clipboard.', 'good');
+      else root.showToast('Gagal menyalin hasil.', 'danger');
+    });
   };
 
   // ===== PAGE BOOTSTRAP =====

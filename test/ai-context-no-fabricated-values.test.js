@@ -17,7 +17,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+// fetchQuoteContext() moved out of index.html into market-feature-runtime.js
+// so index.html and analisis-saham-runtime.js share one implementation
+// instead of drifting apart (see PR #529 follow-up).
+const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'market-feature-runtime.js'), 'utf8');
 
 function sliceFunction(name) {
   const start = html.indexOf('async function ' + name + '(');

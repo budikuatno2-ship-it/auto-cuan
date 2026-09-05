@@ -685,6 +685,11 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   window.openDailyRankingPage = openDailyRankingPage;
+  // Exposed so the Ranking Harian tab (index.html / analisis-saham-runtime.js)
+  // can wire up the same "catatan sesi" banner as the dedicated Ranking page,
+  // instead of only showing it after the user navigates to that page.
+  window.wrapRenderRankingTableForSessionLabel = wrapRenderRankingTableForSessionLabel;
+  window.updateRankingSessionLabel = updateRankingSessionLabel;
 
   function enhanceDailyRanking() {
     ensureRankingNavButtons();
