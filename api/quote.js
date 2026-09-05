@@ -1158,7 +1158,7 @@ async function fetchNewsFromGemini(apiKey, ticker, companyName) {
     '[{"date":"YYYY-MM-DD","title":"max 80 chars","source":"media","url":"url or null","summary":"max 15 words Indonesian","possibleImpact":"positive|negative|neutral|mixed"}]\n' +
     'If no news: []. Title max 80 chars. Summary max 15 words.';
 
-  var geminiModel = process.env.GEMINI_MODEL || 'gemini-3-flash';
+  var geminiModel = (process.env.GEMINI_MODEL && process.env.GEMINI_MODEL !== 'gemini-3-flash' && process.env.GEMINI_MODEL !== 'gemini-2.5-flash' && process.env.GEMINI_MODEL !== 'gemini-1.5-flash') ? process.env.GEMINI_MODEL : 'gemini-3.8-flash';
   var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + geminiModel + ':generateContent?key=' + apiKey;
   var payload = {
     contents: [{ parts: [{ text: prompt }] }],
