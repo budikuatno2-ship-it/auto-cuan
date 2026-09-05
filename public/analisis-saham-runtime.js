@@ -193,7 +193,108 @@
     renderRankingTable();
   };
 
+  // ===== SUB-TAB SWITCHER (POLA PORTFOLIO) =====
+  function switchAnalisisTab(tabName) {
+    var validTabs = ['analisis', 'chart', 'ranking'];
+    if (validTabs.indexOf(tabName) < 0) tabName = 'analisis';
+
+    document.querySelectorAll('.analisis-tab').forEach(function (btn) {
+      var isActive = btn.dataset.tab === tabName;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    var pAnalisis = byId('panel-tab-analisis');
+    var pChart = byId('panel-tab-chart');
+    var pRanking = byId('panel-tab-ranking');
+
+    if (pAnalisis) pAnalisis.style.display = (tabName === 'analisis' ? 'block' : 'none');
+    if (pChart) pChart.style.display = (tabName === 'chart' ? 'block' : 'none');
+    if (pRanking) pRanking.style.display = (tabName === 'ranking' ? 'block' : 'none');
+
+    if (tabName === 'chart') {
+      var ticker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
+        ? root.UnifiedCockpit.getActiveTicker() : 'BBCA';
+      if (root.UnifiedCockpit && typeof root.UnifiedCockpit.loadUnifiedChart === 'function') {
+        root.UnifiedCockpit.loadUnifiedChart(ticker);
+      }
+      if (typeof setTimeout === 'function') {
+        setTimeout(function () {
+          try { window.dispatchEvent(new Event('resize')); } catch (_) {}
+        }, 50);
+      }
+    } else if (tabName === 'ranking') {
+      root.ensureRankingTableLoaded();
+    }
+  }
+  root.switchAnalisisTab = switchAnalisisTab;
+
+  // ===== SUBSCRIPTION & PAYWALL LOGIC =====
+  function isSubscribedUser() {
+    if (localStorage.getItem('autocuan_is_admin') === 'true') return true;
+    if (window.premiumAccessState && typeof window.premiumAccessState === 'object') {
+      var s = window.premiumAccessState;
+      if (s.premium === true) return true;
+      if (s.accessLevel === 'admin' || s.accessLevel === 'premium' || s.accessLevel === 'lifetime') return true;
+    }
+    return false;
+  }
+  root.isSubscribedUser = isSubscribedUser;
+
+  function updateRankingPaywallUi() {
+    var isSubscribed = isSubscribedUser();
+    var paywallGate = byId('rankingPaywallGate');
+    var contentWrap = byId('rankingContentWrap');
+    var lockIcon = byId('rankingLockIcon');
+
+    if (paywallGate) paywallGate.style.display = isSubscribed ? 'none' : 'block';
+    if (contentWrap) contentWrap.style.display = isSubscribed ? 'block' : 'none';
+    if (lockIcon) lockIcon.style.display = isSubscribed ? 'none' : 'inline-block';
+  }
+  root.updateRankingPaywallUi = updateRankingPaywallUi;
+
+  async function verifySubscriptionStatus() {
+    if (isSubscribedUser()) {
+      updateRankingPaywallUi();
+      return true;
+    }
+    try {
+      var resp = await fetch('/api/reset-password', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'account-profile' })
+      });
+      var data = await resp.json().catch(function () { return {}; });
+      if (data && data.success && data.profile) {
+        var p = data.profile;
+        var sub = p.subscription || {};
+        var ent = sub.entitlement || {};
+        var isAdmin = p.is_admin === true;
+        var isPrem = isAdmin || (p.is_approved === true && ent.premium === true);
+        window.premiumAccessState = {
+          state: 'ready',
+          premium: isPrem,
+          accessLevel: isAdmin ? 'admin' : (isPrem ? (ent.access_level || 'premium') : 'free')
+        };
+        updateRankingPaywallUi();
+        return isPrem;
+      }
+    } catch (_) {}
+    updateRankingPaywallUi();
+    return false;
+  }
+  root.verifySubscriptionStatus = verifySubscriptionStatus;
+
   root.fetchRankingTable = async function () {
+    if (!isSubscribedUser()) {
+      await verifySubscriptionStatus();
+      if (!isSubscribedUser()) {
+        updateRankingPaywallUi();
+        return;
+      }
+    }
+    updateRankingPaywallUi();
     if (rankingState.loading) return;
     rankingState.loading = true;
     rankingState.error = null;
@@ -215,6 +316,10 @@
   };
 
   root.ensureRankingTableLoaded = function () {
+    if (!isSubscribedUser()) {
+      updateRankingPaywallUi();
+      return;
+    }
     if (!rankingState.loaded && !rankingState.loading) {
       root.fetchRankingTable();
     }
@@ -224,6 +329,7 @@
     rankingState.loaded = false;
     root.fetchRankingTable();
   };
+
 
   // ===== STOCK ANALYSIS (TEXT FORMAT) VIA /api/analyze =====
   var _analisisRequestSeq = 0;
@@ -337,8 +443,9 @@
         var html = rawOutput.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
         resultArea.innerHTML = '<div class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl p-4 sm:p-5 fade-in-up">' + html + '</div>' +
           '<div class="mt-3 flex flex-wrap gap-2">' +
+          '<button onclick="switchAnalisisTab(\'chart\')" class="px-3 py-1.5 rounded-lg text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition inline-flex items-center gap-1 font-semibold">📈 Buka Chart</button>' +
+          '<button onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="px-3 py-1.5 rounded-lg text-xs text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition inline-flex items-center gap-1 font-semibold">🤖 Analisis Chart (AI)</button>' +
           '<button onclick="UnifiedCockpit.openFullscreen()" class="px-3 py-1.5 rounded-lg text-xs text-sky-400 border border-sky-500/30 hover:bg-sky-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 9V5a1 1 0 011-1h4M20 9V5a1 1 0 00-1-1h-4M4 15v4a1 1 0 001 1h4m11-5v4a1 1 0 01-1 1h-4"/></svg>Chart Layar Penuh</button>' +
-          '<button onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="px-3 py-1.5 rounded-lg text-xs text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition inline-flex items-center gap-1">🤖 Analisis Chart (AI)</button>' +
           '<button onclick="copyAnalisisResult()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-gray-500/30 hover:bg-gray-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>Salin Hasil</button>' +
           '<button onclick="window.print()" class="px-3 py-1.5 rounded-lg text-xs text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>Cetak / PDF</button>' +
           '</div>';
@@ -355,6 +462,9 @@
   };
 
   root.quickAnalisis = function (ticker) {
+    if (typeof root.switchAnalisisTab === 'function') {
+      root.switchAnalisisTab('analisis');
+    }
     if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
       root.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: true, forceChartReload: true, runAnalysis: true });
     } else {
@@ -379,11 +489,27 @@
 
   // ===== PAGE BOOTSTRAP =====
   function initStandaloneAnalisisPage() {
+    verifySubscriptionStatus();
+
+    try {
+      window.addEventListener('autocuan:premium-access', function () {
+        updateRankingPaywallUi();
+        if (isSubscribedUser()) {
+          root.ensureRankingTableLoaded();
+        }
+      });
+    } catch (_) {}
+
     var params = (typeof URLSearchParams !== 'undefined' && window.location && window.location.search)
       ? new URLSearchParams(window.location.search)
       : { get: function () { return null; } };
     var tickerParam = params.get('ticker');
+    var tabParam = params.get('tab');
     var initialTicker = (tickerParam || 'BBCA').trim().toUpperCase().replace(/[^A-Z0-9]/g, '') || 'BBCA';
+
+    if (tabParam) {
+      switchAnalisisTab(tabParam);
+    }
 
     if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
       root.UnifiedCockpit.syncActiveTicker(initialTicker, {
@@ -393,7 +519,9 @@
       });
     }
 
-    root.ensureRankingTableLoaded();
+    if (isSubscribedUser()) {
+      root.ensureRankingTableLoaded();
+    }
   }
 
   if (document.readyState === 'loading') {

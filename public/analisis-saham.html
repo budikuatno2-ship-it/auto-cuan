@@ -84,11 +84,111 @@
             </div>
         </div>
 
-        <!-- 2-Column Unified Cockpit Grid -->
-        <div class="unified-cockpit-grid">
-            <!-- PRIMARY COLUMN (Chart + Analysis Results + Ranking) -->
-            <div class="unified-primary-col">
-                <!-- Candlestick Chart Card -->
+        <!-- Sub-Tab Strip (Pola Portfolio Command Center) -->
+        <nav class="analisis-tab-strip mb-4" role="tablist" aria-label="Sub-tab Analisis Saham">
+            <button id="tabAnalisisText" type="button" class="analisis-tab active" data-tab="analisis" onclick="switchAnalisisTab('analisis')">
+                <span class="text-base">💬</span>
+                <span>Analisis Saham</span>
+            </button>
+            <button id="tabAnalisisVision" type="button" class="analisis-tab" data-tab="chart" onclick="switchAnalisisTab('chart')">
+                <span class="text-base">📈</span>
+                <span>Chart &amp; AI Vision</span>
+            </button>
+            <button id="tabRankingHarian" type="button" class="analisis-tab" data-tab="ranking" onclick="switchAnalisisTab('ranking')">
+                <span class="text-base">🏆</span>
+                <span>Ranking Harian</span>
+                <span id="rankingLockIcon" class="text-xs text-amber-400 ml-1">🔒</span>
+            </button>
+        </nav>
+
+        <!-- ===== 3 ISOLATED SUB-TAB PANELS ===== -->
+
+        <!-- SUB-TAB 1: ANALISIS SAHAM (Text Analysis + AI Companion Chat, NO Chart) -->
+        <section id="panel-tab-analisis" class="analisis-tab-panel active">
+            <div class="unified-cockpit-grid">
+                <!-- Text Analysis Result Column -->
+                <div class="unified-primary-col">
+                    <div class="unified-card">
+                        <div class="unified-card-header">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                <h2 class="text-sm font-bold text-gray-200">Hasil Analisis Saham</h2>
+                                <span id="analisisActiveTickerTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-600/60 text-emerald-300 border border-emerald-500/20">BBCA</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="switchAnalisisTab('chart')" class="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold">
+                                    <span>📈 Buka Chart &rarr;</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="p-3 sm:p-4">
+                            <div id="panelAnalisisText">
+                                <div id="analisisResult" class="overflow-y-auto">
+                                    <div class="text-center py-12 text-gray-500">
+                                        <svg class="w-10 h-10 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                                        <p class="text-sm font-semibold text-gray-300">Belum ada analisis yang dijalankan</p>
+                                        <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Ketik ticker di kolom atas lalu klik tombol <strong>Analisis Saham</strong> untuk ringkasan teknikal, broker &amp; prospek.</p>
+                                        <button type="button" onclick="UnifiedCockpit.handleUnifiedAnalisisSubmit()" class="mt-3 px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold text-xs hover:bg-emerald-400 transition">Jalankan Analisis Sekarang</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Lanjutan AI Column -->
+                <div class="unified-chat-col">
+                    <div class="unified-card flex flex-col h-full">
+                        <div class="unified-card-header">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                                <h3 class="text-sm font-bold text-gray-200 truncate">Asisten AI Saham</h3>
+                                <span id="chatActiveTickerTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-600/60 text-emerald-300 border border-emerald-500/20">BBCA</span>
+                            </div>
+                            <button type="button" onclick="UnifiedCockpit.clearAnalysisChatHistory()" class="text-[11px] text-gray-400 hover:text-rose-400 transition" title="Bersihkan riwayat chat ticker ini">
+                                Bersihkan
+                            </button>
+                        </div>
+
+                        <div class="unified-quick-prompts">
+                            <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Entry di harga berapa yang ideal dan aman?')">Entry di mana?</button>
+                            <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Di mana level cut loss / invalidasi setup ini?')">Level cut loss?</button>
+                            <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Bagaimana konfirmasi volume dan tren MA?')">Konfirmasi volume?</button>
+                            <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Lebih cocok untuk swing atau day trade?')">Swing vs Day trade?</button>
+                        </div>
+
+                        <div id="unifiedChatMessages" class="unified-chat-messages flex-1">
+                            <div class="text-center py-8 text-gray-500 text-xs">
+                                <svg class="w-8 h-8 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                                <p class="font-medium text-gray-400">Tanya seputar ticker atau chart</p>
+                                <p class="text-[11px] text-gray-600 mt-1">Gunakan prompt di atas atau ketik pertanyaan langsung di bawah.</p>
+                            </div>
+                        </div>
+
+                        <div id="analisisFollowUp" class="unified-chat-composer flex-shrink-0">
+                            <div class="flex items-end gap-2">
+                                <input id="analysisFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="if(typeof handleFileSelect==='function')handleFileSelect(event)">
+                                <button id="analysisUploadBtn" type="button" onclick="var f=document.getElementById('analysisFileInput');if(f)f.click();" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file chart tambahan" aria-label="Upload gambar/file chart tambahan">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                                </button>
+                                <div class="flex-1 relative">
+                                    <textarea id="analysisChatInput" rows="1" placeholder="Tanya lanjutan: entry di mana? hold atau cut?" class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px"></textarea>
+                                </div>
+                                <button id="analysisSendBtn" type="button" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim" aria-label="Kirim pesan">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SUB-TAB 2: CHART (Candlestick Interaktif + Tombol Analisis AI + Hasil Vision, NO Text Analysis) -->
+        <section id="panel-tab-chart" class="analisis-tab-panel" style="display:none">
+            <div class="space-y-4">
+                <!-- Interactive Candlestick Chart Card -->
                 <div class="unified-card">
                     <div id="unifiedChartContainer" class="unified-chart-box">
                         <div class="p-8 text-center text-gray-500 text-xs">
@@ -97,57 +197,66 @@
                     </div>
                 </div>
 
-                <!-- Analysis Results Card with Sub-tabs -->
-                <div class="unified-card">
+                <!-- AI Vision 5-Section Results Card -->
+                <div id="panelAnalisisVision" class="unified-card">
                     <div class="unified-card-header">
                         <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                            <h2 class="text-sm font-bold text-gray-200">Hasil Analisis</h2>
+                            <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                            <h2 class="text-sm font-bold text-gray-200">Hasil Analisis Chart (AI Vision)</h2>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/25">Gemini 3 Flash</span>
                         </div>
-                        <!-- Subtab Buttons -->
-                        <div class="unified-subtabs" role="tablist" aria-label="Format Analisis">
-                            <button id="tabAnalisisText" type="button" role="tab" class="unified-subtab-btn active" onclick="UnifiedCockpit.switchAnalysisSubTab('text')">
-                                <span>📝 Analisis Saham</span>
-                            </button>
-                            <button id="tabAnalisisVision" type="button" role="tab" class="unified-subtab-btn vision-tab" onclick="UnifiedCockpit.switchAnalysisSubTab('vision')">
-                                <span>🤖 Analisis Chart (AI)</span>
-                            </button>
-                        </div>
+                        <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition flex items-center gap-1.5">
+                            <span>🤖 Analisis Ulang</span>
+                        </button>
                     </div>
-
                     <div class="p-3 sm:p-4">
-                        <!-- Panel 1: Analisis Saham (Text Format) -->
-                        <div id="panelAnalisisText">
-                            <div id="analisisResult" class="overflow-y-auto">
-                                <div class="text-center py-10 text-gray-500">
-                                    <svg class="w-10 h-10 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                                    <p class="text-sm">Klik tombol <strong>Analisis Saham</strong> untuk ringkasan teknikal, broker &amp; prospek.</p>
-                                    <p class="text-xs text-gray-600 mt-1">Atau gunakan tombol <strong>🤖 Analisis Chart (AI)</strong> untuk pembacaan visual AI.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Panel 2: Analisis Chart Vision (5-Bagian Terstruktur) -->
-                        <div id="panelAnalisisVision" style="display:none">
-                            <div id="unifiedAiChartResultWrap">
-                                <div class="text-center py-10 text-gray-500">
-                                    <span class="text-3xl mb-2 block">🤖</span>
-                                    <p class="text-sm font-semibold text-gray-300">Belum ada analisis chart visual AI</p>
-                                    <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Klik tombol <strong>🤖 Analisis Chart (AI)</strong> di atas untuk menganalisis tren, level kunci, candlestick, volume, dan risiko.</p>
-                                    <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="mt-3 px-4 py-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition">Mulai Analisis Chart (AI)</button>
-                                </div>
+                        <div id="unifiedAiChartResultWrap">
+                            <div class="text-center py-10 text-gray-500">
+                                <span class="text-3xl mb-2 block">🤖</span>
+                                <p class="text-sm font-semibold text-gray-300">Belum ada analisis chart visual AI</p>
+                                <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Klik tombol <strong>🤖 Analisis Chart (AI)</strong> di atas untuk menganalisis tren, level kunci, candlestick, volume, dan risiko secara visual.</p>
+                                <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="mt-3 px-4 py-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition">Mulai Analisis Chart (AI)</button>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+        </section>
 
-                <!-- Ranking Harian Card -->
-                <div id="rankingCardOuterWrap" class="ranking-card-wrapper">
-                    <div class="unified-card">
+        <!-- SUB-TAB 3: RANKING HARIAN (Tabel Ranking + Paywall Lock untuk Free Users) -->
+        <section id="panel-tab-ranking" class="analisis-tab-panel" style="display:none">
+            <div id="rankingCardOuterWrap" class="ranking-card-wrapper">
+                <div class="unified-card">
+                    <!-- Paywall Gate for Free Users -->
+                    <div id="rankingPaywallGate" class="p-8 sm:p-12 text-center rounded-2xl bg-gradient-to-b from-dark-800/80 to-dark-900/90 border border-dark-600/50 shadow-2xl max-w-xl mx-auto my-8">
+                        <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-2xl text-amber-400">
+                            🔒
+                        </div>
+                        <span class="inline-block px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-amber-500/15 text-amber-300 border border-amber-500/30 mb-3">
+                            Fitur Eksklusif Member Berlangganan
+                        </span>
+                        <h3 class="text-lg sm:text-xl font-bold text-white mb-2">
+                            Ranking Harian Terkunci
+                        </h3>
+                        <p class="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-md mx-auto mb-6">
+                            Akses ranking harian pasar modal, jarak 52W High/Low, net foreign flow 7D, dan status Overbought/Oversold (RSI 14) seluruh emiten IHSG hanya tersedia untuk member berlangganan (Bulanan &amp; Lifetime).
+                        </p>
+                        <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+                            <a href="/dashboard" onclick="if(window.openAccountSubscription){window.openAccountSubscription();return false;}" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 hover:brightness-110 transition text-center">
+                                💎 Upgrade ke Bulanan / Lifetime
+                            </a>
+                        </div>
+                        <p class="text-[11px] text-gray-500 mt-4">
+                            Sudah berlangganan? Pastikan Anda sudah login dengan akun yang aktif.
+                        </p>
+                    </div>
+
+                    <!-- Ranking Content for Subscribed Users -->
+                    <div id="rankingContentWrap" style="display:none">
                         <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-3 border-b border-dark-600/20 bg-black/10">
                             <div>
-                                <h3 class="text-sm font-semibold text-gray-200">Ranking Harian</h3>
-                                <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker &mdash; klik ticker untuk memuat chart.</p>
+                                <h3 class="text-sm font-semibold text-gray-200">Ranking Harian Pasar</h3>
+                                <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker &mdash; klik ticker untuk memuat analisis &amp; chart.</p>
                             </div>
                             <div class="flex items-center gap-2">
                                 <input id="rankingSearchInput" type="text" placeholder="Cari di tabel..." aria-label="Cari di tabel ranking" class="w-36 sm:w-52 px-3 py-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" oninput="onRankingSearchInput(this.value)">
@@ -162,57 +271,7 @@
                     </div>
                 </div>
             </div>
-
-            <!-- COMPANION COLUMN (Chat Lanjutan AI & Upload Media) -->
-            <div class="unified-chat-col">
-                <div class="unified-card flex flex-col h-full">
-                    <!-- Companion Header -->
-                    <div class="unified-card-header">
-                        <div class="flex items-center gap-2 min-w-0">
-                            <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
-                            <h3 class="text-sm font-bold text-gray-200 truncate">Asisten AI Saham</h3>
-                            <span id="chatActiveTickerTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-600/60 text-emerald-300 border border-emerald-500/20">BBCA</span>
-                        </div>
-                        <button type="button" onclick="UnifiedCockpit.clearAnalysisChatHistory()" class="text-[11px] text-gray-400 hover:text-rose-400 transition" title="Bersihkan riwayat chat ticker ini">
-                            Bersihkan
-                        </button>
-                    </div>
-
-                    <!-- Quick Prompts Chips -->
-                    <div class="unified-quick-prompts">
-                        <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Entry di harga berapa yang ideal dan aman?')">Entry di mana?</button>
-                        <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Di mana level cut loss / invalidasi setup ini?')">Level cut loss?</button>
-                        <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Bagaimana konfirmasi volume dan tren MA?')">Konfirmasi volume?</button>
-                        <button type="button" class="unified-prompt-chip" onclick="UnifiedCockpit.sendQuickPrompt('Lebih cocok untuk swing atau day trade?')">Swing vs Day trade?</button>
-                    </div>
-
-                    <!-- Chat Messages Stream / Bubbles -->
-                    <div id="unifiedChatMessages" class="unified-chat-messages flex-1">
-                        <div class="text-center py-8 text-gray-500 text-xs">
-                            <svg class="w-8 h-8 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                            <p class="font-medium text-gray-400">Tanya seputar ticker atau chart</p>
-                            <p class="text-[11px] text-gray-600 mt-1">Gunakan prompt di atas atau ketik pertanyaan langsung di bawah.</p>
-                        </div>
-                    </div>
-
-                    <!-- Chat Composer Box -->
-                    <div id="analisisFollowUp" class="unified-chat-composer flex-shrink-0">
-                        <div class="flex items-end gap-2">
-                            <input id="analysisFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="if(typeof handleFileSelect==='function')handleFileSelect(event)">
-                            <button id="analysisUploadBtn" type="button" onclick="var f=document.getElementById('analysisFileInput');if(f)f.click();" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file chart tambahan" aria-label="Upload gambar/file chart tambahan">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
-                            </button>
-                            <div class="flex-1 relative">
-                                <textarea id="analysisChatInput" rows="1" placeholder="Tanya lanjutan: entry di mana? hold atau cut?" class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px"></textarea>
-                            </div>
-                            <button id="analysisSendBtn" type="button" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim" aria-label="Kirim pesan">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </section>
     </main>
 
     <!-- Hidden compatibility chart elements for viewer helper functions -->

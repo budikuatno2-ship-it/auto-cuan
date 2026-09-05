@@ -32,7 +32,34 @@ test('Standalone Analisis Saham: HTML structure contains 2-column cockpit with a
     assert.ok(standaloneHtml.includes(`'${ticker}'`), `Popular chip for ${ticker} exists`);
   });
 
-  // Primary Column (Chart + Subtabs + Results + Ranking)
+  // Sub-Tab Strip and 3 Isolated Panels
+  assert.ok(standaloneHtml.includes('class="analisis-tab-strip'), '.analisis-tab-strip navigation exists');
+  assert.ok(standaloneHtml.includes('data-tab="analisis"'), 'Sub-tab for Analisis Saham exists');
+  assert.ok(standaloneHtml.includes('data-tab="chart"'), 'Sub-tab for Chart exists');
+  assert.ok(standaloneHtml.includes('data-tab="ranking"'), 'Sub-tab for Ranking Harian exists');
+  assert.ok(standaloneHtml.includes('id="panel-tab-analisis"'), '#panel-tab-analisis panel exists');
+  assert.ok(standaloneHtml.includes('id="panel-tab-chart"'), '#panel-tab-chart panel exists');
+  assert.ok(standaloneHtml.includes('id="panel-tab-ranking"'), '#panel-tab-ranking panel exists');
+
+  // Strict Tab Isolation Checks
+  const panelAnalisisMatch = standaloneHtml.match(/<section[^>]+id="panel-tab-analisis"[^>]*>([\s\S]*?)<\/section>/i);
+  assert.ok(panelAnalisisMatch, 'Found panel-tab-analisis section');
+  assert.ok(panelAnalisisMatch[1].includes('id="analisisResult"'), 'Tab Analisis Saham contains text analysis result');
+  assert.ok(!panelAnalisisMatch[1].includes('id="unifiedChartContainer"'), 'Tab Analisis Saham does NOT contain chart');
+
+  const panelChartMatch = standaloneHtml.match(/<section[^>]+id="panel-tab-chart"[^>]*>([\s\S]*?)<\/section>/i);
+  assert.ok(panelChartMatch, 'Found panel-tab-chart section');
+  assert.ok(panelChartMatch[1].includes('id="unifiedChartContainer"'), 'Tab Chart contains candlestick chart');
+  assert.ok(panelChartMatch[1].includes('id="unifiedAiChartResultWrap"'), 'Tab Chart contains AI Vision results');
+  assert.ok(!panelChartMatch[1].includes('id="analisisResult"'), 'Tab Chart does NOT contain text analysis');
+
+  const panelRankingMatch = standaloneHtml.match(/<section[^>]+id="panel-tab-ranking"[^>]*>([\s\S]*?)<\/section>/i);
+  assert.ok(panelRankingMatch, 'Found panel-tab-ranking section');
+  assert.ok(panelRankingMatch[1].includes('id="rankingPaywallGate"'), 'Tab Ranking contains paywall gate');
+  assert.ok(panelRankingMatch[1].includes('id="rankingContentWrap"'), 'Tab Ranking contains ranking content wrap');
+  assert.ok(panelRankingMatch[1].includes('id="rankingTableWrap"'), 'Tab Ranking contains ranking table wrap');
+
+  // Primary & Subtab elements
   assert.ok(standaloneHtml.includes('class="unified-primary-col"'), '.unified-primary-col exists');
   assert.ok(standaloneHtml.includes('id="unifiedChartContainer"'), '#unifiedChartContainer exists');
   assert.ok(standaloneHtml.includes('id="tabAnalisisText"'), '#tabAnalisisText subtab button exists');
@@ -102,17 +129,45 @@ test('Standalone Analisis Saham: Navigation in index.html directs to /analisis-s
   assert.ok(!indexHtml.includes("navigateTo('chart')\n        window.location.assign('/analisis-saham')"), 'Chart navigation is untouched');
 });
 
-test('Standalone Analisis Saham Runtime: Exposes formatters, ranking state, and analysis handlers', () => {
+test('Standalone Analisis Saham Runtime: Exposes formatters, ranking state, subtabs, paywall, and analysis handlers', () => {
+  const elements = {};
+  function mockEl(id) {
+    if (!elements[id]) {
+      elements[id] = {
+        id,
+        style: {},
+        classList: {
+          contains: () => false,
+          add: () => {},
+          remove: () => {},
+          toggle: () => {}
+        },
+        setAttribute: () => {},
+        innerHTML: '',
+        textContent: ''
+      };
+    }
+    return elements[id];
+  }
+
   const sandbox = {
     window: {
       location: { pathname: '/analisis-saham', search: '' },
-      history: { replaceState: () => {} }
+      history: { replaceState: () => {} },
+      dispatchEvent: () => {}
     },
     document: {
       addEventListener: () => {},
       readyState: 'complete',
-      getElementById: () => null
-    }
+      getElementById: mockEl,
+      querySelectorAll: () => []
+    },
+    localStorage: {
+      getItem: () => null,
+      setItem: () => {}
+    },
+    setTimeout,
+    clearTimeout
   };
   sandbox.globalThis = sandbox.window;
   vm.createContext(sandbox);
@@ -128,6 +183,10 @@ test('Standalone Analisis Saham Runtime: Exposes formatters, ranking state, and 
   assert.equal(typeof root.renderRankingTable, 'function');
   assert.equal(typeof root.ensureRankingTableLoaded, 'function');
   assert.equal(typeof root.showToast, 'function');
+  assert.equal(typeof root.switchAnalisisTab, 'function');
+  assert.equal(typeof root.isSubscribedUser, 'function');
+  assert.equal(typeof root.updateRankingPaywallUi, 'function');
+  assert.equal(typeof root.verifySubscriptionStatus, 'function');
 
   // Test formatters
   assert.equal(root.mktCtxFmtPrice(9850), 'Rp 9.850');
@@ -135,4 +194,27 @@ test('Standalone Analisis Saham Runtime: Exposes formatters, ranking state, and 
   assert.equal(root.mktCtxFmtPct(-1.25), '-1.25%');
   assert.equal(root.mktCtxFmtRatio(1.85), '1.85x');
   assert.match(root.mktCtxFmtIDR(2500000000), /\+2\.50 M/);
+
+  // Test paywall check defaults for free user
+  assert.equal(root.isSubscribedUser(), false);
+
+  // Test paywall check for admin or premium
+  sandbox.localStorage.getItem = (key) => key === 'autocuan_is_admin' ? 'true' : null;
+  assert.equal(root.isSubscribedUser(), true);
+
+  sandbox.localStorage.getItem = () => null;
+  sandbox.window.premiumAccessState = { premium: true, accessLevel: 'premium' };
+  assert.equal(root.isSubscribedUser(), true);
+
+  // Test tab switching
+  root.switchAnalisisTab('chart');
+  assert.equal(elements['panel-tab-chart'].style.display, 'block');
+  assert.equal(elements['panel-tab-analisis'].style.display, 'none');
+  assert.equal(elements['panel-tab-ranking'].style.display, 'none');
+
+  root.switchAnalisisTab('analisis');
+  assert.equal(elements['panel-tab-analisis'].style.display, 'block');
+  assert.equal(elements['panel-tab-chart'].style.display, 'none');
+  assert.equal(elements['panel-tab-ranking'].style.display, 'none');
 });
+

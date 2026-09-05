@@ -255,6 +255,8 @@
         var streamBuffer = '';
         var replyText = '';
         var localFallback = false;
+        var isStreamError = false;
+        var streamErrorCode = null;
         var bubble = appendStreamingBubble();
         var streamError = null;
         try {
@@ -268,6 +270,10 @@
                 if (bubble) bubble.textContent = replyText;
               }
               if (parsed && parsed.local_fallback === true) localFallback = true;
+              if (parsed && (parsed.error === true || parsed.code === 'AI_KEY_INVALID' || parsed.code === 'AI_RATE_LIMITED' || parsed.code === 'AI_TIMEOUT' || parsed.code === 'QUOTA_EXCEEDED')) {
+                isStreamError = true;
+                streamErrorCode = parsed.code;
+              }
             });
           }
         } catch (err) {
@@ -288,6 +294,11 @@
         if (!replyText) {
           var streamFailure = describeFailure(response, {}, null);
           appendNotice(streamFailure.text, streamFailure.retryable);
+          return;
+        }
+        if (isStreamError) {
+          var canRetry = streamErrorCode === 'AI_RATE_LIMITED' || streamErrorCode === 'AI_TIMEOUT';
+          appendNotice(replyText || 'Gagal memproses permintaan AI.', canRetry);
           return;
         }
         if (localFallback) {

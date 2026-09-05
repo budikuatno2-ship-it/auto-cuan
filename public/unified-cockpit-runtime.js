@@ -22,6 +22,11 @@
   function switchAnalysisSubTab(mode) {
     _activeSubTab = mode === 'vision' ? 'vision' : 'text';
 
+    if (typeof root.switchAnalisisTab === 'function') {
+      root.switchAnalisisTab(mode === 'vision' ? 'chart' : 'analisis');
+      return;
+    }
+
     var btnText = byId('tabAnalisisText');
     var btnVision = byId('tabAnalisisVision');
     var panelText = byId('panelAnalisisText');
@@ -127,6 +132,9 @@
     var chatTag = byId('chatActiveTickerTag');
     if (chatTag) chatTag.textContent = ticker;
 
+    var analisisTag = byId('analisisActiveTickerTag');
+    if (analisisTag) analisisTag.textContent = ticker;
+
     // 3. Make follow-up composer visible in cockpit
     var followUp = byId('analisisFollowUp');
     if (followUp && followUp.classList.contains('hidden')) {
@@ -145,10 +153,12 @@
                    (typeof window !== 'undefined' && typeof window.triggerAiChartAnalysis === 'function') ? window.triggerAiChartAnalysis : null;
 
     if (options.runAnalysis && runFn) {
-      switchAnalysisSubTab('text');
+      if (typeof root.switchAnalisisTab === 'function') root.switchAnalisisTab('analisis');
+      else switchAnalysisSubTab('text');
       runFn(ticker);
     } else if (options.runChartVision && visionFn) {
-      switchAnalysisSubTab('vision');
+      if (typeof root.switchAnalisisTab === 'function') root.switchAnalisisTab('chart');
+      else switchAnalysisSubTab('vision');
       visionFn(ticker);
     }
   }
@@ -157,9 +167,15 @@
     var input = byId('analisisInput');
     var ticker = input ? cleanTicker(input.value) : '';
     if (!ticker) {
+      ticker = getActiveTicker();
+    }
+    if (!ticker) {
       if (typeof root.showToast === 'function') root.showToast('Ketik ticker terlebih dahulu (misal: BBCA, BBRI).', 'warning');
       else alert('Ketik ticker terlebih dahulu (misal: BBCA, BBRI).');
       return;
+    }
+    if (typeof root.switchAnalisisTab === 'function') {
+      root.switchAnalisisTab('analisis');
     }
     syncActiveTicker(ticker, { runAnalysis: true, loadChart: true });
   }
@@ -168,9 +184,15 @@
     var input = byId('analisisInput');
     var ticker = input ? cleanTicker(input.value) : '';
     if (!ticker) {
+      ticker = getActiveTicker();
+    }
+    if (!ticker) {
       if (typeof root.showToast === 'function') root.showToast('Ketik ticker terlebih dahulu (misal: BBCA, BBRI).', 'warning');
       else alert('Ketik ticker terlebih dahulu (misal: BBCA, BBRI).');
       return;
+    }
+    if (typeof root.switchAnalisisTab === 'function') {
+      root.switchAnalisisTab('chart');
     }
     syncActiveTicker(ticker, { runChartVision: true, loadChart: true });
   }
