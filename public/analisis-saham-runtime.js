@@ -207,7 +207,7 @@
 
   // ===== SUB-TAB SWITCHER (POLA PORTFOLIO) =====
   function switchAnalisisTab(tabName) {
-    var validTabs = ['analisis', 'chart', 'ranking', 'pattern'];
+    var validTabs = ['analisis', 'chart', 'ranking', 'bandarmologi', 'pattern'];
     if (validTabs.indexOf(tabName) < 0) tabName = 'analisis';
 
     document.querySelectorAll('.analisis-tab').forEach(function (btn) {
@@ -219,11 +219,13 @@
     var pAnalisis = byId('panel-tab-analisis');
     var pChart = byId('panel-tab-chart');
     var pRanking = byId('panel-tab-ranking');
+    var pBandarmologi = byId('panel-tab-bandarmologi');
     var pPattern = byId('panel-tab-pattern');
 
     if (pAnalisis) pAnalisis.style.display = (tabName === 'analisis' ? 'block' : 'none');
     if (pChart) pChart.style.display = (tabName === 'chart' ? 'block' : 'none');
     if (pRanking) pRanking.style.display = (tabName === 'ranking' ? 'block' : 'none');
+    if (pBandarmologi) pBandarmologi.style.display = (tabName === 'bandarmologi' ? 'block' : 'none');
     if (pPattern) pPattern.style.display = (tabName === 'pattern' ? 'block' : 'none');
 
     if (tabName === 'chart') {
@@ -239,6 +241,12 @@
       }
     } else if (tabName === 'ranking') {
       root.ensureRankingTableLoaded();
+    } else if (tabName === 'bandarmologi') {
+      if (typeof root.loadBandarmologiTab === 'function') {
+        var bandarTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
+          ? root.UnifiedCockpit.getActiveTicker() : 'BBCA';
+        root.loadBandarmologiTab(bandarTicker);
+      }
     } else if (tabName === 'pattern') {
       if (typeof root.ensurePatternRadarMounted === 'function') {
         root.ensurePatternRadarMounted();

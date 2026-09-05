@@ -51,6 +51,7 @@ const corporateActionGuard = require('../lib/corporate-action-price-scale-guard'
 const smartSetupLabels = require('../lib/smart-setup-labels');
 const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
 const trackRecordService = require('../lib/track-record-service');
+const bandarmologiService = require('../lib/bandarmologi-service');
 const telegramDailyRecap = require('../lib/telegram-daily-recap');
 const userWatchlistService = require('../lib/user-watchlist-service');
 const recentFailureCooldown = require('../lib/recent-failure-cooldown');
@@ -66,6 +67,14 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    const action = req.query.action || null;
+    const groupCode = req.query.group || null;
+
+    // === BANDARMOLOGI & INSIDER (PUBLIC / AUTHED READ-ONLY, can serve from disk/API) ===
+    if (action === 'bandarmologi') {
+      return await handleBandarmologi(req, res);
+    }
+
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -77,16 +86,13 @@ module.exports = async function handler(req, res) {
       auth: { persistSession: false, autoRefreshToken: false }
     });
 
-    const action = req.query.action || null;
-    const groupCode = req.query.group || null;
-
     // ===== ACTION ALLOWLIST (PHASE 6A.4) =====
     // Unknown actions must never fall through to the default Sektor Hot list/detail
     // response, because that would bypass the premium read policy.
     const knownActions = new Set([
       'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks', 'telegram-daily-recap',
       'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record',
-      'watchlist', 'watchlist-alert',
+      'watchlist', 'watchlist-alert', 'bandarmologi',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
       'create-screener-share-link', 'public-screener-share', 'refresh', 'debug-members'
@@ -141,6 +147,11 @@ module.exports = async function handler(req, res) {
     // === TRACK RECORD (PUBLIC / AUTHED READ-ONLY) ===
     if (action === 'track-record') {
       return await handleTrackRecord(req, res, supabase);
+    }
+
+    // === BANDARMOLOGI & INSIDER (PUBLIC / AUTHED READ-ONLY) ===
+    if (action === 'bandarmologi') {
+      return await handleBandarmologi(req, res);
     }
 
     // === WATCHLIST PRIBADI (LOGIN REQUIRED) ===
@@ -8098,6 +8109,17 @@ async function handleTrackRecord(req, res, supabase) {
   }
 }
 
+async function handleBandarmologi(req, res) {
+  try {
+    var ticker = (req.query && req.query.ticker) || 'BBCA';
+    var date = (req.query && req.query.date) || '';
+    var result = await bandarmologiService.getBandarmologiData(ticker, { date: date });
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || String(err) });
+  }
+}
+
 async function handleTelegramDailyRecap(req, res, supabase) {
   if (!verifyCronSecret(req)) {
     return res.status(401).json({ success: false, error: 'Unauthorized: CRON_SECRET required.' });
@@ -14056,6 +14078,7 @@ module.exports.__test = {
   getPersistedWebTop5HistoryBucket: getPersistedWebTop5HistoryBucket,
   buildWebTop5HistoryCollections: buildWebTop5HistoryCollections,
   handleTrackRecord: handleTrackRecord,
+  handleBandarmologi: handleBandarmologi,
   handleTelegramDailyRecap: handleTelegramDailyRecap,
   handleUserWatchlist: handleUserWatchlist,
   handleUserWatchlistAlert: handleUserWatchlistAlert,
