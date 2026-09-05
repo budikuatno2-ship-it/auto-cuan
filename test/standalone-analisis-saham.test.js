@@ -217,4 +217,3 @@ test('Standalone Analisis Saham Runtime: Exposes formatters, ranking state, subt
   assert.equal(elements['panel-tab-chart'].style.display, 'none');
   assert.equal(elements['panel-tab-ranking'].style.display, 'none');
 });
-
