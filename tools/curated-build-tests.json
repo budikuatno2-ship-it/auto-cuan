@@ -41,6 +41,7 @@
   "test/admin-token-security-fix.test.js",
   "test/api-hardening-cache-and-resilience.test.js",
   "test/track-record-csv.test.js",
+  "test/track-record-backtest.test.js",
   "test/login-localstorage-resilience.test.js",
   "test/account-center-contract.test.js",
   "test/admin-ai-eval-polling.test.js",

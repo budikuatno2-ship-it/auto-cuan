@@ -1335,110 +1335,295 @@
         </div>
     </div>
 
-    <!-- Summary Metrics Cards Grid -->
-    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="trackRecordSummaryGrid">
-        <!-- Total Signals -->
-        <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3 sm:p-4">
-            <div class="flex items-center justify-between text-gray-400 text-xs mb-1">
-                <span>Total Sinyal</span>
-                <span class="text-base">📊</span>
+    <!-- View Switcher (Rekap vs Backtesting) -->
+    <div class="flex items-center gap-2 border-b border-dark-600/40 pb-2.5">
+        <button id="trViewTabTable" onclick="switchTrackRecordView('table')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5">
+            <span>📋 Rekap Sinyal Realtime</span>
+        </button>
+        <button id="trViewTabBacktest" onclick="switchTrackRecordView('backtest')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-gray-200 border border-transparent hover:bg-dark-700/50 transition flex items-center gap-1.5">
+            <span>🔬 Simulasi &amp; Backtesting Strategi</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono">Baru</span>
+        </button>
+    </div>
+
+    <!-- WRAPPER 1: TABEL REKAP SINYAL (DEFAULT) -->
+    <div id="trTableViewPanel" class="space-y-4">
+        <!-- Summary Metrics Cards Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="trackRecordSummaryGrid">
+            <!-- Total Signals -->
+            <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3 sm:p-4">
+                <div class="flex items-center justify-between text-gray-400 text-xs mb-1">
+                    <span>Total Sinyal</span>
+                    <span class="text-base">📊</span>
+                </div>
+                <div class="text-xl sm:text-2xl font-black text-white" id="trTotalSignals">—</div>
+                <p class="text-[11px] text-gray-500 mt-1" id="trTotalSignalsSub">Rekomendasi tercatat</p>
             </div>
-            <div class="text-xl sm:text-2xl font-black text-white" id="trTotalSignals">—</div>
-            <p class="text-[11px] text-gray-500 mt-1" id="trTotalSignalsSub">Rekomendasi tercatat</p>
+
+            <!-- Win Rate TP1 -->
+            <div class="bg-dark-800/60 border border-emerald-500/25 rounded-xl p-3 sm:p-4 bg-gradient-to-b from-emerald-500/5 to-transparent">
+                <div class="flex items-center justify-between text-emerald-400 text-xs mb-1">
+                    <span class="font-semibold">Win Rate (TP1)</span>
+                    <span class="text-base">🎯</span>
+                </div>
+                <div class="text-xl sm:text-2xl font-black text-emerald-400" id="trWinRateTp1">—</div>
+                <p class="text-[11px] text-emerald-400/70 mt-1" id="trTp1HitsSub">— sinyal tercapai</p>
+            </div>
+
+            <!-- Win Rate TP2 -->
+            <div class="bg-dark-800/60 border border-emerald-500/20 rounded-xl p-3 sm:p-4">
+                <div class="flex items-center justify-between text-emerald-300 text-xs mb-1">
+                    <span>Target Maks (TP2)</span>
+                    <span class="text-base">🚀</span>
+                </div>
+                <div class="text-xl sm:text-2xl font-black text-emerald-300" id="trWinRateTp2">—</div>
+                <p class="text-[11px] text-gray-400 mt-1" id="trTp2HitsSub">— target maksimal</p>
+            </div>
+
+            <!-- SL Rate / Risk Control -->
+            <div class="bg-dark-800/60 border border-red-500/20 rounded-xl p-3 sm:p-4">
+                <div class="flex items-center justify-between text-red-400 text-xs mb-1">
+                    <span>SL Hit Rate</span>
+                    <span class="text-base">🛡️</span>
+                </div>
+                <div class="text-xl sm:text-2xl font-black text-red-400" id="trSlRate">—</div>
+                <p class="text-[11px] text-red-400/70 mt-1" id="trSlHitsSub">— kena Stop Loss</p>
+            </div>
         </div>
 
-        <!-- Win Rate TP1 -->
-        <div class="bg-dark-800/60 border border-emerald-500/25 rounded-xl p-3 sm:p-4 bg-gradient-to-b from-emerald-500/5 to-transparent">
-            <div class="flex items-center justify-between text-emerald-400 text-xs mb-1">
-                <span class="font-semibold">Win Rate (TP1)</span>
-                <span class="text-base">🎯</span>
+        <!-- Category Breakdown Cards -->
+        <div class="space-y-2">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400">Performa Per Kategori</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="trCategoryGrid">
+                <!-- Rendered by JS -->
             </div>
-            <div class="text-xl sm:text-2xl font-black text-emerald-400" id="trWinRateTp1">—</div>
-            <p class="text-[11px] text-emerald-400/70 mt-1" id="trTp1HitsSub">— sinyal tercapai</p>
         </div>
 
-        <!-- Win Rate TP2 -->
-        <div class="bg-dark-800/60 border border-emerald-500/20 rounded-xl p-3 sm:p-4">
-            <div class="flex items-center justify-between text-emerald-300 text-xs mb-1">
-                <span>Target Maks (TP2)</span>
-                <span class="text-base">🚀</span>
+        <!-- Filter Bar -->
+        <div class="bg-dark-800/50 border border-dark-600/30 rounded-xl p-3 space-y-2">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+                <!-- Category Tab Pill Filters -->
+                <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5" id="trCategoryTabs">
+                    <button onclick="filterTrackRecordCategory('all')" class="screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="all">Semua</button>
+                    <button onclick="filterTrackRecordCategory('daytrade')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="daytrade">⚡ Day Trade</button>
+                    <button onclick="filterTrackRecordCategory('swing_konglo')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="swing_konglo">🏢 Swing Konglo</button>
+                    <button onclick="filterTrackRecordCategory('swing_nk')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="swing_nk">🚀 Swing Non-Konglo</button>
+                    <button onclick="filterTrackRecordCategory('top5')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="top5">🎯 Top 5</button>
+                </div>
+
+                <!-- Status & Search Inputs -->
+                <div class="flex items-center gap-2">
+                    <select id="trStatusFilter" onchange="renderTrackRecordTable()" class="rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
+                        <option value="all">Status: Semua</option>
+                        <option value="TP2_HIT">TP2 Hit (Maksimal)</option>
+                        <option value="TP1_HIT">TP1 Hit (Target 1)</option>
+                        <option value="SL_HIT">SL Hit</option>
+                        <option value="RUNNING">Running</option>
+                        <option value="WAITING">Menunggu</option>
+                        <option value="EXPIRED">Expired</option>
+                    </select>
+                    <input id="trSearchInput" oninput="renderTrackRecordTable()" placeholder="Cari ticker..." class="w-28 sm:w-36 rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+                </div>
             </div>
-            <div class="text-xl sm:text-2xl font-black text-emerald-300" id="trWinRateTp2">—</div>
-            <p class="text-[11px] text-gray-400 mt-1" id="trTp2HitsSub">— target maksimal</p>
         </div>
 
-        <!-- SL Rate / Risk Control -->
-        <div class="bg-dark-800/60 border border-red-500/20 rounded-xl p-3 sm:p-4">
-            <div class="flex items-center justify-between text-red-400 text-xs mb-1">
-                <span>SL Hit Rate</span>
-                <span class="text-base">🛡️</span>
+        <!-- Table of Signals -->
+        <div class="bg-dark-800/40 border border-dark-600/30 rounded-xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs border-collapse min-w-[700px]">
+                    <thead>
+                        <tr class="bg-dark-700/60 text-gray-400 font-medium border-b border-dark-600/40 text-left">
+                            <th class="px-3 py-2.5 sticky left-0 bg-dark-700/90 z-10">Ticker</th>
+                            <th class="px-3 py-2.5">Kategori</th>
+                            <th class="px-3 py-2.5">Tanggal</th>
+                            <th class="px-3 py-2.5 text-right">Entry</th>
+                            <th class="px-3 py-2.5 text-right">Target 1</th>
+                            <th class="px-3 py-2.5 text-right">Target 2</th>
+                            <th class="px-3 py-2.5 text-right">Stop Loss</th>
+                            <th class="px-3 py-2.5 text-center">Status</th>
+                            <th class="px-3 py-2.5 text-right">Gain / Loss</th>
+                            <th class="px-3 py-2.5 text-right">Durasi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trTableBody" class="divide-y divide-dark-600/20 text-gray-300">
+                        <!-- Dynamic rows or skeleton -->
+                    </tbody>
+                </table>
             </div>
-            <div class="text-xl sm:text-2xl font-black text-red-400" id="trSlRate">—</div>
-            <p class="text-[11px] text-red-400/70 mt-1" id="trSlHitsSub">— kena Stop Loss</p>
+            <div id="trEmptyState" class="hidden py-12 text-center text-gray-500 text-xs">
+                Tidak ada sinyal yang sesuai dengan filter.
+            </div>
         </div>
     </div>
 
-    <!-- Category Breakdown Cards -->
-    <div class="space-y-2">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400">Performa Per Kategori</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="trCategoryGrid">
-            <!-- Rendered by JS -->
-        </div>
-    </div>
-
-    <!-- Filter Bar -->
-    <div class="bg-dark-800/50 border border-dark-600/30 rounded-xl p-3 space-y-2">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-            <!-- Category Tab Pill Filters -->
-            <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5" id="trCategoryTabs">
-                <button onclick="filterTrackRecordCategory('all')" class="screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="all">Semua</button>
-                <button onclick="filterTrackRecordCategory('daytrade')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="daytrade">⚡ Day Trade</button>
-                <button onclick="filterTrackRecordCategory('swing_konglo')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="swing_konglo">🏢 Swing Konglo</button>
-                <button onclick="filterTrackRecordCategory('swing_nk')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="swing_nk">🚀 Swing Non-Konglo</button>
-                <button onclick="filterTrackRecordCategory('top5')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="top5">🎯 Top 5</button>
+    <!-- WRAPPER 2: SIMULASI & BACKTESTING STRATEGI -->
+    <div id="trBacktestViewPanel" class="hidden space-y-4">
+        <!-- Interactive Controls Card -->
+        <div class="bg-dark-800/60 border border-dark-600/40 rounded-xl p-4 space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-dark-600/30 pb-2.5">
+                <div>
+                    <h3 class="text-sm font-bold text-white flex items-center gap-1.5">
+                        <span>⚙️ Parameter Simulasi Strategi</span>
+                    </h3>
+                    <p class="text-[11px] text-gray-400 mt-0.5">Asumsi eksekusi beli pada rata-rata Entry 1 &amp; Entry 2 untuk merefleksikan hasil realistis.</p>
+                </div>
+                <button onclick="triggerBacktestSimulation()" class="self-start sm:self-auto px-3.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition flex items-center gap-1.5">
+                    <span>⚡ Hitung Ulang</span>
+                </button>
             </div>
 
-            <!-- Status & Search Inputs -->
-            <div class="flex items-center gap-2">
-                <select id="trStatusFilter" onchange="renderTrackRecordTable()" class="rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
-                    <option value="all">Status: Semua</option>
-                    <option value="TP2_HIT">TP2 Hit (Maksimal)</option>
-                    <option value="TP1_HIT">TP1 Hit (Target 1)</option>
-                    <option value="SL_HIT">SL Hit</option>
-                    <option value="RUNNING">Running</option>
-                    <option value="WAITING">Menunggu</option>
-                    <option value="EXPIRED">Expired</option>
-                </select>
-                <input id="trSearchInput" oninput="renderTrackRecordTable()" placeholder="Cari ticker..." class="w-28 sm:w-36 rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+            <!-- Filters Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Kategori Sinyal</label>
+                    <select id="btCategoryFilter" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
+                        <option value="all">Semua Kategori</option>
+                        <option value="daytrade">⚡ Day Trade</option>
+                        <option value="swing_konglo">🏢 Swing Konglo</option>
+                        <option value="swing_nk">🚀 Swing Non-Konglo</option>
+                        <option value="top5">🎯 Top 5</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Periode Histori</label>
+                    <select id="btPeriodFilter" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
+                        <option value="all">Semua Histori Tersedia</option>
+                        <option value="30">30 Hari Terakhir</option>
+                        <option value="60">60 Hari Terakhir</option>
+                        <option value="90">90 Hari (3 Bulan)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Min. Risk/Reward (R:R)</label>
+                    <select id="btMinRrFilter" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
+                        <option value="0">Semua R:R</option>
+                        <option value="1.5">R:R ≥ 1.5x</option>
+                        <option value="2.0">R:R ≥ 2.0x</option>
+                        <option value="2.5">R:R ≥ 2.5x</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Target Strategi</label>
+                    <select id="btTargetStrategyFilter" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
+                        <option value="max_tp">Maksimal (TP2 jika tercapai)</option>
+                        <option value="tp1">Konservatif (Amankan TP1)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Modal Awal (Rp)</label>
+                    <input id="btInitialCapitalInput" type="number" step="1000000" min="1000000" value="10000000" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Model Alokasi / Sizing</label>
+                    <select id="btSizingModeFilter" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
+                        <option value="fixed_amount">Nominal Tetap per Trade</option>
+                        <option value="fixed_pct">10% Modal per Trade</option>
+                        <option value="compounding">100% Compounding</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Alokasi per Posisi (Rp)</label>
+                    <input id="btPositionAmountInput" type="number" step="500000" min="500000" value="2000000" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Table of Signals -->
-    <div class="bg-dark-800/40 border border-dark-600/30 rounded-xl overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-xs border-collapse min-w-[700px]">
-                <thead>
-                    <tr class="bg-dark-700/60 text-gray-400 font-medium border-b border-dark-600/40 text-left">
-                        <th class="px-3 py-2.5 sticky left-0 bg-dark-700/90 z-10">Ticker</th>
-                        <th class="px-3 py-2.5">Kategori</th>
-                        <th class="px-3 py-2.5">Tanggal</th>
-                        <th class="px-3 py-2.5 text-right">Entry</th>
-                        <th class="px-3 py-2.5 text-right">Target 1</th>
-                        <th class="px-3 py-2.5 text-right">Target 2</th>
-                        <th class="px-3 py-2.5 text-right">Stop Loss</th>
-                        <th class="px-3 py-2.5 text-center">Status</th>
-                        <th class="px-3 py-2.5 text-right">Gain / Loss</th>
-                        <th class="px-3 py-2.5 text-right">Durasi</th>
-                    </tr>
-                </thead>
-                <tbody id="trTableBody" class="divide-y divide-dark-600/20 text-gray-300">
-                    <!-- Dynamic rows or skeleton -->
-                </tbody>
-            </table>
+        <!-- Backtest Metrics Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            <!-- Saldo Akhir -->
+            <div class="bg-dark-800/60 border border-emerald-500/25 rounded-xl p-3 bg-gradient-to-b from-emerald-500/5 to-transparent">
+                <div class="text-[11px] text-gray-400">Saldo Akhir</div>
+                <div class="text-base sm:text-lg font-black text-white mt-0.5" id="btMetricEndingCapital">—</div>
+                <div class="text-[11px] font-semibold text-emerald-400 mt-0.5" id="btMetricNetReturn">—</div>
+            </div>
+
+            <!-- Win Rate -->
+            <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3">
+                <div class="text-[11px] text-gray-400">Win Rate</div>
+                <div class="text-base sm:text-lg font-black text-emerald-400 mt-0.5" id="btMetricWinRate">—</div>
+                <div class="text-[10px] text-gray-500 mt-0.5 truncate" id="btMetricWinLossSub">— trade</div>
+            </div>
+
+            <!-- Profit Factor -->
+            <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3">
+                <div class="text-[11px] text-gray-400">Profit Factor</div>
+                <div class="text-base sm:text-lg font-black text-cyan-300 mt-0.5" id="btMetricProfitFactor">—</div>
+                <div class="text-[10px] text-gray-500 mt-0.5 truncate" id="btMetricProfitFactorSub">Gross P/L</div>
+            </div>
+
+            <!-- Expectancy -->
+            <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3">
+                <div class="text-[11px] text-gray-400">Expectancy / Trade</div>
+                <div class="text-base sm:text-lg font-black text-emerald-300 mt-0.5" id="btMetricExpectancy">—</div>
+                <div class="text-[10px] text-gray-500 mt-0.5">Laba rata-rata</div>
+            </div>
+
+            <!-- Max Drawdown -->
+            <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3">
+                <div class="text-[11px] text-gray-400">Max Drawdown</div>
+                <div class="text-base sm:text-lg font-black text-red-400 mt-0.5" id="btMetricMaxDrawdown">—</div>
+                <div class="text-[10px] text-gray-500 mt-0.5">Dari puncak</div>
+            </div>
+
+            <!-- Rata-rata Hold -->
+            <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3">
+                <div class="text-[11px] text-gray-400">Rata-rata Hold</div>
+                <div class="text-base sm:text-lg font-black text-amber-300 mt-0.5" id="btMetricAvgDuration">—</div>
+                <div class="text-[10px] text-gray-500 mt-0.5">Durasi posisi</div>
+            </div>
         </div>
-        <div id="trEmptyState" class="hidden py-12 text-center text-gray-500 text-xs">
-            Tidak ada sinyal yang sesuai dengan filter.
+
+        <!-- Equity Curve Chart -->
+        <div class="bg-dark-800/50 border border-dark-600/30 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                        <span>📈 Kurva Pertumbuhan Modal (Equity Curve)</span>
+                    </h4>
+                    <p class="text-[11px] text-gray-400 mt-0.5">Pertumbuhan saldo portofolio berjalan dari waktu ke waktu berdasarkan hasil trade yang selesai.</p>
+                </div>
+            </div>
+            <div class="h-64 sm:h-72 w-full">
+                <canvas id="trBacktestChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Simulated Trade Logs Table -->
+        <div class="bg-dark-800/40 border border-dark-600/30 rounded-xl overflow-hidden">
+            <div class="px-4 py-3 border-b border-dark-600/30 flex items-center justify-between">
+                <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <span>📜 Log Transaksi Hasil Simulasi</span>
+                </h4>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs border-collapse min-w-[700px]">
+                    <thead>
+                        <tr class="bg-dark-700/60 text-gray-400 font-medium border-b border-dark-600/40 text-left">
+                            <th class="px-3 py-2.5">#</th>
+                            <th class="px-3 py-2.5">Ticker</th>
+                            <th class="px-3 py-2.5">Tanggal</th>
+                            <th class="px-3 py-2.5 text-right">Entry (Avg)</th>
+                            <th class="px-3 py-2.5 text-right">Exit</th>
+                            <th class="px-3 py-2.5 text-center">R:R</th>
+                            <th class="px-3 py-2.5 text-center">Hasil</th>
+                            <th class="px-3 py-2.5 text-right">P&amp;L</th>
+                            <th class="px-3 py-2.5 text-right">Saldo Portofolio</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trBacktestTradesBody" class="divide-y divide-dark-600/20 text-gray-300">
+                        <!-- Simulated trade rows -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="trBacktestEmptyState" class="hidden py-10 text-center text-gray-500 text-xs">
+                Tidak ada data transaksi yang memenuhi kriteria filter simulasi.
+            </div>
         </div>
     </div>
 </div>
@@ -3146,8 +3331,9 @@ function showAdminDeviceApprovalModal(data) {
                 setTimeout(function() {
                     modal.classList.add('hidden');
                     try {
+                        var isApprovedAdmin = json.isAdmin === true && String(json.username || '').toLowerCase() === 'budi';
                         localStorage.setItem('autocuan_user', json.username || 'budi');
-                        localStorage.setItem('autocuan_is_admin', 'true');
+                        localStorage.setItem('autocuan_is_admin', isApprovedAdmin ? 'true' : 'false');
                         localStorage.setItem('autocuan_logged_in', 'true');
                         localStorage.setItem('autocuan_login_time', Date.now().toString());
                         if (json.userId) localStorage.setItem('autocuan_user_id', json.userId);
@@ -6830,13 +7016,13 @@ function renderDeviceDetailsHtml(user) {
     html += '<ul class="space-y-2">';
     m.items.forEach(function (it, idx) {
         var badge = it.isCurrent
-            ? ' <span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300">Saat ini</span>'
+            ? ' <span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300">Perangkat saat ini</span>'
             : '';
         var invalidBadge = it.valid
             ? ''
             : ' <span class="px-1.5 py-0.5 rounded text-[10px] bg-yellow-500/20 text-yellow-300">Format tidak valid</span>';
         var removeBtn = it.rawId
-            ? ' <button onclick="removeUserDevice(\'' + uname + '\', \'' + encodeURIComponent(it.rawId) + '\')" class="ml-auto px-2 py-0.5 rounded text-[10px] text-red-400 border border-red-500/30 hover:bg-red-500/10 transition">Hapus</button>'
+            ? ' <button onclick="removeUserDeviceByIndex(\'' + uname + '\', ' + idx + ')" class="ml-auto px-2 py-0.5 rounded text-[10px] text-red-400 border border-red-500/30 hover:bg-red-500/10 transition">Hapus</button>'
             : '';
         html += '<li class="flex items-center gap-2 text-xs py-1 border-b border-dark-600/30 last:border-b-0">';
         html += '<span class="text-gray-500">' + (idx + 1) + '.</span>';
@@ -6914,8 +7100,15 @@ function closeDeviceModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-async function removeUserDevice(username, encodedDeviceId) {
-    var deviceId = decodeURIComponent(encodedDeviceId);
+function removeUserDeviceByIndex(username, index) {
+    var user = Array.isArray(cachedUsers) ? cachedUsers.find(function (x) { return x.username === username; }) : null;
+    var rawId = user && Array.isArray(user.devices) ? user.devices[index] : null;
+    if (!rawId) return;
+    removeUserDevice(username, rawId);
+}
+
+async function removeUserDevice(username, rawDeviceId) {
+    var deviceId = rawDeviceId ? decodeURIComponent(rawDeviceId) : rawDeviceId;
     if (!confirm('Hapus perangkat ini dari akun ' + username + '? Slot akan langsung kosong.')) return;
     try {
         var adminName = localStorage.getItem('autocuan_user') || 'budi';
@@ -11218,6 +11411,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/ui-bugfix-pack-v1.js?v=20260803-v1"></script>
 <script src="/screener-lifecycle-ui.js?v=20260816-v1"></script>
 <script src="/track-record-runtime.js"></script>
+<script src="/track-record-backtest.js"></script>
 <script src="/watchlist-runtime.js"></script>
 <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
 <script src="/unified-cockpit-runtime.js?v=20260905-v1"></script>

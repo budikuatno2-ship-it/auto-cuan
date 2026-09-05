@@ -132,6 +132,9 @@ function renderTrackRecordUI(data) {
     }
 
     renderTrackRecordTable();
+    if (typeof triggerBacktestSimulation === 'function') {
+        try { triggerBacktestSimulation(); } catch (_) {}
+    }
 }
 
 function filterTrackRecordCategory(cat) {
@@ -311,6 +314,130 @@ function exportTrackRecordCsv() {
     if (typeof showToast === 'function') showToast('📥 File ' + filename + ' berhasil diunduh!', 'success');
 }
 
+// ===== BACKTESTING & SIMULASI STRATEGI CONTROLLER =====
+var _trCurrentView = 'table'; // 'table' | 'backtest'
+var _trDataInitialized = false;
+
+function switchTrackRecordView(view) {
+    _trCurrentView = view || 'table';
+    var isBacktest = _trCurrentView === 'backtest';
+
+    var tabTable = document.getElementById('trViewTabTable');
+    var tabBacktest = document.getElementById('trViewTabBacktest');
+    var panelTable = document.getElementById('trTableViewPanel');
+    var panelBacktest = document.getElementById('trBacktestViewPanel');
+
+    if (tabTable) {
+        if (isBacktest) {
+            tabTable.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-gray-200 border border-transparent hover:bg-dark-700/50 transition flex items-center gap-1.5';
+        } else {
+            tabTable.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5';
+        }
+    }
+
+    if (tabBacktest) {
+        if (isBacktest) {
+            tabBacktest.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5';
+        } else {
+            tabBacktest.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-gray-200 border border-transparent hover:bg-dark-700/50 transition flex items-center gap-1.5';
+        }
+    }
+
+    if (panelTable) {
+        if (isBacktest) panelTable.classList.add('hidden');
+        else panelTable.classList.remove('hidden');
+    }
+
+    if (panelBacktest) {
+        if (isBacktest) {
+            panelBacktest.classList.remove('hidden');
+            triggerBacktestSimulation();
+        } else {
+            panelBacktest.classList.add('hidden');
+        }
+    }
+}
+
+function triggerBacktestSimulation() {
+    if (typeof AutoCuanBacktest === 'undefined' || !AutoCuanBacktest.runBacktestSimulation) return;
+    var signals = _trData && Array.isArray(_trData.signals) ? _trData.signals : [];
+
+    var elCategory = document.getElementById('btCategoryFilter');
+    var elPeriod = document.getElementById('btPeriodFilter');
+    var elMinRr = document.getElementById('btMinRrFilter');
+    var elCapital = document.getElementById('btInitialCapitalInput');
+    var elSizing = document.getElementById('btSizingModeFilter');
+    var elPosition = document.getElementById('btPositionAmountInput');
+    var elTarget = document.getElementById('btTargetStrategyFilter');
+
+    var config = {
+        category: elCategory ? elCategory.value : 'all',
+        periodDays: elPeriod ? (elPeriod.value === 'all' ? 'all' : Number(elPeriod.value)) : 'all',
+        minRr: elMinRr ? parseFloat(elMinRr.value) || 0 : 0,
+        initialCapital: elCapital ? parseFloat(elCapital.value) || 10000000 : 10000000,
+        sizingMode: elSizing ? elSizing.value : 'fixed_amount',
+        positionAmount: elPosition ? parseFloat(elPosition.value) || 2000000 : 2000000,
+        targetStrategy: elTarget ? elTarget.value : 'max_tp'
+    };
+
+    var result = AutoCuanBacktest.runBacktestSimulation(signals, config);
+    var m = result.metrics;
+
+    // Update UI Metrics
+    var elEnding = document.getElementById('btMetricEndingCapital');
+    if (elEnding) {
+        elEnding.textContent = 'Rp ' + Number(m.endingCapital).toLocaleString('id-ID');
+    }
+
+    var elReturn = document.getElementById('btMetricNetReturn');
+    if (elReturn) {
+        var isProfit = m.netProfitRp >= 0;
+        elReturn.className = 'text-[11px] font-semibold mt-1 ' + (isProfit ? 'text-emerald-400' : 'text-red-400');
+        elReturn.textContent = (isProfit ? '+' : '') + 'Rp ' + Number(m.netProfitRp).toLocaleString('id-ID') + ' (' + (isProfit ? '+' : '') + m.totalReturnPct + '%)';
+    }
+
+    var elWr = document.getElementById('btMetricWinRate');
+    if (elWr) {
+        elWr.textContent = m.winRatePct + '%';
+    }
+
+    var elWrSub = document.getElementById('btMetricWinLossSub');
+    if (elWrSub) {
+        elWrSub.textContent = m.winCount + ' Menang · ' + m.lossCount + ' Kalah (' + m.totalTrades + ' trade)';
+    }
+
+    var elPf = document.getElementById('btMetricProfitFactor');
+    if (elPf) {
+        elPf.textContent = m.profitFactor >= 90 ? '> 99' : m.profitFactor.toFixed(2);
+    }
+
+    var elPfSub = document.getElementById('btMetricProfitFactorSub');
+    if (elPfSub) {
+        elPfSub.textContent = 'Gross: Rp ' + (m.grossProfitRp / 1000000).toFixed(1) + 'M / ' + (m.grossLossRp / 1000000).toFixed(1) + 'M';
+    }
+
+    var elExp = document.getElementById('btMetricExpectancy');
+    if (elExp) {
+        var isExpPos = m.expectancyRp >= 0;
+        elExp.className = 'text-xl sm:text-2xl font-black ' + (isExpPos ? 'text-emerald-300' : 'text-red-400');
+        elExp.textContent = (isExpPos ? '+' : '') + 'Rp ' + Number(m.expectancyRp).toLocaleString('id-ID');
+    }
+
+    var elDd = document.getElementById('btMetricMaxDrawdown');
+    if (elDd) {
+        elDd.textContent = m.maxDrawdownPct + '%';
+    }
+
+    var elAvgDur = document.getElementById('btMetricAvgDuration');
+    if (elAvgDur) {
+        elAvgDur.textContent = m.avgDurationDays + ' Hari';
+    }
+
+    // Render Chart and Trade Table
+    AutoCuanBacktest.renderBacktestChart(result.equityCurve);
+    AutoCuanBacktest.renderBacktestTradeTable(result.trades);
+}
+
 if (typeof window !== 'undefined') {
     window.loadTrackRecord = loadTrackRecord;
     window.filterTrackRecordCategory = filterTrackRecordCategory;
@@ -318,6 +445,8 @@ if (typeof window !== 'undefined') {
     window.exportTrackRecordCsv = exportTrackRecordCsv;
     window.generateTrackRecordCsv = generateTrackRecordCsv;
     window.formatTrackRecordCsvRow = formatTrackRecordCsvRow;
+    window.switchTrackRecordView = switchTrackRecordView;
+    window.triggerBacktestSimulation = triggerBacktestSimulation;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
