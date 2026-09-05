@@ -3605,7 +3605,7 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
             if (typeof normalizeFinalStockHtml === 'function') html = normalizeFinalStockHtml(html);
             if (isIndex && typeof sanitizeIHSGOutput === 'function') html = sanitizeIHSGOutput(html);
             if (typeof reorderBrokerCTA === 'function') html = reorderBrokerCTA(html, isIndex);
-            html = convertStrayMarkdownBold(html);
+            if (typeof convertStrayMarkdownBold === 'function') html = convertStrayMarkdownBold(html);
 
             // Render result
             var confluenceHtml = isIndex ? '' : buildManualConfluenceHtml(ticker);
@@ -3653,10 +3653,16 @@ function copyAnalisisResult() {
     // Build clean text from HTML structure
     var html = contentEl.innerHTML;
     var text = htmlToCleanText(html);
-    navigator.clipboard.writeText(text).then(function() {
-        showToast('Hasil berhasil disalin.', 'success');
-    }).catch(function() {
-        showToast('Gagal menyalin. Coba lagi.', 'warning');
+    // navigator.clipboard can be undefined (non-secure context, older
+    // webview) — calling .writeText on it there throws synchronously before
+    // any Promise exists, so the button silently did nothing. AutoCuanAI.copyText
+    // guards that and falls back to document.execCommand('copy').
+    var copyFn = (window.AutoCuanAI && typeof window.AutoCuanAI.copyText === 'function')
+        ? window.AutoCuanAI.copyText
+        : function (t) { return navigator.clipboard ? navigator.clipboard.writeText(t).then(function () { return true; }).catch(function () { return false; }) : Promise.resolve(false); };
+    copyFn(text).then(function (ok) {
+        if (ok) showToast('Hasil berhasil disalin.', 'success');
+        else showToast('Gagal menyalin. Coba lagi.', 'warning');
     });
 }
 
@@ -5065,392 +5071,9 @@ function buildContextForApi() {
 }
 
 // ===== MARKET DATA CONTEXT FETCHER =====
-// Frontend cache: avoid repeated /api/quote calls for same ticker within 4 minutes
-var _quoteContextCache = {};
-var _quoteInflight = {};
-var QUOTE_CONTEXT_CACHE_TTL = 4 * 60 * 1000;
-
-async function fetchQuoteContext(ticker, forceFresh) {
-    if (!ticker || !isValidTicker(ticker)) return '';
-
-    // Check frontend cache (skipped when forceFresh — initial analysis must match live card)
-    var cacheKey = ticker;
-    if (!forceFresh) {
-        var cached = _quoteContextCache[cacheKey];
-        if (cached && (Date.now() - cached.ts < QUOTE_CONTEXT_CACHE_TTL)) {
-            return cached.ctx;
-        }
-        // Deduplicate inflight requests for same ticker
-        if (_quoteInflight[cacheKey]) {
-            return _quoteInflight[cacheKey];
-        }
-    }
-
-    _quoteInflight[cacheKey] = (async function() {
-    try {
-        var quoteResp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&includeNews=0', { method: 'GET', headers: getAuthHeaders() }).catch(function() { return null; });
-
-        var lines = ['\n[Auto-Cuan Market Data]'];
-        lines.push('Ticker: ' + ticker);
-        lines.push('Basis Data: Data Historis T-1');
-
-        if (quoteResp && quoteResp.ok) {
-            var q = await quoteResp.json();
-            if (q.success) {
-                // Same rule as every other grounding line: absent stays absent.
-                // "Volume: 0" told the model the stock did not trade, and a
-                // missing OHLC field was written as the literal "undefined".
-                [['Last', q.last], ['Open', q.open], ['High', q.high], ['Low', q.low], ['Volume', q.volume]]
-                    .forEach(function(entry) {
-                        if (entry[1] != null && entry[1] !== '') lines.push(entry[0] + ': ' + entry[1]);
-                    });
-                if (q.volumeAvg20 != null) lines.push('Avg Volume 20: ' + q.volumeAvg20);
-                if (q.volumeVsAvg20 != null) lines.push('Volume vs Avg 20: ' + q.volumeVsAvg20 + 'x');
-                if (q.volumeAvg3 != null) lines.push('Avg Volume 3D: ' + q.volumeAvg3);
-                if (q.volumeAvg7 != null) lines.push('Avg Volume 7D: ' + q.volumeAvg7);
-                if (q.volumeVsAvg3 != null) lines.push('Volume vs Avg 3D: ' + q.volumeVsAvg3 + 'x');
-                if (q.volumeVsAvg7 != null) lines.push('Volume vs Avg 7D: ' + q.volumeVsAvg7 + 'x');
-                if (q.prevClose != null) lines.push('Prev Close: ' + q.prevClose);
-                if (q.priceChange1D != null) lines.push('Price Change 1D: ' + q.priceChange1D + '%');
-                if (q.volumeTrend) lines.push('Volume Trend: ' + q.volumeTrend);
-                if (q.priceVolumeReading) lines.push('Price-Volume Reading: ' + q.priceVolumeReading);
-                if (q.ma20 != null) lines.push('MA20: ' + q.ma20);
-                if (q.ma50 != null) lines.push('MA50: ' + q.ma50);
-                if (q.ma100 != null) lines.push('MA100: ' + q.ma100);
-                if (q.ma200 != null) lines.push('MA200: ' + q.ma200);
-                if (q.rsi14 != null) lines.push('RSI14: ' + q.rsi14);
-                // Pivot data from same response
-                if (q.pivot) {
-                    // A missing pivot used to be written into the prompt as the
-                    // literal string "undefined" ("Support 1: undefined").
-                    [['Pivot Point', q.pivot.pivotPoint], ['OHLC Pivot', q.pivot.ohlcPivot],
-                     ['Support 1', q.pivot.support1], ['Support 2', q.pivot.support2],
-                     ['Resistance 1', q.pivot.resistance1], ['Resistance 2', q.pivot.resistance2],
-                     ['Pivot Method', q.pivot.pivotMethod], ['Pivot Source Date', q.pivot.pivotSourceDate]
-                    ].forEach(function(entry) {
-                        if (entry[1] != null && entry[1] !== '') lines.push(entry[0] + ': ' + entry[1]);
-                    });
-                    if (q.pivot.flatRange) lines.push('Note: Range T-1 flat/sempit, level pivot kurang informatif.');
-                }
-
-                // Volume Intelligence context (only for stocks with volume data)
-                if (q.volumeAvg3 != null && q.volumeAvg7 != null && !q.isIndex) {
-                    lines.push('');
-                    lines.push('[Auto-Cuan Volume Intelligence]');
-                    // Every line here is grounding the model reads as fact, so a
-                    // missing field is omitted rather than defaulted. The `|| 0`
-                    // fallbacks this replaces turned an absent 20-day average
-                    // into "Volume vs Avg 20D: 0x" and an absent daily move into
-                    // "Price Change 1D: 0%" — readings the model would then
-                    // reason from as a volume collapse and a flat session. The
-                    // block immediately above already guards the same fields
-                    // with `!= null`; this one did not.
-                    if (q.volume != null) lines.push('Volume Terakhir: ' + formatIndonesianVolume(q.volume));
-                    lines.push('Rata-rata 3 Hari: ' + formatCompactVolume(q.volumeAvg3));
-                    lines.push('Rata-rata 7 Hari: ' + formatCompactVolume(q.volumeAvg7));
-                    if (q.volumeAvg20 != null) lines.push('Rata-rata 20 Hari: ' + formatCompactVolume(q.volumeAvg20));
-                    if (q.volumeVsAvg3 != null) lines.push('Volume vs Avg 3D: ' + String(q.volumeVsAvg3).replace('.', ',') + 'x');
-                    if (q.volumeVsAvg7 != null) lines.push('Volume vs Avg 7D: ' + String(q.volumeVsAvg7).replace('.', ',') + 'x');
-                    if (q.volumeVsAvg20 != null) lines.push('Volume vs Avg 20D: ' + String(q.volumeVsAvg20).replace('.', ',') + 'x');
-                    if (q.priceChange1D != null) lines.push('Price Change 1D: ' + q.priceChange1D + '%');
-                    if (q.volumeTrend) lines.push('Volume Trend: ' + q.volumeTrend);
-                    lines.push('Pembacaan: ' + (q.priceVolumeReading || 'Data tidak cukup untuk pembacaan volume.'));
-                    // Estimated transaction value (optional)
-                    if (q.last && q.volume && q.volume > 0) {
-                        var estTxnValue = q.last * q.volume;
-                        lines.push('Estimasi Nilai Transaksi: ' + formatIndonesianRupiah(estTxnValue));
-                    }
-                }
-
-                // Fibonacci Intelligence context (only if data available)
-                var fib = q.fibonacci;
-                if (fib && fib.swingHigh != null && fib.levels) {
-                    lines.push('');
-                    lines.push('[Auto-Cuan Fibonacci Intelligence]');
-                    lines.push('Swing High: ' + fib.swingHigh);
-                    lines.push('Swing Low: ' + fib.swingLow);
-                    lines.push('Trend Context: ' + humanizeFibTrend(fib.trend));
-                    lines.push('Lookback: ' + fib.lookbackCandles + ' candles');
-                    lines.push('Fib 23.6%: ' + fib.levels.fib236);
-                    lines.push('Fib 38.2%: ' + fib.levels.fib382);
-                    lines.push('Fib 50%: ' + fib.levels.fib500);
-                    lines.push('Fib 61.8%: ' + fib.levels.fib618);
-                    lines.push('Fib 78.6%: ' + fib.levels.fib786);
-                    if (fib.nearestLabel) lines.push('Nearest Fib: ' + fib.nearestLabel + ' (' + fib.nearestLevel + ')');
-                    if (fib.positionReading) lines.push('Reading: ' + fib.positionReading);
-                    if (fib.invalidationLevel) lines.push('Invalidation: ' + (fib.trend === 'upward_retracement' ? 'Breakdown di bawah ' : 'Breakout di atas ') + fib.invalidationLevel + ' melemahkan skenario saat ini.');
-                }
-            } else {
-                lines.push('Data historis belum berhasil diambil.');
-            }
-
-            // Board data from same response
-            var b = q && q.board;
-            if (b) {
-                lines.push('');
-                lines.push('[Auto-Cuan Board Data]');
-                lines.push('Ticker: ' + ticker);
-                if (b.companyName) lines.push('Company: ' + b.companyName);
-                lines.push('Board: ' + (b.board || 'UNKNOWN'));
-                lines.push('FCA: ' + (b.isFca ? 'true' : 'false'));
-                lines.push('Min Price Guard: ' + (b.minPriceGuard != null ? b.minPriceGuard : 50));
-                if (b.note) lines.push('Note: ' + b.note);
-            }
-
-            // News data from same response
-            var newsData = q && q.news;
-            if (newsData && newsData.items && newsData.items.length > 0) {
-                lines.push('');
-                lines.push('[Auto-Cuan News Summary]');
-                lines.push('Ticker: ' + ticker);
-                lines.push('Period: 6 bulan terakhir');
-                for (var ni = 0; ni < newsData.items.length; ni++) {
-                    var news = newsData.items[ni];
-                    lines.push('- ' + (news.date || '?') + ': ' + news.title);
-                    if (news.summary) lines.push('  ' + news.summary);
-                    if (news.possibleImpact) lines.push('  Impact: ' + news.possibleImpact);
-                    if (news.source) lines.push('  Sumber: ' + news.source);
-                }
-                // Store for News panel button (by ticker)
-                if (!window._stockNewsByTicker) window._stockNewsByTicker = {};
-                window._stockNewsByTicker[ticker] = newsData.items;
-            } else {
-                lines.push('');
-                lines.push('[Auto-Cuan News Summary]');
-                lines.push('News Summary: unavailable');
-                window._stockNewsByTicker = window._stockNewsByTicker || {};
-                delete window._stockNewsByTicker[ticker];
-            }
-
-            // === AUTO-CUAN SCORE (from server-side calculation) ===
-            var acs = q.autoCuanScore;
-            if (acs && acs.score != null) {
-                lines.push('');
-                lines.push('[Auto-Cuan Score]');
-                lines.push('Score: ' + acs.score + '/100');
-                lines.push('Grade: ' + acs.grade);
-                lines.push('Confidence: ' + acs.confidence);
-                lines.push('Trend: ' + acs.components.trend + '/25');
-                lines.push('Momentum: ' + acs.components.momentum + '/20');
-                lines.push('Volume: ' + acs.components.volume + '/20');
-                lines.push('Pivot: ' + acs.components.pivot + '/15');
-                lines.push('Catalyst: ' + acs.components.catalyst + '/10');
-                lines.push('Risk: ' + acs.components.risk);
-                if (acs.reasons && acs.reasons.length > 0) lines.push('Reasons: ' + acs.reasons.join('; '));
-                if (acs.warnings && acs.warnings.length > 0) lines.push('Warnings: ' + acs.warnings.join('; '));
-            } else {
-                // Fallback to frontend calculation if server didn't return score
-                var acScore = calculateAutoCuanScore(q, b, newsData);
-                if (acScore) {
-                    lines.push('');
-                    lines.push('[Auto-Cuan Score]');
-                    lines.push('Total: ' + acScore.total + '/100');
-                    lines.push('Category: ' + acScore.category);
-                    lines.push('Trend Score: ' + acScore.trendScore + '/30');
-                    lines.push('RSI Score: ' + acScore.rsiScore + '/20');
-                    lines.push('Volume Score: ' + acScore.volumeScore + '/20');
-                    lines.push('News Score: ' + acScore.newsScore + '/15');
-                    lines.push('Board Risk Score: ' + acScore.boardRiskScore + '/15');
-                    lines.push('Reason: ' + acScore.reason);
-                }
-            }
-
-            // === SETUP LABEL (from server-side calculation) ===
-            var sl = q.setupLabel;
-            if (sl && sl.status) {
-                lines.push('');
-                lines.push('[Auto-Cuan Setup Label]');
-                lines.push('Status: ' + sl.status);
-                lines.push('Confidence: ' + sl.confidence);
-                if (sl.reasons && sl.reasons.length > 0) lines.push('Reasons: ' + sl.reasons.join('; '));
-                lines.push('Valid If: ' + sl.validIf);
-                lines.push('Invalid If: ' + sl.invalidIf);
-                if (sl.flags && sl.flags.length > 0) lines.push('Flags: ' + sl.flags.join(', '));
-            }
-
-            // === BREAKOUT / BREAKDOWN CONFIRMATION (from server-side) ===
-            var bc = q.breakoutConfirmation;
-            if (bc && bc.status) {
-                lines.push('');
-                lines.push('[Auto-Cuan Breakout Confirmation]');
-                lines.push('Status: ' + bc.status);
-                lines.push('Confidence: ' + bc.confidence);
-                if (bc.breakoutLevel != null) lines.push('Breakout Level: ' + bc.breakoutLevel);
-                if (bc.breakdownLevel != null) lines.push('Breakdown Level: ' + bc.breakdownLevel);
-                lines.push('Valid If: ' + bc.validIf);
-                lines.push('Invalid If: ' + bc.invalidIf);
-                if (bc.reasons && bc.reasons.length > 0) lines.push('Reasons: ' + bc.reasons.join('; '));
-                if (bc.warnings && bc.warnings.length > 0) lines.push('Warnings: ' + bc.warnings.join('; '));
-            }
-
-            // === RESPECT ZONE & TRADING PLAN (from server-side) ===
-            if (q.respectZone && q.respectZone.notes && q.respectZone.notes.length > 0) {
-                lines.push('');
-                lines.push('[Auto-Cuan Respect Zone]');
-                q.respectZone.notes.forEach(function(n) { lines.push('- ' + n); });
-            }
-            if (q.tradingPlan) {
-                var tp = q.tradingPlan;
-                lines.push('');
-                lines.push('[Auto-Cuan Trading Plan]');
-                lines.push('Entry 1: ' + (tp.entry_1 || '-'));
-                lines.push('Entry 2: ' + (tp.entry_2 || '-'));
-                lines.push('Stop Loss: ' + (tp.stop_loss || '-'));
-                lines.push('Target 1: ' + (tp.target_1 || '-'));
-                lines.push('Target 2: ' + (tp.target_2 || '-'));
-                lines.push('R/R: ' + (tp.risk_reward || '-'));
-                if (isLoggedInUser() && tp.half_candle_level) lines.push('Half Candle Debt: ' + tp.half_candle_level + ' — ' + (tp.half_candle_label || 'Entry pullback 1/2 candle'));
-                if (isLoggedInUser() && tp.half_candle_note) lines.push('Half Candle Note: ' + tp.half_candle_note);
-                if (isLoggedInUser() && tp.refinement_notes) lines.push('Refinement: ' + tp.refinement_notes);
-                if (isLoggedInUser() && tp.respect_zone_notes) lines.push('Zone Context: ' + tp.respect_zone_notes);
-                if (isLoggedInUser() && tp.respect_quality_label) {
-                    lines.push('Respect v2: ' + tp.respect_quality_label + (tp.respect_quality_score != null ? ' (' + tp.respect_quality_score + '/100)' : ''));
-                    if (tp.respect_quality_factors && tp.respect_quality_factors.length) lines.push('Respect Factors: ' + tp.respect_quality_factors.slice(0, 4).join('; '));
-                    if (tp.respect_invalid_reason) lines.push('Respect Invalid: ' + tp.respect_invalid_reason);
-                    if (tp.bearish_respect_warning) lines.push('Bearish Respect: ' + tp.bearish_respect_warning);
-                }
-            }
-            if (q.bsjpLabel) {
-                lines.push('');
-                lines.push('[Auto-Cuan BSJP]');
-                lines.push(q.bsjpLabel);
-            }
-            // === V6: RISK LABEL (from server-side deterministic calculation) ===
-            if (q.riskLabel && q.riskLabel.risk_label) {
-                lines.push('');
-                lines.push('[Auto-Cuan Risk Label]');
-                lines.push('Risk: ' + q.riskLabel.risk_label);
-                lines.push('Score: ' + q.riskLabel.risk_score + '/100');
-                if (q.riskLabel.risk_notes && q.riskLabel.risk_notes.length > 0) lines.push('Notes: ' + q.riskLabel.risk_notes.join('; '));
-            }
-        } else {
-            lines.push('Data historis belum berhasil diambil.');
-        }
-
-        var ctx = lines.join('\n');
-        _quoteContextCache[cacheKey] = { ctx: ctx, ts: Date.now() };
-        return ctx;
-    } catch (e) {
-        return '\n[Auto-Cuan Market Data]\nData historis belum berhasil diambil.';
-    }
-    })();
-    try { var result = await _quoteInflight[cacheKey]; return result; }
-    finally { delete _quoteInflight[cacheKey]; }
-}
-
-// ===== AUTO-CUAN SCORE CALCULATOR =====
-function calculateAutoCuanScore(q, board, newsData) {
-    if (!q || !q.success) return null;
-
-    var trendScore = 0; // 0-30
-    var rsiScore = 0;   // 0-20
-    var volumeScore = 0; // 0-20
-    var newsScore = 7;  // 0-15 (default neutral)
-    var boardRiskScore = 10; // 0-15 (default medium)
-    var reasons = [];
-
-    // 1. TREND / MA Score (0-30)
-    var last = q.last;
-    var maAbove = 0;
-    var maTotal = 0;
-    if (q.ma20 != null) { maTotal++; if (last >= q.ma20) maAbove++; }
-    if (q.ma50 != null) { maTotal++; if (last >= q.ma50) maAbove++; }
-    if (q.ma100 != null) { maTotal++; if (last >= q.ma100) maAbove++; }
-    if (q.ma200 != null) { maTotal++; if (last >= q.ma200) maAbove++; }
-
-    if (maTotal > 0) {
-        var maRatio = maAbove / maTotal;
-        trendScore = Math.round(maRatio * 30);
-        // Bonus: check MA alignment (MA20 > MA50 > MA100 = bullish)
-        if (q.ma20 != null && q.ma50 != null && q.ma20 > q.ma50) trendScore = Math.min(30, trendScore + 3);
-        if (maAbove === 0) reasons.push('trend bearish (below all MA)');
-        else if (maAbove === maTotal) reasons.push('trend bullish (above all MA)');
-        else reasons.push('trend mixed');
-    } else {
-        trendScore = 10; // no MA data, neutral
-    }
-
-    // 2. RSI / MOMENTUM Score (0-20)
-    var rsi = q.rsi14;
-    if (rsi != null) {
-        if (rsi >= 55 && rsi <= 70) { rsiScore = 17; reasons.push('RSI bullish momentum'); }
-        else if (rsi >= 45 && rsi < 55) { rsiScore = 12; reasons.push('RSI netral'); }
-        else if (rsi > 70) { rsiScore = 8; reasons.push('RSI overbought risk'); }
-        else if (rsi >= 30 && rsi < 45) { rsiScore = 7; reasons.push('RSI weak/bearish'); }
-        else if (rsi < 30) { rsiScore = 5; reasons.push('RSI oversold belum confirm reversal'); }
-        else { rsiScore = 10; }
-    } else {
-        rsiScore = 8; // no RSI data
-    }
-
-    // 3. VOLUME Score (0-20)
-    var volVsAvg = q.volumeVsAvg20;
-    if (volVsAvg != null) {
-        // Determine if last candle was green or red
-        var isGreenCandle = q.last >= q.open;
-        if (volVsAvg >= 1.2 && isGreenCandle) { volumeScore = 18; reasons.push('volume tinggi + price naik'); }
-        else if (volVsAvg >= 1.2 && !isGreenCandle) { volumeScore = 6; reasons.push('volume tinggi tapi price turun (distribusi)'); }
-        else if (volVsAvg >= 0.8 && volVsAvg < 1.2) { volumeScore = 12; reasons.push('volume normal'); }
-        else if (volVsAvg < 0.5) { volumeScore = 4; reasons.push('volume sangat lemah'); }
-        else { volumeScore = 8; reasons.push('volume di bawah rata-rata'); }
-    } else {
-        volumeScore = 8; // no volume data
-    }
-
-    // 4. NEWS / KATALIS Score (0-15)
-    if (newsData && newsData.items && newsData.items.length > 0) {
-        var positiveNews = 0, negativeNews = 0;
-        for (var ni = 0; ni < newsData.items.length; ni++) {
-            var impact = newsData.items[ni].possibleImpact || newsData.items[ni].impact || 'neutral';
-            if (impact === 'positive') positiveNews++;
-            else if (impact === 'negative') negativeNews++;
-        }
-        if (positiveNews > 0 && negativeNews === 0) { newsScore = 13; reasons.push('katalis positif'); }
-        else if (negativeNews > 0 && positiveNews === 0) { newsScore = 3; reasons.push('katalis negatif'); }
-        else if (positiveNews > 0 && negativeNews > 0) { newsScore = 8; reasons.push('katalis mixed'); }
-        else { newsScore = 7; }
-    } else {
-        newsScore = 6; // no news = slightly below neutral
-    }
-
-    // 5. BOARD / RISK Score (0-15)
-    if (board && board.board) {
-        var b = board.board;
-        if (b === 'UTAMA') { boardRiskScore = 14; }
-        else if (b === 'PENGEMBANGAN' || b === 'EKONOMI_BARU') { boardRiskScore = 11; }
-        else if (b === 'AKSELERASI') { boardRiskScore = 6; reasons.push('papan AKSELERASI (likuiditas ketat)'); }
-        else if (b === 'PEMANTAUAN_KHUSUS') { boardRiskScore = 3; reasons.push('Pemantauan Khusus (risk tinggi)'); }
-        else { boardRiskScore = 8; } // UNKNOWN
-        if (board.isFca) { boardRiskScore = Math.min(boardRiskScore, 3); reasons.push('FCA risk'); }
-    }
-
-    // Calculate total
-    var total = trendScore + rsiScore + volumeScore + newsScore + boardRiskScore;
-    total = Math.max(0, Math.min(100, total));
-
-    // Determine category
-    var category;
-    if (total <= 30) category = 'Avoid';
-    else if (total <= 45) category = 'Wait and see';
-    else if (total <= 60) category = 'Watchlist';
-    else if (total <= 75) category = 'Speculative buy';
-    else category = 'Strong setup';
-
-    // Build reason string (max 2 most important)
-    var topReasons = reasons.slice(0, 3).join(', ');
-    if (!topReasons) topReasons = 'Data terbatas';
-
-    return {
-        total: total,
-        category: category,
-        trendScore: trendScore,
-        rsiScore: rsiScore,
-        volumeScore: volumeScore,
-        newsScore: newsScore,
-        boardRiskScore: boardRiskScore,
-        reason: topReasons
-    };
-}
+// fetchQuoteContext() and calculateAutoCuanScore() moved to public/market-feature-runtime.js
+// so this page and analisis-saham-runtime.js share one implementation instead of
+// silently drifting apart (see PR #529 follow-up).
 
 function setActiveTicker(ticker) {
     if (!ticker) return;
@@ -6358,18 +5981,19 @@ function copyBubbleContent(btn) {
     var bubble = btn.closest('.bg-dark-700\\/50') || btn.closest('.bg-emerald-500\\/15') || btn.parentElement.parentElement;
     var contentEl = bubble.querySelector('.ai-content') || bubble.querySelector('p');
     var text = contentEl ? contentEl.innerText : bubble.innerText;
-    navigator.clipboard.writeText(text).then(function() {
+    // navigator.clipboard can be undefined (non-secure context, older
+    // webview) — calling .writeText on it there throws synchronously before
+    // any Promise exists, so the execCommand fallback below never ran.
+    // AutoCuanAI.copyText covers both cases in one place.
+    var copyFn = (window.AutoCuanAI && typeof window.AutoCuanAI.copyText === 'function')
+        ? window.AutoCuanAI.copyText
+        : function (t) { return navigator.clipboard ? navigator.clipboard.writeText(t).then(function () { return true; }).catch(function () { return false; }) : Promise.resolve(false); };
+    copyFn(text).then(function (ok) {
+        if (!ok) return;
         var originalText = btn.textContent;
         btn.textContent = 'Tersalin';
         btn.classList.add('text-emerald-400');
         setTimeout(function() { btn.textContent = originalText; btn.classList.remove('text-emerald-400'); }, 2000);
-    }).catch(function() {
-        // Fallback for older browsers
-        var textarea = document.createElement('textarea');
-        textarea.value = text; textarea.style.position = 'fixed'; textarea.style.opacity = '0';
-        document.body.appendChild(textarea); textarea.select();
-        try { document.execCommand('copy'); btn.textContent = 'Tersalin'; btn.classList.add('text-emerald-400'); setTimeout(function() { btn.textContent = 'Salin'; btn.classList.remove('text-emerald-400'); }, 2000); } catch(e) {}
-        document.body.removeChild(textarea);
     });
 }
 

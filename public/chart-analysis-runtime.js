@@ -10,6 +10,26 @@
     });
   }
 
+  // The Chart & AI Vision result had no copy button at all; add one
+  // consistent with the "Salin Hasil" button on Analisis Saham/Portfolio.
+  root.copyChartVisionResult = function (btn) {
+    var wrap = btn.closest('[data-ai-vision-raw-text]') || document.getElementById('unifiedAiChartResultWrap') || document.getElementById('aiChartAnalysisResultWrap');
+    var text = wrap ? (wrap.dataset.aiVisionRawText || '') : '';
+    if (!text) return;
+    var copyFn = (root.AutoCuanAI && typeof root.AutoCuanAI.copyText === 'function')
+      ? root.AutoCuanAI.copyText
+      : function (t) { return (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(t).then(function () { return true; }).catch(function () { return false; }) : Promise.resolve(false); };
+    copyFn(text).then(function (ok) {
+      if (!ok) {
+        if (typeof root.showToast === 'function') root.showToast('Gagal menyalin hasil.', 'warning');
+        return;
+      }
+      var original = btn.textContent;
+      btn.textContent = '✓ Tersalin';
+      setTimeout(function () { btn.textContent = original; }, 2000);
+    });
+  };
+
   // Inline markdown -> HTML for a single line of AI text. The vision prompt
   // asks Gemini for plain prose, but models routinely add **bold**/bullets
   // anyway; without this they showed up as literal asterisks/dashes in the UI.
@@ -255,9 +275,14 @@
             cardHtml += '<div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);font-size:10px;color:#6b7280;line-height:1.4">';
             cardHtml += '🛡️ <em>Hasil analisis di atas merupakan pembacaan visual AI menggunakan API key pribadi Anda, bukan bagian dari sinyal resmi screener Auto-Cuan. Bukan rekomendasi beli/jual. Konfirmasi manual wajib.</em>';
             cardHtml += '</div>';
+            cardHtml += '<div style="margin-top:10px"><button type="button" onclick="copyChartVisionResult(this)" style="padding:6px 12px;border-radius:8px;background:rgba(148,163,184,0.1);color:#cbd5e1;font-weight:600;font-size:11px;border:1px solid rgba(148,163,184,0.25);cursor:pointer">📋 Salin Hasil</button></div>';
             cardHtml += '</div>';
 
             wrap.innerHTML = cardHtml;
+            // Stored as a JS property (not concatenated into cardHtml) so
+            // arbitrary AI text — quotes, newlines — never has to survive
+            // round-tripping through an HTML attribute string.
+            wrap.dataset.aiVisionRawText = analysisData.analysisText || '';
           });
       })
       .catch(function (err) {

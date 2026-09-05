@@ -212,7 +212,8 @@ function runAnalysisHarness() {
     sanitizeAIHtml: (x) => x,
     normalizeFinalStockHtml: (x) => x,
     sanitizeIHSGOutput: (x) => x,
-    reorderBrokerCTA: (x) => x
+    reorderBrokerCTA: (x) => x,
+    convertStrayMarkdownBold: (x) => x
   };
   vm.createContext(sandbox);
   vm.runInContext('var _analisisRequestSeq = 0; var ANALISIS_REQUEST_TIMEOUT_MS = 70000;', sandbox);

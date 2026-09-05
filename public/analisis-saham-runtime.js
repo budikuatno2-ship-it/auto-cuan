@@ -419,6 +419,19 @@
       var controller = (typeof AbortController === 'function') ? new AbortController() : null;
       var abortTimer = controller ? setTimeout(function () { try { controller.abort(); } catch (_) {} }, ANALISIS_REQUEST_TIMEOUT_MS) : null;
 
+      // Same enrichment as the Dashboard chat's runAnalisisFromDashboard()
+      // (public/index.html), via the shared fetchQuoteContext() in
+      // public/market-feature-runtime.js: a bare ticker with no [Auto-Cuan
+      // Market Data]/[Auto-Cuan Fibonacci Intelligence] block makes the server
+      // fall back to a 90-day Yahoo-only quote that can't produce MA100/MA200
+      // or a real Fibonacci swing high/low. See PR #529 follow-up.
+      var company = (typeof getCompanyName === 'function') ? getCompanyName(ticker) : null;
+      var enrichedMsg = ticker + (company ? '\n[Info: ' + ticker + ' = ' + company + ']' : '');
+      if (typeof fetchQuoteContext === 'function') {
+        var quoteCtx = await fetchQuoteContext(ticker, true);
+        if (quoteCtx) enrichedMsg += quoteCtx;
+      }
+
       var response;
       try {
         response = await fetch('/api/analyze', {
@@ -430,7 +443,7 @@
             'Accept': 'application/json'
           },
           body: JSON.stringify({
-            chatMessage: ticker,
+            chatMessage: enrichedMsg,
             source: 'chat_mode',
             isInitialAnalysis: true,
             username: localStorage.getItem('autocuan_user') || '',
@@ -494,13 +507,16 @@
     var contentEl = resultArea.querySelector('.ai-content');
     if (!contentEl) return;
     var text = htmlToCleanText(contentEl.innerHTML);
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () {
-        root.showToast('Hasil analisis berhasil disalin ke clipboard.', 'good');
-      }).catch(function () {
-        root.showToast('Gagal menyalin hasil.', 'danger');
-      });
-    }
+    // AutoCuanAI.copyText (public/ai-chat-renderer.js) guards a missing
+    // navigator.clipboard and falls back to document.execCommand('copy'),
+    // same as every other "Salin Hasil" button in the app.
+    var copyFn = (window.AutoCuanAI && typeof window.AutoCuanAI.copyText === 'function')
+      ? window.AutoCuanAI.copyText
+      : function (t) { return (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(t).then(function () { return true; }).catch(function () { return false; }) : Promise.resolve(false); };
+    copyFn(text).then(function (ok) {
+      if (ok) root.showToast('Hasil analisis berhasil disalin ke clipboard.', 'good');
+      else root.showToast('Gagal menyalin hasil.', 'danger');
+    });
   };
 
   // ===== PAGE BOOTSTRAP =====
