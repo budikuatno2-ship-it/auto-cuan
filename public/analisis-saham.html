@@ -39,7 +39,7 @@
             </div>
         </div>
         <div class="header-actions">
-            <a href="/dashboard#news" onclick="event.preventDefault(); window.location.href='/#news';" class="px-3.5 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-300 hover:text-white hover:border-emerald-500/40 transition-all text-xs font-semibold flex items-center gap-1.5" title="Buka Berita Pasar &amp; Katalis">
+            <a href="/dashboard?page=news#news" onclick="event.preventDefault(); var t = (window.UnifiedCockpit && typeof window.UnifiedCockpit.getActiveTicker === 'function' ? window.UnifiedCockpit.getActiveTicker() : '') || 'BBCA'; window.location.href='/dashboard?page=news&ticker=' + encodeURIComponent(t) + '#news';" class="px-3.5 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-300 hover:text-white hover:border-emerald-500/40 transition-all text-xs font-semibold flex items-center gap-1.5" title="Buka Berita Pasar &amp; Katalis">
                 <span>📰 Berita &amp; Katalis</span>
             </a>
             <button type="button" onclick="openAiApiKeyModal()" class="px-3 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-amber-300 hover:bg-dark-600/60 transition-all text-xs font-semibold flex items-center gap-1.5" title="Kelola Google Gemini API Key (BYOK)">
@@ -208,7 +208,7 @@
                         <div class="flex items-center gap-2">
                             <span class="w-2 h-2 rounded-full bg-blue-400"></span>
                             <h2 class="text-sm font-bold text-gray-200">Hasil Analisis Chart (AI Vision)</h2>
-                            <span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/25">Gemini 3 Flash</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/25">Gemini 3.8 Flash</span>
                         </div>
                         <button type="button" onclick="UnifiedCockpit.handleUnifiedChartAiSubmit()" class="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30 text-xs font-semibold hover:bg-blue-600/30 transition flex items-center gap-1.5">
                             <span>🤖 Analisis Ulang</span>
@@ -304,7 +304,7 @@
                 <button type="button" onclick="closeAiApiKeyModal()" class="text-gray-400 hover:text-white text-lg">&times;</button>
             </div>
             <p class="text-xs text-gray-400 leading-relaxed">
-                Fitur Analisis Chart (AI Vision) menggunakan model <strong>Gemini 3 Flash</strong> dengan API key pribadi Anda (Bring Your Own Key) yang disimpan aman dan terenkripsi.
+                Fitur Analisis Chart (AI Vision) menggunakan model <strong>Gemini 3.8 Flash</strong> dengan API key pribadi Anda (Bring Your Own Key) yang disimpan aman dan terenkripsi.
             </p>
             <div id="aiApiKeyStatusText" class="text-xs text-gray-300 p-3 rounded-xl bg-dark-700/60 border border-dark-600/40">
                 Memeriksa status...
