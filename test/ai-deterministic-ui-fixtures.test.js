@@ -59,7 +59,7 @@ test('wide and long structured table fixture remains inside the scroll wrapper',
 
 test('mobile long-answer fixture has a bounded readable scroll region, not clipped content', () => {
   const source = read('public/ai-chat-renderer.js');
-  assert.match(source, /#chatMessages\.ai-followup-scroll-region\{[^}]*overflow-y:auto/);
+  assert.match(source, /#chatMessages\.ai-followup-scroll-region[^{]*\{[^}]*overflow-y:auto/);
   assert.match(source, /max-height:min\(680px,calc\(100dvh - 260px\)\)/);
   assert.match(source, /@media\(max-width:640px\)[^{]*\{[^}]*\.ai-rich-text/);
   assert.match(source, /max-height:62dvh/);

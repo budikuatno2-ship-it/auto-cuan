@@ -209,7 +209,11 @@
 
   function markFollowupPanel(node) {
     if (!node || !node.closest) return;
-    var messages = node.closest('#chatMessages');
+    // #chatMessages only exists inside the legacy, permanently-hidden #aiSection
+    // (see public/index.html) — the live Analisis Saham follow-up chat appends
+    // into #analisisResult instead, so that also needs the bounded scroll class
+    // or this treatment never actually applies to what a user sees.
+    var messages = node.closest('#chatMessages') || node.closest('#analisisResult');
     if (messages) messages.classList.add('ai-followup-scroll-region');
   }
 
@@ -263,9 +267,9 @@
     '.ai-table-wrap{max-width:100%;overflow:auto;margin:8px 0 12px;border:1px solid rgba(148,163,184,.14);border-radius:12px}',
     '.ai-table-wrap table{width:100%;min-width:0;border-collapse:collapse}.ai-table-wrap th,.ai-table-wrap td{padding:8px 10px;border-bottom:1px solid rgba(148,163,184,.1);text-align:left}.ai-table-wrap th{font-size:.76rem;color:#a9bdd3;background:rgba(15,23,42,.7)}',
     '.ai-message.ai-assistant,.ai-content.ai-followup{overflow-wrap:anywhere;word-break:normal}',
-    '#chatMessages.ai-followup-scroll-region{max-height:min(680px,calc(100dvh - 260px));overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:4px}',
-    '#chatMessages.ai-followup-scroll-region::-webkit-scrollbar{width:8px}#chatMessages.ai-followup-scroll-region::-webkit-scrollbar-thumb{background:rgba(100,116,139,.4);border-radius:999px}',
-    '@media(max-width:640px){.ai-rich-text{max-width:100%;font-size:.92rem}.ai-kv-row{grid-template-columns:1fr;gap:2px}.ai-kv-row dd{text-align:left}#chatMessages.ai-followup-scroll-region{max-height:62dvh}}',
+    '#chatMessages.ai-followup-scroll-region,#analisisResult.ai-followup-scroll-region{max-height:min(680px,calc(100dvh - 260px));overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:4px}',
+    '#chatMessages.ai-followup-scroll-region::-webkit-scrollbar,#analisisResult.ai-followup-scroll-region::-webkit-scrollbar{width:8px}#chatMessages.ai-followup-scroll-region::-webkit-scrollbar-thumb,#analisisResult.ai-followup-scroll-region::-webkit-scrollbar-thumb{background:rgba(100,116,139,.4);border-radius:999px}',
+    '@media(max-width:640px){.ai-rich-text{max-width:100%;font-size:.92rem}.ai-kv-row{grid-template-columns:1fr;gap:2px}.ai-kv-row dd{text-align:left}#chatMessages.ai-followup-scroll-region,#analisisResult.ai-followup-scroll-region{max-height:62dvh}}',
     '@media(prefers-reduced-motion:reduce){.ai-rich-text *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}'
   ].join('');
   document.head.appendChild(style);
