@@ -280,3 +280,91 @@
 .analisis-tab-panel.active {
   display: block;
 }
+
+/* =========================================================================
+   TABLE & CONTAINER SCROLL BOUNDING (Fixed Heights & Containment)
+   Guarantees that tables and data containers scroll internally within their
+   own boxes and never hijack the page/window scrolling across all 9 pages.
+   ========================================================================= */
+#rankingTableWrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: min(66vh, 560px);
+  scrollbar-width: thin;
+  overscroll-behavior-y: contain;
+}
+
+#portTableWrap,
+.table-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: min(66vh, 520px);
+  scrollbar-width: thin;
+  overscroll-behavior-y: contain;
+}
+
+#trTableWrap,
+#trBacktestTradesWrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: min(66vh, 580px);
+  scrollbar-width: thin;
+  overscroll-behavior-y: contain;
+}
+
+#screenerTableWrap,
+#nkScreenerTableWrap,
+#dtScreenerTableWrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: min(66vh, 560px);
+  scrollbar-width: thin;
+  overscroll-behavior-y: contain;
+}
+
+#sektorDetailTable {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: min(66vh, 560px);
+  scrollbar-width: thin;
+  overscroll-behavior-y: contain;
+}
+
+#newsPageContainer {
+  overflow-y: auto;
+  max-height: min(70vh, 640px);
+  scrollbar-width: thin;
+  overscroll-behavior-y: contain;
+}
+
+#analisisResult {
+  overflow-y: auto;
+  max-height: min(70vh, 640px);
+  scrollbar-width: thin;
+  overscroll-behavior-y: contain;
+}
+
+#unifiedAiChartResultWrap {
+  overflow-y: auto;
+  max-height: min(66vh, 560px);
+  scrollbar-width: thin;
+  overscroll-behavior-y: contain;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  overscroll-behavior-y: contain;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+

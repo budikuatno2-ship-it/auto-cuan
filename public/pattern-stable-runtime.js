@@ -215,27 +215,34 @@
       return place(node);
     }
 
-    function makeNav(id, mobile) {
-      var button = doc.createElement('button');
-      button.id = id; button.type = 'button'; button.className = 'nav-btn' + (mobile ? ' flex-shrink-0' : '');
-      button.setAttribute('data-page', 'pattern');
-      button.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 18l4-5 4 3 4-8 4 4M4 21h16"/></svg><span>Pattern</span>';
-      button.onclick = function () { root.navigateTo('pattern'); };
-      return button;
-    }
-    function insertNav(container, button) {
-      if (!container || !button) return;
-      var chart = container.querySelector('[data-page="chart"]');
-      chart ? container.insertBefore(button, chart) : container.appendChild(button);
+    function isBudiAdmin() {
+      var user = '';
+      try { user = (root.localStorage.getItem('autocuan_user') || '').toLowerCase().trim(); } catch (_) {}
+      var isAdmin = false;
+      try {
+        isAdmin = root.localStorage.getItem('autocuan_is_admin') === 'true' ||
+          Boolean(root.premiumAccessState && root.premiumAccessState.isAdmin === true);
+      } catch (_) {}
+      return user === 'budi' && isAdmin;
     }
     function removeNav() {
       ['patternStableDesktopNav','patternStableMobileNav','patternRadarDesktopNav','patternRadarMobileNav'].forEach(function (id) { var node = doc.getElementById(id); if (node) node.remove(); });
+      var tabPattern = doc.getElementById('tabAnalisisPattern');
+      if (tabPattern && !isBudiAdmin()) { tabPattern.classList.add('hidden'); tabPattern.style.display = 'none'; }
     }
     function ensureNav() {
-      if (!state.allowed) return;
-      ['patternRadarDesktopNav','patternRadarMobileNav'].forEach(function (id) { var old = doc.getElementById(id); if (old) old.remove(); });
-      if (!doc.getElementById('patternStableDesktopNav')) insertNav(doc.querySelector('.desktop-nav'), makeNav('patternStableDesktopNav', false));
-      if (!doc.getElementById('patternStableMobileNav')) insertNav(doc.getElementById('mainNav'), makeNav('patternStableMobileNav', true));
+      // Remove any historical buttons from main nav
+      ['patternStableDesktopNav','patternStableMobileNav','patternRadarDesktopNav','patternRadarMobileNav'].forEach(function (id) { var old = doc.getElementById(id); if (old) old.remove(); });
+      var tabPattern = doc.getElementById('tabAnalisisPattern');
+      if (tabPattern) {
+        if (state.allowed && isBudiAdmin()) {
+          tabPattern.classList.remove('hidden');
+          tabPattern.style.display = 'inline-flex';
+        } else {
+          tabPattern.classList.add('hidden');
+          tabPattern.style.display = 'none';
+        }
+      }
     }
     async function access(force) {
       var allowed = await root.PatternMapAdminAccess.refresh(force === true).catch(function () { return false; });
@@ -245,11 +252,31 @@
       return state.allowed;
     }
     function hide() { setPageVisible(doc.getElementById('page-pattern'), false); }
+
+    root.ensurePatternRadarMounted = function (container) {
+      var target = container || doc.getElementById('patternSubTabContainer');
+      if (!target) return;
+      var pNode = page();
+      setPageVisible(pNode, true);
+      if (pNode.parentNode !== target) {
+        target.innerHTML = '';
+        target.appendChild(pNode);
+      }
+      if (!hydrateCache()) scan(false);
+    };
+
     function show() {
+      if (doc.getElementById('panel-tab-pattern') && typeof root.switchAnalisisTab === 'function') {
+        root.switchAnalisisTab('pattern');
+        return;
+      }
+      if (root.location && root.location.pathname !== '/analisis-saham') {
+        window.location.assign('/analisis-saham#pattern');
+        return;
+      }
       originalNavigate('chart');
       doc.querySelectorAll('.page-content').forEach(function (node) { node.classList.add('hidden'); });
       setPageVisible(page(), true);
-      doc.querySelectorAll('.nav-btn[data-page]').forEach(function (button) { button.classList.toggle('active', button.getAttribute('data-page') === 'pattern'); });
       try { root.history.replaceState({}, '', '/pattern'); } catch (_) {}
       if (typeof root.closeSidebar === 'function') root.closeSidebar();
       root.scrollTo({ top:0, behavior:'smooth' });
