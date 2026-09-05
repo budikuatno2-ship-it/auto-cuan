@@ -273,6 +273,7 @@
   window.AutoCuanAI = {
     version: '20260727-premium-v2',
     renderMarkdown: renderMarkdown,
+    inlineFormat: inlineFormat,
     friendlyText: normalizeLines,
     structureLongProse: normalizeLines,
     polishNode: polishNode

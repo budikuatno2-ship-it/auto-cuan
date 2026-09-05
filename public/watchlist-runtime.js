@@ -143,7 +143,8 @@
 
           return '<div class="flex items-center gap-1.5 mb-1">' +
             '<span class="font-mono text-gray-300">' + label + '</span> ' + statusBadge +
-            ' <button onclick="window.deleteUserAlert(\'' + a.id + '\')" class="text-gray-500 hover:text-red-400 ml-1 text-xs" title="Hapus Alert">×</button></div>';
+            ' <button onclick="window.openEditAlertModal(\'' + a.id + '\', \'' + escapeAttr(item.ticker) + '\', \'' + a.condition_type + '\', ' + Number(a.target_price) + ')" class="text-gray-500 hover:text-amber-300 ml-1 text-xs" title="Edit Alert">✎</button>' +
+            '<button onclick="window.deleteUserAlert(\'' + a.id + '\')" class="text-gray-500 hover:text-red-400 ml-0.5 text-xs" title="Hapus Alert">×</button></div>';
         }).join('');
       } else {
         alertsHtml = '<span class="text-gray-500 italic">Belum ada alert</span>';
@@ -233,27 +234,58 @@
     });
   }
 
+  function setAlertModalMode(editingId) {
+    var idInput = document.getElementById('wlAlertId');
+    var title = document.getElementById('wlAlertModalTitle');
+    var submitBtn = document.getElementById('wlAlertSubmitBtn');
+    var tickerInput = document.getElementById('wlAlertTicker');
+    if (idInput) idInput.value = editingId || '';
+    if (title) title.textContent = editingId ? 'Edit Alert Harga' : 'Pasang Alert Harga';
+    if (submitBtn) submitBtn.textContent = editingId ? 'Simpan Perubahan' : 'Simpan Alert';
+    if (tickerInput) tickerInput.readOnly = !!editingId;
+  }
+
   function openCreateAlertModal(ticker) {
     var modal = document.getElementById('wlAlertModal');
     var tickerInput = document.getElementById('wlAlertTicker');
+    var typeInput = document.getElementById('wlAlertCondition');
     var priceInput = document.getElementById('wlAlertPrice');
     if (!modal) return;
 
+    setAlertModalMode(null);
     if (tickerInput) tickerInput.value = ticker || '';
+    if (typeInput) typeInput.value = 'PRICE_ABOVE';
     if (priceInput) priceInput.value = '';
+    modal.classList.remove('hidden');
+  }
+
+  function openEditAlertModal(alertId, ticker, conditionType, targetPrice) {
+    var modal = document.getElementById('wlAlertModal');
+    var tickerInput = document.getElementById('wlAlertTicker');
+    var typeInput = document.getElementById('wlAlertCondition');
+    var priceInput = document.getElementById('wlAlertPrice');
+    if (!modal) return;
+
+    setAlertModalMode(alertId);
+    if (tickerInput) tickerInput.value = ticker || '';
+    if (typeInput) typeInput.value = conditionType || 'PRICE_ABOVE';
+    if (priceInput) priceInput.value = targetPrice != null ? targetPrice : '';
     modal.classList.remove('hidden');
   }
 
   function closeCreateAlertModal() {
     var modal = document.getElementById('wlAlertModal');
     if (modal) modal.classList.add('hidden');
+    setAlertModalMode(null);
   }
 
   async function submitCreateAlert() {
+    var idInput = document.getElementById('wlAlertId');
     var tickerInput = document.getElementById('wlAlertTicker');
     var typeInput = document.getElementById('wlAlertCondition');
     var priceInput = document.getElementById('wlAlertPrice');
 
+    var editingId = idInput ? idInput.value.trim() : '';
     var ticker = tickerInput ? tickerInput.value.trim().toUpperCase() : '';
     var cond = typeInput ? typeInput.value : 'PRICE_ABOVE';
     var price = priceInput ? Number(priceInput.value) : null;
@@ -268,8 +300,11 @@
     }
 
     try {
-      var res = await fetch('/api/sector-hot?action=watchlist-alert', {
-        method: 'POST',
+      var url = editingId
+        ? '/api/sector-hot?action=watchlist-alert&id=' + encodeURIComponent(editingId)
+        : '/api/sector-hot?action=watchlist-alert';
+      var res = await fetch(url, {
+        method: editingId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
         body: JSON.stringify({
@@ -280,14 +315,14 @@
       });
       var json = await res.json();
       if (json && json.success) {
-        if (typeof showToast === 'function') showToast('Alert ' + ticker + ' berhasil dipasang!', 'success');
+        if (typeof showToast === 'function') showToast(editingId ? ('Alert ' + ticker + ' berhasil diperbarui!') : ('Alert ' + ticker + ' berhasil dipasang!'), 'success');
         closeCreateAlertModal();
         loadUserWatchlist(true);
       } else {
-        if (typeof showToast === 'function') showToast(json.error || 'Gagal memasang alert.', 'error');
+        if (typeof showToast === 'function') showToast(json.error || 'Gagal menyimpan alert.', 'error');
       }
     } catch (err) {
-      console.error('Error creating alert:', err);
+      console.error('Error saving alert:', err);
     }
   }
 
@@ -374,6 +409,7 @@
   window.toggleWatchlistTicker = toggleWatchlistTicker;
   window.updateAllWatchlistStars = updateAllWatchlistStars;
   window.openCreateAlertModal = openCreateAlertModal;
+  window.openEditAlertModal = openEditAlertModal;
   window.closeCreateAlertModal = closeCreateAlertModal;
   window.submitCreateAlert = submitCreateAlert;
   window.deleteUserAlert = deleteUserAlert;

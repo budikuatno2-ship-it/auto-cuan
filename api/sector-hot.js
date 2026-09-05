@@ -8144,6 +8144,13 @@ async function handleUserWatchlistAlert(req, res, supabase) {
     return res.status(200).json(createRes);
   }
 
+  if (req.method === 'PATCH') {
+    var patchPayload = req.body || {};
+    var patchAlertId = (req.query && (req.query.id || req.query.alert_id)) || patchPayload.id || patchPayload.alert_id;
+    var updateRes = await userWatchlistService.updateAlert(supabase, userId, patchAlertId, patchPayload);
+    return res.status(200).json(updateRes);
+  }
+
   if (req.method === 'DELETE') {
     var alertId = (req.query && (req.query.id || req.query.alert_id)) || (req.body && (req.body.id || req.body.alert_id));
     var delRes = await userWatchlistService.deleteAlert(supabase, userId, alertId);

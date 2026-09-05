@@ -10,6 +10,13 @@
     });
   }
 
+  function inlineFormat(text) {
+    if (window.AutoCuanAI && typeof window.AutoCuanAI.inlineFormat === 'function') {
+      return window.AutoCuanAI.inlineFormat(text);
+    }
+    return escapeHtml(text);
+  }
+
   function formatAnalysisText(rawText) {
     if (!rawText) return '<p class="text-gray-400">Tidak ada hasil analisis.</p>';
     var lines = String(rawText).split('\n');
@@ -23,6 +30,7 @@
         inSection = false;
         return;
       }
+      if (/^[-*_]{3,}$/.test(trimmed)) return;
       if (trimmed.startsWith('## ')) {
         if (inSection) html += '</div>';
         var title = trimmed.replace(/^##\s*/, '');
@@ -37,10 +45,12 @@
         html += '<div style="font-weight:700;font-size:12px;color:#93c5fd;margin-bottom:4px">' + icon + ' ' + escapeHtml(title) + '</div>';
         inSection = true;
       } else {
+        var bullet = trimmed.match(/^[-*]\s+(.+)$/);
+        var body = bullet ? '• ' + inlineFormat(bullet[1]) : inlineFormat(trimmed);
         if (!inSection) {
-          html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6;margin-bottom:6px">' + escapeHtml(trimmed) + '</div>';
+          html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6;margin-bottom:6px">' + body + '</div>';
         } else {
-          html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6">' + escapeHtml(trimmed) + '</div>';
+          html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6">' + body + '</div>';
         }
       }
     });
@@ -229,4 +239,8 @@
           '</div>';
       });
   };
+
+  // Exposed for focused unit tests only (same convention as api/analyze.js
+  // module.exports.__test). Nothing in the runtime reads this.
+  root.__test = { formatAnalysisText: formatAnalysisText };
 })(typeof window !== 'undefined' ? window : globalThis);
