@@ -1929,6 +1929,7 @@
             <button onclick="closeCreateAlertModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal alert">&times;</button>
         </div>
         <div class="space-y-3">
+            <input type="hidden" id="wlAlertId" value="">
             <div>
                 <label for="wlAlertTicker" class="block text-xs font-medium text-gray-400 mb-1">Ticker Saham</label>
                 <input type="text" id="wlAlertTicker" placeholder="Contoh: BBCA" class="w-full px-4 py-2.5 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 font-bold uppercase focus:outline-none focus:border-amber-500/50 text-sm">
@@ -1948,7 +1949,7 @@
                 <input type="number" id="wlAlertPrice" placeholder="Contoh: 10500" class="w-full px-4 py-2.5 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 font-semibold focus:outline-none focus:border-amber-500/50 text-sm">
             </div>
             <p class="text-[11px] text-gray-500 leading-normal">Notifikasi akan dikirim via Telegram bot otomatis saat intraday monitor mendeteksi harga mencapai target.</p>
-            <button onclick="submitCreateAlert()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-amber-600 to-amber-500 hover:scale-[1.02] transition-all">Simpan Alert</button>
+            <button id="wlAlertSubmitBtn" onclick="submitCreateAlert()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-amber-600 to-amber-500 hover:scale-[1.02] transition-all">Simpan Alert</button>
         </div>
     </div>
 </div>
@@ -6232,8 +6233,22 @@ function clearInput() { var el = getActiveChatInput(); if (!el) return; el.value
 function disableSend() { isSending = true; ['analysisSendBtn', 'generalSendBtn'].forEach(function(id) { var btn = document.getElementById(id); if (btn) { btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); } }); }
 function enableSend() { isSending = false; ['analysisSendBtn', 'generalSendBtn'].forEach(function(id) { var btn = document.getElementById(id); if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); } }); }
 
+// #aiSection/#chatMessages is legacy markup from before the Unified AI Cockpit
+// (public/index.html) and #aiSection stays permanently `class="hidden"` —
+// nothing in this build ever un-hides it (confirmed by grep: zero other
+// references to #aiSection by id). handleAnalisisFollowUp() already resolves
+// the real, visible container as `document.getElementById('unifiedChatMessages')
+// || document.getElementById('analisisResult')` for text follow-ups; this
+// mirrors that exact fallback so the three bubble renderers below (used by
+// file/image uploads: handleChartUpload, handleBrokerSummaryText,
+// handleTickerQuestion, handleChat) land in the same visible panel instead of
+// silently appending to the hidden section.
+function getActiveMessagesContainer() {
+    return document.getElementById('unifiedChatMessages') || document.getElementById('analisisResult') || document.getElementById('chatMessages');
+}
+
 function addUserBubble(text) {
-    var container = document.getElementById('chatMessages');
+    var container = getActiveMessagesContainer();
     var div = document.createElement('div');
     div.className = 'flex gap-3 justify-end fade-in-up';
     // Long text: show collapsed card
@@ -6276,7 +6291,7 @@ function isNetworkError(e) {
     return msg.indexOf('failed to fetch') !== -1 || msg.indexOf('networkerror') !== -1 || msg.indexOf('network') !== -1 || msg.indexOf('timeout') !== -1 || msg.indexOf('aborted') !== -1 || msg.indexOf('err_connection') !== -1;
 }
 function addLoadingBubble(loadingContext) {
-    var container = document.getElementById('chatMessages');
+    var container = getActiveMessagesContainer();
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up'; div.id = 'loadingBubble';
     // Context-aware initial text and stages
@@ -6312,7 +6327,7 @@ function addLoadingBubble(loadingContext) {
 }
 function removeLoadingBubble() { var el = document.getElementById('loadingBubble'); if (el) { if (el._stageTimer) clearInterval(el._stageTimer); el.remove(); } }
 function addAIBubble(html, isStructured) {
-    var container = document.getElementById('chatMessages');
+    var container = getActiveMessagesContainer();
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up';
     var copyLabel = isStructured ? 'Salin Hasil' : 'Salin';
