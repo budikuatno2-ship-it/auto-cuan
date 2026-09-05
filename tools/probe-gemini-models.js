@@ -63,7 +63,7 @@ const candidateModels = [
 async function probe() {
   console.log(`Testing Gemini API Key: ${apiKey.slice(0, 8)}...${apiKey.slice(-4)}`);
   console.log('Fetching official model list from Google API...');
-  
+
   let availableList = [];
   try {
     const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
