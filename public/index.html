@@ -522,7 +522,12 @@
                     <p class="text-sm text-gray-400 mt-1 max-w-2xl">Dashboard ringkas untuk Day Trade, Swing Konglo, dan Swing Non-Konglo. Watchlist/pantau tidak sama dengan BUY agresif.</p>
                 </div>
                 <div class="dashboard-hero-meta flex flex-col sm:items-end gap-2">
-                    <span id="approvedBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">Approved</span>
+                    <div class="flex items-center gap-2">
+                        <span id="approvedBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">Approved</span>
+                        <button type="button" onclick="openAiApiKeyModal()" class="px-3 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/50 text-gray-300 hover:text-amber-300 hover:border-amber-500/40 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0 shadow-sm" title="Kelola Google Gemini API Key (BYOK)">
+                            <span>🔑 API Key (BYOK)</span>
+                        </button>
+                    </div>
                     <div class="text-[11px] text-gray-500">Bukan rekomendasi beli/jual.</div>
                 </div>
             </div>
@@ -726,21 +731,23 @@
             </div>
 
             <!-- Ranking Harian Card (Preserved Context) -->
-            <div class="unified-card">
-                <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-3 border-b border-dark-600/20 bg-black/10">
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-200">Ranking Harian</h3>
-                        <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker &mdash; klik ticker untuk memuat chart.</p>
+            <div id="rankingCardOuterWrap" class="ranking-card-wrapper">
+                <div class="unified-card">
+                    <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-3 border-b border-dark-600/20 bg-black/10">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-200">Ranking Harian</h3>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker &mdash; klik ticker untuk memuat chart.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input id="rankingSearchInput" type="text" placeholder="Cari di tabel..." aria-label="Cari di tabel ranking" class="w-36 sm:w-52 px-3 py-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" oninput="onRankingSearchInput(this.value)">
+                            <button onclick="refreshRankingTable()" class="p-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition flex-shrink-0" title="Muat ulang ranking" aria-label="Muat ulang ranking">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <input id="rankingSearchInput" type="text" placeholder="Cari di tabel..." aria-label="Cari di tabel ranking" class="w-36 sm:w-52 px-3 py-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" oninput="onRankingSearchInput(this.value)">
-                        <button onclick="refreshRankingTable()" class="p-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition flex-shrink-0" title="Muat ulang ranking" aria-label="Muat ulang ranking">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        </button>
+                    <div id="rankingTableWrap" class="overflow-x-auto">
+                        <div class="text-center py-8 text-gray-500 text-xs">Memuat ranking harian...</div>
                     </div>
-                </div>
-                <div id="rankingTableWrap" class="overflow-x-auto">
-                    <div class="text-center py-8 text-gray-500 text-xs">Memuat ranking harian...</div>
                 </div>
             </div>
         </div>

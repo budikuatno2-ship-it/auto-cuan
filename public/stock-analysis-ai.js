@@ -413,18 +413,21 @@
 
     configureRankingColumns();
 
-    var card = tableWrap.parentElement;
-    var outer = card && card.parentElement;
-    if (!card || !outer) return false;
+    var card = tableWrap.closest('.unified-card') || tableWrap.parentElement;
+    if (!card) return false;
 
-    if (outer.parentElement !== mount) mount.appendChild(outer);
+    // Safety guard: NEVER move structural cockpit columns (.unified-primary-col, #page-analisis, etc.)
+    var outer = card.parentElement;
+    var nodeToMove = (outer && outer !== mount && outer.classList && outer.classList.contains('ranking-card-wrapper')) ? outer : card;
 
-    outer.dataset.rankingPolished = 'true';
-    outer.classList.remove('border-b', 'flex-shrink-0');
-    outer.style.paddingTop = '0';
-    outer.style.paddingBottom = '0';
-    outer.style.marginTop = '0';
-    outer.style.borderBottom = '0';
+    if (nodeToMove.parentElement !== mount) mount.appendChild(nodeToMove);
+
+    nodeToMove.dataset.rankingPolished = 'true';
+    nodeToMove.classList.remove('border-b', 'flex-shrink-0');
+    nodeToMove.style.paddingTop = '0';
+    nodeToMove.style.paddingBottom = '0';
+    nodeToMove.style.marginTop = '0';
+    nodeToMove.style.borderBottom = '0';
 
     card.style.background = 'linear-gradient(180deg, rgba(18,24,34,.97), rgba(11,14,20,.995))';
     card.style.border = '1px solid rgba(52,211,153,.16)';
