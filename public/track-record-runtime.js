@@ -204,7 +204,10 @@ function renderTrackRecordTable() {
             '<td class="px-3 py-2.5 text-gray-400 whitespace-nowrap">' +
                 '<span class="text-[11px] px-2 py-0.5 rounded-md bg-dark-700/60 border border-dark-600/40">' + s.source_short + '</span>' +
             '</td>' +
-            '<td class="px-3 py-2.5 text-gray-400 whitespace-nowrap font-mono text-[11px]">' + (s.date || '—') + '</td>' +
+            '<td class="px-3 py-2.5 text-gray-400 whitespace-nowrap font-mono text-[11px]">' +
+                '<div>' + (s.date || '—') + '</div>' +
+                (s.signal_time_wib && s.signal_time_wib !== '—' ? '<div class="text-[10px] text-gray-500">' + s.signal_time_wib + (s.price_at_signal ? ' @ ' + formatRp(s.price_at_signal) : '') + '</div>' : '') +
+            '</td>' +
             '<td class="px-3 py-2.5 text-right font-mono text-gray-300">' + entryText + '</td>' +
             '<td class="px-3 py-2.5 text-right font-mono text-emerald-400 font-medium">' + formatRp(s.tp1) + '</td>' +
             '<td class="px-3 py-2.5 text-right font-mono text-emerald-300">' + formatRp(s.tp2) + '</td>' +
@@ -213,6 +216,7 @@ function renderTrackRecordTable() {
                 '<span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide" style="color:' + s.status_tone + ';background-color:' + s.status_bg + ';border:1px solid ' + s.status_border + '">' +
                     s.status_label +
                 '</span>' +
+                (s.hit_time_wib && s.hit_time_wib !== '—' ? '<div class="text-[10px] text-gray-400 font-mono mt-0.5">' + s.hit_time_wib + (s.price_at_hit ? ' @ ' + formatRp(s.price_at_hit) : '') + '</div>' : '') +
             '</td>' +
             '<td class="px-3 py-2.5 text-right font-mono">' + gainHtml + '</td>' +
             '<td class="px-3 py-2.5 text-right text-gray-400 whitespace-nowrap text-[11px]">' + (s.duration_text || '—') + '</td>' +

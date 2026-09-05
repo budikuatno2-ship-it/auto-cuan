@@ -4,9 +4,20 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   formatDuration,
+  formatWibTime,
   calculateGainPct,
   buildTrackRecordData
 } = require('../lib/track-record-service');
+
+test('formatWibTime formats timestamps in Asia/Jakarta (WIB) properly', () => {
+  assert.equal(formatWibTime(null), '—');
+  assert.equal(formatWibTime(undefined), '—');
+  assert.equal(formatWibTime('invalid-date'), '—');
+  // 2026-08-20T02:30:00.000Z is 09:30 WIB
+  assert.match(formatWibTime('2026-08-20T02:30:00.000Z'), /09:30 WIB/);
+  // 2026-08-20T07:15:00.000Z is 14:15 WIB
+  assert.match(formatWibTime('2026-08-20T07:15:00.000Z'), /14:15 WIB/);
+});
 
 test('formatDuration calculates human-readable duration correctly', () => {
   assert.equal(formatDuration(null, null), '—');
@@ -148,6 +159,10 @@ test('buildTrackRecordData aggregates multiple signal types and categories', () 
   const bbca = res.signals.find(s => s.ticker === 'BBCA');
   assert.equal(bbca.status_label, 'TP2 Hit');
   assert.equal(bbca.gain_pct, 8); // (10800 - 10000) / 10000 = 8%
+  assert.match(bbca.signal_time_wib, /09:00 WIB/);
+  assert.match(bbca.hit_time_wib, /10:00 WIB/);
+  assert.equal(bbca.price_at_signal, 10000);
+  assert.equal(bbca.price_at_hit, 10800);
 });
 
 test('buildTrackRecordData total_signals always equals sum of every breakdown bucket, including INVALID/ENTRY_MISSED (NEVER_ENTERED) and IN_ENTRY_ZONE/ENTRY_READY/WATCHLIST', () => {
