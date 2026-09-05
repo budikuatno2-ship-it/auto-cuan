@@ -6,39 +6,84 @@ const legacyAnalyze = require('../lib/analyze-legacy');
 const { hydrateContext } = require('../lib/ai-context-snapshot-store');
 const { prepareRuntimeGrounding } = require('../lib/ai-runtime-grounding-v2');
 const { requirePremiumEntitlement } = require('../lib/subscription-auth');
+const subscriptionAuth = require('../lib/subscription-auth');
+const { resolveAiCredentials } = require('../lib/user-ai-credentials');
 const handleChartAnalysisEndpoint = require('../lib/chart-analysis-endpoint');
 
+let customSupabaseClient = null;
+
 function getSupabase() {
+  if (customSupabaseClient) return customSupabaseClient;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-async function requireAnalyzeAccess(req, res) {
-  const db = getSupabase();
+function setSupabaseClientForTesting(client) {
+  customSupabaseClient = client;
+}
+
+async function requireAnalyzeAccess(req, res, customDb = null) {
+  const db = customDb || getSupabase();
   if (!db) {
-    res.status(503).json({ success:false, code:'PREMIUM_ACCESS_UNAVAILABLE', error:'Status subscription belum tersedia.' });
+    res.status(503).json({ success: false, code: 'PREMIUM_ACCESS_UNAVAILABLE', error: 'Status subscription belum tersedia.' });
     return false;
   }
 
   let access;
-  try { access = await requirePremiumEntitlement(req, db); }
-  catch (_) {
-    res.status(503).json({ success:false, code:'PREMIUM_ACCESS_UNAVAILABLE', error:'Status subscription belum tersedia.' });
+  try {
+    const entitlementFn = (subscriptionAuth && subscriptionAuth.requirePremiumEntitlement) || requirePremiumEntitlement;
+    access = await entitlementFn(req, db);
+    // await requirePremiumEntitlement(req, db);
+  } catch (_) {
+    res.status(503).json({ success: false, code: 'PREMIUM_ACCESS_UNAVAILABLE', error: 'Status subscription belum tersedia.' });
     return false;
   }
 
-  if (!access.ok) {
-    res.status(access.status || 403).json({
-      success:false,
-      code:access.code || 'PREMIUM_ACCESS_DENIED',
-      error:access.error || 'Akses premium diperlukan.',
-      access_level:access.access_level || 'free'
+  // If user is Free (SUBSCRIPTION_REQUIRED), check if they have registered a personal BYOK key
+  if (!access || !access.ok) {
+    if (access && access.code === 'SUBSCRIPTION_REQUIRED') {
+      const userId = access.user && access.user.id;
+      const credentials = await resolveAiCredentials(db, userId, access);
+      if (!credentials.ok) {
+        res.status(403).json({
+          success: false,
+          code: 'BYOK_KEY_REQUIRED',
+          error: 'API key Google Gemini diperlukan untuk pengguna gratis. Masukkan API key Gemini Anda di pengaturan.',
+          access_level: 'free',
+          needs_key: true
+        });
+        return false;
+      }
+      return { ok: true, access, credentials };
+    }
+
+    res.status(access && access.status || 401).json({
+      success: false,
+      code: access && access.code || 'UNAUTHORIZED',
+      error: access && access.error || 'Sesi login diperlukan.'
     });
     return false;
   }
-  return true;
+
+  const userId = access.user && access.user.id;
+  const credentials = await resolveAiCredentials(db, userId, access);
+
+  if (!credentials.ok) {
+    res.status(403).json({
+      success: false,
+      code: 'BYOK_KEY_REQUIRED',
+      error: credentials.isSubscribed
+        ? 'API key Google Gemini belum tersedia di sistem. Masukkan API key cadangan Anda di pengaturan.'
+        : 'API key Google Gemini diperlukan untuk pengguna gratis. Masukkan API key Gemini Anda di pengaturan.',
+      access_level: credentials.isSubscribed ? 'subscribed' : 'free',
+      needs_key: true
+    });
+    return false;
+  }
+
+  return { ok: true, access, credentials };
 }
 
 function styleInstruction(source) {
@@ -114,6 +159,11 @@ module.exports = async function handler(req, res) {
     if (req && req.method === 'POST') {
       const allowed = await requireAnalyzeAccess(req, res);
       if (!allowed) return;
+      if (allowed.credentials) {
+        req.body = req.body || {};
+        req.body.apiKey = allowed.credentials.primaryKey;
+        req.body.fallbackApiKey = allowed.credentials.fallbackKey;
+      }
     }
 
     const source = req && req.method === 'POST' && req.body && req.body.source;
@@ -129,6 +179,7 @@ module.exports = async function handler(req, res) {
 
 module.exports.__test = {
   getSupabase,
+  setSupabaseClientForTesting,
   requireAnalyzeAccess,
   transientSimulation,
   styleInstruction
