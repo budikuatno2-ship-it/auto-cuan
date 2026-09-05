@@ -19,6 +19,7 @@
   "test/ai-vision-markdown-bold-consistency.test.js",
   "test/chart-analysis-runtime-markdown.test.js",
   "test/user-watchlist-alert-edit.test.js",
+  "test/analisis-chart-upload-visible-container.test.js",
   "test/portfolio-ai-context-completeness.test.js",
   "test/portfolio-price-freshness.test.js",
   "test/portfolio-supabase-persistence.test.js",

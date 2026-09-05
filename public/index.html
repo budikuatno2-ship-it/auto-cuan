@@ -6059,8 +6059,19 @@ function clearInput() { var el = getActiveChatInput(); if (!el) return; el.value
 function disableSend() { isSending = true; ['analysisSendBtn', 'generalSendBtn'].forEach(function(id) { var btn = document.getElementById(id); if (btn) { btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); } }); }
 function enableSend() { isSending = false; ['analysisSendBtn', 'generalSendBtn'].forEach(function(id) { var btn = document.getElementById(id); if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); } }); }
 
+// Analisis Saham is the only page that can actually reach handleChartUpload /
+// handleBrokerSummaryText / handleTickerQuestion / handleChat in this build
+// (there is no navigable "chat" page anymore — #aiSection/#chatMessages are
+// legacy markup kept only so these functions don't throw on a missing node).
+// Without this, every image upload (chart/orderbook/broker-summary) from
+// Analisis Saham appended its response into that permanently-hidden section
+// and the user saw nothing happen at all.
+function getActiveMessagesContainer() {
+    return document.getElementById(currentPage === 'analisis' ? 'analisisResult' : 'chatMessages');
+}
+
 function addUserBubble(text) {
-    var container = document.getElementById('chatMessages');
+    var container = getActiveMessagesContainer();
     var div = document.createElement('div');
     div.className = 'flex gap-3 justify-end fade-in-up';
     // Long text: show collapsed card
@@ -6103,7 +6114,7 @@ function isNetworkError(e) {
     return msg.indexOf('failed to fetch') !== -1 || msg.indexOf('networkerror') !== -1 || msg.indexOf('network') !== -1 || msg.indexOf('timeout') !== -1 || msg.indexOf('aborted') !== -1 || msg.indexOf('err_connection') !== -1;
 }
 function addLoadingBubble(loadingContext) {
-    var container = document.getElementById('chatMessages');
+    var container = getActiveMessagesContainer();
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up'; div.id = 'loadingBubble';
     // Context-aware initial text and stages
@@ -6139,7 +6150,7 @@ function addLoadingBubble(loadingContext) {
 }
 function removeLoadingBubble() { var el = document.getElementById('loadingBubble'); if (el) { if (el._stageTimer) clearInterval(el._stageTimer); el.remove(); } }
 function addAIBubble(html, isStructured) {
-    var container = document.getElementById('chatMessages');
+    var container = getActiveMessagesContainer();
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up';
     var copyLabel = isStructured ? 'Salin Hasil' : 'Salin';
