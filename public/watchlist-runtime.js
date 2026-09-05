@@ -117,8 +117,8 @@
       return;
     }
 
-    var html = '<div class="overflow-x-auto"><table class="w-full text-left text-xs border-collapse">';
-    html += '<thead><tr class="border-b border-dark-600/60 text-gray-400 uppercase tracking-wider">';
+    var html = '<div class="overflow-x-auto overflow-y-auto max-h-[540px] scrollbar-thin rounded-lg"><table class="w-full text-left text-xs border-collapse">';
+    html += '<thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-10 shadow-sm"><tr class="border-b border-dark-600/60 text-gray-400 uppercase tracking-wider">';
     html += '<th class="py-3 px-3 font-semibold">Ticker &amp; Catatan</th>';
     html += '<th class="py-3 px-3 font-semibold text-right">Harga</th>';
     html += '<th class="py-3 px-3 font-semibold text-right">Perubahan</th>';

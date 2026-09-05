@@ -197,6 +197,27 @@ function renderTrackRecordTable() {
         var entryBounds = trEntryBounds(s);
         var entryText = entryBounds.length ? entryBounds.map(formatRp).join('–') : '—';
 
+        var signalSubtext = '';
+        if (s.signal_time_wib && s.signal_time_wib !== '—') {
+            signalSubtext = '<div class="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1 font-mono">' +
+                '<span class="text-gray-500">🕒</span><span>' + s.signal_time_wib + '</span>' +
+                (s.price_at_signal ? '<span class="text-gray-600">·</span><span class="text-gray-300 font-medium">' + formatRp(s.price_at_signal) + '</span>' : '') +
+                '</div>';
+        }
+
+        var isExpiredSignal = s.outcome === 'EXPIRED' || s.status_label === 'Sinyal Kedaluwarsa' || s.status_label === 'Expired';
+        var statusTooltip = isExpiredSignal ? ' title="Harga tidak pernah masuk area beli (Entry 1 / Entry 2) dalam batas waktu pengamatan sinyal."' : '';
+        var statusLabelText = isExpiredSignal ? 'Sinyal Kedaluwarsa' : s.status_label;
+        var infoIcon = isExpiredSignal ? '<svg class="w-3 h-3 ml-1 inline text-gray-400 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : '';
+
+        var hitSubtext = '';
+        if (s.hit_time_wib && s.hit_time_wib !== '—') {
+            hitSubtext = '<div class="text-[10px] text-gray-400 font-mono mt-0.5 flex items-center justify-center gap-1">' +
+                '<span class="text-emerald-400/70">⚡</span><span>' + s.hit_time_wib + '</span>' +
+                (s.price_at_hit ? '<span class="text-gray-600">·</span><span class="text-gray-300 font-medium">' + formatRp(s.price_at_hit) + '</span>' : '') +
+                '</div>';
+        }
+
         rowsHtml += '<tr class="hover:bg-dark-700/40 transition">' +
             '<td class="px-3 py-2.5 font-bold text-white sticky left-0 bg-dark-800/90 z-10">' +
                 '<div class="flex items-center gap-1.5">' +
@@ -208,18 +229,18 @@ function renderTrackRecordTable() {
                 '<span class="text-[11px] px-2 py-0.5 rounded-md bg-dark-700/60 border border-dark-600/40">' + s.source_short + '</span>' +
             '</td>' +
             '<td class="px-3 py-2.5 text-gray-400 whitespace-nowrap font-mono text-[11px]">' +
-                '<div>' + (s.date || '—') + '</div>' +
-                (s.signal_time_wib && s.signal_time_wib !== '—' ? '<div class="text-[10px] text-gray-500">' + s.signal_time_wib + (s.price_at_signal ? ' @ ' + formatRp(s.price_at_signal) : '') + '</div>' : '') +
+                '<div class="font-medium text-gray-200">' + (s.date || '—') + '</div>' +
+                signalSubtext +
             '</td>' +
             '<td class="px-3 py-2.5 text-right font-mono text-gray-300">' + entryText + '</td>' +
             '<td class="px-3 py-2.5 text-right font-mono text-emerald-400 font-medium">' + formatRp(s.tp1) + '</td>' +
             '<td class="px-3 py-2.5 text-right font-mono text-emerald-300">' + formatRp(s.tp2) + '</td>' +
             '<td class="px-3 py-2.5 text-right font-mono text-red-400">' + formatRp(s.sl) + '</td>' +
-            '<td class="px-3 py-2.5 text-center whitespace-nowrap">' +
-                '<span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide" style="color:' + s.status_tone + ';background-color:' + s.status_bg + ';border:1px solid ' + s.status_border + '">' +
-                    s.status_label +
+            '<td class="px-3 py-2 text-center whitespace-nowrap">' +
+                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold tracking-wide' + (isExpiredSignal ? ' cursor-help' : '') + '" style="color:' + s.status_tone + ';background-color:' + s.status_bg + ';border:1px solid ' + s.status_border + '"' + statusTooltip + '>' +
+                    statusLabelText + infoIcon +
                 '</span>' +
-                (s.hit_time_wib && s.hit_time_wib !== '—' ? '<div class="text-[10px] text-gray-400 font-mono mt-0.5">' + s.hit_time_wib + (s.price_at_hit ? ' @ ' + formatRp(s.price_at_hit) : '') + '</div>' : '') +
+                hitSubtext +
             '</td>' +
             '<td class="px-3 py-2.5 text-right font-mono">' + gainHtml + '</td>' +
             '<td class="px-3 py-2.5 text-right text-gray-400 whitespace-nowrap text-[11px]">' + (s.duration_text || '—') + '</td>' +

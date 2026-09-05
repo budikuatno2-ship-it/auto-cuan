@@ -266,7 +266,7 @@
 
             var cardHtml = '<div style="margin-top:8px;padding:16px;background:#111827;border:1px solid #1f2937;border-radius:14px;box-shadow:0 10px 25px rgba(0,0,0,0.5)">';
             cardHtml += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08)">';
-            cardHtml += '<div><span style="font-size:13px;font-weight:800;color:#fff;display:flex;align-items:center;gap:6px"><span>🤖</span> Analisis Chart (AI) — ' + escapeHtml(ticker) + '</span><span style="font-size:10px;color:#94a3b8">Model: ' + escapeHtml(analysisData.model || 'Gemini 3 Flash') + (result.cached ? ' · (Cache Hari Ini)' : '') + '</span></div>';
+            cardHtml += '<div><span style="font-size:13px;font-weight:800;color:#fff;display:flex;align-items:center;gap:6px"><span>🤖</span> Analisis Chart (AI) — ' + escapeHtml(ticker) + '</span><span style="font-size:10px;color:#94a3b8">Model: ' + escapeHtml(analysisData.model || 'Gemini 2.5 Flash') + (result.cached ? ' · (Cache Hari Ini)' : '') + '</span></div>';
             cardHtml += '<span style="font-size:10px;padding:3px 8px;border-radius:6px;background:rgba(16,185,129,0.1);color:#6ee7b7;font-weight:600">' + escapeHtml(quotaText) + '</span>';
             cardHtml += '</div>';
 
