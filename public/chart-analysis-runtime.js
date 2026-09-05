@@ -10,22 +10,41 @@
     });
   }
 
+  // Inline markdown -> HTML for a single line of AI text. The vision prompt
+  // asks Gemini for plain prose, but models routinely add **bold**/bullets
+  // anyway; without this they showed up as literal asterisks/dashes in the UI.
+  function inlineMarkdown(text) {
+    var html = escapeHtml(text);
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+    html = html.replace(/(^|\s)\*([^*\n]+)\*(?=\s|$|[.,!?;:])/g, '$1<em>$2</em>');
+    html = html.replace(/(^|\s)_([^_\n]+)_(?=\s|$|[.,!?;:])/g, '$1<em>$2</em>');
+    return html.replace(/\*\*|__/g, '');
+  }
+
   function formatAnalysisText(rawText) {
     if (!rawText) return '<p class="text-gray-400">Tidak ada hasil analisis.</p>';
     var lines = String(rawText).split('\n');
     var html = '';
     var inSection = false;
+    var inList = false;
+
+    function closeList() {
+      if (inList) { html += '</ul>'; inList = false; }
+    }
 
     lines.forEach(function (line) {
       var trimmed = line.trim();
       if (!trimmed) {
+        closeList();
         if (inSection) html += '</div>';
         inSection = false;
         return;
       }
       if (trimmed.startsWith('## ')) {
+        closeList();
         if (inSection) html += '</div>';
-        var title = trimmed.replace(/^##\s*/, '');
+        var title = trimmed.replace(/^##\s*/, '').replace(/\*\*/g, '');
         var icon = '📌';
         if (/tren/i.test(title)) icon = '📈';
         else if (/level/i.test(title)) icon = '🎯';
@@ -36,14 +55,22 @@
         html += '<div style="margin-top:12px;margin-bottom:8px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px">';
         html += '<div style="font-weight:700;font-size:12px;color:#93c5fd;margin-bottom:4px">' + icon + ' ' + escapeHtml(title) + '</div>';
         inSection = true;
+        return;
+      }
+      var bullet = trimmed.match(/^[-*]\s+(.+)$/);
+      if (bullet) {
+        if (!inList) { html += '<ul style="margin:4px 0 6px 18px;padding:0">'; inList = true; }
+        html += '<li style="font-size:11px;color:#d1d5db;line-height:1.6">' + inlineMarkdown(bullet[1]) + '</li>';
+        return;
+      }
+      closeList();
+      if (!inSection) {
+        html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6;margin-bottom:6px">' + inlineMarkdown(trimmed) + '</div>';
       } else {
-        if (!inSection) {
-          html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6;margin-bottom:6px">' + escapeHtml(trimmed) + '</div>';
-        } else {
-          html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6">' + escapeHtml(trimmed) + '</div>';
-        }
+        html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6">' + inlineMarkdown(trimmed) + '</div>';
       }
     });
+    closeList();
     if (inSection) html += '</div>';
     return html;
   }

@@ -3605,6 +3605,7 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
             if (typeof normalizeFinalStockHtml === 'function') html = normalizeFinalStockHtml(html);
             if (isIndex && typeof sanitizeIHSGOutput === 'function') html = sanitizeIHSGOutput(html);
             if (typeof reorderBrokerCTA === 'function') html = reorderBrokerCTA(html, isIndex);
+            html = convertStrayMarkdownBold(html);
 
             // Render result
             var confluenceHtml = isIndex ? '' : buildManualConfluenceHtml(ticker);
@@ -3730,13 +3731,17 @@ var rankingState = {
     selectedTicker: null
 };
 
+// Same column set as configureRankingColumns() in stock-analysis-ai.js (the
+// dedicated "Ranking" menu page) so the Ranking Harian tab embedded here
+// shows the identical, fuller table instead of a second, simpler one.
 var RANKING_COLUMNS = [
     { key: 'ticker', label: 'Ticker', align: 'left', sortable: true },
     { key: 'last_price', label: 'Harga', align: 'right', fmt: mktCtxFmtPrice },
-    { key: 'change_pct', label: 'Perubahan', align: 'right', fmt: mktCtxFmtPct, colorize: true },
-    { key: 'rsi_14', label: 'RSI 14', align: 'right', fmt: function(v) { return v.toFixed(1); } },
+    { key: 'rsi_14', label: 'RSI 14', align: 'right', fmt: function(v) { return Number(v).toFixed(1); } },
     { key: 'week52_high_dist_pct', label: 'Jarak 52W High', align: 'right', fmt: mktCtxFmtPct },
     { key: 'volume_ratio_vs_7d_avg', label: 'Vol vs 7D', align: 'right', fmt: mktCtxFmtRatio },
+    { key: 'foreign_net_today', label: 'Foreign Terakhir', align: 'right', fmt: mktCtxFmtIDR, colorize: true },
+    { key: 'foreign_net_3d', label: 'Foreign 3D', align: 'right', fmt: mktCtxFmtIDR, colorize: true },
     { key: 'foreign_net_7d', label: 'Foreign 7D', align: 'right', fmt: mktCtxFmtIDR, colorize: true }
 ];
 
@@ -3853,6 +3858,10 @@ function setRankingSort(key) {
 
 async function fetchRankingTable() {
     if (rankingState.loading) return;
+    // Same session-note wiring as the standalone "Ranking" menu page
+    // (stock-analysis-ai.js), so the Ranking Harian tab shows the identical
+    // "catatan sesi" banner instead of nothing.
+    if (typeof wrapRenderRankingTableForSessionLabel === 'function') wrapRenderRankingTableForSessionLabel();
     rankingState.loading = true;
     rankingState.error = null;
     renderRankingTable();
@@ -4237,15 +4246,20 @@ async function loadChartPage() {
     var _pd = (typeof chartDims === 'function') ? chartDims('page') : { main: 350, rsi: 60 };
     var _dlIcon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>';
     var _fsIcon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 9V5a1 1 0 011-1h4M20 9V5a1 1 0 00-1-1h-4M4 15v4a1 1 0 001 1h4m11-5v4a1 1 0 01-1 1h-4"/></svg>';
-    container.innerHTML = '<div class="px-4 py-3 border-b border-dark-600/30 flex flex-wrap items-center justify-between gap-2"><div class="flex items-center gap-2 min-w-0"><span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span><h2 class="text-sm font-semibold text-gray-200 truncate">Chart ' + ticker + '</h2><span class="text-xs text-gray-500 shrink-0">Data Historis T-1</span></div>' +
+    // Same header/skeleton/legend markup as UnifiedCockpit.loadUnifiedChart()
+    // (public/unified-cockpit-runtime.js) — this is the standalone "Chart" menu
+    // page's counterpart to the "Chart & AI Vision" tab in Analisis Saham, and
+    // both must present the identical chart component, not two hand-drifted copies.
+    container.innerHTML = '<div class="unified-card-header">' +
+        '<div class="flex items-center gap-2 min-w-0"><span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span><h2 class="text-sm font-semibold text-gray-200 truncate">Chart Interaktif ' + ticker + '</h2><span class="text-xs text-gray-500 shrink-0">Data Historis T-1</span></div>' +
         '<div class="flex items-center gap-2 shrink-0">' +
-        '<button id="' + chartId + '_ai" onclick="triggerAiChartAnalysis(\'' + ticker + '\')" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-300 border border-blue-500/30 hover:bg-blue-500/10 transition" aria-label="Analisis chart ' + ticker + ' dengan AI">🤖 Analisis AI</button>' +
-        '<button id="' + chartId + '_fs" onclick="openChartPageFullscreen()" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-sky-300 border border-sky-500/30 hover:bg-sky-500/10 transition" aria-label="Buka chart ' + ticker + ' layar penuh">' + _fsIcon + 'Layar Penuh</button>' +
-        '<button id="' + chartId + '_dl" onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\',this)" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition" aria-label="Download chart ' + ticker + ' sebagai PNG">' + _dlIcon + 'Download PNG</button></div></div>' +
+        '<button id="' + chartId + '_ai" onclick="triggerAiChartAnalysis(\'' + ticker + '\')" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-300 border border-blue-500/30 hover:bg-blue-500/10 transition" aria-label="Analisis chart ' + ticker + ' dengan AI">🤖 Analisis AI</button>' +
+        '<button id="' + chartId + '_fs" onclick="openChartPageFullscreen()" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-sky-300 border border-sky-500/30 hover:bg-sky-500/10 transition" aria-label="Buka chart ' + ticker + ' layar penuh">' + _fsIcon + 'Layar Penuh</button>' +
+        '<button id="' + chartId + '_dl" onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\',this)" class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition" aria-label="Download chart ' + ticker + ' sebagai PNG">' + _dlIcon + 'Download PNG</button></div></div>' +
         '<div id="' + chartId + '_container" style="height:' + _pd.main + 'px;width:100%"><div class="h-full p-4 space-y-3"><div class="skeleton-card h-full flex flex-col justify-end gap-3"><div class="skeleton-line w-2/3"></div><div class="skeleton-line w-full"></div><div class="skeleton-line w-5/6"></div><p class="text-xs text-gray-500 pt-2"><span class="spinner-sm"></span>Memuat chart...</p></div></div></div>' +
         '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:' + _pd.rsi + 'px;width:100%"></div>' +
         '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-4 sm:grid-cols-8 gap-1 text-[10px]"></div>' +
-        '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-3 text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span><span class="text-amber-400/80">Fib</span></div>';
+        '<div class="unified-chart-legend"><span class="text-emerald-400 font-semibold">MA20</span><span class="text-yellow-400 font-semibold">MA50</span><span class="text-blue-400 font-semibold">MA100</span><span class="text-purple-400 font-semibold">MA200</span><span class="text-orange-400 font-semibold">RSI14</span><span class="text-amber-400/80 font-semibold">Fibonacci</span></div>';
 
     try {
         var resp = await fetch('/api/candles?ticker=' + encodeURIComponent(ticker));
@@ -10810,6 +10824,14 @@ function stripFollowUpTemplate(html) {
 }
 
 // ===== AI OUTPUT SANITIZER (security) =====
+// Server prompts tell the model to output real HTML and never markdown
+// stars, but LLMs occasionally ignore that and leave literal **bold**
+// markers in otherwise-valid HTML. Converting any that slip through is a
+// no-op when the text is clean, so it's safe to always run.
+function convertStrayMarkdownBold(html) {
+    return String(html || '').replace(/\*\*([^*<>\n]+)\*\*/g, '<strong>$1</strong>');
+}
+
 function sanitizeAIHtml(html) {
     if (!html) return html;
     // Remove script tags (split closing tag to avoid HTML parser issue)
