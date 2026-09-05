@@ -3146,8 +3146,9 @@ function showAdminDeviceApprovalModal(data) {
                 setTimeout(function() {
                     modal.classList.add('hidden');
                     try {
+                        var isApprovedAdmin = json.isAdmin === true && String(json.username || '').toLowerCase() === 'budi';
                         localStorage.setItem('autocuan_user', json.username || 'budi');
-                        localStorage.setItem('autocuan_is_admin', 'true');
+                        localStorage.setItem('autocuan_is_admin', isApprovedAdmin ? 'true' : 'false');
                         localStorage.setItem('autocuan_logged_in', 'true');
                         localStorage.setItem('autocuan_login_time', Date.now().toString());
                         if (json.userId) localStorage.setItem('autocuan_user_id', json.userId);
@@ -6830,13 +6831,13 @@ function renderDeviceDetailsHtml(user) {
     html += '<ul class="space-y-2">';
     m.items.forEach(function (it, idx) {
         var badge = it.isCurrent
-            ? ' <span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300">Saat ini</span>'
+            ? ' <span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300">Perangkat saat ini</span>'
             : '';
         var invalidBadge = it.valid
             ? ''
             : ' <span class="px-1.5 py-0.5 rounded text-[10px] bg-yellow-500/20 text-yellow-300">Format tidak valid</span>';
         var removeBtn = it.rawId
-            ? ' <button onclick="removeUserDevice(\'' + uname + '\', \'' + encodeURIComponent(it.rawId) + '\')" class="ml-auto px-2 py-0.5 rounded text-[10px] text-red-400 border border-red-500/30 hover:bg-red-500/10 transition">Hapus</button>'
+            ? ' <button onclick="removeUserDeviceByIndex(\'' + uname + '\', ' + idx + ')" class="ml-auto px-2 py-0.5 rounded text-[10px] text-red-400 border border-red-500/30 hover:bg-red-500/10 transition">Hapus</button>'
             : '';
         html += '<li class="flex items-center gap-2 text-xs py-1 border-b border-dark-600/30 last:border-b-0">';
         html += '<span class="text-gray-500">' + (idx + 1) + '.</span>';
@@ -6914,8 +6915,15 @@ function closeDeviceModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-async function removeUserDevice(username, encodedDeviceId) {
-    var deviceId = decodeURIComponent(encodedDeviceId);
+function removeUserDeviceByIndex(username, index) {
+    var user = Array.isArray(cachedUsers) ? cachedUsers.find(function (x) { return x.username === username; }) : null;
+    var rawId = user && Array.isArray(user.devices) ? user.devices[index] : null;
+    if (!rawId) return;
+    removeUserDevice(username, rawId);
+}
+
+async function removeUserDevice(username, rawDeviceId) {
+    var deviceId = rawDeviceId ? decodeURIComponent(rawDeviceId) : rawDeviceId;
     if (!confirm('Hapus perangkat ini dari akun ' + username + '? Slot akan langsung kosong.')) return;
     try {
         var adminName = localStorage.getItem('autocuan_user') || 'budi';
