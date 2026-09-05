@@ -546,29 +546,25 @@
   function classifyFailure(response, data, error) {
     var code = data && data.code;
     var status = response ? response.status : 0;
+    var serverMsg = (data && (data.error || data.message)) || (error && error.message) || '';
     if (error && error.name === 'AbortError') {
-      return { fallback: true, status: 'Permintaan dihentikan karena terlalu lama. Ringkasan lokal ditampilkan.' };
+      return { fallback: true, status: 'Permintaan dihentikan karena waktu tunggu habis (timeout). Ringkasan lokal ditampilkan.' };
     }
     if (!response) {
-      return { fallback: true, status: 'Koneksi ke server AI gagal. Ringkasan lokal ditampilkan.' };
+      return { fallback: true, status: 'Koneksi ke server gagal (' + (error ? error.message : 'NetworkError') + '). Ringkasan lokal ditampilkan.' };
     }
     if (status === 401) {
       return { fallback: false, status: 'Sesi kamu sudah berakhir. Muat ulang halaman dan login lagi untuk memakai Asisten AI.' };
     }
     if (status === 403) {
-      return { fallback: false, status: (data && data.error) || 'Akses Asisten AI ditolak untuk akun ini.' };
+      return { fallback: false, status: serverMsg || 'Akses Asisten AI ditolak untuk akun ini.' };
     }
     // api/analyze.js answers a non-premium account with 402 SUBSCRIPTION_REQUIRED
-    // (lib/subscription-auth.js requirePremiumEntitlement). That is squarely "a
-    // failure the user can act on", so per this function's own contract it must
-    // be reported as itself rather than answered with a local summary and a
-    // Retry button that can never succeed. public/stock-analysis-ai.js already
-    // classified it; this runtime was the one AI surface still missing it.
     if (status === 402 || code === 'SUBSCRIPTION_REQUIRED') {
-      return { fallback: false, status: (data && data.error) || 'Subscription aktif diperlukan untuk memakai Asisten AI Portofolio.' };
+      return { fallback: false, status: serverMsg || 'Subscription aktif diperlukan untuk memakai Asisten AI Portofolio.' };
     }
     if (code === 'ACCOUNT_NOT_APPROVED') {
-      return { fallback: false, status: (data && data.error) || 'Akun belum di-approve admin, jadi Asisten AI belum bisa dipakai.' };
+      return { fallback: false, status: serverMsg || 'Akun belum di-approve admin, jadi Asisten AI belum bisa dipakai.' };
     }
     if (status === 429 || code === 'AI_RATE_LIMITED') {
       var wait = Number(data && data.retry_after_seconds);
@@ -580,23 +576,19 @@
     if (code === 'AI_NOT_CONFIGURED') {
       return { fallback: false, status: 'Asisten AI belum diaktifkan di server. Hubungi admin.' };
     }
-    // A rejected key, an exhausted balance or a denied model is a server
-    // configuration problem, not an outage. Answering it with a local summary
-    // buries the one thing that would fix it, and no amount of retrying helps.
-    // lib/context-ai-router-v6.js drops the same code from its fallback set.
-    if (code === 'AI_KEY_OR_BALANCE_ERROR') {
-      return { fallback: false, status: 'Konfigurasi akses AI di server bermasalah (API key atau saldo). Hubungi admin.' };
+    if (code === 'AI_KEY_INVALID' || code === 'AI_KEY_OR_BALANCE_ERROR') {
+      return { fallback: false, status: (serverMsg ? serverMsg + ' Hubungi admin.' : 'Konfigurasi akses AI di server bermasalah (API key atau saldo). Hubungi admin.') };
     }
-    // Inference is unavailable across vendors, not one busy model. Saying so is more useful
-    // than "all AI routes failed", and the summary underneath stays labelled as
-    // a local calculation rather than an AI answer.
     if (code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE') {
       return { fallback: true, status: 'Provider AI sedang mengalami gangguan sementara. Ringkasan di bawah dihitung secara lokal dan bukan jawaban AI.' };
     }
     if (data && data.provider_failed) {
-      return { fallback: true, status: 'Semua jalur AI gagal dihubungi. Ringkasan lokal ditampilkan.' };
+      return { fallback: true, status: 'Semua jalur AI eksternal sedang tidak merespons' + (serverMsg ? ': ' + serverMsg : '.') + ' Ringkasan lokal ditampilkan.' };
     }
-    return { fallback: true, status: 'Jawaban AI belum bisa diambil. Ringkasan lokal ditampilkan.' };
+    if (status >= 500) {
+      return { fallback: true, status: 'Server AI mengalami kendala (' + status + (serverMsg ? ': ' + serverMsg : '') + '). Ringkasan lokal ditampilkan.' };
+    }
+    return { fallback: true, status: serverMsg ? ('Jawaban AI belum bisa diambil (' + serverMsg + '). Ringkasan lokal ditampilkan.') : 'Jawaban AI belum bisa diambil. Ringkasan lokal ditampilkan.' };
   }
 
   // Local fallbacks are deterministic summaries, not model turns. Feeding them
@@ -773,24 +765,24 @@
       style.id = 'portfolio-ai-premium-layout';
       style.textContent = [
         '#page-ai{--ai-surface:#0b111b;--ai-surface-2:#101925;--ai-line:rgba(148,163,184,.16);--ai-accent:#34d399}',
-        '#page-ai .ai-shell{max-width:none!important;display:grid!important;grid-template-columns:minmax(0,1.9fr) minmax(270px,.72fr)!important;gap:16px!important;align-items:stretch}',
-        '#page-ai .ai-chat{position:relative;min-width:0;height:min(680px,calc(100dvh - 205px));min-height:520px;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto;overflow:hidden;padding:18px;background:linear-gradient(155deg,rgba(16,25,37,.98),rgba(8,13,22,.99));border-color:rgba(74,222,128,.18);box-shadow:0 22px 70px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.025)}',
-        '#page-ai .ai-chat>.between{padding-bottom:12px;border-bottom:1px solid rgba(148,163,184,.11)}',
-        '#page-ai .ai-chat h2{font-size:1.08rem;margin-bottom:3px}',
-        '#page-ai .ai-quick{margin:10px 0 8px;gap:7px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}',
+        '#page-ai .ai-shell{max-width:1440px!important;margin:0 auto!important;display:grid!important;grid-template-columns:minmax(0,3.2fr) minmax(260px,.8fr)!important;gap:20px!important;align-items:stretch}',
+        '#page-ai .ai-chat{position:relative;min-width:0;height:min(680px,calc(100dvh - 205px));height:clamp(660px,calc(100dvh - 110px),960px)!important;min-height:620px!important;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto;overflow:hidden;padding:22px;background:linear-gradient(155deg,rgba(16,25,37,.98),rgba(8,13,22,.99));border-color:rgba(74,222,128,.18);box-shadow:0 22px 70px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.025)}',
+        '#page-ai .ai-chat>.between{padding-bottom:14px;border-bottom:1px solid rgba(148,163,184,.11)}',
+        '#page-ai .ai-chat h2{font-size:1.15rem;margin-bottom:4px}',
+        '#page-ai .ai-quick{margin:12px 0 10px;gap:8px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}',
         '#page-ai .ai-quick::-webkit-scrollbar{display:none}',
         '#page-ai .ai-quick .btn{border-radius:999px;background:rgba(15,23,42,.82);border-color:rgba(148,163,184,.16);color:#cbd5e1;box-shadow:none}',
         '#page-ai .ai-quick .btn:hover,#page-ai .ai-quick .btn:focus-visible{border-color:rgba(52,211,153,.5);color:#d1fae5;background:rgba(16,185,129,.09)}',
-        '#page-ai .ai-messages{min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-gutter:stable;display:flex;flex-direction:column;gap:10px;padding:12px 6px 16px 2px;scroll-behavior:smooth}',
+        '#page-ai .ai-messages{min-height:400px!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-gutter:stable;display:flex;flex-direction:column;gap:12px;padding:14px 8px 18px 2px;scroll-behavior:smooth}',
         '#page-ai .ai-messages::-webkit-scrollbar{width:8px}#page-ai .ai-messages::-webkit-scrollbar-track{background:transparent}#page-ai .ai-messages::-webkit-scrollbar-thumb{background:rgba(100,116,139,.38);border-radius:999px}',
-        '#page-ai .ai-message{box-shadow:none;font-size:13.5px;line-height:1.58}',
-        '#page-ai .ai-user{max-width:min(520px,82%);background:linear-gradient(135deg,rgba(16,185,129,.16),rgba(6,95,70,.12));border-color:rgba(52,211,153,.24);color:#ecfdf5}',
-        '#page-ai .ai-assistant{max-width:min(760px,96%);background:rgba(6,11,19,.78);border-color:rgba(148,163,184,.14);padding:14px 16px}',
-        '#page-ai .ai-system{margin:auto;max-width:560px;padding:18px 14px;border:1px dashed rgba(148,163,184,.15);border-radius:14px;background:rgba(15,23,42,.3)}',
-        '#page-ai .ai-compose{margin:0;padding-top:11px;border-top:1px solid rgba(148,163,184,.11);background:linear-gradient(180deg,rgba(8,13,22,0),rgba(8,13,22,.98) 24%)}',
-        '#page-ai .ai-compose textarea{min-height:54px;max-height:130px;background:rgba(5,10,17,.92);border-color:rgba(148,163,184,.2);border-radius:13px;resize:none}',
+        '#page-ai .ai-message{box-shadow:none;font-size:14px;line-height:1.68;border-radius:16px}',
+        '#page-ai .ai-user{max-width:min(680px,88%);background:linear-gradient(135deg,rgba(16,185,129,.16),rgba(6,95,70,.12));border-color:rgba(52,211,153,.24);color:#ecfdf5;padding:14px 18px}',
+        '#page-ai .ai-assistant{max-width:100%;background:rgba(6,11,19,.88);border-color:rgba(148,163,184,.16);padding:16px 20px;font-size:14px;line-height:1.7}',
+        '#page-ai .ai-system{margin:auto;max-width:620px;padding:18px 16px;border:1px dashed rgba(148,163,184,.15);border-radius:14px;background:rgba(15,23,42,.3)}',
+        '#page-ai .ai-compose{margin:0;padding-top:13px;border-top:1px solid rgba(148,163,184,.11);background:linear-gradient(180deg,rgba(8,13,22,0),rgba(8,13,22,.98) 24%)}',
+        '#page-ai .ai-compose textarea{min-height:60px;max-height:150px;background:rgba(5,10,17,.92);border-color:rgba(148,163,184,.2);border-radius:13px;resize:none;font-size:13.5px}',
         '#page-ai .ai-compose textarea:focus{border-color:rgba(52,211,153,.58);box-shadow:0 0 0 3px rgba(52,211,153,.08)}',
-        '#page-ai .ai-compose .btn{min-width:92px;border-radius:12px}',
+        '#page-ai .ai-compose .btn{min-width:96px;border-radius:12px;font-size:13.5px}',
         '#page-ai .ai-retry{margin:7px 2px 0;padding:6px 12px;min-height:32px;border-radius:999px;background:rgba(15,23,42,.9);border:1px solid rgba(148,163,184,.28);color:#cbd5e1;font-size:11.5px;font-weight:700;cursor:pointer}',
         '#page-ai .ai-retry:hover:not(:disabled),#page-ai .ai-retry:focus-visible{border-color:rgba(52,211,153,.5);color:#d1fae5;background:rgba(16,185,129,.1)}',
         '#page-ai .ai-retry:disabled{opacity:.5;cursor:default}',
@@ -798,7 +790,7 @@
         '#page-ai .ai-local-fallback{border-color:rgba(251,191,36,.28);background:rgba(30,22,8,.6)}',
         '#page-ai .ai-fallback-badge{display:inline-block;margin-bottom:8px;padding:3px 8px;border:1px solid rgba(251,191,36,.32);border-radius:999px;background:rgba(120,53,15,.35);color:#fcd34d;font-size:10.5px;font-weight:700;letter-spacing:.03em}',
         '#page-ai .ai-status{margin:7px 2px 0;color:#7f9bb7;font-size:11.5px}',
-        '#page-ai .ai-shell>aside{order:initial!important;align-self:stretch;padding:16px;background:linear-gradient(180deg,rgba(15,23,35,.95),rgba(9,15,24,.98));border-color:rgba(148,163,184,.14);box-shadow:0 18px 54px rgba(0,0,0,.2)}',
+        '#page-ai .ai-shell>aside{order:initial!important;align-self:stretch;padding:18px;background:linear-gradient(180deg,rgba(15,23,35,.95),rgba(9,15,24,.98));border-color:rgba(148,163,184,.14);box-shadow:0 18px 54px rgba(0,0,0,.2)}',
         '#page-ai .ai-data-grid{grid-template-columns:1fr!important;gap:8px}',
         '#page-ai .ai-data-card{padding:10px 11px;border-radius:10px;background:rgba(5,10,17,.62)}',
         '#page-ai .ai-data-card[style]{grid-column:auto!important}',
@@ -811,8 +803,8 @@
         '#page-ai .ai-jump-latest{position:relative;grid-row:3;grid-column:1;justify-self:end;align-self:end;z-index:5;margin:0 14px 8px 0;padding:7px 11px;border:1px solid rgba(52,211,153,.35);border-radius:999px;background:rgba(6,78,59,.94);color:#d1fae5;font:700 11px/1.2 inherit;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.3)}',
         '#page-ai .ai-jump-latest.hidden{display:none}',
         '#page-ai button:focus-visible,#page-ai textarea:focus-visible{outline:2px solid rgba(110,231,183,.75);outline-offset:2px}',
-        '@media(max-width:980px){#page-ai .ai-shell{grid-template-columns:1fr!important}#page-ai .ai-chat{height:clamp(540px,72dvh,680px)}#page-ai .ai-shell>aside{order:2!important}#page-ai .ai-data-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}',
-        '@media(max-width:620px){#page-ai .ai-chat{height:clamp(500px,70dvh,640px);min-height:500px;padding:13px}#page-ai .ai-chat>.between{align-items:flex-start}#page-ai .ai-chat>.between .btn{padding:7px 9px;min-height:34px}#page-ai .ai-quick{margin-top:8px}#page-ai .ai-user{max-width:92%}#page-ai .ai-assistant{max-width:98%;padding:12px 13px}#page-ai .ai-compose{grid-template-columns:minmax(0,1fr) auto!important}#page-ai .ai-compose .btn{width:auto!important;min-width:76px;padding:9px 12px}#page-ai .ai-data-grid{grid-template-columns:1fr 1fr!important}#page-ai .ai-jump-latest{margin-right:8px}}',
+        '@media(max-width:980px){#page-ai .ai-shell{grid-template-columns:1fr!important}#page-ai .ai-chat{height:clamp(560px,76dvh,720px)!important;min-height:540px!important}#page-ai .ai-shell>aside{order:2!important}#page-ai .ai-data-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}',
+        '@media(max-width:620px){#page-ai .ai-chat{height:clamp(520px,74dvh,660px)!important;min-height:520px!important;padding:14px}#page-ai .ai-chat>.between{align-items:flex-start}#page-ai .ai-chat>.between .btn{padding:7px 9px;min-height:34px}#page-ai .ai-quick{margin-top:8px}#page-ai .ai-user{max-width:92%;padding:12px 14px}#page-ai .ai-assistant{max-width:100%;padding:13px 15px}#page-ai .ai-compose{grid-template-columns:minmax(0,1fr) auto!important}#page-ai .ai-compose .btn{width:auto!important;min-width:76px;padding:9px 12px}#page-ai .ai-data-grid{grid-template-columns:1fr 1fr!important}#page-ai .ai-jump-latest{margin-right:8px}}',
         '@media(prefers-reduced-motion:reduce){#page-ai .ai-messages{scroll-behavior:auto}#page-ai *{animation-duration:.01ms!important;transition-duration:.01ms!important}}'
       ].join('');
       document.head.appendChild(style);

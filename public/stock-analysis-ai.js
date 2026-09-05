@@ -349,56 +349,16 @@
   }
 
   function rankingNavButtonHtml() {
-    return '<button type="button" onclick="openDailyRankingPage()" class="nav-btn" data-page="ranking" aria-label="Ranking Pasar Harian">' +
-      '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
-        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3v18h18M7 16l4-4 3 3 5-7"/>' +
-      '</svg><span>Ranking</span></button>';
+    return '';
   }
 
   function ensureRankingNavButtons() {
-    var desktop = document.querySelector('.desktop-nav');
-    var mobile = byId('mainNav');
-
-    if (desktop && !desktop.querySelector('[data-page="ranking"]')) {
-      var analisisDesktop = desktop.querySelector('[data-page="analisis"]');
-      if (analisisDesktop) analisisDesktop.insertAdjacentHTML('afterend', rankingNavButtonHtml());
-      else desktop.insertAdjacentHTML('beforeend', rankingNavButtonHtml());
-    }
-
-    if (mobile && !mobile.querySelector('[data-page="ranking"]')) {
-      var analisisMobile = mobile.querySelector('[data-page="analisis"]');
-      if (analisisMobile) analisisMobile.insertAdjacentHTML('afterend', rankingNavButtonHtml());
-      else mobile.insertAdjacentHTML('beforeend', rankingNavButtonHtml());
-    }
+    // Canonical implementation: Ranking is hosted exclusively inside Analisis Saham.
+    return;
   }
 
   function ensureRankingPageShell() {
-    var page = byId('page-ranking');
-    if (page) return page;
-
-    var dashboard = byId('dashboardScreen');
-    if (!dashboard) return null;
-
-    page = document.createElement('div');
-    page.id = 'page-ranking';
-    page.className = 'page-content hidden flex-1 max-w-[1180px] w-full mx-auto px-3 sm:px-5 py-5 sm:py-7';
-    page.innerHTML =
-      '<div class="mb-5 sm:mb-6">' +
-        '<div id="marketContextSessionBadge" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-emerald-500/15 bg-emerald-500/5 text-[10px] font-bold uppercase tracking-[.12em] text-emerald-300">Memuat sesi&hellip;</div>' +
-        '<div class="mt-3 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">' +
-          '<div>' +
-            '<h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight">Ranking Pasar Harian</h2>' +
-            '<p class="mt-1 text-xs sm:text-sm text-gray-500">Bandingkan RSI 14, jarak 52W high, volume, dan aliran foreign seluruh saham dalam satu halaman khusus.</p>' +
-          '</div>' +
-          '<div class="text-[11px] text-gray-600">Terpisah dari Analisis Saham</div>' +
-        '</div>' +
-      '</div>' +
-      '<div id="dailyRankingMount"></div>';
-
-    var header = dashboard.querySelector('header');
-    if (header && header.nextSibling) dashboard.insertBefore(page, header.nextSibling);
-    else dashboard.appendChild(page);
-    return page;
+    return null;
   }
 
   function configureRankingColumns() {
@@ -418,26 +378,17 @@
   function mountRankingCardOnOwnPage() {
     var search = byId('rankingSearchInput');
     var tableWrap = byId('rankingTableWrap');
-    var page = ensureRankingPageShell();
-    var mount = byId('dailyRankingMount');
-    if (!search || !tableWrap || !page || !mount) return false;
+    if (!tableWrap) return false;
 
     configureRankingColumns();
 
     var card = tableWrap.closest('.unified-card') || tableWrap.parentElement;
-    if (!card) return false;
-
-    // Safety guard: NEVER move structural cockpit columns (.unified-primary-col, #page-analisis, etc.)
-    var outer = card.parentElement;
-    var nodeToMove = (outer && outer !== mount && outer.classList && outer.classList.contains('ranking-card-wrapper')) ? outer : card;
-
-    if (nodeToMove.parentElement !== mount) mount.appendChild(nodeToMove);
-
-    nodeToMove.dataset.rankingPolished = 'true';
-    nodeToMove.classList.remove('border-b', 'flex-shrink-0');
-    nodeToMove.style.paddingTop = '0';
-    nodeToMove.style.paddingBottom = '0';
-    nodeToMove.style.marginTop = '0';
+    if (card) {
+      card.dataset.rankingPolished = 'true';
+    }
+    if (search) {
+      search.placeholder = 'Cari ticker di ranking…';
+    }
     nodeToMove.style.borderBottom = '0';
 
     card.style.background = 'linear-gradient(180deg, rgba(18,24,34,.97), rgba(11,14,20,.995))';
@@ -658,31 +609,23 @@
   }
 
   function setRankingNavActive() {
-    document.querySelectorAll('.nav-btn').forEach(function(button) {
-      button.classList.toggle('active', button.getAttribute('data-page') === 'ranking');
-    });
+    // No-op: ranking is inside Analisis Saham
   }
 
   function openDailyRankingPage() {
-    ensureRankingNavButtons();
-    mountRankingCardOnOwnPage();
-
-    var page = byId('page-ranking');
-    if (!page) return;
-
-    document.querySelectorAll('.page-content').forEach(function(el) {
-      if (el !== page) el.classList.add('hidden');
-    });
-    page.classList.remove('hidden');
-    setRankingNavActive();
+    if (typeof window.navigateTo === 'function') {
+      window.navigateTo('analisis');
+    }
+    setTimeout(function() {
+      var el = byId('rankingCardOuterWrap');
+      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth' });
+    }, 120);
 
     if (typeof window.ensureRankingTableLoaded === 'function') {
       window.ensureRankingTableLoaded();
     } else if (typeof window.fetchRankingTable === 'function') {
       window.fetchRankingTable();
     }
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   window.openDailyRankingPage = openDailyRankingPage;
   // Exposed so the Ranking Harian tab (index.html / analisis-saham-runtime.js)
@@ -692,8 +635,6 @@
   window.updateRankingSessionLabel = updateRankingSessionLabel;
 
   function enhanceDailyRanking() {
-    ensureRankingNavButtons();
-    ensureRankingPageShell();
     return mountRankingCardOnOwnPage();
   }
 

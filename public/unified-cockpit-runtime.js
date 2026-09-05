@@ -221,9 +221,29 @@
   }
 
   function openFullscreen() {
+    var data = root._chartPageData || (typeof window !== 'undefined' && window._chartPageData);
     if (typeof root.openChartPageFullscreen === 'function') {
       root.openChartPageFullscreen();
+      return;
     }
+    if (!data || !Array.isArray(data.candles) || !data.candles.length) {
+      if (typeof root.showToast === 'function') root.showToast('Muat chart terlebih dahulu sebelum membuka layar penuh.', 'warning');
+      return;
+    }
+    var viewer = (typeof root.openChartViewer === 'function') ? root.openChartViewer :
+                 (typeof window !== 'undefined' && typeof window.openChartViewer === 'function') ? window.openChartViewer :
+                 (root.AutoCuanChartViewer && typeof root.AutoCuanChartViewer.open === 'function') ? function(cfg) { return root.AutoCuanChartViewer.open(root, cfg); } : null;
+    if (!viewer) {
+      if (typeof root.showToast === 'function') root.showToast('Tampilan layar penuh sedang disiapkan. Coba lagi sesaat lagi.', 'warning');
+      return;
+    }
+    viewer({
+      title: 'Chart ' + (data.ticker || getActiveTicker() || ''),
+      subtitle: 'Data historis T-1' + (data.actual_data_date ? ' · ' + data.actual_data_date : ''),
+      ticker: data.ticker || getActiveTicker() || '',
+      candles: data.candles,
+      metrics: data.metrics || null
+    });
   }
 
   // Export API

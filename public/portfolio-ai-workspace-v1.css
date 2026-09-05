@@ -6,18 +6,19 @@
 }
 
 #page-ai .ai-shell {
-  grid-template-columns: minmax(0, 2.35fr) minmax(260px, .62fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 3.2fr) minmax(260px, .8fr);
+  gap: 20px;
   align-items: start;
 }
 
 #page-ai .ai-chat {
   height: clamp(560px, calc(100dvh - 96px), 820px);
-  min-height: 560px;
+  height: clamp(660px, calc(100dvh - 110px), 960px);
+  min-height: 620px;
 }
 
 #page-ai .ai-messages {
-  min-height: 300px;
+  min-height: 400px;
   padding-bottom: 22px;
 }
 
@@ -37,7 +38,7 @@
 @media (min-width: 1081px) and (max-height: 760px) {
   #page-ai .ai-chat {
     height: calc(100dvh - 78px);
-    min-height: 500px;
+    min-height: 560px;
   }
 }
 
@@ -47,7 +48,7 @@
   }
 
   #page-ai .ai-chat {
-    height: clamp(560px, 78dvh, 760px);
+    height: clamp(580px, 78dvh, 760px);
     min-height: 560px;
   }
 
@@ -65,10 +66,10 @@
 
   #page-ai .ai-chat {
     height: clamp(540px, 76dvh, 700px);
-    min-height: 540px;
+    min-height: 520px;
   }
 
   #page-ai .ai-messages {
-    min-height: 270px;
+    min-height: 320px;
   }
 }
