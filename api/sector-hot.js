@@ -6783,8 +6783,22 @@ function evaluateMonitorStatus(pick, px) {
 
   var active = activeBefore || entryTouched;
 
-  if (slTouched) return result(active ? 'SL_HIT' : 'INVALID', active ? 'SL kena' : 'Invalid', true, active ? 'SL tersentuh' : 'Harga menyentuh invalidation sebelum entry');
+  // Once a recommendation has already recorded TP1 (pick.hit_tp1_at or status === 'TP1_HIT'):
+  // - If price touches TP2, advance to TP2_HIT
+  // - If price drops back to/below SL, finalize the position as TP1_HIT (never overwrite a winning TP1 with SL_HIT!)
+  if (pick.hit_tp1_at || status === 'TP1_HIT') {
+    if (active && tp2Touched) return result('TP2_HIT', 'TP2 Hit', true, pick.hit_tp2_at ? 'TP2 sudah tercatat sebelumnya' : 'TP2 tersentuh');
+    if (slTouched) {
+      return result('TP1_HIT', 'TP1 Hit', true, 'Posisi selesai setelah TP1 tercapai (trailing stop/reversal)', {
+        hit_tp1_at: pick.hit_tp1_at || new Date().toISOString()
+      });
+    }
+    return result('TP1_HIT', 'TP1 Hit', false, 'TP1 sudah tercatat sebelumnya; memantau TP2');
+  }
+
+  // If TP2 touched on an active recommendation, TP2 hit takes precedence
   if (active && tp2Touched) return result('TP2_HIT', 'TP2 Hit', true, pick.hit_tp2_at ? 'TP2 sudah tercatat sebelumnya' : 'TP2 tersentuh');
+  if (slTouched) return result(active ? 'SL_HIT' : 'INVALID', active ? 'SL kena' : 'Invalid', true, active ? 'SL tersentuh' : 'Harga menyentuh invalidation sebelum entry');
   if (active && tp1Touched) return result('TP1_HIT', 'TP1 Hit', false, pick.hit_tp1_at ? 'TP1 sudah tercatat sebelumnya' : 'TP1 tersentuh');
   // For already-active positions (entry was previously touched / hit_entry_at already set),
   // the pre-entry "price too far from entry" freshness rule must NOT expire the position.
@@ -8482,10 +8496,20 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       }
 
       var update = { status: ev.status, is_final: ev.isFinal || isFinal, last_checked_at: new Date().toISOString() };
+      if (px && px.last != null) update.last_price = toNum(px.last);
       if ((ev.status === 'RUNNING' || ev.status === 'IN_ENTRY_ZONE') && !pck.hit_entry_at) update.hit_entry_at = update.last_checked_at;
-      if (ev.status === 'TP1_HIT' && !pck.hit_tp1_at) update.hit_tp1_at = update.last_checked_at;
-      if (ev.status === 'TP2_HIT' && !pck.hit_tp2_at) update.hit_tp2_at = update.last_checked_at;
-      if (ev.status === 'SL_HIT' && !pck.hit_sl_at) update.hit_sl_at = update.last_checked_at;
+      if (ev.status === 'TP1_HIT' && !pck.hit_tp1_at) {
+        update.hit_tp1_at = update.last_checked_at;
+        update.hit_price = toNum(px && px.last) || toNum(pck.tp1);
+      }
+      if (ev.status === 'TP2_HIT' && !pck.hit_tp2_at) {
+        update.hit_tp2_at = update.last_checked_at;
+        update.hit_price = toNum(px && px.last) || toNum(pck.tp2);
+      }
+      if (ev.status === 'SL_HIT' && !pck.hit_sl_at) {
+        update.hit_sl_at = update.last_checked_at;
+        update.hit_price = toNum(px && px.last) || toNum(pck.sl);
+      }
       // Persistence is intentionally deferred until after an immediate significant-hit
       // Telegram delivery attempt. A failed send must not consume hit_* idempotency
       // markers or terminal state, otherwise the next monitor run can never retry.

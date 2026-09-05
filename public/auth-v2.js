@@ -239,6 +239,13 @@
         }
       }
 
+      if (data && (data.code === 'DEVICE_APPROVAL_PENDING' || data.approval_token)) {
+        if (typeof window.showAdminDeviceApprovalModal === 'function') {
+          window.showAdminDeviceApprovalModal(data);
+          return;
+        }
+      }
+
       errorEl.textContent = (data && data.error) || 'Login gagal.';
       errorEl.classList.remove('hidden');
     } catch (_) {

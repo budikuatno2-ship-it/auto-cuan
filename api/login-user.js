@@ -12,8 +12,23 @@ const telegramVerification = require('../lib/telegram-verification');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
 const securityGuard = require('../lib/security-guard');
 const passwordCredential = require('../lib/password-credential');
+const adminDeviceApproval = require('../lib/admin-device-approval');
 
 const MAX_DEVICES = 3;
+
+function isVercelPreviewRequest(req) {
+  if (!req || !req.headers) return false;
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(':')[0].trim().toLowerCase();
+  const origin = String(req.headers.origin || '').trim().toLowerCase();
+  if (host.endsWith('.vercel.app')) return true;
+  if (origin) {
+    try {
+      const u = new URL(origin);
+      if (u.hostname.endsWith('.vercel.app')) return true;
+    } catch (_) {}
+  }
+  return false;
+}
 
 // Max accepted webhook body size (bytes). A normal Telegram update is well under
 // this; anything larger is rejected before parsing/processing.
@@ -223,6 +238,12 @@ module.exports = async function handler(req, res) {
     return await handleVerifyWebhook(req, res);
   }
 
+  if ((req.query && req.query.action === 'device-approval-status') || (req.body && req.body.action === 'device-approval-status')) {
+    const token = (req.query && req.query.token) || (req.body && req.body.token);
+    const result = adminDeviceApproval.checkDeviceApprovalStatus(token, res);
+    return res.status(result.ok ? 200 : 400).json(result);
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
@@ -314,8 +335,23 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // === LOGOUT === (explicit; does not require a valid token or DB access)
+    // === LOGOUT === (clears cookies and cleans up device slot)
     if (action === 'logout') {
+      try {
+        const auth = requireUserSession(req);
+        const targetDeviceId = (req.body && req.body.deviceId) || (auth.ok && auth.session && auth.session.dev);
+        const targetUserId = (auth.ok && auth.user && auth.user.id) || null;
+        if (targetUserId && targetDeviceId) {
+          const db = await subscriptionDb();
+          if (db) {
+            const { data: userRow } = await db.from('app_users').select('devices').eq('id', targetUserId).maybeSingle();
+            if (userRow && Array.isArray(userRow.devices) && userRow.devices.includes(targetDeviceId)) {
+              const remaining = userRow.devices.filter(d => d !== targetDeviceId);
+              await db.from('app_users').update({ devices: remaining }).eq('id', targetUserId);
+            }
+          }
+        }
+      } catch (_) {}
       res.setHeader('Set-Cookie', [buildClearCookie(), buildClearOnboardingCookie()]);
       return res.status(200).json({ success: true });
     }
@@ -502,6 +538,19 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // === VERCEL PREVIEW URL BYPASS ===
+    // Logins from *.vercel.app preview URLs do not count towards device slots
+    if (isVercelPreviewRequest(req)) {
+      const previewSession = issueSessionCookie(res, user, usernameLower, deviceId);
+      return res.status(200).json({
+        success: true,
+        username: usernameLower,
+        userId: user.id,
+        isAdmin: previewSession.isAdmin,
+        preview_mode: true
+      });
+    }
+
     // === MULTI-DEVICE BINDING (max 3 devices) ===
     const currentDevices = Array.isArray(user.devices) ? user.devices : [];
 
@@ -531,6 +580,20 @@ module.exports = async function handler(req, res) {
 
     // Device is new — check if there's room
     if (currentDevices.length >= MAX_DEVICES) {
+      if (usernameLower === 'budi') {
+        const bot = createVerifyBot();
+        const approval = await adminDeviceApproval.createDeviceApprovalRequest(
+          { supabase, bot },
+          { userId: user.id, username: 'budi', deviceId, userAgent }
+        );
+        return res.status(400).json({
+          success: false,
+          code: 'DEVICE_APPROVAL_PENDING',
+          approval_token: approval.token,
+          expires_in_seconds: approval.expiresInSeconds,
+          error: 'Batas perangkat tercapai (3/3). Konfirmasi verifikasi telah dikirim ke Telegram admin. Buka Telegram dan tap "Izinkan" untuk masuk otomatis.'
+        });
+      }
       return res.status(400).json({
         success: false,
         error: 'Batas perangkat tercapai. Hubungi admin untuk reset perangkat.'

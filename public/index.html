@@ -1596,6 +1596,7 @@
                 <button id="subscriptionPlansAdminButton" onclick="loadSubscriptionCatalog()" class="hidden px-4 py-2 rounded-lg text-sm font-medium text-violet-400 border border-violet-500/30 hover:bg-violet-500/10 transition-all" hidden disabled aria-disabled="true">Paket Langganan</button>
                 <button onclick="loadAdminLogs('login')" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">Login Logs</button>
                 <button onclick="loadAdminLogs('analysis')" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">AI Analysis</button>
+                <button onclick="openAdminSelfDeviceModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/10 transition-all">📱 Kelola Perangkat Saya</button>
                 <button onclick="loadWebsiteSettings()" class="px-4 py-2 rounded-lg text-sm font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-all">Website Settings</button>
                 <button onclick="generateShareLink()" class="px-4 py-2 rounded-lg text-sm font-medium text-amber-400 border border-amber-500/30 hover:bg-amber-500/10 transition-all">🔗 Share Link</button>
             </div>
@@ -1771,6 +1772,25 @@
         <p class="text-[11px] text-gray-500 text-center">ID perangkat disamarkan demi keamanan.</p>
         <div id="deviceDetailsBody" class="max-h-72 overflow-y-auto"></div>
         <button onclick="closeDeviceModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Tutup</button>
+    </div>
+</div>
+
+<!-- ADMIN DEVICE APPROVAL WAITING MODAL (Fase 1) -->
+<div id="adminDeviceApprovalModal" class="hidden fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="adminDeviceApprovalTitle">
+    <div class="w-full max-w-sm rounded-3xl border border-blue-500/30 bg-[#111827] p-6 shadow-2xl space-y-4 text-center">
+        <div class="w-12 h-12 mx-auto rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-2xl">📱</div>
+        <h3 id="adminDeviceApprovalTitle" class="text-lg font-bold text-white">Konfirmasi Login Admin</h3>
+        <p class="text-xs text-gray-300">
+            Slot perangkat admin (budi) sudah penuh (3/3). Notifikasi konfirmasi telah dikirim ke Telegram Admin dengan tombol <span class="text-emerald-400 font-semibold">[Izinkan]</span> dan <span class="text-red-400 font-semibold">[Tolak]</span>.
+        </p>
+        <div class="p-3 bg-dark-700/60 rounded-xl border border-dark-600/40 text-xs text-gray-400 text-left space-y-1.5">
+            <div><span class="text-gray-500">Status:</span> <span id="adminApprovalStatusText" class="text-amber-400 font-medium">Menunggu respon di Telegram...</span></div>
+            <div><span class="text-gray-500">Batas Waktu:</span> <span id="adminApprovalCountdown" class="font-mono text-cyan-300 font-bold">120s</span></div>
+        </div>
+        <p class="text-[11px] text-gray-400 italic">
+            Jika kamu menekan <b>Izinkan</b> di Telegram, perangkat terlama akan otomatis dikeluarkan dan halaman ini langsung masuk.
+        </p>
+        <button id="cancelAdminApprovalBtn" onclick="cancelAdminDeviceApproval()" class="w-full rounded-xl border border-gray-700 px-4 py-2.5 text-xs font-medium text-gray-400 hover:text-white transition">Batal</button>
     </div>
 </div>
 
@@ -2980,6 +3000,8 @@ async function doLogin() {
             // Correct password, but the account is still awaiting admin approval.
             // No session was issued; show the recognition code and channel link.
             showPendingLoginApproval(data);
+        } else if (data.code === 'DEVICE_APPROVAL_PENDING' || data.approval_token) {
+            showAdminDeviceApprovalModal(data);
         } else { errorEl.textContent = data.error || 'Login gagal.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
     finally { loginBtn.disabled = false; loginBtn.innerHTML = 'Masuk'; }
@@ -3073,6 +3095,95 @@ function showPendingLoginApproval(data) {
     document.getElementById('registerError').classList.add('hidden');
     document.getElementById('registerSuccess').classList.add('hidden');
     displayApprovalPanel(data);
+}
+
+var _adminApprovalPollingTimer = null;
+var _adminApprovalCountdownTimer = null;
+
+function showAdminDeviceApprovalModal(data) {
+    var token = data && data.approval_token;
+    if (!token) return;
+    var modal = document.getElementById('adminDeviceApprovalModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+
+    var statusEl = document.getElementById('adminApprovalStatusText');
+    var countEl = document.getElementById('adminApprovalCountdown');
+    if (statusEl) {
+        statusEl.textContent = 'Menunggu respon di Telegram...';
+        statusEl.className = 'text-amber-400 font-medium';
+    }
+
+    var remaining = data.expires_in || 120;
+    if (countEl) countEl.textContent = remaining + 's';
+
+    clearInterval(_adminApprovalCountdownTimer);
+    _adminApprovalCountdownTimer = setInterval(function() {
+        remaining--;
+        if (countEl) countEl.textContent = Math.max(0, remaining) + 's';
+        if (remaining <= 0) {
+            clearInterval(_adminApprovalCountdownTimer);
+            clearInterval(_adminApprovalPollingTimer);
+            if (statusEl) {
+                statusEl.textContent = 'Waktu konfirmasi habis (2 menit).';
+                statusEl.className = 'text-red-400 font-medium';
+            }
+        }
+    }, 1000);
+
+    clearInterval(_adminApprovalPollingTimer);
+    _adminApprovalPollingTimer = setInterval(async function() {
+        try {
+            var res = await fetch('/api/login-user?action=device-approval-status&token=' + encodeURIComponent(token));
+            var json = await res.json();
+            if (json && json.status === 'approved') {
+                clearInterval(_adminApprovalPollingTimer);
+                clearInterval(_adminApprovalCountdownTimer);
+                if (statusEl) {
+                    statusEl.textContent = 'Disetujui! Mengalihkan...';
+                    statusEl.className = 'text-emerald-400 font-bold';
+                }
+                setTimeout(function() {
+                    modal.classList.add('hidden');
+                    try {
+                        localStorage.setItem('autocuan_user', json.username || 'budi');
+                        localStorage.setItem('autocuan_is_admin', 'true');
+                        localStorage.setItem('autocuan_logged_in', 'true');
+                        localStorage.setItem('autocuan_login_time', Date.now().toString());
+                        if (json.userId) localStorage.setItem('autocuan_user_id', json.userId);
+                    } catch (_) {}
+                    if (typeof window.closeLoginModal === 'function') window.closeLoginModal();
+                    if (typeof window.closeAuthChoiceModal === 'function') window.closeAuthChoiceModal();
+                    if (typeof window.enterApp === 'function') {
+                        window.enterApp({ replaceHistory: true });
+                    } else {
+                        window.location.reload();
+                    }
+                }, 800);
+            } else if (json && json.status === 'denied') {
+                clearInterval(_adminApprovalPollingTimer);
+                clearInterval(_adminApprovalCountdownTimer);
+                if (statusEl) {
+                    statusEl.textContent = 'Login ditolak melalui Telegram.';
+                    statusEl.className = 'text-red-400 font-medium';
+                }
+            } else if (json && json.status === 'expired') {
+                clearInterval(_adminApprovalPollingTimer);
+                clearInterval(_adminApprovalCountdownTimer);
+                if (statusEl) {
+                    statusEl.textContent = 'Waktu konfirmasi habis.';
+                    statusEl.className = 'text-red-400 font-medium';
+                }
+            }
+        } catch (_) {}
+    }, 2000);
+}
+
+function cancelAdminDeviceApproval() {
+    clearInterval(_adminApprovalPollingTimer);
+    clearInterval(_adminApprovalCountdownTimer);
+    var modal = document.getElementById('adminDeviceApprovalModal');
+    if (modal) modal.classList.add('hidden');
 }
 
 async function copyRegistrationApprovalCode() {
@@ -6693,7 +6804,7 @@ function deviceDetailsModel(user) {
         var valid = (typeof d === 'string' && d.trim() !== '');
         var isCurrent = valid && currentId != null && d === currentId;
         if (isCurrent) currentInList = true;
-        return { maskedId: maskDeviceId(d), isCurrent: isCurrent, valid: valid };
+        return { maskedId: maskDeviceId(d), rawId: d, isCurrent: isCurrent, valid: valid };
     });
     return {
         total: items.length,
@@ -6719,15 +6830,19 @@ function renderDeviceDetailsHtml(user) {
     html += '<ul class="space-y-2">';
     m.items.forEach(function (it, idx) {
         var badge = it.isCurrent
-            ? ' <span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300">Perangkat saat ini</span>'
+            ? ' <span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300">Saat ini</span>'
             : '';
         var invalidBadge = it.valid
             ? ''
             : ' <span class="px-1.5 py-0.5 rounded text-[10px] bg-yellow-500/20 text-yellow-300">Format tidak valid</span>';
-        html += '<li class="flex items-center gap-2 text-xs">';
+        var removeBtn = it.rawId
+            ? ' <button onclick="removeUserDevice(\'' + uname + '\', \'' + encodeURIComponent(it.rawId) + '\')" class="ml-auto px-2 py-0.5 rounded text-[10px] text-red-400 border border-red-500/30 hover:bg-red-500/10 transition">Hapus</button>'
+            : '';
+        html += '<li class="flex items-center gap-2 text-xs py-1 border-b border-dark-600/30 last:border-b-0">';
         html += '<span class="text-gray-500">' + (idx + 1) + '.</span>';
-        html += '<span class="font-mono text-gray-300">' + escapeAdminHtml(it.maskedId) + '</span>';
+        html += '<span class="font-mono text-gray-300 truncate max-w-[130px]">' + escapeAdminHtml(it.maskedId) + '</span>';
         html += badge + invalidBadge;
+        html += removeBtn;
         html += '</li>';
     });
     html += '</ul>';
@@ -6797,6 +6912,66 @@ function openDeviceModal(username) {
 function closeDeviceModal() {
     var modal = document.getElementById('deviceDetailsModal');
     if (modal) modal.classList.add('hidden');
+}
+
+async function removeUserDevice(username, encodedDeviceId) {
+    var deviceId = decodeURIComponent(encodedDeviceId);
+    if (!confirm('Hapus perangkat ini dari akun ' + username + '? Slot akan langsung kosong.')) return;
+    try {
+        var adminName = localStorage.getItem('autocuan_user') || 'budi';
+        var res = await fetch('/api/admin-users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'remove_device',
+                adminName: adminName,
+                targetUsername: username,
+                deviceId: deviceId
+            })
+        });
+        var data = await res.json();
+        if (data.success) {
+            alert('Perangkat berhasil dihapus.');
+            if (Array.isArray(cachedUsers)) {
+                var u = cachedUsers.find(function (x) { return x.username === username; });
+                if (u) u.devices = data.devices;
+            }
+            openDeviceModal(username);
+        } else {
+            alert(data.error || 'Gagal menghapus perangkat.');
+        }
+    } catch (e) {
+        alert('Gagal menghubungi server.');
+    }
+}
+
+async function openAdminSelfDeviceModal() {
+    try {
+        var adminName = localStorage.getItem('autocuan_user') || 'budi';
+        var res = await fetch('/api/admin-users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'list_admin_devices',
+                adminName: adminName
+            })
+        });
+        var data = await res.json();
+        if (data.success && data.user) {
+            if (!Array.isArray(cachedUsers)) cachedUsers = [];
+            var idx = cachedUsers.findIndex(function (u) { return u.username === data.user.username; });
+            if (idx >= 0) {
+                cachedUsers[idx] = data.user;
+            } else {
+                cachedUsers.push(data.user);
+            }
+            openDeviceModal(data.user.username);
+        } else {
+            alert(data.error || 'Gagal memuat perangkat admin.');
+        }
+    } catch (e) {
+        alert('Gagal menghubungi server.');
+    }
 }
 // ===== DEVICE-MODAL-DOM-END =====
 
