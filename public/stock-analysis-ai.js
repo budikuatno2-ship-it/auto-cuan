@@ -408,6 +408,9 @@
       title.id = title.id || 'rankingCardTitle';
       title.style.fontSize = '15px';
       title.style.letterSpacing = '-0.01em';
+      if (!byId('marketContextSessionBadge')) {
+        title.insertAdjacentHTML('afterend', '<span id="marketContextSessionBadge" class="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-dark-700/60 border border-dark-600/40 text-gray-400 align-middle"></span>');
+      }
     }
     if (desc) {
       desc.textContent = 'Klik judul kolom untuk urut terbesar ↔ terkecil. Foreign Terakhir, 3D, dan 7D memakai data upload terbaru.';

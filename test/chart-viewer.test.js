@@ -337,7 +337,12 @@ test('the Chart page and Pattern both open the same viewer', () => {
   const html = read('public/index.html');
   const patternStable = read('public/pattern-stable-runtime.js');
   assert.match(html, /function openChartPageFullscreen\(\)/);
-  assert.match(html, /openChartViewer\(\{/);
+  // openChartPageFullscreen() resolves openChartViewer defensively (falling back to
+  // window.AutoCuanChartViewer.open if the global isn't wired up yet) rather than
+  // calling it as a bare literal, so this checks for that resolution plus the
+  // actual invocation with the shared config shape.
+  assert.match(html, /typeof openChartViewer === 'function'\)\s*\?\s*openChartViewer/);
+  assert.match(html, /viewer\(\{/);
   assert.match(html, /id="' \+ chartId \+ '_fs"/);
   assert.match(patternStable, /root\.openChartViewer\(\{/);
   assert.match(patternStable, /data-ps-zoom/);

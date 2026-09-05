@@ -17,13 +17,13 @@ test('PR 4: 2-column sticky classes (sticky-col-1 and sticky-col-2) are defined 
 });
 
 test('PR 4: Day Trade table has sticky # and Ticker headers and row cells', () => {
-  assert.match(html, /<tr class="scr-cols-22 bg-dark-700\/70">\s*<th[^>]*sticky-col-1[^>]*>#<\/th>\s*<th[^>]*sticky-col-2[^>]*>Ticker<\/th>/);
+  assert.match(html, /<tr class="scr-cols-22 bg-dark-700\/80">\s*<th[^>]*sticky-col-1[^>]*>#<\/th>\s*<th[^>]*sticky-col-2[^>]*>Ticker<\/th>/);
   assert.match(dtRuntime, /sticky-col-1 sticky left-0/);
   assert.match(dtRuntime, /sticky-col-2 sticky left-\[36px\]/);
 });
 
 test('PR 4: Non-Konglo table has sticky # and Ticker headers and row cells', () => {
-  assert.match(html, /<tr class="scr-cols-18 bg-dark-700\/70">\s*<th[^>]*sticky-col-1[^>]*>#<\/th>\s*<th[^>]*sticky-col-2[^>]*>Ticker<\/th>/);
+  assert.match(html, /<tr class="scr-cols-18 bg-dark-700\/80">\s*<th[^>]*sticky-col-1[^>]*>#<\/th>\s*<th[^>]*sticky-col-2[^>]*>Ticker<\/th>/);
   assert.match(html, /sticky-col-1 sticky left-0[^>]*>\'\s*\+\s*\(r\.rank/);
   assert.match(html, /sticky-col-2 sticky left-\[36px\][^>]*>\'\s*\+\s*r\.ticker/);
 });
