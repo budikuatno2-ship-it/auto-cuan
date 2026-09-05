@@ -1889,7 +1889,7 @@
         </div>
         <div class="space-y-3 text-xs">
             <p class="text-gray-300 leading-relaxed">
-                Fitur Analisis Chart AI berjalan dengan model <strong>Google Gemini 3 Flash</strong> menggunakan API key pribadi Anda (Bring Your Own Key).
+                Fitur Analisis Chart AI berjalan dengan model <strong>Google Gemini 3.8 Flash</strong> menggunakan API key pribadi Anda (Bring Your Own Key).
             </p>
             <div class="p-3 rounded-xl bg-[#0b0e14] border border-gray-800 space-y-2">
                 <div class="font-semibold text-gray-200">Cara Mendapatkan API Key Gratis:</div>
@@ -3525,7 +3525,32 @@ function showDashboard() {
     loadDashboardTop5Monitor(true, { loadAdminPreview: false });
     scheduleTop5HistoryLoad();
     startDashboardMonitorAutoRefresh();
+    checkInitialUrlTargetPage();
 }
+
+function checkInitialUrlTargetPage() {
+    try {
+        var hash = (window.location.hash || '').replace(/^#/, '').toLowerCase();
+        var params = new URLSearchParams(window.location.search);
+        var pageParam = (params.get('page') || '').toLowerCase();
+        var target = pageParam || hash;
+        if (target === 'news') {
+            var t = (params.get('ticker') || '').toUpperCase() || 'BBCA';
+            navigateTo('news');
+            if (typeof loadStockNewsPage === 'function') {
+                var inp = document.getElementById('newsTickerInput');
+                if (inp) inp.value = t;
+                loadStockNewsPage(t);
+            }
+            return true;
+        } else if (target && target !== 'dashboard' && document.getElementById('page-' + target)) {
+            navigateTo(target);
+            return true;
+        }
+    } catch (_) {}
+    return false;
+}
+window.addEventListener('hashchange', checkInitialUrlTargetPage);
 
 // ===== PAGE NAVIGATION =====
 var currentPage = 'dashboard';
