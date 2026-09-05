@@ -98,3 +98,8 @@ data/intraday-fast-watcher-state/
 data/intraday-fast-watcher-events/
 .vercel
 .env*
+
+.env*
+
+data/arjum-data/
+arjum-data/

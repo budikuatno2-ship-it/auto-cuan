@@ -94,6 +94,10 @@
                 <span class="text-base">📈</span>
                 <span>Chart &amp; AI Vision</span>
             </button>
+            <button id="tabBandarmologi" type="button" class="analisis-tab" data-tab="bandarmologi" onclick="switchAnalisisTab('bandarmologi')">
+                <span class="text-base">🏛️</span>
+                <span>Bandarmologi &amp; Insider</span>
+            </button>
             <button id="tabRankingHarian" type="button" class="analisis-tab" data-tab="ranking" onclick="switchAnalisisTab('ranking')">
                 <span class="text-base">🏆</span>
                 <span>Ranking Harian</span>
@@ -278,6 +282,23 @@
             </div>
         </section>
 
+        <!-- SUB-TAB: BANDARMOLOGI & INSIDER -->
+        <section id="panel-tab-bandarmologi" class="analisis-tab-panel" style="display:none">
+            <div class="unified-card p-4 sm:p-5">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-dark-600/40">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                        <h2 class="text-sm font-bold text-gray-100">Analisis Bandarmologi &amp; Kepemilikan Insider</h2>
+                        <span id="bandarActiveTickerTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-600/60 text-emerald-300 border border-emerald-500/20">BBCA</span>
+                    </div>
+                    <div class="text-[11px] text-gray-400">
+                        Sumber data: <span class="font-mono text-gray-300">stock.arjum.com</span>
+                    </div>
+                </div>
+                <div id="bandarmologiContent"></div>
+            </div>
+        </section>
+
         <!-- SUB-TAB 4: PATTERN RADAR (Admin budi only) -->
         <section id="panel-tab-pattern" class="analisis-tab-panel" style="display:none">
             <div id="patternSubTabContainer" class="space-y-4">
@@ -331,6 +352,7 @@
     <script src="/unified-cockpit-runtime.js?v=20260905-v1"></script>
     <script src="/ai-chat-renderer.js?v=20260905-v2"></script>
     <script src="/analisis-saham-runtime.js?v=20260905-v1"></script>
+    <script src="/bandarmologi-runtime.js?v=20260906-v1"></script>
     <script src="/stock-analysis-ai.js?v=20260905-v2"></script>
 </body>
 </html>
