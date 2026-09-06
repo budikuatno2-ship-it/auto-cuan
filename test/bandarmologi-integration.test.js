@@ -48,6 +48,13 @@ test('arjumClient: extractQuotaHeaders picks up a rate-limit-style header opport
 // Root cause: broker_limit/level_limit were never sent to Arjum, so its
 // endpoint fell back to a small default instead of the 20/25 the UI expects.
 test('arjumClient: fetchBrokerSummary always sends explicit broker_limit and level_limit', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'arjum-cache-broker-limit-'));
+  const origEnv = process.env.ARJUM_DATA_DIR;
+  process.env.ARJUM_DATA_DIR = tmpBase; // fetchArjum records quota usage to disk on every real call — never let a test write into the real repo data dir.
+
   const origFetch = global.fetch;
   let capturedUrl = '';
   global.fetch = async (url) => {
@@ -65,6 +72,43 @@ test('arjumClient: fetchBrokerSummary always sends explicit broker_limit and lev
     assert.match(capturedUrl, /level_limit=60/);
   } finally {
     global.fetch = origFetch;
+    if (origEnv !== undefined) process.env.ARJUM_DATA_DIR = origEnv;
+    else delete process.env.ARJUM_DATA_DIR;
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+  }
+});
+
+// Regression: backfill/daily-update reserve-quota math is worthless if the
+// underlying HTTP client never actually records usage anywhere durable.
+test('arjumClient: every real fetchArjum call (2xx or not) increments the persistent quota tracker exactly once', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'arjum-cache-tracker-wiring-'));
+  const origEnv = process.env.ARJUM_DATA_DIR;
+  process.env.ARJUM_DATA_DIR = tmpBase;
+
+  const quotaTracker = require('../lib/arjum-quota-tracker');
+  const origFetch = global.fetch;
+  let respondOk = true;
+  global.fetch = async () => respondOk
+    ? { ok: true, headers: { get: () => null }, json: async () => ({ success: true }) }
+    : { ok: false, status: 429, headers: { get: () => null }, json: async () => ({}) };
+
+  try {
+    assert.equal(arjumClient.getUsedQuotaToday(), 0);
+    await arjumClient.fetchBrokerSummary('BBCA');
+    assert.equal(arjumClient.getUsedQuotaToday(), 1, 'a successful response must count against quota');
+
+    respondOk = false;
+    await arjumClient.fetchBrokerSummary('BBCA');
+    assert.equal(arjumClient.getUsedQuotaToday(), 2, 'a rejected-but-answered request (e.g. 429) still reached Arjum and must also count');
+  } finally {
+    global.fetch = origFetch;
+    if (origEnv !== undefined) process.env.ARJUM_DATA_DIR = origEnv;
+    else delete process.env.ARJUM_DATA_DIR;
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+    delete require.cache[require.resolve('../lib/arjum-quota-tracker')];
   }
 });
 
@@ -75,6 +119,13 @@ test('arjumClient: fetchBrokerSummary always sends explicit broker_limit and lev
 // Arjum's own unfiltered total. "All" must stay a single pass-through call
 // with no flow param, deferring entirely to Arjum's own combined response.
 test('arjumClient: fetchBrokerSummary sends no flow param for "all" or an unrecognized value (never locally summed)', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'arjum-cache-flow-all-url-'));
+  const origEnv = process.env.ARJUM_DATA_DIR;
+  process.env.ARJUM_DATA_DIR = tmpBase; // fetchArjum records quota usage to disk on every real call — never let a test write into the real repo data dir.
+
   const origFetch = global.fetch;
   let capturedUrl = '';
   global.fetch = async (url) => { capturedUrl = url; return { ok: true, json: async () => ({ success: true }) }; };
@@ -91,6 +142,9 @@ test('arjumClient: fetchBrokerSummary sends no flow param for "all" or an unreco
     assert.match(capturedUrl, /flow=F/, 'sanity check: F must still be sent explicitly');
   } finally {
     global.fetch = origFetch;
+    if (origEnv !== undefined) process.env.ARJUM_DATA_DIR = origEnv;
+    else delete process.env.ARJUM_DATA_DIR;
+    fs.rmSync(tmpBase, { recursive: true, force: true });
   }
 });
 

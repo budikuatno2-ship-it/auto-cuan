@@ -118,6 +118,7 @@ async function run(argv) {
   console.log(`Target Date (WIB): ${dateArg}`);
   console.log(`Total Tickers: ${tickers.length}`);
   console.log(`Mode: ${dryRun ? 'DRY-RUN' : 'LIVE'}${isFinal ? ' (FINAL ATTEMPT for tonight)' : ''}`);
+  console.log(`Daily Quota: ${dailyLimit} | Already used today (cross-process, all scripts): ${arjumClient.getUsedQuotaToday()}`);
   console.log('----------------------------------------------------');
 
   // Mandatory per project spec: skip entirely on a non-trading day (weekend
@@ -169,7 +170,7 @@ async function run(argv) {
   }
 
   for (let i = 0; i < tickers.length; i++) {
-    if (quotaReached || totalRequested >= dailyLimit) break;
+    if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
     const ticker = tickers[i];
 
     // 1. Broker Summary for TODAY — the critical, evening-gated data.
@@ -201,7 +202,7 @@ async function run(argv) {
       await sleep(delayMs);
     }
 
-    if (quotaReached || totalRequested >= dailyLimit) break;
+    if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
 
     // 2. Broker Accumulation — always refreshed (Arjum's own trend endpoint
     // is expected to append today's point once published).
@@ -218,7 +219,7 @@ async function run(argv) {
       totalRequested++;
     }
 
-    if (quotaReached || totalRequested >= dailyLimit) break;
+    if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
 
     // 3. Insiders — cheap check for new transactions; not every ticker has
     // one every day, so an empty result is normal, not an error.
@@ -241,7 +242,8 @@ async function run(argv) {
 
   console.log('\n----------------------------------------------------');
   console.log('=== RINGKASAN DAILY BROKER UPDATE ===');
-  console.log(`Total Permintaan Terkirim:     ${totalRequested}`);
+  console.log(`Total Permintaan Terkirim (run ini): ${totalRequested}`);
+  console.log(`Total Terpakai Hari Ini (lintas-proses): ${arjumClient.getUsedQuotaToday()} / ${dailyLimit}`);
   console.log(`Broker Summary Selesai:        ${doneCount}/${tickers.length}`);
   console.log(`Belum Terbit (Pending Arjum):  ${pendingCount}`);
   console.log(`Error / Gagal:                 ${errorCount}`);
