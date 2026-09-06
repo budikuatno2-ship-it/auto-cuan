@@ -152,6 +152,23 @@ async function run() {
   let totalSkipped = 0;
   let totalErrors = 0;
   let quotaReached = false;
+  let stopReason = ''; // 'daily_limit' | 'api_quota_exceeded'
+
+  // A single 429/quota response from Arjum means the account's real quota is
+  // gone for the day — further requests just fail the same way and waste
+  // time. Stop immediately instead of grinding through every remaining
+  // ticker/date racking up errors.
+  function checkApiQuota(res) {
+    if (res.ok) return false;
+    const classified = arjumClient.classifyFailure(res);
+    if (classified.reason === 'quota_exceeded') {
+      quotaReached = true;
+      stopReason = 'api_quota_exceeded';
+      console.log(`\n[BERHENTI: KUOTA API HABIS] Arjum menolak request dengan status kuota (${classified.detail || 'quota exceeded'}). Worker berhenti rapi, tidak retry.`);
+      return true;
+    }
+    return false;
+  }
 
   for (let i = 0; i < tickers.length; i++) {
     if (quotaReached) break;
@@ -168,8 +185,9 @@ async function run() {
       totalRequested++;
     } else {
       if (totalRequested >= dailyLimit) {
-        console.log(`\n[KUOTA TERCAPAI] Batas limit harian tercapai (${dailyLimit} request). Worker berhenti.`);
+        console.log(`\n[BERHENTI: BATAS HARIAN] Batas limit harian tercapai (${dailyLimit} request). Worker berhenti.`);
         quotaReached = true;
+        stopReason = 'daily_limit';
         break;
       }
       totalRequested++;
@@ -179,6 +197,7 @@ async function run() {
         totalSaved++;
       } else {
         totalErrors++;
+        if (checkApiQuota(res)) break;
       }
       await sleep(delayMs);
     }
@@ -194,8 +213,9 @@ async function run() {
       totalRequested++;
     } else {
       if (totalRequested >= dailyLimit) {
-        console.log(`\n[KUOTA TERCAPAI] Batas limit harian tercapai (${dailyLimit} request). Worker berhenti.`);
+        console.log(`\n[BERHENTI: BATAS HARIAN] Batas limit harian tercapai (${dailyLimit} request). Worker berhenti.`);
         quotaReached = true;
+        stopReason = 'daily_limit';
         break;
       }
       totalRequested++;
@@ -205,6 +225,7 @@ async function run() {
         totalSaved++;
       } else {
         totalErrors++;
+        if (checkApiQuota(res)) break;
       }
       await sleep(delayMs);
     }
@@ -221,8 +242,9 @@ async function run() {
         totalRequested++;
       } else {
         if (totalRequested >= dailyLimit) {
-          console.log(`\n[KUOTA TERCAPAI] Batas limit harian tercapai (${dailyLimit} request). Worker berhenti.`);
+          console.log(`\n[BERHENTI: BATAS HARIAN] Batas limit harian tercapai (${dailyLimit} request). Worker berhenti.`);
           quotaReached = true;
+          stopReason = 'daily_limit';
           break;
         }
         totalRequested++;
@@ -235,21 +257,31 @@ async function run() {
           totalSaved++;
         } else {
           totalErrors++;
+          if (checkApiQuota(res)) break;
         }
         await sleep(delayMs);
       }
     }
   }
 
+  const stopReasonLabel = {
+    daily_limit: 'BERHENTI: BATAS HARIAN TERCAPAI (--daily-limit)',
+    api_quota_exceeded: 'BERHENTI: KUOTA API ARJUM HABIS (bukan --daily-limit)',
+    '': 'SELESAI LENGKAP'
+  };
   console.log('\n----------------------------------------------------');
   console.log('=== RINGKASAN HASIL BACKFILL ===');
-  console.log(`Status Berhenti:               ${quotaReached ? 'TERHENTI (BATAS LIMIT TERCAPAI)' : 'SELESAI LENGKAP'}`);
+  console.log(`Status Berhenti:               ${stopReasonLabel[stopReason] || stopReasonLabel['']}`);
   console.log(`Batas Request Harian:          ${dailyLimit}`);
   console.log(`Total Permintaan Terkirim:     ${totalRequested}`);
   console.log(`Total File Tersimpan Baru:     ${totalSaved}`);
   console.log(`Total Terlewati (Sudah Ada):   ${totalSkipped}`);
   console.log(`Total Error / Gagal:           ${totalErrors}`);
   console.log('Proses worker selesai.');
+
+  // Distinct exit code for "quota exhausted" so a wrapping cron/scheduler can
+  // tell it apart from a clean finish or a real crash, without parsing logs.
+  if (stopReason === 'api_quota_exceeded') process.exitCode = 2;
 }
 
 run().catch(err => {
