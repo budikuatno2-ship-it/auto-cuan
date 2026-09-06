@@ -2491,7 +2491,11 @@ function handleAppRoute(opts) {
     opts = opts || {};
     var path = window.location.pathname || '/';
     if (path === '/dashboard' || path === '/dashboard/') {
-        if (isAutocuanLoggedIn()) enterApp({ replaceHistory: opts.duringInit });
+        // Berita & Katalis is a guest-accessible feature (same as Analisis Saham
+        // itself), so a deep link to it must not be blocked by the full-login
+        // gate that guards the rest of /dashboard.
+        var isNewsDeepLink = (new URLSearchParams(window.location.search).get('page') || '').toLowerCase() === 'news';
+        if (isAutocuanLoggedIn() || isNewsDeepLink) enterApp({ replaceHistory: opts.duringInit, allowGuest: isNewsDeepLink });
         else showLandingPage({ skipHistory: true, duringInit: opts.duringInit, promptAuth: true, promptMessage: 'Login atau daftar diperlukan untuk membuka /dashboard.' });
         return;
     }
