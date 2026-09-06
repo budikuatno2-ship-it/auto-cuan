@@ -81,7 +81,8 @@ test('describeAnalisisFailure reports each rejection class as itself', () => {
 
   const noSession = describeAnalisisFailure({ status: 401 }, { success: false, error: 'Sesi tidak valid.' }, null);
   assert.equal(noSession.retryable, false, 'an expired session cannot be fixed by retrying');
-  assert.match(noSession.text, /login lagi/i);
+  assert.equal(noSession.requiresAuth, true, 'a 401 means no free guest tier, not a stale session');
+  assert.match(noSession.text, /akun terdaftar|daftar|masuk/i);
 
   // The exact shape api/analyze.js:31-38 returns when premium is denied.
   const noPremium = describeAnalisisFailure(
@@ -143,6 +144,29 @@ test('describeAnalisisFailure matches the contract public/stock-analysis-ai.js a
   });
 });
 
+// public/index.html's page-analisis is unreachable in production — navigateTo
+// redirects '/analisis-saham' to the standalone page, which loads its own
+// copy of these two functions from analisis-saham-runtime.js. Both copies
+// must agree, so a fix applied to one isn't silently missing from the file
+// real traffic actually uses (this bit the 401/"login lagi" message once).
+test('describeAnalisisFailure/renderAnalisisFailure in analisis-saham-runtime.js (the file production actually serves) match the index.html contract for a guest 401', () => {
+  const runtimeSource = fs.readFileSync(path.join(ROOT, 'public', 'analisis-saham-runtime.js'), 'utf8');
+  const sandbox = { Number: Number };
+  vm.createContext(sandbox);
+  vm.runInContext(extractFunction(runtimeSource, 'function describeAnalisisFailure('), sandbox);
+  vm.runInContext(extractFunction(runtimeSource, 'function renderAnalisisFailure('), sandbox);
+
+  const noSession = sandbox.describeAnalisisFailure({ status: 401 }, {}, null);
+  assert.equal(noSession.retryable, false);
+  assert.equal(noSession.requiresAuth, true, 'a 401 means no free guest tier, not a stale session');
+  assert.match(noSession.text, /akun terdaftar|daftar|masuk/i);
+
+  const el = makeElement();
+  sandbox.renderAnalisisFailure(el, noSession);
+  assert.ok(!/bisa mencoba lagi/i.test(el.innerHTML), 'no free guest tier — retry cannot fix a 401');
+  assert.match(el.innerHTML, /href="\/dashboard"/, 'must offer a way to register/login');
+});
+
 // ---------------------------------------------------------------------------
 // 2. A server-supplied message is text, never markup.
 // ---------------------------------------------------------------------------
@@ -167,6 +191,13 @@ test('renderAnalisisFailure only invites a retry when retrying can work', () => 
   const transient = makeElement();
   renderAnalisisFailure(transient, describeAnalisisFailure({ status: 503 }, {}, null));
   assert.match(transient.innerHTML, /bisa mencoba lagi/i);
+
+  // A guest (401) must get a "Daftar / Masuk" CTA, not a pointless retry
+  // invitation — retrying without logging in fails the same way again.
+  const notLoggedIn = makeElement();
+  renderAnalisisFailure(notLoggedIn, describeAnalisisFailure({ status: 401 }, {}, null));
+  assert.ok(!/bisa mencoba lagi/i.test(notLoggedIn.innerHTML), 'no free guest tier — retry cannot fix a 401');
+  assert.match(notLoggedIn.innerHTML, /href="\/dashboard"/, 'must offer a way to register/login');
 });
 
 // ---------------------------------------------------------------------------

@@ -107,13 +107,15 @@
     root.insertAdjacentHTML('beforeend', '<div class="mt-3 flex gap-3 fade-in-up stock-ai-followup"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="' + shell + '">' + badge + renderAnswer(friendly(text)) + '</div></div>');
     scrollBottom();
   }
-  function appendNotice(text, retryable) {
+  function appendNotice(text, retryable, requiresAuth) {
     var root = getChatRoot(); if (!root) return;
     removeRetry();
-    var retryHtml = retryable
-      ? '<button type="button" id="stockAiRetry" class="mt-2 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-[11px] font-bold text-emerald-300">Coba lagi</button>'
-      : '';
-    root.insertAdjacentHTML('beforeend', '<div id="stockAiNotice" class="mt-3 stock-ai-followup"><div class="rounded-xl border border-amber-500/25 bg-amber-500/5 px-3.5 py-2.5"><p class="text-xs text-amber-200">' + escapeHtml(text) + '</p>' + retryHtml + '</div></div>');
+    var actionHtml = requiresAuth
+      ? '<a href="/dashboard" class="mt-2 inline-block px-3 py-1.5 rounded-lg bg-emerald-500 text-black text-[11px] font-bold">Daftar / Masuk</a>'
+      : (retryable
+        ? '<button type="button" id="stockAiRetry" class="mt-2 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-[11px] font-bold text-emerald-300">Coba lagi</button>'
+        : '');
+    root.insertAdjacentHTML('beforeend', '<div id="stockAiNotice" class="mt-3 stock-ai-followup"><div class="rounded-xl border border-amber-500/25 bg-amber-500/5 px-3.5 py-2.5"><p class="text-xs text-amber-200">' + escapeHtml(text) + '</p>' + actionHtml + '</div></div>');
     var button = byId('stockAiRetry');
     if (button) button.addEventListener('click', function (event) {
       event.preventDefault();
@@ -171,7 +173,9 @@
     var status = response ? response.status : 0;
     if (error && error.name === 'AbortError') return { retryable: true, text: 'Permintaan dihentikan karena terlalu lama. Coba lagi ya.' };
     if (!response) return { retryable: true, text: 'Koneksi ke server AI gagal. Cek jaringan lalu coba lagi.' };
-    if (status === 401) return { retryable: false, text: 'Sesi kamu sudah berakhir. Muat ulang halaman dan login lagi.' };
+    // No free guest tier for AI chat — a 401 here means "not logged in",
+    // never a stale session, so don't tell the user to just reload.
+    if (status === 401) return { retryable: false, requiresAuth: true, text: 'Fitur tanya-jawab AI khusus untuk akun terdaftar. Daftar atau masuk dulu (gratis) untuk lanjut.' };
     if (status === 403) return { retryable: false, text: (data && data.error) || 'Akses AI ditolak untuk akun ini.' };
     if (status === 402 || code === 'SUBSCRIPTION_REQUIRED') return { retryable: false, text: (data && data.error) || 'Subscription aktif diperlukan untuk menggunakan fitur ini.' };
     if (status === 429 || code === 'AI_RATE_LIMITED') {
@@ -321,7 +325,7 @@
       removeLoading();
       if (!response.ok || !data.success || !data.reply) {
         var failure = describeFailure(response, data, null);
-        appendNotice(failure.text, failure.retryable);
+        appendNotice(failure.text, failure.retryable, failure.requiresAuth);
         return;
       }
       // The provider outage is named before the local summary is shown, so the

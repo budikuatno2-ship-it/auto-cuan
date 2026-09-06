@@ -554,7 +554,9 @@
       return { fallback: true, status: 'Koneksi ke server gagal (' + (error ? error.message : 'NetworkError') + '). Ringkasan lokal ditampilkan.' };
     }
     if (status === 401) {
-      return { fallback: false, status: 'Sesi kamu sudah berakhir. Muat ulang halaman dan login lagi untuk memakai Asisten AI.' };
+      // No free guest tier for Asisten AI Portofolio — a 401 means "not
+      // logged in", not "your session expired", and retrying changes nothing.
+      return { fallback: false, requiresAuth: true, status: 'Asisten AI Portofolio khusus untuk akun terdaftar. Daftar atau masuk dulu (gratis) lewat menu Dashboard.' };
     }
     if (status === 403) {
       return { fallback: false, status: serverMsg || 'Akses Asisten AI ditolak untuk akun ini.' };
@@ -649,12 +651,12 @@
         var failure = classifyFailure(response, data, null);
         if (!failure.fallback) {
           setStatus(failure.status);
-          showRetry(true);
+          showRetry(!failure.requiresAuth);
           return;
         }
         addMessage('assistant', localFallback(text, contextNow()), { local: true });
         setStatus(failure.status);
-        showRetry(true);
+        showRetry(!failure.requiresAuth);
         return;
       }
       // A successful answer clears every trace of the previous failure.
