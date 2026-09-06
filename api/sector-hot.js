@@ -33,6 +33,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { requirePremiumEntitlement, requireNonBlockedUser } = require('../lib/subscription-auth');
 const { requireAuthenticatedSession } = require('../lib/admin-session');
+const landingShowcase = require('../lib/landing-showcase-service');
 const dtEngine = require('../lib/daytrade-screener-engine-v7');
 const daytradeExecutionRanking = require('../lib/daytrade-execution-ranking');
 const { summarizeDayTradeEntryDiscipline } = require('../lib/daytrade-entry-discipline-observability');
@@ -96,7 +97,8 @@ module.exports = async function handler(req, res) {
       'watchlist', 'watchlist-alert', 'bandarmologi',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
-      'create-screener-share-link', 'public-screener-share', 'refresh', 'debug-members'
+      'create-screener-share-link', 'public-screener-share', 'refresh', 'debug-members',
+      'landing-snapshot', 'landing-snapshot-refresh'
     ]);
     if (action !== null && !knownActions.has(action)) {
       return res.status(400).json({ success: false, error: 'Aksi tidak valid.' });
@@ -104,6 +106,8 @@ module.exports = async function handler(req, res) {
 
     // ===== PREMIUM READ ACCESS GATE (PHASE 6A.4) =====
     // Public HMAC share links and CRON_SECRET automation retain their own gates.
+    // landing-snapshot is intentionally public (no auth required) — it only serves
+    // pre-built, anonymised snapshot data.
     const premiumBrowserRead = action === null || action === 'screener' ||
       action === 'nk-screener-results' || action === 'daytrade-screener';
     if (premiumBrowserRead && !verifyCronSecret(req)) {
@@ -237,6 +241,42 @@ module.exports = async function handler(req, res) {
         members_latest: { row_count: membersRows.length, with_last_price: withLastPrice, with_change_pct: withChangePct, with_volume: withVolume, with_ratio: withRatio, error: dbMembers.error ? dbMembers.error.message : null, sample: membersRows.length > 0 ? membersRows[0] : null, field_names: membersRows.length > 0 ? Object.keys(membersRows[0]) : [] },
         conclusion: withLastPrice > 0 ? 'DB_HAS_DATA' : (membersRows.length > 0 ? 'ROWS_EXIST_BUT_NULL_FIELDS' : 'NO_ROWS_IN_DB')
       });
+    }
+
+    // === LANDING SHOWCASE: READ (public, no auth required) ===
+    // Returns a pre-built snapshot of review data for the landing page hero card.
+    // No live market data; only reads from kv_store (populated by landing-snapshot-refresh).
+    if (action === 'landing-snapshot') {
+      res.setHeader('Cache-Control', 'public, max-age=900, s-maxage=900'); // 15 min CDN cache
+      try {
+        const snap = await landingShowcase.getSnapshot(supabase);
+        return res.status(200).json({
+          success: true,
+          snapshot: snap.snapshot,
+          stale: snap.stale,
+          updated_at: snap.updated_at || null
+        });
+      } catch (e) {
+        return res.status(200).json({ success: false, snapshot: null, stale: true });
+      }
+    }
+
+    // === LANDING SHOWCASE: REFRESH (cron-protected — Bearer CRON_SECRET) ===
+    // Rebuilds the snapshot from existing DB data and saves to kv_store.
+    if (action === 'landing-snapshot-refresh') {
+      if (!verifyCronSecret(req)) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+      try {
+        const result = await landingShowcase.refreshSnapshot(supabase);
+        return res.status(200).json({
+          success: result.ok,
+          generated_at: result.snapshot ? result.snapshot.generated_at : null,
+          sectors_count: result.snapshot ? (result.snapshot.sectors || []).length : 0,
+          dt_signals_count: result.snapshot ? (result.snapshot.dt_signals || []).length : 0,
+          error: result.error || null
+        });
+      } catch (e) {
+        return res.status(500).json({ success: false, error: 'Landing snapshot refresh failed.' });
+      }
     }
 
     // === DETAIL MODE: single group + members (existing) ===

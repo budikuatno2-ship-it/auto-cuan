@@ -255,26 +255,27 @@
         <section class="landing-hero">
             <div class="landing-container landing-hero-grid grid grid-cols-2 gap-8 items-center">
                 <div class="landing-hero-copy">
-                    <div class="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300 mb-5">Preview UI · data contoh statis</div>
+                    <div class="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300 mb-5">IDX Stock Radar</div>
                     <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.02] tracking-tight landing-gradient-text">Pantau saham IDX dengan radar yang lebih rapi.</h1>
                     <p class="mt-5 text-base sm:text-lg text-gray-400 max-w-2xl leading-relaxed">Auto-Cuan membantu merapikan proses analisis saham: Day Trade Radar, Swing Konglo, Swing Non-Konglo, Sector Hot, Chart, dan Portofolio Manual — tetap dengan konfirmasi manual.</p>
                     <p class="mt-4 text-sm text-amber-200/90 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3">Bukan rekomendasi beli/jual. Data bisa terlambat. Konfirmasi manual wajib.</p>
                     <div class="mt-7 flex landing-mobile-wrap gap-3"><button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span></button><a href="#landingPreview" class="landing-btn">Lihat Preview</a><button type="button" onclick="openLoginModal()" class="landing-btn">Login</button></div>
                     <div class="landing-trust-rail" aria-label="Prinsip operasional Auto-Cuan">
                         <span class="landing-trust-item">Fokus pasar IDX</span>
-                        <span class="landing-trust-item">Keputusan & eksekusi manual</span>
+                        <span class="landing-trust-item">Keputusan &amp; eksekusi manual</span>
                         <span class="landing-trust-item">Freshness / stale warning</span>
                     </div>
                 </div>
-                <div class="landing-card p-4 sm:p-5" aria-label="Preview UI statis Auto-Cuan">
-                    <div class="flex items-center justify-between mb-4"><div><p class="text-xs text-emerald-300 font-black uppercase tracking-wide">Preview UI</p><h2 class="text-lg font-black text-white">Auto-Cuan Radar</h2></div><span class="landing-chip">Data contoh</span></div>
-                    <div class="mock-grid">
-                        <div class="mock-card"><div class="flex justify-between text-xs text-gray-500"><span>IDX/IHSG</span><span class="text-emerald-300">+0.42%</span></div><div class="mt-2 text-2xl font-black text-white">7,325</div><svg viewBox="0 0 240 82" class="w-full mt-3"><path d="M5 63 C35 45, 47 55, 72 34 S112 19, 135 31 S174 67, 205 25 S226 24, 236 14" fill="none" stroke="#34d399" stroke-width="4"/><path d="M5 63 C35 45, 47 55, 72 34 S112 19, 135 31 S174 67, 205 25 S226 24, 236 14 L236 82 L5 82 Z" fill="rgba(16,185,129,.12)"/></svg></div>
-                        <div class="mock-card"><p class="text-xs text-gray-500">Risk Label</p><div class="mt-3 inline-flex rounded-full bg-amber-500/10 border border-amber-500/20 px-3 py-1 text-xs font-bold text-amber-200">Medium Risk</div><div class="mt-4 space-y-2"><div class="mock-bar w-5/6"></div><div class="mock-bar w-2/3 opacity-60"></div></div></div>
-                        <div class="mock-card"><p class="text-xs text-gray-500 mb-3">Top Radar</p><div class="space-y-2 text-xs"><div class="flex justify-between"><b class="text-white">BBCA</b><span class="text-emerald-300">RR 2.1</span></div><div class="flex justify-between"><b class="text-white">ANTM</b><span class="text-blue-300">Watch</span></div><div class="flex justify-between"><b class="text-white">TLKM</b><span class="text-amber-200">Manual</span></div></div></div>
-                        <div class="mock-card"><p class="text-xs text-gray-500 mb-2">Entry / TP / SL</p><div class="grid grid-cols-3 gap-2 text-center text-[11px]"><div class="rounded-xl bg-slate-800/70 p-2"><span class="text-gray-500">Entry</span><b class="block text-white">5,100</b></div><div class="rounded-xl bg-emerald-500/10 p-2"><span class="text-gray-500">TP</span><b class="block text-emerald-300">5,450</b></div><div class="rounded-xl bg-red-500/10 p-2"><span class="text-gray-500">SL</span><b class="block text-red-300">4,950</b></div></div></div>
+                <div class="landing-card p-4 sm:p-5" aria-label="Showcase Auto-Cuan Radar">
+                    <div class="flex items-center justify-between mb-4"><div><p class="text-xs text-emerald-300 font-black uppercase tracking-wide">Live Radar</p><h2 class="text-lg font-black text-white">Auto-Cuan Radar</h2></div><span id="landingShowcaseChip" class="landing-chip" aria-live="polite">Memuat...</span></div>
+                    <div id="landingShowcaseBody" class="mock-grid">
+                        <!-- Rendered by loadLandingShowcase() — see script below -->
+                        <div class="mock-card"><div class="flex justify-between text-xs text-gray-500"><span>Sektor</span><span class="text-emerald-300">--</span></div><div class="mt-2 text-sm font-black text-white">Memuat data...</div></div>
+                        <div class="mock-card"><p class="text-xs text-gray-500">Sinyal DT</p><div class="mt-3 text-xs text-gray-500">--</div></div>
+                        <div class="mock-card"><p class="text-xs text-gray-500 mb-3">Radar</p><div class="space-y-2 text-xs text-gray-500">--</div></div>
+                        <div class="mock-card"><p class="text-xs text-gray-500 mb-2">Entry / TP / SL</p><div class="text-xs text-gray-500">--</div></div>
                     </div>
-                    <div class="mt-3 grid grid-cols-4 gap-2 text-[11px]"><div class="heat-cell">Energy</div><div class="heat-cell bg-blue-500/10 border-blue-500/20">Finance</div><div class="heat-cell bg-amber-500/10 border-amber-500/20">Consumer</div><div class="heat-cell bg-purple-500/10 border-purple-500/20">Tech</div></div>
+                    <div id="landingShowcaseSectors" class="mt-3 grid grid-cols-4 gap-2 text-[11px]"><div class="heat-cell">--</div><div class="heat-cell">--</div><div class="heat-cell">--</div><div class="heat-cell">--</div></div>
                 </div>
             </div>
         </section>
@@ -2436,6 +2437,119 @@ function isAutocuanLoggedIn() {
         return Boolean(window.__AUTOCUAN_AUTHENTICATED_SESSION__ && window.__AUTOCUAN_AUTHENTICATED_SESSION__.userId);
     }
 }
+// ===== LANDING SHOWCASE — fetch real review data snapshot =====
+// Loads a pre-built snapshot from /api/sector-hot?action=landing-snapshot (public, no auth).
+// On success, replaces the placeholder mock-card content with real sector + DT signal data.
+// On any failure (network, empty DB, etc.) — silently keeps the placeholder intact.
+var _landingShowcaseLoaded = false;
+function loadLandingShowcase() {
+    if (_landingShowcaseLoaded) return;
+    var chip = document.getElementById('landingShowcaseChip');
+    var body = document.getElementById('landingShowcaseBody');
+    var sectorsEl = document.getElementById('landingShowcaseSectors');
+    if (!body || !chip) return;
+
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timer = controller ? setTimeout(function() { controller.abort(); }, 5000) : null;
+
+    fetch('/api/sector-hot?action=landing-snapshot', {
+        method: 'GET',
+        signal: controller ? controller.signal : undefined,
+        cache: 'no-cache'
+    }).then(function(res) {
+        if (timer) clearTimeout(timer);
+        return res.json();
+    }).then(function(data) {
+        if (!data || !data.success || !data.snapshot) return; // keep placeholder
+
+        var snap = data.snapshot;
+        var sectors = Array.isArray(snap.sectors) ? snap.sectors : [];
+        var signals = Array.isArray(snap.dt_signals) ? snap.dt_signals : [];
+
+        // ── Chip: show freshness ──
+        if (chip) {
+            chip.textContent = data.stale ? 'Data tersedia' : 'Data terkini';
+            chip.className = 'landing-chip' + (data.stale ? '' : ' bg-emerald-500/10 border-emerald-500/30 text-emerald-300');
+        }
+
+        // ── Body: 4 mock-card ──
+        var html = '';
+
+        // Card 1: top sector
+        var topSector = sectors[0];
+        var secName = topSector ? escapeHtml(topSector.name || topSector.code || '--') : '--';
+        var secChg = topSector && topSector.avg_change_pct != null
+            ? (topSector.avg_change_pct >= 0 ? '+' : '') + topSector.avg_change_pct.toFixed(2) + '%'
+            : '--';
+        var secChgColor = topSector && topSector.avg_change_pct != null
+            ? (topSector.avg_change_pct >= 0 ? 'text-emerald-300' : 'text-red-300') : 'text-gray-500';
+        html += '<div class="mock-card"><div class="flex justify-between text-xs text-gray-500"><span>Sektor Aktif</span><span class="' + secChgColor + '">' + secChg + '</span></div>'
+            + '<div class="mt-2 text-sm font-black text-white">' + secName + '</div>';
+        // Score bar
+        if (topSector && topSector.score != null) {
+            var scoreW = Math.min(100, Math.round(topSector.score * 10)) + '%';
+            html += '<div class="mt-3 space-y-1.5"><div class="mock-bar" style="width:' + scoreW + '"></div><div class="mock-bar opacity-50" style="width:' + Math.round(parseInt(scoreW) * 0.7) + '%"></div></div>';
+        }
+        html += '</div>';
+
+        // Card 2: first DT signal type
+        var sig0 = signals[0];
+        var sig0Ticker = sig0 ? escapeHtml(sig0.ticker || '--') : '--';
+        var sig0Type = sig0 ? escapeHtml(sig0.signal_type || 'DT') : 'DT';
+        var sig0RR = sig0 && sig0.rr != null ? 'RR ' + Number(sig0.rr).toFixed(1) : '';
+        html += '<div class="mock-card"><p class="text-xs text-gray-500">Sinyal ' + sig0Type + '</p>'
+            + '<div class="mt-3 inline-flex rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-300">' + sig0Ticker + '</div>'
+            + (sig0RR ? '<div class="mt-2 text-xs text-gray-500">' + sig0RR + '</div>' : '')
+            + '<div class="mt-3 space-y-2"><div class="mock-bar w-5/6"></div><div class="mock-bar w-2/3 opacity-60"></div></div>'
+            + '</div>';
+
+        // Card 3: top 3 DT tickers (radar style)
+        var radarHtml = '<div class="space-y-2 text-xs">';
+        var colorMap = ['text-emerald-300', 'text-blue-300', 'text-amber-200'];
+        var labelMap = ['Entry', 'Watch', 'Radar'];
+        for (var i = 0; i < Math.min(3, signals.length); i++) {
+            radarHtml += '<div class="flex justify-between"><b class="text-white">' + escapeHtml(signals[i].ticker || '--') + '</b>'
+                + '<span class="' + colorMap[i] + '">' + labelMap[i] + '</span></div>';
+        }
+        // Fill blanks if < 3 signals
+        for (var j = signals.length; j < 3; j++) {
+            radarHtml += '<div class="flex justify-between"><b class="text-gray-600">--</b><span class="text-gray-600">--</span></div>';
+        }
+        radarHtml += '</div>';
+        html += '<div class="mock-card"><p class="text-xs text-gray-500 mb-3">Top Radar</p>' + radarHtml + '</div>';
+
+        // Card 4: entry/TP/SL from first signal
+        var entry = sig0 && sig0.entry != null ? Number(sig0.entry).toLocaleString('id-ID') : '--';
+        var tp = sig0 && sig0.tp != null ? Number(sig0.tp).toLocaleString('id-ID') : '--';
+        var sl = sig0 && sig0.sl != null ? Number(sig0.sl).toLocaleString('id-ID') : '--';
+        html += '<div class="mock-card"><p class="text-xs text-gray-500 mb-2">Entry / TP / SL</p>'
+            + '<div class="grid grid-cols-3 gap-2 text-center text-[11px]">'
+            + '<div class="rounded-xl bg-slate-800/70 p-2"><span class="text-gray-500">Entry</span><b class="block text-white">' + entry + '</b></div>'
+            + '<div class="rounded-xl bg-emerald-500/10 p-2"><span class="text-gray-500">TP</span><b class="block text-emerald-300">' + tp + '</b></div>'
+            + '<div class="rounded-xl bg-red-500/10 p-2"><span class="text-gray-500">SL</span><b class="block text-red-300">' + sl + '</b></div>'
+            + '</div></div>';
+
+        if (body) body.innerHTML = html;
+
+        // ── Sectors heat-cells ──
+        var heatColors = ['', 'bg-blue-500/10 border-blue-500/20', 'bg-amber-500/10 border-amber-500/20', 'bg-purple-500/10 border-purple-500/20'];
+        if (sectorsEl && sectors.length > 0) {
+            var cellHtml = '';
+            for (var k = 0; k < 4; k++) {
+                var s = sectors[k];
+                var name = s ? escapeHtml((s.name || s.code || '--').slice(0, 8)) : '--';
+                cellHtml += '<div class="heat-cell ' + (heatColors[k] || '') + '">' + name + '</div>';
+            }
+            sectorsEl.innerHTML = cellHtml;
+        }
+
+        _landingShowcaseLoaded = true;
+    }).catch(function() {
+        // Silently keep placeholder — never show error to user on landing page
+        if (timer) clearTimeout(timer);
+    });
+}
+
 function updateLandingCtas() {
     var isLoggedIn = isAutocuanLoggedIn();
     document.querySelectorAll('.landing-cta-label').forEach(function(el) { el.textContent = isLoggedIn ? 'Masuk Dashboard' : 'Mulai Sekarang'; });
@@ -11645,5 +11759,19 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/unified-cockpit-runtime.js?v=20260905-v1"></script>
 <script src="/position-sizing-calculator.js?v=20260906-e1"></script>
 <script src="/signal-gate-transparency.js?v=20260906-e3"></script>
+<script>
+// Kickoff landing showcase load as early as possible (non-blocking, fail-open).
+// Called here after all scripts are loaded so escapeHtml is available.
+(function() {
+    function tryLoad() {
+        if (typeof loadLandingShowcase === 'function') loadLandingShowcase();
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tryLoad);
+    } else {
+        tryLoad();
+    }
+})();
+</script>
 </body>
 </html>
