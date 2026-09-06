@@ -114,6 +114,63 @@ test('bandarmologiService: normalizeBrokerSummary handles full raw brokers array
   assert.equal(norm.net_buyers[0].nval, 139000);
   assert.equal(norm.net_sellers[0].broker, 'AK');
   assert.equal(norm.net_sellers[0].nval, -100000);
+  assert.equal(norm.net_flow, 39000); // 139000 (YU) + (-100000) (AK), summed once per broker
+});
+
+// Regression: normalizeBrokerSummary's "brokers" (unified per-broker) input
+// shape derives grossBuyers AND grossSellers from the SAME full broker set
+// (just re-sorted), unlike the other two input shapes where buy-side and
+// sell-side lists are genuinely disjoint. net_flow must be computed by
+// summing each broker's nval exactly once — never via a "total buyer net"
+// minus "total seller net" that both iterate that same full set, which
+// silently cancels a pure-accumulation or pure-distribution day to ~0.
+test('bandarmologiService: normalizeBrokerSummary net_flow is not neutralized for single-broker "brokers" shape', () => {
+  const pureBuyDay = {
+    stock_code: 'BBCA',
+    date: '2026-09-05',
+    brokers: [
+      { broker_code: 'YU', broker_name: 'CGS', bval: 100, sval: 0, bvol: 10, svol: 0, nval: 100, nvol: 10 }
+    ]
+  };
+  const normBuy = bandarmologiService.normalizeBrokerSummary(pureBuyDay, '2026-09-05');
+  assert.equal(normBuy.net_flow, 100, 'a single pure-buyer day must report its full net_flow, not cancel to 0');
+  assert.equal(normBuy.net_status, 'BIG_ACCUMULATION');
+
+  const pureSellDay = {
+    stock_code: 'BBCA',
+    date: '2026-09-06',
+    brokers: [
+      { broker_code: 'AK', broker_name: 'UBS', bval: 0, sval: 50, bvol: 0, svol: 5, nval: -50, nvol: -5 }
+    ]
+  };
+  const normSell = bandarmologiService.normalizeBrokerSummary(pureSellDay, '2026-09-06');
+  assert.equal(normSell.net_flow, -50, 'a single pure-seller day must report its full negative net_flow, not cancel to 0');
+  assert.equal(normSell.net_status, 'BIG_DISTRIBUTION');
+});
+
+// Same regression, exercised through the two OTHER input shapes to confirm
+// they were never affected (disjoint buy/sell lists, no aliasing).
+test('bandarmologiService: normalizeBrokerSummary net_flow is correct for broker_levels and top_buyers/top_sellers shapes', () => {
+  const levelsShape = {
+    stock_code: 'BBCA',
+    date: '2026-09-05',
+    broker_levels: [
+      { buy: { broker_code: 'YU', broker_name: 'CGS', bval: 100, bvol: 10 }, sell: { broker_code: 'AK', broker_name: 'UBS', sval: 40, svol: 4 } }
+    ]
+  };
+  const normLevels = bandarmologiService.normalizeBrokerSummary(levelsShape, '2026-09-05');
+  assert.equal(normLevels.net_flow, 60); // 100 (buy) - 40 (sell)
+  assert.equal(normLevels.net_status, 'BIG_ACCUMULATION');
+
+  const arraysShape = {
+    stock_code: 'BBCA',
+    date: '2026-09-05',
+    top_buyers: [{ broker: 'YU', bval: 100, sval: 0, bvol: 10, svol: 0 }],
+    top_sellers: [{ broker: 'AK', bval: 0, sval: 40, bvol: 0, svol: 4 }]
+  };
+  const normArrays = bandarmologiService.normalizeBrokerSummary(arraysShape, '2026-09-05');
+  assert.equal(normArrays.net_flow, 60); // 100 (buy) - 40 (sell)
+  assert.equal(normArrays.net_status, 'BIG_ACCUMULATION');
 });
 
 // Regression: header badge (net_label/net_status) must track the actual net
