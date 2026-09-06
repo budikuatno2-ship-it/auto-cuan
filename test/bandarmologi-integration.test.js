@@ -17,6 +17,30 @@ test('arjumClient: hasArjumApiKey checks environment variable safely without lea
   assert.equal(typeof isConfigured, 'boolean');
 });
 
+// Regression: the Broker Summary UI only ever showed 5 buyers/5 sellers.
+// Root cause: broker_limit/level_limit were never sent to Arjum, so its
+// endpoint fell back to a small default instead of the 20/25 the UI expects.
+test('arjumClient: fetchBrokerSummary always sends explicit broker_limit and level_limit', async () => {
+  const origFetch = global.fetch;
+  let capturedUrl = '';
+  global.fetch = async (url) => {
+    capturedUrl = url;
+    return { ok: true, json: async () => ({ success: true }) };
+  };
+  try {
+    await arjumClient.fetchBrokerSummary('BBCA');
+    assert.match(capturedUrl, /broker_limit=20/, 'must default broker_limit to 20, not rely on Arjum\'s own smaller default');
+    assert.match(capturedUrl, /level_limit=25/);
+
+    capturedUrl = '';
+    await arjumClient.fetchBrokerSummary('BBCA', null, null, { brokerLimit: 50, levelLimit: 60 });
+    assert.match(capturedUrl, /broker_limit=50/, 'must honor an explicit override');
+    assert.match(capturedUrl, /level_limit=60/);
+  } finally {
+    global.fetch = origFetch;
+  }
+});
+
 test('bandarmologiService: generateDemoData produces complete structure for UI', () => {
   const data = bandarmologiService.generateDemoData('BBCA', '2026-09-04');
   assert.equal(data.ticker, 'BBCA');
