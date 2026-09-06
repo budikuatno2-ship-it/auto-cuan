@@ -80,7 +80,7 @@
     if (document.querySelector('link[data-autocuan-account-center-css]')) return;
     var link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = '/account-center-v1.css?v=20260816-v1';
+    link.href = '/account-center-v1.css?v=20260906-v2';
     link.setAttribute('data-autocuan-account-center-css', '1');
     document.head.appendChild(link);
   }
@@ -214,7 +214,7 @@
     panel.innerHTML = [
       '<div class="ac-center-grid">',
       '<section class="ac-card ac-card-accent">',
-      '<div class="ac-profile-hero"><div><p class="ac-section-kicker">Identitas akun</p><p class="ac-big-name">' + esc(p.username) + '</p><p class="ac-muted">ID akun disembunyikan dari tampilan; identitas diverifikasi dari sesi server.</p></div>' + chip(p.is_approved, 'Approved', 'Pending') + '</div>',
+      '<div class="ac-profile-hero"><div><p class="ac-section-kicker">Identitas akun</p><p class="ac-big-name">' + esc(p.username) + (p.verified_badge ? ' <span class="ac-badge-verified" title="Akun terverifikasi">&#10003; Terverifikasi</span>' : '') + '</p><p class="ac-muted">ID akun disembunyikan dari tampilan; identitas diverifikasi dari sesi server.</p></div>' + chip(p.is_approved, 'Approved', 'Pending') + '</div>',
       '<dl class="ac-facts">',
       fact('Username', esc(p.username)),
       fact('Status akun', chip(p.is_approved, 'Terverifikasi admin', 'Menunggu approval')),
