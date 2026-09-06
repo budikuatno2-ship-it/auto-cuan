@@ -8113,7 +8113,8 @@ async function handleBandarmologi(req, res) {
   try {
     var ticker = (req.query && req.query.ticker) || 'BBCA';
     var date = (req.query && req.query.date) || '';
-    var result = await bandarmologiService.getBandarmologiData(ticker, { date: date });
+    var range = (req.query && (req.query.range || req.query.days)) || '1d';
+    var result = await bandarmologiService.getBandarmologiData(ticker, { date: date, range: range });
     return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });

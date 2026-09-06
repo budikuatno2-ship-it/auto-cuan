@@ -159,7 +159,9 @@ async function run() {
     console.log(`\n[${i + 1}/${tickers.length}] Memproses ${ticker}...`);
 
     // 1. Broker Accumulation (1 call per ticker)
-    const accCached = bandarmologiService.readDiskCache('broker-accumulation', ticker, 'series');
+    const accCached = typeof bandarmologiService.hasDiskCache === 'function'
+      ? bandarmologiService.hasDiskCache('broker-accumulation', ticker, 'series')
+      : bandarmologiService.readDiskCache('broker-accumulation', ticker, 'series');
     if (accCached) {
       totalSkipped++;
     } else if (dryRun) {
@@ -183,7 +185,9 @@ async function run() {
 
     // 2. Insiders (1 call per ticker)
     if (quotaReached) break;
-    const insCached = bandarmologiService.readDiskCache('insiders', ticker, 'p1');
+    const insCached = typeof bandarmologiService.hasDiskCache === 'function'
+      ? bandarmologiService.hasDiskCache('insiders', ticker, 'p1')
+      : bandarmologiService.readDiskCache('insiders', ticker, 'p1');
     if (insCached) {
       totalSkipped++;
     } else if (dryRun) {
@@ -208,7 +212,9 @@ async function run() {
     // 3. Broker Summary (per trading date)
     for (const date of tradingDates) {
       if (quotaReached) break;
-      const sumCached = bandarmologiService.readDiskCache('broker-summary', ticker, date);
+      const sumCached = typeof bandarmologiService.hasDiskCache === 'function'
+        ? bandarmologiService.hasDiskCache('broker-summary', ticker, date)
+        : bandarmologiService.readDiskCache('broker-summary', ticker, date);
       if (sumCached) {
         totalSkipped++;
       } else if (dryRun) {

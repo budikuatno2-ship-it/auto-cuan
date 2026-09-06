@@ -144,3 +144,103 @@ test('bandarmologiService: normalizeBrokerAccumulation builds daily series per d
   assert.equal(norm.series[1].date, '2026-09-04');
   assert.equal(norm.series[1].net_val, 10000000);
 });
+
+test('bandarmologiService: readDiskCache does NOT fallback to other dates when specific date identifier is missing', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'arjum-cache-test-'));
+  const testDir = path.join(tmpBase, 'broker-summary', 'TEST_TICKER');
+  fs.mkdirSync(testDir, { recursive: true });
+
+  // Save only 2026-08-03.json
+  const fileData = { date: '2026-08-03', stock_code: 'TEST_TICKER', net_status: 'ACC' };
+  fs.writeFileSync(path.join(testDir, '2026-08-03.json'), JSON.stringify(fileData));
+
+  const origEnv = process.env.ARJUM_DATA_DIR;
+  process.env.ARJUM_DATA_DIR = tmpBase;
+
+  try {
+    // 1. Exact existing date returns exact file
+    const exact = bandarmologiService.readDiskCache('broker-summary', 'TEST_TICKER', '2026-08-03');
+    assert.ok(exact, '2026-08-03 must exist');
+    assert.equal(exact.date, '2026-08-03');
+    assert.equal(bandarmologiService.hasDiskCache('broker-summary', 'TEST_TICKER', '2026-08-03'), true);
+
+    // 2. Unsaved date MUST return null, NOT 2026-08-03
+    const missing = bandarmologiService.readDiskCache('broker-summary', 'TEST_TICKER', '2026-08-04');
+    assert.equal(missing, null, 'readDiskCache must return null for missing date, never return other dates as false fallback');
+    assert.equal(bandarmologiService.hasDiskCache('broker-summary', 'TEST_TICKER', '2026-08-04'), false);
+
+    // 3. Requesting 'latest' or omitting identifier falls back to newest available file
+    const latest = bandarmologiService.readDiskCache('broker-summary', 'TEST_TICKER', 'latest');
+    assert.ok(latest, 'latest can fall back to newest file');
+    assert.equal(latest.date, '2026-08-03');
+    assert.equal(bandarmologiService.hasDiskCache('broker-summary', 'TEST_TICKER', 'latest'), true);
+  } finally {
+    if (origEnv !== undefined) {
+      process.env.ARJUM_DATA_DIR = origEnv;
+    } else {
+      delete process.env.ARJUM_DATA_DIR;
+    }
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+  }
+});
+
+test('bandarmologiService: aggregateBrokerSummaries sums transaction metrics across multiple dates', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'arjum-agg-test-'));
+  const testDir = path.join(tmpBase, 'broker-summary', 'TEST_AGGR');
+  fs.mkdirSync(testDir, { recursive: true });
+
+  // Day 1
+  const day1 = {
+    date: '2026-08-01',
+    stock_code: 'TEST_AGGR',
+    gross_buyers: [{ broker: 'YP', broker_name: 'Mirae', bval: 100, sval: 20, bvol: 10, svol: 2, bfrq: 5, sfrq: 1 }],
+    gross_sellers: [{ broker: 'CC', broker_name: 'Mandiri', bval: 10, sval: 80, bvol: 1, svol: 8, bfrq: 1, sfrq: 4 }],
+    net_flow: 50
+  };
+  // Day 2
+  const day2 = {
+    date: '2026-08-02',
+    stock_code: 'TEST_AGGR',
+    gross_buyers: [{ broker: 'YP', broker_name: 'Mirae', bval: 150, sval: 30, bvol: 15, svol: 3, bfrq: 6, sfrq: 2 }],
+    gross_sellers: [{ broker: 'CC', broker_name: 'Mandiri', bval: 20, sval: 120, bvol: 2, svol: 12, bfrq: 2, sfrq: 6 }],
+    net_flow: 70
+  };
+
+  fs.writeFileSync(path.join(testDir, '2026-08-01.json'), JSON.stringify(day1));
+  fs.writeFileSync(path.join(testDir, '2026-08-02.json'), JSON.stringify(day2));
+
+  const origEnv = process.env.ARJUM_DATA_DIR;
+  process.env.ARJUM_DATA_DIR = tmpBase;
+
+  try {
+    const agg = bandarmologiService.aggregateBrokerSummaries('TEST_AGGR', ['2026-08-02', '2026-08-01']);
+    assert.ok(agg, 'Aggregated result must exist');
+    assert.equal(agg.range_days, 2);
+    assert.equal(agg.net_flow, 120);
+
+    const yp = agg.gross_buyers.find(b => b.broker === 'YP');
+    assert.ok(yp, 'YP must be present in gross_buyers');
+    assert.equal(yp.bval, 250); // 100 + 150
+    assert.equal(yp.sval, 50);  // 20 + 30
+    assert.equal(yp.bvol, 25);  // 10 + 15
+    assert.equal(yp.svol, 5);   // 2 + 3
+    assert.equal(yp.bfrq, 11);  // 5 + 6
+    assert.equal(yp.sfrq, 3);   // 1 + 2
+    assert.equal(yp.nval, 200); // 250 - 50
+  } finally {
+    if (origEnv !== undefined) {
+      process.env.ARJUM_DATA_DIR = origEnv;
+    } else {
+      delete process.env.ARJUM_DATA_DIR;
+    }
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+  }
+});
