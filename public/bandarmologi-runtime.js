@@ -106,6 +106,7 @@
   var lastBandarData = null;
   var brokerSummaryMode = 'gross'; // 'gross' or 'net'
   var brokerSummaryView = 'bubble'; // 'bubble' (default) or 'table'
+  var brokerSummaryRange = '1d'; // '1d' (default), '7d', '30d'
   var selectedBrokerCode = '';
   var bubbleFilterSide = 'all'; // 'all', 'buy', 'sell'
   var lastBrokerItems = [];
@@ -345,6 +346,11 @@
     html += '      </div>';
     html += '    </div>';
     html += '    <div class="flex items-center gap-2">';
+    var rangeBadgeText = brokerSummaryRange === '30d' ? '30 Hari' : (brokerSummaryRange === '7d' ? '7 Hari' : '1 Hari');
+    if (lastBandarData && lastBandarData.broker_summary && lastBandarData.broker_summary.range_label) {
+      rangeBadgeText = lastBandarData.broker_summary.range_label;
+    }
+    html += '      <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md bg-dark-700 border border-dark-600/60 text-gray-300 font-mono">📅 ' + escapeHtml(rangeBadgeText) + '</span>';
     html += '      <span class="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md ' + tagColor + '">';
     html += '        ' + (isNetBuyer ? '🟢 Akumulasi' : '🔴 Distribusi');
     html += '      </span>';
@@ -590,11 +596,17 @@
     }
   }
 
-  async function loadBandarmologiTab(ticker, date) {
+  function setBrokerSummaryRange(range) {
+    brokerSummaryRange = range || '1d';
+    loadBandarmologiTab(currentBandarTicker, brokerSummaryRange === '1d' ? currentBandarDate : null, brokerSummaryRange);
+  }
+
+  async function loadBandarmologiTab(ticker, date, range) {
     var clean = String(ticker || currentBandarTicker || 'BBCA').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!clean) clean = 'BBCA';
     currentBandarTicker = clean;
-    if (date != null) currentBandarDate = date;
+    if (date !== undefined && date !== null) currentBandarDate = date;
+    if (range) brokerSummaryRange = range;
 
     var container = byId('bandarmologiContent');
     if (!container) return;
@@ -606,7 +618,9 @@
 
     try {
       var url = '/api/sector-hot?action=bandarmologi&ticker=' + encodeURIComponent(clean);
-      if (currentBandarDate) {
+      if (brokerSummaryRange && brokerSummaryRange !== '1d') {
+        url += '&range=' + encodeURIComponent(brokerSummaryRange);
+      } else if (currentBandarDate) {
         url += '&date=' + encodeURIComponent(currentBandarDate);
       }
       var res = await fetch(url);
@@ -686,9 +700,21 @@
 
     html += '<div class="mb-5">';
     html += '  <div class="flex flex-wrap items-center justify-between gap-2.5 mb-3">';
-    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📊</span> Broker Summary Detail — Tanggal: <span class="text-emerald-400 font-mono">' + escapeHtml(bSum.date || 'Terbaru') + '</span></h3>';
+    var summaryHeadingDate = bSum.range_label || (bSum.date ? 'Tanggal: ' + bSum.date : (currentBandarDate ? 'Tanggal: ' + currentBandarDate : 'Terbaru'));
+    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📊</span> Broker Summary Detail — <span class="text-emerald-400 font-mono">' + escapeHtml(summaryHeadingDate) + '</span></h3>';
 
     html += '    <div class="flex flex-wrap items-center gap-2">';
+    // Rentang Selector (1 Hari, 7 Hari, 30 Hari)
+    var r1Class = brokerSummaryRange === '1d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var r7Class = brokerSummaryRange === '7d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var r30Class = brokerSummaryRange === '30d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
+    html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Rentang:</span>';
+    html += '        <button type="button" id="toggleRange1d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'1d\')" class="px-2.5 py-1 rounded-md transition ' + r1Class + '">1 Hari</button>';
+    html += '        <button type="button" id="toggleRange7d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'7d\')" class="px-2.5 py-1 rounded-md transition ' + r7Class + '">7 Hari</button>';
+    html += '        <button type="button" id="toggleRange30d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'30d\')" class="px-2.5 py-1 rounded-md transition ' + r30Class + '">30 Hari</button>';
+    html += '      </div>';
+
     // View Switcher (Bubble View vs Tabel Rinci)
     html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
     html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Tampilan:</span>';
@@ -1026,6 +1052,8 @@
     getBrokerSummaryMode: function () { return brokerSummaryMode; },
     setBrokerSummaryView: setBrokerSummaryView,
     getBrokerSummaryView: function () { return brokerSummaryView; },
+    setBrokerSummaryRange: setBrokerSummaryRange,
+    getBrokerSummaryRange: function () { return brokerSummaryRange; },
     selectBrokerBubble: selectBrokerBubble,
     setBubbleFilterSide: setBubbleFilterSide,
     getBubbleFilterSide: function () { return bubbleFilterSide; },
@@ -1046,7 +1074,8 @@
       renderBrokerBubbleClusterHtml: renderBrokerBubbleClusterHtml,
       renderBrokerDetailCardHtml: renderBrokerDetailCardHtml,
       setBrokerSummaryMode: setBrokerSummaryMode,
-      setBrokerSummaryView: setBrokerSummaryView
+      setBrokerSummaryView: setBrokerSummaryView,
+      setBrokerSummaryRange: setBrokerSummaryRange
     };
   }
 
