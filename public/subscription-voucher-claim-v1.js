@@ -25,12 +25,23 @@
       notify('Browser tidak mendukung aktivasi voucher aman.','error');
       return;
     }
+    var termsCheckbox = document.getElementById('acVoucherTerms');
+    if (termsCheckbox && !termsCheckbox.checked) {
+      notify('Centang persetujuan kebijakan aktivasi voucher sebelum melanjutkan.','warning');
+      return;
+    }
     if (button) button.disabled = true;
     try {
       var response = await fetch('/api/subscription-voucher', {
         method:'POST', credentials:'same-origin', cache:'no-store',
         headers:{ 'Content-Type':'application/json', 'Cache-Control':'no-cache' },
-        body:JSON.stringify({ voucher_code:code, idempotency_key:window.crypto.randomUUID() })
+        body:JSON.stringify({
+          voucher_code:code,
+          idempotency_key:window.crypto.randomUUID(),
+          termsAccepted:true,
+          paymentTermsAccepted:true,
+          termsVersion:'2026-08-16-v1'
+        })
       });
       var data = await response.json().catch(function () { return {}; });
       if (!response.ok || data.success !== true) {

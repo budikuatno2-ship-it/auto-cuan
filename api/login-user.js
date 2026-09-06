@@ -13,6 +13,7 @@ const { createVerifyBot } = require('../lib/telegram-verify-bot');
 const securityGuard = require('../lib/security-guard');
 const passwordCredential = require('../lib/password-credential');
 const adminDeviceApproval = require('../lib/admin-device-approval');
+const accountTerms = require('../lib/account-terms');
 
 const MAX_DEVICES = 3;
 
@@ -177,9 +178,16 @@ async function handleSubscriptionAction(req, res, action) {
   }
   if(action==='voucher-quote'||action==='voucher-redeem') {
     if(!isSameOrigin(req)) return res.status(403).json({success:false,error:'Permintaan ditolak.'});
+    if(action==='voucher-redeem') {
+      const termsCheck = accountTerms.paymentAcceptance(req.body);
+      if(!termsCheck.ok) return res.status(400).json({success:false,error:'Anda wajib menyetujui ketentuan aktivasi voucher.'});
+    }
     let hash; try { hash=vouchers.voucherCodeHash(req.body&&req.body.voucher_code); } catch (_) { return res.status(400).json({success:false,error:'Voucher tidak valid.'}); }
     const result=await db.rpc(action==='voucher-quote'?'quote_subscription_voucher':'redeem_subscription_voucher',{p_user_id:account.id,p_voucher_code_hash:hash,p_redemption_idempotency_key:action==='voucher-redeem'?req.body&&req.body.idempotency_key:null});
     if(result.error||!result.data) return res.status(409).json({success:false,error:'Voucher tidak dapat digunakan.'});
+    if(action==='voucher-redeem') {
+      await accountTerms.recordTermsAcceptance(db, account.id, 'voucher');
+    }
     return res.status(200).json({success:true,voucher:result.data});
   }
   return res.status(400).json({success:false,error:'Aksi tidak valid.'});

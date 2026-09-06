@@ -145,10 +145,21 @@
   }
 
   async function redeemDirectVoucher(planCode, voucherCode, button) {
+    var termsCb = document.getElementById('acPayDirectTerms');
+    if (!termsCb || !termsCb.checked) {
+      notify('Centang persetujuan kebijakan aktivasi voucher sebelum melanjutkan.','warning');
+      return;
+    }
     var key = randomUuid();
     if (!key) { notify('Browser tidak mendukung aktivasi voucher aman.','error'); return; }
     if (button) button.disabled = true;
-    var result = await requestVoucher({ voucher_code:voucherCode, idempotency_key:key }, 10000);
+    var result = await requestVoucher({
+      voucher_code:voucherCode,
+      idempotency_key:key,
+      termsAccepted:true,
+      paymentTermsAccepted:true,
+      termsVersion:'2026-08-16-v1'
+    }, 10000);
     if (button) button.disabled = false;
     if (!result.ok || !result.data.success) {
       notify(result.data.error || 'Voucher belum dapat diaktifkan.','error');
@@ -173,6 +184,7 @@
       '<div class="ac-pay-row"><span>Total</span><strong style="color:#6ee7b7;font-size:18px">Rp0</strong></div>',
       '</div>',
       '<div class="ac-pay-status">✅ Voucher ini memberikan aktivasi langsung. <b>Tidak perlu transfer</b> dan tidak perlu konfirmasi pembayaran admin.</div>',
+      '<label style="display:flex;gap:8px;align-items:flex-start;margin:12px 0;font-size:11px;color:#cbd5e1;cursor:pointer"><input type="checkbox" id="acPayDirectTerms" style="margin-top:2px;accent-color:#10b981"><span>Saya menyetujui kebijakan pembayaran, aktivasi voucher, dan ketentuan subscription Auto-Cuan.</span></label>',
       '<div class="ac-pay-actions"><button type="button" id="acPayDirectVoucher" class="ac-pay-btn primary">Aktifkan voucher</button></div>'
     ].join('');
     var activate = document.getElementById('acPayDirectVoucher');
@@ -237,6 +249,7 @@
       '<label class="ac-pay-label" for="acPayNote">Catatan transfer (opsional)</label>',
       '<input id="acPayNote" class="ac-pay-input" maxlength="500" placeholder="Contoh: transfer dari BCA / jam transfer">',
       '<div class="ac-pay-status">Transfer sesuai <b>total transfer</b> di atas. Subscription belum aktif sampai admin memeriksa transfer dan menekan konfirmasi.</div>',
+      '<label style="display:flex;gap:8px;align-items:flex-start;margin:12px 0;font-size:11px;color:#cbd5e1;cursor:pointer"><input type="checkbox" id="acPayTerms" style="margin-top:2px;accent-color:#10b981"><span>Saya menyetujui kebijakan pembayaran/refund transfer manual dan ketentuan subscription Auto-Cuan.</span></label>',
       '<div class="ac-pay-actions"><button type="button" id="acPaySubmitted" class="ac-pay-btn primary">Saya sudah transfer</button></div>'
     ].join('');
 
@@ -250,12 +263,25 @@
 
     var submit = document.getElementById('acPaySubmitted');
     if (submit) submit.addEventListener('click', async function () {
+      var termsCb = document.getElementById('acPayTerms');
+      if (!termsCb || !termsCb.checked) {
+        notify('Centang persetujuan kebijakan pembayaran sebelum mengirim konfirmasi transfer.','warning');
+        return;
+      }
       var senderName = (document.getElementById('acPaySender') || {}).value || '';
       var note = (document.getElementById('acPayNote') || {}).value || '';
       senderName = senderName.trim();
       if (senderName.length < 2) { notify('Isi nama pemilik rekening pengirim.','warning'); return; }
       submit.disabled = true;
-      var result = await request({ action:'submit', payment_reference:payment.payment_reference, transfer_sender_name:senderName, transfer_note:note.trim() }, 10000);
+      var result = await request({
+        action:'submit',
+        payment_reference:payment.payment_reference,
+        transfer_sender_name:senderName,
+        transfer_note:note.trim(),
+        paymentTermsAccepted:true,
+        termsAccepted:true,
+        termsVersion:'2026-08-16-v1'
+      }, 10000);
       submit.disabled = false;
       if (!result.ok || !result.data.success) { notify(result.data.error || 'Konfirmasi transfer belum terkirim.','error'); return; }
       savePending(payment.payment_reference);
