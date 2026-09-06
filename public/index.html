@@ -8084,6 +8084,9 @@ function renderDtCardGrid(results, data) {
         var _riskReason = getRiskReasonOnly(r);
         if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
         if (notes) html += '<div style="font-size:10px;color:#9ca3af;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + escapeHtml(notes) + '</div>';
+        if (window.SignalGateTransparency && typeof window.SignalGateTransparency.renderCardButton === 'function') {
+            html += window.SignalGateTransparency.renderCardButton(r, 'daytrade');
+        }
         html += '<div style="font-size:9px;color:#4b5563;margin-top:6px;text-align:right">Klik untuk detail</div>';
         html += '</div>';
     }
@@ -8251,6 +8254,9 @@ function openScrDetail(r, type) {
     html += '</div></div>';
     if (window.PositionSizing && typeof window.PositionSizing.renderDetailSection === 'function') {
         html += window.PositionSizing.renderDetailSection(r);
+    }
+    if (window.SignalGateTransparency && typeof window.SignalGateTransparency.renderDetailBox === 'function') {
+        html += window.SignalGateTransparency.renderDetailBox(r, type);
     }
     // Setup reasoning
     if (r.status_reason || r.notes) html += '<div style="font-size:11px;color:#d1d5db;line-height:1.55;margin-bottom:14px;word-break:break-word">' + escapeHtml(r.status_reason || r.notes || '-') + '</div>';
@@ -8430,6 +8436,9 @@ function renderKgCardGrid(results) {
         var _riskReason = getRiskReasonOnly(r);
         if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
         if (notes) html += '<div style="font-size:10px;color:#9ca3af;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + escapeHtml(notes) + '</div>';
+        if (window.SignalGateTransparency && typeof window.SignalGateTransparency.renderCardButton === 'function') {
+            html += window.SignalGateTransparency.renderCardButton(r, 'konglo');
+        }
         html += '<div style="font-size:9px;color:#4b5563;margin-top:6px;text-align:right">Klik untuk detail</div>';
         html += '</div>';
     }
@@ -8499,6 +8508,9 @@ function renderNkCardGrid(results) {
         var _riskReason = getRiskReasonOnly(r);
         if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
         if (notes) html += '<div style="font-size:10px;color:#9ca3af;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + escapeHtml(notes) + '</div>';
+        if (window.SignalGateTransparency && typeof window.SignalGateTransparency.renderCardButton === 'function') {
+            html += window.SignalGateTransparency.renderCardButton(r, 'nonkonglo');
+        }
         html += '<div style="font-size:9px;color:#4b5563;margin-top:6px;text-align:right">Klik untuk detail</div>';
         html += '</div>';
     }
@@ -8507,7 +8519,7 @@ function renderNkCardGrid(results) {
 
 // ===== CENTRALIZED EVENT DELEGATION MANAGER =====
 document.addEventListener('click', function(e) {
-    if (e.target.closest('.ac-pos-calc-box') || e.target.closest('.wl-star-btn') || e.target.closest('#posCalcModal')) {
+    if (e.target.closest('.ac-pos-calc-box') || e.target.closest('.ac-gate-card-trigger') || e.target.closest('.ac-gate-drawer') || e.target.closest('.wl-star-btn') || e.target.closest('#posCalcModal')) {
         return;
     }
     // 1. Screener card click delegation (Day Trade, Swing Konglo, Swing Non-Konglo)
@@ -10373,6 +10385,9 @@ function renderDashboardTop5(picks) {
         if (window.PositionSizing && typeof window.PositionSizing.renderCardWidget === 'function') {
             html += window.PositionSizing.renderCardWidget(r, { levels: { e1: r.entry1, e2: r.entry2, sl: r.stop_loss, t1: r.tp1, t2: r.tp2 } });
         }
+        if (window.SignalGateTransparency && typeof window.SignalGateTransparency.renderCardButton === 'function') {
+            html += window.SignalGateTransparency.renderCardButton(r, 'top5');
+        }
         html += '</div>';
 
         // Zone 3 — caveats and reference.
@@ -11593,5 +11608,6 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
 <script src="/unified-cockpit-runtime.js?v=20260905-v1"></script>
 <script src="/position-sizing-calculator.js?v=20260906-e1"></script>
+<script src="/signal-gate-transparency.js?v=20260906-e3"></script>
 </body>
 </html>
