@@ -17,6 +17,102 @@ test('arjumClient: hasArjumApiKey checks environment variable safely without lea
   assert.equal(typeof isConfigured, 'boolean');
 });
 
+test('arjumClient: getConfiguredDailyQuota reads ARJUM_DAILY_QUOTA env var, falls back to a sane default', () => {
+  const orig = process.env.ARJUM_DAILY_QUOTA;
+  try {
+    delete process.env.ARJUM_DAILY_QUOTA;
+    assert.equal(arjumClient.getConfiguredDailyQuota(), 16000, 'must fall back to the documented plan quota, not a stale small default');
+
+    process.env.ARJUM_DAILY_QUOTA = '25000';
+    assert.equal(arjumClient.getConfiguredDailyQuota(), 25000, 'must be overridable via env var without a code change');
+
+    process.env.ARJUM_DAILY_QUOTA = 'not-a-number';
+    assert.equal(arjumClient.getConfiguredDailyQuota(), 16000, 'must ignore a garbage env value rather than returning NaN');
+  } finally {
+    if (orig !== undefined) process.env.ARJUM_DAILY_QUOTA = orig;
+    else delete process.env.ARJUM_DAILY_QUOTA;
+  }
+});
+
+test('arjumClient: extractQuotaHeaders picks up a rate-limit-style header opportunistically', () => {
+  const headersWith = new Map([['x-ratelimit-remaining', '42'], ['x-ratelimit-limit', '16000']]);
+  const resultWith = arjumClient.extractQuotaHeaders({ get: (k) => headersWith.get(k) || null });
+  assert.deepEqual(resultWith, { remaining: 42, limit: 16000 });
+
+  const headersWithout = new Map();
+  const resultWithout = arjumClient.extractQuotaHeaders({ get: (k) => headersWithout.get(k) || null });
+  assert.equal(resultWithout, null, 'must return null (not throw or fabricate) when Arjum sends no quota headers');
+});
+
+// Regression: the Broker Summary UI only ever showed 5 buyers/5 sellers.
+// Root cause: broker_limit/level_limit were never sent to Arjum, so its
+// endpoint fell back to a small default instead of the 20/25 the UI expects.
+test('arjumClient: fetchBrokerSummary always sends explicit broker_limit and level_limit', async () => {
+  const origFetch = global.fetch;
+  let capturedUrl = '';
+  global.fetch = async (url) => {
+    capturedUrl = url;
+    return { ok: true, json: async () => ({ success: true }) };
+  };
+  try {
+    await arjumClient.fetchBrokerSummary('BBCA');
+    assert.match(capturedUrl, /broker_limit=20/, 'must default broker_limit to 20, not rely on Arjum\'s own smaller default');
+    assert.match(capturedUrl, /level_limit=25/);
+
+    capturedUrl = '';
+    await arjumClient.fetchBrokerSummary('BBCA', null, null, { brokerLimit: 50, levelLimit: 60 });
+    assert.match(capturedUrl, /broker_limit=50/, 'must honor an explicit override');
+    assert.match(capturedUrl, /level_limit=60/);
+  } finally {
+    global.fetch = origFetch;
+  }
+});
+
+// Regression: the demo-fallback badge used to say generic "DEMO PREVIEW"
+// regardless of why live data wasn't used, so a quota-exhausted API looked
+// identical to "no cache yet" or a real outage.
+test('arjumClient: classifyFailure distinguishes quota exhaustion from a generic API error', () => {
+  assert.equal(arjumClient.classifyFailure({ ok: false, status: 429, error: 'Too Many Requests' }).reason, 'quota_exceeded');
+  assert.equal(arjumClient.classifyFailure({ ok: false, status: 403, error: 'Daily quota exceeded' }).reason, 'quota_exceeded');
+  assert.equal(arjumClient.classifyFailure({ ok: false, status: 500, error: 'Internal Server Error' }).reason, 'api_error');
+  assert.equal(arjumClient.classifyFailure({ ok: false, status: 404, error: 'Not Found' }).reason, 'api_error');
+  assert.equal(arjumClient.classifyFailure(null).reason, 'unknown');
+});
+
+test('bandarmologiService: getBandarmologiData surfaces demo_reason=quota_exceeded instead of a silent generic fallback', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'arjum-cache-quota-'));
+  const origEnv = process.env.ARJUM_DATA_DIR;
+  process.env.ARJUM_DATA_DIR = tmpBase;
+
+  const origHasKey = arjumClient.hasArjumApiKey;
+  const origFetchSummary = arjumClient.fetchBrokerSummary;
+  const origFetchAcc = arjumClient.fetchBrokerAccumulation;
+  const origFetchIns = arjumClient.fetchInsiders;
+
+  arjumClient.hasArjumApiKey = () => true;
+  arjumClient.fetchBrokerSummary = async () => ({ ok: false, status: 429, error: 'Quota exceeded for today' });
+  arjumClient.fetchBrokerAccumulation = async () => ({ ok: false, status: 429, error: 'Quota exceeded for today' });
+  arjumClient.fetchInsiders = async () => ({ ok: false, status: 429, error: 'Quota exceeded for today' });
+
+  try {
+    const res = await bandarmologiService.getBandarmologiData('NOCACHE1', {});
+    assert.equal(res.success, true);
+    assert.equal(res.is_demo, true);
+    assert.equal(res.demo_reason, 'quota_exceeded');
+  } finally {
+    arjumClient.hasArjumApiKey = origHasKey;
+    arjumClient.fetchBrokerSummary = origFetchSummary;
+    arjumClient.fetchBrokerAccumulation = origFetchAcc;
+    arjumClient.fetchInsiders = origFetchIns;
+    if (origEnv !== undefined) process.env.ARJUM_DATA_DIR = origEnv;
+    else delete process.env.ARJUM_DATA_DIR;
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+  }
+});
+
 test('bandarmologiService: generateDemoData produces complete structure for UI', () => {
   const data = bandarmologiService.generateDemoData('BBCA', '2026-09-04');
   assert.equal(data.ticker, 'BBCA');
@@ -114,6 +210,101 @@ test('bandarmologiService: normalizeBrokerSummary handles full raw brokers array
   assert.equal(norm.net_buyers[0].nval, 139000);
   assert.equal(norm.net_sellers[0].broker, 'AK');
   assert.equal(norm.net_sellers[0].nval, -100000);
+  assert.equal(norm.net_flow, 39000); // 139000 (YU) + (-100000) (AK), summed once per broker
+});
+
+// Regression: normalizeBrokerSummary's "brokers" (unified per-broker) input
+// shape derives grossBuyers AND grossSellers from the SAME full broker set
+// (just re-sorted), unlike the other two input shapes where buy-side and
+// sell-side lists are genuinely disjoint. net_flow must be computed by
+// summing each broker's nval exactly once — never via a "total buyer net"
+// minus "total seller net" that both iterate that same full set, which
+// silently cancels a pure-accumulation or pure-distribution day to ~0.
+test('bandarmologiService: normalizeBrokerSummary net_flow is not neutralized for single-broker "brokers" shape', () => {
+  const pureBuyDay = {
+    stock_code: 'BBCA',
+    date: '2026-09-05',
+    brokers: [
+      { broker_code: 'YU', broker_name: 'CGS', bval: 100, sval: 0, bvol: 10, svol: 0, nval: 100, nvol: 10 }
+    ]
+  };
+  const normBuy = bandarmologiService.normalizeBrokerSummary(pureBuyDay, '2026-09-05');
+  assert.equal(normBuy.net_flow, 100, 'a single pure-buyer day must report its full net_flow, not cancel to 0');
+  assert.equal(normBuy.net_status, 'BIG_ACCUMULATION');
+
+  const pureSellDay = {
+    stock_code: 'BBCA',
+    date: '2026-09-06',
+    brokers: [
+      { broker_code: 'AK', broker_name: 'UBS', bval: 0, sval: 50, bvol: 0, svol: 5, nval: -50, nvol: -5 }
+    ]
+  };
+  const normSell = bandarmologiService.normalizeBrokerSummary(pureSellDay, '2026-09-06');
+  assert.equal(normSell.net_flow, -50, 'a single pure-seller day must report its full negative net_flow, not cancel to 0');
+  assert.equal(normSell.net_status, 'BIG_DISTRIBUTION');
+});
+
+// Same regression, exercised through the two OTHER input shapes to confirm
+// they were never affected (disjoint buy/sell lists, no aliasing).
+test('bandarmologiService: normalizeBrokerSummary net_flow is correct for broker_levels and top_buyers/top_sellers shapes', () => {
+  const levelsShape = {
+    stock_code: 'BBCA',
+    date: '2026-09-05',
+    broker_levels: [
+      { buy: { broker_code: 'YU', broker_name: 'CGS', bval: 100, bvol: 10 }, sell: { broker_code: 'AK', broker_name: 'UBS', sval: 40, svol: 4 } }
+    ]
+  };
+  const normLevels = bandarmologiService.normalizeBrokerSummary(levelsShape, '2026-09-05');
+  assert.equal(normLevels.net_flow, 60); // 100 (buy) - 40 (sell)
+  assert.equal(normLevels.net_status, 'BIG_ACCUMULATION');
+
+  const arraysShape = {
+    stock_code: 'BBCA',
+    date: '2026-09-05',
+    top_buyers: [{ broker: 'YU', bval: 100, sval: 0, bvol: 10, svol: 0 }],
+    top_sellers: [{ broker: 'AK', bval: 0, sval: 40, bvol: 0, svol: 4 }]
+  };
+  const normArrays = bandarmologiService.normalizeBrokerSummary(arraysShape, '2026-09-05');
+  assert.equal(normArrays.net_flow, 60); // 100 (buy) - 40 (sell)
+  assert.equal(normArrays.net_status, 'BIG_ACCUMULATION');
+});
+
+// Regression: header badge (net_label/net_status) must track the actual net
+// flow direction, not get overridden by which list (buyer/seller) an item
+// arrived in — the same class of bug fixed for the bubble visualization in
+// PR #550 (isBuyerList overriding explicitNetVal).
+test('bandarmologiService: normalizeBrokerSummary badge shows Big Distribution when sellers dominate', () => {
+  const rawSellHeavy = {
+    stock_code: 'BBCA',
+    date: '2026-09-04',
+    brokers: [
+      { broker_code: 'YU', broker_name: 'CGS', bval: 20000, sval: 15000, bvol: 300, svol: 200, nval: 5000, nvol: 100 },
+      { broker_code: 'AK', broker_name: 'UBS', bval: 10000, sval: 200000, bvol: 100, svol: 2500, nval: -190000, nvol: -2400 }
+    ]
+  };
+
+  const norm = bandarmologiService.normalizeBrokerSummary(rawSellHeavy, '2026-09-04');
+  assert.equal(norm.net_status, 'BIG_DISTRIBUTION');
+  assert.equal(norm.net_label, 'Big Distribution');
+  assert.ok(norm.net_flow < 0);
+});
+
+test('bandarmologiService: normalizeBrokerSummary badge respects explicit net_val even for pure seller items', () => {
+  // Seller-side items reported with only net_val (no explicit sval) must not
+  // have their sign flipped by an isBuyer-style override when computing the
+  // net flow direction feeding the badge.
+  const rawNetValOnly = {
+    stock_code: 'BBCA',
+    date: '2026-09-04',
+    brokers: [
+      { broker_code: 'YU', broker_name: 'CGS', net_val: 8000 },
+      { broker_code: 'AK', broker_name: 'UBS', net_val: -50000 }
+    ]
+  };
+
+  const norm = bandarmologiService.normalizeBrokerSummary(rawNetValOnly, '2026-09-04');
+  assert.equal(norm.net_status, 'BIG_DISTRIBUTION');
+  assert.equal(norm.net_label, 'Big Distribution');
 });
 
 test('bandarmologiService: normalizeBrokerAccumulation builds daily series per date', () => {
@@ -178,6 +369,128 @@ test('bandarmologiService: readDiskCache does NOT fallback to other dates when s
     assert.ok(latest, 'latest can fall back to newest file');
     assert.equal(latest.date, '2026-08-03');
     assert.equal(bandarmologiService.hasDiskCache('broker-summary', 'TEST_TICKER', 'latest'), true);
+  } finally {
+    if (origEnv !== undefined) {
+      process.env.ARJUM_DATA_DIR = origEnv;
+    } else {
+      delete process.env.ARJUM_DATA_DIR;
+    }
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+  }
+});
+
+test('bandarmologiService: getBandarmologiData(flow=F) fetches foreign-only data and reports foreign net buy', async () => {
+  const origHasKey = arjumClient.hasArjumApiKey;
+  const origFetchSummary = arjumClient.fetchBrokerSummary;
+  const origFetchAcc = arjumClient.fetchBrokerAccumulation;
+  const origFetchIns = arjumClient.fetchInsiders;
+
+  arjumClient.hasArjumApiKey = () => true;
+  arjumClient.fetchBrokerSummary = async (ticker, date, flow) => {
+    assert.equal(flow, 'F');
+    return {
+      ok: true,
+      data: {
+        stock_code: ticker,
+        date: '2026-09-05',
+        top_buyers: [{ broker: 'FRGN', broker_name: 'Foreign Desk', bval: 9000000, sval: 1000000, bvol: 900, svol: 100 }],
+        top_sellers: [{ broker: 'LOCL', broker_name: 'Local Desk', bval: 500000, sval: 500000, bvol: 50, svol: 50 }]
+      }
+    };
+  };
+  arjumClient.fetchBrokerAccumulation = async () => ({ ok: false });
+  arjumClient.fetchInsiders = async () => ({ ok: false });
+
+  try {
+    const res = await bandarmologiService.getBandarmologiData('BBCA', { flow: 'F' });
+    assert.equal(res.success, true);
+    assert.equal(res.flow, 'F');
+    assert.ok(res.broker_summary.net_flow > 0, 'foreign-buy-heavy summary must report positive net flow');
+    assert.equal(res.broker_summary.net_status, 'BIG_ACCUMULATION');
+  } finally {
+    arjumClient.hasArjumApiKey = origHasKey;
+    arjumClient.fetchBrokerSummary = origFetchSummary;
+    arjumClient.fetchBrokerAccumulation = origFetchAcc;
+    arjumClient.fetchInsiders = origFetchIns;
+  }
+});
+
+test('bandarmologiService: getBandarmologiData(flow=D) fetches domestic-only data and reports domestic net sell', async () => {
+  const origHasKey = arjumClient.hasArjumApiKey;
+  const origFetchSummary = arjumClient.fetchBrokerSummary;
+  const origFetchAcc = arjumClient.fetchBrokerAccumulation;
+  const origFetchIns = arjumClient.fetchInsiders;
+
+  arjumClient.hasArjumApiKey = () => true;
+  arjumClient.fetchBrokerSummary = async (ticker, date, flow) => {
+    assert.equal(flow, 'D');
+    return {
+      ok: true,
+      data: {
+        stock_code: ticker,
+        date: '2026-09-05',
+        top_buyers: [{ broker: 'LOCL', broker_name: 'Local Desk', bval: 500000, sval: 500000, bvol: 50, svol: 50 }],
+        top_sellers: [{ broker: 'DOM', broker_name: 'Domestic Desk', bval: 1000000, sval: 9000000, bvol: 100, svol: 900 }]
+      }
+    };
+  };
+  arjumClient.fetchBrokerAccumulation = async () => ({ ok: false });
+  arjumClient.fetchInsiders = async () => ({ ok: false });
+
+  try {
+    const res = await bandarmologiService.getBandarmologiData('BBCA', { flow: 'D' });
+    assert.equal(res.success, true);
+    assert.equal(res.flow, 'D');
+    assert.ok(res.broker_summary.net_flow < 0, 'domestic-sell-heavy summary must report negative net flow');
+    assert.equal(res.broker_summary.net_status, 'BIG_DISTRIBUTION');
+  } finally {
+    arjumClient.hasArjumApiKey = origHasKey;
+    arjumClient.fetchBrokerSummary = origFetchSummary;
+    arjumClient.fetchBrokerAccumulation = origFetchAcc;
+    arjumClient.fetchInsiders = origFetchIns;
+  }
+});
+
+test('bandarmologiService: getBandarmologiData with custom date range only aggregates dates inside the window', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'arjum-cache-custom-range-'));
+  const origEnv = process.env.ARJUM_DATA_DIR;
+  process.env.ARJUM_DATA_DIR = tmpBase;
+
+  try {
+    const ticker = 'CUSTOMR';
+    // top_buyers/top_sellers as separate lists (the real Arjum broker-summary
+    // shape) so each day's net_flow is unambiguous.
+    bandarmologiService.writeDiskCache('broker-summary', ticker, '2026-08-01', {
+      stock_code: ticker, date: '2026-08-01',
+      top_buyers: [{ broker: 'YU', broker_name: 'Test Buyer', bval: 100, sval: 0, bvol: 10, svol: 0 }],
+      top_sellers: []
+    });
+    bandarmologiService.writeDiskCache('broker-summary', ticker, '2026-08-15', {
+      stock_code: ticker, date: '2026-08-15',
+      top_buyers: [],
+      top_sellers: [{ broker: 'AK', broker_name: 'Test Seller', bval: 0, sval: 50, bvol: 0, svol: 5 }]
+    });
+    bandarmologiService.writeDiskCache('broker-summary', ticker, '2026-08-31', {
+      stock_code: ticker, date: '2026-08-31',
+      top_buyers: [{ broker: 'ZP', broker_name: 'Outside Window', bval: 200, sval: 0, bvol: 20, svol: 0 }],
+      top_sellers: []
+    });
+
+    // Window covers only 08-01 and 08-15, excludes 08-31.
+    const res = await bandarmologiService.getBandarmologiData(ticker, { range: 'custom', startDate: '2026-08-01', endDate: '2026-08-20' });
+    assert.equal(res.success, true);
+    assert.equal(res.broker_summary.net_flow, 50); // 100 (08-01) - 50 (08-15), 08-31 excluded
+
+    // Window with no matching dates on disk must not fall back to demo/live data.
+    const empty = await bandarmologiService.getBandarmologiData(ticker, { range: 'custom', startDate: '2020-01-01', endDate: '2020-01-31' });
+    assert.equal(empty.success, true);
+    assert.equal(empty.is_demo, false);
+    assert.equal(empty.broker_summary.net_status, 'NO_DATA');
+    assert.equal(empty.broker_summary.top_buyers.length, 0);
   } finally {
     if (origEnv !== undefined) {
       process.env.ARJUM_DATA_DIR = origEnv;

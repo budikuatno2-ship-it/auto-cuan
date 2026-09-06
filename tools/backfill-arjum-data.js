@@ -94,12 +94,39 @@ async function run() {
     limit = parseInt(args[limitIdx + 1], 10) || Infinity;
   }
 
-  let dailyLimit = 5000;
+  // Default comes from ARJUM_DAILY_QUOTA env var (fallback: a constant in
+  // arjum-client.js) — update the env var when the Arjum plan changes,
+  // no code edit needed. --daily-limit / ARJUM_DAILY_LIMIT still override
+  // it explicitly for one-off runs.
+  let dailyLimit = arjumClient.getConfiguredDailyQuota();
   const dailyLimitIdx = args.indexOf('--daily-limit');
   if (dailyLimitIdx >= 0 && args[dailyLimitIdx + 1]) {
-    dailyLimit = parseInt(args[dailyLimitIdx + 1], 10) || 5000;
+    dailyLimit = parseInt(args[dailyLimitIdx + 1], 10) || dailyLimit;
   } else if (process.env.ARJUM_DAILY_LIMIT) {
-    dailyLimit = parseInt(process.env.ARJUM_DAILY_LIMIT, 10) || 5000;
+    dailyLimit = parseInt(process.env.ARJUM_DAILY_LIMIT, 10) || dailyLimit;
+  }
+
+  // Reserve quota for the ~18:00-20:00 WIB daily update job (Bagian 3) so
+  // historical backfill never eats the whole day's quota before it runs.
+  let reserveQuota = 3000;
+  const reserveIdx = args.indexOf('--reserve-quota');
+  if (reserveIdx >= 0 && args[reserveIdx + 1]) {
+    reserveQuota = parseInt(args[reserveIdx + 1], 10) || 0;
+  }
+  const effectiveDailyLimit = Math.max(0, dailyLimit - reserveQuota);
+
+  // Hard wall-clock cutoff (Asia/Jakarta) as a second, independent safety
+  // net — stops even if the request-count math above is ever wrong.
+  let stopAtTime = '16:00';
+  const stopAtIdx = args.indexOf('--stop-at-time');
+  if (stopAtIdx >= 0 && args[stopAtIdx + 1]) {
+    stopAtTime = args[stopAtIdx + 1];
+  }
+  function pastStopTime() {
+    if (!/^\d{1,2}:\d{2}$/.test(stopAtTime)) return false;
+    const [h, m] = stopAtTime.split(':').map(Number);
+    const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    return nowWib.getHours() > h || (nowWib.getHours() === h && nowWib.getMinutes() >= m);
   }
 
   let tickers = TOP_TICKERS;
@@ -135,7 +162,8 @@ async function run() {
   console.log('=== AUTO-CUAN ARJUM BACKFILL WORKER ===');
   console.log(`ARJUM_API_KEY: [${hasDirectKey ? 'ADA' : 'TIDAK ADA'}]`);
   console.log(`Connection Source: Direct API (${arjumClient.ARJUM_BASE_URL})`);
-  console.log(`Daily Request Limit: ${dailyLimit}`);
+  console.log(`Daily Request Limit: ${dailyLimit} (reserve ${reserveQuota} for daily update job -> effective ${effectiveDailyLimit})`);
+  console.log(`Stop-at-time (WIB): ${stopAtTime}`);
   console.log(`Total Tickers to process: ${tickers.length}`);
   console.log(`Trading Dates count: ${tradingDates.length} (${tradingDates[0]} s/d ${tradingDates[tradingDates.length - 1]})`);
   console.log(`Delay per request: ${delayMs}ms | Mode: ${dryRun ? 'DRY-RUN' : 'LIVE'}`);
@@ -152,6 +180,53 @@ async function run() {
   let totalSkipped = 0;
   let totalErrors = 0;
   let quotaReached = false;
+  let stopReason = ''; // 'daily_limit' | 'api_quota_exceeded' | 'time_cutoff'
+
+  // A single 429/quota response from Arjum means the account's real quota is
+  // gone for the day — further requests just fail the same way and waste
+  // time. Stop immediately instead of grinding through every remaining
+  // ticker/date racking up errors.
+  function checkApiQuota(res) {
+    if (res.ok) {
+      // Opportunistic: if Arjum ever sends a rate-limit-style header, use
+      // the REAL remaining count instead of just our own request tally.
+      if (res.quota && Number.isFinite(res.quota.remaining) && res.quota.remaining <= reserveQuota) {
+        quotaReached = true;
+        stopReason = 'api_quota_exceeded';
+        console.log(`\n[BERHENTI: KUOTA API HAMPIR HABIS] Header response Arjum melaporkan sisa kuota ${res.quota.remaining} (<= reserve ${reserveQuota}). Worker berhenti rapi.`);
+        return true;
+      }
+      return false;
+    }
+    const classified = arjumClient.classifyFailure(res);
+    if (classified.reason === 'quota_exceeded') {
+      quotaReached = true;
+      stopReason = 'api_quota_exceeded';
+      console.log(`\n[BERHENTI: KUOTA API HABIS] Arjum menolak request dengan status kuota (${classified.detail || 'quota exceeded'}). Worker berhenti rapi, tidak retry.`);
+      return true;
+    }
+    return false;
+  }
+
+  // Checked before every real (non-cached, non-dry-run) request. Two
+  // independent stop conditions, whichever fires first:
+  //   1. request counter hits effectiveDailyLimit (dailyLimit - reserveQuota)
+  //   2. wall clock (WIB) passes stopAtTime
+  function checkPreflightStop() {
+    if (totalRequested >= effectiveDailyLimit) {
+      console.log(`\n[BERHENTI: BATAS HARIAN] Batas efektif tercapai (${effectiveDailyLimit} = ${dailyLimit} - reserve ${reserveQuota}). Worker berhenti.`);
+      quotaReached = true;
+      stopReason = 'daily_limit';
+      return true;
+    }
+    if (pastStopTime()) {
+      console.log(`\n[BERHENTI: BATAS WAKTU] Sudah lewat jam cutoff ${stopAtTime} WIB. Worker berhenti supaya job update harian jam 18:00-20:00 WIB tetap dapat kuota.`);
+      quotaReached = true;
+      stopReason = 'time_cutoff';
+      return true;
+    }
+    return false;
+  }
 
   for (let i = 0; i < tickers.length; i++) {
     if (quotaReached) break;
@@ -167,11 +242,7 @@ async function run() {
     } else if (dryRun) {
       totalRequested++;
     } else {
-      if (totalRequested >= dailyLimit) {
-        console.log(`\n[KUOTA TERCAPAI] Batas limit harian tercapai (${dailyLimit} request). Worker berhenti.`);
-        quotaReached = true;
-        break;
-      }
+      if (checkPreflightStop()) break;
       totalRequested++;
       const res = await arjumClient.fetchBrokerAccumulation(ticker);
       if (res.ok && res.data) {
@@ -180,6 +251,7 @@ async function run() {
       } else {
         totalErrors++;
       }
+      if (checkApiQuota(res)) break;
       await sleep(delayMs);
     }
 
@@ -193,11 +265,7 @@ async function run() {
     } else if (dryRun) {
       totalRequested++;
     } else {
-      if (totalRequested >= dailyLimit) {
-        console.log(`\n[KUOTA TERCAPAI] Batas limit harian tercapai (${dailyLimit} request). Worker berhenti.`);
-        quotaReached = true;
-        break;
-      }
+      if (checkPreflightStop()) break;
       totalRequested++;
       const res = await arjumClient.fetchInsiders(ticker, 1, 15);
       if (res.ok && res.data) {
@@ -206,6 +274,7 @@ async function run() {
       } else {
         totalErrors++;
       }
+      if (checkApiQuota(res)) break;
       await sleep(delayMs);
     }
 
@@ -220,11 +289,7 @@ async function run() {
       } else if (dryRun) {
         totalRequested++;
       } else {
-        if (totalRequested >= dailyLimit) {
-          console.log(`\n[KUOTA TERCAPAI] Batas limit harian tercapai (${dailyLimit} request). Worker berhenti.`);
-          quotaReached = true;
-          break;
-        }
+        if (checkPreflightStop()) break;
         totalRequested++;
         const res = await arjumClient.fetchBrokerSummary(ticker, date);
         if (res.ok && res.data) {
@@ -236,20 +301,31 @@ async function run() {
         } else {
           totalErrors++;
         }
+        if (checkApiQuota(res)) break;
         await sleep(delayMs);
       }
     }
   }
 
+  const stopReasonLabel = {
+    daily_limit: 'BERHENTI: BATAS EFEKTIF TERCAPAI (daily-limit - reserve-quota)',
+    api_quota_exceeded: 'BERHENTI: KUOTA API ARJUM HABIS (respons 429/quota dari Arjum)',
+    time_cutoff: 'BERHENTI: LEWAT JAM CUTOFF (menyisakan kuota untuk job update harian)',
+    '': 'SELESAI LENGKAP'
+  };
   console.log('\n----------------------------------------------------');
   console.log('=== RINGKASAN HASIL BACKFILL ===');
-  console.log(`Status Berhenti:               ${quotaReached ? 'TERHENTI (BATAS LIMIT TERCAPAI)' : 'SELESAI LENGKAP'}`);
+  console.log(`Status Berhenti:               ${stopReasonLabel[stopReason] || stopReasonLabel['']}`);
   console.log(`Batas Request Harian:          ${dailyLimit}`);
   console.log(`Total Permintaan Terkirim:     ${totalRequested}`);
   console.log(`Total File Tersimpan Baru:     ${totalSaved}`);
   console.log(`Total Terlewati (Sudah Ada):   ${totalSkipped}`);
   console.log(`Total Error / Gagal:           ${totalErrors}`);
   console.log('Proses worker selesai.');
+
+  // Distinct exit code for "quota exhausted" so a wrapping cron/scheduler can
+  // tell it apart from a clean finish or a real crash, without parsing logs.
+  if (stopReason === 'api_quota_exceeded') process.exitCode = 2;
 }
 
 run().catch(err => {

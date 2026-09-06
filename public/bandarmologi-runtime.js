@@ -106,7 +106,11 @@
   var lastBandarData = null;
   var brokerSummaryMode = 'gross'; // 'gross' or 'net'
   var brokerSummaryView = 'bubble'; // 'bubble' (default) or 'table'
-  var brokerSummaryRange = '1d'; // '1d' (default), '7d', '30d'
+  var brokerSummaryRange = '1d'; // '1d' (default), '7d', '30d', 'custom'
+  var customRangeStart = '';
+  var customRangeEnd = '';
+  var brokerFlowFilter = 'all'; // 'all', 'F' (foreign), 'D' (domestic)
+  var bandarSection = 'summary'; // 'summary' (Broker Summary) or 'akumulasi' (Akumulasi Broker)
   var selectedBrokerCode = '';
   var bubbleFilterSide = 'all'; // 'all', 'buy', 'sell'
   var lastBrokerItems = [];
@@ -609,9 +613,42 @@
     }
   }
 
+  function setBandarSection(section) {
+    bandarSection = (section === 'akumulasi') ? 'akumulasi' : 'summary';
+    var container = byId('bandarmologiContent');
+    if (container && lastBandarData) {
+      renderBandarmologiUI(container, lastBandarData);
+    }
+  }
+
+  function setBrokerFlowFilter(flow) {
+    brokerFlowFilter = (flow === 'F' || flow === 'D') ? flow : 'all';
+    loadBandarmologiTab(currentBandarTicker, brokerSummaryRange === '1d' ? currentBandarDate : null, brokerSummaryRange);
+  }
+
   function setBrokerSummaryRange(range) {
     brokerSummaryRange = range || '1d';
+    if (brokerSummaryRange === 'custom') {
+      // Just switch the UI to show the date pickers; wait for explicit "Terapkan".
+      var container = byId('bandarmologiContent');
+      if (container && lastBandarData) renderBandarmologiUI(container, lastBandarData);
+      return;
+    }
     loadBandarmologiTab(currentBandarTicker, brokerSummaryRange === '1d' ? currentBandarDate : null, brokerSummaryRange);
+  }
+
+  function applyCustomBrokerSummaryRange(startDate, endDate) {
+    startDate = String(startDate || '').trim();
+    endDate = String(endDate || '').trim();
+    var isoRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (!isoRe.test(startDate) || !isoRe.test(endDate) || startDate > endDate) {
+      if (typeof showToast === 'function') showToast('Rentang tanggal tidak valid. Pastikan tanggal mulai ≤ tanggal akhir.', 'warning');
+      return;
+    }
+    customRangeStart = startDate;
+    customRangeEnd = endDate;
+    brokerSummaryRange = 'custom';
+    loadBandarmologiTab(currentBandarTicker, null, 'custom');
   }
 
   async function loadBandarmologiTab(ticker, date, range) {
@@ -631,7 +668,12 @@
 
     try {
       var url = '/api/sector-hot?action=bandarmologi&ticker=' + encodeURIComponent(clean);
-      if (brokerSummaryRange && brokerSummaryRange !== '1d') {
+      if (brokerFlowFilter === 'F' || brokerFlowFilter === 'D') {
+        url += '&flow=' + encodeURIComponent(brokerFlowFilter);
+      }
+      if (brokerSummaryRange === 'custom' && customRangeStart && customRangeEnd) {
+        url += '&range=custom&startDate=' + encodeURIComponent(customRangeStart) + '&endDate=' + encodeURIComponent(customRangeEnd);
+      } else if (brokerSummaryRange && brokerSummaryRange !== '1d') {
         url += '&range=' + encodeURIComponent(brokerSummaryRange);
       } else if (currentBandarDate) {
         url += '&date=' + encodeURIComponent(currentBandarDate);
@@ -659,8 +701,15 @@
     var bAcc = data.broker_accumulation || {};
     var insiders = Array.isArray(data.insiders) ? data.insiders : [];
 
+    var DEMO_REASON_LABEL = {
+      no_api_key: 'Data Demo — API key belum dikonfigurasi',
+      no_disk_cache: 'Data Demo — belum ada data tersimpan untuk ticker ini',
+      quota_exceeded: 'Data Demo — kuota API harian habis',
+      api_error: 'Data Demo — API sedang tidak tersedia',
+      network_error: 'Data Demo — koneksi ke API gagal'
+    };
     var isDemoBadge = data.is_demo
-      ? '<span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono">DEMO PREVIEW</span>'
+      ? '<span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono" title="' + escapeHtml(data.demo_detail || '') + '">' + escapeHtml(DEMO_REASON_LABEL[data.demo_reason] || 'DEMO PREVIEW — data bukan dari sumber live') + '</span>'
       : '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">LIVE / BACKFILL</span>';
 
     var netStatusTone = 'text-emerald-400';
@@ -707,6 +756,14 @@
       html += '</div>';
     }
 
+    // SECTION TABS: Broker Summary (hari ini / rentang terpilih) vs Akumulasi Broker (tren historis panjang)
+    var isSummarySection = bandarSection !== 'akumulasi';
+    html += '<div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-xs mb-4 w-fit">';
+    html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'summary\')" class="px-3 py-1.5 rounded-md transition ' + (isSummarySection ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📊 Broker Summary</button>';
+    html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'akumulasi\')" class="px-3 py-1.5 rounded-md transition ' + (!isSummarySection ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📈 Akumulasi Broker</button>';
+    html += '</div>';
+
+    if (isSummarySection) {
     // 1. BROKER SUMMARY (BANDARMOLOGI) SECTION - INTERACTIVE BUBBLE OR DETAILED TABLE
     var isGross = brokerSummaryMode === 'gross';
     var isBubbleView = brokerSummaryView === 'bubble';
@@ -721,12 +778,23 @@
     var r1Class = brokerSummaryRange === '1d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var r7Class = brokerSummaryRange === '7d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var r30Class = brokerSummaryRange === '30d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var rCustomClass = brokerSummaryRange === 'custom' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
     html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Rentang:</span>';
     html += '        <button type="button" id="toggleRange1d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'1d\')" class="px-2.5 py-1 rounded-md transition ' + r1Class + '">1 Hari</button>';
     html += '        <button type="button" id="toggleRange7d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'7d\')" class="px-2.5 py-1 rounded-md transition ' + r7Class + '">7 Hari</button>';
     html += '        <button type="button" id="toggleRange30d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'30d\')" class="px-2.5 py-1 rounded-md transition ' + r30Class + '">30 Hari</button>';
+    html += '        <button type="button" id="toggleRangeCustom" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'custom\')" class="px-2.5 py-1 rounded-md transition ' + rCustomClass + '">📅 Custom</button>';
     html += '      </div>';
+
+    if (brokerSummaryRange === 'custom') {
+      html += '      <div class="flex items-center gap-1.5 bg-dark-800 p-1 rounded-lg border border-dark-600/50 text-[11px]">';
+      html += '        <input type="date" id="bandarCustomStartDate" value="' + escapeHtml(customRangeStart) + '" class="bg-dark-700 border border-dark-600/60 rounded px-1.5 py-0.5 text-gray-200 text-[11px]">';
+      html += '        <span class="text-gray-500">s/d</span>';
+      html += '        <input type="date" id="bandarCustomEndDate" value="' + escapeHtml(customRangeEnd) + '" class="bg-dark-700 border border-dark-600/60 rounded px-1.5 py-0.5 text-gray-200 text-[11px]">';
+      html += '        <button type="button" onclick="BandarmologiRuntime.applyCustomBrokerSummaryRange(document.getElementById(\'bandarCustomStartDate\').value, document.getElementById(\'bandarCustomEndDate\').value)" class="px-2.5 py-1 rounded-md bg-emerald-500 text-dark-900 font-bold transition hover:bg-emerald-400">Terapkan</button>';
+      html += '      </div>';
+    }
 
     // View Switcher (Bubble View vs Tabel Rinci)
     html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
@@ -742,6 +810,17 @@
     html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Mode:</span>';
     html += '        <button type="button" id="toggleBandarGross" onclick="BandarmologiRuntime.setBrokerSummaryMode(\'gross\')" class="px-2.5 py-1 rounded-md transition ' + grossClass + '">Full / Gross</button>';
     html += '        <button type="button" id="toggleBandarNet" onclick="BandarmologiRuntime.setBrokerSummaryMode(\'net\')" class="px-2.5 py-1 rounded-md transition ' + netClass + '">Net</button>';
+    html += '      </div>';
+
+    // Flow Filter (Foreign / Domestic / All) — live-only, not part of disk backfill
+    var flowAllClass = brokerFlowFilter === 'all' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var flowFClass = brokerFlowFilter === 'F' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var flowDClass = brokerFlowFilter === 'D' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
+    html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Flow:</span>';
+    html += '        <button type="button" id="toggleFlowAll" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'all\')" class="px-2.5 py-1 rounded-md transition ' + flowAllClass + '">Semua</button>';
+    html += '        <button type="button" id="toggleFlowForeign" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'F\')" class="px-2.5 py-1 rounded-md transition ' + flowFClass + '">🌏 Foreign</button>';
+    html += '        <button type="button" id="toggleFlowDomestic" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'D\')" class="px-2.5 py-1 rounded-md transition ' + flowDClass + '">🏠 Domestic</button>';
     html += '      </div>';
     html += '    </div>';
     html += '  </div>';
@@ -915,6 +994,7 @@
       html += '  </div>';
     }
     html += '</div>';
+    } else {
 
     // 2. DAILY BROKER SUMMARY BREAKDOWN TABLE (PER HARI)
     html += '<div class="mb-5 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5">';
@@ -1010,6 +1090,7 @@
       html += '  </div>';
     }
     html += '</div>';
+    }
 
     // 4. INSIDER TRANSACTIONS SECTION
     html += '<div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5">';
@@ -1067,6 +1148,12 @@
     getBrokerSummaryView: function () { return brokerSummaryView; },
     setBrokerSummaryRange: setBrokerSummaryRange,
     getBrokerSummaryRange: function () { return brokerSummaryRange; },
+    applyCustomBrokerSummaryRange: applyCustomBrokerSummaryRange,
+    getCustomBrokerSummaryRange: function () { return { start: customRangeStart, end: customRangeEnd }; },
+    setBrokerFlowFilter: setBrokerFlowFilter,
+    getBrokerFlowFilter: function () { return brokerFlowFilter; },
+    setBandarSection: setBandarSection,
+    getBandarSection: function () { return bandarSection; },
     selectBrokerBubble: selectBrokerBubble,
     setBubbleFilterSide: setBubbleFilterSide,
     getBubbleFilterSide: function () { return bubbleFilterSide; },

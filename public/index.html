@@ -639,7 +639,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
                 <div class="relative flex-1 min-w-[200px]">
-                    <input id="analisisInput" type="text" placeholder="Ketik ticker: BBCA, BBRI, TLKM..." class="w-full px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm font-semibold tracking-wide" onkeydown="if(event.key==='Enter')UnifiedCockpit.handleUnifiedAnalisisSubmit()">
+                    <input id="analisisInput" type="text" placeholder="Ketik ticker: BBCA, BBRI, TLKM..." class="w-full px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm font-semibold tracking-wide" onkeydown="if(event.key==='Enter')UnifiedCockpit.handleTickerInputEnter()">
                 </div>
                 <button onclick="UnifiedCockpit.handleUnifiedAnalisisSubmit()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all flex items-center gap-1.5 shrink-0" title="Jalankan Analisis Saham">
                     <span>Analisis Saham</span>
@@ -659,12 +659,12 @@
         <!-- Quick Ticker Chips -->
         <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
             <span class="text-[11px] text-gray-400 mr-1">Populer:</span>
-            <button onclick="UnifiedCockpit.syncActiveTicker('IHSG', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">IHSG</button>
-            <button onclick="UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
-            <button onclick="UnifiedCockpit.syncActiveTicker('BBRI', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
-            <button onclick="UnifiedCockpit.syncActiveTicker('BMRI', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
-            <button onclick="UnifiedCockpit.syncActiveTicker('TLKM', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
-            <button onclick="UnifiedCockpit.syncActiveTicker('ASII', { loadChart: true, forceChartReload: true, runAnalysis: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">ASII</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('IHSG', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">IHSG</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('BBRI', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('BMRI', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('TLKM', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
+            <button onclick="UnifiedCockpit.syncActiveTicker('ASII', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">ASII</button>
         </div>
     </div>
 
@@ -2491,7 +2491,11 @@ function handleAppRoute(opts) {
     opts = opts || {};
     var path = window.location.pathname || '/';
     if (path === '/dashboard' || path === '/dashboard/') {
-        if (isAutocuanLoggedIn()) enterApp({ replaceHistory: opts.duringInit });
+        // Berita & Katalis is a guest-accessible feature (same as Analisis Saham
+        // itself), so a deep link to it must not be blocked by the full-login
+        // gate that guards the rest of /dashboard.
+        var isNewsDeepLink = (new URLSearchParams(window.location.search).get('page') || '').toLowerCase() === 'news';
+        if (isAutocuanLoggedIn() || isNewsDeepLink) enterApp({ replaceHistory: opts.duringInit, allowGuest: isNewsDeepLink });
         else showLandingPage({ skipHistory: true, duringInit: opts.duringInit, promptAuth: true, promptMessage: 'Login atau daftar diperlukan untuk membuka /dashboard.' });
         return;
     }
