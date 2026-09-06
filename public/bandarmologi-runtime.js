@@ -107,6 +107,7 @@
   var brokerSummaryMode = 'gross'; // 'gross' or 'net'
   var brokerSummaryView = 'bubble'; // 'bubble' (default) or 'table'
   var brokerSummaryRange = '1d'; // '1d' (default), '7d', '30d'
+  var bandarSection = 'summary'; // 'summary' (Broker Summary) or 'akumulasi' (Akumulasi Broker)
   var selectedBrokerCode = '';
   var bubbleFilterSide = 'all'; // 'all', 'buy', 'sell'
   var lastBrokerItems = [];
@@ -609,6 +610,14 @@
     }
   }
 
+  function setBandarSection(section) {
+    bandarSection = (section === 'akumulasi') ? 'akumulasi' : 'summary';
+    var container = byId('bandarmologiContent');
+    if (container && lastBandarData) {
+      renderBandarmologiUI(container, lastBandarData);
+    }
+  }
+
   function setBrokerSummaryRange(range) {
     brokerSummaryRange = range || '1d';
     loadBandarmologiTab(currentBandarTicker, brokerSummaryRange === '1d' ? currentBandarDate : null, brokerSummaryRange);
@@ -707,6 +716,14 @@
       html += '</div>';
     }
 
+    // SECTION TABS: Broker Summary (hari ini / rentang terpilih) vs Akumulasi Broker (tren historis panjang)
+    var isSummarySection = bandarSection !== 'akumulasi';
+    html += '<div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-xs mb-4 w-fit">';
+    html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'summary\')" class="px-3 py-1.5 rounded-md transition ' + (isSummarySection ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📊 Broker Summary</button>';
+    html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'akumulasi\')" class="px-3 py-1.5 rounded-md transition ' + (!isSummarySection ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📈 Akumulasi Broker</button>';
+    html += '</div>';
+
+    if (isSummarySection) {
     // 1. BROKER SUMMARY (BANDARMOLOGI) SECTION - INTERACTIVE BUBBLE OR DETAILED TABLE
     var isGross = brokerSummaryMode === 'gross';
     var isBubbleView = brokerSummaryView === 'bubble';
@@ -915,6 +932,7 @@
       html += '  </div>';
     }
     html += '</div>';
+    } else {
 
     // 2. DAILY BROKER SUMMARY BREAKDOWN TABLE (PER HARI)
     html += '<div class="mb-5 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5">';
@@ -1010,6 +1028,7 @@
       html += '  </div>';
     }
     html += '</div>';
+    }
 
     // 4. INSIDER TRANSACTIONS SECTION
     html += '<div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5">';
@@ -1067,6 +1086,8 @@
     getBrokerSummaryView: function () { return brokerSummaryView; },
     setBrokerSummaryRange: setBrokerSummaryRange,
     getBrokerSummaryRange: function () { return brokerSummaryRange; },
+    setBandarSection: setBandarSection,
+    getBandarSection: function () { return bandarSection; },
     selectBrokerBubble: selectBrokerBubble,
     setBubbleFilterSide: setBubbleFilterSide,
     getBubbleFilterSide: function () { return bubbleFilterSide; },
