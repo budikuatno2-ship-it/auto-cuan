@@ -109,6 +109,7 @@
   var brokerSummaryRange = '1d'; // '1d' (default), '7d', '30d', 'custom'
   var customRangeStart = '';
   var customRangeEnd = '';
+  var brokerFlowFilter = 'all'; // 'all', 'F' (foreign), 'D' (domestic)
   var bandarSection = 'summary'; // 'summary' (Broker Summary) or 'akumulasi' (Akumulasi Broker)
   var selectedBrokerCode = '';
   var bubbleFilterSide = 'all'; // 'all', 'buy', 'sell'
@@ -620,6 +621,11 @@
     }
   }
 
+  function setBrokerFlowFilter(flow) {
+    brokerFlowFilter = (flow === 'F' || flow === 'D') ? flow : 'all';
+    loadBandarmologiTab(currentBandarTicker, brokerSummaryRange === '1d' ? currentBandarDate : null, brokerSummaryRange);
+  }
+
   function setBrokerSummaryRange(range) {
     brokerSummaryRange = range || '1d';
     if (brokerSummaryRange === 'custom') {
@@ -662,6 +668,9 @@
 
     try {
       var url = '/api/sector-hot?action=bandarmologi&ticker=' + encodeURIComponent(clean);
+      if (brokerFlowFilter === 'F' || brokerFlowFilter === 'D') {
+        url += '&flow=' + encodeURIComponent(brokerFlowFilter);
+      }
       if (brokerSummaryRange === 'custom' && customRangeStart && customRangeEnd) {
         url += '&range=custom&startDate=' + encodeURIComponent(customRangeStart) + '&endDate=' + encodeURIComponent(customRangeEnd);
       } else if (brokerSummaryRange && brokerSummaryRange !== '1d') {
@@ -794,6 +803,17 @@
     html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Mode:</span>';
     html += '        <button type="button" id="toggleBandarGross" onclick="BandarmologiRuntime.setBrokerSummaryMode(\'gross\')" class="px-2.5 py-1 rounded-md transition ' + grossClass + '">Full / Gross</button>';
     html += '        <button type="button" id="toggleBandarNet" onclick="BandarmologiRuntime.setBrokerSummaryMode(\'net\')" class="px-2.5 py-1 rounded-md transition ' + netClass + '">Net</button>';
+    html += '      </div>';
+
+    // Flow Filter (Foreign / Domestic / All) — live-only, not part of disk backfill
+    var flowAllClass = brokerFlowFilter === 'all' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var flowFClass = brokerFlowFilter === 'F' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var flowDClass = brokerFlowFilter === 'D' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
+    html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Flow:</span>';
+    html += '        <button type="button" id="toggleFlowAll" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'all\')" class="px-2.5 py-1 rounded-md transition ' + flowAllClass + '">Semua</button>';
+    html += '        <button type="button" id="toggleFlowForeign" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'F\')" class="px-2.5 py-1 rounded-md transition ' + flowFClass + '">🌏 Foreign</button>';
+    html += '        <button type="button" id="toggleFlowDomestic" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'D\')" class="px-2.5 py-1 rounded-md transition ' + flowDClass + '">🏠 Domestic</button>';
     html += '      </div>';
     html += '    </div>';
     html += '  </div>';
@@ -1123,6 +1143,8 @@
     getBrokerSummaryRange: function () { return brokerSummaryRange; },
     applyCustomBrokerSummaryRange: applyCustomBrokerSummaryRange,
     getCustomBrokerSummaryRange: function () { return { start: customRangeStart, end: customRangeEnd }; },
+    setBrokerFlowFilter: setBrokerFlowFilter,
+    getBrokerFlowFilter: function () { return brokerFlowFilter; },
     setBandarSection: setBandarSection,
     getBandarSection: function () { return bandarSection; },
     selectBrokerBubble: selectBrokerBubble,

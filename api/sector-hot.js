@@ -8116,7 +8116,8 @@ async function handleBandarmologi(req, res) {
     var range = (req.query && (req.query.range || req.query.days)) || '1d';
     var startDate = (req.query && req.query.startDate) || '';
     var endDate = (req.query && req.query.endDate) || '';
-    var result = await bandarmologiService.getBandarmologiData(ticker, { date: date, range: range, startDate: startDate, endDate: endDate });
+    var flow = (req.query && req.query.flow) || '';
+    var result = await bandarmologiService.getBandarmologiData(ticker, { date: date, range: range, startDate: startDate, endDate: endDate, flow: flow });
     return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });

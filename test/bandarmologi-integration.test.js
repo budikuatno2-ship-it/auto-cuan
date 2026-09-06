@@ -226,6 +226,78 @@ test('bandarmologiService: readDiskCache does NOT fallback to other dates when s
   }
 });
 
+test('bandarmologiService: getBandarmologiData(flow=F) fetches foreign-only data and reports foreign net buy', async () => {
+  const origHasKey = arjumClient.hasArjumApiKey;
+  const origFetchSummary = arjumClient.fetchBrokerSummary;
+  const origFetchAcc = arjumClient.fetchBrokerAccumulation;
+  const origFetchIns = arjumClient.fetchInsiders;
+
+  arjumClient.hasArjumApiKey = () => true;
+  arjumClient.fetchBrokerSummary = async (ticker, date, flow) => {
+    assert.equal(flow, 'F');
+    return {
+      ok: true,
+      data: {
+        stock_code: ticker,
+        date: '2026-09-05',
+        top_buyers: [{ broker: 'FRGN', broker_name: 'Foreign Desk', bval: 9000000, sval: 1000000, bvol: 900, svol: 100 }],
+        top_sellers: [{ broker: 'LOCL', broker_name: 'Local Desk', bval: 500000, sval: 500000, bvol: 50, svol: 50 }]
+      }
+    };
+  };
+  arjumClient.fetchBrokerAccumulation = async () => ({ ok: false });
+  arjumClient.fetchInsiders = async () => ({ ok: false });
+
+  try {
+    const res = await bandarmologiService.getBandarmologiData('BBCA', { flow: 'F' });
+    assert.equal(res.success, true);
+    assert.equal(res.flow, 'F');
+    assert.ok(res.broker_summary.net_flow > 0, 'foreign-buy-heavy summary must report positive net flow');
+    assert.equal(res.broker_summary.net_status, 'BIG_ACCUMULATION');
+  } finally {
+    arjumClient.hasArjumApiKey = origHasKey;
+    arjumClient.fetchBrokerSummary = origFetchSummary;
+    arjumClient.fetchBrokerAccumulation = origFetchAcc;
+    arjumClient.fetchInsiders = origFetchIns;
+  }
+});
+
+test('bandarmologiService: getBandarmologiData(flow=D) fetches domestic-only data and reports domestic net sell', async () => {
+  const origHasKey = arjumClient.hasArjumApiKey;
+  const origFetchSummary = arjumClient.fetchBrokerSummary;
+  const origFetchAcc = arjumClient.fetchBrokerAccumulation;
+  const origFetchIns = arjumClient.fetchInsiders;
+
+  arjumClient.hasArjumApiKey = () => true;
+  arjumClient.fetchBrokerSummary = async (ticker, date, flow) => {
+    assert.equal(flow, 'D');
+    return {
+      ok: true,
+      data: {
+        stock_code: ticker,
+        date: '2026-09-05',
+        top_buyers: [{ broker: 'LOCL', broker_name: 'Local Desk', bval: 500000, sval: 500000, bvol: 50, svol: 50 }],
+        top_sellers: [{ broker: 'DOM', broker_name: 'Domestic Desk', bval: 1000000, sval: 9000000, bvol: 100, svol: 900 }]
+      }
+    };
+  };
+  arjumClient.fetchBrokerAccumulation = async () => ({ ok: false });
+  arjumClient.fetchInsiders = async () => ({ ok: false });
+
+  try {
+    const res = await bandarmologiService.getBandarmologiData('BBCA', { flow: 'D' });
+    assert.equal(res.success, true);
+    assert.equal(res.flow, 'D');
+    assert.ok(res.broker_summary.net_flow < 0, 'domestic-sell-heavy summary must report negative net flow');
+    assert.equal(res.broker_summary.net_status, 'BIG_DISTRIBUTION');
+  } finally {
+    arjumClient.hasArjumApiKey = origHasKey;
+    arjumClient.fetchBrokerSummary = origFetchSummary;
+    arjumClient.fetchBrokerAccumulation = origFetchAcc;
+    arjumClient.fetchInsiders = origFetchIns;
+  }
+});
+
 test('bandarmologiService: getBandarmologiData with custom date range only aggregates dates inside the window', async () => {
   const fs = require('fs');
   const path = require('path');
