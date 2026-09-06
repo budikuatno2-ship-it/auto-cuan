@@ -163,6 +163,7 @@ async function run() {
   console.log(`ARJUM_API_KEY: [${hasDirectKey ? 'ADA' : 'TIDAK ADA'}]`);
   console.log(`Connection Source: Direct API (${arjumClient.ARJUM_BASE_URL})`);
   console.log(`Daily Request Limit: ${dailyLimit} (reserve ${reserveQuota} for daily update job -> effective ${effectiveDailyLimit})`);
+  console.log(`Already used today (cross-process, all scripts): ${arjumClient.getUsedQuotaToday()}`);
   console.log(`Stop-at-time (WIB): ${stopAtTime}`);
   console.log(`Total Tickers to process: ${tickers.length}`);
   console.log(`Trading Dates count: ${tradingDates.length} (${tradingDates[0]} s/d ${tradingDates[tradingDates.length - 1]})`);
@@ -213,8 +214,15 @@ async function run() {
   //   1. request counter hits effectiveDailyLimit (dailyLimit - reserveQuota)
   //   2. wall clock (WIB) passes stopAtTime
   function checkPreflightStop() {
-    if (totalRequested >= effectiveDailyLimit) {
-      console.log(`\n[BERHENTI: BATAS HARIAN] Batas efektif tercapai (${effectiveDailyLimit} = ${dailyLimit} - reserve ${reserveQuota}). Worker berhenti.`);
+    // Cross-process usage (lib/arjum-quota-tracker.js), not this invocation's
+    // own totalRequested — this script is one of several cron-fired
+    // processes sharing the same daily quota (this backfill worker at
+    // 00:05, the daily-update job 5x between 20:00-22:00), and a counter
+    // that resets to 0 every run cannot actually reserve anything across
+    // processes.
+    const usedToday = arjumClient.getUsedQuotaToday();
+    if (usedToday >= effectiveDailyLimit) {
+      console.log(`\n[BERHENTI: BATAS HARIAN] Batas efektif tercapai (${usedToday}/${effectiveDailyLimit} terpakai hari ini lintas-proses = ${dailyLimit} - reserve ${reserveQuota}). Worker berhenti.`);
       quotaReached = true;
       stopReason = 'daily_limit';
       return true;
@@ -317,7 +325,8 @@ async function run() {
   console.log('=== RINGKASAN HASIL BACKFILL ===');
   console.log(`Status Berhenti:               ${stopReasonLabel[stopReason] || stopReasonLabel['']}`);
   console.log(`Batas Request Harian:          ${dailyLimit}`);
-  console.log(`Total Permintaan Terkirim:     ${totalRequested}`);
+  console.log(`Total Permintaan Terkirim (run ini): ${totalRequested}`);
+  console.log(`Total Terpakai Hari Ini (lintas-proses): ${arjumClient.getUsedQuotaToday()} / ${dailyLimit}`);
   console.log(`Total File Tersimpan Baru:     ${totalSaved}`);
   console.log(`Total Terlewati (Sudah Ada):   ${totalSkipped}`);
   console.log(`Total Error / Gagal:           ${totalErrors}`);
