@@ -13,6 +13,29 @@ const path = require('path');
 const arjumClient = require('../lib/arjum-client');
 const bandarmologiService = require('../lib/bandarmologi-service');
 
+// Optional local/server .env loader (without external dependencies)
+try {
+  const envPath = path.join(__dirname, '..', '.env');
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx > 0) {
+        const key = trimmed.slice(0, eqIdx).trim();
+        let val = trimmed.slice(eqIdx + 1).trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        if (!process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    }
+  }
+} catch (_) {}
+
 // Bursa Efek Indonesia trading calendar for August - September 2026 (weekdays, skip known holidays)
 // 17 Agustus 2026 (HUT RI), etc.
 function getTradingDates(startDateStr = '2026-08-03', endDateStr = '2026-09-04') {
@@ -66,6 +89,14 @@ async function run() {
     limit = parseInt(args[limitIdx + 1], 10) || Infinity;
   }
 
+  let dailyLimit = 5000;
+  const dailyLimitIdx = args.indexOf('--daily-limit');
+  if (dailyLimitIdx >= 0 && args[dailyLimitIdx + 1]) {
+    dailyLimit = parseInt(args[dailyLimitIdx + 1], 10) || 5000;
+  } else if (process.env.ARJUM_DAILY_LIMIT) {
+    dailyLimit = parseInt(process.env.ARJUM_DAILY_LIMIT, 10) || 5000;
+  }
+
   let tickers = TOP_TICKERS;
   const tickerArgIdx = args.indexOf('--tickers');
   if (tickerArgIdx >= 0 && args[tickerArgIdx + 1]) {
@@ -94,37 +125,31 @@ async function run() {
   if (endIdx >= 0 && args[endIdx + 1]) endDate = args[endIdx + 1];
 
   const tradingDates = getTradingDates(startDate, endDate);
-
   const hasDirectKey = arjumClient.hasArjumApiKey();
-  const GATEWAY_URL = 'https://autocuan.web.id/api/sector-hot?action=bandarmologi';
 
   console.log('=== AUTO-CUAN ARJUM BACKFILL WORKER ===');
   console.log(`ARJUM_API_KEY: [${hasDirectKey ? 'ADA' : 'TIDAK ADA'}]`);
-  console.log(`Connection Source: ${hasDirectKey ? arjumClient.ARJUM_BASE_URL : 'Production Gateway (autocuan.web.id)'}`);
+  console.log(`Connection Source: Direct API (${arjumClient.ARJUM_BASE_URL})`);
+  console.log(`Daily Request Limit: ${dailyLimit}`);
   console.log(`Total Tickers to process: ${tickers.length}`);
   console.log(`Trading Dates count: ${tradingDates.length} (${tradingDates[0]} s/d ${tradingDates[tradingDates.length - 1]})`);
   console.log(`Delay per request: ${delayMs}ms | Mode: ${dryRun ? 'DRY-RUN' : 'LIVE'}`);
   console.log('----------------------------------------------------');
 
+  if (!hasDirectKey && !dryRun) {
+    console.error('ERROR: ARJUM_API_KEY tidak ditemukan di environment atau .env.');
+    console.error('Direct API access membutuhkan ARJUM_API_KEY yang valid.');
+    process.exit(1);
+  }
+
   let totalRequested = 0;
   let totalSaved = 0;
   let totalSkipped = 0;
   let totalErrors = 0;
-
-  async function fetchGateway(ticker, date) {
-    try {
-      let url = `${GATEWAY_URL}&ticker=${encodeURIComponent(ticker)}`;
-      if (date) url += `&date=${encodeURIComponent(date)}`;
-      const res = await fetch(url, { headers: { 'User-Agent': 'AutoCuan-BackfillWorker/1.0' } });
-      if (!res.ok) return { ok: false, status: res.status };
-      const body = await res.json();
-      return { ok: body.success, data: body };
-    } catch (err) {
-      return { ok: false, error: err.message };
-    }
-  }
+  let quotaReached = false;
 
   for (let i = 0; i < tickers.length; i++) {
+    if (quotaReached) break;
     const ticker = tickers[i];
     console.log(`\n[${i + 1}/${tickers.length}] Memproses ${ticker}...`);
 
@@ -135,14 +160,13 @@ async function run() {
     } else if (dryRun) {
       totalRequested++;
     } else {
-      totalRequested++;
-      let res;
-      if (hasDirectKey) {
-        res = await arjumClient.fetchBrokerAccumulation(ticker);
-      } else {
-        const gw = await fetchGateway(ticker, 'latest');
-        res = { ok: gw.ok && !!gw.data.broker_accumulation, data: gw.data && gw.data.broker_accumulation };
+      if (totalRequested >= dailyLimit) {
+        console.log(`\n[KUOTA TERCAPAI] Batas limit harian tercapai (${dailyLimit} request). Worker berhenti.`);
+        quotaReached = true;
+        break;
       }
+      totalRequested++;
+      const res = await arjumClient.fetchBrokerAccumulation(ticker);
       if (res.ok && res.data) {
         bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', res.data);
         totalSaved++;
@@ -153,20 +177,20 @@ async function run() {
     }
 
     // 2. Insiders (1 call per ticker)
+    if (quotaReached) break;
     const insCached = bandarmologiService.readDiskCache('insiders', ticker, 'p1');
     if (insCached) {
       totalSkipped++;
     } else if (dryRun) {
       totalRequested++;
     } else {
-      totalRequested++;
-      let res;
-      if (hasDirectKey) {
-        res = await arjumClient.fetchInsiders(ticker, 1, 15);
-      } else {
-        const gw = await fetchGateway(ticker, 'latest');
-        res = { ok: gw.ok && !!gw.data.insiders, data: gw.data && gw.data.insiders };
+      if (totalRequested >= dailyLimit) {
+        console.log(`\n[KUOTA TERCAPAI] Batas limit harian tercapai (${dailyLimit} request). Worker berhenti.`);
+        quotaReached = true;
+        break;
       }
+      totalRequested++;
+      const res = await arjumClient.fetchInsiders(ticker, 1, 15);
       if (res.ok && res.data) {
         bandarmologiService.writeDiskCache('insiders', ticker, 'p1', res.data);
         totalSaved++;
@@ -178,20 +202,20 @@ async function run() {
 
     // 3. Broker Summary (per trading date)
     for (const date of tradingDates) {
+      if (quotaReached) break;
       const sumCached = bandarmologiService.readDiskCache('broker-summary', ticker, date);
       if (sumCached) {
         totalSkipped++;
       } else if (dryRun) {
         totalRequested++;
       } else {
-        totalRequested++;
-        let res;
-        if (hasDirectKey) {
-          res = await arjumClient.fetchBrokerSummary(ticker, date);
-        } else {
-          const gw = await fetchGateway(ticker, date);
-          res = { ok: gw.ok && !!gw.data.broker_summary, data: gw.data && gw.data.broker_summary };
+        if (totalRequested >= dailyLimit) {
+          console.log(`\n[KUOTA TERCAPAI] Batas limit harian tercapai (${dailyLimit} request). Worker berhenti.`);
+          quotaReached = true;
+          break;
         }
+        totalRequested++;
+        const res = await arjumClient.fetchBrokerSummary(ticker, date);
         if (res.ok && res.data) {
           bandarmologiService.writeDiskCache('broker-summary', ticker, date, res.data);
           if (date === tradingDates[tradingDates.length - 1]) {
@@ -208,11 +232,13 @@ async function run() {
 
   console.log('\n----------------------------------------------------');
   console.log('=== RINGKASAN HASIL BACKFILL ===');
-  console.log(`Total Permintaan Direncanakan: ${totalRequested}`);
+  console.log(`Status Berhenti:               ${quotaReached ? 'TERHENTI (BATAS LIMIT TERCAPAI)' : 'SELESAI LENGKAP'}`);
+  console.log(`Batas Request Harian:          ${dailyLimit}`);
+  console.log(`Total Permintaan Terkirim:     ${totalRequested}`);
   console.log(`Total File Tersimpan Baru:     ${totalSaved}`);
   console.log(`Total Terlewati (Sudah Ada):   ${totalSkipped}`);
   console.log(`Total Error / Gagal:           ${totalErrors}`);
-  console.log('Proses selesai.');
+  console.log('Proses worker selesai.');
 }
 
 run().catch(err => {
