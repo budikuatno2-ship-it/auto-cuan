@@ -31,6 +31,16 @@
 
   var currentBandarTicker = 'BBCA';
   var currentBandarDate = '';
+  var lastBandarData = null;
+  var brokerSummaryMode = 'gross'; // 'gross' or 'net'
+
+  function setBrokerSummaryMode(mode) {
+    brokerSummaryMode = (mode === 'net') ? 'net' : 'gross';
+    var container = byId('bandarmologiContent');
+    if (container && lastBandarData) {
+      renderBandarmologiUI(container, lastBandarData);
+    }
+  }
 
   async function loadBandarmologiTab(ticker, date) {
     var clean = String(ticker || currentBandarTicker || 'BBCA').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -66,6 +76,7 @@
   }
 
   function renderBandarmologiUI(container, data) {
+    lastBandarData = data;
     var ticker = data.ticker || currentBandarTicker;
     var bSum = data.broker_summary || {};
     var bAcc = data.broker_accumulation || {};
@@ -88,14 +99,13 @@
     // Header info bar
     html += '<div class="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-dark-700/60 border border-dark-600/40 rounded-2xl mb-4">';
     html += '  <div class="flex items-center gap-2">';
-    html += '    <span class="text-sm font-bold text-white tracking-wide">' + escapeHtml(ticker) + '</span>';
+    html += '    <span class="text-sm font-bold text-gray-100 font-mono">' + escapeHtml(ticker) + '</span>';
+    html += '    <span class="text-xs px-2.5 py-0.5 rounded-full border font-semibold ' + netStatusTone + ' ' + netStatusBg + '">' + escapeHtml(netLabel) + '</span>';
     html += '    ' + isDemoBadge;
-    html += '    <span class="text-xs px-2.5 py-0.5 rounded-lg border font-semibold ' + netStatusTone + ' ' + netStatusBg + '">' + escapeHtml(netLabel) + '</span>';
     html += '  </div>';
-    html += '  <div class="flex items-center gap-2 text-xs text-gray-400">';
-    html += '    <span>Tanggal:</span>';
-    html += '    <input id="bandarDatePicker" type="date" value="' + escapeHtml(bSum.date || '2026-09-04') + '" onchange="BandarmologiRuntime.loadBandarmologiTab(null, this.value)" class="px-2.5 py-1 rounded-lg bg-dark-800 border border-dark-600 text-gray-200 text-xs focus:outline-none focus:border-emerald-500">';
-    html += '    <button type="button" onclick="BandarmologiRuntime.loadBandarmologiTab(null, null)" class="px-2.5 py-1 rounded-lg bg-dark-600/80 hover:bg-dark-500 text-gray-300 text-xs transition">Reset</button>';
+    html += '  <div class="flex items-center gap-3 text-xs font-mono">';
+    html += '    <span class="text-gray-400">Net Flow: <strong class="' + (bSum.net_flow >= 0 ? 'text-emerald-400' : 'text-rose-400') + '">' + (bSum.net_flow >= 0 ? '+' : '') + formatIDR(bSum.net_flow) + '</strong></span>';
+    html += '    <span class="text-gray-400">Tanggal: <strong class="text-gray-200">' + escapeHtml(bSum.date || currentBandarDate || 'Terbaru') + '</strong></span>';
     html += '  </div>';
     html += '</div>';
 
@@ -122,37 +132,97 @@
 
     // 1. BROKER SUMMARY (BANDARMOLOGI) SECTION - DETAILED CARD FOR SELECTED DATE
     html += '<div class="mb-5">';
-    html += '  <div class="flex items-center justify-between mb-2.5">';
+    html += '  <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">';
     html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📊</span> Broker Summary Detail — Tanggal: <span class="text-emerald-400 font-mono">' + escapeHtml(bSum.date || 'Terbaru') + '</span></h3>';
-    html += '    <span class="text-[11px] text-gray-400">Breakdown Top 5 Sekuritas Harian</span>';
+
+    // Toggle switch: Full/Gross vs Net
+    var isGross = brokerSummaryMode === 'gross';
+    var grossClass = isGross ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var netClass = !isGross ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    html += '    <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
+    html += '      <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Mode:</span>';
+    html += '      <button type="button" id="toggleBandarGross" onclick="BandarmologiRuntime.setBrokerSummaryMode(\'gross\')" class="px-2.5 py-1 rounded-md transition ' + grossClass + '">Full / Gross</button>';
+    html += '      <button type="button" id="toggleBandarNet" onclick="BandarmologiRuntime.setBrokerSummaryMode(\'net\')" class="px-2.5 py-1 rounded-md transition ' + netClass + '">Net</button>';
+    html += '    </div>';
     html += '  </div>';
+
+    var buyers = isGross
+      ? (bSum.gross_buyers || bSum.top_buyers || [])
+      : (bSum.net_buyers || bSum.top_buyers || []);
+    var sellers = isGross
+      ? (bSum.gross_sellers || bSum.top_sellers || [])
+      : (bSum.net_sellers || bSum.top_sellers || []);
 
     html += '  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">';
 
     // Top Buyers
     html += '    <div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3">';
     html += '      <div class="text-[11px] font-bold text-emerald-400 mb-2 flex items-center justify-between pb-1.5 border-b border-dark-600/40">';
-    html += '        <span>🟢 TOP BUYERS (' + escapeHtml(bSum.date || '') + ')</span><span>NET VALUE</span>';
+    html += '        <span>🟢 TOP BUYERS (' + (isGross ? 'FULL / GROSS' : 'NET VALUE &amp; VOL') + ')</span>';
+    html += '        <span class="text-[10px] text-gray-400 font-mono">' + (isGross ? 'BUY &amp; SELL VAL' : 'NET VAL') + '</span>';
     html += '      </div>';
-    html += '      <div class="space-y-1.5 text-xs">';
-    var buyers = bSum.top_buyers || [];
+    html += '      <div class="space-y-2 text-xs">';
     if (buyers.length === 0) {
       html += '      <div class="text-gray-500 text-center py-4 text-xs">Tidak ada data buyer</div>';
     } else {
       for (var b = 0; b < buyers.length; b++) {
         var item = buyers[b];
-        html += '      <div class="flex items-center justify-between py-1 px-1.5 rounded hover:bg-dark-600/30 transition">';
-        html += '        <div class="flex items-center gap-2">';
-        html += '          <span class="w-5 text-gray-500 font-mono text-[10px]">' + (b + 1) + '</span>';
-        html += '          <span class="font-bold font-mono text-emerald-300">' + escapeHtml(item.broker) + '</span>';
+        var buyVal = item.bval != null ? item.bval : (item.buy_val || item.net_val || 0);
+        var sellVal = item.sval != null ? item.sval : (item.sell_val || 0);
+        var buyVol = item.bvol != null ? item.bvol : (item.buy_vol || 0);
+        var sellVol = item.svol != null ? item.svol : (item.sell_vol || 0);
+        var netVal = item.nval != null ? item.nval : (item.net_val != null ? item.net_val : (buyVal - sellVal));
+        var netVol = item.nvol != null ? item.nvol : (item.net_vol != null ? item.net_vol : (buyVol - sellVol));
+
+        html += '      <div class="py-2 px-2.5 rounded-lg bg-dark-800/40 border border-dark-600/30 hover:border-emerald-500/30 transition">';
+        html += '        <div class="flex items-center justify-between">';
+        html += '          <div class="flex items-center gap-2">';
+        html += '            <span class="w-4 text-gray-500 font-mono text-[10px] font-bold">' + (b + 1) + '</span>';
+        html += '            <span class="font-bold font-mono text-emerald-300 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-xs">' + escapeHtml(item.broker) + '</span>';
         if (item.broker_name) {
-          html += '          <span class="text-gray-400 text-[10px] truncate max-w-[120px]" title="' + escapeHtml(item.broker_name) + '">' + escapeHtml(item.broker_name) + '</span>';
+          html += '            <span class="text-gray-300 text-[11px] truncate max-w-[120px]" title="' + escapeHtml(item.broker_name) + '">' + escapeHtml(item.broker_name) + '</span>';
         }
         if (item.avg_price) {
-          html += '          <span class="text-gray-400 text-[11px]">@ ' + formatNumber(item.avg_price) + '</span>';
+          html += '            <span class="text-gray-400 text-[10px]">@ ' + formatNumber(item.avg_price) + '</span>';
+        }
+        html += '          </div>';
+        if (isGross) {
+          html += '          <div class="text-right font-mono">';
+          html += '            <span class="font-bold text-emerald-400 text-xs">+' + formatIDR(buyVal) + '</span>';
+          if (sellVal > 0) {
+            html += '            <span class="text-rose-400/80 text-[10px] ml-1.5">-' + formatIDR(sellVal) + '</span>';
+          }
+          html += '          </div>';
+        } else {
+          html += '          <div class="text-right font-mono">';
+          html += '            <span class="font-bold text-emerald-400 text-xs">+' + formatIDR(netVal) + '</span>';
+          html += '          </div>';
         }
         html += '        </div>';
-        html += '        <span class="font-mono font-semibold text-emerald-400">+' + formatIDR(item.net_val || item.buy_val) + '</span>';
+
+        if (isGross) {
+          html += '        <div class="flex flex-wrap items-center justify-between text-[10px] font-mono text-gray-400 mt-1.5 pt-1.5 border-t border-dark-600/20">';
+          html += '          <div class="flex items-center gap-2.5">';
+          html += '            <span>B.Vol: <strong class="text-gray-200">' + formatNumber(buyVol) + '</strong></span>';
+          if (sellVol > 0) {
+            html += '            <span>S.Vol: <strong class="text-gray-300">' + formatNumber(sellVol) + '</strong></span>';
+          }
+          if (item.bfrq || item.sfrq) {
+            html += '            <span>Freq: <strong class="text-gray-300">' + formatNumber(item.bfrq || 0) + '/' + formatNumber(item.sfrq || 0) + '</strong></span>';
+          }
+          html += '          </div>';
+          html += '          <div>';
+          html += '            <span class="' + (netVal >= 0 ? 'text-emerald-300' : 'text-rose-300') + ' font-semibold">Net: ' + (netVal >= 0 ? '+' : '') + formatIDR(netVal) + '</span>';
+          html += '          </div>';
+          html += '        </div>';
+        } else {
+          html += '        <div class="flex items-center justify-between text-[10px] font-mono text-gray-400 mt-1.5 pt-1.5 border-t border-dark-600/20">';
+          html += '          <span>Net Vol: <strong class="text-emerald-300 font-semibold">+' + formatNumber(netVol) + '</strong></span>';
+          if (item.avg_price) {
+            html += '          <span>Avg: <strong class="text-gray-200">' + formatNumber(item.avg_price) + '</strong></span>';
+          }
+          html += '        </div>';
+        }
         html += '      </div>';
       }
     }
@@ -162,27 +232,71 @@
     // Top Sellers
     html += '    <div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3">';
     html += '      <div class="text-[11px] font-bold text-rose-400 mb-2 flex items-center justify-between pb-1.5 border-b border-dark-600/40">';
-    html += '        <span>🔴 TOP SELLERS (' + escapeHtml(bSum.date || '') + ')</span><span>NET VALUE</span>';
+    html += '        <span>🔴 TOP SELLERS (' + (isGross ? 'FULL / GROSS' : 'NET VALUE &amp; VOL') + ')</span>';
+    html += '        <span class="text-[10px] text-gray-400 font-mono">' + (isGross ? 'SELL &amp; BUY VAL' : 'NET VAL') + '</span>';
     html += '      </div>';
-    html += '      <div class="space-y-1.5 text-xs">';
-    var sellers = bSum.top_sellers || [];
+    html += '      <div class="space-y-2 text-xs">';
     if (sellers.length === 0) {
       html += '      <div class="text-gray-500 text-center py-4 text-xs">Tidak ada data seller</div>';
     } else {
       for (var s = 0; s < sellers.length; s++) {
         var sItem = sellers[s];
-        html += '      <div class="flex items-center justify-between py-1 px-1.5 rounded hover:bg-dark-600/30 transition">';
-        html += '        <div class="flex items-center gap-2">';
-        html += '          <span class="w-5 text-gray-500 font-mono text-[10px]">' + (s + 1) + '</span>';
-        html += '          <span class="font-bold font-mono text-rose-300">' + escapeHtml(sItem.broker) + '</span>';
+        var sBuyVal = sItem.bval != null ? sItem.bval : (sItem.buy_val || 0);
+        var sSellVal = sItem.sval != null ? sItem.sval : (sItem.sell_val || Math.abs(sItem.net_val || 0));
+        var sBuyVol = sItem.bvol != null ? sItem.bvol : (sItem.buy_vol || 0);
+        var sSellVol = sItem.svol != null ? sItem.svol : (sItem.sell_vol || 0);
+        var sNetVal = sItem.nval != null ? sItem.nval : (sItem.net_val != null ? sItem.net_val : (sBuyVal - sSellVal));
+        var sNetVol = sItem.nvol != null ? sItem.nvol : (sItem.net_vol != null ? sItem.net_vol : (sBuyVol - sSellVol));
+
+        html += '      <div class="py-2 px-2.5 rounded-lg bg-dark-800/40 border border-dark-600/30 hover:border-rose-500/30 transition">';
+        html += '        <div class="flex items-center justify-between">';
+        html += '          <div class="flex items-center gap-2">';
+        html += '            <span class="w-4 text-gray-500 font-mono text-[10px] font-bold">' + (s + 1) + '</span>';
+        html += '            <span class="font-bold font-mono text-rose-300 px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-xs">' + escapeHtml(sItem.broker) + '</span>';
         if (sItem.broker_name) {
-          html += '          <span class="text-gray-400 text-[10px] truncate max-w-[120px]" title="' + escapeHtml(sItem.broker_name) + '">' + escapeHtml(sItem.broker_name) + '</span>';
+          html += '            <span class="text-gray-300 text-[11px] truncate max-w-[120px]" title="' + escapeHtml(sItem.broker_name) + '">' + escapeHtml(sItem.broker_name) + '</span>';
         }
         if (sItem.avg_price) {
-          html += '          <span class="text-gray-400 text-[11px]">@ ' + formatNumber(sItem.avg_price) + '</span>';
+          html += '            <span class="text-gray-400 text-[10px]">@ ' + formatNumber(sItem.avg_price) + '</span>';
+        }
+        html += '          </div>';
+        if (isGross) {
+          html += '          <div class="text-right font-mono">';
+          html += '            <span class="font-bold text-rose-400 text-xs">-' + formatIDR(sSellVal) + '</span>';
+          if (sBuyVal > 0) {
+            html += '            <span class="text-emerald-400/80 text-[10px] ml-1.5">+' + formatIDR(sBuyVal) + '</span>';
+          }
+          html += '          </div>';
+        } else {
+          html += '          <div class="text-right font-mono">';
+          html += '            <span class="font-bold text-rose-400 text-xs">-' + formatIDR(Math.abs(sNetVal)) + '</span>';
+          html += '          </div>';
         }
         html += '        </div>';
-        html += '        <span class="font-mono font-semibold text-rose-400">-' + formatIDR(Math.abs(sItem.net_val || sItem.sell_val)) + '</span>';
+
+        if (isGross) {
+          html += '        <div class="flex flex-wrap items-center justify-between text-[10px] font-mono text-gray-400 mt-1.5 pt-1.5 border-t border-dark-600/20">';
+          html += '          <div class="flex items-center gap-2.5">';
+          html += '            <span>S.Vol: <strong class="text-gray-200">' + formatNumber(sSellVol) + '</strong></span>';
+          if (sBuyVol > 0) {
+            html += '            <span>B.Vol: <strong class="text-gray-300">' + formatNumber(sBuyVol) + '</strong></span>';
+          }
+          if (sItem.bfrq || sItem.sfrq) {
+            html += '            <span>Freq: <strong class="text-gray-300">' + formatNumber(sItem.sfrq || 0) + '/' + formatNumber(sItem.bfrq || 0) + '</strong></span>';
+          }
+          html += '          </div>';
+          html += '          <div>';
+          html += '            <span class="' + (sNetVal >= 0 ? 'text-emerald-300' : 'text-rose-300') + ' font-semibold">Net: ' + (sNetVal >= 0 ? '+' : '') + formatIDR(sNetVal) + '</span>';
+          html += '          </div>';
+          html += '        </div>';
+        } else {
+          html += '        <div class="flex items-center justify-between text-[10px] font-mono text-gray-400 mt-1.5 pt-1.5 border-t border-dark-600/20">';
+          html += '          <span>Net Vol: <strong class="text-rose-300 font-semibold">-' + formatNumber(Math.abs(sNetVol)) + '</strong></span>';
+          if (sItem.avg_price) {
+            html += '          <span>Avg: <strong class="text-gray-200">' + formatNumber(sItem.avg_price) + '</strong></span>';
+          }
+          html += '        </div>';
+        }
         html += '      </div>';
       }
     }
@@ -335,7 +449,9 @@
   }
 
   root.BandarmologiRuntime = {
-    loadBandarmologiTab: loadBandarmologiTab
+    loadBandarmologiTab: loadBandarmologiTab,
+    setBrokerSummaryMode: setBrokerSummaryMode,
+    getBrokerSummaryMode: function () { return brokerSummaryMode; }
   };
 
   root.loadBandarmologiTab = loadBandarmologiTab;
