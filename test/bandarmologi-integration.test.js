@@ -84,6 +84,36 @@ test('bandarmologiService: normalizeBrokerSummary converts raw broker_levels to 
   assert.equal(norm.top_buyers[0].broker, 'YU');
   assert.equal(norm.top_sellers[0].broker, 'AK');
   assert.equal(norm.net_status, 'BIG_ACCUMULATION');
+  assert.ok(Array.isArray(norm.gross_buyers));
+  assert.ok(Array.isArray(norm.net_buyers));
+});
+
+test('bandarmologiService: normalizeBrokerSummary handles full raw brokers array with gross and net fields', () => {
+  const rawWithBrokers = {
+    stock_code: 'BBCA',
+    date: '2026-09-04',
+    brokers: [
+      { broker_code: 'YU', broker_name: 'CGS', bval: 154000, sval: 15000, bvol: 2200, svol: 200, bfrq: 240, sfrq: 30, nval: 139000, nvol: 2000 },
+      { broker_code: 'AK', broker_name: 'UBS', bval: 20000, sval: 120000, bvol: 300, svol: 1700, bfrq: 50, sfrq: 180, nval: -100000, nvol: -1400 }
+    ]
+  };
+
+  const norm = bandarmologiService.normalizeBrokerSummary(rawWithBrokers, '2026-09-04');
+  assert.equal(norm.gross_buyers[0].broker, 'YU');
+  assert.equal(norm.gross_buyers[0].bval, 154000);
+  assert.equal(norm.gross_buyers[0].sval, 15000);
+  assert.equal(norm.gross_buyers[0].bfrq, 240);
+  assert.equal(norm.gross_buyers[0].sfrq, 30);
+  assert.equal(norm.gross_buyers[0].nval, 139000);
+
+  assert.equal(norm.gross_sellers[0].broker, 'AK');
+  assert.equal(norm.gross_sellers[0].sval, 120000);
+  assert.equal(norm.gross_sellers[0].bval, 20000);
+
+  assert.equal(norm.net_buyers[0].broker, 'YU');
+  assert.equal(norm.net_buyers[0].nval, 139000);
+  assert.equal(norm.net_sellers[0].broker, 'AK');
+  assert.equal(norm.net_sellers[0].nval, -100000);
 });
 
 test('bandarmologiService: normalizeBrokerAccumulation builds daily series per date', () => {
