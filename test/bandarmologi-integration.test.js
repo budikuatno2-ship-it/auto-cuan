@@ -17,6 +17,33 @@ test('arjumClient: hasArjumApiKey checks environment variable safely without lea
   assert.equal(typeof isConfigured, 'boolean');
 });
 
+test('arjumClient: getConfiguredDailyQuota reads ARJUM_DAILY_QUOTA env var, falls back to a sane default', () => {
+  const orig = process.env.ARJUM_DAILY_QUOTA;
+  try {
+    delete process.env.ARJUM_DAILY_QUOTA;
+    assert.equal(arjumClient.getConfiguredDailyQuota(), 16000, 'must fall back to the documented plan quota, not a stale small default');
+
+    process.env.ARJUM_DAILY_QUOTA = '25000';
+    assert.equal(arjumClient.getConfiguredDailyQuota(), 25000, 'must be overridable via env var without a code change');
+
+    process.env.ARJUM_DAILY_QUOTA = 'not-a-number';
+    assert.equal(arjumClient.getConfiguredDailyQuota(), 16000, 'must ignore a garbage env value rather than returning NaN');
+  } finally {
+    if (orig !== undefined) process.env.ARJUM_DAILY_QUOTA = orig;
+    else delete process.env.ARJUM_DAILY_QUOTA;
+  }
+});
+
+test('arjumClient: extractQuotaHeaders picks up a rate-limit-style header opportunistically', () => {
+  const headersWith = new Map([['x-ratelimit-remaining', '42'], ['x-ratelimit-limit', '16000']]);
+  const resultWith = arjumClient.extractQuotaHeaders({ get: (k) => headersWith.get(k) || null });
+  assert.deepEqual(resultWith, { remaining: 42, limit: 16000 });
+
+  const headersWithout = new Map();
+  const resultWithout = arjumClient.extractQuotaHeaders({ get: (k) => headersWithout.get(k) || null });
+  assert.equal(resultWithout, null, 'must return null (not throw or fabricate) when Arjum sends no quota headers');
+});
+
 // Regression: the Broker Summary UI only ever showed 5 buyers/5 sellers.
 // Root cause: broker_limit/level_limit were never sent to Arjum, so its
 // endpoint fell back to a small default instead of the 20/25 the UI expects.
