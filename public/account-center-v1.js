@@ -223,6 +223,10 @@
       fact('Peraturan', accepted ? chip(accepted.version === TERMS_VERSION, 'Disetujui · ' + accepted.version, 'Versi lama · ' + accepted.version) : '<span class="ac-chip">Belum ada catatan</span>'),
       '</dl></section>',
       '<div class="space-y-3">',
+      '<section class="ac-card"><p class="ac-section-kicker">Risk Management</p><h2 class="ac-section-title">Modal &amp; Toleransi Risiko</h2><div style="font-size:11px;color:#94a3b8;margin-bottom:8px">Digunakan untuk menghitung saran lot dan risiko otomatis di seluruh kartu sinyal.</div><dl class="ac-facts">' +
+      fact('Modal Trading', '<span style="font-weight:700;color:#6ee7b7">' + esc(window.PositionSizing ? PositionSizing.fmtRp(PositionSizing.getSettings().capital) : 'Rp 10.000.000') + '</span>') +
+      fact('Risiko per Trade', '<span style="font-weight:700;color:#93c5fd">' + (window.PositionSizing ? PositionSizing.getSettings().riskPct : '1.0') + '%</span>') +
+      '</dl><button type="button" class="ac-btn" style="margin-top:10px;width:100%;font-size:11px" onclick="if(window.PositionSizing)PositionSizing.openModal(event)">⚙️ Ubah Modal &amp; Toleransi Risiko</button></section>',
       '<section class="ac-card"><p class="ac-section-kicker">Telegram</p><h2 class="ac-section-title">Keamanan &amp; verifikasi</h2><dl class="ac-facts">' +
       fact('Status', chip(tg.verified, 'Verified', 'Belum verified')) +
       fact('Telegram ID', esc(tg.telegram_user_id || '—')) +

@@ -2038,6 +2038,7 @@
 
 <script src="/assets/idx-tickers.js"></script>
 <script src="/assets/fca-stocks.js"></script>
+<script src="/position-sizing-calculator.js?v=20260906-e1"></script>
 <script>
 // ===== PDF LIBRARY LOADER (multi-CDN fallback, on demand) =====
 // jsPDF + autoTable are ~350KB and are only needed when someone actually
@@ -8016,6 +8017,7 @@ function freshnessChipHtml(r) {
 function renderDtCardGrid(results, data) {
     var container = document.getElementById('dtCardGrid');
     if (!container) return;
+    _lastDtResults = results;
     _dtCardData = {};
     var filtered = applyScreenerUiFilters('daytrade', results || []);
     if (_dtScreenerFilter && _dtScreenerFilter !== 'all') {
@@ -8076,6 +8078,9 @@ function renderDtCardGrid(results, data) {
         html += '<div class="trade-plan-tile" data-type="tp"><div class="trade-plan-label">Target 2</div><div class="trade-plan-value">' + t2 + '</div></div>';
         html += '<div class="trade-plan-tile" data-type="rr"><div class="trade-plan-label">R/R</div><div class="trade-plan-value">' + rrVal + '</div></div>';
         html += '</div>';
+        if (window.PositionSizing && typeof window.PositionSizing.renderCardWidget === 'function') {
+            html += window.PositionSizing.renderCardWidget(r, { levels: _l });
+        }
         var _riskReason = getRiskReasonOnly(r);
         if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
         if (notes) html += '<div style="font-size:10px;color:#9ca3af;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + escapeHtml(notes) + '</div>';
@@ -8244,6 +8249,9 @@ function openScrDetail(r, type) {
     html += '<div style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#4ead8a;margin-bottom:4px;font-weight:500">Target 2</div><div style="font-size:15px;font-weight:700;color:#6ee7b7">' + t2 + '</div></div>';
     html += '<div style="background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#a78bfa;margin-bottom:4px;font-weight:500">Risk / Reward</div><div style="font-size:15px;font-weight:700;color:#c4b5fd">' + rrVal + '</div></div>';
     html += '</div></div>';
+    if (window.PositionSizing && typeof window.PositionSizing.renderDetailSection === 'function') {
+        html += window.PositionSizing.renderDetailSection(r);
+    }
     // Setup reasoning
     if (r.status_reason || r.notes) html += '<div style="font-size:11px;color:#d1d5db;line-height:1.55;margin-bottom:14px;word-break:break-word">' + escapeHtml(r.status_reason || r.notes || '-') + '</div>';
     var _top5Reason = r.top5_reason || r.telegram_pick_reason || r.pick_reason || r.reason || r.grade_reason || r.status_reason || r.notes;
@@ -8361,6 +8369,7 @@ function kgToggleView(mode) {
 function renderKgCardGrid(results) {
     var container = document.getElementById('kgCardGrid');
     if (!container) return;
+    _lastKgResults = results;
     _kgCardData = {};
     var filtered = applyScreenerUiFilters('konglo', results || []);
     if (_screenerFilter && _screenerFilter !== 'all') {
@@ -8415,6 +8424,9 @@ function renderKgCardGrid(results) {
         html += '<div class="trade-plan-tile" data-type="tp"><div class="trade-plan-label">Target 2</div><div class="trade-plan-value">' + t2 + '</div></div>';
         html += '<div class="trade-plan-tile" data-type="rr"><div class="trade-plan-label">R/R</div><div class="trade-plan-value">' + rrVal + '</div></div>';
         html += '</div>';
+        if (window.PositionSizing && typeof window.PositionSizing.renderCardWidget === 'function') {
+            html += window.PositionSizing.renderCardWidget(r, { levels: _l });
+        }
         var _riskReason = getRiskReasonOnly(r);
         if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
         if (notes) html += '<div style="font-size:10px;color:#9ca3af;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + escapeHtml(notes) + '</div>';
@@ -8432,6 +8444,7 @@ var _nkCardData = {};
 function renderNkCardGrid(results) {
     var container = document.getElementById('nkCardGrid');
     if (!container) return;
+    _lastNkResults = results;
     _nkCardData = {};
     var filtered = applyScreenerUiFilters('nonkonglo', results || []);
     if (typeof _nkScreenerFilter !== 'undefined' && _nkScreenerFilter && _nkScreenerFilter !== 'all') {
@@ -8469,7 +8482,7 @@ function renderNkCardGrid(results) {
         if (r.pattern_label) _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#60a5fa">' + escapeHtml(r.pattern_label.substring(0,18)) + '</span>';
         if (r.foreign_label && r.foreign_label !== 'Foreign Data Unavailable') _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#6ee7b7">' + escapeHtml(r.foreign_label.replace('Foreign ','')) + '</span>';
         if (r.high_rr_warning) _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#fbbf24;font-weight:600" title="' + escapeHtml(r.high_rr_warning_note || 'Target R:R tinggi') + '">⚠️ R:R Tinggi</span>';
-        if (_nBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _nBadgeLine + '</div>';
+        if (_nBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _badgeLine + '</div>';
         var _nRespectLine = buildRespectQualityLine(r);
         if (_nRespectLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Respect v2:</span> ' + escapeHtml(_nRespectLine) + '</div>';
         html += '<div class="trade-plan-grid">';
@@ -8480,6 +8493,9 @@ function renderNkCardGrid(results) {
         html += '<div class="trade-plan-tile" data-type="tp"><div class="trade-plan-label">Target 2</div><div class="trade-plan-value">' + t2 + '</div></div>';
         html += '<div class="trade-plan-tile" data-type="rr"><div class="trade-plan-label">R/R</div><div class="trade-plan-value">' + rrVal + '</div></div>';
         html += '</div>';
+        if (window.PositionSizing && typeof window.PositionSizing.renderCardWidget === 'function') {
+            html += window.PositionSizing.renderCardWidget(r, { levels: _l });
+        }
         var _riskReason = getRiskReasonOnly(r);
         if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
         if (notes) html += '<div style="font-size:10px;color:#9ca3af;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + escapeHtml(notes) + '</div>';
@@ -8491,6 +8507,9 @@ function renderNkCardGrid(results) {
 
 // ===== CENTRALIZED EVENT DELEGATION MANAGER =====
 document.addEventListener('click', function(e) {
+    if (e.target.closest('.ac-pos-calc-box') || e.target.closest('.wl-star-btn') || e.target.closest('#posCalcModal')) {
+        return;
+    }
     // 1. Screener card click delegation (Day Trade, Swing Konglo, Swing Non-Konglo)
     var dtCard = e.target.closest('.dt-card-item');
     if (dtCard) {
@@ -10351,6 +10370,9 @@ function renderDashboardTop5(picks) {
         html += '<div class="dash-zone dash-trade">';
         html += dashRiskLadderHtml(r);
         html += '<div class="dash-level-grid">' + dashLevelHtml('Entry 1', r.entry1) + dashLevelHtml('Entry 2', r.entry2) + dashLevelHtml('Stop Loss', r.stop_loss, 'danger') + dashLevelHtml('TP1', r.tp1, 'target') + dashLevelHtml('TP2', r.tp2, 'target') + '</div>';
+        if (window.PositionSizing && typeof window.PositionSizing.renderCardWidget === 'function') {
+            html += window.PositionSizing.renderCardWidget(r, { levels: { e1: r.entry1, e2: r.entry2, sl: r.stop_loss, t1: r.tp1, t2: r.tp2 } });
+        }
         html += '</div>';
 
         // Zone 3 — caveats and reference.
@@ -11570,5 +11592,6 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/chart-viewer.js?v=20260905-v1"></script>
 <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
 <script src="/unified-cockpit-runtime.js?v=20260905-v1"></script>
+<script src="/position-sizing-calculator.js?v=20260906-e1"></script>
 </body>
 </html>
