@@ -150,3 +150,17 @@ test('buildBrokerBubbleItems: avgSell computed from svol when avg_price not avai
   assert.ok(cc.avgSell > 0, 'avgSell must be computed from sval/svol when avg_price not present');
   assert.equal(cc.avgSell, 10000); // 50000000000 / 5000000 = 10000
 });
+
+// Regression: the "Semua" (all) flow bubble view showed every broker as BUY
+// with "Sellers (0)", because `bSum.gross_sellers || bSum.top_sellers || []`
+// does not fall back past an empty array (`[]` is truthy in JS) — an empty
+// gross_sellers field silently discarded a populated top_sellers, so
+// buildBrokerBubbleItems never even ran its seller-side loop.
+test('firstNonEmptyList: falls back past an empty array (unlike `||`), never past a populated one', () => {
+  const populatedSellers = [{ broker: 'AK', bval: 0, sval: 5000000 }];
+  assert.deepEqual(bandarmologiRuntime.firstNonEmptyList([], populatedSellers), populatedSellers, 'an empty first candidate must not shadow a populated fallback');
+  assert.deepEqual(bandarmologiRuntime.firstNonEmptyList(undefined, populatedSellers), populatedSellers, 'a missing first candidate must fall back too');
+  assert.deepEqual(bandarmologiRuntime.firstNonEmptyList(populatedSellers, []), populatedSellers, 'a populated first candidate must win over the fallback');
+  assert.deepEqual(bandarmologiRuntime.firstNonEmptyList([], []), [], 'every candidate empty must resolve to [], not throw or return undefined');
+  assert.deepEqual(bandarmologiRuntime.firstNonEmptyList(), [], 'no arguments at all must resolve to []');
+});
