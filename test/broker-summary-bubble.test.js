@@ -101,3 +101,52 @@ test('renderBrokerDetailCardHtml: produces complete card with full name, compari
   assert.ok(html.includes('Avg Harga Jual'));
   assert.ok(html.includes('@ Rp 9.800'));
 });
+
+test('buildBrokerBubbleItems: net seller broker (sval > bval) gets isNetBuyer=false correctly', () => {
+  // Simulates aggregated data where a broker appears only in sellers list
+  const buyers = [];
+  const sellers = [
+    {
+      broker: 'RX',
+      broker_name: 'Macquarie',
+      bval: 10000000000,
+      sval: 80000000000,
+      bvol: 1000000,
+      svol: 8000000,
+      bfrq: 100,
+      sfrq: 500,
+      nval: -70000000000,
+      net_val: -70000000000,
+      nvol: -7000000
+    }
+  ];
+  const items = bandarmologiRuntime.buildBrokerBubbleItems(buyers, sellers, 'gross');
+  assert.equal(items.length, 1);
+  const rx = items[0];
+  assert.equal(rx.broker, 'RX');
+  assert.equal(rx.isNetBuyer, false, 'Net seller must have isNetBuyer=false');
+  assert.ok(rx.netVal < 0, 'netVal must be negative for net seller');
+  assert.equal(rx.sval, 80000000000);
+});
+
+test('buildBrokerBubbleItems: avgSell computed from svol when avg_price not available', () => {
+  const buyers = [];
+  const sellers = [
+    {
+      broker: 'CC',
+      broker_name: 'Mandiri Sekuritas',
+      bval: 0,
+      sval: 50000000000,
+      bvol: 0,
+      svol: 5000000,
+      bfrq: 0,
+      sfrq: 300,
+      nval: -50000000000
+    }
+  ];
+  const items = bandarmologiRuntime.buildBrokerBubbleItems(buyers, sellers, 'gross');
+  const cc = items.find(b => b.broker === 'CC');
+  assert.ok(cc, 'CC must exist');
+  assert.ok(cc.avgSell > 0, 'avgSell must be computed from sval/svol when avg_price not present');
+  assert.equal(cc.avgSell, 10000); // 50000000000 / 5000000 = 10000
+});

@@ -210,10 +210,10 @@
         target.fullName = getBrokerSecurityName(code, item.broker_name);
       }
 
-      var bval = item.bval != null ? item.bval : (isBuyerList ? (item.buy_val || item.net_val || 0) : 0);
-      var sval = item.sval != null ? item.sval : (!isBuyerList ? (item.sell_val || Math.abs(item.net_val || 0)) : 0);
-      var bvol = item.bvol != null ? item.bvol : (isBuyerList ? (item.buy_vol || item.net_vol || 0) : 0);
-      var svol = item.svol != null ? item.svol : (!isBuyerList ? (item.sell_vol || Math.abs(item.net_vol || 0)) : 0);
+      var bval = item.bval != null ? Number(item.bval) : (item.buy_val != null ? Number(item.buy_val) : (isBuyerList ? Number(item.net_val || 0) : 0));
+      var sval = item.sval != null ? Number(item.sval) : (item.sell_val != null ? Number(item.sell_val) : (!isBuyerList ? Math.abs(Number(item.net_val || 0)) : 0));
+      var bvol = item.bvol != null ? Number(item.bvol) : (item.buy_vol != null ? Number(item.buy_vol) : 0);
+      var svol = item.svol != null ? Number(item.svol) : (item.sell_vol != null ? Number(item.sell_vol) : 0);
 
       if (bval > target.bval) target.bval = bval;
       if (sval > target.sval) target.sval = sval;
@@ -223,14 +223,18 @@
       if (item.bfrq && item.bfrq > target.bfrq) target.bfrq = item.bfrq;
       if (item.sfrq && item.sfrq > target.sfrq) target.sfrq = item.sfrq;
 
-      if (isBuyerList && item.avg_price) target.avgBuy = item.avg_price;
-      if (!isBuyerList && item.avg_price) target.avgSell = item.avg_price;
+      // avg_buy / avg_sell: prefer explicit, fallback to val/vol
+      if (item.avg_buy && isBuyerList) target.avgBuy = item.avg_buy;
+      else if (item.avg_price && isBuyerList) target.avgBuy = item.avg_price;
+      if (item.avg_sell && !isBuyerList) target.avgSell = item.avg_sell;
+      else if (item.avg_price && !isBuyerList) target.avgSell = item.avg_price;
 
-      if (item.nval != null) target.explicitNetVal = item.nval;
-      else if (item.net_val != null) target.explicitNetVal = item.net_val;
+      // nval: prefer explicit field, works for both buyer and seller items
+      var itemNval = item.nval != null ? Number(item.nval) : (item.net_val != null ? Number(item.net_val) : null);
+      if (itemNval != null) target.explicitNetVal = itemNval;
 
-      if (item.nvol != null) target.explicitNetVol = item.nvol;
-      else if (item.net_vol != null) target.explicitNetVol = item.net_vol;
+      var itemNvol = item.nvol != null ? Number(item.nvol) : (item.net_vol != null ? Number(item.net_vol) : null);
+      if (itemNvol != null) target.explicitNetVol = itemNvol;
     }
 
     var bList = Array.isArray(buyers) ? buyers : [];
@@ -253,6 +257,15 @@
       var netVal = it.explicitNetVal != null ? it.explicitNetVal : (it.bval - it.sval);
       var netVol = it.explicitNetVol != null ? it.explicitNetVol : (it.bvol - it.svol);
       var isNetBuyer = netVal >= 0;
+
+      // Fix avgSell fallback: compute from svol if not set
+      if (!it.avgSell && it.svol > 0 && it.sval > 0) {
+        it.avgSell = Math.round(it.sval / it.svol);
+      }
+      // Fix avgBuy fallback: compute from bvol if not set
+      if (!it.avgBuy && it.bvol > 0 && it.bval > 0) {
+        it.avgBuy = Math.round(it.bval / it.bvol);
+      }
 
       // Sizing transaction value
       var txVal = isGross ? Math.max(it.bval, it.sval, Math.abs(netVal)) : Math.abs(netVal);
