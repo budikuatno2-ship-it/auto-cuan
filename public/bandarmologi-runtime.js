@@ -701,8 +701,15 @@
     var bAcc = data.broker_accumulation || {};
     var insiders = Array.isArray(data.insiders) ? data.insiders : [];
 
+    var DEMO_REASON_LABEL = {
+      no_api_key: 'Data Demo — API key belum dikonfigurasi',
+      no_disk_cache: 'Data Demo — belum ada data tersimpan untuk ticker ini',
+      quota_exceeded: 'Data Demo — kuota API harian habis',
+      api_error: 'Data Demo — API sedang tidak tersedia',
+      network_error: 'Data Demo — koneksi ke API gagal'
+    };
     var isDemoBadge = data.is_demo
-      ? '<span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono">DEMO PREVIEW</span>'
+      ? '<span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono" title="' + escapeHtml(data.demo_detail || '') + '">' + escapeHtml(DEMO_REASON_LABEL[data.demo_reason] || 'DEMO PREVIEW — data bukan dari sumber live') + '</span>'
       : '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">LIVE / BACKFILL</span>';
 
     var netStatusTone = 'text-emerald-400';

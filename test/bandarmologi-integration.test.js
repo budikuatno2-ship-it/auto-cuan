@@ -41,6 +41,51 @@ test('arjumClient: fetchBrokerSummary always sends explicit broker_limit and lev
   }
 });
 
+// Regression: the demo-fallback badge used to say generic "DEMO PREVIEW"
+// regardless of why live data wasn't used, so a quota-exhausted API looked
+// identical to "no cache yet" or a real outage.
+test('arjumClient: classifyFailure distinguishes quota exhaustion from a generic API error', () => {
+  assert.equal(arjumClient.classifyFailure({ ok: false, status: 429, error: 'Too Many Requests' }).reason, 'quota_exceeded');
+  assert.equal(arjumClient.classifyFailure({ ok: false, status: 403, error: 'Daily quota exceeded' }).reason, 'quota_exceeded');
+  assert.equal(arjumClient.classifyFailure({ ok: false, status: 500, error: 'Internal Server Error' }).reason, 'api_error');
+  assert.equal(arjumClient.classifyFailure({ ok: false, status: 404, error: 'Not Found' }).reason, 'api_error');
+  assert.equal(arjumClient.classifyFailure(null).reason, 'unknown');
+});
+
+test('bandarmologiService: getBandarmologiData surfaces demo_reason=quota_exceeded instead of a silent generic fallback', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'arjum-cache-quota-'));
+  const origEnv = process.env.ARJUM_DATA_DIR;
+  process.env.ARJUM_DATA_DIR = tmpBase;
+
+  const origHasKey = arjumClient.hasArjumApiKey;
+  const origFetchSummary = arjumClient.fetchBrokerSummary;
+  const origFetchAcc = arjumClient.fetchBrokerAccumulation;
+  const origFetchIns = arjumClient.fetchInsiders;
+
+  arjumClient.hasArjumApiKey = () => true;
+  arjumClient.fetchBrokerSummary = async () => ({ ok: false, status: 429, error: 'Quota exceeded for today' });
+  arjumClient.fetchBrokerAccumulation = async () => ({ ok: false, status: 429, error: 'Quota exceeded for today' });
+  arjumClient.fetchInsiders = async () => ({ ok: false, status: 429, error: 'Quota exceeded for today' });
+
+  try {
+    const res = await bandarmologiService.getBandarmologiData('NOCACHE1', {});
+    assert.equal(res.success, true);
+    assert.equal(res.is_demo, true);
+    assert.equal(res.demo_reason, 'quota_exceeded');
+  } finally {
+    arjumClient.hasArjumApiKey = origHasKey;
+    arjumClient.fetchBrokerSummary = origFetchSummary;
+    arjumClient.fetchBrokerAccumulation = origFetchAcc;
+    arjumClient.fetchInsiders = origFetchIns;
+    if (origEnv !== undefined) process.env.ARJUM_DATA_DIR = origEnv;
+    else delete process.env.ARJUM_DATA_DIR;
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+  }
+});
+
 test('bandarmologiService: generateDemoData produces complete structure for UI', () => {
   const data = bandarmologiService.generateDemoData('BBCA', '2026-09-04');
   assert.equal(data.ticker, 'BBCA');
