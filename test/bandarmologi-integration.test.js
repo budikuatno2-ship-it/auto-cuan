@@ -116,6 +116,44 @@ test('bandarmologiService: normalizeBrokerSummary handles full raw brokers array
   assert.equal(norm.net_sellers[0].nval, -100000);
 });
 
+// Regression: header badge (net_label/net_status) must track the actual net
+// flow direction, not get overridden by which list (buyer/seller) an item
+// arrived in — the same class of bug fixed for the bubble visualization in
+// PR #550 (isBuyerList overriding explicitNetVal).
+test('bandarmologiService: normalizeBrokerSummary badge shows Big Distribution when sellers dominate', () => {
+  const rawSellHeavy = {
+    stock_code: 'BBCA',
+    date: '2026-09-04',
+    brokers: [
+      { broker_code: 'YU', broker_name: 'CGS', bval: 20000, sval: 15000, bvol: 300, svol: 200, nval: 5000, nvol: 100 },
+      { broker_code: 'AK', broker_name: 'UBS', bval: 10000, sval: 200000, bvol: 100, svol: 2500, nval: -190000, nvol: -2400 }
+    ]
+  };
+
+  const norm = bandarmologiService.normalizeBrokerSummary(rawSellHeavy, '2026-09-04');
+  assert.equal(norm.net_status, 'BIG_DISTRIBUTION');
+  assert.equal(norm.net_label, 'Big Distribution');
+  assert.ok(norm.net_flow < 0);
+});
+
+test('bandarmologiService: normalizeBrokerSummary badge respects explicit net_val even for pure seller items', () => {
+  // Seller-side items reported with only net_val (no explicit sval) must not
+  // have their sign flipped by an isBuyer-style override when computing the
+  // net flow direction feeding the badge.
+  const rawNetValOnly = {
+    stock_code: 'BBCA',
+    date: '2026-09-04',
+    brokers: [
+      { broker_code: 'YU', broker_name: 'CGS', net_val: 8000 },
+      { broker_code: 'AK', broker_name: 'UBS', net_val: -50000 }
+    ]
+  };
+
+  const norm = bandarmologiService.normalizeBrokerSummary(rawNetValOnly, '2026-09-04');
+  assert.equal(norm.net_status, 'BIG_DISTRIBUTION');
+  assert.equal(norm.net_label, 'Big Distribution');
+});
+
 test('bandarmologiService: normalizeBrokerAccumulation builds daily series per date', () => {
   const raw = {
     code: 'BBCA',
