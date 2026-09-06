@@ -99,11 +99,32 @@
     html += '  </div>';
     html += '</div>';
 
-    // 1. BROKER SUMMARY (BANDARMOLOGI) SECTION
+    var series = bAcc.series || [];
+    var availableDates = Array.isArray(data.available_dates) && data.available_dates.length > 0
+      ? data.available_dates
+      : series.map(function (s) { return s.date; }).filter(Boolean).reverse();
+
+    // Quick date pills in header if available
+    var quickDates = availableDates.slice(0, 5);
+    if (quickDates.length > 0) {
+      html += '<div class="flex flex-wrap items-center gap-1.5 mb-3">';
+      html += '  <span class="text-[11px] text-gray-400 mr-1">Pilih Cepat Tanggal:</span>';
+      for (var qd = 0; qd < quickDates.length; qd++) {
+        var dt = quickDates[qd];
+        var isCurrent = dt === (bSum.date || currentBandarDate);
+        var pillStyle = isCurrent
+          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
+          : 'bg-dark-700 text-gray-300 border-dark-600/60 hover:bg-dark-600 hover:text-white';
+        html += '  <button type="button" onclick="BandarmologiRuntime.loadBandarmologiTab(null, \'' + escapeHtml(dt) + '\')" class="px-2 py-0.5 text-[11px] rounded-md border font-mono transition ' + pillStyle + '">' + escapeHtml(dt) + '</button>';
+      }
+      html += '</div>';
+    }
+
+    // 1. BROKER SUMMARY (BANDARMOLOGI) SECTION - DETAILED CARD FOR SELECTED DATE
     html += '<div class="mb-5">';
     html += '  <div class="flex items-center justify-between mb-2.5">';
-    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📊</span> Broker Summary (Top Buyer &amp; Seller)</h3>';
-    html += '    <span class="text-[11px] text-gray-400">Data Transaksi Harian</span>';
+    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📊</span> Broker Summary Detail — Tanggal: <span class="text-emerald-400 font-mono">' + escapeHtml(bSum.date || 'Terbaru') + '</span></h3>';
+    html += '    <span class="text-[11px] text-gray-400">Breakdown Top 5 Sekuritas Harian</span>';
     html += '  </div>';
 
     html += '  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">';
@@ -111,7 +132,7 @@
     // Top Buyers
     html += '    <div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3">';
     html += '      <div class="text-[11px] font-bold text-emerald-400 mb-2 flex items-center justify-between pb-1.5 border-b border-dark-600/40">';
-    html += '        <span>🟢 TOP BUYERS</span><span>NET VALUE</span>';
+    html += '        <span>🟢 TOP BUYERS (' + escapeHtml(bSum.date || '') + ')</span><span>NET VALUE</span>';
     html += '      </div>';
     html += '      <div class="space-y-1.5 text-xs">';
     var buyers = bSum.top_buyers || [];
@@ -124,7 +145,12 @@
         html += '        <div class="flex items-center gap-2">';
         html += '          <span class="w-5 text-gray-500 font-mono text-[10px]">' + (b + 1) + '</span>';
         html += '          <span class="font-bold font-mono text-emerald-300">' + escapeHtml(item.broker) + '</span>';
-        html += '          <span class="text-gray-400 text-[11px]">@ ' + formatNumber(item.avg_price) + '</span>';
+        if (item.broker_name) {
+          html += '          <span class="text-gray-400 text-[10px] truncate max-w-[120px]" title="' + escapeHtml(item.broker_name) + '">' + escapeHtml(item.broker_name) + '</span>';
+        }
+        if (item.avg_price) {
+          html += '          <span class="text-gray-400 text-[11px]">@ ' + formatNumber(item.avg_price) + '</span>';
+        }
         html += '        </div>';
         html += '        <span class="font-mono font-semibold text-emerald-400">+' + formatIDR(item.net_val || item.buy_val) + '</span>';
         html += '      </div>';
@@ -136,7 +162,7 @@
     // Top Sellers
     html += '    <div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3">';
     html += '      <div class="text-[11px] font-bold text-rose-400 mb-2 flex items-center justify-between pb-1.5 border-b border-dark-600/40">';
-    html += '        <span>🔴 TOP SELLERS</span><span>NET VALUE</span>';
+    html += '        <span>🔴 TOP SELLERS (' + escapeHtml(bSum.date || '') + ')</span><span>NET VALUE</span>';
     html += '      </div>';
     html += '      <div class="space-y-1.5 text-xs">';
     var sellers = bSum.top_sellers || [];
@@ -149,7 +175,12 @@
         html += '        <div class="flex items-center gap-2">';
         html += '          <span class="w-5 text-gray-500 font-mono text-[10px]">' + (s + 1) + '</span>';
         html += '          <span class="font-bold font-mono text-rose-300">' + escapeHtml(sItem.broker) + '</span>';
-        html += '          <span class="text-gray-400 text-[11px]">@ ' + formatNumber(sItem.avg_price) + '</span>';
+        if (sItem.broker_name) {
+          html += '          <span class="text-gray-400 text-[10px] truncate max-w-[120px]" title="' + escapeHtml(sItem.broker_name) + '">' + escapeHtml(sItem.broker_name) + '</span>';
+        }
+        if (sItem.avg_price) {
+          html += '          <span class="text-gray-400 text-[11px]">@ ' + formatNumber(sItem.avg_price) + '</span>';
+        }
         html += '        </div>';
         html += '        <span class="font-mono font-semibold text-rose-400">-' + formatIDR(Math.abs(sItem.net_val || sItem.sell_val)) + '</span>';
         html += '      </div>';
@@ -160,16 +191,74 @@
     html += '  </div>';
     html += '</div>';
 
-    // 2. HISTORICAL BROKER ACCUMULATION
+    // 2. DAILY BROKER SUMMARY BREAKDOWN TABLE (PER HARI)
     html += '<div class="mb-5 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5">';
     html += '  <div class="flex items-center justify-between mb-3">';
-    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📈</span> Akumulasi Broker Historis</h3>';
+    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📅</span> Riwayat Harian Broker Summary (Breakdown Per Hari)</h3>';
+    html += '    <span class="text-[11px] text-gray-400">Setiap tanggal memiliki data tersendiri</span>';
+    html += '  </div>';
+
+    if (series.length === 0) {
+      html += '  <div class="text-gray-500 text-center py-4 text-xs">Belum ada riwayat harian untuk emiten ini.</div>';
+    } else {
+      html += '  <div class="overflow-x-auto max-h-72 overflow-y-auto">';
+      html += '    <table class="w-full text-left text-xs">';
+      html += '      <thead>';
+      html += '        <tr class="text-[11px] text-gray-400 border-b border-dark-600/40 sticky top-0 bg-dark-800/90 backdrop-blur z-10">';
+      html += '          <th class="py-2 px-2.5">Tanggal</th>';
+      html += '          <th class="py-2 px-2 text-center">Status Bandar</th>';
+      html += '          <th class="py-2 px-2 text-right">Net Flow (IDR)</th>';
+      html += '          <th class="py-2 px-2 text-center">Top Buyer</th>';
+      html += '          <th class="py-2 px-2 text-center">Top Seller</th>';
+      html += '          <th class="py-2 px-2 text-center">Aksi</th>';
+      html += '        </tr>';
+      html += '      </thead>';
+      html += '      <tbody class="divide-y divide-dark-600/20">';
+
+      var revSeries = series.slice().reverse();
+      for (var di = 0; di < revSeries.length; di++) {
+        var dayRow = revSeries[di];
+        var isSelected = dayRow.date === (bSum.date || currentBandarDate);
+        var isPositive = (dayRow.net_val || 0) >= 0;
+        var statusBadge = isPositive
+          ? '<span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold text-[10px]">AKUMULASI</span>'
+          : '<span class="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-semibold text-[10px]">DISTRIBUSI</span>';
+
+        var rowBg = isSelected
+          ? 'bg-emerald-500/10 border-l-2 border-emerald-500 font-medium'
+          : 'hover:bg-dark-600/20 transition';
+
+        html += '        <tr class="' + rowBg + '">';
+        html += '          <td class="py-2 px-2.5 font-mono text-[11px] text-gray-200">';
+        html += '            ' + escapeHtml(dayRow.date);
+        if (isSelected) {
+          html += '          <span class="ml-1.5 text-[9px] px-1.5 py-0.2 rounded bg-emerald-500 text-dark-900 font-bold">DILIHAT</span>';
+        }
+        html += '          </td>';
+        html += '          <td class="py-2 px-2 text-center">' + statusBadge + '</td>';
+        html += '          <td class="py-2 px-2 font-mono text-right font-semibold ' + (isPositive ? 'text-emerald-400' : 'text-rose-400') + '">' + (isPositive ? '+' : '-') + formatIDR(Math.abs(dayRow.net_val || 0)) + '</td>';
+        html += '          <td class="py-2 px-2 text-center font-mono font-bold text-emerald-300">' + escapeHtml(dayRow.top_buyer || '—') + '</td>';
+        html += '          <td class="py-2 px-2 text-center font-mono font-bold text-rose-300">' + escapeHtml(dayRow.top_seller || '—') + '</td>';
+        html += '          <td class="py-2 px-2 text-center">';
+        html += '            <button type="button" onclick="BandarmologiRuntime.loadBandarmologiTab(null, \'' + escapeHtml(dayRow.date) + '\')" class="px-2 py-1 text-[10px] rounded bg-dark-600 hover:bg-emerald-600 hover:text-white text-gray-300 transition">Lihat Top 5</button>';
+        html += '          </td>';
+        html += '        </tr>';
+      }
+      html += '      </tbody>';
+      html += '    </table>';
+      html += '  </div>';
+    }
+    html += '</div>';
+
+    // 3. HISTORICAL BROKER ACCUMULATION (BAR CHART)
+    html += '<div class="mb-5 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5">';
+    html += '  <div class="flex items-center justify-between mb-3">';
+    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📈</span> Grafik Tren Akumulasi vs Distribusi Historis</h3>';
     if (bAcc.accumulation_score != null) {
       html += '    <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-dark-600 text-emerald-400 border border-emerald-500/20">Acc Score: ' + bAcc.accumulation_score + '/100</span>';
     }
     html += '  </div>';
 
-    var series = bAcc.series || [];
     if (series.length === 0) {
       html += '  <div class="text-gray-500 text-center py-4 text-xs">Belum ada data series akumulasi</div>';
     } else {

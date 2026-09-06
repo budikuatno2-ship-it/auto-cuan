@@ -72,9 +72,12 @@ async function run() {
     tickers = args[tickerArgIdx + 1].split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
   } else if (isAll) {
     try {
-      const screenerFile = path.join(__dirname, '..', 'data', 'bei_universe.json');
-      if (fs.existsSync(screenerFile)) {
-        tickers = JSON.parse(fs.readFileSync(screenerFile, 'utf8'));
+      const txtFile = path.join(__dirname, '..', 'data', 'daytrade-observe-tickers.txt');
+      const jsonFile = path.join(__dirname, '..', 'data', 'bei_universe.json');
+      if (fs.existsSync(txtFile)) {
+        tickers = fs.readFileSync(txtFile, 'utf8').split(/\r?\n/).map(t => t.trim().toUpperCase()).filter(Boolean);
+      } else if (fs.existsSync(jsonFile)) {
+        tickers = JSON.parse(fs.readFileSync(jsonFile, 'utf8'));
       }
     } catch (_) {}
   }
@@ -83,7 +86,14 @@ async function run() {
     tickers = tickers.slice(0, limit);
   }
 
-  const tradingDates = getTradingDates();
+  let startDate = '2026-08-03';
+  let endDate = '2026-09-04';
+  const startIdx = args.indexOf('--start-date');
+  if (startIdx >= 0 && args[startIdx + 1]) startDate = args[startIdx + 1];
+  const endIdx = args.indexOf('--end-date');
+  if (endIdx >= 0 && args[endIdx + 1]) endDate = args[endIdx + 1];
+
+  const tradingDates = getTradingDates(startDate, endDate);
 
   console.log('=== AUTO-CUAN ARJUM BACKFILL WORKER ===');
   console.log(`ARJUM_API_KEY: [${arjumClient.hasArjumApiKey() ? 'ADA' : 'TIDAK ADA'}]`);
@@ -156,6 +166,9 @@ async function run() {
         const res = await arjumClient.fetchBrokerSummary(ticker, date);
         if (res.ok && res.data) {
           bandarmologiService.writeDiskCache('broker-summary', ticker, date, res.data);
+          if (date === tradingDates[tradingDates.length - 1]) {
+            bandarmologiService.writeDiskCache('broker-summary', ticker, 'latest', res.data);
+          }
           totalSaved++;
         } else {
           totalErrors++;

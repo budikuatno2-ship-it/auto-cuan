@@ -65,3 +65,52 @@ test('sectorHot: handleBandarmologi responds with status 200 and payload', async
   assert.equal(responseData.success, true);
   assert.equal(responseData.ticker, 'TLKM');
 });
+
+test('bandarmologiService: normalizeBrokerSummary converts raw broker_levels to top_buyers/sellers', () => {
+  const raw = {
+    stock_code: 'BBCA',
+    broker_start_date: '2026-09-04',
+    broker_end_date: '2026-09-04',
+    broker_levels: [
+      {
+        buy: { broker_code: 'YU', broker_name: 'CGS', bval: 154000000, bvol: 22000, bavg: 7000 },
+        sell: { broker_code: 'AK', broker_name: 'UBS', sval: 120000000, svol: 17000, savg: 7050 }
+      }
+    ]
+  };
+
+  const norm = bandarmologiService.normalizeBrokerSummary(raw, '2026-09-04');
+  assert.equal(norm.date, '2026-09-04');
+  assert.equal(norm.top_buyers[0].broker, 'YU');
+  assert.equal(norm.top_sellers[0].broker, 'AK');
+  assert.equal(norm.net_status, 'BIG_ACCUMULATION');
+});
+
+test('bandarmologiService: normalizeBrokerAccumulation builds daily series per date', () => {
+  const raw = {
+    code: 'BBCA',
+    series: [
+      {
+        broker_code: 'AK',
+        points: [
+          { date: '2026-09-03', nval: 10000000 },
+          { date: '2026-09-04', nval: -5000000 }
+        ]
+      },
+      {
+        broker_code: 'YU',
+        points: [
+          { date: '2026-09-03', nval: 20000000 },
+          { date: '2026-09-04', nval: 15000000 }
+        ]
+      }
+    ]
+  };
+
+  const norm = bandarmologiService.normalizeBrokerAccumulation(raw, 'BBCA');
+  assert.equal(norm.series.length, 2);
+  assert.equal(norm.series[0].date, '2026-09-03');
+  assert.equal(norm.series[0].net_val, 30000000);
+  assert.equal(norm.series[1].date, '2026-09-04');
+  assert.equal(norm.series[1].net_val, 10000000);
+});
