@@ -226,6 +226,56 @@ test('bandarmologiService: readDiskCache does NOT fallback to other dates when s
   }
 });
 
+test('bandarmologiService: getBandarmologiData with custom date range only aggregates dates inside the window', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'arjum-cache-custom-range-'));
+  const origEnv = process.env.ARJUM_DATA_DIR;
+  process.env.ARJUM_DATA_DIR = tmpBase;
+
+  try {
+    const ticker = 'CUSTOMR';
+    // top_buyers/top_sellers as separate lists (the real Arjum broker-summary
+    // shape) so each day's net_flow is unambiguous.
+    bandarmologiService.writeDiskCache('broker-summary', ticker, '2026-08-01', {
+      stock_code: ticker, date: '2026-08-01',
+      top_buyers: [{ broker: 'YU', broker_name: 'Test Buyer', bval: 100, sval: 0, bvol: 10, svol: 0 }],
+      top_sellers: []
+    });
+    bandarmologiService.writeDiskCache('broker-summary', ticker, '2026-08-15', {
+      stock_code: ticker, date: '2026-08-15',
+      top_buyers: [],
+      top_sellers: [{ broker: 'AK', broker_name: 'Test Seller', bval: 0, sval: 50, bvol: 0, svol: 5 }]
+    });
+    bandarmologiService.writeDiskCache('broker-summary', ticker, '2026-08-31', {
+      stock_code: ticker, date: '2026-08-31',
+      top_buyers: [{ broker: 'ZP', broker_name: 'Outside Window', bval: 200, sval: 0, bvol: 20, svol: 0 }],
+      top_sellers: []
+    });
+
+    // Window covers only 08-01 and 08-15, excludes 08-31.
+    const res = await bandarmologiService.getBandarmologiData(ticker, { range: 'custom', startDate: '2026-08-01', endDate: '2026-08-20' });
+    assert.equal(res.success, true);
+    assert.equal(res.broker_summary.net_flow, 50); // 100 (08-01) - 50 (08-15), 08-31 excluded
+
+    // Window with no matching dates on disk must not fall back to demo/live data.
+    const empty = await bandarmologiService.getBandarmologiData(ticker, { range: 'custom', startDate: '2020-01-01', endDate: '2020-01-31' });
+    assert.equal(empty.success, true);
+    assert.equal(empty.is_demo, false);
+    assert.equal(empty.broker_summary.net_status, 'NO_DATA');
+    assert.equal(empty.broker_summary.top_buyers.length, 0);
+  } finally {
+    if (origEnv !== undefined) {
+      process.env.ARJUM_DATA_DIR = origEnv;
+    } else {
+      delete process.env.ARJUM_DATA_DIR;
+    }
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+  }
+});
+
 test('bandarmologiService: aggregateBrokerSummaries sums transaction metrics across multiple dates', () => {
   const fs = require('fs');
   const path = require('path');
