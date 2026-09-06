@@ -171,7 +171,7 @@
 
     var html = '';
     html += '<div class="ac-gate-transparency-box" style="margin-bottom:16px;padding:14px;background:rgba(15,23,42,0.5);border:1px solid rgba(16,185,129,0.25);border-radius:12px">';
-    
+
     // Header
     html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">';
     html += '<div style="display:flex;align-items:center;gap:7px">';
