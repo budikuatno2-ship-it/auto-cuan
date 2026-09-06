@@ -68,6 +68,63 @@ test('arjumClient: fetchBrokerSummary always sends explicit broker_limit and lev
   }
 });
 
+// Regression: "All" in the flow selector must never become a locally-computed
+// Foreign + Domestic sum — each flow-filtered call independently truncates to
+// its own top-broker_limit, so summing two separately-truncated lists would
+// NOT reconstruct the true combined top-N and would silently disagree with
+// Arjum's own unfiltered total. "All" must stay a single pass-through call
+// with no flow param, deferring entirely to Arjum's own combined response.
+test('arjumClient: fetchBrokerSummary sends no flow param for "all" or an unrecognized value (never locally summed)', async () => {
+  const origFetch = global.fetch;
+  let capturedUrl = '';
+  global.fetch = async (url) => { capturedUrl = url; return { ok: true, json: async () => ({ success: true }) }; };
+  try {
+    await arjumClient.fetchBrokerSummary('BBCA', null, 'all');
+    assert.doesNotMatch(capturedUrl, /flow=/i, '"all" must omit the flow param entirely, not send flow=all or anything else');
+
+    capturedUrl = '';
+    await arjumClient.fetchBrokerSummary('BBCA', null, null);
+    assert.doesNotMatch(capturedUrl, /flow=/i, 'omitting flow must also omit the flow param');
+
+    capturedUrl = '';
+    await arjumClient.fetchBrokerSummary('BBCA', null, 'F');
+    assert.match(capturedUrl, /flow=F/, 'sanity check: F must still be sent explicitly');
+  } finally {
+    global.fetch = origFetch;
+  }
+});
+
+test('bandarmologiService: getBandarmologiData with flow=all (or omitted) uses the normal disk-cache path, never the live per-flow branch', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'arjum-flow-all-'));
+  const origEnv = process.env.ARJUM_DATA_DIR;
+  process.env.ARJUM_DATA_DIR = tmpBase;
+
+  const origFetchSummary = arjumClient.fetchBrokerSummary;
+  let liveFlowCallMade = false;
+  arjumClient.fetchBrokerSummary = async (...args) => { liveFlowCallMade = true; return origFetchSummary(...args); };
+
+  try {
+    bandarmologiService.writeDiskCache('broker-summary', 'FLOWALL1', 'latest', {
+      stock_code: 'FLOWALL1',
+      date: '2026-09-05',
+      top_buyers: [{ broker: 'YU', bval: 100, sval: 0, bvol: 10, svol: 0 }],
+      top_sellers: []
+    });
+
+    const res = await bandarmologiService.getBandarmologiData('FLOWALL1', { flow: 'all' });
+    assert.equal(res.success, true);
+    assert.equal(liveFlowCallMade, false, 'flow=all must be served from the disk-cached combined data, not a live flow-filtered fetch');
+  } finally {
+    arjumClient.fetchBrokerSummary = origFetchSummary;
+    if (origEnv !== undefined) process.env.ARJUM_DATA_DIR = origEnv;
+    else delete process.env.ARJUM_DATA_DIR;
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+  }
+});
+
 // Regression: the demo-fallback badge used to say generic "DEMO PREVIEW"
 // regardless of why live data wasn't used, so a quota-exhausted API looked
 // identical to "no cache yet" or a real outage.
