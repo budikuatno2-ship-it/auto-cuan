@@ -326,6 +326,10 @@ test('createAlert validates condition_type and target_price correctly', async ()
   assert.equal(res1.alert.target_price, 10500);
   assert.equal(res1.alert.notification_chat_id, 123456789);
 
+  // Falls through to the unhandled `app_user_alert_history` branch above
+  // (mockSupabase.from returns undefined there); logAlertHistory's own
+  // try/catch must swallow that without ever failing createAlert itself.
+
   // 2. Failure case: Invalid condition type
   const res2 = await watchlistService.createAlert(mockSupabase, userId, {
     ticker: 'BBCA',
@@ -344,27 +348,45 @@ test('createAlert validates condition_type and target_price correctly', async ()
   assert.match(res3.error, /target_price harus berupa angka positif/);
 });
 
-test('deleteAlert removes alert by ID and user ID', async () => {
+test('deleteAlert removes alert by ID and user ID, and logs a deleted history entry', async () => {
   const userId = '11111111-1111-1111-1111-111111111111';
   let deletedAlertId = null;
+  let historyInsert = null;
 
   const mockSupabase = {
     from(table) {
-      assert.equal(table, 'app_user_alerts');
-      return {
-        delete() {
-          return {
-            eq(col1, val1) {
-              return {
-                eq(col2, val2) {
-                  deletedAlertId = val1;
-                  return Promise.resolve({ error: null });
-                }
-              };
-            }
-          };
-        }
-      };
+      if (table === 'app_user_alerts') {
+        return {
+          delete() {
+            return {
+              eq(col1, val1) {
+                return {
+                  eq(col2, val2) {
+                    deletedAlertId = val1;
+                    return {
+                      select() {
+                        return {
+                          maybeSingle() {
+                            return Promise.resolve({ data: { id: val1, ticker: 'BBCA', condition_type: 'PRICE_ABOVE', target_price: 10500 }, error: null });
+                          }
+                        };
+                      }
+                    };
+                  }
+                };
+              }
+            };
+          }
+        };
+      }
+      if (table === 'app_user_alert_history') {
+        return {
+          insert(payload) {
+            historyInsert = payload;
+            return Promise.resolve({ data: null, error: null });
+          }
+        };
+      }
     }
   };
 
@@ -372,6 +394,8 @@ test('deleteAlert removes alert by ID and user ID', async () => {
   assert.equal(res.success, true);
   assert.equal(res.alert_id, 'alert-999');
   assert.equal(deletedAlertId, 'alert-999');
+  assert.equal(historyInsert.action, 'deleted');
+  assert.equal(historyInsert.ticker, 'BBCA');
 });
 
 test('getUserWatchlist retrieves watchlist items with enriched prices and alerts', async () => {
@@ -452,6 +476,78 @@ test('getUserWatchlist retrieves watchlist items with enriched prices and alerts
   assert.equal(asii.alerts.length, 0);
 });
 
+test('createAlert writes a "created" entry to app_user_alert_history without failing the request when history insert errors', async () => {
+  const userId = '11111111-1111-1111-1111-111111111111';
+  let historyInsert = null;
+
+  const mockSupabase = {
+    from(table) {
+      if (table === 'app_user_telegram_verifications') {
+        return { select() { return { eq() { return { maybeSingle() { return Promise.resolve({ data: null, error: null }); } }; } }; } };
+      }
+      if (table === 'app_user_alerts') {
+        return {
+          insert(payload) {
+            return { select() { return { maybeSingle() { return Promise.resolve({ data: { id: 'alert-201', ...payload }, error: null }); } }; } };
+          }
+        };
+      }
+      if (table === 'app_user_alert_history') {
+        return {
+          insert(payload) {
+            historyInsert = payload;
+            return Promise.resolve({ data: null, error: { message: 'boom' } }); // must not throw or bubble
+          }
+        };
+      }
+    }
+  };
+
+  const res = await watchlistService.createAlert(mockSupabase, userId, {
+    ticker: 'TLKM', condition_type: 'PRICE_ABOVE', target_price: 3200
+  });
+  assert.equal(res.success, true);
+  assert.equal(historyInsert.action, 'created');
+  assert.equal(historyInsert.ticker, 'TLKM');
+  assert.equal(historyInsert.user_id, userId);
+});
+
+test('getAlertHistory returns the user\'s own history rows newest-first, capped at 200', async () => {
+  const userId = '11111111-1111-1111-1111-111111111111';
+  let requestedLimit = null;
+
+  const mockSupabase = {
+    from(table) {
+      assert.equal(table, 'app_user_alert_history');
+      return {
+        select() {
+          return {
+            eq(col, val) {
+              assert.equal(col, 'user_id');
+              assert.equal(val, userId);
+              return {
+                order() {
+                  return {
+                    limit(n) {
+                      requestedLimit = n;
+                      return Promise.resolve({ data: [{ id: 'h-1', ticker: 'BBCA', action: 'created' }], error: null });
+                    }
+                  };
+                }
+              };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  const res = await watchlistService.getAlertHistory(mockSupabase, userId, 9999);
+  assert.equal(res.success, true);
+  assert.equal(res.history.length, 1);
+  assert.equal(requestedLimit, 200, 'a caller-supplied limit above the cap must be clamped to 200');
+});
+
 function requireSectorHotWithStub() {
   const origLoad = Module._load;
   const abs = require.resolve('../api/sector-hot');
@@ -472,6 +568,25 @@ function requireSectorHotWithStub() {
     Module._load = origLoad;
   }
 }
+
+test('handleUserWatchlistAlertHistory rejects unauthenticated session and is registered as a known action', async () => {
+  const sectorHot = requireSectorHotWithStub();
+  const handler = sectorHot.__test && sectorHot.__test.handleUserWatchlistAlertHistory;
+  assert.equal(typeof handler, 'function');
+
+  let statusCode = 0;
+  let jsonResult = null;
+  const mockReq = { method: 'GET', query: { action: 'watchlist-alert-history' }, headers: {} };
+  const mockRes = {
+    status(c) { statusCode = c; return this; },
+    json(obj) { jsonResult = obj; return this; }
+  };
+
+  await handler(mockReq, mockRes, {});
+  assert.equal(statusCode, 200);
+  assert.equal(jsonResult.success, false);
+  assert.deepEqual(jsonResult.history, []);
+});
 
 test('handleUserWatchlist rejects unauthenticated session', async () => {
   const sectorHot = requireSectorHotWithStub();
