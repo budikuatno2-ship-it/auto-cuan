@@ -163,6 +163,26 @@ test('buildTrackRecordData aggregates multiple signal types and categories', () 
   assert.match(bbca.hit_time_wib, /10:00 WIB/);
   assert.equal(bbca.price_at_signal, 10000);
   assert.equal(bbca.price_at_hit, 10800);
+
+  // Largest all-time profit % across every signal here: BBCA's TP2 (8%)
+  // beats BMRI's TP1 (~6.15%); BRIS's SL (-3.33%) must never win.
+  assert.deepEqual(res.summary.best_gain, { gain_pct: 8, ticker: 'BBCA', date: '2026-08-20' });
+});
+
+test('buildTrackRecordData best_gain is null when no signal has a computable gain, and tracks ticker+date of the true all-time max', () => {
+  assert.equal(buildTrackRecordData([]).summary.best_gain, null);
+  assert.equal(buildTrackRecordData([
+    { id: 1, ticker: 'AAAA', monitor_source: 'top5', status: 'WAITING' },
+    { id: 2, ticker: 'BBBB', monitor_source: 'top5', status: 'RUNNING' }
+  ]).summary.best_gain, null);
+
+  const rows = [
+    { id: 1, ticker: 'AAAA', date: '2026-08-01', entry1: 1000, tp1: 1050, tp2: 1100, status: 'TP1_HIT' }, // +5%
+    { id: 2, ticker: 'BBBB', date: '2026-08-05', entry1: 1000, tp1: 1200, tp2: 1500, status: 'TP2_HIT' }, // +50% (largest)
+    { id: 3, ticker: 'CCCC', date: '2026-08-10', entry1: 1000, sl: 900, status: 'SL_HIT' } // -10%, must never win
+  ];
+  const res = buildTrackRecordData(rows);
+  assert.deepEqual(res.summary.best_gain, { gain_pct: 50, ticker: 'BBBB', date: '2026-08-05' });
 });
 
 test('buildTrackRecordData total_signals always equals sum of every breakdown bucket, including INVALID/ENTRY_MISSED (NEVER_ENTERED) and IN_ENTRY_ZONE/ENTRY_READY/WATCHLIST', () => {

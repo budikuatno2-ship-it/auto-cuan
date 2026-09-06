@@ -1392,7 +1392,7 @@
     <!-- WRAPPER 1: TABEL REKAP SINYAL (DEFAULT) -->
     <div id="trTableViewPanel" class="space-y-4">
         <!-- Summary Metrics Cards Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="trackRecordSummaryGrid">
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5" id="trackRecordSummaryGrid">
             <!-- Total Signals -->
             <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3 sm:p-4">
                 <div class="flex items-center justify-between text-gray-400 text-xs mb-1">
@@ -1431,6 +1431,16 @@
                 </div>
                 <div class="text-xl sm:text-2xl font-black text-red-400" id="trSlRate">—</div>
                 <p class="text-[11px] text-red-400/70 mt-1" id="trSlHitsSub">— kena Stop Loss</p>
+            </div>
+
+            <!-- Largest Profit % (all-time) -->
+            <div class="bg-dark-800/60 border border-amber-400/25 rounded-xl p-3 sm:p-4 bg-gradient-to-b from-amber-400/5 to-transparent">
+                <div class="flex items-center justify-between text-amber-300 text-xs mb-1">
+                    <span class="font-semibold">Untung Terbesar</span>
+                    <span class="text-base">🏆</span>
+                </div>
+                <div class="text-xl sm:text-2xl font-black text-amber-300" id="trBestGain">—</div>
+                <p class="text-[11px] text-amber-300/70 mt-1" id="trBestGainSub">Sepanjang waktu</p>
             </div>
         </div>
 
