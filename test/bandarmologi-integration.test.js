@@ -324,6 +324,60 @@ test('bandarmologiService: normalizeBrokerSummary handles full raw brokers array
   assert.equal(norm.net_flow, 39000); // 139000 (YU) + (-100000) (AK), summed once per broker
 });
 
+// Regression: the "Semua" (all) flow bubble view showed every broker as BUY
+// with "Sellers (0)", even for tickers with genuine sell-side data visible
+// in each broker's own detail card. Root cause: `raw.gross_sellers ||
+// raw.top_sellers || []` does not fall back past an empty array — `[]` is
+// truthy in JS — so an upstream response carrying an empty `gross_sellers`
+// field alongside a populated `top_sellers` field had its real seller data
+// silently discarded, both here and in the two other `||`-chained spots
+// that fed the same top_sellers/gross_sellers fields.
+test('bandarmologiService: normalizeBrokerSummary falls back to a populated top_sellers/top_buyers when gross_*/net_* is an empty array (not just missing)', () => {
+  const rawEmptyGrossSellers = {
+    stock_code: 'BBCA',
+    date: '2026-09-04',
+    gross_buyers: [], // also exercises the buyer-side symmetric bug
+    top_buyers: [{ broker: 'YU', bval: 100, sval: 0, bvol: 10, svol: 0 }],
+    gross_sellers: [], // <- present but empty, must not shadow top_sellers
+    top_sellers: [{ broker: 'AK', bval: 46520000, sval: 53820000, bvol: 100, svol: 100 }]
+  };
+
+  const norm = bandarmologiService.normalizeBrokerSummary(rawEmptyGrossSellers, '2026-09-04');
+  assert.equal(norm.gross_buyers.length, 1, 'an empty gross_buyers must fall back to top_buyers, not stay empty');
+  assert.equal(norm.gross_buyers[0].broker, 'YU');
+  assert.equal(norm.gross_sellers.length, 1, 'an empty gross_sellers must fall back to top_sellers, not stay empty');
+  assert.equal(norm.gross_sellers[0].broker, 'AK');
+  assert.equal(norm.gross_sellers[0].sval, 53820000);
+});
+
+test('bandarmologiService: aggregateBrokerSummaries also falls back correctly when a day\'s gross_sellers is an empty array', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'arjum-cache-empty-gross-'));
+  const origEnv = process.env.ARJUM_DATA_DIR;
+  process.env.ARJUM_DATA_DIR = tmpBase;
+  try {
+    const ticker = 'EMPTYGROSS1';
+    bandarmologiService.writeDiskCache('broker-summary', ticker, '2026-09-05', {
+      stock_code: ticker,
+      date: '2026-09-05',
+      gross_sellers: [],
+      top_sellers: [{ broker: 'AK', bval: 0, sval: 5000000, bvol: 0, svol: 50 }],
+      gross_buyers: [],
+      top_buyers: [{ broker: 'YU', bval: 8000000, sval: 0, bvol: 80, svol: 0 }]
+    });
+
+    const result = bandarmologiService.aggregateBrokerSummaries(ticker, ['2026-09-05']);
+    const brokerCodes = result.gross_sellers.map(b => b.broker);
+    assert.ok(brokerCodes.includes('AK'), 'AK must survive into the aggregated seller list, not be dropped because gross_sellers was []');
+  } finally {
+    if (origEnv !== undefined) process.env.ARJUM_DATA_DIR = origEnv;
+    else delete process.env.ARJUM_DATA_DIR;
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+  }
+});
+
 // Regression: normalizeBrokerSummary's "brokers" (unified per-broker) input
 // shape derives grossBuyers AND grossSellers from the SAME full broker set
 // (just re-sorted), unlike the other two input shapes where buy-side and
@@ -416,6 +470,32 @@ test('bandarmologiService: normalizeBrokerSummary badge respects explicit net_va
   const norm = bandarmologiService.normalizeBrokerSummary(rawNetValOnly, '2026-09-04');
   assert.equal(norm.net_status, 'BIG_DISTRIBUTION');
   assert.equal(norm.net_label, 'Big Distribution');
+});
+
+// Regression: the "Lembar Saham" column in the Insider table always showed
+// "–", while the neighboring "Perubahan %" column had real values. Root
+// cause: Arjum's changes_value field can arrive as a thousand-separated
+// string (e.g. "1,234,567"), and the client's formatNumber() runs
+// `isNaN(num)` on whatever it's handed — which is true for a comma string —
+// silently rendering "–" even though real data existed. pct_change is
+// displayed as raw text (no numeric parsing), so it was unaffected and
+// looked fine, making this look like a shares-only bug.
+test('bandarmologiService: normalizeInsiders parses a comma-formatted changes_value instead of dropping it to "–"', () => {
+  const raw = [
+    { date: '2026-09-01', name: 'Budi', action_type: 'BUY', changes_value: '1,234,567', changes_percentage: '+0.0012%' },
+    { date: '2026-09-02', name: 'Siti', action_type: 'SELL', changes_value: 500000, changes_percentage: '-0.0005%' },
+    { date: '2026-09-03', name: 'Ali', action_type: 'BUY', changes_percentage: '+0.0001%' } // no shares field anywhere
+  ];
+  const normalized = bandarmologiService.normalizeInsiders(raw);
+  assert.equal(normalized[0].shares, 1234567, 'a comma-formatted string must be parsed to a real number, not dropped');
+  assert.equal(normalized[1].shares, 500000, 'a plain number must still work');
+  assert.equal(normalized[2].shares, null, 'genuinely missing data must be null, not silently coerced to 0 (which would also render wrong)');
+});
+
+test('bandarmologiService: normalizeInsiders never fabricates a shares value out of garbage input', () => {
+  const raw = [{ date: '2026-09-01', name: 'Test', action_type: 'BUY', changes_value: 'not-a-number', changes_percentage: '+0.001%' }];
+  const normalized = bandarmologiService.normalizeInsiders(raw);
+  assert.equal(normalized[0].shares, null, 'unparseable input must become null, never NaN or a garbage number');
 });
 
 test('bandarmologiService: normalizeBrokerAccumulation builds daily series per date', () => {

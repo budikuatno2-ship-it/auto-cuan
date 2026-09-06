@@ -183,6 +183,18 @@
     document.head.appendChild(style);
   }
 
+  // Returns the first argument that is a non-empty array; falls through
+  // subsequent candidates otherwise, ending at []. Unlike `a || b || []`,
+  // this correctly treats an empty array as "no data here, try the next
+  // one" instead of stopping on it (`[]` is truthy, so `||` never falls
+  // through past it).
+  function firstNonEmptyList() {
+    for (var i = 0; i < arguments.length; i++) {
+      if (Array.isArray(arguments[i]) && arguments[i].length > 0) return arguments[i];
+    }
+    return [];
+  }
+
   function buildBrokerBubbleItems(buyers, sellers, mode) {
     var isGross = mode === 'gross';
     var map = {};
@@ -825,12 +837,19 @@
     html += '    </div>';
     html += '  </div>';
 
+    // `||` does NOT fall back on an empty array (`[]` is truthy in JS), so
+    // `bSum.gross_sellers || bSum.top_sellers || []` silently kept an empty
+    // gross_sellers instead of falling back to a populated top_sellers —
+    // this is what made the "Semua" (all) flow bubble view show every
+    // broker as BUY with "Sellers (0)", since the seller-side list never
+    // got merged in at all (see buildBrokerBubbleItems below, which never
+    // even ran processItem for a seller when sellers=[]).
     var buyers = isGross
-      ? (bSum.gross_buyers || bSum.top_buyers || [])
-      : (bSum.net_buyers || bSum.top_buyers || []);
+      ? firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers)
+      : firstNonEmptyList(bSum.net_buyers, bSum.top_buyers);
     var sellers = isGross
-      ? (bSum.gross_sellers || bSum.top_sellers || [])
-      : (bSum.net_sellers || bSum.top_sellers || []);
+      ? firstNonEmptyList(bSum.gross_sellers, bSum.top_sellers)
+      : firstNonEmptyList(bSum.net_sellers, bSum.top_sellers);
 
     lastBrokerItems = buildBrokerBubbleItems(buyers, sellers, brokerSummaryMode);
 
@@ -1127,7 +1146,7 @@
         html += '          <td class="py-2.5 px-2 font-medium text-gray-100">' + escapeHtml(row.name || '—') + '</td>';
         html += '          <td class="py-2.5 px-2 text-gray-400 text-[11px]">' + escapeHtml(row.position || '—') + '</td>';
         html += '          <td class="py-2.5 px-2 text-center">' + actionTag + '</td>';
-        html += '          <td class="py-2.5 px-2 font-mono text-right text-gray-200">' + formatNumber(row.shares || row.volume || 0) + '</td>';
+        html += '          <td class="py-2.5 px-2 font-mono text-right text-gray-200">' + formatNumber(row.shares != null ? row.shares : (row.volume != null ? row.volume : null)) + '</td>';
         html += '          <td class="py-2.5 px-2 font-mono text-right ' + (isBuy ? 'text-emerald-400' : 'text-rose-400') + '">' + escapeHtml(row.pct_change || '—') + '</td>';
         html += '        </tr>';
       }
@@ -1175,7 +1194,8 @@
       renderBrokerDetailCardHtml: renderBrokerDetailCardHtml,
       setBrokerSummaryMode: setBrokerSummaryMode,
       setBrokerSummaryView: setBrokerSummaryView,
-      setBrokerSummaryRange: setBrokerSummaryRange
+      setBrokerSummaryRange: setBrokerSummaryRange,
+      firstNonEmptyList: firstNonEmptyList
     };
   }
 
