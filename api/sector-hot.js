@@ -50,6 +50,7 @@ const productionEligibility = require('../lib/intraday-production-eligibility');
 const corporateActionGuard = require('../lib/corporate-action-price-scale-guard');
 const smartSetupLabels = require('../lib/smart-setup-labels');
 const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
+const bandarmologiConfluence = require('../lib/bandarmologi-confluence');
 const trackRecordService = require('../lib/track-record-service');
 const bandarmologiService = require('../lib/bandarmologi-service');
 const telegramDailyRecap = require('../lib/telegram-daily-recap');
@@ -2843,6 +2844,11 @@ async function enrichNonKongloHalfCandleDebt(rows) {
 async function enrichConfluenceRows(supabase, rows, includeForeign) {
   rows = rows || [];
   var foreignMap = includeForeign ? await fetchForeignConfluenceMap(supabase, rows.map(function(r) { return r && r.ticker; })) : {};
+  // Bandarmologi confluence (Bagian 5) is disk-backed and cheap (no Supabase
+  // round trip), so unlike foreign flow it is computed unconditionally for
+  // every category that reaches this function — display-only, never touches
+  // confidence/score below.
+  var bandarMap = bandarmologiConfluence.enrichBandarmologiConfluenceMap(rows.map(function(r) { return r && r.ticker; }));
   var out = [];
   for (var i = 0; i < rows.length; i++) {
     var r = Object.assign({}, rows[i]);
@@ -2858,6 +2864,7 @@ async function enrichConfluenceRows(supabase, rows, includeForeign) {
         r.confidence_notes = confAfterForeign.confidence_notes;
       }
     }
+    Object.assign(r, bandarMap[String(r.ticker || '').trim().toUpperCase()] || {});
     out.push(r);
   }
   return out;
@@ -6939,6 +6946,11 @@ function buildDashboardPickRow(row, rank, px) {
     rr_quality_label: raw.rr_quality_label,
     raw_payload: raw
   };
+  // Bagian 5: Top 5 has its own row-assembly path (doesn't go through
+  // enrichConfluenceRows), so bandarmologi confluence is computed directly
+  // here — display-only, computed fresh per ticker (in-memory cached), never
+  // read from raw_payload since that snapshot may predate this field.
+  Object.assign(out, bandarmologiConfluence.computeBandarmologiConfluence(out.ticker));
   return attachFreshness(out, { calculated_at: (px && px.at) || row.last_checked_at || row.first_sent_at || raw.calculated_at || raw.updated_at || row.date });
 }
 
@@ -11352,6 +11364,14 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       return daytradeReadRow;
     });
 
+    // Bagian 5: Day Trade now also gets bandarmologi confluence badges
+    // (enrichConfluenceRows computes bandar_* unconditionally). Foreign flow
+    // stays off here (includeForeign=false) — enrichConfluenceRows's
+    // confidence re-derivation hardcodes category='Swing' regardless of
+    // caller, so flipping this on for Day Trade would silently run Day Trade
+    // rows through Swing's RR/upside/score thresholds. That's a pre-existing
+    // bug worth its own fix, not something to trigger as a side effect of a
+    // badge-only change.
     sortedRows = await enrichConfluenceRows(supabase, sortedRows, false);
 
     // Trade Plan V2 public decoration (Day Trade web). No-op unless

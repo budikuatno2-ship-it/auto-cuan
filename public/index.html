@@ -7599,6 +7599,21 @@ function normalizeRiskLabel(label) {
     if (compact === 'avoid' || compact === 'avoid dulu' || compact === 'hindari' || compact === 'hindari dulu') return 'Hindari';
     return text;
 }
+// Bagian 5: Bandarmologi confluence badge — same tone/vocab as the existing
+// Foreign flow badge (r.foreign_label), just a different data source. Swing
+// cards state it plainly (a supporting signal); Day Trade/Top 5 append a
+// "(konteks)" qualifier since that trade horizon is more volatile.
+var BANDAR_LABEL_ID = { Accumulation: 'Akumulasi', Distribution: 'Distribusi', Mixed: 'Campuran' };
+function bandarBadgeText(r, isContextOnly) {
+    if (!r || !r.bandar_label || r.bandar_label === 'Bandar Data Unavailable') return '';
+    var label = BANDAR_LABEL_ID[r.bandar_label] || r.bandar_label;
+    var windows = Array.isArray(r.bandar_consistent_windows) ? r.bandar_consistent_windows.filter(function(w) { return w === '7D' || w === '1M' || w === '3M'; }) : [];
+    var prefix = windows.length >= 2 ? ('Bandar ' + windows.join('&') + ': ') : 'Bandar: ';
+    return prefix + label + (isContextOnly ? ' (konteks)' : '');
+}
+function bandarBadgeColor(r) {
+    return r && r.bandar_label === 'Distribution' ? '#fca5a5' : '#6ee7b7';
+}
 function getRiskLabel(r) {
     if (!r) return '';
     var camelRisk = r.riskLabel;
@@ -8065,6 +8080,8 @@ function renderDtCardGrid(results, data) {
         if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown' && r.multi_timeframe_bias !== 'neutral') { var _mbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); _mtfBadge = '<span style="color:' + _mbC + '">MTF:' + escapeHtml(r.multi_timeframe_bias.substring(0,5)) + '</span>'; }
         var _actionBadge = getActionLabel(r); if (_actionBadge && _actionBadge !== getStatusLabel(r, st)) _vpBadge = (_vpBadge ? _vpBadge + ' · ' : '') + '<span style="color:#93c5fd">' + escapeHtml(_actionBadge) + '</span>';
         var _badgeLine = [_grBadge, _rlBadge, _vpBadge, _mtfBadge].filter(function(b){return b;}).join(' · ');
+        var _dtBandarText = bandarBadgeText(r, true);
+        if (_dtBandarText) _badgeLine += (_badgeLine ? ' · ' : '') + '<span style="color:' + bandarBadgeColor(r) + '">' + escapeHtml(_dtBandarText) + '</span>';
         if (_badgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _badgeLine + '</div>';
         if (r.entry_status_label) html += '<div style="font-size:10px;margin-bottom:8px;color:#d1d5db"><span style="color:#94a3b8">Status Entry:</span> ' + escapeHtml(r.entry_status_label) + '</div>';
         if (st === 'WAIT_PULLBACK' && r.entry_chase_pct != null && isFinite(r.entry_chase_pct) && r.entry_chase_pct > 0) {
@@ -8416,6 +8433,8 @@ function renderKgCardGrid(results) {
         var _kBadgeLine = [_kgrBadge, _krlBadge, _kvpBadge, _kmtfBadge].filter(function(b){return b;}).join(' · ');
         if (r.pattern_label) _kBadgeLine += (_kBadgeLine ? ' · ' : '') + '<span style="color:#60a5fa">' + escapeHtml(r.pattern_label.substring(0,18)) + '</span>';
         if (r.foreign_label && r.foreign_label !== 'Foreign Data Unavailable') _kBadgeLine += (_kBadgeLine ? ' · ' : '') + '<span style="color:#6ee7b7">' + escapeHtml(r.foreign_label.replace('Foreign ','')) + '</span>';
+        var _kBandarText = bandarBadgeText(r, false);
+        if (_kBandarText) _kBadgeLine += (_kBadgeLine ? ' · ' : '') + '<span style="color:' + bandarBadgeColor(r) + '">' + escapeHtml(_kBandarText) + '</span>';
         if (_kBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _kBadgeLine + '</div>';
         var _kRespectLine = buildRespectQualityLine(r);
         if (_kRespectLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Respect v2:</span> ' + escapeHtml(_kRespectLine) + '</div>';
@@ -8494,8 +8513,10 @@ function renderNkCardGrid(results) {
         var _nBadgeLine = [_ngrBadge, _nrlBadge, _nvpBadge, _nmtfBadge].filter(function(b){return b;}).join(' · ');
         if (r.pattern_label) _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#60a5fa">' + escapeHtml(r.pattern_label.substring(0,18)) + '</span>';
         if (r.foreign_label && r.foreign_label !== 'Foreign Data Unavailable') _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#6ee7b7">' + escapeHtml(r.foreign_label.replace('Foreign ','')) + '</span>';
+        var _nBandarText = bandarBadgeText(r, false);
+        if (_nBandarText) _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:' + bandarBadgeColor(r) + '">' + escapeHtml(_nBandarText) + '</span>';
         if (r.high_rr_warning) _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#fbbf24;font-weight:600" title="' + escapeHtml(r.high_rr_warning_note || 'Target R:R tinggi') + '">⚠️ R:R Tinggi</span>';
-        if (_nBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _badgeLine + '</div>';
+        if (_nBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _nBadgeLine + '</div>';
         var _nRespectLine = buildRespectQualityLine(r);
         if (_nRespectLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Respect v2:</span> ' + escapeHtml(_nRespectLine) + '</div>';
         html += '<div class="trade-plan-grid">';
@@ -10178,6 +10199,12 @@ function normalizeDashboardPick(p) {
     r.setup_expiry_note = p.setup_expiry_note || raw.setup_expiry_note;
     r.setup_age_minutes = p.setup_age_minutes != null ? p.setup_age_minutes : raw.setup_age_minutes;
     r.quality_chips = Array.isArray(p.quality_chips) ? p.quality_chips : (Array.isArray(raw.quality_chips) ? raw.quality_chips : []);
+    // Bagian 5: bandarmologi confluence is set directly on the top-level pick
+    // object by buildDashboardPickRow (never inside raw_payload), so it must
+    // be copied explicitly here like every other field above — otherwise the
+    // whitelist silently drops it before renderDashboardTop5 ever sees it.
+    r.bandar_label = p.bandar_label || raw.bandar_label;
+    r.bandar_consistent_windows = Array.isArray(p.bandar_consistent_windows) ? p.bandar_consistent_windows : (Array.isArray(raw.bandar_consistent_windows) ? raw.bandar_consistent_windows : []);
     return r;
 }
 
@@ -10406,6 +10433,8 @@ function renderDashboardTop5(picks) {
         if (planWarn) html += '<div class="dash-flag" data-tone="warn">' + escapeHtml(planWarn) + '</div>';
         if (safetyNote) html += '<div class="dash-flag">' + escapeHtml(safetyNote) + '</div>';
         if (actionLine) html += '<div class="dash-flag">' + escapeHtml(actionLine) + '</div>';
+        var _top5BandarText = bandarBadgeText(r, true);
+        if (_top5BandarText) html += '<div class="dash-flag" data-tone="info">' + escapeHtml(_top5BandarText) + '</div>';
         html += '<p class="dash-reason">' + escapeHtml(reason) + '</p>';
         html += dashQualityChipsHtml(r.quality_chips);
         html += '</div>';
