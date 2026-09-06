@@ -4,6 +4,7 @@
 
   var _activeSubTab = 'text'; // 'text' | 'vision'
   var _lastLoadedChartTicker = '';
+  var _lastBandarSyncTicker = '';
   var _loadingChart = false;
 
   function byId(id) { return document.getElementById(id); }
@@ -116,7 +117,24 @@
     var ticker = cleanTicker(rawTicker);
     if (!ticker) return;
 
+    var previousTicker = cleanTicker(root.activeTicker);
+    var tickerChanged = previousTicker && previousTicker !== ticker;
     root.activeTicker = ticker;
+
+    // Switching ticker context (without an explicit new AI run) makes the
+    // previous ticker's AI result stale — clear it instead of leaving a
+    // mismatched result on screen under the new "Aktif" badge.
+    if (tickerChanged && !options.runAnalysis) {
+      var resultBox = byId('analisisResult');
+      if (resultBox) {
+        resultBox.innerHTML = '<div class="text-center py-12 text-gray-500">' +
+          '<svg class="w-10 h-10 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>' +
+          '<p class="text-sm font-semibold text-gray-300">Belum ada analisis untuk ' + ticker + '</p>' +
+          '<p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Klik tombol <strong>Analisis Saham</strong> untuk menjalankan analisis AI ticker ini.</p>' +
+          '<button type="button" onclick="UnifiedCockpit.handleUnifiedAnalisisSubmit()" class="mt-3 px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold text-xs hover:bg-emerald-400 transition">Jalankan Analisis Sekarang</button>' +
+          '</div>';
+      }
+    }
 
     // 1. Sync input elements
     var analisisInput = byId('analisisInput');
@@ -146,6 +164,16 @@
       loadUnifiedChart(ticker);
     }
 
+    // 4b. Keep the Bandarmologi & Insider tab in sync with the active ticker
+    // too, mirroring the chart reload above — a ticker switch must not leave
+    // that tab showing the previous ticker's data.
+    var loadBandarFn = (typeof root.loadBandarmologiTab === 'function') ? root.loadBandarmologiTab :
+                        (typeof window !== 'undefined' && typeof window.loadBandarmologiTab === 'function') ? window.loadBandarmologiTab : null;
+    if (loadBandarFn && (_lastBandarSyncTicker !== ticker || options.forceChartReload)) {
+      _lastBandarSyncTicker = ticker;
+      loadBandarFn(ticker);
+    }
+
     // 5. Trigger analysis if specified
     var runFn = (typeof root.runAnalisisFromDashboard === 'function') ? root.runAnalisisFromDashboard :
                 (typeof window !== 'undefined' && typeof window.runAnalisisFromDashboard === 'function') ? window.runAnalisisFromDashboard : null;
@@ -161,6 +189,21 @@
       else switchAnalysisSubTab('vision');
       visionFn(ticker);
     }
+  }
+
+  // Ticker input Enter key: switch the active ticker context ONLY (badge,
+  // chart, Bandarmologi tab, etc). Does NOT trigger an AI run — that stays
+  // exclusive to the explicit "Analisis Saham" button (handleUnifiedAnalisisSubmit),
+  // since AI runs consume quota/BYOK and must be a deliberate action.
+  function handleTickerInputEnter() {
+    var input = byId('analisisInput');
+    var ticker = input ? cleanTicker(input.value) : '';
+    if (!ticker) {
+      if (typeof root.showToast === 'function') root.showToast('Ketik ticker terlebih dahulu (misal: BBCA, BBRI).', 'warning');
+      else alert('Ketik ticker terlebih dahulu (misal: BBCA, BBRI).');
+      return;
+    }
+    syncActiveTicker(ticker, { loadChart: true, forceChartReload: true });
   }
 
   function handleUnifiedAnalisisSubmit() {
@@ -253,6 +296,7 @@
     switchAnalysisSubTab: switchAnalysisSubTab,
     loadUnifiedChart: loadUnifiedChart,
     handleUnifiedAnalisisSubmit: handleUnifiedAnalisisSubmit,
+    handleTickerInputEnter: handleTickerInputEnter,
     handleUnifiedChartAiSubmit: handleUnifiedChartAiSubmit,
     sendQuickPrompt: sendQuickPrompt,
     clearAnalysisChatHistory: clearAnalysisChatHistory,
