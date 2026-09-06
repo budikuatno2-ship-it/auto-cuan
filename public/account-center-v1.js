@@ -87,7 +87,7 @@
   function termsHtml() {
     return [
       '<div class="ac-terms-intro">',
-      '<div><p class="ac-section-kicker">Dokumen penggunaan</p><h2 class="ac-section-title">Peraturan &amp; Ketentuan Auto-Cuan</h2><p class="ac-muted">Versi ' + esc(TERMS_VERSION) + ' · berlaku ' + esc(TERMS_EFFECTIVE) + '</p></div>',
+      '<div><p class="ac-section-kicker">Dokumen penggunaan</p><h2 class="ac-section-title">Peraturan &amp; Ketentuan Auto-Cuan</h2><p class="ac-muted">Versi ' + esc(TERMS_VERSION) + '</p></div>',
       '<span class="ac-chip ac-chip-ok">Dokumen aktif</span>',
       '</div>',
       '<div class="ac-terms-scroll" tabindex="0" aria-label="Isi Peraturan dan Ketentuan Auto-Cuan">',
@@ -333,12 +333,17 @@
     quotedVoucher = { code:code, data:result.data.voucher };
     var v = result.data.voucher;
     var paymentRequired = v.voucher_type === 'PERCENT_30' || v.voucher_type === 'PERCENT_50';
-    if (target) target.innerHTML = '<div class="ac-callout ac-callout-success"><strong>Voucher valid.</strong><br>Paket: ' + esc(planName(v.plan_code)) + ' · ' + (paymentRequired ? 'Diskon ' + esc(v.discount_percent) + '%' : 'Aktivasi paket') + (v.expires_at ? ' · berlaku sampai ' + esc(dateId(v.expires_at,true)) : '') + (paymentRequired ? '<br><span style="color:#fde68a">Voucher diskon membutuhkan jalur pembayaran yang belum dibuka di Account Center.</span>' : '<button type="button" id="acVoucherRedeem" class="ac-btn ac-btn-primary" style="width:100%;margin-top:10px">Aktifkan voucher</button>') + '</div>';
+    if (target) target.innerHTML = '<div class="ac-callout ac-callout-success"><strong>Voucher valid.</strong><br>Paket: ' + esc(planName(v.plan_code)) + ' · ' + (paymentRequired ? 'Diskon ' + esc(v.discount_percent) + '%' : 'Aktivasi paket') + (v.expires_at ? ' · berlaku sampai ' + esc(dateId(v.expires_at,true)) : '') + (paymentRequired ? '<br><span style="color:#fde68a">Voucher diskon membutuhkan jalur pembayaran yang belum dibuka di Account Center.</span>' : '<label style="display:flex;gap:8px;align-items:flex-start;margin:10px 0;font-size:11px;color:#cbd5e1;cursor:pointer"><input type="checkbox" id="acVoucherTerms" style="margin-top:2px;accent-color:#10b981"><span>Saya menyetujui kebijakan aktivasi voucher dan ketentuan subscription Auto-Cuan.</span></label><button type="button" id="acVoucherRedeem" class="ac-btn ac-btn-primary" style="width:100%">Aktifkan voucher</button>') + '</div>';
     var redeem = byId('acVoucherRedeem'); if (redeem) redeem.addEventListener('click', redeemVoucher);
   }
   async function redeemVoucher() {
     if (!quotedVoucher || !window.crypto || typeof window.crypto.randomUUID !== 'function') return;
-    var result = await request('/api/login-user', { action:'voucher-redeem', voucher_code:quotedVoucher.code, idempotency_key:window.crypto.randomUUID() }, 9000);
+    var termsCb = byId('acVoucherTerms');
+    if (!termsCb || !termsCb.checked) {
+      notify('Centang persetujuan kebijakan aktivasi voucher sebelum melanjutkan.','warning');
+      return;
+    }
+    var result = await request('/api/login-user', { action:'voucher-redeem', voucher_code:quotedVoucher.code, idempotency_key:window.crypto.randomUUID(), termsAccepted:true, paymentTermsAccepted:true, termsVersion:TERMS_VERSION }, 9000);
     if (!result.ok || !result.data.success) { notify(result.data.error || 'Voucher belum dapat digunakan.','error'); return; }
     notify('Voucher berhasil diaktifkan.','success');
     quotedVoucher=null;
