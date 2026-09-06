@@ -63,15 +63,17 @@ const respond = status => ({ status });
 
 // =================== ACTIONABLE FAILURES ARE NOT "AI BUSY" ================
 
-test('an expired session is reported as an expired session on both surfaces', () => {
+test('a 401 (no free guest tier) is reported as a login requirement, not a stale session, on both surfaces', () => {
   const portfolio = portfolioFailure(respond(401), { code: 'AI_ACCESS_DENIED', error: 'Autentikasi diperlukan.' }, null);
   assert.equal(portfolio.fallback, false, 'an auth failure must not be dressed up as a provider outage');
-  assert.match(portfolio.status, /sesi/i);
+  assert.equal(portfolio.requiresAuth, true, 'a 401 means not logged in, not a stale session — there is no free guest tier');
+  assert.match(portfolio.status, /akun terdaftar|daftar|masuk/i);
   assert.doesNotMatch(portfolio.status, /sibuk/i);
 
   const stock = stockFailure(respond(401), { code: 'AI_ACCESS_DENIED' }, null);
-  assert.equal(stock.retryable, false, 'retrying will not fix an expired session');
-  assert.match(stock.text, /login/i);
+  assert.equal(stock.retryable, false, 'retrying will not fix a missing login');
+  assert.equal(stock.requiresAuth, true);
+  assert.match(stock.text, /akun terdaftar|daftar|masuk/i);
 });
 
 test('a blocked or unapproved account is told why, without a fake local answer', () => {

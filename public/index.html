@@ -3860,7 +3860,9 @@ function describeAnalisisFailure(response, data, error) {
     var status = response ? response.status : 0;
     if (error && error.name === 'AbortError') return { retryable: true, text: 'Analisis dihentikan karena terlalu lama. Coba lagi ya.' };
     if (!response) return { retryable: true, text: 'Koneksi ke server AI gagal. Cek jaringan lalu coba lagi.' };
-    if (status === 401) return { retryable: false, text: 'Sesi kamu sudah berakhir. Muat ulang halaman dan login lagi.' };
+    // No free guest tier for AI analysis — a 401 means "not logged in", never
+    // a stale session, so don't tell the user to just reload.
+    if (status === 401) return { retryable: false, requiresAuth: true, text: 'Fitur AI Analisis Saham khusus untuk akun terdaftar. Daftar atau masuk dulu (gratis) untuk mulai.' };
     if (status === 403) return { retryable: false, text: (data && data.error) || 'Akses AI ditolak untuk akun ini.' };
     if (status === 402 || code === 'SUBSCRIPTION_REQUIRED') return { retryable: false, text: (data && data.error) || 'Subscription aktif diperlukan untuk menggunakan fitur ini.' };
     if (status === 429 || code === 'AI_RATE_LIMITED') {
@@ -3878,7 +3880,8 @@ function renderAnalisisFailure(resultArea, failure) {
     if (!resultArea) return;
     resultArea.innerHTML = '<div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center space-y-2" role="alert">' +
         '<p class="text-sm text-red-400"></p>' +
-        (failure.retryable ? '<p class="text-xs text-gray-500">Kamu bisa mencoba lagi.</p>' : '') +
+        (failure.requiresAuth ? '<a href="/dashboard" class="inline-block mt-1 px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold text-xs hover:bg-emerald-400 transition">Daftar / Masuk</a>' :
+            (failure.retryable ? '<p class="text-xs text-gray-500">Kamu bisa mencoba lagi.</p>' : '')) +
         '</div>';
     // textContent, never innerHTML: failure.text can carry a server-supplied
     // message and must never be parsed as markup.
