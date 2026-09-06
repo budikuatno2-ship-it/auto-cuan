@@ -95,24 +95,34 @@ async function run() {
 
   const tradingDates = getTradingDates(startDate, endDate);
 
+  const hasDirectKey = arjumClient.hasArjumApiKey();
+  const GATEWAY_URL = 'https://autocuan.web.id/api/sector-hot?action=bandarmologi';
+
   console.log('=== AUTO-CUAN ARJUM BACKFILL WORKER ===');
-  console.log(`ARJUM_API_KEY: [${arjumClient.hasArjumApiKey() ? 'ADA' : 'TIDAK ADA'}]`);
-  console.log(`Base URL: ${arjumClient.ARJUM_BASE_URL}`);
+  console.log(`ARJUM_API_KEY: [${hasDirectKey ? 'ADA' : 'TIDAK ADA'}]`);
+  console.log(`Connection Source: ${hasDirectKey ? arjumClient.ARJUM_BASE_URL : 'Production Gateway (autocuan.web.id)'}`);
   console.log(`Total Tickers to process: ${tickers.length}`);
   console.log(`Trading Dates count: ${tradingDates.length} (${tradingDates[0]} s/d ${tradingDates[tradingDates.length - 1]})`);
   console.log(`Delay per request: ${delayMs}ms | Mode: ${dryRun ? 'DRY-RUN' : 'LIVE'}`);
   console.log('----------------------------------------------------');
 
-  if (!arjumClient.hasArjumApiKey() && !dryRun) {
-    console.warn('⚠️ PERINGATAN: process.env.ARJUM_API_KEY belum terdeteksi di runtime.');
-    console.warn('  Worker akan mensimulasikan proses atau menyimpan demo cache.');
-    console.warn('  Pastikan ARJUM_API_KEY di-export di environment sebelum run produksi.');
-  }
-
   let totalRequested = 0;
   let totalSaved = 0;
   let totalSkipped = 0;
   let totalErrors = 0;
+
+  async function fetchGateway(ticker, date) {
+    try {
+      let url = `${GATEWAY_URL}&ticker=${encodeURIComponent(ticker)}`;
+      if (date) url += `&date=${encodeURIComponent(date)}`;
+      const res = await fetch(url, { headers: { 'User-Agent': 'AutoCuan-BackfillWorker/1.0' } });
+      if (!res.ok) return { ok: false, status: res.status };
+      const body = await res.json();
+      return { ok: body.success, data: body };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  }
 
   for (let i = 0; i < tickers.length; i++) {
     const ticker = tickers[i];
@@ -126,7 +136,13 @@ async function run() {
       totalRequested++;
     } else {
       totalRequested++;
-      const res = await arjumClient.fetchBrokerAccumulation(ticker);
+      let res;
+      if (hasDirectKey) {
+        res = await arjumClient.fetchBrokerAccumulation(ticker);
+      } else {
+        const gw = await fetchGateway(ticker, 'latest');
+        res = { ok: gw.ok && !!gw.data.broker_accumulation, data: gw.data && gw.data.broker_accumulation };
+      }
       if (res.ok && res.data) {
         bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', res.data);
         totalSaved++;
@@ -144,7 +160,13 @@ async function run() {
       totalRequested++;
     } else {
       totalRequested++;
-      const res = await arjumClient.fetchInsiders(ticker, 1, 15);
+      let res;
+      if (hasDirectKey) {
+        res = await arjumClient.fetchInsiders(ticker, 1, 15);
+      } else {
+        const gw = await fetchGateway(ticker, 'latest');
+        res = { ok: gw.ok && !!gw.data.insiders, data: gw.data && gw.data.insiders };
+      }
       if (res.ok && res.data) {
         bandarmologiService.writeDiskCache('insiders', ticker, 'p1', res.data);
         totalSaved++;
@@ -163,7 +185,13 @@ async function run() {
         totalRequested++;
       } else {
         totalRequested++;
-        const res = await arjumClient.fetchBrokerSummary(ticker, date);
+        let res;
+        if (hasDirectKey) {
+          res = await arjumClient.fetchBrokerSummary(ticker, date);
+        } else {
+          const gw = await fetchGateway(ticker, date);
+          res = { ok: gw.ok && !!gw.data.broker_summary, data: gw.data && gw.data.broker_summary };
+        }
         if (res.ok && res.data) {
           bandarmologiService.writeDiskCache('broker-summary', ticker, date, res.data);
           if (date === tradingDates[tradingDates.length - 1]) {
