@@ -98,6 +98,12 @@ function renderTrackRecordUI(data) {
     var elSlSub = document.getElementById('trSlHitsSub');
     if (elSlSub) elSlSub.textContent = (sum.sl_hits || 0) + ' kena Stop Loss';
 
+    var elBestGain = document.getElementById('trBestGain');
+    var elBestGainSub = document.getElementById('trBestGainSub');
+    var bestGain = sum.best_gain || null;
+    if (elBestGain) elBestGain.textContent = bestGain ? ('+' + bestGain.gain_pct + '%') : '—';
+    if (elBestGainSub) elBestGainSub.textContent = bestGain ? (bestGain.ticker + ' · ' + bestGain.date) : 'Belum ada data';
+
     // 2. Category Cards Breakdown
     var catGrid = document.getElementById('trCategoryGrid');
     if (catGrid && data.by_category) {
