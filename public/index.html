@@ -3359,7 +3359,7 @@ async function doLogin() {
     loginBtn.disabled = true; loginBtn.innerHTML = '<span class="spinner-sm"></span>Masuk...';
     try {
         var recaptchaToken = '';
-        if (window.grecaptcha && typeof window.grecaptcha.execute === 'function' && window.__RECAPTCHA_SITE_KEY__) {
+        if (typeof window !== 'undefined' && window.grecaptcha && typeof window.grecaptcha.execute === 'function' && window.__RECAPTCHA_SITE_KEY__) {
             try { recaptchaToken = await window.grecaptcha.execute(window.__RECAPTCHA_SITE_KEY__, { action: 'login' }); } catch (_) {}
         }
         var passwordHash = await hashPassword(password); var deviceId = getOrCreateDeviceId();
@@ -3621,7 +3621,7 @@ async function doRegister() {
     registerBtn.disabled = true; registerBtn.innerHTML = '<span class="spinner-sm"></span>Mendaftar...';
     try {
         var recaptchaToken = '';
-        if (window.grecaptcha && typeof window.grecaptcha.execute === 'function' && window.__RECAPTCHA_SITE_KEY__) {
+        if (typeof window !== 'undefined' && window.grecaptcha && typeof window.grecaptcha.execute === 'function' && window.__RECAPTCHA_SITE_KEY__) {
             try { recaptchaToken = await window.grecaptcha.execute(window.__RECAPTCHA_SITE_KEY__, { action: 'register' }); } catch (_) {}
         }
         var passwordHash = await hashPassword(password); var deviceId = getOrCreateDeviceId();
