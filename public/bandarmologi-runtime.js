@@ -227,10 +227,10 @@
         target.fullName = getBrokerSecurityName(code, item.broker_name);
       }
 
-      var bval = item.bval != null ? Number(item.bval) : (item.buy_val != null ? Number(item.buy_val) : (isBuyerList ? Number(item.net_val || 0) : 0));
-      var sval = item.sval != null ? Number(item.sval) : (item.sell_val != null ? Number(item.sell_val) : (!isBuyerList ? Math.abs(Number(item.net_val || 0)) : 0));
-      var bvol = item.bvol != null ? Number(item.bvol) : (item.buy_vol != null ? Number(item.buy_vol) : 0);
-      var svol = item.svol != null ? Number(item.svol) : (item.sell_vol != null ? Number(item.sell_vol) : 0);
+      var bval = item.bval != null ? Number(item.bval) : (item.buy_val != null ? Number(item.buy_val) : (isBuyerList ? Number(item.net_val || item.val || item.value || 0) : 0));
+      var sval = item.sval != null ? Number(item.sval) : (item.sell_val != null ? Number(item.sell_val) : (!isBuyerList ? Math.abs(Number(item.net_val || item.val || item.value || 0)) : 0));
+      var bvol = item.bvol != null ? Number(item.bvol) : (item.buy_vol != null ? Number(item.buy_vol) : (isBuyerList ? Number(item.net_vol || item.vol || item.volume || 0) : 0));
+      var svol = item.svol != null ? Number(item.svol) : (item.sell_vol != null ? Number(item.sell_vol) : (!isBuyerList ? Math.abs(Number(item.net_vol || item.vol || item.volume || 0)) : 0));
 
       if (bval > target.bval) target.bval = bval;
       if (sval > target.sval) target.sval = sval;
@@ -248,10 +248,24 @@
 
       // nval: prefer explicit field, works for both buyer and seller items
       var itemNval = item.nval != null ? Number(item.nval) : (item.net_val != null ? Number(item.net_val) : null);
-      if (itemNval != null) target.explicitNetVal = itemNval;
+      if (itemNval != null) {
+        if (!isBuyerList && itemNval > 0 && (target.sval > target.bval || target.bval === 0)) {
+          itemNval = -Math.abs(itemNval);
+        } else if (isBuyerList && itemNval < 0 && (target.bval > target.sval || target.sval === 0)) {
+          itemNval = Math.abs(itemNval);
+        }
+        target.explicitNetVal = itemNval;
+      }
 
       var itemNvol = item.nvol != null ? Number(item.nvol) : (item.net_vol != null ? Number(item.net_vol) : null);
-      if (itemNvol != null) target.explicitNetVol = itemNvol;
+      if (itemNvol != null) {
+        if (!isBuyerList && itemNvol > 0 && (target.svol > target.bvol || target.bvol === 0)) {
+          itemNvol = -Math.abs(itemNvol);
+        } else if (isBuyerList && itemNvol < 0 && (target.bvol > target.svol || target.svol === 0)) {
+          itemNvol = Math.abs(itemNvol);
+        }
+        target.explicitNetVol = itemNvol;
+      }
     }
 
     var bList = Array.isArray(buyers) ? buyers : [];
@@ -888,12 +902,18 @@
       } else {
         for (var b = 0; b < buyers.length; b++) {
           var item = buyers[b];
-          var buyVal = item.bval != null ? item.bval : (item.buy_val || item.net_val || 0);
+          var buyVal = item.bval != null ? item.bval : (item.buy_val || item.net_val || item.val || item.value || 0);
           var sellVal = item.sval != null ? item.sval : (item.sell_val || 0);
-          var buyVol = item.bvol != null ? item.bvol : (item.buy_vol || 0);
+          var buyVol = item.bvol != null ? item.bvol : (item.buy_vol || item.vol || item.volume || 0);
           var sellVol = item.svol != null ? item.svol : (item.sell_vol || 0);
           var netVal = item.nval != null ? item.nval : (item.net_val != null ? item.net_val : (buyVal - sellVal));
+          if (netVal < 0 && (buyVal > sellVal || sellVal === 0)) {
+            netVal = Math.abs(netVal);
+          }
           var netVol = item.nvol != null ? item.nvol : (item.net_vol != null ? item.net_vol : (buyVol - sellVol));
+          if (netVol < 0 && (buyVol > sellVol || sellVol === 0)) {
+            netVol = Math.abs(netVol);
+          }
 
           html += '      <div class="py-2 px-2.5 rounded-lg bg-dark-800/40 border border-dark-600/30 hover:border-emerald-500/30 transition">';
           html += '        <div class="flex items-center justify-between">';
@@ -963,11 +983,17 @@
         for (var s = 0; s < sellers.length; s++) {
           var sItem = sellers[s];
           var sBuyVal = sItem.bval != null ? sItem.bval : (sItem.buy_val || 0);
-          var sSellVal = sItem.sval != null ? sItem.sval : (sItem.sell_val || Math.abs(sItem.net_val || 0));
+          var sSellVal = sItem.sval != null ? sItem.sval : (sItem.sell_val || Math.abs(sItem.net_val || sItem.val || sItem.value || 0));
           var sBuyVol = sItem.bvol != null ? sItem.bvol : (sItem.buy_vol || 0);
-          var sSellVol = sItem.svol != null ? sItem.svol : (sItem.sell_vol || 0);
+          var sSellVol = sItem.svol != null ? sItem.svol : (sItem.sell_vol || Math.abs(sItem.net_vol || sItem.vol || sItem.volume || 0));
           var sNetVal = sItem.nval != null ? sItem.nval : (sItem.net_val != null ? sItem.net_val : (sBuyVal - sSellVal));
+          if (sNetVal > 0 && (sSellVal > sBuyVal || sBuyVal === 0)) {
+            sNetVal = -Math.abs(sNetVal);
+          }
           var sNetVol = sItem.nvol != null ? sItem.nvol : (sItem.net_vol != null ? sItem.net_vol : (sBuyVol - sSellVol));
+          if (sNetVol > 0 && (sSellVol > sBuyVol || sBuyVol === 0)) {
+            sNetVol = -Math.abs(sNetVol);
+          }
 
           html += '      <div class="py-2 px-2.5 rounded-lg bg-dark-800/40 border border-dark-600/30 hover:border-rose-500/30 transition">';
           html += '        <div class="flex items-center justify-between">';

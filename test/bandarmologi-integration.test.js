@@ -764,3 +764,53 @@ test("bandarmologiService: normalizeBrokerSummary preserves Arjum sellers aliase
   assert.equal(norm.net_sellers.length, 1, "an empty net_sellers must fall back to real seller rows");
   assert.equal(norm.net_sellers[0].nval, -9000000);
 });
+
+test("bandarmologiService: GPRA 2026-09-04 regression: top sellers never clone top buyers and sellers have negative net value", () => {
+  const gpraRaw = {
+    stock_code: "GPRA",
+    date: "2026-09-04",
+    gross_buyers: [
+      { broker: "XL", bval: 823600000, sval: 0, bvol: 82360, svol: 0 },
+      { broker: "CP", bval: 383200000, sval: 0, bvol: 38320, svol: 0 },
+      { broker: "KK", bval: 311900000, sval: 0, bvol: 31190, svol: 0 },
+      { broker: "XC", bval: 242700000, sval: 0, bvol: 24270, svol: 0 }
+    ],
+    gross_sellers: [], // empty from upstream API/disk
+    net_buyers: [
+      { broker: "XL", nval: 823600000, nvol: 82360 },
+      { broker: "CP", nval: 383200000, nvol: 38320 },
+      { broker: "KK", nval: 311900000, nvol: 31190 },
+      { broker: "XC", nval: 242700000, nvol: 24270 }
+    ],
+    net_sellers: [], // empty from upstream API/disk
+    top_buyers: [
+      { broker: "XL", bval: 823600000, sval: 0, bvol: 82360, svol: 0 },
+      { broker: "CP", bval: 383200000, sval: 0, bvol: 38320, svol: 0 }
+    ],
+    top_sellers: [
+      { broker: "MG", bval: 0, sval: 1600000000, bvol: 0, svol: 160000 },
+      { broker: "CC", bval: 0, sval: 693900000, bvol: 0, svol: 69390 },
+      { broker: "AK", bval: 0, sval: 299100000, bvol: 0, svol: 29910 },
+      { broker: "ZP", bval: 0, sval: 107100000, bvol: 0, svol: 10710 },
+      { broker: "BK", bval: 0, sval: 67700000, bvol: 0, svol: 6770 },
+      { broker: "BQ", bval: 0, sval: 23500000, bvol: 0, svol: 2350 },
+      { broker: "PD", bval: 0, sval: 17700000, bvol: 0, svol: 1770 },
+      { broker: "AZ", bval: 0, sval: 8700000, bvol: 0, svol: 870 }
+    ]
+  };
+
+  const norm = bandarmologiService.normalizeBrokerSummary(gpraRaw, "2026-09-04");
+
+  assert.ok(norm, "must return normalized summary");
+  assert.equal(norm.gross_sellers.length, 8, "empty gross_sellers must populate from top_sellers");
+  assert.equal(norm.top_sellers.length, 8);
+  assert.equal(norm.top_sellers[0].broker, "MG", "top seller must be MG, not XL or CP");
+  assert.notEqual(norm.top_sellers[0].broker, norm.top_buyers[0].broker);
+  assert.ok(norm.top_sellers.every(s => s.broker !== "XL" && s.broker !== "CP"), "sellers must not clone buyers");
+
+  assert.equal(norm.net_sellers.length, 8, "net_sellers must populate real sellers");
+  assert.equal(norm.net_sellers[0].broker, "MG");
+  assert.equal(norm.net_sellers[0].nval, -1600000000, "MG net value must be negative");
+  assert.equal(norm.net_sellers[1].broker, "CC");
+  assert.equal(norm.net_sellers[1].nval, -693900000, "CC net value must be negative");
+});

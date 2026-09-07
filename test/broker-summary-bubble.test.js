@@ -164,3 +164,41 @@ test('firstNonEmptyList: falls back past an empty array (unlike `||`), never pas
   assert.deepEqual(bandarmologiRuntime.firstNonEmptyList([], []), [], 'every candidate empty must resolve to [], not throw or return undefined');
   assert.deepEqual(bandarmologiRuntime.firstNonEmptyList(), [], 'no arguments at all must resolve to []');
 });
+
+test('buildBrokerBubbleItems: GPRA 2026-09-04 regression: correct buyer and seller counts and colors', () => {
+  const buyers = [
+    { broker: 'XL', bval: 823600000, sval: 0, nval: 823600000 },
+    { broker: 'CP', bval: 383200000, sval: 0, nval: 383200000 },
+    { broker: 'KK', bval: 311900000, sval: 0, nval: 311900000 },
+    { broker: 'XC', bval: 242700000, sval: 0, nval: 242700000 }
+  ];
+  const sellers = [
+    { broker: 'MG', bval: 0, sval: 1600000000, nval: -1600000000 },
+    { broker: 'CC', bval: 0, sval: 693900000, nval: -693900000 },
+    { broker: 'AK', bval: 0, sval: 299100000, nval: -299100000 },
+    { broker: 'ZP', bval: 0, sval: 107100000, nval: -107100000 },
+    { broker: 'BK', bval: 0, sval: 67700000, nval: -67700000 },
+    { broker: 'BQ', bval: 0, sval: 23500000, nval: -23500000 },
+    { broker: 'PD', bval: 0, sval: 17700000, nval: -17700000 },
+    { broker: 'AZ', bval: 0, sval: 8700000, nval: -8700000 }
+  ];
+
+  const items = bandarmologiRuntime.buildBrokerBubbleItems(buyers, sellers, 'net');
+  assert.equal(items.length, 12, 'total 12 distinct brokers');
+
+  const netBuyers = items.filter(it => it.isNetBuyer);
+  const netSellers = items.filter(it => !it.isNetBuyer);
+
+  assert.equal(netBuyers.length, 4, 'must have exactly 4 buyers');
+  assert.equal(netSellers.length, 8, 'must have exactly 8 sellers, never 0');
+
+  const mg = items.find(it => it.broker === 'MG');
+  assert.ok(mg);
+  assert.equal(mg.isNetBuyer, false, 'MG must be net seller');
+  assert.equal(mg.colorTier, 3, 'MG must be Tier 3 heavy distribution');
+
+  const xl = items.find(it => it.broker === 'XL');
+  assert.ok(xl);
+  assert.equal(xl.isNetBuyer, true, 'XL must be net buyer');
+  assert.equal(xl.colorTier, 2, 'XL must be Tier 2 accumulation relative to MG 1.6B');
+});
