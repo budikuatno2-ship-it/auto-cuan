@@ -207,7 +207,7 @@
 
   // ===== SUB-TAB SWITCHER (POLA PORTFOLIO) =====
   function switchAnalisisTab(tabName) {
-    var validTabs = ['analisis', 'chart', 'ranking', 'bandarmologi', 'akumulasi', 'pattern'];
+    var validTabs = ['analisis', 'chart', 'ranking', 'bandarmologi', 'akumulasi', 'hunter', 'pattern'];
     if (validTabs.indexOf(tabName) < 0) tabName = 'analisis';
 
     document.querySelectorAll('.analisis-tab').forEach(function (btn) {
@@ -225,13 +225,19 @@
     if (pAnalisis) pAnalisis.style.display = (tabName === 'analisis' ? 'block' : 'none');
     if (pChart) pChart.style.display = (tabName === 'chart' ? 'block' : 'none');
     if (pRanking) pRanking.style.display = (tabName === 'ranking' ? 'block' : 'none');
-    if (pBandarmologi) pBandarmologi.style.display = ((tabName === 'bandarmologi' || tabName === 'akumulasi') ? 'block' : 'none');
+    if (pBandarmologi) pBandarmologi.style.display = ((tabName === 'bandarmologi' || tabName === 'akumulasi' || tabName === 'hunter') ? 'block' : 'none');
     if (pPattern) pPattern.style.display = (tabName === 'pattern' ? 'block' : 'none');
 
-    // Update panel title when switching between bandarmologi and akumulasi
+    // Update panel title when switching between bandarmologi, akumulasi, and hunter
     var titleEl = byId('bandarPanelTitle');
-    if (titleEl && (tabName === 'bandarmologi' || tabName === 'akumulasi')) {
-      titleEl.textContent = tabName === 'akumulasi' ? 'Akumulasi Broker & Deteksi Smart Money' : 'Analisis Bandarmologi & Kepemilikan Insider';
+    if (titleEl && (tabName === 'bandarmologi' || tabName === 'akumulasi' || tabName === 'hunter')) {
+      if (tabName === 'hunter') {
+        titleEl.textContent = 'Broker Hunter — Top 10 Saham per Broker';
+      } else if (tabName === 'akumulasi') {
+        titleEl.textContent = 'Akumulasi Broker & Deteksi Smart Money';
+      } else {
+        titleEl.textContent = 'Analisis Bandarmologi & Kepemilikan Insider';
+      }
     }
 
     // Sync tab param in URL
@@ -273,6 +279,10 @@
         var accTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
           ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
         root.loadBandarmologiTab(accTicker);
+      }
+    } else if (tabName === 'hunter') {
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
+        root.BandarmologiRuntime.setBandarSection('hunter');
       }
     } else if (tabName === 'pattern') {
       loadPatternRadarTab();
@@ -755,7 +765,53 @@
     if (isSubscribedUser()) {
       root.ensureRankingTableLoaded();
     }
+
+    syncHeaderUsername();
   }
+
+  async function handleAnalisisLogout() {
+    try {
+      await fetch('/api/login-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: 'logout' })
+      });
+    } catch (_) {}
+    try {
+      localStorage.setItem('autocuan_user', 'guest');
+      localStorage.setItem('autocuan_is_admin', 'false');
+      localStorage.removeItem('autocuan_logged_in');
+      localStorage.removeItem('autocuan_login_time');
+      localStorage.removeItem('autocuan_is_review');
+      localStorage.removeItem('autocuan_user_id');
+    } catch (_) {}
+    window.location.href = '/';
+  }
+  root.handleAnalisisLogout = handleAnalisisLogout;
+  if (!root.logout) root.logout = handleAnalisisLogout;
+
+  function syncHeaderUsername() {
+    var u = 'guest';
+    try { u = (localStorage.getItem('autocuan_user') || '').trim(); } catch (_) {}
+    var userEl = byId('headerUsername');
+    var labelEl = byId('headerUserLabel');
+    var logoutEl = byId('logoutBtn');
+    if (!u || u.toLowerCase() === 'guest') {
+      if (userEl) userEl.textContent = 'Guest';
+      if (logoutEl) {
+        logoutEl.textContent = 'Login';
+        logoutEl.onclick = function () { window.location.href = '/?login=1'; };
+      }
+    } else {
+      if (userEl) userEl.textContent = u;
+      if (logoutEl) {
+        logoutEl.textContent = 'Logout';
+        logoutEl.onclick = handleAnalisisLogout;
+      }
+    }
+  }
+  root.syncHeaderUsername = syncHeaderUsername;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initStandaloneAnalisisPage);

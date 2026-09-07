@@ -86,7 +86,7 @@
   function termsHtml() {
     return [
       '<div class="ac-terms-intro">',
-      '<div><p class="ac-section-kicker">Dokumen penggunaan</p><h2 class="ac-section-title">Peraturan &amp; Ketentuan Auto-Cuan</h2><p class="ac-muted">Versi ' + esc(TERMS_VERSION) + '</p></div>',
+      '<div><p class="ac-section-kicker">Dokumen penggunaan</p><h2 class="ac-section-title">Peraturan &amp; Ketentuan Auto-Cuan</h2></div>',
       '<span class="ac-chip ac-chip-ok">Dokumen aktif</span>',
       '</div>',
       '<div class="ac-terms-scroll" tabindex="0" aria-label="Isi Peraturan dan Ketentuan Auto-Cuan">',

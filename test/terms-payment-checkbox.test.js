@@ -26,7 +26,7 @@ test('accountTerms.paymentAcceptance requires terms acceptance and exact current
 test('terms of service UI in account center hides effective date from display', () => {
   // Effective date should NOT be displayed in the termsHtml intro
   assert.doesNotMatch(accountCenterSource, /Dokumen penggunaan[\s\S]*berlaku[\s\S]*TERMS_EFFECTIVE/);
-  assert.match(accountCenterSource, /Versi ' \+ esc\(TERMS_VERSION\) \+ '<\/p><\/div>'/);
+  assert.doesNotMatch(accountCenterSource, /Versi ' \+ esc\(TERMS_VERSION\)/);
 });
 
 test('manual payment submit requires terms acceptance and sends payment source', () => {
