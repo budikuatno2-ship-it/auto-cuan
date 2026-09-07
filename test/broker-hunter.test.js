@@ -128,4 +128,3 @@ test('Broker Hunter API: /api/sector-hot?action=broker-hunter invokes handler', 
   assert.equal(responseData.broker, 'AK');
   assert.equal(responseData.range, '1d');
 });
-

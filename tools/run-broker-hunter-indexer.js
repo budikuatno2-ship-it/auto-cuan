@@ -2,10 +2,10 @@
 
 /**
  * Background Broker Hunter Indexer
- * 
+ *
  * Aggregates the 957-stock broker summaries into pre-computed JSON indices
  * for all major brokers for ranges: 1d, 7d, 30d.
- * 
+ *
  * Usage:
  *   node tools/run-broker-hunter-indexer.js
  *   node tools/run-broker-hunter-indexer.js --ranges 1d,7d
