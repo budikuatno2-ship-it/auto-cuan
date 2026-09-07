@@ -94,7 +94,7 @@ module.exports = async function handler(req, res) {
     const knownActions = new Set([
       'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks', 'telegram-daily-recap',
       'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record',
-      'watchlist', 'watchlist-alert', 'bandarmologi',
+      'watchlist', 'watchlist-alert', 'watchlist-alert-history', 'bandarmologi',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
       'create-screener-share-link', 'public-screener-share', 'refresh', 'debug-members',
@@ -166,6 +166,10 @@ module.exports = async function handler(req, res) {
 
     if (action === 'watchlist-alert') {
       return await handleUserWatchlistAlert(req, res, supabase);
+    }
+
+    if (action === 'watchlist-alert-history') {
+      return await handleUserWatchlistAlertHistory(req, res, supabase);
     }
 
     // === SCREENER READ MODE (login-gated) ===
@@ -8252,6 +8256,20 @@ async function handleUserWatchlistAlert(req, res, supabase) {
   return res.status(405).json({ success: false, error: 'Method not allowed' });
 }
 
+async function handleUserWatchlistAlertHistory(req, res, supabase) {
+  var auth = await requireNonBlockedUser(req, supabase);
+  if (!auth.ok) {
+    return res.status(200).json({ success: false, error: auth.error || 'Login diperlukan.', history: [] });
+  }
+  if (req.method !== 'GET') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+  var userId = auth.user.id;
+  var limit = (req.query && req.query.limit) || 100;
+  var result = await userWatchlistService.getAlertHistory(supabase, userId, limit);
+  return res.status(200).json(result);
+}
+
 function buildMonitorProgressLabel(pick, px) {
   if (!px || px.last == null) return '-';
   var last = toNum(px.last);
@@ -14146,6 +14164,7 @@ module.exports.__test = {
   handleTelegramDailyRecap: handleTelegramDailyRecap,
   handleUserWatchlist: handleUserWatchlist,
   handleUserWatchlistAlert: handleUserWatchlistAlert,
+  handleUserWatchlistAlertHistory: handleUserWatchlistAlertHistory,
   handleNkScreenerResults: handleNkScreenerResults,
   applyFallbackFibConfluence: applyFallbackFibConfluence,
   annotateSwingNkHighRrWarning: swingNkRrWarning.annotateSwingNkHighRrWarning,

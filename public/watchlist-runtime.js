@@ -404,6 +404,72 @@
     }
   }
 
+  var ALERT_HISTORY_ACTION_LABELS = {
+    created: { label: 'Alert dibuat', icon: '🟢', color: 'text-emerald-400' },
+    updated: { label: 'Alert diubah', icon: '✏️', color: 'text-blue-400' },
+    deleted: { label: 'Alert dihapus', icon: '🗑️', color: 'text-red-400' },
+    triggered: { label: 'Alert ter-trigger', icon: '🔔', color: 'text-amber-400' }
+  };
+
+  function formatHistoryTimestamp(iso) {
+    if (!iso) return '—';
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return '—';
+      return new Intl.DateTimeFormat('id-ID', {
+        timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short'
+      }).format(d) + ' WIB';
+    } catch (_) { return '—'; }
+  }
+
+  async function openAlertHistoryModal() {
+    var modal = document.getElementById('wlAlertHistoryModal');
+    var list = document.getElementById('wlAlertHistoryList');
+    if (!modal || !list) return;
+    modal.classList.remove('hidden');
+    list.innerHTML = '<div class="text-center text-gray-500 text-xs py-6">Memuat riwayat...</div>';
+
+    try {
+      var res = await fetch('/api/sector-hot?action=watchlist-alert-history', { credentials: 'same-origin' });
+      var data = await res.json();
+
+      if (!data || !data.success) {
+        list.innerHTML = '<div class="text-center text-red-400 text-xs py-6">' + escapeHtml((data && data.error) || 'Gagal memuat riwayat alert.') + '</div>';
+        return;
+      }
+
+      var history = data.history || [];
+      if (!history.length) {
+        list.innerHTML = '<div class="text-center text-gray-500 text-xs py-6">Belum ada riwayat perubahan alert.</div>';
+        return;
+      }
+
+      list.innerHTML = history.map(function (h) {
+        var meta = ALERT_HISTORY_ACTION_LABELS[h.action] || { label: h.action, icon: '📌', color: 'text-gray-400' };
+        var priceText = h.target_price != null ? ('Rp' + Number(h.target_price).toLocaleString('id-ID')) : '—';
+        return '<div class="flex items-start gap-2.5 p-2.5 rounded-xl bg-dark-800/60 border border-dark-600/30">' +
+          '<span class="text-base leading-none mt-0.5">' + meta.icon + '</span>' +
+          '<div class="min-w-0 flex-1">' +
+            '<div class="flex items-center justify-between gap-2">' +
+              '<span class="text-xs font-semibold ' + meta.color + '">' + escapeHtml(meta.label) + '</span>' +
+              '<span class="text-[10px] text-gray-500 flex-shrink-0">' + escapeHtml(formatHistoryTimestamp(h.created_at)) + '</span>' +
+            '</div>' +
+            '<div class="text-[11px] text-gray-400 mt-0.5">' + escapeHtml(h.ticker) + (h.condition_type ? (' · ' + escapeHtml(h.condition_type) + ' @ ' + escapeHtml(priceText)) : '') + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    } catch (err) {
+      list.innerHTML = '<div class="text-center text-red-400 text-xs py-6">Gagal menghubungi server.</div>';
+    }
+  }
+
+  function closeAlertHistoryModal() {
+    var modal = document.getElementById('wlAlertHistoryModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  window.openAlertHistoryModal = openAlertHistoryModal;
+  window.closeAlertHistoryModal = closeAlertHistoryModal;
   window.loadUserWatchlist = loadUserWatchlist;
   window.filterWatchlist = filterWatchlist;
   window.toggleWatchlistTicker = toggleWatchlistTicker;
