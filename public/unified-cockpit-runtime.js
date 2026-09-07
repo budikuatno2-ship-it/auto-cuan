@@ -153,6 +153,26 @@
     var analisisTag = byId('analisisActiveTickerTag');
     if (analisisTag) analisisTag.textContent = ticker;
 
+    var bandarTag = byId('bandarActiveTickerTag');
+    if (bandarTag) bandarTag.textContent = ticker;
+
+    // 2b. Sync independent tab search inputs if present
+    ['bandarTickerSearchInput', 'akumulasiTickerSearchInput', 'bandarSummarySearchInput', 'rankingTickerSearchInput', 'patternTickerSearchInput'].forEach(function (id) {
+      var inp = byId(id);
+      if (inp && inp.value !== ticker) inp.value = ticker;
+    });
+
+    // 2c. Update URL query parameter seamlessly
+    try {
+      if (typeof window !== 'undefined' && window.location) {
+        var currentUrl = new URL(window.location.href);
+        if (currentUrl.searchParams.get('ticker') !== ticker) {
+          currentUrl.searchParams.set('ticker', ticker);
+          window.history.replaceState({}, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
+        }
+      }
+    } catch (_) {}
+
     // 3. Make follow-up composer visible in cockpit
     var followUp = byId('analisisFollowUp');
     if (followUp && followUp.classList.contains('hidden')) {
@@ -174,20 +194,22 @@
       loadBandarFn(ticker);
     }
 
-    // 5. Trigger analysis if specified
-    var runFn = (typeof root.runAnalisisFromDashboard === 'function') ? root.runAnalisisFromDashboard :
-                (typeof window !== 'undefined' && typeof window.runAnalisisFromDashboard === 'function') ? window.runAnalisisFromDashboard : null;
-    var visionFn = (typeof root.triggerAiChartAnalysis === 'function') ? root.triggerAiChartAnalysis :
-                   (typeof window !== 'undefined' && typeof window.triggerAiChartAnalysis === 'function') ? window.triggerAiChartAnalysis : null;
+    // 5. Trigger analysis if specified (unless preserveTab is explicitly requested)
+    if (!options.preserveTab) {
+      var runFn = (typeof root.runAnalisisFromDashboard === 'function') ? root.runAnalisisFromDashboard :
+                  (typeof window !== 'undefined' && typeof window.runAnalisisFromDashboard === 'function') ? window.runAnalisisFromDashboard : null;
+      var visionFn = (typeof root.triggerAiChartAnalysis === 'function') ? root.triggerAiChartAnalysis :
+                     (typeof window !== 'undefined' && typeof window.triggerAiChartAnalysis === 'function') ? window.triggerAiChartAnalysis : null;
 
-    if (options.runAnalysis && runFn) {
-      if (typeof root.switchAnalisisTab === 'function') root.switchAnalisisTab('analisis');
-      else switchAnalysisSubTab('text');
-      runFn(ticker);
-    } else if (options.runChartVision && visionFn) {
-      if (typeof root.switchAnalisisTab === 'function') root.switchAnalisisTab('chart');
-      else switchAnalysisSubTab('vision');
-      visionFn(ticker);
+      if (options.runAnalysis && runFn) {
+        if (typeof root.switchAnalisisTab === 'function') root.switchAnalisisTab('analisis');
+        else switchAnalysisSubTab('text');
+        runFn(ticker);
+      } else if (options.runChartVision && visionFn) {
+        if (typeof root.switchAnalisisTab === 'function') root.switchAnalisisTab('chart');
+        else switchAnalysisSubTab('vision');
+        visionFn(ticker);
+      }
     }
   }
 
@@ -300,7 +322,12 @@
     handleUnifiedChartAiSubmit: handleUnifiedChartAiSubmit,
     sendQuickPrompt: sendQuickPrompt,
     clearAnalysisChatHistory: clearAnalysisChatHistory,
-    openFullscreen: openFullscreen
+    openFullscreen: openFullscreen,
+    handleIndependentTabSearch: function (tab, ticker) {
+      if (typeof root.handleIndependentTabSearch === 'function') {
+        return root.handleIndependentTabSearch(tab, ticker);
+      }
+    }
   };
 
   // Wire events on DOM ready

@@ -98,6 +98,10 @@
                 <span class="text-base">🏛️</span>
                 <span>Bandarmologi &amp; Insider</span>
             </button>
+            <button id="tabAkumulasiBroker" type="button" class="analisis-tab" data-tab="akumulasi" onclick="switchAnalisisTab('akumulasi')">
+                <span class="text-base">📊</span>
+                <span>Akumulasi Broker</span>
+            </button>
             <button id="tabRankingHarian" type="button" class="analisis-tab" data-tab="ranking" onclick="switchAnalisisTab('ranking')">
                 <span class="text-base">🏆</span>
                 <span>Ranking Harian</span>
@@ -267,8 +271,12 @@
                                 <h3 class="text-sm font-semibold text-gray-200">Ranking Harian Pasar</h3>
                                 <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker &mdash; klik ticker untuk memuat analisis &amp; chart.</p>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <input id="rankingSearchInput" type="text" placeholder="Cari di tabel..." aria-label="Cari di tabel ranking" class="w-36 sm:w-52 px-3 py-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" oninput="onRankingSearchInput(this.value)">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <div class="flex items-center gap-1.5">
+                                    <input id="rankingTickerSearchInput" type="text" placeholder="Pilih ticker..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-28 sm:w-32 uppercase font-mono px-2.5 py-1.5 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key==='Enter'){handleIndependentTabSearch('ranking', this.value)}">
+                                    <button type="button" onclick="handleIndependentTabSearch('ranking', document.getElementById('rankingTickerSearchInput').value)" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 text-xs font-semibold transition shrink-0" aria-label="Cari ticker di ranking">Cari</button>
+                                </div>
+                                <input id="rankingSearchInput" type="text" placeholder="Filter tabel..." aria-label="Filter tabel ranking" class="w-32 sm:w-44 px-2.5 py-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" oninput="onRankingSearchInput(this.value)">
                                 <button type="button" onclick="refreshRankingTable()" class="p-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition flex-shrink-0" title="Muat ulang ranking" aria-label="Muat ulang ranking">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                 </button>
@@ -285,11 +293,16 @@
         <!-- SUB-TAB: BANDARMOLOGI & INSIDER -->
         <section id="panel-tab-bandarmologi" class="analisis-tab-panel" style="display:none">
             <div class="unified-card p-4 sm:p-5">
-                <div class="flex items-center justify-between pb-3 mb-4 border-b border-dark-600/40">
+                <div class="flex flex-wrap items-center justify-between gap-3 pb-3 mb-4 border-b border-dark-600/40">
                     <div class="flex items-center gap-2">
                         <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                        <h2 class="text-sm font-bold text-gray-100">Analisis Bandarmologi &amp; Kepemilikan Insider</h2>
+                        <h2 id="bandarPanelTitle" class="text-sm font-bold text-gray-100">Analisis Bandarmologi &amp; Kepemilikan Insider</h2>
                         <span id="bandarActiveTickerTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-600/60 text-emerald-300 border border-emerald-500/20">BBCA</span>
+                    </div>
+                    <!-- Search Bar Mandiri Tab Bandarmologi & Insider -->
+                    <div class="flex items-center gap-1.5">
+                        <input id="bandarTickerSearchInput" type="text" placeholder="Ganti ticker..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-28 sm:w-36 uppercase font-mono px-2.5 py-1.5 rounded-lg bg-dark-800/90 border border-dark-600/50 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key==='Enter'){handleIndependentTabSearch('bandarmologi', this.value)}">
+                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', document.getElementById('bandarTickerSearchInput').value)" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 text-xs font-semibold transition shrink-0" aria-label="Cari ticker di Bandarmologi">Cari</button>
                     </div>
                 </div>
                 <div id="bandarmologiContent"></div>
@@ -304,6 +317,40 @@
                 </div>
             </div>
         </section>
+
+        <!-- Shared Ticker Autocomplete DataList for Independent Tab Searches -->
+        <datalist id="tickerAutocompleteList">
+            <option value="BBCA">Bank Central Asia</option>
+            <option value="BBRI">Bank Rakyat Indonesia</option>
+            <option value="BMRI">Bank Mandiri</option>
+            <option value="BBNI">Bank Negara Indonesia</option>
+            <option value="TLKM">Telkom Indonesia</option>
+            <option value="ASII">Astra International</option>
+            <option value="ADRO">Adaro Energy</option>
+            <option value="ICBP">Indofood CBP</option>
+            <option value="INDF">Indofood Sukses Makmur</option>
+            <option value="KLBF">Kalbe Farma</option>
+            <option value="UNTR">United Tractors</option>
+            <option value="GOTO">GoTo Gojek Tokopedia</option>
+            <option value="AMMN">Amman Mineral</option>
+            <option value="BREN">Barito Renewables</option>
+            <option value="BRIS">Bank Syariah Indonesia</option>
+            <option value="CPIN">Charoen Pokphand</option>
+            <option value="PGAS">Perusahaan Gas Negara</option>
+            <option value="PTBA">Bukit Asam</option>
+            <option value="MDKA">Merdeka Copper Gold</option>
+            <option value="ANTM">Aneka Tambang</option>
+            <option value="MEDC">Medco Energi</option>
+            <option value="INKP">Indah Kiat Pulp &amp; Paper</option>
+            <option value="SMGR">Semen Indonesia</option>
+            <option value="TPIA">Chandra Asri</option>
+            <option value="ACES">Aspirasi Hidup Indonesia</option>
+            <option value="EXCL">XL Axiata</option>
+            <option value="ISAT">Indosat</option>
+            <option value="MYOR">Mayora Indah</option>
+            <option value="INCO">Vale Indonesia</option>
+            <option value="GPRA">Perdana Gapuraprima</option>
+        </datalist>
     </main>
 
     <!-- Hidden compatibility chart elements for viewer helper functions -->

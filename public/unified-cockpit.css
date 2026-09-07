@@ -281,6 +281,63 @@
   display: block;
 }
 
+/* ===== INDEPENDENT TAB SEARCH BARS ===== */
+.tab-independent-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-independent-search input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  color: #f1f5f9;
+  padding: 6px 10px;
+  font-size: 12px;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.tab-independent-search input:focus {
+  border-color: rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
+}
+
+.tab-independent-search button {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.tab-independent-search button:hover {
+  background: rgba(16, 185, 129, 0.28);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #a7f3d0;
+}
+
+@media (max-width: 640px) {
+  .tab-independent-search input {
+    width: 100px;
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+  .tab-independent-search button {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+}
+
 /* =========================================================================
    TABLE & CONTAINER SCROLL BOUNDING (Fixed Heights & Containment)
    Guarantees that tables and data containers scroll internally within their

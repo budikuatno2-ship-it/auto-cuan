@@ -21,7 +21,7 @@
     var originalLogout = typeof root.logout === 'function' ? root.logout : null;
     var state = {
       allowed:false, checked:false, loading:false, loaded:false, rows:[], total:0,
-      version:0, urls:{}, controllers:{}, cacheHydrated:false
+      version:0, urls:{}, controllers:{}, cacheHydrated:false, filterTicker:''
     };
 
     function esc(value) {
@@ -167,6 +167,10 @@
         '<h2 class="ps-title">Pattern Radar</h2>' +
         '<p class="ps-sub">Memindai saham di hasil Screener terbaru dan menampilkan yang membentuk pola ABCD atau pola chart klasik pada data harian T-1. Kartu diurutkan mulai dari yang masih relevan untuk dipantau. Pola adalah konfirmasi teknikal, bukan sinyal beli.</p>' +
         '</div><div class="ps-actions">' +
+        '<div class="flex items-center gap-1.5">' +
+        '<input id="patternTickerSearchInput" type="text" placeholder="Cari ticker..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-24 sm:w-32 uppercase font-mono px-2.5 py-1.5 rounded-lg bg-dark-800/80 border border-dark-600/50 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key===\'Enter\'){handleIndependentTabSearch(\'pattern\', this.value)}">' +
+        '<button type="button" onclick="handleIndependentTabSearch(\'pattern\', document.getElementById(\'patternTickerSearchInput\').value)" class="ps-btn px-2.5 py-1.5 text-xs" aria-label="Cari ticker di Pattern Radar">Cari</button>' +
+        '</div>' +
         '<button type="button" id="psRefresh" class="ps-btn">Scan ulang</button>' +
         '<button type="button" id="psTechnical" class="ps-btn alt">Buka Chart</button>' +
         '</div></div>' +
@@ -396,6 +400,11 @@
     function render() {
       state.rows.forEach(function (row) { row.safety = Safety.evaluateRow(row, row.plan || null); });
       state.rows.sort(function (a, b) {
+        if (state.filterTicker) {
+          var aMatch = a.ticker === state.filterTicker ? 1 : 0;
+          var bMatch = b.ticker === state.filterTicker ? 1 : 0;
+          if (aMatch !== bMatch) return bMatch - aMatch;
+        }
         var ar = Safety.statusRank(a.safety && a.safety.status);
         var br = Safety.statusRank(b.safety && b.safety.status);
         if (ar !== br) return ar - br;
@@ -405,16 +414,56 @@
         var bf = b.classicPatterns && b.classicPatterns[0] ? Number(b.classicPatterns[0].confidence) || 0 : 0;
         return (bf - af) || a.ticker.localeCompare(b.ticker);
       });
+      var displayRows = state.filterTicker
+        ? state.rows.filter(function (r) { return r.ticker.indexOf(state.filterTicker) !== -1; })
+        : state.rows;
       var grid = doc.getElementById('psGrid');
-      if (grid) grid.innerHTML = state.rows.map(card).join('');
+      if (grid) grid.innerHTML = displayRows.map(card).join('');
       var empty = doc.getElementById('psEmpty');
       if (empty) {
-        empty.classList.toggle('hidden', state.rows.length > 0);
-        if (!state.rows.length) empty.textContent = state.loading ? 'Sedang memindai saham dari hasil Screener terbaru…' : (state.total ? 'Tidak ada pola yang lolos aturan konservatif pada hasil Screener saat ini.' : 'Belum ada ticker dari Screener yang bisa dipindai.');
+        empty.classList.toggle('hidden', displayRows.length > 0);
+        if (!displayRows.length) {
+          empty.textContent = state.filterTicker
+            ? 'Tidak ada formasi pola terdeteksi untuk ticker ' + state.filterTicker + '.'
+            : (state.loading ? 'Sedang memindai saham dari hasil Screener terbaru…' : (state.total ? 'Tidak ada pola yang lolos aturan konservatif pada hasil Screener saat ini.' : 'Belum ada ticker dari Screener yang bisa dipindai.'));
+        }
       }
       var legend = doc.getElementById('psLegend');
-      if (legend) legend.hidden = state.rows.length === 0;
+      if (legend) legend.hidden = displayRows.length === 0;
     }
+
+    async function filterOrScanTicker(rawTicker) {
+      var clean = String(rawTicker || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      state.filterTicker = clean;
+      var inp = doc.getElementById('patternTickerSearchInput');
+      if (inp && inp.value !== clean) inp.value = clean;
+      if (!clean) {
+        render();
+        return;
+      }
+      var existing = state.rows.find(function (r) { return r.ticker === clean; });
+      if (!existing) {
+        try {
+          var data = await json('/api/candles?ticker=' + encodeURIComponent(clean), 8000);
+          if (data && Array.isArray(data.candles)) {
+            var classicPatterns = Array.isArray(data.classicPatterns) ? data.classicPatterns.filter(function (pattern) { return pattern && pattern.label; }).slice(0, 3) : [];
+            var candidate = null;
+            var dataDate = String(data.actual_data_date || (data.patternMap && data.patternMap.dataDate) || (data.latest && data.latest.date) || '');
+            var context = { ticker: clean, timeframe: '1D', dataDate: dataDate, candles: data.candles };
+            if (data.patternMap && root.PatternMap) {
+              var validation = root.PatternMap.validateCandidate(data.patternMap, context);
+              if (validation && validation.valid === true) candidate = data.patternMap;
+            }
+            if (candidate || classicPatterns.length) {
+              state.rows.unshift({ ticker: clean, candidate: candidate, classicPatterns: classicPatterns, context: context, dataDate: dataDate, currentPrice: data.latest && data.latest.last });
+            }
+          }
+        } catch (_) {}
+      }
+      render();
+    }
+    root.filterPatternRadarTicker = filterOrScanTicker;
+    root.PatternRadarRuntime = { filterOrScanTicker: filterOrScanTicker, scan: scan };
     async function universe() {
       var stamp = Date.now();
       return Ui.collectTickers(await Promise.all([
