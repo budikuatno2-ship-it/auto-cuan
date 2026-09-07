@@ -50,5 +50,6 @@
   "test/unified-cockpit-layout.test.js",
   "test/standalone-analisis-saham.test.js",
   "test/optional-email-auth.test.js",
-  "test/pattern-radar-timeout.test.js"
+  "test/pattern-radar-timeout.test.js",
+  "test/broker-accumulation-bubble.test.js"
 ]
