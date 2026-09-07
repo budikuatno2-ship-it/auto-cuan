@@ -350,6 +350,25 @@ test('bandarmologiService: normalizeBrokerSummary falls back to a populated top_
   assert.equal(norm.gross_sellers[0].sval, 53820000);
 });
 
+test('bandarmologiService: normalizeBrokerSummary preserves Arjum sellers aliases when a partial payload also has buyer fields', () => {
+  // Newer Arjum responses can carry seller rows under `sellers` while the
+  // buyer-side fields are already named gross_buyers/net_buyers. This must
+  // not take the old early-return path and silently leave sellers absent.
+  const norm = bandarmologiService.normalizeBrokerSummary({
+    stock_code: 'BBCA',
+    date: '2026-09-04',
+    gross_buyers: [{ broker: 'YU', bval: 10000000, sval: 0, bvol: 100, svol: 0 }],
+    net_buyers: [{ broker: 'YU', nval: 10000000, nvol: 100 }],
+    sellers: [{ broker: 'AK', bval: 0, sval: 9000000, bvol: 0, svol: 90 }],
+    net_sellers: []
+  }, '2026-09-04');
+
+  assert.equal(norm.gross_sellers.length, 1, 'the sellers alias must populate Full / Gross sellers');
+  assert.equal(norm.gross_sellers[0].broker, 'AK');
+  assert.equal(norm.net_sellers.length, 1, 'an empty net_sellers must fall back to real seller rows');
+  assert.equal(norm.net_sellers[0].nval, -9000000);
+});
+
 test('bandarmologiService: aggregateBrokerSummaries also falls back correctly when a day\'s gross_sellers is an empty array', () => {
   const fs = require('fs');
   const path = require('path');
