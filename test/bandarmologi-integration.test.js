@@ -764,3 +764,48 @@ test("bandarmologiService: normalizeBrokerSummary preserves Arjum sellers aliase
   assert.equal(norm.net_sellers.length, 1, "an empty net_sellers must fall back to real seller rows");
   assert.equal(norm.net_sellers[0].nval, -9000000);
 });
+
+// Regression: disk-cached GPRA data can contain empty canonical seller
+// arrays while Arjum's populated seller list is retained under `sellers`.
+// Empty arrays are not complete data: they must not cause the normalizer to
+// return early, alias the buyer list, or suppress actual counter-sellers.
+test('bandarmologiService: GPRA seller aliases remain distinct from buyers in net and gross modes', () => {
+  const norm = bandarmologiService.normalizeBrokerSummary({
+    stock_code: 'GPRA',
+    date: '2026-09-04',
+    gross_buyers: [
+      { broker: 'XL', bval: 823600000, nval: 823600000 },
+      { broker: 'CP', bval: 383200000, nval: 383200000 },
+      { broker: 'KK', bval: 311900000, nval: 311900000 },
+      { broker: 'XC', bval: 242700000, nval: 242700000 }
+    ],
+    net_buyers: [
+      { broker: 'XL', nval: 823600000 },
+      { broker: 'CP', nval: 383200000 },
+      { broker: 'KK', nval: 311900000 },
+      { broker: 'XC', nval: 242700000 }
+    ],
+    gross_sellers: [],
+    net_sellers: [],
+    sellers: [
+      { broker: 'MG', sval: 1600000000, nval: -1600000000 },
+      { broker: 'CC', sval: 693900000, nval: -693900000 },
+      { broker: 'AK', sval: 299100000, nval: -299100000 },
+      { broker: 'ZP', sval: 107100000, nval: -107100000 },
+      { broker: 'BK', sval: 67700000, nval: -67700000 },
+      { broker: 'BQ', sval: 23500000, nval: -23500000 }
+    ]
+  }, '2026-09-04');
+
+  const buyerCodes = new Set(norm.gross_buyers.map(function (item) { return item.broker; }));
+  const expectedSellerCodes = ['MG', 'CC', 'AK', 'ZP', 'BK', 'BQ'];
+
+  assert.deepEqual(norm.gross_sellers.map(function (item) { return item.broker; }), expectedSellerCodes,
+    'Full / Gross must read Arjum seller aliases instead of mirroring buyer rows');
+  assert.deepEqual(norm.net_sellers.map(function (item) { return item.broker; }), expectedSellerCodes,
+    'Net must fall back to the actual seller rows when net_sellers is empty');
+  assert.ok(norm.net_sellers.every(function (item) { return item.nval < 0; }),
+    'counter-seller net values must retain their negative sign');
+  assert.ok(norm.gross_sellers.every(function (item) { return !buyerCodes.has(item.broker); }),
+    'Top Sellers must not be a negated copy of Top Buyers');
+});
