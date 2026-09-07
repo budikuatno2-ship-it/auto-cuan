@@ -106,6 +106,7 @@
   var lastBandarData = null;
   var brokerSummaryMode = 'gross'; // 'gross' or 'net'
   var brokerSummaryView = 'bubble'; // 'bubble' (default) or 'table'
+  var brokerAccumulationView = 'bubble'; // 'bubble' (default) or 'table'
   var brokerSummaryRange = '1d'; // '1d' (default), '7d', '30d', 'custom'
   var customRangeStart = '';
   var customRangeEnd = '';
@@ -404,9 +405,13 @@
     html += '      <div class="h-full rounded-l-full bg-emerald-500 transition-all duration-300" style="width:' + buyPct + '%"></div>';
     html += '      <div class="h-full rounded-r-full bg-rose-500 transition-all duration-300" style="width:' + sellPct + '%"></div>';
     html += '    </div>';
+    var totalClusterVal = lastBrokerItems.reduce(function (sum, it) { return sum + (it.txVal || 0); }, 0);
+    var contribPct = totalClusterVal > 0 ? ((broker.txVal / totalClusterVal) * 100).toFixed(1) : '—';
+
     html += '    <div class="flex flex-wrap items-center justify-between text-[10px] text-gray-400 font-mono mt-2 pt-1 border-t border-dark-600/20">';
     html += '      <span>Total Transaksi Gross: <strong class="text-gray-200">' + formatIDR(totalGross) + '</strong></span>';
     html += '      <span>Net Flow: <strong class="' + (broker.netVal >= 0 ? 'text-emerald-400' : 'text-rose-400') + '">' + (broker.netVal >= 0 ? '+' : '-') + formatIDR(Math.abs(broker.netVal)) + '</strong></span>';
+    html += '      <span>Kontribusi: <strong class="text-emerald-300 font-bold">' + contribPct + '%</strong></span>';
     html += '    </div>';
     html += '  </div>';
 
@@ -578,6 +583,14 @@
 
   function setBrokerSummaryView(view) {
     brokerSummaryView = (view === 'table') ? 'table' : 'bubble';
+    var container = byId('bandarmologiContent');
+    if (container && lastBandarData) {
+      renderBandarmologiUI(container, lastBandarData);
+    }
+  }
+
+  function setBrokerAccumulationView(view) {
+    brokerAccumulationView = (view === 'table') ? 'table' : 'bubble';
     var container = byId('bandarmologiContent');
     if (container && lastBandarData) {
       renderBandarmologiUI(container, lastBandarData);
@@ -1015,98 +1028,165 @@
     html += '</div>';
     } else {
 
-    // 2. DAILY BROKER SUMMARY BREAKDOWN TABLE (PER HARI)
-    html += '<div class="mb-5 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5">';
-    html += '  <div class="flex items-center justify-between mb-3">';
-    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📅</span> Riwayat Harian Broker Summary (Breakdown Per Hari)</h3>';
-    html += '    <span class="text-[11px] text-gray-400">Setiap tanggal memiliki data tersendiri</span>';
+    // 2. AKUMULASI BROKER SECTION - INTERACTIVE BUBBLE OR DETAILED TABLE & CHART
+    var isAccBubbleView = brokerAccumulationView === 'bubble';
+
+    html += '<div class="mb-5">';
+    html += '  <div class="flex flex-wrap items-center justify-between gap-2.5 mb-3">';
+    var accHeadingDate = bSum.range_label || (bSum.date ? 'Rentang: ' + bSum.date : (currentBandarDate ? 'Tanggal: ' + currentBandarDate : 'Historis'));
+    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📈</span> Akumulasi Broker Detail — <span class="text-emerald-400 font-mono">' + escapeHtml(accHeadingDate) + '</span></h3>';
+
+    html += '    <div class="flex flex-wrap items-center gap-2">';
+
+    // Rentang Selector (1 Hari, 7 Hari, 30 Hari, Custom)
+    var ar1Class = brokerSummaryRange === '1d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var ar7Class = brokerSummaryRange === '7d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var ar30Class = brokerSummaryRange === '30d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var arCustomClass = brokerSummaryRange === 'custom' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
+    html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Rentang:</span>';
+    html += '        <button type="button" id="toggleAccRange1d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'1d\')" class="px-2.5 py-1 rounded-md transition ' + ar1Class + '">1 Hari</button>';
+    html += '        <button type="button" id="toggleAccRange7d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'7d\')" class="px-2.5 py-1 rounded-md transition ' + ar7Class + '">7 Hari</button>';
+    html += '        <button type="button" id="toggleAccRange30d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'30d\')" class="px-2.5 py-1 rounded-md transition ' + ar30Class + '">30 Hari</button>';
+    html += '        <button type="button" id="toggleAccRangeCustom" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'custom\')" class="px-2.5 py-1 rounded-md transition ' + arCustomClass + '">📅 Custom</button>';
+    html += '      </div>';
+
+    if (brokerSummaryRange === 'custom') {
+      html += '      <div class="flex items-center gap-1.5 bg-dark-800 p-1 rounded-lg border border-dark-600/50 text-[11px]">';
+      html += '        <input type="date" id="bandarAccCustomStartDate" value="' + escapeHtml(customRangeStart) + '" class="bg-dark-700 border border-dark-600/60 rounded px-1.5 py-0.5 text-gray-200 text-[11px]">';
+      html += '        <span class="text-gray-500">s/d</span>';
+      html += '        <input type="date" id="bandarAccCustomEndDate" value="' + escapeHtml(customRangeEnd) + '" class="bg-dark-700 border border-dark-600/60 rounded px-1.5 py-0.5 text-gray-200 text-[11px]">';
+      html += '        <button type="button" onclick="BandarmologiRuntime.applyCustomBrokerSummaryRange(document.getElementById(\'bandarAccCustomStartDate\').value, document.getElementById(\'bandarAccCustomEndDate\').value)" class="px-2.5 py-1 rounded-md bg-emerald-500 text-dark-900 font-bold transition hover:bg-emerald-400">Terapkan</button>';
+      html += '      </div>';
+    }
+
+    // View Switcher (Visual Bubble vs Tabel Rinci)
+    html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
+    html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Tampilan:</span>';
+    html += '        <button type="button" id="toggleAccViewBubble" onclick="BandarmologiRuntime.setBrokerAccumulationView(\'bubble\')" class="px-2.5 py-1 rounded-md transition ' + (isAccBubbleView ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">⚪ Visual Bubble</button>';
+    html += '        <button type="button" id="toggleAccViewTable" onclick="BandarmologiRuntime.setBrokerAccumulationView(\'table\')" class="px-2.5 py-1 rounded-md transition ' + (!isAccBubbleView ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📋 Tabel Rinci</button>';
+    html += '      </div>';
+
+    // Flow Filter (Foreign / Domestic / All)
+    var flowAllClass = brokerFlowFilter === 'all' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var flowFClass = brokerFlowFilter === 'F' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var flowDClass = brokerFlowFilter === 'D' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
+    html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Flow:</span>';
+    html += '        <button type="button" id="toggleAccFlowAll" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'all\')" class="px-2.5 py-1 rounded-md transition ' + flowAllClass + '">Semua</button>';
+    html += '        <button type="button" id="toggleAccFlowForeign" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'F\')" class="px-2.5 py-1 rounded-md transition ' + flowFClass + '">🌏 Foreign</button>';
+    html += '        <button type="button" id="toggleAccFlowDomestic" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'D\')" class="px-2.5 py-1 rounded-md transition ' + flowDClass + '">🏠 Domestic</button>';
+    html += '      </div>';
+
+    html += '    </div>';
     html += '  </div>';
 
-    if (series.length === 0) {
-      html += '  <div class="text-gray-500 text-center py-4 text-xs">Belum ada riwayat harian untuk emiten ini.</div>';
+    if (isAccBubbleView) {
+      // 2A. BUBBLE VIEW UNTUK AKUMULASI BROKER
+      var accBuyers = firstNonEmptyList(bSum.net_buyers, bAcc.net_buyers, bAcc.top_buyers, bSum.top_buyers, bSum.gross_buyers);
+      var accSellers = firstNonEmptyList(bSum.net_sellers, bAcc.net_sellers, bAcc.top_sellers, bSum.top_sellers, bSum.gross_sellers);
+
+      lastBrokerItems = buildBrokerBubbleItems(accBuyers, accSellers, 'net');
+
+      if (!selectedBrokerCode || !lastBrokerItems.some(function (it) { return it.broker === selectedBrokerCode; })) {
+        selectedBrokerCode = lastBrokerItems.length > 0 ? lastBrokerItems[0].broker : '';
+      }
+      html += renderBrokerBubbleClusterHtml(lastBrokerItems, selectedBrokerCode, 'net', bubbleFilterSide);
     } else {
-      html += '  <div class="overflow-x-auto max-h-72 overflow-y-auto">';
-      html += '    <table class="w-full text-left text-xs">';
-      html += '      <thead>';
-      html += '        <tr class="text-[11px] text-gray-400 border-b border-dark-600/40 sticky top-0 bg-dark-800/90 backdrop-blur z-10">';
-      html += '          <th class="py-2 px-2.5">Tanggal</th>';
-      html += '          <th class="py-2 px-2 text-center">Status Bandar</th>';
-      html += '          <th class="py-2 px-2 text-right">Net Flow (IDR)</th>';
-      html += '          <th class="py-2 px-2 text-center">Top Buyer</th>';
-      html += '          <th class="py-2 px-2 text-center">Top Seller</th>';
-      html += '          <th class="py-2 px-2 text-center">Aksi</th>';
-      html += '        </tr>';
-      html += '      </thead>';
-      html += '      <tbody class="divide-y divide-dark-600/20">';
+      // 2B. TABEL RINCI (Riwayat Harian Breakdown & Grafik Tren Akumulasi)
+      html += '<div class="mb-5 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5">';
+      html += '  <div class="flex items-center justify-between mb-3">';
+      html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📅</span> Riwayat Harian Broker Summary (Breakdown Per Hari)</h3>';
+      html += '    <span class="text-[11px] text-gray-400">Setiap tanggal memiliki data tersendiri</span>';
+      html += '  </div>';
 
-      var revSeries = series.slice().reverse();
-      for (var di = 0; di < revSeries.length; di++) {
-        var dayRow = revSeries[di];
-        var isSelected = dayRow.date === (bSum.date || currentBandarDate);
-        var isPositive = (dayRow.net_val || 0) >= 0;
-        var statusBadge = isPositive
-          ? '<span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold text-[10px]">AKUMULASI</span>'
-          : '<span class="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-semibold text-[10px]">DISTRIBUSI</span>';
-
-        var rowBg = isSelected
-          ? 'bg-emerald-500/10 border-l-2 border-emerald-500 font-medium'
-          : 'hover:bg-dark-600/20 transition';
-
-        html += '        <tr class="' + rowBg + '">';
-        html += '          <td class="py-2 px-2.5 font-mono text-[11px] text-gray-200">';
-        html += '            ' + escapeHtml(dayRow.date);
-        if (isSelected) {
-          html += '          <span class="ml-1.5 text-[9px] px-1.5 py-0.2 rounded bg-emerald-500 text-dark-900 font-bold">DILIHAT</span>';
-        }
-        html += '          </td>';
-        html += '          <td class="py-2 px-2 text-center">' + statusBadge + '</td>';
-        html += '          <td class="py-2 px-2 font-mono text-right font-semibold ' + (isPositive ? 'text-emerald-400' : 'text-rose-400') + '">' + (isPositive ? '+' : '-') + formatIDR(Math.abs(dayRow.net_val || 0)) + '</td>';
-        html += '          <td class="py-2 px-2 text-center font-mono font-bold text-emerald-300">' + escapeHtml(dayRow.top_buyer || '—') + '</td>';
-        html += '          <td class="py-2 px-2 text-center font-mono font-bold text-rose-300">' + escapeHtml(dayRow.top_seller || '—') + '</td>';
-        html += '          <td class="py-2 px-2 text-center">';
-        html += '            <button type="button" onclick="BandarmologiRuntime.loadBandarmologiTab(null, \'' + escapeHtml(dayRow.date) + '\')" class="px-2 py-1 text-[10px] rounded bg-dark-600 hover:bg-emerald-600 hover:text-white text-gray-300 transition">Lihat Top 5</button>';
-        html += '          </td>';
+      if (series.length === 0) {
+        html += '  <div class="text-gray-500 text-center py-4 text-xs">Belum ada riwayat harian untuk emiten ini.</div>';
+      } else {
+        html += '  <div class="overflow-x-auto max-h-72 overflow-y-auto">';
+        html += '    <table class="w-full text-left text-xs">';
+        html += '      <thead>';
+        html += '        <tr class="text-[11px] text-gray-400 border-b border-dark-600/40 sticky top-0 bg-dark-800/90 backdrop-blur z-10">';
+        html += '          <th class="py-2 px-2.5">Tanggal</th>';
+        html += '          <th class="py-2 px-2 text-center">Status Bandar</th>';
+        html += '          <th class="py-2 px-2 text-right">Net Flow (IDR)</th>';
+        html += '          <th class="py-2 px-2 text-center">Top Buyer</th>';
+        html += '          <th class="py-2 px-2 text-center">Top Seller</th>';
+        html += '          <th class="py-2 px-2 text-center">Aksi</th>';
         html += '        </tr>';
+        html += '      </thead>';
+        html += '      <tbody class="divide-y divide-dark-600/20">';
+
+        var revSeries = series.slice().reverse();
+        for (var di = 0; di < revSeries.length; di++) {
+          var dayRow = revSeries[di];
+          var isSelected = dayRow.date === (bSum.date || currentBandarDate);
+          var isPositive = (dayRow.net_val || 0) >= 0;
+          var statusBadge = isPositive
+            ? '<span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold text-[10px]">AKUMULASI</span>'
+            : '<span class="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-semibold text-[10px]">DISTRIBUSI</span>';
+
+          var rowBg = isSelected
+            ? 'bg-emerald-500/10 border-l-2 border-emerald-500 font-medium'
+            : 'hover:bg-dark-600/20 transition';
+
+          html += '        <tr class="' + rowBg + '">';
+          html += '          <td class="py-2 px-2.5 font-mono text-[11px] text-gray-200">';
+          html += '            ' + escapeHtml(dayRow.date);
+          if (isSelected) {
+            html += '          <span class="ml-1.5 text-[9px] px-1.5 py-0.2 rounded bg-emerald-500 text-dark-900 font-bold">DILIHAT</span>';
+          }
+          html += '          </td>';
+          html += '          <td class="py-2 px-2 text-center">' + statusBadge + '</td>';
+          html += '          <td class="py-2 px-2 font-mono text-right font-semibold ' + (isPositive ? 'text-emerald-400' : 'text-rose-400') + '">' + (isPositive ? '+' : '-') + formatIDR(Math.abs(dayRow.net_val || 0)) + '</td>';
+          html += '          <td class="py-2 px-2 text-center font-mono font-bold text-emerald-300">' + escapeHtml(dayRow.top_buyer || '—') + '</td>';
+          html += '          <td class="py-2 px-2 text-center font-mono font-bold text-rose-300">' + escapeHtml(dayRow.top_seller || '—') + '</td>';
+          html += '          <td class="py-2 px-2 text-center">';
+          html += '            <button type="button" onclick="BandarmologiRuntime.loadBandarmologiTab(null, \'' + escapeHtml(dayRow.date) + '\')" class="px-2 py-1 text-[10px] rounded bg-dark-600 hover:bg-emerald-600 hover:text-white text-gray-300 transition">Lihat Top 5</button>';
+          html += '          </td>';
+          html += '        </tr>';
+        }
+        html += '      </tbody>';
+        html += '    </table>';
+        html += '  </div>';
       }
-      html += '      </tbody>';
-      html += '    </table>';
+      html += '</div>';
+
+      // 3. HISTORICAL BROKER ACCUMULATION (BAR CHART)
+      html += '<div class="mb-5 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5">';
+      html += '  <div class="flex items-center justify-between mb-3">';
+      html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📈</span> Grafik Tren Akumulasi vs Distribusi Historis</h3>';
+      if (bAcc.accumulation_score != null) {
+        html += '    <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-dark-600 text-emerald-400 border border-emerald-500/20">Acc Score: ' + bAcc.accumulation_score + '/100</span>';
+      }
       html += '  </div>';
-    }
-    html += '</div>';
 
-    // 3. HISTORICAL BROKER ACCUMULATION (BAR CHART)
-    html += '<div class="mb-5 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5">';
-    html += '  <div class="flex items-center justify-between mb-3">';
-    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📈</span> Grafik Tren Akumulasi vs Distribusi Historis</h3>';
-    if (bAcc.accumulation_score != null) {
-      html += '    <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-dark-600 text-emerald-400 border border-emerald-500/20">Acc Score: ' + bAcc.accumulation_score + '/100</span>';
-    }
-    html += '  </div>';
+      if (series.length === 0) {
+        html += '  <div class="text-gray-500 text-center py-4 text-xs">Belum ada data series akumulasi</div>';
+      } else {
+        html += '  <div class="space-y-2">';
+        var maxAbs = 1;
+        for (var k = 0; k < series.length; k++) {
+          var val = Math.abs(series[k].net_val || 0);
+          if (val > maxAbs) maxAbs = val;
+        }
+        for (var si = 0; si < series.length; si++) {
+          var day = series[si];
+          var isPositive = (day.net_val || 0) >= 0;
+          var barWidth = Math.max(8, Math.min(100, Math.round((Math.abs(day.net_val || 0) / maxAbs) * 100)));
+          var barColor = isPositive ? 'bg-emerald-500' : 'bg-rose-500';
 
-    if (series.length === 0) {
-      html += '  <div class="text-gray-500 text-center py-4 text-xs">Belum ada data series akumulasi</div>';
-    } else {
-      html += '  <div class="space-y-2">';
-      var maxAbs = 1;
-      for (var k = 0; k < series.length; k++) {
-        var val = Math.abs(series[k].net_val || 0);
-        if (val > maxAbs) maxAbs = val;
+          html += '    <div class="flex items-center gap-3 text-xs">';
+          html += '      <span class="w-20 text-[11px] font-mono text-gray-400 shrink-0">' + escapeHtml(day.date) + '</span>';
+          html += '      <div class="flex-1 bg-dark-800/80 rounded-full h-3 overflow-hidden flex items-center px-0.5">';
+          html += '        <div class="h-2 rounded-full ' + barColor + ' transition-all" style="width:' + barWidth + '%"></div>';
+          html += '      </div>';
+          html += '      <span class="w-24 text-right font-mono font-semibold text-[11px] ' + (isPositive ? 'text-emerald-400' : 'text-rose-400') + ' shrink-0">' + (isPositive ? '+' : '-') + formatIDR(Math.abs(day.net_val || 0)) + '</span>';
+          html += '    </div>';
+        }
+        html += '  </div>';
       }
-      for (var si = 0; si < series.length; si++) {
-        var day = series[si];
-        var isPositive = (day.net_val || 0) >= 0;
-        var barWidth = Math.max(8, Math.min(100, Math.round((Math.abs(day.net_val || 0) / maxAbs) * 100)));
-        var barColor = isPositive ? 'bg-emerald-500' : 'bg-rose-500';
-
-        html += '    <div class="flex items-center gap-3 text-xs">';
-        html += '      <span class="w-20 text-[11px] font-mono text-gray-400 shrink-0">' + escapeHtml(day.date) + '</span>';
-        html += '      <div class="flex-1 bg-dark-800/80 rounded-full h-3 overflow-hidden flex items-center px-0.5">';
-        html += '        <div class="h-2 rounded-full ' + barColor + ' transition-all" style="width:' + barWidth + '%"></div>';
-        html += '      </div>';
-        html += '      <span class="w-24 text-right font-mono font-semibold text-[11px] ' + (isPositive ? 'text-emerald-400' : 'text-rose-400') + ' shrink-0">' + (isPositive ? '+' : '-') + formatIDR(Math.abs(day.net_val || 0)) + '</span>';
-        html += '    </div>';
-      }
-      html += '  </div>';
+      html += '</div>';
     }
     html += '</div>';
     }
@@ -1176,11 +1256,14 @@
     selectBrokerBubble: selectBrokerBubble,
     setBubbleFilterSide: setBubbleFilterSide,
     getBubbleFilterSide: function () { return bubbleFilterSide; },
+    setBrokerAccumulationView: setBrokerAccumulationView,
+    getBrokerAccumulationView: function () { return brokerAccumulationView; },
     BROKER_NAMES: BROKER_NAMES,
     getBrokerSecurityName: getBrokerSecurityName,
     buildBrokerBubbleItems: buildBrokerBubbleItems,
     renderBrokerBubbleClusterHtml: renderBrokerBubbleClusterHtml,
-    renderBrokerDetailCardHtml: renderBrokerDetailCardHtml
+    renderBrokerDetailCardHtml: renderBrokerDetailCardHtml,
+    renderBandarmologiUI: renderBandarmologiUI
   };
 
   root.loadBandarmologiTab = loadBandarmologiTab;
@@ -1192,8 +1275,10 @@
       buildBrokerBubbleItems: buildBrokerBubbleItems,
       renderBrokerBubbleClusterHtml: renderBrokerBubbleClusterHtml,
       renderBrokerDetailCardHtml: renderBrokerDetailCardHtml,
+      renderBandarmologiUI: renderBandarmologiUI,
       setBrokerSummaryMode: setBrokerSummaryMode,
       setBrokerSummaryView: setBrokerSummaryView,
+      setBrokerAccumulationView: setBrokerAccumulationView,
       setBrokerSummaryRange: setBrokerSummaryRange,
       firstNonEmptyList: firstNonEmptyList
     };
