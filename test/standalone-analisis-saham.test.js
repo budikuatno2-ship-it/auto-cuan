@@ -216,4 +216,17 @@ test('Standalone Analisis Saham Runtime: Exposes formatters, ranking state, subt
   assert.equal(elements['panel-tab-analisis'].style.display, 'block');
   assert.equal(elements['panel-tab-chart'].style.display, 'none');
   assert.equal(elements['panel-tab-ranking'].style.display, 'none');
+
+  root.switchAnalisisTab('akumulasi');
+  assert.equal(elements['panel-tab-bandarmologi'].style.display, 'block');
+  assert.equal(elements['panel-tab-analisis'].style.display, 'none');
+
+  root.switchAnalisisTab('bandarmologi');
+  assert.equal(elements['panel-tab-bandarmologi'].style.display, 'block');
+  assert.equal(elements['panel-tab-analisis'].style.display, 'none');
+
+  // Test independent tab search
+  assert.equal(typeof root.handleIndependentTabSearch, 'function');
+  root.handleIndependentTabSearch('bandarmologi', 'BBRI');
+  assert.equal(root.activeTicker, 'BBRI');
 });

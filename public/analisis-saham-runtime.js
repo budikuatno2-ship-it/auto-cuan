@@ -207,7 +207,7 @@
 
   // ===== SUB-TAB SWITCHER (POLA PORTFOLIO) =====
   function switchAnalisisTab(tabName) {
-    var validTabs = ['analisis', 'chart', 'ranking', 'bandarmologi', 'pattern'];
+    var validTabs = ['analisis', 'chart', 'ranking', 'bandarmologi', 'akumulasi', 'pattern'];
     if (validTabs.indexOf(tabName) < 0) tabName = 'analisis';
 
     document.querySelectorAll('.analisis-tab').forEach(function (btn) {
@@ -225,8 +225,23 @@
     if (pAnalisis) pAnalisis.style.display = (tabName === 'analisis' ? 'block' : 'none');
     if (pChart) pChart.style.display = (tabName === 'chart' ? 'block' : 'none');
     if (pRanking) pRanking.style.display = (tabName === 'ranking' ? 'block' : 'none');
-    if (pBandarmologi) pBandarmologi.style.display = (tabName === 'bandarmologi' ? 'block' : 'none');
+    if (pBandarmologi) pBandarmologi.style.display = ((tabName === 'bandarmologi' || tabName === 'akumulasi') ? 'block' : 'none');
     if (pPattern) pPattern.style.display = (tabName === 'pattern' ? 'block' : 'none');
+
+    // Update panel title when switching between bandarmologi and akumulasi
+    var titleEl = byId('bandarPanelTitle');
+    if (titleEl && (tabName === 'bandarmologi' || tabName === 'akumulasi')) {
+      titleEl.textContent = tabName === 'akumulasi' ? 'Akumulasi Broker & Deteksi Smart Money' : 'Analisis Bandarmologi & Kepemilikan Insider';
+    }
+
+    // Sync tab param in URL
+    try {
+      if (typeof window !== 'undefined' && window.location) {
+        var currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('tab', tabName);
+        window.history.replaceState({}, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
+      }
+    } catch (_) {}
 
     if (tabName === 'chart') {
       var ticker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
@@ -242,16 +257,97 @@
     } else if (tabName === 'ranking') {
       root.ensureRankingTableLoaded();
     } else if (tabName === 'bandarmologi') {
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
+        root.BandarmologiRuntime.setBandarSection('summary');
+      }
       if (typeof root.loadBandarmologiTab === 'function') {
         var bandarTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
-          ? root.UnifiedCockpit.getActiveTicker() : 'BBCA';
+          ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
         root.loadBandarmologiTab(bandarTicker);
+      }
+    } else if (tabName === 'akumulasi') {
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
+        root.BandarmologiRuntime.setBandarSection('akumulasi');
+      }
+      if (typeof root.loadBandarmologiTab === 'function') {
+        var accTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
+          ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
+        root.loadBandarmologiTab(accTicker);
       }
     } else if (tabName === 'pattern') {
       loadPatternRadarTab();
     }
   }
   root.switchAnalisisTab = switchAnalisisTab;
+
+  function handleIndependentTabSearch(tabName, rawTicker) {
+    var ticker = String(rawTicker || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!ticker) return;
+
+    root.activeTicker = ticker;
+
+    // 1. Sync URL query parameter (?ticker=...&tab=...) seamlessly
+    try {
+      if (typeof window !== 'undefined' && window.location) {
+        var currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('ticker', ticker);
+        if (tabName) currentUrl.searchParams.set('tab', tabName);
+        window.history.replaceState({}, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
+      }
+    } catch (_) {}
+
+    // 2. Synchronize active ticker across cockpit (inputs & badges) without leaving current tab
+    if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
+      root.UnifiedCockpit.syncActiveTicker(ticker, {
+        loadChart: true,
+        forceChartReload: false,
+        preserveTab: true,
+        runAnalysis: false
+      });
+    } else {
+      var inp = byId('analisisInput');
+      if (inp && inp.value !== ticker) inp.value = ticker;
+      var cInp = byId('chartTickerInput');
+      if (cInp && cInp.value !== ticker) cInp.value = ticker;
+      var badge = byId('unifiedActiveTickerBadge');
+      if (badge) badge.textContent = ticker;
+      var bandarTag = byId('bandarActiveTickerTag');
+      if (bandarTag) bandarTag.textContent = ticker;
+    }
+
+    // 3. Update all independent search inputs
+    ['bandarTickerSearchInput', 'akumulasiTickerSearchInput', 'bandarSummarySearchInput', 'rankingTickerSearchInput', 'patternTickerSearchInput'].forEach(function (id) {
+      var el = byId(id);
+      if (el && el.value !== ticker) el.value = ticker;
+    });
+
+    // 4. Reload data specific to the active tab without leaving the tab!
+    if (tabName === 'bandarmologi') {
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
+        root.BandarmologiRuntime.setBandarSection('summary');
+      }
+      if (typeof root.loadBandarmologiTab === 'function') {
+        root.loadBandarmologiTab(ticker);
+      }
+    } else if (tabName === 'akumulasi') {
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
+        root.BandarmologiRuntime.setBandarSection('akumulasi');
+      }
+      if (typeof root.loadBandarmologiTab === 'function') {
+        root.loadBandarmologiTab(ticker);
+      }
+    } else if (tabName === 'ranking') {
+      rankingState.selectedTicker = ticker;
+      renderRankingTable();
+    } else if (tabName === 'pattern') {
+      if (root.filterPatternRadarTicker && typeof root.filterPatternRadarTicker === 'function') {
+        root.filterPatternRadarTicker(ticker);
+      } else if (root.PatternRadarRuntime && typeof root.PatternRadarRuntime.filterOrScanTicker === 'function') {
+        root.PatternRadarRuntime.filterOrScanTicker(ticker);
+      }
+    }
+  }
+  root.handleIndependentTabSearch = handleIndependentTabSearch;
 
   var patternRadarTimer = null;
 
@@ -646,9 +742,15 @@
       root.UnifiedCockpit.syncActiveTicker(initialTicker, {
         loadChart: true,
         forceChartReload: true,
-        runAnalysis: Boolean(tickerParam)
+        preserveTab: Boolean(tabParam && tabParam !== 'analisis'),
+        runAnalysis: Boolean(tickerParam && (!tabParam || tabParam === 'analisis'))
       });
     }
+
+    ['bandarTickerSearchInput', 'akumulasiTickerSearchInput', 'bandarSummarySearchInput', 'rankingTickerSearchInput', 'patternTickerSearchInput'].forEach(function (id) {
+      var el = byId(id);
+      if (el) el.value = initialTicker;
+    });
 
     if (isSubscribedUser()) {
       root.ensureRankingTableLoaded();

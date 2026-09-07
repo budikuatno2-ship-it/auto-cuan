@@ -654,6 +654,25 @@
 
   function setBandarSection(section) {
     bandarSection = (section === 'akumulasi') ? 'akumulasi' : 'summary';
+    var tabBandar = byId('tabBandarmologi');
+    var tabAkumulasi = byId('tabAkumulasiBroker');
+    if (tabBandar && tabAkumulasi) {
+      tabBandar.classList.toggle('active', bandarSection === 'summary');
+      tabBandar.setAttribute('aria-selected', bandarSection === 'summary' ? 'true' : 'false');
+      tabAkumulasi.classList.toggle('active', bandarSection === 'akumulasi');
+      tabAkumulasi.setAttribute('aria-selected', bandarSection === 'akumulasi' ? 'true' : 'false');
+    }
+    var titleEl = byId('bandarPanelTitle');
+    if (titleEl) {
+      titleEl.textContent = bandarSection === 'akumulasi' ? 'Akumulasi Broker & Deteksi Smart Money' : 'Analisis Bandarmologi & Kepemilikan Insider';
+    }
+    try {
+      if (typeof window !== 'undefined' && window.location) {
+        var currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('tab', bandarSection === 'akumulasi' ? 'akumulasi' : 'bandarmologi');
+        window.history.replaceState({}, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
+      }
+    } catch (_) {}
     var container = byId('bandarmologiContent');
     if (container && lastBandarData) {
       renderBandarmologiUI(container, lastBandarData);
@@ -677,13 +696,7 @@
   }
 
   function applyCustomBrokerSummaryRange(startDate, endDate) {
-    startDate = String(startDate || '').trim();
-    endDate = String(endDate || '').trim();
-    var isoRe = /^\d{4}-\d{2}-\d{2}$/;
-    if (!isoRe.test(startDate) || !isoRe.test(endDate) || startDate > endDate) {
-      if (typeof showToast === 'function') showToast('Rentang tanggal tidak valid. Pastikan tanggal mulai ≤ tanggal akhir.', 'warning');
-      return;
-    }
+    if (!startDate || !endDate) return;
     customRangeStart = startDate;
     customRangeEnd = endDate;
     brokerSummaryRange = 'custom';
@@ -702,6 +715,13 @@
 
     var badgeTicker = byId('bandarActiveTickerTag');
     if (badgeTicker) badgeTicker.textContent = clean;
+
+    var inpBandar = byId('bandarTickerSearchInput');
+    if (inpBandar && inpBandar.value !== clean) inpBandar.value = clean;
+    var inpAkumulasi = byId('akumulasiTickerSearchInput');
+    if (inpAkumulasi && inpAkumulasi.value !== clean) inpAkumulasi.value = clean;
+    var inpSummary = byId('bandarSummarySearchInput');
+    if (inpSummary && inpSummary.value !== clean) inpSummary.value = clean;
 
     container.innerHTML = '<div class="flex flex-col items-center justify-center py-12"><div class="spinner"></div><p class="text-xs text-gray-400 mt-3">Mengambil data Bandarmologi &amp; Insider ' + escapeHtml(clean) + '...</p></div>';
 
@@ -813,6 +833,11 @@
     html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📊</span> Broker Summary Detail — <span class="text-emerald-400 font-mono">' + escapeHtml(summaryHeadingDate) + '</span></h3>';
 
     html += '    <div class="flex flex-wrap items-center gap-2">';
+    // Search Bar Mandiri Broker Summary
+    html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
+    html += '        <input id="bandarSummarySearchInput" type="text" value="' + escapeHtml(ticker) + '" placeholder="Ganti ticker..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-20 sm:w-28 uppercase font-mono px-2 py-1 rounded bg-dark-700 border border-dark-600/60 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key===\'Enter\'){handleIndependentTabSearch(\'bandarmologi\', this.value)}">';
+    html += '        <button type="button" onclick="handleIndependentTabSearch(\'bandarmologi\', document.getElementById(\'bandarSummarySearchInput\').value)" class="px-2 py-1 rounded bg-emerald-500 text-dark-900 font-bold transition hover:bg-emerald-400" aria-label="Cari ticker broker summary">Cari</button>';
+    html += '      </div>';
     // Rentang Selector (1 Hari, 7 Hari, 30 Hari)
     var r1Class = brokerSummaryRange === '1d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var r7Class = brokerSummaryRange === '7d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
@@ -1063,7 +1088,11 @@
     html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📈</span> Akumulasi Broker Detail — <span class="text-emerald-400 font-mono">' + escapeHtml(accHeadingDate) + '</span></h3>';
 
     html += '    <div class="flex flex-wrap items-center gap-2">';
-
+    // Search Bar Mandiri Akumulasi Broker
+    html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
+    html += '        <input id="akumulasiTickerSearchInput" type="text" value="' + escapeHtml(ticker) + '" placeholder="Ganti ticker..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-20 sm:w-28 uppercase font-mono px-2 py-1 rounded bg-dark-700 border border-dark-600/60 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key===\'Enter\'){handleIndependentTabSearch(\'akumulasi\', this.value)}">';
+    html += '        <button type="button" onclick="handleIndependentTabSearch(\'akumulasi\', document.getElementById(\'akumulasiTickerSearchInput\').value)" class="px-2 py-1 rounded bg-emerald-500 text-dark-900 font-bold transition hover:bg-emerald-400" aria-label="Cari ticker akumulasi broker">Cari</button>';
+    html += '      </div>';
     // Rentang Selector (1 Hari, 7 Hari, 30 Hari, Custom)
     var ar1Class = brokerSummaryRange === '1d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var ar7Class = brokerSummaryRange === '7d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
