@@ -86,7 +86,7 @@ module.exports = async function handler(req, res) {
     // Ensure we always have a non-null device ID for the NOT NULL column.
     const normalizedDeviceId = normalizeDeviceId(deviceId);
 
-    
+
     let cleanEmail = null;
     if (email !== undefined && email !== null) {
       const rawEmail = String(email).trim().toLowerCase();
@@ -140,7 +140,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Gagal memeriksa username.' });
     }
 
-    
+
     if (cleanEmail) {
       const { data: existingEmail, error: emailFindErr } = await supabase
         .from("app_users")
@@ -193,7 +193,7 @@ module.exports = async function handler(req, res) {
     // committed. This table is service-role-only. If the audit row cannot be
     // stored (for example the migration was not applied), fail closed and remove
     // the just-created account so there is no un-audited registration.
-    
+
     if (cleanEmail && registration && registration.id) {
       const { error: emailUpdateErr } = await supabase
         .from("app_users")

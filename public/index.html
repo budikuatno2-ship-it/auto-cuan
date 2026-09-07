@@ -5865,10 +5865,10 @@ function getEvidenceLevel() {
     var hasImages = imageFiles.length > 0;
     var imageCount = imageFiles.length;
     // Only count documents that can actually be text-extracted browser-side (TXT, CSV)
-    var hasDocuments = docFiles.some(function(f) { 
-        return f.type === 'text/plain' || f.type === 'text/csv'; 
+    var hasDocuments = docFiles.some(function(f) {
+        return f.type === 'text/plain' || f.type === 'text/csv';
     });
-    
+
     if (!hasImages && !hasDocuments) return 1;
     if (imageCount === 1 && !hasDocuments) return 2;
     if (imageCount >= 2) return hasDocuments ? 4 : 3;
