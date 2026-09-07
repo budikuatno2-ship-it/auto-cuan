@@ -248,12 +248,64 @@
         root.loadBandarmologiTab(bandarTicker);
       }
     } else if (tabName === 'pattern') {
-      if (typeof root.ensurePatternRadarMounted === 'function') {
-        root.ensurePatternRadarMounted();
-      }
+      loadPatternRadarTab();
     }
   }
   root.switchAnalisisTab = switchAnalisisTab;
+
+  var patternRadarTimer = null;
+
+  function renderPatternRadarError(container, message) {
+    if (!container) return;
+    container.innerHTML = '<div class="p-8 text-center text-gray-400 text-xs space-y-3">' +
+      '<div class="text-rose-400 font-semibold text-sm">Gagal Menyiapkan Pattern Radar</div>' +
+      '<p class="text-gray-400 max-w-md mx-auto leading-relaxed">' + (message || 'Permintaan waktu habis atau modul Pattern Radar belum siap.') + '</p>' +
+      '<div class="pt-2">' +
+      '<button type="button" onclick="loadPatternRadarTab(true)" class="px-4 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition inline-flex items-center gap-1.5">' +
+      '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>' +
+      ' Coba Lagi</button>' +
+      '</div></div>';
+  }
+
+  function loadPatternRadarTab(forceRetry) {
+    var container = byId('patternSubTabContainer');
+    if (!container) return;
+
+    if (forceRetry) {
+      container.innerHTML = '<div class="p-8 text-center text-gray-500 text-xs">' +
+        '<span class="spinner-sm"></span> Menyiapkan Pattern Radar...</div>';
+    }
+
+    if (patternRadarTimer) {
+      clearTimeout(patternRadarTimer);
+      patternRadarTimer = null;
+    }
+
+    var start = Date.now();
+    var timeoutMs = 12000;
+
+    function pollMount() {
+      try {
+        if (typeof root.ensurePatternRadarMounted === 'function') {
+          root.ensurePatternRadarMounted(container);
+          return;
+        }
+
+        if (Date.now() - start >= timeoutMs) {
+          renderPatternRadarError(container, 'Waktu memuat Pattern Radar habis (timeout). Layanan sedang lambat atau tidak merespons.');
+          return;
+        }
+
+        patternRadarTimer = setTimeout(pollMount, 100);
+      } catch (err) {
+        renderPatternRadarError(container, 'Terjadi kesalahan saat memuat Pattern Radar: ' + (err && err.message ? err.message : 'Unknown error'));
+      }
+    }
+
+    pollMount();
+  }
+  root.loadPatternRadarTab = loadPatternRadarTab;
+  root.renderPatternRadarError = renderPatternRadarError;
 
   function checkPatternTabVisibility() {
     var tabPattern = byId('tabAnalisisPattern');
