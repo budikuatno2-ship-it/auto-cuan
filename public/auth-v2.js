@@ -193,6 +193,11 @@
       var timeout = setTimeout(function () {
         try { if (controller) controller.abort(); } catch (_) {}
       }, 10000);
+      var recaptchaToken = '';
+      if (window.grecaptcha && typeof window.grecaptcha.execute === 'function' && window.__RECAPTCHA_SITE_KEY__) {
+        try { recaptchaToken = await window.grecaptcha.execute(window.__RECAPTCHA_SITE_KEY__, { action: 'login' }); } catch (_) {}
+      }
+
       var response, data;
       try {
         response = await fetch('/api/login-user', {
@@ -207,7 +212,8 @@
             username: username,
             passwordHash: passwordHash,
             deviceId: deviceId,
-            userAgent: navigator.userAgent
+            userAgent: navigator.userAgent,
+            recaptchaToken: recaptchaToken || undefined
           }),
           signal: controller ? controller.signal : undefined
         });

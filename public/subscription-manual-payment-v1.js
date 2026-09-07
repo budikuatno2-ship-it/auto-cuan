@@ -184,7 +184,7 @@
       '<div class="ac-pay-row"><span>Total</span><strong style="color:#6ee7b7;font-size:18px">Rp0</strong></div>',
       '</div>',
       '<div class="ac-pay-status">✅ Voucher ini memberikan aktivasi langsung. <b>Tidak perlu transfer</b> dan tidak perlu konfirmasi pembayaran admin.</div>',
-      '<label style="display:flex;gap:8px;align-items:flex-start;margin:12px 0;font-size:11px;color:#cbd5e1;cursor:pointer"><input type="checkbox" id="acPayDirectTerms" style="margin-top:2px;accent-color:#10b981"><span>Saya menyetujui kebijakan pembayaran, aktivasi voucher, dan ketentuan subscription Auto-Cuan.</span></label>',
+      '<label style="display:flex;gap:8px;align-items:flex-start;margin:12px 0;font-size:11px;color:#cbd5e1;cursor:pointer"><input type="checkbox" id="acPayDirectTerms" style="margin-top:2px;accent-color:#10b981"><span>Saya memahami Kebijakan Pembayaran, Refund, dan Disclaimer Risiko Finansial</span></label>',
       '<div class="ac-pay-actions"><button type="button" id="acPayDirectVoucher" class="ac-pay-btn primary">Aktifkan voucher</button></div>'
     ].join('');
     var activate = document.getElementById('acPayDirectVoucher');
@@ -249,7 +249,7 @@
       '<label class="ac-pay-label" for="acPayNote">Catatan transfer (opsional)</label>',
       '<input id="acPayNote" class="ac-pay-input" maxlength="500" placeholder="Contoh: transfer dari BCA / jam transfer">',
       '<div class="ac-pay-status">Transfer sesuai <b>total transfer</b> di atas. Subscription belum aktif sampai admin memeriksa transfer dan menekan konfirmasi.</div>',
-      '<label style="display:flex;gap:8px;align-items:flex-start;margin:12px 0;font-size:11px;color:#cbd5e1;cursor:pointer"><input type="checkbox" id="acPayTerms" style="margin-top:2px;accent-color:#10b981"><span>Saya menyetujui kebijakan pembayaran/refund transfer manual dan ketentuan subscription Auto-Cuan.</span></label>',
+      '<label style="display:flex;gap:8px;align-items:flex-start;margin:12px 0;font-size:11px;color:#cbd5e1;cursor:pointer"><input type="checkbox" id="acPayTerms" style="margin-top:2px;accent-color:#10b981"><span>Saya memahami Kebijakan Pembayaran, Refund, dan Disclaimer Risiko Finansial</span></label>',
       '<div class="ac-pay-actions"><button type="button" id="acPaySubmitted" class="ac-pay-btn primary">Saya sudah transfer</button></div>'
     ].join('');
 

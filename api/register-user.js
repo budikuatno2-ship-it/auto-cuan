@@ -8,6 +8,7 @@ const telegramVerification = require('../lib/telegram-verification');
 const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
 const accountTerms = require('../lib/account-terms');
 const passwordCredential = require('../lib/password-credential');
+const { verifyRecaptcha } = require('../lib/recaptcha-verify');
 
 // Registration is far more expensive than a read: it writes an app_users row
 // and mints a one-time Telegram verification challenge. It had no limit at all,
@@ -109,6 +110,21 @@ module.exports = async function handler(req, res) {
 
     if (typeof passwordHash !== 'string' || !PASSWORD_HASH_RE.test(passwordHash)) {
       return res.status(400).json({ success: false, error: 'Data tidak lengkap.' });
+    }
+
+    // Google reCAPTCHA v3 Invisible (threshold 0.5, fail-open, review bypass)
+    const recaptchaToken = req.body && (req.body.recaptchaToken || req.body.recaptcha_token);
+    const recaptchaResult = await verifyRecaptcha({
+      token: recaptchaToken,
+      remoteIp: clientAddress(req),
+      expectedAction: 'register',
+      username: usernameLower
+    });
+    if (!recaptchaResult.ok) {
+      return res.status(400).json({
+        success: false,
+        error: recaptchaResult.error || 'Verifikasi keamanan reCAPTCHA gagal.'
+      });
     }
 
     // Reject reserved usernames
