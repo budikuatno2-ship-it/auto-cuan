@@ -80,7 +80,7 @@
     if (document.querySelector('link[data-autocuan-account-center-css]')) return;
     var link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = '/account-center-v1.css?v=20260906-v2';
+      link.href = '/account-center-v1.css?v=20260906-v3';
     link.setAttribute('data-autocuan-account-center-css', '1');
     document.head.appendChild(link);
   }
@@ -234,11 +234,34 @@
       fact('Channel', tg.channel_joined ? '<span class="ac-chip ac-chip-ok">Sudah bergabung</span>' : '<span class="ac-chip">Belum tercatat</span>') +
       '</dl></section>',
       '<section class="ac-card"><p class="ac-section-kicker">Subscription</p><h2 class="ac-section-title">Status akses</h2>' + subscriptionMini(ent, sub) + '<button type="button" class="ac-btn ac-btn-primary" style="margin-top:12px;width:100%" data-ac-open-sub>Kelola subscription &amp; voucher</button></section>',
+      p.is_admin ? adminCommandsSectionHtml() : '',
       '</div></div>',
       '<div class="ac-hint">Peraturan &amp; Ketentuan dapat dibuka kapan saja dari tab di atas. Untuk akun baru, persetujuan versi aktif diwajibkan sebelum pendaftaran diproses.</div>'
     ].join('');
     var openSub = panel.querySelector('[data-ac-open-sub]');
     if (openSub) openSub.addEventListener('click', function () { switchTab('subscription'); });
+  }
+  // Read-only cheat-sheet of the Telegram admin bot commands, for `budi`
+  // only (gated by p.is_admin server-side, same signal already used for
+  // the profile's admin badge). This does not execute anything — it just
+  // saves budi from re-memorizing exact command spelling.
+  var ADMIN_BOT_COMMANDS = [
+    { cmd: '/akses', desc: 'Minta kode akses admin satu kali pakai (dikirim via bot Telegram).' },
+    { cmd: '/buatvoucher', desc: 'Mulai alur pembuatan voucher baru.' },
+    { cmd: '/daftarvoucher', desc: 'Lihat daftar voucher yang pernah dibuat.' },
+    { cmd: '/detailvoucher', desc: 'Lihat detail satu voucher.' },
+    { cmd: '/nonaktifkanvoucher', desc: 'Nonaktifkan/cabut voucher yang masih berlaku.' },
+    { cmd: '/auditvoucher', desc: 'Audit trail penggunaan voucher.' },
+    { cmd: '/statistiklifetime', desc: 'Statistik akun Lifetime.' },
+    { cmd: '/batal', desc: 'Batalkan sesi/alur admin voucher yang sedang berjalan.' }
+  ];
+  function adminCommandsSectionHtml() {
+    var rows = ADMIN_BOT_COMMANDS.map(function (c) {
+      return '<div class="ac-admin-cmd-row"><code>' + esc(c.cmd) + '</code><span>' + esc(c.desc) + '</span></div>';
+    }).join('');
+    return '<section class="ac-card"><p class="ac-section-kicker">Admin (budi)</p><h2 class="ac-section-title">Referensi Perintah Bot Admin</h2>' +
+      '<p class="ac-muted" style="margin-top:4px">Daftar ini hanya referensi baca — jalankan perintahnya langsung di bot Telegram admin, bukan dari sini.</p>' +
+      '<div class="ac-admin-cmd-list">' + rows + '</div></section>';
   }
   function subscriptionMini(ent, sub) {
     if (!sub || sub.enabled !== true) return '<div class="ac-callout">Subscription belum diaktifkan pada server.</div>';

@@ -37,6 +37,11 @@
 .ac-profile-hero { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
 .ac-big-name { margin:4px 0 0; font-size:25px; font-weight:950; color:#fff; letter-spacing:-.035em; }
 .ac-badge-verified { display:inline-flex; align-items:center; gap:4px; vertical-align:middle; margin-left:8px; padding:2px 9px; border-radius:999px; border:1px solid rgba(56,189,248,.35); background:rgba(56,189,248,.12); color:#7dd3fc; font-size:11px; font-weight:900; letter-spacing:.02em; }
+.ac-admin-cmd-list { display:grid; gap:6px; margin-top:11px; }
+.ac-admin-cmd-row { display:grid; grid-template-columns: minmax(110px,.55fr) minmax(0,1fr); gap:10px; padding:8px 10px; border-radius:10px; background:rgba(148,163,184,.06); border:1px solid rgba(148,163,184,.10); }
+.ac-admin-cmd-row code { color:#fbbf24; font:800 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; }
+.ac-admin-cmd-row span { color:#9bacbf; font-size:11px; line-height:1.5; }
+
 .ac-hint { margin-top:11px; padding:10px 12px; border-radius:12px; border:1px solid rgba(59,130,246,.16); background:rgba(59,130,246,.07); color:#9dbcea; font-size:11px; line-height:1.55; }
 .ac-plans { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; margin-top:13px; }
 .ac-plan { position:relative; overflow:hidden; padding:15px; border:1px solid rgba(148,163,184,.14); border-radius:16px; background:rgba(10,17,27,.72); }
