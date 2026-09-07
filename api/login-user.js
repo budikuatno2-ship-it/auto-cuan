@@ -218,10 +218,10 @@ const GENERIC_CREDENTIAL_ERROR = 'Username atau password salah.';
 // Issue the signed session cookie on a successful, DB-authenticated login.
 // Admin is derived SERVER-SIDE only (never from client input). Fail-closed: if no
 // SESSION_SECRET is configured, no cookie is set and admin endpoints stay locked.
-function issueSessionCookie(res, user, effectiveUsername, deviceId) {
+function issueSessionCookie(res, user, usernameLower, deviceId) {
   const result = { isAdmin: usernameLower === 'budi', issued: false };
   try {
-    const token = createSessionToken({ userId: user.id, username: effectiveUsername, isAdmin: result.isAdmin, deviceId: deviceId });
+    const token = createSessionToken({ userId: user.id, username: usernameLower, isAdmin: result.isAdmin, deviceId: deviceId });
     if (token) {
       res.setHeader('Set-Cookie', buildSessionCookie(token));
       result.issued = true;
