@@ -748,3 +748,19 @@ test('bandarmologiService: aggregateBrokerSummaries sums transaction metrics acr
     fs.rmSync(tmpBase, { recursive: true, force: true });
   }
 });
+
+test("bandarmologiService: normalizeBrokerSummary preserves Arjum sellers aliases when a partial payload also has buyer fields", () => {
+  const norm = bandarmologiService.normalizeBrokerSummary({
+    stock_code: "BBCA",
+    date: "2026-09-04",
+    gross_buyers: [{ broker: "YU", bval: 10000000, sval: 0, bvol: 100, svol: 0 }],
+    net_buyers: [{ broker: "YU", nval: 10000000, nvol: 100 }],
+    sellers: [{ broker: "AK", bval: 0, sval: 9000000, bvol: 0, svol: 90 }],
+    net_sellers: []
+  }, "2026-09-04");
+
+  assert.equal(norm.gross_sellers.length, 1, "the sellers alias must populate Full / Gross sellers");
+  assert.equal(norm.gross_sellers[0].broker, "AK");
+  assert.equal(norm.net_sellers.length, 1, "an empty net_sellers must fall back to real seller rows");
+  assert.equal(norm.net_sellers[0].nval, -9000000);
+});

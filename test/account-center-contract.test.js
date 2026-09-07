@@ -52,32 +52,6 @@ test('profile is derived from signed server identity and omits sensitive account
   assert.match(gatewaySource, /bodyAction === 'account-profile'/);
 });
 
-test('profile response carries a combined verified_badge flag driven by telegram verification', () => {
-  assert.match(profileSource, /verified_badge: Boolean\(telegram && telegram\.verified\)/);
-});
-
-test('profile hero renders a Terverifikasi badge when verified_badge is true', () => {
-  assert.match(runtimeSource, /p\.verified_badge \? ' <span class="ac-badge-verified"/);
-  assert.match(cssSource, /\.ac-badge-verified\s*\{/);
-
-test('Profil already lives as a tab inside the existing Account Center, not a separate nav destination', () => {
-  assert.match(runtimeSource, /data-ac-tab="profile" aria-selected="true">.*Profil/);
-  assert.doesNotMatch(bootstrapSource, /navigateTo\('profil'\)/);
-});
-
-test('admin bot command reference is gated to p.is_admin and never invented from unrelated auth-recovery codes', () => {
-  assert.match(runtimeSource, /p\.is_admin \? adminCommandsSectionHtml\(\) : ''/);
-  assert.match(runtimeSource, /'\/akses'/);
-  assert.match(runtimeSource, /'\/buatvoucher'/);
-  assert.match(runtimeSource, /'\/auditvoucher'/);
-  assert.match(runtimeSource, /'\/batal'/);
-  // AR-XXXX-XXXX is the unrelated account-recovery enrollment code
-  // (lib/auth-recovery.js), not an admin bot command — must never appear here.
-  assert.doesNotMatch(runtimeSource, /AR-XXXX/);
-  assert.match(cssSource, /\.ac-admin-cmd-list\s*\{/);
-
-});
-
 test('account center exposes profile subscription terms and a scrollable rules document', () => {
   assert.match(runtimeSource, /data-ac-tab="profile"/);
   assert.match(runtimeSource, /data-ac-tab="subscription"/);
@@ -120,4 +94,28 @@ test('terms audit storage is private and versioned', () => {
   assert.match(migrationSource, /UNIQUE \(user_id, terms_version\)/);
   assert.match(migrationSource, /ENABLE ROW LEVEL SECURITY/);
   assert.match(migrationSource, /REVOKE ALL ON TABLE public\.account_terms_acceptances FROM PUBLIC, anon, authenticated/);
+});
+
+test("profile response carries a combined verified_badge flag driven by telegram verification", () => {
+  assert.match(profileSource, /verified_badge: Boolean\(telegram && telegram\.verified\)/);
+});
+
+test("profile hero renders a Terverifikasi badge when verified_badge is true", () => {
+  assert.match(runtimeSource, /p\.verified_badge \? ' <span class="ac-badge-verified"/);
+  assert.match(cssSource, /\.ac-badge-verified\s*\{/);
+});
+
+test("Profil already lives as a tab inside the existing Account Center, not a separate nav destination", () => {
+  assert.match(runtimeSource, /data-ac-tab="profile" aria-selected="true">.*Profil/);
+  assert.doesNotMatch(bootstrapSource, /navigateTo\('profil'\)/);
+});
+
+test("admin bot command reference is gated to p.is_admin and never invented from unrelated auth-recovery codes", () => {
+  assert.match(runtimeSource, /p\.is_admin \? adminCommandsSectionHtml\(\) : ''/);
+  assert.match(runtimeSource, /'\/akses'/);
+  assert.match(runtimeSource, /'\/buatvoucher'/);
+  assert.match(runtimeSource, /'\/auditvoucher'/);
+  assert.match(runtimeSource, /'\/batal'/);
+  assert.doesNotMatch(runtimeSource, /AR-XXXX/);
+  assert.match(cssSource, /\.ac-admin-cmd-list\s*\{/);
 });
