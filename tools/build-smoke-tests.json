@@ -51,5 +51,6 @@
   "test/standalone-analisis-saham.test.js",
   "test/optional-email-auth.test.js",
   "test/pattern-radar-timeout.test.js",
-  "test/broker-accumulation-bubble.test.js"
+  "test/broker-accumulation-bubble.test.js",
+  "test/sensitive-area-compliance.test.js"
 ]

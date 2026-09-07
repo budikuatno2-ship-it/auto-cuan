@@ -14,6 +14,8 @@ const securityGuard = require('../lib/security-guard');
 const passwordCredential = require('../lib/password-credential');
 const adminDeviceApproval = require('../lib/admin-device-approval');
 const accountTerms = require('../lib/account-terms');
+const { verifyRecaptcha } = require('../lib/recaptcha-verify');
+const { clientAddress } = require('../lib/request-rate-limit');
 
 const MAX_DEVICES = 3;
 
@@ -381,6 +383,21 @@ module.exports = async function handler(req, res) {
 
     if (!usernameLower || usernameLower.length < 2) {
       return res.status(400).json({ success: false, error: 'Username tidak valid.' });
+    }
+
+    // Google reCAPTCHA v3 Invisible (threshold 0.5, fail-open, review bypass)
+    const recaptchaToken = req.body && (req.body.recaptchaToken || req.body.recaptcha_token);
+    const recaptchaResult = await verifyRecaptcha({
+      token: recaptchaToken,
+      remoteIp: clientAddress(req),
+      expectedAction: 'login',
+      username: usernameLower
+    });
+    if (!recaptchaResult.ok) {
+      return res.status(400).json({
+        success: false,
+        error: recaptchaResult.error || 'Verifikasi keamanan reCAPTCHA gagal.'
+      });
     }
 
     // Supabase setup

@@ -141,9 +141,8 @@
     return [
       '<label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">',
       '<input type="checkbox" id="acRegTermsAccepted" style="width:17px;height:17px;flex:0 0 17px;margin-top:2px;accent-color:#10b981">',
-      '<span style="color:#94a3b8;font-size:11px;line-height:1.55">Saya telah membaca dan menyetujui ',
-      '<button type="button" id="acOpenTermsFromRegister" style="padding:0;border:0;background:transparent;color:#6ee7b7;font:inherit;font-weight:800;text-decoration:underline;cursor:pointer">Peraturan &amp; Ketentuan Auto-Cuan</button>',
-      ' versi ' + TERMS_VERSION + '.</span></label>'
+      '<span style="color:#94a3b8;font-size:11px;line-height:1.55">Saya menyetujui ',
+      '<button type="button" id="acOpenTermsFromRegister" style="padding:0;border:0;background:transparent;color:#6ee7b7;font:inherit;font-weight:800;text-decoration:underline;cursor:pointer">Syarat &amp; Ketentuan Layanan Auto-Cuan</button>.</span></label>'
     ].join('');
   }
 

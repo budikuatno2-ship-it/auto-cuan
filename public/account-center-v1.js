@@ -5,7 +5,6 @@
   window.__AUTOCUAN_ACCOUNT_CENTER_V1__ = true;
 
   var TERMS_VERSION = '2026-08-16-v1';
-  var TERMS_EFFECTIVE = '16 Agustus 2026';
   var currentProfile = null;
   var subscriptionPlans = [];
   var quotedVoucher = null;
@@ -356,7 +355,7 @@
     quotedVoucher = { code:code, data:result.data.voucher };
     var v = result.data.voucher;
     var paymentRequired = v.voucher_type === 'PERCENT_30' || v.voucher_type === 'PERCENT_50';
-    if (target) target.innerHTML = '<div class="ac-callout ac-callout-success"><strong>Voucher valid.</strong><br>Paket: ' + esc(planName(v.plan_code)) + ' · ' + (paymentRequired ? 'Diskon ' + esc(v.discount_percent) + '%' : 'Aktivasi paket') + (v.expires_at ? ' · berlaku sampai ' + esc(dateId(v.expires_at,true)) : '') + (paymentRequired ? '<br><span style="color:#fde68a">Voucher diskon membutuhkan jalur pembayaran yang belum dibuka di Account Center.</span>' : '<label style="display:flex;gap:8px;align-items:flex-start;margin:10px 0;font-size:11px;color:#cbd5e1;cursor:pointer"><input type="checkbox" id="acVoucherTerms" style="margin-top:2px;accent-color:#10b981"><span>Saya menyetujui kebijakan aktivasi voucher dan ketentuan subscription Auto-Cuan.</span></label><button type="button" id="acVoucherRedeem" class="ac-btn ac-btn-primary" style="width:100%">Aktifkan voucher</button>') + '</div>';
+    if (target) target.innerHTML = '<div class="ac-callout ac-callout-success"><strong>Voucher valid.</strong><br>Paket: ' + esc(planName(v.plan_code)) + ' · ' + (paymentRequired ? 'Diskon ' + esc(v.discount_percent) + '%' : 'Aktivasi paket') + (v.expires_at ? ' · berlaku sampai ' + esc(dateId(v.expires_at,true)) : '') + (paymentRequired ? '<br><span style="color:#fde68a">Voucher diskon membutuhkan jalur pembayaran yang belum dibuka di Account Center.</span>' : '<label style="display:flex;gap:8px;align-items:flex-start;margin:10px 0;font-size:11px;color:#cbd5e1;cursor:pointer"><input type="checkbox" id="acVoucherTerms" style="margin-top:2px;accent-color:#10b981"><span>Saya memahami Kebijakan Pembayaran, Refund, dan Disclaimer Risiko Finansial</span></label><button type="button" id="acVoucherRedeem" class="ac-btn ac-btn-primary" style="width:100%">Aktifkan voucher</button>') + '</div>';
     var redeem = byId('acVoucherRedeem'); if (redeem) redeem.addEventListener('click', redeemVoucher);
   }
   async function redeemVoucher() {
@@ -421,7 +420,7 @@
     var error = byId('registerError'); var button=byId('registerBtn');
     if (!error || !error.parentNode || !button) return;
     var box=document.createElement('div'); box.id='acTermsRegistration';
-    box.innerHTML='<label class="ac-reg-terms-row"><input type="checkbox" id="acRegTermsAccepted"><span class="ac-reg-terms-copy">Saya telah membaca dan menyetujui <button type="button" id="acOpenTermsFromRegister" class="ac-reg-terms-link">Peraturan &amp; Ketentuan Auto-Cuan</button> versi ' + esc(TERMS_VERSION) + '.</span></label>';
+    box.innerHTML='<label class="ac-reg-terms-row"><input type="checkbox" id="acRegTermsAccepted"><span class="ac-reg-terms-copy">Saya menyetujui <button type="button" id="acOpenTermsFromRegister" class="ac-reg-terms-link">Syarat &amp; Ketentuan Layanan Auto-Cuan</button>.</span></label>';
     error.parentNode.insertBefore(box,error);
     var checkbox=byId('acRegTermsAccepted'); var open=byId('acOpenTermsFromRegister');
     function sync(){ if(button) button.disabled=!checkbox.checked; }
