@@ -52,6 +52,15 @@ test('profile is derived from signed server identity and omits sensitive account
   assert.match(gatewaySource, /bodyAction === 'account-profile'/);
 });
 
+test('profile response carries a combined verified_badge flag driven by telegram verification', () => {
+  assert.match(profileSource, /verified_badge: Boolean\(telegram && telegram\.verified\)/);
+});
+
+test('profile hero renders a Terverifikasi badge when verified_badge is true', () => {
+  assert.match(runtimeSource, /p\.verified_badge \? ' <span class="ac-badge-verified"/);
+  assert.match(cssSource, /\.ac-badge-verified\s*\{/);
+});
+
 test('account center exposes profile subscription terms and a scrollable rules document', () => {
   assert.match(runtimeSource, /data-ac-tab="profile"/);
   assert.match(runtimeSource, /data-ac-tab="subscription"/);
