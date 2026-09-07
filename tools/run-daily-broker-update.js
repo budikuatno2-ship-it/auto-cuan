@@ -65,6 +65,62 @@ function getJakartaDateString(now) {
   return fmt.format(now || new Date());
 }
 
+function getJakartaTimeInfo(now) {
+  const dateObj = now || new Date();
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  });
+  const parts = fmt.formatToParts(dateObj);
+  let year = '', month = '', day = '', hour = 0, minute = 0;
+  for (const p of parts) {
+    if (p.type === 'year') year = p.value;
+    if (p.type === 'month') month = p.value;
+    if (p.type === 'day') day = p.value;
+    if (p.type === 'hour') hour = parseInt(p.value, 10);
+    if (p.type === 'minute') minute = parseInt(p.value, 10);
+  }
+  const dateKey = `${year}-${month}-${day}`;
+  return { dateKey, hour, minute };
+}
+
+function resolveTargetDate(options = {}) {
+  const { dateArg, now, holidaySet } = options;
+  if (dateArg) {
+    return {
+      targetDate: String(dateArg).trim(),
+      shifted: false,
+      reason: 'explicit_argument'
+    };
+  }
+
+  const { dateKey: todayKey, hour, minute } = getJakartaTimeInfo(now);
+  const isBeforeCutoff = hour < 16 || (hour === 16 && minute < 30);
+
+  if (isBeforeCutoff) {
+    const prevTrading = idxTradingCalendar.previousTradingDay(todayKey, holidaySet);
+    const resolved = prevTrading || todayKey;
+    return {
+      targetDate: resolved,
+      shifted: true,
+      originalDate: todayKey,
+      timeString: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+      reason: 'before_market_close_cutoff'
+    };
+  }
+
+  return {
+    targetDate: todayKey,
+    shifted: false,
+    reason: 'after_cutoff_today'
+  };
+}
+
 function markerPath(date) {
   const baseDir = process.env.ARJUM_DATA_DIR || path.join(__dirname, '..', 'data', 'arjum-data');
   return path.join(baseDir, '_daily-update-marker', `${date}.json`);
@@ -91,9 +147,17 @@ async function run(argv) {
   const dryRun = args.includes('--dry-run');
   const isFinal = args.includes('--final');
 
-  let dateArg = getJakartaDateString();
+  let dateFromArg = null;
   const dateIdx = args.indexOf('--date');
-  if (dateIdx >= 0 && args[dateIdx + 1]) dateArg = args[dateIdx + 1];
+  if (dateIdx >= 0 && args[dateIdx + 1]) dateFromArg = args[dateIdx + 1];
+
+  const resolved = resolveTargetDate({ dateArg: dateFromArg });
+  const dateArg = resolved.targetDate;
+
+  if (resolved.shifted) {
+    console.log(`[SAFETY GUARD] Script dieksekusi sebelum pukul 16:30 WIB (${resolved.timeString} WIB) tanpa argumen --date.`);
+    console.log(`  -> Target date otomatis dialihkan dari hari ini (${resolved.originalDate}) ke hari bursa aktif sebelumnya (${dateArg}) agar kuota API tidak terbuang.`);
+  }
 
   let tickers = [];
   const tickerArgIdx = args.indexOf('--tickers');
@@ -254,6 +318,17 @@ async function run(argv) {
     return;
   }
 
+  if (doneCount > 0) {
+    try {
+      const bandarmologiIntelService = require('../lib/bandarmologi-intel-service');
+      console.log('\n[INTEL] Menjalankan pre-calculation 4 sinyal intelijen bandarmologi...');
+      bandarmologiIntelService.computeAndSaveIntel({ tickers, date: dateArg });
+      console.log('[INTEL] Pre-calculation sinyal intelijen bandarmologi selesai.');
+    } catch (intelErr) {
+      console.warn('[INTEL] Warning: Gagal pre-calculate sinyal intelijen:', intelErr && intelErr.message ? intelErr.message : intelErr);
+    }
+  }
+
   if (complete) {
     writeMarker(dateArg, { date: dateArg, complete: true, completed_at: new Date().toISOString(), total_tickers: tickers.length });
     console.log(`Status: SELESAI LENGKAP — ${tickers.length} ticker punya broker summary ${dateArg}.`);
@@ -281,4 +356,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { run, getJakartaDateString, markerPath, readMarker, writeMarker };
+module.exports = { run, getJakartaDateString, getJakartaTimeInfo, resolveTargetDate, markerPath, readMarker, writeMarker };
