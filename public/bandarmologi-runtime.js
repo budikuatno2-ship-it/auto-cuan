@@ -226,10 +226,10 @@
         target.fullName = getBrokerSecurityName(code, item.broker_name);
       }
 
-      var bval = item.bval != null ? Number(item.bval) : (item.buy_val != null ? Number(item.buy_val) : (isBuyerList ? Number(item.net_val || 0) : 0));
-      var sval = item.sval != null ? Number(item.sval) : (item.sell_val != null ? Number(item.sell_val) : (!isBuyerList ? Math.abs(Number(item.net_val || 0)) : 0));
-      var bvol = item.bvol != null ? Number(item.bvol) : (item.buy_vol != null ? Number(item.buy_vol) : 0);
-      var svol = item.svol != null ? Number(item.svol) : (item.sell_vol != null ? Number(item.sell_vol) : 0);
+      var bval = item.bval != null ? Number(item.bval) : (item.buy_val != null ? Number(item.buy_val) : (isBuyerList ? Number(item.net_val || item.nval || item.val || item.value || 0) : 0));
+      var sval = item.sval != null ? Number(item.sval) : (item.sell_val != null ? Number(item.sell_val) : (!isBuyerList ? Math.abs(Number(item.net_val || item.nval || item.val || item.value || 0)) : 0));
+      var bvol = item.bvol != null ? Number(item.bvol) : (item.buy_vol != null ? Number(item.buy_vol) : (isBuyerList ? Number(item.net_vol || item.nvol || item.vol || item.volume || 0) : 0));
+      var svol = item.svol != null ? Number(item.svol) : (item.sell_vol != null ? Number(item.sell_vol) : (!isBuyerList ? Math.abs(Number(item.net_vol || item.nvol || item.vol || item.volume || 0)) : 0));
 
       if (bval > target.bval) target.bval = bval;
       if (sval > target.sval) target.sval = sval;
@@ -245,12 +245,16 @@
       if (item.avg_sell && !isBuyerList) target.avgSell = item.avg_sell;
       else if (item.avg_price && !isBuyerList) target.avgSell = item.avg_price;
 
-      // nval: prefer explicit field, works for both buyer and seller items
+      // nval: prefer explicit field, signed appropriately for buyer vs seller items
       var itemNval = item.nval != null ? Number(item.nval) : (item.net_val != null ? Number(item.net_val) : null);
-      if (itemNval != null) target.explicitNetVal = itemNval;
+      if (itemNval != null) {
+        target.explicitNetVal = isBuyerList ? Math.abs(itemNval) : -Math.abs(itemNval);
+      }
 
       var itemNvol = item.nvol != null ? Number(item.nvol) : (item.net_vol != null ? Number(item.net_vol) : null);
-      if (itemNvol != null) target.explicitNetVol = itemNvol;
+      if (itemNvol != null) {
+        target.explicitNetVol = isBuyerList ? Math.abs(itemNvol) : -Math.abs(itemNvol);
+      }
     }
 
     var bList = Array.isArray(buyers) ? buyers : [];
@@ -845,11 +849,11 @@
     // got merged in at all (see buildBrokerBubbleItems below, which never
     // even ran processItem for a seller when sellers=[]).
     var buyers = isGross
-      ? firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers)
-      : firstNonEmptyList(bSum.net_buyers, bSum.top_buyers);
+      ? firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.buyers)
+      : firstNonEmptyList(bSum.net_buyers, bSum.top_buyers, bSum.buyers, bSum.gross_buyers);
     var sellers = isGross
-      ? firstNonEmptyList(bSum.gross_sellers, bSum.top_sellers)
-      : firstNonEmptyList(bSum.net_sellers, bSum.top_sellers);
+      ? firstNonEmptyList(bSum.gross_sellers, bSum.top_sellers, bSum.sellers)
+      : firstNonEmptyList(bSum.net_sellers, bSum.top_sellers, bSum.sellers, bSum.gross_sellers);
 
     lastBrokerItems = buildBrokerBubbleItems(buyers, sellers, brokerSummaryMode);
 

@@ -764,3 +764,64 @@ test("bandarmologiService: normalizeBrokerSummary preserves Arjum sellers aliase
   assert.equal(norm.net_sellers.length, 1, "an empty net_sellers must fall back to real seller rows");
   assert.equal(norm.net_sellers[0].nval, -9000000);
 });
+
+test("bandarmologiService: GPRA 2026-09-04 regression test — Top Sellers distinct from Top Buyers with negative net values", () => {
+  // Fixture GPRA per 2026-09-04 with empty gross_sellers/net_sellers in partial payload
+  const gpraRaw = {
+    stock_code: "GPRA",
+    date: "2026-09-04",
+    gross_buyers: [
+      { broker: "XL", bval: 823600000, sval: 0, bvol: 82000, svol: 0, nval: 823600000 },
+      { broker: "CP", bval: 383200000, sval: 0, bvol: 38000, svol: 0, nval: 383200000 },
+      { broker: "KK", bval: 311900000, sval: 0, bvol: 31000, svol: 0, nval: 311900000 },
+      { broker: "XC", bval: 242700000, sval: 0, bvol: 24000, svol: 0, nval: 242700000 }
+    ],
+    gross_sellers: [], // empty gross_sellers must NOT trigger early return
+    net_buyers: [
+      { broker: "XL", nval: 823600000, nvol: 82000 },
+      { broker: "CP", nval: 383200000, nvol: 38000 },
+      { broker: "KK", nval: 311900000, nvol: 31000 },
+      { broker: "XC", nval: 242700000, nvol: 24000 }
+    ],
+    net_sellers: [], // empty net_sellers must NOT trigger early return
+    sellers: [
+      { broker: "MG", sval: 1600000000, bval: 0, svol: 160000, bvol: 0, nval: -1600000000 },
+      { broker: "CC", sval: 693900000, bval: 0, svol: 69000, bvol: 0, nval: -693900000 },
+      { broker: "AK", sval: 299100000, bval: 0, svol: 29000, bvol: 0, nval: -299100000 },
+      { broker: "ZP", sval: 107100000, bval: 0, svol: 10000, bvol: 0, nval: -107100000 },
+      { broker: "BK", sval: 67700000, bval: 0, svol: 6700, bvol: 0, nval: -67700000 },
+      { broker: "BQ", sval: 23500000, bval: 0, svol: 2300, bvol: 0, nval: -23500000 },
+      { broker: "PD", sval: 17700000, bval: 0, svol: 1700, bvol: 0, nval: -17700000 },
+      { broker: "AZ", sval: 8700000, bval: 0, svol: 800, bvol: 0, nval: -8700000 }
+    ]
+  };
+
+  const norm = bandarmologiService.normalizeBrokerSummary(gpraRaw, "2026-09-04");
+
+  // 1. Verify Top Buyers are present
+  assert.equal(norm.top_buyers.length, 4);
+  assert.equal(norm.top_buyers[0].broker, "XL");
+  assert.equal(norm.top_buyers[1].broker, "CP");
+
+  // 2. Verify Top Sellers are populated from real seller data (NOT cloned from buyers)
+  assert.ok(norm.top_sellers.length >= 8, "Top sellers must be populated from sellers list");
+  assert.equal(norm.top_sellers[0].broker, "MG", "Top seller #1 must be MG, not buyer XL");
+  assert.equal(norm.top_sellers[1].broker, "CC", "Top seller #2 must be CC, not buyer CP");
+  assert.equal(norm.top_sellers[2].broker, "AK");
+
+  // 3. Verify Buyer and Seller broker sets are completely distinct
+  const buyerBrokers = new Set(norm.top_buyers.map(b => b.broker));
+  const sellerBrokers = norm.top_sellers.map(s => s.broker);
+  for (const sb of sellerBrokers) {
+    assert.ok(!buyerBrokers.has(sb), `Seller broker ${sb} must not be present in buyers list`);
+  }
+
+  // 4. Verify net_sellers values are strictly negative
+  assert.ok(norm.net_sellers.length >= 8);
+  for (const s of norm.net_sellers) {
+    assert.ok(s.nval < 0, `Seller ${s.broker} nval (${s.nval}) must be negative`);
+    assert.ok(s.net_val < 0, `Seller ${s.broker} net_val (${s.net_val}) must be negative`);
+  }
+  assert.equal(norm.net_sellers[0].broker, "MG");
+  assert.equal(norm.net_sellers[0].nval, -1600000000);
+});

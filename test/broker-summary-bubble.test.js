@@ -164,3 +164,37 @@ test('firstNonEmptyList: falls back past an empty array (unlike `||`), never pas
   assert.deepEqual(bandarmologiRuntime.firstNonEmptyList([], []), [], 'every candidate empty must resolve to [], not throw or return undefined');
   assert.deepEqual(bandarmologiRuntime.firstNonEmptyList(), [], 'no arguments at all must resolve to []');
 });
+
+test('buildBrokerBubbleItems: GPRA 2026-09-04 fixture produces separate buyers and sellers with correct counter and isNetBuyer status', () => {
+  const buyers = [
+    { broker: 'XL', bval: 823600000, sval: 0, nval: 823600000 },
+    { broker: 'CP', bval: 383200000, sval: 0, nval: 383200000 },
+    { broker: 'KK', bval: 311900000, sval: 0, nval: 311900000 },
+    { broker: 'XC', bval: 242700000, sval: 0, nval: 242700000 }
+  ];
+  const sellers = [
+    { broker: 'MG', sval: 1600000000, bval: 0, nval: -1600000000 },
+    { broker: 'CC', sval: 693900000, bval: 0, nval: -693900000 },
+    { broker: 'AK', sval: 299100000, bval: 0, nval: -299100000 },
+    { broker: 'ZP', sval: 107100000, bval: 0, nval: -107100000 }
+  ];
+
+  const items = bandarmologiRuntime.buildBrokerBubbleItems(buyers, sellers, 'net');
+  assert.equal(items.length, 8);
+
+  const buyerCount = items.filter(b => b.isNetBuyer).length;
+  const sellerCount = items.filter(b => !b.isNetBuyer).length;
+
+  assert.equal(buyerCount, 4, 'Buyers count must be 4');
+  assert.equal(sellerCount, 4, 'Sellers count must be 4, NOT 0');
+
+  const mg = items.find(b => b.broker === 'MG');
+  assert.ok(mg);
+  assert.equal(mg.isNetBuyer, false, 'MG must be net seller');
+  assert.ok(mg.netVal < 0, 'MG netVal must be negative');
+
+  const xl = items.find(b => b.broker === 'XL');
+  assert.ok(xl);
+  assert.equal(xl.isNetBuyer, true, 'XL must be net buyer');
+  assert.ok(xl.netVal > 0, 'XL netVal must be positive');
+});
