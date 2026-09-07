@@ -167,10 +167,6 @@
         '<h2 class="ps-title">Pattern Radar</h2>' +
         '<p class="ps-sub">Memindai saham di hasil Screener terbaru dan menampilkan yang membentuk pola ABCD atau pola chart klasik pada data harian T-1. Kartu diurutkan mulai dari yang masih relevan untuk dipantau. Pola adalah konfirmasi teknikal, bukan sinyal beli.</p>' +
         '</div><div class="ps-actions">' +
-        '<div class="flex items-center gap-1.5">' +
-        '<input id="patternTickerSearchInput" type="text" placeholder="Cari ticker..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-24 sm:w-32 uppercase font-mono px-2.5 py-1.5 rounded-lg bg-dark-800/80 border border-dark-600/50 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key===\'Enter\'){handleIndependentTabSearch(\'pattern\', this.value)}">' +
-        '<button type="button" onclick="handleIndependentTabSearch(\'pattern\', document.getElementById(\'patternTickerSearchInput\').value)" class="ps-btn px-2.5 py-1.5 text-xs" aria-label="Cari ticker di Pattern Radar">Cari</button>' +
-        '</div>' +
         '<button type="button" id="psRefresh" class="ps-btn">Scan ulang</button>' +
         '<button type="button" id="psTechnical" class="ps-btn alt">Buka Chart</button>' +
         '</div></div>' +
@@ -265,9 +261,14 @@
       }
     }
     async function access(force) {
-      var allowed = await root.PatternMapAdminAccess.refresh(force === true).catch(function () { return false; });
+      var allowed = false;
+      try {
+        if (root.PatternMapAdminAccess && typeof root.PatternMapAdminAccess.refresh === 'function') {
+          allowed = await root.PatternMapAdminAccess.refresh(force === true).catch(function () { return false; });
+        }
+      } catch (_) { allowed = false; }
       state.checked = true;
-      state.allowed = allowed === true && root.PatternMapAdminAccess.isAllowed() === true;
+      state.allowed = allowed === true && root.PatternMapAdminAccess && root.PatternMapAdminAccess.isAllowed() === true;
       if (state.allowed) ensureNav(); else { removeNav(); hide(); }
       return state.allowed;
     }
@@ -276,11 +277,23 @@
     root.ensurePatternRadarMounted = function (container) {
       var target = container || doc.getElementById('patternSubTabContainer');
       if (!target) return;
+      if (!state.allowed && !isBudiAdmin()) {
+        target.innerHTML = '<div class="p-8 text-center text-gray-400 text-xs space-y-2">' +
+          '<div class="text-amber-400 font-semibold text-sm">🔒 Akses Terbatas: Khusus Administrator</div>' +
+          '<p class="text-gray-500 max-w-md mx-auto">Fitur Pattern Radar memindai formasi teknikal internal dan hanya dapat diakses oleh akun admin terverifikasi.</p>' +
+          '</div>';
+        return;
+      }
       var pNode = page();
       setPageVisible(pNode, true);
       if (pNode.parentNode !== target) {
         target.innerHTML = '';
         target.appendChild(pNode);
+      }
+      var active = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
+        ? root.UnifiedCockpit.getActiveTicker() : '';
+      if (active && active !== state.filterTicker) {
+        state.filterTicker = active;
       }
       if (!hydrateCache()) scan(false);
     };
@@ -502,10 +515,15 @@
         state.total = tickers.length;
         state.loaded = true;
         render(); persistCache();
-      } catch (_) {
+      } catch (err) {
         state.rows = previousRows;
         state.loaded = previousRows.length > 0;
         render();
+        var empty = doc.getElementById('psEmpty');
+        if (empty && !state.rows.length) {
+          empty.classList.remove('hidden');
+          empty.textContent = 'Scan Pattern belum selesai: ' + ((err && err.message) || 'Koneksi lambat atau data belum siap. Klik Scan Ulang.');
+        }
       } finally {
         if (version === state.version) {
           state.loading = false;

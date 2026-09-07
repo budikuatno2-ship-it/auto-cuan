@@ -54,6 +54,7 @@ const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
 const bandarmologiConfluence = require('../lib/bandarmologi-confluence');
 const trackRecordService = require('../lib/track-record-service');
 const bandarmologiService = require('../lib/bandarmologi-service');
+const brokerHunterService = require('../lib/broker-hunter-service');
 const telegramDailyRecap = require('../lib/telegram-daily-recap');
 const userWatchlistService = require('../lib/user-watchlist-service');
 const recentFailureCooldown = require('../lib/recent-failure-cooldown');
@@ -75,6 +76,9 @@ module.exports = async function handler(req, res) {
     // === BANDARMOLOGI & INSIDER (PUBLIC / AUTHED READ-ONLY, can serve from disk/API) ===
     if (action === 'bandarmologi') {
       return await handleBandarmologi(req, res);
+    }
+    if (action === 'broker-hunter') {
+      return await handleBrokerHunter(req, res);
     }
 
     const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -8174,6 +8178,23 @@ async function handleBandarmologi(req, res) {
     var endDate = (req.query && req.query.endDate) || '';
     var flow = (req.query && req.query.flow) || '';
     var result = await bandarmologiService.getBandarmologiData(ticker, { date: date, range: range, startDate: startDate, endDate: endDate, flow: flow });
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || String(err) });
+  }
+}
+
+async function handleBrokerHunter(req, res) {
+  try {
+    var broker = (req.query && req.query.broker) || 'AK';
+    var range = (req.query && (req.query.range || req.query.days)) || '1d';
+    var startDate = (req.query && req.query.startDate) || '';
+    var endDate = (req.query && req.query.endDate) || '';
+    var result = await brokerHunterService.getBrokerHunterData(broker, {
+      range: range,
+      startDate: startDate,
+      endDate: endDate
+    });
     return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });
