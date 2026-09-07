@@ -218,10 +218,10 @@ const GENERIC_CREDENTIAL_ERROR = 'Username atau password salah.';
 // Issue the signed session cookie on a successful, DB-authenticated login.
 // Admin is derived SERVER-SIDE only (never from client input). Fail-closed: if no
 // SESSION_SECRET is configured, no cookie is set and admin endpoints stay locked.
-function issueSessionCookie(res, user, usernameLower, deviceId) {
+function issueSessionCookie(res, user, effectiveUsername, deviceId) {
   const result = { isAdmin: usernameLower === 'budi', issued: false };
   try {
-    const token = createSessionToken({ userId: user.id, username: usernameLower, isAdmin: result.isAdmin, deviceId: deviceId });
+    const token = createSessionToken({ userId: user.id, username: effectiveUsername, isAdmin: result.isAdmin, deviceId: deviceId });
     if (token) {
       res.setHeader('Set-Cookie', buildSessionCookie(token));
       result.issued = true;
@@ -406,12 +406,18 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Find user by username
-    const { data: user, error: findError } = await supabase
-      .from('app_users')
-      .select('id, username, password_hash, device_id, devices, is_blocked, is_approved, created_at')
-      .eq('username', usernameLower)
-      .maybeSingle();
+    // Find user by username or email
+    const isEmailInput = usernameLower.includes("@");
+    let userLookup = supabase
+      .from("app_users")
+      .select("id, username, email, password_hash, device_id, devices, is_blocked, is_approved, created_at");
+    if (isEmailInput) {
+      userLookup = userLookup.ilike("email", usernameLower);
+    } else {
+      userLookup = userLookup.eq("username", usernameLower);
+    }
+    const { data: user, error: findError } = await userLookup.maybeSingle();
+    const effectiveUsername = user && user.username ? String(user.username).toLowerCase() : usernameLower;
 
     if (findError) {
       console.error('login-user find error:', findError);
@@ -450,14 +456,14 @@ module.exports = async function handler(req, res) {
 
       // Compatibility success is deliberately read-only: do not update login
       // metadata and never append/trust a device. Admin is derived server-side.
-      const legacySession = issueSessionCookie(res, user, usernameLower, deviceId);
+      const legacySession = issueSessionCookie(res, user, effectiveUsername, deviceId);
       if (!legacySession.issued) {
         return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
       }
       await loginGuard.credentialAccepted('legacy_admin_login_success');
       return res.status(200).json({
         success: true,
-        username: usernameLower,
+        username: effectiveUsername,
         userId: user.id,
         isAdmin: legacySession.isAdmin
       });
@@ -536,7 +542,7 @@ module.exports = async function handler(req, res) {
         console.error('login-user review update error:', updateError);
       }
 
-      issueSessionCookie(res, user, usernameLower, deviceId);
+      issueSessionCookie(res, user, effectiveUsername, deviceId);
       return res.status(200).json({
         success: true,
         username: 'review',
@@ -549,10 +555,10 @@ module.exports = async function handler(req, res) {
     // === VERCEL PREVIEW URL BYPASS ===
     // Logins from *.vercel.app preview URLs do not count towards device slots
     if (isVercelPreviewRequest(req)) {
-      const previewSession = issueSessionCookie(res, user, usernameLower, deviceId);
+      const previewSession = issueSessionCookie(res, user, effectiveUsername, deviceId);
       return res.status(200).json({
         success: true,
-        username: usernameLower,
+        username: effectiveUsername,
         userId: user.id,
         isAdmin: previewSession.isAdmin,
         preview_mode: true
@@ -577,10 +583,10 @@ module.exports = async function handler(req, res) {
         console.error('login-user update error:', updateError);
       }
 
-      const knownDeviceSession = issueSessionCookie(res, user, usernameLower, deviceId);
+      const knownDeviceSession = issueSessionCookie(res, user, effectiveUsername, deviceId);
       return res.status(200).json({
         success: true,
-        username: usernameLower,
+        username: effectiveUsername,
         userId: user.id,
         isAdmin: knownDeviceSession.isAdmin
       });
@@ -625,10 +631,10 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Gagal memperbarui perangkat.' });
     }
 
-    const newDeviceSession = issueSessionCookie(res, user, usernameLower, deviceId);
+    const newDeviceSession = issueSessionCookie(res, user, effectiveUsername, deviceId);
     return res.status(200).json({
       success: true,
-      username: usernameLower,
+      username: effectiveUsername,
       userId: user.id,
       isAdmin: newDeviceSession.isAdmin
     });
