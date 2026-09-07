@@ -77,6 +77,48 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function getStorageDir() {
+  if (typeof bandarmologiService.getStorageDir === 'function') {
+    return bandarmologiService.getStorageDir();
+  }
+  const configured = process.env.ARJUM_DATA_DIR;
+  if (configured && fs.existsSync(configured)) return configured;
+  return path.join(__dirname, '..', 'data', 'arjum-data');
+}
+
+function isValidCachedJson(endpoint, ticker, identifier) {
+  try {
+    const baseDir = getStorageDir();
+    const filePath = path.join(baseDir, endpoint, ticker, `${identifier}.json`);
+    if (!fs.existsSync(filePath)) return false;
+    const stat = fs.statSync(filePath);
+    if (!stat || stat.size <= 2) return false;
+    const content = fs.readFileSync(filePath, 'utf8');
+    const parsed = JSON.parse(content);
+    return parsed !== null && typeof parsed === 'object';
+  } catch (_) {
+    return false;
+  }
+}
+
+function isTickerFullyCached(ticker, tradingDates) {
+  if (!isValidCachedJson('broker-accumulation', ticker, 'series')) {
+    return false;
+  }
+  if (!isValidCachedJson('insiders', ticker, 'p1')) {
+    return false;
+  }
+  if (!Array.isArray(tradingDates) || tradingDates.length === 0) {
+    return true;
+  }
+  for (const date of tradingDates) {
+    if (!isValidCachedJson('broker-summary', ticker, date)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 async function run() {
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
@@ -188,6 +230,7 @@ async function run() {
   // time. Stop immediately instead of grinding through every remaining
   // ticker/date racking up errors.
   function checkApiQuota(res) {
+    if (!res) return false;
     if (res.ok) {
       // Opportunistic: if Arjum ever sends a rate-limit-style header, use
       // the REAL remaining count instead of just our own request tally.
@@ -241,77 +284,108 @@ async function run() {
     const ticker = tickers[i];
     console.log(`\n[${i + 1}/${tickers.length}] Memproses ${ticker}...`);
 
-    // 1. Broker Accumulation (1 call per ticker)
-    const accCached = typeof bandarmologiService.hasDiskCache === 'function'
-      ? bandarmologiService.hasDiskCache('broker-accumulation', ticker, 'series')
-      : bandarmologiService.readDiskCache('broker-accumulation', ticker, 'series');
-    if (accCached) {
-      totalSkipped++;
-    } else if (dryRun) {
-      totalRequested++;
-    } else {
-      if (checkPreflightStop()) break;
-      totalRequested++;
-      const res = await arjumClient.fetchBrokerAccumulation(ticker);
-      if (res.ok && res.data) {
-        bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', res.data);
-        totalSaved++;
-      } else {
-        totalErrors++;
-      }
-      if (checkApiQuota(res)) break;
-      await sleep(delayMs);
-    }
+    let resAcc = null;
+    let resIns = null;
+    let resSum = null;
 
-    // 2. Insiders (1 call per ticker)
-    if (quotaReached) break;
-    const insCached = typeof bandarmologiService.hasDiskCache === 'function'
-      ? bandarmologiService.hasDiskCache('insiders', ticker, 'p1')
-      : bandarmologiService.readDiskCache('insiders', ticker, 'p1');
-    if (insCached) {
-      totalSkipped++;
-    } else if (dryRun) {
-      totalRequested++;
-    } else {
-      if (checkPreflightStop()) break;
-      totalRequested++;
-      const res = await arjumClient.fetchInsiders(ticker, 1, 15);
-      if (res.ok && res.data) {
-        bandarmologiService.writeDiskCache('insiders', ticker, 'p1', res.data);
-        totalSaved++;
-      } else {
-        totalErrors++;
+    try {
+      if (isTickerFullyCached(ticker, tradingDates)) {
+        console.log(`  -> [SMART-SKIP] Data ${ticker} sudah lengkap dan valid di disk cache (${tradingDates.length} tanggal). Melewati...`);
+        totalSkipped += (2 + tradingDates.length);
+        continue;
       }
-      if (checkApiQuota(res)) break;
-      await sleep(delayMs);
-    }
 
-    // 3. Broker Summary (per trading date)
-    for (const date of tradingDates) {
-      if (quotaReached) break;
-      const sumCached = typeof bandarmologiService.hasDiskCache === 'function'
-        ? bandarmologiService.hasDiskCache('broker-summary', ticker, date)
-        : bandarmologiService.readDiskCache('broker-summary', ticker, date);
-      if (sumCached) {
+      // 1. Broker Accumulation (1 call per ticker)
+      const accValid = isValidCachedJson('broker-accumulation', ticker, 'series');
+      if (accValid) {
         totalSkipped++;
       } else if (dryRun) {
         totalRequested++;
       } else {
         if (checkPreflightStop()) break;
         totalRequested++;
-        const res = await arjumClient.fetchBrokerSummary(ticker, date);
-        if (res.ok && res.data) {
-          bandarmologiService.writeDiskCache('broker-summary', ticker, date, res.data);
-          if (date === tradingDates[tradingDates.length - 1]) {
-            bandarmologiService.writeDiskCache('broker-summary', ticker, 'latest', res.data);
+        try {
+          resAcc = await arjumClient.fetchBrokerAccumulation(ticker);
+          if (resAcc && resAcc.ok && resAcc.data) {
+            bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', resAcc.data);
+            totalSaved++;
+          } else {
+            totalErrors++;
+            console.warn(`[WARN] Gagal mengambil akumulasi broker ${ticker}: ${(resAcc && (resAcc.error || resAcc.detail)) || 'Respon kosong / tidak valid'}`);
           }
-          totalSaved++;
-        } else {
+        } catch (fetchErr) {
           totalErrors++;
+          console.warn(`[WARN] Exception saat ambil akumulasi ${ticker}: ${fetchErr && fetchErr.message ? fetchErr.message : fetchErr}`);
         }
-        if (checkApiQuota(res)) break;
+        if (checkApiQuota(resAcc)) break;
         await sleep(delayMs);
       }
+
+      // 2. Insiders (1 call per ticker)
+      if (quotaReached) break;
+      const insValid = isValidCachedJson('insiders', ticker, 'p1');
+      if (insValid) {
+        totalSkipped++;
+      } else if (dryRun) {
+        totalRequested++;
+      } else {
+        if (checkPreflightStop()) break;
+        totalRequested++;
+        try {
+          resIns = await arjumClient.fetchInsiders(ticker, 1, 15);
+          if (resIns && resIns.ok && resIns.data) {
+            bandarmologiService.writeDiskCache('insiders', ticker, 'p1', resIns.data);
+            totalSaved++;
+          } else {
+            totalErrors++;
+            console.warn(`[WARN] Gagal mengambil insider ${ticker}: ${(resIns && (resIns.error || resIns.detail)) || 'Respon kosong / tidak valid'}`);
+          }
+        } catch (fetchErr) {
+          totalErrors++;
+          console.warn(`[WARN] Exception saat ambil insider ${ticker}: ${fetchErr && fetchErr.message ? fetchErr.message : fetchErr}`);
+        }
+        if (checkApiQuota(resIns)) break;
+        await sleep(delayMs);
+      }
+
+      // 3. Broker Summary (per trading date)
+      for (const date of tradingDates) {
+        if (quotaReached) break;
+        const sumValid = isValidCachedJson('broker-summary', ticker, date);
+        if (sumValid) {
+          totalSkipped++;
+        } else if (dryRun) {
+          totalRequested++;
+        } else {
+          if (checkPreflightStop()) break;
+          totalRequested++;
+          try {
+            resSum = await arjumClient.fetchBrokerSummary(ticker, date);
+            if (resSum && resSum.ok && resSum.data) {
+              bandarmologiService.writeDiskCache('broker-summary', ticker, date, resSum.data);
+              if (date === tradingDates[tradingDates.length - 1]) {
+                bandarmologiService.writeDiskCache('broker-summary', ticker, 'latest', resSum.data);
+              }
+              totalSaved++;
+            } else {
+              totalErrors++;
+              console.warn(`[WARN] Gagal mengambil broker summary ${ticker} (${date}): ${(resSum && (resSum.error || resSum.detail)) || 'Respon kosong / tidak valid'}`);
+            }
+          } catch (fetchErr) {
+            totalErrors++;
+            console.warn(`[WARN] Exception saat ambil broker summary ${ticker} (${date}): ${fetchErr && fetchErr.message ? fetchErr.message : fetchErr}`);
+          }
+          if (checkApiQuota(resSum)) break;
+          await sleep(delayMs);
+        }
+      }
+    } catch (tickerErr) {
+      totalErrors++;
+      console.warn(`[WARN] Terjadi error/timeout saat memproses emiten ${ticker}: ${tickerErr && tickerErr.message ? tickerErr.message : tickerErr}. Melanjutkan ke emiten berikutnya...`);
+    } finally {
+      resAcc = null;
+      resIns = null;
+      resSum = null;
     }
   }
 
@@ -335,9 +409,25 @@ async function run() {
   // Distinct exit code for "quota exhausted" so a wrapping cron/scheduler can
   // tell it apart from a clean finish or a real crash, without parsing logs.
   if (stopReason === 'api_quota_exceeded') process.exitCode = 2;
+  return {
+    totalRequested,
+    totalSaved,
+    totalSkipped,
+    totalErrors,
+    stopReason
+  };
 }
 
-run().catch(err => {
-  console.error('Fatal worker error:', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  run().catch(err => {
+    console.error('Fatal worker error:', err);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  run,
+  getTradingDates,
+  isValidCachedJson,
+  isTickerFullyCached
+};

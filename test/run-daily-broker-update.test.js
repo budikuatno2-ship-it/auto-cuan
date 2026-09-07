@@ -121,3 +121,41 @@ test('run-daily-broker-update: --final on an incomplete run reports failure via 
     }
   });
 });
+
+test('run-daily-broker-update: resolveTargetDate safety guard shifts to T-1 before 16:30 WIB when --date is omitted', () => {
+  // 10:00 WIB on Monday 2026-09-07 (03:00 UTC)
+  const mondayMorning = new Date('2026-09-07T03:00:00.000Z');
+  const resMorning = dailyUpdate.resolveTargetDate({ now: mondayMorning });
+  assert.equal(resMorning.shifted, true);
+  assert.equal(resMorning.reason, 'before_market_close_cutoff');
+  // Previous trading day before Monday 2026-09-07 is Friday 2026-09-04
+  assert.equal(resMorning.targetDate, '2026-09-04');
+
+  // 16:29 WIB on Monday 2026-09-07 (09:29 UTC)
+  const justBeforeCutoff = new Date('2026-09-07T09:29:00.000Z');
+  const resJustBefore = dailyUpdate.resolveTargetDate({ now: justBeforeCutoff });
+  assert.equal(resJustBefore.shifted, true);
+  assert.equal(resJustBefore.targetDate, '2026-09-04');
+});
+
+test('run-daily-broker-update: resolveTargetDate targets today (T-0) at or after 16:30 WIB', () => {
+  // 16:30 WIB on Monday 2026-09-07 (09:30 UTC)
+  const exactlyAtCutoff = new Date('2026-09-07T09:30:00.000Z');
+  const resCutoff = dailyUpdate.resolveTargetDate({ now: exactlyAtCutoff });
+  assert.equal(resCutoff.shifted, false);
+  assert.equal(resCutoff.targetDate, '2026-09-07');
+
+  // 20:00 WIB evening scheduled firing (13:00 UTC)
+  const eveningFiring = new Date('2026-09-07T13:00:00.000Z');
+  const resEvening = dailyUpdate.resolveTargetDate({ now: eveningFiring });
+  assert.equal(resEvening.shifted, false);
+  assert.equal(resEvening.targetDate, '2026-09-07');
+});
+
+test('run-daily-broker-update: resolveTargetDate honors explicit date argument regardless of time', () => {
+  const morningTime = new Date('2026-09-07T03:00:00.000Z');
+  const resExplicit = dailyUpdate.resolveTargetDate({ dateArg: '2026-08-28', now: morningTime });
+  assert.equal(resExplicit.shifted, false);
+  assert.equal(resExplicit.targetDate, '2026-08-28');
+  assert.equal(resExplicit.reason, 'explicit_argument');
+});

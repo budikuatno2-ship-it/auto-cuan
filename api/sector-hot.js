@@ -55,6 +55,7 @@ const bandarmologiConfluence = require('../lib/bandarmologi-confluence');
 const trackRecordService = require('../lib/track-record-service');
 const bandarmologiService = require('../lib/bandarmologi-service');
 const brokerHunterService = require('../lib/broker-hunter-service');
+const bandarmologiIntelService = require('../lib/bandarmologi-intel-service');
 const telegramDailyRecap = require('../lib/telegram-daily-recap');
 const userWatchlistService = require('../lib/user-watchlist-service');
 const recentFailureCooldown = require('../lib/recent-failure-cooldown');
@@ -80,6 +81,9 @@ module.exports = async function handler(req, res) {
     if (action === 'broker-hunter') {
       return await handleBrokerHunter(req, res);
     }
+    if (action === 'bandarmologi-intel') {
+      return await handleBandarmologiIntel(req, res);
+    }
 
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -99,6 +103,7 @@ module.exports = async function handler(req, res) {
       'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks', 'telegram-daily-recap',
       'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record',
       'watchlist', 'watchlist-alert', 'watchlist-alert-history', 'bandarmologi',
+      'broker-hunter', 'bandarmologi-intel',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
       'create-screener-share-link', 'public-screener-share', 'refresh', 'debug-members',
@@ -8201,6 +8206,22 @@ async function handleBrokerHunter(req, res) {
   }
 }
 
+async function handleBandarmologiIntel(req, res) {
+  try {
+    var ticker = (req.query && req.query.ticker) || '';
+    var signal = (req.query && req.query.signal) || '';
+    var range = (req.query && (req.query.range || req.query.days)) || '7d';
+    var result = await bandarmologiIntelService.getBandarmologiIntel({
+      ticker: ticker,
+      signal: signal,
+      range: range
+    });
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || String(err) });
+  }
+}
+
 async function handleTelegramDailyRecap(req, res, supabase) {
   if (!verifyCronSecret(req)) {
     return res.status(401).json({ success: false, error: 'Unauthorized: CRON_SECRET required.' });
@@ -14182,6 +14203,8 @@ module.exports.__test = {
   buildWebTop5HistoryCollections: buildWebTop5HistoryCollections,
   handleTrackRecord: handleTrackRecord,
   handleBandarmologi: handleBandarmologi,
+  handleBrokerHunter: handleBrokerHunter,
+  handleBandarmologiIntel: handleBandarmologiIntel,
   handleTelegramDailyRecap: handleTelegramDailyRecap,
   handleUserWatchlist: handleUserWatchlist,
   handleUserWatchlistAlert: handleUserWatchlistAlert,
