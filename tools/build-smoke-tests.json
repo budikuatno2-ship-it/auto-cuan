@@ -48,5 +48,6 @@
   "test/screener-lifecycle-ui.test.js",
   "test/unified-analysis-byok.test.js",
   "test/unified-cockpit-layout.test.js",
-  "test/standalone-analisis-saham.test.js"
+  "test/standalone-analisis-saham.test.js",
+  "test/optional-email-auth.test.js"
 ]

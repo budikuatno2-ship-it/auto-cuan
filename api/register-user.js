@@ -62,7 +62,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { username, passwordHash, deviceId, userAgent } = req.body || {};
+    const { username, email, passwordHash, deviceId, userAgent } = req.body || {};
 
     // Validate required inputs. Device ID is auto-managed by the client and
     // backfilled server-side, so it is NOT a required user input.
@@ -86,6 +86,17 @@ module.exports = async function handler(req, res) {
     // Ensure we always have a non-null device ID for the NOT NULL column.
     const normalizedDeviceId = normalizeDeviceId(deviceId);
 
+
+    let cleanEmail = null;
+    if (email !== undefined && email !== null) {
+      const rawEmail = String(email).trim().toLowerCase();
+      if (rawEmail.length > 0) {
+        if (rawEmail.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
+          return res.status(400).json({ success: false, error: "Format email tidak valid." });
+        }
+        cleanEmail = rawEmail;
+      }
+    }
     const usernameLower = String(username).trim().toLowerCase();
 
     // Reject empty or too long
@@ -129,6 +140,21 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Gagal memeriksa username.' });
     }
 
+
+    if (cleanEmail) {
+      const { data: existingEmail, error: emailFindErr } = await supabase
+        .from("app_users")
+        .select("id")
+        .ilike("email", cleanEmail)
+        .maybeSingle();
+      if (emailFindErr) {
+        console.error("register-user email find error:", emailFindErr);
+        return res.status(500).json({ success: false, error: "Gagal memeriksa email." });
+      }
+      if (existingEmail) {
+        return res.status(400).json({ success: false, error: "Email sudah digunakan." });
+      }
+    }
     if (existingUser) {
       return res.status(400).json({ success: false, error: 'Username sudah digunakan.' });
     }
@@ -167,6 +193,21 @@ module.exports = async function handler(req, res) {
     // committed. This table is service-role-only. If the audit row cannot be
     // stored (for example the migration was not applied), fail closed and remove
     // the just-created account so there is no un-audited registration.
+
+    if (cleanEmail && registration && registration.id) {
+      const { error: emailUpdateErr } = await supabase
+        .from("app_users")
+        .update({ email: cleanEmail })
+        .eq("id", registration.id);
+      if (emailUpdateErr) {
+        console.error("register-user email update error:", emailUpdateErr);
+        await rollbackIncompleteRegistration(supabase, registration.id);
+        if (emailUpdateErr.code === "23505") {
+          return res.status(400).json({ success: false, error: "Email sudah digunakan." });
+        }
+        return res.status(500).json({ success: false, error: "Gagal menyimpan email." });
+      }
+    }
     const accepted = await supabase.from('account_terms_acceptances').insert({
       user_id: registration.id,
       terms_version: accountTerms.CURRENT_TERMS_VERSION,
