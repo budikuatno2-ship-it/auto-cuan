@@ -7,15 +7,17 @@
     var doc = root.document;
     var Safety = root.AutoCuanPatternSafety;
     var Visual = root.AutoCuanPatternVisual;
-    if (!Ui || !doc.getElementById('dashboardScreen') || !root.PatternMap || !root.PatternMapAdminAccess ||
-        !Safety || !Visual || typeof root.navigateTo !== 'function') {
+    var hasContainer = Boolean(doc.getElementById('dashboardScreen') || doc.getElementById('panel-tab-pattern') || doc.getElementById('patternSubTabContainer'));
+    var hasNav = typeof root.navigateTo === 'function' || typeof root.switchAnalisisTab === 'function';
+    if (!Ui || !hasContainer || !root.PatternMap || !root.PatternMapAdminAccess ||
+        !Safety || !Visual || !hasNav) {
       if (attempt < 240) root.setTimeout(function () { boot(attempt + 1); }, 50);
       return;
     }
     if (root.__AUTOCUAN_PATTERN_STABLE__) return;
     root.__AUTOCUAN_PATTERN_STABLE__ = '20260813-pattern-stable-v6';
 
-    var originalNavigate = root.navigateTo;
+    var originalNavigate = typeof root.navigateTo === 'function' ? root.navigateTo : function () {};
     var originalLogout = typeof root.logout === 'function' ? root.logout : null;
     var state = {
       allowed:false, checked:false, loading:false, loaded:false, rows:[], total:0,
@@ -42,10 +44,24 @@
       } catch (_) {}
       return result;
     }
-    async function json(url) {
-      var response = await root.fetch(url, { credentials:'same-origin', cache:'no-store', headers:headers() });
-      var data = await response.json().catch(function () { return null; });
-      return response.ok && data && data.success !== false ? data : null;
+    async function json(url, timeoutMs) {
+      var ms = timeoutMs || 15000;
+      var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      var timer = controller ? root.setTimeout(function () { controller.abort(); }, ms) : null;
+      try {
+        var response = await root.fetch(url, {
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: headers(),
+          signal: controller ? controller.signal : undefined
+        });
+        var data = await response.json().catch(function () { return null; });
+        return response.ok && data && data.success !== false ? data : null;
+      } catch (_) {
+        return null;
+      } finally {
+        if (timer) root.clearTimeout(timer);
+      }
     }
     function jakartaDateKey() {
       try {
@@ -166,7 +182,7 @@
         '</div></section>';
     }
     function place(node) {
-      var screen = doc.getElementById('dashboardScreen');
+      var screen = doc.getElementById('dashboardScreen') || doc.getElementById('panel-tab-pattern');
       var footer = screen && screen.querySelector('footer');
       if (!screen || !node) return node;
       if (node.parentNode !== screen) footer ? screen.insertBefore(node, footer) : screen.appendChild(node);
@@ -402,9 +418,9 @@
     async function universe() {
       var stamp = Date.now();
       return Ui.collectTickers(await Promise.all([
-        json('/api/sector-hot?action=screener&t=' + stamp).catch(function () { return null; }),
-        json('/api/sector-hot?action=nk-screener-results&t=' + stamp).catch(function () { return null; }),
-        json('/api/sector-hot?action=daytrade-screener&t=' + stamp).catch(function () { return null; })
+        json('/api/sector-hot?action=screener&t=' + stamp, 12000).catch(function () { return null; }),
+        json('/api/sector-hot?action=nk-screener-results&t=' + stamp, 12000).catch(function () { return null; }),
+        json('/api/sector-hot?action=daytrade-screener&t=' + stamp, 12000).catch(function () { return null; })
       ]));
     }
     async function scan(force) {
@@ -419,7 +435,7 @@
         if (version !== state.version) return;
         progress(0, tickers.length);
         var results = await Ui.mapBounded(tickers, Ui.constants.SCAN_CONCURRENCY, async function (ticker) {
-          var data = await json('/api/candles?ticker=' + encodeURIComponent(ticker));
+          var data = await json('/api/candles?ticker=' + encodeURIComponent(ticker), 8000);
           if (version !== state.version || !data || !Array.isArray(data.candles)) return null;
           var classicPatterns = Array.isArray(data.classicPatterns) ? data.classicPatterns.filter(function (pattern) { return pattern && pattern.label; }).slice(0, 3) : [];
           var candidate = null;
@@ -444,7 +460,7 @@
       } finally {
         if (version === state.version) {
           state.loading = false;
-          progress(state.total, state.total, state.loaded ? 'Hasil Pattern hari ini siap. Scan tidak diulang saat keluar–masuk halaman.' : 'Scan belum berhasil.');
+          progress(state.total, state.total, state.loaded ? 'Hasil Pattern hari ini siap. Scan tidak diulang saat keluar–masuk halaman.' : 'Scan belum berhasil atau waktu habis.');
           if (refresh) { refresh.disabled = false; refresh.textContent = 'Scan Ulang'; }
         }
       }
@@ -511,7 +527,14 @@
       });
     }
     function openChart(ticker) {
-      root.navigateTo('chart');
+      if (typeof root.switchAnalisisTab === 'function') {
+        root.switchAnalisisTab('chart');
+        if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
+          root.UnifiedCockpit.syncActiveTicker(ticker);
+        }
+        return;
+      }
+      if (typeof root.navigateTo === 'function') root.navigateTo('chart');
       var input = doc.getElementById('chartTickerInput');
       if (input) input.value = ticker;
       if (typeof root.loadChartPage === 'function') root.loadChartPage();
