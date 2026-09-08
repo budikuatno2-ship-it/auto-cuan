@@ -59,5 +59,7 @@
   "test/broker-bubble-gross-net.test.js",
   "test/broker-accumulation-fix.test.js",
   "test/multiday-broker-aggregation.test.js",
-  "test/bandarmologi-intel-price-fix.test.js"
+  "test/bandarmologi-intel-price-fix.test.js",
+  "test/insider-transaction-table.test.js",
+  "test/insider-network-graph.test.js"
 ]
