@@ -376,10 +376,7 @@
       var itemNval = item.nval != null ? Number(item.nval) : (item.net_val != null ? Number(item.net_val) : null);
       if (itemNval != null) {
         if (!isBuyerList) {
-          // Only mark negative if no previous net value was set or if sell value actually dominates
-          if (target.explicitNetVal == null || target.bval < target.sval) {
-            target.explicitNetVal = -Math.abs(itemNval);
-          }
+          target.explicitNetVal = -Math.abs(itemNval);
         } else {
           target.explicitNetVal = itemNval >= 0 ? Math.abs(itemNval) : itemNval;
         }
@@ -450,19 +447,27 @@
       if (normSval !== it.sval) it.sval = normSval;
 
       var netVal;
-      if (it.bval > 0 && it.sval > 0) {
-        netVal = it.bval - it.sval;
-      } else if (it.explicitNetVal != null) {
+      if (it.explicitNetVal != null) {
         netVal = it.explicitNetVal;
+      } else if (it.bval > 0 && it.sval > 0) {
+        netVal = it.bval - it.sval;
+      } else if (it.bval > 0) {
+        netVal = it.bval;
+      } else if (it.sval > 0) {
+        netVal = -it.sval;
       } else {
         netVal = it.bval - it.sval;
       }
 
       var netVol;
-      if (it.bvol > 0 && it.svol > 0) {
-        netVol = it.bvol - it.svol;
-      } else if (it.explicitNetVol != null) {
+      if (it.explicitNetVol != null) {
         netVol = it.explicitNetVol;
+      } else if (it.bvol > 0 && it.svol > 0) {
+        netVol = it.bvol - it.svol;
+      } else if (it.bvol > 0) {
+        netVol = it.bvol;
+      } else if (it.svol > 0) {
+        netVol = -it.svol;
       } else {
         netVol = it.bvol - it.svol;
       }
@@ -471,10 +476,10 @@
       netVal = normalizeBrokerValue(netVal, Math.max(it.bvol, it.svol), it.avgBuy || it.avgSell);
 
       var isNetBuyer;
-      if (it.bval > 0 && it.sval > 0) {
-        isNetBuyer = it.bval >= it.sval;
-      } else if (it.explicitNetVal != null) {
+      if (it.explicitNetVal != null) {
         isNetBuyer = it.explicitNetVal >= 0;
+      } else if (it.bval > 0 && it.sval > 0) {
+        isNetBuyer = it.bval >= it.sval;
       } else if (it.bval > 0) {
         isNetBuyer = true;
       } else if (it.sval > 0) {
@@ -584,7 +589,7 @@
             isBuyer: true,
             badge: '+',
             txVal: absNval,
-            displayVal: nVal
+            displayVal: Math.abs(nVal)
           }));
         } else {
           netSellers.push(Object.assign({}, nStat, {
@@ -592,12 +597,46 @@
             isBuyer: false,
             badge: '-',
             txVal: absNval,
-            displayVal: nVal
+            displayVal: -Math.abs(nVal)
           }));
         }
       }
       netBuyers.sort(function (a, b) { return b.txVal - a.txVal; });
       netSellers.sort(function (a, b) { return b.txVal - a.txVal; });
+
+      // Fallback: If netSellers is empty but sList has brokers, guarantee sellers are rendered
+      if (netSellers.length === 0 && sList.length > 0) {
+        for (var si = 0; si < sList.length; si++) {
+          var sItem = sList[si];
+          if (!sItem || !sItem.broker) continue;
+          var sCode = String(sItem.broker).trim().toUpperCase();
+          var sVal = Math.abs(Number(sItem.nval != null ? sItem.nval : (sItem.net_val != null ? sItem.net_val : (sItem.sval || sItem.sell_val || sItem.val || 1))));
+          var sStat = map[sCode] || {
+            broker: sCode,
+            fullName: getBrokerSecurityName(sCode, sItem.broker_name),
+            bval: 0,
+            sval: sVal,
+            bvol: 0,
+            svol: sItem.svol || sItem.sell_vol || 0,
+            avgBuy: 0,
+            avgSell: sItem.avg_price || 0,
+            netVal: -sVal,
+            txVal: sVal,
+            isNetBuyer: false
+          };
+          sStat.netVal = -Math.abs(sStat.netVal || sVal);
+          sStat.isNetBuyer = false;
+          netSellers.push(Object.assign({}, sStat, {
+            side: 'sell',
+            isBuyer: false,
+            badge: '-',
+            txVal: Math.max(1, sVal),
+            displayVal: -Math.abs(sVal)
+          }));
+        }
+        netSellers.sort(function (a, b) { return b.txVal - a.txVal; });
+      }
+
       items = netBuyers.concat(netSellers);
     }
 
@@ -1274,11 +1313,16 @@
     html += '  </div>';
 
     var rawBuyers = isGross
-      ? firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers)
-      : firstNonEmptyList(bSum.net_buyers, bSum.top_buyers);
+      ? firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.buyers)
+      : firstNonEmptyList(bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers);
     var rawSellers = isGross
-      ? firstNonEmptyList(bSum.gross_sellers, bSum.top_sellers)
-      : firstNonEmptyList(bSum.net_sellers, bSum.top_sellers);
+      ? firstNonEmptyList(bSum.gross_sellers, bSum.top_sellers, bSum.sellers)
+      : firstNonEmptyList(bSum.net_sellers, bSum.gross_sellers, bSum.top_sellers, bSum.sellers);
+
+    // Fallback: if rawSellers is still empty, ensure it falls back to bSum.gross_sellers
+    if ((!rawSellers || rawSellers.length === 0) && bSum.gross_sellers && bSum.gross_sellers.length > 0) {
+      rawSellers = bSum.gross_sellers;
+    }
 
     // Partition guard: if rawSellers is empty or rawBuyers has seller items
     if ((!rawSellers || rawSellers.length === 0) && rawBuyers && rawBuyers.length > 0) {
