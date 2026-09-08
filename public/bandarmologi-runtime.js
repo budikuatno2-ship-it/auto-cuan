@@ -1100,18 +1100,19 @@
   }
 
   function setBandarSection(section) {
-    bandarSection = (section === 'akumulasi' || section === 'intel') ? section : 'summary';
+    bandarSection = (section === 'akumulasi' || section === 'intel' || section === 'network') ? section : 'summary';
     var tabBandar = byId('tabBandarmologi');
     var tabAkumulasi = byId('tabAkumulasiBroker');
     if (tabBandar && tabAkumulasi) {
-      tabBandar.classList.toggle('active', bandarSection === 'summary' || bandarSection === 'intel');
-      tabBandar.setAttribute('aria-selected', (bandarSection === 'summary' || bandarSection === 'intel') ? 'true' : 'false');
+      tabBandar.classList.toggle('active', bandarSection === 'summary' || bandarSection === 'intel' || bandarSection === 'network');
+      tabBandar.setAttribute('aria-selected', (bandarSection === 'summary' || bandarSection === 'intel' || bandarSection === 'network') ? 'true' : 'false');
       tabAkumulasi.classList.toggle('active', bandarSection === 'akumulasi');
       tabAkumulasi.setAttribute('aria-selected', bandarSection === 'akumulasi' ? 'true' : 'false');
     }
     var subSum = byId('subTabBrokerSummary');
     var subAcc = byId('subTabAkumulasiBroker');
     var subIntel = byId('subTabIntelBandar');
+    var subNet = byId('subTabJejaringInsider');
     if (subSum && subAcc) {
       subSum.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
       subSum.setAttribute('aria-selected', bandarSection === 'summary' ? 'true' : 'false');
@@ -1121,6 +1122,10 @@
         subIntel.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'intel' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
         subIntel.setAttribute('aria-selected', bandarSection === 'intel' ? 'true' : 'false');
       }
+      if (subNet) {
+        subNet.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'network' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
+        subNet.setAttribute('aria-selected', bandarSection === 'network' ? 'true' : 'false');
+      }
     }
     var titleEl = byId('bandarPanelTitle');
     if (titleEl) {
@@ -1128,6 +1133,8 @@
         titleEl.textContent = 'Sinyal Intelijen Bandarmologi (4 Sinyal Strategis)';
       } else if (bandarSection === 'akumulasi') {
         titleEl.textContent = 'Akumulasi Broker & Deteksi Smart Money';
+      } else if (bandarSection === 'network') {
+        titleEl.textContent = 'Jejaring Relasi Insider & Pemegang Saham Multi-Emiten';
       } else {
         titleEl.textContent = 'Analisis Bandarmologi & Kepemilikan Insider';
       }
@@ -1141,7 +1148,9 @@
     } catch (_) {}
     var bandarContainer = byId('bandarmologiContent');
     if (bandarContainer) {
-      if (bandarSection === 'intel') {
+      if (bandarSection === 'network') {
+        renderInsiderNetworkUI(bandarContainer, lastBandarData || { ticker: currentBandarTicker });
+      } else if (bandarSection === 'intel') {
         renderBandarmologiIntelUI(bandarContainer, currentBandarTicker);
       } else if (lastBandarData) {
         if (bandarSection === 'akumulasi') {
@@ -1253,6 +1262,10 @@
 
   function renderBandarmologiUI(container, data) {
     lastBandarData = data;
+    if (bandarSection === 'network') {
+      renderInsiderNetworkUI(container, data);
+      return;
+    }
     if (bandarSection === 'intel') {
       renderBandarmologiIntelUI(container, data);
       return;
@@ -1338,6 +1351,7 @@
       html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'summary\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📊 Broker Summary</button>';
       html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'akumulasi\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'akumulasi' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📈 Akumulasi Broker</button>';
       html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'intel\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'intel' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🎯 Sinyal Intelijen</button>';
+      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'network\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'network' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🕸️ Jejaring Insider</button>';
       html += '</div>';
     }
 
@@ -1998,6 +2012,421 @@
 
   function getInsiderActionFilter() {
     return insiderActionFilter;
+  }
+
+  // ============================================================================
+  // JEJARING INSIDER & MULTI-EMITEN NETWORK GRAPH RUNTIME
+  // ============================================================================
+  var activeInsiderNetworkEntity = 'Belvin Tannadi';
+  var activeInsiderNetworkSelectedTicker = null;
+  var currentInsiderNetworkGraph = null;
+
+  function getInsiderNetworkService() {
+    if (typeof require !== 'undefined') {
+      try {
+        return require('../lib/insider-network-service');
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  function getEffectiveInsiderGraph(name) {
+    var service = getInsiderNetworkService();
+    if (service && typeof service.buildInsiderNetworkGraph === 'function') {
+      return service.buildInsiderNetworkGraph({ name: name });
+    }
+    return null;
+  }
+
+  function getEffectiveSearchInsiders(query, options) {
+    var service = getInsiderNetworkService();
+    if (service && typeof service.searchInsiders === 'function') {
+      return service.searchInsiders(query, options);
+    }
+    return [];
+  }
+
+  function renderInsiderNetworkSvg(graph, selectedTicker) {
+    if (!graph || !graph.nodes || graph.nodes.length === 0) {
+      return '<div class="p-8 text-center text-gray-400 text-xs">Data jejaring relasi tidak ditemukan.</div>';
+    }
+
+    var centralNode = graph.nodes.find(function (n) { return n.is_central || n.type === 'insider'; }) || graph.nodes[0];
+    var edges = graph.edges || graph.links || [];
+    var emitenNodes = graph.nodes.filter(function (n) { return n.type === 'ticker'; });
+
+    var cx = 350;
+    var cy = 220;
+    var radius = 155;
+    var numEmitens = emitenNodes.length;
+
+    var svg = '';
+    svg += '<svg id="insiderNetworkSvg" viewBox="0 0 700 440" class="w-full h-auto max-h-[500px] select-none" xmlns="http://www.w3.org/2000/svg">\n';
+    svg += '  <defs>\n';
+    svg += '    <filter id="glowCentral" x="-30%" y="-30%" width="160%" height="160%">\n';
+    svg += '      <feGaussianBlur stdDeviation="6" result="blur" />\n';
+    svg += '      <feMerge>\n';
+    svg += '        <feMergeNode in="blur" />\n';
+    svg += '        <feMergeNode in="SourceGraphic" />\n';
+    svg += '      </feMerge>\n';
+    svg += '    </filter>\n';
+    svg += '    <filter id="glowNode" x="-20%" y="-20%" width="140%" height="140%">\n';
+    svg += '      <feGaussianBlur stdDeviation="4" result="blur" />\n';
+    svg += '      <feMerge>\n';
+    svg += '        <feMergeNode in="blur" />\n';
+    svg += '        <feMergeNode in="SourceGraphic" />\n';
+    svg += '      </feMerge>\n';
+    svg += '    </filter>\n';
+    svg += '    <linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">\n';
+    svg += '      <stop offset="0%" stop-color="#10b981" stop-opacity="0.8" />\n';
+    svg += '      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.5" />\n';
+    svg += '    </linearGradient>\n';
+    svg += '  </defs>\n';
+
+    // Circular background guide
+    svg += '  <circle cx="' + cx + '" cy="' + cy + '" r="' + radius + '" fill="none" stroke="#334155" stroke-dasharray="3 3" stroke-width="0.8" opacity="0.4"/>\n';
+
+    // Render Edges & Midpoint Broker Chips
+    for (var i = 0; i < numEmitens; i++) {
+      var emNode = emitenNodes[i];
+      var angle = -Math.PI / 2 + (2 * Math.PI * i) / (numEmitens || 1);
+      var ex = cx + radius * Math.cos(angle);
+      var ey = cy + radius * Math.sin(angle);
+      var edge = edges.find(function (e) { return e.ticker === emNode.ticker || e.target === emNode.id; }) || {};
+
+      var isSelected = emNode.ticker === selectedTicker;
+      var strokeColor = isSelected ? '#10b981' : '#38bdf8';
+      var strokeWidth = isSelected ? '3.5' : '2';
+
+      // Edge line
+      svg += '  <line x1="' + cx + '" y1="' + cy + '" x2="' + ex.toFixed(1) + '" y2="' + ey.toFixed(1) + '" stroke="' + strokeColor + '" stroke-width="' + strokeWidth + '" stroke-linecap="round" opacity="' + (isSelected ? '1' : '0.65') + '" class="network-edge"/>\n';
+
+      // Midpoint Broker Chip
+      var mx = (cx + ex) / 2;
+      var my = (cy + ey) / 2;
+      var brokerCode = (edge.brokers && edge.brokers.length > 0) ? edge.brokers[0] : (edge.broker || '—');
+      if (brokerCode && brokerCode !== '—') {
+        svg += '  <g class="broker-chip cursor-pointer" onclick="BandarmologiRuntime.selectInsiderEmitenNode(\'' + escapeHtml(emNode.ticker) + '\')">\n';
+        svg += '    <rect x="' + (mx - 15).toFixed(1) + '" y="' + (my - 9).toFixed(1) + '" width="30" height="18" rx="5" fill="#0f172a" stroke="#475569" stroke-width="1.2"/>\n';
+        svg += '    <text x="' + mx.toFixed(1) + '" y="' + (my + 4).toFixed(1) + '" fill="#cbd5e1" font-size="9" font-family="monospace" font-weight="bold" text-anchor="middle">' + escapeHtml(brokerCode) + '</text>\n';
+        svg += '  </g>\n';
+      }
+    }
+
+    // Render Central Insider Node
+    var isForeign = String(centralNode.nationality || '').toLowerCase() === 'foreign';
+    var natBadge = isForeign ? '🌐' : '🇮🇩';
+    var labelName = escapeHtml(centralNode.label || centralNode.name || 'Insider');
+    var emitensCount = centralNode.total_emitens != null ? centralNode.total_emitens : numEmitens;
+
+    svg += '  <g class="central-insider-node cursor-pointer">\n';
+    svg += '    <circle cx="' + cx + '" cy="' + cy + '" r="50" fill="#0f172a" stroke="#10b981" stroke-width="3" filter="url(#glowCentral)"/>\n';
+    svg += '    <text x="' + cx + '" y="' + (cy - 12) + '" fill="#10b981" font-size="20" text-anchor="middle">👤</text>\n';
+    svg += '    <text x="' + cx + '" y="' + (cy + 8) + '" fill="#f8fafc" font-size="11" font-weight="bold" font-family="sans-serif" text-anchor="middle">' + labelName + '</text>\n';
+    svg += '    <text x="' + cx + '" y="' + (cy + 24) + '" fill="#94a3b8" font-size="9" font-family="sans-serif" text-anchor="middle">' + natBadge + ' ' + emitensCount + ' Emiten</text>\n';
+    svg += '  </g>\n';
+
+    // Render Emiten Nodes
+    for (var j = 0; j < numEmitens; j++) {
+      var emNode2 = emitenNodes[j];
+      var angle2 = -Math.PI / 2 + (2 * Math.PI * j) / (numEmitens || 1);
+      var ex2 = cx + radius * Math.cos(angle2);
+      var ey2 = cy + radius * Math.sin(angle2);
+      var edge2 = edges.find(function (e) { return e.ticker === emNode2.ticker || e.target === emNode2.id; }) || {};
+
+      var isSelected2 = emNode2.ticker === selectedTicker;
+      var nodeFill = isSelected2 ? '#134e4a' : '#0f172a';
+      var nodeStroke = isSelected2 ? '#34d399' : '#38bdf8';
+      var nodeWidth = isSelected2 ? '3' : '2';
+
+      var pctText = edge2.percentage_raw || (edge2.percentage != null ? edge2.percentage + '%' : '—');
+      var sharesShort = formatIDR(edge2.shares || 0);
+
+      svg += '  <g class="emiten-node cursor-pointer" onclick="BandarmologiRuntime.selectInsiderEmitenNode(\'' + escapeHtml(emNode2.ticker) + '\')">\n';
+      svg += '    <circle cx="' + ex2.toFixed(1) + '" cy="' + ey2.toFixed(1) + '" r="36" fill="' + nodeFill + '" stroke="' + nodeStroke + '" stroke-width="' + nodeWidth + '" filter="url(#glowNode)"/>\n';
+      svg += '    <text x="' + ex2.toFixed(1) + '" y="' + (ey2 - 6).toFixed(1) + '" fill="#f8fafc" font-size="12" font-family="monospace" font-weight="bold" text-anchor="middle">' + escapeHtml(emNode2.ticker) + '</text>\n';
+      svg += '    <text x="' + ex2.toFixed(1) + '" y="' + (ey2 + 9).toFixed(1) + '" fill="#34d399" font-size="10" font-family="monospace" font-weight="semibold" text-anchor="middle">' + escapeHtml(pctText) + '</text>\n';
+      svg += '    <text x="' + ex2.toFixed(1) + '" y="' + (ey2 + 22).toFixed(1) + '" fill="#94a3b8" font-size="8" font-family="sans-serif" text-anchor="middle">' + escapeHtml(sharesShort) + '</text>\n';
+      svg += '  </g>\n';
+    }
+
+    svg += '</svg>\n';
+    return svg;
+  }
+
+  function renderInsiderDetailPanelHtml(graph, ticker) {
+    if (!graph) return '<div class="p-4 text-center text-gray-400 text-xs">Pilih tokoh untuk melihat graf</div>';
+    var edges = graph.edges || graph.links || [];
+    var holding = edges.find(function (e) { return e.ticker === ticker; }) || edges[0];
+    if (!holding) {
+      return '<div class="p-4 text-center text-gray-400 text-xs">Pilih salah satu node emiten di kanvas.</div>';
+    }
+
+    var isBuy = String(holding.latest_action || 'BUY').toUpperCase().includes('BUY');
+    var actionBadge = isBuy
+      ? '<span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-bold text-xs">🟢 BELI</span>'
+      : '<span class="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-bold text-xs">🔴 JUAL</span>';
+
+    var priceFormatted = (holding.latest_price != null && Number(holding.latest_price) > 0) ? 'Rp ' + formatIDR(Number(holding.latest_price)) : (holding.latest_price === 0 ? 'Rp 0' : '—');
+    var sharesFormatted = formatNumber(holding.shares || 0) + ' lembar';
+    var brokersList = (holding.brokers && holding.brokers.length > 0) ? holding.brokers.join(', ') : '—';
+    var pctFormatted = holding.percentage_raw || (holding.percentage != null ? holding.percentage + '%' : '—');
+
+    var html = '';
+    html += '<div class="border-b border-dark-600/50 pb-3 mb-3">';
+    html += '  <div class="flex items-center justify-between">';
+    html += '    <div class="flex items-center gap-2">';
+    html += '      <span class="text-xl font-bold font-mono text-gray-100">' + escapeHtml(holding.ticker) + '</span>';
+    html += '      ' + actionBadge;
+    html += '    </div>';
+    html += '    <span class="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded">' + escapeHtml(pctFormatted) + '</span>';
+    html += '  </div>';
+    html += '  <p class="text-[11px] text-gray-400 mt-1">Afiliasi Kepemilikan: <strong class="text-gray-200">' + escapeHtml(graph.summary && graph.summary.entity_name || 'Tokoh Insider') + '</strong></p>';
+    html += '</div>';
+
+    html += '<div class="space-y-2.5 text-xs">';
+    html += '  <div class="flex items-center justify-between">';
+    html += '    <span class="text-gray-400">Total Saham Dimiliki:</span>';
+    html += '    <strong class="font-mono text-gray-200">' + escapeHtml(sharesFormatted) + '</strong>';
+    html += '  </div>';
+    html += '  <div class="flex items-center justify-between">';
+    html += '    <span class="text-gray-400">Persentase Saham:</span>';
+    html += '    <strong class="font-mono text-emerald-400">' + escapeHtml(pctFormatted) + '</strong>';
+    html += '  </div>';
+    html += '  <div class="flex items-center justify-between">';
+    html += '    <span class="text-gray-400">Harga Transaksi Terakhir:</span>';
+    html += '    <strong class="font-mono text-gray-200">' + escapeHtml(priceFormatted) + '</strong>';
+    html += '  </div>';
+    html += '  <div class="flex items-center justify-between">';
+    html += '    <span class="text-gray-400">Tanggal Aksi Terakhir:</span>';
+    html += '    <strong class="font-mono text-gray-300">' + escapeHtml(holding.latest_date || '—') + '</strong>';
+    html += '  </div>';
+    html += '  <div class="flex items-center justify-between">';
+    html += '    <span class="text-gray-400">Sekuritas / Broker:</span>';
+    html += '    <span class="px-2 py-0.5 rounded font-mono font-bold bg-dark-700 text-gray-200 border border-dark-600 text-[11px]">' + escapeHtml(brokersList) + '</span>';
+    html += '  </div>';
+    html += '</div>';
+
+    html += '<div class="mt-5 pt-3 border-t border-dark-600/40">';
+    html += '  <button type="button" onclick="BandarmologiRuntime.analyzeInsiderTicker(\'' + escapeHtml(holding.ticker) + '\')" class="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-dark-900 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition">';
+    html += '    <span>🔍</span><span>Analisis Saham ' + escapeHtml(holding.ticker) + '</span>';
+    html += '  </button>';
+    html += '</div>';
+
+    return html;
+  }
+
+  function renderInsiderNetworkUI(container, data) {
+    if (!container) return;
+    injectBubbleStyles();
+
+    if (!activeInsiderNetworkEntity) {
+      activeInsiderNetworkEntity = 'Belvin Tannadi';
+    }
+
+    var html = '';
+
+    // 1. Header & Deskripsi
+    html += '<div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 mb-4 shadow-lg backdrop-blur">';
+    html += '  <div class="flex flex-wrap items-center justify-between gap-3">';
+    html += '    <div>';
+    html += '      <h3 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
+    html += '        <span class="text-base">🕸️</span> Visualisasi Jejaring Relasi Insider &amp; Pemegang Saham Multi-Emiten';
+    html += '      </h3>';
+    html += '      <p class="text-xs text-gray-400 mt-0.5">Eksplorasi kepemilikan saham lintas emiten para investor besar, tokoh pasar modal, dan institusi terkemuka.</p>';
+    html += '    </div>';
+    html += '    <div class="flex items-center gap-2">';
+    html += '      <span class="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full font-semibold">⚡ Interactive Radial Graph</span>';
+    html += '    </div>';
+    html += '  </div>';
+    html += '</div>';
+
+    // 2. Search Bar + Autocomplete & Quick Chips
+    html += '<div class="bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 mb-4 shadow-md">';
+    html += '  <div class="relative w-full max-w-2xl mb-3">';
+    html += '    <div class="relative flex items-center">';
+    html += '      <span class="absolute left-3.5 text-gray-400 text-sm">🔍</span>';
+    html += '      <input id="insiderSearchInput" type="text" value="' + escapeHtml(activeInsiderNetworkEntity) + '" placeholder="Cari nama insider/tokoh (cth: Belvin Tannadi, Prajogo Pangestu, Lo Kheng Hong)..." oninput="BandarmologiRuntime.handleInsiderSearchInput(this.value)" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-10 pr-10 py-2.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition">';
+    html += '      <button type="button" id="btnClearInsiderSearch" onclick="BandarmologiRuntime.clearInsiderSearch()" class="absolute right-3 text-gray-400 hover:text-gray-200 text-xs px-1" style="display: none;">✕</button>';
+    html += '    </div>';
+    html += '    <div id="insiderSearchDropdown" class="absolute left-0 right-0 top-full mt-1.5 bg-dark-800 border border-dark-600/80 rounded-xl shadow-2xl z-30 overflow-hidden" style="display: none; max-height: 280px; overflow-y: auto;"></div>';
+    html += '  </div>';
+
+    // Quick Chips Tokoh Populer
+    html += '  <div class="flex flex-wrap items-center gap-2 pt-1">';
+    html += '    <span class="text-[11px] text-gray-400 font-medium">Tokoh Populer:</span>';
+    var popularEntities = ['Belvin Tannadi', 'Prajogo Pangestu', 'Lo Kheng Hong', 'Anthoni Salim', 'BlackRock Inc.'];
+    for (var p = 0; p < popularEntities.length; p++) {
+      var popName = popularEntities[p];
+      var isCur = popName.toLowerCase() === activeInsiderNetworkEntity.toLowerCase();
+      var chipClass = isCur
+        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
+        : 'bg-dark-700/70 text-gray-300 border-dark-600/60 hover:text-emerald-300 hover:border-emerald-500/40 hover:bg-emerald-500/10';
+      html += '    <button type="button" onclick="BandarmologiRuntime.selectInsiderQuickChip(\'' + escapeHtml(popName) + '\')" class="px-3 py-1 rounded-full text-xs font-medium border transition ' + chipClass + '">' + escapeHtml(popName) + '</button>';
+    }
+    html += '  </div>';
+    html += '</div>';
+
+    // 3. Grid Canvas (Left 8 cols) & Detail (Right 4 cols)
+    html += '<div class="grid grid-cols-1 lg:grid-cols-12 gap-4">';
+    html += '  <div class="lg:col-span-8 bg-dark-900/80 border border-dark-600/40 rounded-xl p-4 flex flex-col items-center justify-center relative min-h-[460px] overflow-hidden">';
+    html += '    <div class="w-full flex items-center justify-between text-[11px] text-gray-400 mb-2 px-2">';
+    html += '      <span class="flex items-center gap-1.5 font-mono"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>Kanvas Relasi Aktif: <strong id="activeGraphEntityTitle" class="text-gray-200">' + escapeHtml(activeInsiderNetworkEntity) + '</strong></span>';
+    html += '      <span class="text-[10px] text-gray-500">Klik node emiten untuk rincian</span>';
+    html += '    </div>';
+    html += '    <div id="insiderGraphSvgWrap" class="w-full h-full flex items-center justify-center">';
+
+    // Initial graph generation
+    var graph = getEffectiveInsiderGraph(activeInsiderNetworkEntity);
+    currentInsiderNetworkGraph = graph;
+    if (!activeInsiderNetworkSelectedTicker && graph && graph.edges && graph.edges.length > 0) {
+      activeInsiderNetworkSelectedTicker = graph.edges[0].ticker;
+    }
+    html += renderInsiderNetworkSvg(graph, activeInsiderNetworkSelectedTicker);
+
+    html += '    </div>';
+    html += '  </div>';
+
+    // Detail Panel
+    html += '  <div class="lg:col-span-4 bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 flex flex-col justify-between">';
+    html += '    <div id="insiderDetailPanel">';
+    html += renderInsiderDetailPanelHtml(graph, activeInsiderNetworkSelectedTicker);
+    html += '    </div>';
+    html += '  </div>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  function handleInsiderSearchInput(query) {
+    var dd = byId('insiderSearchDropdown');
+    var btnClear = byId('btnClearInsiderSearch');
+    if (!query || String(query).trim().length < 2) {
+      if (dd) dd.style.display = 'none';
+      if (btnClear) btnClear.style.display = 'none';
+      return;
+    }
+    if (btnClear) btnClear.style.display = 'block';
+
+    var results = getEffectiveSearchInsiders(query, { limit: 5 });
+    if (!dd) return;
+
+    if (!results || results.length === 0) {
+      dd.innerHTML = '<div class="p-3 text-center text-xs text-gray-400">Tidak ditemukan tokoh dengan nama "' + escapeHtml(query) + '"</div>';
+      dd.style.display = 'block';
+      return;
+    }
+
+    var html = '';
+    for (var r = 0; r < results.length; r++) {
+      var item = results[r];
+      var isForeign = String(item.nationality || '').toLowerCase() === 'foreign';
+      var natBadge = isForeign ? '🌐 Foreign' : '🇮🇩 Local';
+      var tickersHtml = (item.tickers || []).map(function (t) {
+        return '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-dark-900 border border-dark-600 text-emerald-400">' + escapeHtml(t) + '</span>';
+      }).join(' ');
+
+      html += '<div class="p-2.5 hover:bg-dark-700/60 cursor-pointer border-b border-dark-700/40 last:border-b-0 transition flex items-center justify-between" data-insider-name="' + escapeHtml(item.name) + '" onclick="BandarmologiRuntime.selectInsiderSearchResult(this.getAttribute(\'data-insider-name\'))">';
+      html += '  <div>';
+      html += '    <div class="flex items-center gap-2">';
+      html += '      <span class="text-xs font-bold text-gray-100">' + escapeHtml(item.name) + '</span>';
+      html += '      <span class="text-[10px] text-gray-400">' + natBadge + '</span>';
+      html += '    </div>';
+      html += '    <div class="flex items-center gap-1 mt-1">' + tickersHtml + '</div>';
+      html += '  </div>';
+      html += '  <span class="text-[11px] font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">' + item.total_emitens + ' Emiten</span>';
+      html += '</div>';
+    }
+
+    dd.innerHTML = html;
+    dd.style.display = 'block';
+  }
+
+  function selectInsiderSearchResult(name) {
+    activeInsiderNetworkEntity = name;
+    var input = byId('insiderSearchInput');
+    if (input) input.value = name;
+    var dd = byId('insiderSearchDropdown');
+    if (dd) dd.style.display = 'none';
+    renderInsiderNetworkGraph(name);
+  }
+
+  function selectInsiderQuickChip(name) {
+    activeInsiderNetworkEntity = name;
+    var input = byId('insiderSearchInput');
+    if (input) input.value = name;
+    var dd = byId('insiderSearchDropdown');
+    if (dd) dd.style.display = 'none';
+    renderInsiderNetworkGraph(name);
+  }
+
+  function clearInsiderSearch() {
+    var input = byId('insiderSearchInput');
+    if (input) input.value = '';
+    var dd = byId('insiderSearchDropdown');
+    if (dd) dd.style.display = 'none';
+    var btnClear = byId('btnClearInsiderSearch');
+    if (btnClear) btnClear.style.display = 'none';
+  }
+
+  function renderInsiderNetworkGraph(name) {
+    activeInsiderNetworkEntity = name;
+    var graph = getEffectiveInsiderGraph(name);
+    currentInsiderNetworkGraph = graph;
+    if (graph && graph.edges && graph.edges.length > 0) {
+      activeInsiderNetworkSelectedTicker = graph.edges[0].ticker;
+    } else {
+      activeInsiderNetworkSelectedTicker = null;
+    }
+
+    var titleEl = byId('activeGraphEntityTitle');
+    if (titleEl) {
+      titleEl.textContent = name;
+    }
+
+    var wrap = byId('insiderGraphSvgWrap');
+    if (wrap) {
+      wrap.innerHTML = renderInsiderNetworkSvg(graph, activeInsiderNetworkSelectedTicker);
+    }
+
+    var panel = byId('insiderDetailPanel');
+    if (panel) {
+      panel.innerHTML = renderInsiderDetailPanelHtml(graph, activeInsiderNetworkSelectedTicker);
+    }
+  }
+
+  function selectInsiderEmitenNode(ticker) {
+    activeInsiderNetworkSelectedTicker = ticker;
+    var wrap = byId('insiderGraphSvgWrap');
+    if (wrap && currentInsiderNetworkGraph) {
+      wrap.innerHTML = renderInsiderNetworkSvg(currentInsiderNetworkGraph, activeInsiderNetworkSelectedTicker);
+    }
+    var panel = byId('insiderDetailPanel');
+    if (panel && currentInsiderNetworkGraph) {
+      panel.innerHTML = renderInsiderDetailPanelHtml(currentInsiderNetworkGraph, activeInsiderNetworkSelectedTicker);
+    }
+  }
+
+  function analyzeInsiderTicker(ticker) {
+    if (!ticker) return;
+    var clean = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!clean) return;
+    setBandarSection('summary');
+    var input = byId('bandarTickerInput') || byId('activeTickerInput');
+    if (input) input.value = clean;
+    if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
+      root.UnifiedCockpit.syncActiveTicker(clean, {
+        loadChart: true,
+        forceChartReload: false,
+        preserveTab: false,
+        runAnalysis: true
+      });
+    }
+    if (root && typeof root.loadBandarmologiTab === 'function') {
+      root.loadBandarmologiTab(clean);
+    } else if (typeof loadBandarmologiTab === 'function') {
+      loadBandarmologiTab(clean);
+    }
   }
 
   function formatDateDisplay(dateStr) {
@@ -2901,7 +3330,21 @@
     renderBrokerHunterUI: renderBrokerHunterUI,
     synthesizeAccumulationFromSummary: synthesizeAccumulationFromSummary,
     setInsiderActionFilter: setInsiderActionFilter,
-    getInsiderActionFilter: getInsiderActionFilter
+    getInsiderActionFilter: getInsiderActionFilter,
+    renderInsiderNetworkUI: renderInsiderNetworkUI,
+    renderInsiderNetworkGraph: renderInsiderNetworkGraph,
+    renderInsiderNetworkSvg: renderInsiderNetworkSvg,
+    renderInsiderDetailPanelHtml: renderInsiderDetailPanelHtml,
+    selectInsiderEmitenNode: selectInsiderEmitenNode,
+    handleInsiderSearchInput: handleInsiderSearchInput,
+    selectInsiderSearchResult: selectInsiderSearchResult,
+    selectInsiderQuickChip: selectInsiderQuickChip,
+    clearInsiderSearch: clearInsiderSearch,
+    analyzeInsiderTicker: analyzeInsiderTicker,
+    getInsiderNetworkEntity: function () { return activeInsiderNetworkEntity; },
+    getInsiderNetworkSelectedTicker: function () { return activeInsiderNetworkSelectedTicker; },
+    getEffectiveInsiderGraph: getEffectiveInsiderGraph,
+    getEffectiveSearchInsiders: getEffectiveSearchInsiders
   };
 
   root.loadBandarmologiTab = loadBandarmologiTab;
@@ -2949,7 +3392,21 @@
       renderBrokerHunterUI: renderBrokerHunterUI,
       synthesizeAccumulationFromSummary: synthesizeAccumulationFromSummary,
       setInsiderActionFilter: setInsiderActionFilter,
-      getInsiderActionFilter: getInsiderActionFilter
+      getInsiderActionFilter: getInsiderActionFilter,
+      renderInsiderNetworkUI: renderInsiderNetworkUI,
+      renderInsiderNetworkGraph: renderInsiderNetworkGraph,
+      renderInsiderNetworkSvg: renderInsiderNetworkSvg,
+      renderInsiderDetailPanelHtml: renderInsiderDetailPanelHtml,
+      selectInsiderEmitenNode: selectInsiderEmitenNode,
+      handleInsiderSearchInput: handleInsiderSearchInput,
+      selectInsiderSearchResult: selectInsiderSearchResult,
+      selectInsiderQuickChip: selectInsiderQuickChip,
+      clearInsiderSearch: clearInsiderSearch,
+      analyzeInsiderTicker: analyzeInsiderTicker,
+      getInsiderNetworkEntity: function () { return activeInsiderNetworkEntity; },
+      getInsiderNetworkSelectedTicker: function () { return activeInsiderNetworkSelectedTicker; },
+      getEffectiveInsiderGraph: getEffectiveInsiderGraph,
+      getEffectiveSearchInsiders: getEffectiveSearchInsiders
     };
   }
 

@@ -84,6 +84,9 @@ module.exports = async function handler(req, res) {
     if (action === 'bandarmologi-intel') {
       return await handleBandarmologiIntel(req, res);
     }
+    if (action === 'insider-network') {
+      return await handleInsiderNetwork(req, res);
+    }
 
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -103,7 +106,7 @@ module.exports = async function handler(req, res) {
       'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks', 'telegram-daily-recap',
       'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record',
       'watchlist', 'watchlist-alert', 'watchlist-alert-history', 'bandarmologi',
-      'broker-hunter', 'bandarmologi-intel',
+      'broker-hunter', 'bandarmologi-intel', 'insider-network',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
       'create-screener-share-link', 'public-screener-share', 'refresh', 'debug-members',
@@ -8223,6 +8226,28 @@ async function handleBandarmologiIntel(req, res) {
   }
 }
 
+async function handleInsiderNetwork(req, res) {
+  try {
+    var insiderNetworkService = require('../lib/insider-network-service');
+    var query = (req.query && (req.query.query || req.query.name || req.query.q)) || '';
+    var ticker = (req.query && req.query.ticker) || '';
+    var searchOnly = req.query && (req.query.search === '1' || req.query.search === 'true');
+
+    if (searchOnly) {
+      var results = insiderNetworkService.searchInsiders(query, { limit: Number(req.query.limit) || 10 });
+      return res.status(200).json({ success: true, results: results });
+    }
+
+    var graph = insiderNetworkService.buildInsiderNetworkGraph({
+      name: query,
+      ticker: ticker
+    });
+    return res.status(200).json(Object.assign({ success: true }, graph));
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || String(err) });
+  }
+}
+
 async function handleTelegramDailyRecap(req, res, supabase) {
   if (!verifyCronSecret(req)) {
     return res.status(401).json({ success: false, error: 'Unauthorized: CRON_SECRET required.' });
@@ -14206,6 +14231,7 @@ module.exports.__test = {
   handleBandarmologi: handleBandarmologi,
   handleBrokerHunter: handleBrokerHunter,
   handleBandarmologiIntel: handleBandarmologiIntel,
+  handleInsiderNetwork: handleInsiderNetwork,
   handleTelegramDailyRecap: handleTelegramDailyRecap,
   handleUserWatchlist: handleUserWatchlist,
   handleUserWatchlistAlert: handleUserWatchlistAlert,
