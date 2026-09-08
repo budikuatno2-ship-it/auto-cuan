@@ -1132,7 +1132,14 @@
     html += '  </div>';
     html += '</div>';
 
-    var series = bAcc.series || [];
+    // For multi-day ranges (7D/30D/custom), prefer per-day date_headers from broker_summary
+    // so the "Riwayat Harian" table and bar chart display distinct data per trading day.
+    var series;
+    if (Array.isArray(bSum.date_headers) && bSum.date_headers.length > 0) {
+      series = bSum.date_headers;
+    } else {
+      series = bAcc.series || [];
+    }
     var availableDates = Array.isArray(data.available_dates) && data.available_dates.length > 0
       ? data.available_dates
       : series.map(function (s) { return s.date; }).filter(Boolean).reverse();

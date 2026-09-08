@@ -361,5 +361,6 @@
   "test/optional-email-auth.test.js",
   "test/sensitive-area-compliance.test.js",
   "test/broker-bubble-gross-net.test.js",
-  "test/broker-accumulation-fix.test.js"
+  "test/broker-accumulation-fix.test.js",
+  "test/multiday-broker-aggregation.test.js"
 ]
