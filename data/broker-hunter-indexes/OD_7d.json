@@ -1,0 +1,86 @@
+{
+  "success": true,
+  "from_cache": true,
+  "broker": "OD",
+  "broker_name": "BRI Danareksa Sekuritas",
+  "range": "7d",
+  "target_dates": [
+    "2026-09-07",
+    "2026-09-04",
+    "2026-09-03",
+    "2026-09-02",
+    "2026-09-01"
+  ],
+  "date_range_label": "2026-09-01 s/d 2026-09-07 (5 Hari Bursa)",
+  "generated_at": "2026-09-08T00:00:00.000Z",
+  "top_accumulated": [
+    {
+      "ticker": "BBRI",
+      "net_val": 114000000000,
+      "net_vol": 22136000,
+      "net_lot": 221360,
+      "buy_val": 156000000000,
+      "sell_val": 42000000000,
+      "buy_vol": 30291000,
+      "sell_vol": 8155000,
+      "avg_buy_price": 5150,
+      "avg_sell_price": 5150,
+      "days_active": 5
+    },
+    {
+      "ticker": "BMRI",
+      "net_val": 98500000000,
+      "net_vol": 13873000,
+      "net_lot": 138730,
+      "buy_val": 134000000000,
+      "sell_val": 35500000000,
+      "buy_vol": 18873000,
+      "sell_vol": 5000000,
+      "avg_buy_price": 7100,
+      "avg_sell_price": 7100,
+      "days_active": 5
+    },
+    {
+      "ticker": "PGAS",
+      "net_val": 72500000000,
+      "net_vol": 47078000,
+      "net_lot": 470780,
+      "buy_val": 97000000000,
+      "sell_val": 24500000000,
+      "buy_vol": 62987000,
+      "sell_vol": 15909000,
+      "avg_buy_price": 1540,
+      "avg_sell_price": 1540,
+      "days_active": 5
+    }
+  ],
+  "top_distributed": [
+    {
+      "ticker": "GOTO",
+      "net_val": -57000000000,
+      "net_vol": -982758500,
+      "net_lot": -9827585,
+      "buy_val": 12000000000,
+      "sell_val": 69000000000,
+      "buy_vol": 206896500,
+      "sell_vol": 1189655000,
+      "avg_buy_price": 58,
+      "avg_sell_price": 58,
+      "days_active": 5
+    },
+    {
+      "ticker": "BUKA",
+      "net_val": -37000000000,
+      "net_vol": -308333000,
+      "net_lot": -3083330,
+      "buy_val": 7500000000,
+      "sell_val": 44500000000,
+      "buy_vol": 62500000,
+      "sell_vol": 370833000,
+      "avg_buy_price": 120,
+      "avg_sell_price": 120,
+      "days_active": 5
+    }
+  ],
+  "total_stocks_active": 5
+}

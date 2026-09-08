@@ -103,5 +103,7 @@ data/intraday-fast-watcher-events/
 
 data/arjum-data/
 arjum-data/
+!data/broker-hunter-indexes/
+!data/broker-hunter-indexes/**
 
 .vercel

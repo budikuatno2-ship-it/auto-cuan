@@ -28,6 +28,30 @@ test('Broker Hunter: getBrokerHunterData returns valid schema structure', async 
   assert.ok(typeof result.total_stocks_active === 'number');
 });
 
+test('Broker Hunter: AK and YP return completely distinct, non-identical stock lists (No fake uniform data)', async () => {
+  const ak1d = await brokerHunterService.getBrokerHunterData('AK', { range: '1d' });
+  const yp1d = await brokerHunterService.getBrokerHunterData('YP', { range: '1d' });
+
+  assert.equal(ak1d.success, true);
+  assert.equal(yp1d.success, true);
+  assert.equal(ak1d.broker, 'AK');
+  assert.equal(yp1d.broker, 'YP');
+
+  const akTickers = ak1d.top_accumulated.map(s => s.ticker);
+  const ypTickers = yp1d.top_accumulated.map(s => s.ticker);
+
+  assert.ok(akTickers.length > 0, 'AK must have accumulated tickers');
+  assert.ok(ypTickers.length > 0, 'YP must have accumulated tickers');
+
+  // Verify they are NOT identical
+  assert.notDeepEqual(akTickers, ypTickers, 'AK and YP accumulated stock lists must not be identical');
+  assert.notEqual(akTickers[0], ypTickers[0], 'AK top stock must differ from YP top stock');
+
+  // Also verify date is up to date (2026-09-07)
+  assert.ok(ak1d.date_range_label.includes('2026-09-07'), 'Date must reflect latest 2026-09-07 session');
+});
+
+
 test('Broker Hunter: getBrokerHunterData fast-path reads cached index file if present', async () => {
   const fakeCacheDir = brokerHunterService.HUNTER_CACHE_DIR;
   fs.mkdirSync(fakeCacheDir, { recursive: true });
