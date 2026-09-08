@@ -1,0 +1,16 @@
+{
+  "available_brokers": [
+    {
+      "code": "AK",
+      "name": "UBS Sekuritas Indonesia"
+    },
+    {
+      "code": "BK",
+      "name": "J.P. Morgan Sekuritas Indonesia"
+    }
+  ],
+  "ranges": [
+    "1d"
+  ],
+  "updated_at": "2026-09-08T02:12:31.485Z"
+}
