@@ -322,6 +322,79 @@
     return [];
   }
 
+  function synthesizeAccumulationFromSummary(summary, ticker) {
+    if (!summary) {
+      return { ticker: ticker || '', series: [], daily_summary: [], top_buyers: [], top_sellers: [], net_buyers: [], net_sellers: [] };
+    }
+    var buyers = firstNonEmptyList(summary.net_buyers, summary.gross_buyers, summary.top_buyers, summary.buyers);
+    var sellers = firstNonEmptyList(summary.net_sellers, summary.gross_sellers, summary.top_sellers, summary.sellers);
+
+    var finalBuyers = [];
+    var finalSellers = [];
+    var seen = {};
+
+    for (var bi = 0; bi < buyers.length; bi++) {
+      var b = buyers[bi];
+      var code = b && (b.broker || b.broker_code || '');
+      if (!code || seen[code]) continue;
+      seen[code] = true;
+      var nval = b.nval != null ? Number(b.nval) : (b.net_val != null ? Number(b.net_val) : ((Number(b.bval || b.buy_val || 0)) - (Number(b.sval || b.sell_val || 0))));
+      if (nval < 0) {
+        finalSellers.push(b);
+      } else {
+        finalBuyers.push(b);
+      }
+    }
+
+    for (var si = 0; si < sellers.length; si++) {
+      var s = sellers[si];
+      var sCode = s && (s.broker || s.broker_code || '');
+      if (!sCode || seen[sCode]) continue;
+      seen[sCode] = true;
+      finalSellers.push(s);
+    }
+
+    if (finalSellers.length === 0 && finalBuyers.length > 0) {
+      var pb = [];
+      var ps = [];
+      for (var p = 0; p < finalBuyers.length; p++) {
+        var itm = finalBuyers[p];
+        var nCheck = itm.nval != null ? Number(itm.nval) : (itm.net_val != null ? Number(itm.net_val) : ((Number(itm.bval || itm.buy_val || 0)) - (Number(itm.sval || itm.sell_val || 0))));
+        if (nCheck < 0 || ((Number(itm.sval || itm.sell_val || 0)) > (Number(itm.bval || itm.buy_val || 0)))) {
+          ps.push(itm);
+        } else {
+          pb.push(itm);
+        }
+      }
+      if (ps.length > 0) {
+        finalBuyers = pb;
+        finalSellers = ps;
+      } else {
+        var withSell = finalBuyers.filter(function (b) { return (Number(b.sval || b.sell_val || 0)) > 0; });
+        if (withSell.length > 0) {
+          finalSellers = withSell;
+        }
+      }
+    }
+
+    var netFlow = summary.net_flow || 0;
+    var series = Array.isArray(summary.date_headers) && summary.date_headers.length > 0
+      ? summary.date_headers
+      : (netFlow !== 0 ? [{ date: summary.date || 'latest', net_val: netFlow, status: netFlow >= 0 ? 'ACC' : 'DIST' }] : []);
+
+    return {
+      ticker: ticker || '',
+      accumulation_score: netFlow >= 0 ? 70 : 30,
+      status: netFlow >= 0 ? 'ACCUMULATION' : 'DISTRIBUTION',
+      series: series,
+      daily_summary: series,
+      top_buyers: finalBuyers,
+      top_sellers: finalSellers,
+      net_buyers: finalBuyers,
+      net_sellers: finalSellers
+    };
+  }
+
   function buildBrokerBubbleItems(buyers, sellers, mode) {
     var isGross = mode === 'gross';
     var map = {};
@@ -860,6 +933,12 @@
       return true;
     });
 
+    // If filterSide has no matches but brokers has items, fallback to 'all' so bubbles are never blocked
+    if (visibleBrokers.length === 0 && brokers.length > 0 && filterSide !== 'all') {
+      visibleBrokers = brokers;
+      filterSide = 'all';
+    }
+
     var buyerCount = brokers.filter(function (b) {
       return isGross ? (b.side === 'buy' || b.isBuyer) : b.isNetBuyer;
     }).length;
@@ -1063,6 +1142,12 @@
       if (bandarSection === 'intel') {
         renderBandarmologiIntelUI(bandarContainer, currentBandarTicker);
       } else if (lastBandarData) {
+        if (bandarSection === 'akumulasi') {
+          var accObj = lastBandarData.broker_accumulation;
+          if ((!accObj || ((!accObj.top_buyers || accObj.top_buyers.length === 0) && (!accObj.net_buyers || accObj.net_buyers.length === 0))) && lastBandarData.broker_summary) {
+            lastBandarData.broker_accumulation = synthesizeAccumulationFromSummary(lastBandarData.broker_summary, currentBandarTicker);
+          }
+        }
         renderBandarmologiUI(bandarContainer, lastBandarData);
       } else if (typeof fetch !== 'undefined') {
         loadBandarmologiTab(currentBandarTicker);
@@ -1176,6 +1261,10 @@
     if (data && data.ticker) currentBandarTicker = data.ticker;
     var bSum = data.broker_summary || {};
     var bAcc = data.broker_accumulation || {};
+    if ((!bAcc.top_buyers || bAcc.top_buyers.length === 0) && (!bAcc.net_buyers || bAcc.net_buyers.length === 0) && bSum && (bSum.top_buyers || bSum.gross_buyers || bSum.net_buyers)) {
+      bAcc = synthesizeAccumulationFromSummary(bSum, ticker);
+      data.broker_accumulation = bAcc;
+    }
     var insiders = Array.isArray(data.insiders) ? data.insiders : [];
 
     var DEMO_REASON_LABEL = {
@@ -1586,16 +1675,16 @@
         bAcc.net_buyers,
         bAcc.top_buyers,
         bSum.net_buyers,
-        bSum.top_buyers,
         bSum.gross_buyers,
+        bSum.top_buyers,
         bSum.buyers
       );
       var rawAccSellers = firstNonEmptyList(
         bAcc.net_sellers,
         bAcc.top_sellers,
         bSum.net_sellers,
-        bSum.top_sellers,
         bSum.gross_sellers,
+        bSum.top_sellers,
         bSum.sellers
       );
 
@@ -2710,7 +2799,8 @@
     getCustomHunterRange: function () { return { start: hunterStartDate, end: hunterEndDate }; },
     inspectHunterTicker: inspectHunterTicker,
     loadBrokerHunter: loadBrokerHunter,
-    renderBrokerHunterUI: renderBrokerHunterUI
+    renderBrokerHunterUI: renderBrokerHunterUI,
+    synthesizeAccumulationFromSummary: synthesizeAccumulationFromSummary
   };
 
   root.loadBandarmologiTab = loadBandarmologiTab;
@@ -2755,7 +2845,8 @@
       applyCustomHunterRange: applyCustomHunterRange,
       inspectHunterTicker: inspectHunterTicker,
       loadBrokerHunter: loadBrokerHunter,
-      renderBrokerHunterUI: renderBrokerHunterUI
+      renderBrokerHunterUI: renderBrokerHunterUI,
+      synthesizeAccumulationFromSummary: synthesizeAccumulationFromSummary
     };
   }
 
