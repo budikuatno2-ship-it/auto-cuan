@@ -28,6 +28,11 @@ test('Vercel Serverless Simulation: safeWriteJson & computeAndSaveIntel graceful
   const originalMkdirSync = fs.mkdirSync;
   const originalWriteFileSync = fs.writeFileSync;
 
+  const latestFile = path.join(__dirname, '..', 'data', 'bandarmologi-intel-indexes', 'latest.json');
+  const catalogFile = path.join(__dirname, '..', 'data', 'bandarmologi-intel-indexes', 'catalog.json');
+  const backupLatest = fs.existsSync(latestFile) ? fs.readFileSync(latestFile, 'utf8') : null;
+  const backupCatalog = fs.existsSync(catalogFile) ? fs.readFileSync(catalogFile, 'utf8') : null;
+
   let simulatedVercelReadOnly = true;
 
   try {
@@ -60,5 +65,7 @@ test('Vercel Serverless Simulation: safeWriteJson & computeAndSaveIntel graceful
   } finally {
     fs.mkdirSync = originalMkdirSync;
     fs.writeFileSync = originalWriteFileSync;
+    if (backupLatest) fs.writeFileSync(latestFile, backupLatest, 'utf8');
+    if (backupCatalog) fs.writeFileSync(catalogFile, backupCatalog, 'utf8');
   }
 });

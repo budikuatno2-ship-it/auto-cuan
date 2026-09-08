@@ -820,7 +820,17 @@
     // Bubble cluster container
     html += '  <div id="brokerBubbleClusterContainer" class="p-4 sm:p-6 bg-dark-900/60 rounded-2xl border border-dark-600/40 min-h-[240px] flex flex-wrap items-center justify-center gap-3 sm:gap-4 relative overflow-hidden">';
     if (visibleBrokers.length === 0) {
-      html += '    <div class="text-gray-500 text-xs py-8">Tidak ada broker pada filter ini.</div>';
+      if (brokerFlowFilter !== 'all') {
+        var flowLabel = brokerFlowFilter === 'F' ? 'Asing (Foreign)' : 'Domestik';
+        var oppLabel = brokerFlowFilter === 'F' ? 'Domestik' : 'Asing';
+        html += '    <div class="text-center py-8 px-4 text-xs">';
+        html += '      <p class="font-semibold text-amber-300">Tidak ada broker ' + flowLabel + ' pada filter ini.</p>';
+        html += '      <p class="text-[11px] text-gray-400 mt-1">Seluruh transaksi pada periode ini dicatatkan oleh broker ' + oppLabel + '.</p>';
+        html += '      <button type="button" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'all\')" class="mt-3 px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition">Tampilkan Semua Broker</button>';
+        html += '    </div>';
+      } else {
+        html += '    <div class="text-gray-500 text-xs py-8">Tidak ada broker pada filter ini.</div>';
+      }
     } else {
       for (var i = 0; i < visibleBrokers.length; i++) {
         var b = visibleBrokers[i];
@@ -1030,6 +1040,9 @@
   async function loadBandarmologiTab(ticker, date, range) {
     var clean = String(ticker || currentBandarTicker || 'BBCA').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!clean) clean = 'BBCA';
+    if (clean !== currentBandarTicker) {
+      brokerFlowFilter = 'all';
+    }
     currentBandarTicker = clean;
     if (date !== undefined) currentBandarDate = date;
     if (range) {
@@ -1094,6 +1107,7 @@
     injectBubbleStyles();
 
     var ticker = data.ticker || currentBandarTicker;
+    if (data && data.ticker) currentBandarTicker = data.ticker;
     var bSum = data.broker_summary || {};
     var bAcc = data.broker_accumulation || {};
     var insiders = Array.isArray(data.insiders) ? data.insiders : [];
@@ -1497,8 +1511,22 @@
 
     if (isAccBubbleView) {
       // 2A. BUBBLE VIEW UNTUK AKUMULASI BROKER
-      var rawAccBuyers = firstNonEmptyList(bAcc.net_buyers, bAcc.top_buyers, bSum.net_buyers, bSum.top_buyers, bSum.gross_buyers);
-      var rawAccSellers = firstNonEmptyList(bAcc.net_sellers, bAcc.top_sellers, bSum.net_sellers, bSum.top_sellers, bSum.gross_sellers);
+      var rawAccBuyers = firstNonEmptyList(
+        bAcc.net_buyers,
+        bAcc.top_buyers,
+        bSum.net_buyers,
+        bSum.top_buyers,
+        bSum.gross_buyers,
+        bSum.buyers
+      );
+      var rawAccSellers = firstNonEmptyList(
+        bAcc.net_sellers,
+        bAcc.top_sellers,
+        bSum.net_sellers,
+        bSum.top_sellers,
+        bSum.gross_sellers,
+        bSum.sellers
+      );
 
       // Partition guard: if sellers list is empty or buyers contains negative net values
       var allAcc = [].concat(rawAccBuyers || []);
@@ -1511,14 +1539,45 @@
         for (var ai = 0; ai < allAcc.length; ai++) {
           var itm = allAcc[ai];
           var nCheck = itm.nval != null ? itm.nval : (itm.net_val != null ? itm.net_val : ((itm.bval || itm.buy_val || 0) - (itm.sval || itm.sell_val || 0)));
-          if (nCheck < 0) {
+          if (nCheck < 0 || ((itm.sval || itm.sell_val || 0) > (itm.bval || itm.buy_val || 0))) {
             pSellers.push(itm);
           } else {
             pBuyers.push(itm);
           }
         }
-        rawAccBuyers = pBuyers;
-        rawAccSellers = pSellers;
+        if (pSellers.length > 0) {
+          rawAccBuyers = pBuyers;
+          rawAccSellers = pSellers;
+        } else {
+          var withSell = allAcc.filter(function (b) { return (b.sval || b.sell_val || 0) > 0; });
+          if (withSell.length > 0) {
+            rawAccSellers = withSell;
+          }
+        }
+      }
+
+      // Symmetrical recovery guard: if buyers list is empty, recover from sellers
+      if ((!rawAccBuyers || rawAccBuyers.length === 0) && rawAccSellers && rawAccSellers.length > 0) {
+        var bFromS = [];
+        var sFromS = [];
+        for (var si = 0; si < rawAccSellers.length; si++) {
+          var sItm = rawAccSellers[si];
+          var sCheck = sItm.nval != null ? sItm.nval : (sItm.net_val != null ? sItm.net_val : ((sItm.bval || sItm.buy_val || 0) - (sItm.sval || sItm.sell_val || 0)));
+          if (sCheck > 0 || ((sItm.bval || sItm.buy_val || 0) > (sItm.sval || sItm.sell_val || 0))) {
+            bFromS.push(sItm);
+          } else {
+            sFromS.push(sItm);
+          }
+        }
+        if (bFromS.length > 0) {
+          rawAccBuyers = bFromS;
+          rawAccSellers = sFromS;
+        } else {
+          var withBuy = rawAccSellers.filter(function (s) { return (s.bval || s.buy_val || 0) > 0; });
+          if (withBuy.length > 0) {
+            rawAccBuyers = withBuy;
+          }
+        }
       }
 
       var accBuyers = filterBrokersByFlow(rawAccBuyers, brokerFlowFilter);
@@ -1741,6 +1800,7 @@
     if (!ticker) return;
     var clean = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!clean) return;
+    brokerFlowFilter = 'all';
     currentBandarTicker = clean;
     bandarIntelTicker = clean;
     bandarIntelViewMode = 'ticker';
