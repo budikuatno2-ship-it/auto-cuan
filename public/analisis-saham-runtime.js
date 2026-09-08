@@ -913,6 +913,8 @@
     var labelEl = byId('headerUserLabel');
     var tierBadgeEl = byId('headerTierBadge');
     var logoutEl = byId('logoutBtn');
+    var accountSection = byId('headerAccountSection');
+    if (accountSection) accountSection.style.display = 'inline-flex';
 
     var isGuest = !u || u.toLowerCase() === 'guest';
 

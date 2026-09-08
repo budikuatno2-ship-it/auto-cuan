@@ -96,6 +96,7 @@
         .maintenance-admin-status-error { color: #fca5a5; }
         .maintenance-admin-status-success { color: #6ee7b7; }
         @media (min-width: 640px) { .maintenance-card { padding: 34px 32px; } }
+        #headerAccountSection { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap; }
     </style>
     <link rel="stylesheet" href="/index-shell.css?v=20260818-v1">
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
@@ -461,10 +462,18 @@
                 <span id="wibClock" class="text-[11px] text-gray-500 font-mono tabular-nums hidden sm:inline"></span>
                 <span id="reviewBadge" class="hidden px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">Review</span>
                 <span id="guestBadge" class="hidden"></span>
-                <span id="headerUserLabel" class="hidden text-sm text-gray-400"><span id="headerUsername" class="text-emerald-400 font-medium"></span></span>
                 <button id="headerLoginBtn" onclick="openLoginModal()" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Login</button>
                 <button id="headerRegisterBtn" onclick="openRegisterModal()" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">Daftar</button>
-                <button id="logoutBtn" onclick="logout()" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/50 hover:border-red-500/40 hover:text-red-400 transition-all">Logout</button>
+                <div id="headerAccountSection" class="flex items-center gap-1.5 pl-1.5 sm:pl-2 border-l border-dark-600/40 shrink-0 whitespace-nowrap">
+                    <span id="headerUserLabel" class="text-xs font-medium text-emerald-400 bg-dark-700/80 border border-dark-600/40 px-2.5 py-1.5 rounded-xl cursor-pointer hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all flex items-center gap-1.5 shrink-0" title="Buka Profil Akun" role="button" tabindex="0">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span id="headerUsername">Akun</span>
+                    </span>
+                    <span id="headerTierBadge" class="hidden text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-dark-600/60 border border-dark-600 text-gray-400 shrink-0 cursor-pointer hover:opacity-80 transition-all">FREE</span>
+                    <button id="logoutBtn" onclick="logout()" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-medium text-gray-400 border border-dark-600/40 hover:border-rose-500/40 hover:text-rose-400 transition-all shrink-0" title="Logout dari akun">
+                        Logout
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -2400,6 +2409,134 @@ function isLoggedInUser() { try { return getUsername() !== 'guest' && localStora
 function getAuthHeaders() { try { return isLoggedInUser() ? { 'X-User-Id': localStorage.getItem('autocuan_user_id') || '', 'X-Username': getUsername() } : { 'X-Username': 'guest' }; } catch (_) { return isLoggedInUser() ? { 'X-User-Id': (window.__AUTOCUAN_AUTHENTICATED_SESSION__ && window.__AUTOCUAN_AUTHENTICATED_SESSION__.userId) || '', 'X-Username': getUsername() } : { 'X-Username': 'guest' }; } }
 function getDashboardAuthHeaders() { return getAuthHeaders(); }
 function isAdmin() { try { return getUsername() === 'budi' && localStorage.getItem('autocuan_is_admin') === 'true'; } catch (_) { return getUsername() === 'budi' && Boolean(window.__AUTOCUAN_AUTHENTICATED_SESSION__ && window.__AUTOCUAN_AUTHENTICATED_SESSION__.isAdmin); } }
+function isSubscribedUser() {
+    try {
+        if (isAdmin()) return true;
+        var u = getUsername();
+        if (u === 'budi') return true;
+        if (localStorage.getItem('autocuan_is_admin') === 'true') return true;
+        if (typeof hasConfirmedPremiumAccess === 'function' && hasConfirmedPremiumAccess()) return true;
+        if (window.premiumAccessState && (window.premiumAccessState.premium === true || window.premiumAccessState.accessLevel === 'admin' || window.premiumAccessState.accessLevel === 'premium' || window.premiumAccessState.accessLevel === 'lifetime')) return true;
+    } catch (_) {}
+    return false;
+}
+window.isSubscribedUser = isSubscribedUser;
+
+function syncHeaderUsername() {
+    var u = 'guest';
+    try {
+        u = (typeof getUsername === 'function' ? getUsername() : (localStorage.getItem('autocuan_user') || (window.__AUTOCUAN_AUTHENTICATED_SESSION__ && window.__AUTOCUAN_AUTHENTICATED_SESSION__.username) || 'guest')).trim();
+    } catch (_) {}
+    var isAdm = false;
+    try {
+        isAdm = (typeof isAdmin === 'function' ? isAdmin() : false) ||
+            localStorage.getItem('autocuan_is_admin') === 'true' ||
+            Boolean(window.premiumAccessState && (window.premiumAccessState.isAdmin === true || window.premiumAccessState.accessLevel === 'admin')) ||
+            Boolean(window.__AUTOCUAN_AUTHENTICATED_SESSION__ && window.__AUTOCUAN_AUTHENTICATED_SESSION__.isAdmin === true) ||
+            (u && u.toLowerCase() === 'budi');
+    } catch (_) {}
+    var isBudi = (u && u.toLowerCase() === 'budi') || isAdm;
+    var isSubscribed = (typeof isSubscribedUser === 'function' ? isSubscribedUser() : false) ||
+        isAdm ||
+        Boolean(window.premiumAccessState && (window.premiumAccessState.premium === true || window.premiumAccessState.accessLevel === 'admin' || window.premiumAccessState.accessLevel === 'premium' || window.premiumAccessState.accessLevel === 'lifetime'));
+
+    var userEl = document.getElementById('headerUsername');
+    var labelEl = document.getElementById('headerUserLabel');
+    var tierBadgeEl = document.getElementById('headerTierBadge');
+    var logoutEl = document.getElementById('logoutBtn');
+    var loginEl = document.getElementById('headerLoginBtn');
+    var registerEl = document.getElementById('headerRegisterBtn');
+    var accountSection = document.getElementById('headerAccountSection');
+
+    var isGuest = !u || u.toLowerCase() === 'guest';
+
+    if (isGuest) {
+        if (userEl) userEl.textContent = 'Guest';
+        if (loginEl) loginEl.classList.remove('hidden');
+        if (registerEl) registerEl.classList.remove('hidden');
+        if (loginEl) {
+            if (labelEl) labelEl.classList.add('hidden');
+            if (logoutEl) {
+                logoutEl.classList.add('hidden');
+                logoutEl.textContent = 'Login';
+                logoutEl.onclick = function() {
+                    if (typeof openLoginModal === 'function') openLoginModal();
+                    else window.location.href = '/?login=1';
+                };
+            }
+            if (accountSection) accountSection.classList.add('hidden');
+            if (tierBadgeEl) {
+                tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-dark-600/60 border border-dark-600 text-gray-400 shrink-0 cursor-pointer hover:opacity-80 transition-all hidden';
+                tierBadgeEl.textContent = 'FREE';
+                tierBadgeEl.classList.add('hidden');
+            }
+        } else {
+            if (logoutEl) {
+                logoutEl.classList.remove('hidden');
+                logoutEl.textContent = 'Login';
+                logoutEl.onclick = function() { window.location.href = '/?login=1'; };
+            }
+            if (tierBadgeEl) {
+                tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-dark-600/60 border border-dark-600 text-gray-400 shrink-0 cursor-pointer hover:opacity-80 transition-all';
+                tierBadgeEl.textContent = 'FREE';
+                tierBadgeEl.classList.remove('hidden');
+                tierBadgeEl.style.display = 'inline-block';
+            }
+        }
+    } else {
+        if (userEl) userEl.textContent = u;
+        if (labelEl) {
+            labelEl.classList.remove('hidden');
+            labelEl.style.display = 'inline-flex';
+        }
+        if (loginEl) loginEl.classList.add('hidden');
+        if (registerEl) registerEl.classList.add('hidden');
+        if (logoutEl) {
+            logoutEl.classList.remove('hidden');
+            logoutEl.style.display = 'inline-block';
+            logoutEl.textContent = 'Logout';
+            logoutEl.onclick = function() {
+                if (typeof logout === 'function') logout();
+                else if (typeof handleAnalisisLogout === 'function') handleAnalisisLogout();
+            };
+        }
+        if (accountSection) {
+            accountSection.classList.remove('hidden');
+            accountSection.style.display = 'inline-flex';
+        }
+        if (tierBadgeEl) {
+            if (isBudi || isAdm) {
+                tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shrink-0 cursor-pointer hover:opacity-80 transition-all';
+                tierBadgeEl.textContent = '👑 ADMIN';
+            } else if (isSubscribed) {
+                tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 shrink-0 cursor-pointer hover:opacity-80 transition-all';
+                tierBadgeEl.textContent = '⭐ PRO';
+            } else {
+                tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-dark-600/60 border border-dark-600 text-gray-400 shrink-0 cursor-pointer hover:opacity-80 transition-all';
+                tierBadgeEl.textContent = 'FREE';
+            }
+            tierBadgeEl.classList.remove('hidden');
+            tierBadgeEl.style.display = 'inline-block';
+        }
+    }
+
+    if (tierBadgeEl && !tierBadgeEl.__boundClick && typeof tierBadgeEl.addEventListener === 'function') {
+        tierBadgeEl.__boundClick = true;
+        tierBadgeEl.addEventListener('click', function() {
+            if (labelEl && typeof labelEl.click === 'function') labelEl.click();
+        });
+    }
+}
+window.syncHeaderUsername = syncHeaderUsername;
+
+try {
+    window.addEventListener('autocuan:premium-access', function(ev) {
+        if (ev && ev.detail && (ev.detail.accessLevel === 'admin' || ev.detail.isAdmin)) {
+            try { localStorage.setItem('autocuan_is_admin', 'true'); } catch (_) {}
+        }
+        syncHeaderUsername();
+    });
+} catch (_) {}
 // Subscription provisioning is intentionally unavailable until its schema and
 // configuration are deployed. It is not part of startup and cannot affect free/public UI.
 function safeRequestId() { return generateDeviceUuid(); }
@@ -3672,16 +3809,11 @@ function showDashboard() {
     clearLegacyDeviceBlock();
     setTopLevelView('app');
     var isGuest = (username === 'guest'); var isAdm = isAdmin();
-    // Header
-    var headerUserLabel = document.getElementById('headerUserLabel');
-    var headerUsername = document.getElementById('headerUsername');
-    if (isGuest) { headerUserLabel.classList.add('hidden'); } else { headerUserLabel.classList.remove('hidden'); headerUsername.textContent = username; }
+    // Header & Profile synchronization
+    syncHeaderUsername();
     // Badges
     if (document.getElementById('reviewBadge')) { if (isReview) document.getElementById('reviewBadge').classList.remove('hidden'); else document.getElementById('reviewBadge').classList.add('hidden'); }
     if (document.getElementById('guestBadge')) { if (isGuest) document.getElementById('guestBadge').classList.remove('hidden'); else document.getElementById('guestBadge').classList.add('hidden'); }
-    // Buttons
-    if (isGuest) { document.getElementById('headerLoginBtn').classList.remove('hidden'); document.getElementById('headerRegisterBtn').classList.remove('hidden'); document.getElementById('logoutBtn').classList.add('hidden'); }
-    else { document.getElementById('headerLoginBtn').classList.add('hidden'); document.getElementById('headerRegisterBtn').classList.add('hidden'); document.getElementById('logoutBtn').classList.remove('hidden'); }
     // Admin panel
     if (isAdm && !isReview) { document.getElementById('adminPanel').classList.remove('hidden'); } else { document.getElementById('adminPanel').classList.add('hidden'); }
     updateUsageCounter();
@@ -3755,6 +3887,7 @@ function clearRenderedPremiumData() {
     var addForm=document.getElementById('addPositionForm'); if (addForm) addForm.classList.add('hidden');
 }
 function applyPremiumAccessUi() {
+    syncHeaderUsername();
     var allowed=hasConfirmedPremiumAccess();
     document.querySelectorAll('[data-premium-nav="true"]').forEach(function(button){
         button.classList.toggle('hidden',!allowed); button.disabled=!allowed;
