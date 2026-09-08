@@ -56,5 +56,6 @@
   "test/bandarmologi-intel-ui.test.js",
   "test/header-profile-pattern-radar.test.js",
   "test/sensitive-area-compliance.test.js",
-  "test/broker-bubble-gross-net.test.js"
+  "test/broker-bubble-gross-net.test.js",
+  "test/broker-accumulation-fix.test.js"
 ]
