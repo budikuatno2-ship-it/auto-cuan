@@ -180,6 +180,7 @@
   var brokerFlowFilter = 'all'; // 'all', 'F' (foreign), 'D' (domestic)
   var bandarSection = 'summary'; // 'summary' (Broker Summary), 'akumulasi' (Akumulasi Broker), or 'intel' (Sinyal Intelijen Bandar)
   var selectedBrokerCode = '';
+  var selectedBrokerSide = '';
   var bubbleFilterSide = 'all'; // 'all', 'buy', 'sell'
   var lastBrokerItems = [];
 
@@ -464,26 +465,116 @@
       it.nvol = netVol;
       it.isNetBuyer = isNetBuyer;
       it.txVal = txVal;
-
-      items.push(it);
     }
 
-    // Balance Top 10 Buyers and Top 10 Sellers
+    var items = [];
     if (isGross) {
-      var buyersList = items.filter(function (it) { return it.bval > 0; }).sort(function (a, b) { return b.bval - a.bval; }).slice(0, 10);
-      var sellersList = items.filter(function (it) { return it.sval > 0; }).sort(function (a, b) { return b.sval - a.sval; }).slice(0, 10);
-      var combinedMap = {};
-      for (var bi = 0; bi < buyersList.length; bi++) {
-        combinedMap[buyersList[bi].broker] = buyersList[bi];
+      // 11 Top Gross Buyers
+      var buyerBrokers = [];
+      var seenBuyers = {};
+      for (var bi = 0; bi < bList.length; bi++) {
+        var bItm = bList[bi];
+        if (!bItm || !bItm.broker) continue;
+        var bCode = String(bItm.broker).trim().toUpperCase();
+        if (seenBuyers[bCode]) continue;
+        seenBuyers[bCode] = true;
+        var bStat = map[bCode];
+        if (!bStat) continue;
+        var buyTxVal = bStat.bval > 0 ? bStat.bval : Math.max(1, Math.abs(bStat.netVal));
+        buyerBrokers.push(Object.assign({}, bStat, {
+          side: 'buy',
+          isBuyer: true,
+          badge: 'BUY',
+          txVal: buyTxVal,
+          displayVal: bStat.bval
+        }));
       }
-      for (var si = 0; si < sellersList.length; si++) {
-        combinedMap[sellersList[si].broker] = sellersList[si];
+      if (buyerBrokers.length < 11) {
+        for (var c1 = 0; c1 < codes.length; c1++) {
+          var code1 = codes[c1];
+          if (!seenBuyers[code1] && map[code1].bval > 0) {
+            seenBuyers[code1] = true;
+            buyerBrokers.push(Object.assign({}, map[code1], {
+              side: 'buy',
+              isBuyer: true,
+              badge: 'BUY',
+              txVal: map[code1].bval,
+              displayVal: map[code1].bval
+            }));
+          }
+        }
       }
-      items = Object.values(combinedMap);
+      buyerBrokers.sort(function (a, b) { return b.txVal - a.txVal; });
+      var topBuyers = buyerBrokers.slice(0, 11);
+
+      // 11 Top Gross Sellers
+      var sellerBrokers = [];
+      var seenSellers = {};
+      for (var si = 0; si < sList.length; si++) {
+        var sItm = sList[si];
+        if (!sItm || !sItm.broker) continue;
+        var sCode = String(sItm.broker).trim().toUpperCase();
+        if (seenSellers[sCode]) continue;
+        seenSellers[sCode] = true;
+        var sStat = map[sCode];
+        if (!sStat) continue;
+        var sellTxVal = sStat.sval > 0 ? sStat.sval : Math.max(1, Math.abs(sStat.netVal));
+        sellerBrokers.push(Object.assign({}, sStat, {
+          side: 'sell',
+          isBuyer: false,
+          badge: 'SELL',
+          txVal: sellTxVal,
+          displayVal: sStat.sval
+        }));
+      }
+      if (sellerBrokers.length < 11) {
+        for (var c2 = 0; c2 < codes.length; c2++) {
+          var code2 = codes[c2];
+          if (!seenSellers[code2] && map[code2].sval > 0) {
+            seenSellers[code2] = true;
+            sellerBrokers.push(Object.assign({}, map[code2], {
+              side: 'sell',
+              isBuyer: false,
+              badge: 'SELL',
+              txVal: map[code2].sval,
+              displayVal: map[code2].sval
+            }));
+          }
+        }
+      }
+      sellerBrokers.sort(function (a, b) { return b.txVal - a.txVal; });
+      var topSellers = sellerBrokers.slice(0, 11);
+
+      items = topBuyers.concat(topSellers);
     } else {
-      var nBuyers = items.filter(function (it) { return it.isNetBuyer; }).sort(function (a, b) { return b.txVal - a.txVal; }).slice(0, 10);
-      var nSellers = items.filter(function (it) { return !it.isNetBuyer; }).sort(function (a, b) { return b.txVal - a.txVal; }).slice(0, 10);
-      items = nBuyers.concat(nSellers);
+      // Net Mode: Top Net Buyers (badge +, green) and Top Net Sellers (badge -, red/orange) balanced
+      var netBuyers = [];
+      var netSellers = [];
+      for (var cn = 0; cn < codes.length; cn++) {
+        var nStat = map[codes[cn]];
+        var nVal = nStat.netVal;
+        var absNval = Math.max(1, Math.abs(nVal));
+        if (nStat.isNetBuyer) {
+          netBuyers.push(Object.assign({}, nStat, {
+            side: 'buy',
+            isBuyer: true,
+            badge: '+',
+            txVal: absNval,
+            displayVal: nVal
+          }));
+        } else {
+          netSellers.push(Object.assign({}, nStat, {
+            side: 'sell',
+            isBuyer: false,
+            badge: '-',
+            txVal: absNval,
+            displayVal: nVal
+          }));
+        }
+      }
+      netBuyers.sort(function (a, b) { return b.txVal - a.txVal; });
+      netSellers.sort(function (a, b) { return b.txVal - a.txVal; });
+      items = netBuyers.slice(0, 11).concat(netSellers.slice(0, 11));
     }
 
     // Sort descending by transaction magnitude
@@ -504,11 +595,11 @@
       var size = Math.round(56 + sizeRatio * 48);
       item.size = size;
 
-      var netRatio = maxAbsNet > 0 ? (Math.abs(item.netVal) / maxAbsNet) : 0;
+      var ratio = isGross ? (maxTxVal > 0 ? (item.txVal / maxTxVal) : 0) : (maxAbsNet > 0 ? (Math.abs(item.netVal) / maxAbsNet) : 0);
       var tier = 1;
-      if (netRatio >= 0.55) {
+      if (ratio >= 0.55) {
         tier = 3;
-      } else if (netRatio >= 0.22) {
+      } else if (ratio >= 0.22) {
         tier = 2;
       }
       item.colorTier = tier;
@@ -698,17 +789,17 @@
   function renderBrokerBubbleClusterHtml(brokers, activeCode, mode, filterSide) {
     var isGross = mode === 'gross';
     var visibleBrokers = brokers.filter(function (b) {
-      if (filterSide === 'buy') return isGross ? (b.bval > 0) : b.isNetBuyer;
-      if (filterSide === 'sell') return isGross ? (b.sval > 0) : !b.isNetBuyer;
+      if (filterSide === 'buy') return isGross ? (b.side === 'buy' || b.isBuyer) : b.isNetBuyer;
+      if (filterSide === 'sell') return isGross ? (b.side === 'sell' || !b.isBuyer) : !b.isNetBuyer;
       return true;
     });
 
-    var buyerCount = isGross
-      ? brokers.filter(function (b) { return b.bval > 0; }).length
-      : brokers.filter(function (b) { return b.isNetBuyer; }).length;
-    var sellerCount = isGross
-      ? brokers.filter(function (b) { return b.sval > 0; }).length
-      : brokers.filter(function (b) { return !b.isNetBuyer; }).length;
+    var buyerCount = brokers.filter(function (b) {
+      return isGross ? (b.side === 'buy' || b.isBuyer) : b.isNetBuyer;
+    }).length;
+    var sellerCount = brokers.filter(function (b) {
+      return isGross ? (b.side === 'sell' || !b.isBuyer) : !b.isNetBuyer;
+    }).length;
 
     var html = '';
     html += '<div class="space-y-3">';
@@ -733,21 +824,28 @@
     } else {
       for (var i = 0; i < visibleBrokers.length; i++) {
         var b = visibleBrokers[i];
-        var isSelected = b.broker === activeCode;
-        var isBuyerBubble = filterSide === 'sell' ? false : (filterSide === 'buy' ? true : (isGross ? (b.bval > b.sval) : b.isNetBuyer));
+        var isBuyerBubble = isGross ? (b.side === 'buy' || b.isBuyer) : b.isNetBuyer;
+        var isSelected = (b.broker === activeCode) && (!selectedBrokerSide || !b.side || b.side === selectedBrokerSide);
         var styleInfo = getBubbleColorStyles(isBuyerBubble, b.colorTier);
-        var valText = isGross ? (filterSide === 'sell' ? ('-' + formatIDR(b.sval)) : (filterSide === 'buy' ? ('+' + formatIDR(b.bval)) : formatIDR(b.txVal))) : ((b.netVal >= 0 ? '+' : '-') + formatIDR(Math.abs(b.netVal)));
-        var subBadge = b.size >= 82 ? (isBuyerBubble ? 'BUY' : 'SELL') : '';
+        var valText = isGross
+          ? (b.side === 'sell' || !b.isBuyer ? ('-' + formatIDR(b.sval || b.txVal)) : ('+' + formatIDR(b.bval || b.txVal)))
+          : ((b.netVal >= 0 ? '+' : '-') + formatIDR(Math.abs(b.netVal)));
+        var subBadge = isGross
+          ? (isBuyerBubble ? 'BUY' : 'SELL')
+          : (b.size >= 76 ? (isBuyerBubble ? 'BUY' : 'SELL') : (b.netVal >= 0 ? '+' : '-'));
 
         var animString = isSelected
           ? 'none'
           : 'acBubbleFloat' + b.floatId + ' ' + b.floatDuration + 's ease-in-out infinite alternate, acBubblePopIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) ' + b.staggerDelay + 's backwards';
 
+        var bubbleKey = b.broker + (isGross ? ('-' + (b.side || (b.isBuyer ? 'buy' : 'sell'))) : '');
+
         html += '    <button type="button"';
-        html += '      id="broker-bubble-' + escapeHtml(b.broker) + '"';
+        html += '      id="broker-bubble-' + escapeHtml(bubbleKey) + '"';
         html += '      class="ac-broker-bubble ' + (isSelected ? 'ac-bubble-selected' : '') + '"';
         html += '      data-broker="' + escapeHtml(b.broker) + '"';
-        html += '      onclick="BandarmologiRuntime.selectBrokerBubble(\'' + escapeHtml(b.broker) + '\')"';
+        html += '      data-side="' + escapeHtml(b.side || (b.isBuyer ? 'buy' : 'sell')) + '"';
+        html += '      onclick="BandarmologiRuntime.selectBrokerBubble(\'' + escapeHtml(b.broker) + '\', \'' + escapeHtml(b.side || (b.isBuyer ? 'buy' : 'sell')) + '\')"';
         html += '      title="' + escapeHtml(b.broker + ' - ' + b.fullName) + '"';
         html += '      style="width:' + b.size + 'px; height:' + b.size + 'px; background:' + styleInfo.bg + '; border-color:' + styleInfo.border + '; color:' + styleInfo.text + '; box-shadow:' + styleInfo.shadow + '; animation:' + animString + ';">';
         html += '      <span class="font-mono font-black text-xs sm:text-sm tracking-wider leading-none">' + escapeHtml(b.broker) + '</span>';
@@ -761,7 +859,9 @@
     html += '  </div>';
 
     // Detail card placeholder
-    var activeBroker = brokers.find(function (b) { return b.broker === activeCode; }) || brokers[0] || null;
+    var activeBroker = visibleBrokers.find(function (b) {
+      return b.broker === activeCode && (!selectedBrokerSide || !b.side || b.side === selectedBrokerSide);
+    }) || visibleBrokers.find(function (b) { return b.broker === activeCode; }) || visibleBrokers[0] || brokers[0] || null;
     html += '  <div id="brokerDetailCardSlot">';
     html += renderBrokerDetailCardHtml(activeBroker, mode);
     html += '  </div>';
@@ -802,21 +902,26 @@
     }
   }
 
-  function selectBrokerBubble(brokerCode) {
+  function selectBrokerBubble(brokerCode, side) {
     selectedBrokerCode = String(brokerCode || '').trim().toUpperCase();
+    selectedBrokerSide = String(side || '').trim().toLowerCase();
 
     // Fast inline DOM update to preserve bubble float animations
     var bubbles = document.querySelectorAll('.ac-broker-bubble');
     for (var i = 0; i < bubbles.length; i++) {
       var el = bubbles[i];
       var code = el.getAttribute('data-broker');
-      if (code === selectedBrokerCode) {
+      var bSide = el.getAttribute('data-side') || '';
+      var isMatch = (code === selectedBrokerCode) && (!selectedBrokerSide || !bSide || bSide === selectedBrokerSide);
+      if (isMatch) {
         el.classList.add('ac-bubble-selected');
         el.style.animation = 'none';
       } else {
         el.classList.remove('ac-bubble-selected');
         // Restore float animation
-        var match = lastBrokerItems.find(function (it) { return it.broker === code; });
+        var match = lastBrokerItems.find(function (it) {
+          return it.broker === code && (!bSide || !it.side || it.side === bSide);
+        }) || lastBrokerItems.find(function (it) { return it.broker === code; });
         if (match) {
           el.style.animation = 'acBubbleFloat' + match.floatId + ' ' + match.floatDuration + 's ease-in-out infinite alternate';
         }
@@ -825,7 +930,9 @@
 
     var cardSlot = byId('brokerDetailCardSlot');
     if (cardSlot) {
-      var broker = lastBrokerItems.find(function (b) { return b.broker === selectedBrokerCode; }) || null;
+      var broker = lastBrokerItems.find(function (b) {
+        return b.broker === selectedBrokerCode && (!selectedBrokerSide || !b.side || b.side === selectedBrokerSide);
+      }) || lastBrokerItems.find(function (b) { return b.broker === selectedBrokerCode; }) || null;
       cardSlot.innerHTML = renderBrokerDetailCardHtml(broker, brokerSummaryMode);
     } else {
       var container = byId('bandarmologiContent');
@@ -1158,6 +1265,7 @@
       // Ensure selectedBrokerCode is valid
       if (!selectedBrokerCode || !lastBrokerItems.some(function (it) { return it.broker === selectedBrokerCode; })) {
         selectedBrokerCode = lastBrokerItems.length > 0 ? lastBrokerItems[0].broker : '';
+        selectedBrokerSide = lastBrokerItems.length > 0 ? (lastBrokerItems[0].side || '') : '';
       }
       html += renderBrokerBubbleClusterHtml(lastBrokerItems, selectedBrokerCode, brokerSummaryMode, bubbleFilterSide);
     } else {
@@ -1413,6 +1521,7 @@
 
       if (!selectedBrokerCode || !lastBrokerItems.some(function (it) { return it.broker === selectedBrokerCode; })) {
         selectedBrokerCode = lastBrokerItems.length > 0 ? lastBrokerItems[0].broker : '';
+        selectedBrokerSide = lastBrokerItems.length > 0 ? (lastBrokerItems[0].side || '') : '';
       }
       html += renderBrokerBubbleClusterHtml(lastBrokerItems, selectedBrokerCode, 'net', bubbleFilterSide);
     } else {
@@ -2493,6 +2602,9 @@
       setBrokerSummaryRange: setBrokerSummaryRange,
       setBandarSection: setBandarSection,
       getBandarSection: function () { return bandarSection; },
+      selectBrokerBubble: selectBrokerBubble,
+      setBubbleFilterSide: setBubbleFilterSide,
+      getBubbleFilterSide: function () { return bubbleFilterSide; },
       firstNonEmptyList: firstNonEmptyList,
       setHunterBroker: setHunterBroker,
       setHunterRange: setHunterRange,
