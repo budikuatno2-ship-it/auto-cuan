@@ -2530,10 +2530,7 @@ function syncHeaderUsername() {
 window.syncHeaderUsername = syncHeaderUsername;
 
 try {
-    window.addEventListener('autocuan:premium-access', function(ev) {
-        if (ev && ev.detail && (ev.detail.accessLevel === 'admin' || ev.detail.isAdmin)) {
-            try { localStorage.setItem('autocuan_is_admin', 'true'); } catch (_) {}
-        }
+    window.addEventListener('autocuan:premium-access', function() {
         syncHeaderUsername();
     });
 } catch (_) {}
