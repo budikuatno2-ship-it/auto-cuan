@@ -1886,6 +1886,9 @@
         } else {
           bandarIntelScannerData = json;
         }
+      } else if (bandarIntelViewMode === 'scanner') {
+        // Scanner cache-miss: store the response so UI shows empty categories instead of spinning
+        bandarIntelScannerData = json || {};
       } else {
         bandarIntelError = (json && json.error) || 'Gagal memuat data Sinyal Intelijen Bandar.';
       }
