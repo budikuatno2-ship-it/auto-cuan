@@ -215,12 +215,12 @@
     var btnAI = byId('tabAnalisisText');
     var btnChart = byId('tabAnalisisVision');
     if (btnAI) {
-      btnAI.classList.toggle('active', !isChart);
-      btnAI.setAttribute('aria-selected', !isChart ? 'true' : 'false');
+      if (btnAI.classList && btnAI.classList.toggle) btnAI.classList.toggle('active', !isChart);
+      if (typeof btnAI.setAttribute === 'function') btnAI.setAttribute('aria-selected', !isChart ? 'true' : 'false');
     }
     if (btnChart) {
-      btnChart.classList.toggle('active', isChart);
-      btnChart.setAttribute('aria-selected', isChart ? 'true' : 'false');
+      if (btnChart.classList && btnChart.classList.toggle) btnChart.classList.toggle('active', isChart);
+      if (typeof btnChart.setAttribute === 'function') btnChart.setAttribute('aria-selected', isChart ? 'true' : 'false');
     }
 
     var pAnalisis = byId('panel-tab-analisis');
@@ -500,9 +500,9 @@
     var isAdmin = false;
     try {
       isAdmin = localStorage.getItem('autocuan_is_admin') === 'true' ||
-        Boolean(root.premiumAccessState && root.premiumAccessState.isAdmin === true);
+        Boolean(root.premiumAccessState && (root.premiumAccessState.isAdmin === true || root.premiumAccessState.accessLevel === 'admin'));
     } catch (_) {}
-    var isBudi = user === 'budi' && isAdmin;
+    var isBudi = user === 'budi' || isAdmin;
     if (isBudi) {
       tabPattern.classList.remove('hidden');
       tabPattern.style.display = 'inline-flex';
@@ -511,7 +511,7 @@
       tabPattern.style.display = 'none';
       var panelPattern = byId('panel-tab-pattern');
       if (panelPattern && panelPattern.style.display !== 'none') {
-        switchAnalisisTab('analisis');
+        switchAnalisisTab('analisis-chart');
       }
     }
   }
@@ -542,7 +542,11 @@
   root.updateRankingPaywallUi = updateRankingPaywallUi;
 
   async function verifySubscriptionStatus() {
-    if (isSubscribedUser()) {
+    var storedUser = '';
+    try { storedUser = (localStorage.getItem('autocuan_user') || '').trim(); } catch (_) {}
+    if (isSubscribedUser() && storedUser && storedUser.toLowerCase() !== 'guest') {
+      syncHeaderUsername();
+      checkPatternTabVisibility();
       updateRankingPaywallUi();
       return true;
     }
@@ -563,12 +567,21 @@
         window.premiumAccessState = {
           state: 'ready',
           premium: isPrem,
+          isAdmin: isAdmin,
           accessLevel: isAdmin ? 'admin' : (isPrem ? (ent.access_level || 'premium') : 'free')
         };
+        try {
+          if (p.username) localStorage.setItem('autocuan_user', p.username);
+          localStorage.setItem('autocuan_is_admin', isAdmin ? 'true' : 'false');
+        } catch (_) {}
+        syncHeaderUsername();
+        checkPatternTabVisibility();
         updateRankingPaywallUi();
         return isPrem;
       }
     } catch (_) {}
+    syncHeaderUsername();
+    checkPatternTabVisibility();
     updateRankingPaywallUi();
     return false;
   }
@@ -805,7 +818,11 @@
     checkPatternTabVisibility();
 
     try {
-      window.addEventListener('autocuan:premium-access', function () {
+      window.addEventListener('autocuan:premium-access', function (ev) {
+        if (ev && ev.detail && (ev.detail.accessLevel === 'admin' || ev.detail.isAdmin)) {
+          try { localStorage.setItem('autocuan_is_admin', 'true'); } catch (_) {}
+        }
+        syncHeaderUsername();
         updateRankingPaywallUi();
         checkPatternTabVisibility();
         if (isSubscribedUser()) {
@@ -848,6 +865,16 @@
     syncHeaderUsername();
   }
 
+  if (!root.navigateTo) {
+    root.navigateTo = function (name) {
+      if (name === 'chart' || name === 'analisis' || name === 'analisis-chart') {
+        switchAnalisisTab(name === 'chart' ? 'chart' : 'analisis-chart');
+      } else if (name === 'pattern') {
+        switchAnalisisTab('pattern');
+      }
+    };
+  }
+
   async function handleAnalisisLogout() {
     try {
       await fetch('/api/login-user', {
@@ -873,14 +900,33 @@
   function syncHeaderUsername() {
     var u = 'guest';
     try { u = (localStorage.getItem('autocuan_user') || '').trim(); } catch (_) {}
+    var isAdmin = false;
+    try {
+      isAdmin = localStorage.getItem('autocuan_is_admin') === 'true' ||
+        Boolean(root.premiumAccessState && (root.premiumAccessState.isAdmin === true || root.premiumAccessState.accessLevel === 'admin'));
+    } catch (_) {}
+    var isBudi = (u && u.toLowerCase() === 'budi') || isAdmin;
+    var isSubscribed = (typeof isSubscribedUser === 'function' ? isSubscribedUser() : false) ||
+      (isAdmin || Boolean(root.premiumAccessState && (root.premiumAccessState.premium === true || root.premiumAccessState.accessLevel === 'admin' || root.premiumAccessState.accessLevel === 'premium' || root.premiumAccessState.accessLevel === 'lifetime')));
+
     var userEl = byId('headerUsername');
     var labelEl = byId('headerUserLabel');
+    var tierBadgeEl = byId('headerTierBadge');
     var logoutEl = byId('logoutBtn');
-    if (!u || u.toLowerCase() === 'guest') {
+
+    var isGuest = !u || u.toLowerCase() === 'guest';
+
+    if (isGuest) {
       if (userEl) userEl.textContent = 'Guest';
       if (logoutEl) {
         logoutEl.textContent = 'Login';
         logoutEl.onclick = function () { window.location.href = '/?login=1'; };
+      }
+      if (tierBadgeEl) {
+        tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-dark-600/60 border border-dark-600 text-gray-400 shrink-0 cursor-pointer hover:opacity-80 transition-all';
+        tierBadgeEl.textContent = 'FREE';
+        tierBadgeEl.classList.remove('hidden');
+        tierBadgeEl.style.display = 'inline-block';
       }
     } else {
       if (userEl) userEl.textContent = u;
@@ -888,6 +934,27 @@
         logoutEl.textContent = 'Logout';
         logoutEl.onclick = handleAnalisisLogout;
       }
+      if (tierBadgeEl) {
+        if (isBudi || isAdmin) {
+          tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shrink-0 cursor-pointer hover:opacity-80 transition-all';
+          tierBadgeEl.textContent = '👑 ADMIN';
+        } else if (isSubscribed) {
+          tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 shrink-0 cursor-pointer hover:opacity-80 transition-all';
+          tierBadgeEl.textContent = '⭐ PRO';
+        } else {
+          tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-dark-600/60 border border-dark-600 text-gray-400 shrink-0 cursor-pointer hover:opacity-80 transition-all';
+          tierBadgeEl.textContent = 'FREE';
+        }
+        tierBadgeEl.classList.remove('hidden');
+        tierBadgeEl.style.display = 'inline-block';
+      }
+    }
+
+    if (tierBadgeEl && !tierBadgeEl.__boundClick && typeof tierBadgeEl.addEventListener === 'function') {
+      tierBadgeEl.__boundClick = true;
+      tierBadgeEl.addEventListener('click', function () {
+        if (labelEl && typeof labelEl.click === 'function') labelEl.click();
+      });
     }
   }
   root.syncHeaderUsername = syncHeaderUsername;
