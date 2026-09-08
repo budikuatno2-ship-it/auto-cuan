@@ -515,25 +515,24 @@
           displayVal: bStat.bval
         }));
       }
-      if (buyerBrokers.length < 11) {
-        for (var c1 = 0; c1 < codes.length; c1++) {
-          var code1 = codes[c1];
-          if (!seenBuyers[code1] && map[code1].bval > 0) {
-            seenBuyers[code1] = true;
-            buyerBrokers.push(Object.assign({}, map[code1], {
-              side: 'buy',
-              isBuyer: true,
-              badge: 'BUY',
-              txVal: map[code1].bval,
-              displayVal: map[code1].bval
-            }));
-          }
+      // Collect all remaining brokers with bval > 0
+      for (var c1 = 0; c1 < codes.length; c1++) {
+        var code1 = codes[c1];
+        if (!seenBuyers[code1] && map[code1].bval > 0) {
+          seenBuyers[code1] = true;
+          buyerBrokers.push(Object.assign({}, map[code1], {
+            side: 'buy',
+            isBuyer: true,
+            badge: 'BUY',
+            txVal: map[code1].bval,
+            displayVal: map[code1].bval
+          }));
         }
       }
       buyerBrokers.sort(function (a, b) { return b.txVal - a.txVal; });
-      var topBuyers = buyerBrokers.slice(0, 11);
+      var topBuyers = buyerBrokers; // Render all real buyers without artificial slicing
 
-      // 11 Top Gross Sellers
+      // Gross Sellers: all brokers with sval > 0
       var sellerBrokers = [];
       var seenSellers = {};
       for (var si = 0; si < sList.length; si++) {
@@ -553,27 +552,26 @@
           displayVal: sStat.sval
         }));
       }
-      if (sellerBrokers.length < 11) {
-        for (var c2 = 0; c2 < codes.length; c2++) {
-          var code2 = codes[c2];
-          if (!seenSellers[code2] && map[code2].sval > 0) {
-            seenSellers[code2] = true;
-            sellerBrokers.push(Object.assign({}, map[code2], {
-              side: 'sell',
-              isBuyer: false,
-              badge: 'SELL',
-              txVal: map[code2].sval,
-              displayVal: map[code2].sval
-            }));
-          }
+      // Collect all remaining brokers with sval > 0
+      for (var c2 = 0; c2 < codes.length; c2++) {
+        var code2 = codes[c2];
+        if (!seenSellers[code2] && map[code2].sval > 0) {
+          seenSellers[code2] = true;
+          sellerBrokers.push(Object.assign({}, map[code2], {
+            side: 'sell',
+            isBuyer: false,
+            badge: 'SELL',
+            txVal: map[code2].sval,
+            displayVal: map[code2].sval
+          }));
         }
       }
       sellerBrokers.sort(function (a, b) { return b.txVal - a.txVal; });
-      var topSellers = sellerBrokers.slice(0, 11);
+      var topSellers = sellerBrokers; // Render all real sellers without artificial slicing
 
       items = topBuyers.concat(topSellers);
     } else {
-      // Net Mode: Top Net Buyers (badge +, green) and Top Net Sellers (badge -, red/orange) balanced
+      // Net Mode: All Net Buyers (badge +, green) and All Net Sellers (badge -, red/orange) without artificial slicing
       var netBuyers = [];
       var netSellers = [];
       for (var cn = 0; cn < codes.length; cn++) {
@@ -600,7 +598,7 @@
       }
       netBuyers.sort(function (a, b) { return b.txVal - a.txVal; });
       netSellers.sort(function (a, b) { return b.txVal - a.txVal; });
-      items = netBuyers.slice(0, 11).concat(netSellers.slice(0, 11));
+      items = netBuyers.concat(netSellers);
     }
 
     // Sort descending by transaction magnitude
@@ -613,12 +611,15 @@
       if (Math.abs(items[m].netVal) > maxAbsNet) maxAbsNet = Math.abs(items[m].netVal);
     }
 
-    // Assign sizes, 3-tier colors, and animation presets
+    // Assign sizes, 3-tier colors, and animation presets with responsive density scaling
     for (var k = 0; k < items.length; k++) {
       var item = items[k];
-      var sizeRatio = Math.sqrt(item.txVal / maxTxVal);
-      // Diameter clamped between 56px and 104px
-      var size = Math.round(56 + sizeRatio * 48);
+      var sizeRatio = maxTxVal > 0 ? Math.sqrt(item.txVal / maxTxVal) : 0.5;
+      // Proportional responsive scaling clamped between 44px-52px and 84px-98px
+      var count = items.length;
+      var minPx = count > 40 ? 44 : (count > 24 ? 48 : 52);
+      var maxPx = count > 40 ? 84 : (count > 24 ? 92 : 98);
+      var size = Math.round(minPx + sizeRatio * (maxPx - minPx));
       item.size = size;
 
       var ratio = isGross ? (maxTxVal > 0 ? (item.txVal / maxTxVal) : 0) : (maxAbsNet > 0 ? (Math.abs(item.netVal) / maxAbsNet) : 0);
@@ -633,7 +634,7 @@
       // Continuous float animation parameters
       item.floatId = (k % 4) + 1;
       item.floatDuration = (3.2 + (k % 5) * 0.4).toFixed(1);
-      item.staggerDelay = (k * 0.05).toFixed(2);
+      item.staggerDelay = (k * 0.03).toFixed(2);
     }
 
     return items;

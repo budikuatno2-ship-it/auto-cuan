@@ -6,7 +6,7 @@ const path = require('node:path');
 
 const bandarmologiRuntime = require(path.join(__dirname, '..', 'public', 'bandarmologi-runtime.js'));
 
-test('FASE 2: Mode Gross generates exactly 22 bubbles (11 Top Gross Buyers + 11 Top Gross Sellers)', () => {
+test('Dynamic Rendering: Mode Gross renders ALL 30 real brokers dynamically without artificial slicing (15 buyers + 15 sellers)', () => {
   // Create 15 buyers and 15 sellers
   const mockBuyers = [
     { broker: 'YP', bval: 150000000000, sval: 140000000000, bvol: 150000, svol: 140000, avg_buy: 1000 },
@@ -46,14 +46,14 @@ test('FASE 2: Mode Gross generates exactly 22 bubbles (11 Top Gross Buyers + 11 
 
   const bubbles = bandarmologiRuntime.buildBrokerBubbleItems(mockBuyers, mockSellers, 'gross');
 
-  // 1. Must produce exactly 22 bubbles total
-  assert.equal(bubbles.length, 22, 'Gross mode must produce exactly 22 bubbles (11 buyers + 11 sellers)');
+  // 1. Must produce all 30 bubbles total (no artificial 11/22 slice!)
+  assert.equal(bubbles.length, 30, 'Gross mode must produce all 30 real bubbles (15 buyers + 15 sellers)');
 
-  // 2. Exactly 11 buyers and 11 sellers
+  // 2. Exactly 15 buyers and 15 sellers
   const buyersList = bubbles.filter(b => b.side === 'buy' && b.isBuyer === true);
   const sellersList = bubbles.filter(b => b.side === 'sell' && b.isBuyer === false);
-  assert.equal(buyersList.length, 11, 'Must have exactly 11 top gross buyers');
-  assert.equal(sellersList.length, 11, 'Must have exactly 11 top gross sellers');
+  assert.equal(buyersList.length, 15, 'Must have all 15 gross buyers');
+  assert.equal(sellersList.length, 15, 'Must have all 15 gross sellers');
 
   // 3. Dual-sided broker (YP) exists in both buyer and seller lists
   const ypBuyer = buyersList.find(b => b.broker === 'YP');
