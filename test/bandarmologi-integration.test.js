@@ -63,8 +63,8 @@ test('arjumClient: fetchBrokerSummary always sends explicit broker_limit and lev
   };
   try {
     await arjumClient.fetchBrokerSummary('BBCA');
-    assert.match(capturedUrl, /broker_limit=20/, 'must default broker_limit to 20, not rely on Arjum\'s own smaller default');
-    assert.match(capturedUrl, /level_limit=25/);
+    assert.match(capturedUrl, /broker_limit=100/, 'must default broker_limit to 100 to cover full IDX broker universe');
+    assert.match(capturedUrl, /level_limit=100/);
 
     capturedUrl = '';
     await arjumClient.fetchBrokerSummary('BBCA', null, null, { brokerLimit: 50, levelLimit: 60 });
