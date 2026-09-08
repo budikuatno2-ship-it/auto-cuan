@@ -8179,10 +8179,11 @@ async function handleBandarmologi(req, res) {
     var ticker = (req.query && req.query.ticker) || 'BBCA';
     var date = (req.query && req.query.date) || '';
     var range = (req.query && (req.query.range || req.query.days)) || '1d';
+    var days = req.query && req.query.days ? Number(req.query.days) : undefined;
     var startDate = (req.query && req.query.startDate) || '';
     var endDate = (req.query && req.query.endDate) || '';
     var flow = (req.query && req.query.flow) || '';
-    var result = await bandarmologiService.getBandarmologiData(ticker, { date: date, range: range, startDate: startDate, endDate: endDate, flow: flow });
+    var result = await bandarmologiService.getBandarmologiData(ticker, { date: date, range: range, days: days, startDate: startDate, endDate: endDate, flow: flow });
     return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });

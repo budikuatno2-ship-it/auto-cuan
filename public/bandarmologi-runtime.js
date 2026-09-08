@@ -329,21 +329,24 @@
       var itemNval = item.nval != null ? Number(item.nval) : (item.net_val != null ? Number(item.net_val) : null);
       if (itemNval != null) {
         if (!isBuyerList) {
-          itemNval = -Math.abs(itemNval);
+          // Only mark negative if no previous net value was set or if sell value actually dominates
+          if (target.explicitNetVal == null || target.bval < target.sval) {
+            target.explicitNetVal = -Math.abs(itemNval);
+          }
         } else {
-          itemNval = Math.abs(itemNval);
+          target.explicitNetVal = itemNval >= 0 ? Math.abs(itemNval) : itemNval;
         }
-        target.explicitNetVal = itemNval;
       }
 
       var itemNvol = item.nvol != null ? Number(item.nvol) : (item.net_vol != null ? Number(item.net_vol) : null);
       if (itemNvol != null) {
         if (!isBuyerList) {
-          itemNvol = -Math.abs(itemNvol);
+          if (target.explicitNetVol == null || target.bvol < target.svol) {
+            target.explicitNetVol = -Math.abs(itemNvol);
+          }
         } else {
-          itemNvol = Math.abs(itemNvol);
+          target.explicitNetVol = itemNvol >= 0 ? Math.abs(itemNvol) : itemNvol;
         }
-        target.explicitNetVol = itemNvol;
       }
     }
 
@@ -375,8 +378,23 @@
       if (normBval !== it.bval) it.bval = normBval;
       if (normSval !== it.sval) it.sval = normSval;
 
-      var netVal = it.explicitNetVal != null ? it.explicitNetVal : (it.bval - it.sval);
-      var netVol = it.explicitNetVol != null ? it.explicitNetVol : (it.bvol - it.svol);
+      var netVal;
+      if (it.bval > 0 && it.sval > 0) {
+        netVal = it.bval - it.sval;
+      } else if (it.explicitNetVal != null) {
+        netVal = it.explicitNetVal;
+      } else {
+        netVal = it.bval - it.sval;
+      }
+
+      var netVol;
+      if (it.bvol > 0 && it.svol > 0) {
+        netVol = it.bvol - it.svol;
+      } else if (it.explicitNetVol != null) {
+        netVol = it.explicitNetVol;
+      } else {
+        netVol = it.bvol - it.svol;
+      }
 
       // Anomaly correction on netVal if over-inflated into trillions
       if (Math.abs(netVal) >= 1e12 && (it.bvol > 0 || it.svol > 0)) {
@@ -391,10 +409,10 @@
       }
 
       var isNetBuyer;
-      if (it.explicitNetVal != null) {
-        isNetBuyer = it.explicitNetVal >= 0;
-      } else if (it.bval > 0 && it.sval > 0) {
+      if (it.bval > 0 && it.sval > 0) {
         isNetBuyer = it.bval >= it.sval;
+      } else if (it.explicitNetVal != null) {
+        isNetBuyer = it.explicitNetVal >= 0;
       } else if (it.bval > 0) {
         isNetBuyer = true;
       } else if (it.sval > 0) {
@@ -625,13 +643,17 @@
   function renderBrokerBubbleClusterHtml(brokers, activeCode, mode, filterSide) {
     var isGross = mode === 'gross';
     var visibleBrokers = brokers.filter(function (b) {
-      if (filterSide === 'buy') return b.isNetBuyer;
-      if (filterSide === 'sell') return !b.isNetBuyer;
+      if (filterSide === 'buy') return isGross ? (b.bval > 0) : b.isNetBuyer;
+      if (filterSide === 'sell') return isGross ? (b.sval > 0) : !b.isNetBuyer;
       return true;
     });
 
-    var buyerCount = brokers.filter(function (b) { return b.isNetBuyer; }).length;
-    var sellerCount = brokers.filter(function (b) { return !b.isNetBuyer; }).length;
+    var buyerCount = isGross
+      ? brokers.filter(function (b) { return b.bval > 0; }).length
+      : brokers.filter(function (b) { return b.isNetBuyer; }).length;
+    var sellerCount = isGross
+      ? brokers.filter(function (b) { return b.sval > 0; }).length
+      : brokers.filter(function (b) { return !b.isNetBuyer; }).length;
 
     var html = '';
     html += '<div class="space-y-3">';
@@ -772,6 +794,14 @@
         tabHunter.setAttribute('aria-selected', bandarSection === 'hunter' ? 'true' : 'false');
       }
     }
+    var subSum = byId('subTabBrokerSummary');
+    var subAcc = byId('subTabAkumulasiBroker');
+    if (subSum && subAcc) {
+      subSum.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
+      subSum.setAttribute('aria-selected', bandarSection === 'summary' ? 'true' : 'false');
+      subAcc.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'akumulasi' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
+      subAcc.setAttribute('aria-selected', bandarSection === 'akumulasi' ? 'true' : 'false');
+    }
     var titleEl = byId('bandarPanelTitle');
     if (titleEl) {
       if (bandarSection === 'hunter') {
@@ -789,13 +819,12 @@
         window.history.replaceState({}, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
       }
     } catch (_) {}
-    var container = byId('bandarmologiContent');
-    if (container) {
-      if (bandarSection === 'hunter') {
-        renderBrokerHunterUI(container);
-      } else if (lastBandarData) {
-        renderBandarmologiUI(container, lastBandarData);
-      }
+    var hunterContainer = byId('brokerHunterContent') || byId('bandarmologiContent');
+    var bandarContainer = byId('bandarmologiContent');
+    if (bandarSection === 'hunter' && hunterContainer) {
+      renderBrokerHunterUI(hunterContainer);
+    } else if (bandarContainer && lastBandarData) {
+      renderBandarmologiUI(bandarContainer, lastBandarData);
     }
   }
 
@@ -811,13 +840,16 @@
 
   function setBrokerSummaryRange(range) {
     brokerSummaryRange = range || '1d';
+    if (brokerSummaryRange !== '1d') {
+      currentBandarDate = null;
+    }
     if (brokerSummaryRange === 'custom') {
       // Just switch the UI to show the date pickers; wait for explicit "Terapkan".
       var container = byId('bandarmologiContent');
       if (container && lastBandarData) renderBandarmologiUI(container, lastBandarData);
       return;
     }
-    loadBandarmologiTab(currentBandarTicker, brokerSummaryRange === '1d' ? currentBandarDate : null, brokerSummaryRange);
+    loadBandarmologiTab(currentBandarTicker, null, brokerSummaryRange);
   }
 
   function applyCustomBrokerSummaryRange(startDate, endDate) {
@@ -825,6 +857,7 @@
     customRangeStart = startDate;
     customRangeEnd = endDate;
     brokerSummaryRange = 'custom';
+    currentBandarDate = null;
     loadBandarmologiTab(currentBandarTicker, null, 'custom');
   }
 
@@ -832,8 +865,11 @@
     var clean = String(ticker || currentBandarTicker || 'BBCA').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!clean) clean = 'BBCA';
     currentBandarTicker = clean;
-    if (date !== undefined && date !== null) currentBandarDate = date;
-    if (range) brokerSummaryRange = range;
+    if (date !== undefined) currentBandarDate = date;
+    if (range) {
+      brokerSummaryRange = range;
+      if (range !== '1d') currentBandarDate = null;
+    }
 
     var container = byId('bandarmologiContent');
     if (!container) return;
@@ -859,6 +895,8 @@
         url += '&range=custom&startDate=' + encodeURIComponent(customRangeStart) + '&endDate=' + encodeURIComponent(customRangeEnd);
       } else if (brokerSummaryRange && brokerSummaryRange !== '1d') {
         url += '&range=' + encodeURIComponent(brokerSummaryRange);
+        var numDays = brokerSummaryRange === '30d' ? 30 : (brokerSummaryRange === '7d' ? 7 : 1);
+        url += '&days=' + numDays;
       } else if (currentBandarDate) {
         url += '&date=' + encodeURIComponent(currentBandarDate);
       }
@@ -940,13 +978,14 @@
       html += '</div>';
     }
 
-    // SECTION TABS: Broker Summary vs Akumulasi Broker vs Broker Hunter
+    // SECTION TABS: Only render inline switcher if external subTabBrokerSummary is absent
     var isSummarySection = bandarSection === 'summary';
-    html += '<div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-xs mb-4 w-fit">';
-    html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'summary\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📊 Broker Summary</button>';
-    html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'akumulasi\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'akumulasi' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📈 Akumulasi Broker</button>';
-    html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'hunter\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'hunter' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🎯 Broker Hunter</button>';
-    html += '</div>';
+    if (!byId('subTabBrokerSummary')) {
+      html += '<div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-xs mb-4 w-fit">';
+      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'summary\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📊 Broker Summary</button>';
+      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'akumulasi\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'akumulasi' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📈 Akumulasi Broker</button>';
+      html += '</div>';
+    }
 
     if (isSummarySection) {
     // 1. BROKER SUMMARY (BANDARMOLOGI) SECTION - INTERACTIVE BUBBLE OR DETAILED TABLE
@@ -1250,8 +1289,29 @@
 
     if (isAccBubbleView) {
       // 2A. BUBBLE VIEW UNTUK AKUMULASI BROKER
-      var rawAccBuyers = firstNonEmptyList(bSum.net_buyers, bAcc.net_buyers, bAcc.top_buyers, bSum.top_buyers, bSum.gross_buyers);
-      var rawAccSellers = firstNonEmptyList(bSum.net_sellers, bAcc.net_sellers, bAcc.top_sellers, bSum.top_sellers, bSum.gross_sellers);
+      var rawAccBuyers = firstNonEmptyList(bAcc.net_buyers, bAcc.top_buyers, bSum.net_buyers, bSum.top_buyers, bSum.gross_buyers);
+      var rawAccSellers = firstNonEmptyList(bAcc.net_sellers, bAcc.top_sellers, bSum.net_sellers, bSum.top_sellers, bSum.gross_sellers);
+
+      // Partition guard: if sellers list is empty or buyers contains negative net values
+      var allAcc = [].concat(rawAccBuyers || []);
+      if (!rawAccSellers || rawAccSellers.length === 0 || allAcc.some(function (b) {
+        var v = b.nval != null ? b.nval : (b.net_val != null ? b.net_val : ((b.bval || b.buy_val || 0) - (b.sval || b.sell_val || 0)));
+        return v < 0;
+      })) {
+        var pBuyers = [];
+        var pSellers = [].concat(rawAccSellers || []);
+        for (var ai = 0; ai < allAcc.length; ai++) {
+          var itm = allAcc[ai];
+          var nCheck = itm.nval != null ? itm.nval : (itm.net_val != null ? itm.net_val : ((itm.bval || itm.buy_val || 0) - (itm.sval || itm.sell_val || 0)));
+          if (nCheck < 0) {
+            pSellers.push(itm);
+          } else {
+            pBuyers.push(itm);
+          }
+        }
+        rawAccBuyers = pBuyers;
+        rawAccSellers = pSellers;
+      }
 
       var accBuyers = filterBrokersByFlow(rawAccBuyers, brokerFlowFilter);
       var accSellers = filterBrokersByFlow(rawAccSellers, brokerFlowFilter);
@@ -1454,11 +1514,11 @@
     }
   }
 
-  async function loadBrokerHunter() {
+  async function loadBrokerHunter(targetContainer) {
     hunterLoading = true;
     hunterError = null;
-    var container = (typeof document !== 'undefined') ? byId('bandarmologiContent') : null;
-    if (container && bandarSection === 'hunter') {
+    var container = targetContainer || ((typeof document !== 'undefined') ? (byId('brokerHunterContent') || byId('bandarmologiContent')) : null);
+    if (container) {
       renderBrokerHunterUI(container);
     }
     if (typeof fetch === 'undefined') {
@@ -1481,29 +1541,23 @@
       hunterError = err.message || String(err);
     } finally {
       hunterLoading = false;
-      if (container && bandarSection === 'hunter') {
+      if (container) {
         renderBrokerHunterUI(container);
       }
     }
   }
 
   function renderBrokerHunterUI(container) {
+    container = container || ((typeof document !== 'undefined') ? (byId('brokerHunterContent') || byId('bandarmologiContent')) : null);
     if (!container) return;
 
     if (!hunterData && !hunterLoading && !hunterError && typeof fetch !== 'undefined') {
-      loadBrokerHunter();
+      loadBrokerHunter(container);
     }
 
     var html = '';
 
-    // 1. SECTION NAVIGATION TABS
-    html += '<div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-xs mb-4 w-fit">';
-    html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'summary\')" class="px-3 py-1.5 rounded-md transition text-gray-400 hover:text-white font-medium">📊 Broker Summary</button>';
-    html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'akumulasi\')" class="px-3 py-1.5 rounded-md transition text-gray-400 hover:text-white font-medium">📈 Akumulasi Broker</button>';
-    html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'hunter\')" class="px-3 py-1.5 rounded-md transition bg-emerald-500 text-dark-900 shadow-sm font-bold">🎯 Broker Hunter</button>';
-    html += '</div>';
-
-    // 2. HEADER CONTROLS CARD
+    // HEADER CONTROLS CARD
     html += '<div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 mb-5 shadow-lg backdrop-blur">';
     html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">';
     html += '    <div>';
