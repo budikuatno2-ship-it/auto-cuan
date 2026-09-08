@@ -354,5 +354,7 @@
   "test/unified-cockpit-layout.test.js",
   "test/standalone-analisis-saham.test.js",
   "test/pattern-radar-timeout.test.js",
-  "test/broker-accumulation-bubble.test.js"
+  "test/broker-accumulation-bubble.test.js",
+  "test/broker-engine-parity.test.js",
+  "test/bandarmologi-intel-ui.test.js"
 ]

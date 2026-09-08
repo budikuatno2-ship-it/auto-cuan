@@ -248,7 +248,7 @@
     var parentTab = tabName;
     if (tabName === 'analisis' || tabName === 'chart') {
       parentTab = 'analisis-chart';
-    } else if (tabName === 'akumulasi') {
+    } else if (tabName === 'akumulasi' || tabName === 'intel' || tabName === 'bandarmologi-intel') {
       parentTab = 'bandarmologi';
     }
 
@@ -328,7 +328,9 @@
     } else if (parentTab === 'ranking') {
       root.ensureRankingTableLoaded();
     } else if (parentTab === 'bandarmologi') {
-      var bandarSection = (tabName === 'akumulasi') ? 'akumulasi' : 'summary';
+      var currentSection = (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.getBandarSection === 'function')
+        ? root.BandarmologiRuntime.getBandarSection() : 'summary';
+      var bandarSection = (tabName === 'akumulasi') ? 'akumulasi' : ((tabName === 'intel' || tabName === 'bandarmologi-intel') ? 'intel' : (tabName === 'bandarmologi' ? currentSection : 'summary'));
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
         root.BandarmologiRuntime.setBandarSection(bandarSection);
       }
@@ -391,8 +393,10 @@
 
     // 4. Reload data specific to the active tab without leaving the tab!
     if (tabName === 'bandarmologi') {
+      var activeSec = (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.getBandarSection === 'function')
+        ? root.BandarmologiRuntime.getBandarSection() : 'summary';
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
-        root.BandarmologiRuntime.setBandarSection('summary');
+        root.BandarmologiRuntime.setBandarSection(activeSec || 'summary');
       }
       if (typeof root.loadBandarmologiTab === 'function') {
         root.loadBandarmologiTab(ticker);
@@ -400,6 +404,13 @@
     } else if (tabName === 'akumulasi') {
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
         root.BandarmologiRuntime.setBandarSection('akumulasi');
+      }
+      if (typeof root.loadBandarmologiTab === 'function') {
+        root.loadBandarmologiTab(ticker);
+      }
+    } else if (tabName === 'intel' || tabName === 'bandarmologi-intel') {
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
+        root.BandarmologiRuntime.setBandarSection('intel');
       }
       if (typeof root.loadBandarmologiTab === 'function') {
         root.loadBandarmologiTab(ticker);
