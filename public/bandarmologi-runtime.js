@@ -1945,7 +1945,7 @@
       html += '    <div>';
       html += '      <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-dark-600/30">';
       html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🏷️</span> Harga di Bawah Modal Bandar</h4>';
-      if (s1.is_sweet_spot) {
+      if (s1.in_sweet_spot || s1.is_sweet_spot) {
         html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">🎯 SWEET SPOT (&le; 5% Diskon)</span>';
       } else if (s1.triggered) {
         html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">🟢 DI BAWAH MODAL</span>';
@@ -1955,7 +1955,8 @@
       html += '      </div>';
 
       var currentPrice = s1.current_price || s1.close_price || 0;
-      var bandarAvg = s1.bandar_avg_price || s1.avg_buy_price || 0;
+      // Backend returns bandar_avg_buy (not bandar_avg_price or avg_buy_price)
+      var bandarAvg = s1.bandar_avg_buy || s1.bandar_avg_price || s1.avg_buy_price || 0;
       var discount = s1.discount_pct != null ? s1.discount_pct : (bandarAvg > 0 && currentPrice > 0 ? Number((((bandarAvg - currentPrice) / bandarAvg) * 100).toFixed(2)) : 0);
 
       html += '      <div class="grid grid-cols-3 gap-2 text-xs mb-3 bg-dark-800/60 p-2.5 rounded-lg border border-dark-600/20">';
@@ -1964,7 +1965,9 @@
       html += '        <div><span class="text-[10px] text-gray-400 block">Diskon vs Bandar</span><span class="font-mono font-bold ' + (discount > 0 ? 'text-emerald-400' : 'text-gray-400') + '">' + (discount > 0 ? '+' : '') + discount + '%</span></div>';
       html += '      </div>';
 
-      var topBrokers = s1.top_broker_details || s1.top_brokers || [];
+      // Backend returns top_3_brokers (not top_broker_details or top_brokers)
+      var topBrokers = s1.top_3_brokers || s1.top_broker_details || s1.top_brokers || [];
+
       if (topBrokers.length > 0) {
         html += '      <div class="mb-3">';
         html += '        <span class="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Top 3 Broker Akumulator:</span>';
