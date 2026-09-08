@@ -178,10 +178,33 @@
   var customRangeStart = '';
   var customRangeEnd = '';
   var brokerFlowFilter = 'all'; // 'all', 'F' (foreign), 'D' (domestic)
-  var bandarSection = 'summary'; // 'summary' (Broker Summary) or 'akumulasi' (Akumulasi Broker)
+  var bandarSection = 'summary'; // 'summary' (Broker Summary), 'akumulasi' (Akumulasi Broker), or 'intel' (Sinyal Intelijen Bandar)
   var selectedBrokerCode = '';
   var bubbleFilterSide = 'all'; // 'all', 'buy', 'sell'
   var lastBrokerItems = [];
+
+  // Bandarmologi Intelligence State
+  var bandarIntelTicker = 'BBCA';
+  var bandarIntelRange = '7d'; // '7d' or '30d'
+  var bandarIntelViewMode = 'ticker'; // 'ticker' or 'scanner'
+  var bandarIntelScannerCategory = 'harga_di_bawah_modal_bandar';
+  var bandarIntelData = null;
+  var bandarIntelScannerData = null;
+  var bandarIntelLoading = false;
+  var bandarIntelError = null;
+
+  var RETAIL_BROKERS = ['YP', 'PD', 'XC', 'XL', 'NI'];
+  var INSTITUTIONAL_BROKERS = ['AK', 'BK', 'RX', 'CC', 'KZ', 'ZP', 'CS', 'DB'];
+
+  function isRetailBroker(code) {
+    if (!code) return false;
+    return RETAIL_BROKERS.indexOf(String(code).trim().toUpperCase()) >= 0;
+  }
+
+  function isInstitutionalBroker(code) {
+    if (!code) return false;
+    return INSTITUTIONAL_BROKERS.indexOf(String(code).trim().toUpperCase()) >= 0;
+  }
 
   // Broker Hunter state
   var hunterBroker = 'AK';
@@ -813,32 +836,32 @@
   }
 
   function setBandarSection(section) {
-    bandarSection = (section === 'akumulasi' || section === 'hunter') ? section : 'summary';
+    bandarSection = (section === 'akumulasi' || section === 'intel') ? section : 'summary';
     var tabBandar = byId('tabBandarmologi');
     var tabAkumulasi = byId('tabAkumulasiBroker');
-    var tabHunter = byId('tabBrokerHunter');
     if (tabBandar && tabAkumulasi) {
-      tabBandar.classList.toggle('active', bandarSection === 'summary');
-      tabBandar.setAttribute('aria-selected', bandarSection === 'summary' ? 'true' : 'false');
+      tabBandar.classList.toggle('active', bandarSection === 'summary' || bandarSection === 'intel');
+      tabBandar.setAttribute('aria-selected', (bandarSection === 'summary' || bandarSection === 'intel') ? 'true' : 'false');
       tabAkumulasi.classList.toggle('active', bandarSection === 'akumulasi');
       tabAkumulasi.setAttribute('aria-selected', bandarSection === 'akumulasi' ? 'true' : 'false');
-      if (tabHunter) {
-        tabHunter.classList.toggle('active', bandarSection === 'hunter');
-        tabHunter.setAttribute('aria-selected', bandarSection === 'hunter' ? 'true' : 'false');
-      }
     }
     var subSum = byId('subTabBrokerSummary');
     var subAcc = byId('subTabAkumulasiBroker');
+    var subIntel = byId('subTabIntelBandar');
     if (subSum && subAcc) {
       subSum.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
       subSum.setAttribute('aria-selected', bandarSection === 'summary' ? 'true' : 'false');
       subAcc.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'akumulasi' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
       subAcc.setAttribute('aria-selected', bandarSection === 'akumulasi' ? 'true' : 'false');
+      if (subIntel) {
+        subIntel.className = 'px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ' + (bandarSection === 'intel' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium');
+        subIntel.setAttribute('aria-selected', bandarSection === 'intel' ? 'true' : 'false');
+      }
     }
     var titleEl = byId('bandarPanelTitle');
     if (titleEl) {
-      if (bandarSection === 'hunter') {
-        titleEl.textContent = 'Broker Hunter — Top 10 Saham per Broker';
+      if (bandarSection === 'intel') {
+        titleEl.textContent = 'Sinyal Intelijen Bandarmologi (4 Sinyal Strategis)';
       } else if (bandarSection === 'akumulasi') {
         titleEl.textContent = 'Akumulasi Broker & Deteksi Smart Money';
       } else {
@@ -852,12 +875,15 @@
         window.history.replaceState({}, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
       }
     } catch (_) {}
-    var hunterContainer = byId('brokerHunterContent') || byId('bandarmologiContent');
     var bandarContainer = byId('bandarmologiContent');
-    if (bandarSection === 'hunter' && hunterContainer) {
-      renderBrokerHunterUI(hunterContainer);
-    } else if (bandarContainer && lastBandarData) {
-      renderBandarmologiUI(bandarContainer, lastBandarData);
+    if (bandarContainer) {
+      if (bandarSection === 'intel') {
+        renderBandarmologiIntelUI(bandarContainer, currentBandarTicker);
+      } else if (lastBandarData) {
+        renderBandarmologiUI(bandarContainer, lastBandarData);
+      } else if (typeof fetch !== 'undefined') {
+        loadBandarmologiTab(currentBandarTicker);
+      }
     }
   }
 
@@ -917,6 +943,11 @@
     var inpSummary = byId('bandarSummarySearchInput');
     if (inpSummary && inpSummary.value !== clean) inpSummary.value = clean;
 
+    if (bandarSection === 'intel') {
+      loadBandarmologiIntel(clean, container);
+      return;
+    }
+
     container.innerHTML = '<div class="flex flex-col items-center justify-center py-12"><div class="spinner"></div><p class="text-xs text-gray-400 mt-3">Mengambil data Bandarmologi &amp; Insider ' + escapeHtml(clean) + '...</p></div>';
 
     try {
@@ -949,6 +980,10 @@
 
   function renderBandarmologiUI(container, data) {
     lastBandarData = data;
+    if (bandarSection === 'intel') {
+      renderBandarmologiIntelUI(container, data);
+      return;
+    }
     injectBubbleStyles();
 
     var ticker = data.ticker || currentBandarTicker;
@@ -1017,6 +1052,7 @@
       html += '<div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-xs mb-4 w-fit">';
       html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'summary\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📊 Broker Summary</button>';
       html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'akumulasi\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'akumulasi' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📈 Akumulasi Broker</button>';
+      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'intel\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'intel' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🎯 Sinyal Intelijen</button>';
       html += '</div>';
     }
 
@@ -1530,6 +1566,520 @@
     container.innerHTML = html;
   }
 
+  function formatDateDisplay(dateStr) {
+    if (!dateStr) return 'Terbaru';
+    try {
+      var d = new Date(dateStr);
+      if (isNaN(d.getTime())) return String(dateStr);
+      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch (_) {
+      return String(dateStr);
+    }
+  }
+
+  function renderConfluenceBadgeHtml(badge) {
+    var b = String(badge || 'NEUTRAL').toUpperCase();
+    if (b === 'STRONG_ACCUMULATION') {
+      return '<span class="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold text-xs">🔥 SANGAT KUAT (BULLISH CONFLUENCE)</span>';
+    }
+    if (b === 'ACCUMULATION') {
+      return '<span class="px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold text-xs">🟢 AKUMULASI (BULLISH)</span>';
+    }
+    if (b === 'DISTRIBUTION') {
+      return '<span class="px-2.5 py-0.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold text-xs">🔴 DISTRIBUSI (BEARISH)</span>';
+    }
+    return '<span class="px-2.5 py-0.5 rounded-lg bg-dark-600/40 text-gray-300 border border-dark-500 font-bold text-xs">⚪ NETRAL / TERSEBAR</span>';
+  }
+
+  function setBandarIntelViewMode(mode) {
+    bandarIntelViewMode = (mode === 'scanner') ? 'scanner' : 'ticker';
+    var container = byId('bandarmologiContent');
+    if (bandarIntelViewMode === 'scanner' && !bandarIntelScannerData && !bandarIntelLoading && typeof fetch !== 'undefined') {
+      loadBandarmologiIntel(currentBandarTicker, container);
+    } else if (container) {
+      renderBandarmologiIntelUI(container, currentBandarTicker);
+    }
+  }
+
+  function setBandarIntelRange(range) {
+    bandarIntelRange = (range === '30d') ? '30d' : '7d';
+    bandarIntelData = null;
+    bandarIntelScannerData = null;
+    var container = byId('bandarmologiContent');
+    if (typeof fetch !== 'undefined') {
+      loadBandarmologiIntel(currentBandarTicker, container);
+    } else if (container) {
+      renderBandarmologiIntelUI(container, currentBandarTicker);
+    }
+  }
+
+  function setBandarIntelScannerCategory(cat) {
+    bandarIntelScannerCategory = cat || 'harga_di_bawah_modal_bandar';
+    var container = byId('bandarmologiContent');
+    if (container) {
+      renderBandarmologiIntelUI(container, currentBandarTicker);
+    }
+  }
+
+  function selectIntelTicker(ticker) {
+    if (!ticker) return;
+    var clean = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!clean) return;
+    currentBandarTicker = clean;
+    bandarIntelTicker = clean;
+    bandarIntelViewMode = 'ticker';
+    bandarIntelData = null;
+
+    if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
+      root.UnifiedCockpit.syncActiveTicker(clean, {
+        loadChart: true,
+        forceChartReload: false,
+        preserveTab: true,
+        runAnalysis: false
+      });
+    }
+
+    var badgeTicker = byId('bandarActiveTickerTag');
+    if (badgeTicker) badgeTicker.textContent = clean;
+    var inpBandar = byId('bandarTickerSearchInput');
+    if (inpBandar) inpBandar.value = clean;
+
+    var container = byId('bandarmologiContent');
+    if (typeof fetch !== 'undefined') {
+      loadBandarmologiIntel(clean, container);
+    } else if (container) {
+      renderBandarmologiIntelUI(container, clean);
+    }
+  }
+
+  async function loadBandarmologiIntel(ticker, targetContainer) {
+    bandarIntelLoading = true;
+    bandarIntelError = null;
+    var targetTicker = String(ticker || currentBandarTicker || 'BBCA').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!targetTicker) targetTicker = 'BBCA';
+    currentBandarTicker = targetTicker;
+    bandarIntelTicker = targetTicker;
+
+    var container = targetContainer || ((typeof document !== 'undefined') ? byId('bandarmologiContent') : null);
+    if (container) {
+      renderBandarmologiIntelUI(container, targetTicker);
+    }
+
+    if (typeof fetch === 'undefined') {
+      bandarIntelLoading = false;
+      return;
+    }
+
+    try {
+      var url = '/api/sector-hot?action=bandarmologi-intel&range=' + encodeURIComponent(bandarIntelRange);
+      if (bandarIntelViewMode === 'ticker') {
+        url += '&ticker=' + encodeURIComponent(targetTicker);
+      }
+      var resp = await fetch(url);
+      var json = await resp.json();
+      if (json && json.success) {
+        if (bandarIntelViewMode === 'ticker') {
+          bandarIntelData = json;
+        } else {
+          bandarIntelScannerData = json;
+        }
+      } else {
+        bandarIntelError = (json && json.error) || 'Gagal memuat data Sinyal Intelijen Bandar.';
+      }
+    } catch (err) {
+      bandarIntelError = err.message || String(err);
+    } finally {
+      bandarIntelLoading = false;
+      if (container) {
+        renderBandarmologiIntelUI(container, targetTicker);
+      }
+    }
+  }
+
+  function renderBandarmologiIntelUI(container, dataOrTicker) {
+    container = container || ((typeof document !== 'undefined') ? byId('bandarmologiContent') : null);
+    if (!container) return;
+
+    if (dataOrTicker && typeof dataOrTicker === 'object') {
+      if (dataOrTicker.signals || (dataOrTicker.result && dataOrTicker.result.signals)) {
+        bandarIntelData = dataOrTicker;
+        bandarIntelViewMode = 'ticker';
+        bandarIntelLoading = false;
+        bandarIntelError = null;
+      } else if (dataOrTicker.summary || dataOrTicker.indexes) {
+        bandarIntelScannerData = dataOrTicker;
+        bandarIntelViewMode = 'scanner';
+        bandarIntelLoading = false;
+        bandarIntelError = null;
+      }
+    } else if (typeof dataOrTicker === 'string' && dataOrTicker) {
+      currentBandarTicker = String(dataOrTicker).trim().toUpperCase();
+      bandarIntelTicker = currentBandarTicker;
+    }
+
+    if (!bandarIntelData && !bandarIntelLoading && !bandarIntelError && typeof fetch !== 'undefined') {
+      loadBandarmologiIntel(currentBandarTicker, container);
+    }
+
+    var html = '';
+
+    // SECTION TABS: Only render inline switcher if external subTabBrokerSummary is absent
+    if (!byId('subTabBrokerSummary')) {
+      html += '<div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-xs mb-4 w-fit">';
+      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'summary\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'summary' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📊 Broker Summary</button>';
+      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'akumulasi\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'akumulasi' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📈 Akumulasi Broker</button>';
+      html += '  <button type="button" onclick="BandarmologiRuntime.setBandarSection(\'intel\')" class="px-3 py-1.5 rounded-md transition ' + (bandarSection === 'intel' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🎯 Sinyal Intelijen</button>';
+      html += '</div>';
+    }
+
+    // Subheader Controls Card
+    html += '<div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 mb-4 shadow-lg backdrop-blur">';
+    html += '  <div class="flex flex-wrap items-center justify-between gap-3">';
+    html += '    <div>';
+    html += '      <h3 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
+    html += '        <span class="text-base">🎯</span> Sinyal Intelijen Bandarmologi — <span class="text-emerald-400 font-mono">' + escapeHtml(currentBandarTicker) + '</span>';
+    html += '      </h3>';
+    html += '      <p class="text-xs text-gray-400 mt-0.5">Deteksi 4 pola strategis: modal bandar, akumulasi diam-diam asing, pertukaran ritel &amp; bandar, dan rasio konsentrasi (CR3/CR5).</p>';
+    html += '    </div>';
+    html += '    <div class="flex flex-wrap items-center gap-2">';
+    // View Switcher (Ticker vs Scanner)
+    html += '      <div class="flex items-center gap-1 bg-dark-900 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
+    html += '        <button type="button" id="btnIntelModeTicker" onclick="BandarmologiRuntime.setBandarIntelViewMode(\'ticker\')" class="px-2.5 py-1 rounded-md transition ' + (bandarIntelViewMode === 'ticker' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🎯 Emiten Aktif</button>';
+    html += '        <button type="button" id="btnIntelModeScanner" onclick="BandarmologiRuntime.setBandarIntelViewMode(\'scanner\')" class="px-2.5 py-1 rounded-md transition ' + (bandarIntelViewMode === 'scanner' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">🌐 Market Scanner</button>';
+    html += '      </div>';
+    // Range Switcher (7d vs 30d)
+    html += '      <div class="flex items-center gap-1 bg-dark-900 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
+    html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Rentang:</span>';
+    html += '        <button type="button" id="btnIntelRange7d" onclick="BandarmologiRuntime.setBandarIntelRange(\'7d\')" class="px-2.5 py-1 rounded-md transition ' + (bandarIntelRange === '7d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">7 Hari</button>';
+    html += '        <button type="button" id="btnIntelRange30d" onclick="BandarmologiRuntime.setBandarIntelRange(\'30d\')" class="px-2.5 py-1 rounded-md transition ' + (bandarIntelRange === '30d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">30 Hari</button>';
+    html += '      </div>';
+    // Refresh Button
+    html += '      <button type="button" onclick="BandarmologiRuntime.loadBandarmologiIntel()" class="px-3 py-1.5 rounded-lg bg-dark-700 hover:bg-dark-600 text-gray-200 border border-dark-600 text-xs font-semibold flex items-center gap-1.5 transition" title="Refresh sinyal intelijen">';
+    html += '        <span>🔄 Refresh</span>';
+    html += '      </button>';
+    html += '    </div>';
+    html += '  </div>';
+    html += '</div>';
+
+    // Loading State
+    if (bandarIntelLoading) {
+      html += '<div class="flex flex-col items-center justify-center py-16 bg-dark-800/40 rounded-xl border border-dark-700/30">';
+      html += '  <div class="spinner mb-3"></div>';
+      html += '  <p class="text-xs text-gray-300 font-medium">Menganalisis 4 Sinyal Intelijen Bandar ' + escapeHtml(currentBandarTicker) + '...</p>';
+      html += '  <p class="text-[11px] text-gray-500 mt-1">Menghitung modal rata-rata bandar, flow asing tenang, rasio ritel, &amp; konsentrasi CR3/CR5...</p>';
+      html += '</div>';
+      container.innerHTML = html;
+      return;
+    }
+
+    // Error State
+    if (bandarIntelError) {
+      html += '<div class="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-center my-4">';
+      html += '  <p class="text-xs text-rose-300 font-medium mb-2">⚠️ ' + escapeHtml(bandarIntelError) + '</p>';
+      html += '  <button type="button" onclick="BandarmologiRuntime.loadBandarmologiIntel()" class="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-200 border border-rose-500/30 text-xs font-semibold hover:bg-rose-500/30 transition">Coba Lagi</button>';
+      html += '</div>';
+      container.innerHTML = html;
+      return;
+    }
+
+    // View 1: Active Ticker View
+    if (bandarIntelViewMode === 'ticker') {
+      var intelObj = (bandarIntelData && bandarIntelData.result) || bandarIntelData || {};
+      var signals = intelObj.signals || {};
+      var s1 = signals.harga_di_bawah_modal_bandar || {};
+      var s2 = signals.silent_foreign_accumulation || {};
+      var s3 = signals.ritel_cutloss_vs_bandar || {};
+      var s4 = signals.concentration_ratio || {};
+      var confluenceBadge = intelObj.confluence_badge || 'NEUTRAL';
+      var bullishCount = intelObj.bullish_signals_count || 0;
+      var bearishCount = intelObj.bearish_signals_count || 0;
+
+      // Top Confluence Summary Banner
+      html += '<div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">';
+      html += '  <div class="flex items-center gap-3">';
+      html += '    <div class="w-11 h-11 rounded-xl flex items-center justify-center font-mono font-bold text-base bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">';
+      html += escapeHtml(intelObj.ticker || currentBandarTicker);
+      html += '    </div>';
+      html += '    <div>';
+      html += '      <div class="flex items-center gap-2">';
+      html += '        <h4 class="text-sm font-bold text-gray-100">Status Konfluensi Bandar</h4>';
+      html += '        ' + renderConfluenceBadgeHtml(confluenceBadge);
+      html += '      </div>';
+      html += '      <div class="text-[11px] text-gray-400 mt-0.5">';
+      html += '        <span>Rentang: <strong class="text-gray-200">' + escapeHtml(bandarIntelRange.toUpperCase()) + '</strong></span> &bull; ';
+      html += '        <span>Evaluasi: <strong class="text-gray-300 font-mono">' + escapeHtml(formatDateDisplay(intelObj.evaluated_at)) + '</strong></span>';
+      html += '      </div>';
+      html += '    </div>';
+      html += '  </div>';
+      html += '  <div class="flex items-center gap-2">';
+      html += '    <span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1">';
+      html += '      <span>🟢</span> <span>' + bullishCount + ' Bullish</span>';
+      html += '    </span>';
+      html += '    <span class="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center gap-1">';
+      html += '      <span>🔴</span> <span>' + bearishCount + ' Bearish</span>';
+      html += '    </span>';
+      html += '  </div>';
+      html += '</div>';
+
+      // 4 Signal Cards Grid
+      html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">';
+
+      // Card 1: Harga di Bawah Modal Bandar
+      html += '  <div id="intelCardHargaModal" class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
+      html += '    <div>';
+      html += '      <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-dark-600/30">';
+      html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🏷️</span> Harga di Bawah Modal Bandar</h4>';
+      if (s1.is_sweet_spot) {
+        html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">🎯 SWEET SPOT (&le; 5% Diskon)</span>';
+      } else if (s1.triggered) {
+        html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">🟢 DI BAWAH MODAL</span>';
+      } else {
+        html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-dark-600/40 text-gray-400 border border-dark-600">⚪ DI ATAS MODAL</span>';
+      }
+      html += '      </div>';
+
+      var currentPrice = s1.current_price || s1.close_price || 0;
+      var bandarAvg = s1.bandar_avg_price || s1.avg_buy_price || 0;
+      var discount = s1.discount_pct != null ? s1.discount_pct : (bandarAvg > 0 && currentPrice > 0 ? Number((((bandarAvg - currentPrice) / bandarAvg) * 100).toFixed(2)) : 0);
+
+      html += '      <div class="grid grid-cols-3 gap-2 text-xs mb-3 bg-dark-800/60 p-2.5 rounded-lg border border-dark-600/20">';
+      html += '        <div><span class="text-[10px] text-gray-400 block">Harga Sekarang</span><span class="font-mono font-bold text-gray-100">' + (currentPrice > 0 ? 'Rp ' + formatNumber(currentPrice) : '—') + '</span></div>';
+      html += '        <div><span class="text-[10px] text-gray-400 block">Avg Buy Bandar</span><span class="font-mono font-bold text-emerald-300">' + (bandarAvg > 0 ? 'Rp ' + formatNumber(bandarAvg) : '—') + '</span></div>';
+      html += '        <div><span class="text-[10px] text-gray-400 block">Diskon vs Bandar</span><span class="font-mono font-bold ' + (discount > 0 ? 'text-emerald-400' : 'text-gray-400') + '">' + (discount > 0 ? '+' : '') + discount + '%</span></div>';
+      html += '      </div>';
+
+      var topBrokers = s1.top_broker_details || s1.top_brokers || [];
+      if (topBrokers.length > 0) {
+        html += '      <div class="mb-3">';
+        html += '        <span class="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Top 3 Broker Akumulator:</span>';
+        html += '        <div class="flex flex-wrap items-center gap-1.5">';
+        for (var bIdx = 0; bIdx < topBrokers.length; bIdx++) {
+          var bItem = topBrokers[bIdx];
+          var bCode = typeof bItem === 'string' ? bItem : (bItem.broker || bItem.broker_code || '');
+          var bAvg = typeof bItem === 'object' && bItem.avg_price ? bItem.avg_price : null;
+          var bForeign = isForeignBroker(bCode);
+          html += '        <span class="px-2 py-0.5 rounded text-[11px] font-mono font-semibold ' + (bForeign ? 'bg-sky-500/10 text-sky-300 border border-sky-500/30' : 'bg-dark-600/60 text-gray-200 border border-dark-500') + '">' + escapeHtml(bCode) + (bAvg ? ' @ ' + formatNumber(bAvg) : '') + '</span>';
+        }
+        html += '        </div>';
+        html += '      </div>';
+      }
+      html += '    </div>';
+
+      var s1Desc = s1.description || (s1.triggered ? 'Harga saat ini lebih murah dari modal akumulasi broker institusi/bandar. Peluang entry dengan risiko terukur.' : 'Harga saat ini berada di atas atau setara rerata harga beli top 3 broker.');
+      html += '    <p class="text-[11px] text-gray-400 mt-2 pt-2 border-t border-dark-600/30 leading-relaxed">' + escapeHtml(s1Desc) + '</p>';
+      html += '  </div>';
+
+      // Card 2: Silent Foreign Accumulation
+      html += '  <div id="intelCardSilentForeign" class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
+      html += '    <div>';
+      html += '      <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-dark-600/30">';
+      html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🤫</span> Silent Foreign Accumulation</h4>';
+      if (s2.triggered) {
+        html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">🟢 ASING AKUMULASI DIAM-DIAM</span>';
+      } else {
+        html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-dark-600/40 text-gray-400 border border-dark-600">⚪ TIDAK TERDETEKSI</span>';
+      }
+      html += '      </div>';
+
+      var s2Days = s2.consecutive_days || 0;
+      var s2Chg = s2.price_change_pct != null ? s2.price_change_pct : 0;
+      var s2NetVal = s2.total_foreign_net_val || s2.total_foreign_net || 0;
+
+      html += '      <div class="grid grid-cols-3 gap-2 text-xs mb-3 bg-dark-800/60 p-2.5 rounded-lg border border-dark-600/20">';
+      html += '        <div><span class="text-[10px] text-gray-400 block">Net Buy Beruntun</span><span class="font-mono font-bold ' + (s2Days >= 3 ? 'text-emerald-300' : 'text-gray-300') + '">' + s2Days + ' Hari</span></div>';
+      html += '        <div><span class="text-[10px] text-gray-400 block">Fluktuasi Harga</span><span class="font-mono font-bold text-gray-200">' + (s2Chg > 0 ? '+' : '') + s2Chg + '% ' + (s2.is_sideways ? '<span class="text-emerald-400 text-[10px]">(Tenang)</span>' : '') + '</span></div>';
+      html += '        <div><span class="text-[10px] text-gray-400 block">Total Net Asing</span><span class="font-mono font-bold ' + (s2NetVal >= 0 ? 'text-emerald-400' : 'text-rose-400') + '">' + (s2NetVal >= 0 ? '+' : '') + formatIDR(s2NetVal) + '</span></div>';
+      html += '      </div>';
+      html += '    </div>';
+
+      var s2Desc = s2.description || (s2.triggered ? 'Investor asing melakukan net buy positif berturut-turut saat rentang pergerakan harga relatif sideways (kurang dari 2%).' : 'Aliran dana investor asing belum membentuk akumulasi diam-diam konsisten.');
+      html += '    <p class="text-[11px] text-gray-400 mt-2 pt-2 border-t border-dark-600/30 leading-relaxed">' + escapeHtml(s2Desc) + '</p>';
+      html += '  </div>';
+
+      // Card 3: Ritel Cutloss vs Bandar Nampung
+      html += '  <div id="intelCardRitelCutloss" class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
+      html += '    <div>';
+      html += '      <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-dark-600/30">';
+      html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🔄</span> Ritel Cutloss vs Bandar Nampung</h4>';
+      if (s3.is_bandar_nampung || s3.sub_type === 'BANDAR_NAMPUNG_RITEL_CUTLOSS') {
+        html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">🟢 BANDAR NAMPUNG</span>';
+      } else if (s3.is_distribusi_ke_ritel || s3.sub_type === 'DISTRIBUSI_KE_RITEL') {
+        html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">🔴 DISTRIBUSI KE RITEL</span>';
+      } else {
+        html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-dark-600/40 text-gray-400 border border-dark-600">⚪ NETRAL / SEIMBANG</span>';
+      }
+      html += '      </div>';
+
+      var buyersList = s3.top_buyers || [];
+      var sellersList = s3.top_sellers || [];
+
+      html += '      <div class="space-y-2 mb-3">';
+      html += '        <div class="flex items-center justify-between text-xs bg-dark-800/60 p-2 rounded-lg border border-dark-600/20">';
+      html += '          <span class="text-[10px] text-gray-400 font-semibold w-24">TOP BUYERS:</span>';
+      html += '          <div class="flex items-center gap-1.5 flex-wrap justify-end">';
+      if (buyersList.length === 0) {
+        html += '            <span class="text-gray-500 text-[11px]">—</span>';
+      } else {
+        for (var bi = 0; bi < buyersList.length; bi++) {
+          var bCode = buyersList[bi];
+          var isInst = isInstitutionalBroker(bCode);
+          var isRet = isRetailBroker(bCode);
+          var bTag = isInst ? '<span class="text-[9px] text-emerald-400"> [Inst]</span>' : (isRet ? '<span class="text-[9px] text-rose-400"> [Ritel]</span>' : '');
+          html += '          <span class="px-1.5 py-0.5 rounded font-mono text-[11px] font-bold bg-dark-700 border border-dark-600 text-gray-200">' + escapeHtml(bCode) + bTag + '</span>';
+        }
+      }
+      html += '          </div>';
+      html += '        </div>';
+
+      html += '        <div class="flex items-center justify-between text-xs bg-dark-800/60 p-2 rounded-lg border border-dark-600/20">';
+      html += '          <span class="text-[10px] text-gray-400 font-semibold w-24">TOP SELLERS:</span>';
+      html += '          <div class="flex items-center gap-1.5 flex-wrap justify-end">';
+      if (sellersList.length === 0) {
+        html += '            <span class="text-gray-500 text-[11px]">—</span>';
+      } else {
+        for (var si = 0; si < sellersList.length; si++) {
+          var sCode = sellersList[si];
+          var sInst = isInstitutionalBroker(sCode);
+          var sRet = isRetailBroker(sCode);
+          var sTag = sInst ? '<span class="text-[9px] text-emerald-400"> [Inst]</span>' : (sRet ? '<span class="text-[9px] text-rose-400"> [Ritel]</span>' : '');
+          html += '          <span class="px-1.5 py-0.5 rounded font-mono text-[11px] font-bold bg-dark-700 border border-dark-600 text-gray-200">' + escapeHtml(sCode) + sTag + '</span>';
+        }
+      }
+      html += '          </div>';
+      html += '        </div>';
+      html += '      </div>';
+      html += '    </div>';
+
+      var s3Desc = s3.description || (s3.is_bandar_nampung ? 'Top buyer didominasi institusi/bandar sementara ritel cutloss menjual ke pasar.' : (s3.is_distribusi_ke_ritel ? 'Top buyer didominasi broker ritel sementara bandar/institusi keluar.' : 'Aliran transaksi ritel dan institusi relatif seimbang.'));
+      html += '    <p class="text-[11px] text-gray-400 mt-2 pt-2 border-t border-dark-600/30 leading-relaxed">' + escapeHtml(s3Desc) + '</p>';
+      html += '  </div>';
+
+      // Card 4: Concentration Ratio CR3 & CR5
+      html += '  <div id="intelCardConcentrationRatio" class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
+      html += '    <div>';
+      html += '      <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-dark-600/30">';
+      html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📊</span> Rasio Konsentrasi (CR3 &amp; CR5)</h4>';
+      if (s4.is_massive || s4.status === 'AKUMULASI_MASIF') {
+        html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">🔥 AKUMULASI SANGAT MASIF (&ge; 60%)</span>';
+      } else if (s4.triggered || s4.status === 'AKUMULASI_TERKONSENTRASI') {
+        html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">⚡ AKUMULASI TERKONSENTRASI (&ge; 40%)</span>';
+      } else {
+        html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-dark-600/40 text-gray-400 border border-dark-600">⚪ NORMAL / TERSEBAR</span>';
+      }
+      html += '      </div>';
+
+      var cr3Val = s4.cr3 != null ? s4.cr3 : 0;
+      var cr5Val = s4.cr5 != null ? s4.cr5 : 0;
+
+      html += '      <div class="space-y-2.5 mb-3 bg-dark-800/60 p-3 rounded-lg border border-dark-600/20">';
+      var cr3Color = cr3Val >= 60 ? 'bg-amber-400' : (cr3Val >= 40 ? 'bg-emerald-400' : 'bg-dark-500');
+      html += '        <div>';
+      html += '          <div class="flex items-center justify-between text-xs mb-1">';
+      html += '            <span class="text-[11px] text-gray-300 font-medium">CR3 (Top 3 Broker Dominance):</span>';
+      html += '            <span class="font-mono font-bold ' + (cr3Val >= 60 ? 'text-amber-300' : (cr3Val >= 40 ? 'text-emerald-400' : 'text-gray-300')) + '">' + cr3Val + '%</span>';
+      html += '          </div>';
+      html += '          <div class="w-full bg-dark-900 rounded-full h-2 overflow-hidden">';
+      html += '            <div class="h-2 rounded-full ' + cr3Color + ' transition-all" style="width:' + Math.min(100, Math.max(0, cr3Val)) + '%"></div>';
+      html += '          </div>';
+      html += '        </div>';
+
+      var cr5Color = cr5Val >= 75 ? 'bg-emerald-400' : 'bg-dark-500';
+      html += '        <div>';
+      html += '          <div class="flex items-center justify-between text-xs mb-1">';
+      html += '            <span class="text-[11px] text-gray-300 font-medium">CR5 (Top 5 Broker Dominance):</span>';
+      html += '            <span class="font-mono font-bold ' + (cr5Val >= 75 ? 'text-emerald-400' : 'text-gray-300') + '">' + cr5Val + '%</span>';
+      html += '          </div>';
+      html += '          <div class="w-full bg-dark-900 rounded-full h-2 overflow-hidden">';
+      html += '            <div class="h-2 rounded-full ' + cr5Color + ' transition-all" style="width:' + Math.min(100, Math.max(0, cr5Val)) + '%"></div>';
+      html += '          </div>';
+      html += '        </div>';
+
+      if (Array.isArray(s4.top_3_brokers) && s4.top_3_brokers.length > 0) {
+        html += '        <div class="text-[10px] text-gray-400 pt-1">';
+        html += '          <span>Top 3 Akumulator: <strong class="text-gray-200 font-mono">' + escapeHtml(s4.top_3_brokers.join(', ')) + '</strong></span>';
+        html += '        </div>';
+      }
+      html += '      </div>';
+      html += '    </div>';
+
+      var s4Desc = s4.description || ('CR3 mengukur persentase volume yang dikuasai top 3 broker pembeli. CR3 >= 60% menunjukkan monopoli akumulasi oleh segelintir bandar.');
+      html += '    <p class="text-[11px] text-gray-400 mt-2 pt-2 border-t border-dark-600/30 leading-relaxed">' + escapeHtml(s4Desc) + '</p>';
+      html += '  </div>';
+
+      html += '</div>'; // end grid
+    } else {
+      // View 2: Market-wide Scanner View
+      var scanData = bandarIntelScannerData || {};
+      var summary = scanData.summary || {};
+      var indexes = scanData.indexes || {};
+
+      var catKeys = [
+        { key: 'harga_di_bawah_modal_bandar', label: '🏷️ Di Bawah Modal', count: summary.harga_di_bawah_modal_bandar_count || 0 },
+        { key: 'silent_foreign_accumulation', label: '🤫 Akumulasi Asing', count: summary.silent_foreign_accumulation_count || 0 },
+        { key: 'ritel_cutloss_bandar_nampung', label: '🟢 Ritel Cutloss', count: summary.ritel_cutloss_bandar_nampung_count || 0 },
+        { key: 'distribusi_ke_ritel', label: '🔴 Distribusi ke Ritel', count: summary.distribusi_ke_ritel_count || 0 },
+        { key: 'cr3_massive', label: '🔥 CR3 Masif (≥60%)', count: summary.cr3_massive_count || 0 }
+      ];
+
+      html += '<div class="flex flex-wrap items-center gap-1.5 mb-4">';
+      for (var c = 0; c < catKeys.length; c++) {
+        var cat = catKeys[c];
+        var isCatSel = cat.key === bandarIntelScannerCategory;
+        var catClass = isCatSel
+          ? 'bg-emerald-500 text-dark-900 font-bold shadow-sm'
+          : 'bg-dark-700/80 text-gray-300 hover:text-white border border-dark-600/50';
+        html += '<button type="button" onclick="BandarmologiRuntime.setBandarIntelScannerCategory(\'' + escapeHtml(cat.key) + '\')" class="px-3 py-1.5 rounded-lg text-xs transition ' + catClass + '">';
+        html += escapeHtml(cat.label) + ' <span class="font-mono text-[11px] opacity-80">(' + cat.count + ')</span>';
+        html += '</button>';
+      }
+      html += '</div>';
+
+      var currentItems = Array.isArray(indexes[bandarIntelScannerCategory]) ? indexes[bandarIntelScannerCategory] : [];
+      html += '<div class="bg-dark-700/40 border border-dark-600/30 rounded-xl overflow-hidden">';
+      if (currentItems.length === 0) {
+        html += '  <div class="text-center py-12 text-gray-500 text-xs">';
+        html += '    <p class="font-semibold text-gray-400">Tidak ada emiten terdeteksi untuk kriteria ini saat ini.</p>';
+        html += '    <p class="text-[11px] mt-1 text-gray-500">Gunakan tombol refresh di atas untuk memeriksa ulang universe indeks.</p>';
+        html += '  </div>';
+      } else {
+        html += '  <div class="overflow-x-auto">';
+        html += '    <table class="w-full text-left text-xs">';
+        html += '      <thead>';
+        html += '        <tr class="text-[11px] text-gray-400 border-b border-dark-600/40 bg-dark-800/90">';
+        html += '          <th class="py-2.5 px-3">No</th>';
+        html += '          <th class="py-2.5 px-3">Ticker</th>';
+        html += '          <th class="py-2.5 px-3">Metrik Utama</th>';
+        html += '          <th class="py-2.5 px-3">Keterangan</th>';
+        html += '          <th class="py-2.5 px-3 text-right">Aksi</th>';
+        html += '        </tr>';
+        html += '      </thead>';
+        html += '      <tbody class="divide-y divide-dark-600/20">';
+        for (var it = 0; it < currentItems.length; it++) {
+          var item = currentItems[it];
+          var itTicker = item.ticker || '—';
+          var itMetric = item.metric || (item.discount_pct != null ? 'Diskon +' + item.discount_pct + '%' : (item.cr3 != null ? 'CR3 ' + item.cr3 + '%' : (item.consecutive_days ? item.consecutive_days + ' Hari' : 'Terdeteksi')));
+          var itNote = item.note || item.description || '—';
+
+          html += '        <tr class="hover:bg-dark-600/20 transition">';
+          html += '          <td class="py-2.5 px-3 font-mono text-[11px] text-gray-500">' + (it + 1) + '</td>';
+          html += '          <td class="py-2.5 px-3 font-mono font-bold text-emerald-300">' + escapeHtml(itTicker) + '</td>';
+          html += '          <td class="py-2.5 px-3 font-mono font-semibold text-gray-200">' + escapeHtml(itMetric) + '</td>';
+          html += '          <td class="py-2.5 px-3 text-gray-300 text-[11px] max-w-xs truncate" title="' + escapeHtml(itNote) + '">' + escapeHtml(itNote) + '</td>';
+          html += '          <td class="py-2.5 px-3 text-right">';
+          html += '            <button type="button" onclick="BandarmologiRuntime.selectIntelTicker(\'' + escapeHtml(itTicker) + '\')" class="px-2.5 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition">Buka Intel &rarr;</button>';
+          html += '          </td>';
+          html += '        </tr>';
+        }
+        html += '      </tbody>';
+        html += '    </table>';
+        html += '  </div>';
+      }
+      html += '</div>';
+    }
+
+    container.innerHTML = html;
+  }
+
   function setHunterBroker(code) {
     if (!code) return;
     hunterBroker = String(code).trim().toUpperCase();
@@ -1878,7 +2428,11 @@
     getBrokerAccumulationView: function () { return brokerAccumulationView; },
     BROKER_NAMES: BROKER_NAMES,
     FOREIGN_BROKERS: FOREIGN_BROKERS,
+    RETAIL_BROKERS: RETAIL_BROKERS,
+    INSTITUTIONAL_BROKERS: INSTITUTIONAL_BROKERS,
     isForeignBroker: isForeignBroker,
+    isRetailBroker: isRetailBroker,
+    isInstitutionalBroker: isInstitutionalBroker,
     filterBrokersByFlow: filterBrokersByFlow,
     getBrokerSecurityName: getBrokerSecurityName,
     normalizeBrokerValue: normalizeBrokerValue,
@@ -1886,6 +2440,15 @@
     renderBrokerBubbleClusterHtml: renderBrokerBubbleClusterHtml,
     renderBrokerDetailCardHtml: renderBrokerDetailCardHtml,
     renderBandarmologiUI: renderBandarmologiUI,
+    loadBandarmologiIntel: loadBandarmologiIntel,
+    renderBandarmologiIntelUI: renderBandarmologiIntelUI,
+    setBandarIntelViewMode: setBandarIntelViewMode,
+    getBandarIntelViewMode: function () { return bandarIntelViewMode; },
+    setBandarIntelRange: setBandarIntelRange,
+    getBandarIntelRange: function () { return bandarIntelRange; },
+    setBandarIntelScannerCategory: setBandarIntelScannerCategory,
+    getBandarIntelScannerCategory: function () { return bandarIntelScannerCategory; },
+    selectIntelTicker: selectIntelTicker,
     setHunterBroker: setHunterBroker,
     getHunterBroker: function () { return hunterBroker; },
     setHunterRange: setHunterRange,
@@ -1903,7 +2466,11 @@
     module.exports = {
       BROKER_NAMES: BROKER_NAMES,
       FOREIGN_BROKERS: FOREIGN_BROKERS,
+      RETAIL_BROKERS: RETAIL_BROKERS,
+      INSTITUTIONAL_BROKERS: INSTITUTIONAL_BROKERS,
       isForeignBroker: isForeignBroker,
+      isRetailBroker: isRetailBroker,
+      isInstitutionalBroker: isInstitutionalBroker,
       filterBrokersByFlow: filterBrokersByFlow,
       getBrokerSecurityName: getBrokerSecurityName,
       normalizeBrokerValue: normalizeBrokerValue,
@@ -1911,10 +2478,21 @@
       renderBrokerBubbleClusterHtml: renderBrokerBubbleClusterHtml,
       renderBrokerDetailCardHtml: renderBrokerDetailCardHtml,
       renderBandarmologiUI: renderBandarmologiUI,
+      loadBandarmologiIntel: loadBandarmologiIntel,
+      renderBandarmologiIntelUI: renderBandarmologiIntelUI,
+      setBandarIntelViewMode: setBandarIntelViewMode,
+      getBandarIntelViewMode: function () { return bandarIntelViewMode; },
+      setBandarIntelRange: setBandarIntelRange,
+      getBandarIntelRange: function () { return bandarIntelRange; },
+      setBandarIntelScannerCategory: setBandarIntelScannerCategory,
+      getBandarIntelScannerCategory: function () { return bandarIntelScannerCategory; },
+      selectIntelTicker: selectIntelTicker,
       setBrokerSummaryMode: setBrokerSummaryMode,
       setBrokerSummaryView: setBrokerSummaryView,
       setBrokerAccumulationView: setBrokerAccumulationView,
       setBrokerSummaryRange: setBrokerSummaryRange,
+      setBandarSection: setBandarSection,
+      getBandarSection: function () { return bandarSection; },
       firstNonEmptyList: firstNonEmptyList,
       setHunterBroker: setHunterBroker,
       setHunterRange: setHunterRange,
