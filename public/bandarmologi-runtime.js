@@ -2,6 +2,7 @@
   'use strict';
 
   function byId(id) {
+    if (typeof document === 'undefined') return null;
     return document.getElementById(id);
   }
 
@@ -208,6 +209,7 @@
   var selectedBrokerCode = '';
   var selectedBrokerSide = '';
   var bubbleFilterSide = 'all'; // 'all', 'buy', 'sell'
+  var insiderActionFilter = 'all'; // 'all', 'BUY', 'SELL'
   var lastBrokerItems = [];
 
   // Bandarmologi Intelligence State
@@ -1853,42 +1855,127 @@
 
     // 4. INSIDER TRANSACTIONS SECTION (Exclusively for Bandarmologi & Insider tab)
     if (isSummarySection) {
+      var totalInsidersCount = insiders.length;
+      var buyInsidersCount = insiders.filter(function (r) {
+        var a = String(r.action_type || r.type || 'BUY').toUpperCase();
+        return a.includes('BUY') || a.includes('BELI');
+      }).length;
+      var sellInsidersCount = insiders.filter(function (r) {
+        var a = String(r.action_type || r.type || 'BUY').toUpperCase();
+        return a.includes('SELL') || a.includes('JUAL');
+      }).length;
+
+      var filteredInsiders = insiders.filter(function (r) {
+        if (insiderActionFilter === 'all') return true;
+        var a = String(r.action_type || r.type || 'BUY').toUpperCase();
+        if (insiderActionFilter === 'BUY') return a.includes('BUY') || a.includes('BELI');
+        if (insiderActionFilter === 'SELL') return a.includes('SELL') || a.includes('JUAL');
+        return a.includes(insiderActionFilter);
+      });
+
       html += '<div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5">';
-      html += '  <div class="flex items-center justify-between mb-3">';
-      html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">👥</span> Transaksi Insider (Orang Dalam)</h3>';
-      html += '    <span class="text-[11px] text-gray-400">' + insiders.length + ' transaksi tercatat</span>';
+      html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-3">';
+      html += '    <div class="flex items-center gap-2">';
+      html += '      <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">👥</span> Transaksi Insider (Orang Dalam)</h3>';
+      html += '      <span class="text-[11px] text-gray-400">(' + filteredInsiders.length + (filteredInsiders.length !== totalInsidersCount ? ' dari ' + totalInsidersCount : '') + ' transaksi)</span>';
+      html += '    </div>';
+      html += '    <div class="flex items-center gap-2">';
+      html += '      <span class="text-[11px] text-gray-400 font-medium">Filter Aksi:</span>';
+      html += '      <select id="insiderActionFilterSelect" onchange="BandarmologiRuntime.setInsiderActionFilter(this.value)" class="bg-dark-800 border border-dark-600/60 rounded-lg px-2.5 py-1 text-xs text-gray-200 font-mono focus:outline-none focus:border-emerald-500/50">';
+      html += '        <option value="all"' + (insiderActionFilter === 'all' ? ' selected' : '') + '>Semua Aksi (' + totalInsidersCount + ')</option>';
+      html += '        <option value="BUY"' + (insiderActionFilter === 'BUY' ? ' selected' : '') + '>🟢 Beli (' + buyInsidersCount + ')</option>';
+      html += '        <option value="SELL"' + (insiderActionFilter === 'SELL' ? ' selected' : '') + '>🔴 Jual (' + sellInsidersCount + ')</option>';
+      html += '      </select>';
+      html += '    </div>';
       html += '  </div>';
 
-      if (insiders.length === 0) {
-        html += '  <div class="text-gray-500 text-center py-6 text-xs">Tidak ada riwayat transaksi insider untuk ticker ini.</div>';
+      if (filteredInsiders.length === 0) {
+        html += '  <div class="text-gray-500 text-center py-6 text-xs">' + (totalInsidersCount === 0 ? 'Tidak ada riwayat transaksi insider untuk ticker ini.' : 'Tidak ada transaksi dengan filter aksi yang dipilih.') + '</div>';
       } else {
-        html += '  <div class="overflow-x-auto overflow-y-auto max-h-72 scrollbar-thin">';
-        html += '    <table class="w-full text-left text-xs">';
+        html += '  <div class="overflow-x-auto overflow-y-auto max-h-80 scrollbar-thin">';
+        html += '    <table class="w-full text-left text-xs whitespace-nowrap">';
         html += '      <thead>';
         html += '        <tr class="text-[11px] text-gray-400 border-b border-dark-600/40 sticky top-0 bg-dark-800/95 backdrop-blur z-10">';
-        html += '          <th class="py-2 px-2">Tanggal</th>';
-        html += '          <th class="py-2 px-2">Nama Insider</th>';
-        html += '          <th class="py-2 px-2">Jabatan</th>';
+        html += '          <th class="py-2 px-2.5">Tanggal</th>';
+        html += '          <th class="py-2 px-2.5">Nama Insider</th>';
+        html += '          <th class="py-2 px-2.5">Jabatan</th>';
         html += '          <th class="py-2 px-2 text-center">Aksi</th>';
-        html += '          <th class="py-2 px-2 text-right">Lembar Saham</th>';
-        html += '          <th class="py-2 px-2 text-right">Perubahan %</th>';
+        html += '          <th class="py-2 px-2.5 text-right">Harga</th>';
+        html += '          <th class="py-2 px-2 text-center">Broker</th>';
+        html += '          <th class="py-2 px-2.5 text-right">Perubahan (%)</th>';
+        html += '          <th class="py-2 px-2.5 text-right">Kepemilikan Saat Ini (%)</th>';
+        html += '          <th class="py-2 px-2.5 text-right">Kepemilikan Sebelumnya (%)</th>';
+        html += '          <th class="py-2 px-2 text-center">Nasionalitas</th>';
         html += '        </tr>';
         html += '      </thead>';
         html += '      <tbody class="divide-y divide-dark-600/20">';
-        for (var ins = 0; ins < insiders.length; ins++) {
-          var row = insiders[ins];
-          var isBuy = String(row.action_type || row.type || 'BUY').toUpperCase().includes('BUY');
-          var actionTag = isBuy
-            ? '<span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-bold text-[10px]">BELI</span>'
-            : '<span class="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-bold text-[10px]">JUAL</span>';
+        for (var ins = 0; ins < filteredInsiders.length; ins++) {
+          var row = filteredInsiders[ins];
+          var actRaw = String(row.action_type || row.type || 'BUY').toUpperCase();
+          var isBuy = actRaw.includes('BUY') || actRaw.includes('BELI');
+          var isSell = actRaw.includes('SELL') || actRaw.includes('JUAL');
+          var isTransfer = actRaw.includes('TRANS') || actRaw.includes('ALIH') || actRaw.includes('HIBAH');
+
+          var actionTag = '';
+          if (isBuy) {
+            actionTag = '<span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-bold text-[10px]">BELI</span>';
+          } else if (isSell) {
+            actionTag = '<span class="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-bold text-[10px]">JUAL</span>';
+          } else if (isTransfer) {
+            actionTag = '<span class="px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/30 text-sky-300 font-bold text-[10px]">TRANSFER</span>';
+          } else {
+            actionTag = '<span class="px-2 py-0.5 rounded bg-dark-600/40 text-gray-300 font-bold text-[10px]">' + escapeHtml(actRaw) + '</span>';
+          }
+
+          var priceDisplay = '—';
+          if (row.price != null && Number(row.price) > 0) {
+            priceDisplay = 'Rp ' + formatIDR(Number(row.price));
+          } else if (row.price === 0) {
+            priceDisplay = 'Rp 0';
+          }
+
+          var brokerDisplay = (row.broker && row.broker !== '—')
+            ? '<span class="px-1.5 py-0.5 rounded font-mono font-bold bg-dark-600/60 text-gray-200 border border-dark-500 text-[10px]">' + escapeHtml(row.broker) + '</span>'
+            : '<span class="text-gray-500 font-mono">—</span>';
+
+          var sharesVal = row.shares_change != null ? row.shares_change : (row.shares != null ? row.shares : row.volume);
+          var signStr = isBuy ? '+' : (isSell ? '-' : '');
+          var pctStr = row.pct_change && row.pct_change !== '—' ? ' (' + escapeHtml(row.pct_change) + ')' : '';
+          var changeDisplay = sharesVal != null
+            ? (signStr + formatNumber(Math.abs(sharesVal)) + pctStr)
+            : (row.pct_change || '—');
+
+          var afterShares = row.shares_after != null ? formatNumber(row.shares_after) : (row.shares_after === 0 ? '0' : '—');
+          var afterPct = row.pct_after ? ' (' + escapeHtml(row.pct_after) + ')' : '';
+          var afterDisplay = afterShares !== '—' ? (afterShares + afterPct) : '—';
+
+          var sharesBeforeVal = row.shares_before;
+          if (sharesBeforeVal == null && row.shares_after != null && sharesVal != null) {
+            var signedVal = (isSell && sharesVal > 0) ? -sharesVal : sharesVal;
+            sharesBeforeVal = row.shares_after - signedVal;
+          }
+          var beforeShares = sharesBeforeVal != null ? formatNumber(sharesBeforeVal) : (sharesBeforeVal === 0 ? '0' : '—');
+          var beforePct = row.pct_before ? ' (' + escapeHtml(row.pct_before) + ')' : '';
+          var beforeDisplay = beforeShares !== '—' ? (beforeShares + beforePct) : '—';
+
+          var isForeign = String(row.nationality || '').toLowerCase() === 'foreign';
+          var nationalityBadge = isForeign
+            ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/10 text-sky-300 border border-sky-500/30">🌏 Foreign</span>'
+            : '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-dark-600/40 text-gray-300 border border-dark-500">🇮🇩 Local</span>';
+
+          var changeColor = isBuy ? 'text-emerald-400' : (isSell ? 'text-rose-400' : 'text-gray-300');
 
           html += '        <tr class="hover:bg-dark-600/20 transition">';
-          html += '          <td class="py-2.5 px-2 font-mono text-[11px] text-gray-300">' + escapeHtml(row.date || '—') + '</td>';
-          html += '          <td class="py-2.5 px-2 font-medium text-gray-100">' + escapeHtml(row.name || '—') + '</td>';
-          html += '          <td class="py-2.5 px-2 text-gray-400 text-[11px]">' + escapeHtml(row.position || '—') + '</td>';
+          html += '          <td class="py-2.5 px-2.5 font-mono text-[11px] text-gray-300">' + escapeHtml(row.date || '—') + '</td>';
+          html += '          <td class="py-2.5 px-2.5 font-medium text-gray-100">' + escapeHtml(row.name || row.insider_name || '—') + '</td>';
+          html += '          <td class="py-2.5 px-2.5 text-gray-400 text-[11px]">' + escapeHtml(row.position || '—') + '</td>';
           html += '          <td class="py-2.5 px-2 text-center">' + actionTag + '</td>';
-          html += '          <td class="py-2.5 px-2 font-mono text-right text-gray-200">' + formatNumber(row.shares != null ? row.shares : (row.volume != null ? row.volume : null)) + '</td>';
-          html += '          <td class="py-2.5 px-2 font-mono text-right ' + (isBuy ? 'text-emerald-400' : 'text-rose-400') + '">' + escapeHtml(row.pct_change || '—') + '</td>';
+          html += '          <td class="py-2.5 px-2.5 font-mono text-right text-gray-200">' + priceDisplay + '</td>';
+          html += '          <td class="py-2.5 px-2 text-center">' + brokerDisplay + '</td>';
+          html += '          <td class="py-2.5 px-2.5 font-mono text-right ' + changeColor + '">' + changeDisplay + '</td>';
+          html += '          <td class="py-2.5 px-2.5 font-mono text-right text-gray-200">' + afterDisplay + '</td>';
+          html += '          <td class="py-2.5 px-2.5 font-mono text-right text-gray-400">' + beforeDisplay + '</td>';
+          html += '          <td class="py-2.5 px-2 text-center">' + nationalityBadge + '</td>';
           html += '        </tr>';
         }
         html += '      </tbody>';
@@ -1899,6 +1986,18 @@
     }
 
     container.innerHTML = html;
+  }
+
+  function setInsiderActionFilter(action) {
+    insiderActionFilter = action || 'all';
+    var container = byId('bandarmologiContent');
+    if (container && lastBandarData) {
+      renderBandarmologiUI(container, lastBandarData);
+    }
+  }
+
+  function getInsiderActionFilter() {
+    return insiderActionFilter;
   }
 
   function formatDateDisplay(dateStr) {
@@ -2800,7 +2899,9 @@
     inspectHunterTicker: inspectHunterTicker,
     loadBrokerHunter: loadBrokerHunter,
     renderBrokerHunterUI: renderBrokerHunterUI,
-    synthesizeAccumulationFromSummary: synthesizeAccumulationFromSummary
+    synthesizeAccumulationFromSummary: synthesizeAccumulationFromSummary,
+    setInsiderActionFilter: setInsiderActionFilter,
+    getInsiderActionFilter: getInsiderActionFilter
   };
 
   root.loadBandarmologiTab = loadBandarmologiTab;
@@ -2846,7 +2947,9 @@
       inspectHunterTicker: inspectHunterTicker,
       loadBrokerHunter: loadBrokerHunter,
       renderBrokerHunterUI: renderBrokerHunterUI,
-      synthesizeAccumulationFromSummary: synthesizeAccumulationFromSummary
+      synthesizeAccumulationFromSummary: synthesizeAccumulationFromSummary,
+      setInsiderActionFilter: setInsiderActionFilter,
+      getInsiderActionFilter: getInsiderActionFilter
     };
   }
 
