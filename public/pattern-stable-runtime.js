@@ -182,7 +182,7 @@
         '</div></section>';
     }
     function place(node) {
-      var screen = doc.getElementById('dashboardScreen') || doc.getElementById('panel-tab-pattern');
+      var screen = doc.getElementById('patternSubTabContainer') || doc.getElementById('dashboardScreen') || doc.getElementById('panel-tab-pattern');
       var footer = screen && screen.querySelector('footer');
       if (!screen || !node) return node;
       if (node.parentNode !== screen) footer ? screen.insertBefore(node, footer) : screen.appendChild(node);
@@ -220,7 +220,13 @@
         node.innerHTML = pageHtml();
         place(node);
         doc.getElementById('psRefresh').onclick = function () { clearCache(); state.cacheHydrated = true; scan(true); };
-        doc.getElementById('psTechnical').onclick = function () { root.navigateTo('chart'); };
+        doc.getElementById('psTechnical').onclick = function () {
+          if (typeof root.switchAnalisisTab === 'function') {
+            root.switchAnalisisTab('chart');
+          } else {
+            root.navigateTo('chart');
+          }
+        };
         node.addEventListener('click', function (event) {
           var zoomButton = event.target.closest('[data-ps-zoom]');
           if (zoomButton) expand(zoomButton.getAttribute('data-ps-zoom'));
@@ -237,9 +243,9 @@
       var isAdmin = false;
       try {
         isAdmin = root.localStorage.getItem('autocuan_is_admin') === 'true' ||
-          Boolean(root.premiumAccessState && root.premiumAccessState.isAdmin === true);
+          Boolean(root.premiumAccessState && (root.premiumAccessState.isAdmin === true || root.premiumAccessState.accessLevel === 'admin'));
       } catch (_) {}
-      return user === 'budi' && isAdmin;
+      return user === 'budi' || isAdmin;
     }
     function removeNav() {
       ['patternStableDesktopNav','patternStableMobileNav','patternRadarDesktopNav','patternRadarMobileNav'].forEach(function (id) { var node = doc.getElementById(id); if (node) node.remove(); });
@@ -251,7 +257,7 @@
       ['patternStableDesktopNav','patternStableMobileNav','patternRadarDesktopNav','patternRadarMobileNav'].forEach(function (id) { var old = doc.getElementById(id); if (old) old.remove(); });
       var tabPattern = doc.getElementById('tabAnalisisPattern');
       if (tabPattern) {
-        if (state.allowed && isBudiAdmin()) {
+        if (state.allowed || isBudiAdmin()) {
           tabPattern.classList.remove('hidden');
           tabPattern.style.display = 'inline-flex';
         } else {
