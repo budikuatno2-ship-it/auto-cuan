@@ -140,16 +140,13 @@
   function normalizeBrokerValue(val, vol, avgPrice) {
     if (!val || isNaN(val)) return 0;
     var num = Number(val);
+    // Absolute sanity guard: Any broker value >= 500 Miliar (5e11) is a 100x multiplier artifact in IDX data
+    if (Math.abs(num) >= 5e11) {
+      return Math.round(num / 100);
+    }
     if (vol && avgPrice && vol > 0 && avgPrice > 0) {
       var expected = vol * avgPrice;
       if (expected > 0 && Math.abs(num / expected - 100) < 20) {
-        return Math.round(num / 100);
-      }
-    }
-    // Anomaly guard: if single-day broker value exceeds 1 Triliun IDR with 100x multiplier artifact
-    if (Math.abs(num) >= 1e12 && vol && avgPrice && vol > 0 && avgPrice > 0) {
-      var exp = vol * avgPrice;
-      if (exp > 0 && Math.abs(num / exp - 100) < 30) {
         return Math.round(num / 100);
       }
     }
@@ -353,6 +350,30 @@
     var bList = Array.isArray(buyers) ? buyers : [];
     var sList = Array.isArray(sellers) ? sellers : [];
 
+    // If sList is empty, check if bList contains sellers or sell values
+    if (sList.length === 0 && bList.length > 0) {
+      var pb = [];
+      var ps = [];
+      for (var p = 0; p < bList.length; p++) {
+        var itm = bList[p];
+        var nCheck = itm.nval != null ? itm.nval : (itm.net_val != null ? itm.net_val : ((itm.bval || itm.buy_val || 0) - (itm.sval || itm.sell_val || 0)));
+        if (nCheck < 0 || ((itm.sval || itm.sell_val || 0) > (itm.bval || itm.buy_val || 0))) {
+          ps.push(itm);
+        } else {
+          pb.push(itm);
+        }
+      }
+      if (ps.length > 0) {
+        bList = pb;
+        sList = ps;
+      } else {
+        var withSell = bList.filter(function (b) { return (b.sval || b.sell_val || 0) > 0; });
+        if (withSell.length > 0) {
+          sList = withSell;
+        }
+      }
+    }
+
     for (var i = 0; i < bList.length; i++) {
       processItem(bList[i], true);
     }
@@ -397,16 +418,7 @@
       }
 
       // Anomaly correction on netVal if over-inflated into trillions
-      if (Math.abs(netVal) >= 1e12 && (it.bvol > 0 || it.svol > 0)) {
-        var refPrice = it.avgBuy || it.avgSell || 0;
-        var refVol = Math.max(it.bvol, it.svol);
-        if (refPrice > 0 && refVol > 0) {
-          var approxNet = normalizeBrokerValue(netVal, refVol, refPrice);
-          if (approxNet !== netVal) netVal = approxNet;
-        } else if (Math.abs(netVal) >= 1e12) {
-          netVal = Math.round(netVal / 100);
-        }
-      }
+      netVal = normalizeBrokerValue(netVal, Math.max(it.bvol, it.svol), it.avgBuy || it.avgSell);
 
       var isNetBuyer;
       if (it.bval > 0 && it.sval > 0) {
@@ -430,16 +442,36 @@
       it.isNetBuyer = isNetBuyer;
       it.txVal = txVal;
 
-      if (txVal > maxTxVal) maxTxVal = txVal;
-      if (Math.abs(netVal) > maxAbsNet) maxAbsNet = Math.abs(netVal);
-
       items.push(it);
+    }
+
+    // Balance Top 10 Buyers and Top 10 Sellers
+    if (isGross) {
+      var buyersList = items.filter(function (it) { return it.bval > 0; }).sort(function (a, b) { return b.bval - a.bval; }).slice(0, 10);
+      var sellersList = items.filter(function (it) { return it.sval > 0; }).sort(function (a, b) { return b.sval - a.sval; }).slice(0, 10);
+      var combinedMap = {};
+      for (var bi = 0; bi < buyersList.length; bi++) {
+        combinedMap[buyersList[bi].broker] = buyersList[bi];
+      }
+      for (var si = 0; si < sellersList.length; si++) {
+        combinedMap[sellersList[si].broker] = sellersList[si];
+      }
+      items = Object.values(combinedMap);
+    } else {
+      var nBuyers = items.filter(function (it) { return it.isNetBuyer; }).sort(function (a, b) { return b.txVal - a.txVal; }).slice(0, 10);
+      var nSellers = items.filter(function (it) { return !it.isNetBuyer; }).sort(function (a, b) { return b.txVal - a.txVal; }).slice(0, 10);
+      items = nBuyers.concat(nSellers);
     }
 
     // Sort descending by transaction magnitude
     items.sort(function (a, b) {
       return b.txVal - a.txVal;
     });
+
+    for (var m = 0; m < items.length; m++) {
+      if (items[m].txVal > maxTxVal) maxTxVal = items[m].txVal;
+      if (Math.abs(items[m].netVal) > maxAbsNet) maxAbsNet = Math.abs(items[m].netVal);
+    }
 
     // Assign sizes, 3-tier colors, and animation presets
     for (var k = 0; k < items.length; k++) {
@@ -679,9 +711,10 @@
       for (var i = 0; i < visibleBrokers.length; i++) {
         var b = visibleBrokers[i];
         var isSelected = b.broker === activeCode;
-        var styleInfo = getBubbleColorStyles(b.isNetBuyer, b.colorTier);
-        var valText = isGross ? formatIDR(b.txVal) : ((b.netVal >= 0 ? '+' : '-') + formatIDR(Math.abs(b.netVal)));
-        var subBadge = b.size >= 82 ? (b.isNetBuyer ? 'BUY' : 'SELL') : '';
+        var isBuyerBubble = filterSide === 'sell' ? false : (filterSide === 'buy' ? true : (isGross ? (b.bval > b.sval) : b.isNetBuyer));
+        var styleInfo = getBubbleColorStyles(isBuyerBubble, b.colorTier);
+        var valText = isGross ? (filterSide === 'sell' ? ('-' + formatIDR(b.sval)) : (filterSide === 'buy' ? ('+' + formatIDR(b.bval)) : formatIDR(b.txVal))) : ((b.netVal >= 0 ? '+' : '-') + formatIDR(Math.abs(b.netVal)));
+        var subBadge = b.size >= 82 ? (isBuyerBubble ? 'BUY' : 'SELL') : '';
 
         var animString = isSelected
           ? 'none'
@@ -1056,6 +1089,30 @@
       ? firstNonEmptyList(bSum.gross_sellers, bSum.top_sellers)
       : firstNonEmptyList(bSum.net_sellers, bSum.top_sellers);
 
+    // Partition guard: if rawSellers is empty or rawBuyers has seller items
+    if ((!rawSellers || rawSellers.length === 0) && rawBuyers && rawBuyers.length > 0) {
+      var pbList = [];
+      var psList = [];
+      for (var pbi = 0; pbi < rawBuyers.length; pbi++) {
+        var pIt = rawBuyers[pbi];
+        var pNet = pIt.nval != null ? pIt.nval : (pIt.net_val != null ? pIt.net_val : ((pIt.bval || pIt.buy_val || 0) - (pIt.sval || pIt.sell_val || 0)));
+        if (pNet < 0 || ((pIt.sval || pIt.sell_val || 0) > (pIt.bval || pIt.buy_val || 0))) {
+          psList.push(pIt);
+        } else {
+          pbList.push(pIt);
+        }
+      }
+      if (psList.length > 0) {
+        rawBuyers = pbList;
+        rawSellers = psList;
+      } else {
+        var withSell = rawBuyers.filter(function (b) { return (b.sval || b.sell_val || 0) > 0; });
+        if (withSell.length > 0) {
+          rawSellers = withSell;
+        }
+      }
+    }
+
     var buyers = filterBrokersByFlow(rawBuyers, brokerFlowFilter);
     var sellers = filterBrokersByFlow(rawSellers, brokerFlowFilter);
 
@@ -1083,11 +1140,11 @@
       } else {
         for (var b = 0; b < buyers.length; b++) {
           var item = buyers[b];
-          var buyVal = item.bval != null ? item.bval : (item.buy_val || item.net_val || item.val || item.value || 0);
-          var sellVal = item.sval != null ? item.sval : (item.sell_val || 0);
           var buyVol = item.bvol != null ? item.bvol : (item.buy_vol || item.vol || item.volume || 0);
           var sellVol = item.svol != null ? item.svol : (item.sell_vol || 0);
-          var netVal = item.nval != null ? item.nval : (item.net_val != null ? item.net_val : (buyVal - sellVal));
+          var buyVal = normalizeBrokerValue(item.bval != null ? item.bval : (item.buy_val || item.net_val || item.val || item.value || 0), buyVol, item.avg_price);
+          var sellVal = normalizeBrokerValue(item.sval != null ? item.sval : (item.sell_val || 0), sellVol, item.avg_price);
+          var netVal = normalizeBrokerValue(item.nval != null ? item.nval : (item.net_val != null ? item.net_val : (buyVal - sellVal)));
           if (netVal < 0 && (buyVal > sellVal || sellVal === 0)) {
             netVal = Math.abs(netVal);
           }
@@ -1163,11 +1220,11 @@
       } else {
         for (var s = 0; s < sellers.length; s++) {
           var sItem = sellers[s];
-          var sBuyVal = sItem.bval != null ? sItem.bval : (sItem.buy_val || 0);
-          var sSellVal = sItem.sval != null ? sItem.sval : (sItem.sell_val || Math.abs(sItem.net_val || sItem.val || sItem.value || 0));
           var sBuyVol = sItem.bvol != null ? sItem.bvol : (sItem.buy_vol || 0);
           var sSellVol = sItem.svol != null ? sItem.svol : (sItem.sell_vol || Math.abs(sItem.net_vol || sItem.vol || sItem.volume || 0));
-          var sNetVal = sItem.nval != null ? sItem.nval : (sItem.net_val != null ? sItem.net_val : (sBuyVal - sSellVal));
+          var sBuyVal = normalizeBrokerValue(sItem.bval != null ? sItem.bval : (sItem.buy_val || 0), sBuyVol, sItem.avg_price);
+          var sSellVal = normalizeBrokerValue(sItem.sval != null ? sItem.sval : (sItem.sell_val || Math.abs(sItem.net_val || sItem.val || sItem.value || 0)), sSellVol, sItem.avg_price);
+          var sNetVal = normalizeBrokerValue(sItem.nval != null ? sItem.nval : (sItem.net_val != null ? sItem.net_val : (sBuyVal - sSellVal)));
           if (sNetVal > 0 && (sSellVal > sBuyVal || sBuyVal === 0)) {
             sNetVal = -Math.abs(sNetVal);
           }
@@ -1351,7 +1408,8 @@
         for (var di = 0; di < revSeries.length; di++) {
           var dayRow = revSeries[di];
           var isSelected = dayRow.date === (bSum.date || currentBandarDate);
-          var isPositive = (dayRow.net_val || 0) >= 0;
+          var rowNet = normalizeBrokerValue(dayRow.net_val || 0);
+          var isPositive = rowNet >= 0;
           var statusBadge = isPositive
             ? '<span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold text-[10px]">AKUMULASI</span>'
             : '<span class="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-semibold text-[10px]">DISTRIBUSI</span>';
@@ -1368,7 +1426,7 @@
           }
           html += '          </td>';
           html += '          <td class="py-2 px-2 text-center">' + statusBadge + '</td>';
-          html += '          <td class="py-2 px-2 font-mono text-right font-semibold ' + (isPositive ? 'text-emerald-400' : 'text-rose-400') + '">' + (isPositive ? '+' : '-') + formatIDR(Math.abs(dayRow.net_val || 0)) + '</td>';
+          html += '          <td class="py-2 px-2 font-mono text-right font-semibold ' + (isPositive ? 'text-emerald-400' : 'text-rose-400') + '">' + (isPositive ? '+' : '-') + formatIDR(Math.abs(rowNet)) + '</td>';
           html += '          <td class="py-2 px-2 text-center font-mono font-bold text-emerald-300">' + escapeHtml(dayRow.top_buyer || '—') + '</td>';
           html += '          <td class="py-2 px-2 text-center font-mono font-bold text-rose-300">' + escapeHtml(dayRow.top_seller || '—') + '</td>';
           html += '          <td class="py-2 px-2 text-center">';
@@ -1397,13 +1455,14 @@
         html += '  <div class="space-y-2">';
         var maxAbs = 1;
         for (var k = 0; k < series.length; k++) {
-          var val = Math.abs(series[k].net_val || 0);
+          var val = Math.abs(normalizeBrokerValue(series[k].net_val || 0));
           if (val > maxAbs) maxAbs = val;
         }
         for (var si = 0; si < series.length; si++) {
           var day = series[si];
-          var isPositive = (day.net_val || 0) >= 0;
-          var barWidth = Math.max(8, Math.min(100, Math.round((Math.abs(day.net_val || 0) / maxAbs) * 100)));
+          var dayNet = normalizeBrokerValue(day.net_val || 0);
+          var isPositive = dayNet >= 0;
+          var barWidth = Math.max(8, Math.min(100, Math.round((Math.abs(dayNet) / maxAbs) * 100)));
           var barColor = isPositive ? 'bg-emerald-500' : 'bg-rose-500';
 
           html += '    <div class="flex items-center gap-3 text-xs">';
@@ -1411,7 +1470,7 @@
           html += '      <div class="flex-1 bg-dark-800/80 rounded-full h-3 overflow-hidden flex items-center px-0.5">';
           html += '        <div class="h-2 rounded-full ' + barColor + ' transition-all" style="width:' + barWidth + '%"></div>';
           html += '      </div>';
-          html += '      <span class="w-24 text-right font-mono font-semibold text-[11px] ' + (isPositive ? 'text-emerald-400' : 'text-rose-400') + ' shrink-0">' + (isPositive ? '+' : '-') + formatIDR(Math.abs(day.net_val || 0)) + '</span>';
+          html += '      <span class="w-24 text-right font-mono font-semibold text-[11px] ' + (isPositive ? 'text-emerald-400' : 'text-rose-400') + ' shrink-0">' + (isPositive ? '+' : '-') + formatIDR(Math.abs(dayNet)) + '</span>';
           html += '    </div>';
         }
         html += '  </div>';
@@ -1822,6 +1881,7 @@
     isForeignBroker: isForeignBroker,
     filterBrokersByFlow: filterBrokersByFlow,
     getBrokerSecurityName: getBrokerSecurityName,
+    normalizeBrokerValue: normalizeBrokerValue,
     buildBrokerBubbleItems: buildBrokerBubbleItems,
     renderBrokerBubbleClusterHtml: renderBrokerBubbleClusterHtml,
     renderBrokerDetailCardHtml: renderBrokerDetailCardHtml,
@@ -1846,6 +1906,7 @@
       isForeignBroker: isForeignBroker,
       filterBrokersByFlow: filterBrokersByFlow,
       getBrokerSecurityName: getBrokerSecurityName,
+      normalizeBrokerValue: normalizeBrokerValue,
       buildBrokerBubbleItems: buildBrokerBubbleItems,
       renderBrokerBubbleClusterHtml: renderBrokerBubbleClusterHtml,
       renderBrokerDetailCardHtml: renderBrokerDetailCardHtml,
