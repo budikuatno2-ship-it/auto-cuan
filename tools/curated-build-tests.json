@@ -357,5 +357,7 @@
   "test/broker-accumulation-bubble.test.js",
   "test/broker-engine-parity.test.js",
   "test/bandarmologi-intel-ui.test.js",
-  "test/header-profile-pattern-radar.test.js"
+  "test/header-profile-pattern-radar.test.js",
+  "test/optional-email-auth.test.js",
+  "test/sensitive-area-compliance.test.js"
 ]
