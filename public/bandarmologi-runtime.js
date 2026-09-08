@@ -573,7 +573,7 @@
 
     var items = [];
     if (isGross) {
-      // 11 Top Gross Buyers
+      // Gross Buyers: render all active buyers without artificial cap
       var buyerBrokers = [];
       var seenBuyers = {};
       for (var bi = 0; bi < bList.length; bi++) {
