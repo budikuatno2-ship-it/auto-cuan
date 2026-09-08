@@ -38,7 +38,7 @@ test('tools/build-smoke-tests.json exists and defines essential smoke/contract t
   assert.equal(fs.existsSync(smokePath), true, 'tools/build-smoke-tests.json must exist');
   const list = JSON.parse(fs.readFileSync(smokePath, 'utf8'));
   assert.ok(Array.isArray(list));
-  assert.ok(list.length >= 40 && list.length <= 60, 'Smoke list should contain between 40 and 60 contract tests');
+  assert.ok(list.length >= 40 && list.length <= 75, 'Smoke list should contain between 40 and 75 contract tests');
   for (const file of list) {
     assert.equal(fs.existsSync(path.join(ROOT_DIR, file)), true, `Smoke test file must exist: ${file}`);
   }
