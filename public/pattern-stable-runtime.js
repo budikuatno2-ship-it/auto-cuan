@@ -286,6 +286,8 @@
       }
       var pNode = page();
       setPageVisible(pNode, true);
+      pNode.classList.remove('hidden');
+      pNode.style.display = 'block';
       if (pNode.parentNode !== target) {
         target.innerHTML = '';
         target.appendChild(pNode);
@@ -296,6 +298,7 @@
         state.filterTicker = active;
       }
       if (!hydrateCache()) scan(false);
+      render();
     };
 
     function show() {

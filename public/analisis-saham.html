@@ -17,13 +17,17 @@
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <style>
         body { background-color: #0b0e14; color: #f3f4f6; font-family: Inter, system-ui, -apple-system, sans-serif; min-height: 100dvh; display: flex; flex-direction: column; }
-        .app-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(11,14,20,0.95); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 50; }
-        .brand { display: flex; align-items: center; gap: 12px; }
+        .app-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(11,14,20,0.95); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 50; flex-wrap: nowrap; gap: 12px; }
+        .brand { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
         .brand-mark { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #10b981, #059669); color: #022c22; font-weight: 900; font-size: 15px; display: grid; place-items: center; letter-spacing: -0.02em; flex-shrink: 0; }
         .brand-copy h1 { font-size: 15px; font-weight: 800; color: #fff; line-height: 1.2; margin: 0; }
         .brand-copy p { font-size: 11px; color: #9ca3af; margin: 0; }
-        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: nowrap; }
+        #headerAccountSection { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap; }
         #toastContainer { position: fixed; top: 18px; right: 18px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        .analisis-subtab { padding: 6px 14px; border-radius: 10px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.15s ease; color: #9ca3af; background: transparent; border: none; }
+        .analisis-subtab:hover { color: #fff; }
+        .analisis-subtab.active { background: #10b981; color: #000; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
@@ -39,21 +43,21 @@
             </div>
         </div>
         <div class="header-actions">
-            <a href="/dashboard?page=news#news" onclick="event.preventDefault(); var t = (window.UnifiedCockpit && typeof window.UnifiedCockpit.getActiveTicker === 'function' ? window.UnifiedCockpit.getActiveTicker() : '') || 'BBCA'; window.location.href='/dashboard?page=news&ticker=' + encodeURIComponent(t) + '#news';" class="px-3.5 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-300 hover:text-white hover:border-emerald-500/40 transition-all text-xs font-semibold flex items-center gap-1.5" title="Buka Berita Pasar &amp; Katalis">
+            <a href="/dashboard?page=news#news" onclick="event.preventDefault(); var t = (window.UnifiedCockpit && typeof window.UnifiedCockpit.getActiveTicker === 'function' ? window.UnifiedCockpit.getActiveTicker() : '') || 'BBCA'; window.location.href='/dashboard?page=news&ticker=' + encodeURIComponent(t) + '#news';" class="px-3.5 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-300 hover:text-white hover:border-emerald-500/40 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0" title="Buka Berita Pasar &amp; Katalis">
                 <span>📰 Berita &amp; Katalis</span>
             </a>
-            <button type="button" onclick="openAiApiKeyModal()" class="px-3 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-amber-300 hover:bg-dark-600/60 transition-all text-xs font-semibold flex items-center gap-1.5" title="Kelola Google Gemini API Key (BYOK)">
+            <button type="button" onclick="openAiApiKeyModal()" class="px-3 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-amber-300 hover:bg-dark-600/60 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0" title="Kelola Google Gemini API Key (BYOK)">
                 <span>🔑 API Key (BYOK)</span>
             </button>
-            <a href="/dashboard" class="px-3.5 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-300 hover:text-white hover:border-emerald-500/40 transition-all text-xs font-semibold flex items-center gap-1">
+            <a href="/dashboard" class="px-3.5 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-300 hover:text-white hover:border-emerald-500/40 transition-all text-xs font-semibold flex items-center gap-1 shrink-0">
                 <span>&larr; Dashboard</span>
             </a>
-            <div id="headerAccountSection" class="flex items-center gap-1.5 pl-1.5 sm:pl-2 border-l border-dark-600/40">
-                <span id="headerUserLabel" class="text-xs font-medium text-emerald-400 bg-dark-700/80 border border-dark-600/40 px-2.5 py-1.5 rounded-xl cursor-pointer hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all flex items-center gap-1.5" title="Buka Profil Akun" role="button" tabindex="0">
+            <div id="headerAccountSection" class="flex items-center gap-1.5 pl-1.5 sm:pl-2 border-l border-dark-600/40 shrink-0 whitespace-nowrap">
+                <span id="headerUserLabel" class="text-xs font-medium text-emerald-400 bg-dark-700/80 border border-dark-600/40 px-2.5 py-1.5 rounded-xl cursor-pointer hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all flex items-center gap-1.5 shrink-0" title="Buka Profil Akun" role="button" tabindex="0">
                     <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
                     <span id="headerUsername">Akun</span>
                 </span>
-                <button id="logoutBtn" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-medium text-gray-400 border border-dark-600/40 hover:border-rose-500/40 hover:text-rose-400 transition-all" title="Logout dari akun">
+                <button id="logoutBtn" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-medium text-gray-400 border border-dark-600/40 hover:border-rose-500/40 hover:text-rose-400 transition-all shrink-0" title="Logout dari akun">
                     Logout
                 </button>
             </div>
@@ -62,54 +66,15 @@
 
     <!-- ===== MAIN UNIFIED COCKPIT CONTAINER ===== -->
     <main id="page-analisis" class="page-content flex-1 flex flex-col max-w-[1280px] w-full mx-auto px-3 sm:px-5 py-3">
-        <!-- Top Cockpit Search & Sync Bar -->
-        <div class="unified-top-bar mb-4 flex-shrink-0">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
-                    <div class="relative flex-1 min-w-[200px]">
-                        <input id="analisisInput" type="text" placeholder="Ketik ticker: BBCA, BBRI, TLKM..." class="w-full px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm font-semibold tracking-wide" onkeydown="if(event.key==='Enter')UnifiedCockpit.handleTickerInputEnter()">
-                    </div>
-                    <button type="button" onclick="UnifiedCockpit.handleUnifiedAnalisisSubmit()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all flex items-center gap-1.5 shrink-0" title="Jalankan Analisis Saham">
-                        <span>Analisis Saham</span>
-                    </button>
-                    <button type="button" onclick="openAiApiKeyModal()" class="px-3 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-300 hover:text-amber-300 hover:border-amber-500/40 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0" title="Kelola Google Gemini API Key (BYOK)">
-                        <span>🔑 API Key</span>
-                    </button>
-                </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    <span class="text-xs text-gray-400">Aktif:</span>
-                    <span id="unifiedActiveTickerBadge" class="unified-ticker-badge">BBCA</span>
-                </div>
-            </div>
-            <!-- Quick Ticker Chips -->
-            <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
-                <span class="text-[11px] text-gray-400 mr-1">Populer:</span>
-                <button type="button" onclick="UnifiedCockpit.syncActiveTicker('IHSG', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">IHSG</button>
-                <button type="button" onclick="UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
-                <button type="button" onclick="UnifiedCockpit.syncActiveTicker('BBRI', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
-                <button type="button" onclick="UnifiedCockpit.syncActiveTicker('BMRI', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
-                <button type="button" onclick="UnifiedCockpit.syncActiveTicker('TLKM', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
-                <button type="button" onclick="UnifiedCockpit.syncActiveTicker('ASII', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">ASII</button>
-            </div>
-        </div>
-
-        <!-- Sub-Tab Strip (Pola Portfolio Command Center) -->
-        <nav class="analisis-tab-strip mb-4" role="tablist" aria-label="Sub-tab Analisis Saham">
-            <button id="tabAnalisisText" type="button" class="analisis-tab active" data-tab="analisis" onclick="switchAnalisisTab('analisis')">
+        <!-- Main Tab Navigation Strip (Consolidated 5-Tab Architecture) -->
+        <nav class="analisis-tab-strip mb-4" role="tablist" aria-label="Tab Analisis Saham">
+            <button id="tabAnalisisChart" type="button" class="analisis-tab active" data-tab="analisis-chart" onclick="switchAnalisisTab('analisis-chart')">
                 <span class="text-base">💬</span>
-                <span>Analisis Saham</span>
-            </button>
-            <button id="tabAnalisisVision" type="button" class="analisis-tab" data-tab="chart" onclick="switchAnalisisTab('chart')">
-                <span class="text-base">📈</span>
-                <span>Chart &amp; AI Vision</span>
+                <span>Analisis &amp; Chart</span>
             </button>
             <button id="tabBandarmologi" type="button" class="analisis-tab" data-tab="bandarmologi" onclick="switchAnalisisTab('bandarmologi')">
                 <span class="text-base">🏛️</span>
-                <span>Bandarmologi &amp; Insider</span>
-            </button>
-            <button id="tabAkumulasiBroker" type="button" class="analisis-tab" data-tab="akumulasi" onclick="switchAnalisisTab('akumulasi')">
-                <span class="text-base">📊</span>
-                <span>Akumulasi Broker</span>
+                <span>Bandarmologi</span>
             </button>
             <button id="tabBrokerHunter" type="button" class="analisis-tab" data-tab="hunter" onclick="switchAnalisisTab('hunter')">
                 <span class="text-base">🎯</span>
@@ -127,11 +92,56 @@
             </button>
         </nav>
 
-        <!-- ===== 3 ISOLATED SUB-TAB PANELS ===== -->
+        <!-- Header / Controls for Analisis & Chart (Global Search + Popular Chips + Subtabs) -->
+        <div id="analisisChartHeader" class="mb-4">
+            <!-- Top Cockpit Search & Sync Bar -->
+            <div class="unified-top-bar mb-3 flex-shrink-0">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
+                        <div class="relative flex-1 min-w-[200px]">
+                            <input id="analisisInput" type="text" placeholder="Ketik ticker: BBCA, BBRI, TLKM..." class="w-full px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm font-semibold tracking-wide" onkeydown="if(event.key==='Enter')UnifiedCockpit.handleTickerInputEnter()">
+                        </div>
+                        <button type="button" onclick="UnifiedCockpit.handleUnifiedAnalisisSubmit()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all flex items-center gap-1.5 shrink-0" title="Jalankan Analisis Saham">
+                            <span>Analisis Saham</span>
+                        </button>
+                        <button type="button" onclick="openAiApiKeyModal()" class="px-3 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-300 hover:text-amber-300 hover:border-amber-500/40 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0" title="Kelola Google Gemini API Key (BYOK)">
+                            <span>🔑 API Key</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="text-xs text-gray-400">Aktif:</span>
+                        <span id="unifiedActiveTickerBadge" class="unified-ticker-badge">BBCA</span>
+                    </div>
+                </div>
+                <!-- Quick Ticker Chips -->
+                <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
+                    <span class="text-[11px] text-gray-400 mr-1">Populer:</span>
+                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('IHSG', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">IHSG</button>
+                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
+                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('BBRI', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
+                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('BMRI', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
+                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('TLKM', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
+                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('ASII', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">ASII</button>
+                </div>
+            </div>
 
-        <!-- SUB-TAB 1: ANALISIS SAHAM (Text Analysis + AI Companion Chat, NO Chart) -->
+            <!-- Sub-Tab Switcher: [💬 Analisis AI] vs [📈 Chart & AI Vision] -->
+            <div class="flex items-center gap-1 bg-dark-800 p-1 rounded-xl border border-dark-600/50 text-xs w-fit">
+                <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisSubTab('ai')">
+                    <span>💬</span>
+                    <span>Analisis AI</span>
+                </button>
+                <button id="tabAnalisisVision" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">
+                    <span>📈</span>
+                    <span>Chart &amp; AI Vision</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== TAB 1: INDUK ANALISIS & CHART (SUBPANEL AI) ===== -->
         <section id="panel-tab-analisis" class="analisis-tab-panel active">
-            <div class="unified-cockpit-grid">
+            <!-- SUB-PANEL 1: ANALISIS AI (Cockpit Grid) -->
+            <div id="subPanelAnalisisAI" class="unified-cockpit-grid">
                 <!-- Text Analysis Result Column -->
                 <div class="unified-primary-col">
                     <div class="unified-card">
@@ -142,7 +152,7 @@
                                 <span id="analisisActiveTickerTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-600/60 text-emerald-300 border border-emerald-500/20">BBCA</span>
                             </div>
                             <div class="flex items-center gap-2">
-                                <button type="button" onclick="switchAnalisisTab('chart')" class="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold">
+                                <button type="button" onclick="switchAnalisisSubTab('chart')" class="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold">
                                     <span>📈 Buka Chart &rarr;</span>
                                 </button>
                             </div>
@@ -303,17 +313,55 @@
             </div>
         </section>
 
-        <!-- SUB-TAB: BANDARMOLOGI & INSIDER -->
+        <!-- TAB 2: BANDARMOLOGI & AKUMULASI BROKER -->
         <section id="panel-tab-bandarmologi" class="analisis-tab-panel" style="display:none">
             <div class="unified-card p-4 sm:p-5">
-                <div class="flex flex-wrap items-center justify-between gap-3 pb-3 mb-4 border-b border-dark-600/40">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                        <h2 id="bandarPanelTitle" class="text-sm font-bold text-gray-100">Analisis Bandarmologi &amp; Kepemilikan Insider</h2>
-                        <span id="bandarActiveTickerTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-600/60 text-emerald-300 border border-emerald-500/20">BBCA</span>
+                <!-- Bandarmologi Search & Sync Bar -->
+                <div class="mb-4 pb-3 border-b border-dark-600/40">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
+                            <div class="relative flex-1 min-w-[200px]">
+                                <input id="bandarTickerSearchInput" type="text" placeholder="Ketik ticker: BBCA, BBRI, BMRI..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-full px-4 py-2 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm font-semibold tracking-wide uppercase font-mono" onkeydown="if(event.key==='Enter'){handleIndependentTabSearch('bandarmologi', this.value)}">
+                            </div>
+                            <button type="button" onclick="handleIndependentTabSearch('bandarmologi', document.getElementById('bandarTickerSearchInput').value)" class="px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition shrink-0">Cari</button>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-xs text-gray-400">Aktif:</span>
+                            <span id="bandarActiveTickerTag" class="text-xs font-mono px-2.5 py-1 rounded-lg bg-dark-700/80 text-emerald-300 border border-emerald-500/30 font-bold">BBCA</span>
+                        </div>
+                    </div>
+                    <!-- Quick Ticker Chips -->
+                    <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
+                        <span class="text-[11px] text-gray-400 mr-1">Populer:</span>
+                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'BBCA')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
+                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'BBRI')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
+                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'BMRI')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
+                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'TLKM')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
+                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'ASII')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">ASII</button>
+                        <button type="button" onclick="handleIndependentTabSearch('bandarmologi', 'BREN')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BREN</button>
                     </div>
                 </div>
+
+                <!-- Sub-Tab Switcher: Broker Summary vs Akumulasi Broker -->
+                <div class="flex items-center gap-1 bg-dark-800 p-1 rounded-xl border border-dark-600/50 text-xs mb-4 w-fit">
+                    <button id="subTabBrokerSummary" type="button" onclick="BandarmologiRuntime.setBandarSection('summary')" class="px-3.5 py-1.5 rounded-lg transition bg-emerald-500 text-dark-900 shadow-sm font-bold flex items-center gap-1.5" aria-selected="true">
+                        <span>📊</span>
+                        <span>Broker Summary</span>
+                    </button>
+                    <button id="subTabAkumulasiBroker" type="button" onclick="BandarmologiRuntime.setBandarSection('akumulasi')" class="px-3.5 py-1.5 rounded-lg transition text-gray-400 hover:text-white font-medium flex items-center gap-1.5" aria-selected="false">
+                        <span>📈</span>
+                        <span>Akumulasi Broker</span>
+                    </button>
+                </div>
+
                 <div id="bandarmologiContent"></div>
+            </div>
+        </section>
+
+        <!-- TAB 3: BROKER HUNTER (Market-wide Top 10 Broker Accumulation & Distribution Scan) -->
+        <section id="panel-tab-hunter" class="analisis-tab-panel" style="display:none">
+            <div class="unified-card p-4 sm:p-5">
+                <div id="brokerHunterContent"></div>
             </div>
         </section>
 

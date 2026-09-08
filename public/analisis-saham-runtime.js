@@ -205,39 +205,107 @@
     renderRankingTable();
   };
 
-  // ===== SUB-TAB SWITCHER (POLA PORTFOLIO) =====
-  function switchAnalisisTab(tabName) {
-    var validTabs = ['analisis', 'chart', 'ranking', 'bandarmologi', 'akumulasi', 'hunter', 'pattern'];
-    if (validTabs.indexOf(tabName) < 0) tabName = 'analisis';
+  // ===== SUB-TAB SWITCHER (POLA CONSOLIDATED TAB) =====
+  var currentAnalisisSubTab = 'ai'; // 'ai' or 'chart'
 
-    document.querySelectorAll('.analisis-tab').forEach(function (btn) {
-      var isActive = btn.dataset.tab === tabName;
-      btn.classList.toggle('active', isActive);
-      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    });
+  function switchAnalisisSubTab(subTab) {
+    currentAnalisisSubTab = (subTab === 'chart') ? 'chart' : 'ai';
+    var isChart = currentAnalisisSubTab === 'chart';
+
+    var btnAI = byId('tabAnalisisText');
+    var btnChart = byId('tabAnalisisVision');
+    if (btnAI) {
+      btnAI.classList.toggle('active', !isChart);
+      btnAI.setAttribute('aria-selected', !isChart ? 'true' : 'false');
+    }
+    if (btnChart) {
+      btnChart.classList.toggle('active', isChart);
+      btnChart.setAttribute('aria-selected', isChart ? 'true' : 'false');
+    }
 
     var pAnalisis = byId('panel-tab-analisis');
     var pChart = byId('panel-tab-chart');
-    var pRanking = byId('panel-tab-ranking');
+
+    if (pAnalisis) pAnalisis.style.display = isChart ? 'none' : 'block';
+    if (pChart) pChart.style.display = isChart ? 'block' : 'none';
+
+    if (isChart) {
+      var ticker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
+        ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
+      if (root.UnifiedCockpit && typeof root.UnifiedCockpit.loadUnifiedChart === 'function') {
+        root.UnifiedCockpit.loadUnifiedChart(ticker);
+      }
+      if (typeof setTimeout === 'function') {
+        setTimeout(function () {
+          try { window.dispatchEvent(new Event('resize')); } catch (_) {}
+        }, 50);
+      }
+    }
+  }
+  root.switchAnalisisSubTab = switchAnalisisSubTab;
+
+  function switchAnalisisTab(tabName) {
+    var parentTab = tabName;
+    if (tabName === 'analisis' || tabName === 'chart') {
+      parentTab = 'analisis-chart';
+    } else if (tabName === 'akumulasi') {
+      parentTab = 'bandarmologi';
+    }
+
+    var validParentTabs = ['analisis-chart', 'bandarmologi', 'hunter', 'ranking', 'pattern'];
+    if (validParentTabs.indexOf(parentTab) < 0) parentTab = 'analisis-chart';
+
+    if (typeof document !== 'undefined' && document.querySelectorAll) {
+      document.querySelectorAll('.analisis-tab').forEach(function (btn) {
+        var btnTab = btn.dataset ? btn.dataset.tab : (btn.getAttribute ? btn.getAttribute('data-tab') : null);
+        var isActive = btnTab === parentTab || (parentTab === 'analisis-chart' && (btnTab === 'analisis-chart' || btnTab === 'analisis'));
+        if (btn.classList && btn.classList.toggle) btn.classList.toggle('active', isActive);
+        if (btn.setAttribute) btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+    }
+
+    var pHeader = byId('analisisChartHeader');
+    var pAnalisis = byId('panel-tab-analisis');
+    var pChart = byId('panel-tab-chart');
     var pBandarmologi = byId('panel-tab-bandarmologi');
+    var pHunter = byId('panel-tab-hunter');
+    var pRanking = byId('panel-tab-ranking');
     var pPattern = byId('panel-tab-pattern');
 
-    if (pAnalisis) pAnalisis.style.display = (tabName === 'analisis' ? 'block' : 'none');
-    if (pChart) pChart.style.display = (tabName === 'chart' ? 'block' : 'none');
-    if (pRanking) pRanking.style.display = (tabName === 'ranking' ? 'block' : 'none');
-    if (pBandarmologi) pBandarmologi.style.display = ((tabName === 'bandarmologi' || tabName === 'akumulasi' || tabName === 'hunter') ? 'block' : 'none');
-    if (pPattern) pPattern.style.display = (tabName === 'pattern' ? 'block' : 'none');
+    if (parentTab === 'analisis-chart') {
+      if (pHeader) pHeader.style.display = 'block';
+      if (pBandarmologi) pBandarmologi.style.display = 'none';
+      if (pHunter) pHunter.style.display = 'none';
+      if (pRanking) pRanking.style.display = 'none';
+      if (pPattern) pPattern.style.display = 'none';
 
-    // Update panel title when switching between bandarmologi, akumulasi, and hunter
-    var titleEl = byId('bandarPanelTitle');
-    if (titleEl && (tabName === 'bandarmologi' || tabName === 'akumulasi' || tabName === 'hunter')) {
-      if (tabName === 'hunter') {
-        titleEl.textContent = 'Broker Hunter — Top 10 Saham per Broker';
-      } else if (tabName === 'akumulasi') {
-        titleEl.textContent = 'Akumulasi Broker & Deteksi Smart Money';
+      if (tabName === 'chart') {
+        if (pAnalisis) pAnalisis.style.display = 'none';
+        if (pChart) pChart.style.display = 'block';
+        switchAnalisisSubTab('chart');
+      } else if (tabName === 'analisis') {
+        if (pAnalisis) pAnalisis.style.display = 'block';
+        if (pChart) pChart.style.display = 'none';
+        switchAnalisisSubTab('ai');
       } else {
-        titleEl.textContent = 'Analisis Bandarmologi & Kepemilikan Insider';
+        if (currentAnalisisSubTab === 'chart') {
+          if (pAnalisis) pAnalisis.style.display = 'none';
+          if (pChart) pChart.style.display = 'block';
+          switchAnalisisSubTab('chart');
+        } else {
+          if (pAnalisis) pAnalisis.style.display = 'block';
+          if (pChart) pChart.style.display = 'none';
+          switchAnalisisSubTab('ai');
+        }
       }
+    } else {
+      if (pHeader) pHeader.style.display = 'none';
+      if (pAnalisis) pAnalisis.style.display = 'none';
+      if (pChart) pChart.style.display = 'none';
+      if (pBandarmologi) pBandarmologi.style.display = (parentTab === 'bandarmologi' ? 'block' : 'none');
+      if (pHunter) pHunter.style.display = (parentTab === 'hunter' ? 'block' : 'none');
+      if (pRanking) pRanking.style.display = (parentTab === 'ranking' ? 'block' : 'none');
+      if (pPattern) pPattern.style.display = (parentTab === 'pattern' ? 'block' : 'none');
     }
 
     // Sync tab param in URL
@@ -249,42 +317,32 @@
       }
     } catch (_) {}
 
-    if (tabName === 'chart') {
-      var ticker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
-        ? root.UnifiedCockpit.getActiveTicker() : 'BBCA';
-      if (root.UnifiedCockpit && typeof root.UnifiedCockpit.loadUnifiedChart === 'function') {
-        root.UnifiedCockpit.loadUnifiedChart(ticker);
+    if (parentTab === 'analisis-chart') {
+      if (tabName === 'chart') {
+        switchAnalisisSubTab('chart');
+      } else if (tabName === 'analisis') {
+        switchAnalisisSubTab('ai');
+      } else {
+        switchAnalisisSubTab(currentAnalisisSubTab);
       }
-      if (typeof setTimeout === 'function') {
-        setTimeout(function () {
-          try { window.dispatchEvent(new Event('resize')); } catch (_) {}
-        }, 50);
-      }
-    } else if (tabName === 'ranking') {
+    } else if (parentTab === 'ranking') {
       root.ensureRankingTableLoaded();
-    } else if (tabName === 'bandarmologi') {
+    } else if (parentTab === 'bandarmologi') {
+      var bandarSection = (tabName === 'akumulasi') ? 'akumulasi' : 'summary';
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
-        root.BandarmologiRuntime.setBandarSection('summary');
+        root.BandarmologiRuntime.setBandarSection(bandarSection);
       }
       if (typeof root.loadBandarmologiTab === 'function') {
         var bandarTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
           ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
         root.loadBandarmologiTab(bandarTicker);
       }
-    } else if (tabName === 'akumulasi') {
-      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
-        root.BandarmologiRuntime.setBandarSection('akumulasi');
+    } else if (parentTab === 'hunter') {
+      var hunterContainer = byId('brokerHunterContent') || byId('bandarmologiContent');
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.loadBrokerHunter === 'function') {
+        root.BandarmologiRuntime.loadBrokerHunter(hunterContainer);
       }
-      if (typeof root.loadBandarmologiTab === 'function') {
-        var accTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
-          ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
-        root.loadBandarmologiTab(accTicker);
-      }
-    } else if (tabName === 'hunter') {
-      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
-        root.BandarmologiRuntime.setBandarSection('hunter');
-      }
-    } else if (tabName === 'pattern') {
+    } else if (parentTab === 'pattern') {
       loadPatternRadarTab();
     }
   }
@@ -374,6 +432,11 @@
   }
 
   function loadPatternRadarTab(forceRetry) {
+    var panel = byId('panel-tab-pattern');
+    if (panel) {
+      panel.style.display = 'block';
+      panel.classList.remove('hidden');
+    }
     var container = byId('patternSubTabContainer');
     if (!container) return;
 
@@ -394,6 +457,11 @@
       try {
         if (typeof root.ensurePatternRadarMounted === 'function') {
           root.ensurePatternRadarMounted(container);
+          var pNode = byId('page-pattern');
+          if (pNode) {
+            pNode.classList.remove('hidden');
+            pNode.style.display = 'block';
+          }
           return;
         }
 
