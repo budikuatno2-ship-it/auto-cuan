@@ -1,16 +1,316 @@
 {
   "available_brokers": [
     {
+      "code": "AG",
+      "name": "Kiwoom Sekuritas Indonesia"
+    },
+    {
+      "code": "AH",
+      "name": "Shinhan Sekuritas Indonesia"
+    },
+    {
+      "code": "AI",
+      "name": "UOB Kay Hian Sekuritas"
+    },
+    {
       "code": "AK",
       "name": "UBS Sekuritas Indonesia"
     },
     {
+      "code": "AN",
+      "name": "Wanteg Sekuritas"
+    },
+    {
+      "code": "AO",
+      "name": "Erdikha Elit Sekuritas"
+    },
+    {
+      "code": "AP",
+      "name": "Pacific Sekuritas Indonesia"
+    },
+    {
+      "code": "AR",
+      "name": "Binaartha Sekuritas"
+    },
+    {
+      "code": "AT",
+      "name": "Phintraco Sekuritas"
+    },
+    {
+      "code": "AZ",
+      "name": "Sucor Sekuritas"
+    },
+    {
       "code": "BK",
       "name": "J.P. Morgan Sekuritas Indonesia"
+    },
+    {
+      "code": "BQ",
+      "name": "Korea Investment & Sekuritas Indonesia"
+    },
+    {
+      "code": "BR",
+      "name": "Trust Sekuritas"
+    },
+    {
+      "code": "CC",
+      "name": "Mandiri Sekuritas"
+    },
+    {
+      "code": "CD",
+      "name": "Mega Capital Sekuritas"
+    },
+    {
+      "code": "CP",
+      "name": "KB Valbury Sekuritas"
+    },
+    {
+      "code": "CS",
+      "name": "Credit Suisse Sekuritas Indonesia"
+    },
+    {
+      "code": "DB",
+      "name": "Deutsche Sekuritas Indonesia"
+    },
+    {
+      "code": "DH",
+      "name": "Sinarmas Sekuritas"
+    },
+    {
+      "code": "DP",
+      "name": "DBS Vickers Sekuritas Indonesia"
+    },
+    {
+      "code": "DR",
+      "name": "RHB Sekuritas Indonesia"
+    },
+    {
+      "code": "DS",
+      "name": "Danpac Sekuritas"
+    },
+    {
+      "code": "DX",
+      "name": "Bahana Sekuritas"
+    },
+    {
+      "code": "EP",
+      "name": "MNC Sekuritas"
+    },
+    {
+      "code": "FS",
+      "name": "Yuanta Sekuritas Indonesia"
+    },
+    {
+      "code": "FZ",
+      "name": "Waterfront Sekuritas Indonesia"
+    },
+    {
+      "code": "GA",
+      "name": "IIF Sekuritas"
+    },
+    {
+      "code": "GR",
+      "name": "Panin Sekuritas"
+    },
+    {
+      "code": "GW",
+      "name": "HSBC Sekuritas Indonesia"
+    },
+    {
+      "code": "HD",
+      "name": "KGI Sekuritas Indonesia"
+    },
+    {
+      "code": "HP",
+      "name": "Henan Putihrai Sekuritas"
+    },
+    {
+      "code": "IF",
+      "name": "Samuel Sekuritas Indonesia"
+    },
+    {
+      "code": "IH",
+      "name": "Pacific Capital Sekuritas"
+    },
+    {
+      "code": "II",
+      "name": "Danatama Makmur Sekuritas"
+    },
+    {
+      "code": "IN",
+      "name": "Investindo Nusantara Sekuritas"
+    },
+    {
+      "code": "IP",
+      "name": "Sinarmas Sekuritas"
+    },
+    {
+      "code": "IU",
+      "name": "Indo Capital Sekuritas"
+    },
+    {
+      "code": "JB",
+      "name": "Victoria Sekuritas"
+    },
+    {
+      "code": "KI",
+      "name": "Ciptadana Sekuritas Asia"
+    },
+    {
+      "code": "KK",
+      "name": "Phillip Sekuritas Indonesia"
+    },
+    {
+      "code": "KS",
+      "name": "Kresna Sekuritas"
+    },
+    {
+      "code": "KZ",
+      "name": "CLSA Sekuritas Indonesia"
+    },
+    {
+      "code": "LG",
+      "name": "Trimegah Sekuritas Indonesia"
+    },
+    {
+      "code": "MG",
+      "name": "Semesta Indovest Sekuritas"
+    },
+    {
+      "code": "MI",
+      "name": "Victoria Sekuritas Indonesia"
+    },
+    {
+      "code": "MS",
+      "name": "Morgan Stanley Sekuritas Indonesia"
+    },
+    {
+      "code": "NI",
+      "name": "BNI Sekuritas"
+    },
+    {
+      "code": "NO",
+      "name": "BNC Sekuritas Indonesia"
+    },
+    {
+      "code": "OD",
+      "name": "BRI Danareksa Sekuritas"
+    },
+    {
+      "code": "PC",
+      "name": "FAC Sekuritas Indonesia"
+    },
+    {
+      "code": "PD",
+      "name": "Indo Premier Sekuritas"
+    },
+    {
+      "code": "PE",
+      "name": "Waterfront Sekuritas"
+    },
+    {
+      "code": "PF",
+      "name": "Danasakti Sekuritas"
+    },
+    {
+      "code": "PG",
+      "name": "Panca Global Sekuritas"
+    },
+    {
+      "code": "PO",
+      "name": "Pilarmas Investindo Sekuritas"
+    },
+    {
+      "code": "PP",
+      "name": "Aldiracita Sekuritas Indonesia"
+    },
+    {
+      "code": "PS",
+      "name": "Paramitra Alfa Sekuritas"
+    },
+    {
+      "code": "RB",
+      "name": "Reliance Sekuritas Indonesia"
+    },
+    {
+      "code": "RF",
+      "name": "Buana Capital Sekuritas"
+    },
+    {
+      "code": "RG",
+      "name": "Profindo Sekuritas Indonesia"
+    },
+    {
+      "code": "RO",
+      "name": "NISP Sekuritas"
+    },
+    {
+      "code": "RS",
+      "name": "Yulie Sekuritas Indonesia"
+    },
+    {
+      "code": "RX",
+      "name": "Macquarie Sekuritas Indonesia"
+    },
+    {
+      "code": "SF",
+      "name": "Surya Fajar Sekuritas"
+    },
+    {
+      "code": "SH",
+      "name": "Artha Sekuritas Indonesia"
+    },
+    {
+      "code": "SQ",
+      "name": "BCA Sekuritas"
+    },
+    {
+      "code": "SS",
+      "name": "Shinhan Sekuritas Indonesia"
+    },
+    {
+      "code": "TF",
+      "name": "Universal Broker Indonesia"
+    },
+    {
+      "code": "TP",
+      "name": "OCBC Sekuritas Indonesia"
+    },
+    {
+      "code": "TX",
+      "name": "Dhanawibawa Sekuritas"
+    },
+    {
+      "code": "XA",
+      "name": "NH Korindo Sekuritas Indonesia"
+    },
+    {
+      "code": "XC",
+      "name": "Ajaib Sekuritas Asia"
+    },
+    {
+      "code": "XL",
+      "name": "Stockbit Sekuritas"
+    },
+    {
+      "code": "YJ",
+      "name": "Lotus Andalan Sekuritas"
+    },
+    {
+      "code": "YP",
+      "name": "Mirae Asset Sekuritas Indonesia"
+    },
+    {
+      "code": "YU",
+      "name": "CGS International Sekuritas Indonesia"
+    },
+    {
+      "code": "ZP",
+      "name": "Maybank Sekuritas Indonesia"
     }
   ],
   "ranges": [
     "1d"
   ],
-  "updated_at": "2026-09-08T02:12:31.485Z"
+  "updated_at": "2026-09-08T05:56:21.856Z"
 }

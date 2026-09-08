@@ -1,0 +1,151 @@
+{
+  "success": true,
+  "from_cache": true,
+  "broker": "NI",
+  "broker_name": "BNI Sekuritas",
+  "range": "7d",
+  "target_dates": [
+    "2026-09-07",
+    "2026-09-04",
+    "2026-09-03",
+    "2026-09-02",
+    "2026-09-01"
+  ],
+  "date_range_label": "2026-09-01 s/d 2026-09-07 (5 Hari Bursa)",
+  "generated_at": "2026-09-08T00:00:00.000Z",
+  "top_accumulated": [
+    {
+      "ticker": "BBNI",
+      "net_val": 278500000000,
+      "net_vol": 51574000,
+      "net_lot": 515740,
+      "buy_val": 371000000000,
+      "sell_val": 92500000000,
+      "buy_vol": 68703500,
+      "sell_vol": 17129500,
+      "avg_buy_price": 5400,
+      "avg_sell_price": 5400,
+      "days_active": 5
+    },
+    {
+      "ticker": "BBRI",
+      "net_val": 172000000000,
+      "net_vol": 33398000,
+      "net_lot": 333980,
+      "buy_val": 243000000000,
+      "sell_val": 71000000000,
+      "buy_vol": 47184000,
+      "sell_vol": 13786000,
+      "avg_buy_price": 5150,
+      "avg_sell_price": 5150,
+      "days_active": 5
+    },
+    {
+      "ticker": "PGAS",
+      "net_val": 107500000000,
+      "net_vol": 69805000,
+      "net_lot": 698050,
+      "buy_val": 142000000000,
+      "sell_val": 34500000000,
+      "buy_vol": 92207500,
+      "sell_vol": 22402500,
+      "avg_buy_price": 1540,
+      "avg_sell_price": 1540,
+      "days_active": 5
+    },
+    {
+      "ticker": "SMGR",
+      "net_val": 83500000000,
+      "net_vol": 21139500,
+      "net_lot": 211395,
+      "buy_val": 110500000000,
+      "sell_val": 27000000000,
+      "buy_vol": 27974500,
+      "sell_vol": 6835000,
+      "avg_buy_price": 3950,
+      "avg_sell_price": 3950,
+      "days_active": 5
+    },
+    {
+      "ticker": "JSMR",
+      "net_val": 72000000000,
+      "net_vol": 14815000,
+      "net_lot": 148150,
+      "buy_val": 93500000000,
+      "sell_val": 21500000000,
+      "buy_vol": 19238500,
+      "sell_vol": 4423500,
+      "avg_buy_price": 4860,
+      "avg_sell_price": 4860,
+      "days_active": 5
+    },
+    {
+      "ticker": "PTBA",
+      "net_val": 63000000000,
+      "net_vol": 23507500,
+      "net_lot": 235075,
+      "buy_val": 82000000000,
+      "sell_val": 19000000000,
+      "buy_vol": 30597000,
+      "sell_vol": 7089500,
+      "avg_buy_price": 2680,
+      "avg_sell_price": 2680,
+      "days_active": 5
+    }
+  ],
+  "top_distributed": [
+    {
+      "ticker": "GOTO",
+      "net_val": -101500000000,
+      "net_vol": -1750000000,
+      "net_lot": -17500000,
+      "buy_val": 22500000000,
+      "sell_val": 124000000000,
+      "buy_vol": 387931000,
+      "sell_vol": 2137931000,
+      "avg_buy_price": 58,
+      "avg_sell_price": 58,
+      "days_active": 5
+    },
+    {
+      "ticker": "EMTK",
+      "net_val": -67000000000,
+      "net_vol": -152273000,
+      "net_lot": -1522730,
+      "buy_val": 15500000000,
+      "sell_val": 82500000000,
+      "buy_vol": 35227000,
+      "sell_vol": 187500000,
+      "avg_buy_price": 440,
+      "avg_sell_price": 440,
+      "days_active": 5
+    },
+    {
+      "ticker": "BUKA",
+      "net_val": -48500000000,
+      "net_vol": -404166500,
+      "net_lot": -4041665,
+      "buy_val": 11000000000,
+      "sell_val": 59500000000,
+      "buy_vol": 91666500,
+      "sell_vol": 495833000,
+      "avg_buy_price": 120,
+      "avg_sell_price": 120,
+      "days_active": 5
+    },
+    {
+      "ticker": "ARTO",
+      "net_val": -48000000000,
+      "net_vol": -18461500,
+      "net_lot": -184615,
+      "buy_val": 14000000000,
+      "sell_val": 62000000000,
+      "buy_vol": 5384500,
+      "sell_vol": 23846000,
+      "avg_buy_price": 2600,
+      "avg_sell_price": 2600,
+      "days_active": 5
+    }
+  ],
+  "total_stocks_active": 10
+}

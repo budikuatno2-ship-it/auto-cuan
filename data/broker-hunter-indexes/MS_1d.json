@@ -1,0 +1,121 @@
+{
+  "success": true,
+  "from_cache": false,
+  "broker": "MS",
+  "broker_name": "Morgan Stanley Sekuritas Indonesia",
+  "range": "1d",
+  "target_dates": [
+    "2026-09-07"
+  ],
+  "date_range_label": "2026-09-07",
+  "generated_at": "2026-09-08T05:54:20.348Z",
+  "top_accumulated": [
+    {
+      "ticker": "BMRI",
+      "net_val": 25600000000,
+      "net_vol": 3605600,
+      "net_lot": 36056,
+      "buy_val": 34500000000,
+      "sell_val": 8900000000,
+      "buy_vol": 4859100,
+      "sell_vol": 1253500,
+      "avg_buy_price": 7100,
+      "avg_sell_price": 7100,
+      "days_active": 1
+    },
+    {
+      "ticker": "TLKM",
+      "net_val": 21000000000,
+      "net_vol": 6953600,
+      "net_lot": 69536,
+      "buy_val": 28400000000,
+      "sell_val": 7400000000,
+      "buy_vol": 9403900,
+      "sell_vol": 2450300,
+      "avg_buy_price": 3020,
+      "avg_sell_price": 3020,
+      "days_active": 1
+    },
+    {
+      "ticker": "ASII",
+      "net_val": 17900000000,
+      "net_vol": 3509800,
+      "net_lot": 35098,
+      "buy_val": 24100000000,
+      "sell_val": 6200000000,
+      "buy_vol": 4725400,
+      "sell_vol": 1215600,
+      "avg_buy_price": 5100,
+      "avg_sell_price": 5100,
+      "days_active": 1
+    },
+    {
+      "ticker": "UNTR",
+      "net_val": 14100000000,
+      "net_vol": 526100,
+      "net_lot": 5261,
+      "buy_val": 18900000000,
+      "sell_val": 4800000000,
+      "buy_vol": 705200,
+      "sell_vol": 179100,
+      "avg_buy_price": 26800,
+      "avg_sell_price": 26800,
+      "days_active": 1
+    },
+    {
+      "ticker": "ICBP",
+      "net_val": 11700000000,
+      "net_vol": 1044600,
+      "net_lot": 10446,
+      "buy_val": 15600000000,
+      "sell_val": 3900000000,
+      "buy_vol": 1392800,
+      "sell_vol": 348200,
+      "avg_buy_price": 11200,
+      "avg_sell_price": 11200,
+      "days_active": 1
+    }
+  ],
+  "top_distributed": [
+    {
+      "ticker": "BBRI",
+      "net_val": -19400000000,
+      "net_vol": -3767000,
+      "net_lot": -37670,
+      "buy_val": 5400000000,
+      "sell_val": 24800000000,
+      "buy_vol": 1048500,
+      "sell_vol": 4815500,
+      "avg_buy_price": 5150,
+      "avg_sell_price": 5150,
+      "days_active": 1
+    },
+    {
+      "ticker": "GOTO",
+      "net_val": -12400000000,
+      "net_vol": -213793200,
+      "net_lot": -2137932,
+      "buy_val": 2100000000,
+      "sell_val": 14500000000,
+      "buy_vol": 36206800,
+      "sell_vol": 250000000,
+      "avg_buy_price": 58,
+      "avg_sell_price": 58,
+      "days_active": 1
+    },
+    {
+      "ticker": "ARTO",
+      "net_val": -8000000000,
+      "net_vol": -3076900,
+      "net_lot": -30769,
+      "buy_val": 1800000000,
+      "sell_val": 9800000000,
+      "buy_vol": 692300,
+      "sell_vol": 3769200,
+      "avg_buy_price": 2600,
+      "avg_sell_price": 2600,
+      "days_active": 1
+    }
+  ],
+  "total_stocks_active": 8
+}

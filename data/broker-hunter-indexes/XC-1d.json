@@ -1,0 +1,147 @@
+{
+  "success": true,
+  "from_cache": true,
+  "broker": "XC",
+  "broker_name": "Ajaib Sekuritas Asia",
+  "range": "1d",
+  "target_dates": [
+    "2026-09-07"
+  ],
+  "date_range_label": "2026-09-07",
+  "generated_at": "2026-09-08T00:00:00.000Z",
+  "top_accumulated": [
+    {
+      "ticker": "BUMI",
+      "net_val": 37600000000,
+      "net_vol": 293750000,
+      "net_lot": 2937500,
+      "buy_val": 52400000000,
+      "sell_val": 14800000000,
+      "buy_vol": 409375000,
+      "sell_vol": 115625000,
+      "avg_buy_price": 128,
+      "avg_sell_price": 128,
+      "days_active": 1
+    },
+    {
+      "ticker": "GOTO",
+      "net_val": 31600000000,
+      "net_vol": 544827600,
+      "net_lot": 5448276,
+      "buy_val": 46800000000,
+      "sell_val": 15200000000,
+      "buy_vol": 806896500,
+      "sell_vol": 262068900,
+      "avg_buy_price": 58,
+      "avg_sell_price": 58,
+      "days_active": 1
+    },
+    {
+      "ticker": "DEWA",
+      "net_val": 23400000000,
+      "net_vol": 265909100,
+      "net_lot": 2659091,
+      "buy_val": 31200000000,
+      "sell_val": 7800000000,
+      "buy_vol": 354545400,
+      "sell_vol": 88636300,
+      "avg_buy_price": 88,
+      "avg_sell_price": 88,
+      "days_active": 1
+    },
+    {
+      "ticker": "BRIS",
+      "net_val": 19500000000,
+      "net_vol": 6632600,
+      "net_lot": 66326,
+      "buy_val": 27900000000,
+      "sell_val": 8400000000,
+      "buy_vol": 9489700,
+      "sell_vol": 2857100,
+      "avg_buy_price": 2940,
+      "avg_sell_price": 2940,
+      "days_active": 1
+    },
+    {
+      "ticker": "CUAN",
+      "net_val": 16500000000,
+      "net_vol": 2088600,
+      "net_lot": 20886,
+      "buy_val": 22400000000,
+      "sell_val": 5900000000,
+      "buy_vol": 2835400,
+      "sell_vol": 746800,
+      "avg_buy_price": 7900,
+      "avg_sell_price": 7900,
+      "days_active": 1
+    },
+    {
+      "ticker": "PTRO",
+      "net_val": 14900000000,
+      "net_vol": 1128800,
+      "net_lot": 11288,
+      "buy_val": 19800000000,
+      "sell_val": 4900000000,
+      "buy_vol": 1500000,
+      "sell_vol": 371200,
+      "avg_buy_price": 13200,
+      "avg_sell_price": 13200,
+      "days_active": 1
+    }
+  ],
+  "top_distributed": [
+    {
+      "ticker": "BBCA",
+      "net_val": -30500000000,
+      "net_vol": -2975600,
+      "net_lot": -29756,
+      "buy_val": 8400000000,
+      "sell_val": 38900000000,
+      "buy_vol": 819500,
+      "sell_vol": 3795100,
+      "avg_buy_price": 10250,
+      "avg_sell_price": 10250,
+      "days_active": 1
+    },
+    {
+      "ticker": "BMRI",
+      "net_val": -24600000000,
+      "net_vol": -3464800,
+      "net_lot": -34648,
+      "buy_val": 6800000000,
+      "sell_val": 31400000000,
+      "buy_vol": 957700,
+      "sell_vol": 4422500,
+      "avg_buy_price": 7100,
+      "avg_sell_price": 7100,
+      "days_active": 1
+    },
+    {
+      "ticker": "TLKM",
+      "net_val": -17300000000,
+      "net_vol": -5728400,
+      "net_lot": -57284,
+      "buy_val": 4800000000,
+      "sell_val": 22100000000,
+      "buy_vol": 1589400,
+      "sell_vol": 7317800,
+      "avg_buy_price": 3020,
+      "avg_sell_price": 3020,
+      "days_active": 1
+    },
+    {
+      "ticker": "ASII",
+      "net_val": -15600000000,
+      "net_vol": -3058800,
+      "net_lot": -30588,
+      "buy_val": 4200000000,
+      "sell_val": 19800000000,
+      "buy_vol": 823500,
+      "sell_vol": 3882300,
+      "avg_buy_price": 5100,
+      "avg_sell_price": 5100,
+      "days_active": 1
+    }
+  ],
+  "total_stocks_active": 10
+}
