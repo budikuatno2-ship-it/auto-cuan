@@ -105,5 +105,8 @@ data/arjum-data/
 arjum-data/
 !data/broker-hunter-indexes/
 !data/broker-hunter-indexes/**
+!data/bandarmologi-intel-indexes/
+!data/bandarmologi-intel-indexes/**
+
 
 .vercel

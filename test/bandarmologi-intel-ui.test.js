@@ -337,7 +337,7 @@ test('BandarmologiRuntime: renders Market-Wide Scanner view with 5 signal catego
   // Check table content for default category (harga_di_bawah_modal_bandar)
   assert.ok(html.includes('BBCA'), 'Table lists BBCA');
   assert.ok(html.includes('ASII'), 'Table lists ASII');
-  assert.ok(html.includes('Buka Intel &rarr;'), 'Has action button to inspect intel');
+  assert.ok(html.includes('Analisis &rarr;') || html.includes('Buka Intel &rarr;'), 'Has action button to inspect intel');
 });
 
 test('AnalisisSahamRuntime: switchAnalisisTab routes intel to bandarmologi panel and maintains active section', () => {

@@ -2181,11 +2181,11 @@
 
           html += '        <tr class="hover:bg-dark-600/20 transition">';
           html += '          <td class="py-2.5 px-3 font-mono text-[11px] text-gray-500">' + (it + 1) + '</td>';
-          html += '          <td class="py-2.5 px-3 font-mono font-bold text-emerald-300">' + escapeHtml(itTicker) + '</td>';
+          html += '          <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded font-mono font-bold text-xs bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">' + escapeHtml(itTicker) + '</span></td>';
           html += '          <td class="py-2.5 px-3 font-mono font-semibold text-gray-200">' + escapeHtml(itMetric) + '</td>';
           html += '          <td class="py-2.5 px-3 text-gray-300 text-[11px] max-w-xs truncate" title="' + escapeHtml(itNote) + '">' + escapeHtml(itNote) + '</td>';
           html += '          <td class="py-2.5 px-3 text-right">';
-          html += '            <button type="button" onclick="BandarmologiRuntime.selectIntelTicker(\'' + escapeHtml(itTicker) + '\')" class="px-2.5 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition">Buka Intel &rarr;</button>';
+          html += '            <button type="button" onclick="BandarmologiRuntime.selectIntelTicker(\'' + escapeHtml(itTicker) + '\')" class="px-2.5 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition">Analisis &rarr;</button>';
           html += '          </td>';
           html += '        </tr>';
         }
