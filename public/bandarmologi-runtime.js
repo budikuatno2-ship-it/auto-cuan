@@ -29,56 +29,65 @@
     return new Intl.NumberFormat('id-ID').format(num);
   }
 
-  // IDX Broker Code to Full Security Name Dictionary
+  // IDX Broker Code to Full Security Name Dictionary (Audited September 2026)
   var BROKER_NAMES = {
-    'YP': 'Mirae Asset Sekuritas Indonesia',
-    'CC': 'Mandiri Sekuritas',
-    'PD': 'Indo Premier Sekuritas',
-    'NI': 'BNI Sekuritas',
-    'BK': 'J.P. Morgan Sekuritas Indonesia',
+    // Major Foreign Institutional
     'AK': 'UBS Sekuritas Indonesia',
+    'BK': 'J.P. Morgan Sekuritas Indonesia',
     'CS': 'Credit Suisse Sekuritas Indonesia',
     'RX': 'Macquarie Sekuritas Indonesia',
-    'DX': 'Bahana Sekuritas',
+    'KZ': 'CLSA Sekuritas Indonesia',
     'ZP': 'Maybank Sekuritas Indonesia',
+    'DB': 'Deutsche Sekuritas Indonesia',
+    'GW': 'HSBC Sekuritas Indonesia',
+    'DP': 'DBS Vickers Sekuritas Indonesia',
+    'MS': 'Morgan Stanley Sekuritas Indonesia',
+    'BQ': 'Korea Investment & Sekuritas Indonesia',
+    'FS': 'Yuanta Sekuritas Indonesia',
+    'YU': 'CGS International Sekuritas Indonesia',
+    'AI': 'UOB Kay Hian Sekuritas',
+    'DR': 'RHB Sekuritas Indonesia',
+
+    // Major Domestic Institutional & BUMN
+    'CC': 'Mandiri Sekuritas',
+    'NI': 'BNI Sekuritas',
+    'OD': 'BRI Danareksa Sekuritas',
+    'DX': 'Bahana Sekuritas',
+    'SQ': 'BCA Sekuritas',
+    'LG': 'Trimegah Sekuritas Indonesia',
+    'KI': 'Ciptadana Sekuritas Asia',
+    'PP': 'Aldiracita Sekuritas Indonesia',
+    'PO': 'Pilarmas Investindo Sekuritas',
+
+    // Major Retail & Online
+    'YP': 'Mirae Asset Sekuritas Indonesia',
+    'PD': 'Indo Premier Sekuritas',
     'XC': 'Ajaib Sekuritas Asia',
+    'XL': 'Stockbit Sekuritas',
     'CP': 'KB Valbury Sekuritas',
     'GR': 'Panin Sekuritas',
     'MG': 'Semesta Indovest Sekuritas',
-    'OD': 'BRI Danareksa Sekuritas',
-    'SQ': 'BCA Sekuritas',
-    'KZ': 'CLSA Sekuritas Indonesia',
-    'LG': 'Trimegah Sekuritas Indonesia',
     'AZ': 'Sucor Sekuritas',
     'EP': 'MNC Sekuritas',
-    'KI': 'Ciptadana Sekuritas Asia',
-    'XL': 'Stockbit Sekuritas',
-    'IF': 'Samuel Sekuritas Indonesia',
-    'AI': 'UOB Kay Hian Sekuritas',
     'KK': 'Phillip Sekuritas Indonesia',
     'HD': 'KGI Sekuritas Indonesia',
-    'DR': 'RHB Sekuritas Indonesia',
-    'YU': 'CGS International Sekuritas Indonesia',
-    'DB': 'Deutsche Sekuritas Indonesia',
-    'GW': 'HSBC Sekuritas Indonesia',
+    'DH': 'Sinarmas Sekuritas',
+    'IP': 'Sinarmas Sekuritas',
+    'AN': 'Wanteg Sekuritas',
+    'RG': 'Profindo Sekuritas Indonesia',
+    'IF': 'Samuel Sekuritas Indonesia',
     'CD': 'Mega Capital Sekuritas',
     'HP': 'Henan Putihrai Sekuritas',
     'AT': 'Phintraco Sekuritas',
-    'FS': 'Yuanta Sekuritas Indonesia',
-    'AN': 'Wanteg Sekuritas',
     'AO': 'Erdikha Elit Sekuritas',
     'AP': 'Pacific Sekuritas Indonesia',
     'AR': 'Binaartha Sekuritas',
-    'BQ': 'Korea Investment & Sekuritas Indonesia',
-    'DP': 'DBS Vickers Sekuritas Indonesia',
     'DS': 'Danpac Sekuritas',
     'GA': 'IIF Sekuritas',
     'IN': 'Investindo Nusantara Sekuritas',
-    'IP': 'Sinarmas Sekuritas',
     'MI': 'Victoria Sekuritas Indonesia',
     'PG': 'Panca Global Sekuritas',
     'RB': 'Reliance Sekuritas Indonesia',
-    'RG': 'Profindo Sekuritas Indonesia',
     'RO': 'NISP Sekuritas',
     'SF': 'Surya Fajar Sekuritas',
     'SH': 'Artha Sekuritas Indonesia',
@@ -86,7 +95,24 @@
     'TF': 'Universal Broker Indonesia',
     'TP': 'OCBC Sekuritas Indonesia',
     'XA': 'NH Korindo Sekuritas Indonesia',
-    'YJ': 'Lotus Andalan Sekuritas'
+    'YJ': 'Lotus Andalan Sekuritas',
+    'AG': 'Kiwoom Sekuritas Indonesia',
+    'AH': 'Shinhan Sekuritas Indonesia',
+    'BR': 'Trust Sekuritas',
+    'PC': 'FAC Sekuritas Indonesia',
+    'FZ': 'Waterfront Sekuritas Indonesia',
+    'IH': 'Pacific Capital Sekuritas',
+    'II': 'Danatama Makmur Sekuritas',
+    'IU': 'Indo Capital Sekuritas',
+    'JB': 'Victoria Sekuritas',
+    'KS': 'Kresna Sekuritas',
+    'NO': 'BNC Sekuritas Indonesia',
+    'PE': 'Waterfront Sekuritas',
+    'PF': 'Danasakti Sekuritas',
+    'PS': 'Paramitra Alfa Sekuritas',
+    'RF': 'Buana Capital Sekuritas',
+    'RS': 'Yulie Sekuritas Indonesia',
+    'TX': 'Dhanawibawa Sekuritas'
   };
 
   function getBrokerSecurityName(brokerCode, fallbackName) {
@@ -2360,7 +2386,7 @@
     html += '  </div>';
 
     // Quick Broker Chips
-    var quickBrokers = ['AK', 'BK', 'CC', 'RX', 'KZ', 'ZP', 'YP', 'XC', 'PD', 'NI', 'MG', 'SQ'];
+    var quickBrokers = ['AK', 'BK', 'CC', 'RX', 'DX', 'KZ', 'ZP', 'YP', 'XC', 'PD', 'NI', 'MG', 'SQ'];
     html += '  <div class="flex flex-wrap items-center gap-2 mb-3">';
     html += '    <span class="text-xs text-gray-300 font-medium">Pilih Broker Cepat:</span>';
     html += '    <div class="flex flex-wrap items-center gap-1.5">';
