@@ -595,24 +595,9 @@
           displayVal: bStat.bval
         }));
       }
-      // Collect all remaining brokers with bval > 0
-      for (var c1 = 0; c1 < codes.length; c1++) {
-        var code1 = codes[c1];
-        if (!seenBuyers[code1] && map[code1].bval > 0) {
-          seenBuyers[code1] = true;
-          buyerBrokers.push(Object.assign({}, map[code1], {
-            side: 'buy',
-            isBuyer: true,
-            badge: 'BUY',
-            txVal: map[code1].bval,
-            displayVal: map[code1].bval
-          }));
-        }
-      }
       buyerBrokers.sort(function (a, b) { return b.txVal - a.txVal; });
-      var topBuyers = buyerBrokers; // Render all real buyers without artificial slicing
 
-      // Gross Sellers: all brokers with sval > 0
+      // Gross Sellers: all brokers in sList
       var sellerBrokers = [];
       var seenSellers = {};
       for (var si = 0; si < sList.length; si++) {
@@ -632,24 +617,9 @@
           displayVal: sStat.sval
         }));
       }
-      // Collect all remaining brokers with sval > 0
-      for (var c2 = 0; c2 < codes.length; c2++) {
-        var code2 = codes[c2];
-        if (!seenSellers[code2] && map[code2].sval > 0) {
-          seenSellers[code2] = true;
-          sellerBrokers.push(Object.assign({}, map[code2], {
-            side: 'sell',
-            isBuyer: false,
-            badge: 'SELL',
-            txVal: map[code2].sval,
-            displayVal: map[code2].sval
-          }));
-        }
-      }
       sellerBrokers.sort(function (a, b) { return b.txVal - a.txVal; });
-      var topSellers = sellerBrokers; // Render all real sellers without artificial slicing
 
-      items = topBuyers.concat(topSellers);
+      items = buyerBrokers.concat(sellerBrokers);
     } else {
       // Net Mode: All Net Buyers (badge +, green) and All Net Sellers (badge -, red/orange) without artificial slicing
       var netBuyers = [];
@@ -1329,7 +1299,7 @@
       : series.map(function (s) { return s.date; }).filter(Boolean).reverse();
 
     // Quick date pills in header if available
-    var quickDates = availableDates.slice(0, 5);
+    var quickDates = availableDates.slice(0, 10);
     if (quickDates.length > 0) {
       html += '<div class="flex flex-wrap items-center gap-1.5 mb-3">';
       html += '  <span class="text-[11px] text-gray-400 mr-1">Pilih Cepat Tanggal:</span>';
@@ -3255,8 +3225,8 @@
         html += '          <td class="py-2.5 px-2">';
         html += '            <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowD.ticker) + '\', \'bandarmologi\')" class="font-bold text-rose-400 hover:text-rose-300 font-mono hover:underline">' + escapeHtml(rowD.ticker) + '</button>';
         html += '          </td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono font-semibold text-rose-400">' + formatIDR(netValD) + '</td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-200">' + formatNumber(netLotD) + '</td>';
+        html += '          <td class="py-2.5 px-2 text-right font-mono font-semibold text-rose-400">-' + formatIDR(Math.abs(netValD)) + '</td>';
+        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-200">-' + formatNumber(Math.abs(netLotD)) + '</td>';
         html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-300">' + (avgSellD > 0 ? 'Rp ' + formatNumber(avgSellD) : '—') + '</td>';
         html += '          <td class="py-2.5 px-2 text-center">';
         html += '            <div class="flex items-center justify-center gap-1">';
