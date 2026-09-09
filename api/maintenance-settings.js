@@ -113,6 +113,19 @@ module.exports = async function handler(req, res) {
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!SUPABASE_URL || !SUPABASE_KEY) {
+      if (action === 'get' || !action || action === 'watch-admin-code') {
+        return res.status(200).json({
+          success: true,
+          maintenance: false,
+          operational: true,
+          config: {
+            maintenanceMode: false,
+            message: ''
+          },
+          adminCode: { available: false, active: false, expiresAt: null },
+          aiTelemetry: getAiTelemetryStats()
+        });
+      }
       return res.status(500).json({ success: false, error: 'Database belum dikonfigurasi.' });
     }
 

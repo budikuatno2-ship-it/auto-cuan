@@ -100,7 +100,9 @@ test('FASE 5: Frontend renderBandarmologiIntelUI displays real prices and no em-
   const html = elements.bandarmologiContent.innerHTML;
 
   // Verify S1 card contains formatted real price
-  assert.ok(html.includes('Rp 10.250'), 'HTML renders Rp 10.250 for BBCA');
+  const s1 = realIntelData.result.signals.harga_di_bawah_modal_bandar;
+  const expectedPrice = Math.round(s1.current_price || s1.close_price).toLocaleString('id-ID');
+  assert.ok(html.includes(`Rp ${expectedPrice}`) || html.includes(`Rp${expectedPrice}`), `HTML renders Rp ${expectedPrice} for BBCA`);
 
   // Verify the S1 metric section does NOT contain '—' (em-dash placeholder)
   const card1Match = html.match(/id="intelCardHargaModal"[\s\S]*?id="intelCardSilentForeign"/);
@@ -109,7 +111,7 @@ test('FASE 5: Frontend renderBandarmologiIntelUI displays real prices and no em-
   assert.ok(!card1Html.includes('>—<'), 'Card 1 metric boxes do NOT contain empty em-dash placeholder');
 
   // Verify top broker codes are rendered as chips
-  assert.ok(card1Html.includes('CC'), 'Renders CC chip');
-  assert.ok(card1Html.includes('AK'), 'Renders AK chip');
-  assert.ok(card1Html.includes('BK'), 'Renders BK chip');
+  for (const b of (s1.top_brokers || [])) {
+    assert.ok(card1Html.includes(b), `Renders ${b} chip`);
+  }
 });

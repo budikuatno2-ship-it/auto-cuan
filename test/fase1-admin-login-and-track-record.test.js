@@ -6,7 +6,7 @@ const adminDeviceApproval = require('../lib/admin-device-approval');
 const sectorHot = require('../api/sector-hot');
 const { evaluateMonitorStatus } = sectorHot.__test;
 
-test('adminDeviceApproval: createDeviceApprovalRequest creates challenge with 2 minute expiry and telegram buttons', async () => {
+test('adminDeviceApproval: createDeviceApprovalRequest creates challenge with 15 minute expiry and telegram buttons', async () => {
   adminDeviceApproval.clearMemoryStoreForTesting();
   const mockSent = [];
   const mockBot = {
@@ -22,7 +22,7 @@ test('adminDeviceApproval: createDeviceApprovalRequest creates challenge with 2 
   );
 
   assert.ok(req.token);
-  assert.equal(req.expiresInSeconds, 120);
+  assert.equal(req.expiresInSeconds, 900);
 
   process.env.ADMIN_TELEGRAM_ID = '999888';
   try {

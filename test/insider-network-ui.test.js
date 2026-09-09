@@ -97,11 +97,31 @@ function createMockDom() {
   return { sandbox: sandbox, elements: elements, mockEl: mockEl };
 }
 
-test('HTML: analisis-saham.html includes Jejaring Insider subtab button', () => {
+test('HTML: analisis-saham.html excludes duplicate Jejaring Insider subtab button', () => {
   const html = read('public/analisis-saham.html');
-  assert.ok(html.includes('id="subTabJejaringInsider"'), 'Has subTabJejaringInsider');
-  assert.ok(html.includes("BandarmologiRuntime.setBandarSection('network')"), 'SubTabJejaringInsider onclick calls setBandarSection(network)');
-  assert.ok(html.includes('Jejaring Insider'), 'Button label is Jejaring Insider');
+  assert.ok(!html.includes('id="subTabJejaringInsider"'), 'SubTabJejaringInsider is removed to prevent duplication');
+});
+
+test('HTML: analisis-saham.html includes dedicated top-level tabJejaringInsider and panel-tab-insider', () => {
+  const html = read('public/analisis-saham.html');
+  assert.ok(html.includes('id="tabJejaringInsider"'), 'Has top-level tabJejaringInsider button');
+  assert.ok(html.includes("onclick=\"switchAnalisisTab('insider')\""), 'Calls switchAnalisisTab(insider)');
+  assert.ok(html.includes('id="panel-tab-insider"'), 'Has dedicated panel-tab-insider container');
+  assert.ok(html.includes('id="insiderNetworkDedicatedContent"'), 'Has insiderNetworkDedicatedContent inner div');
+});
+
+test('BandarmologiRuntime: renderInsiderNetworkUI applies pl-11 search padding and popular chips include Garibaldi Thohir', () => {
+  const runtimeSource = read('public/bandarmologi-runtime.js');
+  const { sandbox, elements } = createMockDom();
+  vm.runInContext(runtimeSource, sandbox);
+
+  const runtime = sandbox.window.BandarmologiRuntime;
+  const container = elements.bandarmologiContent;
+  runtime.renderInsiderNetworkUI(container);
+
+  assert.ok(container.innerHTML.includes('pl-11'), 'Input has pl-11 class');
+  assert.ok(container.innerHTML.includes('padding-left: 2.75rem'), 'Input has explicit padding-left: 2.75rem');
+  assert.ok(container.innerHTML.includes('Garibaldi Thohir'), 'Includes Garibaldi Thohir in quick chips');
 });
 
 test('BandarmologiRuntime: exports all Insider Network UI functions', () => {
@@ -218,7 +238,7 @@ test('BandarmologiRuntime: renderInsiderDetailPanelHtml renders holding details 
         percentage_raw: '2.45%',
         latest_action: 'BUY',
         latest_price: 142,
-        latest_date: '2026-09-04',
+        latest_date: '2026-09-08',
         brokers: ['YP']
       }
     ]
@@ -231,7 +251,7 @@ test('BandarmologiRuntime: renderInsiderDetailPanelHtml renders holding details 
   assert.ok(panelHtml.includes('2.45%'), 'Displays percentage 2.45%');
   assert.ok(panelHtml.includes('850,000,000 lembar') || panelHtml.includes('850.000.000 lembar'), 'Displays shares');
   assert.ok(panelHtml.includes('142'), 'Displays price 142');
-  assert.ok(panelHtml.includes('2026-09-04'), 'Displays date 2026-09-04');
+  assert.ok(panelHtml.includes('2026-09-08'), 'Displays date 2026-09-08');
   assert.ok(panelHtml.includes('YP'), 'Displays broker YP');
   assert.ok(panelHtml.includes("BandarmologiRuntime.analyzeInsiderTicker('BUMI')"), 'Shortcut CTA calls analyzeInsiderTicker');
   assert.ok(panelHtml.includes('Analisis Saham BUMI'), 'CTA button text mentions Analisis Saham BUMI');

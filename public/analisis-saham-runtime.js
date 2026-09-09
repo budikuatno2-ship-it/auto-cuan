@@ -248,11 +248,15 @@
     var parentTab = tabName;
     if (tabName === 'analisis' || tabName === 'chart') {
       parentTab = 'analisis-chart';
-    } else if (tabName === 'akumulasi' || tabName === 'intel' || tabName === 'bandarmologi-intel') {
+    } else if (tabName === 'akumulasi') {
       parentTab = 'bandarmologi';
+    } else if (tabName === 'intel' || tabName === 'bandarmologi-intel' || tabName === 'sinyal-intelijen') {
+      parentTab = 'intel';
+    } else if (tabName === 'insider' || tabName === 'network') {
+      parentTab = 'insider';
     }
 
-    var validParentTabs = ['analisis-chart', 'bandarmologi', 'hunter', 'ranking', 'pattern'];
+    var validParentTabs = ['analisis-chart', 'bandarmologi', 'intel', 'hunter', 'insider', 'ranking', 'pattern'];
     if (validParentTabs.indexOf(parentTab) < 0) parentTab = 'analisis-chart';
 
     if (typeof document !== 'undefined' && document.querySelectorAll) {
@@ -268,14 +272,18 @@
     var pAnalisis = byId('panel-tab-analisis');
     var pChart = byId('panel-tab-chart');
     var pBandarmologi = byId('panel-tab-bandarmologi');
+    var pIntel = byId('panel-tab-intel');
     var pHunter = byId('panel-tab-hunter');
+    var pInsider = byId('panel-tab-insider');
     var pRanking = byId('panel-tab-ranking');
     var pPattern = byId('panel-tab-pattern');
 
     if (parentTab === 'analisis-chart') {
       if (pHeader) pHeader.style.display = 'block';
       if (pBandarmologi) pBandarmologi.style.display = 'none';
+      if (pIntel) pIntel.style.display = 'none';
       if (pHunter) pHunter.style.display = 'none';
+      if (pInsider) pInsider.style.display = 'none';
       if (pRanking) pRanking.style.display = 'none';
       if (pPattern) pPattern.style.display = 'none';
 
@@ -303,7 +311,9 @@
       if (pAnalisis) pAnalisis.style.display = 'none';
       if (pChart) pChart.style.display = 'none';
       if (pBandarmologi) pBandarmologi.style.display = (parentTab === 'bandarmologi' ? 'block' : 'none');
+      if (pIntel) pIntel.style.display = (parentTab === 'intel' ? 'block' : 'none');
       if (pHunter) pHunter.style.display = (parentTab === 'hunter' ? 'block' : 'none');
+      if (pInsider) pInsider.style.display = (parentTab === 'insider' ? 'block' : 'none');
       if (pRanking) pRanking.style.display = (parentTab === 'ranking' ? 'block' : 'none');
       if (pPattern) pPattern.style.display = (parentTab === 'pattern' ? 'block' : 'none');
     }
@@ -330,7 +340,7 @@
     } else if (parentTab === 'bandarmologi') {
       var currentSection = (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.getBandarSection === 'function')
         ? root.BandarmologiRuntime.getBandarSection() : 'summary';
-      var bandarSection = (tabName === 'akumulasi') ? 'akumulasi' : ((tabName === 'intel' || tabName === 'bandarmologi-intel') ? 'intel' : (tabName === 'bandarmologi' ? currentSection : 'summary'));
+      var bandarSection = (tabName === 'akumulasi' || currentSection === 'akumulasi') ? 'akumulasi' : 'summary';
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
         root.BandarmologiRuntime.setBandarSection(bandarSection);
       }
@@ -339,10 +349,30 @@
           ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
         root.loadBandarmologiTab(bandarTicker);
       }
+    } else if (parentTab === 'intel') {
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
+        root.BandarmologiRuntime.setBandarSection('intel');
+      }
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.updateIntelSearchBarVisibility === 'function') {
+        root.BandarmologiRuntime.updateIntelSearchBarVisibility();
+      }
+      var intelContainer = byId('bandarmologiIntelContent') || byId('bandarmologiContent');
+      var activeIntelTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
+        ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.loadBandarmologiIntel === 'function') {
+        root.BandarmologiRuntime.loadBandarmologiIntel(activeIntelTicker, intelContainer);
+      } else if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.renderBandarmologiIntelUI === 'function') {
+        root.BandarmologiRuntime.renderBandarmologiIntelUI(intelContainer, activeIntelTicker);
+      }
     } else if (parentTab === 'hunter') {
       var hunterContainer = byId('brokerHunterContent') || byId('bandarmologiContent');
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.loadBrokerHunter === 'function') {
         root.BandarmologiRuntime.loadBrokerHunter(hunterContainer);
+      }
+    } else if (parentTab === 'insider') {
+      var insiderContainer = byId('insiderNetworkDedicatedContent') || byId('bandarmologiContent');
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.loadInsiderNetwork === 'function') {
+        root.BandarmologiRuntime.loadInsiderNetwork(insiderContainer);
       }
     } else if (parentTab === 'pattern') {
       loadPatternRadarTab();
@@ -383,10 +413,12 @@
       if (badge) badge.textContent = ticker;
       var bandarTag = byId('bandarActiveTickerTag');
       if (bandarTag) bandarTag.textContent = ticker;
+      var intelTag = byId('intelActiveTickerTag');
+      if (intelTag) intelTag.textContent = ticker;
     }
 
     // 3. Update all independent search inputs
-    ['bandarTickerSearchInput', 'akumulasiTickerSearchInput', 'bandarSummarySearchInput', 'rankingTickerSearchInput', 'patternTickerSearchInput'].forEach(function (id) {
+    ['bandarTickerSearchInput', 'intelSearchInput', 'akumulasiTickerSearchInput', 'bandarSummarySearchInput', 'rankingTickerSearchInput', 'patternTickerSearchInput'].forEach(function (id) {
       var el = byId(id);
       if (el && el.value !== ticker) el.value = ticker;
     });
@@ -395,8 +427,9 @@
     if (tabName === 'bandarmologi') {
       var activeSec = (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.getBandarSection === 'function')
         ? root.BandarmologiRuntime.getBandarSection() : 'summary';
+      var safeSec = (activeSec === 'akumulasi') ? 'akumulasi' : 'summary';
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
-        root.BandarmologiRuntime.setBandarSection(activeSec || 'summary');
+        root.BandarmologiRuntime.setBandarSection(safeSec);
       }
       if (typeof root.loadBandarmologiTab === 'function') {
         root.loadBandarmologiTab(ticker);
@@ -409,11 +442,11 @@
         root.loadBandarmologiTab(ticker);
       }
     } else if (tabName === 'intel' || tabName === 'bandarmologi-intel') {
-      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
-        root.BandarmologiRuntime.setBandarSection('intel');
-      }
-      if (typeof root.loadBandarmologiTab === 'function') {
-        root.loadBandarmologiTab(ticker);
+      var intelContainer = byId('bandarmologiIntelContent') || byId('bandarmologiContent');
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.loadBandarmologiIntel === 'function') {
+        root.BandarmologiRuntime.loadBandarmologiIntel(ticker, intelContainer);
+      } else if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.renderBandarmologiIntelUI === 'function') {
+        root.BandarmologiRuntime.renderBandarmologiIntelUI(intelContainer, ticker);
       }
     } else if (tabName === 'ranking') {
       rankingState.selectedTicker = ticker;
@@ -431,6 +464,10 @@
   var patternRadarTimer = null;
 
   function renderPatternRadarError(container, message) {
+    var globalLoader = byId('patternRadarGlobalLoader');
+    if (globalLoader) {
+      globalLoader.style.display = 'none';
+    }
     if (!container) return;
     container.innerHTML = '<div class="p-8 text-center text-gray-400 text-xs space-y-3">' +
       '<div class="text-rose-400 font-semibold text-sm">Gagal Menyiapkan Pattern Radar</div>' +
