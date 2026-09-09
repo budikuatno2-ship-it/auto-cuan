@@ -248,13 +248,15 @@
     var parentTab = tabName;
     if (tabName === 'analisis' || tabName === 'chart') {
       parentTab = 'analisis-chart';
-    } else if (tabName === 'akumulasi' || tabName === 'intel' || tabName === 'bandarmologi-intel') {
+    } else if (tabName === 'akumulasi') {
       parentTab = 'bandarmologi';
+    } else if (tabName === 'intel' || tabName === 'bandarmologi-intel' || tabName === 'sinyal-intelijen') {
+      parentTab = 'intel';
     } else if (tabName === 'insider' || tabName === 'network') {
       parentTab = 'insider';
     }
 
-    var validParentTabs = ['analisis-chart', 'bandarmologi', 'hunter', 'insider', 'ranking', 'pattern'];
+    var validParentTabs = ['analisis-chart', 'bandarmologi', 'intel', 'hunter', 'insider', 'ranking', 'pattern'];
     if (validParentTabs.indexOf(parentTab) < 0) parentTab = 'analisis-chart';
 
     if (typeof document !== 'undefined' && document.querySelectorAll) {
@@ -270,6 +272,7 @@
     var pAnalisis = byId('panel-tab-analisis');
     var pChart = byId('panel-tab-chart');
     var pBandarmologi = byId('panel-tab-bandarmologi');
+    var pIntel = byId('panel-tab-intel');
     var pHunter = byId('panel-tab-hunter');
     var pInsider = byId('panel-tab-insider');
     var pRanking = byId('panel-tab-ranking');
@@ -278,6 +281,7 @@
     if (parentTab === 'analisis-chart') {
       if (pHeader) pHeader.style.display = 'block';
       if (pBandarmologi) pBandarmologi.style.display = 'none';
+      if (pIntel) pIntel.style.display = 'none';
       if (pHunter) pHunter.style.display = 'none';
       if (pInsider) pInsider.style.display = 'none';
       if (pRanking) pRanking.style.display = 'none';
@@ -307,6 +311,7 @@
       if (pAnalisis) pAnalisis.style.display = 'none';
       if (pChart) pChart.style.display = 'none';
       if (pBandarmologi) pBandarmologi.style.display = (parentTab === 'bandarmologi' ? 'block' : 'none');
+      if (pIntel) pIntel.style.display = (parentTab === 'intel' ? 'block' : 'none');
       if (pHunter) pHunter.style.display = (parentTab === 'hunter' ? 'block' : 'none');
       if (pInsider) pInsider.style.display = (parentTab === 'insider' ? 'block' : 'none');
       if (pRanking) pRanking.style.display = (parentTab === 'ranking' ? 'block' : 'none');
@@ -335,7 +340,7 @@
     } else if (parentTab === 'bandarmologi') {
       var currentSection = (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.getBandarSection === 'function')
         ? root.BandarmologiRuntime.getBandarSection() : 'summary';
-      var bandarSection = (tabName === 'akumulasi') ? 'akumulasi' : ((tabName === 'intel' || tabName === 'bandarmologi-intel') ? 'intel' : (tabName === 'bandarmologi' ? currentSection : 'summary'));
+      var bandarSection = (tabName === 'akumulasi') ? 'akumulasi' : (tabName === 'bandarmologi' ? currentSection : 'summary');
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
         root.BandarmologiRuntime.setBandarSection(bandarSection);
       }
@@ -343,6 +348,18 @@
         var bandarTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
           ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
         root.loadBandarmologiTab(bandarTicker);
+      }
+    } else if (parentTab === 'intel') {
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
+        root.BandarmologiRuntime.setBandarSection('intel');
+      }
+      var intelContainer = byId('bandarmologiIntelContent') || byId('bandarmologiContent');
+      var activeIntelTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
+        ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.loadBandarmologiIntel === 'function') {
+        root.BandarmologiRuntime.loadBandarmologiIntel(activeIntelTicker, intelContainer);
+      } else if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.renderBandarmologiIntelUI === 'function') {
+        root.BandarmologiRuntime.renderBandarmologiIntelUI(intelContainer, activeIntelTicker);
       }
     } else if (parentTab === 'hunter') {
       var hunterContainer = byId('brokerHunterContent') || byId('bandarmologiContent');
@@ -419,11 +436,11 @@
         root.loadBandarmologiTab(ticker);
       }
     } else if (tabName === 'intel' || tabName === 'bandarmologi-intel') {
-      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
-        root.BandarmologiRuntime.setBandarSection('intel');
-      }
-      if (typeof root.loadBandarmologiTab === 'function') {
-        root.loadBandarmologiTab(ticker);
+      var intelContainer = byId('bandarmologiIntelContent') || byId('bandarmologiContent');
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.loadBandarmologiIntel === 'function') {
+        root.BandarmologiRuntime.loadBandarmologiIntel(ticker, intelContainer);
+      } else if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.renderBandarmologiIntelUI === 'function') {
+        root.BandarmologiRuntime.renderBandarmologiIntelUI(intelContainer, ticker);
       }
     } else if (tabName === 'ranking') {
       rankingState.selectedTicker = ticker;

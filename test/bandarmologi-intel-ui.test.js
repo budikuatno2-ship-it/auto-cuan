@@ -90,14 +90,19 @@ function createMockDom() {
   return { sandbox, elements, mockEl };
 }
 
-test('HTML: analisis-saham.html includes 3 subtabs in Bandarmologi panel and independent Hunter tab', () => {
+test('HTML: analisis-saham.html includes pure Bandarmologi subtabs and independent Intel & Hunter tabs', () => {
   const html = read('public/analisis-saham.html');
 
-  // Subtab switcher in Bandarmologi panel
+  // Subtab switcher in Bandarmologi panel (purely Broker Summary & Akumulasi Broker)
   assert.ok(html.includes('id="subTabBrokerSummary"'), 'Has subTabBrokerSummary');
   assert.ok(html.includes('id="subTabAkumulasiBroker"'), 'Has subTabAkumulasiBroker');
-  assert.ok(html.includes('id="subTabIntelBandar"'), 'Has subTabIntelBandar');
-  assert.ok(html.includes("BandarmologiRuntime.setBandarSection('intel')"), 'SubTabIntelBandar onclick calls setBandarSection(intel)');
+  assert.ok(!html.includes('id="subTabIntelBandar"'), 'subTabIntelBandar removed from Bandarmologi panel');
+
+  // Standalone top-level tabSinyalIntelijen and panel-tab-intel
+  assert.ok(html.includes('id="tabSinyalIntelijen"'), 'Has dedicated tabSinyalIntelijen in top tab strip');
+  assert.ok(html.includes("onclick=\"switchAnalisisTab('intel')\""), 'tabSinyalIntelijen calls switchAnalisisTab(intel)');
+  assert.ok(html.includes('id="panel-tab-intel"'), 'Has standalone panel-tab-intel');
+  assert.ok(html.includes('id="bandarmologiIntelContent"'), 'Has bandarmologiIntelContent');
 
   // Standalone Broker Hunter top tab and section
   assert.ok(html.includes('id="tabBrokerHunter"'), 'Has tabBrokerHunter in top tab strip');

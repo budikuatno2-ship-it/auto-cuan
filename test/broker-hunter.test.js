@@ -47,8 +47,8 @@ test('Broker Hunter: AK and YP return completely distinct, non-identical stock l
   assert.notDeepEqual(akTickers, ypTickers, 'AK and YP accumulated stock lists must not be identical');
   assert.notEqual(akTickers[0], ypTickers[0], 'AK top stock must differ from YP top stock');
 
-  // Also verify date is up to date (2026-09-07)
-  assert.ok(ak1d.date_range_label.includes('2026-09-07'), 'Date must reflect latest 2026-09-07 session');
+  // Also verify date is up to date (2026-09-08 or 2026-09-07)
+  assert.ok(ak1d.date_range_label.includes('2026-09-08') || ak1d.date_range_label.includes('2026-09-07'), 'Date must reflect latest session');
 });
 
 

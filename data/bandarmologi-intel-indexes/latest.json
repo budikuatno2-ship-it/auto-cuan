@@ -1,961 +1,72 @@
 {
-  "updated_at": "2026-09-09T00:23:08.104Z",
-  "total_evaluated": 45,
+  "updated_at": "2026-09-09T02:35:22.060Z",
+  "total_evaluated": 46,
   "indexes": {
-    "harga_di_bawah_modal_bandar": [
-      {
-        "ticker": "BUMI",
-        "current_price": 128,
-        "bandar_avg_buy": 128,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "YP",
-            "broker_name": "Mirae Asset Sekuritas Indonesia",
-            "buy_val": 342500000000,
-            "buy_vol": 2675781000,
-            "avg_price": 128
-          },
-          {
-            "broker": "XC",
-            "broker_name": "Ajaib Sekuritas Asia",
-            "buy_val": 262000000000,
-            "buy_vol": 2046875000,
-            "avg_price": 128
-          },
-          {
-            "broker": "PD",
-            "broker_name": "Indo Premier Sekuritas",
-            "buy_val": 197500000000,
-            "buy_vol": 1542968500,
-            "avg_price": 128
-          }
-        ]
-      },
-      {
-        "ticker": "BRIS",
-        "current_price": 2940,
-        "bandar_avg_buy": 2940,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "PD",
-            "broker_name": "Indo Premier Sekuritas",
-            "buy_val": 220500000000,
-            "buy_vol": 75000000,
-            "avg_price": 2940
-          },
-          {
-            "broker": "YP",
-            "broker_name": "Mirae Asset Sekuritas Indonesia",
-            "buy_val": 198000000000,
-            "buy_vol": 67346500,
-            "avg_price": 2940
-          },
-          {
-            "broker": "CC",
-            "broker_name": "Mandiri Sekuritas",
-            "buy_val": 192000000000,
-            "buy_vol": 65306000,
-            "avg_price": 2940
-          }
-        ]
-      },
-      {
-        "ticker": "CUAN",
-        "current_price": 7900,
-        "bandar_avg_buy": 7900,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "YP",
-            "broker_name": "Mirae Asset Sekuritas Indonesia",
-            "buy_val": 120500000000,
-            "buy_vol": 15253000,
-            "avg_price": 7900
-          },
-          {
-            "broker": "XC",
-            "broker_name": "Ajaib Sekuritas Asia",
-            "buy_val": 112000000000,
-            "buy_vol": 14177000,
-            "avg_price": 7900
-          },
-          {
-            "broker": "AG",
-            "broker_name": "Kiwoom Sekuritas Indonesia",
-            "buy_val": 89000000000,
-            "buy_vol": 11265500,
-            "avg_price": 7900
-          }
-        ]
-      },
-      {
-        "ticker": "DEWA",
-        "current_price": 88,
-        "bandar_avg_buy": 88,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "YP",
-            "broker_name": "Mirae Asset Sekuritas Indonesia",
-            "buy_val": 175500000000,
-            "buy_vol": 1994318000,
-            "avg_price": 88
-          },
-          {
-            "broker": "XC",
-            "broker_name": "Ajaib Sekuritas Asia",
-            "buy_val": 156000000000,
-            "buy_vol": 1772727000,
-            "avg_price": 88
-          },
-          {
-            "broker": "AG",
-            "broker_name": "Kiwoom Sekuritas Indonesia",
-            "buy_val": 77000000000,
-            "buy_vol": 875000000,
-            "avg_price": 88
-          }
-        ]
-      },
-      {
-        "ticker": "BBCA",
-        "current_price": 10250,
-        "bandar_avg_buy": 10250,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "CC",
-            "broker_name": "Mandiri Sekuritas",
-            "buy_val": 472500000000,
-            "buy_vol": 46097500,
-            "avg_price": 10250
-          },
-          {
-            "broker": "AK",
-            "broker_name": "UBS Sekuritas Indonesia",
-            "buy_val": 392500000000,
-            "buy_vol": 38292500,
-            "avg_price": 10250
-          },
-          {
-            "broker": "BK",
-            "broker_name": "J.P. Morgan Sekuritas Indonesia",
-            "buy_val": 162500000000,
-            "buy_vol": 15853500,
-            "avg_price": 10250
-          }
-        ]
-      },
-      {
-        "ticker": "BMRI",
-        "current_price": 7100,
-        "bandar_avg_buy": 7100,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "CC",
-            "broker_name": "Mandiri Sekuritas",
-            "buy_val": 441000000000,
-            "buy_vol": 62112500,
-            "avg_price": 7100
-          },
-          {
-            "broker": "BK",
-            "broker_name": "J.P. Morgan Sekuritas Indonesia",
-            "buy_val": 412000000000,
-            "buy_vol": 58028000,
-            "avg_price": 7100
-          },
-          {
-            "broker": "DX",
-            "broker_name": "Bahana Sekuritas",
-            "buy_val": 271000000000,
-            "buy_vol": 38169000,
-            "avg_price": 7100
-          }
-        ]
-      },
-      {
-        "ticker": "TLKM",
-        "current_price": 3020,
-        "bandar_avg_buy": 3020,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "BK",
-            "broker_name": "J.P. Morgan Sekuritas Indonesia",
-            "buy_val": 270500000000,
-            "buy_vol": 89569500,
-            "avg_price": 3020
-          },
-          {
-            "broker": "DX",
-            "broker_name": "Bahana Sekuritas",
-            "buy_val": 192000000000,
-            "buy_vol": 63576000,
-            "avg_price": 3020
-          },
-          {
-            "broker": "AI",
-            "broker_name": "UOB Kay Hian Sekuritas",
-            "buy_val": 142000000000,
-            "buy_vol": 47019500,
-            "avg_price": 3020
-          }
-        ]
-      },
-      {
-        "ticker": "ASII",
-        "current_price": 5100,
-        "bandar_avg_buy": 5100,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "AK",
-            "broker_name": "UBS Sekuritas Indonesia",
-            "buy_val": 226000000000,
-            "buy_vol": 44313500,
-            "avg_price": 5100
-          },
-          {
-            "broker": "DX",
-            "broker_name": "Bahana Sekuritas",
-            "buy_val": 142500000000,
-            "buy_vol": 27941000,
-            "avg_price": 5100
-          },
-          {
-            "broker": "AI",
-            "broker_name": "UOB Kay Hian Sekuritas",
-            "buy_val": 120500000000,
-            "buy_vol": 23627000,
-            "avg_price": 5100
-          }
-        ]
-      },
-      {
-        "ticker": "UNTR",
-        "current_price": 26800,
-        "bandar_avg_buy": 26801,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "BK",
-            "broker_name": "J.P. Morgan Sekuritas Indonesia",
-            "buy_val": 157500000000,
-            "buy_vol": 5876500,
-            "avg_price": 26800
-          },
-          {
-            "broker": "AI",
-            "broker_name": "UOB Kay Hian Sekuritas",
-            "buy_val": 94500000000,
-            "buy_vol": 3526000,
-            "avg_price": 26800
-          },
-          {
-            "broker": "BQ",
-            "broker_name": "Korea Investment and Sekuritas",
-            "buy_val": 94500000000,
-            "buy_vol": 3526000,
-            "avg_price": 26800
-          }
-        ]
-      },
-      {
-        "ticker": "ICBP",
-        "current_price": 11200,
-        "bandar_avg_buy": 11200,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "BK",
-            "broker_name": "J.P. Morgan Sekuritas Indonesia",
-            "buy_val": 181000000000,
-            "buy_vol": 16160500,
-            "avg_price": 11200
-          },
-          {
-            "broker": "AI",
-            "broker_name": "UOB Kay Hian Sekuritas",
-            "buy_val": 78000000000,
-            "buy_vol": 6964000,
-            "avg_price": 11200
-          },
-          {
-            "broker": "BQ",
-            "broker_name": "Korea Investment and Sekuritas",
-            "buy_val": 78000000000,
-            "buy_vol": 6964000,
-            "avg_price": 11200
-          }
-        ]
-      },
-      {
-        "ticker": "BBRI",
-        "current_price": 5150,
-        "bandar_avg_buy": 5150,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "RX",
-            "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 342000000000,
-            "buy_vol": 66407500,
-            "avg_price": 5150
-          },
-          {
-            "broker": "DX",
-            "broker_name": "Bahana Sekuritas",
-            "buy_val": 312500000000,
-            "buy_vol": 60679500,
-            "avg_price": 5150
-          },
-          {
-            "broker": "CC",
-            "broker_name": "Mandiri Sekuritas",
-            "buy_val": 260500000000,
-            "buy_vol": 50582500,
-            "avg_price": 5150
-          }
-        ]
-      },
-      {
-        "ticker": "GOTO",
-        "current_price": 58,
-        "bandar_avg_buy": 58,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "PD",
-            "broker_name": "Indo Premier Sekuritas",
-            "buy_val": 291000000000,
-            "buy_vol": 5017241000,
-            "avg_price": 58
-          },
-          {
-            "broker": "YP",
-            "broker_name": "Mirae Asset Sekuritas Indonesia",
-            "buy_val": 249000000000,
-            "buy_vol": 4293103000,
-            "avg_price": 58
-          },
-          {
-            "broker": "XC",
-            "broker_name": "Ajaib Sekuritas Asia",
-            "buy_val": 234000000000,
-            "buy_vol": 4034482500,
-            "avg_price": 58
-          }
-        ]
-      },
-      {
-        "ticker": "BREN",
-        "current_price": 9200,
-        "bandar_avg_buy": 9200,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "AK",
-            "broker_name": "UBS Sekuritas Indonesia",
-            "buy_val": 194500000000,
-            "buy_vol": 21141000,
-            "avg_price": 9200
-          },
-          {
-            "broker": "YP",
-            "broker_name": "Mirae Asset Sekuritas Indonesia",
-            "buy_val": 132000000000,
-            "buy_vol": 14347500,
-            "avg_price": 9200
-          }
-        ]
-      },
-      {
-        "ticker": "INCO",
-        "current_price": 3980,
-        "bandar_avg_buy": 3980,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "AK",
-            "broker_name": "UBS Sekuritas Indonesia",
-            "buy_val": 142000000000,
-            "buy_vol": 35678000,
-            "avg_price": 3980
-          }
-        ]
-      },
-      {
-        "ticker": "AMMN",
-        "current_price": 9850,
-        "bandar_avg_buy": 9850,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "AK",
-            "broker_name": "UBS Sekuritas Indonesia",
-            "buy_val": 122500000000,
-            "buy_vol": 12436500,
-            "avg_price": 9850
-          }
-        ]
-      },
-      {
-        "ticker": "ADRO",
-        "current_price": 3700,
-        "bandar_avg_buy": 3700,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "AK",
-            "broker_name": "UBS Sekuritas Indonesia",
-            "buy_val": 114000000000,
-            "buy_vol": 30810500,
-            "avg_price": 3700
-          }
-        ]
-      },
-      {
-        "ticker": "MEDC",
-        "current_price": 1250,
-        "bandar_avg_buy": 1250,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "AK",
-            "broker_name": "UBS Sekuritas Indonesia",
-            "buy_val": 97000000000,
-            "buy_vol": 77600000,
-            "avg_price": 1250
-          },
-          {
-            "broker": "PD",
-            "broker_name": "Indo Premier Sekuritas",
-            "buy_val": 87500000000,
-            "buy_vol": 70000000,
-            "avg_price": 1250
-          }
-        ]
-      },
-      {
-        "ticker": "TPIA",
-        "current_price": 7400,
-        "bandar_avg_buy": 7400,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "RX",
-            "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 197500000000,
-            "buy_vol": 26689000,
-            "avg_price": 7400
-          },
-          {
-            "broker": "AK",
-            "broker_name": "UBS Sekuritas Indonesia",
-            "buy_val": 91000000000,
-            "buy_vol": 12297000,
-            "avg_price": 7400
-          }
-        ]
-      },
-      {
-        "ticker": "PGAS",
-        "current_price": 1540,
-        "bandar_avg_buy": 1540,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "NI",
-            "broker_name": "BNI Sekuritas",
-            "buy_val": 142000000000,
-            "buy_vol": 92207500,
-            "avg_price": 1540
-          },
-          {
-            "broker": "CC",
-            "broker_name": "Mandiri Sekuritas",
-            "buy_val": 123500000000,
-            "buy_vol": 80194500,
-            "avg_price": 1540
-          },
-          {
-            "broker": "RX",
-            "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 123000000000,
-            "buy_vol": 79870000,
-            "avg_price": 1540
-          }
-        ]
-      },
-      {
-        "ticker": "SMGR",
-        "current_price": 3950,
-        "bandar_avg_buy": 3950,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "NI",
-            "broker_name": "BNI Sekuritas",
-            "buy_val": 110500000000,
-            "buy_vol": 27974500,
-            "avg_price": 3950
-          },
-          {
-            "broker": "CC",
-            "broker_name": "Mandiri Sekuritas",
-            "buy_val": 91000000000,
-            "buy_vol": 23037500,
-            "avg_price": 3950
-          }
-        ]
-      },
-      {
-        "ticker": "KLBF",
-        "current_price": 1680,
-        "bandar_avg_buy": 1680,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "BK",
-            "broker_name": "J.P. Morgan Sekuritas Indonesia",
-            "buy_val": 120500000000,
-            "buy_vol": 71726000,
-            "avg_price": 1680
-          }
-        ]
-      },
-      {
-        "ticker": "BBNI",
-        "current_price": 5400,
-        "bandar_avg_buy": 5400,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "NI",
-            "broker_name": "BNI Sekuritas",
-            "buy_val": 371000000000,
-            "buy_vol": 68703500,
-            "avg_price": 5400
-          },
-          {
-            "broker": "CC",
-            "broker_name": "Mandiri Sekuritas",
-            "buy_val": 297000000000,
-            "buy_vol": 55000000,
-            "avg_price": 5400
-          },
-          {
-            "broker": "BK",
-            "broker_name": "J.P. Morgan Sekuritas Indonesia",
-            "buy_val": 244500000000,
-            "buy_vol": 45277500,
-            "avg_price": 5400
-          }
-        ]
-      },
-      {
-        "ticker": "CPIN",
-        "current_price": 5000,
-        "bandar_avg_buy": 5000,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "BK",
-            "broker_name": "J.P. Morgan Sekuritas Indonesia",
-            "buy_val": 139000000000,
-            "buy_vol": 27800000,
-            "avg_price": 5000
-          }
-        ]
-      },
-      {
-        "ticker": "MAPI",
-        "current_price": 1520,
-        "bandar_avg_buy": 1520,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "BK",
-            "broker_name": "J.P. Morgan Sekuritas Indonesia",
-            "buy_val": 99000000000,
-            "buy_vol": 65131500,
-            "avg_price": 1520
-          }
-        ]
-      },
-      {
-        "ticker": "INDF",
-        "current_price": 6900,
-        "bandar_avg_buy": 6900,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "BK",
-            "broker_name": "J.P. Morgan Sekuritas Indonesia",
-            "buy_val": 88000000000,
-            "buy_vol": 12753500,
-            "avg_price": 6900
-          }
-        ]
-      },
-      {
-        "ticker": "ANTM",
-        "current_price": 1560,
-        "bandar_avg_buy": 1560,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "CC",
-            "broker_name": "Mandiri Sekuritas",
-            "buy_val": 144500000000,
-            "buy_vol": 92628000,
-            "avg_price": 1560
-          },
-          {
-            "broker": "RX",
-            "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 97500000000,
-            "buy_vol": 62500000,
-            "avg_price": 1560
-          },
-          {
-            "broker": "DX",
-            "broker_name": "Bahana Sekuritas",
-            "buy_val": 71000000000,
-            "buy_vol": 45512500,
-            "avg_price": 1560
-          }
-        ]
-      },
-      {
-        "ticker": "BRPT",
-        "current_price": 1120,
-        "bandar_avg_buy": 1120,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "YP",
-            "broker_name": "Mirae Asset Sekuritas Indonesia",
-            "buy_val": 271000000000,
-            "buy_vol": 241964000,
-            "avg_price": 1120
-          },
-          {
-            "broker": "RX",
-            "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 224000000000,
-            "buy_vol": 200000000,
-            "avg_price": 1120
-          }
-        ]
-      },
-      {
-        "ticker": "PTBA",
-        "current_price": 2680,
-        "bandar_avg_buy": 2680,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "CC",
-            "broker_name": "Mandiri Sekuritas",
-            "buy_val": 156000000000,
-            "buy_vol": 58208500,
-            "avg_price": 2680
-          },
-          {
-            "broker": "RX",
-            "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 109000000000,
-            "buy_vol": 40671500,
-            "avg_price": 2680
-          },
-          {
-            "broker": "DX",
-            "broker_name": "Bahana Sekuritas",
-            "buy_val": 82500000000,
-            "buy_vol": 30783500,
-            "avg_price": 2680
-          }
-        ]
-      },
-      {
-        "ticker": "JSMR",
-        "current_price": 4860,
-        "bandar_avg_buy": 4860,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "DX",
-            "broker_name": "Bahana Sekuritas",
-            "buy_val": 112000000000,
-            "buy_vol": 23045000,
-            "avg_price": 4860
-          },
-          {
-            "broker": "CC",
-            "broker_name": "Mandiri Sekuritas",
-            "buy_val": 107500000000,
-            "buy_vol": 22119000,
-            "avg_price": 4860
-          },
-          {
-            "broker": "NI",
-            "broker_name": "BNI Sekuritas",
-            "buy_val": 93500000000,
-            "buy_vol": 19238500,
-            "avg_price": 4860
-          }
-        ]
-      },
-      {
-        "ticker": "DOID",
-        "current_price": 710,
-        "bandar_avg_buy": 710,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "PD",
-            "broker_name": "Indo Premier Sekuritas",
-            "buy_val": 143500000000,
-            "buy_vol": 202112500,
-            "avg_price": 710
-          }
-        ]
-      },
-      {
-        "ticker": "PSAB",
-        "current_price": 280,
-        "bandar_avg_buy": 280,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "PD",
-            "broker_name": "Indo Premier Sekuritas",
-            "buy_val": 121500000000,
-            "buy_vol": 433928500,
-            "avg_price": 280
-          }
-        ]
-      },
-      {
-        "ticker": "WIFI",
-        "current_price": 310,
-        "bandar_avg_buy": 310,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "PD",
-            "broker_name": "Indo Premier Sekuritas",
-            "buy_val": 106000000000,
-            "buy_vol": 341935000,
-            "avg_price": 310
-          }
-        ]
-      },
-      {
-        "ticker": "TOBA",
-        "current_price": 590,
-        "bandar_avg_buy": 590,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "PD",
-            "broker_name": "Indo Premier Sekuritas",
-            "buy_val": 94500000000,
-            "buy_vol": 160169000,
-            "avg_price": 590
-          }
-        ]
-      },
-      {
-        "ticker": "MBMA",
-        "current_price": 580,
-        "bandar_avg_buy": 580,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "RX",
-            "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 145500000000,
-            "buy_vol": 250862000,
-            "avg_price": 580
-          }
-        ]
-      },
-      {
-        "ticker": "INKP",
-        "current_price": 8000,
-        "bandar_avg_buy": 8000,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "RX",
-            "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 86000000000,
-            "buy_vol": 10750000,
-            "avg_price": 8000
-          }
-        ]
-      },
-      {
-        "ticker": "TKIM",
-        "current_price": 7000,
-        "bandar_avg_buy": 7000,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "RX",
-            "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 74000000000,
-            "buy_vol": 10571000,
-            "avg_price": 7000
-          }
-        ]
-      },
-      {
-        "ticker": "PTRO",
-        "current_price": 13200,
-        "bandar_avg_buy": 13200,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "YP",
-            "broker_name": "Mirae Asset Sekuritas Indonesia",
-            "buy_val": 109000000000,
-            "buy_vol": 8257500,
-            "avg_price": 13200
-          },
-          {
-            "broker": "XC",
-            "broker_name": "Ajaib Sekuritas Asia",
-            "buy_val": 99000000000,
-            "buy_vol": 7500000,
-            "avg_price": 13200
-          }
-        ]
-      },
-      {
-        "ticker": "ENRG",
-        "current_price": 220,
-        "bandar_avg_buy": 220,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "YP",
-            "broker_name": "Mirae Asset Sekuritas Indonesia",
-            "buy_val": 144500000000,
-            "buy_vol": 656818000,
-            "avg_price": 220
-          }
-        ]
-      },
-      {
-        "ticker": "RAJA",
-        "current_price": 1850,
-        "bandar_avg_buy": 1850,
-        "discount_pct": 0,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "YP",
-            "broker_name": "Mirae Asset Sekuritas Indonesia",
-            "buy_val": 93500000000,
-            "buy_vol": 50540500,
-            "avg_price": 1850
-          }
-        ]
-      }
-    ],
+    "harga_di_bawah_modal_bandar": [],
     "silent_foreign_accumulation": [
       {
         "ticker": "BMRI",
         "consecutive_days": 1,
         "price_change_pct": 0.8,
-        "total_foreign_net": 826500000000
+        "total_foreign_net": 826500000000,
+        "description": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp826.500.000.000) oleh broker asing (BK, CS, DB, KZ, ZP).",
+        "note": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp826.500.000.000) oleh broker asing (BK, CS, DB, KZ, ZP)."
       },
       {
         "ticker": "TLKM",
         "consecutive_days": 1,
         "price_change_pct": 0.8,
-        "total_foreign_net": 614000000000
+        "total_foreign_net": 614000000000,
+        "description": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp614.000.000.000) oleh broker asing (BK, CS, DB, KZ, ZP).",
+        "note": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp614.000.000.000) oleh broker asing (BK, CS, DB, KZ, ZP)."
       },
       {
         "ticker": "ASII",
         "consecutive_days": 1,
         "price_change_pct": 0.8,
-        "total_foreign_net": 523500000000
+        "total_foreign_net": 523500000000,
+        "description": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp523.500.000.000) oleh broker asing (AK, CS, DB, KZ, ZP).",
+        "note": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp523.500.000.000) oleh broker asing (AK, CS, DB, KZ, ZP)."
       },
       {
         "ticker": "UNTR",
         "consecutive_days": 1,
         "price_change_pct": 0.8,
-        "total_foreign_net": 402500000000
+        "total_foreign_net": 402500000000,
+        "description": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp402.500.000.000) oleh broker asing (BK, CS, DB, KZ, ZP).",
+        "note": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp402.500.000.000) oleh broker asing (BK, CS, DB, KZ, ZP)."
       },
       {
         "ticker": "BBCA",
         "consecutive_days": 1,
         "price_change_pct": 0.8,
-        "total_foreign_net": 371000000000
+        "total_foreign_net": 371000000000,
+        "description": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp371.000.000.000) oleh broker asing (AK, BK).",
+        "note": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp371.000.000.000) oleh broker asing (AK, BK)."
       },
       {
         "ticker": "ICBP",
         "consecutive_days": 1,
         "price_change_pct": 0.8,
-        "total_foreign_net": 370500000000
+        "total_foreign_net": 370500000000,
+        "description": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp370.500.000.000) oleh broker asing (BK, CS, DB, KZ, ZP).",
+        "note": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp370.500.000.000) oleh broker asing (BK, CS, DB, KZ, ZP)."
       },
       {
         "ticker": "TPIA",
         "consecutive_days": 1,
         "price_change_pct": 0.8,
-        "total_foreign_net": 222000000000
+        "total_foreign_net": 222000000000,
+        "description": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp222.000.000.000) oleh broker asing (RX, AK).",
+        "note": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp222.000.000.000) oleh broker asing (RX, AK)."
       },
       {
         "ticker": "PGAS",
         "consecutive_days": 1,
         "price_change_pct": 0.8,
-        "total_foreign_net": 160500000000
+        "total_foreign_net": 160500000000,
+        "description": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp160.500.000.000) oleh broker asing (RX, AK).",
+        "note": "Net Foreign Buy positif 1 hari berturut-turut (total net Rp160.500.000.000) oleh broker asing (RX, AK)."
       }
     ],
     "ritel_cutloss_bandar_nampung": [
@@ -970,7 +81,9 @@
           "YP",
           "RX",
           "PD"
-        ]
+        ],
+        "description": "Top 3 Buyer didominasi institusi/bandar (CC, AK, BK) dan Top 3 Seller didominasi ritel (YP, RX, PD). Ritel sedang cutloss dan ditampung bandar.",
+        "note": "Top 3 Buyer didominasi institusi/bandar (CC, AK, BK) dan Top 3 Seller didominasi ritel (YP, RX, PD). Ritel sedang cutloss dan ditampung bandar."
       },
       {
         "ticker": "BMRI",
@@ -983,7 +96,9 @@
           "AK",
           "PD",
           "YP"
-        ]
+        ],
+        "description": "Top 3 Buyer didominasi institusi/bandar (CC, BK, DX) dan Top 3 Seller didominasi ritel (AK, PD, YP). Ritel sedang cutloss dan ditampung bandar.",
+        "note": "Top 3 Buyer didominasi institusi/bandar (CC, BK, DX) dan Top 3 Seller didominasi ritel (AK, PD, YP). Ritel sedang cutloss dan ditampung bandar."
       }
     ],
     "distribusi_ke_ritel": [
@@ -998,7 +113,9 @@
           "CC",
           "DX",
           "BK"
-        ]
+        ],
+        "description": "Top 3 Buyer didominasi ritel (YP, XC, PD) dan Top 3 Seller didominasi institusi/bandar (CC, DX, BK). Bandar sedang mendistribusikan barang ke ritel.",
+        "note": "Top 3 Buyer didominasi ritel (YP, XC, PD) dan Top 3 Seller didominasi institusi/bandar (CC, DX, BK). Bandar sedang mendistribusikan barang ke ritel."
       },
       {
         "ticker": "GOTO",
@@ -1010,21 +127,13 @@
         "top_sellers": [
           "CC",
           "DX",
-          "AK"
-        ]
+          "RX"
+        ],
+        "description": "Top 3 Buyer didominasi ritel (PD, YP, XC) dan Top 3 Seller didominasi institusi/bandar (CC, DX, RX). Bandar sedang mendistribusikan barang ke ritel.",
+        "note": "Top 3 Buyer didominasi ritel (PD, YP, XC) dan Top 3 Seller didominasi institusi/bandar (CC, DX, RX). Bandar sedang mendistribusikan barang ke ritel."
       }
     ],
     "cr3_massive": [
-      {
-        "ticker": "GOTO",
-        "cr3": 100,
-        "cr5": 100,
-        "top_3_brokers": [
-          "PD",
-          "YP",
-          "XC"
-        ]
-      },
       {
         "ticker": "BREN",
         "cr3": 100,
@@ -1032,7 +141,9 @@
         "top_3_brokers": [
           "AK",
           "YP"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "INCO",
@@ -1040,7 +151,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "AK"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "AMMN",
@@ -1048,7 +161,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "AK"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "ADRO",
@@ -1056,7 +171,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "AK"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "MEDC",
@@ -1065,7 +182,9 @@
         "top_3_brokers": [
           "AK",
           "PD"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "TPIA",
@@ -1074,7 +193,9 @@
         "top_3_brokers": [
           "RX",
           "AK"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "SMGR",
@@ -1083,7 +204,9 @@
         "top_3_brokers": [
           "NI",
           "CC"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "KLBF",
@@ -1091,7 +214,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "BK"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "CPIN",
@@ -1099,7 +224,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "BK"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "MAPI",
@@ -1107,7 +234,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "BK"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "INDF",
@@ -1115,7 +244,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "BK"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "ANTM",
@@ -1125,7 +256,9 @@
           "CC",
           "RX",
           "DX"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "BRPT",
@@ -1134,7 +267,9 @@
         "top_3_brokers": [
           "YP",
           "RX"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "JSMR",
@@ -1144,7 +279,9 @@
           "DX",
           "CC",
           "NI"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "DOID",
@@ -1152,7 +289,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "PD"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "PSAB",
@@ -1160,7 +299,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "PD"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "WIFI",
@@ -1168,7 +309,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "PD"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "TOBA",
@@ -1176,7 +319,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "PD"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "MBMA",
@@ -1184,7 +329,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "RX"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "INKP",
@@ -1192,7 +339,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "RX"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "TKIM",
@@ -1200,7 +349,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "RX"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "PTRO",
@@ -1209,7 +360,9 @@
         "top_3_brokers": [
           "YP",
           "XC"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "ENRG",
@@ -1217,7 +370,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "YP"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "RAJA",
@@ -1225,7 +380,9 @@
         "cr5": 100,
         "top_3_brokers": [
           "YP"
-        ]
+        ],
+        "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "BBCA",
@@ -1235,7 +392,9 @@
           "CC",
           "AK",
           "BK"
-        ]
+        ],
+        "description": "CR3 sebesar 87.26% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 87.26% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "BBNI",
@@ -1245,7 +404,9 @@
           "NI",
           "CC",
           "BK"
-        ]
+        ],
+        "description": "CR3 sebesar 81% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 81% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "PTBA",
@@ -1255,29 +416,55 @@
           "CC",
           "RX",
           "DX"
-        ]
+        ],
+        "description": "CR3 sebesar 80.91% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 80.91% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
+      },
+      {
+        "ticker": "GOTO",
+        "cr3": 74.89,
+        "cr5": 100,
+        "top_3_brokers": [
+          "PD",
+          "YP",
+          "XC"
+        ],
+        "description": "CR3 sebesar 74.89% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 74.89% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
+      },
+      {
+        "ticker": "GPRA",
+        "cr3": 74.22,
+        "cr5": 95.35,
+        "top_3_brokers": [
+          "XL",
+          "CP",
+          "KK"
+        ],
+        "description": "CR3 sebesar 74.22% dan CR5 sebesar 95.35%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 74.22% dan CR5 sebesar 95.35%. Status: Akumulasi Sangat Masif (Monopoli)."
       }
     ]
   },
   "summary": {
-    "harga_di_bawah_modal_bandar_count": 39,
+    "harga_di_bawah_modal_bandar_count": 0,
     "silent_foreign_accumulation_count": 8,
     "ritel_cutloss_bandar_nampung_count": 2,
     "distribusi_ke_ritel_count": 2,
-    "cr3_massive_count": 28
+    "cr3_massive_count": 29
   },
   "tickers": {
     "BUMI": {
       "ticker": "BUMI",
-      "evaluated_at": "2026-09-09T00:23:08.061Z",
-      "confluence_badge": "NEUTRAL",
-      "bullish_signals_count": 1,
+      "evaluated_at": "2026-09-09T02:35:21.967Z",
+      "confluence_badge": "DISTRIBUTION",
+      "bullish_signals_count": 0,
       "bearish_signals_count": 1,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 128,
@@ -1340,7 +527,7 @@
             "XC",
             "PD"
           ],
-          "description": "Harga terkini (128) berada di bawah modal rata-rata Top 3 Bandar (128) dengan diskon 0%."
+          "description": "Harga terkini (128) seimbang dengan modal rata-rata Top 3 Bandar (128) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -1394,15 +581,15 @@
     },
     "BRIS": {
       "ticker": "BRIS",
-      "evaluated_at": "2026-09-09T00:23:08.063Z",
-      "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 1,
+      "evaluated_at": "2026-09-09T02:35:21.969Z",
+      "confluence_badge": "NEUTRAL",
+      "bullish_signals_count": 0,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 2940,
@@ -1465,7 +652,7 @@
             "YP",
             "CC"
           ],
-          "description": "Harga terkini (2940) berada di bawah modal rata-rata Top 3 Bandar (2940) dengan diskon 0%."
+          "description": "Harga terkini (2940) seimbang dengan modal rata-rata Top 3 Bandar (2940) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -1502,15 +689,15 @@
     },
     "CUAN": {
       "ticker": "CUAN",
-      "evaluated_at": "2026-09-09T00:23:08.063Z",
-      "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 1,
+      "evaluated_at": "2026-09-09T02:35:21.969Z",
+      "confluence_badge": "NEUTRAL",
+      "bullish_signals_count": 0,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 7900,
@@ -1573,7 +760,7 @@
             "XC",
             "AG"
           ],
-          "description": "Harga terkini (7900) berada di bawah modal rata-rata Top 3 Bandar (7900) dengan diskon 0%."
+          "description": "Harga terkini (7900) seimbang dengan modal rata-rata Top 3 Bandar (7900) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -1610,15 +797,15 @@
     },
     "DEWA": {
       "ticker": "DEWA",
-      "evaluated_at": "2026-09-09T00:23:08.064Z",
-      "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 1,
+      "evaluated_at": "2026-09-09T02:35:21.970Z",
+      "confluence_badge": "NEUTRAL",
+      "bullish_signals_count": 0,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 88,
@@ -1681,7 +868,7 @@
             "XC",
             "AG"
           ],
-          "description": "Harga terkini (88) berada di bawah modal rata-rata Top 3 Bandar (88) dengan diskon 0%."
+          "description": "Harga terkini (88) seimbang dengan modal rata-rata Top 3 Bandar (88) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -1733,15 +920,15 @@
     },
     "BBCA": {
       "ticker": "BBCA",
-      "evaluated_at": "2026-09-09T00:23:08.089Z",
+      "evaluated_at": "2026-09-09T02:35:22.014Z",
       "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 5,
+      "bullish_signals_count": 4,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 10250,
@@ -1804,7 +991,7 @@
             "AK",
             "BK"
           ],
-          "description": "Harga terkini (10250) berada di bawah modal rata-rata Top 3 Bandar (10250) dengan diskon 0%."
+          "description": "Harga terkini (10250) seimbang dengan modal rata-rata Top 3 Bandar (10250) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -1870,15 +1057,15 @@
     },
     "BMRI": {
       "ticker": "BMRI",
-      "evaluated_at": "2026-09-09T00:23:08.090Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.014Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 7100,
@@ -1941,7 +1128,7 @@
             "BK",
             "DX"
           ],
-          "description": "Harga terkini (7100) berada di bawah modal rata-rata Top 3 Bandar (7100) dengan diskon 0%."
+          "description": "Harga terkini (7100) seimbang dengan modal rata-rata Top 3 Bandar (7100) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -2007,15 +1194,15 @@
     },
     "TLKM": {
       "ticker": "TLKM",
-      "evaluated_at": "2026-09-09T00:23:08.090Z",
+      "evaluated_at": "2026-09-09T02:35:22.015Z",
       "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 2,
+      "bullish_signals_count": 1,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 3020,
@@ -2078,7 +1265,7 @@
             "DX",
             "AI"
           ],
-          "description": "Harga terkini (3020) berada di bawah modal rata-rata Top 3 Bandar (3020) dengan diskon 0%."
+          "description": "Harga terkini (3020) seimbang dengan modal rata-rata Top 3 Bandar (3020) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -2144,15 +1331,15 @@
     },
     "ASII": {
       "ticker": "ASII",
-      "evaluated_at": "2026-09-09T00:23:08.091Z",
+      "evaluated_at": "2026-09-09T02:35:22.015Z",
       "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 2,
+      "bullish_signals_count": 1,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 5100,
@@ -2215,7 +1402,7 @@
             "DX",
             "AI"
           ],
-          "description": "Harga terkini (5100) berada di bawah modal rata-rata Top 3 Bandar (5100) dengan diskon 0%."
+          "description": "Harga terkini (5100) seimbang dengan modal rata-rata Top 3 Bandar (5100) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -2281,15 +1468,15 @@
     },
     "UNTR": {
       "ticker": "UNTR",
-      "evaluated_at": "2026-09-09T00:23:08.091Z",
+      "evaluated_at": "2026-09-09T02:35:22.016Z",
       "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 2,
+      "bullish_signals_count": 1,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 26800,
@@ -2307,21 +1494,21 @@
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
               "buy_val": 157500000000,
               "buy_vol": 5876500,
-              "avg_price": 26800
+              "avg_price": 26802
             },
             {
               "broker": "AI",
               "broker_name": "UOB Kay Hian Sekuritas",
               "buy_val": 94500000000,
               "buy_vol": 3526000,
-              "avg_price": 26800
+              "avg_price": 26801
             },
             {
               "broker": "BQ",
               "broker_name": "Korea Investment and Sekuritas",
               "buy_val": 94500000000,
               "buy_vol": 3526000,
-              "avg_price": 26800
+              "avg_price": 26801
             }
           ],
           "top_broker_details": [
@@ -2330,21 +1517,21 @@
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
               "buy_val": 157500000000,
               "buy_vol": 5876500,
-              "avg_price": 26800
+              "avg_price": 26802
             },
             {
               "broker": "AI",
               "broker_name": "UOB Kay Hian Sekuritas",
               "buy_val": 94500000000,
               "buy_vol": 3526000,
-              "avg_price": 26800
+              "avg_price": 26801
             },
             {
               "broker": "BQ",
               "broker_name": "Korea Investment and Sekuritas",
               "buy_val": 94500000000,
               "buy_vol": 3526000,
-              "avg_price": 26800
+              "avg_price": 26801
             }
           ],
           "top_brokers": [
@@ -2352,7 +1539,7 @@
             "AI",
             "BQ"
           ],
-          "description": "Harga terkini (26800) berada di bawah modal rata-rata Top 3 Bandar (26801) dengan diskon 0%."
+          "description": "Harga terkini (26800) seimbang dengan modal rata-rata Top 3 Bandar (26801) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -2401,15 +1588,15 @@
     },
     "ICBP": {
       "ticker": "ICBP",
-      "evaluated_at": "2026-09-09T00:23:08.092Z",
+      "evaluated_at": "2026-09-09T02:35:22.016Z",
       "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 2,
+      "bullish_signals_count": 1,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 11200,
@@ -2472,7 +1659,7 @@
             "AI",
             "BQ"
           ],
-          "description": "Harga terkini (11200) berada di bawah modal rata-rata Top 3 Bandar (11200) dengan diskon 0%."
+          "description": "Harga terkini (11200) seimbang dengan modal rata-rata Top 3 Bandar (11200) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -2521,15 +1708,15 @@
     },
     "BBRI": {
       "ticker": "BBRI",
-      "evaluated_at": "2026-09-09T00:23:08.092Z",
+      "evaluated_at": "2026-09-09T02:35:22.017Z",
       "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 2,
+      "bullish_signals_count": 1,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 5150,
@@ -2592,7 +1779,7 @@
             "DX",
             "CC"
           ],
-          "description": "Harga terkini (5150) berada di bawah modal rata-rata Top 3 Bandar (5150) dengan diskon 0%."
+          "description": "Harga terkini (5150) seimbang dengan modal rata-rata Top 3 Bandar (5150) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -2646,15 +1833,15 @@
     },
     "GOTO": {
       "ticker": "GOTO",
-      "evaluated_at": "2026-09-09T00:23:08.093Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.028Z",
+      "confluence_badge": "NEUTRAL",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 1,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 58,
@@ -2670,46 +1857,46 @@
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 291000000000,
-              "buy_vol": 5017241000,
-              "avg_price": 58
+              "buy_val": 116400000000,
+              "buy_vol": 1972881356,
+              "avg_price": 59
             },
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 249000000000,
-              "buy_vol": 4293103000,
+              "buy_val": 99600000000,
+              "buy_vol": 1717241378,
               "avg_price": 58
             },
             {
               "broker": "XC",
               "broker_name": "Ajaib Sekuritas Asia",
-              "buy_val": 234000000000,
-              "buy_vol": 4034482500,
-              "avg_price": 58
+              "buy_val": 93600000000,
+              "buy_vol": 1642105262,
+              "avg_price": 57
             }
           ],
           "top_broker_details": [
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 291000000000,
-              "buy_vol": 5017241000,
-              "avg_price": 58
+              "buy_val": 116400000000,
+              "buy_vol": 1972881356,
+              "avg_price": 59
             },
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 249000000000,
-              "buy_vol": 4293103000,
+              "buy_val": 99600000000,
+              "buy_vol": 1717241378,
               "avg_price": 58
             },
             {
               "broker": "XC",
               "broker_name": "Ajaib Sekuritas Asia",
-              "buy_val": 234000000000,
-              "buy_vol": 4034482500,
-              "avg_price": 58
+              "buy_val": 93600000000,
+              "buy_vol": 1642105262,
+              "avg_price": 57
             }
           ],
           "top_brokers": [
@@ -2717,7 +1904,7 @@
             "YP",
             "XC"
           ],
-          "description": "Harga terkini (58) berada di bawah modal rata-rata Top 3 Bandar (58) dengan diskon 0%."
+          "description": "Harga terkini (58) seimbang dengan modal rata-rata Top 3 Bandar (58) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -2740,38 +1927,38 @@
           "top_sellers": [
             "CC",
             "DX",
-            "AK"
+            "RX"
           ],
           "inst_buyer_count": 0,
           "retail_seller_count": 0,
           "retail_buyer_count": 3,
           "inst_seller_count": 2,
-          "description": "Top 3 Buyer didominasi ritel (PD, YP, XC) dan Top 3 Seller didominasi institusi/bandar (CC, DX, AK). Bandar sedang mendistribusikan barang ke ritel."
+          "description": "Top 3 Buyer didominasi ritel (PD, YP, XC) dan Top 3 Seller didominasi institusi/bandar (CC, DX, RX). Bandar sedang mendistribusikan barang ke ritel."
         },
         "concentration_ratio": {
           "signal_key": "CONCENTRATION_RATIO",
           "signal_name": "Concentration Ratio (CR3 & CR5)",
           "triggered": true,
           "is_massive": true,
-          "cr3": 100,
+          "cr3": 74.89,
           "cr5": 100,
           "status": "AKUMULASI_MASIF",
           "label": "Akumulasi Sangat Masif (Monopoli)",
-          "top_3_vol": 13344826500,
-          "top_5_vol": 13344826500,
-          "total_vol": 13344826500,
+          "top_3_vol": 2666113998,
+          "top_5_vol": 3560079515,
+          "total_vol": 3560079515,
           "top_3_brokers": [
             "PD",
             "YP",
             "XC"
           ],
-          "description": "CR3 sebesar 100% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
+          "description": "CR3 sebesar 74.89% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
         }
       }
     },
     "ARTO": {
       "ticker": "ARTO",
-      "evaluated_at": "2026-09-09T00:23:08.093Z",
+      "evaluated_at": "2026-09-09T02:35:22.029Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -2804,15 +1991,15 @@
     },
     "BREN": {
       "ticker": "BREN",
-      "evaluated_at": "2026-09-09T00:23:08.094Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.029Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 9200,
@@ -2860,7 +2047,7 @@
             "AK",
             "YP"
           ],
-          "description": "Harga terkini (9200) berada di bawah modal rata-rata Top 3 Bandar (9200) dengan diskon 0%."
+          "description": "Harga terkini (9200) seimbang dengan modal rata-rata Top 3 Bandar (9200) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -2896,15 +2083,15 @@
     },
     "INCO": {
       "ticker": "INCO",
-      "evaluated_at": "2026-09-09T00:23:08.094Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.030Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 3980,
@@ -2937,7 +2124,7 @@
           "top_brokers": [
             "AK"
           ],
-          "description": "Harga terkini (3980) berada di bawah modal rata-rata Top 3 Bandar (3980) dengan diskon 0%."
+          "description": "Harga terkini (3980) seimbang dengan modal rata-rata Top 3 Bandar (3980) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -2972,15 +2159,15 @@
     },
     "AMMN": {
       "ticker": "AMMN",
-      "evaluated_at": "2026-09-09T00:23:08.094Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.030Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 9850,
@@ -3013,7 +2200,7 @@
           "top_brokers": [
             "AK"
           ],
-          "description": "Harga terkini (9850) berada di bawah modal rata-rata Top 3 Bandar (9850) dengan diskon 0%."
+          "description": "Harga terkini (9850) seimbang dengan modal rata-rata Top 3 Bandar (9850) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -3048,15 +2235,15 @@
     },
     "ADRO": {
       "ticker": "ADRO",
-      "evaluated_at": "2026-09-09T00:23:08.095Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.031Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 3700,
@@ -3089,7 +2276,7 @@
           "top_brokers": [
             "AK"
           ],
-          "description": "Harga terkini (3700) berada di bawah modal rata-rata Top 3 Bandar (3700) dengan diskon 0%."
+          "description": "Harga terkini (3700) seimbang dengan modal rata-rata Top 3 Bandar (3700) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -3137,15 +2324,15 @@
     },
     "MEDC": {
       "ticker": "MEDC",
-      "evaluated_at": "2026-09-09T00:23:08.095Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.031Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 1250,
@@ -3193,7 +2380,7 @@
             "AK",
             "PD"
           ],
-          "description": "Harga terkini (1250) berada di bawah modal rata-rata Top 3 Bandar (1250) dengan diskon 0%."
+          "description": "Harga terkini (1250) seimbang dengan modal rata-rata Top 3 Bandar (1250) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -3244,15 +2431,15 @@
     },
     "TPIA": {
       "ticker": "TPIA",
-      "evaluated_at": "2026-09-09T00:23:08.095Z",
+      "evaluated_at": "2026-09-09T02:35:22.032Z",
       "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 4,
+      "bullish_signals_count": 3,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 7400,
@@ -3300,7 +2487,7 @@
             "RX",
             "AK"
           ],
-          "description": "Harga terkini (7400) berada di bawah modal rata-rata Top 3 Bandar (7400) dengan diskon 0%."
+          "description": "Harga terkini (7400) seimbang dengan modal rata-rata Top 3 Bandar (7400) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -3348,15 +2535,15 @@
     },
     "PGAS": {
       "ticker": "PGAS",
-      "evaluated_at": "2026-09-09T00:23:08.096Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.032Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 1540,
@@ -3419,7 +2606,7 @@
             "CC",
             "RX"
           ],
-          "description": "Harga terkini (1540) berada di bawah modal rata-rata Top 3 Bandar (1540) dengan diskon 0%."
+          "description": "Harga terkini (1540) seimbang dengan modal rata-rata Top 3 Bandar (1540) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -3468,7 +2655,7 @@
     },
     "MDKA": {
       "ticker": "MDKA",
-      "evaluated_at": "2026-09-09T00:23:08.096Z",
+      "evaluated_at": "2026-09-09T02:35:22.032Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -3501,7 +2688,7 @@
     },
     "EXCL": {
       "ticker": "EXCL",
-      "evaluated_at": "2026-09-09T00:23:08.096Z",
+      "evaluated_at": "2026-09-09T02:35:22.032Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -3534,15 +2721,15 @@
     },
     "SMGR": {
       "ticker": "SMGR",
-      "evaluated_at": "2026-09-09T00:23:08.097Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.033Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 3950,
@@ -3590,7 +2777,7 @@
             "NI",
             "CC"
           ],
-          "description": "Harga terkini (3950) berada di bawah modal rata-rata Top 3 Bandar (3950) dengan diskon 0%."
+          "description": "Harga terkini (3950) seimbang dengan modal rata-rata Top 3 Bandar (3950) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -3641,7 +2828,7 @@
     },
     "BUKA": {
       "ticker": "BUKA",
-      "evaluated_at": "2026-09-09T00:23:08.097Z",
+      "evaluated_at": "2026-09-09T02:35:22.033Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -3674,15 +2861,15 @@
     },
     "KLBF": {
       "ticker": "KLBF",
-      "evaluated_at": "2026-09-09T00:23:08.098Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.033Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 1680,
@@ -3715,7 +2902,7 @@
           "top_brokers": [
             "BK"
           ],
-          "description": "Harga terkini (1680) berada di bawah modal rata-rata Top 3 Bandar (1680) dengan diskon 0%."
+          "description": "Harga terkini (1680) seimbang dengan modal rata-rata Top 3 Bandar (1680) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -3764,15 +2951,15 @@
     },
     "BBNI": {
       "ticker": "BBNI",
-      "evaluated_at": "2026-09-09T00:23:08.098Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.033Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 5400,
@@ -3835,7 +3022,7 @@
             "CC",
             "BK"
           ],
-          "description": "Harga terkini (5400) berada di bawah modal rata-rata Top 3 Bandar (5400) dengan diskon 0%."
+          "description": "Harga terkini (5400) seimbang dengan modal rata-rata Top 3 Bandar (5400) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -3872,15 +3059,15 @@
     },
     "CPIN": {
       "ticker": "CPIN",
-      "evaluated_at": "2026-09-09T00:23:08.098Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.034Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 5000,
@@ -3913,7 +3100,7 @@
           "top_brokers": [
             "BK"
           ],
-          "description": "Harga terkini (5000) berada di bawah modal rata-rata Top 3 Bandar (5000) dengan diskon 0%."
+          "description": "Harga terkini (5000) seimbang dengan modal rata-rata Top 3 Bandar (5000) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -3948,15 +3135,15 @@
     },
     "MAPI": {
       "ticker": "MAPI",
-      "evaluated_at": "2026-09-09T00:23:08.099Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.034Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 1520,
@@ -3989,7 +3176,7 @@
           "top_brokers": [
             "BK"
           ],
-          "description": "Harga terkini (1520) berada di bawah modal rata-rata Top 3 Bandar (1520) dengan diskon 0%."
+          "description": "Harga terkini (1520) seimbang dengan modal rata-rata Top 3 Bandar (1520) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -4024,15 +3211,15 @@
     },
     "INDF": {
       "ticker": "INDF",
-      "evaluated_at": "2026-09-09T00:23:08.099Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.034Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 6900,
@@ -4065,7 +3252,7 @@
           "top_brokers": [
             "BK"
           ],
-          "description": "Harga terkini (6900) berada di bawah modal rata-rata Top 3 Bandar (6900) dengan diskon 0%."
+          "description": "Harga terkini (6900) seimbang dengan modal rata-rata Top 3 Bandar (6900) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -4100,15 +3287,15 @@
     },
     "ANTM": {
       "ticker": "ANTM",
-      "evaluated_at": "2026-09-09T00:23:08.100Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.035Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 1560,
@@ -4171,7 +3358,7 @@
             "RX",
             "DX"
           ],
-          "description": "Harga terkini (1560) berada di bawah modal rata-rata Top 3 Bandar (1560) dengan diskon 0%."
+          "description": "Harga terkini (1560) seimbang dengan modal rata-rata Top 3 Bandar (1560) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -4223,15 +3410,15 @@
     },
     "BRPT": {
       "ticker": "BRPT",
-      "evaluated_at": "2026-09-09T00:23:08.100Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.035Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 1120,
@@ -4279,7 +3466,7 @@
             "YP",
             "RX"
           ],
-          "description": "Harga terkini (1120) berada di bawah modal rata-rata Top 3 Bandar (1120) dengan diskon 0%."
+          "description": "Harga terkini (1120) seimbang dengan modal rata-rata Top 3 Bandar (1120) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -4331,15 +3518,15 @@
     },
     "PTBA": {
       "ticker": "PTBA",
-      "evaluated_at": "2026-09-09T00:23:08.100Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.036Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 2680,
@@ -4402,7 +3589,7 @@
             "RX",
             "DX"
           ],
-          "description": "Harga terkini (2680) berada di bawah modal rata-rata Top 3 Bandar (2680) dengan diskon 0%."
+          "description": "Harga terkini (2680) seimbang dengan modal rata-rata Top 3 Bandar (2680) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -4439,15 +3626,15 @@
     },
     "JSMR": {
       "ticker": "JSMR",
-      "evaluated_at": "2026-09-09T00:23:08.101Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.036Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 4860,
@@ -4510,7 +3697,7 @@
             "CC",
             "NI"
           ],
-          "description": "Harga terkini (4860) berada di bawah modal rata-rata Top 3 Bandar (4860) dengan diskon 0%."
+          "description": "Harga terkini (4860) seimbang dengan modal rata-rata Top 3 Bandar (4860) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -4547,7 +3734,7 @@
     },
     "EMTK": {
       "ticker": "EMTK",
-      "evaluated_at": "2026-09-09T00:23:08.101Z",
+      "evaluated_at": "2026-09-09T02:35:22.036Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -4580,15 +3767,15 @@
     },
     "DOID": {
       "ticker": "DOID",
-      "evaluated_at": "2026-09-09T00:23:08.101Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.037Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 710,
@@ -4621,7 +3808,7 @@
           "top_brokers": [
             "PD"
           ],
-          "description": "Harga terkini (710) berada di bawah modal rata-rata Top 3 Bandar (710) dengan diskon 0%."
+          "description": "Harga terkini (710) seimbang dengan modal rata-rata Top 3 Bandar (710) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -4656,15 +3843,15 @@
     },
     "PSAB": {
       "ticker": "PSAB",
-      "evaluated_at": "2026-09-09T00:23:08.101Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.037Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 280,
@@ -4697,7 +3884,7 @@
           "top_brokers": [
             "PD"
           ],
-          "description": "Harga terkini (280) berada di bawah modal rata-rata Top 3 Bandar (280) dengan diskon 0%."
+          "description": "Harga terkini (280) seimbang dengan modal rata-rata Top 3 Bandar (280) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -4732,15 +3919,15 @@
     },
     "WIFI": {
       "ticker": "WIFI",
-      "evaluated_at": "2026-09-09T00:23:08.102Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.037Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 310,
@@ -4773,7 +3960,7 @@
           "top_brokers": [
             "PD"
           ],
-          "description": "Harga terkini (310) berada di bawah modal rata-rata Top 3 Bandar (310) dengan diskon 0%."
+          "description": "Harga terkini (310) seimbang dengan modal rata-rata Top 3 Bandar (310) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -4808,15 +3995,15 @@
     },
     "TOBA": {
       "ticker": "TOBA",
-      "evaluated_at": "2026-09-09T00:23:08.102Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.037Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 590,
@@ -4849,7 +4036,7 @@
           "top_brokers": [
             "PD"
           ],
-          "description": "Harga terkini (590) berada di bawah modal rata-rata Top 3 Bandar (590) dengan diskon 0%."
+          "description": "Harga terkini (590) seimbang dengan modal rata-rata Top 3 Bandar (590) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -4884,15 +4071,15 @@
     },
     "MBMA": {
       "ticker": "MBMA",
-      "evaluated_at": "2026-09-09T00:23:08.102Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.037Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 580,
@@ -4925,7 +4112,7 @@
           "top_brokers": [
             "RX"
           ],
-          "description": "Harga terkini (580) berada di bawah modal rata-rata Top 3 Bandar (580) dengan diskon 0%."
+          "description": "Harga terkini (580) seimbang dengan modal rata-rata Top 3 Bandar (580) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -4960,15 +4147,15 @@
     },
     "INKP": {
       "ticker": "INKP",
-      "evaluated_at": "2026-09-09T00:23:08.102Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.038Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 8000,
@@ -5001,7 +4188,7 @@
           "top_brokers": [
             "RX"
           ],
-          "description": "Harga terkini (8000) berada di bawah modal rata-rata Top 3 Bandar (8000) dengan diskon 0%."
+          "description": "Harga terkini (8000) seimbang dengan modal rata-rata Top 3 Bandar (8000) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -5036,15 +4223,15 @@
     },
     "TKIM": {
       "ticker": "TKIM",
-      "evaluated_at": "2026-09-09T00:23:08.103Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.039Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 7000,
@@ -5077,7 +4264,7 @@
           "top_brokers": [
             "RX"
           ],
-          "description": "Harga terkini (7000) berada di bawah modal rata-rata Top 3 Bandar (7000) dengan diskon 0%."
+          "description": "Harga terkini (7000) seimbang dengan modal rata-rata Top 3 Bandar (7000) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -5112,15 +4299,15 @@
     },
     "PTRO": {
       "ticker": "PTRO",
-      "evaluated_at": "2026-09-09T00:23:08.103Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.039Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 13200,
@@ -5168,7 +4355,7 @@
             "YP",
             "XC"
           ],
-          "description": "Harga terkini (13200) berada di bawah modal rata-rata Top 3 Bandar (13200) dengan diskon 0%."
+          "description": "Harga terkini (13200) seimbang dengan modal rata-rata Top 3 Bandar (13200) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -5204,15 +4391,15 @@
     },
     "ENRG": {
       "ticker": "ENRG",
-      "evaluated_at": "2026-09-09T00:23:08.103Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.039Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 220,
@@ -5245,7 +4432,7 @@
           "top_brokers": [
             "YP"
           ],
-          "description": "Harga terkini (220) berada di bawah modal rata-rata Top 3 Bandar (220) dengan diskon 0%."
+          "description": "Harga terkini (220) seimbang dengan modal rata-rata Top 3 Bandar (220) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -5280,15 +4467,15 @@
     },
     "RAJA": {
       "ticker": "RAJA",
-      "evaluated_at": "2026-09-09T00:23:08.103Z",
-      "confluence_badge": "STRONG_ACCUMULATION",
-      "bullish_signals_count": 3,
+      "evaluated_at": "2026-09-09T02:35:22.039Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": true,
+          "triggered": false,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
           "current_price": 1850,
@@ -5321,7 +4508,7 @@
           "top_brokers": [
             "YP"
           ],
-          "description": "Harga terkini (1850) berada di bawah modal rata-rata Top 3 Bandar (1850) dengan diskon 0%."
+          "description": "Harga terkini (1850) seimbang dengan modal rata-rata Top 3 Bandar (1850) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -5356,7 +4543,7 @@
     },
     "UNVR": {
       "ticker": "UNVR",
-      "evaluated_at": "2026-09-09T00:23:08.103Z",
+      "evaluated_at": "2026-09-09T02:35:22.039Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -5384,6 +4571,131 @@
           "signal_name": "Concentration Ratio (CR3 & CR5)",
           "triggered": false,
           "reason": "NO_DATA"
+        }
+      }
+    },
+    "GPRA": {
+      "ticker": "GPRA",
+      "evaluated_at": "2026-09-09T02:35:22.059Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
+      "bearish_signals_count": 0,
+      "signals": {
+        "harga_di_bawah_modal_bandar": {
+          "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
+          "signal_name": "Harga di Bawah Modal Bandar",
+          "triggered": false,
+          "in_sweet_spot": false,
+          "is_sweet_spot": false,
+          "current_price": 444,
+          "close_price": 444,
+          "bandar_avg_buy": 92,
+          "bandar_avg_price": 92,
+          "avg_buy_price": 92,
+          "broker_cost": 92,
+          "harga_modal": 92,
+          "discount_pct": -382.61,
+          "range": "7D",
+          "top_3_brokers": [
+            {
+              "broker": "XL",
+              "broker_name": "Stockbit Sekuritas Digital",
+              "buy_val": 1647200000,
+              "buy_vol": 17711800,
+              "avg_price": 93
+            },
+            {
+              "broker": "CP",
+              "broker_name": "Valbury Sekuritas Indonesia",
+              "buy_val": 766400000,
+              "buy_vol": 8330400,
+              "avg_price": 92
+            },
+            {
+              "broker": "KK",
+              "broker_name": "Phillip Sekuritas Indonesia",
+              "buy_val": 623800000,
+              "buy_vol": 6855000,
+              "avg_price": 91
+            }
+          ],
+          "top_broker_details": [
+            {
+              "broker": "XL",
+              "broker_name": "Stockbit Sekuritas Digital",
+              "buy_val": 1647200000,
+              "buy_vol": 17711800,
+              "avg_price": 93
+            },
+            {
+              "broker": "CP",
+              "broker_name": "Valbury Sekuritas Indonesia",
+              "buy_val": 766400000,
+              "buy_vol": 8330400,
+              "avg_price": 92
+            },
+            {
+              "broker": "KK",
+              "broker_name": "Phillip Sekuritas Indonesia",
+              "buy_val": 623800000,
+              "buy_vol": 6855000,
+              "avg_price": 91
+            }
+          ],
+          "top_brokers": [
+            "XL",
+            "CP",
+            "KK"
+          ],
+          "description": "Harga terkini (444) masih di atas modal rata-rata Top 3 Bandar (92)."
+        },
+        "silent_foreign_accumulation": {
+          "signal_key": "SILENT_FOREIGN_ACCUMULATION",
+          "signal_name": "Silent Foreign Accumulation",
+          "triggered": false,
+          "reason": "INSUFFICIENT_DATES"
+        },
+        "ritel_cutloss_vs_bandar": {
+          "signal_key": "RITEL_CUTLOSS_VS_BANDAR",
+          "signal_name": "Ritel Cutloss vs Bandar Nampung",
+          "triggered": false,
+          "sub_type": "NEUTRAL",
+          "is_bandar_nampung": false,
+          "is_distribusi_ke_ritel": false,
+          "top_buyers": [
+            "XL",
+            "CP",
+            "KK"
+          ],
+          "top_sellers": [
+            "MG",
+            "CC",
+            "AK"
+          ],
+          "inst_buyer_count": 0,
+          "retail_seller_count": 0,
+          "retail_buyer_count": 1,
+          "inst_seller_count": 2,
+          "description": "Distribusi transaksi antara ritel dan institusi seimbang / normal."
+        },
+        "concentration_ratio": {
+          "signal_key": "CONCENTRATION_RATIO",
+          "signal_name": "Concentration Ratio (CR3 & CR5)",
+          "triggered": true,
+          "is_massive": true,
+          "cr3": 74.22,
+          "cr5": 95.35,
+          "status": "AKUMULASI_MASIF",
+          "label": "Akumulasi Sangat Masif (Monopoli)",
+          "top_3_vol": 16448600,
+          "top_5_vol": 21130800,
+          "total_vol": 22161200,
+          "top_3_brokers": [
+            "XL",
+            "CP",
+            "KK"
+          ],
+          "description": "CR3 sebesar 74.22% dan CR5 sebesar 95.35%. Status: Akumulasi Sangat Masif (Monopoli)."
         }
       }
     }

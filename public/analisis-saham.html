@@ -77,6 +77,10 @@
                 <span class="text-base">🏛️</span>
                 <span>Bandarmologi</span>
             </button>
+            <button id="tabSinyalIntelijen" type="button" class="analisis-tab" data-tab="intel" onclick="switchAnalisisTab('intel')">
+                <span class="text-base">🎯</span>
+                <span>Sinyal Intelijen</span>
+            </button>
             <button id="tabBrokerHunter" type="button" class="analisis-tab" data-tab="hunter" onclick="switchAnalisisTab('hunter')">
                 <span class="text-base">🎯</span>
                 <span>Broker Hunter</span>
@@ -347,7 +351,7 @@
                     </div>
                 </div>
 
-                <!-- Sub-Tab Switcher: Broker Summary vs Akumulasi Broker vs Sinyal Intelijen Bandar -->
+                <!-- Sub-Tab Switcher: Broker Summary vs Akumulasi Broker -->
                 <div class="flex items-center gap-1 bg-dark-800 p-1 rounded-xl border border-dark-600/50 text-xs mb-4 w-fit">
                     <button id="subTabBrokerSummary" type="button" onclick="BandarmologiRuntime.setBandarSection('summary')" class="px-3.5 py-1.5 rounded-lg transition bg-emerald-500 text-dark-900 shadow-sm font-bold flex items-center gap-1.5" aria-selected="true">
                         <span>📊</span>
@@ -357,17 +361,16 @@
                         <span>📈</span>
                         <span>Akumulasi Broker</span>
                     </button>
-                    <button id="subTabIntelBandar" type="button" onclick="BandarmologiRuntime.setBandarSection('intel')" class="px-3.5 py-1.5 rounded-lg transition text-gray-400 hover:text-white font-medium flex items-center gap-1.5" aria-selected="false">
-                        <span>🎯</span>
-                        <span>Sinyal Intelijen Bandar</span>
-                    </button>
-                    <button id="subTabJejaringInsider" type="button" onclick="BandarmologiRuntime.setBandarSection('network')" class="px-3.5 py-1.5 rounded-lg transition text-gray-400 hover:text-white font-medium flex items-center gap-1.5" aria-selected="false">
-                        <span>🕸️</span>
-                        <span>Jejaring Insider</span>
-                    </button>
                 </div>
 
                 <div id="bandarmologiContent"></div>
+            </div>
+        </section>
+
+        <!-- TAB MANDIRI: SINYAL INTELIJEN BANDAR & MARKET SCREENER -->
+        <section id="panel-tab-intel" class="analisis-tab-panel" style="display:none">
+            <div class="unified-card p-4 sm:p-5">
+                <div id="bandarmologiIntelContent"></div>
             </div>
         </section>
 

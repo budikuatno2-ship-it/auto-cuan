@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const http = require('http');
 const fs = require('fs');
@@ -130,12 +130,39 @@ const server = http.createServer(async (req, res) => {
     const endpointName = pathname.slice('/api/'.length).replace(/\.js$/, '');
     const apiFile = path.join(API_DIR, endpointName + '.js');
 
+    // Bypass maintenance screen on local dev server
+    if (endpointName === 'maintenance-settings') {
+      const parsedBody = await parseBody(req);
+      if (!parsedBody.action || parsedBody.action === 'get' || parsedBody.action === 'watch-admin-code') {
+        return res.status(200).json({
+          success: true,
+          maintenance: false,
+          operational: true,
+          config: {
+            maintenanceMode: false,
+            message: ''
+          },
+          adminCode: { available: false, active: false, expiresAt: null }
+        });
+      }
+    }
+
     if (fs.existsSync(apiFile)) {
       try {
         const handler = require(apiFile);
         req.query = Object.fromEntries(parsedUrl.searchParams.entries());
         req.body = await parseBody(req);
         
+        // On-demand fetch broker summary from VPS when requested ticker is not on local disk
+        if (endpointName === 'sector-hot' && req.query.action === 'bandarmologi' && req.query.ticker) {
+          try {
+            const vpsFetcher = require('../lib/vps-data-fetcher');
+            await vpsFetcher.ensureBrokerSummary(req.query.ticker, req.query.date || '2026-09-08');
+          } catch (fetchErr) {
+            console.warn('[VPS-FETCHER] On-demand fetch warning:', fetchErr.message);
+          }
+        }
+
         await handler(req, res);
         return;
       } catch (err) {
