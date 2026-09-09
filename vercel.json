@@ -6,6 +6,14 @@
   },
   "rewrites": [
     {
+      "source": "/api/insiders/network",
+      "destination": "/api/sector-hot?action=insider-network"
+    },
+    {
+      "source": "/api/insiders/search",
+      "destination": "/api/sector-hot?action=insider-network&search=1"
+    },
+    {
       "source": "/api/subscription-manual",
       "destination": "/api/review-access?surface=subscription-manual"
     },
