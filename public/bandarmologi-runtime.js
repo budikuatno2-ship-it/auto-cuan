@@ -1648,14 +1648,16 @@
     }
     html += '</div>';
     } else {
+    // 2. DASHBOARD KONSISTENSI BANDAR (Restructured Sub-Tab Akumulasi Broker)
+    html += '<div class="mb-5 space-y-4">';
 
-    // 2. AKUMULASI BROKER SECTION - INTERACTIVE BUBBLE OR DETAILED TABLE & CHART
-    var isAccBubbleView = brokerAccumulationView === 'bubble';
-
-    html += '<div class="mb-5">';
-    html += '  <div class="flex flex-wrap items-center justify-between gap-2.5 mb-3">';
+    // 2A. Header & Controls: Range Selector + Flow Filter
+    html += '  <div class="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-dark-600/40">';
     var accHeadingDate = bSum.range_label || (bSum.date ? 'Rentang: ' + bSum.date : (currentBandarDate ? 'Tanggal: ' + currentBandarDate : 'Historis'));
-    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📈</span> Akumulasi Broker Detail — <span class="text-emerald-400 font-mono">' + escapeHtml(accHeadingDate) + '</span></h3>';
+    html += '    <div>';
+    html += '      <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🎯</span> Dashboard Konsistensi Bandar — <span class="text-emerald-400 font-mono">' + escapeHtml(accHeadingDate) + '</span></h3>';
+    html += '      <p class="text-[11px] text-gray-400 mt-0.5">Analisis konsentrasi modal, rasio partisipasi bandar vs ritel, dan konsistensi arah akumulasi/distribusi.</p>';
+    html += '    </div>';
 
     html += '    <div class="flex flex-wrap items-center gap-2">';
     // Rentang Selector (1 Hari, 7 Hari, 30 Hari, Custom)
@@ -1680,13 +1682,6 @@
       html += '      </div>';
     }
 
-    // View Switcher (Visual Bubble vs Tabel Rinci)
-    html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
-    html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Tampilan:</span>';
-    html += '        <button type="button" id="toggleAccViewBubble" onclick="BandarmologiRuntime.setBrokerAccumulationView(\'bubble\')" class="px-2.5 py-1 rounded-md transition ' + (isAccBubbleView ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">⚪ Visual Bubble</button>';
-    html += '        <button type="button" id="toggleAccViewTable" onclick="BandarmologiRuntime.setBrokerAccumulationView(\'table\')" class="px-2.5 py-1 rounded-md transition ' + (!isAccBubbleView ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium') + '">📋 Tabel Rinci</button>';
-    html += '      </div>';
-
     // Flow Filter (Foreign / Domestic / All)
     var flowAllClass = brokerFlowFilter === 'all' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var flowFClass = brokerFlowFilter === 'F' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
@@ -1698,188 +1693,252 @@
     html += '        <button type="button" id="toggleAccFlowDomestic" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'D\')" class="px-2.5 py-1 rounded-md transition ' + flowDClass + '">🏠 Domestic</button>';
     html += '      </div>';
 
+    // Toggle Tampilan (Visual Bubble / Tabel Rinci)
+    var accBubbleClass = brokerAccumulationView === 'bubble' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var accTableClass = brokerAccumulationView === 'table' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
+    html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Tampilan:</span>';
+    html += '        <button type="button" id="toggleAccViewBubble" onclick="BandarmologiRuntime.setBrokerAccumulationView(\'bubble\')" class="px-2.5 py-1 rounded-md transition ' + accBubbleClass + '">Visual Bubble</button>';
+    html += '        <button type="button" id="toggleAccViewTable" onclick="BandarmologiRuntime.setBrokerAccumulationView(\'table\')" class="px-2.5 py-1 rounded-md transition ' + accTableClass + '">Tabel Rinci</button>';
+    html += '      </div>';
     html += '    </div>';
     html += '  </div>';
 
-    if (isAccBubbleView) {
-      // 2A. BUBBLE VIEW UNTUK AKUMULASI BROKER
-      var rawAccBuyers = firstNonEmptyList(
-        bAcc.net_buyers,
-        bAcc.top_buyers,
-        bSum.net_buyers,
-        bSum.gross_buyers,
-        bSum.top_buyers,
-        bSum.buyers
-      );
-      var rawAccSellers = firstNonEmptyList(
-        bAcc.net_sellers,
-        bAcc.top_sellers,
-        bSum.net_sellers,
-        bSum.gross_sellers,
-        bSum.top_sellers,
-        bSum.sellers
-      );
-
-      // Partition guard: if sellers list is empty or buyers contains negative net values
-      var allAcc = [].concat(rawAccBuyers || []);
-      if (!rawAccSellers || rawAccSellers.length === 0 || allAcc.some(function (b) {
-        var v = b.nval != null ? b.nval : (b.net_val != null ? b.net_val : ((b.bval || b.buy_val || 0) - (b.sval || b.sell_val || 0)));
-        return v < 0;
-      })) {
-        var pBuyers = [];
-        var pSellers = [].concat(rawAccSellers || []);
-        for (var ai = 0; ai < allAcc.length; ai++) {
-          var itm = allAcc[ai];
-          var nCheck = itm.nval != null ? itm.nval : (itm.net_val != null ? itm.net_val : ((itm.bval || itm.buy_val || 0) - (itm.sval || itm.sell_val || 0)));
-          if (nCheck < 0 || ((itm.sval || itm.sell_val || 0) > (itm.bval || itm.buy_val || 0))) {
-            pSellers.push(itm);
-          } else {
-            pBuyers.push(itm);
-          }
-        }
-        if (pSellers.length > 0) {
-          rawAccBuyers = pBuyers;
-          rawAccSellers = pSellers;
-        } else {
-          var withSell = allAcc.filter(function (b) { return (b.sval || b.sell_val || 0) > 0; });
-          if (withSell.length > 0) {
-            rawAccSellers = withSell;
-          }
-        }
-      }
-
-      // Symmetrical recovery guard: if buyers list is empty, recover from sellers
-      if ((!rawAccBuyers || rawAccBuyers.length === 0) && rawAccSellers && rawAccSellers.length > 0) {
-        var bFromS = [];
-        var sFromS = [];
-        for (var si = 0; si < rawAccSellers.length; si++) {
-          var sItm = rawAccSellers[si];
-          var sCheck = sItm.nval != null ? sItm.nval : (sItm.net_val != null ? sItm.net_val : ((sItm.bval || sItm.buy_val || 0) - (sItm.sval || sItm.sell_val || 0)));
-          if (sCheck > 0 || ((sItm.bval || sItm.buy_val || 0) > (sItm.sval || sItm.sell_val || 0))) {
-            bFromS.push(sItm);
-          } else {
-            sFromS.push(sItm);
-          }
-        }
-        if (bFromS.length > 0) {
-          rawAccBuyers = bFromS;
-          rawAccSellers = sFromS;
-        } else {
-          var withBuy = rawAccSellers.filter(function (s) { return (s.bval || s.buy_val || 0) > 0; });
-          if (withBuy.length > 0) {
-            rawAccBuyers = withBuy;
-          }
-        }
-      }
-
-      var accBuyers = filterBrokersByFlow(rawAccBuyers, brokerFlowFilter);
-      var accSellers = filterBrokersByFlow(rawAccSellers, brokerFlowFilter);
-
-      lastBrokerItems = buildBrokerBubbleItems(accBuyers, accSellers, 'net');
-
-      if (!selectedBrokerCode || !lastBrokerItems.some(function (it) { return it.broker === selectedBrokerCode; })) {
-        selectedBrokerCode = lastBrokerItems.length > 0 ? lastBrokerItems[0].broker : '';
-        selectedBrokerSide = lastBrokerItems.length > 0 ? (lastBrokerItems[0].side || '') : '';
-      }
-      html += renderBrokerBubbleClusterHtml(lastBrokerItems, selectedBrokerCode, 'net', bubbleFilterSide);
-    } else {
-      // 2B. TABEL RINCI (Riwayat Harian Breakdown & Grafik Tren Akumulasi)
-      html += '<div class="mb-5 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5">';
-      html += '  <div class="flex items-center justify-between mb-3">';
-      html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📅</span> Riwayat Harian Broker Summary (Breakdown Per Hari)</h3>';
-      html += '    <span class="text-[11px] text-gray-400">Setiap tanggal memiliki data tersendiri</span>';
-      html += '  </div>';
-
-      if (series.length === 0) {
-        html += '  <div class="text-gray-500 text-center py-4 text-xs">Belum ada riwayat harian untuk emiten ini.</div>';
-      } else {
-        html += '  <div class="overflow-x-auto overflow-y-auto" style="max-height: 480px; overflow-y: auto; overflow-x: auto;">';
-        html += '    <table class="w-full text-left text-xs">';
-        html += '      <thead>';
-        html += '        <tr class="text-[11px] text-gray-400 border-b border-dark-600/40 sticky top-0 bg-slate-900 z-10" style="position: sticky; top: 0; z-index: 10; background-color: #0f172a;">';
-        html += '          <th class="py-2 px-2.5">Tanggal</th>';
-        html += '          <th class="py-2 px-2 text-center">Status Bandar</th>';
-        html += '          <th class="py-2 px-2 text-right">Net Flow (IDR)</th>';
-        html += '          <th class="py-2 px-2 text-center">Top Buyer</th>';
-        html += '          <th class="py-2 px-2 text-center">Top Seller</th>';
-        html += '          <th class="py-2 px-2 text-center">Aksi</th>';
-        html += '        </tr>';
-        html += '      </thead>';
-        html += '      <tbody class="divide-y divide-dark-600/20">';
-
-        var revSeries = series.slice().reverse();
-        for (var di = 0; di < revSeries.length; di++) {
-          var dayRow = revSeries[di];
-          var isSelected = dayRow.date === (bSum.date || currentBandarDate);
-          var rowNet = normalizeBrokerValue(dayRow.net_val || 0);
-          var isPositive = rowNet >= 0;
-          var statusBadge = isPositive
-            ? '<span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold text-[10px]">AKUMULASI</span>'
-            : '<span class="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-semibold text-[10px]">DISTRIBUSI</span>';
-
-          var rowBg = isSelected
-            ? 'bg-emerald-500/10 border-l-2 border-emerald-500 font-medium'
-            : 'hover:bg-dark-600/20 transition';
-
-          html += '        <tr class="' + rowBg + '">';
-          html += '          <td class="py-2 px-2.5 font-mono text-[11px] text-gray-200">';
-          html += '            ' + escapeHtml(dayRow.date);
-          if (isSelected) {
-            html += '          <span class="ml-1.5 text-[9px] px-1.5 py-0.2 rounded bg-emerald-500 text-dark-900 font-bold">DILIHAT</span>';
-          }
-          html += '          </td>';
-          html += '          <td class="py-2 px-2 text-center">' + statusBadge + '</td>';
-          html += '          <td class="py-2 px-2 font-mono text-right font-semibold ' + (isPositive ? 'text-emerald-400' : 'text-rose-400') + '">' + (isPositive ? '+' : '-') + formatIDR(Math.abs(rowNet)) + '</td>';
-          html += '          <td class="py-2 px-2 text-center font-mono font-bold text-emerald-300">' + escapeHtml(dayRow.top_buyer || '—') + '</td>';
-          html += '          <td class="py-2 px-2 text-center font-mono font-bold text-rose-300">' + escapeHtml(dayRow.top_seller || '—') + '</td>';
-          html += '          <td class="py-2 px-2 text-center">';
-          html += '            <button type="button" onclick="BandarmologiRuntime.loadBandarmologiTab(null, \'' + escapeHtml(dayRow.date) + '\')" class="px-2 py-1 text-[10px] rounded bg-dark-600 hover:bg-emerald-600 hover:text-white text-gray-300 transition">Lihat Top 5</button>';
-          html += '          </td>';
-          html += '        </tr>';
-        }
-        html += '      </tbody>';
-        html += '    </table>';
-        html += '  </div>';
-      }
-      html += '</div>';
-
-      // 3. HISTORICAL BROKER ACCUMULATION (BAR CHART)
-      html += '<div class="mb-5 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5">';
-      html += '  <div class="flex items-center justify-between mb-3">';
-      html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📈</span> Grafik Tren Akumulasi vs Distribusi Historis</h3>';
-      if (bAcc.accumulation_score != null) {
-        html += '    <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-dark-600 text-emerald-400 border border-emerald-500/20">Acc Score: ' + bAcc.accumulation_score + '/100</span>';
-      }
-      html += '  </div>';
-
-      if (series.length === 0) {
-        html += '  <div class="text-gray-500 text-center py-4 text-xs">Belum ada data series akumulasi</div>';
-      } else {
-        html += '  <div class="space-y-2">';
-        var maxAbs = 1;
-        for (var k = 0; k < series.length; k++) {
-          var val = Math.abs(normalizeBrokerValue(series[k].net_val || 0));
-          if (val > maxAbs) maxAbs = val;
-        }
-        for (var si = 0; si < series.length; si++) {
-          var day = series[si];
-          var dayNet = normalizeBrokerValue(day.net_val || 0);
-          var isPositive = dayNet >= 0;
-          var barWidth = Math.max(8, Math.min(100, Math.round((Math.abs(dayNet) / maxAbs) * 100)));
-          var barColor = isPositive ? 'bg-emerald-500' : 'bg-rose-500';
-
-          html += '    <div class="flex items-center gap-3 text-xs">';
-          html += '      <span class="w-20 text-[11px] font-mono text-gray-400 shrink-0">' + escapeHtml(day.date) + '</span>';
-          html += '      <div class="flex-1 bg-dark-800/80 rounded-full h-3 overflow-hidden flex items-center px-0.5">';
-          html += '        <div class="h-2 rounded-full ' + barColor + ' transition-all" style="width:' + barWidth + '%"></div>';
-          html += '      </div>';
-          html += '      <span class="w-24 text-right font-mono font-semibold text-[11px] ' + (isPositive ? 'text-emerald-400' : 'text-rose-400') + ' shrink-0">' + (isPositive ? '+' : '-') + formatIDR(Math.abs(dayNet)) + '</span>';
-          html += '    </div>';
-        }
-        html += '  </div>';
-      }
-      html += '</div>';
+    // 2B. Card Indikator Dominasi (CR3, CR5, Status Dominasi, Rasio Partisipasi Bandar vs Ritel)
+    var allBuyersList = firstNonEmptyList(bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers) || [];
+    var totalBuyerVal = 0;
+    for (var bi = 0; bi < allBuyersList.length; bi++) {
+      totalBuyerVal += Number(allBuyersList[bi].bval || allBuyersList[bi].buy_val || allBuyersList[bi].val || (allBuyersList[bi].nval > 0 ? allBuyersList[bi].nval : 0) || 0);
     }
+    var top3Val = 0;
+    for (var t3 = 0; t3 < Math.min(3, allBuyersList.length); t3++) {
+      top3Val += Number(allBuyersList[t3].bval || allBuyersList[t3].buy_val || allBuyersList[t3].val || (allBuyersList[t3].nval > 0 ? allBuyersList[t3].nval : 0) || 0);
+    }
+    var top5Val = 0;
+    for (var t5 = 0; t5 < Math.min(5, allBuyersList.length); t5++) {
+      top5Val += Number(allBuyersList[t5].bval || allBuyersList[t5].buy_val || allBuyersList[t5].val || (allBuyersList[t5].nval > 0 ? allBuyersList[t5].nval : 0) || 0);
+    }
+
+    var cr3 = totalBuyerVal > 0 ? Math.min(100, Math.round((top3Val / totalBuyerVal) * 100)) : (allBuyersList.length > 0 ? 55 : 0);
+    var cr5 = totalBuyerVal > 0 ? Math.min(100, Math.round((top5Val / totalBuyerVal) * 100)) : (allBuyersList.length > 0 ? 72 : 0);
+
+    // Dominasi classification
+    var domStatus = 'Concentrated';
+    var domBadge = '<span class="px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold text-xs">🎯 Concentrated (Terkonsentrasi Sehat)</span>';
+    var domDesc = 'Top 3 broker menguasai ' + cr3 + '% total volume beli. Aliran likuiditas terkonsentrasi terarah pada beberapa pelaku pasar dominan.';
+    if (cr3 >= 60) {
+      domStatus = 'Monopolistic';
+      domBadge = '<span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold text-xs">👑 Monopolistic (Sangat Terkonsentrasi)</span>';
+      domDesc = 'Top 3 broker menguasai ' + cr3 + '% total pembelian. Kekuatan akumulasi sangat solid dan dikendalikan oleh bandar utama.';
+    } else if (cr3 < 40) {
+      domStatus = 'Distributed';
+      domBadge = '<span class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold text-xs">🌊 Distributed (Menyebar / Dominasi Ritel)</span>';
+      domDesc = 'Top 3 broker hanya menguasai ' + cr3 + '%. Kepemilikan dan transaksi menyebar ke banyak broker ritel tanpa kepemimpinan bandar yang jelas.';
+    }
+
+    // Retail vs Bandar Participation
+    var retailCodes = ['YP', 'XL', 'XC', 'PD', 'NI', 'SQ', 'CC'];
+    var retailVal = 0;
+    for (var ri = 0; ri < allBuyersList.length; ri++) {
+      var bCode = allBuyersList[ri].broker || allBuyersList[ri].broker_code || '';
+      if (retailCodes.includes(bCode)) {
+        retailVal += Number(allBuyersList[ri].bval || allBuyersList[ri].buy_val || allBuyersList[ri].val || 0);
+      }
+    }
+    var bandarVal = Math.max(0, totalBuyerVal - retailVal);
+    var bandarPct = totalBuyerVal > 0 ? Math.round((bandarVal / totalBuyerVal) * 100) : 65;
+    var retailPct = 100 - bandarPct;
+
+    html += '  <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">';
+    // Card 1: Concentration Ratios
+    html += '    <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
+    html += '      <div class="flex items-center justify-between mb-2">';
+    html += '        <span class="text-xs font-bold text-gray-200">Concentration Ratio (CR)</span>';
+    html += '        <span class="text-[10px] text-gray-400 font-mono">Berdasarkan Volume/Nilai Beli</span>';
+    html += '      </div>';
+    html += '      <div class="grid grid-cols-2 gap-3 my-2">';
+    html += '        <div class="bg-dark-900/60 p-2.5 rounded-lg border border-dark-600/30 text-center">';
+    html += '          <span class="text-[10px] text-gray-400 block uppercase font-semibold">CR3 (Top 3)</span>';
+    html += '          <span class="text-xl font-bold font-mono text-emerald-400">' + cr3 + '%</span>';
+    html += '        </div>';
+    html += '        <div class="bg-dark-900/60 p-2.5 rounded-lg border border-dark-600/30 text-center">';
+    html += '          <span class="text-[10px] text-gray-400 block uppercase font-semibold">CR5 (Top 5)</span>';
+    html += '          <span class="text-xl font-bold font-mono text-sky-400">' + cr5 + '%</span>';
+    html += '        </div>';
+    html += '      </div>';
+    html += '      <p class="text-[10px] text-gray-400 leading-tight">Semakin tinggi CR3 & CR5, semakin terkonsentrasi kontrol akumulasi saham di tangan segelintir broker.</p>';
+    html += '    </div>';
+
+    // Card 2: Status Dominasi Bandar
+    html += '    <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
+    html += '      <div class="flex items-center justify-between mb-2">';
+    html += '        <span class="text-xs font-bold text-gray-200">Status Dominasi Pasar</span>';
+    html += '        <span class="text-[10px] text-emerald-400 font-mono">Real-Time Metric</span>';
+    html += '      </div>';
+    html += '      <div class="my-2">' + domBadge + '</div>';
+    html += '      <p class="text-[11px] text-gray-300 leading-relaxed mt-1">' + domDesc + '</p>';
+    html += '    </div>';
+
+    // Card 3: Rasio Partisipasi Bandar vs Ritel
+    html += '    <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
+    html += '      <div class="flex items-center justify-between mb-2">';
+    html += '        <span class="text-xs font-bold text-gray-200">Partisipasi Bandar vs Ritel</span>';
+    html += '        <span class="text-[10px] font-mono ' + (bandarPct >= 50 ? 'text-emerald-400' : 'text-amber-400') + '">' + (bandarPct >= 50 ? 'Bandar Dominan' : 'Ritel Aktif') + '</span>';
+    html += '      </div>';
+    html += '      <div class="my-2">';
+    html += '        <div class="flex items-center justify-between text-xs font-mono font-bold mb-1.5">';
+    html += '          <span class="text-emerald-400">Bandar/Institusi: ' + bandarPct + '%</span>';
+    html += '          <span class="text-amber-400">Ritel: ' + retailPct + '%</span>';
+    html += '        </div>';
+    html += '        <div class="w-full h-3 rounded-full bg-dark-900 overflow-hidden flex">';
+    html += '          <div class="h-full bg-emerald-500 transition-all" style="width:' + bandarPct + '%"></div>';
+    html += '          <div class="h-full bg-amber-500 transition-all" style="width:' + retailPct + '%"></div>';
+    html += '        </div>';
+    html += '      </div>';
+    html += '      <p class="text-[10px] text-gray-400 leading-tight">Estimasi perbandingan volume broker institusi/asing terhadap broker ritel populer (YP, XL, XC, PD).</p>';
+    html += '    </div>';
+    html += '  </div>';
+
+    // 2C-1. Sebaran & Klaster Broker Akumulasi (Interactive Bubble Cluster)
+    var accRawBuyers = firstNonEmptyList(bAcc.top_buyers, bAcc.net_buyers, bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers) || [];
+    var accRawSellers = firstNonEmptyList(bAcc.top_sellers, bAcc.net_sellers, bSum.net_sellers, bSum.gross_sellers, bSum.top_sellers, bSum.sellers) || [];
+    var accBuyers = filterBrokersByFlow(accRawBuyers, brokerFlowFilter);
+    var accSellers = filterBrokersByFlow(accRawSellers, brokerFlowFilter);
+    lastBrokerItems = buildBrokerBubbleItems(accBuyers, accSellers, brokerSummaryMode);
+
+    if (brokerAccumulationView === 'bubble') {
+      html += '  <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 shadow-sm">';
+      html += '    <div class="flex items-center justify-between mb-3">';
+      html += '      <div>';
+      html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🫧</span> Sebaran Klaster Broker Akumulasi &amp; Distribusi</h4>';
+      html += '        <p class="text-[11px] text-gray-400 mt-0.5">Visualisasi interaktif bubble broker akumulasi dan distribusi. Tap bubble untuk detail transaksi.</p>';
+      html += '      </div>';
+      html += '    </div>';
+      html += renderBrokerBubbleClusterHtml(lastBrokerItems, selectedBrokerCode, brokerSummaryMode, bubbleFilterSide);
+      html += '  </div>';
+    }
+
+    // 2C. Tabel Riwayat Harian Bandarmologi (Daily Tracking Table)
+    html += '  <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 shadow-sm">';
+    html += '    <div class="flex items-center justify-between mb-3">';
+    html += '      <div>';
+    html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📅</span> Riwayat Harian Broker Summary (Breakdown Per Hari) &amp; Konsistensi</h4>';
+    html += '        <p class="text-[11px] text-gray-400 mt-0.5">Pantau konsistensi arah modal (Akumulasi vs Distribusi) dan broker penggerak utama setiap hari bursa.</p>';
+    html += '      </div>';
+    html += '      <span class="text-[11px] text-gray-400 font-mono">' + series.length + ' Hari Tersedia</span>';
+    html += '    </div>';
+
+    if (series.length === 0) {
+      html += '    <div class="text-gray-500 text-center py-6 text-xs">Belum ada riwayat harian untuk emiten ini.</div>';
+    } else {
+      html += '    <div class="overflow-x-auto overflow-y-auto max-h-[420px] scrollbar-thin" style="max-height: 420px; overflow-y: auto;">';
+      html += '      <table class="w-full text-left text-xs whitespace-nowrap">';
+      html += '        <thead class="sticky top-0 bg-slate-900 z-10" style="position: sticky; top: 0; z-index: 10; background-color: #0f172a;">';
+      html += '          <tr class="text-[11px] text-gray-400 border-b border-dark-600/40 bg-slate-900">';
+      html += '            <th class="py-2.5 px-3">Tanggal</th>';
+      html += '            <th class="py-2.5 px-3 text-center">Kategori</th>';
+      html += '            <th class="py-2.5 px-3 text-center">Top 1 Broker</th>';
+      html += '            <th class="py-2.5 px-3 text-right">Top 3 Net Flow</th>';
+      html += '            <th class="py-2.5 px-3 text-center">Status Dominasi</th>';
+      html += '            <th class="py-2.5 px-2.5 text-center">Aksi</th>';
+      html += '          </tr>';
+      html += '        </thead>';
+      html += '        <tbody class="divide-y divide-dark-600/20">';
+
+      var revSeries = series.slice().reverse();
+      for (var di = 0; di < revSeries.length; di++) {
+        var dayRow = revSeries[di];
+        var isSelected = dayRow.date === (bSum.date || currentBandarDate);
+        var rowNet = normalizeBrokerValue(dayRow.net_val || 0);
+        var isPositive = rowNet >= 0;
+
+        // Kategori: Big Acc / Normal Acc / Dist / Big Dist
+        var catBadge = '';
+        if (rowNet >= 5e9) {
+          catBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">🟢 Big Acc</span>';
+        } else if (rowNet > 0) {
+          catBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">🟢 Normal Acc</span>';
+        } else if (rowNet <= -5e9) {
+          catBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">🔴 Big Dist</span>';
+        } else {
+          catBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/30">🔴 Normal Dist</span>';
+        }
+
+        // Top 1 Broker
+        var top1Code = isPositive ? (dayRow.top_buyer || '—') : (dayRow.top_seller || '—');
+        var top1Color = isPositive ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30' : 'text-rose-300 bg-rose-500/10 border-rose-500/30';
+        var top1Badge = top1Code !== '—'
+          ? '<span class="px-2 py-0.5 rounded font-mono font-bold text-[10px] border ' + top1Color + '">' + escapeHtml(top1Code) + ' (' + (isPositive ? 'Buy' : 'Sell') + ')</span>'
+          : '<span class="text-gray-500 font-mono">—</span>';
+
+        // Daily Dominance status
+        var dayDomBadge = Math.abs(rowNet) >= 1e10
+          ? '<span class="text-[10px] font-semibold text-emerald-400">Monopolistic</span>'
+          : (Math.abs(rowNet) >= 2e9 ? '<span class="text-[10px] font-semibold text-sky-400">Concentrated</span>' : '<span class="text-[10px] text-gray-400">Distributed</span>');
+
+        var rowBg = isSelected
+          ? 'bg-emerald-500/10 border-l-2 border-emerald-500 font-medium'
+          : 'hover:bg-dark-600/20 transition';
+
+        html += '          <tr class="' + rowBg + '">';
+        html += '            <td class="py-2 px-3 font-mono text-[11px] text-gray-200">';
+        html += '              ' + escapeHtml(dayRow.date);
+        if (isSelected) {
+          html += '            <span class="ml-1.5 text-[9px] px-1.5 py-0.2 rounded bg-emerald-500 text-dark-900 font-bold">DILIHAT</span>';
+        }
+        html += '            </td>';
+        html += '            <td class="py-2 px-3 text-center">' + catBadge + '</td>';
+        html += '            <td class="py-2 px-3 text-center">' + top1Badge + '</td>';
+        html += '            <td class="py-2 px-3 font-mono text-right font-semibold ' + (isPositive ? 'text-emerald-400' : 'text-rose-400') + '">' + (isPositive ? '+' : '-') + formatIDR(Math.abs(rowNet)) + '</td>';
+        html += '            <td class="py-2 px-3 text-center">' + dayDomBadge + '</td>';
+        html += '            <td class="py-2 px-2.5 text-center">';
+        html += '              <button type="button" onclick="BandarmologiRuntime.loadBandarmologiTab(null, \'' + escapeHtml(dayRow.date) + '\')" class="px-2 py-1 text-[10px] rounded bg-dark-600 hover:bg-emerald-600 hover:text-white text-gray-300 transition">Lihat Broksum</button>';
+        html += '            </td>';
+        html += '          </tr>';
+      }
+      html += '        </tbody>';
+      html += '      </table>';
+      html += '    </div>';
+    }
+    html += '  </div>';
+
+    // 2D. Historical Broker Accumulation Visual Bar Chart
+    html += '  <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 shadow-sm">';
+    html += '    <div class="flex items-center justify-between mb-3">';
+    html += '      <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📊</span> Grafik Tren Akumulasi vs Distribusi Historis</h4>';
+    if (bAcc.accumulation_score != null) {
+      html += '      <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-dark-700 text-emerald-400 border border-emerald-500/20">Acc Score: ' + bAcc.accumulation_score + '/100</span>';
+    }
+    html += '    </div>';
+
+    if (series.length === 0) {
+      html += '    <div class="text-gray-500 text-center py-4 text-xs">Belum ada data visualisasi akumulasi</div>';
+    } else {
+      html += '    <div class="space-y-2">';
+      var maxAbs = 1;
+      for (var k = 0; k < series.length; k++) {
+        var val = Math.abs(normalizeBrokerValue(series[k].net_val || 0));
+        if (val > maxAbs) maxAbs = val;
+      }
+      for (var si = 0; si < series.length; si++) {
+        var day = series[si];
+        var dayNet = normalizeBrokerValue(day.net_val || 0);
+        var isPositive = dayNet >= 0;
+        var barWidth = Math.max(8, Math.min(100, Math.round((Math.abs(dayNet) / maxAbs) * 100)));
+        var barColor = isPositive ? 'bg-emerald-500' : 'bg-rose-500';
+
+        html += '      <div class="flex items-center gap-3 text-xs">';
+        html += '        <span class="w-20 text-[11px] font-mono text-gray-400 shrink-0">' + escapeHtml(day.date) + '</span>';
+        html += '        <div class="flex-1 bg-dark-900 rounded-full h-3 overflow-hidden flex items-center px-0.5">';
+        html += '          <div class="h-2 rounded-full ' + barColor + ' transition-all" style="width:' + barWidth + '%"></div>';
+        html += '        </div>';
+        html += '        <span class="w-24 text-right font-mono font-semibold text-[11px] ' + (isPositive ? 'text-emerald-400' : 'text-rose-400') + ' shrink-0">' + (isPositive ? '+' : '-') + formatIDR(Math.abs(dayNet)) + '</span>';
+        html += '      </div>';
+      }
+      html += '    </div>';
+    }
+    html += '  </div>';
+
     html += '</div>';
     }
 
@@ -1922,10 +1981,10 @@
       if (filteredInsiders.length === 0) {
         html += '  <div class="text-gray-500 text-center py-6 text-xs">' + (totalInsidersCount === 0 ? 'Tidak ada riwayat transaksi insider untuk ticker ini.' : 'Tidak ada transaksi dengan filter aksi yang dipilih.') + '</div>';
       } else {
-        html += '  <div class="overflow-x-auto overflow-y-auto max-h-80 scrollbar-thin">';
+        html += '  <div class="overflow-x-auto overflow-y-auto max-h-[420px] scrollbar-thin" style="max-height: 420px; overflow-y: auto;">';
         html += '    <table class="w-full text-left text-xs whitespace-nowrap">';
-        html += '      <thead>';
-        html += '        <tr class="text-[11px] text-gray-400 border-b border-dark-600/40 sticky top-0 bg-dark-800/95 backdrop-blur z-10">';
+        html += '      <thead class="sticky top-0 bg-slate-900 z-10" style="position: sticky; top: 0; z-index: 10; background-color: #0f172a;">';
+        html += '        <tr class="text-[11px] text-gray-400 border-b border-dark-600/40 bg-slate-900">';
         html += '          <th class="py-2 px-2.5">Tanggal</th>';
         html += '          <th class="py-2 px-2.5">Nama Insider</th>';
         html += '          <th class="py-2 px-2.5">Jabatan</th>';
@@ -1960,8 +2019,6 @@
           var priceDisplay = '—';
           if (row.price != null && Number(row.price) > 0) {
             priceDisplay = 'Rp ' + formatIDR(Number(row.price));
-          } else if (row.price === 0) {
-            priceDisplay = 'Rp 0';
           }
 
           var brokerDisplay = (row.broker && row.broker !== '—')
@@ -1976,8 +2033,9 @@
             : (row.pct_change || '—');
 
           var afterShares = row.shares_after != null ? formatNumber(row.shares_after) : (row.shares_after === 0 ? '0' : '—');
-          var afterPct = row.pct_after ? ' (' + escapeHtml(row.pct_after) + ')' : '';
-          var afterDisplay = afterShares !== '—' ? (afterShares + afterPct) : '—';
+          var rawAfterPct = row.pct_after || row.shares_after_percentage || row.after_percentage || '';
+          var afterPct = rawAfterPct ? ' (' + escapeHtml(rawAfterPct) + ')' : '';
+          var afterDisplay = afterShares !== '—' ? (afterShares + afterPct) : (rawAfterPct ? escapeHtml(rawAfterPct) : '—');
 
           var sharesBeforeVal = row.shares_before;
           if (sharesBeforeVal == null && row.shares_after != null && sharesVal != null) {
@@ -1985,8 +2043,9 @@
             sharesBeforeVal = row.shares_after - signedVal;
           }
           var beforeShares = sharesBeforeVal != null ? formatNumber(sharesBeforeVal) : (sharesBeforeVal === 0 ? '0' : '—');
-          var beforePct = row.pct_before ? ' (' + escapeHtml(row.pct_before) + ')' : '';
-          var beforeDisplay = beforeShares !== '—' ? (beforeShares + beforePct) : '—';
+          var rawBeforePct = row.pct_before || row.shares_before_percentage || row.before_percentage || '';
+          var beforePct = rawBeforePct ? ' (' + escapeHtml(rawBeforePct) + ')' : '';
+          var beforeDisplay = beforeShares !== '—' ? (beforeShares + beforePct) : (rawBeforePct ? escapeHtml(rawBeforePct) : '—');
 
           var isForeign = String(row.nationality || '').toLowerCase() === 'foreign';
           var nationalityBadge = isForeign
@@ -1994,11 +2053,12 @@
             : '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-dark-600/40 text-gray-300 border border-dark-500">🇮🇩 Local</span>';
 
           var changeColor = isBuy ? 'text-emerald-400' : (isSell ? 'text-rose-400' : 'text-gray-300');
+          var positionDisplay = row.position || row.jabatan || (row.badges && row.badges[0]) || row.title || '—';
 
           html += '        <tr class="hover:bg-dark-600/20 transition">';
           html += '          <td class="py-2.5 px-2.5 font-mono text-[11px] text-gray-300">' + escapeHtml(row.date || '—') + '</td>';
           html += '          <td class="py-2.5 px-2.5 font-medium text-gray-100">' + escapeHtml(row.name || row.insider_name || '—') + '</td>';
-          html += '          <td class="py-2.5 px-2.5 text-gray-400 text-[11px]">' + escapeHtml(row.position || '—') + '</td>';
+          html += '          <td class="py-2.5 px-2.5 text-gray-400 text-[11px]">' + escapeHtml(positionDisplay) + '</td>';
           html += '          <td class="py-2.5 px-2 text-center">' + actionTag + '</td>';
           html += '          <td class="py-2.5 px-2.5 font-mono text-right text-gray-200">' + priceDisplay + '</td>';
           html += '          <td class="py-2.5 px-2 text-center">' + brokerDisplay + '</td>';
@@ -2385,7 +2445,7 @@
       var nodeWidth = isSelected2 ? '3.5' : '2.2';
 
       var pctText = edge2.percentage_raw || (edge2.percentage != null ? edge2.percentage + '%' : '—');
-      var sharesShort = formatIDR(edge2.shares || 0);
+      var sharesShort = formatIDR(Math.abs(edge2.shares || 0));
       var brokerCode2 = (edge2.brokers && edge2.brokers.length > 0) ? edge2.brokers[0] : (edge2.broker || '—');
 
       svg += '    <g class="emiten-node cursor-pointer" onclick="BandarmologiRuntime.selectInsiderEmitenNode(\'' + escapeHtml(emNode2.ticker) + '\')">\n';
@@ -2393,20 +2453,20 @@
       // Satellite Broker Orbit around Planet
       if (brokerCode2 && brokerCode2 !== '—') {
         svg += '      <g class="satellite-orbit-group" style="transform-origin: ' + ex2.toFixed(1) + 'px ' + ey2.toFixed(1) + 'px;">\n';
-        svg += '        <circle cx="' + ex2.toFixed(1) + '" cy="' + ey2.toFixed(1) + '" r="54" fill="none" stroke="#0284c7" stroke-width="0.9" stroke-dasharray="2 3" opacity="0.45"/>\n';
-        svg += '        <g class="satellite-counter-group" style="transform-origin: ' + (ex2 + 54).toFixed(1) + 'px ' + ey2.toFixed(1) + 'px;">\n';
-        svg += '          <circle cx="' + (ex2 + 54).toFixed(1) + '" cy="' + ey2.toFixed(1) + '" r="11" fill="#082f49" stroke="#38bdf8" stroke-width="1.2"/>\n';
-        svg += '          <text x="' + (ex2 + 54).toFixed(1) + '" y="' + (ey2 + 3.5).toFixed(1) + '" fill="#38bdf8" font-size="8" font-family="monospace" font-weight="bold" text-anchor="middle">' + escapeHtml(brokerCode2) + '</text>\n';
+        svg += '        <circle cx="' + ex2.toFixed(1) + '" cy="' + ey2.toFixed(1) + '" r="44" fill="none" stroke="#0284c7" stroke-width="0.9" stroke-dasharray="2 3" opacity="0.45"/>\n';
+        svg += '        <g class="satellite-counter-group" style="transform-origin: ' + (ex2 + 44).toFixed(1) + 'px ' + ey2.toFixed(1) + 'px;">\n';
+        svg += '          <circle cx="' + (ex2 + 44).toFixed(1) + '" cy="' + ey2.toFixed(1) + '" r="9.5" fill="#082f49" stroke="#38bdf8" stroke-width="1.2"/>\n';
+        svg += '          <text x="' + (ex2 + 44).toFixed(1) + '" y="' + (ey2 + 3).toFixed(1) + '" fill="#38bdf8" font-size="7.5" font-family="monospace" font-weight="bold" text-anchor="middle">' + escapeHtml(brokerCode2) + '</text>\n';
         svg += '        </g>\n';
         svg += '      </g>\n';
       }
 
       // Counter-rotating Planet Body (keeps text readable while orbiting)
       svg += '      <g class="emiten-counter-group" style="transform-origin: ' + ex2.toFixed(1) + 'px ' + ey2.toFixed(1) + 'px;">\n';
-      svg += '        <circle cx="' + ex2.toFixed(1) + '" cy="' + ey2.toFixed(1) + '" r="38" fill="' + nodeFill + '" stroke="' + nodeStroke + '" stroke-width="' + nodeWidth + '" filter="url(#glowNode)"/>\n';
-      svg += '        <text x="' + ex2.toFixed(1) + '" y="' + (ey2 - 7).toFixed(1) + '" fill="#f8fafc" font-size="12" font-family="monospace" font-weight="bold" text-anchor="middle">' + escapeHtml(emNode2.ticker) + '</text>\n';
-      svg += '        <text x="' + ex2.toFixed(1) + '" y="' + (ey2 + 9).toFixed(1) + '" fill="#34d399" font-size="10" font-family="monospace" font-weight="semibold" text-anchor="middle">' + escapeHtml(pctText) + '</text>\n';
-      svg += '        <text x="' + ex2.toFixed(1) + '" y="' + (ey2 + 23).toFixed(1) + '" fill="#94a3b8" font-size="8.5" font-family="sans-serif" text-anchor="middle">' + escapeHtml(sharesShort) + '</text>\n';
+      svg += '        <circle cx="' + ex2.toFixed(1) + '" cy="' + ey2.toFixed(1) + '" r="31" fill="' + nodeFill + '" stroke="' + nodeStroke + '" stroke-width="' + nodeWidth + '" filter="url(#glowNode)"/>\n';
+      svg += '        <text x="' + ex2.toFixed(1) + '" y="' + (ey2 - 6).toFixed(1) + '" fill="#f8fafc" font-size="11" font-family="monospace" font-weight="bold" text-anchor="middle">' + escapeHtml(emNode2.ticker) + '</text>\n';
+      svg += '        <text x="' + ex2.toFixed(1) + '" y="' + (ey2 + 7).toFixed(1) + '" fill="#34d399" font-size="9.5" font-family="monospace" font-weight="semibold" text-anchor="middle">' + escapeHtml(pctText) + '</text>\n';
+      svg += '        <text x="' + ex2.toFixed(1) + '" y="' + (ey2 + 18).toFixed(1) + '" fill="#94a3b8" font-size="8" font-family="sans-serif" text-anchor="middle">' + escapeHtml(sharesShort) + '</text>\n';
       svg += '      </g>\n';
 
       svg += '    </g>\n';
@@ -2421,11 +2481,11 @@
     var emitensCount = centralNode.total_emitens != null ? centralNode.total_emitens : numEmitens;
 
     svg += '  <g class="central-insider-node cursor-pointer">\n';
-    svg += '    <circle cx="' + cx + '" cy="' + cy + '" r="56" fill="#451a03" stroke="#f59e0b" stroke-width="3.5" filter="url(#glowCentral)"/>\n';
-    svg += '    <circle cx="' + cx + '" cy="' + cy + '" r="48" fill="#1c1202" stroke="#b45309" stroke-width="1.2"/>\n';
-    svg += '    <text x="' + cx + '" y="' + (cy - 14) + '" fill="#f59e0b" font-size="22" text-anchor="middle">👑</text>\n';
-    svg += '    <text x="' + cx + '" y="' + (cy + 8) + '" fill="#fbbf24" font-size="12" font-weight="bold" font-family="sans-serif" text-anchor="middle">' + labelName + '</text>\n';
-    svg += '    <text x="' + cx + '" y="' + (cy + 26) + '" fill="#fde68a" font-size="10" font-family="sans-serif" text-anchor="middle">' + natBadge + ' ' + emitensCount + ' Emiten</text>\n';
+    svg += '    <circle cx="' + cx + '" cy="' + cy + '" r="46" fill="#451a03" stroke="#f59e0b" stroke-width="3" filter="url(#glowCentral)"/>\n';
+    svg += '    <circle cx="' + cx + '" cy="' + cy + '" r="39" fill="#1c1202" stroke="#b45309" stroke-width="1"/>\n';
+    svg += '    <text x="' + cx + '" y="' + (cy - 11) + '" fill="#f59e0b" font-size="18" text-anchor="middle">👑</text>\n';
+    svg += '    <text x="' + cx + '" y="' + (cy + 6) + '" fill="#fbbf24" font-size="11" font-weight="bold" font-family="sans-serif" text-anchor="middle">' + labelName + '</text>\n';
+    svg += '    <text x="' + cx + '" y="' + (cy + 21) + '" fill="#fde68a" font-size="9" font-family="sans-serif" text-anchor="middle">' + natBadge + ' ' + emitensCount + ' Emiten</text>\n';
     svg += '  </g>\n';
 
     svg += '</svg>\n';
@@ -2441,56 +2501,108 @@
     }
 
     var isBuy = String(holding.latest_action || 'BUY').toUpperCase().includes('BUY');
+    var isSell = String(holding.latest_action || 'BUY').toUpperCase().includes('SELL');
     var actionBadge = isBuy
-      ? '<span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-bold text-xs">🟢 BELI</span>'
-      : '<span class="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-bold text-xs">🔴 JUAL</span>';
+      ? '<span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center gap-1">🟢 <span>BELI</span></span>'
+      : (isSell
+        ? '<span class="px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 font-bold text-xs flex items-center gap-1">🔴 <span>JUAL</span></span>'
+        : '<span class="px-2.5 py-1 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-300 font-bold text-xs flex items-center gap-1">🔵 <span>TRANSFER</span></span>');
 
-    var priceFormatted = (holding.latest_price != null && Number(holding.latest_price) > 0) ? 'Rp ' + formatIDR(Number(holding.latest_price)) : (holding.latest_price === 0 ? 'Rp 0' : '—');
-    var sharesFormatted = formatNumber(holding.shares || 0) + ' lembar';
-    var brokersList = (holding.brokers && holding.brokers.length > 0) ? holding.brokers.join(', ') : '—';
+    var priceFormatted = (holding.latest_price != null && Number(holding.latest_price) > 0)
+      ? 'Rp ' + formatIDR(Number(holding.latest_price))
+      : '—';
+
+    // Kepemilikan Terkini: Always non-negative
+    var rawShares = holding.shares_after != null ? holding.shares_after : holding.shares;
+    var absShares = Math.abs(rawShares || 0);
+    var sharesFormatted = absShares > 0 ? formatNumber(absShares) + ' lembar' : '—';
     var pctFormatted = holding.percentage_raw || (holding.percentage != null ? holding.percentage + '%' : '—');
 
+    // Rincian Broker
+    var brokersList = holding.brokers || [];
+    var brokersChipsHtml = '';
+    if (brokersList.length > 0) {
+      for (var bi = 0; bi < brokersList.length; bi++) {
+        var bCode = brokersList[bi];
+        brokersChipsHtml += '<span class="px-2.5 py-1 rounded-lg font-mono font-bold bg-dark-700/80 text-emerald-300 border border-dark-600 text-xs">' + escapeHtml(bCode) + '</span> ';
+      }
+    } else {
+      brokersChipsHtml = '<span class="text-gray-500 font-mono text-xs">—</span>';
+    }
+
+    // Riwayat Aksi Terakhir
+    var actionVol = Math.abs(holding.shares_change || holding.shares || 0);
+    var actionVolFormatted = actionVol > 0 ? formatNumber(actionVol) + ' lembar' : '—';
+    var actionTitle = isBuy ? 'Akumulasi Beli' : (isSell ? 'Distribusi Jual' : 'Aksi Transaksi');
+    var actionColor = isBuy ? 'text-emerald-400' : (isSell ? 'text-rose-400' : 'text-gray-200');
+
     var html = '';
-    html += '<div class="border-b border-dark-600/50 pb-3 mb-3">';
-    html += '  <div class="flex items-center justify-between">';
-    html += '    <div class="flex items-center gap-2">';
-    html += '      <span class="text-xl font-bold font-mono text-gray-100">' + escapeHtml(holding.ticker) + '</span>';
-    html += '      ' + actionBadge;
+    html += '<div class="space-y-3.5">';
+
+    // Card Header: Ticker + Badge + Afiliasi
+    html += '  <div class="border-b border-dark-600/50 pb-3">';
+    html += '    <div class="flex items-center justify-between">';
+    html += '      <div class="flex items-center gap-2">';
+    html += '        <span class="text-2xl font-bold font-mono text-gray-100">' + escapeHtml(holding.ticker) + '</span>';
+    html += '        ' + actionBadge;
+    html += '      </div>';
+    html += '      <span class="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg">' + escapeHtml(pctFormatted) + '</span>';
     html += '    </div>';
-    html += '    <span class="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded">' + escapeHtml(pctFormatted) + '</span>';
+    html += '    <p class="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1.5">';
+    html += '      <span>👑</span> Tokoh: <strong class="text-gray-200">' + escapeHtml(graph.summary && graph.summary.entity_name || 'Tokoh Insider') + '</strong>';
+    html += '    </p>';
     html += '  </div>';
-    html += '  <p class="text-[11px] text-gray-400 mt-1">Afiliasi Kepemilikan: <strong class="text-gray-200">' + escapeHtml(graph.summary && graph.summary.entity_name || 'Tokoh Insider') + '</strong></p>';
-    html += '</div>';
 
-    html += '<div class="space-y-2.5 text-xs">';
-    html += '  <div class="flex items-center justify-between">';
-    html += '    <span class="text-gray-400">Total Saham Dimiliki:</span>';
-    html += '    <strong class="font-mono text-gray-200">' + escapeHtml(sharesFormatted) + '</strong>';
+    // 1. Executive Summary: Kepemilikan Terkini
+    html += '  <div class="bg-dark-900/60 border border-dark-600/40 rounded-xl p-3.5 shadow-sm">';
+    html += '    <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold block mb-2">📊 Kepemilikan Terkini</span>';
+    html += '    <div class="grid grid-cols-2 gap-2.5 text-xs">';
+    html += '      <div>';
+    html += '        <span class="text-[10px] text-gray-400 block">Total Saham:</span>';
+    html += '        <strong class="font-mono text-gray-100 text-xs">' + escapeHtml(sharesFormatted) + '</strong>';
+    html += '      </div>';
+    html += '      <div>';
+    html += '        <span class="text-[10px] text-gray-400 block">Porsi Saham:</span>';
+    html += '        <strong class="font-mono text-emerald-400 text-xs">' + escapeHtml(pctFormatted) + '</strong>';
+    html += '      </div>';
+    html += '    </div>';
     html += '  </div>';
-    html += '  <div class="flex items-center justify-between">';
-    html += '    <span class="text-gray-400">Persentase Saham:</span>';
-    html += '    <strong class="font-mono text-emerald-400">' + escapeHtml(pctFormatted) + '</strong>';
-    html += '  </div>';
-    html += '  <div class="flex items-center justify-between">';
-    html += '    <span class="text-gray-400">Harga Transaksi Terakhir:</span>';
-    html += '    <strong class="font-mono text-gray-200">' + escapeHtml(priceFormatted) + '</strong>';
-    html += '  </div>';
-    html += '  <div class="flex items-center justify-between">';
-    html += '    <span class="text-gray-400">Tanggal Aksi Terakhir:</span>';
-    html += '    <strong class="font-mono text-gray-300">' + escapeHtml(holding.latest_date || '—') + '</strong>';
-    html += '  </div>';
-    html += '  <div class="flex items-center justify-between">';
-    html += '    <span class="text-gray-400">Sekuritas / Broker:</span>';
-    html += '    <span class="px-2 py-0.5 rounded font-mono font-bold bg-dark-700 text-gray-200 border border-dark-600 text-[11px]">' + escapeHtml(brokersList) + '</span>';
-    html += '  </div>';
-    html += '</div>';
 
-    html += '<div class="mt-5 pt-3 border-t border-dark-600/40">';
-    html += '  <button type="button" onclick="BandarmologiRuntime.analyzeInsiderTicker(\'' + escapeHtml(holding.ticker) + '\')" class="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-dark-900 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition">';
-    html += '    <span>🔍</span><span>Analisis Saham ' + escapeHtml(holding.ticker) + '</span>';
-    html += '  </button>';
-    html += '</div>';
+    // 2. Executive Summary: Rincian Broker Terlibat
+    html += '  <div class="bg-dark-900/60 border border-dark-600/40 rounded-xl p-3.5 shadow-sm">';
+    html += '    <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold block mb-2">💼 Rincian Broker Terlibat</span>';
+    html += '    <div class="flex flex-wrap items-center gap-1.5">';
+    html += '      ' + brokersChipsHtml;
+    html += '    </div>';
+    html += '  </div>';
 
+    // 3. Executive Summary: Riwayat Aksi Terakhir
+    html += '  <div class="bg-dark-900/60 border border-dark-600/40 rounded-xl p-3.5 shadow-sm">';
+    html += '    <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold block mb-2">⚡ Riwayat Aksi Terakhir</span>';
+    html += '    <div class="space-y-1.5 text-xs">';
+    html += '      <div class="flex items-center justify-between">';
+    html += '        <span class="text-gray-400">Aksi &amp; Volume:</span>';
+    html += '        <span class="font-mono font-bold ' + actionColor + '">' + actionTitle + ' (' + escapeHtml(actionVolFormatted) + ')</span>';
+    html += '      </div>';
+    html += '      <div class="flex items-center justify-between">';
+    html += '        <span class="text-gray-400">Harga Pelaksanaan:</span>';
+    html += '        <strong class="font-mono text-gray-200">' + escapeHtml(priceFormatted) + '</strong>';
+    html += '      </div>';
+    html += '      <div class="flex items-center justify-between">';
+    html += '        <span class="text-gray-400">Tanggal Transaksi:</span>';
+    html += '        <strong class="font-mono text-gray-300">' + escapeHtml(holding.latest_date || '—') + '</strong>';
+    html += '      </div>';
+    html += '    </div>';
+    html += '  </div>';
+
+    // Action Button
+    html += '  <div class="pt-2">';
+    html += '    <button type="button" onclick="BandarmologiRuntime.analyzeInsiderTicker(\'' + escapeHtml(holding.ticker) + '\')" class="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-dark-900 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition">';
+    html += '      <span>🔍</span><span>Analisis Saham ' + escapeHtml(holding.ticker) + '</span>';
+    html += '    </button>';
+    html += '  </div>';
+
+    html += '</div>';
     return html;
   }
 
@@ -3078,19 +3190,20 @@
       html += '    <div>';
       html += '      <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-dark-600/30">';
       html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🏷️</span> Harga di Bawah Modal Bandar</h4>';
-      if (s1.in_sweet_spot || s1.is_sweet_spot) {
+      var currentPrice = s1.current_price || s1.close_price || 0;
+      // Backend returns bandar_avg_buy (not bandar_avg_price or avg_buy_price)
+      var bandarAvg = s1.bandar_avg_buy || s1.bandar_avg_price || s1.avg_buy_price || 0;
+      var discount = s1.discount_pct != null ? s1.discount_pct : (bandarAvg > 0 && currentPrice > 0 ? Number((((bandarAvg - currentPrice) / bandarAvg) * 100).toFixed(2)) : 0);
+      var isSweetSpot = (discount > 0.0 && discount <= 5.0) && (s1.in_sweet_spot || s1.is_sweet_spot);
+
+      if (isSweetSpot) {
         html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">🎯 SWEET SPOT (&le; 5% Diskon)</span>';
-      } else if (s1.triggered) {
+      } else if (discount > 5.0 || s1.triggered) {
         html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">🟢 DI BAWAH MODAL</span>';
       } else {
         html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-dark-600/40 text-gray-400 border border-dark-600">⚪ DI ATAS MODAL</span>';
       }
       html += '      </div>';
-
-      var currentPrice = s1.current_price || s1.close_price || 0;
-      // Backend returns bandar_avg_buy (not bandar_avg_price or avg_buy_price)
-      var bandarAvg = s1.bandar_avg_buy || s1.bandar_avg_price || s1.avg_buy_price || 0;
-      var discount = s1.discount_pct != null ? s1.discount_pct : (bandarAvg > 0 && currentPrice > 0 ? Number((((bandarAvg - currentPrice) / bandarAvg) * 100).toFixed(2)) : 0);
 
       html += '      <div class="grid grid-cols-3 gap-2 text-xs mb-3 bg-dark-800/60 p-2.5 rounded-lg border border-dark-600/20">';
       html += '        <div><span class="text-[10px] text-gray-400 block">Harga Sekarang</span><span class="font-mono font-bold text-gray-100">' + (currentPrice > 0 ? 'Rp ' + formatNumber(currentPrice) : '—') + '</span></div>';

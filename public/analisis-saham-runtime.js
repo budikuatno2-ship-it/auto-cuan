@@ -410,10 +410,12 @@
       if (badge) badge.textContent = ticker;
       var bandarTag = byId('bandarActiveTickerTag');
       if (bandarTag) bandarTag.textContent = ticker;
+      var intelTag = byId('intelActiveTickerTag');
+      if (intelTag) intelTag.textContent = ticker;
     }
 
     // 3. Update all independent search inputs
-    ['bandarTickerSearchInput', 'akumulasiTickerSearchInput', 'bandarSummarySearchInput', 'rankingTickerSearchInput', 'patternTickerSearchInput'].forEach(function (id) {
+    ['bandarTickerSearchInput', 'intelSearchInput', 'akumulasiTickerSearchInput', 'bandarSummarySearchInput', 'rankingTickerSearchInput', 'patternTickerSearchInput'].forEach(function (id) {
       var el = byId(id);
       if (el && el.value !== ticker) el.value = ticker;
     });
