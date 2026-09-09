@@ -5487,8 +5487,8 @@ function parseBrokerSummaryText(message) {
     buyers.sort(function(a, b) { return b.net - a.net; });
     sellers.sort(function(a, b) { return a.net - b.net; });
 
-    result.topBuyers = buyers.slice(0, 5);
-    result.topSellers = sellers.slice(0, 5);
+    result.topBuyers = buyers.slice(0, 100);
+    result.topSellers = sellers.slice(0, 100);
 
     // Judgment logic
     var absNeg = Math.abs(result.totalNegative);
