@@ -283,6 +283,10 @@
     root.ensurePatternRadarMounted = function (container) {
       var target = container || doc.getElementById('patternSubTabContainer');
       if (!target) return;
+      var globalLoader = doc.getElementById('patternRadarGlobalLoader');
+      if (globalLoader) {
+        globalLoader.style.display = 'none';
+      }
       if (!state.allowed && !isBudiAdmin()) {
         target.innerHTML = '<div class="p-8 text-center text-gray-400 text-xs space-y-2">' +
           '<div class="text-amber-400 font-semibold text-sm">🔒 Akses Terbatas: Khusus Administrator</div>' +
