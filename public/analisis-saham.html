@@ -81,6 +81,10 @@
                 <span class="text-base">🎯</span>
                 <span>Broker Hunter</span>
             </button>
+            <button id="tabJejaringInsider" type="button" class="analisis-tab" data-tab="insider" onclick="switchAnalisisTab('insider')">
+                <span class="text-base">🕸️</span>
+                <span>Jejaring Insider</span>
+            </button>
             <button id="tabRankingHarian" type="button" class="analisis-tab" data-tab="ranking" onclick="switchAnalisisTab('ranking')">
                 <span class="text-base">🏆</span>
                 <span>Ranking Harian</span>
@@ -371,6 +375,13 @@
         <section id="panel-tab-hunter" class="analisis-tab-panel" style="display:none">
             <div class="unified-card p-4 sm:p-5">
                 <div id="brokerHunterContent"></div>
+            </div>
+        </section>
+
+        <!-- TAB DEDICATED: JEJARING INSIDER (Multi-Emiten Network Graph & Full Canvas) -->
+        <section id="panel-tab-insider" class="analisis-tab-panel" style="display:none">
+            <div class="unified-card p-4 sm:p-5">
+                <div id="insiderNetworkDedicatedContent"></div>
             </div>
         </section>
 

@@ -250,9 +250,11 @@
       parentTab = 'analisis-chart';
     } else if (tabName === 'akumulasi' || tabName === 'intel' || tabName === 'bandarmologi-intel') {
       parentTab = 'bandarmologi';
+    } else if (tabName === 'insider' || tabName === 'network') {
+      parentTab = 'insider';
     }
 
-    var validParentTabs = ['analisis-chart', 'bandarmologi', 'hunter', 'ranking', 'pattern'];
+    var validParentTabs = ['analisis-chart', 'bandarmologi', 'hunter', 'insider', 'ranking', 'pattern'];
     if (validParentTabs.indexOf(parentTab) < 0) parentTab = 'analisis-chart';
 
     if (typeof document !== 'undefined' && document.querySelectorAll) {
@@ -269,6 +271,7 @@
     var pChart = byId('panel-tab-chart');
     var pBandarmologi = byId('panel-tab-bandarmologi');
     var pHunter = byId('panel-tab-hunter');
+    var pInsider = byId('panel-tab-insider');
     var pRanking = byId('panel-tab-ranking');
     var pPattern = byId('panel-tab-pattern');
 
@@ -276,6 +279,7 @@
       if (pHeader) pHeader.style.display = 'block';
       if (pBandarmologi) pBandarmologi.style.display = 'none';
       if (pHunter) pHunter.style.display = 'none';
+      if (pInsider) pInsider.style.display = 'none';
       if (pRanking) pRanking.style.display = 'none';
       if (pPattern) pPattern.style.display = 'none';
 
@@ -304,6 +308,7 @@
       if (pChart) pChart.style.display = 'none';
       if (pBandarmologi) pBandarmologi.style.display = (parentTab === 'bandarmologi' ? 'block' : 'none');
       if (pHunter) pHunter.style.display = (parentTab === 'hunter' ? 'block' : 'none');
+      if (pInsider) pInsider.style.display = (parentTab === 'insider' ? 'block' : 'none');
       if (pRanking) pRanking.style.display = (parentTab === 'ranking' ? 'block' : 'none');
       if (pPattern) pPattern.style.display = (parentTab === 'pattern' ? 'block' : 'none');
     }
@@ -343,6 +348,11 @@
       var hunterContainer = byId('brokerHunterContent') || byId('bandarmologiContent');
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.loadBrokerHunter === 'function') {
         root.BandarmologiRuntime.loadBrokerHunter(hunterContainer);
+      }
+    } else if (parentTab === 'insider') {
+      var insiderContainer = byId('insiderNetworkDedicatedContent') || byId('bandarmologiContent');
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.loadInsiderNetwork === 'function') {
+        root.BandarmologiRuntime.loadInsiderNetwork(insiderContainer);
       }
     } else if (parentTab === 'pattern') {
       loadPatternRadarTab();
