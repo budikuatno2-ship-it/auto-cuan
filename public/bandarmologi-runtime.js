@@ -1088,10 +1088,16 @@
       }
     }
     var tabBandar = byId('tabBandarmologi');
+    var tabIntel = byId('tabSinyalIntelijen');
     var tabAkumulasi = byId('tabAkumulasiBroker');
-    if (tabBandar && tabAkumulasi) {
-      tabBandar.classList.toggle('active', bandarSection === 'summary' || bandarSection === 'intel');
-      tabBandar.setAttribute('aria-selected', (bandarSection === 'summary' || bandarSection === 'intel') ? 'true' : 'false');
+    if (tabBandar && tabIntel) {
+      tabBandar.classList.toggle('active', bandarSection === 'summary' || bandarSection === 'akumulasi');
+      tabBandar.setAttribute('aria-selected', (bandarSection === 'summary' || bandarSection === 'akumulasi') ? 'true' : 'false');
+      tabIntel.classList.toggle('active', bandarSection === 'intel');
+      tabIntel.setAttribute('aria-selected', bandarSection === 'intel' ? 'true' : 'false');
+    } else if (tabBandar && tabAkumulasi) {
+      tabBandar.classList.toggle('active', bandarSection === 'summary');
+      tabBandar.setAttribute('aria-selected', bandarSection === 'summary' ? 'true' : 'false');
       tabAkumulasi.classList.toggle('active', bandarSection === 'akumulasi');
       tabAkumulasi.setAttribute('aria-selected', bandarSection === 'akumulasi' ? 'true' : 'false');
     }
@@ -1132,22 +1138,27 @@
         window.history.replaceState({}, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
       }
     } catch (_) {}
-    var bandarContainer = byId('bandarmologiContent');
-    if (bandarContainer) {
-      if (bandarSection === 'network') {
-        renderInsiderNetworkUI(bandarContainer, currentBandarTicker);
-      } else if (bandarSection === 'intel') {
-        renderBandarmologiIntelUI(bandarContainer, currentBandarTicker);
-      } else if (lastBandarData) {
-        if (bandarSection === 'akumulasi') {
-          var accObj = lastBandarData.broker_accumulation;
-          if ((!accObj || ((!accObj.top_buyers || accObj.top_buyers.length === 0) && (!accObj.net_buyers || accObj.net_buyers.length === 0))) && lastBandarData.broker_summary) {
-            lastBandarData.broker_accumulation = synthesizeAccumulationFromSummary(lastBandarData.broker_summary, currentBandarTicker);
+
+    if (bandarSection === 'intel') {
+      var intelContainer = byId('bandarmologiIntelContent') || byId('bandarmologiContent');
+      if (intelContainer) renderBandarmologiIntelUI(intelContainer, currentBandarTicker);
+    } else if (bandarSection === 'network') {
+      var netContainer = byId('insiderNetworkDedicatedContent') || byId('bandarmologiContent');
+      if (netContainer) renderInsiderNetworkUI(netContainer, currentBandarTicker);
+    } else {
+      var bandarContainer = byId('bandarmologiContent');
+      if (bandarContainer) {
+        if (lastBandarData) {
+          if (bandarSection === 'akumulasi') {
+            var accObj = lastBandarData.broker_accumulation;
+            if ((!accObj || ((!accObj.top_buyers || accObj.top_buyers.length === 0) && (!accObj.net_buyers || accObj.net_buyers.length === 0))) && lastBandarData.broker_summary) {
+              lastBandarData.broker_accumulation = synthesizeAccumulationFromSummary(lastBandarData.broker_summary, currentBandarTicker);
+            }
           }
+          renderBandarmologiUI(bandarContainer, lastBandarData);
+        } else if (typeof fetch !== 'undefined') {
+          loadBandarmologiTab(currentBandarTicker);
         }
-        renderBandarmologiUI(bandarContainer, lastBandarData);
-      } else if (typeof fetch !== 'undefined') {
-        loadBandarmologiTab(currentBandarTicker);
       }
     }
   }
@@ -1211,9 +1222,8 @@
     var inpSummary = byId('bandarSummarySearchInput');
     if (inpSummary && inpSummary.value !== clean) inpSummary.value = clean;
 
-    if (bandarSection === 'intel') {
-      loadBandarmologiIntel(clean, container);
-      return;
+    if (bandarSection === 'intel' || bandarSection === 'network') {
+      bandarSection = 'summary';
     }
 
     container.innerHTML = '<div class="flex flex-col items-center justify-center py-12"><div class="spinner"></div><p class="text-xs text-gray-400 mt-3">Mengambil data Bandarmologi &amp; Insider ' + escapeHtml(clean) + '...</p></div>';
@@ -2884,12 +2894,10 @@
       }
     } finally {
       if (timer) clearTimeout(timer);
-      if (thisRequestSeq === intelRequestSeq) {
-        bandarIntelLoading = false;
-        activeIntelAbortController = null;
-        if (container) {
-          renderBandarmologiIntelUI(container, targetTicker);
-        }
+      bandarIntelLoading = false;
+      activeIntelAbortController = null;
+      if (thisRequestSeq === intelRequestSeq && container) {
+        renderBandarmologiIntelUI(container, targetTicker);
       }
     }
   }
@@ -2899,6 +2907,11 @@
     if (!container) return;
 
     if (dataOrTicker && typeof dataOrTicker === 'object') {
+      var objTicker = dataOrTicker.ticker || (dataOrTicker.result && dataOrTicker.result.ticker);
+      if (objTicker) {
+        currentBandarTicker = String(objTicker).trim().toUpperCase();
+        bandarIntelTicker = currentBandarTicker;
+      }
       if (dataOrTicker.signals || (dataOrTicker.result && dataOrTicker.result.signals)) {
         bandarIntelData = dataOrTicker;
         bandarIntelViewMode = 'ticker';
@@ -2913,6 +2926,14 @@
     } else if (typeof dataOrTicker === 'string' && dataOrTicker) {
       currentBandarTicker = String(dataOrTicker).trim().toUpperCase();
       bandarIntelTicker = currentBandarTicker;
+    }
+
+    if (bandarIntelViewMode === 'ticker') {
+      var cachedObj = (bandarIntelData && bandarIntelData.result) || bandarIntelData || {};
+      var cachedTicker = (bandarIntelData && bandarIntelData.ticker) || cachedObj.ticker;
+      if (cachedTicker && cachedTicker !== currentBandarTicker) {
+        bandarIntelData = null;
+      }
     }
 
     if (!bandarIntelData && !bandarIntelLoading && !bandarIntelError && typeof fetch !== 'undefined') {
@@ -2983,9 +3004,11 @@
 
     // Error State
     if (bandarIntelError) {
-      html += '<div class="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-center my-4">';
-      html += '  <p class="text-xs text-rose-300 font-medium mb-2">⚠️ ' + escapeHtml(bandarIntelError) + '</p>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.loadBandarmologiIntel()" class="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-200 border border-rose-500/30 text-xs font-semibold hover:bg-rose-500/30 transition">Coba Lagi</button>';
+      html += '<div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-6 text-center my-4">';
+      html += '  <span class="text-2xl mb-1 block">⚠️</span>';
+      html += '  <p class="text-sm text-gray-200 font-semibold mb-1">Data intelijen emiten belum tersedia</p>';
+      html += '  <p class="text-xs text-gray-400 mb-3">' + escapeHtml(bandarIntelError) + '</p>';
+      html += '  <button type="button" onclick="BandarmologiRuntime.loadBandarmologiIntel()" class="px-3.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-semibold hover:bg-emerald-500/30 transition">Coba Lagi</button>';
       html += '</div>';
       container.innerHTML = html;
       return;
@@ -2999,6 +3022,23 @@
       var s2 = signals.silent_foreign_accumulation || {};
       var s3 = signals.ritel_cutloss_vs_bandar || {};
       var s4 = signals.concentration_ratio || {};
+
+      var s1HasData = s1 && s1.reason !== 'NO_DATA';
+      var s2HasData = s2 && s2.reason !== 'NO_DATA';
+      var s3HasData = s3 && s3.reason !== 'NO_DATA';
+      var s4HasData = s4 && s4.reason !== 'NO_DATA';
+      var hasAnySignalData = intelObj.has_data !== false && (s1HasData || s2HasData || s3HasData || s4HasData);
+
+      if (!hasAnySignalData && (intelObj.has_data === false || (!s1.signal_key && !s2.signal_key))) {
+        html += '<div class="bg-dark-800/40 border border-dark-600/30 rounded-xl p-8 text-center my-4">';
+        html += '  <span class="text-3xl mb-2 block">🎯</span>';
+        html += '  <h4 class="text-sm font-bold text-gray-200 mb-1">Data intelijen emiten belum tersedia</h4>';
+        html += '  <p class="text-xs text-gray-400 max-w-md mx-auto">Data transaksi broker summary dan kalkulasi sinyal intelijen untuk emiten <strong class="text-emerald-400 font-mono">' + escapeHtml(currentBandarTicker) + '</strong> belum tercatat di bursa atau sedang dalam proses sinkronisasi.</p>';
+        html += '</div>';
+        container.innerHTML = html;
+        return;
+      }
+
       var confluenceBadge = intelObj.confluence_badge || 'NEUTRAL';
       var bullishCount = intelObj.bullish_signals_count || 0;
       var bearishCount = intelObj.bearish_signals_count || 0;

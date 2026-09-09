@@ -366,5 +366,6 @@
   "test/bandarmologi-intel-price-fix.test.js",
   "test/insider-transaction-table.test.js",
   "test/insider-network-graph.test.js",
-  "test/insider-network-ui.test.js"
+  "test/insider-network-ui.test.js",
+  "test/tab-navigation-and-insider-universe.test.js"
 ]

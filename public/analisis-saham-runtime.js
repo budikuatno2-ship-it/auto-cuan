@@ -340,7 +340,7 @@
     } else if (parentTab === 'bandarmologi') {
       var currentSection = (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.getBandarSection === 'function')
         ? root.BandarmologiRuntime.getBandarSection() : 'summary';
-      var bandarSection = (tabName === 'akumulasi') ? 'akumulasi' : (tabName === 'bandarmologi' ? currentSection : 'summary');
+      var bandarSection = (tabName === 'akumulasi' || currentSection === 'akumulasi') ? 'akumulasi' : 'summary';
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
         root.BandarmologiRuntime.setBandarSection(bandarSection);
       }
@@ -422,8 +422,9 @@
     if (tabName === 'bandarmologi') {
       var activeSec = (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.getBandarSection === 'function')
         ? root.BandarmologiRuntime.getBandarSection() : 'summary';
+      var safeSec = (activeSec === 'akumulasi') ? 'akumulasi' : 'summary';
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
-        root.BandarmologiRuntime.setBandarSection(activeSec || 'summary');
+        root.BandarmologiRuntime.setBandarSection(safeSec);
       }
       if (typeof root.loadBandarmologiTab === 'function') {
         root.loadBandarmologiTab(ticker);
