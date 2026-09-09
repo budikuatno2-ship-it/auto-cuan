@@ -441,6 +441,10 @@
   var patternRadarTimer = null;
 
   function renderPatternRadarError(container, message) {
+    var globalLoader = byId('patternRadarGlobalLoader');
+    if (globalLoader) {
+      globalLoader.style.display = 'none';
+    }
     if (!container) return;
     container.innerHTML = '<div class="p-8 text-center text-gray-400 text-xs space-y-3">' +
       '<div class="text-rose-400 font-semibold text-sm">Gagal Menyiapkan Pattern Radar</div>' +

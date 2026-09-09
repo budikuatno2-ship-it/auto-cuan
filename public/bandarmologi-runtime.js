@@ -2619,12 +2619,19 @@
       return;
     }
 
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () {
+      try { controller.abort(); } catch (_) {}
+    }, 10000) : null;
+
     try {
       var url = '/api/sector-hot?action=bandarmologi-intel&range=' + encodeURIComponent(bandarIntelRange);
       if (bandarIntelViewMode === 'ticker') {
         url += '&ticker=' + encodeURIComponent(targetTicker);
       }
-      var resp = await fetch(url);
+      var fetchOpts = controller ? { signal: controller.signal } : {};
+      var resp = await fetch(url, fetchOpts);
+      if (timer) clearTimeout(timer);
       var json = await resp.json();
       if (json && json.success) {
         if (bandarIntelViewMode === 'ticker') {
@@ -2639,8 +2646,12 @@
         bandarIntelError = (json && json.error) || 'Gagal memuat data Sinyal Intelijen Bandar.';
       }
     } catch (err) {
-      bandarIntelError = err.message || String(err);
+      if (timer) clearTimeout(timer);
+      bandarIntelError = (err && (err.name === 'AbortError' || String(err.message).includes('aborted')))
+        ? 'Waktu kalkulasi 30D melebihi 10 detik. Silakan coba kembali atau gunakan rentang 7D.'
+        : (err.message || String(err));
     } finally {
+      if (timer) clearTimeout(timer);
       bandarIntelLoading = false;
       if (container) {
         renderBandarmologiIntelUI(container, targetTicker);
