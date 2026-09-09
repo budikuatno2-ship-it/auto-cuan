@@ -2033,7 +2033,8 @@
             : (row.pct_change || '—');
 
           var afterShares = row.shares_after != null ? formatNumber(row.shares_after) : (row.shares_after === 0 ? '0' : '—');
-          var rawAfterPct = row.pct_after || row.shares_after_percentage || row.after_percentage || '';
+          var rawAfterPct = row.pct_after || row.shares_after_percentage || row.current_percentage || row.percentage_after || row.after_percentage || '';
+          if (rawAfterPct && !String(rawAfterPct).includes('%') && rawAfterPct !== '—') rawAfterPct += '%';
           var afterPct = rawAfterPct ? ' (' + escapeHtml(rawAfterPct) + ')' : '';
           var afterDisplay = afterShares !== '—' ? (afterShares + afterPct) : (rawAfterPct ? escapeHtml(rawAfterPct) : '—');
 
@@ -2043,7 +2044,8 @@
             sharesBeforeVal = row.shares_after - signedVal;
           }
           var beforeShares = sharesBeforeVal != null ? formatNumber(sharesBeforeVal) : (sharesBeforeVal === 0 ? '0' : '—');
-          var rawBeforePct = row.pct_before || row.shares_before_percentage || row.before_percentage || '';
+          var rawBeforePct = row.pct_before || row.shares_before_percentage || row.previous_percentage || row.percentage_before || row.before_percentage || '';
+          if (rawBeforePct && !String(rawBeforePct).includes('%') && rawBeforePct !== '—') rawBeforePct += '%';
           var beforePct = rawBeforePct ? ' (' + escapeHtml(rawBeforePct) + ')' : '';
           var beforeDisplay = beforeShares !== '—' ? (beforeShares + beforePct) : (rawBeforePct ? escapeHtml(rawBeforePct) : '—');
 
@@ -2053,7 +2055,7 @@
             : '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-dark-600/40 text-gray-300 border border-dark-500">🇮🇩 Local</span>';
 
           var changeColor = isBuy ? 'text-emerald-400' : (isSell ? 'text-rose-400' : 'text-gray-300');
-          var positionDisplay = row.position || row.jabatan || (row.badges && row.badges[0]) || row.title || '—';
+          var positionDisplay = row.position || row.jabatan || row.title || row.status || (row.badges && row.badges[0]) || '—';
 
           html += '        <tr class="hover:bg-dark-600/20 transition">';
           html += '          <td class="py-2.5 px-2.5 font-mono text-[11px] text-gray-300">' + escapeHtml(row.date || '—') + '</td>';
@@ -2276,6 +2278,27 @@
     renderInsiderNetworkUI(target);
   }
 
+  function formatEntityDisplayName(name) {
+    if (!name) return '';
+    var str = String(name).trim();
+    var cleanLower = str.toLowerCase();
+    if (cleanLower.includes('belvin')) return 'Belvin Tannadi';
+    if (cleanLower.includes('prajogo')) return 'Prajogo Pangestu';
+    if (cleanLower.includes('garibaldi') || cleanLower.includes('boy thohir')) return 'Garibaldi Thohir';
+    if (cleanLower.includes('kheng hong')) return 'Lo Kheng Hong';
+    if (cleanLower.includes('anthoni salim') || cleanLower.includes('anthony salim')) return 'Anthoni Salim';
+    if (cleanLower.includes('samsudin') || cleanLower.includes('isam')) return 'Haji Samsudin Andi Arsyad (Haji Isam)';
+    if (cleanLower.includes('budi hartono')) return 'Robert Budi Hartono';
+
+    if (str === str.toUpperCase() && str.length > 3) {
+      return str.split(' ').map(function(w) {
+        if (!w) return '';
+        return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+      }).join(' ');
+    }
+    return str;
+  }
+
   function renderInsiderNetworkSvg(graph, selectedTicker) {
     if (!graph || !graph.nodes || graph.nodes.length === 0) {
       return '<div class="p-8 text-center text-gray-400 text-xs">Data jejaring relasi tidak ditemukan.</div>';
@@ -2477,7 +2500,7 @@
     // Render Central Insider Node (Sun: Glowing Amber / Gold)
     var isForeign = String(centralNode.nationality || '').toLowerCase() === 'foreign';
     var natBadge = isForeign ? '🌐' : '🇮🇩';
-    var labelName = escapeHtml(centralNode.label || centralNode.name || 'Insider');
+    var labelName = escapeHtml(formatEntityDisplayName(centralNode.label || centralNode.name || 'Insider'));
     var emitensCount = centralNode.total_emitens != null ? centralNode.total_emitens : numEmitens;
 
     svg += '  <g class="central-insider-node cursor-pointer">\n';
@@ -2727,16 +2750,17 @@
     var html = '';
     for (var r = 0; r < results.length; r++) {
       var item = results[r];
+      var displayName = formatEntityDisplayName(item.name);
       var isForeign = String(item.nationality || '').toLowerCase() === 'foreign';
       var natBadge = isForeign ? '🌐 Foreign' : '🇮🇩 Local';
       var tickersHtml = (item.tickers || []).map(function (t) {
         return '<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-dark-900 border border-dark-600 text-emerald-400">' + escapeHtml(t) + '</span>';
       }).join(' ');
 
-      html += '<div class="p-2.5 hover:bg-dark-700/60 cursor-pointer border-b border-dark-700/40 last:border-b-0 transition flex items-center justify-between" data-insider-name="' + escapeHtml(item.name) + '" onclick="BandarmologiRuntime.selectInsiderSearchResult(this.getAttribute(\'data-insider-name\'))">';
+      html += '<div class="p-2.5 hover:bg-dark-700/60 cursor-pointer border-b border-dark-700/40 last:border-b-0 transition flex items-center justify-between" data-insider-name="' + escapeHtml(displayName) + '" onclick="BandarmologiRuntime.selectInsiderSearchResult(this.getAttribute(\'data-insider-name\'))">';
       html += '  <div>';
       html += '    <div class="flex items-center gap-2">';
-      html += '      <span class="text-xs font-bold text-gray-100">' + escapeHtml(item.name) + '</span>';
+      html += '      <span class="text-xs font-bold text-gray-100">' + escapeHtml(displayName) + '</span>';
       html += '      <span class="text-[10px] text-gray-400">' + natBadge + '</span>';
       html += '    </div>';
       html += '    <div class="flex items-center gap-1 mt-1">' + tickersHtml + '</div>';
@@ -2878,8 +2902,17 @@
     return '<span class="px-2.5 py-0.5 rounded-lg bg-dark-600/40 text-gray-300 border border-dark-500 font-bold text-xs">⚪ NETRAL / TERSEBAR</span>';
   }
 
+  function updateIntelSearchBarVisibility() {
+    if (typeof document === 'undefined') return;
+    var searchContainer = byId('intelSearchBarContainer');
+    if (searchContainer) {
+      searchContainer.style.display = (bandarIntelViewMode === 'scanner') ? 'none' : '';
+    }
+  }
+
   function setBandarIntelViewMode(mode) {
     bandarIntelViewMode = (mode === 'scanner') ? 'scanner' : 'ticker';
+    updateIntelSearchBarVisibility();
     var container = byId('bandarmologiIntelContent') || byId('bandarmologiContent');
     if (bandarIntelViewMode === 'scanner' && !bandarIntelScannerData && !bandarIntelLoading && typeof fetch !== 'undefined') {
       loadBandarmologiIntel(currentBandarTicker, container);
@@ -3040,6 +3073,8 @@
       bandarIntelTicker = currentBandarTicker;
     }
 
+    updateIntelSearchBarVisibility();
+
     if (bandarIntelViewMode === 'ticker') {
       var cachedObj = (bandarIntelData && bandarIntelData.result) || bandarIntelData || {};
       var cachedTicker = (bandarIntelData && bandarIntelData.ticker) || cachedObj.ticker;
@@ -3048,7 +3083,8 @@
       }
     }
 
-    if (!bandarIntelData && !bandarIntelLoading && !bandarIntelError && typeof fetch !== 'undefined') {
+    var hasTargetData = (bandarIntelViewMode === 'scanner') ? Boolean(bandarIntelScannerData) : Boolean(bandarIntelData);
+    if (!hasTargetData && !bandarIntelLoading && !bandarIntelError && typeof fetch !== 'undefined') {
       loadBandarmologiIntel(currentBandarTicker, container);
     }
 
@@ -3922,6 +3958,7 @@
       getBandarIntelRange: function () { return bandarIntelRange; },
       setBandarIntelScannerCategory: setBandarIntelScannerCategory,
       getBandarIntelScannerCategory: function () { return bandarIntelScannerCategory; },
+      updateIntelSearchBarVisibility: updateIntelSearchBarVisibility,
       selectIntelTicker: selectIntelTicker,
       setBrokerSummaryMode: setBrokerSummaryMode,
       setBrokerSummaryView: setBrokerSummaryView,
