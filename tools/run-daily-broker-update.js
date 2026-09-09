@@ -147,6 +147,13 @@ async function run(argv) {
   const dryRun = args.includes('--dry-run');
   const isFinal = args.includes('--final');
 
+  const isFresh = args.includes('--fresh');
+  let limit = Infinity;
+  const limitIdx = args.indexOf('--limit');
+  if (limitIdx >= 0 && args[limitIdx + 1]) {
+    limit = parseInt(args[limitIdx + 1], 10) || Infinity;
+  }
+
   let dateFromArg = null;
   const dateIdx = args.indexOf('--date');
   if (dateIdx >= 0 && args[dateIdx + 1]) dateFromArg = args[dateIdx + 1];
@@ -172,16 +179,20 @@ async function run(argv) {
     } catch (_) {}
   }
 
+  if (isFinite(limit) && limit < tickers.length) {
+    tickers = tickers.slice(0, limit);
+  }
+
   let delayMs = 250;
   const delayIdx = args.indexOf('--delay');
   if (delayIdx >= 0 && args[delayIdx + 1]) delayMs = parseInt(args[delayIdx + 1], 10) || 250;
 
-  const dailyLimit = arjumClient.getConfiguredDailyQuota();
+  const dailyLimit = Math.min(arjumClient.getConfiguredDailyQuota(), isFinite(limit) ? limit : Infinity);
 
   console.log('=== AUTO-CUAN DAILY BROKER UPDATE (Bagian 3) ===');
   console.log(`Target Date (WIB): ${dateArg}`);
   console.log(`Total Tickers: ${tickers.length}`);
-  console.log(`Mode: ${dryRun ? 'DRY-RUN' : 'LIVE'}${isFinal ? ' (FINAL ATTEMPT for tonight)' : ''}`);
+  console.log(`Mode: ${dryRun ? 'DRY-RUN' : (isFresh ? 'LIVE (FRESH OVERWRITE)' : 'LIVE')}${isFinal ? ' (FINAL ATTEMPT for tonight)' : ''}`);
   console.log(`Daily Quota: ${dailyLimit} | Already used today (cross-process, all scripts): ${arjumClient.getUsedQuotaToday()}`);
   console.log('----------------------------------------------------');
 
@@ -205,7 +216,7 @@ async function run(argv) {
   console.log(`Trading day check: OK (calendar source: ${guard.calendarSource})`);
 
   const existingMarker = readMarker(dateArg);
-  if (existingMarker && existingMarker.complete) {
+  if (!isFresh && existingMarker && existingMarker.complete) {
     console.log(`[SUDAH SELESAI] Marker ${dateArg} sudah lengkap sejak ${existingMarker.completed_at}. Tidak ada yang perlu dikerjakan.`);
     return;
   }
@@ -238,7 +249,7 @@ async function run(argv) {
     const ticker = tickers[i];
 
     // 1. Broker Summary for TODAY — the critical, evening-gated data.
-    const alreadyCached = bandarmologiService.hasDiskCache('broker-summary', ticker, dateArg);
+    const alreadyCached = !isFresh && bandarmologiService.hasDiskCache('broker-summary', ticker, dateArg);
     if (alreadyCached) {
       doneCount++;
     } else if (dryRun) {

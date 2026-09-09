@@ -331,9 +331,11 @@
 
     for (var bi = 0; bi < buyers.length; bi++) {
       var b = buyers[bi];
-      var code = b && (b.broker || b.broker_code || '');
+      var code = b && (b.broker || b.broker_code || b.code || '');
       if (!code || seen[code]) continue;
       seen[code] = true;
+      b.broker = code;
+      b.broker_code = code;
       var nval = b.nval != null ? Number(b.nval) : (b.net_val != null ? Number(b.net_val) : ((Number(b.bval || b.buy_val || 0)) - (Number(b.sval || b.sell_val || 0))));
       if (nval < 0) {
         finalSellers.push(b);
@@ -344,9 +346,11 @@
 
     for (var si = 0; si < sellers.length; si++) {
       var s = sellers[si];
-      var sCode = s && (s.broker || s.broker_code || '');
+      var sCode = s && (s.broker || s.broker_code || s.code || '');
       if (!sCode || seen[sCode]) continue;
       seen[sCode] = true;
+      s.broker = sCode;
+      s.broker_code = sCode;
       finalSellers.push(s);
     }
 
@@ -396,8 +400,11 @@
     var map = {};
 
     function processItem(item, isBuyerList) {
-      if (!item || !item.broker) return;
-      var code = String(item.broker).trim().toUpperCase();
+      if (!item) return;
+      var code = String(item.broker || item.broker_code || item.code || '').trim().toUpperCase();
+      if (!code) return;
+      item.broker = code;
+      item.broker_code = code;
       if (!map[code]) {
         map[code] = {
           broker: code,
@@ -933,7 +940,7 @@
     html += '  </div>';
 
     // Bubble cluster container
-    html += '  <div id="brokerBubbleClusterContainer" class="p-4 sm:p-6 bg-dark-900/60 rounded-2xl border border-dark-600/40 min-h-[240px] flex flex-wrap items-center justify-center gap-3 sm:gap-4 relative overflow-hidden">';
+    html += '  <div id="brokerBubbleClusterContainer" class="p-3 sm:p-4 bg-dark-900/60 rounded-xl border border-dark-600/40 min-h-[190px] flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 relative overflow-hidden">';
     if (visibleBrokers.length === 0) {
       if (brokerFlowFilter !== 'all') {
         var flowLabel = brokerFlowFilter === 'F' ? 'Asing (Foreign)' : 'Domestik';
@@ -1749,19 +1756,19 @@
     var bandarPct = totalBuyerVal > 0 ? Math.round((bandarVal / totalBuyerVal) * 100) : 65;
     var retailPct = 100 - bandarPct;
 
-    html += '  <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">';
+    html += '  <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">';
     // Card 1: Concentration Ratios
-    html += '    <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
-    html += '      <div class="flex items-center justify-between mb-2">';
+    html += '    <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-3 flex flex-col justify-between shadow-sm">';
+    html += '      <div class="flex items-center justify-between mb-1.5">';
     html += '        <span class="text-xs font-bold text-gray-200">Concentration Ratio (CR)</span>';
     html += '        <span class="text-[10px] text-gray-400 font-mono">Berdasarkan Volume/Nilai Beli</span>';
     html += '      </div>';
-    html += '      <div class="grid grid-cols-2 gap-3 my-2">';
-    html += '        <div class="bg-dark-900/60 p-2.5 rounded-lg border border-dark-600/30 text-center">';
+    html += '      <div class="grid grid-cols-2 gap-2 my-1.5">';
+    html += '        <div class="bg-dark-900/60 p-2 rounded-lg border border-dark-600/30 text-center">';
     html += '          <span class="text-[10px] text-gray-400 block uppercase font-semibold">CR3 (Top 3)</span>';
     html += '          <span class="text-xl font-bold font-mono text-emerald-400">' + cr3 + '%</span>';
     html += '        </div>';
-    html += '        <div class="bg-dark-900/60 p-2.5 rounded-lg border border-dark-600/30 text-center">';
+    html += '        <div class="bg-dark-900/60 p-2 rounded-lg border border-dark-600/30 text-center">';
     html += '          <span class="text-[10px] text-gray-400 block uppercase font-semibold">CR5 (Top 5)</span>';
     html += '          <span class="text-xl font-bold font-mono text-sky-400">' + cr5 + '%</span>';
     html += '        </div>';
@@ -1770,17 +1777,17 @@
     html += '    </div>';
 
     // Card 2: Status Dominasi Bandar
-    html += '    <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
-    html += '      <div class="flex items-center justify-between mb-2">';
+    html += '    <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-3 flex flex-col justify-between shadow-sm">';
+    html += '      <div class="flex items-center justify-between mb-1.5">';
     html += '        <span class="text-xs font-bold text-gray-200">Status Dominasi Pasar</span>';
     html += '        <span class="text-[10px] text-emerald-400 font-mono">Real-Time Metric</span>';
     html += '      </div>';
-    html += '      <div class="my-2">' + domBadge + '</div>';
+    html += '      <div class="my-1.5">' + domBadge + '</div>';
     html += '      <p class="text-[11px] text-gray-300 leading-relaxed mt-1">' + domDesc + '</p>';
     html += '    </div>';
 
     // Card 3: Rasio Partisipasi Bandar vs Ritel
-    html += '    <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
+    html += '    <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-3 flex flex-col justify-between shadow-sm">';
     html += '      <div class="flex items-center justify-between mb-2">';
     html += '        <span class="text-xs font-bold text-gray-200">Partisipasi Bandar vs Ritel</span>';
     html += '        <span class="text-[10px] font-mono ' + (bandarPct >= 50 ? 'text-emerald-400' : 'text-amber-400') + '">' + (bandarPct >= 50 ? 'Bandar Dominan' : 'Ritel Aktif') + '</span>';
@@ -1802,9 +1809,20 @@
     // 2C-1. Sebaran & Klaster Broker Akumulasi (Interactive Bubble Cluster)
     var accRawBuyers = firstNonEmptyList(bAcc.top_buyers, bAcc.net_buyers, bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers) || [];
     var accRawSellers = firstNonEmptyList(bAcc.top_sellers, bAcc.net_sellers, bSum.net_sellers, bSum.gross_sellers, bSum.top_sellers, bSum.sellers) || [];
+    if (accRawBuyers.length === 0 && accRawSellers.length === 0 && bSum) {
+      accRawBuyers = firstNonEmptyList(bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers) || [];
+      accRawSellers = firstNonEmptyList(bSum.net_sellers, bSum.gross_sellers, bSum.top_sellers, bSum.sellers) || [];
+    }
     var accBuyers = filterBrokersByFlow(accRawBuyers, brokerFlowFilter);
     var accSellers = filterBrokersByFlow(accRawSellers, brokerFlowFilter);
+    if (accBuyers.length === 0 && accSellers.length === 0 && brokerFlowFilter === 'all' && (accRawBuyers.length > 0 || accRawSellers.length > 0)) {
+      accBuyers = accRawBuyers;
+      accSellers = accRawSellers;
+    }
     lastBrokerItems = buildBrokerBubbleItems(accBuyers, accSellers, brokerSummaryMode);
+    if (lastBrokerItems.length === 0 && (accRawBuyers.length > 0 || accRawSellers.length > 0)) {
+      lastBrokerItems = buildBrokerBubbleItems(accRawBuyers, accRawSellers, brokerSummaryMode);
+    }
 
     if (brokerAccumulationView === 'bubble') {
       html += '  <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 shadow-sm">';
@@ -3219,12 +3237,12 @@
       html += '</div>';
 
       // 4 Signal Cards Grid
-      html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">';
+      html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3.5">';
 
       // Card 1: Harga di Bawah Modal Bandar
-      html += '  <div id="intelCardHargaModal" class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
+      html += '  <div id="intelCardHargaModal" class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5 flex flex-col justify-between shadow-sm">';
       html += '    <div>';
-      html += '      <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-dark-600/30">';
+      html += '      <div class="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-dark-600/30">';
       html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🏷️</span> Harga di Bawah Modal Bandar</h4>';
       var currentPrice = s1.current_price || s1.close_price || 0;
       // Backend returns bandar_avg_buy (not bandar_avg_price or avg_buy_price)
@@ -3241,7 +3259,7 @@
       }
       html += '      </div>';
 
-      html += '      <div class="grid grid-cols-3 gap-2 text-xs mb-3 bg-dark-800/60 p-2.5 rounded-lg border border-dark-600/20">';
+      html += '      <div class="grid grid-cols-3 gap-2 text-xs mb-2 bg-dark-800/60 p-2 rounded-lg border border-dark-600/20">';
       html += '        <div><span class="text-[10px] text-gray-400 block">Harga Sekarang</span><span class="font-mono font-bold text-gray-100">' + (currentPrice > 0 ? 'Rp ' + formatNumber(currentPrice) : '—') + '</span></div>';
       html += '        <div><span class="text-[10px] text-gray-400 block">Avg Buy Bandar</span><span class="font-mono font-bold text-emerald-300">' + (bandarAvg > 0 ? 'Rp ' + formatNumber(bandarAvg) : '—') + '</span></div>';
       html += '        <div><span class="text-[10px] text-gray-400 block">Diskon vs Bandar</span><span class="font-mono font-bold ' + (discount > 0 ? 'text-emerald-400' : 'text-gray-400') + '">' + (discount > 0 ? '+' : '') + discount + '%</span></div>';
@@ -3251,7 +3269,7 @@
       var topBrokers = s1.top_3_brokers || s1.top_broker_details || s1.top_brokers || [];
 
       if (topBrokers.length > 0) {
-        html += '      <div class="mb-3">';
+        html += '      <div class="mb-2">';
         html += '        <span class="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Top 3 Broker Akumulator:</span>';
         html += '        <div class="flex flex-wrap items-center gap-1.5">';
         for (var bIdx = 0; bIdx < topBrokers.length; bIdx++) {
@@ -3267,13 +3285,13 @@
       html += '    </div>';
 
       var s1Desc = s1.description || (s1.triggered ? 'Harga saat ini lebih murah dari modal akumulasi broker institusi/bandar. Peluang entry dengan risiko terukur.' : 'Harga saat ini berada di atas atau setara rerata harga beli top 3 broker.');
-      html += '    <p class="text-[11px] text-gray-400 mt-2 pt-2 border-t border-dark-600/30 leading-relaxed">' + escapeHtml(s1Desc) + '</p>';
+      html += '    <p class="text-[11px] text-gray-400 mt-1.5 pt-1.5 border-t border-dark-600/30 leading-relaxed">' + escapeHtml(s1Desc) + '</p>';
       html += '  </div>';
 
       // Card 2: Silent Foreign Accumulation
-      html += '  <div id="intelCardSilentForeign" class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
+      html += '  <div id="intelCardSilentForeign" class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5 flex flex-col justify-between shadow-sm">';
       html += '    <div>';
-      html += '      <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-dark-600/30">';
+      html += '      <div class="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-dark-600/30">';
       html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🤫</span> Silent Foreign Accumulation</h4>';
       if (s2.triggered) {
         html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">🟢 ASING AKUMULASI DIAM-DIAM</span>';
@@ -3286,7 +3304,7 @@
       var s2Chg = s2.price_change_pct != null ? s2.price_change_pct : 0;
       var s2NetVal = s2.total_foreign_net_val || s2.total_foreign_net || 0;
 
-      html += '      <div class="grid grid-cols-3 gap-2 text-xs mb-3 bg-dark-800/60 p-2.5 rounded-lg border border-dark-600/20">';
+      html += '      <div class="grid grid-cols-3 gap-2 text-xs mb-2 bg-dark-800/60 p-2 rounded-lg border border-dark-600/20">';
       html += '        <div><span class="text-[10px] text-gray-400 block">Net Buy Beruntun</span><span class="font-mono font-bold ' + (s2Days >= 3 ? 'text-emerald-300' : 'text-gray-300') + '">' + s2Days + ' Hari</span></div>';
       html += '        <div><span class="text-[10px] text-gray-400 block">Fluktuasi Harga</span><span class="font-mono font-bold text-gray-200">' + (s2Chg > 0 ? '+' : '') + s2Chg + '% ' + (s2.is_sideways ? '<span class="text-emerald-400 text-[10px]">(Tenang)</span>' : '') + '</span></div>';
       html += '        <div><span class="text-[10px] text-gray-400 block">Total Net Asing</span><span class="font-mono font-bold ' + (s2NetVal >= 0 ? 'text-emerald-400' : 'text-rose-400') + '">' + (s2NetVal >= 0 ? '+' : '') + formatIDR(s2NetVal) + '</span></div>';
@@ -3294,13 +3312,13 @@
       html += '    </div>';
 
       var s2Desc = s2.description || (s2.triggered ? 'Investor asing melakukan net buy positif berturut-turut saat rentang pergerakan harga relatif sideways (kurang dari 2%).' : 'Aliran dana investor asing belum membentuk akumulasi diam-diam konsisten.');
-      html += '    <p class="text-[11px] text-gray-400 mt-2 pt-2 border-t border-dark-600/30 leading-relaxed">' + escapeHtml(s2Desc) + '</p>';
+      html += '    <p class="text-[11px] text-gray-400 mt-1.5 pt-1.5 border-t border-dark-600/30 leading-relaxed">' + escapeHtml(s2Desc) + '</p>';
       html += '  </div>';
 
       // Card 3: Ritel Cutloss vs Bandar Nampung
-      html += '  <div id="intelCardRitelCutloss" class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
+      html += '  <div id="intelCardRitelCutloss" class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5 flex flex-col justify-between shadow-sm">';
       html += '    <div>';
-      html += '      <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-dark-600/30">';
+      html += '      <div class="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-dark-600/30">';
       html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🔄</span> Ritel Cutloss vs Bandar Nampung</h4>';
       if (s3.is_bandar_nampung || s3.sub_type === 'BANDAR_NAMPUNG_RITEL_CUTLOSS') {
         html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">🟢 BANDAR NAMPUNG</span>';
@@ -3314,8 +3332,8 @@
       var buyersList = s3.top_buyers || [];
       var sellersList = s3.top_sellers || [];
 
-      html += '      <div class="space-y-2 mb-3">';
-      html += '        <div class="flex items-center justify-between text-xs bg-dark-800/60 p-2 rounded-lg border border-dark-600/20">';
+      html += '      <div class="space-y-1.5 mb-2">';
+      html += '        <div class="flex items-center justify-between text-xs bg-dark-800/60 p-1.5 rounded-lg border border-dark-600/20">';
       html += '          <span class="text-[10px] text-gray-400 font-semibold w-24">TOP BUYERS:</span>';
       html += '          <div class="flex items-center gap-1.5 flex-wrap justify-end">';
       if (buyersList.length === 0) {
@@ -3332,7 +3350,7 @@
       html += '          </div>';
       html += '        </div>';
 
-      html += '        <div class="flex items-center justify-between text-xs bg-dark-800/60 p-2 rounded-lg border border-dark-600/20">';
+      html += '        <div class="flex items-center justify-between text-xs bg-dark-800/60 p-1.5 rounded-lg border border-dark-600/20">';
       html += '          <span class="text-[10px] text-gray-400 font-semibold w-24">TOP SELLERS:</span>';
       html += '          <div class="flex items-center gap-1.5 flex-wrap justify-end">';
       if (sellersList.length === 0) {
@@ -3352,13 +3370,13 @@
       html += '    </div>';
 
       var s3Desc = s3.description || (s3.is_bandar_nampung ? 'Top buyer didominasi institusi/bandar sementara ritel cutloss menjual ke pasar.' : (s3.is_distribusi_ke_ritel ? 'Top buyer didominasi broker ritel sementara bandar/institusi keluar.' : 'Aliran transaksi ritel dan institusi relatif seimbang.'));
-      html += '    <p class="text-[11px] text-gray-400 mt-2 pt-2 border-t border-dark-600/30 leading-relaxed">' + escapeHtml(s3Desc) + '</p>';
+      html += '    <p class="text-[11px] text-gray-400 mt-1.5 pt-1.5 border-t border-dark-600/30 leading-relaxed">' + escapeHtml(s3Desc) + '</p>';
       html += '  </div>';
 
       // Card 4: Concentration Ratio CR3 & CR5
-      html += '  <div id="intelCardConcentrationRatio" class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-4 flex flex-col justify-between shadow-sm">';
+      html += '  <div id="intelCardConcentrationRatio" class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5 flex flex-col justify-between shadow-sm">';
       html += '    <div>';
-      html += '      <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-dark-600/30">';
+      html += '      <div class="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-dark-600/30">';
       html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📊</span> Rasio Konsentrasi (CR3 &amp; CR5)</h4>';
       if (s4.is_massive || s4.status === 'AKUMULASI_MASIF') {
         html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">🔥 AKUMULASI SANGAT MASIF (&ge; 60%)</span>';
@@ -3372,7 +3390,7 @@
       var cr3Val = s4.cr3 != null ? s4.cr3 : 0;
       var cr5Val = s4.cr5 != null ? s4.cr5 : 0;
 
-      html += '      <div class="space-y-2.5 mb-3 bg-dark-800/60 p-3 rounded-lg border border-dark-600/20">';
+      html += '      <div class="space-y-2 mb-2 bg-dark-800/60 p-2.5 rounded-lg border border-dark-600/20">';
       var cr3Color = cr3Val >= 60 ? 'bg-amber-400' : (cr3Val >= 40 ? 'bg-emerald-400' : 'bg-dark-500');
       html += '        <div>';
       html += '          <div class="flex items-center justify-between text-xs mb-1">';
