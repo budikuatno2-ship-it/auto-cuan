@@ -353,6 +353,9 @@
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
         root.BandarmologiRuntime.setBandarSection('intel');
       }
+      if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.updateIntelSearchBarVisibility === 'function') {
+        root.BandarmologiRuntime.updateIntelSearchBarVisibility();
+      }
       var intelContainer = byId('bandarmologiIntelContent') || byId('bandarmologiContent');
       var activeIntelTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
         ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
