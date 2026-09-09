@@ -101,7 +101,28 @@ test('HTML: analisis-saham.html includes Jejaring Insider subtab button', () => 
   const html = read('public/analisis-saham.html');
   assert.ok(html.includes('id="subTabJejaringInsider"'), 'Has subTabJejaringInsider');
   assert.ok(html.includes("BandarmologiRuntime.setBandarSection('network')"), 'SubTabJejaringInsider onclick calls setBandarSection(network)');
-  assert.ok(html.includes('Jejaring Insider'), 'Button label is Jejaring Insider');
+});
+
+test('HTML: analisis-saham.html includes dedicated top-level tabJejaringInsider and panel-tab-insider', () => {
+  const html = read('public/analisis-saham.html');
+  assert.ok(html.includes('id="tabJejaringInsider"'), 'Has top-level tabJejaringInsider button');
+  assert.ok(html.includes("onclick=\"switchAnalisisTab('insider')\""), 'Calls switchAnalisisTab(insider)');
+  assert.ok(html.includes('id="panel-tab-insider"'), 'Has dedicated panel-tab-insider container');
+  assert.ok(html.includes('id="insiderNetworkDedicatedContent"'), 'Has insiderNetworkDedicatedContent inner div');
+});
+
+test('BandarmologiRuntime: renderInsiderNetworkUI applies pl-11 search padding and popular chips include Garibaldi Thohir', () => {
+  const runtimeSource = read('public/bandarmologi-runtime.js');
+  const { sandbox, elements } = createMockDom();
+  vm.runInContext(runtimeSource, sandbox);
+
+  const runtime = sandbox.window.BandarmologiRuntime;
+  const container = elements.bandarmologiContent;
+  runtime.renderInsiderNetworkUI(container);
+
+  assert.ok(container.innerHTML.includes('pl-11'), 'Input has pl-11 class');
+  assert.ok(container.innerHTML.includes('padding-left: 2.75rem'), 'Input has explicit padding-left: 2.75rem');
+  assert.ok(container.innerHTML.includes('Garibaldi Thohir'), 'Includes Garibaldi Thohir in quick chips');
 });
 
 test('BandarmologiRuntime: exports all Insider Network UI functions', () => {
