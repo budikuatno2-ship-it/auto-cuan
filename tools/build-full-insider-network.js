@@ -472,12 +472,9 @@ function buildFullInsiderNetwork() {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
-  // Write insiders-db.json & universe.json
-  console.log('Writing to:', INSIDERS_DB_FILE);
-  fs.writeFileSync(INSIDERS_DB_FILE, JSON.stringify(allRecords, null, 2), 'utf8');
-
-  console.log('Writing to:', UNIVERSE_FILE);
-  fs.writeFileSync(UNIVERSE_FILE, JSON.stringify(allRecords, null, 2), 'utf8');
+  // Write minified insiders-db.json
+  console.log('Writing minified database to:', INSIDERS_DB_FILE);
+  fs.writeFileSync(INSIDERS_DB_FILE, JSON.stringify(allRecords), 'utf8');
 
   // Build aggregate stats
   const aggregated = insiderNetworkService.aggregateInsiderHoldings(allRecords);

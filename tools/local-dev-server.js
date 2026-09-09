@@ -152,7 +152,7 @@ const server = http.createServer(async (req, res) => {
         const handler = require(apiFile);
         req.query = Object.fromEntries(parsedUrl.searchParams.entries());
         req.body = await parseBody(req);
-        
+
         // On-demand fetch broker summary from VPS when requested ticker is not on local disk
         if (endpointName === 'sector-hot' && req.query.action === 'bandarmologi' && req.query.ticker) {
           try {
