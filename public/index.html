@@ -7591,11 +7591,15 @@ async function removeUserDevice(username, rawDeviceId) {
     }
 }
 
+var _isLoadingAdminDevices = false;
 async function openAdminSelfDeviceModal() {
+    if (_isLoadingAdminDevices) return;
+    _isLoadingAdminDevices = true;
     try {
         var adminName = localStorage.getItem('autocuan_user') || 'budi';
         var res = await fetch('/api/admin-users', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 action: 'list_admin_devices',
@@ -7603,20 +7607,30 @@ async function openAdminSelfDeviceModal() {
             })
         });
         var data = await res.json();
-        if (data.success && data.user) {
+        var userObj = data.user || (data.devices ? {
+            username: adminName,
+            devices: data.devices,
+            device_id: data.current_device_id,
+            last_login_at: data.last_login_at,
+            user_agent: data.user_agent
+        } : null);
+
+        if (data.success && userObj) {
             if (!Array.isArray(cachedUsers)) cachedUsers = [];
-            var idx = cachedUsers.findIndex(function (u) { return u.username === data.user.username; });
+            var idx = cachedUsers.findIndex(function (u) { return u.username === userObj.username; });
             if (idx >= 0) {
-                cachedUsers[idx] = data.user;
+                cachedUsers[idx] = userObj;
             } else {
-                cachedUsers.push(data.user);
+                cachedUsers.push(userObj);
             }
-            openDeviceModal(data.user.username);
+            openDeviceModal(userObj.username);
         } else {
             alert(data.error || 'Gagal memuat perangkat admin.');
         }
     } catch (e) {
         alert('Gagal menghubungi server.');
+    } finally {
+        _isLoadingAdminDevices = false;
     }
 }
 // ===== DEVICE-MODAL-DOM-END =====

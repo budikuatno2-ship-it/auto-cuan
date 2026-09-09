@@ -250,7 +250,15 @@ module.exports = async function handler(req, res) {
 
   if ((req.query && req.query.action === 'device-approval-status') || (req.body && req.body.action === 'device-approval-status')) {
     const token = (req.query && req.query.token) || (req.body && req.body.token);
-    const result = adminDeviceApproval.checkDeviceApprovalStatus(token, res);
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    let supabase = null;
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+    }
+    const result = await adminDeviceApproval.checkDeviceApprovalStatus(token, res, { supabase });
     return res.status(result.ok ? 200 : 400).json(result);
   }
 
