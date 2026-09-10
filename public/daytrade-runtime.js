@@ -229,7 +229,14 @@ function renderDtTable(results, data) {
         html += '<td class="px-2 py-2 font-medium text-white sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px]">' + (r.board || '—') + '</td>';
         html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ' + statusClass + '">' + escapeHtml(getStatusLabel(r, formatDtStatus(r.status))) + '</span></td>';
-        html += '<td class="px-2 py-2 text-center font-bold ' + getDtScoreClass(r.daytrade_score) + '">' + r.daytrade_score + '</td>';
+        var dtBdBadgeHtml = '';
+        if (r.bandarmologi_badge || r.bandarmologi_score != null) {
+            var dtBColor = r.bandarmologi_badge_color === 'emerald' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : (r.bandarmologi_badge_color === 'cyan' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' : 'bg-gray-700/60 text-gray-300 border-gray-600/40');
+            var dtBText = r.bandarmologi_badge || ((r.bandarmologi_score >= 0 ? '+' : '') + r.bandarmologi_score + ' BD');
+            var dtBTip = r.bandarmologi_breakdown || r.bandarmologi_breakdown_text || 'Metrik Bandarmologi';
+            dtBdBadgeHtml = '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border ' + dtBColor + '" title="' + escapeHtml(dtBTip) + '">' + dtBText + '</span></div>';
+        }
+        html += '<td class="px-2 py-2 text-center font-bold ' + getDtScoreClass(r.daytrade_score) + '">' + r.daytrade_score + dtBdBadgeHtml + '</td>';
         html += '<td class="px-2 py-2 text-center ' + confColor + ' text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
         html += '<td class="px-2 py-2 text-gray-300 text-[10px] max-w-[100px] truncate" title="' + (r.setup || '') + '">' + (r.setup || '—') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '—') + '</td>';

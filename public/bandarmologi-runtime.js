@@ -16,13 +16,38 @@
       .replace(/'/g, '&#039;');
   }
 
+  function formatBrokerVal(num, includeSign) {
+    if (num == null || isNaN(num)) return '—';
+    var n = Number(num);
+    var sign = '';
+    if (includeSign) {
+      sign = n >= 0 ? '+' : '-';
+    }
+    var abs = Math.abs(n);
+    if (abs >= 1e12) {
+      return sign + (abs / 1e12).toFixed(2).replace(/\.00$/, '') + ' T';
+    }
+    if (abs >= 1e9) {
+      return sign + (abs / 1e9).toFixed(2).replace(/\.00$/, '') + ' M';
+    }
+    if (abs >= 1e6) {
+      return sign + (abs / 1e6).toFixed(1).replace(/\.0$/, '') + ' Jt';
+    }
+    if (abs >= 1e3) {
+      return sign + (abs / 1e3).toFixed(0) + ' Rb';
+    }
+    return sign + new Intl.NumberFormat('id-ID').format(abs);
+  }
+
   function formatIDR(num) {
     if (num == null || isNaN(num)) return '—';
     var abs = Math.abs(num);
-    if (abs >= 1e12) return (num / 1e12).toFixed(2) + ' T';
-    if (abs >= 1e9) return (num / 1e9).toFixed(2) + ' M';
-    if (abs >= 1e6) return (num / 1e6).toFixed(1) + ' jt';
-    return new Intl.NumberFormat('id-ID').format(num);
+    var sign = num < 0 ? '-' : '';
+    if (abs >= 1e12) return sign + (abs / 1e12).toFixed(2).replace(/\.00$/, '') + ' T';
+    if (abs >= 1e9) return sign + (abs / 1e9).toFixed(2).replace(/\.00$/, '') + ' M';
+    if (abs >= 1e6) return sign + (abs / 1e6).toFixed(1).replace(/\.0$/, '') + ' Jt';
+    if (abs >= 1e3) return sign + (abs / 1e3).toFixed(0) + ' Rb';
+    return sign + new Intl.NumberFormat('id-ID').format(abs);
   }
 
   function formatNumber(num) {
@@ -960,8 +985,8 @@
         var isSelected = (b.broker === activeCode) && (!selectedBrokerSide || !b.side || b.side === selectedBrokerSide);
         var styleInfo = getBubbleColorStyles(isBuyerBubble, b.colorTier);
         var valText = isGross
-          ? (b.side === 'sell' || !b.isBuyer ? ('-' + formatIDR(b.sval || b.txVal)) : ('+' + formatIDR(b.bval || b.txVal)))
-          : ((b.netVal >= 0 ? '+' : '-') + formatIDR(Math.abs(b.netVal)));
+          ? (b.side === 'sell' || !b.isBuyer ? ('-' + formatBrokerVal(b.sval || b.txVal)) : ('+' + formatBrokerVal(b.bval || b.txVal)))
+          : ((b.netVal >= 0 ? '+' : '-') + formatBrokerVal(Math.abs(b.netVal)));
         var subBadge = isGross
           ? (isBuyerBubble ? 'BUY' : 'SELL')
           : (b.size >= 76 ? (isBuyerBubble ? 'BUY' : 'SELL') : (b.netVal >= 0 ? '+' : '-'));
@@ -1907,22 +1932,47 @@
     html += '  </div>';
 
     // 2B. Card Indikator Dominasi (CR3, CR5, Status Dominasi, Rasio Partisipasi Bandar vs Ritel)
-    var allBuyersList = firstNonEmptyList(bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers) || [];
-    var totalBuyerVal = 0;
-    for (var bi = 0; bi < allBuyersList.length; bi++) {
-      totalBuyerVal += Number(allBuyersList[bi].bval || allBuyersList[bi].buy_val || allBuyersList[bi].val || (allBuyersList[bi].nval > 0 ? allBuyersList[bi].nval : 0) || 0);
+    var allBuyersList = firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.net_buyers, bSum.buyers) || [];
+
+    // Calculate true total market buy value across all brokers
+    var totalMarketBuyVal = 0;
+    var allMarketBrokers = (Array.isArray(bSum.brokers) && bSum.brokers.length > 0)
+      ? bSum.brokers
+      : ((Array.isArray(bSum.gross_buyers) && bSum.gross_buyers.length > 0)
+        ? bSum.gross_buyers
+        : allBuyersList);
+
+    for (var mb = 0; mb < allMarketBrokers.length; mb++) {
+      totalMarketBuyVal += Number(allMarketBrokers[mb].bval || allMarketBrokers[mb].buy_val || allMarketBrokers[mb].val || (allMarketBrokers[mb].nval > 0 ? allMarketBrokers[mb].nval : 0) || 0);
     }
-    var top3Val = 0;
-    for (var t3 = 0; t3 < Math.min(3, allBuyersList.length); t3++) {
-      top3Val += Number(allBuyersList[t3].bval || allBuyersList[t3].buy_val || allBuyersList[t3].val || (allBuyersList[t3].nval > 0 ? allBuyersList[t3].nval : 0) || 0);
-    }
-    var top5Val = 0;
-    for (var t5 = 0; t5 < Math.min(5, allBuyersList.length); t5++) {
-      top5Val += Number(allBuyersList[t5].bval || allBuyersList[t5].buy_val || allBuyersList[t5].val || (allBuyersList[t5].nval > 0 ? allBuyersList[t5].nval : 0) || 0);
+    if (totalMarketBuyVal <= 0 && bSum.total_buy_val && Number(bSum.total_buy_val) > 0) {
+      totalMarketBuyVal = Number(bSum.total_buy_val);
     }
 
-    var cr3 = totalBuyerVal > 0 ? Math.min(100, Math.round((top3Val / totalBuyerVal) * 100)) : (allBuyersList.length > 0 ? 55 : 0);
-    var cr5 = totalBuyerVal > 0 ? Math.min(100, Math.round((top5Val / totalBuyerVal) * 100)) : (allBuyersList.length > 0 ? 72 : 0);
+    var sortedBuyersByBuyVal = allBuyersList.slice().sort(function (a, b) {
+      var va = Number(a.bval || a.buy_val || a.val || (a.nval > 0 ? a.nval : 0) || 0);
+      var vb = Number(b.bval || b.buy_val || b.val || (b.nval > 0 ? b.nval : 0) || 0);
+      return vb - va;
+    });
+
+    var top3Val = 0;
+    for (var t3 = 0; t3 < Math.min(3, sortedBuyersByBuyVal.length); t3++) {
+      top3Val += Number(sortedBuyersByBuyVal[t3].bval || sortedBuyersByBuyVal[t3].buy_val || sortedBuyersByBuyVal[t3].val || (sortedBuyersByBuyVal[t3].nval > 0 ? sortedBuyersByBuyVal[t3].nval : 0) || 0);
+    }
+    var top5Val = 0;
+    for (var t5 = 0; t5 < Math.min(5, sortedBuyersByBuyVal.length); t5++) {
+      top5Val += Number(sortedBuyersByBuyVal[t5].bval || sortedBuyersByBuyVal[t5].buy_val || sortedBuyersByBuyVal[t5].val || (sortedBuyersByBuyVal[t5].nval > 0 ? sortedBuyersByBuyVal[t5].nval : 0) || 0);
+    }
+
+    // Dynamic denominator: if market total is known and larger, use it; otherwise avoid dividing top 3 by top 3
+    var denominator = totalMarketBuyVal > 0 ? totalMarketBuyVal : (sortedBuyersByBuyVal.length > 3 ? top3Val * 1.5 : 0);
+
+    var cr3 = 0;
+    var cr5 = 0;
+    if (denominator > 0 && top3Val > 0) {
+      cr3 = Math.min(100, Math.round((top3Val / denominator) * 100));
+      cr5 = Math.min(100, Math.round((top5Val / denominator) * 100));
+    }
 
     // Dominasi classification
     var domStatus = 'Concentrated';
@@ -1947,9 +1997,10 @@
         retailVal += Number(allBuyersList[ri].bval || allBuyersList[ri].buy_val || allBuyersList[ri].val || 0);
       }
     }
-    var bandarVal = Math.max(0, totalBuyerVal - retailVal);
-    var bandarPct = totalBuyerVal > 0 ? Math.round((bandarVal / totalBuyerVal) * 100) : 65;
-    var retailPct = 100 - bandarPct;
+    var effectiveTotalVal = totalMarketBuyVal > 0 ? totalMarketBuyVal : (allBuyersList.length > 0 ? top3Val : 0);
+    var bandarVal = Math.max(0, effectiveTotalVal - retailVal);
+    var bandarPct = effectiveTotalVal > 0 ? Math.round((bandarVal / effectiveTotalVal) * 100) : 0;
+    var retailPct = effectiveTotalVal > 0 ? (100 - bandarPct) : 0;
 
     html += '  <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">';
     // Card 1: Concentration Ratios
@@ -2002,18 +2053,75 @@
     html += '  </div>';
 
     // 2C-1. Sebaran & Klaster Broker Akumulasi (Interactive Bubble Cluster)
-    var accRawBuyers = firstNonEmptyList(bAcc.top_buyers, bAcc.net_buyers, bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers) || [];
-    var accRawSellers = firstNonEmptyList(bAcc.top_sellers, bAcc.net_sellers, bSum.net_sellers, bSum.gross_sellers, bSum.top_sellers, bSum.sellers) || [];
-    if (accRawBuyers.length === 0 && accRawSellers.length === 0 && bSum) {
-      accRawBuyers = firstNonEmptyList(bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers) || [];
-      accRawSellers = firstNonEmptyList(bSum.net_sellers, bSum.gross_sellers, bSum.top_sellers, bSum.sellers) || [];
+    var accRawBuyers = firstNonEmptyList(
+      bAcc.top_buyers, bAcc.net_buyers, bAcc.gross_buyers, bAcc.buyers,
+      bSum.top_buyers, bSum.net_buyers, bSum.gross_buyers, bSum.buyers
+    ) || [];
+    var accRawSellers = firstNonEmptyList(
+      bAcc.top_sellers, bAcc.net_sellers, bAcc.gross_sellers, bAcc.sellers,
+      bSum.top_sellers, bSum.net_sellers, bSum.gross_sellers, bSum.sellers
+    ) || [];
+
+    // Fallback: extract from bAcc or bSum brokers if buyers/sellers are still empty
+    if (accRawBuyers.length === 0 && accRawSellers.length === 0) {
+      var allAccBrokers = (Array.isArray(bAcc.brokers) && bAcc.brokers.length > 0)
+        ? bAcc.brokers
+        : ((bAcc.accumulation && Array.isArray(bAcc.accumulation.brokers))
+          ? bAcc.accumulation.brokers
+          : (Array.isArray(bSum.brokers) ? bSum.brokers : []));
+      if (allAccBrokers.length > 0) {
+        for (var abi = 0; abi < allAccBrokers.length; abi++) {
+          var abItem = allAccBrokers[abi];
+          var abNet = abItem.nval != null ? Number(abItem.nval) : (abItem.net_val != null ? Number(abItem.net_val) : ((Number(abItem.bval || abItem.buy_val || 0)) - (Number(abItem.sval || abItem.sell_val || 0))));
+          if (abNet >= 0) accRawBuyers.push(abItem);
+          else accRawSellers.push(abItem);
+        }
+      }
     }
+
+    // Partition guard: If sellers are empty but buyers contain sellers or sell volume, partition them
+    if (accRawSellers.length === 0 && accRawBuyers.length > 0) {
+      var accPb = [];
+      var accPs = [];
+      for (var pbi = 0; pbi < accRawBuyers.length; pbi++) {
+        var pItm = accRawBuyers[pbi];
+        var pNetVal = pItm.nval != null ? Number(pItm.nval) : (pItm.net_val != null ? Number(pItm.net_val) : ((Number(pItm.bval || pItm.buy_val || 0)) - (Number(pItm.sval || pItm.sell_val || 0))));
+        if (pNetVal < 0 || ((Number(pItm.sval || pItm.sell_val || 0)) > (Number(pItm.bval || pItm.buy_val || 0)))) {
+          accPs.push(pItm);
+        } else {
+          accPb.push(pItm);
+        }
+      }
+      if (accPs.length > 0) {
+        accRawBuyers = accPb;
+        accRawSellers = accPs;
+      } else {
+        var accWithSell = accRawBuyers.filter(function (b) { return (Number(b.sval || b.sell_val || 0)) > 0; });
+        if (accWithSell.length > 0) {
+          accRawSellers = accWithSell;
+        }
+      }
+    }
+
+    // Cross-fallback: if one side is still empty, fall back to bSum
+    if (accRawSellers.length === 0 && bSum && (bSum.gross_sellers || bSum.top_sellers || bSum.net_sellers)) {
+      accRawSellers = firstNonEmptyList(bSum.gross_sellers, bSum.top_sellers, bSum.net_sellers) || [];
+    }
+    if (accRawBuyers.length === 0 && bSum && (bSum.gross_buyers || bSum.top_buyers || bSum.net_buyers)) {
+      accRawBuyers = firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.net_buyers) || [];
+    }
+
     var accBuyers = filterBrokersByFlow(accRawBuyers, brokerFlowFilter);
     var accSellers = filterBrokersByFlow(accRawSellers, brokerFlowFilter);
-    if (accBuyers.length === 0 && accSellers.length === 0 && brokerFlowFilter === 'all' && (accRawBuyers.length > 0 || accRawSellers.length > 0)) {
-      accBuyers = accRawBuyers;
-      accSellers = accRawSellers;
+
+    // If filtering by flow emptied everything while raw had brokers, fallback to all so bubbles are never zero
+    if (accBuyers.length === 0 && accSellers.length === 0 && (accRawBuyers.length > 0 || accRawSellers.length > 0)) {
+      if (brokerFlowFilter === 'all') {
+        accBuyers = accRawBuyers;
+        accSellers = accRawSellers;
+      }
     }
+
     lastBrokerItems = buildBrokerBubbleItems(accBuyers, accSellers, brokerSummaryMode);
     if (lastBrokerItems.length === 0 && (accRawBuyers.length > 0 || accRawSellers.length > 0)) {
       lastBrokerItems = buildBrokerBubbleItems(accRawBuyers, accRawSellers, brokerSummaryMode);
@@ -2231,7 +2339,7 @@
 
           var priceDisplay = '—';
           if (row.price != null && Number(row.price) > 0) {
-            priceDisplay = 'Rp ' + formatIDR(Number(row.price));
+            priceDisplay = 'Rp ' + formatNumber(Number(row.price));
           }
 
           var brokerDisplay = (row.broker && row.broker !== '—')
@@ -2470,19 +2578,85 @@
     return results;
   }
 
+  var currentInsiderRosterTicker = 'BBCA';
+  var currentInsiderRosterData = [];
+  var insiderRosterFilterQuery = '';
+  var insiderRosterCategoryFilter = 'all';
+  var vpsInsiderRosterCache = {};
+
   function fetchRemoteInsiderGraph(name, cb) {
     if (typeof window === 'undefined' || typeof fetch === 'undefined') return;
-    try {
-      fetch('/api/sector-hot?action=insider-network&query=' + encodeURIComponent(name))
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          if (data && (data.success || data.nodes) && data.nodes && data.nodes.length > 0) {
-            FALLBACK_INSIDER_DATA[String(name).toLowerCase().trim()] = data;
-            if (typeof cb === 'function') cb(data);
-          }
-        })
-        .catch(function () {});
-    } catch (_) {}
+    var safeName = String(name || '').trim();
+    if (!safeName) return;
+
+    var vpsUrl = VPS_DATA_API_BASE + '/api/insider-network?ticker=' + encodeURIComponent(safeName);
+    fetch(vpsUrl)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data && (data.success || data.nodes) && data.nodes && data.nodes.length > 0) {
+          FALLBACK_INSIDER_DATA[safeName.toLowerCase()] = data;
+          if (typeof cb === 'function') cb(data);
+        } else {
+          fallbackLocalGraph();
+        }
+      })
+      .catch(function () {
+        fallbackLocalGraph();
+      });
+
+    function fallbackLocalGraph() {
+      try {
+        fetch('/api/sector-hot?action=insider-network&query=' + encodeURIComponent(safeName))
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data && (data.success || data.nodes) && data.nodes && data.nodes.length > 0) {
+              FALLBACK_INSIDER_DATA[safeName.toLowerCase()] = data;
+              if (typeof cb === 'function') cb(data);
+            }
+          })
+          .catch(function () {});
+      } catch (_) {}
+    }
+  }
+
+  function fetchVpsInsiderRoster(ticker, cb) {
+    if (typeof window === 'undefined' || typeof fetch === 'undefined') return;
+    var cleanTicker = String(ticker || 'BBCA').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!cleanTicker) return;
+
+    if (vpsInsiderRosterCache[cleanTicker]) {
+      if (typeof cb === 'function') cb(vpsInsiderRosterCache[cleanTicker]);
+      return;
+    }
+
+    var vpsUrl = VPS_DATA_API_BASE + '/api/insider-roster?ticker=' + encodeURIComponent(cleanTicker);
+    fetch(vpsUrl)
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data && data.success && Array.isArray(data.roster) && data.roster.length > 0) {
+          vpsInsiderRosterCache[cleanTicker] = data.roster;
+          if (typeof cb === 'function') cb(data.roster);
+        } else {
+          fallbackLocalRoster();
+        }
+      })
+      .catch(function () {
+        fallbackLocalRoster();
+      });
+
+    function fallbackLocalRoster() {
+      try {
+        fetch('/api/sector-hot?action=insider-roster&ticker=' + encodeURIComponent(cleanTicker))
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (data && data.success && Array.isArray(data.roster)) {
+              vpsInsiderRosterCache[cleanTicker] = data.roster;
+              if (typeof cb === 'function') cb(data.roster);
+            }
+          })
+          .catch(function () {});
+      } catch (_) {}
+    }
   }
 
   function loadInsiderNetwork(container) {
@@ -2842,6 +3016,139 @@
     return html;
   }
 
+  function getCategoryBadge(category) {
+    var c = String(category || '').toLowerCase();
+    if (c.includes('pengendali') || c.includes('ultimate')) {
+      return '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">👑 ' + escapeHtml(category) + '</span>';
+    }
+    if (c.includes('direksi') || c.includes('direktur')) {
+      return '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">💼 ' + escapeHtml(category) + '</span>';
+    }
+    if (c.includes('komisaris')) {
+      return '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30">🛡️ ' + escapeHtml(category) + '</span>';
+    }
+    if (c.includes('>5%') || c.includes('5%')) {
+      return '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">📈 ' + escapeHtml(category) + '</span>';
+    }
+    return '<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-700/50 text-gray-300 border border-dark-600">👥 ' + escapeHtml(category || 'Pemegang Saham') + '</span>';
+  }
+
+  function renderRosterTableRows(rosterList) {
+    var tbody = byId('insiderRosterTbody');
+    var badge = byId('insiderRosterCountBadge');
+    if (!tbody) return;
+
+    var list = Array.isArray(rosterList) ? rosterList : currentInsiderRosterData;
+    currentInsiderRosterData = list;
+
+    var query = (insiderRosterFilterQuery || '').toLowerCase().trim();
+    var catFilter = (insiderRosterCategoryFilter || 'all').toLowerCase();
+
+    var filtered = list.filter(function (row) {
+      if (catFilter !== 'all') {
+        var rowCat = String(row.category || '').toLowerCase();
+        if (!rowCat.includes(catFilter)) return false;
+      }
+      if (query) {
+        var rowName = String(row.name || '').toLowerCase();
+        var rowPos = String(row.position || '').toLowerCase();
+        if (!rowName.includes(query) && !rowPos.includes(query)) return false;
+      }
+      return true;
+    });
+
+    if (badge) {
+      badge.textContent = filtered.length + (filtered.length !== list.length ? ' dari ' + list.length : '') + ' Entitas Terdata';
+    }
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-xs text-gray-400">Tidak ada data pemegang saham / insider yang sesuai dengan filter.</td></tr>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < filtered.length; i++) {
+      var r = filtered[i];
+      var name = r.name || '—';
+      var isForeign = String(r.nationality || '').toLowerCase() === 'foreign';
+      var entityIcon = isForeign ? '🌐' : (String(r.category || '').toLowerCase().includes('pengendali') ? '👑' : '👤');
+
+      var pct = typeof r.percentage === 'number' ? r.percentage : parseFloat(r.percentage || 0);
+      var shares = typeof r.shares === 'number' ? r.shares : parseFloat(r.shares || 0);
+
+      var changeStr = r.last_change || 'Tetap';
+      var changeTone = 'text-gray-400';
+      if (changeStr.includes('+')) changeTone = 'text-emerald-400 font-semibold';
+      else if (changeStr.includes('-')) changeTone = 'text-rose-400 font-semibold';
+
+      html += '<tr class="hover:bg-dark-700/40 border-b border-dark-700/30 transition text-xs">';
+      html += '  <td class="py-2.5 px-3 font-mono text-gray-400">' + (i + 1) + '</td>';
+      html += '  <td class="py-2.5 px-3 font-medium text-gray-100 whitespace-nowrap">';
+      html += '    <div class="flex items-center gap-1.5">';
+      html += '      <span>' + entityIcon + '</span>';
+      html += '      <strong class="text-white hover:text-emerald-400 cursor-pointer transition" onclick="BandarmologiRuntime.selectInsiderForGraph(\'' + escapeHtml(name) + '\')">' + escapeHtml(name) + '</strong>';
+      html += '    </div>';
+      if (r.position && r.position !== r.category) {
+        html += '    <div class="text-[10px] text-gray-400 font-normal pl-5">' + escapeHtml(r.position) + '</div>';
+      }
+      html += '  </td>';
+      html += '  <td class="py-2.5 px-3 whitespace-nowrap">' + getCategoryBadge(r.category) + '</td>';
+      html += '  <td class="py-2.5 px-3 text-right font-mono text-gray-200">' + formatNumber(shares) + ' <span class="text-[10px] text-gray-400">lbr</span></td>';
+      html += '  <td class="py-2.5 px-3 text-right font-mono">';
+      html += '    <span class="px-2 py-0.5 rounded bg-dark-900 border border-dark-600 text-emerald-400 font-bold">' + (r.percentage_formatted || (pct.toFixed(2) + '%')) + '</span>';
+      html += '  </td>';
+      html += '  <td class="py-2.5 px-3 font-mono text-right ' + changeTone + ' whitespace-nowrap">' + escapeHtml(changeStr) + (r.last_date ? ' <span class="text-[10px] text-gray-500">(' + escapeHtml(r.last_date) + ')</span>' : '') + '</td>';
+      html += '  <td class="py-2.5 px-3 text-center whitespace-nowrap">';
+      html += '    <button type="button" onclick="BandarmologiRuntime.selectInsiderForGraph(\'' + escapeHtml(name) + '\')" class="px-2.5 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-semibold transition" title="Lihat peta kepemilikan dan relasi lintas emiten">';
+      html += '      🕸️ Lihat Graf';
+      html += '    </button>';
+      html += '  </td>';
+      html += '</tr>';
+    }
+    tbody.innerHTML = html;
+  }
+
+  function filterRosterTable(query) {
+    insiderRosterFilterQuery = query || '';
+    renderRosterTableRows();
+  }
+
+  function setRosterCategoryFilter(cat) {
+    insiderRosterCategoryFilter = cat || 'all';
+    renderRosterTableRows();
+  }
+
+  function loadRosterForTicker(ticker) {
+    var clean = String(ticker || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!clean) return;
+    currentInsiderRosterTicker = clean;
+    var tickerInput = byId('insiderRosterTickerInput');
+    if (tickerInput) tickerInput.value = clean;
+    var disp = byId('rosterTickerDisplay');
+    if (disp) disp.textContent = clean;
+
+    var tbody = byId('insiderRosterTbody');
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-xs text-gray-400"><div class="spinner mx-auto mb-2"></div>Memuat data pemegang saham ' + escapeHtml(clean) + ' dari VPS Oracle Cloud...</td></tr>';
+    }
+
+    fetchVpsInsiderRoster(clean, function (roster) {
+      renderRosterTableRows(roster);
+    });
+  }
+
+  function selectInsiderForGraph(name) {
+    if (!name) return;
+    activeInsiderNetworkEntity = name;
+    var input = byId('insiderSearchInput');
+    if (input) input.value = name;
+    renderInsiderNetworkGraph(name);
+    var graphSection = byId('insiderGraphSection');
+    if (graphSection && typeof graphSection.scrollIntoView === 'function') {
+      graphSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
   function renderInsiderNetworkUI(container, data) {
     if (!container) return;
     injectBubbleStyles();
@@ -2849,6 +3156,9 @@
     if (!activeInsiderNetworkEntity) {
       activeInsiderNetworkEntity = 'Belvin Tannadi';
     }
+
+    var ticker = (typeof data === 'string' ? data : (data && data.ticker)) || currentInsiderRosterTicker || currentBandarTicker || 'BBCA';
+    currentInsiderRosterTicker = ticker;
 
     var html = '';
 
@@ -2867,20 +3177,95 @@
     html += '  </div>';
     html += '</div>';
 
-    // 2. Search Bar + Autocomplete & Quick Chips
-    html += '<div class="bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 mb-4 shadow-md">';
-    html += '  <div class="relative w-full max-w-2xl mb-2">';
-    html += '    <div class="relative flex items-center">';
-    html += '      <span class="absolute left-3.5 text-gray-400 text-sm">🔍</span>';
-    html += '      <input id="insiderSearchInput" type="text" value="' + escapeHtml(activeInsiderNetworkEntity) + '" placeholder="Cari nama insider/tokoh (cth: Belvin Tannadi, Prajogo Pangestu, Haji Isam, Garibaldi Thohir)..." oninput="BandarmologiRuntime.handleInsiderSearchInput(this.value)" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-11 pr-10 py-2.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition" style="padding-left: 2.75rem;">';
-    html += '      <button type="button" id="btnClearInsiderSearch" onclick="BandarmologiRuntime.clearInsiderSearch()" class="absolute right-3 text-gray-400 hover:text-gray-200 text-xs px-1" style="display: none;">✕</button>';
+    // 2. TABEL TERSTRUKTUR: DAFTAR PEMEGANG SAHAM & INSIDER (DITAMPILKAN LENGKAP DI ATAS GRAF)
+    html += '<div id="insiderRosterSection" class="bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 mb-5 shadow-lg">';
+    html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-3 border-b border-dark-700/60 pb-3">';
+    html += '    <div>';
+    html += '      <h4 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
+    html += '        <span>📋</span> Daftar Pemegang Saham &amp; Insider (<span id="rosterTickerDisplay" class="font-mono text-emerald-400 font-bold">' + escapeHtml(ticker) + '</span>)';
+    html += '      </h4>';
+    html += '      <p class="text-[11px] text-gray-400 mt-0.5">Data kepemilikan resmi bursa efek, direksi, komisaris, dan institusi pengendali terkini.</p>';
     html += '    </div>';
-    html += '    <div id="insiderSearchDropdown" class="w-full mt-2 mb-2 bg-dark-900 border border-dark-600/80 rounded-xl shadow-xl overflow-hidden" style="display: none; max-height: 280px; overflow-y: auto;"></div>';
+    html += '    <div class="flex items-center gap-2">';
+    html += '      <span id="insiderRosterCountBadge" class="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">Memuat data...</span>';
+    html += '    </div>';
     html += '  </div>';
 
+    // Emiten Picker Bar + Quick Chips
+    html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">';
+    html += '    <div class="flex flex-wrap items-center gap-1.5">';
+    html += '      <span class="text-[11px] text-gray-400 font-medium mr-1">Pilih Emiten:</span>';
+    var popularEmitens = ['BBCA', 'BBRI', 'BMRI', 'BREN', 'GPRA', 'AMMN', 'BUMI', 'BRPT', 'CUAN', 'PANI', 'TLKM'];
+    for (var e = 0; e < popularEmitens.length; e++) {
+      var em = popularEmitens[e];
+      var isCurEm = em.toUpperCase() === ticker.toUpperCase();
+      var emClass = isCurEm
+        ? 'bg-emerald-500 text-dark-900 border-emerald-400 font-bold shadow-sm'
+        : 'bg-dark-700/70 text-gray-300 border-dark-600/60 hover:text-emerald-300 hover:border-emerald-500/40';
+      html += '    <button type="button" onclick="BandarmologiRuntime.loadRosterForTicker(\'' + escapeHtml(em) + '\')" class="px-2.5 py-1 rounded-lg text-xs font-mono border transition ' + emClass + '">' + escapeHtml(em) + '</button>';
+    }
+    html += '    </div>';
+    html += '    <div class="flex items-center gap-2">';
+    html += '      <input id="insiderRosterTickerInput" type="text" value="' + escapeHtml(ticker) + '" placeholder="Ketik ticker..." onkeydown="if(event.key===\'Enter\')BandarmologiRuntime.loadRosterForTicker(this.value)" class="w-28 bg-dark-900 border border-dark-600 rounded-lg px-2.5 py-1 text-xs font-mono text-gray-100 uppercase focus:outline-none focus:border-emerald-500">';
+    html += '      <button type="button" onclick="BandarmologiRuntime.loadRosterForTicker(byId(\'insiderRosterTickerInput\').value)" class="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-dark-900 font-bold text-xs transition">Cari</button>';
+    html += '    </div>';
+    html += '  </div>';
+
+    // Filter controls within table card
+    html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-3 bg-dark-900/60 p-2.5 rounded-lg border border-dark-700/50">';
+    html += '    <div class="relative flex-1 min-w-[200px]">';
+    html += '      <span class="absolute left-2.5 top-2 text-gray-400 text-xs">🔍</span>';
+    html += '      <input type="text" oninput="BandarmologiRuntime.filterRosterTable(this.value)" placeholder="Filter nama atau jabatan dalam tabel..." class="w-full bg-dark-800 border border-dark-600/80 rounded-lg pl-8 pr-3 py-1.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500">';
+    html += '    </div>';
+    html += '    <div class="flex items-center gap-2">';
+    html += '      <span class="text-xs text-gray-400">Kategori:</span>';
+    html += '      <select onchange="BandarmologiRuntime.setRosterCategoryFilter(this.value)" class="bg-dark-800 border border-dark-600/80 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-emerald-500">';
+    html += '        <option value="all">Semua Kategori</option>';
+    html += '        <option value="pengendali">👑 Pengendali</option>';
+    html += '        <option value="direksi">💼 Direksi</option>';
+    html += '        <option value="komisaris">🛡️ Komisaris</option>';
+    html += '        <option value="5%">📈 Pemegang Saham &gt;5%</option>';
+    html += '      </select>';
+    html += '    </div>';
+    html += '  </div>';
+
+    // Full Table Container (Without row cutting/truncation)
+    html += '  <div class="overflow-x-auto max-h-[460px] scrollbar-thin border border-dark-700/60 rounded-xl">';
+    html += '    <table class="w-full text-xs text-left border-collapse min-w-[720px]">';
+    html += '      <thead class="sticky top-0 bg-dark-900/95 backdrop-blur z-10 border-b border-dark-700/80 text-gray-400 font-semibold">';
+    html += '        <tr>';
+    html += '          <th class="py-2.5 px-3 w-12">No</th>';
+    html += '          <th class="py-2.5 px-3">Nama Pemilik / Insider</th>';
+    html += '          <th class="py-2.5 px-3">Kategori</th>';
+    html += '          <th class="py-2.5 px-3 text-right">Jumlah Lembar Saham</th>';
+    html += '          <th class="py-2.5 px-3 text-right">Persentase (%)</th>';
+    html += '          <th class="py-2.5 px-3 text-right">Perubahan Terakhir</th>';
+    html += '          <th class="py-2.5 px-3 text-center w-28">Aksi</th>';
+    html += '        </tr>';
+    html += '      </thead>';
+    html += '      <tbody id="insiderRosterTbody" class="divide-y divide-dark-700/30 text-gray-300">';
+    html += '        <tr><td colspan="7" class="py-8 text-center text-xs text-gray-400"><div class="spinner mx-auto mb-2"></div>Memuat data pemegang saham dari VPS...</td></tr>';
+    html += '      </tbody>';
+    html += '    </table>';
+    html += '  </div>';
+    html += '</div>';
+
+    // 3. VISUALISASI GRAF RELASI (NETWORK GRAPH) DI BAWAH TABEL
+    html += '<div id="insiderGraphSection">';
+    // Search Bar + Autocomplete & Quick Chips
+    html += '  <div class="bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 mb-4 shadow-md">';
+    html += '    <div class="relative w-full max-w-2xl mb-2">';
+    html += '      <div class="relative flex items-center">';
+    html += '        <span class="absolute left-3.5 text-gray-400 text-sm">🔍</span>';
+    html += '        <input id="insiderSearchInput" type="text" value="' + escapeHtml(activeInsiderNetworkEntity) + '" placeholder="Cari nama insider/tokoh (cth: Belvin Tannadi, Prajogo Pangestu, Haji Isam, Garibaldi Thohir)..." oninput="BandarmologiRuntime.handleInsiderSearchInput(this.value)" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-11 pr-10 py-2.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition" style="padding-left: 2.75rem;">';
+    html += '        <button type="button" id="btnClearInsiderSearch" onclick="BandarmologiRuntime.clearInsiderSearch()" class="absolute right-3 text-gray-400 hover:text-gray-200 text-xs px-1" style="display: none;">✕</button>';
+    html += '      </div>';
+    html += '      <div id="insiderSearchDropdown" class="w-full mt-2 mb-2 bg-dark-900 border border-dark-600/80 rounded-xl shadow-xl overflow-hidden" style="display: none; max-height: 280px; overflow-y: auto;"></div>';
+    html += '    </div>';
+
     // Quick Chips Tokoh Populer
-    html += '  <div class="flex flex-wrap items-center gap-2 pt-1">';
-    html += '    <span class="text-[11px] text-gray-400 font-medium">Tokoh Populer:</span>';
+    html += '    <div class="flex flex-wrap items-center gap-2 pt-1">';
+    html += '      <span class="text-[11px] text-gray-400 font-medium">Tokoh Populer:</span>';
     var popularEntities = ['Belvin Tannadi', 'Prajogo Pangestu', 'Haji Isam', 'Garibaldi Thohir', 'Lo Kheng Hong', 'Anthoni Salim', 'BlackRock Inc.'];
     for (var p = 0; p < popularEntities.length; p++) {
       var popName = popularEntities[p];
@@ -2888,19 +3273,19 @@
       var chipClass = isCur
         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
         : 'bg-dark-700/70 text-gray-300 border-dark-600/60 hover:text-emerald-300 hover:border-emerald-500/40 hover:bg-emerald-500/10';
-      html += '    <button type="button" onclick="BandarmologiRuntime.selectInsiderQuickChip(\'' + escapeHtml(popName) + '\')" class="px-3 py-1 rounded-full text-xs font-medium border transition ' + chipClass + '">' + escapeHtml(popName) + '</button>';
+      html += '      <button type="button" onclick="BandarmologiRuntime.selectInsiderQuickChip(\'' + escapeHtml(popName) + '\')" class="px-3 py-1 rounded-full text-xs font-medium border transition ' + chipClass + '">' + escapeHtml(popName) + '</button>';
     }
-    html += '  </div>';
-    html += '</div>';
-
-    // 3. Grid Canvas (Left 8 cols) & Detail (Right 4 cols)
-    html += '<div class="grid grid-cols-1 lg:grid-cols-12 gap-4">';
-    html += '  <div class="lg:col-span-8 bg-dark-900/80 border border-dark-600/40 rounded-xl p-4 flex flex-col items-center justify-center relative min-h-[640px] overflow-hidden">';
-    html += '    <div class="w-full flex items-center justify-between text-[11px] text-gray-400 mb-2 px-2">';
-    html += '      <span class="flex items-center gap-1.5 font-mono"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>Kanvas Relasi Aktif: <strong id="activeGraphEntityTitle" class="text-gray-200">' + escapeHtml(activeInsiderNetworkEntity) + '</strong></span>';
-    html += '      <span class="text-[10px] text-gray-500">Klik node emiten untuk rincian</span>';
     html += '    </div>';
-    html += '    <div id="insiderGraphSvgWrap" class="w-full h-full flex items-center justify-center">';
+    html += '  </div>';
+
+    // Grid Canvas (Left 8 cols) & Detail (Right 4 cols)
+    html += '  <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">';
+    html += '    <div class="lg:col-span-8 bg-dark-900/80 border border-dark-600/40 rounded-xl p-4 flex flex-col items-center justify-center relative min-h-[640px] overflow-hidden">';
+    html += '      <div class="w-full flex items-center justify-between text-[11px] text-gray-400 mb-2 px-2">';
+    html += '        <span class="flex items-center gap-1.5 font-mono"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>Kanvas Relasi Aktif: <strong id="activeGraphEntityTitle" class="text-gray-200">' + escapeHtml(activeInsiderNetworkEntity) + '</strong></span>';
+    html += '        <span class="text-[10px] text-gray-500">Klik node emiten untuk rincian</span>';
+    html += '      </div>';
+    html += '      <div id="insiderGraphSvgWrap" class="w-full h-full flex items-center justify-center">';
 
     // Initial graph generation
     var graph = getEffectiveInsiderGraph(activeInsiderNetworkEntity);
@@ -2910,18 +3295,22 @@
     }
     html += renderInsiderNetworkSvg(graph, activeInsiderNetworkSelectedTicker);
 
+    html += '      </div>';
     html += '    </div>';
-    html += '  </div>';
 
     // Detail Panel
-    html += '  <div class="lg:col-span-4 bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 flex flex-col justify-between">';
-    html += '    <div id="insiderDetailPanel">';
+    html += '    <div class="lg:col-span-4 bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 flex flex-col justify-between">';
+    html += '      <div id="insiderDetailPanel">';
     html += renderInsiderDetailPanelHtml(graph, activeInsiderNetworkSelectedTicker);
+    html += '      </div>';
     html += '    </div>';
     html += '  </div>';
     html += '</div>';
 
     container.innerHTML = html;
+
+    // Load full roster for active emiten from VPS
+    loadRosterForTicker(ticker);
 
     fetchRemoteInsiderGraph(activeInsiderNetworkEntity, function (remoteGraph) {
       if (remoteGraph && remoteGraph.nodes && remoteGraph.nodes.length > 0) {
@@ -4145,6 +4534,14 @@
     fetchVpsAvailableDates: fetchVpsAvailableDates,
     fetchVpsBrokerSummary: fetchVpsBrokerSummary,
     normalizeClientBrokerSummary: normalizeClientBrokerSummary,
+    fetchVpsInsiderRoster: fetchVpsInsiderRoster,
+    loadRosterForTicker: loadRosterForTicker,
+    filterRosterTable: filterRosterTable,
+    setRosterCategoryFilter: setRosterCategoryFilter,
+    selectInsiderForGraph: selectInsiderForGraph,
+    renderRosterTableRows: renderRosterTableRows,
+    getCurrentInsiderRoster: function () { return currentInsiderRosterData; },
+    getCurrentInsiderRosterTicker: function () { return currentInsiderRosterTicker; },
     VPS_DATA_API_BASE: VPS_DATA_API_BASE
   };
 
@@ -4214,6 +4611,14 @@
       fetchVpsAvailableDates: fetchVpsAvailableDates,
       fetchVpsBrokerSummary: fetchVpsBrokerSummary,
       normalizeClientBrokerSummary: normalizeClientBrokerSummary,
+      fetchVpsInsiderRoster: fetchVpsInsiderRoster,
+      loadRosterForTicker: loadRosterForTicker,
+      filterRosterTable: filterRosterTable,
+      setRosterCategoryFilter: setRosterCategoryFilter,
+      selectInsiderForGraph: selectInsiderForGraph,
+      renderRosterTableRows: renderRosterTableRows,
+      getCurrentInsiderRoster: function () { return currentInsiderRosterData; },
+      getCurrentInsiderRosterTicker: function () { return currentInsiderRosterTicker; },
       VPS_DATA_API_BASE: VPS_DATA_API_BASE
     };
   }

@@ -52,6 +52,7 @@ const corporateActionGuard = require('../lib/corporate-action-price-scale-guard'
 const smartSetupLabels = require('../lib/smart-setup-labels');
 const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
 const bandarmologiConfluence = require('../lib/bandarmologi-confluence');
+const bandarScoring = require('../lib/bandarmologi-screener-scoring');
 const trackRecordService = require('../lib/track-record-service');
 const bandarmologiService = require('../lib/bandarmologi-service');
 const brokerHunterService = require('../lib/broker-hunter-service');
@@ -87,6 +88,9 @@ module.exports = async function handler(req, res) {
     if (action === 'insider-network') {
       return await handleInsiderNetwork(req, res);
     }
+    if (action === 'insider-roster') {
+      return await handleInsiderRoster(req, res);
+    }
     if (action === 'available-dates') {
       const ticker = (req.query && req.query.ticker) || 'BBCA';
       const dates = await bandarmologiService.getAvailableDates(ticker);
@@ -111,7 +115,7 @@ module.exports = async function handler(req, res) {
       'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks', 'telegram-daily-recap',
       'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record',
       'watchlist', 'watchlist-alert', 'watchlist-alert-history', 'bandarmologi', 'available-dates',
-      'broker-hunter', 'bandarmologi-intel', 'insider-network',
+      'broker-hunter', 'bandarmologi-intel', 'insider-network', 'insider-roster',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
       'create-screener-share-link', 'public-screener-share', 'refresh', 'debug-members',
@@ -2926,6 +2930,8 @@ async function enrichConfluenceRows(supabase, rows, includeForeign) {
       }
     }
     Object.assign(r, bandarMap[String(r.ticker || '').trim().toUpperCase()] || {});
+    var candidateMode = (r.category === 'daytrade' || r.mode === 'daytrade' || r.daytrade_score != null) ? 'daytrade' : 'swing';
+    bandarScoring.enrichCandidateWithBandarmologi(r, { mode: candidateMode });
     out.push(r);
   }
   return out;
@@ -7012,6 +7018,7 @@ function buildDashboardPickRow(row, rank, px) {
   // here — display-only, computed fresh per ticker (in-memory cached), never
   // read from raw_payload since that snapshot may predate this field.
   Object.assign(out, bandarmologiConfluence.computeBandarmologiConfluence(out.ticker));
+  bandarScoring.enrichCandidateWithBandarmologi(out, { mode: 'swing' });
   return attachFreshness(out, { calculated_at: (px && px.at) || row.last_checked_at || row.first_sent_at || raw.calculated_at || raw.updated_at || row.date });
 }
 
@@ -8248,6 +8255,17 @@ async function handleInsiderNetwork(req, res) {
       ticker: ticker
     });
     return res.status(200).json(Object.assign({ success: true }, graph));
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || String(err) });
+  }
+}
+
+async function handleInsiderRoster(req, res) {
+  try {
+    var insiderNetworkService = require('../lib/insider-network-service');
+    var ticker = (req.query && req.query.ticker) ? String(req.query.ticker).trim().toUpperCase() : 'BBCA';
+    var roster = insiderNetworkService.getRosterForTicker(ticker);
+    return res.status(200).json({ success: true, ticker: ticker, count: roster.length, roster: roster });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });
   }
@@ -14237,6 +14255,7 @@ module.exports.__test = {
   handleBrokerHunter: handleBrokerHunter,
   handleBandarmologiIntel: handleBandarmologiIntel,
   handleInsiderNetwork: handleInsiderNetwork,
+  handleInsiderRoster: handleInsiderRoster,
   handleTelegramDailyRecap: handleTelegramDailyRecap,
   handleUserWatchlist: handleUserWatchlist,
   handleUserWatchlistAlert: handleUserWatchlistAlert,

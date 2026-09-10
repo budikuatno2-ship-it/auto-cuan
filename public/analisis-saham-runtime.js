@@ -336,6 +336,10 @@
         switchAnalisisSubTab(currentAnalisisSubTab);
       }
     } else if (parentTab === 'ranking') {
+      if (!isSubscribedUser()) {
+        updateRankingPaywallUi();
+        return;
+      }
       root.ensureRankingTableLoaded();
     } else if (parentTab === 'bandarmologi') {
       var currentSection = (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.getBandarSection === 'function')
@@ -343,6 +347,10 @@
       var bandarSection = (tabName === 'akumulasi' || currentSection === 'akumulasi') ? 'akumulasi' : 'summary';
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
         root.BandarmologiRuntime.setBandarSection(bandarSection);
+      }
+      if (!isSubscribedUser()) {
+        renderTabPaywall('bandarmologiContent', 'Bandarmologi Terkunci', 'Akses Broker Summary, Akumulasi Bandar harian, dan aliran modal bandar hanya tersedia untuk member berlangganan.');
+        return;
       }
       if (typeof root.loadBandarmologiTab === 'function') {
         var bandarTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
@@ -352,6 +360,11 @@
     } else if (parentTab === 'intel') {
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
         root.BandarmologiRuntime.setBandarSection('intel');
+      }
+      if (!isSubscribedUser()) {
+        var intelTarget = byId('bandarmologiIntelContent') || byId('bandarmologiContent');
+        renderTabPaywall(intelTarget ? intelTarget.id : 'bandarmologiContent', 'Sinyal Intelijen Terkunci', 'Akses 4 Sinyal Strategis Intelijen Bandar (Akumulasi Senyap, Harga di Bawah Bandar, Ritel Cutloss vs Bandar, dan Screening Pasar) hanya tersedia untuk member berlangganan.');
+        return;
       }
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.updateIntelSearchBarVisibility === 'function') {
         root.BandarmologiRuntime.updateIntelSearchBarVisibility();
@@ -365,16 +378,30 @@
         root.BandarmologiRuntime.renderBandarmologiIntelUI(intelContainer, activeIntelTicker);
       }
     } else if (parentTab === 'hunter') {
+      if (!isSubscribedUser()) {
+        var hunterTarget = byId('brokerHunterContent') || byId('bandarmologiContent');
+        renderTabPaywall(hunterTarget ? hunterTarget.id : 'bandarmologiContent', 'Broker Hunter Terkunci', 'Akses pelacak broker institusi, smart money tracker, dan deteksi pergerakan broker asing hanya tersedia untuk member berlangganan.');
+        return;
+      }
       var hunterContainer = byId('brokerHunterContent') || byId('bandarmologiContent');
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.loadBrokerHunter === 'function') {
         root.BandarmologiRuntime.loadBrokerHunter(hunterContainer);
       }
     } else if (parentTab === 'insider') {
+      if (!isSubscribedUser()) {
+        var insiderTarget = byId('insiderNetworkDedicatedContent') || byId('bandarmologiContent');
+        renderTabPaywall(insiderTarget ? insiderTarget.id : 'bandarmologiContent', 'Jejaring Insider Terkunci', 'Daftar Pemegang Saham lengkap, transaksi kepemilikan orang dalam, dan graf jejaring lintas emiten hanya tersedia untuk member berlangganan.');
+        return;
+      }
       var insiderContainer = byId('insiderNetworkDedicatedContent') || byId('bandarmologiContent');
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.loadInsiderNetwork === 'function') {
         root.BandarmologiRuntime.loadInsiderNetwork(insiderContainer);
       }
     } else if (parentTab === 'pattern') {
+      if (!isAdminUser()) {
+        renderTabPaywall('panel-tab-pattern', 'Pattern Radar Khusus Administrator', 'Fitur Pattern Radar dengan deteksi pola teknikal multi-frame saat ini hanya tersedia secara eksklusif untuk Administrator.', true);
+        return;
+      }
       loadPatternRadarTab();
     }
   }
@@ -529,18 +556,24 @@
   root.loadPatternRadarTab = loadPatternRadarTab;
   root.renderPatternRadarError = renderPatternRadarError;
 
+  function isAdminUser() {
+    var user = '';
+    try { user = (localStorage.getItem('autocuan_user') || '').toLowerCase().trim(); } catch (_) {}
+    if (user === 'budi') return true;
+    try {
+      if (localStorage.getItem('autocuan_is_admin') === 'true') return true;
+      if (root.premiumAccessState && (root.premiumAccessState.isAdmin === true || root.premiumAccessState.accessLevel === 'admin' || root.premiumAccessState.role === 'admin')) {
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+  root.isAdminUser = isAdminUser;
+
   function checkPatternTabVisibility() {
     var tabPattern = byId('tabAnalisisPattern');
     if (!tabPattern) return;
-    var user = '';
-    try { user = (localStorage.getItem('autocuan_user') || '').toLowerCase().trim(); } catch (_) {}
-    var isAdmin = false;
-    try {
-      isAdmin = localStorage.getItem('autocuan_is_admin') === 'true' ||
-        Boolean(root.premiumAccessState && (root.premiumAccessState.isAdmin === true || root.premiumAccessState.accessLevel === 'admin'));
-    } catch (_) {}
-    var isBudi = user === 'budi' || isAdmin;
-    if (isBudi) {
+    if (isAdminUser()) {
       tabPattern.classList.remove('hidden');
       tabPattern.style.display = 'inline-flex';
     } else {
@@ -556,7 +589,7 @@
 
   // ===== SUBSCRIPTION & PAYWALL LOGIC =====
   function isSubscribedUser() {
-    if (localStorage.getItem('autocuan_is_admin') === 'true') return true;
+    if (isAdminUser()) return true;
     if (window.premiumAccessState && typeof window.premiumAccessState === 'object') {
       var s = window.premiumAccessState;
       if (s.premium === true) return true;
@@ -565,6 +598,40 @@
     return false;
   }
   root.isSubscribedUser = isSubscribedUser;
+
+  function renderTabPaywall(containerId, title, description, isAdminOnly) {
+    var container = byId(containerId);
+    if (!container) return;
+    var badgeText = isAdminOnly ? 'Khusus Administrator' : 'Fitur Eksklusif Member Berlangganan';
+    var icon = isAdminOnly ? '👑' : '🔒';
+    var buttonHtml = isAdminOnly
+      ? '<a href="/dashboard" class="px-6 py-2.5 rounded-xl bg-dark-700 border border-dark-600 text-gray-300 font-bold text-xs sm:text-sm hover:bg-dark-600 transition text-center">← Kembali ke Dashboard</a>'
+      : '<a href="/dashboard" onclick="if(window.openAccountSubscription){window.openAccountSubscription();return false;}" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 hover:brightness-110 transition text-center">💎 Upgrade ke Bulanan / Lifetime</a>';
+
+    container.innerHTML = [
+      '<div class="analisis-paywall-gate p-8 sm:p-12 text-center rounded-2xl bg-gradient-to-b from-dark-800/90 to-dark-900/95 border border-amber-500/30 shadow-2xl max-w-xl mx-auto my-8 relative z-20 backdrop-blur-md">',
+      '  <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-2xl text-amber-400">',
+      '    ' + icon,
+      '  </div>',
+      '  <span class="inline-block px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-amber-500/15 text-amber-300 border border-amber-500/30 mb-3">',
+      '    ' + badgeText,
+      '  </span>',
+      '  <h3 class="text-lg sm:text-xl font-bold text-white mb-2">',
+      '    ' + escapeHtml(title),
+      '  </h3>',
+      '  <p class="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-md mx-auto mb-6">',
+      '    ' + escapeHtml(description),
+      '  </p>',
+      '  <div class="flex flex-col sm:flex-row items-center justify-center gap-3">',
+      '    ' + buttonHtml,
+      '  </div>',
+      '  <p class="text-[11px] text-gray-500 mt-4">',
+      '    ' + (isAdminOnly ? 'Halaman ini dilindungi otentikasi khusus administrator.' : 'Sudah berlangganan? Pastikan Anda sudah login dengan akun aktif Anda.'),
+      '  </p>',
+      '</div>'
+    ].join('');
+  }
+  root.renderTabPaywall = renderTabPaywall;
 
   function updateRankingPaywallUi() {
     var isSubscribed = isSubscribedUser();
