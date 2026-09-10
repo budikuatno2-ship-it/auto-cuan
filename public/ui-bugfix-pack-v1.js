@@ -31,6 +31,7 @@
     '   remains untouched. */',
     'html,body{overscroll-behavior-y:auto!important;}',
     '#analisisResult,#aiMessages,.chat-messages,.ai-messages,.table-wrap{overscroll-behavior-y:auto!important;}',
+    '#trTableWrap,#trBacktestTradesWrap,#portTableWrap,.overflow-x-auto.overflow-y-auto{overscroll-behavior-y:auto!important;-webkit-overflow-scrolling:touch!important;}',
     '',
     '/* Portfolio tabs share equal tracks on wide screens. The compact layout keeps',
     '   horizontal scrolling below the breakpoint, so long labels never collide. */',

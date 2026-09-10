@@ -190,9 +190,13 @@
   }
   root.renderRankingTable = renderRankingTable;
 
+  var _rankingSearchTimer = null;
   root.onRankingSearchInput = function (value) {
-    rankingState.searchQuery = value;
-    renderRankingTable();
+    if (_rankingSearchTimer) clearTimeout(_rankingSearchTimer);
+    _rankingSearchTimer = setTimeout(function () {
+      rankingState.searchQuery = value;
+      renderRankingTable();
+    }, 300);
   };
 
   root.setRankingSort = function (key) {
@@ -592,6 +596,8 @@
     if (isAdminUser()) return true;
     if (window.premiumAccessState && typeof window.premiumAccessState === 'object') {
       var s = window.premiumAccessState;
+      // Do not determine paywall restriction while subscription check is still in-flight
+      if (s.state === 'loading') return false;
       if (s.premium === true) return true;
       if (s.accessLevel === 'admin' || s.accessLevel === 'premium' || s.accessLevel === 'lifetime') return true;
     }
@@ -634,6 +640,8 @@
   root.renderTabPaywall = renderTabPaywall;
 
   function updateRankingPaywallUi() {
+    var isLoading = window.premiumAccessState && window.premiumAccessState.state === 'loading';
+    if (isLoading) return;
     var isSubscribed = isSubscribedUser();
     var paywallGate = byId('rankingPaywallGate');
     var contentWrap = byId('rankingContentWrap');
@@ -653,6 +661,9 @@
       checkPatternTabVisibility();
       updateRankingPaywallUi();
       return true;
+    }
+    if (!window.premiumAccessState || window.premiumAccessState.state !== 'ready') {
+      window.premiumAccessState = { state: 'loading' };
     }
     try {
       var resp = await fetch('/api/reset-password', {
@@ -742,12 +753,13 @@
 
   // ===== STOCK ANALYSIS (TEXT FORMAT) VIA /api/analyze =====
   var _analisisRequestSeq = 0;
+  var _activeAnalisisAbortController = null;
   var ANALISIS_REQUEST_TIMEOUT_MS = 70000;
 
   function describeAnalisisFailure(response, data, error) {
     var code = data && data.code;
     var status = response ? response.status : 0;
-    if (error && error.name === 'AbortError') return { retryable: true, text: 'Analisis dihentikan karena terlalu lama. Coba lagi ya.' };
+    if (error && error.name === 'AbortError') return { retryable: true, text: 'Analisis dihentikan atau digantikan request baru.' };
     if (!response) return { retryable: true, text: 'Koneksi ke server AI gagal. Cek jaringan lalu coba lagi.' };
     // Anonymous/guest browsing has no server session at all, so a 401 here is
     // never "your session expired" — AI analysis requires a registered
@@ -786,6 +798,12 @@
     var ticker = String(tickerOrQuery || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!ticker) return;
 
+    // Cancel any previous in-flight AI analysis immediately
+    if (_activeAnalisisAbortController) {
+      try { _activeAnalisisAbortController.abort(); } catch (_) {}
+      _activeAnalisisAbortController = null;
+    }
+
     var analisisRequestId = ++_analisisRequestSeq;
     function isStaleRun() { return analisisRequestId !== _analisisRequestSeq; }
 
@@ -815,6 +833,7 @@
 
     try {
       var controller = (typeof AbortController === 'function') ? new AbortController() : null;
+      _activeAnalisisAbortController = controller;
       var abortTimer = controller ? setTimeout(function () { try { controller.abort(); } catch (_) {} }, ANALISIS_REQUEST_TIMEOUT_MS) : null;
 
       // Same enrichment as the Dashboard chat's runAnalisisFromDashboard()
@@ -883,7 +902,12 @@
     } catch (e) {
       clearInterval(stageTimer);
       if (isStaleRun()) return;
+      if (e && e.name === 'AbortError' && isStaleRun()) return;
       renderAnalisisFailure(resultArea, describeAnalisisFailure(null, {}, e));
+    } finally {
+      if (_activeAnalisisAbortController === controller) {
+        _activeAnalisisAbortController = null;
+      }
     }
   };
 
@@ -961,6 +985,21 @@
       var el = byId(id);
       if (el) el.value = initialTicker;
     });
+
+    // Debounce (300ms) input pencarian ticker utama agar UI sinkron secara mulus tanpa lag
+    var analisisInputEl = byId('analisisInput');
+    if (analisisInputEl && !analisisInputEl.__boundDebounce && typeof analisisInputEl.addEventListener === 'function') {
+      analisisInputEl.__boundDebounce = true;
+      var _analisisInputDebounceTimer = null;
+      analisisInputEl.addEventListener('input', function (e) {
+        if (_analisisInputDebounceTimer) clearTimeout(_analisisInputDebounceTimer);
+        var val = (e.target && e.target.value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        _analisisInputDebounceTimer = setTimeout(function () {
+          var badge = byId('unifiedActiveTickerBadge');
+          if (badge && val) badge.textContent = val;
+        }, 300);
+      });
+    }
 
     if (isSubscribedUser()) {
       root.ensureRankingTableLoaded();
