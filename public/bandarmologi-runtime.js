@@ -1203,6 +1203,134 @@
     loadBandarmologiTab(currentBandarTicker, null, 'custom');
   }
 
+  var VPS_DATA_API_BASE = (typeof window !== 'undefined' && (window.NEXT_PUBLIC_VPS_DATA_API || window.VPS_DATA_API_BASE)) || 'https://wishing-challenged-deeper-crown.trycloudflare.com';
+  var vpsDatesMemoryCache = {};
+  var vpsSummaryMemoryCache = {};
+
+  async function fetchVpsAvailableDates(ticker) {
+    if (!ticker) return [];
+    var safeTicker = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (vpsDatesMemoryCache[safeTicker] && vpsDatesMemoryCache[safeTicker].length > 0) {
+      return vpsDatesMemoryCache[safeTicker];
+    }
+    try {
+      var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var timer = controller ? setTimeout(function () { controller.abort(); }, 5000) : null;
+      var res = await fetch(VPS_DATA_API_BASE + '/api/available-dates?ticker=' + encodeURIComponent(safeTicker), controller ? { signal: controller.signal } : {});
+      if (timer) clearTimeout(timer);
+      if (res.ok) {
+        var json = await res.json();
+        if (json && Array.isArray(json.dates)) {
+          var cleanDates = json.dates.filter(function (d) { return d && d !== 'latest'; });
+          if (cleanDates.length > 0) {
+            vpsDatesMemoryCache[safeTicker] = cleanDates;
+            return cleanDates;
+          }
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  async function fetchVpsBrokerSummary(ticker, date) {
+    if (!ticker) return null;
+    var safeTicker = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    var safeDate = String(date || 'latest').trim();
+    var cacheKey = safeTicker + '_' + safeDate;
+    if (vpsSummaryMemoryCache[cacheKey]) {
+      return vpsSummaryMemoryCache[cacheKey];
+    }
+    try {
+      var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var timer = controller ? setTimeout(function () { controller.abort(); }, 6000) : null;
+      var res = await fetch(VPS_DATA_API_BASE + '/api/broker-summary?ticker=' + encodeURIComponent(safeTicker) + '&date=' + encodeURIComponent(safeDate), controller ? { signal: controller.signal } : {});
+      if (timer) clearTimeout(timer);
+      if (res.ok) {
+        var json = await res.json();
+        if (json && (json.brokers || json.stock_code)) {
+          vpsSummaryMemoryCache[cacheKey] = json;
+          return json;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function normalizeClientBrokerSummary(raw, date) {
+    if (!raw) return null;
+    if (Array.isArray(raw.top_buyers) && Array.isArray(raw.top_sellers)) {
+      return raw;
+    }
+    var targetDate = raw.broker_start_date || raw.date || date || '';
+    var brokersMap = {};
+    if (Array.isArray(raw.brokers)) {
+      for (var i = 0; i < raw.brokers.length; i++) {
+        var b = raw.brokers[i];
+        if (b && b.broker_code) {
+          var bval = Number(b.bval || 0);
+          var sval = Number(b.sval || 0);
+          var bvol = Number(b.bvol || 0);
+          var svol = Number(b.svol || 0);
+          var nval = b.nval != null ? Number(b.nval) : (bval - sval);
+          var nvol = b.nvol != null ? Number(b.nvol) : (bvol - svol);
+          var bfrq = Number(b.bfrq || 0);
+          var sfrq = Number(b.sfrq || 0);
+          var avgPrice = 0;
+          if (bval > 0 && bvol > 0) {
+            avgPrice = Math.round(bval / bvol);
+          } else if (sval > 0 && svol > 0) {
+            avgPrice = Math.round(sval / svol);
+          }
+          if (avgPrice > 50000) avgPrice = Math.round(avgPrice / 100);
+
+          brokersMap[b.broker_code] = {
+            broker: b.broker_code,
+            broker_name: b.broker_name || BROKER_NAMES[b.broker_code] || b.broker_code,
+            bval: bval,
+            sval: sval,
+            bvol: bvol,
+            svol: svol,
+            bfrq: bfrq,
+            sfrq: sfrq,
+            nval: nval,
+            nvol: nvol,
+            avg_price: avgPrice,
+            buy_val: bval,
+            buy_vol: bvol,
+            sell_val: sval,
+            sell_vol: svol,
+            net_val: nval,
+            net_vol: nvol
+          };
+        }
+      }
+    }
+    var all = Object.values(brokersMap);
+    var grossBuyers = all.slice().sort(function (a, b) { return (b.bval || 0) - (a.bval || 0); });
+    var grossSellers = all.slice().sort(function (a, b) { return (b.sval || 0) - (a.sval || 0); });
+    var netBuyers = all.filter(function (x) { return (x.nval || 0) > 0; }).sort(function (a, b) { return b.nval - a.nval; });
+    var netSellers = all.filter(function (x) { return (x.nval || 0) < 0; }).sort(function (a, b) { return Math.abs(b.nval) - Math.abs(a.nval); });
+
+    var topBuyVal = netBuyers.slice(0, 5).reduce(function (sum, x) { return sum + (x.nval || 0); }, 0);
+    var topSellVal = netSellers.slice(0, 5).reduce(function (sum, x) { return sum + Math.abs(x.nval || 0); }, 0);
+    var diff = topBuyVal - topSellVal;
+    var isAccumulation = diff >= 0;
+
+    return {
+      date: targetDate,
+      stock_code: raw.stock_code || '',
+      net_status: isAccumulation ? 'BIG_ACCUMULATION' : 'BIG_DISTRIBUTION',
+      net_label: isAccumulation ? 'Big Accumulation' : 'Big Distribution',
+      net_flow: diff,
+      top_buyers: grossBuyers,
+      top_sellers: grossSellers,
+      gross_buyers: grossBuyers,
+      gross_sellers: grossSellers,
+      net_buyers: netBuyers,
+      net_sellers: netSellers
+    };
+  }
+
   async function loadBandarmologiTab(ticker, date, range) {
     var clean = String(ticker || currentBandarTicker || 'BBCA').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!clean) clean = 'BBCA';
@@ -1236,6 +1364,10 @@
     container.innerHTML = '<div class="flex flex-col items-center justify-center py-12"><div class="spinner"></div><p class="text-xs text-gray-400 mt-3">Mengambil data Bandarmologi &amp; Insider ' + escapeHtml(clean) + '...</p></div>';
 
     try {
+      // 1. Fetch available dates from VPS Tunnel in background
+      var vpsDatesPromise = fetchVpsAvailableDates(clean);
+
+      // 2. Fetch from backend API
       var url = '/api/sector-hot?action=bandarmologi&ticker=' + encodeURIComponent(clean);
       if (brokerFlowFilter === 'F' || brokerFlowFilter === 'D') {
         url += '&flow=' + encodeURIComponent(brokerFlowFilter);
@@ -1250,11 +1382,63 @@
       } else if (currentBandarDate) {
         url += '&date=' + encodeURIComponent(currentBandarDate);
       }
-      var res = await fetch(url);
-      var data = await res.json();
+
+      var data = null;
+      try {
+        var res = await fetch(url);
+        data = await res.json();
+      } catch (_) {}
+
+      var vpsDates = await vpsDatesPromise;
+      if (vpsDates && vpsDates.length > 0) {
+        if (!data || !Array.isArray(data.available_dates) || data.available_dates.length === 0) {
+          if (!data) data = { success: true, ticker: clean };
+          data.available_dates = vpsDates;
+        } else {
+          var seenDates = {};
+          var combinedDates = [];
+          for (var di = 0; di < data.available_dates.length; di++) {
+            var d1 = data.available_dates[di];
+            if (!seenDates[d1]) { seenDates[d1] = true; combinedDates.push(d1); }
+          }
+          for (var dj = 0; dj < vpsDates.length; dj++) {
+            var d2 = vpsDates[dj];
+            if (!seenDates[d2]) { seenDates[d2] = true; combinedDates.push(d2); }
+          }
+          data.available_dates = combinedDates.sort().reverse();
+        }
+      }
+
+      // 3. If backend returned demo or empty or error, fetch directly from VPS Tunnel (0 byte local disk)
+      if (!data || !data.success || data.is_demo || !data.broker_summary || !data.broker_summary.top_buyers || data.broker_summary.top_buyers.length === 0) {
+        var targetDateToFetch = currentBandarDate || (vpsDates && vpsDates[0]) || 'latest';
+        var directVpsRaw = await fetchVpsBrokerSummary(clean, targetDateToFetch);
+        if (directVpsRaw) {
+          var clientNormSummary = normalizeClientBrokerSummary(directVpsRaw, targetDateToFetch);
+          if (clientNormSummary) {
+            var clientAcc = {
+              top_buyers: clientNormSummary.net_buyers || clientNormSummary.top_buyers,
+              top_sellers: clientNormSummary.net_sellers || clientNormSummary.top_sellers,
+              series: []
+            };
+            data = {
+              success: true,
+              is_demo: false,
+              from_vps_tunnel: true,
+              ticker: clean,
+              date: clientNormSummary.date || targetDateToFetch,
+              range: brokerSummaryRange || '1d',
+              available_dates: (data && data.available_dates && data.available_dates.length > 0) ? data.available_dates : vpsDates,
+              broker_summary: clientNormSummary,
+              broker_accumulation: clientAcc,
+              insiders: (data && data.insiders) || []
+            };
+          }
+        }
+      }
 
       if (!data || !data.success) {
-        container.innerHTML = '<div class="p-6 text-center text-rose-400 text-xs">Gagal memuat data bandarmologi: ' + escapeHtml((data && data.error) || 'Terjadi kesalahan.') + '</div>';
+        container.innerHTML = '<div class="p-6 text-center text-rose-400 text-xs">Gagal memuat data bandarmologi: ' + escapeHtml((data && data.error) || 'Koneksi ke data bursa terputus.') + '</div>';
         return;
       }
 
@@ -1467,9 +1651,11 @@
       api_error: 'Data Demo — API sedang tidak tersedia',
       network_error: 'Data Demo — koneksi ke API gagal'
     };
-    var isDemoBadge = (data.is_demo && !data.from_disk)
+    var isDemoBadge = (data.is_demo && !data.from_disk && !data.from_vps_tunnel)
       ? '<span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono" title="' + escapeHtml(data.demo_detail || '') + '">' + escapeHtml(DEMO_REASON_LABEL[data.demo_reason] || 'DEMO PREVIEW — data bukan dari sumber live') + '</span>'
-      : '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">LIVE / BACKFILL</span>';
+      : (data.from_vps_tunnel
+          ? '<span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-300 font-mono">VPS TUNNEL LIVE</span>'
+          : '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">LIVE / BACKFILL</span>');
 
     var netStatusTone = 'text-emerald-400';
     var netStatusBg = 'bg-emerald-500/10 border-emerald-500/30';
@@ -1506,11 +1692,11 @@
       ? data.available_dates
       : series.map(function (s) { return s.date; }).filter(Boolean).reverse();
 
-    // Quick date pills in header if available
-    var quickDates = availableDates.slice(0, 10);
+    // Quick date pills and full date dropdown in header if available
+    var quickDates = availableDates.slice(0, 8);
     if (quickDates.length > 0) {
       html += '<div class="flex flex-wrap items-center gap-1.5 mb-3">';
-      html += '  <span class="text-[11px] text-gray-400 mr-1">Pilih Cepat Tanggal:</span>';
+      html += '  <span class="text-[11px] text-gray-400 mr-1">Pilih Tanggal:</span>';
       for (var qd = 0; qd < quickDates.length; qd++) {
         var dt = quickDates[qd];
         var isCurrent = dt === (bSum.date || currentBandarDate);
@@ -1518,6 +1704,15 @@
           ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
           : 'bg-dark-700 text-gray-300 border-dark-600/60 hover:bg-dark-600 hover:text-white';
         html += '  <button type="button" onclick="BandarmologiRuntime.loadBandarmologiTab(null, \'' + escapeHtml(dt) + '\')" class="px-2 py-0.5 text-[11px] rounded-md border font-mono transition ' + pillStyle + '">' + escapeHtml(dt) + '</button>';
+      }
+      if (availableDates.length > 8) {
+        html += '  <select onchange="BandarmologiRuntime.loadBandarmologiTab(null, this.value)" class="px-2 py-0.5 text-[11px] rounded-md border border-dark-600/60 bg-dark-700 text-gray-200 font-mono transition cursor-pointer hover:bg-dark-600">';
+        html += '    <option value="" disabled' + (!currentBandarDate || quickDates.indexOf(currentBandarDate) >= 0 ? ' selected' : '') + '>Semua Tanggal (' + availableDates.length + ')...</option>';
+        for (var ad = 0; ad < availableDates.length; ad++) {
+          var aDt = availableDates[ad];
+          html += '    <option value="' + escapeHtml(aDt) + '"' + (aDt === (bSum.date || currentBandarDate) ? ' selected' : '') + '>' + escapeHtml(aDt) + '</option>';
+        }
+        html += '  </select>';
       }
       html += '</div>';
     }
@@ -3946,7 +4141,11 @@
     getInsiderNetworkSelectedTicker: function () { return activeInsiderNetworkSelectedTicker; },
     getEffectiveInsiderGraph: getEffectiveInsiderGraph,
     getEffectiveSearchInsiders: getEffectiveSearchInsiders,
-    loadInsiderNetwork: loadInsiderNetwork
+    loadInsiderNetwork: loadInsiderNetwork,
+    fetchVpsAvailableDates: fetchVpsAvailableDates,
+    fetchVpsBrokerSummary: fetchVpsBrokerSummary,
+    normalizeClientBrokerSummary: normalizeClientBrokerSummary,
+    VPS_DATA_API_BASE: VPS_DATA_API_BASE
   };
 
   root.loadBandarmologiTab = loadBandarmologiTab;
@@ -4011,7 +4210,11 @@
       getInsiderNetworkSelectedTicker: function () { return activeInsiderNetworkSelectedTicker; },
       getEffectiveInsiderGraph: getEffectiveInsiderGraph,
       getEffectiveSearchInsiders: getEffectiveSearchInsiders,
-      loadInsiderNetwork: loadInsiderNetwork
+      loadInsiderNetwork: loadInsiderNetwork,
+      fetchVpsAvailableDates: fetchVpsAvailableDates,
+      fetchVpsBrokerSummary: fetchVpsBrokerSummary,
+      normalizeClientBrokerSummary: normalizeClientBrokerSummary,
+      VPS_DATA_API_BASE: VPS_DATA_API_BASE
     };
   }
 

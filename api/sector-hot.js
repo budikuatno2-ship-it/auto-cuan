@@ -87,6 +87,11 @@ module.exports = async function handler(req, res) {
     if (action === 'insider-network') {
       return await handleInsiderNetwork(req, res);
     }
+    if (action === 'available-dates') {
+      const ticker = (req.query && req.query.ticker) || 'BBCA';
+      const dates = await bandarmologiService.getAvailableDates(ticker);
+      return res.status(200).json({ success: true, ticker, dates });
+    }
 
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -105,7 +110,7 @@ module.exports = async function handler(req, res) {
     const knownActions = new Set([
       'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks', 'telegram-daily-recap',
       'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record',
-      'watchlist', 'watchlist-alert', 'watchlist-alert-history', 'bandarmologi',
+      'watchlist', 'watchlist-alert', 'watchlist-alert-history', 'bandarmologi', 'available-dates',
       'broker-hunter', 'bandarmologi-intel', 'insider-network',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
