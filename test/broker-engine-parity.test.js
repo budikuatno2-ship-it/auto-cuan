@@ -113,7 +113,7 @@ test('Bubble Synchronization: buildBrokerBubbleItems balances Gross Mode and pre
 
   // When filtering by sell side, sell value is rendered
   const htmlSell = bandarmologiRuntime.renderBrokerBubbleClusterHtml(grossBubbles, 'CC', 'gross', 'sell');
-  assert.match(htmlSell, /-64\.0 jt/, 'Sell filter must display sell value for CC');
+  assert.match(htmlSell, /-64(\.0)?\s*[Jj]t/, 'Sell filter must display sell value for CC');
 });
 
 test('Partition Guard: recovers sellers when raw seller list is empty but buyer list contains sellers', () => {

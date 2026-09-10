@@ -170,6 +170,69 @@ test('runBacktestSimulation filter by category and min R:R functions accurately'
   assert.equal(rrRes.trades.some(t => t.ticker === 'DT2'), false);
 });
 
+test('runBacktestSimulation supports flexible outcomes (WIN, LOSS, pnl_pct) and fallback benchmark dataset', () => {
+  // 1. Fallback benchmark dataset when empty
+  const emptyRes = backtest.runBacktestSimulation([]);
+  assert.ok(emptyRes.metrics.totalTrades >= 5, 'Fallback benchmark dataset should yield >= 5 trades');
+  assert.ok(emptyRes.metrics.winRatePct > 0);
+
+  // 2. Flexible outcomes (WIN, LOSS, pnl_pct)
+  const flexSignals = [
+    { ticker: 'W1', date: '2026-08-01', entry: 1000, outcome: 'WIN', pnl_pct: 12.5 },
+    { ticker: 'L1', date: '2026-08-02', entry: 2000, outcome: 'LOSS', pnl_pct: -4.0 },
+    { ticker: 'W2', date: '2026-08-03', buy_price: 500, outcome: 'PROFIT', tp1: 550, sl: 480 }
+  ];
+  const flexRes = backtest.runBacktestSimulation(flexSignals, {
+    initialCapital: 10000000,
+    sizingMode: 'fixed_amount',
+    positionAmount: 2000000
+  });
+
+  assert.equal(flexRes.metrics.totalTrades, 3);
+  assert.equal(flexRes.metrics.winCount, 2);
+  assert.equal(flexRes.metrics.lossCount, 1);
+  assert.ok(flexRes.metrics.netProfitRp > 0);
+});
+
+test('renderBacktestTradeTable outputs detailed 10-column table format', () => {
+  const domTbody = { innerHTML: '' };
+  const domEmpty = { classList: { add: () => {}, remove: () => {} } };
+  global.document = {
+    getElementById: function (id) {
+      if (id === 'trBacktestTradesBody') return domTbody;
+      if (id === 'trBacktestEmptyState') return domEmpty;
+      return null;
+    }
+  };
+
+  const trades = [
+    {
+      tradeNum: 1,
+      date: '2026-08-10',
+      ticker: 'BBCA',
+      category: 'Swing Konglo',
+      entry: 10000,
+      exitPrice: 10800,
+      rr: 2.5,
+      finalTarget: 'TP1',
+      gainPct: 8.0,
+      pnlRp: 160000,
+      endingCapital: 10160000
+    }
+  ];
+
+  backtest.renderBacktestTradeTable(trades);
+  assert.ok(domTbody.innerHTML.includes('BBCA'));
+  assert.ok(domTbody.innerHTML.includes('Swing Konglo'));
+  assert.ok(domTbody.innerHTML.includes('Rp 10.000'));
+  assert.ok(domTbody.innerHTML.includes('Rp 10.800'));
+  assert.ok(domTbody.innerHTML.includes('2.5x'));
+  assert.ok(domTbody.innerHTML.includes('TP1'));
+  assert.ok(domTbody.innerHTML.includes('+8.0%'));
+  assert.ok(domTbody.innerHTML.includes('+Rp 160.000'));
+  assert.ok(domTbody.innerHTML.includes('Rp 10.160.000'));
+});
+
 test('API endpoint count remains exactly 12', () => {
   const apiDir = path.resolve(__dirname, '..', 'api');
   const files = fs.readdirSync(apiDir).filter(f => f.endsWith('.js'));
