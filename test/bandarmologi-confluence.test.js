@@ -127,4 +127,10 @@ test('bandarmologiConfluence: getBandarTrendLabel matches the vocabulary already
   assert.equal(confluence.getBandarTrendLabel(-100, -100), 'Distribution');
   assert.equal(confluence.getBandarTrendLabel(100, -100), 'Mixed');
   assert.equal(confluence.getBandarTrendLabel(0, 0), 'Mixed');
+  // Long-term distribution guards: 1M or 3M distribution prevents false Accumulation
+  assert.equal(confluence.getBandarTrendLabel(100, 100, -500), 'Mixed');
+  assert.equal(confluence.getBandarTrendLabel(100, 100, 500, -1000), 'Mixed');
+  assert.equal(confluence.getBandarTrendLabel(-100, -100, 500), 'Mixed');
+  assert.equal(confluence.getBandarTrendLabel(100, 100, 500, 1000), 'Accumulation');
+  assert.equal(confluence.getBandarTrendLabel(-100, -100, -500, -1000), 'Distribution');
 });

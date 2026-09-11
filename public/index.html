@@ -9199,7 +9199,7 @@ async function loadSwingScreener(silent) {
 
     // Guard: do not call API if not logged in (same check as Sektor Hot gate)
     if (getUsername() === 'guest' || localStorage.getItem('autocuan_logged_in') !== 'true') {
-        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
         return;
     }
 
@@ -9234,7 +9234,7 @@ async function loadSwingScreener(silent) {
         var data = await response.json();
 
         if (response.status === 403 || !data.success) {
-            if (!silent) tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
+            if (!silent) tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
             return;
         }
 
