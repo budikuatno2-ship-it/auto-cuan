@@ -44,11 +44,39 @@ const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
   const { ticker, date } = parsedUrl.query;
-  const cleanTicker = ticker ? String(ticker).trim().toUpperCase() : '';
+
+  // Sanitasi ketat terhadap Path Traversal dan karakter ilegal
+  if (ticker !== undefined && ticker !== null) {
+    const rawTickerStr = String(ticker).trim();
+    if (rawTickerStr.includes('..') || rawTickerStr.includes('/') || rawTickerStr.includes('\\')) {
+      res.writeHead(400);
+      return res.end(JSON.stringify({ error: 'Invalid ticker: path traversal characters detected' }));
+    }
+    const baseTicker = path.basename(rawTickerStr).toUpperCase();
+    if (baseTicker && !/^[A-Z0-9_-]+$/.test(baseTicker)) {
+      res.writeHead(400);
+      return res.end(JSON.stringify({ error: 'Invalid ticker format' }));
+    }
+  }
+
+  if (date !== undefined && date !== null) {
+    const rawDateStr = String(date).trim();
+    if (rawDateStr.includes('..') || rawDateStr.includes('/') || rawDateStr.includes('\\')) {
+      res.writeHead(400);
+      return res.end(JSON.stringify({ error: 'Invalid date: path traversal characters detected' }));
+    }
+    const baseDate = path.basename(rawDateStr);
+    if (baseDate && !/^[A-Z0-9_-]+$/i.test(baseDate)) {
+      res.writeHead(400);
+      return res.end(JSON.stringify({ error: 'Invalid date format' }));
+    }
+  }
+
+  const cleanTicker = ticker ? path.basename(String(ticker).trim()).toUpperCase() : '';
+  const targetDate = date ? path.basename(String(date).trim()) : 'latest';
 
   // Endpoint: /api/broker-summary?ticker=BBCA&date=2026-09-09
   if (pathname === '/api/broker-summary' && cleanTicker) {
-    const targetDate = date ? String(date).trim() : 'latest';
     const filePath = path.join(DATA_DIR, 'broker-summary', cleanTicker, targetDate + '.json');
     if (fs.existsSync(filePath)) {
       return res.end(fs.readFileSync(filePath, 'utf8'));

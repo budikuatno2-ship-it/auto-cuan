@@ -27,14 +27,30 @@ function cleanNumber(val) {
 
 function parsePercentageNum(val) {
   if (val == null) return 0;
-  if (typeof val === 'number') return isNaN(val) ? 0 : val;
-  var s = String(val).replace(/[%,\s]/g, '').trim();
+  if (typeof val === 'number') {
+    if (isNaN(val) || val < 0 || val > 100) return 0;
+    return val;
+  }
+  var s = String(val).replace(/%/g, '').trim();
+  // Tangani format koma desimal Indonesia ("54,94%" -> "54.94")
+  if (s.includes(',') && !s.includes('.')) {
+    s = s.replace(/,/g, '.');
+  } else if (s.includes(',') && s.includes('.')) {
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+      s = s.replace(/\./g, '').replace(/,/g, '.');
+    } else {
+      s = s.replace(/,/g, '');
+    }
+  }
+  s = s.replace(/[^\d.-]/g, '');
   var n = parseFloat(s);
-  return isNaN(n) ? 0 : n;
+  // Validasi batas persentase wajar (0 - 100%). Buang anomali integer overflow upstream.
+  if (isNaN(n) || n < 0 || n > 100) return 0;
+  return Number(n.toFixed(4));
 }
 
 function formatPercentage(num) {
-  if (num == null || isNaN(num)) return '0.00%';
+  if (num == null || isNaN(num) || num < 0) return '0.00%';
   return Number(num).toFixed(2) + '%';
 }
 
@@ -43,7 +59,9 @@ function categorizePosition(badges, positionStr, nameStr, pct) {
   var p = String(positionStr || '').toUpperCase();
   var n = String(nameStr || '').toUpperCase();
 
-  if (b.includes('PENGENDALI') || p.includes('PENGENDALI') || pct >= 50) {
+  var validPct = (typeof pct === 'number' && !isNaN(pct) && pct >= 0 && pct <= 100) ? pct : 0;
+
+  if (b.includes('PENGENDALI') || p.includes('PENGENDALI') || validPct >= 50) {
     return 'Pengendali';
   }
   if (b.includes('DIREKSI') || b.includes('DIREKTUR') || p.includes('DIREKSI') || p.includes('DIREKTUR')) {
@@ -97,7 +115,7 @@ function runPipeline() {
 
           var canon = canonicalName(name);
           var shares = cleanNumber(item.shares_after || item.current_value || item.shares || item.shares_change);
-          var pct = parsePercentageNum(item.shares_after_percentage || item.current_percentage || item.pct_change);
+          var pct = parsePercentageNum(item.shares_after_percentage || item.current_percentage);
           var category = categorizePosition(item.badges, item.position, name, pct);
 
           if (!rosterByTicker[ticker][canon] || (item.date && (!rosterByTicker[ticker][canon].last_date || item.date >= rosterByTicker[ticker][canon].last_date))) {
