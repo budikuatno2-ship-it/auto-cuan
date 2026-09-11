@@ -59,9 +59,10 @@ async function loadDayTradeScreener() {
             badge.textContent = ((meta.source === 'latest_completed_snapshot' || meta.status === 'latest_completed_snapshot') ? 'Latest Completed Snapshot' : (meta.freshness_label || meta.snapshot_label || meta.status || 'pending')) + ' · ' + ts;
             // V2 Freshness label: warn if Day Trade data is not from today
             if (meta.calculated_at && meta.status !== 'scanning') {
-                var dtCalcDate = new Date(meta.calculated_at);
-                var dtNowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
-                var dtCalcDateStr = dtCalcDate.toISOString().slice(0, 10);
+                var wibOffset = 7 * 60 * 60 * 1000;
+                var dtCalcWib = new Date(new Date(meta.calculated_at).getTime() + wibOffset);
+                var dtNowWib = new Date(Date.now() + wibOffset);
+                var dtCalcDateStr = dtCalcWib.toISOString().slice(0, 10);
                 var dtTodayStr = dtNowWib.toISOString().slice(0, 10);
                 var dtYesterdayStr = new Date(dtNowWib.getTime() - 86400000).toISOString().slice(0, 10);
                 if (dtCalcDateStr !== dtTodayStr && dtCalcDateStr !== dtYesterdayStr) {

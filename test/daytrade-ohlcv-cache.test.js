@@ -275,6 +275,24 @@ test('isCacheFresh returns true for old cache on weekend (12h effective TTL)', (
   assert.equal(cache.isCacheFresh(updatedAtMs, nowMs, 900000), true);
 });
 
+test('isCacheFresh returns false when crossing market open 09:00 WIB boundary', () => {
+  // Wednesday: Updated at 08:55 WIB (01:55 UTC), Checked at 09:05 WIB (02:05 UTC).
+  // Elapsed time is 10 min (< 15 min TTL), but it crossed 09:00 WIB open boundary.
+  const updatedAtMs = Date.parse('2026-07-08T01:55:00Z');
+  const nowMs = Date.parse('2026-07-08T02:05:00Z');
+  assert.equal(cache.isCacheFresh(updatedAtMs, nowMs, 900000), false,
+    'Cache updated before 09:00 WIB must be stale after market open');
+});
+
+test('isCacheFresh returns true when updated after market open 09:00 WIB within TTL', () => {
+  // Wednesday: Updated at 09:02 WIB (02:02 UTC), Checked at 09:05 WIB (02:05 UTC).
+  // Elapsed time is 3 min (< 15 min TTL), both within active trading session.
+  const updatedAtMs = Date.parse('2026-07-08T02:02:00Z');
+  const nowMs = Date.parse('2026-07-08T02:05:00Z');
+  assert.equal(cache.isCacheFresh(updatedAtMs, nowMs, 900000), true,
+    'Cache updated after 09:00 WIB within TTL should be fresh');
+});
+
 // ============================================================
 // TEST: normalizeCandles filters invalid entries
 // ============================================================

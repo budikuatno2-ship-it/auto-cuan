@@ -269,6 +269,10 @@
             if (chunkResult.done) break;
             streamBuffer += decoder.decode(chunkResult.value, { stream: true });
             streamBuffer = consumeSSELines(streamBuffer, function (parsed) {
+              if (parsed && (parsed.reset === true || parsed.action === 'clear')) {
+                replyText = '';
+                if (bubble) bubble.textContent = '';
+              }
               if (parsed && typeof parsed.chunk === 'string') {
                 replyText += parsed.chunk;
                 if (bubble) bubble.textContent = replyText;
