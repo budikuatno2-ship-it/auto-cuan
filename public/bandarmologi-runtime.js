@@ -16,12 +16,55 @@
       .replace(/'/g, '&#039;');
   }
 
+  function parseNumericValue(val) {
+    if (val == null) return null;
+    if (typeof val === 'number') return isFinite(val) ? val : null;
+    var s = String(val).trim();
+    if (!s || s === '—' || s === '-' || s.toLowerCase() === 'nan' || s.toLowerCase() === 'null') return null;
+
+    var mult = 1;
+    var cleanStr = s.replace(/Rp\.?\s*/gi, '').replace(/\s+/g, '');
+    if (/[0-9][tT]$/.test(cleanStr)) {
+      mult = 1e12;
+      cleanStr = cleanStr.slice(0, -1);
+    } else if (/[0-9][mM]$/.test(cleanStr) || /[0-9][bB]$/.test(cleanStr)) {
+      mult = 1e9;
+      cleanStr = cleanStr.slice(0, -1);
+    } else if (/[0-9](jt|juta)$/i.test(cleanStr)) {
+      mult = 1e6;
+      cleanStr = cleanStr.replace(/(jt|juta)$/i, '');
+    } else if (/[0-9](rb|k|ribu)$/i.test(cleanStr)) {
+      mult = 1e3;
+      cleanStr = cleanStr.replace(/(rb|k|ribu)$/i, '');
+    }
+
+    if (cleanStr.indexOf('.') >= 0 && cleanStr.indexOf(',') >= 0) {
+      if (cleanStr.lastIndexOf(',') > cleanStr.lastIndexOf('.')) {
+        cleanStr = cleanStr.replace(/\./g, '').replace(',', '.');
+      } else {
+        cleanStr = cleanStr.replace(/,/g, '');
+      }
+    } else if (cleanStr.indexOf(',') >= 0) {
+      if (/^\-?\d+,\d{1,2}$/.test(cleanStr)) {
+        cleanStr = cleanStr.replace(',', '.');
+      } else {
+        cleanStr = cleanStr.replace(/,/g, '');
+      }
+    }
+
+    cleanStr = cleanStr.replace(/[^\d.-]/g, '');
+    var n = parseFloat(cleanStr);
+    return isFinite(n) ? n * mult : null;
+  }
+
   function formatBrokerVal(num, includeSign) {
-    if (num == null || isNaN(num)) return '—';
-    var n = Number(num);
+    var n = parseNumericValue(num);
+    if (n == null) return '—';
     var sign = '';
     if (includeSign) {
       sign = n >= 0 ? '+' : '-';
+    } else if (n < 0) {
+      sign = '-';
     }
     var abs = Math.abs(n);
     if (abs >= 1e12) {
@@ -40,9 +83,10 @@
   }
 
   function formatIDR(num) {
-    if (num == null || isNaN(num)) return '—';
-    var abs = Math.abs(num);
-    var sign = num < 0 ? '-' : '';
+    var n = parseNumericValue(num);
+    if (n == null) return '—';
+    var abs = Math.abs(n);
+    var sign = n < 0 ? '-' : '';
     if (abs >= 1e12) return sign + (abs / 1e12).toFixed(2).replace(/\.00$/, '') + ' T';
     if (abs >= 1e9) return sign + (abs / 1e9).toFixed(2).replace(/\.00$/, '') + ' M';
     if (abs >= 1e6) return sign + (abs / 1e6).toFixed(1).replace(/\.0$/, '') + ' Jt';
@@ -51,8 +95,9 @@
   }
 
   function formatNumber(num) {
-    if (num == null || isNaN(num)) return '—';
-    return new Intl.NumberFormat('id-ID').format(num);
+    var n = parseNumericValue(num);
+    if (n == null) return '—';
+    return new Intl.NumberFormat('id-ID').format(n);
   }
 
   // IDX Broker Code to Full Security Name Dictionary (Audited September 2026)
@@ -238,6 +283,10 @@
   var bandarIntelError = null;
   var activeIntelAbortController = null;
   var intelRequestSeq = 0;
+  var activeBandarSummaryAbortController = null;
+  var bandarSummaryRequestSeq = 0;
+  var activeInsiderGraphAbortController = null;
+  var activeInsiderRosterAbortController = null;
 
   var RETAIL_BROKERS = ['YP', 'PD', 'XC', 'XL', 'NI'];
   var INSTITUTIONAL_BROKERS = ['AK', 'BK', 'RX', 'CC', 'KZ', 'ZP', 'CS', 'DB'];
@@ -1101,6 +1150,12 @@
 
   function setBandarSection(section) {
     bandarSection = (section === 'akumulasi' || section === 'intel' || section === 'network') ? section : 'summary';
+    if (activeBandarSummaryAbortController && (section === 'intel' || section === 'network')) {
+      try { activeBandarSummaryAbortController.abort(); } catch (_) {}
+    }
+    if (activeIntelAbortController && (section === 'summary' || section === 'akumulasi' || section === 'network')) {
+      try { activeIntelAbortController.abort(); } catch (_) {}
+    }
     if (section === 'network') {
       if (typeof root.switchAnalisisTab === 'function') {
         var pInsider = byId('panel-tab-insider');
@@ -1386,6 +1441,17 @@
       bandarSection = 'summary';
     }
 
+    bandarSummaryRequestSeq++;
+    var thisRequestSeq = bandarSummaryRequestSeq;
+    if (activeBandarSummaryAbortController) {
+      try { activeBandarSummaryAbortController.abort(); } catch (_) {}
+    }
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    activeBandarSummaryAbortController = controller;
+    var timer = controller ? setTimeout(function () {
+      try { controller.abort(); } catch (_) {}
+    }, 12000) : null;
+
     container.innerHTML = '<div class="flex flex-col items-center justify-center py-12"><div class="spinner"></div><p class="text-xs text-gray-400 mt-3">Mengambil data Bandarmologi &amp; Insider ' + escapeHtml(clean) + '...</p></div>';
 
     try {
@@ -1410,11 +1476,16 @@
 
       var data = null;
       try {
-        var res = await fetch(url);
+        var fetchOpts = controller ? { signal: controller.signal } : {};
+        var res = await fetch(url, fetchOpts);
         data = await res.json();
       } catch (_) {}
+      if (timer) clearTimeout(timer);
+      if (thisRequestSeq !== bandarSummaryRequestSeq) return;
 
       var vpsDates = await vpsDatesPromise;
+      if (thisRequestSeq !== bandarSummaryRequestSeq) return;
+
       if (vpsDates && vpsDates.length > 0) {
         if (!data || !Array.isArray(data.available_dates) || data.available_dates.length === 0) {
           if (!data) data = { success: true, ticker: clean };
@@ -1438,6 +1509,7 @@
       if (!data || !data.success || data.is_demo || !data.broker_summary || !data.broker_summary.top_buyers || data.broker_summary.top_buyers.length === 0) {
         var targetDateToFetch = currentBandarDate || (vpsDates && vpsDates[0]) || 'latest';
         var directVpsRaw = await fetchVpsBrokerSummary(clean, targetDateToFetch);
+        if (thisRequestSeq !== bandarSummaryRequestSeq) return;
         if (directVpsRaw) {
           var clientNormSummary = normalizeClientBrokerSummary(directVpsRaw, targetDateToFetch);
           if (clientNormSummary) {
@@ -1462,6 +1534,8 @@
         }
       }
 
+      if (thisRequestSeq !== bandarSummaryRequestSeq) return;
+
       if (!data || !data.success) {
         container.innerHTML = '<div class="p-6 text-center text-rose-400 text-xs">Gagal memuat data bandarmologi: ' + escapeHtml((data && data.error) || 'Koneksi ke data bursa terputus.') + '</div>';
         return;
@@ -1469,6 +1543,9 @@
 
       renderBandarmologiUI(container, data);
     } catch (err) {
+      if (timer) clearTimeout(timer);
+      if (thisRequestSeq !== bandarSummaryRequestSeq) return;
+      if (err && (err.name === 'AbortError' || String(err.message).includes('aborted'))) return;
       container.innerHTML = '<div class="p-6 text-center text-rose-400 text-xs">Error memuat data bandarmologi: ' + escapeHtml(err.message || String(err)) + '</div>';
     }
   }
@@ -2589,10 +2666,18 @@
     var safeName = String(name || '').trim();
     if (!safeName) return;
 
+    if (activeInsiderGraphAbortController) {
+      try { activeInsiderGraphAbortController.abort(); } catch (_) {}
+    }
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    activeInsiderGraphAbortController = controller;
+    var fetchOpts = controller ? { signal: controller.signal } : {};
+
     var vpsUrl = VPS_DATA_API_BASE + '/api/insider-network?ticker=' + encodeURIComponent(safeName);
-    fetch(vpsUrl)
+    fetch(vpsUrl, fetchOpts)
       .then(function (r) { return r.json(); })
       .then(function (data) {
+        if (activeInsiderGraphAbortController !== controller) return;
         if (data && (data.success || data.nodes) && data.nodes && data.nodes.length > 0) {
           FALLBACK_INSIDER_DATA[safeName.toLowerCase()] = data;
           if (typeof cb === 'function') cb(data);
@@ -2600,15 +2685,18 @@
           fallbackLocalGraph();
         }
       })
-      .catch(function () {
+      .catch(function (err) {
+        if (activeInsiderGraphAbortController !== controller) return;
+        if (err && (err.name === 'AbortError' || String(err.message).includes('aborted'))) return;
         fallbackLocalGraph();
       });
 
     function fallbackLocalGraph() {
       try {
-        fetch('/api/sector-hot?action=insider-network&query=' + encodeURIComponent(safeName))
+        fetch('/api/sector-hot?action=insider-network&query=' + encodeURIComponent(safeName), fetchOpts)
           .then(function (r) { return r.json(); })
           .then(function (data) {
+            if (activeInsiderGraphAbortController !== controller) return;
             if (data && (data.success || data.nodes) && data.nodes && data.nodes.length > 0) {
               FALLBACK_INSIDER_DATA[safeName.toLowerCase()] = data;
               if (typeof cb === 'function') cb(data);
@@ -2629,10 +2717,18 @@
       return;
     }
 
+    if (activeInsiderRosterAbortController) {
+      try { activeInsiderRosterAbortController.abort(); } catch (_) {}
+    }
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    activeInsiderRosterAbortController = controller;
+    var fetchOpts = controller ? { signal: controller.signal } : {};
+
     var vpsUrl = VPS_DATA_API_BASE + '/api/insider-roster?ticker=' + encodeURIComponent(cleanTicker);
-    fetch(vpsUrl)
+    fetch(vpsUrl, fetchOpts)
       .then(function (res) { return res.json(); })
       .then(function (data) {
+        if (activeInsiderRosterAbortController !== controller) return;
         if (data && data.success && Array.isArray(data.roster) && data.roster.length > 0) {
           vpsInsiderRosterCache[cleanTicker] = data.roster;
           if (typeof cb === 'function') cb(data.roster);
@@ -2640,15 +2736,18 @@
           fallbackLocalRoster();
         }
       })
-      .catch(function () {
+      .catch(function (err) {
+        if (activeInsiderRosterAbortController !== controller) return;
+        if (err && (err.name === 'AbortError' || String(err.message).includes('aborted'))) return;
         fallbackLocalRoster();
       });
 
     function fallbackLocalRoster() {
       try {
-        fetch('/api/sector-hot?action=insider-roster&ticker=' + encodeURIComponent(cleanTicker))
+        fetch('/api/sector-hot?action=insider-roster&ticker=' + encodeURIComponent(cleanTicker), fetchOpts)
           .then(function (res) { return res.json(); })
           .then(function (data) {
+            if (activeInsiderRosterAbortController !== controller) return;
             if (data && data.success && Array.isArray(data.roster)) {
               vpsInsiderRosterCache[cleanTicker] = data.roster;
               if (typeof cb === 'function') cb(data.roster);
