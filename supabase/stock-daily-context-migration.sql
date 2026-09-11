@@ -81,8 +81,7 @@ CREATE TABLE IF NOT EXISTS stock_daily_history (
   CONSTRAINT stock_daily_history_ticker_date_key UNIQUE (ticker, trade_date)
 );
 
-CREATE INDEX IF NOT EXISTS idx_stock_daily_history_ticker_date
-  ON stock_daily_history (ticker, trade_date DESC);
+DROP INDEX IF EXISTS idx_stock_daily_history_ticker_date;
 CREATE INDEX IF NOT EXISTS idx_stock_daily_history_trade_date
   ON stock_daily_history (trade_date DESC);
 
