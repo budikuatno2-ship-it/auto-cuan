@@ -273,6 +273,7 @@
   "test/telegram-monitor-dry-run.test.js",
   "test/telegram-monitor-hourly-batch.test.js",
   "test/telegram-monitor-local-runner.test.js",
+  "test/vps-monitor-local-runner.test.js",
   "test/telegram-monitor-plan-identity-migration.test.js",
   "test/telegram-monitor-plan-identity.test.js",
   "test/telegram-monitor.test.js",
