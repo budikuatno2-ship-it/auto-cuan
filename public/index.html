@@ -2081,7 +2081,6 @@
 
 <script src="/assets/idx-tickers.js"></script>
 <script src="/assets/fca-stocks.js"></script>
-<script src="/position-sizing-calculator.js?v=20260906-e1"></script>
 <script>
 // ===== PDF LIBRARY LOADER (multi-CDN fallback, on demand) =====
 // jsPDF + autoTable are ~350KB and are only needed when someone actually
@@ -4403,6 +4402,7 @@ function mktCtxFmtPct(v) { return (v > 0 ? '+' : '') + v.toFixed(2).replace('.',
 function mktCtxFmtRatio(v) { return v.toFixed(2).replace('.', ',') + 'x'; }
 function mktCtxFmtVol(v) { return (typeof formatCompactVolume === 'function') ? formatCompactVolume(v) : String(Math.round(v)); }
 function mktCtxFmtIDR(v) {
+    if (!Number.isFinite(v) || v === 0 || Math.round(v) === 0) return 'Rp 0';
     var abs = Math.abs(v);
     var sign = v < 0 ? '-' : '+';
     if (abs >= 1e9) return sign + 'Rp' + (abs / 1e9).toFixed(2).replace('.', ',') + ' M';
@@ -8224,6 +8224,7 @@ function getScreenerUiFilterValues(type) {
 function getScreenerTypeLabel(r, fallbackType) {
     if (r && r.screener_type) return r.screener_type;
     if (fallbackType === 'daytrade' || (r && (r.daytrade_score != null || r.status === 'READY_BREAKOUT'))) return 'Day Trade';
+    if (fallbackType === 'konglo' || (r && (r.group_code || r.is_konglo || r.konglo_group || r.group_name))) return 'Swing Konglo';
     if (fallbackType === 'nonkonglo' || (r && r.board)) return 'Swing Non-Konglo';
     return 'Swing Konglo';
 }

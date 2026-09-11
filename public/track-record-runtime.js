@@ -440,7 +440,7 @@ function triggerBacktestSimulation() {
 
     var elPfSub = document.getElementById('btMetricProfitFactorSub');
     if (elPfSub) {
-        elPfSub.textContent = 'Gross: Rp ' + (m.grossProfitRp / 1000000).toFixed(1) + 'M / ' + (m.grossLossRp / 1000000).toFixed(1) + 'M';
+        elPfSub.textContent = 'Gross: Rp ' + (m.grossProfitRp / 1000000).toFixed(1) + 'Jt / ' + (m.grossLossRp / 1000000).toFixed(1) + 'Jt';
     }
 
     var elExp = document.getElementById('btMetricExpectancy');
