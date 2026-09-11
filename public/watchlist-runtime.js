@@ -151,8 +151,8 @@
       }
 
       var noteHtml = item.notes ?
-        '<span onclick="window.openEditNotesModal(\'' + escapeAttr(item.ticker) + '\', \'' + escapeAttr(item.notes) + '\')" class="cursor-pointer text-[10px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded truncate max-w-[160px] hover:border-amber-500/40 transition" title="Klik untuk edit catatan: ' + escapeAttr(item.notes) + '">📝 ' + escapeHtml(item.notes) + '</span>' :
-        '<button onclick="window.openEditNotesModal(\'' + escapeAttr(item.ticker) + '\', \'\')" class="text-[10px] text-gray-500 hover:text-amber-300 transition" title="Tambah catatan">+ Catatan</button>';
+        '<span data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="cursor-pointer text-[10px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded truncate max-w-[160px] hover:border-amber-500/40 transition" title="Klik untuk edit catatan">📝 ' + escapeHtml(item.notes) + '</span>' :
+        '<button type="button" data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="text-[10px] text-gray-500 hover:text-amber-300 transition" title="Tambah catatan">+ Catatan</button>';
 
       html += '<tr class="hover:bg-dark-800/40 transition-colors">';
       html += '<td class="py-3 px-3 font-bold text-white text-sm"><div class="flex items-center gap-2 flex-wrap"><span>' + item.ticker + '</span>' + noteHtml + '</div></td>';
@@ -160,7 +160,7 @@
       html += '<td class="py-3 px-3 text-right font-semibold" style="color:' + chgColor + '">' + chgText + '</td>';
       html += '<td class="py-3 px-3">' + alertsHtml + '</td>';
       html += '<td class="py-3 px-3 text-right whitespace-nowrap">';
-      html += '<button onclick="window.openEditNotesModal(\'' + escapeAttr(item.ticker) + '\', \'' + escapeAttr(item.notes || '') + '\')" class="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/25 rounded text-xs mr-1.5 transition-all" title="Edit Catatan">📝 Edit</button>';
+      html += '<button type="button" data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/25 rounded text-xs mr-1.5 transition-all" title="Edit Catatan">📝 Edit</button>';
       html += '<button onclick="window.openCreateAlertModal(\'' + escapeAttr(item.ticker) + '\')" class="px-2 py-1 bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 rounded text-xs mr-1.5 transition-all">+ Alert</button>';
       html += '<button onclick="window.toggleWatchlistTicker(\'' + escapeAttr(item.ticker) + '\', null, event)" class="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 rounded text-xs transition-all">Hapus</button>';
       html += '</td>';
@@ -169,6 +169,18 @@
 
     html += '</tbody></table></div>';
     container.innerHTML = html;
+    if (container && !container.__notesDelegationBound) {
+      container.__notesDelegationBound = true;
+      container.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-action="edit-notes"]');
+        if (btn) {
+          e.preventDefault();
+          e.stopPropagation();
+          var t = btn.getAttribute('data-ticker');
+          openEditNotesModal(t);
+        }
+      });
+    }
   }
 
   async function toggleWatchlistTicker(ticker, notes, e) {
@@ -349,6 +361,11 @@
     var tickerDisplay = document.getElementById('wlNotesTickerDisplay');
     var notesText = document.getElementById('wlNotesText');
     if (!modal) return;
+
+    if (currentNotes === undefined && window.__AUTOCUAN_WATCHLIST_DATA__) {
+      var item = window.__AUTOCUAN_WATCHLIST_DATA__.find(function (it) { return it.ticker === ticker; });
+      if (item) currentNotes = item.notes;
+    }
 
     if (tickerInput) tickerInput.value = ticker || '';
     if (tickerDisplay) tickerDisplay.textContent = ticker || '';

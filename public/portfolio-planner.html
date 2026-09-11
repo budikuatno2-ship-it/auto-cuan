@@ -70,7 +70,7 @@
     var state={uid:null,username:'',plans:[],prices:{},lastPlan:null};
     function $(id){return document.getElementById(id)}
     function money(value){var n=Number(value);return Number.isFinite(n)?'Rp '+Math.round(n).toLocaleString('id-ID'):'—'}
-    function num(value){var n=Number(String(value==null?'':value).replace(/[^0-9.-]/g,''));return Number.isFinite(n)?n:null}
+    function num(value){var s=String(value==null?'':value).trim();if(/\.\d{3}/.test(s)||(s.match(/\./g)||[]).length>1)s=s.replace(/\./g,'');var n=Number(s.replace(/,/g,'.').replace(/[^0-9.-]/g,''));return Number.isFinite(n)?n:null}
     function ticker(value){var t=String(value||'').trim().toUpperCase().replace(/\.JK$/i,'');return /^[A-Z]{3,5}$/.test(t)?t:null}
     function safeJson(key,fallback){try{var raw=localStorage.getItem(key);return raw?JSON.parse(raw):fallback}catch(_){return fallback}}
     function saveJson(key,value){localStorage.setItem(key,JSON.stringify(value))}

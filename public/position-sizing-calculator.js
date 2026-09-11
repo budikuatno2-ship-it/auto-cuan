@@ -23,7 +23,13 @@
 
   function sanitizeNumber(val, fallback) {
     if (val === null || val === undefined || val === '') return fallback;
-    var n = Number(String(val).replace(/[^0-9.-]/g, ''));
+    if (typeof val === 'number') return isFinite(val) ? val : fallback;
+    var s = String(val).trim();
+    if (/\.\d{3}/.test(s) || (s.match(/\./g) || []).length > 1) {
+      s = s.replace(/\./g, '');
+    }
+    s = s.replace(/,/g, '.').replace(/[^0-9.-]/g, '');
+    var n = Number(s);
     return isFinite(n) ? n : fallback;
   }
 

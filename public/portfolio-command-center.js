@@ -49,7 +49,9 @@
   // of a fabricated 0.
   function num(value) {
     if (value === null || value === undefined) return null;
-    return finite(String(value).replace(/[^0-9.-]/g, ''));
+    var s = String(value).trim();
+    if (/\.\d{3}/.test(s) || (s.match(/\./g) || []).length > 1) s = s.replace(/\./g, '');
+    return finite(s.replace(/,/g, '.').replace(/[^0-9.-]/g, ''));
   }
 
   function money(value) {

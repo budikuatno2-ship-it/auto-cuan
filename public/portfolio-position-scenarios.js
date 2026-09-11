@@ -75,6 +75,8 @@
     rawBeforeClick('checkBudgetTicker', ['budgetCapital']);
     rawBeforeClick('calculatePlan', ['capital','entry','stop','tp1','tp2']);
     rawBeforeClick('saveOwned', ['ownedEntry','ownedStop','ownedTp1','ownedTp2']);
+    rawBeforeClick('evaluateRisk', ['riskCurrent','riskFunds','riskLimit']);
+    rawBeforeClick('saveJournal', ['journalPrice']);
   }
 
   function normalizedPlan(plan) {

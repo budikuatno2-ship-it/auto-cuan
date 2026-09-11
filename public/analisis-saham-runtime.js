@@ -58,8 +58,9 @@
   };
   root.mktCtxFmtIDR = function (v) {
     if (!Number.isFinite(v)) return '—';
+    if (v === 0 || Math.round(v) === 0) return 'Rp 0';
     var abs = Math.abs(v);
-    var sign = v >= 0 ? '+' : '-';
+    var sign = v > 0 ? '+' : '-';
     if (abs >= 1e12) return sign + (abs / 1e12).toFixed(2) + ' T';
     if (abs >= 1e9) return sign + (abs / 1e9).toFixed(2) + ' M';
     if (abs >= 1e6) return sign + (abs / 1e6).toFixed(1) + ' jt';
