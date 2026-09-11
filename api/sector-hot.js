@@ -61,6 +61,7 @@ const telegramDailyRecap = require('../lib/telegram-daily-recap');
 const userWatchlistService = require('../lib/user-watchlist-service');
 const recentFailureCooldown = require('../lib/recent-failure-cooldown');
 const swingNkRrWarning = require('../lib/swing-nk-rr-warning');
+const fastWatcherMomentum = require('../lib/intraday-fast-watcher-momentum');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -3288,6 +3289,55 @@ function getWibDateString() {
 
 function getWibHourString() {
   return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(11, 16) + ' WIB';
+}
+
+function getWibHourAndMinute(input) {
+  if (typeof input === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(input.trim())) {
+    var strParts = input.trim().split(':');
+    return { hour: Number(strParts[0]), minute: Number(strParts[1]) };
+  }
+  var d;
+  if (input instanceof Date && !isNaN(input.getTime())) {
+    d = input;
+  } else if (input != null && !isNaN(new Date(input).getTime())) {
+    d = new Date(input);
+  } else {
+    d = new Date();
+  }
+  var wib = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+  return { hour: wib.getUTCHours(), minute: wib.getUTCMinutes() };
+}
+
+function isSignalPublicationTimeRestrictedWib(nowValue) {
+  var hm = getWibHourAndMinute(nowValue);
+  var total = hm.hour * 60 + hm.minute;
+  // 09:00 - 09:15 WIB (whipsaw pembukaan)
+  if (total >= 540 && total <= 555) {
+    return {
+      blocked: true,
+      restricted: true,
+      window: '09:00-09:15',
+      reason: 'whipsaw_pembukaan_blocked',
+      description: 'Pengiriman sinyal diblokir pada pukul 09:00 - 09:15 WIB (whipsaw pembukaan).'
+    };
+  }
+  // 13:00 - 13:59 WIB (dead zone likuiditas)
+  if (total >= 780 && total <= 839) {
+    return {
+      blocked: true,
+      restricted: true,
+      window: '13:00-13:59',
+      reason: 'dead_zone_likuiditas_blocked',
+      description: 'Pengiriman sinyal dinonaktifkan pada pukul 13:00 - 13:59 WIB (dead zone likuiditas).'
+    };
+  }
+  return {
+    blocked: false,
+    restricted: false,
+    window: null,
+    reason: null,
+    description: null
+  };
 }
 
 
@@ -12618,9 +12668,13 @@ function formatDayTradeCandidateWarningList(r) {
 }
 
 function formatDayTradeRadarTelegramMessage(results) {
+  if (telegramTemplates.formatOpeningRadarMessage) {
+    return telegramTemplates.formatOpeningRadarMessage(results);
+  }
   var msg = telegramTemplates.formatDayTradeSignalMessage(results);
-  return '📡 Day Trade RADAR/MONITOR — BUKAN REKOMENDASI BELI\n' +
-    'Strict buy-signal gate = 0. Daftar ini hanya untuk pantauan: tunggu pullback/revalidasi, jangan chase.\n\n' + msg;
+  return '👀 RADAR PEMBUKAAN — PANTAUAN, BUKAN SINYAL BUY\n' +
+    'Kategori: Day Trade Signal (Pantauan / Radar)\n' +
+    '⚠️ Volatilitas pembukaan tinggi. Saham dalam daftar ini sedang dipantau dan DILARANG HAKA sebelum ada konfirmasi resmi.\n\n' + msg;
 }
 
 function formatDayTradeEmptyHeartbeatTelegramMessage(scannedCount, rawBatchPassedCount, reason) {
@@ -12640,6 +12694,30 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
   // Duplicate guard: same run_id = don't send the normal Signal twice, but allow one explicit radar retry after a silent no-signal result.
   if (!deferDelivery && duplicateRunHit && !allowRadarRetry && !forceRadarDebug) {
     return { sent: false, skipped: true, reason: (_dtTelegramLastRadarRunId === runId && sendRadarFallback) ? 'duplicate_radar_guard' : 'duplicate_run_id', duplicate_guard_hit: true, radar_requested: !!sendRadarFallback };
+  }
+
+  // === TIME GUARD: WIB Market Hours Filter (Fase 1: Rem Darurat) ===
+  // Blokir/skip pengiriman sinyal pada:
+  // - 09:00 - 09:15 WIB (whipsaw pembukaan)
+  // - 13:00 - 13:59 WIB (dead zone likuiditas)
+  var timeGuard = isSignalPublicationTimeRestrictedWib(options.scheduled_time || options.scheduledTime || options.now);
+  if (timeGuard.blocked && !options.bypass_time_guard) {
+    _dtTelegramLastRunId = runId;
+    _dtTelegramLastRunReason = timeGuard.reason;
+    return {
+      sent: false,
+      skipped: true,
+      reason: timeGuard.reason,
+      time_guard_blocked: true,
+      time_guard_window: timeGuard.window,
+      message: timeGuard.description,
+      published_count: publishedCount,
+      raw_candidate_count: 0,
+      selected_count: 0,
+      strict_signal_count: 0,
+      radar_count: 0,
+      hard_reject_count: 0
+    };
   }
 
   try {
@@ -12718,40 +12796,19 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       return pri != null && pri <= 6;
     });
 
-    // Step 3: If not enough, include WAIT_PULLBACK/SPECULATIVE with strong confirmation
-    if (actionable.length < 5) {
-      var seenActionable = {}; actionable.forEach(function(r) { seenActionable[r.ticker] = true; });
-      var watchlist = nonAvoid.filter(function(r) {
-        return !seenActionable[r.ticker] && (r.status === 'WAIT_PULLBACK' || r.status === 'SPECULATIVE') && (r.daytrade_score || 0) >= 60;
-      }).slice(0, 5 - actionable.length);
-      actionable = actionable.concat(watchlist);
-    }
+    // Step 3: Matikan paksaan fallback kuota 5 saham (Fase 2).
+    // Hentikan penarikan kandidat cadangan WAIT_PULLBACK / SPECULATIVE demi kuota 5.
+    // Hanya kirim saham yang benar-benar lolos kriteria prima/actionable.
 
     // Step 4: Sort by rank potential (rankCandidatesByPotential is the
     // canonical final-list ordering used by every other digest in this file
     // — Top10, screener digests, daily Top5, tier1/tier2, etc.).
-    //
-    // A confirmed dead-code bug used to live here: an earlier "sort by
-    // priority tier then score" comparator ran first, but its result was
-    // immediately discarded by this rankCandidatesByPotential sort running
-    // right after it on the same array — Array.prototype.sort always
-    // reflects only the LAST sort applied, so the priority-tier ordering
-    // never had any effect on the actual published output. Removing it here
-    // changes zero live behavior (this rankCandidatesByPotential sort was
-    // already the one determining the real digest order) — it only removes
-    // the misleading, wastefully-computed dead sort so a future edit to the
-    // priority-tier comparator doesn't appear to change behavior when it
-    // silently wouldn't.
     actionable.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
     var finalList = actionable.slice(0, 5);
     var headerNote = '';
 
-    // Step 5: Fallback — if still empty but published_count > 0
-    if (finalList.length === 0 && nonAvoid.length > 0) {
-      nonAvoid.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
-      finalList = nonAvoid.slice(0, 5);
-      headerNote = 'Tidak ada kandidat A/B bersih, menampilkan watchlist terbaik.';
-    }
+    // Step 5: Matikan fallback ke watchlist jika finalList kosong.
+    // Jika 0 saham lolos kriteria prima, diam (jangan kirim sinyal buy paksaan).
 
     var diagnostics = buildDayTradeTelegramDiagnostics(candidates, stageByTicker, {
       scanned_count: publishedCount,
@@ -12872,6 +12929,22 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       if (sendRadarFallback && _dtTelegramLastRadarRunId === runId) return Object.assign(silentResult, { reason: 'duplicate_radar_guard', duplicate_guard_hit: true, radar_skipped_reason: 'duplicate_radar_guard' });
       if (forceRadarDebug && duplicateRunHit && !allowRadarRetry) return silentResult;
       if (sendRadarFallback && radarCandidates.length > 0) {
+        var timeGuard = isSignalPublicationTimeRestrictedWib(options.scheduled_time || options.scheduledTime || options.now);
+        if (timeGuard.blocked && !options.bypass_time_guard) {
+          _dtTelegramLastRunId = runId;
+          _dtTelegramLastRunReason = timeGuard.reason;
+          return Object.assign(silentResult, {
+            sent: false,
+            skipped: true,
+            reason: timeGuard.reason,
+            time_guard_blocked: true,
+            time_guard_window: timeGuard.window,
+            message: timeGuard.description,
+            radar_sent: false,
+            radar_count: radarCandidates.length,
+            strict_signal_count: 0
+          });
+        }
         var radarMsg = formatDayTradeRadarTelegramMessage(radarCandidates);
         var radarResult = await telegramNotifier.sendTelegramMessage(radarMsg);
         radarResult.reason = radarResult.sent ? 'daytrade_radar_monitor_fallback_sent' : 'telegram_send_failed';
@@ -12966,6 +13039,28 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     var finalMsg = msg;
     if (dtAiNotes.length > 0) {
       finalMsg = msg + '\n\nCatatan AI:\n' + dtAiNotes[0];
+    }
+
+    // === TIME GUARD: WIB Market Hours Filter (Fase 1: Rem Darurat) ===
+    var timeGuard = isSignalPublicationTimeRestrictedWib(options.scheduled_time || options.scheduledTime || options.now);
+    if (timeGuard.blocked && !options.bypass_time_guard) {
+      _dtTelegramLastRunId = runId;
+      _dtTelegramLastRunReason = timeGuard.reason;
+      return {
+        sent: false,
+        skipped: true,
+        reason: timeGuard.reason,
+        time_guard_blocked: true,
+        time_guard_window: timeGuard.window,
+        message: timeGuard.description,
+        published_count: publishedCount,
+        raw_candidate_count: rawCount,
+        selected_count: finalList.length,
+        strict_signal_count: finalList.length,
+        radar_count: radarCandidates.length,
+        hard_reject_count: diagnostics.hard_reject_count || 0,
+        diagnostics: diagnostics
+      };
     }
 
     // Send
@@ -14001,7 +14096,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
       return s.indexOf('SPECULATIVE') < 0 && (toNum(r.score) || 0) >= 65 && (toNum(r.risk_reward) || 0) >= 1.3;
     });
 
-    // Build final
+    // Build final: tier1 first, then tier2 to fill, then any digest candidate
     tier1.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
     tier2.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
     var finalList = tier1.slice(0, 5);
@@ -14215,6 +14310,8 @@ module.exports.__test = {
   sendSwingKongloNoSavedRowsHeartbeat: sendSwingKongloNoSavedRowsHeartbeat,
   sendSwingNkTelegramNotification: sendSwingNkTelegramNotification,
   sendDayTradeTelegramNotification: sendDayTradeTelegramNotification,
+  isSignalPublicationTimeRestrictedWib: isSignalPublicationTimeRestrictedWib,
+  getWibHourAndMinute: getWibHourAndMinute,
   registerCandidatesForMonitoring: registerCandidatesForMonitoring,
   fetchRecentSlHitRowsForCooldown: fetchRecentSlHitRowsForCooldown,
   annotateRecentlyFailedSimilarSetups: annotateRecentlyFailedSimilarSetups,
@@ -14269,5 +14366,12 @@ module.exports.__test = {
   resetIncludesAnyDiagnostics: resetIncludesAnyDiagnostics,
   calcScreenerRSI: calcScreenerRSI,
   nkCalcRSI: nkCalcRSI,
-  deriveDayTradeTimeframeContext: deriveDayTradeTimeframeContext
+  deriveDayTradeTimeframeContext: deriveDayTradeTimeframeContext,
+  isOpeningRangeVelocityWindow: fastWatcherMomentum.isOpeningRangeVelocityWindow,
+  evaluateOpeningVelocityGuard: fastWatcherMomentum.evaluateOpeningVelocityGuard
 };
+
+module.exports.isSignalPublicationTimeRestrictedWib = isSignalPublicationTimeRestrictedWib;
+module.exports.getWibHourAndMinute = getWibHourAndMinute;
+module.exports.isOpeningRangeVelocityWindow = fastWatcherMomentum.isOpeningRangeVelocityWindow;
+module.exports.evaluateOpeningVelocityGuard = fastWatcherMomentum.evaluateOpeningVelocityGuard;

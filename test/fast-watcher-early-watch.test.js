@@ -228,10 +228,10 @@ function confirmationSequence(env, extraOpts) {
         results: batch.map(item => {
           run += 1;
           return {
-            ticker: item.ticker, last_price: run === 1 ? 100 : 101, entry_low: 98, entry_high: 103,
+            ticker: item.ticker, last_price: run === 1 ? 100 : (run === 2 ? 101 : 102), entry_low: 98, entry_high: 105,
             tp1: 119, stop_loss: 95, status: 'EARLY_RADAR', daytrade_score: 75,
-            volume_today: run === 1 ? 1000 : 1800, avg_volume_20d: 700, volume_ratio_20d: run === 1 ? 1.5 : 1.8,
-            momentum_score: 14, liquidity_score: 16, risk_reward: 2, high_price: 103, low_price: 98
+            volume_today: run === 1 ? 1000 : (run === 2 ? 1800 : 2800), avg_volume_20d: 700, volume_ratio_20d: run === 1 ? 1.5 : (run === 2 ? 1.8 : 2.1),
+            momentum_score: 14, liquidity_score: 16, risk_reward: 2, high_price: 105, low_price: 98
           };
         }),
         failed: []
@@ -256,10 +256,12 @@ function confirmationSequence(env, extraOpts) {
     }, extraOpts || {});
     const first = await guarded.run({ ...common, scheduledTime: '09:10' });
     assert.equal(first.system_published, 0);
-    const second = await guarded.run({ ...common, scheduledTime: '09:13' });
-    assert.equal(second.confirmed.length, 1);
-    assert.equal(second.system_published, 1);
-    return { first, second };
+    const second = await guarded.run({ ...common, scheduledTime: '09:12' });
+    assert.equal(second.system_published, 0);
+    const third = await guarded.run({ ...common, scheduledTime: '09:14' });
+    assert.equal(third.confirmed.length, 1);
+    assert.equal(third.system_published, 1);
+    return { first, second: third };
   };
 }
 
@@ -296,18 +298,24 @@ test('Early Watch never creates READY_CONFIRMED (pool.js untouched)', () => {
     shortlistRows: [{ ticker: 'PADA', source_rank: 1 }], observations: [obs('PADA', '09:10')], priorState: null
   });
   const second = pool.process({
-    sampleDate: '2026-08-12', scheduledTime: '09:13',
+    sampleDate: '2026-08-12', scheduledTime: '09:12',
     shortlistRows: [{ ticker: 'PADA', source_rank: 1 }],
-    observations: [obs('PADA', '09:13', { current_price: 101, volume: 1700, relative_volume: 1.5 })],
+    observations: [obs('PADA', '09:12', { current_price: 101, volume: 1700, relative_volume: 1.5 })],
     priorState: first.state
   });
   const third = pool.process({
-    sampleDate: '2026-08-12', scheduledTime: '09:22',
+    sampleDate: '2026-08-12', scheduledTime: '09:14',
     shortlistRows: [{ ticker: 'PADA', source_rank: 1 }],
-    observations: [obs('PADA', '09:22', { current_price: 102, volume: 3200, relative_volume: 2 })],
+    observations: [obs('PADA', '09:14', { current_price: 102, volume: 2800, relative_volume: 1.9 })],
     priorState: second.state
   });
-  assert.equal(third.state.tickers.PADA.status, 'READY_CONFIRMED');
+  const fourth = pool.process({
+    sampleDate: '2026-08-12', scheduledTime: '09:15',
+    shortlistRows: [{ ticker: 'PADA', source_rank: 1 }],
+    observations: [obs('PADA', '09:15', { current_price: 102.8, volume: 4200, relative_volume: 2.4 })],
+    priorState: third.state
+  });
+  assert.equal(fourth.state.tickers.PADA.status, 'READY_CONFIRMED');
 });
 
 test('existing confirmed signal is emitted normally after an Early Watch alert, and its payload is unchanged', async () => {
@@ -937,23 +945,29 @@ test('FIX2.4 a delayed alert cannot sneak out immediately before/after an alread
     shortlistRows: [{ ticker: 'PADA', source_rank: 1 }], observations: [obs('PADA', '09:10')], priorState: null
   });
   const second = pool.process({
-    sampleDate: '2026-08-12', scheduledTime: '09:13',
+    sampleDate: '2026-08-12', scheduledTime: '09:12',
     shortlistRows: [{ ticker: 'PADA', source_rank: 1 }],
-    observations: [obs('PADA', '09:13', { current_price: 101, volume: 1700, relative_volume: 1.5 })],
+    observations: [obs('PADA', '09:12', { current_price: 101, volume: 1700, relative_volume: 1.5 })],
     priorState: first.state
   });
   const third = pool.process({
-    sampleDate: '2026-08-12', scheduledTime: '09:22',
+    sampleDate: '2026-08-12', scheduledTime: '09:14',
     shortlistRows: [{ ticker: 'PADA', source_rank: 1 }],
-    observations: [obs('PADA', '09:22', { current_price: 102, volume: 3200, relative_volume: 2 })],
+    observations: [obs('PADA', '09:14', { current_price: 102, volume: 2800, relative_volume: 1.9 })],
     priorState: second.state
   });
-  assert.equal(third.state.tickers.PADA.status, 'READY_CONFIRMED');
+  const fourth = pool.process({
+    sampleDate: '2026-08-12', scheduledTime: '09:15',
+    shortlistRows: [{ ticker: 'PADA', source_rank: 1 }],
+    observations: [obs('PADA', '09:15', { current_price: 102.8, volume: 4200, relative_volume: 2.4 })],
+    priorState: third.state
+  });
+  assert.equal(fourth.state.tickers.PADA.status, 'READY_CONFIRMED');
 
   const state = freshState('PADA', first.state.tickers.PADA, '2026-08-12', '09:10', '2026-08-12T02:10:00.000Z');
   assert.equal(state.tickers.PADA.early_watch_notification_attempted, false);
   const sent = fakeSender();
-  const result = await earlyWatchPublisher.sendPendingNotifications(state, third.state, { env: EW_ENV, notifyFn: sent.fn });
+  const result = await earlyWatchPublisher.sendPendingNotifications(state, fourth.state, { env: EW_ENV, notifyFn: sent.fn });
   assert.equal(result.early_watch_sent, 0);
   assert.equal(sent.calls.length, 0);
   assert.equal(result.state.tickers.PADA.early_watch_notification_attempted, false);
