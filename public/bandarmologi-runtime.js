@@ -452,9 +452,24 @@
     }
 
     var netFlow = summary.net_flow || 0;
+    var isPos = netFlow >= 0;
+    var tBuyer = (finalBuyers[0] && (finalBuyers[0].broker || finalBuyers[0].broker_code || finalBuyers[0].code)) || '—';
+    var tSeller = (finalSellers[0] && (finalSellers[0].broker || finalSellers[0].broker_code || finalSellers[0].code)) || '—';
+    var top1 = isPos ? tBuyer : tSeller;
     var series = Array.isArray(summary.date_headers) && summary.date_headers.length > 0
       ? summary.date_headers
-      : (netFlow !== 0 ? [{ date: summary.date || 'latest', net_val: netFlow, status: netFlow >= 0 ? 'ACC' : 'DIST' }] : []);
+      : (netFlow !== 0 ? [{
+          date: summary.date || 'latest',
+          net_val: netFlow,
+          status: isPos ? 'ACC' : 'DIST',
+          top_buyer: tBuyer,
+          top_seller: tSeller,
+          top_1_broker: top1,
+          top1_broker: top1,
+          top_broker: top1,
+          buyer1: tBuyer,
+          seller1: tSeller
+        }] : []);
 
     return {
       ticker: ticker || '',
@@ -1985,17 +2000,23 @@
     html += '    </div>';
 
     html += '    <div class="flex flex-wrap items-center gap-2">';
-    // Rentang Selector (1 Hari, 7 Hari, 30 Hari, Custom)
+    // Rentang Selector (1D, 5D, 7D, 14D, 30D, 60D, Custom)
     var ar1Class = brokerSummaryRange === '1d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var ar5Class = brokerSummaryRange === '5d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var ar7Class = brokerSummaryRange === '7d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var ar14Class = brokerSummaryRange === '14d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var ar30Class = brokerSummaryRange === '30d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
+    var ar60Class = brokerSummaryRange === '60d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
     var arCustomClass = brokerSummaryRange === 'custom' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    html += '      <div class="flex items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
+    html += '      <div class="flex flex-wrap items-center gap-1 bg-dark-800 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
     html += '        <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Rentang:</span>';
-    html += '        <button type="button" id="toggleAccRange1d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'1d\')" class="px-2.5 py-1 rounded-md transition ' + ar1Class + '">1 Hari</button>';
-    html += '        <button type="button" id="toggleAccRange7d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'7d\')" class="px-2.5 py-1 rounded-md transition ' + ar7Class + '">7 Hari</button>';
-    html += '        <button type="button" id="toggleAccRange30d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'30d\')" class="px-2.5 py-1 rounded-md transition ' + ar30Class + '">30 Hari</button>';
-    html += '        <button type="button" id="toggleAccRangeCustom" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'custom\')" class="px-2.5 py-1 rounded-md transition ' + arCustomClass + '">📅 Custom</button>';
+    html += '        <button type="button" id="toggleAccRange1d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'1d\')" class="px-2 py-1 rounded-md transition ' + ar1Class + '">1D</button>';
+    html += '        <button type="button" id="toggleAccRange5d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'5d\')" class="px-2 py-1 rounded-md transition ' + ar5Class + '">5D</button>';
+    html += '        <button type="button" id="toggleAccRange7d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'7d\')" class="px-2 py-1 rounded-md transition ' + ar7Class + '">7D</button>';
+    html += '        <button type="button" id="toggleAccRange14d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'14d\')" class="px-2 py-1 rounded-md transition ' + ar14Class + '">14D</button>';
+    html += '        <button type="button" id="toggleAccRange30d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'30d\')" class="px-2 py-1 rounded-md transition ' + ar30Class + '">30D</button>';
+    html += '        <button type="button" id="toggleAccRange60d" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'60d\')" class="px-2 py-1 rounded-md transition ' + ar60Class + '">60D</button>';
+    html += '        <button type="button" id="toggleAccRangeCustom" onclick="BandarmologiRuntime.setBrokerSummaryRange(\'custom\')" class="px-2 py-1 rounded-md transition ' + arCustomClass + '">📅 Custom</button>';
     html += '      </div>';
 
     if (brokerSummaryRange === 'custom') {
@@ -2250,7 +2271,7 @@
     if (series.length === 0) {
       html += '    <div class="text-gray-500 text-center py-6 text-xs">Belum ada riwayat harian untuk emiten ini.</div>';
     } else {
-      html += '    <div class="overflow-x-auto overflow-y-auto max-h-[420px] scrollbar-thin" style="max-height: 420px; overflow-y: auto;">';
+      html += '    <div class="overflow-x-auto overflow-y-auto max-h-[420px] scrollbar-thin" style="max-height: 420px; overflow: auto; pointer-events: auto;">';
       html += '      <table class="w-full text-left text-xs whitespace-nowrap">';
       html += '        <thead class="sticky top-0 bg-slate-900 z-10" style="position: sticky; top: 0; z-index: 10; background-color: #0f172a;">';
       html += '          <tr class="text-[11px] text-gray-400 border-b border-dark-600/40 bg-slate-900">';
@@ -2262,7 +2283,7 @@
       html += '            <th class="py-2.5 px-2.5 text-center">Aksi</th>';
       html += '          </tr>';
       html += '        </thead>';
-      html += '        <tbody class="divide-y divide-dark-600/20">';
+      html += '        <tbody class="divide-y divide-dark-600/20" style="pointer-events: auto;">';
 
       var revSeries = series.slice().reverse();
       for (var di = 0; di < revSeries.length; di++) {
@@ -2284,10 +2305,23 @@
         }
 
         // Top 1 Broker
-        var top1Code = isPositive ? (dayRow.top_buyer || '—') : (dayRow.top_seller || '—');
-        var top1Color = isPositive ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30' : 'text-rose-300 bg-rose-500/10 border-rose-500/30';
-        var top1Badge = top1Code !== '—'
-          ? '<span class="px-2 py-0.5 rounded font-mono font-bold text-[10px] border ' + top1Color + '">' + escapeHtml(top1Code) + ' (' + (isPositive ? 'Buy' : 'Sell') + ')</span>'
+        var top1Code = dayRow.top_1_broker || dayRow.top1_broker || dayRow.top_broker || (isPositive ? (dayRow.top_buyer || dayRow.buyer1) : (dayRow.top_seller || dayRow.seller1));
+        if (!top1Code || top1Code === '—') {
+          top1Code = isPositive
+            ? (dayRow.top_buyer || dayRow.buyer1 || (dayRow.top_buyers && dayRow.top_buyers[0] && (dayRow.top_buyers[0].broker || dayRow.top_buyers[0].code)) || '—')
+            : (dayRow.top_seller || dayRow.seller1 || (dayRow.top_sellers && dayRow.top_sellers[0] && (dayRow.top_sellers[0].broker || dayRow.top_sellers[0].code)) || '—');
+        }
+        if (!top1Code || top1Code === '—') {
+          top1Code = dayRow.top_1_broker || dayRow.top1_broker || dayRow.top_broker || dayRow.top_buyer || dayRow.top_seller || dayRow.buyer1 || dayRow.seller1 || '—';
+        }
+        var isTopBuyer = isPositive;
+        if (dayRow.top_buyer && dayRow.top_buyer === top1Code) isTopBuyer = true;
+        else if (dayRow.top_seller && dayRow.top_seller === top1Code) isTopBuyer = false;
+        else if (dayRow.buyer1 && dayRow.buyer1 === top1Code) isTopBuyer = true;
+        else if (dayRow.seller1 && dayRow.seller1 === top1Code) isTopBuyer = false;
+        var top1Color = isTopBuyer ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30' : 'text-rose-300 bg-rose-500/10 border-rose-500/30';
+        var top1Badge = top1Code && top1Code !== '—'
+          ? '<span class="px-2 py-0.5 rounded font-mono font-bold text-[10px] border ' + top1Color + '">' + escapeHtml(top1Code) + ' (' + (isTopBuyer ? 'Buy' : 'Sell') + ')</span>'
           : '<span class="text-gray-500 font-mono">—</span>';
 
         // Daily Dominance status
@@ -3345,9 +3379,9 @@
 
     // Filter controls within table card
     html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-3 bg-dark-900/60 p-2.5 rounded-lg border border-dark-700/50">';
-    html += '    <div class="relative flex-1 min-w-[200px]">';
-    html += '      <span class="absolute left-2.5 top-2 text-gray-400 text-xs">🔍</span>';
-    html += '      <input type="text" oninput="BandarmologiRuntime.filterRosterTable(this.value)" placeholder="Filter nama atau jabatan dalam tabel..." class="w-full bg-dark-800 border border-dark-600/80 rounded-lg pl-8 pr-3 py-1.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500">';
+    html += '    <div class="relative flex items-center flex-1 min-w-[200px]">';
+    html += '      <span class="absolute left-3 text-gray-400 text-sm pointer-events-none">🔍</span>';
+    html += '      <input type="text" oninput="BandarmologiRuntime.filterRosterTable(this.value)" placeholder="Filter nama atau jabatan dalam tabel..." class="w-full bg-dark-800 border border-dark-600/80 rounded-lg pl-10 pr-3 py-1.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500" style="padding-left: 2.5rem;">';
     html += '    </div>';
     html += '    <div class="flex items-center gap-2">';
     html += '      <span class="text-xs text-gray-400">Kategori:</span>';
@@ -3362,7 +3396,7 @@
     html += '  </div>';
 
     // Full Table Container (Without row cutting/truncation)
-    html += '  <div class="overflow-x-auto max-h-[460px] scrollbar-thin border border-dark-700/60 rounded-xl">';
+    html += '  <div class="overflow-x-auto overflow-y-auto max-h-[460px] scrollbar-thin border border-dark-700/60 rounded-xl" style="max-height: 460px; overflow: auto; pointer-events: auto;">';
     html += '    <table class="w-full text-xs text-left border-collapse min-w-[720px]">';
     html += '      <thead class="sticky top-0 bg-dark-900/95 backdrop-blur z-10 border-b border-dark-700/80 text-gray-400 font-semibold">';
     html += '        <tr>';
@@ -3375,7 +3409,7 @@
     html += '          <th class="py-2.5 px-3 text-center w-28">Aksi</th>';
     html += '        </tr>';
     html += '      </thead>';
-    html += '      <tbody id="insiderRosterTbody" class="divide-y divide-dark-700/30 text-gray-300">';
+    html += '      <tbody id="insiderRosterTbody" class="divide-y divide-dark-700/30 text-gray-300" style="pointer-events: auto;">';
     html += '        <tr><td colspan="7" class="py-8 text-center text-xs text-gray-400"><div class="spinner mx-auto mb-2"></div>Memuat data pemegang saham dari VPS...</td></tr>';
     html += '      </tbody>';
     html += '    </table>';
@@ -3388,7 +3422,7 @@
     html += '  <div class="bg-dark-800/90 border border-dark-600/50 rounded-xl p-4 mb-4 shadow-md">';
     html += '    <div class="relative w-full max-w-2xl mb-2">';
     html += '      <div class="relative flex items-center">';
-    html += '        <span class="absolute left-3.5 text-gray-400 text-sm">🔍</span>';
+    html += '        <span class="absolute left-3.5 text-gray-400 text-sm pointer-events-none">🔍</span>';
     html += '        <input id="insiderSearchInput" type="text" value="' + escapeHtml(activeInsiderNetworkEntity) + '" placeholder="Cari nama insider/tokoh (cth: Belvin Tannadi, Prajogo Pangestu, Haji Isam, Garibaldi Thohir)..." oninput="BandarmologiRuntime.handleInsiderSearchInput(this.value)" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-11 pr-10 py-2.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition" style="padding-left: 2.75rem;">';
     html += '        <button type="button" id="btnClearInsiderSearch" onclick="BandarmologiRuntime.clearInsiderSearch()" class="absolute right-3 text-gray-400 hover:text-gray-200 text-xs px-1" style="display: none;">✕</button>';
     html += '      </div>';
@@ -3992,7 +4026,20 @@
         for (var bIdx = 0; bIdx < topBrokers.length; bIdx++) {
           var bItem = topBrokers[bIdx];
           var bCode = typeof bItem === 'string' ? bItem : (bItem.broker || bItem.broker_code || '');
-          var bAvg = typeof bItem === 'object' && bItem.avg_price ? bItem.avg_price : null;
+          var bAvg = typeof bItem === 'object' && (bItem.avg_price || bItem.avg_buy || bItem.avgPrice || bItem.bavg) ? (bItem.avg_price || bItem.avg_buy || bItem.avgPrice || bItem.bavg) : null;
+          if (!bAvg && bCode) {
+            var bSum = (lastBandarData && lastBandarData.broker_summary) || {};
+            var bAcc = (lastBandarData && lastBandarData.broker_accumulation) || {};
+            var allBuyers = (bSum.gross_buyers || bSum.top_buyers || bSum.net_buyers || bSum.buyers || bSum.brokers || []);
+            var found = allBuyers.find(function(b) { return (b.broker || b.broker_code || b.code) === bCode; });
+            if (!found) {
+              var accBrokers = (bAcc.top_buyers || bAcc.net_buyers || bAcc.buyers || bAcc.brokers || []);
+              found = accBrokers.find(function(b) { return (b.broker || b.broker_code || b.code) === bCode; });
+            }
+            if (found) {
+              bAvg = found.avg_price || found.avg_buy || found.bavg || (found.bvol > 0 ? Math.round(found.bval / found.bvol) : null);
+            }
+          }
           var bForeign = isForeignBroker(bCode);
           html += '        <span class="px-2 py-0.5 rounded text-[11px] font-mono font-semibold ' + (bForeign ? 'bg-sky-500/10 text-sky-300 border border-sky-500/30' : 'bg-dark-600/60 text-gray-200 border border-dark-500') + '">' + escapeHtml(bCode) + (bAvg ? ' @ ' + formatNumber(bAvg) : '') + '</span>';
         }
