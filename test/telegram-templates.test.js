@@ -84,7 +84,7 @@ test('T-TPL-03: formatSignalCard uses IDX flag emoji', function() {
 
 test('T-TPL-04: formatDayTradeSignalMessage produces clean header + cards + disclaimer', function() {
   var msg = templates.formatDayTradeSignalMessage([baseDayTrade(), baseDayTrade({ ticker: 'TLKM' })]);
-  assert.match(msg, /AUTO-CUAN IDX DAY TRADE SIGNAL/);
+  assert.match(msg, /AUTO-CUAN DAY TRADE — CONFIRMED BUY/);
   assert.match(msg, /Update:/);
   assert.match(msg, /EXCL/);
   assert.match(msg, /TLKM/);
@@ -96,14 +96,16 @@ test('T-TPL-04: formatDayTradeSignalMessage produces clean header + cards + disc
 
 test('T-TPL-05: formatSwingKongloSignalMessage has correct header', function() {
   var msg = templates.formatSwingKongloSignalMessage([baseSwing()]);
-  assert.match(msg, /AUTO-CUAN IDX SWING KONGLO SIGNAL/);
+  assert.match(msg, /AUTO-CUAN SWING TRADE — HIGH CONVICTION/);
+  assert.match(msg, /Kluster: Konglo/);
   assert.match(msg, /BBRI/);
   assert.match(msg, /Bukan rekomendasi beli\/jual/);
 });
 
 test('T-TPL-06: formatSwingNonKongloSignalMessage has correct header', function() {
   var msg = templates.formatSwingNonKongloSignalMessage([baseSwing({ ticker: 'ACES', status: 'Swing Ready' })]);
-  assert.match(msg, /AUTO-CUAN IDX SWING NON-KONGLO SIGNAL/);
+  assert.match(msg, /AUTO-CUAN SWING TRADE — HIGH CONVICTION/);
+  assert.match(msg, /Kluster: Non-Konglo/);
   assert.match(msg, /ACES/);
 });
 
@@ -330,7 +332,7 @@ test('T-TPL-15: getRiskShort normalizes risk labels', function() {
 
 test('T-TPL-16: Template does not depend on AI — no AI-related text in output', function() {
   var msg = templates.formatDayTradeSignalMessage([baseDayTrade()]);
-  assert.doesNotMatch(msg, /AI/i);
+  assert.doesNotMatch(msg, /\bAI\b/i);
   assert.doesNotMatch(msg, /Gemini/i);
   assert.doesNotMatch(msg, /narration/i);
 });

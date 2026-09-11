@@ -12668,9 +12668,13 @@ function formatDayTradeCandidateWarningList(r) {
 }
 
 function formatDayTradeRadarTelegramMessage(results) {
+  if (telegramTemplates.formatOpeningRadarMessage) {
+    return telegramTemplates.formatOpeningRadarMessage(results);
+  }
   var msg = telegramTemplates.formatDayTradeSignalMessage(results);
-  return '📡 Day Trade RADAR/MONITOR — BUKAN REKOMENDASI BELI\n' +
-    'Strict buy-signal gate = 0. Daftar ini hanya untuk pantauan: tunggu pullback/revalidasi, jangan chase.\n\n' + msg;
+  return '👀 RADAR PEMBUKAAN — PANTAUAN, BUKAN SINYAL BUY\n' +
+    'Kategori: Day Trade Signal (Pantauan / Radar)\n' +
+    '⚠️ Volatilitas pembukaan tinggi. Saham dalam daftar ini sedang dipantau dan DILARANG HAKA sebelum ada konfirmasi resmi.\n\n' + msg;
 }
 
 function formatDayTradeEmptyHeartbeatTelegramMessage(scannedCount, rawBatchPassedCount, reason) {
@@ -12792,40 +12796,19 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       return pri != null && pri <= 6;
     });
 
-    // Step 3: If not enough, include WAIT_PULLBACK/SPECULATIVE with strong confirmation
-    if (actionable.length < 5) {
-      var seenActionable = {}; actionable.forEach(function(r) { seenActionable[r.ticker] = true; });
-      var watchlist = nonAvoid.filter(function(r) {
-        return !seenActionable[r.ticker] && (r.status === 'WAIT_PULLBACK' || r.status === 'SPECULATIVE') && (r.daytrade_score || 0) >= 60;
-      }).slice(0, 5 - actionable.length);
-      actionable = actionable.concat(watchlist);
-    }
+    // Step 3: Matikan paksaan fallback kuota 5 saham (Fase 2).
+    // Hentikan penarikan kandidat cadangan WAIT_PULLBACK / SPECULATIVE demi kuota 5.
+    // Hanya kirim saham yang benar-benar lolos kriteria prima/actionable.
 
     // Step 4: Sort by rank potential (rankCandidatesByPotential is the
     // canonical final-list ordering used by every other digest in this file
     // — Top10, screener digests, daily Top5, tier1/tier2, etc.).
-    //
-    // A confirmed dead-code bug used to live here: an earlier "sort by
-    // priority tier then score" comparator ran first, but its result was
-    // immediately discarded by this rankCandidatesByPotential sort running
-    // right after it on the same array — Array.prototype.sort always
-    // reflects only the LAST sort applied, so the priority-tier ordering
-    // never had any effect on the actual published output. Removing it here
-    // changes zero live behavior (this rankCandidatesByPotential sort was
-    // already the one determining the real digest order) — it only removes
-    // the misleading, wastefully-computed dead sort so a future edit to the
-    // priority-tier comparator doesn't appear to change behavior when it
-    // silently wouldn't.
     actionable.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
     var finalList = actionable.slice(0, 5);
     var headerNote = '';
 
-    // Step 5: Fallback — if still empty but published_count > 0
-    if (finalList.length === 0 && nonAvoid.length > 0) {
-      nonAvoid.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
-      finalList = nonAvoid.slice(0, 5);
-      headerNote = 'Tidak ada kandidat A/B bersih, menampilkan watchlist terbaik.';
-    }
+    // Step 5: Matikan fallback ke watchlist jika finalList kosong.
+    // Jika 0 saham lolos kriteria prima, diam (jangan kirim sinyal buy paksaan).
 
     var diagnostics = buildDayTradeTelegramDiagnostics(candidates, stageByTicker, {
       scanned_count: publishedCount,
@@ -14113,7 +14096,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
       return s.indexOf('SPECULATIVE') < 0 && (toNum(r.score) || 0) >= 65 && (toNum(r.risk_reward) || 0) >= 1.3;
     });
 
-    // Build final
+    // Build final: tier1 first, then tier2 to fill, then any digest candidate
     tier1.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
     tier2.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
     var finalList = tier1.slice(0, 5);
