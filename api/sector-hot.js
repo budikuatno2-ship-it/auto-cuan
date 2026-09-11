@@ -61,6 +61,7 @@ const telegramDailyRecap = require('../lib/telegram-daily-recap');
 const userWatchlistService = require('../lib/user-watchlist-service');
 const recentFailureCooldown = require('../lib/recent-failure-cooldown');
 const swingNkRrWarning = require('../lib/swing-nk-rr-warning');
+const fastWatcherMomentum = require('../lib/intraday-fast-watcher-momentum');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -3288,6 +3289,55 @@ function getWibDateString() {
 
 function getWibHourString() {
   return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(11, 16) + ' WIB';
+}
+
+function getWibHourAndMinute(input) {
+  if (typeof input === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(input.trim())) {
+    var strParts = input.trim().split(':');
+    return { hour: Number(strParts[0]), minute: Number(strParts[1]) };
+  }
+  var d;
+  if (input instanceof Date && !isNaN(input.getTime())) {
+    d = input;
+  } else if (input != null && !isNaN(new Date(input).getTime())) {
+    d = new Date(input);
+  } else {
+    d = new Date();
+  }
+  var wib = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+  return { hour: wib.getUTCHours(), minute: wib.getUTCMinutes() };
+}
+
+function isSignalPublicationTimeRestrictedWib(nowValue) {
+  var hm = getWibHourAndMinute(nowValue);
+  var total = hm.hour * 60 + hm.minute;
+  // 09:00 - 09:15 WIB (whipsaw pembukaan)
+  if (total >= 540 && total <= 555) {
+    return {
+      blocked: true,
+      restricted: true,
+      window: '09:00-09:15',
+      reason: 'whipsaw_pembukaan_blocked',
+      description: 'Pengiriman sinyal diblokir pada pukul 09:00 - 09:15 WIB (whipsaw pembukaan).'
+    };
+  }
+  // 13:00 - 13:59 WIB (dead zone likuiditas)
+  if (total >= 780 && total <= 839) {
+    return {
+      blocked: true,
+      restricted: true,
+      window: '13:00-13:59',
+      reason: 'dead_zone_likuiditas_blocked',
+      description: 'Pengiriman sinyal dinonaktifkan pada pukul 13:00 - 13:59 WIB (dead zone likuiditas).'
+    };
+  }
+  return {
+    blocked: false,
+    restricted: false,
+    window: null,
+    reason: null,
+    description: null
+  };
 }
 
 
@@ -12642,6 +12692,30 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     return { sent: false, skipped: true, reason: (_dtTelegramLastRadarRunId === runId && sendRadarFallback) ? 'duplicate_radar_guard' : 'duplicate_run_id', duplicate_guard_hit: true, radar_requested: !!sendRadarFallback };
   }
 
+  // === TIME GUARD: WIB Market Hours Filter (Fase 1: Rem Darurat) ===
+  // Blokir/skip pengiriman sinyal pada:
+  // - 09:00 - 09:15 WIB (whipsaw pembukaan)
+  // - 13:00 - 13:59 WIB (dead zone likuiditas)
+  var timeGuard = isSignalPublicationTimeRestrictedWib(options.scheduled_time || options.scheduledTime || options.now);
+  if (timeGuard.blocked && !options.bypass_time_guard) {
+    _dtTelegramLastRunId = runId;
+    _dtTelegramLastRunReason = timeGuard.reason;
+    return {
+      sent: false,
+      skipped: true,
+      reason: timeGuard.reason,
+      time_guard_blocked: true,
+      time_guard_window: timeGuard.window,
+      message: timeGuard.description,
+      published_count: publishedCount,
+      raw_candidate_count: 0,
+      selected_count: 0,
+      strict_signal_count: 0,
+      radar_count: 0,
+      hard_reject_count: 0
+    };
+  }
+
   try {
     // Fetch top 50 published Day Trade rows (same data web displays)
     var { data: candidates, error: readErr } = await supabase
@@ -12872,6 +12946,22 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       if (sendRadarFallback && _dtTelegramLastRadarRunId === runId) return Object.assign(silentResult, { reason: 'duplicate_radar_guard', duplicate_guard_hit: true, radar_skipped_reason: 'duplicate_radar_guard' });
       if (forceRadarDebug && duplicateRunHit && !allowRadarRetry) return silentResult;
       if (sendRadarFallback && radarCandidates.length > 0) {
+        var timeGuard = isSignalPublicationTimeRestrictedWib(options.scheduled_time || options.scheduledTime || options.now);
+        if (timeGuard.blocked && !options.bypass_time_guard) {
+          _dtTelegramLastRunId = runId;
+          _dtTelegramLastRunReason = timeGuard.reason;
+          return Object.assign(silentResult, {
+            sent: false,
+            skipped: true,
+            reason: timeGuard.reason,
+            time_guard_blocked: true,
+            time_guard_window: timeGuard.window,
+            message: timeGuard.description,
+            radar_sent: false,
+            radar_count: radarCandidates.length,
+            strict_signal_count: 0
+          });
+        }
         var radarMsg = formatDayTradeRadarTelegramMessage(radarCandidates);
         var radarResult = await telegramNotifier.sendTelegramMessage(radarMsg);
         radarResult.reason = radarResult.sent ? 'daytrade_radar_monitor_fallback_sent' : 'telegram_send_failed';
@@ -12966,6 +13056,28 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     var finalMsg = msg;
     if (dtAiNotes.length > 0) {
       finalMsg = msg + '\n\nCatatan AI:\n' + dtAiNotes[0];
+    }
+
+    // === TIME GUARD: WIB Market Hours Filter (Fase 1: Rem Darurat) ===
+    var timeGuard = isSignalPublicationTimeRestrictedWib(options.scheduled_time || options.scheduledTime || options.now);
+    if (timeGuard.blocked && !options.bypass_time_guard) {
+      _dtTelegramLastRunId = runId;
+      _dtTelegramLastRunReason = timeGuard.reason;
+      return {
+        sent: false,
+        skipped: true,
+        reason: timeGuard.reason,
+        time_guard_blocked: true,
+        time_guard_window: timeGuard.window,
+        message: timeGuard.description,
+        published_count: publishedCount,
+        raw_candidate_count: rawCount,
+        selected_count: finalList.length,
+        strict_signal_count: finalList.length,
+        radar_count: radarCandidates.length,
+        hard_reject_count: diagnostics.hard_reject_count || 0,
+        diagnostics: diagnostics
+      };
     }
 
     // Send
@@ -14215,6 +14327,8 @@ module.exports.__test = {
   sendSwingKongloNoSavedRowsHeartbeat: sendSwingKongloNoSavedRowsHeartbeat,
   sendSwingNkTelegramNotification: sendSwingNkTelegramNotification,
   sendDayTradeTelegramNotification: sendDayTradeTelegramNotification,
+  isSignalPublicationTimeRestrictedWib: isSignalPublicationTimeRestrictedWib,
+  getWibHourAndMinute: getWibHourAndMinute,
   registerCandidatesForMonitoring: registerCandidatesForMonitoring,
   fetchRecentSlHitRowsForCooldown: fetchRecentSlHitRowsForCooldown,
   annotateRecentlyFailedSimilarSetups: annotateRecentlyFailedSimilarSetups,
@@ -14269,5 +14383,14 @@ module.exports.__test = {
   resetIncludesAnyDiagnostics: resetIncludesAnyDiagnostics,
   calcScreenerRSI: calcScreenerRSI,
   nkCalcRSI: nkCalcRSI,
-  deriveDayTradeTimeframeContext: deriveDayTradeTimeframeContext
+  deriveDayTradeTimeframeContext: deriveDayTradeTimeframeContext,
+  isOpeningRangeVelocityWindow: fastWatcherMomentum.isOpeningRangeVelocityWindow,
+  evaluateOpeningVelocityGuard: fastWatcherMomentum.evaluateOpeningVelocityGuard
 };
+
+module.exports.isSignalPublicationTimeRestrictedWib = isSignalPublicationTimeRestrictedWib;
+module.exports.getWibHourAndMinute = getWibHourAndMinute;
+module.exports.isOpeningRangeVelocityWindow = fastWatcherMomentum.isOpeningRangeVelocityWindow;
+module.exports.evaluateOpeningVelocityGuard = fastWatcherMomentum.evaluateOpeningVelocityGuard;
+
+
