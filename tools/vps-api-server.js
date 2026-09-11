@@ -82,8 +82,8 @@ const server = http.createServer((req, res) => {
       return res.end(fs.readFileSync(filePath, 'utf8'));
     }
     const dirPath = path.join(DATA_DIR, 'broker-summary', cleanTicker);
-    if (fs.existsSync(dirPath)) {
-      const files = fs.readdirSync(dirPath).filter(f => f.endsWith('.json')).sort().reverse();
+    if (targetDate === 'latest' && fs.existsSync(dirPath)) {
+      const files = fs.readdirSync(dirPath).filter(f => f.endsWith('.json') && f !== 'latest.json').sort().reverse();
       if (files.length > 0) {
         return res.end(fs.readFileSync(path.join(dirPath, files[0]), 'utf8'));
       }
