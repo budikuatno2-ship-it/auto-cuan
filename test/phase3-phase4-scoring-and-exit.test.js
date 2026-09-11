@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -146,7 +146,7 @@ test('Fase 3: selectTopCandidatesWithSectorDiversification enforces Top 10 and m
 
   const selected = selectTopCandidatesWithSectorDiversification(candidates, 10, 3);
   assert.equal(selected.length, 10);
-  
+
   const counts = {};
   selected.forEach(c => {
     counts[c.sector] = (counts[c.sector] || 0) + 1;
@@ -165,6 +165,7 @@ test('Fase 3: selectTopCandidatesWithSectorDiversification enforces Top 10 and m
 test('Fase 4: Dynamic Break-Even Exit Lock (+2.0% profit triggers BEP_CLOSED upon pullback)', () => {
   const activePick = {
     ticker: 'AUTO',
+    category: 'Day Trade',
     status: 'RUNNING',
     entry1: 1000,
     entry2: 1000,
@@ -209,6 +210,7 @@ test('Fase 4: Dynamic Break-Even Exit Lock (+2.0% profit triggers BEP_CLOSED upo
   // Case 3: Control - Stock only reaches 1010 (+1.0%, < +2.0%) then drops to 950
   const controlPick = {
     ticker: 'CTRL',
+    category: 'Day Trade',
     status: 'RUNNING',
     entry1: 1000,
     entry2: 1000,

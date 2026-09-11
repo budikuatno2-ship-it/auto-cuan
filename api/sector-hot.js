@@ -6902,13 +6902,14 @@ function evaluateMonitorStatus(pick, px) {
   var lastInEntryZone = entryLow != null && last != null && last >= entryLow && last <= entryHigh;
   var active = activeBefore || entryTouched;
 
-  // Fase 4: Dynamic Break-Even Lock (+2.0%)
+  // Fase 4: Dynamic Break-Even Lock (+2.0% for Day Trade)
   var prevHighSinceEntry = toNum(pick.high_since_entry || pick.mfe || pick.highest_price || pick.high_price_since_entry);
   var highSinceEntry = active ? Math.max(prevHighSinceEntry || 0, effectiveHigh || 0) : (prevHighSinceEntry || null);
-  
-  var bepLocked = !!(pick.bep_locked || (active && entryMid && highSinceEntry >= entryMid * 1.020));
+
+  var isDaytrade = String(monitorSource || '').toLowerCase().indexOf('day') >= 0;
+  var bepLocked = isDaytrade && !!(pick.bep_locked || (activeBefore && entryMid && highSinceEntry >= entryMid * 1.020));
   var bepLockedAt = pick.bep_locked_at || (bepLocked ? (px && px.at || new Date().toISOString()) : null);
-  
+
   var tickSize = 1;
   if (entryMid && idxTick.getIdxTickSize) {
     tickSize = idxTick.getIdxTickSize(entryMid, pick.board, pick.is_fca, pick.ticker) || 1;
@@ -14481,4 +14482,3 @@ module.exports.getWibHourAndMinute = getWibHourAndMinute;
 module.exports.isOpeningRangeVelocityWindow = fastWatcherMomentum.isOpeningRangeVelocityWindow;
 module.exports.evaluateOpeningVelocityGuard = fastWatcherMomentum.evaluateOpeningVelocityGuard;
 module.exports.selectTopCandidatesWithSectorDiversification = selectTopCandidatesWithSectorDiversification;
-
