@@ -1,10 +1,12 @@
-'use strict';
+﻿'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const fs = require('fs');
 const vm = require('vm');
+
+const bandarmologiService = require('../lib/bandarmologi-service');
 
 function read(rel) {
   return fs.readFileSync(path.join(__dirname, '..', rel), 'utf8');
@@ -74,6 +76,60 @@ function createMockDom() {
   vm.createContext(sandbox);
   return { sandbox, elements };
 }
+
+test('normalizeInsiders: separates absolute balance (shares) from transaction mutation (last_change)', () => {
+  const mockRaw = [
+    {
+      date: '2026-09-08',
+      name: 'PT Abadimukti Gunalestari',
+      position: 'Pengendali',
+      action_type: 'BUY',
+      shares_after: '2,147,483,648',
+      changes_value: '1,500,000',
+      pct_change: '0.07%'
+    },
+    {
+      date: '2026-09-05',
+      name: 'Direktur Utama',
+      position: 'Direksi',
+      action_type: 'SELL',
+      current_value: 50000000,
+      volume: 250000,
+      pct_change: '-0.5%'
+    }
+  ];
+
+  const normalized = bandarmologiService.normalizeInsiders(mockRaw);
+
+  assert.equal(normalized.length, 2);
+
+  // Item 1: GPRA controlling shareholder
+  assert.equal(normalized[0].name, 'PT Abadimukti Gunalestari');
+  assert.equal(normalized[0].shares, 2147483648, 'shares must reflect total absolute holding (shares_after)');
+  assert.equal(normalized[0].last_change, 1500000, 'last_change must reflect transaction mutation (changes_value)');
+  assert.equal(normalized[0].action_type, 'BUY');
+
+  // Item 2: Director transaction
+  assert.equal(normalized[1].shares, 50000000, 'shares must reflect current_value when shares_after is null');
+  assert.equal(normalized[1].last_change, 250000, 'last_change must reflect volume');
+  assert.equal(normalized[1].action_type, 'SELL');
+});
+
+test('normalizeInsiders: preserves null when absolute balance fields are absent without falling back to changes_value', () => {
+  const mockOnlyMutation = [
+    {
+      date: '2026-09-01',
+      name: 'Investor X',
+      action_type: 'BUY',
+      changes_value: '10,000',
+      pct_change: '0.01%'
+    }
+  ];
+
+  const normalized = bandarmologiService.normalizeInsiders(mockOnlyMutation);
+  assert.equal(normalized[0].shares, null, 'shares must be null when no absolute balance field is present');
+  assert.equal(normalized[0].last_change, 10000, 'last_change must capture changes_value');
+});
 
 test('BandarmologiRuntime: renderInsiderNetworkUI renders structured roster table at top', () => {
   const runtimeSource = read('public/bandarmologi-runtime.js');
