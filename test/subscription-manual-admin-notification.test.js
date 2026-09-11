@@ -330,4 +330,3 @@ test('submit is rejected with 400 when terms are not accepted', async () => {
   assert.equal(res.statusCode, 400);
   assert.match(res.body.error, /kebijakan pembayaran/i);
 });
-
