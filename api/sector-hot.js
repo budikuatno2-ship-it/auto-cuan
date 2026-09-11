@@ -6833,9 +6833,96 @@ function isJakartaAtOrAfter(hour, minute) {
   return h > hour || (h === hour && m >= minute);
 }
 
+function detectSwingBandarDistribution(pick, px, monitorSource) {
+  pick = pick || {};
+  px = px || {};
+  var raw = pick.raw_payload || {};
+  var bPick = pick.bandarmologi || {};
+  var bPx = px.bandarmologi || {};
+  var bRaw = raw.bandarmologi || {};
+
+  var src = String(monitorSource || pick.monitor_source || raw.monitor_source || pick.category || raw.category || '').toLowerCase();
+  var isDaytrade = src.indexOf('day') >= 0;
+  if (isDaytrade) {
+    return {
+      distribution_detected: false,
+      reason: null,
+      cr3: null,
+      cr5: null,
+      net_flow: null,
+      retail_participation: null,
+      bandar_status: null
+    };
+  }
+
+  function firstDefined() {
+    for (var i = 0; i < arguments.length; i++) {
+      if (arguments[i] !== undefined && arguments[i] !== null && arguments[i] !== '') return arguments[i];
+    }
+    return null;
+  }
+
+  var cr3 = firstDefined(px.cr3, px.cr3_flow, px.cr3_net, bPx.cr3, pick.cr3, pick.cr3_flow, pick.cr3_net, bPick.cr3, raw.cr3, raw.cr3_flow, raw.cr3_net, bRaw.cr3);
+  var cr5 = firstDefined(px.cr5, px.cr5_flow, px.cr5_net, bPx.cr5, pick.cr5, pick.cr5_flow, pick.cr5_net, bPick.cr5, raw.cr5, raw.cr5_flow, raw.cr5_net, bRaw.cr5);
+  var netFlow = firstDefined(px.net_flow, px.bandar_net_flow, px.broker_net_flow, bPx.net_flow, pick.net_flow, pick.bandar_net_flow, pick.broker_net_flow, bPick.net_flow, raw.net_flow, raw.bandar_net_flow, raw.broker_net_flow, bRaw.net_flow);
+  var retail = firstDefined(px.retail_participation, px.retail_flow, px.retail_pct, px.retail_dominance, bPx.retail_participation, pick.retail_participation, pick.retail_flow, pick.retail_pct, bPick.retail_participation, raw.retail_participation, raw.retail_flow, raw.retail_pct, bRaw.retail_participation);
+  var bandarStatus = firstDefined(px.bandarmologi_status, px.bandar_status, px.bandar_flow_label, px.broker_accumulation_label, bPx.status, pick.bandarmologi_status, pick.bandar_status, pick.bandar_flow_label, pick.broker_accumulation_label, bPick.status, raw.bandarmologi_status, raw.bandar_status, raw.bandar_flow_label, raw.broker_accumulation_label, bRaw.status);
+  var isDistribusiKeRitel = firstDefined(px.is_distribusi_ke_ritel, bPx.is_distribusi_ke_ritel, pick.is_distribusi_ke_ritel, bPick.is_distribusi_ke_ritel, raw.is_distribusi_ke_ritel, bRaw.is_distribusi_ke_ritel);
+  var explicitDistribution = firstDefined(px.distribution_detected, bPx.distribution_detected, pick.distribution_detected, bPick.distribution_detected, raw.distribution_detected, bRaw.distribution_detected);
+
+  var cr3Num = cr3 != null ? toNum(cr3) : null;
+  var cr5Num = cr5 != null ? toNum(cr5) : null;
+  var netFlowNum = netFlow != null ? toNum(netFlow) : null;
+  var retailNum = retail != null ? toNum(retail) : null;
+  var bandarStatusStr = bandarStatus != null ? String(bandarStatus).trim() : null;
+  var statusUpper = bandarStatusStr ? bandarStatusStr.toUpperCase() : '';
+
+  var isExplicit = explicitDistribution === true || explicitDistribution === 'true' || explicitDistribution === 1;
+  var isDistRitel = isDistribusiKeRitel === true || isDistribusiKeRitel === 'true' || isDistribusiKeRitel === 1;
+
+  var cr3Pct = cr3Num != null ? (Math.abs(cr3Num) <= 1.0 ? Math.abs(cr3Num) * 100 : Math.abs(cr3Num)) : null;
+  var cr5Pct = cr5Num != null ? (Math.abs(cr5Num) <= 1.0 ? Math.abs(cr5Num) * 100 : Math.abs(cr5Num)) : null;
+  var retailPct = retailNum != null ? (Math.abs(retailNum) <= 1.0 ? Math.abs(retailNum) * 100 : Math.abs(retailNum)) : null;
+
+  var distributionDetected = false;
+
+  if (isExplicit) {
+    distributionDetected = true;
+  } else if (statusUpper.indexOf('DISTRIBUSI_MASIF') >= 0 || statusUpper.indexOf('MASSIVE_DISTRIBUTION') >= 0) {
+    distributionDetected = true;
+  } else if (statusUpper.indexOf('DISTRIBUSI') >= 0 && (netFlowNum == null || netFlowNum < 0)) {
+    distributionDetected = true;
+  } else if (cr3Num != null && cr3Num < 0 && (Math.abs(cr3Num) >= 0.50 || Math.abs(cr3Num) >= 50)) {
+    // Negative CR3 representation: net sell concentration >= 50%
+    distributionDetected = true;
+  } else if (cr3Pct != null && cr3Pct >= 50 && netFlowNum != null && netFlowNum < 0) {
+    // CR3 >= 50% with negative net flow
+    distributionDetected = true;
+  } else if (cr5Pct != null && cr5Pct >= 60 && netFlowNum != null && netFlowNum < 0) {
+    // CR5 >= 60% with negative net flow
+    distributionDetected = true;
+  } else if (isDistRitel && (netFlowNum == null || netFlowNum < 0)) {
+    // Flagged distribution to retail
+    distributionDetected = true;
+  } else if (retailPct != null && retailPct > 50 && netFlowNum != null && netFlowNum < 0) {
+    // Retail participation dominates (>50%) with negative flow
+    distributionDetected = true;
+  }
+
+  return {
+    distribution_detected: distributionDetected,
+    reason: distributionDetected ? 'BANDAR_DISTRIBUTION_WARNING' : null,
+    cr3: cr3Num,
+    cr5: cr5Num,
+    net_flow: netFlowNum,
+    retail_participation: retailNum,
+    bandar_status: bandarStatusStr
+  };
+}
+
 function evaluateMonitorStatus(pick, px) {
   var status = String(pick.status || 'WAITING').toUpperCase();
-  var finalBefore = pick.is_final || ['TP1_HIT','TP2_HIT','SL_HIT','BEP_CLOSED'].indexOf(status) >= 0;
+  var finalBefore = pick.is_final || ['TP1_HIT','TP2_HIT','SL_HIT','BEP_CLOSED','EARLY_EXIT_DISTRIBUTION'].indexOf(status) >= 0;
   var raw = pick.raw_payload || {};
   var setupOriginAt = resolveMonitorSetupOrigin(pick);
   var monitorSource = (pick && pick.monitor_source) || raw.monitor_source || pick.category || raw.category;
@@ -6863,6 +6950,13 @@ function evaluateMonitorStatus(pick, px) {
       price_source: px && px.source || null,
       price_best_effort: !!(px && px.bestEffort)
     }, extra || {});
+  }
+  if (status === 'EARLY_EXIT_DISTRIBUTION' || pick.early_exit_at) {
+    return result('EARLY_EXIT_DISTRIBUTION', 'Early Exit (Distribusi Bandar)', true, 'Early exit sudah tercatat sebelumnya', {
+      distribution_detected: true,
+      early_exit_at: pick.early_exit_at || null,
+      reason: 'BANDAR_DISTRIBUTION_WARNING'
+    });
   }
   if (!px || px.last == null) {
     if (fresh.setup_freshness_status === 'EXPIRED') return result('EXPIRED', 'Expired', false, fresh.setup_expiry_note);
@@ -6907,6 +7001,7 @@ function evaluateMonitorStatus(pick, px) {
   var highSinceEntry = active ? Math.max(prevHighSinceEntry || 0, effectiveHigh || 0) : (prevHighSinceEntry || null);
 
   var isDaytrade = String(monitorSource || '').toLowerCase().indexOf('day') >= 0;
+  var bandarDist = detectSwingBandarDistribution(pick, px, monitorSource);
   var bepLocked = isDaytrade && !!(pick.bep_locked || (activeBefore && entryMid && highSinceEntry >= entryMid * 1.020));
   var bepLockedAt = pick.bep_locked_at || (bepLocked ? (px && px.at || new Date().toISOString()) : null);
 
@@ -6978,6 +7073,25 @@ function evaluateMonitorStatus(pick, px) {
 
   // If TP2 touched on an active recommendation, TP2 hit takes precedence
   if (active && tp2Touched) return result('TP2_HIT', 'TP2 Hit', true, pick.hit_tp2_at ? 'TP2 sudah tercatat sebelumnya' : 'TP2 tersentuh', { bep_locked: bepLocked, bep_locked_at: bepLockedAt, effective_sl: effectiveSl, high_since_entry: highSinceEntry });
+
+  // Fase 5: Early Exit for Active Swing Positions on Massive Bandar Distribution
+  var isPriceBelowEntry = last != null && ((entryMid != null && last < entryMid) || (entryLow != null && last < entryLow));
+  if (active && !isDaytrade && bandarDist.distribution_detected && isPriceBelowEntry) {
+    return result('EARLY_EXIT_DISTRIBUTION', 'Early Exit (Distribusi Bandar)', true, 'Peringatan distribusi bandar terdeteksi di bawah harga entry; early exit dipicu', {
+      distribution_detected: true,
+      bandar_distribution_warning: true,
+      reason: 'BANDAR_DISTRIBUTION_WARNING',
+      cr3: bandarDist.cr3,
+      cr5: bandarDist.cr5,
+      net_flow: bandarDist.net_flow,
+      retail_participation: bandarDist.retail_participation,
+      bandar_status: bandarDist.bandar_status,
+      effective_sl: effectiveSl,
+      initial_sl: initialSl,
+      high_since_entry: highSinceEntry
+    });
+  }
+
   if (slTouched) {
     if (active && bepLocked) {
       return result('BEP_CLOSED', 'BEP Closed', true, 'Posisi ditutup di level Break-Even (+2% lock tercapai sebelumnya)', {
@@ -7004,18 +7118,30 @@ function evaluateMonitorStatus(pick, px) {
   // For already-active positions (entry was previously touched / hit_entry_at already set),
   // the pre-entry "price too far from entry" freshness rule must NOT expire the position.
   // The position remains active (IN_ENTRY_ZONE or RUNNING towards TP1) until TP or SL is reached.
+  var swingWarningExtra = (!isDaytrade && bandarDist.distribution_detected) ? {
+    distribution_detected: true,
+    bandar_distribution_warning: true,
+    reason: 'BANDAR_DISTRIBUTION_WARNING',
+    cr3: bandarDist.cr3,
+    cr5: bandarDist.cr5,
+    net_flow: bandarDist.net_flow,
+    retail_participation: bandarDist.retail_participation,
+    bandar_status: bandarDist.bandar_status
+  } : {};
+
   if (activeBefore) {
-    if (lastInEntryZone) return result('IN_ENTRY_ZONE', 'In Entry Zone', false, 'Harga berada di area Entry 1–Entry 2', { bep_locked: bepLocked, bep_locked_at: bepLockedAt, effective_sl: effectiveSl, high_since_entry: highSinceEntry });
-    return result('RUNNING', 'Running', false, 'Posisi aktif; menuju TP1', { bep_locked: bepLocked, bep_locked_at: bepLockedAt, effective_sl: effectiveSl, high_since_entry: highSinceEntry });
+    if (lastInEntryZone) return result('IN_ENTRY_ZONE', 'In Entry Zone', false, 'Harga berada di area Entry 1–Entry 2', Object.assign({ bep_locked: bepLocked, bep_locked_at: bepLockedAt, effective_sl: effectiveSl, high_since_entry: highSinceEntry }, swingWarningExtra));
+    var runningNote = swingWarningExtra.distribution_detected ? 'Posisi aktif; menuju TP1 (Peringatan: Distribusi bandar terdeteksi)' : 'Posisi aktif; menuju TP1';
+    return result('RUNNING', 'Running', false, runningNote, Object.assign({ bep_locked: bepLocked, bep_locked_at: bepLockedAt, effective_sl: effectiveSl, high_since_entry: highSinceEntry }, swingWarningExtra));
   }
   if (fresh.setup_freshness_status === 'EXPIRED') return result('EXPIRED', 'Expired', false, fresh.setup_expiry_note);
   if (fresh.setup_freshness_status === 'NEEDS_REVALIDATION') return result('NEEDS_REVALIDATION', 'Needs Revalidation', false, fresh.setup_expiry_note);
-  if (lastInEntryZone) return result('IN_ENTRY_ZONE', 'In Entry Zone', false, 'Harga berada di area Entry 1–Entry 2');
-  if (entryTouched) return result('RUNNING', 'Running', false, 'Area entry sudah tersentuh; monitor TP/SL', { bep_locked: bepLocked, bep_locked_at: bepLockedAt, effective_sl: effectiveSl, high_since_entry: highSinceEntry });
-  if (entry2 != null && sl != null && last < Math.min(entry1 != null ? entry1 : entry2, entry2) && last > sl) return result('WATCHLIST', 'Watchlist', false, 'Harga di bawah area entry namun masih di atas SL');
-  if (entry1 != null && last > Math.max(entry1, entry2 != null ? entry2 : entry1)) return result(active ? 'RUNNING' : 'ENTRY_MISSED', active ? 'Running' : 'Entry Missed', false, active ? 'Menuju TP1' : 'Harga di atas area entry tanpa touch; tunggu pullback');
-  if (entry1 != null && last < Math.min(entry1, entry2 != null ? entry2 : entry1)) return result('ENTRY_READY', 'Entry Ready', false, 'Mendekati area entry; tunggu harga masuk zone');
-  return result('WATCHLIST', 'Watchlist', false, 'Belum masuk area entry');
+  if (lastInEntryZone) return result('IN_ENTRY_ZONE', 'In Entry Zone', false, 'Harga berada di area Entry 1–Entry 2', swingWarningExtra);
+  if (entryTouched) return result('RUNNING', 'Running', false, 'Area entry sudah tersentuh; monitor TP/SL', Object.assign({ bep_locked: bepLocked, bep_locked_at: bepLockedAt, effective_sl: effectiveSl, high_since_entry: highSinceEntry }, swingWarningExtra));
+  if (entry2 != null && sl != null && last < Math.min(entry1 != null ? entry1 : entry2, entry2) && last > sl) return result('WATCHLIST', 'Watchlist', false, 'Harga di bawah area entry namun masih di atas SL', swingWarningExtra);
+  if (entry1 != null && last > Math.max(entry1, entry2 != null ? entry2 : entry1)) return result(active ? 'RUNNING' : 'ENTRY_MISSED', active ? 'Running' : 'Entry Missed', false, active ? 'Menuju TP1' : 'Harga di atas area entry tanpa touch; tunggu pullback', swingWarningExtra);
+  if (entry1 != null && last < Math.min(entry1, entry2 != null ? entry2 : entry1)) return result('ENTRY_READY', 'Entry Ready', false, 'Mendekati area entry; tunggu harga masuk zone', swingWarningExtra);
+  return result('WATCHLIST', 'Watchlist', false, 'Belum masuk area entry', swingWarningExtra);
 }
 
 function webPickScore(raw) {
@@ -8509,12 +8635,12 @@ function isTerminalPick(pick) {
   if (!pick) return true;
   var status = String(pick.status || '').toUpperCase();
   // Terminal statuses that should no longer be monitored
-  var terminalStatuses = ['TP2_HIT', 'SL_HIT', 'BEP_CLOSED', 'EXPIRED', 'INVALID'];
+  var terminalStatuses = ['TP2_HIT', 'SL_HIT', 'BEP_CLOSED', 'EARLY_EXIT_DISTRIBUTION', 'EXPIRED', 'INVALID'];
   if (terminalStatuses.indexOf(status) >= 0) return true;
   // Also consider rows with both TP1 and TP2 hit as terminal (full profit taken)
   if (pick.hit_tp2_at) return true;
-  // Row with SL hit or BEP closed is terminal
-  if (pick.hit_sl_at || pick.bep_closed_at) return true;
+  // Row with SL hit, BEP closed, or early exit is terminal
+  if (pick.hit_sl_at || pick.bep_closed_at || pick.early_exit_at) return true;
   return false;
 }
 
@@ -8700,7 +8826,7 @@ function formatMonitorBatchRow(pick, ev, px) {
   // Activation = the position is considered entered (hit_entry_at recorded, or the
   // status has moved to RUNNING/TP/SL). Before that, price movement is only a
   // DISTANCE from entry, not a realised/unrealised P/L.
-  var activated = pick.hit_entry_at != null || ['RUNNING', 'TP1_HIT', 'TP2_HIT', 'SL_HIT'].indexOf(status) >= 0;
+  var activated = pick.hit_entry_at != null || ['RUNNING', 'TP1_HIT', 'TP2_HIT', 'SL_HIT', 'BEP_CLOSED', 'EARLY_EXIT_DISTRIBUTION'].indexOf(status) >= 0;
   if (refPrice != null && refPrice > 0 && last != null) {
     var pct = ((last - refPrice) / refPrice) * 100;
     var pctStr = (pct > 0 ? '+' : '') + pct.toFixed(1) + '%';
@@ -8718,6 +8844,9 @@ function formatMonitorBatchRow(pick, ev, px) {
   // look contradictory next to an SL alert.
   if (status === 'SL_HIT') {
     lines.push('Low intraday: ' + fmtPrice(low) + ' \u00B7 SL: ' + fmtPrice(sl));
+  }
+  if (status === 'EARLY_EXIT_DISTRIBUTION') {
+    lines.push('Catatan: Distribusi masif bandar terdeteksi (Early Exit)');
   }
   return lines.join('\n');
 }
@@ -8825,6 +8954,12 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
         update.hit_price = toNum(ev.exit_price) || toNum(px && px.last) || toNum(pck.sl);
         update.bep_locked = true;
       }
+      if (ev.status === 'EARLY_EXIT_DISTRIBUTION' && !pck.early_exit_at) {
+        update.early_exit_at = update.last_checked_at;
+        update.hit_price = toNum(px && px.last) || toNum(pck.sl);
+        update.distribution_detected = true;
+      }
+      if (ev.distribution_detected) update.distribution_detected = true;
       if (ev.bep_locked) update.bep_locked = true;
       if (ev.bep_locked_at) update.bep_locked_at = ev.bep_locked_at;
       if (ev.high_since_entry != null) update.high_since_entry = ev.high_since_entry;
@@ -8835,7 +8970,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
 
       // Attempt AI note for significant status updates (note-only: appended to template)
       var monitorAiNote = null;
-      var significantStatuses = ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'BEP_CLOSED', 'IN_ENTRY_ZONE', 'RUNNING'];
+      var significantStatuses = ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'BEP_CLOSED', 'EARLY_EXIT_DISTRIBUTION', 'IN_ENTRY_ZONE', 'RUNNING'];
       // AI SUPPRESSION: dry-run never calls AI narration services.
       if (!dryRun && significantStatuses.indexOf(ev.status) >= 0) {
         try {
@@ -8860,7 +8995,8 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       if (ev.status === 'TP2_HIT' && !pck.hit_tp2_at) isNewHit = true;
       if (ev.status === 'SL_HIT' && !pck.hit_sl_at) isNewHit = true;
       if (ev.status === 'BEP_CLOSED' && !pck.bep_closed_at) isNewHit = true;
-      var significantHit = isPublicAlertEligible && isNewHit && ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'BEP_CLOSED', 'IN_ENTRY_ZONE'].indexOf(ev.status) >= 0;
+      if (ev.status === 'EARLY_EXIT_DISTRIBUTION' && !pck.early_exit_at) isNewHit = true;
+      var significantHit = isPublicAlertEligible && isNewHit && ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'BEP_CLOSED', 'EARLY_EXIT_DISTRIBUTION', 'IN_ENTRY_ZONE'].indexOf(ev.status) >= 0;
 
       // IMMEDIATE INDIVIDUAL NOTIFICATION — fires on EVERY monitor invocation
       // (both the top-of-hour and the half-hour run), independent of the hourly
@@ -14353,6 +14489,7 @@ module.exports.__test = {
   isMonitorTimestampStale: isMonitorTimestampStale,
   dedupeActiveMonitorRows: dedupeActiveMonitorRows,
   compareMonitorRowRecency: compareMonitorRowRecency,
+  detectSwingBandarDistribution: detectSwingBandarDistribution,
   evaluateMonitorStatus: evaluateMonitorStatus,
   fetchLatestPriceForMonitor: fetchLatestPriceForMonitor,
   getMonitorDateRange: getMonitorDateRange,
