@@ -45,5 +45,9 @@ async function main(argv) {
   else process.stdout.write(`Fast Watcher guarded-live: ${result.status}; shortlist=${result.shortlist_count || 0}; pool=${result.active_pool_count || 0}; confirmed=${(result.confirmed || []).length}; spikes=${result.informational_spike_count || 0}; radar=${result.radar_items_sent || 0}; system=${result.system_published || 0}; telegram=${result.telegram_sent || 0}\n`);
   return new Set(['invalid_input', 'shortlist_missing', 'shortlist_invalid', 'lock_busy', 'skipped_due_to_production_lock']).has(result.status) ? 1 : 0;
 }
+process.on('unhandledRejection', (reason, promise) => {
+  process.stderr.write(`[FastWatcher] Unhandled Rejection: ${reason && reason.stack ? reason.stack : reason}\n`);
+});
+
 if (require.main === module) main(process.argv).then(code => { process.exitCode = code; }).catch(error => { process.stderr.write(`FATAL: ${error.message}\n`); process.exitCode = 1; });
 module.exports = { parseArgs, main, USAGE };
