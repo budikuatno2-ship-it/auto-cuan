@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 /**
  * Historical Backfill Engine for stock.arjum.com Data
@@ -135,10 +135,14 @@ async function run() {
   if (toIdx >= 0 && args[toIdx + 1]) toDate = args[toIdx + 1];
   else if (endIdx >= 0 && args[endIdx + 1]) toDate = args[endIdx + 1];
 
-  let delayMs = 250;
+  let delayMs = 800;
   const delayIdx = args.indexOf('--delay');
   if (delayIdx >= 0 && args[delayIdx + 1]) {
-    delayMs = parseInt(args[delayIdx + 1], 10) || 250;
+    delayMs = parseInt(args[delayIdx + 1], 10) || 800;
+    if (!dryRun && delayMs < 600) {
+      console.warn(`[THROTTLING] Delay ${delayMs}ms terlalu cepat. Dinaikkan otomatis ke batas aman 600ms.`);
+      delayMs = 600;
+    }
   }
 
   let limit = Infinity;
@@ -180,8 +184,18 @@ async function run() {
     tickers = tickers.slice(0, limit);
   }
 
-  const tradingDates = getTradingDates(fromDate, toDate);
+  let tradingDates = getTradingDates(fromDate, toDate);
   const hasDirectKey = arjumClient.hasArjumApiKey();
+
+  // Guard jam bursa: data EOD hari ini hanya boleh diproses jika sudah >= 16:15 WIB
+  if (typeof arjumClient.getJakartaTime === 'function') {
+    const { dateKey: todayKey, hour: nowHour, minute: nowMinute } = arjumClient.getJakartaTime();
+    const isEodPassed = nowHour > 16 || (nowHour === 16 && nowMinute >= 15);
+    if (tradingDates.includes(todayKey) && !isEodPassed && !dryRun) {
+      console.warn(`[GUARD JAM BURSA] Tanggal hari ini (${todayKey}) belum melewati 16:15 WIB (rilis data resmi bursa). Hari ini dilewati.`);
+      tradingDates = tradingDates.filter(d => d !== todayKey);
+    }
+  }
 
   console.log('=== AUTO-CUAN HISTORICAL BACKFILL ENGINE ===');
   console.log(`Periode: ${fromDate} s/d ${toDate}`);
@@ -217,8 +231,9 @@ async function run() {
   }
 
   for (let i = 0; i < tickers.length; i++) {
-    if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) {
-      console.log(`\n[QUOTA LIMIT] Mencapai batas limit kuota harian (${dailyLimit}). Engine berhenti.`);
+    const circuitTripped = typeof arjumClient.isCircuitBreakerTripped === 'function' && arjumClient.isCircuitBreakerTripped();
+    if (circuitTripped || quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) {
+      console.log(`\n[CIRCUIT BREAKER / QUOTA LIMIT] Batas kuota tercapai atau circuit breaker aktif. Engine berhenti.`);
       break;
     }
 
@@ -269,7 +284,8 @@ async function run() {
 
     // 3. Loop over trading dates for Broker Summary
     for (let di = 0; di < tradingDates.length; di++) {
-      if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
+      const circuitTripped = typeof arjumClient.isCircuitBreakerTripped === 'function' && arjumClient.isCircuitBreakerTripped();
+      if (circuitTripped || quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
 
       const dateStr = tradingDates[di];
       const sumCached = !isFresh && isValidCachedJson('broker-summary', ticker, dateStr);
