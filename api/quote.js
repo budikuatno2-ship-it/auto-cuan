@@ -309,14 +309,31 @@ module.exports = async function handler(req, res) {
       isIndex ? Promise.resolve(makeIndexBoard(ticker)) : fetchBoardData(ticker)
     ]);
 
-    var quoteResult = baseResults[0] ? JSON.parse(JSON.stringify(baseResults[0])) : baseResults[0];
-    var boardResult = baseResults[1];
+    var quoteResult = (baseResults && baseResults[0]) ? JSON.parse(JSON.stringify(baseResults[0])) : null;
+    var boardResult = (baseResults && baseResults[1]) || null;
+
+    // Graceful fallback / 502 response if upstream provider failed completely
+    if (!quoteResult || typeof quoteResult !== 'object') {
+      return res.status(502).json({
+        success: false,
+        ticker: ticker,
+        error: 'Penyedia data pasar (upstream quote) tidak merespons atau mengembalikan data kosong.',
+        note: 'Data Historis T-1',
+        board: boardResult || makeBoardNotFound(ticker)
+      });
+    }
+
+    // If upstream Yahoo quote explicitly failed without candles/price
+    if (quoteResult.success === false && !quoteResult.last) {
+      quoteResult.board = boardResult || makeBoardNotFound(ticker);
+      return res.status(502).json(quoteResult);
+    }
 
     // A manual Portfolio refresh must not reuse the Yahoo in-memory quote cache.
     // Prefer the same fresh screener latest rows used by Day Trade/Swing displays.
     if (portfolioPriceOnly && !isIndex) {
       var latest = await fetchFreshScreenerLatestPrice(ticker);
-      if (latest.price) {
+      if (latest && latest.price) {
         quoteResult.last = latest.price;
         quoteResult.price_source = latest.price_source;
         quoteResult.price_date = latest.price_date;
@@ -324,12 +341,12 @@ module.exports = async function handler(req, res) {
         quoteResult.price_stale = false;
       } else {
         quoteResult.price_stale = true;
-        quoteResult.price_diagnostic = latest.diagnostic;
+        quoteResult.price_diagnostic = latest ? latest.diagnostic : 'No latest price';
       }
     }
 
-    // Attach board to quote result
-    quoteResult.board = boardResult;
+    // Attach board to quote result safely
+    quoteResult.board = boardResult || makeBoardNotFound(ticker);
 
     // Fetch news after board is available (uses companyName for better search)
     if (includeNews) {

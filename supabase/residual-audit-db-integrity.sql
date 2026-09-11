@@ -16,6 +16,7 @@ begin
   if exists (
     select 1
     from public.telegram_daily_picks
+    where monitor_source is not null and plan_lock_id is not null
     group by date, ticker, monitor_source, plan_lock_id
     having count(*) > 1
   ) then
@@ -24,16 +25,15 @@ begin
 end
 $$;
 
--- Build the replacement before dropping the legacy partial index so there is
--- never a committed state without uniqueness protection for the covered rows.
+-- Build the replacement with a partial unique index scoped to explicit plan identities
+-- (WHERE monitor_source IS NOT NULL AND plan_lock_id IS NOT NULL).
+-- This protects plan-locked rows from duplicate insert while preventing NULLS NOT DISTINCT
+-- from blocking multiple broadcasts, unassigned plans, or intraday re-alerts for the same emiten.
 drop index if exists public.idx_telegram_daily_picks_plan_identity_unique_all_rows;
-create unique index idx_telegram_daily_picks_plan_identity_unique_all_rows
-  on public.telegram_daily_picks (date, ticker, monitor_source, plan_lock_id)
-  nulls not distinct;
-
 drop index if exists public.idx_telegram_daily_picks_plan_identity_unique;
-alter index public.idx_telegram_daily_picks_plan_identity_unique_all_rows
-  rename to idx_telegram_daily_picks_plan_identity_unique;
+create unique index idx_telegram_daily_picks_plan_identity_unique
+  on public.telegram_daily_picks (date, ticker, monitor_source, plan_lock_id)
+  where monitor_source is not null and plan_lock_id is not null;
 
 -- `sector-hot-members-patch.sql` introduced an older/plain taxonomy that can
 -- conflict with the revised canonical mapping in

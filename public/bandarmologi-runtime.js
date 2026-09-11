@@ -1283,12 +1283,35 @@
     loadBandarmologiTab(currentBandarTicker, null, 'custom');
   }
 
-  var VPS_DATA_API_BASE = (typeof window !== 'undefined' && (window.NEXT_PUBLIC_VPS_DATA_API || window.VPS_DATA_API_BASE)) || 'https://wishing-challenged-deeper-crown.trycloudflare.com';
+  function getVpsDataApiBase() {
+    if (typeof window !== 'undefined') {
+      if (window.VPS_TUNNEL_URL && typeof window.VPS_TUNNEL_URL === 'string' && window.VPS_TUNNEL_URL.trim()) {
+        return window.VPS_TUNNEL_URL.trim().replace(/\/+$/, '');
+      }
+      if (window.NEXT_PUBLIC_VPS_DATA_API && typeof window.NEXT_PUBLIC_VPS_DATA_API === 'string' && window.NEXT_PUBLIC_VPS_DATA_API.trim()) {
+        return window.NEXT_PUBLIC_VPS_DATA_API.trim().replace(/\/+$/, '');
+      }
+      if (window.VPS_DATA_API_BASE && typeof window.VPS_DATA_API_BASE === 'string' && window.VPS_DATA_API_BASE.trim()) {
+        return window.VPS_DATA_API_BASE.trim().replace(/\/+$/, '');
+      }
+      try {
+        var stored = window.localStorage && (window.localStorage.getItem('VPS_TUNNEL_URL') || window.localStorage.getItem('VPS_DATA_API_BASE'));
+        if (stored && typeof stored === 'string' && stored.trim()) {
+          return stored.trim().replace(/\/+$/, '');
+        }
+      } catch (_) {}
+    }
+    return '';
+  }
+
+  var VPS_DATA_API_BASE = getVpsDataApiBase();
   var vpsDatesMemoryCache = {};
   var vpsSummaryMemoryCache = {};
 
   async function fetchVpsAvailableDates(ticker) {
     if (!ticker) return [];
+    var base = getVpsDataApiBase();
+    if (!base) return []; // No external tunnel configured, skip remote ping to prevent hanging
     var safeTicker = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (vpsDatesMemoryCache[safeTicker] && vpsDatesMemoryCache[safeTicker].length > 0) {
       return vpsDatesMemoryCache[safeTicker];
@@ -1296,7 +1319,7 @@
     try {
       var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
       var timer = controller ? setTimeout(function () { controller.abort(); }, 5000) : null;
-      var res = await fetch(VPS_DATA_API_BASE + '/api/available-dates?ticker=' + encodeURIComponent(safeTicker), controller ? { signal: controller.signal } : {});
+      var res = await fetch(base + '/api/available-dates?ticker=' + encodeURIComponent(safeTicker), controller ? { signal: controller.signal } : {});
       if (timer) clearTimeout(timer);
       if (res.ok) {
         var json = await res.json();
@@ -1314,6 +1337,8 @@
 
   async function fetchVpsBrokerSummary(ticker, date) {
     if (!ticker) return null;
+    var base = getVpsDataApiBase();
+    if (!base) return null; // No external tunnel configured, skip remote ping
     var safeTicker = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     var safeDate = String(date || 'latest').trim();
     var cacheKey = safeTicker + '_' + safeDate;
@@ -1323,7 +1348,7 @@
     try {
       var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
       var timer = controller ? setTimeout(function () { controller.abort(); }, 6000) : null;
-      var res = await fetch(VPS_DATA_API_BASE + '/api/broker-summary?ticker=' + encodeURIComponent(safeTicker) + '&date=' + encodeURIComponent(safeDate), controller ? { signal: controller.signal } : {});
+      var res = await fetch(base + '/api/broker-summary?ticker=' + encodeURIComponent(safeTicker) + '&date=' + encodeURIComponent(safeDate), controller ? { signal: controller.signal } : {});
       if (timer) clearTimeout(timer);
       if (res.ok) {
         var json = await res.json();
@@ -2673,7 +2698,13 @@
     activeInsiderGraphAbortController = controller;
     var fetchOpts = controller ? { signal: controller.signal } : {};
 
-    var vpsUrl = VPS_DATA_API_BASE + '/api/insider-network?ticker=' + encodeURIComponent(safeName);
+    var base = getVpsDataApiBase();
+    if (!base) {
+      fallbackLocalGraph();
+      return;
+    }
+
+    var vpsUrl = base + '/api/insider-network?ticker=' + encodeURIComponent(safeName);
     fetch(vpsUrl, fetchOpts)
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -2724,7 +2755,13 @@
     activeInsiderRosterAbortController = controller;
     var fetchOpts = controller ? { signal: controller.signal } : {};
 
-    var vpsUrl = VPS_DATA_API_BASE + '/api/insider-roster?ticker=' + encodeURIComponent(cleanTicker);
+    var base = getVpsDataApiBase();
+    if (!base) {
+      fallbackLocalRoster();
+      return;
+    }
+
+    var vpsUrl = base + '/api/insider-roster?ticker=' + encodeURIComponent(cleanTicker);
     fetch(vpsUrl, fetchOpts)
       .then(function (res) { return res.json(); })
       .then(function (data) {
@@ -4641,7 +4678,8 @@
     renderRosterTableRows: renderRosterTableRows,
     getCurrentInsiderRoster: function () { return currentInsiderRosterData; },
     getCurrentInsiderRosterTicker: function () { return currentInsiderRosterTicker; },
-    VPS_DATA_API_BASE: VPS_DATA_API_BASE
+    get VPS_DATA_API_BASE() { return getVpsDataApiBase(); },
+    getVpsDataApiBase: getVpsDataApiBase
   };
 
   root.loadBandarmologiTab = loadBandarmologiTab;
@@ -4718,7 +4756,8 @@
       renderRosterTableRows: renderRosterTableRows,
       getCurrentInsiderRoster: function () { return currentInsiderRosterData; },
       getCurrentInsiderRosterTicker: function () { return currentInsiderRosterTicker; },
-      VPS_DATA_API_BASE: VPS_DATA_API_BASE
+      get VPS_DATA_API_BASE() { return getVpsDataApiBase(); },
+    getVpsDataApiBase: getVpsDataApiBase
     };
   }
 
