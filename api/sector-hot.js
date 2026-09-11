@@ -1915,13 +1915,22 @@ function scoreAndClassify(data) {
   var score = 50;
   var v2Notes = []; // Collect V2 guard notes for status_reason
 
-  // TREND
-  if (data.ma20 && data.last_price >= data.ma20) score += 10;
-  else if (data.ma20 && data.last_price >= data.ma20 * 0.98) score += 5;
+  // TREND — Fase 3: Hilangkan poin cuma-cuma MA20 (+10) dan MA50 (+10) jika volume ratio < 1.0x
+  var volRatio = data.volume_ratio_avg20 != null ? data.volume_ratio_avg20 : (data._volRatio != null ? data._volRatio : 1.0);
+  if (data.ma20 && data.last_price >= data.ma20) {
+    if (volRatio >= 1.0) score += 10;
+  }
+  else if (data.ma20 && data.last_price >= data.ma20 * 0.98) {
+    if (volRatio >= 1.0) score += 5;
+  }
   else score -= 5;
 
-  if (data.ma50 && data.last_price >= data.ma50) score += 10;
-  else if (data.ma50 && data.last_price >= data.ma50 * 0.97) score += 3;
+  if (data.ma50 && data.last_price >= data.ma50) {
+    if (volRatio >= 1.0) score += 10;
+  }
+  else if (data.ma50 && data.last_price >= data.ma50 * 0.97) {
+    if (volRatio >= 1.0) score += 3;
+  }
   else score -= 10;
 
   // MOMENTUM / RSI — V2 Guard A3: widened realistic range
@@ -3821,7 +3830,7 @@ function buildEntryRangeNormalizationDiagnostics(candidates) {
 function getMinTp1UpsideForCategory(category) {
   var cat = String(category || '').toLowerCase();
   var envName = cat.indexOf('day') >= 0 ? 'DAYTRADE_MIN_TP1_UPSIDE_PCT' : (cat.indexOf('non') >= 0 ? 'SWING_NON_KONGLO_MIN_TP1_UPSIDE_PCT' : 'SWING_KONGLO_MIN_TP1_UPSIDE_PCT');
-  var fallback = cat.indexOf('day') >= 0 ? 3 : 5;
+  var fallback = cat.indexOf('day') >= 0 ? 3 : (cat.indexOf('non') >= 0 ? 4.5 : 5);
   var configured = toNum(process.env[envName]);
   return configured != null && configured >= 0 ? configured : fallback;
 }
@@ -6826,7 +6835,7 @@ function isJakartaAtOrAfter(hour, minute) {
 
 function evaluateMonitorStatus(pick, px) {
   var status = String(pick.status || 'WAITING').toUpperCase();
-  var finalBefore = pick.is_final || ['TP1_HIT','TP2_HIT','SL_HIT'].indexOf(status) >= 0;
+  var finalBefore = pick.is_final || ['TP1_HIT','TP2_HIT','SL_HIT','BEP_CLOSED'].indexOf(status) >= 0;
   var raw = pick.raw_payload || {};
   var setupOriginAt = resolveMonitorSetupOrigin(pick);
   var monitorSource = (pick && pick.monitor_source) || raw.monitor_source || pick.category || raw.category;
@@ -6880,15 +6889,44 @@ function evaluateMonitorStatus(pick, px) {
   var tp1 = toNum(pick.tp1);
   var tp2 = toNum(pick.tp2);
   var sl = toNum(pick.sl);
+  var initialSl = toNum(pick.initial_sl || pick.sl);
   var entryLow = null;
   var entryHigh = null;
   if (entry1 != null || entry2 != null) {
     entryLow = entry1 != null && entry2 != null ? Math.min(entry1, entry2) : (entry1 != null ? entry1 : entry2);
     entryHigh = entry1 != null && entry2 != null ? Math.max(entry1, entry2) : (entry1 != null ? entry1 : entry2);
   }
+  var entryMid = entryLow != null && entryHigh != null ? (entryLow + entryHigh) / 2 : (entry1 != null ? entry1 : entry2);
+
   var entryTouched = entryLow != null && effectiveHigh != null && effectiveLow != null && effectiveLow <= entryHigh && effectiveHigh >= entryLow;
   var lastInEntryZone = entryLow != null && last != null && last >= entryLow && last <= entryHigh;
-  var slTouched = sl != null && effectiveLow != null && effectiveLow <= sl;
+  var active = activeBefore || entryTouched;
+
+  // Fase 4: Dynamic Break-Even Lock (+2.0% for Day Trade)
+  var prevHighSinceEntry = toNum(pick.high_since_entry || pick.mfe || pick.highest_price || pick.high_price_since_entry);
+  var highSinceEntry = active ? Math.max(prevHighSinceEntry || 0, effectiveHigh || 0) : (prevHighSinceEntry || null);
+
+  var isDaytrade = String(monitorSource || '').toLowerCase().indexOf('day') >= 0;
+  var bepLocked = isDaytrade && !!(pick.bep_locked || (activeBefore && entryMid && highSinceEntry >= entryMid * 1.020));
+  var bepLockedAt = pick.bep_locked_at || (bepLocked ? (px && px.at || new Date().toISOString()) : null);
+
+  var tickSize = 1;
+  if (entryMid && idxTick.getIdxTickSize) {
+    tickSize = idxTick.getIdxTickSize(entryMid, pick.board, pick.is_fca, pick.ticker) || 1;
+  }
+  var bepLevel = null;
+  var effectiveSl = sl;
+  if (bepLocked && entryMid) {
+    var rawBep = entryMid + tickSize;
+    bepLevel = idxTick.roundToIdxTick ? (idxTick.roundToIdxTick(rawBep, 'up', pick.board, pick.is_fca, pick.ticker) || rawBep) : rawBep;
+    if (initialSl != null) {
+      effectiveSl = Math.max(initialSl, bepLevel);
+    } else {
+      effectiveSl = bepLevel;
+    }
+  }
+
+  var slTouched = effectiveSl != null && effectiveLow != null && effectiveLow <= effectiveSl;
   var tp1Touched = tp1 != null && effectiveHigh != null && effectiveHigh >= tp1;
   var tp2Touched = tp2 != null && effectiveHigh != null && effectiveHigh >= tp2;
 
@@ -6916,36 +6954,64 @@ function evaluateMonitorStatus(pick, px) {
     );
   }
 
-  var active = activeBefore || entryTouched;
-
   // Once a recommendation has already recorded TP1 (pick.hit_tp1_at or status === 'TP1_HIT'):
   // - If price touches TP2, advance to TP2_HIT
   // - If price drops back to/below SL, finalize the position as TP1_HIT (never overwrite a winning TP1 with SL_HIT!)
   if (pick.hit_tp1_at || status === 'TP1_HIT') {
-    if (active && tp2Touched) return result('TP2_HIT', 'TP2 Hit', true, pick.hit_tp2_at ? 'TP2 sudah tercatat sebelumnya' : 'TP2 tersentuh');
+    if (active && tp2Touched) return result('TP2_HIT', 'TP2 Hit', true, pick.hit_tp2_at ? 'TP2 sudah tercatat sebelumnya' : 'TP2 tersentuh', { bep_locked: bepLocked, bep_locked_at: bepLockedAt, effective_sl: effectiveSl, high_since_entry: highSinceEntry });
     if (slTouched) {
       return result('TP1_HIT', 'TP1 Hit', true, 'Posisi selesai setelah TP1 tercapai (trailing stop/reversal)', {
-        hit_tp1_at: pick.hit_tp1_at || new Date().toISOString()
+        hit_tp1_at: pick.hit_tp1_at || new Date().toISOString(),
+        bep_locked: bepLocked,
+        bep_locked_at: bepLockedAt,
+        effective_sl: effectiveSl,
+        high_since_entry: highSinceEntry
       });
     }
-    return result('TP1_HIT', 'TP1 Hit', false, 'TP1 sudah tercatat sebelumnya; memantau TP2');
+    return result('TP1_HIT', 'TP1 Hit', false, 'TP1 sudah tercatat sebelumnya; memantau TP2', {
+      bep_locked: bepLocked,
+      bep_locked_at: bepLockedAt,
+      effective_sl: effectiveSl,
+      high_since_entry: highSinceEntry
+    });
   }
 
   // If TP2 touched on an active recommendation, TP2 hit takes precedence
-  if (active && tp2Touched) return result('TP2_HIT', 'TP2 Hit', true, pick.hit_tp2_at ? 'TP2 sudah tercatat sebelumnya' : 'TP2 tersentuh');
-  if (slTouched) return result(active ? 'SL_HIT' : 'INVALID', active ? 'SL kena' : 'Invalid', true, active ? 'SL tersentuh' : 'Harga menyentuh invalidation sebelum entry');
-  if (active && tp1Touched) return result('TP1_HIT', 'TP1 Hit', false, pick.hit_tp1_at ? 'TP1 sudah tercatat sebelumnya' : 'TP1 tersentuh');
+  if (active && tp2Touched) return result('TP2_HIT', 'TP2 Hit', true, pick.hit_tp2_at ? 'TP2 sudah tercatat sebelumnya' : 'TP2 tersentuh', { bep_locked: bepLocked, bep_locked_at: bepLockedAt, effective_sl: effectiveSl, high_since_entry: highSinceEntry });
+  if (slTouched) {
+    if (active && bepLocked) {
+      return result('BEP_CLOSED', 'BEP Closed', true, 'Posisi ditutup di level Break-Even (+2% lock tercapai sebelumnya)', {
+        bep_locked: true,
+        bep_locked_at: bepLockedAt,
+        effective_sl: effectiveSl,
+        bep_level: bepLevel,
+        initial_sl: initialSl,
+        high_since_entry: highSinceEntry,
+        exit_price: effectiveSl,
+        pnl_pct: 0,
+        loss_pct: 0
+      });
+    }
+    return result(active ? 'SL_HIT' : 'INVALID', active ? 'SL kena' : 'Invalid', true, active ? 'SL tersentuh' : 'Harga menyentuh invalidation sebelum entry', {
+      effective_sl: effectiveSl,
+      initial_sl: initialSl,
+      high_since_entry: highSinceEntry,
+      bep_locked: false
+    });
+  }
+  if (active && tp1Touched) return result('TP1_HIT', 'TP1 Hit', false, pick.hit_tp1_at ? 'TP1 sudah tercatat sebelumnya' : 'TP1 tersentuh', { bep_locked: bepLocked, bep_locked_at: bepLockedAt, effective_sl: effectiveSl, high_since_entry: highSinceEntry });
+
   // For already-active positions (entry was previously touched / hit_entry_at already set),
   // the pre-entry "price too far from entry" freshness rule must NOT expire the position.
   // The position remains active (IN_ENTRY_ZONE or RUNNING towards TP1) until TP or SL is reached.
   if (activeBefore) {
-    if (lastInEntryZone) return result('IN_ENTRY_ZONE', 'In Entry Zone', false, 'Harga berada di area Entry 1–Entry 2');
-    return result('RUNNING', 'Running', false, 'Posisi aktif; menuju TP1');
+    if (lastInEntryZone) return result('IN_ENTRY_ZONE', 'In Entry Zone', false, 'Harga berada di area Entry 1–Entry 2', { bep_locked: bepLocked, bep_locked_at: bepLockedAt, effective_sl: effectiveSl, high_since_entry: highSinceEntry });
+    return result('RUNNING', 'Running', false, 'Posisi aktif; menuju TP1', { bep_locked: bepLocked, bep_locked_at: bepLockedAt, effective_sl: effectiveSl, high_since_entry: highSinceEntry });
   }
   if (fresh.setup_freshness_status === 'EXPIRED') return result('EXPIRED', 'Expired', false, fresh.setup_expiry_note);
   if (fresh.setup_freshness_status === 'NEEDS_REVALIDATION') return result('NEEDS_REVALIDATION', 'Needs Revalidation', false, fresh.setup_expiry_note);
   if (lastInEntryZone) return result('IN_ENTRY_ZONE', 'In Entry Zone', false, 'Harga berada di area Entry 1–Entry 2');
-  if (entryTouched) return result('RUNNING', 'Running', false, 'Area entry sudah tersentuh; monitor TP/SL');
+  if (entryTouched) return result('RUNNING', 'Running', false, 'Area entry sudah tersentuh; monitor TP/SL', { bep_locked: bepLocked, bep_locked_at: bepLockedAt, effective_sl: effectiveSl, high_since_entry: highSinceEntry });
   if (entry2 != null && sl != null && last < Math.min(entry1 != null ? entry1 : entry2, entry2) && last > sl) return result('WATCHLIST', 'Watchlist', false, 'Harga di bawah area entry namun masih di atas SL');
   if (entry1 != null && last > Math.max(entry1, entry2 != null ? entry2 : entry1)) return result(active ? 'RUNNING' : 'ENTRY_MISSED', active ? 'Running' : 'Entry Missed', false, active ? 'Menuju TP1' : 'Harga di atas area entry tanpa touch; tunggu pullback');
   if (entry1 != null && last < Math.min(entry1, entry2 != null ? entry2 : entry1)) return result('ENTRY_READY', 'Entry Ready', false, 'Mendekati area entry; tunggu harga masuk zone');
@@ -8443,12 +8509,12 @@ function isTerminalPick(pick) {
   if (!pick) return true;
   var status = String(pick.status || '').toUpperCase();
   // Terminal statuses that should no longer be monitored
-  var terminalStatuses = ['TP2_HIT', 'SL_HIT', 'EXPIRED', 'INVALID'];
+  var terminalStatuses = ['TP2_HIT', 'SL_HIT', 'BEP_CLOSED', 'EXPIRED', 'INVALID'];
   if (terminalStatuses.indexOf(status) >= 0) return true;
   // Also consider rows with both TP1 and TP2 hit as terminal (full profit taken)
   if (pick.hit_tp2_at) return true;
-  // Row with SL hit is terminal
-  if (pick.hit_sl_at) return true;
+  // Row with SL hit or BEP closed is terminal
+  if (pick.hit_sl_at || pick.bep_closed_at) return true;
   return false;
 }
 
@@ -8754,13 +8820,22 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
         update.hit_sl_at = update.last_checked_at;
         update.hit_price = toNum(px && px.last) || toNum(pck.sl);
       }
+      if (ev.status === 'BEP_CLOSED' && !pck.bep_closed_at) {
+        update.bep_closed_at = update.last_checked_at;
+        update.hit_price = toNum(ev.exit_price) || toNum(px && px.last) || toNum(pck.sl);
+        update.bep_locked = true;
+      }
+      if (ev.bep_locked) update.bep_locked = true;
+      if (ev.bep_locked_at) update.bep_locked_at = ev.bep_locked_at;
+      if (ev.high_since_entry != null) update.high_since_entry = ev.high_since_entry;
+      if (ev.effective_sl != null) update.effective_sl = ev.effective_sl;
       // Persistence is intentionally deferred until after an immediate significant-hit
       // Telegram delivery attempt. A failed send must not consume hit_* idempotency
       // markers or terminal state, otherwise the next monitor run can never retry.
 
       // Attempt AI note for significant status updates (note-only: appended to template)
       var monitorAiNote = null;
-      var significantStatuses = ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'IN_ENTRY_ZONE', 'RUNNING'];
+      var significantStatuses = ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'BEP_CLOSED', 'IN_ENTRY_ZONE', 'RUNNING'];
       // AI SUPPRESSION: dry-run never calls AI narration services.
       if (!dryRun && significantStatuses.indexOf(ev.status) >= 0) {
         try {
@@ -8775,7 +8850,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       }
 
       // Only notify if this is a NEW hit (idempotent per recommendation via the
-      // hit_entry_at / hit_tp1_at / hit_tp2_at / hit_sl_at markers) AND the row is
+      // hit_entry_at / hit_tp1_at / hit_tp2_at / hit_sl_at / bep_closed_at markers) AND the row is
       // eligible for public Telegram broadcast (silent 'daytrade' rows are tracked
       // in DB only and never send public Telegram hit alerts).
       var isPublicAlertEligible = telegramDelivery.monitorRowIsPublicNotificationEligible(pck);
@@ -8784,7 +8859,8 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       if (ev.status === 'TP1_HIT' && !pck.hit_tp1_at) isNewHit = true;
       if (ev.status === 'TP2_HIT' && !pck.hit_tp2_at) isNewHit = true;
       if (ev.status === 'SL_HIT' && !pck.hit_sl_at) isNewHit = true;
-      var significantHit = isPublicAlertEligible && isNewHit && ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'IN_ENTRY_ZONE'].indexOf(ev.status) >= 0;
+      if (ev.status === 'BEP_CLOSED' && !pck.bep_closed_at) isNewHit = true;
+      var significantHit = isPublicAlertEligible && isNewHit && ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'BEP_CLOSED', 'IN_ENTRY_ZONE'].indexOf(ev.status) >= 0;
 
       // IMMEDIATE INDIVIDUAL NOTIFICATION — fires on EVERY monitor invocation
       // (both the top-of-hour and the half-hour run), independent of the hourly
@@ -10553,72 +10629,47 @@ async function fetchNkQuoteData(ticker) {
     }
 
     // === NK TP: Best probable swing target (V1.1 — not merely nearest resistance) ===
+    // Fase 4: TP1 intermediate target (+4.5% s/d +5.5%), TP2 resistance / fib extension (+12% ke atas)
     var nkRange = resistance - support;
     var nkAtrForTP = nkAtr14 || (nkRange * 0.15);
-    var nkRiskForTP = ((entryLow + entryHigh) / 2) - (stopLoss || entryLow * 0.96);
+    var nkEntryMidApprox = (entryLow + entryHigh) / 2;
+    var nkRiskForTP = nkEntryMidApprox - (stopLoss || entryLow * 0.96);
     if (nkRiskForTP <= 0) nkRiskForTP = nkAtrForTP;
 
-    // TP1 base: Fibonacci 0.618 (existing good logic for NK)
-    var tp1 = Math.round(support + nkRange * 0.618);
-    var nkTp1Source = 'fib_618';
+    // TP1 base: intermediate target (+5.0% dari entry mid)
+    var tp1 = Math.round(nkEntryMidApprox * 1.050);
+    var nkTp1Source = 'intermediate_5pct';
 
-    // Check if swingHigh10 gives better RR than Fib (and is meaningful)
-    var nkSwH10RR = nkRiskForTP > 0 ? (nkSwingHigh10 - ((entryLow + entryHigh) / 2)) / nkRiskForTP : 0;
-    var nkFibRR = nkRiskForTP > 0 ? (tp1 - ((entryLow + entryHigh) / 2)) / nkRiskForTP : 0;
-
-    // Use swingHigh10 ONLY if it gives RR >= 1.5 AND is not too close (skip if too short)
-    if (nkSwingHigh10 > entryHigh && nkSwH10RR >= 1.5 && nkSwingHigh10 < resistance * 0.97) {
-      // Only replace Fib if swing high is ABOVE Fib level (better target)
-      if (nkSwingHigh10 > tp1) {
-        tp1 = Math.round(nkSwingHigh10);
-        nkTp1Source = 'swing_high_10d';
-      }
-      // If swing high is below Fib and gives poor RR, keep Fib
+    // Check if overhead gap is within the realistic intermediate window (+4.5% s/d +6.0%)
+    if (nkOverheadGap && nkOverheadGap.lower >= nkEntryMidApprox * 1.045 && nkOverheadGap.lower <= nkEntryMidApprox * 1.060) {
+      tp1 = nkOverheadGap.lower;
+      nkTp1Source = 'gap_lower';
     }
 
-    // Overhead gap as TP1 candidate if closer than current TP1 but still gives RR >= 1.5
-    if (nkOverheadGap && nkOverheadGap.lower > entryHigh && nkOverheadGap.lower < tp1) {
-      var nkGapRR = nkRiskForTP > 0 ? (nkOverheadGap.lower - ((entryLow + entryHigh) / 2)) / nkRiskForTP : 0;
-      if (nkGapRR >= 1.5) {
-        tp1 = nkOverheadGap.lower;
-        nkTp1Source = 'gap_lower';
-      }
-    }
-
-    // If TP1 RR < 1.5, try to use resistance instead
-    var nkTp1FinalRR = nkRiskForTP > 0 ? (tp1 - ((entryLow + entryHigh) / 2)) / nkRiskForTP : 0;
-    if (nkTp1FinalRR < 1.5 && resistance > entryHigh) {
-      var resRR = nkRiskForTP > 0 ? (resistance - ((entryLow + entryHigh) / 2)) / nkRiskForTP : 0;
-      if (resRR >= 1.5) {
-        tp1 = Math.round(resistance);
-        nkTp1Source = 'resistance_20d';
-      }
-    }
-
-    // Fallback: TP1 must be > entry
+    // Fallback: TP1 must be > entryHigh by at least 4.5%
     if (tp1 <= entryHigh) {
-      tp1 = Math.round(((entryLow + entryHigh) / 2) + nkAtrForTP * 2.0);
-      nkTp1Source = 'atr_measured';
+      tp1 = Math.round(entryHigh * 1.045);
+      nkTp1Source = 'intermediate_clamp';
     }
 
-    // === NK TP2: Extended target (stricter than Konglo due to liquidity) ===
-    var tp2 = Math.round(resistance);
-    var nkTp2Source = 'resistance_20d';
+    // === NK TP2: Extended target (resistance / fib extension +12% ke atas) ===
+    var tp2 = Math.round(Math.max(resistance, nkEntryMidApprox * 1.12));
+    var nkTp2Source = 'resistance_or_extension_12pct';
 
     // If overhead gap upper is above TP1, use as TP2
-    if (nkOverheadGap && nkOverheadGap.upper > tp1) {
+    if (nkOverheadGap && nkOverheadGap.upper > tp1 && nkOverheadGap.upper >= nkEntryMidApprox * 1.10) {
       tp2 = Math.round(nkOverheadGap.upper);
       nkTp2Source = 'gap_upper';
     }
-    // If TP2 <= TP1, extend
+    // If TP2 <= TP1, extend to at least +12% or TP1 + ATR
     if (tp2 <= tp1) {
-      tp2 = Math.round(tp1 + nkAtrForTP * 1.0);
+      tp2 = Math.round(Math.max(tp1 + nkAtrForTP * 1.5, nkEntryMidApprox * 1.12));
       nkTp2Source = 'atr_extension';
     }
-    // NK stricter cap: TP2 max = entry + 4×ATR (tighter than Konglo's 5×)
-    var nkTp2Cap = Math.round(((entryLow + entryHigh) / 2) + nkAtrForTP * 4.0);
+    // NK cap: TP2 max = entry + 4×ATR (or at least +12%)
+    var nkTp2Cap = Math.round(nkEntryMidApprox + nkAtrForTP * 4.0);
     if (tp2 > nkTp2Cap && tp2 > resistance * 1.05 && volumeRatioAvg20 < 1.5) {
-      tp2 = nkTp2Cap;
+      tp2 = Math.max(nkTp2Cap, Math.round(nkEntryMidApprox * 1.12));
       nkTp2Source = 'capped_liquidity';
     }
 
@@ -10626,12 +10677,8 @@ async function fetchNkQuoteData(ticker) {
     var nkTpNote = '';
     if (nkTp1Source === 'gap_lower' || nkTp2Source === 'gap_upper') {
       nkTpNote = 'TP mempertimbangkan area gap atas yang belum tertutup.';
-    } else if (nkTp1Source === 'swing_high_10d') {
-      nkTpNote = 'TP1 ke swing high valid.';
-    } else if (nkTp1Source === 'resistance_20d') {
-      nkTpNote = 'TP1 ke resistance 20D.';
-    } else if (nkTp1Source === 'fib_618') {
-      nkTpNote = 'TP1 ke Fib 61.8% area.';
+    } else {
+      nkTpNote = 'TP1 target antara +5% (parsial 50%), TP2 resistance/extension +12% ke atas.';
     }
     if (nkDownsideGap) {
       nkTpNote += (nkTpNote ? ' ' : '') + 'Ada gap bawah belum tertutup, waspadai pullback.';
@@ -10678,14 +10725,21 @@ async function fetchNkQuoteData(ticker) {
     // Risk/Reward based on actual entry (post-ATR-adjustment)
     const entryMid = (entryLow + entryHigh) / 2;
     const riskAmt = entryMid - stopLoss;
-    const rewardAmt = tp1 - entryMid;
-    var riskReward = riskAmt > 0 ? rewardAmt / riskAmt : 0;
+
+    // Final alignment of TP1 & TP2 with adjusted entryMid
+    if (tp1 <= entryHigh || tp1 < entryMid * 1.045) {
+      tp1 = Math.round(entryMid * 1.050);
+    }
+    if (tp2 <= tp1) {
+      tp2 = Math.round(Math.max(tp1 * 1.05, entryMid * 1.12));
+    }
+
+    const rewardTp1 = Math.max(0, tp1 - entryMid);
+    const rewardTp2 = Math.max(0, tp2 - entryMid);
+    const blendedReward = (rewardTp1 * 0.5) + (rewardTp2 * 0.5);
+    var riskReward = riskAmt > 0 ? blendedReward / riskAmt : 0;
 
     // === RR QUALITY GUARD (V1.1) ===
-    if (riskReward > 5.0 && tp1 > resistance && nkTp1Source !== 'gap_lower') {
-      tp1 = Math.round(resistance);
-      riskReward = riskAmt > 0 ? (tp1 - entryMid) / riskAmt : 0;
-    }
     if (riskReward < 1.2 && riskReward > 0 && !nkTpNote.includes('terlalu dekat')) {
       nkTpNote = (nkTpNote ? nkTpNote + ' ' : '') + 'TP terlalu dekat, RR kurang layak.';
     }
@@ -10810,13 +10864,22 @@ function calculateNkSetupScore(q) {
   var score = 50; // Same base as Konglo
   var components = [];
 
-  // 1. TREND (same as Konglo: MA20 +10/+5/-5, MA50 softened)
-  if (q.ma20 && q.lastPrice >= q.ma20) { score += 10; components.push('close>MA20'); }
-  else if (q.ma20 && q.lastPrice >= q.ma20 * 0.98) { score += 5; components.push('close~MA20'); }
+  // 1. TREND (same as Konglo: MA20 +10/+5/-5, MA50 softened) — Fase 3: Hilangkan poin MA20/MA50 jika volume ratio < 1.0x
+  var nkVolRatio = q.volumeRatioAvg20 != null ? q.volumeRatioAvg20 : (q.volume_ratio_avg20 != null ? q.volume_ratio_avg20 : 1.0);
+  if (q.ma20 && q.lastPrice >= q.ma20) {
+    if (nkVolRatio >= 1.0) { score += 10; components.push('close>MA20'); }
+  }
+  else if (q.ma20 && q.lastPrice >= q.ma20 * 0.98) {
+    if (nkVolRatio >= 1.0) { score += 5; components.push('close~MA20'); }
+  }
   else { score -= 5; if (q.ma20) components.push('close<MA20'); }
 
-  if (q.ma50 && q.lastPrice >= q.ma50) { score += 10; components.push('close>MA50'); }
-  else if (q.ma50 && q.lastPrice >= q.ma50 * 0.97) { score += 3; }
+  if (q.ma50 && q.lastPrice >= q.ma50) {
+    if (nkVolRatio >= 1.0) { score += 10; components.push('close>MA50'); }
+  }
+  else if (q.ma50 && q.lastPrice >= q.ma50 * 0.97) {
+    if (nkVolRatio >= 1.0) { score += 3; }
+  }
   else if (q.ma50 && q.lastPrice >= q.ma50 * 0.95) { score += 0; }
   else { score -= 3; if (q.ma50) components.push('close<MA50'); }
 
@@ -11761,8 +11824,8 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
 
   // 7. Save batch results to daytrade_screener_latest immediately (upsert per ticker)
   // 7. Save batch results to daytrade_screener_latest immediately (upsert per ticker with run_id)
-  //    Only keep candidates with score >= 50. Old data is preserved until finalizeDtScreener trims it.
-  var passedResults = results.filter(function(r) { return r.daytrade_score >= 50; });
+  //    Only keep candidates with score >= 65 (Fase 3 tradeable threshold). Old data is preserved until finalizeDtScreener trims it.
+  var passedResults = results.filter(function(r) { return r.daytrade_score >= 65; });
   var now = new Date().toISOString();
   var batchSaveError = null;
 
@@ -11924,8 +11987,47 @@ function buildDtValueDistribution(rows, fieldName) {
   return dist;
 }
 
+// ============================================================
+// FASE 3: TOP 10 CANDIDATE SELECTION & SECTOR DIVERSIFICATION
+// ============================================================
+
+function selectTopCandidatesWithSectorDiversification(candidates, maxTotal, maxPerSector) {
+  if (!Array.isArray(candidates)) return [];
+  var limitTotal = Number.isFinite(maxTotal) && maxTotal > 0 ? maxTotal : 10;
+  var limitPerSector = Number.isFinite(maxPerSector) && maxPerSector > 0 ? maxPerSector : 3;
+
+  var selected = [];
+  var sectorCounts = {};
+
+  for (var i = 0; i < candidates.length; i++) {
+    var c = candidates[i];
+    if (!c) continue;
+    var score = c.daytrade_score != null ? Number(c.daytrade_score) : (c.score != null ? Number(c.score) : null);
+    if (score != null && Number.isFinite(score) && score < 65) {
+      continue;
+    }
+
+    var rawSector = c.sector || c.sector_name || c.group_code || c.industry;
+    if (rawSector) {
+      var sectorKey = String(rawSector).trim().toUpperCase();
+      var count = sectorCounts[sectorKey] || 0;
+      if (count >= limitPerSector) {
+        continue;
+      }
+      sectorCounts[sectorKey] = count + 1;
+    }
+
+    selected.push(c);
+    if (selected.length >= limitTotal) {
+      break;
+    }
+  }
+
+  return selected;
+}
+
 async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, universeCount, batchCount, counters) {
-  // Read all rows currently in daytrade_screener_latest, keep only top 50 by score for current run
+  // Read all rows currently in daytrade_screener_latest, keep only top 10 by score for current run
   var { data: allRows, error: readErr } = await supabase
     .from('daytrade_screener_latest')
     .select('ticker, daytrade_score, status, risk_reward, entry_low, entry_high, stop_loss, tp1, tp2, calculated_at, run_id')
@@ -11976,19 +12078,19 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
   // Preserve batch progress diagnostics separately from rows that survive DB read/trim.
   // This prevents a production false-zero from hiding the fact that earlier batches had candidates.
   var totalPassed = Math.max(prePublishCandidateCount, rawBatchPassedCount);
-  var publishedRows = currentRunRows.slice(0, 50);
+  var publishedRows = selectTopCandidatesWithSectorDiversification(currentRunRows, 10, 3);
   var savedCount = publishedRows.length;
 
-  // Prune rows that are not in the top 50 of the current run (cleans up both lower-ranked rows and stale rows from prior runs)
-  var top50Tickers = new Set(publishedRows.map(function(r) { return r.ticker; }));
+  // Prune rows that are not in the top 10 of the current run (cleans up both lower-ranked rows and stale rows from prior runs)
+  var top10Tickers = new Set(publishedRows.map(function(r) { return r.ticker; }));
   var tickersToRemove = allRows
-    .filter(function(r) { return !top50Tickers.has(r.ticker); })
+    .filter(function(r) { return !top10Tickers.has(r.ticker); })
     .map(function(r) { return r.ticker; });
 
   if (tickersToRemove.length > 0) {
     var { error: trimErr } = await supabase.from('daytrade_screener_latest').delete().in('ticker', tickersToRemove);
     if (trimErr) {
-      console.error('[daytrade-screener-finalize] top-50 trim failed:', trimErr.message || trimErr);
+      console.error('[daytrade-screener-finalize] top-10 trim failed:', trimErr.message || trimErr);
       await updateDtMeta(supabase, {
         status: 'failed',
         run_date: runDate,
@@ -12804,7 +12906,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     // canonical final-list ordering used by every other digest in this file
     // — Top10, screener digests, daily Top5, tier1/tier2, etc.).
     actionable.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
-    var finalList = actionable.slice(0, 5);
+    var finalList = selectTopCandidatesWithSectorDiversification(actionable, 10, 3);
     var headerNote = '';
 
     // Step 5: Matikan fallback ke watchlist jika finalList kosong.
@@ -14227,6 +14329,8 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 }
 
 module.exports.__test = {
+  scoreAndClassify: scoreAndClassify,
+  calculateNkSetupScore: calculateNkSetupScore,
   parseNkValidDays: parseNkValidDays,
   fetchWithTimeout: fetchWithTimeout,
   YAHOO_FETCH_TIMEOUT_MS: YAHOO_FETCH_TIMEOUT_MS,
@@ -14280,6 +14384,7 @@ module.exports.__test = {
   sanitizeNkLatestPublishRow: sanitizeNkLatestPublishRow,
   buildNkPublishFailureResponse: buildNkPublishFailureResponse,
   candidatePassesMinUpside: candidatePassesMinUpside,
+  getMinTp1UpsideForCategory: getMinTp1UpsideForCategory,
   buildEntryRangeNormalizationDiagnostics: buildEntryRangeNormalizationDiagnostics,
   handleDayTradeScreenerRead: handleDayTradeScreenerRead,
   getDayTradeRunningLockDiagnostics: getDayTradeRunningLockDiagnostics,
@@ -14368,10 +14473,12 @@ module.exports.__test = {
   nkCalcRSI: nkCalcRSI,
   deriveDayTradeTimeframeContext: deriveDayTradeTimeframeContext,
   isOpeningRangeVelocityWindow: fastWatcherMomentum.isOpeningRangeVelocityWindow,
-  evaluateOpeningVelocityGuard: fastWatcherMomentum.evaluateOpeningVelocityGuard
+  evaluateOpeningVelocityGuard: fastWatcherMomentum.evaluateOpeningVelocityGuard,
+  selectTopCandidatesWithSectorDiversification: selectTopCandidatesWithSectorDiversification
 };
 
 module.exports.isSignalPublicationTimeRestrictedWib = isSignalPublicationTimeRestrictedWib;
 module.exports.getWibHourAndMinute = getWibHourAndMinute;
 module.exports.isOpeningRangeVelocityWindow = fastWatcherMomentum.isOpeningRangeVelocityWindow;
 module.exports.evaluateOpeningVelocityGuard = fastWatcherMomentum.evaluateOpeningVelocityGuard;
+module.exports.selectTopCandidatesWithSectorDiversification = selectTopCandidatesWithSectorDiversification;

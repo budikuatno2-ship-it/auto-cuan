@@ -39,7 +39,7 @@ function extractRegion(marker, endMarker) {
 }
 
 test('REGRESSION: the Day Trade Telegram actionable shortlist has exactly ONE sort, not a dead-then-live double sort', () => {
-  const region = extractRegion('Step 4: Sort by', 'var finalList = actionable.slice(0, 5);');
+  const region = extractRegion('Step 4: Sort by', 'var finalList = selectTopCandidatesWithSectorDiversification(actionable, 10, 3);');
 
   const sortCallCount = (region.match(/actionable\.sort\(/g) || []).length;
   assert.equal(sortCallCount, 1, 'expected exactly one actionable.sort() call between "Step 4" and the slice(0,5) — found ' + sortCallCount +
@@ -47,12 +47,12 @@ test('REGRESSION: the Day Trade Telegram actionable shortlist has exactly ONE so
 });
 
 test('the surviving sort uses rankCandidatesByPotential, the codebase-wide canonical final-list ranking function', () => {
-  const region = extractRegion('Step 4: Sort by', 'var finalList = actionable.slice(0, 5);');
+  const region = extractRegion('Step 4: Sort by', 'var finalList = selectTopCandidatesWithSectorDiversification(actionable, 10, 3);');
   assert.match(region, /actionable\.sort\(function\(a,\s*b\)\s*\{\s*return rankCandidatesByPotential\(b\)\s*-\s*rankCandidatesByPotential\(a\)/);
 });
 
 test('the dead priority-tier-then-score comparator is gone from the actionable sort region', () => {
-  const region = extractRegion('Step 4: Sort by', 'var finalList = actionable.slice(0, 5);');
+  const region = extractRegion('Step 4: Sort by', 'var finalList = selectTopCandidatesWithSectorDiversification(actionable, 10, 3);');
   // The old dead comparator referenced setupPriority[a.status]/[b.status]
   // INSIDE a .sort() callback specifically — setupPriority itself is still
   // legitimately used earlier (Step 2's actionable filter), so this checks
