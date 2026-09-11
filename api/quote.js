@@ -301,7 +301,7 @@ module.exports = async function handler(req, res) {
 
     // IHSG/Index: skip board data, use ^JKSE for Yahoo
     var isIndex = (ticker === 'IHSG');
-    var portfolioPriceOnly = req.query && req.query.portfolio === '1';
+    var portfolioPriceOnly = Boolean(req.query?.portfolio === '1' || req.body?.portfolio === '1' || req.body?.portfolio === true);
 
     // Run Yahoo quote and Supabase board in parallel first
     var baseResults = await Promise.all([

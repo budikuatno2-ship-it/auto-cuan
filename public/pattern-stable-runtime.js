@@ -633,15 +633,24 @@
       if (root.location && root.location.pathname === '/pattern') { try { root.history.replaceState({}, '', '/dashboard'); } catch (_) {} }
       return originalNavigate.apply(root, arguments);
     };
-    if (originalLogout) root.logout = function () { state.allowed=false; state.checked=true; state.version+=1; clearCache(); hide(); removeNav(); return originalLogout.apply(root, arguments); };
+    if (originalLogout) root.logout = function () { clearPatternInterval(); state.allowed=false; state.checked=true; state.version+=1; clearCache(); hide(); removeNav(); return originalLogout.apply(root, arguments); };
     access(false).then(function (allowed) { if (allowed && root.location && root.location.pathname === '/pattern') open(); });
-    root.setInterval(function () {
+    var patternPollInterval = root.setInterval(function () {
       if (doc.visibilityState === 'hidden') return;
       if (!state.checked || root.PatternMapAdminAccess.isAllowed()) return;
       state.allowed=false; removeNav();
       var node=doc.getElementById('page-pattern');
       if (node && !node.classList.contains('hidden')) root.navigateTo('chart');
     }, 1000);
+    function clearPatternInterval() {
+      if (patternPollInterval) {
+        root.clearInterval(patternPollInterval);
+        patternPollInterval = null;
+      }
+    }
+    root.addEventListener('beforeunload', clearPatternInterval);
+    root.addEventListener('pagehide', clearPatternInterval);
+    if (root.addEventListener) root.addEventListener('unload', clearPatternInterval);
     root.addEventListener('focus', function () { access(true); });
     doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') access(true); });
   }

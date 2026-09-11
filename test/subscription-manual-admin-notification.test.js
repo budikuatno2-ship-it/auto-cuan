@@ -76,6 +76,12 @@ function fakeDb() {
             eq() { return Promise.resolve({ data: null, error: null }); }
           };
         },
+        upsert() {
+          return Promise.resolve({ data: null, error: null });
+        },
+        insert() {
+          return Promise.resolve({ data: null, error: null });
+        },
         async maybeSingle() {
           if (table === 'subscription_payment_settings') {
             return { data: { bank_name: 'BCA', account_number: '123', account_holder: 'Budi', active: true }, error: null };
@@ -155,11 +161,18 @@ function makeRes() {
   return res;
 }
 
-async function submit(headers) {
+async function submit(headers, bodyOverrides) {
   const req = {
     method: 'POST',
     headers: Object.assign({ host: 'autocuan.web.id', origin: 'https://autocuan.web.id' }, headers || {}),
-    body: { action: 'submit', payment_reference: 'PAY-0123456789AB', transfer_sender_name: 'Budi' }
+    body: Object.assign({
+      action: 'submit',
+      payment_reference: 'PAY-0123456789AB',
+      transfer_sender_name: 'Budi',
+      paymentTermsAccepted: true,
+      termsAccepted: true,
+      termsVersion: '2026-08-16-v1'
+    }, bodyOverrides || {})
   };
   const res = makeRes();
   await handler(req, res);
@@ -309,4 +322,11 @@ test('a failed delivery leaves the payment retryable', async () => {
   const retry = await submit();
   assert.equal(retry.statusCode, 200);
   assert.equal(state.sent.length, 1, 'retry after a failed delivery must be allowed');
+});
+
+test('submit is rejected with 400 when terms are not accepted', async () => {
+  resetState();
+  const res = await submit(null, { paymentTermsAccepted: false, termsAccepted: false });
+  assert.equal(res.statusCode, 400);
+  assert.match(res.body.error, /kebijakan pembayaran/i);
 });

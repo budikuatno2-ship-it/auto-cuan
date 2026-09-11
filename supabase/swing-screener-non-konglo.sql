@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS swing_screener_non_konglo_jobs (
   completed_at TIMESTAMPTZ
 );
 
-CREATE INDEX IF NOT EXISTS idx_nk_jobs_run_date ON swing_screener_non_konglo_jobs (run_date);
+DROP INDEX IF EXISTS idx_nk_jobs_run_date;
 CREATE INDEX IF NOT EXISTS idx_nk_jobs_status ON swing_screener_non_konglo_jobs (status);
 CREATE INDEX IF NOT EXISTS idx_nk_jobs_run_status ON swing_screener_non_konglo_jobs (run_date, status);
 
@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS swing_screener_non_konglo_staging (
   calculated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_nk_staging_run_date ON swing_screener_non_konglo_staging (run_date);
+DROP INDEX IF EXISTS idx_nk_staging_run_date;
 CREATE INDEX IF NOT EXISTS idx_nk_staging_score ON swing_screener_non_konglo_staging (score DESC);
 CREATE INDEX IF NOT EXISTS idx_nk_staging_run_score ON swing_screener_non_konglo_staging (run_date, score DESC);
 

@@ -56,7 +56,7 @@ WHERE monitor_source IS NULL
 
 ALTER TABLE telegram_daily_picks DROP CONSTRAINT IF EXISTS telegram_daily_picks_date_ticker_key;
 
-CREATE INDEX IF NOT EXISTS idx_telegram_daily_picks_date ON telegram_daily_picks (date);
+DROP INDEX IF EXISTS idx_telegram_daily_picks_date;
 CREATE INDEX IF NOT EXISTS idx_telegram_daily_picks_date_status ON telegram_daily_picks (date, status);
 CREATE INDEX IF NOT EXISTS idx_telegram_daily_picks_ticker ON telegram_daily_picks (ticker);
 CREATE INDEX IF NOT EXISTS idx_telegram_daily_picks_monitor_source ON telegram_daily_picks (monitor_source);

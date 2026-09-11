@@ -82,7 +82,7 @@ ALTER TABLE public.sector_hot_members_latest ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sector_hot_meta ENABLE ROW LEVEL SECURITY;
 
 -- Indexes
-CREATE INDEX IF NOT EXISTS idx_shgm_group ON public.sector_hot_group_members(group_code);
+DROP INDEX IF EXISTS idx_shgm_group;
 CREATE INDEX IF NOT EXISTS idx_shml_group ON public.sector_hot_members_latest(group_code);
 
 -- =============================================

@@ -202,7 +202,7 @@ module.exports = async function handler(req, res) {
         ma100: calcMA(closePrices, 100),
         ma200: calcMA(closePrices, 200),
         rsi14: calcRSI(closePrices, 14),
-        volumeAvg20: calcMA(volumeArr, 20) ? Math.round(calcMA(volumeArr, 20)) : null,
+        volumeAvg20: calcMA(volumeArr, 20) != null ? Math.round(calcMA(volumeArr, 20)) : null,
         volumeVsAvg20: calcVolumeRatio(volumeArr, latest.volume, 20)
       },
       candles: candles
