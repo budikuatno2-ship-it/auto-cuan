@@ -14375,5 +14375,3 @@ module.exports.isSignalPublicationTimeRestrictedWib = isSignalPublicationTimeRes
 module.exports.getWibHourAndMinute = getWibHourAndMinute;
 module.exports.isOpeningRangeVelocityWindow = fastWatcherMomentum.isOpeningRangeVelocityWindow;
 module.exports.evaluateOpeningVelocityGuard = fastWatcherMomentum.evaluateOpeningVelocityGuard;
-
-
