@@ -4,7 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const REPO = process.env.AUTO_CUAN_REPO || '/home/ubuntu/auto-cuan';
+const REPO = process.env.AUTO_CUAN_REPO || (fs.existsSync(path.join(__dirname, '..', 'package.json')) ? path.resolve(__dirname, '..') : '/home/ubuntu/auto-cuan');
 const RUNNER_DIR = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
 
 function loadEnvFile(file) {
@@ -35,93 +35,134 @@ function loadEnvFile(file) {
   return true;
 }
 
+function getJakartaDateParts(now = new Date()) {
+  const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+  const day = wib.getUTCDay();
+  const hours = wib.getUTCHours();
+  const minutes = wib.getUTCMinutes();
+  const totalMinutes = hours * 60 + minutes;
+  const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  return { day, hours, minutes, totalMinutes, timeStr };
+}
+
+function isMarketSessionWib(now = new Date()) {
+  const { day, totalMinutes, timeStr } = getJakartaDateParts(now);
+  const isWeekday = day >= 1 && day <= 5;
+  if (!isWeekday) return { active: false, reason: 'weekend', timeStr };
+  // Active trading window: 09:05 - 16:05 WIB (545 to 965 minutes from midnight)
+  if (totalMinutes < 545 || totalMinutes > 965) {
+    return { active: false, reason: 'outside_trading_hours', timeStr };
+  }
+  return { active: true, reason: null, timeStr };
+}
+
 [
   path.join(REPO, '.env.intraday-runtime'),
   path.join(REPO, '.env.local'),
   path.join(RUNNER_DIR, '.env')
 ].forEach(loadEnvFile);
 
-const args = new Set(process.argv.slice(2));
-const execute = args.has('--execute');
-const finalRun = args.has('--final');
-const force = args.has('--force');
+async function main() {
+  const args = new Set(process.argv.slice(2));
+  const execute = args.has('--execute');
+  const finalRun = args.has('--final');
+  const force = args.has('--force');
 
-if (execute && process.env.LOCAL_MONITOR_LIVE_APPROVED !== 'YES') {
-  throw new Error(
-    'LIVE_BLOCKED: set LOCAL_MONITOR_LIVE_APPROVED=YES only after production approval'
-  );
-}
+  if (execute && process.env.LOCAL_MONITOR_LIVE_APPROVED !== 'YES') {
+    throw new Error(
+      'LIVE_BLOCKED: set LOCAL_MONITOR_LIVE_APPROVED=YES only after production approval'
+    );
+  }
 
-for (const key of [
-  'SUPABASE_URL',
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'CRON_SECRET'
-]) {
-  if (!process.env[key]) throw new Error(`${key}_MISSING`);
-}
+  // In live execution mode without --force, gracefully skip when outside IDX trading hours (09:05 - 16:05 WIB Mon-Fri)
+  const sessionCheck = isMarketSessionWib();
+  if (execute && !force && !sessionCheck.active) {
+    const skipOutput = {
+      run_mode: 'LIVE',
+      success: true,
+      skipped: true,
+      reason: sessionCheck.reason,
+      time_wib: sessionCheck.timeStr,
+      message: `Skipped: ${sessionCheck.reason} (active market window is 09:05-16:05 WIB Mon-Fri). Pass --force to override.`
+    };
+    console.log(JSON.stringify(skipOutput, null, 2));
+    process.exit(0);
+  }
 
-process.chdir(REPO);
+  for (const key of [
+    'SUPABASE_URL',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'CRON_SECRET'
+  ]) {
+    if (!process.env[key]) throw new Error(`${key}_MISSING`);
+  }
 
-const { createClient } = require(
-  path.join(REPO, 'node_modules', '@supabase', 'supabase-js')
-);
-const sectorHot = require(path.join(REPO, 'api', 'sector-hot.js'));
+  process.chdir(REPO);
 
-const handler =
-  sectorHot.__test &&
-  sectorHot.__test.handleTelegramMonitorPicks;
+  let createClient;
+  try {
+    createClient = require('@supabase/supabase-js').createClient;
+  } catch (_) {
+    createClient = require(
+      path.join(REPO, 'node_modules', '@supabase', 'supabase-js')
+    ).createClient;
+  }
+  const sectorHot = require(path.join(REPO, 'api', 'sector-hot.js'));
 
-if (typeof handler !== 'function') {
-  throw new Error('LOCAL_MONITOR_HANDLER_NOT_EXPORTED');
-}
+  const handler =
+    sectorHot.__test &&
+    sectorHot.__test.handleTelegramMonitorPicks;
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false
+  if (typeof handler !== 'function') {
+    throw new Error('LOCAL_MONITOR_HANDLER_NOT_EXPORTED');
+  }
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
     }
+  );
+
+  const query = {};
+
+  if (!execute) {
+    query.dry_run = '1';
+    query.force = '1';
+    query.preview_hourly_batch = '1';
+  } else {
+    if (finalRun) query.final = '1';
+    if (force) query.force = '1';
   }
-);
 
-const query = {};
+  const req = {
+    method: 'GET',
+    query,
+    body: {},
+    headers: {
+      authorization: `Bearer ${process.env.CRON_SECRET}`
+    }
+  };
 
-if (!execute) {
-  query.dry_run = '1';
-  query.force = '1';
-  query.preview_hourly_batch = '1';
-} else {
-  if (finalRun) query.final = '1';
-  if (force) query.force = '1';
-}
+  let statusCode = null;
+  let payload = null;
 
-const req = {
-  method: 'GET',
-  query,
-  body: {},
-  headers: {
-    authorization: `Bearer ${process.env.CRON_SECRET}`
-  }
-};
+  const res = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
 
-let statusCode = null;
-let payload = null;
+    json(value) {
+      payload = value;
+      return value;
+    }
+  };
 
-const res = {
-  status(code) {
-    statusCode = code;
-    return this;
-  },
-
-  json(value) {
-    payload = value;
-    return value;
-  }
-};
-
-(async () => {
   await handler(req, res, supabase);
 
   if (!payload) throw new Error('MONITOR_RETURNED_NO_PAYLOAD');
@@ -160,8 +201,19 @@ const res = {
   }
 
   if (payload.success !== true) process.exitCode = 1;
-})().catch(error => {
-  console.error('LOCAL_MONITOR_RUN=FAILED');
-  console.error('ERROR=' + String(error && error.message || error));
-  process.exit(1);
-});
+}
+
+if (require.main === module) {
+  main().catch(error => {
+    console.error('LOCAL_MONITOR_RUN=FAILED');
+    console.error('ERROR=' + String(error && error.message || error));
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  loadEnvFile,
+  getJakartaDateParts,
+  isMarketSessionWib,
+  main
+};
