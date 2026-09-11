@@ -40,6 +40,7 @@ function readyObservation(time, overrides = {}) {
     risk_reward: 1.7,
     minimum_risk_reward: 1,
     plan_lock_id: 'PLAN_A',
+    delta_turnover_5m: 500000000,
     freshness: { is_stale: false },
     ...overrides
   };
@@ -390,17 +391,37 @@ test('stable changed source resets once then continues confirmation against lock
   });
 
   const thirdState = third.state.tickers.ZZZZ;
-  const thirdDiagnostic = third.diagnostics.source_identity[0];
   assert.equal(thirdState.locked_plan_lock_id, 'PLAN_A');
   assert.equal(thirdState.last_source_plan_lock_id, 'PLAN_B');
-  assert.equal(thirdState.status, 'READY_CONFIRMED');
+  assert.equal(thirdState.status, 'READY_PENDING');
   assert.equal(thirdState.ready_streak, 2);
   assert.deepEqual(thirdState.confirmation_window, [true, true]);
-  assert.ok(!thirdState.last_reasons.includes('confirmation_reset_source_setup_changed'));
-  assert.equal(thirdDiagnostic.reset, false);
-  assert.equal(thirdDiagnostic.reason, 'SOURCE_IDENTITY_STABLE');
-  assert.equal(thirdDiagnostic.previous_plan_lock_id, 'PLAN_B');
-  assert.equal(thirdDiagnostic.current_plan_lock_id, 'PLAN_B');
-  assert.equal(thirdDiagnostic.previous_setup_id, thirdDiagnostic.current_setup_id);
-  assert.equal(third.publishable.length, 1);
+
+  const fourth = pool.process({
+    sampleDate: '2099-01-07',
+    scheduledTime: '09:19',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:19', {
+      ...sourceB,
+      current_price: 103,
+      volume: 2600,
+      relative_volume: 2.2
+    })],
+    priorState: third.state
+  });
+
+  const fourthState = fourth.state.tickers.ZZZZ;
+  const fourthDiagnostic = fourth.diagnostics.source_identity[0];
+  assert.equal(fourthState.locked_plan_lock_id, 'PLAN_A');
+  assert.equal(fourthState.last_source_plan_lock_id, 'PLAN_B');
+  assert.equal(fourthState.status, 'READY_CONFIRMED');
+  assert.equal(fourthState.ready_streak, 3);
+  assert.deepEqual(fourthState.confirmation_window, [true, true, true]);
+  assert.ok(!fourthState.last_reasons.includes('confirmation_reset_source_setup_changed'));
+  assert.equal(fourthDiagnostic.reset, false);
+  assert.equal(fourthDiagnostic.reason, 'SOURCE_IDENTITY_STABLE');
+  assert.equal(fourthDiagnostic.previous_plan_lock_id, 'PLAN_B');
+  assert.equal(fourthDiagnostic.current_plan_lock_id, 'PLAN_B');
+  assert.equal(fourthDiagnostic.previous_setup_id, fourthDiagnostic.current_setup_id);
+  assert.equal(fourth.publishable.length, 1);
 });

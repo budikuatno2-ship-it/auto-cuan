@@ -10,7 +10,7 @@ function readyObservation(time, status, price, volume, relativeVolume) {
     current_price: price, entry_low: 100, entry_high: 103, tp1: 112, stop_loss: 97,
     open: 100, high: 104, low: 99, volume, average_volume: 1000,
     relative_volume: relativeVolume, score: 82, momentum_component: 20,
-    liquidity_component: 20, risk_reward: 2
+    liquidity_component: 20, risk_reward: 2, delta_turnover_5m: 500000000
   };
 }
 
@@ -23,7 +23,7 @@ function run(priorState, time, observation) {
   });
 }
 
-test('two passes in three observations confirm while one noisy miss gets grace', () => {
+test('three passes in four observations confirm while one noisy miss gets grace', () => {
   const first = run(null, '09:10', readyObservation('09:10', 'READY_BREAKOUT', 101, 1400, 1.4));
   assert.equal(first.state.tickers.TEST.status, 'READY_PENDING');
   assert.deepEqual(first.state.tickers.TEST.confirmation_window, [true]);
@@ -34,9 +34,13 @@ test('two passes in three observations confirm while one noisy miss gets grace',
   assert.ok(noisy.state.tickers.TEST.last_reasons.includes('confirmation_grace'));
 
   const third = run(noisy.state, '09:16', readyObservation('09:16', 'READY_BREAKOUT', 102, 1900, 1.6));
-  assert.equal(third.state.tickers.TEST.status, 'READY_CONFIRMED');
+  assert.equal(third.state.tickers.TEST.status, 'READY_PENDING');
   assert.deepEqual(third.state.tickers.TEST.confirmation_window, [true, false, true]);
-  assert.ok(third.state.tickers.TEST.last_reasons.includes('two_of_three_confirmation'));
+
+  const fourth = run(third.state, '09:19', readyObservation('09:19', 'READY_BREAKOUT', 103, 2100, 1.8));
+  assert.equal(fourth.state.tickers.TEST.status, 'READY_CONFIRMED');
+  assert.deepEqual(fourth.state.tickers.TEST.confirmation_window, [true, false, true, true]);
+  assert.ok(fourth.state.tickers.TEST.last_reasons.includes('two_of_three_confirmation'));
 });
 
 test('hard reject remains immediate and clears confirmation memory', () => {
