@@ -44,10 +44,10 @@ test('bandarmologiConfluence: no disk data returns a labelled "unavailable" resu
   });
 });
 
-test('bandarmologiConfluence: consistent net-buy across 3D/7D/1M is reported as Accumulation with matching windows', () => {
+test('bandarmologiConfluence: consistent net-buy across 3D/7D is reported as Accumulation with 1M/3M null when under 20 days', () => {
   withTempDataDir(() => {
     const ticker = 'ACCUM1';
-    // 10 straight days of net buy -> every window that has data agrees.
+    // 10 straight days of net buy -> 3D and 7D agree, 1M/3M null due to minimum threshold
     const dates = [];
     for (let i = 0; i < 10; i++) {
       const d = new Date('2026-09-05T00:00:00Z');
@@ -61,10 +61,33 @@ test('bandarmologiConfluence: consistent net-buy across 3D/7D/1M is reported as 
     assert.equal(result.bandar_label, 'Accumulation');
     assert.equal(result.bandar_3d, 300);
     assert.equal(result.bandar_7d, 700);
-    assert.equal(result.bandar_1m, 1000); // only 10 days on disk, sums what exists
-    assert.equal(result.bandar_3m, 1000);
+    assert.equal(result.bandar_1m, null); // only 10 days on disk (< 20 required), nullified
+    assert.equal(result.bandar_3m, null); // (< 60 required), nullified
     assert.ok(result.bandar_consistent_windows.includes('3D'));
     assert.ok(result.bandar_consistent_windows.includes('7D'));
+    assert.ok(!result.bandar_consistent_windows.includes('1M'));
+    assert.ok(!result.bandar_consistent_windows.includes('3M'));
+  });
+});
+
+test('bandarmologiConfluence: 1M is computed when >= 20 trading days available', () => {
+  withTempDataDir(() => {
+    const ticker = 'ACCUM20';
+    for (let i = 0; i < 22; i++) {
+      const d = new Date('2026-09-05T00:00:00Z');
+      d.setDate(d.getDate() - i);
+      const iso = d.toISOString().slice(0, 10);
+      writeDay(ticker, iso, 100, 0);
+    }
+
+    const result = confluence.computeBandarmologiConfluence(ticker);
+    assert.equal(result.bandar_label, 'Accumulation');
+    assert.equal(result.bandar_3d, 300);
+    assert.equal(result.bandar_7d, 700);
+    assert.equal(result.bandar_1m, 2200);
+    assert.equal(result.bandar_3m, null); // 22 < 60, still null
+    assert.ok(result.bandar_consistent_windows.includes('1M'));
+    assert.ok(!result.bandar_consistent_windows.includes('3M'));
   });
 });
 
