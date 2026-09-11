@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS foreign_watchlist_daily (
 
 CREATE INDEX IF NOT EXISTS idx_foreign_watchlist_daily_ticker ON foreign_watchlist_daily (ticker);
 CREATE INDEX IF NOT EXISTS idx_foreign_watchlist_daily_trade_date ON foreign_watchlist_daily (trade_date);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_foreign_watchlist_daily_trade_date_ticker ON foreign_watchlist_daily (trade_date, ticker);
 
 ALTER TABLE foreign_watchlist_daily ADD COLUMN IF NOT EXISTS close NUMERIC;
 ALTER TABLE foreign_watchlist_daily ADD COLUMN IF NOT EXISTS volume NUMERIC;
