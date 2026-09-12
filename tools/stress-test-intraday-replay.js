@@ -63,12 +63,12 @@ function generateSyntheticBatch(count = 1000) {
   for (let i = 0; i < validCount; i++) {
     const patternIndex = i % PATTERN_KEYS.length;
     const targetPattern = PATTERN_KEYS[patternIndex];
-    
+
     // Choose realistic liquid price bands (1,000 to 4,500)
     const rawPrice = 1000 + ((i * 47) % 3500);
     const tick = idxTick.getIdxTickSize(rawPrice) || (rawPrice < 2000 ? 5 : 10);
     const lastPrice = Math.round(rawPrice / tick) * tick;
-    
+
     // Structural levels compliant with Trade Plan V2 risk budget (< 4% stop distance, RR >= 1.0)
     const entryHigh = lastPrice;
     const entryLow = lastPrice - tick;
