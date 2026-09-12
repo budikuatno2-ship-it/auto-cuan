@@ -114,7 +114,8 @@ function runPipeline() {
           if (!rosterByTicker[ticker]) rosterByTicker[ticker] = {};
 
           var canon = canonicalName(name);
-          var shares = cleanNumber(item.shares_after || item.current_value || item.shares || item.shares_change);
+          var rawSharesVal = item.shares_after != null ? item.shares_after : (item.current_value != null ? item.current_value : (item.shares != null ? item.shares : 0));
+          var shares = Math.max(0, cleanNumber(rawSharesVal));
           var pct = parsePercentageNum(item.shares_after_percentage || item.current_percentage);
           var category = categorizePosition(item.badges, item.position, name, pct);
 
@@ -164,7 +165,8 @@ function runPipeline() {
             if (!rName || rName === '—') continue;
 
             var rCanon = canonicalName(rName);
-            var rShares = cleanNumber(row.current_value || row.shares_after || row.previous_value || 0);
+            var rawRSharesVal = row.current_value != null ? row.current_value : (row.shares_after != null ? row.shares_after : (row.previous_value != null ? row.previous_value : 0));
+            var rShares = Math.max(0, cleanNumber(rawRSharesVal));
             var rPct = parsePercentageNum(row.current_percentage || row.shares_after_percentage || row.previous_percentage || 0);
             var rCat = categorizePosition(row.badges, row.position, rName, rPct);
 
