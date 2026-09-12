@@ -229,4 +229,3 @@ test('T-PP-09: formatDailyTop5Message renders Edge line properly and migration f
   const top5Msg = telegramTemplates.formatDailyTop5Message(candidates, '2026-09-12');
   assert.match(top5Msg, /Edge: COMBO_FX_TECH_MA5 · WR 64\.2% · PF 2\.06/);
 });
-
