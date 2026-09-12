@@ -2926,10 +2926,10 @@ function enrichCandidateWithPatternPersonality(candidate) {
     var bonus = patternPersonality.calculatePatternScoreBonus(matched);
     candidate.pattern_score_bonus = bonus;
     if (typeof candidate.score === 'number') {
-      candidate.score += bonus;
+      candidate.score = Math.min(100, Math.max(0, candidate.score + bonus));
     }
     if (typeof candidate.daytrade_score === 'number') {
-      candidate.daytrade_score += bonus;
+      candidate.daytrade_score = Math.min(100, Math.max(0, candidate.daytrade_score + bonus));
     }
   }
   return candidate;
@@ -11225,6 +11225,7 @@ function calculateNkSetupScore(q) {
     components.push('Market regime ' + regime.market_regime_score_adjustment + ' (' + regime.market_regime_label + ')');
   }
   score = marketRegime.applyMarketRegimeScore(scoreBeforeMarketRegime, regime);
+  score = Math.min(100, Math.max(0, score));
 
   // GRADE (same thresholds)
   var grade = 'D';
