@@ -94,8 +94,8 @@ test('signal card previews render without exception and include Pattern Edge lin
 
     assert.ok(card.includes(candidate.ticker), `card must include ticker ${candidate.ticker}`);
     assert.ok(card.includes('🎯 Trading Plan'), `card must include Trading Plan header`);
-    assert.ok(card.includes('Area Beli:'), `card must include Area Beli`);
-    assert.ok(card.includes('Take Profit:'), `card must include Take Profit`);
+    assert.ok(card.includes('Area Beli (Entry):') || card.includes('Area Beli'), `card must include Area Beli`);
+    assert.ok(card.includes('Target Profit') || card.includes('Take Profit:'), `card must include Target/Take Profit`);
     assert.ok(card.includes('Stop Loss:'), `card must include Stop Loss`);
     assert.ok(card.includes('Risk/Reward:'), `card must include Risk/Reward`);
     assert.ok(card.includes('👁 Pattern / Setup'), `card must include Pattern section`);

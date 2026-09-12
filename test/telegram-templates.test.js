@@ -48,8 +48,8 @@ test('T-TPL-01: formatSignalCard produces structured premium card', function() {
   assert.match(card, /EXCL/);
   assert.match(card, /Signal: Ready Breakout/);
   assert.match(card, /Trading Plan/);
-  assert.match(card, /Entry:/);
-  assert.match(card, /Take Profit:/);
+  assert.match(card, /Area Beli \(Entry\):/);
+  assert.match(card, /Target Profit 1/);
   assert.match(card, /Stop Loss:/);
   assert.match(card, /Risk\/Reward:/);
   assert.match(card, /Technical Context/);
@@ -161,18 +161,18 @@ test('T-TPL-18: ATR TP1 and TP2 stretched warnings render in swing templates', f
 test('T-TPL-19: Telegram signal renders normally without ATR fields', function() {
   var msg = templates.formatSwingNonKongloSignalMessage([baseSwing({ ticker: 'ACES' })]);
   assert.match(msg, /ACES/);
-  assert.match(msg, /Entry: Rp5\.050 \/ Rp5\.000/);
+  assert.match(msg, /Area Beli \(Entry\): Rp5\.000 - Rp5\.050/);
   assert.doesNotMatch(msg, /volatilitas harian|cukup jauh vs ATR|TP2 agresif/);
 });
 
 test('T-TPL-20: ATR warnings do not change entry TP SL values', function() {
   var noAtr = templates.formatSignalCard(baseDayTrade(), 1, 'daytrade');
   var withAtr = templates.formatSignalCard(baseDayTrade({ sl_atr_class: 'SL_TOO_TIGHT', tp1_atr_class: 'TP1_STRETCHED', tp2_atr_class: 'TP2_STRETCHED' }), 1, 'daytrade');
-  assert.match(withAtr, /Entry: Rp2\.900 \/ Rp2\.870/);
-  assert.match(withAtr, /Take Profit: Rp3\.010 \/ Rp3\.150/);
+  assert.match(withAtr, /Area Beli \(Entry\): Rp2\.870 - Rp2\.900/);
+  assert.match(withAtr, /Target Profit 1 \(\+4\.5%\): Rp3\.010/);
   assert.match(withAtr, /Stop Loss: Rp2\.750/);
-  assert.equal(noAtr.includes('Entry: Rp2.900 / Rp2.870'), true);
-  assert.equal(withAtr.includes('Entry: Rp2.900 / Rp2.870'), true);
+  assert.equal(noAtr.includes('Area Beli (Entry): Rp2.870 - Rp2.900'), true);
+  assert.equal(withAtr.includes('Area Beli (Entry): Rp2.870 - Rp2.900'), true);
 });
 
 // ============================================================

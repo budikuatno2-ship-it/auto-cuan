@@ -1,4 +1,5 @@
 [
+  "test/swing-screener-and-telegram-integrity.test.js",
   "test/ai-eval-once.test.js",
   "test/ai-eval-final-contract-output.test.js",
   "test/ai-stock-analysis-failure-and-race.test.js",
