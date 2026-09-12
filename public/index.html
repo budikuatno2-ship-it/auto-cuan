@@ -7942,7 +7942,7 @@ var PATTERN_PERSONALITY_UI_CATALOG = {
     TRAP_CHG5_VOL3_CLIMAX: { key: 'TRAP_CHG5_VOL3_CLIMAX', label: 'Climax Vol Reversal', pf: 1.62, wr: 56.4, mfe: 12.3, mae: -9.5, color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
     STOCH_RSI_OVERSOLD: { key: 'STOCH_RSI_OVERSOLD', label: 'Stoch RSI Oversold', pf: 1.51, wr: 54.2, mfe: 9.5, mae: -8.8, color: 'bg-teal-500/20 text-teal-300 border-teal-500/40' }
 };
-window.PATTERN_PERSONALITY_UI_CATALOG = PATTERN_PERSONALITY_UI_CATALOG;
+if (typeof window !== 'undefined') window.PATTERN_PERSONALITY_UI_CATALOG = PATTERN_PERSONALITY_UI_CATALOG;
 
 function patternPersonalityBadgeHtml(r) {
     if (!r) return '';
@@ -7962,7 +7962,7 @@ function patternPersonalityBadgeHtml(r) {
     var tip = 'Quant Edge: ' + p.key + ' · WR ' + p.wr.toFixed(1) + '% · PF ' + p.pf.toFixed(2) + ' (MFE +' + p.mfe.toFixed(1) + '% · MAE ' + p.mae.toFixed(1) + '%)';
     return '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border ' + p.color + '" title="' + escapeHtml(tip) + '">⚡ ' + escapeHtml(p.label) + '</span></div>';
 }
-window.patternPersonalityBadgeHtml = patternPersonalityBadgeHtml;
+if (typeof window !== 'undefined') window.patternPersonalityBadgeHtml = patternPersonalityBadgeHtml;
 
 function getRiskLabel(r) {
     if (!r) return '';
