@@ -226,7 +226,7 @@ test('notification pipeline queries recent SL_HIT cooldown rows exactly once per
     slHitQueryCount = 0;
     const sup3 = makeMockSupabaseWithCounter();
     const dtRunId = 'dt-run-' + Date.now();
-    const dtRes = await sectorHot.__test.sendDayTradeTelegramNotification(sup3, dtRunId, today, 1, false, false, {});
+    const dtRes = await sectorHot.__test.sendDayTradeTelegramNotification(sup3, dtRunId, today, 1, false, false, { bypass_time_guard: true });
     assert.equal(dtRes.strict_signal_count, 1, 'dtRes: ' + JSON.stringify(dtRes));
     assert.equal(slHitQueryCount, 1, 'Day Trade should query SL_HIT cooldown table exactly once');
   } finally {
