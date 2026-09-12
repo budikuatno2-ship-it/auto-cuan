@@ -217,7 +217,7 @@ test('resilience: failure in one channel does not interrupt dispatch in the othe
 
   // Mock fetch: telegram fails with 500, discord succeeds with 204
   global.fetch = async (url) => {
-    if (String(url).includes('telegram.org')) {
+    if (String(url).startsWith('https://api.telegram.org/')) {
       return {
         ok: false,
         status: 500,

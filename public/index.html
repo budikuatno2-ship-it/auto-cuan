@@ -11562,14 +11562,11 @@ function sanitizeAIHtml(html) {
             return match;
         });
     // Remove iframe/embed/object
-    var _prevTags;
-    do {
-        _prevTags = output;
-        output = output.replace(/<(iframe|embed|object|form|input|button)[\s\S]*?<\/\1>/gi, '');
-        output = output.replace(/<(iframe|embed|object|form|input|button)[^>]*\/?>/gi, '');
-        output = output.replace(/<(style|template|noscript|svg|math)[\s\S]*?<\/\1>/gi, '');
-        output = output.replace(/<(base|meta|link|style|template|noscript|svg|math)[^>]*\/?>/gi, '');
-    } while (output !== _prevTags);
+    var _stripTag = function() { return ''; };
+    output = output.replace(/<(iframe|embed|object|form|input|button)[\s\S]*?<\/\1>/gi, _stripTag);
+    output = output.replace(/<(iframe|embed|object|form|input|button)[^>]*\/?>/gi, _stripTag);
+    output = output.replace(/<(style|template|noscript|svg|math)[\s\S]*?<\/\1>/gi, _stripTag);
+    output = output.replace(/<(base|meta|link|style|template|noscript|svg|math)[^>]*\/?>/gi, _stripTag);
     // Collapse excessive whitespace/empty elements for compact layout
     output = output.replace(/<p[^>]*>\s*<\/p>/gi, ''); // remove empty <p></p>
     output = output.replace(/(<br\s*\/?>){3,}/gi, '<br>'); // max 1 consecutive br (only 3+)
