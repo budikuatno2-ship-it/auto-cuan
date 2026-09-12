@@ -371,5 +371,6 @@
   "test/tab-navigation-and-insider-universe.test.js",
   "test/phase5-swing-bandarmologi-monitor.test.js",
   "test/stress-test-replay.test.js",
-  "test/webhook-alert-engine.test.js"
+  "test/webhook-alert-engine.test.js",
+  "test/daytrade-v7-engine-integrity.test.js"
 ]
