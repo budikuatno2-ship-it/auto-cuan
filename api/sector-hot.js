@@ -58,6 +58,7 @@ const trackRecordService = require('../lib/track-record-service');
 const bandarmologiService = require('../lib/bandarmologi-service');
 const brokerHunterService = require('../lib/broker-hunter-service');
 const bandarmologiIntelService = require('../lib/bandarmologi-intel-service');
+const swingEngine = require('../lib/swing-screener-engine');
 const telegramDailyRecap = require('../lib/telegram-daily-recap');
 const userWatchlistService = require('../lib/user-watchlist-service');
 const recentFailureCooldown = require('../lib/recent-failure-cooldown');
@@ -13469,7 +13470,7 @@ function getTelegramGrade(r) {
 
 function isTelegramWaitPullbackStatus(status) {
   var s = safeTelegramText(status, 100, '').toUpperCase().replace(/[_-]+/g, ' ');
-  return s.indexOf('WAIT PULLBACK') >= 0;
+  return s.indexOf('WAIT PULLBACK') >= 0 || s.indexOf('TUNGGU PULLBACK') >= 0;
 }
 
 function isBadTelegramStatus(status) {
@@ -13674,12 +13675,19 @@ function computeTelegramConvictionScore(r, mode) {
   if (status.indexOf('READY') >= 0 || status.indexOf('TRADE_CANDIDATE') >= 0 || status.indexOf('A_PLUS') >= 0) conviction += 10;
   if (status.indexOf('WATCH') >= 0 || status.indexOf('EARLY') >= 0 || status.indexOf('SPECULATIVE') >= 0) conviction -= 8;
   if (includesAny(noteText, ['chase', 'late', 'telat', 'failed', 'gagal', 'distribusi'])) conviction -= 25;
-  return Math.round(Math.max(0, Math.min(100, conviction)));
+  var rawConviction = Math.round(Math.max(0, Math.min(100, conviction)));
+  var isSwing = mode === 'swing' || (mode && mode.indexOf('swing') >= 0);
+  if (isSwing && swingEngine && typeof swingEngine.applySwingScoringPenalties === 'function') {
+    var penalized = swingEngine.applySwingScoringPenalties(rawConviction, r);
+    return penalized.score;
+  }
+  return rawConviction;
 }
 
 function verifyHighConvictionTelegramSignal(row, mode) {
   if (!row) return null;
   var r = Object.assign({}, row);
+  var isSwing = mode === 'swing' || (mode && mode.indexOf('swing') >= 0);
   var status = safeTelegramText(r.status || r.final_status, 100, '').toUpperCase();
   var grade = getTelegramGrade(r).toUpperCase();
   var rr = toNum(r.risk_reward) || 0;
@@ -13689,19 +13697,29 @@ function verifyHighConvictionTelegramSignal(row, mode) {
   var noteText = joinTelegramTexts([r.notes, r.status_reason, r.entry_timing, r.time_plan, r.volume_notes, r.grade_reason]).toLowerCase();
 
   if (grade === 'AVOID') return null;
-  if (mode === 'swing' && rr < 1.5) return null;
+  if (isSwing && rr < 1.8) return null;
   if (mode === 'daytrade' && rr < 1.3) return null;
   if ((status.indexOf('WATCH') >= 0 || status.indexOf('EARLY') >= 0 || status.indexOf('SPECULATIVE') >= 0) && !strong) return null;
   if (value > 0 && value < 750000000 && !(getTelegramScore(r, mode) >= 90 && strong)) return null;
   if (vol != null && vol < 0.8 && !(value >= 5000000000 && isTelegramTfSupportive(r))) return null;
   if (includesAny(noteText, ['failed', 'gagal', 'distribusi'])) return null;
 
+  if (isSwing) {
+    if (isTelegramWaitPullbackStatus(status)) return null;
+    if (swingEngine && typeof swingEngine.verifySwingHighConviction === 'function') {
+      var swingVerified = swingEngine.verifySwingHighConviction(r);
+      if (!swingVerified) return null;
+      r = swingVerified;
+    }
+  }
+
   var conviction = computeTelegramConvictionScore(r, mode);
   r.telegram_conviction_score = conviction;
-  if (conviction < (mode === 'swing' ? 62 : 58)) return null;
+  if (conviction < (isSwing ? 75 : 58)) return null;
   if (r.telegram_action_label === 'Pantau dulu' && !(conviction >= 82 && strong)) return null;
 
   if (isTelegramWaitPullbackStatus(status)) {
+    if (isSwing) return null;
     r.telegram_action_label = 'Tunggu pullback';
     r.telegram_verdict = 'Tunggu pullback valid, jangan chase.';
   } else if (status.indexOf('MOMENTUM_CONTINUATION') >= 0) {
@@ -13784,10 +13802,10 @@ function formatRichTelegramCandidateBlock(r, idx, mode) {
   if (volParts.length > 0) lines.push('Vol: ' + volParts.join(' \u00B7 '));
 
   var tfParts = [];
-  if (hasTelegramText(r.tf_1d_context)) tfParts.push('1D ' + safeTelegramText(r.tf_1d_context, 50, ''));
-  if (mode === 'daytrade' && hasTelegramText(r.tf_3d_context)) tfParts.push('3D ' + safeTelegramText(r.tf_3d_context, 50, ''));
-  if (hasTelegramText(r.tf_5d_context)) tfParts.push('5D ' + safeTelegramText(r.tf_5d_context, 50, ''));
-  if (hasTelegramText(r.tf_20d_context)) tfParts.push('20D ' + safeTelegramText(r.tf_20d_context, 50, ''));
+  if (hasTelegramText(r.tf_1d_context)) tfParts.push('1D ' + safeTelegramText(r.tf_1d_context, 50, '').replace(/^1D\s*/i, ''));
+  if (mode === 'daytrade' && hasTelegramText(r.tf_3d_context)) tfParts.push('3D ' + safeTelegramText(r.tf_3d_context, 50, '').replace(/^3D\s*/i, ''));
+  if (hasTelegramText(r.tf_5d_context)) tfParts.push('5D ' + safeTelegramText(r.tf_5d_context, 50, '').replace(/^5D\s*/i, ''));
+  if (hasTelegramText(r.tf_20d_context)) tfParts.push('20D ' + safeTelegramText(r.tf_20d_context, 50, '').replace(/^20D\s*/i, ''));
   if (tfParts.length > 0) lines.push('TF: ' + tfParts.join(' \u00B7 '));
 
   // Fibonacci confluence (Swing Konglo only, soft signal)
@@ -13849,10 +13867,10 @@ function fmtTelegramSignalBlock(r, idx, mode) {
   if (volParts.length > 0) lines.push('Vol: ' + volParts.join(' · '));
 
   var tfParts = [];
-  if (hasTelegramText(r.tf_1d_context)) tfParts.push('1D ' + safeTelegramText(r.tf_1d_context, 45, ''));
-  if (mode === 'daytrade' && hasTelegramText(r.tf_3d_context)) tfParts.push('3D ' + safeTelegramText(r.tf_3d_context, 45, ''));
-  if (hasTelegramText(r.tf_5d_context)) tfParts.push('5D ' + safeTelegramText(r.tf_5d_context, 45, ''));
-  if (hasTelegramText(r.tf_20d_context)) tfParts.push('20D ' + safeTelegramText(r.tf_20d_context, 45, ''));
+  if (hasTelegramText(r.tf_1d_context)) tfParts.push('1D ' + safeTelegramText(r.tf_1d_context, 45, '').replace(/^1D\s*/i, ''));
+  if (mode === 'daytrade' && hasTelegramText(r.tf_3d_context)) tfParts.push('3D ' + safeTelegramText(r.tf_3d_context, 45, '').replace(/^3D\s*/i, ''));
+  if (hasTelegramText(r.tf_5d_context)) tfParts.push('5D ' + safeTelegramText(r.tf_5d_context, 45, '').replace(/^5D\s*/i, ''));
+  if (hasTelegramText(r.tf_20d_context)) tfParts.push('20D ' + safeTelegramText(r.tf_20d_context, 45, '').replace(/^20D\s*/i, ''));
   if (tfParts.length > 0) lines.push('TF: ' + tfParts.join(' · '));
   // Fibonacci confluence (Swing Konglo only, soft signal)
   if (mode !== 'daytrade' && r.fib_confluence_label && r.fib_confluence_label !== 'Fib belum cukup data') {

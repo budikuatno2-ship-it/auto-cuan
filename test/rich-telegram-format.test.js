@@ -77,8 +77,8 @@ test('T1: Day Trade formatter uses premium card format with Signal, Trading Plan
   assert.match(msg, /DAY TRADE SIGNAL/i);
   assert.match(msg, /Signal:/);
   assert.match(msg, /Trading Plan/);
-  assert.match(msg, /Entry:/);
-  assert.match(msg, /Take Profit:/);
+  assert.match(msg, /Area Beli \(Entry\):/);
+  assert.match(msg, /Target Profit 1/);
   assert.match(msg, /Stop Loss:/);
   assert.match(msg, /Risk\/Reward:/);
   assert.match(msg, /Technical Context/);

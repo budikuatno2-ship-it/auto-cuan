@@ -47,7 +47,7 @@ test('Phase 2 - formatDayTradeSignalMessage renders confirmed buy format and exe
   assert.match(msg, /Skor Keyakinan: 85\/100/);
 
   // Price points & risk %
-  assert.match(msg, /Area Beli: Rp5\.100 - Rp5\.200/);
+  assert.match(msg, /Area Beli \(Entry\): Rp5\.100 - Rp5\.200/);
   assert.match(msg, /Stop Loss: Rp4\.950 \(Risk: -2\.9%\)/);
   assert.match(msg, /Target Profit 1 \(\+4\.5%\): Rp5\.425/);
   assert.match(msg, /Target Profit 2 \(\+7\.5%\): Rp5\.575/);
