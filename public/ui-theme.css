@@ -2247,3 +2247,14 @@ button:disabled,
     justify-self: end;
   }
 }
+
+/* Ticker Search Controls & Header Search Bar Fix */
+.analisis-saham-controls, .ticker-search-container {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+  margin: 16px 0 !important;
+  position: static !important;
+  clear: both !important;
+}
