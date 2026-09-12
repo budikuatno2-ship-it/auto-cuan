@@ -246,13 +246,17 @@
 
   function computeAvgPrice(val, vol, explicitAvg) {
     if (explicitAvg && explicitAvg > 0) {
-      if (explicitAvg > 100000 && vol > 0 && Math.round(explicitAvg / 100) >= 50) {
+      if (explicitAvg > 100000 && vol > 0 && Math.round(explicitAvg / 100) >= 1) {
         return Math.round(explicitAvg / 100);
       }
       return Math.round(explicitAvg);
     }
     if (!val || !vol || vol <= 0) return 0;
-    return Math.round(val / vol);
+    var raw = val / vol;
+    if (raw > 100000 && Math.round(raw / 100) >= 1) {
+      return Math.round(raw / 100);
+    }
+    return Math.round(raw);
   }
 
   var currentBandarTicker = 'BBCA';
@@ -518,10 +522,18 @@
         target.fullName = getBrokerSecurityName(code, item.broker_name);
       }
 
-      var bval = item.bval != null ? Number(item.bval) : (item.buy_val != null ? Number(item.buy_val) : (isBuyerList ? Number(item.net_val || item.val || item.value || 0) : 0));
-      var sval = item.sval != null ? Number(item.sval) : (item.sell_val != null ? Number(item.sell_val) : (!isBuyerList ? Math.abs(Number(item.net_val || item.val || item.value || 0)) : 0));
-      var bvol = item.bvol != null ? Number(item.bvol) : (item.buy_vol != null ? Number(item.buy_vol) : (isBuyerList ? Number(item.net_vol || item.vol || item.volume || 0) : 0));
-      var svol = item.svol != null ? Number(item.svol) : (item.sell_vol != null ? Number(item.sell_vol) : (!isBuyerList ? Math.abs(Number(item.net_vol || item.vol || item.volume || 0)) : 0));
+      var bval = item.bval != null ? Number(item.bval) : (item.buy_val != null ? Number(item.buy_val) : (item.val != null ? Number(item.val) : (item.value != null ? Number(item.value) : 0)));
+      var sval = item.sval != null ? Number(item.sval) : (item.sell_val != null ? Number(item.sell_val) : 0);
+      if (!isBuyerList) {
+        sval = item.sval != null ? Number(item.sval) : (item.sell_val != null ? Number(item.sell_val) : (item.val != null ? Number(item.val) : (item.value != null ? Number(item.value) : 0)));
+        bval = item.bval != null ? Number(item.bval) : (item.buy_val != null ? Number(item.buy_val) : 0);
+      }
+      var bvol = item.bvol != null ? Number(item.bvol) : (item.buy_vol != null ? Number(item.buy_vol) : (item.vol != null ? Number(item.vol) : (item.volume != null ? Number(item.volume) : 0)));
+      var svol = item.svol != null ? Number(item.svol) : (item.sell_vol != null ? Number(item.sell_vol) : 0);
+      if (!isBuyerList) {
+        svol = item.svol != null ? Number(item.svol) : (item.sell_vol != null ? Number(item.sell_vol) : (item.vol != null ? Number(item.vol) : (item.volume != null ? Number(item.volume) : 0)));
+        bvol = item.bvol != null ? Number(item.bvol) : (item.buy_vol != null ? Number(item.buy_vol) : 0);
+      }
 
       if (bval > target.bval) target.bval = bval;
       if (sval > target.sval) target.sval = sval;
@@ -532,9 +544,14 @@
       if (item.sfrq && item.sfrq > target.sfrq) target.sfrq = item.sfrq;
 
       // avg_buy / avg_sell: prefer explicit, fallback to val/vol
-      if (item.avg_buy && isBuyerList) target.avgBuy = item.avg_buy;
+      if (item.avg_buy) target.avgBuy = item.avg_buy;
+      else if (item.buy_avg_price) target.avgBuy = item.buy_avg_price;
+      else if (item.bavg) target.avgBuy = item.bavg;
       else if (item.avg_price && isBuyerList) target.avgBuy = item.avg_price;
-      if (item.avg_sell && !isBuyerList) target.avgSell = item.avg_sell;
+
+      if (item.avg_sell) target.avgSell = item.avg_sell;
+      else if (item.sell_avg_price) target.avgSell = item.sell_avg_price;
+      else if (item.savg) target.avgSell = item.savg;
       else if (item.avg_price && !isBuyerList) target.avgSell = item.avg_price;
 
       // nval: prefer explicit field, works for both buyer and seller items
@@ -1650,8 +1667,8 @@
           var item = buyers[b];
           var buyVol = item.bvol != null ? item.bvol : (item.buy_vol || item.vol || item.volume || 0);
           var sellVol = item.svol != null ? item.svol : (item.sell_vol || 0);
-          var buyVal = normalizeBrokerValue(item.bval != null ? item.bval : (item.buy_val || item.net_val || item.val || item.value || 0), buyVol, item.avg_price);
-          var sellVal = normalizeBrokerValue(item.sval != null ? item.sval : (item.sell_val || 0), sellVol, item.avg_price);
+          var buyVal = normalizeBrokerValue(item.bval != null ? item.bval : (item.buy_val || item.val || item.value || 0), buyVol, item.avg_buy || item.avg_price);
+          var sellVal = normalizeBrokerValue(item.sval != null ? item.sval : (item.sell_val || 0), sellVol, item.avg_sell || item.avg_price);
           var netVal = normalizeBrokerValue(item.nval != null ? item.nval : (item.net_val != null ? item.net_val : (buyVal - sellVal)));
           var netVol = item.nvol != null ? item.nvol : (item.net_vol != null ? item.net_vol : (buyVol - sellVol));
 
@@ -1716,9 +1733,9 @@
         for (var s = 0; s < sellers.length; s++) {
           var sItem = sellers[s];
           var sBuyVol = sItem.bvol != null ? sItem.bvol : (sItem.buy_vol || 0);
-          var sSellVol = sItem.svol != null ? sItem.svol : (sItem.sell_vol || Math.abs(sItem.net_vol || sItem.vol || sItem.volume || 0));
-          var sBuyVal = normalizeBrokerValue(sItem.bval != null ? sItem.bval : (sItem.buy_val || 0), sBuyVol, sItem.avg_price);
-          var sSellVal = normalizeBrokerValue(sItem.sval != null ? sItem.sval : (sItem.sell_val || Math.abs(sItem.net_val || sItem.val || sItem.value || 0)), sSellVol, sItem.avg_price);
+          var sSellVol = sItem.svol != null ? sItem.svol : (sItem.sell_vol || sItem.vol || sItem.volume || 0);
+          var sBuyVal = normalizeBrokerValue(sItem.bval != null ? sItem.bval : (sItem.buy_val || 0), sBuyVol, sItem.avg_buy || sItem.avg_price);
+          var sSellVal = normalizeBrokerValue(sItem.sval != null ? sItem.sval : (sItem.sell_val || sItem.val || sItem.value || 0), sSellVol, sItem.avg_sell || sItem.avg_price);
           var sNetVal = normalizeBrokerValue(sItem.nval != null ? sItem.nval : (sItem.net_val != null ? sItem.net_val : (sBuyVal - sSellVal)));
           var sNetVol = sItem.nvol != null ? sItem.nvol : (sItem.net_vol != null ? sItem.net_vol : (sBuyVol - sSellVol));
 
@@ -1830,27 +1847,33 @@
       ? data.available_dates
       : series.map(function (s) { return s.date; }).filter(Boolean).reverse();
 
-    // Quick date pills and full date dropdown in header if available
-    var quickDates = availableDates.slice(0, 8);
-    if (quickDates.length > 0) {
-      html += '<div class="flex flex-wrap items-center gap-1.5 mb-3">';
-      html += '  <span class="text-[11px] text-gray-400 mr-1">Pilih Tanggal:</span>';
-      for (var qd = 0; qd < quickDates.length; qd++) {
-        var dt = quickDates[qd];
-        var isCurrent = dt === (bSum.date || currentBandarDate);
-        var pillStyle = isCurrent
-          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
-          : 'bg-dark-700 text-gray-300 border-dark-600/60 hover:bg-dark-600 hover:text-white';
-        html += '  <button type="button" onclick="BandarmologiRuntime.loadBandarmologiTab(null, \'' + escapeHtml(dt) + '\')" class="px-2 py-0.5 text-[11px] rounded-md border font-mono transition ' + pillStyle + '">' + escapeHtml(dt) + '</button>';
+    // Interactive date selector dropdown and quick date pills
+    if (availableDates.length > 0) {
+      html += '<div class="flex flex-wrap items-center gap-2.5 mb-3 bg-dark-800/60 p-2 rounded-xl border border-dark-600/40">';
+      html += '  <div class="flex items-center gap-1.5">';
+      html += '    <label for="brokerDateSelect" class="text-xs text-gray-300 font-semibold flex items-center gap-1">📅 <span>Pilih Tanggal:</span></label>';
+      html += '    <select id="brokerDateSelect" onchange="BandarmologiRuntime.loadBandarmologiTab(null, this.value)" class="px-2.5 py-1 text-xs rounded-lg border border-dark-600/80 bg-dark-900 text-emerald-400 font-mono font-bold transition cursor-pointer hover:border-emerald-500/60 focus:outline-none focus:ring-1 focus:ring-emerald-500">';
+      for (var ad = 0; ad < availableDates.length; ad++) {
+        var aDt = availableDates[ad];
+        var isCurrentDate = aDt === (bSum.date || currentBandarDate);
+        var dateNote = ad === 0 ? ' (Terbaru)' : '';
+        html += '      <option value="' + escapeHtml(aDt) + '"' + (isCurrentDate ? ' selected' : '') + '>' + escapeHtml(aDt) + dateNote + '</option>';
       }
-      if (availableDates.length > 8) {
-        html += '  <select onchange="BandarmologiRuntime.loadBandarmologiTab(null, this.value)" class="px-2 py-0.5 text-[11px] rounded-md border border-dark-600/60 bg-dark-700 text-gray-200 font-mono transition cursor-pointer hover:bg-dark-600">';
-        html += '    <option value="" disabled' + (!currentBandarDate || quickDates.indexOf(currentBandarDate) >= 0 ? ' selected' : '') + '>Semua Tanggal (' + availableDates.length + ')...</option>';
-        for (var ad = 0; ad < availableDates.length; ad++) {
-          var aDt = availableDates[ad];
-          html += '    <option value="' + escapeHtml(aDt) + '"' + (aDt === (bSum.date || currentBandarDate) ? ' selected' : '') + '>' + escapeHtml(aDt) + '</option>';
+      html += '    </select>';
+      html += '  </div>';
+
+      var quickDates = availableDates.slice(0, 6);
+      if (quickDates.length > 0) {
+        html += '  <div class="flex flex-wrap items-center gap-1 sm:ml-auto">';
+        for (var qd = 0; qd < quickDates.length; qd++) {
+          var dt = quickDates[qd];
+          var isCurrent = dt === (bSum.date || currentBandarDate);
+          var pillStyle = isCurrent
+            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
+            : 'bg-dark-700/80 text-gray-300 border-dark-600/60 hover:bg-dark-600 hover:text-white';
+          html += '    <button type="button" onclick="BandarmologiRuntime.loadBandarmologiTab(null, \'' + escapeHtml(dt) + '\')" class="px-2 py-0.5 text-[11px] rounded-md border font-mono transition ' + pillStyle + '">' + escapeHtml(dt) + '</button>';
         }
-        html += '  </select>';
+        html += '  </div>';
       }
       html += '</div>';
     }
@@ -2053,38 +2076,40 @@
     // 2B. Card Indikator Dominasi (CR3, CR5, Status Dominasi, Rasio Partisipasi Bandar vs Ritel)
     var allBuyersList = firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.net_buyers, bSum.buyers) || [];
 
-    // Calculate true total market buy value across all brokers
-    var totalMarketBuyVal = 0;
-    var allMarketBrokers = (Array.isArray(bSum.brokers) && bSum.brokers.length > 0)
-      ? bSum.brokers
-      : ((Array.isArray(bSum.gross_buyers) && bSum.gross_buyers.length > 0)
-        ? bSum.gross_buyers
-        : allBuyersList);
+    // Calculate true total market buy value across all brokers / emiten turnover
+    var totalMarketBuyVal = Number(bSum.total_turnover || bSum.total_buy_val || 0);
+    if (totalMarketBuyVal <= 0) {
+      var allMarketBrokers = (Array.isArray(bSum.brokers) && bSum.brokers.length > 0)
+        ? bSum.brokers
+        : ((Array.isArray(bSum.gross_buyers) && bSum.gross_buyers.length > 0)
+          ? bSum.gross_buyers
+          : allBuyersList);
 
-    for (var mb = 0; mb < allMarketBrokers.length; mb++) {
-      totalMarketBuyVal += Number(allMarketBrokers[mb].bval || allMarketBrokers[mb].buy_val || allMarketBrokers[mb].val || (allMarketBrokers[mb].nval > 0 ? allMarketBrokers[mb].nval : 0) || 0);
-    }
-    if (totalMarketBuyVal <= 0 && bSum.total_buy_val && Number(bSum.total_buy_val) > 0) {
-      totalMarketBuyVal = Number(bSum.total_buy_val);
+      for (var mb = 0; mb < allMarketBrokers.length; mb++) {
+        totalMarketBuyVal += Number(allMarketBrokers[mb].bval || allMarketBrokers[mb].buy_val || allMarketBrokers[mb].val || 0);
+      }
     }
 
     var sortedBuyersByBuyVal = allBuyersList.slice().sort(function (a, b) {
-      var va = Number(a.bval || a.buy_val || a.val || (a.nval > 0 ? a.nval : 0) || 0);
-      var vb = Number(b.bval || b.buy_val || b.val || (b.nval > 0 ? b.nval : 0) || 0);
+      var va = Number(a.bval || a.buy_val || a.val || 0);
+      var vb = Number(b.bval || b.buy_val || b.val || 0);
       return vb - va;
     });
 
     var top3Val = 0;
     for (var t3 = 0; t3 < Math.min(3, sortedBuyersByBuyVal.length); t3++) {
-      top3Val += Number(sortedBuyersByBuyVal[t3].bval || sortedBuyersByBuyVal[t3].buy_val || sortedBuyersByBuyVal[t3].val || (sortedBuyersByBuyVal[t3].nval > 0 ? sortedBuyersByBuyVal[t3].nval : 0) || 0);
+      top3Val += Number(sortedBuyersByBuyVal[t3].bval || sortedBuyersByBuyVal[t3].buy_val || sortedBuyersByBuyVal[t3].val || 0);
     }
     var top5Val = 0;
     for (var t5 = 0; t5 < Math.min(5, sortedBuyersByBuyVal.length); t5++) {
-      top5Val += Number(sortedBuyersByBuyVal[t5].bval || sortedBuyersByBuyVal[t5].buy_val || sortedBuyersByBuyVal[t5].val || (sortedBuyersByBuyVal[t5].nval > 0 ? sortedBuyersByBuyVal[t5].nval : 0) || 0);
+      top5Val += Number(sortedBuyersByBuyVal[t5].bval || sortedBuyersByBuyVal[t5].buy_val || sortedBuyersByBuyVal[t5].val || 0);
     }
 
-    // Dynamic denominator: if market total is known and larger, use it; otherwise avoid dividing top 3 by top 3
+    // Dynamic denominator: avoid dividing top 3 by top 3 (100% lock) when only 3 brokers present
     var denominator = totalMarketBuyVal > 0 ? totalMarketBuyVal : (sortedBuyersByBuyVal.length > 3 ? top3Val * 1.5 : 0);
+    if (denominator <= top3Val && sortedBuyersByBuyVal.length <= 3 && top3Val > 0) {
+      denominator = top3Val * 2.0;
+    }
 
     var cr3 = 0;
     var cr5 = 0;

@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 /**
  * Unit tests for price-below-bandar-cost fix:
@@ -47,7 +47,8 @@ test('FASE 5 fix: detectPriceBelowBandarCost resolves genuine market price or re
 });
 
 test('FASE 5 fix: detectPriceBelowBandarCost calculates real discount when currentPrice injected via options', () => {
-  const injectedPrice = 9800;
+  // BBCA bandar cost in dataset is ~6629, so price 6000 is genuinely below bandar cost
+  const injectedPrice = 6000;
 
   const res = intelService.detectPriceBelowBandarCost('BBCA', {
     range: '7d',
