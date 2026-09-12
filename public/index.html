@@ -884,6 +884,33 @@
             <button onclick="switchScreenerType('nonkonglo')" id="scrTypeNonKonglo" class="ac-segment" aria-pressed="false">Non-Konglo</button>
             <button onclick="switchScreenerType('daytrade')" id="scrTypeDayTrade" class="ac-segment" aria-pressed="false">Day Trade</button>
         </div>
+        <!-- Quick Filter Pattern Personality & Win Rate (Day Trade & Swing) -->
+        <div id="patternFilterContainer" class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-dark-800/60 border border-dark-600/30 rounded-xl p-2.5 mb-3 shadow-sm">
+            <div class="flex items-center gap-2 flex-1 min-w-[260px]">
+                <label for="filter-pattern-personality" class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5 whitespace-nowrap">
+                    <span>⚡ Pola:</span>
+                </label>
+                <select id="filter-pattern-personality" onchange="onPatternPersonalityFilterChange()" class="w-full sm:max-w-md rounded-lg border border-dark-600/40 bg-dark-900/90 px-2.5 py-1.5 text-xs text-gray-100 outline-none focus:border-emerald-500/50">
+                    <option value="all">Semua Pola Personality (All)</option>
+                    <option value="COMBO_FX_TECH_MA5">COMBO_FX_TECH_MA5 (WR 64.2% · PF 2.06)</option>
+                    <option value="FX_STRONG_BUY">FX_STRONG_BUY (WR 61.2% · PF 1.80)</option>
+                    <option value="TECH_ABOVE_MA20">TECH_ABOVE_MA20 (WR 60.6% · PF 1.90)</option>
+                    <option value="TECH_ABOVE_MA5">TECH_ABOVE_MA5 (WR 60.1% · PF 1.89)</option>
+                    <option value="VOL_WARM_1P2_1P5">VOL_WARM_1P2_1P5 (WR 60.0% · PF 1.46)</option>
+                    <option value="RSI_OVERBOUGHT_65P">RSI_OVERBOUGHT_65P (WR 59.8% · PF 1.73)</option>
+                    <option value="COMBO_BROKER_FX">COMBO_BROKER_FX (WR 57.1% · PF 1.71)</option>
+                    <option value="COMBO_BROKER_TECH">COMBO_BROKER_TECH (WR 56.1% · PF 1.67)</option>
+                    <option value="TRAP_CHG5_VOL3_CLIMAX">TRAP_CHG5_VOL3_CLIMAX (WR 55.6% · PF 1.84)</option>
+                    <option value="BROKER_TOP3_CONCENTRATION">BROKER_TOP3_CONCENTRATION (WR 54.5% · PF 1.57)</option>
+                </select>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="inline-flex items-center gap-2 cursor-pointer rounded-lg border border-dark-600/40 bg-dark-900/90 px-3 py-1.5 text-xs text-gray-200 hover:text-white transition select-none">
+                    <input type="checkbox" id="filter-high-wr" onchange="onPatternPersonalityFilterChange()" class="accent-emerald-500 w-4 h-4 rounded cursor-pointer">
+                    <span class="font-medium whitespace-nowrap">Hanya Win Rate ≥ 60%</span>
+                </label>
+            </div>
+        </div>
         <!-- Konglo Pane -->
         <div id="screenerKongloPane" class="space-y-3">
         <!-- Header -->
@@ -7935,16 +7962,18 @@ var PATTERN_PERSONALITY_UI_CATALOG = {
     FX_STRONG_BUY: { key: 'FX_STRONG_BUY', label: 'FX Strong Buy', pf: 1.80, wr: 61.2, mfe: 10.8, mae: -5.4, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
     TECH_ABOVE_MA20: { key: 'TECH_ABOVE_MA20', label: 'Above MA20', pf: 1.90, wr: 60.6, mfe: 11.0, mae: -8.2, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
     TECH_ABOVE_MA5: { key: 'TECH_ABOVE_MA5', label: 'Above MA5', pf: 1.89, wr: 60.1, mfe: 10.8, mae: -8.0, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
-    MA5_MA20_CROSS: { key: 'MA5_MA20_CROSS', label: 'MA5xMA20 Cross', pf: 1.82, wr: 59.8, mfe: 10.9, mae: -8.2, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
-    RSI_OVERBOUGHT_65P: { key: 'RSI_OVERBOUGHT_65P', label: 'RSI Bull Momentum', pf: 1.73, wr: 59.8, mfe: 10.2, mae: -8.7, color: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
     VOL_WARM_1P2_1P5: { key: 'VOL_WARM_1P2_1P5', label: 'Vol Warm 1.2-1.5x', pf: 1.46, wr: 60.0, mfe: 11.8, mae: -7.1, color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' },
+    RSI_OVERBOUGHT_65P: { key: 'RSI_OVERBOUGHT_65P', label: 'RSI Bull Momentum', pf: 1.73, wr: 59.8, mfe: 10.2, mae: -8.7, color: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
+    COMBO_BROKER_FX: { key: 'COMBO_BROKER_FX', label: 'Combo Broker+FX', pf: 1.71, wr: 57.1, mfe: 12.3, mae: -5.9, color: 'bg-purple-500/20 text-purple-300 border-purple-500/40' },
+    COMBO_BROKER_TECH: { key: 'COMBO_BROKER_TECH', label: 'Combo Broker+Tech', pf: 1.67, wr: 56.1, mfe: 12.6, mae: -9.2, color: 'bg-purple-500/20 text-purple-300 border-purple-500/40' },
+    TRAP_CHG5_VOL3_CLIMAX: { key: 'TRAP_CHG5_VOL3_CLIMAX', label: 'Climax Vol Reversal', pf: 1.84, wr: 55.6, mfe: 29.1, mae: -5.9, color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
     BROKER_TOP3_CONCENTRATION: { key: 'BROKER_TOP3_CONCENTRATION', label: 'Broker Top 3', pf: 1.57, wr: 54.5, mfe: 11.7, mae: -10.3, color: 'bg-violet-500/20 text-violet-300 border-violet-500/40' },
-    TRAP_CHG5_VOL3_CLIMAX: { key: 'TRAP_CHG5_VOL3_CLIMAX', label: 'Climax Vol Reversal', pf: 1.62, wr: 56.4, mfe: 12.3, mae: -9.5, color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+    MA5_MA20_CROSS: { key: 'MA5_MA20_CROSS', label: 'MA5xMA20 Cross', pf: 1.82, wr: 59.8, mfe: 10.9, mae: -8.2, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
     STOCH_RSI_OVERSOLD: { key: 'STOCH_RSI_OVERSOLD', label: 'Stoch RSI Oversold', pf: 1.51, wr: 54.2, mfe: 9.5, mae: -8.8, color: 'bg-teal-500/20 text-teal-300 border-teal-500/40' }
 };
 if (typeof window !== 'undefined') window.PATTERN_PERSONALITY_UI_CATALOG = PATTERN_PERSONALITY_UI_CATALOG;
 
-function patternPersonalityBadgeHtml(r) {
+function extractPatternPersonalityKey(r) {
     if (!r) return '';
     var rawKey = r.pattern_personality || r.patternPersonality || r.matched_pattern || r.pattern_key;
     if (!rawKey && typeof r.notes === 'string' && r.notes.indexOf('Edge: ') >= 0) {
@@ -7956,7 +7985,28 @@ function patternPersonalityBadgeHtml(r) {
         if (m2) rawKey = m2[1];
     }
     if (!rawKey) return '';
-    var key = typeof rawKey === 'object' ? (rawKey.key || rawKey.name) : String(rawKey).trim().toUpperCase();
+    return typeof rawKey === 'object' ? (rawKey.key || rawKey.name || '') : String(rawKey).trim().toUpperCase();
+}
+if (typeof window !== 'undefined') window.extractPatternPersonalityKey = extractPatternPersonalityKey;
+
+function matchesPatternPersonalityFilters(r, patternFilter, highWrOnly) {
+    var key = extractPatternPersonalityKey(r);
+    var p = key ? PATTERN_PERSONALITY_UI_CATALOG[key] : null;
+
+    if (patternFilter && patternFilter !== 'all') {
+        if (!key || key !== patternFilter) return false;
+    }
+    if (highWrOnly) {
+        if (!p || typeof p.wr !== 'number' || p.wr < 60.0) return false;
+    }
+    return true;
+}
+if (typeof window !== 'undefined') window.matchesPatternPersonalityFilters = matchesPatternPersonalityFilters;
+
+function patternPersonalityBadgeHtml(r) {
+    if (!r) return '';
+    var key = extractPatternPersonalityKey(r);
+    if (!key) return '';
     var p = PATTERN_PERSONALITY_UI_CATALOG[key];
     if (!p) return '';
     var tip = 'Quant Edge: ' + p.key + ' · WR ' + p.wr.toFixed(1) + '% · PF ' + p.pf.toFixed(2) + ' (MFE +' + p.mfe.toFixed(1) + '% · MAE ' + p.mae.toFixed(1) + '%)';
@@ -8245,14 +8295,26 @@ function normalizeFilterToken(value) {
 }
 function getScreenerUiFilterValues(type) {
     var prefix = type === 'daytrade' ? 'dt' : (type === 'nonkonglo' ? 'nk' : 'kg');
-    function val(id, fallback) { var el = document.getElementById(prefix + id); return el ? el.value : fallback; }
-    function checked(id) { var el = document.getElementById(prefix + id); return !!(el && el.checked); }
+    function val(id, fallback) {
+        if (typeof document === 'undefined') return fallback;
+        var el = document.getElementById(prefix + id);
+        return el ? el.value : fallback;
+    }
+    function checked(id) {
+        if (typeof document === 'undefined') return false;
+        var el = document.getElementById(prefix + id);
+        return !!(el && el.checked);
+    }
+    var patEl = typeof document !== 'undefined' ? document.getElementById('filter-pattern-personality') : null;
+    var highWrEl = typeof document !== 'undefined' ? document.getElementById('filter-high-wr') : null;
     return {
         ticker: normalizeFilterToken(val('TickerSearch', '')),
         risk: val('RiskFilter', 'all'),
         status: val('StatusFilter', 'all'),
         type: val('TypeFilter', 'all'),
-        hideVeryHigh: checked('HideVeryHigh')
+        hideVeryHigh: checked('HideVeryHigh'),
+        patternPersonality: patEl ? patEl.value : 'all',
+        highWr: !!(highWrEl && highWrEl.checked)
     };
 }
 function getScreenerTypeLabel(r, fallbackType) {
@@ -8314,6 +8376,53 @@ function screenerActionMatches(r, filter) {
     if (filter === 'Watchlist') return /\b(watchlist|watch|radar|early radar|pre spike watch|speculative)\b/.test(text);
     return true;
 }
+function getPatternPersonalityEmptyMessage(defaultMessage) {
+    if (typeof document === 'undefined') return defaultMessage || STRICT_EMPTY_TEXT;
+    var patEl = document.getElementById('filter-pattern-personality');
+    var highWrEl = document.getElementById('filter-high-wr');
+    var isPatternActive = (patEl && patEl.value && patEl.value !== 'all') || (highWrEl && highWrEl.checked);
+    if (isPatternActive) {
+        return 'Tidak ada saham yang cocok dengan filter Pattern Personality / Win Rate yang dipilih.';
+    }
+    return defaultMessage || STRICT_EMPTY_TEXT;
+}
+if (typeof window !== 'undefined') window.getPatternPersonalityEmptyMessage = getPatternPersonalityEmptyMessage;
+
+function onPatternPersonalityFilterChange() {
+    var activeType = (typeof _currentScreenerType !== 'undefined' && _currentScreenerType) ? _currentScreenerType : 'konglo';
+    if (typeof applyScreenerUiFilters === 'function') {
+        applyScreenerUiFilters(activeType);
+    }
+    if (typeof _screenerCache !== 'undefined' && _screenerCache && _screenerCache.results && activeType !== 'konglo') {
+        if (typeof renderScreenerTable === 'function') renderScreenerTable(_screenerCache.results);
+        if (typeof renderKgCardGrid === 'function') renderKgCardGrid(_screenerCache.results);
+    }
+    if (typeof _nkScreenerCache !== 'undefined' && _nkScreenerCache && _nkScreenerCache.results && activeType !== 'nonkonglo') {
+        if (typeof renderNkScreenerTable === 'function') renderNkScreenerTable(_nkScreenerCache.results);
+        if (typeof renderNkCardGrid === 'function') renderNkCardGrid(_nkScreenerCache.results);
+    }
+    if (typeof _dtScreenerCache !== 'undefined' && _dtScreenerCache && _dtScreenerCache.results && activeType !== 'daytrade') {
+        if (typeof renderDtTable === 'function') renderDtTable(_dtScreenerCache.results);
+        if (typeof renderDtCardGrid === 'function') renderDtCardGrid(_dtScreenerCache.results);
+    }
+}
+if (typeof window !== 'undefined') window.onPatternPersonalityFilterChange = onPatternPersonalityFilterChange;
+
+function setupPatternPersonalityFilterListeners() {
+    if (typeof document === 'undefined') return;
+    var pSel = document.getElementById('filter-pattern-personality');
+    var wrChk = document.getElementById('filter-high-wr');
+    if (pSel) {
+        pSel.removeEventListener('change', onPatternPersonalityFilterChange);
+        pSel.addEventListener('change', onPatternPersonalityFilterChange);
+    }
+    if (wrChk) {
+        wrChk.removeEventListener('change', onPatternPersonalityFilterChange);
+        wrChk.addEventListener('change', onPatternPersonalityFilterChange);
+    }
+}
+if (typeof window !== 'undefined') window.setupPatternPersonalityFilterListeners = setupPatternPersonalityFilterListeners;
+
 function applyScreenerUiFilters(type, results) {
     var cache = type === 'daytrade' ? _dtScreenerCache : (type === 'nonkonglo' ? _nkScreenerCache : _screenerCache);
     var source = results || (cache && cache.results) || [];
@@ -8332,6 +8441,7 @@ function applyScreenerUiFilters(type, results) {
         if (f.hideVeryHigh && risk === 'Very High Risk') return false;
         if (f.type !== 'all' && getScreenerTypeLabel(r, type) !== f.type) return false;
         if (!screenerStatusMatches(r, f.status)) return false;
+        if (typeof matchesPatternPersonalityFilters === 'function' && !matchesPatternPersonalityFilters(r, f.patternPersonality, f.highWr)) return false;
         return true;
     });
 }
@@ -8394,7 +8504,7 @@ function renderDtCardGrid(results, data) {
         if (_dtScreenerFilter === 'WATCH') { filtered = filtered.filter(function(r) { return isDayTradeWatchStatus(r.status); }); }
         else { filtered = filtered.filter(function(r) { return r.status === _dtScreenerFilter; }); }
     }
-    if (!filtered || filtered.length === 0) { container.innerHTML = screenerEmptyCardHtml(getDayTradeEmptyMessage(data)); return; }
+    if (!filtered || filtered.length === 0) { container.innerHTML = screenerEmptyCardHtml(getPatternPersonalityEmptyMessage(getDayTradeEmptyMessage(data))); return; }
     var html = '';
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
@@ -8755,7 +8865,7 @@ function renderKgCardGrid(results) {
     if (_screenerFilter && _screenerFilter !== 'all') {
         filtered = filtered.filter(function(r) { var tier = r.swing_tier || ''; var fs = r.final_status || r.status || 'Invalid'; return tier === _screenerFilter || fs === _screenerFilter; });
     }
-    if (!filtered || filtered.length === 0) { container.innerHTML = screenerEmptyCardHtml(STRICT_EMPTY_TEXT); return; }
+    if (!filtered || filtered.length === 0) { container.innerHTML = screenerEmptyCardHtml(getPatternPersonalityEmptyMessage(STRICT_EMPTY_TEXT)); return; }
     var html = '';
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
@@ -8837,7 +8947,7 @@ function renderNkCardGrid(results) {
     if (typeof _nkScreenerFilter !== 'undefined' && _nkScreenerFilter && _nkScreenerFilter !== 'all') {
         filtered = filtered.filter(function(r) { var tier = r.swing_tier || ''; var fs = r.final_status || r.status || 'Invalid'; return tier === _nkScreenerFilter || fs === _nkScreenerFilter; });
     }
-    if (!filtered || filtered.length === 0) { container.innerHTML = screenerEmptyCardHtml(STRICT_EMPTY_TEXT); return; }
+    if (!filtered || filtered.length === 0) { container.innerHTML = screenerEmptyCardHtml(getPatternPersonalityEmptyMessage(STRICT_EMPTY_TEXT)); return; }
     var html = '';
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
@@ -9407,7 +9517,7 @@ function renderScreenerTable(results) {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = screenerEmptyRowHtml(17, STRICT_EMPTY_TEXT);
+        tbody.innerHTML = screenerEmptyRowHtml(17, getPatternPersonalityEmptyMessage(STRICT_EMPTY_TEXT));
         return;
     }
 
@@ -9849,7 +9959,7 @@ function renderNkScreenerTable(results) {
         filtered = filtered.filter(function(r) { return r.status === _nkScreenerFilter || r.swing_tier === _nkScreenerFilter; });
     }
     if (filtered.length === 0) {
-        tbody.innerHTML = screenerEmptyRowHtml(18, STRICT_EMPTY_TEXT);
+        tbody.innerHTML = screenerEmptyRowHtml(18, getPatternPersonalityEmptyMessage(STRICT_EMPTY_TEXT));
         return;
     }
 
@@ -12005,6 +12115,7 @@ function forceNormalizeTechnicalDOM(root) {
 // Called here after all scripts are loaded so escapeHtml is available.
 (function() {
     function tryLoad() {
+        if (typeof setupPatternPersonalityFilterListeners === 'function') setupPatternPersonalityFilterListeners();
         if (typeof loadLandingShowcase === 'function') loadLandingShowcase();
     }
     if (document.readyState === 'loading') {

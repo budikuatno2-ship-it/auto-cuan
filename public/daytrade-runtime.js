@@ -205,7 +205,10 @@ function renderDtTable(results, data) {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = screenerEmptyRowHtml(22, getDayTradeEmptyMessage(data));
+        var emptyMsg = typeof getPatternPersonalityEmptyMessage === 'function'
+            ? getPatternPersonalityEmptyMessage(getDayTradeEmptyMessage(data))
+            : getDayTradeEmptyMessage(data);
+        tbody.innerHTML = screenerEmptyRowHtml(22, emptyMsg);
         return;
     }
 
