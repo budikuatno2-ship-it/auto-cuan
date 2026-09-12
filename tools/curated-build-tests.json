@@ -374,5 +374,6 @@
   "test/webhook-alert-engine.test.js",
   "test/daytrade-v7-engine-integrity.test.js",
   "test/insider-network-integrity.test.js",
-  "test/ai-cockpit-byok-integrity.test.js"
+  "test/ai-cockpit-byok-integrity.test.js",
+  "test/auth-security-compliance-integrity.test.js"
 ]
