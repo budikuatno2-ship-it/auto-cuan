@@ -2105,11 +2105,8 @@
       top5Val += Number(sortedBuyersByBuyVal[t5].bval || sortedBuyersByBuyVal[t5].buy_val || sortedBuyersByBuyVal[t5].val || 0);
     }
 
-    // Dynamic denominator: avoid dividing top 3 by top 3 (100% lock) when only 3 brokers present
-    var denominator = totalMarketBuyVal > 0 ? totalMarketBuyVal : (sortedBuyersByBuyVal.length > 3 ? top3Val * 1.5 : 0);
-    if (denominator <= top3Val && sortedBuyersByBuyVal.length <= 3 && top3Val > 0) {
-      denominator = top3Val * 2.0;
-    }
+    // Dynamic denominator: avoid dividing top 3 by top 3 (100% lock) when only partial broker data is present
+    var denominator = totalMarketBuyVal > top3Val ? totalMarketBuyVal : Math.round(top3Val * 2.85);
 
     var cr3 = 0;
     var cr5 = 0;
@@ -4210,7 +4207,8 @@
       html += '      </div>';
       html += '    </div>';
 
-      var s4Desc = s4.description || ('CR3 mengukur persentase volume yang dikuasai top 3 broker pembeli. CR3 >= 60% menunjukkan monopoli akumulasi oleh segelintir bandar.');
+      var s4Label = (cr3Val >= 60 ? 'Akumulasi Sangat Masif (Monopoli)' : (cr3Val >= 40 ? 'Akumulasi Terkonsentrasi' : 'Normal / Tersebar'));
+      var s4Desc = 'CR3 sebesar ' + cr3Val + '% dan CR5 sebesar ' + cr5Val + '%. Status: ' + s4Label + '.';
       html += '    <p class="text-[11px] text-gray-400 mt-2 pt-2 border-t border-dark-600/30 leading-relaxed">' + escapeHtml(s4Desc) + '</p>';
       html += '  </div>';
 

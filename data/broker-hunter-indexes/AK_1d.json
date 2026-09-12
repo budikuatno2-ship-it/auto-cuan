@@ -26,14 +26,14 @@
     {
       "ticker": "BBCA",
       "net_val": 49479052500,
-      "net_vol": 7376900,
-      "net_lot": 73769,
+      "net_vol": 4827225,
+      "net_lot": 48272,
       "buy_val": 94282360000,
       "sell_val": 44803307500,
-      "buy_vol": 14071300,
-      "sell_vol": 6694400,
-      "avg_buy_price": 6700,
-      "avg_sell_price": 6693,
+      "buy_vol": 9198279,
+      "sell_vol": 4371054,
+      "avg_buy_price": 10250,
+      "avg_sell_price": 10250,
       "days_active": 1
     },
     {
