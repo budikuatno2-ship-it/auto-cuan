@@ -237,7 +237,8 @@ function renderDtTable(results, data) {
             var dtBTip = r.bandarmologi_breakdown || r.bandarmologi_breakdown_text || 'Metrik Bandarmologi';
             dtBdBadgeHtml = '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border ' + dtBColor + '" title="' + escapeHtml(dtBTip) + '">' + dtBText + '</span></div>';
         }
-        html += '<td class="px-2 py-2 text-center font-bold ' + getDtScoreClass(r.daytrade_score) + '">' + r.daytrade_score + dtBdBadgeHtml + '</td>';
+        var dtPatternBadgeHtml = typeof patternPersonalityBadgeHtml === 'function' ? patternPersonalityBadgeHtml(r) : '';
+        html += '<td class="px-2 py-2 text-center font-bold ' + getDtScoreClass(r.daytrade_score) + '">' + r.daytrade_score + dtBdBadgeHtml + dtPatternBadgeHtml + '</td>';
         html += '<td class="px-2 py-2 text-center ' + confColor + ' text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
         html += '<td class="px-2 py-2 text-gray-300 text-[10px] max-w-[100px] truncate" title="' + (r.setup || '') + '">' + (r.setup || '—') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '—') + '</td>';

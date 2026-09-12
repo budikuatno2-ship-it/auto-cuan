@@ -229,3 +229,24 @@ test('T-PP-09: formatDailyTop5Message renders Edge line properly and migration f
   const top5Msg = telegramTemplates.formatDailyTop5Message(candidates, '2026-09-12');
   assert.match(top5Msg, /Edge: COMBO_FX_TECH_MA5 · WR 64\.2% · PF 2\.06/);
 });
+
+test('T-PP-10: Frontend patternPersonalityBadgeHtml renders badges for candidates', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const vm = require('vm');
+
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const match = html.match(/var PATTERN_PERSONALITY_UI_CATALOG = [\s\S]*?window\.patternPersonalityBadgeHtml = patternPersonalityBadgeHtml;/);
+  assert.ok(match, 'patternPersonalityBadgeHtml must be defined in index.html');
+
+  const ctx = { window: {}, escapeHtml: (s) => s };
+  ctx.window = ctx;
+  vm.runInNewContext(match[0], ctx);
+
+  const badge = ctx.patternPersonalityBadgeHtml({ ticker: 'BBCA', pattern_personality: 'COMBO_FX_TECH_MA5' });
+  assert.match(badge, /⚡ Combo FX\+MA5/);
+  assert.match(badge, /PF 2\.06/);
+
+  const emptyBadge = ctx.patternPersonalityBadgeHtml({ ticker: 'XYZ' });
+  assert.equal(emptyBadge, '');
+});
