@@ -369,5 +369,6 @@
   "test/insider-network-graph.test.js",
   "test/insider-network-ui.test.js",
   "test/tab-navigation-and-insider-universe.test.js",
-  "test/phase5-swing-bandarmologi-monitor.test.js"
+  "test/phase5-swing-bandarmologi-monitor.test.js",
+  "test/stress-test-replay.test.js"
 ]
