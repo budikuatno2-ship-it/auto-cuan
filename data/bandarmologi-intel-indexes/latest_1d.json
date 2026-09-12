@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T09:03:40.651Z",
+  "updated_at": "2026-09-12T09:49:25.556Z",
   "total_evaluated": 52,
   "indexes": {
     "harga_di_bawah_modal_bandar": [
@@ -110,6 +110,41 @@
         ],
         "description": "Harga terkini (5975) berada di bawah modal rata-rata Top 3 Bandar (7000) dengan diskon 14.64%.",
         "note": "Harga terkini (5975) berada di bawah modal rata-rata Top 3 Bandar (7000) dengan diskon 14.64%."
+      },
+      {
+        "ticker": "BBRI",
+        "current_price": 2990,
+        "bandar_avg_buy": 3396,
+        "discount_pct": 11.96,
+        "in_sweet_spot": false,
+        "top_3_brokers": [
+          {
+            "broker": "YU",
+            "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+            "buy_val": 103178766000,
+            "buy_vol": 30354200,
+            "avg_price": 3399,
+            "avg_buy": 3399
+          },
+          {
+            "broker": "AK",
+            "broker_name": "UBS SEKURITAS INDONESIA",
+            "buy_val": 95969929000,
+            "buy_vol": 28293700,
+            "avg_price": 3392,
+            "avg_buy": 3392
+          },
+          {
+            "broker": "ZP",
+            "broker_name": "MAYBANK SEKURITAS INDONESIA",
+            "buy_val": 54768012000,
+            "buy_vol": 16117900,
+            "avg_price": 3398,
+            "avg_buy": 3398
+          }
+        ],
+        "description": "Harga terkini (2990) berada di bawah modal rata-rata Top 3 Bandar (3396) dengan diskon 11.96%.",
+        "note": "Harga terkini (2990) berada di bawah modal rata-rata Top 3 Bandar (3396) dengan diskon 11.96%."
       },
       {
         "ticker": "CUAN",
@@ -269,6 +304,25 @@
         ],
         "description": "Harga terkini (101) berada di bawah modal rata-rata Top 3 Bandar (109) dengan diskon 7.34%.",
         "note": "Harga terkini (101) berada di bawah modal rata-rata Top 3 Bandar (109) dengan diskon 7.34%."
+      },
+      {
+        "ticker": "BREN",
+        "current_price": 8800,
+        "bandar_avg_buy": 9200,
+        "discount_pct": 4.35,
+        "in_sweet_spot": true,
+        "top_3_brokers": [
+          {
+            "broker": "YP",
+            "broker_name": "Mirae Asset Sekuritas Indonesia",
+            "buy_val": 26400000000,
+            "buy_vol": 2869500,
+            "avg_price": 9200,
+            "avg_buy": 9200
+          }
+        ],
+        "description": "Harga terkini (8800) berada di bawah modal rata-rata Top 3 Bandar (9200) dengan diskon 4.35%.",
+        "note": "Harga terkini (8800) berada di bawah modal rata-rata Top 3 Bandar (9200) dengan diskon 4.35%."
       },
       {
         "ticker": "INKP",
@@ -457,6 +511,74 @@
     ],
     "cr3_massive": [
       {
+        "ticker": "BRIS",
+        "cr3": 81.4,
+        "cr5": 100,
+        "top_3_brokers": [
+          "PD",
+          "YP",
+          "CC"
+        ],
+        "description": "CR3 sebesar 81.4% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 81.4% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
+      },
+      {
+        "ticker": "CUAN",
+        "cr3": 80.38,
+        "cr5": 100,
+        "top_3_brokers": [
+          "YP",
+          "XC",
+          "AG"
+        ],
+        "description": "CR3 sebesar 80.38% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 80.38% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
+      },
+      {
+        "ticker": "PSAB",
+        "cr3": 77.95,
+        "cr5": 77.95,
+        "top_3_brokers": [
+          "PD"
+        ],
+        "description": "CR3 sebesar 77.95% dan CR5 sebesar 77.95%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 77.95% dan CR5 sebesar 77.95%. Status: Akumulasi Sangat Masif (Monopoli)."
+      },
+      {
+        "ticker": "PGAS",
+        "cr3": 70.64,
+        "cr5": 100,
+        "top_3_brokers": [
+          "NI",
+          "CC",
+          "RX"
+        ],
+        "description": "CR3 sebesar 70.64% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 70.64% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
+      },
+      {
+        "ticker": "ENRG",
+        "cr3": 68.57,
+        "cr5": 68.57,
+        "top_3_brokers": [
+          "YP"
+        ],
+        "description": "CR3 sebesar 68.57% dan CR5 sebesar 68.57%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 68.57% dan CR5 sebesar 68.57%. Status: Akumulasi Sangat Masif (Monopoli)."
+      },
+      {
+        "ticker": "BUMI",
+        "cr3": 65,
+        "cr5": 80,
+        "top_3_brokers": [
+          "YP",
+          "XC",
+          "PD"
+        ],
+        "description": "CR3 sebesar 65% dan CR5 sebesar 80%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 65% dan CR5 sebesar 80%. Status: Akumulasi Sangat Masif (Monopoli)."
+      },
+      {
         "ticker": "DADA",
         "cr3": 65,
         "cr5": 80,
@@ -467,6 +589,30 @@
         ],
         "description": "CR3 sebesar 65% dan CR5 sebesar 80%. Status: Akumulasi Sangat Masif (Monopoli).",
         "note": "CR3 sebesar 65% dan CR5 sebesar 80%. Status: Akumulasi Sangat Masif (Monopoli)."
+      },
+      {
+        "ticker": "JSMR",
+        "cr3": 65,
+        "cr5": 80,
+        "top_3_brokers": [
+          "DX",
+          "CC",
+          "NI"
+        ],
+        "description": "CR3 sebesar 65% dan CR5 sebesar 80%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 65% dan CR5 sebesar 80%. Status: Akumulasi Sangat Masif (Monopoli)."
+      },
+      {
+        "ticker": "DEWA",
+        "cr3": 64.17,
+        "cr5": 88.36,
+        "top_3_brokers": [
+          "YP",
+          "XC",
+          "AG"
+        ],
+        "description": "CR3 sebesar 64.17% dan CR5 sebesar 88.36%. Status: Akumulasi Sangat Masif (Monopoli).",
+        "note": "CR3 sebesar 64.17% dan CR5 sebesar 88.36%. Status: Akumulasi Sangat Masif (Monopoli)."
       },
       {
         "ticker": "ASII",
@@ -495,17 +641,17 @@
     ]
   },
   "summary": {
-    "harga_di_bawah_modal_bandar_count": 13,
+    "harga_di_bawah_modal_bandar_count": 15,
     "silent_foreign_accumulation_count": 7,
     "ritel_cutloss_bandar_nampung_count": 0,
     "distribusi_ke_ritel_count": 1,
-    "cr3_massive_count": 3
+    "cr3_massive_count": 11
   },
   "tickers": {
     "AADI": {
       "ticker": "AADI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:02:58.467Z",
+      "evaluated_at": "2026-09-12T09:48:43.290Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -641,7 +787,7 @@
     "ADRO": {
       "ticker": "ADRO",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:02:59.639Z",
+      "evaluated_at": "2026-09-12T09:48:44.334Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -690,7 +836,7 @@
     "AMMN": {
       "ticker": "AMMN",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:00.266Z",
+      "evaluated_at": "2026-09-12T09:48:44.850Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -726,7 +872,7 @@
     "ANTM": {
       "ticker": "ANTM",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:00.896Z",
+      "evaluated_at": "2026-09-12T09:48:45.389Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -847,7 +993,7 @@
           "total_turnover": 228379756000,
           "top_3_vol": 40128100,
           "top_5_vol": 40128100,
-          "total_vol": 114365085,
+          "total_vol": 146396896,
           "top_3_brokers": [
             "CC",
             "RX",
@@ -860,7 +1006,7 @@
     "ARTO": {
       "ticker": "ARTO",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:01.549Z",
+      "evaluated_at": "2026-09-12T09:48:46.026Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -896,7 +1042,7 @@
     "ASII": {
       "ticker": "ASII",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:01.603Z",
+      "evaluated_at": "2026-09-12T09:48:46.062Z",
       "confluence_badge": "STRONG_ACCUMULATION",
       "bullish_signals_count": 3,
       "bearish_signals_count": 0,
@@ -1044,7 +1190,7 @@
     "BBCA": {
       "ticker": "BBCA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:01.626Z",
+      "evaluated_at": "2026-09-12T09:48:46.079Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -1057,22 +1203,22 @@
           "is_sweet_spot": false,
           "current_price": 10150,
           "close_price": 10150,
-          "bandar_avg_buy": 8308,
-          "bandar_avg_price": 8308,
-          "avg_buy_price": 8308,
-          "broker_cost": 8308,
-          "harga_modal": 8308,
-          "discount_pct": -22.17,
-          "price_diff_pct": 22.17,
+          "bandar_avg_buy": 10150,
+          "bandar_avg_price": 10150,
+          "avg_buy_price": 10150,
+          "broker_cost": 10150,
+          "harga_modal": 10150,
+          "discount_pct": 0,
+          "price_diff_pct": 0,
           "range": "1D",
           "top_3_brokers": [
             {
               "broker": "CC",
               "broker_name": "MANDIRI SEKURITAS",
               "buy_val": 175422065000,
-              "buy_vol": 26158100,
-              "avg_price": 6706,
-              "avg_buy": 6706
+              "buy_vol": 17282962,
+              "avg_price": 10150,
+              "avg_buy": 10150
             },
             {
               "broker": "YU",
@@ -1096,9 +1242,9 @@
               "broker": "CC",
               "broker_name": "MANDIRI SEKURITAS",
               "buy_val": 175422065000,
-              "buy_vol": 26158100,
-              "avg_price": 6706,
-              "avg_buy": 6706
+              "buy_vol": 17282962,
+              "avg_price": 10150,
+              "avg_buy": 10150
             },
             {
               "broker": "YU",
@@ -1122,7 +1268,7 @@
             "YU",
             "AK"
           ],
-          "description": "Harga terkini (10150) masih di atas modal rata-rata Top 3 Bandar (8308)."
+          "description": "Harga terkini (10150) seimbang dengan modal rata-rata Top 3 Bandar (10150) (diskon 0%)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -1166,9 +1312,9 @@
           "top_3_val": 406406655000,
           "top_5_val": 540311055000,
           "total_turnover": 719120315000,
-          "top_3_vol": 48915202,
-          "top_5_vol": 62107754,
-          "total_vol": 79724429,
+          "top_3_vol": 40040064,
+          "top_5_vol": 53232616,
+          "total_vol": 70849291,
           "top_3_brokers": [
             "CC",
             "YU",
@@ -1181,7 +1327,7 @@
     "BBNI": {
       "ticker": "BBNI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:02.250Z",
+      "evaluated_at": "2026-09-12T09:48:46.755Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -1287,7 +1433,7 @@
           "total_turnover": 309305470000,
           "top_3_vol": 32666600,
           "top_5_vol": 32666600,
-          "total_vol": 93099810,
+          "total_vol": 57278674,
           "top_3_brokers": [
             "NI",
             "CC",
@@ -1300,26 +1446,26 @@
     "BBRI": {
       "ticker": "BBRI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:02.262Z",
+      "evaluated_at": "2026-09-12T09:48:46.764Z",
       "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 1,
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": false,
+          "triggered": true,
           "in_sweet_spot": false,
           "is_sweet_spot": false,
-          "current_price": 5150,
-          "close_price": 5150,
+          "current_price": 2990,
+          "close_price": 2990,
           "bandar_avg_buy": 3396,
           "bandar_avg_price": 3396,
           "avg_buy_price": 3396,
           "broker_cost": 3396,
           "harga_modal": 3396,
-          "discount_pct": -51.65,
-          "price_diff_pct": 51.65,
+          "discount_pct": 11.96,
+          "price_diff_pct": -11.96,
           "range": "1D",
           "top_3_brokers": [
             {
@@ -1378,7 +1524,7 @@
             "AK",
             "ZP"
           ],
-          "description": "Harga terkini (5150) masih di atas modal rata-rata Top 3 Bandar (3396)."
+          "description": "Harga terkini (2990) berada di bawah modal rata-rata Top 3 Bandar (3396) dengan diskon 11.96%."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -1436,7 +1582,7 @@
     "BMRI": {
       "ticker": "BMRI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:02.268Z",
+      "evaluated_at": "2026-09-12T09:48:46.773Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -1449,72 +1595,72 @@
           "is_sweet_spot": false,
           "current_price": 7100,
           "close_price": 7100,
-          "bandar_avg_buy": 4414,
-          "bandar_avg_price": 4414,
-          "avg_buy_price": 4414,
-          "broker_cost": 4414,
-          "harga_modal": 4414,
-          "discount_pct": -60.85,
-          "price_diff_pct": 60.85,
+          "bandar_avg_buy": 6049,
+          "bandar_avg_price": 6049,
+          "avg_buy_price": 6049,
+          "broker_cost": 6049,
+          "harga_modal": 6049,
+          "discount_pct": -17.37,
+          "price_diff_pct": 17.37,
           "range": "1D",
           "top_3_brokers": [
             {
-              "broker": "YU",
-              "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
-              "buy_val": 77923662000,
-              "buy_vol": 17635300,
-              "avg_price": 4419,
-              "avg_buy": 4419
-            },
-            {
               "broker": "CC",
-              "broker_name": "MANDIRI SEKURITAS",
-              "buy_val": 76007729000,
-              "buy_vol": 17232200,
-              "avg_price": 4411,
-              "avg_buy": 4411
+              "broker_name": "Mandiri Sekuritas",
+              "buy_val": 88200000000,
+              "buy_vol": 12422500,
+              "avg_price": 7100,
+              "avg_buy": 7100
             },
             {
               "broker": "AK",
-              "broker_name": "UBS SEKURITAS INDONESIA",
+              "broker_name": "UBS Sekuritas Indonesia",
               "buy_val": 56782225000,
               "buy_vol": 12872700,
               "avg_price": 4411,
               "avg_buy": 4411
+            },
+            {
+              "broker": "DX",
+              "broker_name": "Bahana Sekuritas",
+              "buy_val": 54200000000,
+              "buy_vol": 7633800,
+              "avg_price": 7100,
+              "avg_buy": 7100
             }
           ],
           "top_broker_details": [
             {
-              "broker": "YU",
-              "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
-              "buy_val": 77923662000,
-              "buy_vol": 17635300,
-              "avg_price": 4419,
-              "avg_buy": 4419
-            },
-            {
               "broker": "CC",
-              "broker_name": "MANDIRI SEKURITAS",
-              "buy_val": 76007729000,
-              "buy_vol": 17232200,
-              "avg_price": 4411,
-              "avg_buy": 4411
+              "broker_name": "Mandiri Sekuritas",
+              "buy_val": 88200000000,
+              "buy_vol": 12422500,
+              "avg_price": 7100,
+              "avg_buy": 7100
             },
             {
               "broker": "AK",
-              "broker_name": "UBS SEKURITAS INDONESIA",
+              "broker_name": "UBS Sekuritas Indonesia",
               "buy_val": 56782225000,
               "buy_vol": 12872700,
               "avg_price": 4411,
               "avg_buy": 4411
+            },
+            {
+              "broker": "DX",
+              "broker_name": "Bahana Sekuritas",
+              "buy_val": 54200000000,
+              "buy_vol": 7633800,
+              "avg_price": 7100,
+              "avg_buy": 7100
             }
           ],
           "top_brokers": [
-            "YU",
             "CC",
-            "AK"
+            "AK",
+            "DX"
           ],
-          "description": "Harga terkini (7100) masih di atas modal rata-rata Top 3 Bandar (4414)."
+          "description": "Harga terkini (7100) masih di atas modal rata-rata Top 3 Bandar (6049)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -1584,85 +1730,51 @@
     "BREN": {
       "ticker": "BREN",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:02.278Z",
+      "evaluated_at": "2026-09-12T09:48:46.780Z",
       "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 1,
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
           "signal_key": "HARGA_DI_BAWAH_MODAL_BANDAR",
           "signal_name": "Harga di Bawah Modal Bandar",
-          "triggered": false,
-          "in_sweet_spot": false,
-          "is_sweet_spot": false,
+          "triggered": true,
+          "in_sweet_spot": true,
+          "is_sweet_spot": true,
           "current_price": 8800,
           "close_price": 8800,
-          "bandar_avg_buy": 3326,
-          "bandar_avg_price": 3326,
-          "avg_buy_price": 3326,
-          "broker_cost": 3326,
-          "harga_modal": 3326,
-          "discount_pct": -164.58,
-          "price_diff_pct": 164.58,
+          "bandar_avg_buy": 9200,
+          "bandar_avg_price": 9200,
+          "avg_buy_price": 9200,
+          "broker_cost": 9200,
+          "harga_modal": 9200,
+          "discount_pct": 4.35,
+          "price_diff_pct": -4.35,
           "range": "1D",
           "top_3_brokers": [
             {
-              "broker": "XL",
-              "broker_name": "STOCKBIT SEKURITAS DIGITAL",
-              "buy_val": 6919127000,
-              "buy_vol": 2080800,
-              "avg_price": 3325,
-              "avg_buy": 3325
-            },
-            {
-              "broker": "XC",
-              "broker_name": "AJAIB SEKURITAS ASIA",
-              "buy_val": 4296308000,
-              "buy_vol": 1291200,
-              "avg_price": 3327,
-              "avg_buy": 3327
-            },
-            {
-              "broker": "CC",
-              "broker_name": "MANDIRI SEKURITAS",
-              "buy_val": 3998651000,
-              "buy_vol": 1202000,
-              "avg_price": 3327,
-              "avg_buy": 3327
+              "broker": "YP",
+              "broker_name": "Mirae Asset Sekuritas Indonesia",
+              "buy_val": 26400000000,
+              "buy_vol": 2869500,
+              "avg_price": 9200,
+              "avg_buy": 9200
             }
           ],
           "top_broker_details": [
             {
-              "broker": "XL",
-              "broker_name": "STOCKBIT SEKURITAS DIGITAL",
-              "buy_val": 6919127000,
-              "buy_vol": 2080800,
-              "avg_price": 3325,
-              "avg_buy": 3325
-            },
-            {
-              "broker": "XC",
-              "broker_name": "AJAIB SEKURITAS ASIA",
-              "buy_val": 4296308000,
-              "buy_vol": 1291200,
-              "avg_price": 3327,
-              "avg_buy": 3327
-            },
-            {
-              "broker": "CC",
-              "broker_name": "MANDIRI SEKURITAS",
-              "buy_val": 3998651000,
-              "buy_vol": 1202000,
-              "avg_price": 3327,
-              "avg_buy": 3327
+              "broker": "YP",
+              "broker_name": "Mirae Asset Sekuritas Indonesia",
+              "buy_val": 26400000000,
+              "buy_vol": 2869500,
+              "avg_price": 9200,
+              "avg_buy": 9200
             }
           ],
           "top_brokers": [
-            "XL",
-            "XC",
-            "CC"
+            "YP"
           ],
-          "description": "Harga terkini (8800) masih di atas modal rata-rata Top 3 Bandar (3326)."
+          "description": "Harga terkini (8800) berada di bawah modal rata-rata Top 3 Bandar (9200) dengan diskon 4.35%."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -1720,9 +1832,9 @@
     "BRIS": {
       "ticker": "BRIS",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:02.934Z",
-      "confluence_badge": "NEUTRAL",
-      "bullish_signals_count": 0,
+      "evaluated_at": "2026-09-12T09:48:47.361Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
@@ -1815,15 +1927,15 @@
         "concentration_ratio": {
           "signal_key": "CONCENTRATION_RATIO",
           "signal_name": "Concentration Ratio (CR3 & CR5)",
-          "triggered": false,
-          "is_massive": false,
-          "cr3": 35.09,
-          "cr5": 49.46,
-          "status": "NORMAL_DIFFUSE",
-          "label": "Normal / Tersebar",
+          "triggered": true,
+          "is_massive": true,
+          "cr3": 81.4,
+          "cr5": 100,
+          "status": "AKUMULASI_MASIF",
+          "label": "Akumulasi Sangat Masif (Monopoli)",
           "top_3_val": 122100000000,
           "top_5_val": 172100000000,
-          "total_turnover": 347985000000,
+          "total_turnover": 150000000000,
           "top_3_vol": 41530500,
           "top_5_vol": 58537200,
           "total_vol": 449421200,
@@ -1832,14 +1944,14 @@
             "YP",
             "CC"
           ],
-          "description": "CR3 sebesar 35.09% dan CR5 sebesar 49.46%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 81.4% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
         }
       }
     },
     "BRPT": {
       "ticker": "BRPT",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:03.489Z",
+      "evaluated_at": "2026-09-12T09:48:47.886Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -1944,7 +2056,7 @@
           "total_turnover": 209066182000,
           "top_3_vol": 88392800,
           "top_5_vol": 88392800,
-          "total_vol": 251919480,
+          "total_vol": 186666113,
           "top_3_brokers": [
             "YP",
             "RX"
@@ -1956,7 +2068,7 @@
     "BUKA": {
       "ticker": "BUKA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:04.135Z",
+      "evaluated_at": "2026-09-12T09:48:48.463Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -1992,9 +2104,9 @@
     "BUMI": {
       "ticker": "BUMI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:04.722Z",
-      "confluence_badge": "DISTRIBUTION",
-      "bullish_signals_count": 0,
+      "evaluated_at": "2026-09-12T09:48:49.181Z",
+      "confluence_badge": "NEUTRAL",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 1,
       "signals": {
         "harga_di_bawah_modal_bandar": {
@@ -2104,15 +2216,15 @@
         "concentration_ratio": {
           "signal_key": "CONCENTRATION_RATIO",
           "signal_name": "Concentration Ratio (CR3 & CR5)",
-          "triggered": false,
-          "is_massive": false,
-          "cr3": 35.09,
-          "cr5": 47.51,
-          "status": "NORMAL_DIFFUSE",
-          "label": "Normal / Tersebar",
+          "triggered": true,
+          "is_massive": true,
+          "cr3": 65,
+          "cr5": 80,
+          "status": "AKUMULASI_MASIF",
+          "label": "Akumulasi Sangat Masif (Monopoli)",
           "top_3_val": 160400000000,
           "top_5_val": 217200000000,
-          "total_turnover": 457140000000,
+          "total_turnover": 186600705000,
           "top_3_vol": 1253124900,
           "top_5_vol": 1696874900,
           "total_vol": 13012499900,
@@ -2121,14 +2233,14 @@
             "XC",
             "PD"
           ],
-          "description": "CR3 sebesar 35.09% dan CR5 sebesar 47.51%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 65% dan CR5 sebesar 80%. Status: Akumulasi Sangat Masif (Monopoli)."
         }
       }
     },
     "CPIN": {
       "ticker": "CPIN",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:05.445Z",
+      "evaluated_at": "2026-09-12T09:48:49.735Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -2164,9 +2276,9 @@
     "CUAN": {
       "ticker": "CUAN",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:05.983Z",
-      "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 1,
+      "evaluated_at": "2026-09-12T09:48:50.288Z",
+      "confluence_badge": "STRONG_ACCUMULATION",
+      "bullish_signals_count": 3,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
@@ -2259,15 +2371,15 @@
         "concentration_ratio": {
           "signal_key": "CONCENTRATION_RATIO",
           "signal_name": "Concentration Ratio (CR3 & CR5)",
-          "triggered": false,
-          "is_massive": false,
-          "cr3": 35.09,
-          "cr5": 54.51,
-          "status": "NORMAL_DIFFUSE",
-          "label": "Normal / Tersebar",
+          "triggered": true,
+          "is_massive": true,
+          "cr3": 80.38,
+          "cr5": 100,
+          "status": "AKUMULASI_MASIF",
+          "label": "Akumulasi Sangat Masif (Monopoli)",
           "top_3_val": 64300000000,
           "top_5_val": 99900000000,
-          "total_turnover": 183255000000,
+          "total_turnover": 80000000000,
           "top_3_vol": 8139100,
           "top_5_vol": 12645300,
           "total_vol": 125300300,
@@ -2276,14 +2388,14 @@
             "XC",
             "AG"
           ],
-          "description": "CR3 sebesar 35.09% dan CR5 sebesar 54.51%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 80.38% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
         }
       }
     },
     "DADA": {
       "ticker": "DADA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:05.991Z",
+      "evaluated_at": "2026-09-12T09:48:50.296Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -2419,9 +2531,9 @@
     "DEWA": {
       "ticker": "DEWA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:06.551Z",
-      "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 1,
+      "evaluated_at": "2026-09-12T09:48:50.890Z",
+      "confluence_badge": "STRONG_ACCUMULATION",
+      "bullish_signals_count": 3,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
@@ -2529,15 +2641,15 @@
         "concentration_ratio": {
           "signal_key": "CONCENTRATION_RATIO",
           "signal_name": "Concentration Ratio (CR3 & CR5)",
-          "triggered": false,
-          "is_massive": false,
-          "cr3": 35.09,
-          "cr5": 48.32,
-          "status": "NORMAL_DIFFUSE",
-          "label": "Normal / Tersebar",
+          "triggered": true,
+          "is_massive": true,
+          "cr3": 64.17,
+          "cr5": 88.36,
+          "status": "AKUMULASI_MASIF",
+          "label": "Akumulasi Sangat Masif (Monopoli)",
           "top_3_val": 81700000000,
           "top_5_val": 112500000000,
-          "total_turnover": 232845000000,
+          "total_turnover": 127315552200,
           "top_3_vol": 928409000,
           "top_5_vol": 1278409000,
           "total_vol": 10028409000,
@@ -2546,14 +2658,14 @@
             "XC",
             "AG"
           ],
-          "description": "CR3 sebesar 35.09% dan CR5 sebesar 48.32%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 64.17% dan CR5 sebesar 88.36%. Status: Akumulasi Sangat Masif (Monopoli)."
         }
       }
     },
     "DOID": {
       "ticker": "DOID",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:07.134Z",
+      "evaluated_at": "2026-09-12T09:48:51.456Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -2625,7 +2737,7 @@
           "total_turnover": 50000000000,
           "top_3_vol": 40422500,
           "top_5_vol": 40422500,
-          "total_vol": 115204125,
+          "total_vol": 70422474,
           "top_3_brokers": [
             "PD"
           ],
@@ -2636,7 +2748,7 @@
     "EMTK": {
       "ticker": "EMTK",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:07.844Z",
+      "evaluated_at": "2026-09-12T09:48:52.038Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -2672,9 +2784,9 @@
     "ENRG": {
       "ticker": "ENRG",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:08.520Z",
-      "confluence_badge": "NEUTRAL",
-      "bullish_signals_count": 0,
+      "evaluated_at": "2026-09-12T09:48:52.606Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
@@ -2733,29 +2845,29 @@
         "concentration_ratio": {
           "signal_key": "CONCENTRATION_RATIO",
           "signal_name": "Concentration Ratio (CR3 & CR5)",
-          "triggered": false,
-          "is_massive": false,
-          "cr3": 35.09,
-          "cr5": 35.09,
-          "status": "NORMAL_DIFFUSE",
-          "label": "Normal / Tersebar",
+          "triggered": true,
+          "is_massive": true,
+          "cr3": 68.57,
+          "cr5": 68.57,
+          "status": "AKUMULASI_MASIF",
+          "label": "Akumulasi Sangat Masif (Monopoli)",
           "top_3_val": 28900000000,
           "top_5_val": 28900000000,
-          "total_turnover": 82365000000,
+          "total_turnover": 42146968500,
           "top_3_vol": 131363600,
           "top_5_vol": 131363600,
-          "total_vol": 374386260,
+          "total_vol": 191577077,
           "top_3_brokers": [
             "YP"
           ],
-          "description": "CR3 sebesar 35.09% dan CR5 sebesar 35.09%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 68.57% dan CR5 sebesar 68.57%. Status: Akumulasi Sangat Masif (Monopoli)."
         }
       }
     },
     "EXCL": {
       "ticker": "EXCL",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:09.109Z",
+      "evaluated_at": "2026-09-12T09:48:53.171Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -2791,7 +2903,7 @@
     "FLOWALL1": {
       "ticker": "FLOWALL1",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:14.478Z",
+      "evaluated_at": "2026-09-12T09:48:59.117Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -2827,7 +2939,7 @@
     "GOTO": {
       "ticker": "GOTO",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:14.494Z",
+      "evaluated_at": "2026-09-12T09:48:59.125Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -2963,7 +3075,7 @@
     "GPRA": {
       "ticker": "GPRA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:14.523Z",
+      "evaluated_at": "2026-09-12T09:48:59.142Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -3074,27 +3186,27 @@
           "signal_name": "Concentration Ratio (CR3 & CR5)",
           "triggered": false,
           "is_massive": false,
-          "cr3": 28.57,
-          "cr5": 28.57,
+          "cr3": 5.49,
+          "cr5": 5.49,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
           "top_3_val": 823600000,
           "top_5_val": 823600000,
-          "total_turnover": 2882600000,
+          "total_turnover": 15000000000,
           "top_3_vol": 0,
           "top_5_vol": 0,
           "total_vol": 0,
           "top_3_brokers": [
             "XL"
           ],
-          "description": "CR3 sebesar 28.57% dan CR5 sebesar 28.57%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 5.49% dan CR5 sebesar 5.49%. Status: Normal / Tersebar."
         }
       }
     },
     "ICBP": {
       "ticker": "ICBP",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:15.208Z",
+      "evaluated_at": "2026-09-12T09:48:59.694Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -3225,7 +3337,7 @@
     "INCO": {
       "ticker": "INCO",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:15.804Z",
+      "evaluated_at": "2026-09-12T09:49:00.276Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -3261,7 +3373,7 @@
     "INDF": {
       "ticker": "INDF",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:16.330Z",
+      "evaluated_at": "2026-09-12T09:49:00.882Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -3297,7 +3409,7 @@
     "INKP": {
       "ticker": "INKP",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:16.935Z",
+      "evaluated_at": "2026-09-12T09:49:01.412Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -3360,27 +3472,27 @@
           "signal_name": "Concentration Ratio (CR3 & CR5)",
           "triggered": false,
           "is_massive": false,
-          "cr3": 28.57,
-          "cr5": 28.57,
+          "cr3": 19.11,
+          "cr5": 19.11,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
           "top_3_val": 17200000000,
           "top_5_val": 17200000000,
-          "total_turnover": 60200000000,
+          "total_turnover": 90000000000,
           "top_3_vol": 2150000,
           "top_5_vol": 2150000,
-          "total_vol": 6127500,
+          "total_vol": 11250000,
           "top_3_brokers": [
             "RX"
           ],
-          "description": "CR3 sebesar 28.57% dan CR5 sebesar 28.57%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 19.11% dan CR5 sebesar 19.11%. Status: Normal / Tersebar."
         }
       }
     },
     "JARR": {
       "ticker": "JARR",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:16.951Z",
+      "evaluated_at": "2026-09-12T09:49:01.424Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -3516,9 +3628,9 @@
     "JSMR": {
       "ticker": "JSMR",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:17.562Z",
-      "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 1,
+      "evaluated_at": "2026-09-12T09:49:01.990Z",
+      "confluence_badge": "STRONG_ACCUMULATION",
+      "bullish_signals_count": 3,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
@@ -3611,31 +3723,31 @@
         "concentration_ratio": {
           "signal_key": "CONCENTRATION_RATIO",
           "signal_name": "Concentration Ratio (CR3 & CR5)",
-          "triggered": false,
-          "is_massive": false,
-          "cr3": 35.09,
-          "cr5": 35.09,
-          "status": "NORMAL_DIFFUSE",
-          "label": "Normal / Tersebar",
+          "triggered": true,
+          "is_massive": true,
+          "cr3": 65,
+          "cr5": 80,
+          "status": "AKUMULASI_MASIF",
+          "label": "Akumulasi Sangat Masif (Monopoli)",
           "top_3_val": 62600000000,
           "top_5_val": 62600000000,
-          "total_turnover": 178410000000,
+          "total_turnover": 70000000000,
           "top_3_vol": 12880500,
           "top_5_vol": 12880500,
-          "total_vol": 36709425,
+          "total_vol": 14403115,
           "top_3_brokers": [
             "DX",
             "CC",
             "NI"
           ],
-          "description": "CR3 sebesar 35.09% dan CR5 sebesar 35.09%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 65% dan CR5 sebesar 80%. Status: Akumulasi Sangat Masif (Monopoli)."
         }
       }
     },
     "KLBF": {
       "ticker": "KLBF",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:18.368Z",
+      "evaluated_at": "2026-09-12T09:49:02.692Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -3685,7 +3797,7 @@
     "MAPI": {
       "ticker": "MAPI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:19.015Z",
+      "evaluated_at": "2026-09-12T09:49:03.259Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -3721,7 +3833,7 @@
     "MBMA": {
       "ticker": "MBMA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:19.578Z",
+      "evaluated_at": "2026-09-12T09:49:03.810Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -3793,7 +3905,7 @@
           "total_turnover": 80000000000,
           "top_3_vol": 50172400,
           "top_5_vol": 50172400,
-          "total_vol": 142991340,
+          "total_vol": 137930997,
           "top_3_brokers": [
             "RX"
           ],
@@ -3804,7 +3916,7 @@
     "MDKA": {
       "ticker": "MDKA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:20.160Z",
+      "evaluated_at": "2026-09-12T09:49:04.388Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -3840,7 +3952,7 @@
     "MEDC": {
       "ticker": "MEDC",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:20.741Z",
+      "evaluated_at": "2026-09-12T09:49:04.956Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -3918,27 +4030,27 @@
           "signal_name": "Concentration Ratio (CR3 & CR5)",
           "triggered": false,
           "is_massive": false,
-          "cr3": 28.57,
-          "cr5": 28.57,
+          "cr3": 11.67,
+          "cr5": 11.67,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
           "top_3_val": 17500000000,
           "top_5_val": 17500000000,
-          "total_turnover": 61250000000,
+          "total_turnover": 150000000000,
           "top_3_vol": 14000000,
           "top_5_vol": 14000000,
-          "total_vol": 39900000,
+          "total_vol": 120000000,
           "top_3_brokers": [
             "PD"
           ],
-          "description": "CR3 sebesar 28.57% dan CR5 sebesar 28.57%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 11.67% dan CR5 sebesar 11.67%. Status: Normal / Tersebar."
         }
       }
     },
     "NOACC": {
       "ticker": "NOACC",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:26.935Z",
+      "evaluated_at": "2026-09-12T09:49:11.240Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -3974,7 +4086,7 @@
     "NOCACHE1": {
       "ticker": "NOCACHE1",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:32.845Z",
+      "evaluated_at": "2026-09-12T09:49:18.569Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -4010,9 +4122,9 @@
     "PGAS": {
       "ticker": "PGAS",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:33.369Z",
-      "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 2,
+      "evaluated_at": "2026-09-12T09:49:19.137Z",
+      "confluence_badge": "STRONG_ACCUMULATION",
+      "bullish_signals_count": 4,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
@@ -4117,15 +4229,15 @@
         "concentration_ratio": {
           "signal_key": "CONCENTRATION_RATIO",
           "signal_name": "Concentration Ratio (CR3 & CR5)",
-          "triggered": false,
-          "is_massive": false,
-          "cr3": 35.09,
-          "cr5": 52.79,
-          "status": "NORMAL_DIFFUSE",
-          "label": "Normal / Tersebar",
+          "triggered": true,
+          "is_massive": true,
+          "cr3": 70.64,
+          "cr5": 100,
+          "status": "AKUMULASI_MASIF",
+          "label": "Akumulasi Sangat Masif (Monopoli)",
           "top_3_val": 77700000000,
           "top_5_val": 116900000000,
-          "total_turnover": 221445000000,
+          "total_turnover": 110000000000,
           "top_3_vol": 50454400,
           "top_5_vol": 75908900,
           "total_vol": 101103700,
@@ -4134,16 +4246,16 @@
             "CC",
             "RX"
           ],
-          "description": "CR3 sebesar 35.09% dan CR5 sebesar 52.79%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 70.64% dan CR5 sebesar 100%. Status: Akumulasi Sangat Masif (Monopoli)."
         }
       }
     },
     "PSAB": {
       "ticker": "PSAB",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:33.991Z",
-      "confluence_badge": "NEUTRAL",
-      "bullish_signals_count": 0,
+      "evaluated_at": "2026-09-12T09:49:19.817Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
@@ -4202,29 +4314,29 @@
         "concentration_ratio": {
           "signal_key": "CONCENTRATION_RATIO",
           "signal_name": "Concentration Ratio (CR3 & CR5)",
-          "triggered": false,
-          "is_massive": false,
-          "cr3": 35.09,
-          "cr5": 35.09,
-          "status": "NORMAL_DIFFUSE",
-          "label": "Normal / Tersebar",
+          "triggered": true,
+          "is_massive": true,
+          "cr3": 77.95,
+          "cr5": 77.95,
+          "status": "AKUMULASI_MASIF",
+          "label": "Akumulasi Sangat Masif (Monopoli)",
           "top_3_val": 24300000000,
           "top_5_val": 24300000000,
-          "total_turnover": 69255000000,
+          "total_turnover": 31174574800,
           "top_3_vol": 86785700,
           "top_5_vol": 86785700,
-          "total_vol": 247339245,
+          "total_vol": 111337749,
           "top_3_brokers": [
             "PD"
           ],
-          "description": "CR3 sebesar 35.09% dan CR5 sebesar 35.09%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 77.95% dan CR5 sebesar 77.95%. Status: Akumulasi Sangat Masif (Monopoli)."
         }
       }
     },
     "PTBA": {
       "ticker": "PTBA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:34.594Z",
+      "evaluated_at": "2026-09-12T09:49:20.361Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -4343,7 +4455,7 @@
     "PTRO": {
       "ticker": "PTRO",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:35.118Z",
+      "evaluated_at": "2026-09-12T09:49:20.958Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -4432,7 +4544,7 @@
           "total_turnover": 79496760000,
           "top_3_vol": 3151500,
           "top_5_vol": 3151500,
-          "total_vol": 8981775,
+          "total_vol": 6022453,
           "top_3_brokers": [
             "YP",
             "XC"
@@ -4444,7 +4556,7 @@
     "RAJA": {
       "ticker": "RAJA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:35.907Z",
+      "evaluated_at": "2026-09-12T09:49:21.535Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -4507,27 +4619,27 @@
           "signal_name": "Concentration Ratio (CR3 & CR5)",
           "triggered": false,
           "is_massive": false,
-          "cr3": 28.57,
-          "cr5": 28.57,
+          "cr3": 16.29,
+          "cr5": 16.29,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
           "top_3_val": 18700000000,
           "top_5_val": 18700000000,
-          "total_turnover": 65450000000,
+          "total_turnover": 114822193000,
           "top_3_vol": 10108100,
           "top_5_vol": 10108100,
-          "total_vol": 28808085,
+          "total_vol": 62066000,
           "top_3_brokers": [
             "YP"
           ],
-          "description": "CR3 sebesar 28.57% dan CR5 sebesar 28.57%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 16.29% dan CR5 sebesar 16.29%. Status: Normal / Tersebar."
         }
       }
     },
     "SMGR": {
       "ticker": "SMGR",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:36.992Z",
+      "evaluated_at": "2026-09-12T09:49:22.269Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -4631,7 +4743,7 @@
           "total_turnover": 100000000000,
           "top_3_vol": 10202400,
           "top_5_vol": 10202400,
-          "total_vol": 29076840,
+          "total_vol": 25316129,
           "top_3_brokers": [
             "NI",
             "CC"
@@ -4643,7 +4755,7 @@
     "TKIM": {
       "ticker": "TKIM",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:37.604Z",
+      "evaluated_at": "2026-09-12T09:49:22.803Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -4715,7 +4827,7 @@
           "total_turnover": 65000000000,
           "top_3_vol": 2114200,
           "top_5_vol": 2114200,
-          "total_vol": 6025470,
+          "total_vol": 9285338,
           "top_3_brokers": [
             "RX"
           ],
@@ -4726,7 +4838,7 @@
     "TLKM": {
       "ticker": "TLKM",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:37.613Z",
+      "evaluated_at": "2026-09-12T09:49:22.811Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -4874,7 +4986,7 @@
     "TOBA": {
       "ticker": "TOBA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:38.224Z",
+      "evaluated_at": "2026-09-12T09:49:23.363Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -4946,7 +5058,7 @@
           "total_turnover": 45000000000,
           "top_3_vol": 32033800,
           "top_5_vol": 32033800,
-          "total_vol": 91296330,
+          "total_vol": 76270952,
           "top_3_brokers": [
             "PD"
           ],
@@ -4957,7 +5069,7 @@
     "TPIA": {
       "ticker": "TPIA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:38.794Z",
+      "evaluated_at": "2026-09-12T09:49:23.904Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -5032,27 +5144,27 @@
           "signal_name": "Concentration Ratio (CR3 & CR5)",
           "triggered": false,
           "is_massive": false,
-          "cr3": 28.57,
-          "cr5": 28.57,
+          "cr3": 6.76,
+          "cr5": 6.76,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
           "top_3_val": 39500000000,
           "top_5_val": 39500000000,
-          "total_turnover": 138250000000,
+          "total_turnover": 584587255000,
           "top_3_vol": 5337800,
           "top_5_vol": 5337800,
-          "total_vol": 15212730,
+          "total_vol": 78997718,
           "top_3_brokers": [
             "RX"
           ],
-          "description": "CR3 sebesar 28.57% dan CR5 sebesar 28.57%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 6.76% dan CR5 sebesar 6.76%. Status: Normal / Tersebar."
         }
       }
     },
     "UNTR": {
       "ticker": "UNTR",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:39.398Z",
+      "evaluated_at": "2026-09-12T09:49:24.411Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -5183,7 +5295,7 @@
     "UNVR": {
       "ticker": "UNVR",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:40.111Z",
+      "evaluated_at": "2026-09-12T09:49:24.986Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -5219,7 +5331,7 @@
     "WIFI": {
       "ticker": "WIFI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:03:40.651Z",
+      "evaluated_at": "2026-09-12T09:49:25.556Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -5291,7 +5403,7 @@
           "total_turnover": 48483200000,
           "top_3_vol": 68387000,
           "top_5_vol": 68387000,
-          "total_vol": 194902950,
+          "total_vol": 156397198,
           "top_3_brokers": [
             "PD"
           ],
