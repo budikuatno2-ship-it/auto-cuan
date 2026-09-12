@@ -7930,6 +7930,40 @@ function bandarScoreBadgeHtml(r) {
     var title = (r.bandar_breakdown && Array.isArray(r.bandar_breakdown.reasons)) ? r.bandar_breakdown.reasons.join(' | ') : ('Bandarmologi: ' + sign + r.bandar_score_bonus);
     return '<div class="mt-0.5"><span class="inline-block px-1 py-0.2 text-[9px] font-bold rounded ' + color + '" title="' + escapeHtml(title) + '">' + sign + r.bandar_score_bonus + ' BD</span></div>';
 }
+var PATTERN_PERSONALITY_UI_CATALOG = {
+    COMBO_FX_TECH_MA5: { key: 'COMBO_FX_TECH_MA5', label: 'Combo FX+MA5', pf: 2.06, wr: 64.2, mfe: 9.8, mae: -5.9, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
+    FX_STRONG_BUY: { key: 'FX_STRONG_BUY', label: 'FX Strong Buy', pf: 1.80, wr: 61.2, mfe: 10.8, mae: -5.4, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
+    TECH_ABOVE_MA20: { key: 'TECH_ABOVE_MA20', label: 'Above MA20', pf: 1.90, wr: 60.6, mfe: 11.0, mae: -8.2, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
+    TECH_ABOVE_MA5: { key: 'TECH_ABOVE_MA5', label: 'Above MA5', pf: 1.89, wr: 60.1, mfe: 10.8, mae: -8.0, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
+    MA5_MA20_CROSS: { key: 'MA5_MA20_CROSS', label: 'MA5xMA20 Cross', pf: 1.82, wr: 59.8, mfe: 10.9, mae: -8.2, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
+    RSI_OVERBOUGHT_65P: { key: 'RSI_OVERBOUGHT_65P', label: 'RSI Bull Momentum', pf: 1.73, wr: 59.8, mfe: 10.2, mae: -8.7, color: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
+    VOL_WARM_1P2_1P5: { key: 'VOL_WARM_1P2_1P5', label: 'Vol Warm 1.2-1.5x', pf: 1.46, wr: 60.0, mfe: 11.8, mae: -7.1, color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' },
+    BROKER_TOP3_CONCENTRATION: { key: 'BROKER_TOP3_CONCENTRATION', label: 'Broker Top 3', pf: 1.57, wr: 54.5, mfe: 11.7, mae: -10.3, color: 'bg-violet-500/20 text-violet-300 border-violet-500/40' },
+    TRAP_CHG5_VOL3_CLIMAX: { key: 'TRAP_CHG5_VOL3_CLIMAX', label: 'Climax Vol Reversal', pf: 1.62, wr: 56.4, mfe: 12.3, mae: -9.5, color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+    STOCH_RSI_OVERSOLD: { key: 'STOCH_RSI_OVERSOLD', label: 'Stoch RSI Oversold', pf: 1.51, wr: 54.2, mfe: 9.5, mae: -8.8, color: 'bg-teal-500/20 text-teal-300 border-teal-500/40' }
+};
+window.PATTERN_PERSONALITY_UI_CATALOG = PATTERN_PERSONALITY_UI_CATALOG;
+
+function patternPersonalityBadgeHtml(r) {
+    if (!r) return '';
+    var rawKey = r.pattern_personality || r.patternPersonality || r.matched_pattern || r.pattern_key;
+    if (!rawKey && typeof r.notes === 'string' && r.notes.indexOf('Edge: ') >= 0) {
+        var m = r.notes.match(/Edge:\s*([A-Z0-9_]+)/);
+        if (m) rawKey = m[1];
+    }
+    if (!rawKey && typeof r.status_reason === 'string' && r.status_reason.indexOf('Edge: ') >= 0) {
+        var m2 = r.status_reason.match(/Edge:\s*([A-Z0-9_]+)/);
+        if (m2) rawKey = m2[1];
+    }
+    if (!rawKey) return '';
+    var key = typeof rawKey === 'object' ? (rawKey.key || rawKey.name) : String(rawKey).trim().toUpperCase();
+    var p = PATTERN_PERSONALITY_UI_CATALOG[key];
+    if (!p) return '';
+    var tip = 'Quant Edge: ' + p.key + ' · WR ' + p.wr.toFixed(1) + '% · PF ' + p.pf.toFixed(2) + ' (MFE +' + p.mfe.toFixed(1) + '% · MAE ' + p.mae.toFixed(1) + '%)';
+    return '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border ' + p.color + '" title="' + escapeHtml(tip) + '">⚡ ' + escapeHtml(p.label) + '</span></div>';
+}
+window.patternPersonalityBadgeHtml = patternPersonalityBadgeHtml;
+
 function getRiskLabel(r) {
     if (!r) return '';
     var camelRisk = r.riskLabel;
@@ -8400,6 +8434,8 @@ function renderDtCardGrid(results, data) {
         var _dtBandarText = bandarBadgeText(r, true);
         if (_dtBandarText) _badgeLine += (_badgeLine ? ' · ' : '') + '<span style="color:' + bandarBadgeColor(r) + '">' + escapeHtml(_dtBandarText) + '</span>';
         if (_badgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _badgeLine + '</div>';
+        var _dtPatternBadge = typeof patternPersonalityBadgeHtml === 'function' ? patternPersonalityBadgeHtml(r) : '';
+        if (_dtPatternBadge) html += '<div style="margin:-4px 0 8px 0">' + _dtPatternBadge + '</div>';
         if (r.entry_status_label) html += '<div style="font-size:10px;margin-bottom:8px;color:#d1d5db"><span style="color:#94a3b8">Status Entry:</span> ' + escapeHtml(r.entry_status_label) + '</div>';
         if (st === 'WAIT_PULLBACK' && r.entry_chase_pct != null && isFinite(r.entry_chase_pct) && r.entry_chase_pct > 0) {
             html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Chase:</span> +' + Number(r.entry_chase_pct).toFixed(1) + '% dari entry</div>';
@@ -8753,6 +8789,8 @@ function renderKgCardGrid(results) {
         var _kBandarText = bandarBadgeText(r, false);
         if (_kBandarText) _kBadgeLine += (_kBadgeLine ? ' · ' : '') + '<span style="color:' + bandarBadgeColor(r) + '">' + escapeHtml(_kBandarText) + '</span>';
         if (_kBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _kBadgeLine + '</div>';
+        var _kPatternBadge = typeof patternPersonalityBadgeHtml === 'function' ? patternPersonalityBadgeHtml(r) : '';
+        if (_kPatternBadge) html += '<div style="margin:-4px 0 8px 0">' + _kPatternBadge + '</div>';
         var _kRespectLine = buildRespectQualityLine(r);
         if (_kRespectLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Respect v2:</span> ' + escapeHtml(_kRespectLine) + '</div>';
         // Fibonacci confluence badge (Swing Konglo soft signal)
@@ -8834,6 +8872,8 @@ function renderNkCardGrid(results) {
         if (_nBandarText) _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:' + bandarBadgeColor(r) + '">' + escapeHtml(_nBandarText) + '</span>';
         if (r.high_rr_warning) _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#fbbf24;font-weight:600" title="' + escapeHtml(r.high_rr_warning_note || 'Target R:R tinggi') + '">⚠️ R:R Tinggi</span>';
         if (_nBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _nBadgeLine + '</div>';
+        var _nPatternBadge = typeof patternPersonalityBadgeHtml === 'function' ? patternPersonalityBadgeHtml(r) : '';
+        if (_nPatternBadge) html += '<div style="margin:-4px 0 8px 0">' + _nPatternBadge + '</div>';
         var _nRespectLine = buildRespectQualityLine(r);
         if (_nRespectLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Respect v2:</span> ' + escapeHtml(_nRespectLine) + '</div>';
         html += '<div class="trade-plan-grid">';
@@ -9408,7 +9448,7 @@ function renderScreenerTable(results) {
         html += '<td class="px-2 py-2 text-gray-500 whitespace-nowrap text-[10px]">' + (r.group_code || '-') + '</td>';
         html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-2 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
-        html += '<td class="px-2 py-2 text-center ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + bandarScoreBadgeHtml(r) + '</td>';
+        html += '<td class="px-2 py-2 text-center ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + bandarScoreBadgeHtml(r) + patternPersonalityBadgeHtml(r) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
         html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-') + '</td>';
@@ -9861,7 +9901,7 @@ function renderNkScreenerTable(results) {
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
-        html += '<td class="px-2 py-1.5 text-center ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + bandarScoreBadgeHtml(r) + '</td>';
+        html += '<td class="px-2 py-1.5 text-center ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + bandarScoreBadgeHtml(r) + patternPersonalityBadgeHtml(r) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
         html += '<td class="px-2 py-1.5 text-right whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap">' + rsiStr + '</td>';
