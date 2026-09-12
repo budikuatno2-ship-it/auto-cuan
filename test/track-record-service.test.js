@@ -176,6 +176,19 @@ test('buildTrackRecordData best_gain is null when no signal has a computable gai
     { id: 2, ticker: 'BBBB', monitor_source: 'top5', status: 'RUNNING' }
   ]).summary.best_gain, null);
 
+  // When only SL_HIT signals exist, best_gain must remain null and NOT record a negative loss
+  assert.equal(buildTrackRecordData([
+    { id: 1, ticker: 'LOSS', date: '2026-08-10', entry1: 1000, sl: 900, status: 'SL_HIT' },
+    { id: 2, ticker: 'FAIL', date: '2026-08-11', entry1: 2000, sl: 1900, status: 'SL_HIT' }
+  ]).summary.best_gain, null);
+
+  // Outlier / data split anomaly (> 500%) must be ignored
+  const outlierRows = [
+    { id: 1, ticker: 'NORM', date: '2026-08-01', entry1: 1000, tp1: 1200, status: 'TP1_HIT' }, // +20%
+    { id: 2, ticker: 'SPLT', date: '2026-08-02', entry1: 1, tp1: 1000, status: 'TP1_HIT' }     // +99900% (corrupted / split)
+  ];
+  assert.deepEqual(buildTrackRecordData(outlierRows).summary.best_gain, { gain_pct: 20, ticker: 'NORM', date: '2026-08-01' });
+
   const rows = [
     { id: 1, ticker: 'AAAA', date: '2026-08-01', entry1: 1000, tp1: 1050, tp2: 1100, status: 'TP1_HIT' }, // +5%
     { id: 2, ticker: 'BBBB', date: '2026-08-05', entry1: 1000, tp1: 1200, tp2: 1500, status: 'TP2_HIT' }, // +50% (largest)
