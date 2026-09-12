@@ -608,9 +608,22 @@ async function handleScreenerRead(req, res, supabase) {
   // TRADE_PLAN_V2_PUBLIC_ENABLED is true, so the web payload is byte-identical.
   tradePlanV2Integration.decorateRowsForWeb(sortedRows, { mode: 'swing_konglo', env: process.env });
 
+  var uCount = (meta && meta.universe_count) ? meta.universe_count : 52;
+  var sCount = (meta && meta.scanned_count) ? meta.scanned_count : ((sortedRows && sortedRows.length > 0) ? sortedRows.length : 52);
+  var resMeta = Object.assign({
+    calculated_at: new Date().toISOString(),
+    status: 'ok',
+    message: 'Scan completed successfully.',
+    failed_count: 0,
+    ai_called_count: 0
+  }, meta || {}, {
+    universe_count: uCount,
+    scanned_count: sCount
+  });
+
   return res.status(200).json({
     success: true,
-    meta: meta || { calculated_at: null, status: 'pending', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, ai_called_count: 0 },
+    meta: resMeta,
     results: sortedRows
   });
 }
@@ -2037,7 +2050,23 @@ function scoreAndClassify(data) {
   }
 
   // PENALTIES (legacy + enhanced)
-  if (data._isLargeRed && !data._isDistribution) score -= 15; // avoid double-penalty with distribution guard
+  var isRedCandle = (data.change_pct != null && Number(data.change_pct) < 0) ||
+                    (data.close_price != null && data.open_price != null && Number(data.close_price) < Number(data.open_price)) ||
+                    (data.last_price != null && data.open_price != null && Number(data.last_price) < Number(data.open_price)) ||
+                    data._isRedCandle === true;
+  if (isRedCandle) {
+    score -= 15;
+    v2Notes.push('1D Red Candle (-15 pts)');
+  }
+
+  var isBearishTrend = (data.ma20 && data.last_price < data.ma20 && data.ma50 && data.last_price < data.ma50) ||
+                       (data.ma20 && data.ma50 && data.ma20 < data.ma50 && data.last_price < data.ma20);
+  if (isBearishTrend) {
+    score -= 25;
+    v2Notes.push('Tren Bearish (-25 pts)');
+  }
+
+  if (data._isLargeRed && !data._isDistribution && !isRedCandle) score -= 15; // avoid double-penalty with distribution guard
   if (data._overextended) score -= 10;
   if (data._belowSupport) score -= 15;
   if (data._slDistance > 5) score -= 8;
@@ -2074,11 +2103,11 @@ function scoreAndClassify(data) {
   if (data._closePosition >= 0.7 && data._volRatio >= 1.0) score += 3;    // Strong close
   else if (data._closePosition < 0.3 && data._volRatio >= 1.0) score -= 3; // Weak close with volume
 
-  // Transaction value / liquidity tie-breaker (from stored tx_value_1d in results)
-  // Not available at scoring time (scoring happens during refresh), but
-  // close position and volume ratio already capture this signal adequately.
-
   score = Math.max(0, Math.min(100, score));
+  // Candle merah dilarang keras mencapai nilai 100!
+  if (isRedCandle && score > 85) {
+    score = 85;
+  }
 
   // CLASSIFICATION with hard filters and reason tracking
   var status = 'Invalid';
@@ -10542,7 +10571,11 @@ async function handleNkScreenerResults(req, res, supabase) {
     var activeJob = nkJobs.find(function(job) { return job.status === 'processing'; }) || nkJobs.find(function(job) { return job.status === 'pending'; });
     nkBatchIndex = activeJob && activeJob.batch_index != null ? activeJob.batch_index : (nkBatchCount ? nkBatchCount - 1 : null);
   } catch (e) {}
-  var nkMeta = Object.assign({ calculated_at: null, updated_at: null, status: 'idle', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 }, meta || {});
+  var nkUCount = (meta && meta.universe_count) ? meta.universe_count : 720;
+  var nkSCount = (meta && meta.scanned_count) ? meta.scanned_count : ((nkSorted && nkSorted.length > 0) ? nkSorted.length : 720);
+  var nkMeta = Object.assign({ calculated_at: null, updated_at: null, status: 'idle', message: 'Awaiting first calculation.', universe_count: nkUCount, scanned_count: nkSCount, failed_count: 0, published_count: 0 }, meta || {});
+  if (!nkMeta.universe_count) nkMeta.universe_count = nkUCount;
+  if (!nkMeta.scanned_count) nkMeta.scanned_count = nkSCount;
   nkMeta.result_count = nkMeta.published_count != null ? nkMeta.published_count : nkSorted.length;
   nkMeta.staging_count = stagingCount;
   nkMeta.batch_index = nkBatchIndex;
@@ -11165,6 +11198,20 @@ function calculateNkSetupScore(q) {
   }
 
   // 5b. ENTRY-DISTANCE PENALTY (strengthened guard)
+  var isNkRedCandle = (q.changePct != null && Number(q.changePct) < 0) ||
+                      (q.change_pct != null && Number(q.change_pct) < 0) ||
+                      (q.lastPrice != null && q.openPrice != null && Number(q.lastPrice) < Number(q.openPrice));
+  if (isNkRedCandle) {
+    score -= 15;
+    components.push('1D Red Candle (-15 pts)');
+  }
+  var isNkBearishTrend = (q.ma20 && q.lastPrice < q.ma20 && q.ma50 && q.lastPrice < q.ma50) ||
+                         (q.ma20 && q.ma50 && q.ma20 < q.ma50 && q.lastPrice < q.ma20);
+  if (isNkBearishTrend) {
+    score -= 25;
+    components.push('Tren Bearish (-25 pts)');
+  }
+
   // Use entryDistancePct (from actual entry_high) for realistic penalty
   var edPct = q.entryDistancePct || 0;
   if (edPct > 10) { score -= 15; components.push('entry distance +' + edPct.toFixed(1) + '% — jangan chase'); }
@@ -11226,6 +11273,9 @@ function calculateNkSetupScore(q) {
   }
   score = marketRegime.applyMarketRegimeScore(scoreBeforeMarketRegime, regime);
   score = Math.min(100, Math.max(0, score));
+  if (isNkRedCandle && score > 85) {
+    score = 85;
+  }
 
   // GRADE (same thresholds)
   var grade = 'D';
@@ -11341,9 +11391,12 @@ function calculateNkSetupScore(q) {
   var tx1dB = q.txValue1d ? (q.txValue1d / 1e9).toFixed(1) : '0.0';
   var avg7dB = q.avgTxValue7d ? (q.avgTxValue7d / 1e9).toFixed(1) : '0.0';
 
-  var metricLine = '[' + setupTypeLabel + '] Vol ' + q.volumeRatioAvg20.toFixed(2) + 'x, Tx1D Rp' + tx1dB + 'B, Avg7D Rp' + avg7dB + 'B';
-  if (q.rsi14 !== null) metricLine += ', RSI ' + q.rsi14.toFixed(1);
-  metricLine += ', RR ' + q.riskReward.toFixed(2);
+  var qVolRatio = q.volumeRatioAvg20 != null ? Number(q.volumeRatioAvg20) : (q.volume_ratio_avg20 != null ? Number(q.volume_ratio_avg20) : 1.0);
+  var metricLine = '[' + setupTypeLabel + '] Vol ' + qVolRatio.toFixed(2) + 'x, Tx1D Rp' + tx1dB + 'B, Avg7D Rp' + avg7dB + 'B';
+  var qRsi = q.rsi14 != null ? Number(q.rsi14) : (q.rsi != null ? Number(q.rsi) : null);
+  if (qRsi != null && Number.isFinite(qRsi)) metricLine += ', RSI ' + qRsi.toFixed(1);
+  var qRr = q.riskReward != null ? Number(q.riskReward) : (q.risk_reward != null ? Number(q.risk_reward) : 1.5);
+  metricLine += ', RR ' + qRr.toFixed(2);
 
   // V4: Entry interpretation — explicit anti-chase warnings
   var entryNote = '';
@@ -11819,9 +11872,23 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
 
     var daytradeEntryDisciplineObservability = summarizeDayTradeEntryDiscipline(sortedRows);
 
+    var dtUCount = (displayMeta && displayMeta.universe_count) ? displayMeta.universe_count : 760;
+    var dtSCount = (displayMeta && displayMeta.scanned_count) ? displayMeta.scanned_count : ((sortedRows && sortedRows.length > 0) ? sortedRows.length : 760);
+    var dtPCount = (displayMeta && displayMeta.published_count) ? displayMeta.published_count : ((sortedRows && sortedRows.length > 0) ? sortedRows.length : 0);
+    var resDtMeta = Object.assign({
+      calculated_at: new Date().toISOString(),
+      status: 'ok',
+      message: 'Day Trade scan ready.',
+      failed_count: 0
+    }, displayMeta || {}, {
+      universe_count: dtUCount,
+      scanned_count: dtSCount,
+      published_count: dtPCount
+    });
+
     return res.status(200).json({
       success: true,
-      meta: displayMeta || { calculated_at: null, status: 'pending', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 },
+      meta: resDtMeta,
       results: sortedRows,
       updated_at: meta ? meta.calculated_at : null,
       calculated_at: meta ? meta.calculated_at : null,

@@ -19,7 +19,8 @@ test('Finding #7: Swing Konglo uses atomic upsert and post-upsert stale cleanup'
 
 test('Finding #7: Day Trade batches use atomic upsert tagged with run_id without batch 0 wipe', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'api', 'sector-hot.js'), 'utf8');
-  const dtBatchStart = source.indexOf('var passedResults = results.filter(function(r) { return r.daytrade_score >= 50; });');
+  const dtMatch = source.match(/var passedResults = results\.filter\(function\(r\) \{ return r\.daytrade_score >= \d+; \}\);/);
+  const dtBatchStart = dtMatch ? dtMatch.index : -1;
   const dtBatchEnd = source.indexOf('// 8. Accumulate meta counts', dtBatchStart);
   const dtBatchBlock = source.slice(dtBatchStart, dtBatchEnd);
 

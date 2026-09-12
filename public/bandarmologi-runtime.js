@@ -1057,7 +1057,7 @@
         html += '      <button type="button" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'all\')" class="mt-3 px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition">Tampilkan Semua Broker</button>';
         html += '    </div>';
       } else {
-        html += '    <div class="text-gray-500 text-xs py-8">Tidak ada broker pada filter ini.</div>';
+        html += '    <div class="text-center py-10 px-4 text-xs"><p class="text-gray-400 font-medium">Tidak ada data transaksi broker summary untuk tanggal ini (Pasar tutup / data belum tersedia)</p></div>';
       }
     } else {
       for (var i = 0; i < visibleBrokers.length; i++) {
@@ -1838,10 +1838,14 @@
               ? '<span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-mono">DISK CACHE</span>'
               : '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">LIVE / BACKFILL</span>'));
 
+    var isDataEmpty = Boolean(data.is_empty || bSum.is_empty || bSum.status === 'NO_DATA' || data.status === 'NO_DATA');
     var netStatusTone = 'text-emerald-400';
     var netStatusBg = 'bg-emerald-500/10 border-emerald-500/30';
-    var netLabel = bSum.net_label || bSum.net_status || 'AKUMULASI';
-    if (String(netLabel).toUpperCase().includes('DIST')) {
+    var netLabel = isDataEmpty ? 'TIDAK ADA DATA' : (bSum.net_label || bSum.net_status || 'AKUMULASI');
+    if (isDataEmpty) {
+      netStatusTone = 'text-gray-400';
+      netStatusBg = 'bg-dark-600/40 border-dark-600';
+    } else if (String(netLabel).toUpperCase().includes('DIST')) {
       netStatusTone = 'text-rose-400';
       netStatusBg = 'bg-rose-500/10 border-rose-500/30';
     }
@@ -4083,7 +4087,7 @@
 
       var discountDisplay = discount >= 0 ? 'Diskon +' + discount + '%' : 'Premium +' + Math.abs(discount) + '%';
       html += '      <div class="grid grid-cols-3 gap-2 text-xs mb-2 bg-dark-800/60 p-2 rounded-lg border border-dark-600/20">';
-      html += '        <div><span class="text-[10px] text-gray-400 block">Harga Sekarang</span><span class="font-mono font-bold text-gray-100">' + (currentPrice > 0 ? 'Rp ' + formatNumber(currentPrice) : '—') + '</span></div>';
+      html += '        <div><span class="text-[10px] text-gray-400 block">Harga Sekarang</span><span id="intelCurrentPrice" class="font-mono font-bold text-gray-100">' + (currentPrice > 0 ? 'Rp ' + formatNumber(currentPrice) : '—') + '</span></div>';
       html += '        <div><span class="text-[10px] text-gray-400 block">Avg Buy Bandar</span><span class="font-mono font-bold text-emerald-300">' + (bandarAvg > 0 ? 'Rp ' + formatNumber(bandarAvg) : '—') + '</span></div>';
       html += '        <div><span class="text-[10px] text-gray-400 block">Diskon vs Bandar</span><span class="font-mono font-bold ' + (discount > 0 ? 'text-emerald-400' : 'text-gray-400') + '">' + escapeHtml(discountDisplay) + '</span></div>';
       html += '      </div>';

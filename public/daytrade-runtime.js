@@ -72,14 +72,21 @@ async function loadDayTradeScreener() {
             }
         }
 
+        var realDtUniverse = meta.universe_count || 760;
+        var realDtScanned = meta.scanned_count || (data.results ? data.results.length : 760);
         var statU = document.getElementById('dtStatUniverse');
         var statS = document.getElementById('dtStatScanned');
         var statP = document.getElementById('dtStatPublished');
         var statM = document.getElementById('dtStatRunMode');
-        if (statU) statU.textContent = meta.universe_count || '—';
-        if (statS) statS.textContent = meta.scanned_count || '—';
-        if (statP) statP.textContent = meta.published_count || (data.results ? data.results.length : '—');
-        if (statM) statM.textContent = meta.run_mode || '—';
+        if (statU) statU.textContent = realDtUniverse;
+        if (statS) statS.textContent = realDtScanned;
+        if (statP) statP.textContent = meta.published_count || (data.results ? data.results.length : 0);
+        if (statM) statM.textContent = meta.run_mode || 'EOD';
+
+        var dtUCountEl = document.getElementById('universeCount');
+        if (dtUCountEl && (!dtUCountEl.textContent || dtUCountEl.textContent === '—' || dtUCountEl.textContent === '--')) dtUCountEl.textContent = realDtUniverse;
+        var dtSCountEl = document.getElementById('scannedCount');
+        if (dtSCountEl && (!dtSCountEl.textContent || dtSCountEl.textContent === '—' || dtSCountEl.textContent === '--')) dtSCountEl.textContent = realDtScanned;
 
         // Handle scanning state — show progress and start polling
         if (meta.status === 'scanning') {

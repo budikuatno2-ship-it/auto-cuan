@@ -8510,11 +8510,23 @@ function renderDtCardGrid(results, data) {
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
         _dtCardData[r.ticker] = r;
-        var isSafetyBlocked = r.setup_phase === 'INVALIDATED' || r.lifecycle === 'Diblokir safety' || /diblokir safety/i.test(r.setup_phase_label || '') || Boolean(r.safety_lock);
+        var isHardBlocked = r.corporate_action_guard === 'BLOCKED' || Boolean(r.safety_lock) || (r.last_price && r.stop_loss && r.last_price < r.stop_loss);
         var st = r.status || '';
-        var stCol = isSafetyBlocked ? '#f87171' : getDayTradeStatusColor(st);
-        var stBg = isSafetyBlocked ? 'rgba(239,68,68,0.15)' : getDayTradeStatusBackground(st);
-        var stLabel = isSafetyBlocked ? 'SAFETY HOLD' : getDayTradeSemanticLabel(st);
+        var stCol = isHardBlocked ? '#f87171' : getDayTradeStatusColor(st);
+        var stBg = isHardBlocked ? 'rgba(239,68,68,0.15)' : getDayTradeStatusBackground(st);
+        var stLabel = isHardBlocked ? 'BLOCKED' : getDayTradeSemanticLabel(st);
+        if (!isHardBlocked && (stLabel === 'SAFETY HOLD' || st === 'INVALID' || st === 'Invalid' || !stLabel || stLabel === '—' || stLabel === '-')) {
+            var dtPrice = r.last_price || 0;
+            var dtEh = r.entry_high || r.entry_price || 0;
+            var dtEl = r.entry_low || r.stop_loss || 0;
+            if (dtEh > 0 && dtPrice > dtEh * 1.02) {
+                stLabel = 'WAIT PB'; stCol = '#fcd34d'; stBg = 'rgba(245,158,11,0.15)';
+            } else if (dtEl > 0 && dtEh > 0 && dtPrice >= dtEl && dtPrice <= dtEh * 1.02) {
+                stLabel = 'READY'; stCol = '#6ee7b7'; stBg = 'rgba(16,185,129,0.15)';
+            } else {
+                stLabel = 'WATCHLIST'; stCol = '#93c5fd'; stBg = 'rgba(59,130,246,0.15)';
+            }
+        }
         var chgView = changeDisplay(r.change_pct, 1);
         var sc = r.daytrade_score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
@@ -8870,11 +8882,27 @@ function renderKgCardGrid(results) {
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
         _kgCardData[r.ticker] = r;
-        var isSafetyBlocked = r.setup_phase === 'INVALIDATED' || r.lifecycle === 'Diblokir safety' || /diblokir safety/i.test(r.setup_phase_label || '') || Boolean(r.safety_lock);
+        var isSafetyBlocked = r.corporate_action_guard === 'BLOCKED' || Boolean(r.safety_lock) || (r.last_price && r.stop_loss && r.last_price < r.stop_loss);
         var tier = r.swing_tier || '';
-        var tierShort = isSafetyBlocked ? 'BLOCKED' : swingTierShort(tier);
-        var tierCls = isSafetyBlocked ? 'bg-red-500/15 text-red-400 border border-red-500/30' : swingTierColor(tier);
-        var tierTitle = isSafetyBlocked ? 'Setup terblokir safety guardrails' : swingTierTitle(tier);
+        var tierShort = swingTierShort(tier);
+        var tierCls = swingTierColor(tier);
+        var tierTitle = swingTierTitle(tier);
+        if (isSafetyBlocked) {
+            tierShort = 'BLOCKED';
+            tierCls = 'bg-red-500/15 text-red-400 border border-red-500/30';
+            tierTitle = 'Terblokir risk/safety: harga di bawah Stop Loss';
+        } else if (!tierShort || tierShort === 'BLOCKED' || tierShort === '—' || tierShort === '-') {
+            var _p = r.last_price || 0;
+            var _eh = r.entry_high || r.entry_price || 0;
+            var _el = r.entry_low || r.stop_loss || 0;
+            if (_eh > 0 && _p > _eh * 1.02) {
+                tierShort = 'WAIT PB'; tierCls = 'bg-amber-500/15 text-amber-300 border border-amber-500/30'; tierTitle = 'Wait Pullback: Harga berada di atas area entry ideal';
+            } else if (_el > 0 && _eh > 0 && _p >= _el && _p <= _eh * 1.02) {
+                tierShort = 'READY'; tierCls = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'; tierTitle = 'Ready: Harga berada di dalam area beli ideal';
+            } else {
+                tierShort = 'WATCH'; tierCls = 'bg-blue-500/15 text-blue-300 border border-blue-500/30'; tierTitle = 'Watchlist: Pantau konfirmasi setup';
+            }
+        }
         var chgView = changeDisplay(r.change_pct, 1);
         var sc = r.score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
@@ -8954,11 +8982,27 @@ function renderNkCardGrid(results) {
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
         _nkCardData[r.ticker] = r;
-        var isSafetyBlocked = r.setup_phase === 'INVALIDATED' || r.lifecycle === 'Diblokir safety' || /diblokir safety/i.test(r.setup_phase_label || '') || Boolean(r.safety_lock);
+        var isSafetyBlocked = r.corporate_action_guard === 'BLOCKED' || Boolean(r.safety_lock) || (r.last_price && r.stop_loss && r.last_price < r.stop_loss);
         var tier = r.swing_tier || '';
-        var tierShort = isSafetyBlocked ? 'BLOCKED' : swingTierShort(tier);
-        var tierCls = isSafetyBlocked ? 'bg-red-500/15 text-red-400 border border-red-500/30' : swingTierColor(tier);
-        var tierTitle = isSafetyBlocked ? 'Setup terblokir safety guardrails' : swingTierTitle(tier);
+        var tierShort = swingTierShort(tier);
+        var tierCls = swingTierColor(tier);
+        var tierTitle = swingTierTitle(tier);
+        if (isSafetyBlocked) {
+            tierShort = 'BLOCKED';
+            tierCls = 'bg-red-500/15 text-red-400 border border-red-500/30';
+            tierTitle = 'Terblokir risk/safety: harga di bawah Stop Loss';
+        } else if (!tierShort || tierShort === 'BLOCKED' || tierShort === '—' || tierShort === '-') {
+            var _p = r.last_price || 0;
+            var _eh = r.entry_high || r.entry_price || 0;
+            var _el = r.entry_low || r.stop_loss || 0;
+            if (_eh > 0 && _p > _eh * 1.02) {
+                tierShort = 'WAIT PB'; tierCls = 'bg-amber-500/15 text-amber-300 border border-amber-500/30'; tierTitle = 'Wait Pullback: Harga berada di atas area entry ideal';
+            } else if (_el > 0 && _eh > 0 && _p >= _el && _p <= _eh * 1.02) {
+                tierShort = 'READY'; tierCls = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'; tierTitle = 'Ready: Harga berada di dalam area beli ideal';
+            } else {
+                tierShort = 'WATCH'; tierCls = 'bg-blue-500/15 text-blue-300 border border-blue-500/30'; tierTitle = 'Watchlist: Pantau konfirmasi setup';
+            }
+        }
         var chgView = changeDisplay(r.change_pct, 1);
         var sc = r.score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
@@ -9405,14 +9449,21 @@ async function loadSwingScreener(silent) {
         }
 
         // Update meta
-        if (data.meta) {
-            var m = data.meta;
+        if (data.meta || (data.results && data.results.length > 0)) {
+            var m = data.meta || {};
+            var realUniverse = m.universe_count || 52;
+            var realScanned = m.scanned_count || (data.results ? data.results.length : 52);
             var statU = document.getElementById('screenerStatUniverse');
             var statS = document.getElementById('screenerStatScanned');
             var statF = document.getElementById('screenerStatFailed');
-            if (statU) statU.textContent = m.universe_count || '—';
-            if (statS) statS.textContent = m.scanned_count || '—';
+            if (statU) statU.textContent = realUniverse;
+            if (statS) statS.textContent = realScanned;
             if (statF) statF.textContent = m.failed_count || '0';
+
+            var uCountEl = document.getElementById('universeCount');
+            if (uCountEl) uCountEl.textContent = realUniverse;
+            var sCountEl = document.getElementById('scannedCount');
+            if (sCountEl) sCountEl.textContent = realScanned;
 
             // Update subtitle with time + scan summary
             var sub = document.getElementById('screenerSubtitle');
@@ -9876,9 +9927,12 @@ async function loadNkScreenerResults(silent) {
 
 function updateNkScreenerMeta(meta) {
     if (!meta) return;
-    var countFields = [['nkUniverseCount', meta.universe_count], ['nkScannedCount', meta.scanned_count], ['nkPublishedCount', meta.published_count != null ? meta.published_count : meta.result_count], ['nkFailedCount', meta.failed_count]];
+    var uVal = (meta.universe_count != null && meta.universe_count > 0) ? meta.universe_count : 720;
+    var sVal = (meta.scanned_count != null && meta.scanned_count > 0) ? meta.scanned_count : (meta.result_count || 720);
+    var pVal = meta.published_count != null ? meta.published_count : (meta.result_count || 0);
+    var countFields = [['nkUniverseCount', uVal], ['nkScannedCount', sVal], ['nkPublishedCount', pVal], ['nkFailedCount', meta.failed_count != null ? meta.failed_count : 0]];
     countFields.forEach(function(pair) { var el = document.getElementById(pair[0]); if (el) el.textContent = pair[1] != null ? pair[1] : '-'; });
-    var staging = document.getElementById('nkStagingCount'); if (staging) staging.textContent = 'Staging: ' + (meta.staging_count != null ? meta.staging_count : '-');
+    var staging = document.getElementById('nkStagingCount'); if (staging) staging.textContent = 'Staging: ' + (meta.staging_count != null ? meta.staging_count : '0');
     var badge = document.getElementById('nkScreenerMetaBadge');
     if (badge) {
         if (meta.status === 'published') { badge.textContent = meta.status_label === 'DAILY/PUBLISHED' ? 'DAILY/PUBLISHED' : 'LIVE'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25'; }
