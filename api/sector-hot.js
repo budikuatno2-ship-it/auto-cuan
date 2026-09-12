@@ -11014,6 +11014,23 @@ function applyNkHardFilters(q) {
   return true;
 }
 
+function safeToFixed(value, fractionDigits, fallbackValue) {
+  if (fractionDigits === undefined) fractionDigits = 2;
+  if (fallbackValue === undefined) fallbackValue = '0.00';
+  if (value == null) return fallbackValue;
+  var num = Number(value);
+  if (!Number.isFinite(num)) return fallbackValue;
+  return num.toFixed(fractionDigits);
+}
+
+function safeNumber(value, fallbackValue) {
+  if (fallbackValue === undefined) fallbackValue = 0;
+  if (value == null) return fallbackValue;
+  var num = Number(value);
+  if (!Number.isFinite(num)) return fallbackValue;
+  return num;
+}
+
 // --- SCORING: deterministic 0-100, same engine as Konglo ---
 // Uses same base-50 additive/subtractive approach as scoreAndClassify (Konglo).
 // Liquidity is a hard filter (already applied), so only adds a small tie-breaker bonus.
@@ -11044,57 +11061,59 @@ function calculateNkSetupScore(q) {
   if (q.priceInEntryZone) { score += 3; components.push('near entry'); }
 
   // 2. MOMENTUM / RSI — V2 Guard A3: widened realistic range (same as Konglo V2)
-  if (q.rsi14 !== null) {
-    if (q.rsi14 >= 45 && q.rsi14 <= 70) { score += 15; components.push('RSI ' + q.rsi14.toFixed(1) + ' ideal'); }
-    else if (q.rsi14 >= 40 && q.rsi14 < 45) { score += 8; components.push('RSI ' + q.rsi14.toFixed(1) + ' netral'); }
-    else if (q.rsi14 > 70 && q.rsi14 <= 75) { score += 5; components.push('RSI ' + q.rsi14.toFixed(1) + ' kuat'); }
-    else if (q.rsi14 >= 30 && q.rsi14 < 40) { score += 3; components.push('RSI ' + q.rsi14.toFixed(1) + ' oversold zone'); }
-    else if (q.rsi14 > 75 && q.rsi14 <= 80) { score -= 5; components.push('RSI ' + q.rsi14.toFixed(1) + ' overbought'); }
-    else if (q.rsi14 > 80) { score -= 12; components.push('RSI ' + q.rsi14.toFixed(1) + ' overbought kuat'); }
-    else { score -= 10; components.push('RSI ' + q.rsi14.toFixed(1) + ' extreme'); }
+  if (typeof q.rsi14 === 'number' && Number.isFinite(q.rsi14)) {
+    if (q.rsi14 >= 45 && q.rsi14 <= 70) { score += 15; components.push('RSI ' + safeToFixed(q.rsi14, 1, '0.0') + ' ideal'); }
+    else if (q.rsi14 >= 40 && q.rsi14 < 45) { score += 8; components.push('RSI ' + safeToFixed(q.rsi14, 1, '0.0') + ' netral'); }
+    else if (q.rsi14 > 70 && q.rsi14 <= 75) { score += 5; components.push('RSI ' + safeToFixed(q.rsi14, 1, '0.0') + ' kuat'); }
+    else if (q.rsi14 >= 30 && q.rsi14 < 40) { score += 3; components.push('RSI ' + safeToFixed(q.rsi14, 1, '0.0') + ' oversold zone'); }
+    else if (q.rsi14 > 75 && q.rsi14 <= 80) { score -= 5; components.push('RSI ' + safeToFixed(q.rsi14, 1, '0.0') + ' overbought'); }
+    else if (q.rsi14 > 80) { score -= 12; components.push('RSI ' + safeToFixed(q.rsi14, 1, '0.0') + ' overbought kuat'); }
+    else { score -= 10; components.push('RSI ' + safeToFixed(q.rsi14, 1, '0.0') + ' extreme'); }
   }
 
   // 3. VOLUME — V2 Guard A1: conditional on accumulation/distribution
+  var nkVrVal = typeof q.volumeRatioAvg20 === 'number' && Number.isFinite(q.volumeRatioAvg20) ? q.volumeRatioAvg20 : (typeof q.volume_ratio_avg20 === 'number' && Number.isFinite(q.volume_ratio_avg20) ? q.volume_ratio_avg20 : 0);
   if (q.nkIsAccumulation) {
     // Full volume bonus — bullish with good close position
-    if (q.volumeRatioAvg20 >= 1.5) { score += 15; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x akumulasi'); }
-    else if (q.volumeRatioAvg20 >= 1.2) { score += 12; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x above avg'); }
-    else if (q.volumeRatioAvg20 >= 0.8) { score += 5; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x normal'); }
-    else { score -= 5; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x rendah'); }
+    if (nkVrVal >= 1.5) { score += 15; components.push('vol ' + safeToFixed(nkVrVal, 2, '0.00') + 'x akumulasi'); }
+    else if (nkVrVal >= 1.2) { score += 12; components.push('vol ' + safeToFixed(nkVrVal, 2, '0.00') + 'x above avg'); }
+    else if (nkVrVal >= 0.8) { score += 5; components.push('vol ' + safeToFixed(nkVrVal, 2, '0.00') + 'x normal'); }
+    else { score -= 5; components.push('vol ' + safeToFixed(nkVrVal, 2, '0.00') + 'x rendah'); }
   } else if (q.nkIsDistribution) {
     // V2: Distribution — reduced/negated bonus + penalty
     if (q.nkDistributionStrength >= 2) {
-      score -= 15; components.push('distribusi kuat vol ' + q.volumeRatioAvg20.toFixed(2) + 'x');
+      score -= 15; components.push('distribusi kuat vol ' + safeToFixed(nkVrVal, 2, '0.00') + 'x');
     } else {
-      score -= 8; components.push('distribusi ringan vol ' + q.volumeRatioAvg20.toFixed(2) + 'x');
+      score -= 8; components.push('distribusi ringan vol ' + safeToFixed(nkVrVal, 2, '0.00') + 'x');
     }
   } else {
     // Normal candle — standard volume bonus (slightly reduced)
-    if (q.volumeRatioAvg20 >= 1.5) { score += 12; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x tinggi'); }
-    else if (q.volumeRatioAvg20 >= 1.2) { score += 10; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x above avg'); }
-    else if (q.volumeRatioAvg20 >= 0.8) { score += 5; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x normal'); }
-    else { score -= 5; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x rendah'); }
+    if (nkVrVal >= 1.5) { score += 12; components.push('vol ' + safeToFixed(nkVrVal, 2, '0.00') + 'x tinggi'); }
+    else if (nkVrVal >= 1.2) { score += 10; components.push('vol ' + safeToFixed(nkVrVal, 2, '0.00') + 'x above avg'); }
+    else if (nkVrVal >= 0.8) { score += 5; components.push('vol ' + safeToFixed(nkVrVal, 2, '0.00') + 'x normal'); }
+    else { score -= 5; components.push('vol ' + safeToFixed(nkVrVal, 2, '0.00') + 'x rendah'); }
   }
 
   // 4. RISK/REWARD (same as Konglo: +15/+12/+8/+3/-5)
-  if (q.riskReward >= 2.5) { score += 15; components.push('RR ' + q.riskReward.toFixed(2) + ' baik'); }
-  else if (q.riskReward >= 2.0) { score += 12; components.push('RR ' + q.riskReward.toFixed(2)); }
-  else if (q.riskReward >= 1.5) { score += 8; components.push('RR ' + q.riskReward.toFixed(2) + ' minimal'); }
-  else if (q.riskReward >= 1.0) { score += 3; }
+  var nkRrVal = typeof q.riskReward === 'number' && Number.isFinite(q.riskReward) ? q.riskReward : 0;
+  if (nkRrVal >= 2.5) { score += 15; components.push('RR ' + safeToFixed(nkRrVal, 2, '0.00') + ' baik'); }
+  else if (nkRrVal >= 2.0) { score += 12; components.push('RR ' + safeToFixed(nkRrVal, 2, '0.00')); }
+  else if (nkRrVal >= 1.5) { score += 8; components.push('RR ' + safeToFixed(nkRrVal, 2, '0.00') + ' minimal'); }
+  else if (nkRrVal >= 1.0) { score += 3; }
   else { score -= 5; }
 
   // 5. PENALTIES (same as Konglo: -15/-10/-15/-8) — V2: avoid double-penalty with distribution
   if (q.isLargeRed && !q.nkIsDistribution) { score -= 15; components.push('candle distribusi'); }
   if (q.overextended && q.setupType !== 'breakout') { score -= 10; components.push('overextended'); }
   if (q.belowSupport) { score -= 15; components.push('breakdown support'); }
-  if (q.slDistance > 5) { score -= 8; components.push('SL jauh ' + q.slDistance.toFixed(1) + '%'); }
+  if (q.slDistance > 5) { score -= 8; components.push('SL jauh ' + safeToFixed(q.slDistance, 1, '0.0') + '%'); }
 
   // V2 Guard A2: Candle Rejection / Indecision penalty
   if (q.nkIsStrongRejection) { score -= 12; components.push('rejection candle kuat'); }
   else if (q.nkIsDoji) { score -= 5; components.push('candle indecision'); }
 
   // V2 Guard A6: Wait Pullback for overextended above MA20 (>12% for non-konglo)
-  if (q.nkDistAboveMA20Pct > 12) { score -= 5; components.push('jauh di atas MA20 +' + q.nkDistAboveMA20Pct.toFixed(1) + '%'); }
+  if (q.nkDistAboveMA20Pct > 12) { score -= 5; components.push('jauh di atas MA20 +' + safeToFixed(q.nkDistAboveMA20Pct, 1, '0.0') + '%'); }
 
   // === V5: Candle Pattern Confirmation (Non-Konglo Swing — stricter than Konglo) ===
   var _nkCp = q.nkCandlePattern;
@@ -11408,18 +11427,18 @@ function calculateNkSetupScore(q) {
     avg_tx_value_3d: Math.round(q.avgTxValue3d || 0),
     avg_tx_value_7d: Math.round(q.avgTxValue7d || 0),
     traded_days_20d: q.tradedDays20d,
-    risk_reward: Number(q.riskReward.toFixed(2)),
+    risk_reward: Number(safeToFixed(q.riskReward, 2, '0.00')),
     volume_ratio_avg20: q.volume_ratio_avg20,
-    ma20: q.ma20 ? Number(q.ma20.toFixed(2)) : null,
-    ma50: q.ma50 ? Number(q.ma50.toFixed(2)) : null,
-    rsi14: q.rsi14 !== null ? Number(q.rsi14.toFixed(2)) : null,
-    entry_low: Number(q.entryLow.toFixed(2)),
-    entry_high: Number(q.entryHigh.toFixed(2)),
-    stop_loss: Number(q.stopLoss.toFixed(2)),
-    tp1: Number(q.tp1.toFixed(2)),
-    tp2: Number(q.tp2.toFixed(2)),
-    support: Number(q.support.toFixed(2)),
-    resistance: Number(q.resistance.toFixed(2))
+    ma20: q.ma20 ? Number(safeToFixed(q.ma20, 2, '0.00')) : null,
+    ma50: q.ma50 ? Number(safeToFixed(q.ma50, 2, '0.00')) : null,
+    rsi14: (typeof q.rsi14 === 'number' && Number.isFinite(q.rsi14)) ? Number(safeToFixed(q.rsi14, 2, '0.00')) : null,
+    entry_low: Number(safeToFixed(q.entryLow, 2, '0.00')),
+    entry_high: Number(safeToFixed(q.entryHigh, 2, '0.00')),
+    stop_loss: Number(safeToFixed(q.stopLoss, 2, '0.00')),
+    tp1: Number(safeToFixed(q.tp1, 2, '0.00')),
+    tp2: Number(safeToFixed(q.tp2, 2, '0.00')),
+    support: Number(safeToFixed(q.support, 2, '0.00')),
+    resistance: Number(safeToFixed(q.resistance, 2, '0.00'))
   };
 }
 
@@ -13740,11 +13759,13 @@ function verifyHighConvictionTelegramSignal(row, mode) {
 
 function formatRichTelegramCandidateBlock(r, idx, mode) {
   var enriched = enrichSignalQuality(r, mode === 'daytrade' ? 'Day Trade' : (mode === 'swing_non_konglo' ? 'Swing Non-Konglo' : 'Swing'));
-  var entryLow = toNum(r.entry_low);
-  var entryHigh = toNum(r.entry_high);
-  var e1 = Math.max(entryLow || 0, entryHigh || 0);
-  var e2 = Math.min(entryLow || 0, entryHigh || 0);
-  if (e2 <= 0) e2 = e1;
+  var entryLow = toNum(r.entry_low || r.entryLow || r.entry1 || r.buy_low);
+  var entryHigh = toNum(r.entry_high || r.entryHigh || r.entry2 || r.buy_high);
+  var lowEntry = Math.min(entryLow || 0, entryHigh || 0);
+  var highEntry = Math.max(entryLow || 0, entryHigh || 0);
+  if (lowEntry <= 0) lowEntry = highEntry;
+  if (highEntry <= 0) highEntry = lowEntry;
+  var areaBeliText = (lowEntry > 0 && highEntry > 0 && lowEntry !== highEntry) ? fmtPrice(lowEntry) + ' - ' + fmtPrice(highEntry) : fmtPrice(highEntry || lowEntry);
   var statusLabel = safeTelegramText(r.status || r.final_status, 80, '').replace(/_/g, ' ');
   var action = safeTelegramText(r.telegram_action_label || r.action_label || r.signal_action_label || r.entry_timing, 60, 'Pantau dulu');
   var grade = enriched.confidence || safeTelegramText(r.confidence || r.quality_grade || r.grade || getTelegramGrade(r), 10, 'C');
@@ -13787,7 +13808,7 @@ function formatRichTelegramCandidateBlock(r, idx, mode) {
     lines.push(safetyLine);
   }
   lines.push('Harga: ' + fmtPrice(r.lastn || r.last_price));
-  lines.push('Entry: ' + fmtPrice(e1) + ' / ' + fmtPrice(e2));
+  lines.push('Entry: ' + areaBeliText);
   lines.push('SL: ' + fmtPrice(r.stop_loss || r.sl));
   lines.push('TP: ' + fmtPrice(r.tp1 || r.tp1n) + (toNum(r.tp2 || r.tp2n) > 0 ? ' / ' + fmtPrice(r.tp2 || r.tp2n) : ''));
 
@@ -13802,10 +13823,10 @@ function formatRichTelegramCandidateBlock(r, idx, mode) {
   if (volParts.length > 0) lines.push('Vol: ' + volParts.join(' \u00B7 '));
 
   var tfParts = [];
-  if (hasTelegramText(r.tf_1d_context)) tfParts.push('1D ' + safeTelegramText(r.tf_1d_context, 50, '').replace(/^1D\s*/i, ''));
-  if (mode === 'daytrade' && hasTelegramText(r.tf_3d_context)) tfParts.push('3D ' + safeTelegramText(r.tf_3d_context, 50, '').replace(/^3D\s*/i, ''));
-  if (hasTelegramText(r.tf_5d_context)) tfParts.push('5D ' + safeTelegramText(r.tf_5d_context, 50, '').replace(/^5D\s*/i, ''));
-  if (hasTelegramText(r.tf_20d_context)) tfParts.push('20D ' + safeTelegramText(r.tf_20d_context, 50, '').replace(/^20D\s*/i, ''));
+  if (hasTelegramText(r.tf_1d_context)) tfParts.push('1D ' + safeTelegramText(r.tf_1d_context, 50, '').replace(/^(1D\s*)+/i, ''));
+  if (mode === 'daytrade' && hasTelegramText(r.tf_3d_context)) tfParts.push('3D ' + safeTelegramText(r.tf_3d_context, 50, '').replace(/^(3D\s*)+/i, ''));
+  if (hasTelegramText(r.tf_5d_context)) tfParts.push('5D ' + safeTelegramText(r.tf_5d_context, 50, '').replace(/^(5D\s*)+/i, ''));
+  if (hasTelegramText(r.tf_20d_context)) tfParts.push('20D ' + safeTelegramText(r.tf_20d_context, 50, '').replace(/^(20D\s*)+/i, ''));
   if (tfParts.length > 0) lines.push('TF: ' + tfParts.join(' \u00B7 '));
 
   // Fibonacci confluence (Swing Konglo only, soft signal)
@@ -13828,11 +13849,13 @@ function formatRichTelegramCandidateBlock(r, idx, mode) {
 }
 
 function fmtTelegramSignalBlock(r, idx, mode) {
-  var entryLow = toNum(r.entry_low);
-  var entryHigh = toNum(r.entry_high);
-  var e1 = Math.max(entryLow || 0, entryHigh || 0);
-  var e2 = Math.min(entryLow || 0, entryHigh || 0);
-  if (e2 <= 0) e2 = e1;
+  var entryLow = toNum(r.entry_low || r.entryLow || r.entry1 || r.buy_low);
+  var entryHigh = toNum(r.entry_high || r.entryHigh || r.entry2 || r.buy_high);
+  var lowEntry = Math.min(entryLow || 0, entryHigh || 0);
+  var highEntry = Math.max(entryLow || 0, entryHigh || 0);
+  if (lowEntry <= 0) lowEntry = highEntry;
+  if (highEntry <= 0) highEntry = lowEntry;
+  var areaBeliText = (lowEntry > 0 && highEntry > 0 && lowEntry !== highEntry) ? fmtPrice(lowEntry) + ' - ' + fmtPrice(highEntry) : fmtPrice(highEntry || lowEntry);
   var score = getTelegramScore(r, mode);
   var statusLabel = safeTelegramText(r.status || r.final_status, 80, '-').replace(/_/g, ' ');
   var action = safeTelegramText(r.telegram_action_label, 40, 'Pantau dulu');
@@ -13840,15 +13863,15 @@ function fmtTelegramSignalBlock(r, idx, mode) {
   var grade = enrichedForGrade.confidence || getTelegramGrade(r);
   var risk = normalizeTelegramRiskLabel(r.risk_label_v2 || r.verified_risk_label || r.risk_label) || '-';
   var lines = [];
-  lines.push(idx + '. ' + safeTelegramText(r.ticker, 16, '-') + ' — ' + action);
+  lines.push(idx + '. ' + safeTelegramText(r.ticker, 16, '-') + ' \u2014 ' + action);
   lines.push('Status: ' + statusLabel);
-  lines.push('G:' + grade + ' · ' + risk + ' · RR:' + fmtRR(r.risk_reward) + ' · Liq:' + safeTelegramText(enrichedForGrade.liquidity_label, 40, '-'));
-  lines.push('EntryQ: ' + safeTelegramText(r.entry_quality_label || r.entry_status_label, 40, '-') + ' · PlanQ: ' + safeTelegramText(r.plan_quality_label || r.plan_label, 40, '-'));
-  lines.push('Breakout: ' + safeTelegramText((r.breakout_confirmation_label || 'Breakout Watch').replace(/^Breakout /, ''), 40, '-') + (r.resistance ? ', needs close > ' + fmtPrice(r.resistance) : '') + ' · Setup Age: ' + safeTelegramText(r.setup_freshness_label || 'Needs Revalidation', 30, '-'));
+  lines.push('G:' + grade + ' \u00B7 ' + risk + ' \u00B7 RR:' + fmtRR(r.risk_reward) + ' \u00B7 Liq:' + safeTelegramText(enrichedForGrade.liquidity_label, 40, '-'));
+  lines.push('EntryQ: ' + safeTelegramText(r.entry_quality_label || r.entry_status_label, 40, '-') + ' \u00B7 PlanQ: ' + safeTelegramText(r.plan_quality_label || r.plan_label, 40, '-'));
+  lines.push('Breakout: ' + safeTelegramText((r.breakout_confirmation_label || 'Breakout Watch').replace(/^Breakout /, ''), 40, '-') + (r.resistance ? ', needs close > ' + fmtPrice(r.resistance) : '') + ' \u00B7 Setup Age: ' + safeTelegramText(r.setup_freshness_label || 'Needs Revalidation', 30, '-'));
   lines.push('Window: ' + safeTelegramText(enrichedForGrade.entry_window_label, 60, '-'));
-  if (r.entry_status_label) lines.push('Entry Safety: ' + safeTelegramText(r.entry_status_label, 40, '-') + ' — ' + safeTelegramText(r.entry_status_note, 90, '-').replace(/^Harga/, 'harga'));
-  lines.push('Harga: ' + fmtPrice(r.last_price));
-  lines.push('Entry: ' + fmtPrice(e1) + ' / ' + fmtPrice(e2));
+  if (r.entry_status_label) lines.push('Entry Safety: ' + safeTelegramText(r.entry_status_label, 40, '-') + ' \u2014 ' + safeTelegramText(r.entry_status_note, 90, '-').replace(/^Harga/, 'harga'));
+  lines.push('Harga: ' + fmtPrice(r.last_price || r.lastn));
+  lines.push('Entry: ' + areaBeliText);
   lines.push('SL: ' + fmtPrice(r.stop_loss));
   lines.push('TP: ' + fmtPrice(r.tp1) + ' / ' + fmtPrice(r.tp2));
 
@@ -13858,20 +13881,20 @@ function fmtTelegramSignalBlock(r, idx, mode) {
   if (mode === 'daytrade' && r.avg_tx_value_3d) txParts.push('Avg3D ' + fmtRpValue(r.avg_tx_value_3d));
   if (r.avg_tx_value_7d) txParts.push('Avg7D ' + fmtRpValue(r.avg_tx_value_7d));
   else if (r.avg_value_7d) txParts.push('Avg7D ' + fmtRpValue(r.avg_value_7d));
-  if (txParts.length > 0) lines.push('Value: ' + txParts.join(' · '));
+  if (txParts.length > 0) lines.push('Value: ' + txParts.join(' \u00B7 '));
 
   var volParts = [];
   if (r.volume_ratio_20d || r.volume_ratio_avg20) volParts.push(fmtRatio(r.volume_ratio_20d || r.volume_ratio_avg20));
   if (mode === 'daytrade' && r.volume_today_vs_3d) volParts.push('3D ' + fmtRatio(r.volume_today_vs_3d));
   if (mode === 'daytrade' && r.volume_today_vs_7d) volParts.push('7D ' + fmtRatio(r.volume_today_vs_7d));
-  if (volParts.length > 0) lines.push('Vol: ' + volParts.join(' · '));
+  if (volParts.length > 0) lines.push('Vol: ' + volParts.join(' \u00B7 '));
 
   var tfParts = [];
-  if (hasTelegramText(r.tf_1d_context)) tfParts.push('1D ' + safeTelegramText(r.tf_1d_context, 45, '').replace(/^1D\s*/i, ''));
-  if (mode === 'daytrade' && hasTelegramText(r.tf_3d_context)) tfParts.push('3D ' + safeTelegramText(r.tf_3d_context, 45, '').replace(/^3D\s*/i, ''));
-  if (hasTelegramText(r.tf_5d_context)) tfParts.push('5D ' + safeTelegramText(r.tf_5d_context, 45, '').replace(/^5D\s*/i, ''));
-  if (hasTelegramText(r.tf_20d_context)) tfParts.push('20D ' + safeTelegramText(r.tf_20d_context, 45, '').replace(/^20D\s*/i, ''));
-  if (tfParts.length > 0) lines.push('TF: ' + tfParts.join(' · '));
+  if (hasTelegramText(r.tf_1d_context)) tfParts.push('1D ' + safeTelegramText(r.tf_1d_context, 45, '').replace(/^(1D\s*)+/i, ''));
+  if (mode === 'daytrade' && hasTelegramText(r.tf_3d_context)) tfParts.push('3D ' + safeTelegramText(r.tf_3d_context, 45, '').replace(/^(3D\s*)+/i, ''));
+  if (hasTelegramText(r.tf_5d_context)) tfParts.push('5D ' + safeTelegramText(r.tf_5d_context, 45, '').replace(/^(5D\s*)+/i, ''));
+  if (hasTelegramText(r.tf_20d_context)) tfParts.push('20D ' + safeTelegramText(r.tf_20d_context, 45, '').replace(/^(20D\s*)+/i, ''));
+  if (tfParts.length > 0) lines.push('TF: ' + tfParts.join(' \u00B7 '));
   // Fibonacci confluence (Swing Konglo only, soft signal)
   if (mode !== 'daytrade' && r.fib_confluence_label && r.fib_confluence_label !== 'Fib belum cukup data') {
     var fibLine2 = 'Fib: ' + safeTelegramText(r.fib_confluence_label, 40, '');

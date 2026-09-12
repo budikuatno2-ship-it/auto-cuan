@@ -32,22 +32,22 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { token } = req.body || {};
+    const submittedToken = (req.body && req.body.token) || (req.query && req.query.token) || (req.headers && (req.headers['x-review-token'] || req.headers['X-Review-Token']));
 
     // Fail closed. This used to fall back to a literal default token, which was
     // also written twice into public/index.html — so the gate's secret was
     // readable by anyone who opened the page or the (public) repository. There is
     // no safe default for a credential: an unset variable now closes the door
     // rather than opening it with a value everyone knows.
-    const EXPECTED_TOKEN = String(process.env.REVIEW_ACCESS_TOKEN || '');
-    if (!EXPECTED_TOKEN) {
+    const EXPECTED_TOKEN = String(process.env.REVIEW_ACCESS_TOKEN || '').trim();
+    if (!EXPECTED_TOKEN || EXPECTED_TOKEN.length < 16) {
       return res.status(403).json({ success: false, error: 'Token review tidak valid.' });
     }
 
     // Timing-safe comparison — a plain !== leaks early-mismatch timing, and every
     // other secret compare in this codebase (login-user.js, sector-hot.js cron
     // secret) already uses timingSafeEqual.
-    const tokenBuf = Buffer.from(String(token || ''));
+    const tokenBuf = Buffer.from(String(submittedToken || ''));
     const expectedBuf = Buffer.from(EXPECTED_TOKEN);
     const tokenValid = tokenBuf.length === expectedBuf.length &&
       crypto.timingSafeEqual(tokenBuf, expectedBuf);
