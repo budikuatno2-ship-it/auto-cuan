@@ -151,7 +151,12 @@ async function run() {
     limit = parseInt(args[limitIdx + 1], 10) || Infinity;
   }
 
-  let dailyLimit = arjumClient.getConfiguredDailyQuota();
+  let dailyQuota = arjumClient.getConfiguredDailyQuota();
+  let eodReserve = parseInt(process.env.ARJUM_EOD_RESERVE, 10);
+  if (!Number.isFinite(eodReserve) || eodReserve < 0) eodReserve = 5000;
+
+  // Max usage limit for backfill engine: accounts for EOD reserve
+  let dailyLimit = Math.max(0, dailyQuota - eodReserve);
   const dailyLimitIdx = args.indexOf('--daily-limit');
   if (dailyLimitIdx >= 0 && args[dailyLimitIdx + 1]) {
     dailyLimit = parseInt(args[dailyLimitIdx + 1], 10) || dailyLimit;
@@ -202,8 +207,8 @@ async function run() {
   console.log(`Trading Dates count: ${tradingDates.length} hari bursa`);
   console.log(`Total Tickers to process: ${tickers.length}`);
   console.log(`ARJUM_API_KEY: [${hasDirectKey ? 'ADA' : 'TIDAK ADA'}]`);
-  console.log(`Daily Request Limit: ${dailyLimit}`);
-  console.log(`Used quota today: ${arjumClient.getUsedQuotaToday()}`);
+  console.log(`Total Account Quota: ${dailyQuota} | EOD Reserve (18:00 WIB): ${eodReserve}`);
+  console.log(`Max Backfill Budget: ${dailyLimit} | Used Quota Today: ${arjumClient.getUsedQuotaToday()}`);
   console.log(`Delay per request: ${delayMs}ms | Mode: ${dryRun ? 'DRY-RUN' : (isFresh ? 'LIVE (FRESH OVERWRITE)' : 'LIVE (SMART-SKIP)')}`);
   console.log('----------------------------------------------------');
 
