@@ -3795,7 +3795,7 @@
     }, 10000) : null;
 
     try {
-      var url = '/api/sector-hot?action=bandarmologi-intel&range=' + encodeURIComponent(bandarIntelRange);
+      var url = '/api/sector-hot?action=bandarmologi-intel&range=' + encodeURIComponent(bandarIntelRange) + '&_t=' + Date.now();
       if (bandarIntelViewMode === 'ticker') {
         url += '&ticker=' + encodeURIComponent(targetTicker);
       }
@@ -3804,8 +3804,32 @@
       if (timer) clearTimeout(timer);
       if (thisRequestSeq !== intelRequestSeq) return;
 
-      var json = await resp.json();
+      var json = null;
+      if (resp && resp.ok) {
+        try { json = await resp.json(); } catch (_) {}
+      }
       if (thisRequestSeq !== intelRequestSeq) return;
+
+      if ((!json || !json.success) && bandarIntelViewMode === 'scanner') {
+        try {
+          var staticUrl = '/data/bandarmologi-intel-indexes/latest_' + encodeURIComponent(bandarIntelRange) + '.json?_t=' + Date.now();
+          var staticResp = await fetch(staticUrl);
+          if (staticResp && staticResp.ok) {
+            var staticJson = await staticResp.json();
+            if (staticJson && (staticJson.indexes || staticJson.tickers)) {
+              json = {
+                success: true,
+                range: bandarIntelRange,
+                updated_at: staticJson.updated_at,
+                total_evaluated: staticJson.total_evaluated,
+                indexes: staticJson.indexes,
+                summary: staticJson.summary,
+                tickers: staticJson.tickers
+              };
+            }
+          }
+        } catch (_) {}
+      }
 
       if (json && json.success) {
         if (bandarIntelViewMode === 'ticker') {

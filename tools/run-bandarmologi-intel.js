@@ -33,50 +33,41 @@ async function run(argv = process.argv.slice(2)) {
     targetDate = args[dateIdx + 1];
   }
 
-  let range = '';
+  const isJson = args.includes('--json');
+  const isAllRanges = args.includes('--all-ranges');
+  let singleRange = null;
   const rangeIdx = args.indexOf('--range');
   if (rangeIdx >= 0 && args[rangeIdx + 1]) {
-    range = args[rangeIdx + 1];
+    singleRange = args[rangeIdx + 1].trim().toLowerCase();
   }
 
-  const allRanges = args.includes('--all-ranges');
-  const isJson = args.includes('--json');
+  const allRanges = ['1d', '5d', '7d', '14d', '30d', '60d'];
+  const targetRanges = isAllRanges ? allRanges : (singleRange ? [singleRange] : ['7d']);
 
   if (tickers && isFinite(limit)) {
     tickers = tickers.slice(0, limit);
   }
 
   console.log('=== AUTO-CUAN BANDARMOLOGI INTELLIGENCE ENGINE ===');
-  console.log(`Target Date: ${targetDate || 'Latest Data On Disk'}`);
-  console.log(`Target Range: ${allRanges ? 'All Ranges (1d, 5d, 7d, 14d, 30d, 60d)' : (range || '7d (default)')}`);
+  console.log(`Target Date:    ${targetDate || 'Latest Data On Disk'}`);
+  console.log(`Target Ranges:  ${targetRanges.map(r => r.toUpperCase()).join(', ')}`);
   if (tickers) console.log(`Target Tickers: ${tickers.length} emiten`);
   console.log('Menghitung 4 sinyal intelijen bandarmologi...');
   console.log('----------------------------------------------------');
 
   const startTime = Date.now();
-  let payload;
-
-  if (allRanges) {
-    const ranges = ['1d', '5d', '7d', '14d', '30d', '60d'];
-    for (const r of ranges) {
-      console.log(`Computing index for range: ${r}...`);
-      const p = bandarmologiIntelService.computeAndSaveIntel({
-        tickers,
-        date: targetDate,
-        range: r,
-        limit: isFinite(limit) ? limit : undefined
-      });
-      if (r === '7d' || !payload) {
-        payload = p;
-      }
-    }
-  } else {
+  let payload = null;
+  for (const rg of targetRanges) {
     payload = bandarmologiIntelService.computeAndSaveIntel({
       tickers,
       date: targetDate,
-      range: range || undefined,
+      range: rg,
       limit: isFinite(limit) ? limit : undefined
     });
+    if (!isJson) {
+      const idx = payload.indexes || {};
+      console.log(`✓ [${rg.toUpperCase()}] Evaluated: ${payload.total_evaluated} | Di Bawah Modal: ${(idx.harga_di_bawah_modal_bandar || []).length} | Silent Foreign: ${(idx.silent_foreign_accumulation || []).length} | Ritel Cutloss: ${(idx.ritel_cutloss_bandar_nampung || []).length} | CR3 Masif: ${(idx.cr3_massive || []).length}`);
+    }
   }
   const elapsed = Date.now() - startTime;
 
