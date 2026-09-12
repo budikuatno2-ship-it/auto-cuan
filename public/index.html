@@ -8433,8 +8433,9 @@ function applyScreenerUiFilters(type, results) {
         return;
     }
     var f = getScreenerUiFilterValues(type);
-    return source.filter(function(r) {
-        var ticker = normalizeFilterToken(r && r.ticker);
+    return (source || []).filter(function(r) {
+        if (!r || !r.ticker) return false;
+        var ticker = normalizeFilterToken(r.ticker);
         if (f.ticker && ticker.indexOf(f.ticker) === -1) return false;
         var risk = getRiskLabel(r);
         if (f.risk !== 'all' && risk !== f.risk) return false;
@@ -8509,18 +8510,17 @@ function renderDtCardGrid(results, data) {
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
         _dtCardData[r.ticker] = r;
+        var isSafetyBlocked = r.setup_phase === 'INVALIDATED' || r.lifecycle === 'Diblokir safety' || /diblokir safety/i.test(r.setup_phase_label || '') || Boolean(r.safety_lock);
         var st = r.status || '';
-        var stCol =
-            getDayTradeStatusColor(st);
-
-        var stBg =
-            getDayTradeStatusBackground(st);
+        var stCol = isSafetyBlocked ? '#f87171' : getDayTradeStatusColor(st);
+        var stBg = isSafetyBlocked ? 'rgba(239,68,68,0.15)' : getDayTradeStatusBackground(st);
+        var stLabel = isSafetyBlocked ? 'SAFETY HOLD' : getDayTradeSemanticLabel(st);
         var chgView = changeDisplay(r.change_pct, 1);
         var sc = r.daytrade_score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
         var _l = normalizeDisplayLevels(r);
         var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
-        var volR = r.volume_ratio_20d ? r.volume_ratio_20d.toFixed(1) + 'x' : '-';
+        var volR = (r.volume_ratio_20d != null && Number.isFinite(r.volume_ratio_20d)) ? r.volume_ratio_20d.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r); if (notes.length > 110) notes = notes.substring(0, 107) + '...';
         var _isStarred = window.__AUTOCUAN_WATCHLIST_SET__ && window.__AUTOCUAN_WATCHLIST_SET__.has(r.ticker);
         var _starIcon = _isStarred ? '★' : '☆';
@@ -8528,7 +8528,7 @@ function renderDtCardGrid(results, data) {
         var _starClass = _isStarred ? 'active' : '';
         html += '<div class="dt-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><button class="wl-star-btn ' + _starClass + '" data-ticker="' + escapeHtml(r.ticker) + '" onclick="window.toggleWatchlistTicker(\'' + escapeHtml(r.ticker) + '\', null, event)" style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;color:' + _starColor + ';padding:0 2px" title="Simpan ke Watchlist">' + _starIcon + '</button><span style="font-size:9px;padding:2px 7px;border-radius:5px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(
-            getDayTradeSemanticLabel(st)
+            stLabel
         ) + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span></div>';
@@ -8870,18 +8870,20 @@ function renderKgCardGrid(results) {
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
         _kgCardData[r.ticker] = r;
+        var isSafetyBlocked = r.setup_phase === 'INVALIDATED' || r.lifecycle === 'Diblokir safety' || /diblokir safety/i.test(r.setup_phase_label || '') || Boolean(r.safety_lock);
         var tier = r.swing_tier || '';
-        var tierShort = swingTierShort(tier);
-        var tierCls = swingTierColor(tier);
+        var tierShort = isSafetyBlocked ? 'BLOCKED' : swingTierShort(tier);
+        var tierCls = isSafetyBlocked ? 'bg-red-500/15 text-red-400 border border-red-500/30' : swingTierColor(tier);
+        var tierTitle = isSafetyBlocked ? 'Setup terblokir safety guardrails' : swingTierTitle(tier);
         var chgView = changeDisplay(r.change_pct, 1);
         var sc = r.score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
         var _l = normalizeDisplayLevels(r);
         var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
-        var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
+        var volR = (r.volume_ratio != null && Number.isFinite(r.volume_ratio)) ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="kg-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(swingTierTitle(tier)) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(tierTitle) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.group_code) html += '<span style="color:#6b7280">' + escapeHtml(r.group_code) + '</span>';
@@ -8952,18 +8954,20 @@ function renderNkCardGrid(results) {
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
         _nkCardData[r.ticker] = r;
+        var isSafetyBlocked = r.setup_phase === 'INVALIDATED' || r.lifecycle === 'Diblokir safety' || /diblokir safety/i.test(r.setup_phase_label || '') || Boolean(r.safety_lock);
         var tier = r.swing_tier || '';
-        var tierShort = swingTierShort(tier);
-        var tierCls = swingTierColor(tier);
+        var tierShort = isSafetyBlocked ? 'BLOCKED' : swingTierShort(tier);
+        var tierCls = isSafetyBlocked ? 'bg-red-500/15 text-red-400 border border-red-500/30' : swingTierColor(tier);
+        var tierTitle = isSafetyBlocked ? 'Setup terblokir safety guardrails' : swingTierTitle(tier);
         var chgView = changeDisplay(r.change_pct, 1);
         var sc = r.score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
         var _l = normalizeDisplayLevels(r);
         var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
-        var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
+        var volR = (r.volume_ratio != null && Number.isFinite(r.volume_ratio)) ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="nk-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(swingTierTitle(tier)) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(tierTitle) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + (r.bandar_score_bonus ? (' (' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ' BD)') : '') + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.board) html += '<span style="color:#6b7280">' + escapeHtml(r.board) + '</span>';
@@ -9461,6 +9465,9 @@ async function loadSwingScreener(silent) {
                     var failMatch = m.message.match(/Failed\([0-9]+\):\s*([^|]+)/);
                     diagEl.textContent = failMatch ? ('Gagal: ' + failMatch[1].trim()) : ('Gagal: ' + m.failed_count + ' ticker');
                     diagEl.classList.remove('hidden');
+                } else if (m.failed_count > 0) {
+                    diagEl.textContent = 'Gagal: ' + m.failed_count + ' ticker';
+                    diagEl.classList.remove('hidden');
                 } else {
                     diagEl.textContent = '';
                     diagEl.classList.add('hidden');
@@ -9471,8 +9478,9 @@ async function loadSwingScreener(silent) {
             startScreenerPolling();
         }
 
-        renderScreenerTable(data.results);
-        renderKgCardGrid(data.results);
+        var validResults = (data && data.results ? data.results : []).filter(function(r) { return r && r.ticker; });
+        renderScreenerTable(validResults);
+        renderKgCardGrid(validResults);
     } catch (e) {
         tbody.innerHTML = screenerEmptyRowHtml(17, DASHBOARD_ERROR_TEXT, 'error');
         // Card grid: keep showing cached cards on a failed background refresh (just drop the
@@ -9822,8 +9830,9 @@ async function loadNkScreenerResults(silent) {
         }
 
         updateNkScreenerMeta(data.meta);
-        renderNkScreenerTable(data.results);
-        renderNkCardGrid(data.results);
+        var validNkResults = (data && data.results ? data.results : []).filter(function(r) { return r && r.ticker; });
+        renderNkScreenerTable(validNkResults);
+        renderNkCardGrid(validNkResults);
 
         // Update title with actual count
         var nkTitle = document.querySelector('#screenerNonKongloPane h2');

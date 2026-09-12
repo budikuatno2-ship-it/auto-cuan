@@ -1287,9 +1287,8 @@
     var container = byId('bandarmologiContent');
     if (container && lastBandarData) {
       renderBandarmologiUI(container, lastBandarData);
-    } else {
-      loadBandarmologiTab(currentBandarTicker, brokerSummaryRange === '1d' ? currentBandarDate : null, brokerSummaryRange);
     }
+    loadBandarmologiTab(currentBandarTicker, brokerSummaryRange === '1d' ? currentBandarDate : null, brokerSummaryRange);
   }
 
   function setBrokerSummaryRange(range) {
@@ -1451,13 +1450,31 @@
     var topBuyVal = netBuyers.slice(0, 5).reduce(function (sum, x) { return sum + (x.nval || 0); }, 0);
     var topSellVal = netSellers.slice(0, 5).reduce(function (sum, x) { return sum + Math.abs(x.nval || 0); }, 0);
     var diff = topBuyVal - topSellVal;
-    var isAccumulation = diff >= 0;
+    var totalTurnover = raw.total_turnover || raw.turnover || (topBuyVal + topSellVal);
+    var flowRatio = totalTurnover > 0 ? (diff / totalTurnover) : 0;
+    var netStatus, netLabel;
+    if (flowRatio >= 0.15) {
+      netStatus = 'BIG_ACCUMULATION';
+      netLabel = 'Big Accumulation';
+    } else if (flowRatio >= 0.05) {
+      netStatus = 'NORMAL_ACCUMULATION';
+      netLabel = 'Normal Accumulation';
+    } else if (flowRatio > -0.05) {
+      netStatus = 'NEUTRAL';
+      netLabel = 'Neutral';
+    } else if (flowRatio > -0.15) {
+      netStatus = 'NORMAL_DISTRIBUTION';
+      netLabel = 'Normal Distribution';
+    } else {
+      netStatus = 'BIG_DISTRIBUTION';
+      netLabel = 'Big Distribution';
+    }
 
     return {
       date: targetDate,
       stock_code: raw.stock_code || '',
-      net_status: isAccumulation ? 'BIG_ACCUMULATION' : 'BIG_DISTRIBUTION',
-      net_label: isAccumulation ? 'Big Accumulation' : 'Big Distribution',
+      net_status: netStatus,
+      net_label: netLabel,
       net_flow: diff,
       top_buyers: grossBuyers,
       top_sellers: grossSellers,
@@ -1473,6 +1490,12 @@
     if (!clean) clean = 'BBCA';
     if (clean !== currentBandarTicker) {
       brokerFlowFilter = 'all';
+      selectedBrokerCode = '';
+      selectedBrokerSide = '';
+      lastBandarData = null;
+      bandarIntelData = null;
+      lastBrokerItems = [];
+      currentBandarDate = null;
     }
     currentBandarTicker = clean;
     if (date !== undefined) currentBandarDate = date;
@@ -1800,17 +1823,20 @@
     var insiders = Array.isArray(data.insiders) ? data.insiders : [];
 
     var DEMO_REASON_LABEL = {
-      no_api_key: 'Data Demo — API key belum dikonfigurasi',
-      no_disk_cache: 'Data Demo — belum ada data tersimpan untuk ticker ini',
-      quota_exceeded: 'Data Demo — kuota API harian habis',
-      api_error: 'Data Demo — API sedang tidak tersedia',
-      network_error: 'Data Demo — koneksi ke API gagal'
+      no_api_key: 'CACHE_OFFLINE — API key belum dikonfigurasi',
+      no_disk_cache: 'CACHE_OFFLINE — belum ada data tersimpan untuk ticker ini',
+      quota_exceeded: 'CACHE_OFFLINE — kuota API harian habis',
+      api_error: 'CACHE_OFFLINE — API sedang tidak tersedia',
+      network_error: 'CACHE_OFFLINE — koneksi ke API gagal',
+      cache_offline: 'CACHE_OFFLINE — offline / disk cache kosong'
     };
-    var isDemoBadge = (data.is_demo && !data.from_disk && !data.from_vps_tunnel)
-      ? '<span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono" title="' + escapeHtml(data.demo_detail || '') + '">' + escapeHtml(DEMO_REASON_LABEL[data.demo_reason] || 'DEMO PREVIEW — data bukan dari sumber live') + '</span>'
+    var isDemoBadge = (data.is_offline || data.status === 'CACHE_OFFLINE' || (data.is_demo && !data.from_disk && !data.from_vps_tunnel))
+      ? '<span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-mono" title="' + escapeHtml(data.demo_detail || '') + '">' + escapeHtml(DEMO_REASON_LABEL[data.demo_reason] || 'CACHE_OFFLINE — data tidak tersedia') + '</span>'
       : (data.from_vps_tunnel
           ? '<span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-300 font-mono">VPS TUNNEL LIVE</span>'
-          : '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">LIVE / BACKFILL</span>');
+          : (data.from_disk
+              ? '<span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-mono">DISK CACHE</span>'
+              : '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">LIVE / BACKFILL</span>'));
 
     var netStatusTone = 'text-emerald-400';
     var netStatusBg = 'bg-emerald-500/10 border-emerald-500/30';

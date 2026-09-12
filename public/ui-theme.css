@@ -189,6 +189,33 @@ body, #dashboardScreen, .landing-shell { min-height: 100vh; }
 /* The app footer sits at the foot of the shell; keep it clear of the home indicator. */
 #dashboardScreen > footer { padding-bottom: var(--ac-safe-bottom); }
 
+/* Global Scroll & Unclipped Card Grid Layout */
+html, body, #dashboardScreen, .page-content {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#kgCardGrid, #nkCardGrid, #dtCardGrid {
+  padding-bottom: 80px;
+  margin-bottom: 24px;
+  overflow: visible;
+}
+
+.dt-card-item, .kg-card-item, .nk-card-item {
+  min-height: fit-content;
+  height: auto;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.trade-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+  overflow: visible;
+}
+
 /* ---- 2. Base + typography ---------------------------------------------- */
 body {
   font-family: var(--ac-font-sans);
