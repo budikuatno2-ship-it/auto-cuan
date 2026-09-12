@@ -206,3 +206,27 @@ test('T-PP-08: api/sector-hot enrichCandidateWithPatternPersonality injects patt
   assert.equal(enriched.score, 90); // 75 + 15
   assert.equal(enriched.daytrade_score, 87); // 72 + 15
 });
+
+test('T-PP-09: formatDailyTop5Message renders Edge line properly and migration file exists', () => {
+  const fs = require('fs');
+  const path = require('path');
+
+  const migrationPath = path.join(__dirname, '..', 'supabase', 'pattern-personality-column-migration.sql');
+  assert.ok(fs.existsSync(migrationPath), 'Migration SQL file must exist');
+
+  const candidates = [
+    {
+      ticker: 'BBCA',
+      last_price: 6600,
+      entry_low: 6550,
+      entry_high: 6600,
+      stop_loss: 6400,
+      tp1: 6900,
+      pattern_personality: 'COMBO_FX_TECH_MA5'
+    }
+  ];
+
+  const top5Msg = telegramTemplates.formatDailyTop5Message(candidates, '2026-09-12');
+  assert.match(top5Msg, /Edge: COMBO_FX_TECH_MA5 · WR 64\.2% · PF 2\.06/);
+});
+
