@@ -14,7 +14,7 @@
     BREAKOUT_CONFIRMED: { short: 'Fase 3/4 · Breakout', tone: '#6ee7b7', bg: 'rgba(16,185,129,.11)', border: 'rgba(16,185,129,.26)', showConfidence: true },
     POST_BREAKOUT_CONTINUATION: { short: 'Fase 4/4 · Continuation', tone: '#c4b5fd', bg: 'rgba(139,92,246,.10)', border: 'rgba(139,92,246,.24)', showConfidence: true },
     NONE: { short: 'Lifecycle · Belum masuk fase', tone: '#94a3b8', bg: 'rgba(148,163,184,.08)', border: 'rgba(148,163,184,.22)', showConfidence: false },
-    INVALIDATED: { short: 'Lifecycle · Diblokir safety', tone: '#fca5a5', bg: 'rgba(239,68,68,.09)', border: 'rgba(239,68,68,.22)', showConfidence: false },
+    INVALIDATED: { short: 'Lifecycle · Diblokir safety', tone: '#ef4444', bg: 'rgba(239,68,68,.10)', border: 'rgba(239,68,68,.24)', showConfidence: false },
     UNKNOWN: { short: 'Lifecycle · Status belum tersedia', tone: '#94a3b8', bg: 'rgba(148,163,184,.06)', border: 'rgba(148,163,184,.16)', showConfidence: false }
   };
 
