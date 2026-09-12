@@ -11562,16 +11562,14 @@ function sanitizeAIHtml(html) {
             return match;
         });
     // Remove iframe/embed/object
-    output = output.replace(/<(iframe|embed|object|form|input|button)[\s\S]*?<\/\1>/gi, '');
-    output = output.replace(/<(iframe|embed|object|form|input|button)[^>]*\/?>/gi, '');
-    // Elements that change how the whole document behaves have no place in
-    // narrative output and were not being removed at all. A surviving
-    // `<base href="https://evil.example/">` re-points every relative URL on the
-    // page — including the app's own /api/* calls — and a surviving
-    // `<meta http-equiv="refresh">` navigates the page away entirely. <style>
-    // and <link> can restyle or hide the real interface.
-    output = output.replace(/<(style|template|noscript|svg|math)[\s\S]*?<\/\1>/gi, '');
-    output = output.replace(/<(base|meta|link|style|template|noscript|svg|math)[^>]*\/?>/gi, '');
+    var _prevTags;
+    do {
+        _prevTags = output;
+        output = output.replace(/<(iframe|embed|object|form|input|button)[\s\S]*?<\/\1>/gi, '');
+        output = output.replace(/<(iframe|embed|object|form|input|button)[^>]*\/?>/gi, '');
+        output = output.replace(/<(style|template|noscript|svg|math)[\s\S]*?<\/\1>/gi, '');
+        output = output.replace(/<(base|meta|link|style|template|noscript|svg|math)[^>]*\/?>/gi, '');
+    } while (output !== _prevTags);
     // Collapse excessive whitespace/empty elements for compact layout
     output = output.replace(/<p[^>]*>\s*<\/p>/gi, ''); // remove empty <p></p>
     output = output.replace(/(<br\s*\/?>){3,}/gi, '<br>'); // max 1 consecutive br (only 3+)
