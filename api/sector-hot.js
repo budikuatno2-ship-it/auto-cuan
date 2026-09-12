@@ -53,6 +53,7 @@ const smartSetupLabels = require('../lib/smart-setup-labels');
 const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
 const bandarmologiConfluence = require('../lib/bandarmologi-confluence');
 const bandarScoring = require('../lib/bandarmologi-screener-scoring');
+const patternPersonality = require('../lib/pattern-personality');
 const trackRecordService = require('../lib/track-record-service');
 const bandarmologiService = require('../lib/bandarmologi-service');
 const brokerHunterService = require('../lib/broker-hunter-service');
@@ -2916,6 +2917,23 @@ async function enrichNonKongloHalfCandleDebt(rows) {
   return out;
 }
 
+function enrichCandidateWithPatternPersonality(candidate) {
+  if (!candidate || typeof candidate !== 'object') return candidate;
+  var matched = patternPersonality.matchTickerPattern(candidate);
+  if (matched) {
+    candidate.pattern_personality = matched;
+    var bonus = patternPersonality.calculatePatternScoreBonus(matched);
+    candidate.pattern_score_bonus = bonus;
+    if (typeof candidate.score === 'number') {
+      candidate.score += bonus;
+    }
+    if (typeof candidate.daytrade_score === 'number') {
+      candidate.daytrade_score += bonus;
+    }
+  }
+  return candidate;
+}
+
 async function enrichConfluenceRows(supabase, rows, includeForeign) {
   rows = rows || [];
   var foreignMap = includeForeign ? await fetchForeignConfluenceMap(supabase, rows.map(function(r) { return r && r.ticker; })) : {};
@@ -2942,6 +2960,7 @@ async function enrichConfluenceRows(supabase, rows, includeForeign) {
     Object.assign(r, bandarMap[String(r.ticker || '').trim().toUpperCase()] || {});
     var candidateMode = (r.category === 'daytrade' || r.mode === 'daytrade' || r.daytrade_score != null) ? 'daytrade' : 'swing';
     bandarScoring.enrichCandidateWithBandarmologi(r, { mode: candidateMode });
+    enrichCandidateWithPatternPersonality(r);
     out.push(r);
   }
   return out;
@@ -7261,6 +7280,7 @@ function buildDashboardPickRow(row, rank, px) {
   // read from raw_payload since that snapshot may predate this field.
   Object.assign(out, bandarmologiConfluence.computeBandarmologiConfluence(out.ticker));
   bandarScoring.enrichCandidateWithBandarmologi(out, { mode: 'swing' });
+  enrichCandidateWithPatternPersonality(out);
   return attachFreshness(out, { calculated_at: (px && px.at) || row.last_checked_at || row.first_sent_at || raw.calculated_at || raw.updated_at || row.date });
 }
 
@@ -14611,7 +14631,8 @@ module.exports.__test = {
   deriveDayTradeTimeframeContext: deriveDayTradeTimeframeContext,
   isOpeningRangeVelocityWindow: fastWatcherMomentum.isOpeningRangeVelocityWindow,
   evaluateOpeningVelocityGuard: fastWatcherMomentum.evaluateOpeningVelocityGuard,
-  selectTopCandidatesWithSectorDiversification: selectTopCandidatesWithSectorDiversification
+  selectTopCandidatesWithSectorDiversification: selectTopCandidatesWithSectorDiversification,
+  enrichCandidateWithPatternPersonality: enrichCandidateWithPatternPersonality
 };
 
 module.exports.isSignalPublicationTimeRestrictedWib = isSignalPublicationTimeRestrictedWib;
