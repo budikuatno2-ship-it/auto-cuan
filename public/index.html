@@ -11561,17 +11561,18 @@ function sanitizeAIHtml(html) {
             if (/^(javascript|vbscript|data):/.test(decoded)) return ' ' + attr + '="#"';
             return match;
         });
-    // Remove iframe/embed/object
-    output = output.replace(/<(iframe|embed|object|form|input|button)[\s\S]*?<\/\1>/gi, '');
-    output = output.replace(/<(iframe|embed|object|form|input|button)[^>]*\/?>/gi, '');
-    // Elements that change how the whole document behaves have no place in
-    // narrative output and were not being removed at all. A surviving
-    // `<base href="https://evil.example/">` re-points every relative URL on the
-    // page — including the app's own /api/* calls — and a surviving
-    // `<meta http-equiv="refresh">` navigates the page away entirely. <style>
-    // and <link> can restyle or hide the real interface.
-    output = output.replace(/<(style|template|noscript|svg|math)[\s\S]*?<\/\1>/gi, '');
-    output = output.replace(/<(base|meta|link|style|template|noscript|svg|math)[^>]*\/?>/gi, '');
+    // Remove dangerous HTML elements (iframe, embed, object, form, style, base, etc.)
+    var _dangerousBlocks = ['iframe', 'embed', 'object', 'form', 'input', 'button', 'style', 'template', 'noscript', 'svg', 'math'];
+    for (var _bi = 0; _bi < _dangerousBlocks.length; _bi++) {
+        var _bt = _dangerousBlocks[_bi];
+        output = output.replace(new RegExp('<' + _bt + '[\\s\\S]*?<\\/' + _bt + '>', 'gi'), '');
+        output = output.replace(new RegExp('<' + _bt + '[^>]*\\/?>', 'gi'), '');
+    }
+    var _dangerousEmpties = ['base', 'meta', 'link'];
+    for (var _ei = 0; _ei < _dangerousEmpties.length; _ei++) {
+        var _et = _dangerousEmpties[_ei];
+        output = output.replace(new RegExp('<' + _et + '[^>]*\\/?>', 'gi'), '');
+    }
     // Collapse excessive whitespace/empty elements for compact layout
     output = output.replace(/<p[^>]*>\s*<\/p>/gi, ''); // remove empty <p></p>
     output = output.replace(/(<br\s*\/?>){3,}/gi, '<br>'); // max 1 consecutive br (only 3+)
