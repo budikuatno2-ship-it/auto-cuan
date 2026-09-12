@@ -33,6 +33,13 @@ async function run(argv = process.argv.slice(2)) {
     targetDate = args[dateIdx + 1];
   }
 
+  let range = '';
+  const rangeIdx = args.indexOf('--range');
+  if (rangeIdx >= 0 && args[rangeIdx + 1]) {
+    range = args[rangeIdx + 1];
+  }
+
+  const allRanges = args.includes('--all-ranges');
   const isJson = args.includes('--json');
 
   if (tickers && isFinite(limit)) {
@@ -41,16 +48,36 @@ async function run(argv = process.argv.slice(2)) {
 
   console.log('=== AUTO-CUAN BANDARMOLOGI INTELLIGENCE ENGINE ===');
   console.log(`Target Date: ${targetDate || 'Latest Data On Disk'}`);
+  console.log(`Target Range: ${allRanges ? 'All Ranges (1d, 7d, 14d, 30d)' : (range || '7d (default)')}`);
   if (tickers) console.log(`Target Tickers: ${tickers.length} emiten`);
   console.log('Menghitung 4 sinyal intelijen bandarmologi...');
   console.log('----------------------------------------------------');
 
   const startTime = Date.now();
-  const payload = bandarmologiIntelService.computeAndSaveIntel({
-    tickers,
-    date: targetDate,
-    limit: isFinite(limit) ? limit : undefined
-  });
+  let payload;
+
+  if (allRanges) {
+    const ranges = ['1d', '7d', '14d', '30d'];
+    for (const r of ranges) {
+      console.log(`Computing index for range: ${r}...`);
+      const p = bandarmologiIntelService.computeAndSaveIntel({
+        tickers,
+        date: targetDate,
+        range: r,
+        limit: isFinite(limit) ? limit : undefined
+      });
+      if (r === '7d' || !payload) {
+        payload = p;
+      }
+    }
+  } else {
+    payload = bandarmologiIntelService.computeAndSaveIntel({
+      tickers,
+      date: targetDate,
+      range: range || undefined,
+      limit: isFinite(limit) ? limit : undefined
+    });
+  }
   const elapsed = Date.now() - startTime;
 
   if (isJson) {

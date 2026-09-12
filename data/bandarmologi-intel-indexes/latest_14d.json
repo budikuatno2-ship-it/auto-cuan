@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T09:04:29.408Z",
+  "updated_at": "2026-09-12T09:04:12.524Z",
   "total_evaluated": 52,
   "indexes": {
     "harga_di_bawah_modal_bandar": [
@@ -48,24 +48,24 @@
           {
             "broker": "DX",
             "broker_name": "Bahana Sekuritas",
-            "buy_val": 492800000000,
-            "buy_vol": 101398000,
+            "buy_val": 112000000000,
+            "buy_vol": 23045000,
             "avg_price": 4860,
             "avg_buy": 4860
           },
           {
             "broker": "CC",
             "broker_name": "Mandiri Sekuritas",
-            "buy_val": 473000000000,
-            "buy_vol": 97323600,
+            "buy_val": 107500000000,
+            "buy_vol": 22119000,
             "avg_price": 4860,
             "avg_buy": 4860
           },
           {
             "broker": "NI",
             "broker_name": "BNI Sekuritas",
-            "buy_val": 411400000000,
-            "buy_vol": 84649400,
+            "buy_val": 93500000000,
+            "buy_vol": 19238500,
             "avg_price": 4860,
             "avg_buy": 4860
           }
@@ -83,8 +83,8 @@
           {
             "broker": "PD",
             "broker_name": "Indo Premier Sekuritas",
-            "buy_val": 415800000000,
-            "buy_vol": 704743600,
+            "buy_val": 94500000000,
+            "buy_vol": 160169000,
             "avg_price": 590,
             "avg_buy": 590
           }
@@ -102,8 +102,8 @@
           {
             "broker": "RX",
             "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 325600000000,
-            "buy_vol": 46512400,
+            "buy_val": 74000000000,
+            "buy_vol": 10571000,
             "avg_price": 7000,
             "avg_buy": 7000
           }
@@ -121,24 +121,24 @@
           {
             "broker": "YP",
             "broker_name": "Mirae Asset Sekuritas Indonesia",
-            "buy_val": 530200000000,
-            "buy_vol": 67113200,
+            "buy_val": 120500000000,
+            "buy_vol": 15253000,
             "avg_price": 7900,
             "avg_buy": 7900
           },
           {
             "broker": "XC",
             "broker_name": "Ajaib Sekuritas Asia",
-            "buy_val": 492800000000,
-            "buy_vol": 62378800,
+            "buy_val": 112000000000,
+            "buy_vol": 14177000,
             "avg_price": 7900,
             "avg_buy": 7900
           },
           {
             "broker": "AG",
             "broker_name": "Kiwoom Sekuritas Indonesia",
-            "buy_val": 391600000000,
-            "buy_vol": 49568200,
+            "buy_val": 89000000000,
+            "buy_vol": 11265500,
             "avg_price": 7900,
             "avg_buy": 7900
           }
@@ -156,24 +156,24 @@
           {
             "broker": "YP",
             "broker_name": "Mirae Asset Sekuritas Indonesia",
-            "buy_val": 772200000000,
-            "buy_vol": 8774999200,
+            "buy_val": 175500000000,
+            "buy_vol": 1994318000,
             "avg_price": 88,
             "avg_buy": 88
           },
           {
             "broker": "XC",
             "broker_name": "Ajaib Sekuritas Asia",
-            "buy_val": 686400000000,
-            "buy_vol": 7799998800,
+            "buy_val": 156000000000,
+            "buy_vol": 1772727000,
             "avg_price": 88,
             "avg_buy": 88
           },
           {
             "broker": "AG",
             "broker_name": "Kiwoom Sekuritas Indonesia",
-            "buy_val": 338800000000,
-            "buy_vol": 3850000000,
+            "buy_val": 77000000000,
+            "buy_vol": 875000000,
             "avg_price": 88,
             "avg_buy": 88
           }
@@ -191,8 +191,8 @@
           {
             "broker": "RX",
             "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 640200000000,
-            "buy_vol": 1103792800,
+            "buy_val": 145500000000,
+            "buy_vol": 250862000,
             "avg_price": 580,
             "avg_buy": 580
           }
@@ -210,30 +210,65 @@
           {
             "broker": "CC",
             "broker_name": "Mandiri Sekuritas",
-            "buy_val": 686400000000,
-            "buy_vol": 256117400,
+            "buy_val": 156000000000,
+            "buy_vol": 58208500,
             "avg_price": 2680,
             "avg_buy": 2680
           },
           {
             "broker": "RX",
             "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 479600000000,
-            "buy_vol": 178954600,
+            "buy_val": 109000000000,
+            "buy_vol": 40671500,
             "avg_price": 2680,
             "avg_buy": 2680
           },
           {
             "broker": "DX",
             "broker_name": "Bahana Sekuritas",
-            "buy_val": 363000000000,
-            "buy_vol": 135447400,
+            "buy_val": 82500000000,
+            "buy_vol": 30783500,
             "avg_price": 2680,
             "avg_buy": 2680
           }
         ],
         "description": "Harga terkini (2410) berada di bawah modal rata-rata Top 3 Bandar (2680) dengan diskon 10.07%.",
         "note": "Harga terkini (2410) berada di bawah modal rata-rata Top 3 Bandar (2680) dengan diskon 10.07%."
+      },
+      {
+        "ticker": "GPRA",
+        "current_price": 101,
+        "bandar_avg_buy": 111,
+        "discount_pct": 9.01,
+        "in_sweet_spot": false,
+        "top_3_brokers": [
+          {
+            "broker": "AG",
+            "broker_name": "KIWOOM SEKURITAS INDONESIA",
+            "buy_val": 52271117100,
+            "buy_vol": 468367300,
+            "avg_price": 112,
+            "avg_buy": 112
+          },
+          {
+            "broker": "OD",
+            "broker_name": "BRI DANAREKSA SEKURITAS",
+            "buy_val": 26765229700,
+            "buy_vol": 241596600,
+            "avg_price": 111,
+            "avg_buy": 111
+          },
+          {
+            "broker": "XA",
+            "broker_name": "NH KORINDO SEKURITAS INDONESIA",
+            "buy_val": 20448089300,
+            "buy_vol": 185631900,
+            "avg_price": 110,
+            "avg_buy": 110
+          }
+        ],
+        "description": "Harga terkini (101) berada di bawah modal rata-rata Top 3 Bandar (111) dengan diskon 9.01%.",
+        "note": "Harga terkini (101) berada di bawah modal rata-rata Top 3 Bandar (111) dengan diskon 9.01%."
       },
       {
         "ticker": "KLBF",
@@ -245,49 +280,14 @@
           {
             "broker": "BK",
             "broker_name": "J.P. Morgan Sekuritas Indonesia",
-            "buy_val": 530200000000,
-            "buy_vol": 315594400,
+            "buy_val": 120500000000,
+            "buy_vol": 71726000,
             "avg_price": 1680,
             "avg_buy": 1680
           }
         ],
         "description": "Harga terkini (1560) berada di bawah modal rata-rata Top 3 Bandar (1680) dengan diskon 7.14%.",
         "note": "Harga terkini (1560) berada di bawah modal rata-rata Top 3 Bandar (1680) dengan diskon 7.14%."
-      },
-      {
-        "ticker": "GPRA",
-        "current_price": 101,
-        "bandar_avg_buy": 108,
-        "discount_pct": 6.48,
-        "in_sweet_spot": false,
-        "top_3_brokers": [
-          {
-            "broker": "AG",
-            "broker_name": "KIWOOM SEKURITAS INDONESIA",
-            "buy_val": 149769746300,
-            "buy_vol": 1384854000,
-            "avg_price": 108,
-            "avg_buy": 108
-          },
-          {
-            "broker": "OD",
-            "broker_name": "BRI DANAREKSA SEKURITAS",
-            "buy_val": 56954859900,
-            "buy_vol": 523904100,
-            "avg_price": 109,
-            "avg_buy": 109
-          },
-          {
-            "broker": "YP",
-            "broker_name": "MIRAE ASSET SEKURITAS INDONESIA",
-            "buy_val": 37517809900,
-            "buy_vol": 352444100,
-            "avg_price": 106,
-            "avg_buy": 106
-          }
-        ],
-        "description": "Harga terkini (101) berada di bawah modal rata-rata Top 3 Bandar (108) dengan diskon 6.48%.",
-        "note": "Harga terkini (101) berada di bawah modal rata-rata Top 3 Bandar (108) dengan diskon 6.48%."
       },
       {
         "ticker": "INKP",
@@ -299,8 +299,8 @@
           {
             "broker": "RX",
             "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 378400000000,
-            "buy_vol": 47300000,
+            "buy_val": 86000000000,
+            "buy_vol": 10750000,
             "avg_price": 8000,
             "avg_buy": 8000
           }
@@ -318,8 +318,8 @@
           {
             "broker": "BK",
             "broker_name": "J.P. Morgan Sekuritas Indonesia",
-            "buy_val": 387200000000,
-            "buy_vol": 56115400,
+            "buy_val": 88000000000,
+            "buy_vol": 12753500,
             "avg_price": 6900,
             "avg_buy": 6900
           }
@@ -337,24 +337,24 @@
           {
             "broker": "NI",
             "broker_name": "BNI Sekuritas",
-            "buy_val": 624800000000,
-            "buy_vol": 405713000,
+            "buy_val": 142000000000,
+            "buy_vol": 92207500,
             "avg_price": 1540,
             "avg_buy": 1540
           },
           {
             "broker": "CC",
             "broker_name": "Mandiri Sekuritas",
-            "buy_val": 543400000000,
-            "buy_vol": 352855800,
+            "buy_val": 123500000000,
+            "buy_vol": 80194500,
             "avg_price": 1540,
             "avg_buy": 1540
           },
           {
             "broker": "RX",
             "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 541200000000,
-            "buy_vol": 351428000,
+            "buy_val": 123000000000,
+            "buy_vol": 79870000,
             "avg_price": 1540,
             "avg_buy": 1540
           }
@@ -372,8 +372,8 @@
           {
             "broker": "BK",
             "broker_name": "J.P. Morgan Sekuritas Indonesia",
-            "buy_val": 435600000000,
-            "buy_vol": 286578600,
+            "buy_val": 99000000000,
+            "buy_vol": 65131500,
             "avg_price": 1520,
             "avg_buy": 1520
           }
@@ -391,24 +391,24 @@
           {
             "broker": "CC",
             "broker_name": "Mandiri Sekuritas",
-            "buy_val": 635800000000,
-            "buy_vol": 407563200,
+            "buy_val": 144500000000,
+            "buy_vol": 92628000,
             "avg_price": 1560,
             "avg_buy": 1560
           },
           {
             "broker": "RX",
             "broker_name": "Macquarie Sekuritas Indonesia",
-            "buy_val": 429000000000,
-            "buy_vol": 275000000,
+            "buy_val": 97500000000,
+            "buy_vol": 62500000,
             "avg_price": 1560,
             "avg_buy": 1560
           },
           {
             "broker": "DX",
             "broker_name": "Bahana Sekuritas",
-            "buy_val": 312400000000,
-            "buy_vol": 200255000,
+            "buy_val": 71000000000,
+            "buy_vol": 45512500,
             "avg_price": 1560,
             "avg_buy": 1560
           }
@@ -426,16 +426,16 @@
           {
             "broker": "AK",
             "broker_name": "UBS Sekuritas Indonesia",
-            "buy_val": 426800000000,
-            "buy_vol": 341440000,
+            "buy_val": 97000000000,
+            "buy_vol": 77600000,
             "avg_price": 1250,
             "avg_buy": 1250
           },
           {
             "broker": "PD",
             "broker_name": "Indo Premier Sekuritas",
-            "buy_val": 385000000000,
-            "buy_vol": 308000000,
+            "buy_val": 87500000000,
+            "buy_vol": 70000000,
             "avg_price": 1250,
             "avg_buy": 1250
           }
@@ -453,8 +453,8 @@
           {
             "broker": "AK",
             "broker_name": "UBS Sekuritas Indonesia",
-            "buy_val": 501600000000,
-            "buy_vol": 135566200,
+            "buy_val": 114000000000,
+            "buy_vol": 30810500,
             "avg_price": 3700,
             "avg_buy": 3700
           }
@@ -589,7 +589,7 @@
     "AADI": {
       "ticker": "AADI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.553Z",
+      "evaluated_at": "2026-09-12T09:03:56.014Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -609,7 +609,7 @@
           "harga_modal": 7012,
           "discount_pct": -24.43,
           "price_diff_pct": 24.43,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "CC",
@@ -725,9 +725,9 @@
     "ADRO": {
       "ticker": "ADRO",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.649Z",
+      "evaluated_at": "2026-09-12T09:03:56.016Z",
       "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 1,
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
@@ -745,13 +745,13 @@
           "harga_modal": 3700,
           "discount_pct": 0.54,
           "price_diff_pct": -0.54,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "AK",
               "broker_name": "UBS Sekuritas Indonesia",
-              "buy_val": 501600000000,
-              "buy_vol": 135566200,
+              "buy_val": 114000000000,
+              "buy_vol": 30810500,
               "avg_price": 3700,
               "avg_buy": 3700
             }
@@ -760,8 +760,8 @@
             {
               "broker": "AK",
               "broker_name": "UBS Sekuritas Indonesia",
-              "buy_val": 501600000000,
-              "buy_vol": 135566200,
+              "buy_val": 114000000000,
+              "buy_vol": 30810500,
               "avg_price": 3700,
               "avg_buy": 3700
             }
@@ -799,31 +799,31 @@
         "concentration_ratio": {
           "signal_key": "CONCENTRATION_RATIO",
           "signal_name": "Concentration Ratio (CR3 & CR5)",
-          "triggered": false,
+          "triggered": true,
           "is_massive": false,
-          "cr3": 35.09,
-          "cr5": 35.09,
-          "status": "NORMAL_DIFFUSE",
-          "label": "Normal / Tersebar",
-          "top_3_val": 501600000000,
-          "top_5_val": 501600000000,
-          "total_turnover": 1429560000000,
-          "top_3_vol": 135566200,
-          "top_5_vol": 135566200,
-          "total_vol": 386363670,
+          "cr3": 45.6,
+          "cr5": 45.6,
+          "status": "AKUMULASI_TERKONSENTRASI",
+          "label": "Akumulasi Terkonsentrasi",
+          "top_3_val": 114000000000,
+          "top_5_val": 114000000000,
+          "total_turnover": 250000000000,
+          "top_3_vol": 30810500,
+          "top_5_vol": 30810500,
+          "total_vol": 87809925,
           "top_3_brokers": [
             "AK"
           ],
-          "description": "CR3 sebesar 35.09% dan CR5 sebesar 35.09%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 45.6% dan CR5 sebesar 45.6%. Status: Akumulasi Terkonsentrasi."
         }
       }
     },
     "AMMN": {
       "ticker": "AMMN",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.652Z",
-      "confluence_badge": "NEUTRAL",
-      "bullish_signals_count": 0,
+      "evaluated_at": "2026-09-12T09:03:56.020Z",
+      "confluence_badge": "ACCUMULATION",
+      "bullish_signals_count": 1,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
@@ -841,13 +841,13 @@
           "harga_modal": 9850,
           "discount_pct": 0,
           "price_diff_pct": 0,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "AK",
               "broker_name": "UBS Sekuritas Indonesia",
-              "buy_val": 539000000000,
-              "buy_vol": 54720600,
+              "buy_val": 122500000000,
+              "buy_vol": 12436500,
               "avg_price": 9850,
               "avg_buy": 9850
             }
@@ -856,8 +856,8 @@
             {
               "broker": "AK",
               "broker_name": "UBS Sekuritas Indonesia",
-              "buy_val": 539000000000,
-              "buy_vol": 54720600,
+              "buy_val": 122500000000,
+              "buy_vol": 12436500,
               "avg_price": 9850,
               "avg_buy": 9850
             }
@@ -882,29 +882,29 @@
         "concentration_ratio": {
           "signal_key": "CONCENTRATION_RATIO",
           "signal_name": "Concentration Ratio (CR3 & CR5)",
-          "triggered": false,
+          "triggered": true,
           "is_massive": false,
-          "cr3": 35.09,
-          "cr5": 35.09,
-          "status": "NORMAL_DIFFUSE",
-          "label": "Normal / Tersebar",
-          "top_3_val": 539000000000,
-          "top_5_val": 539000000000,
-          "total_turnover": 1536150000000,
-          "top_3_vol": 54720600,
-          "top_5_vol": 54720600,
-          "total_vol": 155953710,
+          "cr3": 58.34,
+          "cr5": 58.34,
+          "status": "AKUMULASI_TERKONSENTRASI",
+          "label": "Akumulasi Terkonsentrasi",
+          "top_3_val": 122500000000,
+          "top_5_val": 122500000000,
+          "total_turnover": 209983830000,
+          "top_3_vol": 12436500,
+          "top_5_vol": 12436500,
+          "total_vol": 35444025,
           "top_3_brokers": [
             "AK"
           ],
-          "description": "CR3 sebesar 35.09% dan CR5 sebesar 35.09%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 58.34% dan CR5 sebesar 58.34%. Status: Akumulasi Terkonsentrasi."
         }
       }
     },
     "ANTM": {
       "ticker": "ANTM",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.655Z",
+      "evaluated_at": "2026-09-12T09:03:56.024Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -924,29 +924,29 @@
           "harga_modal": 1560,
           "discount_pct": 1.28,
           "price_diff_pct": -1.28,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 635800000000,
-              "buy_vol": 407563200,
+              "buy_val": 144500000000,
+              "buy_vol": 92628000,
               "avg_price": 1560,
               "avg_buy": 1560
             },
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 429000000000,
-              "buy_vol": 275000000,
+              "buy_val": 97500000000,
+              "buy_vol": 62500000,
               "avg_price": 1560,
               "avg_buy": 1560
             },
             {
               "broker": "DX",
               "broker_name": "Bahana Sekuritas",
-              "buy_val": 312400000000,
-              "buy_vol": 200255000,
+              "buy_val": 71000000000,
+              "buy_vol": 45512500,
               "avg_price": 1560,
               "avg_buy": 1560
             }
@@ -955,24 +955,24 @@
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 635800000000,
-              "buy_vol": 407563200,
+              "buy_val": 144500000000,
+              "buy_vol": 92628000,
               "avg_price": 1560,
               "avg_buy": 1560
             },
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 429000000000,
-              "buy_vol": 275000000,
+              "buy_val": 97500000000,
+              "buy_vol": 62500000,
               "avg_price": 1560,
               "avg_buy": 1560
             },
             {
               "broker": "DX",
               "broker_name": "Bahana Sekuritas",
-              "buy_val": 312400000000,
-              "buy_vol": 200255000,
+              "buy_val": 71000000000,
+              "buy_vol": 45512500,
               "avg_price": 1560,
               "avg_buy": 1560
             }
@@ -1020,12 +1020,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 1377200000000,
-          "top_5_val": 1377200000000,
-          "total_turnover": 3925020000000,
-          "top_3_vol": 882818200,
-          "top_5_vol": 882818200,
-          "total_vol": 2516031870,
+          "top_3_val": 313000000000,
+          "top_5_val": 313000000000,
+          "total_turnover": 892050000000,
+          "top_3_vol": 200640500,
+          "top_5_vol": 200640500,
+          "total_vol": 571825425,
           "top_3_brokers": [
             "CC",
             "RX",
@@ -1038,7 +1038,7 @@
     "ARTO": {
       "ticker": "ARTO",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.655Z",
+      "evaluated_at": "2026-09-12T09:03:56.024Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -1074,7 +1074,7 @@
     "ASII": {
       "ticker": "ASII",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.662Z",
+      "evaluated_at": "2026-09-12T09:03:56.030Z",
       "confluence_badge": "STRONG_ACCUMULATION",
       "bullish_signals_count": 3,
       "bearish_signals_count": 0,
@@ -1094,7 +1094,7 @@
           "harga_modal": 4899,
           "discount_pct": -4.61,
           "price_diff_pct": 4.61,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "AK",
@@ -1222,7 +1222,7 @@
     "BBCA": {
       "ticker": "BBCA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.780Z",
+      "evaluated_at": "2026-09-12T09:03:56.079Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -1235,72 +1235,72 @@
           "is_sweet_spot": false,
           "current_price": 10150,
           "close_price": 10150,
-          "bandar_avg_buy": 6508,
-          "bandar_avg_price": 6508,
-          "avg_buy_price": 6508,
-          "broker_cost": 6508,
-          "harga_modal": 6508,
-          "discount_pct": -55.96,
-          "price_diff_pct": 55.96,
-          "range": "30D",
+          "bandar_avg_buy": 6704,
+          "bandar_avg_price": 6704,
+          "avg_buy_price": 6704,
+          "broker_cost": 6704,
+          "harga_modal": 6704,
+          "discount_pct": -51.4,
+          "price_diff_pct": 51.4,
+          "range": "14D",
           "top_3_brokers": [
+            {
+              "broker": "YU",
+              "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+              "buy_val": 1496810812500,
+              "buy_vol": 219739800,
+              "avg_price": 6812,
+              "avg_buy": 6812
+            },
             {
               "broker": "ZP",
               "broker_name": "MAYBANK SEKURITAS INDONESIA",
-              "buy_val": 4429851575000,
-              "buy_vol": 690114159,
-              "avg_price": 6419,
-              "avg_buy": 6419
+              "buy_val": 1428517452500,
+              "buy_vol": 216534659,
+              "avg_price": 6597,
+              "avg_buy": 6597
             },
             {
               "broker": "AK",
               "broker_name": "UBS SEKURITAS INDONESIA",
-              "buy_val": 2694012972500,
-              "buy_vol": 413446102,
-              "avg_price": 6516,
-              "avg_buy": 6516
-            },
-            {
-              "broker": "YU",
-              "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
-              "buy_val": 1906208295000,
-              "buy_vol": 284073500,
-              "avg_price": 6710,
-              "avg_buy": 6710
+              "buy_val": 1281987840000,
+              "buy_vol": 191304502,
+              "avg_price": 6701,
+              "avg_buy": 6701
             }
           ],
           "top_broker_details": [
             {
+              "broker": "YU",
+              "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+              "buy_val": 1496810812500,
+              "buy_vol": 219739800,
+              "avg_price": 6812,
+              "avg_buy": 6812
+            },
+            {
               "broker": "ZP",
               "broker_name": "MAYBANK SEKURITAS INDONESIA",
-              "buy_val": 4429851575000,
-              "buy_vol": 690114159,
-              "avg_price": 6419,
-              "avg_buy": 6419
+              "buy_val": 1428517452500,
+              "buy_vol": 216534659,
+              "avg_price": 6597,
+              "avg_buy": 6597
             },
             {
               "broker": "AK",
               "broker_name": "UBS SEKURITAS INDONESIA",
-              "buy_val": 2694012972500,
-              "buy_vol": 413446102,
-              "avg_price": 6516,
-              "avg_buy": 6516
-            },
-            {
-              "broker": "YU",
-              "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
-              "buy_val": 1906208295000,
-              "buy_vol": 284073500,
-              "avg_price": 6710,
-              "avg_buy": 6710
+              "buy_val": 1281987840000,
+              "buy_vol": 191304502,
+              "avg_price": 6701,
+              "avg_buy": 6701
             }
           ],
           "top_brokers": [
+            "YU",
             "ZP",
-            "AK",
-            "YU"
+            "AK"
           ],
-          "description": "Harga terkini (10150) masih di atas modal rata-rata Top 3 Bandar (6508)."
+          "description": "Harga terkini (10150) masih di atas modal rata-rata Top 3 Bandar (6704)."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -1337,29 +1337,29 @@
           "signal_name": "Concentration Ratio (CR3 & CR5)",
           "triggered": true,
           "is_massive": false,
-          "cr3": 46.52,
-          "cr5": 63.33,
+          "cr3": 46.81,
+          "cr5": 65.68,
           "status": "AKUMULASI_TERKONSENTRASI",
           "label": "Akumulasi Terkonsentrasi",
-          "top_3_val": 9030072842500,
-          "top_5_val": 12294486332500,
-          "total_turnover": 19413035982500,
-          "top_3_vol": 1387633761,
-          "top_5_vol": 1891633916,
-          "total_vol": 2989456029,
+          "top_3_val": 4207316105000,
+          "top_5_val": 5903666980000,
+          "total_turnover": 8988552215000,
+          "top_3_vol": 627578961,
+          "top_5_vol": 885707116,
+          "total_vol": 1347138429,
           "top_3_brokers": [
+            "YU",
             "ZP",
-            "AK",
-            "YU"
+            "AK"
           ],
-          "description": "CR3 sebesar 46.52% dan CR5 sebesar 63.33%. Status: Akumulasi Terkonsentrasi."
+          "description": "CR3 sebesar 46.81% dan CR5 sebesar 65.68%. Status: Akumulasi Terkonsentrasi."
         }
       }
     },
     "BBNI": {
       "ticker": "BBNI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.784Z",
+      "evaluated_at": "2026-09-12T09:03:56.083Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -1379,29 +1379,29 @@
           "harga_modal": 5400,
           "discount_pct": 0,
           "price_diff_pct": 0,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "NI",
               "broker_name": "BNI Sekuritas",
-              "buy_val": 1632400000000,
-              "buy_vol": 302295400,
+              "buy_val": 371000000000,
+              "buy_vol": 68703500,
               "avg_price": 5400,
               "avg_buy": 5400
             },
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 1306800000000,
-              "buy_vol": 242000000,
+              "buy_val": 297000000000,
+              "buy_vol": 55000000,
               "avg_price": 5400,
               "avg_buy": 5400
             },
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 1075800000000,
-              "buy_vol": 199221000,
+              "buy_val": 244500000000,
+              "buy_vol": 45277500,
               "avg_price": 5400,
               "avg_buy": 5400
             }
@@ -1410,24 +1410,24 @@
             {
               "broker": "NI",
               "broker_name": "BNI Sekuritas",
-              "buy_val": 1632400000000,
-              "buy_vol": 302295400,
+              "buy_val": 371000000000,
+              "buy_vol": 68703500,
               "avg_price": 5400,
               "avg_buy": 5400
             },
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 1306800000000,
-              "buy_vol": 242000000,
+              "buy_val": 297000000000,
+              "buy_vol": 55000000,
               "avg_price": 5400,
               "avg_buy": 5400
             },
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 1075800000000,
-              "buy_vol": 199221000,
+              "buy_val": 244500000000,
+              "buy_vol": 45277500,
               "avg_price": 5400,
               "avg_buy": 5400
             }
@@ -1460,12 +1460,12 @@
           "cr5": 43.32,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 4015000000000,
-          "top_5_val": 4956600000000,
-          "total_turnover": 11442750000000,
-          "top_3_vol": 743516400,
-          "top_5_vol": 917886200,
-          "total_vol": 917886200,
+          "top_3_val": 912500000000,
+          "top_5_val": 1126500000000,
+          "total_turnover": 2600625000000,
+          "top_3_vol": 168981000,
+          "top_5_vol": 208610500,
+          "total_vol": 208610500,
           "top_3_brokers": [
             "NI",
             "CC",
@@ -1478,7 +1478,7 @@
     "BBRI": {
       "ticker": "BBRI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.791Z",
+      "evaluated_at": "2026-09-12T09:03:56.091Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -1498,7 +1498,7 @@
           "harga_modal": 3396,
           "discount_pct": -51.65,
           "price_diff_pct": 51.65,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "YU",
@@ -1614,7 +1614,7 @@
     "BMRI": {
       "ticker": "BMRI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.797Z",
+      "evaluated_at": "2026-09-12T09:03:56.096Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -1634,7 +1634,7 @@
           "harga_modal": 4414,
           "discount_pct": -60.85,
           "price_diff_pct": 60.85,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "YU",
@@ -1762,7 +1762,7 @@
     "BREN": {
       "ticker": "BREN",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.803Z",
+      "evaluated_at": "2026-09-12T09:03:56.104Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -1782,7 +1782,7 @@
           "harga_modal": 3326,
           "discount_pct": -164.58,
           "price_diff_pct": 164.58,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "XL",
@@ -1898,7 +1898,7 @@
     "BRIS": {
       "ticker": "BRIS",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.806Z",
+      "evaluated_at": "2026-09-12T09:03:56.107Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -1918,29 +1918,29 @@
           "harga_modal": 2940,
           "discount_pct": -1.36,
           "price_diff_pct": 1.36,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 970200000000,
-              "buy_vol": 330000000,
+              "buy_val": 220500000000,
+              "buy_vol": 75000000,
               "avg_price": 2940,
               "avg_buy": 2940
             },
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 871200000000,
-              "buy_vol": 296324600,
+              "buy_val": 198000000000,
+              "buy_vol": 67346500,
               "avg_price": 2940,
               "avg_buy": 2940
             },
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 844800000000,
-              "buy_vol": 287346400,
+              "buy_val": 192000000000,
+              "buy_vol": 65306000,
               "avg_price": 2940,
               "avg_buy": 2940
             }
@@ -1949,24 +1949,24 @@
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 970200000000,
-              "buy_vol": 330000000,
+              "buy_val": 220500000000,
+              "buy_vol": 75000000,
               "avg_price": 2940,
               "avg_buy": 2940
             },
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 871200000000,
-              "buy_vol": 296324600,
+              "buy_val": 198000000000,
+              "buy_vol": 67346500,
               "avg_price": 2940,
               "avg_buy": 2940
             },
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 844800000000,
-              "buy_vol": 287346400,
+              "buy_val": 192000000000,
+              "buy_vol": 65306000,
               "avg_price": 2940,
               "avg_buy": 2940
             }
@@ -1999,12 +1999,12 @@
           "cr5": 50.61,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 2686200000000,
-          "top_5_val": 3874200000000,
-          "total_turnover": 7655670000000,
-          "top_3_vol": 913671000,
-          "top_5_vol": 1317749400,
-          "total_vol": 10082571400,
+          "top_3_val": 610500000000,
+          "top_5_val": 880500000000,
+          "total_turnover": 1739925000000,
+          "top_3_vol": 207652500,
+          "top_5_vol": 299488500,
+          "total_vol": 2291493500,
           "top_3_brokers": [
             "PD",
             "YP",
@@ -2017,7 +2017,7 @@
     "BRPT": {
       "ticker": "BRPT",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.810Z",
+      "evaluated_at": "2026-09-12T09:03:56.110Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -2037,21 +2037,21 @@
           "harga_modal": 1120,
           "discount_pct": -50.89,
           "price_diff_pct": 50.89,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 1192400000000,
-              "buy_vol": 1064641600,
+              "buy_val": 271000000000,
+              "buy_vol": 241964000,
               "avg_price": 1120,
               "avg_buy": 1120
             },
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 985600000000,
-              "buy_vol": 880000000,
+              "buy_val": 224000000000,
+              "buy_vol": 200000000,
               "avg_price": 1120,
               "avg_buy": 1120
             }
@@ -2060,16 +2060,16 @@
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 1192400000000,
-              "buy_vol": 1064641600,
+              "buy_val": 271000000000,
+              "buy_vol": 241964000,
               "avg_price": 1120,
               "avg_buy": 1120
             },
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 985600000000,
-              "buy_vol": 880000000,
+              "buy_val": 224000000000,
+              "buy_vol": 200000000,
               "avg_price": 1120,
               "avg_buy": 1120
             }
@@ -2117,12 +2117,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 2178000000000,
-          "top_5_val": 2178000000000,
-          "total_turnover": 6207300000000,
-          "top_3_vol": 1944641600,
-          "top_5_vol": 1944641600,
-          "total_vol": 5542228560,
+          "top_3_val": 495000000000,
+          "top_5_val": 495000000000,
+          "total_turnover": 1410750000000,
+          "top_3_vol": 441964000,
+          "top_5_vol": 441964000,
+          "total_vol": 1259597400,
           "top_3_brokers": [
             "YP",
             "RX"
@@ -2134,7 +2134,7 @@
     "BUKA": {
       "ticker": "BUKA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.810Z",
+      "evaluated_at": "2026-09-12T09:03:56.110Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -2170,7 +2170,7 @@
     "BUMI": {
       "ticker": "BUMI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.812Z",
+      "evaluated_at": "2026-09-12T09:03:56.113Z",
       "confluence_badge": "DISTRIBUTION",
       "bullish_signals_count": 0,
       "bearish_signals_count": 1,
@@ -2190,29 +2190,29 @@
           "harga_modal": 128,
           "discount_pct": -17.19,
           "price_diff_pct": 17.19,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 1507000000000,
-              "buy_vol": 11773436400,
+              "buy_val": 342500000000,
+              "buy_vol": 2675781000,
               "avg_price": 128,
               "avg_buy": 128
             },
             {
               "broker": "XC",
               "broker_name": "Ajaib Sekuritas Asia",
-              "buy_val": 1152800000000,
-              "buy_vol": 9006250000,
+              "buy_val": 262000000000,
+              "buy_vol": 2046875000,
               "avg_price": 128,
               "avg_buy": 128
             },
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 869000000000,
-              "buy_vol": 6789061400,
+              "buy_val": 197500000000,
+              "buy_vol": 1542968500,
               "avg_price": 128,
               "avg_buy": 128
             }
@@ -2221,24 +2221,24 @@
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 1507000000000,
-              "buy_vol": 11773436400,
+              "buy_val": 342500000000,
+              "buy_vol": 2675781000,
               "avg_price": 128,
               "avg_buy": 128
             },
             {
               "broker": "XC",
               "broker_name": "Ajaib Sekuritas Asia",
-              "buy_val": 1152800000000,
-              "buy_vol": 9006250000,
+              "buy_val": 262000000000,
+              "buy_vol": 2046875000,
               "avg_price": 128,
               "avg_buy": 128
             },
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 869000000000,
-              "buy_vol": 6789061400,
+              "buy_val": 197500000000,
+              "buy_vol": 1542968500,
               "avg_price": 128,
               "avg_buy": 128
             }
@@ -2288,12 +2288,12 @@
           "cr5": 47.51,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 3528800000000,
-          "top_5_val": 4778400000000,
-          "total_turnover": 10057080000000,
-          "top_3_vol": 27568747800,
-          "top_5_vol": 37331247800,
-          "total_vol": 286274997800,
+          "top_3_val": 802000000000,
+          "top_5_val": 1086000000000,
+          "total_turnover": 2285700000000,
+          "top_3_vol": 6265624500,
+          "top_5_vol": 8484374500,
+          "total_vol": 65062499500,
           "top_3_brokers": [
             "YP",
             "XC",
@@ -2306,7 +2306,7 @@
     "CPIN": {
       "ticker": "CPIN",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.814Z",
+      "evaluated_at": "2026-09-12T09:03:56.122Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -2326,13 +2326,13 @@
           "harga_modal": 5000,
           "discount_pct": -2,
           "price_diff_pct": 2,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 611600000000,
-              "buy_vol": 122320000,
+              "buy_val": 139000000000,
+              "buy_vol": 27800000,
               "avg_price": 5000,
               "avg_buy": 5000
             }
@@ -2341,8 +2341,8 @@
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 611600000000,
-              "buy_vol": 122320000,
+              "buy_val": 139000000000,
+              "buy_vol": 27800000,
               "avg_price": 5000,
               "avg_buy": 5000
             }
@@ -2373,12 +2373,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 611600000000,
-          "top_5_val": 611600000000,
-          "total_turnover": 1743060000000,
-          "top_3_vol": 122320000,
-          "top_5_vol": 122320000,
-          "total_vol": 348612000,
+          "top_3_val": 139000000000,
+          "top_5_val": 139000000000,
+          "total_turnover": 396150000000,
+          "top_3_vol": 27800000,
+          "top_5_vol": 27800000,
+          "total_vol": 79230000,
           "top_3_brokers": [
             "BK"
           ],
@@ -2389,7 +2389,7 @@
     "CUAN": {
       "ticker": "CUAN",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.816Z",
+      "evaluated_at": "2026-09-12T09:03:56.125Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -2409,29 +2409,29 @@
           "harga_modal": 7900,
           "discount_pct": 11.39,
           "price_diff_pct": -11.39,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 530200000000,
-              "buy_vol": 67113200,
+              "buy_val": 120500000000,
+              "buy_vol": 15253000,
               "avg_price": 7900,
               "avg_buy": 7900
             },
             {
               "broker": "XC",
               "broker_name": "Ajaib Sekuritas Asia",
-              "buy_val": 492800000000,
-              "buy_vol": 62378800,
+              "buy_val": 112000000000,
+              "buy_vol": 14177000,
               "avg_price": 7900,
               "avg_buy": 7900
             },
             {
               "broker": "AG",
               "broker_name": "Kiwoom Sekuritas Indonesia",
-              "buy_val": 391600000000,
-              "buy_vol": 49568200,
+              "buy_val": 89000000000,
+              "buy_vol": 11265500,
               "avg_price": 7900,
               "avg_buy": 7900
             }
@@ -2440,24 +2440,24 @@
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 530200000000,
-              "buy_vol": 67113200,
+              "buy_val": 120500000000,
+              "buy_vol": 15253000,
               "avg_price": 7900,
               "avg_buy": 7900
             },
             {
               "broker": "XC",
               "broker_name": "Ajaib Sekuritas Asia",
-              "buy_val": 492800000000,
-              "buy_vol": 62378800,
+              "buy_val": 112000000000,
+              "buy_vol": 14177000,
               "avg_price": 7900,
               "avg_buy": 7900
             },
             {
               "broker": "AG",
               "broker_name": "Kiwoom Sekuritas Indonesia",
-              "buy_val": 391600000000,
-              "buy_vol": 49568200,
+              "buy_val": 89000000000,
+              "buy_vol": 11265500,
               "avg_price": 7900,
               "avg_buy": 7900
             }
@@ -2490,12 +2490,12 @@
           "cr5": 54.51,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 1414600000000,
-          "top_5_val": 2197800000000,
-          "total_turnover": 4031610000000,
-          "top_3_vol": 179060200,
-          "top_5_vol": 278196600,
-          "total_vol": 2756606600,
+          "top_3_val": 321500000000,
+          "top_5_val": 499500000000,
+          "total_turnover": 916275000000,
+          "top_3_vol": 40695500,
+          "top_5_vol": 63226500,
+          "total_vol": 626501500,
           "top_3_brokers": [
             "YP",
             "XC",
@@ -2508,7 +2508,7 @@
     "DADA": {
       "ticker": "DADA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.822Z",
+      "evaluated_at": "2026-09-12T09:03:56.132Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -2528,7 +2528,7 @@
           "harga_modal": 50,
           "discount_pct": 0,
           "price_diff_pct": 0,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "XL",
@@ -2644,7 +2644,7 @@
     "DEWA": {
       "ticker": "DEWA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.825Z",
+      "evaluated_at": "2026-09-12T09:03:56.135Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -2664,29 +2664,29 @@
           "harga_modal": 88,
           "discount_pct": 11.36,
           "price_diff_pct": -11.36,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 772200000000,
-              "buy_vol": 8774999200,
+              "buy_val": 175500000000,
+              "buy_vol": 1994318000,
               "avg_price": 88,
               "avg_buy": 88
             },
             {
               "broker": "XC",
               "broker_name": "Ajaib Sekuritas Asia",
-              "buy_val": 686400000000,
-              "buy_vol": 7799998800,
+              "buy_val": 156000000000,
+              "buy_vol": 1772727000,
               "avg_price": 88,
               "avg_buy": 88
             },
             {
               "broker": "AG",
               "broker_name": "Kiwoom Sekuritas Indonesia",
-              "buy_val": 338800000000,
-              "buy_vol": 3850000000,
+              "buy_val": 77000000000,
+              "buy_vol": 875000000,
               "avg_price": 88,
               "avg_buy": 88
             }
@@ -2695,24 +2695,24 @@
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 772200000000,
-              "buy_vol": 8774999200,
+              "buy_val": 175500000000,
+              "buy_vol": 1994318000,
               "avg_price": 88,
               "avg_buy": 88
             },
             {
               "broker": "XC",
               "broker_name": "Ajaib Sekuritas Asia",
-              "buy_val": 686400000000,
-              "buy_vol": 7799998800,
+              "buy_val": 156000000000,
+              "buy_vol": 1772727000,
               "avg_price": 88,
               "avg_buy": 88
             },
             {
               "broker": "AG",
               "broker_name": "Kiwoom Sekuritas Indonesia",
-              "buy_val": 338800000000,
-              "buy_vol": 3850000000,
+              "buy_val": 77000000000,
+              "buy_vol": 875000000,
               "avg_price": 88,
               "avg_buy": 88
             }
@@ -2760,12 +2760,12 @@
           "cr5": 48.32,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 1797400000000,
-          "top_5_val": 2475000000000,
-          "total_turnover": 5122590000000,
-          "top_3_vol": 20424998000,
-          "top_5_vol": 28124998000,
-          "total_vol": 220624998000,
+          "top_3_val": 408500000000,
+          "top_5_val": 562500000000,
+          "total_turnover": 1164225000000,
+          "top_3_vol": 4642045000,
+          "top_5_vol": 6392045000,
+          "total_vol": 50142045000,
           "top_3_brokers": [
             "YP",
             "XC",
@@ -2778,7 +2778,7 @@
     "DOID": {
       "ticker": "DOID",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.828Z",
+      "evaluated_at": "2026-09-12T09:03:56.139Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -2798,13 +2798,13 @@
           "harga_modal": 7,
           "discount_pct": -2900,
           "price_diff_pct": 2900,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 631400000000,
-              "buy_vol": 889295000,
+              "buy_val": 143500000000,
+              "buy_vol": 202112500,
               "avg_price": 7,
               "avg_buy": 7
             }
@@ -2813,8 +2813,8 @@
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 631400000000,
-              "buy_vol": 889295000,
+              "buy_val": 143500000000,
+              "buy_vol": 202112500,
               "avg_price": 7,
               "avg_buy": 7
             }
@@ -2845,12 +2845,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 631400000000,
-          "top_5_val": 631400000000,
-          "total_turnover": 1799490000000,
-          "top_3_vol": 889295000,
-          "top_5_vol": 889295000,
-          "total_vol": 2534490750,
+          "top_3_val": 143500000000,
+          "top_5_val": 143500000000,
+          "total_turnover": 408975000000,
+          "top_3_vol": 202112500,
+          "top_5_vol": 202112500,
+          "total_vol": 576020625,
           "top_3_brokers": [
             "PD"
           ],
@@ -2861,7 +2861,7 @@
     "EMTK": {
       "ticker": "EMTK",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.828Z",
+      "evaluated_at": "2026-09-12T09:03:56.139Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -2897,7 +2897,7 @@
     "ENRG": {
       "ticker": "ENRG",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.832Z",
+      "evaluated_at": "2026-09-12T09:03:56.142Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -2917,13 +2917,13 @@
           "harga_modal": 220,
           "discount_pct": -520.45,
           "price_diff_pct": 520.45,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 635800000000,
-              "buy_vol": 2889999200,
+              "buy_val": 144500000000,
+              "buy_vol": 656818000,
               "avg_price": 220,
               "avg_buy": 220
             }
@@ -2932,8 +2932,8 @@
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 635800000000,
-              "buy_vol": 2889999200,
+              "buy_val": 144500000000,
+              "buy_vol": 656818000,
               "avg_price": 220,
               "avg_buy": 220
             }
@@ -2964,12 +2964,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 635800000000,
-          "top_5_val": 635800000000,
-          "total_turnover": 1812030000000,
-          "top_3_vol": 2889999200,
-          "top_5_vol": 2889999200,
-          "total_vol": 8236497720,
+          "top_3_val": 144500000000,
+          "top_5_val": 144500000000,
+          "total_turnover": 411825000000,
+          "top_3_vol": 656818000,
+          "top_5_vol": 656818000,
+          "total_vol": 1871931300,
           "top_3_brokers": [
             "YP"
           ],
@@ -2980,7 +2980,7 @@
     "EXCL": {
       "ticker": "EXCL",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:12.833Z",
+      "evaluated_at": "2026-09-12T09:03:56.143Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -3016,7 +3016,7 @@
     "FLOWALL1": {
       "ticker": "FLOWALL1",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:18.867Z",
+      "evaluated_at": "2026-09-12T09:04:01.699Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -3052,7 +3052,7 @@
     "GOTO": {
       "ticker": "GOTO",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:18.875Z",
+      "evaluated_at": "2026-09-12T09:04:01.708Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -3072,7 +3072,7 @@
           "harga_modal": 50,
           "discount_pct": 0,
           "price_diff_pct": 0,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "ZP",
@@ -3188,7 +3188,7 @@
     "GPRA": {
       "ticker": "GPRA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:18.966Z",
+      "evaluated_at": "2026-09-12T09:04:01.759Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -3201,72 +3201,72 @@
           "is_sweet_spot": false,
           "current_price": 101,
           "close_price": 101,
-          "bandar_avg_buy": 108,
-          "bandar_avg_price": 108,
-          "avg_buy_price": 108,
-          "broker_cost": 108,
-          "harga_modal": 108,
-          "discount_pct": 6.48,
-          "price_diff_pct": -6.48,
-          "range": "30D",
+          "bandar_avg_buy": 111,
+          "bandar_avg_price": 111,
+          "avg_buy_price": 111,
+          "broker_cost": 111,
+          "harga_modal": 111,
+          "discount_pct": 9.01,
+          "price_diff_pct": -9.01,
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "AG",
               "broker_name": "KIWOOM SEKURITAS INDONESIA",
-              "buy_val": 149769746300,
-              "buy_vol": 1384854000,
-              "avg_price": 108,
-              "avg_buy": 108
+              "buy_val": 52271117100,
+              "buy_vol": 468367300,
+              "avg_price": 112,
+              "avg_buy": 112
             },
             {
               "broker": "OD",
               "broker_name": "BRI DANAREKSA SEKURITAS",
-              "buy_val": 56954859900,
-              "buy_vol": 523904100,
-              "avg_price": 109,
-              "avg_buy": 109
+              "buy_val": 26765229700,
+              "buy_vol": 241596600,
+              "avg_price": 111,
+              "avg_buy": 111
             },
             {
-              "broker": "YP",
-              "broker_name": "MIRAE ASSET SEKURITAS INDONESIA",
-              "buy_val": 37517809900,
-              "buy_vol": 352444100,
-              "avg_price": 106,
-              "avg_buy": 106
+              "broker": "XA",
+              "broker_name": "NH KORINDO SEKURITAS INDONESIA",
+              "buy_val": 20448089300,
+              "buy_vol": 185631900,
+              "avg_price": 110,
+              "avg_buy": 110
             }
           ],
           "top_broker_details": [
             {
               "broker": "AG",
               "broker_name": "KIWOOM SEKURITAS INDONESIA",
-              "buy_val": 149769746300,
-              "buy_vol": 1384854000,
-              "avg_price": 108,
-              "avg_buy": 108
+              "buy_val": 52271117100,
+              "buy_vol": 468367300,
+              "avg_price": 112,
+              "avg_buy": 112
             },
             {
               "broker": "OD",
               "broker_name": "BRI DANAREKSA SEKURITAS",
-              "buy_val": 56954859900,
-              "buy_vol": 523904100,
-              "avg_price": 109,
-              "avg_buy": 109
+              "buy_val": 26765229700,
+              "buy_vol": 241596600,
+              "avg_price": 111,
+              "avg_buy": 111
             },
             {
-              "broker": "YP",
-              "broker_name": "MIRAE ASSET SEKURITAS INDONESIA",
-              "buy_val": 37517809900,
-              "buy_vol": 352444100,
-              "avg_price": 106,
-              "avg_buy": 106
+              "broker": "XA",
+              "broker_name": "NH KORINDO SEKURITAS INDONESIA",
+              "buy_val": 20448089300,
+              "buy_vol": 185631900,
+              "avg_price": 110,
+              "avg_buy": 110
             }
           ],
           "top_brokers": [
             "AG",
             "OD",
-            "YP"
+            "XA"
           ],
-          "description": "Harga terkini (101) berada di bawah modal rata-rata Top 3 Bandar (108) dengan diskon 6.48%."
+          "description": "Harga terkini (101) berada di bawah modal rata-rata Top 3 Bandar (111) dengan diskon 9.01%."
         },
         "silent_foreign_accumulation": {
           "signal_key": "SILENT_FOREIGN_ACCUMULATION",
@@ -3299,29 +3299,29 @@
           "signal_name": "Concentration Ratio (CR3 & CR5)",
           "triggered": true,
           "is_massive": false,
-          "cr3": 55.89,
-          "cr5": 70.29,
+          "cr3": 50.89,
+          "cr5": 67.77,
           "status": "AKUMULASI_TERKONSENTRASI",
           "label": "Akumulasi Terkonsentrasi",
-          "top_3_val": 244242416100,
-          "top_5_val": 307170696800,
-          "total_turnover": 437022557400,
-          "top_3_vol": 2261202200,
-          "top_5_vol": 2843929400,
-          "total_vol": 4052846100,
+          "top_3_val": 99484436100,
+          "top_5_val": 132467511700,
+          "total_turnover": 195477591600,
+          "top_3_vol": 895595800,
+          "top_5_vol": 1196901800,
+          "total_vol": 1772666000,
           "top_3_brokers": [
             "AG",
             "OD",
-            "YP"
+            "XA"
           ],
-          "description": "CR3 sebesar 55.89% dan CR5 sebesar 70.29%. Status: Akumulasi Terkonsentrasi."
+          "description": "CR3 sebesar 50.89% dan CR5 sebesar 67.77%. Status: Akumulasi Terkonsentrasi."
         }
       }
     },
     "ICBP": {
       "ticker": "ICBP",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:18.969Z",
+      "evaluated_at": "2026-09-12T09:04:01.762Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -3341,29 +3341,29 @@
           "harga_modal": 11200,
           "discount_pct": 0,
           "price_diff_pct": 0,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 796400000000,
-              "buy_vol": 71106200,
+              "buy_val": 181000000000,
+              "buy_vol": 16160500,
               "avg_price": 11200,
               "avg_buy": 11200
             },
             {
               "broker": "AI",
               "broker_name": "UOB Kay Hian Sekuritas",
-              "buy_val": 343200000000,
-              "buy_vol": 30641600,
+              "buy_val": 78000000000,
+              "buy_vol": 6964000,
               "avg_price": 11200,
               "avg_buy": 11200
             },
             {
               "broker": "BQ",
               "broker_name": "Korea Investment and Sekuritas",
-              "buy_val": 343200000000,
-              "buy_vol": 30641600,
+              "buy_val": 78000000000,
+              "buy_vol": 6964000,
               "avg_price": 11200,
               "avg_buy": 11200
             }
@@ -3372,24 +3372,24 @@
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 796400000000,
-              "buy_vol": 71106200,
+              "buy_val": 181000000000,
+              "buy_vol": 16160500,
               "avg_price": 11200,
               "avg_buy": 11200
             },
             {
               "broker": "AI",
               "broker_name": "UOB Kay Hian Sekuritas",
-              "buy_val": 343200000000,
-              "buy_vol": 30641600,
+              "buy_val": 78000000000,
+              "buy_vol": 6964000,
               "avg_price": 11200,
               "avg_buy": 11200
             },
             {
               "broker": "BQ",
               "broker_name": "Korea Investment and Sekuritas",
-              "buy_val": 343200000000,
-              "buy_vol": 30641600,
+              "buy_val": 78000000000,
+              "buy_vol": 6964000,
               "avg_price": 11200,
               "avg_buy": 11200
             }
@@ -3434,12 +3434,12 @@
           "cr5": 51.33,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 1482800000000,
-          "top_5_val": 2169200000000,
-          "total_turnover": 4225980000000,
-          "top_3_vol": 132389400,
-          "top_5_vol": 193672600,
-          "total_vol": 438805400,
+          "top_3_val": 337000000000,
+          "top_5_val": 493000000000,
+          "total_turnover": 960450000000,
+          "top_3_vol": 30088500,
+          "top_5_vol": 44016500,
+          "total_vol": 99728500,
           "top_3_brokers": [
             "BK",
             "AI",
@@ -3452,7 +3452,7 @@
     "INCO": {
       "ticker": "INCO",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:18.971Z",
+      "evaluated_at": "2026-09-12T09:04:01.764Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -3472,13 +3472,13 @@
           "harga_modal": 3980,
           "discount_pct": -22.86,
           "price_diff_pct": 22.86,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "AK",
               "broker_name": "UBS Sekuritas Indonesia",
-              "buy_val": 624800000000,
-              "buy_vol": 156983200,
+              "buy_val": 142000000000,
+              "buy_vol": 35678000,
               "avg_price": 3980,
               "avg_buy": 3980
             }
@@ -3487,8 +3487,8 @@
             {
               "broker": "AK",
               "broker_name": "UBS Sekuritas Indonesia",
-              "buy_val": 624800000000,
-              "buy_vol": 156983200,
+              "buy_val": 142000000000,
+              "buy_vol": 35678000,
               "avg_price": 3980,
               "avg_buy": 3980
             }
@@ -3519,12 +3519,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 624800000000,
-          "top_5_val": 624800000000,
-          "total_turnover": 1780680000000,
-          "top_3_vol": 156983200,
-          "top_5_vol": 156983200,
-          "total_vol": 447402120,
+          "top_3_val": 142000000000,
+          "top_5_val": 142000000000,
+          "total_turnover": 404700000000,
+          "top_3_vol": 35678000,
+          "top_5_vol": 35678000,
+          "total_vol": 101682300,
           "top_3_brokers": [
             "AK"
           ],
@@ -3535,7 +3535,7 @@
     "INDF": {
       "ticker": "INDF",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:18.974Z",
+      "evaluated_at": "2026-09-12T09:04:01.767Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -3555,13 +3555,13 @@
           "harga_modal": 6900,
           "discount_pct": 2.54,
           "price_diff_pct": -2.54,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 387200000000,
-              "buy_vol": 56115400,
+              "buy_val": 88000000000,
+              "buy_vol": 12753500,
               "avg_price": 6900,
               "avg_buy": 6900
             }
@@ -3570,8 +3570,8 @@
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 387200000000,
-              "buy_vol": 56115400,
+              "buy_val": 88000000000,
+              "buy_vol": 12753500,
               "avg_price": 6900,
               "avg_buy": 6900
             }
@@ -3602,12 +3602,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 387200000000,
-          "top_5_val": 387200000000,
-          "total_turnover": 1103520000000,
-          "top_3_vol": 56115400,
-          "top_5_vol": 56115400,
-          "total_vol": 159928890,
+          "top_3_val": 88000000000,
+          "top_5_val": 88000000000,
+          "total_turnover": 250800000000,
+          "top_3_vol": 12753500,
+          "top_5_vol": 12753500,
+          "total_vol": 36347475,
           "top_3_brokers": [
             "BK"
           ],
@@ -3618,7 +3618,7 @@
     "INKP": {
       "ticker": "INKP",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:18.979Z",
+      "evaluated_at": "2026-09-12T09:04:01.769Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -3638,13 +3638,13 @@
           "harga_modal": 8000,
           "discount_pct": 4.06,
           "price_diff_pct": -4.06,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 378400000000,
-              "buy_vol": 47300000,
+              "buy_val": 86000000000,
+              "buy_vol": 10750000,
               "avg_price": 8000,
               "avg_buy": 8000
             }
@@ -3653,8 +3653,8 @@
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 378400000000,
-              "buy_vol": 47300000,
+              "buy_val": 86000000000,
+              "buy_vol": 10750000,
               "avg_price": 8000,
               "avg_buy": 8000
             }
@@ -3685,12 +3685,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 378400000000,
-          "top_5_val": 378400000000,
-          "total_turnover": 1078440000000,
-          "top_3_vol": 47300000,
-          "top_5_vol": 47300000,
-          "total_vol": 134805000,
+          "top_3_val": 86000000000,
+          "top_5_val": 86000000000,
+          "total_turnover": 245100000000,
+          "top_3_vol": 10750000,
+          "top_5_vol": 10750000,
+          "total_vol": 30637500,
           "top_3_brokers": [
             "RX"
           ],
@@ -3701,7 +3701,7 @@
     "JARR": {
       "ticker": "JARR",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:18.994Z",
+      "evaluated_at": "2026-09-12T09:04:01.782Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -3721,7 +3721,7 @@
           "harga_modal": 3312,
           "discount_pct": 44.14,
           "price_diff_pct": -44.14,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "AK",
@@ -3837,7 +3837,7 @@
     "JSMR": {
       "ticker": "JSMR",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:19.000Z",
+      "evaluated_at": "2026-09-12T09:04:01.786Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -3857,29 +3857,29 @@
           "harga_modal": 4860,
           "discount_pct": 43.21,
           "price_diff_pct": -43.21,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "DX",
               "broker_name": "Bahana Sekuritas",
-              "buy_val": 492800000000,
-              "buy_vol": 101398000,
+              "buy_val": 112000000000,
+              "buy_vol": 23045000,
               "avg_price": 4860,
               "avg_buy": 4860
             },
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 473000000000,
-              "buy_vol": 97323600,
+              "buy_val": 107500000000,
+              "buy_vol": 22119000,
               "avg_price": 4860,
               "avg_buy": 4860
             },
             {
               "broker": "NI",
               "broker_name": "BNI Sekuritas",
-              "buy_val": 411400000000,
-              "buy_vol": 84649400,
+              "buy_val": 93500000000,
+              "buy_vol": 19238500,
               "avg_price": 4860,
               "avg_buy": 4860
             }
@@ -3888,24 +3888,24 @@
             {
               "broker": "DX",
               "broker_name": "Bahana Sekuritas",
-              "buy_val": 492800000000,
-              "buy_vol": 101398000,
+              "buy_val": 112000000000,
+              "buy_vol": 23045000,
               "avg_price": 4860,
               "avg_buy": 4860
             },
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 473000000000,
-              "buy_vol": 97323600,
+              "buy_val": 107500000000,
+              "buy_vol": 22119000,
               "avg_price": 4860,
               "avg_buy": 4860
             },
             {
               "broker": "NI",
               "broker_name": "BNI Sekuritas",
-              "buy_val": 411400000000,
-              "buy_vol": 84649400,
+              "buy_val": 93500000000,
+              "buy_vol": 19238500,
               "avg_price": 4860,
               "avg_buy": 4860
             }
@@ -3938,12 +3938,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 1377200000000,
-          "top_5_val": 1377200000000,
-          "total_turnover": 3925020000000,
-          "top_3_vol": 283371000,
-          "top_5_vol": 283371000,
-          "total_vol": 807607350,
+          "top_3_val": 313000000000,
+          "top_5_val": 313000000000,
+          "total_turnover": 892050000000,
+          "top_3_vol": 64402500,
+          "top_5_vol": 64402500,
+          "total_vol": 183547125,
           "top_3_brokers": [
             "DX",
             "CC",
@@ -3956,7 +3956,7 @@
     "KLBF": {
       "ticker": "KLBF",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:19.003Z",
+      "evaluated_at": "2026-09-12T09:04:01.789Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -3976,13 +3976,13 @@
           "harga_modal": 1680,
           "discount_pct": 7.14,
           "price_diff_pct": -7.14,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 530200000000,
-              "buy_vol": 315594400,
+              "buy_val": 120500000000,
+              "buy_vol": 71726000,
               "avg_price": 1680,
               "avg_buy": 1680
             }
@@ -3991,8 +3991,8 @@
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 530200000000,
-              "buy_vol": 315594400,
+              "buy_val": 120500000000,
+              "buy_vol": 71726000,
               "avg_price": 1680,
               "avg_buy": 1680
             }
@@ -4037,12 +4037,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 530200000000,
-          "top_5_val": 530200000000,
-          "total_turnover": 1511070000000,
-          "top_3_vol": 315594400,
-          "top_5_vol": 315594400,
-          "total_vol": 899444040,
+          "top_3_val": 120500000000,
+          "top_5_val": 120500000000,
+          "total_turnover": 343425000000,
+          "top_3_vol": 71726000,
+          "top_5_vol": 71726000,
+          "total_vol": 204419100,
           "top_3_brokers": [
             "BK"
           ],
@@ -4053,7 +4053,7 @@
     "MAPI": {
       "ticker": "MAPI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:19.007Z",
+      "evaluated_at": "2026-09-12T09:04:01.793Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -4073,13 +4073,13 @@
           "harga_modal": 1520,
           "discount_pct": 1.97,
           "price_diff_pct": -1.97,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 435600000000,
-              "buy_vol": 286578600,
+              "buy_val": 99000000000,
+              "buy_vol": 65131500,
               "avg_price": 1520,
               "avg_buy": 1520
             }
@@ -4088,8 +4088,8 @@
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 435600000000,
-              "buy_vol": 286578600,
+              "buy_val": 99000000000,
+              "buy_vol": 65131500,
               "avg_price": 1520,
               "avg_buy": 1520
             }
@@ -4120,12 +4120,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 435600000000,
-          "top_5_val": 435600000000,
-          "total_turnover": 1241460000000,
-          "top_3_vol": 286578600,
-          "top_5_vol": 286578600,
-          "total_vol": 816749010,
+          "top_3_val": 99000000000,
+          "top_5_val": 99000000000,
+          "total_turnover": 282150000000,
+          "top_3_vol": 65131500,
+          "top_5_vol": 65131500,
+          "total_vol": 185624775,
           "top_3_brokers": [
             "BK"
           ],
@@ -4136,7 +4136,7 @@
     "MBMA": {
       "ticker": "MBMA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:19.013Z",
+      "evaluated_at": "2026-09-12T09:04:01.796Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -4156,13 +4156,13 @@
           "harga_modal": 580,
           "discount_pct": 11.21,
           "price_diff_pct": -11.21,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 640200000000,
-              "buy_vol": 1103792800,
+              "buy_val": 145500000000,
+              "buy_vol": 250862000,
               "avg_price": 580,
               "avg_buy": 580
             }
@@ -4171,8 +4171,8 @@
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 640200000000,
-              "buy_vol": 1103792800,
+              "buy_val": 145500000000,
+              "buy_vol": 250862000,
               "avg_price": 580,
               "avg_buy": 580
             }
@@ -4203,12 +4203,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 640200000000,
-          "top_5_val": 640200000000,
-          "total_turnover": 1824570000000,
-          "top_3_vol": 1103792800,
-          "top_5_vol": 1103792800,
-          "total_vol": 3145809480,
+          "top_3_val": 145500000000,
+          "top_5_val": 145500000000,
+          "total_turnover": 414675000000,
+          "top_3_vol": 250862000,
+          "top_5_vol": 250862000,
+          "total_vol": 714956700,
           "top_3_brokers": [
             "RX"
           ],
@@ -4219,7 +4219,7 @@
     "MDKA": {
       "ticker": "MDKA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:19.013Z",
+      "evaluated_at": "2026-09-12T09:04:01.797Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -4255,7 +4255,7 @@
     "MEDC": {
       "ticker": "MEDC",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:19.017Z",
+      "evaluated_at": "2026-09-12T09:04:01.801Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -4275,21 +4275,21 @@
           "harga_modal": 1250,
           "discount_pct": 1.2,
           "price_diff_pct": -1.2,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "AK",
               "broker_name": "UBS Sekuritas Indonesia",
-              "buy_val": 426800000000,
-              "buy_vol": 341440000,
+              "buy_val": 97000000000,
+              "buy_vol": 77600000,
               "avg_price": 1250,
               "avg_buy": 1250
             },
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 385000000000,
-              "buy_vol": 308000000,
+              "buy_val": 87500000000,
+              "buy_vol": 70000000,
               "avg_price": 1250,
               "avg_buy": 1250
             }
@@ -4298,16 +4298,16 @@
             {
               "broker": "AK",
               "broker_name": "UBS Sekuritas Indonesia",
-              "buy_val": 426800000000,
-              "buy_vol": 341440000,
+              "buy_val": 97000000000,
+              "buy_vol": 77600000,
               "avg_price": 1250,
               "avg_buy": 1250
             },
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 385000000000,
-              "buy_vol": 308000000,
+              "buy_val": 87500000000,
+              "buy_vol": 70000000,
               "avg_price": 1250,
               "avg_buy": 1250
             }
@@ -4354,12 +4354,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 811800000000,
-          "top_5_val": 811800000000,
-          "total_turnover": 2313630000000,
-          "top_3_vol": 649440000,
-          "top_5_vol": 649440000,
-          "total_vol": 1850904000,
+          "top_3_val": 184500000000,
+          "top_5_val": 184500000000,
+          "total_turnover": 525825000000,
+          "top_3_vol": 147600000,
+          "top_5_vol": 147600000,
+          "total_vol": 420660000,
           "top_3_brokers": [
             "AK",
             "PD"
@@ -4371,7 +4371,7 @@
     "NOACC": {
       "ticker": "NOACC",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:24.075Z",
+      "evaluated_at": "2026-09-12T09:04:07.105Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -4407,7 +4407,7 @@
     "NOCACHE1": {
       "ticker": "NOCACHE1",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.363Z",
+      "evaluated_at": "2026-09-12T09:04:12.472Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -4443,7 +4443,7 @@
     "PGAS": {
       "ticker": "PGAS",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.367Z",
+      "evaluated_at": "2026-09-12T09:04:12.475Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -4463,29 +4463,29 @@
           "harga_modal": 1540,
           "discount_pct": 2.27,
           "price_diff_pct": -2.27,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "NI",
               "broker_name": "BNI Sekuritas",
-              "buy_val": 624800000000,
-              "buy_vol": 405713000,
+              "buy_val": 142000000000,
+              "buy_vol": 92207500,
               "avg_price": 1540,
               "avg_buy": 1540
             },
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 543400000000,
-              "buy_vol": 352855800,
+              "buy_val": 123500000000,
+              "buy_vol": 80194500,
               "avg_price": 1540,
               "avg_buy": 1540
             },
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 541200000000,
-              "buy_vol": 351428000,
+              "buy_val": 123000000000,
+              "buy_vol": 79870000,
               "avg_price": 1540,
               "avg_buy": 1540
             }
@@ -4494,24 +4494,24 @@
             {
               "broker": "NI",
               "broker_name": "BNI Sekuritas",
-              "buy_val": 624800000000,
-              "buy_vol": 405713000,
+              "buy_val": 142000000000,
+              "buy_vol": 92207500,
               "avg_price": 1540,
               "avg_buy": 1540
             },
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 543400000000,
-              "buy_vol": 352855800,
+              "buy_val": 123500000000,
+              "buy_vol": 80194500,
               "avg_price": 1540,
               "avg_buy": 1540
             },
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 541200000000,
-              "buy_vol": 351428000,
+              "buy_val": 123000000000,
+              "buy_vol": 79870000,
               "avg_price": 1540,
               "avg_buy": 1540
             }
@@ -4556,12 +4556,12 @@
           "cr5": 52.79,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 1709400000000,
-          "top_5_val": 2571800000000,
-          "total_turnover": 4871790000000,
-          "top_3_vol": 1109996800,
-          "top_5_vol": 1669995800,
-          "total_vol": 2462851600,
+          "top_3_val": 388500000000,
+          "top_5_val": 584500000000,
+          "total_turnover": 1107225000000,
+          "top_3_vol": 252272000,
+          "top_5_vol": 379544500,
+          "total_vol": 559739000,
           "top_3_brokers": [
             "NI",
             "CC",
@@ -4574,7 +4574,7 @@
     "PSAB": {
       "ticker": "PSAB",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.371Z",
+      "evaluated_at": "2026-09-12T09:04:12.479Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -4594,13 +4594,13 @@
           "harga_modal": 280,
           "discount_pct": -50.71,
           "price_diff_pct": 50.71,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 534600000000,
-              "buy_vol": 1909285400,
+              "buy_val": 121500000000,
+              "buy_vol": 433928500,
               "avg_price": 280,
               "avg_buy": 280
             }
@@ -4609,8 +4609,8 @@
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 534600000000,
-              "buy_vol": 1909285400,
+              "buy_val": 121500000000,
+              "buy_vol": 433928500,
               "avg_price": 280,
               "avg_buy": 280
             }
@@ -4641,12 +4641,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 534600000000,
-          "top_5_val": 534600000000,
-          "total_turnover": 1523610000000,
-          "top_3_vol": 1909285400,
-          "top_5_vol": 1909285400,
-          "total_vol": 5441463390,
+          "top_3_val": 121500000000,
+          "top_5_val": 121500000000,
+          "total_turnover": 346275000000,
+          "top_3_vol": 433928500,
+          "top_5_vol": 433928500,
+          "total_vol": 1236696225,
           "top_3_brokers": [
             "PD"
           ],
@@ -4657,7 +4657,7 @@
     "PTBA": {
       "ticker": "PTBA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.374Z",
+      "evaluated_at": "2026-09-12T09:04:12.482Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -4677,29 +4677,29 @@
           "harga_modal": 2680,
           "discount_pct": 10.07,
           "price_diff_pct": -10.07,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 686400000000,
-              "buy_vol": 256117400,
+              "buy_val": 156000000000,
+              "buy_vol": 58208500,
               "avg_price": 2680,
               "avg_buy": 2680
             },
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 479600000000,
-              "buy_vol": 178954600,
+              "buy_val": 109000000000,
+              "buy_vol": 40671500,
               "avg_price": 2680,
               "avg_buy": 2680
             },
             {
               "broker": "DX",
               "broker_name": "Bahana Sekuritas",
-              "buy_val": 363000000000,
-              "buy_vol": 135447400,
+              "buy_val": 82500000000,
+              "buy_vol": 30783500,
               "avg_price": 2680,
               "avg_buy": 2680
             }
@@ -4708,24 +4708,24 @@
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 686400000000,
-              "buy_vol": 256117400,
+              "buy_val": 156000000000,
+              "buy_vol": 58208500,
               "avg_price": 2680,
               "avg_buy": 2680
             },
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 479600000000,
-              "buy_vol": 178954600,
+              "buy_val": 109000000000,
+              "buy_vol": 40671500,
               "avg_price": 2680,
               "avg_buy": 2680
             },
             {
               "broker": "DX",
               "broker_name": "Bahana Sekuritas",
-              "buy_val": 363000000000,
-              "buy_vol": 135447400,
+              "buy_val": 82500000000,
+              "buy_vol": 30783500,
               "avg_price": 2680,
               "avg_buy": 2680
             }
@@ -4758,12 +4758,12 @@
           "cr5": 43.37,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 1529000000000,
-          "top_5_val": 1889800000000,
-          "total_turnover": 4357650000000,
-          "top_3_vol": 570519400,
-          "top_5_vol": 705146200,
-          "total_vol": 705146200,
+          "top_3_val": 347500000000,
+          "top_5_val": 429500000000,
+          "total_turnover": 990375000000,
+          "top_3_vol": 129663500,
+          "top_5_vol": 160260500,
+          "total_vol": 160260500,
           "top_3_brokers": [
             "CC",
             "RX",
@@ -4776,7 +4776,7 @@
     "PTRO": {
       "ticker": "PTRO",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.376Z",
+      "evaluated_at": "2026-09-12T09:04:12.485Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -4796,21 +4796,21 @@
           "harga_modal": 13200,
           "discount_pct": -7.58,
           "price_diff_pct": 7.58,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 479600000000,
-              "buy_vol": 36333000,
+              "buy_val": 109000000000,
+              "buy_vol": 8257500,
               "avg_price": 13200,
               "avg_buy": 13200
             },
             {
               "broker": "XC",
               "broker_name": "Ajaib Sekuritas Asia",
-              "buy_val": 435600000000,
-              "buy_vol": 33000000,
+              "buy_val": 99000000000,
+              "buy_vol": 7500000,
               "avg_price": 13200,
               "avg_buy": 13200
             }
@@ -4819,16 +4819,16 @@
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 479600000000,
-              "buy_vol": 36333000,
+              "buy_val": 109000000000,
+              "buy_vol": 8257500,
               "avg_price": 13200,
               "avg_buy": 13200
             },
             {
               "broker": "XC",
               "broker_name": "Ajaib Sekuritas Asia",
-              "buy_val": 435600000000,
-              "buy_vol": 33000000,
+              "buy_val": 99000000000,
+              "buy_vol": 7500000,
               "avg_price": 13200,
               "avg_buy": 13200
             }
@@ -4860,12 +4860,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 915200000000,
-          "top_5_val": 915200000000,
-          "total_turnover": 2608320000000,
-          "top_3_vol": 69333000,
-          "top_5_vol": 69333000,
-          "total_vol": 197599050,
+          "top_3_val": 208000000000,
+          "top_5_val": 208000000000,
+          "total_turnover": 592800000000,
+          "top_3_vol": 15757500,
+          "top_5_vol": 15757500,
+          "total_vol": 44908875,
           "top_3_brokers": [
             "YP",
             "XC"
@@ -4877,7 +4877,7 @@
     "RAJA": {
       "ticker": "RAJA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.383Z",
+      "evaluated_at": "2026-09-12T09:04:12.489Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -4897,13 +4897,13 @@
           "harga_modal": 19,
           "discount_pct": -4584.21,
           "price_diff_pct": 4584.21,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 411400000000,
-              "buy_vol": 222378200,
+              "buy_val": 93500000000,
+              "buy_vol": 50540500,
               "avg_price": 19,
               "avg_buy": 19
             }
@@ -4912,8 +4912,8 @@
             {
               "broker": "YP",
               "broker_name": "Mirae Asset Sekuritas Indonesia",
-              "buy_val": 411400000000,
-              "buy_vol": 222378200,
+              "buy_val": 93500000000,
+              "buy_vol": 50540500,
               "avg_price": 19,
               "avg_buy": 19
             }
@@ -4944,12 +4944,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 411400000000,
-          "top_5_val": 411400000000,
-          "total_turnover": 1172490000000,
-          "top_3_vol": 222378200,
-          "top_5_vol": 222378200,
-          "total_vol": 633777870,
+          "top_3_val": 93500000000,
+          "top_5_val": 93500000000,
+          "total_turnover": 266475000000,
+          "top_3_vol": 50540500,
+          "top_5_vol": 50540500,
+          "total_vol": 144040425,
           "top_3_brokers": [
             "YP"
           ],
@@ -4960,7 +4960,7 @@
     "SMGR": {
       "ticker": "SMGR",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.387Z",
+      "evaluated_at": "2026-09-12T09:04:12.493Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -4980,21 +4980,21 @@
           "harga_modal": 40,
           "discount_pct": -3687.5,
           "price_diff_pct": 3687.5,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "NI",
               "broker_name": "BNI Sekuritas",
-              "buy_val": 486200000000,
-              "buy_vol": 123087800,
+              "buy_val": 110500000000,
+              "buy_vol": 27974500,
               "avg_price": 40,
               "avg_buy": 40
             },
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 400400000000,
-              "buy_vol": 101365000,
+              "buy_val": 91000000000,
+              "buy_vol": 23037500,
               "avg_price": 40,
               "avg_buy": 40
             }
@@ -5003,16 +5003,16 @@
             {
               "broker": "NI",
               "broker_name": "BNI Sekuritas",
-              "buy_val": 486200000000,
-              "buy_vol": 123087800,
+              "buy_val": 110500000000,
+              "buy_vol": 27974500,
               "avg_price": 40,
               "avg_buy": 40
             },
             {
               "broker": "CC",
               "broker_name": "Mandiri Sekuritas",
-              "buy_val": 400400000000,
-              "buy_vol": 101365000,
+              "buy_val": 91000000000,
+              "buy_vol": 23037500,
               "avg_price": 40,
               "avg_buy": 40
             }
@@ -5059,12 +5059,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 886600000000,
-          "top_5_val": 886600000000,
-          "total_turnover": 2526810000000,
-          "top_3_vol": 224452800,
-          "top_5_vol": 224452800,
-          "total_vol": 639690480,
+          "top_3_val": 201500000000,
+          "top_5_val": 201500000000,
+          "total_turnover": 574275000000,
+          "top_3_vol": 51012000,
+          "top_5_vol": 51012000,
+          "total_vol": 145384200,
           "top_3_brokers": [
             "NI",
             "CC"
@@ -5076,7 +5076,7 @@
     "TKIM": {
       "ticker": "TKIM",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.391Z",
+      "evaluated_at": "2026-09-12T09:04:12.497Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -5096,13 +5096,13 @@
           "harga_modal": 7000,
           "discount_pct": 14.64,
           "price_diff_pct": -14.64,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 325600000000,
-              "buy_vol": 46512400,
+              "buy_val": 74000000000,
+              "buy_vol": 10571000,
               "avg_price": 7000,
               "avg_buy": 7000
             }
@@ -5111,8 +5111,8 @@
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 325600000000,
-              "buy_vol": 46512400,
+              "buy_val": 74000000000,
+              "buy_vol": 10571000,
               "avg_price": 7000,
               "avg_buy": 7000
             }
@@ -5143,12 +5143,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 325600000000,
-          "top_5_val": 325600000000,
-          "total_turnover": 927960000000,
-          "top_3_vol": 46512400,
-          "top_5_vol": 46512400,
-          "total_vol": 132560340,
+          "top_3_val": 74000000000,
+          "top_5_val": 74000000000,
+          "total_turnover": 210900000000,
+          "top_3_vol": 10571000,
+          "top_5_vol": 10571000,
+          "total_vol": 30127350,
           "top_3_brokers": [
             "RX"
           ],
@@ -5159,7 +5159,7 @@
     "TLKM": {
       "ticker": "TLKM",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.397Z",
+      "evaluated_at": "2026-09-12T09:04:12.506Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 2,
       "bearish_signals_count": 0,
@@ -5179,7 +5179,7 @@
           "harga_modal": 2641,
           "discount_pct": -1.1,
           "price_diff_pct": 1.1,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "ZP",
@@ -5307,7 +5307,7 @@
     "TOBA": {
       "ticker": "TOBA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.400Z",
+      "evaluated_at": "2026-09-12T09:04:12.511Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -5327,13 +5327,13 @@
           "harga_modal": 590,
           "discount_pct": 21.36,
           "price_diff_pct": -21.36,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 415800000000,
-              "buy_vol": 704743600,
+              "buy_val": 94500000000,
+              "buy_vol": 160169000,
               "avg_price": 590,
               "avg_buy": 590
             }
@@ -5342,8 +5342,8 @@
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 415800000000,
-              "buy_vol": 704743600,
+              "buy_val": 94500000000,
+              "buy_vol": 160169000,
               "avg_price": 590,
               "avg_buy": 590
             }
@@ -5374,12 +5374,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 415800000000,
-          "top_5_val": 415800000000,
-          "total_turnover": 1185030000000,
-          "top_3_vol": 704743600,
-          "top_5_vol": 704743600,
-          "total_vol": 2008519260,
+          "top_3_val": 94500000000,
+          "top_5_val": 94500000000,
+          "total_turnover": 269325000000,
+          "top_3_vol": 160169000,
+          "top_5_vol": 160169000,
+          "total_vol": 456481650,
           "top_3_brokers": [
             "PD"
           ],
@@ -5390,9 +5390,9 @@
     "TPIA": {
       "ticker": "TPIA",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.402Z",
+      "evaluated_at": "2026-09-12T09:04:12.515Z",
       "confluence_badge": "ACCUMULATION",
-      "bullish_signals_count": 1,
+      "bullish_signals_count": 2,
       "bearish_signals_count": 0,
       "signals": {
         "harga_di_bawah_modal_bandar": {
@@ -5410,21 +5410,21 @@
           "harga_modal": 7400,
           "discount_pct": 0,
           "price_diff_pct": 0,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 869000000000,
-              "buy_vol": 117431600,
+              "buy_val": 197500000000,
+              "buy_vol": 26689000,
               "avg_price": 7400,
               "avg_buy": 7400
             },
             {
               "broker": "AK",
               "broker_name": "UBS Sekuritas Indonesia",
-              "buy_val": 400400000000,
-              "buy_vol": 54106800,
+              "buy_val": 91000000000,
+              "buy_vol": 12297000,
               "avg_price": 7400,
               "avg_buy": 7400
             }
@@ -5433,16 +5433,16 @@
             {
               "broker": "RX",
               "broker_name": "Macquarie Sekuritas Indonesia",
-              "buy_val": 869000000000,
-              "buy_vol": 117431600,
+              "buy_val": 197500000000,
+              "buy_vol": 26689000,
               "avg_price": 7400,
               "avg_buy": 7400
             },
             {
               "broker": "AK",
               "broker_name": "UBS Sekuritas Indonesia",
-              "buy_val": 400400000000,
-              "buy_vol": 54106800,
+              "buy_val": 91000000000,
+              "buy_vol": 12297000,
               "avg_price": 7400,
               "avg_buy": 7400
             }
@@ -5480,30 +5480,30 @@
         "concentration_ratio": {
           "signal_key": "CONCENTRATION_RATIO",
           "signal_name": "Concentration Ratio (CR3 & CR5)",
-          "triggered": false,
+          "triggered": true,
           "is_massive": false,
-          "cr3": 35.09,
-          "cr5": 35.09,
-          "status": "NORMAL_DIFFUSE",
-          "label": "Normal / Tersebar",
-          "top_3_val": 1269400000000,
-          "top_5_val": 1269400000000,
-          "total_turnover": 3617790000000,
-          "top_3_vol": 171538400,
-          "top_5_vol": 171538400,
-          "total_vol": 488884440,
+          "cr3": 49.35,
+          "cr5": 49.35,
+          "status": "AKUMULASI_TERKONSENTRASI",
+          "label": "Akumulasi Terkonsentrasi",
+          "top_3_val": 288500000000,
+          "top_5_val": 288500000000,
+          "total_turnover": 584587255000,
+          "top_3_vol": 38986000,
+          "top_5_vol": 38986000,
+          "total_vol": 111110100,
           "top_3_brokers": [
             "RX",
             "AK"
           ],
-          "description": "CR3 sebesar 35.09% dan CR5 sebesar 35.09%. Status: Normal / Tersebar."
+          "description": "CR3 sebesar 49.35% dan CR5 sebesar 49.35%. Status: Akumulasi Terkonsentrasi."
         }
       }
     },
     "UNTR": {
       "ticker": "UNTR",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.404Z",
+      "evaluated_at": "2026-09-12T09:04:12.519Z",
       "confluence_badge": "ACCUMULATION",
       "bullish_signals_count": 1,
       "bearish_signals_count": 0,
@@ -5523,29 +5523,29 @@
           "harga_modal": 26801,
           "discount_pct": -0.28,
           "price_diff_pct": 0.28,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 693000000000,
-              "buy_vol": 25856600,
+              "buy_val": 157500000000,
+              "buy_vol": 5876500,
               "avg_price": 26800,
               "avg_buy": 26800
             },
             {
               "broker": "AI",
               "broker_name": "UOB Kay Hian Sekuritas",
-              "buy_val": 415800000000,
-              "buy_vol": 15514400,
+              "buy_val": 94500000000,
+              "buy_vol": 3526000,
               "avg_price": 26800,
               "avg_buy": 26800
             },
             {
               "broker": "BQ",
               "broker_name": "Korea Investment and Sekuritas",
-              "buy_val": 415800000000,
-              "buy_vol": 15514400,
+              "buy_val": 94500000000,
+              "buy_vol": 3526000,
               "avg_price": 26800,
               "avg_buy": 26800
             }
@@ -5554,24 +5554,24 @@
             {
               "broker": "BK",
               "broker_name": "J.P. Morgan Sekuritas Indonesia",
-              "buy_val": 693000000000,
-              "buy_vol": 25856600,
+              "buy_val": 157500000000,
+              "buy_vol": 5876500,
               "avg_price": 26800,
               "avg_buy": 26800
             },
             {
               "broker": "AI",
               "broker_name": "UOB Kay Hian Sekuritas",
-              "buy_val": 415800000000,
-              "buy_vol": 15514400,
+              "buy_val": 94500000000,
+              "buy_vol": 3526000,
               "avg_price": 26800,
               "avg_buy": 26800
             },
             {
               "broker": "BQ",
               "broker_name": "Korea Investment and Sekuritas",
-              "buy_val": 415800000000,
-              "buy_vol": 15514400,
+              "buy_val": 94500000000,
+              "buy_vol": 3526000,
               "avg_price": 26800,
               "avg_buy": 26800
             }
@@ -5616,12 +5616,12 @@
           "cr5": 54.23,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 1524600000000,
-          "top_5_val": 2356200000000,
-          "total_turnover": 4345110000000,
-          "top_3_vol": 56885400,
-          "top_5_vol": 87914200,
-          "total_vol": 212029400,
+          "top_3_val": 346500000000,
+          "top_5_val": 535500000000,
+          "total_turnover": 987525000000,
+          "top_3_vol": 12928500,
+          "top_5_vol": 19980500,
+          "total_vol": 48188500,
           "top_3_brokers": [
             "BK",
             "AI",
@@ -5634,7 +5634,7 @@
     "UNVR": {
       "ticker": "UNVR",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.404Z",
+      "evaluated_at": "2026-09-12T09:04:12.519Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -5670,7 +5670,7 @@
     "WIFI": {
       "ticker": "WIFI",
       "has_data": true,
-      "evaluated_at": "2026-09-12T09:04:29.408Z",
+      "evaluated_at": "2026-09-12T09:04:12.524Z",
       "confluence_badge": "NEUTRAL",
       "bullish_signals_count": 0,
       "bearish_signals_count": 0,
@@ -5690,13 +5690,13 @@
           "harga_modal": 310,
           "discount_pct": -545.16,
           "price_diff_pct": 545.16,
-          "range": "30D",
+          "range": "14D",
           "top_3_brokers": [
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 466400000000,
-              "buy_vol": 1504514000,
+              "buy_val": 106000000000,
+              "buy_vol": 341935000,
               "avg_price": 310,
               "avg_buy": 310
             }
@@ -5705,8 +5705,8 @@
             {
               "broker": "PD",
               "broker_name": "Indo Premier Sekuritas",
-              "buy_val": 466400000000,
-              "buy_vol": 1504514000,
+              "buy_val": 106000000000,
+              "buy_vol": 341935000,
               "avg_price": 310,
               "avg_buy": 310
             }
@@ -5737,12 +5737,12 @@
           "cr5": 35.09,
           "status": "NORMAL_DIFFUSE",
           "label": "Normal / Tersebar",
-          "top_3_val": 466400000000,
-          "top_5_val": 466400000000,
-          "total_turnover": 1329240000000,
-          "top_3_vol": 1504514000,
-          "top_5_vol": 1504514000,
-          "total_vol": 4287864900,
+          "top_3_val": 106000000000,
+          "top_5_val": 106000000000,
+          "total_turnover": 302100000000,
+          "top_3_vol": 341935000,
+          "top_5_vol": 341935000,
+          "total_vol": 974514750,
           "top_3_brokers": [
             "PD"
           ],
