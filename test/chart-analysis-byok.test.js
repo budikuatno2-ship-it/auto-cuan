@@ -27,7 +27,7 @@ test('BYOK Security: API key is symmetrically encrypted with AES-256-GCM and nev
 
   // Verify tampering detection (AES-256-GCM auth tag verification)
   const parts = enc.split(':');
-  parts[3] = (parts[3].slice(0, -2) + 'ff'); // Tamper with ciphertext
+  parts[2] = 'ffff' + parts[2].slice(4); // Deterministically corrupt auth tag
   const tampered = parts.join(':');
   assert.equal(credentials.decryptApiKey(tampered), null, 'Tampered ciphertext must fail authentication');
 });
