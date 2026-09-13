@@ -8546,7 +8546,13 @@ function renderDtCardGrid(results, data) {
             stLabel
         ) + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
-        html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span></div>';
+        var dtScBreakdown = '';
+        if (r.daytrade_score_before_bandarmologi != null && r.bandar_score_bonus) {
+            dtScBreakdown = ' <span style="font-size:9.5px;font-weight:normal;color:#9ca3af">(Base: ' + r.daytrade_score_before_bandarmologi + ' + Bandar: ' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ')</span>';
+        } else if (r.bandar_score_bonus) {
+            dtScBreakdown = ' <span style="font-size:9.5px;font-weight:normal;color:#9ca3af">(Bandar: ' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ')</span>';
+        }
+        html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong>' + dtScBreakdown + '</span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span></div>';
         // V6: Risk / Grade / MTF compact badges
         var _rlBadge = ''; var _grBadge = ''; var _vpBadge = ''; var _mtfBadge = '';
         var _cardRisk = getRiskLabel(r); if (_cardRisk) { var _rlC = getRiskColor(_cardRisk); _rlBadge = '<span style="color:' + _rlC + ';font-weight:600">' + escapeHtml(_cardRisk) + '</span>'; }
@@ -8916,7 +8922,13 @@ function renderKgCardGrid(results) {
         html += '<div class="kg-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(tierTitle) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
-        html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
+        var scBreakdown = '';
+        if (r.score_before_bandarmologi != null && r.bandar_score_bonus) {
+            scBreakdown = ' <span style="font-size:9.5px;font-weight:normal;color:#9ca3af">(Base: ' + r.score_before_bandarmologi + ' + Bandar: ' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ')</span>';
+        } else if (r.bandar_score_bonus) {
+            scBreakdown = ' <span style="font-size:9.5px;font-weight:normal;color:#9ca3af">(Bandar: ' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ')</span>';
+        }
+        html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong>' + scBreakdown + '</span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.group_code) html += '<span style="color:#6b7280">' + escapeHtml(r.group_code) + '</span>';
         html += '</div>';
         // V6: Risk / Grade / Volume / MTF compact badges
@@ -9016,7 +9028,13 @@ function renderNkCardGrid(results) {
         html += '<div class="nk-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(tierTitle) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
-        html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + (r.bandar_score_bonus ? (' (' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ' BD)') : '') + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
+        var nkScBreakdown = '';
+        if (r.score_before_bandarmologi != null && r.bandar_score_bonus) {
+            nkScBreakdown = ' <span style="font-size:9.5px;font-weight:normal;color:#9ca3af">(Base: ' + r.score_before_bandarmologi + ' + Bandar: ' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ')</span>';
+        } else if (r.bandar_score_bonus) {
+            nkScBreakdown = ' <span style="font-size:9.5px;font-weight:normal;color:#9ca3af">(Bandar: ' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ')</span>';
+        }
+        html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong>' + nkScBreakdown + '</span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.board) html += '<span style="color:#6b7280">' + escapeHtml(r.board) + '</span>';
         html += '</div>';
         // V6: Risk / Grade / Volume / MTF compact badges
