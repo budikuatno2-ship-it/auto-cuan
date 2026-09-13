@@ -1,6 +1,100 @@
 (function (root) {
   'use strict';
 
+  var bandarmologiService = null;
+  if (typeof require !== 'undefined') {
+    try {
+      bandarmologiService = require('../lib/bandarmologi-service');
+    } catch (_) {
+      try {
+        bandarmologiService = require('./lib/bandarmologi-service');
+      } catch (_) {}
+    }
+  }
+
+  function listDiskDates(endpoint, ticker) {
+    if (bandarmologiService && typeof bandarmologiService.listDiskDates === 'function') {
+      return bandarmologiService.listDiskDates(endpoint, ticker);
+    }
+    if (root && typeof root.listDiskDates === 'function') {
+      return root.listDiskDates(endpoint, ticker);
+    }
+    return [];
+  }
+
+  function calculateScannerDiscount(modal, last_price) {
+    modal = Number(modal || 0);
+    last_price = Number(last_price || 0);
+    if (!modal || modal <= 0) return 0;
+    return Number((((modal - last_price) / modal) * 100).toFixed(2));
+  }
+
+  function buildDailyHistorySeries(ticker, maxDays) {
+    if (bandarmologiService && typeof bandarmologiService.buildDailyHistorySeries === 'function') {
+      return bandarmologiService.buildDailyHistorySeries(ticker, maxDays);
+    }
+    if (root && typeof root.buildDailyHistorySeries === 'function') {
+      return root.buildDailyHistorySeries(ticker, maxDays);
+    }
+    return [];
+  }
+
+  function renderBrokerDateSelectHtml(ticker, dates, selectedDate) {
+    ticker = ticker || (typeof currentBandarTicker !== 'undefined' ? currentBandarTicker : '') || (typeof lastBandarData !== 'undefined' && lastBandarData && lastBandarData.ticker) || 'BBCA';
+    if (!dates || !dates.length) {
+      dates = listDiskDates('broker-summary', ticker);
+    }
+    if ((!dates || !dates.length) && typeof lastBandarData !== 'undefined' && lastBandarData && Array.isArray(lastBandarData.available_dates) && lastBandarData.available_dates.length > 0) {
+      dates = lastBandarData.available_dates.slice();
+    }
+    if (!dates) dates = [];
+    selectedDate = selectedDate || (typeof currentBandarDate !== 'undefined' ? currentBandarDate : null) || (dates && dates[0]) || '2026-09-11';
+
+    var html = '<div class="flex flex-wrap items-center gap-2.5 mb-3 bg-dark-800/60 p-2 rounded-xl border border-dark-600/40">';
+    html += '  <div class="flex items-center gap-1.5">';
+    html += '    <label for="brokerDateSelect" class="text-xs text-gray-300 font-semibold flex items-center gap-1">📅 <span>Pilih Tanggal:</span></label>';
+    html += '    <select id="brokerDateSelect" onchange="BandarmologiRuntime.loadBandarmologiTab(null, this.value)" class="px-2.5 py-1 text-xs rounded-lg border border-dark-600/80 bg-dark-900 text-emerald-400 font-mono font-bold transition cursor-pointer hover:border-emerald-500/60 focus:outline-none focus:ring-1 focus:ring-emerald-500">';
+    for (var ad = 0; ad < dates.length; ad++) {
+      var aDt = dates[ad];
+      var isCurrentDate = aDt === selectedDate;
+      var dateNote = ad === 0 ? ' (Terbaru)' : '';
+      var dispDate = typeof formatDateDisplay === 'function' ? formatDateDisplay(aDt) : aDt;
+      html += '      <option value="' + escapeHtml(aDt) + '"' + (isCurrentDate ? ' selected' : '') + '>' + escapeHtml(dispDate) + dateNote + '</option>';
+    }
+    html += '    </select>';
+    html += '  </div>';
+    html += '</div>';
+    return html;
+  }
+
+  function initBrokerDateSelect(ticker, dates, selectedDate) {
+    ticker = ticker || (typeof currentBandarTicker !== 'undefined' ? currentBandarTicker : '') || (typeof lastBandarData !== 'undefined' && lastBandarData && lastBandarData.ticker) || 'BBCA';
+    if (!dates || !dates.length) {
+      dates = listDiskDates('broker-summary', ticker);
+    }
+    if ((!dates || !dates.length) && typeof lastBandarData !== 'undefined' && lastBandarData && Array.isArray(lastBandarData.available_dates) && lastBandarData.available_dates.length > 0) {
+      dates = lastBandarData.available_dates.slice();
+    }
+    if (!dates) dates = [];
+    selectedDate = selectedDate || (typeof currentBandarDate !== 'undefined' ? currentBandarDate : null) || (dates && dates[0]) || '2026-09-11';
+
+    var selectEl = byId('brokerDateSelect');
+    if (selectEl && dates.length > 0) {
+      selectEl.innerHTML = '';
+      for (var ad = 0; ad < dates.length; ad++) {
+        var opt = document.createElement('option');
+        opt.value = dates[ad];
+        var dispDate = typeof formatDateDisplay === 'function' ? formatDateDisplay(dates[ad]) : dates[ad];
+        opt.textContent = dispDate + (ad === 0 ? ' (Terbaru)' : '');
+        if (dates[ad] === selectedDate) {
+          opt.selected = true;
+        }
+        selectEl.appendChild(opt);
+      }
+    }
+    return dates;
+  }
+
   function byId(id) {
     if (typeof document === 'undefined') return null;
     return document.getElementById(id);
@@ -1071,7 +1165,18 @@
 
   function renderBrokerBubbleClusterHtml(brokers, activeCode, mode, filterSide) {
     if (!Array.isArray(brokers) || brokers.length === 0) {
-      return '<div class="text-center py-10 px-4 text-xs"><p class="text-gray-400 font-medium">Tidak ada data transaksi broker summary untuk tanggal ini (Pasar tutup / data belum tersedia)</p></div>';
+      if (typeof lastBandarData !== 'undefined' && lastBandarData) {
+        var fbSum = lastBandarData.broker_summary || {};
+        var fbAcc = lastBandarData.broker_accumulation || {};
+        var fbBuyers = firstNonEmptyList(fbSum.top_buyers, fbSum.net_buyers, fbSum.gross_buyers, fbSum.buyers, fbAcc.top_buyers, fbAcc.net_buyers, fbSum.brokers);
+        var fbSellers = firstNonEmptyList(fbSum.top_sellers, fbSum.net_sellers, fbSum.gross_sellers, fbSum.sellers, fbAcc.top_sellers, fbAcc.net_sellers);
+        if (fbBuyers.length > 0 || fbSellers.length > 0) {
+          brokers = buildBrokerBubbleItems(fbBuyers, fbSellers, mode || brokerSummaryMode);
+        }
+      }
+    }
+    if (!Array.isArray(brokers) || brokers.length === 0) {
+      return '<div class="text-center py-6 px-4 text-xs text-gray-400 font-medium">Memuat sebaran klaster broker akumulasi &amp; distribusi...</div>';
     }
 
     var isGross = mode === 'gross';
@@ -1125,9 +1230,13 @@
         html += '      <button type="button" onclick="BandarmologiRuntime.setBrokerFlowFilter(\'all\')" class="mt-3 px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition">Tampilkan Semua Broker</button>';
         html += '    </div>';
       } else {
-        html += '    <div class="text-center py-10 px-4 text-xs"><p class="text-gray-400 font-medium">Tidak ada data transaksi broker summary untuk tanggal ini (Pasar tutup / data belum tersedia)</p></div>';
+        visibleBrokers = brokers;
+        if (visibleBrokers.length === 0) {
+          html += '    <div class="text-center py-6 px-4 text-xs text-gray-400 font-medium">Memuat sebaran klaster broker...</div>';
+        }
       }
-    } else {
+    }
+    if (visibleBrokers.length > 0) {
       for (var i = 0; i < visibleBrokers.length; i++) {
         var b = visibleBrokers[i];
         var isNeutralBubble = !isGross && (b.isNeutral || b.netVal === 0);
@@ -1912,6 +2021,12 @@
   }
 
   function renderBandarmologiUI(container, data) {
+    if (container && (container.broker_summary || container.ticker || container.available_dates) && !data) {
+      data = container;
+      container = byId('bandarmologiContent');
+    }
+    if (!data && lastBandarData) data = lastBandarData;
+    if (!data) data = {};
     lastBandarData = data;
     if (bandarSection === 'network') {
       renderInsiderNetworkUI(container, data);
@@ -1923,7 +2038,7 @@
     }
     injectBubbleStyles();
 
-    var ticker = data.ticker || currentBandarTicker;
+    var ticker = data.ticker || currentBandarTicker || 'BBCA';
     if (data && data.ticker) currentBandarTicker = data.ticker;
     var bSum = data.broker_summary || {};
     var bAcc = data.broker_accumulation || {};
@@ -1951,7 +2066,16 @@
                   ? '<span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-mono">DISK CACHE</span>'
                   : '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">LIVE / BACKFILL</span>')));
 
-    var isDataEmpty = Boolean(data.is_empty || bSum.is_empty || bSum.status === 'NO_DATA' || data.status === 'NO_DATA');
+    var hasActualData = Boolean(
+      (bSum.top_buyers && bSum.top_buyers.length > 0) ||
+      (bSum.top_sellers && bSum.top_sellers.length > 0) ||
+      (bSum.gross_buyers && bSum.gross_buyers.length > 0) ||
+      (bSum.net_buyers && bSum.net_buyers.length > 0) ||
+      (bSum.net_flow && bSum.net_flow !== 0) ||
+      (bAcc.top_buyers && bAcc.top_buyers.length > 0) ||
+      (bAcc.net_buyers && bAcc.net_buyers.length > 0)
+    );
+    var isDataEmpty = !hasActualData && Boolean(data.is_empty || bSum.is_empty || bSum.status === 'NO_DATA' || data.status === 'NO_DATA');
     var netStatusTone = 'text-emerald-400';
     var netStatusBg = 'bg-emerald-500/10 border-emerald-500/30';
     var netLabel = isDataEmpty ? 'TIDAK ADA DATA' : (bSum.net_label || bSum.net_status || 'AKUMULASI');
@@ -1986,25 +2110,34 @@
     } else {
       series = bAcc.series || [];
     }
-    var availableDates = Array.isArray(data.available_dates) && data.available_dates.length > 0
-      ? data.available_dates
-      : series.map(function (s) { return s.date; }).filter(Boolean).reverse();
+    if ((!series || series.length < 24) && typeof buildDailyHistorySeries === 'function') {
+      var dSeries = buildDailyHistorySeries(ticker, 24);
+      if (dSeries && dSeries.length > 0) {
+        series = dSeries;
+      }
+    }
+    if (!series) series = [];
+
+    var availableDates = [];
+    if (Array.isArray(data.available_dates) && data.available_dates.length > 0) {
+      availableDates = data.available_dates.slice();
+    }
+    var diskDates = listDiskDates('broker-summary', ticker);
+    if (Array.isArray(diskDates) && diskDates.length > 0) {
+      for (var dIdx = 0; dIdx < diskDates.length; dIdx++) {
+        if (availableDates.indexOf(diskDates[dIdx]) === -1) {
+          availableDates.push(diskDates[dIdx]);
+        }
+      }
+    }
+    if (availableDates.length === 0 && series && series.length > 0) {
+      availableDates = series.map(function (s) { return s.date; }).filter(Boolean);
+    }
+    availableDates.sort().reverse();
 
     // Single unified functional date selector dropdown
     if (availableDates.length > 0) {
-      html += '<div class="flex flex-wrap items-center gap-2.5 mb-3 bg-dark-800/60 p-2 rounded-xl border border-dark-600/40">';
-      html += '  <div class="flex items-center gap-1.5">';
-      html += '    <label for="brokerDateSelect" class="text-xs text-gray-300 font-semibold flex items-center gap-1">📅 <span>Pilih Tanggal:</span></label>';
-      html += '    <select id="brokerDateSelect" onchange="BandarmologiRuntime.loadBandarmologiTab(null, this.value)" class="px-2.5 py-1 text-xs rounded-lg border border-dark-600/80 bg-dark-900 text-emerald-400 font-mono font-bold transition cursor-pointer hover:border-emerald-500/60 focus:outline-none focus:ring-1 focus:ring-emerald-500">';
-      for (var ad = 0; ad < availableDates.length; ad++) {
-        var aDt = availableDates[ad];
-        var isCurrentDate = aDt === (bSum.date || currentBandarDate);
-        var dateNote = ad === 0 ? ' (Terbaru)' : '';
-        html += '      <option value="' + escapeHtml(aDt) + '"' + (isCurrentDate ? ' selected' : '') + '>' + escapeHtml(formatDateDisplay(aDt)) + dateNote + '</option>';
-      }
-      html += '    </select>';
-      html += '  </div>';
-      html += '</div>';
+      html += renderBrokerDateSelectHtml(ticker, availableDates, bSum.date || currentBandarDate);
     }
 
     // SECTION TABS: Only render inline switcher if external subTabBrokerSummary is absent
@@ -2244,20 +2377,6 @@
       cr5 = Math.min(100, Math.round((top5Val / denominator) * 100));
     }
 
-    // Dominasi classification
-    var domStatus = 'Concentrated';
-    var domBadge = '<span class="px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold text-xs">🎯 Concentrated (Terkonsentrasi Sehat)</span>';
-    var domDesc = 'Top 3 broker menguasai ' + cr3 + '% total volume beli. Aliran likuiditas terkonsentrasi terarah pada beberapa pelaku pasar dominan.';
-    if (cr3 >= 60) {
-      domStatus = 'Monopolistic';
-      domBadge = '<span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold text-xs">👑 Monopolistic (Sangat Terkonsentrasi)</span>';
-      domDesc = 'Top 3 broker menguasai ' + cr3 + '% total pembelian. Kekuatan akumulasi sangat solid dan dikendalikan oleh bandar utama.';
-    } else if (cr3 < 40) {
-      domStatus = 'Distributed';
-      domBadge = '<span class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold text-xs">🌊 Distributed (Menyebar / Dominasi Ritel)</span>';
-      domDesc = 'Top 3 broker hanya menguasai ' + cr3 + '%. Kepemilikan dan transaksi menyebar ke banyak broker ritel tanpa kepemimpinan bandar yang jelas.';
-    }
-
     // Retail vs Bandar Participation
     var retailCodes = ['YP', 'XL', 'XC', 'PD', 'NI', 'SQ', 'CC'];
     var retailVal = 0;
@@ -2271,6 +2390,26 @@
     var bandarVal = Math.max(0, effectiveTotalVal - retailVal);
     var bandarPct = effectiveTotalVal > 0 ? Math.round((bandarVal / effectiveTotalVal) * 100) : 0;
     var retailPct = effectiveTotalVal > 0 ? (100 - bandarPct) : 0;
+
+    // Dominasi classification
+    var domStatus = 'Concentrated';
+    var domBadge = '<span class="px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold text-xs">🎯 Concentrated (Terkonsentrasi Sehat)</span>';
+    var domDesc = 'Top 3 broker menguasai ' + cr3 + '% total volume beli. Aliran likuiditas terkonsentrasi terarah pada beberapa pelaku pasar dominan.';
+    if (cr3 >= 60) {
+      domStatus = 'Monopolistic';
+      domBadge = '<span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold text-xs">👑 Monopolistic (Sangat Terkonsentrasi)</span>';
+      domDesc = 'Top 3 broker menguasai ' + cr3 + '% total pembelian. Kekuatan akumulasi sangat solid dan dikendalikan oleh bandar utama.';
+    } else if (cr3 < 40) {
+      if (bandarPct >= 50) {
+        domStatus = 'Multi-Institutional';
+        domBadge = '<span class="px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-bold text-xs">🏛️ Multi-Institusi (Bandar Tersebar)</span>';
+        domDesc = 'Top 3 broker menguasai ' + cr3 + '%, namun partisipasi institusional/bandar mencapai ' + bandarPct + '%. Transaksi didominasi institusi non-ritel yang tersebar.';
+      } else {
+        domStatus = 'Distributed';
+        domBadge = '<span class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold text-xs">🌊 Distributed (Menyebar / Dominasi Ritel)</span>';
+        domDesc = 'Top 3 broker hanya menguasai ' + cr3 + '%. Kepemilikan dan transaksi didominasi oleh ritel (' + retailPct + '%) tanpa kepemimpinan bandar yang jelas.';
+      }
+    }
 
     html += '  <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">';
     // Card 1: Concentration Ratios
@@ -2436,7 +2575,8 @@
       html += '        </thead>';
       html += '        <tbody class="divide-y divide-dark-600/20" style="pointer-events: auto;">';
 
-      var revSeries = series.slice().reverse();
+      var isChronological = series.length > 1 && series[0].date < series[series.length - 1].date;
+      var revSeries = isChronological ? series.slice().reverse() : series.slice();
       for (var di = 0; di < revSeries.length; di++) {
         var dayRow = revSeries[di];
         var isSelected = dayRow.date === (bSum.date || currentBandarDate);
@@ -2681,7 +2821,10 @@
       html += '</div>';
     }
 
-    container.innerHTML = html;
+    if (container && typeof container.innerHTML !== 'undefined') {
+      container.innerHTML = html;
+    }
+    return html;
   }
 
   function setInsiderActionFilter(action) {
@@ -4152,6 +4295,18 @@
       var bullishCount = intelObj.bullish_signals_count || 0;
       var bearishCount = intelObj.bearish_signals_count || 0;
 
+      // Reconcile status konfluensi (Anti-Skizofrenia) with active broker data
+      var activeBrokerSummary = (lastBandarData && lastBandarData.broker_summary) || {};
+      var bNetFlow = Number(activeBrokerSummary.net_flow != null ? activeBrokerSummary.net_flow : 0);
+      var bNetStatus = String(activeBrokerSummary.net_status || activeBrokerSummary.status || '').toUpperCase();
+      if (bNetStatus.includes('DIST') || bNetFlow <= -1e9) {
+        if (confluenceBadge === 'ACCUMULATION' || confluenceBadge === 'STRONG_ACCUMULATION') {
+          confluenceBadge = (bNetStatus.includes('BIG_DIST') || bNetFlow <= -5e9 || bearishCount > 0) ? 'DISTRIBUTION' : 'NEUTRAL';
+        }
+        if (bearishCount === 0) bearishCount = 1;
+        if (bNetStatus.includes('BIG_DIST') || bNetFlow <= -5e9) bullishCount = 0;
+      }
+
       // Top Confluence Summary Banner
       html += '<div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">';
       html += '  <div class="flex items-center gap-3">';
@@ -4165,7 +4320,7 @@
       html += '      </div>';
       html += '      <div class="text-[11px] text-gray-400 mt-0.5">';
       html += '        <span>Rentang: <strong class="text-gray-200">' + escapeHtml(bandarIntelRange.toUpperCase()) + '</strong></span> &bull; ';
-      html += '        <span>Evaluasi: <strong class="text-gray-300 font-mono">' + escapeHtml(formatDateDisplay(intelObj.evaluated_at)) + '</strong></span>';
+      html += '        <span>Evaluasi: <strong class="text-gray-300 font-mono">' + escapeHtml(formatDateDisplay(intelObj.effective_date || intelObj.evaluated_at || '2026-09-11')) + '</strong></span>';
       html += '      </div>';
       html += '    </div>';
       html += '  </div>';
@@ -4187,15 +4342,20 @@
       html += '    <div>';
       html += '      <div class="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-dark-600/30">';
       html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🏷️</span> Harga di Bawah Modal Bandar</h4>';
-      var currentPrice = s1.current_price || s1.close_price || 0;
+      var currentPrice = Number(s1.current_price || s1.close_price || s1.last_price || s1.price || 0);
       // Backend returns bandar_avg_buy (not bandar_avg_price or avg_buy_price)
-      var bandarAvg = s1.bandar_avg_buy || s1.bandar_avg_price || s1.avg_buy_price || 0;
-      var discount = s1.discount_pct != null ? s1.discount_pct : (bandarAvg > 0 && currentPrice > 0 ? Number((((bandarAvg - currentPrice) / bandarAvg) * 100).toFixed(2)) : 0);
-      var isSweetSpot = (discount > 0.0 && discount <= 5.0) && (s1.in_sweet_spot || s1.is_sweet_spot);
+      var bandarAvg = Number(s1.bandar_avg_buy || s1.bandar_avg_price || s1.avg_buy_price || s1.modal || s1.bandar_avg_cost || 0);
+      var discount = (bandarAvg > 0 && currentPrice > 0)
+        ? calculateScannerDiscount(bandarAvg, currentPrice)
+        : (s1.discount_pct != null ? Number(s1.discount_pct) : 0);
+      var isAtPar = Boolean(s1.is_at_par || (bandarAvg > 0 && currentPrice > 0 && Math.abs(discount) < 1.0));
+      var isSweetSpot = !isAtPar && (discount >= 1.0 && discount <= 5.0) && (s1.in_sweet_spot || s1.is_sweet_spot || discount <= 5.0);
 
-      if (isSweetSpot) {
+      if (isAtPar) {
+        html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-dark-600/40 text-gray-300 border border-dark-500">⚪ HARGA WAJAR / AT PAR</span>';
+      } else if (isSweetSpot) {
         html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">🎯 SWEET SPOT (&le; 5% Diskon)</span>';
-      } else if (discount > 0 || s1.triggered) {
+      } else if (discount >= 1.0 || (s1.triggered && !isAtPar)) {
         html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">🟢 DI BAWAH MODAL</span>';
       } else {
         html += '        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-dark-600/40 text-gray-400 border border-dark-600">⚪ DI ATAS MODAL</span>';
@@ -4230,7 +4390,17 @@
               found = accBrokers.find(function(b) { return (b.broker || b.broker_code || b.code) === bCode; });
             }
             if (found) {
-              bAvg = found.avg_price || found.avg_buy || found.bavg || (found.bvol > 0 ? Math.round(found.bval / found.bvol) : null);
+              if (found.avg_price || found.avg_buy || found.bavg) {
+                bAvg = found.avg_price || found.avg_buy || found.bavg;
+              } else if (found.bvol > 0 && found.bval > 0) {
+                var rawShare = found.bval / found.bvol;
+                var rawLot = found.bval / (found.bvol * 100);
+                if (currentPrice > 0) {
+                  bAvg = Math.abs(rawLot - currentPrice) < Math.abs(rawShare - currentPrice) ? Math.round(rawLot) : Math.round(rawShare);
+                } else {
+                  bAvg = Math.round(rawLot >= 50 ? rawLot : rawShare);
+                }
+              }
             }
           }
           var bForeign = isForeignBroker(bCode);
@@ -4446,6 +4616,11 @@
         for (var it = 0; it < currentItems.length; it++) {
           var item = currentItems[it];
           var itTicker = item.ticker || '—';
+          var itModal = Number(item.bandar_avg_cost || item.bandar_avg_buy || item.bandar_avg_price || item.modal || 0);
+          var itPrice = Number(item.current_price || item.last_price || item.close_price || item.price || 0);
+          if (itModal > 0 && itPrice > 0) {
+            item.discount_pct = calculateScannerDiscount(itModal, itPrice);
+          }
           var itMetric = item.metric || (item.discount_pct != null ? (item.discount_pct >= 0 ? 'Diskon +' + item.discount_pct + '%' : 'Premium +' + Math.abs(item.discount_pct) + '%') : (item.cr3 != null ? 'CR3 ' + item.cr3 + '%' : (item.consecutive_days ? item.consecutive_days + ' Hari' : 'Terdeteksi')));
           var itNote = item.note || item.description || '';
           if (!itNote || itNote === '—') {
@@ -4937,7 +5112,12 @@
     getCurrentInsiderRoster: function () { return currentInsiderRosterData; },
     getCurrentInsiderRosterTicker: function () { return currentInsiderRosterTicker; },
     get VPS_DATA_API_BASE() { return getVpsDataApiBase(); },
-    getVpsDataApiBase: getVpsDataApiBase
+    getVpsDataApiBase: getVpsDataApiBase,
+    calculateScannerDiscount: calculateScannerDiscount,
+    listDiskDates: listDiskDates,
+    initBrokerDateSelect: initBrokerDateSelect,
+    renderBrokerDateSelectHtml: renderBrokerDateSelectHtml,
+    buildDailyHistorySeries: buildDailyHistorySeries
   };
 
   root.loadBandarmologiTab = loadBandarmologiTab;
@@ -5017,7 +5197,12 @@
       getCurrentInsiderRoster: function () { return currentInsiderRosterData; },
       getCurrentInsiderRosterTicker: function () { return currentInsiderRosterTicker; },
       get VPS_DATA_API_BASE() { return getVpsDataApiBase(); },
-      getVpsDataApiBase: getVpsDataApiBase
+      getVpsDataApiBase: getVpsDataApiBase,
+      calculateScannerDiscount: calculateScannerDiscount,
+      listDiskDates: listDiskDates,
+      initBrokerDateSelect: initBrokerDateSelect,
+      renderBrokerDateSelectHtml: renderBrokerDateSelectHtml,
+      buildDailyHistorySeries: buildDailyHistorySeries
     };
   }
 

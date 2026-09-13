@@ -2262,6 +2262,8 @@ button:disabled,
 /* Ticker Search Controls & Header Search Bar Fix */
 .analisis-saham-controls,
 .ticker-search-container,
+.unified-top-bar,
+#analisisChartHeader,
 .screener-search-bar,
 .screener-search-wrap,
 #screenerSearchWrap,
@@ -2271,10 +2273,10 @@ button:disabled,
   align-items: center !important;
   gap: 10px !important;
   flex-wrap: wrap !important;
-  margin-top: 14px !important;
-  margin-bottom: 14px !important;
   position: relative !important;
-  z-index: 10 !important;
+  z-index: 20 !important;
+  margin-top: 24px !important;
+  margin-bottom: 16px !important;
   clear: both !important;
 }
 
@@ -2288,13 +2290,51 @@ button:disabled,
 #analisisFollowUp .floating-ai-icon,
 .unified-chat-composer .floating-ai-icon,
 .unified-chat-composer .ai-icon,
-#analisisFollowUp .ai-icon {
+#analisisFollowUp .ai-icon,
+.ai-assistant-icon,
+#aiAssistantIcon,
+.chat-composer-wrapper .floating-ai-icon,
+.chat-composer-wrapper .ai-icon {
   position: absolute !important;
-  right: 12px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
+  right: 14px !important;
+  bottom: 12px !important;
+  top: auto !important;
+  transform: none !important;
   pointer-events: none !important;
   z-index: 5 !important;
+}
+
+/* Eliminasi Double Scrollbar pada Hasil Analisis Saham */
+#panelAnalisisText,
+.unified-card:has(#analisisResult),
+.unified-primary-col:has(#analisisResult) {
+  overflow: visible !important;
+}
+
+#analisisResult {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  max-height: min(72vh, 680px) !important;
+  scrollbar-gutter: stable;
+  overscroll-behavior-y: contain;
+}
+
+#analisisResult .ai-content,
+#analisisResult .ai-rich-text,
+#analisisResult > div {
+  overflow-y: visible !important;
+  max-height: none !important;
+}
+
+#analisisResult::-webkit-scrollbar {
+  width: 6px;
+}
+#analisisResult::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+}
+#analisisResult::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* Screener Card Grids Padding & Overflow */
