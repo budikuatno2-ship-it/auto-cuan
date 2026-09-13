@@ -646,7 +646,7 @@
 <!-- ===== PAGE: ANALISIS SAHAM (Unified AI Cockpit) ===== -->
 <div id="page-analisis" class="page-content hidden flex-1 flex flex-col max-w-[1280px] w-full mx-auto px-3 sm:px-5 py-3">
     <!-- Top Cockpit Search & Sync Bar -->
-    <div class="unified-top-bar mb-4 flex-shrink-0">
+    <div class="unified-top-bar analisis-saham-controls ticker-search-container mb-4 flex-shrink-0">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
                 <div class="relative flex-1 min-w-[200px]">
@@ -797,8 +797,11 @@
                         <button id="analysisUploadBtn" onclick="openActiveFileInput()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file chart tambahan" aria-label="Upload gambar/file chart tambahan">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                         </button>
-                        <div class="flex-1 relative">
-                            <textarea id="analysisChatInput" rows="1" placeholder="Tanya lanjutan: entry di mana? hold atau cut?" class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
+                        <div class="flex-1 relative chat-composer-wrapper">
+                            <textarea id="analysisChatInput" rows="1" placeholder="Tanya lanjutan: entry di mana? hold atau cut?" class="w-full px-4 py-2.5 pr-10 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
+                            <span class="floating-ai-icon ai-icon pointer-events-none" aria-hidden="true">
+                                <span class="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-[10px] text-emerald-400 font-bold">✨</span>
+                            </span>
                         </div>
                         <button id="analysisSendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim" aria-label="Kirim pesan">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
