@@ -1598,7 +1598,20 @@
   async function fetchVpsAvailableDates(ticker) {
     if (!ticker) return [];
     var base = getVpsDataApiBase();
-    if (!base) return []; // No external tunnel configured, skip remote ping to prevent hanging
+    if (!base) {
+      // Fallback to internal API /api/sector-hot?action=available-dates when no external tunnel is active
+      try {
+        var localRes = await fetch('/api/sector-hot?action=available-dates&ticker=' + encodeURIComponent(safeTicker));
+        if (localRes && localRes.ok) {
+          var localJson = await localRes.json();
+          if (localJson && Array.isArray(localJson.dates) && localJson.dates.length > 0) {
+            vpsDatesMemoryCache[safeTicker] = localJson.dates;
+            return localJson.dates;
+          }
+        }
+      } catch (_) {}
+      return [];
+    }
     var safeTicker = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (vpsDatesMemoryCache[safeTicker] && vpsDatesMemoryCache[safeTicker].length > 0) {
       return vpsDatesMemoryCache[safeTicker];
@@ -1744,14 +1757,15 @@
   async function loadBandarmologiTab(ticker, date, range) {
     var clean = String(ticker || currentBandarTicker || 'BBCA').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!clean) clean = 'BBCA';
-    if (clean !== currentBandarTicker) {
+    var targetRangeKey = (brokerSummaryRange || '1d') + '_' + (currentBandarDate || date || 'latest');
+    if (clean !== currentBandarTicker || (lastBandarData && (lastBandarData.ticker !== clean || (lastBandarData.range && lastBandarData.range !== (range || brokerSummaryRange || '1d'))))) {
       brokerFlowFilter = 'all';
       selectedBrokerCode = '';
       selectedBrokerSide = '';
       lastBandarData = null;
       bandarIntelData = null;
       lastBrokerItems = [];
-      currentBandarDate = null;
+      if (clean !== currentBandarTicker) currentBandarDate = null;
     }
     currentBandarTicker = clean;
     if (date !== undefined) currentBandarDate = date;
@@ -4197,7 +4211,7 @@
     }, 10000) : null;
 
     try {
-      var url = '/api/sector-hot?action=bandarmologi-intel&range=' + encodeURIComponent(bandarIntelRange) + '&_t=' + Date.now();
+      var url = '/api/sector-hot?action=bandarmologi-intel&range=' + encodeURIComponent(bandarIntelRange) + '&days=' + (({ '1d': 1, '5d': 5, '7d': 7, '14d': 14, '30d': 30, '60d': 60 }[bandarIntelRange]) || 7) + '&_t=' + Date.now();
       if (bandarIntelViewMode === 'ticker') {
         url += '&ticker=' + encodeURIComponent(targetTicker);
       }
@@ -4694,8 +4708,9 @@
       var currentItems = Array.isArray(indexes[bandarIntelScannerCategory]) ? indexes[bandarIntelScannerCategory] : [];
       html += '<div id="panel-intel-scanner" class="bg-dark-700/40 border border-dark-600/30 rounded-xl overflow-hidden">';
 
-      var activeMarketDate = formatDateDisplay(scanData.effective_date || scanData.date || (lastBandarData && lastBandarData.date) || '2026-09-11');
-      var rangeAggLabel = escapeHtml(bandarIntelRange.toUpperCase()) + (bandarIntelRange === '1d' ? '' : ' Aggregated');
+      var activeMarketDate = formatDateDisplay(scanData.effective_date || scanData.date || scanData.updated_at || (lastBandarData && lastBandarData.date) || '2026-09-11');
+      var rangeDaysCount = { '1d': 1, '5d': 5, '7d': 7, '14d': 14, '30d': 30, '60d': 60 }[bandarIntelRange] || (parseInt(bandarIntelRange, 10) || 7);
+      var rangeAggLabel = bandarIntelRange === '1d' ? '1D (Harian)' : (rangeDaysCount + ' Hari Bursa (' + escapeHtml(bandarIntelRange.toUpperCase()) + ' Agregat)');
       html += '  <div class="px-3.5 py-2 bg-dark-800/80 border-b border-dark-600/40 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">';
       html += '    <span class="text-emerald-400 font-semibold">📅 Data per: ' + escapeHtml(activeMarketDate) + ' (Penutupan Terakhir)</span>';
       html += '    <span class="text-gray-400">Rentang: <strong class="text-gray-200">' + rangeAggLabel + '</strong></span>';
