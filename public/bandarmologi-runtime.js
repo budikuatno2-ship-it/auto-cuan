@@ -1311,8 +1311,8 @@
         var subBadge = isNeutralBubble
           ? '0'
           : (isGross
-              ? (isBuyerBubble ? 'BUY' : 'SELL')
-              : (b.size >= 76 ? (isBuyerBubble ? 'BUY' : 'SELL') : (b.netVal >= 0 ? '+' : '-')));
+              ? (isBuyerBubble ? 'BELI' : 'JUAL')
+              : (b.size >= 76 ? (isBuyerBubble ? 'BELI' : 'JUAL') : (b.netVal >= 0 ? '+' : '-')));
 
         var isSmallBubble = b.size < 64;
         var animString = isSelected
@@ -1327,9 +1327,13 @@
         html += '      data-broker="' + escapeHtml(b.broker) + '"';
         html += '      data-side="' + escapeHtml(b.side || (b.isBuyer ? 'buy' : (isNeutralBubble ? 'neutral' : 'sell'))) + '"';
         html += '      onclick="BandarmologiRuntime.selectBrokerBubble(\'' + escapeHtml(b.broker) + '\', \'' + escapeHtml(b.side || (b.isBuyer ? 'buy' : (isNeutralBubble ? 'neutral' : 'sell'))) + '\')"';
-        html += '      title="' + escapeHtml(b.broker + ' - ' + b.fullName + ' | ' + (isNeutralBubble ? 'Netral (0)' : (isBuyerBubble ? 'Akumulasi +' : 'Distribusi -') + formatBrokerVal(Math.abs(b.netVal || b.txVal))) + ' | Vol: ' + formatNumber(b.nvol || 0) + ' lot') + '"';
+        var bubbleHoverDesc = isGross
+          ? (b.broker + ' - ' + b.fullName + ' | ' + (isBuyerBubble ? 'Sisi Beli (Gross): Rp' : 'Sisi Jual (Gross): Rp') + formatNumber(Math.round(b.displayVal || b.txVal || 0)) + ' | Vol: ' + formatNumber(b.bvol || b.svol || b.nvol || 0) + ' lot')
+          : (b.broker + ' - ' + b.fullName + ' | ' + (isNeutralBubble ? 'Netral (0)' : (isBuyerBubble ? 'Akumulasi +' : 'Distribusi -') + formatBrokerVal(Math.abs(b.netVal || b.txVal))) + ' | Vol: ' + formatNumber(b.nvol || 0) + ' lot');
+        html += '      title="' + escapeHtml(bubbleHoverDesc) + '"';
         html += '      style="width:' + b.size + 'px; height:' + b.size + 'px; background:' + styleInfo.bg + '; border-color:' + styleInfo.border + '; color:' + styleInfo.text + '; box-shadow:' + styleInfo.shadow + '; animation:' + animString + ';">';
-        html += '      <span class="font-mono font-black text-xs sm:text-sm tracking-wider leading-none">' + escapeHtml(b.broker) + '</span>';
+        var brokerDisplayCode = isGross ? (b.broker + (isBuyerBubble ? ' (Beli)' : ' (Jual)')) : b.broker;
+        html += '      <span class="font-mono font-black text-xs sm:text-sm tracking-wider leading-none">' + escapeHtml(brokerDisplayCode) + '</span>';
         html += '      <span class="text-[9px] sm:text-[10px] font-mono font-bold leading-tight mt-1" style="color:' + styleInfo.subText + '">' + escapeHtml(valText) + '</span>';
         if (subBadge) {
           html += '      <span class="text-[8px] font-mono tracking-widest opacity-75 mt-0.5 uppercase">' + subBadge + '</span>';
@@ -4322,7 +4326,7 @@
     html += '      <h3 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
     html += '        <span class="text-base">🎯</span> Sinyal Intelijen Bandarmologi — <span class="text-emerald-400 font-mono">' + escapeHtml(currentBandarTicker) + '</span>';
     html += '      </h3>';
-    html += '      <p class="text-xs text-gray-400 mt-0.5">Deteksi 4 pola strategis: modal bandar, akumulasi diam-diam asing, pertukaran ritel &amp; bandar, dan rasio konsentrasi (CR3/CR5).</p>';
+    html += '      <p class="text-xs text-gray-400 mt-0.5">Deteksi 5 kategori screening (4 pola dasar): modal bandar, akumulasi diam-diam asing, ritel cutloss, distribusi ke ritel, dan rasio konsentrasi (CR3/CR5).</p>';
     html += '    </div>';
     html += '    <div class="flex flex-wrap items-center gap-2">';
     // View Switcher (Ticker vs Scanner)
