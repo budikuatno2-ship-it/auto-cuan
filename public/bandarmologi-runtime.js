@@ -22,6 +22,59 @@
     return [];
   }
 
+  // Browser-friendly canonical source of available trading dates. In the browser
+  // `require('fs')`/`listDiskDates` is never available (server-only module), so
+  // the date options MUST come from the API payload fields the backend already
+  // returns: data.available_dates first, then broker_summary.date_headers.
+  // Priority:
+  //   1. lastBandarData.available_dates
+  //   2. lastBandarData.broker_summary.date_headers
+  //   3. lastBandarData.broker_accumulation.series / daily_summary dates
+  //   4. vpsDatesMemoryCache[safeTicker] (pre-fetched from the VPS tunnel)
+  //   5. server-side listDiskDates (only in Node, where fs exists)
+  function collectAvailableDateOptions(ticker) {
+    var out = [];
+    var seen = {};
+    if (typeof lastBandarData !== 'undefined' && lastBandarData) {
+      if (Array.isArray(lastBandarData.available_dates) && lastBandarData.available_dates.length > 0) {
+        for (var av = 0; av < lastBandarData.available_dates.length; av++) {
+          var dAv = lastBandarData.available_dates[av];
+          if (dAv && !seen[dAv]) { seen[dAv] = true; out.push(dAv); }
+        }
+      }
+      var bSumDates = lastBandarData.broker_summary && Array.isArray(lastBandarData.broker_summary.date_headers)
+        ? lastBandarData.broker_summary.date_headers
+        : [];
+      for (var hd = 0; hd < bSumDates.length; hd++) {
+        var hDate = bSumDates[hd] && (bSumDates[hd].date || bSumDates[hd]);
+        if (hDate && !seen[hDate]) { seen[hDate] = true; out.push(hDate); }
+      }
+      var bAcc = lastBandarData.broker_accumulation;
+      var accSeries = bAcc && Array.isArray(bAcc.series) ? bAcc.series : (bAcc && Array.isArray(bAcc.daily_summary) ? bAcc.daily_summary : []);
+      for (var ds = 0; ds < accSeries.length; ds++) {
+        var dSeries = accSeries[ds] && (accSeries[ds].date || accSeries[ds]);
+        if (dSeries && !seen[dSeries]) { seen[dSeries] = true; out.push(dSeries); }
+      }
+    }
+    if (typeof ticker === 'string' && ticker) {
+      var safeT = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      var vpsDatesArr = (typeof vpsDatesMemoryCache !== 'undefined') ? (vpsDatesMemoryCache[safeT] || []) : [];
+      for (var vd = 0; vd < vpsDatesArr.length; vd++) {
+        var dVps = vpsDatesArr[vd];
+        if (dVps && !seen[dVps]) { seen[dVps] = true; out.push(dVps); }
+      }
+    }
+    var diskDates = listDiskDates('broker-summary', ticker);
+    if (Array.isArray(diskDates)) {
+      for (var di = diskDates.length - 1; di >= 0; di--) {
+        var dDisk = diskDates[di];
+        if (dDisk && !seen[dDisk]) { seen[dDisk] = true; out.push(dDisk); }
+      }
+    }
+    out.sort().reverse();
+    return out;
+  }
+
   function calculateScannerDiscount(modal, last_price) {
     modal = Number(modal || 0);
     last_price = Number(last_price || 0);
@@ -51,7 +104,7 @@
       }
     }
     if (!dates || !dates.length) {
-      dates = listDiskDates('broker-summary', ticker);
+      dates = collectAvailableDateOptions(ticker);
     }
     if (!dates) dates = [];
     selectedDate = selectedDate || (typeof currentBandarDate !== 'undefined' ? currentBandarDate : null) || (dates && dates[0]) || '2026-09-11';
@@ -86,7 +139,7 @@
       }
     }
     if (!dates || !dates.length) {
-      dates = listDiskDates('broker-summary', ticker);
+      dates = collectAvailableDateOptions(ticker);
     }
     if (!dates) dates = [];
     selectedDate = selectedDate || (typeof currentBandarDate !== 'undefined' ? currentBandarDate : null) || (dates && dates[0]) || '2026-09-11';
@@ -1436,7 +1489,10 @@
     }
     var dateSelectWrap = byId('brokerDateSelectWrap');
     if (dateSelectWrap) {
-      dateSelectWrap.style.display = (bandarSection === 'summary') ? '' : 'none';
+      // The date selector belongs exclusively to Broker Summary. Akumulasi Broker
+      // already has range controls and must not inherit this single-date filter.
+      dateSelectWrap.style.display = bandarSection === 'summary' ? '' : 'none';
+      dateSelectWrap.setAttribute('aria-hidden', bandarSection === 'summary' ? 'false' : 'true');
     }
     var titleEl = byId('bandarPanelTitle');
     if (titleEl) {
@@ -2088,9 +2144,12 @@
       (bSum.top_sellers && bSum.top_sellers.length > 0) ||
       (bSum.gross_buyers && bSum.gross_buyers.length > 0) ||
       (bSum.net_buyers && bSum.net_buyers.length > 0) ||
+      (bSum.date_headers && bSum.date_headers.length > 0) ||
       (bSum.net_flow && bSum.net_flow !== 0) ||
       (bAcc.top_buyers && bAcc.top_buyers.length > 0) ||
-      (bAcc.net_buyers && bAcc.net_buyers.length > 0)
+      (bAcc.net_buyers && bAcc.net_buyers.length > 0) ||
+      (bAcc.series && bAcc.series.length > 0) ||
+      (bAcc.daily_summary && bAcc.daily_summary.length > 0)
     );
     var isDataEmpty = !hasActualData && Boolean(data.is_empty || bSum.is_empty || bSum.status === 'NO_DATA' || data.status === 'NO_DATA');
     var netStatusTone = 'text-emerald-400';
@@ -2169,11 +2228,15 @@
     availableDates.sort().reverse();
 
     if (series.length === 0 && availableDates.length > 0) {
+      // Keep a non-empty historical table when the API supplies dates but the
+      // optional accumulation series is absent. This is a structural fallback;
+      // real date_headers/series always take precedence above.
       series = availableDates.slice(0, 24).map(function (d, idx) {
+        var net = idx === 0 ? Number(bSum.net_flow || 0) : 0;
         return {
           date: d,
-          net_val: idx === 0 ? (bSum.net_flow || 0) : 0,
-          status: idx === 0 ? (bSum.net_flow >= 0 ? 'ACC' : 'DIST') : 'ACC',
+          net_val: net,
+          status: net >= 0 ? 'ACC' : 'DIST',
           top_1_broker: '—',
           top_buyer: '—',
           top_seller: '—'
@@ -4401,10 +4464,6 @@
       // Backend returns bandar_avg_buy (not bandar_avg_price or avg_buy_price)
       var bandarAvg = Number(s1.bandar_avg_buy || s1.bandar_avg_price || s1.avg_buy_price || s1.modal || s1.bandar_avg_cost || 0);
       var curTicker = String((intelObj && intelObj.ticker) || currentBandarTicker || bandarIntelTicker || '').toUpperCase();
-      if (curTicker === 'BBCA' && (currentPrice === 10150 || bandarAvg === 10250 || (currentPrice >= 10100 && bandarAvg >= 10200))) {
-        currentPrice = 6320;
-        if (bandarAvg === 10250 || bandarAvg >= 10200) bandarAvg = 6464;
-      }
       var discount = (bandarAvg > 0 && currentPrice > 0)
         ? calculateScannerDiscount(bandarAvg, currentPrice)
         : (s1.discount_pct != null ? Number(s1.discount_pct) : 0);
@@ -4675,13 +4734,6 @@
           var itTicker = item.ticker || '—';
           var itModal = Number(item.bandar_avg_cost || item.bandar_avg_buy || item.bandar_avg_price || item.modal || 0);
           var itPrice = Number(item.current_price || item.last_price || item.close_price || item.price || 0);
-          if (itTicker === 'BBCA' && (itPrice === 10150 || itModal === 10250 || (itPrice >= 10100 && itModal >= 10200))) {
-            itPrice = 6320;
-            if (itModal === 10250 || itModal >= 10200) itModal = 6464;
-            item.current_price = itPrice;
-            item.bandar_avg_cost = itModal;
-            item.bandar_avg_buy = itModal;
-          }
           if (itModal > 0 && itPrice > 0) {
             item.discount_pct = calculateScannerDiscount(itModal, itPrice);
           }
