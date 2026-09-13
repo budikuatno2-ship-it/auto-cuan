@@ -2382,15 +2382,70 @@ body {
   min-height: 100vh;
 }
 
-/* AUTO_CUAN_DESKTOP_HEADER_CENTER_V1 */
-/* Keep the navigation centered on the viewport instead of centering it only
-   inside the space left between unequal brand and account groups. */
+/* Header status badge pills — restored visibility and layout */
+.desktop-header-chips {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.header-status-chip {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid var(--ac-line);
+  border-radius: 999px;
+  background: var(--ac-surface-3);
+  color: var(--ac-text-muted);
+  font-size: var(--ac-text-micro);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.header-status-chip.safe {
+  border-color: rgba(52, 211, 153, 0.30);
+  background: rgba(52, 211, 153, 0.08);
+  color: #6ee7b7;
+}
+
+.header-status-chip.warn {
+  border-color: rgba(251, 191, 36, 0.30);
+  background: rgba(251, 191, 36, 0.08);
+  color: #fcd34d;
+}
+
+.header-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.55);
+  animation: headerDotPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes headerDotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* Hide status chips on mobile — they clutter the compact header */
+@media (max-width: 1023px) {
+  .desktop-header-chips { display: none !important; }
+}
+
+/* AUTO_CUAN_DESKTOP_HEADER_CENTER_V2 */
+/* 4-column grid: Logo | Nav(center) | Status Chips | Account
+   Keeps navigation centered and badges visible without overlap. */
 @media (min-width: 1280px) {
   .app-header > .header-shell > .flex {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-columns: auto 1fr auto auto;
     align-items: center;
-    column-gap: 16px;
+    column-gap: 12px;
   }
 
   .app-header > .header-shell > .flex > :first-child {
@@ -2402,6 +2457,10 @@ body {
     width: max-content;
     max-width: none;
     flex: none;
+  }
+
+  .app-header > .header-shell > .flex > .desktop-header-chips {
+    justify-self: center;
   }
 
   .app-header > .header-shell > .flex > :last-child {
