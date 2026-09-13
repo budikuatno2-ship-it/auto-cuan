@@ -180,6 +180,7 @@ function stopDtPolling() {
 }
 
 function updateDtMetaUI(meta) {
+    if (typeof updateGlobalLiveRadarStatus === 'function') updateGlobalLiveRadarStatus(meta || {});
     var badge = document.getElementById('dtMetaBadge');
     if (badge) {
         var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—';
