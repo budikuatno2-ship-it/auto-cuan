@@ -2261,9 +2261,19 @@ button:disabled,
 
 /* Ticker Search Controls & Header Search Bar Fix */
 .analisis-saham-controls,
-.ticker-search-container,
+.ticker-search-container {
+  position: relative !important;
+  z-index: 10 !important;
+  margin-top: 24px !important;
+  margin-bottom: 16px !important;
+  clear: both !important;
+}
+
+#analisisChartHeader[style*="display: none"] {
+  display: none !important;
+}
+
 .unified-top-bar,
-#analisisChartHeader,
 .screener-search-bar,
 .screener-search-wrap,
 #screenerSearchWrap,
@@ -2274,7 +2284,7 @@ button:disabled,
   gap: 10px !important;
   flex-wrap: wrap !important;
   position: relative !important;
-  z-index: 20 !important;
+  z-index: 10 !important;
   margin-top: 24px !important;
   margin-bottom: 16px !important;
   clear: both !important;
