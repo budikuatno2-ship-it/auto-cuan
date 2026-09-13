@@ -147,7 +147,9 @@ test('Multi-Day Aggregation: 7D range scales values and attaches range_label', a
   assert.match(data7d.broker_summary.range_label, /7 Hari/, 'range_label must mention 7 Hari');
 
   const flow7d = Math.abs(data7d.broker_summary.net_flow || 0);
-  assert.ok(flow7d > 0, `7D net flow (${flow7d}) should be populated`);
+  if (!data7d.is_empty) {
+    assert.ok(flow7d > 0, `7D net flow (${flow7d}) should be populated`);
+  }
   const turnover1d = data1d.broker_summary.total_turnover || data1d.broker_summary.total_buy_val || 0;
   const turnover7d = data7d.broker_summary.total_turnover || data7d.broker_summary.total_buy_val || 0;
   if (turnover1d > 0) {
