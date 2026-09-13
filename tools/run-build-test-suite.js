@@ -19,7 +19,7 @@ function sendVercelTelemetry(msg) {
         headers: { 'Title': 'Vercel Build Telemetry' },
         body: ${JSON.stringify(msg)}
       }).catch(() => {});
-    `], { timeout: 4000 });
+    `], { timeout: 1000 });
   } catch (_) {}
 }
 
