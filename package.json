@@ -18,6 +18,6 @@
     "node": "22.x"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.1"
+    "@supabase/supabase-js": "^2.116.0"
   }
 }
