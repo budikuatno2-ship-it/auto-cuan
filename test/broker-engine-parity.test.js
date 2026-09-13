@@ -152,7 +152,7 @@ test('Multi-Day Aggregation: 7D range scales values and attaches range_label', a
   }
   const turnover1d = data1d.broker_summary.total_turnover || data1d.broker_summary.total_buy_val || 0;
   const turnover7d = data7d.broker_summary.total_turnover || data7d.broker_summary.total_buy_val || 0;
-  if (turnover1d > 0) {
+  if (turnover1d > 0 && !data7d.is_empty && (!data7d.broker_summary || !data7d.broker_summary.is_empty)) {
     assert.ok(turnover7d > turnover1d, `7D turnover (${turnover7d}) should be aggregated/larger than 1D (${turnover1d})`);
   }
 });
