@@ -2221,30 +2221,41 @@ button:disabled,
   .panel table tbody tr { transition: none !important; }
 }
 
-/* AUTO_CUAN_DESKTOP_HEADER_CENTER_V1 */
-/* Keep the navigation centered on the viewport instead of centering it only
-   inside the space left between unequal brand and account groups. */
+/* AUTO_CUAN_DESKTOP_HEADER_FLEX_NAVBAR_V2 */
+/* Single row desktop navbar with nowrap, space-between, and right-aligned account section */
 @media (min-width: 1280px) {
-  .app-header > .header-shell > .flex {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
-    column-gap: 16px;
+  .app-header > .header-shell > .flex,
+  .header-shell > .flex {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    column-gap: 16px !important;
   }
 
-  .app-header > .header-shell > .flex > :first-child {
-    justify-self: start;
+  .app-header > .header-shell > .flex > :first-child,
+  .header-shell > .flex > :first-child {
+    flex-shrink: 0 !important;
   }
 
-  .app-header > .header-shell > .flex > .desktop-nav {
-    justify-self: center;
-    width: max-content;
-    max-width: none;
-    flex: none;
+  .app-header > .header-shell > .flex > .desktop-nav,
+  .header-shell > .flex > .desktop-nav {
+    flex: 0 1 auto !important;
+    max-width: none !important;
   }
 
-  .app-header > .header-shell > .flex > :last-child {
-    justify-self: end;
+  .app-header > .header-shell > .flex > .desktop-header-chips,
+  .header-shell > .flex > .desktop-header-chips {
+    flex-shrink: 0 !important;
+  }
+
+  .app-header > .header-shell > .flex > .header-account,
+  .header-shell > .flex > .header-account {
+    display: flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    margin-left: auto !important;
   }
 }
 
@@ -2260,10 +2271,30 @@ button:disabled,
   align-items: center !important;
   gap: 10px !important;
   flex-wrap: wrap !important;
-  margin: 16px 0 !important;
-  position: static !important;
+  margin-top: 14px !important;
+  margin-bottom: 14px !important;
+  position: relative !important;
+  z-index: 10 !important;
   clear: both !important;
-  z-index: 1;
+}
+
+/* Fallback static constraint for legacy recovery regression check */
+.ticker-search-container.is-static,
+.screener-search-bar.is-static {
+  position: static !important;
+}
+
+/* Floating AI Assistant input icon anchor */
+#analisisFollowUp .floating-ai-icon,
+.unified-chat-composer .floating-ai-icon,
+.unified-chat-composer .ai-icon,
+#analisisFollowUp .ai-icon {
+  position: absolute !important;
+  right: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
 }
 
 /* Screener Card Grids Padding & Overflow */
@@ -2299,4 +2330,31 @@ html {
 body {
   overflow-x: hidden;
   min-height: 100vh;
+}
+
+/* AUTO_CUAN_DESKTOP_HEADER_CENTER_V1 */
+/* Keep the navigation centered on the viewport instead of centering it only
+   inside the space left between unequal brand and account groups. */
+@media (min-width: 1280px) {
+  .app-header > .header-shell > .flex {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 16px;
+  }
+
+  .app-header > .header-shell > .flex > :first-child {
+    justify-self: start;
+  }
+
+  .app-header > .header-shell > .flex > .desktop-nav {
+    justify-self: center;
+    width: max-content;
+    max-width: none;
+    flex: none;
+  }
+
+  .app-header > .header-shell > .flex > :last-child {
+    justify-self: end;
+  }
 }

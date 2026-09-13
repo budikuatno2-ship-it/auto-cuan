@@ -350,6 +350,8 @@
       '  to { opacity: 1; transform: translateY(0); }',
       '}',
       '.ac-broker-bubble {',
+      '  margin: 4px;',
+      '  flex-shrink: 0;',
       '  border-radius: 9999px;',
       '  display: flex;',
       '  flex-direction: column;',
@@ -661,26 +663,33 @@
       // Anomaly correction on netVal if over-inflated into trillions
       netVal = normalizeBrokerValue(netVal, Math.max(it.bvol, it.svol), it.avgBuy || it.avgSell);
 
-      var isNetBuyer;
-      if (it.bval > 0 && it.sval > 0) {
-        isNetBuyer = it.bval >= it.sval;
-      } else if (it.explicitNetVal != null) {
-        isNetBuyer = it.explicitNetVal >= 0;
-      } else if (it.bval > 0) {
-        isNetBuyer = true;
-      } else if (it.sval > 0) {
-        isNetBuyer = false;
-      } else {
-        isNetBuyer = netVal >= 0;
+      var isNeutral = (Math.abs(netVal) === 0) || (it.bval > 0 && it.sval > 0 && it.bval === it.sval);
+      var isNetBuyer = false;
+      if (!isNeutral) {
+        if (it.bval > 0 && it.sval > 0) {
+          isNetBuyer = it.bval > it.sval;
+        } else if (it.explicitNetVal != null) {
+          isNetBuyer = it.explicitNetVal > 0;
+        } else if (it.bval > 0) {
+          isNetBuyer = true;
+        } else if (it.sval > 0) {
+          isNetBuyer = false;
+        } else {
+          isNetBuyer = netVal > 0;
+        }
       }
 
       // Sizing transaction value
       var txVal = isGross ? Math.max(it.bval, it.sval, Math.abs(netVal)) : Math.abs(netVal);
-      if (txVal <= 0) txVal = 1;
+      if (isNeutral && txVal <= 0 && (it.bval > 0 || it.sval > 0)) {
+        txVal = Math.max(it.bval, it.sval);
+      }
+      if (txVal <= 0) txVal = 0;
 
       it.netVal = netVal;
       it.nvol = netVol;
       it.isNetBuyer = isNetBuyer;
+      it.isNeutral = isNeutral;
       it.txVal = txVal;
     }
 
@@ -697,7 +706,8 @@
         seenBuyers[bCode] = true;
         var bStat = map[bCode];
         if (!bStat) continue;
-        var buyTxVal = bStat.bval > 0 ? bStat.bval : Math.max(1, Math.abs(bStat.netVal));
+        var buyTxVal = bStat.bval > 0 ? bStat.bval : Math.abs(bStat.netVal);
+        if (buyTxVal <= 0) continue; // eliminate 0 dummy bubbles
         buyerBrokers.push(Object.assign({}, bStat, {
           side: 'buy',
           isBuyer: true,
@@ -719,7 +729,8 @@
         seenSellers[sCode] = true;
         var sStat = map[sCode];
         if (!sStat) continue;
-        var sellTxVal = sStat.sval > 0 ? sStat.sval : Math.max(1, Math.abs(sStat.netVal));
+        var sellTxVal = sStat.sval > 0 ? sStat.sval : Math.abs(sStat.netVal);
+        if (sellTxVal <= 0) continue; // eliminate 0 dummy bubbles
         sellerBrokers.push(Object.assign({}, sStat, {
           side: 'sell',
           isBuyer: false,
@@ -732,13 +743,32 @@
 
       items = buyerBrokers.concat(sellerBrokers);
     } else {
-      // Net Mode: All Net Buyers (badge +, green) and All Net Sellers (badge -, red/orange) without artificial slicing
+      // Net Mode: All Net Buyers (badge +, green), All Net Sellers (badge -, red/orange), and Neutral (badge 0, gray)
       var netBuyers = [];
       var netSellers = [];
+      var netNeutrals = [];
       for (var cn = 0; cn < codes.length; cn++) {
         var nStat = map[codes[cn]];
         var nVal = nStat.netVal;
-        var absNval = Math.max(1, Math.abs(nVal));
+
+        if (nStat.isNeutral) {
+          if (nStat.bval > 0 || nStat.sval > 0) {
+            netNeutrals.push(Object.assign({}, nStat, {
+              side: 'neutral',
+              isBuyer: false,
+              isNetBuyer: false,
+              isNeutral: true,
+              badge: '0',
+              txVal: nStat.txVal > 0 ? nStat.txVal : Math.max(nStat.bval, nStat.sval, 1),
+              displayVal: 0
+            }));
+          }
+          continue; // No dummy bubble for empty 0 activity
+        }
+
+        var absNval = Math.abs(nVal);
+        if (absNval <= 0) continue; // eliminate dummy +1/-1
+
         if (nStat.isNetBuyer) {
           netBuyers.push(Object.assign({}, nStat, {
             side: 'buy',
@@ -759,6 +789,7 @@
       }
       netBuyers.sort(function (a, b) { return b.txVal - a.txVal; });
       netSellers.sort(function (a, b) { return b.txVal - a.txVal; });
+      netNeutrals.sort(function (a, b) { return b.txVal - a.txVal; });
 
       // Fallback: If netSellers is empty but sList has brokers, guarantee sellers are rendered
       if (netSellers.length === 0 && sList.length > 0) {
@@ -766,7 +797,8 @@
           var sItem = sList[si];
           if (!sItem || !sItem.broker) continue;
           var sCode = String(sItem.broker).trim().toUpperCase();
-          var sVal = Math.abs(Number(sItem.nval != null ? sItem.nval : (sItem.net_val != null ? sItem.net_val : (sItem.sval || sItem.sell_val || sItem.val || 1))));
+          var sVal = Math.abs(Number(sItem.nval != null ? sItem.nval : (sItem.net_val != null ? sItem.net_val : (sItem.sval || sItem.sell_val || sItem.val || 0))));
+          if (sVal <= 0) continue;
           var sStat = map[sCode] || {
             broker: sCode,
             fullName: getBrokerSecurityName(sCode, sItem.broker_name),
@@ -778,7 +810,8 @@
             avgSell: sItem.avg_price || 0,
             netVal: -sVal,
             txVal: sVal,
-            isNetBuyer: false
+            isNetBuyer: false,
+            isNeutral: false
           };
           sStat.netVal = -Math.abs(sStat.netVal || sVal);
           sStat.isNetBuyer = false;
@@ -793,7 +826,7 @@
         netSellers.sort(function (a, b) { return b.txVal - a.txVal; });
       }
 
-      items = netBuyers.concat(netSellers);
+      items = netBuyers.concat(netSellers).concat(netNeutrals);
     }
 
     // Sort descending by transaction magnitude
@@ -845,10 +878,20 @@
     var bval = broker.bval || 0;
     var sval = broker.sval || 0;
     var totalGross = bval + sval;
+    var netVal = broker.netVal != null ? broker.netVal : (bval - sval);
+    var isNeutral = broker.isNeutral || (netVal === 0 && (bval === sval || totalGross === 0));
 
-    var buyPct = 50;
-    var sellPct = 50;
-    if (totalGross > 0) {
+    var buyPct = 0;
+    var sellPct = 0;
+    if (isNeutral) {
+      if (totalGross > 0) {
+        buyPct = 50;
+        sellPct = 50;
+      } else {
+        buyPct = 0;
+        sellPct = 0;
+      }
+    } else if (totalGross > 0) {
       buyPct = Math.round((bval / totalGross) * 100);
       sellPct = 100 - buyPct;
     } else if (isNetBuyer) {
@@ -859,14 +902,23 @@
       sellPct = 100;
     }
 
-    var tagColor = isNetBuyer
-      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-      : 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+    var tagColor = isNeutral
+      ? 'bg-dark-600/60 text-gray-300 border-dark-500'
+      : (isNetBuyer
+          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+          : 'bg-rose-500/20 text-rose-300 border-rose-500/40');
 
     var html = '';
     html += '<div id="brokerBubbleDetailCard" class="bg-dark-800/90 border border-dark-600/50 rounded-2xl p-4 sm:p-5 shadow-xl ac-fade-in">';
 
     // Header with broker code, full name, and net status
+    var statusTitle = isNeutral
+      ? 'NETRAL (0)'
+      : (isNetBuyer ? 'NET BUYER (+ ' + formatIDR(netVal) + ')' : 'NET SELLER (- ' + formatIDR(Math.abs(netVal)) + ')');
+    var statusBadge = isNeutral
+      ? '⚪ ' + (totalGross === 0 ? '0% / 0% Netral' : 'Netral (' + buyPct + '% / ' + sellPct + '%)')
+      : (isNetBuyer ? '🟢 Akumulasi' : '🔴 Distribusi');
+
     html += '  <div class="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3.5 border-b border-dark-600/40">';
     html += '    <div class="flex items-center gap-3">';
     html += '      <span class="px-3 py-1.5 rounded-xl font-black font-mono text-base border ' + tagColor + '">' + escapeHtml(broker.broker) + '</span>';
@@ -876,7 +928,7 @@
     html += '        </div>';
     html += '        <div class="text-[11px] text-gray-400 font-mono mt-0.5">';
     html += '          Kode Broker: <span class="text-gray-200 font-bold">' + escapeHtml(broker.broker) + '</span>';
-    html += '          • Status: <span class="font-bold ' + (isNetBuyer ? 'text-emerald-400' : 'text-rose-400') + '">' + (isNetBuyer ? 'NET BUYER (+ ' + formatIDR(broker.netVal) + ')' : 'NET SELLER (- ' + formatIDR(Math.abs(broker.netVal)) + ')') + '</span>';
+    html += '          • Status: <span class="font-bold ' + (isNeutral ? 'text-gray-300' : (isNetBuyer ? 'text-emerald-400' : 'text-rose-400')) + '">' + statusTitle + '</span>';
     html += '        </div>';
     html += '      </div>';
     html += '    </div>';
@@ -887,7 +939,7 @@
     }
     html += '      <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md bg-dark-700 border border-dark-600/60 text-gray-300 font-mono">📅 ' + escapeHtml(rangeBadgeText) + '</span>';
     html += '      <span class="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md ' + tagColor + '">';
-    html += '        ' + (isNetBuyer ? '🟢 Akumulasi' : '🔴 Distribusi');
+    html += '        ' + statusBadge;
     html += '      </span>';
     html += '    </div>';
     html += '  </div>';
@@ -915,7 +967,7 @@
 
     html += '    <div class="flex flex-wrap items-center justify-between text-[10px] text-gray-400 font-mono mt-2 pt-1 border-t border-dark-600/20">';
     html += '      <span>Total Transaksi Gross: <strong class="text-gray-200">' + formatIDR(totalGross) + '</strong></span>';
-    html += '      <span>Net Flow: <strong class="' + (broker.netVal >= 0 ? 'text-emerald-400' : 'text-rose-400') + '">' + (broker.netVal >= 0 ? '+' : '-') + formatIDR(Math.abs(broker.netVal)) + '</strong></span>';
+    html += '      <span>Net Flow: <strong class="' + (isNeutral ? 'text-gray-300' : (broker.netVal >= 0 ? 'text-emerald-400' : 'text-rose-400')) + '">' + (isNeutral ? '0' : ((broker.netVal >= 0 ? '+' : '-') + formatIDR(Math.abs(broker.netVal)))) + '</strong></span>';
     html += '      <span>Kontribusi: <strong class="text-emerald-300 font-bold">' + contribPct + '%</strong></span>';
     html += '    </div>';
     html += '  </div>';
@@ -952,7 +1004,16 @@
     return html;
   }
 
-  function getBubbleColorStyles(isNetBuyer, tier) {
+  function getBubbleColorStyles(isNetBuyer, tier, isNeutral) {
+    if (isNeutral) {
+      return {
+        bg: 'radial-gradient(circle at 35% 35%, rgba(148, 163, 184, 0.25), rgba(51, 65, 85, 0.70))',
+        border: 'rgba(148, 163, 184, 0.55)',
+        text: '#f1f5f9',
+        subText: '#cbd5e1',
+        shadow: '0 3px 10px rgba(100, 116, 139, 0.25)'
+      };
+    }
     if (isNetBuyer) {
       if (tier === 3) {
         return {
@@ -1009,31 +1070,38 @@
   }
 
   function renderBrokerBubbleClusterHtml(brokers, activeCode, mode, filterSide) {
+    if (!Array.isArray(brokers) || brokers.length === 0) {
+      return '<div class="text-center py-10 px-4 text-xs"><p class="text-gray-400 font-medium">Tidak ada data transaksi broker summary untuk tanggal ini (Pasar tutup / data belum tersedia)</p></div>';
+    }
+
     var isGross = mode === 'gross';
+    filterSide = filterSide || 'all';
+
+    // If filterSide has no matches but brokers has items, fallback to 'all' so bubbles are never blocked
     var visibleBrokers = brokers.filter(function (b) {
+      if (brokerFlowFilter !== 'all') {
+        var isF = isForeignBroker(b.broker);
+        if (brokerFlowFilter === 'F' && !isF) return false;
+        if (brokerFlowFilter === 'D' && isF) return false;
+      }
       if (filterSide === 'buy') return isGross ? (b.side === 'buy' || b.isBuyer) : b.isNetBuyer;
-      if (filterSide === 'sell') return isGross ? (b.side === 'sell' || !b.isBuyer) : !b.isNetBuyer;
+      if (filterSide === 'sell') return isGross ? (b.side === 'sell' || !b.isBuyer) : (!b.isNetBuyer && !b.isNeutral);
       return true;
     });
 
-    // If filterSide has no matches but brokers has items, fallback to 'all' so bubbles are never blocked
-    if (visibleBrokers.length === 0 && brokers.length > 0 && filterSide !== 'all') {
-      visibleBrokers = brokers;
+    if (visibleBrokers.length === 0 && brokers.length > 0 && brokerFlowFilter === 'all') {
       filterSide = 'all';
+      visibleBrokers = brokers;
     }
 
-    var buyerCount = brokers.filter(function (b) {
-      return isGross ? (b.side === 'buy' || b.isBuyer) : b.isNetBuyer;
-    }).length;
-    var sellerCount = brokers.filter(function (b) {
-      return isGross ? (b.side === 'sell' || !b.isBuyer) : !b.isNetBuyer;
-    }).length;
+    var buyerCount = brokers.filter(function (b) { return isGross ? (b.side === 'buy' || b.isBuyer) : b.isNetBuyer; }).length;
+    var sellerCount = brokers.filter(function (b) { return isGross ? (b.side === 'sell' || !b.isBuyer) : (!b.isNetBuyer && !b.isNeutral); }).length;
 
     var html = '';
     html += '<div class="space-y-3">';
 
-    // Subheader controls: Helper tip and Filter side pills
-    html += '  <div class="flex flex-wrap items-center justify-between gap-2 px-1 text-xs">';
+    // Filter controls and hint
+    html += '  <div class="flex flex-wrap items-center justify-between gap-2 px-1">';
     html += '    <div class="flex items-center gap-1.5 text-gray-400 text-[11px]">';
     html += '      <span>💡</span>';
     html += '      <span>Tap bubble broker untuk rincian &amp; statistik transaksi.</span>';
@@ -1062,16 +1130,22 @@
     } else {
       for (var i = 0; i < visibleBrokers.length; i++) {
         var b = visibleBrokers[i];
-        var isBuyerBubble = isGross ? (b.side === 'buy' || b.isBuyer) : b.isNetBuyer;
+        var isNeutralBubble = !isGross && (b.isNeutral || b.netVal === 0);
+        var isBuyerBubble = isNeutralBubble ? false : (isGross ? (b.side === 'buy' || b.isBuyer) : b.isNetBuyer);
         var isSelected = (b.broker === activeCode) && (!selectedBrokerSide || !b.side || b.side === selectedBrokerSide);
-        var styleInfo = getBubbleColorStyles(isBuyerBubble, b.colorTier);
-        var valText = isGross
-          ? (b.side === 'sell' || !b.isBuyer ? ('-' + formatBrokerVal(b.sval || b.txVal)) : ('+' + formatBrokerVal(b.bval || b.txVal)))
-          : ((b.netVal >= 0 ? '+' : '-') + formatBrokerVal(Math.abs(b.netVal)));
-        var subBadge = isGross
-          ? (isBuyerBubble ? 'BUY' : 'SELL')
-          : (b.size >= 76 ? (isBuyerBubble ? 'BUY' : 'SELL') : (b.netVal >= 0 ? '+' : '-'));
+        var styleInfo = getBubbleColorStyles(isBuyerBubble, b.colorTier, isNeutralBubble);
+        var valText = isNeutralBubble
+          ? formatBrokerVal(0)
+          : (isGross
+              ? (b.side === 'sell' || !b.isBuyer ? ('-' + formatBrokerVal(b.sval || b.txVal)) : ('+' + formatBrokerVal(b.bval || b.txVal)))
+              : ((b.netVal >= 0 ? '+' : '-') + formatBrokerVal(Math.abs(b.netVal))));
+        var subBadge = isNeutralBubble
+          ? '0'
+          : (isGross
+              ? (isBuyerBubble ? 'BUY' : 'SELL')
+              : (b.size >= 76 ? (isBuyerBubble ? 'BUY' : 'SELL') : (b.netVal >= 0 ? '+' : '-')));
 
+        var isSmallBubble = b.size < 64;
         var animString = isSelected
           ? 'none'
           : 'acBubbleFloat' + b.floatId + ' ' + b.floatDuration + 's ease-in-out infinite alternate, acBubblePopIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) ' + b.staggerDelay + 's backwards';
@@ -1082,9 +1156,9 @@
         html += '      id="broker-bubble-' + escapeHtml(bubbleKey) + '"';
         html += '      class="ac-broker-bubble ' + (isSelected ? 'ac-bubble-selected' : '') + '"';
         html += '      data-broker="' + escapeHtml(b.broker) + '"';
-        html += '      data-side="' + escapeHtml(b.side || (b.isBuyer ? 'buy' : 'sell')) + '"';
-        html += '      onclick="BandarmologiRuntime.selectBrokerBubble(\'' + escapeHtml(b.broker) + '\', \'' + escapeHtml(b.side || (b.isBuyer ? 'buy' : 'sell')) + '\')"';
-        html += '      title="' + escapeHtml(b.broker + ' - ' + b.fullName) + '"';
+        html += '      data-side="' + escapeHtml(b.side || (b.isBuyer ? 'buy' : (isNeutralBubble ? 'neutral' : 'sell'))) + '"';
+        html += '      onclick="BandarmologiRuntime.selectBrokerBubble(\'' + escapeHtml(b.broker) + '\', \'' + escapeHtml(b.side || (b.isBuyer ? 'buy' : (isNeutralBubble ? 'neutral' : 'sell'))) + '\')"';
+        html += '      title="' + escapeHtml(b.broker + ' - ' + b.fullName + ' | ' + (isNeutralBubble ? 'Netral (0)' : (isBuyerBubble ? 'Akumulasi +' : 'Distribusi -') + formatBrokerVal(Math.abs(b.netVal || b.txVal))) + ' | Vol: ' + formatNumber(b.nvol || 0) + ' lot') + '"';
         html += '      style="width:' + b.size + 'px; height:' + b.size + 'px; background:' + styleInfo.bg + '; border-color:' + styleInfo.border + '; color:' + styleInfo.text + '; box-shadow:' + styleInfo.shadow + '; animation:' + animString + ';">';
         html += '      <span class="font-mono font-black text-xs sm:text-sm tracking-wider leading-none">' + escapeHtml(b.broker) + '</span>';
         html += '      <span class="text-[9px] sm:text-[10px] font-mono font-bold leading-tight mt-1" style="color:' + styleInfo.subText + '">' + escapeHtml(valText) + '</span>';
@@ -1295,6 +1369,12 @@
     brokerSummaryRange = range || '1d';
     if (brokerSummaryRange !== '1d') {
       currentBandarDate = null;
+    }
+    var validIntelRanges = ['1d', '5d', '7d', '14d', '30d', '60d'];
+    if (validIntelRanges.includes(String(range).toLowerCase())) {
+      bandarIntelRange = String(range).toLowerCase();
+      bandarIntelData = null;
+      bandarIntelScannerData = null;
     }
     if (brokerSummaryRange === 'custom') {
       // Just switch the UI to show the date pickers; wait for explicit "Terapkan".
@@ -1894,7 +1974,7 @@
     html += '  </div>';
     html += '  <div class="flex items-center gap-3 text-xs font-mono">';
     html += '    <span class="text-gray-400">Net Flow: <strong class="' + (bSum.net_flow >= 0 ? 'text-emerald-400' : 'text-rose-400') + '">' + (bSum.net_flow >= 0 ? '+' : '') + formatIDR(bSum.net_flow) + '</strong></span>';
-    html += '    <span class="text-gray-400">Tanggal: <strong class="text-gray-200">' + escapeHtml(bSum.date || currentBandarDate || 'Terbaru') + '</strong></span>';
+    html += '    <span class="text-gray-400">Tanggal: <strong class="text-gray-200">' + escapeHtml(formatDateDisplay(bSum.date || currentBandarDate || '2026-09-11')) + '</strong></span>';
     html += '  </div>';
     html += '</div>';
 
@@ -1910,7 +1990,7 @@
       ? data.available_dates
       : series.map(function (s) { return s.date; }).filter(Boolean).reverse();
 
-    // Interactive date selector dropdown and quick date pills
+    // Single unified functional date selector dropdown
     if (availableDates.length > 0) {
       html += '<div class="flex flex-wrap items-center gap-2.5 mb-3 bg-dark-800/60 p-2 rounded-xl border border-dark-600/40">';
       html += '  <div class="flex items-center gap-1.5">';
@@ -1920,24 +2000,10 @@
         var aDt = availableDates[ad];
         var isCurrentDate = aDt === (bSum.date || currentBandarDate);
         var dateNote = ad === 0 ? ' (Terbaru)' : '';
-        html += '      <option value="' + escapeHtml(aDt) + '"' + (isCurrentDate ? ' selected' : '') + '>' + escapeHtml(aDt) + dateNote + '</option>';
+        html += '      <option value="' + escapeHtml(aDt) + '"' + (isCurrentDate ? ' selected' : '') + '>' + escapeHtml(formatDateDisplay(aDt)) + dateNote + '</option>';
       }
       html += '    </select>';
       html += '  </div>';
-
-      var quickDates = availableDates.slice(0, 6);
-      if (quickDates.length > 0) {
-        html += '  <div class="flex flex-wrap items-center gap-1 sm:ml-auto">';
-        for (var qd = 0; qd < quickDates.length; qd++) {
-          var dt = quickDates[qd];
-          var isCurrent = dt === (bSum.date || currentBandarDate);
-          var pillStyle = isCurrent
-            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
-            : 'bg-dark-700/80 text-gray-300 border-dark-600/60 hover:bg-dark-600 hover:text-white';
-          html += '    <button type="button" onclick="BandarmologiRuntime.loadBandarmologiTab(null, \'' + escapeHtml(dt) + '\')" class="px-2 py-0.5 text-[11px] rounded-md border font-mono transition ' + pillStyle + '">' + escapeHtml(dt) + '</button>';
-        }
-        html += '  </div>';
-      }
       html += '</div>';
     }
 
@@ -3731,11 +3797,17 @@
   }
 
   function formatDateDisplay(dateStr) {
-    if (!dateStr) return 'Terbaru';
+    if (!dateStr) return '2026-09-11';
     try {
+      if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
+        return dateStr.trim();
+      }
       var d = new Date(dateStr);
       if (isNaN(d.getTime())) return String(dateStr);
-      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+      var yr = d.getFullYear();
+      var mo = String(d.getMonth() + 1).padStart(2, '0');
+      var da = String(d.getDate()).padStart(2, '0');
+      return yr + '-' + mo + '-' + da;
     } catch (_) {
       return String(dateStr);
     }
@@ -3776,12 +3848,24 @@
 
   function setBandarIntelRange(range) {
     var validRanges = ['1d', '5d', '7d', '14d', '30d', '60d'];
-    bandarIntelRange = validRanges.includes(String(range).toLowerCase()) ? String(range).toLowerCase() : '7d';
+    var cleanRange = validRanges.includes(String(range).toLowerCase()) ? String(range).toLowerCase() : '7d';
+    bandarIntelRange = cleanRange;
     bandarIntelData = null;
     bandarIntelScannerData = null;
+
+    // Synchronize broker summary range as well so banner, broker summary, and intel stay in sync
+    brokerSummaryRange = cleanRange;
+    if (cleanRange !== '1d') {
+      currentBandarDate = null;
+    }
+
     var container = byId('bandarmologiIntelContent') || byId('bandarmologiContent');
     if (typeof fetch !== 'undefined') {
       loadBandarmologiIntel(currentBandarTicker, container);
+      var sumContainer = byId('bandarmologiContent');
+      if (sumContainer && bandarSection !== 'intel') {
+        loadBandarmologiTab(currentBandarTicker, null, cleanRange);
+      }
     } else if (container) {
       renderBandarmologiIntelUI(container, currentBandarTicker);
     }
@@ -4329,19 +4413,31 @@
 
       var currentItems = Array.isArray(indexes[bandarIntelScannerCategory]) ? indexes[bandarIntelScannerCategory] : [];
       html += '<div id="panel-intel-scanner" class="bg-dark-700/40 border border-dark-600/30 rounded-xl overflow-hidden">';
+
+      var activeMarketDate = formatDateDisplay(scanData.effective_date || scanData.date || (lastBandarData && lastBandarData.date) || '2026-09-11');
+      var rangeAggLabel = escapeHtml(bandarIntelRange.toUpperCase()) + (bandarIntelRange === '1d' ? '' : ' Aggregated');
+      html += '  <div class="px-3.5 py-2 bg-dark-800/80 border-b border-dark-600/40 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">';
+      html += '    <span class="text-emerald-400 font-semibold">📅 Data per: ' + escapeHtml(activeMarketDate) + ' (Penutupan Terakhir)</span>';
+      html += '    <span class="text-gray-400">Rentang: <strong class="text-gray-200">' + rangeAggLabel + '</strong></span>';
+      html += '  </div>';
+
       if (currentItems.length === 0) {
         html += '  <div class="text-center py-12 text-gray-500 text-xs">';
         html += '    <p class="font-semibold text-gray-400">Tidak ada emiten terdeteksi untuk kriteria ini saat ini.</p>';
         html += '    <p class="text-[11px] mt-1 text-gray-500">Gunakan tombol refresh di atas untuk memeriksa ulang universe indeks.</p>';
         html += '  </div>';
       } else {
+        var metricColTitle = bandarIntelScannerCategory === 'harga_di_bawah_modal_bandar'
+          ? ('Diskon vs Modal Bandar (' + rangeAggLabel + ')')
+          : ('Metrik Utama (' + escapeHtml(bandarIntelRange.toUpperCase()) + ')');
+
         html += '  <div class="overflow-x-auto overflow-y-auto" style="max-height: 540px; overflow-y: auto; overflow-x: auto;">';
         html += '    <table class="w-full text-left text-xs">';
         html += '      <thead class="sticky top-0 bg-slate-900 z-20" style="position: sticky; top: 0; z-index: 20; background-color: #0f172a;">';
         html += '        <tr class="text-[11px] text-gray-400 border-b border-dark-600/40 bg-dark-800/90">';
         html += '          <th class="py-2.5 px-3">No</th>';
         html += '          <th class="py-2.5 px-3">Ticker</th>';
-        html += '          <th class="py-2.5 px-3">Metrik Utama</th>';
+        html += '          <th class="py-2.5 px-3 font-semibold text-emerald-300">' + escapeHtml(metricColTitle) + '</th>';
         html += '          <th class="py-2.5 px-3">Keterangan</th>';
         html += '          <th class="py-2.5 px-3 text-right">Aksi</th>';
         html += '        </tr>';
@@ -4836,6 +4932,8 @@
     setRosterCategoryFilter: setRosterCategoryFilter,
     selectInsiderForGraph: selectInsiderForGraph,
     renderRosterTableRows: renderRosterTableRows,
+    formatDateDisplay: formatDateDisplay,
+    injectBubbleStyles: injectBubbleStyles,
     getCurrentInsiderRoster: function () { return currentInsiderRosterData; },
     getCurrentInsiderRosterTicker: function () { return currentInsiderRosterTicker; },
     get VPS_DATA_API_BASE() { return getVpsDataApiBase(); },
@@ -4846,6 +4944,8 @@
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
+      formatDateDisplay: formatDateDisplay,
+      injectBubbleStyles: injectBubbleStyles,
       BROKER_NAMES: BROKER_NAMES,
       FOREIGN_BROKERS: FOREIGN_BROKERS,
       RETAIL_BROKERS: RETAIL_BROKERS,
@@ -4917,7 +5017,7 @@
       getCurrentInsiderRoster: function () { return currentInsiderRosterData; },
       getCurrentInsiderRosterTicker: function () { return currentInsiderRosterTicker; },
       get VPS_DATA_API_BASE() { return getVpsDataApiBase(); },
-    getVpsDataApiBase: getVpsDataApiBase
+      getVpsDataApiBase: getVpsDataApiBase
     };
   }
 
