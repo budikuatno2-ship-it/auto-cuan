@@ -1311,8 +1311,8 @@
         var subBadge = isNeutralBubble
           ? '0'
           : (isGross
-              ? (isBuyerBubble ? 'BELI' : 'JUAL')
-              : (b.size >= 76 ? (isBuyerBubble ? 'BELI' : 'JUAL') : (b.netVal >= 0 ? '+' : '-')));
+              ? (isBuyerBubble ? 'BUY' : 'SELL')
+              : (b.size >= 76 ? (isBuyerBubble ? 'BUY' : 'SELL') : (b.netVal >= 0 ? '+' : '-')));
 
         var isSmallBubble = b.size < 64;
         var animString = isSelected
