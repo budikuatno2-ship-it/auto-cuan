@@ -2278,6 +2278,12 @@ button:disabled,
   clear: both !important;
 }
 
+/* Fallback static constraint for legacy recovery regression check */
+.ticker-search-container.is-static,
+.screener-search-bar.is-static {
+  position: static !important;
+}
+
 /* Floating AI Assistant input icon anchor */
 #analisisFollowUp .floating-ai-icon,
 .unified-chat-composer .floating-ai-icon,
