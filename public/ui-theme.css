@@ -2249,7 +2249,13 @@ button:disabled,
 }
 
 /* Ticker Search Controls & Header Search Bar Fix */
-.analisis-saham-controls, .ticker-search-container {
+.analisis-saham-controls,
+.ticker-search-container,
+.screener-search-bar,
+.screener-search-wrap,
+#screenerSearchWrap,
+#nkSearchWrap,
+#dtSearchWrap {
   display: flex !important;
   align-items: center !important;
   gap: 10px !important;
@@ -2257,4 +2263,25 @@ button:disabled,
   margin: 16px 0 !important;
   position: static !important;
   clear: both !important;
+  z-index: 1;
+}
+
+/* Screener Card Grids Padding & Overflow */
+#screenerCardGrid,
+#nkCardGrid,
+#dtCardGrid,
+.screener-card-grid,
+.card-grid {
+  padding-bottom: 32px;
+  max-width: 100%;
+}
+
+/* Global scroll safety without breaking desktop reflow */
+html {
+  overflow-y: scroll;
+}
+
+body {
+  overflow-x: hidden;
+  min-height: 100vh;
 }
