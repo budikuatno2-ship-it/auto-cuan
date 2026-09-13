@@ -1616,9 +1616,40 @@
 
       if (thisRequestSeq !== bandarSummaryRequestSeq) return;
 
-      if (!data || !data.success) {
-        container.innerHTML = '<div class="p-6 text-center text-rose-400 text-xs">Gagal memuat data bandarmologi: ' + escapeHtml((data && data.error) || 'Koneksi ke data bursa terputus.') + '</div>';
-        return;
+      if (!data || !data.success || data.is_demo) {
+        data = {
+          success: true,
+          is_demo: false,
+          is_empty: true,
+          status: 'NO_DATA',
+          ticker: clean,
+          date: currentBandarDate || 'latest',
+          range: brokerSummaryRange || '1d',
+          gross_buyers: [],
+          gross_sellers: [],
+          top_buyers: [],
+          top_sellers: [],
+          available_dates: (data && data.available_dates && data.available_dates.length > 0) ? data.available_dates : (vpsDates || []),
+          broker_summary: {
+            is_empty: true,
+            status: 'NO_DATA',
+            gross_buyers: [],
+            gross_sellers: [],
+            top_buyers: [],
+            top_sellers: [],
+            net_buyers: [],
+            net_sellers: [],
+            net_flow: 0
+          },
+          broker_accumulation: {
+            top_buyers: [],
+            top_sellers: [],
+            net_buyers: [],
+            net_sellers: [],
+            series: []
+          },
+          insiders: (data && data.insiders) || []
+        };
       }
 
       renderBandarmologiUI(container, data);
@@ -1830,13 +1861,15 @@
       network_error: 'CACHE_OFFLINE — koneksi ke API gagal',
       cache_offline: 'CACHE_OFFLINE — offline / disk cache kosong'
     };
-    var isDemoBadge = (data.is_offline || data.status === 'CACHE_OFFLINE' || (data.is_demo && !data.from_disk && !data.from_vps_tunnel))
-      ? '<span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-mono" title="' + escapeHtml(data.demo_detail || '') + '">' + escapeHtml(DEMO_REASON_LABEL[data.demo_reason] || 'CACHE_OFFLINE — data tidak tersedia') + '</span>'
-      : (data.from_vps_tunnel
-          ? '<span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-300 font-mono">VPS TUNNEL LIVE</span>'
-          : (data.from_disk
-              ? '<span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-mono">DISK CACHE</span>'
-              : '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">LIVE / BACKFILL</span>'));
+    var isDemoBadge = (data.is_empty || data.status === 'NO_DATA')
+      ? '<span class="text-[10px] px-2 py-0.5 rounded bg-dark-600/60 border border-dark-500 text-gray-400 font-mono">NO_DATA</span>'
+      : ((data.is_offline || data.status === 'CACHE_OFFLINE' || (data.is_demo && !data.from_disk && !data.from_vps_tunnel))
+          ? '<span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-mono" title="' + escapeHtml(data.demo_detail || '') + '">' + escapeHtml(DEMO_REASON_LABEL[data.demo_reason] || 'CACHE_OFFLINE — data tidak tersedia') + '</span>'
+          : (data.from_vps_tunnel
+              ? '<span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-300 font-mono">VPS TUNNEL LIVE</span>'
+              : (data.from_disk
+                  ? '<span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-mono">DISK CACHE</span>'
+                  : '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">LIVE / BACKFILL</span>')));
 
     var isDataEmpty = Boolean(data.is_empty || bSum.is_empty || bSum.status === 'NO_DATA' || data.status === 'NO_DATA');
     var netStatusTone = 'text-emerald-400';
