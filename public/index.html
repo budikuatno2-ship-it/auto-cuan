@@ -453,7 +453,7 @@
                 <button onclick="navigateTo('trackrecord')" class="nav-btn hidden" data-page="trackrecord" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg><span>Track Record</span></button>
             </nav>
             <div class="desktop-header-chips items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
-                <span class="header-status-chip"><span class="header-status-dot"></span>Live Radar</span>
+                <span class="header-status-chip" id="globalLiveRadarChip" title="Status Live Radar"><span class="header-status-dot" id="globalLiveRadarDot"></span><span id="globalLiveRadarText">Live Radar</span></span>
                 <span class="header-status-chip safe">Safety ON</span>
                 <span class="header-status-chip warn">Manual Confirm</span>
                 <span class="header-status-chip">Watchlist ≠ BUY</span>
@@ -523,7 +523,7 @@
         <div class="dashboard-hero p-4 sm:p-5">
             <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="dashboard-hero-main">
-                    <div class="flex items-center gap-2 mb-2"><span class="dash-badge">Live Radar</span><span class="dash-badge text-amber-200 border-amber-500/20 bg-amber-500/10">Konfirmasi manual wajib</span></div>
+                    <div class="flex items-center gap-2 mb-2"><span class="dash-badge" id="heroLiveRadarBadge"><span class="header-status-dot" id="heroLiveRadarDot" style="margin-right:3px"></span><span id="heroLiveRadarText">Live Radar</span></span><span class="dash-badge text-amber-200 border-amber-500/20 bg-amber-500/10">Konfirmasi manual wajib</span></div>
                     <h2 class="text-2xl sm:text-3xl font-black text-white tracking-tight" id="dashGreeting">Halo, Trader</h2>
                     <p class="text-sm text-gray-400 mt-1 max-w-2xl">Dashboard ringkas untuk Day Trade, Swing Konglo, dan Swing Non-Konglo. Watchlist/pantau tidak sama dengan BUY agresif.</p>
                 </div>
@@ -4116,6 +4116,130 @@ function navigateTo(page) {
     }
 }
 
+// ===== GLOBAL LIVE RADAR FRESHNESS STATUS HELPER (Temuan #6) =====
+function updateGlobalLiveRadarStatus(metaOrFreshness) {
+    var chip = document.getElementById('globalLiveRadarChip');
+    var dot = document.getElementById('globalLiveRadarDot');
+    var txt = document.getElementById('globalLiveRadarText');
+    var heroBadge = document.getElementById('heroLiveRadarBadge');
+    var heroDot = document.getElementById('heroLiveRadarDot');
+    var heroText = document.getElementById('heroLiveRadarText');
+    if (!chip && !heroBadge) return;
+
+    var status = 'live'; // 'live' | 'delayed' | 'stale' | 'market_closed'
+    var label = 'Live Radar';
+    var tooltip = 'Radar aktif — data pasar terkini.';
+
+    // Extract calculated_at & status from metaOrFreshness
+    var calcAt = null;
+    var isStale = false;
+    var isScanning = false;
+    if (metaOrFreshness) {
+        if (typeof metaOrFreshness === 'string') calcAt = metaOrFreshness;
+        else if (metaOrFreshness.calculated_at) calcAt = metaOrFreshness.calculated_at;
+        else if (metaOrFreshness.last_updated_at) calcAt = metaOrFreshness.last_updated_at;
+        else if (metaOrFreshness.updated_at) calcAt = metaOrFreshness.updated_at;
+
+        if (metaOrFreshness.data_stale || metaOrFreshness.is_stale || metaOrFreshness.freshness_is_stale) isStale = true;
+        if (metaOrFreshness.status === 'scanning' || metaOrFreshness.status === 'finalizing') isScanning = true;
+    }
+
+    var nowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
+    var todayStr = nowWib.toISOString().slice(0, 10);
+    var yesterdayWib = new Date(nowWib.getTime() - 86400000);
+    var yesterdayStr = yesterdayWib.toISOString().slice(0, 10);
+
+    if (isScanning) {
+        status = 'scanning';
+        label = 'Radar: Scanning';
+        tooltip = 'Screener sedang memproses data terkini...';
+    } else if (calcAt) {
+        var calcDate = new Date(calcAt);
+        var calcDateStr = calcDate.toISOString().slice(0, 10);
+        var ageHours = Math.max(0, Math.round((Date.now() - calcDate.getTime()) / (1000 * 60 * 60)));
+
+        if (isStale || (calcDateStr !== todayStr && calcDateStr !== yesterdayStr) || ageHours >= 24) {
+            status = 'stale';
+            label = 'Radar: Stale (' + ageHours + 'h)';
+            tooltip = 'Data stale (evaluasi terakhir ' + ageHours + ' jam lalu pada ' + calcDateStr + '). Refresh diperlukan.';
+        } else if (calcDateStr === yesterdayStr) {
+            status = 'delayed';
+            label = 'Radar: EOD Close';
+            tooltip = 'Snapshot penutupan pasar sesi kemarin (' + calcDateStr + '). Menunggu sesi baru.';
+        } else {
+            status = 'live';
+            label = 'Live Radar';
+            tooltip = 'Radar aktif — data pasar hari ini (' + calcDateStr + ').';
+        }
+    }
+
+    // Apply UI styles to Navbar Chip
+    if (chip && dot && txt) {
+        chip.className = 'header-status-chip';
+        dot.style.background = '';
+        dot.style.boxShadow = '';
+        chip.style.borderColor = '';
+        chip.style.backgroundColor = '';
+        chip.style.color = '';
+
+        if (status === 'stale') {
+            chip.classList.add('warn');
+            dot.style.background = '#f87171';
+            dot.style.boxShadow = '0 0 10px rgba(248,113,113,0.6)';
+            chip.style.borderColor = 'rgba(239,68,68,0.3)';
+            chip.style.backgroundColor = 'rgba(239,68,68,0.1)';
+            chip.style.color = '#fca5a5';
+        } else if (status === 'delayed') {
+            chip.classList.add('warn');
+            dot.style.background = '#fbbf24';
+            dot.style.boxShadow = '0 0 10px rgba(251,191,36,0.5)';
+            chip.style.borderColor = 'rgba(245,158,11,0.3)';
+            chip.style.backgroundColor = 'rgba(245,158,11,0.1)';
+            chip.style.color = '#fcd34d';
+        } else if (status === 'scanning') {
+            dot.style.background = '#60a5fa';
+            dot.style.boxShadow = '0 0 10px rgba(96,165,250,0.6)';
+            chip.style.borderColor = 'rgba(59,130,246,0.3)';
+            chip.style.backgroundColor = 'rgba(59,130,246,0.1)';
+            chip.style.color = '#93c5fd';
+        } else {
+            dot.style.background = '#34d399';
+            dot.style.boxShadow = '0 0 12px rgba(52,211,153,0.55)';
+        }
+        txt.textContent = label;
+        chip.title = tooltip;
+    }
+
+    // Apply UI styles to Hero Badge
+    if (heroBadge && heroText) {
+        heroBadge.className = 'dash-badge';
+        heroBadge.style.borderColor = '';
+        heroBadge.style.backgroundColor = '';
+        heroBadge.style.color = '';
+        if (heroDot) { heroDot.style.background = ''; heroDot.style.boxShadow = ''; }
+
+        if (status === 'stale') {
+            heroBadge.style.borderColor = 'rgba(239,68,68,0.3)';
+            heroBadge.style.backgroundColor = 'rgba(239,68,68,0.12)';
+            heroBadge.style.color = '#fca5a5';
+            if (heroDot) { heroDot.style.background = '#f87171'; heroDot.style.boxShadow = '0 0 8px rgba(248,113,113,0.6)'; }
+        } else if (status === 'delayed') {
+            heroBadge.style.borderColor = 'rgba(245,158,11,0.3)';
+            heroBadge.style.backgroundColor = 'rgba(245,158,11,0.12)';
+            heroBadge.style.color = '#fcd34d';
+            if (heroDot) { heroDot.style.background = '#fbbf24'; heroDot.style.boxShadow = '0 0 8px rgba(251,191,36,0.6)'; }
+        } else if (status === 'scanning') {
+            heroBadge.style.borderColor = 'rgba(59,130,246,0.3)';
+            heroBadge.style.backgroundColor = 'rgba(59,130,246,0.12)';
+            heroBadge.style.color = '#93c5fd';
+            if (heroDot) { heroDot.style.background = '#60a5fa'; heroDot.style.boxShadow = '0 0 8px rgba(96,165,250,0.6)'; }
+        } else {
+            if (heroDot) { heroDot.style.background = '#34d399'; heroDot.style.boxShadow = '0 0 8px rgba(52,211,153,0.55)'; }
+        }
+        heroText.textContent = label;
+        heroBadge.title = tooltip;
+    }
+}
 function updateDashGreeting() {
     var el = document.getElementById('dashGreeting');
     if (!el) return;
@@ -8546,7 +8670,13 @@ function renderDtCardGrid(results, data) {
             stLabel
         ) + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
-        html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span></div>';
+        var dtScBreakdown = '';
+        if (r.daytrade_score_before_bandarmologi != null && r.bandar_score_bonus) {
+            dtScBreakdown = ' <span style="font-size:9.5px;font-weight:normal;color:#9ca3af">(Base: ' + r.daytrade_score_before_bandarmologi + ' + Bandar: ' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ')</span>';
+        } else if (r.bandar_score_bonus) {
+            dtScBreakdown = ' <span style="font-size:9.5px;font-weight:normal;color:#9ca3af">(Bandar: ' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ')</span>';
+        }
+        html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong>' + dtScBreakdown + '</span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span></div>';
         // V6: Risk / Grade / MTF compact badges
         var _rlBadge = ''; var _grBadge = ''; var _vpBadge = ''; var _mtfBadge = '';
         var _cardRisk = getRiskLabel(r); if (_cardRisk) { var _rlC = getRiskColor(_cardRisk); _rlBadge = '<span style="color:' + _rlC + ';font-weight:600">' + escapeHtml(_cardRisk) + '</span>'; }
@@ -8916,7 +9046,13 @@ function renderKgCardGrid(results) {
         html += '<div class="kg-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(tierTitle) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
-        html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
+        var scBreakdown = '';
+        if (r.score_before_bandarmologi != null && r.bandar_score_bonus) {
+            scBreakdown = ' <span style="font-size:9.5px;font-weight:normal;color:#9ca3af">(Base: ' + r.score_before_bandarmologi + ' + Bandar: ' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ')</span>';
+        } else if (r.bandar_score_bonus) {
+            scBreakdown = ' <span style="font-size:9.5px;font-weight:normal;color:#9ca3af">(Bandar: ' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ')</span>';
+        }
+        html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong>' + scBreakdown + '</span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.group_code) html += '<span style="color:#6b7280">' + escapeHtml(r.group_code) + '</span>';
         html += '</div>';
         // V6: Risk / Grade / Volume / MTF compact badges
@@ -9016,7 +9152,13 @@ function renderNkCardGrid(results) {
         html += '<div class="nk-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(tierTitle) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
-        html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + (r.bandar_score_bonus ? (' (' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ' BD)') : '') + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
+        var nkScBreakdown = '';
+        if (r.score_before_bandarmologi != null && r.bandar_score_bonus) {
+            nkScBreakdown = ' <span style="font-size:9.5px;font-weight:normal;color:#9ca3af">(Base: ' + r.score_before_bandarmologi + ' + Bandar: ' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ')</span>';
+        } else if (r.bandar_score_bonus) {
+            nkScBreakdown = ' <span style="font-size:9.5px;font-weight:normal;color:#9ca3af">(Bandar: ' + (r.bandar_score_bonus > 0 ? '+' : '') + r.bandar_score_bonus + ')</span>';
+        }
+        html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong>' + nkScBreakdown + '</span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.board) html += '<span style="color:#6b7280">' + escapeHtml(r.board) + '</span>';
         html += '</div>';
         // V6: Risk / Grade / Volume / MTF compact badges
@@ -9453,6 +9595,7 @@ async function loadSwingScreener(silent) {
 
         // Update meta
         if (data.meta || (data.results && data.results.length > 0)) {
+            if (typeof updateGlobalLiveRadarStatus === 'function') updateGlobalLiveRadarStatus(data.meta || {});
             var m = data.meta || {};
             var realUniverse = m.universe_count || 52;
             var realScanned = m.scanned_count || (data.results ? data.results.length : 52);
@@ -9929,6 +10072,7 @@ async function loadNkScreenerResults(silent) {
 }
 
 function updateNkScreenerMeta(meta) {
+    if (typeof updateGlobalLiveRadarStatus === 'function') updateGlobalLiveRadarStatus(meta || {});
     if (!meta) return;
     var uVal = (meta.universe_count != null && meta.universe_count > 0) ? meta.universe_count : 720;
     var sVal = (meta.scanned_count != null && meta.scanned_count > 0) ? meta.scanned_count : (meta.result_count || 720);
@@ -11210,6 +11354,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
 }
 
 function renderDashboardTop5MonitorData(data) {
+    if (typeof updateGlobalLiveRadarStatus === 'function' && data) updateGlobalLiveRadarStatus(data);
     var note = document.getElementById('dashboardTop5LockNote');
     var top5Rows = data.top5 || data.picks || [];
     // "lolos gate: X/5" reflects FINAL actionable (safe) candidates, not the pre-safety pool.

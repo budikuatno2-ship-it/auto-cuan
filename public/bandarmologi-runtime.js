@@ -1327,9 +1327,13 @@
         html += '      data-broker="' + escapeHtml(b.broker) + '"';
         html += '      data-side="' + escapeHtml(b.side || (b.isBuyer ? 'buy' : (isNeutralBubble ? 'neutral' : 'sell'))) + '"';
         html += '      onclick="BandarmologiRuntime.selectBrokerBubble(\'' + escapeHtml(b.broker) + '\', \'' + escapeHtml(b.side || (b.isBuyer ? 'buy' : (isNeutralBubble ? 'neutral' : 'sell'))) + '\')"';
-        html += '      title="' + escapeHtml(b.broker + ' - ' + b.fullName + ' | ' + (isNeutralBubble ? 'Netral (0)' : (isBuyerBubble ? 'Akumulasi +' : 'Distribusi -') + formatBrokerVal(Math.abs(b.netVal || b.txVal))) + ' | Vol: ' + formatNumber(b.nvol || 0) + ' lot') + '"';
+        var bubbleHoverDesc = isGross
+          ? (b.broker + ' - ' + b.fullName + ' | ' + (isBuyerBubble ? 'Sisi Beli (Gross): Rp' : 'Sisi Jual (Gross): Rp') + formatNumber(Math.round(b.displayVal || b.txVal || 0)) + ' | Vol: ' + formatNumber(b.bvol || b.svol || b.nvol || 0) + ' lot')
+          : (b.broker + ' - ' + b.fullName + ' | ' + (isNeutralBubble ? 'Netral (0)' : (isBuyerBubble ? 'Akumulasi +' : 'Distribusi -') + formatBrokerVal(Math.abs(b.netVal || b.txVal))) + ' | Vol: ' + formatNumber(b.nvol || 0) + ' lot');
+        html += '      title="' + escapeHtml(bubbleHoverDesc) + '"';
         html += '      style="width:' + b.size + 'px; height:' + b.size + 'px; background:' + styleInfo.bg + '; border-color:' + styleInfo.border + '; color:' + styleInfo.text + '; box-shadow:' + styleInfo.shadow + '; animation:' + animString + ';">';
-        html += '      <span class="font-mono font-black text-xs sm:text-sm tracking-wider leading-none">' + escapeHtml(b.broker) + '</span>';
+        var brokerDisplayCode = isGross ? (b.broker + (isBuyerBubble ? ' (Beli)' : ' (Jual)')) : b.broker;
+        html += '      <span class="font-mono font-black text-xs sm:text-sm tracking-wider leading-none">' + escapeHtml(brokerDisplayCode) + '</span>';
         html += '      <span class="text-[9px] sm:text-[10px] font-mono font-bold leading-tight mt-1" style="color:' + styleInfo.subText + '">' + escapeHtml(valText) + '</span>';
         if (subBadge) {
           html += '      <span class="text-[8px] font-mono tracking-widest opacity-75 mt-0.5 uppercase">' + subBadge + '</span>';
@@ -1598,7 +1602,20 @@
   async function fetchVpsAvailableDates(ticker) {
     if (!ticker) return [];
     var base = getVpsDataApiBase();
-    if (!base) return []; // No external tunnel configured, skip remote ping to prevent hanging
+    if (!base) {
+      // Fallback to internal API /api/sector-hot?action=available-dates when no external tunnel is active
+      try {
+        var localRes = await fetch('/api/sector-hot?action=available-dates&ticker=' + encodeURIComponent(safeTicker));
+        if (localRes && localRes.ok) {
+          var localJson = await localRes.json();
+          if (localJson && Array.isArray(localJson.dates) && localJson.dates.length > 0) {
+            vpsDatesMemoryCache[safeTicker] = localJson.dates;
+            return localJson.dates;
+          }
+        }
+      } catch (_) {}
+      return [];
+    }
     var safeTicker = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (vpsDatesMemoryCache[safeTicker] && vpsDatesMemoryCache[safeTicker].length > 0) {
       return vpsDatesMemoryCache[safeTicker];
@@ -1744,14 +1761,15 @@
   async function loadBandarmologiTab(ticker, date, range) {
     var clean = String(ticker || currentBandarTicker || 'BBCA').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!clean) clean = 'BBCA';
-    if (clean !== currentBandarTicker) {
+    var targetRangeKey = (brokerSummaryRange || '1d') + '_' + (currentBandarDate || date || 'latest');
+    if (clean !== currentBandarTicker || (lastBandarData && (lastBandarData.ticker !== clean || (lastBandarData.range && lastBandarData.range !== (range || brokerSummaryRange || '1d'))))) {
       brokerFlowFilter = 'all';
       selectedBrokerCode = '';
       selectedBrokerSide = '';
       lastBandarData = null;
       bandarIntelData = null;
       lastBrokerItems = [];
-      currentBandarDate = null;
+      if (clean !== currentBandarTicker) currentBandarDate = null;
     }
     currentBandarTicker = clean;
     if (date !== undefined) currentBandarDate = date;
@@ -4197,7 +4215,7 @@
     }, 10000) : null;
 
     try {
-      var url = '/api/sector-hot?action=bandarmologi-intel&range=' + encodeURIComponent(bandarIntelRange) + '&_t=' + Date.now();
+      var url = '/api/sector-hot?action=bandarmologi-intel&range=' + encodeURIComponent(bandarIntelRange) + '&days=' + (({ '1d': 1, '5d': 5, '7d': 7, '14d': 14, '30d': 30, '60d': 60 }[bandarIntelRange]) || 7) + '&_t=' + Date.now();
       if (bandarIntelViewMode === 'ticker') {
         url += '&ticker=' + encodeURIComponent(targetTicker);
       }
@@ -4322,7 +4340,7 @@
     html += '      <h3 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
     html += '        <span class="text-base">🎯</span> Sinyal Intelijen Bandarmologi — <span class="text-emerald-400 font-mono">' + escapeHtml(currentBandarTicker) + '</span>';
     html += '      </h3>';
-    html += '      <p class="text-xs text-gray-400 mt-0.5">Deteksi 4 pola strategis: modal bandar, akumulasi diam-diam asing, pertukaran ritel &amp; bandar, dan rasio konsentrasi (CR3/CR5).</p>';
+    html += '      <p class="text-xs text-gray-400 mt-0.5">Deteksi 5 kategori screening (4 pola dasar): modal bandar, akumulasi diam-diam asing, ritel cutloss, distribusi ke ritel, dan rasio konsentrasi (CR3/CR5).</p>';
     html += '    </div>';
     html += '    <div class="flex flex-wrap items-center gap-2">';
     // View Switcher (Ticker vs Scanner)
@@ -4694,8 +4712,9 @@
       var currentItems = Array.isArray(indexes[bandarIntelScannerCategory]) ? indexes[bandarIntelScannerCategory] : [];
       html += '<div id="panel-intel-scanner" class="bg-dark-700/40 border border-dark-600/30 rounded-xl overflow-hidden">';
 
-      var activeMarketDate = formatDateDisplay(scanData.effective_date || scanData.date || (lastBandarData && lastBandarData.date) || '2026-09-11');
-      var rangeAggLabel = escapeHtml(bandarIntelRange.toUpperCase()) + (bandarIntelRange === '1d' ? '' : ' Aggregated');
+      var activeMarketDate = formatDateDisplay(scanData.effective_date || scanData.date || scanData.updated_at || (lastBandarData && lastBandarData.date) || '2026-09-11');
+      var rangeDaysCount = { '1d': 1, '5d': 5, '7d': 7, '14d': 14, '30d': 30, '60d': 60 }[bandarIntelRange] || (parseInt(bandarIntelRange, 10) || 7);
+      var rangeAggLabel = bandarIntelRange === '1d' ? '1D (Harian)' : (rangeDaysCount + ' Hari Bursa (' + escapeHtml(bandarIntelRange.toUpperCase()) + ' Agregat)');
       html += '  <div class="px-3.5 py-2 bg-dark-800/80 border-b border-dark-600/40 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">';
       html += '    <span class="text-emerald-400 font-semibold">📅 Data per: ' + escapeHtml(activeMarketDate) + ' (Penutupan Terakhir)</span>';
       html += '    <span class="text-gray-400">Rentang: <strong class="text-gray-200">' + rangeAggLabel + '</strong></span>';
