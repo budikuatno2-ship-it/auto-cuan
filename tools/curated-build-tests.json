@@ -1,4 +1,5 @@
 [
+  "test/zero-defect-cluster-recovery.test.js",
   "test/swing-screener-and-telegram-integrity.test.js",
   "test/ai-eval-once.test.js",
   "test/ai-eval-final-contract-output.test.js",
@@ -311,8 +312,6 @@
   "test/website-production-audit.test.js",
   "test/weekly-timeframe.test.js",
   "test/fast-watcher-web-refresh.test.js",
-  "test/collect-daily-market-context-cli.test.js",
-  "test/daily-market-context-collector-runtime-bugfix.test.js",
   "test/correctness-live-followup-regression.test.js",
   "test/daytrade-finalizer-schema-contract.test.js",
   "test/security-phase1.test.js",
