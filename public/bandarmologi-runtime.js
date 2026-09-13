@@ -794,18 +794,12 @@
       if (normBval !== it.bval) it.bval = normBval;
       if (normSval !== it.sval) it.sval = normSval;
 
-      var netVal;
-      if (it.explicitNetVal != null) {
-        netVal = it.explicitNetVal;
-      } else if (it.bval > 0 && it.sval > 0) {
-        netVal = it.bval - it.sval;
-      } else if (it.bval > 0) {
-        netVal = it.bval;
-      } else if (it.sval > 0) {
-        netVal = -it.sval;
-      } else {
-        netVal = it.bval - it.sval;
-      }
+      // ALWAYS derive netVal from accumulated bval/sval after all items are processed.
+      // This guarantees 1 broker = 1 position: if bval > sval the broker is a net buyer
+      // (green bubble), otherwise a net seller (red bubble). Relying on explicitNetVal
+      // caused duplicate-position bugs when the same broker appeared in both buyer and
+      // seller input lists, because processItem() overwrote explicitNetVal on each call.
+      var netVal = it.bval - it.sval;
 
       var netVol;
       if (it.explicitNetVol != null) {
