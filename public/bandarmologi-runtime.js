@@ -969,12 +969,21 @@
       netSellers.sort(function (a, b) { return b.txVal - a.txVal; });
       netNeutrals.sort(function (a, b) { return b.txVal - a.txVal; });
 
-      // Fallback: If netSellers is empty but sList has brokers, guarantee sellers are rendered
+      // Fallback: If netSellers is empty but sList has brokers, guarantee sellers are rendered.
+      // Guard: never duplicate a broker already emitted as net buyer/neutral (1 broker = 1 bubble in net mode).
       if (netSellers.length === 0 && sList.length > 0) {
+        var existingNetCodes = {};
+        for (var ebi = 0; ebi < netBuyers.length; ebi++) {
+          if (netBuyers[ebi] && netBuyers[ebi].broker) existingNetCodes[String(netBuyers[ebi].broker).trim().toUpperCase()] = true;
+        }
+        for (var eni = 0; eni < netNeutrals.length; eni++) {
+          if (netNeutrals[eni] && netNeutrals[eni].broker) existingNetCodes[String(netNeutrals[eni].broker).trim().toUpperCase()] = true;
+        }
         for (var si = 0; si < sList.length; si++) {
           var sItem = sList[si];
           if (!sItem || !sItem.broker) continue;
           var sCode = String(sItem.broker).trim().toUpperCase();
+          if (existingNetCodes[sCode]) continue;
           var sVal = Math.abs(Number(sItem.nval != null ? sItem.nval : (sItem.net_val != null ? sItem.net_val : (sItem.sval || sItem.sell_val || sItem.val || 0))));
           if (sVal <= 0) continue;
           var sStat = map[sCode] || {
