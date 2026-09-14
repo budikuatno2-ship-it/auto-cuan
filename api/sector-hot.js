@@ -3444,12 +3444,23 @@ function attachFreshness(row, meta) {
   row.freshness_priority = f.freshness_priority;
   row.freshness_is_stale = f.freshness_is_stale;
   var sf = idxTick.deriveSetupFreshness(row, meta);
-  row.setup_age_minutes = sf.setup_age_minutes != null ? sf.setup_age_minutes : f.freshness_age_minutes;
-  row.setup_age_hours = sf.setup_age_hours != null ? sf.setup_age_hours : (f.freshness_age_minutes != null ? Math.round((f.freshness_age_minutes / 60) * 100) / 100 : null);
-  row.setup_freshness_status = f.freshness_is_stale ? 'NEEDS_REVALIDATION' : sf.setup_freshness_status;
-  row.setup_freshness_label = f.freshness_is_stale ? 'Needs Revalidation' : sf.setup_freshness_label;
-  row.setup_expiry_note = f.freshness_is_stale ? f.freshness_reason : sf.setup_expiry_note;
-  if (f.freshness_is_stale) {
+  // Temuan #9 (scope guard): only let a STALE freshness verdict escalate the
+  // row to NEEDS_REVALIDATION when that verdict was derived from the row's OWN
+  // timestamp. deriveFreshness falls back to meta.calculated_at/run_date, and
+  // the non-konglo refresh context carries an older run_date than the konglo
+  // one — so meta-only staleness mass-stamped every non-konglo row
+  // (CBDK/NICL/ELIT) while konglo (BELI/IMJS) stayed normal. Meta-only
+  // staleness is now informational (kept in the freshness_* fields above),
+  // never a data-quality exclusion.
+  var rowOwnTimestamp = row.freshness_timestamp || row.calculated_at || row.updated_at || row.last_updated_at || row.last_checked_at || row.first_sent_at || row.run_at || row.created_at || null;
+  var staleAuthoritative = f.freshness_is_stale && rowOwnTimestamp != null;
+  row.setup_freshness_status = staleAuthoritative ? 'NEEDS_REVALIDATION' : sf.setup_freshness_status;
+  row.setup_freshness_label = staleAuthoritative ? 'Needs Revalidation' : sf.setup_freshness_label;
+  row.setup_expiry_note = staleAuthoritative ? f.freshness_reason : sf.setup_expiry_note;
+  if (f.freshness_is_stale && !staleAuthoritative) {
+    row.freshness_scope_note = 'Freshness dinilai dari metadata agregat, bukan timestamp baris ini; dipakai sebagai referensi, tidak memblokir entry.';
+  }
+  if (staleAuthoritative) {
     var staleMsg = 'Data stale — validasi ulang harga/volume sebelum entry.';
     if (!row.stale_notes) row.stale_notes = staleMsg;
     if (!row.data_stale) row.data_stale = true;
