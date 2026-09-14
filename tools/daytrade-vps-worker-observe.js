@@ -238,6 +238,9 @@ async function runWorker(cliArgs) {
     cacheDir: cacheDir,
     ttlMs: cacheTtlMs,
     timeoutMs: DEFAULT_TIMEOUT_MS,
+    // Temuan #8: this is the production day-trade scan, so stale candles whose
+    // newest bar is older than the broker summary on disk must not be served.
+    syncWithBrokerSummary: true,
     fetchFn: async function(ticker, opts) {
       if (Date.now() < breaker.openedUntil) throw new Error('circuit_open');
       try {

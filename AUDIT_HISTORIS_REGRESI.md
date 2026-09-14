@@ -166,7 +166,10 @@
   ```
   Frontend di `lib/swing-nk-rr-warning.js:104-108` dan `lib/smart-setup-labels.js:48-50` menggunakan status `NEEDS_REVALIDATION` tanpa memeriksa klasifikasi konglomerasi yang benar.
 - **Jejak Git Historis:** Commit `0cc0a0e` (2026-09-14) - memperbaiki cache key tetapi tidak memperbaiki logika eligibility.
-- **Rekomendasi Fix:** Perbaiki `isProductionEligibilityBlocked` di `lib/intraday-production-eligibility.js:77-80` untuk memeriksa klasifikasi konglomerasi yang benar sebelum mengembalikan status `NEEDS_REVALIDATION`. Tambahkan validasi yang memeriksa apakah emiten benar-benar non-konglomerasi (bukan konglomerasi) sebelum menerapkan status ini.
+- **Rekomendasi Fix:** **Status: PERLU DATA LEBIH (root cause belum terbukti).** Verifikasi ulang menunjukkan `NEEDS_REVALIDATION` TIDAK diproduksi di `lib/intraday-production-eligibility.js` untuk kasus ini. Dua jalur nyata:
+  1. `api/sector-hot.js:3449-3460` (`attachFreshness`) — FIXED: staleness dari timestamp `meta` (bukan timestamp baris) tidak lagi meng-escalate ke `NEEDS_REVALIDATION`; sekarang informasional saja.
+  2. `api/sector-hot.js:7021-7023` (`evaluateMonitorStatus`) — `px.last == null` (tidak ada harga monitor) memang kondisi "data harga belum tersedia", bukan misklasifikasi. Belum diubah karena belum ada bukti defect di sini.
+  **Observasi yang akan menyelesaikan:** jalankan monitor dengan logging `monitor_source`, `px.source`, `px.bestEffort`, `freshness_timestamp` untuk CBDK/NICL/ELIT vs BELI/IMJS pada run 09:15 yang sama. Jika `monitor_source` non-konglo mengarah ke tabel tanpa baris harga (atau `bestEffort=true` dengan `last=null`), perbaiki resolver harga di `api/sector-hot.js:6838`; jangan menambah pengecualian konglo/non-konglo di modul eligibility, karena modul itu murni data-quality dan tidak boleh tahu klasifikasi konglomerasi.
 
 ## Temuan #10 — Riwayat Commit/PR Forensik Git & Deteksi Regresi
 - **Status Data:** Statis / Mock JSON / Stale Cache
