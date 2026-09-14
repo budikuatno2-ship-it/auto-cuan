@@ -3,7 +3,7 @@
 ## Temuan #1 — Parameter RENTANG Macet & Override "DISK CACHE" (Broker Summary & Akumulasi Broker)
 - **Status Data:** Statis / Mock JSON / Stale Cache
 - **Root cause:** `lib/bandarmologi-service.js:1686-1710` - Cache key tidak mencakup parameter `range` untuk multi-day ranges, menyebabkan penggunaan cache yang sama untuk 1D/5D/30D/60D. Backend selalu membaca snapshot cache tunggal tanggal 2026-09-11 alih-alih menghitung data sesuai rentang yang dipilih.
-- **Bukti Teknis:** 
+- **Bukti Teknis:**
   ```javascript
   // lib/bandarmologi-service.js:1700-1706
   const cacheKey = versionedCacheKey([
