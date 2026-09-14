@@ -176,13 +176,16 @@
    fallback for engines that do not support it. */
 body, #dashboardScreen, .landing-shell { min-height: 100vh; }
 .sidebar { height: 100vh; }
-#page-analisis { min-height: calc(100vh - 120px); }
+/* PR1 layout fix: the -120px offset (header + footer) over-reserved space and,
+   with body as a flex column, forced a dark band below short panels. The
+   analisis page owns its own scroll; a foot-level min-height is enough. */
+#page-analisis { min-height: calc(100vh - 64px); }
 #aiSection { min-height: calc(100vh - 64px); }
 
 @supports (height: 100dvh) {
   body, #dashboardScreen, .landing-shell { min-height: 100dvh; }
   .sidebar { height: 100dvh; }
-  #page-analisis { min-height: calc(100dvh - 120px); }
+  #page-analisis { min-height: calc(100dvh - 64px); }
   #aiSection { min-height: calc(100dvh - 64px); }
 }
 
@@ -2260,11 +2263,16 @@ button:disabled,
 }
 
 /* Ticker Search Controls & Header Search Bar Fix */
+/* PR1 layout fix: a 24px top margin on BOTH `.analisis-saham-controls`
+   (the wrapper, `#analisisChartHeader`) and `.unified-top-bar` (its child)
+   stacked to ~48px of dead dark space below the sticky tab strip, which read
+   as a broken void. The wrapper owns the gap; the inner bar must not add its
+   own again. */
 .analisis-saham-controls,
 .ticker-search-container {
   position: relative !important;
   z-index: 10 !important;
-  margin-top: 24px !important;
+  margin-top: 12px !important;
   margin-bottom: 16px !important;
   clear: both !important;
 }
@@ -2285,8 +2293,8 @@ button:disabled,
   flex-wrap: wrap !important;
   position: relative !important;
   z-index: 10 !important;
-  margin-top: 24px !important;
-  margin-bottom: 16px !important;
+  margin-top: 0 !important;
+  margin-bottom: 12px !important;
   clear: both !important;
 }
 
