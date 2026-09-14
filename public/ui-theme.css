@@ -176,16 +176,13 @@
    fallback for engines that do not support it. */
 body, #dashboardScreen, .landing-shell { min-height: 100vh; }
 .sidebar { height: 100vh; }
-/* PR1 layout fix: the -120px offset (header + footer) over-reserved space and,
-   with body as a flex column, forced a dark band below short panels. The
-   analisis page owns its own scroll; a foot-level min-height is enough. */
-#page-analisis { min-height: calc(100vh - 64px); }
+#page-analisis { min-height: calc(100vh - 120px); }
 #aiSection { min-height: calc(100vh - 64px); }
 
 @supports (height: 100dvh) {
   body, #dashboardScreen, .landing-shell { min-height: 100dvh; }
   .sidebar { height: 100dvh; }
-  #page-analisis { min-height: calc(100dvh - 64px); }
+  #page-analisis { min-height: calc(100dvh - 120px); }
   #aiSection { min-height: calc(100dvh - 64px); }
 }
 
