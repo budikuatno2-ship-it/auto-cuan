@@ -2260,11 +2260,16 @@ button:disabled,
 }
 
 /* Ticker Search Controls & Header Search Bar Fix */
+/* PR1 layout fix: a 24px top margin on BOTH `.analisis-saham-controls`
+   (the wrapper, `#analisisChartHeader`) and `.unified-top-bar` (its child)
+   stacked to ~48px of dead dark space below the sticky tab strip, which read
+   as a broken void. The wrapper owns the gap; the inner bar must not add its
+   own again. */
 .analisis-saham-controls,
 .ticker-search-container {
   position: relative !important;
   z-index: 10 !important;
-  margin-top: 24px !important;
+  margin-top: 12px !important;
   margin-bottom: 16px !important;
   clear: both !important;
 }
@@ -2285,8 +2290,8 @@ button:disabled,
   flex-wrap: wrap !important;
   position: relative !important;
   z-index: 10 !important;
-  margin-top: 24px !important;
-  margin-bottom: 16px !important;
+  margin-top: 0 !important;
+  margin-bottom: 12px !important;
   clear: both !important;
 }
 

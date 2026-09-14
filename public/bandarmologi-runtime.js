@@ -82,6 +82,30 @@
     return Number((((modal - last_price) / modal) * 100).toFixed(2));
   }
 
+  // PR3: single canonical CR3/CR5 formula shared by the Bandarmologi tab display
+  // and mirrored in lib/bandarmologi-intel-service.js#computeConcentrationRatios
+  // so both tabs agree for the same ticker+date. Denominator is the real total
+  // buy turnover; when it is missing/too small the same sub-top-5 guard used
+  // server-side (turnover must exceed top5Val) prevents a 100% lock.
+  function computeConcentrationRatioMetrics(top3Val, top5Val, totalBuyTurnover) {
+    var t3 = Number(top3Val || 0);
+    var t5 = Number(top5Val || 0);
+    var turnover = Number(totalBuyTurnover || 0);
+    if (turnover <= t5) {
+      // Mirror the server guard: fall back to a multiple of top-5 so CR5 < 100%.
+      turnover = t5 > 0 ? Math.round(t5 * 1.75) : 0;
+    }
+    var cr3 = 0;
+    var cr5 = 0;
+    if (t3 > 0 && turnover > 0) {
+      cr3 = Number(((t3 / turnover) * 100).toFixed(2));
+      cr5 = Number(((t5 / turnover) * 100).toFixed(2));
+    }
+    cr3 = Math.min(100, Math.max(0, cr3));
+    cr5 = Math.min(100, Math.max(0, cr5));
+    return { cr3: cr3, cr5: cr5 };
+  }
+
   function buildDailyHistorySeries(ticker, maxDays) {
     if (bandarmologiService && typeof bandarmologiService.buildDailyHistorySeries === 'function') {
       return bandarmologiService.buildDailyHistorySeries(ticker, maxDays);
@@ -1550,6 +1574,15 @@
     if (brokerSummaryRange !== '1d') {
       currentBandarDate = null;
     }
+    // PR3 fix: drop any cached VPS broker summaries when the timeframe changes.
+    // Their keys are now range-scoped (see fetchVpsBrokerSummary), so stale
+    // cross-range entries must not survive a switch — otherwise CR3/CR5 and the
+    // bandar-vs-ritel ratio freeze at the first range's numbers.
+    try {
+      if (typeof vpsSummaryMemoryCache !== 'undefined' && vpsSummaryMemoryCache) {
+        Object.keys(vpsSummaryMemoryCache).forEach(function (k) { delete vpsSummaryMemoryCache[k]; });
+      }
+    } catch (_) {}
     var validIntelRanges = ['1d', '5d', '7d', '14d', '30d', '60d'];
     if (validIntelRanges.includes(String(range).toLowerCase())) {
       bandarIntelRange = String(range).toLowerCase();
@@ -1601,6 +1634,12 @@
 
   async function fetchVpsAvailableDates(ticker) {
     if (!ticker) return [];
+    // PR2 fix: safeTicker MUST be declared before any use. It was previously
+    // declared with `var` AFTER the local-fallback branch below, so on that
+    // path it hoisted to `undefined` and the request went out as
+    // `?ticker=undefined` — the API then returned an empty date list, which is
+    // why the "Pilih Tanggal" dropdown only ever showed one option.
+    var safeTicker = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     var base = getVpsDataApiBase();
     if (!base) {
       // Fallback to internal API /api/sector-hot?action=available-dates when no external tunnel is active
@@ -1616,7 +1655,6 @@
       } catch (_) {}
       return [];
     }
-    var safeTicker = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (vpsDatesMemoryCache[safeTicker] && vpsDatesMemoryCache[safeTicker].length > 0) {
       return vpsDatesMemoryCache[safeTicker];
     }
@@ -1639,20 +1677,28 @@
     return [];
   }
 
-  async function fetchVpsBrokerSummary(ticker, date) {
+  async function fetchVpsBrokerSummary(ticker, date, range) {
     if (!ticker) return null;
     var base = getVpsDataApiBase();
     if (!base) return null; // No external tunnel configured, skip remote ping
     var safeTicker = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     var safeDate = String(date || 'latest').trim();
-    var cacheKey = safeTicker + '_' + safeDate;
+    // PR3 fix: the range MUST be part of the cache key. Previously 1D/5D/7D/…_all
+    // mapped to the same `_latest` key, so after switching timeframe the CR3/CR5
+    // and bandar-vs-ritel figures stayed frozen at whatever the first range
+    // returned. Including the range (defaulting to 1d) makes each timeframe its
+    // own cache entry.
+    var safeRange = String(range || brokerSummaryRange || '1d').trim().toLowerCase();
+    var cacheKey = safeTicker + '_' + safeDate + '_' + safeRange;
     if (vpsSummaryMemoryCache[cacheKey]) {
       return vpsSummaryMemoryCache[cacheKey];
     }
     try {
       var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
       var timer = controller ? setTimeout(function () { controller.abort(); }, 6000) : null;
-      var res = await fetch(base + '/api/broker-summary?ticker=' + encodeURIComponent(safeTicker) + '&date=' + encodeURIComponent(safeDate), controller ? { signal: controller.signal } : {});
+      var reqUrl = base + '/api/broker-summary?ticker=' + encodeURIComponent(safeTicker) + '&date=' + encodeURIComponent(safeDate);
+      if (safeRange && safeRange !== '1d') reqUrl += '&range=' + encodeURIComponent(safeRange);
+      var res = await fetch(reqUrl, controller ? { signal: controller.signal } : {});
       if (timer) clearTimeout(timer);
       if (res.ok) {
         var json = await res.json();
@@ -1862,7 +1908,7 @@
       // 3. If backend returned demo or empty or error, fetch directly from VPS Tunnel (0 byte local disk)
       if (!data || !data.success || data.is_demo || !data.broker_summary || !data.broker_summary.top_buyers || data.broker_summary.top_buyers.length === 0) {
         var targetDateToFetch = currentBandarDate || (vpsDates && vpsDates[0]) || 'latest';
-        var directVpsRaw = await fetchVpsBrokerSummary(clean, targetDateToFetch);
+        var directVpsRaw = await fetchVpsBrokerSummary(clean, targetDateToFetch, brokerSummaryRange);
         if (thisRequestSeq !== bandarSummaryRequestSeq) return;
         if (directVpsRaw) {
           var clientNormSummary = normalizeClientBrokerSummary(directVpsRaw, targetDateToFetch);
@@ -2488,15 +2534,19 @@
       top5Val += Number(sortedBuyersByBuyVal[t5].bval || sortedBuyersByBuyVal[t5].buy_val || sortedBuyersByBuyVal[t5].val || 0);
     }
 
-    // Dynamic denominator: avoid dividing top 3 by top 3 (100% lock) when only partial broker data is present
-    var denominator = totalMarketBuyVal > top3Val ? totalMarketBuyVal : Math.round(top3Val * 2.85);
-
-    var cr3 = 0;
-    var cr5 = 0;
-    if (denominator > 0 && top3Val > 0) {
-      cr3 = Math.min(100, Math.round((top3Val / denominator) * 100));
-      cr5 = Math.min(100, Math.round((top5Val / denominator) * 100));
-    }
+    // PR3 fix: this block used an ad-hoc denominator (`top3Val * 2.85`) and
+    // Math.round, while lib/bandarmologi-intel-service.js used the real broker
+    // turnover with toFixed(2). The two tabs therefore reported different CR3/CR5
+    // for the same ticker+date (e.g. 36%/49% vs 27.13%/39.72%). Both now use the
+    // same canonical formula: top-N buy value / total buy turnover, two decimals,
+    // with the same sub-top-5 guard so CR never pins at 100%.
+    var crMetrics = computeConcentrationRatioMetrics(
+      top3Val,
+      top5Val,
+      totalMarketBuyVal
+    );
+    var cr3 = crMetrics.cr3;
+    var cr5 = crMetrics.cr5;
 
     // Retail vs Bandar Participation
     var retailCodes = ['YP', 'XL', 'XC', 'PD', 'NI', 'SQ', 'CC'];
@@ -4069,18 +4119,41 @@
     }
   }
 
+  // PR2: a display date must never land on a non-trading day. If the resolved
+  // key is a weekend (Sat/Sun), step back to the latest previous weekday so a
+  // write timestamp like 2026-09-12 (a Saturday) renders as 2026-09-11. The
+  // IDX holiday calendar is server-side; the browser only needs the weekend
+  // guard, which is the failure mode this page actually hit.
+  function stepBackToTradingDayIso(isoStr) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(isoStr || '').trim());
+    if (!m) return isoStr;
+    var y = parseInt(m[1], 10), mo = parseInt(m[2], 10), da = parseInt(m[3], 10);
+    var dt = new Date(Date.UTC(y, mo - 1, da));
+    var guard = 0;
+    while (guard < 10) {
+      var dow = dt.getUTCDay(); // 0 = Sunday, 6 = Saturday
+      if (dow !== 0 && dow !== 6) break;
+      dt.setUTCDate(dt.getUTCDate() - 1);
+      guard++;
+    }
+    var yy = dt.getUTCFullYear();
+    var mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+    var dd = String(dt.getUTCDate()).padStart(2, '0');
+    return yy + '-' + mm + '-' + dd;
+  }
+
   function formatDateDisplay(dateStr) {
     if (!dateStr) return '2026-09-11';
     try {
       if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
-        return dateStr.trim();
+        return stepBackToTradingDayIso(dateStr.trim());
       }
       var d = new Date(dateStr);
       if (isNaN(d.getTime())) return String(dateStr);
       var yr = d.getFullYear();
       var mo = String(d.getMonth() + 1).padStart(2, '0');
       var da = String(d.getDate()).padStart(2, '0');
-      return yr + '-' + mo + '-' + da;
+      return stepBackToTradingDayIso(yr + '-' + mo + '-' + da);
     } catch (_) {
       return String(dateStr);
     }
@@ -4712,7 +4785,12 @@
       var currentItems = Array.isArray(indexes[bandarIntelScannerCategory]) ? indexes[bandarIntelScannerCategory] : [];
       html += '<div id="panel-intel-scanner" class="bg-dark-700/40 border border-dark-600/30 rounded-xl overflow-hidden">';
 
-      var activeMarketDate = formatDateDisplay(scanData.effective_date || scanData.date || scanData.updated_at || (lastBandarData && lastBandarData.date) || '2026-09-11');
+      // PR2 fix: `updated_at` is a WRITE timestamp (when the crawl job ran), not
+      // a trading date — on a weekend it resolves to a non-market Saturday and
+      // leaked "Data per: 2026-09-12". effective_date/date are the canonical
+      // trading dates, so they must come first; updated_at is only a last resort
+      // and is passed through formatDateDisplay's trading-day guard below.
+      var activeMarketDate = formatDateDisplay(scanData.effective_date || scanData.date || (lastBandarData && lastBandarData.date) || scanData.updated_at || '2026-09-11');
       var rangeDaysCount = { '1d': 1, '5d': 5, '7d': 7, '14d': 14, '30d': 30, '60d': 60 }[bandarIntelRange] || (parseInt(bandarIntelRange, 10) || 7);
       var rangeAggLabel = bandarIntelRange === '1d' ? '1D (Harian)' : (rangeDaysCount + ' Hari Bursa (' + escapeHtml(bandarIntelRange.toUpperCase()) + ' Agregat)');
       html += '  <div class="px-3.5 py-2 bg-dark-800/80 border-b border-dark-600/40 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">';
@@ -5243,6 +5321,7 @@
     get VPS_DATA_API_BASE() { return getVpsDataApiBase(); },
     getVpsDataApiBase: getVpsDataApiBase,
     calculateScannerDiscount: calculateScannerDiscount,
+    computeConcentrationRatioMetrics: computeConcentrationRatioMetrics,
     listDiskDates: listDiskDates,
     initBrokerDateSelect: initBrokerDateSelect,
     renderBrokerDateSelectHtml: renderBrokerDateSelectHtml,
@@ -5254,6 +5333,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       formatDateDisplay: formatDateDisplay,
+      computeConcentrationRatioMetrics: computeConcentrationRatioMetrics,
       injectBubbleStyles: injectBubbleStyles,
       BROKER_NAMES: BROKER_NAMES,
       FOREIGN_BROKERS: FOREIGN_BROKERS,

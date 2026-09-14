@@ -229,13 +229,29 @@
 }
 
 /* ===== ANALISIS SAHAM SUB-TAB STRIP (POLA PORTFOLIO) ===== */
+/* PR1 layout fix (measured via CDP): the header is `position: sticky; top: 0`
+   and 61px tall. The tab strip was also `position: sticky; top: 61px`, which
+   DOUBLE-counted the header height on first paint: with scrollY = 0 the strip
+   sat at y=122 instead of y=61, opening a 61px black void directly under the
+   header (headerBottom=61, tabTop=122, gap=61).
+   Root cause: the scroll container is <body>, not #page-analisis. A sticky
+   element whose `top` is a positive offset in a non-scrolled flex parent gains
+   that offset as a static shift. The correct value is `top: 0` — the sticky
+   header (z-index 50) already sits above the strip (z-index 20) while
+   scrolling, so no manual offset is needed. */
+:root { --analisis-header-h: 61px; }
+#page-analisis {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
 .analisis-tab-strip {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 8px 0 14px;
+  padding: 8px 0 12px;
+  margin-top: 0;
   position: sticky;
-  top: 60px;
+  top: 0;
   z-index: 20;
   background: linear-gradient(rgba(11, 14, 20, 0.98) 80%, transparent);
   scrollbar-width: none;
@@ -279,6 +295,27 @@
 
 .analisis-tab-panel.active {
   display: block;
+}
+
+/* ===== PR1 LAYOUT FIX: dropdown & search containers ===== */
+/* The broker date dropdown wrapper is injected ABOVE the panel content and
+   had no containing block, so it stacked over the "Broker Summary" heading.
+   Give it its own row, isolation, and a stacking context below the sticky
+   tab strip (z-index 20). */
+#brokerDateSelectWrap {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  isolation: isolate;
+}
+
+/* The Sinyal Intelijen search bar is covered by the sticky tab strip on
+   scroll because it had no scroll offset compensation. Reserve room equal to
+   the header + strip so the input's top edge stays visible. */
+#intelSearchBarContainer {
+  scroll-margin-top: calc(var(--analisis-header-h) + 44px);
+  position: relative;
+  z-index: 10;
 }
 
 /* ===== INDEPENDENT TAB SEARCH BARS ===== */
