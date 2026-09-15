@@ -4629,6 +4629,22 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
   if (candidate.corporate_action_guard === 'BLOCKED') return false;
   normalizeEntryRangeAliases(candidate);
+  // BATCH 5 (Zombie Purge): saham yang harga terakhirnya sudah jebol Stop Loss
+  // (lastPrice < stopLoss) adalah sinyal ZOMBIE — status-nya wajib dianggap
+  // INVALIDATED/EXPIRED dan DILARANG KERAS masuk antrean broadcast (drop 100%).
+  // Cek ini dari RAW price/SL (bukan derived entry_status) agar baris dengan
+  // derived field kosong/stale tidak lolos (contoh COCO 101 vs SL 140, COIN
+  // 670 vs SL 750).
+  var _zLast = toNum(candidate.last_price || candidate.lastn || candidate.current_price || candidate.close);
+  var _zSl = toNum(candidate.stop_loss || candidate.sl);
+  if (_zLast > 0 && _zSl > 0 && _zLast < _zSl) return false;
+  // BATCH 5 (Anomali jarak entry): jarak harga terhadap batas atas entry
+  // > 10% adalah anomali dan wajib di-drop.
+  var _zEntryHigh = toNum(candidate.entry_high || candidate.entry1 || candidate.entry_2 || candidate.buy_high);
+  if (_zLast > 0 && _zEntryHigh > 0) {
+    var _zEntryDistPct = ((_zLast - _zEntryHigh) / _zEntryHigh) * 100;
+    if (_zEntryDistPct > 10) return false;
+  }
   if (candidateHasTp1AlreadyReachedByObservedHigh(candidate)) return false;
   // Foreign-flow commentary such as "foreign net sell" is analytical context,
   // not an instruction. SELL is fatal only in explicit action/status fields.
