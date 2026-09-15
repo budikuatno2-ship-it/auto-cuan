@@ -1,2 +1,0 @@
- M data/bandarmologi-intel-indexes/catalog_7d.json
- M data/bandarmologi-intel-indexes/latest_7d.json
