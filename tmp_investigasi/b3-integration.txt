@@ -1,0 +1,148 @@
+✔ arjumClient: cleanTicker cleans non-alphanumerics and normalizes to uppercase (1.7145ms)
+✔ arjumClient: hasArjumApiKey checks environment variable safely without leaking (0.3583ms)
+✔ arjumClient: getConfiguredDailyQuota reads ARJUM_DAILY_QUOTA env var, falls back to a sane default (0.5524ms)
+✔ arjumClient: extractQuotaHeaders picks up a rate-limit-style header opportunistically (2.3099ms)
+✔ arjumClient: fetchBrokerSummary always sends explicit broker_limit and level_limit (55.8124ms)
+[CIRCUIT BREAKER] Arjum daily quota reached or rate-limited. Blocking outgoing calls. Reason: HTTP 429
+✔ arjumClient: every real fetchArjum call (2xx or not) increments the persistent quota tracker exactly once (39.7607ms)
+✔ arjumClient: fetchBrokerSummary sends no flow param for "all" or an unrecognized value (never locally summed) (61.9635ms)
+✔ bandarmologiService: getBandarmologiData with flow=all (or omitted) uses the normal disk-cache path, never the live per-flow branch (144.8998ms)
+✔ arjumClient: classifyFailure distinguishes quota exhaustion from a generic API error (0.6375ms)
+✖ bandarmologiService: getBandarmologiData surfaces demo_reason=quota_exceeded instead of a silent generic fallback (65.5878ms)
+✖ bandarmologiService: generateDemoData produces complete structure for UI (0.6648ms)
+✔ bandarmologiService: getBandarmologiData returns demo fallback gracefully when key is unset (44.7477ms)
+✔ sectorHot: handleBandarmologi responds with status 200 and payload (39.5112ms)
+✖ bandarmologiService: normalizeBrokerSummary converts raw broker_levels to top_buyers/sellers (4.2456ms)
+✖ bandarmologiService: normalizeBrokerSummary handles full raw brokers array with gross and net fields (3.3743ms)
+✔ bandarmologiService: normalizeBrokerSummary falls back to a populated top_sellers/top_buyers when gross_*/net_* is an empty array (not just missing) (3.7362ms)
+✔ bandarmologiService: aggregateBrokerSummaries also falls back correctly when a day's gross_sellers is an empty array (10.2724ms)
+✔ bandarmologiService: normalizeBrokerSummary net_flow is not neutralized for single-broker "brokers" shape (11.0487ms)
+✖ bandarmologiService: normalizeBrokerSummary net_flow is correct for broker_levels and top_buyers/top_sellers shapes (9.6057ms)
+✔ bandarmologiService: normalizeBrokerSummary badge shows Big Distribution when sellers dominate (8.1558ms)
+✔ bandarmologiService: normalizeBrokerSummary badge respects explicit net_val even for pure seller items (4.7123ms)
+✔ bandarmologiService: normalizeInsiders parses a comma-formatted changes_value instead of dropping it to "–" (0.6422ms)
+✔ bandarmologiService: normalizeInsiders never fabricates a shares value out of garbage input (0.586ms)
+✔ bandarmologiService: normalizeBrokerAccumulation builds daily series per date (2.2287ms)
+✔ bandarmologiService: readDiskCache does NOT fallback to other dates when specific date identifier is missing (8.0777ms)
+✔ bandarmologiService: getBandarmologiData(flow=F) fetches foreign-only data and reports foreign net buy (44.3603ms)
+✔ bandarmologiService: getBandarmologiData(flow=D) fetches domestic-only data and reports domestic net sell (51.0827ms)
+✔ bandarmologiService: getBandarmologiData with custom date range only aggregates dates inside the window (91.6508ms)
+✔ bandarmologiService: aggregateBrokerSummaries sums transaction metrics across multiple dates (8.8459ms)
+✔ bandarmologiService: normalizeBrokerSummary preserves Arjum sellers aliases when a partial payload also has buyer fields (4.3933ms)
+✔ bandarmologiService: GPRA 2026-09-04 regression: top sellers never clone top buyers and sellers have negative net value (0.9778ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 26
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1015.674
+
+✖ failing tests:
+
+test at test\bandarmologi-integration.test.js:193:1
+✖ bandarmologiService: getBandarmologiData surfaces demo_reason=quota_exceeded instead of a silent generic fallback (65.5878ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\bandarmologi-integration.test.js:214:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\bandarmologi-integration.test.js:227:1
+✖ bandarmologiService: generateDemoData produces complete structure for UI (0.6648ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'BBCA'
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\bandarmologi-integration.test.js:229:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'BBCA',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\bandarmologi-integration.test.js:276:1
+✖ bandarmologiService: normalizeBrokerSummary converts raw broker_levels to top_buyers/sellers (4.2456ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'BIG_DISTRIBUTION'
+  - 'BIG_ACCUMULATION'
+         ^
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\bandarmologi-integration.test.js:293:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'BIG_DISTRIBUTION',
+    expected: 'BIG_ACCUMULATION',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\bandarmologi-integration.test.js:298:1
+✖ bandarmologiService: normalizeBrokerSummary handles full raw brokers array with gross and net fields (3.3743ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  -100000 !== 39000
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\bandarmologi-integration.test.js:324:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: -100000,
+    expected: 39000,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\bandarmologi-integration.test.js:414:1
+✖ bandarmologiService: normalizeBrokerSummary net_flow is correct for broker_levels and top_buyers/top_sellers shapes (9.6057ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  -40 !== 60
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\bandarmologi-integration.test.js:423:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: -40,
+    expected: 60,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

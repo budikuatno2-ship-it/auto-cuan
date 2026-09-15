@@ -1,0 +1,200 @@
+✔ B3-M1-01: getRunMode returns MORNING_SCOUT during 09:00-10:30 on Thursday (4.832ms)
+✔ B3-M1-02: getRunMode returns MIDDAY_CHECK during 10:31-12:00 on Thursday (0.3035ms)
+✖ B3-M1-03: getRunMode returns null (lunch break) at 12:00-13:29 on Thursday (1.5304ms)
+✔ B3-M1-04: getRunMode returns AFTERNOON_EXIT during 13:30-16:00 on Thursday (0.2708ms)
+✖ B3-M1-05: getRunMode returns null during Friday lunch break 11:30-13:59 (0.4825ms)
+✔ B3-M1-06: getRunMode returns AFTERNOON_EXIT during Friday session 2 (14:00-15:50) (0.2577ms)
+✖ B3-M1-07: getRunMode returns null after Friday session 2 close (15:51+) (0.3581ms)
+✔ B3-M1-08: getRunMode returns OUTSIDE_MARKET before 09:00 and after 16:00 (0.2601ms)
+✖ B3-M1-09: getRunMode returns OUTSIDE_MARKET for invalid input (0.4695ms)
+✔ B3-M1-10: getRunMode override still works (backward compat) (0.3511ms)
+✖ B3-M2-11: collectLiveSnapshot separates internal observation from published payload (3.055ms)
+✔ B3-M2-12: cooldown drops duplicate alert within 30-minute window (0.6697ms)
+✖ B3-M2-13: cooldown allows re-alert after window expires (0.388ms)
+✔ B3-M2-14: cooldown bypass on status upgrade (watchlist -> confirmed buy) (0.2618ms)
+✖ B3-M3-15: momentum confirmation requires relative_volume > 1.2 (5.379ms)
+✖ B3-M3-16: live-price state machine transitions LIVE -> CONFIRMED -> STALE (0.4058ms)
+✖ B3-M4-integrity: aggregateBrokerSummaries returns one row per requested day (2.4527ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 8
+ℹ fail 9
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 227.6647
+
+✖ failing tests:
+
+test at test\audit-batch3-screener-engine.test.js:84:1
+✖ B3-M1-03: getRunMode returns null (lunch break) at 12:00-13:29 on Thursday (1.5304ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'MIDDAY_CHECK'
+  - null
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch3-screener-engine.test.js:85:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'MIDDAY_CHECK',
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\audit-batch3-screener-engine.test.js:92:1
+✖ B3-M1-05: getRunMode returns null during Friday lunch break 11:30-13:59 (0.4825ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'MIDDAY_CHECK'
+  - null
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch3-screener-engine.test.js:94:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'MIDDAY_CHECK',
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\audit-batch3-screener-engine.test.js:102:1
+✖ B3-M1-07: getRunMode returns null after Friday session 2 close (15:51+) (0.3581ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'AFTERNOON_EXIT'
+  - null
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch3-screener-engine.test.js:104:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'AFTERNOON_EXIT',
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\audit-batch3-screener-engine.test.js:112:1
+✖ B3-M1-09: getRunMode returns OUTSIDE_MARKET for invalid input (0.4695ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'MORNING_SCOUT'
+  - 'OUTSIDE_MARKET'
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch3-screener-engine.test.js:114:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'MORNING_SCOUT',
+    expected: 'OUTSIDE_MARKET',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\audit-batch3-screener-engine.test.js:126:1
+✖ B3-M2-11: collectLiveSnapshot separates internal observation from published payload (3.055ms)
+  TypeError: collector.buildCandidateRecord is not a function
+      at d:\auto-cuan-2\lib\intraday-fast-watcher-live.js:170:26
+      at Array.map (<anonymous>)
+      at Object.collectLiveSnapshot (d:\auto-cuan-2\lib\intraday-fast-watcher-live.js:169:30)
+      at async TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch3-screener-engine.test.js:138:18)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+
+test at test\audit-batch3-screener-engine.test.js:166:1
+✖ B3-M2-13: cooldown allows re-alert after window expires (0.388ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch3-screener-engine.test.js:174:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\audit-batch3-screener-engine.test.js:191:1
+✖ B3-M3-15: momentum confirmation requires relative_volume > 1.2 (5.379ms)
+  AssertionError [ERR_ASSERTION]: RVOL 1.5 must pass momentum gate
+  
+  false !== true
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch3-screener-engine.test.js:210:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\audit-batch3-screener-engine.test.js:213:1
+✖ B3-M3-16: live-price state machine transitions LIVE -> CONFIRMED -> STALE (0.4058ms)
+  TypeError: momentum.classifyPriceState is not a function
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch3-screener-engine.test.js:231:30)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+
+test at test\audit-batch3-screener-engine.test.js:249:1
+✖ B3-M4-integrity: aggregateBrokerSummaries returns one row per requested day (2.4527ms)
+  AssertionError [ERR_ASSERTION]: aggregateBrokerSummaries must return a result object
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch3-screener-engine.test.js:255:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

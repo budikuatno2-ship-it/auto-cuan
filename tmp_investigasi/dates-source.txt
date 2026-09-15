@@ -1,0 +1,32 @@
+
+BBCA: available-dates=1 head=["2026-09-14"]
+    2026-09-14=>1396352157500|117770132500|29
+   unique payloads among 1 dates = 1
+
+CUAN: available-dates=172 head=["2026-09-14","2026-09-11","2026-09-10","2026-09-09"]
+    2026-09-14=>undefined|0|0
+    2026-09-11=>undefined|0|0
+    2026-09-10=>undefined|0|0
+    2026-09-09=>undefined|0|0
+   unique payloads among 4 dates = 1
+
+PTRO: available-dates=172 head=["2026-09-14","2026-09-11","2026-09-10","2026-09-09"]
+    2026-09-14=>undefined|0|0
+    2026-09-11=>undefined|0|0
+    2026-09-10=>undefined|0|0
+    2026-09-09=>undefined|0|0
+   unique payloads among 4 dates = 1
+
+TLKM: available-dates=172 head=["2026-09-14","2026-09-11","2026-09-10","2026-09-09"]
+    2026-09-14=>undefined|0|0
+    2026-09-11=>undefined|0|0
+    2026-09-10=>undefined|0|0
+    2026-09-09=>undefined|0|0
+   unique payloads among 4 dates = 1
+
+ASII: available-dates=172 head=["2026-09-14","2026-09-11","2026-09-10","2026-09-09"]
+    2026-09-14=>undefined|0|0
+    2026-09-11=>undefined|0|0
+    2026-09-10=>undefined|0|0
+    2026-09-09=>undefined|0|0
+   unique payloads among 4 dates = 1

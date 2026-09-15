@@ -1,0 +1,272 @@
+✔ T6: Early Watch blocks the canonical poor-RR source status (2.2337ms)
+✔ T6: Early Watch still allows a normal pre-confirmation candidate (score is not the gate) (0.3186ms)
+✔ T6: Early Watch still refuses non-active / confirmed / terminal statuses (0.2639ms)
+✔ T7: READY_PENDING below the score floor is rejected (WIRG score 35 leak) (0.418ms)
+✔ T7: READY_PENDING with sub-1.0 R/R is rejected (PGAS 0.86x leak) (0.2322ms)
+✔ T7: a candidate at/above both floors is still accepted (0.2501ms)
+✔ T7: missing R/R does not block (no evidence) (0.21ms)
+✔ T7: the score floor still applies to WAIT_PULLBACK and PENDING_VELOCITY (0.2155ms)
+✔ T8: with syncWithBrokerSummary on, a candle cache behind the summary is refetched (39.0208ms)
+✔ T8: with syncWithBrokerSummary OFF, TTL freshness alone still serves the cache (7.7183ms)
+✔ PR2: formatDateDisplay steps weekend dates back to a trading day (3.3707ms)
+✔ PR2: fetchVpsAvailableDates declares safeTicker before any code use (no ?ticker=undefined) (3.6915ms)
+✔ PR3: computeConcentrationRatioMetrics uses turnover denominator with two decimals and a sub-top5 guard (0.4049ms)
+✔ PR3: runtime CR block no longer uses the ad-hoc top3Val * 2.85 denominator (4.9686ms)
+✔ PR3: VPS broker-summary cache key is range-scoped (3.692ms)
+✔ PR4: getCachedClosePrice rejects a candle older than the latest broker-summary day (29.9474ms)
+✔ PR4: KNOWN_TICKER_PRICES sanity anchors are populated (1.3474ms)
+✔ PR4: stale-candle guard compares candle date against newest broker-summary date (3.8028ms)
+✔ PR1: void-gap and dropdown/search layout fixes are present (2.9125ms)
+✔ arjumClient: cleanTicker cleans non-alphanumerics and normalizes to uppercase (4.1195ms)
+✔ arjumClient: hasArjumApiKey checks environment variable safely without leaking (0.3847ms)
+✔ arjumClient: getConfiguredDailyQuota reads ARJUM_DAILY_QUOTA env var, falls back to a sane default (0.4313ms)
+✔ arjumClient: extractQuotaHeaders picks up a rate-limit-style header opportunistically (1.9121ms)
+✔ arjumClient: fetchBrokerSummary always sends explicit broker_limit and level_limit (68.0749ms)
+[CIRCUIT BREAKER] Arjum daily quota reached or rate-limited. Blocking outgoing calls. Reason: HTTP 429
+✔ arjumClient: every real fetchArjum call (2xx or not) increments the persistent quota tracker exactly once (42.8874ms)
+✔ arjumClient: fetchBrokerSummary sends no flow param for "all" or an unrecognized value (never locally summed) (44.7453ms)
+✔ bandarmologiService: getBandarmologiData with flow=all (or omitted) uses the normal disk-cache path, never the live per-flow branch (126.3246ms)
+✔ arjumClient: classifyFailure distinguishes quota exhaustion from a generic API error (0.6043ms)
+✖ bandarmologiService: getBandarmologiData surfaces demo_reason=quota_exceeded instead of a silent generic fallback (64.7785ms)
+✖ bandarmologiService: generateDemoData produces complete structure for UI (0.6474ms)
+✔ bandarmologiService: getBandarmologiData returns demo fallback gracefully when key is unset (46.9877ms)
+✔ sectorHot: handleBandarmologi responds with status 200 and payload (40.1889ms)
+✖ bandarmologiService: normalizeBrokerSummary converts raw broker_levels to top_buyers/sellers (3.475ms)
+✖ bandarmologiService: normalizeBrokerSummary handles full raw brokers array with gross and net fields (3.123ms)
+✔ bandarmologiService: normalizeBrokerSummary falls back to a populated top_sellers/top_buyers when gross_*/net_* is an empty array (not just missing) (3.4503ms)
+✔ bandarmologiService: aggregateBrokerSummaries also falls back correctly when a day's gross_sellers is an empty array (8.0909ms)
+✔ bandarmologiService: normalizeBrokerSummary net_flow is not neutralized for single-broker "brokers" shape (5.2797ms)
+✖ bandarmologiService: normalizeBrokerSummary net_flow is correct for broker_levels and top_buyers/top_sellers shapes (3.3372ms)
+✔ bandarmologiService: normalizeBrokerSummary badge shows Big Distribution when sellers dominate (2.1439ms)
+✔ bandarmologiService: normalizeBrokerSummary badge respects explicit net_val even for pure seller items (2.5253ms)
+✔ bandarmologiService: normalizeInsiders parses a comma-formatted changes_value instead of dropping it to "–" (0.3693ms)
+✔ bandarmologiService: normalizeInsiders never fabricates a shares value out of garbage input (0.1238ms)
+✔ bandarmologiService: normalizeBrokerAccumulation builds daily series per date (0.6476ms)
+✔ bandarmologiService: readDiskCache does NOT fallback to other dates when specific date identifier is missing (6.1853ms)
+✔ bandarmologiService: getBandarmologiData(flow=F) fetches foreign-only data and reports foreign net buy (45.1567ms)
+✔ bandarmologiService: getBandarmologiData(flow=D) fetches domestic-only data and reports domestic net sell (50.4385ms)
+✔ bandarmologiService: getBandarmologiData with custom date range only aggregates dates inside the window (89.5924ms)
+✔ bandarmologiService: aggregateBrokerSummaries sums transaction metrics across multiple dates (6.916ms)
+✔ bandarmologiService: normalizeBrokerSummary preserves Arjum sellers aliases when a partial payload also has buyer fields (2.1651ms)
+✔ bandarmologiService: GPRA 2026-09-04 regression: top sellers never clone top buyers and sellers have negative net value (0.4674ms)
+[VPS-FETCHER] Successfully synced 0 date files for NOACC from VPS
+[VPS-FETCHER][WARN] ssh ohlcv UNIFIED failed: Command failed: ssh -i D:\Private Key Oracle\ssh-key-2026-07-02.key -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@168.110.221.197 cat "/home/ubuntu/auto-cuan/data/daytrade-ohlcv-cache/UNIFIED.json" 2>/dev/null
+[VPS-FETCHER][WARN] ssh ohlcv APITEST failed: Command failed: ssh -i D:\Private Key Oracle\ssh-key-2026-07-02.key -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@168.110.221.197 cat "/home/ubuntu/auto-cuan/data/daytrade-ohlcv-cache/APITEST.json" 2>/dev/null
+[VPS-FETCHER][WARN] ssh ohlcv APITEST failed: Command failed: ssh -i D:\Private Key Oracle\ssh-key-2026-07-02.key -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@168.110.221.197 cat "/home/ubuntu/auto-cuan/data/daytrade-ohlcv-cache/APITEST.json" 2>/dev/null
+[VPS-FETCHER][WARN] ssh ohlcv APITEST failed: Command failed: ssh -i D:\Private Key Oracle\ssh-key-2026-07-02.key -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@168.110.221.197 cat "/home/ubuntu/auto-cuan/data/daytrade-ohlcv-cache/APITEST.json" 2>/dev/null
+[VPS-FETCHER][WARN] ssh ohlcv APITEST failed: Command failed: ssh -i D:\Private Key Oracle\ssh-key-2026-07-02.key -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@168.110.221.197 cat "/home/ubuntu/auto-cuan/data/daytrade-ohlcv-cache/APITEST.json" 2>/dev/null
+✔ backfillWorker: isValidCachedJson rejects missing, empty, or corrupt files and accepts valid JSON (13.0995ms)
+✔ backfillWorker: isTickerFullyCached returns true only when series, p1, and all target dates exist (29.6521ms)
+✔ bandarmologiService: aggregateBrokerSummaries sanitizes 100x lot price anomaly (13.4434ms)
+✔ bandarmologiService: getBandarmologiData multi-day range succeeds even if accumulation series is missing (1761.4787ms)
+✔ bandarmologiIntelService: Signal 1 (Harga di Bawah Modal Bandar) detects sweet-spot discount (8.8687ms)
+✔ bandarmologiIntelService: Signal 2 (Silent Foreign Accumulation) detects positive foreign buy with sideways price (23.5586ms)
+✔ bandarmologiIntelService: Signal 3 (Ritel Cutloss vs Bandar Nampung) and reverse (Distribusi ke Ritel) (10.3091ms)
+✔ bandarmologiIntelService: Signal 4 (Concentration Ratio CR3 & CR5) classifies massive accumulation (5.9079ms)
+✔ bandarmologiIntelService: evaluateBandarmologiIntelForTicker produces unified confluence score (1001.1004ms)
+✔ sectorHot: handleBandarmologiIntel responds with status 200 and formatted intelligence output (5523.7213ms)
+✓ normalizeBrokerAccumulation(null) returns full empty structure
+✓ synthesizeAccumulationFromSummary(null) returns empty structure
+✓ synthesizeAccumulationFromSummary: 2 buyers, 2 sellers (no duplicates)
+✓ synthesizeAccumulationFromSummary: no Trillion values in output
+✓ synthesizeAccumulationFromSummary: series has 1 entry with correct status
+✓ synthesizeAccumulationFromSummary: DISTRIBUTION status for negative net_flow
+✓ normalizeBrokerAccumulation: 1 buyers, 1 sellers from raw disk data
+
+✅ All broker-accumulation-fix tests passed!
+
+✔ test\broker-accumulation-fix.test.js (140.724ms)
+✔ Broker Summary Gross Mode: dual-sided broker CC is classified as net buyer with positive net value (47.9007ms)
+✔ Broker Summary Net Mode: correctly separates buyers and sellers by net value (2.004ms)
+✔ Broker Accumulation: normalizeBrokerAccumulation partitions negative net items into net_sellers (1.0673ms)
+✔ Multi-Day Range: demo and multi-day aggregation provides range_label and scales correctly (462.5654ms)
+✔ Broker Hunter Contract: getBrokerHunterData returns non-empty stocks active (2.0136ms)
+✔ No hardcoded 5150 mock price in broker-hunter-service.js (2.415ms)
+✔ No hardcoded 5150 mock price in bandarmologi-service.js (3.5722ms)
+✔ No hardcoded 5150 mock price in bandarmologi-intel-service.js (1.5508ms)
+✔ BROKER_PROFILES constant is deleted from broker-hunter-service.js (0.6903ms)
+✔ synthesizeBrokerData function is deleted from broker-hunter-service.js (0.7558ms)
+✔ BROKER_PROFILES and synthesizeBrokerData are not exported (3.2321ms)
+✔ getBrokerHunterData returns empty arrays (not mock data) when no disk data (66.1313ms)
+✔ getBandarmologiIntel returns cache-miss error without live 957-ticker compute (22.3523ms)
+✔ aggregateBrokerSummaries has no .slice(0, 20) artificial cap (3.0716ms)
+✖ normalizeBrokerSummary brokersMap path has no .slice(0, 20) cap (3.5231ms)
+✓ aggregateBrokerSummaries: date_headers has per-day entries sorted oldest-first
+✓ aggregateBrokerSummaries 7D: net_flow = 57000000000 (real sum, not multiplied by 5)
+✓ synthesizeAccumulationFromSummary: multi-day series has 3 per-day entries from date_headers
+✓ synthesizeAccumulationFromSummary: single-day fallback series has 1 entry
+✓ 7D vs 30D distinct: 7D net_flow=4000000000, 30D net_flow=175000000000
+✓ 7D date_headers=7, 30D date_headers=30
+
+✅ All multi-day broker aggregation tests passed!
+
+✔ test\multiday-broker-aggregation.test.js (344.111ms)
+✔ VPS Bridge: exports required constants and fetchers (2.1778ms)
+✔ VPS Bridge: normalizeClientBrokerSummary correctly formats raw Arjum brokers (0.9795ms)
+✔ VPS Bridge: 0-byte local disk guarantee (0.8684ms)
+✔ maintenance OTP watcher sleeps completely outside maintenance UI (4.3005ms)
+✔ maintenance OTP network work is bounded and Telegram notice is off login critical path (2.1773ms)
+✔ fast watcher browser refresh cannot remain stuck forever on a hung fetch (2.3918ms)
+✔ production loader cache keys point at audited runtimes (0.8608ms)
+✔ high-frequency maintenance status override is read-only (1.8258ms)
+admin delete user error: { message: 'foreign key violation' }
+✔ A: build validator passes twice and rewrites nothing (483.0602ms)
+✔ A: exactly 12 Vercel API functions (0.4941ms)
+✔ B: portfolio_access approves only an approved, unblocked, signed account (24.1674ms)
+✔ B: localStorage-style headers alone never grant access (1.2675ms)
+✔ B: a tampered session token is rejected (1.2852ms)
+✔ C: /dashboard rewrites straight to index.html with no loader hop (5.3335ms)
+✔ C: portfolio back button returns to /dashboard and no subscription redirect exists (4.8584ms)
+✔ D: portfolio AI layout is vertical, compact, and single-scroll (1.3436ms)
+✔ D: one click or Enter sends exactly one portfolio AI request (0.5974ms)
+✔ D: stored duplicate consecutive chat rows are cleaned on load (0.5342ms)
+✔ D: AI renderer observes added nodes only and preserves structured output (0.5275ms)
+✔ E: delete_user requires an admin session (1.6832ms)
+✔ E: delete_user refuses system accounts budi and review (1.5711ms)
+✔ E: successful delete removes device and verification records too (1.1552ms)
+✔ E: related-record failure surfaces an error instead of pretending success (1.2005ms)
+✔ E: delete UI demands the exact username and never decorates budi/review rows (0.3091ms)
+✔ F: cached groups are returned for an approved non-admin user (68.9801ms)
+✔ F: group-code case/space mismatch cannot hide a cached group (3.669ms)
+✔ F: a mapping-query failure keeps the last valid cache visible (5.4338ms)
+✔ F: an empty cache still reports a clean empty state (5.4969ms)
+✔ Klaster 2: safeToFixed is exported and formats correctly across engines (1.8932ms)
+✔ Klaster 2: Prespike and Early Momentum boundaries match specifications (0.4647ms)
+✔ Klaster 3: Backtest screener parses mixed line breaks, MFE best_gain, and filters > +500% anomalies (2.7011ms)
+✔ Klaster 5 & 6: Crypto service performs AES-256-GCM encryption with 12-byte IV, 16-byte tag, and timingSafeEqual (4.9435ms)
+✔ Klaster 1: Bandarmologi service returns official empty schema without demo dummy data (154.3036ms)
+✔ Bagian 4: UI CSS contains search static/flex rules, card grid padding, and overflow rules (2.2082ms)
+ℹ tests 111
+ℹ suites 0
+ℹ pass 105
+ℹ fail 6
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8838.387
+
+✖ failing tests:
+
+test at test\bandarmologi-integration.test.js:193:1
+✖ bandarmologiService: getBandarmologiData surfaces demo_reason=quota_exceeded instead of a silent generic fallback (64.7785ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\bandarmologi-integration.test.js:214:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\bandarmologi-integration.test.js:227:1
+✖ bandarmologiService: generateDemoData produces complete structure for UI (0.6474ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'BBCA'
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\bandarmologi-integration.test.js:229:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'BBCA',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\bandarmologi-integration.test.js:276:1
+✖ bandarmologiService: normalizeBrokerSummary converts raw broker_levels to top_buyers/sellers (3.475ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'BIG_DISTRIBUTION'
+  - 'BIG_ACCUMULATION'
+         ^
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\bandarmologi-integration.test.js:293:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'BIG_DISTRIBUTION',
+    expected: 'BIG_ACCUMULATION',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\bandarmologi-integration.test.js:298:1
+✖ bandarmologiService: normalizeBrokerSummary handles full raw brokers array with gross and net fields (3.123ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  -100000 !== 39000
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\bandarmologi-integration.test.js:324:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: -100000,
+    expected: 39000,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\bandarmologi-integration.test.js:414:1
+✖ bandarmologiService: normalizeBrokerSummary net_flow is correct for broker_levels and top_buyers/top_sellers shapes (3.3372ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  -40 !== 60
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\bandarmologi-integration.test.js:423:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: -40,
+    expected: 60,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\fix-intel-real-data.test.js:116:1
+✖ normalizeBrokerSummary brokersMap path has no .slice(0, 20) cap (3.5231ms)
+  AssertionError [ERR_ASSERTION]: brokersMap.size > 0 check not found
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\fix-intel-real-data.test.js:122:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

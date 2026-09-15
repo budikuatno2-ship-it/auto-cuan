@@ -1,0 +1,11 @@
+2026-09-14: from_disk=undefined bs.date=2026-09-14 buyers=0 top=undefined bval=undefined net_flow=0
+2026-09-11: from_disk=undefined bs.date=2026-09-11 buyers=0 top=undefined bval=undefined net_flow=0
+2026-09-10: from_disk=undefined bs.date=2026-09-10 buyers=0 top=undefined bval=undefined net_flow=0
+2026-09-09: from_disk=undefined bs.date=2026-09-09 buyers=0 top=undefined bval=undefined net_flow=0
+2026-09-08: from_disk=undefined bs.date=2026-09-08 buyers=0 top=undefined bval=undefined net_flow=0
+
+--- CUAN multi-day ---
+1d: bs.date=2026-09-14 total_buy_val=401468235000 headers=0 buyers=32
+5d: bs.date=2026-09-09 s/d 2026-09-15 total_buy_val=3535357142834 headers=0 buyers=55
+7d: bs.date=2026-09-07 s/d 2026-09-15 total_buy_val=4949500000000 headers=0 buyers=55
+30d: bs.date=2026-08-05 s/d 2026-09-15 total_buy_val=21777800000000 headers=30 buyers=55

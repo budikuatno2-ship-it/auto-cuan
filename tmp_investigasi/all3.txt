@@ -1,0 +1,35 @@
+[VPS-FETCHER] Successfully synced 0 date files for AUDITSCALE5D from VPS
+[VPS-FETCHER] Successfully synced 0 date files for AUDITSCALE14D from VPS
+[VPS-FETCHER] Successfully synced 0 date files for AUDITSCALE30D from VPS
+[VPS-FETCHER] Successfully synced 0 date files for AUDITSCALE60D from VPS
+✔ T1: vps-data-fetcher never shells out to curl.exe or curl (14.05ms)
+✔ T1b: the only shell binary ever spawned is ssh (2.7753ms)
+✔ T2: a failed VPS fetch emits an explicit diagnostic instead of an empty catch (5099.939ms)
+✔ T2b: the fetch functions contain no empty catch that discards errors (1.0115ms)
+✔ T3: a requested date that does not exist must not masquerade another snapshot (111.7362ms)
+✔ T3b: the real date is still served when it genuinely exists (70.5583ms)
+✔ T3c: the latest date is still served when no date is requested (55.4405ms)
+✔ T4: a single-day snapshot is never multiplied for multi-day ranges (5302.2821ms)
+✔ T4b: real multi-day aggregation is preserved when the days are on disk (42.0668ms)
+[VPS-FETCHER][WARN] http://127.0.0.1:1/api/bandarmologi-intel?range=7d failed: fetch failed
+[VPS-FETCHER][WARN] http://127.0.0.1:1/api/bandarmologi-intel?range=7d failed: fetch failed
+✔ B1: deployed available-dates returns the full bridge history, not the local listing (300.1713ms)
+✔ B1b: a non-empty but PARTIAL local listing must not truncate the bridge history (184.4133ms)
+✔ B2: Market Scanner price prefers the live bridge over a stale local candle (148.261ms)
+✔ B2b: the price carrier exposes honest as_of_date and price_source (0.3246ms)
+✔ B3: VERCEL can read a live aggregate without writing to local disk (86.0741ms)
+✔ B3b: VERCEL never attempts a full recompute+save (read-only filesystem) (141.3507ms)
+✔ B3c: when no index exists and no bridge is reachable, the failure is explicit (108.8056ms)
+✔ B4: intel payload declares data_source and as_of_date (1.5098ms)
+✔ B4b: a baked index served without a bridge is labelled, not silently stale (112.6254ms)
+[VPS-FETCHER] Warning: failed to fetch range for BBCA: EROFS: read-only file system, open '/var/task/data/arjum-data/bandarmologi-intel/latest.json'
+✔ Vercel Serverless Read-Only Guard: getBandarmologiIntel loads precomputed index without crashing (20.0504ms)
+✔ Vercel Serverless Simulation: safeWriteJson & computeAndSaveIntel gracefully handle EROFS / ENOENT (2235.3152ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10886.9019

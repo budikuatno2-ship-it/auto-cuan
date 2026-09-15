@@ -1,0 +1,45 @@
+✔ PR2: formatDateDisplay steps weekend dates back to a trading day (4.3336ms)
+✔ PR2: fetchVpsAvailableDates declares safeTicker before any code use (no ?ticker=undefined) (2.6205ms)
+✔ PR3: computeConcentrationRatioMetrics uses turnover denominator with two decimals and a sub-top5 guard (0.2961ms)
+✔ PR3: runtime CR block no longer uses the ad-hoc top3Val * 2.85 denominator (3.071ms)
+✔ PR3: VPS broker-summary cache key is range-scoped (3.5694ms)
+✔ PR4: getCachedClosePrice rejects a candle older than the latest broker-summary day (23.0751ms)
+✔ PR4: KNOWN_TICKER_PRICES sanity anchors are populated (0.8568ms)
+✔ PR4: stale-candle guard compares candle date against newest broker-summary date (1.5848ms)
+✔ PR1: void-gap and dropdown/search layout fixes are present (1.6946ms)
+✔ Vercel Serverless Read-Only Guard: getBandarmologiIntel loads precomputed index without crashing (17.1484ms)
+✔ Vercel Serverless Simulation: safeWriteJson & computeAndSaveIntel gracefully handle EROFS / ENOENT (235.0498ms)
+✔ maintenance OTP watcher sleeps completely outside maintenance UI (2.3067ms)
+✔ maintenance OTP network work is bounded and Telegram notice is off login critical path (1.2032ms)
+✔ fast watcher browser refresh cannot remain stuck forever on a hung fetch (1.6891ms)
+✔ production loader cache keys point at audited runtimes (0.5659ms)
+✔ high-frequency maintenance status override is read-only (1.9589ms)
+admin delete user error: { message: 'foreign key violation' }
+✔ A: build validator passes twice and rewrites nothing (369.9103ms)
+✔ A: exactly 12 Vercel API functions (0.5569ms)
+✔ B: portfolio_access approves only an approved, unblocked, signed account (24.0541ms)
+✔ B: localStorage-style headers alone never grant access (0.9908ms)
+✔ B: a tampered session token is rejected (1.1908ms)
+✔ C: /dashboard rewrites straight to index.html with no loader hop (5.9831ms)
+✔ C: portfolio back button returns to /dashboard and no subscription redirect exists (6.025ms)
+✔ D: portfolio AI layout is vertical, compact, and single-scroll (1.9873ms)
+✔ D: one click or Enter sends exactly one portfolio AI request (0.5919ms)
+✔ D: stored duplicate consecutive chat rows are cleaned on load (0.4982ms)
+✔ D: AI renderer observes added nodes only and preserves structured output (0.3917ms)
+✔ E: delete_user requires an admin session (1.1894ms)
+✔ E: delete_user refuses system accounts budi and review (1.1601ms)
+✔ E: successful delete removes device and verification records too (0.9973ms)
+✔ E: related-record failure surfaces an error instead of pretending success (1.1789ms)
+✔ E: delete UI demands the exact username and never decorates budi/review rows (0.3216ms)
+✔ F: cached groups are returned for an approved non-admin user (66.2468ms)
+✔ F: group-code case/space mismatch cannot hide a cached group (3.5882ms)
+✔ F: a mapping-query failure keeps the last valid cache visible (4.9869ms)
+✔ F: an empty cache still reports a clean empty state (4.5644ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 683.6317

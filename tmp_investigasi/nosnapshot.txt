@@ -1,0 +1,12 @@
+
+=== BBCA ===
+success= true from_disk= true is_empty= undefined status= undefined is_offline= undefined demo_reason= undefined
+date= Tanggal: 2026-09-14 range= 1d
+available_dates len= 1 head= ["2026-09-14"]
+bs.date= 2026-09-14 top_buyers= 29
+
+=== CUAN ===
+success= true from_disk= undefined is_empty= undefined status= undefined is_offline= undefined demo_reason= undefined
+date= Tanggal: 2026-09-14 range= 1d
+available_dates len= 172 head= ["2026-09-14","2026-09-11","2026-09-10","2026-09-09","2026-09-08"]
+bs.date= 2026-09-14 top_buyers= 32

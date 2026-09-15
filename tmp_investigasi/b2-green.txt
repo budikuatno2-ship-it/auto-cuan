@@ -1,0 +1,151 @@
+[VPS-FETCHER][WARN] http://127.0.0.1:57794/api/available-dates?ticker=AUDITB2 failed: This operation was aborted
+[VPS-FETCHER][WARN] http://127.0.0.1:57794/api/available-dates?ticker=AUDITB2 failed: This operation was aborted
+[VPS-FETCHER][WARN] http://127.0.0.1:57794/api/broker-summary?ticker=AUDITB2&date=latest failed: This operation was aborted
+[VPS-FETCHER][WARN] http://127.0.0.1:57794/api/broker-summary?ticker=AUDITB2&date=latest failed: This operation was aborted
+[VPS-FETCHER][WARN] http://127.0.0.1:57794/api/bandarmologi-intel?range=7d failed: This operation was aborted
+[VPS-FETCHER][WARN] http://127.0.0.1:57794/api/bandarmologi-intel?range=7d failed: This operation was aborted
+[VPS-FETCHER][WARN] http://127.0.0.1:57794/api/bandarmologi-intel?range=7d failed: This operation was aborted
+✖ B1: deployed available-dates returns the full bridge history, not the local listing (5101.3917ms)
+✖ B1b: a non-empty but PARTIAL local listing must not truncate the bridge history (5092.1164ms)
+✖ B2: Market Scanner price prefers the live bridge over a stale local candle (5097.921ms)
+✖ B2b: the price carrier exposes honest as_of_date and price_source (5092.3107ms)
+✔ B3: VERCEL can read a live aggregate without writing to local disk (149.0991ms)
+✔ B3b: VERCEL never attempts a full recompute+save (read-only filesystem) (5095.506ms)
+✖ B3c: when no index exists and no bridge is reachable, the failure is explicit (5080.8418ms)
+✖ B4: intel payload declares data_source and as_of_date (2.1215ms)
+✖ B4b: a baked index served without a bridge is labelled, not silently stale (5075.0995ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 2
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35970.7561
+
+✖ failing tests:
+
+test at test\audit-batch2-live-pricing.test.js:178:1
+✖ B1: deployed available-dates returns the full bridge history, not the local listing (5101.3917ms)
+  AssertionError [ERR_ASSERTION]: expected the master bridge list (172) but got 0
+  
+  0 !== 172
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch2-live-pricing.test.js:185:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 172,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\audit-batch2-live-pricing.test.js:192:1
+✖ B1b: a non-empty but PARTIAL local listing must not truncate the bridge history (5092.1164ms)
+  AssertionError [ERR_ASSERTION]: partial local cache must not truncate the bridge master list (got 1)
+  
+  1 !== 172
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch2-live-pricing.test.js:210:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 172,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\audit-batch2-live-pricing.test.js:225:1
+✖ B2: Market Scanner price prefers the live bridge over a stale local candle (5097.921ms)
+  AssertionError [ERR_ASSERTION]: a stale candle must never be served as the current price when the bridge has fresher data
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch2-live-pricing.test.js:245:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 630,
+    expected: 630,
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }
+
+test at test\audit-batch2-live-pricing.test.js:255:1
+✖ B2b: the price carrier exposes honest as_of_date and price_source (5092.3107ms)
+  AssertionError [ERR_ASSERTION]: detail must be returned
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch2-live-pricing.test.js:263:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at test\audit-batch2-live-pricing.test.js:305:1
+✖ B3c: when no index exists and no bridge is reachable, the failure is explicit (5080.8418ms)
+  AssertionError [ERR_ASSERTION]: an unreachable bridge with no index must fail honestly
+  
+  true !== false
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch2-live-pricing.test.js:314:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\audit-batch2-live-pricing.test.js:326:1
+✖ B4: intel payload declares data_source and as_of_date (2.1215ms)
+  AssertionError [ERR_ASSERTION]: data served from the live bridge must be labelled as such
+  + actual - expected
+  
+  + 'local_cache'
+  - 'live_bridge'
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch2-live-pricing.test.js:335:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'local_cache',
+    expected: 'live_bridge',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\audit-batch2-live-pricing.test.js:339:1
+✖ B4b: a baked index served without a bridge is labelled, not silently stale (5075.0995ms)
+  AssertionError [ERR_ASSERTION]: as_of_date must come from the index trading date, never the write timestamp
+  + actual - expected
+  
+  + '2026-09-14'
+  - '2026-09-11'
+              ^
+  
+      at TestContext.<anonymous> (d:\auto-cuan-2\test\audit-batch2-live-pricing.test.js:365:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: '2026-09-14',
+    expected: '2026-09-11',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

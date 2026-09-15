@@ -1,0 +1,19 @@
+[VPS-FETCHER][WARN] http://127.0.0.1:1/api/bandarmologi-intel?range=7d failed: fetch failed
+[VPS-FETCHER][WARN] http://127.0.0.1:1/api/bandarmologi-intel?range=7d failed: fetch failed
+✔ B1: deployed available-dates returns the full bridge history, not the local listing (226.55ms)
+✔ B1b: a non-empty but PARTIAL local listing must not truncate the bridge history (123.7718ms)
+✔ B2: Market Scanner price prefers the live bridge over a stale local candle (134.9676ms)
+✔ B2b: the price carrier exposes honest as_of_date and price_source (0.3175ms)
+✔ B3: VERCEL can read a live aggregate without writing to local disk (112.4957ms)
+✔ B3b: VERCEL never attempts a full recompute+save (read-only filesystem) (124.2196ms)
+✔ B3c: when no index exists and no bridge is reachable, the failure is explicit (105.9501ms)
+✔ B4: intel payload declares data_source and as_of_date (1.8949ms)
+✔ B4b: a baked index served without a bridge is labelled, not silently stale (111.5867ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1080.1512

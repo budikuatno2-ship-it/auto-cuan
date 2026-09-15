@@ -96,8 +96,18 @@ module.exports = async function handler(req, res) {
     }
     if (action === 'available-dates') {
       const ticker = (req.query && req.query.ticker) || 'BBCA';
+      // Batch 2: the service prefers the VPS bridge master list on a deployed
+      // runtime, so the response carries the source that actually answered.
       const dates = await bandarmologiService.getAvailableDates(ticker);
-      return res.status(200).json({ success: true, ticker, dates });
+      return res.status(200).json({
+        success: true,
+        ticker,
+        dates,
+        count: dates.length,
+        // No local write happens here; a read-only runtime can be detected by
+        // the absence of a data directory.
+        cache_hit: false
+      });
     }
 
     const SUPABASE_URL = process.env.SUPABASE_URL;

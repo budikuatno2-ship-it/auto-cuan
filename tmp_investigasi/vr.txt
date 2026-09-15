@@ -1,0 +1,11 @@
+[VPS-FETCHER] Warning: failed to fetch range for BBCA: EROFS: read-only file system, open '/var/task/data/arjum-data/bandarmologi-intel/latest.json'
+✔ Vercel Serverless Read-Only Guard: getBandarmologiIntel loads precomputed index without crashing (22.8063ms)
+✔ Vercel Serverless Simulation: safeWriteJson & computeAndSaveIntel gracefully handle EROFS / ENOENT (1639.4093ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1790.3776

@@ -92,6 +92,20 @@ const server = http.createServer((req, res) => {
     return res.end(JSON.stringify({ error: 'Data not found', ticker: cleanTicker, date: targetDate }));
   }
 
+  // Endpoint: /api/bandarmologi-intel?range=7d  (Batch 2)
+  // Serves a pre-aggregated intel index so a read-only deployment can quote
+  // fresh scanner data without any local write. Read-only: never computes.
+  if (pathname === '/api/bandarmologi-intel') {
+    const rawRange = path.basename(String(parsedUrl.query.range || '7d').trim()).toLowerCase();
+    const safeRange = /^[0-9]{1,3}d$/.test(rawRange) ? rawRange : '7d';
+    const indexPath = path.join(DATA_DIR, '..', 'bandarmologi-intel-indexes', `latest_${safeRange}.json`);
+    if (fs.existsSync(indexPath)) {
+      return res.end(fs.readFileSync(indexPath, 'utf8'));
+    }
+    res.writeHead(404);
+    return res.end(JSON.stringify({ error: 'Intel index not found', range: safeRange }));
+  }
+
   // Endpoint: /api/available-dates?ticker=BBCA
   if (pathname === '/api/available-dates' && cleanTicker) {
     const dirPath = path.join(DATA_DIR, 'broker-summary', cleanTicker);
