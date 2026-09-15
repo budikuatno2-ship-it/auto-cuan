@@ -46,11 +46,11 @@ test('price 50 remains radar context with adequate liquidity', function() {
   assert.ok(row.smart_setup_diagnostics.includes('price_near_50_requires_stronger_liquidity_confirmation'));
 });
 
-test('price under 50 is downgraded and FCA or special-watch rows are not setup-actionable', function() {
+test('price under 50 is downgraded via liquidity (not nominal) and FCA or special-watch rows are not setup-actionable', function() {
   var cheap = smart.applySmartSetupLabels({ last_price: 49, ma20: 49, ma50: 45, risk_reward: 2, rsi14: 50 });
   var fca = smart.applySmartSetupLabels({ last_price: 100, board_status: 'FCA special watch', ma20: 100, ma50: 95, risk_reward: 2, rsi14: 50 });
   assert.equal(cheap.smart_setup_score_bonus, 0);
-  assert.ok(cheap.smart_setup_diagnostics.includes('price_below_50_downgraded'));
+  assert.ok(cheap.smart_setup_diagnostics.includes('price_near_50_liquidity_not_confirmed'));
   assert.equal(fca.smart_setup_score_bonus, 0);
   assert.match(fca.smart_setup_diagnostics.join(' '), /board_or_status_blocked/);
 });

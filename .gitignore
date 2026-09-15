@@ -55,6 +55,9 @@ logs/ai-research/
 uploads/
 tmp/
 
+# Investigation scratch artifacts (temporary probes + captured test output)
+tmp_investigasi/
+
 # Offline ABCD historical validation market data and generated reports
 data/abcd-validation/
 data/abcd-validation.staging-*/

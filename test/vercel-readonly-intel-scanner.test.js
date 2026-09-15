@@ -28,10 +28,27 @@ test('Vercel Serverless Simulation: safeWriteJson & computeAndSaveIntel graceful
   const originalMkdirSync = fs.mkdirSync;
   const originalWriteFileSync = fs.writeFileSync;
 
-  const latestFile = path.join(__dirname, '..', 'data', 'bandarmologi-intel-indexes', 'latest.json');
-  const catalogFile = path.join(__dirname, '..', 'data', 'bandarmologi-intel-indexes', 'catalog.json');
-  const backupLatest = fs.existsSync(latestFile) ? fs.readFileSync(latestFile, 'utf8') : null;
-  const backupCatalog = fs.existsSync(catalogFile) ? fs.readFileSync(catalogFile, 'utf8') : null;
+  // Hygiene fix: computeAndSaveIntel writes FOUR files (latest/catalog plus the
+  // _7d variants), but only two used to be backed up — so running this test
+  // silently clobbered committed index data. Redirect every output location to
+  // a temp dir instead, which also keeps the original EROFS intent intact.
+  // The temp path must still contain the literal "arjum-data" segment, otherwise
+  // the EROFS interceptor below would stop matching and the test would silently
+  // stop exercising the read-only path it exists to protect.
+  const isolatedRoot = fs.mkdtempSync(path.join(require('os').tmpdir(), 'autocuan-vercel-'));
+  const isolatedIndexDir = path.join(isolatedRoot, 'intel-indexes');
+  const isolatedArjumDir = path.join(isolatedRoot, 'arjum-data', 'bandarmologi-intel');
+  fs.mkdirSync(isolatedIndexDir, { recursive: true });
+  fs.mkdirSync(isolatedArjumDir, { recursive: true });
+  const previousIndexDir = process.env.INTEL_INDEX_DIR;
+  const previousArjumDir = process.env.ARJUM_DATA_DIR;
+  process.env.INTEL_INDEX_DIR = isolatedIndexDir;
+  process.env.ARJUM_DATA_DIR = isolatedArjumDir;
+
+  const latestFile = null;
+  const catalogFile = null;
+  const backupLatest = null;
+  const backupCatalog = null;
 
   let simulatedVercelReadOnly = true;
 
@@ -65,7 +82,11 @@ test('Vercel Serverless Simulation: safeWriteJson & computeAndSaveIntel graceful
   } finally {
     fs.mkdirSync = originalMkdirSync;
     fs.writeFileSync = originalWriteFileSync;
-    if (backupLatest) fs.writeFileSync(latestFile, backupLatest, 'utf8');
-    if (backupCatalog) fs.writeFileSync(catalogFile, backupCatalog, 'utf8');
+    if (previousIndexDir === undefined) delete process.env.INTEL_INDEX_DIR;
+    else process.env.INTEL_INDEX_DIR = previousIndexDir;
+    if (previousArjumDir === undefined) delete process.env.ARJUM_DATA_DIR;
+    else process.env.ARJUM_DATA_DIR = previousArjumDir;
+    try { fs.rmSync(isolatedIndexDir, { recursive: true, force: true }); } catch (_) {}
+    try { fs.rmSync(isolatedArjumDir, { recursive: true, force: true }); } catch (_) {}
   }
 });

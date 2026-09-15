@@ -15,7 +15,7 @@ test('Day Trade universe filters restricted, low-price, and foreign unknown-boar
   ], { requirePrice: true, requireLiquidity: true });
   assert.deepEqual(result.tickers.map((r) => r.ticker), ['SAFE']);
   assert.equal(result.diagnostics.raw_universe_count, 6);
-  assert.equal(result.diagnostics.excluded_by_reason.price_below_50, 1);
+  assert.equal(result.diagnostics.excluded_by_reason.liquidity_unverified, 1);
   assert.equal(result.diagnostics.excluded_by_reason.restricted_board_or_status, 3);
   assert.equal(result.diagnostics.excluded_by_reason.invalid_or_unknown_board, 1);
 });
@@ -59,10 +59,11 @@ test('board-validated IPO diagnostics keep Konglo affiliation-driven and route m
   assert.deepEqual(diagnostics.sample_affiliation_missing.map((row) => row.ticker), ['WBSA']);
 });
 
-test('price 50 requires board and liquidity safety, while 49 is always excluded', () => {
+test('price below 50 is no longer a hard-reject; eligibility is pure liquidity', () => {
   assert.equal(engine.dayTradeEligibilityReason({ board: 'UTAMA', last_price: 50, valuasi: 1, freq: 1 }, { requirePrice: true, requireLiquidity: true }), null);
   assert.equal(engine.dayTradeEligibilityReason({ board: 'UTAMA', last_price: 50 }, { requirePrice: true, requireLiquidity: true }), 'liquidity_unverified');
-  assert.equal(engine.dayTradeEligibilityReason({ board: 'UTAMA', last_price: 49, valuasi: 1, freq: 1 }, { requirePrice: true, requireLiquidity: true }), 'price_below_50');
+  assert.equal(engine.dayTradeEligibilityReason({ board: 'UTAMA', last_price: 49, valuasi: 1, freq: 1 }, { requirePrice: true, requireLiquidity: true }), null, 'price 49 with liquidity must pass');
+  assert.equal(engine.dayTradeEligibilityReason({ board: 'UTAMA', last_price: 49 }, { requirePrice: true, requireLiquidity: true }), 'liquidity_unverified', 'price 49 without liquidity must fail');
 });
 
 test('stale Day Trade scanning lock is diagnosed for recovery but a fresh lock remains running', () => {
