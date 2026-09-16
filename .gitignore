@@ -102,8 +102,6 @@ data/intraday-fast-watcher-events/
 .vercel
 .env*
 
-.env*
-
 data/arjum-data/
 arjum-data/
 !data/broker-hunter-indexes/
@@ -111,5 +109,10 @@ arjum-data/
 !data/bandarmologi-intel-indexes/
 !data/bandarmologi-intel-indexes/**
 
+# Chart-engine candle cache (Arjum history; regenerable at runtime)
+data/daily-candles/
+data/candle-quota.json
 
-.vercel
+# Local test-runner output artifacts
+test*-out.txt
+testout.txt
