@@ -1163,15 +1163,15 @@
     html += '  <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs font-mono">';
     html += '    <div class="p-2.5 rounded-xl bg-dark-700/40 border border-dark-600/30">';
     html += '      <div class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Volume Beli</div>';
-    html += '      <div class="text-emerald-400 font-bold text-xs sm:text-sm">' + formatNumber(broker.bvol) + ' <span class="text-[10px] font-normal text-gray-400">lot</span></div>';
+    html += '      <div class="text-emerald-400 font-bold text-xs sm:text-sm">' + formatNumber(broker.bvol) + ' <span class="text-[10px] font-normal text-gray-400">lembar</span></div>';
     html += '    </div>';
     html += '    <div class="p-2.5 rounded-xl bg-dark-700/40 border border-dark-600/30">';
     html += '      <div class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Volume Jual</div>';
-    html += '      <div class="text-rose-400 font-bold text-xs sm:text-sm">' + formatNumber(broker.svol) + ' <span class="text-[10px] font-normal text-gray-400">lot</span></div>';
+    html += '      <div class="text-rose-400 font-bold text-xs sm:text-sm">' + formatNumber(broker.svol) + ' <span class="text-[10px] font-normal text-gray-400">lembar</span></div>';
     html += '    </div>';
     html += '    <div class="p-2.5 rounded-xl bg-dark-700/40 border border-dark-600/30">';
     html += '      <div class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Net Volume</div>';
-    html += '      <div class="' + (broker.nvol >= 0 ? 'text-emerald-300' : 'text-rose-300') + ' font-bold text-xs sm:text-sm">' + (broker.nvol >= 0 ? '+' : '') + formatNumber(broker.nvol) + ' <span class="text-[10px] font-normal text-gray-400">lot</span></div>';
+    html += '      <div class="' + (broker.nvol >= 0 ? 'text-emerald-300' : 'text-rose-300') + ' font-bold text-xs sm:text-sm">' + (broker.nvol >= 0 ? '+' : '') + formatNumber(broker.nvol) + ' <span class="text-[10px] font-normal text-gray-400">lembar</span></div>';
     html += '    </div>';
     html += '    <div class="p-2.5 rounded-xl bg-dark-700/40 border border-dark-600/30">';
     html += '      <div class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Frekuensi Order</div>';
@@ -2960,7 +2960,10 @@
 
           var sharesVal = row.shares_change != null ? row.shares_change : (row.shares != null ? row.shares : row.volume);
           var signStr = isBuy ? '+' : (isSell ? '-' : '');
-          var pctStr = row.pct_change && row.pct_change !== '—' ? ' (' + escapeHtml(row.pct_change) + ')' : '';
+          // Normalise pct_change: strip leading sign so it never doubles the
+          // buy/sell sign already applied to the shares figure (fix --x.xx%).
+          var rawPct = row.pct_change && row.pct_change !== '—' ? String(row.pct_change).replace(/^[+-]/, '') : '';
+          var pctStr = rawPct ? ' (' + escapeHtml(rawPct) + ')' : '';
           var changeDisplay = sharesVal != null
             ? (signStr + formatNumber(Math.abs(sharesVal)) + pctStr)
             : (row.pct_change || '—');
@@ -3722,7 +3725,10 @@
       var isForeign = String(r.nationality || '').toLowerCase() === 'foreign';
       var entityIcon = isForeign ? '🌐' : (String(r.category || '').toLowerCase().includes('pengendali') ? '👑' : '👤');
 
-      var pct = typeof r.percentage === 'number' ? r.percentage : parseFloat(r.percentage || 0);
+      var pct = (r.percentage == null || r.percentage === '')
+        ? 0
+        : (typeof r.percentage === 'number' ? r.percentage : parseFloat(String(r.percentage).replace(/[%\s]/g, '')));
+      if (!Number.isFinite(pct)) pct = 0;
       var shares = typeof r.shares === 'number' ? r.shares : parseFloat(r.shares || 0);
 
       var changeStr = r.last_change || 'Tetap';
@@ -3732,13 +3738,14 @@
 
       html += '<tr class="hover:bg-dark-700/40 border-b border-dark-700/30 transition text-xs">';
       html += '  <td class="py-2.5 px-3 font-mono text-gray-400">' + (i + 1) + '</td>';
-      html += '  <td class="py-2.5 px-3 font-medium text-gray-100 whitespace-nowrap">';
+      html += '  <td class="py-2.5 px-3 font-medium text-gray-100 whitespace-normal min-w-[140px]">';
       html += '    <div class="flex items-center gap-1.5">';
       html += '      <span>' + entityIcon + '</span>';
       html += '      <strong class="text-white hover:text-emerald-400 cursor-pointer transition" onclick="BandarmologiRuntime.selectInsiderForGraph(\'' + escapeHtml(name) + '\')">' + escapeHtml(name) + '</strong>';
       html += '    </div>';
-      if (r.position && r.position !== r.category) {
-        html += '    <div class="text-[10px] text-gray-400 font-normal pl-5">' + escapeHtml(r.position) + '</div>';
+      var positionLabel = r.position || r.category || '';
+      if (positionLabel && positionLabel !== r.name) {
+        html += '    <div class="text-[10px] text-gray-400 font-normal pl-5">' + escapeHtml(positionLabel) + '</div>';
       }
       html += '  </td>';
       html += '  <td class="py-2.5 px-3 whitespace-nowrap">' + getCategoryBadge(r.category) + '</td>';

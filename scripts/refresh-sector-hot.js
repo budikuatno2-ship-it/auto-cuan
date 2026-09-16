@@ -208,6 +208,15 @@ async function main() {
       const member = groupMembers[m];
       const quote = quoteCache[member.ticker];
 
+      // sector_hot_members_latest enforces CHECK (member_type IN ('ANCHOR',
+      // 'Member')). The v2 group mapping legitimately uses CORE/AFFILIATE/
+      // RADAR, which violated that constraint and rejected every member row
+      // after the aggregate upsert succeeded. Map to the allowed set:
+      // CORE (the group's anchor names) -> ANCHOR, everything else -> Member.
+      const memberTypeForLatest = member.member_type === 'CORE' || member.member_type === 'ANCHOR'
+        ? 'ANCHOR'
+        : 'Member';
+
       const row = {
         group_code: group.group_code,
         ticker: member.ticker,
@@ -217,7 +226,7 @@ async function main() {
         volume_today: quote ? quote.volumeToday : null,
         avg_volume_30d: quote ? quote.avgVolume30d : null,
         volume_ratio_30d: quote ? quote.volumeRatio30d : null,
-        member_type: member.member_type,
+        member_type: memberTypeForLatest,
         calculated_at: now
       };
 

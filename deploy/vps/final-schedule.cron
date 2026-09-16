@@ -1,0 +1,8 @@
+# BEGIN AUTO-CUAN FINAL SCHEDULE
+5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
+30 16 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-lifecycle-evaluator.js --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
+0 18 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-daily-broker-update.js --limit 5000 --fresh >> /home/ubuntu/auto-cuan-runner/logs/daily-broker-update.log 2>&1
+45 18 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-daily-afternoon-recap.js --send >> /home/ubuntu/auto-cuan-runner/logs/daily-afternoon-recap.log 2>&1
+30 19 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/fetch-daily-candles.js >> /home/ubuntu/auto-cuan-runner/logs/fetch-daily-candles.log 2>&1
+15 22 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/direct-refresh-landing.js >> /home/ubuntu/auto-cuan-runner/logs/landing-refresh.log 2>&1
+# END AUTO-CUAN FINAL SCHEDULE
