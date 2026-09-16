@@ -558,14 +558,20 @@ module.exports = async function handler(req, res) {
 
     // === REVIEW USER: bypass device binding ===
     if (usernameLower === 'review') {
-      const { error: updateError } = await supabase
-        .from('app_users')
-        .update({ last_login_at: new Date().toISOString() })
-        .eq('id', user.id);
-
-      if (updateError) {
-        console.error('login-user review update error:', updateError);
-      }
+      // Fire-and-forget: the login response must not wait on this timestamp write.
+      void (async () => {
+        try {
+          const { error: updateError } = await supabase
+            .from('app_users')
+            .update({ last_login_at: new Date().toISOString() })
+            .eq('id', user.id);
+          if (updateError) {
+            console.error('login-user review update error:', updateError);
+          }
+        } catch (err) {
+          console.error('Silent login timestamp update error:', err);
+        }
+      })();
 
       issueSessionCookie(res, user, effectiveUsername, deviceId);
       return res.status(200).json({
@@ -595,18 +601,24 @@ module.exports = async function handler(req, res) {
 
     // Check if this device is already registered for this user
     if (currentDevices.includes(deviceId)) {
-      // Device already known — just update last_login_at
-      const { error: updateError } = await supabase
-        .from('app_users')
-        .update({
-          last_login_at: new Date().toISOString(),
-          user_agent: userAgent || ''
-        })
-        .eq('id', user.id);
-
-      if (updateError) {
-        console.error('login-user update error:', updateError);
-      }
+      // Device already known — just update last_login_at. Fire-and-forget: the
+      // login response must not be blocked by this non-critical timestamp write.
+      void (async () => {
+        try {
+          const { error: updateError } = await supabase
+            .from('app_users')
+            .update({
+              last_login_at: new Date().toISOString(),
+              user_agent: userAgent || ''
+            })
+            .eq('id', user.id);
+          if (updateError) {
+            console.error('login-user update error:', updateError);
+          }
+        } catch (err) {
+          console.error('Silent login timestamp update error:', err);
+        }
+      })();
 
       const knownDeviceSession = issueSessionCookie(res, user, effectiveUsername, deviceId);
       return res.status(200).json({
