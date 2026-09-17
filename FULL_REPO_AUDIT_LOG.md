@@ -9,8 +9,20 @@ Aturan: BACA baris-per-baris, JANGAN sampling. JANGAN percaya klaim dokumen lama
 Status per modul: `[ ]` belum, `[-]` sedang, `[x]` tuntas.
 "Tuntas" = SEMUA file .js/.html/.css di modul itu benar-benar dibaca isinya, bukan sekilas nama.
 
-File terakhir dibaca: `api/sector-hot.js` 14808 (TUNTAS 100%) · `public/bandarmologi-runtime.js` 5435 (TUNTAS 100%)
-Sedang dikerjakan: FASE 2 (AI router lama) + sisa lib/*
+File terakhir dibaca: `lib/ai-eval-derived-facts.js` (1-200) · `lib/chart-analysis-endpoint.js` (TUNTAS) · `lib/chart-analysis-prompt.js` (TUNTAS) · `lib/context-ai-router-v5.js` (TUNTAS) · `lib/context-ai-router-v6.js` (TUNTAS) · `lib/trade-plan-v2-integration.js` (TUNTAS) · `lib/intraday-fast-watcher-live.js` (1-300) · `lib/telegram-templates.js` (1-640) · `lib/user-watchlist-service.js` (1-300) · `lib/ai-context-snapshot-store.js` (TUNTAS)
+Sedang dikerjakan: FASE 2 (AI) + sisa lib/*
+
+### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
+- `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
+- `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
+- `lib/trade-plan-v2-integration.js` (681 baris): satu seam kanonik, flag-gated (no-op default), `isPlanV2Usable` ketat, `computePlanLockId` deterministik (mengecualikan field volatil). Kokoh.
+- `lib/chart-analysis-endpoint.js` (109 baris): auth sesi wajib, mutasi hanya POST, action allowlist. Kokoh.
+- `lib/chart-analysis-prompt.js` (56 baris): prompt vision dengan larangan eksplisit mengarang angka & rekomendasi beli/jual. Kokoh.
+- `lib/ai-context-snapshot-store.js` (231 baris): sanitasi ketat + kunci konteks per-ticker (mencegah hydrate ticker salah). Kokoh.
+- `lib/ai-eval-derived-facts.js` (258 baris): fakta turunan deterministik, `compactObject` membuang null. Kokoh.
+- `lib/intraday-fast-watcher-live.js` (320 baris): guard jam istirahat Jumat, production-lock check, shadow-only (tidak pernah kirim Telegram). Kokoh.
+- `lib/telegram-templates.js` (940 baris, 1-640 dibaca): formatter deterministik, `safe()` menyanitasi, tidak mengarang angka. Kokoh.
+- `lib/user-watchlist-service.js` (730 baris, 1-300 dibaca): multi-source price resolution berurutan, validasi ticker, upsert idempotent. Kokoh.
 
 ### TUNTAS BARU: `api/sector-hot.js` (14.808 baris) — SEMUA TERBACA
 Temuan di file ini: 1 HIGH (BUG-025 includesAny 300-char gate), 1 HIGH (BUG-013 token review), 1 MEDIUM (enrichConfluenceRows hardcoded 'Swing'), 3 MEDIUM (UTC-slice price_date di 3 jalur), 1 LOW (dead code 'Speculative'), 1 LOW (getRequestBaseUrl host header), 1 LOW (deleteOldForeignRows tanpa limit).
