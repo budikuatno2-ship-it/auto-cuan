@@ -15,7 +15,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 
 ## Progres Batch
 
-- [x] **Batch 0** — Audit Arsitektur & Logika Penilaian Seluruh Screener
+- [x] **Batch 0** — Audit Arsitektur & Logika Penilaian Seluruh Screener (PR #665, commit `fd2a809`)
 - [ ] **Batch 1** — Sinkronisasi Baseline & Setup Log
 - [ ] **Batch 2** — Modul Market Hours Guard Terpusat
 - [ ] **Batch 3** — Integrasi Market Hours Guard ke Broadcast Notifier
@@ -44,6 +44,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 ### Batch 0: Audit Arsitektur & Logika Penilaian Seluruh Screener
 - **Status:** **SELESAI**
 - **Tanggal:** 2026-09-17
+- **PR:** #665 (`fd2a809`)
 - **Dokumen Audit Utama:** [`SCREENER_ARCHITECTURE_AUDIT.md`](SCREENER_ARCHITECTURE_AUDIT.md)
 - **Ringkasan Temuan Utama:**
   1. *Prior Art (d82fbd1):* `getMarketSessionStatus` dan `candidatePassesPublicTelegramSafetyGate` masih ada. `candidatePassesPublicTelegramSafetyGate` aktif dipanggil untuk zombie purge & filter ARA/ARB. Namun `getMarketSessionStatus` terisolasi di fungsi `sendAlert` yang dead code.
@@ -52,3 +53,16 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
   4. *Celah Filter R/R Swing:* Jalur `strictCandidates` memiliki hard gate R/R 1.8x, namun jika kosong, sistem fallback ke `digestCandidates` yang melewati hard gate R/R dan mengizinkan R/R 1.3x (Tier 2) atau tanpa filter R/R.
   5. *Status RAM VPS:* Terbukti proses `tools/ai-eval-once-supervisor.js` (PID 1801024 sejak 11 Sep) dan `tools/vps-api-server.js` (PID 1883477 sejak 14 Sep) menjalankan kode lama di memori.
 - **Hasil Sintaks Check:** `node --check` valid pada seluruh file audit.
+
+### Batch 1: Sinkronisasi Baseline & Setup Log
+- **Status:** **IN PROGRESS**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/baseline-sync-and-log`
+- **Baseline Sintaks JS:**
+  - Total File `.js` Diperiksa: **788 file** (seluruh repo di luar `node_modules` dan `.git`)
+  - Status `node --check`: **100% VALID** (0 syntax error)
+- **Baseline Test Suite (`npm test` / `tools/run-build-test-suite.js --full`):**
+  - Total Test Files: **377 test files** (dari `tools/curated-build-tests.json`)
+  - Status Eksekusi: **377/377 test files PASSED (100% Lolos)**
+  - Total Subtests: **317 subtests passed, 0 fail, 0 skipped, 0 cancelled**
+  - Pre-Build Tooling Validations: 6/6 passed (`apply-production-hotfixes`, `apply-desktop-header-center`, `apply-ui-bugfix-pack-v1`, `apply-screener-lifecycle-ui`, `validate-auth-recovery-v2`, `validate-ai-eval-once`)
