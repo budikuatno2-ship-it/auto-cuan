@@ -25,7 +25,30 @@ Setiap temuan wajib punya lokasi + kutipan + penjelasan + bukti + arah perbaikan
 Semua klaim dokumen audit lama TIDAK diwarisi — divertifikasi ulang dari kode kini.
 
 Status: **AUDIT BERJALAN — BELUM SELESAI**. Modul yang belum dibaca belum tercantum di sini.
-Total temuan sejauh ini: 1 CRITICAL, 17 HIGH, 17 MEDIUM, 10 LOW.
+Total temuan sejauh ini: 1 CRITICAL, 17 HIGH, 18 MEDIUM, 11 LOW.
+
+### [MEDIUM] `api/sector-hot.js` Non-Konglo juga menyimpan `price_date` dari potongan UTC naif
+- **Lokasi:** [`api/sector-hot.js:11060`](api/sector-hot.js:11060)
+- **Kutipan kode bermasalah:**
+  ```js
+  price_date: validDays[lastIdx].ts ? new Date(validDays[lastIdx].ts * 1000).toISOString().slice(0, 10) : null,
+  ```
+- **Penjelasan:** Ini jalur Non-Konglo (`fetchNkQuoteData`). Sama seperti Konglo ([`:1885`](api/sector-hot.js:1885)) dan jalur Top 5 chart ([`:5707`](api/sector-hot.js:5707)), tanggal sesi diambil dari potongan UTC, bukan konversi WIB. `price_date` adalah input kebijakan kesegaran (`attachPriceFreshness`/`validateScreenerPriceFreshness`), sehingga tanggal yang salah dapat menandai harga segar sebagai stale (atau sebaliknya). Sekarang **tiga jalur berbeda di file yang sama** memakai pola yang salah, sementara helper WIB (`getJakartaDateFromTimestamp`, `getJakartaDateString`) tersedia di file yang sama.
+- **Bukti verifikasi riil:** Bukti kode: 3 lokasi identik.
+- **Usulan arah perbaikan:** Ganti ketiganya dengan `getJakartaDateFromTimestamp(ts * 1000)`.
+
+### [LOW] `formatDateDisplay` di UI Bandarmologi mengembalikan tanggal literal `'2026-09-11'` sebagai default
+- **Lokasi:** [`public/bandarmologi-runtime.js:4162`](public/bandarmologi-runtime.js:4162)
+- **Kutipan kode bermasalah:**
+  ```js
+  function formatDateDisplay(dateStr) {
+    if (!dateStr) return '2026-09-11';
+    ...
+  ```
+- **Penjelasan:** Fungsi pemformat tanggal pusat untuk seluruh tab Bandarmologi. Bila `dateStr` kosong, ia mengembalikan tanggal tetap yang kini basi. Karena `formatDateDisplay` dipanggil dari banyak tempat (label tanggal header, opsi dropdown tanggal, dan lain-lain), satu nilai kosong dapat menampilkan "2026-09-11" di beberapa lokasi UI sekaligus sebagai tanggal data. Total literal `'2026-09-11'` di modul Bandarmologi kini **8 tempat**.
+- **Bukti verifikasi riil:** Bukti kode: literal pada default.
+- **Usulan arah perbaikan:** Kembalikan `'—'` alih-alih tanggal tetap.
+
 (1 temuan pernah dicatat lalu DITARIK setelah verifikasi ulang — lihat bagian "DITARIK".)
 
 ## MODUL: Context AI Router v4 (lib/context-ai-router-v4.js)
