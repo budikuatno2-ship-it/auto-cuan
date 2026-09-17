@@ -24,7 +24,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 6** — Terapkan Filter R/R ke Klasifikasi Radar & Entry Zone
 - [x] **Batch 7** — Kunci Revalidasi Sinyal & R/R Gate Jalur Swing (PR #673)
 - [x] **Batch 8** — Deduplikasi & Stateful Alert Tracking (Anti-Duplikat) (PR #674)
-- [ ] **Batch 9** — Syarat Konfirmasi Volume Breakout untuk Revalidasi
+- [x] **Batch 9** — Syarat Konfirmasi Volume Breakout untuk Revalidasi (PR #675)
 - [ ] **Batch 10** — Implementasi Alert Throttling di Telegram Notifier
 - [ ] **Batch 11** — Syarat Konfirmasi Candle Close Sebelum Alert Entry Zone
 - [ ] **Batch 12** — Setup Ecosystem Process Manager (PM2)
@@ -216,3 +216,30 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
     - Upgrade (Watchlist → Confirmed Buy) & downgrade (Normal → SL_HIT) menembus cooldown.
     - Alert tanpa `alert_key`/`ticker` tidak pernah di-suppress (backward-compatible).
   - `npm test`: **383/383 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 9: Syarat Konfirmasi Volume Breakout untuk Revalidasi
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/volume-breakout-revalidation`
+- **File Dimodifikasi:**
+  - [`lib/screener-config.js`](lib/screener-config.js): Menambahkan konstanta `MIN_BREAKOUT_VOLUME_RATIO = 1.2`, helper `passesVolumeBreakoutConfirmation()`, dan `validateRevalidationSignal()`.
+  - [`lib/idx-tick-normalization.js`](lib/idx-tick-normalization.js): `deriveBreakoutConfirmation()` kini memverifikasi volume ratio sebelum melabeli `BREAKOUT_CONFIRMED`.
+  - [`api/sector-hot.js`](api/sector-hot.js): `candidatePassesPublicTelegramSafetyGate()` memblokir status `VOLUME_CONFIRMATION_NEEDED`.
+  - [`test/volume-breakout-revalidation.test.js`](test/volume-breakout-revalidation.test.js): Unit test regresi baru (13 test suites).
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Akar Masalah yang Ditutup (Akar Masalah #3 & #4):**
+  - `deriveBreakoutConfirmation()` sebelumnya melabeli `BREAKOUT_CONFIRMED` HANYA berdasarkan `close > resistance`, tanpa mempertimbangkan volume ratio. Kenaikan harga tipis tanpa volume (*low-volume drift* / *fakeout*) bisa lolos sebagai breakout terkonfirmasi.
+  - Tidak ada helper sentral untuk memvalidasi konfirmasi volume breakout maupun sinyal revalidasi.
+- **Guard yang Terpasang:**
+  - `MIN_BREAKOUT_VOLUME_RATIO = 1.2` sebagai ambang volume breakout terpusat.
+  - `passesVolumeBreakoutConfirmation(candidate, minRatio)` mengekstrak volume ratio dari varian `volume_ratio`, `volume_ratio_20d`, `volume_ratio_avg20`, `volumeRatio`, `vr`, `vol_ratio`; menolak nilai null/NaN/negatif.
+  - `validateRevalidationSignal(candidate, options)` menolak sinyal stale, R/R < 1.5x, dan breakout tanpa konfirmasi volume (VR < 1.2x).
+  - `deriveBreakoutConfirmation()` kini mengembalikan `VOLUME_CONFIRMATION_NEEDED` (label `Needs Volume Confirmation`) saat `close > resistance` tetapi VR < `min_breakout_volume_ratio` (default 1.0x). Tanpa data volume, perilaku lama (`BREAKOUT_CONFIRMED`) dipertahankan (backward-compatible).
+  - `candidatePassesPublicTelegramSafetyGate()` men-drop kandidat berstatus `VOLUME_CONFIRMATION_NEEDED` dari broadcast publik.
+- **Hasil Test:**
+  - `node --check lib/screener-config.js lib/idx-tick-normalization.js api/sector-hot.js test/volume-breakout-revalidation.test.js`: VALID
+  - `node --test test/volume-breakout-revalidation.test.js`: 13/13 passed
+    - Breakout dengan VR 0.7x terbukti DITOLAK (`VOLUME_CONFIRMATION_NEEDED`); VR 1.5x lolos `BREAKOUT_CONFIRMED`.
+    - Sinyal stale, R/R 1.0x, dan breakout tanpa volume terbukti ditolak oleh `validateRevalidationSignal`.
+    - Tanpa data volume, perilaku lama tetap terjaga (backward-compatible).
+  - `npm test`: **384/384 test files passed (100% lolos, 0 fail, 0 skipped)**

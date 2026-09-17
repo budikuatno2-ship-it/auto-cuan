@@ -4701,7 +4701,7 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   ])) return false;
 
   var breakoutStatus = String(candidate.breakout_confirmation_status || '').trim().toUpperCase();
-  if ({ FALSE_BREAKOUT_RISK: true, NEEDS_CLOSE_CONFIRMATION: true, BREAKOUT_WATCH: true }[breakoutStatus]) return false;
+  if ({ FALSE_BREAKOUT_RISK: true, NEEDS_CLOSE_CONFIRMATION: true, BREAKOUT_WATCH: true, VOLUME_CONFIRMATION_NEEDED: true }[breakoutStatus]) return false;
   if (candidate.false_breakout_risk === true) return false;
   var breakoutSafetyText = joinTelegramTexts([
     candidate.breakout_confirmation_label,
