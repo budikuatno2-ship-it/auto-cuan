@@ -9370,29 +9370,43 @@ async function handleTelegramWebhook(req, res, supabase) {
 }
 
 async function updateMeta(supabase, scannedCount, failedCount, status, message) {
-  await supabase.from('sector_hot_meta').upsert([{
-    id: 'latest',
-    calculated_at: new Date().toISOString(),
-    scanned_count: scannedCount,
-    failed_count: failedCount,
-    status: status,
-    message: message,
-    updated_at: new Date().toISOString()
-  }], { onConflict: 'id' });
+  try {
+    var result = await supabase.from('sector_hot_meta').upsert([{
+      id: 'latest',
+      calculated_at: new Date().toISOString(),
+      scanned_count: scannedCount,
+      failed_count: failedCount,
+      status: status,
+      message: message,
+      updated_at: new Date().toISOString()
+    }], { onConflict: 'id' });
+    if (result && result.error) {
+      console.warn('sector-hot updateMeta upsert error:', result.error.message || result.error);
+    }
+  } catch (e) {
+    console.warn('sector-hot updateMeta failed:', (e && e.message) || e);
+  }
 }
 
 async function updateScreenerMeta(supabase, fields) {
-  await supabase.from('swing_screener_meta').upsert([{
-    id: 'latest',
-    calculated_at: new Date().toISOString(),
-    universe_count: fields.universe_count || 0,
-    scanned_count: fields.scanned_count || 0,
-    failed_count: fields.failed_count || 0,
-    ai_called_count: fields.ai_called_count || 0,
-    status: fields.status || 'pending',
-    message: fields.message || null,
-    updated_at: new Date().toISOString()
-  }], { onConflict: 'id' });
+  try {
+    var result = await supabase.from('swing_screener_meta').upsert([{
+      id: 'latest',
+      calculated_at: new Date().toISOString(),
+      universe_count: fields.universe_count || 0,
+      scanned_count: fields.scanned_count || 0,
+      failed_count: fields.failed_count || 0,
+      ai_called_count: fields.ai_called_count || 0,
+      status: fields.status || 'pending',
+      message: fields.message || null,
+      updated_at: new Date().toISOString()
+    }], { onConflict: 'id' });
+    if (result && result.error) {
+      console.warn('sector-hot updateScreenerMeta upsert error:', result.error.message || result.error);
+    }
+  } catch (e) {
+    console.warn('sector-hot updateScreenerMeta failed:', (e && e.message) || e);
+  }
 }
 
 // Shared, read-only board/affiliation diagnostics.  stock_boards remains the
