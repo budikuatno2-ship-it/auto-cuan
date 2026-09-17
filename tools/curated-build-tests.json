@@ -264,6 +264,7 @@
   "test/swing-nonkonglo-notification.test.js",
   "test/swing-nonkonglo-staging-schema.test.js",
   "test/swing-price-provenance-persistence.test.js",
+  "test/swing-screener-rr-gate.test.js",
   "test/swing-top5-radar-digest.test.js",
   "test/telegram-approval-gate.test.js",
   "test/telegram-candidate-digest-gate.test.js",

@@ -59,6 +59,7 @@ const bandarmologiService = require('../lib/bandarmologi-service');
 const brokerHunterService = require('../lib/broker-hunter-service');
 const bandarmologiIntelService = require('../lib/bandarmologi-intel-service');
 const swingEngine = require('../lib/swing-screener-engine');
+const { passesRiskRewardFilter, MIN_RR_RATIO } = require('../lib/screener-config');
 const telegramDailyRecap = require('../lib/telegram-daily-recap');
 const userWatchlistService = require('../lib/user-watchlist-service');
 const recentFailureCooldown = require('../lib/recent-failure-cooldown');
@@ -14288,11 +14289,13 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
       .filter(function(r) { return candidatePassesPublicTelegramSafetyGate(r, 'swing_konglo'); });
 
     // Digest fallback path: use digest gate (allows warnings)
+    // R/R hard gate: fallback MUST NOT leak sub-minimum R/R candidates (Batch 7).
     var digestCandidates = rows
       .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Konglo'), swingMeta); })
       .map(function(r) { return attachPriceFreshness(r, { meta: swingMeta, run_date: swingMeta.run_date }); })
       .filter(candidatePassesPriceFreshness)
-      .filter(function(r) { return candidatePassesTelegramCandidateDigestGate(r, 'swing_konglo_auto'); });
+      .filter(function(r) { return candidatePassesTelegramCandidateDigestGate(r, 'swing_konglo_auto'); })
+      .filter(function(r) { return passesRiskRewardFilter(r, MIN_RR_RATIO); });
 
     // Use strict candidates if available, otherwise use digest candidates
     var nonAvoid = strictCandidates.length > 0 ? strictCandidates : digestCandidates;
@@ -14490,11 +14493,13 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
       .filter(function(r) { return candidatePassesPublicTelegramSafetyGate(r, 'swing_non_konglo'); });
 
     // Digest fallback path: use digest gate (allows warnings)
+    // R/R hard gate: fallback MUST NOT leak sub-minimum R/R candidates (Batch 7).
     var digestCandidates = rows
       .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), swingMeta); })
       .map(function(r) { return attachPriceFreshness(r, { meta: swingMeta, run_date: swingMeta.run_date }); })
       .filter(candidatePassesPriceFreshness)
-      .filter(function(r) { return candidatePassesTelegramCandidateDigestGate(r, 'swing_non_konglo_auto'); });
+      .filter(function(r) { return candidatePassesTelegramCandidateDigestGate(r, 'swing_non_konglo_auto'); })
+      .filter(function(r) { return passesRiskRewardFilter(r, MIN_RR_RATIO); });
 
     // Use strict candidates if available, otherwise use digest candidates
     var nonAvoid = strictCandidates.length > 0 ? strictCandidates : digestCandidates;

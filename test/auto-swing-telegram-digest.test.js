@@ -342,15 +342,19 @@ function monitorRow(overrides) {
 
 
 function digestMonitorRow(overrides) {
-  return monitorRow(Object.assign({ risk_reward: 1.4, execution_reality_status: null }, overrides || {}));
+  // Batch 7: digest fallback now enforces MIN_RR_RATIO (1.5). Levels yield R/R 1.5x
+  // ((114-102)/(102-94)) so these rows still reach the public-safety filter stage.
+  return monitorRow(Object.assign({ risk_reward: 1.5, tp1: 114, target1: 114, execution_reality_status: null }, overrides || {}));
 }
 
 test('Swing Non-Konglo digest path does not bypass generated Hindari action safety', async function() {
   await withSendSpy(async function(calls) {
-    var supabase = makeSupabase(null, [digestMonitorRow({ ticker: 'NDIG' })]);
+    // Batch 7: digest fallback enforces MIN_RR_RATIO (1.5); the Hindari row is now
+    // rejected by both public safety and monitor safety, so an empty heartbeat is sent.
+    var supabase = makeSupabase(null, [digestMonitorRow({ ticker: 'NDIG', notes: 'hindari dulu' })]);
     var result = await sendSwingNkTelegramNotification(supabase, 1);
     assert.equal(result.sent, true);
-    assert.equal(result.reason, 'swing_monitor_fallback_sent');
+    assert.equal(result.reason, 'swing_empty_heartbeat_sent');
     assert.equal(result.selected_count, 0);
     assert.equal(result.strict_selected_count, 0);
     assert.equal(result.public_safety_filtered_count, 1);
@@ -426,10 +430,12 @@ test('Swing Non-Konglo all-public-unsafe finalList sends empty heartbeat when no
 
 test('Swing Konglo digest path does not bypass generated Hindari action safety', async function() {
   await withSendSpy(async function(calls) {
-    var supabase = makeSupabase([digestMonitorRow({ ticker: 'KDIG' })], null);
+    // Batch 7: digest fallback enforces MIN_RR_RATIO (1.5); the Hindari row is now
+    // rejected by both public safety and monitor safety, so an empty heartbeat is sent.
+    var supabase = makeSupabase([digestMonitorRow({ ticker: 'KDIG', notes: 'hindari dulu' })], null);
     var result = await sendSwingKongloTelegramNotification(supabase, 1);
     assert.equal(result.sent, true);
-    assert.equal(result.reason, 'swing_monitor_fallback_sent');
+    assert.equal(result.reason, 'swing_empty_heartbeat_sent');
     assert.equal(result.selected_count, 0);
     assert.equal(result.strict_selected_count, 0);
     assert.equal(result.public_safety_filtered_count, 1);
