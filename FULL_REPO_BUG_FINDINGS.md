@@ -24,7 +24,61 @@ Setiap temuan wajib punya lokasi + kutipan + penjelasan + bukti + arah perbaikan
 Semua klaim dokumen audit lama TIDAK diwarisi — divertifikasi ulang dari kode kini.
 
 Status: **AUDIT BERJALAN — BELUM SELESAI**. Modul yang belum dibaca belum tercantum di sini.
-Total temuan sejauh ini: 1 CRITICAL, 14 HIGH, 7 MEDIUM, 4 LOW.
+Total temuan sejauh ini: 1 CRITICAL, 14 HIGH, 9 MEDIUM, 5 LOW.
+
+## MODUL: Bandarmologi Intel & Pattern (lib/bandarmologi-intel-service.js, lib/pattern-abcd.js, lib/intraday-fast-watcher.js, lib/trade-plan-v2.js, lib/telegram-notifier.js)
+
+### [MEDIUM] Perbandingan kesegaran candle di `bandarmologi-intel-service.js` memakai tanggal UTC-naif → candle segar bisa ditolak sebagai stale
+- **Lokasi:** [`lib/bandarmologi-intel-service.js:389`](lib/bandarmologi-intel-service.js:389) dan [`lib/bandarmologi-intel-service.js:628`](lib/bandarmologi-intel-service.js:628)
+- **Kutipan kode bermasalah:**
+  ```js
+  const candleDate = lastCandle && (lastCandle.date || (lastCandle.time ? new Date(lastCandle.time*1000).toISOString().slice(0,10) : null));
+  const bsDates = bandarmologiService.listDiskDates('broker-summary', clean);
+  if (candleDate && bsDates && bsDates.length > 0 && candleDate < bsDates[0]) staleCandle = true;
+  ```
+- **Penjelasan:** Gerbang anti-stale (perbaikan PR4 untuk kasus CUAN/PTRO) bergantung pada `candleDate` yang dihitung dari potongan UTC. Untuk candle dengan timestamp ≥ 17:00 UTC, `candleDate` mundur satu hari sehingga bisa tampak lebih tua daripada `bsDates[0]` dan candle yang SEBENARNYA segar ditolak → harga jatuh ke VWAP broker-summary. Ini justru dapat memunculkan "harga ngaco" yang hendak dicegah perbaikan itu sendiri.
+- **Bukti verifikasi riil:** Belum. Bukti kode: pola UTC-slice pada nilai yang dibandingkan dengan tanggal disk WIB.
+- **Usulan arah perbaikan:** Pakai konversi WIB (+7 jam) seperti helper di file lain sebelum membandingkan.
+
+### Catatan tuntas (tanpa bug) — modul yang dibaca batch ini
+- `lib/pattern-abcd.js`: geometri ABCD v1 deterministik, menolak pivot ambigu/outside-bar, urutan pivot divalidasi, invalidation diprioritaskan sebelum confirmation pada candle ambigu, ATR/level divalidasi. Kokoh.
+- `lib/intraday-fast-watcher.js`: validasi tanggal/ticker/time, allow-list READY vs NOT_READY, guard anti-chase (advance > 6%), dedup event ber-hash. Kokoh.
+- `lib/trade-plan-v2.js`: satu engine kanonik untuk ketiga screener, profil ter-freeze, `normalizeScreenerType` konsisten, tidak membaca wall-clock/Supabase. Kokoh.
+- `lib/telegram-notifier.js`: guard jam bursa, dedup cooldown stateful, throttle + backoff 429 retry_after, chunking pesan, tidak pernah melempar. Kokoh.
+- `api/sector-hot.js` bagian `callAIConfirmation` (parser AI), `verifyCronSecret`, `normalizeScreenerStatus`, `deriveSwingLabels`, `scoreAndClassify`: konsisten.
+
+## MODUL: Screener Konglo & Day Trade (api/sector-hot.js, lib/daytrade-screener-engine.js)
+
+### [MEDIUM] `api/sector-hot.js` menyimpan `price_date` dari potongan UTC naif pada candle Yahoo
+- **Lokasi:** [`api/sector-hot.js:1885`](api/sector-hot.js:1885)
+- **Kutipan kode bermasalah:**
+  ```js
+  price_date: candles[lastIdx] && candles[lastIdx].time ? new Date(candles[lastIdx].time * 1000).toISOString().slice(0, 10) : null,
+  ```
+- **Penjelasan:** Sama seperti kelas bug tanggal UTC-naif: `price_date` yang dipersist ke `swing_screener_latest` bisa mundur satu hari untuk candle dengan timestamp UTC ≥ 17:00. Karena `price_date` dipakai untuk gerbang kesegaran harga (`attachPriceFreshness`/`validateScreenerPriceFreshness`), tanggal yang salah dapat membuat harga segar ditandai stale atau sebaliknya. Modul lain di file yang sama (`getJakartaDateString`, `getJakartaDateFromTimestamp`) sudah benar menambahkan +7 jam; baris ini tidak.
+- **Bukti verifikasi riil:** Belum. Bukti kode: pola UTC-slice pada field tanggal yang dipakai gerbang freshness.
+- **Usulan arah perbaikan:** Pakai `getJakartaDateFromTimestamp(candles[lastIdx].time * 1000)` yang sudah ada di file yang sama.
+
+### [LOW] Cabang `status === 'Speculative'` di `deriveSwingLabels` adalah dead code
+- **Lokasi:** [`api/sector-hot.js:11644`](api/sector-hot.js:11644)
+- **Kutipan kode bermasalah:**
+  ```js
+  } else if (status === 'Speculative' || (status === 'Watchlist' && score < 60 && score >= 40)) {
+  ```
+- **Penjelasan:** Produsen status `scoreAndClassify` ([`api/sector-hot.js:2158-2184`](api/sector-hot.js:2158)) tidak pernah menghasilkan string `'Speculative'` — hanya `'Swing Ready'`, `'Wait Pullback'`, `'Rebound Speculative'`, `'Watchlist'`, `'Invalid'`. Jadi kondisi `status === 'Speculative'` tak pernah benar; hanya cabang `Watchlist && score<60` yang aktif. Tidak merugikan, tapi menandakan label status yang tidak sinkron antar fungsi.
+- **Bukti verifikasi riil:** Bukti kode: pencarian seluruh file menunjukkan `'Speculative'` hanya muncul di sini sebagai pembanding, bukan sebagai nilai yang di-assign.
+- **Usulan arah perbaikan:** Hapus kondisi mati atau selaraskan daftar status dengan produsennya.
+
+### Catatan tuntas (tanpa bug) — `api/sector-hot.js` bagian yang dibaca
+- `verifyCronSecret` ([`:9453`](api/sector-hot.js:9453)) memakai `crypto.timingSafeEqual` dengan cek panjang — aman.
+- Parser AI line-protocol `callAIConfirmation` ([`:2222`](api/sector-hot.js:2222)) menangani banyak bentuk respons (content string/array, reasoning_content, output_text, JSON fallback) dan memvalidasi status ke CONFIRMED/CAUTION/REJECT — kokoh.
+- `normalizeScreenerStatus`/`getCanonicalPriority` ([`:3010`](api/sector-hot.js:3010)) konsisten dengan filter AI (READY/REBOUND/WATCH).
+- `deriveSwingLabels` ([`:11586`](api/sector-hot.js:11586)) membandingkan status dengan string yang benar-benar dihasilkan `scoreAndClassify` — sinkron.
+
+### Catatan tuntas (tanpa bug) — `lib/daytrade-screener-engine.js` bagian yang dibaca
+- Gate R/R keras (`classifyStatus` → `WAIT_PULLBACK` bila RR < MIN_RR_RATIO), guard Akselerasi, guard afternoon, guard candle-close (Batch 11) semuanya konsisten.
+- `calculateDayTradeScore` menegakkan plafon 64 bila volume ratio < 1.0 (meritokrasi transaksi riil) — sesuai desain.
+- `getMarketSessionStatus` ([`:153`](lib/daytrade-screener-engine.js:153)) memakai offset WIB +7h yang benar.
 
 ## MODUL: Screener Engine Swing (lib/swing-screener-engine.js) — catatan tuntas
 
