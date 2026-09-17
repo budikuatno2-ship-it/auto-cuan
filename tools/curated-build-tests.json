@@ -388,5 +388,6 @@
   "test/pm2-ecosystem-config.test.js",
   "test/atomic-deploy.test.js",
   "test/guard-pipeline-integration.test.js",
-  "test/historical-incident-regression.test.js"
+  "test/historical-incident-regression.test.js",
+  "test/code-integrity-no-duplicate-definitions.test.js"
 ]
