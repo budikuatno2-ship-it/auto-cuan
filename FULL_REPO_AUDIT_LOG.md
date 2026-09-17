@@ -9,8 +9,11 @@ Aturan: BACA baris-per-baris, JANGAN sampling. JANGAN percaya klaim dokumen lama
 Status per modul: `[ ]` belum, `[-]` sedang, `[x]` tuntas.
 "Tuntas" = SEMUA file .js/.html/.css di modul itu benar-benar dibaca isinya, bukan sekilas nama.
 
-File terakhir dibaca: `public/bandarmologi-runtime.js` 5435 (TUNTAS 100%) · `api/sector-hot.js` 11337
-Sedang dikerjakan: FASE 3 (sector-hot sisa) + FASE 2 (AI router lama)
+File terakhir dibaca: `api/sector-hot.js` 14808 (TUNTAS 100%) · `public/bandarmologi-runtime.js` 5435 (TUNTAS 100%)
+Sedang dikerjakan: FASE 2 (AI router lama) + sisa lib/*
+
+### TUNTAS BARU: `api/sector-hot.js` (14.808 baris) — SEMUA TERBACA
+Temuan di file ini: 1 HIGH (BUG-025 includesAny 300-char gate), 1 HIGH (BUG-013 token review), 1 MEDIUM (enrichConfluenceRows hardcoded 'Swing'), 3 MEDIUM (UTC-slice price_date di 3 jalur), 1 LOW (dead code 'Speculative'), 1 LOW (getRequestBaseUrl host header), 1 LOW (deleteOldForeignRows tanpa limit).
 
 ### TUNTAS BARU: `public/bandarmologi-runtime.js` (5.435 baris) — SEMUA TERBACA
 Temuan di file ini: 1 HIGH (FALLBACK_INSIDER_DATA fabrikasi), 1 MEDIUM (persentase missing→0.00%), 3 LOW (2 literal tanggal, 1 var duplikat).

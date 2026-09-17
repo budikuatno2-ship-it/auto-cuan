@@ -25,7 +25,26 @@ Setiap temuan wajib punya lokasi + kutipan + penjelasan + bukti + arah perbaikan
 Semua klaim dokumen audit lama TIDAK diwarisi — divertifikasi ulang dari kode kini.
 
 Status: **AUDIT BERJALAN — BELUM SELESAI**. Modul yang belum dibaca belum tercantum di sini.
-Total temuan sejauh ini: 1 CRITICAL, 17 HIGH, 20 MEDIUM, 11 LOW.
+Total temuan sejauh ini: 1 CRITICAL, 17 HIGH, 20 MEDIUM, 12 LOW.
+
+### [LOW] `deleteOldForeignRows` membaca SEMUA tanggal per ticker tanpa `.limit()`
+- **Lokasi:** [`api/sector-hot.js:3185-3189`](api/sector-hot.js:3185)
+- **Kutipan kode bermasalah:**
+  ```js
+  var dateRes = await supabase.from('foreign_watchlist_daily')
+    .select('trade_date').eq('ticker', ticker)
+    .order('trade_date', { ascending: false });   // tanpa .limit()
+  ```
+- **Penjelasan:** Ini jalur retensi foreign flow di `handleForeignImportUpload`. Berbeda dari `lib/admin-foreign-upload.js` (yang membaca lintas banyak ticker sekaligus dan kena cap respons), di sini query di-scope ke SATU ticker, jadi jumlah barisnya jauh lebih kecil dan tidak berisiko truncation lintas-universe. Namun tetap tanpa `.limit()` eksplisit — pada ticker dengan backlog besar, respons bisa besar. Bukan bug fungsional saat ini, tapi melanggar disiplin bounded-query yang dipakai modul lain.
+- **Bukti verifikasi riil:** Bukti kode: tidak ada `.limit()`.
+- **Usulan arah perbaikan:** Tambahkan `.limit(50)` (cukup untuk menentukan 7 tanggal terbaru).
+
+### Catatan tuntas — `api/sector-hot.js` TUNTAS (14.808 baris, semua terbaca)
+- `getWibDateString` ([`:3355`](api/sector-hot.js:3355)) dan `getWibHourString` ([`:3359`](api/sector-hot.js:3359)) BENAR: epoch + 7 jam lalu potongan UTC = tanggal/jam WIB.
+- `isSignalPublicationTimeRestrictedWib` ([`:3380`](api/sector-hot.js:3380)) memblokir 09:00–09:15 dan 13:00–13:59 WIB dengan benar.
+- `deriveFreshness` ([`:3422`](api/sector-hot.js:3422)) memakai `getJakartaDateFromTimestamp` (WIB-aware) dan membedakan Fresh/Delayed/Stale/Market-Close-Snapshot dengan benar.
+- `parseForeignImportCsv` ([`:3136`](api/sector-hot.js:3136)) memvalidasi kolom wajib, tanggal, ticker, dan duplikat baris; `foreign_net` dihitung `nbsa * close` (bukan dikarang).
+- Seluruh rantai gate keselamatan Telegram, monitor TP/SL, dedup, dan delivery-prep konsisten (lihat catatan batch sebelumnya).
 
 ### [MEDIUM] `enrichConfluenceRows` menghitung ulang confidence memakai kategori hardcoded `'Swing'` — ambang TP1 Non-Konglo jadi salah
 - **Lokasi:** [`api/sector-hot.js:2995-2998`](api/sector-hot.js:2995)
