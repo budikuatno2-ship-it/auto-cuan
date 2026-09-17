@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # VPS-Local Telegram Monitor Runner
 #
-# Recommended crontab schedule on VPS (active market hours: 09:05 - 16:05 WIB, Mon-Fri):
-#   */15 9-16 * * 1-5  /home/ubuntu/auto-cuan/deploy/vps/telegram-monitor-local.sh --execute >> /home/ubuntu/auto-cuan-runner/logs/telegram-monitor-local.log 2>&1
+# Recommended crontab schedule on VPS (active market sessions: 09:00-11:58 & 13:30-15:45 WIB Mon-Thu / 09:00-11:28 & 14:00-15:45 WIB Fri):
+# Note: Runner automatically skips midday breaks and closed market hours via central lib/market-hours-guard.js.
+#   */15 9-15 * * 1-5  /home/ubuntu/auto-cuan/deploy/vps/telegram-monitor-local.sh --execute >> /home/ubuntu/auto-cuan-runner/logs/telegram-monitor-local.log 2>&1
 #
 # Guarantees:
 #   - forces TZ=Asia/Jakarta for child process;
