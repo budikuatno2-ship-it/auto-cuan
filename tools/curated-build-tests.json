@@ -378,5 +378,6 @@
   "test/insider-network-integrity.test.js",
   "test/ai-cockpit-byok-integrity.test.js",
   "test/auth-security-compliance-integrity.test.js",
-  "test/risk-reward-filter.test.js"
+  "test/risk-reward-filter.test.js",
+  "test/daytrade-screener-status-rr.test.js"
 ]

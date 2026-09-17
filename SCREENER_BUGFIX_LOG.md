@@ -21,7 +21,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 3** — Integrasi Market Hours Guard ke Broadcast Notifier (PR #669)
 - [x] **Batch 4** — Audit & Perbaikan Crontab / Schedule VPS (PR #670)
 - [x] **Batch 5** — Filter Minimum Risk/Reward Ratio Sentral (PR #671)
-- [ ] **Batch 6** — Terapkan Filter R/R ke Klasifikasi Radar & Entry Zone
+- [x] **Batch 6** — Terapkan Filter R/R ke Klasifikasi Radar & Entry Zone
 - [ ] **Batch 7** — Kunci Transisi Status Revalidasi (NEEDS_REVALIDATION)
 - [ ] **Batch 8** — Syarat Konfirmasi Volume Breakout untuk Revalidasi
 - [ ] **Batch 9** — Desain & Modul State Machine Alert (Anti-Duplikat)
@@ -142,3 +142,25 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - **Hasil Test:**
   - `node --test test/risk-reward-filter.test.js`: 7/7 passed
   - `npm test`: **380/380 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 6: Terapkan Filter R/R ke Klasifikasi Radar & Entry Zone
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/enforce-rr-status-classification`
+- **File Dimodifikasi:**
+  - [`lib/daytrade-screener-engine.js`](lib/daytrade-screener-engine.js): Import `MIN_RR_RATIO` & `passesRiskRewardFilter` dari [`lib/screener-config.js`](lib/screener-config.js), lalu memasang **Hard R/R Gate** di dalam `classifyStatus()`.
+  - [`test/daytrade-screener-status-rr.test.js`](test/daytrade-screener-status-rr.test.js): Unit test regresi baru (5 test suites).
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Akar Masalah yang Ditutup:**
+  - Sebelumnya pengecekan R/R di `classifyStatus()` hanya menandai `hasPoorRR` dan menambah `hardFails`, tetapi `hardFails` **hanya diperiksa oleh cabang tier tinggi**. Cabang fall-through `MOMENTUM_CONTINUATION` (`:1011`) dan `SPECULATIVE` (`:1023`) **mengabaikan `hardFails`**, sehingga kandidat R/R rendah (mis. SSMS 1.0x) dengan skor >= 60 tetap bisa masuk status momentum yang actionable.
+- **Guard yang Terpasang:**
+  - Tepat setelah deteksi `hasPoorRR`, `classifyStatus()` memanggil `passesRiskRewardFilter(levels, MIN_RR_RATIO)`. Jika R/R < 1.5x (atau tidak valid), kandidat **langsung dikembalikan sebagai `WAIT_PULLBACK`** dengan setup `Wait - Poor RR` dan catatan peringatan eksplisit berisi nilai R/R aktual vs minimum.
+  - Status prioritas/entry (`A_PLUS_SETUP`, `TRADE_CANDIDATE`, `READY_BREAKOUT`, `PRE_SPIKE_WATCH`, `EARLY_RADAR`, `MOMENTUM_CONTINUATION`, `RECLAIM_CANDIDATE`) kini **tidak dapat dicapai** saat R/R < 1.5x.
+  - Kandidat dengan R/R >= 1.5x tetap lolos normal bila kriteria teknikal lain terpenuhi.
+- **Hasil Test:**
+  - `node --check lib/daytrade-screener-engine.js` & `node --check test/daytrade-screener-status-rr.test.js`: VALID
+  - `node --test test/daytrade-screener-status-rr.test.js`: 5/5 passed
+    - Kasus SSMS (R/R 1.0x) terbukti DITOLAK dari status prioritas/entry.
+    - Sub-threshold 1.2x & 1.49x ditolak; batas 1.5x lolos; ideal 2.5x mencapai `A_PLUS_SETUP`.
+    - R/R tidak valid (undefined/null/0/negatif/NaN) diperlakukan gagal gate.
+  - `npm test`: **381/381 test files passed (100% lolos, 0 fail, 0 skipped)**
