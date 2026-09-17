@@ -26,7 +26,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 8** — Deduplikasi & Stateful Alert Tracking (Anti-Duplikat) (PR #674)
 - [x] **Batch 9** — Syarat Konfirmasi Volume Breakout untuk Revalidasi (PR #675)
 - [x] **Batch 10** — Implementasi Alert Throttling & Rate Limiter Terpusat di Telegram Notifier
-- [ ] **Batch 11** — Syarat Konfirmasi Candle Close Sebelum Alert Entry Zone
+- [x] **Batch 11** — Syarat Konfirmasi Candle Close Sebelum Alert Entry Zone
 - [ ] **Batch 12** — Setup Ecosystem Process Manager (PM2)
 - [ ] **Batch 13** — Skrip Deploy Otomatis & Atomik (Git Pull + PM2 Restart)
 - [ ] **Batch 14** — Test Integrasi Seluruh Guard
@@ -269,3 +269,30 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
     - Respons 429 mengekstrak `retry_after`, memarkir gate (`backoffActive === true`), mencatat warning, tanpa throw.
     - Backoff aktif dihormati pada pengiriman berikutnya; `resetTelegramThrottle` membersihkan gate.
   - `npm test`: **385/385 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 11: Syarat Konfirmasi Candle Close Sebelum Alert Entry Zone
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/candle-close-confirmation-gate`
+- **File Dimodifikasi:**
+  - [`lib/screener-config.js`](lib/screener-config.js): Helper sentral baru `isCandleCloseConfirmed()`.
+  - [`lib/idx-tick-normalization.js`](lib/idx-tick-normalization.js): `deriveBreakoutConfirmation()` menahan `BREAKOUT_CONFIRMED` saat bar belum close.
+  - [`lib/daytrade-screener-engine.js`](lib/daytrade-screener-engine.js): Kedua jalur `deriveBreakoutConfirmation` (scoreDayTrade + runDayTradeBatch) kini meneruskan state close.
+  - [`test/candle-close-confirmation.test.js`](test/candle-close-confirmation.test.js): Unit test regresi baru (8 test suites).
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Akar Masalah yang Ditutup (Akar Masalah #3 & #4):**
+  - `classifyStatus()` menetapkan status ENTRY ZONE (`A_PLUS_SETUP`/`TRADE_CANDIDATE`/`READY_BREAKOUT`) murni dari skor + guard volume/RR/overheat — **tanpa dimensi candle close**.
+  - `deriveBreakoutConfirmation()` membandingkan `close > resistance`, dan engine mengisinya dengan `close: data.last_price`. Pada alur live/intraday, `last_price` adalah tick bar yang **masih berjalan**, sehingga jarum (wick) yang menyentuh resistance dilabeli `BREAKOUT_CONFIRMED` — membuat blok downgrade breakout di engine tidak pernah terpicu. Tidak ada flag yang membedakan "bar closed" dari "bar masih terbentuk".
+- **Guard yang Terpasang:**
+  - `isCandleCloseConfirmed(candidate)` mengembalikan `false` bila `candle_closed === false`, `bar_closed === false`, `candle_forming === true`, `is_intraday_live === true`, atau `price_source` mengandung penanda live/intraday/realtime/tick.
+  - **Backward-compatible:** tanpa sinyal eksplisit "masih terbentuk", mengembalikan `true` (alur daily-close lama tidak berubah; `yahoo_chart_1d_close` tidak dianggap live).
+  - `deriveBreakoutConfirmation()` kini mengembalikan `NEEDS_CLOSE_CONFIRMATION` saat harga di atas resistance tetapi bar belum close — bukan `BREAKOUT_CONFIRMED`.
+  - Blok downgrade engine (yang menurunkan ENTRY ZONE → `EARLY_RADAR`) kini terpicu otomatis karena status bukan lagi `BREAKOUT_CONFIRMED`.
+  - Gate publik [`candidatePassesPublicTelegramSafetyGate()`](api/sector-hot.js:4704) sudah memblokir `NEEDS_CLOSE_CONFIRMATION` pada broadcast/potential radar.
+- **Hasil Test:**
+  - `node --check lib/screener-config.js lib/idx-tick-normalization.js lib/daytrade-screener-engine.js test/candle-close-confirmation.test.js`: VALID
+  - `node --test test/candle-close-confirmation.test.js`: 8/8 passed
+    - Emiten dengan harga live menembus resistance (bar belum close) → `NEEDS_CLOSE_CONFIRMATION` dan TIDAK mencapai ENTRY ZONE.
+    - Emiten dengan close terkonfirmasi → `BREAKOUT_CONFIRMED` dan lolos ke ENTRY ZONE (`A_PLUS_SETUP`).
+    - Kandidat daily-close lama tanpa flag tidak terpengaruh (backward-compatible).
+  - `npm test`: **386/386 test files passed (100% lolos, 0 fail, 0 skipped)**
