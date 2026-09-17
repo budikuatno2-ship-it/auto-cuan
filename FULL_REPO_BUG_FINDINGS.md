@@ -25,7 +25,26 @@ Setiap temuan wajib punya lokasi + kutipan + penjelasan + bukti + arah perbaikan
 Semua klaim dokumen audit lama TIDAK diwarisi — divertifikasi ulang dari kode kini.
 
 Status: **AUDIT BERJALAN — BELUM SELESAI**. Modul yang belum dibaca belum tercantum di sini.
-Total temuan sejauh ini: 1 CRITICAL, 17 HIGH, 19 MEDIUM, 11 LOW.
+Total temuan sejauh ini: 1 CRITICAL, 17 HIGH, 20 MEDIUM, 11 LOW.
+
+### [MEDIUM] `enrichConfluenceRows` menghitung ulang confidence memakai kategori hardcoded `'Swing'` — ambang TP1 Non-Konglo jadi salah
+- **Lokasi:** [`api/sector-hot.js:2995-2998`](api/sector-hot.js:2995)
+- **Kutipan kode bermasalah:**
+  ```js
+  if (includeForeign) {
+    Object.assign(r, foreignMap[...] || {...});
+    if (r.confidence) {
+      var confAfterForeign = deriveConfidenceTier(r, 'Swing');   // <-- kategori DIPAKSA 'Swing'
+      r.confidence = confAfterForeign.confidence;
+      r.confidence_label = confAfterForeign.confidence_label;
+      r.confidence_notes = confAfterForeign.confidence_notes;
+    }
+  }
+  ```
+- **Penjelasan:** Ini bug yang **sudah diakui sendiri oleh kode**: komentar di [`api/sector-hot.js:11913-11918`](api/sector-hot.js:11913) menulis *"enrichConfluenceRows's confidence re-derivation hardcodes category='Swing' regardless of caller … That's a pre-existing bug worth its own fix"*. Dampak terverifikasi: fungsi ini dipanggil `includeForeign=true` dari **Swing Konglo** ([`:616`](api/sector-hot.js:616)) dan **Swing Non-Konglo** ([`:10610`](api/sector-hot.js:10610)). Untuk Non-Konglo, `deriveConfidenceTier(r, 'Swing')` memakai `getMinTp1UpsideForCategory('Swing')` = **5%**, padahal kategori sebenarnya menuntut **4.5%** (`cat.indexOf('non') >= 0` → 4.5). Jadi tier confidence Non-Konglo dihitung dengan ambang yang lebih ketat daripada spesifikasinya → sebagian kandidat turun tier secara tidak konsisten. Day Trade tidak terpengaruh karena dipanggil dengan `includeForeign=false` ([`:11919`](api/sector-hot.js:11919)).
+- **Bukti verifikasi riil:** Bukti kode: hardcode + komentar pengakuan + pembanding `getMinTp1UpsideForCategory` (`day`→3, `non`→4.5, else→5).
+- **Usulan arah perbaikan:** Teruskan `r.category` (atau kategori asli pemanggil) ke `deriveConfidenceTier` alih-alih literal `'Swing'`.
+
 
 ### [MEDIUM] Tabel "Daftar Pemegang Saham & Insider": persentase yang HILANG dirender "0.00%" (missing disajikan sebagai nol)
 - **Lokasi:** [`public/bandarmologi-runtime.js:3728-3731`](public/bandarmologi-runtime.js:3728) dan `:3754`
