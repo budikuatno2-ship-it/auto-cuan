@@ -25,7 +25,50 @@ Setiap temuan wajib punya lokasi + kutipan + penjelasan + bukti + arah perbaikan
 Semua klaim dokumen audit lama TIDAK diwarisi — divertifikasi ulang dari kode kini.
 
 Status: **AUDIT BERJALAN — BELUM SELESAI**. Modul yang belum dibaca belum tercantum di sini.
-Total temuan sejauh ini: 1 CRITICAL, 16 HIGH, 16 MEDIUM, 9 LOW.
+Total temuan sejauh ini: 1 CRITICAL, 17 HIGH, 16 MEDIUM, 10 LOW.
+(1 temuan pernah dicatat lalu DITARIK setelah verifikasi ulang — lihat bagian "DITARIK".)
+
+### [HIGH] Data insider FABRIKASI diduplikasi di sisi klien (`FALLBACK_INSIDER_DATA`) — semua nama tak dikenal jatuh ke Belvin Tannadi
+- **Lokasi:** [`public/bandarmologi-runtime.js:3041-3150`](public/bandarmologi-runtime.js:3041) dan `:3161-3173`
+- **Kutipan kode bermasalah:**
+  ```js
+  var FALLBACK_INSIDER_DATA = {
+    'belvin tannadi': { summary:{entity_name:'Belvin Tannadi',total_emitens:3}, nodes:[...], edges:[
+      { ticker:'BUMI', shares:850000000, percentage:2.45, latest_price:142, latest_date:'2026-09-05' }, ... ] },
+    'prajogo pangestu': {...}, 'lo kheng hong': {...}, 'anthoni salim': {...},
+    'garibaldi thohir': {...}, 'blackrock inc.': {...}, 'haji isam': {...}, 'haji samsudin andi arsyad': {...}
+  };
+  ...
+  function getEffectiveInsiderGraph(name) {
+    var service = getInsiderNetworkService();
+    if (service && ...) { var res = service.buildInsiderNetworkGraph({name:name}); if (res && res.nodes && res.nodes.length>0) return res; }
+    var key = String(name||'').toLowerCase().trim();
+    if (FALLBACK_INSIDER_DATA[key]) return FALLBACK_INSIDER_DATA[key];
+    for (var k in FALLBACK_INSIDER_DATA) { if (k.includes(key) || key.includes(k)) return FALLBACK_INSIDER_DATA[k]; }
+    return FALLBACK_INSIDER_DATA['belvin tannadi'] || null;   // <-- default ke data palsu
+  }
+  ```
+- **Penjelasan:** Ini menggandakan masalah temuan HIGH sebelumnya (`SAMPLE_INSIDER_UNIVERSE` di `lib/insider-network-service.js`) langsung di dalam bundle browser. Akibatnya, meskipun backend diperbaiki kelak, UI masih akan menampilkan graf insider karangan: `getEffectiveInsiderGraph` mengembalikan data palsu untuk nama yang dikenal, dan untuk nama APA PUN yang tidak dikenal ia mengembalikan **Belvin Tannadi** — lengkap dengan harga, jumlah lembar, persentase, tanggal. Di halaman "Jejaring Insider", user dapat mencari sembarang nama dan mendapat graf "relasi insider" fiktif tanpa penanda apa pun bahwa itu data contoh. Ini risiko kredibilitas tinggi pada fitur yang menyajikan klaim kepemilikan.
+- **Bukti verifikasi riil:** Bukti kode: literal data identik dengan versi backend; fallback terakhir adalah entri tetap. `getEffectiveSearchInsiders` juga membaca `FALLBACK_INSIDER_DATA` saat service kosong.
+- **Usulan arah perbaikan:** Hapus `FALLBACK_INSIDER_DATA`; tampilkan estado "belum ada data relasi" bila service tidak mengembalikan hasil. Jangan pernah mengembalikan entri tertentu untuk nama tak dikenal.
+
+### DITARIK (diverifikasi ulang = BUKAN bug) — recall volume pace v7 vs level yang dipublikasikan
+- **Lokasi:** [`lib/daytrade-screener-engine-v7.js:120-134`](lib/daytrade-screener-engine-v7.js:120)
+- **Klaim awal saya:** `levels` dihitung ulang dari `effective.analysis` tetapi tidak ditimpa ke `output`, sehingga skor/status mungkin memakai level berbeda dari yang dipublikasikan.
+- **Hasil verifikasi ulang:** **Klaim ini SALAH — saya tarik.** `base.calculateLevels(data)` ([`lib/daytrade-screener-engine.js:646-795`](lib/daytrade-screener-engine.js:646)) hanya memakai `last_price/open_price/high_price/low_price/support/resistance/atr14/swingLow5/swingHigh10`. Overlay pace di v7 hanya mengubah field **volume** (`volume_ratio_20d`, `avg_volume_20d`, `avg_value_7d`, dll), bukan satupun input `calculateLevels`. Jadi `levels` hasil hitung ulang identik dengan level yang sudah ada di `row`; tidak ada ketidakkonsistenan. Tidak ada bug di sini.
+- **Pelajaran metode:** temuan ini tidak lolos verifikasi ulang — dicatat eksplisit agar tidak dihitung sebagai bug dan agar sesi berikutnya tidak mengulanginya.
+
+
+### [LOW] Tanggal literal `'2026-09-11'` juga muncul di header UI Bandarmologi
+- **Lokasi:** [`public/bandarmologi-runtime.js:2244`](public/bandarmologi-runtime.js:2244)
+- **Kutipan kode bermasalah:**
+  ```js
+  html += '    <span class="text-gray-400">Tanggal: <strong class="text-gray-200">' + escapeHtml(formatDateDisplay(bSum.date || currentBandarDate || '2026-09-11')) + '</strong></span>';
+  ```
+- **Penjelasan:** Melengkapi rangkaian literal tanggal di modul Bandarmologi (sebelumnya ditemukan di `lib/bandarmologi-service.js` 4x dan `bandarmologi-runtime.js` 2x). Ketika backend tidak mengirim `date`, header menampilkan "2026-09-11" — tanggal yang kini basi — seolah itu tanggal data yang ditampilkan. Total literal tanggal ini di modul Bandarmologi: **7 tempat**.
+- **Bukti verifikasi riil:** Bukti kode: literal tanggal pada fallback render.
+- **Usulan arah perbaikan:** Tampilkan "—" atau "Tanggal belum tersedia" alih-alih tanggal tetap.
+
 
 ### [LOW] `getRequestBaseUrl` mempercayai `x-forwarded-host`/`host` klien saat membangun URL chart Telegram
 - **Lokasi:** [`api/sector-hot.js:5859-5863`](api/sector-hot.js:5859)
