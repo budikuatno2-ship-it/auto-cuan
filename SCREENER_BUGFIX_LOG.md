@@ -30,7 +30,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 12** — Setup Ecosystem Process Manager (PM2)
 - [x] **Batch 13** — Skrip Deploy Otomatis & Atomik (Git Pull + PM2 Restart)
 - [x] **Batch 14** — Test Integrasi Seluruh Guard
-- [ ] **Batch 15** — Regression Test Data Historis Nyata (SSMS, KAEF, SMGR, IMJS, INKP)
+- [x] **Batch 15** — Regression Test Data Historis Nyata (SSMS, KAEF, SMGR, IMJS, INKP)
 - [ ] **Batch 16** — Audit Ketikan Nyasar & Integritas Kode
 - [ ] **Batch 17** — Validasi Penuh Sintaks & Full Regression Test Suite
 - [ ] **Batch 18** — Deploy Penuh ke VPS dengan PM2
@@ -364,3 +364,29 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
   - `node --check test/guard-pipeline-integration.test.js`: VALID; `curated-build-tests.json` JSON VALID.
   - `node --test test/guard-pipeline-integration.test.js`: 10/10 passed.
   - `npm test`: **389/389 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 15: Regression Test Data Historis Nyata (SSMS, KAEF, SMGR, IMJS, INKP)
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/historical-regression-fixtures`
+- **File Dimodifikasi:**
+  - [`test/historical-incident-regression.test.js`](test/historical-incident-regression.test.js): Regresi dataset insiden nyata (9 test suites).
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Sumber Data:** [`SCREENER_ARCHITECTURE_AUDIT.md`](SCREENER_ARCHITECTURE_AUDIT.md) §4.1 — data produksi Supabase, insiden 17 September 2026.
+- **Temuan Audit:**
+  - Test existing menyebut ticker insiden secara longgar (SSMS di test R/R, KAEF/INKP sebagai string di test broadcast), tetapi **tidak ada** yang menegakkan dataset insiden end-to-end: setiap baris riil harus terbukti dihentikan oleh guard yang tepat.
+- **Fixture Riil yang Diuji:**
+  - **IMJS** (Konglo) R/R 1.27x, last 188, entry 182-186 → ditolak R/R gate.
+  - **SSMS** (Non-Konglo) kebocoran pagi R/R 1.0x @1080 (di atas entry 1050-1075) → ditolak R/R gate; baris terbit R/R 2.25x tetap valid.
+  - **KAEF** (Konglo) R/R 4.25x, last 448, entry 442-448 → R/R lolos, **ditembak 12:45 WIB** → diblokir market hours guard.
+  - **INKP** (Konglo) R/R 2.82x, last 8725, entry 8550-8725 → diblokir market hours guard @12:45.
+  - **SMGR** (Konglo) R/R 3.67x, last 1620, entry 1580-1620 → diblokir market hours guard @12:45.
+  - Cross-check: bar (close di atas resistance) pada bar berjalan → `NEEDS_CLOSE_CONFIRMATION`; pada close terkonfirmasi → `BREAKOUT_CONFIRMED`.
+- **Guard yang Divalidasi:**
+  - Momen insiden 12:45 WIB (Kamis) = `CLOSED` (jam istirahat) → KAEF/INKP/SMGR yang valid secara R/R hanya bisa dihentikan oleh market guard (guard yang hilang saat insiden).
+  - Guard bersifat ter-scope waktu, bukan blanket: baris yang sama lolos pada sesi aktif (10:00 & 14:00 WIB).
+  - Setiap baris insiden dihentikan oleh tepat satu guard — tidak ada yang mencapai broadcast publik tanpa perubahan.
+- **Hasil Test:**
+  - `node --check test/historical-incident-regression.test.js`: VALID; `curated-build-tests.json` JSON VALID.
+  - `node --test test/historical-incident-regression.test.js`: 9/9 passed.
+  - `npm test`: **390/390 test files passed (100% lolos, 0 fail, 0 skipped)**
