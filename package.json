@@ -15,6 +15,7 @@
     "aftermarket:top5-lock": "node tools/run-after-market-top5-lock.js",
     "validate:syntax": "node tools/validate-full-syntax.js",
     "deploy:preflight": "node tools/vps-deploy-preflight.js",
+    "monitor:live-session": "node tools/live-session-monitor.js",
     "deploy:atomic": "node tools/atomic-deploy.js --branch feat/daytrade-screener-v1",
     "pm2:start": "pm2 start ecosystem.config.js",
     "pm2:reload": "pm2 reload ecosystem.config.js --update-env",

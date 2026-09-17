@@ -34,7 +34,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 16** — Audit Ketikan Nyasar & Integritas Kode
 - [x] **Batch 17** — Validasi Penuh Sintaks & Full Regression Test Suite
 - [x] **Batch 18** — Deploy Penuh ke VPS dengan PM2
-- [ ] **Batch 19** — Pemantauan Sesi Bursa Langsung (Live Monitoring)
+- [x] **Batch 19** — Pemantauan Sesi Bursa Langsung (Live Monitoring)
 - [ ] **Batch 20** — Laporan Akhir Konsolidasi & Cleanup
 
 ---
@@ -461,3 +461,27 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
   - `node --check tools/vps-deploy-preflight.js test/vps-deploy-preflight.test.js`: VALID; `package.json` & `curated-build-tests.json` JSON VALID.
   - `node --test test/vps-deploy-preflight.test.js`: 6/6 passed.
   - `npm test`: **393/393 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 19: Pemantauan Sesi Bursa Langsung (Live Monitoring)
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/live-session-monitor`
+- **File Dimodifikasi:**
+  - [`tools/live-session-monitor.js`](tools/live-session-monitor.js): Harness observability live-session baru (read-only).
+  - [`package.json`](package.json): Skrip `monitor:live-session`.
+  - [`test/live-session-monitor.test.js`](test/live-session-monitor.test.js): Unit test live-session (6 test suites).
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Temuan Audit:**
+  - Aset live-monitoring ada & teruji terpisah ([`lib/market-hours-guard.js`](lib/market-hours-guard.js), [`tools/run-telegram-monitor-local.js`](tools/run-telegram-monitor-local.js), [`lib/intraday-fast-watcher-guarded-live.js`](lib/intraday-fast-watcher-guarded-live.js), [`lib/intraday-volume-pace.js`](lib/intraday-volume-pace.js)), tetapi **tidak ada** satu view observability terpadu.
+  - Saat sesi live, operator harus menggabungkan manual guard jam bursa + gate telegram monitor + kill-switch fast-watcher untuk menjawab "apakah tiap path live boleh jalan sekarang, dan kenapa tidak?". Tidak ada tool yang melaporkannya, dan tidak ada test yang membuktikan ketiga gate sepakat pada instan yang sama.
+- **Guard yang Terpasang:**
+  - `tools/live-session-monitor.js` menyusun laporan read-only per-instans: status sesi IDX, `market_state` volume-pace, dan keputusan per-path (`telegram_monitor`, `fast_watcher_guarded_live`) beserta alasan blokir.
+  - Komposisi gate: telegram monitor butuh sesi aktif; fast-watcher butuh kill-switch ON **dan** sesi aktif.
+  - Tidak pernah mengirim sinyal atau mengubah state — aman dijalankan saat sesi live.
+  - Primitif diekspor untuk pengujian: `buildLiveSessionReport`, `parseArgs`.
+- **Hasil Test:**
+  - `npm run validate:syntax`: **808 file .js parsed cleanly**, 394 entri curated, 0 hilang.
+  - `node --check tools/live-session-monitor.js test/live-session-monitor.test.js`: VALID; `package.json` & `curated-build-tests.json` JSON VALID.
+  - `node --test test/live-session-monitor.test.js`: 6/6 passed
+    - Sesi aktif → kedua path allowed; istirahat 12:45 → semua diblokir (`MARKET_BREAK`); gate sepakat di setiap instan; kill-switch mematikan fast-watcher meski pasar buka; weekend mutlak tertutup.
+  - `npm test`: **394/394 test files passed (100% lolos, 0 fail, 0 skipped)**

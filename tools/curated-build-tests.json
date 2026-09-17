@@ -391,5 +391,6 @@
   "test/historical-incident-regression.test.js",
   "test/code-integrity-no-duplicate-definitions.test.js",
   "test/full-syntax-validation.test.js",
-  "test/vps-deploy-preflight.test.js"
+  "test/vps-deploy-preflight.test.js",
+  "test/live-session-monitor.test.js"
 ]
