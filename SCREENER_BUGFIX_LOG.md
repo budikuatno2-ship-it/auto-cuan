@@ -35,7 +35,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 17** — Validasi Penuh Sintaks & Full Regression Test Suite
 - [x] **Batch 18** — Deploy Penuh ke VPS dengan PM2
 - [x] **Batch 19** — Pemantauan Sesi Bursa Langsung (Live Monitoring)
-- [ ] **Batch 20** — Laporan Akhir Konsolidasi & Cleanup
+- [x] **Batch 20** — Laporan Akhir Konsolidasi & Cleanup
 
 ---
 
@@ -485,3 +485,105 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
   - `node --test test/live-session-monitor.test.js`: 6/6 passed
     - Sesi aktif → kedua path allowed; istirahat 12:45 → semua diblokir (`MARKET_BREAK`); gate sepakat di setiap instan; kill-switch mematikan fast-watcher meski pasar buka; weekend mutlak tertutup.
   - `npm test`: **394/394 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 20: Laporan Akhir Konsolidasi & Cleanup
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/final-consolidation-signoff`
+- **File Dimodifikasi:**
+  - [`SCREENER_BUGFIX_LOG.md`](SCREENER_BUGFIX_LOG.md): Sign-off 20 batch + laporan eksekutif.
+  - [`SCREENER_ARCHITECTURE_AUDIT.md`](SCREENER_ARCHITECTURE_AUDIT.md): §7 Status Penyelesaian Temuan (F1–F8 + 4 akar masalah).
+  - [`deploy/vps/README.md`](deploy/vps/README.md): Sinkronisasi dengan `live-session-monitor.js`.
+  - [`test/batch-consolidation-signoff.test.js`](test/batch-consolidation-signoff.test.js): Sign-off test konsolidasi (5 test suites).
+- **Konsolidasi Dokumentasi:**
+  - Seluruh 20 batch tercatat lengkap dengan PR/commit, rincian perbaikan, dan hasil test.
+  - Temuan audit F1–F8 dan 4 akar masalah ditandai TERSELESAIKAN dengan bukti teknis di [`SCREENER_ARCHITECTURE_AUDIT.md`](SCREENER_ARCHITECTURE_AUDIT.md) §7.
+  - Runbook VPS disinkronkan dengan tools baru (preflight, atomic deploy, live monitor).
+- **Hasil Test:**
+  - `npm run validate:syntax`: **808 file .js parsed cleanly**.
+  - `npm test`: **395/395 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+---
+
+## Laporan Eksekutif Penutupan 20 Batch
+
+### Daftar PR (Batch 0–20)
+
+| PR | Batch | Judul |
+|---|---|---|
+| #665 | 0 | Audit Arsitektur & Logika Penilaian Seluruh Screener |
+| #666 | 1 | Sinkronisasi Baseline & Setup Log |
+| #668 | 2 | Modul Market Hours Guard Terpusat |
+| #669 | 3 | Integrasi Market Hours Guard ke Broadcast Notifier |
+| #670 | 4 | Audit & Perbaikan Crontab / Schedule VPS |
+| #671 | 5 | Filter Minimum Risk/Reward Ratio Sentral |
+| #672 | 6 | Terapkan Filter R/R ke Klasifikasi Radar & Entry Zone |
+| #673 | 7 | Kunci Revalidasi Sinyal & R/R Gate Jalur Swing |
+| #674 | 8 | Deduplikasi & Stateful Alert Tracking (Anti-Duplikat) |
+| #675 | 9 | Syarat Konfirmasi Volume Breakout untuk Revalidasi |
+| #676 | 10 | Alert Throttling & Rate Limiter Terpusat di Telegram Notifier |
+| #677 | 11 | Syarat Konfirmasi Candle Close Sebelum Alert Entry Zone |
+| #678 | 12 | Setup Ecosystem Process Manager (PM2) |
+| #679 | 13 | Skrip Deploy Otomatis & Atomik (Git Pull + PM2 Restart) |
+| #680 | 14 | Test Integrasi Seluruh Guard |
+| #681 | 15 | Regression Test Data Historis Nyata (SSMS, KAEF, SMGR, IMJS, INKP) |
+| #682 | 16 | Audit Ketikan Nyasar & Integritas Kode |
+| #683 | 17 | Validasi Penuh Sintaks & Full Regression Test Suite |
+| #684 | 18 | Deploy Penuh ke VPS dengan PM2 |
+| #685 | 19 | Pemantauan Sesi Bursa Langsung (Live Monitoring) |
+| #686 | 20 | Laporan Akhir Konsolidasi & Cleanup |
+
+### Pertumbuhan Baseline Test
+
+| Titik | Test Files |
+|---|---|
+| Batch 1 (baseline) | 377 |
+| Batch 2 | 378 |
+| Batch 3 | 379 |
+| Batch 5 | 380 |
+| Batch 6 | 381 |
+| Batch 7 | 382 |
+| Batch 8 | 383 |
+| Batch 9 | 384 |
+| Batch 10 | 385 |
+| Batch 11 | 386 |
+| Batch 12 | 387 |
+| Batch 13 | 388 |
+| Batch 14 | 389 |
+| Batch 15 | 390 |
+| Batch 16 | 391 |
+| Batch 17 | 392 |
+| Batch 18 | 393 |
+| Batch 19 | 394 |
+| Batch 20 (final) | 395 (100% lolos) |
+
+Pertumbuhan bersih: **377 → 395 test files (+18)**. Ditambah pre-build gate
+[`tools/validate-full-syntax.js`](tools/validate-full-syntax.js) yang mem-parse **808 file `.js`** setiap build.
+
+### Instruksi Operator — Deploy ke VPS
+
+1. **Preflight** (fail-fast):
+   ```bash
+   cd /home/ubuntu/auto-cuan
+   npm run validate:syntax
+   npm run deploy:preflight
+   ```
+2. **Start pertama kali** (proses lama harus dimatikan dulu: `kill <PID lama>`):
+   ```bash
+   npm run pm2:start
+   npm run pm2:save
+   pm2 startup            # jalankan perintah yang dicetak, sekali saja
+   ```
+3. **Deploy berikutnya** (pull + test gate + reload zero-downtime):
+   ```bash
+   npm run deploy:atomic
+   ```
+4. **Verifikasi:**
+   ```bash
+   npm run pm2:status
+   npm run pm2:logs
+   npm run monitor:live-session     # apakah tiap path live boleh jalan + alasan
+   ```
+5. **Rollback** bila perlu: `git reset --hard <sha-sebelumnya> && npm run pm2:reload`.
+
+Detail lengkap: [`deploy/vps/README.md`](deploy/vps/README.md).

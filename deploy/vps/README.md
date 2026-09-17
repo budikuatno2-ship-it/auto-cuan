@@ -11,6 +11,7 @@ processes that caused **Akar Masalah #1 (kode basi di RAM VPS)**: with PM2,
 | [`ecosystem.config.js`](../../ecosystem.config.js) | PM2 app definitions (`auto-cuan-vps-api`, `auto-cuan-ai-eval-supervisor`) — Batch 12 |
 | [`tools/atomic-deploy.js`](../../tools/atomic-deploy.js) | Pull + test gate + zero-downtime reload — Batch 13 |
 | [`tools/vps-deploy-preflight.js`](../../tools/vps-deploy-preflight.js) | Deploy preflight (PM2 present, Node version, ecosystem integrity) — Batch 18 |
+| [`tools/live-session-monitor.js`](../../tools/live-session-monitor.js) | Read-only live-session observability (per-path gate decisions) — Batch 19 |
 | [`deploy/systemd/auto-cuan-ai-eval-once.service`](../systemd/auto-cuan-ai-eval-once.service) | Reference systemd unit (not the live process) |
 | [`deploy/vps/final-schedule.cron`](final-schedule.cron) | EOD/nightly cron jobs (no intraday broadcast) |
 
@@ -46,6 +47,10 @@ npm run deploy:atomic
 pm2 list                         # both apps should be `online`
 pm2 logs --lines 100             # check for startup errors
 curl -s localhost:3001/api/...   # vps-api bridge responding
+
+# Are the live paths allowed to run right now, and why?
+node tools/live-session-monitor.js               # human summary (now)
+node tools/live-session-monitor.js --json        # machine-readable
 ```
 
 ## Rollback

@@ -7,6 +7,8 @@
 **Tanggal:** 2026-09-17 (WIB)
 
 > **Catatan Kepatuhan:** Dokumen ini MURNI audit & dokumentasi arsitektur berdasarkan pembacaan kode baris-per-baris dan verifikasi data produksi riil di VPS. Tidak ada perubahan logika produksi pada Batch 0.
+>
+> **PEMBARUAN BATCH 20 (SIGN-OFF):** Seluruh temuan F1–F8 dan 4 akar masalah di dokumen ini **TELAH TERSELESAIKAN** melalui Batch 1–19. Lihat §7 STATUS PENYELESAIAN TEMUAN.
 
 ---
 
@@ -316,3 +318,39 @@ Hasil eksekusi `ps -eo pid,lstart,cmd` di VPS:
 7. **Batch 9 & 10 (Alert State Store & Throttling):** Pasang penyimpanan status alert per ticker untuk mencegah duplikasi sinyal dalam window waktu.
 8. **Batch 11 (Konfirmasi Candle Close):** Pastikan sinyal `ENTRY ZONE` hanya terpicu dari candle yang sudah resmi *close*.
 9. **Batch 12 & 13 (PM2 & Atomic Deploy):** Konfigurasikan `ecosystem.config.js` dan `deploy.sh` untuk mengeliminasi kode basi di RAM VPS selamanya.
+
+---
+
+## 7. STATUS PENYELESAIAN TEMUAN (Batch 20 — Sign-Off)
+
+Seluruh temuan audit F1–F8 dan 4 akar masalah **TELAH TERSELESAIKAN** dan diverifikasi oleh test suite (394/394 test files, 100% lolos).
+
+### 7.1 Temuan F1–F8
+
+| ID | Temuan | Status | Bukti Penyelesaian |
+|---|---|---|---|
+| **F1** | Dead Market Gate (`sendAlert` tidak dipanggil) | **SELESAI** | Guard jam bursa dipindah ke modul terpusat [`lib/market-hours-guard.js`](lib/market-hours-guard.js) (Batch 2) dan dipasang di pintu transport tunggal [`lib/telegram-notifier.js`](lib/telegram-notifier.js) (Batch 3). |
+| **F2** | Unprotected Real Broadcast | **SELESAI** | `isMarketOpen()` dipasang di `sendTelegramMessage`/`sendTelegramDocument`/`sendTelegramPhoto`/`sendTelegramPhotoUrl` (Batch 3); test [`test/broadcast-market-guard.test.js`](test/broadcast-market-guard.test.js). |
+| **F3** | VPS Cron & Runner Permissive Window (12:45 WIB) | **SELESAI** | [`tools/run-telegram-monitor-local.js`](tools/run-telegram-monitor-local.js) kini memakai `market-hours-guard` (Batch 4); test [`test/vps-monitor-local-runner.test.js`](test/vps-monitor-local-runner.test.js). |
+| **F4** | Cron Midday Evaluation di Jam Istirahat | **SELESAI** | [`deploy/vps/final-schedule.cron`](deploy/vps/final-schedule.cron) hanya berisi tugas EOD/malam; broadcast intraday diproteksi guard berlapis (Batch 4). |
+| **F5** | Inkonsistensi Sumber Kebenaran Sesi Bursa | **SELESAI** | Satu acuan terpusat [`lib/market-hours-guard.js`](lib/market-hours-guard.js) (Batch 2); seluruh jalur broadcast mengonsumsinya. |
+| **F6** | Pintasan Digest Fallback (R/R rendah bocor) | **SELESAI** | Hard R/R gate di [`classifyStatus()`](lib/daytrade-screener-engine.js:819) (Batch 6) & jalur digest Swing (Batch 7); test [`test/swing-screener-rr-gate.test.js`](test/swing-screener-rr-gate.test.js). |
+| **F7** | Query Tabel Tanpa Filter Tanggal/Run | **SELESAI** | Revalidasi sinyal & freshness gate (Batch 7/9); `validateRevalidationSignal` menolak sinyal stale. |
+| **F8** | Kode Basi di RAM Proses Node VPS | **SELESAI** | [`ecosystem.config.js`](ecosystem.config.js) (Batch 12) + [`tools/atomic-deploy.js`](tools/atomic-deploy.js) (Batch 13) + [`tools/vps-deploy-preflight.js`](tools/vps-deploy-preflight.js) (Batch 18). |
+
+### 7.2 Empat Akar Masalah
+
+| Akar Masalah | Status | Bukti |
+|---|---|---|
+| **1. Kode Basi di RAM VPS** | **SELESAI** | PM2 ecosystem (Batch 12), atomic deploy dengan test-gate + rollback (Batch 13), preflight (Batch 18). |
+| **2. Tidak Ada Market Hours Guard Terhubung** | **SELESAI** | `lib/market-hours-guard.js` terpusat (Batch 2) + integrasi ke notifier (Batch 3) & runner VPS (Batch 4). |
+| **3. Kriteria Trigger Kelonggaran (R/R bocor)** | **SELESAI** | `MIN_RR_RATIO` sentral (Batch 5), hard gate klasifikasi (Batch 6), gate jalur Swing (Batch 7), volume breakout (Batch 9), candle close (Batch 11). |
+| **4. Tidak Ada State Machine / Anti-Duplikat Alert** | **SELESAI** | Revalidasi terkunci (Batch 7), dedup stateful (Batch 8), volume breakout (Batch 9), throttling/rate-limit (Batch 10), candle close (Batch 11). |
+
+### 7.3 Verifikasi Akhir
+
+- **Sintaks:** `npm run validate:syntax` → 808 file `.js` parsed cleanly, 0 error.
+- **Regression:** `npm test` → **394/394 test files passed (100%)**.
+- **Integrasi guard:** [`test/guard-pipeline-integration.test.js`](test/guard-pipeline-integration.test.js) membuktikan seluruh guard terkomposisi (Market Hours → R/R → Volume → Candle Close → Public Gate).
+- **Data historis nyata:** [`test/historical-incident-regression.test.js`](test/historical-incident-regression.test.js) membuktikan SSMS/KAEF/SMGR/IMJS/INKP kini dihentikan guard yang tepat.
+- **Observability live:** [`tools/live-session-monitor.js`](tools/live-session-monitor.js) (Batch 19) melaporkan keputusan gate per-path secara read-only.
