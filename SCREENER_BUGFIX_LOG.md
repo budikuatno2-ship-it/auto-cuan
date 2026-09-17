@@ -28,7 +28,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 10** — Implementasi Alert Throttling & Rate Limiter Terpusat di Telegram Notifier
 - [x] **Batch 11** — Syarat Konfirmasi Candle Close Sebelum Alert Entry Zone
 - [x] **Batch 12** — Setup Ecosystem Process Manager (PM2)
-- [ ] **Batch 13** — Skrip Deploy Otomatis & Atomik (Git Pull + PM2 Restart)
+- [x] **Batch 13** — Skrip Deploy Otomatis & Atomik (Git Pull + PM2 Restart)
 - [ ] **Batch 14** — Test Integrasi Seluruh Guard
 - [ ] **Batch 15** — Regression Test Data Historis Nyata (SSMS, KAEF, SMGR, IMJS, INKP)
 - [ ] **Batch 16** — Audit Ketikan Nyasar & Integritas Kode
@@ -319,3 +319,27 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
   - `node --test test/pm2-ecosystem-config.test.js`: 6/6 passed
     - Dua daemon terdaftar; setiap `script` menunjuk file yang ada di disk; autorestart/fork; kill_timeout supervisor >= 30s; env produksi; skrip pm2 tersedia.
   - `npm test`: **387/387 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 13: Skrip Deploy Otomatis & Atomik (Git Pull + PM2 Restart)
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/atomic-deploy-script`
+- **File Dimodifikasi:**
+  - [`tools/atomic-deploy.js`](tools/atomic-deploy.js): Skrip orkestrasi deploy atomik + helper murni `deriveDeployDecision()`.
+  - [`package.json`](package.json): Skrip `deploy:atomic`.
+  - [`test/atomic-deploy.test.js`](test/atomic-deploy.test.js): Unit test kebijakan deploy (6 test suites).
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Akar Masalah yang Ditutup (Akar Masalah #1 — Kode Basi di RAM VPS):**
+  - Tidak ada skrip deploy tunggal. Logika `git pull` tersebar ad-hoc di runner (mis. [`tools/run-daytrade-full-universe-intraday-validation.sh:130`](tools/run-daytrade-full-universe-intraday-validation.sh:130)) dan dijalankan manual oleh operator sesuai docs.
+  - Setelah `git pull`, tidak ada langkah yang memanggil `pm2 reload` — sehingga jaminan "kode di RAM = kode di disk" belum ditegakkan end-to-end.
+  - Tidak ada pre-flight (tree kotor) maupun rollback: revisi yang rusak bisa saja ter-pull tanpa pernah tercatat SHA sebelumnya.
+- **Guard yang Terpasang:**
+  - Urutan deploy aman: pre-flight tree bersih → fetch + catat `PREV_SHA` → `git pull --ff-only` → **jalankan `npm test` SEBELUM menyentuh proses** → jika gagal `git reset --hard PREV_SHA` & abort (kode lama tetap jalan = rollback aman) → jika lolos `pm2 reload ecosystem.config.js --update-env` (zero-downtime).
+  - Revisi yang sudah sama dengan remote = no-op bersih (tanpa pull/test/reload) — menghindari restart sia-sia pada proses sehat.
+  - `deriveDeployDecision()` murni (tanpa I/O) sehingga seluruh kebijakan dapat diuji: `DIRTY_WORKTREE` (exit 2), `UP_TO_DATE` (0), `TESTS_FAILED_ROLLED_BACK` (3), `DEPLOYED_RELOADED` (0).
+  - `--skip-tests` hanya aktif bila sengaja; `--dry-run` untuk pratinjau.
+- **Hasil Test:**
+  - `node --check tools/atomic-deploy.js test/atomic-deploy.test.js`: VALID; `package.json` & `curated-build-tests.json` JSON VALID.
+  - `node --test test/atomic-deploy.test.js`: 6/6 passed
+    - Tree kotor → abort; revisi sama → no-op; test gagal → rollback tanpa reload; test lolos → reload; gate test hanya dilewati bila `--skip-tests`.
+  - `npm test`: **388/388 test files passed (100% lolos, 0 fail, 0 skipped)**
