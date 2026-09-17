@@ -9,8 +9,15 @@ Aturan: BACA baris-per-baris, JANGAN sampling. JANGAN percaya klaim dokumen lama
 Status per modul: `[ ]` belum, `[-]` sedang, `[x]` tuntas.
 "Tuntas" = SEMUA file .js/.html/.css di modul itu benar-benar dibaca isinya, bukan sekilas nama.
 
-File terakhir dibaca: `lib/pattern-abcd.js` (baris 1-150 dari 189) + `lib/intraday-fast-watcher.js` (1-200) + `lib/bandarmologi-intel-service.js` (360-679) + `lib/trade-plan-v2.js` (1-300) + `lib/telegram-notifier.js` (1-509)
-Sedang dikerjakan: FASE 3 (screener/intraday/pattern) sebagian; FASE 6 (telegram) sebagian.
+File terakhir dibaca: `lib/ai-context-snapshot-store.js` (1-120) + `api/admin-users.js` (1-120) + `lib/vps-data-fetcher.js` (230-389) + `lib/report-helpers.js` (1-140) + `lib/daily-history-collector.js` (100-279) + `public/portfolio-command-center.js` (1-479) + `public/signal-gate-transparency.js` (1-200) + `public/pattern-map.js` (1-250)
+Sedang dikerjakan: FASE 3/6/7 sebagian.
+
+### PROGRES TAMBAHAN (batch ke-3)
+Sudah dibaca tuntas (batch ke-3):
+- lib/daily-history-collector.js (100-279), lib/chart-engine/candle-fetcher.js (full 177), lib/trade-plan-v2.js (1-300), lib/telegram-notifier.js (1-509), lib/bandarmologi-intel-service.js (360-679), lib/intraday-fast-watcher.js (1-200), lib/pattern-abcd.js (1-150), api/sector-hot.js (14245-14544), lib/daytrade-screener-engine.js (2500-3098) → **daytrade-screener-engine.js TUNTAS 100%**
+- public/portfolio-command-center.js (1-479), public/portfolio-runtime-fix.js (full), lib/portfolio-state-handler.js (full), public/signal-gate-transparency.js (1-200), public/pattern-map.js (1-250), public/unified-cockpit-runtime.js (1-200), public/dashboard-top5-only-ui.js (full), lib/report-helpers.js (1-140), lib/vps-data-fetcher.js (230-389), lib/ai-context-snapshot-store.js (1-120), api/admin-users.js (1-120), lib/track-record-service.js (1-150), lib/daily-market-context-builder.js (296-405)
+
+Temuan kumulatif: 1 CRITICAL, 14 HIGH, 13 MEDIUM, 6 LOW (34 temuan).
 
 ### PROGRES TAMBAHAN SESI INI (batch monster)
 Sudah dibaca tuntas (batch ke-2):

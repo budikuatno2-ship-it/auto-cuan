@@ -24,7 +24,158 @@ Setiap temuan wajib punya lokasi + kutipan + penjelasan + bukti + arah perbaikan
 Semua klaim dokumen audit lama TIDAK diwarisi — divertifikasi ulang dari kode kini.
 
 Status: **AUDIT BERJALAN — BELUM SELESAI**. Modul yang belum dibaca belum tercantum di sini.
-Total temuan sejauh ini: 1 CRITICAL, 14 HIGH, 9 MEDIUM, 5 LOW.
+Total temuan sejauh ini: 1 CRITICAL, 16 HIGH, 14 MEDIUM, 6 LOW.
+
+### [HIGH] BUG-025 lama MASIH BELUM DIPERBAIKI — hanya dipasangi "diagnostik", pemotongan 300 karakter tetap aktif
+- **Lokasi:** [`api/sector-hot.js:13643-13683`](api/sector-hot.js:13643)
+- **Kutipan kode bermasalah:**
+  ```js
+  function includesAny(text, words) {
+    ...
+    var t = safeTelegramText(text, 300, '').toLowerCase();   // <-- teks DIPOTONG ke 300 char
+    ...
+    // BUG-025 Diagnostic (Dry-run, pure observation - does NOT alter gate behavior):
+    if (text != null && typeof text !== 'object') {
+      var rawText = String(text)...;                          // dihitung dari teks PENUH
+      if (rawText.length > 300) {
+        includesAnyDiagnostics.calls_exceeding_300++;
+        if (!matched && ...) { /* catat missed match */ }
+  ```
+- **Penjelasan:** Dokumen lama menandai ini HIGH dan "MENUNGGU KEPUTUSAN". Kode sekarang menambahkan blok diagnostik yang secara eksplisit berkomentar **"does NOT alter gate behavior"** — jadi pemotongan 300 karakter **masih** terjadi. Fungsi ini dipakai gate keselamatan Telegram ([`:12806-12807`](api/sector-hot.js:12806)) untuk mendeteksi kata seperti `stale`, `invalid plan`, `weak liquidity`, `very high risk`. Bila kata pemicu berada di posisi >300 karakter dalam teks gabungan, gate gagal menemukannya → sinyal berisiko lolos sebagai "aman" (fail-OPEN). Perhatikan pula `joinTelegramTexts` ([`:13685-13687`](api/sector-hot.js:13685)) memotong SETIAP bagian ke 120 karakter, sehingga kata pemicu yang berada di ujung field panjang (mis. `status_reason` atau `plan_quality_note`) rutin terpotong sebelum `includesAny` bahkan melihatnya. Diagnostik hanya mencatat kejadian, tidak memperbaiki.
+- **Bukti verifikasi riil:** Kode dibaca langsung. Komentar "does NOT alter gate behavior" adalah pengakuan eksplisit bahwa bug belum diperbaiki.
+- **Usulan arah perbaikan:** Hapus batas 300 (atau naikkan jauh) di `includesAny` khusus untuk jalur gate; perbesar batas `joinTelegramTexts`. Jangan biarkan gate keselamatan bergantung pada pemotongan teks.
+
+### [LOW] BUG-015 lama SUDAH DIPERBAIKI — RSI 0/0 kini dinetralkan ke 50, bukan overbought
+- **Lokasi:** [`api/quote.js:1484`](api/quote.js:1484), [`api/candles.js:294`](api/candles.js:294), [`lib/daytrade-screener-engine.js:2174`](lib/daytrade-screener-engine.js:2174)
+- **Kutipan kode (bukti perbaikan):** `if (avgGain === 0 && avgLoss === 0) return 50;`
+- **Penjelasan:** Dokumen lama menyatakan RSI 0/0 pada saham beku dilaporkan sebagai overbought ekstrem di 6 salinan. Kini ketiga salinan utama yang diperiksa mengembalikan netral 50. **Perbaikan terkonfirmasi.** Dicatat agar tidak dihitung bug lagi.
+
+### Catatan verifikasi batch ini
+- `lib/password-credential.js` memakai `timingSafeEqual` + format `k1` acak — **klaim BUG-032 (reset password admin) perlu dicek di `lib/admin-users-handler.js`**, belum diverifikasi di sini.
+- `api/review-access.js` memakai `crypto.timingSafeEqual` dan rate limiter — bagian timing-safe **sudah benar**; yang tersisa hanyalah fallback token BUG-013 di atas.
+
+## MODUL: Verifikasi ulang klaim `AUDIT_FINDINGS.md` / `AUDIT_CHECKPOINT.md` (44 bug lama)
+
+Dokumen lama mengklaim 44 BUG (25 "sudah diperbaiki", 19 "belum"). Berikut hasil cek ulang ke kode SEKARANG.
+
+### [HIGH] BUG-013 lama MASIH BELUM DIPERBAIKI — token review masih punya default yang tertulis di source untuk lingkungan Vercel
+- **Lokasi:** [`api/review-access.js:42-44`](api/review-access.js:42)
+- **Kutipan kode bermasalah:**
+  ```js
+  const fallbackBuildToken = (process.env.VERCEL || process.env.VERCEL_ENV) ? 'vercel-build-secure-token-entropy-minimum-32b' : '';
+  const token = process.env.REVIEW_ACCESS_TOKEN || fallbackBuildToken;
+  const EXPECTED_TOKEN = String(token || '').trim();
+  if (!EXPECTED_TOKEN || EXPECTED_TOKEN.length < 16) { /* 403 */ }
+  ```
+- **Penjelasan:** Logikanya sudah fail-closed bila env kosong **kecuali** di lingkungan Vercel — dan di situlah produksi berjalan. Panjang literal itu 39 karakter, jadi melewati gerbang `length < 16` dan diterima sebagai token yang sah. Siapa pun yang membaca source (dokumen lama menyebut repo ini publik; repo punya 557 branch) dapat memakai token itu untuk membuka `surface` review. Komentar di baris 37-41 mengklaim masalah ini sudah diperbaiki ("used to fall back to a literal default token"), padahal fallback literal masih ada untuk jalur yang justru paling penting.
+- **Bukti verifikasi riil:** Kode kini dibaca langsung; dokumen lama menandainya "MENUNGGU KEPUTUSAN", dan memang belum berubah. Bukan hipotesis.
+- **Usulan arah perbaikan:** Hapus `fallbackBuildToken` sepenuhnya; wajibkan `REVIEW_ACCESS_TOKEN` di semua lingkungan.
+
+### [MEDIUM] BUG-038 lama MASIH BELUM DIPERBAIKI — retensi foreign flow masih tanpa `.limit()`
+- **Lokasi:** [`lib/admin-foreign-upload.js:217-221`](lib/admin-foreign-upload.js:217)
+- **Kutipan kode bermasalah:**
+  ```js
+  const lookup = await supabase.from('foreign_watchlist_daily')
+    .select('id,ticker,trade_date').in('ticker', tickerBatch)
+    .order('trade_date', { ascending: false });   // tidak ada .limit()
+  ```
+- **Penjelasan:** Persis pola yang sudah didokumentasikan dan diperbaiki di `lib/stock-daily-history-store.js:54-73` (docstring menyebutnya "confirmed bug — retention was silently a no-op"), tetapi `foreign_watchlist_daily` belum mendapat perbaikan yang sama. Pada deployment dengan cap respons PostgREST (~1.000 baris), hasil terpotong ke baris terbaru sehingga loop penghapusan tidak pernah menemukan baris melewati batas retensi → retensi 7 hari diam-diam tidak berlaku. Dokumen lama menandainya "MENUNGGU KEPUTUSAN"; kode membuktikan belum diperbaiki.
+- **Bukti verifikasi riil:** Kode dibaca; bandingkan dengan `SAFE_QUERY_ROW_BUDGET`/`RETENTION_TRIM_HEADROOM` yang ada di store sebelah.
+- **Usulan arah perbaikan:** Salin pola bounded-chunk dari `lib/stock-daily-history-store.js:74-113`.
+
+### [LOW] BUG-027 lama SUDAH DIPERBAIKI — diverifikasi, jangan diulang di batch berikutnya
+- **Lokasi:** [`lib/idx-tick-normalization.js:886`](lib/idx-tick-normalization.js:886)
+- **Kutipan kode (bukti perbaikan):**
+  ```js
+  var cleanObservation = observationNotes.replace(/(?:jangan|anti|tidak|no)[ -]chase\b/g, ' ');
+  ```
+- **Penjelasan:** Dokumen lama menyatakan peringatan "JANGAN chase" dibaca sistem sebagai bukti harga sedang di-chase (BUG-027, HIGH). Kode kini secara eksplisit menghapus frasa nasihat `jangan/anti/tidak/no chase` dari catatan observasi sebelum dipakai mengambil kesimpulan, dan memisahkan `noteText` (nasihat) dari `cleanObservation` (observasi). **Perbaikan terkonfirmasi ada.** Ini contoh klaim lama yang BENAR — dicatat agar tidak dihitung bug lagi.
+
+### [LOW] BUG-022 lama SUDAH DIPERBAIKI — diverifikasi
+- **Lokasi:** [`api/sector-hot.js:1885`](api/sector-hot.js:1885) terkait klaim "support runtuh jadi 0"
+- **Penjelasan:** Tidak ditemukan lagi jalur `high/low` Yahoo yang runtuh menjadi 0 untuk Swing Non-Konglo pada kode `calculateIndicators`/`analyzeDayTrade` yang dibaca; `deriveDataQualityStatus` ([`lib/daytrade-screener-engine.js:79-81`](lib/daytrade-screener-engine.js:79)) kini menolak candle dengan `high < low`, `close > high`, `close < low`, dsb → status `INVALID_CANDLE` alih-alih meneruskan `support = 0`. Perbaikan terlihat ada.
+
+### Catatan metode
+Pemeriksaan ini menegaskan peringatan awal: **klaim "sudah diperbaiki" sebagian benar dan sebagian keliru.** BUG-027 dan BUG-022 terkonfirmasi diperbaiki; BUG-013 dan BUG-038 terkonfirmasi BELUM. Setiap klaim lama harus diperlakukan sebagai hipotesis sampai kode membuktikannya.
+
+## VERIFIKASI SILANG: VPS Data Fetcher (lib/vps-data-fetcher.js) — menegaskan temuan HIGH sebelumnya
+
+- **Lokasi:** [`lib/vps-data-fetcher.js:243,247,315,319`](lib/vps-data-fetcher.js:243)
+- **Kutipan:** `function fetchBrokerSummaryFromVpsSync(ticker, date = '2026-09-08')`, `const safeDate = String(date || '2026-09-08')...`, idem di versi async.
+- **Bukti tambahan (verifikasi perilaku):** Kedua fungsi mencoba `candidateDates = [safeDate]` LALU `'latest'`, tetapi `safeDate` default adalah tanggal tetap `2026-09-08`. Selama file `2026-09-08.json` masih ada di VPS, pemanggil tanpa argumen tanggal akan menerima data sesi 2026-09-08 dan tidak pernah mencapai `'latest'`. Ini mengonfirmasi dampak nyata (bukan hanya hipotetis) dari temuan HIGH `vps-data-fetcher` sebelumnya: bridge harga Bandarmologi dapat menyajikan sesi lama sebagai hasil default.
+- **Arah perbaikan:** Default harus `null`/`'latest'`, bukan tanggal tetap.
+
+### Catatan tuntas (tanpa bug) — modul yang dibaca batch ini
+- `lib/report-helpers.js`: `classifyOutcome` menegakkan kronologi TP-before-SL yang benar (posisi yang sempat hit TP tetap dihitung win walau SL menyusul), `getMonitorSource` menangani variasi nama sumber, `calculateRate` aman terhadap pembagian nol. Kokoh. **Ini penting untuk Track Record: tidak ditemukan bug di sini.**
+- `lib/ai-context-snapshot-store.js`: sanitasi ketat (batas ukuran, validasi ticker, whitelist field), `price_meta` diteruskan sehingga AI tahu umur harga. Kokoh.
+- `api/admin-users.js` (120 baris pertama): `requireBudiAdmin` cek same-origin + sesi admin terverifikasi + username 'budi'; `resolvePremiumPortfolioAccess` memakai `requirePremiumEntitlement`. Kokoh.
+- `public/pattern-map.js`, `public/dashboard-top5-only-ui.js`, `public/unified-cockpit-runtime.js`: presentasi saja, authorisasi server-verified, sinkronisasi ticker konsisten. Kokoh.
+
+## MODUL: Transparansi Gate Sinyal (public/signal-gate-transparency.js)
+
+### [MEDIUM] Ambang batas di panel "Kenapa Sinyal Ini Lolos Gate?" TIDAK cocok dengan gate server — menyesatkan user
+- **Lokasi:** [`public/signal-gate-transparency.js:57`](public/signal-gate-transparency.js:57), `:64`, `:90`, `:95`, `:99`
+- **Kutipan kode bermasalah:**
+  ```js
+  var minValTarget = isNonKonglo ? 10e9 : (isDayTrade ? 3e9 : 5e9); // 10M Non-Konglo, 3M DT, 5M Konglo
+  var minVolRatio = isDayTrade ? 1.2 : 1.0;
+  rsiPassed = rsi <= 78 && rsi >= 35;
+  var rsiThresholdText = '35 - 75 (Zona Aman)';   // <-- teks bilang 75, kode pakai 78
+  var minRR = isDayTrade ? 1.2 : 1.5;
+  ```
+- **Penjelasan:** Panel ini menjawab pertanyaan user "kenapa sinyal ini muncul" dengan menampilkan nilai aktual vs ambang. Tetapi ambangnya di-hardcode di frontend dan TIDAK sama dengan gate server: gate likuiditas Day Trade sebenarnya `MIN_VALUE_TODAY = 1e9` / `MIN_AVG_VALUE_7D = 5e8` (`lib/daytrade-screener-engine.js:379-380`), sedangkan panel mengklaim 3e9. Selain itu teks ambang RSI berbunyi "35 - 75" padahal kode memakai `<= 78`. Jadi user membaca checklist yang secara faktual salah tentang gate yang sebenarnya menyaring sinyal — kelas "transparansi palsu".
+- **Bukti verifikasi riil:** Perbandingan kode langsung: nilai frontend vs nilai backend berbeda numerik; teks vs kode berbeda (75 vs 78).
+- **Usulan arah perbaikan:** Kirim ambang batas aktual dari backend bersama payload sinyal (mis. `gate_thresholds`), lalu tampilkan itu; atau kalau memang hanya indikatif, beri label "indikatif" dan selaraskan teks dengan kode.
+
+### [LOW] Komentar satuan salah pada ambang likuiditas (`10e9` dilabeli "10M")
+- **Lokasi:** [`public/signal-gate-transparency.js:57`](public/signal-gate-transparency.js:57)
+- **Penjelasan:** `10e9 / 3e9 / 5e9` adalah 10 miliar / 3 miliar / 5 miliar, tetapi komentarnya menulis "10M / 3M / 5M". Komentar salah satuan memperbesar risiko orang mengubah angka berdasarkan label yang keliru.
+- **Usulan arah perbaikan:** Perbaiki komentar menjadi "10 miliar / 3 miliar / 5 miliar".
+
+### Catatan tuntas (tanpa bug) — `public/pattern-map.js`
+- `validateCandidate` melakukan verifikasi ketat: ticker+timeframe+dataDate cocok dengan konteks, candle set identik dengan sumber (byte-identik per OHLC), urutan candle/pivot naik, pivot harus berada di dalam candle sumber dengan harga yang sama persis, PRZ valid, bukti konfirmasi wajib untuk status confirmed. Gate admin Pattern Map server-verified (bukan query/window flag). Sangat kokoh.
+
+## MODUL: Portfolio (public/portfolio-command-center.js, public/portfolio-ai-runtime-v2.js)
+
+### [MEDIUM] Refresh harga Portfolio tidak menulis metadata kesegaran → AI Portfolio menilai harga dengan umur yang salah
+- **Lokasi:** [`public/portfolio-command-center.js:392-393`](public/portfolio-command-center.js:392) vs [`public/portfolio-ai-runtime-v2.js:79`](public/portfolio-ai-runtime-v2.js:79) & `:485`
+- **Kutipan kode bermasalah:**
+  ```js
+  // portfolio-command-center.js — refreshAllPrices()
+  rows.forEach(function (row) { if (row[1] && row[1] > 0) { state.prices[row[0]] = Math.round(row[1]); updated += 1; } });
+  saveJson(pricesKey(), state.prices); localStorage.setItem(priceTimeKey(), String(Date.now()));
+  ```
+  ```js
+  // portfolio-ai-runtime-v2.js — contextNow()
+  var meta = readJson(pricesKey + '_meta_v1', {});
+  ...
+  priceMeta[row.ticker] = { at: entryMeta && entryMeta.iso ? ... : null, age_minutes: capturedMs != null ? Math.max(0, Math.round((now-capturedMs)/60000)) : null, provider_marked_stale: entryMeta && typeof entryMeta.stale === 'boolean' ? entryMeta.stale : null, ... };
+  ```
+- **Penjelasan:** Harga diperbarui oleh Command Center (dua tombol: `refreshToday`, `refreshPrices` → `refreshAllPrices`) tetapi **tidak pernah** menulis side-map `autocuan_portfolio_prices_<uid>_meta_v1` — hanya `portfolio-ai-runtime-v2.js:485` yang menulisnya. Akibatnya setelah user menekan "Refresh Harga" di Command Center, AI Portfolio membaca metadata lama/kosong: `provider_marked_stale` boleh tetap `true` dari pembacaan sebelumnya, dan `age_minutes` tetap menghitung dari waktu capture lama. AI lalu memberi peringatan "harga usang" tentang harga yang sebenarnya baru saja disegarkan, atau sebaliknya menganggapnya segar. Ini konflik data antar dua modul yang memakai sumber harga yang sama.
+- **Bukti verifikasi riil:** Bukti kode: `findstr` menunjukkan `_meta_v1` hanya ditulis di `portfolio-ai-runtime-v2.js:485`, sedangkan penulis `state.prices` utama (`portfolio-command-center.js:393`) tidak menyentuhnya.
+- **Usulan arah perbaikan:** Satukan penulis harga ke satu helper (tulis `prices` + `_meta_v1` bersama), atau Command Center memanggil helper metadata yang sama.
+
+### Catatan tuntas (tanpa bug) — modul Portfolio yang dibaca
+- `lib/portfolio-state-handler.js`: auth premium + same-origin, batas ukuran state, optimistic-concurrency via `expected_updated_at` + penanganan 23505 saat bootstrap race, sanitasi bentuk state. Kokoh.
+- `public/portfolio-command-center.js`: pemisahan tegas "missing ≠ zero" (`finite()`), render portofolio lokal sebelum panggilan jaringan, fetch ber-timeout. Kokoh.
+- `public/portfolio-runtime-fix.js`: migrasi ID rencana legacy deterministik + penghapusan atomic. Kokoh.
+
+## MODUL: Kolektor Riwayat Harian (lib/daily-history-collector.js)
+
+### [MEDIUM] `trade_date` yang DIPERSIST ke `stock_daily_history` dihitung dari potongan UTC naif
+- **Lokasi:** [`lib/daily-history-collector.js:149`](lib/daily-history-collector.js:149) dan [`lib/daily-history-collector.js:136`](lib/daily-history-collector.js:136)
+- **Kutipan kode bermasalah:**
+  ```js
+  var rowDate = new Date(timestamps[i] * 1000).toISOString().slice(0, 10);
+  ...
+  var metaDate = meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString().slice(0, 10) : null;
+  ```
+- **Penjelasan:** `rowDate` menjadi `trade_date` yang di-upsert ke `stock_daily_history` — sumber untuk RSI, volume 7D, foreign flow, dan Ranking Harian. Untuk bar harian IDX, Yahoo umumnya menstempel timestamp sekitar 02:00 UTC (09:00 WIB), sehingga potongan UTC kebetulan benar; namun ini bergantung pada perilaku provider, bukan pada kebijakan WIB eksplisit. Bila provider menggeser stempel (mis. ke 17:00+ UTC), seluruh tanggal riwayat bergeser satu hari dan merusak semua turunannya. Modul lain di repo sudah memakai konversi WIB eksplisit; di sini tidak.
+- **Bukti verifikasi riil:** Belum. Bukti kode: pola UTC-slice pada nilai yang dipersist sebagai tanggal sesi. Perlu cek sampel `stock_daily_history.trade_date` vs tanggal sesi IDX sebenarnya.
+- **Usulan arah perbaikan:** Pakai `Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' })` (pola yang sudah dipakai `lib/chart-engine/candle-fetcher.js:43` dan `lib/idx-trading-calendar.js`).
+
+### Catatan tuntas (tanpa bug) — `lib/chart-engine/candle-fetcher.js`
+- Cache-first idempotent, kuota harian berbasis kunci WIB (`todayWibKey` memakai `Intl` timeZone Asia/Jakarta — BENAR), normalisasi payload menangani beberapa bentuk respons, sort oldest-first, clamp limit ≥ 20. Kokoh.
 
 ## MODUL: Bandarmologi Intel & Pattern (lib/bandarmologi-intel-service.js, lib/pattern-abcd.js, lib/intraday-fast-watcher.js, lib/trade-plan-v2.js, lib/telegram-notifier.js)
 
