@@ -27,7 +27,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 9** — Syarat Konfirmasi Volume Breakout untuk Revalidasi (PR #675)
 - [x] **Batch 10** — Implementasi Alert Throttling & Rate Limiter Terpusat di Telegram Notifier
 - [x] **Batch 11** — Syarat Konfirmasi Candle Close Sebelum Alert Entry Zone
-- [ ] **Batch 12** — Setup Ecosystem Process Manager (PM2)
+- [x] **Batch 12** — Setup Ecosystem Process Manager (PM2)
 - [ ] **Batch 13** — Skrip Deploy Otomatis & Atomik (Git Pull + PM2 Restart)
 - [ ] **Batch 14** — Test Integrasi Seluruh Guard
 - [ ] **Batch 15** — Regression Test Data Historis Nyata (SSMS, KAEF, SMGR, IMJS, INKP)
@@ -296,3 +296,26 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
     - Emiten dengan close terkonfirmasi → `BREAKOUT_CONFIRMED` dan lolos ke ENTRY ZONE (`A_PLUS_SETUP`).
     - Kandidat daily-close lama tanpa flag tidak terpengaruh (backward-compatible).
   - `npm test`: **386/386 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 12: Setup Ecosystem Process Manager (PM2)
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/pm2-ecosystem-process-manager`
+- **File Dimodifikasi:**
+  - [`ecosystem.config.js`](ecosystem.config.js): Source of truth PM2 untuk dua daemon VPS.
+  - [`package.json`](package.json): Skrip `pm2:start`/`pm2:reload`/`pm2:stop`/`pm2:restart`/`pm2:status`/`pm2:logs`/`pm2:save`.
+  - [`test/pm2-ecosystem-config.test.js`](test/pm2-ecosystem-config.test.js): Unit test kontrak ecosystem (6 test suites).
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Akar Masalah yang Ditutup (Akar Masalah #1 — Kode Basi di RAM VPS):**
+  - Tidak ada `ecosystem.config.js` di repo. Dua proses daemon Node hidup berhari-hari via nohup/background (tanpa process manager): `tools/ai-eval-once-supervisor.js` (PID 1801024 sejak 11 Sep) & `tools/vps-api-server.js` (PID 1883477 sejak 14 Sep).
+  - `git pull` hanya mengubah file di disk; proses di RAM tetap mengeksekusi kode lama sampai restart manual. Tidak ada unit systemd/PM2 untuk `vps-api-server.js`.
+  - Kedua skrip bersifat daemon-friendly (`require.main === module` auto-start + handler SIGTERM/SIGINT), sehingga dapat langsung dikelola PM2.
+- **Guard yang Terpasang:**
+  - `ecosystem.config.js` mendefinisikan dua app: `auto-cuan-vps-api` & `auto-cuan-ai-eval-supervisor`, keduanya `autorestart: true`, single-fork, `max_restarts: 10`, `restart_delay`, `kill_timeout` (supervisor 45s selaras systemd TimeoutStopSec=45 agar child sempat SIGTERM), `time`/`merge_logs`.
+  - Env produksi dipin: `NODE_ENV=production`, `TZ=Asia/Jakarta`, `AUTO_CUAN_ROOT`.
+  - Skrip `npm run pm2:reload` = `pm2 reload ecosystem.config.js --update-env` → restart zero-downtime yang akan dipanggil oleh script deploy atomik Batch 13.
+- **Hasil Test:**
+  - `node --check ecosystem.config.js test/pm2-ecosystem-config.test.js`: VALID; `package.json` & `curated-build-tests.json` JSON VALID.
+  - `node --test test/pm2-ecosystem-config.test.js`: 6/6 passed
+    - Dua daemon terdaftar; setiap `script` menunjuk file yang ada di disk; autorestart/fork; kill_timeout supervisor >= 30s; env produksi; skrip pm2 tersedia.
+  - `npm test`: **387/387 test files passed (100% lolos, 0 fail, 0 skipped)**
