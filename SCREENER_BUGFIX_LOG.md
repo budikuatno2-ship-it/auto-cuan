@@ -25,7 +25,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 7** — Kunci Revalidasi Sinyal & R/R Gate Jalur Swing (PR #673)
 - [x] **Batch 8** — Deduplikasi & Stateful Alert Tracking (Anti-Duplikat) (PR #674)
 - [x] **Batch 9** — Syarat Konfirmasi Volume Breakout untuk Revalidasi (PR #675)
-- [ ] **Batch 10** — Implementasi Alert Throttling di Telegram Notifier
+- [x] **Batch 10** — Implementasi Alert Throttling & Rate Limiter Terpusat di Telegram Notifier
 - [ ] **Batch 11** — Syarat Konfirmasi Candle Close Sebelum Alert Entry Zone
 - [ ] **Batch 12** — Setup Ecosystem Process Manager (PM2)
 - [ ] **Batch 13** — Skrip Deploy Otomatis & Atomik (Git Pull + PM2 Restart)
@@ -243,3 +243,29 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
     - Sinyal stale, R/R 1.0x, dan breakout tanpa volume terbukti ditolak oleh `validateRevalidationSignal`.
     - Tanpa data volume, perilaku lama tetap terjaga (backward-compatible).
   - `npm test`: **384/384 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 10: Implementasi Alert Throttling & Rate Limiter Terpusat di Telegram Notifier
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/telegram-alert-throttling`
+- **File Dimodifikasi:**
+  - [`lib/telegram-notifier.js`](lib/telegram-notifier.js): Menambahkan **throttle/queue terpusat** + **backoff 429** pada pintu transport tunggal semua alert Telegram.
+  - [`test/telegram-notifier-throttling.test.js`](test/telegram-notifier-throttling.test.js): Unit test regresi baru (5 test suites).
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Akar Masalah yang Ditutup (Akar Masalah #4 — burst spam & HTTP 429):**
+  - `lib/telegram-notifier.js` sebelumnya **tanpa rate limiting sama sekali**: chunk pesan dikirim back-to-back tanpa jeda, dan pemanggil paralel tidak pernah diserialisasi. Saat banyak emiten lolos filter bersamaan, N `fetch` ditembak serentak → Telegram membalas HTTP 429.
+  - Penanganan 429 sebelumnya **pasif**: `retry_after` diekstrak dari body/header tetapi **tidak pernah dihormati** — tidak ada backoff, tidak ada jeda, tidak ada koordinasi antar pengiriman berikutnya.
+- **Guard yang Terpasang:**
+  - **Serialized throttle gate** (`acquireSendSlot`): setiap pengiriman melewati satu antrean berantai (promise chain) yang menjamin hanya satu pengiriman berjalan dan memberi jeda aman antar pesan.
+  - **Interval aman default 3000ms** (`DEFAULT_SEND_INTERVAL_MS`, dapat di-override via `TELEGRAM_SEND_INTERVAL_MS`) — sesuai plafon broadcast Telegram ~20 pesan/menit per chat.
+  - **Backoff 429 terpusat** (`applyRateLimitBackoff`): saat Telegram membalas 429, seluruh gate diparkir selama `retry_after` (fallback `DEFAULT_SEND_INTERVAL_MS` bila tidak ada), dengan logging peringatan terstruktur `[TELEGRAM_RATE_LIMITED] honoring retry_after=...s, backoff=...s` dan **tidak pernah melempar uncaught exception**.
+  - Gate dipasang pada `sendTelegramMessage`, `sendTelegramDocument`, `sendTelegramPhoto`, dan `sendTelegramPhotoUrl`.
+  - **Controllable clock untuk test:** opsi `min_interval_ms` + `sleep` yang dapat di-inject; di lingkungan test (`NODE_TEST_CONTEXT`/`--test`) throttle & backoff di-bypass otomatis sehingga suite tidak menunggu timer asli.
+  - Primitif diekspor untuk pengujian: `acquireSendSlot`, `applyRateLimitBackoff`, `resetTelegramThrottle`, `getTelegramThrottleState`, `DEFAULT_SEND_INTERVAL_MS`.
+- **Hasil Test:**
+  - `node --check lib/telegram-notifier.js` & `node --check test/telegram-notifier-throttling.test.js`: VALID
+  - `node --test test/telegram-notifier-throttling.test.js test/telegram-notifier-rate-limit.test.js`: 7/7 passed
+    - Burst 5 alert terbukti dipacu (>=4 jeda) dan **tidak ada yang di-drop**.
+    - Respons 429 mengekstrak `retry_after`, memarkir gate (`backoffActive === true`), mencatat warning, tanpa throw.
+    - Backoff aktif dihormati pada pengiriman berikutnya; `resetTelegramThrottle` membersihkan gate.
+  - `npm test`: **385/385 test files passed (100% lolos, 0 fail, 0 skipped)**
