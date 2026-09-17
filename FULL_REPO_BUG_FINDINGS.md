@@ -25,7 +25,60 @@ Setiap temuan wajib punya lokasi + kutipan + penjelasan + bukti + arah perbaikan
 Semua klaim dokumen audit lama TIDAK diwarisi — divertifikasi ulang dari kode kini.
 
 Status: **AUDIT BERJALAN — BELUM SELESAI**. Modul yang belum dibaca belum tercantum di sini.
-Total temuan sejauh ini: 1 CRITICAL, 16 HIGH, 15 MEDIUM, 6 LOW.
+Total temuan sejauh ini: 1 CRITICAL, 16 HIGH, 16 MEDIUM, 9 LOW.
+
+### [LOW] `getRequestBaseUrl` mempercayai `x-forwarded-host`/`host` klien saat membangun URL chart Telegram
+- **Lokasi:** [`api/sector-hot.js:5859-5863`](api/sector-hot.js:5859)
+- **Kutipan kode bermasalah:**
+  ```js
+  function getRequestBaseUrl(req) {
+    var proto = req.headers['x-forwarded-proto'] || 'https';
+    var host = req.headers['x-forwarded-host'] || req.headers.host;
+    return proto + '://' + host;
+  }
+  ```
+- **Penjelasan:** Persis pola BUG-034 lama (host header menentukan tautan Telegram), yang di `lib/subscription-manual-handler.js` sudah diperbaiki. Di sini masih ada: URL gambar chart dikirim ke Telegram berasal dari header yang bisa dipengaruhi pemanggil. Risiko praktis dibatasi karena `handleTelegramDailyPicks` wajib `CRON_SECRET`, sehingga hanya pemegang rahasia yang bisa memicu — jadi LOW, bukan HIGH. Namun bila CRON_SECRET bocor, penyerang dapat mengarahkan gambar ke host mereka.
+- **Bukti verifikasi riil:** Bukti kode; bandingkan dengan perbaikan di `lib/subscription-manual-handler.js`.
+- **Usulan arah perbaikan:** Pakai base URL tetap dari env (mis. `PUBLIC_BASE_URL`) alih-alih header request.
+
+
+## MODUL: Bandarmologi UI + Screener Chart (public/bandarmologi-runtime.js, api/sector-hot.js)
+
+### [MEDIUM] Date OHLC chart Telegram/Pattern memakai potongan UTC naif (kembali)
+- **Lokasi:** [`api/sector-hot.js:5707`](api/sector-hot.js:5707)
+- **Kutipan kode bermasalah:**
+  ```js
+  rows.push({ date: new Date(timestamps[i] * 1000).toISOString().slice(0, 10), open: ..., });
+  ```
+- **Penjelasan:** Ini `fetchChartOhlcRows` yang dipakai untuk menggambar chart Telegram Top 5 — komentar di baris 5684 mengklaim "Match the web Chart page data source (/api/candles)". Justru di sinilah ia TIDAK match: `/api/candles` memakai `t1Policy.formatJakartaDate(...)` (WIB-aware), sedangkan baris ini memakai potongan UTC. Untuk bar dengan timestamp ≥ 17:00 UTC, tanggal candle bergeser satu hari → label tanggal chart Telegram berbeda dari chart web untuk ticker & hari yang sama. Kelas bug yang sama dengan temuan `api/quote.js`. Sudah ada helper WIB di file yang sama (`getJakartaDateFromTimestamp`).
+- **Bukti verifikasi riil:** Bukti kode; bandingkan dengan `api/candles.js:157-158`.
+- **Usulan arah perbaikan:** Pakai `getJakartaDateFromTimestamp(timestamps[i] * 1000)`.
+
+### [LOW] Deklarasi `var items` ganda di `buildBrokerBubbleItems`
+- **Lokasi:** [`public/bandarmologi-runtime.js:803`](public/bandarmologi-runtime.js:803) dan [`public/bandarmologi-runtime.js:874`](public/bandarmologi-runtime.js:874)
+- **Kutipan kode bermasalah:**
+  ```js
+  // baris 803
+  var items = [];
+  var maxTxVal = 1;
+  var maxAbsNet = 1;
+  var codes = Object.keys(map);
+  ... (loop mengisi map[codes[c]] dengan it.netVal/it.txVal, TIDAK memakai `items`) ...
+  // baris 874
+  var items = [];
+  if (isGross) { ... items = buyerBrokers.concat(sellerBrokers); } else { ... }
+  ```
+- **Penjelasan:** Deklarasi pertama (`:803`) tidak pernah dipakai di antara baris 803–874 — loop hanya menghitung/menetapkan field pada `map[...]`. Deklarasi kedua (`:874`) sepenuhnya menimpa deklarasi pertama. Tidak merusak perilaku (deklarasi kedua tetap menang), tetapi menandakan variabel lama yang terbuang dan membuat pembaca berikutnya mengira ada alur data yang hilang.
+- **Bukti verifikasi riil:** Bukti kode: rentang 804-873 tidak menyentuh `items`.
+- **Usulan arah perbaikan:** Hapus deklarasi di baris 803.
+
+### Catatan tuntas (tanpa bug) — `api/sector-hot.js` bagian yang dibaca batch ini
+- Seluruh rangkaian **gate keselamatan Telegram** (baris 4328-5327) konsisten dan berlapis: `textHasFatalTopGuard`, `hasAvoidGrade`, `hasHindariAction`, `deriveFinalTopQualityGate`, `candidatePassesPublicTelegramSafetyGate`, `candidatePassesTop5WatchlistGate`, `candidatePassesTelegramCandidateDigestGate`, `candidatePassesMinUpside`, `rankCandidatesByPotential`. Setiap gate memblokir hal yang sama secara konsisten (avoid/hindari/very-high-risk/invalid-plan/stale/below-SL/weak-liquidity/ARA-ARB), dan frasa nasihat "jangan chase" dinetralkan sebelum dipakai mengambil kesimpulan (baris 4424, 4812, 5057) — perbaikan BUG-027 diterapkan di ketiga jalur. Kokoh.
+
+### Catatan tuntas (tanpa bug) — `public/bandarmologi-runtime.js` bagian yang dibaca batch ini
+- `loadBandarmologiTab` ([`:1816-1991`](public/bandarmologi-runtime.js:1816)) memakai pola request-sequence + AbortController yang benar: hasil yang datang terlambat dibuang (`thisRequestSeq !== bandarSummaryRequestSeq`), timer dibersihkan, dan fallback ke VPS tunnel hanya bila backend kosong/demo. Kokoh.
+- Fallback "no data" ([`:1948-1982`](public/bandarmologi-runtime.js:1948)) mengembalikan struktur kosong eksplisit (`is_empty: true`, `status: 'NO_DATA'`) alih-alih angka palsu. Kokoh.
+- Cache key VPS broker summary sudah menyertakan `range` ([`:1701`](public/bandarmologi-runtime.js:1701)) — perbaikan PR3 terkonfirmasi.
 
 ## MODUL: CI / Test Suite (tools/run-build-test-suite.js, tools/curated-build-tests.json)
 
