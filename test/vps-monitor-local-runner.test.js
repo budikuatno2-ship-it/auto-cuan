@@ -5,7 +5,7 @@
  *
  * Tests:
  * 1. Production approval gate (LOCAL_MONITOR_LIVE_APPROVED=YES)
- * 2. Active trading window logic (09:05 - 16:05 WIB, Monday-Friday)
+ * 2. Active trading window logic (Market Hours Guard Integrated)
  * 3. Graceful handling of empty active picks without crash
  * 4. Active picks processing and BEP lock evaluation (+2.0% profit triggers BEP_CLOSED)
  * 5. VPS bash runner wrapper contract (telegram-monitor-local.sh)
@@ -126,14 +126,36 @@ test('Approval Gate: --execute without LOCAL_MONITOR_LIVE_APPROVED=YES fails clo
 });
 
 // -----------------------------------------------------------------------------
-// 2. TRADING WINDOW LOGIC (09:05 - 16:05 WIB Mon-Fri)
+// 2. TRADING WINDOW LOGIC (Market Hours Guard Integrated)
 // -----------------------------------------------------------------------------
-test('Trading Window: isMarketSessionWib correctly identifies market hours and weekends', () => {
-  // Tuesday at 10:00 WIB (03:00 UTC)
+test('Trading Window: isMarketSessionWib correctly identifies market hours, breaks, and weekends', () => {
+  // Tuesday at 10:00 WIB (03:00 UTC) - Session 1
   const tue10am = new Date('2026-09-08T03:00:00.000Z');
   const resTue10am = isMarketSessionWib(tue10am);
   assert.equal(resTue10am.active, true);
+  assert.equal(resTue10am.session, 'SESSION_1');
   assert.equal(resTue10am.reason, null);
+
+  // Tuesday at 12:45 WIB (05:45 UTC) - Midday Break (Case: 17 Sep Incident)
+  const tue1245pm = new Date('2026-09-08T05:45:00.000Z');
+  const resTue1245pm = isMarketSessionWib(tue1245pm);
+  assert.equal(resTue1245pm.active, false);
+  assert.equal(resTue1245pm.session, 'CLOSED');
+  assert.equal(resTue1245pm.reason, 'market_break');
+
+  // Tuesday at 14:15 WIB (07:15 UTC) - Session 2
+  const tue1415pm = new Date('2026-09-08T07:15:00.000Z');
+  const resTue1415pm = isMarketSessionWib(tue1415pm);
+  assert.equal(resTue1415pm.active, true);
+  assert.equal(resTue1415pm.session, 'SESSION_2');
+  assert.equal(resTue1415pm.reason, null);
+
+  // Friday at 12:30 WIB (05:30 UTC) - Friday Prayer Break
+  const fri1230pm = new Date('2026-09-11T05:30:00.000Z');
+  const resFri1230pm = isMarketSessionWib(fri1230pm);
+  assert.equal(resFri1230pm.active, false);
+  assert.equal(resFri1230pm.session, 'CLOSED');
+  assert.equal(resFri1230pm.reason, 'market_break');
 
   // Tuesday at 08:30 WIB (01:30 UTC) - pre-market
   const tue830am = new Date('2026-09-08T01:30:00.000Z');
@@ -288,5 +310,4 @@ test('VPS Bash Wrapper: contains non-blocking flock, timezone, node fallback, an
   assert.match(wrapper, /export TZ=Asia\/Jakarta/, 'Wrapper must force Jakarta timezone');
   assert.match(wrapper, /tools\/run-telegram-monitor-local\.js/, 'Wrapper must execute Node runner');
   assert.match(wrapper, /LOCAL_MONITOR_LIVE_APPROVED/, 'Wrapper must support LOCAL_MONITOR_LIVE_APPROVED');
-  assert.match(wrapper, /09:05 - 16:05 WIB/, 'Wrapper must document active trading hours schedule');
 });

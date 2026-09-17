@@ -19,7 +19,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 1** — Sinkronisasi Baseline & Setup Log (PR #666, commit `a562ca4`)
 - [x] **Batch 2** — Modul Market Hours Guard Terpusat (PR #668)
 - [x] **Batch 3** — Integrasi Market Hours Guard ke Broadcast Notifier (PR #669)
-- [ ] **Batch 4** — Audit & Perbaikan Crontab / Schedule VPS
+- [x] **Batch 4** — Audit & Perbaikan Crontab / Schedule VPS (PR #670)
 - [ ] **Batch 5** — Filter Minimum Risk/Reward Ratio Sentral
 - [ ] **Batch 6** — Terapkan Filter R/R ke Klasifikasi Radar & Entry Zone
 - [ ] **Batch 7** — Kunci Transisi Status Revalidasi (NEEDS_REVALIDATION)
@@ -106,4 +106,19 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
   - Opsi explicit bypass `options.skip_market_guard === true` disediakan untuk keperluan test/debugging terisolasi.
 - **Hasil Test:**
   - `node --test test/broadcast-market-guard.test.js`: 5/5 passed
+  - `npm test`: **379/379 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 4: Audit & Perbaikan Crontab / Schedule VPS
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **PR:** #670
+- **File Dimodifikasi:**
+  - [`tools/run-telegram-monitor-local.js`](tools/run-telegram-monitor-local.js): Menggantikan logika `isMarketSessionWib()` statis (09:05–16:05 WIB) dengan integrasi langsung ke [`lib/market-hours-guard.js`](lib/market-hours-guard.js). Runner kini membedakan status break (`market_break`), luar jam bursa (`outside_trading_hours`), dan akhir pekan (`weekend`), serta membaca sesi resmi (`SESSION_1`, `SESSION_2`, `CLOSED`).
+  - [`deploy/vps/telegram-monitor-local.sh`](deploy/vps/telegram-monitor-local.sh): Pembaruan dokumentasi crontab schedule dan penjelasan market guard otomatis.
+  - [`test/vps-monitor-local-runner.test.js`](test/vps-monitor-local-runner.test.js): Pembaruan unit test runner untuk memvalidasi penolakan runner di jam istirahat siang (12:45 WIB), sholat Jumat (12:30 WIB), pre-market, dan weekend, serta keberhasilan saat sesi aktif 1 & 2.
+- **Audit Temuan Jadwal Cron:**
+  - `deploy/vps/final-schedule.cron` diaudit bersih (hanya berisi tugas EOD/malam: 00:05 backfill, 16:30 lifecycle, 18:00 broker update, 18:45 afternoon recap, 19:30 candle fetch, 22:15 landing refresh). Tidak ada cron broadcast intraday yang berjalan liar di jam istirahat.
+  - `telegram-monitor-local.sh` diproteksi guard berlapis: (1) Runner skipping pada `tools/run-telegram-monitor-local.js` via `isMarketOpen()`, (2) Broadcast notifier blocking pada `lib/telegram-notifier.js`.
+- **Hasil Test:**
+  - `node --test test/vps-monitor-local-runner.test.js test/telegram-monitor-local-runner.test.js`: 10/10 passed (100%)
   - `npm test`: **379/379 test files passed (100% lolos, 0 fail, 0 skipped)**

@@ -35,25 +35,37 @@ function loadEnvFile(file) {
   return true;
 }
 
+const marketHoursGuard = require(path.join(REPO, 'lib', 'market-hours-guard.js'));
+
 function getJakartaDateParts(now = new Date()) {
-  const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-  const day = wib.getUTCDay();
-  const hours = wib.getUTCHours();
-  const minutes = wib.getUTCMinutes();
-  const totalMinutes = hours * 60 + minutes;
-  const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-  return { day, hours, minutes, totalMinutes, timeStr };
+  const wib = marketHoursGuard.getWibComponents(now);
+  return {
+    day: wib.dayOfWeek,
+    hours: wib.hours,
+    minutes: wib.minutes,
+    totalMinutes: wib.totalMinutes,
+    timeStr: wib.timeStr
+  };
 }
 
 function isMarketSessionWib(now = new Date()) {
   const { day, totalMinutes, timeStr } = getJakartaDateParts(now);
   const isWeekday = day >= 1 && day <= 5;
-  if (!isWeekday) return { active: false, reason: 'weekend', timeStr };
-  // Active trading window: 09:05 - 16:05 WIB (545 to 965 minutes from midnight)
-  if (totalMinutes < 545 || totalMinutes > 965) {
-    return { active: false, reason: 'outside_trading_hours', timeStr };
+  if (!isWeekday) return { active: false, reason: 'weekend', session: 'CLOSED', timeStr };
+
+  const session = marketHoursGuard.getMarketSession(now);
+  const open = marketHoursGuard.isMarketOpen(now);
+
+  if (!open) {
+    const isBreak = (day === 5)
+      ? (totalMinutes > 688 && totalMinutes < 840)
+      : (totalMinutes > 718 && totalMinutes < 810);
+
+    const reason = isBreak ? 'market_break' : 'outside_trading_hours';
+    return { active: false, reason, session, timeStr };
   }
-  return { active: true, reason: null, timeStr };
+
+  return { active: true, reason: null, session, timeStr };
 }
 
 [
@@ -74,7 +86,7 @@ async function main() {
     );
   }
 
-  // In live execution mode without --force, gracefully skip when outside IDX trading hours (09:05 - 16:05 WIB Mon-Fri)
+  // In live execution mode without --force, gracefully skip when outside IDX trading hours (Session 1 or 2)
   const sessionCheck = isMarketSessionWib();
   if (execute && !force && !sessionCheck.active) {
     const skipOutput = {
@@ -82,8 +94,9 @@ async function main() {
       success: true,
       skipped: true,
       reason: sessionCheck.reason,
+      session: sessionCheck.session,
       time_wib: sessionCheck.timeStr,
-      message: `Skipped: ${sessionCheck.reason} (active market window is 09:05-16:05 WIB Mon-Fri). Pass --force to override.`
+      message: `Skipped: ${sessionCheck.reason} (session: ${sessionCheck.session}, time: ${sessionCheck.timeStr} WIB). Pass --force to override.`
     };
     console.log(JSON.stringify(skipOutput, null, 2));
     process.exit(0);
