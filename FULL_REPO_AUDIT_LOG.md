@@ -9,8 +9,27 @@ Aturan: BACA baris-per-baris, JANGAN sampling. JANGAN percaya klaim dokumen lama
 Status per modul: `[ ]` belum, `[-]` sedang, `[x]` tuntas.
 "Tuntas" = SEMUA file .js/.html/.css di modul itu benar-benar dibaca isinya, bukan sekilas nama.
 
-File terakhir dibaca: `lib/ai-context-snapshot-store.js` (1-120) + `api/admin-users.js` (1-120) + `lib/vps-data-fetcher.js` (230-389) + `lib/report-helpers.js` (1-140) + `lib/daily-history-collector.js` (100-279) + `public/portfolio-command-center.js` (1-479) + `public/signal-gate-transparency.js` (1-200) + `public/pattern-map.js` (1-250)
-Sedang dikerjakan: FASE 3/6/7 sebagian.
+File terakhir dibaca: `api/maintenance-settings.js` (1-80) + `api/log.js` (1-100) + `api/register-user.js` (1-120)
+Sedang dikerjakan: FASE 8/9 sebagian.
+
+### PROGRES BATCH 4 (sesi ini)
+- `lib/daytrade-screener-engine-v7.js` TUNTAS (208 baris) — bersih.
+- `lib/candle-pattern-engine.js:230-309` (BUG-042 verified FIXED)
+- `lib/admin-users-handler.js:240-299` (BUG-032 verified FIXED)
+- `api/review-access.js` (BUG-013 masih ada) + `tools/run-build-test-suite.js` (BUG-002 masih ada) + `lib/admin-foreign-upload.js` (BUG-038 masih ada)
+- `api/register-user.js` (1-120), `api/log.js` (1-100), `api/maintenance-settings.js` (1-80) — semua kokoh
+- Dihitung: 453 test file vs 395 ter-kurasi = 58 test tak dijalankan CI
+
+### BELUM TUNTAS (prioritas sesi berikutnya)
+- `api/sector-hot.js` sisa: 3119-3450, 3638-9452, 9493-11585, 11706-14244, 14545-14808
+- `public/bandarmologi-runtime.js` sisa (1-750 sudah dibaca dari 5435)
+- Semua `lib/intraday-*` sisa (~20 file), `lib/telegram-*` sisa (~12 file), `lib/trade-plan-v2-*` (13 file)
+- `lib/context-ai-router-v4/v5/v6.js`, `lib/analyze-legacy.js`, `lib/chart-analysis-*`
+- Sisa `public/*.js` (~40 file), `public/*.html`, `public/*.css`
+- `tools/` (~100 file), `supabase/*.sql` (56 migrasi), `.github/workflows/*` (12), `scripts/`, `deploy/`
+- `test/` (~453 file), 18 dokumen audit lama lain (AUDIT_SCREENER_*, AUDIT_KLASTER_*, dll)
+
+Temuan kumulatif: 1 CRITICAL, 16 HIGH, 15 MEDIUM, 6 LOW (38 temuan).
 
 ### PROGRES TAMBAHAN (batch ke-3)
 Sudah dibaca tuntas (batch ke-3):

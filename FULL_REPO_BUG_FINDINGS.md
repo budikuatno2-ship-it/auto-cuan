@@ -2,10 +2,11 @@
 
 Hasil audit mendalam lintas repo. Branch kerja: `audit/full-repo-deep-dive`.
 
-## RINGKASAN SESI INI
+## RINGKASAN
 
-File kode dibaca tuntas sesi ini: 46 file (daftar lengkap di `FULL_REPO_AUDIT_LOG.md`).
-Total temuan: 1 CRITICAL, 14 HIGH, 7 MEDIUM, 4 LOW (26 temuan).
+Total file kode dibaca tuntas: ~90 file (daftar lengkap di `FULL_REPO_AUDIT_LOG.md`).
+Total temuan: **1 CRITICAL, 16 HIGH, 15 MEDIUM, 6 LOW (38 temuan)**.
+Delapan klaim dokumen audit lama diverifikasi ulang langsung ke kode — **3 klaim "sudah selesai" ternyata BELUM diperbaiki**.
 
 ### Modul dengan temuan CRITICAL/HIGH (prioritas batch perbaikan berikutnya)
 1. **Pipeline Harga** — `api/quote.js` vs `api/candles.js` definisi harga terakhir berbeda (CRITICAL); pivot dari candle belum close (HIGH).
