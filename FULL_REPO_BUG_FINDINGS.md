@@ -25,8 +25,30 @@ Setiap temuan wajib punya lokasi + kutipan + penjelasan + bukti + arah perbaikan
 Semua klaim dokumen audit lama TIDAK diwarisi — divertifikasi ulang dari kode kini.
 
 Status: **AUDIT BERJALAN — BELUM SELESAI**. Modul yang belum dibaca belum tercantum di sini.
-Total temuan sejauh ini: 1 CRITICAL, 17 HIGH, 16 MEDIUM, 10 LOW.
+Total temuan sejauh ini: 1 CRITICAL, 17 HIGH, 17 MEDIUM, 10 LOW.
 (1 temuan pernah dicatat lalu DITARIK setelah verifikasi ulang — lihat bagian "DITARIK".)
+
+## MODUL: Context AI Router v4 (lib/context-ai-router-v4.js)
+
+### [MEDIUM] Katalog model WeizeRouter di-hardcode sebagai daftar fallback, mencampur model yang belum tentu ada dengan daftar CATALOG
+- **Lokasi:** [`lib/context-ai-router-v4.js:99-125`](lib/context-ai-router-v4.js:99)
+- **Kutipan kode bermasalah:**
+  ```js
+  const CATALOG = Object.freeze([
+    'wz/gpt-5.6-sol','wz/claude-opus-5','wz/claude-opus-4.8', ... 'wz/deepseek-v4-pro-none'
+  ]);
+  const DEFAULT_STOCK = Object.freeze(['wz/gpt-5.6-sol','wz/claude-sonnet-4.6', ...]);
+  ...
+  function configuredModels(source, task) {
+    return economicalOrder(envModels(source, task).concat(defaultsFor(source, task), split(process.env.PORTFOLIO_AI_MODELS), CATALOG), source, task);
+  }
+  ```
+- **Penjelasan:** `configuredModels` **selalu** menambahkan seluruh `CATALOG` (44 nama model) ke daftar kandidat. Jadi setiap request ke router v4 akan mencoba nama model hardcoded dari repo, termasuk yang mungkin sudah tidak dilayani provider. Komentar di file mengakui provider mengembalikan `wz_model_temporarily_unavailable` untuk semua route katalog-valid, dan ada latch outage instance-wide — artinya jalur ini secara rutin gagal dan jatuh ke fallback. Karena CATALOG adalah konstanta source (bukan env), mengubah model yang dilayani provider menuntut perubahan kode + deploy. Ini juga memperluas masalah "nama model tersebar di banyak modul" yang sudah tercatat (narasi, provider, safety-net, chart-analysis).
+- **Bukti verifikasi riil:** Bukti kode; komentar internal file (baris 72-90) mengonfirmasi kegagalan produksi nyata pada jalur ini.
+- **Usulan arah perbaikan:** Pindahkan katalog ke env/konfigurasi (atau hapus jalur v4 yang sudah dikonfirmasi tidak melayani inference), agar satu sumber daftar model saja.
+
+### Catatan tuntas (tanpa bug) — `lib/intraday-volume-pace.js`
+- `dateInJakarta` memakai `Intl.DateTimeFormat` timeZone Asia/Jakarta (BENAR untuk WIB), `tradingSchedule` membedakan Jumat (270 menit) vs Senin-Kamis (330 menit) sesuai jam bursa IDX, `sessionProgress` menangani BEFORE_OPEN/BREAK/AFTER_CLOSE, dan baseline volume dihitung eksklusif candle sesi berjalan. Kokoh.
 
 ### [HIGH] Data insider FABRIKASI diduplikasi di sisi klien (`FALLBACK_INSIDER_DATA`) — semua nama tak dikenal jatuh ke Belvin Tannadi
 - **Lokasi:** [`public/bandarmologi-runtime.js:3041-3150`](public/bandarmologi-runtime.js:3041) dan `:3161-3173`
@@ -50,7 +72,8 @@ Total temuan sejauh ini: 1 CRITICAL, 17 HIGH, 16 MEDIUM, 10 LOW.
   ```
 - **Penjelasan:** Ini menggandakan masalah temuan HIGH sebelumnya (`SAMPLE_INSIDER_UNIVERSE` di `lib/insider-network-service.js`) langsung di dalam bundle browser. Akibatnya, meskipun backend diperbaiki kelak, UI masih akan menampilkan graf insider karangan: `getEffectiveInsiderGraph` mengembalikan data palsu untuk nama yang dikenal, dan untuk nama APA PUN yang tidak dikenal ia mengembalikan **Belvin Tannadi** — lengkap dengan harga, jumlah lembar, persentase, tanggal. Di halaman "Jejaring Insider", user dapat mencari sembarang nama dan mendapat graf "relasi insider" fiktif tanpa penanda apa pun bahwa itu data contoh. Ini risiko kredibilitas tinggi pada fitur yang menyajikan klaim kepemilikan.
 - **Bukti verifikasi riil:** Bukti kode: literal data identik dengan versi backend; fallback terakhir adalah entri tetap. `getEffectiveSearchInsiders` juga membaca `FALLBACK_INSIDER_DATA` saat service kosong.
-- **Usulan arah perbaikan:** Hapus `FALLBACK_INSIDER_DATA`; tampilkan estado "belum ada data relasi" bila service tidak mengembalikan hasil. Jangan pernah mengembalikan entri tertentu untuk nama tak dikenal.
+- **Bukti tambahan (verifikasi perilaku):** [`public/bandarmologi-runtime.js:3812-3814`](public/bandarmologi-runtime.js:3812) menetapkan `activeInsiderNetworkEntity = 'Belvin Tannadi'` sebagai default saat tab dibuka, sehingga tampilan awal halaman Jejaring Insider selalu memuat satu tokoh contoh dari data karangan. Cache `FALLBACK_INSIDER_DATA` juga ditimpa data live saat VPS merespons ([`:3229`](public/bandarmologi-runtime.js:3229), `:3248`), jadi entri palsu dan nyata bercampur dalam satu map tanpa penanda.
+- **Usulan arah perbaikan:** Hapus `FALLBACK_INSIDER_DATA`; tampilkan estado "belum ada data relasi" bila service tidak mengembalikan hasil. Jangan pernah mengembalikan entri tertentu untuk nama tak dikenal, dan jangan jadikan tokoh contoh sebagai default tab.
 
 ### DITARIK (diverifikasi ulang = BUKAN bug) — recall volume pace v7 vs level yang dipublikasikan
 - **Lokasi:** [`lib/daytrade-screener-engine-v7.js:120-134`](lib/daytrade-screener-engine-v7.js:120)

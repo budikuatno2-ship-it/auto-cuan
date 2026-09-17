@@ -9,8 +9,16 @@ Aturan: BACA baris-per-baris, JANGAN sampling. JANGAN percaya klaim dokumen lama
 Status per modul: `[ ]` belum, `[-]` sedang, `[x]` tuntas.
 "Tuntas" = SEMUA file .js/.html/.css di modul itu benar-benar dibaca isinya, bukan sekilas nama.
 
-File terakhir dibaca: `api/maintenance-settings.js` (1-80) + `api/log.js` (1-100) + `api/register-user.js` (1-120)
-Sedang dikerjakan: FASE 8/9 sebagian.
+File terakhir dibaca: `api/sector-hot.js` 9937 · `public/bandarmologi-runtime.js` 3900 · `lib/context-ai-router-v4.js` 1-300 · `lib/intraday-volume-pace.js` 1-250
+Sedang dikerjakan: FASE 3 (monster files) + FASE 2 (AI router lama)
+
+### POSISI BACA FILE MONSTER (WAJIB DILANJUT SESI BERIKUTNYA — jangan ulang)
+- `api/sector-hot.js` (14.808 baris): sudah dibaca **1-3119, 3450-3637, 5738-9937, 11586-11705, 13643-13697, 14245-14544, 9453-9492**. BELUM: 3119-3450, 3638-5737, 9938-11585, 11706-13642, 13698-14244, 14545-14808.
+- `public/bandarmologi-runtime.js` (5.435 baris): sudah dibaca **1-3900**. BELUM: 3901-5435.
+- `lib/daytrade-screener-engine.js` TUNTAS. `lib/daytrade-screener-engine-v7.js` TUNTAS. `lib/idx-tick-normalization.js` baru 1-899 (belum 900-1182).
+- `lib/context-ai-router-v4.js` baru 1-300 (belum 301-1162); v5/v6 belum disentuh.
+
+Temuan kumulatif: 1 CRITICAL, 17 HIGH, 17 MEDIUM, 10 LOW (1 ditarik).
 
 ### PROGRES BATCH 4 (sesi ini)
 - `lib/daytrade-screener-engine-v7.js` TUNTAS (208 baris) — bersih.
