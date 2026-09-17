@@ -29,7 +29,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 11** — Syarat Konfirmasi Candle Close Sebelum Alert Entry Zone
 - [x] **Batch 12** — Setup Ecosystem Process Manager (PM2)
 - [x] **Batch 13** — Skrip Deploy Otomatis & Atomik (Git Pull + PM2 Restart)
-- [ ] **Batch 14** — Test Integrasi Seluruh Guard
+- [x] **Batch 14** — Test Integrasi Seluruh Guard
 - [ ] **Batch 15** — Regression Test Data Historis Nyata (SSMS, KAEF, SMGR, IMJS, INKP)
 - [ ] **Batch 16** — Audit Ketikan Nyasar & Integritas Kode
 - [ ] **Batch 17** — Validasi Penuh Sintaks & Full Regression Test Suite
@@ -343,3 +343,24 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
   - `node --test test/atomic-deploy.test.js`: 6/6 passed
     - Tree kotor → abort; revisi sama → no-op; test gagal → rollback tanpa reload; test lolos → reload; gate test hanya dilewati bila `--skip-tests`.
   - `npm test`: **388/388 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 14: Test Integrasi Seluruh Guard
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/integration-guards-test`
+- **File Dimodifikasi:**
+  - [`test/guard-pipeline-integration.test.js`](test/guard-pipeline-integration.test.js): Test integrasi lintas-guard baru (10 test suites).
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Temuan Audit:**
+  - Setiap guard dari Batch 2–13 punya test terisolasi masing-masing, tetapi **tidak ada** test yang membuktikan guard-guard tersebut **terkomposisi** sebagai satu pipeline ring (defense in depth).
+  - Tidak ada cross-guard invariant: satu guard gagal (mis. candle belum close) harus memveto kandidat apa pun isi guard lain (tidak ada jalur samping).
+  - Tidak ada test yang memverifikasi urutan deploy (test-gate sebelum reload) menyatu dengan guard runtime.
+- **Guard yang Diuji (komposisi):**
+  - Pipeline `runGuardPipeline()` meniru jalur broadcast nyata: Market Hours → R/R → Volume Breakout → Candle Close → Public Telegram Gate → `PASS`.
+  - **Cross-guard invariant:** market closed memveto kandidat sempurna; R/R rendah memveto sebelum volume/close dikonsultasi; volume kering memveto kandidat R/R tinggi; candle belum close memveto kandidat volume/RR kuat; wick live → `NEEDS_CLOSE_CONFIRMATION` + diblokir `candidatePassesPublicTelegramSafetyGate`.
+  - **Lapisan alert:** alert yang lolos gate lalu di-dedup (cooldown) dan di-throttle (`acquireSendSlot`); upgrade netral → confirmed-buy menembus cooldown.
+  - **Lapisan deploy:** `deriveDeployDecision` tidak pernah reload revisi yang test-nya gagal.
+- **Hasil Test:**
+  - `node --check test/guard-pipeline-integration.test.js`: VALID; `curated-build-tests.json` JSON VALID.
+  - `node --test test/guard-pipeline-integration.test.js`: 10/10 passed.
+  - `npm test`: **389/389 test files passed (100% lolos, 0 fail, 0 skipped)**
