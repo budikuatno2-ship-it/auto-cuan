@@ -284,6 +284,7 @@
   "test/telegram-monitor.test.js",
   "test/telegram-no-candidate-silence.test.js",
   "test/telegram-notifier-rate-limit.test.js",
+  "test/telegram-notifier-throttling.test.js",
   "test/telegram-public-safety.test.js",
   "test/telegram-retry-safe-observability.test.js",
   "test/telegram-templates.test.js",
