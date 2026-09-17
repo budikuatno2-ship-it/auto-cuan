@@ -22,7 +22,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 4** — Audit & Perbaikan Crontab / Schedule VPS (PR #670)
 - [x] **Batch 5** — Filter Minimum Risk/Reward Ratio Sentral (PR #671)
 - [x] **Batch 6** — Terapkan Filter R/R ke Klasifikasi Radar & Entry Zone
-- [ ] **Batch 7** — Kunci Transisi Status Revalidasi (NEEDS_REVALIDATION)
+- [x] **Batch 7** — Kunci Revalidasi Sinyal & R/R Gate Jalur Swing (PR #673)
 - [ ] **Batch 8** — Syarat Konfirmasi Volume Breakout untuk Revalidasi
 - [ ] **Batch 9** — Desain & Modul State Machine Alert (Anti-Duplikat)
 - [ ] **Batch 10** — Implementasi Alert Throttling di Telegram Notifier
@@ -164,3 +164,26 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
     - Sub-threshold 1.2x & 1.49x ditolak; batas 1.5x lolos; ideal 2.5x mencapai `A_PLUS_SETUP`.
     - R/R tidak valid (undefined/null/0/negatif/NaN) diperlakukan gagal gate.
   - `npm test`: **381/381 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 7: Kunci Revalidasi Sinyal & R/R Gate Jalur Swing
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/swing-rr-gate-and-revalidation`
+- **File Dimodifikasi:**
+  - [`api/sector-hot.js`](api/sector-hot.js): Import `passesRiskRewardFilter` & `MIN_RR_RATIO` dari [`lib/screener-config.js`](lib/screener-config.js), lalu memasang **Hard R/R Gate** pada jalur fallback digest Swing Konglo & Swing Non-Konglo.
+  - [`test/swing-screener-rr-gate.test.js`](test/swing-screener-rr-gate.test.js): Unit test regresi baru (9 test suites).
+  - [`test/auto-swing-telegram-digest.test.js`](test/auto-swing-telegram-digest.test.js): Penyesuaian fixture `digestMonitorRow` (R/R 1.5x) & ekspektasi dua test Hindari agar konsisten dengan gate baru.
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Akar Masalah yang Ditutup (Temuan Batch 0):**
+  - `sendSwingKongloTelegramNotification()` & `sendSwingNkTelegramNotification()` membangun `strictCandidates` (lolos `verifyHighConvictionTelegramSignal` → R/R >= 1.8x). Namun saat `strictCandidates` kosong, sistem fallback ke `digestCandidates`.
+  - Gate digest [`candidatePassesTelegramCandidateDigestGate()`](api/sector-hot.js:5223) hanya menolak `rr <= 0` — **tidak** menegakkan ambang R/R minimum. Akibatnya emiten Tier 2 (R/R 1.3x) lolos ke broadcast tanpa filter R/R.
+- **Guard yang Terpasang:**
+  - Jalur `digestCandidates` (Konglo & Non-Konglo) kini difilter dengan `passesRiskRewardFilter(r, MIN_RR_RATIO)` (minimum 1.5x). Kandidat dengan R/R < 1.5x **di-drop** dan tidak pernah masuk `nonAvoid`/tier/finalList, sehingga tidak disiarkan sebagai sinyal beli.
+  - Jalur `strictCandidates` tetap memakai hard gate high-conviction 1.8x via [`verifySwingHighConviction()`](lib/swing-screener-engine.js:230) — tidak diubah.
+- **Hasil Test:**
+  - `node --check api/sector-hot.js` & `node --check test/swing-screener-rr-gate.test.js`: VALID
+  - `node --test test/swing-screener-rr-gate.test.js`: 9/9 passed
+    - Kandidat swing fallback R/R 1.3x terbukti DITOLAK dari dispatch sinyal beli Telegram (Konglo & Non-Konglo).
+    - Kandidat R/R >= 1.8x lolos `verifySwingHighConviction`; R/R >= 1.5x lolos gate digest.
+    - R/R invalid/null/0 ditolak dengan aman tanpa throw.
+  - `npm test`: **382/382 test files passed (100% lolos, 0 fail, 0 skipped)**
