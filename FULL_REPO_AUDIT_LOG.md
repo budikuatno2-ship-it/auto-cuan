@@ -9,8 +9,11 @@ Aturan: BACA baris-per-baris, JANGAN sampling. JANGAN percaya klaim dokumen lama
 Status per modul: `[ ]` belum, `[-]` sedang, `[x]` tuntas.
 "Tuntas" = SEMUA file .js/.html/.css di modul itu benar-benar dibaca isinya, bukan sekilas nama.
 
-File terakhir dibaca: `api/sector-hot.js` 9937 · `public/bandarmologi-runtime.js` 3900 · `lib/context-ai-router-v4.js` 1-300 · `lib/intraday-volume-pace.js` 1-250
-Sedang dikerjakan: FASE 3 (monster files) + FASE 2 (AI router lama)
+File terakhir dibaca: `public/bandarmologi-runtime.js` 5435 (TUNTAS 100%) · `api/sector-hot.js` 11337
+Sedang dikerjakan: FASE 3 (sector-hot sisa) + FASE 2 (AI router lama)
+
+### TUNTAS BARU: `public/bandarmologi-runtime.js` (5.435 baris) — SEMUA TERBACA
+Temuan di file ini: 1 HIGH (FALLBACK_INSIDER_DATA fabrikasi), 1 MEDIUM (persentase missing→0.00%), 3 LOW (2 literal tanggal, 1 var duplikat).
 
 ### POSISI BACA FILE MONSTER (WAJIB DILANJUT SESI BERIKUTNYA — jangan ulang)
 - `api/sector-hot.js` (14.808 baris): sudah dibaca **1-3119, 3450-3637, 5738-9937, 11586-11705, 13643-13697, 14245-14544, 9453-9492**. BELUM: 3119-3450, 3638-5737, 9938-11585, 11706-13642, 13698-14244, 14545-14808.

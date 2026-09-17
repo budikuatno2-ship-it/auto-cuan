@@ -25,7 +25,28 @@ Setiap temuan wajib punya lokasi + kutipan + penjelasan + bukti + arah perbaikan
 Semua klaim dokumen audit lama TIDAK diwarisi — divertifikasi ulang dari kode kini.
 
 Status: **AUDIT BERJALAN — BELUM SELESAI**. Modul yang belum dibaca belum tercantum di sini.
-Total temuan sejauh ini: 1 CRITICAL, 17 HIGH, 18 MEDIUM, 11 LOW.
+Total temuan sejauh ini: 1 CRITICAL, 17 HIGH, 19 MEDIUM, 11 LOW.
+
+### [MEDIUM] Tabel "Daftar Pemegang Saham & Insider": persentase yang HILANG dirender "0.00%" (missing disajikan sebagai nol)
+- **Lokasi:** [`public/bandarmologi-runtime.js:3728-3731`](public/bandarmologi-runtime.js:3728) dan `:3754`
+- **Kutipan kode bermasalah:**
+  ```js
+  var pct = (r.percentage == null || r.percentage === '')
+    ? 0
+    : (typeof r.percentage === 'number' ? r.percentage : parseFloat(String(r.percentage).replace(/[%\s]/g, '')));
+  if (!Number.isFinite(pct)) pct = 0;
+  ...
+  html += '... ' + (r.percentage_formatted || (pct.toFixed(2) + '%')) + ' ...';
+  ```
+- **Penjelasan:** Ketika data persentase kepemilikan tidak tersedia, `pct` dipaksa menjadi `0`, lalu dirender sebagai **"0.00%"** — persis kelas bug yang di seluruh repo ini secara eksplisit dijaga (`public/portfolio-command-center.js:18-43` menulis "MISSING DATA IS NOT ZERO" dan `lib/report-helpers.js` menangani null dengan hati-hati). Di halaman Jejaring Insider, seorang pemegang saham tanpa data persentase akan tampak seolah-olah memegang **0%** saham. Pada fitur yang menyajikan klaim kepemilikan, ini informasi yang salah, bukan kosmetik.
+- **Bukti verifikasi riil:** Bukti kode: `0` sintetis dari cabang `== null`.
+- **Usulan arah perbaikan:** Tampilkan `'—'` bila `percentage` null/kosong; jangan sintesis 0.
+
+### Catatan tuntas — `public/bandarmologi-runtime.js` TUNTAS (5.435 baris, semua terbaca)
+- `loadBandarmologiTab`/`loadBandarmologiIntel`/`loadBrokerHunter` memakai pola request-sequence + AbortController + timer yang benar dan konsisten.
+- `computeConcentrationRatioMetrics` memakai rumus CR3/CR5 kanonik yang sama dengan server (perbaikan PR3 terkonfirmasi, termasuk guard sub-top-5 agar CR tidak mentok 100%).
+- `stepBackToTradingDayIso` mencegah tanggal non-bursa ditampilkan (perbaikan PR2 terkonfirmasi), walaupun masih ada default literal (temuan LOW terpisah).
+- Semua `innerHTML` yang memuat data dinamis melewati `escapeHtml`; atribut `onclick` memakai `escapeHtml` juga.
 
 ### [MEDIUM] `api/sector-hot.js` Non-Konglo juga menyimpan `price_date` dari potongan UTC naif
 - **Lokasi:** [`api/sector-hot.js:11060`](api/sector-hot.js:11060)
