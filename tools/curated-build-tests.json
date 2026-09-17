@@ -1,4 +1,5 @@
 [
+  "test/market-hours-guard.test.js",
   "test/zero-defect-cluster-recovery.test.js",
   "test/swing-screener-and-telegram-integrity.test.js",
   "test/ai-eval-once.test.js",

@@ -17,7 +17,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 
 - [x] **Batch 0** — Audit Arsitektur & Logika Penilaian Seluruh Screener (PR #665, commit `fd2a809`)
 - [x] **Batch 1** — Sinkronisasi Baseline & Setup Log (PR #666, commit `a562ca4`)
-- [ ] **Batch 2** — Modul Market Hours Guard Terpusat
+- [x] **Batch 2** — Modul Market Hours Guard Terpusat (PR #668)
 - [ ] **Batch 3** — Integrasi Market Hours Guard ke Broadcast Notifier
 - [ ] **Batch 4** — Audit & Perbaikan Crontab / Schedule VPS
 - [ ] **Batch 5** — Filter Minimum Risk/Reward Ratio Sentral
@@ -57,7 +57,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 ### Batch 1: Sinkronisasi Baseline & Setup Log
 - **Status:** **SELESAI**
 - **Tanggal:** 2026-09-17
-- **PR:** #666 (`a562ca4`)
+- **PR:** #666 (`a562ca4`) & #667 (`d011c47`)
 - **Baseline Sintaks JS:**
   - Total File `.js` Diperiksa: **788 file** (seluruh repo di luar `node_modules` dan `.git`)
   - Status `node --check`: **100% VALID** (0 syntax error)
@@ -66,3 +66,25 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
   - Status Eksekusi: **377/377 test files PASSED (100% Lolos)**
   - Total Subtests: **317 subtests passed, 0 fail, 0 skipped, 0 cancelled**
   - Pre-Build Tooling Validations: 6/6 passed (`apply-production-hotfixes`, `apply-desktop-header-center`, `apply-ui-bugfix-pack-v1`, `apply-screener-lifecycle-ui`, `validate-auth-recovery-v2`, `validate-ai-eval-once`)
+
+### Batch 2: Modul Market Hours Guard Terpusat
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **PR:** #668
+- **Modul Baru:** [`lib/market-hours-guard.js`](lib/market-hours-guard.js)
+- **Unit Test Baru:** [`test/market-hours-guard.test.js`](test/market-hours-guard.test.js) (5 test suites, 100% pass)
+- **Jadwal Resmi IDX (WIB) yang Diimplementasikan:**
+  - *Senin s/d Kamis:*
+    - Sesi 1: 09:00 s/d 11:58 WIB (`SESSION_1`, `isMarketOpen === true`)
+    - Istirahat: 11:58 s/d 13:30 WIB (`CLOSED`, `isMarketOpen === false` — kasus 12:45 WIB terblokir mutlak)
+    - Sesi 2: 13:30 s/d 15:45 WIB (`SESSION_2`, `isMarketOpen === true`)
+    - Di luar jam tersebut: `CLOSED` (`isMarketOpen === false`)
+  - *Khusus Hari Jumat:*
+    - Sesi 1: 09:00 s/d 11:28 WIB (`SESSION_1`, `isMarketOpen === true`)
+    - Istirahat Sholat Jumat: 11:28 s/d 14:00 WIB (`CLOSED`, `isMarketOpen === false`)
+    - Sesi 2: 14:00 s/d 15:45 WIB (`SESSION_2`, `isMarketOpen === true`)
+    - Di luar jam tersebut: `CLOSED` (`isMarketOpen === false`)
+  - *Akhir Pekan (Sabtu/Minggu) & Libur:* Mutlak `CLOSED` (`isMarketOpen === false`).
+- **Verifikasi Test Suite:**
+  - `node --test test/market-hours-guard.test.js`: 5/5 pass
+  - `npm test`: 378/378 test files PASSED (100% lolos)
