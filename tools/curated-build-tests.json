@@ -390,5 +390,6 @@
   "test/guard-pipeline-integration.test.js",
   "test/historical-incident-regression.test.js",
   "test/code-integrity-no-duplicate-definitions.test.js",
-  "test/full-syntax-validation.test.js"
+  "test/full-syntax-validation.test.js",
+  "test/vps-deploy-preflight.test.js"
 ]
