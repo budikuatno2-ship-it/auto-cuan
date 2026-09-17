@@ -25,6 +25,8 @@ function sendVercelTelemetry(msg) {
 
 // 1. Run Pre-build tools & validators
 const preBuildScripts = [
+  // Batch 17: parse-check every repo .js file + verify curated list integrity.
+  'tools/validate-full-syntax.js',
   'tools/apply-production-hotfixes.js',
   'tools/apply-desktop-header-center.js',
   'tools/apply-ui-bugfix-pack-v1.js',
