@@ -31,7 +31,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 13** — Skrip Deploy Otomatis & Atomik (Git Pull + PM2 Restart)
 - [x] **Batch 14** — Test Integrasi Seluruh Guard
 - [x] **Batch 15** — Regression Test Data Historis Nyata (SSMS, KAEF, SMGR, IMJS, INKP)
-- [ ] **Batch 16** — Audit Ketikan Nyasar & Integritas Kode
+- [x] **Batch 16** — Audit Ketikan Nyasar & Integritas Kode
 - [ ] **Batch 17** — Validasi Penuh Sintaks & Full Regression Test Suite
 - [ ] **Batch 18** — Deploy Penuh ke VPS dengan PM2
 - [ ] **Batch 19** — Pemantauan Sesi Bursa Langsung (Live Monitoring)
@@ -390,3 +390,26 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
   - `node --check test/historical-incident-regression.test.js`: VALID; `curated-build-tests.json` JSON VALID.
   - `node --test test/historical-incident-regression.test.js`: 9/9 passed.
   - `npm test`: **390/390 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 16: Audit Ketikan Nyasar & Integritas Kode
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/stray-typo-and-integrity-audit`
+- **File Dimodifikasi:**
+  - [`lib/daytrade-intraday-dry-run-gate.js`](lib/daytrade-intraday-dry-run-gate.js): Menghapus definisi `recommendationForStatus` yang duplikat.
+  - [`lib/daytrade-intraday-staged-enable-runbook.js`](lib/daytrade-intraday-staged-enable-runbook.js): Menghapus definisi `recommendationForStatus` yang duplikat.
+  - [`test/guard-pipeline-integration.test.js`](test/guard-pipeline-integration.test.js): Perbaikan typo `weakenning` → `weakening`.
+  - [`test/code-integrity-no-duplicate-definitions.test.js`](test/code-integrity-no-duplicate-definitions.test.js): Regresi integritas kode baru (4 test suites).
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Temuan Audit:**
+  - **Duplikat definisi fungsi (integritas):** `recommendationForStatus` dideklarasikan DUA KALI di [`lib/daytrade-intraday-dry-run-gate.js`](lib/daytrade-intraday-dry-run-gate.js) (baris 374 & 658) dan [`lib/daytrade-intraday-staged-enable-runbook.js`](lib/daytrade-intraday-staged-enable-runbook.js) (baris 121 & 409). Definisi bawah men-shadow yang atas secara diam-diam — identik saat ini sehingga perilaku tidak berubah, tetapi hazard pemeliharaan (edit pada definisi pertama tidak akan pernah berlaku).
+  - **Typo nyasar:** `weakenning` pada nama test di [`test/guard-pipeline-integration.test.js`](test/guard-pipeline-integration.test.js) (diperkenalkan Batch 14).
+  - **Bersih (diverifikasi):** tidak ada mojibake/replacement char di `lib/`, `tools/`, `api/`; tidak ada `module.exports` ganda; sapuan salah-ketik luas (recieve/seperate/occured/treshold/dll.) tidak menemukan temuan lain.
+- **Guard yang Terpasang:**
+  - Definisi duplikat dihapus (menyisakan satu definisi + komentar penjelas).
+  - Test integritas memindai file guard/screener dan gagal bila ada deklarasi fungsi top-level duplikat.
+  - Test memverifikasi kedua modul tetap mengekspor `recommendationForStatus` yang berfungsi, dan typo `weakenning` tidak kembali.
+- **Hasil Test:**
+  - `node --check` pada 4 file tersentuh: VALID; `curated-build-tests.json` JSON VALID.
+  - `node --test test/code-integrity-no-duplicate-definitions.test.js test/guard-pipeline-integration.test.js`: 14/14 passed.
+  - `npm test`: **391/391 test files passed (100% lolos, 0 fail, 0 skipped)**

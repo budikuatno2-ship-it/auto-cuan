@@ -121,7 +121,7 @@ test('Batch 14: a live wick yields NEEDS_CLOSE_CONFIRMATION and is blocked by th
     Object.assign({}, c, label), 'telegram'), false);
 });
 
-test('Batch 14: an unconfirmed breakout cannot be promoted by weakenning another guard', () => {
+test('Batch 14: an unconfirmed breakout cannot be promoted by weakening another guard', () => {
   // Even with a perfect R/R and huge volume, the close gate alone keeps it out.
   const c = healthyCandidate({ risk_reward: 5.0, volume_ratio: 9.0, candle_forming: true });
   assert.equal(runGuardPipeline(c, { marketTimeIso: wibToUtcIso(THU, '10:00') }), 'candle_not_closed');
