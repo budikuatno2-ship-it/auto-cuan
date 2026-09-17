@@ -494,13 +494,14 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
   - [`SCREENER_BUGFIX_LOG.md`](SCREENER_BUGFIX_LOG.md): Sign-off 20 batch + laporan eksekutif.
   - [`SCREENER_ARCHITECTURE_AUDIT.md`](SCREENER_ARCHITECTURE_AUDIT.md): §7 Status Penyelesaian Temuan (F1–F8 + 4 akar masalah).
   - [`deploy/vps/README.md`](deploy/vps/README.md): Sinkronisasi dengan `live-session-monitor.js`.
+  - [`test/batch-consolidation-signoff.test.js`](test/batch-consolidation-signoff.test.js): Sign-off test konsolidasi (5 test suites).
 - **Konsolidasi Dokumentasi:**
   - Seluruh 20 batch tercatat lengkap dengan PR/commit, rincian perbaikan, dan hasil test.
   - Temuan audit F1–F8 dan 4 akar masalah ditandai TERSELESAIKAN dengan bukti teknis di [`SCREENER_ARCHITECTURE_AUDIT.md`](SCREENER_ARCHITECTURE_AUDIT.md) §7.
   - Runbook VPS disinkronkan dengan tools baru (preflight, atomic deploy, live monitor).
 - **Hasil Test:**
   - `npm run validate:syntax`: **808 file .js parsed cleanly**.
-  - `npm test`: **394/394 test files passed (100% lolos, 0 fail, 0 skipped)**
+  - `npm test`: **395/395 test files passed (100% lolos, 0 fail, 0 skipped)**
 
 ---
 
@@ -554,9 +555,9 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 | Batch 17 | 392 |
 | Batch 18 | 393 |
 | Batch 19 | 394 |
-| **Batch 20 (final)** | **394 (100% lolos)** |
+| Batch 20 (final) | 395 (100% lolos) |
 
-Pertumbuhan bersih: **377 → 394 test files (+17)**. Ditambah pre-build gate
+Pertumbuhan bersih: **377 → 395 test files (+18)**. Ditambah pre-build gate
 [`tools/validate-full-syntax.js`](tools/validate-full-syntax.js) yang mem-parse **808 file `.js`** setiap build.
 
 ### Instruksi Operator — Deploy ke VPS
