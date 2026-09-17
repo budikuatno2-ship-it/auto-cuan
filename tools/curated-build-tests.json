@@ -383,5 +383,6 @@
   "test/risk-reward-filter.test.js",
   "test/daytrade-screener-status-rr.test.js",
   "test/screener-alert-dedup.test.js",
-  "test/volume-breakout-revalidation.test.js"
+  "test/volume-breakout-revalidation.test.js",
+  "test/candle-close-confirmation.test.js"
 ]
