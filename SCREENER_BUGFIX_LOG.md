@@ -32,7 +32,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 14** — Test Integrasi Seluruh Guard
 - [x] **Batch 15** — Regression Test Data Historis Nyata (SSMS, KAEF, SMGR, IMJS, INKP)
 - [x] **Batch 16** — Audit Ketikan Nyasar & Integritas Kode
-- [ ] **Batch 17** — Validasi Penuh Sintaks & Full Regression Test Suite
+- [x] **Batch 17** — Validasi Penuh Sintaks & Full Regression Test Suite
 - [ ] **Batch 18** — Deploy Penuh ke VPS dengan PM2
 - [ ] **Batch 19** — Pemantauan Sesi Bursa Langsung (Live Monitoring)
 - [ ] **Batch 20** — Laporan Akhir Konsolidasi & Cleanup
@@ -413,3 +413,28 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
   - `node --check` pada 4 file tersentuh: VALID; `curated-build-tests.json` JSON VALID.
   - `node --test test/code-integrity-no-duplicate-definitions.test.js test/guard-pipeline-integration.test.js`: 14/14 passed.
   - `npm test`: **391/391 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 17: Validasi Penuh Sintaks & Full Regression Test Suite
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/full-syntax-and-regression-validation`
+- **File Dimodifikasi:**
+  - [`tools/validate-full-syntax.js`](tools/validate-full-syntax.js): Validator sintaks seluruh repo baru.
+  - [`tools/run-build-test-suite.js`](tools/run-build-test-suite.js): Validator dijalankan sebagai langkah pre-build pertama (CI gate).
+  - [`package.json`](package.json): Skrip `validate:syntax`.
+  - [`test/full-syntax-validation.test.js`](test/full-syntax-validation.test.js): Unit test validasi sintaks (4 test suites).
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Temuan Audit:**
+  - Tidak ada tool validasi sintaks seluruh repo. [`tools/run-build-test-suite.js`](tools/run-build-test-suite.js) menjalankan pre-build validator & test suite, tetapi tidak pernah `node --check` ~804 file `.js` — pengecekan sintaks hanya dilakukan manual per batch.
+  - Runner membisukan entri `curated-build-tests.json` yang filenya tidak ada (filter `fs.existsSync`), sehingga path salah-ketik bisa mengecilkan cakupan tanpa membuat build gagal.
+  - Seluruh file `.js` repo adalah CommonJS (0 file ber-`import`/`export`), sehingga parse in-process via `node:vm` deterministik dan aman.
+- **Guard yang Terpasang:**
+  - `tools/validate-full-syntax.js` mem-parse SETIAP file `.js` (lib/tools/api/test/scripts/public/server.js) tanpa mengeksekusinya via `vm.Script` — ekuivalen `node --check` untuk seluruh file sekaligus.
+  - Memverifikasi setiap entri `curated-build-tests.json` menunjuk file yang benar-benar ada; keluar non-zero jika ada yang hilang.
+  - Dijalankan sebagai langkah **pre-build pertama** di [`tools/run-build-test-suite.js`](tools/run-build-test-suite.js), sehingga `npm test` dan Vercel build gagal lebih awal bila ada sintaks rusak atau cakupan test bocor.
+  - Primitif diekspor untuk pengujian: `collectJsFiles`, `checkFile`, `checkSyntax`, `checkCuratedTestList`.
+- **Hasil Test:**
+  - `node --check tools/validate-full-syntax.js test/full-syntax-validation.test.js`: VALID; `package.json` & `curated-build-tests.json` JSON VALID.
+  - `node tools/validate-full-syntax.js`: **804 file .js parsed cleanly**, 392 entri curated, 0 hilang.
+  - `node --test test/full-syntax-validation.test.js`: 4/4 passed (termasuk self-check deteksi file rusak & penerimaan file valid).
+  - `npm test`: **392/392 test files passed (100% lolos, 0 fail, 0 skipped)**
