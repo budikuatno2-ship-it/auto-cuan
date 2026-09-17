@@ -18,7 +18,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 0** — Audit Arsitektur & Logika Penilaian Seluruh Screener (PR #665, commit `fd2a809`)
 - [x] **Batch 1** — Sinkronisasi Baseline & Setup Log (PR #666, commit `a562ca4`)
 - [x] **Batch 2** — Modul Market Hours Guard Terpusat (PR #668)
-- [ ] **Batch 3** — Integrasi Market Hours Guard ke Broadcast Notifier
+- [x] **Batch 3** — Integrasi Market Hours Guard ke Broadcast Notifier (PR #669)
 - [ ] **Batch 4** — Audit & Perbaikan Crontab / Schedule VPS
 - [ ] **Batch 5** — Filter Minimum Risk/Reward Ratio Sentral
 - [ ] **Batch 6** — Terapkan Filter R/R ke Klasifikasi Radar & Entry Zone
@@ -88,3 +88,22 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - **Verifikasi Test Suite:**
   - `node --test test/market-hours-guard.test.js`: 5/5 pass
   - `npm test`: 378/378 test files PASSED (100% lolos)
+
+### Batch 3: Integrasi Market Hours Guard ke Broadcast Notifier
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **PR:** #669
+- **File Dimodifikasi:**
+  - [`lib/telegram-notifier.js`](lib/telegram-notifier.js): Memasang verifikasi `isMarketOpen()` pada `sendTelegramMessage`, `sendTelegramDocument`, `sendTelegramPhoto`, dan `sendTelegramPhotoUrl`.
+  - [`test/broadcast-market-guard.test.js`](test/broadcast-market-guard.test.js): Unit test integrasi pengujian blokir broadcast di luar jam bursa.
+  - [`test/telegram-notifier-rate-limit.test.js`](test/telegram-notifier-rate-limit.test.js): Penyesuaian test mock rate-limit dengan flag bypass.
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Ringkasan Guard yang Terpasang:**
+  - Pintu gerbang utama pengiriman Telegram publik kini memverifikasi sesi bursa sebelum payload dikirim.
+  - Menolak dan membatalkan pengiriman saat `isMarketOpen() === false` dengan logging eksplisit: `[MARKET_GUARD_BLOCKED] Broadcast cancelled: Market is CLOSED (Session: <session>, Time: <time_wib>)` dan mengembalikan payload standar `{ sent: false, skipped: true, reason: 'market_closed', session, time_wib }`.
+  - Kasus insiden 12:45 WIB terbukti diblokir 100% secara otomatis pada pintu terluar notifier.
+  - Sesi Sholat Jumat (11:28–14:00 WIB) dan akhir pekan terbukti diblokir 100%.
+  - Opsi explicit bypass `options.skip_market_guard === true` disediakan untuk keperluan test/debugging terisolasi.
+- **Hasil Test:**
+  - `node --test test/broadcast-market-guard.test.js`: 5/5 passed
+  - `npm test`: **379/379 test files passed (100% lolos, 0 fail, 0 skipped)**

@@ -32,7 +32,7 @@ test('sendTelegramMessage exposes Telegram 429 body retry_after metadata', async
     headers: { get: () => null },
     text: async () => JSON.stringify({ ok: false, parameters: { retry_after: 7 } })
   }), async () => {
-    const result = await notifier.sendTelegramMessage('test', { timeout_ms: 100 });
+    const result = await notifier.sendTelegramMessage('test', { timeout_ms: 100, skip_market_guard: true });
     assert.equal(result.sent, false);
     assert.equal(result.reason, 'rate_limited');
     assert.equal(result.status, 429);
@@ -47,7 +47,7 @@ test('sendTelegramMessage falls back to Retry-After header when Telegram body om
     headers: { get: (name) => String(name).toLowerCase() === 'retry-after' ? '11' : null },
     text: async () => JSON.stringify({ ok: false, description: 'Too Many Requests' })
   }), async () => {
-    const result = await notifier.sendTelegramMessage('test', { timeout_ms: 100 });
+    const result = await notifier.sendTelegramMessage('test', { timeout_ms: 100, skip_market_guard: true });
     assert.equal(result.sent, false);
     assert.equal(result.reason, 'rate_limited');
     assert.equal(result.status, 429);
