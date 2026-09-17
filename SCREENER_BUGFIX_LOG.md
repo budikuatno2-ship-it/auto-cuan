@@ -23,8 +23,8 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 5** — Filter Minimum Risk/Reward Ratio Sentral (PR #671)
 - [x] **Batch 6** — Terapkan Filter R/R ke Klasifikasi Radar & Entry Zone
 - [x] **Batch 7** — Kunci Revalidasi Sinyal & R/R Gate Jalur Swing (PR #673)
-- [ ] **Batch 8** — Syarat Konfirmasi Volume Breakout untuk Revalidasi
-- [ ] **Batch 9** — Desain & Modul State Machine Alert (Anti-Duplikat)
+- [x] **Batch 8** — Deduplikasi & Stateful Alert Tracking (Anti-Duplikat) (PR #674)
+- [ ] **Batch 9** — Syarat Konfirmasi Volume Breakout untuk Revalidasi
 - [ ] **Batch 10** — Implementasi Alert Throttling di Telegram Notifier
 - [ ] **Batch 11** — Syarat Konfirmasi Candle Close Sebelum Alert Entry Zone
 - [ ] **Batch 12** — Setup Ecosystem Process Manager (PM2)
@@ -187,3 +187,32 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
     - Kandidat R/R >= 1.8x lolos `verifySwingHighConviction`; R/R >= 1.5x lolos gate digest.
     - R/R invalid/null/0 ditolak dengan aman tanpa throw.
   - `npm test`: **382/382 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 8: Deduplikasi & Stateful Alert Tracking (Anti-Duplikat)
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/alert-dedup-and-state-tracking`
+- **Catatan Penomoran:** Checklist awal menempatkan "State Machine Alert (Anti-Duplikat)" di Batch 9 dan "Syarat Konfirmasi Volume Breakout" di Batch 8. Sesuai instruksi protokol lintas sesi, Batch 8 dikerjakan sebagai **Deduplikasi & Stateful Alert Tracking**; item "Volume Breakout Confirmation" digeser ke Batch 9.
+- **File Dimodifikasi:**
+  - [`lib/telegram-notifier.js`](lib/telegram-notifier.js): Menambahkan **stateful alert dedup / cooldown guard terpusat** pada pintu transport tunggal semua alert Telegram.
+  - [`test/screener-alert-dedup.test.js`](test/screener-alert-dedup.test.js): Unit test regresi baru (8 test suites).
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Akar Masalah yang Ditutup (Akar Masalah #4):**
+  - `lib/telegram-notifier.js` sebelumnya murni transport tanpa dedup/cooldown sama sekali — setiap pemanggil bisa menembak alert berulang (stateless pings).
+  - Modul cooldown yang sudah ada ([`lib/webhook-alert-engine.js`](lib/webhook-alert-engine.js)) **tidak terhubung ke jalur produksi mana pun** (hanya dipakai test) — sehingga dedup tidak pernah aktif di runtime.
+  - Jalur [`lib/intraday-fast-watcher-publisher.js`](lib/intraday-fast-watcher-publisher.js) hanya dedup terhadap baris DB yang sudah tersimpan, bukan terhadap pengiriman in-flight/recent.
+- **Guard yang Terpasang:**
+  - Cache in-memory `alertCooldownCache` (Map) dengan TTL sliding-window default **20 menit** (satu jendela sesi perdagangan).
+  - Guard bersifat **opt-in** via `options.alert_key` (atau `options.ticker`); tanpa key, perilaku lama tidak berubah (backward-compatible).
+  - Ticker yang sama dalam window cooldown **di-suppress otomatis** dengan logging `[ALERT_DEDUP_BLOCKED]` dan hasil `{ sent: false, skipped: true, reason: 'duplicate_suppressed' }`.
+  - **Bypass perubahan status signifikan:** upgrade ke status confirmed-buy (`A_PLUS`/`READY`/`TRADE_CANDIDATE`/`CONFIRMED`) atau downgrade ke `AVOID`/`SL_HIT`/`INVALID` selalu menembus cooldown.
+  - Cooldown hanya dicatat **setelah pengiriman sukses terkonfirmasi** (bukan saat gagal/timeout).
+  - Primitif diekspor untuk pengujian: `checkAlertCooldown`, `recordAlertCooldown`, `clearAlertCooldownCache`, `getAlertCooldownStatus`, `isDrasticAlertStatusChange`, `DEFAULT_ALERT_COOLDOWN_MS`.
+- **Hasil Test:**
+  - `node --check lib/telegram-notifier.js` & `node --check test/screener-alert-dedup.test.js`: VALID
+  - `node --test test/screener-alert-dedup.test.js`: 8/8 passed
+    - Alert pertama lolos & tercatat; duplikat dalam cooldown diblokir otomatis (tanpa hit network).
+    - Alert kembali diizinkan setelah window cooldown kedaluwarsa.
+    - Upgrade (Watchlist → Confirmed Buy) & downgrade (Normal → SL_HIT) menembus cooldown.
+    - Alert tanpa `alert_key`/`ticker` tidak pernah di-suppress (backward-compatible).
+  - `npm test`: **383/383 test files passed (100% lolos, 0 fail, 0 skipped)**
