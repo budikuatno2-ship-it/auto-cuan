@@ -381,5 +381,6 @@
   "test/auth-security-compliance-integrity.test.js",
   "test/risk-reward-filter.test.js",
   "test/daytrade-screener-status-rr.test.js",
-  "test/screener-alert-dedup.test.js"
+  "test/screener-alert-dedup.test.js",
+  "test/volume-breakout-revalidation.test.js"
 ]
