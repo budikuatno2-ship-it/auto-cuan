@@ -20,7 +20,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 2** — Modul Market Hours Guard Terpusat (PR #668)
 - [x] **Batch 3** — Integrasi Market Hours Guard ke Broadcast Notifier (PR #669)
 - [x] **Batch 4** — Audit & Perbaikan Crontab / Schedule VPS (PR #670)
-- [ ] **Batch 5** — Filter Minimum Risk/Reward Ratio Sentral
+- [x] **Batch 5** — Filter Minimum Risk/Reward Ratio Sentral (PR #671)
 - [ ] **Batch 6** — Terapkan Filter R/R ke Klasifikasi Radar & Entry Zone
 - [ ] **Batch 7** — Kunci Transisi Status Revalidasi (NEEDS_REVALIDATION)
 - [ ] **Batch 8** — Syarat Konfirmasi Volume Breakout untuk Revalidasi
@@ -122,3 +122,23 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - **Hasil Test:**
   - `node --test test/vps-monitor-local-runner.test.js test/telegram-monitor-local-runner.test.js`: 10/10 passed (100%)
   - `npm test`: **379/379 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 5: Filter Minimum Risk/Reward Ratio Sentral
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **PR:** #671
+- **Modul Baru:** [`lib/screener-config.js`](lib/screener-config.js)
+- **Konstanta Terpusat:**
+  - `MIN_RR_RATIO = 1.5` — ambang batas minimal R/R yang bisa ditoleransi.
+  - `IDEAL_RR_RATIO = 2.0` — rasio target ideal.
+- **Fungsi Filter:** `passesRiskRewardFilter(candidate, minRatio = MIN_RR_RATIO)`
+  - Mengekstrak R/R dari berbagai varian properti: `rr`, `rr_ratio`, `rrRatio`, `risk_reward`, `riskReward`, serta nested `levels.*`.
+  - Menangani nilai falsy/null/undefined/0/string/NaN/Infinity/negatif secara aman (return `false` tanpa throw).
+  - Mengembalikan `true` HANYA jika R/R numerik valid >= `minRatio`.
+- **Unit Test Baru:** [`test/risk-reward-filter.test.js`](test/risk-reward-filter.test.js) (7 test suites, 100% pass)
+  - Kasus insiden SSMS (R/R 1.0x) terbukti ditolak.
+  - Sub-threshold 1.2x & 1.49x ditolak; batas tepat 1.5x lolos; ideal 2.0x/2.5x/3.0x lolos.
+  - Edge case null/undefined/0/negatif/string invalid/NaN/Infinity aman tanpa throw.
+- **Hasil Test:**
+  - `node --test test/risk-reward-filter.test.js`: 7/7 passed
+  - `npm test`: **380/380 test files passed (100% lolos, 0 fail, 0 skipped)**
