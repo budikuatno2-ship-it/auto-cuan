@@ -24,7 +24,79 @@ Setiap temuan wajib punya lokasi + kutipan + penjelasan + bukti + arah perbaikan
 Semua klaim dokumen audit lama TIDAK diwarisi — divertifikasi ulang dari kode kini.
 
 Status: **AUDIT BERJALAN — BELUM SELESAI**. Modul yang belum dibaca belum tercantum di sini.
-Total temuan sejauh ini: 1 CRITICAL, 16 HIGH, 14 MEDIUM, 6 LOW.
+Total temuan sejauh ini: 1 CRITICAL, 16 HIGH, 15 MEDIUM, 6 LOW.
+
+## MODUL: CI / Test Suite (tools/run-build-test-suite.js, tools/curated-build-tests.json)
+
+### [MEDIUM] BUG-002 lama MASIH BELUM DIPERBAIKI — 58 file test tidak pernah dijalankan CI
+- **Lokasi:** [`tools/run-build-test-suite.js:69-70`](tools/run-build-test-suite.js:69) vs `tools/curated-build-tests.json`
+- **Kutipan kode bermasalah:**
+  ```js
+  const curatedTestFiles = JSON.parse(fs.readFileSync(curatedConfigFile, 'utf8'));
+  const existingFiles = curatedTestFiles.filter(f => fs.existsSync(path.join(ROOT_DIR, f)));
+  ```
+- **Penjelasan:** Dihitung langsung: `test/*.test.js` = **453 file**, entri di `curated-build-tests.json` = **395**. Selisih **58 file test tidak pernah dieksekusi** oleh `npm run build`/`npm test`. Dokumen lama menandainya "MENUNGGU KEPUTUSAN" dan memang belum ada validator yang menggagalkan build bila ada test tak terdaftar. Konsekuensi: regresi pada 58 file itu tidak akan tertangkap CI — termasuk beberapa test yang relevan dengan temuan di laporan ini (mis. `test/bandarmologi-fix-pack-regression.test.js` yang sedang terbuka di editor).
+- **Bukti verifikasi riil:** Perhitungan langsung dari filesystem vs isi JSON (bukan klaim dokumen).
+- **Usulan arah perbaikan:** Tambahkan validator di `run-build-test-suite.js` yang gagal bila ada `test/*.test.js` tidak terdaftar, lalu daftarkan 58 file yang hilang.
+
+### [HIGH] BUG-013 diperkuat — token review literal yang sama juga di-hardcode di runner build
+- **Lokasi:** [`tools/run-build-test-suite.js:9-10`](tools/run-build-test-suite.js:9)
+- **Kutipan kode bermasalah:**
+  ```js
+  const token = process.env.REVIEW_ACCESS_TOKEN || 'vercel-build-secure-token-entropy-minimum-32b';
+  process.env.REVIEW_ACCESS_TOKEN = token;
+  ```
+- **Penjelasan:** Literal `'vercel-build-secure-token-entropy-minimum-32b'` yang sama dengan fallback di [`api/review-access.js:42`](api/review-access.js:42) muncul lagi di runner build. Ini membuktikan token itu memang nilai yang dipakai sistem (bukan sekadar sisa), dan karena tertulis di dua file source, ia dapat dibaca siapa pun yang melihat repo. Di lingkungan Vercel, `api/review-access.js` menerimanya sebagai token sah → gate review terbuka dengan kredensial publik. **Menegaskan temuan HIGH sebelumnya dengan bukti kedua.**
+- **Bukti verifikasi riil:** Dua lokasi source berbeda memuat literal identik.
+- **Usulan arah perbaikan:** Hapus literal di kedua file; wajibkan env.
+
+
+### [LOW] BUG-042 lama SUDAH DIPERBAIKI — Hammer vs Hanging Man kini context-aware
+- **Lokasi:** [`lib/candle-pattern-engine.js:248-271`](lib/candle-pattern-engine.js:248)
+- **Kutipan kode (bukti perbaikan):**
+  ```js
+  // Context-aware trend helper for Hammer vs Hanging Man and Inverted Hammer vs Shooting Star (BUG-042)
+  var isAtSupportOrPullback = false;
+  if (ctx) { if (ctx.support && (c0.low <= ctx.support*1.03 || lastP <= ctx.support*1.03)) isAtSupportOrPullback = true;
+             else if (ctx.changePct != null && ctx.changePct <= 0) isAtSupportOrPullback = true;
+             else if (c1 && c0.close <= c1.close) isAtSupportOrPullback = true; }
+  if (lowerShadow >= body*2 && upperR < 0.15 && bodyRatio < 0.4) {
+    if (bull || isAtSupportOrPullback) return { name:'Hammer', bias:'Bullish', ... };
+    return { name:'Hanging Man', bias:'Bearish', ... };
+  }
+  ```
+- **Penjelasan:** Dokumen lama menyatakan Hammer vs Hanging Man dibedakan HANYA dari warna candle. Kini ada konteks support/changePct/prev-close. **Perbaikan terkonfirmasi.**
+
+### [LOW] BUG-032 lama SUDAH DIPERBAIKI — reset password admin menyimpan kredensial terproteksi
+- **Lokasi:** [`lib/admin-users-handler.js:261-268`](lib/admin-users-handler.js:261) dan `:293-299`
+- **Kutipan kode (bukti perbaikan):**
+  ```js
+  const clientPasswordHash = passwordCredential.normalizeClientHash(newPasswordHash);
+  if (!clientPasswordHash) return res.status(400).json({ success:false, error:'Password hash tidak valid.' });
+  ...
+  // Store the PROTECTED credential (random salt + scrypt), exactly like every other write path
+  ```
+- **Penjelasan:** Dokumen lama menyatakan hash mentah disimpan tanpa validasi. Kini divalidasi sebagai client-hash 64-hex dan disimpan dalam bentuk terproteksi (`k1` + salt acak + scrypt). **Perbaikan terkonfirmasi.**
+
+### [LOW] `lib/daytrade-screener-engine-v7.js` — TUNTAS, tidak ditemukan bug
+- Recall volume pace menegakkan batas keselamatan dengan disiplin: `isSafeStructure` memblokir status terminal/invalid, promosi dibatasi HANYA ke radar (`ENTRY_READY_STATUSES` → `EARLY_RADAR`), skor non-ready di-cap di 74 (`Math.min(adjustedScore, 74)`) sehingga tidak bisa memalsukan sinyal entry, dan `volume_pace_recall_applied` hanya true bila benar-benar berubah. Kokoh.
+
+---
+
+## CATATAN AKHIR STATUS VERIFIKASI KLAIM LAMA
+
+| Klaim lama | Hasil verifikasi kode kini |
+|---|---|
+| BUG-013 token review | **BELUM DIPERBAIKI** (HIGH) |
+| BUG-025 `includesAny` 300 char | **BELUM DIPERBAIKI** (HIGH) — hanya ditambah diagnostik |
+| BUG-038 retensi foreign tanpa limit | **BELUM DIPERBAIKI** (MEDIUM) |
+| BUG-015 RSI 0/0 | SUDAH diperbaiki |
+| BUG-022 support runtuh 0 | SUDAH diperbaiki |
+| BUG-027 "jangan chase" salah baca | SUDAH diperbaiki |
+| BUG-032 reset password admin | SUDAH diperbaiki |
+| BUG-042 Hammer/Hanging Man | SUDAH diperbaiki |
+
+Kesimpulan: dari 8 klaim lama yang diverifikasi langsung ke kode, **3 masih belum diperbaiki** (2 di antaranya HIGH). Ini konsisten dengan keluhan user bahwa bug nyata masih ada meski dokumen mengklaim selesai.
 
 ### [HIGH] BUG-025 lama MASIH BELUM DIPERBAIKI — hanya dipasangi "diagnostik", pemotongan 300 karakter tetap aktif
 - **Lokasi:** [`api/sector-hot.js:13643-13683`](api/sector-hot.js:13643)
