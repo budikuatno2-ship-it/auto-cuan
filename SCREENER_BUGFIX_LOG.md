@@ -16,7 +16,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 ## Progres Batch
 
 - [x] **Batch 0** — Audit Arsitektur & Logika Penilaian Seluruh Screener (PR #665, commit `fd2a809`)
-- [ ] **Batch 1** — Sinkronisasi Baseline & Setup Log
+- [x] **Batch 1** — Sinkronisasi Baseline & Setup Log (PR #666, commit `a562ca4`)
 - [ ] **Batch 2** — Modul Market Hours Guard Terpusat
 - [ ] **Batch 3** — Integrasi Market Hours Guard ke Broadcast Notifier
 - [ ] **Batch 4** — Audit & Perbaikan Crontab / Schedule VPS
@@ -55,9 +55,9 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - **Hasil Sintaks Check:** `node --check` valid pada seluruh file audit.
 
 ### Batch 1: Sinkronisasi Baseline & Setup Log
-- **Status:** **IN PROGRESS**
+- **Status:** **SELESAI**
 - **Tanggal:** 2026-09-17
-- **Branch:** `fix/baseline-sync-and-log`
+- **PR:** #666 (`a562ca4`)
 - **Baseline Sintaks JS:**
   - Total File `.js` Diperiksa: **788 file** (seluruh repo di luar `node_modules` dan `.git`)
   - Status `node --check`: **100% VALID** (0 syntax error)
