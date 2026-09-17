@@ -33,7 +33,7 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
 - [x] **Batch 15** — Regression Test Data Historis Nyata (SSMS, KAEF, SMGR, IMJS, INKP)
 - [x] **Batch 16** — Audit Ketikan Nyasar & Integritas Kode
 - [x] **Batch 17** — Validasi Penuh Sintaks & Full Regression Test Suite
-- [ ] **Batch 18** — Deploy Penuh ke VPS dengan PM2
+- [x] **Batch 18** — Deploy Penuh ke VPS dengan PM2
 - [ ] **Batch 19** — Pemantauan Sesi Bursa Langsung (Live Monitoring)
 - [ ] **Batch 20** — Laporan Akhir Konsolidasi & Cleanup
 
@@ -438,3 +438,26 @@ Dokumen ini adalah pencatatan status riil, audit trail, dan log eksekusi setiap 
   - `node tools/validate-full-syntax.js`: **804 file .js parsed cleanly**, 392 entri curated, 0 hilang.
   - `node --test test/full-syntax-validation.test.js`: 4/4 passed (termasuk self-check deteksi file rusak & penerimaan file valid).
   - `npm test`: **392/392 test files passed (100% lolos, 0 fail, 0 skipped)**
+
+### Batch 18: Deploy Penuh ke VPS dengan PM2
+- **Status:** **SELESAI**
+- **Tanggal:** 2026-09-17
+- **Branch:** `fix/vps-pm2-deploy-bundle`
+- **File Dimodifikasi:**
+  - [`tools/vps-deploy-preflight.js`](tools/vps-deploy-preflight.js): Pre-flight deploy VPS baru.
+  - [`deploy/vps/README.md`](deploy/vps/README.md): Runbook deploy VPS + rollback.
+  - [`package.json`](package.json): Skrip `deploy:preflight`.
+  - [`test/vps-deploy-preflight.test.js`](test/vps-deploy-preflight.test.js): Unit test pre-flight (6 test suites).
+  - [`tools/curated-build-tests.json`](tools/curated-build-tests.json): Pendaftaran test baru.
+- **Temuan Audit:**
+  - Tidak ada pre-flight check: tidak ada yang memverifikasi bundle deploy layak sebelum `pm2 start` — apakah `pm2` terpasang, Node memenuhi `engines.node` (22.x), `ecosystem.config.js` valid dan target `script`-nya ada, serta env wajib tersedia. `pm2` yang hilang baru gagal di tengah deploy.
+  - Tidak ada runbook operasional: tidak ada dokumen yang menjelaskan urutan bring-up VPS lengkap (install → preflight → start → save → startup → verify), sehingga operator mengulang langkah manual ad-hoc pemicu Akar Masalah #1.
+- **Guard yang Terpasang:**
+  - `tools/vps-deploy-preflight.js` memverifikasi: (1) `ecosystem.config.js` memuat & berisi app yang diharapkan (`auto-cuan-vps-api`, `auto-cuan-ai-eval-supervisor`) dengan setiap `script` ada; (2) versi Node memenuhi `engines.node`; (3) binary `pm2` dapat di-resolve; (4) env file wajib tersedia. Keluar non-zero bila ada yang gagal.
+  - Helper murni diekspor untuk pengujian: `checkEcosystem`, `checkNodeVersion`, `checkPm2`, `checkEnvFiles`, `runPreflight`, `readEnginesNode`.
+  - [`deploy/vps/README.md`](deploy/vps/README.md): runbook start/reload/verify/rollback + daftar guardrail (test gate sebelum reload, up-to-date = no-op, market hours).
+- **Hasil Test:**
+  - `npm run validate:syntax`: **806 file .js parsed cleanly**, 393 entri curated, 0 hilang.
+  - `node --check tools/vps-deploy-preflight.js test/vps-deploy-preflight.test.js`: VALID; `package.json` & `curated-build-tests.json` JSON VALID.
+  - `node --test test/vps-deploy-preflight.test.js`: 6/6 passed.
+  - `npm test`: **393/393 test files passed (100% lolos, 0 fail, 0 skipped)**
