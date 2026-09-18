@@ -378,6 +378,11 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: SEMUA respons AI (`handleAnalysis`/`handleBrokerSummaryText`/`handleChartUpload`/`handleChat`) dirender lewat `addAIBubble` yang meng-sanitasi (`sanitizeAIHtml(clientSanitizeFCA(html))` di `:6836`) sebelum innerHTML; `addUserBubble` konsisten `escapeHtml`; `escapeHtml` lokal meng-escape 5 karakter (komentar menjelaskan perbaikan quote-escaping di atribut); `buildSuggestionChips` hanya interpolasi string statis.
 - `index.html` **TUNTAS dibaca sesi ini:** 1-300, 2110-6729. **BELUM:** 300-2110, 6729-7330 (sebagian), 7330-7909 (sebagian), 7909-12174.
 
+### PROGRES BATCH 63 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 6849-7329 dibaca (addAIBubble sisa, copy/regenerate, chat session history, sidebar, TradingView, subscription catalog admin). **BERSIH — tidak ada temuan baru.**
+- BERSIH: `addAIBubble` MutationObserver `childList`-only + auto-disconnect 2s (tidak bereaksi editnya sendiri); history menyimpan `outerHTML` yang SUDAH disanitasi; `renderSidebarSessions` `escapeHtml(session.title)` + `activeTicker` selalu lewat `isValidTicker` (`[A-Z]{4}`); `loadSubscriptionCatalog` `escapeAdminHtml` untuk display_name/price_version/change_reason; `loadTradingView` simbol dinormalisasi `IDX:` + uppercase.
+- Berikutnya: `index.html` 7909-12174 (dashboard top5/history/monitor, scanner, diagnostics).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
