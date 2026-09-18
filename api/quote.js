@@ -10,6 +10,7 @@
 var dtEngine = require('../lib/daytrade-screener-engine');
 var idxTick = require('../lib/idx-tick-normalization');
 var latestPriceResolver = require('../lib/latest-price-resolver');
+var t1Policy = require('../lib/chart-t1-policy');
 var dailyContextBuilder = require('../lib/daily-market-context-builder');
 var dailyHistoryStore = require('../lib/stock-daily-history-store');
 var { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
@@ -543,12 +544,21 @@ async function fetchYahooQuote(ticker) {
   for (var i = 0; i < timestamps.length; i++) {
     var c = closes[i], o = opens[i], h = highs[i], l = lows[i], v = volumes[i];
     if (c != null && o != null && h != null && l != null && !isNaN(c)) {
-      candles.push({ close: Math.round(c * 100) / 100, open: Math.round(o * 100) / 100, high: Math.round(h * 100) / 100, low: Math.round(l * 100) / 100, volume: v || 0, date: new Date(timestamps[i] * 1000).toISOString().slice(0, 10) });
+      // Jakarta (WIB) session date, never the naive UTC slice (a UTC bar at
+      // >=17:00 belongs to the next WIB day). Same label policy as /api/candles.
+      candles.push({ close: Math.round(c * 100) / 100, open: Math.round(o * 100) / 100, high: Math.round(h * 100) / 100, low: Math.round(l * 100) / 100, volume: v || 0, time: t1Policy.formatJakartaDate(new Date(timestamps[i] * 1000)) });
     }
   }
 
+  // Unify "last price" with /api/candles: drop today's still-open Jakarta bar
+  // and any future-dated provider row before latest/pivot/MA/RSI/fibonacci are
+  // derived. Without this, /api/quote reports an intraday price while the chart
+  // on the same page reports the T-1 close — the "harga ngaco" mismatch.
+  var cutoff = t1Policy.retainCompletedCandles(candles, new Date());
+  candles = cutoff.candles;
+
   if (candles.length === 0) {
-    return { success: false, ticker: ticker, error: 'Tidak ada candle valid.', note: 'Data Historis T-1' };
+    return { success: false, ticker: ticker, error: 'Tidak ada candle harian selesai sebelum tanggal Jakarta hari ini.', note: 'Data Historis T-1' };
   }
 
   var latest = candles[candles.length - 1];
@@ -591,7 +601,7 @@ async function fetchYahooQuote(ticker) {
     ticker: ticker,
     symbol: ticker === 'IHSG' ? '^JKSE' : symbol,
     isIndex: ticker === 'IHSG',
-    latestBarDate: latest.date,
+    latestBarDate: latest.time,
     last: lastPrice,
     open: latest.open,
     high: latest.high,
@@ -614,6 +624,10 @@ async function fetchYahooQuote(ticker) {
     priceVolumeReading: priceVolumeReading,
     priceVsMA: priceVsMA.join(', '),
     totalCandles: candles.length,
+    actual_data_date: cutoff.metadata.actual_data_date,
+    jakarta_today: cutoff.metadata.jakarta_today,
+    t1_status: cutoff.metadata.t1_status,
+    t1_verified: cutoff.metadata.t1_verified,
     note: 'Data Historis T-1'
   };
 
@@ -646,7 +660,7 @@ async function fetchYahooQuote(ticker) {
     prevLow: prevL,
     prevClose: prevC,
     pivotMethod: 'classic',
-    pivotSourceDate: latest.date,
+    pivotSourceDate: latest.time,
     flatRange: (range === 0 || range < 1),
     tickNormalized: true
   };
