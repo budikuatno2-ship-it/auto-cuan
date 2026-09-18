@@ -2,6 +2,9 @@
   "functions": {
     "api/analyze.js": {
       "maxDuration": 60
+    },
+    "api/sector-hot.js": {
+      "includeFiles": "data/insider-network/**"
     }
   },
   "rewrites": [

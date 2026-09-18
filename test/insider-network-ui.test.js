@@ -173,7 +173,7 @@ test('BandarmologiRuntime: renderInsiderNetworkUI renders dark container, search
   runtime.renderInsiderNetworkUI(container);
 
   assert.ok(container.innerHTML.includes('id="insiderSearchInput"'), 'Contains search input');
-  assert.ok(container.innerHTML.includes('placeholder="Cari nama insider/tokoh'), 'Contains expected placeholder');
+  assert.ok(container.innerHTML.includes('placeholder="Ketik nama insider/tokoh untuk melihat relasi'), 'Contains guidance placeholder');
   assert.ok(container.innerHTML.includes('id="insiderSearchDropdown"'), 'Contains search dropdown container');
   assert.ok(container.innerHTML.includes('Belvin Tannadi'), 'Contains Belvin Tannadi chip');
   assert.ok(container.innerHTML.includes('Prajogo Pangestu'), 'Contains Prajogo Pangestu chip');

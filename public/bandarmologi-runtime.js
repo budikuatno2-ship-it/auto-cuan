@@ -3034,120 +3034,24 @@
   // ============================================================================
   // JEJARING INSIDER & MULTI-EMITEN NETWORK GRAPH RUNTIME
   // ============================================================================
-  var activeInsiderNetworkEntity = 'Belvin Tannadi';
+  // F-007: no default example figure on first open; empty state guides the user to input a name.
+  var activeInsiderNetworkEntity = '';
   var activeInsiderNetworkSelectedTicker = null;
   var currentInsiderNetworkGraph = null;
 
-  var FALLBACK_INSIDER_DATA = {
-    'belvin tannadi': {
-      summary: { entity_name: 'Belvin Tannadi', total_emitens: 3 },
-      nodes: [
-        { id: 'insider:belvin_tannadi', label: 'Belvin Tannadi', type: 'insider', is_central: true, total_emitens: 3, nationality: 'local' },
-        { id: 'ticker:BUMI', label: 'BUMI', ticker: 'BUMI', type: 'ticker' },
-        { id: 'ticker:BRMS', label: 'BRMS', ticker: 'BRMS', type: 'ticker' },
-        { id: 'ticker:DEWA', label: 'DEWA', ticker: 'DEWA', type: 'ticker' }
-      ],
-      edges: [
-        { source: 'insider:belvin_tannadi', target: 'ticker:BUMI', ticker: 'BUMI', shares: 850000000, percentage: 2.45, percentage_raw: '2.45%', broker: 'YP', brokers: ['YP'], latest_action: 'BUY', latest_price: 142, latest_date: '2026-09-05' },
-        { source: 'insider:belvin_tannadi', target: 'ticker:BRMS', ticker: 'BRMS', shares: 420000000, percentage: 1.80, percentage_raw: '1.80%', broker: 'XL', brokers: ['XL'], latest_action: 'BUY', latest_price: 195, latest_date: '2026-08-28' },
-        { source: 'insider:belvin_tannadi', target: 'ticker:DEWA', ticker: 'DEWA', shares: 180000000, percentage: 1.15, percentage_raw: '1.15%', broker: 'YP', brokers: ['YP'], latest_action: 'BUY', latest_price: 78, latest_date: '2026-08-15' }
-      ]
-    },
-    'prajogo pangestu': {
-      summary: { entity_name: 'Prajogo Pangestu', total_emitens: 4 },
-      nodes: [
-        { id: 'insider:prajogo_pangestu', label: 'Prajogo Pangestu', type: 'insider', is_central: true, total_emitens: 4, nationality: 'local' },
-        { id: 'ticker:BREN', label: 'BREN', ticker: 'BREN', type: 'ticker' },
-        { id: 'ticker:BRPT', label: 'BRPT', ticker: 'BRPT', type: 'ticker' },
-        { id: 'ticker:TPIA', label: 'TPIA', ticker: 'TPIA', type: 'ticker' },
-        { id: 'ticker:PTRO', label: 'PTRO', ticker: 'PTRO', type: 'ticker' }
-      ],
-      edges: [
-        { source: 'insider:prajogo_pangestu', target: 'ticker:BREN', ticker: 'BREN', shares: 5800000000, percentage: 43.20, percentage_raw: '43.20%', broker: 'CC', brokers: ['CC'], latest_action: 'BUY', latest_price: 8900, latest_date: '2026-09-02' },
-        { source: 'insider:prajogo_pangestu', target: 'ticker:BRPT', ticker: 'BRPT', shares: 66500000000, percentage: 71.18, percentage_raw: '71.18%', broker: 'CC', brokers: ['CC'], latest_action: 'BUY', latest_price: 1150, latest_date: '2026-08-20' },
-        { source: 'insider:prajogo_pangestu', target: 'ticker:TPIA', ticker: 'TPIA', shares: 3280000000, percentage: 37.95, percentage_raw: '37.95%', broker: 'CC', brokers: ['CC'], latest_action: 'BUY', latest_price: 8750, latest_date: '2026-08-10' },
-        { source: 'insider:prajogo_pangestu', target: 'ticker:PTRO', ticker: 'PTRO', shares: 340000000, percentage: 34.00, percentage_raw: '34.00%', broker: 'CC', brokers: ['CC'], latest_action: 'BUY', latest_price: 14200, latest_date: '2026-07-25' }
-      ]
-    },
-    'lo kheng hong': {
-      summary: { entity_name: 'Lo Kheng Hong', total_emitens: 3 },
-      nodes: [
-        { id: 'insider:lo_kheng_hong', label: 'Lo Kheng Hong', type: 'insider', is_central: true, total_emitens: 3, nationality: 'local' },
-        { id: 'ticker:BMTR', label: 'BMTR', ticker: 'BMTR', type: 'ticker' },
-        { id: 'ticker:DILD', label: 'DILD', ticker: 'DILD', type: 'ticker' },
-        { id: 'ticker:ABMM', label: 'ABMM', ticker: 'ABMM', type: 'ticker' }
-      ],
-      edges: [
-        { source: 'insider:lo_kheng_hong', target: 'ticker:BMTR', ticker: 'BMTR', shares: 1060000000, percentage: 6.45, percentage_raw: '6.45%', broker: 'PD', brokers: ['PD'], latest_action: 'BUY', latest_price: 240, latest_date: '2026-08-18' },
-        { source: 'insider:lo_kheng_hong', target: 'ticker:DILD', ticker: 'DILD', shares: 650000000, percentage: 6.28, percentage_raw: '6.28%', broker: 'PD', brokers: ['PD'], latest_action: 'BUY', latest_price: 185, latest_date: '2026-08-05' },
-        { source: 'insider:lo_kheng_hong', target: 'ticker:ABMM', ticker: 'ABMM', shares: 138000000, percentage: 5.01, percentage_raw: '5.01%', broker: 'PD', brokers: ['PD'], latest_action: 'BUY', latest_price: 3950, latest_date: '2026-07-30' }
-      ]
-    },
-    'anthoni salim': {
-      summary: { entity_name: 'Anthoni Salim', total_emitens: 2 },
-      nodes: [
-        { id: 'insider:anthoni_salim', label: 'Anthoni Salim', type: 'insider', is_central: true, total_emitens: 2, nationality: 'local' },
-        { id: 'ticker:INDF', label: 'INDF', ticker: 'INDF', type: 'ticker' },
-        { id: 'ticker:AMMN', label: 'AMMN', ticker: 'AMMN', type: 'ticker' }
-      ],
-      edges: [
-        { source: 'insider:anthoni_salim', target: 'ticker:INDF', ticker: 'INDF', shares: 4390000000, percentage: 50.07, percentage_raw: '50.07%', broker: 'CS', brokers: ['CS'], latest_action: 'BUY', latest_price: 6800, latest_date: '2026-08-22' },
-        { source: 'insider:anthoni_salim', target: 'ticker:AMMN', ticker: 'AMMN', shares: 5200000000, percentage: 7.15, percentage_raw: '7.15%', broker: 'AK', brokers: ['AK'], latest_action: 'BUY', latest_price: 10400, latest_date: '2026-08-14' }
-      ]
-    },
-    'garibaldi thohir': {
-      summary: { entity_name: 'Garibaldi Thohir', total_emitens: 3 },
-      nodes: [
-        { id: 'insider:garibaldi_thohir', label: 'Garibaldi Thohir', type: 'insider', is_central: true, total_emitens: 3, nationality: 'local' },
-        { id: 'ticker:ADRO', label: 'ADRO', ticker: 'ADRO', type: 'ticker' },
-        { id: 'ticker:MDKA', label: 'MDKA', ticker: 'MDKA', type: 'ticker' },
-        { id: 'ticker:ESSA', label: 'ESSA', ticker: 'ESSA', type: 'ticker' }
-      ],
-      edges: [
-        { source: 'insider:garibaldi_thohir', target: 'ticker:ADRO', ticker: 'ADRO', shares: 1980000000, percentage: 6.18, percentage_raw: '6.18%', broker: 'LG', brokers: ['LG'], latest_action: 'BUY', latest_price: 3680, latest_date: '2026-09-03' },
-        { source: 'insider:garibaldi_thohir', target: 'ticker:MDKA', ticker: 'MDKA', shares: 1850000000, percentage: 7.65, percentage_raw: '7.65%', broker: 'LG', brokers: ['LG'], latest_action: 'BUY', latest_price: 2360, latest_date: '2026-08-26' },
-        { source: 'insider:garibaldi_thohir', target: 'ticker:ESSA', ticker: 'ESSA', shares: 920000000, percentage: 5.40, percentage_raw: '5.40%', broker: 'LG', brokers: ['LG'], latest_action: 'BUY', latest_price: 940, latest_date: '2026-08-19' }
-      ]
-    },
-    'blackrock inc.': {
-      summary: { entity_name: 'BlackRock Inc.', total_emitens: 3 },
-      nodes: [
-        { id: 'insider:blackrock_inc', label: 'BlackRock Inc.', type: 'insider', is_central: true, total_emitens: 3, nationality: 'foreign' },
-        { id: 'ticker:BBCA', label: 'BBCA', ticker: 'BBCA', type: 'ticker' },
-        { id: 'ticker:BBRI', label: 'BBRI', ticker: 'BBRI', type: 'ticker' },
-        { id: 'ticker:TLKM', label: 'TLKM', ticker: 'TLKM', type: 'ticker' }
-      ],
-      edges: [
-        { source: 'insider:blackrock_inc', target: 'ticker:BBCA', ticker: 'BBCA', shares: 3100000000, percentage: 2.52, percentage_raw: '2.52%', broker: 'AK', brokers: ['AK'], latest_action: 'BUY', latest_price: 9850, latest_date: '2026-09-01' },
-        { source: 'insider:blackrock_inc', target: 'ticker:BBRI', ticker: 'BBRI', shares: 3800000000, percentage: 2.51, percentage_raw: '2.51%', broker: 'AK', brokers: ['AK'], latest_action: 'BUY', latest_price: 4950, latest_date: '2026-08-29' },
-        { source: 'insider:blackrock_inc', target: 'ticker:TLKM', ticker: 'TLKM', shares: 2450000000, percentage: 2.47, percentage_raw: '2.47%', broker: 'AK', brokers: ['AK'], latest_action: 'SELL', latest_price: 2950, latest_date: '2026-08-25' }
-      ]
-    },
-    'haji isam': {
-      summary: { entity_name: 'Haji Samsudin Andi Arsyad (Haji Isam)', total_emitens: 2 },
-      nodes: [
-        { id: 'insider:haji_isam', label: 'Haji Isam', type: 'insider', is_central: true, total_emitens: 2, nationality: 'local' },
-        { id: 'ticker:JARR', label: 'JARR', ticker: 'JARR', type: 'ticker' },
-        { id: 'ticker:PGUN', label: 'PGUN', ticker: 'PGUN', type: 'ticker' }
-      ],
-      edges: [
-        { source: 'insider:haji_isam', target: 'ticker:JARR', ticker: 'JARR', shares: 6850000000, percentage: 85.00, percentage_raw: '85.00%', broker: 'YP', brokers: ['YP'], latest_action: 'BUY', latest_price: 360, latest_date: '2026-09-02' },
-        { source: 'insider:haji_isam', target: 'ticker:PGUN', ticker: 'PGUN', shares: 4120000000, percentage: 49.80, percentage_raw: '49.80%', broker: 'YP', brokers: ['YP'], latest_action: 'BUY', latest_price: 480, latest_date: '2026-08-25' }
-      ]
-    },
-    'haji samsudin andi arsyad': {
-      summary: { entity_name: 'Haji Samsudin Andi Arsyad (Haji Isam)', total_emitens: 2 },
-      nodes: [
-        { id: 'insider:haji_isam', label: 'Haji Isam', type: 'insider', is_central: true, total_emitens: 2, nationality: 'local' },
-        { id: 'ticker:JARR', label: 'JARR', ticker: 'JARR', type: 'ticker' },
-        { id: 'ticker:PGUN', label: 'PGUN', ticker: 'PGUN', type: 'ticker' }
-      ],
-      edges: [
-        { source: 'insider:haji_isam', target: 'ticker:JARR', ticker: 'JARR', shares: 6850000000, percentage: 85.00, percentage_raw: '85.00%', broker: 'YP', brokers: ['YP'], latest_action: 'BUY', latest_price: 360, latest_date: '2026-09-02' },
-        { source: 'insider:haji_isam', target: 'ticker:PGUN', ticker: 'PGUN', shares: 4120000000, percentage: 49.80, percentage_raw: '49.80%', broker: 'YP', brokers: ['YP'], latest_action: 'BUY', latest_price: 480, latest_date: '2026-08-25' }
-      ]
-    }
-  };
+  // F-007: explicit empty graph. Used when the insider service has no data for a
+  // name (or no name is selected). Never fabricate a profile for an unknown name.
+  function emptyInsiderGraph(name) {
+    return {
+      nodes: [],
+      edges: [],
+      links: [],
+      status: 'NO_DATA',
+      no_data: true,
+      message: 'Belum ada data relasi',
+      summary: { query: String(name || ''), entity_name: String(name || ''), node_count: 0, edge_count: 0, total_emitens: 0, total_shares: 0 }
+    };
+  }
 
   function getInsiderNetworkService() {
     if (typeof require !== 'undefined') {
@@ -3159,41 +3063,28 @@
   }
 
   function getEffectiveInsiderGraph(name) {
+    var cleanName = String(name || '').trim();
+    if (!cleanName) return emptyInsiderGraph('');
     var service = getInsiderNetworkService();
     if (service && typeof service.buildInsiderNetworkGraph === 'function') {
-      var res = service.buildInsiderNetworkGraph({ name: name });
+      var res = service.buildInsiderNetworkGraph({ name: cleanName });
       if (res && res.nodes && res.nodes.length > 0) return res;
     }
-    var key = String(name || '').toLowerCase().trim();
-    if (FALLBACK_INSIDER_DATA[key]) return FALLBACK_INSIDER_DATA[key];
-    for (var k in FALLBACK_INSIDER_DATA) {
-      if (k.includes(key) || key.includes(k)) return FALLBACK_INSIDER_DATA[k];
-    }
-    return FALLBACK_INSIDER_DATA['belvin tannadi'] || null;
+    return emptyInsiderGraph(cleanName);
+  }
+
+  function getEffectiveInsiderGraphStatus(name) {
+    var graph = getEffectiveInsiderGraph(name);
+    return graph && graph.nodes && graph.nodes.length > 0 ? 'OK' : 'NO_DATA';
   }
 
   function getEffectiveSearchInsiders(query, options) {
     var service = getInsiderNetworkService();
     if (service && typeof service.searchInsiders === 'function') {
       var res = service.searchInsiders(query, options);
-      if (Array.isArray(res) && res.length > 0) return res;
+      if (Array.isArray(res)) return res;
     }
-    var cleanQ = String(query || '').toLowerCase().trim();
-    var results = [];
-    for (var k in FALLBACK_INSIDER_DATA) {
-      var d = FALLBACK_INSIDER_DATA[k];
-      var entityName = d.summary.entity_name;
-      var tickers = (d.edges || []).map(function(e) { return e.ticker; });
-      if (!cleanQ || k.includes(cleanQ) || entityName.toLowerCase().includes(cleanQ) || tickers.some(function(t) { return t.toLowerCase().includes(cleanQ); })) {
-        results.push({
-          id: d.nodes[0].id,
-          name: entityName,
-          tickers: tickers,
-          total_emitens: d.summary.total_emitens
-        });
-      }
-    }
-    return results;
+    return [];
   }
 
   var currentInsiderRosterTicker = 'BBCA';
@@ -3226,7 +3117,6 @@
       .then(function (data) {
         if (activeInsiderGraphAbortController !== controller) return;
         if (data && (data.success || data.nodes) && data.nodes && data.nodes.length > 0) {
-          FALLBACK_INSIDER_DATA[safeName.toLowerCase()] = data;
           if (typeof cb === 'function') cb(data);
         } else {
           fallbackLocalGraph();
@@ -3245,7 +3135,6 @@
           .then(function (data) {
             if (activeInsiderGraphAbortController !== controller) return;
             if (data && (data.success || data.nodes) && data.nodes && data.nodes.length > 0) {
-              FALLBACK_INSIDER_DATA[safeName.toLowerCase()] = data;
               if (typeof cb === 'function') cb(data);
             }
           })
@@ -3340,7 +3229,7 @@
 
   function renderInsiderNetworkSvg(graph, selectedTicker) {
     if (!graph || !graph.nodes || graph.nodes.length === 0) {
-      return '<div class="p-8 text-center text-gray-400 text-xs">Data jejaring relasi tidak ditemukan.</div>';
+      return '<div class="p-8 text-center text-gray-400 text-xs">Belum ada data relasi untuk tokoh ini. Silakan pilih tokoh lain atau masukkan nama pemegang saham lain.</div>';
     }
 
     var centralNode = graph.nodes.find(function (n) { return n.is_central || n.type === 'insider'; }) || graph.nodes[0];
@@ -3809,9 +3698,9 @@
     if (!container) return;
     injectBubbleStyles();
 
-    if (!activeInsiderNetworkEntity) {
-      activeInsiderNetworkEntity = 'Belvin Tannadi';
-    }
+    // F-007: first open has no preselected entity. Show a guidance state instead
+    // of loading a fabricated example figure.
+    var activeEntityLabel = activeInsiderNetworkEntity || 'Belum dipilih';
 
     var ticker = (typeof data === 'string' ? data : (data && data.ticker)) || currentInsiderRosterTicker || currentBandarTicker || 'BBCA';
     currentInsiderRosterTicker = ticker;
@@ -3913,7 +3802,7 @@
     html += '    <div class="relative w-full max-w-2xl mb-2">';
     html += '      <div class="relative flex items-center">';
     html += '        <span class="absolute left-3.5 text-gray-400 text-sm pointer-events-none">🔍</span>';
-    html += '        <input id="insiderSearchInput" type="text" value="' + escapeHtml(activeInsiderNetworkEntity) + '" placeholder="Cari nama insider/tokoh (cth: Belvin Tannadi, Prajogo Pangestu, Haji Isam, Garibaldi Thohir)..." oninput="BandarmologiRuntime.handleInsiderSearchInput(this.value)" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-11 pr-10 py-2.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition" style="padding-left: 2.75rem;">';
+    html += '        <input id="insiderSearchInput" type="text" value="' + escapeHtml(activeInsiderNetworkEntity) + '" placeholder="Ketik nama insider/tokoh untuk melihat relasi (cth: Prajogo Pangestu, Haji Isam, Garibaldi Thohir)..." oninput="BandarmologiRuntime.handleInsiderSearchInput(this.value)" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-11 pr-10 py-2.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition" style="padding-left: 2.75rem;">';
     html += '        <button type="button" id="btnClearInsiderSearch" onclick="BandarmologiRuntime.clearInsiderSearch()" class="absolute right-3 text-gray-400 hover:text-gray-200 text-xs px-1" style="display: none;">✕</button>';
     html += '      </div>';
     html += '      <div id="insiderSearchDropdown" class="w-full mt-2 mb-2 bg-dark-900 border border-dark-600/80 rounded-xl shadow-xl overflow-hidden" style="display: none; max-height: 280px; overflow-y: auto;"></div>';
@@ -3925,7 +3814,7 @@
     var popularEntities = ['Belvin Tannadi', 'Prajogo Pangestu', 'Haji Isam', 'Garibaldi Thohir', 'Lo Kheng Hong', 'Anthoni Salim', 'BlackRock Inc.'];
     for (var p = 0; p < popularEntities.length; p++) {
       var popName = popularEntities[p];
-      var isCur = popName.toLowerCase() === activeInsiderNetworkEntity.toLowerCase();
+      var isCur = popName.toLowerCase() === activeEntityLabel.toLowerCase();
       var chipClass = isCur
         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
         : 'bg-dark-700/70 text-gray-300 border-dark-600/60 hover:text-emerald-300 hover:border-emerald-500/40 hover:bg-emerald-500/10';
@@ -3938,7 +3827,7 @@
     html += '  <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">';
     html += '    <div class="lg:col-span-8 bg-dark-900/80 border border-dark-600/40 rounded-xl p-4 flex flex-col items-center justify-center relative min-h-[640px] overflow-hidden">';
     html += '      <div class="w-full flex items-center justify-between text-[11px] text-gray-400 mb-2 px-2">';
-    html += '        <span class="flex items-center gap-1.5 font-mono"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>Kanvas Relasi Aktif: <strong id="activeGraphEntityTitle" class="text-gray-200">' + escapeHtml(activeInsiderNetworkEntity) + '</strong></span>';
+    html += '        <span class="flex items-center gap-1.5 font-mono"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>Kanvas Relasi Aktif: <strong id="activeGraphEntityTitle" class="text-gray-200">' + escapeHtml(activeEntityLabel) + '</strong></span>';
     html += '        <span class="text-[10px] text-gray-500">Klik node emiten untuk rincian</span>';
     html += '      </div>';
     html += '      <div id="insiderGraphSvgWrap" class="w-full h-full flex items-center justify-center">';
@@ -3967,6 +3856,8 @@
 
     // Load full roster for active emiten from VPS
     loadRosterForTicker(ticker);
+
+    if (!activeInsiderNetworkEntity) return;
 
     fetchRemoteInsiderGraph(activeInsiderNetworkEntity, function (remoteGraph) {
       if (remoteGraph && remoteGraph.nodes && remoteGraph.nodes.length > 0) {
@@ -4059,7 +3950,7 @@
   }
 
   function renderInsiderNetworkGraph(name) {
-    activeInsiderNetworkEntity = name;
+    activeInsiderNetworkEntity = name || '';
     var graph = getEffectiveInsiderGraph(name);
     currentInsiderNetworkGraph = graph;
     if (graph && graph.edges && graph.edges.length > 0) {
@@ -4070,7 +3961,7 @@
 
     var titleEl = byId('activeGraphEntityTitle');
     if (titleEl) {
-      titleEl.textContent = name;
+      titleEl.textContent = name || 'Belum dipilih';
     }
 
     var wrap = byId('insiderGraphSvgWrap');
@@ -4082,6 +3973,8 @@
     if (panel) {
       panel.innerHTML = renderInsiderDetailPanelHtml(graph, activeInsiderNetworkSelectedTicker);
     }
+
+    if (!name) return;
 
     fetchRemoteInsiderGraph(name, function (remoteGraph) {
       if (remoteGraph && remoteGraph.nodes && remoteGraph.nodes.length > 0 && String(activeInsiderNetworkEntity).toLowerCase() === String(name).toLowerCase()) {
@@ -5319,6 +5212,7 @@
     getInsiderNetworkEntity: function () { return activeInsiderNetworkEntity; },
     getInsiderNetworkSelectedTicker: function () { return activeInsiderNetworkSelectedTicker; },
     getEffectiveInsiderGraph: getEffectiveInsiderGraph,
+    getEffectiveInsiderGraphStatus: getEffectiveInsiderGraphStatus,
     getEffectiveSearchInsiders: getEffectiveSearchInsiders,
     loadInsiderNetwork: loadInsiderNetwork,
     fetchVpsAvailableDates: fetchVpsAvailableDates,
@@ -5408,6 +5302,7 @@
       getInsiderNetworkEntity: function () { return activeInsiderNetworkEntity; },
       getInsiderNetworkSelectedTicker: function () { return activeInsiderNetworkSelectedTicker; },
       getEffectiveInsiderGraph: getEffectiveInsiderGraph,
+      getEffectiveInsiderGraphStatus: getEffectiveInsiderGraphStatus,
       getEffectiveSearchInsiders: getEffectiveSearchInsiders,
       loadInsiderNetwork: loadInsiderNetwork,
       fetchVpsAvailableDates: fetchVpsAvailableDates,
