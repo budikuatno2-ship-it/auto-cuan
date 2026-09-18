@@ -418,6 +418,11 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: semua pesan empty/error di-`escapeHtml`; `screenerTickerClick` encodeURIComponent; `swingTierShort/Color/Title` jujur "TIER —" untuk tier absen (bukan AVOID). Catatan trivial: `renderScreenerTable` menginterpolasi `r.ticker`/`r.group_code`/`r.confidence`/`r.direction` mentah, tetapi semuanya field server IDX (bukan input user).
 - Berikutnya: `index.html` 10070-12174.
 
+### PROGRES BATCH 71 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 10070-10369 dibaca (updateNkScreenerMeta, filterNkScreener, renderNkScreenerTable, portfolio load/save, computePositionPL/Totals, sanitizePositionInput). **BERSIH — tidak ada temuan baru.**
+- BERSIH: `updateNkScreenerMeta` menandai STALE SCAN jujur (age>10mnt) + STALE/DAILY freshness; `renderNkScreenerTable` `escapeHtml` untuk confidence_notes/entry_window/status_reason; `sanitizePositionInput` menolak NaN/∞/negatif/0/oversize/lot non-integer; `computePositionPL`/`computePortfolioTotals` tidak mengarang P/L untuk posisi tak ter-harga (partial sum jujur). Catatan: fallback `universe_count || 720` (`:10077`) sudah tercakup temuan LOW batch 24 (`760`/`720`).
+- Berikutnya: `index.html` 10370-12174.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
