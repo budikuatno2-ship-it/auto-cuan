@@ -1426,3 +1426,12 @@ Total heading temuan kini **83** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 33 LOW).
 - **Usulan arah perbaikan:** Samakan ambang dengan gate backend; saat input absen, render "Data tidak tersedia" dengan `passed:false` (unknown ≠ pass); perbaiki teks ambang RSI agar sama dengan kode.
 
 Total heading temuan kini **84** (2 CRITICAL, 15 HIGH, 34 MEDIUM, 33 LOW).
+
+---
+
+## MODUL: Portfolio Command Model + Pattern Screener Extension (2 file — TUNTAS, BERSIH)
+
+- `public/portfolio-command-center-model.js` (231) — **BERSIH**. Model murni (tanpa DOM): `budgetCapacity`/`affordability` lot 100 + reserve clamp 0–90; `planStatus` prioritas status deterministik (STOP_TOUCHED>TP2>TP1>NEAR_STOP>BELOW_ENTRY>NEAR_TP1>ACTIVE); `averageDownDecision` guard berurutan (cut-loss dulu, setup valid, dana, batas risiko); `compareSnapshots` event-driven; `journalSummary` `disciplinePct` null saat belum ada assessment. Catatan: `finite()` men-strip semua non-digit (mis. `"1.234,56"` → 123456), tetapi hanya tercapai bila `Number()` gagal lebih dulu; field IDR memakai `inputmode="numeric"` dan nilai tersimpan sudah number → tidak ada pemicu nyata.
+- `public/pattern-screener-extension.js` (381) — **BERSIH**. `esc()` konsisten pada semua interpolasi HTML; `planConflict` menolak menggabungkan plan berlawanan arah (level Screener disembunyikan); MutationObserver di-throttle (`scheduled`) + `syncCard` early-return via `data-setup-signature` sehingga tulisan `innerHTML`-nya tidak memicu loop tak berujung.
+
+Total heading temuan tetap **84** — batch ini tidak menambah temuan.

@@ -226,6 +226,12 @@ TUNTAS & BERSIH (8 file `lib/admin-*`):
 - `public/signal-gate-transparency.js` (295) **TUNTAS** — 1 MEDIUM: panel "Kenapa Sinyal Ini Lolos Gate?" menandai gate **PASS saat data absen** (`rsiPassed=true` + "Dalam rentang aman" saat `rsi14` null; `rrPassed=true` saat rr null; volume null → "Terkonfirmasi"+PASS) dan ambang RSI `35–78` **berbeda** dari hard filter backend `45–70` + tolak null ([`api/sector-hot.js:2135-2144`](api/sector-hot.js:2135)); teks ambang "35 - 75" juga ≠ kode (78). Bisa tampil "5/5 Gate Terpenuhi" untuk sinyal yang gagal backend.
 - Total heading temuan kini **84** (2 CRITICAL, 15 HIGH, 34 MEDIUM, 33 LOW).
 
+### PROGRES BATCH 40 (sesi 2026-09-18 lanjutan)
+- `public/portfolio-command-center-model.js` (231) **TUNTAS** — **BERSIH**. Model murni: budget/affordability lot 100, `planStatus` prioritas deterministik, `averageDownDecision` guard berurutan, `disciplinePct` null saat kosong. `finite()` strip-non-digit hanya tercapai bila `Number()` gagal (field IDR numeric) → tidak ada pemicu.
+- `public/pattern-screener-extension.js` (381) **TUNTAS** — **BERSIH**. `esc()` konsisten; `planConflict` tolak gabung plan berlawanan arah; MutationObserver settle via `data-setup-signature`.
+- Total heading temuan tetap **84** — batch ini tidak menambah temuan.
+- Berikutnya: `public/portfolio-position-scenarios.js`, `public/portfolio-runtime-fix.js`, `public/subscription-*`, `public/mobile-*`, `public/admin-*`, `public/account-center-*`.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
