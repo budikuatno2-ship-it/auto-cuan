@@ -207,6 +207,12 @@ TUNTAS & BERSIH (8 file `lib/admin-*`):
 - Total heading temuan tetap **82** — batch ini tidak menemukan bug baru.
 - Berikutnya: sisa `public/` runtime UI publik lain (portfolio-*, pattern-*, subscription-*, admin-*, dll).
 
+### PROGRES BATCH 36 (sesi 2026-09-18 lanjutan)
+- `public/portfolio-ai-runtime-v2.js` (844) **TUNTAS 100%** (sesi lama 1-400 + batch ini 401-844) — **BERSIH**. Verifikasi: `renderMarkdown` ([`ai-chat-renderer.js:148`](public/ai-chat-renderer.js:148)) meng-escape SEBELUM transform markdown → tidak ada XSS dari jawaban model; `classifyFailure` memisahkan auth/kuota/server dari kegagalan provider (fallback lokal tak menyamar sebagai AI); `historyForRequest` membuang baris `local`; `syncPortfolioPrices` worker-pool bounded 8.
+- `public/pattern-stable-runtime.js` (660) **TUNTAS 100%** — **BERSIH**. Verifikasi: `confidenceText ×100` benar (detector clamp 0–1 di [`classic-chart-patterns.js:90`](lib/classic-chart-patterns.js:90)); `esc()` konsisten; cache di-`persistCache()` tepat sebelum `progress()`; `mapBounded` menelan error per-worker.
+- 4 kecurigaan diperiksa & DITOLAK (dicatat sebagai bukti di findings): `Number(null)===0` price_age_hours (produksi selalu men-stamp), `state.total` = jumlah ticker dipindai (disengaja), `markdown()` fallback (entity ter-escape), `patternPollInterval` closure (benar).
+- Total heading temuan tetap **82** — batch ini tidak menambah temuan.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
