@@ -64,7 +64,13 @@ TUNTAS & BERSIH (semua dibaca baris-per-baris):
 - `lib/intraday-fast-watcher-early-watch-publisher.js` (360) — gate 3 kill-switch termasuk global `TELEGRAM_ENABLED` sebelum reservasi; `_attempted` dipersist sebelum kirim (crash-safe); anti-chase hanya setelah early-watch prior run.
 - `lib/intraday-sample-summary.js` (405) — partisi eligibility konservatif (legacy_unclassified TIDAK dianggap eligible), catatan semantik MFE/MAE sampled jujur.
 
-Sisa `lib/intraday-*` (5): `intraday-shadow-scoring.js` (1262), `intraday-shadow-scoring-live.js` (1013), `intraday-shadow-trade-backtest.js` (1188), `intraday-fast-watcher-publisher.js` (TUNTAS batch 15), `intraday-fast-watcher-live.js` (TUNTAS), `intraday-fast-watcher-guarded-live.js` (TUNTAS), `intraday-production-eligibility.js` (TUNTAS), `intraday-fast-watcher-pool.js` (TUNTAS), `intraday-fast-watcher.js` (TUNTAS). → TERSISA 3 file shadow-*.
+### PROGRES BATCH 17 (sesi 2026-09-18)
+TUNTAS & BERSIH:
+- `lib/intraday-shadow-scoring.js` (1.262) — safety gate produksi OFF, path guard input/output, deterministik tanpa wall-clock, forward-returns dilaporkan jujur "tidak tersedia" (tidak mengarang profitabilitas).
+- `lib/intraday-shadow-scoring-live.js` (1.013) — no-lookahead ketat (baris > target diabaikan), tanggal+jam WAJIB eksplisit (tanpa fallback wall-clock), hit-rate ditahan bila sampel < 5, `profitability_claimed: false`, lock PID-aware.
+- `lib/intraday-shadow-trade-backtest.js` (1.188) — anti-lookahead entry (snapshot BERIKUTNYA, bukan snapshot sinyal), dedup 1 trade/ticker/hari, biaya round-trip 0/30/50 bps terpisah dari gross, small-sample warning + disclaimer tegas, `no_losing_trades_profit_factor_undefined` jujur.
+
+**SELURUH `lib/intraday-*` (17 file) KINI TUNTAS 100%.**
 
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
