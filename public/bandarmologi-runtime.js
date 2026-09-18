@@ -131,7 +131,10 @@
       dates = collectAvailableDateOptions(ticker);
     }
     if (!dates) dates = [];
-    selectedDate = selectedDate || (typeof currentBandarDate !== 'undefined' ? currentBandarDate : null) || (dates && dates[0]) || '2026-09-11';
+    // Batch 6 F-040: no static date fallback. When no dynamic date is
+    // available, leave selectedDate empty so the UI renders the explicit
+    // "tanggal belum tersedia" state via formatDateDisplay's empty-input path.
+    selectedDate = selectedDate || (typeof currentBandarDate !== 'undefined' ? currentBandarDate : null) || (dates && dates[0]) || null;
 
     var displayStyle = (typeof bandarSection !== 'undefined' && bandarSection !== 'summary') ? 'style="display: none;"' : '';
     var html = '<div id="brokerDateSelectWrap" ' + displayStyle + ' class="flex flex-wrap items-center gap-2.5 mb-3 bg-dark-800/60 p-2 rounded-xl border border-dark-600/40">';
@@ -166,7 +169,8 @@
       dates = collectAvailableDateOptions(ticker);
     }
     if (!dates) dates = [];
-    selectedDate = selectedDate || (typeof currentBandarDate !== 'undefined' ? currentBandarDate : null) || (dates && dates[0]) || '2026-09-11';
+    // Batch 6 F-040: no static date fallback — mirror initBrokerDateSelect.
+    selectedDate = selectedDate || (typeof currentBandarDate !== 'undefined' ? currentBandarDate : null) || (dates && dates[0]) || null;
 
     var selectEl = byId('brokerDateSelect');
     if (selectEl && dates.length > 0) {
@@ -2241,7 +2245,9 @@
     html += '  </div>';
     html += '  <div class="flex items-center gap-3 text-xs font-mono">';
     html += '    <span class="text-gray-400">Net Flow: <strong class="' + (bSum.net_flow >= 0 ? 'text-emerald-400' : 'text-rose-400') + '">' + (bSum.net_flow >= 0 ? '+' : '') + formatIDR(bSum.net_flow) + '</strong></span>';
-    html += '    <span class="text-gray-400">Tanggal: <strong class="text-gray-200">' + escapeHtml(formatDateDisplay(bSum.date || currentBandarDate || '2026-09-11')) + '</strong></span>';
+    // Batch 6 F-008: no static date fallback — empty input -> formatDateDisplay
+    // returns "—" via the explicit empty branch added below.
+    html += '    <span class="text-gray-400">Tanggal: <strong class="text-gray-200">' + escapeHtml(formatDateDisplay(bSum.date || currentBandarDate)) + '</strong></span>';
     html += '  </div>';
     html += '</div>';
 
@@ -4052,7 +4058,9 @@
   }
 
   function formatDateDisplay(dateStr) {
-    if (!dateStr) return '2026-09-11';
+    // Batch 6 F-005: when no dynamic date is available, return the explicit
+    // "tanggal belum tersedia" marker rather than a stale hardcoded key.
+    if (!dateStr) return '—';
     try {
       if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
         return stepBackToTradingDayIso(dateStr.trim());
@@ -4432,7 +4440,8 @@
       html += '      </div>';
       html += '      <div class="text-[11px] text-gray-400 mt-0.5">';
       html += '        <span>Rentang: <strong class="text-gray-200">' + escapeHtml(bandarIntelRange.toUpperCase()) + '</strong></span> &bull; ';
-      html += '        <span>Evaluasi: <strong class="text-gray-300 font-mono">' + escapeHtml(formatDateDisplay(intelObj.effective_date || intelObj.evaluated_at || '2026-09-11')) + '</strong></span>';
+      // Batch 6: no static date fallback — empty -> "—" via formatDateDisplay.
+      html += '        <span>Evaluasi: <strong class="text-gray-300 font-mono">' + escapeHtml(formatDateDisplay(intelObj.effective_date || intelObj.evaluated_at)) + '</strong></span>';
       html += '      </div>';
       html += '    </div>';
       html += '  </div>';
@@ -4699,7 +4708,8 @@
       // leaked "Data per: 2026-09-12". effective_date/date are the canonical
       // trading dates, so they must come first; updated_at is only a last resort
       // and is passed through formatDateDisplay's trading-day guard below.
-      var activeMarketDate = formatDateDisplay(scanData.effective_date || scanData.date || (lastBandarData && lastBandarData.date) || scanData.updated_at || '2026-09-11');
+      // Batch 6: no static date fallback — empty -> "—" via formatDateDisplay.
+      var activeMarketDate = formatDateDisplay(scanData.effective_date || scanData.date || (lastBandarData && lastBandarData.date) || scanData.updated_at);
       var rangeDaysCount = { '1d': 1, '5d': 5, '7d': 7, '14d': 14, '30d': 30, '60d': 60 }[bandarIntelRange] || (parseInt(bandarIntelRange, 10) || 7);
       var rangeAggLabel = bandarIntelRange === '1d' ? '1D (Harian)' : (rangeDaysCount + ' Hari Bursa (' + escapeHtml(bandarIntelRange.toUpperCase()) + ' Agregat)');
       html += '  <div class="px-3.5 py-2 bg-dark-800/80 border-b border-dark-600/40 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">';
