@@ -85,7 +85,19 @@ TUNTAS & BERSIH (semua `lib/telegram-*`, 12 file):
 - `telegram-analytics.js` + `telegram-transient-message.js` (TUNTAS batch 14).
 
 **SELURUH `lib/telegram-*` (12 file) KINI TUNTAS 100%.**
-Sisa `lib/trade-plan-v2-*` (8): candle-structure, daytrade-diagnostic, formatter, gap-areas, liquidity-sweep, replay-preview, source-adapters, sweep-diagnostic.
+### PROGRES BATCH 19 (sesi 2026-09-18)
+TUNTAS & BERSIH (SEMUA `lib/trade-plan-v2-*`, 11 file):
+- `gap-areas.js` (262) — gap observable, fill/reclaim/fail jelas, gap tanpa harga → GAP_UNAVAILABLE (tidak mengarang).
+- `formatter.js` (302) — single source of truth angka kanonik, parity web↔telegram via `diffViewModels`, legacy fallback saat flag OFF.
+- `replay-preview.js` (262) — read-only; `HISTORICAL_STRUCTURE_NOT_CAPTURED` jujur saat struktur tak tersimpan (tidak reverse-derive SL/TP).
+- `candle-structure.js` (398) — pivot terkonfirmasi 2-kiri-2-kanan, bar tanpa OHLC → `available:false` (tidak mengarang).
+- `liquidity-sweep.js` (450) — model observable (bukan klaim stop-hunting), hard stop SELALU aktif, breakdown butuh 2 close / explicit confirm.
+- `daytrade-diagnostic.js` (522) — scope guard DAY_TRADE; support/resistance hanya dari harga ≤ entry (no look-ahead); ATR proxy null bila <2 titik.
+- `source-adapters.js` (508) — alias per-screener eksplisit, TIDAK PERNAH reverse-derive SL/TP, `source_fields` melaporkan apa yang benar-benar ada.
+- `sweep-diagnostic.js` (476) — 4 policy konfirmasi; emergency stop aktif di semua policy; BNBR exclusion dilaporkan jujur; no profitability claim.
+
+**SELURUH `lib/trade-plan-v2-*` (11 file) KINI TUNTAS 100%.**
+Berikutnya: `lib/bandarmologi-service.js` (2.226 — baca bertahap), lalu `lib/idx-tick-normalization.js` (900-1182).
 
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
