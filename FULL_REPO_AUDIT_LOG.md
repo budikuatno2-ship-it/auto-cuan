@@ -166,7 +166,9 @@ TUNTAS & BERSIH (13 file sisa `daytrade-*`, dibaca baris-per-baris):
 - `lib/foreign-flow-recap.js` (295) **TUNTAS** — 1 LOW: `sendForeignFlowRecap` memanggil `telegramNotifier.sendMessage` yang TIDAK ADA (ekspor hanya `sendTelegramMessage`; runtime `sendMessage === undefined`) → TypeError laten; fungsi tanpa pemanggil (dead code).
 - `lib/broker-hunter-service.js` (548) **TUNTAS** — 1 LOW: literal `'2026-09-07'` fallback tanggal (2 lokasi). Inti bersih (BROKER_PROFILES dummy dihapus, respons kosong jujur).
 - Total heading temuan kini **78** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 28 LOW).
-- Berikutnya: `lib/insider-network-service.js` (1.125 — baca bertahap), lalu sisa `lib/` minor.
+- `lib/insider-network-service.js` (1.125) **TUNTAS** (4 chunk) — 2 LOW: `getRosterForTicker` merender persentase hilang sebagai "0.00%" (baris 1099); literal `'2026-09-01'` fallback `last_date` (baris 1102). Inti bersih (aksi non-buy/sell diabaikan dari net).
+- Total heading temuan kini **80** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 30 LOW).
+- Berikutnya: verifikasi sisa `lib/*` minor, lalu `public/bandarmologi-runtime.js` (5.435) sisa baris.
 
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.

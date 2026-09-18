@@ -1288,3 +1288,30 @@ File dibaca baris-per-baris (1-300, 301-548). **BERSIH pada bagian inti**: `BROK
 - **Penjelasan:** Sama kelasnya dengan literal tanggal di `bandarmologi-service.js`/`bandarmologi-intel-service.js` (batch 20/22): ketika `discoverAvailableDates()` kosong, sistem mengklaim data bertanggal tetap `2026-09-07` alih-alih melaporkan "tanggal tidak tersedia". Karena `discoverAvailableDates()` membaca disk, kondisi ini terjadi saat cache broker-summary belum ada — tepat saat label tanggal paling menyesatkan.
 - **Bukti verifikasi riil:** Bukti kode: 2 kemunculan literal terverifikasi via pencarian langsung.
 - **Usulan arah perbaikan:** Kembalikan `target_dates: []` + `date_range_label: 'Tanggal tidak tersedia'` saat tidak ada tanggal, jangan mengarang tanggal tetap.
+
+---
+
+## MODUL: Insider Network Service (lib/insider-network-service.js, 1.125 baris — TUNTAS)
+
+File dibaca baris-per-baris (1-300, 301-600, 601-900, 901-1125). **BERSIH pada bagian inti**: agregasi holding per entitas, search index dengan skoring deterministik, network graph (nodes/edges/links) untuk D3, aksi non-buy/sell (TRANSFER/HIBAH/WARIS/BONUS/RIGHTS) sengaja diabaikan dari `net_shares_change` (mencegah akumulasi palsu). Temuan HIGH fabrikasi `SAMPLE_INSIDER_UNIVERSE` (fallback `getEffectiveUniverse` baris 522) sudah tercatat di sesi lama. Dua temuan tambahan:
+
+### [LOW] `getRosterForTicker` merender persentase yang HILANG sebagai "0.00%" (missing disajikan sebagai nol)
+- **Lokasi:** [`lib/insider-network-service.js:1098-1099`](lib/insider-network-service.js:1098)
+- **Kutipan kode bermasalah:**
+  ```js
+  percentage: r.percentage || 0,
+  percentage_formatted: (r.percentage || 0).toFixed(2) + '%',
+  ```
+- **Penjelasan:** Ketika `r.percentage` tidak tersedia (null/undefined), nilai dipaksa `0` lalu dirender "0.00%" — kelas yang sama dengan temuan MEDIUM di `public/bandarmologi-runtime.js:3728` (missing disajikan sebagai nol), tetapi di lokasi berbeda. Pada tabel pemegang saham/insider, seorang pemegang saham tanpa data persentase akan tampak memegang 0%. Repo ini secara eksplisit menjaga prinsip "MISSING DATA IS NOT ZERO" di modul lain.
+- **Bukti verifikasi riil:** Bukti kode: `|| 0` pada dua field berurutan; `r.percentage` berasal dari record yang bisa tidak punya field persentase.
+- **Usulan arah perbaikan:** Bila `r.percentage == null`, kirim `percentage: null` + `percentage_formatted: '—'` alih-alih `0`/`0.00%`.
+
+### [LOW] Literal tanggal `'2026-09-01'` sebagai fallback `last_date` di roster insider
+- **Lokasi:** [`lib/insider-network-service.js:1102`](lib/insider-network-service.js:1102)
+- **Kutipan kode bermasalah:**
+  ```js
+  last_date: r.date || '2026-09-01',
+  ```
+- **Penjelasan:** Sama kelasnya dengan literal tanggal di `bandarmologi-service.js`/`broker-hunter-service.js`: ketika record tidak punya tanggal, roster menampilkan tanggal tetap `2026-09-01` seolah transaksi terjadi pada tanggal itu.
+- **Bukti verifikasi riil:** Bukti kode: 1 kemunculan literal.
+- **Usulan arah perbaikan:** Kirim `last_date: null`/`'—'` saat tanggal tidak tersedia.
