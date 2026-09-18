@@ -170,6 +170,15 @@ TUNTAS & BERSIH (13 file sisa `daytrade-*`, dibaca baris-per-baris):
 - Total heading temuan kini **80** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 30 LOW).
 - Berikutnya: verifikasi sisa `lib/*` minor, lalu `public/bandarmologi-runtime.js` (5.435) sisa baris.
 
+### PROGRES BATCH 30 (sesi 2026-09-18 lanjutan)
+TUNTAS & BERSIH (16 file `lib/` minor, dibaca baris-per-baris):
+- Subscription/identity: `subscription-identity` (19 — HMAC token fail-closed), `subscription-catalog` (46), `subscription-capability` (58 — fail-closed), `subscription-voucher-claim` (178), `subscription-voucher-handler` (77 — same-origin + idempotency + terms), `voucher-admin-sender` (29 — token isolation).
+- Daily context: `daily-pbv` (71 — null bila data absen, tidak mengarang), `daily-rsi` (118 — Wilder RSI benar), `daily-volume-context` (111 — partial session tidak mencampur), `fast-watcher-daily-context-shadow` (54 — no-op saat disabled).
+- Evaluation: `screener-evaluation-contract` (100 — pemindai secret + kontradiksi threshold), `screener-evaluation-logger` (86), `screener-evaluation-retention` (64 — checksum + path-escape guard).
+- Lain: `account-terms` (70), `crypto-service` (139 — AES-256-GCM + timing-safe), `pattern-abcd-validation` (185 — walk-forward tanpa look-ahead).
+- Total heading temuan tetap **80** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 30 LOW) — batch ini tidak menemukan bug baru.
+- Berikutnya: sisa `lib/` (admin-* ~10, subscription-manual-handler 388, reset-password-legacy-handler 432, second-chance-admin-pilot 293, voucher-admin-bot 334), lalu `public/bandarmologi-runtime.js` sisa baris.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
