@@ -467,6 +467,24 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: semua `onclick`/`oninput`/`onchange` inline memanggil fungsi bernama atau literal statis (mis. `UnifiedCockpit.syncActiveTicker('BBCA', …)`); tidak ada interpolasi data user di atribut event; tidak ada input hidden berisi secret.
 - Berikutnya: `index.html` 900-2110.
 
+### PROGRES BATCH 81 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 900-1199 dibaca (screener Konglo/Non-Konglo/DayTrade panes: filter selects, tabs, stats, card grids, tables). **BERSIH — tidak ada temuan baru.**
+- BERSIH: semua `onchange`/`onclick`/`oninput` memanggil fungsi bernama; opsi `select` statis (tanpa interpolasi); tidak ada input hidden/secret.
+- Berikutnya: `index.html` 1200-2110.
+
+### PROGRES BATCH 83-84 (sesi 2026-09-18 lanjutan) — **`index.html` TUNTAS 100%**
+- `public/index.html` 1500-1799 dibaca (track record/backtest controls, watchlist page). **BERSIH.**
+- `public/index.html` 1800-2110 dibaca (`#aiSection` legacy chat, tvSection, adminPanel, usage-reminder/onboarding/footer, scrDetail modal, BYOK modal, watchlist alert/notes/history modals, reset-password admin modal, device-details, admin device-approval, maintenance preview). **BERSIH — tidak ada temuan baru.**
+- BERSIH: `input type=hidden` (`wlAlertId`, `wlNotesTicker`) hanya menyimpan ID/ticker (bukan secret); BYOK modal menyatakan key dienkripsi AES-256-GCM server + tidak dicatat log; semua handler bernama/statis.
+- **`public/index.html` (12.342) KINI TUNTAS 100%** (dibaca baris-per-baris lintas sesi: 1-300 + 2110-12342 sesi lalu, 300-2110 batch 79-84).
+- Total heading temuan tetap **91** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 36 LOW).
+- **Berikutnya:** file HTML satelit `analisis-saham.html`, `admin-ai-eval.html`, `admin-foreign.html`, `portfolio-command-center*.html`, `portfolio-planner.html`, `trust.html`, `methodology.html`.
+
+### PROGRES BATCH 82 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 1200-1499 dibaca (chart page, news page, portfolio page + add form, track record page header/summary). **BERSIH — tidak ada temuan baru.**
+- BERSIH: semua handler bernama/statis; form Tambah Posisi memakai `maxlength` + `type=number`; tidak ada input hidden/secret.
+- Berikutnya: `index.html` 1500-2110.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
