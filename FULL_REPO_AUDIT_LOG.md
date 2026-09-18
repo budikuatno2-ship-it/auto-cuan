@@ -508,6 +508,12 @@ TUNTAS & BERSIH (3 file `public/`):
 - **`residual-audit-db-integrity.sql`:** fail-closed (RAISE bila duplikat plan identity / taxonomy v2 hilang), partial unique index scoped `WHERE monitor_source IS NOT NULL AND plan_lock_id IS NOT NULL` (tidak memblokir broadcast NULL) — kokoh.
 - **Berikutnya:** baca penuh migrasi berisiko tinggi (subscription-phase-2/5c, telegram-verification-v2, admin-telegram-*) untuk verifikasi constraint/trigger; lalu `tools/` (~102), `test/` (~521).
 
+### PROGRES BATCH 89 (sesi 2026-09-18 lanjutan) — SQL berisiko tinggi (baca penuh)
+- `supabase/subscription-phase-2-migration.sql` (255) — **BERSIH & KOKOH**. Harga append-only ber-versi (`price_version`), trigger `reject_subscription_identity_update` menolak UPDATE/DELETE kecuali retire versi aktif (uang tak bisa ditulis ulang); `REVOKE ALL ... FROM anon, authenticated` + policy service_role-only; `publish_subscription_plan_price` fail-closed (validasi kode/harga/reason/submission_id regex), advisory lock per-plan, idempotent via `publication_submission_id`, trial TEPAT `interval '10 days'` + unique index 1 trial/user; `subscription_trial_telegram_users` reservasi permanen.
+- Scan sisa migrasi (admin-telegram-*, telegram-verification-v2, subscription-phase-5c-*, stock-daily-context, sector-hot): konsisten `SECURITY DEFINER SET search_path = pg_catalog, public`, RLS + service_role-only, check constraint shape, `ON CONFLICT DO NOTHING` idempoten.
+- Total heading temuan tetap **91** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 36 LOW).
+- **Berikutnya:** `tools/` (~102 file) + `test/` (~521 file) — pemetaan & spot-check; baca penuh migrasi 5c bila ditemukan dugaan konkret.
+
 ### PROGRES BATCH 82 (sesi 2026-09-18 lanjutan)
 - `public/index.html` 1200-1499 dibaca (chart page, news page, portfolio page + add form, track record page header/summary). **BERSIH — tidak ada temuan baru.**
 - BERSIH: semua handler bernama/statis; form Tambah Posisi memakai `maxlength` + `type=number`; tidak ada input hidden/secret.
