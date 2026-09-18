@@ -747,3 +747,9 @@ SYSTEM_ARCHITECTURE_LIFECYCLE, CHANGELOG, SECURITY, SCREENER_BUGFIX_LOG, SCREENE
 - **Spot-check BERSIH:** `data/` (JSON/TXT/CSV) tanpa token/secret; `public/*.css`/`*.js`/`*.html` tanpa secret hardcoded; `.github/workflows/*` tanpa referensi token review.
 - Total heading temuan kini **96** (2 CRITICAL, 16 HIGH, 39 MEDIUM, 39 LOW).
 - **Berikutnya:** `.github/workflows/*` (12) baca penuh, `scripts/`, `deploy/` sisa, lalu tutup sisa `lib/*` minor + dokumen audit lama.
+
+### PROGRES BATCH 93 (sesi 2026-09-18 lanjutan) — `.github/workflows/*` + `scripts/` + `deploy/`
+- **BERSIH & KOKOH:** 12 workflow + templates. Semua `actions/*` di-pin ke commit SHA, `persist-credentials: false`, `permissions` least-privilege, secret divalidasi sebelum dipakai, endpoint di-redact. `monitor-picks`/`non-konglo-screener` sengaja manual-only. `sync-foreign-flow` debug-only tanpa kredensial produksi. `phase5c-postgres`/`admin-access-postgres` harness PostgreSQL 16 lokal berkredensial dummy. `deploy/vps/*` + `deploy/systemd/*` memakai env file, bukan secret literal.
+- **1 temuan LOW BARU:** gate keamanan & regresi (`security-gate`, `codeql-security`, `web-hardening-regression`, `fast-watcher-regression`) hanya memicu pada base branch `feat/daytrade-screener-v1` → PR ke base lain tak melewati gate.
+- Total heading temuan kini **97** (2 CRITICAL, 16 HIGH, 39 MEDIUM, 40 LOW).
+- **Berikutnya:** tutup sisa `lib/*` minor + rekonsiliasi dokumen audit lama, lalu penutupan sesi.

@@ -1804,3 +1804,31 @@ Total heading temuan kini **96** (2 CRITICAL, 16 HIGH, 39 MEDIUM, 39 LOW).
 - `data/` (spot-check JSON/TXT/CSV) — **tidak ada** token/secret bertipe (`sk-`, `AIza`, bot token, JWT, `service_role`).
 - `public/*.css`/`*.js`/`*.html` — **tidak ada** secret hardcoded atau literal `vercel-build-secure-token` (scan bersih).
 - `.github/workflows/*` — tidak ada referensi `REVIEW_ACCESS_TOKEN`/literal token.
+
+---
+
+## MODUL: `.github/workflows/*` (12) + `deploy/` + `scripts/`
+
+### [LOW] Gate keamanan & regresi di-scope hanya ke branch `feat/daytrade-screener-v1` → PR ke branch lain tidak melewati gate
+- **Lokasi:** [`security-gate.yml:3-12`](.github/workflows/security-gate.yml:3), [`codeql-security.yml:3-12`](.github/workflows/codeql-security.yml:3), [`web-hardening-regression.yml:3-16`](.github/workflows/web-hardening-regression.yml:3), [`fast-watcher-regression.yml:3-11`](.github/workflows/fast-watcher-regression.yml:3).
+- **Kutipan kode bermasalah:**
+  ```yaml
+  # security-gate.yml
+  on:
+    pull_request:
+      branches: [ feat/daytrade-screener-v1 ]   # HANYA base branch ini
+    push:
+      branches: [ feat/daytrade-screener-v1 ]
+  ```
+- **Dampak:** `pull_request.branches` menyaring BASE branch, bukan head. PR yang di-arahkan ke `main` (atau branch integrasi lain) TIDAK memicu security-gate (scan kredensial + npm audit), CodeQL, web-hardening, maupun fast-watcher regression. Repo memiliki 557 branch remote. Murni observasi konfigurasi (bukan bug kode); dampak nol selama semua PR memang selalu ber-base `feat/daytrade-screener-v1`.
+- **Bukti verifikasi riil:** Baca `on.pull_request.branches` keempat file = literal `feat/daytrade-screener-v1`.
+- **Usulan arah perbaikan:** Tambahkan `main` ke `branches`, atau ubah ke `on: pull_request` tanpa filter branches untuk gate keamanan.
+
+Total heading temuan kini **97** (2 CRITICAL, 16 HIGH, 39 MEDIUM, 40 LOW).
+
+### Catatan tuntas — `.github/workflows/*` (BERSIH & KOKOH), `deploy/`, `scripts/`
+- Semua workflow BERSIH: setiap `actions/*` di-pin ke commit SHA, `persist-credentials: false`, `permissions` least-privilege (CodeQL `security-events: write` di-guard agar fork PR tak dapat token upload), secret divalidasi dulu sebelum dipakai, URL endpoint di-redact dari log.
+- `monitor-picks.yml` & `non-konglo-screener.yml` — jadwal otomatis SENGAJA dimatikan (manual-first), hanya `workflow_dispatch`, memakai `secrets.CRON_SECRET` (bukan literal).
+- `sync-foreign-flow.yml` — debug-only, eksplisit "must never receive production Supabase credentials", hanya baca SQLite lokal, clone IDX-API pada commit ter-pin + verifikasi `rev-parse HEAD`.
+- `phase5c-postgres.yml` (230) & `admin-access-postgres.yml` (136) — harness PostgreSQL 16 lokal berkredensial dummy, menjalankan migrasi + test runtime + race test; tidak menyentuh DB produksi.
+- `deploy/vps/*` + `deploy/systemd/*` — cron/wrapper memakai env file (bukan secret literal); `run-historical-backfill.sh` memakai lock file + `STOP_AT_TIME`/`RESERVE_QUOTA`.
