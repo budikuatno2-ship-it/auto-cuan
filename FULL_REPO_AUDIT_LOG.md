@@ -53,6 +53,19 @@ Sedang dikerjakan: FASE 2 (AI) + sisa lib/* (berikutnya: `context-ai-router-v4.j
 - `lib/intraday-fast-watcher-publisher.js` (501) **TUNTAS** — 1 MEDIUM BARU: `buildDbRow` memalsukan `daytrade_score` (`?? 70` + clamp `Math.max(50,...)`) dan menulisnya ke tabel produksi `daytrade_screener_latest`; terbukti runtime (42→50, null→70, status hardcoded `READY_BREAKOUT`). Konsumen publik terverifikasi (`api/sector-hot.js:2748,6869,11742,12423`).
 - Total heading temuan kini **66** (2 CRITICAL, 15 HIGH, 28 MEDIUM, 21 LOW).
 
+### PROGRES BATCH 16 (sesi 2026-09-18, lanjutan)
+TUNTAS & BERSIH (semua dibaca baris-per-baris):
+- `lib/intraday-collector-vps-audit.js` (305) — pure audit crontab/runner, idempotent, aman.
+- `lib/intraday-sample-lifecycle.js` (297) — lifecycle research storage; guard "first snapshot observation-only"; alias v1.1 konsisten; tidak mengubah state produksi.
+- `lib/intraday-volume-pace.js` (311) — pace WIB dengan jadwal Jumat 270 menit, `MIN_EFFECTIVE_PROGRESS` 0.15, clamp 6x, confidence LOW bila data kurang; tidak mengarang baseline.
+- `lib/intraday-fast-watcher-radar-publisher.js` (322) — 4 kill-switch, floor `MIN_RADAR_WATCH_SCORE=55` ketat (Temuan #7 terverifikasi ada di kode), RR<1 diblokir, ledger dedup + score +8 gate, chase reasons reused.
+- `lib/intraday-fast-watcher-momentum.js` (587) — scoring deterministik, floor RVOL 1.2 (BATCH 3 Mod 3), RR minimum, anti-chase adaptif max 6%, opening-velocity guard 09:16–09:30 WIB dengan threshold board-aware; `safeToFixed` dead code (LOW minor, tidak dicatat terpisah — pola sama dengan `lib/daytrade-screener-engine.js:3050`).
+- `lib/intraday-fast-watcher-early-watch.js` (577) — `executable_price` SELALU null + alasan eksplisit (jujur, tidak dipromosikan); at-most-once notification reservation; tidak menyentuh pool state.
+- `lib/intraday-fast-watcher-early-watch-publisher.js` (360) — gate 3 kill-switch termasuk global `TELEGRAM_ENABLED` sebelum reservasi; `_attempted` dipersist sebelum kirim (crash-safe); anti-chase hanya setelah early-watch prior run.
+- `lib/intraday-sample-summary.js` (405) — partisi eligibility konservatif (legacy_unclassified TIDAK dianggap eligible), catatan semantik MFE/MAE sampled jujur.
+
+Sisa `lib/intraday-*` (5): `intraday-shadow-scoring.js` (1262), `intraday-shadow-scoring-live.js` (1013), `intraday-shadow-trade-backtest.js` (1188), `intraday-fast-watcher-publisher.js` (TUNTAS batch 15), `intraday-fast-watcher-live.js` (TUNTAS), `intraday-fast-watcher-guarded-live.js` (TUNTAS), `intraday-production-eligibility.js` (TUNTAS), `intraday-fast-watcher-pool.js` (TUNTAS), `intraday-fast-watcher.js` (TUNTAS). → TERSISA 3 file shadow-*.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
@@ -206,7 +219,7 @@ SYSTEM_ARCHITECTURE_LIFECYCLE, CHANGELOG, SECURITY, SCREENER_BUGFIX_LOG, SCREENE
 - [ ] `lib/daytrade-screener-engine.js`, `lib/daytrade-screener-engine-v7.js`, `lib/daytrade-screener-constants.js`
 - [ ] `lib/swing-screener-engine.js`, `lib/screener-config.js`
 - [ ] `lib/daytrade-*` (semua ~35 file intraday/adjusted/provider/validation/outcome)
-- [-] `lib/intraday-*` (semua ~22 file fast-watcher/collector/shadow) — TUNTAS: `intraday-fast-watcher.js` (510), `intraday-fast-watcher-live.js` (320); sisa collector/shadow belum
+- [-] `lib/intraday-*` (semua ~22 file fast-watcher/collector/shadow) — TUNTAS: fast-watcher (510), -live (320), -pool (448), -publisher (501), -momentum (587), -radar-publisher (322), -early-watch (577), -early-watch-publisher (360), -guarded-live (180), production-eligibility (92), collector-vps-audit (305), sample-lifecycle (297), sample-summary (405), volume-pace (311). SISA: shadow-scoring (1262), shadow-scoring-live (1013), shadow-trade-backtest (1188)
 - [-] `lib/trade-plan-v2*.js` (14 file) — TUNTAS: `trade-plan-v2.js` (1.320), `trade-plan-v2-integration.js` (681); sisa 12 file belum
 - [ ] `lib/pattern-abcd*.js`, `lib/pattern-personality.js`, `lib/classic-chart-patterns.js`, `lib/candle-pattern-engine.js`, `lib/reversal-breakout-lifecycle.js`
 - [ ] `lib/swing-nk-rr-warning.js`, `lib/daytrade-entry-discipline*.js`, `lib/daytrade-execution-ranking.js`
