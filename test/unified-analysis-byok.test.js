@@ -7,6 +7,9 @@ const credentials = require('../lib/user-ai-credentials');
 const service = require('../lib/chart-analysis-service');
 const analyzeHandler = require('../api/analyze');
 
+// BYOK encryption is fail-closed without a configured secret; tests provide one.
+process.env.APP_SECRET = process.env.APP_SECRET || 'test-app-secret-for-byok-unit-tests';
+
 const TEST_KEY_APP = 'AIzaSyApp_MasterSystemKey_0011223344';
 const TEST_KEY_USER = 'AQ.UserPersonalKey_AABBCCDDEEFF9988';
 const TEST_KEY_FALLBACK = 'AIzaSyUser_FallbackPersonalKey_77889900';

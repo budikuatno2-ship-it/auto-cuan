@@ -11,6 +11,9 @@ const geminiProvider = require('../lib/ai-gemini-provider');
 const credentials = require('../lib/user-ai-credentials');
 const chartService = require('../lib/chart-analysis-service');
 
+// BYOK encryption is fail-closed without a configured secret; tests provide one.
+process.env.APP_SECRET = process.env.APP_SECRET || 'test-app-secret-for-byok-unit-tests';
+
 const ROOT_DIR = path.join(__dirname, '..');
 const indexHtml = fs.readFileSync(path.join(ROOT_DIR, 'public', 'index.html'), 'utf8');
 const aiChatRendererJs = fs.readFileSync(path.join(ROOT_DIR, 'public', 'ai-chat-renderer.js'), 'utf8');

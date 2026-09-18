@@ -13,34 +13,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const crypto = require('node:crypto');
-const vm = require('node:vm');
 const Module = require('module');
 
 const ROOT = path.resolve(__dirname, '..');
 const SECRET = 'unit-test-session-secret-value';
-const LEGACY_DOT_HASH = crypto.createHash('sha256').update('._autocuan_salt_2024', 'utf8').digest('hex');
-
-function loadFrontendHashPassword() {
-  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-  const start = html.indexOf('async function hashPassword(password)');
-  assert.ok(start >= 0, 'frontend hashPassword function must exist');
-  const braceStart = html.indexOf('{', start);
-  let depth = 0;
-  for (let i = braceStart; i < html.length; i++) {
-    if (html[i] === '{') depth++;
-    if (html[i] === '}') depth--;
-    if (depth === 0) {
-      const source = html.slice(start, i + 1);
-      return vm.runInNewContext('(' + source + ')', {
-        TextEncoder: TextEncoder,
-        crypto: crypto.webcrypto,
-        Uint8Array: Uint8Array
-      });
-    }
-  }
-  throw new Error('frontend hashPassword function has unbalanced braces');
-}
 
 // Inert placeholder budi record (NOT real data). BUDI_RAW is what the client
 // submits (its own SHA-256 prehash); BUDI_HASH is the server-stored credential
@@ -158,181 +134,46 @@ async function loginBudi(devices, deviceId) {
   return { res, sink };
 }
 
-async function loginLegacyBudi(options) {
-  const opts = options || {};
-  const sink = [];
-  const user = Object.prototype.hasOwnProperty.call(opts, 'user') ? opts.user : freshBudi();
-  const handler = requireApiWithSupabaseStub('../api/login-user', trackingSupabase({ app_users: user }, sink));
-  const res = makeRes();
-  const body = Object.assign({
-    username: 'budi',
-    passwordHash: LEGACY_DOT_HASH,
-    deviceId: 'budi_dev_1',
-    userAgent: 'legacy-test-ua'
-  }, opts.body || {});
-  await handler({ method: 'POST', headers: sameOrigin(), body: body }, res);
-  return { res, sink, user };
-}
-
-function assertGenericRejection(result) {
-  assert.equal(result.res.statusCode, 400);
-  assert.deepEqual(result.res.body, { success: false, error: 'Username atau password salah.' });
-  assert.equal(setCookie(result.res), '', 'failed compatibility login must issue no cookie');
-  assert.equal(result.sink.length, 0, 'failed compatibility login must not mutate the database');
-}
-
+// ============================================================
+// Batch 3 (F-037): the hardcoded legacy budi backdoor is removed. budi now
+// authenticates only through the standard database credential check.
 // ============================================================
 
-// Focused legacy compatibility matrix required by the production regression.
-test('legacy budi + dot hash succeeds only on an already-registered devices[] entry', async () => {
-  await withEnv({}, async () => {
-    const result = await loginLegacyBudi({
-      user: Object.assign(freshBudi(['primary-device', 'array-device']), { device_id: 'primary-device' }),
-      body: { deviceId: 'array-device' }
-    });
-    assert.equal(result.res.statusCode, 200);
-    assert.deepEqual(result.res.body, {
-      success: true,
-      username: 'budi',
-      userId: 'budi-immutable-id',
-      isAdmin: true
-    });
-    assert.equal(result.sink.length, 0, 'compatibility success must perform no database write');
-  });
+test('F-037: api/login-user.js contains no hardcoded legacy budi hash path', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'api', 'login-user.js'), 'utf8');
+  assert.doesNotMatch(source, /LEGACY_BUDI_PASSWORD_HASH|matchesLegacyBudiPassword/,
+    'the legacy backdoor helper and constant must be removed');
+  assert.ok(!source.includes('._autocuan' + '_salt_2024'),
+    'the salted backdoor seed must not remain in source');
 });
 
-test('legacy hash contract executes the production frontend algorithm and normalizes budi username', async () => {
+test('F-037: the retired dot hash no longer authenticates budi', async () => {
   await withEnv({}, async () => {
-    const frontendHashPassword = loadFrontendHashPassword();
-    const frontendDotHash = await frontendHashPassword('.');
-    assert.equal(frontendDotHash, LEGACY_DOT_HASH, 'server compatibility hash must match the production client algorithm');
-    const result = await loginLegacyBudi({ body: { username: '  BuDi  ', passwordHash: frontendDotHash } });
-    assert.equal(result.res.statusCode, 200);
-    assert.equal(result.res.body.username, 'budi');
-    assert.equal(result.sink.length, 0);
-  });
-});
-
-test('database-password match takes precedence even when the stored hash equals the legacy dot hash', async () => {
-  await withEnv({}, async () => {
+    const crypto = require('node:crypto');
+    const retiredDotHash = crypto.createHash('sha256').update('._autocuan' + '_salt_2024', 'utf8').digest('hex');
     const sink = [];
-    const user = Object.assign(freshBudi(['registered-device']), { password_hash: LEGACY_DOT_HASH });
-    const handler = requireApiWithSupabaseStub('../api/login-user', trackingSupabase({ app_users: user }, sink));
+    const handler = requireApiWithSupabaseStub('../api/login-user', trackingSupabase({ app_users: freshBudi() }, sink));
     const res = makeRes();
     await handler({ method: 'POST', headers: sameOrigin(), body: {
-      username: 'budi', passwordHash: LEGACY_DOT_HASH, deviceId: 'normal-path-new-device', userAgent: 'ua'
+      username: 'budi', passwordHash: retiredDotHash, deviceId: 'budi_dev_1'
     } }, res);
-    assert.equal(res.statusCode, 200);
-    assert.equal(res.body.success, true);
-    // The stored hash is in the raw legacy format here (by construction, to test
-    // precedence), so the normal database-match path also triggers the one-time
-    // transparent credential-migration write (see the "needsUpgrade" compare-and-swap
-    // in api/login-user.js) in addition to the existing device-append write.
-    assert.equal(sink.length, 2, 'normal login path retains its device update AND migrates the legacy-format credential');
-    const migrationWrite = sink.find(m => m.payload && Object.prototype.hasOwnProperty.call(m.payload, 'password_hash'));
-    assert.ok(migrationWrite, 'legacy-format stored hash must be migrated to the protected format on successful login');
-    assert.notEqual(migrationWrite.payload.password_hash, LEGACY_DOT_HASH, 'migrated credential must not be the raw legacy hash');
-    assert.doesNotMatch(migrationWrite.payload.password_hash, /^[a-f0-9]{64}$/i, 'migrated credential must be in the protected (non-raw-hex) format');
-    assert.ok(!('devices' in migrationWrite.payload), 'credential migration write must not also touch devices');
-    const deviceWrite = sink.find(m => m.payload && Object.prototype.hasOwnProperty.call(m.payload, 'devices'));
-    assert.ok(deviceWrite, 'device-append write must still happen');
-    assert.deepEqual(deviceWrite.payload.devices, ['registered-device', 'normal-path-new-device']);
+    assert.equal(res.statusCode, 400);
+    assert.deepEqual(res.body, { success: false, error: 'Username atau password salah.' });
+    assert.equal(setCookie(res), '', 'the retired backdoor credential must issue no cookie');
+    assert.equal(sink.length, 0, 'a rejected backdoor attempt must not mutate the database');
   });
 });
 
-test('legacy compatibility fails generically when a signed cookie cannot be attached', async () => {
+test('F-037: a legacy-shaped budi login with no device is refused generically', async () => {
   await withEnv({}, async () => {
     const sink = [];
     const handler = requireApiWithSupabaseStub('../api/login-user', trackingSupabase({ app_users: freshBudi() }, sink));
     const res = makeRes();
-    res.setHeader = function () { throw new Error('simulated cookie header failure'); };
-    await handler({ method: 'POST', headers: sameOrigin(), body: {
-      username: 'budi', passwordHash: LEGACY_DOT_HASH, deviceId: 'budi_dev_1'
-    } }, res);
+    await handler({ method: 'POST', headers: sameOrigin(), body: { username: 'budi', passwordHash: BUDI_RAW } }, res);
     assert.equal(res.statusCode, 400);
-    assert.deepEqual(res.body, { success: false, error: 'Username atau password salah.' });
-    assert.deepEqual(res.headers, {});
+    assert.deepEqual(res.body, { success: false, error: 'Data tidak lengkap.' });
+    assert.equal(setCookie(res), '');
     assert.equal(sink.length, 0);
-  });
-});
-
-test('legacy budi compatibility accepts the existing primary device_id without appending it', async () => {
-  await withEnv({}, async () => {
-    const result = await loginLegacyBudi({
-      user: Object.assign(freshBudi([]), { device_id: 'primary-only', devices: [] }),
-      body: { deviceId: 'primary-only' }
-    });
-    assert.equal(result.res.body.success, true);
-    assert.equal(result.sink.length, 0, 'primary device compatibility must remain read-only');
-  });
-});
-
-test('legacy compatibility sets the signed HttpOnly admin cookie with adm=true', async () => {
-  await withEnv({}, async () => {
-    const result = await loginLegacyBudi();
-    const cookie = setCookie(result.res);
-    assert.match(cookie, /^ac_sess=/);
-    assert.match(cookie, /HttpOnly/);
-    assert.match(cookie, /SameSite=Strict/);
-    const token = /^ac_sess=([^;]+)/.exec(cookie)[1];
-    const verified = S.verifySessionToken(token);
-    assert.equal(verified.valid, true);
-    assert.equal(verified.payload.adm, true);
-    assert.equal(verified.payload.un, 'budi');
-    assert.equal(verified.payload.uid, 'budi-immutable-id');
-    assert.equal(token.includes(LEGACY_DOT_HASH), false, 'legacy hash must not enter the token');
-    assert.equal(token.includes('budi_dev_1'), false, 'raw device id must not enter the token');
-  });
-});
-
-test('legacy compatibility never updates a budi field or inserts/appends a device', async () => {
-  await withEnv({}, async () => {
-    const user = freshBudi();
-    const before = JSON.stringify(user);
-    const result = await loginLegacyBudi({ user: user });
-    assert.equal(result.res.body.success, true);
-    assert.equal(result.sink.length, 0, 'no update or insert of any kind is allowed');
-    assert.equal(JSON.stringify(user), before, 'mocked budi row must remain byte-for-byte unchanged');
-  });
-});
-
-test('legacy budi rejects unknown and missing devices generically without mutation', async () => {
-  await withEnv({}, async () => {
-    assertGenericRejection(await loginLegacyBudi({ body: { deviceId: 'never-registered' } }));
-    assertGenericRejection(await loginLegacyBudi({ body: { deviceId: '' } }));
-  });
-});
-
-test('legacy budi fails closed without SESSION_SECRET', async () => {
-  await withEnv({ SESSION_SECRET: undefined }, async () => {
-    assertGenericRejection(await loginLegacyBudi());
-  });
-});
-
-test('legacy budi requires an existing approved and unblocked database account', async () => {
-  await withEnv({}, async () => {
-    assertGenericRejection(await loginLegacyBudi({ user: null }));
-    assertGenericRejection(await loginLegacyBudi({ user: Object.assign(freshBudi(), { is_blocked: true }) }));
-    assertGenericRejection(await loginLegacyBudi({ user: Object.assign(freshBudi(), { is_approved: false }) }));
-  });
-});
-
-test('wrong budi password, normal-user dot hash, and client admin flags cannot enter compatibility', async () => {
-  await withEnv({}, async () => {
-    assertGenericRejection(await loginLegacyBudi({ body: { passwordHash: 'not-the-legacy-hash' } }));
-
-    const alice = {
-      id: 'alice-id', username: 'alice', password_hash: 'alice-db-hash',
-      device_id: 'alice-device', devices: ['alice-device'], is_blocked: false, is_approved: true
-    };
-    assertGenericRejection(await loginLegacyBudi({
-      user: alice,
-      body: { username: 'alice', deviceId: 'alice-device', is_admin: true, isAdmin: true, adminName: 'budi' }
-    }));
-
-    assertGenericRejection(await loginLegacyBudi({
-      body: { deviceId: 'never-registered', is_admin: true, isAdmin: true, adminName: 'budi' }
-    }));
   });
 });
 
