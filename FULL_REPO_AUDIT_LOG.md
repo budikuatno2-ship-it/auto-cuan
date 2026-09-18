@@ -197,6 +197,10 @@ TUNTAS & BERSIH (8 file `lib/admin-*`):
 - Total heading temuan tetap **80** — batch ini tidak menemukan bug baru.
 - `public/bandarmologi-runtime.js` (5.435) **TUNTAS 100%** (sesi lama 1-3900 + batch ini 3901-5435). Temuan baru: 1 LOW — catatan scanner "Silent Foreign Accumulation" memfabrikasi "3 hari berturut-turut" saat `consecutive_days` absen (baris 4861). Literal `'2026-09-11'` di `formatDateDisplay`/scanner sudah tercatat (batch 8).
 - Total heading temuan kini **81** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 31 LOW).
+### PROGRES BATCH 34 (sesi 2026-09-18 lanjutan)
+- `public/watchlist-runtime.js` (507) **TUNTAS** — BERSIH (escapeHtml/escapeAttr, same-origin, delegasi klik notes).
+- `public/track-record-runtime.js` (490) **TUNTAS** — 1 LOW: dua jalur error interpolasi `data.error`/`err.message` mentah ke innerHTML tanpa escapeHtml (baris 58, 65). Inti bersih (`trEntryBounds` normalisasi urutan entry, CSV escapeCsvCell).
+- Total heading temuan kini **82** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 32 LOW).
 - Berikutnya: sisa `public/` runtime UI publik lain.
 
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug

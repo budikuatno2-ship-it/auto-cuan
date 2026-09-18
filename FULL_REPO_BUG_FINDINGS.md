@@ -1334,3 +1334,21 @@ Batch ini menuntaskan sisa 3901-5435 (sesi lama 1-3900). **BERSIH pada sebagian 
 - **Penjelasan:** Bila `item.consecutive_days` tidak ada (null/0), UI menampilkan klaim "Akumulasi senyap asing **3 hari berturut-turut**" — angka yang tidak berasal dari data. Backend (`bandarmologi-intel-service.js`) hanya memasukkan item ke `indexes.silent_foreign_accumulation` saat `triggered` (yang mensyaratkan `consecutivePositiveDays >= 3`), sehingga field biasanya ada; namun fallback `|| 3` tetap bisa memfabrikasi klaim bila bentuk data berbeda (mis. file index statis `/data/bandarmologi-intel-indexes/latest_*.json` dengan skema lain). Sama kelasnya dengan temuan fabrikasi `price_change_pct: 0.8` di backend.
 - **Bukti verifikasi riil:** Bukti kode: literal `|| 3` pada baris 4861; konsumen tunggal di scanner view.
 - **Usulan arah perbaikan:** Bila `consecutive_days` absen, tampilkan "beberapa hari" atau `—`, jangan mengarang angka 3.
+
+---
+
+## MODUL: Frontend Watchlist & Track Record (public/watchlist-runtime.js 507, public/track-record-runtime.js 490 — TUNTAS)
+
+Kedua file BERSIH pada inti: `watchlist-runtime` memakai `escapeHtml`/`escapeAttr` + `credentials:'same-origin'` + delegasi klik untuk catatan; `track-record-runtime` `trEntryBounds()` menormalkan urutan entry low-to-high (fix tampilan terdokumentasi), CSV export dengan `escapeCsvCell` yang benar. Satu temuan LOW:
+
+### [LOW] `track-record-runtime.js` menulis teks error ke `innerHTML` tanpa escaping (dua lokasi)
+- **Lokasi:** [`public/track-record-runtime.js:58`](public/track-record-runtime.js:58), [`:65`](public/track-record-runtime.js:65)
+- **Kutipan kode bermasalah:**
+  ```js
+  tbody.innerHTML = '<tr>...Gagal memuat track record: ' + ((data && data.error) || 'Terjadi kesalahan.') + '</td></tr>';
+  ...
+  tbody.innerHTML = '<tr>...Gagal terhubung ke server: ' + (err.message || String(err)) + '</td></tr>';
+  ```
+- **Penjelasan:** Berbeda dari file yang sama yang memakai `escapeCsvCell` untuk CSV dan `public/watchlist-runtime.js` yang memakai `escapeHtml`, dua jalur error di sini menempelkan `data.error` (teks dari server) dan `err.message` (teks dari platform/fetch) langsung ke `innerHTML`. Bila pesan error server suatu saat memuat input user (mis. ticker) atau pesan fetch memuat URL, konten itu dirender sebagai HTML. Dampaknya LOW (sumber teks bukan input langsung user di jalur normal) dan belum terverifikasi bisa dikendalikan penyerang, tetapi enkapsulasi escaping tidak konsisten dalam satu file.
+- **Bukti verifikasi riil:** Bukti kode: dua interpolasi mentah; pencarian file menunjukkan `escapeHtml` tidak ada padahal dipakai di file sibling.
+- **Usulan arah perbaikan:** Bungkus `data.error`/`err.message` dengan helper `escapeHtml` sebelum interpolasi, konsisten dengan `watchlist-runtime.js`.
