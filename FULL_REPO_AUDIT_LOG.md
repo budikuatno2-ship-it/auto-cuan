@@ -188,6 +188,15 @@ TUNTAS & BERSIH (4 file `lib/`):
 - Total heading temuan tetap **80** — batch ini tidak menemukan bug baru.
 - Berikutnya: sisa `lib/admin-*` (~10 file), lalu `public/bandarmologi-runtime.js` sisa baris.
 
+### PROGRES BATCH 32 (sesi 2026-09-18 lanjutan)
+TUNTAS & BERSIH (8 file `lib/admin-*`):
+- `admin-command-login-browser` (177), `admin-command-login` (279), `admin-command-zero-link-browser` (222), `admin-command-zero-link-pairing` (324) — device cookie HttpOnly/SameSite/Secure, admin 'budi' gate, webhook claim dedup, pairing fail-closed saat ambiguous.
+- `admin-fundamentals-upload` (241) — CSV validasi ketat, tidak mengarang BVPS.
+- `admin-maintenance-code-browser` (357), `admin-maintenance-code` (258) — HMAC code, maintenance-gated, OTP auto-delete, attempt lock.
+- `admin-device-approval` (468) — approval TTL, kick-oldest device, session hanya setelah approve.
+- Total heading temuan tetap **80** — batch ini tidak menemukan bug baru.
+- Berikutnya: `public/bandarmologi-runtime.js` (5.435) sisa baris (per log sudah dibaca 1-3900).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
