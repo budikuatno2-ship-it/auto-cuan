@@ -1447,3 +1447,13 @@ Total heading temuan tetap **84** — batch ini tidak menambah temuan.
 - `public/website-approved-access.js` (50) — **BERSIH**. Menyembunyikan UI subscription (akses dipegang gate server), `loadScriptOnce` idempoten via marker atribut.
 
 Total heading temuan tetap **84** — batch ini tidak menambah temuan.
+
+---
+
+## MODUL: Mobile UI + Maintenance Guard + Mobile Nav (3 file — TUNTAS, BERSIH)
+
+- `public/mobile-ui-runtime-v6.js` (19) — **BERSIH**. Hanya menyuntik CSS `@media (max-width:1023px)` untuk posisi launcher (safe-area aware). Tidak menyentuh logika drag.
+- `public/maintenance-auth-guard.js` (37) — **BERSIH**. Menutup modal pilihan auth saat gate maintenance/status terlihat; membungkus `openAuthChoiceModal` agar tidak bisa dibuka saat maintenance. Guard UX di atas batas server.
+- `public/mobile-nav.js` (474) — **BERSIH**. Launcher dibangun via `createElement` (tanpa innerHTML berisi label → tidak ada permukaan injeksi); tap didelegasikan ke tombol nav asli (semua gate/handler tetap jalan); `snapPosition` menjaga kontrol tetap di dalam safe area; MutationObserver di-throttle + `render()` early-return via signature; drag pakai pointer capture + ambang jarak; `applyShellVisibility` menyembunyikan launcher di luar `dashboardScreen` (landing/blocked/maintenance).
+
+Total heading temuan tetap **84** — batch ini tidak menambah temuan.
