@@ -49,7 +49,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 
 | Batch | Judul | Jumlah temuan | Status |
 |---|---|---:|---|
-| 1 | CRITICAL: Satukan Definisi Harga Terakhir (api/quote.js vs api/candles.js) | 2 | [ ] BELUM |
+| 1 | CRITICAL: Satukan Definisi Harga Terakhir (api/quote.js vs api/candles.js) | 2 | [x] SELESAI |
 | 2 | CRITICAL: Satu Sumber Kebenaran Nama Model Gemini | 9 | [ ] BELUM |
 | 3 | HIGH Keamanan: Token Hardcoded, Backdoor Kredensial, Kunci Enkripsi Fallback | 5 | [ ] BELUM |
 | 4 | HIGH: Integritas Gerbang Keselamatan Telegram (BUG-025 & Pemotongan Teks) | 1 | [ ] BELUM |
@@ -64,7 +64,18 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [ ] BELUM |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [ ] BELUM |
 
-Progres keseluruhan: **0/97 SELESAI, 0 DITARIK, 97 BELUM** (per Batch 0).
+Progres keseluruhan: **2/97 SELESAI, 0 DITARIK, 95 BELUM** (per Batch 1).
+
+### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
+
+Branch `fix/unify-latest-price-policy` -> base `feat/daytrade-screener-v1`. Scope: F-050 (CRITICAL) + F-051 (HIGH) saja.
+
+- **Verifikasi runtime SEBELUM ubah kode** (mock Yahoo, tanpa jaringan): `quote.last=505` (bar hari berjalan) vs `candles.latest.last=100` (T-1); `pivotSourceDate=hari ini`. Divergen terkonfirmasi.
+- **Perbaikan** di `api/quote.js`: impor `lib/chart-t1-policy.js`; label candle pakai `formatJakartaDate` (field `date` -> `time`, selaras `/api/candles`); `retainCompletedCandles` dijalankan sebelum `latest`/pivot/MA/RSI/fibonacci; tambah `actual_data_date`/`jakarta_today`/`t1_status`/`t1_verified`.
+- **Setelah perbaikan**: `quote.last=100 == candles.latest.last=100`, `pivotSourceDate=T-1`, `DIVERGENT=false`.
+- **Test regresi baru**: `test/quote-candles-latest-price-consistency.test.js` (3 subtest) + didaftarkan di `tools/curated-build-tests.json` agar ter-gate `npm test`.
+- **Gate**: `node --check api/quote.js` bersih; `npm test` = **396/396 file lolos, exit 0** (baseline 395 + 1 test baru). CI PR #689 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login).
+- **Diff**: `api/quote.js` +18/-4, `tools/curated-build-tests.json` +1, test baru 132 baris. Tidak menyentuh scope Batch 2+.
 
 ---
 
@@ -74,8 +85,8 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 
 ### Batch 1 - CRITICAL: Satukan Definisi Harga Terakhir (api/quote.js vs api/candles.js) (2 temuan)
 
-- [ ] F-050 | CRITICAL | batch 1 | api/quote.js:543, api/candles.js:155 - `api/quote.js` dan `api/candles.js` memakai definisi "harga terakhir" yang BERBEDA — sumber utama "harga ngaco"
-- [ ] F-051 | HIGH | batch 1 | api/quote.js:620 - `api/quote.js` memakai pivot dari candle yang belum close → level support/resistance & trading plan bergeser
+- [x] F-050 | CRITICAL | batch 1 | api/quote.js:543, api/candles.js:155 - `api/quote.js` dan `api/candles.js` memakai definisi "harga terakhir" yang BERBEDA — sumber utama "harga ngaco"
+- [x] F-051 | HIGH | batch 1 | api/quote.js:620 - `api/quote.js` memakai pivot dari candle yang belum close → level support/resistance & trading plan bergeser
 
 ### Batch 2 - CRITICAL: Satu Sumber Kebenaran Nama Model Gemini (9 temuan)
 
