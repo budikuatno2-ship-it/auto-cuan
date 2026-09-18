@@ -1590,6 +1590,24 @@ Total heading temuan kini **86** (2 CRITICAL, 15 HIGH, 36 MEDIUM, 33 LOW).
 
 Total heading temuan kini **87** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 33 LOW).
 
+### [LOW] `getRelativeDate` masih memakai rumus WIB double-shift yang sudah diperbaiki di `getWIBDateString`
+- **Lokasi:** [`public/index.html:2410-2425`](public/index.html:2410); dipakai di [`public/index.html:7214`](public/index.html:7214)
+- **Kutipan kode bermasalah:**
+  ```js
+  function getRelativeDate(isoString) {
+      var now = new Date();
+      var wibNow = new Date(now.getTime() + (7 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));   // <-- double-shift
+      var target = new Date(isoString);
+      var wibTarget = new Date(target.getTime() + (7 * 60 * 60 * 1000) - (target.getTimezoneOffset() * 60 * 1000));
+      var todayStr = wibNow.toISOString().slice(0, 10);
+      ...
+  ```
+- **Penjelasan:** `getWIBDateString` ([`:2386`](public/index.html:2386)) sudah diperbaiki dengan menghapus `getTimezoneOffset()` (komentar di atasnya menjelaskan bahwa bentuk lama membuat tanggal "maju sehari dari 17:00 WIB"). Namun `getRelativeDate` beberapa baris di bawahnya MASIH memakai bentuk lama `+ 7h - getTimezoneOffset()`. Untuk browser WIB (`getTimezoneOffset()` = -420), shift efektif jadi +14 jam, sehingga batas pergantian hari bergeser ke **17:00 WIB**, bukan tengah malam. Akibatnya, untuk sesi AI admin yang dibuat sore/malam WIB, label "Hari ini"/"Kemarin" salah dan jatuh ke tanggal absolut (mis. sesi 18 Sep 10:00 WIB dibaca sebagai bukan "Hari ini" saat sekarang 18 Sep 18:00 WIB). Dampak terbatas pada label tanggal di panel admin, tetapi ini bug zona waktu konkret yang kontradiktif dengan perbaikan yang sudah ada di fungsi sebelahnya.
+- **Bukti verifikasi riil:** Bukti kode: rumus `+ 7h - getTimezoneOffset()` masih ada di `:2413,2415` sementara `getWIBDateString:2388` memakai `+ 7h` saja. Perhitungan: now=18 Sep 18:00 WIB → `now+14h` = 19 Sep 01:00 UTC → `todayStr='2026-09-19'` (salah; WIB sebenarnya 18 Sep).
+- **Usulan arah perbaikan:** Samakan dengan `getWIBDateString`: `new Date(t.getTime() + 7*3600000)` tanpa `getTimezoneOffset()`, atau gunakan `Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Jakarta', … })` seperti modul lain.
+
+Total heading temuan kini **88** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 34 LOW).
+
 ---
 
 ## MODUL: Pattern Safety Hardening + UI Stability Fix + Admin Maintenance Code (3 file — TUNTAS, BERSIH)

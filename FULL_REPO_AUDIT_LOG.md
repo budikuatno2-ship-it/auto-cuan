@@ -322,6 +322,12 @@ TUNTAS & BERSIH (3 file `public/`):
 - Total heading temuan kini **87** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 33 LOW).
 - **Sisa `index.html` belum dibaca:** 301-4299, 4480-5089, 5200-7329, 7909-12174 (fokus: inline globals, event handler interpolasi, sisa binding DOM).
 
+### PROGRES BATCH 54 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 2110-2709 dibaca (device-id, username normalization, premium/maintenance state, password hashing, WIB util, subscription experience, landing showcase). **1 LOW BARU.**
+- BERSIH: `hashPassword` (SHA-256 + salt klien) aman karena server re-hash via scrypt + salt acak (`lib/password-credential.js` `k1` prefix, `timingSafeEqual`); `setTopLevelView` gate maintenance 3-state; `loadLandingShowcase` memakai `escapeHtml`; `isServerVerifiedAdmin` hanya dari sesi server.
+- **Temuan LOW:** `getRelativeDate` (`:2410-2425`) masih memakai rumus WIB double-shift (`+7h - getTimezoneOffset()`) yang sudah dihapus di `getWIBDateString` (`:2386`) → batas hari bergeser ke 17:00 WIB; label "Hari ini/Kemarin" salah untuk sesi sore/malam.
+- Total heading temuan kini **88** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 34 LOW).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
