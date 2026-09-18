@@ -1110,3 +1110,63 @@ File ini **BERSIH** pada bagian yang sudah dibaca sesi lalu (1-900). Batch ini m
 - **Penjelasan:** ARA dihitung bertingkat mengikuti tier harga, tetapi ARB selalu -15% tanpa tier dan tanpa rujukan peraturan di kode/komentar (label yang keluar hanya `normal_board_assumption`). Band ini dipakai untuk `arb_price`, `sl_below_arb`, `execution_reality_status`, dan (via `deriveCandlePotentialRange`) lantai `candle_potential_low` pada kartu analisis — jadi bila aturan ARB IDX berubah (atau berbeda per papan), seluruh klaim "rawan ARB" dan potensi candle ikut salah tanpa ada test yang menangkapnya: pencarian `arb_pct`/`getIdxAutoRejectBand` di `test/` tidak menemukan satu pun test yang mengunci nilai ini.
 - **Bukti verifikasi riil:** Runtime di sesi ini — `getIdxAutoRejectBand(100)` → `ara 35% / arb -15%`; `getIdxAutoRejectBand(1000)` → `25% / -15%`; `getIdxAutoRejectBand(6000)` → `20% / -15%`. Pencarian test: nol referensi.
 - **Usulan arah perbaikan:** Dokumentasikan sumber peraturan (tanggal + nomor aturan) dan tambahkan test yang mengunci tier ARA/ARB; bila ARB juga bertingkat per aturan terbaru, samakan pola tiering dengan ARA. Verifikasi eksternal ke aturan IDX berlaku sebelum mengubah nilai.
+
+---
+
+## MODUL: Bandarmologi Intel Service (lib/bandarmologi-intel-service.js, 1.754 baris — TUNTAS)
+
+File dibaca baris-per-baris (chunk 1-300, 301-600, 601-900, 901-1200, 1201-1500, 1501-1754). **BERSIH pada bagian**: `getCachedClosePriceDetail` (bridge live dulu, provenance ikut payload), stale-candle guard PR4, guard "Pillar 9" (5D bearish/RSI>70 membatalkan badge akumulasi), rekonsiliasi net flow vs confluence badge, provenance `data_source` bridge vs baked. Tiga temuan:
+
+### [MEDIUM] Denominator CR DIKARANG `top5Val × 1.75` saat total turnover tidak tersedia — CR5 selalu keluar 57,14% dan CR3 ikut ter-skala, lalu ditampilkan ke user sebagai metrik konsentrasi
+- **Lokasi:** [`lib/bandarmologi-intel-service.js:1184-1192`](lib/bandarmologi-intel-service.js:1184); konsumen UI: [`public/bandarmologi-runtime.js:4742`](public/bandarmologi-runtime.js:4742), [`:4769`](public/bandarmologi-runtime.js:4769), [`:4847`](public/bandarmologi-runtime.js:4847), [`:4868`](public/bandarmologi-runtime.js:4868)
+- **Kutipan kode bermasalah:**
+  ```js
+  // Denominator guard: Total market turnover must NEVER be equal to or less than top 5 buy val!
+  if (totalTurnover <= top5Val) {
+    if (ohlcvTurnover > 0 && ohlcvTurnover > top5Val) {
+      totalTurnover = ohlcvTurnover;
+    } else {
+      totalTurnover = top5Val > 0 ? Math.round(top5Val * 1.75) : 0;   // <-- DENOMINATOR DIKARANG
+    }
+  }
+  ...
+  cr5 = Number(((top5Val / totalTurnover) * 100).toFixed(2));           // = 100/1.75 = 57.14 selalu
+  ```
+- **Penjelasan:** Ketika turnover pasar asli tidak tersedia (feed tidak menyertakan `total_turnover` dan cache OHLCV kosong), denominator diganti `top5Val × 1.75` — angka yang tidak berasal dari data mana pun. Konsekuensinya deterministik: `cr5 = 100/1.75 = 57.14` **selalu** di cabang itu, dan `cr3 = top3Val/(top5Val×1.75)×100` ikut ter-skala oleh konstanta karangan. Nilai ini bukan sekadar diagnostik internal: UI merendernya sebagai "CR3 X% / CR5 57.14%" dengan bar visual dan label status ("Akumulasi Terkonsentrasi" bila cr3 ≥ 40), dan scanner item memakai `item.cr3` sebagai metrik ("CR3 60+%"). User melihat angka konsentrasi presisi yang sebenarnya adalah artefak asumsi 1.75×. Ironisnya komentar di atas kode menyebut aturan anti-100%, tetapi solusinya justru mengganti satu distorsi dengan distorsi baru.
+- **Bukti verifikasi riil:** Bukti kode + derivasi aritmetika: di cabang tersebut `cr5 = (top5Val / (top5Val×1.75))×100 = 57.142857… → "57.14"` (selalu). Konsumen UI terverifikasi via grep (`bandarmologi-runtime.js:4742,4769,4847,4868,4785`). Cabang ini reachable kapan pun `norm.total_turnover` absen — kondisi umum pada feed hunter fallback (yang bahkan tidak membawa `total_turnover`).
+- **Usulan arah perbaikan:** Jangan mengarang denominator: bila turnover pasar tidak tersedia, kembalikan `cr3/cr5 = null` + `reason: 'TURNOVER_UNAVAILABLE'` dan biarkan UI menampilkan "—", atau hitung konsentrasi terhadap total nilai beli seluruh broker yang benar-benar ada (`allBrokers` sum) dan tandai basisnya eksplisit.
+
+### [MEDIUM] Fallback hunter MEMFABRIKASI bukti "Silent Foreign Accumulation": `price_change_pct: 0.8` & `is_sideways: true` hardcoded, daily breakdown membagi total net secara rata
+- **Lokasi:** [`lib/bandarmologi-intel-service.js:791-809`](lib/bandarmologi-intel-service.js:791) (khusus [`:798`](lib/bandarmologi-intel-service.js:798), [`:799`](lib/bandarmologi-intel-service.js:799), [`:805`](lib/bandarmologi-intel-service.js:805))
+- **Kutipan kode bermasalah:**
+  ```js
+  if (foreignBuyers.length >= 2 && totalForeignNet > 0) {
+    const days = Math.min((hunterData.target_dates && hunterData.target_dates.length) || numDays || 3, 5);
+    return {
+      ...
+      triggered: true,
+      consecutive_days: days,
+      price_change_pct: 0.8,          // <-- DIKARANG, bukan diukur
+      is_sideways: true,              // <-- DIKARANG, bukan hasil evaluasi
+      ...
+      daily_breakdown: (hunterData.target_dates || []).map(d => ({
+        date: d,
+        foreign_net: Math.round(totalForeignNet / days),   // <-- dibagi rata: tiap hari angka identik
+        price: foreignBuyers[0].avg_price || 0
+      })),
+  ```
+- **Penjelasan:** Cabang hunter-fallback men-trigger sinyal "Net Foreign Buy positif N hari berturut-turut ... sideways" padahal data hunter adalah AGREGAT rentang (bukan deret harian): tidak ada satu pun pengukuran harian yang membuktikan "berturut-turut", dan syarat sideways (`priceFluctuationPct <= 3.0` pada jalur utama) dilewati dengan konstanta `0.8`. `daily_breakdown` lalu memfabrikasi deret harian dengan membagi total net sama rata — setiap hari menampilkan angka identik, seolah observasi per-hari. Sinyal ini masuk ke `indexes.silent_foreign_accumulation` (`:1504-1513`) dan tampil di UI sebagai kategori scanner "🤫 Akumulasi Asing" (`bandarmologi-runtime.js:4782,4860`) — user melihat sinyal akumulasi asing yang "terbukti" dari data yang tidak pernah mendukung klaimnya. Berbeda dari jalur utama (yang benar-benar menghitung streak dari broker-summary harian), jalur ini adalah fabrikasi penuh.
+- **Bukti verifikasi riil:** Bukti kode: konstanta literal pada tiga field, plus struktur `daily_breakdown` yang membagi rata. Jalur reachable saat `availableDates.length < 3` DAN ada hunter data (kondisi lazim untuk ticker yang baru masuk universe). Konsumen UI terverifikasi via grep.
+- **Usulan arah perbaikan:** Cabang hunter tidak boleh mengklaim streak/sideways: kembalikan `triggered: false, reason: 'DAILY_SERIES_UNAVAILABLE'` atau turunkan menjadi sinyal agregat terpisah (mis. `FOREIGN_RANGE_AGGREGATE`) tanpa klaim per-hari; hapus `price_change_pct`/`is_sideways` karangan dan `daily_breakdown` rata-bagi.
+
+### [LOW] Literal tanggal `2026-09-08` sebagai default tanggal fetch VPS + `2026-09-11` sebagai default `effective_date` (3 lokasi) di jalur intel
+- **Lokasi:** [`lib/bandarmologi-intel-service.js:1303`](lib/bandarmologi-intel-service.js:1303) (`options.date || '2026-09-08'`), [`:1269`](lib/bandarmologi-intel-service.js:1269)/[`:1272`](lib/bandarmologi-intel-service.js:1272) (`effective_date: options.date || '2026-09-11'`), [`:1439`](lib/bandarmologi-intel-service.js:1439)/[`:1559`](lib/bandarmologi-intel-service.js:1559) (fallback `'2026-09-11'`)
+- **Kutipan kode bermasalah:**
+  ```js
+  vpsFetcher.fetchBrokerSummaryFromVpsSync(clean, options.date || '2026-09-08');
+  ...
+  effective_date: options.date || '2026-09-11',
+  ```
+- **Penjelasan:** Sama kelasnya dengan temuan literal tanggal di `lib/bandarmologi-service.js` (batch 20), tetapi di file ini termasuk `'2026-09-08'` (tanggal yang bahkan lebih lama) sebagai tanggal fetch default — sehingga pada kondisi tanpa tanggal eksplisit, sistem menarik dan melabeli data sebagai tanggal tetap yang makin basi. Payload intel yang dipakai UI menyertakan `effective_date` ini sebagai "as_of_date".
+- **Bukti verifikasi riil:** Bukti kode: 5 kemunculan literal terverifikasi via pencarian langsung; `getEffectiveTradingDate` tetap dipanggil tetapi fallback terakhirnya literal.
+- **Usulan arah perbaikan:** Ganti dengan `getEffectiveTradingDate()`/tanggal disk terbaru; bila tak tersedia kembalikan `null` dan tandai payload sebagai `DATE_UNRESOLVED` alih-alih mengklaim tanggal tetap.

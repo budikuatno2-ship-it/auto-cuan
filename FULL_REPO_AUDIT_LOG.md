@@ -109,6 +109,16 @@ Berikutnya: `lib/bandarmologi-service.js` (2.226 — baca bertahap), lalu `lib/i
 - Total heading temuan kini **69** (2 CRITICAL, 15 HIGH, 29 MEDIUM, 23 LOW).
 - Rekap sesi 2026-09-18: `analyze-legacy` (1.920), `ai-answer-contract`, `ai-telemetry`, `context-ai-router-v4` (1.162), `user-watchlist-service` (730), `daytrade-ohlcv-cache` (393), `arjum-client` (641), **SEMUA `intraday-*` (17)**, **SEMUA `telegram-*` (12)**, **SEMUA `trade-plan-v2-*` (11)**, `bandarmologi-service` (2.226), `idx-tick-normalization` (900-1182) — semua dibaca baris-per-baris.
 
+### PROGRES BATCH 22 (sesi 2026-09-18 lanjutan)
+- `lib/bandarmologi-confluence.js` (161) **TUNTAS** — BERSIH (window sum dengan syarat minimum hari untuk 1M/3M; tidak mengarang).
+- `lib/bandarmologi-screener-scoring.js` (295) **TUNTAS** — BERSIH (rubrik skor terdokumentasi; `options.hasInsiderBuy` tanpa validasi 30-hari tapi TIDAK dipakai caller mana pun — dead path, tidak dicatat sebagai temuan).
+- `lib/bandarmologi-intel-service.js` (1.754) **TUNTAS** (6 chunk). Temuan baru: 2 MEDIUM + 1 LOW:
+  1. MEDIUM — denominator CR dikarang `top5Val × 1.75` (baris 1190) → CR5 selalu 57,14%; CR3 ter-skala; dirender UI (`bandarmologi-runtime.js:4742,4769,4847,4868`).
+  2. MEDIUM — hunter fallback memfabrikasi bukti Silent Foreign Accumulation (`price_change_pct: 0.8`, `is_sideways: true` hardcoded baris 798-799; `daily_breakdown` bagi rata baris 805); tampil di UI kategori "Akumulasi Asing".
+  3. LOW — literal `2026-09-08` (fetch default) + `2026-09-11` (effective_date) di 5 lokasi.
+- Total heading temuan kini **72** (2 CRITICAL, 15 HIGH, 31 MEDIUM, 24 LOW).
+- Berikutnya: klaster `lib/daytrade-*` (31 file tersisa) lalu frontend `public/` sisa.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
