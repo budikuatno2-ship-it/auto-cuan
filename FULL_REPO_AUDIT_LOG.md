@@ -383,6 +383,11 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: `addAIBubble` MutationObserver `childList`-only + auto-disconnect 2s (tidak bereaksi editnya sendiri); history menyimpan `outerHTML` yang SUDAH disanitasi; `renderSidebarSessions` `escapeHtml(session.title)` + `activeTicker` selalu lewat `isValidTicker` (`[A-Z]{4}`); `loadSubscriptionCatalog` `escapeAdminHtml` untuk display_name/price_version/change_reason; `loadTradingView` simbol dinormalisasi `IDX:` + uppercase.
 - Berikutnya: `index.html` 7909-12174 (dashboard top5/history/monitor, scanner, diagnostics).
 
+### PROGRES BATCH 64 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 7970-8269 dibaca (website settings admin, screener display helpers, bandar/pattern badges, confluence html). **BERSIH — tidak ada temuan baru.**
+- BERSIH: `buildConfluenceHtml` (SEMUA interpolasi `escapeHtml`); `patternPersonalityBadgeHtml`/`bandarScoreBadgeHtml` `escapeHtml(tip/label/title)`; `normalizeDisplayLevels`/`safeDisplayText` murni. `loadWebsiteSettings` menginterpolasi `config.message`/`config.updatedBy` mentah, tetapi keduanya di-otor oleh admin (`updatedBy` selalu username admin yang menyimpan) → bukan eskalasi privilege.
+- Berikutnya: `index.html` 8270-12174 (dashboard top5/history/monitor, scanner, diagnostics, script akhir).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
