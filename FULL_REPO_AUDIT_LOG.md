@@ -250,6 +250,15 @@ TUNTAS & BERSIH (3 file `public/`):
 - Total heading temuan tetap **84** — batch ini tidak menambah temuan.
 - Berikutnya: `public/security-admin-runtime.js`, `public/admin-tools-runtime.js`, `public/admin-zero-link-pairing.js`, `public/admin-user-delete-enhancement.js`, `public/auth-v2.js`, `public/account-center-lazy-loader-v1.js`.
 
+### PROGRES BATCH 44 (sesi 2026-09-18 lanjutan)
+TUNTAS & BERSIH (4 file admin/security `public/`):
+- `security-admin-runtime.js` (199) — esc() konsisten, tak tampilkan rahasia, readiness jujur.
+- `admin-user-delete-enhancement.js` (111) — konfirmasi ketik-username, gate admin, observer throttle + dedup.
+- `admin-tools-runtime.js` (143) — guide aktivasi security, tombol idempoten, observer settle.
+- `admin-zero-link-pairing.js` (196) — fail-closed, sanitasi tag/label, konsumsi grant device, diam saat maintenance-code aktif.
+- Total heading temuan tetap **84** — batch ini tidak menambah temuan.
+- Berikutnya: `public/auth-v2.js` (18.273 b), `public/account-center-lazy-loader-v1.js` (18.553 b), `public/account-center-v1.js` (46.744 b), `public/subscription-manual-payment-v1.js` (24.622 b), `public/position-sizing-calculator.js`, `public/track-record-backtest.js`, `public/ui-bugfix-pack-v1.js`, `public/dashboard-top5-only-ui.js`, `public/portfolio-ai-workspace-v1.js`, `public/tmp-ci-touch-batch1.js`.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.

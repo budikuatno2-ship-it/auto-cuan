@@ -1457,3 +1457,14 @@ Total heading temuan tetap **84** — batch ini tidak menambah temuan.
 - `public/mobile-nav.js` (474) — **BERSIH**. Launcher dibangun via `createElement` (tanpa innerHTML berisi label → tidak ada permukaan injeksi); tap didelegasikan ke tombol nav asli (semua gate/handler tetap jalan); `snapPosition` menjaga kontrol tetap di dalam safe area; MutationObserver di-throttle + `render()` early-return via signature; drag pakai pointer capture + ambang jarak; `applyShellVisibility` menyembunyikan launcher di luar `dashboardScreen` (landing/blocked/maintenance).
 
 Total heading temuan tetap **84** — batch ini tidak menambah temuan.
+
+---
+
+## MODUL: Admin/Security Frontend (4 file — TUNTAS, BERSIH)
+
+- `public/security-admin-runtime.js` (199) — **BERSIH**. `esc()` konsisten di semua interpolasi (ip, target, route, UA, reason, pesan error); tidak pernah menampilkan password/cookie/token/device ID; `when()` WIB via Intl; readiness pill jujur (DB/pepper/alert/fail-closed). `loading` guard mencegah request ganda.
+- `public/admin-user-delete-enhancement.js` (111) — **BERSIH**. Konfirmasi ketik-username sebelum hapus; gate `isAdminBrowser()` (budi + is_admin) hanya menyembunyikan tombol (backend tetap batas); MutationObserver `requestAnimationFrame`-throttle + `deleteAccountReady` dedup; `budi`/`review` dikecualikan.
+- `public/admin-tools-runtime.js` (143) — **BERSIH**. `securityMissingSteps` memandu aktivasi (migration/pepper/mode/shadow/fail-closed/alert) dengan penegasan "jangan taruh rahasia di halaman"; tombol Foreign/AI-Eval idempoten; observer settle via early-return.
+- `public/admin-zero-link-pairing.js` (196) — **BERSIH**. Fail-closed (error polling tidak mengubah state UI/auth); `renderHint` menyaring `tag` ke `[A-Z0-9]{≤6}` dan `label` membuang `<>`; polling `stopped`/`inFlight` guard; konsumsi grant device sebelum berhenti (memperbaiki path /akses lama); diam saat `__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__`.
+
+Total heading temuan tetap **84** — batch ini tidak menambah temuan.
