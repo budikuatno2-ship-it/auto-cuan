@@ -393,6 +393,11 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: `fetchManualConfluenceRow` merender lewat `buildConfluenceHtml` (escapeHtml); `getDayTradeStatusColor` jujur mengembalikan abu-abu untuk status kosong (bukan amber "caution"); semua fungsi label/filter murni string (tanpa sink innerHTML).
 - Berikutnya: `index.html` 8570-12174.
 
+### PROGRES BATCH 66 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 8570-8869 dibaca (applyScreenerUiFilters sisa, dtToggleView, freshness chip, renderDtCardGrid, getSetupMeaning, buildRespectQualityLine, openScrDetail header/metrics/signal/entry/plan/fib). **BERSIH — tidak ada temuan baru.**
+- BERSIH: `renderDtCardGrid` & `openScrDetail` konsisten memakai `escapeHtml` pada SEMUA field teks (ticker, status, risk, notes, reason, label, setup meaning, fib); `freshnessChipHtml` escape label+reason. Catatan trivial (bukan temuan): `:8699` `replace(/^Plan:\\s*/, '')` memakai `\\s` (literal backslash+s) sehingga replace no-op → prefix "Plan:" bisa tampil ganda; kosmetik saja.
+- Berikutnya: `index.html` 8870-12174.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
