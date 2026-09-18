@@ -1170,3 +1170,26 @@ File dibaca baris-per-baris (chunk 1-300, 301-600, 601-900, 901-1200, 1201-1500,
 - **Penjelasan:** Sama kelasnya dengan temuan literal tanggal di `lib/bandarmologi-service.js` (batch 20), tetapi di file ini termasuk `'2026-09-08'` (tanggal yang bahkan lebih lama) sebagai tanggal fetch default — sehingga pada kondisi tanpa tanggal eksplisit, sistem menarik dan melabeli data sebagai tanggal tetap yang makin basi. Payload intel yang dipakai UI menyertakan `effective_date` ini sebagai "as_of_date".
 - **Bukti verifikasi riil:** Bukti kode: 5 kemunculan literal terverifikasi via pencarian langsung; `getEffectiveTradingDate` tetap dipanggil tetapi fallback terakhirnya literal.
 - **Usulan arah perbaikan:** Ganti dengan `getEffectiveTradingDate()`/tanggal disk terbaru; bila tak tersedia kembalikan `null` dan tandai payload sebagai `DATE_UNRESOLVED` alih-alih mengklaim tanggal tetap.
+
+---
+
+## MODUL: Frontend Day Trade Runtime (public/daytrade-runtime.js, public/fast-watcher-live-refresh.js)
+
+`public/fast-watcher-live-refresh.js` (153) **BERSIH** (polling visibility-aware, abort timeout 8s, signature dedup, tidak refresh saat full screener berjalan). `public/daytrade-runtime.js` (398) **BERSIH** kecuali satu temuan LOW:
+
+### [LOW] Statistik "Universe"/"Scanned" memakai fallback hardcoded 760/720 saat meta kosong — angka karangan yang tampil sebagai fakta
+- **Lokasi:** [`public/daytrade-runtime.js:75-76`](public/daytrade-runtime.js:75) (frontend) dan sumbernya [`api/sector-hot.js:11927-11928`](api/sector-hot.js:11927) (Day Trade) + [`api/sector-hot.js:10626-10627`](api/sector-hot.js:10626) (Swing Non-Konglo, `720`)
+- **Kutipan kode bermasalah:**
+  ```js
+  // public/daytrade-runtime.js
+  var realDtUniverse = meta.universe_count || 760;
+  var realDtScanned = meta.scanned_count || (data.results ? data.results.length : 760);
+  ```
+  ```js
+  // api/sector-hot.js:11927-11928 (sumber yang sama)
+  var dtUCount = (displayMeta && displayMeta.universe_count) ? displayMeta.universe_count : 760;
+  var dtSCount = (displayMeta && displayMeta.scanned_count) ? displayMeta.scanned_count : ((sortedRows && sortedRows.length > 0) ? sortedRows.length : 760);
+  ```
+- **Penjelasan:** Ketika meta belum terisi (scan belum pernah jalan / meta kosong), UI menampilkan "Universe: 760" dan "Scanned: 760" — angka yang tidak berasal dari data mana pun, hanya konstanta yang diasumsikan sebagai ukuran universe IDX. Karena API sendiri sudah memakai fallback yang sama, frontend hanya mencerminkan perilaku itu, tetapi hasil akhirnya tetap: user melihat statistik cakupan scan yang terlihat presisi padahal karangan. Bila universe riil berbeda (mis. 800+ ticker terdaftar), angka ini menyesatkan tentang seberapa luas scan sebenarnya.
+- **Bukti verifikasi riil:** Bukti kode: literal `760` di frontend dan API (dua jalur), `720` untuk NK; grep `760`/`720` di `FULL_REPO_BUG_FINDINGS.md` sebelumnya nol (belum pernah dicatat).
+- **Usulan arah perbaikan:** Tampilkan `—`/`n/a` saat meta kosong alih-alih konstanta; bila perlu estimasi, ambil dari sumber universe resmi (`stock_boards` count) dan tandai sebagai estimasi.

@@ -133,6 +133,11 @@ TUNTAS & BERSIH (13 file sisa `daytrade-*`, dibaca baris-per-baris):
 - Catatan: `daytrade-screener-engine.js` (3.098) & `daytrade-screener-engine-v7.js` (208) TUNTAS di sesi lama; `daytrade-ohlcv-cache.js` (393) TUNTAS batch 13.
 - Berikutnya: sisa frontend `public/` (harga/chart/status sinyal) lalu `lib/bandarmologi-*` lain sudah tuntas, `lib/*` sisa (broker-hunter 548, insider-network 1125, foreign-flow-*), `tools/`, `supabase/`, `test/`.
 
+### PROGRES BATCH 24 (sesi 2026-09-18 lanjutan) — frontend `public/`
+- `public/fast-watcher-live-refresh.js` (153) **TUNTAS** — BERSIH (polling visibility-aware, abort timeout, signature dedup).
+- `public/daytrade-runtime.js` (398) **TUNTAS** — 1 LOW: fallback `universe_count || 760` / `scanned_count || 760` (frontend) yang bersumber dari `api/sector-hot.js:11927-11928` (dan `720` untuk NK di `:10626-10627`) — angka cakupan scan karangan saat meta kosong.
+- Total heading temuan kini **73** (2 CRITICAL, 15 HIGH, 31 MEDIUM, 25 LOW).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
