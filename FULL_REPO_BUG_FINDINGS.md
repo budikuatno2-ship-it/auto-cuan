@@ -893,3 +893,149 @@ Pemeriksaan ini menegaskan peringatan awal: **klaim "sudah diperbaiki" sebagian 
 - **Penjelasan:** `broker-summary` seharusnya hanya berisi ticker IDX valid. Nama seperti `AUDITSCALE5D`, `B4TST`, `DBGT4`, `NOACC` merupakan artefak uji/audit. Jika kode apa pun mengiterasi seluruh isi direktori `broker-summary` (mis. memakai `readdirSync` untuk membangun universe), ticker palsu ini bisa masuk ke perhitungan bandarmologi/ranking. WAJIB dilacak pemakainya.
 - **Bukti verifikasi riil:** Direktori terbukti ada di repo (hasil `dir /b /s`). Belum dilacak apakah ada kode yang mengiterasi direktori ini.
 - **Usulan arah perbaikan:** Bersihkan direktori; tambahkan validasi format ticker (`/^[A-Z]{4}$/`) saat mengiterasi `broker-summary`.
+
+---
+
+## MODUL: Template Deterministik & Kontrak Jawaban AI (lib/analyze-legacy.js, lib/ai-answer-contract.js, lib/ai-telemetry.js)
+
+Batch ini membaca TUNTAS: `lib/ai-answer-contract.js` (254 baris), `lib/ai-telemetry.js` (76 baris), `lib/analyze-legacy.js` (1.920 baris). `lib/ai-telemetry.js` **BERSIH** (in-memory counter sederhana, tanpa payload sensitif, tanpa token leak). Temuan di dua file lain:
+
+### [HIGH] Template deterministik "data-driven" mengarang RSI14=50, volume=1x, dan perubahan harga=0 saat data absen — lalu angka karangan itu dipakai menghitung Status/Bias/Confidence
+- **Lokasi:** [`lib/analyze-legacy.js:1074-1076`](lib/analyze-legacy.js:1074) (IHSG), [`lib/analyze-legacy.js:1231-1233`](lib/analyze-legacy.js:1231) (saham), dipicu jalur `extractStatedPrice` [`lib/analyze-legacy.js:141-145`](lib/analyze-legacy.js:141) dan [`lib/analyze-legacy.js:206-210`](lib/analyze-legacy.js:206)
+- **Kutipan kode bermasalah:**
+  ```js
+  // buildIHSGFixedTemplate
+  var changePct = d.priceChange1D != null ? d.priceChange1D : 0;
+  var volRatio = d.volumeVsAvg20 != null ? d.volumeVsAvg20 : 1;
+  var rsi14 = d.rsi14 || 50;
+  // buildStockFixedTemplate
+  var changePct = d.priceChange1D != null ? d.priceChange1D : 0;
+  var volRatio = d.volumeVsAvg20 != null ? d.volumeVsAvg20 : 1;
+  var rsi14 = d.rsi14 || 50;
+  // lalu dipakai di decision logic + dirender:
+  html += '<div>RSI14: ' + idn(rsi14) + ' (' + rsiLabel + ')</div>';
+  html += '<div>Volume: ' + ratio(volRatio) + ' avg 20D</div>';
+  ```
+- **Penjelasan:** Jalur `message_stated_price` membangun objek data dengan SEMUA field teknikal `null` kecuali `last` ([`:143`](lib/analyze-legacy.js:143), [`:208`](lib/analyze-legacy.js:208)); jalur ticker-mode juga hanya mengirim harga ([`:399`](lib/analyze-legacy.js:399)). Di template, field yang `null` DIGANTI nilai default (RSI=50 "netral", volume=1x "normal", change=0%) dan dirender sebagai fakta: kartu menampilkan "RSI14: 50 (netral)" dan "volume 1x rata-rata" padahal tidak ada data RSI/volume sama sekali. Lebih parah, default itu masuk ke decision logic ([`:1263-1281`](lib/analyze-legacy.js:1263)) sehingga Status/Bias/Confidence/Action ("Tunggu Konfirmasi", "Medium") dihitung dari angka yang tidak pernah ada. Ini kontradiksi desain dengan frontend yang justru sengaja OMIT field absen ("absent stays absent", [`public/market-feature-runtime.js:585-606`](public/market-feature-runtime.js:585)) dan dengan prompt AI yang berulang kali melarang mengarang angka. Kartu deterministik — yang dibuat justru untuk MENGHINDARI halusinasi AI — menjadi sumber angka rekaan di alur utama "user ketik ticker+harga".
+- **Bukti verifikasi riil:** Bukti kode + kontrak frontend: `fetchQuoteContext` hanya menulis baris yang `!= null` (komentar eksplisit di `market-feature-runtime.js:626-632`), sehingga `d.rsi14`/`d.volumeVsAvg20` memang bisa `null` saat diparse `parseMarketDataFromMessage` ([`:1041-1067`](lib/analyze-legacy.js:1041) mengembalikan `null` untuk field absen). Jalur stated-price terlihat langsung: objek di [`:143`](lib/analyze-legacy.js:143) semua `null` kecuali `last`.
+- **Usulan arah perbaikan:** Jangan substitusi nilai; render "—" untuk metrik absen dan JANGAN pakai metrik absen dalam decision logic (turunkan confidence atau tandai "data teknikal belum tersedia"). Samakan dengan kontrak `!= null` milik frontend.
+
+### [MEDIUM] `provider` di respons ticker-mode selalu dilaporkan `'deepseek'` walau jawaban berasal dari Gemini
+- **Lokasi:** [`lib/analyze-legacy.js:416-419`](lib/analyze-legacy.js:416)
+- **Kutipan kode bermasalah:**
+  ```js
+  if (!tHtml) {
+    return res.status(200).json({ html: '...', provider: 'fallback' });
+  }
+  return res.status(200).json({ html: sanitizeOutput(tHtml, fcaConfirmed, 'ticker_price_basic'), intent: 'ticker_price_basic', provider: tHtml ? 'deepseek' : 'gemini-fallback' });
+  ```
+- **Penjelasan:** Di titik baris 419, `tHtml` pasti truthy (jika falsy sudah `return` di baris 416). Ekspresi `tHtml ? 'deepseek' : 'gemini-fallback'` karena itu selalu bernilai `'deepseek'` — termasuk saat `tHtml` sebenarnya hasil `callGemini` ([`:413-414`](lib/analyze-legacy.js:413)). Label provider di respons jadi salah; audit/troubleshooting provider AI membaca data yang keliru (mis. mengira DeepSeek aktif padahal DeepSeek tidak dikonfigurasi). Ini kelas yang sama dengan temuan label model hardcode di UI (menyesatkan audit AI).
+- **Bukti verifikasi riil:** Bukti kode langsung: cabang `!tHtml` sudah return lebih dulu; ternary tidak punya nilai lain yang mungkin.
+- **Usulan arah perbaikan:** Simpan asal provider secara eksplisit (variabel `tProvider` diisi saat masing-masing call sukses) lalu kirim variabel itu.
+
+### [MEDIUM] Daftar model Gemini deprecated disalin ulang 4× di `analyze-legacy.js` dengan isi BERBEDA dari daftar otoritatif provider (3 nama vs 7 nama)
+- **Lokasi:** [`lib/analyze-legacy.js:457`](lib/analyze-legacy.js:457), [`lib/analyze-legacy.js:631`](lib/analyze-legacy.js:631), [`lib/analyze-legacy.js:1648`](lib/analyze-legacy.js:1648), [`lib/analyze-legacy.js:1730`](lib/analyze-legacy.js:1730)
+- **Kutipan kode bermasalah:**
+  ```js
+  var geminiModel = (process.env.GEMINI_MODEL && process.env.GEMINI_MODEL !== 'gemini-3-flash' && process.env.GEMINI_MODEL !== 'gemini-2.5-flash' && process.env.GEMINI_MODEL !== 'gemini-1.5-flash') ? process.env.GEMINI_MODEL : 'gemini-3.8-flash';
+  ```
+- **Penjelasan:** `lib/ai-gemini-provider.js` menetapkan daftar deprecated otoritatif berisi 7 nama (`gemini-1.5-flash`, `gemini-1.5-pro`, `gemini-2.5-flash`, `gemini-2.5-pro`, `gemini-3-flash`, `gemini-3.0-flash`, `gemini-3.1-flash`) dan fungsi `sanitizeGeminiModel`. `analyze-legacy.js` menyalin logika itu 4× dengan daftar hanya 3 nama — `gemini-1.5-pro`, `gemini-2.5-pro`, `gemini-3.0-flash`, `gemini-3.1-flash` LOLOS filter. Jika `GEMINI_MODEL` di lingkungan produksi bernilai salah satu nama yang lolos itu (atau daftar provider diperbarui lagi tanpa menyentuh file ini), jalur AI legacy memanggil model yang tidak valid → 404 → fallback diam. Ini memperkuat temuan CRITICAL "nama model bertabrakan antar modul" dengan satu lokasi baru.
+- **Bukti verifikasi riil:** Bukti kode: 4 literal filter yang identik dan daftar provider yang lebih lengkap; `grep` `gemini-3.8-flash` menunjukkan salinan terpisah, bukan konstanta bersama.
+- **Usulan arah perbaikan:** Impor `sanitizeGeminiModel`/konstanta dari `lib/ai-gemini-provider.js` dan hapus 4 salinan.
+
+### [MEDIUM] `fetchServerSideQuote` menghitung pivot/MA/RSI dari candle TERAKHIR (termasuk bar hari berjalan) padahal seluruh label menyebut "Data Historis T-1"
+- **Lokasi:** [`lib/analyze-legacy.js:1494-1557`](lib/analyze-legacy.js:1494) (khusus `lastIdx = candles.length - 1` di [`:1500`](lib/analyze-legacy.js:1500) dan pivot di [`:1537`](lib/analyze-legacy.js:1537))
+- **Kutipan kode bermasalah:**
+  ```js
+  var lastIdx = candles.length - 1;
+  var last = Math.round(candles[lastIdx].close * 100) / 100;
+  ...
+  var pivotPoint = Math.round(((high + low + last) / 3) * 100) / 100;
+  var resistance1 = Math.round(((2 * pivotPoint) - low) * 100) / 100;
+  ```
+- **Penjelasan:** `fetchYahooChartOnce` mengambil `range=90d&interval=1d`; selama jam bursa bar terakhir adalah candle hari ini yang belum close. Pivot klasik, support/resistance, MA, dan RSI dihitung dari bar itu — bukan dari candle selesai T-1 — sehingga level pada kartu analisis berubah-ubah intraday dan tidak sesuai klaim "Basis Data: Data Historis T-1" yang ditulis di blok enrichment maupun prompt. Ini kelas bug yang SAMA dengan temuan CRITICAL `api/quote.js` (definisi harga terakhir) dan HIGH pivot `api/quote.js`, kini di jalur fallback `analyze-legacy` (dipakai saat frontend tidak mengirim data, dan oleh `api/analyze.js:5`).
+- **Bukti verifikasi riil:** Bukti kode: tidak ada filter tanggal/cutoff sebelum `lastIdx`; `lib/chart-t1-policy.js` menyediakan kebijakan cutoff tetapi tidak dipanggil di file ini.
+- **Usulan arah perbaikan:** Terapkan cutoff candle selesai (T-1) via `lib/chart-t1-policy.js`/`lib/idx-trading-calendar.js` sebelum menghitung `last`/pivot/MA/RSI, atau hentikan klaim T-1.
+
+### [LOW] Validasi `direct_answer terlalu panjang` tidak pernah bisa terpicu (dead validation) — terbukti runtime
+- **Lokasi:** [`lib/ai-answer-contract.js:187`](lib/ai-answer-contract.js:187) vs [`lib/ai-answer-contract.js:51`](lib/ai-answer-contract.js:51)
+- **Kutipan kode bermasalah:**
+  ```js
+  direct_answer: clean(row.direct_answer || row.answer, 600),   // baris 51: sudah di-slice(0, 600)
+  ...
+  if (answer.direct_answer.length > 600) errors.push('direct_answer terlalu panjang');  // baris 187: tidak pernah true
+  ```
+- **Penjelasan:** `normalizeAnswer` men-`slice(0, 600)` sehingga `answer.direct_answer.length` maksimum 600; syarat `> 600` mustahil. Input yang terlalu panjang dipotong DIAM-DIAM lalu lolos validasi — kontrak kehilangan sinyal bahwa jawaban asli melampaui batas (sementara `renderPlainText` ikut memakai versi terpotong). Validasi dead code biasanya menandakan pemotongan yang seharusnya ditolak/lapor.
+- **Bukti verifikasi riil:** Runtime `node -e` di sesi ini: `validateAnswer({direct_answer: 'x'.repeat(700), action:'a', invalidation:'i'})` → `normalized length: 600`, `errors: []`.
+- **Usulan arah perbaikan:** Cek panjang SEBELUM normalisasi (pada `row.direct_answer` mentah), atau tambahkan warning saat pemotongan terjadi.
+
+### [LOW] Variabel `explicitRatio` dihitung tetapi tidak pernah dipakai (dead variable)
+- **Lokasi:** [`lib/ai-answer-contract.js:101`](lib/ai-answer-contract.js:101) vs [`:115`](lib/ai-answer-contract.js:115)
+- **Kutipan kode bermasalah:**
+  ```js
+  const explicitRatio = /[x×%]\s*$/i.test(text);
+  text = text.replace(/\s*[x×%]\s*$/i, '').trim();
+  ...
+  if (scale && (explicitCurrency || MONETARY_SCALE_CONTEXT.test(context || ''))) return base * scale;
+  ```
+- **Penjelasan:** Hasil deteksi rasio eksplisit (`x`/`%`) tidak dipakai di keputusan apa pun; `financialNumbersInText` mendeteksi ulang rasio lewat regex terpisah di [`:162`](lib/ai-answer-contract.js:162). Sisa refactor yang membingungkan pembaca kontrak.
+- **Bukti verifikasi riil:** Bukti kode: pencarian `explicitRatio` di file hanya menemukan deklarasi (1 kemunculan).
+- **Usulan arah perbaikan:** Hapus variabel atau pakai sebagai bagian keputusan `parseMatchedNumber`.
+
+### [LOW] `handleChartVision` mengembalikan string pesan-error sebagai HTML → pemanggil menandai `provider: 'gemini-vision'` sebagai sukses
+- **Lokasi:** [`lib/analyze-legacy.js:637`](lib/analyze-legacy.js:637), [`:646`](lib/analyze-legacy.js:646), [`:648`](lib/analyze-legacy.js:648) vs pemakaian [`:50-53`](lib/analyze-legacy.js:50)
+- **Kutipan kode bermasalah:**
+  ```js
+  if (!response.ok) return '<p class="text-sm text-red-400">Analisis chart gagal. Coba upload ulang.</p>';
+  ...
+  chartHtml = await handleChartVision(GEMINI_API_KEY, images, image, body.mimeType, chatMessage);
+  if (chartHtml) chartProvider = 'gemini-vision';
+  ```
+- **Penjelasan:** Handler DeepSeek mengembalikan `null` saat gagal (sehingga fallback berjalan), tetapi `handleChartVision` mengembalikan STRING pesan error. Pemanggil hanya memeriksa truthiness, jadi kegagalan Gemini Vision dilaporkan sebagai `provider: 'gemini-vision'` — seolah analisis berhasil. Telemetry/audit provider jadi salah, dan `evidenceType` dilaporkan seolah diproses penuh.
+- **Bukti verifikasi riil:** Bukti kode langsung: tiga cabang error mengembalikan string HTML, bukan `null`.
+- **Usulan arah perbaikan:** Kembalikan `null` untuk kegagalan (biarkan pemanggil merakit pesan gagal), atau tambahkan flag `{ok:false}`.
+
+### [LOW] `geminiSearchNews` adalah dead code (didefinisikan, tidak pernah dipanggil)
+- **Lokasi:** [`lib/analyze-legacy.js:542-544`](lib/analyze-legacy.js:542)
+- **Kutipan kode bermasalah:**
+  ```js
+  async function geminiSearchNews(apiKey, ticker) {
+    return null;
+  }
+  ```
+- **Penjelasan:** Fungsi hanya mengembalikan `null` dan tidak ada satu pun pemanggil di seluruh repo (dikonfirmasi pencarian). Sisa fitur "news research" yang dimatikan; aman, tapi menambah kebingungan saat audit "apakah berita dikarang?".
+- **Bukti verifikasi riil:** Pencarian repo: `geminiSearchNews` hanya muncul 1× (definisi).
+- **Usulan arah perbaikan:** Hapus fungsi; jika grounding Google Search nanti diaktifkan, tambahkan dengan pemanggil yang jelas.
+
+### [LOW] Echo `chatMessage` tanpa escape ke HTML pada intent `ticker_only` — refleksi HTML mentah (self-XSS) via trik blok `[Info:]`
+- **Lokasi:** [`lib/analyze-legacy.js:285-290`](lib/analyze-legacy.js:285)
+- **Kutipan kode bermasalah:**
+  ```js
+  if (intent === 'ticker_only') {
+    return res.status(200).json({
+      html: '<p class="text-sm text-gray-300"><strong class="text-emerald-400">' + chatMessage.trim().toUpperCase() + '</strong> terdeteksi. ...',
+  ```
+- **Penjelasan:** `routeIntent` menentukan `ticker_only` setelah MEMBUANG blok `[Info: ...]`/`[Auto-Cuan ...]` ([`:786-795`](lib/analyze-legacy.js:786)), tetapi respons ini merender `chatMessage` ASLI (belum dibersihkan) dengan `.toUpperCase()` — tanpa escaping. Pesan seperti `BBCA` + `\n[Info: <img src=x onerror=alert(1)>]` lolos sebagai `ticker_only`, lalu tag HTML user ikut dirender. Jalur ini tidak melewati `sanitizeOutput`. Karena payload berasal dari input user sendiri dampaknya self-XSS (LOW), tetapi kontrak "HTML selalu disanitasi" di file ini menjadi tidak konsisten.
+- **Bukti verifikasi riil:** Bukti kode: `routeIntent` men-strip blok, jalur `ticker_only` mencetak string mentah; `sanitizeOutput` tidak dipanggil di jalur ini.
+- **Usulan arah perbaikan:** Escape `chatMessage` (helper escape HTML) sebelum interpolasi, atau tampilkan ticker hasil `msg` yang sudah dibersihkan.
+
+---
+
+## MODUL: Telegram Templates & Trade Plan V2 (lib/telegram-templates.js, lib/trade-plan-v2.js, lib/telegram-notifier.js, lib/intraday-fast-watcher*.js)
+
+Batch ini membaca TUNTAS: `lib/telegram-templates.js` (940), `lib/trade-plan-v2.js` (1.320), `lib/telegram-notifier.js` (648), `lib/intraday-fast-watcher.js` (510), `lib/intraday-fast-watcher-live.js` (320). **BERSIH**: `trade-plan-v2.js` (engine kanonik deterministik, tick-aware, TP2 gated breakout — kokoh), `telegram-notifier.js` (throttle, market guard, timeout terbatas, error body dipotong 200 char — tidak ada token leak), `intraday-fast-watcher.js` + `-live.js` (lock atomic, dedup key, shadow-only). Satu temuan di formatter Telegram:
+
+### [MEDIUM] Kartu sinyal Telegram mencetak target TP yang DIKARANG saat `tp1`/`tp2` absen, dan label persentase target di-hardcode (tidak cocok dengan TP riil)
+- **Lokasi:** [`lib/telegram-templates.js:615-616`](lib/telegram-templates.js:615) (daytrade legacy), [`lib/telegram-templates.js:620-621`](lib/telegram-templates.js:620) (swing legacy), label di [`lib/telegram-templates.js:597-604`](lib/telegram-templates.js:597) (jalur V2 public) dan [`:617`](lib/telegram-templates.js:617)/[`:622`](lib/telegram-templates.js:622)
+- **Kutipan kode bermasalah:**
+  ```js
+  var tp1Text = tp1 ? fmtPrice(tp1) : fmtPrice(Math.round(e1 * 1.045));   // <-- target DIKARANG +4.5%
+  var tp2Text = tp2 ? fmtPrice(tp2) : fmtPrice(Math.round(e1 * 1.075));   // <-- target DIKARANG +7.5%
+  ...
+  var tp1SwingText = tp1 ? fmtPrice(tp1) : fmtPrice(Math.round(refEntry * 1.055)); // <-- DIKARANG +5.5%
+  ...
+  lines.push('Target Profit 1 (+4.5%): ' + tp1Text + ' / Target Profit 2 (+7.5%): ' + tp2Text);
+  ```
+- **Penjelasan:** Dua masalah dalam satu jalur: (1) bila `tp1`/`tp2` tidak ada di row, formatter MENGARANG target dari persentase tetap (entry×1.045 / ×1.075 / ×1.055) lalu mengirimkannya ke pelanggan Telegram sebagai "Target Profit" — tanpa dasar struktural apa pun. Ini kelas "angka karangan tembus ke produksi" di kanal distribusi sinyal. (2) Label persentase `(+4.5%)`, `(+7.5%)`, `(+5% s/d +6% Partial TP 50%)` adalah string literal yang dicetak untuk nilai TP apa pun; padahal engine V2 menghitung TP1 dari R-target (1.15R daytrade / 1.35R swing, lihat [`lib/trade-plan-v2.js:66`](lib/trade-plan-v2.js:66)) yang di-cap resistance — persentase riil bervariasi per saham. Pelanggan membaca persentase yang tidak pernah dihitung dari data.
+- **Bukti verifikasi riil:** Runtime di sesi ini — `formatSignalCard({entry_low:100, entry_high:102, stop_loss:95, tp1:103, tp2:110, ...}, 1, 'daytrade')` mencetak `Target Profit 1 (+4.5%): Rp103 / Target Profit 2 (+7.5%): Rp110`. TP1 103 dari entry_high 102 = **+0,98%** (bukan +4,5%); dari entry_low 100 = +3%. Label dan angka saling bertentangan di output nyata.
+- **Usulan arah perbaikan:** Hapus fallback karangan — bila `tp1`/`tp2` absen, tampilkan `—` atau omit barisnya. Ganti label persentase dengan hitungan `((tp1/entryRef)-1)*100` yang diformat, atau hapus klaim persen sama sekali.

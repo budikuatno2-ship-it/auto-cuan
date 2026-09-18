@@ -9,8 +9,44 @@ Aturan: BACA baris-per-baris, JANGAN sampling. JANGAN percaya klaim dokumen lama
 Status per modul: `[ ]` belum, `[-]` sedang, `[x]` tuntas.
 "Tuntas" = SEMUA file .js/.html/.css di modul itu benar-benar dibaca isinya, bukan sekilas nama.
 
-File terakhir dibaca: `lib/ai-eval-derived-facts.js` (1-200) · `lib/chart-analysis-endpoint.js` (TUNTAS) · `lib/chart-analysis-prompt.js` (TUNTAS) · `lib/context-ai-router-v5.js` (TUNTAS) · `lib/context-ai-router-v6.js` (TUNTAS) · `lib/trade-plan-v2-integration.js` (TUNTAS) · `lib/intraday-fast-watcher-live.js` (1-300) · `lib/telegram-templates.js` (1-640) · `lib/user-watchlist-service.js` (1-300) · `lib/ai-context-snapshot-store.js` (TUNTAS)
-Sedang dikerjakan: FASE 2 (AI) + sisa lib/*
+File terakhir dibaca: `lib/analyze-legacy.js` (TUNTAS 1-1920) · `lib/ai-answer-contract.js` (TUNTAS 1-254) · `lib/ai-telemetry.js` (TUNTAS 1-76) · `lib/ai-eval-derived-facts.js` (1-200) · `lib/chart-analysis-endpoint.js` (TUNTAS) · `lib/chart-analysis-prompt.js` (TUNTAS) · `lib/context-ai-router-v5.js` (TUNTAS) · `lib/context-ai-router-v6.js` (TUNTAS) · `lib/trade-plan-v2-integration.js` (TUNTAS) · `lib/intraday-fast-watcher-live.js` (1-300) · `lib/telegram-templates.js` (1-640) · `lib/user-watchlist-service.js` (1-300) · `lib/ai-context-snapshot-store.js` (TUNTAS)
+Sedang dikerjakan: FASE 2 (AI) + sisa lib/* (berikutnya: `context-ai-router-v4.js` 301-1162, lalu sisa `intraday-*`, `telegram-*`, `trade-plan-v2-*`)
+
+### PROGRES BATCH 11 (sesi 2026-09-18, lanjutan dari commit 8b39b46)
+- `lib/ai-answer-contract.js` (254 baris) **TUNTAS** — temuan: 1 LOW (validasi `direct_answer > 600` dead karena sudah di-slice di normalizer; terbukti runtime), 1 LOW (`explicitRatio` dead variable). Sisa kontrak kokoh (normalisasi, banned style, near-equal guard, allowed_numbers).
+- `lib/ai-telemetry.js` (76 baris) **TUNTAS** — **BERSIH** (counter in-memory; tanpa payload sensitif/token leak; latency & cache-hit rate terhitung benar).
+- `lib/analyze-legacy.js` (1.920 baris) **TUNTAS** — temuan: 1 HIGH (fabrikasi RSI=50 / volume=1x / change=0 di template deterministik, lalu dipakai decision logic — kontradiksi dengan kontrak frontend "absent stays absent" di `public/market-feature-runtime.js:585-606`), 3 MEDIUM (provider selalu `'deepseek'` di jalur ticker; daftar model Gemini deprecated disalin 4× dengan isi BEDA dari daftar provider; `fetchServerSideQuote` hitung pivot/MA/RSI dari candle hari berjalan meski berlabel T-1), 5 LOW (`handleChartVision` error-string dianggap sukses; `geminiSearchNews` dead code; echo `chatMessage` tanpa escape di intent `ticker_only`; dst).
+- Verifikasi runtime: `validateAnswer({direct_answer: 'x'.repeat(700)})` → `length 600`, `errors: []` (branch `>600` mustahil).
+- Verifikasi lintas file: `api/analyze.js:5` require `analyze-legacy` (jalur produksi); `refKeys` di `lib/idx-tick-normalization.js:989` SUDAH mencakup `previousClose`/`prevClose` → dugaan mismatch DITOLAK (tidak dicatat).
+- Heading temuan di `FULL_REPO_BUG_FINDINGS.md` kini **64** (2 CRITICAL, 15 HIGH, 26 MEDIUM, 21 LOW).
+
+### PROGRES BATCH 12 (sesi 2026-09-18)
+- `lib/intraday-fast-watcher.js` (510) **TUNTAS** — bersih (lock atomic pid-aware, dedup key, state per-tanggal, shadow-only).
+- `lib/intraday-fast-watcher-live.js` (320) **TUNTAS** — bersih (concurrency clamp, production-lock check, shadow-only).
+- `lib/telegram-templates.js` (940) **TUNTAS** — 1 MEDIUM: TP dikarang `entry×1.045/1.075/1.055` saat tp1/tp2 absen + label persen hardcoded; terbukti runtime `formatSignalCard` mencetak "Target Profit 1 (+4.5%): Rp103" padahal TP 103/102 = +0,98%.
+- `lib/telegram-notifier.js` (648) **TUNTAS** — bersih (throttle 429 backoff, market guard, error body ≤200 char; tidak ada token leak).
+- `lib/trade-plan-v2.js` (1.320) **TUNTAS** — bersih (engine kanonik, deterministik, tick-aware; TP2 gated breakout; tidak mengarang level).
+- Total heading temuan kini **65** (2 CRITICAL, 15 HIGH, 27 MEDIUM, 21 LOW).
+
+### PROGRES BATCH 13 (sesi 2026-09-18)
+- `lib/context-ai-router-v4.js` (1.162) **TUNTAS** — **BERSIH**. Verifikasi: rate limit per-user, health/cooldown per model, outage latch ter-scope (hanya CATALOG_WITH_OVERLAP + semua attempt `wz_model_temporarily_unavailable` + ≥2 vendor family), redaksi log (hostname-only, tanpa key/cookie/pertanyaan), cache key semantik (exclude `captured_at`/`price_meta`), budget split per-attempt. Anomali kecil `provider_outage_latched:false` pada jalur userRetry TIDAK berdampak — grep menunjukkan frontend hanya membaca `code`; tidak dicatat.
+- `lib/user-watchlist-service.js` (730) **TUNTAS** — bersih. `createAlert` menolak `notification_chat_id` dari request (resolve server-side dari `app_user_telegram_verifications` — anti-IDOR), `watchlist_id` diverifikasi ownership, update/delete scoped `user_id`, evaluator alert dengan gate pillar-13 (match freq ≥50 & turnover ≥1B kecuali AKSELERASI), delivery gagal → `is_triggered` tetap false untuk retry, dry-run preview.
+- `lib/daytrade-ohlcv-cache.js` (393) **TUNTAS** — bersih (TTL efektif per jam bursa; `syncWithBrokerSummary` opt-in mencegah candle ketinggalan summary; fallback stale cache eksplisit).
+- `lib/arjum-client.js` (641) **TUNTAS** — bersih (circuit breaker kuota harian, market-hours guard WIB, fallback cache lokal berlabel `from_cache/fallback`, `classifyFailure` memisahkan quota vs api_error).
+
+### PROGRES BATCH 14 (sesi 2026-09-18)
+- `lib/intraday-production-eligibility.js` (92) **TUNTAS** — bersih (pure helper; exclusion set selaras gate `candidatePassesDayTradeRecommendation` di api/sector-hot.js; tidak mencampur `execution_grade`).
+- `lib/intraday-fast-watcher-guarded-live.js` (180) **TUNTAS** — bersih (kill switch `FAST_WATCHER_LIVE_ENABLED` default OFF, lock per-tanggal, early-watch aditif tidak mempengaruhi publikasi, delegasi Telegram ke publisher yang re-check flag).
+- `lib/telegram-analytics.js` (156) **TUNTAS** — bersih (pure; reserved accounts dikecualikan; join date unknown TIDAK diinvent; average score null bila kosong).
+- `lib/telegram-transient-message.js` (70) **TUNTAS** — bersih (best-effort transient message, semua error ditelan aman).
+- `lib/trade-plan-v2-flags.js` (129) **TUNTAS** — bersih (semua flag default FALSE, hanya string eksplisit true/1/yes/on).
+- Status file menggantung dari sesi lalu yang kini TUNTAS: `intraday-fast-watcher-live.js`, `telegram-notifier.js`, `trade-plan-v2.js`, `telegram-templates.js`, `user-watchlist-service.js`, `daytrade-ohlcv-cache.js`, `arjum-client.js`, `context-ai-router-v4.js`.
+
+### SISA CHECKLIST lib/ (urutan berikutnya)
+- `intraday-*` sisa 15: collector-vps-audit, fast-watcher-early-watch(-publisher), fast-watcher-momentum, fast-watcher-pool, fast-watcher-publisher, fast-watcher-radar-publisher, sample-lifecycle, sample-summary, shadow-scoring(-live), shadow-trade-backtest, volume-pace.
+- `telegram-*` sisa 10: daily-recap, delivery (981), lifecycle, unified-general, unified-subscription, verification (1.534), verify-bot, voucher-admin-continuation.
+- `trade-plan-v2-*` sisa 8: candle-structure, daytrade-diagnostic, formatter, gap-areas, liquidity-sweep, replay-preview, source-adapters, sweep-diagnostic.
+- Lalu: `lib/bandarmologi-service.js` sisa, `lib/idx-tick-normalization.js` sisa (900-1182), `lib/intraday-shadow-*` besar, `public/*` sisa, `tools/`, `supabase/`, `test/`.
 
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
@@ -154,19 +190,19 @@ SYSTEM_ARCHITECTURE_LIFECYCLE, CHANGELOG, SECURITY, SCREENER_BUGFIX_LOG, SCREENE
 ### FASE 2 — AI (PRIORITAS CRITICAL: "AI masih banyak bug")
 - [ ] `lib/ai-gemini-provider.js`, `lib/ai-narration.js`, `lib/ai-narration-prompts.js`, `lib/ai-narration-validator.js`, `lib/ai-narration-cache.js`
 - [ ] `lib/ai-runtime-grounding.js`, `lib/ai-runtime-grounding-v2.js`, `lib/ai-eval-derived-facts.js`
-- [ ] `lib/ai-answer-contract.js`, `lib/ai-analysis-cache.js`, `lib/ai-context-snapshot-store.js`, `lib/ai-telemetry.js`
+- [x] `lib/ai-answer-contract.js` (TUNTAS 254), `lib/ai-analysis-cache.js` (TUNTAS), `lib/ai-context-snapshot-store.js` (TUNTAS), `lib/ai-telemetry.js` (TUNTAS 76, BERSIH)
 - [ ] `lib/context-ai-router-v4..v7.js`
 - [ ] `lib/user-ai-credentials.js`
 - [ ] `lib/chart-analysis-*.js`, `lib/chart-image-renderer.js`
-- [ ] `api/analyze.js`, `api/sector-hot.js`, `lib/analyze-legacy.js`
+- [x] `api/analyze.js` (TUNTAS sesi lama; diverifikasi ulang 1-80 sesi ini), `api/sector-hot.js` (TUNTAS 14.808), `lib/analyze-legacy.js` (TUNTAS 1.920 — batch 11)
 - [ ] frontend AI: `public/stock-analysis-ai.js`, `public/ai-chat-renderer.js`, `public/portfolio-ai-runtime-v2.js`, `public/portfolio-ai-workspace-v1.js`, `public/admin-ai-eval.html`
 
 ### FASE 3 — Screener engine & daytrade/swing (re-verifikasi klaim lama)
 - [ ] `lib/daytrade-screener-engine.js`, `lib/daytrade-screener-engine-v7.js`, `lib/daytrade-screener-constants.js`
 - [ ] `lib/swing-screener-engine.js`, `lib/screener-config.js`
 - [ ] `lib/daytrade-*` (semua ~35 file intraday/adjusted/provider/validation/outcome)
-- [ ] `lib/intraday-*` (semua ~22 file fast-watcher/collector/shadow)
-- [ ] `lib/trade-plan-v2*.js` (14 file)
+- [-] `lib/intraday-*` (semua ~22 file fast-watcher/collector/shadow) — TUNTAS: `intraday-fast-watcher.js` (510), `intraday-fast-watcher-live.js` (320); sisa collector/shadow belum
+- [-] `lib/trade-plan-v2*.js` (14 file) — TUNTAS: `trade-plan-v2.js` (1.320), `trade-plan-v2-integration.js` (681); sisa 12 file belum
 - [ ] `lib/pattern-abcd*.js`, `lib/pattern-personality.js`, `lib/classic-chart-patterns.js`, `lib/candle-pattern-engine.js`, `lib/reversal-breakout-lifecycle.js`
 - [ ] `lib/swing-nk-rr-warning.js`, `lib/daytrade-entry-discipline*.js`, `lib/daytrade-execution-ranking.js`
 - [ ] frontend: `public/screener-lifecycle-ui.js`, `public/pattern-*.js` (map/visual/direction-safety/screener-extension/stable-runtime/tab-resume-guard), `public/signal-gate-transparency.js`, `public/market-feature-runtime.js`
@@ -187,7 +223,7 @@ SYSTEM_ARCHITECTURE_LIFECYCLE, CHANGELOG, SECURITY, SCREENER_BUGFIX_LOG, SCREENE
 - [ ] frontend: `public/auth-v2.js`, `public/subscription-*.js`, `public/security-admin-runtime.js`, `public/admin-*.js`, `public/website-approved-access.js`, `public/maintenance-auth-guard.js`
 
 ### FASE 6 — Telegram & notifikasi
-- [ ] `lib/telegram-*.js` (~14), `lib/voucher-admin-*.js`, `lib/webhook-alert-engine.js`, `lib/top5-progress-monitor.js`
+- [-] `lib/telegram-*.js` (~14) — TUNTAS: `telegram-notifier.js` (648), `telegram-templates.js` (940); sisa file telegram lain belum. `lib/voucher-admin-*.js`, `lib/webhook-alert-engine.js`, `lib/top5-progress-monitor.js` belum
 - [ ] `lib/recent-failure-cooldown.js`, `lib/telegram-analytics.js`
 
 ### FASE 7 — Portfolio & UI shell
