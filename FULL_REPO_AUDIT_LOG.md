@@ -345,6 +345,11 @@ TUNTAS & BERSIH (3 file `public/`):
 - **Temuan MEDIUM:** `doRegister` (`:3768`) memakai `errorEl` sebelum di-assign (`:3775`) → jalur email tidak valid melempar `TypeError` (tanpa pesan), dan `email` tidak pernah dikirim ke server.
 - Total heading temuan kini **90** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 35 LOW).
 
+### PROGRES BATCH 58 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 4480-4779 dibaca (copyAnalisisResult, htmlToCleanText, daily market context panel, Ranking Harian table). **BERSIH — tidak ada temuan baru.**
+- BERSIH: `renderRankingTable` konsisten memakai `escapeHtml(row.ticker)` (`:4601`) + `adminOnclickArg(row.ticker)` (`:4683`); `rankingCellHtml` memformat angka (N/A jujur); `openMarketContextFromAnalisis` hanya menerima ticker `[A-Z0-9]` (dari `runAnalisisFromDashboard:4357`).
+- Berikutnya: `index.html` 4780-5089 (news page), 5200-7330 (chart/scanner/screener), 7909-12174 (dashboard/admin/diagnostics).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
