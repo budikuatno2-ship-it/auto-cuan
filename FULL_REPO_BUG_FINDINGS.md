@@ -1400,3 +1400,29 @@ Dibaca baris-per-baris. Tiga file BERSIH; satu temuan LOW (edge).
 - **Usulan arah perbaikan:** Untuk state besar, kirim hanya bagian yang berubah, atau tambahkan `.catch` yang menandai `dirty` tetap true + `setStatus('local-fallback', ...)` agar pengguna tahu belum tersimpan; atau andalkan `navigator.sendBeacon` dengan payload ringkas.
 
 Total heading temuan kini **83** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 33 LOW).
+
+---
+
+## MODUL: Frontend Pattern Map + Signal Gate Transparency (2 file — TUNTAS)
+
+- `public/pattern-map.js` (363) — **BERSIH**. `validateCandidate` adalah validator kontrak renderer yang ketat (verifikasi OHLC, urutan candle, pivot cocok dengan candle sumber, ticker/timeframe/dataDate, `prz.low <= high`, `confirmationEvidence` wajib saat status `confirmed`) — tidak mendeteksi pola/mengarang level. Gate admin: hanya sesi admin `budi` terverifikasi server (`/api/admin-users`) boleh mengekspos Pattern Map; `mayBeAdmin()` hanya hint (tidak pernah memberi akses), storage-event mencabut akses saat logout. `levelLabel` memakai `en-US` tetapi TIDAK dipanggil di mana pun (grep: hanya definisi/ekspor) → tidak ada inkonsistensi render yang terlihat.
+- `public/signal-gate-transparency.js` (295) — 1 temuan MEDIUM (di bawah).
+
+### [MEDIUM] Panel "Kenapa Sinyal Ini Lolos Gate?" menandai gate PASS saat data absen & ambang RSI berbeda dari gate backend
+- **Lokasi:** [`public/signal-gate-transparency.js:87-102`](public/signal-gate-transparency.js:87) (RSI/RR), [`public/signal-gate-transparency.js:65-66`](public/signal-gate-transparency.js:65) (volume)
+- **Kutipan kode bermasalah:**
+  ```js
+  var rsiPassed = true; var rsiActualText = '-';
+  if (rsi !== null) {
+    rsiPassed = rsi <= 78 && rsi >= 35;               // ambang 35–78
+    rsiActualText = rsi.toFixed(1) + ...;
+  } else { rsiActualText = 'Dalam rentang aman'; }    // rsi null → tetap PASS
+  var rsiThresholdText = '35 - 75 (Zona Aman)';       // teks ≠ kode (78 vs 75)
+  ...
+  var rrPassed = rr !== null ? (rr >= minRR) : true;  // rr null → PASS
+  ```
+- **Penjelasan:** Panel ini secara eksplisit menjawab "kenapa sinyal ini muncul" dan merender checklist ✅/⚠️ per gate. Tiga masalah nyata: (1) bila `rsi14`/`risk_reward` absen, gate ditandai **PASS** dengan teks "Dalam rentang aman"/"Terkalkulasi" — menyajikan "tidak diketahui" sebagai "lulus"; (2) ambang RSI di sini `35–78`, sedangkan gate keras backend `api/sector-hot.js` mensyaratkan `rsi14 >= 45 && rsi14 <= 70` dan **menolak** `rsi14 === null` (`failReasons.push('RSI tidak tersedia')`); (3) teks ambang yang ditampilkan ("35 - 75") tidak sama dengan kode (`78`). Akibatnya kartu bisa menampilkan "5/5 Gate Terpenuhi" untuk sinyal ber-RSI 40 atau 72 (yang justru gagal hard filter backend), atau saat RSI tak tersedia. Ini melanggar prinsip repo "MISSING DATA IS NOT PASS" dan menyesatkan karena panelnya khusus untuk transparansi alasan.
+- **Bukti verifikasi riil:** Bukti kode lintas file — frontend `rsiPassed = rsi <= 78 && rsi >= 35` + `else { 'Dalam rentang aman' }` vs backend [`api/sector-hot.js:2135-2144`](api/sector-hot.js:2135) `rsi14 >= 45 && rsi14 <= 70` dan `rsi14 === null → failReasons`. Ambang volume frontend `>= 1.0`/DT `>= 1.2` selaras backend (`volume_ratio_avg20 >= 1.0`), tetapi `volRatio === null → 'Terkonfirmasi' + PASS` juga divergen.
+- **Usulan arah perbaikan:** Samakan ambang dengan gate backend; saat input absen, render "Data tidak tersedia" dengan `passed:false` (unknown ≠ pass); perbaiki teks ambang RSI agar sama dengan kode.
+
+Total heading temuan kini **84** (2 CRITICAL, 15 HIGH, 34 MEDIUM, 33 LOW).
