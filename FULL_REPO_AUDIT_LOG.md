@@ -195,7 +195,9 @@ TUNTAS & BERSIH (8 file `lib/admin-*`):
 - `admin-maintenance-code-browser` (357), `admin-maintenance-code` (258) — HMAC code, maintenance-gated, OTP auto-delete, attempt lock.
 - `admin-device-approval` (468) — approval TTL, kick-oldest device, session hanya setelah approve.
 - Total heading temuan tetap **80** — batch ini tidak menemukan bug baru.
-- Berikutnya: `public/bandarmologi-runtime.js` (5.435) sisa baris (per log sudah dibaca 1-3900).
+- `public/bandarmologi-runtime.js` (5.435) **TUNTAS 100%** (sesi lama 1-3900 + batch ini 3901-5435). Temuan baru: 1 LOW — catatan scanner "Silent Foreign Accumulation" memfabrikasi "3 hari berturut-turut" saat `consecutive_days` absen (baris 4861). Literal `'2026-09-11'` di `formatDateDisplay`/scanner sudah tercatat (batch 8).
+- Total heading temuan kini **81** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 31 LOW).
+- Berikutnya: sisa `public/` runtime UI publik lain.
 
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.

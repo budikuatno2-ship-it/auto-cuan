@@ -1315,3 +1315,22 @@ File dibaca baris-per-baris (1-300, 301-600, 601-900, 901-1125). **BERSIH pada b
 - **Penjelasan:** Sama kelasnya dengan literal tanggal di `bandarmologi-service.js`/`broker-hunter-service.js`: ketika record tidak punya tanggal, roster menampilkan tanggal tetap `2026-09-01` seolah transaksi terjadi pada tanggal itu.
 - **Bukti verifikasi riil:** Bukti kode: 1 kemunculan literal.
 - **Usulan arah perbaikan:** Kirim `last_date: null`/`'—'` saat tanggal tidak tersedia.
+
+---
+
+## MODUL: Frontend Bandarmologi Runtime (public/bandarmologi-runtime.js, 5.435 baris — TUNTAS 100%)
+
+Batch ini menuntaskan sisa 3901-5435 (sesi lama 1-3900). **BERSIH pada sebagian besar isi**: render intel/scanner/hunter/insider network, abort controller + request-seq guard, `escapeHtml` konsisten, `formatDateDisplay` dengan weekend guard (PR2). Satu temuan baru:
+
+### [LOW] Catatan scanner "Silent Foreign Accumulation" memfabrikasi "3 hari berturut-turut" saat `consecutive_days` absen
+- **Lokasi:** [`public/bandarmologi-runtime.js:4860-4862`](public/bandarmologi-runtime.js:4860)
+- **Kutipan kode bermasalah:**
+  ```js
+  } else if (bandarIntelScannerCategory === 'silent_foreign_accumulation') {
+    var days = item.consecutive_days || 3;
+    itNote = 'Akumulasi senyap asing ' + days + ' hari berturut-turut tanpa lonjakan harga drastis.';
+  }
+  ```
+- **Penjelasan:** Bila `item.consecutive_days` tidak ada (null/0), UI menampilkan klaim "Akumulasi senyap asing **3 hari berturut-turut**" — angka yang tidak berasal dari data. Backend (`bandarmologi-intel-service.js`) hanya memasukkan item ke `indexes.silent_foreign_accumulation` saat `triggered` (yang mensyaratkan `consecutivePositiveDays >= 3`), sehingga field biasanya ada; namun fallback `|| 3` tetap bisa memfabrikasi klaim bila bentuk data berbeda (mis. file index statis `/data/bandarmologi-intel-indexes/latest_*.json` dengan skema lain). Sama kelasnya dengan temuan fabrikasi `price_change_pct: 0.8` di backend.
+- **Bukti verifikasi riil:** Bukti kode: literal `|| 3` pada baris 4861; konsumen tunggal di scanner view.
+- **Usulan arah perbaikan:** Bila `consecutive_days` absen, tampilkan "beberapa hari" atau `—`, jangan mengarang angka 3.
