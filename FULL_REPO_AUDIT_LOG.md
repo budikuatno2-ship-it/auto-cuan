@@ -753,3 +753,15 @@ SYSTEM_ARCHITECTURE_LIFECYCLE, CHANGELOG, SECURITY, SCREENER_BUGFIX_LOG, SCREENE
 - **1 temuan LOW BARU:** gate keamanan & regresi (`security-gate`, `codeql-security`, `web-hardening-regression`, `fast-watcher-regression`) hanya memicu pada base branch `feat/daytrade-screener-v1` → PR ke base lain tak melewati gate.
 - Total heading temuan kini **97** (2 CRITICAL, 16 HIGH, 39 MEDIUM, 40 LOW).
 - **Berikutnya:** tutup sisa `lib/*` minor + rekonsiliasi dokumen audit lama, lalu penutupan sesi.
+
+### REKAP SESI 2026-09-18 (bagian 3) — modul TUNTAS & 6 temuan baru
+- **Modul tuntas sesi ini:** `supabase/*.sql` berisiko tinggi (11 file dibaca penuh), `tools/` (pemetaan + runner cron/backfill/scan kredensial), `test/` (~453 file scan kualitas), `data/` + `public/*.css` spot-check, `.github/workflows/*` (12) + `deploy/*` + `scripts/`.
+- **Temuan baru: 1 MEDIUM + 3 MEDIUM + 2 LOW** (total heading **97**: 2 CRITICAL, 16 HIGH, 39 MEDIUM, 40 LOW):
+  1. **MEDIUM** `api/review-access.js:42` token gate review DITANAM HARDCODED (fallback aktif saat `VERCEL`/`VERCEL_ENV`) — kontradiksi komentar fail-closed file itu sendiri; literal sama juga di `tools/run-build-test-suite.js:9`; scanner CI tak mendeteksinya.
+  2. **MEDIUM** 58 file `test/*.test.js` di luar `curated-build-tests.json` (395/453) → regresi modul berisiko tak ter-gate saat build.
+  3. **MEDIUM** 3 salinan kalender libur IDX 2026 saling melenceng (`lib/idx-holidays-2026-seed-data.js` 22 vs `tools/backfill-engine.js` 17 vs `tools/backfill-arjum-data.js` 1) → backfill tarik API pada hari libur / lewatkan hari bursa.
+  4. **LOW** klaster 8 migrasi RLS-tanpa-REVOKE (`stock-daily-context`, `sector-hot`, dll) — komentar "Deny direct client access" tak ditopang `REVOKE`.
+  5. **LOW** 1 test vacuous `assert.ok(true)` (`test/intraday-sample-collector.test.js:488`).
+  6. **LOW** gate keamanan/regresi hanya ter-scope base branch `feat/daytrade-screener-v1`.
+- **Commit sesi bagian 3:** `9a859bf` (batch 90 SQL), `d6a928f` (batch 91 tools), `84d0ce0` (batch 92 test/gate), `484e2dc` (batch 93 workflows).
+- **Sisa untuk sesi berikutnya:** `lib/*` minor (admin-*) & rekonsiliasi 20 dokumen audit lama root, `.agents/`, `tailwind*`, `test/sql|fixtures|helpers` dalam, serta spot-check `public/assets/`.
