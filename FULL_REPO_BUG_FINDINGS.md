@@ -1477,3 +1477,11 @@ Total heading temuan tetap **84** — batch ini tidak menambah temuan.
 - `public/account-center-lazy-loader-v1.js` (329) — **BERSIH**. Lazy-load runtime (account-center/manual-payment/voucher) idempoten via flag global + `data-*` marker; kontrak registrasi menandai `termsAccepted`/`termsVersion`; markup terms statis (tanpa interpolasi data pengguna) → innerHTML aman; `installRegistrationContract` idempoten via `originalDoRegister`/`originalOpenRegister` guard.
 
 Total heading temuan tetap **84** — batch ini tidak menambah temuan.
+
+---
+
+## MODUL: Account Center v1 (public/account-center-v1.js, 554 baris — TUNTAS, BERSIH)
+
+- **BERSIH**. `esc()` dipakai konsisten di semua interpolasi (username, plan, harga, voucher hint, error). Voucher admin dibuat dengan `crypto.getRandomValues` (alphabet tanpa karakter ambigu), server hanya menyimpan HMAC/hash, daftar admin hanya menampilkan `code_hint` (4 karakter terakhir). `redeemVoucher`/`quoteVoucher` mewajibkan checkbox persetujuan + `idempotency_key` randomUUID. `loadTrialStatus`/`loadAdminVouchers` menulis error via `textContent`/`esc`. `request()` same-origin + timeout + fallback error aman. `installRegistrationContract` idempoten via guard `originalDoRegister`/`originalOpenRegister`. Markup terms statis (tanpa data pengguna).
+
+Total heading temuan tetap **84** — batch ini tidak menambah temuan.
