@@ -480,6 +480,13 @@ TUNTAS & BERSIH (3 file `public/`):
 - Total heading temuan tetap **91** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 36 LOW).
 - **Berikutnya:** file HTML satelit `analisis-saham.html`, `admin-ai-eval.html`, `admin-foreign.html`, `portfolio-command-center*.html`, `portfolio-planner.html`, `trust.html`, `methodology.html`.
 
+### PROGRES BATCH 85 (sesi 2026-09-18 lanjutan) — HTML satelit
+- `public/analisis-saham.html` (517) **TUNTAS** — **BERSIH**. Semua handler bernama (`switchAnalisisTab`/`handleIndependentTabSearch`/`UnifiedCockpit.*`); `datalist` statis; `chartTickerInput` hidden hanya default 'BBCA'; BYOK modal sama seperti index.html; daftar `<script src>` lokal (sudah diaudit).
+- `public/admin-ai-eval.html` (141) **TUNTAS** — **BERSIH**. `esc()` konsisten di `render()`; `request()` same-origin + admin-gated (`/api/admin-users`); polling visibility-aware; tidak ada secret.
+- `public/admin-foreign.html` (303) **TUNTAS** — **BERSIH**. `showStatus`/`addMetric` memakai `textContent`; upload via `/api/admin-users` sesi admin (secret DB/CRON tidak ke browser); batas file 3MB; preview-before-upload.
+- Total heading temuan tetap **91**.
+- **Berikutnya:** `portfolio-command-center*.html`, `portfolio-planner.html`, `trust.html`, `methodology.html`, `404.html`.
+
 ### PROGRES BATCH 82 (sesi 2026-09-18 lanjutan)
 - `public/index.html` 1200-1499 dibaca (chart page, news page, portfolio page + add form, track record page header/summary). **BERSIH — tidak ada temuan baru.**
 - BERSIH: semua handler bernama/statis; form Tambah Posisi memakai `maxlength` + `type=number`; tidak ada input hidden/secret.
