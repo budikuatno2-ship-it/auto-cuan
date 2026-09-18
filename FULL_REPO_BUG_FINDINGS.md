@@ -1624,6 +1624,28 @@ Total heading temuan kini **88** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 34 LOW).
 
 Total heading temuan kini **89** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 35 LOW).
 
+### [MEDIUM] `doRegister` memakai `errorEl` sebelum di-assign → jalur email tidak valid melempar TypeError, bukan pesan validasi
+- **Lokasi:** [`public/index.html:3767-3771`](public/index.html:3767) (pemakaian) vs [`:3775`](public/index.html:3775) (assignment)
+- **Kutipan kode bermasalah:**
+  ```js
+  async function doRegister() {
+      var usernameInput = document.getElementById('regUsername').value.trim();
+      var regEmailEl = document.getElementById('regEmail');
+      var regEmailVal = regEmailEl ? regEmailEl.value.trim() : "";
+      if (regEmailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmailVal)) {
+          errorEl.textContent = "Format email tidak valid.";   // <-- errorEl belum di-assign (baru di :3775)
+          errorEl.classList.remove("hidden");
+          return;
+      }
+      ...
+      var errorEl = document.getElementById('registerError'); var successEl = document.getElementById('registerSuccess');   // :3775
+  ```
+- **Penjelasan:** `var errorEl` ter-hoist ke atas `doRegister` tetapi nilainya baru diberikan di baris 3775. Pada baris 3768, `errorEl` masih `undefined`, sehingga `errorEl.textContent = …` melempar `TypeError: Cannot set properties of undefined (setting 'textContent')`. Akibatnya, bila pengguna mengetik email format salah lalu menekan Daftar, fungsi gagal total SEBELUM pesan "Format email tidak valid." tampil: tidak ada umpan balik, tidak ada request, tombol tampak tidak bereaksi. (Untuk email kosong/invalid-format lain jalur ini terpicu konsisten.) Tambahan: `email: regEmailVal` bahkan tidak pernah dikirim di body `/api/register-user` (`:3793`), jadi email divalidasi lalu dibuang.
+- **Bukti verifikasi riil:** Bukti kode urutan baris: `:3768` (pakai) < `:3775` (assign). `var` hoisting → `undefined`, bukan ReferenceError. Body register (`:3793`) tidak memuat `email`.
+- **Usulan arah perbaikan:** Pindahkan `var errorEl = document.getElementById('registerError');` (dan `successEl`, `registerBtn`) ke ATAS blok validasi email. Bila email memang tak dipakai server, hapus field/validasinya untuk menghindari kebingungan.
+
+Total heading temuan kini **90** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 35 LOW).
+
 ---
 
 ## MODUL: Pattern Safety Hardening + UI Stability Fix + Admin Maintenance Code (3 file — TUNTAS, BERSIH)

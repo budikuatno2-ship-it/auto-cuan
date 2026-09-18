@@ -339,6 +339,12 @@ TUNTAS & BERSIH (3 file `public/`):
 - **Temuan LOW:** `doLogin` (`:3531`) mereferensikan `regEmailVal` yang hanya dideklarasikan di `doRegister` (`:3766`) → `ReferenceError` laten yang tertutupi override `auth-v2.js:433`.
 - Total heading temuan kini **89** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 35 LOW).
 
+### PROGRES BATCH 57 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 3600-4000 dibaca (approval panel, device-approval modal, doRegister, logout, logging, dashboard bootstrap, premium gate). **1 MEDIUM BARU.**
+- BERSIH: `displayApprovalPanel` memakai `textContent` + whitelist bot URL; device-approval polling menurunkun admin hanya bila `isAdmin===true && username==='budi'`; `logout` menghapus sesi server + state lokal; `isPremiumFeaturePage`/`hasConfirmedPremiumAccess` fail-closed.
+- **Temuan MEDIUM:** `doRegister` (`:3768`) memakai `errorEl` sebelum di-assign (`:3775`) → jalur email tidak valid melempar `TypeError` (tanpa pesan), dan `email` tidak pernah dikirim ke server.
+- Total heading temuan kini **90** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 35 LOW).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
