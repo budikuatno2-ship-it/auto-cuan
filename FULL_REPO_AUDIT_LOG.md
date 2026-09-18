@@ -124,7 +124,14 @@ TUNTAS & BERSIH (18 file `lib/daytrade-*` kecil-menengah, dibaca baris-per-baris
 - Report/eval: `adjusted-vs-normal-report` (141), `cache-audit` (162), `compare-report` (180 — `sanitizeForOutput` meredaksi Bearer/token), `entry-discipline` (85 — fail-closed), `entry-discipline-observability` (70), `evaluation-adapter` (17 — envelope caps + fail-closed), `full-eligible-universe` (63 — redactError menyensor service key), `screener-constants` (35 — frozen thresholds).
 - Outcome chain: `outcome-collector-guard` (50 — window alignment), `outcome-contract` (57 — exact-keys + SHA-256 chain + sensitivity scan), `outcome-evaluator` (24 — state matrix), `outcome-logger` (14 — preflight anti-symlink/checksum).
 - Eksekusi/intraday: `execution-ranking` (177 — RR null → BLOCKED), `intraday-adjustment-provider` (116 — read-only), `intraday-eod-closeout` (147), `intraday-provider-cache-quality` (153 — quarantine provider-bad instan), `intraday-readiness` (141 — BLOCK/WARN ketat), `intraday-score-adjustment` (64 — flag-gated no-op default).
-- Sisa `daytrade-*` (10): intraday-score-impact (163), intraday-validation-aggregate (250), intraday-validation-coverage (65), scan-comparison (292), intraday-observe (294), intraday-dry-run-gate (689), intraday-policy (573), experimental-admin-alert (555), outcome-collector (536), intraday-staged-enable-runbook (431).
+### PROGRES BATCH 23b (sesi 2026-09-18 lanjutan) — **SELURUH `lib/daytrade-*` TUNTAS 100%**
+TUNTAS & BERSIH (13 file sisa `daytrade-*`, dibaca baris-per-baris):
+- `intraday-score-impact` (163), `intraday-validation-coverage` (65), `intraday-validation-aggregate` (250 — BLOCK/WARN + session spacing), `scan-comparison` (292 — observe-only terdokumentasi), `intraday-observe` (294 — redaksi secret, TTL sesi pasar).
+- `intraday-dry-run-gate` (689), `intraday-policy` (573), `intraday-staged-enable-runbook` (431) — semua gate konservatif; duplikat `recommendationForStatus` sudah dihapus Batch 16.
+- `experimental-admin-alert` (555 — admin-only, flag opt-in, chat mask, idempoten).
+- `outcome-collector` (536 — symlink guard, clean-checkout, semantic dedup).
+- Catatan: `daytrade-screener-engine.js` (3.098) & `daytrade-screener-engine-v7.js` (208) TUNTAS di sesi lama; `daytrade-ohlcv-cache.js` (393) TUNTAS batch 13.
+- Berikutnya: sisa frontend `public/` (harga/chart/status sinyal) lalu `lib/bandarmologi-*` lain sudah tuntas, `lib/*` sisa (broker-hunter 548, insider-network 1125, foreign-flow-*), `tools/`, `supabase/`, `test/`.
 
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
