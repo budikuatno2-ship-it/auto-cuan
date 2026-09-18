@@ -361,6 +361,18 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: file selection memvalidasi tipe (`ALL_SUPPORTED_TYPES`) + ukuran per-jenis (gambar 10MB, dok 20MB, total 50MB) + dedup nama+ukuran, revoke object URL saat hapus/unload; `renderFilePreview` memakai `escapeHtml(f.name)`; konten onboarding statis; `parseBrokerSummaryText`/`extractNetValue` murni (format angka Indonesia ditangani benar, `isValidTicker` 4-huruf + whitelist `IDX_TICKERS`).
 - Berikutnya: `index.html` 5800-6100 (broker summary build/context, analysis context update).
 
+### PROGRES BATCH 61 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 5800-6099 dibaca (updateAnalysisContext, hideEmptySections, buildContextForApi, setActiveTicker, detectPrice/parseCleanPrice, detectTicker/IHSG alias, FCA detect). **BERSIH — tidak ada temuan baru.**
+- BERSIH: semua fungsi ini parser/kontruksi konteks murni (tanpa sink innerHTML dengan data user); `parseCleanPrice` membatasi 0<price≤999999; `detectTicker` memakai whitelist `IDX_TICKERS` + stopwords; `buildContextForApi` hanya meneruskan field yang ada.
+
+### REKAP SESI 2026-09-18 (bagian 2 — HTML/backend)
+- **Reconciliation:** `api/sector-hot.js` (14.808) & `public/bandarmologi-runtime.js` (5.435) SUDAH TUNTAS 100% (commit `ead716e`/`900090a`); catatan "BELUM" lama ditandai USANG.
+- `public/index.html` (12.342) audit bertahap batch 53-61. **TUNTAS dibaca:** 1-300, 2110-300 (via 2110-5089), 3300-4000, 4480-6099 (rentang: 1-300, 2110-6099). **BELUM:** 300-2110 (landing markup), 4000-4480, 5089-5200, 6099-7330, 7330-7909 (sebagian sudah via batch 53), 7909-12174.
+- Temuan sesi bagian 2: **1 HIGH** (stored XSS `loadAdminLogs`), **1 MEDIUM** (`doRegister` errorEl ordering), **4 LOW** (`getRelativeDate` WIB, `regEmailVal`, `openNewsFromAnalisis` escape, + catatan artefak tmp).
+- Total heading temuan **91** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 36 LOW).
+- Commit sesi bagian 2: ca0df56, 05a012b, 2d2a7ba, 08d7c65, ca981f5, 48c8237, b14ac61, 80918dd (+ ini).
+- **Sisa sesi berikutnya:** sisa `index.html`, lalu `analisis-saham.html`, `admin-ai-eval.html`, `admin-foreign.html`, `portfolio-command-center*.html`, `portfolio-planner.html`, `public/*.css`, `supabase/*.sql` (56), `tools/` (~102), `test/` (~521).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
