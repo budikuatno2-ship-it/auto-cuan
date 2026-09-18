@@ -104,6 +104,11 @@ Berikutnya: `lib/bandarmologi-service.js` (2.226 — baca bertahap), lalu `lib/i
   - Catatan bersih: `firstNonEmptyArray` memperbaiki bug lama `[] || []`; `readDiskCache` dengan identifier eksplisit TIDAK fallback ke tanggal lain; date masquerading sudah dihapus (Batch 1 P0); `applyMultiDayScaling` tidak lagi mengalikan angka sintetis.
 - Total heading temuan kini **68** (2 CRITICAL, 15 HIGH, 29 MEDIUM, 22 LOW).
 
+### PROGRES BATCH 21 (sesi 2026-09-18)
+- `lib/idx-tick-normalization.js` (1.182) **TUNTAS 100%** (sesi lalu 1-900 + batch ini 900-1182). Temuan baru: 1 LOW (ARB flat -15% vs ARA bertingkat, tanpa test yang mengunci & tanpa rujukan aturan — diverifikasi runtime 100/1000/6000).
+- Total heading temuan kini **69** (2 CRITICAL, 15 HIGH, 29 MEDIUM, 23 LOW).
+- Rekap sesi 2026-09-18: `analyze-legacy` (1.920), `ai-answer-contract`, `ai-telemetry`, `context-ai-router-v4` (1.162), `user-watchlist-service` (730), `daytrade-ohlcv-cache` (393), `arjum-client` (641), **SEMUA `intraday-*` (17)**, **SEMUA `telegram-*` (12)**, **SEMUA `trade-plan-v2-*` (11)**, `bandarmologi-service` (2.226), `idx-tick-normalization` (900-1182) — semua dibaca baris-per-baris.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
@@ -233,7 +238,7 @@ SYSTEM_ARCHITECTURE_LIFECYCLE, CHANGELOG, SECURITY, SCREENER_BUGFIX_LOG, SCREENE
 ### FASE 1 — Alur uang & harga (PRIORITAS CRITICAL: "harga ngaco")
 - [ ] `lib/latest-price-resolver.js` (+ test)
 - [ ] `lib/corporate-action-price-scale-guard.js`
-- [ ] `lib/idx-tick-normalization.js`
+- [x] `lib/idx-tick-normalization.js` (TUNTAS 1.182 — batch 21; 1 LOW: ARB flat -15%)
 - [ ] `lib/arjum-client.js`, `lib/arjum-quota-tracker.js`
 - [ ] `lib/vps-data-fetcher.js`, `lib/stock-daily-history-store.js`, `lib/daily-history-collector.js`
 - [ ] `lib/daytrade-ohlcv-cache.js`

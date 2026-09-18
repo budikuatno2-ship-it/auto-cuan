@@ -1091,3 +1091,22 @@ Batch ini membaca TUNTAS `lib/intraday-fast-watcher-pool.js` (448) dan `lib/intr
 - **Penjelasan:** Tanggal "hari terakhir" di-hardcode sebagai fallback ketika kalender gagal/tidak ada. Setiap kali kalender kosong atau upstream tidak menyertakan `date`, sistem akan mengklaim data bertanggal 2026-09-11 — tanggal yang makin lama makin basi — dan payload NO_DATA pun bisa berlabel tanggal itu. Ini memperkuat kelas temuan literal tanggal yang sudah tercatat di modul lain (bandarmologi/broker), dengan 4+ lokasi tambahan di file ini yang belum pernah didaftarkan. Karena modul ini sudah punya `idx-trading-calendar` yang bisa diandalkan, literal ini seharusnya tidak pernah menjadi jawaban terakhir.
 - **Bukti verifikasi riil:** Bukti kode: 5 kemunculan literal terverifikasi via pencarian langsung di file; `getEffectiveTradingDate` memang memanggil `previousTradingDay` tetapi tetap jatuh ke literal ketika null.
 - **Usulan arah perbaikan:** Hapus literal — bila kalender tidak tersedia kembalikan `null`/`NO_DATA` eksplisit, atau pakai tanggal file terbaru yang benar-benar ada di disk (`listDiskDates()[0]`) sebagai basis.
+
+---
+
+## MODUL: Tick Normalization (lib/idx-tick-normalization.js, 1.182 baris — TUNTAS)
+
+File ini **BERSIH** pada bagian yang sudah dibaca sesi lalu (1-900). Batch ini membaca tuntas 900-1182 (deriveIdxAutoRejectLevels, deriveCandlePotentialRange, calculateQualityGrade). Guard ARA/ARB konservatif (hit → buy tidak realistis; near → pantau), TP realism berbasis candle potential, quality grade deterministik dengan gate `tick_normalized`. Satu temuan LOW:
+
+### [LOW] Band ARB di-hardcode flat -15% (multiplier 0.85) untuk SEMUA tier harga, sementara ARA bertingkat (35/25/20%); tidak ada test yang mengunci dan tidak ada rujukan aturan di kode
+- **Lokasi:** [`lib/idx-tick-normalization.js:981-984`](lib/idx-tick-normalization.js:981) (`getIdxAutoRejectBand`)
+- **Kutipan kode bermasalah:**
+  ```js
+  var ara = 0.35;
+  if (ref > 5000) ara = 0.20;
+  else if (ref > 200) ara = 0.25;
+  return { ara_pct: round2(ara * 100), arb_pct: -15, ara_multiplier: 1 + ara, arb_multiplier: 0.85, ara_band_label: label };
+  ```
+- **Penjelasan:** ARA dihitung bertingkat mengikuti tier harga, tetapi ARB selalu -15% tanpa tier dan tanpa rujukan peraturan di kode/komentar (label yang keluar hanya `normal_board_assumption`). Band ini dipakai untuk `arb_price`, `sl_below_arb`, `execution_reality_status`, dan (via `deriveCandlePotentialRange`) lantai `candle_potential_low` pada kartu analisis — jadi bila aturan ARB IDX berubah (atau berbeda per papan), seluruh klaim "rawan ARB" dan potensi candle ikut salah tanpa ada test yang menangkapnya: pencarian `arb_pct`/`getIdxAutoRejectBand` di `test/` tidak menemukan satu pun test yang mengunci nilai ini.
+- **Bukti verifikasi riil:** Runtime di sesi ini — `getIdxAutoRejectBand(100)` → `ara 35% / arb -15%`; `getIdxAutoRejectBand(1000)` → `25% / -15%`; `getIdxAutoRejectBand(6000)` → `20% / -15%`. Pencarian test: nol referensi.
+- **Usulan arah perbaikan:** Dokumentasikan sumber peraturan (tanggal + nomor aturan) dan tambahkan test yang mengunci tier ARA/ARB; bila ARB juga bertingkat per aturan terbaru, samakan pola tiering dengan ARA. Verifikasi eksternal ke aturan IDX berlaku sebelum mengubah nilai.
