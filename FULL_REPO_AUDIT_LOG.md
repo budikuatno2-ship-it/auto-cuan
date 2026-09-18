@@ -408,6 +408,11 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: event delegation hanya membaca `data-ticker` dari cache internal; `window.alert` override → `showToast` memakai `textContent` (aman); `loadSektorHot`/`showGroupDetail` `escapeHtml` untuk group_name/stock_name/ticker di teks (ticker/group_code adalah kode IDX server-side, bukan input user). Catatan trivial: `showGroupDetail(\'' + g.group_code + '\')` (`:9379`) tidak escape, tetapi group_code server-defined (mis. `KONGLO_BANK`).
 - Berikutnya: `index.html` 9470-12174.
 
+### PROGRES BATCH 69 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 9470-9769 dibaca (sektor detail sisa, format helpers, screener polling, loadSwingScreener, renderScreenerTable awal). **BERSIH — tidak ada temuan baru.**
+- BERSIH: `loadSwingScreener` gate login + `escapeHtml(data.error)`; freshness badge jujur (STALE/DAILY/LIVE); `renderScreenerTable` menginterpolasi `r.ticker`/`r.group_code`/`confLabel`/`tierLabel` mentah, tetapi semuanya kode/label IDX server-side (bukan input user); `confidence_notes` di `title` di-escape.
+- Berikutnya: `index.html` 9770-12174.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
