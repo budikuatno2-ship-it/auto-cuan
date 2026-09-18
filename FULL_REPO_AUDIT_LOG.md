@@ -403,6 +403,11 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: `openScrDetail` konsisten `escapeHtml` di SEMUA field (level plan, reason, execution, timeframe, risk notes, technical, respect, bsjp, timing, direction, ticker di onclick); `renderKgCardGrid`/`renderNkCardGrid` `escapeHtml(ticker/confidence/group_code/board/pattern_label/foreign_label/badge)`; tombol "Buka Chart" memvalidasi ticker via `escapeHtml` di onclick.
 - Berikutnya: `index.html` 9170-12174 (nk card sisa, table render, dashboard top5/monitor/history, scanner, diagnostics akhir + script penutup).
 
+### PROGRES BATCH 68 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 9170-9469 dibaca (renderNkCardGrid sisa, event delegation manager, toast/alert override, temp history cleanup, loadSektorHot, showGroupDetail). **BERSIH — tidak ada temuan baru.**
+- BERSIH: event delegation hanya membaca `data-ticker` dari cache internal; `window.alert` override → `showToast` memakai `textContent` (aman); `loadSektorHot`/`showGroupDetail` `escapeHtml` untuk group_name/stock_name/ticker di teks (ticker/group_code adalah kode IDX server-side, bukan input user). Catatan trivial: `showGroupDetail(\'' + g.group_code + '\')` (`:9379`) tidak escape, tetapi group_code server-defined (mis. `KONGLO_BANK`).
+- Berikutnya: `index.html` 9470-12174.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
