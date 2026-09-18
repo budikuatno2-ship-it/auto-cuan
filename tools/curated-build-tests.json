@@ -1,4 +1,5 @@
 [
+  "test/security-hardening-batch3.test.js",
   "test/ai-gemini-model-single-source.test.js",
   "test/broadcast-market-guard.test.js",
   "test/market-hours-guard.test.js",

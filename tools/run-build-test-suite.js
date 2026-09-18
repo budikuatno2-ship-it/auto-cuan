@@ -1,13 +1,19 @@
 'use strict';
 
 const { spawnSync } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 
-const token = process.env.REVIEW_ACCESS_TOKEN || 'vercel-build-secure-token-entropy-minimum-32b';
-process.env.REVIEW_ACCESS_TOKEN = token;
+// The review-access tests only need a configured, non-default token to assert
+// the gate opens for the right value. A single-use random value is enough and
+// keeps the previous shared literal out of source (it was readable in the repo,
+// so it was not a secret at all).
+if (!process.env.REVIEW_ACCESS_TOKEN) {
+  process.env.REVIEW_ACCESS_TOKEN = crypto.randomBytes(24).toString('hex');
+}
 process.env.SECURITY_GUARD_MODE = process.env.SECURITY_GUARD_MODE || 'off';
 
 function sendVercelTelemetry(msg) {

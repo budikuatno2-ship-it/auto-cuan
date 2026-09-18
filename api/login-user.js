@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
-const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret, buildClearOnboardingCookie, isSameOrigin } = require('../lib/admin-session');
+const { createSessionToken, buildSessionCookie, buildClearCookie, buildClearOnboardingCookie, isSameOrigin } = require('../lib/admin-session');
 const { requireUserSession, requireNonBlockedUser, requireSubscriptionOnboardingUser, resolvePremiumAccess } = require('../lib/subscription-auth');
 const identity = require('../lib/subscription-identity');
 const { resolveEntitlements } = require('../lib/entitlements');
@@ -19,18 +19,18 @@ const { clientAddress } = require('../lib/request-rate-limit');
 
 const MAX_DEVICES = 3;
 
+// Preview detection must not trust client-controlled headers. `Origin` is set by
+// the caller, so `Origin: https://anything.vercel.app` used to mark a production
+// login as "preview" and skip the 3-device binding. The only trustworthy signal
+// is the host the platform actually routed the request to (req.headers.host),
+// compared against the official production domain.
+const OFFICIAL_HOSTS = ['autocuan.web.id', 'www.autocuan.web.id'];
 function isVercelPreviewRequest(req) {
   if (!req || !req.headers) return false;
-  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(':')[0].trim().toLowerCase();
-  const origin = String(req.headers.origin || '').trim().toLowerCase();
-  if (host.endsWith('.vercel.app')) return true;
-  if (origin) {
-    try {
-      const u = new URL(origin);
-      if (u.hostname.endsWith('.vercel.app')) return true;
-    } catch (_) {}
-  }
-  return false;
+  const host = String(req.headers.host || '').split(':')[0].trim().toLowerCase();
+  if (!host) return false;
+  if (OFFICIAL_HOSTS.includes(host)) return false;
+  return host.endsWith('.vercel.app');
 }
 
 // Max accepted webhook body size (bytes). A normal Telegram update is well under
@@ -193,24 +193,6 @@ async function handleSubscriptionAction(req, res, action) {
     return res.status(200).json({success:true,voucher:result.data});
   }
   return res.status(400).json({success:false,error:'Aksi tidak valid.'});
-}
-
-const LEGACY_BUDI_PASSWORD_HASH = crypto
-  .createHash('sha256')
-  .update('._autocuan_salt_2024', 'utf8')
-  .digest('hex');
-
-function matchesLegacyBudiPassword(passwordHash) {
-  if (typeof passwordHash !== 'string') return false;
-  const supplied = Buffer.from(passwordHash, 'utf8');
-  const expected = Buffer.from(LEGACY_BUDI_PASSWORD_HASH, 'utf8');
-  return supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
-}
-
-function isRegisteredDevice(user, deviceId) {
-  if (typeof deviceId !== 'string' || !deviceId) return false;
-  const currentDevices = Array.isArray(user.devices) ? user.devices : [];
-  return user.device_id === deviceId || currentDevices.includes(deviceId);
 }
 
 // Generic credential error to prevent username enumeration (invalid username and
@@ -383,9 +365,6 @@ module.exports = async function handler(req, res) {
     const usernameLower = String(username).trim().toLowerCase();
 
     if (!deviceId) {
-      if (usernameLower === 'budi' && matchesLegacyBudiPassword(passwordHash)) {
-        return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
-      }
       return res.status(400).json({ success: false, error: 'Data tidak lengkap.' });
     }
 
@@ -460,38 +439,14 @@ module.exports = async function handler(req, res) {
     }
 
     const credentialCheck = passwordCredential.verifyStoredCredential(user.password_hash, passwordHash);
-    const databasePasswordMatches = credentialCheck.ok;
 
-    if (!databasePasswordMatches) {
-      // Narrow compatibility for the historical budi + "." login. The browser
-      // still hashes the entered password through the shared client algorithm;
-      // the legacy hash alone is insufficient and never bypasses device binding.
-      const legacyBudiPasswordMatches = usernameLower === 'budi' && matchesLegacyBudiPassword(passwordHash);
-      const legacyBudiMayLogin = legacyBudiPasswordMatches &&
-        Boolean(getSessionSecret()) &&
-        user.is_blocked === false &&
-        user.is_approved === true &&
-        isRegisteredDevice(user, deviceId);
-
-      if (!legacyBudiMayLogin) {
-        await loginGuard.failure(legacyBudiPasswordMatches ? 'legacy_admin_rejected' : 'bad_password');
-        console.error('login-user: authentication failed (bad password)');
-        return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
-      }
-
-      // Compatibility success is deliberately read-only: do not update login
-      // metadata and never append/trust a device. Admin is derived server-side.
-      const legacySession = issueSessionCookie(res, user, effectiveUsername, deviceId);
-      if (!legacySession.issued) {
-        return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
-      }
-      await loginGuard.credentialAccepted('legacy_admin_login_success');
-      return res.status(200).json({
-        success: true,
-        username: effectiveUsername,
-        userId: user.id,
-        isAdmin: legacySession.isAdmin
-      });
+    // Every account, including the historical `budi` admin, authenticates through
+    // the standard database credential check. The old hardcoded legacy hash path
+    // was a backdoor whose accepted value was published in source.
+    if (!credentialCheck.ok) {
+      await loginGuard.failure('bad_password');
+      console.error('login-user: authentication failed (bad password)');
+      return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
     }
 
     // Transparent migration from the historical raw client prehash. The update

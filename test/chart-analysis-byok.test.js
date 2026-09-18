@@ -12,6 +12,9 @@ const service = require('../lib/chart-analysis-service');
 const TEST_API_KEY_A = 'AIzaSyA_SampleTestKey_ForUserA_12345678';
 const TEST_API_KEY_B = 'AIzaSyB_SampleTestKey_ForUserB_87654321';
 
+// BYOK encryption is fail-closed without a configured secret; tests provide one.
+process.env.APP_SECRET = process.env.APP_SECRET || 'test-app-secret-for-byok-unit-tests';
+
 test.beforeEach(() => {
   credentials.clearMemoryStoreForTesting();
   service.clearMemoryStoresForTesting();

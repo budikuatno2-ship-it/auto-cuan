@@ -31,7 +31,10 @@ test('login integration records failures without changing credential authority',
   // via raw string equality, but through verifyStoredCredential (scrypt-derived
   // protected format, with a one-time transparent migration path for legacy rows).
   assert.match(login, /const credentialCheck = passwordCredential\.verifyStoredCredential\(user\.password_hash, passwordHash\)/);
-  assert.match(login, /const databasePasswordMatches = credentialCheck\.ok/);
+  // Batch 3 (F-037): the hardcoded legacy budi hash path is gone; every account
+  // (including budi) must pass the standard database credential check.
+  assert.match(login, /if \(!credentialCheck\.ok\) \{/);
+  assert.doesNotMatch(login, /LEGACY_BUDI_PASSWORD_HASH|matchesLegacyBudiPassword/);
   assert.match(login, /const GENERIC_CREDENTIAL_ERROR = 'Username atau password salah\.'/);
   assert.doesNotMatch(login, /securityGuard[^\n]*(?:passwordHash|deviceId)/);
 });
