@@ -99,6 +99,11 @@ TUNTAS & BERSIH (SEMUA `lib/trade-plan-v2-*`, 11 file):
 **SELURUH `lib/trade-plan-v2-*` (11 file) KINI TUNTAS 100%.**
 Berikutnya: `lib/bandarmologi-service.js` (2.226 — baca bertahap), lalu `lib/idx-tick-normalization.js` (900-1182).
 
+### PROGRES BATCH 20 (sesi 2026-09-18)
+- `lib/bandarmologi-service.js` (2.226) **TUNTAS** (chunk 1-300, 301-600, 601-900, 901-1200, 1201-1500, 1501-1800, 1801-2100, 2101-2226). Temuan baru: 1 MEDIUM (`accumulation_score` dikarang 70/30/75, terbukti tampil di UI `bandarmologi-runtime.js:2842` sebagai "Acc Score: X/100"), 1 LOW (5 literal `2026-09-11` sebagai fallback tanggal termasuk payload NO_DATA).
+  - Catatan bersih: `firstNonEmptyArray` memperbaiki bug lama `[] || []`; `readDiskCache` dengan identifier eksplisit TIDAK fallback ke tanggal lain; date masquerading sudah dihapus (Batch 1 P0); `applyMultiDayScaling` tidak lagi mengalikan angka sintetis.
+- Total heading temuan kini **68** (2 CRITICAL, 15 HIGH, 29 MEDIUM, 22 LOW).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.

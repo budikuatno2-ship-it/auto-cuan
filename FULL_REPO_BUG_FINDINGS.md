@@ -1057,3 +1057,37 @@ Batch ini membaca TUNTAS `lib/intraday-fast-watcher-pool.js` (448) dan `lib/intr
 - **Penjelasan:** Dua distorsi sekaligus pada field yang dibaca publik: (1) bila ketiga skor (`publishScore`, `watchScore`, `engineScore`) absen, skor DIKARANG menjadi **70**; (2) operator `Math.max(50, ...)` menaikkan paksa skor riil yang < 50 menjadi **50** — jadi skor sah seperti 42 (ambang extension pool adalah 42) tersimpan sebagai 50. Tabel `daytrade_screener_latest` adalah tabel PRODUKSI yang dikonsumsi langsung oleh halaman publik: `api/sector-hot.js:2748` mengambil top-50 `.order('daytrade_score', { ascending: false })` untuk kategori Day Trade, `:11742`/`:12423` memakai status `READY_BREAKOUT` sebagai gate sinyal, dan `:6869-6872` memakai baris tabel ini sebagai SUMBER HARGA OHLC. Akibatnya skor yang ditampilkan ke user untuk pick dari jalur fast-watcher bisa lebih tinggi daripada skor sebenarnya (atau sepenuhnya karangan), dan urutan ranking top-50 ikut salah. Ini persis kelas yang dihindari seluruh repo ("jangan mengarang angka"); jalur ini di belakang kill switch `FAST_WATCHER_PUBLISH_ENABLED`, tetapi ketika dinyalakan distorsinya langsung masuk ke produksi publik. Catatan tambahan: `status: 'READY_BREAKOUT'` juga hardcoded ([`:54`](lib/intraday-fast-watcher-publisher.js:54)) — pemetaan dari `READY_CONFIRMED` watcher ke skema tabel (perlu dicatat sebagai kontrak yang disengaja atau diperbaiki).
 - **Bukti verifikasi riil:** Runtime di sesi ini: `buildDbRow({ticker:'TEST', watch_score:null, publish_score:null, observation:{}})` → `status: 'READY_BREAKOUT'`, `daytrade_score: 70` (dikarang), `quality_grade: 'B'`. `buildDbRow({watch_score:31, publish_score:42})` → `daytrade_score: 50` (skor riil 42 dinaikkan). `buildDbRow({observation:{score:88}})` → `88` (benar). Konsumen tabel terverifikasi di `api/sector-hot.js:2748, 6869, 11742, 12423`.
 - **Usulan arah perbaikan:** Jangan substitusi skor — biarkan `null` bila tidak ada dan JANGAN clamp ke 50; bila skema tabel mewajibkan angka, turunkan ke `engineScore` tanpa floor dan tandai `score_source`. Tambahkan guard agar baris tanpa skor riil tidak ikut ranking publik.
+
+---
+
+## MODUL: Bandarmologi Service (lib/bandarmologi-service.js, 2.226 baris — TUNTAS)
+
+### [MEDIUM] `accumulation_score` DIKARANG dari tanda net flow (70/30/75) lalu ditampilkan ke user sebagai "Acc Score: X/100"
+- **Lokasi:** [`lib/bandarmologi-service.js:986`](lib/bandarmologi-service.js:986) (`synthesizeAccumulationFromSummary`), [`lib/bandarmologi-service.js:1131`](lib/bandarmologi-service.js:1131) (`normalizeBrokerAccumulation`); konsumen UI: [`public/bandarmologi-runtime.js:2842-2843`](public/bandarmologi-runtime.js:2842)
+- **Kutipan kode bermasalah:**
+  ```js
+  // synthesizeAccumulationFromSummary
+  return {
+    ticker: ticker,
+    accumulation_score: netFlow >= 0 ? 70 : 30,
+    status: netFlow >= 0 ? 'ACCUMULATION' : 'DISTRIBUTION',
+  ...
+  // normalizeBrokerAccumulation
+  accumulation_score: raw.accumulation_score != null ? raw.accumulation_score : 75,
+  ```
+- **Penjelasan:** Tidak ada skor akumulasi yang benar-benar dihitung dari data broker — nilainya hanya fungsi tanda net flow (positif → 70, negatif → 30), dan jalur kedua memakai konstanta 75 ketika upstream tidak mengirim skor. Angka ini kemudian dirender di UI sebagai "Acc Score: 70/100" (badge di kartu Akumulasi Broker), yaitu angka presisi palsu yang terlihat seperti hasil analisis kuantitatif padahal hanya penanda arah. Karena `netFlow` sendiri bisa berasal dari jalur fallback/hunter (bukan VWAP murni), skor ini dapat muncul untuk data yang bahkan tidak lengkap.
+- **Bukti verifikasi riil:** Bukti kode: dua lokasi substitusi (`70/30` dan `75`), plus grep menunjukkan konsumen tunggal di UI `public/bandarmologi-runtime.js:2842-2843` yang mencetak `/100`. Jalur `synthesizeAccumulationFromSummary` aktif setiap kali diskAcc kosong (`bandarmologi-service.js:1950-1963`) — jalur umum, bukan edge case.
+- **Usulan arah perbaikan:** Hitung skor dari komponen nyata (mis. rasio net buy vs total, konsistensi multi-hari) atau tampilkan status kategorikal saja tanpa angka `/100`; bila skor tidak tersedia, render `—` bukan konstanta.
+
+### [LOW] Literal tanggal `2026-09-11` sebagai default/fallback tanggal data di 4 jalur (termasuk payload tanggal NO_DATA)
+- **Lokasi:** [`lib/bandarmologi-service.js:213`](lib/bandarmologi-service.js:213), [`:220`](lib/bandarmologi-service.js:220), [`:232`](lib/bandarmologi-service.js:232), [`:808`](lib/bandarmologi-service.js:808), dan [`:1984`](lib/bandarmologi-service.js:1984) (`resolvedDate` fallback `'2026-09-11'`)
+- **Kutipan kode bermasalah:**
+  ```js
+  return prevTrading || '2026-09-11';                       // :213
+  return prev || '2026-09-11';                              // :220
+  return [fallbackEff, '2026-09-11', '2026-09-10', ...];    // :232
+  const targetDate = date === 'latest' || !date ? (raw.date || raw.broker_start_date || '2026-09-11') : date;  // :808
+  ```
+- **Penjelasan:** Tanggal "hari terakhir" di-hardcode sebagai fallback ketika kalender gagal/tidak ada. Setiap kali kalender kosong atau upstream tidak menyertakan `date`, sistem akan mengklaim data bertanggal 2026-09-11 — tanggal yang makin lama makin basi — dan payload NO_DATA pun bisa berlabel tanggal itu. Ini memperkuat kelas temuan literal tanggal yang sudah tercatat di modul lain (bandarmologi/broker), dengan 4+ lokasi tambahan di file ini yang belum pernah didaftarkan. Karena modul ini sudah punya `idx-trading-calendar` yang bisa diandalkan, literal ini seharusnya tidak pernah menjadi jawaban terakhir.
+- **Bukti verifikasi riil:** Bukti kode: 5 kemunculan literal terverifikasi via pencarian langsung di file; `getEffectiveTradingDate` memang memanggil `previousTradingDay` tetapi tetap jatuh ke literal ketika null.
+- **Usulan arah perbaikan:** Hapus literal — bila kalender tidak tersedia kembalikan `null`/`NO_DATA` eksplisit, atau pakai tanggal file terbaru yang benar-benar ada di disk (`listDiskDates()[0]`) sebagai basis.
