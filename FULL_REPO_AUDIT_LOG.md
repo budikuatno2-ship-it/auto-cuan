@@ -448,6 +448,15 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: `sanitizeAIHtml` (`:11729`) membuang `<script>`, event handler `on*` (per-tag, tahan separator `/`), skema URL berbahaya (`javascript:`/`vbscript:`/`data:` dengan decode entity), dan elemen berbahaya (`iframe`/`embed`/`object`/`form`/`input`/`button`/`style`/`template`/`noscript`/`svg`/`math`/`base`/`meta`/`link`) — pertahanan XSS inti yang kokoh. `stripFollowUpTemplate`/`buildFollowUpFallback` murni deterministik.
 - Berikutnya: `index.html` 11870-12174.
 
+### PROGRES BATCH 77 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 11870-12169 dibaca (normalizeTechnicalLabels, normalizeRenderedTechnicalText, forceNormalizeTechnicalDOM). **BERSIH — tidak ada temuan baru.**
+- BERSIH: post-render normalizer menulis `span.innerHTML` dari `textContent` (teks yang SUDAH dirender/disanitasi) dengan HANYA menambahkan `<br>`/spasi → tidak ada reintroduksi HTML berbahaya; skip-list tag/class (`SCRIPT`/`STYLE`/`PRE`/`CODE`/`SVG` + grid containers) mencegah merusak struktur.
+
+### PROGRES BATCH 78 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 12170-12342 dibaca (akhir script utama, daftar `<script src>`, a11y skip-link + modal focus management, kickoff landing showcase). **BERSIH — tidak ada temuan baru.**
+- BERSIH: daftar `<script src>` semuanya file lokal (sudah diaudit); tidak ada API key/token hardcoded; a11y focus-trap hanya mengelola class `hidden` + fokus (tidak menyentuh auth/API).
+- **`index.html` TUNTAS dibaca: 1-300 + 2110-12342.** Sisa: **300-2110** (markup landing page — Prioritas 2).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
