@@ -1435,3 +1435,15 @@ Total heading temuan kini **84** (2 CRITICAL, 15 HIGH, 34 MEDIUM, 33 LOW).
 - `public/pattern-screener-extension.js` (381) — **BERSIH**. `esc()` konsisten pada semua interpolasi HTML; `planConflict` menolak menggabungkan plan berlawanan arah (level Screener disembunyikan); MutationObserver di-throttle (`scheduled`) + `syncCard` early-return via `data-setup-signature` sehingga tulisan `innerHTML`-nya tidak memicu loop tak berujung.
 
 Total heading temuan tetap **84** — batch ini tidak menambah temuan.
+
+---
+
+## MODUL: Portfolio Scenarios/RuntimeFix + Subscription Access/Voucher (5 file — TUNTAS, BERSIH)
+
+- `public/portfolio-position-scenarios.js` (320) — **BERSIH**. `escapeHtml` konsisten; `installMoneyInputs` format Rupiah + `rawBeforeClick` mengembalikan digit mentah tepat sebelum handler kalkulasi (capture phase) agar nilai terformat tidak salah-parse; `installRiskGuard` pakai `stopImmediatePropagation` untuk mengambil alih tombol risk; `useBudgetMatch` tidak membawa harga sintetis apa pun.
+- `public/portfolio-runtime-fix.js` (150) — **BERSIH**. `migrateLegacyPlans` idempoten (buat `id` stabil berbasis hash hanya untuk plan tanpa id, `return false` bila tak ada perubahan); `deletePlan` menghapus harga hanya bila ticker sudah tak dipakai plan lain; handler delete pakai capture + `stopImmediatePropagation`.
+- `public/subscription-access-gate-v1.js` (146) — **BERSIH**. Mengganti resolver akses lama: premium HANYA dari entitlement server (`profile.subscription.entitlement.premium` dan `is_approved`), 401/403 → free, kegagalan jaringan → `state:'unavailable'` (fail-closed ke non-premium, bukan ke premium). Cache 20s + dedup `requestInFlight`. Backend tetap batas keamanan sebenarnya.
+- `public/subscription-voucher-claim-v1.js` (73) — **BERSIH**. Butuh `crypto.randomUUID` (idempotency key aman), gate persetujuan terms, `stopImmediatePropagation` agar klaim lewat endpoint notification-aware tepat sekali; pesan jujur saat notifikasi admin gagal.
+- `public/website-approved-access.js` (50) — **BERSIH**. Menyembunyikan UI subscription (akses dipegang gate server), `loadScriptOnce` idempoten via marker atribut.
+
+Total heading temuan tetap **84** — batch ini tidak menambah temuan.

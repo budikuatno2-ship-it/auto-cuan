@@ -232,6 +232,16 @@ TUNTAS & BERSIH (8 file `lib/admin-*`):
 - Total heading temuan tetap **84** — batch ini tidak menambah temuan.
 - Berikutnya: `public/portfolio-position-scenarios.js`, `public/portfolio-runtime-fix.js`, `public/subscription-*`, `public/mobile-*`, `public/admin-*`, `public/account-center-*`.
 
+### PROGRES BATCH 41-42 (sesi 2026-09-18 lanjutan)
+TUNTAS & BERSIH (5 file `public/`, dibaca baris-per-baris):
+- `portfolio-position-scenarios.js` (320) — reporter skenario deterministik; Rupiah input di-`rawBeforeClick` sebelum kalkulasi; `escapeHtml` konsisten.
+- `portfolio-runtime-fix.js` (150) — migrasi id plan legacy idempoten; `deletePlan` bersihkan harga hanya bila ticker tak terpakai.
+- `subscription-access-gate-v1.js` (146) — premium HANYA dari entitlement server; 401/403→free, error jaringan→`unavailable` (fail-closed).
+- `subscription-voucher-claim-v1.js` (73) — randomUUID idempotency, gate terms, klaim sekali.
+- `website-approved-access.js` (50) — sembunyikan UI subscription, loader idempoten.
+- Total heading temuan tetap **84** — batch ini tidak menambah temuan.
+- Berikutnya: `public/mobile-*`, `public/admin-*`, `public/security-admin-runtime.js`, `public/auth-v2.js`, `public/account-center-*`, `public/ui-bugfix-pack-v1.js`, `public/position-sizing-calculator.js`, `public/track-record-backtest.js`.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
