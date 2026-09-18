@@ -328,6 +328,11 @@ TUNTAS & BERSIH (3 file `public/`):
 - **Temuan LOW:** `getRelativeDate` (`:2410-2425`) masih memakai rumus WIB double-shift (`+7h - getTimezoneOffset()`) yang sudah dihapus di `getWIBDateString` (`:2386`) → batas hari bergeser ke 17:00 WIB; label "Hari ini/Kemarin" salah untuk sesi sore/malam.
 - Total heading temuan kini **88** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 34 LOW).
 
+### PROGRES BATCH 55 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 2710-3300 dibaca (landing showcase heat-cells, routing, maintenance check, review mode, public share mode). **BERSIH — tidak ada temuan baru.**
+- BERSIH: `loadLandingShowcase` escape nama sektor/ticker; `checkMaintenanceStatus` fail-safe 3-state (hanya mengubah status pada jawaban terkonfirmasi); `reviewModeToken` tidak lagi menyimpan secret di source (token hanya diteruskan ke server, server timing-safe compare); `enterShareMode` menandai `noindex`; interpolasi `data.error` di `:2928` berasal dari string tetap `api/review-access.js` (tanpa input user) → bukan vektor XSS.
+- Berikutnya: `index.html` 3300-4300 (login/register/device approval flows).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
