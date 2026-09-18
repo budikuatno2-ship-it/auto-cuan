@@ -433,6 +433,11 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: `dashboardTop5NoteText` heading konsisten dengan body (komentar perbaikan kontradiksi); `renderMarketBand` menampilkan '—' bukan 0/5 saat awaiting; `dashboardExcludedHtml` `escapeHtml(ticker/action/risk/reason)`; `dashLevelHtml` `escapeHtml(label)`; safety split mempertahankan row ter-merge untuk excluded.
 - Berikutnya: `index.html` 10970-12174.
 
+### PROGRES BATCH 74 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 10970-11269 dibaca (dashRiskLadderHtml, dashQualityChipsHtml, buildDashboardActionLine, renderDashboardTop5, dashExecutionRealityLine, dashTpRealismLine, renderDashboardMonitor, renderTop5History). **BERSIH — tidak ada temuan baru.**
+- BERSIH: `renderDashboardTop5`/`renderDashboardMonitor`/`renderTop5History` `escapeHtml` pada SEMUA field (ticker, category, grade, risk, action, reason, meta, status, date, plan); `tickerJs` = `escapeHtml(dashJsString(ticker))` untuk onclick/onkeydown; `dashQualityChipsHtml` `escapeHtml(chip)`; `dashRiskLadderHtml` `escapeHtml(summary)` di aria-label.
+- Berikutnya: `index.html` 11270-12174.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
