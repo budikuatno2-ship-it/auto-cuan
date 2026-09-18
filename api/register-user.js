@@ -28,6 +28,10 @@ const registrationLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 8
 const PASSWORD_HASH_RE = /^[a-f0-9]{64}$/i;
 const MAX_USER_AGENT = 256;
 
+// Username charset allowlist (stored-XSS defence in depth for the admin log
+// viewer). Letters/digits/dot/underscore/hyphen, 2-30 chars.
+const USERNAME_RE = /^[a-z0-9._-]{2,30}$/i;
+
 // Normalize a client-provided device ID and generate a secure server-side
 // fallback when an older client omits it. Keeps the NOT NULL `device_id`
 // column satisfied without exposing device ID as a required user input.
@@ -106,6 +110,14 @@ module.exports = async function handler(req, res) {
     }
     if (usernameLower.length > 30) {
       return res.status(400).json({ success: false, error: 'Username maksimal 30 karakter.' });
+    }
+    // Charset allowlist. Usernames are rendered into the admin log viewer and
+    // other HTML surfaces, so a value like `<img src=x onerror=...>` (28 chars,
+    // within the length bound) must never be storable. Only letters, digits,
+    // dot, underscore and hyphen are accepted — no whitespace, no tag or
+    // script metacharacters, no control characters.
+    if (!USERNAME_RE.test(usernameLower)) {
+      return res.status(400).json({ success: false, error: 'Username hanya boleh berisi huruf, angka, titik, underscore, dan tanda hubung (2-30 karakter).' });
     }
 
     if (typeof passwordHash !== 'string' || !PASSWORD_HASH_RE.test(passwordHash)) {
@@ -259,5 +271,6 @@ module.exports.__test = {
   normalizeDeviceId: normalizeDeviceId,
   rollbackIncompleteRegistration: rollbackIncompleteRegistration,
   registrationLimiter: registrationLimiter,
-  PASSWORD_HASH_RE: PASSWORD_HASH_RE
+  PASSWORD_HASH_RE: PASSWORD_HASH_RE,
+  USERNAME_RE: USERNAME_RE
 };
