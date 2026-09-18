@@ -1646,6 +1646,24 @@ Total heading temuan kini **89** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 35 LOW).
 
 Total heading temuan kini **90** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 35 LOW).
 
+### [LOW] `openNewsFromAnalisis` menyisipkan judul/ringkasan berita mentah ke `innerHTML`, inkonsisten dengan `loadStockNewsPage` yang meng-escape
+- **Lokasi:** [`public/index.html:4878-4879`](public/index.html:4878) (raw) vs [`public/index.html:4915-4924`](public/index.html:4915) (escape); sumber [`api/quote.js:1310-1312`](api/quote.js:1310)/[`:1449-1451`](api/quote.js:1449)
+- **Kutipan kode bermasalah:**
+  ```js
+  // openNewsFromAnalisis (:4878-4879) — TANPA escape
+  panelHtml += '...<p class="text-xs text-gray-400">' + (item.date || '') + '</p><p class="text-sm text-gray-300">' + (item.title || '') + '</p>';
+  if (item.summary) panelHtml += '<p class="text-xs text-gray-500 mt-0.5">' + item.summary + '</p>';
+  // loadStockNewsPage (:4915-4924) — DENGAN escape
+  var title = escapeHtml(item.title || 'Informasi Pasar');
+  var titleLink = item.url ? '<a href="' + item.url + '" ...>' + title + '</a>' : title;
+  ... escapeHtml(item.source) ... escapeHtml(item.date) ... escapeHtml(item.summary)
+  ```
+- **Penjelasan:** Data berita berasal dari pencarian web Gemini (sumber pihak ketiga), disimpan sebagai `item.title` (cap 200) / `item.summary` / `item.url` (`api/quote.js:1310-1312,1449-1451`). Dua renderer menyajikan data yang sama dengan perlakuan berbeda: `loadStockNewsPage` (halaman News) meng-escape title/source/date/summary, sedangkan `openNewsFromAnalisis` (panel "Lihat News" di kartu analisis) menyisipkan `item.title`/`item.summary`/`item.date` MENTAH ke `innerHTML`. Bila hasil pencarian memuat markup (konten web bisa saja berisi `</p><img onerror=…>`), panel analisis akan mengeksekusinya — sementara halaman News yang sama tidak. Selain itu, KEDUA renderer menyisipkan `item.url` mentah ke atribut `href` tanpa memvalidasi skema (`javascript:`), meski server sudah membatasi panjang. Dampak LOW karena kontrol penyerang atas hasil pencarian terbatas dan tidak langsung, tetapi inkonsistensi escaping-nya konkret.
+- **Bukti verifikasi riil:** Bukti kode: `:4878-4879` tanpa `escapeHtml`; `:4915-4924` memakai `escapeHtml`. Sumber field dari `api/quote.js` (external search), bukan input user langsung.
+- **Usulan arah perbaikan:** Samakan `openNewsFromAnalisis` dengan `loadStockNewsPage`: bungkus `item.title`/`item.summary`/`item.date` dengan `escapeHtml`. Untuk `href`, tambahkan guard skema (`/^https?:\/\//i`) sebelum menyisipkan `item.url`.
+
+Total heading temuan kini **91** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 36 LOW).
+
 ---
 
 ## MODUL: Pattern Safety Hardening + UI Stability Fix + Admin Maintenance Code (3 file — TUNTAS, BERSIH)

@@ -350,6 +350,12 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: `renderRankingTable` konsisten memakai `escapeHtml(row.ticker)` (`:4601`) + `adminOnclickArg(row.ticker)` (`:4683`); `rankingCellHtml` memformat angka (N/A jujur); `openMarketContextFromAnalisis` hanya menerima ticker `[A-Z0-9]` (dari `runAnalisisFromDashboard:4357`).
 - Berikutnya: `index.html` 4780-5089 (news page), 5200-7330 (chart/scanner/screener), 7909-12174 (dashboard/admin/diagnostics).
 
+### PROGRES BATCH 59 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 4780-5089 dibaca (market context panel, news panel, news page, follow-up chat, chart page bootstrap). **1 LOW BARU.**
+- BERSIH: `loadStockNewsPage` escape title/source/date/summary; `handleAnalisisFollowUp` men-sanitasi (`clientSanitizeFCA`+`sanitizeAIHtml`) sebelum innerHTML; `mktCtxNumOrNA` jujur N/A; panel konteks pasar menandai freshness stale + foreign partial.
+- **Temuan LOW:** `openNewsFromAnalisis` (`:4878-4879`) menyisipkan judul/ringkasan berita mentah (tak di-escape), inkonsisten dengan `loadStockNewsPage` (`:4915-4924`); keduanya menyisipkan `item.url` mentah ke `href`.
+- Total heading temuan kini **91** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 36 LOW).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
