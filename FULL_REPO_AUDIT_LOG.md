@@ -296,6 +296,14 @@ TUNTAS & BERSIH (2 file `public/`):
 - **SISA non-JS `public/`:** `*.html` (index.html 12.342, analisis-saham, admin-ai-eval, admin-foreign, methodology, portfolio-command-center*, portfolio-planner, trust, 404, tmp-measure*), `*.css` (index-shell, account-center-v1, portfolio-command-center, portfolio-ai-workspace-v1, premium-workstation*, tailwind-build, ui-theme, unified-cockpit), `assets/`, robots/sitemap/favicon, `.well-known/`.
 - Temuan sesi ini: 1 MEDIUM (`signal-gate-transparency` missing=PASS), 1 MEDIUM (`track-record-backtest` benchmark fabrikasi), 2 LOW (`portfolio-supabase-sync` keepalive, + catatan artefak).
 
+### PROGRES BATCH 50 (sesi 2026-09-18 lanjutan)
+TUNTAS & BERSIH (3 file `public/`):
+- `pattern-safety-hardening-v1.js` (186) — safeFinite tolak null/''/false, patch via defineProperty setter, entry satu-sisi ditolak.
+- `ui-stability-fix.js` (223) — collectTickers/mapBounded, artifact cleanup idempoten.
+- `admin-maintenance-code.js` (483) — OTP 6 digit, hydrate hanya budi, lifecycle Telegram keepalive, polling visibility-aware.
+- Total heading temuan tetap **85** — batch ini tidak menambah temuan.
+- Sisa `public/` JS: `ai-chat-renderer.js` (334; 1-319 sudah dibaca), `analisis-saham-runtime.js` (1.114; 1-320 sudah dibaca), `pattern-visual.js` (360), `chart-analysis-runtime.js`/`chart-viewer.js` (sudah tuntas sesi lama).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.

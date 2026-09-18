@@ -1528,3 +1528,13 @@ Total heading temuan kini **85** (2 CRITICAL, 15 HIGH, 35 MEDIUM, 33 LOW).
 - `public/tmp-ci-touch-batch1.js` (1) — artefak sisa ("touch batch 1 final"), tanpa kode. **Catatan pembersihan (bukan bug):** file ini (dan `public/tmp-measure*.html`) adalah artefak test/CI yang bocor ke `public/` — sebaiknya dihapus, sejalan dengan catatan folder `data/arjum-data/AUDITSCALE*/B4TST/DBGT4/NOACC`.
 
 Total heading temuan tetap **85**.
+
+---
+
+## MODUL: Pattern Safety Hardening + UI Stability Fix + Admin Maintenance Code (3 file — TUNTAS, BERSIH)
+
+- `public/pattern-safety-hardening-v1.js` (186) — **BERSIH**. `safeFinite` menolak `null`/`''`/`false` (mencegah koersi ke 0 yang membuat data absen tampak level nyata); memasang patch lewat `Object.defineProperty` setter agar implementasi aman terpasang SEBELUM `pattern-direction-safety.js` dimuat; `tradePlanDirection` menolak entry satu sisi (tidak menyalin sisi yang hilang).
+- `public/ui-stability-fix.js` (223) — **BERSIH**. `collectTickers`/`mapBounded` (concurrency 4, error per-worker ditelan), `cleanVisibleArtifacts` + `pruneStandaloneArtifacts` membersihkan artefak teks; observer `cleanNode` idempoten via `data-ui-cleaning`/`data-artifact` guard. `levelLabel` dead (tanpa pemanggil).
+- `public/admin-maintenance-code.js` (483) — **BERSIH**. OTP 6 digit (input `\D` strip + `autocomplete=one-time-code`), consume via server, `setError` pakai `textContent`; `hydrateApprovedClientState` hanya untuk `budi`+`isAdmin`; lifecycle Telegram notify/cleanup `keepalive`; polling visibility-aware (`HIDDEN_POLL_MS`) + observer gate cleanup; OTP auto-delete dari server. Tidak ada kebocoran kode/secret.
+
+Total heading temuan tetap **85**.
