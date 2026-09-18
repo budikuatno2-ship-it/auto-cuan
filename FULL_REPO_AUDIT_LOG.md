@@ -149,6 +149,18 @@ TUNTAS & BERSIH (13 file sisa `daytrade-*`, dibaca baris-per-baris):
 - `public/market-feature-runtime.js` (1.510) **TUNTAS 100%** (sesi lama 1-600 + batch ini 601-1510). Temuan baru: 1 MEDIUM — blok prompt `[Auto-Cuan Score]` memakai dua skala berbeda untuk field berlabel sama (server `/25` untuk trend via `api/quote.js`; fallback frontend `/30`). Catatan bersih: grounding blok Market Data sengaja OMIT field absen (tidak `|| 0`), `Min Price Guard` selalu di-set server (fallback 50 di frontend tidak reachable).
 - Total heading temuan kini **76** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 26 LOW).
 
+### PROGRES BATCH 27 (sesi 2026-09-18 lanjutan) — penutup sesi
+- `public/unified-cockpit-runtime.js` (358) **TUNTAS 100%** (sesi lama 1-200 + batch ini 201-358) — BERSIH (Enter hanya mengganti konteks ticker, tidak memicu AI run; `openFullscreen` ber-guard; export API eksplisit).
+- `public/screener-lifecycle-ui.js` (174) **TUNTAS** — BERSIH (UMD, PHASE_META 4 fase + NONE/INVALIDATED/UNKNOWN, chip chase risk, MutationObserver sinkronisasi kartu).
+
+### REKAP SESI 2026-09-18 (lanjutan) — modul TUNTAS 100%
+- `lib/bandarmologi-*`: confluence (161), screener-scoring (295), intel-service (1.754) — 3 temuan.
+- **SEMUA `lib/daytrade-*`: 31 file TUNTAS** (report/eval, outcome-chain, execution-ranking, intraday gate/policy/runbook/collector, observe, scan-comparison, dry-run-gate) — semua BERSIH.
+- `public/`: daytrade-runtime (398 — 1 LOW), fast-watcher-live-refresh (153), stock-analysis-ai (678 — 1 MEDIUM + 1 LOW), market-feature-runtime (1.510 — 1 MEDIUM), unified-cockpit-runtime (358), screener-lifecycle-ui (174) — semua TUNTAS.
+- Total heading temuan akhir sesi: **76** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 26 LOW).
+- Commit sesi: 0d1fa7a, ed05b8a, 8954cab, eeb4788, 1529a21, ab9689c (+ ini).
+- Sisa untuk sesi berikutnya: `lib/` (broker-hunter 548, insider-network 1125, foreign-flow-* 295/74, bandarmologi-* lain), sisa `public/` (~40 file), `tools/` (~102), `supabase/*.sql` (56), `.github/workflows/*`, `test/` (~521).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
