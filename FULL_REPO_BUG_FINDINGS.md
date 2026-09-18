@@ -1711,32 +1711,33 @@ Total heading temuan kini **92** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 37 LOW).
 
 ## MODUL: `tools/` — runner backfill terjadwal & kalender libur
 
-### [MEDIUM] `backfill-engine.js` menyimpan salinan kalender libur IDX 2026 yang BASI dan BERBEDA dari "single source of truth" — cron terjadwal melewatkan hari bursa nyata dan tetap menarik API pada hari libur
-- **Lokasi:** [`tools/backfill-engine.js:46-64`](tools/backfill-engine.js:46) (set inline) dipakai [`tools/backfill-engine.js:192`](tools/backfill-engine.js:192) → dijalankan tiap hari oleh cron [`tools/run-scheduled-backfill.js:52-58`](tools/run-scheduled-backfill.js:52). Sumber kanonik: [`lib/idx-holidays-2026-seed-data.js:30-53`](lib/idx-holidays-2026-seed-data.js:30).
+### [MEDIUM] Tiga salinan kalender libur IDX 2026 yang saling melenceng dari "single source of truth" — backfill menarik API pada hari libur & melewatkan hari bursa nyata
+- **Lokasi:** sumber kanonik [`lib/idx-holidays-2026-seed-data.js:30-53`](lib/idx-holidays-2026-seed-data.js:30) (22 tanggal). Salinan #2: [`tools/backfill-engine.js:46-64`](tools/backfill-engine.js:46) (17 tanggal, dipakai `:192 getTradingDates`). Salinan #3 (JALUR LIVE): [`tools/backfill-arjum-data.js:51-53`](tools/backfill-arjum-data.js:51) (hanya 1 tanggal, dipakai `:201 getTradingDates`).
 - **Kutipan kode bermasalah:**
   ```js
-  // tools/backfill-engine.js:46-64 — salinan KEDUA, tidak lagi sinkron
+  // lib/idx-holidays-2026-seed-data.js:12 — klaim kanonik
+  // "This is the SINGLE source of truth consumed by both: scripts/seed-idx-holidays-2026.js
+  //  and supabase/idx-holidays-2026-seed.sql ... Keeping one list avoids the two seed paths drifting apart."
+
+  // tools/backfill-engine.js:46-64 — salinan #2, sudah melenceng
   const IDX_HOLIDAYS_2026 = new Set([
-    '2026-01-01', '2026-01-16', '2026-02-17',
-    '2026-03-20', // "Hari Suci Nyepi"   <-- kanonik: 03-20 = Cuti Bersama Idul Fitri (Nyepi di 03-19)
+    '2026-01-01','2026-01-16','2026-02-17',
+    '2026-03-20', // "Hari Suci Nyepi"      <-- kanonik: 03-20 = Cuti Bersama Idul Fitri (Nyepi = 03-19)
     '2026-03-21', // "Hari Raya Idul Fitri" <-- kanonik: TIDAK ada (Sabtu)
-    '2026-03-23', '2026-03-24', '2026-04-03', '2026-05-01', '2026-05-14',
-    '2026-05-25', // "Idul Adha"          <-- kanonik: 05-25 BUKAN libur; Idul Adha = 05-27
-    '2026-05-31', '2026-06-01', '2026-06-16', '2026-08-17', '2026-08-25', '2026-12-25'
+    '2026-03-23','2026-03-24','2026-04-03','2026-05-01','2026-05-14',
+    '2026-05-25', // "Idul Adha"            <-- kanonik: 05-25 BUKAN libur; Idul Adha = 05-27
+    '2026-05-31','2026-06-01','2026-06-16','2026-08-17','2026-08-25','2026-12-25'
   ]);
-  ...
-  function getTradingDates(startDateStr = '2026-01-01', endDateStr = '2026-05-31') {  // default basi (Mei 2026)
+
+  // tools/backfill-arjum-data.js:51-53 — salinan #3 (dipakai wrapper cron live)
+  const holidays = new Set([ '2026-08-17' ]);   // hanya HUT RI; Juni-Juli libur hilang
   ```
-  ```js
-  // tools/run-scheduled-backfill.js:53-57 — cron mengunci rentang Mei 2026
-  const args = [scriptPath, '--from', '2026-01-01', '--to', '2026-05-31', '--daily-limit', String(dailyLimit)];
-  ```
-- **Dampak:** Berkas kanonik menyatakan dirinya **"SINGLE source of truth ... Keeping one list avoids the two seed paths drifting apart"**, tetapi `backfill-engine.js` memuat daftar terpisah yang sudah melenceng. Karena `getTradingDates()` MEMAKAI set ini untuk menentukan hari yang di-backfill, akibatnya nyata:
-  - **Hari bursa nyata DILEWATI** (libur hantu): `2026-05-25` ditandai libur padahal kanonik BUKAN libur → backfill hari itu tidak pernah dijalankan (gap data permanen), padahal cron memang di-rutekan untuk mengejar rentang `--to 2026-05-31`.
-  - **Hari libur nyata TETAP ditarik ke API** (libur hilang dari set): `2026-02-16`, `2026-03-18`, `2026-03-19`, `2026-05-15`, `2026-05-27`, `2026-05-28` tidak ada di set engine → engine mengirim request Arjum pada hari bursa tutup (kuota harian dijatah ketat: 24.114/29.050, tiap run malam) dan berpotensi menulis baris all-zero/invalid.
-  - Label tanggal juga salah (03-20 diberi nama "Nyepi", 03-21 "Idul Fitri" yang kanonik tidak ada) → bukti set ini benar-benar disalin manual dan tidak diperbarui.
-- **Bukti verifikasi riil:** Diff dua daftar: kanonik 22 tanggal vs inline 17 tanggal. Selisih: engine TAMBAH `2026-03-21`, `2026-05-25`, `2026-05-31`, `2026-06-16` (kanonik tidak ada / beda hari); engine HILANG `2026-02-16`, `2026-03-18`, `2026-03-19`, `2026-05-15`, `2026-05-27`, `2026-05-28`, `2026-06-17`, `2026-12-24`, `2026-12-31`. Alur pemakaian terkonfirmasi: `run-scheduled-backfill.js:52` spawn `backfill-engine.js` dengan rentang tetap → `:192 getTradingDates(fromDate, toDate)`.
-- **Usulan arah perbaikan:** Hapus set inline di `backfill-engine.js` dan impor `require('../lib/idx-holidays-2026-seed-data').IDX_HOLIDAYS_2026` (map ke Set tanggal), atau panggil `lib/idx-trading-calendar.js` (yang sudah dipakai `run-daily-broker-update.js`) agar satu sumber saja. Perbarui juga default rentang `--to` yang masih `2026-05-31`. **Belum terkonfirmasi (hipotesis, butuh jalankan):** berapa banyak request Arjum terbuang pada 6 tanggal libur hilang itu — perkirakan dengan `node tools/backfill-engine.js --from 2026-05-25 --to 2026-05-28 --dry-run` pada salinan repo.
+- **Dampak:** Berkas kanonik mengklaim satu sumber agar tidak melenceng, tetapi ada DUA salinan independen yang sudah berbeda. `getTradingDates()` memakai set masing-masing untuk memutuskan hari yang di-backfill, sehingga:
+  - **Hari libur nyata tetap ditarik ke API** (libur hilang dari set): salinan #2 kehilangan `2026-02-16, 03-18, 03-19, 05-15, 05-27, 05-28, 06-17, 12-24, 12-31`; salinan #3 (LIVE) hanya punya `08-17` sehingga untuk rentang backfill Juni–Juli (`run-historical-backfill.sh:34-35` → `2026-06-01..2026-07-31`) ia menganggap `2026-06-01` (Pancasila) dan `2026-06-17` (1 Muharam) sebagai hari bursa → request Arjum terbuang pada hari tutup (kuota dijatah ketat 24.114/29.050).
+  - **Hari bursa nyata dilewati** (libur hantu): salinan #2 menandai `2026-05-25` libur padahal kanonik BUKAN → gap data permanen untuk tanggal itu.
+  - Label salah (03-20 "Nyepi", 03-21 "Idul Fitri" yang kanonik tidak ada) membuktikan salinan disalin manual dan tak diperbarui.
+- **Bukti verifikasi riil:** Diff kanonik (22) vs salinan #2 (17): #2 TAMBAH `03-21, 05-25, 05-31, 06-16`; #2 HILANG `02-16, 03-18, 03-19, 05-15, 05-27, 05-28, 06-17, 12-24, 12-31`. Salinan #3 = `{08-17}` saja. **Koreksi jalur live:** `deploy/vps/final-schedule.cron` TIDAK memanggil `run-scheduled-backfill.js`/`backfill-engine.js`; cron 00:05 memanggil `backfill-historical-candles.js` (tanpa filter libur — hanya cek cache), dan `deploy/vps/run-historical-backfill.sh:29` memanggil `backfill-arjum-data.js` (salinan #3). Jadi `backfill-engine.js` adalah runner manual/legacy (bukan cron) → dampak live-nya terbatas pada salinan #3 (Juni–Juli, yang komentarnya menyatakan sudah selesai → no-op).
+- **Usulan arah perbaikan:** Hapus ketiga set inline; impor `require('../lib/idx-holidays-2026-seed-data').IDX_HOLIDAYS_2026` (map ke Set) atau panggil `lib/idx-trading-calendar.js` (sudah dipakai `run-daily-broker-update.js`) di `backfill-engine.js` DAN `backfill-arjum-data.js`. Perbarui default rentang `--to 2026-05-31`/`2026-09-04` yang basi. **Belum terkonfirmasi (hipotesis, butuh jalankan):** jumlah request terbuang — perkirakan dengan `node tools/backfill-arjum-data.js --start-date 2026-06-01 --end-date 2026-06-17 --dry-run` pada salinan repo.
 
 Total heading temuan kini **93** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 38 LOW).
 
@@ -1744,4 +1745,62 @@ Total heading temuan kini **93** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 38 LOW).
 - **Tidak ada kredensial hardcoded.** 26 file `tools/` yang memakai Supabase semuanya `process.env.SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_URL`; tidak ada service-role key, API key, atau bearer token literal. Pola secret hanya nama env (aman).
 - **Tidak ada endpoint URL sensitif hardcoded.** URL yang muncul: `query1/query2.finance.yahoo.com` (sumber candle), `generativelanguage.googleapis.com` (Gemini), `integrate.api.nvidia.com`, `ntfy.sh`, `openagentic.id`, dan domain sendiri `auto-cuan.vercel.app`; `https://xxx.supabase.co` hanyalah contoh di pesan usage.
 - Blok `catch (_) {}` yang dipetakan (48 di 24 file) mayoritas **best-effort yang benar** (load `.env`, unlink file sementara/lock, close fd, probe opsional) — bukan silent-fail data. `run-daily-broker-update.js` (627, baca penuh sebagian) terbukti menangani kuota Arjum dengan `classifyFailure`, marker idempoten, dan exit-code `--final` jujur.
-- `tools/run-build-test-suite.js` masih memuat klaim lama BUG-002 (perlu verifikasi terpisah di batch test).
+- `tools/run-build-test-suite.js` (125) — lihat temuan `test/` di bawah (token fallback + telemetry).
+
+---
+
+## MODUL: `test/` (~453) + gate build — kualitas suite & kebocoran gate
+
+### [MEDIUM] Token gate review produksi (`REVIEW_ACCESS_TOKEN`) DITANAM HARDCODED sebagai fallback di sumber publik `api/review-access.js` — kontradiksi langsung dengan komentar fail-closed di file yang sama
+- **Lokasi:** [`api/review-access.js:42`](api/review-access.js:42) (fallback aktif saat `VERCEL`/`VERCEL_ENV`); literal identik juga dipakai [`tools/run-build-test-suite.js:9`](tools/run-build-test-suite.js:9).
+- **Kutipan kode bermasalah:**
+  ```js
+  // api/review-access.js:37-43
+  //   "This used to fall back to a literal default token, which was also written
+  //    twice into public/index.html — so the gate's secret was readable by anyone
+  //    who opened the page or the (public) repository. There is no safe default for
+  //    a credential: an unset variable now closes the door rather than opening it
+  //    with a value everyone knows."
+  const fallbackBuildToken = (process.env.VERCEL || process.env.VERCEL_ENV) ? 'vercel-build-secure-token-entropy-minimum-32b' : '';
+  const token = process.env.REVIEW_ACCESS_TOKEN || fallbackBuildToken;
+  ```
+  ```js
+  // tools/run-build-test-suite.js:9
+  const token = process.env.REVIEW_ACCESS_TOKEN || 'vercel-build-secure-token-entropy-minimum-32b';
+  ```
+- **Dampak:** Komentar menyatakan prinsip "tidak ada default aman untuk kredensial" dan mengklaim kebocoran literal lama sudah ditutup, TETAPI baris berikutnya (`:42`) kembali menanam literal `vercel-build-secure-token-entropy-minimum-32b` di repo publik. Karena fallback diaktifkan tepat pada `process.env.VERCEL || process.env.VERCEL_ENV` — yang SELALU ter-set di runtime Vercel — maka pada deployment produksi tanpa `REVIEW_ACCESS_TOKEN` eksplisit, gate `/api/review-access` menerima token yang publik ketahui. Endpoint ini adalah grant diskon voucher/subscription (lihat `lib/subscription-voucher-claim.js`), jadi token bocor = jalur klaim yang tidak semestinya bisa dicapai. Ini juga artinya perbaikan lama (memindahkan secret keluar `public/index.html`) belum tuntas: nilai yang sama masih hidup di source server + script build.
+- **Bukti verifikasi riil:** Baca langsung `:37-47`: komentar fail-closed (`:37-41`) kontradiksi dengan literal fallback (`:42`); panjang 41 ≥ ambang 16 (`:45`) sehingga literal LOLOS validasi. `findstr` menemukan literal identik di `tools/run-build-test-suite.js:9`. **Belum terkonfirmasi (butuh env Vercel):** apakah `REVIEW_ACCESS_TOKEN` produksi memang sudah di-set (jika ya, dampak turun tetapi literal tetap bocor); cek daftar Environment Variables proyek + git history `public/index.html` untuk nilai lama.
+- **Usulan arah perbaikan:** Hapus literal fallback di `:42` (kembalikan `const token = process.env.REVIEW_ACCESS_TOKEN || ''` sehingga fail-closed benar-benar berlaku di produksi) dan di `tools/run-build-test-suite.js:9` (gunakan nilai dummy acak sekali pakai untuk build lokal, bukan literal tetap). Pindahkan secret review ke hanya Environment Variables Vercel.
+
+### [MEDIUM] 58 file `test/*.test.js` tidak ada di daftar CI ter-kurasi → regresi modul berisiko TIDAK ter-gate
+- **Lokasi:** [`tools/run-build-test-suite.js:54-73`](tools/run-build-test-suite.js:54) membaca `tools/curated-build-tests.json` (395 entri) / `tools/build-smoke-tests.json` (67 entri).
+- **Kutipan kode bermasalah:**
+  ```js
+  const curatedTestFiles = JSON.parse(fs.readFileSync(curatedConfigFile, 'utf8'));
+  const existingFiles = curatedTestFiles.filter(f => fs.existsSync(path.join(ROOT_DIR, f)));
+  // -> HANYA file dalam curated list yang dijalankan; 58 file .test.js lain diabaikan
+  ```
+- **Dampak:** Dari 453 file `test/*.test.js`, **58 tidak pernah dijalankan** oleh gate build/CI. Lebih konkret, yang ter-exclude justru menguji modul yang sudah ditandai berisiko di audit ini: `bandarmologi-fix-pack-regression`, `bandarmologi-cr3-realistic-market-turnover`, `bandarmologi-gross-price-and-cr3-fix`, `screener-upsert-atomic-safety`, `signal-gate-transparency`, `swing-non-konglo-fib-confluence`, `user-watchlist-multisource-prices`, `run-daily-broker-update`, `run-daily-afternoon-recap`, `fast-watcher-opening-velocity-guard`, `audit-batch1..5`. Artinya, bug regresi pada area yang PALING diaudit (CR3 fabrikasi, atomic upsert, gate sinyal, harga multi-sumber) bisa lolos build tanpa ketahuan.
+- **Bukti verifikasi riil:** `curated=395, smoke=67, totalTests=453, not-in-curated=58` (dihitung via PowerShell membandingkan `curated-build-tests.json` vs `Get-ChildItem test -Recurse -Include *.test.js`). Daftar 58 file dikonfirmasi (lihat nama-nama di atas).
+- **Usulan arah perbaikan:** Tambahkan 58 file ke `curated-build-tests.json` (atau ganti penentuan file menjadi glob `test/**/*.test.js` dengan allowlist skip eksplisit untuk yang memang berat/flaky). Dokumentasikan alasan tiap file yang sengaja dikecualikan.
+
+### [LOW] Satu test vacuous `assert.ok(true)` (placeholder B15) — tidak memverifikasi apa pun
+- **Lokasi:** [`test/intraday-sample-collector.test.js:488-491`](test/intraday-sample-collector.test.js:488).
+- **Kutipan kode bermasalah:**
+  ```js
+  test('B15. this test file contains all original + new tests', () => {
+    // If this test runs, the suite loaded successfully
+    assert.ok(true);
+  });
+  ```
+- **Dampak:** Test hanya membuktikan file berhasil di-load, bukan perilaku apa pun. Klaim "contains all original + new tests" tidak diverifikasi. Tidak berbahaya sendiri, tetapi menambah jumlah test hijau secara menyesatkan. (Ini SATU-SATUNYA `assert.ok(true)`/test kosong di seluruh suite — tidak ditemukan empty suite, `skip`/`todo`, atau file tanpa assertion.)
+- **Bukti verifikasi riil:** `Select-String` pola always-pass seluruh `test/*.test.js` → 1 kecocokan (baris ini). Skrip cek "file tanpa keyword assert/expect" → `count=0`. Tidak ada `it.skip`/`test.skip`/`todo`.
+- **Usulan arah perbaikan:** Hapus test placeholder, atau ubah menjadi assertion nyata (mis. memverifikasi daftar nama test inti ada).
+
+Total heading temuan kini **96** (2 CRITICAL, 16 HIGH, 39 MEDIUM, 39 LOW).
+
+### Catatan tuntas — `test/` & sumber data (BERSIH)
+- Tidak ada empty test suite (0 file <400 byte), tidak ada `skip`/`todo`, tidak ada file tanpa assertion. `tools/build-smoke-tests.json` (67) dan `tools/curated-build-tests.json` (395) valid JSON.
+- `data/` (spot-check JSON/TXT/CSV) — **tidak ada** token/secret bertipe (`sk-`, `AIza`, bot token, JWT, `service_role`).
+- `public/*.css`/`*.js`/`*.html` — **tidak ada** secret hardcoded atau literal `vercel-build-secure-token` (scan bersih).
+- `.github/workflows/*` — tidak ada referensi `REVIEW_ACCESS_TOKEN`/literal token.

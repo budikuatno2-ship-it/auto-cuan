@@ -730,3 +730,20 @@ SYSTEM_ARCHITECTURE_LIFECYCLE, CHANGELOG, SECURITY, SCREENER_BUGFIX_LOG, SCREENE
 - **1 temuan LOW BARU:** klaster migrasi RLS-tanpa-REVOKE (8 file) — komentar "Deny direct client access" tidak ditopang `REVOKE`; rujukan komentar ke `foreign_watchlist_daily` juga keliru (file itu 34 baris, juga tanpa REVOKE). RLS-tanpa-policy masih menolak anon/authenticated saat ini, jadi LOW (defense-in-depth gap).
 - Total heading temuan kini **92** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 37 LOW).
 - **Berikutnya:** `tools/` (~102) — prioritas runner live/cron/data-sync (credential hardcoded, endpoint URL mentah, silent fail); lalu `test/` (~521), `data/` + `public/*.css` spot-check, `.github/workflows/*`.
+
+### PROGRES BATCH 91 (sesi 2026-09-18 lanjutan) — `tools/` (pemetaan + runner cron/backfill)
+- Pemetaan 118 file (10 .bat, .js/.sh/.ps1) + scan kredensial/URL/silent-fail.
+- **BERSIH (area kredensial/URL):** 26 file tools memakai Supabase hanya via `process.env.SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_URL` — tidak ada service-role key, API key, atau bearer token literal. URL yang ada semuanya sah (Yahoo Finance, Gemini, NVIDIA, ntfy.sh, openagentic.id, domain sendiri). 48 `catch (_) {}` di 24 file mayoritas best-effort benar (load `.env`, unlink temp/lock, close fd, probe opsional).
+- **1 temuan MEDIUM BARU:** 3 salinan kalender libur IDX 2026 yang saling melenceng dari "single source of truth" (`lib/idx-holidays-2026-seed-data.js` kanonik 22 tanggal vs `tools/backfill-engine.js` 17 vs `tools/backfill-arjum-data.js` 1) → backfill menarik API pada hari libur & melewatkan hari bursa nyata. **Reconciliation penting:** `deploy/vps/final-schedule.cron` TIDAK memanggil `backfill-engine.js`; cron 00:05 = `backfill-historical-candles.js`, dan wrapper `run-historical-backfill.sh:29` = `backfill-arjum-data.js` (salinan #3). Cron live terverifikasi: backfill-candles 00:05, lifecycle-evaluator 16:30, daily-broker-update 18:00, afternoon-recap 18:45, fetch-daily-candles 19:30, landing-refresh 22:15 (semua WIB).
+- Total heading temuan kini **93** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 38 LOW).
+- **Berikutnya:** `test/` (~453) — deteksi empty/always-pass/over-mock; lalu `data/` + `public/*.css` spot-check, `.github/workflows/*`.
+
+### PROGRES BATCH 92 (sesi 2026-09-18 lanjutan) — `test/` + gate build + spot-check `data/`/`public/*.css`
+- **Kualitas suite BERSIH:** 453 file `test/*.test.js`; 0 empty suite (<400 byte), 0 `skip`/`todo`, 0 file tanpa assertion. Hanya 1 test vacuous `assert.ok(true)` (placeholder B15 di `test/intraday-sample-collector.test.js:488`).
+- **2 temuan MEDIUM BARU:**
+  1. Token gate review produksi `vercel-build-secure-token-entropy-minimum-32b` DITANAM HARDCODED sebagai fallback di [`api/review-access.js:42`](api/review-access.js:42) (aktif saat `VERCEL`/`VERCEL_ENV` ter-set) — kontradiksi langsung dengan komentar fail-closed di `:37-41` file yang sama; literal identik juga di `tools/run-build-test-suite.js:9`. Endpoint = grant voucher/subscription.
+  2. **58 file test tidak ada di daftar CI ter-kurasi** (curated=395, smoke=67, total=453) → regresi modul berisiko (bandarmologi CR3, screener-upsert-atomic-safety, signal-gate-transparency, user-watchlist-multisource-prices, run-daily-broker-update, fast-watcher-opening-velocity-guard, audit-batch1..5) TIDAK ter-gate build.
+- **1 temuan LOW BARU:** test placeholder `assert.ok(true)` (B15).
+- **Spot-check BERSIH:** `data/` (JSON/TXT/CSV) tanpa token/secret; `public/*.css`/`*.js`/`*.html` tanpa secret hardcoded; `.github/workflows/*` tanpa referensi token review.
+- Total heading temuan kini **96** (2 CRITICAL, 16 HIGH, 39 MEDIUM, 39 LOW).
+- **Berikutnya:** `.github/workflows/*` (12) baca penuh, `scripts/`, `deploy/` sisa, lalu tutup sisa `lib/*` minor + dokumen audit lama.
