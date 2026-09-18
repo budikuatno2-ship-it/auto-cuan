@@ -271,6 +271,13 @@ TUNTAS & BERSIH (2 file auth/account `public/`):
 - Total heading temuan tetap **84** — batch ini tidak menambah temuan.
 - Berikutnya: `public/subscription-manual-payment-v1.js` (465 b), `public/position-sizing-calculator.js` (418 b), `public/track-record-backtest.js` (603 b), `public/ui-bugfix-pack-v1.js` (381 b), `public/dashboard-top5-only-ui.js` (77 b), `public/portfolio-ai-workspace-v1.js` (33 b), `public/tmp-ci-touch-batch1.js` (23 b).
 
+### PROGRES BATCH 47 (sesi 2026-09-18 lanjutan)
+TUNTAS & BERSIH (2 file `public/`):
+- `subscription-manual-payment-v1.js` (465) — esc() konsisten, PAY ref regex, idempotency, terms gate, polling visibility-aware, admin review fail-closed.
+- `position-sizing-calculator.js` (419) — sanitizeNumber format lokal, lot 100 + clamp risk, hanya angka ke innerHTML, refreshActiveViews.
+- Total heading temuan tetap **84** — batch ini tidak menambah temuan.
+- Berikutnya: `public/track-record-backtest.js` (603 b), `public/ui-bugfix-pack-v1.js` (381 b), `public/dashboard-top5-only-ui.js` (77 b), `public/portfolio-ai-workspace-v1.js` (33 b), `public/tmp-ci-touch-batch1.js` (23 b).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.

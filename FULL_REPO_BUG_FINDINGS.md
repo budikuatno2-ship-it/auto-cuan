@@ -1471,6 +1471,15 @@ Total heading temuan tetap **84** — batch ini tidak menambah temuan.
 
 ---
 
+## MODUL: Manual Payment + Position Sizing (2 file — TUNTAS, BERSIH)
+
+- `public/subscription-manual-payment-v1.js` (465) — **BERSIH**. `esc()` konsisten di semua interpolasi (referensi, bank, nominal, pengirim, catatan, status); `PAYMENT_REF_RE = /^PAY-[A-F0-9]{12}$/` memvalidasi deep-link `paymentReview` sebelum request; `idempotency_key` randomUUID untuk create/redeem; gate checkbox terms sebelum submit/redeem; polling visibility-aware + `PENDING_KEY` untuk resume; `adminReviewFromUrl` fail-closed (401/403 → pesan login admin). Voucher hint hanya 4 karakter terakhir.
+- `public/position-sizing-calculator.js` (419) — **BERSIH**. `sanitizeNumber` menangani format lokal (titik ribuan/koma desimal); `calculate` lot 100 + clamp risk 0.1–10% + `cappedByCapital` jujur; `renderCardWidget`/`renderDetailSection` hanya menginterpolasi angka (bukan teks pengguna) ke innerHTML; `saveSettings` dispatch event + `refreshActiveViews` re-render kartu.
+
+Total heading temuan tetap **84** — batch ini tidak menambah temuan.
+
+---
+
 ## MODUL: Auth v2 + Account Center Lazy Loader (2 file — TUNTAS, BERSIH)
 
 - `public/auth-v2.js` (448) — **BERSIH**. `validateServerSession` (session-status) hanya mempercayai `success===true && userId`; `storeSession` memaksa `is_admin` hanya bila `username==='budi'`; pesan error dirender via `textContent` (bukan innerHTML); `reset_token` divalidasi `/^[A-Za-z0-9_-]{32,100}$/` sebelum form reset; `autocuanAuthReady` resolve benar (komentar menjelaskan perbaikan bug lama). Semua fetch `/api/*` same-origin + timeout.
