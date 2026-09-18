@@ -53,7 +53,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 2 | CRITICAL: Satu Sumber Kebenaran Nama Model Gemini | 9 | [-] SEBAGIAN (5/9) |
 | 3 | HIGH Keamanan: Token Hardcoded, Backdoor Kredensial, Kunci Enkripsi Fallback | 5 | [x] SELESAI |
 | 4 | HIGH: Integritas Gerbang Keselamatan Telegram (BUG-025 & Pemotongan Teks) | 1 | [x] SELESAI |
-| 5 | HIGH: Hapus Data Fabrikasi Jejaring Insider | 2 | [ ] BELUM |
+| 5 | HIGH: Hapus Data Fabrikasi Jejaring Insider | 2 | [x] SELESAI |
 | 6 | HIGH: Hapus Semua Tanggal Fallback Hardcoded | 12 | [ ] BELUM |
 | 7 | HIGH: Stored XSS Admin Logs + Validasi Charset Username | 1 | [ ] BELUM |
 | 8 | HIGH: analyze-legacy.js Berhenti Mengarang RSI/Volume/Change | 3 | [ ] BELUM |
@@ -64,7 +64,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [ ] BELUM |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [ ] BELUM |
 
-Progres keseluruhan: **13/97 SELESAI, 0 DITARIK, 84 BELUM** (per Batch 4).
+Progres keseluruhan: **15/97 SELESAI, 0 DITARIK, 82 BELUM** (per Batch 5).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -114,6 +114,19 @@ Branch `fix/telegram-safety-gate-text-limit` -> base `feat/daytrade-screener-v1`
 - **Gate**: `node --check api/sector-hot.js` bersih; `npm test` = **399/399 file lolos, exit 0** (baseline 398 setelah Batch 3 + 1 test baru). CI PR #695 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login, Vercel).
 - **Diff**: `api/sector-hot.js` +13/-65, 2 file test (1 ditulis ulang, 1 baru), `curated-build-tests.json` +1. Tidak menyentuh scope Batch 5+.
 
+### Batch 5 - SELESAI (PR #697, merge `a78dd89`)
+
+Branch `fix/remove-insider-data-fabrication` -> base `feat/daytrade-screener-v1`. Scope = 2 temuan: F-007 (HIGH) + F-041 (HIGH). Tidak menyentuh scope Batch 6+.
+
+- **F-041 ([`lib/insider-network-service.js`](lib/insider-network-service.js))**: 340-baris `SAMPLE_INSIDER_UNIVERSE` (Belvin Tannadi, Prajogo Pangestu, Lo Kheng Hong, Anthoni Salim, Haji Isam, Garibaldi Thohir, BlackRock) dihapus. `getEffectiveUniverse` kini mengembalikan `[]` ketika tidak ada `recordsOverride`/`customUniverse`/`insiders-db.json`. Pembantu baru `getEffectiveUniverseStatus()` mengembalikan `OK | OVERRIDE | CUSTOM | NO_DATA`. `SAMPLE_INSIDER_UNIVERSE` tidak lagi di-export, sehingga tidak ada fallback ke data karangan. Cache `clearInsiderServiceMemoryCache()` tetap membatalkan semua turunan (`dedicated/aggregated/searchIndex`) jika state berubah.
+- **F-007 ([`public/bandarmologi-runtime.js`](public/bandarmologi-runtime.js))**: kamus `FALLBACK_INSIDER_DATA` (~110 baris, 8 tokoh karangan) dihapus. `getEffectiveInsiderGraph(name)` sekarang: 1) berhenti di service, 2) bila tidak ada node -> kembalikan graf eksplisit `status: NO_DATA`, `no_data: true`, `message: 'Belum ada data relasi'`. Dilarang mengembalikan profil tokoh apa pun untuk nama tak dikenal. Pembantu baru `getEffectiveInsiderGraphStatus()`. `getEffectiveSearchInsiders()` selalu `[]` saat service tidak menghasilkan data (sebelumnya membaca `FALLBACK_INSIDER_DATA`). Default `activeInsiderNetworkEntity` diubah dari `'Belvin Tannadi'` ke `''`, dengan label panduan `Belum dipilih` di header kanvas (`activeEntityLabel`). Pesan kosong SVG diubah ke “Belum ada data relasi untuk tokoh ini. Silakan pilih tokoh lain atau masukkan nama pemegang saham lain.” Placeholder input disesuaikan ke “Ketik nama insider/tokoh untuk melihat relasi...”. Cache overwrite `FALLBACK_INSIDER_DATA[...] = data` di kedua jalur `fetchRemoteInsiderGraph` (VPS + fallback lokal) ikut dihapus.
+- **Bundling serverless ([`vercel.json`](vercel.json))**: `api/sector-hot.js` -> `includeFiles: data/insider-network/**`, sehingga `data/insider-network/insiders-db.json`/`network.json`/`roster.json` ikut ke bundle fungsi serverless di Vercel (sebelumnya tidak ada `includeFiles`, sehingga fallback `SAMPLE_INSIDER_UNIVERSE` berisiko aktif di produksi).
+- **Test regresi baru**: [`test/insider-data-fabrication-removal.test.js`](test/insider-data-fabrication-removal.test.js) (6 subtest) -- (a) source-level: tidak ada lagi `SAMPLE_INSIDER_UNIVERSE` atau ekspornya, tidak ada lagi `FALLBACK_INSIDER_DATA` atau default `Belvin Tannadi`; (b) behavior: `getEffectiveUniverseStatus()` -> `NO_DATA` dan `getEffectiveUniverse()` -> `[]` ketika `fs.existsSync` memalsukan file DB tidak ada, `searchInsiders('Belvin Tannadi')` -> `[]`, `getInsiderProfile(unknown)` -> `null`; (c) runtime: `getEffectiveInsiderGraph(unknown)` -> `{nodes: [], status: 'NO_DATA', no_data: true}`, tidak pernah meleak Belvin Tannadi, `getEffectiveSearchInsiders(unknown)` -> `[]`; (d) bundling: `vercel.json.functions['api/sector-hot.js'].includeFiles` mengandung `data/insider-network`. Test lama [`test/insider-network-ui.test.js`](test/insider-network-ui.test.js) disesuaikan (placeholder search bar +1/-1 baris).
+- **Gate**: `node --check` bersih pada `lib/insider-network-service.js`, `public/bandarmologi-runtime.js`, dan `test/insider-data-fabrication-removal.test.js`; `npm test` = **400/400 file tests lolos, exit 0** (baseline 399 setelah Batch 4 + 1 test regresi baru). CI PR #697 hijau (build-and-focused-tests, security-gate, Analyze JavaScript, CodeQL, command-login, portfolio-persistence, Vercel + admin-hardening).
+- **Diff**: 6 file, +166/-490. Tidak menyentuh scope Batch 6+.
+
+---
+
 ---
 
 ## 3. Checklist Master 97 Temuan
@@ -151,8 +164,8 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 
 ### Batch 5 - HIGH: Hapus Data Fabrikasi Jejaring Insider (2 temuan)
 
-- [ ] F-007 | HIGH | batch 5 | public/bandarmologi-runtime.js:3041 - Data insider FABRIKASI diduplikasi di sisi klien (`FALLBACK_INSIDER_DATA`) — semua nama tak dikenal jatuh ke Belvin Tannadi
-- [ ] F-041 | HIGH | batch 5 | lib/insider-network-service.js:17, lib/insider-network-service.js:511 - Fallback ke data insider FABRIKASI (`SAMPLE_INSIDER_UNIVERSE`) bila file DB tidak terbaca — berisiko tampil sebagai data nyata di serverless
+- [x] F-007 | HIGH | batch 5 | public/bandarmologi-runtime.js:3041 - Data insider FABRIKASI diduplikasi di sisi klien (`FALLBACK_INSIDER_DATA`) — semua nama tak dikenal jatuh ke Belvin Tannadi _(DIPERBAIKI: hapus `FALLBACK_INSIDER_DATA`, default `activeInsiderNetworkEntity=''`, `getEffectiveInsiderGraph` -> `NO_DATA`)_
+- [x] F-041 | HIGH | batch 5 | lib/insider-network-service.js:17, lib/insider-network-service.js:511 - Fallback ke data insider FABRIKASI (`SAMPLE_INSIDER_UNIVERSE`) bila file DB tidak terbaca — berisiko tampil sebagai data nyata di serverless _(DIPERBAIKI: hapus `SAMPLE_INSIDER_UNIVERSE`, `getEffectiveUniverse` -> `[]` + `getEffectiveUniverseStatus`, `vercel.json` includeFiles)_
 
 ### Batch 6 - HIGH: Hapus Semua Tanggal Fallback Hardcoded (12 temuan)
 
