@@ -221,7 +221,7 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 
 | Batch | Branch | PR | Commit | Status | Catatan |
 |---|---|---|---|---|---|
-| 0 | `fix/fix-phase-baseline-log` | #687 | `973c1f6` (+ config commit) | [-] BERJALAN | Baseline + log 97 temuan; merge audit `027ea0e` |
+| 0 | `fix/fix-phase-baseline-log` | #687 (merged) | `973c1f6`, `f713d58`, `5b44fab`; merge `4d640ba` | [x] SELESAI | Baseline + log 97 temuan; merge audit `027ea0e` |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
