@@ -1494,3 +1494,27 @@ Total heading temuan tetap **84** — batch ini tidak menambah temuan.
 - **BERSIH**. `esc()` dipakai konsisten di semua interpolasi (username, plan, harga, voucher hint, error). Voucher admin dibuat dengan `crypto.getRandomValues` (alphabet tanpa karakter ambigu), server hanya menyimpan HMAC/hash, daftar admin hanya menampilkan `code_hint` (4 karakter terakhir). `redeemVoucher`/`quoteVoucher` mewajibkan checkbox persetujuan + `idempotency_key` randomUUID. `loadTrialStatus`/`loadAdminVouchers` menulis error via `textContent`/`esc`. `request()` same-origin + timeout + fallback error aman. `installRegistrationContract` idempoten via guard `originalDoRegister`/`originalOpenRegister`. Markup terms statis (tanpa data pengguna).
 
 Total heading temuan tetap **84** — batch ini tidak menambah temuan.
+
+---
+
+## MODUL: Track Record Backtest + UI Bugfix Pack (2 file — TUNTAS)
+
+- `public/ui-bugfix-pack-v1.js` (382) — **BERSIH**. Sanitizer AI yang kokoh: allowlist tag (`ALLOWED_AI_TAGS`), drop tag berbahaya (`SCRIPT`/`IFRAME`/`FORM`/`SVG`/…), unwrap tag tak dikenal, buang semua `on*`/`style`/`id`, `hardenUrlAttributes` menetralkan `javascript:`/`vbscript:`/`data:` (termasuk decode entity + `srcset`), `safeAnchorHref` hanya izinkan http/mailto/tel/relatif, `_blank` dipaksa `rel="noopener noreferrer"`. Wheel-handoff + device-poll fail-safe.
+- `public/track-record-backtest.js` (604) — 1 temuan MEDIUM (di bawah).
+
+### [MEDIUM] Backtest Track Record diam-diam memakai 8 sinyal benchmark hardcoded saat data riil kosong, tanpa label demo
+- **Lokasi:** [`public/track-record-backtest.js:55-64`](public/track-record-backtest.js:55) (data), [`:68`](public/track-record-backtest.js:68) (fallback); konsumen [`public/track-record-runtime.js:390`](public/track-record-runtime.js:390), [`:410`](public/track-record-runtime.js:410)
+- **Kutipan kode bermasalah:**
+  ```js
+  var BENCHMARK_SIGNALS = [
+    { ticker:'BBCA', date:'2026-08-05', entry1:9900, entry2:9800, tp1:10400, tp2:10800, sl:9600, outcome:'TP1_HIT', duration_text:'4 hari' },
+    ... 8 sinyal fiktif ...
+  ];
+  function runBacktestSimulation(signals, rawConfig) {
+    var list = (Array.isArray(signals) && signals.length > 0) ? signals.slice() : BENCHMARK_SIGNALS.slice();
+  ```
+- **Penjelasan:** `triggerBacktestSimulation` mengambil `_trData.signals` (data track record riil). Bila array itu kosong (user baru / belum ada sinyal / gagal muat), `runBacktestSimulation` mengganti input dengan `BENCHMARK_SIGNALS` — 8 trade fiktif (BBCA/BBRI/BREN/… dengan outcome TP1/TP2/SL yang dikarang). Hasilnya dirender sebagai metrik performa nyata: "Saldo Akhir", "Net Return", "Win Rate", "Profit Factor", "Expectancy", kurva ekuitas, dan tabel trade — TANPA penanda bahwa ini data demo. Pengguna bisa menyimpulkan strategi punya track record padahal itu angka benchmark bawaan. Ini kelas yang sama dengan temuan fabrikasi data lain (FALLBACK_INSIDER_DATA, accumulation_score) dan melanggar prinsip repo "jangan mengarang angka".
+- **Bukti verifikasi riil:** Bukti kode: fallback `: BENCHMARK_SIGNALS.slice()` pada baris 68; konsumen `track-record-runtime.js:390` meneruskan `_trData.signals` yang bisa `[]`; tidak ada flag `isDemo`/label di `metrics` maupun renderer. Grep: `BENCHMARK_SIGNALS` hanya di file ini.
+- **Usulan arah perbaikan:** Bila `signals` kosong, kembalikan hasil kosong + pesan "Belum ada sinyal untuk disimulasikan" (jangan pakai benchmark), atau tandai jelas `isDemo:true` dan tampilkan banner "Data contoh — bukan track record nyata" di UI.
+
+Total heading temuan kini **85** (2 CRITICAL, 15 HIGH, 35 MEDIUM, 33 LOW).

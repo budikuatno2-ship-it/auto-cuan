@@ -278,6 +278,12 @@ TUNTAS & BERSIH (2 file `public/`):
 - Total heading temuan tetap **84** — batch ini tidak menambah temuan.
 - Berikutnya: `public/track-record-backtest.js` (603 b), `public/ui-bugfix-pack-v1.js` (381 b), `public/dashboard-top5-only-ui.js` (77 b), `public/portfolio-ai-workspace-v1.js` (33 b), `public/tmp-ci-touch-batch1.js` (23 b).
 
+### PROGRES BATCH 48 (sesi 2026-09-18 lanjutan)
+- `public/ui-bugfix-pack-v1.js` (382) **TUNTAS** — **BERSIH**. Sanitizer AI allowlist + URL scheme guard + unwrap tag + `_blank` noopener; wheel-handoff + device-poll fail-safe.
+- `public/track-record-backtest.js` (604) **TUNTAS** — 1 MEDIUM: `runBacktestSimulation` mengganti input kosong dengan 8 `BENCHMARK_SIGNALS` fiktif dan merender metrik/kurva/tabel sebagai performa nyata tanpa label demo (konsumen `track-record-runtime.js:390,410`).
+- Total heading temuan kini **85** (2 CRITICAL, 15 HIGH, 35 MEDIUM, 33 LOW).
+- Berikutnya: `public/dashboard-top5-only-ui.js` (77 b), `public/portfolio-ai-workspace-v1.js` (33 b), `public/tmp-ci-touch-batch1.js` (23 b) — lalu tutup folder `public/` (sisa HTML/CSS).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
