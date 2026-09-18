@@ -388,6 +388,11 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: `buildConfluenceHtml` (SEMUA interpolasi `escapeHtml`); `patternPersonalityBadgeHtml`/`bandarScoreBadgeHtml` `escapeHtml(tip/label/title)`; `normalizeDisplayLevels`/`safeDisplayText` murni. `loadWebsiteSettings` menginterpolasi `config.message`/`config.updatedBy` mentah, tetapi keduanya di-otor oleh admin (`updatedBy` selalu username admin yang menyimpan) → bukan eskalasi privilege.
 - Berikutnya: `index.html` 8270-12174 (dashboard top5/history/monitor, scanner, diagnostics, script akhir).
 
+### PROGRES BATCH 65 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 8270-8569 dibaca (fetchManualConfluenceRow, daytrade status label/color, screener UI filter values, risk reason factors, pattern personality filter listeners). **BERSIH — tidak ada temuan baru.**
+- BERSIH: `fetchManualConfluenceRow` merender lewat `buildConfluenceHtml` (escapeHtml); `getDayTradeStatusColor` jujur mengembalikan abu-abu untuk status kosong (bukan amber "caution"); semua fungsi label/filter murni string (tanpa sink innerHTML).
+- Berikutnya: `index.html` 8570-12174.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
