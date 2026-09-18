@@ -179,6 +179,15 @@ TUNTAS & BERSIH (16 file `lib/` minor, dibaca baris-per-baris):
 - Total heading temuan tetap **80** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 30 LOW) — batch ini tidak menemukan bug baru.
 - Berikutnya: sisa `lib/` (admin-* ~10, subscription-manual-handler 388, reset-password-legacy-handler 432, second-chance-admin-pilot 293, voucher-admin-bot 334), lalu `public/bandarmologi-runtime.js` sisa baris.
 
+### PROGRES BATCH 31 (sesi 2026-09-18 lanjutan)
+TUNTAS & BERSIH (4 file `lib/`):
+- `second-chance-admin-pilot.js` (293) — lock queue + stale-lock quarantine, at-most-once delivery, `approvedAdmin` menolak id ambigu (sama dengan public/channel).
+- `voucher-admin-bot.js` (334) — admin identity ketat (private chat, no forward), claim webhook dedup, chunk delivery dengan uncertain handling.
+- `subscription-manual-handler.js` (388) — `publicBaseUrl` anti host-header injection (hanya host allowlist/configured), `requireBudi` admin gate, idempotency, notify hanya bila belum ada admin message.
+- `reset-password-legacy-handler.js` (432) — timing-safe secret/hash compare, webhook secret, rate limit, browser-bound challenge, IP rate-limit hanya dari `x-vercel-forwarded-for`.
+- Total heading temuan tetap **80** — batch ini tidak menemukan bug baru.
+- Berikutnya: sisa `lib/admin-*` (~10 file), lalu `public/bandarmologi-runtime.js` sisa baris.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
