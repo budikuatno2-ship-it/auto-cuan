@@ -48,6 +48,11 @@ Sedang dikerjakan: FASE 2 (AI) + sisa lib/* (berikutnya: `context-ai-router-v4.j
 - `trade-plan-v2-*` sisa 8: candle-structure, daytrade-diagnostic, formatter, gap-areas, liquidity-sweep, replay-preview, source-adapters, sweep-diagnostic.
 - Lalu: `lib/bandarmologi-service.js` sisa, `lib/idx-tick-normalization.js` sisa (900-1182), `lib/intraday-shadow-*` besar, `public/*` sisa, `tools/`, `supabase/`, `test/`.
 
+### PROGRES BATCH 15 (sesi 2026-09-18)
+- `lib/intraday-fast-watcher-pool.js` (448) **TUNTAS** — **BERSIH** (lock setup/plan deterministik via `setupId`/`plan_lock_id`, confirmation 2-dari-3 window size 5, opening-velocity guard 09:16-09:30, adaptive watch extension, production-eligibility block, reentry reset, eviction terminal).
+- `lib/intraday-fast-watcher-publisher.js` (501) **TUNTAS** — 1 MEDIUM BARU: `buildDbRow` memalsukan `daytrade_score` (`?? 70` + clamp `Math.max(50,...)`) dan menulisnya ke tabel produksi `daytrade_screener_latest`; terbukti runtime (42→50, null→70, status hardcoded `READY_BREAKOUT`). Konsumen publik terverifikasi (`api/sector-hot.js:2748,6869,11742,12423`).
+- Total heading temuan kini **66** (2 CRITICAL, 15 HIGH, 28 MEDIUM, 21 LOW).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
