@@ -1223,3 +1223,29 @@ File dibaca baris-per-baris (chunk 1-300, 301-600, 601-900, 901-1200, 1201-1500,
 - **Penjelasan:** Pola guard tidak konsisten: `card` diperiksa `if (card)` untuk `dataset`, tetapi empat baris setelahnya diakses langsung (`card.style.*`) tanpa guard. Bila `tableWrap` terlepas dari DOM (`parentElement === null`), ini melempar TypeError. Dampak praktis kecil (elemen ranking biasanya terpasang), tetapi enkapsulasi guard yang setengah jalan menyembunyikan asumsi yang rapuh.
 - **Bukti verifikasi riil:** Bukti kode langsung; guard hanya pada satu penggunaan dari lima.
 - **Usulan arah perbaikan:** Bungkus blok styling dalam `if (card) { … }`, atau early-return saat `card` null.
+
+---
+
+## MODUL: Frontend Market Feature Runtime (public/market-feature-runtime.js, 1.510 baris — TUNTAS)
+
+Batch ini membaca tuntas 601-1510 (sesi lama sudah 1-600). **BERSIH pada sebagian besar isi**: grounding blok `[Auto-Cuan Market Data]` sengaja OMIT field absen (`!= null`, tidak `|| 0`), pivot absen tidak lagi ditulis "undefined", Volume Intelligence tidak memakai `|| 0`, export chart PNG high-DPI aware. Satu temuan:
+
+### [MEDIUM] Blok prompt `[Auto-Cuan Score]` memakai DUA skala berbeda untuk field berlabel sama — server `/25` vs fallback frontend `/30`
+- **Lokasi:** [`public/market-feature-runtime.js:718-722`](public/market-feature-runtime.js:718) (jalur server) vs [`public/market-feature-runtime.js:734-738`](public/market-feature-runtime.js:734) (jalur fallback); sumber server [`api/quote.js:1736`](api/quote.js:1736), [`:1830`](api/quote.js:1830), [`:1884`](api/quote.js:1884)
+- **Kutipan kode bermasalah:**
+  ```js
+  // jalur server (q.autoCuanScore)
+  lines.push('Trend: ' + acs.components.trend + '/25');
+  lines.push('Momentum: ' + acs.components.momentum + '/20');
+  lines.push('Volume: ' + acs.components.volume + '/20');
+  lines.push('Pivot: ' + acs.components.pivot + '/15');
+  lines.push('Catalyst: ' + acs.components.catalyst + '/10');
+  ...
+  // jalur fallback (calculateAutoCuanScore lokal)
+  lines.push('Trend Score: ' + acScore.trendScore + '/30');
+  ...
+  lines.push('Board Risk Score: ' + acScore.boardRiskScore + '/15');
+  ```
+- **Penjelasan:** Kedua jalur menulis blok dengan header SAMA (`[Auto-Cuan Score]`) tetapi skala komponen BERBEDA. Server (`api/quote.js`) memakai trend 25 / momentum 20 / volume 20 / pivot 15 / catalyst 10 / risk 10 (jumlah 100; `pivotScore = Math.min(15, …)`). Fallback frontend memakai trend **30** / rsi 20 / volume 20 / news 15 / board-risk 15 (jumlah 100). Karena `q.autoCuanScore` adalah field server (dikonfirmasi `api/quote.js:2138,2283-2284`), jalur fallback praktis jarang aktif — tetapi bila aktif, model AI membaca komponen berlabel sama dengan penyebut berbeda pada prompt yang sama, dan skor total tidak bisa dibandingkan lintas jalur. Prompt adalah grounding yang eksplisit dilindungi di file ini; dua kontrak angka dalam satu blok melemahkan jaminan itu.
+- **Bukti verifikasi riil:** Bukti kode: `/25` vs `/30`, dan definisi server `Math.min(15, pivotScore)` + `rawScore = trend + momentum + volume + pivotScore + catalyst + risk` di `api/quote.js:1830,1884`.
+- **Usulan arah perbaikan:** Satukan rubrik: fallback frontend harus memakai skala server (atau jalur fallback dihapus); beri label blok berbeda bila memang skala berbeda.

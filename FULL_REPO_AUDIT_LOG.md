@@ -145,6 +145,10 @@ TUNTAS & BERSIH (13 file sisa `daytrade-*`, dibaca baris-per-baris):
 - `public/market-feature-runtime.js` (1.510): sesi lalu sudah dibaca 1-600; lanjut 601-910.
 - Total heading temuan kini **75** (2 CRITICAL, 15 HIGH, 32 MEDIUM, 26 LOW).
 
+### PROGRES BATCH 26 (sesi 2026-09-18 lanjutan)
+- `public/market-feature-runtime.js` (1.510) **TUNTAS 100%** (sesi lama 1-600 + batch ini 601-1510). Temuan baru: 1 MEDIUM — blok prompt `[Auto-Cuan Score]` memakai dua skala berbeda untuk field berlabel sama (server `/25` untuk trend via `api/quote.js`; fallback frontend `/30`). Catatan bersih: grounding blok Market Data sengaja OMIT field absen (tidak `|| 0`), `Min Price Guard` selalu di-set server (fallback 50 di frontend tidak reachable).
+- Total heading temuan kini **76** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 26 LOW).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
