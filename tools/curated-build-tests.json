@@ -1,4 +1,5 @@
 [
+  "test/ai-gemini-model-single-source.test.js",
   "test/broadcast-market-guard.test.js",
   "test/market-hours-guard.test.js",
   "test/zero-defect-cluster-recovery.test.js",

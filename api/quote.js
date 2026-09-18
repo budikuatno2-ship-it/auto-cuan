@@ -11,6 +11,7 @@ var dtEngine = require('../lib/daytrade-screener-engine');
 var idxTick = require('../lib/idx-tick-normalization');
 var latestPriceResolver = require('../lib/latest-price-resolver');
 var t1Policy = require('../lib/chart-t1-policy');
+var geminiProvider = require('../lib/ai-gemini-provider');
 var dailyContextBuilder = require('../lib/daily-market-context-builder');
 var dailyHistoryStore = require('../lib/stock-daily-history-store');
 var { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
@@ -1189,7 +1190,7 @@ async function fetchNewsFromGemini(apiKey, ticker, companyName) {
     '[{"date":"YYYY-MM-DD","title":"max 80 chars","source":"media","url":"url or null","summary":"max 15 words Indonesian","possibleImpact":"positive|negative|neutral|mixed"}]\n' +
     'If no news: []. Title max 80 chars. Summary max 15 words.';
 
-  var geminiModel = (process.env.GEMINI_MODEL && process.env.GEMINI_MODEL !== 'gemini-3-flash' && process.env.GEMINI_MODEL !== 'gemini-2.5-flash' && process.env.GEMINI_MODEL !== 'gemini-1.5-flash') ? process.env.GEMINI_MODEL : 'gemini-3.8-flash';
+  var geminiModel = geminiProvider.sanitizeGeminiModel(process.env.GEMINI_MODEL, geminiProvider.DEFAULT_GEMINI_MODEL);
   var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + geminiModel + ':generateContent?key=' + apiKey;
   var payload = {
     contents: [{ parts: [{ text: prompt }] }],
