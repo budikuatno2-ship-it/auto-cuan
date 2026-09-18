@@ -234,4 +234,3 @@ Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate)
 2. Baca ulang heading temuan relevan di `FULL_REPO_BUG_FINDINGS.md` sebelum mengerjakan batch.
 3. Lanjutkan PERSIS dari titik terakhir; jangan ulang batch yang SELESAI.
 4. Kalau context terpotong sebelum log di-update, cek `git log`/`git status`/PR remote untuk memastikan status riil.
-
