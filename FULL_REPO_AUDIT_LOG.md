@@ -314,6 +314,14 @@ TUNTAS & BERSIH (3 file `public/`):
 **SELURUH `public/*.js` runtime KINI TUNTAS 100%** (dibaca baris-per-baris lintas sesi). Sesi ini menambah 39 file (batch 36-52). Sisa yang BELUM: `public/*.html` (index.html 12.342, analisis-saham.html, admin-ai-eval.html, admin-foreign.html, methodology.html, portfolio-command-center*.html, portfolio-planner.html, trust.html, 404.html, tmp-measure*.html) dan `public/*.css` (index-shell, account-center-v1, portfolio-command-center, portfolio-ai-workspace-v1, premium-workstation*, tailwind-build, ui-theme, unified-cockpit) + `public/assets/`.
 - Commit sesi ini: efe6fe8, f30df72, 85035ad, de09873, 3f6a928, 2c4ae6f, 79df32e, 5f5f545, 662269b, c1d335c, 8aaa174, 13d2582, 2cb6d73 (+ ini).
 
+### PROGRES BATCH 53 (sesi 2026-09-18 lanjutan) — mulai `public/*.html`
+- **Reconciliation:** `api/sector-hot.js` (14.808) & `public/bandarmologi-runtime.js` (5.435) SUDAH TUNTAS 100% (commit `ead716e`/`900090a`; `git merge-base --is-ancestor` = TRUE). Catatan "BELUM" lama sudah ditandai USANG.
+- `public/index.html` (12.342) — audit bertahap: 1-300 (head/landing) + 4300-4479 (AI render dashboard) + 5090-5200 (chart page) + 7330-7908 (admin logs/users). **1 HIGH BARU** (stored XSS di `loadAdminLogs`).
+- Yang sudah diverifikasi BERSIH: render AI dashboard (`:4443-4455`) men-sanitasi penuh (`clientSanitizeFCA`+`sanitizeAIHtml`+`normalizeFinalStockHtml`+`sanitizeIHSGOutput`+`reorderBrokerCTA`+`convertStrayMarkdownBold`); `loadChartPage` (`:5128`) mem-`strip` ticker ke `[A-Z0-9]` dengan komentar eksplisit; tabel user admin memakai `escapeAdminHtml`/`adminOnclickArg`; `renderAnalyticsBodyHtml` memakai `escapeAdminHtml`; tidak ada hardcoded API key/token (BYOK & CRON_SECRET di-`prompt` runtime, tidak di source).
+- **Temuan:** `loadAdminLogs` (`:7404-7405,7418`) menyisipkan `username`/`ticker` mentah ke `innerHTML`; `api/log.js:41` tak meng-escape; `api/register-user.js:101-108` tak batasi charset username → stored XSS di sesi admin.
+- Total heading temuan kini **87** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 33 LOW).
+- **Sisa `index.html` belum dibaca:** 301-4299, 4480-5089, 5200-7329, 7909-12174 (fokus: inline globals, event handler interpolasi, sisa binding DOM).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
@@ -333,8 +341,11 @@ Temuan di file ini: 1 HIGH (BUG-025 includesAny 300-char gate), 1 HIGH (BUG-013 
 Temuan di file ini: 1 HIGH (FALLBACK_INSIDER_DATA fabrikasi), 1 MEDIUM (persentase missing→0.00%), 3 LOW (2 literal tanggal, 1 var duplikat).
 
 ### POSISI BACA FILE MONSTER (WAJIB DILANJUT SESI BERIKUTNYA — jangan ulang)
-- `api/sector-hot.js` (14.808 baris): sudah dibaca **1-3119, 3450-3637, 5738-9937, 11586-11705, 13643-13697, 14245-14544, 9453-9492**. BELUM: 3119-3450, 3638-5737, 9938-11585, 11706-13642, 13698-14244, 14545-14808.
-- `public/bandarmologi-runtime.js` (5.435 baris): sudah dibaca **1-3900**. BELUM: 3901-5435.
+> **RECONCILIATION (sesi 2026-09-18, batch 52+):** Catatan "BELUM" di bawah SUDAH USANG.
+> `git merge-base --is-ancestor ead716e HEAD` = TRUE → commit `ead716e` ("api/sector-hot.js TUNTAS (14808 lines) — both monster files now 100% read") ada di riwayat.
+> **`api/sector-hot.js` (14.808) TUNTAS 100%** dan **`public/bandarmologi-runtime.js` (5.435) TUNTAS 100%** (dikonfirmasi commit `900090a` batch 32). Jangan ulang.
+- `api/sector-hot.js` (14.808 baris): **TUNTAS 100%** (semua rentang terbaca; lihat `### TUNTAS BARU` di atas + commit `ead716e`).
+- `public/bandarmologi-runtime.js` (5.435 baris): **TUNTAS 100%** (sesi lama 1-3900 + batch 32 3901-5435).
 - `lib/daytrade-screener-engine.js` TUNTAS. `lib/daytrade-screener-engine-v7.js` TUNTAS. `lib/idx-tick-normalization.js` baru 1-899 (belum 900-1182).
 - `lib/context-ai-router-v4.js` baru 1-300 (belum 301-1162); v5/v6 belum disentuh.
 

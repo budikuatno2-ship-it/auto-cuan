@@ -1560,6 +1560,38 @@ Total heading temuan kini **86** (2 CRITICAL, 15 HIGH, 36 MEDIUM, 33 LOW).
 
 ---
 
+## MODUL: public/index.html (12.342 baris) — audit bertahap
+
+### [HIGH] Stored XSS di viewer log admin: `loadAdminLogs` menyisipkan `username`/`ticker` mentah ke `innerHTML`, padahal username tidak dibatasi charset
+- **Lokasi:** [`public/index.html:7404-7405`](public/index.html:7404) (kartu analysis), [`:7418`](public/index.html:7418) (tabel generik); sumber data [`api/log.js:109-111`](api/log.js:109) + [`api/log.js:37-42`](api/log.js:37); validasi username [`api/register-user.js:101-108`](api/register-user.js:101)
+- **Kutipan kode bermasalah:**
+  ```js
+  // public/index.html:7404-7405 (render kartu analysis)
+  cardsHtml += '<span ...>' + (row.ticker || '-') + '</span>';
+  cardsHtml += '<span ...>' + (row.username || '-') + '</span>';
+  // public/index.html:7418 (tabel generik)
+  logs.forEach(function(row) { ... keys.forEach(function(k) { var val = row[k] || '-'; ... tableHtml += '<td ...>' + val + '</td>'; }); });
+  ```
+  ```js
+  // api/log.js:37-42 — hanya strip control char + cap panjang, TIDAK escape HTML
+  function text(value, max) { return String(value).replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, max); }
+  // api/log.js:109-111 — username dari signed session (session.un) atau body
+  const username = session ? text(session.un, LIMITS.username) || 'unknown' : text(body.username, LIMITS.username) || 'unknown';
+  ```
+  ```js
+  // api/register-user.js:101-108 — username hanya dicek panjang, TANPA charset
+  const usernameLower = String(username).trim().toLowerCase();
+  if (!usernameLower || usernameLower.length < 2) { ... }
+  if (usernameLower.length > 30) { ... }
+  ```
+- **Penjelasan:** `loadAdminLogs` (dipanggil dari panel admin) membangun HTML dengan menyisipkan `row.username` dan `row.ticker` LANGSUNG ke `innerHTML` tanpa `escapeAdminHtml`. Nilai-nilai itu berasal dari `login_logs`/`ai_analysis_logs` yang diisi `api/log.js`, yang hanya membuang karakter kontrol dan memotong panjang — tidak meng-escape HTML. Karena `api/register-user.js` TIDAK membatasi charset username (hanya 2–30 karakter), seorang penyerang dapat mendaftar dengan username seperti `<img src=x onerror=alert(document.cookie)>` (28 karakter, lolos batas 30). Username itu tersimpan apa adanya, lalu dirender sebagai HTML di panel admin → **stored XSS** yang dieksekusi di sesi admin (`budi`) saat admin membuka tab log. Ironisnya, tabel user yang lebih baru (`renderApprovedUsersTable`, `renderDeviceDetailsHtml`) SUDAH memakai `escapeAdminHtml`/`adminOnclickArg` — jadi ini inkonsistensi: jalur log lama tidak ikut di-escape. `ticker` (cap 12) juga mentah di tabel generik, dan endpoint `/api/log` menerima `ticker` dari body same-origin mana pun.
+- **Bukti verifikasi riil:** Bukti kode lintas file: (1) `index.html:7404-7405,7418` interpolasi mentah; (2) `api/log.js:41` hanya strip control char; (3) `api/register-user.js:104-108` tanpa regex charset; (4) `escapeAdminHtml` ada di file yang sama (`:7556`) tetapi tidak dipakai di `loadAdminLogs`. Panjang `<img src=x onerror=alert(1)>` = 28 ≤ 30 → lolos validasi.
+- **Usulan arah perbaikan:** Bungkus setiap nilai dinamis di `loadAdminLogs` dengan `escapeAdminHtml(...)` (kartu analysis + tabel generik, termasuk header `k`). Sebagai pertahanan berlapis, batasi charset username di `api/register-user.js` (mis. `/^[a-z0-9._-]{2,30}$/`) dan/atau escape saat menulis di `api/log.js`.
+
+Total heading temuan kini **87** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 33 LOW).
+
+---
+
 ## MODUL: Pattern Safety Hardening + UI Stability Fix + Admin Maintenance Code (3 file — TUNTAS, BERSIH)
 
 - `public/pattern-safety-hardening-v1.js` (186) — **BERSIH**. `safeFinite` menolak `null`/`''`/`false` (mencegah koersi ke 0 yang membuat data absen tampak level nyata); memasang patch lewat `Object.defineProperty` setter agar implementasi aman terpasang SEBELUM `pattern-direction-safety.js` dimuat; `tradePlanDirection` menolak entry satu sisi (tidak menyalin sisi yang hilang).
