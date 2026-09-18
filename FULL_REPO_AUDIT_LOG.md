@@ -765,3 +765,33 @@ SYSTEM_ARCHITECTURE_LIFECYCLE, CHANGELOG, SECURITY, SCREENER_BUGFIX_LOG, SCREENE
   6. **LOW** gate keamanan/regresi hanya ter-scope base branch `feat/daytrade-screener-v1`.
 - **Commit sesi bagian 3:** `9a859bf` (batch 90 SQL), `d6a928f` (batch 91 tools), `84d0ce0` (batch 92 test/gate), `484e2dc` (batch 93 workflows).
 - **Sisa untuk sesi berikutnya:** `lib/*` minor (admin-*) & rekonsiliasi 20 dokumen audit lama root, `.agents/`, `tailwind*`, `test/sql|fixtures|helpers` dalam, serta spot-check `public/assets/`.
+
+---
+
+### PROGRES BATCH 94 (sesi 2026-09-18 lanjutan) — sisa `lib/admin-*`, tailwind, `.agents/`, test subdirs, REKONSILIASI dokumen historis
+- **TUNTAS & BERSIH (baca baris-per-baris):** `lib/admin-access.js` (61 — dispatcher fail-ordered, maintenance-code hanya bila `SESSION_SECRET` ada), `lib/admin-access-legacy.js` (450 — Telegram-initiated, dormant challenge tak pernah kirim pesan; interlock approve/deny/consume), `lib/admin-foreign-upload.js` (262 — CSV 3MB/5000 baris, retensi 7 hari ber-`.limit()` per-batch), `lib/admin-users-handler.js` (581 — gate `budi` dilindungi dari block/reset/reject; transisi approve idempoten `.eq('is_approved', false)`; invite gagal tidak rollback approval).
+- **BERSIH:** `tailwind.config.js` + `tailwind.src.css` (build lokal, safelist terdokumentasi), `.agents/` (skill pack + tasks JSON — tooling agen, bukan runtime). Spot-check `test/sql`, `test/fixtures`, `test/helpers`, `public/assets` → **tanpa token/secret/credential**.
+
+#### MATRIKS REKONSILIASI KLAIM DOKUMEN AUDIT LAMA (buktikan ke kode kini)
+| Dokumen lama | Klaim | Status kini | Bukti riil di kode |
+|---|---|---|---|
+| `AUDIT_EXHAUSTIVE_REPORT.md` #1 | Libur 1 Muharam salah `2026-06-16` (High) | **VALID→FIXED** | `lib/idx-holidays-2026-seed-data.js` memakai `2026-06-17`; `2026-06-16` tidak ada lagi |
+| `AUDIT_EXHAUSTIVE_REPORT.md` #2 | `normalizeVwapPrice` menggelembungkan penny 100× (High) | **VALID→FIXED** | [`lib/bandarmologi-service.js:277-284`](lib/bandarmologi-service.js:277): fallback hanya `raw > 100000` dibagi 100; tidak ada lagi `raw < 50 → ×100` |
+| `AUDIT_EXHAUSTIVE_REPORT.md` #3 | Stale cache OHLCV menembus 09:00 WIB | **VALID→FIXED** | [`lib/daytrade-ohlcv-cache.js:208-224`](lib/daytrade-ohlcv-cache.js:208): `isCacheFresh` punya session-boundary 09:00 |
+| `AUDIT_EXHAUSTIVE_REPORT.md` #4 | Syarat pembayaran bisa di-bypass saat field absen | **VALID→FIXED** | [`lib/subscription-manual-handler.js:340-341`](lib/subscription-manual-handler.js:340): `!termsAccepted →` tolak (fail-closed `=== true`) |
+| `AUDIT_EXHAUSTIVE_REPORT.md` #6 | Timezone UTC vs WIB → STALE palsu | **VALID→FIXED** | [`public/daytrade-runtime.js:65-66`](public/daytrade-runtime.js:65): `dtCalcDateStr` & `dtTodayStr` **keduanya** dari WIB |
+| `AUDIT_EXHAUSTIVE_REPORT.md` #8 | `calcMA(volume,20) ? …` falsy → null saat MA=0 | **VALID→FIXED** | [`api/candles.js:205`](api/candles.js:205): `calcMA(volumeArr,20) != null ? … : null` |
+| `AUDIT_EXHAUSTIVE_REPORT.md` #9 | `portfolio` hanya dicek di `req.query` | **VALID→FIXED** | [`api/quote.js:304`](api/quote.js:304): cek `query` **dan** `body` |
+| `AUDIT_EXHAUSTIVE_REPORT.md` #11 | `setInterval` tanpa `clearInterval` | **VALID→FIXED** | [`public/pattern-stable-runtime.js:647`](public/pattern-stable-runtime.js:647): `root.clearInterval(patternPollInterval)` |
+| `AUDIT_EXHAUSTIVE_REPORT.md` #12/#13/#14/#15/#16 | Indeks DB redundan | **VALID→FIXED** | `DROP INDEX IF EXISTS idx_foreign_watchlist_daily_trade_date_ticker`; `sector-hot.sql:85` `DROP INDEX IF EXISTS idx_shgm_group` |
+| `AUDIT_HISTORIS_REGRESI.md` Temuan #1 | Cache key tidak memuat `range` (multi-day) | **USANG (sudah ada)** | [`lib/bandarmologi-service.js:1700-1707`](lib/bandarmologi-service.js:1700): cache key memuat `range` + `days${numDays}` |
+| `AUDIT_CHECKPOINT.md` BUG-015 | RSI 0/0 → 100 di 5 salinan | **VALID→FIXED** | Guard `avgGain===0 && avgLoss===0 return 50` ada di `api/quote.js:1484`, `api/candles.js:294`, `lib/daily-rsi.js:71`, `lib/daytrade-screener-engine.js:2174`, `lib/analyze-legacy.js:1527`, `api/sector-hot.js:3051,11573` |
+| `AUDIT_CHECKPOINT.md` BUG-027 | Teks "jangan chase" dibaca sebagai sedang chase (High) | **VALID→FIXED** | [`lib/idx-tick-normalization.js:883-886`](lib/idx-tick-normalization.js:883): field nasihat dipisah ke `cleanObservation` + regex strip `jangan/anti/tidak-chase` |
+| `AUDIT_CHECKPOINT.md` BUG-038 | Retensi foreign tanpa `.limit()` | **VALID→FIXED** | [`lib/admin-foreign-upload.js:216-221`](lib/admin-foreign-upload.js:216): lookup dibagi per-batch ticker 50, scoped `.in('ticker', batch)` |
+| `AUDIT_CHECKPOINT.md` §1.3 | 22 PR audit (#495–#516), 21 masih terbuka | **USANG (meta)** | Perlu `gh pr list` (di luar scope); beberapa fix (BUG-032/036/038/045) sudah terverifikasi di kode |
+| `AUDIT_CHECKPOINT.md` §1.4 | "test per-modul hijau bukan bukti seam produksi benar" | **VALID (prinsip)** | Sejalan temuan batch 92: 58 test tak ter-gate + `assert.ok(true)` |
+| `AUDIT_EXHAUSTIVE_REPORT.md` #5 | Duplikasi SSE saat fallback retry | **BELUM DIVERIFIKASI** | `context-ai-router-v7.js` sudah diaudit bersih sesi lama (anti-leak antar-user); klaim ini tak terkonfirmasi → butuh reproduksi |
+| `AUDIT_EXHAUSTIVE_REPORT.md` #7 | `.ai-chat` terpotong di laptop 1366×768 | **BELUM DIVERIFIKASI** | CSS `clamp()` berubah tiap revisi UI; butuh render nyata (bukan statis) |
+| `AUDIT_EXHAUSTIVE_REPORT.md` #10 | `catch (_) {}` di `parseSseStream` menelan error | **VALID→FIXED (stale)** | [`lib/ai-gemini-provider.js:329`](lib/ai-gemini-provider.js:329) kini menerima `rearmStallTimer` (BUG-036 fix) — catch lama sudah dibenahi |
+- **Kesimpulan rekonsiliasi:** mayoritas klaim `AUDIT_EXHAUSTIVE_REPORT` + `AUDIT_HISTORIS_REGRESI` Temuan #1 kini **USANG karena SUDAH DIPERBAIKI** (bukti kode di tabel). **Tidak ada klaim lama yang terkonfirmasi REGRESI.** Dua klaim (SSE duplikasi, CSS laptop) **belum terverifikasi** dan tidak diangkat jadi temuan (butuh reproduksi runtime).
+- Total heading temuan **tetap 97** (2 CRITICAL, 16 HIGH, 39 MEDIUM, 40 LOW) — batch ini tidak menambah temuan baru (semua penemuan = klaim lama yang sudah diperbaiki).
