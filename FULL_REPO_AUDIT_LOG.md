@@ -284,6 +284,18 @@ TUNTAS & BERSIH (2 file `public/`):
 - Total heading temuan kini **85** (2 CRITICAL, 15 HIGH, 35 MEDIUM, 33 LOW).
 - Berikutnya: `public/dashboard-top5-only-ui.js` (77 b), `public/portfolio-ai-workspace-v1.js` (33 b), `public/tmp-ci-touch-batch1.js` (23 b) — lalu tutup folder `public/` (sisa HTML/CSS).
 
+### PROGRES BATCH 49 (sesi 2026-09-18 lanjutan)
+- `public/dashboard-top5-only-ui.js` (78) **TUNTAS** — **BERSIH** (presentation-only, observer idempoten).
+- `public/portfolio-ai-workspace-v1.js` (33) **TUNTAS** — **BERSIH** (scroll-into-view saja).
+- `public/tmp-ci-touch-batch1.js` (1) — artefak sisa tanpa kode (catatan pembersihan, bukan bug).
+- Total heading temuan tetap **85**.
+
+### STATUS `public/` JS (per sesi ini)
+- **TUNTAS sesi ini (batch 36-49, 33 file):** portfolio-ai-runtime-v2, pattern-stable-runtime, pattern-direction-safety, pattern-tab-resume-guard, portfolio-planner-v1, portfolio-supabase-sync, pattern-map, signal-gate-transparency, portfolio-command-center-model, pattern-screener-extension, portfolio-position-scenarios, portfolio-runtime-fix, subscription-access-gate-v1, subscription-voucher-claim-v1, website-approved-access, mobile-ui-runtime-v6, maintenance-auth-guard, mobile-nav, security-admin-runtime, admin-user-delete-enhancement, admin-tools-runtime, admin-zero-link-pairing, auth-v2, account-center-lazy-loader-v1, account-center-v1, subscription-manual-payment-v1, position-sizing-calculator, track-record-backtest, ui-bugfix-pack-v1, dashboard-top5-only-ui, portfolio-ai-workspace-v1, tmp-ci-touch-batch1.
+- **SISA `public/` JS belum dibaca tuntas:** `admin-maintenance-code.js`, `pattern-safety-hardening-v1.js`, `pattern-visual.js` (360), `ui-stability-fix.js` (223), `ai-chat-renderer.js` (334), `analisis-saham-runtime.js` (1.114).
+- **SISA non-JS `public/`:** `*.html` (index.html 12.342, analisis-saham, admin-ai-eval, admin-foreign, methodology, portfolio-command-center*, portfolio-planner, trust, 404, tmp-measure*), `*.css` (index-shell, account-center-v1, portfolio-command-center, portfolio-ai-workspace-v1, premium-workstation*, tailwind-build, ui-theme, unified-cockpit), `assets/`, robots/sitemap/favicon, `.well-known/`.
+- Temuan sesi ini: 1 MEDIUM (`signal-gate-transparency` missing=PASS), 1 MEDIUM (`track-record-backtest` benchmark fabrikasi), 2 LOW (`portfolio-supabase-sync` keepalive, + catatan artefak).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.

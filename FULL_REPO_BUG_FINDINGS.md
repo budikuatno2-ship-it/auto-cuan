@@ -1518,3 +1518,13 @@ Total heading temuan tetap **84** — batch ini tidak menambah temuan.
 - **Usulan arah perbaikan:** Bila `signals` kosong, kembalikan hasil kosong + pesan "Belum ada sinyal untuk disimulasikan" (jangan pakai benchmark), atau tandai jelas `isDemo:true` dan tampilkan banner "Data contoh — bukan track record nyata" di UI.
 
 Total heading temuan kini **85** (2 CRITICAL, 15 HIGH, 35 MEDIUM, 33 LOW).
+
+---
+
+## MODUL: Dashboard Top5 UI + Portfolio AI Workspace + tmp artifact (3 file — TUNTAS, BERSIH)
+
+- `public/dashboard-top5-only-ui.js` (78) — **BERSIH**. Presentation-only (menyembunyikan monitor, memperluas kartu Top5, membersihkan teks catatan); observer `applyTop5OnlyLayout` idempoten (set `hidden`/`style` yang sama → tidak berubah → tidak re-trigger) + interval berhenti setelah observer terpasang. Tidak mengubah ranking/API.
+- `public/portfolio-ai-workspace-v1.js` (33) — **BERSIH**. Hanya `scrollIntoView` ke `#page-ai` saat tab ai diklik/Enter; reduced-motion aware; tidak menyentuh logika AI.
+- `public/tmp-ci-touch-batch1.js` (1) — artefak sisa ("touch batch 1 final"), tanpa kode. **Catatan pembersihan (bukan bug):** file ini (dan `public/tmp-measure*.html`) adalah artefak test/CI yang bocor ke `public/` — sebaiknya dihapus, sejalan dengan catatan folder `data/arjum-data/AUDITSCALE*/B4TST/DBGT4/NOACC`.
+
+Total heading temuan tetap **85**.
