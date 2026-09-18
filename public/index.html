@@ -7384,12 +7384,12 @@ async function loadAdminLogs(type) {
         var response = await fetch('/api/admin-logs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminName: adminName }) });
         if (!response.ok) throw new Error('Fetch failed');
         var data = await response.json(); cachedAdminData = data;
-        if (!data.success) { container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Belum ada data log.') + '</p>'; return; }
+        if (!data.success) { container.innerHTML = '<p class="text-sm text-yellow-400">' + escapeAdminHtml(data.error || 'Belum ada data log.') + '</p>'; return; }
         var summaryHtml = '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Logins</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalLogins || 0) + '</p></div>';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Searches</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalSearches || 0) + '</p></div>';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">AI Analyses</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalAIAnalyses || 0) + '</p></div>';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Top Ticker</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.mostSearchedTicker || '-') + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Logins</p><p class="text-lg font-bold text-emerald-400">' + escapeAdminHtml(data.summary.totalLogins || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Searches</p><p class="text-lg font-bold text-emerald-400">' + escapeAdminHtml(data.summary.totalSearches || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">AI Analyses</p><p class="text-lg font-bold text-emerald-400">' + escapeAdminHtml(data.summary.totalAIAnalyses || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Top Ticker</p><p class="text-lg font-bold text-emerald-400">' + escapeAdminHtml(data.summary.mostSearchedTicker || '-') + '</p></div>';
         summaryHtml += '</div>';
         var logs = [];
         if (type === 'login') logs = data.loginLogs || [];
@@ -7401,10 +7401,10 @@ async function loadAdminLogs(type) {
             var cardsHtml = '<div class="space-y-3">';
             logs.forEach(function(row, idx) {
                 cardsHtml += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333]"><div class="flex flex-wrap items-center gap-2 mb-2">';
-                cardsHtml += '<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400">' + (row.ticker || '-') + '</span>';
-                cardsHtml += '<span class="text-xs text-gray-500">' + (row.username || '-') + '</span>';
-                cardsHtml += '<span class="text-xs text-gray-600">' + (row.mode || '-') + '</span>';
-                cardsHtml += '<span class="text-xs text-gray-600 ml-auto">' + (row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : '-') + '</span></div>';
+                cardsHtml += '<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400">' + escapeAdminHtml(row.ticker || '-') + '</span>';
+                cardsHtml += '<span class="text-xs text-gray-500">' + escapeAdminHtml(row.username || '-') + '</span>';
+                cardsHtml += '<span class="text-xs text-gray-600">' + escapeAdminHtml(row.mode || '-') + '</span>';
+                cardsHtml += '<span class="text-xs text-gray-600 ml-auto">' + escapeAdminHtml(row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : '-') + '</span></div>';
                 cardsHtml += '<p class="text-xs text-gray-500">Status: success</p></div>';
             });
             cardsHtml += '</div>';
@@ -7413,9 +7413,9 @@ async function loadAdminLogs(type) {
         var excludeCols = ['full_result_html'];
         var keys = Object.keys(logs[0]).filter(function(k) { return excludeCols.indexOf(k) === -1; });
         var tableHtml = '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
-        keys.forEach(function(k) { tableHtml += '<th class="px-3 py-2 text-left text-emerald-400 font-medium border-b border-dark-600/50 bg-dark-700 whitespace-nowrap">' + k + '</th>'; });
+        keys.forEach(function(k) { tableHtml += '<th class="px-3 py-2 text-left text-emerald-400 font-medium border-b border-dark-600/50 bg-dark-700 whitespace-nowrap">' + escapeAdminHtml(k) + '</th>'; });
         tableHtml += '</tr></thead><tbody>';
-        logs.forEach(function(row) { tableHtml += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">'; keys.forEach(function(k) { var val = row[k] || '-'; if (typeof val === 'string' && val.length > 80) val = val.slice(0, 80) + '...'; tableHtml += '<td class="px-3 py-2 text-gray-300 whitespace-nowrap">' + val + '</td>'; }); tableHtml += '</tr>'; });
+        logs.forEach(function(row) { tableHtml += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">'; keys.forEach(function(k) { var val = row[k] || '-'; if (typeof val === 'string' && val.length > 80) val = val.slice(0, 80) + '...'; tableHtml += '<td class="px-3 py-2 text-gray-300 whitespace-nowrap">' + escapeAdminHtml(val) + '</td>'; }); tableHtml += '</tr>'; });
         tableHtml += '</tbody></table></div>';
         container.innerHTML = summaryHtml + tableHtml;
     } catch(e) { container.innerHTML = '<p class="text-sm text-gray-500">Belum ada data log.</p>'; }
