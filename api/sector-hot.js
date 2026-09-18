@@ -13578,7 +13578,8 @@ function safeTelegramText(value, maxLen, fallback) {
   var low = text.toLowerCase();
   if (!text || low === 'undefined' || low === 'null' || text === '[object Object]' || low === 'nan') return fallback;
   maxLen = maxLen || 80;
-  if (text.length > maxLen) text = text.slice(0, Math.max(0, maxLen - 1)).trim() + '…';
+  // BUG-025: Infinity means "keep the full text" for safety-gate scanning.
+  if (isFinite(maxLen) && text.length > maxLen) text = text.slice(0, Math.max(0, maxLen - 1)).trim() + '…';
   return text;
 }
 
@@ -13617,73 +13618,21 @@ function isBadTelegramStatus(status) {
   return s.indexOf('INVALID') >= 0 || s.indexOf('AVOID') >= 0;
 }
 
-var includesAnyDiagnostics = {
-  total_calls: 0,
-  calls_exceeding_300: 0,
-  missed_matches_count: 0,
-  missed_events: []
-};
-
-function getIncludesAnyDiagnostics() {
-  return {
-    total_calls: includesAnyDiagnostics.total_calls,
-    calls_exceeding_300: includesAnyDiagnostics.calls_exceeding_300,
-    missed_matches_count: includesAnyDiagnostics.missed_matches_count,
-    missed_events: includesAnyDiagnostics.missed_events.slice()
-  };
-}
-
-function resetIncludesAnyDiagnostics() {
-  includesAnyDiagnostics.total_calls = 0;
-  includesAnyDiagnostics.calls_exceeding_300 = 0;
-  includesAnyDiagnostics.missed_matches_count = 0;
-  includesAnyDiagnostics.missed_events = [];
-}
-
+// BUG-025: the safety gate must scan the FULL candidate text. Any character cap
+// here (previously 300 chars in includesAny and 120 chars per part in
+// joinTelegramTexts) can hide a trigger word sitting past the cutoff and let a
+// risky signal broadcast. Keep this unbounded so the gate fails closed.
 function includesAny(text, words) {
-  includesAnyDiagnostics.total_calls++;
-  var t = safeTelegramText(text, 300, '').toLowerCase();
-  var matched = false;
-  if (Array.isArray(words)) {
-    for (var i = 0; i < words.length; i++) {
-      if (t.indexOf(words[i]) >= 0) {
-        matched = true;
-        break;
-      }
-    }
+  var t = safeTelegramText(text, Infinity, '').toLowerCase();
+  if (!Array.isArray(words)) return false;
+  for (var i = 0; i < words.length; i++) {
+    if (t.indexOf(words[i]) >= 0) return true;
   }
-
-  // BUG-025 Diagnostic (Dry-run, pure observation - does NOT alter gate behavior):
-  if (text != null && typeof text !== 'object') {
-    var rawText = String(text).replace(/[\r\n\t]+/g, ' ').replace(/<[^>]*>/g, '').replace(/\s{2,}/g, ' ').trim().toLowerCase();
-    if (rawText.length > 300) {
-      includesAnyDiagnostics.calls_exceeding_300++;
-      if (!matched && Array.isArray(words)) {
-        for (var j = 0; j < words.length; j++) {
-          var w = words[j];
-          if (w && rawText.indexOf(w) >= 0) {
-            includesAnyDiagnostics.missed_matches_count++;
-            if (includesAnyDiagnostics.missed_events.length < 50) {
-              includesAnyDiagnostics.missed_events.push({
-                timestamp: new Date().toISOString(),
-                text_length: rawText.length,
-                matched_word: w,
-                text_sample: rawText.slice(0, 80) + '...[' + rawText.slice(290, 310) + ']...'
-              });
-            }
-            console.warn('[BUG-025 DIAGNOSTIC] includesAny missed word "' + w + '" due to 300-char truncation (len=' + rawText.length + ')');
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  return matched;
+  return false;
 }
 
 function joinTelegramTexts(parts) {
-  return parts.map(function(p) { return safeTelegramText(p, 120, ''); }).filter(Boolean).join(' | ');
+  return parts.map(function(p) { return safeTelegramText(p, Infinity, ''); }).filter(Boolean).join(' | ');
 }
 
 function normalizeTelegramRiskLabel(value) {
@@ -14789,8 +14738,7 @@ module.exports.__test = {
   annotateSwingNkHighRrWarning: swingNkRrWarning.annotateSwingNkHighRrWarning,
   SWING_NK_HIGH_RR_WARNING_THRESHOLD: swingNkRrWarning.SWING_NK_HIGH_RR_WARNING_THRESHOLD,
   includesAny: includesAny,
-  getIncludesAnyDiagnostics: getIncludesAnyDiagnostics,
-  resetIncludesAnyDiagnostics: resetIncludesAnyDiagnostics,
+  joinTelegramTexts: joinTelegramTexts,
   calcScreenerRSI: calcScreenerRSI,
   nkCalcRSI: nkCalcRSI,
   deriveDayTradeTimeframeContext: deriveDayTradeTimeframeContext,
