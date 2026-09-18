@@ -1249,3 +1249,42 @@ Batch ini membaca tuntas 601-1510 (sesi lama sudah 1-600). **BERSIH pada sebagia
 - **Penjelasan:** Kedua jalur menulis blok dengan header SAMA (`[Auto-Cuan Score]`) tetapi skala komponen BERBEDA. Server (`api/quote.js`) memakai trend 25 / momentum 20 / volume 20 / pivot 15 / catalyst 10 / risk 10 (jumlah 100; `pivotScore = Math.min(15, …)`). Fallback frontend memakai trend **30** / rsi 20 / volume 20 / news 15 / board-risk 15 (jumlah 100). Karena `q.autoCuanScore` adalah field server (dikonfirmasi `api/quote.js:2138,2283-2284`), jalur fallback praktis jarang aktif — tetapi bila aktif, model AI membaca komponen berlabel sama dengan penyebut berbeda pada prompt yang sama, dan skor total tidak bisa dibandingkan lintas jalur. Prompt adalah grounding yang eksplisit dilindungi di file ini; dua kontrak angka dalam satu blok melemahkan jaminan itu.
 - **Bukti verifikasi riil:** Bukti kode: `/25` vs `/30`, dan definisi server `Math.min(15, pivotScore)` + `rawScore = trend + momentum + volume + pivotScore + catalyst + risk` di `api/quote.js:1830,1884`.
 - **Usulan arah perbaikan:** Satukan rubrik: fallback frontend harus memakai skala server (atau jalur fallback dihapus); beri label blok berbeda bila memang skala berbeda.
+
+---
+
+## MODUL: Foreign Flow (lib/foreign-flow-store.js, lib/foreign-flow-recap.js)
+
+`lib/foreign-flow-store.js` (74) **BERSIH** — chunked query di bawah budget 900 baris, tidak mengarang `foreign_buy`/`foreign_sell` (selalu null, hanya `foreign_net`). `lib/foreign-flow-recap.js` (295) **BERSIH** kecuali satu temuan LOW:
+
+### [LOW] `sendForeignFlowRecap` memanggil `telegramNotifier.sendMessage` yang TIDAK ADA (ekspor hanya `sendTelegramMessage`) — TypeError laten di fungsi tanpa pemanggil
+- **Lokasi:** [`lib/foreign-flow-recap.js:270`](lib/foreign-flow-recap.js:270)
+- **Kutipan kode bermasalah:**
+  ```js
+  const result = await telegramNotifier.sendMessage(message, {
+    parse_mode: 'HTML',
+    chat_id: options.chatId || null
+  });
+  ```
+- **Penjelasan:** `lib/telegram-notifier.js` mengekspor `sendTelegramMessage` (bukan `sendMessage`). Diverifikasi runtime: `require('./lib/telegram-notifier').sendMessage === undefined`. Jadi bila `sendForeignFlowRecap` dipanggil dengan `send:true`, baris ini melempar `TypeError: telegramNotifier.sendMessage is not a function` — recap foreign flow tidak akan pernah terkirim. Saat ini dampaknya terbatas karena fungsi ini **tidak punya pemanggil** di seluruh repo (grep: hanya definisi + ekspor), sehingga ini bug laten di dead code; begitu ada yang menyambungkannya (mis. cron recap), ia langsung gagal.
+- **Bukti verifikasi riil:** Runtime `node -e`: `has sendMessage: undefined`, `has sendTelegramMessage: function`; grep repo: `telegramNotifier.sendMessage` hanya 1 kemunculan (baris ini); `sendForeignFlowRecap` hanya 2 kemunculan (definisi + ekspor, tanpa pemanggil).
+- **Usulan arah perbaikan:** Ganti ke `telegramNotifier.sendTelegramMessage(message, { chat_id, ... })` (perhatikan: `sendTelegramMessage` tidak menerima `parse_mode`; pesan memakai tag HTML `<b>`/`<code>` sehingga perlu mode HTML yang didukung sender, atau konversi ke teks polos). Tambahkan test yang benar-benar memanggil jalur kirim.
+
+---
+
+## MODUL: Broker Hunter Service (lib/broker-hunter-service.js, 548 baris — TUNTAS)
+
+File dibaca baris-per-baris (1-300, 301-548). **BERSIH pada bagian inti**: `BROKER_PROFILES` dummy sudah dihapus (komentar eksplisit "Never use dummy data"), fast-path index disk + VPS, fallback on-the-fly menghitung dari broker-summary nyata, respons kosong jujur (`top_accumulated: []`, bukan mock). Satu temuan LOW:
+
+### [LOW] Literal tanggal `'2026-09-07'` sebagai fallback `targetDates`/`date_range_label` saat tidak ada tanggal tersedia
+- **Lokasi:** [`lib/broker-hunter-service.js:368`](lib/broker-hunter-service.js:368), [`:417`](lib/broker-hunter-service.js:417)
+- **Kutipan kode bermasalah:**
+  ```js
+  if (targetDates.length === 0) {
+    targetDates = ['2026-09-07'];
+  }
+  ...
+  : (targetDates[0] || '2026-09-07');
+  ```
+- **Penjelasan:** Sama kelasnya dengan literal tanggal di `bandarmologi-service.js`/`bandarmologi-intel-service.js` (batch 20/22): ketika `discoverAvailableDates()` kosong, sistem mengklaim data bertanggal tetap `2026-09-07` alih-alih melaporkan "tanggal tidak tersedia". Karena `discoverAvailableDates()` membaca disk, kondisi ini terjadi saat cache broker-summary belum ada — tepat saat label tanggal paling menyesatkan.
+- **Bukti verifikasi riil:** Bukti kode: 2 kemunculan literal terverifikasi via pencarian langsung.
+- **Usulan arah perbaikan:** Kembalikan `target_dates: []` + `date_range_label: 'Tanggal tidak tersedia'` saat tidak ada tanggal, jangan mengarang tanggal tetap.

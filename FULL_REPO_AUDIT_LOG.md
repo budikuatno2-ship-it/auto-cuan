@@ -161,6 +161,13 @@ TUNTAS & BERSIH (13 file sisa `daytrade-*`, dibaca baris-per-baris):
 - Commit sesi: 0d1fa7a, ed05b8a, 8954cab, eeb4788, 1529a21, ab9689c (+ ini).
 - Sisa untuk sesi berikutnya: `lib/` (broker-hunter 548, insider-network 1125, foreign-flow-* 295/74, bandarmologi-* lain), sisa `public/` (~40 file), `tools/` (~102), `supabase/*.sql` (56), `.github/workflows/*`, `test/` (~521).
 
+### PROGRES BATCH 28 (sesi 2026-09-18 lanjutan)
+- `lib/foreign-flow-store.js` (74) **TUNTAS** — BERSIH (chunked query < budget 900; tidak mengarang foreign_buy/sell).
+- `lib/foreign-flow-recap.js` (295) **TUNTAS** — 1 LOW: `sendForeignFlowRecap` memanggil `telegramNotifier.sendMessage` yang TIDAK ADA (ekspor hanya `sendTelegramMessage`; runtime `sendMessage === undefined`) → TypeError laten; fungsi tanpa pemanggil (dead code).
+- `lib/broker-hunter-service.js` (548) **TUNTAS** — 1 LOW: literal `'2026-09-07'` fallback tanggal (2 lokasi). Inti bersih (BROKER_PROFILES dummy dihapus, respons kosong jujur).
+- Total heading temuan kini **78** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 28 LOW).
+- Berikutnya: `lib/insider-network-service.js` (1.125 — baca bertahap), lalu sisa `lib/` minor.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
