@@ -50,7 +50,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | Batch | Judul | Jumlah temuan | Status |
 |---|---|---:|---|
 | 1 | CRITICAL: Satukan Definisi Harga Terakhir (api/quote.js vs api/candles.js) | 2 | [x] SELESAI |
-| 2 | CRITICAL: Satu Sumber Kebenaran Nama Model Gemini | 9 | [ ] BELUM |
+| 2 | CRITICAL: Satu Sumber Kebenaran Nama Model Gemini | 9 | [-] SEBAGIAN (5/9) |
 | 3 | HIGH Keamanan: Token Hardcoded, Backdoor Kredensial, Kunci Enkripsi Fallback | 5 | [ ] BELUM |
 | 4 | HIGH: Integritas Gerbang Keselamatan Telegram (BUG-025 & Pemotongan Teks) | 1 | [ ] BELUM |
 | 5 | HIGH: Hapus Data Fabrikasi Jejaring Insider | 2 | [ ] BELUM |
@@ -64,7 +64,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [ ] BELUM |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [ ] BELUM |
 
-Progres keseluruhan: **2/97 SELESAI, 0 DITARIK, 95 BELUM** (per Batch 1).
+Progres keseluruhan: **7/97 SELESAI, 0 DITARIK, 90 BELUM** (per Batch 2).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -76,6 +76,21 @@ Branch `fix/unify-latest-price-policy` -> base `feat/daytrade-screener-v1`. Scop
 - **Test regresi baru**: `test/quote-candles-latest-price-consistency.test.js` (3 subtest) + didaftarkan di `tools/curated-build-tests.json` agar ter-gate `npm test`.
 - **Gate**: `node --check api/quote.js` bersih; `npm test` = **396/396 file lolos, exit 0** (baseline 395 + 1 test baru). CI PR #689 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login).
 - **Diff**: `api/quote.js` +18/-4, `tools/curated-build-tests.json` +1, test baru 132 baris. Tidak menyentuh scope Batch 2+.
+
+### Batch 2 - SELESAI (PR #691, merge `ce8403a`) - hanya item model Gemini yang diminta
+
+Branch `fix/unify-gemini-model-source` -> base `feat/daytrade-screener-v1`. Scope batch ini sesuai instruksi user = 5 temuan: F-046 (CRITICAL), F-044 (HIGH), F-045 (HIGH), F-047 (HIGH), F-058 (MEDIUM). F-006/F-057/F-062/F-063 (sisa 4 temuan ber-batch 2) TIDAK diminta dan SENGAJA tidak disentuh.
+
+- **Single source of truth**: [`lib/ai-gemini-provider.js`](lib/ai-gemini-provider.js) kini mengekspor `SAFETY_NET_GEMINI_MODEL` (default ikut `DEFAULT_GEMINI_MODEL`, override via `GEMINI_SAFETY_NET_MODEL`) dan `getGeminiApiKey()` yang membaca berurutan `GEMINI_API_KEY_PRIMARY` -> `API_KEY_ANALISA_SAHAM_PORTOFOLIO` -> `GEMINI_API_KEY`.
+- **F-046 CRITICAL**: [`lib/ai-narration.js`](lib/ai-narration.js:53) tidak lagi default ke `'gemini-3-flash'` (deprecated/404); `getModel()` memakai `sanitizeGeminiModel(GEMINI_MODEL, DEFAULT_GEMINI_MODEL)`. Model deprecated otomatis diganti default valid.
+- **F-044 HIGH**: [`public/chart-analysis-runtime.js`](public/chart-analysis-runtime.js:269) tidak lagi fallback ke `'Gemini 2.5 Flash'`; bila `analysisData.model` kosong ditampilkan `'tidak dilaporkan'`.
+- **F-045 HIGH**: [`lib/context-ai-router-v7.js`](lib/context-ai-router-v7.js:600) safety-net literal `'gemini-3.6-flash'` (2 lokasi) diganti `SAFETY_NET_GEMINI_MODEL`.
+- **F-058 MEDIUM**: 4 salinan daftar model deprecated di [`lib/analyze-legacy.js`](lib/analyze-legacy.js:457) dan 1 salinan di [`api/quote.js`](api/quote.js:1192) diganti `sanitizeGeminiModel`/`DEFAULT_GEMINI_MODEL` (3 nama vs 7 nama di otoritatif).
+- **F-047 HIGH**: narasi gagal senyap bila kunci hanya `GEMINI_API_KEY` — kini pakai rantai `getGeminiApiKey()` yang mencakup semua nama kunci.
+- **Test regresi baru**: `test/ai-gemini-model-single-source.test.js` (6 subtest) + didaftarkan di `tools/curated-build-tests.json`; [`test/ai-narration.test.js`](test/ai-narration.test.js:254) diperbarui (test lama mengunci default deprecated = bug yang diperbaiki).
+- **Gate**: `node --check` bersih pada 7 file; `npm test` = **397/397 file lolos, exit 0** (baseline 396 setelah Batch 1 + 1 test baru). CI PR #691 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login).
+- **Diff**: 8 file kode/test + `curated-build-tests.json`, +168/-29. Tidak menyentuh scope Batch 3+.
+- **Sisa Batch 2 (BELUM)**: F-006 (katalog WeizeRouter v4), F-057 (label provider ticker-mode), F-062 (pesan error `handleChartVision` sebagai HTML), F-063 (`geminiSearchNews` dead code) — menunggu instruksi batch berikutnya.
 
 ---
 
@@ -90,15 +105,15 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 
 ### Batch 2 - CRITICAL: Satu Sumber Kebenaran Nama Model Gemini (9 temuan)
 
-- [ ] F-006 | MEDIUM | batch 2 | lib/context-ai-router-v4.js:99 - Katalog model WeizeRouter di-hardcode sebagai daftar fallback, mencampur model yang belum tentu ada dengan daftar CATALOG
-- [ ] F-044 | HIGH | batch 2 | public/chart-analysis-runtime.js:269 - Label model di kartu "Analisis Chart (AI)" di-hardcode `'Gemini 2.5 Flash'` — menyesatkan user bila model riil berbeda
-- [ ] F-045 | HIGH | batch 2 | lib/context-ai-router-v7.js:600, lib/context-ai-router-v7.js:750 - Rantai fallback model di `context-ai-router-v7.js` memakai literal hardcode `'gemini-3.6-flash'` yang tidak dikelola konstanta provider
-- [ ] F-046 | CRITICAL | batch 2 | lib/ai-gemini-provider.js:8, lib/ai-narration.js:52 - Nama model Gemini saling bertentangan antar modul — narasi AI Telegram & news memakai model yang sudah dideprecate/404
-- [ ] F-047 | HIGH | batch 2 | lib/ai-narration.js:112 - Narasi AI gagal total (fallback diam) bila kunci hanya `GEMINI_API_KEY`, karena `ai-narration.js` hanya membaca `GEMINI_API_KEY_PRIMARY`
-- [ ] F-057 | MEDIUM | batch 2 | lib/analyze-legacy.js:416 - `provider` di respons ticker-mode selalu dilaporkan `'deepseek'` walau jawaban berasal dari Gemini
-- [ ] F-058 | MEDIUM | batch 2 | lib/analyze-legacy.js:457, lib/analyze-legacy.js:631 - Daftar model Gemini deprecated disalin ulang 4× di `analyze-legacy.js` dengan isi BERBEDA dari daftar otoritatif provider (3 nama vs 7 nama)
-- [ ] F-062 | LOW | batch 2 | lib/analyze-legacy.js:637 - `handleChartVision` mengembalikan string pesan-error sebagai HTML → pemanggil menandai `provider: 'gemini-vision'` sebagai sukses
-- [ ] F-063 | LOW | batch 2 | lib/analyze-legacy.js:542 - `geminiSearchNews` adalah dead code (didefinisikan, tidak pernah dipanggil)
+- [ ] F-006 | MEDIUM | batch 2 | lib/context-ai-router-v4.js:99 - Katalog model WeizeRouter di-hardcode sebagai daftar fallback, mencampur model yang belum tentu ada dengan daftar CATALOG _(di luar instruksi batch 2 ini; BELUM)_
+- [x] F-044 | HIGH | batch 2 | public/chart-analysis-runtime.js:269 - Label model di kartu "Analisis Chart (AI)" di-hardcode `'Gemini 2.5 Flash'` — menyesatkan user bila model riil berbeda
+- [x] F-045 | HIGH | batch 2 | lib/context-ai-router-v7.js:600, lib/context-ai-router-v7.js:750 - Rantai fallback model di `context-ai-router-v7.js` memakai literal hardcode `'gemini-3.6-flash'` yang tidak dikelola konstanta provider
+- [x] F-046 | CRITICAL | batch 2 | lib/ai-gemini-provider.js:8, lib/ai-narration.js:52 - Nama model Gemini saling bertentangan antar modul — narasi AI Telegram & news memakai model yang sudah dideprecate/404
+- [x] F-047 | HIGH | batch 2 | lib/ai-narration.js:112 - Narasi AI gagal total (fallback diam) bila kunci hanya `GEMINI_API_KEY`, karena `ai-narration.js` hanya membaca `GEMINI_API_KEY_PRIMARY`
+- [ ] F-057 | MEDIUM | batch 2 | lib/analyze-legacy.js:416 - `provider` di respons ticker-mode selalu dilaporkan `'deepseek'` walau jawaban berasal dari Gemini _(di luar instruksi batch 2 ini; BELUM)_
+- [x] F-058 | MEDIUM | batch 2 | lib/analyze-legacy.js:457, lib/analyze-legacy.js:631 - Daftar model Gemini deprecated disalin ulang 4× di `analyze-legacy.js` dengan isi BERBEDA dari daftar otoritatif provider (3 nama vs 7 nama)
+- [ ] F-062 | LOW | batch 2 | lib/analyze-legacy.js:637 - `handleChartVision` mengembalikan string pesan-error sebagai HTML → pemanggil menandai `provider: 'gemini-vision'` sebagai sukses _(di luar instruksi batch 2 ini; BELUM)_
+- [ ] F-063 | LOW | batch 2 | lib/analyze-legacy.js:542 - `geminiSearchNews` adalah dead code (didefinisikan, tidak pernah dipanggil) _(di luar instruksi batch 2 ini; BELUM)_
 
 ### Batch 3 - HIGH Keamanan: Token Hardcoded, Backdoor Kredensial, Kunci Enkripsi Fallback (5 temuan)
 
