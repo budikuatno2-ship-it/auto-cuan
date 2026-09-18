@@ -351,6 +351,7 @@
   "test/daily-volume-7d-window-partial.test.js",
   "test/idx-calendar-source-window.test.js",
   "test/includes-any-length-diagnostic.test.js",
+  "test/telegram-safety-gate-text-limit.test.js",
   "test/rsi-zero-division-neutral-50.test.js",
   "test/daytrade-volume-sentinel-null.test.js",
   "test/latent-aliases-radar-dead-code-cleanup.test.js",

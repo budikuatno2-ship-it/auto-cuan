@@ -5,50 +5,40 @@ const assert = require('node:assert/strict');
 
 const sectorHot = require('../api/sector-hot');
 
-test('BUG-025: includesAny dry-run diagnostic correctly observes and records truncation without altering behavior', () => {
-  const { includesAny, getIncludesAnyDiagnostics, resetIncludesAnyDiagnostics } = sectorHot.__test;
+// BUG-025 regression: the safety gate must scan the FULL text. Previously
+// includesAny truncated to 300 chars and joinTelegramTexts truncated each part
+// to 120 chars, so a trigger word past the cutoff was silently missed and a
+// risky signal could broadcast (fail-OPEN). These tests lock the fail-CLOSED
+// behavior: no truncation on the gate path.
+test('BUG-025: includesAny scans the full text and never truncates', () => {
+  const { includesAny } = sectorHot.__test;
   assert.equal(typeof includesAny, 'function', 'includesAny should be exported in __test');
-  assert.equal(typeof getIncludesAnyDiagnostics, 'function', 'getIncludesAnyDiagnostics should be exported in __test');
-  assert.equal(typeof resetIncludesAnyDiagnostics, 'function', 'resetIncludesAnyDiagnostics should be exported in __test');
 
-  resetIncludesAnyDiagnostics();
+  // Short text with a matching keyword.
+  assert.equal(includesAny('Setup A+ Breakout valid candle', ['invalid candle', 'breakout']), true);
 
-  // Case 1: Short text <= 300 chars with matching keyword
-  const shortText = 'Setup A+ Breakout valid candle';
-  const match1 = includesAny(shortText, ['invalid candle', 'breakout']);
-  assert.equal(match1, true);
-  let diag = getIncludesAnyDiagnostics();
-  assert.equal(diag.total_calls, 1);
-  assert.equal(diag.calls_exceeding_300, 0);
-  assert.equal(diag.missed_matches_count, 0);
-
-  // Case 2: Long text > 300 chars with keyword in first 300 chars
+  // Keyword inside the first 300 chars.
   const longPrefix = 'A'.repeat(100) + ' invalid candle ' + 'B'.repeat(300);
-  const match2 = includesAny(longPrefix, ['invalid candle', 'below sl']);
-  assert.equal(match2, true);
-  diag = getIncludesAnyDiagnostics();
-  assert.equal(diag.total_calls, 2);
-  assert.equal(diag.calls_exceeding_300, 1);
-  assert.equal(diag.missed_matches_count, 0);
+  assert.equal(includesAny(longPrefix, ['invalid candle', 'below sl']), true);
 
-  // Case 3: Long text > 300 chars where keyword ONLY appears after 300 chars
-  // Before fix / in dry-run: this keyword is missed because includesAny cuts at 300.
-  // The dry-run diagnostic MUST detect and record this missed match while keeping return value false.
+  // Keyword ONLY after 300 chars — must now be found (was missed before the fix).
   const longTextMissed = 'X'.repeat(320) + ' fatal below sl violation';
-  const match3 = includesAny(longTextMissed, ['fatal below sl violation', 'sl kena']);
-  assert.equal(match3, false, 'Existing behavior must be preserved: returns false due to 300-char truncation');
+  assert.equal(includesAny(longTextMissed, ['fatal below sl violation', 'sl kena']), true);
 
-  diag = getIncludesAnyDiagnostics();
-  assert.equal(diag.total_calls, 3);
-  assert.equal(diag.calls_exceeding_300, 2);
-  assert.equal(diag.missed_matches_count, 1, 'Diagnostic must observe that a keyword was missed due to truncation');
-  assert.equal(diag.missed_events.length, 1);
-  assert.equal(diag.missed_events[0].matched_word, 'fatal below sl violation');
-  assert.ok(diag.missed_events[0].text_length > 300);
+  // Keyword far beyond 300 chars (e.g. tail of a long status_reason).
+  const veryLong = 'Y'.repeat(5000) + ' weak liquidity';
+  assert.equal(includesAny(veryLong, ['weak liquidity']), true);
 
-  // Reset check
-  resetIncludesAnyDiagnostics();
-  diag = getIncludesAnyDiagnostics();
-  assert.equal(diag.total_calls, 0);
-  assert.equal(diag.missed_matches_count, 0);
+  // Non-matching text still returns false.
+  assert.equal(includesAny('Z'.repeat(1000), ['stale', 'invalid plan']), false);
+});
+
+test('BUG-025: joinTelegramTexts keeps every part intact (no 120-char cap)', () => {
+  const { joinTelegramTexts } = sectorHot.__test;
+  assert.equal(typeof joinTelegramTexts, 'function', 'joinTelegramTexts should be exported in __test');
+
+  const longPart = 'A'.repeat(400) + ' stale';
+  const joined = joinTelegramTexts([longPart, 'short']);
+  assert.ok(joined.indexOf('stale') >= 0, 'trigger word at the tail of a long part must survive');
+  assert.ok(joined.length > 400, 'long parts must not be truncated to 120 chars');
 });
