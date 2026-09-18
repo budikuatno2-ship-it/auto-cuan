@@ -443,6 +443,11 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: `archiveTop5History` admin-gated + CRON_SECRET di-`prompt` runtime (bukan hardcoded); `loadDashboardTop5Monitor` retry auth + cache guard; `refreshIHSGCard` `textContent`; `sanitizeIHSGOutput`/`reorderBrokerCTA`/`normalizeFinalStockHtml` transformasi string (dijalankan SETELAH `sanitizeAIHtml`).
 - Berikutnya: `index.html` 11570-12174.
 
+### PROGRES BATCH 76 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 11570-11869 dibaca (normalizeFinalStockHtml tail, buildFollowUpFallback, stripFollowUpTemplate, convertStrayMarkdownBold, sanitizeAIHtml). **BERSIH — tidak ada temuan baru.**
+- BERSIH: `sanitizeAIHtml` (`:11729`) membuang `<script>`, event handler `on*` (per-tag, tahan separator `/`), skema URL berbahaya (`javascript:`/`vbscript:`/`data:` dengan decode entity), dan elemen berbahaya (`iframe`/`embed`/`object`/`form`/`input`/`button`/`style`/`template`/`noscript`/`svg`/`math`/`base`/`meta`/`link`) — pertahanan XSS inti yang kokoh. `stripFollowUpTemplate`/`buildFollowUpFallback` murni deterministik.
+- Berikutnya: `index.html` 11870-12174.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
