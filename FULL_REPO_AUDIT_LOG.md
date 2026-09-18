@@ -72,6 +72,21 @@ TUNTAS & BERSIH:
 
 **SELURUH `lib/intraday-*` (17 file) KINI TUNTAS 100%.**
 
+### PROGRES BATCH 18 (sesi 2026-09-18)
+TUNTAS & BERSIH (semua `lib/telegram-*`, 12 file):
+- `telegram-voucher-admin-continuation.js` (146) — fail-closed admin shape, private-chat only, quantity session + expiry check.
+- `telegram-daily-recap.js` (210) — WIB date via Intl, filter arsip/test, fallback "hari libur" jelas, disclaimer konsisten.
+- `telegram-lifecycle.js` (318) — two-phase claim→send→commit/release (retryable, delivered counter hanya naik saat commit); deep-link payload tanpa identifier.
+- `telegram-verify-bot.js` (202) — token HANYA `TELEGRAM_VERIFY_BOT_TOKEN` tanpa fallback, error disanitasi, invite join-request tanpa member_limit (cegah clicker pertama masuk).
+- `telegram-unified-general.js` (217) — binding verified dulu; akun blocked → pesan generik; entitlement aktif dihitung dari window waktu.
+- `telegram-unified-subscription.js` (333) — idempotency key deterministik per update_id; RPC consume token; admin gate + capability check.
+- `telegram-delivery.js` (981) — state machine DELIVERY_* 2-phase claim; `row_results` per-baris (header gagal tidak menandai semua row UNCERTAIN); uncertain tidak di-retry otomatis (anti-duplikat).
+- `telegram-verification.js` (1.534) — HMAC-SHA256 fail-closed (secret absen → tolak); join-request gate EXACT match (invite link + eligible + belum joined) else DECLINE; outbox claim/complete/fail at-least-once; webhook claim by update_id; sender limiter 5/15mnt; rating 1–5 idempotent; tidak ada token/raw text di log.
+- `telegram-analytics.js` + `telegram-transient-message.js` (TUNTAS batch 14).
+
+**SELURUH `lib/telegram-*` (12 file) KINI TUNTAS 100%.**
+Sisa `lib/trade-plan-v2-*` (8): candle-structure, daytrade-diagnostic, formatter, gap-areas, liquidity-sweep, replay-preview, source-adapters, sweep-diagnostic.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
@@ -247,7 +262,7 @@ SYSTEM_ARCHITECTURE_LIFECYCLE, CHANGELOG, SECURITY, SCREENER_BUGFIX_LOG, SCREENE
 - [ ] frontend: `public/auth-v2.js`, `public/subscription-*.js`, `public/security-admin-runtime.js`, `public/admin-*.js`, `public/website-approved-access.js`, `public/maintenance-auth-guard.js`
 
 ### FASE 6 — Telegram & notifikasi
-- [-] `lib/telegram-*.js` (~14) — TUNTAS: `telegram-notifier.js` (648), `telegram-templates.js` (940); sisa file telegram lain belum. `lib/voucher-admin-*.js`, `lib/webhook-alert-engine.js`, `lib/top5-progress-monitor.js` belum
+- [x] `lib/telegram-*.js` — **TUNTAS SEMUA 12 file**: notifier (648), templates (940), analytics (156), transient-message (70), daily-recap (210), lifecycle (318), verify-bot (202), unified-general (217), unified-subscription (333), delivery (981), verification (1.534), voucher-admin-continuation (146). `lib/voucher-admin-*.js` (bot/sender), `lib/webhook-alert-engine.js`, `lib/top5-progress-monitor.js` belum
 - [ ] `lib/recent-failure-cooldown.js`, `lib/telegram-analytics.js`
 
 ### FASE 7 — Portfolio & UI shell
