@@ -1673,3 +1673,36 @@ Total heading temuan kini **91** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 36 LOW).
 - `public/admin-maintenance-code.js` (483) — **BERSIH**. OTP 6 digit (input `\D` strip + `autocomplete=one-time-code`), consume via server, `setError` pakai `textContent`; `hydrateApprovedClientState` hanya untuk `budi`+`isAdmin`; lifecycle Telegram notify/cleanup `keepalive`; polling visibility-aware (`HIDDEN_POLL_MS`) + observer gate cleanup; OTP auto-delete dari server. Tidak ada kebocoran kode/secret.
 
 Total heading temuan tetap **85**.
+
+---
+
+## MODUL: `supabase/*.sql` — migrasi berisiko tinggi (baca penuh baris-per-baris)
+
+### [LOW] Migrasi `stock-daily-context` (dan 7 lain) menyatakan "Deny direct client access" tetapi TIDAK ADA `REVOKE` apa pun — hanya `ENABLE ROW LEVEL SECURITY`; komentar merujuk "konvensi" yang juga tidak melakukannya
+- **Lokasi:** [`supabase/stock-daily-context-migration.sql:154-157`](supabase/stock-daily-context-migration.sql:154) (tabel di `:44,88,105,152`). Pola identik di `foreign-watchlist-daily-migration.sql`, `sector-hot.sql`, `swing-screener-migration.sql`, `swing-screener-non-konglo.sql`, `daytrade-screener-migration.sql`, `ai-analysis-cache-migration.sql`, `telegram-daily-picks-migration.sql`.
+- **Kutipan kode bermasalah:**
+  ```sql
+  ALTER TABLE stock_daily_features ENABLE ROW LEVEL SECURITY;
+
+  -- Deny direct client access on all four tables. Service role bypasses RLS for
+  -- server-side collector/API/admin code, matching the convention already used
+  -- by foreign_watchlist_daily.
+  -- <<< EOF: tidak ada satu pun baris REVOKE/GRANT sesudah komentar ini >>>
+  ```
+- **Dampak:** Komentar menjanjikan penolakan akses klien langsung, tetapi migrasi hanya `ENABLE ROW LEVEL SECURITY` tanpa policy. RLS tanpa policy memang menolak `anon`/`authenticated` (tidak ada kebocoran baris hari ini), NAMUN table-level privilege `anon`/`authenticated` tetap utuh. Begitu RLS dinonaktifkan, atau sebuah policy permisif ditambahkan untuk fitur baru, akses DML langsung terbuka tanpa lapisan kedua. Migrasi berisiko tinggi lain (`subscription-phase-*`, `admin-telegram-*`, `telegram-verification-v2-migration`) eksplisit `REVOKE ALL ... FROM PUBLIC, anon, authenticated` + `GRANT ... TO service_role`; klaster ini tidak. Lebih konkret: komentar menyebut "matching the convention already used by foreign_watchlist_daily", padahal `foreign-watchlist-daily-migration.sql` (34 baris) juga TIDAK punya REVOKE — klaim rujukan itu keliru.
+- **Bukti verifikasi riil:** `Select-String` pola `REVOKE|GRANT` pada `stock-daily-context-migration.sql` → **0 kecocokan**. Pemindaian seluruh `supabase\*.sql` untuk kondisi "ada `ENABLE ROW LEVEL SECURITY` tetapi `REVOKE`=0" mengembalikan tepat **8 file** (ai-analysis-cache, daytrade-screener, foreign-watchlist-daily, sector-hot, stock-daily-context, swing-screener, swing-screener-non-konglo, telegram-daily-picks). `foreign-watchlist-daily-migration.sql` dikonfirmasi 34 baris tanpa REVOKE. **Belum terkonfirmasi (hipotesis):** apakah default privilege Supabase proyek target benar-benar memberi `anon` DML pada tabel `public` — cek dengan `select has_table_privilege('anon','public.stock_daily_features','INSERT');`.
+- **Usulan arah perbaikan:** Tambahkan `REVOKE ALL ON <tabel> FROM PUBLIC, anon, authenticated;` (+ `GRANT ... TO service_role;` bila perlu) sebelum EOF, atau perbaiki komentar agar jujur menyatakan proteksi bersandar pada RLS-tanpa-policy.
+
+Total heading temuan kini **92** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 37 LOW).
+
+### Catatan tuntas — migrasi SQL berisiko tinggi (BERSIH & KOKOH setelah verifikasi)
+- `subscription-phase-5c-voucher-admin-migration.sql` (405) — **BERSIH**. Semua RPC `SECURITY DEFINER SET search_path = pg_catalog, public`, semua tabel RLS + `REVOKE ALL FROM PUBLIC, anon, authenticated` + grant `service_role` saja; input regex ketat (`code_hash` 64-hex, `code_hint` 4-char, `batch_reference ^VB-[A-F0-9]{12}$`); state machine attempt deterministik dengan `FOR UPDATE`, lease 5 menit, counter atomik (`GET DIAGNOSTICS` + `IF affected <> 1 THEN RAISE`); replay prepare diverifikasi baris-per-baris vs JSON (mismatch → `conflicting replay`).
+- `subscription-phase-5c-lifecycle-correction.sql` (282) — **BERSIH**. Reap stale-claim lease-expired sebelum klaim baru; konsistensi `generated/delivered/finalized` dijaga; idempoten (`already_*`).
+- `subscription-phase-5c-redemption-correction.sql` (237) — **BERSIH**. Advisory lock idempotency-key; `FOR UPDATE` user (serialisasi stacking); voucher `PERCENT_30/50` ditolak di jalur gratis; lifetime terminal; `duration_days` DIVERIFIKASI vs plan imutabel (`expected_days`).
+- `subscription-phase-5c-admin-command-correction.sql` (133) — **BERSIH**. Validasi `^(VB|VV)-[A-F0-9]{12}$`; nonaktifkan batch/voucher cek `affected <> 1 → RAISE`. (Jalur UI `v:disable`/`v:detail`/`v:audit` mengirim `p_reference:null` → dijawab pesan "Gunakan perintah dengan referensi… yang valid", bukan crash — perlu input teks manual, bukan temuan keselamatan.)
+- `admin-telegram-command-login-migration.sql` (446) — **BERSIH**. Hanya SHA-256 hash disimpan; TTL grant ≤5 menit; device grant re-cek binding PERSIS setelah row-lock; `REVOKE ALL FROM anon, authenticated`.
+- `admin-telegram-zero-link-pairing-migration.sql` (410) — **BERSIH**. Fail-closed saat >1 pairing live (`ambiguous`); rate-limit per-IP 5/5mnt + global 100/5mnt; `FOR UPDATE`; recycle row kedaluwarsa.
+- `admin-telegram-maintenance-code-migration.sql` (336) — **BERSIH**. Kode 6-digit hanya sebagai HMAC digest (`^[0-9a-f]{64}$`); 1 kode aktif/2 menit; maks 5 salah → `locked`/`expired`; eligibility+Telegram binding dicek ulang saat consume; tidak ada token di RETURN.
+- `admin-telegram-access-migration.sql` (886) — **BERSIH**. Cleanup 3-langkah (expire TTL → bersihkan HANYA claim stale >20s state='pending' → fail-closed bila konflik nyata tersisa); partial unique index anti-griefing (dormant row kolom NULL tak menempati slot); semua referensi kolom di-alias eksplisit; consume re-cek eligible+verified+not-blocked.
+- `telegram-verification-v2-migration.sql` (502) — **BERSIH**. 4 tabel RLS tanpa policy + `REVOKE ALL FROM anon, authenticated` + `ALTER FUNCTION ... OWNER TO postgres`; advisory lock per-user `tgverify:`; unique index 1-challenge-aktif/user + 1-hash-aktif; webhook claim/reclaim rotasi `processing_token` + lease clamp [10,60]s; `not_found` generik; `budi`/`review` dikecualikan.
+- `stock-daily-context-migration.sql` (157) & `sector-hot.sql` (229) — struktur/data **BERSIH**: kolom harga/level `NUMERIC`, ticker `CHECK (ticker = UPPER(ticker))`, seed grup/ticker konsisten, `sector_hot_meta` idempoten. Terkait **temuan LOW di atas**.

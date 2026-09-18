@@ -720,3 +720,13 @@ SYSTEM_ARCHITECTURE_LIFECYCLE, CHANGELOG, SECURITY, SCREENER_BUGFIX_LOG, SCREENE
 
 - `data/arjum-data/broker-summary/` berisi folder ticker aneh: `AUDITSCALE14D/30D/5D/60D`, `B4TST`, `DBGT4`, `NOACC`. Nama-nama ini BUKAN ticker saham valid → indikasi artefak test/audit yang bocor ke data produksi. WAJIB dilacak siapa yang menulis folder itu.
 - 557 branches remote — kemungkinan banyak fix tidak ter-merge. Catat saja, jangan checkout.
+
+---
+
+### PROGRES BATCH 90 (sesi 2026-09-18 lanjutan) — `supabase/*.sql` berisiko tinggi (BACA PENUH)
+- **Koreksi metadata:** `telegram-verification-v2-migration.sql` sebenarnya **502 baris** (angka 1.534 di log lama adalah `lib/telegram-verification.js`). `admin-telegram-access-migration.sql` = **886** (bukan 818).
+- Dibaca baris-per-baris & BERSIH (rincian di `FULL_REPO_BUG_FINDINGS.md` modul baru): `subscription-phase-5c-voucher-admin` (405), `-lifecycle-correction` (282), `-redemption-correction` (237), `-admin-command-correction` (133), `admin-telegram-command-login` (446), `admin-telegram-zero-link-pairing` (410), `admin-telegram-maintenance-code` (336), `admin-telegram-access` (886), `telegram-verification-v2` (502), `stock-daily-context` (157), `sector-hot` (229).
+- Verifikasi trigger/advisory lock/validasi input/default: semua RPC high-risk `SECURITY DEFINER SET search_path = pg_catalog, public` + fail-closed; advisory lock (`pg_advisory_xact_lock(hashtextextended(...))`) di redemption/issue; input regex ketat; `duration_days` DIVERIFIKASI vs plan imutabel; tidak ada `DEFAULT '2026-...'` fiktif.
+- **1 temuan LOW BARU:** klaster migrasi RLS-tanpa-REVOKE (8 file) — komentar "Deny direct client access" tidak ditopang `REVOKE`; rujukan komentar ke `foreign_watchlist_daily` juga keliru (file itu 34 baris, juga tanpa REVOKE). RLS-tanpa-policy masih menolak anon/authenticated saat ini, jadi LOW (defense-in-depth gap).
+- Total heading temuan kini **92** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 37 LOW).
+- **Berikutnya:** `tools/` (~102) — prioritas runner live/cron/data-sync (credential hardcoded, endpoint URL mentah, silent fail); lalu `test/` (~521), `data/` + `public/*.css` spot-check, `.github/workflows/*`.
