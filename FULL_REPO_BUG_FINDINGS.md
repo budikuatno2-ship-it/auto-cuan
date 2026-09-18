@@ -1608,6 +1608,22 @@ Total heading temuan kini **87** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 33 LOW).
 
 Total heading temuan kini **88** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 34 LOW).
 
+### [LOW] `doLogin` mereferensikan `regEmailVal` yang tak terdeklarasi di scope-nya (latent ReferenceError; tertutupi oleh override `auth-v2.js`)
+- **Lokasi:** [`public/index.html:3531`](public/index.html:3531) (pemakaian) vs [`public/index.html:3766`](public/index.html:3766) (deklarasi, di dalam `doRegister`)
+- **Kutipan kode bermasalah:**
+  ```js
+  // doLogin (~:3506-3556)
+  var response = await fetch('/api/login-user', { ...,
+      body: JSON.stringify({ username: usernameLower, email: regEmailVal || null, passwordHash: passwordHash, deviceId: deviceId, ... }) });
+  // regEmailVal tidak dideklarasikan di doLogin; hanya ada di doRegister:
+  async function doRegister() { ... var regEmailVal = regEmailEl ? regEmailEl.value.trim() : ""; ... }
+  ```
+- **Penjelasan:** `regEmailVal` hanya dideklarasikan dengan `var` di dalam `doRegister` (`:3766`); `doLogin` tidak punya deklarasi/global apa pun untuknya (grep repo: 3 kemunculan, tak ada global). Saat baris 3531 dievaluasi, `regEmailVal` adalah variabel bebas → `ReferenceError`, ditangkap `catch(e)` di `:3554` yang menampilkan "Koneksi ke server sedang bermasalah…" — pesan menyesatkan, bukan penyebab sebenarnya. Di produksi bug ini **tertutupi** karena `auth-v2.js` menimpa `window.doLogin = doLoginV2` ([`public/auth-v2.js:433`](public/auth-v2.js:433)) dan `doLoginV2` tidak memakai `regEmailVal`. Namun bila `auth-v2.js` gagal dimuat (di-load terakhir, `index.html:12310`), tombol login memanggil `doLogin` bawaan → SETIAP percobaan login gagal dengan pesan "koneksi" yang salah. Sama kelasnya dengan temuan `nodeToMove` (batch 25), tetapi di sini jalur aktifnya sudah digantikan sehingga dampaknya laten.
+- **Bukti verifikasi riil:** Grep `regEmailVal` = `:3531` (pakai), `:3766-3767` (deklarasi di `doRegister`). Tidak ada deklarasi global. `auth-v2.js:433` `window.doLogin = doLoginV2` mengonfirmasi override.
+- **Usulan arah perbaikan:** Hapus `email: regEmailVal || null` dari `doLogin` (login tidak butuh email), atau hilangkan `doLogin` bawaan sepenuhnya karena sudah digantikan `auth-v2.js`.
+
+Total heading temuan kini **89** (2 CRITICAL, 16 HIGH, 36 MEDIUM, 35 LOW).
+
 ---
 
 ## MODUL: Pattern Safety Hardening + UI Stability Fix + Admin Maintenance Code (3 file — TUNTAS, BERSIH)
