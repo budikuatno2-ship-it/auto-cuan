@@ -51,7 +51,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 |---|---|---:|---|
 | 1 | CRITICAL: Satukan Definisi Harga Terakhir (api/quote.js vs api/candles.js) | 2 | [x] SELESAI |
 | 2 | CRITICAL: Satu Sumber Kebenaran Nama Model Gemini | 9 | [-] SEBAGIAN (5/9) |
-| 3 | HIGH Keamanan: Token Hardcoded, Backdoor Kredensial, Kunci Enkripsi Fallback | 5 | [ ] BELUM |
+| 3 | HIGH Keamanan: Token Hardcoded, Backdoor Kredensial, Kunci Enkripsi Fallback | 5 | [x] SELESAI |
 | 4 | HIGH: Integritas Gerbang Keselamatan Telegram (BUG-025 & Pemotongan Teks) | 1 | [ ] BELUM |
 | 5 | HIGH: Hapus Data Fabrikasi Jejaring Insider | 2 | [ ] BELUM |
 | 6 | HIGH: Hapus Semua Tanggal Fallback Hardcoded | 12 | [ ] BELUM |
@@ -64,7 +64,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [ ] BELUM |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [ ] BELUM |
 
-Progres keseluruhan: **7/97 SELESAI, 0 DITARIK, 90 BELUM** (per Batch 2).
+Progres keseluruhan: **12/97 SELESAI, 0 DITARIK, 85 BELUM** (per Batch 3).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -92,6 +92,18 @@ Branch `fix/unify-gemini-model-source` -> base `feat/daytrade-screener-v1`. Scop
 - **Diff**: 8 file kode/test + `curated-build-tests.json`, +168/-29. Tidak menyentuh scope Batch 3+.
 - **Sisa Batch 2 (BELUM)**: F-006 (katalog WeizeRouter v4), F-057 (label provider ticker-mode), F-062 (pesan error `handleChartVision` sebagai HTML), F-063 (`geminiSearchNews` dead code) — menunggu instruksi batch berikutnya.
 
+### Batch 3 - SELESAI (PR #693, merge `0091baa`)
+
+Branch `fix/security-hardening-tokens-credentials` -> base `feat/daytrade-screener-v1`. Scope = 5 temuan keamanan: F-019 (HIGH), F-037 (HIGH), F-038 (MEDIUM), F-039 (MEDIUM), F-094 (MEDIUM). Tidak menyentuh scope Batch 4+.
+
+- **F-019/F-094 (token hardcoded)**: [`api/review-access.js`](api/review-access.js:42) tidak lagi punya `fallbackBuildToken` literal untuk lingkungan Vercel; `EXPECTED_TOKEN` murni dari `process.env.REVIEW_ACCESS_TOKEN` dan fail-closed bila kosong. [`tools/run-build-test-suite.js`](tools/run-build-test-suite.js:9) tidak lagi menanam literal token bersama; runner membuat token sekali-pakai via `crypto.randomBytes(24)` bila env tidak diset.
+- **F-037 (backdoor budi)**: [`api/login-user.js`](api/login-user.js:198) menghapus `LEGACY_BUDI_PASSWORD_HASH`, `matchesLegacyBudiPassword`, dan `isRegisteredDevice`; jalur login budi kini mengikuti verifikasi database standar (`passwordCredential.verifyStoredCredential`) tanpa cabang kompatibilitas. Import `getSessionSecret` yang tak lagi dipakai ikut dibersihkan.
+- **F-038 (kunci BYOK fallback)**: [`lib/user-ai-credentials.js`](lib/user-ai-credentials.js:14) fail-closed — `getMasterKey()` melempar `CredentialConfigError` (`AI_CREDENTIAL_KEY_UNCONFIGURED`) bila `APP_SECRET`/`ENCRYPTION_SECRET`/`SUPABASE_SERVICE_ROLE_KEY` kosong; `saveUserApiKey` mengembalikan 503 dan `getUserApiKey` mengembalikan `KEY_UNCONFIGURED` alih-alih memakai string statis.
+- **F-039 (bypass device binding)**: [`api/login-user.js`](api/login-user.js:22) `isVercelPreviewRequest` hanya memakai `req.headers.host` dan membandingkannya dengan domain resmi (`autocuan.web.id`, `www.autocuan.web.id`); header `Origin` dari klien tidak lagi dipercaya.
+- **Test regresi baru**: `test/security-hardening-batch3.test.js` (8 subtest) + didaftarkan di `tools/curated-build-tests.json`. Test lama yang mengunci perilaku backdoor diperbarui: [`test/budi-admin-compatibility.test.js`](test/budi-admin-compatibility.test.js) (matriks legacy diganti asersi backdoor hilang), [`test/security-phase1.test.js`](test/security-phase1.test.js), dan 3 test BYOK diberi `APP_SECRET` uji.
+- **Gate**: `node --check` bersih pada 4 file sumber; `npm test` = **398/398 file lolos, exit 0** (baseline 397 setelah Batch 2 + 1 test baru). CI PR #693 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login, migrations).
+- **Diff**: 4 file sumber + 6 file test + `curated-build-tests.json`, +302/-255. Tidak menyentuh scope Batch 4+.
+
 ---
 
 ## 3. Checklist Master 97 Temuan
@@ -117,11 +129,11 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 
 ### Batch 3 - HIGH Keamanan: Token Hardcoded, Backdoor Kredensial, Kunci Enkripsi Fallback (5 temuan)
 
-- [ ] F-019 | HIGH | batch 3 | api/review-access.js:42 - BUG-013 lama MASIH BELUM DIPERBAIKI — token review masih punya default yang tertulis di source untuk lingkungan Vercel
-- [ ] F-037 | HIGH | batch 3 | api/login-user.js:198, api/login-user.js:469 - Kredensial legacy `budi` di-hardcode di sumber (`LEGACY_BUDI_PASSWORD_HASH`) — hash yang diterima diketahui publik
-- [ ] F-038 | MEDIUM | batch 3 | lib/user-ai-credentials.js:14 - Enkripsi BYOK memakai kunci master fallback hardcoded `'autocuan-chart-ai-key-secret-seed'`
-- [ ] F-039 | MEDIUM | batch 3 | api/login-user.js:22, api/login-user.js:586 - `Origin` yang dikendalikan klien bisa memicu bypass device-binding (`isVercelPreviewRequest`)
-- [ ] F-094 | MEDIUM | batch 3 | api/review-access.js:42, tools/run-build-test-suite.js:9 - Token gate review produksi (`REVIEW_ACCESS_TOKEN`) DITANAM HARDCODED sebagai fallback di sumber publik `api/review-access.js` — kontradiksi langsung dengan komentar fail-closed di file yang sama
+- [x] F-019 | HIGH | batch 3 | api/review-access.js:42 - BUG-013 lama MASIH BELUM DIPERBAIKI — token review masih punya default yang tertulis di source untuk lingkungan Vercel
+- [x] F-037 | HIGH | batch 3 | api/login-user.js:198, api/login-user.js:469 - Kredensial legacy `budi` di-hardcode di sumber (`LEGACY_BUDI_PASSWORD_HASH`) — hash yang diterima diketahui publik
+- [x] F-038 | MEDIUM | batch 3 | lib/user-ai-credentials.js:14 - Enkripsi BYOK memakai kunci master fallback hardcoded `'autocuan-chart-ai-key-secret-seed'`
+- [x] F-039 | MEDIUM | batch 3 | api/login-user.js:22, api/login-user.js:586 - `Origin` yang dikendalikan klien bisa memicu bypass device-binding (`isVercelPreviewRequest`)
+- [x] F-094 | MEDIUM | batch 3 | api/review-access.js:42, tools/run-build-test-suite.js:9 - Token gate review produksi (`REVIEW_ACCESS_TOKEN`) DITANAM HARDCODED sebagai fallback di sumber publik `api/review-access.js` — kontradiksi langsung dengan komentar fail-closed di file yang sama
 
 ### Batch 4 - HIGH: Integritas Gerbang Keselamatan Telegram (BUG-025 & Pemotongan Teks) (1 temuan)
 
@@ -248,6 +260,9 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 | Batch | Branch | PR | Commit | Status | Catatan |
 |---|---|---|---|---|---|
 | 0 | `fix/fix-phase-baseline-log` | #687 (merged) | `973c1f6`, `f713d58`, `5b44fab`; merge `4d640ba` | [x] SELESAI | Baseline + log 97 temuan; merge audit `027ea0e` |
+| 1 | `fix/unify-latest-price-policy` | #689 (merged) | `076d6a0` | [x] SELESAI | F-050 + F-051; test baru 396/396 |
+| 2 | `fix/unify-gemini-model-source` | #691 (merged) | `ce8403a` | [x] SELESAI | 5 temuan model Gemini; test baru 397/397 |
+| 3 | `fix/security-hardening-tokens-credentials` | #693 (merged) | `29be320`; merge `0091baa` | [x] SELESAI | F-019/F-037/F-038/F-039/F-094; test baru 398/398 |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
