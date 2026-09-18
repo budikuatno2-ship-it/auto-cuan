@@ -259,6 +259,13 @@ TUNTAS & BERSIH (4 file admin/security `public/`):
 - Total heading temuan tetap **84** — batch ini tidak menambah temuan.
 - Berikutnya: `public/auth-v2.js` (18.273 b), `public/account-center-lazy-loader-v1.js` (18.553 b), `public/account-center-v1.js` (46.744 b), `public/subscription-manual-payment-v1.js` (24.622 b), `public/position-sizing-calculator.js`, `public/track-record-backtest.js`, `public/ui-bugfix-pack-v1.js`, `public/dashboard-top5-only-ui.js`, `public/portfolio-ai-workspace-v1.js`, `public/tmp-ci-touch-batch1.js`.
 
+### PROGRES BATCH 45 (sesi 2026-09-18 lanjutan)
+TUNTAS & BERSIH (2 file auth/account `public/`):
+- `auth-v2.js` (448) — session-status server-verified, admin dipaksa hanya `budi`, error via textContent, `reset_token` regex-validated, `autocuanAuthReady` resolve benar.
+- `account-center-lazy-loader-v1.js` (329) — lazy-load idempoten, kontrak registrasi terms, markup terms statis (aman).
+- Total heading temuan tetap **84** — batch ini tidak menambah temuan.
+- Berikutnya: `public/account-center-v1.js` (553 b), `public/subscription-manual-payment-v1.js` (465 b), `public/position-sizing-calculator.js` (418 b), `public/track-record-backtest.js` (603 b), `public/ui-bugfix-pack-v1.js` (381 b), `public/dashboard-top5-only-ui.js` (77 b), `public/portfolio-ai-workspace-v1.js` (33 b).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.

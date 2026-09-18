@@ -1468,3 +1468,12 @@ Total heading temuan tetap **84** — batch ini tidak menambah temuan.
 - `public/admin-zero-link-pairing.js` (196) — **BERSIH**. Fail-closed (error polling tidak mengubah state UI/auth); `renderHint` menyaring `tag` ke `[A-Z0-9]{≤6}` dan `label` membuang `<>`; polling `stopped`/`inFlight` guard; konsumsi grant device sebelum berhenti (memperbaiki path /akses lama); diam saat `__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__`.
 
 Total heading temuan tetap **84** — batch ini tidak menambah temuan.
+
+---
+
+## MODUL: Auth v2 + Account Center Lazy Loader (2 file — TUNTAS, BERSIH)
+
+- `public/auth-v2.js` (448) — **BERSIH**. `validateServerSession` (session-status) hanya mempercayai `success===true && userId`; `storeSession` memaksa `is_admin` hanya bila `username==='budi'`; pesan error dirender via `textContent` (bukan innerHTML); `reset_token` divalidasi `/^[A-Za-z0-9_-]{32,100}$/` sebelum form reset; `autocuanAuthReady` resolve benar (komentar menjelaskan perbaikan bug lama). Semua fetch `/api/*` same-origin + timeout.
+- `public/account-center-lazy-loader-v1.js` (329) — **BERSIH**. Lazy-load runtime (account-center/manual-payment/voucher) idempoten via flag global + `data-*` marker; kontrak registrasi menandai `termsAccepted`/`termsVersion`; markup terms statis (tanpa interpolasi data pengguna) → innerHTML aman; `installRegistrationContract` idempoten via `originalDoRegister`/`originalOpenRegister` guard.
+
+Total heading temuan tetap **84** — batch ini tidak menambah temuan.
