@@ -462,6 +462,11 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: semua `onclick`/`onkeydown` inline memanggil fungsi bernama (tanpa interpolasi data user); form login/register/reset TIDAK punya atribut `action` (JS-driven, `doLogin`/`doRegister`/`doSelfResetPassword`); tidak ada `<input type="hidden">` berisi secret/token; `openVerificationBot` `rel="noopener noreferrer"`.
 - Berikutnya: `index.html` 600-2110.
 
+### PROGRES BATCH 80 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 600-899 dibaca (dashboard radar/history, analisis cockpit, sektor hot, screener markup awal). **BERSIH — tidak ada temuan baru.**
+- BERSIH: semua `onclick`/`oninput`/`onchange` inline memanggil fungsi bernama atau literal statis (mis. `UnifiedCockpit.syncActiveTicker('BBCA', …)`); tidak ada interpolasi data user di atribut event; tidak ada input hidden berisi secret.
+- Berikutnya: `index.html` 900-2110.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
