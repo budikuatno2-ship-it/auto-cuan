@@ -52,7 +52,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 1 | CRITICAL: Satukan Definisi Harga Terakhir (api/quote.js vs api/candles.js) | 2 | [x] SELESAI |
 | 2 | CRITICAL: Satu Sumber Kebenaran Nama Model Gemini | 9 | [-] SEBAGIAN (5/9) |
 | 3 | HIGH Keamanan: Token Hardcoded, Backdoor Kredensial, Kunci Enkripsi Fallback | 5 | [x] SELESAI |
-| 4 | HIGH: Integritas Gerbang Keselamatan Telegram (BUG-025 & Pemotongan Teks) | 1 | [ ] BELUM |
+| 4 | HIGH: Integritas Gerbang Keselamatan Telegram (BUG-025 & Pemotongan Teks) | 1 | [x] SELESAI |
 | 5 | HIGH: Hapus Data Fabrikasi Jejaring Insider | 2 | [ ] BELUM |
 | 6 | HIGH: Hapus Semua Tanggal Fallback Hardcoded | 12 | [ ] BELUM |
 | 7 | HIGH: Stored XSS Admin Logs + Validasi Charset Username | 1 | [ ] BELUM |
@@ -64,7 +64,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [ ] BELUM |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [ ] BELUM |
 
-Progres keseluruhan: **12/97 SELESAI, 0 DITARIK, 85 BELUM** (per Batch 3).
+Progres keseluruhan: **13/97 SELESAI, 0 DITARIK, 84 BELUM** (per Batch 4).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -104,6 +104,16 @@ Branch `fix/security-hardening-tokens-credentials` -> base `feat/daytrade-screen
 - **Gate**: `node --check` bersih pada 4 file sumber; `npm test` = **398/398 file lolos, exit 0** (baseline 397 setelah Batch 2 + 1 test baru). CI PR #693 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login, migrations).
 - **Diff**: 4 file sumber + 6 file test + `curated-build-tests.json`, +302/-255. Tidak menyentuh scope Batch 4+.
 
+### Batch 4 - SELESAI (PR #695, merge `23b5bda`)
+
+Branch `fix/telegram-safety-gate-text-limit` -> base `feat/daytrade-screener-v1`. Scope = 1 temuan: F-017 (HIGH, BUG-025). Tidak menyentuh scope Batch 5+.
+
+- **F-017 (BUG-025)**: [`api/sector-hot.js`](api/sector-hot.js:13623) `includesAny` tidak lagi memotong teks ke 300 karakter (`safeTelegramText(text, Infinity, '')`) dan [`joinTelegramTexts`](api/sector-hot.js:13634) tidak lagi memotong setiap bagian ke 120 karakter. Kata pemicu gate (`stale`, `invalid plan`, `weak liquidity`, dll.) di ujung `status_reason`/`plan_quality_note` kini terbaca utuh → gate memblokir (fail-CLOSED), bukan lolos (fail-OPEN).
+- **Blok diagnostik dihapus**: `includesAnyDiagnostics`, `getIncludesAnyDiagnostics`, `resetIncludesAnyDiagnostics`, dan seluruh blok "does NOT alter gate behavior" dihapus dari `api/sector-hot.js`. `safeTelegramText` kini mendukung `maxLen = Infinity` untuk jalur gate (jalur tampilan tetap memotong normal).
+- **Test regresi baru**: `test/telegram-safety-gate-text-limit.test.js` (4 subtest) membuktikan kata pemicu di atas indeks 300 (`plan_quality_note`, `stale_notes`) memblokir broadcast via `candidatePassesPublicTelegramSafetyGate`, plus kasus kontrol (trigger pendek tetap blokir, kandidat bersih tetap lolos). `test/includes-any-length-diagnostic.test.js` ditulis ulang (2 subtest) untuk mengunci perilaku tanpa pemotongan.
+- **Gate**: `node --check api/sector-hot.js` bersih; `npm test` = **399/399 file lolos, exit 0** (baseline 398 setelah Batch 3 + 1 test baru). CI PR #695 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login, Vercel).
+- **Diff**: `api/sector-hot.js` +13/-65, 2 file test (1 ditulis ulang, 1 baru), `curated-build-tests.json` +1. Tidak menyentuh scope Batch 5+.
+
 ---
 
 ## 3. Checklist Master 97 Temuan
@@ -137,7 +147,7 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 
 ### Batch 4 - HIGH: Integritas Gerbang Keselamatan Telegram (BUG-025 & Pemotongan Teks) (1 temuan)
 
-- [ ] F-017 | HIGH | batch 4 | api/sector-hot.js:13643 - BUG-025 lama MASIH BELUM DIPERBAIKI — hanya dipasangi "diagnostik", pemotongan 300 karakter tetap aktif
+- [x] F-017 | HIGH | batch 4 | api/sector-hot.js:13623 - BUG-025 lama MASIH BELUM DIPERBAIKI — hanya dipasangi "diagnostik", pemotongan 300 karakter tetap aktif → DIPERBAIKI: `includesAny`/`joinTelegramTexts` tanpa pemotongan, diagnostik dihapus
 
 ### Batch 5 - HIGH: Hapus Data Fabrikasi Jejaring Insider (2 temuan)
 
