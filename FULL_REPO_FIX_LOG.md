@@ -54,7 +54,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 3 | HIGH Keamanan: Token Hardcoded, Backdoor Kredensial, Kunci Enkripsi Fallback | 5 | [x] SELESAI |
 | 4 | HIGH: Integritas Gerbang Keselamatan Telegram (BUG-025 & Pemotongan Teks) | 1 | [x] SELESAI |
 | 5 | HIGH: Hapus Data Fabrikasi Jejaring Insider | 2 | [x] SELESAI |
-| 6 | HIGH: Hapus Semua Tanggal Fallback Hardcoded | 12 | [ ] BELUM |
+| 6 | HIGH: Hapus Semua Tanggal Fallback Hardcoded | 12 | [x] SELESAI |
 | 7 | HIGH: Stored XSS Admin Logs + Validasi Charset Username | 1 | [ ] BELUM |
 | 8 | HIGH: analyze-legacy.js Berhenti Mengarang RSI/Volume/Change | 3 | [ ] BELUM |
 | 9 | MEDIUM: Cluster Fabrikasi Angka di Bandarmologi & Publisher | 6 | [ ] BELUM |
@@ -64,7 +64,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [ ] BELUM |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [ ] BELUM |
 
-Progres keseluruhan: **15/97 SELESAI, 0 DITARIK, 82 BELUM** (per Batch 5).
+Progres keseluruhan: **27/97 SELESAI, 0 DITARIK, 70 BELUM** (per Batch 6).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -125,6 +125,22 @@ Branch `fix/remove-insider-data-fabrication` -> base `feat/daytrade-screener-v1`
 - **Gate**: `node --check` bersih pada `lib/insider-network-service.js`, `public/bandarmologi-runtime.js`, dan `test/insider-data-fabrication-removal.test.js`; `npm test` = **400/400 file tests lolos, exit 0** (baseline 399 setelah Batch 4 + 1 test regresi baru). CI PR #697 hijau (build-and-focused-tests, security-gate, Analyze JavaScript, CodeQL, command-login, portfolio-persistence, Vercel + admin-hardening).
 - **Diff**: 6 file, +166/-490. Tidak menyentuh scope Batch 6+.
 
+### Batch 6 - SELESAI (PR #699, merge `44abc80`)
+
+Branch `fix/remove-hardcoded-date-fallbacks` -> base `feat/daytrade-screener-v1`. Scope = 12 temuan: F-005, F-008, F-030, F-031, F-032, F-040, F-042, F-043, F-068, F-072, F-078, F-080. Tidak menyentuh scope Batch 7+.
+
+- **Aturan penggantian**: setiap literal tanggal statis (`2026-09-07`/`2026-09-08`/`2026-09-11`/`2026-08-01`/`2026-09-01`) dihapus dari jalur kode. Bila butuh hari bursa aktif/terakhir -> `getEffectiveTradingDate()` / `idxTradingCalendar.previousTradingDay()`; bila data tanggal memang tidak ada -> `null` / `[]` / `'—'` (status eksplisit DATE_UNRESOLVED). Tidak ada lagi fallback ke string tanggal statis.
+- **F-042/F-068 ([`lib/bandarmologi-service.js`](lib/bandarmologi-service.js:210))**: 3 literal `'2026-09-11'` di `getEffectiveTradingDate` -> `null`; `getDynamicTradingDays` tidak lagi mengembalikan deret tanggal mati -> `[]`; 2 literal tambahan di `normalizeBrokerSummary` (`:808`) dan `getCombinedBandarmologiData` (`:1984`) -> `null`.
+- **F-043 ([`lib/bandarmologi-service.js`](lib/bandarmologi-service.js:299))**: gerbang kesegaran `getReferencePrice` tidak lagi memakai batas literal `'2026-08-01'`; ambang kini dihitung dari `idxTradingCalendar.previousTradingDay(refKey, undefined, { maxLookback: 60 })` (fallback `addDaysToKey(refKey, -7)` bila kalender tak tersedia).
+- **F-072 ([`lib/bandarmologi-intel-service.js`](lib/bandarmologi-intel-service.js:1269))**: 3 literal `'2026-09-11'` (`effective_date`/`evaluated_at` di safe-fallback, `getEffectiveTradingDate(...) || ...`, `marketDate`) -> `null`; 1 literal `'2026-09-08'` di jalur fetch VPS -> `'latest'`.
+- **F-030 ([`lib/vps-data-fetcher.js`](lib/vps-data-fetcher.js:243))**: 7 literal `'2026-09-08'` (default param + `String(date || ...)` di `fetchBrokerSummaryFromVpsSync`, `fetchBrokerSummaryFromVps`, `ensureBrokerSummary`) -> `'latest'`.
+- **F-031/F-078 ([`lib/broker-hunter-service.js`](lib/broker-hunter-service.js:368))**: `targetDates = ['2026-09-07']` -> `[]` (memicu cabang "no data" yang jujur); `date_range_label` fallback `'2026-09-07'` -> `'—'`.
+- **F-080 ([`lib/insider-network-service.js`](lib/insider-network-service.js:776))**: `last_date: r.date || '2026-09-01'` -> `r.date || null`.
+- **F-005/F-008/F-040 ([`public/bandarmologi-runtime.js`](public/bandarmologi-runtime.js:134))**: 7 literal `'2026-09-11'` dihapus — `selectedDate` fallback (2 lokasi) -> `null`; header `Tanggal:` (`:2244`), `formatDateDisplay` default (`:4055`), label `Evaluasi:` (`:4435`), `activeMarketDate` (`:4702`) -> `'—'` via cabang input-kosong `formatDateDisplay`.
+- **Test regresi baru**: [`test/remove-hardcoded-date-fallbacks.test.js`](test/remove-hardcoded-date-fallbacks.test.js) (13 subtest) — (a) source-level: 6 modul tidak memuat literal tanggal terlarang di jalur kode (komentar ditoleransi); (b) behavior: `getEffectiveTradingDate` -> `null` saat tak ada hari bursa sebelumnya, `getDynamicTradingDays` -> `[]`, `safeEvaluateBandarmologiIntelForTicker` tidak pernah mengembalikan literal basi (sama dengan hasil dinamis), VPS fetcher default `'latest'`, broker-hunter `date_range_label` bukan literal, insider `last_date` -> `null`, `formatDateDisplay('')` -> `'—'`. Didaftarkan di [`tools/curated-build-tests.json`](tools/curated-build-tests.json:386).
+- **Gate**: `node --check` bersih pada 6 file sumber + test; `npm test` = **401/401 file lolos, exit 0** (baseline 400 setelah Batch 5 + 1 test baru). CI PR #699 hijau (build-and-focused-tests, security-gate, Analyze JavaScript, CodeQL, command-login, portfolio-persistence, Vercel + admin-hardening).
+- **Diff**: 6 file sumber + 1 test baru + `curated-build-tests.json`, +306/-31. Tidak menyentuh scope Batch 7+.
+
 ---
 
 ---
@@ -169,18 +185,18 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 
 ### Batch 6 - HIGH: Hapus Semua Tanggal Fallback Hardcoded (12 temuan)
 
-- [ ] F-005 | LOW | batch 6 | public/bandarmologi-runtime.js:4162 - `formatDateDisplay` di UI Bandarmologi mengembalikan tanggal literal `'2026-09-11'` sebagai default
-- [ ] F-008 | LOW | batch 6 | public/bandarmologi-runtime.js:2244 - Tanggal literal `'2026-09-11'` juga muncul di header UI Bandarmologi
-- [ ] F-030 | HIGH | batch 6 | lib/vps-data-fetcher.js:243 - `lib/vps-data-fetcher.js` memakai default tanggal literal `'2026-09-08'` di 7 tempat
-- [ ] F-031 | HIGH | batch 6 | lib/broker-hunter-service.js:368 - `lib/broker-hunter-service.js` memakai daftar tanggal literal `['2026-09-07']`
-- [ ] F-032 | MEDIUM | batch 6 | lib/bandarmologi-service.js:808 - Dua literal `'2026-09-11'` tambahan di `lib/bandarmologi-service.js`
-- [ ] F-040 | MEDIUM | batch 6 | public/bandarmologi-runtime.js:134, public/bandarmologi-runtime.js:169 - `public/bandarmologi-runtime.js` juga memakai fallback tanggal literal `'2026-09-11'` untuk pemilih tanggal
-- [ ] F-042 | HIGH | batch 6 | lib/bandarmologi-service.js:213, lib/bandarmologi-service.js:220 - Tanggal bursa fallback di-hardcode `'2026-09-11'` di 3 tempat — setelah tanggal itu, Bandarmologi dapat menampilkan tanggal & data lama sebagai "efektif"
-- [ ] F-043 | HIGH | batch 6 | lib/bandarmologi-service.js:299 - Gerbang kesegaran `getReferencePrice` memakai batas tanggal literal `'2026-08-01'` — candle lama dapat lolos sebagai referensi harga
-- [ ] F-068 | LOW | batch 6 | lib/bandarmologi-service.js:213 - Literal tanggal `2026-09-11` sebagai default/fallback tanggal data di 4 jalur (termasuk payload tanggal NO_DATA)
-- [ ] F-072 | LOW | batch 6 | lib/bandarmologi-intel-service.js:1303 - Literal tanggal `2026-09-08` sebagai default tanggal fetch VPS + `2026-09-11` sebagai default `effective_date` (3 lokasi) di jalur intel
-- [ ] F-078 | LOW | batch 6 | lib/broker-hunter-service.js:368 - Literal tanggal `'2026-09-07'` sebagai fallback `targetDates`/`date_range_label` saat tidak ada tanggal tersedia
-- [ ] F-080 | LOW | batch 6 | lib/insider-network-service.js:1102 - Literal tanggal `'2026-09-01'` sebagai fallback `last_date` di roster insider
+- [x] F-005 | LOW | batch 6 | public/bandarmologi-runtime.js:4162 - `formatDateDisplay` di UI Bandarmologi mengembalikan tanggal literal `'2026-09-11'` sebagai default _(DIPERBAIKI: default -> `'—'`)_
+- [x] F-008 | LOW | batch 6 | public/bandarmologi-runtime.js:2244 - Tanggal literal `'2026-09-11'` juga muncul di header UI Bandarmologi _(DIPERBAIKI: hapus fallback literal)_
+- [x] F-030 | HIGH | batch 6 | lib/vps-data-fetcher.js:243 - `lib/vps-data-fetcher.js` memakai default tanggal literal `'2026-09-08'` di 7 tempat _(DIPERBAIKI: default -> `'latest'`)_
+- [x] F-031 | HIGH | batch 6 | lib/broker-hunter-service.js:368 - `lib/broker-hunter-service.js` memakai daftar tanggal literal `['2026-09-07']` _(DIPERBAIKI: `[]` + cabang "no data")_
+- [x] F-032 | MEDIUM | batch 6 | lib/bandarmologi-service.js:808 - Dua literal `'2026-09-11'` tambahan di `lib/bandarmologi-service.js` _(DIPERBAIKI: -> `null`)_
+- [x] F-040 | MEDIUM | batch 6 | public/bandarmologi-runtime.js:134, public/bandarmologi-runtime.js:169 - `public/bandarmologi-runtime.js` juga memakai fallback tanggal literal `'2026-09-11'` untuk pemilih tanggal _(DIPERBAIKI: -> `null`)_
+- [x] F-042 | HIGH | batch 6 | lib/bandarmologi-service.js:213, lib/bandarmologi-service.js:220 - Tanggal bursa fallback di-hardcode `'2026-09-11'` di 3 tempat _(DIPERBAIKI: -> `null`; `getDynamicTradingDays` -> `[]`)_
+- [x] F-043 | HIGH | batch 6 | lib/bandarmologi-service.js:299 - Gerbang kesegaran `getReferencePrice` memakai batas tanggal literal `'2026-08-01'` _(DIPERBAIKI: -> `idxTradingCalendar.previousTradingDay()`)_
+- [x] F-068 | LOW | batch 6 | lib/bandarmologi-service.js:213 - Literal tanggal `2026-09-11` sebagai default/fallback tanggal data di 4 jalur _(DIPERBAIKI: -> `null`)_
+- [x] F-072 | LOW | batch 6 | lib/bandarmologi-intel-service.js:1303 - Literal tanggal `2026-09-08` default fetch VPS + `2026-09-11` default `effective_date` (3 lokasi) _(DIPERBAIKI: `'latest'` / `null`)_
+- [x] F-078 | LOW | batch 6 | lib/broker-hunter-service.js:368 - Literal tanggal `'2026-09-07'` sebagai fallback `targetDates`/`date_range_label` _(DIPERBAIKI: `[]` / `'—'`)_
+- [x] F-080 | LOW | batch 6 | lib/insider-network-service.js:1102 - Literal tanggal `'2026-09-01'` sebagai fallback `last_date` di roster insider _(DIPERBAIKI: -> `null`)_
 
 ### Batch 7 - HIGH: Stored XSS Admin Logs + Validasi Charset Username (1 temuan)
 
@@ -286,6 +302,9 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 | 1 | `fix/unify-latest-price-policy` | #689 (merged) | `076d6a0` | [x] SELESAI | F-050 + F-051; test baru 396/396 |
 | 2 | `fix/unify-gemini-model-source` | #691 (merged) | `ce8403a` | [x] SELESAI | 5 temuan model Gemini; test baru 397/397 |
 | 3 | `fix/security-hardening-tokens-credentials` | #693 (merged) | `29be320`; merge `0091baa` | [x] SELESAI | F-019/F-037/F-038/F-039/F-094; test baru 398/398 |
+| 4 | `fix/telegram-safety-gate-text-limit` | #695 (merged) | `23b5bda` | [x] SELESAI | F-017 (BUG-025); test baru 399/399 |
+| 5 | `fix/remove-insider-data-fabrication` | #697 (merged) | `a78dd89` | [x] SELESAI | F-007 + F-041; test baru 400/400 |
+| 6 | `fix/remove-hardcoded-date-fallbacks` | #699 (merged) | `fc00dbc`; merge `44abc80` | [x] SELESAI | 12 temuan tanggal literal; test baru 401/401 |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
