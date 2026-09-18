@@ -201,7 +201,11 @@ TUNTAS & BERSIH (8 file `lib/admin-*`):
 - `public/watchlist-runtime.js` (507) **TUNTAS** — BERSIH (escapeHtml/escapeAttr, same-origin, delegasi klik notes).
 - `public/track-record-runtime.js` (490) **TUNTAS** — 1 LOW: dua jalur error interpolasi `data.error`/`err.message` mentah ke innerHTML tanpa escapeHtml (baris 58, 65). Inti bersih (`trEntryBounds` normalisasi urutan entry, CSV escapeCsvCell).
 - Total heading temuan kini **82** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 32 LOW).
-- Berikutnya: sisa `public/` runtime UI publik lain.
+### PROGRES BATCH 35 (sesi 2026-09-18 lanjutan)
+- `public/portfolio-command-center.js` (605) **TUNTAS 100%** (sesi lama 1-479 + batch ini 480-605) — BERSIH (escapeHtml konsisten, guard input, journal/planner lokal).
+- `public/mobile-ui-runtime-v5.js` (435) **TUNTAS** — BERSIH (presentation-only, viewport-aware, long-press drag, tidak mengubah logika akses/trading).
+- Total heading temuan tetap **82** — batch ini tidak menemukan bug baru.
+- Berikutnya: sisa `public/` runtime UI publik lain (portfolio-*, pattern-*, subscription-*, admin-*, dll).
 
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
