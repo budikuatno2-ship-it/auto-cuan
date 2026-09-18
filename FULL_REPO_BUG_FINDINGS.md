@@ -1369,3 +1369,34 @@ Kedua file dibaca baris-per-baris (seluruh rentang). **BERSIH — tidak ada bug 
 4. **`patternPollInterval` state bocor saat logout** ([`pattern-stable-runtime.js:638`](public/pattern-stable-runtime.js:638)) — `clearPatternInterval` menutup variabel `var` yang di-hoist, jadi pemanggilan saat logout benar-benar membatalkan interval. Aman.
 
 Total heading temuan tetap **82** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 32 LOW) — batch ini tidak menambah temuan.
+
+---
+
+## MODUL: Frontend Pattern Safety + Portfolio Planner/Sync (4 file — TUNTAS)
+
+Dibaca baris-per-baris. Tiga file BERSIH; satu temuan LOW (edge).
+
+- `public/pattern-direction-safety.js` (323) — **BERSIH**. Model murni (tanpa DOM/observer — komentar menjelaskan penghapusan patcher lama yang menyebabkan 7014 mutasi/4s). `patternDirection` benar: `candidate.name` selalu `'Bullish ABCD'`/`'Bearish ABCD'` ([`lib/pattern-abcd.js:151`](lib/pattern-abcd.js:151)) → `labelDirection` mengembalikan arah tepat. `evaluateAbcdLevels` memakai angka otoritatif (bukan string ter-render), `statusRank` mengurutkan berdasarkan nilai keputusan.
+- `public/pattern-tab-resume-guard.js` (137) — **BERSIH**. `createStableGate` mencegah denial transien saat focus+visibility bersamaan (in-flight dedup + `isAllowed()` re-check); `revealPatternPage` membersihkan ketiga atribut (`hidden`/`aria-hidden`/`inert`). Wrapper `refresh()` membuang argumen `force`, tetapi listener focus/visibility milik `pattern-map.js` sendiri tetap memanggil `refreshAccess(true)` lokal → re-check paksa tidak hilang; tidak ada bug terlihat.
+- `public/portfolio-planner-v1.js` (240) — **BERSIH**. Position sizing BigInt (lot 100, bps 10000), validasi ketat (stop<entry, TP1>entry, TP2>TP1, batas risiko per profil), `safeNumber` mengembalikan null bila melewati MAX_SAFE_INTEGER, guidance jujur saat modal < 1 lot.
+
+### [LOW] `pagehideSave` memakai `keepalive:true` dengan seluruh state portofolio (batas ~64KB browser)
+- **Lokasi:** [`public/portfolio-supabase-sync.js:259-270`](public/portfolio-supabase-sync.js:259)
+- **Kutipan kode bermasalah:**
+  ```js
+  function pagehideSave() {
+    if (!hydrated || !dirty || !uid) return;
+    try {
+      fetch(ENDPOINT, {
+        method: 'POST', credentials: 'same-origin', keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'portfolio-state-save', portfolio_state: readLocalState(uid), expected_updated_at: cloudRevision })
+      });
+    } catch (_) {}
+  }
+  ```
+- **Penjelasan:** `keepalive` request dibatasi ~64KB oleh browser (Chrome/Firefox). Bila state portofolio (plans + prices + price_meta + journal + snapshot + changes) melewati batas itu, flush terakhir saat navigasi/`pagehide` gagal senyap (tidak ada `.catch` pada promise fetch, hanya `try/catch` sinkron). Dampak sempit: save debounce (650ms) + change-watcher (700ms) biasanya sudah menyimpan perubahan dalam ~1,4s, jadi kehilangan data hanya bila perubahan terjadi <1,4s sebelum navigasi DAN state >64KB. Bukan bug fungsional pada portofolio normal, tetapi jalur flush terakhir tidak benar-benar menjamin tersimpan untuk state besar.
+- **Bukti verifikasi riil:** Bukti kode: `keepalive:true` + body = `readLocalState(uid)` penuh; tidak ada penanganan kegagalan promise. Kunci `price_updated_at` terverifikasi cocok dengan `priceTimeKey()` Command Center ([`portfolio-command-center.js:89`](public/portfolio-command-center.js:89)).
+- **Usulan arah perbaikan:** Untuk state besar, kirim hanya bagian yang berubah, atau tambahkan `.catch` yang menandai `dirty` tetap true + `setStatus('local-fallback', ...)` agar pengguna tahu belum tersimpan; atau andalkan `navigator.sendBeacon` dengan payload ringkas.
+
+Total heading temuan kini **83** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 33 LOW).

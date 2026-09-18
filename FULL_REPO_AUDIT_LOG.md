@@ -213,6 +213,14 @@ TUNTAS & BERSIH (8 file `lib/admin-*`):
 - 4 kecurigaan diperiksa & DITOLAK (dicatat sebagai bukti di findings): `Number(null)===0` price_age_hours (produksi selalu men-stamp), `state.total` = jumlah ticker dipindai (disengaja), `markdown()` fallback (entity ter-escape), `patternPollInterval` closure (benar).
 - Total heading temuan tetap **82** — batch ini tidak menambah temuan.
 
+### PROGRES BATCH 37-38 (sesi 2026-09-18 lanjutan)
+- `public/pattern-direction-safety.js` (323) **TUNTAS** — **BERSIH**. Model murni tanpa DOM/observer; `patternDirection` benar (`candidate.name` = 'Bullish/Bearish ABCD' di [`pattern-abcd.js:151`](lib/pattern-abcd.js:151)); evaluasi level dari angka otoritatif.
+- `public/pattern-tab-resume-guard.js` (137) **TUNTAS** — **BERSIH**. `createStableGate` anti-denial transien; `revealPatternPage` bersihkan `hidden`+`aria-hidden`+`inert`. Wrapper `refresh()` buang `force` TIDAK berdampak (listener `pattern-map.js` tetap panggil `refreshAccess(true)` lokal).
+- `public/portfolio-planner-v1.js` (240) **TUNTAS** — **BERSIH**. Position sizing BigInt, validasi ketat, `safeNumber` null saat > MAX_SAFE_INTEGER.
+- `public/portfolio-supabase-sync.js` (285) **TUNTAS** — 1 LOW: `pagehideSave` `keepalive:true` dengan state penuh → gagal senyap >64KB tanpa `.catch`; kunci `price_updated_at` terverifikasi cocok dengan `priceTimeKey()` Command Center.
+- Total heading temuan kini **83** (2 CRITICAL, 15 HIGH, 33 MEDIUM, 33 LOW).
+- Berikutnya: `public/pattern-map.js` (352 baris target), `public/signal-gate-transparency.js`, `public/portfolio-command-center-model.js`, sisa `subscription-*`/`admin-*`/`mobile-*`.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
