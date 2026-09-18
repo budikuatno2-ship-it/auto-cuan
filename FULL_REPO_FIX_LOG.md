@@ -55,7 +55,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 4 | HIGH: Integritas Gerbang Keselamatan Telegram (BUG-025 & Pemotongan Teks) | 1 | [x] SELESAI |
 | 5 | HIGH: Hapus Data Fabrikasi Jejaring Insider | 2 | [x] SELESAI |
 | 6 | HIGH: Hapus Semua Tanggal Fallback Hardcoded | 12 | [x] SELESAI |
-| 7 | HIGH: Stored XSS Admin Logs + Validasi Charset Username | 1 | [ ] BELUM |
+| 7 | HIGH: Stored XSS Admin Logs + Validasi Charset Username | 1 | [x] SELESAI |
 | 8 | HIGH: analyze-legacy.js Berhenti Mengarang RSI/Volume/Change | 3 | [ ] BELUM |
 | 9 | MEDIUM: Cluster Fabrikasi Angka di Bandarmologi & Publisher | 6 | [ ] BELUM |
 | 10 | MEDIUM: Cluster Fabrikasi di Telegram Templates & Track Record Backtest | 2 | [ ] BELUM |
@@ -64,7 +64,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [ ] BELUM |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [ ] BELUM |
 
-Progres keseluruhan: **27/97 SELESAI, 0 DITARIK, 70 BELUM** (per Batch 6).
+Progres keseluruhan: **28/97 SELESAI, 0 DITARIK, 69 BELUM** (per Batch 7).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -141,6 +141,16 @@ Branch `fix/remove-hardcoded-date-fallbacks` -> base `feat/daytrade-screener-v1`
 - **Gate**: `node --check` bersih pada 6 file sumber + test; `npm test` = **401/401 file lolos, exit 0** (baseline 400 setelah Batch 5 + 1 test baru). CI PR #699 hijau (build-and-focused-tests, security-gate, Analyze JavaScript, CodeQL, command-login, portfolio-persistence, Vercel + admin-hardening).
 - **Diff**: 6 file sumber + 1 test baru + `curated-build-tests.json`, +306/-31. Tidak menyentuh scope Batch 7+.
 
+### Batch 7 - SELESAI (PR #701, merge `239734c`)
+
+Branch `fix/admin-logs-stored-xss` -> base `feat/daytrade-screener-v1`. Scope = 1 temuan: F-087. Tidak menyentuh scope Batch 8+.
+
+- **F-087 ([`public/index.html`](public/index.html:7387))**: seluruh nilai dinamis di `loadAdminLogs` kini dibungkus `escapeAdminHtml` — pesan error (`data.error`), kartu ringkasan (`totalLogins`/`totalSearches`/`totalAIAnalyses`/`mostSearchedTicker`), kartu analysis (`row.ticker`/`row.username`/`row.mode`/`row.created_at`), sel tabel generik (`val`), dan header kolom dinamis (`k`). Sebelumnya `username`/`ticker` disisipkan mentah ke `innerHTML`.
+- **F-087 ([`api/register-user.js`](api/register-user.js:31))**: allowlist charset `USERNAME_RE = /^[a-z0-9._-]{2,30}$/i` ditambahkan dan ditegakkan sebelum penulisan apa pun; username berisi tag HTML/script, spasi, atau metakarakter lain ditolak dengan error validasi 400. `USERNAME_RE` di-export via `__test`.
+- **Test regresi baru**: [`test/admin-logs-stored-xss.test.js`](test/admin-logs-stored-xss.test.js) (7 subtest) — (a) API: `USERNAME_RE` menerima username normal dan menolak `<img src=x onerror=alert(1)>`/`<script>`/spasi/`&`/kutip/`/`/`\`/`;`/`(`/NUL/panjang>30; registrasi dengan username HTML ditolak 400 tanpa RPC; registrasi username valid tetap sukses; (b) UI: `loadAdminLogs` diekstrak ke sandbox `node:vm` headless dengan DOM + `fetch` palsu, membuktikan teks ter-escape (`<img...>`) yang mencapai `innerHTML`, bukan HTML mentah, untuk kartu analysis, tabel generik (termasuk header dinamis), dan pesan error. Didaftarkan di [`tools/curated-build-tests.json`](tools/curated-build-tests.json:403).
+- **Gate**: `node --check` bersih pada `api/register-user.js` + test; `npm test` = **402/402 file lolos, exit 0** (baseline 401 setelah Batch 6 + 1 test baru). CI PR #701 hijau (build-and-focused-tests, security-gate, Analyze JavaScript, CodeQL, command-login, portfolio-persistence, account-center, Vercel + admin-hardening).
+- **Diff**: `api/register-user.js` +14/-1, `public/index.html` +11/-11, test baru 243 baris, `curated-build-tests.json` +1. Tidak menyentuh scope Batch 8+.
+
 ---
 
 ---
@@ -200,7 +210,7 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 
 ### Batch 7 - HIGH: Stored XSS Admin Logs + Validasi Charset Username (1 temuan)
 
-- [ ] F-087 | HIGH | batch 7 | public/index.html:7404, api/log.js:109 - Stored XSS di viewer log admin: `loadAdminLogs` menyisipkan `username`/`ticker` mentah ke `innerHTML`, padahal username tidak dibatasi charset
+- [x] F-087 | HIGH | batch 7 | public/index.html:7404, api/log.js:109 - Stored XSS di viewer log admin: `loadAdminLogs` menyisipkan `username`/`ticker` mentah ke `innerHTML`, padahal username tidak dibatasi charset _(DIPERBAIKI: escape `escapeAdminHtml` di semua nilai dinamis `loadAdminLogs` + allowlist charset `USERNAME_RE` di `api/register-user.js`)_
 
 ### Batch 8 - HIGH: analyze-legacy.js Berhenti Mengarang RSI/Volume/Change (3 temuan)
 
