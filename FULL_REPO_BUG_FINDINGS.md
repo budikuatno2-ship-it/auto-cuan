@@ -1193,3 +1193,33 @@ File dibaca baris-per-baris (chunk 1-300, 301-600, 601-900, 901-1200, 1201-1500,
 - **Penjelasan:** Ketika meta belum terisi (scan belum pernah jalan / meta kosong), UI menampilkan "Universe: 760" dan "Scanned: 760" — angka yang tidak berasal dari data mana pun, hanya konstanta yang diasumsikan sebagai ukuran universe IDX. Karena API sendiri sudah memakai fallback yang sama, frontend hanya mencerminkan perilaku itu, tetapi hasil akhirnya tetap: user melihat statistik cakupan scan yang terlihat presisi padahal karangan. Bila universe riil berbeda (mis. 800+ ticker terdaftar), angka ini menyesatkan tentang seberapa luas scan sebenarnya.
 - **Bukti verifikasi riil:** Bukti kode: literal `760` di frontend dan API (dua jalur), `720` untuk NK; grep `760`/`720` di `FULL_REPO_BUG_FINDINGS.md` sebelumnya nol (belum pernah dicatat).
 - **Usulan arah perbaikan:** Tampilkan `—`/`n/a` saat meta kosong alih-alih konstanta; bila perlu estimasi, ambil dari sumber universe resmi (`stock_boards` count) dan tandai sebagai estimasi.
+
+### [MEDIUM] `mountRankingCardOnOwnPage()` mereferensikan identifier tak terdeklarasi `nodeToMove` → ReferenceError yang mematikan seluruh enhance Ranking Harian (termasuk banner sesi mixed-date)
+- **Lokasi:** [`public/stock-analysis-ai.js:400`](public/stock-analysis-ai.js:400)
+- **Kutipan kode bermasalah:**
+  ```js
+  var card = tableWrap.closest('.unified-card') || tableWrap.parentElement;
+  if (card) {
+    card.dataset.rankingPolished = 'true';
+  }
+  if (search) {
+    search.placeholder = 'Cari ticker di ranking…';
+  }
+  nodeToMove.style.borderBottom = '0';   // <-- nodeToMove TIDAK PERNAH dideklarasikan
+  ```
+- **Penjelasan:** `nodeToMove` tidak dideklarasikan di file ini (var/let/const) maupun diekspor/diimpor dari tempat lain — pencarian seluruh repo hanya menemukan SATU kemunculan, yaitu baris ini. Saat elemen `rankingTableWrap` ada di DOM, `mountRankingCardOnOwnPage()` melewati early-return (`if (!tableWrap) return false`) lalu mencapai baris 400 dan melempar `ReferenceError: nodeToMove is not defined`. Karena `enhanceDailyRanking()` memanggil fungsi ini dan `init()` memanggilnya berulang di `setInterval` (sampai 30×), semuanya berhenti tepat sebelum: styling kartu, penyisipan badge `marketContextSessionBadge`, `wrapRenderRankingTableForSessionLabel()`, dan `updateRankingSessionLabel()`. Akibat nyata: fitur "catatan sesi / peringatan data tertinggal" Ranking Harian — yang justru ditulis khusus untuk bug audit 12 Agu 2026 (label T-1 statis) — tidak pernah tampil, dan konsol diisi error tiap detik selama 30 detik.
+- **Bukti verifikasi riil:** Pencarian repo: `nodeToMove` muncul 1× (hanya baris 400); tidak ada deklarasi global. Alur panggil terverifikasi: `init()` → `enhanceDailyRanking()` → `mountRankingCardOnOwnPage()` ([`:648-675`](public/stock-analysis-ai.js:648)). Ini regresi refactor: kemungkinan sisa dari pemindahan node (`nodeToMove`) yang dulu ada.
+- **Usulan arah perbaikan:** Hapus baris 400 (fungsi sudah tidak memindahkan node), atau deklarasikan `nodeToMove` yang dimaksud (mis. `tableWrap`/`card`) bila memang perlu menghapus border. Tambahkan guard agar exception tidak mematikan sisa enhance.
+
+### [LOW] `mountRankingCardOnOwnPage()` menulis `card.style.*` tanpa null-guard meski `card` dijaga `if (card)` beberapa baris sebelumnya
+- **Lokasi:** [`public/stock-analysis-ai.js:393-405`](public/stock-analysis-ai.js:393)
+- **Kutipan kode bermasalah:**
+  ```js
+  var card = tableWrap.closest('.unified-card') || tableWrap.parentElement;
+  if (card) { card.dataset.rankingPolished = 'true'; }
+  ...
+  card.style.background = 'linear-gradient(...)';   // <-- tanpa guard, padahal di atas di-guard
+  ```
+- **Penjelasan:** Pola guard tidak konsisten: `card` diperiksa `if (card)` untuk `dataset`, tetapi empat baris setelahnya diakses langsung (`card.style.*`) tanpa guard. Bila `tableWrap` terlepas dari DOM (`parentElement === null`), ini melempar TypeError. Dampak praktis kecil (elemen ranking biasanya terpasang), tetapi enkapsulasi guard yang setengah jalan menyembunyikan asumsi yang rapuh.
+- **Bukti verifikasi riil:** Bukti kode langsung; guard hanya pada satu penggunaan dari lima.
+- **Usulan arah perbaikan:** Bungkus blok styling dalam `if (card) { … }`, atau early-return saat `card` null.

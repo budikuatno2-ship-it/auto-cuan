@@ -138,6 +138,13 @@ TUNTAS & BERSIH (13 file sisa `daytrade-*`, dibaca baris-per-baris):
 - `public/daytrade-runtime.js` (398) **TUNTAS** — 1 LOW: fallback `universe_count || 760` / `scanned_count || 760` (frontend) yang bersumber dari `api/sector-hot.js:11927-11928` (dan `720` untuk NK di `:10626-10627`) — angka cakupan scan karangan saat meta kosong.
 - Total heading temuan kini **73** (2 CRITICAL, 15 HIGH, 31 MEDIUM, 25 LOW).
 
+### PROGRES BATCH 25 (sesi 2026-09-18 lanjutan)
+- `public/stock-analysis-ai.js` (678) **TUNTAS** — SSE client hati-hati (hanya `text/event-stream`+ok dibaca sebagai stream; partial text tidak pernah dipresentasikan final; label "Ringkasan lokal — bukan jawaban AI"; hanya jawaban model nyata masuk history). Temuan baru: 1 MEDIUM + 1 LOW:
+  1. MEDIUM — `nodeToMove` identifier TAK TERDEKLARASI di [`:400`](public/stock-analysis-ai.js:400) (grep repo: 1 kemunculan) → ReferenceError mematikan `mountRankingCardOnOwnPage` → badge sesi + banner data-tertinggal Ranking Harian tak pernah tampil; error berulang tiap detik (interval 30×).
+  2. LOW — `card.style.*` tanpa null-guard padahal `card` di-guard di atasnya.
+- `public/market-feature-runtime.js` (1.510): sesi lalu sudah dibaca 1-600; lanjut 601-910.
+- Total heading temuan kini **75** (2 CRITICAL, 15 HIGH, 32 MEDIUM, 26 LOW).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
