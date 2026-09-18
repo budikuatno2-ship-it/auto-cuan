@@ -487,6 +487,17 @@ TUNTAS & BERSIH (3 file `public/`):
 - Total heading temuan tetap **91**.
 - **Berikutnya:** `portfolio-command-center*.html`, `portfolio-planner.html`, `trust.html`, `methodology.html`, `404.html`.
 
+### PROGRES BATCH 86-87 (sesi 2026-09-18 lanjutan) — **SELURUH `public/*.html` TUNTAS**
+- `public/portfolio-command-center.html` (314) **TUNTAS** — **BERSIH**. Semua handler bernama; form input `maxlength`/`inputmode`; script src lokal (sudah diaudit).
+- `public/portfolio-command-center-v2.html` (163) **TUNTAS** — **BERSIH**. Boot loader: `escapeHtml(message)` di `failBoot`; `DOMParser` + **menghapus SEMUA `<script>`** dari HTML yang di-fetch sebelum `innerHTML` (anti-injeksi); asset timeout + failBoot.
+- `public/portfolio-planner.html` (113) **TUNTAS** — **BERSIH**. `escapeHtml` konsisten di SEMUA interpolasi (ticker/status/id/group_name/top_ticker); `checkAccess` via `/api/admin-users` sesi; `num()`/`ticker()` validasi.
+- `public/trust.html` (151) **TUNTAS** — **BERSIH**. Statis (tanpa script); klaim jujur (non-claims eksplisit).
+- `public/methodology.html` (47) **TUNTAS** — **BERSIH**. Statis + **CSP ketat** (`script-src 'none'; connect-src 'none'; form-action 'none'`).
+- `public/404.html` (31) **TUNTAS** — **BERSIH**. Statis.
+- **SELURUH `public/*.html` KINI TUNTAS 100%** (index.html 12.342 + 10 file satelit).
+- Total heading temuan tetap **91** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 36 LOW).
+- **Berikutnya:** `supabase/*.sql` (56 migrasi) — constraint, default fiktif, tipe data harga, policy RLS; lalu `tools/` (~102), `test/` (~521).
+
 ### PROGRES BATCH 82 (sesi 2026-09-18 lanjutan)
 - `public/index.html` 1200-1499 dibaca (chart page, news page, portfolio page + add form, track record page header/summary). **BERSIH — tidak ada temuan baru.**
 - BERSIH: semua handler bernama/statis; form Tambah Posisi memakai `maxlength` + `type=number`; tidak ada input hidden/secret.
