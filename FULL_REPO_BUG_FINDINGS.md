@@ -1706,3 +1706,42 @@ Total heading temuan kini **92** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 37 LOW).
 - `admin-telegram-access-migration.sql` (886) — **BERSIH**. Cleanup 3-langkah (expire TTL → bersihkan HANYA claim stale >20s state='pending' → fail-closed bila konflik nyata tersisa); partial unique index anti-griefing (dormant row kolom NULL tak menempati slot); semua referensi kolom di-alias eksplisit; consume re-cek eligible+verified+not-blocked.
 - `telegram-verification-v2-migration.sql` (502) — **BERSIH**. 4 tabel RLS tanpa policy + `REVOKE ALL FROM anon, authenticated` + `ALTER FUNCTION ... OWNER TO postgres`; advisory lock per-user `tgverify:`; unique index 1-challenge-aktif/user + 1-hash-aktif; webhook claim/reclaim rotasi `processing_token` + lease clamp [10,60]s; `not_found` generik; `budi`/`review` dikecualikan.
 - `stock-daily-context-migration.sql` (157) & `sector-hot.sql` (229) — struktur/data **BERSIH**: kolom harga/level `NUMERIC`, ticker `CHECK (ticker = UPPER(ticker))`, seed grup/ticker konsisten, `sector_hot_meta` idempoten. Terkait **temuan LOW di atas**.
+
+---
+
+## MODUL: `tools/` — runner backfill terjadwal & kalender libur
+
+### [MEDIUM] `backfill-engine.js` menyimpan salinan kalender libur IDX 2026 yang BASI dan BERBEDA dari "single source of truth" — cron terjadwal melewatkan hari bursa nyata dan tetap menarik API pada hari libur
+- **Lokasi:** [`tools/backfill-engine.js:46-64`](tools/backfill-engine.js:46) (set inline) dipakai [`tools/backfill-engine.js:192`](tools/backfill-engine.js:192) → dijalankan tiap hari oleh cron [`tools/run-scheduled-backfill.js:52-58`](tools/run-scheduled-backfill.js:52). Sumber kanonik: [`lib/idx-holidays-2026-seed-data.js:30-53`](lib/idx-holidays-2026-seed-data.js:30).
+- **Kutipan kode bermasalah:**
+  ```js
+  // tools/backfill-engine.js:46-64 — salinan KEDUA, tidak lagi sinkron
+  const IDX_HOLIDAYS_2026 = new Set([
+    '2026-01-01', '2026-01-16', '2026-02-17',
+    '2026-03-20', // "Hari Suci Nyepi"   <-- kanonik: 03-20 = Cuti Bersama Idul Fitri (Nyepi di 03-19)
+    '2026-03-21', // "Hari Raya Idul Fitri" <-- kanonik: TIDAK ada (Sabtu)
+    '2026-03-23', '2026-03-24', '2026-04-03', '2026-05-01', '2026-05-14',
+    '2026-05-25', // "Idul Adha"          <-- kanonik: 05-25 BUKAN libur; Idul Adha = 05-27
+    '2026-05-31', '2026-06-01', '2026-06-16', '2026-08-17', '2026-08-25', '2026-12-25'
+  ]);
+  ...
+  function getTradingDates(startDateStr = '2026-01-01', endDateStr = '2026-05-31') {  // default basi (Mei 2026)
+  ```
+  ```js
+  // tools/run-scheduled-backfill.js:53-57 — cron mengunci rentang Mei 2026
+  const args = [scriptPath, '--from', '2026-01-01', '--to', '2026-05-31', '--daily-limit', String(dailyLimit)];
+  ```
+- **Dampak:** Berkas kanonik menyatakan dirinya **"SINGLE source of truth ... Keeping one list avoids the two seed paths drifting apart"**, tetapi `backfill-engine.js` memuat daftar terpisah yang sudah melenceng. Karena `getTradingDates()` MEMAKAI set ini untuk menentukan hari yang di-backfill, akibatnya nyata:
+  - **Hari bursa nyata DILEWATI** (libur hantu): `2026-05-25` ditandai libur padahal kanonik BUKAN libur → backfill hari itu tidak pernah dijalankan (gap data permanen), padahal cron memang di-rutekan untuk mengejar rentang `--to 2026-05-31`.
+  - **Hari libur nyata TETAP ditarik ke API** (libur hilang dari set): `2026-02-16`, `2026-03-18`, `2026-03-19`, `2026-05-15`, `2026-05-27`, `2026-05-28` tidak ada di set engine → engine mengirim request Arjum pada hari bursa tutup (kuota harian dijatah ketat: 24.114/29.050, tiap run malam) dan berpotensi menulis baris all-zero/invalid.
+  - Label tanggal juga salah (03-20 diberi nama "Nyepi", 03-21 "Idul Fitri" yang kanonik tidak ada) → bukti set ini benar-benar disalin manual dan tidak diperbarui.
+- **Bukti verifikasi riil:** Diff dua daftar: kanonik 22 tanggal vs inline 17 tanggal. Selisih: engine TAMBAH `2026-03-21`, `2026-05-25`, `2026-05-31`, `2026-06-16` (kanonik tidak ada / beda hari); engine HILANG `2026-02-16`, `2026-03-18`, `2026-03-19`, `2026-05-15`, `2026-05-27`, `2026-05-28`, `2026-06-17`, `2026-12-24`, `2026-12-31`. Alur pemakaian terkonfirmasi: `run-scheduled-backfill.js:52` spawn `backfill-engine.js` dengan rentang tetap → `:192 getTradingDates(fromDate, toDate)`.
+- **Usulan arah perbaikan:** Hapus set inline di `backfill-engine.js` dan impor `require('../lib/idx-holidays-2026-seed-data').IDX_HOLIDAYS_2026` (map ke Set tanggal), atau panggil `lib/idx-trading-calendar.js` (yang sudah dipakai `run-daily-broker-update.js`) agar satu sumber saja. Perbarui juga default rentang `--to` yang masih `2026-05-31`. **Belum terkonfirmasi (hipotesis, butuh jalankan):** berapa banyak request Arjum terbuang pada 6 tanggal libur hilang itu — perkirakan dengan `node tools/backfill-engine.js --from 2026-05-25 --to 2026-05-28 --dry-run` pada salinan repo.
+
+Total heading temuan kini **93** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 38 LOW).
+
+### Catatan tuntas — `tools/` (scan pendahuluan, BERSIH pada area kredensial/URL)
+- **Tidak ada kredensial hardcoded.** 26 file `tools/` yang memakai Supabase semuanya `process.env.SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_URL`; tidak ada service-role key, API key, atau bearer token literal. Pola secret hanya nama env (aman).
+- **Tidak ada endpoint URL sensitif hardcoded.** URL yang muncul: `query1/query2.finance.yahoo.com` (sumber candle), `generativelanguage.googleapis.com` (Gemini), `integrate.api.nvidia.com`, `ntfy.sh`, `openagentic.id`, dan domain sendiri `auto-cuan.vercel.app`; `https://xxx.supabase.co` hanyalah contoh di pesan usage.
+- Blok `catch (_) {}` yang dipetakan (48 di 24 file) mayoritas **best-effort yang benar** (load `.env`, unlink file sementara/lock, close fd, probe opsional) — bukan silent-fail data. `run-daily-broker-update.js` (627, baca penuh sebagian) terbukti menangani kuota Arjum dengan `classifyFailure`, marker idempoten, dan exit-code `--final` jujur.
+- `tools/run-build-test-suite.js` masih memuat klaim lama BUG-002 (perlu verifikasi terpisah di batch test).
