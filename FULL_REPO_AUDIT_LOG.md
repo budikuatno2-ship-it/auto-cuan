@@ -795,3 +795,48 @@ SYSTEM_ARCHITECTURE_LIFECYCLE, CHANGELOG, SECURITY, SCREENER_BUGFIX_LOG, SCREENE
 | `AUDIT_EXHAUSTIVE_REPORT.md` #10 | `catch (_) {}` di `parseSseStream` menelan error | **VALID→FIXED (stale)** | [`lib/ai-gemini-provider.js:329`](lib/ai-gemini-provider.js:329) kini menerima `rearmStallTimer` (BUG-036 fix) — catch lama sudah dibenahi |
 - **Kesimpulan rekonsiliasi:** mayoritas klaim `AUDIT_EXHAUSTIVE_REPORT` + `AUDIT_HISTORIS_REGRESI` Temuan #1 kini **USANG karena SUDAH DIPERBAIKI** (bukti kode di tabel). **Tidak ada klaim lama yang terkonfirmasi REGRESI.** Dua klaim (SSE duplikasi, CSS laptop) **belum terverifikasi** dan tidak diangkat jadi temuan (butuh reproduksi runtime).
 - Total heading temuan **tetap 97** (2 CRITICAL, 16 HIGH, 39 MEDIUM, 40 LOW) — batch ini tidak menambah temuan baru (semua penemuan = klaim lama yang sudah diperbaiki).
+
+---
+
+## 🏁 REKAPITULASI PENUTUP FASE AUDIT (READ-ONLY, selesai)
+
+### Cakupan inventaris (dihitung ulang dari `Get-ChildItem -Recurse`)
+| Modul | file | file kode | baris kode | Status audit |
+|---|---:|---:|---:|---|
+| `api/` | 12 | 12 | 18.421 | **100% dibaca** |
+| `lib/` | 184 | 184 | 57.632 | **100% dibaca** (lintas sesi) |
+| `public/` | 79 | 74 | 41.936 | JS+HTML+CSS **100% dibaca**; aset data spot-check |
+| `tools/` | 125 | 118 | 18.895 | dipetakan + scan kredensial/URL/silent-fail + runner cron dibaca |
+| `supabase/` | 56 | 56 | 8.199 | dipetakan 100%; 11 migrasi berisiko tinggi dibaca penuh |
+| `test/` | 496 | 473 | 81.284 | 453 `.test.js` dipindai kualitas + gap CI; subdir SQL/fixtures/helpers spot-check |
+| `scripts/` | 8 | 8 | 1.610 | dipetakan |
+| `deploy/` | 10 | 5 | 266 | dibaca |
+| `.github/` | 17 | 0 | — | 12 workflow dibaca penuh |
+| `.agents/` | 43 | 0 | — | tooling agen, spot-check |
+| `docs/` | 27 | 0 | — | referensi |
+| **Total file kode** | — | **~930** | **~228.000** | — |
+
+### Temuan final menurut severity
+| Severity | jumlah |
+|---|---:|
+| CRITICAL | **2** |
+| HIGH | **16** |
+| MEDIUM | **39** |
+| LOW | **40** |
+| **TOTAL** | **97** |
+
+Semua 97 heading temuan ada di `FULL_REPO_BUG_FINDINGS.md` dengan format baku 5 bagian (Lokasi, Kutipan Kode, Dampak, Bukti Riil, Usulan Solusi).
+
+### Aturan audit dipatuhi
+- **Nol perubahan kode produksi.** Seluruh commit sesi ini hanya menyentuh `FULL_REPO_AUDIT_LOG.md` dan `FULL_REPO_BUG_FINDINGS.md`.
+- Setiap klaim diverifikasi ke bukti riil (baca kode baris, `Select-String`/`findstr`, hitung via PowerShell) — bukan percaya dokumen lama.
+- Pembacaan bertahap ≤300 baris per panggilan untuk file besar.
+- Rekonsiliasi dokumen historis: **tidak ada klaim lama yang terkonfirmasi REGRESI**; mayoritas klaim `AUDIT_EXHAUSTIVE_REPORT` & `AUDIT_HISTORIS_REGRESI` Temuan #1 **sudah diperbaiki** (bukti kode di matriks batch 94).
+
+### Prioritas untuk FASE PERBAIKAN (usulan urutan)
+1. **CRITICAL (2):** definisi harga terakhir berbeda `api/quote.js` vs `api/candles.js`; model Gemini deprecated sebagai default narasi.
+2. **HIGH (16):** termasuk stored XSS `loadAdminLogs`, `FALLBACK_INSIDER_DATA` fabrikasi, literal tanggal hardcoded, narasi hanya baca `GEMINI_API_KEY_PRIMARY`, gate freshness literal.
+3. **MEDIUM terbaru yang layak didahulukan:** token fallback hardcoded `api/review-access.js:42`; 58 test di luar CI; 3 salinan kalender libur; `buildDbRow` fabrikasi `daytrade_score`.
+4. **LOW (40):** kebanyakan defense-in-depth (REVOKE, escape konsisten, test vacuous, gate branch).
+
+**Fase audit dinyatakan SELESAI.** Langkah berikutnya = perencanaan fase perbaikan (belum dijalankan; menunggu instruksi).
