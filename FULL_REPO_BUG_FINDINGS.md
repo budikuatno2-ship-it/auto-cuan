@@ -1531,6 +1531,35 @@ Total heading temuan tetap **85**.
 
 ---
 
+## MODUL: AI Chat Renderer (rest) + Pattern Visual + Analisis Saham Runtime (3 file — TUNTAS)
+
+- `public/ai-chat-renderer.js` (334; 1-319 sesi lalu + 320-334 batch ini) — **BERSIH**. `renderMarkdown`/`inlineFormat` meng-escape SEBELUM transform markdown (aman XSS); observer `polishNode` idempoten via `data-ai-rendered` signature.
+- `public/pattern-visual.js` (360) — **BERSIH**. Pure SVG string builder (tanpa I/O); `finite` menolak null/'' (data absen tidak jadi "0"); `esc()` dipakai untuk name/ticker/dataDate/point label/level label; window pattern dipilih agar X tidak terpotong; gutter label di-spread dan yang tak muat dibuang (tidak menimpa sumbu).
+- `public/analisis-saham-runtime.js` (1.114) — 1 temuan MEDIUM (di bawah).
+
+### [MEDIUM] `analisis-saham-runtime.js` menyuntik HTML jawaban AI ke `innerHTML` TANPA `sanitizeAIHtml` (satu-satunya sink AI yang tidak disanitasi)
+- **Lokasi:** [`public/analisis-saham-runtime.js:888-891`](public/analisis-saham-runtime.js:888) (sink), vs sink yang disanitasi di [`public/index.html:4447`](public/index.html:4447), [`:4451`](public/index.html:4451), [`:4987`](public/index.html:4987), [`:6424`](public/index.html:6424), [`:6462`](public/index.html:6462), [`:6836`](public/index.html:6836)
+- **Kutipan kode bermasalah:**
+  ```js
+  var rawOutput = data.html || data.reply || '';
+  if (rawOutput) {
+    var html = convertStrayMarkdownBold(rawOutput.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''));
+    resultArea.innerHTML = '<div class="ai-content ...">' + html + '</div>' + ...
+  ```
+  ```js
+  // public/analisis-saham-runtime.js:23-25 — hanya bold, TIDAK meng-escape
+  function convertStrayMarkdownBold(html) {
+    return String(html || '').replace(/\*\*([^*<>\n]+)\*\*/g, '<strong>$1</strong>');
+  }
+  ```
+- **Penjelasan:** Jawaban AI (`data.html`/`data.reply`) disisipkan langsung ke `innerHTML` setelah HANYA transform bold. Tidak ada pemanggilan `sanitizeAIHtml`. Padahal alur AI yang sama di `index.html` SELALU menjalankan `sanitizeAIHtml(html)` lebih dulu, baru `convertStrayMarkdownBold` (mis. `:4447`+`:4451`). `sanitizeAIHtml` (global, `index.html:11729`) justru ditulis khusus untuk membuang `<script>`, event handler (`onerror`/`onload`), dan skema URL berbahaya (`javascript:`/entity-encoded) — dan `ui-bugfix-pack-v1.js` memperkuatnya. Karena `analisis-saham-runtime.js` dijalankan pada dokumen yang sama (mengakses `#analisisResult`, `#analisisInput`, `#headerUsername`), `sanitizeAIHtml` tersedia sebagai global — tetapi tidak dipanggil di sini. Model dapat terpengaruh input pengguna (chatMessage memuat ticker + konteks + blok kutipan), sehingga output bisa memuat markup/`onerror` yang di sini dieksekusi, sedangkan di jalur dashboard tidak. Ini regresi keamanan defense-in-depth: satu-satunya sink AI tanpa sanitizer.
+- **Bukti verifikasi riil:** Grep `sanitizeAIHtml`: dipakai di `index.html` (6 sink) + di-hardening `ui-bugfix-pack-v1.js`; NOL kemunculan di `analisis-saham-runtime.js`. Grep `convertStrayMarkdownBold`: ada di `analisis-saham-runtime.js:23,890` dan `index.html:4451,11725`. Perbandingan langsung: `index.html` sanitize→bold; `analisis-saham-runtime.js` bold saja.
+- **Usulan arah perbaikan:** Sebelum `innerHTML`, jalankan `if (typeof sanitizeAIHtml === 'function') html = sanitizeAIHtml(html);` (urutan sama seperti `index.html`: sanitize dulu, lalu `convertStrayMarkdownBold`). Jangan andalkan `escapeHtml` penuh karena output memang HTML.
+
+Total heading temuan kini **86** (2 CRITICAL, 15 HIGH, 36 MEDIUM, 33 LOW).
+
+---
+
 ## MODUL: Pattern Safety Hardening + UI Stability Fix + Admin Maintenance Code (3 file — TUNTAS, BERSIH)
 
 - `public/pattern-safety-hardening-v1.js` (186) — **BERSIH**. `safeFinite` menolak `null`/`''`/`false` (mencegah koersi ke 0 yang membuat data absen tampak level nyata); memasang patch lewat `Object.defineProperty` setter agar implementasi aman terpasang SEBELUM `pattern-direction-safety.js` dimuat; `tradePlanDirection` menolak entry satu sisi (tidak menyalin sisi yang hilang).

@@ -304,6 +304,16 @@ TUNTAS & BERSIH (3 file `public/`):
 - Total heading temuan tetap **85** — batch ini tidak menambah temuan.
 - Sisa `public/` JS: `ai-chat-renderer.js` (334; 1-319 sudah dibaca), `analisis-saham-runtime.js` (1.114; 1-320 sudah dibaca), `pattern-visual.js` (360), `chart-analysis-runtime.js`/`chart-viewer.js` (sudah tuntas sesi lama).
 
+### PROGRES BATCH 51-52 (sesi 2026-09-18 lanjutan) — PENUTUP `public/*.js`
+- `public/ai-chat-renderer.js` (334) **TUNTAS** — BERSIH (escape sebelum markdown, observer signature).
+- `public/pattern-visual.js` (360) **TUNTAS** — BERSIH (pure SVG, esc konsisten, no-zero untuk absen).
+- `public/analisis-saham-runtime.js` (1.114) **TUNTAS** — 1 MEDIUM: sink `innerHTML` jawaban AI (`:888-891`) memakai `convertStrayMarkdownBold` saja TANPA `sanitizeAIHtml`, padahal semua 6 sink AI di `index.html` men-sanitasi dulu. Satu-satunya sink AI tanpa sanitizer → regresi defense-in-depth.
+- Total heading temuan kini **86** (2 CRITICAL, 15 HIGH, 36 MEDIUM, 33 LOW).
+
+### STATUS AKHIR `public/*.js` (sesi 2026-09-18)
+**SELURUH `public/*.js` runtime KINI TUNTAS 100%** (dibaca baris-per-baris lintas sesi). Sesi ini menambah 39 file (batch 36-52). Sisa yang BELUM: `public/*.html` (index.html 12.342, analisis-saham.html, admin-ai-eval.html, admin-foreign.html, methodology.html, portfolio-command-center*.html, portfolio-planner.html, trust.html, 404.html, tmp-measure*.html) dan `public/*.css` (index-shell, account-center-v1, portfolio-command-center, portfolio-ai-workspace-v1, premium-workstation*, tailwind-build, ui-theme, unified-cockpit) + `public/assets/`.
+- Commit sesi ini: efe6fe8, f30df72, 85035ad, de09873, 3f6a928, 2c4ae6f, 79df32e, 5f5f545, 662269b, c1d335c, 8aaa174, 13d2582, 2cb6d73 (+ ini).
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
