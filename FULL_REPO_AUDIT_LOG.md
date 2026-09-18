@@ -457,6 +457,11 @@ TUNTAS & BERSIH (3 file `public/`):
 - BERSIH: daftar `<script src>` semuanya file lokal (sudah diaudit); tidak ada API key/token hardcoded; a11y focus-trap hanya mengelola class `hidden` + fokus (tidak menyentuh auth/API).
 - **`index.html` TUNTAS dibaca: 1-300 + 2110-12342.** Sisa: **300-2110** (markup landing page — Prioritas 2).
 
+### PROGRES BATCH 79 (sesi 2026-09-18 lanjutan)
+- `public/index.html` 300-599 dibaca (auth choice/login/register/self-reset modals, sidebar, header+nav, subscription page, dashboard home + market band). **BERSIH — tidak ada temuan baru.**
+- BERSIH: semua `onclick`/`onkeydown` inline memanggil fungsi bernama (tanpa interpolasi data user); form login/register/reset TIDAK punya atribut `action` (JS-driven, `doLogin`/`doRegister`/`doSelfResetPassword`); tidak ada `<input type="hidden">` berisi secret/token; `openVerificationBot` `rel="noopener noreferrer"`.
+- Berikutnya: `index.html` 600-2110.
+
 ### TUNTAS BARU (batch ini) — semua BERSIH, tidak ada bug
 - `lib/context-ai-router-v5.js` (552 baris): failover outage spillover, redaksi diagnostik (Bearer/key/JWT), health bookkeeping untuk route emergency, `attempted_count` kini mencakup semua panggilan. Kokoh.
 - `lib/context-ai-router-v6.js` (227 baris): fallback lokal deterministik untuk stock follow-up; hanya mengutip angka dari snapshot, tidak mengarang level; `shouldUseLocalFallback` ketat (hanya source stock_analysis_followup + status ≥500). Kokoh.
