@@ -498,6 +498,16 @@ TUNTAS & BERSIH (3 file `public/`):
 - Total heading temuan tetap **91** (2 CRITICAL, 16 HIGH, 37 MEDIUM, 36 LOW).
 - **Berikutnya:** `supabase/*.sql` (56 migrasi) — constraint, default fiktif, tipe data harga, policy RLS; lalu `tools/` (~102), `test/` (~521).
 
+### PROGRES BATCH 88 (sesi 2026-09-18 lanjutan) — `supabase/*.sql` (pemetaan + scan risiko)
+- **Pemetaan 56 migrasi** + scan pola risiko (RLS, GRANT, SECURITY DEFINER, DEFAULT, tipe numeric harga, literal tanggal). **Tidak ada temuan baru pada scan ini.**
+- **RLS:** SEMUA tabel sensitif `ENABLE ROW LEVEL SECURITY`; policy hanya `TO service_role` (mis. `ai_analysis_cache` `USING(true)` khusus service_role — benar, bukan anon). Beberapa migrasi menyatakan eksplisit "No SELECT policy for anon or authenticated roles" (daytrade/swing/nk screener, telegram-*). Tidak ada policy `TO anon`/`TO authenticated`/`TO public`.
+- **GRANT:** hanya `TO service_role` (mis. `app_user_watchlists`/`app_user_alerts`/`app_user_alert_history`). Tidak ada grant ke anon/authenticated.
+- **SECURITY DEFINER:** semua RPC memakai `SET search_path = pg_catalog, public` (anti search-path hijack) + schema-qualified; `subscription-phase-2` RPC voucher-admin memverifikasi `p_telegram_user_id<>6396446903 → RAISE unauthorized`.
+- **Tipe harga:** kolom harga/level (`last_price`/`entry_low`/`stop_loss`/`tp1`/`tp2`/`target_price`) memakai `NUMERIC` (bukan float) — benar untuk IDR.
+- **DEFAULT:** `DEFAULT 0` hanya pada kolom skor/counter (bukan harga) — wajar; tidak ada `DEFAULT '2026-...'` fiktif.
+- **`residual-audit-db-integrity.sql`:** fail-closed (RAISE bila duplikat plan identity / taxonomy v2 hilang), partial unique index scoped `WHERE monitor_source IS NOT NULL AND plan_lock_id IS NOT NULL` (tidak memblokir broadcast NULL) — kokoh.
+- **Berikutnya:** baca penuh migrasi berisiko tinggi (subscription-phase-2/5c, telegram-verification-v2, admin-telegram-*) untuk verifikasi constraint/trigger; lalu `tools/` (~102), `test/` (~521).
+
 ### PROGRES BATCH 82 (sesi 2026-09-18 lanjutan)
 - `public/index.html` 1200-1499 dibaca (chart page, news page, portfolio page + add form, track record page header/summary). **BERSIH — tidak ada temuan baru.**
 - BERSIH: semua handler bernama/statis; form Tambah Posisi memakai `maxlength` + `type=number`; tidak ada input hidden/secret.
