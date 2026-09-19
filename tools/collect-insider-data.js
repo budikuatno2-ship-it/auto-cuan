@@ -104,7 +104,7 @@ function loadUniverseTickers() {
   const sumDir = path.join(__dirname, '..', 'data', 'arjum-data', 'broker-summary');
   if (fs.existsSync(sumDir)) {
     fs.readdirSync(sumDir)
-      .filter(f => /^[A-Z0-9.-]+$/.test(f))
+      .filter(isValidIdxTicker)
       .forEach(t => tickerSet.add(t));
   }
 
@@ -112,7 +112,7 @@ function loadUniverseTickers() {
   const insDir = path.join(__dirname, '..', 'data', 'arjum-data', 'insiders');
   if (fs.existsSync(insDir)) {
     fs.readdirSync(insDir)
-      .filter(f => /^[A-Z0-9.-]+$/.test(f))
+      .filter(isValidIdxTicker)
       .forEach(t => tickerSet.add(t));
   }
 

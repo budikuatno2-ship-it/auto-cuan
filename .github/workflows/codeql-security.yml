@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - feat/daytrade-screener-v1
+      - main
   pull_request:
     branches:
       - feat/daytrade-screener-v1
+      - main
   schedule:
     - cron: '17 2 * * 1'
   workflow_dispatch:
