@@ -804,7 +804,8 @@
       processItem(sList[j], false);
     }
 
-    var items = [];
+    // F-011: the shadowed `var items` (redeclared below) is removed here so the
+    // loop below is the single declaration of the build result.
     var maxTxVal = 1;
     var maxAbsNet = 1;
 

@@ -391,24 +391,24 @@
     configureRankingColumns();
 
     var card = tableWrap.closest('.unified-card') || tableWrap.parentElement;
+    // F-074/F-075: the old code referenced an undeclared element (ReferenceError
+    // that aborted the whole enhance) and wrote card.style.* without a null-guard
+    // even though `card` is only conditionally present. Both are guarded now.
     if (card) {
       card.dataset.rankingPolished = 'true';
+      card.style.background = 'linear-gradient(180deg, rgba(18,24,34,.97), rgba(11,14,20,.995))';
+      card.style.border = '1px solid rgba(52,211,153,.16)';
+      card.style.borderRadius = '18px';
+      card.style.boxShadow = '0 20px 55px rgba(0,0,0,.26)';
     }
     if (search) {
       search.placeholder = 'Cari ticker di ranking…';
     }
-    nodeToMove.style.borderBottom = '0';
-
-    card.style.background = 'linear-gradient(180deg, rgba(18,24,34,.97), rgba(11,14,20,.995))';
-    card.style.border = '1px solid rgba(52,211,153,.16)';
-    card.style.borderRadius = '18px';
-    card.style.boxShadow = '0 20px 55px rgba(0,0,0,.26)';
     // No vertical max-height here: the table must grow to its natural height so the
     // document stays the single vertical scroll owner (mouse wheel/touchpad/swipe
     // must not get trapped inside a small inner scrollport). Only horizontal
     // overflow (for narrow viewports with many columns) is handled by the wrap.
     tableWrap.style.minHeight = '420px';
-    search.placeholder = 'Cari ticker di ranking…';
 
     var title = card.querySelector('h3');
     var desc = card.querySelector('h3 + p');
