@@ -86,7 +86,11 @@ test('T2: a failed VPS fetch emits an explicit diagnostic instead of an empty ca
       VPS_DATA_API_BASE: 'http://127.0.0.1:1',
       VPS_SSH_KEY: path.join(os.tmpdir(), 'definitely-missing-autocuan-key'),
       ARJUM_DATA_DIR: path.join(os.tmpdir(), 'autocuan-t2-empty'),
-      NODE_ENV: 'production'
+      NODE_ENV: 'production',
+      // CI sets CI=1, which makes isTestEnv() short-circuit to an empty list
+      // WITHOUT logging. Opt in explicitly so the real failure path (and its
+      // [VPS-FETCHER][WARN] diagnostic) is exercised in CI too.
+      VPS_FETCHER_ALLOW_IN_TESTS: '1'
     })
   });
 

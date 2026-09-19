@@ -112,15 +112,24 @@ test('T8: with syncWithBrokerSummary on, a candle cache behind the summary is re
   // Candle series whose newest bar is old, but freshly written (TTL-fresh).
   await cache.writeCache(dir, 'BBCA', candlesThrough('2026-09-01'), 'test');
 
+  // The guard compares against the newest broker-summary date on disk, which is
+  // environment-dependent (data/arjum-data is gitignored). Stub the resolver so
+  // the test is deterministic in CI and locally.
+  const original = cache.latestBrokerSummaryDate;
+  cache.latestBrokerSummaryDate = () => '2026-09-11';
   let fetched = false;
-  const provider = cache.createCacheProvider({
-    cacheDir: dir,
-    syncWithBrokerSummary: true,
-    fetchFn: async () => { fetched = true; return candlesThrough('2026-09-11'); }
-  });
+  try {
+    const provider = cache.createCacheProvider({
+      cacheDir: dir,
+      syncWithBrokerSummary: true,
+      fetchFn: async () => { fetched = true; return candlesThrough('2026-09-11'); }
+    });
 
-  await provider.fetchWithCache('BBCA');
-  assert.equal(fetched, true, 'cache behind the broker summary must trigger a refetch');
+    await provider.fetchWithCache('BBCA');
+    assert.equal(fetched, true, 'cache behind the broker summary must trigger a refetch');
+  } finally {
+    cache.latestBrokerSummaryDate = original;
+  }
 });
 
 test('T8: with syncWithBrokerSummary OFF, TTL freshness alone still serves the cache', async () => {
