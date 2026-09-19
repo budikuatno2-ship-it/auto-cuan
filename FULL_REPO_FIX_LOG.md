@@ -62,9 +62,9 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 11 | MEDIUM: Satukan Konversi Tanggal UTC ke WIB | 6 | [x] SELESAI |
 | 12 | MEDIUM: Panel "Kenapa Sinyal Ini Lolos Gate?" (Ambang + Missing != Pass) | 3 | [x] SELESAI |
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [x] SELESAI |
-| 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [ ] BELUM |
+| 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [-] SEBAGIAN (14A: 9 temuan + 1 ditolak) |
 
-Progres keseluruhan: **50/97 SELESAI, 0 DITARIK, 47 BELUM** (per Batch 13).
+Progres keseluruhan: **59/97 SELESAI, 1 DITOLAK (F-029), 37 BELUM** (per Batch 14A).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -90,7 +90,7 @@ Branch `fix/unify-gemini-model-source` -> base `feat/daytrade-screener-v1`. Scop
 - **Test regresi baru**: `test/ai-gemini-model-single-source.test.js` (6 subtest) + didaftarkan di `tools/curated-build-tests.json`; [`test/ai-narration.test.js`](test/ai-narration.test.js:254) diperbarui (test lama mengunci default deprecated = bug yang diperbaiki).
 - **Gate**: `node --check` bersih pada 7 file; `npm test` = **397/397 file lolos, exit 0** (baseline 396 setelah Batch 1 + 1 test baru). CI PR #691 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login).
 - **Diff**: 8 file kode/test + `curated-build-tests.json`, +168/-29. Tidak menyentuh scope Batch 3+.
-- **Sisa Batch 2 (BELUM)**: F-006 (katalog WeizeRouter v4), F-057 (label provider ticker-mode), F-062 (pesan error `handleChartVision` sebagai HTML), F-063 (`geminiSearchNews` dead code) — menunggu instruksi batch berikutnya.
+- **Sisa Batch 2**: F-006 (katalog WeizeRouter v4), F-057 (label provider ticker-mode), F-062 (pesan error `handleChartVision` sebagai HTML), F-063 (`geminiSearchNews` dead code) — **DITUNTASKAN di Batch 14A (PR #715)**.
 
 ### Batch 3 - SELESAI (PR #693, merge `0091baa`)
 
@@ -180,15 +180,15 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 
 ### Batch 2 - CRITICAL: Satu Sumber Kebenaran Nama Model Gemini (9 temuan)
 
-- [ ] F-006 | MEDIUM | batch 2 | lib/context-ai-router-v4.js:99 - Katalog model WeizeRouter di-hardcode sebagai daftar fallback, mencampur model yang belum tentu ada dengan daftar CATALOG _(di luar instruksi batch 2 ini; BELUM)_
+- [x] F-006 | MEDIUM | batch 2 | lib/context-ai-router-v4.js:99 - Katalog model WeizeRouter di-hardcode sebagai daftar fallback, mencampur model yang belum tentu ada dengan daftar CATALOG _(DIPERBAIKI Batch 14A: katalog dari `catalogFromEnv()`, override via env `WEIZEROUTER_CATALOG` + satu default `DEFAULT_CATALOG`)_
 - [x] F-044 | HIGH | batch 2 | public/chart-analysis-runtime.js:269 - Label model di kartu "Analisis Chart (AI)" di-hardcode `'Gemini 2.5 Flash'` — menyesatkan user bila model riil berbeda
 - [x] F-045 | HIGH | batch 2 | lib/context-ai-router-v7.js:600, lib/context-ai-router-v7.js:750 - Rantai fallback model di `context-ai-router-v7.js` memakai literal hardcode `'gemini-3.6-flash'` yang tidak dikelola konstanta provider
 - [x] F-046 | CRITICAL | batch 2 | lib/ai-gemini-provider.js:8, lib/ai-narration.js:52 - Nama model Gemini saling bertentangan antar modul — narasi AI Telegram & news memakai model yang sudah dideprecate/404
 - [x] F-047 | HIGH | batch 2 | lib/ai-narration.js:112 - Narasi AI gagal total (fallback diam) bila kunci hanya `GEMINI_API_KEY`, karena `ai-narration.js` hanya membaca `GEMINI_API_KEY_PRIMARY`
-- [ ] F-057 | MEDIUM | batch 2 | lib/analyze-legacy.js:416 - `provider` di respons ticker-mode selalu dilaporkan `'deepseek'` walau jawaban berasal dari Gemini _(di luar instruksi batch 2 ini; BELUM)_
+- [x] F-057 | MEDIUM | batch 2 | lib/analyze-legacy.js:416 - `provider` di respons ticker-mode selalu dilaporkan `'deepseek'` walau jawaban berasal dari Gemini _(DIPERBAIKI Batch 14A: `tProvider` melacak provider yang benar-benar menjawab)_
 - [x] F-058 | MEDIUM | batch 2 | lib/analyze-legacy.js:457, lib/analyze-legacy.js:631 - Daftar model Gemini deprecated disalin ulang 4× di `analyze-legacy.js` dengan isi BERBEDA dari daftar otoritatif provider (3 nama vs 7 nama)
-- [ ] F-062 | LOW | batch 2 | lib/analyze-legacy.js:637 - `handleChartVision` mengembalikan string pesan-error sebagai HTML → pemanggil menandai `provider: 'gemini-vision'` sebagai sukses _(di luar instruksi batch 2 ini; BELUM)_
-- [ ] F-063 | LOW | batch 2 | lib/analyze-legacy.js:542 - `geminiSearchNews` adalah dead code (didefinisikan, tidak pernah dipanggil) _(di luar instruksi batch 2 ini; BELUM)_
+- [x] F-062 | LOW | batch 2 | lib/analyze-legacy.js:637 - `handleChartVision` mengembalikan string pesan-error sebagai HTML → pemanggil menandai `provider: 'gemini-vision'` sebagai sukses _(DIPERBAIKI Batch 14A: kini `return null` pada semua cabang gagal)_
+- [x] F-063 | LOW | batch 2 | lib/analyze-legacy.js:542 - `geminiSearchNews` adalah dead code (didefinisikan, tidak pernah dipanggil) _(DIPERBAIKI Batch 14A: fungsi dihapus)_
 
 ### Batch 3 - HIGH Keamanan: Token Hardcoded, Backdoor Kredensial, Kunci Enkripsi Fallback (5 temuan)
 
@@ -317,12 +317,29 @@ Branch `fix/ci-pipeline-calendar-db-hardening` -> base `feat/daytrade-screener-v
 - **Gate**: `node --check` bersih pada semua file tersentuh; `npm test` = **466/466 file lolos, exit 0** (408 -> 466: +58 orphan ter-gate + 1 test baru). CI PR #713 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, command-login, portfolio-persistence, Vercel).
 - **Diff**: 8 migrasi + 3 kode (calendar/backfill×2) + 1 doc + 19 file test + `curated-build-tests.json` + `run-build-test-suite.js` + 1 test baru, +471/-152. Tidak menyentuh scope Batch 14+.
 
+### Batch 14A - Pembersihan Dead Code & Fungsi Menggantung [x] SELESAI
+
+Branch `fix/batch-14a-dead-code-cleanup` -> base `feat/daytrade-screener-v1` (PR **#715 merged**; merge `16d1fcb`). Scope = temuan LOW dead code + sisa Batch 2 (F-006/F-057/F-062/F-063) + fungsi menggantung. **Tidak menyentuh** Batch 14B (UI sanitasi/render) maupun 14C (file cleanup non-ticker).
+
+- **F-063 (dead function)**: [`lib/analyze-legacy.js`](lib/analyze-legacy.js:539) - fungsi `geminiSearchNews` (selalu `return null`, tanpa pemanggil) dihapus.
+- **F-062 (pesan error sebagai HTML)**: [`lib/analyze-legacy.js`](lib/analyze-legacy.js:636) - `handleChartVision` kini `return null` pada semua cabang gagal (bukan string HTML error), meniru `handleChartDeepSeek`, sehingga pemanggil tidak menandai `provider: 'gemini-vision'` sebagai sukses saat analisis gagal.
+- **F-057 (label provider salah)**: [`lib/analyze-legacy.js`](lib/analyze-legacy.js:410) - jalur ticker-mode melacak `tProvider` (`'deepseek'`/`'gemini'`) yang benar-benar menjawab; ternary lama `tHtml ? 'deepseek' : 'gemini-fallback'` selalu bernilai `'deepseek'` (cabang `!tHtml` sudah return lebih dulu).
+- **F-077 (fungsi menggantung)**: [`lib/foreign-flow-recap.js`](lib/foreign-flow-recap.js:270) - `sendForeignFlowRecap` memanggil `telegramNotifier.sendTelegramMessage` (ekspor nyata), bukan `sendMessage` yang tidak ada (TypeError laten); `parse_mode: 'HTML'` tetap didukung.
+- **F-061 (dead variable)**: [`lib/ai-answer-contract.js`](lib/ai-answer-contract.js:101) - variabel `explicitRatio` yang tidak dipakai di `parseMatchedNumber` dihapus.
+- **F-011 (deklarasi ganda)**: [`public/bandarmologi-runtime.js`](public/bandarmologi-runtime.js:807) - `var items` ganda di `buildBrokerBubbleItems` dikurangi jadi 1 deklarasi.
+- **F-074/F-075 (ReferenceError + null-guard)**: [`public/stock-analysis-ai.js`](public/stock-analysis-ai.js:393) - referensi `nodeToMove` tak terdeklarasi (ReferenceError yang mematikan enhance Ranking Harian) dihapus; penulisan `card.style.*` dipindah ke dalam guard `if (card)`.
+- **F-006 (katalog hardcoded)**: [`lib/context-ai-router-v4.js`](lib/context-ai-router-v4.js:99) - katalog WeizeRouter kini dari `catalogFromEnv()`: override via env `WEIZEROUTER_CATALOG` (comma-separated) dengan satu sumber default `DEFAULT_CATALOG`. Mengubah model yang dilayani provider tidak lagi menuntut edit kode + deploy.
+- **F-029 (DITOLAK - false positive)**: [`api/sector-hot.js`](api/sector-hot.js:11644) - klaim "cabang `status === 'Speculative'` dead code" SALAH. Classifier non-konglo ([`:11423`](api/sector-hot.js:11423)/[`:11430`](api/sector-hot.js:11430)) memang meng-emit `status = 'Speculative'`, jadi cabang reachable; menghapusnya akan mengubah perilaku (baris score<30 Speculative flip ke AVOID). **Tidak diubah**; komentar koreksi ditambahkan.
+- **Test regresi baru**: [`test/batch14a-dead-code-cleanup.test.js`](test/batch14a-dead-code-cleanup.test.js:1) (9 subtest) mengunci status pasca-fix (F-006/F-011/F-057/F-061/F-062/F-063/F-074/F-075/F-077) + didaftarkan di [`curated-build-tests.json`](tools/curated-build-tests.json:2).
+- **Gate**: `node --check` bersih pada semua file tersentuh; `npm test` = **467/467 file lolos** (466 + 1 test baru). CI PR #715 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, ai-eval-regression, command-login, portfolio-persistence, Vercel).
+- **Diff**: 6 kode + 1 test baru + `curated-build-tests.json`, +169/-24.
+
 ### Batch 14 - LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) (40 temuan)
 
 - [ ] F-001 | LOW | batch 14 | api/sector-hot.js:3185 - `deleteOldForeignRows` membaca SEMUA tanggal per ticker tanpa `.limit()`
 - [ ] F-003 | MEDIUM | batch 14 | public/bandarmologi-runtime.js:3728 - Tabel "Daftar Pemegang Saham & Insider": persentase yang HILANG dirender "0.00%" (missing disajikan sebagai nol)
 - [ ] F-009 | LOW | batch 14 | api/sector-hot.js:5859 - `getRequestBaseUrl` mempercayai `x-forwarded-host`/`host` klien saat membangun URL chart Telegram
-- [ ] F-011 | LOW | batch 14 | public/bandarmologi-runtime.js:803, public/bandarmologi-runtime.js:874 - Deklarasi `var items` ganda di `buildBrokerBubbleItems`
+- [x] F-011 | LOW | batch 14 | public/bandarmologi-runtime.js:803, public/bandarmologi-runtime.js:874 - Deklarasi `var items` ganda di `buildBrokerBubbleItems` _(DIPERBAIKI Batch 14A: 1 deklarasi)_
 - [ ] F-013 | HIGH | batch 14 | tools/run-build-test-suite.js:9 - BUG-013 diperkuat — token review literal yang sama juga di-hardcode di runner build
 - [ ] F-014 | LOW | batch 14 | lib/candle-pattern-engine.js:248 - BUG-042 lama SUDAH DIPERBAIKI — Hammer vs Hanging Man kini context-aware _(catatan audit: sudah diperbaiki/bukan bug - verifikasi ulang saat batch)_
 - [ ] F-015 | LOW | batch 14 | lib/admin-users-handler.js:261 - BUG-032 lama SUDAH DIPERBAIKI — reset password admin menyimpan kredensial terproteksi _(catatan audit: sudah diperbaiki/bukan bug - verifikasi ulang saat batch)_
@@ -332,7 +349,7 @@ Branch `fix/ci-pipeline-calendar-db-hardening` -> base `feat/daytrade-screener-v
 - [ ] F-021 | LOW | batch 14 | lib/idx-tick-normalization.js:886 - BUG-027 lama SUDAH DIPERBAIKI — diverifikasi, jangan diulang di batch berikutnya _(catatan audit: sudah diperbaiki/bukan bug - verifikasi ulang saat batch)_
 - [ ] F-022 | LOW | batch 14 | api/sector-hot.js:1885 - BUG-022 lama SUDAH DIPERBAIKI — diverifikasi _(catatan audit: sudah diperbaiki/bukan bug - verifikasi ulang saat batch)_
 - [ ] F-025 | MEDIUM | batch 14 | public/portfolio-command-center.js:392, public/portfolio-ai-runtime-v2.js:79 - Refresh harga Portfolio tidak menulis metadata kesegaran → AI Portfolio menilai harga dengan umur yang salah
-- [ ] F-029 | LOW | batch 14 | api/sector-hot.js:11644 - Cabang `status === 'Speculative'` di `deriveSwingLabels` adalah dead code
+- [~] F-029 | LOW | batch 14 | api/sector-hot.js:11644 - Cabang `status === 'Speculative'` di `deriveSwingLabels` adalah dead code _(DITOLAK Batch 14A: FALSE POSITIVE - classifier non-konglo :11423/:11430 memang meng-emit 'Speculative'; cabang reachable, tidak diubah)_
 - [ ] F-034 | MEDIUM | batch 14 | lib/intraday-shadow-scoring.js:51, lib/intraday-collector-vps-audit.js:35 - `lib/intraday-shadow-scoring.js` dan `lib/intraday-collector-vps-audit.js` menyimpan tanggal contoh ter-hardcode
 - [ ] F-035 | LOW | batch 14 | public/tmp-measure.html, public/tmp-measure2.html - Aset scratch ter-commit di `public/`: `tmp-measure.html`, `tmp-measure2.html`, `tmp-ci-touch-batch1.js`
 - [ ] F-036 | LOW | batch 14 | (tanpa lokasi eksplisit) - `data/arjum-data/broker-summary/` berisi folder ticker non-saham (`AUDITSCALE5D/14D/30D/60D`, `B4TST`, `DBGT4`, `NOACC`)
@@ -342,13 +359,13 @@ Branch `fix/ci-pipeline-calendar-db-hardening` -> base `feat/daytrade-screener-v
 - [ ] F-053 | MEDIUM | batch 14 | lib/latest-price-resolver.js:37 - `isFresh` default jendela 48 jam memungkinkan harga "fresh" sampai 2 hari & tidak membedakan hari bursa
 - [ ] F-055 | MEDIUM | batch 14 | (tanpa lokasi eksplisit) - Folder ticker non-saham di data produksi: `data/arjum-data/broker-summary/{AUDITSCALE14D,AUDITSCALE30D,AUDITSCALE5D,AUDITSCALE60D,B4TST,DBGT4,NOACC}`
 - [ ] F-060 | LOW | batch 14 | lib/ai-answer-contract.js:187, lib/ai-answer-contract.js:51 - Validasi `direct_answer terlalu panjang` tidak pernah bisa terpicu (dead validation) — terbukti runtime
-- [ ] F-061 | LOW | batch 14 | lib/ai-answer-contract.js:101 - Variabel `explicitRatio` dihitung tetapi tidak pernah dipakai (dead variable)
+- [x] F-061 | LOW | batch 14 | lib/ai-answer-contract.js:101 - Variabel `explicitRatio` dihitung tetapi tidak pernah dipakai (dead variable) _(DIPERBAIKI Batch 14A)_
 - [ ] F-069 | LOW | batch 14 | lib/idx-tick-normalization.js:981 - Band ARB di-hardcode flat -15% (multiplier 0.85) untuk SEMUA tier harga, sementara ARA bertingkat (35/25/20%); tidak ada test yang mengunci dan tidak ada rujukan aturan di kode
 - [ ] F-073 | LOW | batch 14 | public/daytrade-runtime.js:75, api/sector-hot.js:11927 - Statistik "Universe"/"Scanned" memakai fallback hardcoded 760/720 saat meta kosong — angka karangan yang tampil sebagai fakta
-- [ ] F-074 | MEDIUM | batch 14 | public/stock-analysis-ai.js:400 - `mountRankingCardOnOwnPage()` mereferensikan identifier tak terdeklarasi `nodeToMove` → ReferenceError yang mematikan seluruh enhance Ranking Harian (termasuk banner sesi mixed-date)
-- [ ] F-075 | LOW | batch 14 | public/stock-analysis-ai.js:393 - `mountRankingCardOnOwnPage()` menulis `card.style.*` tanpa null-guard meski `card` dijaga `if (card)` beberapa baris sebelumnya
+- [x] F-074 | MEDIUM | batch 14 | public/stock-analysis-ai.js:400 - `mountRankingCardOnOwnPage()` mereferensikan identifier tak terdeklarasi `nodeToMove` → ReferenceError yang mematikan seluruh enhance Ranking Harian (termasuk banner sesi mixed-date) _(DIPERBAIKI Batch 14A)_
+- [x] F-075 | LOW | batch 14 | public/stock-analysis-ai.js:393 - `mountRankingCardOnOwnPage()` menulis `card.style.*` tanpa null-guard meski `card` dijaga `if (card)` beberapa baris sebelumnya _(DIPERBAIKI Batch 14A)_
 - [ ] F-076 | MEDIUM | batch 14 | public/market-feature-runtime.js:718, public/market-feature-runtime.js:734 - Blok prompt `[Auto-Cuan Score]` memakai DUA skala berbeda untuk field berlabel sama — server `/25` vs fallback frontend `/30`
-- [ ] F-077 | LOW | batch 14 | lib/foreign-flow-recap.js:270 - `sendForeignFlowRecap` memanggil `telegramNotifier.sendMessage` yang TIDAK ADA (ekspor hanya `sendTelegramMessage`) — TypeError laten di fungsi tanpa pemanggil
+- [x] F-077 | LOW | batch 14 | lib/foreign-flow-recap.js:270 - `sendForeignFlowRecap` memanggil `telegramNotifier.sendMessage` yang TIDAK ADA (ekspor hanya `sendTelegramMessage`) — TypeError laten di fungsi tanpa pemanggil _(DIPERBAIKI Batch 14A)_
 - [ ] F-079 | LOW | batch 14 | lib/insider-network-service.js:1098 - `getRosterForTicker` merender persentase yang HILANG sebagai "0.00%" (missing disajikan sebagai nol)
 - [ ] F-082 | LOW | batch 14 | public/track-record-runtime.js:58 - `track-record-runtime.js` menulis teks error ke `innerHTML` tanpa escaping (dua lokasi)
 - [ ] F-083 | LOW | batch 14 | public/portfolio-supabase-sync.js:259 - `pagehideSave` memakai `keepalive:true` dengan seluruh state portofolio (batas ~64KB browser)
@@ -384,6 +401,7 @@ Branch `fix/ci-pipeline-calendar-db-hardening` -> base `feat/daytrade-screener-v
 | 11 | `fix/utc-naive-date-formatting` | #709 (merged) | `773d945`; merge `d79937e` | [x] SELESAI | 6 temuan UTC naif; test baru 406/406 |
 | 12 | `fix/signal-gate-transparency-ui-parity` | #711 (merged) | `c7e57e7`; merge `f8bda0a` | [x] SELESAI | F-023/F-024/F-084; test baru 407/407 |
 | 13 | `fix/ci-pipeline-calendar-db-hardening` | #713 (merged) | `a40d955`; merge `6b5cab5` | [x] SELESAI | F-012/F-054/F-092/F-093/F-095; 58 orphan ter-gate; test 466/466 |
+| 14A | `fix/batch-14a-dead-code-cleanup` | #715 (merged) | `6878dc9`; merge `16d1fcb` | [x] SELESAI | F-006/F-011/F-057/F-061/F-062/F-063/F-074/F-075/F-077; F-029 DITOLAK (false positive); test 467/467 |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
