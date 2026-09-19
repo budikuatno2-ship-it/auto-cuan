@@ -62,9 +62,9 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 11 | MEDIUM: Satukan Konversi Tanggal UTC ke WIB | 6 | [x] SELESAI |
 | 12 | MEDIUM: Panel "Kenapa Sinyal Ini Lolos Gate?" (Ambang + Missing != Pass) | 3 | [x] SELESAI |
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [x] SELESAI |
-| 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [-] SEBAGIAN (14A: 9 temuan + 1 ditolak; 14B: 8 temuan) |
+| 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [-] SEBAGIAN (14A: 9 temuan + 1 ditolak; 14B: 8 temuan; 14C: 4 temuan) |
 
-Progres keseluruhan: **67/97 SELESAI, 1 DITOLAK (F-029), 29 BELUM** (per Batch 14B).
+Progres keseluruhan: **71/97 SELESAI, 1 DITOLAK (F-029), 25 BELUM** (per Batch 14C).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -350,6 +350,17 @@ Branch `fix/batch-14b-ui-sanitization-and-forms` -> base `feat/daytrade-screener
 - **Gate**: `node --check` bersih pada semua file tersentuh; `npm test` = **468/468 file lolos, exit 0** (baseline 467 setelah Batch 14A + 1 test baru). CI PR #717 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, command-login, portfolio-persistence, Vercel).
 - **Diff**: 5 kode + 1 test baru + `curated-build-tests.json`, +313/-35. Tidak menyentuh scope Batch 14C/15/16.
 
+### Batch 14C - File Cleanup, Filter Non-Ticker, & CI Hygiene [x] SELESAI
+
+Branch `fix/batch-14c-cleanup-and-ci-hygiene` -> base `feat/daytrade-screener-v1` (PR **#719 merged**; merge `b61d00b`). Scope = 4 temuan LOW/MEDIUM kebersihan file + filter folder non-ticker + hygiene CI. **Tidak menyentuh** Batch 15/16.
+
+- **F-035 (LOW, aset scratch)**: [`public/tmp-ci-touch-batch1.js`](public/tmp-ci-touch-batch1.js) dihapus dari repo (satu-satunya aset scratch yang masih terlacak; `public/tmp-measure.html`/`tmp-measure2.html` sudah tidak ada di working tree). `tmp_investigasi/` tetap di-`.gitignore`.
+- **F-036/F-055 (LOW/MEDIUM, folder non-ticker)**: helper baru [`lib/idx-ticker.js`](lib/idx-ticker.js:1) mengekspor `isValidIdxTicker` (`/^[A-Z]{4}$/`). Semua pembaca folder `data/arjum-data/broker-summary/` yang sebelumnya memakai regex longgar `/^[A-Z0-9.-]+$/` (yang meloloskan `AUDITSCALE5D/14D/30D/60D`, `B4TST`, `DBGT4`, `NOACC`) kini memfilter via helper: [`lib/broker-hunter-service.js`](lib/broker-hunter-service.js:129), [`lib/bandarmologi-intel-service.js`](lib/bandarmologi-intel-service.js:517), [`tools/collect-insider-data.js`](tools/collect-insider-data.js:107), [`tools/fetch-daily-candles.js`](tools/fetch-daily-candles.js:42), [`tools/backfill-historical-candles.js`](tools/backfill-historical-candles.js:39), [`tools/targeted-september-backfill.js`](tools/targeted-september-backfill.js:78). Folder artefak uji/audit otomatis diabaikan saat membangun universe.
+- **F-097 (LOW, scoping gate CI)**: [`security-gate.yml`](.github/workflows/security-gate.yml:3), [`codeql-security.yml`](.github/workflows/codeql-security.yml:3), [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:4), dan [`fast-watcher-regression.yml`](.github/workflows/fast-watcher-regression.yml:4) kini juga memicu untuk PR/push ber-base `main` (sebelumnya hanya `feat/daytrade-screener-v1`), sehingga PR ke branch integrasi lain tetap melewati gate keamanan & regresi.
+- **Test regresi baru**: [`test/batch14c-ticker-filter-and-ci-hygiene.test.js`](test/batch14c-ticker-filter-and-ci-hygiene.test.js:1) (5 subtest) - (a) `isValidIdxTicker` menerima kode IDX 4 huruf & menolak `AUDITSCALE*`/`B4TST`/`DBGT4`/`NOACC`; (b) `loadUniverseTickers()` pada direktori broker-summary sementara hanya memuat ticker nyata, artefak diabaikan; (c) setiap pembaca folder memakai `isValidIdxTicker` & tidak lagi menyimpan regex longgar; (d) aset scratch tidak ada di `public/`; (e) keempat workflow memuat `main` di blok `pull_request`. Didaftarkan di [`tools/curated-build-tests.json`](tools/curated-build-tests.json:2).
+- **Gate**: `node --check` bersih pada semua file tersentuh; `npm test` = **469/469 file lolos, exit 0** (baseline 468 setelah Batch 14B + 1 test baru). CI PR #719 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, command-login, portfolio-persistence, fast-watcher-regression, Vercel).
+- **Diff**: 1 helper baru + 6 pembaca folder + 4 workflow + 1 test baru + `curated-build-tests.json` + 1 file scratch dihapus, +153/-8. Tidak menyentuh scope Batch 15/16.
+
 ### Batch 14 - LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) (40 temuan)
 
 - [ ] F-001 | LOW | batch 14 | api/sector-hot.js:3185 - `deleteOldForeignRows` membaca SEMUA tanggal per ticker tanpa `.limit()`
@@ -367,13 +378,13 @@ Branch `fix/batch-14b-ui-sanitization-and-forms` -> base `feat/daytrade-screener
 - [ ] F-025 | MEDIUM | batch 14 | public/portfolio-command-center.js:392, public/portfolio-ai-runtime-v2.js:79 - Refresh harga Portfolio tidak menulis metadata kesegaran → AI Portfolio menilai harga dengan umur yang salah
 - [~] F-029 | LOW | batch 14 | api/sector-hot.js:11644 - Cabang `status === 'Speculative'` di `deriveSwingLabels` adalah dead code _(DITOLAK Batch 14A: FALSE POSITIVE - classifier non-konglo :11423/:11430 memang meng-emit 'Speculative'; cabang reachable, tidak diubah)_
 - [ ] F-034 | MEDIUM | batch 14 | lib/intraday-shadow-scoring.js:51, lib/intraday-collector-vps-audit.js:35 - `lib/intraday-shadow-scoring.js` dan `lib/intraday-collector-vps-audit.js` menyimpan tanggal contoh ter-hardcode
-- [ ] F-035 | LOW | batch 14 | public/tmp-measure.html, public/tmp-measure2.html - Aset scratch ter-commit di `public/`: `tmp-measure.html`, `tmp-measure2.html`, `tmp-ci-touch-batch1.js`
-- [ ] F-036 | LOW | batch 14 | (tanpa lokasi eksplisit) - `data/arjum-data/broker-summary/` berisi folder ticker non-saham (`AUDITSCALE5D/14D/30D/60D`, `B4TST`, `DBGT4`, `NOACC`)
+- [x] F-035 | LOW | batch 14 | public/tmp-measure.html, public/tmp-measure2.html - Aset scratch ter-commit di `public/`: `tmp-measure.html`, `tmp-measure2.html`, `tmp-ci-touch-batch1.js` _(DIPERBAIKI Batch 14C: `public/tmp-ci-touch-batch1.js` dihapus; tmp-measure* sudah tidak ada)_
+- [x] F-036 | LOW | batch 14 | (tanpa lokasi eksplisit) - `data/arjum-data/broker-summary/` berisi folder ticker non-saham (`AUDITSCALE5D/14D/30D/60D`, `B4TST`, `DBGT4`, `NOACC`) _(DIPERBAIKI Batch 14C: `isValidIdxTicker` `/^[A-Z]{4}$/` di semua pembaca folder)_
 - [ ] F-048 | MEDIUM | batch 14 | lib/ai-narration-validator.js:164 - Validator anti-angka-rekaan AI melemahkan dirinya sendiri dengan mengecualikan SEMUA angka 0–31 dan 2020–2030
 - [ ] F-049 | MEDIUM | batch 14 | api/analyze.js:172 - `api/analyze.js` memanggil `checkUnifiedAiQuota(db, …)` dengan `db` yang bisa `null`
 - [ ] F-052 | MEDIUM | batch 14 | lib/corporate-action-price-scale-guard.js:42 - `lib/corporate-action-price-scale-guard.js` memakai median 5-field untuk blokir — bisa false-positive di saham berita
 - [ ] F-053 | MEDIUM | batch 14 | lib/latest-price-resolver.js:37 - `isFresh` default jendela 48 jam memungkinkan harga "fresh" sampai 2 hari & tidak membedakan hari bursa
-- [ ] F-055 | MEDIUM | batch 14 | (tanpa lokasi eksplisit) - Folder ticker non-saham di data produksi: `data/arjum-data/broker-summary/{AUDITSCALE14D,AUDITSCALE30D,AUDITSCALE5D,AUDITSCALE60D,B4TST,DBGT4,NOACC}`
+- [x] F-055 | MEDIUM | batch 14 | (tanpa lokasi eksplisit) - Folder ticker non-saham di data produksi: `data/arjum-data/broker-summary/{AUDITSCALE14D,AUDITSCALE30D,AUDITSCALE5D,AUDITSCALE60D,B4TST,DBGT4,NOACC}` _(DIPERBAIKI Batch 14C: universe tidak lagi menyerap folder artefak)_
 - [ ] F-060 | LOW | batch 14 | lib/ai-answer-contract.js:187, lib/ai-answer-contract.js:51 - Validasi `direct_answer terlalu panjang` tidak pernah bisa terpicu (dead validation) — terbukti runtime
 - [x] F-061 | LOW | batch 14 | lib/ai-answer-contract.js:101 - Variabel `explicitRatio` dihitung tetapi tidak pernah dipakai (dead variable) _(DIPERBAIKI Batch 14A)_
 - [ ] F-069 | LOW | batch 14 | lib/idx-tick-normalization.js:981 - Band ARB di-hardcode flat -15% (multiplier 0.85) untuk SEMUA tier harga, sementara ARA bertingkat (35/25/20%); tidak ada test yang mengunci dan tidak ada rujukan aturan di kode
@@ -391,7 +402,7 @@ Branch `fix/batch-14b-ui-sanitization-and-forms` -> base `feat/daytrade-screener
 - [x] F-090 | MEDIUM | batch 14 | public/index.html:3767 - `doRegister` memakai `errorEl` sebelum di-assign → jalur email tidak valid melempar TypeError, bukan pesan validasi _(DIPERBAIKI Batch 14B: `errorEl`/`successEl`/`registerBtn` di-resolve di atas blok validasi email + null-guard)_
 - [x] F-091 | LOW | batch 14 | public/index.html:4878, public/index.html:4915 - `openNewsFromAnalisis` menyisipkan judul/ringkasan berita mentah ke `innerHTML`, inkonsisten dengan `loadStockNewsPage` yang meng-escape _(DIPERBAIKI Batch 14B: `title`/`summary`/`date` di-escape; `href` diberi guard skema `^https?://`)_
 - [ ] F-096 | LOW | batch 14 | test/intraday-sample-collector.test.js:488 - Satu test vacuous `assert.ok(true)` (placeholder B15) — tidak memverifikasi apa pun
-- [ ] F-097 | LOW | batch 14 | security-gate.yml:3, codeql-security.yml:3 - Gate keamanan & regresi di-scope hanya ke branch `feat/daytrade-screener-v1` → PR ke branch lain tidak melewati gate
+- [x] F-097 | LOW | batch 14 | security-gate.yml:3, codeql-security.yml:3 - Gate keamanan & regresi di-scope hanya ke branch `feat/daytrade-screener-v1` → PR ke branch lain tidak melewati gate _(DIPERBAIKI Batch 14C: `main` ditambahkan ke branches di 4 workflow)_
 
 ### Temuan DITARIK (di luar 97 heading)
 
@@ -419,6 +430,7 @@ Branch `fix/batch-14b-ui-sanitization-and-forms` -> base `feat/daytrade-screener
 | 13 | `fix/ci-pipeline-calendar-db-hardening` | #713 (merged) | `a40d955`; merge `6b5cab5` | [x] SELESAI | F-012/F-054/F-092/F-093/F-095; 58 orphan ter-gate; test 466/466 |
 | 14A | `fix/batch-14a-dead-code-cleanup` | #715 (merged) | `6878dc9`; merge `16d1fcb` | [x] SELESAI | F-006/F-011/F-057/F-061/F-062/F-063/F-074/F-075/F-077; F-029 DITOLAK (false positive); test 467/467 |
 | 14B | `fix/batch-14b-ui-sanitization-and-forms` | #717 (merged) | merge `c423a30` | [x] SELESAI | F-003/F-079/F-081/F-082/F-086/F-089/F-090/F-091; test 468/468 |
+| 14C | `fix/batch-14c-cleanup-and-ci-hygiene` | #719 (merged) | merge `b61d00b` | [x] SELESAI | F-035/F-036/F-055/F-097; `lib/idx-ticker.js` filter non-ticker; test 469/469 |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
