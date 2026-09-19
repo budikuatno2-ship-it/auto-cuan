@@ -61,10 +61,10 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 10 | MEDIUM: Cluster Fabrikasi di Telegram Templates & Track Record Backtest | 2 | [x] SELESAI |
 | 11 | MEDIUM: Satukan Konversi Tanggal UTC ke WIB | 6 | [x] SELESAI |
 | 12 | MEDIUM: Panel "Kenapa Sinyal Ini Lolos Gate?" (Ambang + Missing != Pass) | 3 | [x] SELESAI |
-| 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [ ] BELUM |
+| 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [x] SELESAI |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [ ] BELUM |
 
-Progres keseluruhan: **45/97 SELESAI, 0 DITARIK, 52 BELUM** (per Batch 12).
+Progres keseluruhan: **50/97 SELESAI, 0 DITARIK, 47 BELUM** (per Batch 13).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -298,13 +298,24 @@ Branch `fix/signal-gate-transparency-ui-parity` -> base `feat/daytrade-screener-
 - **Gate**: `node --check` bersih pada file sumber + test; `npm test` = **407/407 file lolos, exit 0** (baseline 406 setelah Batch 11 + 1 test baru). CI PR #711 hijau (build-and-focused-tests, security-gate, Analyze JavaScript, CodeQL, command-login, portfolio-persistence, Vercel).
 - **Diff**: `public/signal-gate-transparency.js` +56/-39, test baru 141 baris, `curated-build-tests.json` +1. Tidak menyentuh scope Batch 13+.
 
-### Batch 13 - MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) (5 temuan)
+### Batch 13 - SELESAI (PR #713, merge `6b5cab5`) - CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE)
 
-- [ ] F-012 | MEDIUM | batch 13 | tools/run-build-test-suite.js:69 - BUG-002 lama MASIH BELUM DIPERBAIKI — 58 file test tidak pernah dijalankan CI
-- [ ] F-054 | LOW | batch 13 | lib/idx-trading-calendar.js:9, docs/CHART_T1_DATA_POLICY.md:9 - `lib/idx-trading-calendar.js` mendokumentasikan tabel `idx_trading_calendar` sebagai sumber, tetapi `docs/CHART_T1_DATA_POLICY.md` menyatakan tidak ada kalender libur otoritatif — dua sumber kontradiktif
-- [ ] F-092 | LOW | batch 13 | supabase/stock-daily-context-migration.sql:154 - Migrasi `stock-daily-context` (dan 7 lain) menyatakan "Deny direct client access" tetapi TIDAK ADA `REVOKE` apa pun — hanya `ENABLE ROW LEVEL SECURITY`; komentar merujuk "konvensi" yang juga tidak melakukannya
-- [ ] F-093 | MEDIUM | batch 13 | lib/idx-holidays-2026-seed-data.js:30, tools/backfill-engine.js:46 - Tiga salinan kalender libur IDX 2026 yang saling melenceng dari "single source of truth" — backfill menarik API pada hari libur & melewatkan hari bursa nyata
-- [ ] F-095 | MEDIUM | batch 13 | tools/run-build-test-suite.js:54 - 58 file `test/*.test.js` tidak ada di daftar CI ter-kurasi → regresi modul berisiko TIDAK ter-gate
+- [x] F-012 | MEDIUM | batch 13 | tools/run-build-test-suite.js:69 - BUG-002 lama MASIH BELUM DIPERBAIKI — 58 file test tidak pernah dijalankan CI _(DIPERBAIKI: guard `unregistered` di runner + 58 file didaftarkan)_
+- [x] F-054 | LOW | batch 13 | lib/idx-trading-calendar.js:9, docs/CHART_T1_DATA_POLICY.md:9 - `lib/idx-trading-calendar.js` mendokumentasikan tabel `idx_trading_calendar` sebagai sumber, tetapi `docs/CHART_T1_DATA_POLICY.md` menyatakan tidak ada kalender libur otoritatif — dua sumber kontradiktif _(DIPERBAIKI: doc menyebut kalender terpelihara 2026 + status belum diverifikasi BEI)_
+- [x] F-092 | LOW | batch 13 | supabase/stock-daily-context-migration.sql:154 - Migrasi `stock-daily-context` (dan 7 lain) menyatakan "Deny direct client access" tetapi TIDAK ADA `REVOKE` apa pun — hanya `ENABLE ROW LEVEL SECURITY`; komentar merujuk "konvensi" yang juga tidak melakukannya _(DIPERBAIKI: `REVOKE ALL FROM PUBLIC, anon, authenticated` + `GRANT ... TO service_role` di 8 migrasi)_
+- [x] F-093 | MEDIUM | batch 13 | lib/idx-holidays-2026-seed-data.js:30, tools/backfill-engine.js:46 - Tiga salinan kalender libur IDX 2026 yang saling melenceng dari "single source of truth" — backfill menarik API pada hari libur & melewatkan hari bursa nyata _(DIPERBAIKI: `getSeedHolidaySet()` tunggal; set inline 17-tanggal & 1-tanggal dihapus)_
+- [x] F-095 | MEDIUM | batch 13 | tools/run-build-test-suite.js:54 - 58 file `test/*.test.js` tidak ada di daftar CI ter-kurasi → regresi modul berisiko TIDAK ter-gate _(DIPERBAIKI: 58 file direkonsiliasi + didaftarkan; `npm test` 466/466)_
+
+Branch `fix/ci-pipeline-calendar-db-hardening` -> base `feat/daytrade-screener-v1`. Scope = 5 temuan cluster infrastruktur (F-012, F-054, F-092, F-093, F-095). Tidak menyentuh scope Batch 14+.
+
+- **F-012/F-095 (coverage gap CI)**: audit 58 `test/*.test.js` di luar `tools/curated-build-tests.json`. 42 sudah valid & lolos apa adanya; **16 diperbaiki** (assertion yang mengunci perilaku yang sengaja diubah Batch 1-12 + 2 sandbox `vm` kurang `style`); 0 file scratch dihapus (semua menguji modul nyata). Perbaikan utama: `generateDemoData` fabrikasi (Batch 9), literal `+4.5%`/`10150`/`2026-09-11` (Batch 6/10), CR3 denominator `top5×1.75` (F-070), `net_status` prioritas net asing, `verifyStoredCredential`, `slice(0,20)`, label `(Terbaru)`, dan mock-DOM. 5 orphan yang bergantung data gitignored (`data/arjum-data`) dibuat CI-safe (opt-in `VPS_FETCHER_ALLOW_IN_TESTS`, temp `ARJUM_DATA_DIR`, atau skip eksplisit bila data absen).
+- **F-012/F-095 (gate)**: [`tools/run-build-test-suite.js`](tools/run-build-test-suite.js:77) gagal (exit 1) pada full suite bila ada `test/*.test.js` tak terdaftar — mencegah regresi "test ditambah tapi tak pernah jalan" berulang. 58 file + 1 test baru didaftarkan ke [`tools/curated-build-tests.json`](tools/curated-build-tests.json:1).
+- **F-093 (kalender bursa 2026)**: [`lib/idx-trading-calendar.js`](lib/idx-trading-calendar.js:26) mengekspor `getSeedHolidaySet()` dari `lib/idx-holidays-2026-seed-data.js` (kanonik, 22 tanggal). [`tools/backfill-engine.js`](tools/backfill-engine.js:43) menghapus set inline 17-tanggal yang melenceng (termasuk hantu `2026-05-25`, `2026-03-21`); [`tools/backfill-arjum-data.js`](tools/backfill-arjum-data.js:44) menghapus set inline 1-tanggal (`{08-17}`). Keduanya kini melewati libur nyata (Pancasila `06-01`, 1 Muharam `06-17`) alih-alih membuang request Arjum; loop juga beralih ke UTC agar bebas DST.
+- **F-054 (doc)**: [`docs/CHART_T1_DATA_POLICY.md`](docs/CHART_T1_DATA_POLICY.md:9) tidak lagi menyatakan "tidak ada kalender libur otoritatif"; menyebut daftar terpelihara 2026 dengan `verified_at=null` sampai dikonfirmasi ke pengumuman resmi BEI.
+- **F-092 (pengerasan migrasi DB)**: 8 migrasi `ENABLE ROW LEVEL SECURITY` tanpa `REVOKE` (stock-daily-context, sector-hot, daytrade-screener, swing-screener, swing-screener-non-konglo, foreign-watchlist-daily, ai-analysis-cache, telegram-daily-picks) diberi `REVOKE ALL ON <tabel> FROM PUBLIC, anon, authenticated;` + `GRANT ALL ON <tabel> TO service_role;` sebagai lapisan kedua (RLS-tanpa-policy tetap dipertahankan).
+- **Test regresi baru**: [`test/batch13-ci-calendar-db-hardening.test.js`](test/batch13-ci-calendar-db-hardening.test.js:1) (8 subtest) — (a) setiap `test/*.test.js` terdaftar di curated list & runner punya guard `unregistered`; (b) `getSeedHolidaySet()` == seed kanonik, backfill tools tidak lagi memuat literal melenceng, dan `getTradingDates` melewati `06-01`/`06-17`; (c) setiap migrasi RLS punya `REVOKE` + grant service_role; (d) doc T-1 tidak lagi menyatakan tak ada kalender.
+- **Gate**: `node --check` bersih pada semua file tersentuh; `npm test` = **466/466 file lolos, exit 0** (408 -> 466: +58 orphan ter-gate + 1 test baru). CI PR #713 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, command-login, portfolio-persistence, Vercel).
+- **Diff**: 8 migrasi + 3 kode (calendar/backfill×2) + 1 doc + 19 file test + `curated-build-tests.json` + `run-build-test-suite.js` + 1 test baru, +471/-152. Tidak menyentuh scope Batch 14+.
 
 ### Batch 14 - LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) (40 temuan)
 
@@ -372,6 +383,7 @@ Branch `fix/signal-gate-transparency-ui-parity` -> base `feat/daytrade-screener-
 | 10 | `fix/remove-fabricated-tp-and-backtest-demo-label` | #707 (merged) | `7d25f4c`; merge `71fcb0d` | [x] SELESAI | F-065 + F-085; test baru 405/405 |
 | 11 | `fix/utc-naive-date-formatting` | #709 (merged) | `773d945`; merge `d79937e` | [x] SELESAI | 6 temuan UTC naif; test baru 406/406 |
 | 12 | `fix/signal-gate-transparency-ui-parity` | #711 (merged) | `c7e57e7`; merge `f8bda0a` | [x] SELESAI | F-023/F-024/F-084; test baru 407/407 |
+| 13 | `fix/ci-pipeline-calendar-db-hardening` | #713 (merged) | `a40d955`; merge `6b5cab5` | [x] SELESAI | F-012/F-054/F-092/F-093/F-095; 58 orphan ter-gate; test 466/466 |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
