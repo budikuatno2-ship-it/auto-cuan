@@ -8,6 +8,13 @@ function formatRp(val) {
     return Number(val).toLocaleString('id-ID');
 }
 
+// F-082: escape server/fetch error text before writing it to innerHTML.
+function escapeHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+        return ({ '&': '&' + 'amp;', '<': '&' + 'lt;', '>': '&' + 'gt;', '"': '&' + 'quot;', "'": '&' + '#39;' })[ch];
+    });
+}
+
 // Entry bounds, always low-to-high.
 //
 // In `telegram_daily_picks`, entry1 is the UPPER bound and entry2 the LOWER one.
@@ -55,14 +62,14 @@ async function loadTrackRecord(force) {
         var data = await res.json();
 
         if (!data || !data.success) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-400">Gagal memuat track record: ' + ((data && data.error) || 'Terjadi kesalahan.') + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-400">Gagal memuat track record: ' + escapeHtml((data && data.error) || 'Terjadi kesalahan.') + '</td></tr>';
             return;
         }
 
         _trData = data;
         renderTrackRecordUI(data);
     } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-400">Gagal terhubung ke server: ' + (err.message || String(err)) + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-400">Gagal terhubung ke server: ' + escapeHtml(err.message || String(err)) + '</td></tr>';
     } finally {
         _trInFlight = false;
         if (refreshBtn) refreshBtn.classList.remove('opacity-50', 'pointer-events-none');

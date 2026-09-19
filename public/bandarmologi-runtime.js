@@ -3621,10 +3621,13 @@
       var isForeign = String(r.nationality || '').toLowerCase() === 'foreign';
       var entityIcon = isForeign ? '🌐' : (String(r.category || '').toLowerCase().includes('pengendali') ? '👑' : '👤');
 
-      var pct = (r.percentage == null || r.percentage === '')
-        ? 0
-        : (typeof r.percentage === 'number' ? r.percentage : parseFloat(String(r.percentage).replace(/[%\s]/g, '')));
-      if (!Number.isFinite(pct)) pct = 0;
+      // F-003: a missing ownership percentage must stay missing. Synthesizing 0
+      // (then rendering "0.00%") told users a holder owned 0% of the company.
+      var pctRaw = r.percentage;
+      var pct = (pctRaw == null || pctRaw === '')
+        ? null
+        : (typeof pctRaw === 'number' ? pctRaw : parseFloat(String(pctRaw).replace(/[%\s]/g, '')));
+      if (!Number.isFinite(pct)) pct = null;
       var shares = typeof r.shares === 'number' ? r.shares : parseFloat(r.shares || 0);
 
       var changeStr = r.last_change || 'Tetap';
@@ -3647,7 +3650,7 @@
       html += '  <td class="py-2.5 px-3 whitespace-nowrap">' + getCategoryBadge(r.category) + '</td>';
       html += '  <td class="py-2.5 px-3 text-right font-mono text-gray-200">' + formatNumber(shares) + ' <span class="text-[10px] text-gray-400">lbr</span></td>';
       html += '  <td class="py-2.5 px-3 text-right font-mono">';
-      html += '    <span class="px-2 py-0.5 rounded bg-dark-900 border border-dark-600 text-emerald-400 font-bold">' + (r.percentage_formatted || (pct.toFixed(2) + '%')) + '</span>';
+      html += '    <span class="px-2 py-0.5 rounded bg-dark-900 border border-dark-600 text-emerald-400 font-bold">' + (r.percentage_formatted || (pct == null ? '—' : pct.toFixed(2) + '%')) + '</span>';
       html += '  </td>';
       html += '  <td class="py-2.5 px-3 font-mono text-right ' + changeTone + ' whitespace-nowrap">' + escapeHtml(changeStr) + (r.last_date ? ' <span class="text-[10px] text-gray-500">(' + escapeHtml(r.last_date) + ')</span>' : '') + '</td>';
       html += '  <td class="py-2.5 px-3 text-center whitespace-nowrap">';
@@ -4762,8 +4765,12 @@
                 itNote = 'Harga pasar terpantau mendekati estimasi modal bandar' + (cCost ? ' (' + cCost + ')' : '') + '.';
               }
             } else if (bandarIntelScannerCategory === 'silent_foreign_accumulation') {
-              var days = item.consecutive_days || 3;
-              itNote = 'Akumulasi senyap asing ' + days + ' hari berturut-turut tanpa lonjakan harga drastis.';
+              // F-081: never fabricate a concrete "3 days" streak. Only claim a
+              // streak length when the backend actually reported one.
+              var daysNum = Number(item.consecutive_days);
+              itNote = (item.consecutive_days != null && Number.isFinite(daysNum) && daysNum > 0)
+                ? 'Akumulasi senyap asing ' + daysNum + ' hari berturut-turut tanpa lonjakan harga drastis.'
+                : 'Akumulasi senyap asing tanpa lonjakan harga drastis (jumlah hari berturut-turut belum tersedia).';
             } else if (bandarIntelScannerCategory === 'ritel_cutloss_bandar_nampung') {
               itNote = 'Broker ritel mendominasi net sell (cutloss), ditampung masif oleh broker institusi/bandar.';
             } else if (bandarIntelScannerCategory === 'distribusi_ke_ritel') {

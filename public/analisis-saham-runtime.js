@@ -887,7 +887,11 @@
 
       var rawOutput = data.html || data.reply || '';
       if (rawOutput) {
-        var html = convertStrayMarkdownBold(rawOutput.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''));
+        var html = rawOutput.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+        // F-086: index.html always sanitizes AI HTML before the bold transform;
+        // this was the only AI sink that skipped it. Sanitize first, then bold.
+        if (typeof sanitizeAIHtml === 'function') html = sanitizeAIHtml(html);
+        html = convertStrayMarkdownBold(html);
         resultArea.innerHTML = '<div class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl p-4 sm:p-5 fade-in-up">' + html + '</div>' +
           '<div class="mt-3 flex flex-wrap gap-2">' +
           '<button onclick="switchAnalisisTab(\'chart\')" class="px-3 py-1.5 rounded-lg text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition inline-flex items-center gap-1 font-semibold">📈 Buka Chart</button>' +
