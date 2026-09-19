@@ -62,9 +62,9 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 11 | MEDIUM: Satukan Konversi Tanggal UTC ke WIB | 6 | [x] SELESAI |
 | 12 | MEDIUM: Panel "Kenapa Sinyal Ini Lolos Gate?" (Ambang + Missing != Pass) | 3 | [x] SELESAI |
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [x] SELESAI |
-| 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [-] SEBAGIAN (14A: 9 temuan + 1 ditolak) |
+| 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [-] SEBAGIAN (14A: 9 temuan + 1 ditolak; 14B: 8 temuan) |
 
-Progres keseluruhan: **59/97 SELESAI, 1 DITOLAK (F-029), 37 BELUM** (per Batch 14A).
+Progres keseluruhan: **67/97 SELESAI, 1 DITOLAK (F-029), 29 BELUM** (per Batch 14B).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -241,7 +241,7 @@ Branch `fix/remove-fabricated-scores-bandarmologi` -> base `feat/daytrade-screen
 - [x] F-067 | MEDIUM | batch 9 | lib/bandarmologi-service.js:986, lib/bandarmologi-service.js:1131 - `accumulation_score` DIKARANG 70/30/75 _(DIPERBAIKI: skor dihitung dari net-flow share gross value + konsistensi multi-hari, atau `null` bila data tidak memadai; fallback konstanta 75 dihapus)_
 - [x] F-070 | MEDIUM | batch 9 | lib/bandarmologi-intel-service.js:1184 - Denominator CR DIKARANG `top5Val × 1.75` _(DIPERBAIKI: bila turnover & volume sama-sama absen -> `cr3/cr5 = null` + `reason: 'TURNOVER_UNAVAILABLE'`; basis CR dilabeli eksplisit `cr_basis: VALUE|VOLUME`)_
 - [x] F-071 | MEDIUM | batch 9 | lib/bandarmologi-intel-service.js:791 - Fallback hunter MEMFABRIKASI "Silent Foreign Accumulation" _(DIPERBAIKI: `triggered: false` + `reason: 'DAILY_SERIES_UNAVAILABLE'`; `price_change_pct: 0.8`, `is_sideways: true`, dan `daily_breakdown` rata-bagi dihapus)_
-- [ ] F-081 | LOW | batch 9 | public/bandarmologi-runtime.js:4860 - Catatan scanner "Silent Foreign Accumulation" memfabrikasi "3 hari berturut-turut" saat `consecutive_days` absen _(di luar instruksi batch 9 ini; BELUM)_
+- [x] F-081 | LOW | batch 9 | public/bandarmologi-runtime.js:4860 - Catatan scanner "Silent Foreign Accumulation" memfabrikasi "3 hari berturut-turut" saat `consecutive_days` absen _(DIPERBAIKI Batch 14B: klaim streak hanya bila `consecutive_days` valid; jika absen -> "jumlah hari berturut-turut belum tersedia")_
 
 - **Test regresi baru**: `test/batch9-fabricated-scores-regression.test.js` (13 subtest) + didaftarkan di `tools/curated-build-tests.json`.
 - **Gate**: `node --check` bersih pada 4 file kode; `npm test` = **404/404 file lolos, exit 0** (baseline 403 setelah Batch 8 + 1 test baru). CI PR #705 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login, fast-watcher-regression).
@@ -334,10 +334,26 @@ Branch `fix/batch-14a-dead-code-cleanup` -> base `feat/daytrade-screener-v1` (PR
 - **Gate**: `node --check` bersih pada semua file tersentuh; `npm test` = **467/467 file lolos** (466 + 1 test baru). CI PR #715 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, ai-eval-regression, command-login, portfolio-persistence, Vercel).
 - **Diff**: 6 kode + 1 test baru + `curated-build-tests.json`, +169/-24.
 
+### Batch 14B - Sanitasi UI, Tampilan Nilai Absen, & Form Registrasi [x] SELESAI
+
+Branch `fix/batch-14b-ui-sanitization-and-forms` -> base `feat/daytrade-screener-v1` (PR **#717 merged**; merge `c423a30`). Scope = 8 temuan LOW/MEDIUM antarmuka + sanitasi + form. **Tidak menyentuh** Batch 14C (file cleanup non-ticker, workflow CI) maupun Batch 15/16.
+
+- **F-003 (MEDIUM, missing != zero)**: [`public/bandarmologi-runtime.js`](public/bandarmologi-runtime.js:3624) - tabel "Daftar Pemegang Saham & Insider" tidak lagi memaksa `pct = 0` saat `percentage` absen; `pct` kini `null` dan dirender `'—'` (bukan "0.00%"). Pemegang saham tanpa data persentase tidak lagi tampak memegang 0%.
+- **F-079 (LOW, missing != zero)**: [`lib/insider-network-service.js`](lib/insider-network-service.js:765) - `getRosterForTicker` mengirim `percentage: null` + `percentage_formatted: '—'` saat persentase absen (sebelumnya `r.percentage || 0` -> "0.00%"). Sumber persentase dibaca dari `pct_after`/`current_percentage`/`shares_after_percentage` (field yang benar-benar dibawa record ternormalisasi) sebelum menyerah ke `'—'`.
+- **F-081 (LOW, fabrikasi)**: [`public/bandarmologi-runtime.js`](public/bandarmologi-runtime.js:4764) - catatan scanner "Silent Foreign Accumulation" tidak lagi mengarang "3 hari berturut-turut" via `item.consecutive_days || 3`; klaim streak hanya bila `consecutive_days` valid, jika absen -> "jumlah hari berturut-turut belum tersedia".
+- **F-082 (LOW, escaping)**: [`public/track-record-runtime.js`](public/track-record-runtime.js:11) - helper `escapeHtml` ditambahkan; dua jalur error (`data.error` server + `err.message` fetch) dibungkus `escapeHtml` sebelum `innerHTML`, konsisten dengan `watchlist-runtime.js`.
+- **F-086 (MEDIUM, sanitasi AI)**: [`public/analisis-saham-runtime.js`](public/analisis-saham-runtime.js:888) - `sanitizeAIHtml(html)` dijalankan SEBELUM `convertStrayMarkdownBold`, paritas urutan `index.html`; sink AI ini tidak lagi menjadi satu-satunya yang tanpa sanitizer.
+- **F-089 (LOW, ReferenceError laten)**: [`public/index.html`](public/index.html:3531) - `email: regEmailVal || null` dihapus dari body `/api/login-user` di `doLogin`; variabel tak terdeklarasi tidak lagi memicu ReferenceError yang tertutupi pesan "koneksi".
+- **F-090 (MEDIUM, urutan query selector)**: [`public/index.html`](public/index.html:3762) - `errorEl`/`successEl`/`registerBtn` di-resolve di ATAS blok validasi email; jalur email tidak valid kini menampilkan pesan validasi (dengan null-guard), bukan TypeError.
+- **F-091 (LOW, escaping berita)**: [`public/index.html`](public/index.html:4877) - `openNewsFromAnalisis` membungkus `item.title`/`item.summary`/`item.date` dengan `escapeHtml`; `loadStockNewsPage` memberi guard skema `^https?://` pada `item.url` sebelum menyisipkan `href`.
+- **Test regresi baru**: [`test/batch14b-ui-sanitization-and-forms.test.js`](test/batch14b-ui-sanitization-and-forms.test.js:1) (10 subtest) - (a) roster merender "—" untuk persentase absen & tidak pernah "0.00%"; (b) `getRosterForTicker` menjaga `percentage: null` + `'—'`; (c) catatan silent-foreign tidak mengarang "3 hari"; (d) track-record meng-escape teks error; (e) analisis-saham sanitize sebelum bold; (f) `doLogin` tanpa `regEmailVal`; (g) `doRegister` assign `errorEl` sebelum dipakai; (h) `openNewsFromAnalisis` escape + guard skema href. Didaftarkan di [`tools/curated-build-tests.json`](tools/curated-build-tests.json:2).
+- **Gate**: `node --check` bersih pada semua file tersentuh; `npm test` = **468/468 file lolos, exit 0** (baseline 467 setelah Batch 14A + 1 test baru). CI PR #717 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, command-login, portfolio-persistence, Vercel).
+- **Diff**: 5 kode + 1 test baru + `curated-build-tests.json`, +313/-35. Tidak menyentuh scope Batch 14C/15/16.
+
 ### Batch 14 - LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) (40 temuan)
 
 - [ ] F-001 | LOW | batch 14 | api/sector-hot.js:3185 - `deleteOldForeignRows` membaca SEMUA tanggal per ticker tanpa `.limit()`
-- [ ] F-003 | MEDIUM | batch 14 | public/bandarmologi-runtime.js:3728 - Tabel "Daftar Pemegang Saham & Insider": persentase yang HILANG dirender "0.00%" (missing disajikan sebagai nol)
+- [x] F-003 | MEDIUM | batch 14 | public/bandarmologi-runtime.js:3728 - Tabel "Daftar Pemegang Saham & Insider": persentase yang HILANG dirender "0.00%" (missing disajikan sebagai nol) _(DIPERBAIKI Batch 14B: persentase absen -> "—"; tidak lagi sintesis 0)_
 - [ ] F-009 | LOW | batch 14 | api/sector-hot.js:5859 - `getRequestBaseUrl` mempercayai `x-forwarded-host`/`host` klien saat membangun URL chart Telegram
 - [x] F-011 | LOW | batch 14 | public/bandarmologi-runtime.js:803, public/bandarmologi-runtime.js:874 - Deklarasi `var items` ganda di `buildBrokerBubbleItems` _(DIPERBAIKI Batch 14A: 1 deklarasi)_
 - [ ] F-013 | HIGH | batch 14 | tools/run-build-test-suite.js:9 - BUG-013 diperkuat — token review literal yang sama juga di-hardcode di runner build
@@ -366,14 +382,14 @@ Branch `fix/batch-14a-dead-code-cleanup` -> base `feat/daytrade-screener-v1` (PR
 - [x] F-075 | LOW | batch 14 | public/stock-analysis-ai.js:393 - `mountRankingCardOnOwnPage()` menulis `card.style.*` tanpa null-guard meski `card` dijaga `if (card)` beberapa baris sebelumnya _(DIPERBAIKI Batch 14A)_
 - [ ] F-076 | MEDIUM | batch 14 | public/market-feature-runtime.js:718, public/market-feature-runtime.js:734 - Blok prompt `[Auto-Cuan Score]` memakai DUA skala berbeda untuk field berlabel sama — server `/25` vs fallback frontend `/30`
 - [x] F-077 | LOW | batch 14 | lib/foreign-flow-recap.js:270 - `sendForeignFlowRecap` memanggil `telegramNotifier.sendMessage` yang TIDAK ADA (ekspor hanya `sendTelegramMessage`) — TypeError laten di fungsi tanpa pemanggil _(DIPERBAIKI Batch 14A)_
-- [ ] F-079 | LOW | batch 14 | lib/insider-network-service.js:1098 - `getRosterForTicker` merender persentase yang HILANG sebagai "0.00%" (missing disajikan sebagai nol)
-- [ ] F-082 | LOW | batch 14 | public/track-record-runtime.js:58 - `track-record-runtime.js` menulis teks error ke `innerHTML` tanpa escaping (dua lokasi)
+- [x] F-079 | LOW | batch 14 | lib/insider-network-service.js:1098 - `getRosterForTicker` merender persentase yang HILANG sebagai "0.00%" (missing disajikan sebagai nol) _(DIPERBAIKI Batch 14B: `percentage` absen -> `null` + `percentage_formatted: '—'`)_
+- [x] F-082 | LOW | batch 14 | public/track-record-runtime.js:58 - `track-record-runtime.js` menulis teks error ke `innerHTML` tanpa escaping (dua lokasi) _(DIPERBAIKI Batch 14B: dua jalur error dibungkus `escapeHtml`)_
 - [ ] F-083 | LOW | batch 14 | public/portfolio-supabase-sync.js:259 - `pagehideSave` memakai `keepalive:true` dengan seluruh state portofolio (batas ~64KB browser)
-- [ ] F-086 | MEDIUM | batch 14 | public/analisis-saham-runtime.js:888, public/index.html:4447 - `analisis-saham-runtime.js` menyuntik HTML jawaban AI ke `innerHTML` TANPA `sanitizeAIHtml` (satu-satunya sink AI yang tidak disanitasi)
+- [x] F-086 | MEDIUM | batch 14 | public/analisis-saham-runtime.js:888, public/index.html:4447 - `analisis-saham-runtime.js` menyuntik HTML jawaban AI ke `innerHTML` TANPA `sanitizeAIHtml` (satu-satunya sink AI yang tidak disanitasi) _(DIPERBAIKI Batch 14B: `sanitizeAIHtml` dijalankan sebelum `convertStrayMarkdownBold`, paritas `index.html`)_
 - [ ] F-088 | LOW | batch 14 | public/index.html:2410, public/index.html:7214 - `getRelativeDate` masih memakai rumus WIB double-shift yang sudah diperbaiki di `getWIBDateString` _(catatan audit: sudah diperbaiki/bukan bug - verifikasi ulang saat batch)_
-- [ ] F-089 | LOW | batch 14 | public/index.html:3531, public/index.html:3766 - `doLogin` mereferensikan `regEmailVal` yang tak terdeklarasi di scope-nya (latent ReferenceError; tertutupi oleh override `auth-v2.js`)
-- [ ] F-090 | MEDIUM | batch 14 | public/index.html:3767 - `doRegister` memakai `errorEl` sebelum di-assign → jalur email tidak valid melempar TypeError, bukan pesan validasi
-- [ ] F-091 | LOW | batch 14 | public/index.html:4878, public/index.html:4915 - `openNewsFromAnalisis` menyisipkan judul/ringkasan berita mentah ke `innerHTML`, inkonsisten dengan `loadStockNewsPage` yang meng-escape
+- [x] F-089 | LOW | batch 14 | public/index.html:3531, public/index.html:3766 - `doLogin` mereferensikan `regEmailVal` yang tak terdeklarasi di scope-nya (latent ReferenceError; tertutupi oleh override `auth-v2.js`) _(DIPERBAIKI Batch 14B: `email: regEmailVal || null` dihapus dari body login)_
+- [x] F-090 | MEDIUM | batch 14 | public/index.html:3767 - `doRegister` memakai `errorEl` sebelum di-assign → jalur email tidak valid melempar TypeError, bukan pesan validasi _(DIPERBAIKI Batch 14B: `errorEl`/`successEl`/`registerBtn` di-resolve di atas blok validasi email + null-guard)_
+- [x] F-091 | LOW | batch 14 | public/index.html:4878, public/index.html:4915 - `openNewsFromAnalisis` menyisipkan judul/ringkasan berita mentah ke `innerHTML`, inkonsisten dengan `loadStockNewsPage` yang meng-escape _(DIPERBAIKI Batch 14B: `title`/`summary`/`date` di-escape; `href` diberi guard skema `^https?://`)_
 - [ ] F-096 | LOW | batch 14 | test/intraday-sample-collector.test.js:488 - Satu test vacuous `assert.ok(true)` (placeholder B15) — tidak memverifikasi apa pun
 - [ ] F-097 | LOW | batch 14 | security-gate.yml:3, codeql-security.yml:3 - Gate keamanan & regresi di-scope hanya ke branch `feat/daytrade-screener-v1` → PR ke branch lain tidak melewati gate
 
@@ -402,6 +418,7 @@ Branch `fix/batch-14a-dead-code-cleanup` -> base `feat/daytrade-screener-v1` (PR
 | 12 | `fix/signal-gate-transparency-ui-parity` | #711 (merged) | `c7e57e7`; merge `f8bda0a` | [x] SELESAI | F-023/F-024/F-084; test baru 407/407 |
 | 13 | `fix/ci-pipeline-calendar-db-hardening` | #713 (merged) | `a40d955`; merge `6b5cab5` | [x] SELESAI | F-012/F-054/F-092/F-093/F-095; 58 orphan ter-gate; test 466/466 |
 | 14A | `fix/batch-14a-dead-code-cleanup` | #715 (merged) | `6878dc9`; merge `16d1fcb` | [x] SELESAI | F-006/F-011/F-057/F-061/F-062/F-063/F-074/F-075/F-077; F-029 DITOLAK (false positive); test 467/467 |
+| 14B | `fix/batch-14b-ui-sanitization-and-forms` | #717 (merged) | merge `c423a30` | [x] SELESAI | F-003/F-079/F-081/F-082/F-086/F-089/F-090/F-091; test 468/468 |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
