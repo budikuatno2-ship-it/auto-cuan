@@ -170,11 +170,12 @@ test('runBacktestSimulation filter by category and min R:R functions accurately'
   assert.equal(rrRes.trades.some(t => t.ticker === 'DT2'), false);
 });
 
-test('runBacktestSimulation supports flexible outcomes (WIN, LOSS, pnl_pct) and fallback benchmark dataset', () => {
-  // 1. Fallback benchmark dataset when empty
+test('runBacktestSimulation supports flexible outcomes (WIN, LOSS, pnl_pct) and explicit empty status', () => {
+  // 1. Explicit empty status when no signals
   const emptyRes = backtest.runBacktestSimulation([]);
-  assert.ok(emptyRes.metrics.totalTrades >= 5, 'Fallback benchmark dataset should yield >= 5 trades');
-  assert.ok(emptyRes.metrics.winRatePct > 0);
+  assert.strictEqual(emptyRes.status, 'NO_SIGNALS', 'Empty signals must return NO_SIGNALS status');
+  assert.strictEqual(emptyRes.message, 'Belum ada sinyal untuk disimulasikan', 'Must return explicit message');
+  assert.strictEqual(emptyRes.metrics.totalTrades, 0, 'Empty signals must yield 0 trades');
 
   // 2. Flexible outcomes (WIN, LOSS, pnl_pct)
   const flexSignals = [

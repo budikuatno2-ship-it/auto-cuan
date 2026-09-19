@@ -169,7 +169,7 @@ test('T-TPL-20: ATR warnings do not change entry TP SL values', function() {
   var noAtr = templates.formatSignalCard(baseDayTrade(), 1, 'daytrade');
   var withAtr = templates.formatSignalCard(baseDayTrade({ sl_atr_class: 'SL_TOO_TIGHT', tp1_atr_class: 'TP1_STRETCHED', tp2_atr_class: 'TP2_STRETCHED' }), 1, 'daytrade');
   assert.match(withAtr, /Area Beli \(Entry\): Rp2\.870 - Rp2\.900/);
-  assert.match(withAtr, /Target Profit 1 \(\+4\.5%\): Rp3\.010/);
+  assert.match(withAtr, /Target Profit 1 \(\+3\.8%\): Rp3\.010/);
   assert.match(withAtr, /Stop Loss: Rp2\.750/);
   assert.equal(noAtr.includes('Area Beli (Entry): Rp2.870 - Rp2.900'), true);
   assert.equal(withAtr.includes('Area Beli (Entry): Rp2.870 - Rp2.900'), true);

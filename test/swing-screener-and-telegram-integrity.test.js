@@ -156,7 +156,7 @@ test('Scenario E: Telegram template eliminates double Take Profit lines and inve
   assert.doesNotMatch(card, /^Take Profit:/m, 'Duplicate Take Profit line must be eliminated');
 
   // Must have single clean Target Profit line
-  assert.match(card, /Target Profit 1 \(\+5% s\/d \+6% Partial TP 50%\): Rp1\.800/);
+  assert.match(card, /Target Profit 1 \(\+5\.9% Partial TP 50%\): Rp1\.800/);
 });
 
 test('Scenario F: Real Bandarmologi data vs "Netral / Tersebar" fallback (no fossil mock accumulation)', () => {
