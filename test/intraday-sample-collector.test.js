@@ -484,10 +484,17 @@ test('B14. counts are internally consistent', async () => {
 });
 
 
-// B15: Existing 26 collector tests remain passing (this file IS the test suite)
-test('B15. this test file contains all original + new tests', () => {
-  // If this test runs, the suite loaded successfully
-  assert.ok(true);
+// B15: F-096 — was a vacuous always-pass placeholder. Assert the collector
+// module actually exposes the safety-critical surface this suite exercises.
+test('B15. collector module exposes its safety-critical surface', () => {
+  assert.equal(typeof collector, 'object');
+  const exported = Object.keys(collector);
+  assert.ok(exported.length > 0, 'collector must export at least one symbol');
+  const src = require('node:fs').readFileSync(
+    path.join(__dirname, '..', 'tools', 'intraday-sample-collector.js'), 'utf8');
+  // The collector must never be able to send Telegram (shadow-only guarantee).
+  assert.ok(!src.includes('sendTelegram('));
+  assert.ok(!src.includes('process.env.TELEGRAM_BOT_TOKEN'));
 });
 
 // B16: Relevant production tests remain passing

@@ -5857,6 +5857,10 @@ function buildTop5ChartPng(ticker, date, ohlcRows, pick, source) {
 
 
 function getRequestBaseUrl(req) {
+  // F-009: never derive the Telegram chart URL from caller-controlled headers
+  // when an explicit base is configured. Mirrors lib/subscription-manual-handler.js.
+  var configured = String(process.env.PUBLIC_BASE_URL || process.env.SUBSCRIPTION_PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
+  if (configured) return configured;
   var proto = req.headers['x-forwarded-proto'] || 'https';
   var host = req.headers['x-forwarded-host'] || req.headers.host;
   return proto + '://' + host;
@@ -14743,6 +14747,7 @@ module.exports.__test = {
   SWING_NK_HIGH_RR_WARNING_THRESHOLD: swingNkRrWarning.SWING_NK_HIGH_RR_WARNING_THRESHOLD,
   includesAny: includesAny,
   joinTelegramTexts: joinTelegramTexts,
+  getRequestBaseUrl: getRequestBaseUrl,
   calcScreenerRSI: calcScreenerRSI,
   nkCalcRSI: nkCalcRSI,
   deriveDayTradeTimeframeContext: deriveDayTradeTimeframeContext,
