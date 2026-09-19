@@ -52,6 +52,7 @@ test('Akumulasi UI Fallback: BandarmologiRuntime renders Akumulasi bubbles and i
       innerHTML: '',
       textContent: '',
       value: '',
+      style: {},
       classList: { add: () => {}, remove: () => {}, toggle: () => {} },
       setAttribute: () => {},
       appendChild: () => {}

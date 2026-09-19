@@ -112,15 +112,30 @@ test('T8: with syncWithBrokerSummary on, a candle cache behind the summary is re
   // Candle series whose newest bar is old, but freshly written (TTL-fresh).
   await cache.writeCache(dir, 'BBCA', candlesThrough('2026-09-01'), 'test');
 
-  let fetched = false;
-  const provider = cache.createCacheProvider({
-    cacheDir: dir,
-    syncWithBrokerSummary: true,
-    fetchFn: async () => { fetched = true; return candlesThrough('2026-09-11'); }
-  });
+  // The guard compares against the newest broker-summary date on disk, which is
+  // environment-dependent (data/arjum-data is gitignored). Point ARJUM_DATA_DIR
+  // at a temp dir holding a 2026-09-11 summary so the test is deterministic.
+  const arjumDir = await fs.mkdtemp(path.join(os.tmpdir(), 'arjum-t8-'));
+  const summaryDir = path.join(arjumDir, 'broker-summary', 'BBCA');
+  await fs.mkdir(summaryDir, { recursive: true });
+  await fs.writeFile(path.join(summaryDir, '2026-09-11.json'), JSON.stringify({ stock_code: 'BBCA', date: '2026-09-11' }));
 
-  await provider.fetchWithCache('BBCA');
-  assert.equal(fetched, true, 'cache behind the broker summary must trigger a refetch');
+  const originalEnv = process.env.ARJUM_DATA_DIR;
+  process.env.ARJUM_DATA_DIR = arjumDir;
+  let fetched = false;
+  try {
+    const provider = cache.createCacheProvider({
+      cacheDir: dir,
+      syncWithBrokerSummary: true,
+      fetchFn: async () => { fetched = true; return candlesThrough('2026-09-11'); }
+    });
+
+    await provider.fetchWithCache('BBCA');
+    assert.equal(fetched, true, 'cache behind the broker summary must trigger a refetch');
+  } finally {
+    if (originalEnv === undefined) delete process.env.ARJUM_DATA_DIR;
+    else process.env.ARJUM_DATA_DIR = originalEnv;
+  }
 });
 
 test('T8: with syncWithBrokerSummary OFF, TTL freshness alone still serves the cache', async () => {

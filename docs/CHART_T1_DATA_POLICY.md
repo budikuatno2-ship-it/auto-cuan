@@ -7,8 +7,13 @@ and deterministic Pattern detection are calculated. Only the filtered result
 is placed in the in-memory cache.
 
 This is a minimum completed-candle guarantee, not a complete IDX calendar. The
-repository has weekday/weekend helpers but no authoritative, maintained IDX
-public-holiday calendar. `expected_t1_date` is therefore a weekday-only
+repository now carries a maintained 2026 exchange-holiday list in exactly one
+place — [`lib/idx-holidays-2026-seed-data.js`](../lib/idx-holidays-2026-seed-data.js)
+— consumed by the seed scripts and by [`lib/idx-trading-calendar.js`](../lib/idx-trading-calendar.js)
+(which also reads the `idx_trading_calendar` table). That list is user-provided
+and its rows carry `verified_at = null` until independently confirmed against
+the official BEI announcement, so it is a maintained-but-unverified calendar,
+not an authoritative one. `expected_t1_date` is therefore a weekday-only
 candidate and must not be treated as exchange-calendar verification.
 
 ## Response metadata
@@ -24,7 +29,8 @@ candidate and must not be treated as exchange-calendar verification.
     older than the weekday candidate, but holiday verification is unavailable.
   - `stale`: the last candle predates the weekday candidate.
   - `missing`: no completed candle remains.
-- `t1_verified`: always `false` until an authoritative calendar is integrated.
+- `t1_verified`: always `false` until the maintained 2026 holiday list is
+  independently verified against the official BEI announcement.
 - `t1_reason`: stable machine-readable explanation of the status.
 
 Pattern Map must consume this policy and may not represent

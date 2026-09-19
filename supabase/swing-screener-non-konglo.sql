@@ -152,3 +152,7 @@ ALTER TABLE swing_screener_non_konglo_staging ENABLE ROW LEVEL SECURITY;
 -- No SELECT policy for anon or authenticated roles.
 -- Only service_role bypasses RLS.
 -- Our API endpoint enforces access control via X-User-Id + app_users check.
+
+-- F-092: table-level privilege hardening (see stock-daily-context-migration.sql).
+REVOKE ALL ON swing_screener_non_konglo_latest, swing_screener_non_konglo_meta, swing_screener_non_konglo_jobs, swing_screener_non_konglo_staging FROM PUBLIC, anon, authenticated;
+GRANT ALL ON swing_screener_non_konglo_latest, swing_screener_non_konglo_meta, swing_screener_non_konglo_jobs, swing_screener_non_konglo_staging TO service_role;

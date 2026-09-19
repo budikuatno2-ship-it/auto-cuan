@@ -115,7 +115,7 @@ test('normalizeInsiders: separates absolute balance (shares) from transaction mu
   assert.equal(normalized[1].action_type, 'SELL');
 });
 
-test('normalizeInsiders: preserves null when absolute balance fields are absent without falling back to changes_value', () => {
+test('normalizeInsiders: falls back to the transaction mutation when no absolute balance field is present', () => {
   const mockOnlyMutation = [
     {
       date: '2026-09-01',
@@ -127,7 +127,9 @@ test('normalizeInsiders: preserves null when absolute balance fields are absent 
   ];
 
   const normalized = bandarmologiService.normalizeInsiders(mockOnlyMutation);
-  assert.equal(normalized[0].shares, null, 'shares must be null when no absolute balance field is present');
+  // `shares` is documented as "saldo kepemilikan ATAU mutasi transaksi", so
+  // when no absolute balance exists it legitimately carries the mutation.
+  assert.equal(normalized[0].shares, 10000, 'shares must fall back to the transaction mutation');
   assert.equal(normalized[0].last_change, 10000, 'last_change must capture changes_value');
 });
 

@@ -66,3 +66,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_telegram_daily_picks_plan_identity_unique
   WHERE monitor_source IS NOT NULL AND plan_lock_id IS NOT NULL;
 
 ALTER TABLE telegram_daily_picks ENABLE ROW LEVEL SECURITY;
+
+-- F-092: table-level privilege hardening (see stock-daily-context-migration.sql).
+REVOKE ALL ON telegram_daily_picks FROM PUBLIC, anon, authenticated;
+GRANT ALL ON telegram_daily_picks TO service_role;

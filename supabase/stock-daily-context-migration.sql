@@ -154,3 +154,10 @@ ALTER TABLE stock_daily_features ENABLE ROW LEVEL SECURITY;
 -- Deny direct client access on all four tables. Service role bypasses RLS for
 -- server-side collector/API/admin code, matching the convention already used
 -- by foreign_watchlist_daily.
+--
+-- F-092: RLS-without-policy denies anon/authenticated row access, but the
+-- table-level DML grants remain. Revoke them so a future permissive policy (or
+-- RLS being disabled) cannot silently reopen direct client DML. Service role
+-- bypasses RLS and keeps full access.
+REVOKE ALL ON idx_trading_calendar, stock_daily_history, stock_fundamentals, stock_daily_features FROM PUBLIC, anon, authenticated;
+GRANT ALL ON idx_trading_calendar, stock_daily_history, stock_fundamentals, stock_daily_features TO service_role;

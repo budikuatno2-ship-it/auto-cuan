@@ -117,3 +117,7 @@ ALTER TABLE daytrade_screener_runs ENABLE ROW LEVEL SECURITY;
 -- No SELECT policy for anon or authenticated roles.
 -- Only service_role bypasses RLS.
 -- Our API endpoint enforces access control via X-User-Id + app_users check.
+
+-- F-092: table-level privilege hardening (see stock-daily-context-migration.sql).
+REVOKE ALL ON daytrade_screener_latest, daytrade_screener_meta, daytrade_screener_runs FROM PUBLIC, anon, authenticated;
+GRANT ALL ON daytrade_screener_latest, daytrade_screener_meta, daytrade_screener_runs TO service_role;

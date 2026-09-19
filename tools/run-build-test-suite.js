@@ -75,6 +75,25 @@ if (!fs.existsSync(curatedConfigFile)) {
 const curatedTestFiles = JSON.parse(fs.readFileSync(curatedConfigFile, 'utf8'));
 const existingFiles = curatedTestFiles.filter(f => fs.existsSync(path.join(ROOT_DIR, f)));
 
+// F-012/F-095: every test/*.test.js must be registered in the curated list, or
+// it silently never runs in CI. Fail the build on any unregistered file so a
+// new test cannot be added without being gated. Only enforced for the full
+// suite (the smoke list is a deliberate subset).
+if (isFullSuite) {
+  const registered = new Set(curatedTestFiles);
+  const onDisk = fs.readdirSync(path.join(ROOT_DIR, 'test'))
+    .filter(f => f.endsWith('.test.js'))
+    .map(f => `test/${f}`);
+  const unregistered = onDisk.filter(f => !registered.has(f));
+  if (unregistered.length > 0) {
+    console.error(`ERROR: ${unregistered.length} test file(s) exist but are not in ${path.basename(curatedConfigFile)}:`);
+    unregistered.forEach(f => console.error(` - ${f}`));
+    console.error('Register them (or delete the scratch file) so CI actually runs them.');
+    sendVercelTelemetry(`ERROR: ${unregistered.length} unregistered test file(s):\n${unregistered.join('\n')}`);
+    process.exit(1);
+  }
+}
+
 const suiteLabel = isFullSuite ? 'Full Regression Suite' : 'Smoke/Contract Build Suite';
 console.log(`\n--- Running ${suiteLabel} (${existingFiles.length} test files from ${path.basename(curatedConfigFile)}) ---`);
 

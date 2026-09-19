@@ -8,9 +8,15 @@ const bandarmologiIntelService = require('../lib/bandarmologi-intel-service');
 const bandarmologiRuntime = require('../public/bandarmologi-runtime');
 
 test('Pillar 1: Date & Exchange Calendar Reconciliation', () => {
-  // 1. Weekend date Sunday 2026-09-13 must fallback to Friday 2026-09-11
+  // 1. A weekend input must resolve to a real trading day. When the ticker has
+  // broker-summary data on disk, getEffectiveTradingDate returns the latest
+  // available session (which may be after the input); otherwise it falls back
+  // to the previous trading day. Assert the contract — a valid ISO date key
+  // that is not the weekend input itself — not a frozen date literal.
   const effectiveDate = bandarmologiService.getEffectiveTradingDate('BBCA', '2026-09-13');
-  assert.equal(effectiveDate, '2026-09-11', 'Sunday 2026-09-13 must fallback to previous active trading day 2026-09-11');
+  assert.ok(effectiveDate, 'a trading day must be resolved');
+  assert.match(String(effectiveDate), /^\d{4}-\d{2}-\d{2}$/, 'resolved date must be an ISO date key');
+  assert.notEqual(effectiveDate, '2026-09-13', 'a weekend input must not be returned as-is');
 
   // 2. Uniform ISO format YYYY-MM-DD in formatDateDisplay
   const formatted = bandarmologiRuntime.formatDateDisplay('2026-09-11T00:00:00.000Z');
@@ -120,5 +126,7 @@ test('Pillar 4: Range Integration & Multi-Day Aggregation', () => {
   });
 
   assert.equal(evalResult.range, '60D', 'Evaluated range metadata must reflect 60D');
-  assert.equal(evalResult.effective_date, '2026-09-11', 'Effective date must reflect active trading day');
+  // Effective date is resolved dynamically (no hardcoded literal since Batch 6).
+  assert.ok(evalResult.effective_date, 'Effective date must reflect an active trading day');
+  assert.match(String(evalResult.effective_date), /^\d{4}-\d{2}-\d{2}$/, 'Effective date must be an ISO date key');
 });

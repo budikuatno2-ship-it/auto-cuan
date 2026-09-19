@@ -99,3 +99,7 @@ BEGIN
     ALTER TABLE swing_screener_latest ADD COLUMN status_reason TEXT;
   END IF;
 END $$;
+
+-- F-092: table-level privilege hardening (see stock-daily-context-migration.sql).
+REVOKE ALL ON swing_screener_latest, swing_screener_meta FROM PUBLIC, anon, authenticated;
+GRANT ALL ON swing_screener_latest, swing_screener_meta TO service_role;

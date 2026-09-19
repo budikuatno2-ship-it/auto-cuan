@@ -12,6 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const arjumClient = require('../lib/arjum-client');
 const bandarmologiService = require('../lib/bandarmologi-service');
+const idxTradingCalendar = require('../lib/idx-trading-calendar');
 
 // Optional local/server .env or .env.local loader (without external dependencies)
 try {
@@ -41,25 +42,27 @@ try {
   }
 } catch (_) {}
 
-// Bursa Efek Indonesia trading calendar for August - September 2026 (weekdays, skip known holidays)
-// 17 Agustus 2026 (HUT RI), etc.
+// Bursa Efek Indonesia trading calendar (weekdays, skip known holidays).
+// Uses the single canonical 2026 holiday list (lib/idx-holidays-2026-seed-data.js)
+// via the trading-calendar helper. The previous inline set held only HUT RI, so
+// runs over June-July treated real holidays (Pancasila, 1 Muharam) as trading days
+// and burned the tightly-quota'd Arjum requests. See F-093 in FULL_REPO_FIX_LOG.md.
 function getTradingDates(startDateStr = '2026-08-03', endDateStr = '2026-09-04') {
   const dates = [];
-  const current = new Date(startDateStr);
-  const end = new Date(endDateStr);
-
-  const holidays = new Set([
-    '2026-08-17' // Hari Kemerdekaan RI
-  ]);
+  const holidays = idxTradingCalendar.getSeedHolidaySet();
+  const [sy, sm, sd] = startDateStr.split('-').map(Number);
+  const [ey, em, ed] = endDateStr.split('-').map(Number);
+  const current = new Date(Date.UTC(sy, sm - 1, sd));
+  const end = new Date(Date.UTC(ey, em - 1, ed));
 
   while (current <= end) {
-    const day = current.getDay();
+    const day = current.getUTCDay();
     const iso = current.toISOString().slice(0, 10);
     // 0 = Sunday, 6 = Saturday
     if (day !== 0 && day !== 6 && !holidays.has(iso)) {
       dates.push(iso);
     }
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
   return dates;
 }
