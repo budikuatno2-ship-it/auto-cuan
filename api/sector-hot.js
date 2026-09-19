@@ -1882,7 +1882,7 @@ function calculateIndicators(candles) {
     last_price: round0(last_price),
     price_source: 'yahoo_chart_1d_close',
     price_asof: candles[lastIdx] && candles[lastIdx].time ? new Date(candles[lastIdx].time * 1000).toISOString() : null,
-    price_date: candles[lastIdx] && candles[lastIdx].time ? new Date(candles[lastIdx].time * 1000).toISOString().slice(0, 10) : null,
+    price_date: candles[lastIdx] && candles[lastIdx].time ? getJakartaDateFromTimestamp(new Date(candles[lastIdx].time * 1000)) : null,
     open_price: round0(open_price),
     high_price: round0(high_price),
     low_price: round0(low_price),
@@ -2545,7 +2545,7 @@ async function fetchYahooQuote(ticker) {
     lastPrice: Math.round(lastPrice * 100) / 100,
     price_source: 'yahoo_chart_1d_close',
     price_asof: latest.ts ? new Date(latest.ts * 1000).toISOString() : null,
-    price_date: latest.ts ? new Date(latest.ts * 1000).toISOString().slice(0, 10) : null,
+    price_date: latest.ts ? getJakartaDateFromTimestamp(new Date(latest.ts * 1000)) : null,
     changePct: Math.round(changePct * 100) / 100,
     volumeToday: volumeToday,
     avgVolume30d: Math.round(avgVolume30d),
@@ -5704,7 +5704,7 @@ async function fetchChartOhlcRows(supabase, pick, options) {
           var o = q.open && q.open[i], h = q.high && q.high[i], l = q.low && q.low[i], c = q.close && q.close[i], v = q.volume && q.volume[i];
           if (o != null && h != null && l != null && c != null && isFinite(o) && isFinite(h) && isFinite(l) && isFinite(c)) {
             rows.push({
-              date: new Date(timestamps[i] * 1000).toISOString().slice(0, 10),
+              date: getJakartaDateFromTimestamp(new Date(timestamps[i] * 1000)),
               open: Math.round(o * 100) / 100,
               high: Math.round(h * 100) / 100,
               low: Math.round(l * 100) / 100,
@@ -11057,7 +11057,7 @@ async function fetchNkQuoteData(ticker) {
       last_price: lastClose,
       price_source: 'yahoo_chart_1d_close',
       price_asof: validDays[lastIdx].ts ? new Date(validDays[lastIdx].ts * 1000).toISOString() : null,
-      price_date: validDays[lastIdx].ts ? new Date(validDays[lastIdx].ts * 1000).toISOString().slice(0, 10) : null,
+      price_date: validDays[lastIdx].ts ? getJakartaDateFromTimestamp(new Date(validDays[lastIdx].ts * 1000)) : null,
       open_price: validDays[lastIdx].open,
       high_price: validDays[lastIdx].high,
       low_price: validDays[lastIdx].low,
