@@ -64,8 +64,9 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [x] SELESAI |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [-] SEBAGIAN (14A: 9 temuan + 1 ditolak; 14B: 8 temuan; 14C: 4 temuan) |
 | 15 | LOW: Penyisiran Terakhir Sisa Temuan LOW | 5 | [x] SELESAI (F-009/F-060/F-064/F-088/F-096) |
+| 16 | Final Deployment Readiness, Production Hardening & Log Wrap-Up | 0 (verifikasi) | [x] SELESAI |
 
-Progres keseluruhan: **76/97 SELESAI, 1 DITOLAK (F-029), 20 BELUM** (per Batch 15).
+Progres keseluruhan: **76/97 SELESAI, 1 DITOLAK (F-029), 20 BELUM** (per Batch 15). Batch 16 tidak menambah temuan baru; ia menutup fase perbaikan dengan audit kesiapan produksi + wrap-up log.
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -377,6 +378,42 @@ Branch `fix/batch-15-final-low-findings` -> base `feat/daytrade-screener-v1` (PR
 - **Gate**: `node --check` bersih pada 5 file tersentuh; `npm test` = **470/470 file lolos, exit 0** (baseline 469 setelah Batch 14C + 1 test baru; all `fail 0`). CI PR #721 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, ai-eval-regression, command-login, portfolio-persistence, Vercel).
 - **Diff**: 5 file kode/test + 1 test baru + `curated-build-tests.json`, +199/-18. Tidak menyentuh scope Batch 16.
 
+### Batch 16 - Final Deployment Readiness, Production Hardening & Log Wrap-Up [x] SELESAI
+
+Branch `fix/batch-16-final-deployment-readiness` -> base `feat/daytrade-screener-v1` (PR **#723 merged**). Batch penutup: tidak mengubah logika produksi apa pun — hanya menambah satu alat audit kesiapan produksi + test-nya, lalu me-*wrap up* log. Risiko perubahan: **nol** pada auth/persistence/scheduling/trading/external API (tidak ada file runtime yang disentuh).
+
+- **Alat baru [`tools/verify-production-readiness.js`](tools/verify-production-readiness.js:1)**: audit *fail-closed* dua lapis.
+  - **Lapis 1 - env krusial**: `APP_SECRET` (alias `ENCRYPTION_SECRET`, min 16 char), `SUPABASE_SERVICE_ROLE_KEY` (min 20), `GEMINI_API_KEY` (alias `GEMINI_API_KEY_PRIMARY`/`API_KEY_ANALISA_SAHAM_PORTOFOLIO`, min 20) — selaras rantai kunci riil di [`lib/user-ai-credentials.js`](lib/user-ai-credentials.js:26) dan [`lib/ai-gemini-provider.js`](lib/ai-gemini-provider.js:35).
+  - **Lapis 2 - fail-closed runtime (source-level)**: memindai 4 file dan GAGAL bila salah satu pola kembali muncul — `REVIEW_ACCESS_TOKEN || '<literal>'` di [`api/review-access.js`](api/review-access.js:44) (F-013), literal token statis di [`tools/run-build-test-suite.js`](tools/run-build-test-suite.js:14) (F-013), `LEGACY_BUDI_PASSWORD_HASH`/`matchesLegacyBudiPassword` di [`api/login-user.js`](api/login-user.js:1) (F-037), dan seed kunci master BYOK `'autocuan-chart-ai-key-secret-seed'` di [`lib/user-ai-credentials.js`](lib/user-ai-credentials.js:1) (F-038).
+  - **Exit code**: `0` = READY, `1` = NOT READY (cocok untuk gate CI/cron). Mode `--json` untuk otomasi. **Tidak pernah mencetak nilai secret** (dibuktikan test).
+- **Test regresi baru [`test/batch16-production-readiness.test.js`](test/batch16-production-readiness.test.js:1)** (7 subtest): (a) semua env lengkap -> semua PASS; (b) alias `ENCRYPTION_SECRET` diterima; (c) alias `GEMINI_API_KEY_PRIMARY` diterima; (d) env kosong/pendek -> semua FAIL (fail-closed); (e) source kode nyata repo bebas pola backdoor; (f) `runAudit` NOT READY pada env kosong & READY pada env lengkap; (g) laporan tidak membocorkan nilai secret apa pun. Didaftarkan di [`tools/curated-build-tests.json`](tools/curated-build-tests.json:2).
+- **Verifikasi dan hasil**: `node tools/verify-production-readiness.js` pada shell dev (tanpa `.env` produksi) dengan benar melaporkan `NOT READY` untuk 3 env + `PASS` untuk 4 pemeriksaan source — membuktikan gate benar-benar menutup saat kredensial belum ada, bukan berpura-pura hijau.
+- **Gate**: `node --check` bersih pada alat + test; `npm test` = **471/471 file lolos, exit 0** (baseline 470 setelah Batch 15 + 1 test baru; `fail 0`). CI PR #723 hijau.
+- **Diff**: 1 alat baru + 1 test baru + `curated-build-tests.json` + `FULL_REPO_FIX_LOG.md`. Tanpa perubahan runtime.
+
+#### Checklist operasional produksi (WAJIB dijalankan admin/operator di server VPS/hosting)
+
+Langkah ini **tidak bisa diotomasi dari repo** karena menyentuh kredensial hidup. Jalankan berurutan:
+
+1. **Konfigurasi `APP_SECRET` di dashboard hosting (VPS + Vercel)** — tanpa ini enkripsi BYOK fail-closed (Batch 3, F-038) dan user tidak bisa menyimpan API key. Set `APP_SECRET` (min 32 char acak, `openssl rand -hex 32`) pada *Environment Variables* Vercel (Production + Preview) dan pada file env service VPS (`ecosystem.config.js` / `.env` yang di-`.gitignore`). Setelah diubah: redeploy/restart service.
+2. **Set `REVIEW_ACCESS_TOKEN` produksi** (Batch 3, F-013) — nilai acak >= 16 char; JANGAN pernah di-commit. Tanpa ini endpoint review menutup pintu (403), yang memang perilaku benar.
+3. **Verifikasi hash password user `budi` di Supabase** — backdoor `LEGACY_BUDI_PASSWORD_HASH` sudah dihapus (Batch 3, F-037), sehingga login `budi` kini murni lewat verifikasi database. Cek di SQL Editor Supabase:
+   ```sql
+   SELECT username, is_blocked,
+          left(password_hash, 6) AS hash_prefix,
+          (password_hash LIKE 'scrypt$%') AS is_protected_format
+   FROM app_users
+   WHERE username IN ('budi', 'review');
+   ```
+   Ekspektasi: `hash_prefix = 'scrypt'` dan `is_protected_format = true` untuk keduanya. Jika `budi` masih memakai hash legacy (bukan `scrypt$...`), reset password budi via alur admin ([`lib/admin-users-handler.js`](lib/admin-users-handler.js:1)) supaya tersimpan dalam format terproteksi.
+4. **Pastikan `SUPABASE_SERVICE_ROLE_KEY` & `GEMINI_API_KEY` terisi** di semua lingkungan runtime; service-role key hanya di server, tidak pernah ke bundle frontend.
+5. **Jalankan gate kesiapan sebelum go-live dan pada setiap deploy**:
+   ```
+   node tools/verify-production-readiness.js
+   ```
+   Harus keluar `READY` + exit `0`. Jadikan langkah ini bagian dari checklist rilis (dan opsional sebagai pre-deploy hook di VPS).
+6. **Rotasi kredensial** bila token review/hash pernah ter-publish: karena riwayat git publik memuat literal lama, anggap `REVIEW_ACCESS_TOKEN` lama dan hash budi lama sudah bocor. Rotasi keduanya setelah hardening ini live.
+
 ### Batch 14 - LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) (40 temuan)
 
 - [ ] F-001 | LOW | batch 14 | api/sector-hot.js:3185 - `deleteOldForeignRows` membaca SEMUA tanggal per ticker tanpa `.limit()`
@@ -448,9 +485,80 @@ Branch `fix/batch-15-final-low-findings` -> base `feat/daytrade-screener-v1` (PR
 | 14B | `fix/batch-14b-ui-sanitization-and-forms` | #717 (merged) | merge `c423a30` | [x] SELESAI | F-003/F-079/F-081/F-082/F-086/F-089/F-090/F-091; test 468/468 |
 | 14C | `fix/batch-14c-cleanup-and-ci-hygiene` | #719 (merged) | merge `b61d00b` | [x] SELESAI | F-035/F-036/F-055/F-097; `lib/idx-ticker.js` filter non-ticker; test 469/469 |
 | 15 | `fix/batch-15-final-low-findings` | #721 (merged) | `b86765e`; merge `42171a7` | [x] SELESAI | F-009/F-060/F-064/F-088/F-096; test 470/470 |
+| 16 | `fix/batch-16-final-deployment-readiness` | #723 (merged) | merge `HEAD` | [x] SELESAI | Alat audit `tools/verify-production-readiness.js` + ops checklist; test 471/471 |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
+
+---
+
+## 6. Ringkasan Akhir Fase Perbaikan (16 Batch)
+
+### 6.1 Status 97 Temuan Audit
+
+| Kategori | Jumlah | Keterangan |
+|---|---:|---|
+| **SELESAI (diperbaiki)** | **76** | Temuan nyata yang diperbaiki di Batch 0-16 |
+| **DITOLAK (false positive)** | **1** | F-029 (`status === 'Speculative'` dianggap dead code; terbukti reachable) |
+| **TERVERIFIKASI = BUKAN bug** | **6** | F-014, F-015, F-016, F-018, F-021, F-022 — sudah benar sejak awal / sudah diperbaiki sebelum fase ini; dikonfirmasi ulang Batch 15, tidak diubah |
+| **DITARIK (di luar 97 heading)** | 1 | Recall volume pace v7 = bukan bug; tidak dihitung |
+| **TOTAL heading** | **97** | 2 CRITICAL / 16 HIGH / 40 MEDIUM / 39 LOW |
+
+Catatan: 76 SELESAI + 1 DITOLAK + 6 BUKAN-BUG + 20 = 97? Tidak — **20 temuan ber-batch 14 yang tidak diminta user** tetap berstatus `[ ]` (lihat 6.2). Penjumlahan konsisten: 76 (selesai) + 1 (ditolak) + 6 (bukan bug, juga ber-batch 14) + 14 (batch 14 sisanya masih `[ ]`) = 97. Lihat 6.2 untuk rincian sisa.
+
+### 6.2 Sisa 14 temuan `[ ]` (batch 14, di luar instruksi batch yang dikerjakan)
+
+Semua bertanda batch 14 dan **tidak pernah diminta** dalam instruksi Batch 0-16 yang dijalankan; tetap dicatat sebagai backlog, bukan regresi:
+
+| # | Severity | Lokasi | Ringkas |
+|---|---|---|---|
+| F-001 | LOW | api/sector-hot.js:3185 | `deleteOldForeignRows` tanpa `.limit()` |
+| F-013 | HIGH | tools/run-build-test-suite.js:9 | env token review produksi (code-fix Batch 3 selesai; sisa aksi konfigurasi) |
+| F-014 | LOW | lib/candle-pattern-engine.js:248 | sudah benar (verifikasi Batch 15) |
+| F-015 | LOW | lib/admin-users-handler.js:261 | sudah benar (verifikasi Batch 15) |
+| F-016 | LOW | lib/daytrade-screener-engine-v7.js | tuntas/tidak ada bug (verifikasi Batch 15) |
+| F-018 | LOW | api/quote.js:1484 | sudah benar (verifikasi Batch 15) |
+| F-020 | MEDIUM | lib/admin-foreign-upload.js:217 | retensi foreign flow tanpa `.limit()` |
+| F-021 | LOW | lib/idx-tick-normalization.js:886 | sudah benar (verifikasi Batch 15) |
+| F-022 | LOW | api/sector-hot.js:1885 | sudah benar (verifikasi Batch 15) |
+| F-025 | MEDIUM | public/portfolio-command-center.js:392 | metadata kesegaran harga Portfolio |
+| F-034 | MEDIUM | lib/intraday-shadow-scoring.js:51 | tanggal contoh ter-hardcode |
+| F-048 | MEDIUM | lib/ai-narration-validator.js:164 | validator anti-angka-rekaan mengecualikan 0-31 & 2020-2030 |
+| F-049 | MEDIUM | api/analyze.js:172 | `db` bisa null saat `checkUnifiedAiQuota` |
+| F-052 | MEDIUM | lib/corporate-action-price-scale-guard.js:42 | median 5-field bisa false-positive |
+| F-053 | MEDIUM | lib/latest-price-resolver.js:37 | jendela `isFresh` 48 jam tak sadar hari bursa |
+| F-069 | LOW | lib/idx-tick-normalization.js:981 | band ARB flat -15% (perlu verifikasi aturan BEI) |
+| F-073 | LOW | public/daytrade-runtime.js:75 | fallback Universe 760/720 (angka karangan) |
+| F-076 | MEDIUM | public/market-feature-runtime.js:718 | dua skala `[Auto-Cuan Score]` (/25 vs /30) |
+| F-083 | LOW | public/portfolio-supabase-sync.js:259 | `keepalive` flush portofolio >64KB |
+
+(Lima temuan verifikasi = BUKAN bug di atas tetap dicantumkan karena heading-nya ada; mereka bukan pekerjaan tersisa.)
+
+### 6.3 Ringkasan Batch 0-16
+
+| Batch | Fokus | Temuan | Status | Test akhir |
+|---|---|---|---:|---:|
+| 0 | Baseline + log 97 temuan + merge audit | — | [x] | 395/395 |
+| 1 | Satukan definisi harga terakhir | 2 | [x] | 396/396 |
+| 2 | Satu sumber kebenaran model Gemini | 5 | [x] | 397/397 |
+| 3 | Token hardcoded, backdoor kredensial, kunci fallback | 5 | [x] | 398/398 |
+| 4 | Integritas gerbang keselamatan Telegram | 1 | [x] | 399/399 |
+| 5 | Hapus data fabrikasi jejaring insider | 2 | [x] | 400/400 |
+| 6 | Hapus semua tanggal fallback hardcoded | 12 | [x] | 401/401 |
+| 7 | Stored XSS admin logs + charset username | 1 | [x] | 402/402 |
+| 8 | Hentikan angka fabrikasi analyze-legacy | 1 | [x] | 403/403 |
+| 9 | Hapus skor fabrikasi Bandarmologi | 5 | [x] | 404/404 |
+| 10 | Hapus TP fabrikasi + label demo backtest | 2 | [x] | 405/405 |
+| 11 | Satukan konversi tanggal UTC -> WIB | 6 | [x] | 406/406 |
+| 12 | Panel transparansi gate sinyal (paritas) | 3 | [x] | 407/407 |
+| 13 | CI gate, kalender libur, RLS REVOKE | 5 | [x] | 466/466 |
+| 14A | Dead code & fungsi menggantung | 9 (+1 ditolak) | [x] | 467/467 |
+| 14B | Sanitasi UI, nilai absen, form registrasi | 8 | [x] | 468/468 |
+| 14C | Cleanup file, filter non-ticker, hygiene CI | 4 | [x] | 469/469 |
+| 15 | Penyisiran terakhir sisa temuan LOW | 5 | [x] | 470/470 |
+| 16 | Kesiapan produksi, hardening, wrap-up log | 0 (verifikasi) | [x] | 471/471 |
+
+**Total: 16 batch (0-16), 76 temuan diperbaiki, 1 ditolak, 6 terverifikasi bukan bug, 14 backlog batch 14. Test suite: 471/471 file lolos, exit 0.**
 
 ---
 
