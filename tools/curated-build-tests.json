@@ -1,4 +1,5 @@
 [
+  "test/batch14a-dead-code-cleanup.test.js",
   "test/batch13-ci-calendar-db-hardening.test.js",
   "test/batch12-signal-gate-transparency-parity.test.js",
   "test/batch11-utc-naive-date-formatting.test.js",

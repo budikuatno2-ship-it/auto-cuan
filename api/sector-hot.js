@@ -11642,6 +11642,10 @@ function deriveSwingLabels(r, screenerType) {
   } else if (status === 'Watchlist' && score >= 60) {
     swing_tier = 'WATCHLIST';
   } else if (status === 'Speculative' || (status === 'Watchlist' && score < 60 && score >= 40)) {
+    // F-029 audit claim (dead comparator) is a FALSE POSITIVE: the non-konglo
+    // classifier at :11423/:11430 DOES emit status='Speculative', so this branch
+    // is reachable and must stay. Removing it would flip score<30 Speculative
+    // rows to AVOID — a behavior change, not dead-code cleanup.
     swing_tier = 'SPECULATIVE';
   } else if (status === 'Invalid' || score < 30) {
     swing_tier = 'AVOID';
