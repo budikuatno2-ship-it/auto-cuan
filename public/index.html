@@ -2410,9 +2410,13 @@ function getWIBDateString() {
 function getRelativeDate(isoString) {
     if (!isoString) return '';
     var now = new Date();
-    var wibNow = new Date(now.getTime() + (7 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
+    // F-088: getTime() is already an absolute epoch, so shifting by exactly +7h
+    // and reading the UTC date is all that is needed (same as getWIBDateString).
+    // The old form also subtracted the local timezone offset, double-shifting
+    // the day boundary to 17:00 WIB and mislabelling "Hari ini"/"Kemarin".
+    var wibNow = new Date(now.getTime() + (7 * 60 * 60 * 1000));
     var target = new Date(isoString);
-    var wibTarget = new Date(target.getTime() + (7 * 60 * 60 * 1000) - (target.getTimezoneOffset() * 60 * 1000));
+    var wibTarget = new Date(target.getTime() + (7 * 60 * 60 * 1000));
     var todayStr = wibNow.toISOString().slice(0, 10);
     var targetStr = wibTarget.toISOString().slice(0, 10);
     if (targetStr === todayStr) return 'Hari ini';
