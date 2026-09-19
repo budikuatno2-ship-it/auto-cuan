@@ -52,20 +52,9 @@
         return 1;
     }
 
-    var BENCHMARK_SIGNALS = [
-        { ticker: 'BBCA', date: '2026-08-05', source: 'swing_konglo', category: 'Swing Konglo', entry1: 9900, entry2: 9800, tp1: 10400, tp2: 10800, sl: 9600, outcome: 'TP1_HIT', duration_text: '4 hari' },
-        { ticker: 'BBRI', date: '2026-08-11', source: 'daytrade', category: 'Day Trade', entry1: 5050, entry2: 4975, tp1: 5250, tp2: 5450, sl: 4850, outcome: 'TP1_HIT', duration_text: '1 hari' },
-        { ticker: 'BREN', date: '2026-08-18', source: 'swing_konglo', category: 'Swing Konglo', entry1: 8600, entry2: 8450, tp1: 9200, tp2: 9800, sl: 8200, outcome: 'TP2_HIT', duration_text: '7 hari' },
-        { ticker: 'BMRI', date: '2026-08-22', source: 'swing_konglo', category: 'Swing Konglo', entry1: 6850, entry2: 6750, tp1: 7200, tp2: 7500, sl: 6600, outcome: 'TP1_HIT', duration_text: '5 hari' },
-        { ticker: 'ASII', date: '2026-08-26', source: 'daytrade', category: 'Day Trade', entry1: 5100, entry2: 5025, tp1: 5300, tp2: 5500, sl: 4950, outcome: 'SL_HIT', duration_text: '1 hari' },
-        { ticker: 'ADRO', date: '2026-08-29', source: 'swing_konglo', category: 'Swing Konglo', entry1: 3550, entry2: 3480, tp1: 3800, tp2: 4050, sl: 3380, outcome: 'TP2_HIT', duration_text: '6 hari' },
-        { ticker: 'TLKM', date: '2026-09-02', source: 'daytrade', category: 'Day Trade', entry1: 2980, entry2: 2940, tp1: 3120, tp2: 3250, sl: 2890, outcome: 'TP1_HIT', duration_text: '2 hari' },
-        { ticker: 'AMMN', date: '2026-09-05', source: 'swing_konglo', category: 'Swing Konglo', entry1: 9350, entry2: 9200, tp1: 9900, tp2: 10400, sl: 9000, outcome: 'TP1_HIT', duration_text: '3 hari' }
-    ];
-
     // 3. Main Backtesting Simulation Engine
     function runBacktestSimulation(signals, rawConfig) {
-        var list = (Array.isArray(signals) && signals.length > 0) ? signals.slice() : BENCHMARK_SIGNALS.slice();
+        var list = (Array.isArray(signals) && signals.length > 0) ? signals.slice() : [];
         var config = rawConfig || {};
 
         var initialCapital = Number(config.initialCapital) > 0 ? Number(config.initialCapital) : 10000000;
@@ -280,7 +269,7 @@
         var expectancyRp = totalTrades > 0 ? netProfitRp / totalTrades : 0;
         var avgDurationDays = totalTrades > 0 ? totalDurationDays / totalTrades : 0;
 
-        return {
+        var result = {
             config: config,
             metrics: {
                 initialCapital: initialCapital,
@@ -302,6 +291,11 @@
             equityCurve: equityCurve,
             trades: simulatedTrades
         };
+        if (list.length === 0) {
+            result.status = 'NO_SIGNALS';
+            result.message = 'Belum ada sinyal untuk disimulasikan';
+        }
+        return result;
     }
 
     // 4. UI Chart & Table Renderers

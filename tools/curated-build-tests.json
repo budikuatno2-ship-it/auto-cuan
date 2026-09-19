@@ -1,4 +1,5 @@
 [
+  "test/batch10-fabricated-tp-and-backtest-demo.test.js",
   "test/batch9-fabricated-scores-regression.test.js",
   "test/security-hardening-batch3.test.js",
   "test/ai-gemini-model-single-source.test.js",
