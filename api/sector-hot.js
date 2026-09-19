@@ -2992,7 +2992,7 @@ async function enrichConfluenceRows(supabase, rows, includeForeign) {
     if (includeForeign) {
       Object.assign(r, foreignMap[normalizeForeignTicker(r.ticker)] || { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' });
       if (r.confidence) {
-        var confAfterForeign = deriveConfidenceTier(r, 'Swing');
+        var confAfterForeign = deriveConfidenceTier(r, r.category || r.mode || 'swing');
         r.confidence = confAfterForeign.confidence;
         r.confidence_label = confAfterForeign.confidence_label;
         r.confidence_notes = confAfterForeign.confidence_notes;
