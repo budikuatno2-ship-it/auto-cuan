@@ -60,11 +60,11 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 9 | MEDIUM: Cluster Fabrikasi Angka di Bandarmologi & Publisher | 6 | [x] SELESAI (5/6; F-081 frontend menunggu instruksi) |
 | 10 | MEDIUM: Cluster Fabrikasi di Telegram Templates & Track Record Backtest | 2 | [x] SELESAI |
 | 11 | MEDIUM: Satukan Konversi Tanggal UTC ke WIB | 6 | [x] SELESAI |
-| 12 | MEDIUM: Panel "Kenapa Sinyal Ini Lolos Gate?" (Ambang + Missing != Pass) | 3 | [ ] BELUM |
+| 12 | MEDIUM: Panel "Kenapa Sinyal Ini Lolos Gate?" (Ambang + Missing != Pass) | 3 | [x] SELESAI |
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [ ] BELUM |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [ ] BELUM |
 
-Progres keseluruhan: **42/97 SELESAI, 0 DITARIK, 55 BELUM** (per Batch 11).
+Progres keseluruhan: **45/97 SELESAI, 0 DITARIK, 52 BELUM** (per Batch 12).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -282,11 +282,21 @@ Branch `fix/utc-naive-date-formatting` -> base `feat/daytrade-screener-v1`. Scop
 - [x] F-028 | MEDIUM | batch 11 | api/sector-hot.js:1885 - `api/sector-hot.js` menyimpan `price_date` dari potongan UTC naif pada candle Yahoo _(DIPERBAIKI: `getJakartaDateFromTimestamp`)_
 - [x] F-033 | MEDIUM | batch 11 | (tanpa lokasi eksplisit) - Label tanggal candle memakai potongan UTC (`toISOString().slice(0,10)`) di banyak modul data _(DIPERBAIKI: 4 modul `chart-image-renderer`/`context-ai-router-v7`/`bandarmologi-screener-scoring`/`ai-analysis-cache` -> `formatJakartaDate`)_
 
-### Batch 12 - MEDIUM: Panel "Kenapa Sinyal Ini Lolos Gate?" (Ambang + Missing != Pass) (3 temuan)
+### Batch 12 - SELESAI (PR #711, merge `f8bda0a`) - Panel "Kenapa Sinyal Ini Lolos Gate?" (Ambang + Missing != Pass)
 
-- [ ] F-023 | MEDIUM | batch 12 | public/signal-gate-transparency.js:57 - Ambang batas di panel "Kenapa Sinyal Ini Lolos Gate?" TIDAK cocok dengan gate server — menyesatkan user
-- [ ] F-024 | LOW | batch 12 | public/signal-gate-transparency.js:57 - Komentar satuan salah pada ambang likuiditas (`10e9` dilabeli "10M")
-- [ ] F-084 | MEDIUM | batch 12 | public/signal-gate-transparency.js:87, public/signal-gate-transparency.js:65 - Panel "Kenapa Sinyal Ini Lolos Gate?" menandai gate PASS saat data absen & ambang RSI berbeda dari gate backend
+- [x] F-023 | MEDIUM | batch 12 | public/signal-gate-transparency.js:57 - Ambang batas di panel "Kenapa Sinyal Ini Lolos Gate?" TIDAK cocok dengan gate server — menyesatkan user _(DIPERBAIKI: likuiditas DT 3e9 -> 1e9, RSI 35-78 -> 45-70, teks ambang = kode)_
+- [x] F-024 | LOW | batch 12 | public/signal-gate-transparency.js:57 - Komentar satuan salah pada ambang likuiditas (`10e9` dilabeli "10M") _(DIPERBAIKI: komentar -> "10 miliar / 1 miliar / 5 miliar")_
+- [x] F-084 | MEDIUM | batch 12 | public/signal-gate-transparency.js:87, public/signal-gate-transparency.js:65 - Panel "Kenapa Sinyal Ini Lolos Gate?" menandai gate PASS saat data absen & ambang RSI berbeda dari gate backend _(DIPERBAIKI: tri-state passed true/false/null, data absen -> netral "Data belum tersedia" + unverified, bukan centang hijau)_
+
+Branch `fix/signal-gate-transparency-ui-parity` -> base `feat/daytrade-screener-v1`. Scope = 3 temuan cluster transparansi gate sinyal: F-023 (MEDIUM), F-024 (LOW), F-084 (MEDIUM). Tidak menyentuh scope Batch 13+.
+
+- **F-023 ([`public/signal-gate-transparency.js`](public/signal-gate-transparency.js:65))**: ambang panel "Kenapa Sinyal Ini Lolos Gate?" diselaraskan dengan gate server, bukan nilai indikatif terpisah. Likuiditas Day Trade `3e9` -> `1e9` (sesuai `MIN_VALUE_TODAY` di [`lib/daytrade-screener-engine.js`](lib/daytrade-screener-engine.js:379)); likuiditas tidak lagi lolos dari `liquidity_score >= 12` (proxy frontend tanpa padanan server) — kini murni perbandingan nilai.
+- **F-023/F-084 (RSI)**: ambang `rsi <= 78 && rsi >= 35` (teks lama "35 - 75") diganti `rsi >= 45 && rsi <= 70`, persis hard filter [`api/sector-hot.js`](api/sector-hot.js:2135). Teks ambang kini "45 - 70 (Zona Gate Server)" sehingga sama dengan kode. Sinyal RSI 40/72 yang gagal filter backend tidak lagi tampil hijau di panel.
+- **F-084 (missing != pass)**: setiap gate sekarang tri-state (`passed: true | false | null`). Metrik `null`/`undefined` -> `passed: null`, teks aktual "Data belum tersedia", status `unverified: true`, dan dirender baris netral `➖` (bukan ✅ hijau). `passedCount` hanya menghitung gate terverifikasi lulus; `allPassed` tidak pernah true bila ada data absen. Fallback menyesatkan dihapus: `'Terkonfirmasi'` (volume), `'Dalam rentang aman'` (RSI), `'Terkalkulasi'` (R/R), `'Memenuhi Universe'` (likuiditas), dan `ma20Passed = true` saat hanya `last_price` tersedia.
+- **F-024 (satuan)**: komentar `// 10M Non-Konglo, 3M DT, 5M Konglo` diperbaiki menjadi "10 miliar Non-Konglo, 1 miliar DT, 5 miliar Konglo". `fmtRpCompact(null)` mengembalikan `—`, bukan `-`.
+- **Test regresi baru**: [`test/batch12-signal-gate-transparency-parity.test.js`](test/batch12-signal-gate-transparency-parity.test.js) (8 subtest) — (a) data lengkap sesuai ambang lolos semua gate; (b) data di bawah ambang ditolak (`passed:false`); (c) RSI 72 gagal; (d) data kosong -> 0 centang hijau, 5 gate `unverified`, HTML tanpa ✅; (e) sebagian data absen -> hitungan terverifikasi vs netral; (f) paritas ambang likuiditas/volume/RR DT vs swing vs Non-Konglo; (g) source-level komentar satuan + teks RSI; (h) source-level fallback menyesatkan sudah hilang. Didaftarkan di [`tools/curated-build-tests.json`](tools/curated-build-tests.json:2).
+- **Gate**: `node --check` bersih pada file sumber + test; `npm test` = **407/407 file lolos, exit 0** (baseline 406 setelah Batch 11 + 1 test baru). CI PR #711 hijau (build-and-focused-tests, security-gate, Analyze JavaScript, CodeQL, command-login, portfolio-persistence, Vercel).
+- **Diff**: `public/signal-gate-transparency.js` +56/-39, test baru 141 baris, `curated-build-tests.json` +1. Tidak menyentuh scope Batch 13+.
 
 ### Batch 13 - MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) (5 temuan)
 
@@ -361,6 +371,7 @@ Branch `fix/utc-naive-date-formatting` -> base `feat/daytrade-screener-v1`. Scop
 | 9 | `fix/remove-fabricated-scores-bandarmologi` | #705 (merged) | `cc5199f`; merge `671d1ac` | [x] SELESAI | F-002/F-066/F-067/F-070/F-071; test baru 404/404 |
 | 10 | `fix/remove-fabricated-tp-and-backtest-demo-label` | #707 (merged) | `7d25f4c`; merge `71fcb0d` | [x] SELESAI | F-065 + F-085; test baru 405/405 |
 | 11 | `fix/utc-naive-date-formatting` | #709 (merged) | `773d945`; merge `d79937e` | [x] SELESAI | 6 temuan UTC naif; test baru 406/406 |
+| 12 | `fix/signal-gate-transparency-ui-parity` | #711 (merged) | `c7e57e7`; merge `f8bda0a` | [x] SELESAI | F-023/F-024/F-084; test baru 407/407 |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
