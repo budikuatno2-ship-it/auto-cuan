@@ -63,8 +63,9 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 12 | MEDIUM: Panel "Kenapa Sinyal Ini Lolos Gate?" (Ambang + Missing != Pass) | 3 | [x] SELESAI |
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [x] SELESAI |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [-] SEBAGIAN (14A: 9 temuan + 1 ditolak; 14B: 8 temuan; 14C: 4 temuan) |
+| 15 | LOW: Penyisiran Terakhir Sisa Temuan LOW | 5 | [x] SELESAI (F-009/F-060/F-064/F-088/F-096) |
 
-Progres keseluruhan: **71/97 SELESAI, 1 DITOLAK (F-029), 25 BELUM** (per Batch 14C).
+Progres keseluruhan: **76/97 SELESAI, 1 DITOLAK (F-029), 20 BELUM** (per Batch 15).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -230,7 +231,7 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 
 - [x] F-056 | HIGH | batch 8 | lib/analyze-legacy.js:1074, lib/analyze-legacy.js:1231 - Template deterministik "data-driven" mengarang RSI14=50, volume=1x, dan perubahan harga=0 saat data absen — lalu angka karangan itu dipakai menghitung Status/Bias/Confidence _(DIPERBAIKI: hapus default || 50, || 1, || 0, render "—", status 'Data Belum Lengkap', confidence 'Low')_
 - [ ] F-059 | MEDIUM | batch 8 | lib/analyze-legacy.js:1494 - `fetchServerSideQuote` menghitung pivot/MA/RSI dari candle TERAKHIR (termasuk bar hari berjalan) padahal seluruh label menyebut "Data Historis T-1"
-- [ ] F-064 | LOW | batch 8 | lib/analyze-legacy.js:285 - Echo `chatMessage` tanpa escape ke HTML pada intent `ticker_only` — refleksi HTML mentah (self-XSS) via trik blok `[Info:]`
+- [x] F-064 | LOW | batch 8 | lib/analyze-legacy.js:285 - Echo `chatMessage` tanpa escape ke HTML pada intent `ticker_only` — refleksi HTML mentah (self-XSS) via trik blok `[Info:]` _(DIPERBAIKI Batch 15: `escapeHtmlText` + `stripEnrichmentBlocks`)_
 
 ### Batch 9 - SELESAI (PR #705, merge `671d1ac`) - 5 temuan sesuai instruksi user
 
@@ -361,11 +362,26 @@ Branch `fix/batch-14c-cleanup-and-ci-hygiene` -> base `feat/daytrade-screener-v1
 - **Gate**: `node --check` bersih pada semua file tersentuh; `npm test` = **469/469 file lolos, exit 0** (baseline 468 setelah Batch 14B + 1 test baru). CI PR #719 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, command-login, portfolio-persistence, fast-watcher-regression, Vercel).
 - **Diff**: 1 helper baru + 6 pembaca folder + 4 workflow + 1 test baru + `curated-build-tests.json` + 1 file scratch dihapus, +153/-8. Tidak menyentuh scope Batch 15/16.
 
+### Batch 15 - Penyisiran Terakhir Sisa Temuan LOW [x] SELESAI
+
+Branch `fix/batch-15-final-low-findings` -> base `feat/daytrade-screener-v1` (PR **#721 merged**; merge `42171a7`). Scope = 5 temuan LOW yang benar-benar bug/bersihkan (F-009, F-060, F-064, F-088, F-096). **Tidak menyentuh** Batch 16 (APP_SECRET produksi, verifikasi hash password admin Supabase, deployment final).
+
+- **F-060 (LOW, dead validation)**: [`lib/ai-answer-contract.js`](lib/ai-answer-contract.js:188) - cek `direct_answer.length > 600` memakai nilai TERNORMALISASI yang sudah di-`slice(0,600)`, jadi mustahil true. Kini memvalidasi panjang input RAW (`row.direct_answer`/`row.answer`) SEBELUM normalisasi, sehingga jawaban >600 ditolak (bukan dipotong diam-diam lalu lolos).
+- **F-064 (LOW, refleksi HTML)**: [`lib/analyze-legacy.js`](lib/analyze-legacy.js:291) - jalur `ticker_only` mencetak `chatMessage.trim().toUpperCase()` mentah ke `innerHTML`. Kini memakai `escapeHtmlText(stripEnrichmentBlocks(chatMessage).trim().toUpperCase())`; helper `escapeHtmlText` ditambahkan (entitas dibangun dari string concat agar aman-literal) dan ikut di-export via `__test`.
+- **F-088 (LOW, WIB double-shift)**: [`public/index.html`](public/index.html:2417) - `getRelativeDate` masih memakai `+7h - getTimezoneOffset()`. Diverifikasi masih BUG (batas hari bergeser ke 17:00 WIB). Disamakan dengan `getWIBDateString`: `+7h` saja untuk `wibNow`/`wibTarget`.
+- **F-009 (LOW, URL dari header)**: [`api/sector-hot.js`](api/sector-hot.js:5859) - `getRequestBaseUrl` kini memprioritaskan `PUBLIC_BASE_URL`/`SUBSCRIPTION_PUBLIC_BASE_URL` bila dikonfigurasi; header `x-forwarded-host`/`host` hanya dipakai sebagai fallback bila env kosong. Di-export via `__test`.
+- **F-096 (LOW, test vacuous)**: [`test/intraday-sample-collector.test.js`](test/intraday-sample-collector.test.js:488) - placeholder `assert.ok(true)` diganti assertion nyata (modul collector mengekspor simbol; larangan `sendTelegram(`/`process.env.TELEGRAM_BOT_TOKEN`).
+- **Verifikasi ulang = BUKAN bug (dikonfirmasi, tidak diubah)**: F-014 (Hammer/Hanging Man context-aware), F-015 (reset password admin terproteksi), F-016 (`daytrade-screener-engine-v7` tuntas), F-018 (RSI 0/0 -> 50), F-021 (jangan-chase), F-022 (support runtuh 0).
+- **DITANGGUHKAN ke Batch 16 / di luar scope pembersihan LOW**: F-013 (env token review produksi; code-fix sudah Batch 3), F-020 & F-001 (`.limit()` retensi DB/infra), F-083 (`keepalive` flush portofolio), F-073 (fallback Universe 760/720 -> kontrak payload), F-034 (tanggal contoh modul shadow), F-069 (tiering ARB IDX — perlu verifikasi aturan BEI).
+- **Test regresi baru**: [`test/batch15-final-low-findings.test.js`](test/batch15-final-low-findings.test.js:1) (8 subtest) - (a) F-060 tolak >600 / terima 600 / normalisasi tetap cap 600; (b) F-064 escape entitas + strip blok `[Info:]`/`[Auto-Cuan]` + jalur respons ter-escape; (c) F-088 tanpa API double-shift + label `Hari ini`/`Kemarin` benar pukul 18:00 WIB; (d) F-009 prioritaskan env base; (e) F-096 placeholder hilang. Didaftarkan di [`tools/curated-build-tests.json`](tools/curated-build-tests.json:2).
+- **Gate**: `node --check` bersih pada 5 file tersentuh; `npm test` = **470/470 file lolos, exit 0** (baseline 469 setelah Batch 14C + 1 test baru; all `fail 0`). CI PR #721 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, ai-eval-regression, command-login, portfolio-persistence, Vercel).
+- **Diff**: 5 file kode/test + 1 test baru + `curated-build-tests.json`, +199/-18. Tidak menyentuh scope Batch 16.
+
 ### Batch 14 - LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) (40 temuan)
 
 - [ ] F-001 | LOW | batch 14 | api/sector-hot.js:3185 - `deleteOldForeignRows` membaca SEMUA tanggal per ticker tanpa `.limit()`
 - [x] F-003 | MEDIUM | batch 14 | public/bandarmologi-runtime.js:3728 - Tabel "Daftar Pemegang Saham & Insider": persentase yang HILANG dirender "0.00%" (missing disajikan sebagai nol) _(DIPERBAIKI Batch 14B: persentase absen -> "—"; tidak lagi sintesis 0)_
-- [ ] F-009 | LOW | batch 14 | api/sector-hot.js:5859 - `getRequestBaseUrl` mempercayai `x-forwarded-host`/`host` klien saat membangun URL chart Telegram
+- [x] F-009 | LOW | batch 14 | api/sector-hot.js:5859 - `getRequestBaseUrl` mempercayai `x-forwarded-host`/`host` klien saat membangun URL chart Telegram _(DIPERBAIKI Batch 15: prioritaskan `PUBLIC_BASE_URL`/`SUBSCRIPTION_PUBLIC_BASE_URL`)_
 - [x] F-011 | LOW | batch 14 | public/bandarmologi-runtime.js:803, public/bandarmologi-runtime.js:874 - Deklarasi `var items` ganda di `buildBrokerBubbleItems` _(DIPERBAIKI Batch 14A: 1 deklarasi)_
 - [ ] F-013 | HIGH | batch 14 | tools/run-build-test-suite.js:9 - BUG-013 diperkuat — token review literal yang sama juga di-hardcode di runner build
 - [ ] F-014 | LOW | batch 14 | lib/candle-pattern-engine.js:248 - BUG-042 lama SUDAH DIPERBAIKI — Hammer vs Hanging Man kini context-aware _(catatan audit: sudah diperbaiki/bukan bug - verifikasi ulang saat batch)_
@@ -385,7 +401,7 @@ Branch `fix/batch-14c-cleanup-and-ci-hygiene` -> base `feat/daytrade-screener-v1
 - [ ] F-052 | MEDIUM | batch 14 | lib/corporate-action-price-scale-guard.js:42 - `lib/corporate-action-price-scale-guard.js` memakai median 5-field untuk blokir — bisa false-positive di saham berita
 - [ ] F-053 | MEDIUM | batch 14 | lib/latest-price-resolver.js:37 - `isFresh` default jendela 48 jam memungkinkan harga "fresh" sampai 2 hari & tidak membedakan hari bursa
 - [x] F-055 | MEDIUM | batch 14 | (tanpa lokasi eksplisit) - Folder ticker non-saham di data produksi: `data/arjum-data/broker-summary/{AUDITSCALE14D,AUDITSCALE30D,AUDITSCALE5D,AUDITSCALE60D,B4TST,DBGT4,NOACC}` _(DIPERBAIKI Batch 14C: universe tidak lagi menyerap folder artefak)_
-- [ ] F-060 | LOW | batch 14 | lib/ai-answer-contract.js:187, lib/ai-answer-contract.js:51 - Validasi `direct_answer terlalu panjang` tidak pernah bisa terpicu (dead validation) — terbukti runtime
+- [x] F-060 | LOW | batch 14 | lib/ai-answer-contract.js:187, lib/ai-answer-contract.js:51 - Validasi `direct_answer terlalu panjang` tidak pernah bisa terpicu (dead validation) — terbukti runtime _(DIPERBAIKI Batch 15: validasi panjang input RAW sebelum normalisasi)_
 - [x] F-061 | LOW | batch 14 | lib/ai-answer-contract.js:101 - Variabel `explicitRatio` dihitung tetapi tidak pernah dipakai (dead variable) _(DIPERBAIKI Batch 14A)_
 - [ ] F-069 | LOW | batch 14 | lib/idx-tick-normalization.js:981 - Band ARB di-hardcode flat -15% (multiplier 0.85) untuk SEMUA tier harga, sementara ARA bertingkat (35/25/20%); tidak ada test yang mengunci dan tidak ada rujukan aturan di kode
 - [ ] F-073 | LOW | batch 14 | public/daytrade-runtime.js:75, api/sector-hot.js:11927 - Statistik "Universe"/"Scanned" memakai fallback hardcoded 760/720 saat meta kosong — angka karangan yang tampil sebagai fakta
@@ -397,11 +413,11 @@ Branch `fix/batch-14c-cleanup-and-ci-hygiene` -> base `feat/daytrade-screener-v1
 - [x] F-082 | LOW | batch 14 | public/track-record-runtime.js:58 - `track-record-runtime.js` menulis teks error ke `innerHTML` tanpa escaping (dua lokasi) _(DIPERBAIKI Batch 14B: dua jalur error dibungkus `escapeHtml`)_
 - [ ] F-083 | LOW | batch 14 | public/portfolio-supabase-sync.js:259 - `pagehideSave` memakai `keepalive:true` dengan seluruh state portofolio (batas ~64KB browser)
 - [x] F-086 | MEDIUM | batch 14 | public/analisis-saham-runtime.js:888, public/index.html:4447 - `analisis-saham-runtime.js` menyuntik HTML jawaban AI ke `innerHTML` TANPA `sanitizeAIHtml` (satu-satunya sink AI yang tidak disanitasi) _(DIPERBAIKI Batch 14B: `sanitizeAIHtml` dijalankan sebelum `convertStrayMarkdownBold`, paritas `index.html`)_
-- [ ] F-088 | LOW | batch 14 | public/index.html:2410, public/index.html:7214 - `getRelativeDate` masih memakai rumus WIB double-shift yang sudah diperbaiki di `getWIBDateString` _(catatan audit: sudah diperbaiki/bukan bug - verifikasi ulang saat batch)_
+- [x] F-088 | LOW | batch 14 | public/index.html:2410, public/index.html:7214 - `getRelativeDate` masih memakai rumus WIB double-shift yang sudah diperbaiki di `getWIBDateString` _(DIPERBAIKI Batch 15: `+7h` saja, `getTimezoneOffset()` dihapus; terbukti masih bug — batas hari bergeser ke 17:00 WIB)_
 - [x] F-089 | LOW | batch 14 | public/index.html:3531, public/index.html:3766 - `doLogin` mereferensikan `regEmailVal` yang tak terdeklarasi di scope-nya (latent ReferenceError; tertutupi oleh override `auth-v2.js`) _(DIPERBAIKI Batch 14B: `email: regEmailVal || null` dihapus dari body login)_
 - [x] F-090 | MEDIUM | batch 14 | public/index.html:3767 - `doRegister` memakai `errorEl` sebelum di-assign → jalur email tidak valid melempar TypeError, bukan pesan validasi _(DIPERBAIKI Batch 14B: `errorEl`/`successEl`/`registerBtn` di-resolve di atas blok validasi email + null-guard)_
 - [x] F-091 | LOW | batch 14 | public/index.html:4878, public/index.html:4915 - `openNewsFromAnalisis` menyisipkan judul/ringkasan berita mentah ke `innerHTML`, inkonsisten dengan `loadStockNewsPage` yang meng-escape _(DIPERBAIKI Batch 14B: `title`/`summary`/`date` di-escape; `href` diberi guard skema `^https?://`)_
-- [ ] F-096 | LOW | batch 14 | test/intraday-sample-collector.test.js:488 - Satu test vacuous `assert.ok(true)` (placeholder B15) — tidak memverifikasi apa pun
+- [x] F-096 | LOW | batch 14 | test/intraday-sample-collector.test.js:488 - Satu test vacuous `assert.ok(true)` (placeholder B15) — tidak memverifikasi apa pun _(DIPERBAIKI Batch 15: diganti assertion nyata)_
 - [x] F-097 | LOW | batch 14 | security-gate.yml:3, codeql-security.yml:3 - Gate keamanan & regresi di-scope hanya ke branch `feat/daytrade-screener-v1` → PR ke branch lain tidak melewati gate _(DIPERBAIKI Batch 14C: `main` ditambahkan ke branches di 4 workflow)_
 
 ### Temuan DITARIK (di luar 97 heading)
@@ -431,6 +447,7 @@ Branch `fix/batch-14c-cleanup-and-ci-hygiene` -> base `feat/daytrade-screener-v1
 | 14A | `fix/batch-14a-dead-code-cleanup` | #715 (merged) | `6878dc9`; merge `16d1fcb` | [x] SELESAI | F-006/F-011/F-057/F-061/F-062/F-063/F-074/F-075/F-077; F-029 DITOLAK (false positive); test 467/467 |
 | 14B | `fix/batch-14b-ui-sanitization-and-forms` | #717 (merged) | merge `c423a30` | [x] SELESAI | F-003/F-079/F-081/F-082/F-086/F-089/F-090/F-091; test 468/468 |
 | 14C | `fix/batch-14c-cleanup-and-ci-hygiene` | #719 (merged) | merge `b61d00b` | [x] SELESAI | F-035/F-036/F-055/F-097; `lib/idx-ticker.js` filter non-ticker; test 469/469 |
+| 15 | `fix/batch-15-final-low-findings` | #721 (merged) | `b86765e`; merge `42171a7` | [x] SELESAI | F-009/F-060/F-064/F-088/F-096; test 470/470 |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
