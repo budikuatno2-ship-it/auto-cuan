@@ -59,12 +59,12 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 8 | HIGH: analyze-legacy.js Berhenti Mengarang RSI/Volume/Change | 3 | [x] SELESAI (F-056) |
 | 9 | MEDIUM: Cluster Fabrikasi Angka di Bandarmologi & Publisher | 6 | [x] SELESAI (5/6; F-081 frontend menunggu instruksi) |
 | 10 | MEDIUM: Cluster Fabrikasi di Telegram Templates & Track Record Backtest | 2 | [x] SELESAI |
-| 11 | MEDIUM: Satukan Konversi Tanggal UTC ke WIB | 6 | [ ] BELUM |
+| 11 | MEDIUM: Satukan Konversi Tanggal UTC ke WIB | 6 | [x] SELESAI |
 | 12 | MEDIUM: Panel "Kenapa Sinyal Ini Lolos Gate?" (Ambang + Missing != Pass) | 3 | [ ] BELUM |
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [ ] BELUM |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [ ] BELUM |
 
-Progres keseluruhan: **34/97 SELESAI, 0 DITARIK, 63 BELUM** (per Batch 9).
+Progres keseluruhan: **42/97 SELESAI, 0 DITARIK, 55 BELUM** (per Batch 11).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -257,14 +257,30 @@ Branch `fix/remove-fabricated-tp-and-backtest-demo-label` -> base `feat/daytrade
 - **Gate**: `node --check` bersih pada 6 file; `npm test` = **405/405 file lolos, exit 0** (baseline 404 setelah Batch 9 + 1 test baru). CI PR #707 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login).
 - **Diff**: 2 file kode + 4 file test + `curated-build-tests.json`, +130/-24. Tidak menyentuh scope Batch 11+.
 
-### Batch 11 - MEDIUM: Satukan Konversi Tanggal UTC ke WIB (6 temuan)
+### Batch 11 - SELESAI (PR #709, merge `d79937e`)
 
-- [ ] F-004 | MEDIUM | batch 11 | api/sector-hot.js:11060 - `api/sector-hot.js` Non-Konglo juga menyimpan `price_date` dari potongan UTC naif
-- [ ] F-010 | MEDIUM | batch 11 | api/sector-hot.js:5707 - Date OHLC chart Telegram/Pattern memakai potongan UTC naif (kembali)
-- [ ] F-026 | MEDIUM | batch 11 | lib/daily-history-collector.js:149, lib/daily-history-collector.js:136 - `trade_date` yang DIPERSIST ke `stock_daily_history` dihitung dari potongan UTC naif
-- [ ] F-027 | MEDIUM | batch 11 | lib/bandarmologi-intel-service.js:389, lib/bandarmologi-intel-service.js:628 - Perbandingan kesegaran candle di `bandarmologi-intel-service.js` memakai tanggal UTC-naif → candle segar bisa ditolak sebagai stale
-- [ ] F-028 | MEDIUM | batch 11 | api/sector-hot.js:1885 - `api/sector-hot.js` menyimpan `price_date` dari potongan UTC naif pada candle Yahoo
-- [ ] F-033 | MEDIUM | batch 11 | (tanpa lokasi eksplisit) - Label tanggal candle memakai potongan UTC (`toISOString().slice(0,10)`) di banyak modul data
+Branch `fix/utc-naive-date-formatting` -> base `feat/daytrade-screener-v1`. Scope = 6 temuan cluster UTC naif (F-004, F-010, F-026, F-027, F-028, F-033). Tidak menyentuh scope Batch 12+.
+
+- **Aturan penggantian**: setiap `new Date(ts * 1000).toISOString().slice(0, 10)` pada timestamp candle/bar (UTC-naif) diganti helper resmi Jakarta: `formatJakartaDate` (lib/chart-t1-policy.js, `Intl` timeZone `Asia/Jakarta`), `toDateKey` (lib/idx-trading-calendar.js), atau `getJakartaDateFromTimestamp` (api/sector-hot.js, offset +07:00). Bar dengan timestamp >= 17:00 UTC (00:00 WIB keesokan hari) tidak lagi mundur ke hari sebelumnya.
+- **F-028 ([`api/sector-hot.js`](api/sector-hot.js:1885))**: `price_date` candle Yahoo Konglo -> `getJakartaDateFromTimestamp(new Date(candles[lastIdx].time * 1000))`.
+- **F-004 ([`api/sector-hot.js`](api/sector-hot.js:11060))**: `price_date` jalur Non-Konglo (`fetchNkQuoteData`) -> helper WIB yang sama.
+- **F-010 ([`api/sector-hot.js`](api/sector-hot.js:5707))**: tanggal OHLC chart Telegram/Pattern -> `getJakartaDateFromTimestamp(...)`, kini konsisten dengan `/api/candles` (`formatJakartaDate`). Termasuk `price_date` jalur Top 5 ([`:2548`](api/sector-hot.js:2548)).
+- **F-026 ([`lib/daily-history-collector.js`](lib/daily-history-collector.js:136))**: `trade_date` yang dipersist ke `stock_daily_history` (`metaDate` + `rowDate`) -> `toDateKey(...)`.
+- **F-027 ([`lib/bandarmologi-intel-service.js`](lib/bandarmologi-intel-service.js:389))**: `candleDate` gerbang anti-stale (PR4) di 2 lokasi (`:389`, `:628`) -> `formatJakartaDate(...)`.
+- **F-033 (lintas modul)**: label tanggal/cache-key UTC-naif di [`lib/chart-image-renderer.js`](lib/chart-image-renderer.js:150), [`lib/context-ai-router-v7.js`](lib/context-ai-router-v7.js:428), [`lib/bandarmologi-screener-scoring.js`](lib/bandarmologi-screener-scoring.js:151), [`lib/ai-analysis-cache.js`](lib/ai-analysis-cache.js:27) -> `formatJakartaDate(new Date())` / `formatJakartaDate(new Date(ts * 1000))`.
+- **SENGAJA TIDAK disentuh** (sudah benar / bukan UTC-naif): `sector-hot.js:2589/2658/3117/3356/3589/3603/3614/7550/8715/9488` (sudah offset WIB +7 jam atau aritmetika date-key UTC-midnight) dan `lib/bandarmologi-service.js:1335` (aritmetika hari pada date-key `T00:00:00Z`).
+- **Test regresi baru**: [`test/batch11-utc-naive-date-formatting.test.js`](test/batch11-utc-naive-date-formatting.test.js) (11 subtest) — (a) perilaku: `formatJakartaDate` 01:00 UTC (08:00 WIB) = 18 Sep, 22:00 UTC (05:00 WIB besok) = 19 Sep (potongan UTC naif salah = 18 Sep), `toDateKey` konsisten, `getJakartaDateFromTimestamp` kontrak +07:00; (b) source-level: 7 file produksi tidak lagi memuat pola terlarang dan memakai helper WIB resmi. Didaftarkan di [`tools/curated-build-tests.json`](tools/curated-build-tests.json:2).
+- **Gate**: `node --check` bersih pada 7 file sumber + test; `npm test` = **406/406 file lolos, exit 0** (baseline 405 setelah Batch 10 + 1 test baru). CI PR #709 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login, Vercel + admin-hardening).
+- **Diff**: 7 file sumber + 1 test baru + `curated-build-tests.json`, +142/-12. Tidak menyentuh scope Batch 12+.
+
+#### Checklist temuan Batch 11 (DIPERBAIKI)
+
+- [x] F-004 | MEDIUM | batch 11 | api/sector-hot.js:11060 - `api/sector-hot.js` Non-Konglo juga menyimpan `price_date` dari potongan UTC naif _(DIPERBAIKI: `getJakartaDateFromTimestamp`)_
+- [x] F-010 | MEDIUM | batch 11 | api/sector-hot.js:5707 - Date OHLC chart Telegram/Pattern memakai potongan UTC naif (kembali) _(DIPERBAIKI: `getJakartaDateFromTimestamp`)_
+- [x] F-026 | MEDIUM | batch 11 | lib/daily-history-collector.js:149, lib/daily-history-collector.js:136 - `trade_date` yang DIPERSIST ke `stock_daily_history` dihitung dari potongan UTC naif _(DIPERBAIKI: `toDateKey`)_
+- [x] F-027 | MEDIUM | batch 11 | lib/bandarmologi-intel-service.js:389, lib/bandarmologi-intel-service.js:628 - Perbandingan kesegaran candle di `bandarmologi-intel-service.js` memakai tanggal UTC-naif → candle segar bisa ditolak sebagai stale _(DIPERBAIKI: `formatJakartaDate`)_
+- [x] F-028 | MEDIUM | batch 11 | api/sector-hot.js:1885 - `api/sector-hot.js` menyimpan `price_date` dari potongan UTC naif pada candle Yahoo _(DIPERBAIKI: `getJakartaDateFromTimestamp`)_
+- [x] F-033 | MEDIUM | batch 11 | (tanpa lokasi eksplisit) - Label tanggal candle memakai potongan UTC (`toISOString().slice(0,10)`) di banyak modul data _(DIPERBAIKI: 4 modul `chart-image-renderer`/`context-ai-router-v7`/`bandarmologi-screener-scoring`/`ai-analysis-cache` -> `formatJakartaDate`)_
 
 ### Batch 12 - MEDIUM: Panel "Kenapa Sinyal Ini Lolos Gate?" (Ambang + Missing != Pass) (3 temuan)
 
@@ -344,6 +360,7 @@ Branch `fix/remove-fabricated-tp-and-backtest-demo-label` -> base `feat/daytrade
 | 8 | `fix/analyze-legacy-no-fabricated-defaults` | #703 (merged) | `67ee4fb`; merge `650d53c` | [x] SELESAI | F-056; test baru 403/403 |
 | 9 | `fix/remove-fabricated-scores-bandarmologi` | #705 (merged) | `cc5199f`; merge `671d1ac` | [x] SELESAI | F-002/F-066/F-067/F-070/F-071; test baru 404/404 |
 | 10 | `fix/remove-fabricated-tp-and-backtest-demo-label` | #707 (merged) | `7d25f4c`; merge `71fcb0d` | [x] SELESAI | F-065 + F-085; test baru 405/405 |
+| 11 | `fix/utc-naive-date-formatting` | #709 (merged) | `773d945`; merge `d79937e` | [x] SELESAI | 6 temuan UTC naif; test baru 406/406 |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
