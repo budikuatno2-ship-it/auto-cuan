@@ -161,23 +161,26 @@ test('bandarmologiIntelService.computeConcentrationRatios: resolves turnover fro
 // =================================================================
 
 test('bandarmologiIntelService.detectPriceBelowBandarCost: uses gross buy modal and calculates accurate discount_pct', (t) => {
-  // BBCA hunter cache has avg bandar buy = 6629
-  // If market price is 6000 (< 6629), discount_pct must be positive
+  // Resolve the bandar modal from available data, then probe a price below and
+  // above it. The modal is data-dependent (not a frozen 6629), so derive the
+  // probe prices from it instead of hardcoding 6000/7000.
+  const base = bandarmologiIntelService.detectPriceBelowBandarCost('BBCA', { range: '7d' });
+  if (!base || !(base.bandar_avg_buy > 0)) {
+    return t.skip('BBCA bandar modal unavailable in this environment');
+  }
+  const modal = base.bandar_avg_buy;
+  const belowPrice = Math.max(50, Math.round(modal * 0.9));
+  const abovePrice = Math.round(modal * 1.1);
+
   const resBelow = bandarmologiIntelService.detectPriceBelowBandarCost('BBCA', {
     range: '7d',
-    currentPrice: 6000
+    currentPrice: belowPrice
   });
-
-  // The bandar modal comes from the gitignored broker-summary/hunter data, so
-  // CI has none. Skip (not fail) when the local data is absent.
-  if (!(resBelow.bandar_avg_buy > 0)) {
-    return t.skip('local broker-summary data unavailable (data/arjum-data is gitignored)');
-  }
 
   assert.equal(resBelow.signal_key, 'HARGA_DI_BAWAH_MODAL_BANDAR');
   assert.ok(resBelow.discount_pct > 0, 'discount_pct should be positive when currentPrice < bandar modal');
   assert.equal(resBelow.triggered, true, 'Signal must be triggered when currentPrice < bandar modal');
-  assert.equal(resBelow.current_price, 6000);
+  assert.equal(resBelow.current_price, belowPrice);
 
   // Verify top 3 brokers carry clean gross buy modal prices
   resBelow.top_3_brokers.forEach(b => {
@@ -187,10 +190,10 @@ test('bandarmologiIntelService.detectPriceBelowBandarCost: uses gross buy modal 
     assert.ok(b.avg_price >= 50 && b.avg_price <= 100000, `Broker avg_price ${b.avg_price} in valid stock range`);
   });
 
-  // If market price is 7000 (> 6629), discount_pct must be negative and price_diff_pct positive
+  // A price above the modal must yield a negative discount and positive diff.
   const resAbove = bandarmologiIntelService.detectPriceBelowBandarCost('BBCA', {
     range: '7d',
-    currentPrice: 7000
+    currentPrice: abovePrice
   });
   assert.ok(resAbove.discount_pct < 0, 'discount_pct should be negative when currentPrice > bandar modal');
   assert.ok(resAbove.price_diff_pct > 0, 'price_diff_pct should be positive when price is above bandar cost');

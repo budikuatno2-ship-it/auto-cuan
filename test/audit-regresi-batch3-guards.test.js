@@ -113,10 +113,15 @@ test('T8: with syncWithBrokerSummary on, a candle cache behind the summary is re
   await cache.writeCache(dir, 'BBCA', candlesThrough('2026-09-01'), 'test');
 
   // The guard compares against the newest broker-summary date on disk, which is
-  // environment-dependent (data/arjum-data is gitignored). Stub the resolver so
-  // the test is deterministic in CI and locally.
-  const original = cache.latestBrokerSummaryDate;
-  cache.latestBrokerSummaryDate = () => '2026-09-11';
+  // environment-dependent (data/arjum-data is gitignored). Point ARJUM_DATA_DIR
+  // at a temp dir holding a 2026-09-11 summary so the test is deterministic.
+  const arjumDir = await fs.mkdtemp(path.join(os.tmpdir(), 'arjum-t8-'));
+  const summaryDir = path.join(arjumDir, 'broker-summary', 'BBCA');
+  await fs.mkdir(summaryDir, { recursive: true });
+  await fs.writeFile(path.join(summaryDir, '2026-09-11.json'), JSON.stringify({ stock_code: 'BBCA', date: '2026-09-11' }));
+
+  const originalEnv = process.env.ARJUM_DATA_DIR;
+  process.env.ARJUM_DATA_DIR = arjumDir;
   let fetched = false;
   try {
     const provider = cache.createCacheProvider({
@@ -128,7 +133,8 @@ test('T8: with syncWithBrokerSummary on, a candle cache behind the summary is re
     await provider.fetchWithCache('BBCA');
     assert.equal(fetched, true, 'cache behind the broker summary must trigger a refetch');
   } finally {
-    cache.latestBrokerSummaryDate = original;
+    if (originalEnv === undefined) delete process.env.ARJUM_DATA_DIR;
+    else process.env.ARJUM_DATA_DIR = originalEnv;
   }
 });
 
