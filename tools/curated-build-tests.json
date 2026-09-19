@@ -400,5 +400,6 @@
   "test/vps-deploy-preflight.test.js",
   "test/live-session-monitor.test.js",
   "test/batch-consolidation-signoff.test.js",
-  "test/admin-logs-stored-xss.test.js"
+  "test/admin-logs-stored-xss.test.js",
+  "test/analyze-legacy-no-fabricated-defaults.test.js"
 ]
