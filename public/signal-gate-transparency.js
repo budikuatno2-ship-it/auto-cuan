@@ -33,8 +33,11 @@
       .replace(/'/g, '&#39;');
   }
 
+  // Missing data is NOT pass: unknown gates render neutral, never a green check.
+  var DATA_MISSING = 'Data belum tersedia';
+
   function fmtRpCompact(num) {
-    if (num === null || num === undefined || !isFinite(num)) return '-';
+    if (num === null || num === undefined || !isFinite(num)) return '—';
     var abs = Math.abs(num);
     if (abs >= 1e12) return 'Rp ' + (num / 1e12).toFixed(1) + ' T';
     if (abs >= 1e9) return 'Rp ' + (num / 1e9).toFixed(1) + ' M';
@@ -49,57 +52,61 @@
     var isDayTrade = type.indexOf('day') >= 0 || type.indexOf('dt') >= 0;
     var isNonKonglo = type.indexOf('non') >= 0 || type.indexOf('nk') >= 0;
 
+    // Ambang diselaraskan dengan gate server (bukan nilai indikatif terpisah):
+    // - likuiditas DT: lib/daytrade-screener-engine.js MIN_VALUE_TODAY 1e9 / MIN_AVG_VALUE_7D 5e8
+    // - RSI: api/sector-hot.js hard filter rsi14 >= 45 && rsi14 <= 70 (null = fail)
+    // - volume/RR: api/sector-hot.js volume_ratio_avg20 >= 1.0, risk_reward >= 1.5 (swing) / 1.2 (DT)
+
     // 1. Likuiditas Gate
     var valToday = toNum(signal.value_today);
-    var avgVal20 = toNum(signal.avg_transaction_value_20d || signal.avg_value_7d);
-    var liqScore = toNum(signal.liquidity_score);
-    var bestVal = valToday || avgVal20;
-    var minValTarget = isNonKonglo ? 10e9 : (isDayTrade ? 3e9 : 5e9); // 10M Non-Konglo, 3M DT, 5M Konglo
-    var liqPassed = (bestVal !== null && bestVal >= minValTarget) || (liqScore !== null && liqScore >= 12);
-    var liqActualText = bestVal !== null ? fmtRpCompact(bestVal) : (liqScore !== null ? ('Skor ' + liqScore.toFixed(0) + '/25') : 'Memenuhi Universe');
-    var liqThresholdText = 'Min ' + fmtRpCompact(minValTarget);
+    var avg7d = toNum(signal.avg_value_7d);
+    var avgVal20 = toNum(signal.avg_transaction_value_20d);
+    var bestVal = valToday !== null ? valToday : (avg7d !== null ? avg7d : avgVal20);
+    var minValTarget = isNonKonglo ? 10e9 : (isDayTrade ? 1e9 : 5e9); // 10 miliar Non-Konglo, 1 miliar DT, 5 miliar Konglo
+    var liqPassed = bestVal !== null ? bestVal >= minValTarget : null;
+    var liqActualText = bestVal !== null ? fmtRpCompact(bestVal) : DATA_MISSING;
+    var liqThresholdText = 'Min ' + fmtRpCompact(minValTarget) + ' (value hari ini)';
 
     // 2. Akumulasi Volume (Volume Ratio 20D)
     var volRatio = toNum(signal.volume_ratio_20d != null ? signal.volume_ratio_20d : (signal.volume_ratio != null ? signal.volume_ratio : signal.volume_ratio_avg20));
     var minVolRatio = isDayTrade ? 1.2 : 1.0;
-    var volPassed = volRatio !== null && volRatio >= minVolRatio;
-    var volActualText = volRatio !== null ? (volRatio.toFixed(2) + 'x') : 'Terkonfirmasi';
+    var volPassed = volRatio !== null ? volRatio >= minVolRatio : null;
+    var volActualText = volRatio !== null ? (volRatio.toFixed(2) + 'x') : DATA_MISSING;
     var volThresholdText = 'Min ' + minVolRatio.toFixed(1) + 'x';
 
-    // 3. Tren Harga / MA20
+    // 3. Tren Harga / MA20 (selaras guard backend "Di bawah MA20")
     var lastPrice = toNum(signal.last_price || signal.close);
     var ma20 = toNum(signal.ma20);
     var priceVsMa20 = null;
-    var ma20Passed = true;
-    var ma20ActualText = '-';
+    var ma20Passed = null;
+    var ma20ActualText = DATA_MISSING;
     if (lastPrice !== null && ma20 !== null && ma20 > 0) {
       priceVsMa20 = ((lastPrice - ma20) / ma20) * 100;
       ma20Passed = priceVsMa20 >= -2.0; // Izinkan toleransi pullback tipis sampai -2%
       ma20ActualText = (priceVsMa20 >= 0 ? '+' : '') + priceVsMa20.toFixed(1) + '% vs MA20 (' + Math.round(ma20).toLocaleString('id-ID') + ')';
-    } else if (lastPrice !== null) {
-      ma20ActualText = 'Di area ' + lastPrice.toLocaleString('id-ID');
-      ma20Passed = true;
     }
-    var ma20ThresholdText = '≥ MA20 / Area Support';
+    var ma20ThresholdText = 'Harga ≥ MA20';
 
     // 4. Momentum & Keamanan RSI (RSI 14)
     var rsi = toNum(signal.rsi14 != null ? signal.rsi14 : signal.rsi);
-    var rsiPassed = true;
-    var rsiActualText = '-';
+    var rsiPassed = null;
+    var rsiActualText = DATA_MISSING;
     if (rsi !== null) {
-      rsiPassed = rsi <= 78 && rsi >= 35; // Tidak overbought ekstrem > 78 dan tidak mati momentum < 35
-      rsiActualText = rsi.toFixed(1) + (rsi > 70 ? ' (Overbought)' : (rsi < 40 ? ' (Oversold)' : ' (Sehat)'));
-    } else {
-      rsiActualText = 'Dalam rentang aman';
+      rsiPassed = rsi >= 45 && rsi <= 70; // Samakan persis dengan hard filter api/sector-hot.js
+      rsiActualText = rsi.toFixed(1) + (rsi > 70 ? ' (Overbought)' : (rsi < 45 ? ' (Oversold)' : ' (Sehat)'));
     }
-    var rsiThresholdText = '35 - 75 (Zona Aman)';
+    var rsiThresholdText = '45 - 70 (Zona Gate Server)';
 
     // 5. Rasio Risiko/Keuntungan (Risk/Reward)
     var rr = toNum(signal.risk_reward != null ? signal.risk_reward : signal.rr);
     var minRR = isDayTrade ? 1.2 : 1.5;
-    var rrPassed = rr !== null ? (rr >= minRR) : true;
-    var rrActualText = rr !== null ? (rr.toFixed(1) + ' : 1') : 'Terkalkulasi';
+    var rrPassed = rr !== null ? (rr >= minRR) : null;
+    var rrActualText = rr !== null ? (rr.toFixed(1) + ' : 1') : DATA_MISSING;
     var rrThresholdText = 'Min ' + minRR.toFixed(1) + ' : 1';
+
+    function noteFor(passed, passMsg, failMsg) {
+      return passed === null ? DATA_MISSING : (passed ? passMsg : failMsg);
+    }
 
     var gates = [
       {
@@ -109,7 +116,8 @@
         actual: liqActualText,
         threshold: liqThresholdText,
         passed: liqPassed,
-        note: liqPassed ? 'Transaksi likuid untuk keluar-masuk posisi' : 'Likuiditas perlu konfirmasi orderbook'
+        unverified: liqPassed === null,
+        note: noteFor(liqPassed, 'Transaksi likuid untuk keluar-masuk posisi', 'Likuiditas perlu konfirmasi orderbook')
       },
       {
         id: 'volume',
@@ -118,7 +126,8 @@
         actual: volActualText,
         threshold: volThresholdText,
         passed: volPassed,
-        note: volPassed ? 'Volume di atas rata-rata 20 hari' : 'Volume akumulasi masih tipis'
+        unverified: volPassed === null,
+        note: noteFor(volPassed, 'Volume di atas rata-rata 20 hari', 'Volume akumulasi masih tipis')
       },
       {
         id: 'trend',
@@ -127,7 +136,8 @@
         actual: ma20ActualText,
         threshold: ma20ThresholdText,
         passed: ma20Passed,
-        note: ma20Passed ? 'Harga bertahan di atas batas tren MA20' : 'Harga menguji level support MA20'
+        unverified: ma20Passed === null,
+        note: noteFor(ma20Passed, 'Harga bertahan di atas batas tren MA20', 'Harga menguji level support MA20')
       },
       {
         id: 'rsi',
@@ -136,7 +146,8 @@
         actual: rsiActualText,
         threshold: rsiThresholdText,
         passed: rsiPassed,
-        note: rsiPassed ? 'Momentum terbentuk tanpa overbought ekstrem' : 'Waspada overbought/oversold'
+        unverified: rsiPassed === null,
+        note: noteFor(rsiPassed, 'Momentum terbentuk tanpa overbought ekstrem', 'Waspada overbought/oversold')
       },
       {
         id: 'rr',
@@ -145,18 +156,24 @@
         actual: rrActualText,
         threshold: rrThresholdText,
         passed: rrPassed,
-        note: rrPassed ? 'Potensi target reward melebihi batas risiko' : 'R/R di bawah standar ideal'
+        unverified: rrPassed === null,
+        note: noteFor(rrPassed, 'Potensi target reward melebihi batas risiko', 'R/R di bawah standar ideal')
       }
     ];
 
-    var passedCount = gates.filter(function (g) { return g.passed; }).length;
+    var passedCount = gates.filter(function (g) { return g.passed === true; }).length;
     var totalCount = gates.length;
-    var summaryRationale = signal.notes || signal.status_reason || signal.setup || 'Sinyal memenuhi kriteria momentum dan manajemen risiko yang ditentukan.';
+    var unverifiedCount = gates.filter(function (g) { return g.passed === null; }).length;
+    var allPassed = passedCount === totalCount;
+    var summaryRationale = allPassed
+      ? (signal.notes || signal.status_reason || signal.setup || 'Semua kriteria gate terverifikasi terpenuhi.')
+      : (signal.notes || signal.status_reason || signal.setup || (unverifiedCount > 0 ? 'Sebagian data gate belum tersedia — status belum diverifikasi.' : 'Sebagian kriteria gate belum terpenuhi.'));
 
     return {
       passedCount: passedCount,
       totalCount: totalCount,
-      allPassed: passedCount === totalCount,
+      unverifiedCount: unverifiedCount,
+      allPassed: allPassed,
       gates: gates,
       summaryRationale: summaryRationale
     };
@@ -190,10 +207,10 @@
     html += '<div style="display:flex;flex-direction:column;gap:6px">';
     for (var i = 0; i < evaluation.gates.length; i++) {
       var g = evaluation.gates[i];
-      var icon = g.passed ? '✅' : '⚠️';
-      var titleCol = g.passed ? '#e5e7eb' : '#fbbf24';
-      var rowBorder = g.passed ? 'rgba(30,41,59,0.5)' : 'rgba(234,179,8,0.2)';
-      var rowBg = g.passed ? 'rgba(20,27,45,0.4)' : 'rgba(234,179,8,0.04)';
+      var icon = g.passed === true ? '✅' : (g.passed === null ? '➖' : '⚠️');
+      var titleCol = g.passed === true ? '#e5e7eb' : (g.passed === null ? '#94a3b8' : '#fbbf24');
+      var rowBorder = g.passed === true ? 'rgba(30,41,59,0.5)' : (g.passed === null ? 'rgba(100,116,139,0.25)' : 'rgba(234,179,8,0.2)');
+      var rowBg = g.passed === true ? 'rgba(20,27,45,0.4)' : (g.passed === null ? 'rgba(100,116,139,0.06)' : 'rgba(234,179,8,0.04)');
 
       html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;background:' + rowBg + ';border:1px solid ' + rowBorder + ';border-radius:8px;font-size:11px">';
       html += '<div style="display:flex;align-items:center;gap:8px;min-width:0">';
@@ -245,7 +262,7 @@
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-bottom:6px">';
     for (var i = 0; i < evaluation.gates.length; i++) {
       var g = evaluation.gates[i];
-      var icon = g.passed ? '✅' : '⚠️';
+      var icon = g.passed === true ? '✅' : (g.passed === null ? '➖' : '⚠️');
       html += '<div style="display:flex;align-items:center;gap:4px;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">';
       html += '<span style="font-size:10px">' + icon + '</span>';
       html += '<span style="color:#94a3b8">' + escapeHtml(g.shortTitle) + ':</span>';
