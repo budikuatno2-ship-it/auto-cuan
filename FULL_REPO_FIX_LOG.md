@@ -58,7 +58,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 7 | HIGH: Stored XSS Admin Logs + Validasi Charset Username | 1 | [x] SELESAI |
 | 8 | HIGH: analyze-legacy.js Berhenti Mengarang RSI/Volume/Change | 3 | [x] SELESAI (F-056) |
 | 9 | MEDIUM: Cluster Fabrikasi Angka di Bandarmologi & Publisher | 6 | [x] SELESAI (5/6; F-081 frontend menunggu instruksi) |
-| 10 | MEDIUM: Cluster Fabrikasi di Telegram Templates & Track Record Backtest | 2 | [ ] BELUM |
+| 10 | MEDIUM: Cluster Fabrikasi di Telegram Templates & Track Record Backtest | 2 | [x] SELESAI |
 | 11 | MEDIUM: Satukan Konversi Tanggal UTC ke WIB | 6 | [ ] BELUM |
 | 12 | MEDIUM: Panel "Kenapa Sinyal Ini Lolos Gate?" (Ambang + Missing != Pass) | 3 | [ ] BELUM |
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [ ] BELUM |
@@ -247,10 +247,15 @@ Branch `fix/remove-fabricated-scores-bandarmologi` -> base `feat/daytrade-screen
 - **Gate**: `node --check` bersih pada 4 file kode; `npm test` = **404/404 file lolos, exit 0** (baseline 403 setelah Batch 8 + 1 test baru). CI PR #705 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login, fast-watcher-regression).
 - **Diff**: 4 file kode +43/-27, test baru 142 baris, `curated-build-tests.json` +1. Tidak menyentuh scope Batch 10+.
 
-### Batch 10 - MEDIUM: Cluster Fabrikasi di Telegram Templates & Track Record Backtest (2 temuan)
+### Batch 10 - SELESAI (PR #707, merge `71fcb0d`)
 
-- [ ] F-065 | MEDIUM | batch 10 | lib/telegram-templates.js:615, lib/telegram-templates.js:620 - Kartu sinyal Telegram mencetak target TP yang DIKARANG saat `tp1`/`tp2` absen, dan label persentase target di-hardcode (tidak cocok dengan TP riil)
-- [ ] F-085 | MEDIUM | batch 10 | public/track-record-backtest.js:55, public/track-record-runtime.js:390 - Backtest Track Record diam-diam memakai 8 sinyal benchmark hardcoded saat data riil kosong, tanpa label demo
+Branch `fix/remove-fabricated-tp-and-backtest-demo-label` -> base `feat/daytrade-screener-v1`. Scope = 2 temuan: F-065 (MEDIUM) + F-085 (MEDIUM). Tidak menyentuh scope Batch 11+.
+
+- **F-065 ([`lib/telegram-templates.js`](lib/telegram-templates.js:615))**: fallback perkalian TP karangan (`e1 * 1.045`, `e1 * 1.075`, `refEntry * 1.055`) dihapus. Bila `tp1`/`tp2` null/undefined, kartu menampilkan strip `—` (daytrade) atau omit baris TP2 (swing). Label persentase statis `+4.5%`/`+7.5%`/`+5% s/d +6%` diganti kalkulasi dinamis `Math.round(((tp / entryRef) - 1) * 1000) / 10` sehingga cocok dengan TP riil.
+- **F-085 ([`public/track-record-backtest.js`](public/track-record-backtest.js:55))**: array `BENCHMARK_SIGNALS` (8 sinyal hardcoded) dihapus. `runBacktestSimulation` kini mengembalikan `status: 'NO_SIGNALS'` + `message: 'Belum ada sinyal untuk disimulasikan'` saat input kosong, alih-alih menyuntikkan benchmark sebagai track record nyata.
+- **Test regresi baru**: [`test/batch10-fabricated-tp-and-backtest-demo.test.js`](test/batch10-fabricated-tp-and-backtest-demo.test.js) (6 subtest) — (a) payload tanpa TP1/TP2 tidak memuat angka rekaan 1045/1075/1055; (b) label persentase dihitung dinamis dari selisih entry; (c) backtest sinyal kosong mengembalikan status eksplisit tanpa metrik benchmark palsu. Test lama yang mengunci perilaku fabrikasi diperbarui: [`test/telegram-templates.test.js`](test/telegram-templates.test.js:168) (label dinamis), [`test/swing-screener-and-telegram-integrity.test.js`](test/swing-screener-and-telegram-integrity.test.js:159) (label dinamis), [`test/track-record-backtest.test.js`](test/track-record-backtest.test.js:173) (status eksplisit).
+- **Gate**: `node --check` bersih pada 6 file; `npm test` = **405/405 file lolos, exit 0** (baseline 404 setelah Batch 9 + 1 test baru). CI PR #707 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login).
+- **Diff**: 2 file kode + 4 file test + `curated-build-tests.json`, +130/-24. Tidak menyentuh scope Batch 11+.
 
 ### Batch 11 - MEDIUM: Satukan Konversi Tanggal UTC ke WIB (6 temuan)
 
@@ -338,6 +343,7 @@ Branch `fix/remove-fabricated-scores-bandarmologi` -> base `feat/daytrade-screen
 | 7 | `fix/admin-logs-stored-xss` | #701 (merged) | `ee3ce49`; merge `239734c` | [x] SELESAI | F-087; test baru 402/402 |
 | 8 | `fix/analyze-legacy-no-fabricated-defaults` | #703 (merged) | `67ee4fb`; merge `650d53c` | [x] SELESAI | F-056; test baru 403/403 |
 | 9 | `fix/remove-fabricated-scores-bandarmologi` | #705 (merged) | `cc5199f`; merge `671d1ac` | [x] SELESAI | F-002/F-066/F-067/F-070/F-071; test baru 404/404 |
+| 10 | `fix/remove-fabricated-tp-and-backtest-demo-label` | #707 (merged) | `7d25f4c`; merge `71fcb0d` | [x] SELESAI | F-065 + F-085; test baru 405/405 |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
