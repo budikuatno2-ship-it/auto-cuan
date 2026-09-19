@@ -57,14 +57,14 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 6 | HIGH: Hapus Semua Tanggal Fallback Hardcoded | 12 | [x] SELESAI |
 | 7 | HIGH: Stored XSS Admin Logs + Validasi Charset Username | 1 | [x] SELESAI |
 | 8 | HIGH: analyze-legacy.js Berhenti Mengarang RSI/Volume/Change | 3 | [x] SELESAI (F-056) |
-| 9 | MEDIUM: Cluster Fabrikasi Angka di Bandarmologi & Publisher | 6 | [ ] BELUM |
+| 9 | MEDIUM: Cluster Fabrikasi Angka di Bandarmologi & Publisher | 6 | [x] SELESAI (5/6; F-081 frontend menunggu instruksi) |
 | 10 | MEDIUM: Cluster Fabrikasi di Telegram Templates & Track Record Backtest | 2 | [ ] BELUM |
 | 11 | MEDIUM: Satukan Konversi Tanggal UTC ke WIB | 6 | [ ] BELUM |
 | 12 | MEDIUM: Panel "Kenapa Sinyal Ini Lolos Gate?" (Ambang + Missing != Pass) | 3 | [ ] BELUM |
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [ ] BELUM |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [ ] BELUM |
 
-Progres keseluruhan: **29/97 SELESAI, 0 DITARIK, 68 BELUM** (per Batch 8).
+Progres keseluruhan: **34/97 SELESAI, 0 DITARIK, 63 BELUM** (per Batch 9).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -232,14 +232,20 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 - [ ] F-059 | MEDIUM | batch 8 | lib/analyze-legacy.js:1494 - `fetchServerSideQuote` menghitung pivot/MA/RSI dari candle TERAKHIR (termasuk bar hari berjalan) padahal seluruh label menyebut "Data Historis T-1"
 - [ ] F-064 | LOW | batch 8 | lib/analyze-legacy.js:285 - Echo `chatMessage` tanpa escape ke HTML pada intent `ticker_only` — refleksi HTML mentah (self-XSS) via trik blok `[Info:]`
 
-### Batch 9 - MEDIUM: Cluster Fabrikasi Angka di Bandarmologi & Publisher (6 temuan)
+### Batch 9 - SELESAI (PR #705, merge `671d1ac`) - 5 temuan sesuai instruksi user
 
-- [ ] F-002 | MEDIUM | batch 9 | api/sector-hot.js:2995 - `enrichConfluenceRows` menghitung ulang confidence memakai kategori hardcoded `'Swing'` — ambang TP1 Non-Konglo jadi salah
-- [ ] F-066 | MEDIUM | batch 9 | lib/intraday-fast-watcher-publisher.js:49 - `buildDbRow` MEMALSUKAN `daytrade_score` — skor hilang dikarang jadi 70, skor riil di bawah 50 dipaksa naik jadi 50 — lalu ditulis ke tabel produksi publik `daytrade_screener_latest`
-- [ ] F-067 | MEDIUM | batch 9 | lib/bandarmologi-service.js:986, lib/bandarmologi-service.js:1131 - `accumulation_score` DIKARANG dari tanda net flow (70/30/75) lalu ditampilkan ke user sebagai "Acc Score: X/100"
-- [ ] F-070 | MEDIUM | batch 9 | lib/bandarmologi-intel-service.js:1184, public/bandarmologi-runtime.js:4742 - Denominator CR DIKARANG `top5Val × 1.75` saat total turnover tidak tersedia — CR5 selalu keluar 57,14% dan CR3 ikut ter-skala, lalu ditampilkan ke user sebagai metrik konsentrasi
-- [ ] F-071 | MEDIUM | batch 9 | lib/bandarmologi-intel-service.js:791 - Fallback hunter MEMFABRIKASI bukti "Silent Foreign Accumulation": `price_change_pct: 0.8` & `is_sideways: true` hardcoded, daily breakdown membagi total net secara rata
-- [ ] F-081 | LOW | batch 9 | public/bandarmologi-runtime.js:4860 - Catatan scanner "Silent Foreign Accumulation" memfabrikasi "3 hari berturut-turut" saat `consecutive_days` absen
+Branch `fix/remove-fabricated-scores-bandarmologi` -> base `feat/daytrade-screener-v1`. Scope = 5 temuan fabrikasi angka yang diminta user. F-081 (LOW, frontend `public/bandarmologi-runtime.js`) TIDAK diminta dan SENGAJA tidak disentuh.
+
+- [x] F-002 | MEDIUM | batch 9 | api/sector-hot.js:2995 - `enrichConfluenceRows` menghitung ulang confidence memakai kategori hardcoded `'Swing'` _(DIPERBAIKI: teruskan `r.category || r.mode || 'swing'` ke `deriveConfidenceTier`)_
+- [x] F-066 | MEDIUM | batch 9 | lib/intraday-fast-watcher-publisher.js:49 - `buildDbRow` MEMALSUKAN `daytrade_score` _(DIPERBAIKI: hapus default 70 & clamp `Math.max(50,...)` di `buildDbRow` DAN situs kedua di `registerConfirmedPicksForMonitoring`; item tanpa skor riil difilter dari `publishConfirmed` sehingga tidak masuk tabel publik `daytrade_screener_latest`)_
+- [x] F-067 | MEDIUM | batch 9 | lib/bandarmologi-service.js:986, lib/bandarmologi-service.js:1131 - `accumulation_score` DIKARANG 70/30/75 _(DIPERBAIKI: skor dihitung dari net-flow share gross value + konsistensi multi-hari, atau `null` bila data tidak memadai; fallback konstanta 75 dihapus)_
+- [x] F-070 | MEDIUM | batch 9 | lib/bandarmologi-intel-service.js:1184 - Denominator CR DIKARANG `top5Val × 1.75` _(DIPERBAIKI: bila turnover & volume sama-sama absen -> `cr3/cr5 = null` + `reason: 'TURNOVER_UNAVAILABLE'`; basis CR dilabeli eksplisit `cr_basis: VALUE|VOLUME`)_
+- [x] F-071 | MEDIUM | batch 9 | lib/bandarmologi-intel-service.js:791 - Fallback hunter MEMFABRIKASI "Silent Foreign Accumulation" _(DIPERBAIKI: `triggered: false` + `reason: 'DAILY_SERIES_UNAVAILABLE'`; `price_change_pct: 0.8`, `is_sideways: true`, dan `daily_breakdown` rata-bagi dihapus)_
+- [ ] F-081 | LOW | batch 9 | public/bandarmologi-runtime.js:4860 - Catatan scanner "Silent Foreign Accumulation" memfabrikasi "3 hari berturut-turut" saat `consecutive_days` absen _(di luar instruksi batch 9 ini; BELUM)_
+
+- **Test regresi baru**: `test/batch9-fabricated-scores-regression.test.js` (13 subtest) + didaftarkan di `tools/curated-build-tests.json`.
+- **Gate**: `node --check` bersih pada 4 file kode; `npm test` = **404/404 file lolos, exit 0** (baseline 403 setelah Batch 8 + 1 test baru). CI PR #705 hijau (build-and-focused-tests, security-gate, CodeQL, Analyze JavaScript, portfolio-persistence, command-login, fast-watcher-regression).
+- **Diff**: 4 file kode +43/-27, test baru 142 baris, `curated-build-tests.json` +1. Tidak menyentuh scope Batch 10+.
 
 ### Batch 10 - MEDIUM: Cluster Fabrikasi di Telegram Templates & Track Record Backtest (2 temuan)
 
@@ -329,6 +335,9 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 | 4 | `fix/telegram-safety-gate-text-limit` | #695 (merged) | `23b5bda` | [x] SELESAI | F-017 (BUG-025); test baru 399/399 |
 | 5 | `fix/remove-insider-data-fabrication` | #697 (merged) | `a78dd89` | [x] SELESAI | F-007 + F-041; test baru 400/400 |
 | 6 | `fix/remove-hardcoded-date-fallbacks` | #699 (merged) | `fc00dbc`; merge `44abc80` | [x] SELESAI | 12 temuan tanggal literal; test baru 401/401 |
+| 7 | `fix/admin-logs-stored-xss` | #701 (merged) | `ee3ce49`; merge `239734c` | [x] SELESAI | F-087; test baru 402/402 |
+| 8 | `fix/analyze-legacy-no-fabricated-defaults` | #703 (merged) | `67ee4fb`; merge `650d53c` | [x] SELESAI | F-056; test baru 403/403 |
+| 9 | `fix/remove-fabricated-scores-bandarmologi` | #705 (merged) | `cc5199f`; merge `671d1ac` | [x] SELESAI | F-002/F-066/F-067/F-070/F-071; test baru 404/404 |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
