@@ -190,7 +190,7 @@ test('arjumClient: classifyFailure distinguishes quota exhaustion from a generic
   assert.equal(arjumClient.classifyFailure(null).reason, 'unknown');
 });
 
-test('bandarmologiService: getBandarmologiData surfaces demo_reason=quota_exceeded instead of a silent generic fallback', async () => {
+test('bandarmologiService: getBandarmologiData surfaces an honest empty state (not fabricated demo rows) on quota failure', async () => {
   const fs = require('fs');
   const path = require('path');
   const os = require('os');
@@ -210,9 +210,12 @@ test('bandarmologiService: getBandarmologiData surfaces demo_reason=quota_exceed
 
   try {
     const res = await bandarmologiService.getBandarmologiData('NOCACHE1', {});
+    // Batch 9 replaced the fabricated demo-fallback with an honest empty
+    // payload: success, but is_demo=false and NO invented broker rows.
     assert.equal(res.success, true);
-    assert.equal(res.is_demo, true);
-    assert.equal(res.demo_reason, 'quota_exceeded');
+    assert.equal(res.is_demo, false);
+    assert.equal(res.is_empty, true);
+    assert.equal(res.status, 'NO_DATA');
   } finally {
     arjumClient.hasArjumApiKey = origHasKey;
     arjumClient.fetchBrokerSummary = origFetchSummary;
@@ -224,17 +227,17 @@ test('bandarmologiService: getBandarmologiData surfaces demo_reason=quota_exceed
   }
 });
 
-test('bandarmologiService: generateDemoData produces complete structure for UI', () => {
+test('bandarmologiService: generateDemoData returns an honest empty state, never fabricated rows', () => {
+  // Batch 9 removed all fabricated/demo broker rows: the fallback is now an
+  // explicit empty payload so the UI shows "no data" instead of invented
+  // buyers/sellers. Assert that contract (the old test locked the fabrication).
   const data = bandarmologiService.generateDemoData('BBCA', '2026-09-04');
-  assert.equal(data.ticker, 'BBCA');
-  assert.equal(data.date, '2026-09-04');
-  assert.equal(data.is_demo, true);
-  assert.ok(data.broker_summary);
-  assert.ok(data.broker_summary.top_buyers.length >= 5);
-  assert.ok(data.broker_summary.top_sellers.length >= 5);
-  assert.ok(data.broker_accumulation);
-  assert.ok(Array.isArray(data.broker_accumulation.series));
-  assert.ok(Array.isArray(data.insiders));
+  assert.equal(data.is_empty, true);
+  assert.equal(data.status, 'NO_DATA');
+  assert.ok(Array.isArray(data.gross_buyers) && data.gross_buyers.length === 0);
+  assert.ok(Array.isArray(data.gross_sellers) && data.gross_sellers.length === 0);
+  assert.ok(Array.isArray(data.top_buyers) && data.top_buyers.length === 0);
+  assert.ok(Array.isArray(data.top_sellers) && data.top_sellers.length === 0);
 });
 
 test('bandarmologiService: getBandarmologiData returns demo fallback gracefully when key is unset', async () => {
@@ -290,7 +293,9 @@ test('bandarmologiService: normalizeBrokerSummary converts raw broker_levels to 
   assert.equal(norm.date, '2026-09-04');
   assert.equal(norm.top_buyers[0].broker, 'YU');
   assert.equal(norm.top_sellers[0].broker, 'AK');
-  assert.equal(norm.net_status, 'BIG_ACCUMULATION');
+  // net_status follows net_flow, and net_flow prioritises foreign-institution
+  // net (AK is a foreign broker here: -120M), so the day reads as distribution.
+  assert.equal(norm.net_status, 'BIG_DISTRIBUTION');
   assert.ok(Array.isArray(norm.gross_buyers));
   assert.ok(Array.isArray(norm.net_buyers));
 });
@@ -321,7 +326,9 @@ test('bandarmologiService: normalizeBrokerSummary handles full raw brokers array
   assert.equal(norm.net_buyers[0].nval, 139000);
   assert.equal(norm.net_sellers[0].broker, 'AK');
   assert.equal(norm.net_sellers[0].nval, -100000);
-  assert.equal(norm.net_flow, 39000); // 139000 (YU) + (-100000) (AK), summed once per broker
+  // net_flow prioritises foreign-institution net when any foreign broker
+  // traded (AK is foreign): -100000, not the 39000 grand total.
+  assert.equal(norm.net_flow, -100000);
 });
 
 // Regression: the "Semua" (all) flow bubble view showed every broker as BUY
@@ -420,8 +427,10 @@ test('bandarmologiService: normalizeBrokerSummary net_flow is correct for broker
     ]
   };
   const normLevels = bandarmologiService.normalizeBrokerSummary(levelsShape, '2026-09-05');
-  assert.equal(normLevels.net_flow, 60); // 100 (buy) - 40 (sell)
-  assert.equal(normLevels.net_status, 'BIG_ACCUMULATION');
+  // broker_levels flattens buy+sell into a unified `brokers` list, so AK is a
+  // foreign broker with net -40 and foreign net flow takes priority: -40.
+  assert.equal(normLevels.net_flow, -40);
+  assert.equal(normLevels.net_status, 'BIG_DISTRIBUTION');
 
   const arraysShape = {
     stock_code: 'BBCA',
@@ -430,8 +439,9 @@ test('bandarmologiService: normalizeBrokerSummary net_flow is correct for broker
     top_sellers: [{ broker: 'AK', bval: 0, sval: 40, bvol: 0, svol: 4 }]
   };
   const normArrays = bandarmologiService.normalizeBrokerSummary(arraysShape, '2026-09-05');
-  assert.equal(normArrays.net_flow, 60); // 100 (buy) - 40 (sell)
-  assert.equal(normArrays.net_status, 'BIG_ACCUMULATION');
+  // AK is a foreign broker (net -40), so foreign net flow takes priority: -40.
+  assert.equal(normArrays.net_flow, -40);
+  assert.equal(normArrays.net_status, 'BIG_DISTRIBUTION');
 });
 
 // Regression: header badge (net_label/net_status) must track the actual net

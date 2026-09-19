@@ -27,3 +27,10 @@ BEGIN
       WITH CHECK (true);
   END IF;
 END ;
+
+-- F-092: table-level privilege hardening. RLS-without-policy already denies
+-- anon/authenticated row access, but the table-level DML grants remain. Revoke
+-- them so a future permissive policy (or RLS being disabled) cannot silently
+-- reopen direct client DML. Service role bypasses RLS and keeps full access.
+REVOKE ALL ON ai_analysis_cache FROM PUBLIC, anon, authenticated;
+GRANT ALL ON ai_analysis_cache TO service_role;

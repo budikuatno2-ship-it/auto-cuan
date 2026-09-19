@@ -49,8 +49,10 @@ test('Phase 2 - formatDayTradeSignalMessage renders confirmed buy format and exe
   // Price points & risk %
   assert.match(msg, /Area Beli \(Entry\): Rp5\.100 - Rp5\.200/);
   assert.match(msg, /Stop Loss: Rp4\.950 \(Risk: -2\.9%\)/);
-  assert.match(msg, /Target Profit 1 \(\+4\.5%\): Rp5\.425/);
-  assert.match(msg, /Target Profit 2 \(\+7\.5%\): Rp5\.575/);
+  // TP labels are computed dynamically from the entry reference (Batch 10
+  // removed the static '+4.5%'/+7.5%' literals). 5425 vs entryRef 5200 = +4.3%.
+  assert.match(msg, /Target Profit 1 \(\+4\.3%\): Rp5\.425/);
+  assert.match(msg, /Target Profit 2 \(\+7\.2%\): Rp5\.575/);
 
   // Metrics
   assert.match(msg, /Volume Pace: 2\.3x/);
@@ -110,7 +112,8 @@ test('Phase 2 - formatSwingKongloSignalMessage and NonKonglo render high convict
   assert.match(msgKonglo, /🎯 AUTO-CUAN SWING TRADE — HIGH CONVICTION/);
   assert.match(msgKonglo, /Kluster: Konglo \| Horizon: 3-7 Hari/);
   assert.match(msgKonglo, /TLKM/);
-  assert.match(msgKonglo, /Target Profit 1 \(\+5% s\/d \+6% Partial TP 50%\): Rp3\.420/);
+  // Dynamic label: 3420 vs entryRef 3200 = +6.9% (Batch 10 removed '+5% s/d +6%').
+  assert.match(msgKonglo, /Target Profit 1 \(\+6\.9% Partial TP 50%\): Rp3\.420/);
   assert.match(msgKonglo, /Target Profit 2 \(Fib Extension\): Rp3\.600/);
   assert.match(msgKonglo, /Intel Bandar \/ Arus Dana:/);
   assert.match(msgKonglo, /CR3: Rp45,0 M/);

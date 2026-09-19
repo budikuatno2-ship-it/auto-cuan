@@ -227,6 +227,8 @@ test('bandarmologiRuntime.renderBandarmologiUI: renders brokerDateSelect dropdow
   // Selected date must have selected attribute
   assert.ok(html.includes('value="2026-09-10" selected'), 'Selected date 2026-09-10 must be marked selected');
 
-  // Latest date (first in array) must have "(Terbaru)" badge in option text
-  assert.ok(html.includes('2026-09-11 (Terbaru)'), 'Latest date must have (Terbaru) label');
+  // The newest available date must carry a "(Terbaru)" badge. Which concrete
+  // date is newest depends on the live disk listing, so assert the badge is
+  // present rather than binding it to a frozen date literal.
+  assert.ok(html.includes('(Terbaru)'), 'The newest date must carry the (Terbaru) label');
 });

@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const arjumClient = require('../lib/arjum-client');
 const bandarmologiService = require('../lib/bandarmologi-service');
+const idxTradingCalendar = require('../lib/idx-trading-calendar');
 
 // Optional local/server .env or .env.local loader
 try {
@@ -42,40 +43,26 @@ try {
   }
 } catch (_) {}
 
-// Indonesian Stock Exchange (BEI / IDX) Holiday calendar for 2026
-const IDX_HOLIDAYS_2026 = new Set([
-  '2026-01-01', // Tahun Baru Masehi
-  '2026-01-16', // Isra Miraj Nabi Muhammad SAW
-  '2026-02-17', // Tahun Baru Imlek 2577 Kongzili
-  '2026-03-20', // Hari Suci Nyepi Tahun Baru Saka 1948
-  '2026-03-21', // Hari Raya Idul Fitri 1447 H
-  '2026-03-23', // Cuti Bersama Idul Fitri
-  '2026-03-24', // Cuti Bersama Idul Fitri
-  '2026-04-03', // Wafat Yesus Kristus
-  '2026-05-01', // Hari Buruh Internasional
-  '2026-05-14', // Kenaikan Yesus Kristus
-  '2026-05-25', // Hari Raya Idul Adha 1447 H
-  '2026-05-31', // Hari Raya Waisak 2570 BE
-  '2026-06-01', // Hari Lahir Pancasila
-  '2026-06-16', // Tahun Baru Islam 1448 H
-  '2026-08-17', // Hari Kemerdekaan RI
-  '2026-08-25', // Maulid Nabi Muhammad SAW
-  '2026-12-25'  // Hari Raya Natal
-]);
-
 function getTradingDates(startDateStr = '2026-01-01', endDateStr = '2026-05-31') {
+  // Reference the single canonical 2026 holiday list (lib/idx-holidays-2026-seed-data.js)
+  // via the trading-calendar helper. The previous inline set had drifted from the
+  // canonical list, so backfill pulled API data on real holidays and skipped real
+  // trading days. See F-093 in FULL_REPO_FIX_LOG.md.
+  const IDX_HOLIDAYS_2026 = idxTradingCalendar.getSeedHolidaySet();
   const dates = [];
-  const current = new Date(startDateStr);
-  const end = new Date(endDateStr);
+  const [sy, sm, sd] = startDateStr.split('-').map(Number);
+  const [ey, em, ed] = endDateStr.split('-').map(Number);
+  const current = new Date(Date.UTC(sy, sm - 1, sd));
+  const end = new Date(Date.UTC(ey, em - 1, ed));
 
   while (current <= end) {
-    const day = current.getDay();
+    const day = current.getUTCDay();
     const iso = current.toISOString().slice(0, 10);
     // 0 = Sunday, 6 = Saturday
     if (day !== 0 && day !== 6 && !IDX_HOLIDAYS_2026.has(iso)) {
       dates.push(iso);
     }
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
   return dates;
 }

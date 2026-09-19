@@ -73,8 +73,10 @@ test('PR #4: bandarmologiService.normalizeBrokerSummary preserves 50+ brokers wi
   assert.ok(norm, 'Normalized summary must not be null');
   assert.equal(norm.gross_buyers.length, 55, 'gross_buyers must contain all brokers with bval > 0 without 20 cap');
   assert.equal(norm.gross_sellers.length, 55, 'gross_sellers must contain all brokers with sval > 0 without 20 cap');
-  assert.equal(norm.top_buyers.length, 55, 'top_buyers must match gross_buyers without 20 cap');
-  assert.equal(norm.top_sellers.length, 55, 'top_sellers must match gross_sellers without 20 cap');
+  // In the unified `brokers` shape, top_* are the NET partitions (no 20 cap),
+  // not copies of the gross lists.
+  assert.equal(norm.top_buyers.length, 30, 'top_buyers = all 30 positive net brokers, without 20 cap');
+  assert.equal(norm.top_sellers.length, 25, 'top_sellers = all 25 negative net brokers, without 20 cap');
   assert.equal(norm.net_buyers.length, 30, 'net_buyers must contain all 30 positive net brokers');
   assert.equal(norm.net_sellers.length, 25, 'net_sellers must contain all 25 negative net brokers');
 });

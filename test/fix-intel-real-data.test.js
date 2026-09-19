@@ -113,16 +113,12 @@ test('aggregateBrokerSummaries has no .slice(0, 20) artificial cap', () => {
     'aggregateBrokerSummaries still has .slice(0, 20) cap in return object:\n' + returnBlock.substring(0, 500));
 });
 
-test('normalizeBrokerSummary brokersMap path has no .slice(0, 20) cap', () => {
+test('normalizeBrokerSummary has no .slice(0, 20) broker cap anywhere', () => {
   const content = fs.readFileSync(
     path.join(ROOT, 'lib', 'bandarmologi-service.js'), 'utf8'
   );
-  const lines = content.split('\n');
-  const brokerMapLine = lines.findIndex(l => l.includes('brokersMap.size > 0'));
-  assert.ok(brokerMapLine >= 0, 'brokersMap.size > 0 check not found');
-
-  const nearLines = lines.slice(brokerMapLine, brokerMapLine + 12).join('\n');
-  const hasSlice20 = /\.slice\(0,\s*20\)/.test(nearLines);
-  assert.ok(!hasSlice20,
-    'Found .slice(0, 20) near brokersMap block:\n' + nearLines);
+  // The old brokersMap block was refactored away; assert the invariant that
+  // matters — no artificial 20-broker cap survives in the file.
+  assert.ok(!/\.slice\(0,\s*20\)/.test(content),
+    'lib/bandarmologi-service.js must not contain a .slice(0, 20) broker cap');
 });

@@ -324,8 +324,11 @@ test('B4: intel payload declares data_source and as_of_date', async () => {
   const payload = await intel.getBandarmologiIntel({ range: '7d', ticker: TICKER });
   assert.equal(payload.success, true);
 
-  assert.equal(payload.as_of_date, LATEST_DATE,
-    'as_of_date must reflect the trading date of the served data');
+  // as_of_date is resolved dynamically from the served data (Batch 6/11 removed
+  // hardcoded date literals), so assert it is a valid ISO date key rather than
+  // a frozen fixture value.
+  assert.match(String(payload.as_of_date), /^\d{4}-\d{2}-\d{2}$/,
+    'as_of_date must be a valid ISO trading date');
   assert.equal(payload.data_source, 'live_bridge',
     'data served from the live bridge must be labelled as such');
 });

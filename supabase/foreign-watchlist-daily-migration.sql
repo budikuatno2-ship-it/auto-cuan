@@ -31,3 +31,7 @@ ALTER TABLE foreign_watchlist_daily ADD COLUMN IF NOT EXISTS nbsa NUMERIC;
 
 -- Deny direct client access. Service role bypasses RLS for server/local import tools.
 ALTER TABLE foreign_watchlist_daily ENABLE ROW LEVEL SECURITY;
+
+-- F-092: table-level privilege hardening (see stock-daily-context-migration.sql).
+REVOKE ALL ON foreign_watchlist_daily FROM PUBLIC, anon, authenticated;
+GRANT ALL ON foreign_watchlist_daily TO service_role;
