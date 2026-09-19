@@ -13,6 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const fetcher = require('../lib/chart-engine/candle-fetcher');
+const { isValidIdxTicker } = require('../lib/idx-ticker');
 
 function loadEnvFile() {
   const candidates = [path.join(__dirname, '..', '.env.ai-eval-once'), path.join(__dirname, '..', '.env.local'), path.join(__dirname, '..', '.env')];
@@ -36,7 +37,7 @@ function loadEnvFile() {
 function loadTickers() {
   const idx = path.join(process.cwd(), 'data', 'arjum-data', 'broker-summary');
   try {
-    return fs.readdirSync(idx, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name).sort();
+    return fs.readdirSync(idx, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name).filter(isValidIdxTicker).sort();
   } catch (_) { return []; }
 }
 

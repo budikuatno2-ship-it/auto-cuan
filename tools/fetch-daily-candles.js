@@ -15,6 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const fetcher = require('../lib/chart-engine/candle-fetcher');
+const { isValidIdxTicker } = require('../lib/idx-ticker');
 
 function loadEnvFile() {
   const candidates = [path.join(__dirname, '..', '.env.ai-eval-once'), path.join(__dirname, '..', '.env.local'), path.join(__dirname, '..', '.env')];
@@ -39,7 +40,7 @@ function loadTickers() {
   // Use the full universe index if present; otherwise derive from broker-summary dirs.
   const idx = path.join(process.cwd(), 'data', 'arjum-data', 'broker-summary');
   try {
-    const dirs = fs.readdirSync(idx, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name);
+    const dirs = fs.readdirSync(idx, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name).filter(isValidIdxTicker);
     if (dirs.length) return dirs.sort();
   } catch (_) {}
   return [];

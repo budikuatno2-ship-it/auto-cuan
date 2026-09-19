@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - feat/daytrade-screener-v1
+      - main
     paths:
       - 'lib/intraday-fast-watcher*.js'
       - 'test/*fast-watcher*.test.js'

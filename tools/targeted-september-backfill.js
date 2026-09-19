@@ -16,6 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { isValidIdxTicker } = require('../lib/idx-ticker');
 
 const DATES = ['2026-09-07','2026-09-08','2026-09-09','2026-09-10','2026-09-11','2026-09-14','2026-09-15'];
 const BASE_DIR = process.env.ARJUM_DATA_DIR || path.join(__dirname, '..', 'data', 'arjum-data');
@@ -75,7 +76,7 @@ async function main() {
     let tickers = [];
     try {
       tickers = fs.readdirSync(dir, { withFileTypes: true })
-        .filter(d => d.isDirectory()).map(d => d.name);
+        .filter(d => d.isDirectory()).map(d => d.name).filter(isValidIdxTicker);
     } catch (_) { tickers = []; }
 
     for (const ticker of tickers) {
