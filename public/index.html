@@ -3528,7 +3528,7 @@ async function doLogin() {
         }
         var passwordHash = await hashPassword(password); var deviceId = getOrCreateDeviceId();
         var response = await fetch('/api/login-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-            body: JSON.stringify({ username: usernameLower, email: regEmailVal || null, passwordHash: passwordHash, deviceId: deviceId, userAgent: navigator.userAgent, recaptchaToken: recaptchaToken || undefined }) });
+            body: JSON.stringify({ username: usernameLower, passwordHash: passwordHash, deviceId: deviceId, userAgent: navigator.userAgent, recaptchaToken: recaptchaToken || undefined }) });
         var data = await response.json();
         if (data.success) {
             // Admin status comes ONLY from the authenticated server result, and is
@@ -3761,20 +3761,22 @@ var REGISTRATION_TERMS_VERSION = '2026-08-16-v1';
 
 async function doRegister() {
     clearLegacyDeviceBlock();
+    // F-090: resolve the feedback elements BEFORE any validation branch uses
+    // them. Previously errorEl was assigned below the email check, so an
+    // invalid email threw a TypeError instead of showing the validation message.
+    var errorEl = document.getElementById('registerError'); var successEl = document.getElementById('registerSuccess');
+    var registerBtn = document.getElementById('registerBtn');
     var usernameInput = document.getElementById('regUsername').value.trim();
     var regEmailEl = document.getElementById('regEmail');
     var regEmailVal = regEmailEl ? regEmailEl.value.trim() : "";
     if (regEmailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmailVal)) {
-        errorEl.textContent = "Format email tidak valid.";
-        errorEl.classList.remove("hidden");
+        if (errorEl) { errorEl.textContent = "Format email tidak valid."; errorEl.classList.remove("hidden"); }
         return;
     }
     var password = document.getElementById('regPassword').value;
     var passwordConfirm = document.getElementById('regPasswordConfirm').value;
     var termsEl = document.getElementById('regTermsAccepted');
-    var errorEl = document.getElementById('registerError'); var successEl = document.getElementById('registerSuccess');
-    var registerBtn = document.getElementById('registerBtn');
-    errorEl.classList.add('hidden'); successEl.classList.add('hidden');
+    if (errorEl) errorEl.classList.add('hidden'); if (successEl) successEl.classList.add('hidden');
     if (!usernameInput) { errorEl.textContent = 'Username tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
     var usernameLower = usernameInput.toLowerCase();
     if (usernameLower === 'budi') { errorEl.textContent = 'Username tidak tersedia.'; errorEl.classList.remove('hidden'); return; }
@@ -4875,8 +4877,10 @@ async function openNewsFromAnalisis(ticker) {
     if (newsItems && newsItems.length > 0) {
         panelHtml += '<div class="space-y-2">';
         newsItems.forEach(function(item) {
-            panelHtml += '<div class="border-l-2 border-yellow-500/30 pl-3 py-1"><p class="text-xs text-gray-400">' + (item.date || '') + '</p><p class="text-sm text-gray-300">' + (item.title || '') + '</p>';
-            if (item.summary) panelHtml += '<p class="text-xs text-gray-500 mt-0.5">' + item.summary + '</p>';
+            // F-091: news comes from third-party web search; escape it exactly
+            // like loadStockNewsPage does instead of injecting raw markup.
+            panelHtml += '<div class="border-l-2 border-yellow-500/30 pl-3 py-1"><p class="text-xs text-gray-400">' + escapeHtml(item.date || '') + '</p><p class="text-sm text-gray-300">' + escapeHtml(item.title || '') + '</p>';
+            if (item.summary) panelHtml += '<p class="text-xs text-gray-500 mt-0.5">' + escapeHtml(item.summary) + '</p>';
             panelHtml += '</div>';
         });
         panelHtml += '</div>';
@@ -4913,7 +4917,10 @@ async function loadStockNewsPage(t) {
         html += '<div class="flex items-center justify-between border-b border-dark-600/30 pb-3"><h3 class="text-base font-bold text-white flex items-center gap-2"><span>📰 Berita &amp; Katalis: ' + escapeHtml(ticker) + '</span><span class="text-xs font-normal text-blue-400 font-mono bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full">' + items.length + ' update</span></h3></div>';
         items.forEach(function(item) {
             var title = escapeHtml(item.title || 'Informasi Pasar');
-            var titleLink = item.url ? '<a href="' + item.url + '" target="_blank" rel="noopener noreferrer" class="hover:text-blue-300 hover:underline">' + title + '</a>' : title;
+            // F-091: only link out when the URL is a real http(s) URL; never emit
+            // a raw href that could carry a javascript: scheme.
+            var safeUrl = /^https?:\/\//i.test(String(item.url || '')) ? item.url : '';
+            var titleLink = safeUrl ? '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" class="hover:text-blue-300 hover:underline">' + title + '</a>' : title;
             html += '<div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-4 space-y-1.5 hover:border-blue-500/30 transition">' +
                 '<div class="flex items-center justify-between text-xs text-gray-400 font-mono">' +
                     '<span class="text-blue-400 font-semibold">' + escapeHtml(item.source || 'Media Pasar') + '</span>' +
