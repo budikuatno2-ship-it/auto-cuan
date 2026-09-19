@@ -485,7 +485,7 @@ Langkah ini **tidak bisa diotomasi dari repo** karena menyentuh kredensial hidup
 | 14B | `fix/batch-14b-ui-sanitization-and-forms` | #717 (merged) | merge `c423a30` | [x] SELESAI | F-003/F-079/F-081/F-082/F-086/F-089/F-090/F-091; test 468/468 |
 | 14C | `fix/batch-14c-cleanup-and-ci-hygiene` | #719 (merged) | merge `b61d00b` | [x] SELESAI | F-035/F-036/F-055/F-097; `lib/idx-ticker.js` filter non-ticker; test 469/469 |
 | 15 | `fix/batch-15-final-low-findings` | #721 (merged) | `b86765e`; merge `42171a7` | [x] SELESAI | F-009/F-060/F-064/F-088/F-096; test 470/470 |
-| 16 | `fix/batch-16-final-deployment-readiness` | #723 (merged) | merge `HEAD` | [x] SELESAI | Alat audit `tools/verify-production-readiness.js` + ops checklist; test 471/471 |
+| 16 | `fix/batch-16-final-deployment-readiness` | #723 (merged) | `e5bc26f`; merge `178e507` | [x] SELESAI | Alat audit `tools/verify-production-readiness.js` + ops checklist; test 471/471 |
 
 Catatan Batch 0 (di luar temuan, diperlukan agar PR dokumentasi bisa lolos gate):
 - [`web-hardening-regression.yml`](.github/workflows/web-hardening-regression.yml:3) ditambah path trigger `**/*.md`. Sebelumnya PR dokumentasi-murni tidak memicu check wajib `build-and-focused-tests`, sehingga ruleset memblokir merge (selalu "expected"). Ini berkaitan dengan temuan LOW #97 (gate ter-scope path/branch) dan **tidak menutup** #97 - #97 tetap dikerjakan di Batch 14.
