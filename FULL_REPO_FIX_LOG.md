@@ -56,7 +56,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 5 | HIGH: Hapus Data Fabrikasi Jejaring Insider | 2 | [x] SELESAI |
 | 6 | HIGH: Hapus Semua Tanggal Fallback Hardcoded | 12 | [x] SELESAI |
 | 7 | HIGH: Stored XSS Admin Logs + Validasi Charset Username | 1 | [x] SELESAI |
-| 8 | HIGH: analyze-legacy.js Berhenti Mengarang RSI/Volume/Change | 3 | [ ] BELUM |
+| 8 | HIGH: analyze-legacy.js Berhenti Mengarang RSI/Volume/Change | 3 | [x] SELESAI (F-056) |
 | 9 | MEDIUM: Cluster Fabrikasi Angka di Bandarmologi & Publisher | 6 | [ ] BELUM |
 | 10 | MEDIUM: Cluster Fabrikasi di Telegram Templates & Track Record Backtest | 2 | [ ] BELUM |
 | 11 | MEDIUM: Satukan Konversi Tanggal UTC ke WIB | 6 | [ ] BELUM |
@@ -64,7 +64,7 @@ Runtime: Node v24.19.0, npm 11.17.0. Repo private; tidak ada kredensial/token ya
 | 13 | MEDIUM: CI Gate & Kalender Libur (Coverage Gap + 3 Salinan Kalender + RLS REVOKE) | 5 | [ ] BELUM |
 | 14 | LOW: Sapuan Pembersihan (Dead Code, Escaping, Komentar Salah) | 40 | [ ] BELUM |
 
-Progres keseluruhan: **28/97 SELESAI, 0 DITARIK, 69 BELUM** (per Batch 7).
+Progres keseluruhan: **29/97 SELESAI, 0 DITARIK, 68 BELUM** (per Batch 8).
 
 ### Batch 1 - SELESAI (PR #689, merge `076d6a0`)
 
@@ -151,6 +151,20 @@ Branch `fix/admin-logs-stored-xss` -> base `feat/daytrade-screener-v1`. Scope = 
 - **Gate**: `node --check` bersih pada `api/register-user.js` + test; `npm test` = **402/402 file lolos, exit 0** (baseline 401 setelah Batch 6 + 1 test baru). CI PR #701 hijau (build-and-focused-tests, security-gate, Analyze JavaScript, CodeQL, command-login, portfolio-persistence, account-center, Vercel + admin-hardening).
 - **Diff**: `api/register-user.js` +14/-1, `public/index.html` +11/-11, test baru 243 baris, `curated-build-tests.json` +1. Tidak menyentuh scope Batch 8+.
 
+### Batch 8 - SELESAI (PR #703, merge `650d53c`) - Hentikan Angka Fabrikasi di analyze-legacy.js
+
+Branch `fix/analyze-legacy-no-fabricated-defaults` -> base `feat/daytrade-screener-v1`. Scope = F-056 (HIGH). F-059 (MEDIUM) dan F-064 (LOW) tetap menunggu jadwal batch selanjutnya.
+
+- **F-056 ([`lib/analyze-legacy.js`](lib/analyze-legacy.js:1074))**:
+  - Hapus substitusi default fiktif di `buildIHSGFixedTemplate` dan `buildStockFixedTemplate`: `changePct` tidak lagi fallback ke `0`, `volRatio` tidak lagi fallback ke `1`, `rsi14` tidak lagi fallback ke `50`.
+  - Kontrak diselaraskan dengan [`public/market-feature-runtime.js`](public/market-feature-runtime.js:585) (field absen tetap absen); parsing pesan di `parseMarketDataFromMessage` tidak lagi memalsukan `volume || 0`.
+  - Metrik teknikal yang absen dirender sebagai tanda strip `\u2014` ("—") atau keterangan status `"data tidak tersedia"`, bukan angka karangan.
+  - Perbaiki decision logic (`status`, `bias`, `confidence`, `action`): bila data teknikal tidak lengkap (`isDataIncomplete`), kartu menandai `status = 'Data Belum Lengkap'`, `confidence = 'Low'`, dan action panduan live alih-alih memicu sinyal Breakout/Avoid/Rebound palsu dari data rekaan. Pengujian kondisi teknikal (`ma20`, `ma50`, dll.) mensyaratkan `!= null`.
+  - Ekspor fungsi `buildStockFixedTemplate` dan `buildIHSGFixedTemplate` via `module.exports.__test` untuk memfasilitasi pengujian deterministik.
+- **Test regresi baru**: [`test/analyze-legacy-no-fabricated-defaults.test.js`](test/analyze-legacy-no-fabricated-defaults.test.js) (6 subtest) — (a) Stock template merender strip "—" untuk metrik RSI/volume/change yang absen dan tidak menampilkan angka 50, 1x, atau 0,00%; (b) Stock template menandai `Data Belum Lengkap` dengan confidence `Low` dan menolak rekomendasi beli/breakout fiktif; (c) Stock template tetap menghitung setup real ketika data lengkap; (d) IHSG template merender "—" untuk data absen; (e) IHSG template menandai `Data Belum Lengkap` dengan confidence `Low` saat data tidak tersedia; (f) IHSG template tetap menghitung kesimpulan real ketika data lengkap. Didaftarkan di [`tools/curated-build-tests.json`](tools/curated-build-tests.json:404).
+- **Gate**: `node --check` bersih pada `lib/analyze-legacy.js` + test; `npm test` = **403/403 file lolos, exit 0** (baseline 402 setelah Batch 7 + 1 test baru). CI PR #703 hijau (build-and-focused-tests, security-gate, Analyze JavaScript, CodeQL, command-login, portfolio-persistence, Vercel + admin-hardening).
+- **Diff**: `lib/analyze-legacy.js` +182/-59, test baru 131 baris, `curated-build-tests.json` +1. Tidak menyentuh scope Batch 9+.
+
 ---
 
 ---
@@ -214,7 +228,7 @@ Format: `[status] F-<no> | <severity> | batch <n> | <lokasi utama>` lalu judul.
 
 ### Batch 8 - HIGH: analyze-legacy.js Berhenti Mengarang RSI/Volume/Change (3 temuan)
 
-- [ ] F-056 | HIGH | batch 8 | lib/analyze-legacy.js:1074, lib/analyze-legacy.js:1231 - Template deterministik "data-driven" mengarang RSI14=50, volume=1x, dan perubahan harga=0 saat data absen — lalu angka karangan itu dipakai menghitung Status/Bias/Confidence
+- [x] F-056 | HIGH | batch 8 | lib/analyze-legacy.js:1074, lib/analyze-legacy.js:1231 - Template deterministik "data-driven" mengarang RSI14=50, volume=1x, dan perubahan harga=0 saat data absen — lalu angka karangan itu dipakai menghitung Status/Bias/Confidence _(DIPERBAIKI: hapus default || 50, || 1, || 0, render "—", status 'Data Belum Lengkap', confidence 'Low')_
 - [ ] F-059 | MEDIUM | batch 8 | lib/analyze-legacy.js:1494 - `fetchServerSideQuote` menghitung pivot/MA/RSI dari candle TERAKHIR (termasuk bar hari berjalan) padahal seluruh label menyebut "Data Historis T-1"
 - [ ] F-064 | LOW | batch 8 | lib/analyze-legacy.js:285 - Echo `chatMessage` tanpa escape ke HTML pada intent `ticker_only` — refleksi HTML mentah (self-XSS) via trik blok `[Info:]`
 
