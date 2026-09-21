@@ -148,12 +148,12 @@
     );
   }
 
-  function open(root, config) {
-    if (!root || !root.document || !config) return null;
+  function open(arg1, arg2) {
+    var root = (arg1 && (arg1.document || arg1.window)) ? arg1 : (typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : null));
+    var options = (arg1 && (arg1.document || arg1.window)) ? (arg2 || {}) : (arg1 || {});
+    if (!root || !root.document) return null;
     var doc = root.document;
     close(root);
-
-    var options = config || {};
     var ticker = normalizeTicker(options.ticker);
     var candles = sanitizeCandles(options.candles);
     var state = {
