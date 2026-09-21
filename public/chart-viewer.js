@@ -14,14 +14,14 @@
 // access gates, navigation or any backend.
 (function (root, factory) {
   'use strict';
-  var api = factory();
+  var api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (root) {
     root.AutoCuanChartViewer = api;
     root.openChartViewer = function (config) { return api.open(root, config); };
     root.closeChartViewer = function () { return api.close(root); };
   }
-})(typeof window !== 'undefined' ? window : null, function () {
+})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : null), function (defaultRoot) {
   'use strict';
 
   var VERSION = '20260802-chart-viewer-v1';
@@ -51,32 +51,92 @@
     return current > MIN_ZOOM + 0.01 ? MIN_ZOOM : 2.5;
   }
 
+  function normalizeTicker(ticker) {
+    return String(ticker || '').trim().replace(/\.JK$/i, '').toUpperCase();
+  }
+
+  function parseCandleTime(raw) {
+    if (raw == null) return null;
+    if (typeof raw === 'string') {
+      var s = raw.trim();
+      if (/^\d{4}[-/]\d{2}[-/]\d{2}$/.test(s)) return s.replace(/\//g, '-');
+      var n = Number(s);
+      if (!isNaN(n) && isFinite(n) && n > 0) {
+        raw = n;
+      } else {
+        var d = new Date(s);
+        if (isNaN(d.getTime())) return null;
+        return Math.floor(d.getTime() / 1000);
+      }
+    }
+    if (raw instanceof Date) {
+      if (isNaN(raw.getTime())) return null;
+      return Math.floor(raw.getTime() / 1000);
+    }
+    if (typeof raw === 'number' && isFinite(raw) && !isNaN(raw) && raw > 0) {
+      return raw > 1e11 ? Math.floor(raw / 1000) : Math.floor(raw);
+    }
+    return null;
+  }
+
+  function sanitizeCandles(candles) {
+    if (!Array.isArray(candles)) return [];
+    var seen = Object.create(null);
+    var out = [];
+    for (var i = 0; i < candles.length; i++) {
+      var c = candles[i];
+      if (!c || typeof c !== 'object') continue;
+      var t = parseCandleTime(c.time);
+      if (t === null) continue;
+      var close = Number(c.close);
+      if (c.close === '' || c.close == null || isNaN(close)) continue;
+      var key = String(t);
+      if (seen[key]) continue;
+      seen[key] = true;
+      out.push(Object.assign({}, c, {
+        time: t,
+        close: close,
+        volume: (c.volume != null && !isNaN(Number(c.volume))) ? Number(c.volume) : 0
+      }));
+    }
+    out.sort(function (a, b) {
+      var ta = typeof a.time === 'number' ? a.time : new Date(a.time).getTime();
+      var tb = typeof b.time === 'number' ? b.time : new Date(b.time).getTime();
+      return ta - tb;
+    });
+    return out;
+  }
+
   // iOS ignores `overflow:hidden` on <body> once momentum scrolling has started, so a
   // real lock has to pin the body and restore the scroll position afterwards.
   function lockScroll(root) {
-    var doc = root.document;
-    var body = doc.body;
-    if (body.hasAttribute('data-ac-scroll-locked')) return;
-    var y = root.pageYOffset || doc.documentElement.scrollTop || 0;
-    body.setAttribute('data-ac-scroll-locked', String(y));
-    body.style.position = 'fixed';
-    body.style.top = (-y) + 'px';
-    body.style.left = '0';
-    body.style.right = '0';
-    body.style.width = '100%';
+    var doc = root && root.document;
+    var body = doc && doc.body;
+    if (!body || (typeof body.hasAttribute === 'function' && body.hasAttribute('data-ac-scroll-locked'))) return;
+    var y = root.pageYOffset || (doc.documentElement && doc.documentElement.scrollTop) || (body && body.scrollTop) || 0;
+    if (typeof body.setAttribute === 'function') body.setAttribute('data-ac-scroll-locked', String(y));
+    if (body.style) {
+      body.style.position = 'fixed';
+      body.style.top = (-y) + 'px';
+      body.style.left = '0';
+      body.style.right = '0';
+      body.style.width = '100%';
+    }
   }
 
   function unlockScroll(root) {
-    var doc = root.document;
-    var body = doc.body;
-    if (!body.hasAttribute('data-ac-scroll-locked')) return;
-    var y = Number(body.getAttribute('data-ac-scroll-locked')) || 0;
-    body.removeAttribute('data-ac-scroll-locked');
-    body.style.position = '';
-    body.style.top = '';
-    body.style.left = '';
-    body.style.right = '';
-    body.style.width = '';
+    var doc = root && root.document;
+    var body = doc && doc.body;
+    if (!body || (typeof body.hasAttribute === 'function' && !body.hasAttribute('data-ac-scroll-locked'))) return;
+    var y = (typeof body.getAttribute === 'function' && Number(body.getAttribute('data-ac-scroll-locked'))) || 0;
+    if (typeof body.removeAttribute === 'function') body.removeAttribute('data-ac-scroll-locked');
+    if (body.style) {
+      body.style.position = '';
+      body.style.top = '';
+      body.style.left = '';
+      body.style.right = '';
+      body.style.width = '';
+    }
     if (typeof root.scrollTo === 'function') root.scrollTo(0, y);
   }
 
@@ -88,18 +148,24 @@
     );
   }
 
-  function open(root, config) {
-    if (!root || !root.document || !config) return null;
-    var doc = root.document;
+  function open(arg1, arg2) {
+    var isRoot = Boolean(arg1 && (arg1.document || typeof arg1.loadLightweightCharts === 'function'));
+    var root = isRoot ? arg1 : (defaultRoot || globalThis);
+    var options = isRoot ? (arg2 || {}) : (arg1 || {});
+    var doc = root && root.document;
+    if (!root || !doc) return null;
     close(root);
-
-    var options = config || {};
+    var ticker = normalizeTicker(options.ticker);
+    var candles = sanitizeCandles(options.candles);
+    var canRenderChart = candles.length >= 2 && (typeof root.renderLightweightChart === 'function' || typeof root.loadLightweightCharts === 'function');
     var state = {
       chartId: 'acviewer_' + Date.now(),
       zoom: MIN_ZOOM,
       panX: 0,
       panY: 0,
-      lastFocus: doc.activeElement
+      lastFocus: doc.activeElement,
+      disposed: false,
+      exportBtn: null
     };
 
     var overlay = doc.createElement('div');
@@ -139,13 +205,16 @@
 
     overlay.appendChild(head);
     overlay.appendChild(body);
-    doc.body.appendChild(overlay);
+    if (doc.body && typeof doc.body.appendChild === 'function') {
+      doc.body.appendChild(overlay);
+    }
     lockScroll(root);
 
     var disposed = false;
     function dispose() {
       if (disposed) return;
       disposed = true;
+      state.disposed = true;
       doc.removeEventListener('keydown', onKeydown, true);
       if (root.removeEventListener) root.removeEventListener('orientationchange', onViewportChange);
       if (typeof root.disposeChart === 'function') {
@@ -164,11 +233,21 @@
       if (event.key === 'Escape') { event.preventDefault(); dispose(); return; }
       if (event.key !== 'Tab') return;
       var items = focusableIn(overlay);
-      if (!items.length) return;
+      if (!items.length) { event.preventDefault(); return; }
       var first = items[0];
       var last = items[items.length - 1];
-      if (event.shiftKey && doc.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && doc.activeElement === last) { event.preventDefault(); first.focus(); }
+      var active = doc.activeElement;
+      var idx = items.indexOf(active);
+      if (idx === -1) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
     }
     doc.addEventListener('keydown', onKeydown, true);
 
@@ -181,9 +260,6 @@
     if (root.addEventListener) root.addEventListener('orientationchange', onViewportChange);
 
     closeButton.addEventListener('click', dispose);
-
-    var candles = Array.isArray(options.candles) ? options.candles : [];
-    var canRenderChart = candles.length >= 2 && typeof root.renderLightweightChart === 'function';
 
     if (options.download && options.download.href) {
       var save = doc.createElement('a');
@@ -198,14 +274,15 @@
       exportBtn.className = 'ac-viewer-btn';
       exportBtn.textContent = 'Simpan PNG';
       exportBtn.addEventListener('click', function () {
-        root.downloadChartPng(state.chartId, options.ticker || '', exportBtn);
+        root.downloadChartPng(state.chartId, ticker, exportBtn);
       });
       actions.appendChild(exportBtn);
+      state.exportBtn = exportBtn;
     }
     actions.appendChild(closeButton);
 
     if (canRenderChart) {
-      renderInteractive(root, doc, body, state, options);
+      renderInteractive(root, doc, body, state, options, candles, ticker);
     } else {
       renderImage(root, doc, body, state, options);
     }
@@ -218,7 +295,7 @@
   }
 
   // Interactive path — the exact renderer the Chart page uses.
-  function renderInteractive(root, doc, body, state, options) {
+  function renderInteractive(root, doc, body, state, options, candles, ticker) {
     var wrap = doc.createElement('div');
     wrap.className = 'ac-viewer-chart';
     wrap.innerHTML =
@@ -228,23 +305,33 @@
       '<p class="ac-viewer-hint">Cubit untuk zoom, geser untuk menggulir waktu.</p>';
     body.appendChild(wrap);
 
-    Promise.resolve()
+    var loadPromise = (root && typeof root.loadLightweightCharts === 'function')
+      ? Promise.resolve(root.loadLightweightCharts())
+      : Promise.resolve();
+
+    loadPromise
       .then(function () {
-        if (typeof root.loadLightweightCharts === 'function') return root.loadLightweightCharts();
-        return null;
-      })
-      .then(function () {
-        return root.renderLightweightChart(
-          state.chartId,
-          options.candles,
-          options.metrics || null,
-          options.ticker || '',
-          { variant: 'fullscreen', priceLines: options.priceLines || [], markers: options.markers || [] }
-        );
+        if (state.disposed) return;
+        if (root && typeof root.renderLightweightChart === 'function') {
+          return root.renderLightweightChart(
+            state.chartId,
+            candles,
+            options.metrics || null,
+            ticker || '',
+            { variant: 'fullscreen', priceLines: options.priceLines || [], markers: options.markers || [] }
+          );
+        }
       })
       .catch(function () {
-        // The chart engine failed: fall back to the still-usable image path.
+        if (state.disposed) return;
+        if (state.exportBtn && state.exportBtn.parentNode) {
+          state.exportBtn.parentNode.removeChild(state.exportBtn);
+          state.exportBtn = null;
+        }
         body.innerHTML = '';
+        while (body.children && body.children.length) {
+          body.removeChild(body.children[0]);
+        }
         renderImage(root, doc, body, state, options);
       });
   }
@@ -300,7 +387,7 @@
         var b = pointers[ids[1]];
         pinchStart = { distance: Math.hypot(a.x - b.x, a.y - b.y) || 1, zoom: state.zoom };
         dragStart = null;
-      } else if (ids.length === 1 && state.zoom > MIN_ZOOM + 0.01) {
+      } else if (ids.length === 1) {
         dragStart = { x: event.clientX, y: event.clientY, panX: state.panX, panY: state.panY };
       }
     });
@@ -326,8 +413,14 @@
 
     function endPointer(event) {
       delete pointers[event.pointerId];
-      if (Object.keys(pointers).length < 2) pinchStart = null;
-      if (!Object.keys(pointers).length) dragStart = null;
+      var ids = Object.keys(pointers);
+      if (ids.length < 2) pinchStart = null;
+      if (ids.length === 1) {
+        var remaining = pointers[ids[0]];
+        dragStart = { x: remaining.x, y: remaining.y, panX: state.panX, panY: state.panY };
+      } else if (!ids.length) {
+        dragStart = null;
+      }
     }
     frame.addEventListener('pointerup', endPointer);
     frame.addEventListener('pointercancel', endPointer);
@@ -365,6 +458,11 @@
     toggleZoom: toggleZoom,
     lockScroll: lockScroll,
     unlockScroll: unlockScroll,
+    normalizeTicker: normalizeTicker,
+    parseCandleTime: parseCandleTime,
+    sanitizeCandles: sanitizeCandles,
+    normalizeData: sanitizeCandles,
+    sanitizeData: sanitizeCandles,
     open: open,
     close: close
   };
