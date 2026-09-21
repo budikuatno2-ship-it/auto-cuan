@@ -259,7 +259,7 @@
 
     closeButton.addEventListener('click', dispose);
 
-    var canRenderChart = candles.length >= 2 && typeof root.renderLightweightChart === 'function';
+    var canRenderChart = candles.length >= 2 && (typeof root.renderLightweightChart === 'function' || typeof root.loadLightweightCharts === 'function');
 
     if (options.download && options.download.href) {
       var save = doc.createElement('a');
@@ -312,6 +312,7 @@
       })
       .then(function () {
         if (state.disposed) return;
+        if (typeof root.renderLightweightChart !== 'function') throw new Error('renderLightweightChart unavailable');
         return root.renderLightweightChart(
           state.chartId,
           candles,
