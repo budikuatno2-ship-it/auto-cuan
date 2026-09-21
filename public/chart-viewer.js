@@ -307,19 +307,22 @@
 
     Promise.resolve()
       .then(function () {
-        if (typeof root.loadLightweightCharts === 'function') return root.loadLightweightCharts();
+        if (typeof root.loadLightweightCharts === 'function') {
+          return root.loadLightweightCharts();
+        }
         return null;
       })
       .then(function () {
         if (state.disposed) return;
-        if (typeof root.renderLightweightChart !== 'function') throw new Error('renderLightweightChart unavailable');
-        return root.renderLightweightChart(
-          state.chartId,
-          candles,
-          options.metrics || null,
-          ticker || '',
-          { variant: 'fullscreen', priceLines: options.priceLines || [], markers: options.markers || [] }
-        );
+        if (typeof root.renderLightweightChart === 'function') {
+          return root.renderLightweightChart(
+            state.chartId,
+            candles,
+            options.metrics || null,
+            ticker || '',
+            { variant: 'fullscreen', priceLines: options.priceLines || [], markers: options.markers || [] }
+          );
+        }
       })
       .catch(function () {
         if (state.disposed) return;
