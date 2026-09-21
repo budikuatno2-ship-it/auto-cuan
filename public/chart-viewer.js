@@ -149,14 +149,15 @@
   }
 
   function open(arg1, arg2) {
-    var isRoot = arg1 && (arg1.document || typeof arg1.loadLightweightCharts === 'function' || typeof arg1.renderLightweightChart === 'function');
-    var root = isRoot ? arg1 : defaultRoot;
-    var options = isRoot ? (arg2 || {}) : (arg1 || {});
+    const isRoot = Boolean(arg1 && (arg1.document || typeof arg1.loadLightweightCharts === 'function'));
+    const root = isRoot ? arg1 : (defaultRoot || globalThis);
+    const options = isRoot ? (arg2 || {}) : (arg1 || {});
     if (!root || !root.document) return null;
-    var doc = root.document;
     close(root);
-    var ticker = normalizeTicker(options.ticker);
-    var candles = sanitizeCandles(options.candles);
+    const doc = root.document;
+    const ticker = normalizeTicker(options.ticker);
+    const candles = sanitizeCandles(options.candles);
+    const canRenderChart = candles.length >= 2 && (typeof root.renderLightweightChart === 'function' || typeof root.loadLightweightCharts === 'function');
     var state = {
       chartId: 'acviewer_' + Date.now(),
       zoom: MIN_ZOOM,
@@ -259,8 +260,6 @@
     if (root.addEventListener) root.addEventListener('orientationchange', onViewportChange);
 
     closeButton.addEventListener('click', dispose);
-
-    var canRenderChart = candles.length >= 2 && (typeof root.renderLightweightChart === 'function' || typeof root.loadLightweightCharts === 'function');
 
     if (options.download && options.download.href) {
       var save = doc.createElement('a');
