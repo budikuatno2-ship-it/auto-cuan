@@ -307,14 +307,14 @@
 
     Promise.resolve()
       .then(function () {
-        if (typeof root.loadLightweightCharts === 'function') {
+        if (root && typeof root.loadLightweightCharts === 'function') {
           return root.loadLightweightCharts();
         }
         return null;
       })
       .then(function () {
         if (state.disposed) return;
-        if (typeof root.renderLightweightChart === 'function') {
+        if (root && typeof root.renderLightweightChart === 'function') {
           return root.renderLightweightChart(
             state.chartId,
             candles,
