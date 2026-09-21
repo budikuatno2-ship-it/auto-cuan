@@ -149,15 +149,15 @@
   }
 
   function open(arg1, arg2) {
-    const isRoot = Boolean(arg1 && (arg1.document || typeof arg1.loadLightweightCharts === 'function'));
-    const root = isRoot ? arg1 : (defaultRoot || globalThis);
-    const options = isRoot ? (arg2 || {}) : (arg1 || {});
-    if (!root || !root.document) return null;
+    var isRoot = Boolean(arg1 && (arg1.document || typeof arg1.loadLightweightCharts === 'function'));
+    var root = isRoot ? arg1 : (defaultRoot || globalThis);
+    var options = isRoot ? (arg2 || {}) : (arg1 || {});
+    var doc = root && root.document;
+    if (!root || !doc) return null;
     close(root);
-    const doc = root.document;
-    const ticker = normalizeTicker(options.ticker);
-    const candles = sanitizeCandles(options.candles);
-    const canRenderChart = candles.length >= 2 && (typeof root.renderLightweightChart === 'function' || typeof root.loadLightweightCharts === 'function');
+    var ticker = normalizeTicker(options.ticker);
+    var candles = sanitizeCandles(options.candles);
+    var canRenderChart = candles.length >= 2 && (typeof root.renderLightweightChart === 'function' || typeof root.loadLightweightCharts === 'function');
     var state = {
       chartId: 'acviewer_' + Date.now(),
       zoom: MIN_ZOOM,
@@ -305,14 +305,11 @@
       '<p class="ac-viewer-hint">Cubit untuk zoom, geser untuk menggulir waktu.</p>';
     body.appendChild(wrap);
 
-    Promise.resolve()
-      .then(function () {
-        if (state.disposed) return null;
-        if (root && typeof root.loadLightweightCharts === 'function') {
-          return root.loadLightweightCharts();
-        }
-        return null;
-      })
+    var loadPromise = (root && typeof root.loadLightweightCharts === 'function')
+      ? Promise.resolve(root.loadLightweightCharts())
+      : Promise.resolve();
+
+    loadPromise
       .then(function () {
         if (state.disposed) return;
         if (root && typeof root.renderLightweightChart === 'function') {
@@ -331,7 +328,6 @@
           state.exportBtn.parentNode.removeChild(state.exportBtn);
           state.exportBtn = null;
         }
-        // The chart engine failed: fall back to the still-usable image path.
         body.innerHTML = '';
         while (body.children && body.children.length) {
           body.removeChild(body.children[0]);
