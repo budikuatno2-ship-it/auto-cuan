@@ -110,29 +110,33 @@
   // iOS ignores `overflow:hidden` on <body> once momentum scrolling has started, so a
   // real lock has to pin the body and restore the scroll position afterwards.
   function lockScroll(root) {
-    var doc = root.document;
-    var body = doc.body;
-    if (body.hasAttribute('data-ac-scroll-locked')) return;
-    var y = root.pageYOffset || doc.documentElement.scrollTop || 0;
-    body.setAttribute('data-ac-scroll-locked', String(y));
-    body.style.position = 'fixed';
-    body.style.top = (-y) + 'px';
-    body.style.left = '0';
-    body.style.right = '0';
-    body.style.width = '100%';
+    var doc = root && root.document;
+    var body = doc && doc.body;
+    if (!body || (typeof body.hasAttribute === 'function' && body.hasAttribute('data-ac-scroll-locked'))) return;
+    var y = root.pageYOffset || (doc.documentElement && doc.documentElement.scrollTop) || (body && body.scrollTop) || 0;
+    if (typeof body.setAttribute === 'function') body.setAttribute('data-ac-scroll-locked', String(y));
+    if (body.style) {
+      body.style.position = 'fixed';
+      body.style.top = (-y) + 'px';
+      body.style.left = '0';
+      body.style.right = '0';
+      body.style.width = '100%';
+    }
   }
 
   function unlockScroll(root) {
-    var doc = root.document;
-    var body = doc.body;
-    if (!body.hasAttribute('data-ac-scroll-locked')) return;
-    var y = Number(body.getAttribute('data-ac-scroll-locked')) || 0;
-    body.removeAttribute('data-ac-scroll-locked');
-    body.style.position = '';
-    body.style.top = '';
-    body.style.left = '';
-    body.style.right = '';
-    body.style.width = '';
+    var doc = root && root.document;
+    var body = doc && doc.body;
+    if (!body || (typeof body.hasAttribute === 'function' && !body.hasAttribute('data-ac-scroll-locked'))) return;
+    var y = (typeof body.getAttribute === 'function' && Number(body.getAttribute('data-ac-scroll-locked'))) || 0;
+    if (typeof body.removeAttribute === 'function') body.removeAttribute('data-ac-scroll-locked');
+    if (body.style) {
+      body.style.position = '';
+      body.style.top = '';
+      body.style.left = '';
+      body.style.right = '';
+      body.style.width = '';
+    }
     if (typeof root.scrollTo === 'function') root.scrollTo(0, y);
   }
 
@@ -199,7 +203,9 @@
 
     overlay.appendChild(head);
     overlay.appendChild(body);
-    doc.body.appendChild(overlay);
+    if (doc.body && typeof doc.body.appendChild === 'function') {
+      doc.body.appendChild(overlay);
+    }
     lockScroll(root);
 
     var disposed = false;
@@ -225,7 +231,7 @@
       if (event.key === 'Escape') { event.preventDefault(); dispose(); return; }
       if (event.key !== 'Tab') return;
       var items = focusableIn(overlay);
-      if (!items.length) return;
+      if (!items.length) { event.preventDefault(); return; }
       var first = items[0];
       var last = items[items.length - 1];
       var active = doc.activeElement;
@@ -322,6 +328,9 @@
         }
         // The chart engine failed: fall back to the still-usable image path.
         body.innerHTML = '';
+        while (body.children && body.children.length) {
+          body.removeChild(body.children[0]);
+        }
         renderImage(root, doc, body, state, options);
       });
   }
