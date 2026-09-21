@@ -568,6 +568,13 @@
     if (code === 'ACCOUNT_NOT_APPROVED') {
       return { fallback: false, status: serverMsg || 'Akun belum di-approve admin, jadi Asisten AI belum bisa dipakai.' };
     }
+    // ponytail: handle QUOTA_EXCEEDED before generic 429 rate-limit check
+    if (code === 'QUOTA_EXCEEDED') {
+      return {
+        fallback: false,
+        status: serverMsg || 'Batas kuota harian Anda telah tercapai. Kuota akan direset pada pukul 00:00 WIB.'
+      };
+    }
     if (status === 429 || code === 'AI_RATE_LIMITED') {
       var wait = Number(data && data.retry_after_seconds);
       return {
