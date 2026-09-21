@@ -113,3 +113,4 @@ data/candle-quota.json
 # Local test-runner output artifacts
 test*-out.txt
 testout.txt
+.aider*
