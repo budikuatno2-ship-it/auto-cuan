@@ -60,7 +60,8 @@
       .replace(/terjun bebas/gi, 'mengalami penurunan tajam')
       .replace(/seluruh nasib (porto|portofolio)/gi, 'kinerja portofolio')
       .replace(/profit (?:kecil )?bisa lenyap dalam sekejap/gi, 'profit tipis masih dapat berbalik')
-      .replace(/\s+([,.!?;:])/g, '$1')
+      // ponytail: avoid stripping space before decimal point (.382)
+      .replace(/\s+([,!?;:])|\s+\.(?![0-9])/g, function(m, p1) { return p1 || '.'; })
       .replace(/[ \t]{2,}/g, ' ');
   }
 
@@ -72,7 +73,6 @@
       .replace(/[ \t]+\n/g, '\n')
       .replace(/\n[ \t]+/g, '\n')
       .replace(/\|\s*\n\s*\n\s*\|/g, '|\n|')
-      .replace(/(^|[^0-9])\.([0-9])/g, '$1. $2')
       .replace(/([.!?])(?=[A-ZÀ-ÖØ-Þ])/g, '$1 ')
       .replace(/([,:;])(?=[A-ZÀ-ÖØ-Þ])/g, '$1 ')
       .replace(/\n{3,}/g, '\n\n')

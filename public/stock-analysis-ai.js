@@ -178,6 +178,8 @@
     if (status === 401) return { retryable: false, requiresAuth: true, text: 'Fitur tanya-jawab AI khusus untuk akun terdaftar. Daftar atau masuk dulu (gratis) untuk lanjut.' };
     if (status === 403) return { retryable: false, text: (data && data.error) || 'Akses AI ditolak untuk akun ini.' };
     if (status === 402 || code === 'SUBSCRIPTION_REQUIRED') return { retryable: false, text: (data && data.error) || 'Subscription aktif diperlukan untuk menggunakan fitur ini.' };
+    // ponytail: handle QUOTA_EXCEEDED before generic 429 rate-limit check
+    if (code === 'QUOTA_EXCEEDED') return { retryable: false, text: (data && (data.error || data.message)) || 'Batas kuota harian Anda telah tercapai.' };
     if (status === 429 || code === 'AI_RATE_LIMITED') {
       var wait = Number(data && data.retry_after_seconds);
       return { retryable: false, text: 'Terlalu banyak pertanyaan dalam waktu singkat.' + (Number.isFinite(wait) && wait > 0 ? ' Coba lagi sekitar ' + wait + ' detik lagi.' : ' Tunggu sebentar lalu coba lagi.') };
