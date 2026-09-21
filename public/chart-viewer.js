@@ -14,14 +14,14 @@
 // access gates, navigation or any backend.
 (function (root, factory) {
   'use strict';
-  var api = factory();
+  var api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (root) {
     root.AutoCuanChartViewer = api;
     root.openChartViewer = function (config) { return api.open(root, config); };
     root.closeChartViewer = function () { return api.close(root); };
   }
-})(typeof window !== 'undefined' ? window : null, function () {
+})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : null), function (defaultRoot) {
   'use strict';
 
   var VERSION = '20260802-chart-viewer-v1';
@@ -149,8 +149,9 @@
   }
 
   function open(arg1, arg2) {
-    var root = (arg1 && (arg1.document || arg1.window)) ? arg1 : (typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : null));
-    var options = (arg1 && (arg1.document || arg1.window)) ? (arg2 || {}) : (arg1 || {});
+    var isRoot = arg1 && (arg1.document || typeof arg1.loadLightweightCharts === 'function' || typeof arg1.renderLightweightChart === 'function');
+    var root = isRoot ? arg1 : defaultRoot;
+    var options = isRoot ? (arg2 || {}) : (arg1 || {});
     if (!root || !root.document) return null;
     var doc = root.document;
     close(root);
@@ -307,6 +308,7 @@
 
     Promise.resolve()
       .then(function () {
+        if (state.disposed) return null;
         if (root && typeof root.loadLightweightCharts === 'function') {
           return root.loadLightweightCharts();
         }
