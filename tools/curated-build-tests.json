@@ -1,4 +1,10 @@
 [
+  "test/latest-price-resolver-bugs.test.js",
+  "test/vps-data-fetcher-bugs.test.js",
+  "test/daily-history-collector-bugs.test.js",
+  "test/daytrade-ohlcv-cache-bugs.test.js",
+  "test/stock-daily-history-store-bugs.test.js",
+  "test/chart-viewer-bugs.test.js",
   "test/batch16-production-readiness.test.js",
   "test/batch15-final-low-findings.test.js",
   "test/batch14c-ticker-filter-and-ci-hygiene.test.js",
