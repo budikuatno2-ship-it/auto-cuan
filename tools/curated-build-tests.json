@@ -1,4 +1,7 @@
 [
+  "test/ops-fase9-batch1-bugs.test.js",
+  "test/ops-fase9-batch2-bugs.test.js",
+  "test/ops-fase9-batch3-bugs.test.js",
   "test/supabase-fase8-batch1-bugs.test.js",
   "test/supabase-fase8-batch2-bugs.test.js",
   "test/supabase-fase8-batch3-bugs.test.js",

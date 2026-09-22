@@ -250,6 +250,8 @@ async function main() {
 
     if (upsertMErr) {
       console.error('  [' + group.group_code + '] Member upsert error:', upsertMErr.message);
+      await updateMeta(scannedCount, failedCount, 'failed', 'Member upsert error: ' + upsertMErr.message);
+      throw new Error('Member upsert failed: ' + upsertMErr.message);
     }
 
     // Calculate group summary
@@ -277,13 +279,17 @@ async function main() {
 
     if (upsertGErr) {
       console.error('  [' + group.group_code + '] Group upsert error:', upsertGErr.message);
+      await updateMeta(scannedCount, failedCount, 'failed', 'Group upsert error: ' + upsertGErr.message);
+      throw new Error('Group upsert failed: ' + upsertGErr.message);
     } else {
       groupsProcessed++;
     }
   }
 
-  // 5. Update meta
-  await updateMeta(scannedCount, failedCount, 'ok', 'Refresh completed. Groups: ' + groupsProcessed);
+  // 5. Update meta (BUG-OPS-009: evaluasi status dan kegagalan parsial)
+  const metaStatus = failedCount > 0 ? 'partial' : 'ok';
+  const metaMessage = 'Refresh completed. Groups: ' + groupsProcessed + (failedCount > 0 ? ' (' + failedCount + ' tickers failed)' : '');
+  await updateMeta(scannedCount, failedCount, metaStatus, metaMessage);
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log('[refresh-sector-hot] Done in ' + elapsed + 's. Groups: ' + groupsProcessed + ', Tickers: ' + scannedCount + ' (' + failedCount + ' failed)');
