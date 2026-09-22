@@ -1471,6 +1471,13 @@
 
   function setBandarSection(section) {
     bandarSection = (section === 'akumulasi' || section === 'intel' || section === 'network') ? section : 'summary';
+    // FIX: the Akumulasi Broker tab must never inherit the Broker Summary bubble
+    // cluster. Entering it resets the default to the consistency table + cumulative
+    // chart; the operator can still opt into bubbles explicitly afterwards.
+    if (bandarSection === 'akumulasi') {
+      brokerAccumulationView = 'table';
+      bubbleFilterSide = 'all';
+    }
     if (activeBandarSummaryAbortController && (section === 'intel' || section === 'network')) {
       try { activeBandarSummaryAbortController.abort(); } catch (_) {}
     }
@@ -1710,7 +1717,13 @@
       var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
       var timer = controller ? setTimeout(function () { controller.abort(); }, 6000) : null;
       var reqUrl = base + '/api/broker-summary?ticker=' + encodeURIComponent(safeTicker) + '&date=' + encodeURIComponent(safeDate);
-      if (safeRange && safeRange !== '1d') reqUrl += '&range=' + encodeURIComponent(safeRange);
+      // FIX: always send the active timeframe (1D..60D) and mode so the backend
+      // aggregates the exact window the operator selected instead of defaulting.
+      reqUrl += '&range=' + encodeURIComponent(safeRange || '1d');
+      reqUrl += '&mode=' + encodeURIComponent(safeMode || 'gross');
+      if (safeRange === 'custom' && customRangeStart && customRangeEnd) {
+        reqUrl += '&startDate=' + encodeURIComponent(customRangeStart) + '&endDate=' + encodeURIComponent(customRangeEnd);
+      }
       var res = await fetch(reqUrl, controller ? { signal: controller.signal } : {});
       if (timer) clearTimeout(timer);
       if (res.ok) {
@@ -2014,6 +2027,78 @@
     }
   }
 
+  /**
+   * FIX (Net Vol / Net Val showing +0): upstream broker payloads mix snake_case
+   * (net_val, net_vol, buy_val, buy_vol), camelCase (netVal, netVol) and the
+   * bubble-item shape (txVal, displayVal). Resolve every known alias once so the
+   * Top Buyers / Top Sellers tables always read a real volume and value.
+   */
+  function canonicalizeBrokerRows(list, isBuyerSide) {
+    if (!Array.isArray(list)) return [];
+    var pick = function (obj, keys) {
+      for (var i = 0; i < keys.length; i++) {
+        var v = obj[keys[i]];
+        if (v !== null && v !== undefined && v !== '' && !isNaN(Number(v))) return Number(v);
+      }
+      return null;
+    };
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      var raw = list[i];
+      if (!raw || typeof raw !== 'object') continue;
+      var row = Object.assign({}, raw);
+
+      var bval = pick(raw, ['bval', 'buy_val', 'buyVal', 'gross_buy_val', 'val', 'value']);
+      var sval = pick(raw, ['sval', 'sell_val', 'sellVal', 'gross_sell_val']);
+      var bvol = pick(raw, ['bvol', 'buy_vol', 'buyVol', 'gross_buy_vol', 'vol', 'volume']);
+      var svol = pick(raw, ['svol', 'sell_vol', 'sellVol', 'gross_sell_vol']);
+      if (bval === null) bval = 0;
+      if (sval === null) sval = 0;
+      if (bvol === null) bvol = 0;
+      if (svol === null) svol = 0;
+
+      var netVal = pick(raw, ['nval', 'net_val', 'netVal', 'net_value', 'net']);
+      var netVol = pick(raw, ['nvol', 'net_vol', 'netVol', 'net_volume', 'net_lot']);
+      // Last resort: bubble items carry the magnitude in txVal / displayVal.
+      if (netVal === null || netVal === 0) {
+        if (bval !== 0 || sval !== 0) {
+          netVal = bval - sval;
+        } else {
+          var altVal = pick(raw, ['txVal', 'displayVal']);
+          if (altVal !== null && altVal !== 0) netVal = isBuyerSide ? Math.abs(altVal) : -Math.abs(altVal);
+        }
+      }
+      if (netVol === null || netVol === 0) {
+        if (bvol !== 0 || svol !== 0) {
+          netVol = bvol - svol;
+        } else {
+          var altVol = pick(raw, ['txVol', 'tx_vol', 'vol', 'volume']);
+          if (altVol !== null && altVol !== 0) netVol = isBuyerSide ? Math.abs(altVol) : -Math.abs(altVol);
+        }
+      }
+
+      var avg = pick(raw, ['avg_price', 'avg', 'avg_buy', 'avgBuy', 'avg_sell', 'avgSell', 'bavg', 'savg']);
+      if (avg === null && bvol > 0 && bval > 0) avg = Math.round(bval / bvol);
+      if (avg === null && svol > 0 && sval > 0) avg = Math.round(sval / svol);
+
+      row.bval = bval;
+      row.sval = sval;
+      row.bvol = bvol;
+      row.svol = svol;
+      row.nval = netVal;
+      row.net_val = netVal;
+      row.nvol = netVol;
+      row.net_vol = netVol;
+      row.buy_val = bval;
+      row.buy_vol = bvol;
+      row.sell_val = sval;
+      row.sell_vol = svol;
+      if (avg !== null && avg > 0) row.avg_price = avg;
+      out.push(row);
+    }
+    return out;
+  }
+
   function renderBrokerSummaryTableHtml(buyersOrData, sellersOrIsGross, isGrossArg, modeArg) {
     try {
       var buyers = [];
@@ -2038,6 +2123,10 @@
           mode = isGrossArg || (isGross ? 'gross' : 'net');
         }
       }
+
+      // FIX: normalise both sides once so Net Vol / Net Val never render as +0.
+      buyers = canonicalizeBrokerRows(buyers, true);
+      sellers = canonicalizeBrokerRows(sellers, false);
 
       var html = '';
       html += '  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">';
