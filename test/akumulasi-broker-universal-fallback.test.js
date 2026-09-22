@@ -91,6 +91,7 @@ test('Akumulasi UI Fallback: BandarmologiRuntime renders Akumulasi bubbles and i
 
   const container = { innerHTML: '' };
   runtime.setBandarSection('akumulasi');
+  runtime.setBrokerAccumulationView('bubble');
   runtime.renderBandarmologiUI(container, sampleData);
 
   // Assert bubbles are rendered

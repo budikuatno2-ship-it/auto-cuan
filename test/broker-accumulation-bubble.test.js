@@ -52,13 +52,14 @@ test('Broker Accumulation Bubble: BandarmologiRuntime exports accumulation view 
   const runtime = sandbox.window.BandarmologiRuntime;
   assert.equal(typeof runtime.setBrokerAccumulationView, 'function');
   assert.equal(typeof runtime.getBrokerAccumulationView, 'function');
-  assert.equal(runtime.getBrokerAccumulationView(), 'bubble');
-
-  runtime.setBrokerAccumulationView('table');
+  assert.equal(typeof runtime.renderBrokerAccumulation, 'function');
   assert.equal(runtime.getBrokerAccumulationView(), 'table');
 
   runtime.setBrokerAccumulationView('bubble');
   assert.equal(runtime.getBrokerAccumulationView(), 'bubble');
+
+  runtime.setBrokerAccumulationView('table');
+  assert.equal(runtime.getBrokerAccumulationView(), 'table');
 });
 
 test('Broker Accumulation Bubble: Akumulasi section renders bubble cluster, flow filter, and detail card', () => {
