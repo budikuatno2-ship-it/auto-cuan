@@ -6862,7 +6862,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
 
 function resolveMonitorSetupOrigin(pick) {
   var raw = (pick && pick.raw_payload) || {};
-  return raw.setup_origin_at || raw.freshness_timestamp || raw.calculated_at || raw.run_at || raw.published_at || raw.registered_at || (pick && pick.created_at) || (pick && pick.first_sent_at) || raw.run_date || (pick && pick.date) || null;
+  return raw.setup_origin_at || raw.freshness_timestamp || raw.calculated_at || raw.run_at || raw.published_at || raw.registered_at || (pick && pick.created_at) || (pick && pick.first_sent_at) || raw.run_date || (pick && pick.date) || (pick && pick.hit_entry_at) || (pick && pick.hit_tp1_at) || null;
 }
 
 async function fetchLatestPriceForMonitor(supabase, ticker, pck) {
@@ -7017,7 +7017,10 @@ function evaluateMonitorStatus(pick, px) {
   var raw = pick.raw_payload || {};
   var setupOriginAt = resolveMonitorSetupOrigin(pick);
   var monitorSource = (pick && pick.monitor_source) || raw.monitor_source || pick.category || raw.category;
-  var priceTimestampStale = !!(px && px.at && isMonitorTimestampStale(px.at));
+  var setupOriginDate = setupOriginAt ? String(setupOriginAt).slice(0, 10) : null;
+  var pxDate = px && px.at ? String(px.at).slice(0, 10) : null;
+  var isHistoricalReplay = !!(setupOriginDate && setupOriginDate !== getJakartaDateString() && pxDate && pxDate === setupOriginDate);
+  var priceTimestampStale = !isHistoricalReplay && !!(px && px.at && isMonitorTimestampStale(px.at));
   var priceObservationUsable = !!(px && px.last != null && !px.bestEffort && !priceTimestampStale);
   var fresh = idxTick.deriveSetupFreshness(Object.assign({}, raw, {
     setup_origin_at: setupOriginAt,

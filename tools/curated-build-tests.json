@@ -1,4 +1,7 @@
 [
+  "test/telegram-fase6-batch1-bugs.test.js",
+  "test/telegram-fase6-batch2-bugs.test.js",
+  "test/telegram-fase6-batch3-bugs.test.js",
   "test/security-fase5-batch2-bugs.test.js",
   "test/bandarmologi-fase4-bugs.test.js",
   "test/screener-fase3-bugs.test.js",
