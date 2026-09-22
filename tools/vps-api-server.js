@@ -69,11 +69,23 @@ function serveFallback(res, route, ticker, id) {
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, X-API-Key, Content-Type');
   res.setHeader('Content-Type', 'application/json');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
     return res.end();
+  }
+
+  // BUG-OPS-006: Verifikasi token otentikasi / API key guard
+  const vpsSecret = process.env.VPS_SECRET || process.env.VPS_API_KEY;
+  if (vpsSecret) {
+    const authHeader = req.headers['authorization'] || req.headers['x-api-key'] || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
+    if (!token || token !== vpsSecret) {
+      res.writeHead(401);
+      return res.end(JSON.stringify({ error: 'Unauthorized: invalid or missing authorization token / x-api-key' }));
+    }
   }
 
   const parsedUrl = url.parse(req.url, true);
@@ -249,6 +261,19 @@ function installUnhandledRejectionRecovery() {
   });
   process.on('uncaughtException', (err) => {
     console.error('Uncaught exception recovered by VPS daemon:', err && err.message ? err.message : err);
+  });
+  // BUG-OPS-007: Graceful shutdown handler untuk SIGTERM dan SIGINT
+  process.on('SIGTERM', () => {
+    console.log('VPS daemon received SIGTERM, shutting down gracefully...');
+    stopDaemon().then(() => {
+      process.exit(0);
+    });
+  });
+  process.on('SIGINT', () => {
+    console.log('VPS daemon received SIGINT, shutting down gracefully...');
+    stopDaemon().then(() => {
+      process.exit(0);
+    });
   });
 }
 
