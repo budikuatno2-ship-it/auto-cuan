@@ -456,7 +456,7 @@
   var lastBandarData = null;
   var brokerSummaryMode = 'gross'; // 'gross' or 'net'
   var brokerSummaryView = 'bubble'; // 'bubble' (default) or 'table'
-  var brokerAccumulationView = 'bubble'; // 'bubble' (default) or 'table'
+  var brokerAccumulationView = 'table'; // 'table' (default) or 'bubble'
   var brokerSummaryRange = '1d'; // '1d' (default), '7d', '30d', 'custom'
   var customRangeStart = '';
   var customRangeEnd = '';
@@ -1569,6 +1569,8 @@
             if ((!accObj || ((!accObj.top_buyers || accObj.top_buyers.length === 0) && (!accObj.net_buyers || accObj.net_buyers.length === 0))) && lastBandarData.broker_summary) {
               lastBandarData.broker_accumulation = synthesizeAccumulationFromSummary(lastBandarData.broker_summary, currentBandarTicker);
             }
+            renderBrokerAccumulation(bandarContainer, lastBandarData);
+            return;
           }
           renderBandarmologiUI(bandarContainer, lastBandarData);
         } else if (typeof fetch !== 'undefined') {
@@ -2180,6 +2182,11 @@
       console.error('Error rendering broker summary table:', err);
       return '<div class="text-rose-400 p-4 text-xs bg-rose-500/10 rounded-lg">Gagal merender tabel broker summary.</div>';
     }
+  }
+
+  function renderBrokerAccumulation(container, data) {
+    bandarSection = 'akumulasi';
+    renderBandarmologiUI(container, data);
   }
 
   function renderBandarmologiUI(container, data) {
@@ -4772,7 +4779,14 @@
           }
           var itMetric = item.metric || (item.discount_pct != null ? (item.discount_pct >= 0 ? 'Diskon +' + item.discount_pct + '%' : 'Premium +' + Math.abs(item.discount_pct) + '%') : (item.cr3 != null ? 'CR3 ' + item.cr3 + '%' : (item.consecutive_days ? item.consecutive_days + ' Hari' : 'Terdeteksi')));
           var itNote = item.note || item.description || '';
-          if (!itNote || itNote === '—') {
+          if (bandarIntelScannerCategory === 'harga_di_bawah_modal_bandar' && itModal > 0 && itPrice > 0) {
+            var cCost = 'Rp ' + Math.round(itModal).toLocaleString('id-ID');
+            var cPrice = 'Rp ' + Math.round(itPrice).toLocaleString('id-ID');
+            var dVal = item.discount_pct != null ? Number(item.discount_pct) : calculateScannerDiscount(itModal, itPrice);
+            itNote = dVal >= 0
+              ? 'Harga terkini (' + cPrice + ') berada di bawah modal rata-rata Top 3 Bandar (' + cCost + ') dengan diskon ' + dVal + '%.'
+              : 'Harga terkini (' + cPrice + ') berada di atas modal rata-rata Top 3 Bandar (' + cCost + ') (premium +' + Math.abs(dVal) + '%).';
+          } else if (!itNote || itNote === '—') {
             if (bandarIntelScannerCategory === 'harga_di_bawah_modal_bandar') {
               var cCost = item.bandar_avg_cost ? 'Rp ' + Number(item.bandar_avg_cost).toLocaleString('id-ID') : '';
               if (item.discount_pct != null) {
@@ -5214,6 +5228,7 @@
     renderBrokerBubbleClusterHtml: renderBrokerBubbleClusterHtml,
     renderBrokerDetailCardHtml: renderBrokerDetailCardHtml,
     renderBrokerSummaryTableHtml: renderBrokerSummaryTableHtml,
+    renderBrokerAccumulation: renderBrokerAccumulation,
     renderBandarmologiUI: renderBandarmologiUI,
     loadBandarmologiIntel: loadBandarmologiIntel,
     renderBandarmologiIntelUI: renderBandarmologiIntelUI,
@@ -5298,6 +5313,7 @@
       renderBrokerBubbleClusterHtml: renderBrokerBubbleClusterHtml,
       renderBrokerDetailCardHtml: renderBrokerDetailCardHtml,
       renderBrokerSummaryTableHtml: renderBrokerSummaryTableHtml,
+      renderBrokerAccumulation: renderBrokerAccumulation,
       renderBandarmologiUI: renderBandarmologiUI,
       loadBandarmologiIntel: loadBandarmologiIntel,
       renderBandarmologiIntelUI: renderBandarmologiIntelUI,
