@@ -80,7 +80,7 @@ module.exports = async function handler(req, res) {
     const groupCode = req.query.group || null;
 
     // === BANDARMOLOGI & INSIDER (PUBLIC / AUTHED READ-ONLY, can serve from disk/API) ===
-    if (action === 'bandarmologi') {
+    if (action === 'bandarmologi' || action === 'broker-summary') {
       return await handleBandarmologi(req, res);
     }
     if (action === 'broker-hunter') {
@@ -128,7 +128,7 @@ module.exports = async function handler(req, res) {
     const knownActions = new Set([
       'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks', 'telegram-daily-recap',
       'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record',
-      'watchlist', 'watchlist-alert', 'watchlist-alert-history', 'bandarmologi', 'available-dates',
+      'watchlist', 'watchlist-alert', 'watchlist-alert-history', 'bandarmologi', 'broker-summary', 'available-dates',
       'broker-hunter', 'bandarmologi-intel', 'insider-network', 'insider-roster',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
@@ -8564,10 +8564,27 @@ async function handleBandarmologiIntel(req, res) {
     var ticker = (req.query && req.query.ticker) || '';
     var signal = (req.query && req.query.signal) || '';
     var range = (req.query && (req.query.range || req.query.days)) || '7d';
+    var days = req.query && req.query.days ? Number(req.query.days) : undefined;
+    var currentPrice = req.query && req.query.currentPrice ? Number(req.query.currentPrice) : undefined;
+
+    if (ticker && (!currentPrice || currentPrice <= 0)) {
+      try {
+        var latestPriceResolver = require('../lib/latest-price-resolver');
+        if (latestPriceResolver && typeof latestPriceResolver.fetchFreshScreenerLatestPrice === 'function') {
+          var lp = await latestPriceResolver.fetchFreshScreenerLatestPrice(ticker);
+          if (lp && lp.price > 0) {
+            currentPrice = lp.price;
+          }
+        }
+      } catch (_) {}
+    }
+
     var result = await bandarmologiIntelService.getBandarmologiIntel({
       ticker: ticker,
       signal: signal,
-      range: range
+      range: range,
+      days: days,
+      currentPrice: currentPrice
     });
     return res.status(200).json(result);
   } catch (err) {
