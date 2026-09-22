@@ -61,9 +61,17 @@ function makeMonitorSupabase(opts) {
   return { from, updateCalls };
 }
 
+// Jakarta (WIB, UTC+7) calendar date. The monitor pipeline resolves its
+// trading date with getJakartaDateString(), so a fixture pinned to the UTC
+// date is judged stale for the first 7 hours of every Jakarta day.
+function jakartaToday() {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
 function row(overrides) {
   const nowIso = new Date().toISOString();
-  const today = '2026-09-22';
+  // Derive the trading date from the wall clock instead of a hardcoded literal:
+  // a frozen date made every fixture look stale once the clock rolled past it.
+  const today = jakartaToday();
   return Object.assign({
     ticker: 'TEST',
     status: 'A_PLUS_SETUP',
@@ -139,7 +147,7 @@ test('IN_ENTRY_ZONE is never sent as an immediate individual notification, but a
         {
           id: 101,
           ticker: 'TEST',
-          date: '2026-09-22',
+          date: jakartaToday(),
           status: 'WAITING',
           is_final: false,
           entry1: 100,
@@ -308,7 +316,7 @@ test('sendDayTradeTelegramNotification passes ticker and status to sendTelegramM
     ];
 
     const nowIso = new Date().toISOString();
-    const today = '2026-09-22';
+    const today = jakartaToday();
     const mockSupabase = {
       from(table) {
         if (table === 'telegram_daily_picks') {
