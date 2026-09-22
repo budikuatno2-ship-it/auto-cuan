@@ -335,6 +335,7 @@
   "test/telegram-monitor-plan-identity.test.js",
   "test/telegram-monitor.test.js",
   "test/telegram-no-candidate-silence.test.js",
+  "test/telegram-notification-cleanup.test.js",
   "test/telegram-notifier-rate-limit.test.js",
   "test/telegram-notifier-throttling.test.js",
   "test/telegram-public-safety.test.js",

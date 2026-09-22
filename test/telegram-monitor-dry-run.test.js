@@ -125,7 +125,7 @@ const NOW_ISO = new Date().toISOString();
 // Three active rows, one per monitored source, engineered to produce
 // deterministic statuses independent of the current clock:
 //   BBCA (daytrade_signal)  -> TP1_HIT       (significant -> individual msg)
-//   TLKM (swing_konglo)     -> IN_ENTRY_ZONE (significant -> individual msg)
+//   TLKM (swing_konglo)     -> IN_ENTRY_ZONE (non-individual -> batch only)
 //   ANTM (swing_nk)         -> WATCHLIST     (non-significant -> batch only)
 function buildScenario() {
   return {
@@ -234,8 +234,8 @@ test('dry-run sends zero Telegram messages (normal mode sends)', async function 
   assert.equal(dry.res.body.telegram_suppressed, true);
 
   const normal = await runMonitor({}, buildScenario());
-  // 2 significant individual messages + 1 batch message
-  assert.equal(normal.sendCalls.length, 3, 'normal mode must send individual + batch messages (control)');
+  // 1 significant individual message (BBCA TP1_HIT) + 1 batch message (IN_ENTRY_ZONE is batch-only)
+  assert.equal(normal.sendCalls.length, 2, 'normal mode must send individual + batch messages (control)');
 });
 
 // ==================================================================
@@ -278,18 +278,19 @@ test('dry-run returns individual and batch message previews plus full preview pa
   assert.equal(body.telegram_suppressed, true);
   assert.equal(body.checked_count, 3);
 
-  // Individual previews: BBCA (TP1_HIT) and TLKM (IN_ENTRY_ZONE)
-  assert.equal(body.individual_message_previews.length, 2);
+  // Individual previews: BBCA (TP1_HIT) (TLKM is IN_ENTRY_ZONE, which is batch-only)
+  assert.equal(body.individual_message_previews.length, 1);
   const previewTickers = body.individual_message_previews.map(function (p) { return p.ticker; }).sort();
-  assert.deepEqual(previewTickers, ['BBCA', 'TLKM']);
+  assert.deepEqual(previewTickers, ['BBCA']);
   body.individual_message_previews.forEach(function (p) {
     assert.ok(typeof p.message === 'string' && p.message.length > 0, 'preview message must be a non-empty string');
   });
 
   // Batch preview present and non-empty
   assert.ok(typeof body.batch_message_preview === 'string' && body.batch_message_preview.length > 0);
-  // WATCHLIST (ANTM) belongs in the batch summary.
+  // WATCHLIST (ANTM) and IN_ENTRY_ZONE (TLKM) belong in the batch summary.
   assert.ok(body.batch_message_preview.indexOf('ANTM') >= 0, 'batch preview should include the non-significant ticker');
+  assert.ok(body.batch_message_preview.indexOf('TLKM') >= 0, 'batch preview should include IN_ENTRY_ZONE ticker');
 
   // Per-event diagnostic fields required by the spec.
   const evt = body.events.find(function (e) { return e.ticker === 'BBCA'; });
@@ -340,7 +341,7 @@ test('normal mode still updates, sends, narrates, and returns production shape',
   assert.equal(body.sent_count, 1, 'batch send returns sent_count 1');
   assert.ok(Array.isArray(body.ai_narration) && body.ai_narration.length === 2);
   assert.equal(normal.updateCalls.length, 3);
-  assert.equal(normal.sendCalls.length, 3);
+  assert.equal(normal.sendCalls.length, 2);
 
   // Every update carries last_checked_at and a computed status.
   normal.updateCalls.forEach(function (u) {
