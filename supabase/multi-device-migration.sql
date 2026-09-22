@@ -31,3 +31,10 @@ WHERE devices IS NULL;
 -- Step 3: Set default for future inserts
 ALTER TABLE app_users
 ALTER COLUMN devices SET DEFAULT '[]'::jsonb;
+
+-- Step 4: Enforce NOT NULL and array type constraints
+ALTER TABLE app_users
+ALTER COLUMN devices SET NOT NULL;
+
+ALTER TABLE app_users
+ADD CONSTRAINT app_users_devices_is_array CHECK (jsonb_typeof(devices) = 'array');

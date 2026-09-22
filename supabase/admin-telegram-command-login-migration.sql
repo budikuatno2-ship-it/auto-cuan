@@ -406,7 +406,7 @@ BEGIN
    FOR UPDATE;
 
   IF NOT FOUND THEN
-    RETURN QUERY SELECT 'pending'::text, NULL::uuid, NULL::text;
+    RETURN QUERY SELECT 'not_found'::text, NULL::uuid, NULL::text;
     RETURN;
   END IF;
 

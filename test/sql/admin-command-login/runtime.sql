@@ -122,7 +122,7 @@ BEGIN
   END IF;
 
   SELECT * INTO r FROM public.consume_admin_command_device_grant(v_device_hash);
-  IF r.result_code <> 'pending' THEN
+  IF r.result_code <> 'not_found' THEN
     RAISE EXCEPTION 'device grant replay was not rejected: %', row_to_json(r);
   END IF;
 END

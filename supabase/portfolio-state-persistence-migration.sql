@@ -23,3 +23,21 @@ ALTER TABLE public.app_user_portfolio_state ENABLE ROW LEVEL SECURITY;
 -- authenticated server-side endpoint using SUPABASE_SERVICE_ROLE_KEY.
 REVOKE ALL ON public.app_user_portfolio_state FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.app_user_portfolio_state TO service_role;
+
+CREATE OR REPLACE FUNCTION public.touch_app_user_portfolio_state_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS app_user_portfolio_state_touch_updated_at
+  ON public.app_user_portfolio_state;
+
+CREATE TRIGGER app_user_portfolio_state_touch_updated_at
+BEFORE UPDATE ON public.app_user_portfolio_state
+FOR EACH ROW
+EXECUTE FUNCTION public.touch_app_user_portfolio_state_updated_at();
