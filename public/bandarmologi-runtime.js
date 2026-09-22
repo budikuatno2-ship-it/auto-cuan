@@ -1592,15 +1592,6 @@
     if (brokerSummaryRange !== '1d') {
       currentBandarDate = null;
     }
-    // PR3 fix: drop any cached VPS broker summaries when the timeframe changes.
-    // Their keys are now range-scoped (see fetchVpsBrokerSummary), so stale
-    // cross-range entries must not survive a switch — otherwise CR3/CR5 and the
-    // bandar-vs-ritel ratio freeze at the first range's numbers.
-    try {
-      if (typeof vpsSummaryMemoryCache !== 'undefined' && vpsSummaryMemoryCache) {
-        Object.keys(vpsSummaryMemoryCache).forEach(function (k) { delete vpsSummaryMemoryCache[k]; });
-      }
-    } catch (_) {}
     var validIntelRanges = ['1d', '5d', '7d', '14d', '30d', '60d'];
     if (validIntelRanges.includes(String(range).toLowerCase())) {
       bandarIntelRange = String(range).toLowerCase();
@@ -1701,15 +1692,17 @@
     if (!base) return null; // No external tunnel configured, skip remote ping
     var safeTicker = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     var safeDate = String(date || 'latest').trim();
-    // PR3 fix: the range MUST be part of the cache key. Previously 1D/5D/7D/…_all
-    // mapped to the same `_latest` key, so after switching timeframe the CR3/CR5
-    // and bandar-vs-ritel figures stayed frozen at whatever the first range
-    // returned. Including the range (defaulting to 1d) makes each timeframe its
-    // own cache entry.
     var safeRange = String(range || brokerSummaryRange || '1d').trim().toLowerCase();
-    var cacheKey = safeTicker + '_' + safeDate + '_' + safeRange;
+    var safeMode = String(brokerSummaryMode || 'gross').trim().toLowerCase();
+    // Cache keys scoped by timeframe: legacy format and bsum_${ticker}_${range}_${mode}
+    var legacyKey = safeTicker + '_' + safeDate + '_' + safeRange;
+    var cacheKey = 'bsum_' + safeTicker + '_' + safeRange + '_' + safeMode;
+    if (safeDate && safeDate !== 'latest') cacheKey += '_' + safeDate;
     if (vpsSummaryMemoryCache[cacheKey]) {
       return vpsSummaryMemoryCache[cacheKey];
+    }
+    if (vpsSummaryMemoryCache[legacyKey]) {
+      return vpsSummaryMemoryCache[legacyKey];
     }
     try {
       var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
@@ -1722,6 +1715,7 @@
         var json = await res.json();
         if (json && (json.brokers || json.stock_code)) {
           vpsSummaryMemoryCache[cacheKey] = json;
+          vpsSummaryMemoryCache[legacyKey] = json;
           return json;
         }
       }
@@ -1870,6 +1864,21 @@
       try { controller.abort(); } catch (_) {}
     }, 12000) : null;
 
+    var safeRange = String(brokerSummaryRange || range || '1d').trim().toLowerCase();
+    var safeMode = String(brokerSummaryMode || 'gross').trim().toLowerCase();
+    var safeDate = (safeRange === '1d' && currentBandarDate) ? String(currentBandarDate).trim() : 'latest';
+    var bsumCacheKey = 'bsum_' + clean + '_' + safeRange + '_' + safeMode;
+    if (safeDate && safeDate !== 'latest') bsumCacheKey += '_' + safeDate;
+    if (brokerFlowFilter && brokerFlowFilter !== 'all') bsumCacheKey += '_' + brokerFlowFilter;
+
+    if (typeof vpsSummaryMemoryCache !== 'undefined' && vpsSummaryMemoryCache && vpsSummaryMemoryCache[bsumCacheKey]) {
+      var memCached = vpsSummaryMemoryCache[bsumCacheKey];
+      if (memCached && memCached.broker_summary && !memCached.is_empty) {
+        renderBandarmologiUI(container, memCached);
+        return;
+      }
+    }
+
     container.innerHTML = '<div class="flex flex-col items-center justify-center py-12"><div class="spinner"></div><p class="text-xs text-gray-400 mt-3">Mengambil data Bandarmologi &amp; Insider ' + escapeHtml(clean) + '...</p></div>';
 
     try {
@@ -1988,6 +1997,10 @@
           },
           insiders: (data && data.insiders) || []
         };
+      }
+
+      if (typeof vpsSummaryMemoryCache !== 'undefined' && vpsSummaryMemoryCache && data && data.success && !data.is_demo && !data.is_empty) {
+        vpsSummaryMemoryCache[bsumCacheKey] = data;
       }
 
       renderBandarmologiUI(container, data);
