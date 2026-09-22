@@ -88,16 +88,6 @@ BEGIN
   SELECT * INTO pr FROM public.subscription_plan_prices WHERE plan_code = p_plan_code AND active = true;
   IF NOT FOUND THEN RAISE EXCEPTION 'payment unavailable'; END IF;
 
-  effective_price := CASE
-    WHEN pr.promo_enabled = true
-      AND pr.promo_price_idr IS NOT NULL
-      AND pr.promo_starts_at IS NOT NULL
-      AND pr.promo_starts_at <= now()
-      AND (pr.promo_ends_at IS NULL OR now() < pr.promo_ends_at)
-    THEN pr.promo_price_idr
-    ELSE pr.normal_price_idr
-  END;
-
   IF p_voucher_code_hash IS NOT NULL THEN
     SELECT * INTO v FROM public.subscription_vouchers WHERE code_hash = p_voucher_code_hash FOR UPDATE;
     IF NOT FOUND OR NOT v.active OR v.revoked_at IS NOT NULL OR v.redemption_count >= v.max_redemptions OR
@@ -112,6 +102,16 @@ BEGIN
     END IF;
     discount := CASE v.voucher_type WHEN 'PERCENT_30' THEN 30 WHEN 'PERCENT_50' THEN 50 ELSE NULL END;
   END IF;
+
+  effective_price := CASE
+    WHEN pr.promo_enabled = true
+      AND pr.promo_price_idr IS NOT NULL
+      AND pr.promo_starts_at IS NOT NULL
+      AND pr.promo_starts_at <= now()
+      AND (pr.promo_ends_at IS NULL OR now() < pr.promo_ends_at)
+    THEN pr.promo_price_idr
+    ELSE pr.normal_price_idr
+  END;
 
   INSERT INTO public.subscription_manual_payments(
     payment_reference, request_idempotency_key, user_id, plan_code, price_idr,
@@ -203,7 +203,7 @@ BEGIN
   IF m.status <> 'submitted' THEN RAISE EXCEPTION 'payment unavailable'; END IF;
 
   IF p_decision='reject' THEN
-    UPDATE public.subscription_manual_payments SET status='rejected',reviewed_at=now(),reviewed_by_user_id=admin_id,updated_at=now() WHERE id=m.id RETURNING * INTO m;
+    UPDATE public.subscription_manual_payments SET status='rejected',reviewed_at=now(),reviewed_by_user_id=admin_id,updated_at=now() WHERE id=m.id AND status='submitted' RETURNING * INTO m;
     INSERT INTO public.subscription_events(user_id,event_type,actor_user_id,metadata)
       VALUES(m.user_id,'manual_payment_rejected',admin_id,jsonb_build_object('payment_reference',m.payment_reference,'plan_code',m.plan_code,'amount_due_idr',m.amount_due_idr));
     RETURN jsonb_build_object('payment_reference',m.payment_reference,'status','rejected');
@@ -217,8 +217,12 @@ BEGIN
     IF EXISTS(SELECT 1 FROM public.subscription_voucher_redemptions WHERE voucher_id=v.id AND user_id=m.user_id) THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
   END IF;
 
-  starts:=now();
-  expiry:=CASE m.plan_code
+  SELECT * INTO e FROM public.user_entitlements
+   WHERE user_id = m.user_id AND status = 'active' AND lifetime = false AND expires_at IS NOT NULL AND expires_at > now()
+   ORDER BY expires_at DESC LIMIT 1;
+
+  starts := GREATEST(now(), e.expires_at);
+  expiry := CASE m.plan_code
     WHEN 'LIFETIME' THEN NULL
     WHEN 'PREMIUM_1_MONTH' THEN starts + make_interval(months=>1)
     WHEN 'PREMIUM_2_MONTHS' THEN starts + make_interval(months=>2)
@@ -238,7 +242,7 @@ BEGIN
   END IF;
 
   UPDATE public.app_users SET is_approved=true WHERE id=m.user_id AND is_approved=false;
-  UPDATE public.subscription_manual_payments SET status='approved',reviewed_at=now(),reviewed_by_user_id=admin_id,entitlement_id=e.id,updated_at=now() WHERE id=m.id RETURNING * INTO m;
+  UPDATE public.subscription_manual_payments SET status='approved',reviewed_at=now(),reviewed_by_user_id=admin_id,entitlement_id=e.id,updated_at=now() WHERE id=m.id AND status='submitted' RETURNING * INTO m;
   INSERT INTO public.subscription_events(user_id,entitlement_id,event_type,actor_user_id,metadata)
     VALUES(m.user_id,e.id,'manual_payment_approved',admin_id,jsonb_build_object('payment_reference',m.payment_reference,'plan_code',m.plan_code,'amount_due_idr',m.amount_due_idr,'expires_at',expiry,'lifetime',(m.plan_code='LIFETIME')));
 
