@@ -21,16 +21,59 @@
   var DEFAULT_CAPITAL = 10000000; // Rp 10.000.000
   var DEFAULT_RISK_PCT = 1.0;     // 1.0%
 
-  function sanitizeNumber(val, fallback) {
+  /**
+   * Normalisasi angka dari input pengguna.
+   * - Mode default (rupiah/harga): "10.000.000" dan "10.000" dibaca sebagai ribuan.
+   * - Mode decimal (persentase/rasio): "0.500" tetap 0.5 (BUG-F7-001).
+   * Titik desimal hanya dianggap pemisah ribuan bila ada >= 2 titik, atau
+   * tepat 3 digit di belakang titik dengan grup depan bukan nol (mis. 10.000).
+   */
+  function sanitizeNumber(val, fallback, options) {
     if (val === null || val === undefined || val === '') return fallback;
     if (typeof val === 'number') return isFinite(val) ? val : fallback;
     var s = String(val).trim();
-    if (/\.\d{3}/.test(s) || (s.match(/\./g) || []).length > 1) {
+    var decimalMode = !!(options && options.decimal);
+    var dotCount = (s.match(/\./g) || []).length;
+    if (dotCount > 1) {
       s = s.replace(/\./g, '');
+    } else if (dotCount === 1 && !decimalMode) {
+      var groups = s.split('.');
+      if (/^\d{1,3}$/.test(groups[0]) && /^\d{3}$/.test(groups[1]) && !/^0/.test(groups[0])) {
+        s = s.replace(/\./g, '');
+      }
     }
     s = s.replace(/,/g, '.').replace(/[^0-9.-]/g, '');
     var n = Number(s);
     return isFinite(n) ? n : fallback;
+  }
+
+  /**
+   * Fraksi tick harga IDX (Regular Board).
+   * < 200 : Rp 1 | 200 - < 500 : Rp 2 | 500 - < 2000 : Rp 5
+   * 2000 - < 5000 : Rp 10 | >= 5000 : Rp 25
+   */
+  function idxTickSize(price) {
+    var p = Number(price);
+    if (!isFinite(p) || p <= 0) return 0;
+    if (p < 200) return 1;
+    if (p < 500) return 2;
+    if (p < 2000) return 5;
+    if (p < 5000) return 10;
+    return 25;
+  }
+
+  /**
+   * Validasi harga terhadap fraksi tick IDX (BUG-F7-002).
+   * Harga pecahan desimal dan harga yang tidak kelipatan tick dinyatakan tidak valid.
+   */
+  function isValidIdxTick(price) {
+    var raw = Number(price);
+    if (!isFinite(raw) || raw <= 0) return false;
+    var p = Math.round(raw);
+    if (Math.abs(raw - p) > 1e-9) return false;
+    var tick = idxTickSize(p);
+    if (tick <= 0) return false;
+    return p % tick === 0;
   }
 
   function getSettings() {
@@ -44,7 +87,7 @@
     } catch (_) {}
 
     var capital = sanitizeNumber(storedCapital, null);
-    var riskPct = sanitizeNumber(storedRisk, null);
+    var riskPct = sanitizeNumber(storedRisk, null, { decimal: true });
     var isCustom = capital !== null && capital > 0;
 
     return {
@@ -56,7 +99,7 @@
 
   function saveSettings(capital, riskPct) {
     var c = Math.max(100000, sanitizeNumber(capital, DEFAULT_CAPITAL));
-    var r = Math.max(0.1, Math.min(10, sanitizeNumber(riskPct, DEFAULT_RISK_PCT)));
+    var r = Math.max(0.1, Math.min(10, sanitizeNumber(riskPct, DEFAULT_RISK_PCT, { decimal: true })));
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEY_CAPITAL, String(c));
@@ -88,7 +131,7 @@
     params = params || {};
     var settings = getSettings();
     var capital = sanitizeNumber(params.capital, settings.capital);
-    var riskPct = sanitizeNumber(params.riskPct, settings.riskPct);
+    var riskPct = sanitizeNumber(params.riskPct, settings.riskPct, { decimal: true });
     var entry = sanitizeNumber(params.entry, 0);
     var sl = sanitizeNumber(params.sl, 0);
     var tp1 = sanitizeNumber(params.tp1, 0);
@@ -101,6 +144,24 @@
       return {
         isValid: false,
         reason: 'Level Entry atau Stop Loss belum valid.',
+        capital: capital,
+        riskPct: riskPct
+      };
+    }
+
+    // BUG-F7-002: tolak harga yang melanggar fraksi tick IDX (mis. 205 pada board reguler)
+    if (!isValidIdxTick(entry)) {
+      return {
+        isValid: false,
+        reason: 'Harga Entry (' + entry + ') tidak sesuai fraksi tick IDX.',
+        capital: capital,
+        riskPct: riskPct
+      };
+    }
+    if (!isValidIdxTick(sl)) {
+      return {
+        isValid: false,
+        reason: 'Harga Stop Loss (' + sl + ') tidak sesuai fraksi tick IDX.',
         capital: capital,
         riskPct: riskPct
       };
@@ -334,7 +395,7 @@
     if (!preview || !capInput || !riskInput) return;
 
     var c = sanitizeNumber(capInput.value, DEFAULT_CAPITAL);
-    var r = sanitizeNumber(riskInput.value, DEFAULT_RISK_PCT);
+    var r = sanitizeNumber(riskInput.value, DEFAULT_RISK_PCT, { decimal: true });
     var riskMoney = c * (r / 100);
 
     preview.innerHTML = '<div>Maksimal rupiah yang boleh rugi per trade: <strong class="text-red-400">' + fmtRp(riskMoney) + '</strong></div>' +
@@ -373,7 +434,7 @@
     var capInput = document.getElementById('posCalcCapitalInput');
     var riskInput = document.getElementById('posCalcRiskInput');
     var c = capInput ? sanitizeNumber(capInput.value, DEFAULT_CAPITAL) : DEFAULT_CAPITAL;
-    var r = riskInput ? sanitizeNumber(riskInput.value, DEFAULT_RISK_PCT) : DEFAULT_RISK_PCT;
+    var r = riskInput ? sanitizeNumber(riskInput.value, DEFAULT_RISK_PCT, { decimal: true }) : DEFAULT_RISK_PCT;
     saveSettings(c, r);
     closeModal();
     if (typeof root.showToast === 'function') {
@@ -405,6 +466,9 @@
     getSettings: getSettings,
     saveSettings: saveSettings,
     calculate: calculate,
+    sanitizeNumber: sanitizeNumber,
+    idxTickSize: idxTickSize,
+    isValidIdxTick: isValidIdxTick,
     fmtRp: fmtRp,
     fmtRpCompact: fmtRpCompact,
     renderCardWidget: renderCardWidget,

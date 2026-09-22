@@ -15,6 +15,17 @@
   ];
 
   function byId(id) { return document.getElementById(id); }
+  // Elemen bisa saja tidak ada atau berupa stub tanpa addEventListener (mis. saat
+  // sebagian markup gagal dimuat). Pengikatan event tidak boleh menjatuhkan runtime.
+  function on(target, event, handler) {
+    if (target && typeof target.addEventListener === 'function') target.addEventListener(event, handler);
+  }
+  // Bila tidak ada satu pun nilai yang bisa disimulasikan, tampilkan '—' alih-alih 0.
+  function sumOrDash(values) {
+    var present = values.filter(function (value) { return value != null && Number.isFinite(Number(value)); });
+    if (!present.length) return '—';
+    return money(present.reduce(function (total, value) { return total + Number(value); }, 0));
+  }
   function escapeHtml(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]; }); }
   function digits(value) { return String(value == null ? '' : value).replace(/[^0-9]/g, ''); }
   function positive(value) { var n = Model.finite(value); return Number.isFinite(n) && n > 0 ? n : null; }
@@ -58,14 +69,14 @@
       if (!input || input.dataset.rupiahBound === 'true') return;
       input.dataset.rupiahBound = 'true';
       formatMoneyInput(input);
-      input.addEventListener('input', function () { formatMoneyInput(input); });
-      input.addEventListener('blur', function () { formatMoneyInput(input); });
+      on(input, 'input', function () { formatMoneyInput(input); });
+      on(input, 'blur', function () { formatMoneyInput(input); });
     });
 
     function rawBeforeClick(buttonId, ids) {
       var button = byId(buttonId);
       if (!button) return;
-      button.addEventListener('click', function () {
+      on(button, 'click', function () {
         ids.forEach(function (id) { var input = byId(id); if (input) input.value = digits(input.value); });
         setTimeout(function () { ids.forEach(function (id) { formatMoneyInput(byId(id)); }); }, 0);
       }, true);
@@ -97,7 +108,10 @@
   function scenarioFor(plan, prices, tp1Pct) {
     var current = positive(prices[plan.ticker]);
     var shares = plan.lots * 100;
-    var stopResult = plan.entry && plan.stop && shares ? (plan.stop - plan.entry) * shares : null;
+    // BUG-F7-005: stop loss di atas entry adalah setup terbalik. Simulasinya harus
+    // ditandai tidak valid, bukan dihitung sebagai keuntungan.
+    var invertedStop = !!(plan.entry && plan.stop && plan.stop > plan.entry);
+    var stopResult = plan.entry && plan.stop && shares && !invertedStop ? (plan.stop - plan.entry) * shares : null;
     var tp1Result = plan.entry && plan.tp1 && shares ? (plan.tp1 - plan.entry) * shares : null;
     var tp2Result = plan.entry && plan.tp2 && shares ? (plan.tp2 - plan.entry) * shares : null;
     var riskAbs = stopResult != null ? Math.abs(stopResult) : null;
@@ -111,6 +125,7 @@
     var missing = [];
     if (!plan.entry) missing.push('entry');
     if (!plan.stop) missing.push('stop loss');
+    if (invertedStop) missing.push('stop loss di atas entry');
     if (!plan.tp1) missing.push('TP1');
     if (!plan.tp2) missing.push('TP2');
     if (!plan.lots) missing.push('jumlah lot');
@@ -125,14 +140,14 @@
     var tp1Pct = Number((byId('scenarioTp1Pct') || {}).value || 50);
     var rows = data.plans.map(normalizedPlan).filter(Boolean).map(function (plan) { return { plan:plan, scenario:scenarioFor(plan, data.prices, tp1Pct) }; });
     var complete = rows.filter(function (row) { return row.scenario.missing.length === 0; }).length;
-    var totalStop = rows.reduce(function (sum, row) { return sum + (row.scenario.stopResult || 0); }, 0);
-    var totalTp1 = rows.reduce(function (sum, row) { return sum + (row.scenario.tp1Result || 0); }, 0);
-    var totalPartial = rows.reduce(function (sum, row) { return sum + (row.scenario.partialResult || 0); }, 0);
+    var totalStop = sumOrDash(rows.map(function (row) { return row.scenario.stopResult; }));
+    var totalTp1 = sumOrDash(rows.map(function (row) { return row.scenario.tp1Result; }));
+    var totalPartial = sumOrDash(rows.map(function (row) { return row.scenario.partialResult; }));
     if (byId('scenarioCount')) byId('scenarioCount').textContent = String(rows.length);
     if (byId('scenarioComplete')) byId('scenarioComplete').textContent = complete + ' lengkap';
-    if (byId('scenarioStopTotal')) byId('scenarioStopTotal').textContent = money(totalStop);
-    if (byId('scenarioTp1Total')) byId('scenarioTp1Total').textContent = money(totalTp1);
-    if (byId('scenarioPartialTotal')) byId('scenarioPartialTotal').textContent = money(totalPartial);
+    if (byId('scenarioStopTotal')) byId('scenarioStopTotal').textContent = totalStop;
+    if (byId('scenarioTp1Total')) byId('scenarioTp1Total').textContent = totalTp1;
+    if (byId('scenarioPartialTotal')) byId('scenarioPartialTotal').textContent = totalPartial;
     if (!rows.length) { host.className = 'empty'; host.textContent = 'Belum ada posisi atau rencana untuk disimulasikan.'; return; }
     host.className = 'candidate-list';
     host.innerHTML = rows.map(function (row) {
@@ -155,7 +170,7 @@
     var button = byId('evaluateRisk');
     if (!button || button.dataset.guardV2 === 'true') return;
     button.dataset.guardV2 = 'true';
-    button.addEventListener('click', function (event) {
+    on(button, 'click', function (event) {
       event.preventDefault();
       event.stopImmediatePropagation();
       var data = stateNow();
@@ -291,15 +306,16 @@
     installMoneyInputs();
     installRiskGuard();
     var selector = byId('scenarioTp1Pct');
-    if (selector) selector.addEventListener('change', renderScenarios);
+    on(selector, 'change', renderScenarios);
     var refresh = byId('refreshScenarios');
-    if (refresh) refresh.addEventListener('click', renderScenarios);
-    document.querySelectorAll('[data-tab="scenarios"]').forEach(function (button) { button.addEventListener('click', function () { setTimeout(renderScenarios, 0); }); });
-    ['calculateBudget','checkBudgetTicker'].forEach(function (id) { var button = byId(id); if (button) button.addEventListener('click', function () { setTimeout(renderBudgetMatches, 0); }); });
-    ['budgetCapital','budgetReserve','budgetPositions','budgetProfile'].forEach(function (id) { var input = byId(id); if (input) input.addEventListener('change', function () { setTimeout(renderBudgetMatches, 0); }); });
-    document.addEventListener('click', function (event) { var button = event.target.closest('[data-budget-match]'); if (button) useBudgetMatch(button); });
-    window.addEventListener('focus', function () { renderScenarios(); renderBudgetMatches(); });
-    window.addEventListener('storage', function (event) { if (/autocuan_portfolio_(plans|prices)_/.test(String(event.key || ''))) { renderScenarios(); renderBudgetMatches(); } });
+    on(refresh, 'click', renderScenarios);
+    var tabs = typeof document.querySelectorAll === 'function' ? document.querySelectorAll('[data-tab="scenarios"]') : [];
+    Array.prototype.forEach.call(tabs, function (button) { on(button, 'click', function () { setTimeout(renderScenarios, 0); }); });
+    ['calculateBudget','checkBudgetTicker'].forEach(function (id) { on(byId(id), 'click', function () { setTimeout(renderBudgetMatches, 0); }); });
+    ['budgetCapital','budgetReserve','budgetPositions','budgetProfile'].forEach(function (id) { on(byId(id), 'change', function () { setTimeout(renderBudgetMatches, 0); }); });
+    on(document, 'click', function (event) { var button = event.target.closest('[data-budget-match]'); if (button) useBudgetMatch(button); });
+    on(window, 'focus', function () { renderScenarios(); renderBudgetMatches(); });
+    on(window, 'storage', function (event) { if (/autocuan_portfolio_(plans|prices)_/.test(String(event.key || ''))) { renderScenarios(); renderBudgetMatches(); } });
   }
 
   function waitForAccess(attempt) {
@@ -314,6 +330,6 @@
     waitForAccess(0);
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  if (document.readyState === 'loading') on(document, 'DOMContentLoaded', init);
   else init();
 })();

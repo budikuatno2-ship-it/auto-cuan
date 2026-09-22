@@ -436,12 +436,26 @@
     // "has a price" check. Tickers with no price at all are sorted first so a
     // slow/interrupted sync still resolves genuinely-unpriced positions before
     // merely-stale ones.
+    //
+    // BUG-F7-016: the ticker list is read from the STORED plans, not from
+    // contextNow(). The context is a prompt payload: it applies PLAN_DETAIL_LIMIT
+    // and drops tickers that do not match the strict [A-Z]{3,5} display pattern.
+    // Driving the sync from it left every position outside the first 30 — and
+    // every alphanumeric ticker — permanently without a price update.
+    var storedPlans = readJson(plansKey, []);
+    if (!Array.isArray(storedPlans)) storedPlans = [];
     var seen = {};
-    var tickers = context.plans.map(function (plan) { return plan.ticker; }).filter(function (ticker) {
-      if (!ticker || seen[ticker]) return false;
-      seen[ticker] = true;
-      return true;
-    });
+    var tickers = [];
+    function addTicker(value) {
+      var raw = String(value == null ? '' : value).trim().toUpperCase().replace(/\.JK$/i, '');
+      if (!/^[A-Z0-9]{2,8}$/.test(raw) || seen[raw]) return;
+      seen[raw] = true;
+      tickers.push(raw);
+    }
+    // Candidates come from the prompt context AND from the stored plans, because
+    // the context is a bounded, display-filtered view of the portfolio.
+    context.plans.map(function (plan) { return plan.ticker; }).forEach(addTicker);
+    storedPlans.map(function (plan) { return plan && plan.ticker; }).forEach(addTicker);
     tickers.sort(function (a, b) { return (positive(prices[a]) ? 1 : 0) - (positive(prices[b]) ? 1 : 0); });
     if (!tickers.length) {
       localStorage.setItem(syncKey, String(now));
@@ -769,6 +783,10 @@
   }
 
   function installPremiumLayout() {
+    // Error boundary: layout polish is cosmetic. When a host page (or an embedded
+    // runtime) does not expose the full document API, the missing capability must
+    // not abort init() — that would also skip the price sync below it.
+    if (typeof document.createElement !== 'function' || !document.head) return;
     if (!document.getElementById('portfolio-ai-premium-layout')) {
       var style = document.createElement('style');
       style.id = 'portfolio-ai-premium-layout';
@@ -819,7 +837,7 @@
       document.head.appendChild(style);
     }
 
-    var quicks = document.querySelectorAll('[data-ai-prompt]');
+    var quicks = typeof document.querySelectorAll === 'function' ? document.querySelectorAll('[data-ai-prompt]') : [];
     var replacements = [
       { label: 'Ringkas risiko', prompt: 'Ringkas risiko portofolioku berdasarkan data yang tersedia.' },
       { label: 'Prioritas perhatian', prompt: 'Posisi mana yang paling perlu perhatian dan kenapa?' },
@@ -835,14 +853,14 @@
   }
 
   async function init() {
-    installPremiumLayout();
-    loadChat();
-    bindCleanControls();
-    renderChat();
-    renderSummary();
-    setStatus('AI siap. Harga tersimpan akan diperbarui bila tersedia.');
-    var updated = await syncPortfolioPrices(false);
-    if (updated) setStatus(updated + ' harga posisi berhasil diperbarui.');
+    // Each UI step is isolated so one failing render cannot stop the data sync.
+    [installPremiumLayout, loadChat, bindCleanControls, renderChat, renderSummary].forEach(function (step) {
+      try { step(); } catch (_) {}
+    });
+    try { setStatus('AI siap. Harga tersimpan akan diperbarui bila tersedia.'); } catch (_) {}
+    var updated = 0;
+    try { updated = await syncPortfolioPrices(false); } catch (_) { updated = 0; }
+    if (updated) { try { setStatus(updated + ' harga posisi berhasil diperbarui.'); } catch (_) {} }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

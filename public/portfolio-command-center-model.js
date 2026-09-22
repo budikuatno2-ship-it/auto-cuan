@@ -92,15 +92,26 @@
   function normalizePlan(plan) {
     var ticker = tickerOf(plan && plan.ticker);
     if (!ticker) return null;
+    var entryPriceIdr = positive(plan.entryPriceIdr != null ? plan.entryPriceIdr : plan.entry);
+    var stopLossIdr = positive(plan.stopLossIdr != null ? plan.stopLossIdr : plan.stop);
+    // BUG-F7-003: entry == stop loss (atau stop di atas entry) berarti setup terbalik,
+    // bukan rencana yang valid untuk dipantau.
+    if (entryPriceIdr && stopLossIdr && stopLossIdr >= entryPriceIdr) return null;
+    var lots = Math.max(0, Math.floor(positive(plan.lots) || 0));
+    var estimatedMaxLossIdr = positive(plan.estimatedMaxLossIdr != null ? plan.estimatedMaxLossIdr : plan.riskBudgetIdr);
+    // BUG-F7-004: hitung ulang risiko dari level harga bila tidak ada nilai preset.
+    if (!estimatedMaxLossIdr && entryPriceIdr && stopLossIdr && lots) {
+      estimatedMaxLossIdr = (entryPriceIdr - stopLossIdr) * lots * LOT_SIZE;
+    }
     return {
       id: String(plan.id || ticker),
       ticker: ticker,
-      entryPriceIdr: positive(plan.entryPriceIdr != null ? plan.entryPriceIdr : plan.entry),
-      stopLossIdr: positive(plan.stopLossIdr != null ? plan.stopLossIdr : plan.stop),
+      entryPriceIdr: entryPriceIdr,
+      stopLossIdr: stopLossIdr,
       tp1Idr: positive(plan.tp1Idr != null ? plan.tp1Idr : plan.tp1),
       tp2Idr: positive(plan.tp2Idr != null ? plan.tp2Idr : plan.tp2),
-      lots: Math.max(0, Math.floor(positive(plan.lots) || 0)),
-      estimatedMaxLossIdr: positive(plan.estimatedMaxLossIdr != null ? plan.estimatedMaxLossIdr : plan.riskBudgetIdr) || 0,
+      lots: lots,
+      estimatedMaxLossIdr: estimatedMaxLossIdr || 0,
       capitalIdr: positive(plan.capitalIdr) || 0,
       source: String(plan.source || ''),
       positionStatus: String(plan.positionStatus || ''),

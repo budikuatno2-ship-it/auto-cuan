@@ -62,6 +62,40 @@
     return RISK_PRESETS[key] ? key : null;
   }
 
+  /**
+   * Fraksi tick harga IDX (Regular Board). BUG-F7-006: planner harus menolak
+   * harga yang tidak kelipatan tick, mis. 205 pada board reguler (tick Rp 5).
+   * < 200 : 1 | 200 - < 500 : 2 | 500 - < 2000 : 5 | 2000 - < 5000 : 10 | >= 5000 : 25
+   * Perbandingan memakai BigInt agar harga besar tetap presisi.
+   */
+  function idxTickSize(value) {
+    var price = typeof value === 'bigint' ? value : null;
+    if (price == null) {
+      var numeric = safeNumber(value);
+      if (numeric == null || !Number.isFinite(numeric) || numeric <= 0) return 0;
+      price = BigInt(Math.round(numeric));
+    }
+    if (price <= 0n) return 0;
+    if (price < 200n) return 1;
+    if (price < 500n) return 2;
+    if (price < 2000n) return 5;
+    if (price < 5000n) return 10;
+    return 25;
+  }
+
+  function isValidIdxTick(value) {
+    var price = typeof value === 'bigint' ? value : null;
+    if (price == null) {
+      var numeric = safeNumber(value);
+      if (numeric == null || !Number.isFinite(numeric) || numeric <= 0) return false;
+      price = BigInt(Math.round(numeric));
+    }
+    if (price <= 0n) return false;
+    var tick = idxTickSize(price);
+    if (!tick) return false;
+    return price % BigInt(tick) === 0n;
+  }
+
   function calculate(input) {
     input = input || {};
     var profile = normalizeProfile(input.riskProfile);
@@ -75,6 +109,7 @@
     var stop = parseInteger(input.stopLossIdr, 'Stop loss', { positive: true, max: MAX_MONEY_IDR });
     if (!stop.ok) return invalid('INVALID_STOP', stop.error, 'stopLossIdr');
     if (stop.value >= entry.value) return invalid('STOP_NOT_BELOW_ENTRY', 'Stop loss harus lebih rendah dari harga entry.', 'stopLossIdr');
+    if (!isValidIdxTick(entry.value)) return invalid('INVALID_ENTRY_TICK', 'Harga entry harus sesuai fraksi tick IDX.', 'entryPriceIdr');
 
     var reserve = parseBoundedInteger(input.reserveBps == null ? 0 : input.reserveBps, 'Dana cadangan', 0, 9000);
     if (!reserve.ok) return invalid('INVALID_RESERVE', reserve.error, 'reserveBps');
@@ -180,7 +215,9 @@
     LOT_SIZE: Number(LOT_SIZE),
     RISK_PRESETS: RISK_PRESETS,
     calculate: calculate,
-    normalizeProfile: normalizeProfile
+    normalizeProfile: normalizeProfile,
+    idxTickSize: idxTickSize,
+    isValidIdxTick: isValidIdxTick
   };
 });
 (function installPortfolioUiPolish(root) {
