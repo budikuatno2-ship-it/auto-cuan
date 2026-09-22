@@ -1477,6 +1477,28 @@
     if (bandarSection === 'akumulasi') {
       brokerAccumulationView = 'table';
       bubbleFilterSide = 'all';
+      // FIX (UI): the Akumulasi tab opens on metric cards + cumulative table ONLY.
+      // Force the TAMPILAN pill back to "Tabel Rinci" and hard-hide any bubble
+      // cluster DOM left behind by the Broker Summary view.
+      try {
+        var accBubbleBtn = byId('toggleAccViewBubble');
+        var accTableBtn = byId('toggleAccViewTable');
+        var pillOff = 'px-2.5 py-1 rounded-md transition text-gray-400 hover:text-white font-medium';
+        var pillOn = 'px-2.5 py-1 rounded-md transition bg-emerald-500 text-dark-900 shadow-sm font-bold';
+        if (accBubbleBtn) {
+          accBubbleBtn.className = pillOff;
+          accBubbleBtn.setAttribute('aria-pressed', 'false');
+        }
+        if (accTableBtn) {
+          accTableBtn.className = pillOn;
+          accTableBtn.setAttribute('aria-pressed', 'true');
+        }
+        var staleBubbleWrap = byId('acAccBubbleClusterWrap');
+        if (staleBubbleWrap) {
+          staleBubbleWrap.style.display = 'none';
+          staleBubbleWrap.setAttribute('aria-hidden', 'true');
+        }
+      } catch (_) {}
     }
     if (activeBandarSummaryAbortController && (section === 'intel' || section === 'network')) {
       try { activeBandarSummaryAbortController.abort(); } catch (_) {}
@@ -2099,6 +2121,53 @@
     return out;
   }
 
+  /**
+   * FIX (Net Vol / Net Val = +0): resolve the canonical net value, net volume and
+   * average price for one broker row using the complete fallback chain before it
+   * is printed to HTML. Never returns NaN, never a literal "+0".
+   */
+  function resolveBrokerRowMetrics(row, isBuyerSide) {
+    var src = (row && typeof row === 'object') ? row : {};
+    var num = function (v) {
+      if (v === null || v === undefined || v === '') return null;
+      var n = Number(v);
+      return isFinite(n) ? n : null;
+    };
+    var bval = num(src.bval != null ? src.bval : (src.buy_val != null ? src.buy_val : src.buyVal));
+    var sval = num(src.sval != null ? src.sval : (src.sell_val != null ? src.sell_val : src.sellVal));
+    var bvol = num(src.bvol != null ? src.bvol : (src.buy_vol != null ? src.buy_vol : src.buyVol));
+    var svol = num(src.svol != null ? src.svol : (src.sell_vol != null ? src.sell_vol : src.sellVol));
+
+    var netVal = num(src.net_val != null ? src.net_val : (src.netVal != null ? src.netVal : src.nval));
+    if (netVal == null) {
+      if (bval != null && sval != null) {
+        netVal = bval - sval;
+      } else {
+        var altVal = num(src.val != null ? src.val : (src.txVal != null ? src.txVal : src.displayVal));
+        netVal = (altVal != null) ? (isBuyerSide ? Math.abs(altVal) : -Math.abs(altVal)) : 0;
+      }
+    }
+
+    var netVol = num(src.net_vol != null ? src.net_vol : (src.netVol != null ? src.netVol : src.nvol));
+    if (netVol == null) {
+      if (bvol != null && svol != null) {
+        netVol = bvol - svol;
+      } else {
+        var altVol = num(src.vol != null ? src.vol : (src.txVol != null ? src.txVol : src.volume));
+        netVol = (altVol != null) ? (isBuyerSide ? Math.abs(altVol) : -Math.abs(altVol)) : 0;
+      }
+    }
+
+    var avgPrice = num(src.avg != null ? src.avg : src.avg_price);
+    if (!(avgPrice > 0)) {
+      avgPrice = (netVol !== 0) ? Math.abs(Math.round(netVal / netVol)) : 0;
+    }
+    if (!isFinite(netVal)) netVal = 0;
+    if (!isFinite(netVol)) netVol = 0;
+    if (!isFinite(avgPrice)) avgPrice = 0;
+    return { netVal: netVal, netVol: netVol, avgPrice: avgPrice };
+  }
+
   function renderBrokerSummaryTableHtml(buyersOrData, sellersOrIsGross, isGrossArg, modeArg) {
     try {
       var buyers = [];
@@ -2165,8 +2234,10 @@
           var sellVol = item.svol != null ? item.svol : (item.sell_vol || 0);
           var buyVal = normalizeBrokerValue(item.bval != null ? item.bval : (item.buy_val || item.val || item.value || 0), buyVol, item.avg_buy || item.avg_price);
           var sellVal = normalizeBrokerValue(item.sval != null ? item.sval : (item.sell_val || 0), sellVol, item.avg_sell || item.avg_price);
-          var netVal = normalizeBrokerValue(item.nval != null ? item.nval : (item.net_val != null ? item.net_val : (buyVal - sellVal)));
-          var netVol = item.nvol != null ? item.nvol : (item.net_vol != null ? item.net_vol : (buyVol - sellVol));
+          // FIX: full fallback chain — never render NET VOL: +0 / NET VAL: +0.
+          var buyerMetrics = resolveBrokerRowMetrics(item, true);
+          var netVal = buyerMetrics.netVal;
+          var netVol = buyerMetrics.netVol;
 
           html += '            <tr class="hover:bg-dark-600/20 transition">';
           html += '              <td class="py-2 px-2 text-center font-mono text-[10px] text-gray-500">' + (b + 1) + '</td>';
@@ -2176,7 +2247,7 @@
             html += '                <span class="text-gray-400 text-[10px] ml-1.5 truncate max-w-[100px] inline-block align-middle" title="' + escapeHtml(item.broker_name) + '">' + escapeHtml(item.broker_name) + '</span>';
           }
           html += '              </td>';
-          html += '              <td class="py-2 px-2 text-right font-mono text-gray-300 text-[11px]">' + (item.avg_price ? formatNumber(item.avg_price) : '—') + '</td>';
+          html += '              <td class="py-2 px-2 text-right font-mono text-gray-300 text-[11px]">' + (buyerMetrics.avgPrice > 0 ? formatNumber(buyerMetrics.avgPrice) : '—') + '</td>';
           if (isGross) {
             html += '              <td class="py-2 px-2 text-right font-mono text-gray-300 text-[11px]">' + formatNumber(buyVol) + '</td>';
             html += '              <td class="py-2 px-2 text-right font-mono text-emerald-400 font-bold text-[11px]">+' + formatIDR(buyVal) + '</td>';
@@ -2185,8 +2256,8 @@
           } else {
             var buyerVolColor = netVol >= 0 ? 'text-emerald-300' : 'text-rose-300';
             var buyerValColor = netVal >= 0 ? 'text-emerald-400' : 'text-rose-400';
-            var buyerVolSign = netVol >= 0 ? '+' : '';
-            var buyerValSign = netVal >= 0 ? '+' : '';
+            var buyerVolSign = netVol > 0 ? '+' : '';
+            var buyerValSign = netVal > 0 ? '+' : '';
             html += '              <td class="py-2 px-2 text-right font-mono ' + buyerVolColor + ' font-semibold text-[11px]">' + buyerVolSign + formatNumber(netVol) + '</td>';
             html += '              <td class="py-2 px-2 text-right font-mono ' + buyerValColor + ' font-bold text-[11px]">' + buyerValSign + formatIDR(netVal) + '</td>';
           }
@@ -2232,8 +2303,9 @@
           var sSellVol = sItem.svol != null ? sItem.svol : (sItem.sell_vol || sItem.vol || sItem.volume || 0);
           var sBuyVal = normalizeBrokerValue(sItem.bval != null ? sItem.bval : (sItem.buy_val || 0), sBuyVol, sItem.avg_buy || sItem.avg_price);
           var sSellVal = normalizeBrokerValue(sItem.sval != null ? sItem.sval : (sItem.sell_val || sItem.val || sItem.value || 0), sSellVol, sItem.avg_sell || sItem.avg_price);
-          var sNetVal = normalizeBrokerValue(sItem.nval != null ? sItem.nval : (sItem.net_val != null ? sItem.net_val : (sBuyVal - sSellVal)));
-          var sNetVol = sItem.nvol != null ? sItem.nvol : (sItem.net_vol != null ? sItem.net_vol : (sBuyVol - sSellVol));
+          var sellerMetrics = resolveBrokerRowMetrics(sItem, false);
+          var sNetVal = sellerMetrics.netVal;
+          var sNetVol = sellerMetrics.netVol;
 
           html += '            <tr class="hover:bg-dark-600/20 transition">';
           html += '              <td class="py-2 px-2 text-center font-mono text-[10px] text-gray-500">' + (s + 1) + '</td>';
@@ -2243,7 +2315,7 @@
             html += '                <span class="text-gray-400 text-[10px] ml-1.5 truncate max-w-[100px] inline-block align-middle" title="' + escapeHtml(sItem.broker_name) + '">' + escapeHtml(sItem.broker_name) + '</span>';
           }
           html += '              </td>';
-          html += '              <td class="py-2 px-2 text-right font-mono text-gray-300 text-[11px]">' + (sItem.avg_price ? formatNumber(sItem.avg_price) : '—') + '</td>';
+          html += '              <td class="py-2 px-2 text-right font-mono text-gray-300 text-[11px]">' + (sellerMetrics.avgPrice > 0 ? formatNumber(sellerMetrics.avgPrice) : '—') + '</td>';
           if (isGross) {
             html += '              <td class="py-2 px-2 text-right font-mono text-gray-300 text-[11px]">' + formatNumber(sSellVol) + '</td>';
             html += '              <td class="py-2 px-2 text-right font-mono text-rose-400 font-bold text-[11px]">-' + formatIDR(sSellVal) + '</td>';
@@ -2845,8 +2917,11 @@
       }
     }
 
-    if (brokerAccumulationView === 'bubble') {
-      html += '  <div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 shadow-sm">';
+    // FIX (UI): section 'akumulasi' + view 'table' must NEVER mount the bubble
+    // cluster (AK -205M / YU +118M). Only metric cards + tables may render.
+    var accShowBubbleCluster = (brokerAccumulationView === 'bubble') && !(bandarSection === 'akumulasi' && brokerAccumulationView !== 'bubble');
+    if (accShowBubbleCluster) {
+      html += '  <div id="acAccBubbleClusterWrap" class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 shadow-sm">';
       html += '    <div class="flex items-center justify-between mb-3">';
       html += '      <div>';
       html += '        <h4 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🫧</span> Sebaran Klaster Broker Akumulasi &amp; Distribusi</h4>';
@@ -2856,6 +2931,9 @@
       html += renderBrokerBubbleClusterHtml(lastBrokerItems, selectedBrokerCode, brokerSummaryMode, bubbleFilterSide);
       html += '  </div>';
     } else {
+      // Keep an explicit, hidden placeholder so a previously mounted bubble
+      // cluster cannot survive the re-render in Akumulasi table mode.
+      html += '  <div id="acAccBubbleClusterWrap" style="display:none" aria-hidden="true"></div>';
       html += renderBrokerSummaryTableHtml(accBuyers, accSellers, false, brokerSummaryMode);
     }
 

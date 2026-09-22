@@ -471,6 +471,7 @@
   "test/bandarmologi-intel.test.js",
   "test/bandarmologi-screener-badges.test.js",
   "test/bandarmologi-visual-and-math-parity.test.js",
+  "test/bandarmologi-akumulasi-view-and-scanner-latency.test.js",
   "test/broker-bubble-all-real.test.js",
   "test/broker-hunter-universe-completeness.test.js",
   "test/broker-hunter.test.js",
