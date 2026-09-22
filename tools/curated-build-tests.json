@@ -1,4 +1,5 @@
 [
+  "test/security-fase5-batch2-bugs.test.js",
   "test/bandarmologi-fase4-bugs.test.js",
   "test/screener-fase3-bugs.test.js",
   "test/screener-fase3-batch2-bugs.test.js",
