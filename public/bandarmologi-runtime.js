@@ -78,7 +78,7 @@
   function calculateScannerDiscount(modal, last_price) {
     modal = Number(modal || 0);
     last_price = Number(last_price || 0);
-    if (!modal || modal <= 0) return 0;
+    if (!modal || modal <= 0 || !last_price || last_price <= 0) return 0;
     return Number((((modal - last_price) / modal) * 100).toFixed(2));
   }
 
@@ -237,6 +237,10 @@
         cleanStr = cleanStr.replace(',', '.');
       } else {
         cleanStr = cleanStr.replace(/,/g, '');
+      }
+    } else if (cleanStr.indexOf('.') >= 0) {
+      if (cleanStr.split('.').length > 2 || /^\-?\d{1,3}(\.\d{3})+$/.test(cleanStr)) {
+        cleanStr = cleanStr.replace(/\./g, '');
       }
     }
 
@@ -2565,15 +2569,17 @@
     var cr5 = crMetrics.cr5;
 
     // Retail vs Bandar Participation
-    var retailCodes = ['YP', 'XL', 'XC', 'PD', 'NI', 'SQ', 'CC'];
     var retailVal = 0;
+    var allBuyersTotalVal = 0;
     for (var ri = 0; ri < allBuyersList.length; ri++) {
-      var bCode = allBuyersList[ri].broker || allBuyersList[ri].broker_code || '';
-      if (retailCodes.includes(bCode)) {
-        retailVal += Number(allBuyersList[ri].bval || allBuyersList[ri].buy_val || allBuyersList[ri].val || 0);
+      var bCode = (allBuyersList[ri].broker || allBuyersList[ri].broker_code || '').trim().toUpperCase();
+      var itemVal = Number(allBuyersList[ri].bval || allBuyersList[ri].buy_val || allBuyersList[ri].val || 0);
+      allBuyersTotalVal += itemVal;
+      if (RETAIL_BROKERS.indexOf(bCode) >= 0) {
+        retailVal += itemVal;
       }
     }
-    var effectiveTotalVal = totalMarketBuyVal > 0 ? totalMarketBuyVal : (allBuyersList.length > 0 ? top3Val : 0);
+    var effectiveTotalVal = totalMarketBuyVal > 0 ? totalMarketBuyVal : allBuyersTotalVal;
     var bandarVal = Math.max(0, effectiveTotalVal - retailVal);
     var bandarPct = effectiveTotalVal > 0 ? Math.round((bandarVal / effectiveTotalVal) * 100) : 0;
     var retailPct = effectiveTotalVal > 0 ? (100 - bandarPct) : 0;
@@ -5248,6 +5254,7 @@
     getCurrentInsiderRosterTicker: function () { return currentInsiderRosterTicker; },
     get VPS_DATA_API_BASE() { return getVpsDataApiBase(); },
     getVpsDataApiBase: getVpsDataApiBase,
+    parseNumericValue: parseNumericValue,
     calculateScannerDiscount: calculateScannerDiscount,
     computeConcentrationRatioMetrics: computeConcentrationRatioMetrics,
     listDiskDates: listDiskDates,
@@ -5260,6 +5267,7 @@
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
+      parseNumericValue: parseNumericValue,
       formatDateDisplay: formatDateDisplay,
       computeConcentrationRatioMetrics: computeConcentrationRatioMetrics,
       injectBubbleStyles: injectBubbleStyles,
