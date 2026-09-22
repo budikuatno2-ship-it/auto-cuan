@@ -5913,7 +5913,7 @@ async function sendTop5ChartAttachments(req, picks) {
     if (Date.now() - started > 8500) {
       skipped += (picks.length - i);
       errors.push({ ticker: ticker, reason: 'timeout_guard_text_fallback' });
-      for (var j = i; j < picks.length; j++) if (picks[j]._detail_text) { var guardDetail = await telegramNotifier.sendTelegramMessage(picks[j]._detail_text, { timeout_ms: 2500 }); if (guardDetail.sent) detailSent++; }
+      for (var j = i; j < picks.length; j++) if (picks[j]._detail_text) { var guardDetail = await telegramNotifier.sendTelegramMessage(picks[j]._detail_text, { timeout_ms: 2500, ticker: picks[j].ticker, status: picks[j].status }); if (guardDetail.sent) detailSent++; }
       break;
     }
     try {
@@ -5926,12 +5926,12 @@ async function sendTop5ChartAttachments(req, picks) {
       else {
         skipped++;
         errors.push({ ticker: ticker, reason: result.reason || 'send_failed', telegram: result });
-        if (picks[i]._detail_text) { var failedDetail = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text, { timeout_ms: 2500 }); if (failedDetail.sent) detailSent++; }
+        if (picks[i]._detail_text) { var failedDetail = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text, { timeout_ms: 2500, ticker: picks[i].ticker, status: picks[i].status }); if (failedDetail.sent) detailSent++; }
       }
     } catch (e) {
       skipped++;
       errors.push({ ticker: ticker, reason: e.message || String(e) });
-      if (picks[i]._detail_text) { var fallbackDetail = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text, { timeout_ms: 2500 }); if (fallbackDetail.sent) detailSent++; }
+      if (picks[i]._detail_text) { var fallbackDetail = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text, { timeout_ms: 2500, ticker: picks[i].ticker, status: picks[i].status }); if (fallbackDetail.sent) detailSent++; }
     }
   }
   return { sent_count: sent, detail_sent_count: detailSent, skipped_count: skipped, errors: errors, method: sent > 0 ? 'sendPhoto chart-url per ticker' : 'text fallback no-chart due timeout guard' };
@@ -6211,7 +6211,7 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
     }
     // Always use deterministic template; append AI note if available
     var finalDetailText = detailText + (candidateAiNote ? '\n\nCatatan AI:\n' + candidateAiNote : '');
-    var detailResult = await telegramNotifier.sendTelegramMessage(finalDetailText, { timeout_ms: 2500 });
+    var detailResult = await telegramNotifier.sendTelegramMessage(finalDetailText, { timeout_ms: 2500, ticker: safePicks[i].ticker, status: safePicks[i].status });
     telegramResults.push(detailResult);
     var candidateIndex = (picks || []).indexOf(safePicks[i]);
     if (candidateIndex >= 0) perCandidateResults[candidateIndex] = detailResult;
@@ -9005,6 +9005,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     var individualSentCount = 0;
     var individualFailedCount = 0;
     var individualFailures = [];
+    var notifiedTickersInRun = new Set();
     for (var i = 0; i < rows.length; i++) {
       var pck = rows[i];
       if (!isFinal && pck.is_final) continue;
@@ -9091,7 +9092,10 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       if (ev.status === 'SL_HIT' && !pck.hit_sl_at) isNewHit = true;
       if (ev.status === 'BEP_CLOSED' && !pck.bep_closed_at) isNewHit = true;
       if (ev.status === 'EARLY_EXIT_DISTRIBUTION' && !pck.early_exit_at) isNewHit = true;
-      var significantHit = isPublicAlertEligible && isNewHit && ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'BEP_CLOSED', 'EARLY_EXIT_DISTRIBUTION', 'IN_ENTRY_ZONE'].indexOf(ev.status) >= 0;
+      var tickerUpper = String(pck && pck.ticker || '').toUpperCase();
+      var inRunDuplicate = notifiedTickersInRun.has(tickerUpper);
+      // IN_ENTRY_ZONE is excluded from immediate individual notifications; appears only in routine periodic hourlyBatchDue.
+      var significantHit = isPublicAlertEligible && isNewHit && !inRunDuplicate && ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'BEP_CLOSED', 'EARLY_EXIT_DISTRIBUTION'].indexOf(ev.status) >= 0;
 
       // IMMEDIATE INDIVIDUAL NOTIFICATION — fires on EVERY monitor invocation
       // (both the top-of-hour and the half-hour run), independent of the hourly
@@ -9107,9 +9111,17 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
         // TELEGRAM SUPPRESSION: dry-run records the message it WOULD send instead of sending.
         if (dryRun) {
           individualMessagePreviews.push({ ticker: pck.ticker, source: resolveMonitorSource(pck), status: ev.status, message: hitMsg });
+          notifiedTickersInRun.add(tickerUpper);
         } else {
-          hitResult = await telegramNotifier.sendTelegramMessage(hitMsg, { timeout_ms: 3000 });
-          if (hitResult.sent) individualSentCount++;
+          hitResult = await telegramNotifier.sendTelegramMessage(hitMsg, {
+            timeout_ms: 3000,
+            ticker: tickerUpper,
+            status: ev.status
+          });
+          if (hitResult.sent) {
+            individualSentCount++;
+            notifiedTickersInRun.add(tickerUpper);
+          }
         }
       }
 
@@ -9119,7 +9131,8 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       // next monitor invocation instead of disappearing permanently.
       if (!dryRun) {
         var persistedUpdate = update;
-        if (significantHit && (!hitResult || !hitResult.sent)) {
+        var wasSuppressedByCooldown = hitResult && hitResult.skipped && hitResult.reason === 'duplicate_suppressed';
+        if (significantHit && (!hitResult || !hitResult.sent) && !wasSuppressedByCooldown) {
           individualFailedCount++;
           individualFailures.push({
             ticker: pck.ticker,
@@ -9177,6 +9190,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
         var pctChange = (refPrice != null && refPrice > 0 && lastPx != null) ? Math.round(((lastPx - refPrice) / refPrice) * 10000) / 100 : null;
         var sendReason;
         if (significantHit) sendReason = 'New significant hit (' + ev.status + '): would send an individual Telegram message.';
+        else if (inRunDuplicate) sendReason = 'Duplicate ticker in current run (' + pck.ticker + '): suppressed in-run to prevent spam.';
         else if (isNewHit) sendReason = 'New hit (' + ev.status + ') but not in the individual-send set; would appear in the batch summary only.';
         else if (['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'IN_ENTRY_ZONE'].indexOf(ev.status) >= 0) sendReason = 'Status ' + ev.status + ' already recorded previously (not a new hit); no individual message.';
         else sendReason = 'Non-significant status (' + ev.status + '); would appear in the batch summary only.';
@@ -13094,6 +13108,34 @@ function formatDayTradeEmptyHeartbeatTelegramMessage(scannedCount, rawBatchPasse
     'Reason: ' + safeTelegramText(reason || 'all_candidates_failed_final_gate', 120, 'all_candidates_failed_final_gate');
 }
 
+function isConfirmedDayTradeSignal(r) {
+  if (!r) return false;
+  var status = safeTelegramText(r.status || r.final_status, 80, '').toUpperCase();
+
+  // 1. Fast Watcher confirmed (READY_CONFIRMED / 2 konfirmasi)
+  var isFastWatcherConfirmed = r.run_mode === 'FAST_WATCHER_LIVE' ||
+    String(r.notes || '').indexOf('FAST_WATCHER_CONFIRMED') >= 0 ||
+    status === 'READY_CONFIRMED' ||
+    (r.ready_streak != null && r.ready_streak >= 2);
+  if (isFastWatcherConfirmed) return true;
+
+  // 2. Screener confirmed buy setup status
+  var isConfirmedStatus = status === 'A_PLUS_SETUP' || status === 'TRADE_CANDIDATE' || status === 'READY_BREAKOUT';
+  if (!isConfirmedStatus) return false;
+
+  // 3. Valid setup grade (Grade A or B, never C or Avoid)
+  var rawGrade = safeTelegramText(r.quality_grade || r.grade || r.confidence, 20, '').toUpperCase();
+  if (rawGrade === 'C' || rawGrade === 'AVOID' || rawGrade.indexOf('HIGH RISK') >= 0) {
+    return false;
+  }
+  if (rawGrade.indexOf('A') === 0 || rawGrade.indexOf('B') === 0) {
+    return true;
+  }
+  // If grade field is absent, require entry-grade score (>= 75)
+  var score = toNum(r.daytrade_score != null ? r.daytrade_score : r.score);
+  return score != null && score >= 75;
+}
+
 async function sendDayTradeTelegramNotification(supabase, runId, runDate, publishedCount, sendEmptyNotice, sendRadarFallback, options) {
   options = options || {};
   var deferDelivery = options.defer_delivery === true;
@@ -13198,11 +13240,15 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       else stageByTicker[ticker] = { stage: 'public_safety', candidate: normalized };
     });
 
-    // Step 2: Prioritize actionable setups
+    // Step 2: Prioritize actionable setups (strictly confirmed signals only with in-run ticker deduplication)
     var setupPriority = { 'A_PLUS_SETUP': 0, 'TRADE_CANDIDATE': 1, 'READY_BREAKOUT': 2, 'PRE_SPIKE_WATCH': 3, 'EARLY_RADAR': 4, 'MOMENTUM_CONTINUATION': 5, 'RECLAIM_CANDIDATE': 6, 'WAIT_PULLBACK': 7, 'SPECULATIVE': 8 };
+    var seenActionableTickers = new Set();
     var actionable = nonAvoid.filter(function(r) {
-      var pri = setupPriority[r.status];
-      return pri != null && pri <= 6;
+      if (!isConfirmedDayTradeSignal(r)) return false;
+      var actTicker = String(r && r.ticker || '').toUpperCase();
+      if (!actTicker || seenActionableTickers.has(actTicker)) return false;
+      seenActionableTickers.add(actTicker);
+      return true;
     });
 
     // Step 3: Matikan paksaan fallback kuota 5 saham (Fase 2).
@@ -13355,7 +13401,10 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
           });
         }
         var radarMsg = formatDayTradeRadarTelegramMessage(radarCandidates);
-        var radarResult = await telegramNotifier.sendTelegramMessage(radarMsg);
+        var radarResult = await telegramNotifier.sendTelegramMessage(radarMsg, {
+          timeout_ms: 3000,
+          ticker: radarCandidates[0] ? radarCandidates[0].ticker : undefined
+        });
         radarResult.reason = radarResult.sent ? 'daytrade_radar_monitor_fallback_sent' : 'telegram_send_failed';
         radarResult.radar_skipped_reason = radarResult.sent ? null : 'telegram_send_failed';
         radarResult.message = radarMsg;
@@ -13473,7 +13522,20 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     }
 
     // Send
-    var result = await telegramNotifier.sendTelegramMessage(finalMsg);
+    var dtPrimaryTicker = finalList[0] ? String(finalList[0].ticker || '').toUpperCase() : undefined;
+    var dtPrimaryStatus = finalList[0] ? finalList[0].status : undefined;
+    var result = await telegramNotifier.sendTelegramMessage(finalMsg, {
+      timeout_ms: 3000,
+      ticker: dtPrimaryTicker,
+      status: dtPrimaryStatus
+    });
+    if (result && result.sent && typeof telegramNotifier.recordAlertCooldown === 'function') {
+      for (var fIdx = 1; fIdx < finalList.length; fIdx++) {
+        if (finalList[fIdx] && finalList[fIdx].ticker) {
+          telegramNotifier.recordAlertCooldown(finalList[fIdx].ticker, finalList[fIdx].status);
+        }
+      }
+    }
     var dtDeliveryFinal =
       await telegramDelivery.finalizePreparedDelivery({
         supabase: supabase,
@@ -14363,7 +14425,18 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     // Append AI note to deterministic template
     var skFinalMsg = skAiNote ? msg + '\n\nCatatan AI:\n' + skAiNote : msg;
 
-    var result = await telegramNotifier.sendTelegramMessage(skFinalMsg);
+    var result = await telegramNotifier.sendTelegramMessage(skFinalMsg, {
+      timeout_ms: 3000,
+      ticker: finalList[0] ? String(finalList[0].ticker || '').toUpperCase() : undefined,
+      status: finalList[0] ? finalList[0].status : undefined
+    });
+    if (result && result.sent && typeof telegramNotifier.recordAlertCooldown === 'function') {
+      for (var ski2 = 1; ski2 < finalList.length; ski2++) {
+        if (finalList[ski2] && finalList[ski2].ticker) {
+          telegramNotifier.recordAlertCooldown(finalList[ski2].ticker, finalList[ski2].status);
+        }
+      }
+    }
     var skDeliveryFinal =
       await telegramDelivery.finalizePreparedDelivery({
         supabase: supabase,
@@ -14564,7 +14637,18 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     // Append AI note to deterministic template
     var nkFinalMsg = nkAiNote ? msg + '\n\nCatatan AI:\n' + nkAiNote : msg;
 
-    var result = await telegramNotifier.sendTelegramMessage(nkFinalMsg);
+    var result = await telegramNotifier.sendTelegramMessage(nkFinalMsg, {
+      timeout_ms: 3000,
+      ticker: finalList[0] ? String(finalList[0].ticker || '').toUpperCase() : undefined,
+      status: finalList[0] ? finalList[0].status : undefined
+    });
+    if (result && result.sent && typeof telegramNotifier.recordAlertCooldown === 'function') {
+      for (var nki2 = 1; nki2 < finalList.length; nki2++) {
+        if (finalList[nki2] && finalList[nki2].ticker) {
+          telegramNotifier.recordAlertCooldown(finalList[nki2].ticker, finalList[nki2].status);
+        }
+      }
+    }
     var nkDeliveryFinal =
       await telegramDelivery.finalizePreparedDelivery({
         supabase: supabase,
@@ -14668,6 +14752,7 @@ module.exports.__test = {
   candidatePassesMinUpside: candidatePassesMinUpside,
   getMinTp1UpsideForCategory: getMinTp1UpsideForCategory,
   buildEntryRangeNormalizationDiagnostics: buildEntryRangeNormalizationDiagnostics,
+  isConfirmedDayTradeSignal: isConfirmedDayTradeSignal,
   handleDayTradeScreenerRead: handleDayTradeScreenerRead,
   getDayTradeRunningLockDiagnostics: getDayTradeRunningLockDiagnostics,
   diagnosePublicSafetyGateRejection: diagnosePublicSafetyGateRejection,

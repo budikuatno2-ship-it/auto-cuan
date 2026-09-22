@@ -246,15 +246,15 @@ test('no duplicates: raw and deduped counts match and no ignored rows', async fu
 // TEST 5: Normal mode with duplicates -> one update/notification per group
 // ==================================================================
 test('normal mode with duplicates updates and notifies only the kept row', async function () {
-  // Two COCO rows (swing_nk) that would BOTH evaluate to IN_ENTRY_ZONE (significant).
+  // Two COCO rows (swing_nk) that would BOTH evaluate to TP1_HIT (significant).
   // Only the latest (id 2, 2026-07-16) should be updated + individually notified.
   const scenario = {
     rows: [
-      baseRow({ id: 1, ticker: 'COCO', date: '2026-07-14', entry1: 100, entry2: 98, sl: 95, raw_payload: { monitor_source: 'swing_nk' } }),
-      baseRow({ id: 2, ticker: 'COCO', date: '2026-07-16', entry1: 100, entry2: 98, sl: 95, raw_payload: { monitor_source: 'swing_nk' } })
+      baseRow({ id: 1, ticker: 'COCO', date: '2026-07-14', hit_entry_at: '2026-07-16T09:00:00Z', status: 'RUNNING', entry1: 100, entry2: 98, tp1: 105, sl: 95, raw_payload: { monitor_source: 'swing_nk' } }),
+      baseRow({ id: 2, ticker: 'COCO', date: '2026-07-16', hit_entry_at: '2026-07-16T09:00:00Z', status: 'RUNNING', entry1: 100, entry2: 98, tp1: 105, sl: 95, raw_payload: { monitor_source: 'swing_nk' } })
     ],
-    // last=99 within [98,100] -> IN_ENTRY_ZONE; no wick (high=low=99) so entry not "touched"
-    daytradePrices: { COCO: { last_price: 99, open_price: 99, high_price: 99, low_price: 99 } }
+    // active position with high=106 >= tp1(105) -> TP1_HIT (significant individual notification)
+    daytradePrices: { COCO: { last_price: 106, open_price: 100, high_price: 106, low_price: 100 } }
   };
   const normal = await runMonitor({}, scenario);
   assert.equal(normal.updateCalls.length, 1, 'exactly one row updated');
