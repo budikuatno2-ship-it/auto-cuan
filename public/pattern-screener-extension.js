@@ -22,7 +22,10 @@
     return TICKER_RE.test(ticker) ? ticker : null;
   }
   function rowsFromPayload(payload) {
-    if (!payload || typeof payload !== 'object') return [];
+    if (!payload) return [];
+    // BUG-F7-009: sebagian endpoint mengembalikan array langsung, bukan objek bersarang.
+    if (Array.isArray(payload)) return payload;
+    if (typeof payload !== 'object') return [];
     var keys = ['results', 'rows', 'data', 'picks', 'top5'];
     for (var i = 0; i < keys.length; i += 1) if (Array.isArray(payload[keys[i]])) return payload[keys[i]];
     return [];

@@ -146,16 +146,57 @@
 
   function inlineFormat(value) {
     var html = escapeHtml(value);
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // BUG-F7-017: token di dalam <code> adalah nama simbol, bukan penanda
+    // formatting. Ia disingkirkan dulu ke placeholder agar regex **/__ dan
+    // pembersih sisa penanda di bawah tidak merusak isinya.
+    var codeSpans = [];
+    function stash(fragment) {
+      codeSpans.push(fragment);
+      return '\u0000C' + (codeSpans.length - 1) + '\u0000';
+    }
+
+    // Identifier gaya dunder (mis. __init__, __name__) adalah nama kode, bukan
+    // teks bold, sehingga dirender sebagai inline code apa adanya.
+    html = html.replace(/\b__[A-Za-z][A-Za-z0-9_]*__\b/g, function (token) {
+      return stash('<code>' + token + '</code>');
+    });
+    html = html.replace(/`([^`]+)`/g, function (_, code) {
+      return stash('<code>' + code + '</code>');
+    });
+
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
     html = html.replace(/(^|\s)\*([^*\n]+)\*(?=\s|$|[.,!?;:])/g, '$1<em>$2</em>');
     html = html.replace(/(^|\s)_([^_\n]+)_(?=\s|$|[.,!?;:])/g, '$1<em>$2</em>');
-    return html.replace(/\*\*|__/g, '');
+    html = html.replace(/\*\*|__/g, '');
+
+    return html.replace(/\u0000C(\d+)\u0000/g, function (_, index) {
+      return codeSpans[Number(index)] || '';
+    });
   }
 
+  // BUG-F7-018: pipa yang di-escape (\|) adalah isi sel, bukan pemisah kolom.
+  // Pemecahan naif dengan split('|') menggeser seluruh kolom setelahnya.
   function splitTableRow(line) {
-    return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(function (cell) { return cell.trim(); });
+    var trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+    var cells = [];
+    var current = '';
+    for (var i = 0; i < trimmed.length; i += 1) {
+      var ch = trimmed.charAt(i);
+      if (ch === '\\' && trimmed.charAt(i + 1) === '|') {
+        current += '|';
+        i += 1;
+        continue;
+      }
+      if (ch === '|') {
+        cells.push(current.trim());
+        current = '';
+        continue;
+      }
+      current += ch;
+    }
+    cells.push(current.trim());
+    return cells;
   }
   function isTableLine(line) { return /^\|.*\|$/.test(line.trim()); }
   function isSeparatorRow(cells) {

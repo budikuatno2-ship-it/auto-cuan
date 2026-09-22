@@ -31,8 +31,10 @@
   // no re-parsing. The pure functions below are unchanged and remain the single
   // definition of direction and actionability.
   var VERSION = '20260813-pattern-direction-safety-v2';
-  var BULLISH_LABEL = /\b(?:bull(?:ish)?|uptrend|ascending|double bottom|inverse head|cup and handle|vcp|before rally|reclaim)\b/i;
-  var BEARISH_LABEL = /\b(?:bear(?:ish)?|downtrend|descending|double top|head and shoulders|rising wedge|inverted cup|distribution)\b/i;
+  // BUG-F7-007: Inverted/Inverse Head & Shoulders adalah pola bullish reversal,
+  // sehingga "head and shoulders" hanya bearish bila TIDAK didahului inverted/inverse.
+  var BULLISH_LABEL = /\b(?:bull(?:ish)?|uptrend|ascending|double bottom|inverse head|inverted head|cup and handle|vcp|before rally|reclaim)\b/i;
+  var BEARISH_LABEL = /\b(?:bear(?:ish)?|downtrend|descending|double top|(?<!inverted\s)(?<!inverse\s)head and shoulders|rising wedge|inverted cup|distribution)\b/i;
 
   function finite(value) {
     var number = Number(value);
