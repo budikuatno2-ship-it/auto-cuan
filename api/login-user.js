@@ -586,7 +586,7 @@ module.exports = async function handler(req, res) {
 
     // Device is new — check if there's room
     if (currentDevices.length >= MAX_DEVICES) {
-      if (usernameLower === 'budi') {
+      if (effectiveUsername === 'budi') {
         const bot = createVerifyBot();
         const approval = await adminDeviceApproval.createDeviceApprovalRequest(
           { supabase, bot },

@@ -32,7 +32,10 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const submittedToken = (req.body && req.body.token) || (req.query && req.query.token) || (req.headers && (req.headers['x-review-token'] || req.headers['X-Review-Token']));
+    if (req.query && req.query.token) {
+      return res.status(400).json({ success: false, error: 'Token review tidak boleh dikirim melalui query parameter.' });
+    }
+    const submittedToken = (req.body && req.body.token) || (req.headers && (req.headers['x-review-token'] || req.headers['X-Review-Token']));
 
     // Fail closed. This used to fall back to a literal default token, which was
     // also written twice into public/index.html — so the gate's secret was
@@ -46,13 +49,10 @@ module.exports = async function handler(req, res) {
       return res.status(403).json({ success: false, error: 'Token review tidak valid.' });
     }
 
-    // Timing-safe comparison — a plain !== leaks early-mismatch timing, and every
-    // other secret compare in this codebase (login-user.js, sector-hot.js cron
-    // secret) already uses timingSafeEqual.
-    const tokenBuf = Buffer.from(String(submittedToken || ''));
-    const expectedBuf = Buffer.from(EXPECTED_TOKEN);
-    const tokenValid = tokenBuf.length === expectedBuf.length &&
-      crypto.timingSafeEqual(tokenBuf, expectedBuf);
+    // Constant-time comparison using sha256 hashes to prevent length-leak timing attacks
+    const tokenHash = crypto.createHash('sha256').update(String(submittedToken || '')).digest();
+    const expectedHash = crypto.createHash('sha256').update(EXPECTED_TOKEN).digest();
+    const tokenValid = crypto.timingSafeEqual(tokenHash, expectedHash);
     if (!tokenValid) {
       return res.status(403).json({ success: false, error: 'Token review tidak valid.' });
     }
