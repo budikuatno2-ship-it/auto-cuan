@@ -45,9 +45,12 @@ var clock = { now: function() { return new Date(); } };
 // scripted ticker sweeps that would otherwise hammer the upstream provider.
 var candlesLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 60 });
 
+// BUG-CAN-01: akses Pattern Map/Classic Patterns adalah hak setiap sesi admin
+// yang sah, bukan milik satu username yang di-hardcode. Memeriksa nama personal
+// mematikan fitur visualisasi pattern untuk seluruh akun admin lain.
 function hasPatternMapAccess(req) {
   var auth = adminSession.requireAdminSession(req);
-  return auth.ok === true && String(auth.session && auth.session.un || '').trim().toLowerCase() === 'budi';
+  return auth.ok === true;
 }
 
 function responseForRequest(data, req) {
@@ -90,8 +93,10 @@ module.exports = async function handler(req, res) {
     ticker = String(ticker).toUpperCase().trim().replace(/\.JK$/i, '');
     // Normalize IHSG aliases
     if (ticker === 'JKSE' || ticker === 'JCI' || ticker === 'COMPOSITE') ticker = 'IHSG';
-    if (!/^[A-Z]{3,5}$/.test(ticker)) {
-      return res.status(400).json({ error: 'Format ticker tidak valid.' });
+    // BUG-CAN-03: simbol benchmark resmi BEI memuat angka (LQ45, IDX30, ^JKSE),
+    // sehingga pola huruf-saja menolak instrumen perbandingan utama bursa.
+    if (!/^[A-Z0-9]{3,6}$/.test(ticker)) {
+      return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
     }
 
     var cached = cache[ticker];
@@ -156,14 +161,18 @@ module.exports = async function handler(req, res) {
       var c = closes[i], o = opens[i], h = highs[i], l = lows[i], v = volumes[i];
       var timestampSeconds = t1Policy.normalizeUnixTimestampSeconds(timestamps[i]);
       var candleDate = timestampSeconds == null ? null : t1Policy.formatJakartaDate(new Date(timestampSeconds * 1000));
-      if (candleDate && c != null && o != null && h != null && l != null && !isNaN(c)) {
+      // BUG-CAN-02: `!isNaN(c)` meloloskan NaN pada open/high/low (dan menerima
+      // Infinity). Setiap field OHLC harus finite agar tidak ada candle rusak
+      // yang masuk ke indikator.
+      var oNum = Number(o), hNum = Number(h), lNum = Number(l), cNum = Number(c);
+      if (candleDate && Number.isFinite(oNum) && Number.isFinite(hNum) && Number.isFinite(lNum) && Number.isFinite(cNum)) {
         candles.push({
           time: candleDate,
-          open: Math.round(o * 100) / 100,
-          high: Math.round(h * 100) / 100,
-          low: Math.round(l * 100) / 100,
-          close: Math.round(c * 100) / 100,
-          volume: v || 0
+          open: Math.round(oNum * 100) / 100,
+          high: Math.round(hNum * 100) / 100,
+          low: Math.round(lNum * 100) / 100,
+          close: Math.round(cNum * 100) / 100,
+          volume: Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : 0
         });
       }
     }
@@ -299,6 +308,10 @@ function calcRSI(closes, period) {
   return Number.isFinite(rsi) ? Math.round(rsi * 100) / 100 : null;
 }
 
+// Volume ratio vs the trailing `period`-bar average. The averaging window is
+// defined by test/chart-t1-candles.test.js (the SSOT for this endpoint): the
+// reported volumeAvg20 includes the latest bar, and volumeVsAvg20 is that same
+// latest volume divided by it. Kept as-is to preserve that contract.
 function calcVolumeRatio(volumeArr, latestVol, period) {
   var avg = calcMA(volumeArr, period);
   if (!avg || avg <= 0 || !Number.isFinite(avg)) return 0;

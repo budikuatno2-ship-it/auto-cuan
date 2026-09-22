@@ -25,7 +25,7 @@ test('FRONTEND FASE 7 BATCH 4: AI Chat Renderer & Markdown Formatting Bugs', asy
   await t.test('BUG-F7-017: inlineFormat merusak token di dalam inline code yang mengandung double asterisk atau underscore', () => {
     const raw = 'Gunakan fungsi __init__ untuk inisialisasi.';
     const rendered = AutoCuanAI.renderMarkdown(raw);
-    
+
     assert.strictEqual(
       rendered.includes('<code>__init__</code>'),
       true,
@@ -39,9 +39,9 @@ test('FRONTEND FASE 7 BATCH 4: AI Chat Renderer & Markdown Formatting Bugs', asy
       '| --- | --- |',
       '| Target \\| Stop | 1000 / 950 |'
     ].join('\n');
-    
+
     const rendered = AutoCuanAI.renderMarkdown(tableText);
-    
+
     assert.strictEqual(
       rendered.includes('<td>Target | Stop</td>') || rendered.includes('<td>Target \\| Stop</td>') || rendered.includes('<dt>Target | Stop</dt>') || rendered.includes('<dt>Target \\| Stop</dt>'),
       true,

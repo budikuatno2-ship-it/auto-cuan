@@ -107,9 +107,19 @@ async function fetchFreshScreenerLatestPrice(ticker) {
   var rows = {};
   await Promise.all(latestPriceResolver.SOURCES.map(async function(source) {
     try {
-      var url = base + '/rest/v1/' + source.table + '?ticker=eq.' + encodeURIComponent(ticker) + '&limit=1';
+      // BUG-QUOTE-02: tanpa klausa order, PostgREST mengembalikan baris pertama
+      // hasil disk scan — bisa run kemarin yang usang. Harga portofolio lalu
+      // dihitung dari data lama. Urutkan terbaru dulu, dan fail-safe bila tabel
+      // tidak punya kolom timestamp yang diminta.
+      var orderClause = source.order || 'calculated_at.desc,updated_at.desc';
+      var url = base + '/rest/v1/' + source.table + '?ticker=eq.' + encodeURIComponent(ticker) + '&order=' + orderClause + '&limit=1';
       var response = await fetch(url, { headers: { apikey: key, Authorization: 'Bearer ' + key } });
-      if (!response.ok) return;
+      if (!response.ok) {
+        // Fallback: sebagian deployment belum memiliki kolom order tersebut.
+        var fallbackUrl = base + '/rest/v1/' + source.table + '?ticker=eq.' + encodeURIComponent(ticker) + '&limit=1';
+        response = await fetch(fallbackUrl, { headers: { apikey: key, Authorization: 'Bearer ' + key } });
+        if (!response.ok) return;
+      }
       var data = await response.json();
       rows[source.table] = data && data[0] || null;
     } catch (_) { /* a missing fallback table must not break quotes */ }
@@ -297,8 +307,10 @@ module.exports = async function handler(req, res) {
     ticker = String(ticker).toUpperCase().trim().replace(/\.JK$/i, '');
     // Normalize IHSG aliases to canonical 'IHSG'
     if (ticker === 'JKSE' || ticker === 'JCI' || ticker === 'COMPOSITE') ticker = 'IHSG';
-    if (!/^[A-Z]{3,5}$/.test(ticker) && ticker !== 'IHSG') {
-      return res.status(400).json({ error: 'Format ticker tidak valid.' });
+    // BUG-QUOTE-05: simbol benchmark resmi BEI memuat angka (LQ45, IDX30).
+    // Pola huruf-saja menolaknya dengan 400 padahal itu instrumen perbandingan utama.
+    if (!/^[A-Z0-9]{3,6}$/.test(ticker) && ticker !== 'IHSG') {
+      return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
     }
 
     // IHSG/Index: skip board data, use ^JKSE for Yahoo
@@ -1486,20 +1498,38 @@ function calcMA(prices, period) {
   return Math.round((sum / period) * 100) / 100;
 }
 
+// BUG-QUOTE-06: satu elemen null/NaN membuat gains & losses menjadi NaN, dan
+// fungsi mengembalikan NaN. NaN itu lalu menular ke seluruh perbandingan
+// momentum di calculateAutoCuanScore/calculateSetupLabel tanpa melempar error
+// (silent failure). Data rusak harus dinyatakan sebagai null, bukan NaN.
 function calcRSI(closes, period) {
   if (!closes || closes.length < period + 1) return null;
+  var p = Number(period);
+  if (!Number.isFinite(p) || p <= 0) return null;
   var gains = 0, losses = 0;
-  for (var i = closes.length - period; i < closes.length; i++) {
-    var diff = closes[i] - closes[i - 1];
+  for (var i = closes.length - p; i < closes.length; i++) {
+    // Number(null) and Number('') are both 0, which would silently turn a
+    // missing reading into a real price. Reject the raw shape first.
+    var rawCurrent = closes[i];
+    var rawPrevious = closes[i - 1];
+    if (rawCurrent == null || rawPrevious == null) return null;
+    if (typeof rawCurrent === 'string' && !rawCurrent.trim()) return null;
+    if (typeof rawPrevious === 'string' && !rawPrevious.trim()) return null;
+    var current = Number(rawCurrent);
+    var previous = Number(rawPrevious);
+    if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
+    var diff = current - previous;
     if (diff > 0) gains += diff;
     else losses -= diff;
   }
-  var avgGain = gains / period;
-  var avgLoss = losses / period;
+  var avgGain = gains / p;
+  var avgLoss = losses / p;
+  if (!Number.isFinite(avgGain) || !Number.isFinite(avgLoss)) return null;
   if (avgGain === 0 && avgLoss === 0) return 50;
   if (avgLoss === 0) return 100;
   var rs = avgGain / avgLoss;
-  return Math.round((100 - (100 / (1 + rs))) * 100) / 100;
+  var rsi = 100 - (100 / (1 + rs));
+  return Number.isFinite(rsi) ? Math.round(rsi * 100) / 100 : null;
 }
 
 
@@ -2275,9 +2305,6 @@ function calculateRiskGuard(quote, board) {
     riskScore += 20;
     reasons.push('Setup Label: Bearish Continuation — trend turun berlanjut');
     warnings.push('bearish_continuation_label');
-  } else if (setupStatus === 'Breakdown Risk') {
-    riskScore += 15;
-    reasons.push('Setup Label: breakdown risk terdeteksi');
   } else if (setupStatus === 'Sideways / No Trade') {
     riskScore += 5;
   }
@@ -2410,8 +2437,15 @@ function calculateRiskGuard(quote, board) {
     if (!floorTrigger) floorTrigger = 'Grade C + speculative label → minimum Medium';
   }
 
-  // Enforce floor
-  if (riskScore < minimumScore) {
+  // Enforce floor.
+  //
+  // BUG-QUOTE-04: tanpa memeriksa minimumScore > 0, pengurangan skor oleh
+  // katalis positif bisa menurunkan riskScore di bawah 0 dan memicu
+  // floorApplied = true padahal tidak ada floor yang berlaku (floorTrigger
+  // tetap null). Klien lalu menerima metadata anomali
+  // { floors: { applied: true, trigger: null } } yang membingungkan UI.
+  // Floor hanya "applied" bila memang ada kebijakan floor yang aktif.
+  if (minimumScore > 0 && riskScore < minimumScore) {
     riskScore = minimumScore;
     floorApplied = true;
   }
@@ -2651,15 +2685,28 @@ function calculateFibonacciLevels(candles) {
     fibTrend = 'downward_retracement'; // near lows
   }
 
-  // Calculate Fibonacci levels
-  // For upward retracement: levels measured from swing high down
-  // fib236 = swingHigh - 0.236 * range (closest to high)
-  // fib786 = swingHigh - 0.786 * range (closest to low)
-  var fib236 = idxTick.roundToIdxTick(swingHigh - 0.236 * fibRange, 'nearest');
-  var fib382 = idxTick.roundToIdxTick(swingHigh - 0.382 * fibRange, 'nearest');
-  var fib500 = idxTick.roundToIdxTick(swingHigh - 0.500 * fibRange, 'nearest');
-  var fib618 = idxTick.roundToIdxTick(swingHigh - 0.618 * fibRange, 'nearest');
-  var fib786 = idxTick.roundToIdxTick(swingHigh - 0.786 * fibRange, 'nearest');
+  // Calculate Fibonacci levels.
+  //
+  // BUG-QUOTE-01: arah pengukuran bergantung pada konteks tren. Selalu
+  // mengurangkan dari swingHigh membalik level 180 derajat pada rebound dari
+  // harga rendah: level terendah dilabeli 78.6% dan tertinggi 23.6%, sehingga
+  // Fib 23.6% tidak lagi berada lebih dekat ke low dibanding Fib 78.6%.
+  //   upward_retracement   -> diukur dari swingHigh turun (koreksi dalam uptrend)
+  //   downward_retracement -> diukur dari swingLow naik (rebound dalam downtrend)
+  var fib236, fib382, fib500, fib618, fib786;
+  if (fibTrend === 'downward_retracement') {
+    fib236 = idxTick.roundToIdxTick(swingLow + 0.236 * fibRange, 'nearest');
+    fib382 = idxTick.roundToIdxTick(swingLow + 0.382 * fibRange, 'nearest');
+    fib500 = idxTick.roundToIdxTick(swingLow + 0.500 * fibRange, 'nearest');
+    fib618 = idxTick.roundToIdxTick(swingLow + 0.618 * fibRange, 'nearest');
+    fib786 = idxTick.roundToIdxTick(swingLow + 0.786 * fibRange, 'nearest');
+  } else {
+    fib236 = idxTick.roundToIdxTick(swingHigh - 0.236 * fibRange, 'nearest');
+    fib382 = idxTick.roundToIdxTick(swingHigh - 0.382 * fibRange, 'nearest');
+    fib500 = idxTick.roundToIdxTick(swingHigh - 0.500 * fibRange, 'nearest');
+    fib618 = idxTick.roundToIdxTick(swingHigh - 0.618 * fibRange, 'nearest');
+    fib786 = idxTick.roundToIdxTick(swingHigh - 0.786 * fibRange, 'nearest');
+  }
 
   // Find nearest Fibonacci level
   var fibLevels = [
@@ -2673,13 +2720,14 @@ function calculateFibonacciLevels(candles) {
   var nearest = findNearestFibLevel(latestClose, fibLevels);
   var positionReading = interpretFibonacciPosition(latestClose, fibTrend, nearest, fibLevels, swingHigh, swingLow);
 
-  // Invalidation level: depends on trend context
+  // Invalidation level: depends on trend context.
+  // Uptrend: breakdown di bawah Fib 61.8% melemahkan skenario rebound.
+  // Downtrend: level invalidasi harus dekat swing LOW (bukan dekat high),
+  // karena breakout ke atas level itulah yang membatalkan skenario downtrend.
   var invalidationLevel;
   if (fibTrend === 'upward_retracement') {
-    // Breakdown below Fib 61.8% weakens rebound scenario
     invalidationLevel = fib618;
   } else {
-    // Breakout above Fib 38.2% weakens downtrend scenario
     invalidationLevel = fib382;
   }
 
@@ -2778,5 +2826,8 @@ module.exports.__test = {
   handleDailyMarketContextListAction: handleDailyMarketContextListAction,
   hasVerifiedSession: hasVerifiedSession,
   redactAdvancedQuoteFields: redactAdvancedQuoteFields,
-  calcRSI: calcRSI
+  calcRSI: calcRSI,
+  calculateFibonacciLevels: calculateFibonacciLevels,
+  calculateSetupLabel: calculateSetupLabel,
+  calculateRiskGuard: typeof calculateRiskGuard === 'function' ? calculateRiskGuard : null
 };

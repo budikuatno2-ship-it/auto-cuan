@@ -7,6 +7,7 @@
   "test/frontend-fase7-batch2-bugs.test.js",
   "test/frontend-fase7-batch3-bugs.test.js",
   "test/frontend-fase7-batch4-bugs.test.js",
+  "test/api-fase7-batch1-bugs.test.js",
   "test/bandarmologi-fase4-bugs.test.js",
   "test/screener-fase3-bugs.test.js",
   "test/screener-fase3-batch2-bugs.test.js",
