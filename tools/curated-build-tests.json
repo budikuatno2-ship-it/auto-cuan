@@ -1,4 +1,7 @@
 [
+  "test/screener-fase3-bugs.test.js",
+  "test/screener-fase3-batch2-bugs.test.js",
+  "test/screener-fase3-batch3-bugs.test.js",
   "test/context-ai-router-bugs.test.js",
   "test/context-ai-router-v4-bugs.test.js",
   "test/context-ai-router-v5-bugs.test.js",
