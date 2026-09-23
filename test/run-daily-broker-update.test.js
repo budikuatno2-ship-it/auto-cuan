@@ -19,12 +19,28 @@ test.afterEach(() => { process.exitCode = undefined; });
 function withTempDataDir(fn) {
   const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'daily-update-'));
   const origEnv = process.env.ARJUM_DATA_DIR;
+  // HERMETIC: run() also triggers the intel pre-calculation, which writes the
+  // PERSISTENT index dir. ARJUM_DATA_DIR alone did not cover it, so every run of
+  // this test rewrote the committed data/bandarmologi-intel-indexes files
+  // (verified by mtime bisection). Redirect both roots into the temp dir.
+  const origIntelIndex = process.env.INTEL_INDEX_DIR;
+  const origIntelCache = process.env.INTEL_CACHE_DIR;
+  const origHunterIndex = process.env.BROKER_HUNTER_INDEX_DIR;
   process.env.ARJUM_DATA_DIR = tmpBase;
+  process.env.INTEL_INDEX_DIR = path.join(tmpBase, 'bandarmologi-intel-indexes');
+  process.env.INTEL_CACHE_DIR = path.join(tmpBase, 'bandarmologi-intel');
+  process.env.BROKER_HUNTER_INDEX_DIR = path.join(tmpBase, 'broker-hunter-indexes');
   return Promise.resolve()
     .then(() => fn(tmpBase))
     .finally(() => {
       if (origEnv !== undefined) process.env.ARJUM_DATA_DIR = origEnv;
       else delete process.env.ARJUM_DATA_DIR;
+      if (origIntelIndex !== undefined) process.env.INTEL_INDEX_DIR = origIntelIndex;
+      else delete process.env.INTEL_INDEX_DIR;
+      if (origIntelCache !== undefined) process.env.INTEL_CACHE_DIR = origIntelCache;
+      else delete process.env.INTEL_CACHE_DIR;
+      if (origHunterIndex !== undefined) process.env.BROKER_HUNTER_INDEX_DIR = origHunterIndex;
+      else delete process.env.BROKER_HUNTER_INDEX_DIR;
       fs.rmSync(tmpBase, { recursive: true, force: true });
     });
 }
