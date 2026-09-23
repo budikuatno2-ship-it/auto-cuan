@@ -265,9 +265,163 @@ test('In-run deduplication suppresses multiple hits for the same ticker in the s
     assert.equal(sentCalls.length, 1, 'In-run deduplication must prevent duplicate TP1_HIT alert for same ticker TAPG');
     assert.equal(sentCalls[0].options.ticker, 'TAPG', 'Must pass ticker parameter');
     assert.equal(sentCalls[0].options.status, 'TP1_HIT', 'Must pass status parameter');
+    assert.equal(sentCalls[0].options.alert_key, 'MONITOR:TAPG', 'Monitor alerts must carry the namespaced alert_key so the 20-minute sliding cooldown engages');
   } finally {
     telegramNotifier.sendTelegramMessage = origSend;
   }
+});
+
+// ---------------------------------------------------------------------------
+// STAGE 2: hourly batch recap deduplication + stale-row filtering
+// ---------------------------------------------------------------------------
+
+test('STAGE2: the hourly batch recap carries a fixed alert_key so a re-entrant run cannot double-post', async () => {
+  const sentCalls = [];
+  const origSend = telegramNotifier.sendTelegramMessage;
+  telegramNotifier.sendTelegramMessage = async (text, options) => {
+    sentCalls.push({ text, options });
+    return { sent: true, skipped: false };
+  };
+
+  try {
+    const NOW_ISO = new Date().toISOString();
+    monitorClock.getJakartaMinute = () => 0;
+    const sup = makeMonitorSupabase({
+      rows: [{
+        id: 301, ticker: 'TEST', date: jakartaToday(), status: 'WAITING', is_final: false,
+        entry1: 100, entry2: 98, tp1: 110, tp2: 120, sl: 95,
+        first_sent_at: NOW_ISO, hit_entry_at: null,
+        category: 'Swing Konglo', raw_payload: { monitor_source: 'swing_konglo' }
+      }],
+      daytradePrices: { TEST: { last_price: 99, open_price: 99, high_price: 99, low_price: 99, calculated_at: NOW_ISO } }
+    });
+    const req = { method: 'GET', headers: { authorization: 'Bearer ' + process.env.CRON_SECRET }, query: { force: '1' } };
+    const res = { status() { return this; }, json(d) { this.body = d; return this; } };
+    await handleTelegramMonitorPicks(req, res, sup);
+
+    assert.equal(sentCalls.length, 1, 'exactly one recap send at the top of the hour');
+    assert.match(String(sentCalls[0].options.alert_key || ''), /^MONITOR:BATCH:/);
+    assert.equal(sentCalls[0].options.status, 'MONITOR_BATCH');
+  } finally {
+    telegramNotifier.sendTelegramMessage = origSend;
+  }
+});
+
+test('STAGE2: the recap is deduplicated per TICKER — two plan rows for one stock render one block', async () => {
+  const sentCalls = [];
+  const origSend = telegramNotifier.sendTelegramMessage;
+  telegramNotifier.sendTelegramMessage = async (text, options) => {
+    sentCalls.push({ text, options });
+    return { sent: true, skipped: false };
+  };
+
+  try {
+    const NOW_ISO = new Date().toISOString();
+    monitorClock.getJakartaMinute = () => 0;
+    const sup = makeMonitorSupabase({
+      rows: [
+        {
+          id: 401, ticker: 'TAPG', date: jakartaToday(), status: 'WAITING', is_final: false,
+          entry1: 100, entry2: 98, tp1: 110, tp2: 120, sl: 95,
+          first_sent_at: NOW_ISO, hit_entry_at: null,
+          category: 'Swing Konglo', plan_lock_id: 'tplock_A',
+          raw_payload: { monitor_source: 'swing_konglo', plan_lock_id: 'tplock_A' }
+        },
+        {
+          id: 402, ticker: 'TAPG', date: jakartaToday(), status: 'WAITING', is_final: false,
+          entry1: 101, entry2: 99, tp1: 111, tp2: 121, sl: 96,
+          first_sent_at: NOW_ISO, hit_entry_at: null,
+          category: 'Swing Konglo', plan_lock_id: 'tplock_B',
+          raw_payload: { monitor_source: 'swing_konglo', plan_lock_id: 'tplock_B' }
+        }
+      ],
+      daytradePrices: { TAPG: { last_price: 99, open_price: 99, high_price: 99, low_price: 99, calculated_at: NOW_ISO } }
+    });
+    const req = { method: 'GET', headers: { authorization: 'Bearer ' + process.env.CRON_SECRET }, query: { force: '1' } };
+    const res = { status() { return this; }, json(d) { this.body = d; return this; } };
+    await handleTelegramMonitorPicks(req, res, sup);
+
+    assert.equal(sentCalls.length, 1);
+    const recap = sentCalls[0].text;
+    const tapgBlocks = recap.split('\n').filter(l => /^TAPG · /.test(l));
+    assert.equal(tapgBlocks.length, 1, 'TAPG must appear exactly once in the recap, got: ' + JSON.stringify(tapgBlocks));
+    assert.equal(res.body.shown_count, 1, 'only one recap block is counted as shown');
+    assert.equal(res.body.digest_ticker_deduped_count, 1, 'the second plan row is reported as ticker-deduped');
+  } finally {
+    telegramNotifier.sendTelegramMessage = origSend;
+  }
+});
+
+test('STAGE2: EXPIRED rows more than 10% away from the plan are dropped from the recap', async () => {
+  const sentCalls = [];
+  const origSend = telegramNotifier.sendTelegramMessage;
+  telegramNotifier.sendTelegramMessage = async (text, options) => {
+    sentCalls.push({ text, options });
+    return { sent: true, skipped: false };
+  };
+
+  try {
+    const NOW_ISO = new Date().toISOString();
+    monitorClock.getJakartaMinute = () => 0;
+    // An old recommendation date makes the row EXPIRED; the price is 20% above
+    // the entry, well past the 10% deviation bound.
+    const sup = makeMonitorSupabase({
+      rows: [
+        {
+          id: 501, ticker: 'DRFT', date: '2026-01-05', status: 'WAITING', is_final: false,
+          entry1: 100, entry2: 100, tp1: 130, tp2: 150, sl: 90,
+          first_sent_at: '2026-01-05T02:00:00.000Z', hit_entry_at: null,
+          category: 'Swing Konglo', raw_payload: { monitor_source: 'swing_konglo' }
+        },
+        {
+          id: 502, ticker: 'KEEP', date: '2026-01-05', status: 'WAITING', is_final: false,
+          entry1: 100, entry2: 100, tp1: 130, tp2: 150, sl: 90,
+          first_sent_at: '2026-01-05T02:00:00.000Z', hit_entry_at: null,
+          category: 'Swing Konglo', raw_payload: { monitor_source: 'swing_konglo' }
+        }
+      ],
+      daytradePrices: {
+        DRFT: { last_price: 120, open_price: 120, high_price: 120, low_price: 120, calculated_at: NOW_ISO },
+        KEEP: { last_price: 103, open_price: 103, high_price: 103, low_price: 103, calculated_at: NOW_ISO }
+      }
+    });
+    const req = { method: 'GET', headers: { authorization: 'Bearer ' + process.env.CRON_SECRET }, query: { force: '1' } };
+    const res = { status() { return this; }, json(d) { this.body = d; return this; } };
+    await handleTelegramMonitorPicks(req, res, sup);
+
+    assert.equal(sentCalls.length, 1);
+    const recap = sentCalls[0].text;
+    assert.doesNotMatch(recap, /^DRFT · /m, 'a stale row >10% off-plan must not pad the recap');
+    assert.equal(res.body.digest_stale_dropped_count >= 1, true, 'the dropped stale row is reported');
+  } finally {
+    telegramNotifier.sendTelegramMessage = origSend;
+  }
+});
+
+test('STAGE2: monitorRowWorthDigest keeps non-stale statuses and near-plan stale rows', () => {
+  const { monitorRowWorthDigest, MONITOR_EXPIRED_MAX_DEVIATION } = sectorHot.__test;
+  assert.equal(MONITOR_EXPIRED_MAX_DEVIATION, 0.10);
+  const pick = { entry1: 100, entry2: 100 };
+  // Non-stale statuses always pass regardless of price drift.
+  assert.equal(monitorRowWorthDigest(pick, { status: 'IN_ENTRY_ZONE' }, { last: 500 }), true);
+  assert.equal(monitorRowWorthDigest(pick, { status: 'RUNNING' }, { last: 500 }), true);
+  // Stale statuses pass only while inside the deviation bound.
+  assert.equal(monitorRowWorthDigest(pick, { status: 'EXPIRED' }, { last: 109 }), true);
+  assert.equal(monitorRowWorthDigest(pick, { status: 'EXPIRED' }, { last: 110 }), true);
+  assert.equal(monitorRowWorthDigest(pick, { status: 'EXPIRED' }, { last: 111 }), false);
+  // 91 is 9% below entry (inside the bound); 89 is 11% (outside).
+  assert.equal(monitorRowWorthDigest(pick, { status: 'NEEDS_REVALIDATION' }, { last: 91 }), true);
+  assert.equal(monitorRowWorthDigest(pick, { status: 'NEEDS_REVALIDATION' }, { last: 89 }), false);
+  // Missing evidence never fabricates a drop.
+  assert.equal(monitorRowWorthDigest(pick, { status: 'EXPIRED' }, { last: null }), true);
+  assert.equal(monitorRowWorthDigest({}, { status: 'EXPIRED' }, { last: 10 }), true);
+});
+
+test('STAGE2: buildMonitorDigestTickerKey normalizes to a single upper-case ticker key', () => {
+  const { buildMonitorDigestTickerKey } = sectorHot.__test;
+  assert.equal(buildMonitorDigestTickerKey({ ticker: ' tapg ' }), 'TAPG');
+  assert.equal(buildMonitorDigestTickerKey({ ticker: null }), '');
+  assert.equal(buildMonitorDigestTickerKey(null), '');
 });
 
 test('isConfirmedDayTradeSignal strictly validates setup status and quality grade', () => {

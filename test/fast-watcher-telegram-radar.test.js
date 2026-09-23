@@ -1,5 +1,20 @@
 'use strict';
 
+/**
+ * Radar publisher — Telegram contract.
+ *
+ * STAGE 2 CONTRACT (confirmed-only publication): the Day Trade Telegram
+ * channel must never receive raw pre-confirmation watch signals. Radar
+ * candidates with 0/2 (EARLY WATCH) or 1/2 (RADAR PRIORITAS) confirmations
+ * are recorded in the radar ledger for observability but are NOT sent. Only
+ * a candidate that has reached full confirmation — `ready_streak >= 2`
+ * (2/2 Terkonfirmasi) or a confirmed pool status (READY_CONFIRMED /
+ * A_PLUS_SETUP / TRADE_CANDIDATE / READY_BREAKOUT) — may be published.
+ *
+ * The fixtures below therefore carry `ready_streak: 2`; the dedicated
+ * pre-confirmation tests at the bottom of this file assert the block.
+ */
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fsp = require('node:fs/promises');
@@ -12,6 +27,7 @@ function tickerState(extra) {
     active: true,
     status: 'WATCHING',
     source_status: 'WAIT_PULLBACK',
+    ready_streak: 2,
     last_watch_score: 70,
     last_publish_score: 62,
     last_reasons: ['relative_volume_support'],
@@ -124,4 +140,131 @@ test('radar has a separate default-off kill switch', async () => {
   });
   assert.equal(result.attempted, false);
   assert.equal(result.reason, 'radar_kill_switch_off');
+});
+
+// ---------------------------------------------------------------------------
+// STAGE 2: confirmed-only Telegram publication
+// ---------------------------------------------------------------------------
+
+test('STAGE2: EARLY WATCH (0/2) radar is recorded but never sent to Telegram', async () => {
+  const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'fw-radar-0of2-'));
+  const messages = [];
+  const item = radar.selectRadarCandidates({ tickers: { KPIG: tickerState({ ready_streak: 0 }) } })[0];
+  const result = await radar.publishRadar({
+    sampleDate: '2026-07-31',
+    scheduledTime: '10:10',
+    radarDir: root,
+    candidates: [item],
+    env: {
+      FAST_WATCHER_LIVE_ENABLED: '1',
+      FAST_WATCHER_PUBLISH_ENABLED: '1',
+      FAST_WATCHER_TELEGRAM_ENABLED: '1',
+      FAST_WATCHER_RADAR_TELEGRAM_ENABLED: '1',
+      FAST_WATCHER_TELEGRAM_CHAT_ID: '-1001'
+    },
+    notifyFn: async message => { messages.push(message); return { sent: true }; }
+  });
+  assert.equal(result.telegram_sent, 0);
+  assert.equal(result.reason, 'preconfirmation_radar_blocked');
+  assert.equal(messages.length, 0, '0/2 EARLY WATCH must not reach the channel');
+  assert.equal(result.preconfirmation_blocked.length, 1);
+  assert.equal(result.preconfirmation_blocked[0].ticker, 'KPIG');
+  // Observability preserved: the ledger still records the observation.
+  const ledger = JSON.parse(await fsp.readFile(path.join(root, '2026-07-31.json'), 'utf8'));
+  assert.ok(ledger.tickers.KPIG);
+  assert.equal(ledger.tickers.KPIG.telegram_suppressed_reason, 'preconfirmation_radar_blocked');
+  assert.equal(ledger.tickers.KPIG.sent_at, undefined);
+});
+
+test('STAGE2: RADAR PRIORITAS (1/2) radar is recorded but never sent to Telegram', async () => {
+  const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'fw-radar-1of2-'));
+  const messages = [];
+  const item = radar.selectRadarCandidates({ tickers: { KPIG: tickerState({ ready_streak: 1 }) } })[0];
+  const result = await radar.publishRadar({
+    sampleDate: '2026-07-31',
+    scheduledTime: '10:10',
+    radarDir: root,
+    candidates: [item],
+    env: {
+      FAST_WATCHER_LIVE_ENABLED: '1',
+      FAST_WATCHER_PUBLISH_ENABLED: '1',
+      FAST_WATCHER_TELEGRAM_ENABLED: '1',
+      FAST_WATCHER_RADAR_TELEGRAM_ENABLED: '1',
+      FAST_WATCHER_TELEGRAM_CHAT_ID: '-1001'
+    },
+    notifyFn: async message => { messages.push(message); return { sent: true }; }
+  });
+  assert.equal(result.telegram_sent, 0);
+  assert.equal(result.reason, 'preconfirmation_radar_blocked');
+  assert.equal(messages.length, 0, '1/2 RADAR PRIORITAS must not reach the channel');
+});
+
+test('STAGE2: confirmation helpers classify 0/2, 1/2 and 2/2 correctly', () => {
+  assert.equal(radar.isPreConfirmationItem({ status: 'WATCHING', ready_streak: 0 }), true);
+  assert.equal(radar.isPreConfirmationItem({ status: 'READY_PENDING', ready_streak: 1 }), true);
+  assert.equal(radar.isFullyConfirmedItem({ status: 'READY_PENDING', ready_streak: 2 }), true);
+  assert.equal(radar.isPreConfirmationItem({ status: 'READY_PENDING', ready_streak: 2 }), false);
+  assert.equal(radar.isFullyConfirmedItem({ status: 'READY_CONFIRMED', ready_streak: 3 }), true);
+  assert.equal(radar.isFullyConfirmedItem({ status: 'A_PLUS_SETUP', ready_streak: 0 }), true);
+  assert.equal(radar.confirmationCountOf({ ready_streak: 2 }), 2);
+});
+
+// ---------------------------------------------------------------------------
+// STAGE 2: hard cut-off 14:30 WIB (AFTERNOON_EXIT rule)
+// ---------------------------------------------------------------------------
+
+test('STAGE2: no new radar after 14:30 WIB — the 15:37 WIB pre-close send is blocked', async () => {
+  const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'fw-radar-cutoff-'));
+  const messages = [];
+  const item = radar.selectRadarCandidates({ tickers: { KPIG: tickerState() } })[0];
+  const result = await radar.publishRadar({
+    sampleDate: '2026-07-31',
+    scheduledTime: '15:37',
+    radarDir: root,
+    candidates: [item],
+    env: {
+      FAST_WATCHER_LIVE_ENABLED: '1',
+      FAST_WATCHER_PUBLISH_ENABLED: '1',
+      FAST_WATCHER_TELEGRAM_ENABLED: '1',
+      FAST_WATCHER_RADAR_TELEGRAM_ENABLED: '1',
+      FAST_WATCHER_TELEGRAM_CHAT_ID: '-1001'
+    },
+    notifyFn: async message => { messages.push(message); return { sent: true }; }
+  });
+  assert.equal(result.telegram_sent, 0);
+  assert.equal(result.reason, 'after_1430_wib_cutoff');
+  assert.equal(messages.length, 0, 'no radar may be sent at 15:37 WIB');
+  assert.deepEqual(result.radar_candidates_suppressed, ['KPIG']);
+});
+
+test('STAGE2: 14:30 WIB itself is still inside the radar window (cut-off is strictly after)', () => {
+  assert.equal(radar.evaluateRadarTimeWindow('14:30').allowed, true);
+  assert.equal(radar.evaluateRadarTimeWindow('14:31').allowed, false);
+  assert.equal(radar.evaluateRadarTimeWindow('14:31').reason, 'after_1430_wib_cutoff');
+  assert.equal(radar.evaluateRadarTimeWindow('15:37').allowed, false);
+  assert.equal(radar.evaluateRadarTimeWindow('09:15').allowed, true);
+});
+
+test('STAGE2: pre-confirmation override is default OFF and opt-in only', async () => {
+  assert.equal(radar.PRECONFIRMATION_OVERRIDE_ENV, 'FAST_WATCHER_RADAR_ALLOW_PRECONFIRMATION_TELEGRAM');
+  const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'fw-radar-override-'));
+  const messages = [];
+  const item = radar.selectRadarCandidates({ tickers: { KPIG: tickerState({ ready_streak: 0 }) } })[0];
+  const result = await radar.publishRadar({
+    sampleDate: '2026-07-31',
+    scheduledTime: '10:10',
+    radarDir: root,
+    candidates: [item],
+    env: {
+      FAST_WATCHER_LIVE_ENABLED: '1',
+      FAST_WATCHER_PUBLISH_ENABLED: '1',
+      FAST_WATCHER_TELEGRAM_ENABLED: '1',
+      FAST_WATCHER_RADAR_TELEGRAM_ENABLED: '1',
+      FAST_WATCHER_TELEGRAM_CHAT_ID: '-1001',
+      FAST_WATCHER_RADAR_ALLOW_PRECONFIRMATION_TELEGRAM: '1'
+    },
+    notifyFn: async message => { messages.push(message); return { sent: true }; }
+  });
+  assert.equal(result.telegram_sent, 1, 'the explicit override must still work');
+  assert.equal(messages.length, 1);
 });
