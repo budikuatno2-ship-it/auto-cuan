@@ -203,10 +203,10 @@ function generateMarkdownReport(reportDate, payload, dt, sw) {
   const swM = sw.metrics;
 
   return `# Historical Backtest Report & Walk-Forward Validation
-**As-Of Date:** ${reportDate}  
-**Universe:** ${payload.metadata.strategy_universe.length} IDX Liquid Tickers (LQ45/Kompas100 Proxies)  
-**Historical Period:** ${dt.date_range.start_date} to ${dt.date_range.end_date} (~1 Year, ${dt.date_range.total_trading_days} Trading Days)  
-**Validation Model:** 70% In-Sample / 30% Out-of-Sample Walk-Forward Validation  
+**As-Of Date:** ${reportDate}
+**Universe:** ${payload.metadata.strategy_universe.length} IDX Liquid Tickers (LQ45/Kompas100 Proxies)
+**Historical Period:** ${dt.date_range.start_date} to ${dt.date_range.end_date} (~1 Year, ${dt.date_range.total_trading_days} Trading Days)
+**Validation Model:** 70% In-Sample / 30% Out-of-Sample Walk-Forward Validation
 
 ---
 

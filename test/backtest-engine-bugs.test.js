@@ -19,9 +19,9 @@ const swingEngine = require('../lib/swing-screener-engine');
 
 /**
  * Helper to generate synthetic daily candles
- * @param {number} count 
- * @param {object} baseCandle 
- * @param {string} startDate 
+ * @param {number} count
+ * @param {object} baseCandle
+ * @param {string} startDate
  */
 function generateSyntheticCandles(count, baseCandle = {}, startDate = '2025-01-01') {
   const candles = [];

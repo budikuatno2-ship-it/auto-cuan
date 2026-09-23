@@ -1,8 +1,8 @@
 # Historical Backtest Report & Walk-Forward Validation
-**As-Of Date:** 2026-09-23  
-**Universe:** 29 IDX Liquid Tickers (LQ45/Kompas100 Proxies)  
-**Historical Period:** 2025-09-23 to 2026-09-23 (~1 Year, 245 Trading Days)  
-**Validation Model:** 70% In-Sample / 30% Out-of-Sample Walk-Forward Validation  
+**As-Of Date:** 2026-09-23
+**Universe:** 29 IDX Liquid Tickers (LQ45/Kompas100 Proxies)
+**Historical Period:** 2025-09-23 to 2026-09-23 (~1 Year, 245 Trading Days)
+**Validation Model:** 70% In-Sample / 30% Out-of-Sample Walk-Forward Validation
 
 ---
 
