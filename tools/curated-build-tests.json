@@ -514,5 +514,6 @@
   "test/ui-pattern-filters.test.js",
   "test/user-watchlist-multisource-prices.test.js",
   "test/vercel-readonly-intel-scanner.test.js",
-  "test/vps-api-bridge-tunnel.test.js"
+  "test/vps-api-bridge-tunnel.test.js",
+  "test/regime-adaptive-and-foreign-confluence.test.js"
 ]
