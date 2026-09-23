@@ -239,11 +239,16 @@ test('DEDUPLICATION: publishRadar allows sending in Session 2 even if candidate 
       TELEGRAM_CHAT_ID: '123'
     };
 
+    // STAGE 2: only a FULLY CONFIRMED candidate (2/2 Terkonfirmasi) may be
+    // published to Telegram. The session-aware re-alert behaviour under test
+    // is therefore exercised with a confirmed item; the pre-confirmation
+    // block itself is covered in test/fast-watcher-telegram-radar.test.js.
     const candidate = {
       ticker: 'GOTO',
       status: 'RADAR AKTIF — PANTAU',
       internal_status: 'READY_PENDING',
       source_status: 'RADAR',
+      ready_streak: 2,
       current_price: 80,
       entry_low: 78,
       entry_high: 80,

@@ -292,6 +292,7 @@
   "test/screener-evaluation-contract.test.js",
   "test/screener-evaluation-logger.test.js",
   "test/screener-evaluation-retention.test.js",
+  "test/stage-2-daytrade-live-and-telegram-cleanup.test.js",
   "test/screener-lifecycle-ui.test.js",
   "test/screener-price-freshness.test.js",
   "test/screener-read-session-gate.test.js",

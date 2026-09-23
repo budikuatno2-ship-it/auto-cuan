@@ -65,6 +65,8 @@ const userWatchlistService = require('../lib/user-watchlist-service');
 const recentFailureCooldown = require('../lib/recent-failure-cooldown');
 const swingNkRrWarning = require('../lib/swing-nk-rr-warning');
 const fastWatcherMomentum = require('../lib/intraday-fast-watcher-momentum');
+const marketHoursGuard = require('../lib/market-hours-guard');
+const idxTradingCalendar = require('../lib/idx-trading-calendar');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -3411,12 +3413,16 @@ function isSignalPublicationTimeRestrictedWib(nowValue) {
 
 
 
+// Sesi bursa reguler memakai jam IDX otoritatif dari SATU sumber kebenaran
+// (lib/market-hours-guard.js): Senin-Kamis 09:00-12:00 & 13:30-15:45,
+// Jumat 09:00-11:30 & 14:00-15:45 WIB. Sebelumnya helper ini memakai batas
+// flat 15:15 sehingga 15:15-15:45 (masih sesi 2) dianggap di luar bursa, dan
+// `getJakartaNow()` yang sudah digeser +7 jam dibaca ulang sebagai UTC.
 function isIdxRegularMarketOpenJakarta(now) {
-  now = now || getJakartaNow();
-  var day = now.getUTCDay();
-  if (day < 1 || day > 5) return false;
-  var minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-  return minutes >= (9 * 60) && minutes <= (15 * 60 + 15);
+  if (now instanceof Date && !isNaN(now.getTime())) {
+    return marketHoursGuard.getMarketSessionStatus(now).isOpen;
+  }
+  return marketHoursGuard.getMarketSessionStatus().isOpen;
 }
 
 function deriveFreshness(row, meta, opts) {
@@ -3433,17 +3439,41 @@ function deriveFreshness(row, meta, opts) {
   }
   var now = new Date();
   var age = Math.max(0, Math.round((now.getTime() - d.getTime()) / 60000));
-  var marketOpen = isIdxRegularMarketOpenJakarta();
+  var sessionStatus = marketHoursGuard.getMarketSessionStatus(now);
+  var marketOpen = sessionStatus.isOpen;
   var dataDate = getJakartaDateFromTimestamp(ts);
   var today = getJakartaDateString();
+
+  // PRE-SESSION CARRYOVER (fix "Stale · 17h ago" saat bursa buka):
+  // Sebelum publish live pertama hari ini, snapshot penutupan bursa terakhir
+  // secara definisi berumur belasan jam. Wall-clock age semata BUKAN bukti
+  // data rusak, jadi jangan dicap Stale dan jangan memblokir kartu lewat
+  // setup_freshness_status = NEEDS_REVALIDATION (yang memicu
+  // 'Lifecycle · Diblokir safety'). Yang benar-benar stale adalah data yang
+  // lebih tua dari sesi bursa terakhir.
+  var lastTradingDay = null;
+  try {
+    lastTradingDay = idxTradingCalendar.previousTradingDay(today);
+  } catch (e) { lastTradingDay = null; }
+  var isLatestCloseCarryover = marketOpen && dataDate !== today && dataDate != null && lastTradingDay != null && dataDate >= lastTradingDay;
+  if (isLatestCloseCarryover) {
+    return {
+      freshness_label: 'Market Close Snapshot',
+      freshness_reason: 'Snapshot penutupan bursa terakhir (' + dataDate + '). Sesi live hari ini belum menerbitkan data baru; ini referensi valid, bukan data rusak.',
+      freshness_age_minutes: age,
+      freshness_priority: 3,
+      freshness_is_stale: false
+    };
+  }
+
   var closeSnapshot = !marketOpen && dataDate === today;
   if (closeSnapshot) {
     return { freshness_label: 'Market Close Snapshot', freshness_reason: 'Bursa sedang di luar jam reguler; data ditampilkan sebagai snapshot sesi/close terbaru yang tersedia.', freshness_age_minutes: age, freshness_priority: 3, freshness_is_stale: false };
   }
   if (marketOpen && age <= 45) return { freshness_label: 'Fresh', freshness_reason: 'Timestamp data masih dalam batas fresh saat jam bursa reguler (≤45 menit).', freshness_age_minutes: age, freshness_priority: 0, freshness_is_stale: false };
   if (marketOpen && age <= 120) return { freshness_label: 'Delayed', freshness_reason: 'Timestamp data sudah tertunda namun masih dalam rentang pemantauan (46–120 menit).', freshness_age_minutes: age, freshness_priority: 1, freshness_is_stale: false };
-  if (marketOpen && age > 120) return { freshness_label: 'Stale', freshness_reason: 'Timestamp data lebih dari 120 menit saat jam bursa; validasi ulang harga/volume intraday sebelum eksekusi.', freshness_age_minutes: age, freshness_priority: 2, freshness_is_stale: true };
-  if (dataDate !== today) return { freshness_label: 'Stale', freshness_reason: 'Data bukan dari tanggal WIB hari ini; gunakan sebagai referensi historis dan validasi ulang.', freshness_age_minutes: age, freshness_priority: 2, freshness_is_stale: true };
+  if (marketOpen && dataDate === today) return { freshness_label: 'Stale', freshness_reason: 'Timestamp data lebih dari 120 menit saat jam bursa; validasi ulang harga/volume intraday sebelum eksekusi.', freshness_age_minutes: age, freshness_priority: 2, freshness_is_stale: true };
+  if (dataDate !== today) return { freshness_label: 'Stale', freshness_reason: 'Data lebih tua dari sesi bursa terakhir; gunakan sebagai referensi historis dan validasi ulang.', freshness_age_minutes: age, freshness_priority: 2, freshness_is_stale: true };
   return { freshness_label: 'Market Close Snapshot', freshness_reason: 'Bursa sedang di luar jam reguler; data hari ini ditampilkan sebagai snapshot terbaru.', freshness_age_minutes: age, freshness_priority: 3, freshness_is_stale: false };
 }
 
@@ -8888,6 +8918,39 @@ function dedupeActiveMonitorRows(rows) {
   return { kept: kept, ignored: ignored, duplicateGroups: duplicateGroups };
 }
 
+// TICKER-LEVEL DIGEST KEY (TAPG 09:00 WIB double-send fix).
+//
+// The evaluation dedup above is intentionally plan-aware so distinct locked
+// plans keep their own TP/SL tracking state. The PUBLIC BATCH DIGEST is a
+// different contract: a human reads one line per stock, and two plan_lock_id
+// rows for the same ticker (same source, or across sources) produced two
+// near-identical blocks — the reported TAPG spam. The recap is therefore
+// keyed by the TICKER alone; the first (already recency-sorted) row wins.
+function buildMonitorDigestTickerKey(pick) {
+  return String(pick && pick.ticker || '').trim().toUpperCase();
+}
+
+// EXPIRED / NEEDS_REVALIDATION rows are informational reminders, not live
+// setups. Once price has drifted more than this fraction away from the
+// original entry, the stale level is no longer meaningful and the row would
+// only pad the recap — so it is excluded from the batch digest.
+const MONITOR_EXPIRED_MAX_DEVIATION = 0.10;
+
+// True when an EXPIRED / NEEDS_REVALIDATION row is still close enough to its
+// original plan to be worth a recap line. Non-stale statuses always pass.
+function monitorRowWorthDigest(pick, ev, px) {
+  const status = String(ev && ev.status || '');
+  if (status !== 'EXPIRED' && status !== 'NEEDS_REVALIDATION') return true;
+  const entry1 = toNum(pick && pick.entry1);
+  const entry2 = toNum(pick && pick.entry2);
+  let refPrice = entry1 != null ? entry1 : entry2;
+  if (refPrice == null) refPrice = entry2;
+  const last = px && px.last != null ? toNum(px.last) : null;
+  if (refPrice == null || !(refPrice > 0) || last == null) return true;
+  const deviation = Math.abs(last - refPrice) / refPrice;
+  return deviation <= MONITOR_EXPIRED_MAX_DEVIATION;
+}
+
 // Injectable clock indirection for the monitor's hourly-batch cadence. Production
 // reads the real Jakarta minute; tests override monitorClock.getJakartaMinute to
 // exercise the top-of-hour vs half-hour branches deterministically. getJakartaNow()
@@ -9055,6 +9118,11 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     var individualFailedCount = 0;
     var individualFailures = [];
     var notifiedTickersInRun = new Set();
+    // Public batch-digest (recap) bookkeeping — separate from the evaluation
+    // dedup above and from notifiedTickersInRun (which gates instant alerts).
+    var digestTickersSeen = new Set();
+    var digestSuppressedDuplicate = 0;
+    var digestSuppressedStale = 0;
     for (var i = 0; i < rows.length; i++) {
       var pck = rows[i];
       if (!isFinal && pck.is_final) continue;
@@ -9162,9 +9230,14 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
           individualMessagePreviews.push({ ticker: pck.ticker, source: resolveMonitorSource(pck), status: ev.status, message: hitMsg });
           notifiedTickersInRun.add(tickerUpper);
         } else {
+          // alert_key namespaces the monitor alert so the BATCH 8 sliding
+          // cooldown (20 minutes) applies per ticker AND per alert type: a
+          // monitor hit can never suppress an unrelated signal for the same
+          // ticker, and repeated monitor hits inside the window are absorbed.
           hitResult = await telegramNotifier.sendTelegramMessage(hitMsg, {
             timeout_ms: 3000,
             ticker: tickerUpper,
+            alert_key: 'MONITOR:' + tickerUpper,
             status: ev.status
           });
           if (hitResult.sent) {
@@ -9214,13 +9287,31 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       // active recommendation that is public-eligible. Assembled on every run (pure
       // string building), but only actually sent once per hour via the cadence gate
       // after the loop. Silent 'daytrade' rows are excluded from the public digest.
+      //
+      // Two filters apply to the PUBLIC RECAP only (per-row persistence above is
+      // untouched, so monitoring/freshness/reporting stay complete):
+      //   1. TICKER-level dedup — one recap block per stock, even when several
+      //      plan_lock_id rows exist for it (TAPG 09:00 WIB double-send).
+      //   2. EXPIRED / NEEDS_REVALIDATION rows whose price has drifted >10% from
+      //      the original plan are dropped: the stale level is no longer
+      //      meaningful and the row would only pad the digest.
       if (isPublicAlertEligible) {
-        var batchBlock = formatMonitorBatchRow(pck, ev, px);
-        if (ev.isFinal && !isFinal) batchBlock += '\nStatus: selesai, tidak akan dimonitor di update berikutnya.';
-        if (monitorAiNote) batchBlock += '\nCatatan AI: ' + monitorAiNote;
-        lines.push(batchBlock);
-        lines.push('');
-        shown++;
+        var digestTickerKey = buildMonitorDigestTickerKey(pck);
+        var alreadyInDigest = digestTickerKey && digestTickersSeen.has(digestTickerKey);
+        var digestWorthShowing = monitorRowWorthDigest(pck, ev, px);
+        if (!alreadyInDigest && digestWorthShowing) {
+          var batchBlock = formatMonitorBatchRow(pck, ev, px);
+          if (ev.isFinal && !isFinal) batchBlock += '\nStatus: selesai, tidak akan dimonitor di update berikutnya.';
+          if (monitorAiNote) batchBlock += '\nCatatan AI: ' + monitorAiNote;
+          lines.push(batchBlock);
+          lines.push('');
+          if (digestTickerKey) digestTickersSeen.add(digestTickerKey);
+          shown++;
+        } else if (!digestWorthShowing) {
+          digestSuppressedStale++;
+        } else if (alreadyInDigest) {
+          digestSuppressedDuplicate++;
+        }
       }
 
       // Diagnostic-only preview data (dry-run). Percentage change is reported for
@@ -9297,17 +9388,22 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       // of the current minute. Without it, the preview is produced only when the
       // real cadence would send. Nothing here mutates state, sends, or narrates.
       var batchPreview = (hourlyBatchDue || previewHourlyBatch) ? batchText : null;
-      return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, is_final: isFinal, dates_queried: dateRange, checked_count: rows.length, raw_row_count: rawActiveCount, deduped_row_count: rows.length, duplicate_groups: duplicateGroups, ignored_duplicate_rows: ignoredDuplicateRows, events: dryRunEvents, individual_message_previews: individualMessagePreviews, jakarta_minute: jakartaMinute, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, preview_hourly_batch: previewHourlyBatch, batch_send_reason: batchSendReason, individual_sendable_count: individualSendableCount, batch_message_preview: batchPreview, custom_alerts: customAlertsResult, error: null });
+      return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, is_final: isFinal, dates_queried: dateRange, checked_count: rows.length, raw_row_count: rawActiveCount, deduped_row_count: rows.length, duplicate_groups: duplicateGroups, ignored_duplicate_rows: ignoredDuplicateRows, events: dryRunEvents, individual_message_previews: individualMessagePreviews, jakarta_minute: jakartaMinute, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, preview_hourly_batch: previewHourlyBatch, batch_send_reason: batchSendReason, individual_sendable_count: individualSendableCount, batch_message_preview: batchPreview, digest_shown_count: shown, digest_ticker_deduped_count: digestSuppressedDuplicate, digest_stale_dropped_count: digestSuppressedStale, custom_alerts: customAlertsResult, error: null });
     }
 
     // NORMAL MODE: individual messages already sent in-loop. Only the routine batch
     // summary is cadence-gated here — sent at the top of the hour, suppressed at :30.
+    // The recap carries a fixed batch-level alert_key so a re-entrant cron run
+    // inside the 20-minute sliding window cannot double-post the same digest.
     var sendResult = { sent: false, skipped: true, reason: 'batch_suppressed_by_cadence' };
     if (hourlyBatchDue) {
-      sendResult = await telegramNotifier.sendTelegramMessage(batchText);
+      sendResult = await telegramNotifier.sendTelegramMessage(batchText, {
+        alert_key: 'MONITOR:BATCH:' + hour,
+        status: 'MONITOR_BATCH'
+      });
     }
     var individualDeliveryOk = individualFailedCount === 0;
-    return res.status(200).json({ success: individualDeliveryOk, skipped: false, forced: force, weekend_bypassed: weekendBypassed, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, batch_send_reason: batchSendReason, sent_count: (hourlyBatchDue && sendResult.sent) ? 1 : 0, individual_sent_count: individualSentCount, individual_failed_count: individualFailedCount, individual_failures: individualFailures.length > 0 ? individualFailures : undefined, checked_count: rows.length, shown_count: shown, ai_narration: aiNarrationResults.length > 0 ? aiNarrationResults : undefined, custom_alerts: customAlertsResult, error: individualDeliveryOk ? null : 'individual_monitor_delivery_failed', telegram: sendResult });
+    return res.status(200).json({ success: individualDeliveryOk, skipped: false, forced: force, weekend_bypassed: weekendBypassed, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, batch_send_reason: batchSendReason, sent_count: (hourlyBatchDue && sendResult.sent) ? 1 : 0, individual_sent_count: individualSentCount, individual_failed_count: individualFailedCount, individual_failures: individualFailures.length > 0 ? individualFailures : undefined, checked_count: rows.length, shown_count: shown, digest_ticker_deduped_count: digestSuppressedDuplicate, digest_stale_dropped_count: digestSuppressedStale, ai_narration: aiNarrationResults.length > 0 ? aiNarrationResults : undefined, custom_alerts: customAlertsResult, error: individualDeliveryOk ? null : 'individual_monitor_delivery_failed', telegram: sendResult });
   } catch (e) { return res.status(200).json({ success: false, sent_count: 0, checked_count: 0, error: e.message || String(e) }); }
 }
 
@@ -14802,6 +14898,9 @@ module.exports.__test = {
   getMinTp1UpsideForCategory: getMinTp1UpsideForCategory,
   buildEntryRangeNormalizationDiagnostics: buildEntryRangeNormalizationDiagnostics,
   isConfirmedDayTradeSignal: isConfirmedDayTradeSignal,
+  buildMonitorDigestTickerKey: buildMonitorDigestTickerKey,
+  monitorRowWorthDigest: monitorRowWorthDigest,
+  MONITOR_EXPIRED_MAX_DEVIATION: MONITOR_EXPIRED_MAX_DEVIATION,
   handleDayTradeScreenerRead: handleDayTradeScreenerRead,
   getDayTradeRunningLockDiagnostics: getDayTradeRunningLockDiagnostics,
   diagnosePublicSafetyGateRejection: diagnosePublicSafetyGateRejection,
