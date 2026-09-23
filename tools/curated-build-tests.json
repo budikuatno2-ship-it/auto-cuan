@@ -1,4 +1,5 @@
 [
+  "test/backtest-engine-bugs.test.js",
   "test/bandarmologi-stage1-intel-live-price-and-range.test.js",
   "test/ops-fase9-batch1-bugs.test.js",
   "test/ops-fase9-batch2-bugs.test.js",
