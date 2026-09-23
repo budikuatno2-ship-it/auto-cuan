@@ -88,22 +88,55 @@ test('Broker Hunter: getBrokerHunterData fast-path reads cached index file if pr
 });
 
 test('Broker Hunter: generateBrokerHunterIndex creates valid index files', async () => {
-  const res = await brokerHunterService.generateBrokerHunterIndex({
-    ranges: ['1d'],
-    brokers: ['AK', 'BK']
-  });
+  // HERMETIC: the generator writes BOTH the cache dir and the git-tracked index
+  // dir. Left unredirected it overwrote the committed production indexes under
+  // data/broker-hunter-indexes on every test run (verified by mtime bisection:
+  // AK-1d.json / AK_1d.json / catalog.json all mutated). Point both at a temp dir.
+  const os = require('node:os');
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hunter-index-'));
+  const origArjum = process.env.ARJUM_DATA_DIR;
+  const origGit = process.env.BROKER_HUNTER_INDEX_DIR;
+  process.env.ARJUM_DATA_DIR = tmpRoot;
+  process.env.BROKER_HUNTER_INDEX_DIR = path.join(tmpRoot, 'broker-hunter-indexes');
 
-  assert.equal(res.brokers_indexed, 2);
-  assert.equal(res.files_written, 2);
+  const repoIndexDir = path.join(__dirname, '..', 'data', 'broker-hunter-indexes');
+  const repoAkBefore = path.join(repoIndexDir, 'AK_1d.json');
+  const repoMtimeBefore = fs.existsSync(repoAkBefore) ? fs.statSync(repoAkBefore).mtimeMs : null;
 
-  const akPath = path.join(brokerHunterService.HUNTER_CACHE_DIR, 'AK_1d.json');
-  const bkPath = path.join(brokerHunterService.HUNTER_CACHE_DIR, 'BK_1d.json');
-  assert.ok(fs.existsSync(akPath), 'AK_1d.json must exist');
-  assert.ok(fs.existsSync(bkPath), 'BK_1d.json must exist');
+  try {
+    const res = await brokerHunterService.generateBrokerHunterIndex({
+      ranges: ['1d'],
+      brokers: ['AK', 'BK']
+    });
 
-  const akData = JSON.parse(fs.readFileSync(akPath, 'utf8'));
-  assert.equal(akData.broker, 'AK');
-  assert.equal(akData.range, '1d');
+    assert.equal(res.brokers_indexed, 2);
+    assert.equal(res.files_written, 2);
+
+    const cacheDir = path.join(tmpRoot, 'broker-hunter');
+    const akPath = path.join(cacheDir, 'AK_1d.json');
+    const bkPath = path.join(cacheDir, 'BK_1d.json');
+    // Guard: the isolated cache dir must be the one that actually received the files.
+    assert.equal(brokerHunterService.HUNTER_CACHE_DIR, cacheDir,
+      'the service must resolve HUNTER_CACHE_DIR from the active ARJUM_DATA_DIR');
+    assert.ok(fs.existsSync(akPath), 'AK_1d.json must exist');
+    assert.ok(fs.existsSync(bkPath), 'BK_1d.json must exist');
+
+    const akData = JSON.parse(fs.readFileSync(akPath, 'utf8'));
+    assert.equal(akData.broker, 'AK');
+    assert.equal(akData.range, '1d');
+
+    // The committed production index must be untouched by the test run.
+    if (repoMtimeBefore !== null) {
+      assert.equal(fs.statSync(repoAkBefore).mtimeMs, repoMtimeBefore,
+        'the test must not rewrite the committed data/broker-hunter-indexes files');
+    }
+  } finally {
+    if (origArjum !== undefined) process.env.ARJUM_DATA_DIR = origArjum;
+    else delete process.env.ARJUM_DATA_DIR;
+    if (origGit !== undefined) process.env.BROKER_HUNTER_INDEX_DIR = origGit;
+    else delete process.env.BROKER_HUNTER_INDEX_DIR;
+    try { fs.rmSync(tmpRoot, { recursive: true, force: true }); } catch (_) {}
+  }
 });
 
 test('Broker Hunter Frontend: runtime exports functions and handles render container', () => {

@@ -8559,6 +8559,36 @@ async function handleBrokerHunter(req, res) {
   }
 }
 
+/**
+ * Stage 1: bound a live-price lookup to the endpoint's own latency budget.
+ *
+ * fetchFreshScreenerLatestPrice() falls through to fetchLivePriceFromVpsSync(),
+ * which can attempt a direct SSH read with an 18s timeout. On the intel endpoint
+ * that single probe is enough to blow the < 2s requirement, so the lookup races a
+ * timer and the handler proceeds with whatever is already resolved.
+ */
+function withTimeout(promise, timeoutMs) {
+  return new Promise(function (resolve) {
+    var settled = false;
+    var timer = setTimeout(function () {
+      if (settled) return;
+      settled = true;
+      resolve(null);
+    }, timeoutMs);
+    Promise.resolve(promise).then(function (value) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    }, function () {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(null);
+    });
+  });
+}
+
 async function handleBandarmologiIntel(req, res) {
   try {
     var ticker = (req.query && req.query.ticker) || '';
@@ -8571,7 +8601,9 @@ async function handleBandarmologiIntel(req, res) {
       try {
         var latestPriceResolver = require('../lib/latest-price-resolver');
         if (latestPriceResolver && typeof latestPriceResolver.fetchFreshScreenerLatestPrice === 'function') {
-          var lp = await latestPriceResolver.fetchFreshScreenerLatestPrice(ticker);
+          // 1200ms ceiling: the handler must still answer inside the 2s budget even
+          // when the VPS bridge is slow or unreachable.
+          var lp = await withTimeout(latestPriceResolver.fetchFreshScreenerLatestPrice(ticker), 1200);
           if (lp && lp.price > 0) {
             currentPrice = lp.price;
           }

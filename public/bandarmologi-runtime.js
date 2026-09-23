@@ -1927,15 +1927,21 @@
       if (brokerFlowFilter === 'F' || brokerFlowFilter === 'D') {
         url += '&flow=' + encodeURIComponent(brokerFlowFilter);
       }
+      // FIX (stage 1 range param): the ACTIVE range must always reach the API.
+      // Previously 1D skipped `range` entirely and relied on the server default,
+      // so the request carried no window at all — a range switch could then be
+      // answered from whatever the backend considered current.
+      var rangeDaysMap = { '1d': 1, '5d': 5, '7d': 7, '14d': 14, '30d': 30, '60d': 60 };
       if (brokerSummaryRange === 'custom' && customRangeStart && customRangeEnd) {
         url += '&range=custom&startDate=' + encodeURIComponent(customRangeStart) + '&endDate=' + encodeURIComponent(customRangeEnd);
-      } else if (brokerSummaryRange && brokerSummaryRange !== '1d') {
-        url += '&range=' + encodeURIComponent(brokerSummaryRange);
-        var rangeDaysMap = { '1d': 1, '5d': 5, '7d': 7, '14d': 14, '30d': 30, '60d': 60 };
-        var numDays = rangeDaysMap[brokerSummaryRange] || (parseInt(brokerSummaryRange, 10) || 1);
-        url += '&days=' + numDays;
-      } else if (currentBandarDate) {
-        url += '&date=' + encodeURIComponent(currentBandarDate);
+      } else {
+        var activeRange = brokerSummaryRange || '1d';
+        url += '&range=' + encodeURIComponent(activeRange);
+        url += '&days=' + (rangeDaysMap[activeRange] || (parseInt(activeRange, 10) || 1));
+        // A pinned calendar date only makes sense for the single-day window.
+        if (activeRange === '1d' && currentBandarDate) {
+          url += '&date=' + encodeURIComponent(currentBandarDate);
+        }
       }
 
       var data = null;
@@ -2099,9 +2105,24 @@
         }
       }
 
-      var avg = pick(raw, ['avg_price', 'avg', 'avg_buy', 'avgBuy', 'avg_sell', 'avgSell', 'bavg', 'savg']);
-      if (avg === null && bvol > 0 && bval > 0) avg = Math.round(bval / bvol);
-      if (avg === null && svol > 0 && sval > 0) avg = Math.round(sval / svol);
+      // FIX (stage 1 AVG column): the broker payload stores value and volume on a
+      // 100x scale relative to the traded price, so the raw quotient overshoots by
+      // 100x (2,125,000 instead of 21,250). computeAvgPrice() owns that scale
+      // normalisation — reuse it instead of dividing raw, and fall back to the
+      // opposite side so a one-sided row still resolves a real average.
+      var avg = pick(raw, ['avg_price', 'avg', 'avg_buy', 'avgBuy', 'avg_sell', 'avgSell', 'bavg', 'savg', 'broker_avg']);
+      if (!(avg > 0)) avg = null;
+      if (avg === null) {
+        var avgComputed = isBuyerSide
+          ? computeAvgPrice(bval, bvol, 0)
+          : computeAvgPrice(sval, svol, 0);
+        if (!(avgComputed > 0)) {
+          avgComputed = isBuyerSide
+            ? computeAvgPrice(sval, svol, 0)
+            : computeAvgPrice(bval, bvol, 0);
+        }
+        if (avgComputed > 0) avg = avgComputed;
+      }
 
       row.bval = bval;
       row.sval = sval;
@@ -2138,33 +2159,59 @@
     var bvol = num(src.bvol != null ? src.bvol : (src.buy_vol != null ? src.buy_vol : src.buyVol));
     var svol = num(src.svol != null ? src.svol : (src.sell_vol != null ? src.sell_vol : src.sellVol));
 
+    // FIX (stage 1 NET VAL = 0): an explicit zero is NOT a resolved value. A row
+    // that carries net_val: 0 alongside a real gross bval/sval (or a bubble-style
+    // txVal) must still resolve a magnitude, otherwise the table prints "+0".
     var netVal = num(src.net_val != null ? src.net_val : (src.netVal != null ? src.netVal : src.nval));
-    if (netVal == null) {
-      if (bval != null && sval != null) {
+    if (netVal == null || netVal === 0) {
+      if (bval != null && sval != null && (bval !== 0 || sval !== 0)) {
         netVal = bval - sval;
       } else {
-        var altVal = num(src.val != null ? src.val : (src.txVal != null ? src.txVal : src.displayVal));
-        netVal = (altVal != null) ? (isBuyerSide ? Math.abs(altVal) : -Math.abs(altVal)) : 0;
+        var altVal = num(src.txVal != null ? src.txVal : (src.displayVal != null ? src.displayVal : src.val));
+        if (altVal != null && altVal !== 0) {
+          netVal = isBuyerSide ? Math.abs(altVal) : -Math.abs(altVal);
+        } else if (netVal == null) {
+          netVal = 0;
+        }
       }
     }
 
     var netVol = num(src.net_vol != null ? src.net_vol : (src.netVol != null ? src.netVol : src.nvol));
-    if (netVol == null) {
-      if (bvol != null && svol != null) {
+    if (netVol == null || netVol === 0) {
+      if (bvol != null && svol != null && (bvol !== 0 || svol !== 0)) {
         netVol = bvol - svol;
       } else {
-        var altVol = num(src.vol != null ? src.vol : (src.txVol != null ? src.txVol : src.volume));
-        netVol = (altVol != null) ? (isBuyerSide ? Math.abs(altVol) : -Math.abs(altVol)) : 0;
+        var altVol = num(src.txVol != null ? src.txVol : (src.vol != null ? src.vol : src.volume));
+        if (altVol != null && altVol !== 0) {
+          netVol = isBuyerSide ? Math.abs(altVol) : -Math.abs(altVol);
+        } else if (netVol == null) {
+          netVol = 0;
+        }
       }
     }
 
-    var avgPrice = num(src.avg != null ? src.avg : src.avg_price);
+    // FIX (stage 1 AVG = "—"): resolve through computeAvgPrice() so the broker
+    // value/volume 100x scale is normalised, then fall back to the opposite side
+    // and finally to |netVal / netVol| before giving up on the column.
+    var avgPrice = num(src.avg != null ? src.avg : (src.avg_price != null ? src.avg_price : (src.avg_buy != null ? src.avg_buy : src.avg_sell)));
     if (!(avgPrice > 0)) {
-      avgPrice = (netVol !== 0) ? Math.abs(Math.round(netVal / netVol)) : 0;
+      avgPrice = isBuyerSide
+        ? computeAvgPrice(bval, bvol, 0)
+        : computeAvgPrice(sval, svol, 0);
+    }
+    if (!(avgPrice > 0)) {
+      avgPrice = isBuyerSide
+        ? computeAvgPrice(sval, svol, 0)
+        : computeAvgPrice(bval, bvol, 0);
+    }
+    if (!(avgPrice > 0) && netVol !== 0 && netVal !== 0) {
+      var derived = Math.abs(netVal / netVol);
+      if (derived > 100000 && Math.round(derived / 100) >= 1) derived = derived / 100;
+      avgPrice = Math.round(derived);
     }
     if (!isFinite(netVal)) netVal = 0;
     if (!isFinite(netVol)) netVol = 0;
-    if (!isFinite(avgPrice)) avgPrice = 0;
+    if (!isFinite(avgPrice) || avgPrice < 0) avgPrice = 0;
     return { netVal: netVal, netVol: netVol, avgPrice: avgPrice };
   }
 
@@ -2917,9 +2964,12 @@
       }
     }
 
-    // FIX (UI): section 'akumulasi' + view 'table' must NEVER mount the bubble
-    // cluster (AK -205M / YU +118M). Only metric cards + tables may render.
-    var accShowBubbleCluster = (brokerAccumulationView === 'bubble') && !(bandarSection === 'akumulasi' && brokerAccumulationView !== 'bubble');
+    // FIX (UI, stage 1): in Akumulasi Broker the bubble cluster is mounted ONLY
+    // when the operator explicitly switches to 'Visual Bubble'. The default view
+    // is 'table' (Tabel Rinci active), and in that mode the cluster container must
+    // be hidden in FULL — no bubble markup, only the explicit display:none
+    // placeholder plus the detailed Top Buyers / Top Sellers tables.
+    var accShowBubbleCluster = (brokerAccumulationView === 'bubble');
     if (accShowBubbleCluster) {
       html += '  <div id="acAccBubbleClusterWrap" class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 shadow-sm">';
       html += '    <div class="flex items-center justify-between mb-3">';
