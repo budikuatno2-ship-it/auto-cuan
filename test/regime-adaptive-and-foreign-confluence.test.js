@@ -2,6 +2,9 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const marketRegimeEngine = require('../lib/market-regime');
 const bandarmologiService = require('../lib/bandarmologi-service');
 const daytradeEngine = require('../lib/daytrade-screener-engine');
@@ -33,19 +36,53 @@ test('Regime-Adaptive & Foreign Confluence Suite', async (t) => {
   });
 
   await t.test('2. Foreign Flow & Bandarmologi Confluence directly from local disk cache', () => {
-    // BBCA is backfilled in data/arjum-data/broker-summary/BBCA
-    const foreignFlow = bandarmologiService.getNetForeignFlow('BBCA');
-    assert.ok(foreignFlow, 'Should return foreign flow object');
-    assert.equal(foreignFlow.ticker, 'BBCA');
-    assert.ok(foreignFlow.has_data, 'BBCA disk snapshot should be detected');
-    assert.equal(typeof foreignFlow.foreign_buy, 'number');
-    assert.equal(typeof foreignFlow.foreign_sell, 'number');
-    assert.equal(typeof foreignFlow.foreign_net, 'number');
+    const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'arjum-confluence-test-'));
+    const origEnv = process.env.ARJUM_DATA_DIR;
+    process.env.ARJUM_DATA_DIR = tmpBase;
 
-    // Confluence signal evaluation
-    const confluence = bandarmologiService.evaluateConfluenceSignal('BBCA');
-    assert.ok(confluence, 'Confluence signal should be evaluated');
-    assert.ok(['HINDARI', 'CONFIRMED', 'NEUTRAL'].includes(confluence.confluence_flag));
+    try {
+      const ticker = 'TESTFLOW';
+      const mockSummary = {
+        stock_code: ticker,
+        date: '2026-09-23',
+        total_net_flow: -4500000000,
+        gross_buyers: [
+          { broker_code: 'YP', bval: 500000000, bvol: 5000 },
+          { broker_code: 'AK', bval: 200000000, bvol: 2000 } // Foreign buy
+        ],
+        gross_sellers: [
+          { broker_code: 'AK', sval: 3500000000, svol: 35000 }, // Foreign sell
+          { broker_code: 'BK', sval: 1700000000, svol: 17000 }  // Foreign sell
+        ],
+        brokers: [
+          { broker_code: 'AK', bval: 200000000, sval: 3500000000, nval: -3300000000 },
+          { broker_code: 'BK', bval: 0, sval: 1700000000, nval: -1700000000 }
+        ]
+      };
+
+      bandarmologiService.writeDiskCache('broker-summary', ticker, 'latest', mockSummary);
+
+      const foreignFlow = bandarmologiService.getNetForeignFlow(ticker);
+      assert.ok(foreignFlow, 'Should return foreign flow object');
+      assert.equal(foreignFlow.ticker, ticker);
+      assert.equal(foreignFlow.has_data, true);
+      assert.equal(foreignFlow.foreign_buy, 200000000);
+      assert.equal(foreignFlow.foreign_sell, 5200000000);
+      assert.equal(foreignFlow.foreign_net, -5000000000);
+      assert.equal(foreignFlow.foreign_flow_status, 'DISTRIBUTION');
+      assert.equal(foreignFlow.is_massive_distribution, true);
+
+      // Confluence evaluation
+      const confluence = bandarmologiService.evaluateConfluenceSignal(ticker);
+      assert.ok(confluence, 'Confluence signal should be evaluated');
+      assert.equal(confluence.confluence_flag, 'HINDARI');
+      assert.equal(confluence.confluence_action, 'DOWNGGRADE_GRADE');
+      assert.equal(confluence.is_massive_distribution, true);
+    } finally {
+      fs.rmSync(tmpBase, { recursive: true, force: true });
+      if (origEnv !== undefined) process.env.ARJUM_DATA_DIR = origEnv;
+      else delete process.env.ARJUM_DATA_DIR;
+    }
   });
 
   await t.test('3. Daytrade Screener: Sideways regime enforces score >= 70 and RR >= 1.5', () => {
@@ -90,10 +127,11 @@ test('Regime-Adaptive & Foreign Confluence Suite', async (t) => {
     const analysis = {
       ticker: 'DIST_TICKER',
       last_price: 1000,
+      value_today: 10000000000,
       support: 950,
       resistance: 1100,
       change_pct: 2.0,
-      volume_today: 5000000,
+      volume_today: 10000000,
       avg_volume_20d: 2000000,
       volume_ratio_20d: 2.5,
       ma20: 980,
