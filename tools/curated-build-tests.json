@@ -542,5 +542,6 @@
   "test/website-production-audit.test.js",
   "test/weekly-timeframe.test.js",
   "test/wib-date-string.test.js",
+  "test/telegram-daily-quota.test.js",
   "test/zero-defect-cluster-recovery.test.js"
 ]

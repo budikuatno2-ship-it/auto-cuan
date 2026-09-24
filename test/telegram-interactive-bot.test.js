@@ -74,6 +74,20 @@ function memoryDb(initial) {
           rows.set(id, Object.assign({}, rows.get(id) || {}, patch));
           return { data: rows.get(id), error: null };
         },
+        update(patch) {
+          return {
+            eq(column, value) {
+              const source = table === 'user_ai_credentials' ? credentials : rows;
+              for (const [key, row] of source) {
+                if (String(row[column]) === String(value)) {
+                  source.set(key, Object.assign({}, row, patch));
+                  return Promise.resolve({ data: source.get(key), error: null });
+                }
+              }
+              return Promise.resolve({ data: null, error: null });
+            }
+          };
+        },
         delete() { return api; }
       };
       return api;
