@@ -21,6 +21,16 @@
   var DEFAULT_CAPITAL = 10000000; // Rp 10.000.000
   var DEFAULT_RISK_PCT = 1.0;     // 1.0%
 
+  // F5-B3-03/F5-B3-04: the supported input band. `saveSettings` already clamped
+  // the stored values to this band, but `calculate` accepted anything a caller
+  // passed in, so a 500%-risk request was sized as-is and a 1e308 capital
+  // produced lots = 2e302 with profitTp1Idr = Infinity while still reporting
+  // isValid: true. One band, enforced on every path.
+  var MIN_CAPITAL_IDR = 100000;        // Rp 100.000
+  var MAX_CAPITAL_IDR = 1e15;          // Rp 1 quadrillion — far beyond any retail account
+  var MIN_RISK_PCT = 0.1;
+  var MAX_RISK_PCT = 10;
+
   /**
    * Normalisasi angka dari input pengguna.
    * - Mode default (rupiah/harga): "10.000.000" dan "10.000" dibaca sebagai ribuan.
@@ -33,18 +43,35 @@
     if (typeof val === 'number') return isFinite(val) ? val : fallback;
     var s = String(val).trim();
     var decimalMode = !!(options && options.decimal);
-    var dotCount = (s.match(/\./g) || []).length;
+
+    // F5-B3-02: exponential notation is NOT part of this input contract. The
+    // old pipeline deleted the "e" and re-read "1e400" as "1400", turning an
+    // overflowing/garbage entry into a plausible-looking number. Refuse it.
+    if (/\d\s*[eE]\s*[+-]?\s*\d/.test(s)) return fallback;
+
+    // F5-B3-01: strip the currency/sign prefix BEFORE the separator heuristic.
+    // Previously "-Rp 10.000" kept its "Rp" (the prefix regex excluded "-"),
+    // so the groups were ["-Rp 10","000"] and the thousand separator was not
+    // recognised: minus ten thousand collapsed to minus ten.
+    var firstDigit = s.search(/[0-9]/);
+    if (firstDigit < 0) return fallback;
+    var isNegative = s.slice(0, firstDigit).indexOf('-') >= 0;
+    var body = s.slice(firstDigit);
+
+    var dotCount = (body.match(/\./g) || []).length;
     if (dotCount > 1) {
-      s = s.replace(/\./g, '');
+      body = body.replace(/\./g, '');
     } else if (dotCount === 1 && !decimalMode) {
-      var groups = s.split('.');
+      var groups = body.split('.');
       if (/^\d{1,3}$/.test(groups[0]) && /^\d{3}$/.test(groups[1]) && !/^0/.test(groups[0])) {
-        s = s.replace(/\./g, '');
+        body = body.replace(/\./g, '');
       }
     }
-    s = s.replace(/,/g, '.').replace(/[^0-9.-]/g, '');
-    var n = Number(s);
-    return isFinite(n) ? n : fallback;
+    body = body.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+    if (!body) return fallback;
+    var n = Number(body);
+    if (!isFinite(n)) return fallback;
+    return isNegative && n > 0 ? -n : n;
   }
 
   /**
@@ -52,9 +79,21 @@
    * < 200 : Rp 1 | 200 - < 500 : Rp 2 | 500 - < 2000 : Rp 5
    * 2000 - < 5000 : Rp 10 | >= 5000 : Rp 25
    */
-  function idxTickSize(price) {
+  function idxTickSize(price, board, isFca, ticker) {
     var p = Number(price);
     if (!isFinite(p) || p <= 0) return 0;
+    if (typeof board === 'object' && board !== null) { ticker = board.ticker; isFca = board.isFca != null ? board.isFca : board.is_fca; board = board.board || board.papan; }
+    try {
+      if (typeof require === 'function') {
+        var idxLocal = require('../lib/idx-tick-normalization');
+        var sz = idxLocal.getIdxTickSize(p, board, isFca, ticker);
+        if (sz != null) return sz;
+      } else if (typeof root !== 'undefined' && root.getIdxTickSize) {
+        var sz2 = root.getIdxTickSize(p, board, isFca, ticker);
+        if (sz2 != null) return sz2;
+      }
+    } catch (_) {}
+    if (isFca === true || isFca === 1 || (typeof isFca === 'string' && /^(true|1|yes|y)$/i.test(String(isFca).trim())) || String(board||'').toUpperCase().indexOf('AKSELERASI')>=0 || String(board||'').toUpperCase().indexOf('PEMANTAUAN')>=0) return 1;
     if (p < 200) return 1;
     if (p < 500) return 2;
     if (p < 2000) return 5;
@@ -66,12 +105,13 @@
    * Validasi harga terhadap fraksi tick IDX (BUG-F7-002).
    * Harga pecahan desimal dan harga yang tidak kelipatan tick dinyatakan tidak valid.
    */
-  function isValidIdxTick(price) {
+  function isValidIdxTick(price, board, isFca, ticker) {
     var raw = Number(price);
     if (!isFinite(raw) || raw <= 0) return false;
     var p = Math.round(raw);
     if (Math.abs(raw - p) > 1e-9) return false;
-    var tick = idxTickSize(p);
+    if (typeof board === 'object' && board !== null) { ticker = board.ticker; isFca = board.isFca != null ? board.isFca : board.is_fca; board = board.board || board.papan; }
+    var tick = idxTickSize(p, board, isFca, ticker);
     if (tick <= 0) return false;
     return p % tick === 0;
   }
@@ -98,8 +138,8 @@
   }
 
   function saveSettings(capital, riskPct) {
-    var c = Math.max(100000, sanitizeNumber(capital, DEFAULT_CAPITAL));
-    var r = Math.max(0.1, Math.min(10, sanitizeNumber(riskPct, DEFAULT_RISK_PCT, { decimal: true })));
+    var c = Math.max(MIN_CAPITAL_IDR, Math.min(MAX_CAPITAL_IDR, sanitizeNumber(capital, DEFAULT_CAPITAL)));
+    var r = Math.max(MIN_RISK_PCT, Math.min(MAX_RISK_PCT, sanitizeNumber(riskPct, DEFAULT_RISK_PCT, { decimal: true })));
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEY_CAPITAL, String(c));
@@ -137,8 +177,13 @@
     var tp1 = sanitizeNumber(params.tp1, 0);
     var tp2 = sanitizeNumber(params.tp2, 0);
 
-    if (capital <= 0) capital = DEFAULT_CAPITAL;
-    if (riskPct <= 0) riskPct = DEFAULT_RISK_PCT;
+    if (!(capital > 0)) capital = DEFAULT_CAPITAL;
+    // F5-B3-04: an unbounded capital overflowed the downstream arithmetic
+    // (lots 2e302, profitTp1Idr Infinity). Clamp to the supported band.
+    capital = Math.max(MIN_CAPITAL_IDR, Math.min(MAX_CAPITAL_IDR, capital));
+    if (!(riskPct > 0)) riskPct = DEFAULT_RISK_PCT;
+    // F5-B3-03: enforce the same 0.1%-10% band the settings modal stores.
+    riskPct = Math.max(MIN_RISK_PCT, Math.min(MAX_RISK_PCT, riskPct));
 
     if (entry <= 0 || sl <= 0) {
       return {
@@ -149,8 +194,11 @@
       };
     }
 
-    // BUG-F7-002: tolak harga yang melanggar fraksi tick IDX (mis. 205 pada board reguler)
-    if (!isValidIdxTick(entry)) {
+    var calcBoard = params.board || params.papan || null;
+    var calcIsFca = params.is_fca != null ? params.is_fca : (params.isFca != null ? params.isFca : null);
+    var calcTicker = params.ticker || null;
+    // BUG-F7-002: tolak harga yang melanggar fraksi tick IDX (mis. 205 pada board reguler); FCA uses tick 1
+    if (!isValidIdxTick(entry, calcBoard, calcIsFca, calcTicker)) {
       return {
         isValid: false,
         reason: 'Harga Entry (' + entry + ') tidak sesuai fraksi tick IDX.',
@@ -158,7 +206,7 @@
         riskPct: riskPct
       };
     }
-    if (!isValidIdxTick(sl)) {
+    if (!isValidIdxTick(sl, calcBoard, calcIsFca, calcTicker)) {
       return {
         isValid: false,
         reason: 'Harga Stop Loss (' + sl + ') tidak sesuai fraksi tick IDX.',
@@ -466,6 +514,10 @@
     getSettings: getSettings,
     saveSettings: saveSettings,
     calculate: calculate,
+    MIN_CAPITAL_IDR: MIN_CAPITAL_IDR,
+    MAX_CAPITAL_IDR: MAX_CAPITAL_IDR,
+    MIN_RISK_PCT: MIN_RISK_PCT,
+    MAX_RISK_PCT: MAX_RISK_PCT,
     sanitizeNumber: sanitizeNumber,
     idxTickSize: idxTickSize,
     isValidIdxTick: isValidIdxTick,
