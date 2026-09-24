@@ -1,8 +1,16 @@
 # Auto-Cuan Local Scan Runner (PowerShell)
 # ==========================================
-# Calls existing Vercel API endpoints from CMD.
+# Calls the API endpoints from CMD.
 # Scan and foreign import commands need no Node.js, npm, npx, local Supabase keys, or Vercel CLI.
 # Config stored at: %USERPROFILE%\.auto-cuan-scan.env
+#
+# BATCH 8 — VERCEL SAFEGUARD
+# --------------------------
+# Heavy screener actions (refresh-screener, nk-screener-run, daytrade-screener-run,
+# refresh) are refused with HTTP 403 DEPRECATED_ON_SERVERLESS when the API base URL
+# is a *.vercel.app origin, because a serverless invocation cannot complete the
+# 150-175 ticker sweep. Point API_BASE_URL at the VPS daemon
+# (http://127.0.0.1:3000) instead. Read-only commands still work on either origin.
 #
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 konglo
@@ -22,6 +30,35 @@ param(
 )
 
 $ConfigPath = Join-Path $env:USERPROFILE ".auto-cuan-scan.env"
+
+# === BATCH 8: VERCEL SERVERLESS SAFEGUARD ===
+# Heavy screener actions walk the whole universe; a Vercel invocation is refused
+# by api/sector-hot.js (403 DEPRECATED_ON_SERVERLESS) for exactly that reason.
+$HeavyScanActions = @("refresh-screener", "nk-screener-run", "daytrade-screener-run", "refresh")
+
+function Test-IsVercelBaseUrl($baseUrl) {
+    if (-not $baseUrl) { return $false }
+    return ("$baseUrl" -match '(^|\.)vercel\.app(/|$)')
+}
+
+function Assert-NotVercelForHeavyScan($cfg) {
+    if (-not (Test-IsVercelBaseUrl $cfg.API_BASE_URL)) { return $true }
+    Write-Host ""
+    Write-Host "  ========================================================"
+    Write-Host "  STOP: API_BASE_URL mengarah ke Vercel (serverless)."
+    Write-Host "  URL  : $($cfg.API_BASE_URL)"
+    Write-Host "  Aksi : $($HeavyScanActions -join ', ')"
+    Write-Host "  ========================================================"
+    Write-Host "  Scan berat (150-175 ticker) tidak boleh jalan di Vercel:"
+    Write-Host "  request akan mati di tengah scan dan hasilnya parsial."
+    Write-Host "  API sekarang membalas HTTP 403 DEPRECATED_ON_SERVERLESS."
+    Write-Host ""
+    Write-Host "  Jalankan scan berat di VPS daemon, lalu set:"
+    Write-Host "    API_BASE_URL=http://127.0.0.1:3000"
+    Write-Host "  (edit $ConfigPath atau jalankan 'setup')."
+    Write-Host ""
+    return $false
+}
 
 # === CONFIG HELPERS ===
 function Load-Config {
@@ -336,6 +373,8 @@ function Run-Konglo($cfg) {
     Write-Host "  Running: Konglo Swing Screener"
     Write-Host "  $('-' * 50)"
 
+    if (-not (Assert-NotVercelForHeavyScan $cfg)) { return $false }
+
     $data = Call-Api $cfg "refresh-screener" @{ ai = "0" }
 
     if ($data.success) {
@@ -357,6 +396,8 @@ function Run-NonKonglo($cfg) {
     Write-Host ""
     Write-Host "  Running: Non-Konglo Swing Screener"
     Write-Host "  $('-' * 50)"
+
+    if (-not (Assert-NotVercelForHeavyScan $cfg)) { return $false }
 
     $maxCalls = 150
     $callCount = 0
@@ -510,6 +551,7 @@ function Print-DayTradeTelegramDiagnostics($data) {
 }
 
 function Run-DayTrade($cfg, $mode) {
+    if (-not (Assert-NotVercelForHeavyScan $cfg)) { return $false }
     $sendRadar = $true
     if ($mode.EndsWith("-no-radar")) {
         $sendRadar = $false
@@ -594,6 +636,8 @@ function Run-SektorHot($cfg) {
     Write-Host ""
     Write-Host "  Running: Refresh Sektor Hot / Group Hot"
     Write-Host "  $('-' * 50)"
+
+    if (-not (Assert-NotVercelForHeavyScan $cfg)) { return $false }
 
     $data = Call-Api $cfg "refresh"
 
@@ -680,6 +724,9 @@ function Wait-SecondsWithProgress($seconds, $label) {
 }
 
 function Run-DayTradeAutoLoop($cfg, $loopMode) {
+    # Batch 8: an intensive in-market loop is exactly the workload that must never
+    # be pointed at a serverless origin — fail fast, before the window opens.
+    if (-not (Assert-NotVercelForHeavyScan $cfg)) { return $false }
     $isFull = ($loopMode -eq "full" -or $loopMode -eq "auto-full")
     $runMode = if ($isFull) { "auto-full" } else { "auto-fast" }
     $label = if ($isFull) { "FULL" } else { "FAST" }
@@ -801,6 +848,11 @@ Write-Host ""
 Write-Host "  ========================================================"
 Write-Host "  Auto-Cuan Local Scan Runner"
 Write-Host "  API: $($cfg.API_BASE_URL)"
+if (Test-IsVercelBaseUrl $cfg.API_BASE_URL) {
+    Write-Host "  [WARNING] API_BASE_URL adalah origin Vercel (serverless)."
+    Write-Host "            Aksi scan berat akan DITOLAK (403 DEPRECATED_ON_SERVERLESS)."
+    Write-Host "            Set API_BASE_URL=http://127.0.0.1:3000 untuk scan di VPS."
+}
 Write-Host "  ========================================================"
 
 $success = $false
