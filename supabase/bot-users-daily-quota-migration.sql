@@ -3,7 +3,7 @@
 
 BEGIN;
 
-ALTER TABLE public.bot_users 
+ALTER TABLE public.bot_users
 ADD COLUMN IF NOT EXISTS daily_limit integer NOT NULL DEFAULT 15,
 ADD COLUMN IF NOT EXISTS daily_usage integer NOT NULL DEFAULT 0,
 ADD COLUMN IF NOT EXISTS last_usage_date date;
