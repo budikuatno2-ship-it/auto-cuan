@@ -35,6 +35,7 @@
   "test/ai-chat-renderer-bugs.test.js",
   "test/ai-answer-contract-cache-bugs.test.js",
   "test/ai-telemetry-bugs.test.js",
+  "test/audit-fase1-price-bugs.test.js",
   "test/latest-price-resolver-bugs.test.js",
   "test/vps-data-fetcher-bugs.test.js",
   "test/daily-history-collector-bugs.test.js",
