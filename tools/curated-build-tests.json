@@ -527,5 +527,17 @@
   "test/audit-fase9-fast-watcher-bugs.test.js",
   "test/audit-fase10-telegram-templates-bugs.test.js",
   "test/audit-fase11-telegram-notifier-bugs.test.js",
-  "test/audit-fase12-webhook-alert-bugs.test.js"
+  "test/audit-fase12-webhook-alert-bugs.test.js",
+  "test/audit-fase10-telegram-gate-bugs.test.js",
+  "test/audit-fase11-trading-plan-bugs.test.js",
+  "test/audit-fase12-trade-engine-bugs.test.js",
+  "test/audit-fase13-14-runtime-db-bugs.test.js",
+  "test/audit-fase15-16-pipeline-stress-bugs.test.js",
+  "test/audit-fase2-ca-bugs.test.js",
+  "test/audit-fase3-ingestion-cache-bugs.test.js",
+  "test/audit-fase4-broksum-bugs.test.js",
+  "test/audit-fase5-accumulation-bugs.test.js",
+  "test/audit-fase6-foreign-insider-bugs.test.js",
+  "test/audit-fase7-daytrade-screener-bugs.test.js",
+  "test/audit-fase8-swing-screener-bugs.test.js"
 ]

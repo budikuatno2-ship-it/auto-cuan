@@ -427,13 +427,35 @@
   }
 
   function normalizeBrokerValue(val, vol, avgPrice) {
-    if (!val || isNaN(val)) return 0;
-    var num = Number(val);
+    if (val == null || val === '') return 0;
+    // AUDIT-F4-14: feed dapat mengirim string numerik ("1500000000",
+    // "1.500.000.000"). `isNaN(val)` menandai SEMUA string sebagai NaN sehingga
+    // nilai riil dibuang menjadi 0. Gunakan parseNumericValue yang sudah
+    // menangani format ribuan Indonesia sebelum fallback Number().
+    var num = (typeof val === 'number') ? val : parseNumericValue(val);
+    if (num == null || !isFinite(num)) return 0;
     // Absolute sanity guard: Any broker value >= 500 Miliar (5e11) is a 100x multiplier artifact in IDX data
     if (Math.abs(num) >= 5e11) {
       return Math.round(num / 100);
     }
     return num;
+  }
+
+  /**
+   * AUDIT-F4-15: klasifikasi harian tunggal untuk kolom "Kategori"
+   * (Big Acc / Normal Acc / Netral / Normal Dist / Big Dist).
+   * Sebelumnya cabang terakhir menangkap net 0, -0, dan NaN sehingga hari tanpa
+   * net flow apa pun tampil sebagai "Normal Dist" dan mendistorsi tabel
+   * konsistensi. Ambang dipertahankan 5 Miliar (|net| >= 5e9 => Big).
+   */
+  function classifyDailyNetCategory(rawNet) {
+    var net = (typeof rawNet === 'number') ? rawNet : parseNumericValue(rawNet);
+    if (net == null || !isFinite(net)) return 'Netral';
+    if (net >= 5e9) return 'Big Acc';
+    if (net > 0) return 'Normal Acc';
+    if (net === 0) return 'Netral';
+    if (net <= -5e9) return 'Big Dist';
+    return 'Normal Dist';
   }
 
   function computeAvgPrice(val, vol, explicitAvg) {
@@ -3022,13 +3044,17 @@
         var rowNet = normalizeBrokerValue(dayRow.net_val || 0);
         var isPositive = rowNet >= 0;
 
-        // Kategori: Big Acc / Normal Acc / Dist / Big Dist
+        // Kategori: Big Acc / Normal Acc / Netral / Normal Dist / Big Dist
+        // AUDIT-F4-15: net 0 / NaN tidak lagi jatuh ke "Normal Dist".
         var catBadge = '';
-        if (rowNet >= 5e9) {
+        var dailyCategory = classifyDailyNetCategory(rowNet);
+        if (dailyCategory === 'Big Acc') {
           catBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">🟢 Big Acc</span>';
-        } else if (rowNet > 0) {
+        } else if (dailyCategory === 'Normal Acc') {
           catBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">🟢 Normal Acc</span>';
-        } else if (rowNet <= -5e9) {
+        } else if (dailyCategory === 'Netral') {
+          catBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-500/10 text-gray-300 border border-gray-500/30">⚪ Netral</span>';
+        } else if (dailyCategory === 'Big Dist') {
           catBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">🔴 Big Dist</span>';
         } else {
           catBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/30">🔴 Normal Dist</span>';
@@ -5502,6 +5528,7 @@
     parseNumericValue: parseNumericValue,
     calculateScannerDiscount: calculateScannerDiscount,
     computeConcentrationRatioMetrics: computeConcentrationRatioMetrics,
+    classifyDailyNetCategory: classifyDailyNetCategory,
     listDiskDates: listDiskDates,
     initBrokerDateSelect: initBrokerDateSelect,
     renderBrokerDateSelectHtml: renderBrokerDateSelectHtml,
@@ -5515,6 +5542,7 @@
       parseNumericValue: parseNumericValue,
       formatDateDisplay: formatDateDisplay,
       computeConcentrationRatioMetrics: computeConcentrationRatioMetrics,
+      classifyDailyNetCategory: classifyDailyNetCategory,
       injectBubbleStyles: injectBubbleStyles,
       BROKER_NAMES: BROKER_NAMES,
       FOREIGN_BROKERS: FOREIGN_BROKERS,
