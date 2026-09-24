@@ -521,5 +521,7 @@
   "test/regime-adaptive-and-foreign-confluence.test.js",
   "test/audit-fase4-trade-plan-bugs.test.js",
   "test/audit-fase5-position-sizing-bugs.test.js",
-  "test/audit-fase6-ohlcv-cache-bugs.test.js"
+  "test/audit-fase6-ohlcv-cache-bugs.test.js",
+  "test/audit-fase7-screener-engine-bugs.test.js",
+  "test/audit-fase8-sector-breakout-bugs.test.js"
 ]

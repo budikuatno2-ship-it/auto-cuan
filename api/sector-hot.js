@@ -735,9 +735,12 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         var _finalTp2 = _refinedLevels ? _refinedLevels.tp2 : analysis.tp2;
         var _finalRR = _refinedLevels ? _refinedLevels.risk_reward : analysis.risk_reward;
 
+        // BUG-F8-05: without ticker/board the normalizer cannot recognise
+        // Akselerasi / FCA names, so those levels were snapped onto the regular
+        // tick grid (Rp5/Rp10/...) and published off-tick.
         var _tickResult = idxTick.normalizeLevelsToIdxTicks(
           { entry_low: _finalEntry_low, entry_high: _finalEntry_high, stop_loss: _finalStop_loss, tp1: _finalTp1, tp2: _finalTp2, risk_reward: _finalRR, support: analysis.support, resistance: analysis.resistance },
-          { mode: 'swing' }
+          { mode: 'swing', ticker: item.ticker, board: item.board || null }
         );
         if (_tickResult.tick_normalized) {
           _finalEntry_low = _tickResult.entry_low;
@@ -1188,6 +1191,9 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var savedCount = 0;
     var saveError = null;
 
+    // BATCH4-F8-04: normalise the JSONB plan fields on the source rows first, so
+    // a corrupted/stale payload can never be written as a scalar or array.
+    sanitizeTradePlanSourceRows(results);
     var upsertRows = results.map(function(r) {
       return {
         ticker: r.ticker,
@@ -1462,11 +1468,13 @@ async function handleRefresh(req, res, supabase) {
       }
 
       var memberRows = [];
+      // BATCH4-F8-03: `validCount` now counts only members whose change_pct was
+      // actually MEASURED (see sumObservedSectorMemberQuotes). A quote object
+      // that exists but carries null/NaN numbers is a feed gap, not an observed
+      // 0.00 — counting it dragged the group average toward zero and flipped the
+      // rotation ranking.
       var validCount = 0;
-      var totalChangePct = 0;
-      var totalVolRatio = 0;
       var topTicker = null;
-      var topChangePct = -Infinity;
 
       for (var m = 0; m < groupMembers.length; m++) {
         var member = groupMembers[m];
@@ -1491,12 +1499,6 @@ async function handleRefresh(req, res, supabase) {
           calculated_at: now
         });
 
-        if (q) {
-          validCount++;
-          totalChangePct += q.changePct;
-          totalVolRatio += q.volumeRatio30d;
-          if (q.changePct > topChangePct) { topChangePct = q.changePct; topTicker = member.ticker; }
-        }
       }
 
       if (memberRows.length > 0) {
@@ -1516,8 +1518,14 @@ async function handleRefresh(req, res, supabase) {
         }
       }
 
-      var avgChangePct = validCount > 0 ? Math.round((totalChangePct / validCount) * 100) / 100 : null;
-      var avgVolRatio = validCount > 0 ? Math.round((totalVolRatio / validCount) * 100) / 100 : null;
+      // BATCH4-F8-03: observed-only aggregation (see helper). A group with no
+      // measured member publishes null so the UI renders "-" instead of 0.00.
+      var observedQuotes = sumObservedSectorMemberQuotes(memberRows);
+      validCount = observedQuotes.observed_count;
+      var avgChangePct = observedQuotes.avg_change_pct;
+      var avgVolRatio = observedQuotes.avg_volume_ratio;
+      topTicker = observedQuotes.top_ticker;
+      var topChangePct = observedQuotes.top_change_pct;
 
       await supabase.from('sector_hot_latest').upsert([{
         group_code: group.group_code,
@@ -1527,7 +1535,7 @@ async function handleRefresh(req, res, supabase) {
         stock_count: groupMembers.length,
         valid_count: validCount,
         top_ticker: topTicker,
-        top_change_pct: topChangePct !== -Infinity ? Math.round(topChangePct * 100) / 100 : null,
+        top_change_pct: topChangePct,
         avg_volume_ratio: avgVolRatio,
         calculated_at: now,
         status: validCount > 0 ? 'ok' : 'no_data',
@@ -1587,12 +1595,21 @@ function calculateIndicators(candles) {
   var volAvg20 = calcScreenerMA(volumes, 20);
   var volume_ratio_avg20 = volAvg20 > 0 ? round2(volumes[lastIdx] / volAvg20) : 0;
 
-  // Support: lowest low of last 20 candles
-  var recent20Lows = lows.slice(-20);
+  // Support: lowest low of the last 20 candles BEFORE the running bar.
+  // BUG-F8-01: including the running bar made `support <= last_price` a
+  // mathematical tautology (close >= low >= min(lows)), so `_belowSupport`
+  // could never fire and every breakdown was scored as a healthy setup.
+  // Fall back to the full window only when there is no prior bar.
+  var priorLows = lows.slice(-21, -1);
+  var recent20Lows = priorLows.length > 0 ? priorLows : lows.slice(-20);
   var support = Math.min.apply(null, recent20Lows);
 
-  // Resistance: highest high of last 20 candles
-  var recent20Highs = highs.slice(-20);
+  // Resistance: highest high of the last 20 candles BEFORE the running bar.
+  // BUG-F8-02: including the running bar forced `resistance >= last_price`
+  // (close <= high <= max(highs)), so the breakout test `close > resistance`
+  // was unsatisfiable and BREAKOUT_CONFIRMED was unreachable.
+  var priorHighs = highs.slice(-21, -1);
+  var recent20Highs = priorHighs.length > 0 ? priorHighs : highs.slice(-20);
   var resistance = Math.max.apply(null, recent20Highs);
 
   // Alternative support: 3rd lowest of last 30 days
@@ -2770,6 +2787,20 @@ function cleanFiniteNumber(value) {
   return isFinite(n) ? n : null;
 }
 
+// AUDIT-F6-02: `Number(null)` is 0 and `isFinite(0)` is true, so
+// cleanFiniteNumber(null) returns 0 — an ABSENT foreign value silently becomes
+// an observed zero. That coercion is what let a ticker with no foreign data be
+// labelled "Foreign Neutral". This variant keeps the missing/absent distinction
+// (null / '' / undefined / '-' stay null) and is used by every foreign-flow
+// derivation. cleanFiniteNumber is intentionally left untouched: its other 20
+// call sites rely on the 0 default.
+function nullableFiniteNumber(value) {
+  if (value == null || value === '') return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
+  var n = Number(value);
+  return isFinite(n) ? n : null;
+}
+
 function compactSafeText(value, fallback) {
   var s = String(value == null ? '' : value).replace(/undefined|null|NaN/g, '').replace(/\s+/g, ' ').trim();
   return s || (fallback || '-');
@@ -2853,14 +2884,41 @@ async function fetchForeignConfluenceMap(supabase, tickers) {
   return out;
 }
 
+// AUDIT-F6-02: MISSING vs ZERO. `cleanFiniteNumber(r.foreign_net) || 0` converts
+// a NULL foreign_net (upload gap / fetch error) into 0, so a ticker whose data
+// was never collected was reported as "Foreign Neutral" — a fabricated verdict
+// that hides a data outage. Only genuinely observed values participate; a
+// window with no observation at all is "Foreign Data Unavailable", and a
+// partially observed window is labelled as such instead of silently summed.
+function sumObservedForeignNet(rows, windowSize) {
+  var slice = (rows || []).slice(0, windowSize);
+  var sum = 0;
+  var observed = 0;
+  for (var i = 0; i < slice.length; i++) {
+    var n = nullableFiniteNumber(slice[i].foreign_net);
+    if (n == null) continue;
+    sum += n;
+    observed++;
+  }
+  return { value: observed > 0 ? sum : null, observed: observed, window: slice.length };
+}
+
 function deriveForeignConfluenceFromRows(rows) {
   rows = rows || [];
-  if (rows.length === 0) return { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' };
-  var n1 = cleanFiniteNumber(rows[0].foreign_net) || 0;
-  var n3 = rows.slice(0,3).reduce(function(a,r){ return a + (cleanFiniteNumber(r.foreign_net) || 0); },0);
-  var n7 = rows.slice(0,7).reduce(function(a,r){ return a + (cleanFiniteNumber(r.foreign_net) || 0); },0);
-  var latestClose = cleanFiniteNumber(rows[0].close);
-  var oldestClose = cleanFiniteNumber(rows[Math.min(rows.length-1,6)].close) || latestClose;
+  if (rows.length === 0) return { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_sessions_missing: 0, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' };
+  var latestNet = nullableFiniteNumber(rows[0].foreign_net);
+  var n1 = latestNet;
+  var w3 = sumObservedForeignNet(rows, 3);
+  var w7 = sumObservedForeignNet(rows, 7);
+  var n3 = w3.value;
+  var n7 = w7.value;
+  var missing = rows.slice(0, 7).length - w7.observed;
+  if (n1 == null && n3 == null && n7 == null) {
+    return { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_sessions_missing: missing, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Baris foreign ada tetapi nilai net belum terisi (upload gap).' };
+  }
+  var latestClose = nullableFiniteNumber(rows[0].close);
+  var oldestClose = nullableFiniteNumber(rows[Math.min(rows.length-1,6)].close);
+  if (oldestClose == null) oldestClose = latestClose;
   var priceRising = latestClose != null && oldestClose != null && latestClose >= oldestClose * 1.005;
   var priceMildDown = latestClose != null && oldestClose != null && latestClose >= oldestClose * 0.97;
   var signs = [n1,n3,n7].map(function(n){ return n > 0 ? 1 : (n < 0 ? -1 : 0); });
@@ -2869,31 +2927,38 @@ function deriveForeignConfluenceFromRows(rows) {
   else if (n3 > 0 && n7 > 0 && priceMildDown) label = 'Foreign Absorption';
   else if (n1 < 0 && n3 < 0 && n7 < 0 && !priceMildDown) label = 'Foreign Distribution';
   else if (signs.indexOf(1) !== -1 && signs.indexOf(-1) !== -1) label = 'Foreign Mixed';
-  return { foreign_1d: Math.round(n1), foreign_3d: Math.round(n3), foreign_7d: Math.round(n7), foreign_label: label, foreign_notes: 'Foreign 1D/3D/7D dihitung dari nbsa × close.' };
+  if (missing > 0 && label === 'Foreign Neutral') label = 'Foreign Data Partial';
+  return { foreign_1d: n1 == null ? null : Math.round(n1), foreign_3d: n3 == null ? null : Math.round(n3), foreign_7d: n7 == null ? null : Math.round(n7), foreign_sessions_missing: missing, foreign_label: label, foreign_notes: missing > 0 ? 'Foreign 1D/3D/7D dihitung dari sesi berdata saja (' + missing + ' sesi tanpa data).' : 'Foreign 1D/3D/7D dihitung dari nbsa × close.' };
+}
+
+// Fresh object per call: callers do `Object.assign(row, result)`, and handing
+// out one shared literal would let any future in-place mutation leak across
+// every ticker in the same request.
+function foreignUnavailable() {
+  return { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' };
 }
 
 async function fetchForeignConfluence(supabase, ticker, lastPrice) {
   try {
     var safe = normalizeForeignTicker(ticker);
-    if (!safe) return { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' };
+    if (!safe) return foreignUnavailable();
     var res = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,foreign_net,close,nbsa').eq('ticker', safe).order('trade_date', { ascending: false }).order('uploaded_at', { ascending: false }).limit(7);
     var rows = res.data || [];
-    if (res.error || rows.length === 0) return { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' };
-    var n1 = cleanFiniteNumber(rows[0].foreign_net) || 0;
-    var n3 = rows.slice(0,3).reduce(function(a,r){ return a + (cleanFiniteNumber(r.foreign_net) || 0); },0);
-    var n7 = rows.slice(0,7).reduce(function(a,r){ return a + (cleanFiniteNumber(r.foreign_net) || 0); },0);
-    var latestClose = cleanFiniteNumber(rows[0].close) || cleanFiniteNumber(lastPrice);
-    var oldestClose = cleanFiniteNumber(rows[Math.min(rows.length-1,6)].close) || latestClose;
-    var priceRising = latestClose != null && oldestClose != null && latestClose >= oldestClose * 1.005;
-    var priceMildDown = latestClose != null && oldestClose != null && latestClose >= oldestClose * 0.97;
-    var signs = [n1,n3,n7].map(function(n){ return n > 0 ? 1 : (n < 0 ? -1 : 0); });
-    var label = 'Foreign Neutral';
-    if (n1 > 0 && n3 > 0 && n7 > 0 && priceRising) label = 'Foreign Accumulation';
-    else if (n3 > 0 && n7 > 0 && priceMildDown) label = 'Foreign Absorption';
-    else if (n1 < 0 && n3 < 0 && n7 < 0 && !priceMildDown) label = 'Foreign Distribution';
-    else if (signs.indexOf(1) !== -1 && signs.indexOf(-1) !== -1) label = 'Foreign Mixed';
-    return { foreign_1d: Math.round(n1), foreign_3d: Math.round(n3), foreign_7d: Math.round(n7), foreign_label: label, foreign_notes: 'Foreign 1D/3D/7D dihitung dari nbsa × close.' };
-  } catch (e) { return { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' }; }
+    if (res.error || rows.length === 0) return foreignUnavailable();
+    // AUDIT-F6-02: single derivation path. This function used to carry its own
+    // copy of the label logic with the same `|| 0` missing-to-zero coercion, so
+    // a fix in one place would silently leave the other leaking. The last-known
+    // price is folded in as a close fallback (its original behaviour) and then
+    // the shared, missing-aware derivation runs.
+    var latestCloseFallback = nullableFiniteNumber(lastPrice);
+    var normalizedRows = rows.map(function(r, idx) {
+      if (idx !== 0) return r;
+      var close = nullableFiniteNumber(r.close);
+      if (close != null || latestCloseFallback == null) return r;
+      return Object.assign({}, r, { close: latestCloseFallback });
+    });
+    return deriveForeignConfluenceFromRows(normalizedRows);
+  } catch (e) { return FOREIGN_UNAVAILABLE; }
 }
 
 
@@ -5450,11 +5515,29 @@ async function fetchForeignSummary(supabase, ticker) {
     var res = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,foreign_net,nbsa').eq('ticker', ticker).order('trade_date', { ascending: false }).order('uploaded_at', { ascending: false }).limit(7);
     var rows = res.data || [];
     if (res.error || rows.length === 0) return { text: 'Foreign: belum ada data', score: 0 };
+    // AUDIT-F6-02b: two defects lived in this one expression.
+    //  (a) `Number(r.foreign_net) || 0` turned a NULL session into a real 0,
+    //      dragging the 7-day average toward neutral when data was missing;
+    //  (b) dividing by `rows.length` (all rows) instead of the number of
+    //      OBSERVED sessions understated the average on partial data.
+    // The average now divides by observed sessions only, and a ticker with no
+    // observation at all is reported as unavailable rather than "Neutral".
+    var observed = [];
+    for (var i = 0; i < rows.length; i++) {
+      var net = nullableFiniteNumber(rows[i].foreign_net);
+      if (net != null) observed.push(net);
+    }
+    if (observed.length === 0) {
+      return { latest: rows[0], avg: null, trend: 'Unavailable', score: 0, text: 'Foreign: data ' + rows[0].trade_date + ' belum terisi (net kosong).' };
+    }
+    var latestNet = nullableFiniteNumber(rows[0].foreign_net);
     var latest = rows[0];
-    var avg = rows.reduce(function(s, r) { return s + (Number(r.foreign_net) || 0); }, 0) / rows.length;
-    var side = latest.foreign_net > 0 ? 'net buy' : (latest.foreign_net < 0 ? 'net sell' : 'netral');
+    var avg = observed.reduce(function(s, v) { return s + v; }, 0) / observed.length;
     var trend = avg > 0 ? 'Accumulation' : (avg < 0 ? 'Distribution' : 'Neutral');
-    return { latest: latest, avg: avg, trend: trend, score: avg > 0 ? 5 : (avg < 0 ? -4 : 0), text: 'Foreign: ' + latest.trade_date + ' NBSA ' + formatForeignNumber(latest.nbsa) + ' · ' + formatForeignNetWithSide(latest.foreign_net) + ' · Avg7 ' + formatForeignNetWithSide(avg) + ' (' + trend + ')' };
+    var latestText = latestNet == null
+      ? 'sesi terbaru belum berdata'
+      : formatForeignNetWithSide(latestNet);
+    return { latest: latest, avg: avg, observed_sessions: observed.length, sessions_missing: rows.length - observed.length, trend: trend, score: avg > 0 ? 5 : (avg < 0 ? -4 : 0), text: 'Foreign: ' + latest.trade_date + ' NBSA ' + formatForeignNumber(latest.nbsa) + ' · ' + latestText + ' · Avg7 ' + formatForeignNetWithSide(avg) + ' (' + trend + ', ' + observed.length + '/' + rows.length + ' sesi)' };
   } catch (e) { return { text: 'Foreign: belum ada data', score: 0 }; }
 }
 
@@ -6922,9 +7005,12 @@ async function fetchLatestPriceForMonitor(supabase, ticker, pck) {
   }
 
   if (monitorSource === 'swing_nk' || monitorSource === 'swing_non_konglo' || monitorSource.indexOf('non') >= 0) {
-    var snk = await supabase.from('swing_screener_non_konglo_latest').select('last_price,calculated_at,price_asof,price_date').eq('ticker', ticker).maybeSingle();
+    // BUG-F8-06: swing_screener_non_konglo_latest has no calculated_at column.
+    // Requesting it made PostgREST reject the whole read, so this price source
+    // silently never resolved. published_at is the real recency column.
+    var snk = await supabase.from('swing_screener_non_konglo_latest').select('last_price,published_at,price_asof,price_date').eq('ticker', ticker).maybeSingle();
     if (snk.data && snk.data.last_price != null) {
-      return { last: toNum(snk.data.last_price), open: null, high: null, low: null, at: snk.data.price_asof || snk.data.calculated_at || snk.data.price_date, bestEffort: false, source: 'swing_screener_non_konglo_latest' };
+      return { last: toNum(snk.data.last_price), open: null, high: null, low: null, at: snk.data.price_asof || snk.data.published_at || snk.data.price_date, bestEffort: false, source: 'swing_screener_non_konglo_latest' };
     }
   }
 
@@ -6934,9 +7020,10 @@ async function fetchLatestPriceForMonitor(supabase, ticker, pck) {
     return { last: toNum(skFallback.data.last_price), open: null, high: null, low: null, at: skFallback.data.price_asof || skFallback.data.calculated_at || skFallback.data.price_date, bestEffort: false, source: 'swing_screener_latest' };
   }
 
-  var snkFallback = await supabase.from('swing_screener_non_konglo_latest').select('last_price,calculated_at,price_asof,price_date').eq('ticker', ticker).maybeSingle();
+  // BUG-F8-06 (fallback path): same non-existent calculated_at column.
+  var snkFallback = await supabase.from('swing_screener_non_konglo_latest').select('last_price,published_at,price_asof,price_date').eq('ticker', ticker).maybeSingle();
   if (snkFallback.data && snkFallback.data.last_price != null) {
-    return { last: toNum(snkFallback.data.last_price), open: null, high: null, low: null, at: snkFallback.data.price_asof || snkFallback.data.calculated_at || snkFallback.data.price_date, bestEffort: false, source: 'swing_screener_non_konglo_latest' };
+    return { last: toNum(snkFallback.data.last_price), open: null, high: null, low: null, at: snkFallback.data.price_asof || snkFallback.data.published_at || snkFallback.data.price_date, bestEffort: false, source: 'swing_screener_non_konglo_latest' };
   }
 
   // 4. Final fallback to foreign_watchlist_daily
@@ -9821,15 +9908,12 @@ async function buildNkFinalizeStagingDiagnostics(supabase, runDate, rows, totalS
     diagnostics.batch_passed_seen_count = null;
     diagnostics.batch_diagnostics_error = e && e.message ? e.message : String(e);
   }
-  try {
-    var { data: meta } = await supabase
-      .from('swing_screener_non_konglo_meta')
-      .select('last_staging_write_count')
-      .eq('id', 'latest')
-      .maybeSingle();
-    if (meta && meta.last_staging_write_count != null) diagnostics.last_staging_write_count = meta.last_staging_write_count;
-  } catch (e2) {
-    diagnostics.last_staging_write_count = null;
+  // BUG-F8-08: swing_screener_non_konglo_meta has no `last_staging_write_count`
+  // column (and nothing ever writes it), so this PostgREST select failed on every
+  // finalize and the diagnostic silently stayed null. Derive the value from the
+  // job counters already read above instead of querying a non-existent column.
+  if (diagnostics.batch_passed_seen_count != null) {
+    diagnostics.last_staging_write_count = diagnostics.batch_passed_seen_count;
   }
   return diagnostics;
 }
@@ -9985,6 +10069,95 @@ var NK_STAGING_COLUMN_SET = NK_STAGING_COLUMNS.reduce(function(acc, col) {
   acc[col] = true;
   return acc;
 }, Object.create(null));
+
+/**
+ * BATCH4-F8-04: trade_plan_v2 / trade_plan_v2_structural are JSONB columns.
+ * The mappers published `value || null`, which only guards null/undefined: a
+ * JSON string left behind by a cache round-trip, a bare array, or a function was
+ * written as-is. Postgres then stored a scalar/array where every reader expects
+ * an object, and the plan resolver silently returned an unusable plan.
+ * Returns a plain object, or null when the value cannot be a plan at all.
+ */
+function sanitizeJsonbPayload(value) {
+  if (value == null) return null;
+  if (typeof value === 'string') {
+    var trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+      var parsed = JSON.parse(trimmed);
+      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : null;
+    } catch (_) {
+      return null;
+    }
+  }
+  if (typeof value !== 'object') return null;
+  if (Array.isArray(value)) return null;
+  return value;
+}
+
+/**
+ * BATCH4-F8-03: aggregate sector member quotes over OBSERVED measurements only.
+ *
+ * The rotation handler accumulated `totalChangePct += q.changePct` for every
+ * member whose quote OBJECT existed, while counting that same member in
+ * `validCount`. A quote whose numeric fields were null/NaN (feed gap, parse
+ * failure) therefore contributed a silent 0.00 to the sum and dragged the
+ * published group average toward zero — flipping the rotation ranking. Formatted
+ * numeric strings are measurements and must be coerced, not discarded.
+ *
+ * @returns {{observed_count:number, avg_change_pct:number|null, avg_volume_ratio:number|null,
+ *            top_ticker:string|null, top_change_pct:number|null, stock_count:number}}
+ */
+function sumObservedSectorMemberQuotes(members) {
+  var rows = Array.isArray(members) ? members : [];
+  var totalChangePct = 0;
+  var totalVolRatio = 0;
+  var observedCount = 0;
+  var topTicker = null;
+  var topChangePct = null;
+
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i] || {};
+    var change = nullableFiniteNumber(row.change_pct);
+    if (change == null) continue;
+    observedCount++;
+    totalChangePct += change;
+    var vol = nullableFiniteNumber(row.volume_ratio_30d);
+    if (vol != null) totalVolRatio += vol;
+    if (topChangePct == null || change > topChangePct) {
+      topChangePct = change;
+      topTicker = row.ticker || null;
+    }
+  }
+
+  return {
+    observed_count: observedCount,
+    avg_change_pct: observedCount > 0 ? Math.round((totalChangePct / observedCount) * 100) / 100 : null,
+    avg_volume_ratio: observedCount > 0 ? Math.round((totalVolRatio / observedCount) * 100) / 100 : null,
+    top_ticker: topTicker,
+    top_change_pct: topChangePct != null ? Math.round(topChangePct * 100) / 100 : null,
+    stock_count: rows.length
+  };
+}
+
+/**
+ * BATCH4-F8-04: normalise the JSONB plan fields ON the source rows before they
+ * are mapped into an upsert payload. The row mappers keep their historical
+ * `value || null` shape (pinned by
+ * test/daytrade-swing-konglo-trade-plan-v2-persistence.test.js), so the
+ * sanitisation happens here at the boundary: a corrupted value becomes null
+ * instead of being written into a JSONB column as a scalar/array.
+ */
+function sanitizeTradePlanSourceRows(rows) {
+  if (!Array.isArray(rows)) return rows;
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    if (!row || typeof row !== 'object') continue;
+    row.trade_plan_v2 = sanitizeJsonbPayload(row.trade_plan_v2);
+    row.trade_plan_v2_structural = sanitizeJsonbPayload(row.trade_plan_v2_structural);
+  }
+  return rows;
+}
 
 function sanitizeNkStagingRow(row) {
   var out = {};
@@ -10161,9 +10334,10 @@ async function handleNkScreenerBatch(req, res, supabase) {
 
       // === V6: IDX TICK NORMALIZATION (Non-Konglo — after respect zone refinement) ===
       if (scored.entry_low && scored.stop_loss && scored.tp1) {
+        // BUG-F8-05: pass ticker/board so Akselerasi / FCA names keep Rp1 ticks.
         var _nkTickResult = idxTick.normalizeLevelsToIdxTicks(
           { entry_low: scored.entry_low, entry_high: scored.entry_high, stop_loss: scored.stop_loss, tp1: scored.tp1, tp2: scored.tp2, risk_reward: scored.risk_reward, support: scored.support, resistance: scored.resistance },
-          { mode: 'swing' }
+          { mode: 'swing', ticker: ticker, board: boards[ticker] || null }
         );
         if (_nkTickResult.tick_normalized) {
           scored.entry_low = _nkTickResult.entry_low;
@@ -10578,6 +10752,8 @@ async function handleNkScreenerFinalize(req, res, supabase) {
   var publishedCount = 0;
 
   if (topCandidates && topCandidates.length > 0) {
+    // BATCH4-F8-04: sanitize JSONB plan payloads before they reach the mapper.
+    sanitizeTradePlanSourceRows(topCandidates);
     const publishRows = topCandidates.map((c, idx) => ({
       rank: idx + 1,
       ticker: c.ticker,
@@ -10855,7 +11031,10 @@ async function fetchNkQuoteData(ticker) {
   try {
     const symbol = ticker + '.JK';
     const now = Math.floor(Date.now() / 1000);
-    const from = now - 60 * 86400; // 60 days back
+    // BUG-F8-03: 60 calendar days yield ~42 IDX trading bars, so nkCalcMA(...,50)
+    // always returned null and every Non-Konglo candidate failed the Swing Ready
+    // "Di bawah MA50" gate. 120 days yields ~85 bars, leaving room for holidays.
+    const from = now - 120 * 86400; // 120 days back (~85 trading bars)
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${from}&period2=${now}&interval=1d`;
 
     const controller = new AbortController();
@@ -10915,9 +11094,15 @@ async function fetchNkQuoteData(ticker) {
     // RSI14
     const rsi14 = nkCalcRSI(closesArr, 14);
 
-    // Support/Resistance (20d low/high)
-    const last20Lows = last20.map(d => d.low);
-    const last20Highs = last20.map(d => d.high);
+    // Support/Resistance (20d low/high) — BUG-F8-01/02: the running bar is
+    // excluded. Including it made `support <= lastClose` and
+    // `resistance >= lastClose` tautologies, so breakdowns never scored as
+    // `belowSupport` and a genuine breakout could never exceed its own high.
+    // Fall back to the full window only when no prior bar exists.
+    const priorBars = validDays.slice(-21, -1);
+    const srWindow = priorBars.length > 0 ? priorBars : last20;
+    const last20Lows = srWindow.map(d => d.low);
+    const last20Highs = srWindow.map(d => d.high);
     const support = Math.min(...last20Lows);
     const resistance = Math.max(...last20Highs);
 
@@ -11512,7 +11697,10 @@ function calculateNkSetupScore(q) {
   var passesAllHardFilters = true;
   if (score < 75) { passesAllHardFilters = false; failReasons.push('Score < 75'); }
   if (!(q.ma20 && q.lastPrice >= q.ma20 * 0.99)) { passesAllHardFilters = false; failReasons.push('Di bawah MA20'); }
-  if (!(q.ma50 && q.lastPrice >= q.ma50)) { passesAllHardFilters = false; failReasons.push('Di bawah MA50'); }
+  // BUG-F8-03: `q.ma50` is legitimately null when the provider window is shorter
+  // than 50 bars. Treating "unknown" as "below" hard-failed EVERY candidate.
+  // Fail closed only on a KNOWN MA50 that price is actually under.
+  if (q.ma50 && q.lastPrice < q.ma50) { passesAllHardFilters = false; failReasons.push('Di bawah MA50'); }
   // V2 Guard A3: RSI range widened to 45-70 for Swing Ready
   if (!(q.rsi14 !== null && q.rsi14 >= 45 && q.rsi14 <= 70)) {
     passesAllHardFilters = false;
@@ -12140,6 +12328,25 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
 // ============================================================
 // DAY TRADE SCREENER v1 — RUN (Bearer CRON_SECRET protected)
 // ============================================================
+/**
+ * BUG-F7-07: a paused (BREAK/CLOSED) batch must never reach finalize.
+ *
+ * lib/daytrade-screener-engine.runDayTradeBatch returns
+ * { results: [], skipped: true, status: 'paused', reason: 'market_break' }
+ * when the session is BREAK or CLOSED — order books are frozen, so no signal
+ * may be computed. The handler previously ignored `skipped`, computed 0 passed
+ * results, and called finalizeDtScreener, which TRIMS
+ * daytrade_screener_latest down to the top-10 of an EMPTY set — silently
+ * deleting the day's already-published candidates.
+ *
+ * @returns {boolean} true when the caller must NOT publish/trim.
+ */
+function shouldSkipDayTradePublish(batchResult) {
+  if (!batchResult || typeof batchResult !== 'object') return false;
+  if (batchResult.skipped === true) return true;
+  return String(batchResult.status || '').toLowerCase() === 'paused';
+}
+
 async function handleDayTradeScreenerRun(req, res, supabase) {
   var runId = null;
   var runDate = null;
@@ -12285,6 +12492,38 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
   // 6. Process this batch
   var batchTickers = universe.slice(startIdx, endIdx);
   var batchResult = await dtEngine.runDayTradeBatch(batchTickers, runMode, { fastMode: isFastMode });
+
+  // BUG-F7-07: a paused batch carries NO results by design (frozen order book).
+  // Publishing/finalizing it would trim the live table to an empty top-10 and
+  // wipe the day's already-published candidates.
+  if (shouldSkipDayTradePublish(batchResult)) {
+    console.log('[daytrade-screener-run] batch paused: ' + (batchResult.reason || 'market_break') + ' session=' + (batchResult.session || 'unknown'));
+    await updateDtMeta(supabase, {
+      status: 'paused',
+      run_date: runDate,
+      run_mode: runMode,
+      run_id: runId,
+      universe_count: universeCount,
+      scanned_count: (meta && meta.scanned_count) || 0,
+      failed_count: (meta && meta.failed_count) || 0,
+      passed_count: (meta && meta.passed_count) || 0,
+      message: 'Day Trade scan paused: market session is ' + (batchResult.session || 'CLOSED') + ' (' + (batchResult.reason || 'market_break') + '). Published candidates preserved.'
+    });
+    return res.status(200).json({
+      success: true,
+      status: 'paused',
+      skipped_due_to_market: true,
+      run_id: runId,
+      run_mode: runMode,
+      run_date: runDate,
+      batch_index: batchIndex,
+      session: batchResult.session || null,
+      reason: batchResult.reason || 'market_break',
+      published_count_preserved: true,
+      message: 'Day Trade scan paused during ' + (batchResult.session || 'CLOSED') + '; existing published candidates were preserved.'
+    });
+  }
+
   var results = batchResult.results;
   var failedTickers = batchResult.failed;
 
@@ -12297,6 +12536,8 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
 
   // Upsert passed results for this batch
   if (passedResults.length > 0) {
+    // BATCH4-F8-04: sanitize JSONB plan payloads before they reach the mapper.
+    sanitizeTradePlanSourceRows(passedResults);
     var batchRows = passedResults.map(function(r) {
       return {
         ticker: r.ticker,
@@ -12468,8 +12709,13 @@ function selectTopCandidatesWithSectorDiversification(candidates, maxTotal, maxP
   for (var i = 0; i < candidates.length; i++) {
     var c = candidates[i];
     if (!c) continue;
+    // BUG-F7-06: the previous guard was
+    //   `score != null && Number.isFinite(score) && score < 65`
+    // so a null/NaN/non-numeric score skipped the check ENTIRELY and malformed
+    // rows were promoted into the published Top-10 ahead of the prune step.
+    // Fail closed: only a FINITE score >= 65 may be published.
     var score = c.daytrade_score != null ? Number(c.daytrade_score) : (c.score != null ? Number(c.score) : null);
-    if (score != null && Number.isFinite(score) && score < 65) {
+    if (!Number.isFinite(score) || score < 65) {
       continue;
     }
 
@@ -14437,7 +14683,11 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
       });
     }
 
-    var metaRes = await supabase.from('swing_screener_meta').select('calculated_at,updated_at,run_date,status').eq('id', 'latest').maybeSingle();
+    // BUG-F8-07: swing_screener_meta has no run_date column. Requesting it made
+    // PostgREST reject the read, so the trusted Swing Konglo meta (and therefore
+    // the freshness gate) always fell back to a synthetic context.
+    // buildTrustedSwingKongloTelegramMeta() derives run_date from the rows when absent.
+    var metaRes = await supabase.from('swing_screener_meta').select('calculated_at,updated_at,status').eq('id', 'latest').maybeSingle();
     var swingMeta = metaRes && metaRes.data ? metaRes.data : { calculated_at: null };
     swingMeta = buildTrustedSwingKongloTelegramMeta(swingMeta, rows, savedCount, precomputedResults);
     var swingMetaFallbackDiagnostics = {
@@ -14839,9 +15089,23 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 }
 
 module.exports.__test = {
+  // BUG-F7-07: publish guard for paused (BREAK/CLOSED) batches.
+  shouldSkipDayTradePublish: shouldSkipDayTradePublish,
+  // BATCH4-F8-03/04: sector rotation aggregation + JSONB payload sanitisation.
+  sumObservedSectorMemberQuotes: sumObservedSectorMemberQuotes,
+  sanitizeJsonbPayload: sanitizeJsonbPayload,
+  sanitizeTradePlanSourceRows: sanitizeTradePlanSourceRows,
+  deriveForeignConfluenceFromRows: deriveForeignConfluenceFromRows,
+  sumObservedForeignNet: sumObservedForeignNet,
+  normalizeForeignTicker: normalizeForeignTicker,
   scoreAndClassify: scoreAndClassify,
   calculateNkSetupScore: calculateNkSetupScore,
   parseNkValidDays: parseNkValidDays,
+  // BUG-F8-01/02/03: expose the swing indicator + Non-Konglo gate seams so the
+  // support/resistance and MA50 rules are directly testable.
+  calculateIndicators: calculateIndicators,
+  nkCalcMA: nkCalcMA,
+  applyNkHardFilters: applyNkHardFilters,
   fetchWithTimeout: fetchWithTimeout,
   YAHOO_FETCH_TIMEOUT_MS: YAHOO_FETCH_TIMEOUT_MS,
   SCREENER_AI_TIMEOUT_MS: SCREENER_AI_TIMEOUT_MS,
