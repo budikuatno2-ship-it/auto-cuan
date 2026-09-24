@@ -36,6 +36,8 @@
   "test/ai-answer-contract-cache-bugs.test.js",
   "test/ai-telemetry-bugs.test.js",
   "test/audit-fase1-price-bugs.test.js",
+  "test/audit-fase2-corp-action-bugs.test.js",
+  "test/audit-fase3-market-hours-bugs.test.js",
   "test/latest-price-resolver-bugs.test.js",
   "test/vps-data-fetcher-bugs.test.js",
   "test/daily-history-collector-bugs.test.js",
