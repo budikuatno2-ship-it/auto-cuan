@@ -523,5 +523,6 @@
   "test/audit-fase5-position-sizing-bugs.test.js",
   "test/audit-fase6-ohlcv-cache-bugs.test.js",
   "test/audit-fase7-screener-engine-bugs.test.js",
-  "test/audit-fase8-sector-breakout-bugs.test.js"
+  "test/audit-fase8-sector-breakout-bugs.test.js",
+  "test/audit-fase9-fast-watcher-bugs.test.js"
 ]
