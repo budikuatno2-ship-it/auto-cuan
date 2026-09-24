@@ -211,12 +211,30 @@ test('F6-B3-03b: a successful atomic replace never leaves a temp file behind', a
 // were current. The ceiling exists (F3-007); this locks the observable
 // counter so an operator can see the fallback being refused rather than
 // guessing why a ticker went dark.
+//
+// CROSS-BATCH BLOCKER FIX (Batch 4, 24 Sept 2026) — WALL-CLOCK DETERMINISM.
+// The "RECENT" fixture used to be 6 HOURS old, which is stale under the
+// configured 15-minute TTL but FRESH under the 12-hour off-market TTL that
+// getEffectiveTtl() applies on weekends, before 09:00 WIB and after 15:30 WIB.
+// Outside market hours the entry was therefore served via the cacheHit path
+// instead of the stale-fallback path, so `stats.staleFallback` stayed 0 and
+// this assertion failed. Proof of the wall-clock dependency:
+//   - Batch 3 CI run 35973008820 PASSED at 08:03:18Z (15:03 WIB, market hours)
+//   - Batch 4 CI run 35979641392 FAILED at 09:10:40Z (16:10 WIB, after close)
+// The fixture is now 13 HOURS old: longer than BOTH the 15-minute in-market
+// TTL and the 12-hour off-market TTL, so the entry is genuinely stale in every
+// window and the assertion is deterministic at any hour. The scenario under
+// test (an in-window fallback is served AND counted) is unchanged — it still
+// exercises the same branch of isUsableStaleFallback.
 // ---------------------------------------------------------------------------
+const OFF_MARKET_TTL_MS = 12 * HOUR_MS; // mirrors getEffectiveTtl outside IDX hours
+const IN_WINDOW_STALE_AGE_MS = OFF_MARKET_TTL_MS + HOUR_MS; // 13h > both ceilings
+
 test('F6-B3-04: an ancient cache is refused and counted, a recent one is served and counted', async (t) => {
   const dir = tmpdir(t);
 
   cachedFile(dir, 'ANCIENT', 200 * DAY_MS, 30);
-  cachedFile(dir, 'RECENT', 6 * HOUR_MS, 30);
+  cachedFile(dir, 'RECENT', IN_WINDOW_STALE_AGE_MS, 30);
 
   const provider = cache.createCacheProvider({
     cacheDir: dir,
