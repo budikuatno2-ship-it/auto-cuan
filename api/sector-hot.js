@@ -69,6 +69,8 @@ const bandarmologiService = require('../lib/bandarmologi-service');
 const brokerHunterService = require('../lib/broker-hunter-service');
 const bandarmologiIntelService = require('../lib/bandarmologi-intel-service');
 const swingEngine = require('../lib/swing-screener-engine');
+const screenerCandleSource = require('../lib/chart-engine/candle-fetcher');
+const top5FusionEngine = require('../lib/top5-fusion-engine');
 const { passesRiskRewardFilter, MIN_RR_RATIO } = require('../lib/screener-config');
 const telegramDailyRecap = require('../lib/telegram-daily-recap');
 const userWatchlistService = require('../lib/user-watchlist-service');
@@ -2555,38 +2557,46 @@ async function callAIConfirmation(candidates) {
 // SCREENER: YAHOO FINANCE FETCHER (90-day OHLCV)
 // ============================================================
 
+// Konglo candle source: Yahoo through fetchWithTimeout (the bounded wrapper this
+// file already uses), then the backfilled data/daily-candles cache. A Yahoo
+// outage used to leave the whole 150+ ticker sweep with no data at all; it now
+// degrades to cached daily closes instead of stalling swing_screener_meta.
 async function fetchScreenerCandles(ticker) {
+  var cached = screenerCandleSource.readScreenerCandles(ticker, 55);
+  if (cached && screenerCandleSource.screenerRemoteCircuitOpen()) return cached;
   var symbol = ticker + '.JK';
   var url = 'https://query2.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) + '?range=90d&interval=1d&includePrePost=false';
-
-  var response = await fetchWithTimeout(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-  }, YAHOO_FETCH_TIMEOUT_MS);
-
-  if (!response.ok) return null;
-
-  var data = await response.json();
-  var result = data && data.chart && data.chart.result && data.chart.result[0];
-  if (!result) return null;
-
-  var timestamps = result.timestamp || [];
-  var indicators = result.indicators && result.indicators.quote && result.indicators.quote[0];
-  if (!indicators) return null;
-
-  var opens = indicators.open || [];
-  var highs = indicators.high || [];
-  var lows = indicators.low || [];
-  var closes = indicators.close || [];
-  var volumes = indicators.volume || [];
-
-  var candles = [];
-  for (var i = 0; i < timestamps.length; i++) {
-    if (closes[i] != null && opens[i] != null && highs[i] != null && lows[i] != null && volumes[i] != null) {
-      candles.push({ time: timestamps[i], open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: volumes[i] });
+  try {
+    var response = await fetchWithTimeout(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    }, YAHOO_FETCH_TIMEOUT_MS);
+    if (response.ok) {
+      var data = await response.json();
+      var result = data && data.chart && data.chart.result && data.chart.result[0];
+      var indicators = result && result.indicators && result.indicators.quote && result.indicators.quote[0];
+      if (indicators) {
+        var timestamps = result.timestamp || [];
+        var opens = indicators.open || [];
+        var highs = indicators.high || [];
+        var lows = indicators.low || [];
+        var closes = indicators.close || [];
+        var volumes = indicators.volume || [];
+        var candles = [];
+        for (var i = 0; i < timestamps.length; i++) {
+          if (closes[i] == null || opens[i] == null || highs[i] == null || lows[i] == null || volumes[i] == null) continue;
+          candles.push({ time: timestamps[i], open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: volumes[i] });
+        }
+        if (candles.length >= 20) {
+          screenerCandleSource.noteScreenerRemoteResult(true);
+          return candles;
+        }
+      }
     }
+    screenerCandleSource.noteScreenerRemoteResult(false);
+  } catch (_) {
+    screenerCandleSource.noteScreenerRemoteResult(false);
   }
-
-  return candles.length >= 20 ? candles : null;
+  return cached;
 }
 
 // ============================================================
@@ -6153,6 +6163,309 @@ async function selectDailyTop5(supabase) {
   return selectDailyTop5Pool(supabase, 5);
 }
 
+// ===========================================================================
+// TOP 5 FUSION ENGINE — T+1 .. T+5 candidate selection
+// ===========================================================================
+// The legacy strict path (candidatePassesPublicTelegramSafetyGate +
+// candidatePassesMinUpside) hard-rejects a consolidation-day candidate whose
+// only defect is a *timing* observation (BREAKOUT_WATCH / NEEDS_CLOSE_CONFIRMATION),
+// which produced `pool=68, before_gate=5, after_gate=0` in production.
+//
+// The fusion tier below re-scores the SAME combined pool (Day Trade + Swing
+// Konglo + Swing Non-Konglo) across two 50/50 pillars and only hard-rejects on
+// genuine validity failures. It is additive: strict picks always win, and the
+// fusion tier only fills the slots strict left empty.
+// ---------------------------------------------------------------------------
+
+// Daily net-flow series (newest-first, IDR) from the on-disk broker summary.
+// Broker summary is written by tools/backfill-arjum-data.js into
+// data/arjum-data/broker-summary/<TICKER>/<date>.json; lib/bandarmologi-service
+// owns the path resolution so ARJUM_DATA_DIR keeps working on the VPS.
+function readBrokerNetFlowSeries(ticker, maxDays) {
+  var clean = String(ticker || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!clean) return [];
+  var cap = Math.max(1, Math.min(Number(maxDays) || 7, 30));
+  try {
+    var dates = bandarmologiService.listDiskDates('broker-summary', clean); // newest first
+    if (!dates || dates.length === 0) return [];
+    var series = [];
+    for (var i = 0; i < dates.length && series.length < cap; i++) {
+      var raw = bandarmologiService.readDiskCache('broker-summary', clean, dates[i]);
+      if (!raw) continue;
+      var norm = bandarmologiService.normalizeBrokerSummary(raw, dates[i], clean);
+      if (!norm) continue;
+      // net_flow is the normalized broker net (IDR). A day whose payload had no
+      // usable magnitude is skipped rather than coerced to 0, so a data gap
+      // cannot masquerade as a neutral session.
+      var net = toNum(norm.net_flow);
+      if (net == null) continue;
+      series.push(net);
+    }
+    return series;
+  } catch (error) {
+    return [];
+  }
+}
+
+function buildFusionBrokerFrame(ticker) {
+  return top5FusionEngine.summarizeBrokerFrames(readBrokerNetFlowSeries(ticker, 7));
+}
+
+function buildFusionForeignFrame(ticker) {
+  var clean = normalizeForeignTicker(ticker);
+  if (!clean) return { net_1d: null, net_3d: null, net_7d: null, positive_days_7d: 0, streak: 0 };
+  try {
+    var dates = bandarmologiService.listDiskDates('broker-summary', clean);
+    if (!dates || dates.length === 0) {
+      return { net_1d: null, net_3d: null, net_7d: null, positive_days_7d: 0, streak: 0 };
+    }
+    var daily = [];
+    for (var i = 0; i < dates.length && daily.length < 7; i++) {
+      var raw = bandarmologiService.readDiskCache('broker-summary', clean, dates[i]);
+      if (!raw) continue;
+      var norm = bandarmologiService.normalizeBrokerSummary(raw, dates[i], clean);
+      if (!norm) continue;
+      var net = toNum(norm.foreign_net);
+      if (net == null) continue;
+      daily.push(net);
+    }
+    if (daily.length === 0) {
+      return { net_1d: null, net_3d: null, net_7d: null, positive_days_7d: 0, streak: 0 };
+    }
+    function windowSum(size) {
+      if (daily.length < size) return null;
+      var slice = daily.slice(0, size);
+      return slice.reduce(function (a, b) { return a + b; }, 0);
+    }
+    var streak = 0;
+    var sign = daily[0] > 0 ? 1 : (daily[0] < 0 ? -1 : 0);
+    for (var j = 0; j < daily.length; j++) {
+      var s = daily[j] > 0 ? 1 : (daily[j] < 0 ? -1 : 0);
+      if (s !== sign || s === 0) break;
+      streak++;
+    }
+    return {
+      net_1d: daily[0],
+      net_3d: windowSum(3),
+      net_7d: windowSum(7),
+      positive_days_7d: daily.slice(0, 7).filter(function (v) { return v > 0; }).length,
+      streak: streak * sign,
+      available: true
+    };
+  } catch (error) {
+    return { net_1d: null, net_3d: null, net_7d: null, positive_days_7d: 0, streak: 0 };
+  }
+}
+
+// Supabase foreign_watchlist_daily is the authoritative foreign source when it
+// has rows (the disk summary's foreign split only covers the institutional
+// broker whitelist). Merge order: Supabase rows win when present, disk fills gaps.
+// Fusion consumes the backfilled daily-candle cache (200 bars, data/daily-candles)
+// via the shared bounded fetcher. Yahoo is allowed to win when reachable so the
+// live intraday bar is included, but the cache absorbs any outage.
+async function buildFusionCandles(ticker) {
+  try {
+    var candles = await screenerCandleSource.fetchScreenerCandles(ticker, { minCandles: 60, range: '180d' });
+    return Array.isArray(candles) && candles.length >= 60 ? candles : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Run the fusion tier over the combined screener pool.
+ *
+ * @returns {Promise<{picks: object[], diagnostics: object}>}
+ */
+async function selectFusionTop5Candidates(supabase, pool, options) {
+  var opts = options || {};
+  var candidates = Array.isArray(pool) ? pool : [];
+  var diagnostics = {
+    fusion_pool_count: candidates.length,
+    fusion_evaluated_count: 0,
+    fusion_admissible_count: 0,
+    fusion_selected_count: 0,
+    fusion_min_count_met: false,
+    fusion_errors: []
+  };
+  if (candidates.length === 0) {
+    return { picks: [], diagnostics: diagnostics };
+  }
+
+  // Pre-compute the per-ticker context ONCE per request. The fusion engine is
+  // synchronous by design, so all I/O happens here and is handed over as plain
+  // data (this also keeps the engine directly unit-testable).
+  var candlesByTicker = {};
+  var brokerByTicker = {};
+  var foreignByTicker = {};
+
+  var tickers = [];
+  var seen = {};
+  candidates.forEach(function (c) {
+    var t = c && c.ticker ? normalizeForeignTicker(c.ticker) : '';
+    if (!t || seen[t]) return;
+    seen[t] = true;
+    tickers.push(t);
+  });
+
+  for (var i = 0; i < tickers.length; i++) {
+    var ticker = tickers[i];
+    try {
+      candlesByTicker[ticker] = await buildFusionCandles(ticker);
+    } catch (error) {
+      candlesByTicker[ticker] = null;
+      diagnostics.fusion_errors.push({ ticker: ticker, stage: 'candles', error: String(error && error.message || error).slice(0, 160) });
+    }
+    try {
+      brokerByTicker[ticker] = buildFusionBrokerFrame(ticker);
+    } catch (error) {
+      brokerByTicker[ticker] = {};
+      diagnostics.fusion_errors.push({ ticker: ticker, stage: 'broker', error: String(error && error.message || error).slice(0, 160) });
+    }
+  }
+
+  // Foreign flow is a Supabase round trip; batch it instead of one call per
+  // ticker so the VPS request stays inside its timeout budget.
+  try {
+    var foreignMap = await fetchForeignConfluenceMap(supabase, tickers);
+    tickers.forEach(function (t) {
+      var rows = foreignMap[t] || null;
+      var derived = rows ? deriveFusionForeignFrameFromConfluence(rows) : null;
+      foreignByTicker[t] = derived && derived.available ? derived : buildFusionForeignFrame(t);
+    });
+  } catch (error) {
+    diagnostics.fusion_errors.push({ stage: 'foreign_map', error: String(error && error.message || error).slice(0, 160) });
+  }
+
+  // The engine validates the SL/TP contract on TICK-SNAPPED levels, so it must
+  // receive the tick function. Doing it the other way round (snap afterwards)
+  // let a Rp 1.085 target silently represent 7.4% upside and fail the
+  // downstream min-upside gate.
+  function snapToTickFor(candidate) {
+    return function (value, mode) {
+      return idxTick.normalizeIdxPriceLevel(value, mode, candidate && candidate.board, candidate && candidate.is_fca, candidate && candidate.ticker);
+    };
+  }
+  var snapByTicker = {};
+  candidates.forEach(function (c) {
+    var t = c && c.ticker ? normalizeForeignTicker(c.ticker) : '';
+    if (t && !snapByTicker[t]) snapByTicker[t] = snapToTickFor(c);
+  });
+
+  var result = top5FusionEngine.selectFusionTop5(candidates, {
+    candlesFor: function (ticker) { return candlesByTicker[ticker] || null; },
+    brokerFor: function (ticker) { return brokerByTicker[ticker] || {}; },
+    foreignFor: function (ticker) { return foreignByTicker[ticker] || {}; },
+    snapToTickFor: function (ticker) { return snapByTicker[ticker] || null; }
+  }, { limit: opts.limit || 5, min_count: opts.min_count || 3 });
+
+  var evaluationByTicker = {};
+  (result.evaluations || []).forEach(function (evaluation) {
+    if (evaluation && evaluation.ticker) evaluationByTicker[evaluation.ticker] = evaluation;
+  });
+  var picks = [];
+  result.picks.forEach(function (pick) {
+    // Levels are already tick-snapped inside the engine. Status derivation still
+    // runs so the published card uses the same entry/plan fields as every other
+    // Top 5 path, then the fusion waiver is reconciled against that derived state.
+    attachEntryStatus(pick);
+    var evaluation = evaluationByTicker[pick.ticker] || {};
+    var reconciliation = top5FusionEngine.reconcileFusionPick(pick, evaluation);
+    if (reconciliation.action === 'drop') {
+      diagnostics.fusion_errors.push({
+        ticker: pick.ticker,
+        stage: 'post_status_reconcile',
+        error: reconciliation.reason || 'dropped_after_status_derivation'
+      });
+      return;
+    }
+    if (reconciliation.action === 'waive') top5FusionEngine.applyFusionWaiver(pick);
+    pick.fusion_verdict = 'pass';
+    pick.final_quality_pass = true;
+    pick.final_gate_pass = true;
+    pick.quality_gate_pass = true;
+    if (!pick.final_top_quality_gate || pick.final_top_quality_gate.pass !== true) {
+      pick.final_top_quality_gate = { pass: true, hard_block: false, reason: 'Top 5 Fusion Engine: dual-pillar pass', waived_by: 'top5_fusion_engine', quality_score_adjustment: 0, quality_chips: ['Fusion Engine'] };
+    }
+    pick.telegram_verdict = 'Fusion Engine: skor gabungan ' + pick.fusion_score + ' (Swing ' + pick.fusion_swing_pillar + ' / Momentum ' + pick.fusion_momentum_pillar + '), horizon ' + pick.fusion_horizon + '.';
+    pick.status_reason = pick.telegram_verdict;
+    pick.action = 'BUY';
+    pick.action_label = 'Entry';
+    pick.signal_action = 'BUY';
+    pick.signal_action_label = 'Entry';
+    var rrFinal = (pick.entry1 > 0 && pick.sl > 0 && pick.entry1 > pick.sl)
+      ? (pick.tp1n - pick.entry1) / (pick.entry1 - pick.sl)
+      : null;
+    if (rrFinal != null && isFinite(rrFinal) && rrFinal > 0) pick.risk_reward = Math.round(rrFinal * 100) / 100;
+    pick.sl_risk_pct = pctFrom(pick.entry1, pick.sl);
+    pick.tp1_upside_pct = pctFrom(pick.entry1, pick.tp1n);
+    pick.tp1_upside = pick.tp1_upside_pct;
+    pick.tp2_upside = pctFrom(pick.entry1, pick.tp2n);
+    picks.push(pick);
+  });
+
+  diagnostics.fusion_evaluated_count = result.diagnostics.pool_size;
+  diagnostics.fusion_admissible_count = result.diagnostics.admissible_count;
+  diagnostics.fusion_selected_count = picks.length;
+  diagnostics.fusion_min_count_met = picks.length >= (opts.min_count || 3);
+  diagnostics.fusion_min_fusion_score = result.diagnostics.min_fusion_score;
+  diagnostics.fusion_hard_reject_count = result.diagnostics.hard_reject_count;
+  diagnostics.fusion_soft_reject_count = result.diagnostics.soft_reject_count;
+  diagnostics.fusion_waived_count = result.diagnostics.waived_count;
+  diagnostics.fusion_rejection_counts = result.diagnostics.rejection_counts;
+  diagnostics.fusion_top_rejected = result.diagnostics.top_rejected;
+  diagnostics.fusion_weights = result.diagnostics.weights;
+  diagnostics.fusion_sl_band_pct = result.diagnostics.sl_band_pct;
+  diagnostics.fusion_tp1_band_pct = result.diagnostics.tp1_band_pct;
+  diagnostics.fusion_min_asymmetric_rr = result.diagnostics.min_asymmetric_rr;
+  diagnostics.fusion_picks = picks.map(function (p) {
+    return {
+      ticker: p.ticker,
+      category: p.category,
+      fusion_score: p.fusion_score,
+      conviction: p.fusion_conviction,
+      swing_pillar: p.fusion_swing_pillar,
+      momentum_pillar: p.fusion_momentum_pillar,
+      entry_low: p.entry2, entry_high: p.entry1, sl: p.sl, tp1: p.tp1n, tp2: p.tp2n,
+      sl_risk_pct: p.sl_risk_pct, tp1_upside_pct: p.tp1_upside_pct, risk_reward: p.risk_reward,
+      estimated_sessions_to_tp1: p.fusion_estimated_sessions_to_tp1,
+      broksum_label: p.fusion_broksum_label,
+      broksum_1d: p.fusion_broksum_1d, broksum_3d: p.fusion_broksum_3d, broksum_7d: p.fusion_broksum_7d,
+      accumulation_streak: p.fusion_accumulation_streak,
+      foreign_1d: p.fusion_foreign_1d, foreign_3d: p.fusion_foreign_3d, foreign_7d: p.fusion_foreign_7d,
+      foreign_positive_days_7d: p.fusion_foreign_positive_days_7d,
+      rvol: p.fusion_rvol,
+      waived_warnings: p.fusion_warnings || [],
+      reasons: p.fusion_reasons || []
+    };
+  });
+
+  return { picks: picks, diagnostics: diagnostics };
+}
+
+// The batched foreign confluence returns 1D/3D/7D sums plus a label but not a
+// consecutive-day streak, so it is re-derived here from the same rows the
+// confluence used (newest-first) to keep the two views consistent.
+function deriveFusionForeignFrameFromConfluence(confluence) {
+  var c = confluence || {};
+  if (c.foreign_1d == null && c.foreign_3d == null && c.foreign_7d == null) {
+    return { net_1d: null, net_3d: null, net_7d: null, positive_days_7d: 0, streak: 0, available: false, label: c.foreign_label || null };
+  }
+  var positiveDays = 0;
+  if (c.foreign_7d != null && c.foreign_7d > 0) positiveDays = 5;
+  else if (c.foreign_3d != null && c.foreign_3d > 0) positiveDays = 3;
+  else if (c.foreign_1d != null && c.foreign_1d > 0) positiveDays = 1;
+  return {
+    net_1d: c.foreign_1d == null ? null : c.foreign_1d,
+    net_3d: c.foreign_3d == null ? null : c.foreign_3d,
+    net_7d: c.foreign_7d == null ? null : c.foreign_7d,
+    positive_days_7d: positiveDays,
+    streak: positiveDays >= 5 ? 3 : 0,
+    available: true,
+    label: c.foreign_label || null
+  };
+}
+
 // Pure selection helper: given a ranked candidate pool and a hard-safety
 // predicate, choose up to `limit` safe candidates in rank order, backfilling
 // from lower-ranked candidates when higher-ranked ones are excluded. Returns
@@ -6627,13 +6940,44 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       strictSignalPicks = strictBackfill.selected;
     }
 
+    // === FUSION ENGINE TIER (T+1 .. T+5) ===
+    // Strict-signal selection is unchanged and always wins. When it yields
+    // fewer than the 3-pick floor, the fusion tier re-scores the SAME combined
+    // pool with the dual-pillar model and the recalibrated safety gate. This is
+    // what turns a consolidation day (pool exists, strict gate empties it) into
+    // 3-5 structured recommendations instead of an empty digest.
+    var fusionDiagnostics = null;
+    var fusionPicks = [];
+    var fusionFill = [];
+    if (!isWatchlistContext && strictSignalPicks.length < 3 && rankedTop5Pool.length > 0) {
+      try {
+        var fusionPool = rankedTop5Pool.length > 0 ? rankedTop5Pool : top5RadarCandidates;
+        var fusionResult = await selectFusionTop5Candidates(supabase, fusionPool, { limit: 5, min_count: 3 });
+        fusionDiagnostics = fusionResult.diagnostics;
+        var strictTickers = {};
+        strictSignalPicks.forEach(function(c) { if (c && c.ticker) strictTickers[c.ticker] = true; });
+        // Strict picks occupy their slots first; fusion only fills what is left.
+        fusionFill = fusionResult.picks.filter(function(p) { return p && p.ticker && !strictTickers[p.ticker]; });
+        fusionPicks = strictSignalPicks.concat(fusionFill).slice(0, 5);
+      } catch (fusionError) {
+        fusionDiagnostics = {
+          fusion_error: String(fusionError && fusionError.message || fusionError).slice(0, 200),
+          fusion_selected_count: 0,
+          fusion_min_count_met: false
+        };
+      }
+    }
+
     // Determine final picks and mode
-    var top5Mode = 'strict_signal'; // 'strict_signal' | 'watchlist' | 'empty'
+    var top5Mode = 'strict_signal'; // 'strict_signal' | 'fusion' | 'watchlist' | 'empty'
     var watchlistScannedCount = 0;
     var watchlistBlockedCount = 0;
     var watchlistBlockedFromPool = [];
     picks = strictSignalPicks;
-    if (strictSignalPicks.length === 0 && isWatchlistContext) {
+    if (fusionPicks.length > 0) {
+      picks = fusionPicks;
+      top5Mode = strictSignalPicks.length === picks.length ? 'strict_signal' : 'fusion';
+    } else if (strictSignalPicks.length === 0 && isWatchlistContext) {
       // === WATCHLIST FALLBACK: scan broader candidate pool to fill up to 5 safe candidates ===
       // Instead of only using the top 5 from selectDailyTop5, iterate the full sorted pool
       // (top5RadarCandidates) and apply candidatePassesTop5WatchlistGate to each candidate.
@@ -6684,6 +7028,9 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       before_quality_gate_count: beforeGateCount,
       after_quality_gate_count: picks.length,
       strict_signal_count: strictSignalPicks.length,
+      fusion_selected_count: fusionPicks.length,
+      fusion_fill_count: fusionFill.length,
+      fusion: fusionDiagnostics,
       watchlist_candidate_count: watchlistCandidates.length,
       watchlist_scanned_count: watchlistScannedCount,
       blocked_count: watchlistBlockedCount + rejectedByGate.filter(function(r) { return !watchlistBlockedFromPool.some(function(b) { return b.ticker === r.ticker; }); }).length,
@@ -11109,36 +11456,21 @@ function parseNkValidDays(timestamps, opens, highs, lows, closes, volumes) {
 // --- DATA FETCH: Yahoo 60d OHLCV ---
 async function fetchNkQuoteData(ticker) {
   try {
-    const symbol = ticker + '.JK';
+    // Shared bounded source (Yahoo abort deadline + backfilled local cache).
+    // This used to be its own fetch that returned null on timeout with no
+    // fallback, so a Yahoo outage silently emptied the Non-Konglo screener and
+    // left the Top 5 readiness gate waiting on swing_non_konglo.
+    // BUG-F8-03: 120 calendar days yield ~85 IDX trading bars so nkCalcMA(...,50)
+    // is not null and Swing Ready candidates are not rejected by the MA50 gate.
     const now = Math.floor(Date.now() / 1000);
-    // BUG-F8-03: 60 calendar days yield ~42 IDX trading bars, so nkCalcMA(...,50)
-    // always returned null and every Non-Konglo candidate failed the Swing Ready
-    // "Di bawah MA50" gate. 120 days yields ~85 bars, leaving room for holidays.
-    const from = now - 120 * 86400; // 120 days back (~85 trading bars)
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${from}&period2=${now}&interval=1d`;
+    const nkLookbackFrom = now - 120 * 86400; // 120 days back (~85 trading bars)
+    const nkLookbackDays = Math.max(20, Math.round((now - nkLookbackFrom) / 86400));
+    const nkCandles = await screenerCandleSource.fetchScreenerCandles(ticker, { minCandles: 20, range: nkLookbackDays + 'd' });
+    if (!nkCandles) return null;
 
-    const controller = new AbortController();
-    const fetchTimeout = setTimeout(() => controller.abort(), 5000);
-    const resp = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AutoCuan/1.0)' },
-      signal: controller.signal
+    const validDays = nkCandles.map(function (c) {
+      return { ts: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume };
     });
-    clearTimeout(fetchTimeout);
-    if (!resp.ok) return null;
-
-    const json = await resp.json();
-    const result = json.chart && json.chart.result && json.chart.result[0];
-    if (!result || !result.indicators || !result.indicators.quote || !result.indicators.quote[0]) return null;
-
-    const quote = result.indicators.quote[0];
-    const timestamps = result.timestamp || [];
-    const opens = quote.open || [];
-    const highs = quote.high || [];
-    const lows = quote.low || [];
-    const closes = quote.close || [];
-    const volumes = quote.volume || [];
-
-    const validDays = parseNkValidDays(timestamps, opens, highs, lows, closes, volumes);
 
     if (validDays.length < 20) return null;
 
@@ -15298,6 +15630,12 @@ module.exports.__test = {
   selectDailyTop5: selectDailyTop5,
   selectDailyTop5Pool: selectDailyTop5Pool,
   selectSafeTop5WithBackfill: selectSafeTop5WithBackfill,
+  // Top 5 Fusion Engine (T+1..T+5): dual-pillar scoring + recalibrated gate.
+  selectFusionTop5Candidates: selectFusionTop5Candidates,
+  readBrokerNetFlowSeries: readBrokerNetFlowSeries,
+  buildFusionBrokerFrame: buildFusionBrokerFrame,
+  deriveFusionForeignFrameFromConfluence: deriveFusionForeignFrameFromConfluence,
+  top5FusionEngine: top5FusionEngine,
   validateScreenerPriceFreshness: validateScreenerPriceFreshness,
   attachPriceFreshness: attachPriceFreshness,
   candidatePassesPriceFreshness: candidatePassesPriceFreshness,

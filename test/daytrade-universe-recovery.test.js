@@ -1,7 +1,11 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const engine = require('../lib/daytrade-screener-engine');
+const candleFetcher = require('../lib/chart-engine/candle-fetcher');
 const sectorHot = require('../api/sector-hot').__test;
 
 test('Day Trade universe filters restricted, low-price, and foreign unknown-board rows', () => {
@@ -72,4 +76,115 @@ test('stale Day Trade scanning lock is diagnosed for recovery but a fresh lock r
   assert.equal(stale.running_lock_status, 'stalled');
   assert.equal(stale.stale_running_lock_reason, 'running_lock_timeout');
   assert.equal(fresh.running_lock_status, 'running');
+});
+
+// The Day Trade scan that stalled at "Batch 3/16 done" left
+// daytrade_screener_meta.status='scanning' and blocked Top 5 readiness with
+// running_lock_timeout. The trigger was fetchDayTradeCandles: a bare fetch()
+// with no deadline that never consulted the backfilled data/daily-candles
+// cache. These tests pin the contract that replaced it.
+function withTempCandleCache(candles) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'screener-candles-'));
+  fs.writeFileSync(path.join(dir, 'BBCA.json'), JSON.stringify({
+    ticker: 'BBCA',
+    source: 'arjum',
+    candles: candles
+  }));
+  return dir;
+}
+
+function cachedCandleRows(count) {
+  return Array.from({ length: count }, (_, index) => ({
+    date: '2026-08-' + String(index + 1).padStart(2, '0'),
+    open: 100 + index,
+    high: 110 + index,
+    low: 90 + index,
+    close: 105 + index,
+    volume: 1000 + index
+  }));
+}
+
+function withCandleEnv(dir, fn) {
+  const previousDir = process.env.CANDLE_CACHE_DIR;
+  const previousFetch = global.fetch;
+  process.env.CANDLE_CACHE_DIR = dir;
+  candleFetcher.resetScreenerCandleCircuit();
+  return Promise.resolve()
+    .then(fn)
+    .finally(() => {
+      candleFetcher.resetScreenerCandleCircuit();
+      global.fetch = previousFetch;
+      if (previousDir == null) delete process.env.CANDLE_CACHE_DIR;
+      else process.env.CANDLE_CACHE_DIR = previousDir;
+      fs.rmSync(dir, { recursive: true, force: true });
+    });
+}
+
+test('Day Trade candles fall back to the backfilled local cache when Yahoo fails', async () => {
+  const dir = withTempCandleCache(cachedCandleRows(20));
+  await withCandleEnv(dir, async () => {
+    global.fetch = async () => { throw new Error('yahoo down'); };
+    const candles = await engine.fetchDayTradeCandles('BBCA');
+    assert.equal(candles.length, 20);
+    assert.equal(candles[19].close, 124);
+    assert.equal(candles[19].date, '2026-08-20');
+    // Oldest-first ordering is a hard consumer contract.
+    assert.equal(candles[0].date, '2026-08-01');
+  });
+});
+
+test('a hung Yahoo socket is aborted at the deadline instead of stalling the batch', async () => {
+  const dir = withTempCandleCache(cachedCandleRows(20));
+  await withCandleEnv(dir, async () => {
+    global.fetch = (url, init) => new Promise((resolve, reject) => {
+      init.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+    });
+    const started = Date.now();
+    const candles = await candleFetcher.fetchScreenerCandles('BBCA', { minCandles: 20, timeoutMs: 50 });
+    assert.ok(Date.now() - started < 5000, 'a hung provider must not hold the batch open');
+    assert.equal(candles.length, 20, 'the deadline must degrade to the cached series');
+  });
+});
+
+test('repeated Yahoo failures trip the circuit breaker so later tickers read cache immediately', async () => {
+  const dir = withTempCandleCache(cachedCandleRows(20));
+  await withCandleEnv(dir, async () => {
+    let calls = 0;
+    global.fetch = async () => { calls += 1; throw new Error('yahoo down'); };
+    for (let i = 0; i < candleFetcher.SCREENER_REMOTE_FAILURE_THRESHOLD; i += 1) {
+      await candleFetcher.fetchScreenerCandles('BBCA', { minCandles: 20 });
+    }
+    assert.equal(candleFetcher.screenerRemoteCircuitOpen(), true);
+    const callsBefore = calls;
+    const candles = await candleFetcher.fetchScreenerCandles('BBCA', { minCandles: 20 });
+    assert.equal(calls, callsBefore, 'an open circuit must not call the remote provider again');
+    assert.equal(candles.length, 20);
+  });
+});
+
+test('a fresh Yahoo series still wins over the cache when the provider is healthy', async () => {
+  const dir = withTempCandleCache(cachedCandleRows(20));
+  await withCandleEnv(dir, async () => {
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        chart: {
+          result: [{
+            timestamp: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+            indicators: {
+              quote: [{
+                open: Array(20).fill(200),
+                high: Array(20).fill(210),
+                low: Array(20).fill(190),
+                close: Array(20).fill(205),
+                volume: Array(20).fill(5000)
+              }]
+            }
+          }]
+        }
+      })
+    });
+    const candles = await candleFetcher.fetchScreenerCandles('BBCA', { minCandles: 20 });
+    assert.equal(candles[19].close, 205, 'live Yahoo data must take precedence over the cached closes');
+  });
 });

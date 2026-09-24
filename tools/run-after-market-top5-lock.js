@@ -1,21 +1,52 @@
 #!/usr/bin/env node
 'use strict';
 
-const DEFAULT_BASE_URL = 'https://auto-cuan.vercel.app';
+// The deployed Vercel origin no longer serves this flow: api/sector-hot.js
+// refuses heavy actions on a serverless runtime (403 DEPRECATED_ON_SERVERLESS)
+// and the project now answers HTTP 402 there. This runner therefore targets the
+// VPS daemon by default, exactly like tools/run-all-screeners-vps.js (Batch 8).
+// A *.vercel.app host is refused before --execute-lock can mutate anything.
+const fs = require('node:fs');
+const path = require('node:path');
+const ENV_FILES = ['.env.local', '.env.intraday-runtime', '.env'];
+const DEFAULT_BASE_URL = 'http://127.0.0.1:3000';
+const SERVERLESS_HOST_PATTERN = /(^|\.)vercel\.app$/i;
 const DRY_PATH = '/api/sector-hot?action=telegram-daily-picks&lock_only=1&dry_run=1';
 const LOCK_PATH = '/api/sector-hot?action=telegram-daily-picks&lock_only=1';
 const BLOCK_REASONS = new Set(['screeners_not_ready', 'top5_gate_blocked', 'no_candidates']);
 const ALREADY_LOCKED_REASONS = new Set(['already_locked_dry_run', 'already_locked']);
 
+function loadEnvFiles(options) {
+  const cwd = (options && options.cwd) || process.cwd();
+  const env = (options && options.env) || process.env;
+  for (const name of ENV_FILES) {
+    let content;
+    try { content = fs.readFileSync(path.join(cwd, name), 'utf8'); } catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    for (const line of content.split(/\r?\n/)) {
+      const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!match || Object.prototype.hasOwnProperty.call(env, match[1])) continue;
+      let value = match[2];
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+      else value = value.replace(/\s+#.*$/, '');
+      env[match[1]] = value;
+    }
+  }
+}
+
+function isServerlessHost(baseUrl) {
+  try { return SERVERLESS_HOST_PATTERN.test(new URL(baseUrl).hostname); } catch (error) { return false; }
+}
+
 function printHelp() {
-  console.log(`Usage: node tools/run-after-market-top5-lock.js [options]\n\nSafely previews the after-market Top 5 lock-only flow. Default mode is dry-run/read-only.\nScan refresh orchestration is intentionally out of scope for this phase.\n\nOptions:\n  --base-url <url>  Override BASE_URL/AUTO_CUAN_BASE_URL (default: ${DEFAULT_BASE_URL})\n  --json            Print only the concise JSON summary\n  --execute-lock    After a safe dry-run, execute lock_only=1 (requires --yes)\n  --yes             Required with --execute-lock\n  -h, --help        Show this help\n\nEnvironment:\n  CRON_SECRET       Required; sent as Authorization: Bearer <CRON_SECRET>\n  BASE_URL          Optional base URL\n  AUTO_CUAN_BASE_URL Optional base URL fallback\n`);
+  console.log(`Usage: node tools/run-after-market-top5-lock.js [options]\n\nSafely previews the after-market Top 5 lock-only flow. Default mode is dry-run/read-only.\nScan refresh orchestration is intentionally out of scope for this phase.\n\nOptions:\n  --dry-run         Explicit read-only preview (already the default; accepted for parity)\n  --base-url <url>  Override APP_BASE_URL/VPS_LOCAL_BASE_URL/BASE_URL/AUTO_CUAN_BASE_URL\n  --json            Print only the concise JSON summary\n  --execute-lock    After a safe dry-run, execute lock_only=1 (requires --yes)\n  --yes             Required with --execute-lock\n  -h, --help        Show this help\n\nEnvironment:\n  CRON_SECRET       Required; sent as Authorization: Bearer <CRON_SECRET>\n  APP_BASE_URL      Optional base URL (preferred)\n  VPS_LOCAL_BASE_URL Optional base URL\n  BASE_URL          Optional base URL\n  AUTO_CUAN_BASE_URL Optional base URL fallback\n\nDefault base URL is the local VPS daemon (${DEFAULT_BASE_URL}); a *.vercel.app\nhost is refused before --execute-lock can mutate anything.\n`);
 }
 
 function parseArgs(argv) {
-  const opts = { json: false, executeLock: false, yes: false, baseUrl: process.env.BASE_URL || process.env.AUTO_CUAN_BASE_URL || DEFAULT_BASE_URL };
+  const opts = { json: false, dryRun: true, dryRunExplicit: false, executeLock: false, yes: false, baseUrl: process.env.APP_BASE_URL || process.env.VPS_LOCAL_BASE_URL || process.env.BASE_URL || process.env.AUTO_CUAN_BASE_URL || DEFAULT_BASE_URL };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--json') opts.json = true;
+    else if (arg === '--dry-run') { opts.dryRun = true; opts.dryRunExplicit = true; }
     else if (arg === '--execute-lock') opts.executeLock = true;
     else if (arg === '--yes') opts.yes = true;
     else if (arg === '--base-url') {
@@ -100,6 +131,7 @@ function printHuman(summary) {
 }
 
 async function main() {
+  loadEnvFiles();
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) {
     printHelp();
@@ -107,6 +139,9 @@ async function main() {
   }
   if (!process.env.CRON_SECRET) throw Object.assign(new Error('CRON_SECRET is required; set it before running this manual runner.'), { exitCode: 1 });
   if (opts.executeLock && !opts.yes) throw Object.assign(new Error('--execute-lock requires --yes.'), { exitCode: 4 });
+  if (opts.executeLock && isServerlessHost(opts.baseUrl)) {
+    throw Object.assign(new Error('Refusing --execute-lock against a Vercel host: the serverless origin returns 403 DEPRECATED_ON_SERVERLESS / HTTP 402 for this flow. Point APP_BASE_URL at the VPS daemon (default ' + DEFAULT_BASE_URL + ').'), { exitCode: 2 });
+  }
 
   const dryRun = await fetchJson(opts.baseUrl, DRY_PATH, process.env.CRON_SECRET);
   if (!isSafeDryRun(dryRun)) {
@@ -160,3 +195,5 @@ main().then((code) => {
   console.error(error.message);
   process.exitCode = error.exitCode || 1;
 });
+
+module.exports = { ENV_FILES, DEFAULT_BASE_URL, SERVERLESS_HOST_PATTERN, loadEnvFiles, isServerlessHost, parseArgs, buildUrl, makeSummary, isSafeDryRun, hasTelegramRisk };
