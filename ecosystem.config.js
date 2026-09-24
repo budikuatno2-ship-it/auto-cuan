@@ -50,8 +50,6 @@ module.exports = {
       autorestart: true,
       max_restarts: 10,
       restart_delay: 10000,
-      // Matches systemd TimeoutStopSec=45: give the supervisor time to SIGTERM
-      // its child worker before PM2 force-kills it.
       kill_timeout: 45000,
       time: true,
       merge_logs: true,
@@ -60,6 +58,24 @@ module.exports = {
         TZ: 'Asia/Jakarta',
         AUTO_CUAN_ROOT: ROOT,
         AI_EVAL_ENV_FILE: process.env.AI_EVAL_ENV_FILE || path.join(ROOT, '.env.ai-eval-once')
+      }
+    },
+    {
+      name: 'autocuan-bot',
+      script: path.join(ROOT, 'tools', 'telegram-interactive-bot.js'),
+      cwd: ROOT,
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: true,
+      max_restarts: 10,
+      restart_delay: 5000,
+      kill_timeout: 10000,
+      time: true,
+      merge_logs: true,
+      env: {
+        NODE_ENV: 'production',
+        TZ: 'Asia/Jakarta',
+        AUTO_CUAN_ROOT: ROOT
       }
     }
   ]

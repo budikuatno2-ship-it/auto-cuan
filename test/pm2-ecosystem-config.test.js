@@ -23,11 +23,12 @@ const pkg = require('../package.json');
 const APPS = ecosystem.apps || [];
 const byName = (name) => APPS.find((a) => a.name === name);
 
-test('Batch 12: ecosystem lists exactly the two long-lived VPS daemons', () => {
+test('Batch 12: ecosystem lists all three long-lived VPS daemons', () => {
   assert.ok(Array.isArray(APPS), 'apps must be an array');
-  assert.equal(APPS.length, 2);
+  assert.equal(APPS.length, 3);
   assert.ok(byName('auto-cuan-vps-api'), 'missing auto-cuan-vps-api');
   assert.ok(byName('auto-cuan-ai-eval-supervisor'), 'missing auto-cuan-ai-eval-supervisor');
+  assert.ok(byName('autocuan-bot'), 'missing autocuan-bot');
 });
 
 test('Batch 12: every app script points to a real file on disk', () => {

@@ -33,6 +33,12 @@ function loadEnvFile(filePath) {
   }
 }
 
+// Batch 8 points the VPS runners (tools/run-all-screeners-vps.js,
+// tools/run-after-market-top5-lock.js) at this daemon on 127.0.0.1:3000, so it
+// must be able to reach Supabase; otherwise every heavy action answers
+// "Database belum dikonfigurasi." The VPS runtime env is the same file the
+// runner shell scripts source, and it is absent on a developer machine.
+loadEnvFile(path.join(ROOT_DIR, '.env.intraday-runtime'));
 loadEnvFile(path.join(ROOT_DIR, '.env.local'));
 loadEnvFile(path.join(ROOT_DIR, '.env.preview.local'));
 loadEnvFile(path.join(ROOT_DIR, '.env.production.local'));

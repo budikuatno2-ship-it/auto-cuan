@@ -168,20 +168,26 @@ test('10: existing telegram-daily-picks cron entry remains present and unchanged
   assert.equal(dailyPicks.schedule, '0 1 * * 1-5');
 });
 
-// 11. Batch 8 superseded this for the screener orchestration runner: heavy
-// computation must not be pointed at a serverless origin, so
-// tools/run-all-screeners-vps.js now defaults to the local VPS daemon instead of
-// https://auto-cuan.vercel.app. The read-only after-market Top 5 lock still uses
-// the deployed origin, which is what this test now pins.
-test('11: read-only automation keeps the Vercel base URL; the screener runner is VPS-local', () => {
+// 11. Batch 8 superseded the serverless origin for the screener orchestration
+// runner: heavy computation must not be pointed at a serverless origin, so
+// tools/run-all-screeners-vps.js defaults to the local VPS daemon instead of
+// https://auto-cuan.vercel.app. The after-market Top 5 lock followed in the same
+// direction: that origin now answers HTTP 402 and api/sector-hot.js refuses the
+// flow with 403 DEPRECATED_ON_SERVERLESS, so both runners are VPS-local and
+// neither may fall back to Vercel.
+test('11: screener orchestration and after-market Top 5 lock are both VPS-local', () => {
   var runAllScreeners = fs.readFileSync(path.join(ROOT, 'tools', 'run-all-screeners-vps.js'), 'utf8');
   var runAfterMarket = fs.readFileSync(path.join(ROOT, 'tools', 'run-after-market-top5-lock.js'), 'utf8');
-  assert.match(runAfterMarket, /https:\/\/auto-cuan\.vercel\.app/,
-    'run-after-market-top5-lock.js must still default to the original Vercel base URL');
   assert.match(runAllScreeners, /DEFAULT_LOCAL_BASE_URL = 'http:\/\/127\.0\.0\.1:3000'/,
     'run-all-screeners-vps.js must default to the local VPS daemon (Batch 8)');
   assert.doesNotMatch(runAllScreeners, /env\.APP_BASE_URL\s*\|\|\s*'https:\/\/auto-cuan\.vercel\.app'/,
     'the screener runner must not fall back to the Vercel origin');
+  assert.match(runAfterMarket, /DEFAULT_BASE_URL = 'http:\/\/127\.0\.0\.1:3000'/,
+    'run-after-market-top5-lock.js must default to the local VPS daemon');
+  assert.doesNotMatch(runAfterMarket, /DEFAULT_BASE_URL = 'https:\/\/auto-cuan\.vercel\.app'/,
+    'the after-market lock runner must not default to the dead Vercel origin');
+  assert.match(runAfterMarket, /SERVERLESS_HOST_PATTERN/,
+    'the after-market lock runner must refuse a Vercel host before mutating');
 });
 
 // 12. API endpoint JavaScript count remains exactly 12.
