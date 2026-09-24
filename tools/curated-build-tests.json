@@ -518,5 +518,8 @@
   "test/user-watchlist-multisource-prices.test.js",
   "test/vercel-readonly-intel-scanner.test.js",
   "test/vps-api-bridge-tunnel.test.js",
-  "test/regime-adaptive-and-foreign-confluence.test.js"
+  "test/regime-adaptive-and-foreign-confluence.test.js",
+  "test/audit-fase4-trade-plan-bugs.test.js",
+  "test/audit-fase5-position-sizing-bugs.test.js",
+  "test/audit-fase6-ohlcv-cache-bugs.test.js"
 ]
