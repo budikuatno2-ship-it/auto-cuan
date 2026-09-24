@@ -539,5 +539,6 @@
   "test/audit-fase5-accumulation-bugs.test.js",
   "test/audit-fase6-foreign-insider-bugs.test.js",
   "test/audit-fase7-daytrade-screener-bugs.test.js",
-  "test/audit-fase8-swing-screener-bugs.test.js"
+  "test/audit-fase8-swing-screener-bugs.test.js",
+  "test/batch8-serverless-cpu-guard.test.js"
 ]

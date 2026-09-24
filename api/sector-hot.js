@@ -4,20 +4,30 @@
  * Modes (existing — unchanged):
  *   GET /api/sector-hot                  → list all groups summary
  *   GET /api/sector-hot?group=CODE       → single group detail + members
- *   GET /api/sector-hot?action=refresh   → cron-protected: refresh sektor hot data
+ *   GET /api/sector-hot?action=refresh   → VPS DAEMON ONLY: refresh sektor hot data
  *
  * Modes (new — screener swing konglo):
  *   GET /api/sector-hot?action=screener           → read cached screener data (login-only)
- *   GET /api/sector-hot?action=refresh-screener   → cron-protected: run screener scan + AI
+ *   GET /api/sector-hot?action=refresh-screener   → VPS DAEMON ONLY: run screener scan + AI
  *
  * Modes (Day Trade Screener v1):
  *   GET /api/sector-hot?action=daytrade-screener           → read latest Day Trade results (public)
- *   GET /api/sector-hot?action=daytrade-screener-run       → protected: run Day Trade scan (Bearer CRON_SECRET)
+ *   GET /api/sector-hot?action=daytrade-screener-run       → VPS DAEMON ONLY: run Day Trade scan
  *   POST /api/sector-hot?action=foreign-import-upload        → protected: upload foreign CSV (Bearer CRON_SECRET)
  *
  * Modes (Public Screener Share):
  *   GET /api/sector-hot?action=create-screener-share-link  → protected: generate 1-day share token (Bearer CRON_SECRET)
  *   GET /api/sector-hot?action=public-screener-share&token=TOKEN → public: read-only screener data (HMAC validated)
+ *
+ * BATCH 8 — SERVERLESS CPU GUARD (see HEAVY_COMPUTE_ACTIONS below)
+ *   Heavy screener computation is refused outright on a serverless runtime
+ *   (process.env.VERCEL === '1'). Those actions walk a 150-175 ticker universe
+ *   over Yahoo + Supabase, so one invocation blows the serverless CPU budget,
+ *   gets killed mid-scan, and leaves partial rows behind — the original cause of
+ *   the "0 sinyal" incident. The VPS daemon (tools/run-all-screeners-vps.js ->
+ *   http://127.0.0.1:3000) owns those actions now.
+ *
+ *   Every read-only action keeps serving normally, on Vercel and on the VPS.
  *
  * Environment variables:
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY — database
@@ -72,6 +82,57 @@ const crypto = require('crypto');
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
 const DAYTRADE_RUNNING_SKIP_MESSAGE = 'Day Trade scan already running; skipped to avoid overlap.';
 
+// ============================================================
+// BATCH 8 — SERVERLESS ENVIRONMENT GUARD (CPU PROTECTION)
+// ============================================================
+// Actions that walk the full screener universe (candles + indicators + AI) are
+// physically incompatible with a serverless invocation budget. They must run on
+// the VPS daemon, which is not time-boxed per request.
+const HEAVY_COMPUTE_ACTIONS = new Set([
+  'daytrade-screener-run',
+  'nk-screener-run',
+  'refresh-screener',
+  'refresh'
+]);
+
+// Read-only actions stay available everywhere. Listed explicitly so the intent
+// is auditable and so a new action cannot be assumed read-only by omission.
+const READ_ONLY_ACTIONS = new Set([
+  'daytrade-screener',
+  'screener',
+  'nk-screener-results',
+  'web-daily-picks'
+]);
+
+const DEPRECATED_ON_SERVERLESS_ERROR = 'DEPRECATED_ON_SERVERLESS: Heavy screener computation must be executed directly on the VPS daemon.';
+
+/**
+ * Is this process the read-only serverless deployment (Vercel) rather than the
+ * VPS daemon / a developer machine?
+ */
+function isServerlessRuntime(env) {
+  const source = env || process.env;
+  // Strict equality on the documented marker: Vercel sets the string '1'. A
+  // loose truthiness test would also match VERCEL='0' and flip local runs.
+  return source.VERCEL === '1';
+}
+
+/**
+ * Decide whether an action must be refused before any work happens.
+ *
+ * Returns null when the action may proceed, otherwise the refusal payload.
+ * Pure and dependency-free so it can be unit-tested without booting the handler.
+ */
+function evaluateServerlessGuard(action, env) {
+  const name = action == null ? null : String(action);
+  if (!isServerlessRuntime(env)) return null;
+  if (!name || !HEAVY_COMPUTE_ACTIONS.has(name)) return null;
+  return {
+    status: 403,
+    body: { success: false, error: DEPRECATED_ON_SERVERLESS_ERROR }
+  };
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
@@ -80,6 +141,17 @@ module.exports = async function handler(req, res) {
   try {
     const action = req.query.action || null;
     const groupCode = req.query.group || null;
+
+    // === BATCH 8: SERVERLESS CPU GUARD — refuse heavy computation up front ===
+    // Checked before auth, before Supabase and before any candle fetch, so a
+    // serverless invocation cannot burn CPU on a scan it is not allowed to run.
+    // Read-only actions ('daytrade-screener', 'screener', 'nk-screener-results',
+    // 'web-daily-picks') fall through untouched and keep serving cached data.
+    const serverlessGuard = evaluateServerlessGuard(action, process.env);
+    if (serverlessGuard) {
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(serverlessGuard.status).json(serverlessGuard.body);
+    }
 
     // === BANDARMOLOGI & INSIDER (PUBLIC / AUTHED READ-ONLY, can serve from disk/API) ===
     if (action === 'bandarmologi' || action === 'broker-summary') {
@@ -502,6 +574,14 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ success: false, error: 'Terjadi kesalahan. Coba lagi beberapa saat lagi.' });
   }
 };
+
+// BATCH 8 — exported for unit tests and for the VPS runner's capability probe.
+// Assigning onto module.exports (the handler) keeps the default export intact.
+module.exports.HEAVY_COMPUTE_ACTIONS = HEAVY_COMPUTE_ACTIONS;
+module.exports.READ_ONLY_ACTIONS = READ_ONLY_ACTIONS;
+module.exports.DEPRECATED_ON_SERVERLESS_ERROR = DEPRECATED_ON_SERVERLESS_ERROR;
+module.exports.isServerlessRuntime = isServerlessRuntime;
+module.exports.evaluateServerlessGuard = evaluateServerlessGuard;
 
 // ============================================================
 // SCREENER READ — gated by the signed session, upstream

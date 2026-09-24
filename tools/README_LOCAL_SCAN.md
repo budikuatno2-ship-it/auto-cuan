@@ -28,9 +28,15 @@ Saat pertama kali menjalankan menu, kamu akan diminta:
 
 | Input | Keterangan | Contoh |
 |-------|-----------|--------|
-| API Base URL | URL deployment Vercel | `https://auto-cuan-xxxx.vercel.app` |
-| CRON_SECRET | Secret dari Vercel Env Variables | (tersembunyi saat diketik) |
+| API Base URL | URL VPS daemon (WAJIB untuk scan berat) | `http://127.0.0.1:3000` |
+| CRON_SECRET | Secret dari Env Variables | (tersembunyi saat diketik) |
 | Bypass Token | Opsional — kosongkan jika tidak perlu | (kosong) |
+
+> **Batch 8:** scan berat (`konglo`, `nonkonglo`, `swing-all`, `daytrade`,
+> `sektor-hot`, `refresh-all`) menembak 150-175 ticker. Origin `*.vercel.app`
+> akan **ditolak** (HTTP 403 `DEPRECATED_ON_SERVERLESS`) karena invocation
+> serverless mati di tengah scan dan meninggalkan data parsial. Arahkan
+> `API_BASE_URL` ke daemon VPS. Perintah read-only tetap aman di kedua origin.
 
 Nilai disimpan di: `%USERPROFILE%\.auto-cuan-scan.env`
 (di luar repo, tidak pernah ter-commit)
@@ -131,6 +137,13 @@ Kalau jadwal next run jatuh di jam istirahat, runner otomatis menunggu sampai ja
 The VPS orchestrator is read-only unless `--execute` is explicit.  It always keeps
 `DAYTRADE_INTRADAY_SCORE_ENABLED=false`; Phase 7 is observation-only and never
 changes environment flags, cron, webhook, or production intraday scoring.
+
+**Batch 8 — VPS-local only.** The runner no longer defaults to the deployed Vercel
+origin; it targets `http://127.0.0.1:3000` (the VPS daemon) unless `APP_BASE_URL` or
+`VPS_LOCAL_BASE_URL` overrides it. `--execute` against a `*.vercel.app` host is
+refused outright, because `api/sector-hot.js` answers HTTP 403
+`DEPRECATED_ON_SERVERLESS` for heavy screener actions on a serverless runtime.
+Dry-runs stay allowed for inspection.
 
 ```bash
 # Plan/status only: no mutating endpoints and no Telegram sends.

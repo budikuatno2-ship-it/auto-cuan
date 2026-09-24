@@ -168,14 +168,20 @@ test('10: existing telegram-daily-picks cron entry remains present and unchanged
   assert.equal(dailyPicks.schedule, '0 1 * * 1-5');
 });
 
-// 11. Existing API and automation URLs are not modified by this patch.
-test('11: APP_BASE_URL / automation base URLs are untouched', () => {
+// 11. Batch 8 superseded this for the screener orchestration runner: heavy
+// computation must not be pointed at a serverless origin, so
+// tools/run-all-screeners-vps.js now defaults to the local VPS daemon instead of
+// https://auto-cuan.vercel.app. The read-only after-market Top 5 lock still uses
+// the deployed origin, which is what this test now pins.
+test('11: read-only automation keeps the Vercel base URL; the screener runner is VPS-local', () => {
   var runAllScreeners = fs.readFileSync(path.join(ROOT, 'tools', 'run-all-screeners-vps.js'), 'utf8');
   var runAfterMarket = fs.readFileSync(path.join(ROOT, 'tools', 'run-after-market-top5-lock.js'), 'utf8');
-  assert.match(runAllScreeners, /https:\/\/auto-cuan\.vercel\.app/,
-    'run-all-screeners-vps.js must still default to the original Vercel base URL');
   assert.match(runAfterMarket, /https:\/\/auto-cuan\.vercel\.app/,
     'run-after-market-top5-lock.js must still default to the original Vercel base URL');
+  assert.match(runAllScreeners, /DEFAULT_LOCAL_BASE_URL = 'http:\/\/127\.0\.0\.1:3000'/,
+    'run-all-screeners-vps.js must default to the local VPS daemon (Batch 8)');
+  assert.doesNotMatch(runAllScreeners, /env\.APP_BASE_URL\s*\|\|\s*'https:\/\/auto-cuan\.vercel\.app'/,
+    'the screener runner must not fall back to the Vercel origin');
 });
 
 // 12. API endpoint JavaScript count remains exactly 12.
