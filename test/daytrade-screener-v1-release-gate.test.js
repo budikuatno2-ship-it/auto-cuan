@@ -58,6 +58,7 @@ test('PR 9 Gate: api/ directory contains exactly 13 endpoints (architectural inv
     'admin-logs.js',
     'admin-users.js',
     'analyze.js',
+    'bot-register.js',
     'candles.js',
     'log.js',
     'login-user.js',

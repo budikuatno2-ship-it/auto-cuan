@@ -28,9 +28,9 @@ const NAME_MAX = 80;
 
 function escapeHtml(value) {
   return String(value == null ? '' : value)
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>');
+    .replace(/&/g, '\u0026amp;')
+    .replace(/</g, '\u0026lt;')
+    .replace(/>/g, '\u0026gt;');
 }
 
 function wibTimestamp() {

@@ -154,7 +154,13 @@ test('9: existing /review and /dashboard rewrites remain intact', () => {
   assert.equal(analisis.destination, '/analisis-saham.html');
   // Routing consolidation onto shared Vercel Function slots (Hobby plan function
   // limit) added /pattern, /portfolio-planner, and /analisis-saham.
-  assert.equal(rewrites.length, 7, 'no unexpected extra rewrites were introduced');
+  // PR #760 added /register -> /register.html for the public BYOK registration
+  // form, moving the pinned count 7 -> 8. Still pinned so no extra rewrite can
+  // be introduced silently.
+  var register = rewrites.find(function (r) { return r.source === '/register'; });
+  assert.ok(register, 'expected /register rewrite');
+  assert.equal(register.destination, '/register.html');
+  assert.equal(rewrites.length, 8, 'no unexpected extra rewrites were introduced');
 });
 
 // 10. Existing Vercel cron remains unchanged.
