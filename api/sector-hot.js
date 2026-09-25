@@ -63,6 +63,7 @@ const smartSetupLabels = require('../lib/smart-setup-labels');
 const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
 const bandarmologiConfluence = require('../lib/bandarmologi-confluence');
 const bandarScoring = require('../lib/bandarmologi-screener-scoring');
+const unifiedScore = require('../lib/unified-score');
 const patternPersonality = require('../lib/pattern-personality');
 const trackRecordService = require('../lib/track-record-service');
 const bandarmologiService = require('../lib/bandarmologi-service');
@@ -3158,6 +3159,10 @@ async function enrichConfluenceRows(supabase, rows, includeForeign) {
     Object.assign(r, bandarMap[String(r.ticker || '').trim().toUpperCase()] || {});
     var candidateMode = (r.category === 'daytrade' || r.mode === 'daytrade' || r.daytrade_score != null) ? 'daytrade' : 'swing';
     bandarScoring.enrichCandidateWithBandarmologi(r, { mode: candidateMode });
+    // Unified Scoring (Fase 3): one 0-100 number for every surface. Runs after
+    // bandarmologi so the CR3/CR5 metrics and bandar verdict are available as
+    // inputs, and writes the score/volume aliases the frontend contract reads.
+    unifiedScore.applyUnifiedScore(r, { mode: candidateMode });
     enrichCandidateWithPatternPersonality(r);
     out.push(r);
   }
@@ -7899,6 +7904,11 @@ function buildDashboardPickRow(row, rank, px) {
   // read from raw_payload since that snapshot may predate this field.
   Object.assign(out, bandarmologiConfluence.computeBandarmologiConfluence(out.ticker));
   bandarScoring.enrichCandidateWithBandarmologi(out, { mode: 'swing' });
+  // Unified Scoring (Fase 3): the Top 5 path assembles its own rows instead of
+  // going through enrichConfluenceRows, so it needs its own call or the
+  // dashboard would keep showing the legacy number while the screener shows
+  // the unified one for the same ticker.
+  unifiedScore.applyUnifiedScore(out, { mode: 'swing' });
   enrichCandidateWithPatternPersonality(out);
   return attachFreshness(out, { calculated_at: (px && px.at) || row.last_checked_at || row.first_sent_at || raw.calculated_at || raw.updated_at || row.date });
 }
@@ -14475,7 +14485,12 @@ function fmtRpValue(v) {
 function fmtRatio(v) { var n = toNum(v); return n != null ? n.toFixed(2).replace('.', ',') + 'x' : '-'; }
 
 function getTelegramScore(r, mode) {
-  var n = mode === 'daytrade' ? toNum(r.daytrade_score) : toNum(r.score);
+  // Unified Scoring (Fase 3): read the unified number first so Telegram and the
+  // web card can never diverge. `score`/`daytrade_score` are already kept in
+  // sync by applyUnifiedScore, but rows rehydrated from older stored snapshots
+  // may only carry the alias, hence the explicit precedence.
+  var n = toNum(r.unified_score);
+  if (n == null) n = mode === 'daytrade' ? toNum(r.daytrade_score) : toNum(r.score);
   if (n == null) n = toNum(r.score || r.daytrade_score);
   return n != null ? Math.round(n) : 0;
 }
@@ -14621,6 +14636,16 @@ function hasStrongTelegramConfirmation(r, mode) {
 }
 
 function computeTelegramConvictionScore(r, mode) {
+  // Unified Scoring (Fase 3): the web and Telegram must print the same number
+  // for the same ticker. Every screener row now carries `unified_score`, so the
+  // conviction derivation below is only a fallback for rows that never went
+  // through the unified pipeline (older stored snapshots, intraday fast-watcher
+  // rows, admin previews). Returning the unified value verbatim — without
+  // re-applying the swing penalties — is deliberate: any further adjustment
+  // here would reintroduce exactly the web/Telegram drift this replaced.
+  var unified = toNum(r.unified_score);
+  if (unified !== null) return unified;
+
   var score = getTelegramScore(r, mode);
   var rr = toNum(r.risk_reward) || 0;
   var grade = getTelegramGrade(r).toUpperCase();

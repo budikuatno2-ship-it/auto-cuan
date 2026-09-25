@@ -3,6 +3,10 @@
 /**
  * PM2 Ecosystem — Auto-Cuan VPS Process Manager (Batch 12)
  *
+ * FASE 2 addition: `autocuan-web-tunnel` keeps a public HTTPS origin alive for
+ * the VPS Express app while the Vercel deployment behind autocuan.web.id is
+ * paused. See tools/cloudflared-web-supervisor.js.
+ *
  * Single source of truth for the two long-lived VPS daemons that previously ran
  * via bare nohup/background (Akar Masalah #1: stale code in RAM). With PM2,
  * `git pull` + `pm2 reload ecosystem.config.js` restarts the processes so the
@@ -72,6 +76,58 @@ module.exports = {
       kill_timeout: 10000,
       time: true,
       merge_logs: true,
+      env: {
+        NODE_ENV: 'production',
+        TZ: 'Asia/Jakarta',
+        AUTO_CUAN_ROOT: ROOT
+      }
+    },
+    {
+      // Public web origin for the VPS Express app (port 3000).
+      //
+      // Oracle Cloud's VCN security list blocks every inbound port except
+      // 22/3001, so the app can never be exposed directly. cloudflared dials
+      // OUT from the host instead — no inbound port and no firewall change.
+      //
+      // The supervisor republishes the (ephemeral) quick-tunnel hostname to
+      // /home/ubuntu/auto-cuan-runner/cloudflared-web-url.txt, which
+      // lib/public-web-base.js reads so the bots always link to a LIVE origin.
+      name: 'autocuan-web-tunnel',
+      script: path.join(ROOT, 'tools', 'cloudflared-web-supervisor.js'),
+      cwd: ROOT,
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: true,
+      max_restarts: 20,
+      restart_delay: 5000,
+      kill_timeout: 12000,
+      time: true,
+      merge_logs: true,
+      max_memory_restart: '200M',
+      env: {
+        NODE_ENV: 'production',
+        TZ: 'Asia/Jakarta',
+        AUTO_CUAN_ROOT: ROOT,
+        PUBLIC_WEB_TARGET_URL: 'http://127.0.0.1:3000',
+        PUBLIC_WEB_HEALTH_PATH: '/register.html'
+      }
+    },
+    {
+      // Verification bot (@AutoCuanVerificationBot) — long polling, NO webhook.
+      // Runs the exact same dispatch pipeline the Vercel/VPS webhook used, so the
+      // bot no longer depends on Vercel (HTTP 402) or a trycloudflare tunnel.
+      name: 'autocuan-verify-bot',
+      script: path.join(ROOT, 'tools', 'telegram-verify-bot.js'),
+      cwd: ROOT,
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: true,
+      max_restarts: 10,
+      restart_delay: 5000,
+      kill_timeout: 10000,
+      time: true,
+      merge_logs: true,
+      max_memory_restart: '150M',
       env: {
         NODE_ENV: 'production',
         TZ: 'Asia/Jakarta',

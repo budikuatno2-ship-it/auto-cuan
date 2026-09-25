@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 # Oracle Cloud Always Free — Anti-Suspend Keep-Alive Guard
-# Tujuan: menjaga CPU p95 >20% dan RAM >20% agar tidak dianggap idle oleh Oracle.
-# Dijalankan setiap jam di luar jam bursa (ringan, <1s, <10MB).
-# - Sanitasi cache kadaluarsa
-# - Hash audit integritas
-# - Sentuh file heartbeat untuk monitoring
+# Menjaga CPU p95 >20% dan RAM >20% agar tidak dianggap idle oleh Oracle Cloud.
+# Menjalankan komputasi duty cycle terkontrol (20-25% CPU selama 90s) jika sistem idle >4 jam.
 
 set -euo pipefail
 
@@ -17,29 +14,33 @@ export TZ=Asia/Jakarta
 
 mkdir -p "$RUNNER_DIR/state" "$RUNNER_DIR/logs"
 
-# 1. Heartbeat timestamp
+# Use Node.js keepalive watchdog when available
+NODE_BIN="/home/ubuntu/.local/node-v22/bin/node"
+if [ ! -x "$NODE_BIN" ]; then
+  NODE_BIN=$(command -v node || echo "")
+fi
+
+if [ -n "$NODE_BIN" ] && [ -f "$REPO/tools/vps-keepalive.js" ]; then
+  exec "$NODE_BIN" "$REPO/tools/vps-keepalive.js" "$@"
+fi
+
+# Fallback bash implementation if node is not found
 TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 WIB=$(TZ=Asia/Jakarta date +"%Y-%m-%d %H:%M:%S WIB")
-
-# 2. Light CPU work: hash audit (deterministic, <100ms)
 HASH_INPUT="$TS-$WIB-$(hostname)"
 HASH=$(echo -n "$HASH_INPUT" | sha256sum | cut -d' ' -f1 | cut -c1-16)
 
-# 3. Sanitasi cache kadaluarsa (hapus file >7 hari di tmp, tanpa error jika kosong)
 find "$REPO/tmp" -type f -mtime +7 -delete 2>/dev/null || true
 find "$REPO/data" -name "*.tmp" -mtime +7 -delete 2>/dev/null || true
 find "$RUNNER_DIR/logs" -name "*.log" -mtime +14 -exec truncate -s 0 {} \; 2>/dev/null || true
 
-# 4. Tulis heartbeat JSON (untuk monitoring eksternal)
 cat > "$HEARTBEAT_FILE" <<EOF
 {"timestamp":"$TS","wib":"$WIB","hash":"$HASH","hostname":"$(hostname)","uptime":"$(uptime -p 2>/dev/null || uptime)","load":"$(cat /proc/loadavg 2>/dev/null || echo unknown)"}
 EOF
 
-# 5. Light CPU burn: 50ms busy loop (menjaga CPU tidak 0% di jam sepi)
-#    Tidak membebani bot — hanya 50ms per jam.
-END=$(( $(date +%s%N | cut -b1-13) + 50 ))
+END=$(( $(date +%s%N | cut -b1-13) + 1000 ))
 while [ $(date +%s%N | cut -b1-13) -lt $END ]; do
   : $(( 1 + 1 ))
-done 2>/dev/null || sleep 0.05
+done 2>/dev/null || sleep 0.1
 
-echo "[$WIB] keepalive ok hash=$HASH"
+echo "[$WIB] keepalive fallback ok hash=$HASH"

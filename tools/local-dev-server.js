@@ -76,7 +76,28 @@ const ROUTE_REWRITES = {
   '/pattern': '/index.html',
   '/review': '/index.html',
   '/analisis-saham': '/analisis-saham.html',
-  '/portfolio-planner': '/portfolio-command-center-v2.html'
+  '/portfolio-planner': '/portfolio-command-center-v2.html',
+  // Public BYOK registration form (mirrors the Vercel rewrite so the VPS
+  // fallback serves the same URL shape).
+  '/register': '/register.html',
+  // FASE 2: broker-summary ("broksum") and chart viewers. Both are real views of
+  // pages that already resolve their initial state from the query string, so
+  // these short paths only need to map to the right page + default tab. The tab
+  // selection stays the SPA's own contract (`?ticker=` / `?tab=` / `?page=`).
+  '/broksum': '/analisis-saham.html',
+  '/broker-summary': '/analisis-saham.html',
+  '/bandarmologi': '/analisis-saham.html',
+  '/chart': '/index.html'
+};
+
+// Default query params merged in at rewrite time for the short paths above.
+// An explicit caller-supplied param always wins, so /broksum?tab=intel still
+// opens the intel tab instead of the bandarmologi default.
+const ROUTE_DEFAULT_QUERY = {
+  '/broksum': { tab: 'bandarmologi' },
+  '/broker-summary': { tab: 'bandarmologi' },
+  '/bandarmologi': { tab: 'bandarmologi' },
+  '/chart': { page: 'chart' }
 };
 
 async function parseBody(req) {
@@ -194,7 +215,31 @@ const server = http.createServer(async (req, res) => {
   }
 
   // 2. Route rewrites for SPA / HTML pages
-  if (ROUTE_REWRITES[pathname]) {
+  //
+  // The SPA reads its initial view from `window.location.search`, so a short path
+  // like /broksum cannot simply be served as analisis-saham.html — the browser URL
+  // must actually carry the tab. Redirecting (302) is therefore the correct
+  // mechanism here, and it keeps the address bar shareable/reloadable.
+  const defaultQuery = ROUTE_DEFAULT_QUERY[pathname];
+  if (defaultQuery) {
+    const target = ROUTE_REWRITES[pathname];
+    const merged = new URLSearchParams(parsedUrl.searchParams);
+    let added = false;
+    for (const key of Object.keys(defaultQuery)) {
+      // An explicit caller-supplied value always wins.
+      if (!merged.has(key)) {
+        merged.set(key, defaultQuery[key]);
+        added = true;
+      }
+    }
+    if (added) {
+      const query = merged.toString();
+      res.statusCode = 302;
+      res.setHeader('Location', target + (query ? '?' + query : ''));
+      return res.end();
+    }
+    pathname = target;
+  } else if (ROUTE_REWRITES[pathname]) {
     pathname = ROUTE_REWRITES[pathname];
   }
 
@@ -232,7 +277,12 @@ const server = http.createServer(async (req, res) => {
 });
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;
-const HOST = '127.0.0.1';
+// Loopback by default: the public path is the cloudflared tunnel, which connects
+// from inside the host. Setting HOST=0.0.0.0 is only needed when an operator has
+// also opened the port in the cloud firewall (Oracle VCN) — the Oracle VCN
+// security list blocks every port except 22/3001, so binding wider alone does
+// NOT make this publicly reachable.
+const HOST = process.env.HOST || '127.0.0.1';
 
 server.listen(PORT, HOST, () => {
   console.log('=================================================');

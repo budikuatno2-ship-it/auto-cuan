@@ -197,25 +197,66 @@ async function checkVpsHealth(vpsLocalUrl, secret) {
 
 async function getVpsPublicUrl() {
   // Try to get VPS public webhook URL from various sources
-  // 1. Env VPS_WEBHOOK_URL
+  // 1. Env VPS_WEBHOOK_URL wins.
   if (process.env.VPS_WEBHOOK_URL) return process.env.VPS_WEBHOOK_URL;
-  // 2. Check for cloudflared tunnel URL file
+
+  const runnerDir = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
+
+  // 2. Full webhook URL written by deploy/vps/run-cloudflared-webhook.sh.
+  // This is the canonical hand-off file: the tunnel script writes the complete
+  // webhook URL, so it is returned verbatim.
+  const fullUrlFiles = [
+    path.join(runnerDir, 'cloudflared-webhook-full-url.txt'),
+    '/tmp/cloudflared-webhook-full-url.txt',
+  ];
+  for (const f of fullUrlFiles) {
+    if (fs.existsSync(f)) {
+      try {
+        const url = fs.readFileSync(f, 'utf8').trim();
+        if (url && url.startsWith('https://')) return url;
+      } catch (_) {}
+    }
+  }
+
+  // 3. Bare tunnel origin; append the webhook path.
   const tunnelFiles = [
+    path.join(runnerDir, 'cloudflared-webhook-url.txt'),
+    path.join(runnerDir, 'cloudflared-url.txt'),
     '/tmp/cloudflared-tunnel-url.txt',
-    '/home/ubuntu/auto-cuan-runner/cloudflared-url.txt',
     '/home/ubuntu/.cloudflared/tunnel-url.txt',
   ];
   for (const f of tunnelFiles) {
     if (fs.existsSync(f)) {
       try {
-        const url = fs.readFileSync(f, 'utf8').trim();
-        if (url && url.startsWith('https://')) return url + '/api/reset-password?action=telegram-verify-webhook-v3';
+        let url = fs.readFileSync(f, 'utf8').trim();
+        if (url && url.startsWith('https://')) {
+          url = url.replace(/\/+$/, '');
+          if (!url.includes('/api/')) {
+            url += '/api/reset-password?action=telegram-verify-webhook-v3';
+          }
+          return url;
+        }
       } catch (_) {}
     }
   }
-  // 3. Try to get from running cloudflared process (quick tunnel)
-  // For now, fallback to Vercel URL but with VPS IP note — will be updated when tunnel is created
-  // We return null to indicate no VPS public URL available, so we should not failover
+
+  // 4. Last resort: scrape the running cloudflared log for the quick-tunnel host.
+  const logFiles = [
+    path.join(runnerDir, 'logs', 'cloudflared-webhook.log'),
+  ];
+  for (const f of logFiles) {
+    if (fs.existsSync(f)) {
+      try {
+        const text = fs.readFileSync(f, 'utf8');
+        const match = text.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/i);
+        if (match) {
+          return match[0] + '/api/reset-password?action=telegram-verify-webhook-v3';
+        }
+      } catch (_) {}
+    }
+  }
+
+  // No public VPS origin known → do not failover (webhook stays put).
   return null;
 }
 

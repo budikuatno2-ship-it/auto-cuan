@@ -66,5 +66,6 @@
   "test/tab-navigation-and-insider-universe.test.js",
   "test/stress-test-replay.test.js",
   "test/webhook-alert-engine.test.js",
-  "test/stage-2-daytrade-live-and-telegram-cleanup.test.js"
+  "test/stage-2-daytrade-live-and-telegram-cleanup.test.js",
+  "test/unified-score.test.js"
 ]
