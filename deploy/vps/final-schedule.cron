@@ -39,6 +39,11 @@ CRON_TZ=Asia/Jakarta
 # Tetap dipertahankan agar tidak ada regresi; berjalan 19:10 WIB sebelum EOD dispatch
 10 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screeners.sh --execute --send >> /home/ubuntu/auto-cuan-runner/logs/screeners.log 2>&1
 
+# ── HYBRID WEBHOOK FAILOVER (Vercel primer ⇄ VPS fallback) ──────────────
+# Menjaga webhook verifikasi bot: tetap di Vercel saat sehat, otomatis pindah
+# ke tunnel VPS saat Vercel paused/402, dan kembali ke Vercel saat pulih.
+*/10 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-webhook-failover.sh >> /home/ubuntu/auto-cuan-runner/logs/webhook-failover.log 2>&1
+
 # ── ORACLE ANTI-SUSPEND KEEP-ALIVE (ringan, setiap jam) ──────────────────
 # Sanitasi cache kadaluarsa + hash audit + heartbeat — <1s, <10MB, menjaga CPU p95 >20%
 0 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-keepalive.sh >> /home/ubuntu/auto-cuan-runner/logs/keepalive.log 2>&1
