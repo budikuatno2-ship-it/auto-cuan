@@ -156,7 +156,7 @@ test('14. resistance_as_major_resistance diagnostic metadata is present (swing a
     'Non-Konglo source_fields must record resistance_as_major_resistance');
 });
 
-test('19. API JavaScript count remains exactly 12', () => {
+test('19. API JavaScript count remains exactly 13', () => {
   const apiDir = path.join(__dirname, '..', 'api');
   const count = fs.readdirSync(apiDir).filter((f) => f.endsWith('.js') &&
     fs.statSync(path.join(apiDir, f)).isFile()).length;

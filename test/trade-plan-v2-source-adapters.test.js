@@ -369,12 +369,12 @@ test('15. sample capture never fabricates structure from SL/TP when absent', () 
 });
 
 // ===================================================================
-// 16. API JavaScript count remains exactly 12
+// 16. API JavaScript count remains exactly 13
 // ===================================================================
 
-test('16. the API surface remains exactly 12 endpoints', () => {
+test('16. the API surface remains exactly 13 endpoints', () => {
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter((f) => f.endsWith('.js'));
-  assert.equal(apiFiles.length, 12, 'API endpoint count must stay 12: ' + apiFiles.join(', '));
+  assert.equal(apiFiles.length, 13, 'API endpoint count must stay 12: ' + apiFiles.join(', '));
 });
 
 

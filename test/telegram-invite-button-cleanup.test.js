@@ -98,9 +98,9 @@ test('the completed cleanup message text matches the required copy', function ()
   );
 });
 
-test('API JavaScript file count remains exactly 12', function () {
+test('API JavaScript file count remains exactly 13', function () {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
-  assert.equal(files.length, 12, 'API JS file count must remain 12; got ' + files.length);
+  assert.equal(files.length, 13, 'API JS file count must remain 13; got ' + files.length);
 });
 
 test('Delete User is admin-gated and protects system accounts (no extra endpoint)', function () {

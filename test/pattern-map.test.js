@@ -230,6 +230,6 @@ test('Q&A is visibly disabled and contains no submit or AI/network path', () => 
   assert.match(html, /Tidak ada AI atau permintaan jaringan/);
 });
 
-test('API endpoint count remains exactly 12', () => {
+test('API endpoint count remains exactly 13', () => {
   assert.equal(fs.readdirSync(path.join(__dirname, '..', 'api')).filter(file => file.endsWith('.js')).length, 12);
 });

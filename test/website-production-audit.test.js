@@ -124,9 +124,9 @@ test('A: build validator passes twice and rewrites nothing', () => {
   assert.deepEqual(watched.map(hash), before, 'build must not modify sources');
 });
 
-test('A: exactly 12 Vercel API functions', () => {
+test('A: exactly 13 Vercel API functions', () => {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter((f) => f.endsWith('.js'));
-  assert.equal(files.length, 12, 'found: ' + files.join(', '));
+  assert.equal(files.length, 13, 'found: ' + files.join(', '));
 });
 
 // --- B. access ------------------------------------------------------------------

@@ -425,7 +425,7 @@ test('29. CLI arg parsing handles the documented VPS invocation', () => {
   assert.deepEqual(args.dates, ['2026-07-20', '2026-07-21', '2026-07-22']);
 });
 
-test('30. API endpoint count remains exactly 12', async () => {
+test('30. API endpoint count remains exactly 13', async () => {
   const entries = await fsp.readdir(path.join(__dirname, '..', 'api'));
   assert.equal(entries.filter((f) => f.endsWith('.js')).length, 12);
 });

@@ -467,10 +467,10 @@ test('dry-run diagnostics surface event-order ambiguity without creating a senda
 });
 
 // ==================================================================
-// TEST 10: API endpoint JS count remains exactly 12
+// TEST 10: API endpoint JS count remains exactly 13
 // ==================================================================
-test('api/ directory still contains exactly 12 endpoint JS files', function () {
+test('api/ directory still contains exactly 13 endpoint JS files', function () {
   const apiDir = path.resolve(__dirname, '..', 'api');
   const jsFiles = fs.readdirSync(apiDir).filter(function (f) { return f.endsWith('.js'); });
-  assert.equal(jsFiles.length, 12, 'API endpoint JS count must remain exactly 12; found: ' + jsFiles.join(', '));
+  assert.equal(jsFiles.length, 13, 'API endpoint JS count must remain exactly 13; found: ' + jsFiles.join(', '));
 });

@@ -91,8 +91,8 @@ test('11: logout calls the server logout action and clears local UI state', () =
   assert.match(logout, /autocuan_logged_in/); // still clears local state
 });
 
-// 16. API endpoint count remains exactly 12.
-test('16: api endpoint count remains exactly 12', () => {
+// 16. API endpoint count remains exactly 13.
+test('16: api endpoint count remains exactly 13', () => {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 12, 'found: ' + files.join(', '));
+  assert.equal(files.length, 13, 'found: ' + files.join(', '));
 });

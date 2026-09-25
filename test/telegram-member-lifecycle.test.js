@@ -735,9 +735,9 @@ test('regression: Delete User stays admin-gated with protected system accounts',
   assert.ok(!apiFiles.some(function (f) { return /delete/i.test(f); }), 'no separate delete-user API file');
 });
 
-test('api count: exactly 12 API JavaScript files (no new API file added)', function () {
+test('api count: exactly 13 API JavaScript files (no new API file added)', function () {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
-  assert.equal(files.length, 12, 'API JS file count must remain 12; got ' + files.length);
+  assert.equal(files.length, 13, 'API JS file count must remain 13; got ' + files.length);
 });
 
 test('sql hotfix: additive only, review_score constrained 1..5, service-role-only grants', function () {

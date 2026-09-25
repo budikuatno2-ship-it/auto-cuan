@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 
 // The daily-market-context action is folded into api/quote.js (not a new
 // api/*.js file) to preserve the project's fixed Vercel API function count
-// (see other tests asserting "exactly 12 API JavaScript files").
+// (see other tests asserting "exactly 13 API JavaScript files").
 const { normalizeDailyContextTicker } = require('../api/quote').__test;
 
 function makeRes() {

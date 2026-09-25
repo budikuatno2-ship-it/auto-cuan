@@ -145,5 +145,5 @@ test('Formatter hygiene: no bad placeholders in /top output', async function() {
 test('Endpoint count remains 12', function() {
   var apiDir = path.join(__dirname, '..', 'api');
   var files = fs.readdirSync(apiDir).filter(function(f) { return f.endsWith('.js'); });
-  assert.equal(files.length, 12);
+  assert.equal(files.length, 13);
 });

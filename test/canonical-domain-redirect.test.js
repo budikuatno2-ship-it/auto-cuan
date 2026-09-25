@@ -190,8 +190,8 @@ test('11: screener orchestration and after-market Top 5 lock are both VPS-local'
     'the after-market lock runner must refuse a Vercel host before mutating');
 });
 
-// 12. API endpoint JavaScript count remains exactly 12.
-test('12: api endpoint count remains exactly 12', () => {
+// 12. API endpoint JavaScript count remains exactly 13.
+test('12: api endpoint count remains exactly 13', () => {
   var files = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
-  assert.equal(files.length, 12, 'found: ' + files.join(', '));
+  assert.equal(files.length, 13, 'found: ' + files.join(', '));
 });

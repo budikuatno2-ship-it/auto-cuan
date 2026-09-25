@@ -180,7 +180,7 @@ test('16. existing production test infrastructure not broken', () => {
   assert.ok(typeof worker.runWorker === 'function');
 });
 
-test('17. API endpoint count remains exactly 12', async () => {
+test('17. API endpoint count remains exactly 13', async () => {
   const entries = await fs.readdir(path.join(__dirname, '..', 'api'));
   assert.equal(entries.filter(f => f.endsWith('.js')).length, 12);
 });
@@ -507,8 +507,8 @@ test('B16. production modules still load correctly', () => {
   assert.ok(typeof worker.runWorker === 'function');
 });
 
-// B17: API endpoint count remains exactly 12
-test('B17. API endpoint count remains exactly 12', async () => {
+// B17: API endpoint count remains exactly 13
+test('B17. API endpoint count remains exactly 13', async () => {
   const entries = await fs.readdir(path.join(__dirname, '..', 'api'));
   assert.equal(entries.filter(f => f.endsWith('.js')).length, 12);
 });
@@ -554,7 +554,7 @@ test('S2. no runs during the 12:00-13:30 WIB lunch break', () => {
     const inBreak = mins >= collector.BREAK_START_MINUTES && mins <= collector.BREAK_END_MINUTES;
     assert.equal(inBreak, false, 'Schedule must not contain break-window slot ' + t);
   }
-  // Break window is exactly 12:00 - 13:30
+  // Break window is exactly 13:00 - 13:30
   assert.equal(collector.BREAK_START_MINUTES, 12 * 60);
   assert.equal(collector.BREAK_END_MINUTES, 13 * 60 + 30);
   // And explicit break times are rejected by the validator

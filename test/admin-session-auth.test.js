@@ -408,9 +408,9 @@ test('existing Chart and Portfolio test files are still present', () => {
   assert.ok(fs.existsSync(path.join(ROOT, 'test', 'portfolio-and-security.test.js')));
 });
 
-// 23. API endpoint count remains exactly 12 (session helper lives in lib/, not api/)
-test('api/ still exposes exactly 12 endpoint JS files', () => {
+// 23. API endpoint count remains exactly 13 (session helper lives in lib/, not api/)
+test('api/ still exposes exactly 13 endpoint JS files', () => {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 12, 'found: ' + files.join(', '));
+  assert.equal(files.length, 13, 'found: ' + files.join(', '));
   assert.ok(fs.existsSync(path.join(ROOT, 'lib', 'admin-session.js')), 'session helper must live under lib/');
 });

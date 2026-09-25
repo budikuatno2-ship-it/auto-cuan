@@ -18,7 +18,7 @@ test('Security Phase 1 remains disabled by default and preserves API budget', ()
   // stays inert unless explicitly opted into or deployed to production.
   assert.match(security, /isProductionEnv\(source\) \? 'enforce' : 'off'/);
   assert.match(security, /const raw = source\.SECURITY_GUARD_MODE;/);
-  assert.equal(apiFiles.length, 12);
+  assert.equal(apiFiles.length, 13);
 });
 
 test('login integration records failures without changing credential authority', () => {

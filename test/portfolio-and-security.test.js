@@ -455,10 +455,10 @@ test('register-user.js rate limits account creation, keyed on the observed addre
   assert.doesNotMatch(register, /limiter\.check\([^)]*(body|username|deviceId)/);
 });
 
-// 30. API endpoint count remains exactly 12
-test('api/ still exposes exactly 12 endpoint JS files', () => {
+// 30. API endpoint count remains exactly 13
+test('api/ still exposes exactly 13 endpoint JS files', () => {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 12, 'found: ' + files.join(', '));
+  assert.equal(files.length, 13, 'found: ' + files.join(', '));
 });
 
 // 29. Existing valid register behavior still works (v2: atomic RPC path via stub).

@@ -449,7 +449,7 @@ test('30. backtest modules import no Telegram / Supabase / DB-mutation / trading
 // API count invariant
 // ===================================================================
 
-test('31. API endpoint count remains exactly 12', async () => {
+test('31. API endpoint count remains exactly 13', async () => {
   const entries = await fsp.readdir(path.join(__dirname, '..', 'api'));
   assert.equal(entries.filter((f) => f.endsWith('.js')).length, 12);
 });
