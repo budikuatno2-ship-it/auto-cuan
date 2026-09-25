@@ -92,9 +92,14 @@ function normalizeMode(raw) {
 }
 
 function loadEnvFiles(env, cwd) {
-  const files = ['.env', '.env.intraday-runtime', '.env.local'];
-  for (const file of files) {
-    const filePath = path.join(cwd || ROOT, file);
+  const runnerDir = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
+  const files = [
+    path.join(cwd || ROOT, '.env'),
+    path.join(cwd || ROOT, '.env.intraday-runtime'),
+    path.join(cwd || ROOT, '.env.local'),
+    path.join(runnerDir, '.env')
+  ];
+  for (const filePath of files) {
     if (!fs.existsSync(filePath)) continue;
     for (const line of fs.readFileSync(filePath, 'utf8').split(/\r?\n/)) {
       const trimmed = line.trim();
@@ -107,6 +112,7 @@ function loadEnvFiles(env, cwd) {
         value = value.slice(1, -1);
       }
       if (env[key] == null || env[key] === '') env[key] = value;
+      if (process.env[key] == null || process.env[key] === '') process.env[key] = value;
     }
   }
   return env;
@@ -165,6 +171,24 @@ function candidatesFor(snapshot, mode) {
 function formatCard(mode, candidates, updatedAt) {
   const canonical = normalizeMode(mode);
   const def = MODES[canonical] || MODES[mode] || MODES.daytrade;
+
+  // Use rich canonical Telegram templates when rich candidate data is present
+  let templates;
+  try { templates = require(path.join(ROOT, 'lib', 'telegram-templates')); } catch (_) { templates = null; }
+
+  if (templates && Array.isArray(candidates) && candidates.length > 0 && candidates[0].unified_score != null) {
+    const topCandidates = candidates.slice(0, 5);
+    if (canonical === 'swing-konglo') {
+      return templates.formatSwingKongloSignalMessage(topCandidates, { updatedAt });
+    }
+    if (canonical === 'swing-non-konglo') {
+      return templates.formatSwingNonKongloSignalMessage(topCandidates, { updatedAt });
+    }
+    if (canonical === 'daytrade') {
+      return templates.formatDayTradeSignalMessage(topCandidates, { updatedAt });
+    }
+  }
+
   const lines = [
     '📊 Screener ' + def.label + ' (snapshot ' + (updatedAt || 'tidak diketahui') + ')',
     ''
@@ -262,7 +286,22 @@ async function main(argv, deps) {
     return { exitCode: 0, report: null };
   }
   const env = (deps && deps.env) || loadEnvFiles(Object.assign({}, process.env), ROOT);
-  const report = analyze(opts, Object.assign({ env, rootDir: ROOT }, deps || {}));
+  if (deps && deps.env) {
+    for (const [k, v] of Object.entries(deps.env)) {
+      if (process.env[k] == null || process.env[k] === '') process.env[k] = v;
+    }
+  }
+  let report = analyze(opts, Object.assign({ env, rootDir: ROOT }, deps || {}));
+
+  if (report.snapshot_missing && !(deps && deps.skipAutoSnapshot) && !(deps && deps.rootDir)) {
+    try {
+      const { main: buildSnapshot } = require(path.join(ROOT, 'tools', 'build-screener-snapshot.js'));
+      const snapRes = await buildSnapshot({ dryRun: false, print: false }, { env, rootDir: ROOT });
+      if (snapRes && snapRes.ok) {
+        report = analyze(opts, Object.assign({ env, rootDir: ROOT }, deps || {}));
+      }
+    } catch (_) {}
+  }
 
   const log = (deps && deps.log) || console.log;
   if (opts.json) {

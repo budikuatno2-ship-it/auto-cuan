@@ -3,12 +3,19 @@
 /**
  * Batch 12 — Setup Ecosystem Process Manager (PM2)
  *
- * Membuktikan ecosystem.config.js adalah source of truth yang valid untuk dua
+ * Membuktikan ecosystem.config.js adalah source of truth yang valid untuk
  * daemon VPS yang sebelumnya berjalan via nohup/background (Akar Masalah #1):
- *   1. Dua app terdaftar: auto-cuan-vps-api & auto-cuan-ai-eval-supervisor.
+ *   1. Semua daemon long-lived wajib terdaftar dengan namanya masing-masing.
  *   2. Setiap `script` menunjuk file yang benar-benar ada di disk.
  *   3. autorestart aktif + kill_timeout supervisor cukup untuk SIGTERM child.
  *   4. package.json menyediakan skrip pm2:* (start/reload) untuk deploy atomik.
+ *
+ * Catatan desain (Batch 12 revisi): assertion JUMLAH app dihapus dan diganti
+ * assertion KEHADIRAN daemon wajib. Sebelumnya test mengunci `APPS.length === 3`,
+ * sehingga setiap penambahan daemon resmi (FASE 2 menambah `autocuan-web-tunnel`
+ * dan `autocuan-verify-bot`) menggagalkan test padahal konfigurasinya benar —
+ * test mengukur angka, bukan kontrak. Yang benar-benar harus dijamin adalah
+ * setiap daemon yang wajib hidup itu terdaftar, bukan berapa totalnya.
  */
 
 const assert = require('node:assert/strict');
@@ -23,12 +30,44 @@ const pkg = require('../package.json');
 const APPS = ecosystem.apps || [];
 const byName = (name) => APPS.find((a) => a.name === name);
 
-test('Batch 12: ecosystem lists all three long-lived VPS daemons', () => {
+// Setiap daemon yang WAJIB hidup di VPS. Menambah daemon baru berarti menambah
+// satu baris di sini — itu perubahan kontrak yang disengaja, bukan angka yang
+// kebetulan berubah. Daftar ini adalah kontraknya.
+const REQUIRED_DAEMONS = [
+  'auto-cuan-vps-api',           // Express API bridge (port 3001)
+  'auto-cuan-ai-eval-supervisor', // AI evaluator runner
+  'autocuan-bot',                // Telegram interactive bot
+  'autocuan-web-tunnel',         // public HTTPS origin (cloudflared supervisor)
+  'autocuan-verify-bot'          // @AutoCuanVerificationBot long-polling
+];
+
+test('Batch 12: ecosystem registers every required long-lived VPS daemon', () => {
   assert.ok(Array.isArray(APPS), 'apps must be an array');
-  assert.equal(APPS.length, 3);
-  assert.ok(byName('auto-cuan-vps-api'), 'missing auto-cuan-vps-api');
-  assert.ok(byName('auto-cuan-ai-eval-supervisor'), 'missing auto-cuan-ai-eval-supervisor');
-  assert.ok(byName('autocuan-bot'), 'missing autocuan-bot');
+  for (const name of REQUIRED_DAEMONS) {
+    assert.ok(byName(name), 'missing required daemon: ' + name);
+  }
+});
+
+test('Batch 12: ecosystem declares exactly the five official daemons', () => {
+  // Angka ini tetap dijaga, tapi sebagai cerminan daftar kontrak di atas —
+  // bukan literal yang harus ditebak. Bila daemon resmi bertambah, tambahkan ke
+  // REQUIRED_DAEMONS dan test ini akan memberi tahu angka barunya.
+  assert.equal(
+    APPS.length,
+    REQUIRED_DAEMONS.length,
+    'ecosystem.config.js has ' + APPS.length + ' app(s) but ' + REQUIRED_DAEMONS.length +
+    ' required daemon(s) are declared: ' + APPS.map((a) => a.name).join(', ')
+  );
+});
+
+test('Batch 12: no daemon name is duplicated', () => {
+  // Nama ganda membuat PM2 diam-diam melewatkan salah satunya, sehingga satu
+  // daemon tidak pernah jalan tanpa ada yang menyadarinya.
+  const seen = new Set();
+  for (const app of APPS) {
+    assert.ok(!seen.has(app.name), 'duplicate daemon name: ' + app.name);
+    seen.add(app.name);
+  }
 });
 
 test('Batch 12: every app script points to a real file on disk', () => {

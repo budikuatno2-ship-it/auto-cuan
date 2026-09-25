@@ -27,22 +27,28 @@ CRON_TZ=Asia/Jakarta
 30 10 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daytrade.log 2>&1
 45 13 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daytrade.log 2>&1
 
+# ── PRODUCER SCREENER (Full universe sweep via VPS daemon + Snapshot) ────
+# Berjalan 19:00 WIB (selesai ~19:07 WIB) menghasilkan data/screener-latest.json sebelum consumer berjalan
+0 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screeners.sh --execute --send >> /home/ubuntu/auto-cuan-runner/logs/screeners.log 2>&1
+
 # ── END-OF-DAY / MALAM (Senin-Jumat, 19:00-19:45 WIB) ─────────────────────
-# SWING KONGLOMERAT: 19:15 WIB — setelah data broker summary resmi lengkap
+# SWING KONGLOMERAT: 19:15 WIB — setelah data broker summary resmi lengkap & snapshot ready
 15 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-swing-konglo.sh --send >> /home/ubuntu/auto-cuan-runner/logs/swing-konglo.log 2>&1
 # SWING NON-KONGLOMERAT: 19:30 WIB
 30 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-swing-non-konglo.sh --send >> /home/ubuntu/auto-cuan-runner/logs/swing-non-konglo.log 2>&1
 # TOP 5 & BROKER SUMMARY REKAP + SCREENER DISPATCH: 19:45 WIB (skip_market_guard=true)
 45 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screener-dispatch.sh --send >> /home/ubuntu/auto-cuan-runner/logs/screener-dispatch.log 2>&1
 
-# ── LEGACY PRODUCER (backward compat, full sweep via VPS daemon) ─────────
-# Tetap dipertahankan agar tidak ada regresi; berjalan 19:10 WIB sebelum EOD dispatch
-10 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screeners.sh --execute --send >> /home/ubuntu/auto-cuan-runner/logs/screeners.log 2>&1
-
-# ── HYBRID WEBHOOK FAILOVER (Vercel primer ⇄ VPS fallback) ──────────────
-# Menjaga webhook verifikasi bot: tetap di Vercel saat sehat, otomatis pindah
-# ke tunnel VPS saat Vercel paused/402, dan kembali ke Vercel saat pulih.
-*/10 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-webhook-failover.sh >> /home/ubuntu/auto-cuan-runner/logs/webhook-failover.log 2>&1
+# ── HYBRID WEBHOOK FAILOVER — DINONAKTIFKAN (2026-09-25) ────────────────
+# Verifikasi bot sekarang memakai LONG POLLING mandiri via PM2
+# (autocuan-verify-bot, entry: tools/telegram-verify-bot.js). Tidak ada lagi
+# webhook Vercel (HTTP 402) maupun cloudflared tunnel yang bisa mati.
+#
+# PENTING: JANGAN aktifkan kembali baris di bawah. Failover ini akan
+# memasang ulang webhook dan mematikan polling (getUpdates → 409 Conflict).
+# Untuk mengembalikan mode webhook: pm2 delete autocuan-verify-bot lalu
+# buka komentar baris ini.
+# */10 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-webhook-failover.sh >> /home/ubuntu/auto-cuan-runner/logs/webhook-failover.log 2>&1
 
 # ── HYBRID SECTOR HOT (Vercel primer → runner lokal VPS) ────────────────
 # Pemicu endpoint Vercel dulu; jika response bukan HTTP 200, runner lokal
@@ -52,5 +58,8 @@ CRON_TZ=Asia/Jakarta
 # ── ORACLE ANTI-SUSPEND KEEP-ALIVE (ringan, setiap jam) ──────────────────
 # Sanitasi cache kadaluarsa + hash audit + heartbeat — <1s, <10MB, menjaga CPU p95 >20%
 0 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-keepalive.sh >> /home/ubuntu/auto-cuan-runner/logs/keepalive.log 2>&1
+
+# Watchdog long-polling verifikasi bot (auto-restart bila stall/mati)
+*/5 * * * * /home/ubuntu/auto-cuan/deploy/vps/check-verify-poller.sh >> /home/ubuntu/auto-cuan-runner/logs/verify-poller-watchdog.log 2>&1
 
 # END AUTO-CUAN FINAL SCHEDULE

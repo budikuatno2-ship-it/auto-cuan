@@ -468,10 +468,36 @@ test('isolation: the verification lib owns no market command and never advertise
 
 test('isolation: the register form deep link is the canonical /register.html URL', function () {
   const src = fs.readFileSync(path.join(ROOT, 'lib', 'telegram-verification.js'), 'utf8');
-  assert.match(src, /const REGISTER_FORM_URL = 'https:\/\/autocuan\.web\.id\/register\.html';/);
+  // FASE 2: the ORIGIN is resolved at call time (lib/public-web-base.js) so the
+  // bot keeps working while the Vercel deployment is paused; the PATH remains the
+  // canonical /register.html contract.
+  assert.match(src, /const REGISTER_FORM_PATH = '\/register\.html';/);
+  assert.match(src, /publicWebBase\.getPublicWebBase\(\)/);
   const html = fs.readFileSync(path.join(ROOT, 'public', 'register.html'), 'utf8');
   assert.match(html, /params\.get\('user_id'\)/);
   assert.match(html, /action=mint-token/);
+});
+
+test('isolation: public web base falls back to the canonical domain and rejects bad overrides', function () {
+  const webBase = require('../lib/public-web-base');
+  // A malformed or non-https override must never reach a Telegram button.
+  assert.equal(webBase.normalizeBaseUrl('http://autocuan.web.id'), null);
+  assert.equal(webBase.normalizeBaseUrl('not a url'), null);
+  assert.equal(webBase.normalizeBaseUrl(''), null);
+  assert.equal(webBase.normalizeBaseUrl('https://a.trycloudflare.com/'), 'https://a.trycloudflare.com');
+  // No override + no tunnel file -> canonical domain (previous behaviour).
+  webBase.clearCache();
+  const resolved = webBase.resolvePublicWebBase({}, { bypassCache: true });
+  assert.equal(resolved.base_url, webBase.CANONICAL_BASE_URL);
+  assert.equal(resolved.source, 'canonical');
+  // An explicit override wins.
+  const overridden = webBase.resolvePublicWebBase(
+    { PUBLIC_WEB_BASE_URL: 'https://live.trycloudflare.com' },
+    { bypassCache: true }
+  );
+  assert.equal(overridden.base_url, 'https://live.trycloudflare.com');
+  assert.equal(overridden.source, 'env:PUBLIC_WEB_BASE_URL');
+  webBase.clearCache();
 });
 
 test('isolation: the VPS local server serves /register like the Vercel rewrite', function () {

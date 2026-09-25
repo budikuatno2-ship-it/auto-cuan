@@ -21,6 +21,7 @@ const { createClient } = require('@supabase/supabase-js');
 const registerToken = require('../lib/telegram-register-token');
 const verifyBot = require('../lib/telegram-verify-bot');
 const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+const passwordCredential = require('../lib/password-credential');
 
 const registrationLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 10 });
 // Tighter bucket for token minting: a deep-link hand-off is rare, so a low
@@ -46,10 +47,11 @@ async function notifyAdmin(name, username, telegramId, email) {
   const adminId = String(process.env.ADMIN_TELEGRAM_ID || '').trim();
   if (!adminId) return false;
   const text = [
-    '🔔 PENDAFTARAN MEMBER BARU',
+    '🔔 Pendaftaran Akun Baru Masuk!',
     'Nama: ' + name + (username ? ' (@' + username + ')' : ''),
-    'Telegram ID: ' + telegramId,
     'Email: ' + email,
+    'Telegram ID: ' + telegramId,
+    'Aksi: /approve_' + telegramId + ' atau tolak',
     'Waktu: ' + wibTimestamp() + ' WIB'
   ].join('\n');
   try {
@@ -146,9 +148,14 @@ module.exports = async function handler(req, res) {
   const token = String(body.token || '').trim();
   const name = String(body.name || '').trim().slice(0, NAME_MAX);
   const email = String(body.email || '').trim().toLowerCase();
+  const suppliedUserId = String(body.user_id || '').trim();
+  const password = String(body.password || '');
+  const passwordConfirm = String(body.password_confirm || body.passwordConfirm || '');
+  let clientPasswordHash = passwordCredential.normalizeClientHash(body.passwordHash || body.password_hash);
+  const tokenError = 'Token pendaftaran tidak valid atau sudah kedaluwarsa. Silakan ketik /start di bot Telegram untuk mendapatkan tautan baru.';
 
   if (!token) {
-    return res.status(400).json({ success: false, error: 'Token pendaftaran tidak valid.' });
+    return res.status(400).json({ success: false, error: tokenError });
   }
   if (name.length < 2) {
     return res.status(400).json({ success: false, error: 'Nama lengkap minimal 2 karakter.' });
@@ -156,20 +163,30 @@ module.exports = async function handler(req, res) {
   if (!GMAIL_RE.test(email) || email.length > 100) {
     return res.status(400).json({ success: false, error: 'Gunakan alamat Gmail yang valid (@gmail.com).' });
   }
+  if (!clientPasswordHash) {
+    if (password.length < 6 || password.length > 128) {
+      return res.status(400).json({ success: false, error: 'Password minimal 6 karakter.' });
+    }
+    if (passwordConfirm && passwordConfirm !== password) {
+      return res.status(400).json({ success: false, error: 'Konfirmasi password tidak cocok.' });
+    }
+    clientPasswordHash = require('crypto').createHash('sha256').update(password, 'utf8').digest('hex');
+  }
+  let protectedPassword;
+  try { protectedPassword = passwordCredential.protectClientHash(clientPasswordHash); }
+  catch (_) { return res.status(400).json({ success: false, error: 'Password tidak valid.' }); }
 
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabase = (url && key) ? createClient(url, key, {
+  const supabase = (req && req.supabase) || ((url && key) ? createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false }
-  }) : null;
+  }) : null);
 
   // Burn the token first. A failed/duplicate submit must not consume a token
   // for a valid user, but it MUST prevent replay — so consume before writing.
   const consumed = await registerToken.consumeToken(supabase, token);
   if (!consumed.ok) {
-    const reason = consumed.reason === 'used'
-      ? 'Token ini sudah dipakai. Minta tautan baru dari bot.'
-      : 'Token sudah kedaluwarsa. Minta tautan baru dari bot.';
+    const reason = tokenError;
     return res.status(400).json({ success: false, code: 'TOKEN_INVALID', error: reason });
   }
 
@@ -179,10 +196,19 @@ module.exports = async function handler(req, res) {
     try {
       const existing = await supabase.from('bot_users').select('username').eq('telegram_id', telegramId).maybeSingle();
       if (!existing.error && existing.data) username = existing.data.username || null;
+      if (suppliedUserId && suppliedUserId !== String(telegramId)) {
+        return res.status(400).json({ success: false, error: tokenError });
+      }
+      const current = await supabase.from('bot_users').select('status').eq('telegram_id', telegramId).maybeSingle();
+      const currentStatus = current && !current.error && current.data ? String(current.data.status || '').toLowerCase() : '';
+      if (currentStatus === 'active' || currentStatus === 'approved') {
+        return res.status(409).json({ success: false, error: 'Akun ini sudah aktif. Buka bot verifikasi lalu kirim /akun.' });
+      }
       const upsert = await supabase.from('bot_users').upsert({
         telegram_id: telegramId,
         full_name: name,
         gmail: email,
+        password_hash: protectedPassword,
         status: 'pending',
         updated_at: new Date().toISOString()
       }, { onConflict: 'telegram_id' });
@@ -200,7 +226,7 @@ module.exports = async function handler(req, res) {
 
   return res.status(200).json({
     success: true,
-    message: 'Pendaftaran terkirim. Menunggu persetujuan admin.'
+    message: 'Pendaftaran berhasil dikirim! Menunggu persetujuan admin.'
   });
 };
 

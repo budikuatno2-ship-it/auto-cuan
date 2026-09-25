@@ -25,6 +25,15 @@ export TZ=Asia/Jakarta
 
 mkdir -p "$RUNNER_DIR/state" "$RUNNER_DIR/logs"
 
+# Load environment files (runner-level first, then repo-level overrides like .env.local)
+for env_file in "$RUNNER_DIR/.env" "$REPO/.env" "$REPO/.env.intraday-runtime" "$REPO/.env.local"; do
+  if [ -f "$env_file" ]; then
+    set -a
+    source "$env_file" 2>/dev/null || true
+    set +a
+  fi
+done
+
 if [ ! -x "$NODE_BIN" ]; then
   NODE_BIN="$(command -v node || echo "")"
 fi

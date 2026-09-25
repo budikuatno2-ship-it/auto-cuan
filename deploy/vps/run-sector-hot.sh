@@ -47,6 +47,15 @@ export TZ=Asia/Jakarta
 
 mkdir -p "$RUNNER_DIR/state" "$RUNNER_DIR/logs"
 
+# Load environment files (runner-level first, then repo-level overrides like .env.local)
+for env_file in "$RUNNER_DIR/.env" "$REPO/.env" "$REPO/.env.intraday-runtime" "$REPO/.env.local"; do
+  if [ -f "$env_file" ]; then
+    set -a
+    source "$env_file" 2>/dev/null || true
+    set +a
+  fi
+done
+
 [ -x "$NODE_BIN" ] || NODE_BIN="$(command -v node || echo "")"
 if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ]; then
   echo "NODE_NOT_EXECUTABLE=$NODE_BIN"
@@ -81,14 +90,15 @@ else
     LOCAL_ARGS+=("--dry-run")
   fi
 
-  # The local screener writes the snapshot consumed by api/sector-hot.js and the
-  # dashboard. A non-zero exit is reported but never aborts the cron run.
+  # Run the local screener and ensure snapshot is materialized
   if "$NODE_BIN" tools/run-screener.js "${LOCAL_ARGS[@]}"; then
     LOCAL_RESULT="ok"
   else
     LOCAL_RESULT="failed"
     log "Local screener exited non-zero."
   fi
+  # Always ensure local screener snapshot is up-to-date
+  "$NODE_BIN" tools/build-screener-snapshot.js 2>/dev/null || true
 fi
 
 if [ "$JSON_OUT" -eq 1 ]; then

@@ -37,6 +37,13 @@
     .msg.error { display: block; color: #fca5a5; }
     .msg.ok { display: block; color: #86efac; }
     .hide { display: none !important; }
+    .hint { margin: 6px 0 0; color: #94a3b8; font-size: 12px; }
+    @media (max-width: 480px) {
+      body { padding: 12px; align-items: flex-start; }
+      .card { padding: 22px 16px; border-radius: 14px; }
+      h1 { font-size: 22px; }
+      input, button { font-size: 16px; }
+    }
   </style>
 </head>
 <body>
@@ -52,6 +59,11 @@
       <label for="email">Email Gmail</label>
       <input id="email" name="email" type="email" inputmode="email" autocomplete="email"
              placeholder="nama@gmail.com" maxlength="100" required>
+      <label for="password">Password Baru</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+      <p class="hint">Minimal 6 karakter.</p>
+      <label for="password-confirm">Konfirmasi Password</label>
+      <input id="password-confirm" name="password_confirm" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
       <button id="submit" type="submit">Kirim Pendaftaran</button>
     </form>
     <p class="msg" id="msg" role="status" aria-live="polite"></p>
@@ -70,6 +82,14 @@
       var msg = document.getElementById('msg');
       var submit = document.getElementById('submit');
       var lede = document.getElementById('lede');
+
+      async function sha256Hex(value) {
+        var bytes = new TextEncoder().encode(value);
+        var digest = await crypto.subtle.digest('SHA-256', bytes);
+        return Array.from(new Uint8Array(digest)).map(function (b) {
+          return b.toString(16).padStart(2, '0');
+        }).join('');
+      }
 
       function show(text, kind) {
         msg.textContent = text;
@@ -116,24 +136,29 @@
         event.preventDefault();
         var name = document.getElementById('name').value.trim();
         var email = document.getElementById('email').value.trim().toLowerCase();
+        var password = document.getElementById('password').value;
+        var passwordConfirm = document.getElementById('password-confirm').value;
         if (name.length < 2) { show('Nama lengkap minimal 2 karakter.', 'error'); return; }
         if (!/^[a-z0-9](?:[a-z0-9._%+-]{0,62})@gmail\.com$/.test(email)) {
           show('Gunakan alamat Gmail yang valid (@gmail.com).', 'error');
           return;
         }
+        if (password.length < 6) { show('Password minimal 6 karakter.', 'error'); return; }
+        if (password !== passwordConfirm) { show('Konfirmasi password tidak cocok.', 'error'); return; }
+        var passwordHash = await sha256Hex(password);
         submit.disabled = true;
         show('Mengirim pendaftaran...', 'ok');
         try {
           var resp = await fetch('/api/bot-register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: token, name: name, email: email })
+            body: JSON.stringify({ token: token, user_id: userId, name: name, email: email, passwordHash: passwordHash })
           });
           var data = await resp.json().catch(function () { return {}; });
           if (resp.ok && data.success) {
             form.classList.add('hide');
             lede.classList.add('hide');
-            show('Pendaftaran terkirim. Menunggu persetujuan admin. Anda akan menerima pesan di Telegram setelah disetujui.', 'ok');
+            show('Pendaftaran berhasil dikirim! Menunggu persetujuan admin.', 'ok');
             return;
           }
           show(data.error || 'Pendaftaran gagal. Coba lagi nanti.', 'error');

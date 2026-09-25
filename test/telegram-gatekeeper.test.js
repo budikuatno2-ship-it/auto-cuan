@@ -154,6 +154,50 @@ test('approval moves the user to active and triggers the BYOK wizard', async () 
   assert.deepEqual(provider, ['byok:gemini', 'byok:openai']);
 });
 
+
+function durableTokenDb() {
+  const tokens = new Map();
+  return {
+    tokens,
+    from(table) {
+      const filters = [];
+      const api = {
+        select() { return api; },
+        eq(column, value) { filters.push([column, String(value)]); return api; },
+        async maybeSingle() {
+          if (table !== 'bot_registration_tokens') return { data: null, error: null };
+          for (const row of tokens.values()) {
+            if (filters.every(([column, value]) => String(row[column]) === value)) return { data: Object.assign({}, row), error: null };
+          }
+          return { data: null, error: null };
+        },
+        async insert(row) {
+          if (table === 'bot_registration_tokens') tokens.set(String(row.token), Object.assign({}, row));
+          return { data: row, error: null };
+        },
+        update(patch) {
+          const chain = {
+            eq(column, value) { filters.push([column, String(value)]); return chain; },
+            select() { return chain; },
+            async maybeSingle() {
+              if (table !== 'bot_registration_tokens') return { data: null, error: null };
+              for (const row of tokens.values()) {
+                if (!filters.every(([column, value]) => String(row[column]) === value)) continue;
+                Object.assign(row, patch);
+                return { data: Object.assign({}, row), error: null };
+              }
+              return { data: null, error: null };
+            },
+            then(resolve, reject) { return chain.maybeSingle().then((result) => resolve({ data: result.data, error: result.error }), reject); }
+          };
+          return chain;
+        }
+      };
+      return api;
+    }
+  };
+}
+
 test('one-time registration token is single-use and expires', async () => {
   registerToken.clearMemoryStoreForTesting();
   let now = 1000;
@@ -169,6 +213,86 @@ test('one-time registration token is single-use and expires', async () => {
   assert.equal(expired.ok, false);
   assert.equal(expired.reason, 'expired');
 });
+test('registration token issued by the bot survives a process restart for two hours', async () => {
+  registerToken.clearMemoryStoreForTesting();
+  const durable = durableTokenDb();
+  const now = 1700000000000;
+  const issuer = createInteractiveBot({
+    db: durable,
+    env: { ADMIN_TELEGRAM_ID: '7' },
+    now: () => now,
+    registerTokenStore: registerToken,
+    skipProbe: true
+  });
+  const token = await issuer.issueRegistrationToken('42');
+  assert.equal(issuer.constants.REGISTER_TTL_MS, 2 * 60 * 60 * 1000);
+  registerToken.clearMemoryStoreForTesting();
+  const restarted = createInteractiveBot({
+    db: durable,
+    env: { ADMIN_TELEGRAM_ID: '7' },
+    now: () => now + 90 * 60 * 1000,
+    registerTokenStore: registerToken,
+    skipProbe: true
+  });
+  const consumed = await restarted.consumeRegistrationToken(token);
+  assert.equal(consumed.ok, true);
+  assert.equal(consumed.telegramId, '42');
+});
+
+test('verify bot: verified /start shows the account summary and web screener, never the registration form', async () => {
+  const tv = require('../lib/telegram-verification');
+  const bot = {
+    sent: [],
+    sendMessage: async (chatId, text, options) => {
+      bot.sent.push({ chatId, text, options });
+      return { message_id: 1 };
+    }
+  };
+  const db = {
+    from: (table) => ({
+      select: () => ({
+        eq: (col, val) => ({
+          maybeSingle: async () => {
+            if (table === 'bot_users' && String(val) === '42') {
+              return {
+                data: {
+                  telegram_id: '42', username: 'budi', full_name: 'Budi Santoso',
+                  status: 'active', gmail: 'budi@gmail.com',
+                  subscription_status: 'Premium aktif sampai 2026-12-31',
+                  channel_access: 'Aktif'
+                },
+                error: null
+              };
+            }
+            return { data: null, error: null };
+          }
+        })
+      })
+    }),
+    rpc: (name) => {
+      if (name === 'claim_telegram_webhook_update') return Promise.resolve({ data: [{ claim_state: 'claimed', processing_token: 'tok' }], error: null });
+      if (name === 'complete_telegram_webhook_update') return Promise.resolve({ data: [true], error: null });
+      return Promise.resolve({ data: null, error: null });
+    }
+  };
+  const update = {
+    update_id: 101,
+    message: { chat: { id: 42, type: 'private' }, from: { id: 42 }, text: '/start' }
+  };
+  const res = await tv.processWebhookUpdate(update, { supabase: db, bot });
+  assert.equal(res.outcome, 'start_verified');
+  assert.equal(bot.sent.length, 1);
+  const text = bot.sent[0].text;
+  assert.match(text, /Username:\s*budi/);
+  assert.match(text, /Status:\s*Disetujui/);
+  assert.match(text, /Akses Channel:\s*Aktif/);
+  assert.match(text, /Subscription:\s*Premium aktif sampai 2026-12-31/);
+  assert.doesNotMatch(text, /Formulir Pendaftaran|mendaftar|\/daftar/i);
+  const button = bot.sent[0].options.reply_markup.inline_keyboard[0][0];
+  assert.equal(button.text, '🌐 Buka Web Screener');
+  assert.match(button.url, /^https?:\/\//);
+});
+
 
 test('register endpoint rejects invalid Gmail and burns a valid token', async () => {
   registerToken.clearMemoryStoreForTesting();
@@ -190,7 +314,7 @@ test('register endpoint rejects invalid Gmail and burns a valid token', async ()
   assert.match(badRes.body.error, /Gmail/);
 
   // The token must NOT be consumed by a validation failure.
-  const okReq = { method: 'POST', body: { token, name: 'Budi Santoso', email: 'budi@gmail.com' }, headers: {} };
+  const okReq = { method: 'POST', body: { token, name: 'Budi Santoso', email: 'budi@gmail.com', password: 'rahasia-aman' }, headers: {} };
   const okRes = mockRes();
   await botRegister(okReq, okRes);
   assert.equal(okRes.statusCode, 200);
@@ -198,7 +322,7 @@ test('register endpoint rejects invalid Gmail and burns a valid token', async ()
 
   // Replay is rejected.
   const replayRes = mockRes();
-  await botRegister({ method: 'POST', body: { token, name: 'Budi', email: 'budi@gmail.com' }, headers: {} }, replayRes);
+  await botRegister({ method: 'POST', body: { token, name: 'Budi', email: 'budi@gmail.com', password: 'rahasia-aman' }, headers: {} }, replayRes);
   assert.equal(replayRes.statusCode, 400);
   assert.equal(replayRes.body.code, 'TOKEN_INVALID');
 });
@@ -263,3 +387,57 @@ test('expired BYOK session asks the member to refresh', async () => {
   assert.equal(button.text, '🔄 Refresh Sesi Kunci');
   assert.match(button.url, /start=refresh_42$/);
 });
+
+test('new registration stores a protected password hash and notifies the admin', async () => {
+  registerToken.clearMemoryStoreForTesting();
+  const durable = durableTokenDb();
+  const users = memoryDb([]);
+  const db = {
+    rows: users.rows,
+    from(table) { return table === 'bot_registration_tokens' ? durable.from(table) : users.from(table); }
+  };
+  const now = Date.now();
+  const issuer = createInteractiveBot({ db, env: { ADMIN_TELEGRAM_ID: '7' }, now: () => now, registerTokenStore: registerToken, skipProbe: true });
+  const token = await issuer.issueRegistrationToken('4242');
+  const adminMessages = [];
+  const originalFetch = global.fetch;
+  global.fetch = async (url, options) => {
+    const body = JSON.parse(options.body);
+    adminMessages.push(body);
+    return { ok: true, json: async () => ({ ok: true, result: { message_id: 1 } }) };
+  };
+  process.env.ADMIN_TELEGRAM_ID = '7';
+  process.env.TELEGRAM_VERIFY_BOT_TOKEN = '123456:test-verify-token';
+  const passwordHash = 'a'.repeat(64);
+  const res = { statusCode: 0, body: null, status(code) { this.statusCode = code; return this; }, json(payload) { this.body = payload; return this; } };
+  try {
+    await botRegister({ method: 'POST', supabase: db, body: { token, user_id: '4242', name: 'Sari Baru', email: 'sari.baru@gmail.com', password: 'rahasia-aman', passwordHash }, headers: {} }, res);
+  } finally {
+    global.fetch = originalFetch;
+  }
+  assert.equal(res.statusCode, 200);
+  assert.match(res.body.message, /Pendaftaran berhasil dikirim/);
+  const saved = users.rows.get('4242');
+  assert.equal(saved.full_name, 'Sari Baru');
+  assert.equal(saved.gmail, 'sari.baru@gmail.com');
+  assert.equal(saved.status, 'pending');
+  assert.match(saved.password_hash, /^k1[a-f0-9]{62}$/i);
+  assert.notEqual(saved.password_hash, passwordHash);
+  assert.equal(adminMessages.length, 1);
+  assert.equal(String(adminMessages[0].chat_id), '7');
+  assert.match(adminMessages[0].text, /Pendaftaran Akun Baru Masuk/);
+  assert.match(adminMessages[0].text, /Sari Baru/);
+  assert.match(adminMessages[0].text, /sari\.baru@gmail\.com/);
+  assert.match(adminMessages[0].text, /4242/);
+  assert.match(adminMessages[0].text, /\/approve_4242/);
+  assert.doesNotMatch(adminMessages[0].text, /rahasia-aman|password_hash/);
+});
+
+test('expired registration token returns the friendly browser message', async () => {
+  registerToken.clearMemoryStoreForTesting();
+  const res = { statusCode: 0, body: null, status(code) { this.statusCode = code; return this; }, json(payload) { this.body = payload; return this; } };
+  await botRegister({ method: 'POST', body: { token: 'missing-token', name: 'Sari Baru', email: 'sari.baru@gmail.com', password: 'rahasia-aman', passwordHash: 'b'.repeat(64) }, headers: {} }, res);
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.error, 'Token pendaftaran tidak valid atau sudah kedaluwarsa. Silakan ketik /start di bot Telegram untuk mendapatkan tautan baru.');
+});
+
