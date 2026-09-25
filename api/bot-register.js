@@ -204,19 +204,41 @@ module.exports = async function handler(req, res) {
       if (currentStatus === 'active' || currentStatus === 'approved') {
         return res.status(409).json({ success: false, error: 'Akun ini sudah aktif. Buka bot verifikasi lalu kirim /akun.' });
       }
-      const upsert = await supabase.from('bot_users').upsert({
+      const botPayload = {
         telegram_id: telegramId,
         full_name: name,
         gmail: email,
         password_hash: protectedPassword,
         status: 'pending',
         updated_at: new Date().toISOString()
-      }, { onConflict: 'telegram_id' });
+      };
+      let upsert = await supabase.from('bot_users').upsert(botPayload, { onConflict: 'telegram_id' });
+      if (upsert.error && upsert.error.code === 'PGRST204') {
+        const compatPayload = {
+          telegram_id: telegramId,
+          username: username || name,
+          email: email,
+          status: 'pending',
+          updated_at: new Date().toISOString()
+        };
+        upsert = await supabase.from('bot_users').upsert(compatPayload, { onConflict: 'telegram_id' });
+      }
       if (upsert.error) {
         // Never leave the token burned for a failed write; the member can retry
         // with a fresh token. The old token stays consumed (no replay).
         return res.status(500).json({ success: false, error: 'Gagal menyimpan pendaftaran. Coba lagi nanti.' });
       }
+      try {
+        await supabase.from('app_users').upsert({
+          username: username || name,
+          email: email,
+          password_hash: protectedPassword,
+          is_approved: false,
+          is_blocked: false,
+          device_id: 'bot_' + telegramId,
+          updated_at: new Date().toISOString()
+        });
+      } catch (_) {}
     } catch (_) {
       return res.status(500).json({ success: false, error: 'Gagal menyimpan pendaftaran. Coba lagi nanti.' });
     }
