@@ -2,14 +2,20 @@
 'use strict';
 
 /**
- * Screener channel runner + diagnostic CLI.
+ * Screener channel runner + diagnostic CLI — 4 Pilar (Daytrade, FastWatcher, Swing Konglo, Swing Non-Konglo).
  *
- * Purpose (Bagian 6 audit + repair):
- *  - Diagnose WHY the Daytrade / FastWatcher / Swing screener produced no
+ * Purpose (Bagian 6 audit + repair + Bagian 2 restorasi 4 pilar):
+ *  - Diagnose WHY the Daytrade / FastWatcher / Swing Konglo / Swing Non-Konglo screener produced no
  *    signal in the Telegram channel.
  *  - Dry-run by default: read the latest local screener snapshot, apply the
  *    market/calendar gate, and report what WOULD be sent — without sending.
- *  - `--send` actually broadcasts the card via the canonical notifier.
+ *  - `--send` actually broadcasts the card via the canonical notifier (skip_market_guard=true).
+ *  - Supports 4 canonical modes required by master task:
+ *      --mode=daytrade
+ *      --mode=fastwatcher
+ *      --mode=swing-konglo
+ *      --mode=swing-non-konglo
+ *    Aliases are normalized (swing_konglo, konglo, swing, nk, non-konglo, etc.) for backward compat.
  *
  * Root causes this tool is designed to surface:
  *  1. NO SCHEDULED PRODUCER — the VPS crontab has no entry that generates
@@ -24,8 +30,12 @@
  * Usage:
  *   node tools/run-screener.js --mode=daytrade --dry-run
  *   node tools/run-screener.js --mode=daytrade --send
- *   node tools/run-screener.js --mode=swing --dry-run
  *   node tools/run-screener.js --mode=fastwatcher --dry-run
+ *   node tools/run-screener.js --mode=fastwatcher --send
+ *   node tools/run-screener.js --mode=swing-konglo --dry-run
+ *   node tools/run-screener.js --mode=swing-konglo --send
+ *   node tools/run-screener.js --mode=swing-non-konglo --dry-run
+ *   node tools/run-screener.js --mode=swing-non-konglo --send
  */
 
 const fs = require('node:fs');
@@ -33,12 +43,53 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 
+// Canonical 4-pilar modes + aliases. All aliases resolve to canonical key via normalizeMode().
 const MODES = {
-  daytrade: { key: 'daytrade', label: 'Day Trade', snapshotKeys: ['daytrade', 'dayTrade'] },
-  swing: { key: 'swing', label: 'Swing', snapshotKeys: ['swing'] },
-  fastwatcher: { key: 'fastwatcher', label: 'Fast Watcher', snapshotKeys: ['fastwatcher', 'fastWatcher', 'intraday'] },
+  daytrade: { key: 'daytrade', label: 'Day Trade', snapshotKeys: ['daytrade', 'dayTrade', 'day_trade'] },
+  fastwatcher: { key: 'fastwatcher', label: 'Fast Watcher', snapshotKeys: ['fastwatcher', 'fastWatcher', 'fast_watcher', 'intraday', 'intraday_fast_watcher'] },
+  'swing-konglo': { key: 'swing-konglo', label: 'Swing Konglo', snapshotKeys: ['swing_konglo', 'swingKonglo', 'swing-konglo', 'konglo', 'swing', 'swingKongloLatest'] },
+  'swing-non-konglo': { key: 'swing-non-konglo', label: 'Swing Non-Konglo', snapshotKeys: ['swing_non_konglo', 'swingNonKonglo', 'swing-non-konglo', 'swing_nk', 'swingNk', 'nonKonglo', 'non_konglo', 'nk', 'non-konglo'] },
+  // Backward compat aliases (not canonical but kept for existing tests/crons)
+  swing: { key: 'swing-konglo', label: 'Swing Konglo', snapshotKeys: ['swing_konglo', 'swingKonglo', 'swing-konglo', 'konglo', 'swing', 'swingKongloLatest'] },
   top5: { key: 'top5', label: 'Top 5', snapshotKeys: ['top5', 'fusion'] }
 };
+
+// Alias map: normalized input -> canonical key
+const MODE_ALIASES = {
+  daytrade: 'daytrade',
+  'day-trade': 'daytrade',
+  day_trade: 'daytrade',
+  fastwatcher: 'fastwatcher',
+  'fast-watcher': 'fastwatcher',
+  fast_watcher: 'fastwatcher',
+  intraday: 'fastwatcher',
+  'swing-konglo': 'swing-konglo',
+  swing_konglo: 'swing-konglo',
+  konglo: 'swing-konglo',
+  swing: 'swing-konglo',
+  'swing-non-konglo': 'swing-non-konglo',
+  swing_non_konglo: 'swing-non-konglo',
+  'non-konglo': 'swing-non-konglo',
+  non_konglo: 'swing-non-konglo',
+  nk: 'swing-non-konglo',
+  swing_nk: 'swing-non-konglo',
+  'swing-nk': 'swing-non-konglo',
+  top5: 'top5',
+  fusion: 'top5'
+};
+
+function normalizeMode(raw) {
+  if (!raw) return 'daytrade';
+  const lower = String(raw).trim().toLowerCase().replace(/_/g, '-');
+  if (MODE_ALIASES[lower]) return MODE_ALIASES[lower];
+  const alt = String(raw).trim().toLowerCase();
+  if (MODE_ALIASES[alt]) return MODE_ALIASES[alt];
+  if (lower.includes('non') && lower.includes('konglo')) return 'swing-non-konglo';
+  if (lower.includes('konglo')) return 'swing-konglo';
+  if (lower.includes('fast')) return 'fastwatcher';
+  if (lower.includes('daytrade') || lower.includes('day-trade')) return 'daytrade';
+  return lower;
+}
 
 function loadEnvFiles(env, cwd) {
   const files = ['.env', '.env.intraday-runtime', '.env.local'];
@@ -68,8 +119,12 @@ function parseArgs(argv) {
     if (a === '--dry-run') opts.dryRun = true;
     else if (a === '--send') { opts.send = true; opts.dryRun = false; }
     else if (a === '--json') opts.json = true;
-    else if (a.startsWith('--mode=')) opts.mode = String(a.slice(7)).toLowerCase();
+    else if (a === '--help' || a === '-h') opts.help = true;
+    else if (a.startsWith('--mode=')) opts.mode = normalizeMode(String(a.slice(7)).toLowerCase());
+    else if (a === '--mode' && argv[i + 1]) { opts.mode = normalizeMode(String(argv[++i]).toLowerCase()); }
   }
+  // Ensure mode is always normalized
+  opts.mode = normalizeMode(opts.mode);
   return opts;
 }
 
@@ -90,15 +145,26 @@ function loadSnapshot(rootDir) {
 
 function candidatesFor(snapshot, mode) {
   if (!snapshot || !snapshot.data) return [];
-  const def = MODES[mode] || MODES.daytrade;
+  const canonical = normalizeMode(mode);
+  const def = MODES[canonical] || MODES[mode] || MODES.daytrade;
   for (const key of def.snapshotKeys) {
     if (Array.isArray(snapshot.data[key]) && snapshot.data[key].length) return snapshot.data[key];
+  }
+  // Fallback: try all snapshotKeys across all modes if canonical not found
+  // This helps when snapshot uses different naming (e.g., swing vs swing_konglo)
+  if (canonical === 'swing-konglo' || canonical === 'swing-non-konglo') {
+    for (const m of [MODES['swing-konglo'], MODES['swing-non-konglo']]) {
+      for (const key of m.snapshotKeys) {
+        if (Array.isArray(snapshot.data[key]) && snapshot.data[key].length) return snapshot.data[key];
+      }
+    }
   }
   return [];
 }
 
 function formatCard(mode, candidates, updatedAt) {
-  const def = MODES[mode] || MODES.daytrade;
+  const canonical = normalizeMode(mode);
+  const def = MODES[canonical] || MODES[mode] || MODES.daytrade;
   const lines = [
     '📊 Screener ' + def.label + ' (snapshot ' + (updatedAt || 'tidak diketahui') + ')',
     ''
@@ -140,7 +206,7 @@ function marketStatus(now, holidaySet) {
 function analyze(opts, deps) {
   const rootDir = (deps && deps.rootDir) || ROOT;
   const now = (deps && deps.now) || new Date();
-  const mode = MODES[opts.mode] ? opts.mode : 'daytrade';
+  const mode = normalizeMode(opts.mode) || 'daytrade';
   const snapshot = loadSnapshot(rootDir);
   const candidates = candidatesFor(snapshot, mode);
   const market = marketStatus(now, deps && deps.holidaySet);
@@ -174,7 +240,28 @@ function analyze(opts, deps) {
 
 async function main(argv, deps) {
   const opts = parseArgs(argv || process.argv);
-  const env = (deps && deps.env) || loadEnvFiles(process.env, ROOT);
+  if (opts.help) {
+    const help = [
+      'Usage: node tools/run-screener.js --mode=<mode> [--dry-run|--send] [--json]',
+      '',
+      'Modes (4 pilar):',
+      '  --mode=daytrade            Day Trade momentum screener',
+      '  --mode=fastwatcher         FastWatcher live volume spike (intraday)',
+      '  --mode=swing-konglo        Swing Konglomerat (Barito/Salim/Astra/Bakrie/Sinarmas/Panin/MNC)',
+      '  --mode=swing-non-konglo    Swing Non-Konglomerat (UTAMA/PENGEMBANGAN ex-konglo)',
+      '',
+      'Aliases: swing, konglo, nk, non-konglo, fast_watcher, intraday, day_trade',
+      'Flags:',
+      '  --dry-run   Hanya kalkulasi dan log kandidat (default)',
+      '  --send      Broadcast ke Telegram channel (skip_market_guard=true)',
+      '  --json      Output JSON',
+      '  --help      Tampilkan bantuan'
+    ].join('\n');
+    const log = (deps && deps.log) || console.log;
+    log(help);
+    return { exitCode: 0, report: null };
+  }
+  const env = (deps && deps.env) || loadEnvFiles(Object.assign({}, process.env), ROOT);
   const report = analyze(opts, Object.assign({ env, rootDir: ROOT }, deps || {}));
 
   const log = (deps && deps.log) || console.log;
@@ -218,6 +305,8 @@ if (require.main === module) {
 
 module.exports = {
   MODES,
+  MODE_ALIASES,
+  normalizeMode,
   parseArgs,
   loadEnvFiles,
   screenerSnapshotPath,

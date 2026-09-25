@@ -1,16 +1,46 @@
-# BEGIN AUTO-CUAN FINAL SCHEDULE
+# BEGIN AUTO-CUAN FINAL SCHEDULE — 4 PILAR (LIVE vs EOD) — 2026-09-25
+# Timezone: Asia/Jakarta (WIB = UTC+7). Semua jam di bawah adalah WIB.
+# Live bursa: 09:00-16:00 WIB (02:00-09:00 UTC) — hanya FastWatcher & Daytrade
+# EOD malam: 19:00-19:45 WIB (12:00-12:45 UTC) — Swing Konglo, Swing Non-Konglo, Top5/Broker Recap
 CRON_TZ=Asia/Jakarta
+
+# ── INFRA HARIAN ──────────────────────────────────────────────────────────
+# Backfill candle historis (tengah malam)
 5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
+# Lifecycle evaluator (sore, setelah bursa tutup)
 30 16 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-lifecycle-evaluator.js --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
+# Broker summary update (18:00 WIB, retry tiap 30 menit sampai 22:00 via wrapper)
 0 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-broker-update.sh --limit 5000 --fresh >> /home/ubuntu/auto-cuan-runner/logs/daily-broker-update.log 2>&1
+# Afternoon recap (18:45 WIB)
 45 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-afternoon-recap.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daily-afternoon-recap.log 2>&1
-# SCREENER PRODUCER (Bagian 6 root-cause fix): generate Daytrade/Swing/NK/Top5
-# candidates against the local VPS daemon. Previously absent, which is why the
-# screener channel was silent. Runs at 19:10 WIB after broker data settles.
-10 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screeners.sh --execute --send >> /home/ubuntu/auto-cuan-runner/logs/screeners.log 2>&1
+# Fetch daily candles (19:30 WIB, setelah broker settle)
 30 19 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/fetch-daily-candles.js >> /home/ubuntu/auto-cuan-runner/logs/fetch-daily-candles.log 2>&1
-# SCREENER DISPATCH: dry-run diagnostics then send the channel cards. Uses
-# skip_market_guard because a screener card is an after-session recap.
-45 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screener-dispatch.sh --send >> /home/ubuntu/auto-cuan-runner/logs/screener-dispatch.log 2>&1
+# Landing refresh (22:15 WIB, harian)
 15 22 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/direct-refresh-landing.js >> /home/ubuntu/auto-cuan-runner/logs/landing-refresh.log 2>&1
+
+# ── LIVE BURSA (Senin-Jumat, 09:00-16:00 WIB) ────────────────────────────
+# FASTWATCHER LIVE: setiap 5 menit selama jam bursa aktif (menangkap spike volume mendadak)
+# WIB 09:00-15:59 = UTC 02:00-08:59 → dengan CRON_TZ=Asia/Jakarta cukup 9-15
+*/5 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-fastwatcher.sh --send >> /home/ubuntu/auto-cuan-runner/logs/fastwatcher.log 2>&1
+# DAYTRADE SCREENER: pembukaan & pertengahan sesi (09:15, 10:30, 13:45 WIB)
+15 9 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daytrade.log 2>&1
+30 10 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daytrade.log 2>&1
+45 13 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daytrade.log 2>&1
+
+# ── END-OF-DAY / MALAM (Senin-Jumat, 19:00-19:45 WIB) ─────────────────────
+# SWING KONGLOMERAT: 19:15 WIB — setelah data broker summary resmi lengkap
+15 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-swing-konglo.sh --send >> /home/ubuntu/auto-cuan-runner/logs/swing-konglo.log 2>&1
+# SWING NON-KONGLOMERAT: 19:30 WIB
+30 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-swing-non-konglo.sh --send >> /home/ubuntu/auto-cuan-runner/logs/swing-non-konglo.log 2>&1
+# TOP 5 & BROKER SUMMARY REKAP + SCREENER DISPATCH: 19:45 WIB (skip_market_guard=true)
+45 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screener-dispatch.sh --send >> /home/ubuntu/auto-cuan-runner/logs/screener-dispatch.log 2>&1
+
+# ── LEGACY PRODUCER (backward compat, full sweep via VPS daemon) ─────────
+# Tetap dipertahankan agar tidak ada regresi; berjalan 19:10 WIB sebelum EOD dispatch
+10 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screeners.sh --execute --send >> /home/ubuntu/auto-cuan-runner/logs/screeners.log 2>&1
+
+# ── ORACLE ANTI-SUSPEND KEEP-ALIVE (ringan, setiap jam) ──────────────────
+# Sanitasi cache kadaluarsa + hash audit + heartbeat — <1s, <10MB, menjaga CPU p95 >20%
+0 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-keepalive.sh >> /home/ubuntu/auto-cuan-runner/logs/keepalive.log 2>&1
+
 # END AUTO-CUAN FINAL SCHEDULE
