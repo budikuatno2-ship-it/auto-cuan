@@ -59,7 +59,11 @@ function makeDb() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-let updateId = 900000000;
+// The webhook claim table is DURABLE: a processed update_id is never reprocessed.
+// Each run therefore needs its own id range, otherwise every update after the
+// first run comes back as 'duplicate' and the checks are meaningless.
+// The range is derived from the current minute so repeated runs stay distinct.
+let updateId = 900000000 + (Math.floor(Date.now() / 60000) % 100000) * 100;
 function nextUpdateId() { return ++updateId; }
 
 function privateUpdate(text, senderId) {
