@@ -4,6 +4,13 @@ CRON_TZ=Asia/Jakarta
 30 16 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-lifecycle-evaluator.js --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
 0 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-broker-update.sh --limit 5000 --fresh >> /home/ubuntu/auto-cuan-runner/logs/daily-broker-update.log 2>&1
 45 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-afternoon-recap.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daily-afternoon-recap.log 2>&1
+# SCREENER PRODUCER (Bagian 6 root-cause fix): generate Daytrade/Swing/NK/Top5
+# candidates against the local VPS daemon. Previously absent, which is why the
+# screener channel was silent. Runs at 19:10 WIB after broker data settles.
+10 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screeners.sh --execute --send >> /home/ubuntu/auto-cuan-runner/logs/screeners.log 2>&1
 30 19 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/fetch-daily-candles.js >> /home/ubuntu/auto-cuan-runner/logs/fetch-daily-candles.log 2>&1
+# SCREENER DISPATCH: dry-run diagnostics then send the channel cards. Uses
+# skip_market_guard because a screener card is an after-session recap.
+45 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screener-dispatch.sh --send >> /home/ubuntu/auto-cuan-runner/logs/screener-dispatch.log 2>&1
 15 22 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/direct-refresh-landing.js >> /home/ubuntu/auto-cuan-runner/logs/landing-refresh.log 2>&1
 # END AUTO-CUAN FINAL SCHEDULE

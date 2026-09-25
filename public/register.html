@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Pendaftaran Akses Bot — Auto-Cuan</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(1200px 600px at 50% -10%, #12203f 0%, #0b1120 55%, #070b16 100%);
+      color: #e2e8f0; padding: 24px;
+    }
+    .card {
+      width: 100%; max-width: 440px; background: rgba(20,28,48,.85);
+      border: 1px solid rgba(120,150,220,.25); border-radius: 18px; padding: 28px 24px 24px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.45);
+    }
+    h1 { font-size: 20px; margin: 0 0 6px; }
+    p.lede { color: #94a3b8; font-size: 14px; margin: 0 0 20px; line-height: 1.5; }
+    label { display: block; font-size: 13px; color: #cbd5e1; margin: 14px 0 6px; }
+    input {
+      width: 100%; padding: 12px 14px; border-radius: 10px; font-size: 15px;
+      background: #0b1220; color: #e2e8f0; border: 1px solid #2b3a5c; outline: none;
+    }
+    input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.25); }
+    button {
+      width: 100%; margin-top: 22px; padding: 13px 16px; border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 600; cursor: pointer; color: #06111f;
+      background: linear-gradient(135deg, #6ee7b7, #38bdf8);
+    }
+    button[disabled] { opacity: .6; cursor: default; }
+    .msg { margin-top: 16px; font-size: 14px; line-height: 1.5; display: none; }
+    .msg.error { display: block; color: #fca5a5; }
+    .msg.ok { display: block; color: #86efac; }
+    .hide { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Pendaftaran Akses Bot</h1>
+    <p class="lede" id="lede">
+      Lengkapi data berikut. Setelah dikirim, admin akan meninjau akun Anda
+      dan mengaktifkan akses beserta panduan kunci AI (BYOK).
+    </p>
+    <form id="reg-form" novalidate>
+      <label for="name">Nama Lengkap</label>
+      <input id="name" name="name" type="text" autocomplete="name" maxlength="80" required>
+      <label for="email">Email Gmail</label>
+      <input id="email" name="email" type="email" inputmode="email" autocomplete="email"
+             placeholder="nama@gmail.com" maxlength="100" required>
+      <button id="submit" type="submit">Kirim Pendaftaran</button>
+    </form>
+    <p class="msg" id="msg" role="status" aria-live="polite"></p>
+  </main>
+  <script>
+    (function () {
+      'use strict';
+      var params = new URLSearchParams(window.location.search);
+      var token = (params.get('token') || '').trim();
+      var form = document.getElementById('reg-form');
+      var msg = document.getElementById('msg');
+      var submit = document.getElementById('submit');
+      var lede = document.getElementById('lede');
+
+      function show(text, kind) {
+        msg.textContent = text;
+        msg.className = 'msg ' + kind;
+      }
+
+      if (!token) {
+        form.classList.add('hide');
+        lede.classList.add('hide');
+        show('Tautan pendaftaran tidak valid atau tidak lengkap. Minta tautan baru dari bot verifikasi.', 'error');
+        return;
+      }
+
+      form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        var name = document.getElementById('name').value.trim();
+        var email = document.getElementById('email').value.trim().toLowerCase();
+        if (name.length < 2) { show('Nama lengkap minimal 2 karakter.', 'error'); return; }
+        if (!/^[a-z0-9](?:[a-z0-9._%+-]{0,62})@gmail\.com$/.test(email)) {
+          show('Gunakan alamat Gmail yang valid (@gmail.com).', 'error');
+          return;
+        }
+        submit.disabled = true;
+        show('Mengirim pendaftaran...', 'ok');
+        try {
+          var resp = await fetch('/api/bot-register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: token, name: name, email: email })
+          });
+          var data = await resp.json().catch(function () { return {}; });
+          if (resp.ok && data.success) {
+            form.classList.add('hide');
+            lede.classList.add('hide');
+            show('Pendaftaran terkirim. Menunggu persetujuan admin. Anda akan menerima pesan di Telegram setelah disetujui.', 'ok');
+            return;
+          }
+          show(data.error || 'Pendaftaran gagal. Coba lagi nanti.', 'error');
+        } catch (err) {
+          show('Koneksi bermasalah. Coba lagi.', 'error');
+        }
+        submit.disabled = false;
+      });
+    })();
+  </script>
+</body>
+</html>

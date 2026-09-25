@@ -83,6 +83,6 @@ assertOk(deployIndex > hardeningIndex && webhookIndex > deployIndex, 'webhook co
 const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (name) {
   return name.endsWith('.js');
 });
-assertOk(apiFiles.length === 12, 'Vercel API function count changed: expected 12, got ' + apiFiles.length);
+assertOk(apiFiles.length === 13, 'Vercel API function count changed: expected 13, got ' + apiFiles.length);
 
 console.log('AUTH_RECOVERY_V2_BUILD_VALIDATION=PASS');

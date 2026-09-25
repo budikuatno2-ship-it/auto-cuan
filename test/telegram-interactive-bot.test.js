@@ -223,13 +223,14 @@ test('start guide shows quota, real examples, and the five-minute privacy note',
   assert.match(text, /Status Akun & BYOK/);
   assert.match(text, /Sisa Kuota Hari Ini: 11\/15 \(Reset 00:00 WIB\)/);
   assert.match(text, /\/analisa <KODE_SAHAM> — Analisa chart \+ bandar flow \(Contoh: \/analisa BBCA\)/);
+  assert.match(text, /\/bandar <KODE_SAHAM> — Analisis bandarmologi & konsentrasi CR3\/CR5 \(Contoh: \/bandar BBRI\)/);
   assert.match(text, /\/broksum <KODE_SAHAM> — Rangkuman broker asing \(Contoh: \/broksum BBRI\)/);
   assert.match(text, /\/insider <KODE_SAHAM> — Jaringan kepemilikan orang dalam \(Contoh: \/insider BREN\)/);
   assert.match(text, /\/scan <daytrade\|swing\|top5> — Screener saham otomatis \(Contoh: \/scan daytrade\)/);
   assert.match(text, /\/tanya <pertanyaan> — Tanya AI seputar market \(Contoh: \/tanya prospek perbankan\)/);
-  assert.match(text, /\/foreign — Top 10 foreign flow/);
-  assert.match(text, /\/ritel — Retail flow tracker/);
-  assert.match(text, /privasi data dan query personal/);
+  assert.match(text, /\/foreign — Top 10 Foreign Flow \(Buy\/Sell\)/);
+  assert.match(text, /\/ritel — Top 10 Akumulasi Ritel/);
+  assert.match(text, /privasi terjaga/);
   assert.match(text, /15x weekday \/ 20x weekend/);
   assert.match(text, /Hasil analisa di grup akan otomatis dihapus setelah 5 menit demi privasi\./);
   assert.doesNotMatch(text, /\[TANGGAL\]/);
@@ -283,7 +284,7 @@ test('registration notifies only the admin and approval is admin-private', async
     callbackQuery: { data: 'approve:42', id: 'cb2', message: { message_id: 5 } }
   });
   await bot.handleUpdate(admin);
-  assert.equal(db.rows.get('42').status, 'approved');
+  assert.equal(db.rows.get('42').status, 'active');
   assert.equal(admin.edits[0].text, '✅ Disetujui oleh Admin');
   const welcome = admin.sent.find((message) => String(message.chatId) === '-100');
   assert.ok(welcome);

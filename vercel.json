@@ -35,6 +35,10 @@
     {
       "source": "/analisis-saham",
       "destination": "/analisis-saham.html"
+    },
+    {
+      "source": "/register",
+      "destination": "/register.html"
     }
   ],
   "headers": [

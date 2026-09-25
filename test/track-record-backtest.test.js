@@ -234,8 +234,8 @@ test('renderBacktestTradeTable outputs detailed 10-column table format', () => {
   assert.ok(domTbody.innerHTML.includes('Rp 10.160.000'));
 });
 
-test('API endpoint count remains exactly 12', () => {
+test('API endpoint count remains exactly 13', () => {
   const apiDir = path.resolve(__dirname, '..', 'api');
   const files = fs.readdirSync(apiDir).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 12, 'api/ must contain exactly 12 endpoints');
+  assert.equal(files.length, 13, 'api/ must contain exactly 13 endpoints');
 });
