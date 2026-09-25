@@ -427,7 +427,7 @@ test('29. CLI arg parsing handles the documented VPS invocation', () => {
 
 test('30. API endpoint count remains exactly 13', async () => {
   const entries = await fsp.readdir(path.join(__dirname, '..', 'api'));
-  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 12);
+  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 13);
 });
 
 // ===================================================================

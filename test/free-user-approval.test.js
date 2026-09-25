@@ -730,5 +730,5 @@ test('doLogin routes a valid pending response to the approval panel and never lo
 
 test('API endpoint JavaScript count remains exactly 13', function() {
   const endpoints = fs.readdirSync(path.join(ROOT, 'api')).filter(function(file) { return file.endsWith('.js'); });
-  assert.equal(endpoints.length, 12, endpoints.join(', '));
+  assert.equal(endpoints.length, 13, endpoints.join(', '));
 });

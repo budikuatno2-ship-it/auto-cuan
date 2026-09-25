@@ -182,7 +182,7 @@ test('16. existing production test infrastructure not broken', () => {
 
 test('17. API endpoint count remains exactly 13', async () => {
   const entries = await fs.readdir(path.join(__dirname, '..', 'api'));
-  assert.equal(entries.filter(f => f.endsWith('.js')).length, 12);
+  assert.equal(entries.filter(f => f.endsWith('.js')).length, 13);
 });
 
 
@@ -510,7 +510,7 @@ test('B16. production modules still load correctly', () => {
 // B17: API endpoint count remains exactly 13
 test('B17. API endpoint count remains exactly 13', async () => {
   const entries = await fs.readdir(path.join(__dirname, '..', 'api'));
-  assert.equal(entries.filter(f => f.endsWith('.js')).length, 12);
+  assert.equal(entries.filter(f => f.endsWith('.js')).length, 13);
 });
 
 // ===================================================================

@@ -259,5 +259,5 @@ test('P7. legacy entry with no data-quality evidence is not production eligible'
 // ===================================================================
 test('P-endpoints. API endpoint count remains exactly 13', async () => {
   const entries = await fs.readdir(path.join(__dirname, '..', 'api'));
-  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 12);
+  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 13);
 });

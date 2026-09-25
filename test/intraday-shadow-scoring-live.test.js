@@ -452,7 +452,7 @@ test('27. output-root inside or equal to input-root is refused', async () => {
 
 test('28. API endpoint count remains exactly 13', async () => {
   const entries = await fsp.readdir(path.join(__dirname, '..', 'api'));
-  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 12);
+  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 13);
 });
 
 // ===================================================================

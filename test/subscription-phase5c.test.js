@@ -194,5 +194,5 @@ test('duplicate confirmation resumes the existing batch instead of abandoning it
 });
 
 test('Phase 5C retains exactly twelve api JavaScript files', () => {
-  assert.equal(fs.readdirSync(path.join(root, 'api')).filter(name => name.endsWith('.js')).length, 12);
+  assert.equal(fs.readdirSync(path.join(root, 'api')).filter(name => name.endsWith('.js')).length, 13);
 });

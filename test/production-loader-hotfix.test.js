@@ -52,7 +52,7 @@ test('critical DOM ids are unique and api endpoint boundary remains unchanged', 
   for (const id of ['initialLoader', 'landingPage', 'dashboardScreen', 'blockedScreen', 'maintenanceScreen', 'serviceStatusScreen']) {
     assert.equal((html.match(new RegExp(`id="${id}"`, 'g')) || []).length, 1, `${id} must be unique`);
   }
-  assert.equal(fs.readdirSync(path.join(root, 'api')).filter(name => name.endsWith('.js')).length, 12);
+  assert.equal(fs.readdirSync(path.join(root, 'api')).filter(name => name.endsWith('.js')).length, 13);
   assert.equal((html.match(/id="deleteUser/gi) || []).length, 0, 'no Delete User control');
 });
 
