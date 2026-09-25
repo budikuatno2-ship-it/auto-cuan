@@ -222,8 +222,11 @@ test('start guide shows quota, real examples, and the five-minute privacy note',
   });
   await bot.handleUpdate(ctx);
   const text = ctx.sent[0].text;
+  const wibDay = new Date(Date.now() + (7 * 60 * 60 * 1000)).getUTCDay();
+  const weekend = wibDay === 0 || wibDay === 6;
+  const expectedRemaining = weekend ? '16/20' : '11/15';
   assert.match(text, /Status Akun & BYOK/);
-  assert.match(text, /Sisa Kuota Hari Ini: 11\/15 \(Reset 00:00 WIB\)/);
+  assert.match(text, new RegExp('Sisa Kuota Hari Ini: ' + expectedRemaining.replace('/', '\\/') + ' \\(Reset 00:00 WIB\\)'));
   assert.match(text, /\/analisa <KODE_SAHAM> — Analisa chart \+ bandar flow \(Contoh: \/analisa BBCA\)/);
   assert.match(text, /\/bandar <KODE_SAHAM> — Analisis bandarmologi & konsentrasi CR3\/CR5 \(Contoh: \/bandar BBRI\)/);
   assert.match(text, /\/broksum <KODE_SAHAM> — Rangkuman broker asing \(Contoh: \/broksum BBRI\)/);

@@ -105,6 +105,7 @@ function loadRuntimeEnv(rootDir, env) {
     path.join(runnerDir, 'telegram-webhook-v3-secret.env'),
     path.join(runnerDir, 'telegram-lifecycle.env'),
     path.join(runnerDir, 'telegram-auth-recovery-secret.env'),
+    path.join(runnerDir, 'session-secret.env'),
     path.join(rootDir, '.env.ai-eval-once'),
     // Optional overrides for this poller specifically, plus the runner runtime
     // env (holds TELEGRAM_VERIFY_ADMIN_CHAT_ID). Loaded last so they only fill

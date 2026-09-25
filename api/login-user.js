@@ -471,7 +471,7 @@ module.exports = async function handler(req, res) {
     return res.status(result.ok ? 200 : 400).json(result);
   }
 
-  if (req.query && req.query.action === 'magic-login' && req.method === 'GET') {
+  if ((req.query && req.query.action === 'magic-login') || (req.body && req.body.action === 'magic-login')) {
     return await handleMagicLogin(req, res);
   }
 
