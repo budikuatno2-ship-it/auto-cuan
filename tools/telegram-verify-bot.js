@@ -239,6 +239,7 @@ function createDispatcher(deps) {
   const adminAccess = require(path.join(ROOT, 'lib', 'admin-access'));
   const verification = require(path.join(ROOT, 'lib', 'telegram-verification'));
   const registerTokenStore = require(path.join(ROOT, 'lib', 'telegram-register-token'));
+  const magicTokenStore = require(path.join(ROOT, 'lib', 'telegram-magic-token'));
 
   // Last-resort reply so a private chat is NEVER left with silent double ticks.
   // Only fires when every handler above failed to produce any output.
@@ -270,7 +271,8 @@ function createDispatcher(deps) {
     const result = await verification.processWebhookUpdate(update, {
       supabase: db,
       bot: bot,
-      registerTokenStore: registerTokenStore
+      registerTokenStore: registerTokenStore,
+      magicTokenStore: magicTokenStore
     });
 
     // A message that produced no outcome at all would leave the user staring at

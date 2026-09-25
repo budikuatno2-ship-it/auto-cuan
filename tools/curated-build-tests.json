@@ -480,6 +480,7 @@
   "test/telegram-interactive-bot.test.js",
   "test/telegram-invite-button-cleanup.test.js",
   "test/telegram-join-request-gate.test.js",
+  "test/telegram-magic-link-auth.test.js",
   "test/telegram-member-lifecycle.test.js",
   "test/telegram-monitor-dedup.test.js",
   "test/telegram-monitor-delivery-order.test.js",

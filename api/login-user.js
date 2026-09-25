@@ -16,6 +16,7 @@ const adminDeviceApproval = require('../lib/admin-device-approval');
 const accountTerms = require('../lib/account-terms');
 const { verifyRecaptcha } = require('../lib/recaptcha-verify');
 const { clientAddress } = require('../lib/request-rate-limit');
+const telegramMagicToken = require('../lib/telegram-magic-token');
 
 const MAX_DEVICES = 3;
 
@@ -97,7 +98,12 @@ async function handleVerifyWebhook(req, res) {
 
   try {
     const bot = createVerifyBot();
-    const result = await telegramVerification.processWebhookUpdate(update, { supabase, bot });
+    const result = await telegramVerification.processWebhookUpdate(update, {
+      supabase,
+      bot,
+      magicTokenStore: telegramMagicToken,
+      registerTokenStore: require('../lib/telegram-register-token')
+    });
     // Only a coarse outcome code is returned/logged — never raw user input.
     return res.status(200).json({ ok: true, outcome: result && result.outcome });
   } catch (e) {
@@ -216,6 +222,227 @@ function issueSessionCookie(res, user, usernameLower, deviceId) {
   return result;
 }
 
+async function handleMagicLogin(req, res) {
+  const body = req.body || {};
+  const query = req.query || {};
+  const authToken = String(body.authToken || body.auth_token || query.auth_token || query.authToken || '').trim();
+  const userId = String(body.userId || body.user_id || query.user_id || query.userId || '').trim();
+  const deviceId = String(body.deviceId || body.device_id || 'dev_' + crypto.randomBytes(8).toString('hex')).trim();
+  const userAgent = String(body.userAgent || req.headers['user-agent'] || '');
+
+  if (!authToken || !userId) {
+    if (req.method === 'GET') {
+      res.statusCode = 302;
+      res.setHeader('Location', '/?login=expired');
+      return res.end();
+    }
+    return res.status(400).json({
+      success: false,
+      error: 'Data login otomatis tidak lengkap. Silakan ketik /start di bot Telegram.'
+    });
+  }
+
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  let supabase = null;
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+  }
+
+  // Consume and burn magic token atomically (single use)
+  const consumed = await telegramMagicToken.consumeToken(supabase, authToken, userId);
+  if (!consumed || !consumed.ok) {
+    if (req.method === 'GET') {
+      res.statusCode = 302;
+      res.setHeader('Location', '/?login=expired');
+      return res.end();
+    }
+    return res.status(400).json({
+      success: false,
+      error: 'Tautan login tidak valid atau sudah kedaluwarsa. Silakan ketik /start di bot Telegram untuk mendapatkan tautan baru.'
+    });
+  }
+
+  const telegramId = String(consumed.telegramId || userId).trim();
+  const usernameClaim = String(consumed.username || '').trim().toLowerCase();
+  const adminId = String(process.env.ADMIN_TELEGRAM_ID || process.env.TELEGRAM_VERIFY_ADMIN_CHAT_ID || '').trim();
+  const isBudi = usernameClaim === 'budi' || telegramId.toLowerCase() === 'budi' || (adminId && (telegramId === adminId || (Number(telegramId) && Number(telegramId) === Number(adminId))));
+
+  let user = null;
+  if (supabase) {
+    if (isBudi) {
+      const { data: budiUser } = await supabase.from('app_users')
+        .select('id, username, email, devices, is_blocked, is_approved')
+        .eq('username', 'budi')
+        .maybeSingle();
+      user = budiUser;
+    } else {
+      // 1. Check via app_user_telegram_verifications
+      try {
+        const { data: ver } = await supabase.from('app_user_telegram_verifications')
+          .select('user_id')
+          .eq('telegram_user_id', Number(telegramId) || telegramId)
+          .maybeSingle();
+        if (ver && ver.user_id) {
+          const { data: linkedUser } = await supabase.from('app_users')
+            .select('id, username, email, devices, is_blocked, is_approved')
+            .eq('id', ver.user_id)
+            .maybeSingle();
+          if (linkedUser) user = linkedUser;
+        }
+      } catch (_) {}
+
+      // 2. Check via bot_users
+      if (!user) {
+        try {
+          const { data: botUser } = await supabase.from('bot_users')
+            .select('telegram_id, username, full_name, gmail, status')
+            .eq('telegram_id', telegramId)
+            .maybeSingle();
+
+          if (botUser) {
+            const candidateUname = String(botUser.username || '').toLowerCase();
+            const candidateEmail = String(botUser.gmail || '').toLowerCase();
+            if (candidateEmail && candidateEmail.includes('@')) {
+              const { data: matched } = await supabase.from('app_users')
+                .select('id, username, email, devices, is_blocked, is_approved')
+                .ilike('email', candidateEmail)
+                .maybeSingle();
+              if (matched) user = matched;
+            }
+            if (!user && candidateUname) {
+              const { data: matched } = await supabase.from('app_users')
+                .select('id, username, email, devices, is_blocked, is_approved')
+                .eq('username', candidateUname)
+                .maybeSingle();
+              if (matched) user = matched;
+            }
+
+            // If not found in app_users, provision row for this verified bot user
+            if (!user) {
+              const newUserId = crypto.randomUUID();
+              const newUsername = (candidateUname || ('user_' + telegramId)).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 30);
+              const insertPayload = {
+                id: newUserId,
+                username: newUsername,
+                email: candidateEmail || null,
+                is_approved: true,
+                is_blocked: false,
+                devices: [deviceId],
+                created_at: new Date().toISOString()
+              };
+              const { error: insErr } = await supabase.from('app_users').insert(insertPayload);
+              if (!insErr) {
+                user = insertPayload;
+                try {
+                  await supabase.from('app_user_telegram_verifications').upsert({
+                    user_id: newUserId,
+                    telegram_user_id: Number(telegramId) || 0,
+                    telegram_verified_at: new Date().toISOString()
+                  }, { onConflict: 'user_id' });
+                } catch (_) {}
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 3. Fallback: match by usernameClaim
+      if (!user && usernameClaim) {
+        try {
+          const { data: claimUser } = await supabase.from('app_users')
+            .select('id, username, email, devices, is_blocked, is_approved')
+            .eq('username', usernameClaim)
+            .maybeSingle();
+          if (claimUser) user = claimUser;
+        } catch (_) {}
+      }
+    }
+  } else {
+    // Test environment without Supabase
+    user = {
+      id: 'usr_' + (isBudi ? 'budi' : telegramId),
+      username: isBudi ? 'budi' : (usernameClaim || 'member'),
+      devices: [deviceId],
+      is_approved: true,
+      is_blocked: false
+    };
+  }
+
+  if (!user) {
+    if (req.method === 'GET') {
+      res.statusCode = 302;
+      res.setHeader('Location', '/?login=user_not_found');
+      return res.end();
+    }
+    return res.status(404).json({
+      success: false,
+      error: 'Akun tidak ditemukan. Silakan hubungi admin di Telegram.'
+    });
+  }
+
+  if (user.is_blocked === true) {
+    if (req.method === 'GET') {
+      res.statusCode = 302;
+      res.setHeader('Location', '/?login=blocked');
+      return res.end();
+    }
+    return res.status(403).json({
+      success: false,
+      error: 'Akun sedang diblokir.'
+    });
+  }
+
+  const effectiveUsername = String(user.username || (isBudi ? 'budi' : 'member')).toLowerCase();
+
+  // Multi-device handling for verified magic session:
+  // User verified ownership via official Telegram bot DM -> register device automatically
+  // without triggering device limit warnings or Telegram re-approval prompts!
+  const currentDevices = Array.isArray(user.devices) ? user.devices : [];
+  let updatedDevices = currentDevices;
+  if (!currentDevices.includes(deviceId)) {
+    if (currentDevices.length >= MAX_DEVICES) {
+      updatedDevices = [...currentDevices.slice(-(MAX_DEVICES - 1)), deviceId];
+    } else {
+      updatedDevices = [...currentDevices, deviceId];
+    }
+    if (supabase && typeof supabase.from === 'function') {
+      try {
+        await supabase.from('app_users').update({
+          devices: updatedDevices,
+          user_agent: userAgent,
+          last_login_at: new Date().toISOString()
+        }).eq('id', user.id);
+      } catch (_) {}
+    }
+  } else {
+    if (supabase && typeof supabase.from === 'function') {
+      try {
+        await supabase.from('app_users').update({
+          last_login_at: new Date().toISOString()
+        }).eq('id', user.id);
+      } catch (_) {}
+    }
+  }
+
+  const session = issueSessionCookie(res, user, effectiveUsername, deviceId);
+
+  if (req.method === 'GET') {
+    res.statusCode = 302;
+    res.setHeader('Location', '/?magic_login=1');
+    return res.end();
+  }
+
+  return res.status(200).json({
+    success: true,
+    username: effectiveUsername,
+    userId: user.id,
+    isAdmin: session.isAdmin
+  });
+}
+
 module.exports = async function handler(req, res) {
   // === TELEGRAM VERIFICATION WEBHOOK ===
   // This isolated action runs FIRST, before logout / password / session / normal
@@ -244,6 +471,10 @@ module.exports = async function handler(req, res) {
     return res.status(result.ok ? 200 : 400).json(result);
   }
 
+  if (req.query && req.query.action === 'magic-login' && req.method === 'GET') {
+    return await handleMagicLogin(req, res);
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
@@ -259,6 +490,11 @@ module.exports = async function handler(req, res) {
 
   try {
     const { username, passwordHash, deviceId, userAgent, action } = req.body || {};
+
+    const magicAction = (req.query && req.query.action) || (req.body && req.body.action);
+    if (magicAction === 'magic-login') {
+      return await handleMagicLogin(req, res);
+    }
 
     const subscriptionAction = (req.query && req.query.action) || action;
     if (subscriptionAction === 'subscription-capability') {
