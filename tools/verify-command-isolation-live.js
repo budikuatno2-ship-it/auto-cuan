@@ -142,9 +142,12 @@ async function main() {
   record('/help → help', help.outcome === 'help', 'outcome=' + help.outcome);
 
   // --- 6. A real-looking code still reaches the hashing path ---------------
+  // It must NOT be swallowed by the command router. Depending on whether
+  // TELEGRAM_VERIFY_CODE_SECRET is configured it lands on the hashing path
+  // (not_found / invalid_format) or fails closed with config_error.
   const code = await verification.processWebhookUpdate(privateUpdate('ABCD2345', PROBE_ID + 21), deps);
-  record('a code-shaped token is not treated as a command',
-    code.outcome !== 'foreign_command' && code.outcome !== 'registration_form', 'outcome=' + code.outcome);
+  const codeRouted = ['not_found', 'invalid_format', 'config_error', 'expired', 'locked'].includes(code.outcome);
+  record('a code-shaped token is not treated as a command', codeRouted, 'outcome=' + code.outcome);
 
   // --- 7. Signal bot gatekeeper (unverified group command) -----------------
   const signalBot = createInteractiveBot({
@@ -168,15 +171,22 @@ async function main() {
     async editMessageText() {}
   };
   await signalBot.handleUpdate(groupCtx);
+  // The hold must carry ONLY the deep-link CTA. The bot username comes from the
+  // environment, so assert the URL SHAPE (a t.me deep link carrying the sender's
+  // Telegram id) rather than a hard-coded username.
+  const holdButton = groupSent.length === 1 &&
+    groupSent[0].extra && groupSent[0].extra.reply_markup &&
+    groupSent[0].extra.reply_markup.inline_keyboard &&
+    groupSent[0].extra.reply_markup.inline_keyboard[0] &&
+    groupSent[0].extra.reply_markup.inline_keyboard[0][0];
   const holdOk = groupSent.length === 1 &&
     /Akun Anda belum terverifikasi/.test(groupSent[0].text) &&
-    groupSent[0].extra && groupSent[0].extra.reply_markup &&
-    groupSent[0].extra.reply_markup.inline_keyboard[0][0].text === '🔐 Verifikasi Akses Sekarang' &&
-    groupSent[0].extra.reply_markup.inline_keyboard[0][0].url ===
-      'https://t.me/' + (process.env.VERIFY_BOT_USERNAME || 'AutoCuanVerificationBot').replace(/^@/, '') +
-      '?start=verify_999000777';
+    !/\/bandar/.test(groupSent[0].text) &&
+    holdButton &&
+    holdButton.text === '🔐 Verifikasi Akses Sekarang' &&
+    /^https:\/\/t\.me\/[A-Za-z0-9_]+\?start=verify_999000777$/.test(holdButton.url || '');
   record('signal bot: unverified /bandar → hold CTA with deep link', holdOk,
-    holdOk ? 'ok' : JSON.stringify(groupSent.map((m) => m.text)));
+    holdOk ? 'url=' + holdButton.url : JSON.stringify(groupSent.map((m) => m.text)));
 
   // --- 8. AI evaluator fallback shape --------------------------------------
   const evaluator = require(path.join(ROOT, 'lib', 'ai-evaluator'));
