@@ -76,7 +76,10 @@ const ROUTE_REWRITES = {
   '/pattern': '/index.html',
   '/review': '/index.html',
   '/analisis-saham': '/analisis-saham.html',
-  '/portfolio-planner': '/portfolio-command-center-v2.html'
+  '/portfolio-planner': '/portfolio-command-center-v2.html',
+  // Public BYOK registration form (mirrors the Vercel rewrite so the VPS
+  // fallback serves the same URL shape).
+  '/register': '/register.html'
 };
 
 async function parseBody(req) {

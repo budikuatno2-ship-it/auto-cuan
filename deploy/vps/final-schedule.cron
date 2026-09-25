@@ -44,6 +44,11 @@ CRON_TZ=Asia/Jakarta
 # ke tunnel VPS saat Vercel paused/402, dan kembali ke Vercel saat pulih.
 */10 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-webhook-failover.sh >> /home/ubuntu/auto-cuan-runner/logs/webhook-failover.log 2>&1
 
+# ── HYBRID SECTOR HOT (Vercel primer → runner lokal VPS) ────────────────
+# Pemicu endpoint Vercel dulu; jika response bukan HTTP 200, runner lokal
+# (tools/run-screener.js) dieksekusi mandiri agar snapshot sektor tetap segar.
+*/30 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-sector-hot.sh >> /home/ubuntu/auto-cuan-runner/logs/sector-hot.log 2>&1
+
 # ── ORACLE ANTI-SUSPEND KEEP-ALIVE (ringan, setiap jam) ──────────────────
 # Sanitasi cache kadaluarsa + hash audit + heartbeat — <1s, <10MB, menjaga CPU p95 >20%
 0 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-keepalive.sh >> /home/ubuntu/auto-cuan-runner/logs/keepalive.log 2>&1

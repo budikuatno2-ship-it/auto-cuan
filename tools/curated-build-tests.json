@@ -473,6 +473,7 @@
   "test/telegram-fase6-batch1-bugs.test.js",
   "test/telegram-fase6-batch2-bugs.test.js",
   "test/telegram-fase6-batch3-bugs.test.js",
+  "test/command-isolation-deeplink.test.js",
   "test/telegram-gatekeeper.test.js",
   "test/telegram-interactive-bot.test.js",
   "test/telegram-invite-button-cleanup.test.js",

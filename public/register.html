@@ -60,7 +60,12 @@
     (function () {
       'use strict';
       var params = new URLSearchParams(window.location.search);
+      // `token` = a one-time registration token minted by the verification bot.
+      // `user_id` = the Telegram id the form must bind to (deep-link entry from
+      // the group). Either one is enough: when only user_id is present the form
+      // asks the server to mint a token for that id first.
       var token = (params.get('token') || '').trim();
+      var userId = (params.get('user_id') || '').trim();
       var form = document.getElementById('reg-form');
       var msg = document.getElementById('msg');
       var submit = document.getElementById('submit');
@@ -71,11 +76,40 @@
         msg.className = 'msg ' + kind;
       }
 
-      if (!token) {
+      if (!token && !userId) {
         form.classList.add('hide');
         lede.classList.add('hide');
         show('Tautan pendaftaran tidak valid atau tidak lengkap. Minta tautan baru dari bot verifikasi.', 'error');
         return;
+      }
+
+      // Deep-link entry (user_id only): exchange it for a one-time token. The
+      // server verifies the Telegram id exists and refuses an unknown id, so a
+      // hand-crafted user_id cannot register an arbitrary account.
+      if (!token && userId) {
+        submit.disabled = true;
+        show('Menyiapkan formulir...', 'ok');
+        fetch('/api/bot-register?action=mint-token&user_id=' + encodeURIComponent(userId), {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        }).then(function (resp) {
+          return resp.json().catch(function () { return {}; }).then(function (data) {
+            return { ok: resp.ok, data: data };
+          });
+        }).then(function (res) {
+          submit.disabled = false;
+          if (res.ok && res.data && res.data.token) {
+            token = String(res.data.token);
+            msg.className = 'msg';
+            return;
+          }
+          form.classList.add('hide');
+          lede.classList.add('hide');
+          show((res.data && res.data.error) || 'Tautan pendaftaran tidak valid. Minta tautan baru dari bot verifikasi.', 'error');
+        }).catch(function () {
+          submit.disabled = false;
+          show('Koneksi bermasalah. Muat ulang halaman ini.', 'error');
+        });
       }
 
       form.addEventListener('submit', async function (event) {

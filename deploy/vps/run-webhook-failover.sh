@@ -67,6 +67,19 @@ if [ "$tunnel_alive" -ne 1 ]; then
 fi
 
 # --- Webhook placement ------------------------------------------------------
+# tools/check-webhook-health.js is the decision maker (Vercel-first, fail over
+# only when Vercel is down AND the VPS fallback is reachable). The explicit
+# switch tool is kept as the manual operator override:
+#   node tools/switch-verify-webhook.js --target=vercel|vps|auto
+#   node tools/switch-verify-webhook.js --status
+if [ "${WEBHOOK_FAILOVER_FORCE_SWITCH:-0}" = "1" ]; then
+  FORCE_TARGET="${WEBHOOK_FAILOVER_TARGET:-auto}"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S %Z')] manual switch → $FORCE_TARGET"
+  /usr/bin/flock -n "$LOCK_FILE" \
+    "$NODE_BIN" tools/switch-verify-webhook.js "--target=$FORCE_TARGET"
+  exit $?
+fi
+
 /usr/bin/flock -n "$LOCK_FILE" \
   "$NODE_BIN" tools/check-webhook-health.js --execute
 exit $?

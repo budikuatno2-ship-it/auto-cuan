@@ -23,8 +23,12 @@ const verifyBot = require('../lib/telegram-verify-bot');
 const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
 
 const registrationLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 10 });
+// Tighter bucket for token minting: a deep-link hand-off is rare, so a low
+// ceiling stops a caller from farming tokens for many Telegram ids.
+const mintLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 5 });
 const GMAIL_RE = /^[a-z0-9](?:[a-z0-9._%+-]{0,62})@gmail\.com$/i;
 const NAME_MAX = 80;
+const TELEGRAM_ID_RE = /^\d{4,20}$/;
 
 function escapeHtml(value) {
   return String(value == null ? '' : value)
@@ -63,7 +67,73 @@ async function notifyAdmin(name, username, telegramId, email) {
   }
 }
 
+/**
+ * GET /api/bot-register?action=mint-token&user_id=<telegramId>
+ *
+ * Deep-link hand-off: the group gatekeeper button carries `user_id` only, so the
+ * form needs a one-time token before it can be submitted. This endpoint mints
+ * one for that Telegram id.
+ *
+ * SECURITY MODEL
+ *  - The minted token is only a *submission* credential: it authorizes writing a
+ *    `pending` row for that Telegram id. Nothing is granted until an admin
+ *    approves, and the admin notification carries the id, name, and email, so a
+ *    forged id is visible at the approval step.
+ *  - An account that is ALREADY active/approved is refused, so this endpoint can
+ *    never be used to re-register or disturb an existing member.
+ *  - Strictly rate-limited, and the id must look like a real Telegram id.
+ */
+async function handleMintToken(req, res) {
+  if (!mintLimiter.check(clientAddress(req))) {
+    return res.status(429).json({ success: false, error: 'Terlalu banyak permintaan. Coba lagi nanti.' });
+  }
+
+  const userId = String((req.query && req.query.user_id) || '').trim();
+  if (!TELEGRAM_ID_RE.test(userId)) {
+    return res.status(400).json({ success: false, error: 'ID Telegram tidak valid. Minta tautan baru dari bot verifikasi.' });
+  }
+
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabase = (url && key) ? createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  }) : null;
+
+  if (!supabase) {
+    return res.status(503).json({ success: false, error: 'Pendaftaran sedang tidak tersedia. Coba lagi nanti.' });
+  }
+
+  // Refuse an id that already has a usable account: the form is for new members.
+  try {
+    const existing = await supabase.from('bot_users').select('status').eq('telegram_id', userId).maybeSingle();
+    const status = existing && !existing.error && existing.data ? String(existing.data.status || '').toLowerCase() : '';
+    if (status === 'active' || status === 'approved') {
+      return res.status(409).json({ success: false, error: 'Akun ini sudah aktif. Buka bot verifikasi lalu kirim /akun.' });
+    }
+  } catch (_) {
+    return res.status(503).json({ success: false, error: 'Pendaftaran sedang tidak tersedia. Coba lagi nanti.' });
+  }
+
+  let token = null;
+  try {
+    token = await registerToken.issueToken(supabase, userId, {});
+  } catch (_) {
+    token = null;
+  }
+  if (!token) {
+    return res.status(503).json({ success: false, error: 'Gagal menyiapkan formulir. Coba lagi nanti.' });
+  }
+
+  res.setHeader('Cache-Control', 'no-store');
+  return res.status(200).json({ success: true, token: token });
+}
+
 module.exports = async function handler(req, res) {
+  const action = String((req.query && req.query.action) || '').trim();
+  if (req.method === 'GET' && action === 'mint-token') {
+    return handleMintToken(req, res);
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
@@ -135,3 +205,5 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.escapeHtml = escapeHtml;
+module.exports.handleMintToken = handleMintToken;
+module.exports.TELEGRAM_ID_RE = TELEGRAM_ID_RE;

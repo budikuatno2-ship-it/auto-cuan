@@ -181,7 +181,7 @@ function fixtureRoot() {
   return root;
 }
 
-test('pending group command returns the verification bot link and schedules deletion', async () => {
+test('pending group command returns the verification bot deep-link hold and schedules deletion', async () => {
   const db = memoryDb([]);
   const bot = createInteractiveBot({
     db,
@@ -191,9 +191,11 @@ test('pending group command returns the verification bot link and schedules dele
   const ctx = createCtx({ message: { text: '/analisa BBCA' } });
   await bot.handleUpdate(ctx);
   assert.equal(ctx.sent.length, 1);
-  assert.equal(ctx.sent[0].text, 'Akses Belum Terverifikasi');
+  // Gatekeeper guard: ONLY the hold response, never a processed command.
+  assert.match(ctx.sent[0].text, /Akun Anda belum terverifikasi/);
+  assert.doesNotMatch(ctx.sent[0].text, /\/analisa/);
   const button = ctx.sent[0].extra.reply_markup.inline_keyboard[0][0];
-  assert.equal(button.text, 'Verifikasi akses');
+  assert.equal(button.text, '🔐 Verifikasi Akses Sekarang');
   assert.equal(button.url, 'https://t.me/AutoCuanVerificationBot?start=verify_42');
   await new Promise((resolve) => setTimeout(resolve, 50));
   assert.deepEqual(ctx.deleted, [1]);
