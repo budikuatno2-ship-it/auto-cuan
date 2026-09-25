@@ -123,8 +123,8 @@ function createCtx(overrides) {
         sent.push(message);
         return message;
       },
-      async editMessageText(chatId, messageId, _unused, text) {
-        edits.push({ chatId, messageId, text });
+      async editMessageText(chatId, messageId, _unused, text, extra) {
+        edits.push({ chatId, messageId, text, extra });
         return true;
       },
       async deleteMessage(chatId, messageId) {
@@ -135,8 +135,14 @@ function createCtx(overrides) {
     async answerCbQuery(text) {
       callbacks.push(text);
     },
-    async editMessageText(text) {
-      edits.push({ text });
+    async editMessageText(text, extra) {
+      const message = ctx.callbackQuery && ctx.callbackQuery.message;
+      edits.push({
+        chatId: ctx.chat && ctx.chat.id,
+        messageId: message && message.message_id,
+        text,
+        extra
+      });
     }
   }, overrides || {});
   return ctx;
@@ -175,11 +181,11 @@ function fixtureRoot() {
   return root;
 }
 
-test('pending group command returns a bound verification link and schedules deletion', async () => {
+test('pending group command returns the verification bot link and schedules deletion', async () => {
   const db = memoryDb([]);
   const bot = createInteractiveBot({
     db,
-    env: { ADMIN_TELEGRAM_ID: '7', VERIFY_BOT_USERNAME: 'VerifyBot' },
+    env: { ADMIN_TELEGRAM_ID: '7', VERIFY_BOT_USERNAME: 'AutoCuanVerificationBot' },
     delays: { denial: 20, result: 20, welcome: 20 }
   });
   const ctx = createCtx({ message: { text: '/analisa BBCA' } });
@@ -187,12 +193,42 @@ test('pending group command returns a bound verification link and schedules dele
   assert.equal(ctx.sent.length, 1);
   assert.equal(ctx.sent[0].text, 'Akses Belum Terverifikasi');
   const button = ctx.sent[0].extra.reply_markup.inline_keyboard[0][0];
-  assert.match(button.url, /^https:\/\/t\.me\/VerifyBot\?start=auth_42_/);
-  const token = button.url.split('_').pop();
-  assert.equal(bot.consumeVerifyToken(token, 99).ok, false);
-  assert.equal(bot.consumeVerifyToken(token, 42).reason, 'expired');
+  assert.equal(button.text, 'Verifikasi akses');
+  assert.equal(button.url, 'https://t.me/AutoCuanVerificationBot?start=verify_42');
   await new Promise((resolve) => setTimeout(resolve, 50));
   assert.deepEqual(ctx.deleted, [1]);
+});
+
+test('start guide shows quota, real examples, and the five-minute privacy note', async () => {
+  const today = new Date(Date.now() + (7 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+  const db = memoryDb([{
+    telegram_id: '42',
+    status: 'approved',
+    provider: 'gemini',
+    daily_usage: 4,
+    daily_limit: 15,
+    last_usage_date: today
+  }]);
+  const bot = createInteractiveBot({
+    db,
+    env: {}
+  });
+  const ctx = createCtx({
+    chat: { id: 42, type: 'private' },
+    message: { text: '/start' },
+    startPayload: ''
+  });
+  await bot.handleUpdate(ctx);
+  const text = ctx.sent[0].text;
+  assert.match(text, /Status Akun & BYOK/);
+  assert.match(text, /Sisa Kuota Hari Ini: 11\/15 \(Reset 00:00 WIB\)/);
+  assert.match(text, /\/analisa <KODE_SAHAM> — Analisa chart \+ bandar flow \(Contoh: \/analisa BBCA\)/);
+  assert.match(text, /\/broksum <KODE_SAHAM> — Rangkuman broker asing \(Contoh: \/broksum BBRI\)/);
+  assert.match(text, /\/insider <KODE_SAHAM> — Jaringan kepemilikan orang dalam \(Contoh: \/insider BREN\)/);
+  assert.match(text, /\/scan <daytrade\|swing\|top5> — Screener saham otomatis \(Contoh: \/scan daytrade\)/);
+  assert.match(text, /\/tanya <pertanyaan> — Tanya AI seputar market \(Contoh: \/tanya prospek IHSG\)/);
+  assert.match(text, /Hasil analisa di grup akan otomatis dihapus setelah 5 menit demi privasi\./);
+  assert.doesNotMatch(text, /\[TANGGAL\]/);
 });
 
 test('verification token cannot be replayed', () => {
@@ -270,29 +306,96 @@ test('approved analysis uses progress edits, local data, and a one-time webview'
       }
     }
   });
-  const ctx = createCtx({ message: { text: '/a BBCA 2026-09-24' } });
+  const ctx = createCtx({ message: { text: '/analisa BBCA' } });
   await bot.handleUpdate(ctx);
   assert.deepEqual(ctx.edits.map((edit) => edit.text).slice(0, 2), [
     '60% Menghitung flow dan teknikal...',
     '100% Menyusun kesimpulan final...'
   ]);
-  const finalText = ctx.edits.at(-1).text;
+  const finalEdit = ctx.edits.at(-1);
+  const finalText = finalEdit.text;
   assert.match(finalText, /BBCA/);
+  assert.match(finalText, /Rentang: 1D/);
+  assert.match(finalText, /Hasil analisa di grup akan otomatis dihapus setelah 5 menit demi privasi\./);
+  assert.deepEqual(
+    finalEdit.extra.reply_markup.inline_keyboard[0].map((button) => button.callback_data),
+    ['tf:analisa:BBCA:1', 'tf:analisa:BBCA:7', 'tf:analisa:BBCA:30']
+  );
+  assert.equal(bot.constants.GROUP_RESULT_TTL_MS, 300000);
   assert.match(finalText, /Kesimpulan lokal/);
   assert.match(prompts[0], /BBCA/);
-  const token = finalText.split('/webview/')[1];
+  const token = finalText.split('/webview/')[1].split(/\s/)[0];
   const server = bot.createWebServer();
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const port = server.address().port;
-  const first = await fetch('http://127.0.0.1:' + port + '/webview/' + token);
-  assert.equal(first.status, 200);
-  const html = await first.text();
-  assert.match(html, /BBCA/);
-  const second = await fetch('http://127.0.0.1:' + port + '/webview/' + token);
-  assert.equal(second.status, 410);
-  server.close();
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = server.address().port;
+    const first = await fetch('http://127.0.0.1:' + port + '/webview/' + token);
+    assert.equal(first.status, 200);
+    const html = await first.text();
+    assert.match(html, /BBCA/);
+    const second = await fetch('http://127.0.0.1:' + port + '/webview/' + token);
+    assert.equal(second.status, 410);
+  } finally {
+    server.close();
+  }
   await new Promise((resolve) => setTimeout(resolve, 50));
   assert.ok(ctx.deleted.includes(1));
+});
+
+test('timeframe buttons edit the existing analysis and broker cards', async () => {
+  const root = fixtureRoot();
+  const db = memoryDb([{ telegram_id: '42', status: 'approved', provider: 'gemini', username: 'trader' }]);
+  const mock = mockCredentials();
+  mock.store.set('42:gemini', { apiKey: 'AIzaSyTestKeyForBotUser123456', maskedKey: '****3456' });
+  const bot = createInteractiveBot({
+    db,
+    rootDir: root,
+    env: { ADMIN_TELEGRAM_ID: '7' },
+    credentials: mock,
+    gemini: {
+      async generateGeminiContent() {
+        return { text: 'Kesimpulan 30 hari.' };
+      }
+    }
+  });
+
+  const analysis = createCtx({
+    callbackQuery: {
+      id: 'tf1',
+      data: 'tf:analisa:BBCA:30',
+      message: { message_id: 17, text: 'kartu lama' }
+    }
+  });
+  await bot.handleUpdate(analysis);
+  assert.equal(analysis.sent.length, 0);
+  assert.equal(analysis.edits.length, 1);
+  assert.equal(analysis.edits[0].messageId, 17);
+  assert.match(analysis.edits[0].text, /Rentang: 30D/);
+  assert.match(analysis.edits[0].text, /Kesimpulan 30 hari/);
+  assert.equal(analysis.callbacks[0], 'Rentang 30D');
+
+  const broker = createCtx({
+    message: { text: '/broksum BBCA' }
+  });
+  await bot.handleUpdate(broker);
+  const brokerEdit = broker.edits.at(-1);
+  assert.match(brokerEdit.text, /Rentang: 1D/);
+  assert.deepEqual(
+    brokerEdit.extra.reply_markup.inline_keyboard[0].map((button) => button.text),
+    ['✅ 📊 1D (Hari Ini)', '📅 7D', '📈 30D']
+  );
+
+  const switched = createCtx({
+    callbackQuery: {
+      id: 'tf2',
+      data: 'tf:broksum:BBCA:7',
+      message: { message_id: 1 }
+    }
+  });
+  await bot.handleUpdate(switched);
+  assert.equal(switched.sent.length, 0);
+  assert.match(switched.edits[0].text, /Rentang: 7D/);
+  assert.equal(switched.callbacks[0], 'Rentang 7D');
 });
 
 test('custom provider rejects non-https endpoints before calling fetch', async () => {
