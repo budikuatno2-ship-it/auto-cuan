@@ -207,5 +207,5 @@ test('UI Fix 2: handleContextAIV7 validates required fields and handles missing 
 
 test('Invariant Check: Exactly 12 files in api/ directory', () => {
   const apiFiles = fs.readdirSync(path.join(ROOT_DIR, 'api')).filter(f => f.endsWith('.js'));
-  assert.equal(apiFiles.length, 12, 'api/ directory must have exactly 12 JavaScript files');
+  assert.equal(apiFiles.length, 13, 'api/ directory must have exactly 13 JavaScript files');
 });

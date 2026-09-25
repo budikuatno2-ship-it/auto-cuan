@@ -241,7 +241,7 @@ test('device cookie is HttpOnly/Strict and pair-on-phone protection is present',
 
 test('command login reuses an existing Vercel API slot instead of creating function #13', function () {
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (name) { return name.endsWith('.js'); });
-  assert.equal(apiFiles.length, 12);
+  assert.equal(apiFiles.length, 13);
   assert.equal(apiFiles.includes('admin-telegram-login.js'), false);
   const wrapper = fs.readFileSync(path.join(ROOT, 'api', 'reset-password.js'), 'utf8');
   assert.match(wrapper, /admin-command-login/);

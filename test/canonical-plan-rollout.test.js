@@ -156,11 +156,14 @@ test('14. resistance_as_major_resistance diagnostic metadata is present (swing a
     'Non-Konglo source_fields must record resistance_as_major_resistance');
 });
 
-test('19. API JavaScript count remains exactly 12', () => {
+// PR #760 added api/bot-register.js (public BYOK registration form handler) as
+// the 13th Vercel Function slot, so the invariant moved 12 -> 13. The count is
+// still pinned so no additional slot can be added silently.
+test('19. API JavaScript count remains exactly 13', () => {
   const apiDir = path.join(__dirname, '..', 'api');
   const count = fs.readdirSync(apiDir).filter((f) => f.endsWith('.js') &&
     fs.statSync(path.join(apiDir, f)).isFile()).length;
-  assert.equal(count, 12);
+  assert.equal(count, 13);
 });
 
 // Baseline moved 177 -> 182 when trade-plan-v2-declared-guards.test.js added 5

@@ -372,9 +372,9 @@ test('15. swing, Top5 and public delivery modules are not imported by the pipeli
   assert.ok(pipeline.FORBIDDEN_TELEGRAM_ENV.includes('TELEGRAM_VERIFY_CHANNEL_ID'));
 });
 
-test('16. API JavaScript endpoint count remains exactly 12', async () => {
+test('16. API JavaScript endpoint count remains exactly 13', async () => {
   const entries = await fsp.readdir(path.join(__dirname, '..', 'api'));
-  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 12);
+  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 13);
 });
 
 // ===================================================================

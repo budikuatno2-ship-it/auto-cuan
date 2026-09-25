@@ -11,7 +11,7 @@ test('Phase 5B stores only HMAC voucher codes and redeems atomically through ser
 test('voucher browser actions and protected service actions fail closed with subscription capability',()=>{
   assert.match(login,/voucher-(quote|redeem)/); assert.match(login,/if \(!isSubscriptionFeatureEnabled\(\)\) return res\.status\(503\)/);
   assert.match(admin,/voucherActions/); assert.match(admin,/protectedSubscriptionActions\.indexOf\(action\) >= 0 && !isSubscriptionFeatureEnabled\(\)/);
-  assert.equal(fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js')).length,12);
+  assert.equal(fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js')).length, 13);
 });
 test('voucher Telegram foundation accepts only the fixed owner ID and keeps web UI absent',()=>{
   assert.equal(vouchers.VOUCHER_ADMIN_TELEGRAM_USER_ID,6396446903); assert.equal(vouchers.isVoucherAdminTelegramUser(6396446903),true); assert.equal(vouchers.isVoucherAdminTelegramUser(7),false);

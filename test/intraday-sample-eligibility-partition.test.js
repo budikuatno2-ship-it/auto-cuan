@@ -365,11 +365,11 @@ test('E15. lifecycle + eligibility modules perform no production mutation (no su
 });
 
 // ===================================================================
-// 16. API endpoint JavaScript count remains exactly 12
+// 16. API endpoint JavaScript count remains exactly 13
 // ===================================================================
-test('E16. API endpoint count remains exactly 12', async () => {
+test('E16. API endpoint count remains exactly 13', async () => {
   const entries = await fs.readdir(path.join(__dirname, '..', 'api'));
-  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 12);
+  assert.equal(entries.filter((f) => f.endsWith('.js')).length, 13);
 });
 
 // Extra: the shared policy must not use execution_grade to decide eligibility

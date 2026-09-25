@@ -385,8 +385,8 @@ test('budi login is routed through the real server (no local-only admin shortcut
   assert.match(html, /usernameLower === 'budi'[\s\S]{0,120}Username tidak tersedia/);
 });
 
-// API endpoint count remains exactly 12.
-test('api endpoint count remains exactly 12', () => {
+// API endpoint count remains exactly 13.
+test('api endpoint count remains exactly 13', () => {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 12, 'found: ' + files.join(', '));
+  assert.equal(files.length, 13, 'found: ' + files.join(', '));
 });

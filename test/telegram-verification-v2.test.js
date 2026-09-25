@@ -1064,9 +1064,9 @@ test('isolation: TELEGRAM_BOT_TOKEN is never USED (env-accessed) by the verifica
   });
 });
 
-test('api count: exactly 12 API JavaScript files', function () {
+test('api count: exactly 13 API JavaScript files', function () {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
-  assert.equal(files.length, 12, 'API JS file count must remain 12; got ' + files.length);
+  assert.equal(files.length, 13, 'API JS file count must remain 13; got ' + files.length);
 });
 
 test('hygiene: active verification flow never references TELEGRAM_VERIFY_CHANNEL_INVITE_URL (static fallback removed)', function () {

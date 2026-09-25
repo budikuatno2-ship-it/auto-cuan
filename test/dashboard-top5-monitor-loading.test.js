@@ -264,13 +264,13 @@ test('web-top5-history: endpoint handler exists in module', function() {
 // ============================================================
 // TEST 9: Endpoint count remains 12
 // ============================================================
-test('API endpoint file count remains exactly 12', function() {
+test('API endpoint file count remains exactly 13', function() {
   var apiDir = path.resolve(__dirname, '..', 'api');
   var files = fs.readdirSync(apiDir).filter(function(f) {
     return f.endsWith('.js') && !f.startsWith('.');
   });
-  assert.equal(files.length, 12,
-    'api/ directory must contain exactly 12 JS files. Found ' + files.length + ': ' + files.join(', '));
+  assert.equal(files.length, 13,
+    'api/ directory must contain exactly 13 JS files. Found ' + files.length + ': ' + files.join(', '));
 });
 
 // ============================================================

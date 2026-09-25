@@ -16,7 +16,7 @@
  *   - legacy fallback when V2 data is missing / the V2 plan is rejected
  *   - website and Telegram display identical numeric values
  *   - the public flag false preserves the current public output
- *   - the API surface remains exactly 12 endpoints
+ *   - the API surface remains exactly 13 endpoints
  */
 
 const test = require('node:test');
@@ -355,9 +355,9 @@ test('24. both rollout flags default to false', () => {
   assert.equal(flags.isLiquiditySweepShadowEnabled({}), false);
 });
 
-test('25. the API surface remains exactly 12 endpoints', () => {
+test('25. the API surface remains exactly 13 endpoints', () => {
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter((f) => f.endsWith('.js'));
-  assert.equal(apiFiles.length, 12, 'API endpoint count must stay 12: ' + apiFiles.join(', '));
+  assert.equal(apiFiles.length, 13, 'API endpoint count must stay 12: ' + apiFiles.join(', '));
 });
 
 test('26. the pipelines and presentation are wired through the shared integration seam', () => {
@@ -410,9 +410,9 @@ test('28. web and Telegram produce identical canonical numbers for usable V2 can
   }
 });
 
-test('29. API JavaScript count remains exactly 12', () => {
+test('29. API JavaScript count remains exactly 13', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const apiFiles = fs.readdirSync(path.join(__dirname, '..', 'api')).filter((f) => f.endsWith('.js'));
-  assert.equal(apiFiles.length, 12, 'API endpoint count must stay 12: ' + apiFiles.join(', '));
+  assert.equal(apiFiles.length, 13, 'API endpoint count must stay 12: ' + apiFiles.join(', '));
 });

@@ -79,7 +79,7 @@ assertOk(inlineCount > 0, 'no inline scripts found in public/index.html');
 
 // --- 2. Vercel function budget -------------------------------------------
 const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (name) { return name.endsWith('.js'); });
-assertOk(apiFiles.length === 12, 'Vercel API function count changed: expected 12, got ' + apiFiles.length);
+assertOk(apiFiles.length === 13, 'Vercel API function count changed: expected 13, got ' + apiFiles.length);
 
 // --- 3. Security Phase 1 --------------------------------------------------
 const loginApi = read('api/login-user.js');

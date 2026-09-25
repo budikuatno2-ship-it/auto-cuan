@@ -307,5 +307,5 @@ test('T20: Formatter does not output SL: -, EntryQ: -, PlanQ: -, undefined, null
 test('T21: Endpoint count remains 12', function() {
   var apiDir = path.join(__dirname, '..', 'api');
   var files = fs.readdirSync(apiDir).filter(function(f) { return f.endsWith('.js'); });
-  assert.equal(files.length, 12, 'API endpoint count should be 12, got: ' + files.length + ' (' + files.join(', ') + ')');
+  assert.equal(files.length, 13, 'API endpoint count should be 12, got: ' + files.length + ' (' + files.join(', ') + ')');
 });

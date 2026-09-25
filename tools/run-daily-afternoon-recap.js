@@ -13,6 +13,20 @@ const fs = require('node:fs');
 const path = require('node:path');
 const recapService = require('../lib/telegram-daily-recap');
 
+// Redacted placeholder values that appear in audit/export copies of .env.
+// They must never be loaded as if they were real credentials: a placeholder
+// like SUPABASE_URL=[SENSITIVE] makes @supabase/supabase-js throw
+// "Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL." at client
+// construction instead of letting the runner take its documented fallback path.
+var ENV_PLACEHOLDER_VALUES = new Set(['[SENSITIVE]', '[REDACTED]', 'REDACTED', 'CHANGEME', 'TODO', '']);
+
+function isPlaceholderValue(value) {
+  if (typeof value !== 'string') return true;
+  const trimmed = value.trim();
+  if (ENV_PLACEHOLDER_VALUES.has(trimmed)) return true;
+  return /^\[(?:sensitive|redacted|secret|placeholder|todo)\]$/i.test(trimmed);
+}
+
 function loadEnvFile(file) {
   if (!fs.existsSync(file)) return false;
   try {
@@ -30,6 +44,8 @@ function loadEnvFile(file) {
       ) {
         value = value.slice(1, -1);
       }
+      // Never let a redaction placeholder masquerade as a real credential.
+      if (isPlaceholderValue(value)) continue;
       process.env[match[1]] = value;
     }
     return true;

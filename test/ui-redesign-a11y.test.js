@@ -278,7 +278,7 @@ test('doSelfResetPassword guards against duplicate submissions', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 16+17. Delete User remains absent; API JS count remains exactly 12
+// 16+17. Delete User remains absent; API JS count remains exactly 13
 // ---------------------------------------------------------------------------
 test('Delete User lives only in the guarded admin flow (not in the approved table)', () => {
   const start = html.indexOf('function renderApprovedUsersTable');
@@ -290,9 +290,9 @@ test('Delete User lives only in the guarded admin flow (not in the approved tabl
   assert.ok(/targetUsername === 'budi' \|\| targetUsername === 'review'/.test(adminApi), 'budi/review protected');
 });
 
-test('API JavaScript file count remains exactly 12', () => {
+test('API JavaScript file count remains exactly 13', () => {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 12, 'API JS count must remain 12; got ' + files.length);
+  assert.equal(files.length, 13, 'API JS count must remain 12; got ' + files.length);
 });
 
 // ---------------------------------------------------------------------------

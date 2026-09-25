@@ -38,10 +38,19 @@ function loadEnvFile(filePath) {
 // must be able to reach Supabase; otherwise every heavy action answers
 // "Database belum dikonfigurasi." The VPS runtime env is the same file the
 // runner shell scripts source, and it is absent on a developer machine.
+// Hybrid: Vercel primer + VPS fallback — load all env sources so webhook secret
+// and Supabase are available even when .env contains placeholders.
+loadEnvFile(path.join(ROOT_DIR, '.env'));
 loadEnvFile(path.join(ROOT_DIR, '.env.intraday-runtime'));
+loadEnvFile(path.join(ROOT_DIR, '.env.bot'));
 loadEnvFile(path.join(ROOT_DIR, '.env.local'));
 loadEnvFile(path.join(ROOT_DIR, '.env.preview.local'));
 loadEnvFile(path.join(ROOT_DIR, '.env.production.local'));
+// VPS runner secrets (owner-only, 600) — critical for telegram-verify-webhook-v3
+loadEnvFile('/home/ubuntu/auto-cuan-runner/telegram-webhook-v3-secret.env');
+loadEnvFile('/home/ubuntu/auto-cuan-runner/telegram-lifecycle.env');
+loadEnvFile('/home/ubuntu/auto-cuan-runner/telegram-auth-recovery-secret.env');
+loadEnvFile(path.join(ROOT_DIR, '.env.ai-eval-once'));
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -124,7 +133,7 @@ const server = http.createServer(async (req, res) => {
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Telegram-Bot-Api-Secret-Token');
 
   if (req.method === 'OPTIONS') {
     res.statusCode = 204;

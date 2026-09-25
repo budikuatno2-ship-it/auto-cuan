@@ -154,7 +154,13 @@ test('9: existing /review and /dashboard rewrites remain intact', () => {
   assert.equal(analisis.destination, '/analisis-saham.html');
   // Routing consolidation onto shared Vercel Function slots (Hobby plan function
   // limit) added /pattern, /portfolio-planner, and /analisis-saham.
-  assert.equal(rewrites.length, 7, 'no unexpected extra rewrites were introduced');
+  // PR #760 added /register -> /register.html for the public BYOK registration
+  // form, moving the pinned count 7 -> 8. Still pinned so no extra rewrite can
+  // be introduced silently.
+  var register = rewrites.find(function (r) { return r.source === '/register'; });
+  assert.ok(register, 'expected /register rewrite');
+  assert.equal(register.destination, '/register.html');
+  assert.equal(rewrites.length, 8, 'no unexpected extra rewrites were introduced');
 });
 
 // 10. Existing Vercel cron remains unchanged.
@@ -190,8 +196,8 @@ test('11: screener orchestration and after-market Top 5 lock are both VPS-local'
     'the after-market lock runner must refuse a Vercel host before mutating');
 });
 
-// 12. API endpoint JavaScript count remains exactly 12.
-test('12: api endpoint count remains exactly 12', () => {
+// 12. API endpoint JavaScript count remains exactly 13.
+test('12: api endpoint count remains exactly 13', () => {
   var files = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
-  assert.equal(files.length, 12, 'found: ' + files.join(', '));
+  assert.equal(files.length, 13, 'found: ' + files.join(', '));
 });
