@@ -440,4 +440,3 @@ test('expired registration token returns the friendly browser message', async ()
   assert.equal(res.statusCode, 400);
   assert.equal(res.body.error, 'Token pendaftaran tidak valid atau sudah kedaluwarsa. Silakan ketik /start di bot Telegram untuk mendapatkan tautan baru.');
 });
-

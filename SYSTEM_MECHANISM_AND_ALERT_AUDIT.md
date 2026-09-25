@@ -549,17 +549,17 @@ Subsistem monitoring bertugas mengawal saham-saham yang telah masuk daftar panta
    - **Top-of-Hour (Menit 00–29 WIB):** `hourlyBatchDue = true`. Sistem merangkum seluruh saham aktif ke dalam 1 pesan broadcast panjang dengan format:
      ```text
      ⏱ AUTO-CUAN MONITOR 10:00 WIB
-     
+
      TAPG · Swing Konglo — RUNNING
      Last: Rp2.180 · Entry: Rp2.150–Rp2.170
      P/L vs entry Rp2.160: +0.9%
      TP1/TP2: Rp2.250 / Rp2.350 · SL: Rp2.080
-     
+
      BRMS · Day Trade — IN ENTRY ZONE
      Last: Rp412 · Entry: Rp410–Rp416
      Jarak dari entry Rp410: +0.5% (belum entry)
      TP1/TP2: Rp430 / Rp446 · SL: Rp398
-     
+
      Bukan rekomendasi beli/jual. DYOR.
      ```
    - **Half-Hour (Menit 30–59 WIB):** `hourlyBatchDue = false`. Pesan ringkasan batch **ditekan (suppressed)** agar channel Telegram tidak banjir pesan panjang. Namun, hit darurat tetap dikirim seketika!
