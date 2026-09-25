@@ -558,19 +558,41 @@ test('hybrid: evaluateWithPrimary falls back only on an unavailable primary', as
 
 test('hybrid: switch-verify-webhook only ever selects a public VPS origin', async function () {
   const sw = require('../tools/switch-verify-webhook');
+  // The tunnel resolver is injected so the assertions are identical on a laptop
+  // and on the VPS (where a live cloudflared tunnel file legitimately wins).
+  const noTunnel = async function () { return null; };
+  const liveTunnel = async function () { return 'https://live-tunnel.trycloudflare.com/api/reset-password?action=telegram-verify-webhook-v3'; };
+
   // An explicit public URL always wins and is returned verbatim.
   assert.equal(
-    await sw.resolveVpsPublicUrl({ VPS_WEBHOOK_URL: 'https://tunnel.example/api/reset-password?action=telegram-verify-webhook-v3' }),
+    await sw.resolveVpsPublicUrl({ VPS_WEBHOOK_URL: 'https://tunnel.example/api/reset-password?action=telegram-verify-webhook-v3' }, noTunnel),
     'https://tunnel.example/api/reset-password?action=telegram-verify-webhook-v3'
+  );
+  // A discovered tunnel origin is used when no explicit URL is configured.
+  assert.equal(
+    await sw.resolveVpsPublicUrl({}, liveTunnel),
+    'https://live-tunnel.trycloudflare.com/api/reset-password?action=telegram-verify-webhook-v3'
   );
   // A derived origin is built from an explicitly configured public app base.
   assert.equal(
-    await sw.resolveVpsPublicUrl({ VPS_PUBLIC_BASE_URL: 'https://vps.example/' }),
+    await sw.resolveVpsPublicUrl({ VPS_PUBLIC_BASE_URL: 'https://vps.example/' }, noTunnel),
     'https://vps.example/api/reset-password?action=telegram-verify-webhook-v3'
   );
   // A bare localhost base is never promoted to a webhook target.
-  const resolved = await sw.resolveVpsPublicUrl({ APP_BASE_URL: 'http://127.0.0.1:3000' });
-  assert.ok(resolved === null || /^https:\/\//.test(resolved), 'never a localhost fallback URL');
+  assert.equal(
+    await sw.resolveVpsPublicUrl({ APP_BASE_URL: 'http://127.0.0.1:3000' }, noTunnel),
+    null,
+    'a localhost base must never become a webhook target'
+  );
+  // Nothing configured anywhere → fail closed (no failover target).
+  assert.equal(await sw.resolveVpsPublicUrl({}, noTunnel), null);
+  // A throwing resolver must not break the derivation chain.
+  const throwing = async function () { throw new Error('boom'); };
+  assert.equal(
+    await sw.resolveVpsPublicUrl({ VPS_PUBLIC_BASE_URL: 'https://vps.example' }, throwing),
+    'https://vps.example/api/reset-password?action=telegram-verify-webhook-v3'
+  );
+
   assert.equal(sw.DEFAULT_VERCEL_URL, 'https://autocuan.web.id/api/reset-password?action=telegram-verify-webhook-v3');
   assert.equal(sw.VALID_TARGETS.has('vercel'), true);
   assert.equal(sw.VALID_TARGETS.has('vps'), true);

@@ -91,12 +91,17 @@ function usage() {
 // Telegram cannot reach 127.0.0.1: a public origin is mandatory for failover.
 // Mirrors the resolution order in tools/check-webhook-health.js, whose
 // getVpsPublicUrl() is async (it probes runner files and the tunnel log).
-async function resolveVpsPublicUrl(env) {
+//
+// `tunnelResolver` is injectable so tests can exercise the derivation branches
+// deterministically (on a real VPS a live tunnel file always wins, which is the
+// intended precedence).
+async function resolveVpsPublicUrl(env, tunnelResolver) {
   const explicit = String(env.VPS_WEBHOOK_URL || '').trim();
   if (explicit) return explicit;
 
+  const resolveTunnel = typeof tunnelResolver === 'function' ? tunnelResolver : getVpsPublicUrl;
   try {
-    const fromFiles = await getVpsPublicUrl();
+    const fromFiles = await resolveTunnel();
     if (fromFiles) return fromFiles;
   } catch (_) { /* fall through to the derived origin */ }
 
