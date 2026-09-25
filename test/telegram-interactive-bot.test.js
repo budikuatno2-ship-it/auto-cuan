@@ -226,7 +226,11 @@ test('start guide shows quota, real examples, and the five-minute privacy note',
   assert.match(text, /\/broksum <KODE_SAHAM> — Rangkuman broker asing \(Contoh: \/broksum BBRI\)/);
   assert.match(text, /\/insider <KODE_SAHAM> — Jaringan kepemilikan orang dalam \(Contoh: \/insider BREN\)/);
   assert.match(text, /\/scan <daytrade\|swing\|top5> — Screener saham otomatis \(Contoh: \/scan daytrade\)/);
-  assert.match(text, /\/tanya <pertanyaan> — Tanya AI seputar market \(Contoh: \/tanya prospek IHSG\)/);
+  assert.match(text, /\/tanya <pertanyaan> — Tanya AI seputar market \(Contoh: \/tanya prospek perbankan\)/);
+  assert.match(text, /\/foreign — Top 10 foreign flow/);
+  assert.match(text, /\/ritel — Retail flow tracker/);
+  assert.match(text, /privasi data dan query personal/);
+  assert.match(text, /15x weekday \/ 20x weekend/);
   assert.match(text, /Hasil analisa di grup akan otomatis dihapus setelah 5 menit demi privasi\./);
   assert.doesNotMatch(text, /\[TANGGAL\]/);
 });
@@ -396,6 +400,149 @@ test('timeframe buttons edit the existing analysis and broker cards', async () =
   assert.equal(switched.sent.length, 0);
   assert.match(switched.edits[0].text, /Rentang: 7D/);
   assert.equal(switched.callbacks[0], 'Rentang 7D');
+});
+
+test('vps status is admin-only and group cards expire after 60 seconds', async () => {
+  const bot = createInteractiveBot({
+    db: memoryDb([]),
+    env: { ADMIN_TELEGRAM_ID: '7' },
+    delays: { denial: 20, result: 20, welcome: 20, vps: 30 },
+    systemStatus() {
+      return {
+        uptimeSec: 3661,
+        ramUsedMb: 512,
+        ramTotalMb: 2048,
+        cpuLoad: 0.42,
+        processes: [
+          { name: 'autocuan-bot', status: 'online' },
+          { name: 'vps-api-server', status: 'online' },
+          { name: 'ai-eval-once-supervisor', status: 'online' }
+        ],
+        wibTime: '2026-09-25 08:39 WIB'
+      };
+    }
+  });
+  const member = createCtx({ from: { id: 42 }, message: { text: '/vps' } });
+  await bot.handleUpdate(member);
+  assert.equal(member.sent.length, 0);
+
+  const admin = createCtx({
+    from: { id: 7 },
+    chat: { id: -1003755658635, type: 'supergroup' },
+    message: { text: '/status' }
+  });
+  await bot.handleUpdate(admin);
+  assert.match(admin.sent[0].text, /Uptime: 1j 1m/);
+  assert.match(admin.sent[0].text, /RAM: 512 \/ 2048 MB/);
+  assert.match(admin.sent[0].text, /autocuan-bot: online/);
+  assert.match(admin.sent[0].text, /08:39 WIB/);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.deepEqual(admin.deleted, [1]);
+});
+
+test('sensitive admin controls stay private and update member access', async () => {
+  const db = memoryDb([
+    { telegram_id: '42', status: 'pending', username: 'trader', provider: 'gemini', daily_limit: 15, daily_usage: 2, last_usage_date: '2099-01-01' },
+    { telegram_id: '77', status: 'approved', username: 'member', provider: 'gemini', daily_limit: 15, daily_usage: 1, last_usage_date: '2099-01-01' }
+  ]);
+  const bot = createInteractiveBot({ db, env: { ADMIN_TELEGRAM_ID: '7' } });
+  const group = createCtx({
+    from: { id: 7 },
+    chat: { id: -100, type: 'supergroup' },
+    message: { text: '/pending' }
+  });
+  await bot.handleUpdate(group);
+  assert.equal(group.sent.length, 0);
+
+  const pending = createCtx({
+    from: { id: 7 },
+    chat: { id: 7, type: 'private' },
+    message: { text: '/pending' }
+  });
+  await bot.handleUpdate(pending);
+  assert.match(pending.sent[0].text, /42/);
+  assert.deepEqual(
+    pending.sent[0].extra.reply_markup.inline_keyboard[0].map((button) => button.callback_data),
+    ['approve:42', 'reject:42']
+  );
+
+  const limit = createCtx({
+    from: { id: 7 },
+    chat: { id: 7, type: 'private' },
+    message: { text: '/limit 77 25' }
+  });
+  await bot.handleUpdate(limit);
+  assert.equal(db.rows.get('77').daily_limit, 25);
+
+  const ban = createCtx({
+    from: { id: 7 },
+    chat: { id: 7, type: 'private' },
+    message: { text: '/ban 77' }
+  });
+  await bot.handleUpdate(ban);
+  assert.equal(db.rows.get('77').status, 'banned');
+  const unban = createCtx({
+    from: { id: 7 },
+    chat: { id: 7, type: 'private' },
+    message: { text: '/unban 77' }
+  });
+  await bot.handleUpdate(unban);
+  assert.equal(db.rows.get('77').status, 'approved');
+});
+
+test('foreign and retail flows use trading-day windows and edit in place', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'autocuan-flow-'));
+  const brokerRoot = path.join(root, 'data', 'arjum-data', 'broker-summary');
+  const dates = ['2026-09-18', '2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24'];
+  for (const ticker of ['BBCA', 'BBRI']) {
+    fs.mkdirSync(path.join(brokerRoot, ticker), { recursive: true });
+    dates.forEach((date, index) => {
+      const sign = ticker === 'BBCA' ? 1 : -1;
+      fs.writeFileSync(path.join(brokerRoot, ticker, date + '.json'), JSON.stringify({
+        brokers: [
+          { broker_code: 'YP', nval: sign * (index + 1) * 1000000000, investor_type: 'foreign' },
+          { broker_code: 'AK', nval: sign * 100000000, investor_type: 'local' }
+        ]
+      }));
+    });
+  }
+  fs.mkdirSync(path.join(root, 'data'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'data', 'screener-latest.json'), JSON.stringify({
+    daytrade: [{ ticker: 'BBCA', score: 88, sector: 'Bank' }]
+  }));
+  const db = memoryDb([{ telegram_id: '42', status: 'approved', provider: 'gemini' }]);
+  const mock = mockCredentials();
+  mock.store.set('42:gemini', { apiKey: 'AIzaSyTestKeyForBotUser123456', maskedKey: '****3456' });
+  const bot = createInteractiveBot({
+    db,
+    rootDir: root,
+    env: { ADMIN_TELEGRAM_ID: '7' },
+    credentials: mock,
+    now: () => Date.parse('2026-09-24T12:30:00Z'),
+    gemini: { async generateGeminiContent() { return { text: 'Opini objektif.' }; } }
+  });
+  const ctx = createCtx({ message: { text: '/foreign' } });
+  await bot.handleUpdate(ctx);
+  const card = ctx.sent.at(-1);
+  assert.match(card.text, /Top 10 Net Foreign Buy/);
+  assert.match(card.text, /BBCA/);
+  assert.match(card.text, /Top 10 Net Foreign Sell/);
+  assert.match(card.text, /BBRI/);
+  assert.match(card.text, /Opini objektif/);
+  assert.match(card.text, /Sinyal aktif: BBCA/);
+  assert.deepEqual(
+    card.extra.reply_markup.inline_keyboard[0].map((button) => button.callback_data),
+    ['flow:foreign:1', 'flow:foreign:7', 'flow:foreign:30']
+  );
+
+  const retail = createCtx({
+    callbackQuery: { id: 'flow1', data: 'flow:ritel:7', message: { message_id: 9 } }
+  });
+  await bot.handleUpdate(retail);
+  assert.equal(retail.sent.length, 0);
+  assert.equal(retail.edits[0].messageId, 9);
+  assert.match(retail.edits[0].text, /Top 10 Saham Akumulasi Ritel/);
+  assert.match(retail.edits[0].text, /5 hari perdagangan/);
 });
 
 test('custom provider rejects non-https endpoints before calling fetch', async () => {
