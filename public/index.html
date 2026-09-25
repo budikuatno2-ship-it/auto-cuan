@@ -3250,6 +3250,101 @@ function renderStartupFallback() {
     if (!notice && landing) { notice=document.createElement('p'); notice.id='startupFallbackNotice'; notice.className='mx-auto mt-4 max-w-xl px-4 text-center text-sm text-yellow-300'; notice.setAttribute('role','status'); notice.textContent='Beberapa fitur sementara tidak tersedia.'; landing.prepend(notice); }
 }
 
+// ===== MAGIC LINK AUTO-LOGIN & BYOK PROMPT =====
+function checkAndPromptByok() {
+    function tryPrompt() {
+        fetch('/api/analyze?surface=chart-analysis&action=status', { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(st) {
+                if (st && st.hasKey === false) {
+                    if (typeof openAiApiKeyModal === 'function') {
+                        openAiApiKeyModal();
+                    } else {
+                        var modal = document.getElementById('aiApiKeyModal');
+                        if (modal) modal.classList.remove('hidden');
+                    }
+                }
+            })
+            .catch(function() {});
+    }
+
+    if (document.readyState === 'complete') {
+        setTimeout(tryPrompt, 600);
+    } else {
+        window.addEventListener('load', function() {
+            setTimeout(tryPrompt, 600);
+        });
+    }
+}
+
+async function handleMagicLoginFlow(authToken, magicUserId) {
+    try {
+        var devId = '';
+        if (typeof getOrCreateDeviceId === 'function') {
+            devId = getOrCreateDeviceId();
+        } else {
+            devId = localStorage.getItem('autocuan_device_id') || ('web_' + Math.random().toString(36).slice(2));
+            localStorage.setItem('autocuan_device_id', devId);
+        }
+
+        var res = await fetch('/api/login-user?action=magic-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                authToken: authToken,
+                userId: magicUserId,
+                deviceId: devId
+            })
+        });
+
+        // Clean params from address bar via history.replaceState so URL stays clean
+        var cleanParams = new URLSearchParams(window.location.search);
+        cleanParams.delete('auth_token');
+        cleanParams.delete('user_id');
+        cleanParams.delete('magic_login');
+        var cleanSearch = cleanParams.toString();
+        var cleanUrl = window.location.pathname + (cleanSearch ? '?' + cleanSearch : '');
+        window.history.replaceState({}, document.title, cleanUrl);
+
+        var data = await res.json().catch(function() { return {}; });
+
+        if (data && data.success === true && data.userId) {
+            var username = String(data.username || '').trim().toLowerCase();
+            var isAdmin = data.isAdmin === true && username === 'budi';
+            localStorage.setItem('autocuan_user', username);
+            localStorage.setItem('autocuan_user_id', String(data.userId || ''));
+            localStorage.setItem('autocuan_logged_in', 'true');
+            localStorage.setItem('autocuan_is_admin', isAdmin ? 'true' : 'false');
+            localStorage.setItem('autocuan_login_time', Date.now().toString());
+            localStorage.removeItem('autocuan_is_review');
+            localStorage.removeItem('autocuan_blocked_until');
+            window.__AUTOCUAN_AUTHENTICATED_SESSION__ = data;
+
+            // Bypass modal form "Masuk"
+            if (typeof closeLoginModal === 'function') closeLoginModal();
+            if (typeof closeAuthChoiceModal === 'function') closeAuthChoiceModal();
+            if (typeof syncHeaderUsername === 'function') syncHeaderUsername();
+            if (typeof updateLandingCtas === 'function') updateLandingCtas();
+            if (typeof updateDashGreeting === 'function') updateDashGreeting();
+
+            // Direct to screener dashboard
+            enterApp({ replaceHistory: true });
+
+            // If BYOK (AI Key) is not set, prompt BYOK modal
+            checkAndPromptByok();
+            return true;
+        } else {
+            if (typeof showToast === 'function') {
+                showToast((data && data.error) || 'Tautan login tidak valid atau sudah kedaluwarsa.', 'warning');
+            }
+            return false;
+        }
+    } catch (e) {
+        return false;
+    }
+}
+
 // ===== INITIALIZATION =====
 (async function init() {
     try {
@@ -3277,6 +3372,26 @@ function renderStartupFallback() {
     if (!_maintenanceLocked && isValidReviewMode()) { await enterReviewMode(); return; }
     var params = new URLSearchParams(window.location.search);
     if (params.get('review_access') === '1') { localStorage.removeItem('autocuan_blocked_until'); window.history.replaceState({}, document.title, window.location.pathname); }
+
+    // === SEAMLESS MAGIC LINK AUTO-LOGIN ===
+    var _authToken = params.get('auth_token');
+    var _magicUserId = params.get('user_id');
+    if (!_maintenanceLocked && _authToken && _magicUserId) {
+        var _magicSuccess = await handleMagicLoginFlow(_authToken, _magicUserId);
+        if (_magicSuccess) return;
+    }
+    if (!_maintenanceLocked && params.get('magic_login') === '1') {
+        var _cp = new URLSearchParams(window.location.search);
+        _cp.delete('magic_login');
+        var _cs = _cp.toString();
+        window.history.replaceState({}, document.title, window.location.pathname + (_cs ? '?' + _cs : ''));
+        if (typeof closeLoginModal === 'function') closeLoginModal();
+        if (typeof closeAuthChoiceModal === 'function') closeAuthChoiceModal();
+        enterApp({ replaceHistory: true });
+        checkAndPromptByok();
+        return;
+    }
+
     if (isDeviceBlocked()) { showBlockedScreen(); return; }
     if (!localStorage.getItem('autocuan_user')) {
         localStorage.setItem('autocuan_user', 'guest');

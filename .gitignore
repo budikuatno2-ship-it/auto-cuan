@@ -115,5 +115,6 @@ test*-out.txt
 testout.txt
 .aider*
 data/bot-registration-tokens-fallback.json
+data/bot-magic-tokens-fallback.json
 data/keepalive-heartbeat.json
 data/screener-latest.json
