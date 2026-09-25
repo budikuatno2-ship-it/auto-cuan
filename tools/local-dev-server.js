@@ -50,6 +50,7 @@ loadEnvFile(path.join(ROOT_DIR, '.env.production.local'));
 loadEnvFile('/home/ubuntu/auto-cuan-runner/telegram-webhook-v3-secret.env');
 loadEnvFile('/home/ubuntu/auto-cuan-runner/telegram-lifecycle.env');
 loadEnvFile('/home/ubuntu/auto-cuan-runner/telegram-auth-recovery-secret.env');
+loadEnvFile('/home/ubuntu/auto-cuan-runner/session-secret.env');
 loadEnvFile(path.join(ROOT_DIR, '.env.ai-eval-once'));
 
 const MIME_TYPES = {
