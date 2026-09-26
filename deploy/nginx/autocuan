@@ -87,6 +87,27 @@ server {
         proxy_cache_bypass 1;
     }
 
+    # Track Record — stable JSON alias. Must stay ABOVE the generic /api/ block
+    # in evaluation order (Nginx picks the longest matching prefix, so the exact
+    # path wins regardless of position). Without this the tab could receive an
+    # HTML error page and fail with:
+    #   Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    location = /api/track-record {
+        limit_req zone=autocuan_api burst=20 nodelay;
+        proxy_pass http://autocuan_web/api/sector-hot?action=track-record;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Always answer JSON, never a cached HTML error page.
+        proxy_intercept_errors off;
+        add_header Cache-Control "private, no-store, no-cache, must-revalidate, max-age=0" always;
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+    }
+
     # Aset statis — cache + gzip
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff|woff2|ttf|eot)$ {
         proxy_pass http://autocuan_web;

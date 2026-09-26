@@ -1,0 +1,339 @@
+/* ==========================================================================
+   AUTO-CUAN — SPREADSHEET-GRADE SURFACES, MESH BACKGROUND & MICRO-MOTION
+   ==========================================================================
+
+   Loaded last so it can refine the surfaces the earlier sheets established
+   without redeclaring their tokens. It deliberately contains no `!important`
+   and no bare utility-class overrides, so any individual element can still opt
+   out with a deliberate Tailwind utility.
+
+   Four jobs:
+
+     1. GROUND. The heavy 40px grid that used to tile the whole page is gone.
+        What replaces it is a soft radial mesh — one light source, high above
+        the fold — which reads as depth without reading as a pattern. Dark mode
+        is slate (#090d16 → #0b0f19), light mode is a clean off-white with a
+        sharp text contrast rather than a washed-out grey.
+
+     2. SIDEBAR. Tooltips for the collapsed rail. The rail itself is styled in
+        ui-theme.css; this file only supplies the hover affordance that makes a
+        72px icon-only state usable.
+
+     3. TABLES. Sticky headers, hairline zebra striping, right-aligned
+        monospaced numerals and slim status pills, for the three surfaces that
+        carry the most rows: Kelola Keuangan, Jurnal Portofolio, Broker Summary.
+
+     4. MOTION. Micro-interaction on cards and buttons, plus a keep-alive rule
+        that stops a hidden page from shifting the visible one (CLS = 0).
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. GROUND — one soft mesh instead of a grid of boxes
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* Slate, not black. #06090e read as a void on a laptop panel. */
+  --sp-bg-deep: #090d16;
+  --sp-bg-mid: #0b0f19;
+  --sp-mesh-1: rgba(16, 185, 129, 0.055);
+  --sp-mesh-2: rgba(59, 130, 246, 0.045);
+  --sp-mesh-3: rgba(99, 102, 241, 0.035);
+  --sp-zebra: rgba(148, 163, 184, 0.030);
+  --sp-zebra-hover: rgba(52, 211, 153, 0.055);
+  --sp-pill-radius: 999px;
+}
+
+html.light {
+  --sp-bg-deep: #f8fafc;
+  --sp-bg-mid: #ffffff;
+  --sp-mesh-1: rgba(16, 185, 129, 0.05);
+  --sp-mesh-2: rgba(59, 130, 246, 0.035);
+  --sp-mesh-3: rgba(99, 102, 241, 0.025);
+  --sp-zebra: rgba(15, 23, 42, 0.022);
+  --sp-zebra-hover: rgba(16, 185, 129, 0.07);
+}
+
+/* The mesh: three wide, low-opacity radial pools. Fixed so scrolling content
+   moves over a stable ground rather than dragging the light source with it. */
+body {
+  background-color: var(--sp-bg-mid);
+  background-image:
+    radial-gradient(1100px 620px at 12% -12%, var(--sp-mesh-1), transparent 62%),
+    radial-gradient(900px 540px at 88% -6%, var(--sp-mesh-2), transparent 60%),
+    radial-gradient(1000px 700px at 50% 108%, var(--sp-mesh-3), transparent 65%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* The old grid lived on a ::before overlay in premium-workstation-core.css. It
+   is neutralised there (opacity 0) so nothing double-paints; this keeps the
+   element out of the paint path entirely. */
+body::before {
+  background-image: none;
+}
+
+html.light body {
+  background-image:
+    radial-gradient(1100px 620px at 12% -12%, var(--sp-mesh-1), transparent 62%),
+    radial-gradient(900px 540px at 88% -6%, var(--sp-mesh-2), transparent 60%),
+    radial-gradient(1000px 700px at 50% 108%, var(--sp-mesh-3), transparent 65%);
+}
+
+/* Light mode: sharp text, not washed-out grey. Zinc-50 ground, slate-900 ink. */
+html.light .page-content,
+html.light .panel,
+html.light .dashboard-card {
+  color: #0f172a;
+}
+
+html.light .text-gray-500,
+html.light .text-gray-600 {
+  color: #475569;
+}
+
+/* Thin, precise card border in dark mode — 1px at 8% white. */
+.panel,
+.dashboard-card,
+.screener-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+html.light .panel,
+html.light .dashboard-card,
+html.light .screener-card {
+  border-color: #e2e8f0;
+}
+
+/* --------------------------------------------------------------------------
+   2. COLLAPSED SIDEBAR — tooltips that make a 72px rail usable
+   -------------------------------------------------------------------------- */
+
+.app-sidebar.is-collapsed .sidebar-item,
+.app-sidebar.is-collapsed .theme-toggle-btn {
+  position: relative;
+}
+
+/* The label is display:none when collapsed (ui-theme.css), so the tooltip is
+   drawn from the element's own `title`-equivalent attribute instead of trying
+   to reveal the hidden span. */
+.app-sidebar.is-collapsed .sidebar-item::after {
+  content: attr(title);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) scale(0.96);
+  transform-origin: left center;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #11151e;
+  border: 1px solid var(--ac-line, rgba(148, 163, 184, 0.13));
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  z-index: 70;
+}
+
+.app-sidebar.is-collapsed .sidebar-item:hover::after,
+.app-sidebar.is-collapsed .sidebar-item:focus-visible::after {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+html.light .app-sidebar.is-collapsed .sidebar-item::after {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f172a;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+}
+
+/* --------------------------------------------------------------------------
+   3. SPREADSHEET-GRADE TABLES
+   Scoped to the containers that actually hold long data runs, so prose tables
+   elsewhere keep their own rhythm.
+   -------------------------------------------------------------------------- */
+
+/* 3a. Sticky header. `position: sticky` needs a scroll container; every one of
+   these tables already sits inside `.overflow-x-auto` / `.overflow-y-auto`. */
+#page-money-management .overflow-x-auto > table thead th,
+#page-money-management .overflow-y-auto > table thead th,
+#page-trackrecord .overflow-x-auto > table thead th,
+#page-screener .overflow-x-auto > table thead th,
+.broker-summary-table thead th,
+#brokerSummaryTableWrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+/* 3b. Zebra striping. Hairline weight so it guides the eye along a row without
+   turning the table into a checkerboard. */
+#page-money-management .overflow-x-auto > table tbody tr:nth-child(even),
+#page-money-management .overflow-y-auto > table tbody tr:nth-child(even),
+#page-trackrecord .overflow-x-auto > table tbody tr:nth-child(even),
+#page-screener .overflow-x-auto > table tbody tr:nth-child(even),
+.broker-summary-table tbody tr:nth-child(even) {
+  background-color: var(--sp-zebra);
+}
+
+/* The hover has to outrank the stripe, so it is declared on the row's own
+   background and the stripe is a background-color on the same element. */
+#page-money-management .overflow-x-auto > table tbody tr:hover,
+#page-money-management .overflow-y-auto > table tbody tr:hover,
+#page-trackrecord .overflow-x-auto > table tbody tr:hover,
+#page-screener .overflow-x-auto > table tbody tr:hover,
+.broker-summary-table tbody tr:hover {
+  background-color: var(--sp-zebra-hover);
+}
+
+/* 3c. Numerals. Monospaced and right-aligned wherever a figure carries money.
+   The `font-variant-numeric` in ui-theme.css already makes digits equal-width;
+   the mono face additionally keeps the decimal point on the same column. */
+.ac-num,
+.mm-num,
+#mmCashflowSpreadsheetTable td[class*="text-right"],
+#mmJournalSpreadsheetTable td[class*="text-right"],
+#mmCashflowSpreadsheetTable th[class*="text-right"],
+#mmJournalSpreadsheetTable th[class*="text-right"],
+#trTableBody td[class*="text-right"],
+.broker-summary-table td[class*="text-right"] {
+  font-family: var(--ac-font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Table footer totals read as a different class of row. */
+#mmCashflowSpreadsheetTable tfoot td,
+#mmJournalSpreadsheetTable tfoot td {
+  border-top: 1px solid var(--ac-line, rgba(148, 163, 184, 0.13));
+  font-family: var(--ac-font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* 3d. Slim status pills. The existing badges are `rounded` + a colour utility;
+   this narrows them into a pill without touching their colour meaning. */
+.sp-pill,
+#mmJournalSpreadsheetTable td .rounded,
+#mmJournalSpreadsheetTable td span[class*="rounded"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: var(--sp-pill-radius);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* P/L tones, reinforced by the sign that is already in the string. */
+.sp-up { color: #34d399; }
+.sp-down { color: #fb7185; }
+.sp-flat { color: #94a3b8; }
+
+html.light .sp-up { color: #047857; }
+html.light .sp-down { color: #be123c; }
+html.light .sp-flat { color: #475569; }
+
+/* --------------------------------------------------------------------------
+   4. MICRO-MOTION
+   -------------------------------------------------------------------------- */
+
+/* A 1.01 lift on the cards that are actually interactive. `will-change` is
+   deliberately absent: it would promote every card to its own layer and cost
+   more than the transform saves on a dense dashboard. */
+.dashboard-pick-card,
+.screener-card,
+.sektor-group-card {
+  transition: transform 0.16s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.16s ease,
+              box-shadow 0.16s ease;
+}
+
+.dashboard-pick-card:hover,
+.screener-card:hover,
+.sektor-group-card:hover {
+  transform: scale(1.01);
+  border-color: rgba(52, 211, 153, 0.28);
+  box-shadow: 0 10px 26px rgba(2, 6, 12, 0.42);
+}
+
+html.light .dashboard-pick-card:hover,
+html.light .screener-card:hover,
+html.light .sektor-group-card:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.10);
+}
+
+/* Buttons get a border highlight rather than a lift, so a row of them does not
+   ripple while the pointer crosses it. */
+.nav-btn,
+.sidebar-item,
+.theme-toggle-btn,
+.analysis-tab,
+.unified-subtab-btn {
+  transition: background-color 0.15s ease,
+              border-color 0.15s ease,
+              color 0.15s ease;
+}
+
+/* --------------------------------------------------------------------------
+   5. KEEP-ALIVE — zero layout shift when a tab is switched
+   --------------------------------------------------------------------------
+   Every page is toggled with the `hidden` class rather than unmounted, so the
+   browser keeps its layout box. Two consequences worth pinning:
+
+     a. `hidden` sets `display: none`, which removes the element from flow — so
+        a page that was taller than the viewport cannot contribute its height
+        to the visible one. No scrollbar jump, no reflow of the page above it.
+     b. `content-visibility` is NOT applied to the hidden pages: it would make
+        the browser defer their layout and pay it back as a visible shift the
+        moment they are shown again. */
+
+.page-content.hidden {
+  display: none;
+}
+
+/* The panel that is becoming visible must not animate its own height in. */
+.page-content {
+  contain: layout style;
+}
+
+/* Reserve the scrollbar gutter so toggling a page never changes the viewport
+   width (which would shift every centred column by half the scrollbar). */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* Reduced motion: the brief's micro-interactions are decorative, so they stop
+   entirely rather than being shortened. */
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-pick-card,
+  .screener-card,
+  .sektor-group-card,
+  .nav-btn,
+  .sidebar-item,
+  .theme-toggle-btn,
+  .analysis-tab,
+  .unified-subtab-btn {
+    transition: none !important;
+  }
+
+  .dashboard-pick-card:hover,
+  .screener-card:hover,
+  .sektor-group-card:hover {
+    transform: none;
+  }
+
+  .app-sidebar.is-collapsed .sidebar-item::after {
+    transition: none !important;
+  }
+}

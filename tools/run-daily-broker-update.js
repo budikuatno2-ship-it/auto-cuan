@@ -102,6 +102,19 @@ function resolveTargetDate(options = {}) {
   const { dateKey: todayKey, hour, minute } = getJakartaTimeInfo(now);
   const isBeforeCutoff = hour < 16 || (hour === 16 && minute < 30);
 
+  // If today is a weekend or public holiday, always shift to the last completed trading day
+  if (!idxTradingCalendar.isTradingDay(todayKey, holidaySet)) {
+    const prevTrading = idxTradingCalendar.previousTradingDay(todayKey, holidaySet);
+    const resolved = prevTrading || todayKey;
+    return {
+      targetDate: resolved,
+      shifted: true,
+      originalDate: todayKey,
+      timeString: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+      reason: 'weekend_or_holiday'
+    };
+  }
+
   if (isBeforeCutoff) {
     const prevTrading = idxTradingCalendar.previousTradingDay(todayKey, holidaySet);
     const resolved = prevTrading || todayKey;

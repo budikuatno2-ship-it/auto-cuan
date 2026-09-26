@@ -167,7 +167,22 @@ const server = http.createServer(async (req, res) => {
 
   // 1. Handle API routes
   if (pathname.startsWith('/api/')) {
-    const endpointName = pathname.slice('/api/'.length).replace(/\.js$/, '');
+    let endpointName = pathname.slice('/api/'.length).replace(/\.js$/, '');
+
+    // Alias: /api/track-record -> sector-hot?action=track-record.
+    //
+    // The Track Record tab used to call /api/sector-hot?action=track-record
+    // directly. When this origin (or the Nginx edge in front of it) does not
+    // recognise the request it answers with an HTML page, and the browser then
+    // fails with: Unexpected token '<', "<!DOCTYPE "... is not valid JSON.
+    // Resolving the alias here keeps the tab on a stable JSON URL and removes
+    // the dependency on the caller passing the right action.
+    if (endpointName === 'track-record') {
+      parsedUrl.searchParams.set('action', 'track-record');
+      endpointName = 'sector-hot';
+      pathname = '/api/sector-hot';
+    }
+
     const apiFile = path.join(API_DIR, endpointName + '.js');
 
     if (endpointName === 'money-management') {

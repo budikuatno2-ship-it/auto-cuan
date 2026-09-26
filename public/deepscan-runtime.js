@@ -140,15 +140,29 @@
     tbody.innerHTML = html;
   }
 
+  // KEEP-ALIVE: read through the shared SWR store when it is present. The store
+  // serves a warm payload synchronously and refreshes it in the background, so
+  // returning to this tab paints the previous cards instead of a spinner.
+  function deepScanFetch(url, options) {
+    if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.cachedFetch === 'function') {
+      return window.AutoCuanKeepAlive.cachedFetch(url, options);
+    }
+    return fetch(url, options);
+  }
+
   window.loadDeepScan = async function(force) {
     if (deepScanLoading) return;
+    // KEEP-ALIVE: an unforced revisit with data already rendered is a no-op
+    // render-wise; the SWR store keeps it current in the background.
+    var container = document.getElementById('deepscanCardsGrid');
+    if (!force && deepScanData && container && container.children.length) return;
     deepScanLoading = true;
 
     var badge = document.getElementById('deepscanMetaBadge');
-    if (badge) badge.textContent = 'Memuat DeepScan...';
+    if (badge && !deepScanData) badge.textContent = 'Memuat DeepScan...';
 
     try {
-      var res = await fetch('/api/sector-hot?action=deepscan' + (force ? '&refresh=1' : ''), {
+      var res = await deepScanFetch('/api/sector-hot?action=deepscan' + (force ? '&refresh=1' : ''), {
         headers: { 'Accept': 'application/json' }
       });
       var json = await res.json();

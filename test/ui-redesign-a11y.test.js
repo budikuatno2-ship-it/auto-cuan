@@ -291,8 +291,17 @@ test('Delete User lives only in the guarded admin flow (not in the approved tabl
 });
 
 test('API JavaScript file count remains exactly 13', () => {
+  // Unchanged: /api/track-record is a vercel.json REWRITE onto
+  // /api/sector-hot?action=track-record, so it adds no serverless function.
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(f => f.endsWith('.js'));
-  assert.equal(files.length, 13, 'API JS count must remain 12; got ' + files.length);
+  assert.equal(files.length, 13, 'API JS count must remain 13; got ' + files.length);
+});
+
+test('/api/track-record is aliased to the sector-hot track-record action', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
+  const rule = (config.rewrites || []).find(r => r.source === '/api/track-record');
+  assert.ok(rule, '/api/track-record rewrite must exist so the tab never hits an HTML 404');
+  assert.match(rule.destination, /action=track-record/);
 });
 
 // ---------------------------------------------------------------------------
