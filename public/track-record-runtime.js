@@ -58,8 +58,41 @@ async function loadTrackRecord(force) {
     if (refreshBtn) refreshBtn.classList.add('opacity-50', 'pointer-events-none');
 
     try {
-        var res = await fetch('/api/sector-hot?action=track-record');
-        var data = await res.json();
+        var res = null;
+        var rawText = '';
+        var data = null;
+
+        // KEEP-ALIVE: read through the shared SWR store when present so a tab
+        // revisit renders the previous rows instead of the skeleton.
+        var trFetch = (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.cachedFetch === 'function')
+            ? window.AutoCuanKeepAlive.cachedFetch.bind(window.AutoCuanKeepAlive)
+            : fetch;
+
+        // 1. Try dedicated route /api/track-record
+        try {
+            res = await trFetch('/api/track-record');
+            if (res && res.ok) {
+                rawText = await res.text();
+                if (rawText && !rawText.trim().startsWith('<')) {
+                    data = JSON.parse(rawText);
+                }
+            }
+        } catch (_) {}
+
+        // 2. Fallback to /api/sector-hot?action=track-record if needed
+        if (!data || !data.success) {
+            try {
+                res = await trFetch('/api/sector-hot?action=track-record');
+                rawText = await res.text();
+                if (rawText && !rawText.trim().startsWith('<')) {
+                    data = JSON.parse(rawText);
+                } else if (rawText && rawText.trim().startsWith('<')) {
+                    throw new Error('Respon server tidak valid (halaman HTML/502). Sedang menyinkronkan data.');
+                }
+            } catch (fbErr) {
+                if (!data) throw fbErr;
+            }
+        }
 
         if (!data || !data.success) {
             tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-400">Gagal memuat track record: ' + escapeHtml((data && data.error) || 'Terjadi kesalahan.') + '</td></tr>';

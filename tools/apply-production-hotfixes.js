@@ -78,8 +78,16 @@ for (const match of index.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)
 assertOk(inlineCount > 0, 'no inline scripts found in public/index.html');
 
 // --- 2. Vercel function budget -------------------------------------------
+// The 13-function budget is unchanged. /api/track-record is a REWRITE onto
+// /api/sector-hot?action=track-record (see vercel.json), not a new function,
+// so the Track Record tab gets a stable JSON URL without spending budget.
 const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (name) { return name.endsWith('.js'); });
 assertOk(apiFiles.length === 13, 'Vercel API function count changed: expected 13, got ' + apiFiles.length);
+const vercelConfig = JSON.parse(read('vercel.json'));
+assertOk(
+  (vercelConfig.rewrites || []).some(function (rule) { return rule.source === '/api/track-record'; }),
+  '/api/track-record rewrite is missing from vercel.json.'
+);
 
 // --- 3. Security Phase 1 --------------------------------------------------
 const loginApi = read('api/login-user.js');

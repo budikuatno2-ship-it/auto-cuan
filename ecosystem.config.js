@@ -57,7 +57,7 @@ module.exports = {
       kill_timeout: 10000,
       time: true,
       merge_logs: true,
-      max_memory_restart: '100M',
+      max_memory_restart: '512M',
       env: {
         NODE_ENV: 'production',
         TZ: 'Asia/Jakarta',

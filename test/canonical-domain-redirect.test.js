@@ -155,12 +155,22 @@ test('9: existing /review and /dashboard rewrites remain intact', () => {
   // Routing consolidation onto shared Vercel Function slots (Hobby plan function
   // limit) added /pattern, /portfolio-planner, and /analisis-saham.
   // PR #760 added /register -> /register.html for the public BYOK registration
-  // form, moving the pinned count 7 -> 8. Still pinned so no extra rewrite can
+  // form, moving the pinned count 7 -> 8.
+  //
+  // 8 -> 9: /api/track-record -> /api/sector-hot?action=track-record. This is
+  // the fix for the Track Record tab's
+  //   Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+  // error: the tab now calls a stable JSON URL that resolves through the shared
+  // sector-hot function, so it neither needs its own serverless slot nor can it
+  // be answered with an HTML error page. Still pinned so no extra rewrite can
   // be introduced silently.
   var register = rewrites.find(function (r) { return r.source === '/register'; });
   assert.ok(register, 'expected /register rewrite');
   assert.equal(register.destination, '/register.html');
-  assert.equal(rewrites.length, 8, 'no unexpected extra rewrites were introduced');
+  var trackRecord = rewrites.find(function (r) { return r.source === '/api/track-record'; });
+  assert.ok(trackRecord, 'expected /api/track-record rewrite');
+  assert.match(trackRecord.destination, /action=track-record/);
+  assert.equal(rewrites.length, 9, 'no unexpected extra rewrites were introduced');
 });
 
 // 10. Existing Vercel cron remains unchanged.
