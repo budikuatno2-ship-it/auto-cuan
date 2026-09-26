@@ -9,6 +9,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/track-record",
+      "destination": "/api/sector-hot?action=track-record"
+    },
+    {
       "source": "/api/subscription-manual",
       "destination": "/api/review-access?surface=subscription-manual"
     },
@@ -315,6 +319,24 @@
     },
     {
       "source": "/ui-theme.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/spreadsheet-grade.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/tab-keepalive-runtime.js",
       "headers": [
         {
           "key": "Cache-Control",

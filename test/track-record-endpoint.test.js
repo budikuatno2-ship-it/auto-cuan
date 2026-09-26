@@ -158,3 +158,50 @@ test('handleTrackRecord handles database error safely with valid fallback format
   assert.equal(Array.isArray(jsonResult.signals), true);
   assert.equal(jsonResult.signals.length, 0);
 });
+
+// ---------------------------------------------------------------------------
+// /api/track-record is an ALIAS, not a new serverless function.
+//
+// The tab used to call /api/sector-hot?action=track-record directly and could
+// be answered with an HTML page by the VPS/Nginx edge, producing the browser
+// error: Unexpected token '<', "<!DOCTYPE "... is not valid JSON.
+//
+// The fix routes a stable JSON URL onto the existing sector-hot function, so
+// the API function budget is untouched. Every layer that can answer the request
+// must carry the alias, or the tab regresses on whichever layer is missing it.
+// ---------------------------------------------------------------------------
+test('the /api/track-record alias exists on every layer that can answer it', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const ROOT = path.join(__dirname, '..');
+
+  // 1. Vercel edge.
+  const vercel = JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
+  const rule = (vercel.rewrites || []).find(r => r.source === '/api/track-record');
+  assert.ok(rule, 'vercel.json must rewrite /api/track-record');
+  assert.match(rule.destination, /action=track-record/);
+
+  // 2. Nginx edge (VPS).
+  const nginx = fs.readFileSync(path.join(ROOT, 'deploy', 'nginx', 'autocuan'), 'utf8');
+  assert.match(nginx, /location = \/api\/track-record/, 'Nginx must define the exact-match alias location');
+  assert.match(nginx, /action=track-record/, 'Nginx alias must forward to the track-record action');
+
+  // 3. Origin server (VPS fallback / local dev).
+  const origin = fs.readFileSync(path.join(ROOT, 'tools', 'local-dev-server.js'), 'utf8');
+  assert.match(origin, /endpointName === 'track-record'/, 'origin server must resolve the track-record alias');
+
+  // 4. The client must still fall back, so a stale edge cannot blank the tab.
+  //
+  // The read goes through a one-line bridge (`trFetch`) that resolves to the
+  // keep-alive SWR store when it is present and to plain `fetch` otherwise, so
+  // the contract is the alias URL being requested — not the callee's name.
+  const runtime = fs.readFileSync(path.join(ROOT, 'public', 'track-record-runtime.js'), 'utf8');
+  assert.match(runtime, /\(\s*'\/api\/track-record'\s*\)/, 'runtime must call the stable alias URL');
+  assert.match(runtime, /action=track-record/, 'runtime must keep the sector-hot fallback');
+  assert.match(runtime, /startsWith\('<'\)/, 'runtime must detect an HTML response before parsing');
+  assert.match(
+    runtime,
+    /AutoCuanKeepAlive[\s\S]{0,120}cachedFetch/,
+    'the bridge must resolve to the keep-alive store when it exists'
+  );
+});

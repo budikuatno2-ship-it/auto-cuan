@@ -23,6 +23,24 @@
       .replace(/'/g, '&#39;');
   }
 
+  // KEEP-ALIVE: read through the shared SWR store when it is present. The
+  // store is read-only for GETs, so every watchlist mutation below still goes
+  // straight to the server and explicitly invalidates this key afterwards.
+  function watchlistFetch(url, options) {
+    if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.cachedFetch === 'function') {
+      return window.AutoCuanKeepAlive.cachedFetch(url, options);
+    }
+    return fetch(url, options);
+  }
+
+  /** Called after a successful mutation so the next read cannot be stale. */
+  function invalidateWatchlistCache() {
+    if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.invalidate === 'function') {
+      window.AutoCuanKeepAlive.invalidate('/api/sector-hot?action=watchlist');
+    }
+  }
+  window.__AUTOCUAN_INVALIDATE_WATCHLIST__ = invalidateWatchlistCache;
+
   async function loadUserWatchlist(force) {
     var container = document.getElementById('watchlistContainer');
     var emptyState = document.getElementById('watchlistEmpty');
@@ -33,7 +51,7 @@
     isLoading = true;
 
     try {
-      var res = await fetch('/api/sector-hot?action=watchlist', { credentials: 'same-origin' });
+      var res = await watchlistFetch('/api/sector-hot?action=watchlist', { credentials: 'same-origin' });
       var data = await res.json();
 
       if (!data || !data.success) {
@@ -217,6 +235,10 @@
         }
       }
 
+      // KEEP-ALIVE: the write above bypassed the store (non-GET), so the cached
+      // read is now known-stale. Drop it before anything can read it back.
+      invalidateWatchlistCache();
+
       updateAllWatchlistStars();
       // If currently on watchlist page, reload
       var pageEl = document.getElementById('page-watchlist');
@@ -329,6 +351,7 @@
       if (json && json.success) {
         if (typeof showToast === 'function') showToast(editingId ? ('Alert ' + ticker + ' berhasil diperbarui!') : ('Alert ' + ticker + ' berhasil dipasang!'), 'success');
         closeCreateAlertModal();
+        invalidateWatchlistCache();
         loadUserWatchlist(true);
       } else {
         if (typeof showToast === 'function') showToast(json.error || 'Gagal menyimpan alert.', 'error');
@@ -348,6 +371,7 @@
       var json = await res.json();
       if (json && json.success) {
         if (typeof showToast === 'function') showToast('Alert dibatalkan.', 'info');
+        invalidateWatchlistCache();
         loadUserWatchlist(true);
       }
     } catch (err) {
@@ -407,6 +431,7 @@
           var found = window.__AUTOCUAN_WATCHLIST_DATA__.find(function (it) { return it.ticker === ticker; });
           if (found) found.notes = notes || null;
         }
+        invalidateWatchlistCache();
         closeEditNotesModal();
         renderWatchlistView(window.__AUTOCUAN_WATCHLIST_DATA__);
         if (typeof showToast === 'function') showToast('Catatan ' + ticker + ' berhasil disimpan!', 'success');

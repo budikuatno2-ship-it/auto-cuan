@@ -12,6 +12,17 @@
     }
   }
 
+  // KEEP-ALIVE bridge. The shared SWR store returns a cached payload without a
+  // round trip, so a tab revisit paints instantly while a stale entry is
+  // refreshed behind it. When the store is not loaded this is a plain fetch, so
+  // behaviour on standalone pages is unchanged.
+  function acBandarFetch(url, options) {
+    if (root && root.AutoCuanKeepAlive && typeof root.AutoCuanKeepAlive.cachedFetch === 'function') {
+      return root.AutoCuanKeepAlive.cachedFetch(url, options);
+    }
+    return fetch(url, options);
+  }
+
   function listDiskDates(endpoint, ticker) {
     if (bandarmologiService && typeof bandarmologiService.listDiskDates === 'function') {
       return bandarmologiService.listDiskDates(endpoint, ticker);
@@ -134,7 +145,17 @@
     // Batch 6 F-040: no static date fallback. When no dynamic date is
     // available, leave selectedDate empty so the UI renders the explicit
     // "tanggal belum tersedia" state via formatDateDisplay's empty-input path.
-    selectedDate = selectedDate || (typeof currentBandarDate !== 'undefined' ? currentBandarDate : null) || (dates && dates[0]) || null;
+    // Auto-select the NEWEST available date only when the caller has not pinned
+    // one. An explicit selection (e.g. a date the operator picked, or a date a
+    // caller passes in) must survive untouched — otherwise the dropdown would
+    // snap back to the newest day on every re-render and the pinned history
+    // could never be read.
+    if (!selectedDate || selectedDate === 'latest') {
+      selectedDate = (dates && dates.length > 0)
+        ? dates[0]
+        : ((typeof currentBandarDate !== 'undefined' ? currentBandarDate : null) || null);
+      if (selectedDate && typeof currentBandarDate !== 'undefined') currentBandarDate = selectedDate;
+    }
 
     var displayStyle = (typeof bandarSection !== 'undefined' && bandarSection !== 'summary') ? 'style="display: none;"' : '';
     var html = '<div id="brokerDateSelectWrap" ' + displayStyle + ' class="flex flex-wrap items-center gap-2.5 mb-3 bg-dark-800/60 p-2 rounded-xl border border-dark-600/40">';
@@ -170,7 +191,14 @@
     }
     if (!dates) dates = [];
     // Batch 6 F-040: no static date fallback — mirror initBrokerDateSelect.
-    selectedDate = selectedDate || (typeof currentBandarDate !== 'undefined' ? currentBandarDate : null) || (dates && dates[0]) || null;
+    if (dates && dates.length > 0) {
+      if (!selectedDate || selectedDate === 'latest' || (selectedDate < dates[0] && (!currentBandarDate || currentBandarDate < dates[0]))) {
+        selectedDate = dates[0];
+        currentBandarDate = dates[0];
+      }
+    } else {
+      selectedDate = selectedDate || (typeof currentBandarDate !== 'undefined' ? currentBandarDate : null) || null;
+    }
 
     var selectEl = byId('brokerDateSelect');
     if (selectEl && dates.length > 0) {
@@ -1968,9 +1996,12 @@
 
       var data = null;
       try {
-        var fetchOpts = controller ? { signal: controller.signal } : {};
-        var res = await fetch(url, fetchOpts);
-        data = await res.json();
+      var fetchOpts = controller ? { signal: controller.signal } : {};
+      // KEEP-ALIVE: serve the last payload for this exact ticker/range/date
+      // combination from the shared store, so returning to the tab renders
+      // instantly instead of re-running the 12s broker-summary request.
+      var res = await acBandarFetch(url, fetchOpts);
+      data = await res.json();
       } catch (_) {}
       if (timer) clearTimeout(timer);
       if (thisRequestSeq !== bandarSummaryRequestSeq) return;
@@ -1994,6 +2025,10 @@
             if (!seenDates[d2]) { seenDates[d2] = true; combinedDates.push(d2); }
           }
           data.available_dates = combinedDates.sort().reverse();
+        }
+        if (!currentBandarDate || currentBandarDate === 'latest' || (data.available_dates.length > 0 && currentBandarDate < data.available_dates[0])) {
+          currentBandarDate = data.available_dates[0];
+          selectedDate = data.available_dates[0];
         }
       }
 
@@ -2098,10 +2133,10 @@
       if (!raw || typeof raw !== 'object') continue;
       var row = Object.assign({}, raw);
 
-      var bval = pick(raw, ['bval', 'buy_val', 'buyVal', 'gross_buy_val', 'val', 'value']);
-      var sval = pick(raw, ['sval', 'sell_val', 'sellVal', 'gross_sell_val']);
-      var bvol = pick(raw, ['bvol', 'buy_vol', 'buyVol', 'gross_buy_vol', 'vol', 'volume']);
-      var svol = pick(raw, ['svol', 'sell_vol', 'sellVol', 'gross_sell_vol']);
+      var bval = pick(raw, isBuyerSide ? ['bval', 'buy_val', 'buyVal', 'gross_buy_val', 'val', 'value', 'txVal', 'displayVal'] : ['bval', 'buy_val', 'buyVal', 'gross_buy_val']);
+      var sval = pick(raw, !isBuyerSide ? ['sval', 'sell_val', 'sellVal', 'gross_sell_val', 'val', 'value', 'txVal', 'displayVal'] : ['sval', 'sell_val', 'sellVal', 'gross_sell_val']);
+      var bvol = pick(raw, isBuyerSide ? ['bvol', 'buy_vol', 'buyVol', 'gross_buy_vol', 'vol', 'volume', 'txVol'] : ['bvol', 'buy_vol', 'buyVol', 'gross_buy_vol']);
+      var svol = pick(raw, !isBuyerSide ? ['svol', 'sell_vol', 'sellVol', 'gross_sell_vol', 'vol', 'volume', 'txVol'] : ['svol', 'sell_vol', 'sellVol', 'gross_sell_vol']);
       if (bval === null) bval = 0;
       if (sval === null) sval = 0;
       if (bvol === null) bvol = 0;
@@ -2109,21 +2144,27 @@
 
       var netVal = pick(raw, ['nval', 'net_val', 'netVal', 'net_value', 'net']);
       var netVol = pick(raw, ['nvol', 'net_vol', 'netVol', 'net_volume', 'net_lot']);
-      // Last resort: bubble items carry the magnitude in txVal / displayVal.
+      if (netVol != null && raw.net_lot && netVol === raw.net_lot) {
+        netVol = netVol * 100;
+      }
+
       if (netVal === null || netVal === 0) {
         if (bval !== 0 || sval !== 0) {
-          netVal = bval - sval;
+          netVal = isBuyerSide ? (bval > 0 ? (bval - sval) : sval) : (sval > 0 ? -(sval - bval) : -bval);
         } else {
-          var altVal = pick(raw, ['txVal', 'displayVal']);
+          var altVal = pick(raw, ['txVal', 'displayVal', 'val', 'value']);
           if (altVal !== null && altVal !== 0) netVal = isBuyerSide ? Math.abs(altVal) : -Math.abs(altVal);
         }
       }
       if (netVol === null || netVol === 0) {
         if (bvol !== 0 || svol !== 0) {
-          netVol = bvol - svol;
+          netVol = isBuyerSide ? (bvol > 0 ? (bvol - svol) : svol) : (svol > 0 ? -(svol - bvol) : -bvol);
         } else {
-          var altVol = pick(raw, ['txVol', 'tx_vol', 'vol', 'volume']);
-          if (altVol !== null && altVol !== 0) netVol = isBuyerSide ? Math.abs(altVol) : -Math.abs(altVol);
+          var altVol = pick(raw, ['txVol', 'tx_vol', 'vol', 'volume', 'net_lot', 'lot']);
+          if (altVol !== null && altVol !== 0) {
+            var scaledVol = (raw.net_lot || raw.lot) ? altVol * 100 : altVol;
+            netVol = isBuyerSide ? Math.abs(scaledVol) : -Math.abs(scaledVol);
+          }
         }
       }
 
@@ -2176,41 +2217,38 @@
       var n = Number(v);
       return isFinite(n) ? n : null;
     };
-    var bval = num(src.bval != null ? src.bval : (src.buy_val != null ? src.buy_val : src.buyVal));
-    var sval = num(src.sval != null ? src.sval : (src.sell_val != null ? src.sell_val : src.sellVal));
-    var bvol = num(src.bvol != null ? src.bvol : (src.buy_vol != null ? src.buy_vol : src.buyVol));
-    var svol = num(src.svol != null ? src.svol : (src.sell_vol != null ? src.sell_vol : src.sellVol));
+    var bval = num(src.bval != null ? src.bval : (src.buy_val != null ? src.buy_val : (src.buyVal != null ? src.buyVal : (isBuyerSide ? (src.val != null ? src.val : src.value) : 0)))) || 0;
+    var sval = num(src.sval != null ? src.sval : (src.sell_val != null ? src.sell_val : (src.sellVal != null ? src.sellVal : (!isBuyerSide ? (src.val != null ? src.val : src.value) : 0)))) || 0;
+    var bvol = num(src.bvol != null ? src.bvol : (src.buy_vol != null ? src.buy_vol : (src.buyVol != null ? src.buyVol : (isBuyerSide ? (src.vol != null ? src.vol : src.volume) : 0)))) || 0;
+    var svol = num(src.svol != null ? src.svol : (src.sell_vol != null ? src.sell_vol : (src.sellVol != null ? src.sellVol : (!isBuyerSide ? (src.vol != null ? src.vol : src.volume) : 0)))) || 0;
 
-    // FIX (stage 1 NET VAL = 0): an explicit zero is NOT a resolved value. A row
-    // that carries net_val: 0 alongside a real gross bval/sval (or a bubble-style
-    // txVal) must still resolve a magnitude, otherwise the table prints "+0".
-    var netVal = num(src.net_val != null ? src.net_val : (src.netVal != null ? src.netVal : src.nval));
+    var netVal = num(src.net_val != null ? src.net_val : (src.netVal != null ? src.netVal : (src.nval != null ? src.nval : src.net_value)));
     if (netVal == null || netVal === 0) {
-      if (bval != null && sval != null && (bval !== 0 || sval !== 0)) {
-        netVal = bval - sval;
-      } else {
-        var altVal = num(src.txVal != null ? src.txVal : (src.displayVal != null ? src.displayVal : src.val));
+      if (bval > 0 || sval > 0) {
+        netVal = isBuyerSide ? (bval > 0 ? (bval - sval) : sval) : (sval > 0 ? -(sval - bval) : -bval);
+      }
+      if (netVal === 0 || netVal == null) {
+        var altVal = num(src.txVal != null ? src.txVal : (src.displayVal != null ? src.displayVal : (src.val != null ? src.val : src.value)));
         if (altVal != null && altVal !== 0) {
           netVal = isBuyerSide ? Math.abs(altVal) : -Math.abs(altVal);
-        } else if (netVal == null) {
-          netVal = 0;
         }
       }
     }
+    if (netVal == null) netVal = 0;
 
-    var netVol = num(src.net_vol != null ? src.net_vol : (src.netVol != null ? src.netVol : src.nvol));
+    var netVol = num(src.net_vol != null ? src.net_vol : (src.netVol != null ? src.netVol : (src.nvol != null ? src.nvol : (src.net_volume != null ? src.net_volume : (src.net_lot != null ? src.net_lot * 100 : null)))));
     if (netVol == null || netVol === 0) {
-      if (bvol != null && svol != null && (bvol !== 0 || svol !== 0)) {
-        netVol = bvol - svol;
-      } else {
-        var altVol = num(src.txVol != null ? src.txVol : (src.vol != null ? src.vol : src.volume));
+      if (bvol > 0 || svol > 0) {
+        netVol = isBuyerSide ? (bvol > 0 ? (bvol - svol) : svol) : (svol > 0 ? -(svol - bvol) : -bvol);
+      }
+      if (netVol === 0 || netVol == null) {
+        var altVol = num(src.txVol != null ? src.txVol : (src.vol != null ? src.vol : (src.volume != null ? src.volume : (src.lot != null ? src.lot * 100 : null))));
         if (altVol != null && altVol !== 0) {
           netVol = isBuyerSide ? Math.abs(altVol) : -Math.abs(altVol);
-        } else if (netVol == null) {
-          netVol = 0;
         }
       }
     }
+    if (netVol == null) netVol = 0;
 
     // FIX (stage 1 AVG = "—"): resolve through computeAvgPrice() so the broker
     // value/volume 100x scale is normalised, then fall back to the opposite side
@@ -2460,7 +2498,7 @@
       : ((data.is_offline || data.status === 'CACHE_OFFLINE' || (data.is_demo && !data.from_disk && !data.from_vps_tunnel))
           ? '<span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-mono" title="' + escapeHtml(data.demo_detail || '') + '">' + escapeHtml(DEMO_REASON_LABEL[data.demo_reason] || 'CACHE_OFFLINE — data tidak tersedia') + '</span>'
           : (data.from_vps_tunnel
-              ? '<span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-300 font-mono">VPS TUNNEL LIVE</span>'
+              ? '<span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-300 font-mono">BURSA LIVE FEED</span>'
               : (data.from_disk
                   ? '<span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-mono">DISK CACHE</span>'
                   : '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">LIVE / BACKFILL</span>')));
@@ -3953,7 +3991,7 @@
 
     var tbody = byId('insiderRosterTbody');
     if (tbody) {
-      tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-xs text-gray-400"><div class="spinner mx-auto mb-2"></div>Memuat data pemegang saham ' + escapeHtml(clean) + ' dari VPS Oracle Cloud...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-xs text-gray-400"><div class="spinner mx-auto mb-2"></div>Memuat data pemegang saham ' + escapeHtml(clean) + ' dari data resmi bursa...</td></tr>';
     }
 
     fetchVpsInsiderRoster(clean, function (roster) {
@@ -4068,7 +4106,7 @@
     html += '        </tr>';
     html += '      </thead>';
     html += '      <tbody id="insiderRosterTbody" class="divide-y divide-dark-700/30 text-gray-300" style="pointer-events: auto;">';
-    html += '        <tr><td colspan="7" class="py-8 text-center text-xs text-gray-400"><div class="spinner mx-auto mb-2"></div>Memuat data pemegang saham dari VPS...</td></tr>';
+    html += '        <tr><td colspan="7" class="py-8 text-center text-xs text-gray-400"><div class="spinner mx-auto mb-2"></div>Memuat data kepemilikan saham dari bursa...</td></tr>';
     html += '      </tbody>';
     html += '    </table>';
     html += '  </div>';
@@ -4475,7 +4513,7 @@
     activeIntelAbortController = controller;
     var timer = controller ? setTimeout(function () {
       try { controller.abort(); } catch (_) {}
-    }, 10000) : null;
+    }, 35000) : null;
 
     try {
       var url = '/api/sector-hot?action=bandarmologi-intel&range=' + encodeURIComponent(bandarIntelRange) + '&days=' + (({ '1d': 1, '5d': 5, '7d': 7, '14d': 14, '30d': 30, '60d': 60 }[bandarIntelRange]) || 7) + '&_t=' + Date.now();
@@ -4483,7 +4521,9 @@
         url += '&ticker=' + encodeURIComponent(targetTicker);
       }
       var fetchOpts = controller ? { signal: controller.signal } : {};
-      var resp = await fetch(url, fetchOpts);
+      // KEEP-ALIVE: same ticker/range/view mode is served from the store, so
+      // switching back to Sinyal Intelijen does not re-run the heavy scan.
+      var resp = await acBandarFetch(url, fetchOpts);
       if (timer) clearTimeout(timer);
       if (thisRequestSeq !== intelRequestSeq) return;
 
@@ -4530,7 +4570,7 @@
       if (timer) clearTimeout(timer);
       if (thisRequestSeq !== intelRequestSeq) return;
       if (err && (err.name === 'AbortError' || String(err.message).includes('aborted'))) {
-        bandarIntelError = 'Permintaan dibatalkan atau waktu kalkulasi melebihi batas (10s). Silakan coba lagi.';
+        bandarIntelError = 'Permintaan dibatalkan atau waktu kalkulasi melebihi batas (30s). Silakan coba lagi.';
       } else {
         bandarIntelError = err.message || String(err);
       }
@@ -5155,7 +5195,8 @@
         url += '&startDate=' + encodeURIComponent(hunterStartDate) + '&endDate=' + encodeURIComponent(hunterEndDate);
       }
       var fetchOpts = controller ? { signal: controller.signal } : {};
-      var resp = await fetch(url, fetchOpts);
+      // KEEP-ALIVE: a repeated broker/range query is served from the store.
+      var resp = await acBandarFetch(url, fetchOpts);
       if (timer) clearTimeout(timer);
       if (thisRequestSeq !== hunterRequestSeq) return;
 

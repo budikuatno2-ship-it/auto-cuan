@@ -47,6 +47,24 @@
                 window.location.replace(target);
             }
         })();
+
+        // ===== THEME BOOTSTRAP (same first script, still before first paint) =====
+        // Applied here rather than in a separate tag so this stays the document's
+        // first <script> (a contract enforced by canonical-domain-redirect.test.js)
+        // while the saved theme is still applied before anything is painted,
+        // which is what prevents a dark flash for Light-mode users.
+        (function () {
+            try {
+                var saved = localStorage.getItem('autocuan_theme') || 'dark';
+                if (saved === 'light') {
+                    document.documentElement.classList.add('light');
+                    document.documentElement.style.background = '#f8fafc';
+                } else {
+                    document.documentElement.classList.remove('light');
+                    document.documentElement.style.background = '#0b0e14';
+                }
+            } catch (_) {}
+        })();
     </script>
     <!-- Tailwind is served as a pre-built stylesheet, not as the Play CDN.
          The CDN ships ~400KB of JavaScript that compiles CSS in the browser on
@@ -104,10 +122,68 @@
     <link rel="stylesheet" href="/ui-theme.css?v=20260802-ui-theme-v2">
     <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
+    <link rel="stylesheet" href="/spreadsheet-grade.css?v=20260926-sg1">
 </head>
 <body class="min-h-screen text-gray-100">
 <a href="#" class="skip-link" onclick="return skipToMainContent(event)">Lewati ke konten utama</a>
 <div id="toastContainer" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ===== WORKSPACE SIDEBAR (collapsible left navigation) ===== -->
+<aside id="workspaceSidebar" class="app-sidebar hidden" aria-label="Navigasi workspace">
+    <div class="sidebar-brand flex items-center gap-3 px-4 py-4 border-b border-dark-600/40">
+        <button type="button" onclick="toggleSidebarCollapse()" class="brand-mark w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0" title="Ciutkan / bentangkan sidebar" aria-label="Ciutkan atau bentangkan sidebar navigasi">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div class="sidebar-brand-text min-w-0">
+            <p class="text-sm font-black text-white leading-tight truncate">Auto-Cuan</p>
+            <p class="text-[10px] text-gray-500 truncate">IDX Workspace</p>
+        </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto px-3 py-3 space-y-1 scrollbar-thin" aria-label="Menu utama workspace">
+        <button type="button" onclick="navigateTo('dashboard')" class="sidebar-item" data-sidebar-page="dashboard" title="Dashboard">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            <span class="sidebar-label">Dashboard</span>
+        </button>
+        <button type="button" onclick="navigateTo('analisis')" class="sidebar-item" data-sidebar-page="analisis" title="Analisis Saham">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <span class="sidebar-label">Analisis Saham</span>
+        </button>
+        <button type="button" onclick="navigateTo('sektor')" class="sidebar-item hidden" data-sidebar-page="sektor" data-premium-nav="true" title="Sektor Hot">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span class="sidebar-label">Sektor Hot</span>
+        </button>
+        <button type="button" onclick="navigateTo('screener')" class="sidebar-item hidden" data-sidebar-page="screener" data-premium-nav="true" title="Screener">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <span class="sidebar-label">Screener</span>
+        </button>
+        <button type="button" onclick="navigateTo('portofolio')" class="sidebar-item hidden" data-sidebar-page="portofolio" data-premium-nav="true" title="Portofolio">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+            <span class="sidebar-label">Portofolio</span>
+        </button>
+        <button type="button" onclick="navigateTo('watchlist')" class="sidebar-item hidden" data-sidebar-page="watchlist" data-premium-nav="true" title="Watchlist">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+            <span class="sidebar-label">Watchlist</span>
+        </button>
+        <button type="button" onclick="navigateTo('trackrecord')" class="sidebar-item hidden" data-sidebar-page="trackrecord" data-premium-nav="true" title="Track Record">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <span class="sidebar-label">Track Record</span>
+        </button>
+        <button type="button" onclick="navigateTo('deepscan')" class="sidebar-item hidden" data-sidebar-page="deepscan" data-premium-nav="true" title="Macro DeepScan">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span class="sidebar-label">Macro DeepScan</span>
+        </button>
+        <button type="button" onclick="navigateTo('money-management')" class="sidebar-item hidden" data-sidebar-page="money-management" data-premium-nav="true" title="Kelola Keuangan">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="sidebar-label">Kelola Keuangan</span>
+        </button>
+    </nav>
+    <div class="px-3 py-3 border-t border-dark-600/40 space-y-2">
+        <button type="button" onclick="toggleAppTheme()" class="theme-toggle-btn w-full justify-center" title="Ganti tema terang/gelap">
+            <span id="sidebarThemeIcon">🌙</span><span class="sidebar-label" id="sidebarThemeLabel">Dark Mode</span>
+        </button>
+    </div>
+</aside>
+<div id="sidebarScrim" class="sidebar-scrim hidden" onclick="closeMobileSidebar()" aria-hidden="true"></div>
 
 <!-- ===== INITIAL LOADING INDICATOR (visible before JS init completes) ===== -->
 <div id="initialLoader" class="min-h-screen w-full flex flex-col items-center justify-center" style="background-color:#0b0e14">
@@ -432,6 +508,9 @@
     <div class="header-shell w-full mx-auto px-3 sm:px-5 py-2.5">
         <div class="flex items-center gap-3 lg:gap-4">
             <div class="flex items-center gap-3 min-w-0 flex-shrink-0">
+                <button id="workspaceSidebarToggle" type="button" onclick="toggleSidebarCollapse()" class="workspace-sidebar-toggle lg:hidden" title="Buka menu workspace" aria-label="Buka menu navigasi workspace">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h10M4 18h16"/></svg>
+                </button>
                 <button onclick="toggleSidebar()" class="sidebar-toggle-btn hidden" title="Riwayat Chat">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
@@ -461,6 +540,9 @@
                 <span class="header-status-chip">Watchlist ≠ BUY</span>
             </div>
             <div class="header-account ml-auto flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <button id="themeSwitcherBtn" type="button" onclick="toggleAppTheme()" class="theme-toggle-btn" title="Ganti tema terang/gelap" aria-label="Ganti tema tampilan">
+                    <span id="themeSwitcherIcon">🌙</span><span id="themeSwitcherLabel" class="hidden sm:inline">Dark</span>
+                </button>
                 <span id="wibClock" class="text-[11px] text-gray-500 font-mono tabular-nums hidden sm:inline"></span>
                 <span id="reviewBadge" class="hidden px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">Review</span>
                 <span id="guestBadge" class="hidden"></span>
@@ -1973,59 +2055,66 @@
             </div>
         </div>
 
-        <!-- Budget Input Form -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Pemasukan -->
-            <div class="bg-dark-800/60 border border-dark-600/30 rounded-2xl p-4 sm:p-5 space-y-3">
-                <h4 class="text-sm font-bold text-white flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                    <span>1. Sumber Pemasukan Bulanan (Income)</span>
-                </h4>
-                <div>
-                    <label class="block text-[11px] text-gray-400 mb-1">Gaji Pokok / Uang Bulanan (Rp)</label>
-                    <input id="mmIncomeSalary" type="number" placeholder="Contoh: 6000000" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-dark-600/50 text-gray-100 text-sm focus:border-emerald-500/50 outline-none">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-gray-400 mb-1">Penghasilan Sampingan / Freelance (Rp)</label>
-                    <input id="mmIncomeSide" type="number" placeholder="Contoh: 1500000" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-dark-600/50 text-gray-100 text-sm focus:border-emerald-500/50 outline-none">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-gray-400 mb-1">Pemasukan Lain-lain (Rp)</label>
-                    <input id="mmIncomeOther" type="number" placeholder="0" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-dark-600/50 text-gray-100 text-sm focus:border-emerald-500/50 outline-none">
-                </div>
-            </div>
+        <!-- Hidden underlying inputs for two-way state synchronization -->
+        <input id="mmIncomeSalary" type="hidden" value="0">
+        <input id="mmIncomeSide" type="hidden" value="0">
+        <input id="mmIncomeOther" type="hidden" value="0">
+        <input id="mmExpNecessities" type="hidden" value="0">
+        <input id="mmExpWants" type="hidden" value="0">
+        <input id="mmSavings" type="hidden" value="0">
+        <input id="mmTradingCapital" type="hidden" value="0">
 
-            <!-- Alokasi & Pengeluaran -->
-            <div class="bg-dark-800/60 border border-dark-600/30 rounded-2xl p-4 sm:p-5 space-y-3">
-                <h4 class="text-sm font-bold text-white flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-rose-400"></span>
-                    <span>2. Alokasi Pengeluaran & Modal Bursa</span>
-                </h4>
-                <div>
-                    <label class="block text-[11px] text-gray-400 mb-1">Kebutuhan Pokok (Makan, Kost, Listrik, Internet) (Rp)</label>
-                    <input id="mmExpNecessities" type="number" placeholder="Contoh: 3000000" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-dark-600/50 text-gray-100 text-sm focus:border-rose-500/50 outline-none">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-gray-400 mb-1">Keinginan & Hiburan (Nongkrong, Lifestyle) (Rp)</label>
-                    <input id="mmExpWants" type="number" placeholder="Contoh: 1000000" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-dark-600/50 text-gray-100 text-sm focus:border-rose-500/50 outline-none">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-gray-400 mb-1">Dana Darurat / Tabungan (Rp)</label>
-                    <input id="mmSavings" type="number" placeholder="Contoh: 1000000" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-dark-600/50 text-gray-100 text-sm focus:border-blue-500/50 outline-none">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-blue-300 font-semibold mb-1">🎯 Pos Modal Trading (Dana Dingin Khusus Bursa) (Rp)</label>
-                    <input id="mmTradingCapital" type="number" placeholder="Contoh: 1500000" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-blue-500/40 text-blue-300 font-bold text-sm focus:border-blue-400 outline-none">
-                </div>
-            </div>
+        <!-- Spreadsheet Grid Table: Life Cashflow ala Excel / Airtable -->
+        <div class="overflow-x-auto overflow-y-auto max-h-[580px] scrollbar-thin rounded-xl border border-dark-600/60 bg-dark-900/60 shadow-lg">
+            <table class="w-full text-xs border-collapse min-w-[850px]" id="mmCashflowSpreadsheetTable">
+                <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 border-b border-dark-600/70">
+                    <tr class="text-gray-300 font-semibold text-left">
+                        <th class="py-2.5 px-3 text-center border-r border-dark-600/60 w-12 font-mono text-gray-400">#</th>
+                        <th class="py-2.5 px-3 border-r border-dark-600/60 w-32">Kategori</th>
+                        <th class="py-2.5 px-3 border-r border-dark-600/60">Pos Anggaran Bulanan</th>
+                        <th class="py-2.5 px-3 text-center border-r border-dark-600/60 w-28">Tipe Arus Kas</th>
+                        <th class="py-2.5 px-3 text-right border-r border-dark-600/60 w-52 font-mono">Alokasi Bulanan (Rp)</th>
+                        <th class="py-2.5 px-3 text-right border-r border-dark-600/60 w-28 font-mono">% Rasio</th>
+                        <th class="py-2.5 px-3">Catatan Pos Anggaran</th>
+                    </tr>
+                </thead>
+                <tbody id="mmCashflowSpreadsheetBody" class="divide-y divide-dark-700/40 text-gray-200">
+                    <!-- Populated dynamically via renderCashflowSpreadsheetRows() -->
+                </tbody>
+                <tfoot class="sticky bottom-0 bg-dark-800/95 backdrop-blur border-t-2 border-emerald-500/40 font-bold font-mono text-xs z-10">
+                    <tr class="border-b border-dark-700/40">
+                        <td colspan="4" class="px-3 py-2 text-right border-r border-dark-600/60 text-gray-300">TOTAL PEMASUKAN BULANAN (INCOME):</td>
+                        <td class="px-3 py-2 text-right border-r border-dark-600/60 text-emerald-400" id="mmCfFootIncome">Rp 0</td>
+                        <td class="px-3 py-2 text-right border-r border-dark-600/60 text-emerald-400">100.0%</td>
+                        <td class="px-3 py-2 text-gray-500 text-[11px]">Total kas masuk bersih</td>
+                    </tr>
+                    <tr class="border-b border-dark-700/40">
+                        <td colspan="4" class="px-3 py-2 text-right border-r border-dark-600/60 text-gray-300">TOTAL PENGELUARAN HIDUP & GAYA:</td>
+                        <td class="px-3 py-2 text-right border-r border-dark-600/60 text-rose-400" id="mmCfFootExpense">Rp 0</td>
+                        <td class="px-3 py-2 text-right border-r border-dark-600/60 text-rose-400 font-mono" id="mmCfFootExpensePct">—</td>
+                        <td class="px-3 py-2 text-gray-500 text-[11px]">Kebutuhan pokok, lifestyle, & tabungan</td>
+                    </tr>
+                    <tr class="border-b border-dark-700/40">
+                        <td colspan="4" class="px-3 py-2 text-right border-r border-dark-600/60 text-gray-300">ALOKASI MODAL TRADING (DANA DINGIN):</td>
+                        <td class="px-3 py-2 text-right border-r border-dark-600/60 text-blue-300" id="mmCfFootTrading">Rp 0</td>
+                        <td class="px-3 py-2 text-right border-r border-dark-600/60 text-blue-300 font-mono" id="mmCfFootTradingPct">—</td>
+                        <td class="px-3 py-2 text-gray-500 text-[11px]">Otomatis terhubung ke jurnal bursa</td>
+                    </tr>
+                    <tr class="bg-dark-900/90">
+                        <td colspan="4" class="px-3 py-2.5 text-right border-r border-dark-600/60 text-white font-extrabold">SISA KAS HIDUP AMAN (NET REMAINING):</td>
+                        <td class="px-3 py-2.5 text-right border-r border-dark-600/60 font-black text-sm" id="mmCfFootRemaining">Rp 0</td>
+                        <td colspan="2" class="px-3 py-2.5 text-xs text-gray-400 font-normal">Batas aman pengeluaran di luar modal trading</td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
 
-        <div class="flex items-center justify-between gap-3 pt-2">
-            <div class="flex-1">
-                <input id="mmCashflowNotes" type="text" placeholder="Catatan anggaran bulan ini (opsional)..." class="w-full px-3.5 py-2 rounded-xl bg-dark-800/80 border border-dark-600/40 text-xs text-gray-200 outline-none">
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div class="flex-1 min-w-[260px]">
+                <input id="mmCashflowNotes" type="text" placeholder="Catatan anggaran bulan ini (opsional)..." class="w-full px-3.5 py-2.5 rounded-xl bg-dark-800/80 border border-dark-600/50 text-xs text-gray-200 outline-none focus:border-emerald-500/60">
             </div>
-            <button id="mmSaveCashflowBtn" onclick="saveCashflowData()" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-xs hover:bg-emerald-400 transition flex items-center gap-1.5 shrink-0">
-                <span>Simpan Anggaran</span>
+            <button id="mmSaveCashflowBtn" onclick="saveCashflowData()" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition flex items-center gap-1.5 shrink-0 shadow-md">
+                <span>💾 Simpan Anggaran ke Cloud</span>
             </button>
         </div>
     </div>
@@ -2101,26 +2190,40 @@
             </div>
         </div>
 
-        <!-- Editable Grid Spreadsheet Table -->
-        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30">
-            <table class="w-full text-xs border-collapse min-w-[950px]">
-                <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
-                    <tr class="bg-dark-700/80 text-gray-400 text-left border-b border-dark-600/40">
-                        <th class="px-3 py-2.5 text-center">Tanggal</th>
-                        <th class="px-3 py-2.5">Kode Saham</th>
-                        <th class="px-3 py-2.5 text-center">Posisi</th>
-                        <th class="px-3 py-2.5 text-right">Harga Entry</th>
-                        <th class="px-3 py-2.5 text-center">Lot</th>
-                        <th class="px-3 py-2.5 text-right">Modal Digunakan</th>
-                        <th class="px-3 py-2.5 text-right">Harga Exit</th>
-                        <th class="px-3 py-2.5 text-right">Realized P/L</th>
-                        <th class="px-3 py-2.5">Catatan / Alasan</th>
-                        <th class="px-3 py-2.5 text-center">Aksi</th>
+        <!-- Editable Grid Spreadsheet Table: Jurnal Portofolio ala Excel / Airtable -->
+        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/60 bg-dark-900/60 shadow-lg">
+            <table class="w-full text-xs border-collapse min-w-[1050px]" id="mmJournalSpreadsheetTable">
+                <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 border-b border-dark-600/70 shadow-sm">
+                    <tr class="text-gray-300 text-left font-semibold">
+                        <th class="py-2.5 px-3 text-center border-r border-dark-600/60 w-10 font-mono text-gray-400">#</th>
+                        <th class="py-2.5 px-3 text-center border-r border-dark-600/60 w-28 font-mono">Tanggal</th>
+                        <th class="py-2.5 px-3 border-r border-dark-600/60 w-24">Ticker</th>
+                        <th class="py-2.5 px-3 text-center border-r border-dark-600/60 w-16">Posisi</th>
+                        <th class="py-2.5 px-3 text-right border-r border-dark-600/60 w-28 font-mono">Entry (Rp)</th>
+                        <th class="py-2.5 px-3 text-right border-r border-dark-600/60 w-16 font-mono">Lot</th>
+                        <th class="py-2.5 px-3 text-right border-r border-dark-600/60 w-36 font-mono">Modal (Rp)</th>
+                        <th class="py-2.5 px-3 text-right border-r border-dark-600/60 w-32 font-mono">Exit (Rp) ✏️</th>
+                        <th class="py-2.5 px-3 text-right border-r border-dark-600/60 w-36 font-mono">Realized P/L</th>
+                        <th class="py-2.5 px-3 text-right border-r border-dark-600/60 w-20 font-mono">P/L (%)</th>
+                        <th class="py-2.5 px-3 text-center border-r border-dark-600/60 w-20">Status</th>
+                        <th class="py-2.5 px-3 border-r border-dark-600/60">Catatan & Strategi ✏️</th>
+                        <th class="py-2.5 px-3 text-center w-12">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="mmJournalTableBody" class="text-gray-300 divide-y divide-dark-700/40">
-                    <tr><td colspan="10" class="text-center py-8 text-gray-500">Memuat jurnal transaksi...</td></tr>
+                    <tr><td colspan="13" class="text-center py-8 text-gray-500">Memuat jurnal transaksi...</td></tr>
                 </tbody>
+                <tfoot class="sticky bottom-0 bg-dark-800/95 backdrop-blur border-t-2 border-emerald-500/50 font-bold font-mono text-xs z-10">
+                    <tr class="bg-dark-900/90 text-gray-200">
+                        <td colspan="5" class="px-3 py-2.5 text-right border-r border-dark-600/60 font-black uppercase text-gray-300">TOTAL / RINGKASAN:</td>
+                        <td class="px-3 py-2.5 text-right border-r border-dark-600/60 font-bold text-white" id="mmJrFootLots">0</td>
+                        <td class="px-3 py-2.5 text-right border-r border-dark-600/60 font-bold text-gray-200" id="mmJrFootCapital">Rp 0</td>
+                        <td class="px-3 py-2.5 text-right border-r border-dark-600/60 text-gray-500 text-[10px]">—</td>
+                        <td class="px-3 py-2.5 text-right border-r border-dark-600/60 font-black text-emerald-400" id="mmJrFootPl">Rp 0</td>
+                        <td class="px-3 py-2.5 text-right border-r border-dark-600/60 font-black text-emerald-400" id="mmJrFootWinRate">0%</td>
+                        <td colspan="3" class="px-3 py-2.5 text-center text-gray-500 text-[10px]">Perhitungan otomatis seluruh transaksi</td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>
@@ -3056,6 +3159,7 @@ function closeAuthChoiceModal() {
 function showLandingPage(opts) {
     opts = opts || {};
     setTopLevelView('landing');
+    if (typeof setWorkspaceSidebarVisible === 'function') setWorkspaceSidebarVisible(false);
     var landing = document.getElementById('landingPage');
     try { localStorage.removeItem('autocuan_entered_app'); } catch (_) {}
     updateLandingCtas();
@@ -3074,6 +3178,7 @@ function enterApp(opts) {
     setRoute('/dashboard', !!opts.replaceHistory);
     var landing = document.getElementById('landingPage');
     if (landing) landing.classList.add('hidden');
+    if (typeof setWorkspaceSidebarVisible === 'function') setWorkspaceSidebarVisible(true);
     showDashboard();
 }
 function landingPrimaryAction() {
@@ -4446,11 +4551,22 @@ function navigateTo(page) {
     // Show target page
     var target = document.getElementById('page-' + page);
     if (target) { target.classList.remove('hidden'); target.classList.add('flex-1'); }
+    // KEEP-ALIVE: the panel above is only ever hidden, never unmounted, so its
+    // rendered rows survive the round trip. This call hands the navigation to
+    // the keep-alive runtime, which restores the page's scroll position and
+    // marks it visited so the loaders below skip their skeletons.
+    var kaRevisit = false;
+    if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.onNavigate === 'function') {
+        kaRevisit = window.AutoCuanKeepAlive.hasVisited(page);
+        window.AutoCuanKeepAlive.onNavigate(page);
+    }
     // Update nav active state
     document.querySelectorAll('.nav-btn').forEach(function(btn) {
         btn.classList.remove('active');
         if (btn.getAttribute('data-page') === page) btn.classList.add('active');
     });
+    // Keep the workspace rail's highlight in step with the top nav.
+    if (typeof syncWorkspaceSidebarActive === 'function') syncWorkspaceSidebarActive(page);
     var activeMobileNav = document.querySelector('.mobile-nav-row .nav-btn[data-page="' + page + '"]');
     if (activeMobileNav && activeMobileNav.scrollIntoView) {
         try { activeMobileNav.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch(e) { activeMobileNav.scrollIntoView(); }
@@ -4482,7 +4598,10 @@ function navigateTo(page) {
         var loginGate = document.getElementById('sektorLoginGate');
         var sektorContent = document.getElementById('sektorContent');
         if (loginGate && sektorContent) {
-            if (isLoggedIn) { loginGate.classList.add('hidden'); sektorContent.classList.remove('hidden'); loadSektorHot(); }
+            // KEEP-ALIVE: on a revisit the grid already holds rendered cards, so
+            // the loader runs in silent mode and refreshes behind them instead
+            // of replacing them with a spinner.
+            if (isLoggedIn) { loginGate.classList.add('hidden'); sektorContent.classList.remove('hidden'); loadSektorHot(kaRevisit); }
             else { loginGate.classList.remove('hidden'); sektorContent.classList.add('hidden'); }
         }
     }
@@ -4502,12 +4621,14 @@ function navigateTo(page) {
         var scrLoginGate = document.getElementById('screenerLoginGate');
         var scrContent = document.getElementById('screenerContent');
         if (scrLoginGate && scrContent) {
-            if (scrIsLoggedIn) { scrLoginGate.classList.add('hidden'); scrContent.classList.remove('hidden'); loadSwingScreener(); }
+            // KEEP-ALIVE: revisit revalidates silently, first visit paints normally.
+            if (scrIsLoggedIn) { scrLoginGate.classList.add('hidden'); scrContent.classList.remove('hidden'); loadSwingScreener(kaRevisit); }
             else { scrLoginGate.classList.remove('hidden'); scrContent.classList.add('hidden'); }
         }
     }
     // Track Record loader
     if (page === 'trackrecord') {
+        // KEEP-ALIVE: force=false already serves the in-memory copy when present.
         if (typeof loadTrackRecord === 'function') loadTrackRecord(false);
     }
     // Watchlist loader
@@ -4520,7 +4641,10 @@ function navigateTo(page) {
     }
     // Money Management loader
     if (page === 'money-management') {
-        if (typeof window.initMoneyManagement === 'function') window.initMoneyManagement();
+        // KEEP-ALIVE: initMoneyManagement is idempotent for hydration, but the
+        // two loads it fires each repaint their table. Skipping it on a revisit
+        // keeps the journal and cashflow rows exactly as the user left them.
+        if (!kaRevisit && typeof window.initMoneyManagement === 'function') window.initMoneyManagement();
     }
 }
 
@@ -7608,6 +7732,108 @@ function closeSidebar() {
     overlay.classList.remove('active');
 }
 
+// ===== KEEP-ALIVE FETCH BRIDGE =====
+// One thin indirection so any loader can read through the SWR store without
+// every call site having to feature-detect the runtime. When the keep-alive
+// script is absent (standalone pages, older bundles) this is a plain fetch, so
+// behaviour is identical to before.
+function acKeepAliveFetch(url, options) {
+    if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.cachedFetch === 'function') {
+        return window.AutoCuanKeepAlive.cachedFetch(url, options);
+    }
+    return fetch(url, options);
+}
+
+// ===== THEME SWITCHER (Dark Zinc / Light Clean) =====
+function applyAppTheme(theme) {
+    var isLight = theme === 'light';
+    document.documentElement.classList.toggle('light', isLight);
+    if (document.body) document.body.classList.toggle('light', isLight);
+    document.documentElement.style.background = isLight ? '#f8fafc' : '#0b0e14';
+    var icon = document.getElementById('themeSwitcherIcon');
+    var label = document.getElementById('themeSwitcherLabel');
+    if (icon) icon.textContent = isLight ? '☀️' : '🌙';
+    if (label) label.textContent = isLight ? 'Light' : 'Dark';
+    var sbIcon = document.getElementById('sidebarThemeIcon');
+    var sbLabel = document.getElementById('sidebarThemeLabel');
+    if (sbIcon) sbIcon.textContent = isLight ? '☀️' : '🌙';
+    if (sbLabel) sbLabel.textContent = isLight ? 'Light Mode' : 'Dark Mode';
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', isLight ? '#f8fafc' : '#0b0e14');
+    try { localStorage.setItem('autocuan_theme', isLight ? 'light' : 'dark'); } catch (_) {}
+}
+function toggleAppTheme() {
+    var isLight = document.documentElement.classList.contains('light');
+    applyAppTheme(isLight ? 'dark' : 'light');
+}
+function initAppTheme() {
+    var saved = 'dark';
+    try { saved = localStorage.getItem('autocuan_theme') || 'dark'; } catch (_) {}
+    applyAppTheme(saved);
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAppTheme);
+} else {
+    initAppTheme();
+}
+
+// ===== COLLAPSIBLE WORKSPACE SIDEBAR =====
+var SIDEBAR_COLLAPSE_KEY = 'autocuan_sidebar_collapsed';
+function isWorkspaceSidebarVisible() {
+    var aside = document.getElementById('workspaceSidebar');
+    return Boolean(aside && !aside.classList.contains('hidden'));
+}
+function applySidebarCollapse(collapsed) {
+    var aside = document.getElementById('workspaceSidebar');
+    if (aside) aside.classList.toggle('is-collapsed', Boolean(collapsed));
+    if (document.body) document.body.classList.toggle('sidebar-collapsed', Boolean(collapsed));
+    try { localStorage.setItem(SIDEBAR_COLLAPSE_KEY, collapsed ? '1' : '0'); } catch (_) {}
+}
+function toggleSidebarCollapse() {
+    var aside = document.getElementById('workspaceSidebar');
+    if (!aside) return;
+    if (window.innerWidth < 1024) {
+        aside.classList.toggle('mobile-open');
+        var scrim = document.getElementById('sidebarScrim');
+        if (scrim) scrim.classList.toggle('hidden', !aside.classList.contains('mobile-open'));
+        return;
+    }
+    applySidebarCollapse(!aside.classList.contains('is-collapsed'));
+}
+function openMobileSidebar() {
+    var aside = document.getElementById('workspaceSidebar');
+    if (!aside) return;
+    aside.classList.add('mobile-open');
+    var scrim = document.getElementById('sidebarScrim');
+    if (scrim) scrim.classList.remove('hidden');
+}
+function closeMobileSidebar() {
+    var aside = document.getElementById('workspaceSidebar');
+    if (aside) aside.classList.remove('mobile-open');
+    var scrim = document.getElementById('sidebarScrim');
+    if (scrim) scrim.classList.add('hidden');
+}
+function setWorkspaceSidebarVisible(visible) {
+    var aside = document.getElementById('workspaceSidebar');
+    if (!aside) return;
+    aside.classList.toggle('hidden', !visible);
+    if (document.body) document.body.classList.toggle('sidebar-open', Boolean(visible));
+    if (!visible) {
+        closeMobileSidebar();
+        if (document.body) document.body.classList.remove('sidebar-collapsed');
+    }
+    if (visible) {
+        var saved = '0';
+        try { saved = localStorage.getItem(SIDEBAR_COLLAPSE_KEY) || '0'; } catch (_) {}
+        applySidebarCollapse(saved === '1');
+    }
+}
+function syncWorkspaceSidebarActive(page) {
+    document.querySelectorAll('#workspaceSidebar [data-sidebar-page]').forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-sidebar-page') === page);
+    });
+}
+
 function renderSidebarSessions() {
     var container = document.getElementById('sidebarSessions');
     if (!container) return;
@@ -9722,7 +9948,7 @@ function closeUsageReminder() {
 // ===== SEKTOR HOT / GRUP KONGLOMERAT HOT =====
 var _sektorCache = null;
 
-async function loadSektorHot() {
+async function loadSektorHot(silent) {
     var grid = document.getElementById('sektorGroupsGrid');
     var listView = document.getElementById('sektorListView');
     var detailView = document.getElementById('sektorDetailView');
@@ -9733,10 +9959,17 @@ async function loadSektorHot() {
     listView.classList.remove('hidden');
     detailView.classList.add('hidden');
 
-    grid.innerHTML = '<div class="col-span-full flex justify-center py-8"><div class="spinner"></div></div>';
+    // KEEP-ALIVE: a silent (revisit) load must not blank the grid it is about
+    // to refresh, or the user sees the spinner they already sat through once.
+    var keepAliveCards = silent && grid.querySelector('.sektor-group-card');
+    if (!keepAliveCards) {
+        grid.innerHTML = '<div class="col-span-full flex justify-center py-8"><div class="spinner"></div></div>';
+    }
 
     try {
-        var response = await fetch('/api/sector-hot');
+        // KEEP-ALIVE + SWR: a cached payload returns synchronously, so the
+        // cards paint in the same frame the panel becomes visible.
+        var response = await acKeepAliveFetch('/api/sector-hot');
         var data = await response.json();
         _sektorCache = data;
 
@@ -9789,7 +10022,7 @@ async function loadSektorHot() {
             var topChgView = changeDisplay(g.top_change_pct);
             var chgColor = chgView.cls;
             var avgChgDisplay = chgView.text;
-            html += '<div onclick="showGroupDetail(\'' + g.group_code + '\')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 cursor-pointer hover:border-emerald-500/30 hover:bg-dark-700/80 transition-all">';
+            html += '<div onclick="showGroupDetail(\'' + g.group_code + '\')" class="sektor-group-card bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 cursor-pointer hover:border-emerald-500/30 hover:bg-dark-700/80 transition-all">';
             html += '<div class="flex items-start justify-between mb-2"><h3 class="text-sm font-semibold text-gray-200 leading-tight">' + escapeHtml(g.group_name || g.group_code) + '</h3>';
             html += '<span class="text-lg font-bold ' + chgColor + ' flex-shrink-0 ml-2">' + avgChgDisplay + '</span></div>';
             html += '<div class="flex items-center gap-3 text-xs text-gray-500">';
@@ -12585,6 +12818,7 @@ function forceNormalizeTechnicalDOM(root) {
 // asserts on the produced HTML instead, and runs in CI.
 
 </script>
+<script src="/tab-keepalive-runtime.js?v=20260926-ka1"></script>
 <script src="/market-feature-runtime.js?v=20260818-v1"></script>
 <script src="/daytrade-runtime.js?v=20260818-v1"></script>
 
