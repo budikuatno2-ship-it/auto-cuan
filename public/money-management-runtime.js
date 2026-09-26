@@ -329,7 +329,7 @@
       html += '  <td class="px-3 py-2 text-right font-mono text-gray-200 border-r border-dark-600/40 text-xs">' + formatRp(entryPrice) + '</td>';
       html += '  <td class="px-3 py-2 text-right font-mono text-gray-200 border-r border-dark-600/40 text-xs">' + formatNumber(lots) + '</td>';
       html += '  <td class="px-3 py-2 text-right font-mono text-gray-300 border-r border-dark-600/40 text-xs font-semibold">' + formatRp(capitalUsed) + '</td>';
-      
+
       // Inline editable Exit Price
       html += '  <td class="px-2 py-1 text-right font-mono border-r border-dark-600/40 text-xs">';
       html += '    <input type="number" value="' + (exitPrice || '') + '" placeholder="Open" onchange="updateJournalTradeExit(\'' + safeId + '\', this.value)" class="w-24 text-right bg-dark-900 border border-dark-600/60 rounded px-2 py-1 text-xs text-white font-mono focus:border-emerald-500 outline-none">';
@@ -338,7 +338,7 @@
       html += '  <td class="px-3 py-2 text-right font-mono ' + plClass + ' border-r border-dark-600/40 text-xs whitespace-nowrap">' + (isClosed ? ((plRp >= 0 ? '+' : '') + formatRp(plRp)) : '<span class="text-amber-400 text-[10px] font-semibold">RUNNING</span>') + '</td>';
       html += '  <td class="px-3 py-2 text-right font-mono ' + plClass + ' border-r border-dark-600/40 text-xs">' + (isClosed ? ((plPct >= 0 ? '+' : '') + plPct + '%') : '—') + '</td>';
       html += '  <td class="px-2.5 py-2 text-center border-r border-dark-600/40 text-[10px] font-bold">' + (isClosed ? '<span class="text-gray-400">CLOSED</span>' : '<span class="text-emerald-400">OPEN</span>') + '</td>';
-      
+
       // Inline editable Notes
       html += '  <td class="px-2 py-1 border-r border-dark-600/40 text-xs">';
       html += '    <input type="text" value="' + safeNotes + '" placeholder="Catatan strategi..." onchange="updateJournalTradeNotes(\'' + safeId + '\', this.value)" class="w-full bg-transparent border-0 px-1 py-1 text-xs text-gray-300 focus:bg-dark-900 focus:border focus:border-dark-600 rounded outline-none">';
