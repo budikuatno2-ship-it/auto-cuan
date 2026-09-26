@@ -7,6 +7,13 @@
    ========================================================================== */
 
 :root {
+  /* Semantic canvas contract. Components consume roles rather than assuming
+     that a foreground is permanently light or a border permanently emerald. */
+  --bg-canvas: #090d16;
+  --bg-surface: #0d1320;
+  --text-primary: #f4f7fb;
+  --border-subtle: rgba(148, 163, 184, .12);
+
   --pw-bg: #06090e;
   --pw-bg-2: #080d14;
   --pw-panel: #09111a;
@@ -73,6 +80,13 @@
   --ac-focus-ring: 0 0 0 2px rgba(6, 9, 14, 1), 0 0 0 4px rgba(45, 212, 163, .42);
   --ac-row-h: 36px;
   --ac-row-h-dense: 31px;
+}
+
+html.light {
+  --bg-canvas: #f5f7fa;
+  --bg-surface: #ffffff;
+  --text-primary: #111827;
+  --border-subtle: rgba(15, 23, 42, .08);
 }
 
 html {
@@ -462,7 +476,7 @@ body {
 
 #dashGreeting {
   max-width: 760px;
-  color: #f6f9fb !important;
+  color: var(--text-primary) !important;
   font-size: clamp(25px, 3vw, 34px) !important;
   font-weight: 760 !important;
   line-height: 1.04 !important;
