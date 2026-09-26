@@ -21,6 +21,17 @@
   };
   var journalData = [];
 
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/[&<>"']/g, function(m) {
+      if (m === '&') return '&';
+      if (m === '<') return '<';
+      if (m === '>') return '>';
+      if (m === '"') return '"';
+      return String.fromCharCode(38) + '#39;';
+    });
+  }
+
   function formatRp(val) {
     if (val == null || !Number.isFinite(Number(val))) return 'Rp 0';
     return 'Rp ' + Number(val).toLocaleString('id-ID');
@@ -92,12 +103,15 @@
 
     if (statusEl) {
       if (totalIncome === 0) {
-        statusEl.innerHTML = '<span class="text-gray-400">💡 Masukkan pemasukan bulanan Anda untuk menghitung alokasi hidup aman dan modal trading.</span>';
+        statusEl.textContent = '💡 Masukkan pemasukan bulanan Anda untuk menghitung alokasi hidup aman dan modal trading.';
+        statusEl.className = 'p-3.5 rounded-xl bg-dark-800/80 border border-dark-600/40 text-xs text-gray-400';
       } else if (remainingNonTrading < 0) {
-        statusEl.innerHTML = '<span class="text-rose-400 font-semibold">⚠️ Peringatan: Total pengeluaran + modal trading melebihi pemasukan bulanan! Kurangi pos modal trading atau pengeluaran gaya hidup.</span>';
+        statusEl.textContent = '⚠️ Peringatan: Total pengeluaran + modal trading melebihi pemasukan bulanan! Kurangi pos modal trading atau pengeluaran gaya hidup.';
+        statusEl.className = 'p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-400 font-semibold';
       } else {
-        var pctTrading = totalIncome > 0 ? ((tradingCap / totalIncome) * 100).toFixed(1) : 0;
-        statusEl.innerHTML = '<span class="text-emerald-400 font-semibold">✅ Anggaran Aman: ' + pctTrading + '% pemasukan dialokasikan sebagai dana dingin bursa. Sisa kas kebutuhan hidup di luar trading aman terjaga.</span>';
+        var pctTrading = totalIncome > 0 ? ((tradingCap / totalIncome) * 100).toFixed(1) : '0';
+        statusEl.textContent = '✅ Anggaran Aman: ' + pctTrading + '% pemasukan dialokasikan sebagai dana dingin bursa. Sisa kas kebutuhan hidup di luar trading aman terjaga (' + formatRp(remainingNonTrading) + ').';
+        statusEl.className = 'p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 font-semibold';
       }
     }
 
@@ -125,7 +139,6 @@
     };
 
     try {
-      localStorage.setItem('autocuan_cashflow_cache', JSON.stringify(payload));
       var res = await fetch('/api/money-management', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,7 +149,7 @@
         if (typeof showToast === 'function') showToast('Arus kas bulanan berhasil disimpan!', 'success');
       }
     } catch (e) {
-      if (typeof showToast === 'function') showToast('Tersimpan di cache lokal.', 'info');
+      if (typeof showToast === 'function') showToast('Gagal menyimpan arus kas ke server.', 'warning');
     } finally {
       if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Simpan Anggaran'; }
     }
@@ -147,18 +160,12 @@
     var month = nowWib.toISOString().slice(0, 7);
 
     try {
-      var res = await fetch('/api/money-management?action=get-cashflow&month=' + month);
+      var res = await fetch('/api/money-management?action=get-cashflow&month=' + encodeURIComponent(month));
       var json = await res.json();
       if (json && json.success && json.data) {
         cashflowData = json.data;
-      } else {
-        var local = localStorage.getItem('autocuan_cashflow_cache');
-        if (local) cashflowData = JSON.parse(local);
       }
-    } catch (_) {
-      var local2 = localStorage.getItem('autocuan_cashflow_cache');
-      if (local2) cashflowData = JSON.parse(local2);
-    }
+    } catch (_) {}
 
     setFieldValue('mmIncomeSalary', cashflowData.income_salary);
     setFieldValue('mmIncomeSide', cashflowData.income_side);
@@ -192,20 +199,24 @@
       var plPct = Number(item.realized_pl_pct || 0);
       var isClosed = item.status === 'CLOSED' || (item.exit_price != null && item.exit_price > 0);
       var plClass = plRp > 0 ? 'text-emerald-400 font-bold' : (plRp < 0 ? 'text-rose-400 font-bold' : 'text-gray-400');
-      var statusBadge = isClosed ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-dark-600 text-gray-300">CLOSED</span>' : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">OPEN</span>';
+      var safeTicker = escapeHtml(item.ticker);
+      var safeDate = escapeHtml(item.trade_date || '—');
+      var safeNotes = escapeHtml(item.notes || '—');
+      var safeType = escapeHtml(item.position_type);
+      var safeId = escapeHtml(item.id || idx);
 
       html += '<tr class="hover:bg-dark-700/40 border-b border-dark-700/50 transition">';
-      html += '  <td class="px-3 py-2.5 font-mono text-gray-400 text-center">' + (item.trade_date || '—') + '</td>';
-      html += '  <td class="px-3 py-2.5 font-bold text-white tracking-wide cursor-pointer hover:text-emerald-400" onclick="window.location.assign(\'/analisis-saham?ticker=' + item.ticker + '\')">' + item.ticker + '</td>';
-      html += '  <td class="px-3 py-2.5 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ' + (item.position_type === 'BUY' ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10') + '">' + item.position_type + '</span></td>';
+      html += '  <td class="px-3 py-2.5 font-mono text-gray-400 text-center">' + safeDate + '</td>';
+      html += '  <td class="px-3 py-2.5 font-bold text-white tracking-wide cursor-pointer hover:text-emerald-400" onclick="window.location.assign(\'/analisis-saham?ticker=' + safeTicker + '\')">' + safeTicker + '</td>';
+      html += '  <td class="px-3 py-2.5 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ' + (item.position_type === 'BUY' ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10') + '">' + safeType + '</span></td>';
       html += '  <td class="px-3 py-2.5 text-right font-mono text-gray-200">' + formatRp(item.entry_price) + '</td>';
-      html += '  <td class="px-3 py-2.5 text-center font-mono text-gray-200">' + item.lots + '</td>';
+      html += '  <td class="px-3 py-2.5 text-center font-mono text-gray-200">' + Number(item.lots || 1) + '</td>';
       html += '  <td class="px-3 py-2.5 text-right font-mono text-gray-300">' + formatRp(item.capital_used) + '</td>';
       html += '  <td class="px-3 py-2.5 text-right font-mono ' + (item.exit_price ? 'text-white font-semibold' : 'text-gray-500') + '">' + (item.exit_price ? formatRp(item.exit_price) : '—') + '</td>';
       html += '  <td class="px-3 py-2.5 text-right font-mono ' + plClass + '">' + (isClosed ? ((plRp >= 0 ? '+' : '') + formatRp(plRp) + ' (' + (plPct >= 0 ? '+' : '') + plPct + '%)') : 'Running') + '</td>';
-      html += '  <td class="px-3 py-2.5 text-xs text-gray-400 truncate max-w-[150px]" title="' + (item.notes || '') + '">' + (item.notes || '—') + '</td>';
+      html += '  <td class="px-3 py-2.5 text-xs text-gray-400 truncate max-w-[150px]" title="' + safeNotes + '">' + safeNotes + '</td>';
       html += '  <td class="px-3 py-2.5 text-center">';
-      html += '    <button onclick="deleteJournalTrade(\'' + (item.id || idx) + '\')" class="p-1 text-gray-500 hover:text-rose-400 transition" title="Hapus transaksi">&times;</button>';
+      html += '    <button onclick="deleteJournalTrade(\'' + safeId + '\')" class="p-1 text-gray-500 hover:text-rose-400 transition" title="Hapus transaksi">&times;</button>';
       html += '  </td>';
       html += '</tr>';
     });
@@ -222,7 +233,7 @@
     var deployedCapital = openTrades.reduce(function(sum, j) { return sum + (Number(j.capital_used) || 0); }, 0);
     var totalRealizedPl = closedTrades.reduce(function(sum, j) { return sum + (Number(j.realized_pl_rp) || 0); }, 0);
     var winningTrades = closedTrades.filter(function(j) { return Number(j.realized_pl_rp) > 0; }).length;
-    var winRate = closedTrades.length > 0 ? ((winningTrades / closedTrades.length) * 100).toFixed(1) : 0;
+    var winRate = closedTrades.length > 0 ? Number(((winningTrades / closedTrades.length) * 100).toFixed(1)) : 0;
     var idleCash = Math.max(0, tradingCap - deployedCapital + totalRealizedPl);
 
     var capEl = document.getElementById('mmJrTotalCap');
@@ -296,7 +307,6 @@
 
     // Sync to backend
     try {
-      localStorage.setItem('autocuan_journal_cache', JSON.stringify(journalData));
       await fetch('/api/money-management', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -310,7 +320,6 @@
     journalData = journalData.filter(function(j, idx) { return (j.id || idx) !== id && String(idx) !== String(id); });
     renderJournalTable();
     try {
-      localStorage.setItem('autocuan_journal_cache', JSON.stringify(journalData));
       await fetch('/api/money-management', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -325,14 +334,8 @@
       var json = await res.json();
       if (json && json.success && Array.isArray(json.data)) {
         journalData = json.data;
-      } else {
-        var local = localStorage.getItem('autocuan_journal_cache');
-        if (local) journalData = JSON.parse(local);
       }
-    } catch (_) {
-      var local2 = localStorage.getItem('autocuan_journal_cache');
-      if (local2) journalData = JSON.parse(local2);
-    }
+    } catch (_) {}
     renderJournalTable();
   };
 

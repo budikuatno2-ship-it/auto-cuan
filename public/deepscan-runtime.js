@@ -9,6 +9,17 @@
   var deepScanData = null;
   var deepScanLoading = false;
 
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/[&<>"']/g, function(m) {
+      if (m === '&') return '&';
+      if (m === '<') return '<';
+      if (m === '>') return '>';
+      if (m === '"') return '"';
+      return String.fromCharCode(38) + '#39;';
+    });
+  }
+
   function formatRp(val) {
     if (val == null || !Number.isFinite(Number(val))) return '—';
     return 'Rp ' + Number(val).toLocaleString('id-ID');
@@ -48,13 +59,14 @@
       html += '    <div class="flex items-start justify-between gap-2 mb-3">';
       html += '      <div>';
       html += '        <div class="flex items-center gap-2">';
+      var safeTicker = escapeHtml(item.ticker);
       html += '          <span class="text-xs font-mono font-bold text-gray-400">#' + (idx + 1) + '</span>';
-      html += '          <h3 class="text-xl font-black text-white tracking-wide">' + item.ticker + '</h3>';
+      html += '          <h3 class="text-xl font-black text-white tracking-wide">' + safeTicker + '</h3>';
       html += '          <span class="px-2 py-0.5 rounded text-[11px] font-bold border ' + scoreBadge + '">Score ' + item.score + '/100</span>';
       html += '        </div>';
       html += '        <p class="text-xs text-emerald-400 font-medium mt-1">Lantai Akumulasi 3–6 Bulan: ' + formatRp(item.accumulation_floor) + '</p>';
       html += '      </div>';
-      html += '      <button onclick="if(window.UnifiedCockpit){window.UnifiedCockpit.syncActiveTicker(\'' + item.ticker + '\', {loadChart:true});window.location.assign(\'/analisis-saham?ticker=' + item.ticker + '\');}" class="px-2.5 py-1 text-[11px] font-semibold text-gray-300 bg-dark-700 hover:bg-emerald-500/20 hover:text-emerald-300 rounded-lg border border-dark-600 transition">Chart &rarr;</button>';
+      html += '      <button onclick="if(window.UnifiedCockpit){window.UnifiedCockpit.syncActiveTicker(\'' + safeTicker + '\', {loadChart:true});window.location.assign(\'/analisis-saham?ticker=' + safeTicker + '\');}" class="px-2.5 py-1 text-[11px] font-semibold text-gray-300 bg-dark-700 hover:bg-emerald-500/20 hover:text-emerald-300 rounded-lg border border-dark-600 transition">Chart &rarr;</button>';
       html += '    </div>';
 
       // Price & Entry Area (Buy on Weakness)
