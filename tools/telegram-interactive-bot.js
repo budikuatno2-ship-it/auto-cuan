@@ -72,6 +72,9 @@ function createTelegramApi(token, fetchFn) {
         disable_web_page_preview: true
       }, extra || {}));
     },
+    pinChatMessage(chatId, messageId, extra) {
+      return call('pinChatMessage', Object.assign({ chat_id: chatId, message_id: messageId }, extra || {}));
+    },
     deleteMessage(chatId, messageId) {
       return call('deleteMessage', { chat_id: chatId, message_id: messageId });
     },
