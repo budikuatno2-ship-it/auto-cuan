@@ -532,6 +532,7 @@
   "test/trade-plan-v2-source-adapters.test.js",
   "test/trade-plan-v2-sweep-diagnostic.test.js",
   "test/trade-plan-v2.test.js",
+  "test/financial-surface-contract.test.js",
   "test/ui-bugfix-pack-v1.test.js",
   "test/ui-pattern-filters.test.js",
   "test/ui-redesign-a11y.test.js",
