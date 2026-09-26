@@ -11864,7 +11864,7 @@ async function fetchNkQuoteData(ticker) {
 // --- HARD FILTERS ---
 function applyNkHardFilters(q) {
   if (!q) return false;
-  if (q.lastPrice <= 50) return false;
+  if (q.lastPrice < 1) return false;
   if (q.tradedDays20d < 15) return false;
   if (q.avgTxValue20d < 10_000_000_000) return false;
   if (q.riskReward < 1.5) return false;

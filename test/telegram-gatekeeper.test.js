@@ -359,7 +359,7 @@ test('bandar command renders CR3/CR5 from the local broker snapshot', async () =
   );
 });
 
-test('expired BYOK session asks the member to refresh', async () => {
+test('expired BYOK session remains active (persistent BYOK, no auto-expire)', async () => {
   const db = memoryDb([{ telegram_id: '42', status: 'active', provider: 'gemini', daily_limit: 15 }]);
   let now = 1000;
   const bot = createInteractiveBot({
@@ -375,17 +375,17 @@ test('expired BYOK session asks the member to refresh', async () => {
     },
     skipProbe: true
   });
-  // Open a session, then jump past the 6-hour TTL.
+  // Open a session, then jump past the old 6-hour TTL — with persistent BYOK it should still be active.
   const fistCtx = createCtx({ message: { text: '/start' } });
   await bot.handleUpdate(fistCtx);
   now += bot.constants.KEY_SESSION_TTL_MS + 1;
 
   const ctx = createCtx({ chat: { id: -100, type: 'supergroup' }, message: { text: '/analisa BBCA' } });
   await bot.handleUpdate(ctx);
-  assert.match(ctx.sent[0].text, /Sesi API Key Anda telah berakhir/);
-  const button = ctx.sent[0].extra.reply_markup.inline_keyboard[0][0];
-  assert.equal(button.text, '🔄 Refresh Sesi Kunci');
-  assert.match(button.url, /start=refresh_42$/);
+  // Persistent BYOK: no refresh prompt, command should proceed (progress edits)
+  const hasRefreshPrompt = ctx.sent.some(m => /Sesi API Key Anda telah berakhir|Refresh Sesi Kunci/.test(m.text || ''));
+  assert.equal(hasRefreshPrompt, false, 'persistent BYOK should not send refresh prompt');
+  assert.ok(ctx.edits.length > 0, 'should proceed to analysis');
 });
 
 test('new registration stores a protected password hash and notifies the admin', async () => {

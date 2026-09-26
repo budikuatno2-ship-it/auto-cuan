@@ -606,10 +606,11 @@ test('state-machine: Kondisi 4 in group chat notifies user to set key in DM', as
   });
   await bot.handleUpdate(ctx);
   assert.equal(ctx.sent.length, 1);
-  assert.match(ctx.sent[0].text, /Kunci AI \(BYOK\) Anda belum dipasang/);
-  assert.match(ctx.sent[0].text, /\/setkey/);
+  assert.match(ctx.sent[0].text, /Anda belum mengatur Kunci AI \(BYOK\)/);
+  assert.match(ctx.sent[0].text, /Fitur analisis di grup memerlukan kunci aktif/);
   const btn = ctx.sent[0].extra.reply_markup.inline_keyboard[0][0];
   assert.match(btn.text, /Pasang Kunci AI/);
+  assert.match(btn.url, /start=setkey/);
 });
 
 test('state-machine: direct /setkey <key> activates BYOK and allows group commands', async () => {
