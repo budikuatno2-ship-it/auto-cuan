@@ -432,7 +432,8 @@ test('Non-Konglo hard filters: illiquid / thin names are still rejected', () => 
     riskReward: 2.0, volumeRatioAvg20: 1.2
   };
   assert.equal(T.applyNkHardFilters(liquid), true, 'a liquid, well-traded name must pass');
-  assert.equal(T.applyNkHardFilters(Object.assign({}, liquid, { lastPrice: 50 })), false, 'harga <= 50 ditolak');
+  assert.equal(T.applyNkHardFilters(Object.assign({}, liquid, { lastPrice: 0 })), false, 'harga < 1 ditolak');
+  assert.equal(T.applyNkHardFilters(Object.assign({}, liquid, { lastPrice: 50 })), true, 'harga 50 tetap valid (floor Rp1)');
   assert.equal(T.applyNkHardFilters(Object.assign({}, liquid, { tradedDays20d: 14 })), false, 'traded days < 15 ditolak');
   assert.equal(T.applyNkHardFilters(Object.assign({}, liquid, { avgTxValue20d: 9e9 })), false, 'nilai transaksi < 10B ditolak');
   assert.equal(T.applyNkHardFilters(Object.assign({}, liquid, { riskReward: 1.4 })), false, 'R:R < 1.5 ditolak');

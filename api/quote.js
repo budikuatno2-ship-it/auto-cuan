@@ -740,7 +740,7 @@ async function fetchBoardData(ticker) {
     companyName: row.company_name || null,
     board: row.board || 'UNKNOWN',
     isFca: !!row.is_fca,
-    minPriceGuard: row.min_price_guard != null ? row.min_price_guard : 50,
+    minPriceGuard: row.min_price_guard != null ? row.min_price_guard : 1,
     note: row.note || getBoardNote(row.board)
   };
 
@@ -754,7 +754,7 @@ function makeBoardNotFound(ticker) {
     companyName: null,
     board: 'UNKNOWN',
     isFca: false,
-    minPriceGuard: 50,
+    minPriceGuard: 1,
     note: 'Board/FCA belum tersedia'
   };
 }
@@ -1914,9 +1914,12 @@ function calculateAutoCuanScore(quote, board) {
     }
     // UTAMA, PENGEMBANGAN, EKONOMI_BARU = no penalty
   }
-  // Low price penalty
-  if (price != null && price <= 50) { risk -= 8; warnings.push('Harga sangat rendah'); }
-  else if (price != null && price <= 100) { risk -= 4; warnings.push('Harga rendah'); }
+  // Low price penalty - FLOOR UPDATE 2026-09: floor Rp1, ARB -15%
+  // Harga <1 invalid, 1-10 sangat rendah, 11-50 rendah (tetap valid jika likuiditas ok)
+  if (price != null && price < 1) { risk -= 8; warnings.push('Harga di bawah floor Rp1'); }
+  else if (price != null && price <= 10) { risk -= 8; warnings.push('Harga sangat rendah'); }
+  else if (price != null && price <= 50) { risk -= 4; warnings.push('Harga rendah'); }
+  else if (price != null && price <= 100) { risk -= 2; warnings.push('Harga low-price'); }
   // Extreme RSI penalty (already captured in momentum but add risk warning)
   if (rsi != null && rsi > 80) { risk -= 5; }
   if (rsi != null && rsi < 25) { risk -= 5; }
@@ -2270,18 +2273,27 @@ function calculateRiskGuard(quote, board) {
   }
   // UTAMA/PENGEMBANGAN/EKONOMI_BARU: no board penalty
 
-  // === PRICE RISK ===
+  // === PRICE RISK === FLOOR UPDATE 2026-09: floor Rp1, ARB -15%
+  // Saham di bawah Rp50 tetap valid selama likuiditas & akumulasi memenuhi syarat
   if (price != null) {
-    if (price <= 50) {
+    if (price < 1) {
       riskScore += 20;
-      reasons.push('Harga sangat rendah (Rp ' + price + ') — area gocap/near-gocap');
+      reasons.push('Harga di bawah floor Rp1 (Rp ' + price + ') — invalid');
+      warnings.push('below_floor_1');
+    } else if (price <= 10) {
+      riskScore += 20;
+      reasons.push('Harga sangat rendah (Rp ' + price + ') — area floor Rp1');
       warnings.push('very_low_price');
-    } else if (price <= 100) {
-      riskScore += 15;
-      reasons.push('Harga rendah (Rp ' + price + ') — speculative area');
+    } else if (price <= 50) {
+      riskScore += 10;
+      reasons.push('Harga rendah (Rp ' + price + ') — perlu konfirmasi likuiditas');
       warnings.push('low_price');
-    } else if (price <= 200) {
+    } else if (price <= 100) {
       riskScore += 8;
+      reasons.push('Harga low-price (Rp ' + price + ') — speculative area');
+      warnings.push('low_price_area');
+    } else if (price <= 200) {
+      riskScore += 5;
       reasons.push('Harga masih low-price (Rp ' + price + ') — perlu konfirmasi kuat');
       warnings.push('low_price_area');
     }
