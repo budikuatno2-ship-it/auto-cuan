@@ -586,3 +586,284 @@ test('runtime env loader fills only missing keys', () => {
   assert.equal(env.ADMIN_TELEGRAM_ID, '1');
   assert.equal(env.SUPABASE_URL, 'https://example.supabase.co');
 });
+
+test('state-machine: Kondisi 4 in group chat notifies user to set key in DM', async () => {
+  const db = memoryDb([{
+    telegram_id: '100',
+    username: 'approved_user',
+    status: 'approved',
+    email: 'user@gmail.com',
+    byok_active: false
+  }]);
+  const bot = createInteractiveBot({
+    db,
+    env: { ADMIN_TELEGRAM_ID: '7' }
+  });
+  const ctx = createCtx({
+    chat: { id: -100123, type: 'supergroup' },
+    from: { id: 100, username: 'approved_user' },
+    message: { text: '/analisa BBCA' }
+  });
+  await bot.handleUpdate(ctx);
+  assert.equal(ctx.sent.length, 1);
+  assert.match(ctx.sent[0].text, /Kunci AI \(BYOK\) Anda belum dipasang/);
+  assert.match(ctx.sent[0].text, /\/setkey/);
+  const btn = ctx.sent[0].extra.reply_markup.inline_keyboard[0][0];
+  assert.match(btn.text, /Pasang Kunci AI/);
+});
+
+test('state-machine: direct /setkey <key> activates BYOK and allows group commands', async () => {
+  const db = memoryDb([{
+    telegram_id: '200',
+    username: 'test_trader',
+    status: 'approved',
+    email: 'trader@gmail.com',
+    byok_active: false
+  }]);
+  const mock = mockCredentials();
+  const bot = createInteractiveBot({
+    db,
+    credentials: mock,
+    gemini: {
+      async generateGeminiContent() { return { text: 'Ulasan BBCA mantap' }; }
+    },
+    env: { ADMIN_TELEGRAM_ID: '7' },
+    delays: { denial: 20, result: 20, welcome: 20 }
+  });
+
+  // User sets key directly in DM
+  const dmCtx = createCtx({
+    chat: { id: 200, type: 'private' },
+    from: { id: 200, username: 'test_trader' },
+    message: { message_id: 11, text: '/setkey AIzaSyTestKey123456789012345678901234567' }
+  });
+  await bot.handleUpdate(dmCtx);
+  assert.equal(dmCtx.sent.length, 1);
+  assert.match(dmCtx.sent[0].text, /Kunci AI Berhasil Diaktifkan/);
+
+  // Check database updated
+  const user = await db.from('bot_users').select('*').eq('telegram_id', '200').maybeSingle();
+  assert.equal(user.data.status, 'approved');
+  assert.equal(user.data.provider, 'gemini');
+
+  // Now user calls in group chat
+  const groupCtx = createCtx({
+    chat: { id: -100222, type: 'supergroup' },
+    from: { id: 200, username: 'test_trader' },
+    message: { text: '/analisa BBCA' }
+  });
+  await bot.handleUpdate(groupCtx);
+  assert.notEqual(groupCtx.sent[0].text.indexOf('Kunci AI (BYOK) Anda belum dipasang'), 0);
+  assert.match(groupCtx.edits.at(-1).text, /BBCA/);
+});
+
+test('state-machine: /setkey wizard step-by-step Official Provider flow', async () => {
+  const db = memoryDb([{
+    telegram_id: '300',
+    username: 'wizard_user',
+    status: 'approved',
+    email: 'wiz@gmail.com',
+    byok_active: false
+  }]);
+  const mock = mockCredentials();
+  const bot = createInteractiveBot({
+    db,
+    credentials: mock,
+    env: { ADMIN_TELEGRAM_ID: '7' },
+    fetchFn: async (url) => {
+      if (url.includes('generativelanguage.googleapis.com')) {
+        return {
+          ok: true,
+          json: async () => ({
+            models: [
+              { name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] },
+              { name: 'models/gemini-1.5-pro', supportedGenerationMethods: ['generateContent'] }
+            ]
+          })
+        };
+      }
+      return { ok: false };
+    }
+  });
+
+  // Step 1: User types /setkey
+  const step1Ctx = createCtx({
+    chat: { id: 300, type: 'private' },
+    from: { id: 300, username: 'wizard_user' },
+    message: { text: '/setkey' }
+  });
+  await bot.handleUpdate(step1Ctx);
+  assert.match(step1Ctx.sent[0].text, /Wizard Pengaturan Kunci AI/);
+  const catBtn = step1Ctx.sent[0].extra.reply_markup.inline_keyboard[0][0];
+  assert.equal(catBtn.callback_data, 'setkey:cat:official');
+
+  // Step 2A: User clicks Official Provider
+  const step2Ctx = createCtx({
+    chat: { id: 300, type: 'private' },
+    from: { id: 300, username: 'wizard_user' },
+    callbackQuery: { id: 'cb1', data: 'setkey:cat:official' }
+  });
+  await bot.handleUpdate(step2Ctx);
+  assert.match(step2Ctx.edits[0].text, /Pilih Provider Resmi/);
+  const geminiBtn = step2Ctx.edits[0].extra.reply_markup.inline_keyboard[0][0];
+  assert.equal(geminiBtn.callback_data, 'setkey:prov:gemini');
+
+  // Step 2B: User selects Google Gemini
+  const step3Ctx = createCtx({
+    chat: { id: 300, type: 'private' },
+    from: { id: 300, username: 'wizard_user' },
+    callbackQuery: { id: 'cb2', data: 'setkey:prov:gemini' }
+  });
+  await bot.handleUpdate(step3Ctx);
+  assert.match(step3Ctx.edits[0].text, /Kirimkan API Key resmi Anda/);
+
+  // Step 2C: User sends Gemini API key text
+  const step4Ctx = createCtx({
+    chat: { id: 300, type: 'private' },
+    from: { id: 300, username: 'wizard_user' },
+    message: { message_id: 15, text: 'AIzaSyTestOfficialKey12345678901234567' }
+  });
+  await bot.handleUpdate(step4Ctx);
+  // Verify model buttons presented via editMessageText or reply
+  const lastEditOrSent = step4Ctx.edits[0] || step4Ctx.sent.at(-1);
+  assert.match(lastEditOrSent.text, /pilih model/i);
+  const modelBtns = (lastEditOrSent.extra && lastEditOrSent.extra.reply_markup && lastEditOrSent.extra.reply_markup.inline_keyboard) ||
+    (lastEditOrSent.reply_markup && lastEditOrSent.reply_markup.inline_keyboard);
+  assert.ok(modelBtns.length >= 1);
+  assert.equal(modelBtns[0][0].callback_data, 'setkey:model:0');
+
+  // Step 3: User clicks chosen model
+  const step5Ctx = createCtx({
+    chat: { id: 300, type: 'private' },
+    from: { id: 300, username: 'wizard_user' },
+    callbackQuery: { id: 'cb3', data: 'setkey:model:0' }
+  });
+  await bot.handleUpdate(step5Ctx);
+  assert.match(step5Ctx.edits[0].text, /Kunci AI Berhasil Diaktifkan/);
+  assert.match(step5Ctx.edits[0].text, /gemini-2\.5-flash/);
+  assert.match(step5Ctx.edits[0].text, /Status BYOK: <b>Aktif ✅<\/b>/);
+});
+
+test('state-machine: /setkey wizard Custom Provider flow with model fetching and pagination', async () => {
+  const db = memoryDb([{
+    telegram_id: '400',
+    username: 'custom_wiz_user',
+    status: 'approved',
+    email: 'custom@gmail.com',
+    byok_active: false
+  }]);
+  const mock = mockCredentials();
+  const bot = createInteractiveBot({
+    db,
+    credentials: mock,
+    env: { ADMIN_TELEGRAM_ID: '7' },
+    fetchFn: async (url) => {
+      if (url.includes('api.9router.com/v1/models')) {
+        return {
+          ok: true,
+          json: async () => ({
+            data: [
+              { id: 'deepseek/deepseek-r1' },
+              { id: 'deepseek/deepseek-chat' },
+              { id: 'openai/gpt-4o' },
+              { id: 'openai/gpt-4o-mini' },
+              { id: 'anthropic/claude-3-5-sonnet' },
+              { id: 'google/gemini-2.5-flash' },
+              { id: 'meta-llama/llama-3.3-70b-instruct' }
+            ]
+          })
+        };
+      }
+      return { ok: false };
+    }
+  });
+
+  // Step 1: User types /setkey
+  const step1Ctx = createCtx({
+    chat: { id: 400, type: 'private' },
+    from: { id: 400, username: 'custom_wiz_user' },
+    message: { text: '/setkey' }
+  });
+  await bot.handleUpdate(step1Ctx);
+
+  // Step 2A: User selects Custom Provider
+  const step2Ctx = createCtx({
+    chat: { id: 400, type: 'private' },
+    from: { id: 400, username: 'custom_wiz_user' },
+    callbackQuery: { id: 'cb_custom', data: 'setkey:cat:custom' }
+  });
+  await bot.handleUpdate(step2Ctx);
+  assert.match(step2Ctx.edits[0].text, /Custom \/ 3rd Party Provider/);
+  assert.match(step2Ctx.edits[0].text, /Kirimkan Base URL API Anda/);
+
+  // Step 2B: User sends Base URL
+  const step3Ctx = createCtx({
+    chat: { id: 400, type: 'private' },
+    from: { id: 400, username: 'custom_wiz_user' },
+    message: { text: 'https://api.9router.com/v1' }
+  });
+  await bot.handleUpdate(step3Ctx);
+  assert.match(step3Ctx.sent[0].text, /Base URL disimpan/);
+  assert.match(step3Ctx.sent[0].text, /Kirimkan API Key Anda/);
+
+  // Step 2C: User sends API key
+  const step4Ctx = createCtx({
+    chat: { id: 400, type: 'private' },
+    from: { id: 400, username: 'custom_wiz_user' },
+    message: { message_id: 20, text: 'sk-9router-secret-key-12345678' }
+  });
+  await bot.handleUpdate(step4Ctx);
+
+  const lastEditOrSent = step4Ctx.edits[0] || step4Ctx.sent.at(-1);
+  assert.match(lastEditOrSent.text, /pilih model/i);
+  const modelBtns = (lastEditOrSent.extra && lastEditOrSent.extra.reply_markup && lastEditOrSent.extra.reply_markup.inline_keyboard) ||
+    (lastEditOrSent.reply_markup && lastEditOrSent.reply_markup.inline_keyboard);
+  assert.ok(modelBtns.length >= 1);
+  assert.equal(modelBtns[0][0].callback_data, 'setkey:model:0');
+
+  // Step 3: User selects model (0 -> deepseek/deepseek-r1)
+  const step5Ctx = createCtx({
+    chat: { id: 400, type: 'private' },
+    from: { id: 400, username: 'custom_wiz_user' },
+    callbackQuery: { id: 'cb_m0', data: 'setkey:model:0' }
+  });
+  await bot.handleUpdate(step5Ctx);
+  assert.match(step5Ctx.edits[0].text, /Kunci AI Berhasil Diaktifkan/);
+  assert.match(step5Ctx.edits[0].text, /deepseek\/deepseek-r1/);
+
+  // Verify DB updated with custom settings
+  const userRow = await db.from('bot_users').select('*').eq('telegram_id', '400').maybeSingle();
+  assert.equal(userRow.data.status, 'approved');
+  assert.equal(userRow.data.provider, 'custom');
+  assert.equal(userRow.data.provider_settings.ai_model, 'deepseek/deepseek-r1');
+  assert.equal(userRow.data.provider_settings.ai_base_url, 'https://api.9router.com/v1');
+});
+
+test('state-machine: @Donaldtrumpssss (Telegram ID 6396446903) is recognized as verified admin', async () => {
+  const db = memoryDb([{
+    telegram_id: '6396446903',
+    username: 'Donaldtrumpssss',
+    status: 'approved',
+    email: 'budi@autocuan.com',
+    byok_active: true
+  }]);
+  const bot = createInteractiveBot({
+    db,
+    env: { ADMIN_TELEGRAM_ID: '6396446903' },
+    gemini: {
+      async generateGeminiContent() { return { text: 'Analisa admin ok' }; }
+    }
+  });
+
+  const groupCtx = createCtx({
+    chat: { id: -100999, type: 'supergroup' },
+    from: { id: 6396446903, username: 'Donaldtrumpssss' },
+    message: { text: '/analisa BBCA' }
+  });
+  await bot.handleUpdate(groupCtx);
+  // Must not be rejected with unverified or need byok hold
+  assert.equal(groupCtx.sent.length > 0, true);
+  assert.doesNotMatch(groupCtx.sent[0].text, /belum terverifikasi/i);
+  assert.doesNotMatch(groupCtx.sent[0].text, /Kunci AI \(BYOK\) Anda belum dipasang/i);
+  assert.match(groupCtx.edits.at(-1).text, /BBCA/);
+});
