@@ -119,7 +119,7 @@
     <link rel="stylesheet" href="/index-shell.css?v=20260818-v1">
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
-    <link rel="stylesheet" href="/ui-theme.css?v=20260802-ui-theme-v2">
+    <link rel="stylesheet" href="/ui-theme.css?v=20260926-shell-v3">
     <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <link rel="stylesheet" href="/spreadsheet-grade.css?v=20260926-sg1">
@@ -128,69 +128,11 @@
 <a href="#" class="skip-link" onclick="return skipToMainContent(event)">Lewati ke konten utama</a>
 <div id="toastContainer" role="status" aria-live="polite" aria-atomic="true"></div>
 
-<!-- ===== WORKSPACE SIDEBAR (collapsible left navigation) ===== -->
-<aside id="workspaceSidebar" class="app-sidebar hidden" aria-label="Navigasi workspace">
-    <div class="sidebar-brand flex items-center gap-3 px-4 py-4 border-b border-dark-600/40">
-        <button type="button" onclick="toggleSidebarCollapse()" class="brand-mark w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0" title="Ciutkan / bentangkan sidebar" aria-label="Ciutkan atau bentangkan sidebar navigasi">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-        </button>
-        <div class="sidebar-brand-text min-w-0">
-            <p class="text-sm font-black text-white leading-tight truncate">Auto-Cuan</p>
-            <p class="text-[10px] text-gray-500 truncate">IDX Workspace</p>
-        </div>
-    </div>
-    <nav class="flex-1 overflow-y-auto px-3 py-3 space-y-1 scrollbar-thin" aria-label="Menu utama workspace">
-        <button type="button" onclick="navigateTo('dashboard')" class="sidebar-item" data-sidebar-page="dashboard" title="Dashboard">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-            <span class="sidebar-label">Dashboard</span>
-        </button>
-        <button type="button" onclick="navigateTo('analisis')" class="sidebar-item" data-sidebar-page="analisis" title="Analisis Saham">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-            <span class="sidebar-label">Analisis Saham</span>
-        </button>
-        <button type="button" onclick="navigateTo('sektor')" class="sidebar-item hidden" data-sidebar-page="sektor" data-premium-nav="true" title="Sektor Hot">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            <span class="sidebar-label">Sektor Hot</span>
-        </button>
-        <button type="button" onclick="navigateTo('screener')" class="sidebar-item hidden" data-sidebar-page="screener" data-premium-nav="true" title="Screener">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <span class="sidebar-label">Screener</span>
-        </button>
-        <button type="button" onclick="navigateTo('portofolio')" class="sidebar-item hidden" data-sidebar-page="portofolio" data-premium-nav="true" title="Portofolio">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-            <span class="sidebar-label">Portofolio</span>
-        </button>
-        <button type="button" onclick="navigateTo('watchlist')" class="sidebar-item hidden" data-sidebar-page="watchlist" data-premium-nav="true" title="Watchlist">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-            <span class="sidebar-label">Watchlist</span>
-        </button>
-        <button type="button" onclick="navigateTo('trackrecord')" class="sidebar-item hidden" data-sidebar-page="trackrecord" data-premium-nav="true" title="Track Record">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-            <span class="sidebar-label">Track Record</span>
-        </button>
-        <button type="button" onclick="navigateTo('deepscan')" class="sidebar-item hidden" data-sidebar-page="deepscan" data-premium-nav="true" title="Macro DeepScan">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            <span class="sidebar-label">Macro DeepScan</span>
-        </button>
-        <button type="button" onclick="navigateTo('money-management')" class="sidebar-item hidden" data-sidebar-page="money-management" data-premium-nav="true" title="Kelola Keuangan">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <span class="sidebar-label">Kelola Keuangan</span>
-        </button>
-    </nav>
-    <div class="px-3 py-3 border-t border-dark-600/40 space-y-2">
-        <button type="button" onclick="toggleAppTheme()" class="theme-toggle-btn w-full justify-center" title="Ganti tema terang/gelap">
-            <span id="sidebarThemeIcon">🌙</span><span class="sidebar-label" id="sidebarThemeLabel">Dark Mode</span>
-        </button>
-    </div>
-</aside>
-<div id="sidebarScrim" class="sidebar-scrim hidden" onclick="closeMobileSidebar()" aria-hidden="true"></div>
-
 <!-- ===== INITIAL LOADING INDICATOR (visible before JS init completes) ===== -->
 <div id="initialLoader" class="min-h-screen w-full flex flex-col items-center justify-center" style="background-color:#0b0e14">
     <div class="spinner" style="width:32px;height:32px;border:3px solid #242d3d;border-top-color:#10b981;border-radius:50%;animation:spin 0.8s linear infinite"></div>
     <p style="margin-top:16px;font-size:13px;color:#6b7280;font-family:Inter,-apple-system,sans-serif">Memuat Auto-Cuan...</p>
 </div>
-
 
 <!-- ===== BLOCKED SCREEN ===== -->
 <div id="blockedScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4" style="background-color:#0b0e14">
@@ -255,7 +197,6 @@
     </div>
 </div>
 
-
 <!-- ===== SERVICE STATUS UNVERIFIED SCREEN =====
      Shown when the maintenance status could not be established: the request
      timed out, failed, or returned something unusable. It is deliberately NOT
@@ -304,7 +245,6 @@
         </div>
     </div>
 </div>
-
 
 <!-- ===== PUBLIC LANDING PAGE ===== -->
 <section id="landingPage" class="landing-shell hidden">
@@ -374,7 +314,6 @@
     </main>
     <footer class="border-t border-slate-800/80"><div class="landing-container py-8 flex flex-col md:flex-row gap-4 md:items-center md:justify-between"><div><h2 class="font-black text-white">Auto-Cuan</h2><p class="text-sm text-gray-500">IDX Stock Radar</p></div><div class="flex flex-wrap gap-2 text-xs text-gray-500"><span>Bukan penasihat keuangan</span><span>•</span><span>Bukan rekomendasi beli/jual</span><span>•</span><span>Data bisa terlambat</span><span>•</span><span>Gunakan sebagai alat bantu analisis</span></div><button type="button" onclick="landingPrimaryAction()" class="landing-link text-left"><span class="landing-cta-label">Masuk Dashboard</span> →</button></div></footer>
 </section>
-
 
 <!-- AUTH CHOICE MODAL -->
 <div id="authChoiceModal" class="hidden fixed inset-0 z-[9998] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="authChoiceTitle">
@@ -503,6 +442,74 @@
     </div>
 </aside>
 
+<!-- AUTO_CUAN_FLEX_SHELL_V1 -->
+<!-- ===== APP SHELL =========================================================
+     One flex row: the navigation rail and the content column are SIBLINGS, so
+     the content can only ever sit to the RIGHT of the rail — never under it and
+     never pushed below it. The rail is an in-flow sticky column at >=1024px and
+     becomes a fixed overlay drawer below that (see .app-sidebar in ui-theme.css).
+     This is the single navigation surface for the app: the old horizontal
+     header nav was a second copy of the same nine destinations. -->
+<div class="app-layout">
+<!-- ===== WORKSPACE SIDEBAR (collapsible left navigation) ===== -->
+<aside id="workspaceSidebar" class="app-sidebar hidden" aria-label="Navigasi workspace">
+    <div class="sidebar-brand flex items-center gap-3 px-4 py-4 border-b border-dark-600/40">
+        <button type="button" onclick="toggleSidebarCollapse()" class="brand-mark w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0" title="Ciutkan / bentangkan sidebar" aria-label="Ciutkan atau bentangkan sidebar navigasi">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div class="sidebar-brand-text min-w-0">
+            <p class="text-sm font-black text-white leading-tight truncate">Auto-Cuan</p>
+            <p class="text-[10px] text-gray-500 truncate">IDX Workspace</p>
+        </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto px-3 py-3 space-y-1 scrollbar-thin" aria-label="Menu utama workspace">
+        <button type="button" onclick="navigateTo('dashboard')" class="sidebar-item" data-sidebar-page="dashboard" title="Dashboard">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            <span class="sidebar-label">Dashboard</span>
+        </button>
+        <button type="button" onclick="navigateTo('analisis')" class="sidebar-item" data-sidebar-page="analisis" title="Analisis Saham">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <span class="sidebar-label">Analisis Saham</span>
+        </button>
+        <button type="button" onclick="navigateTo('sektor')" class="sidebar-item hidden" data-sidebar-page="sektor" data-premium-nav="true" title="Sektor Hot">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span class="sidebar-label">Sektor Hot</span>
+        </button>
+        <button type="button" onclick="navigateTo('screener')" class="sidebar-item hidden" data-sidebar-page="screener" data-premium-nav="true" title="Screener">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <span class="sidebar-label">Screener</span>
+        </button>
+        <button type="button" onclick="navigateTo('portofolio')" class="sidebar-item hidden" data-sidebar-page="portofolio" data-premium-nav="true" title="Portofolio">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+            <span class="sidebar-label">Portofolio</span>
+        </button>
+        <button type="button" onclick="navigateTo('watchlist')" class="sidebar-item hidden" data-sidebar-page="watchlist" data-premium-nav="true" title="Watchlist">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+            <span class="sidebar-label">Watchlist</span>
+        </button>
+        <button type="button" onclick="navigateTo('trackrecord')" class="sidebar-item hidden" data-sidebar-page="trackrecord" data-premium-nav="true" title="Track Record">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <span class="sidebar-label">Track Record</span>
+        </button>
+        <button type="button" onclick="navigateTo('deepscan')" class="sidebar-item hidden" data-sidebar-page="deepscan" data-premium-nav="true" title="Macro DeepScan">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span class="sidebar-label">Macro DeepScan</span>
+        </button>
+        <button type="button" onclick="navigateTo('money-management')" class="sidebar-item hidden" data-sidebar-page="money-management" data-premium-nav="true" title="Kelola Keuangan">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="sidebar-label">Kelola Keuangan</span>
+        </button>
+    </nav>
+    <div class="px-3 py-3 border-t border-dark-600/40 space-y-2">
+        <button type="button" onclick="toggleAppTheme()" class="theme-toggle-btn w-full justify-center" title="Ganti tema terang/gelap">
+            <span id="sidebarThemeIcon">🌙</span><span class="sidebar-label" id="sidebarThemeLabel">Dark Mode</span>
+        </button>
+    </div>
+</aside>
+<div id="sidebarScrim" class="sidebar-scrim hidden" onclick="closeMobileSidebar()" aria-hidden="true"></div>
+
+<main class="app-main">
+
 <!-- HEADER -->
 <header class="app-header sticky top-0 z-50 backdrop-blur-xl flex-shrink-0">
     <div class="header-shell w-full mx-auto px-3 sm:px-5 py-2.5">
@@ -522,17 +529,6 @@
                     <p class="text-xs text-gray-500 hidden sm:block">Stock Analysis Dashboard</p>
                 </div>
             </div>
-            <nav class="desktop-nav flex-1 items-center justify-center min-w-0" aria-label="Navigasi utama desktop">
-                <button onclick="navigateTo('dashboard')" class="nav-btn active" data-page="dashboard"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg><span>Dashboard</span></button>
-                <button onclick="navigateTo('analisis')" class="nav-btn" data-page="analisis"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg><span>Analisis Saham</span></button>
-                <button onclick="navigateTo('sektor')" class="nav-btn hidden" data-page="sektor" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>Sektor Hot</span></button>
-                <button onclick="navigateTo('screener')" class="nav-btn hidden" data-page="screener" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span>Screener</span></button>
-                <button onclick="navigateTo('portofolio')" class="nav-btn hidden" data-page="portofolio" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg><span>Portofolio</span></button>
-                <button onclick="navigateTo('watchlist')" class="nav-btn hidden" data-page="watchlist" id="nav-watchlist" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg><span>Watchlist</span></button>
-                <button onclick="navigateTo('trackrecord')" class="nav-btn hidden" data-page="trackrecord" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg><span>Track Record</span></button>
-                <button onclick="navigateTo('deepscan')" class="nav-btn hidden" data-page="deepscan" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span>Macro DeepScan</span></button>
-                <button onclick="navigateTo('money-management')" class="nav-btn hidden" data-page="money-management" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span>Kelola Keuangan</span></button>
-            </nav>
             <div class="desktop-header-chips items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
                 <span class="header-status-chip" id="globalLiveRadarChip" title="Status Live Radar"><span class="header-status-dot" id="globalLiveRadarDot"></span><span id="globalLiveRadarText">Live Radar</span></span>
                 <span class="header-status-chip safe">Safety ON</span>
@@ -540,9 +536,6 @@
                 <span class="header-status-chip">Watchlist ≠ BUY</span>
             </div>
             <div class="header-account ml-auto flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                <button id="themeSwitcherBtn" type="button" onclick="toggleAppTheme()" class="theme-toggle-btn" title="Ganti tema terang/gelap" aria-label="Ganti tema tampilan">
-                    <span id="themeSwitcherIcon">🌙</span><span id="themeSwitcherLabel" class="hidden sm:inline">Dark</span>
-                </button>
                 <span id="wibClock" class="text-[11px] text-gray-500 font-mono tabular-nums hidden sm:inline"></span>
                 <span id="reviewBadge" class="hidden px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">Review</span>
                 <span id="guestBadge" class="hidden"></span>
@@ -1905,7 +1898,6 @@
             </div>
         </div>
 
-
         <!-- Attachment preview (multi-file) -->
         <div id="attachmentPreview" class="hidden px-1 pb-2 flex-shrink-0">
             <div id="filePreviewContainer" class="flex flex-wrap gap-2"></div>
@@ -2248,7 +2240,6 @@
     </div>
 </section>
 
-
 <!-- ADMIN PANEL (only for budi) -->
 <section id="adminPanel" class="hidden max-w-[1100px] w-full mx-auto px-3 sm:px-5 pb-6">
     <div class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden">
@@ -2304,6 +2295,8 @@
         <p class="text-[10px] text-gray-600">Auto-Cuan &copy; 2024–2026 &bull; Bukan merupakan saran investasi.</p>
     </div>
 </footer>
+</main>
+</div>
 
 <!-- Day Trade Detail Modal -->
 <div id="scrDetailModal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="scrDetailTitle" onclick="if(event.target===this)closeScrDetail()">
@@ -2490,6 +2483,7 @@
     </div>
 </div>
 
+</div>
 
 <script src="/assets/idx-tickers.js"></script>
 <script src="/assets/fca-stocks.js"></script>
@@ -3008,8 +3002,6 @@ function getChatLimitMsg() { return getAILimitMsg(); }
 function updateUsageCounter() {
     // Usage counter removed from visible UI — replaced by reminder modal
 }
-
-
 
 // ===== LANDING PAGE / APP ROUTING =====
 function isAutocuanLoggedIn() {
@@ -4321,7 +4313,6 @@ async function logout() {
     if (typeof window.clearAutocuanAuthState === 'function') { try { window.clearAutocuanAuthState(); } catch (_) {} }
     showLandingPage({ replaceHistory: true });
 }
-
 
 // ===== LOGGING =====
 async function logLogin(username, isGuest, isAdm) { try { await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'login', username: username, isGuest: isGuest, isAdmin: isAdm, userAgent: navigator.userAgent }) }); } catch (e) {} }
@@ -6023,7 +6014,6 @@ window.addEventListener('beforeunload', function() {
     });
 });
 
-
 // ===== TICKER STOPWORDS =====
 var TICKER_STOPWORDS = [
     'TAPI','INI','ITU','DAN','YANG','SAHAM','HARGA','SEKARANG','BISA','SAMPAI',
@@ -7140,7 +7130,6 @@ async function handleChartUpload(msg) {
     finally { enableSend(); saveChatHistoryImmediate(); }
 }
 
-
 // ===== CHAT UI HELPERS =====
 
 // === Client-side FCA Sanitizer ===
@@ -7866,7 +7855,6 @@ function renderSidebarSessions() {
     container.innerHTML = html;
 }
 
-
 // ===== TRADINGVIEW (SAFE UPDATE) =====
 function updateTradingViewSafe(ticker) {
     // Only update if ticker is valid in IDX_TICKERS
@@ -7888,7 +7876,6 @@ function showTradingViewChart(ticker) {
     }
     loadTradingView(t);
 }
-
 
 // ===== TRADINGVIEW =====
 var _tvScriptPromise = null;
@@ -8060,7 +8047,6 @@ async function loadAdminLogs(type) {
     } catch(e) { container.innerHTML = '<p class="text-sm text-gray-500">Belum ada data log.</p>'; }
 }
 // openAdminAiDetail and closeAdminAiModal removed: metadata-only mode
-
 
 // ===== ADMIN USER MANAGEMENT =====
 var cachedUsers = [];
@@ -8604,7 +8590,6 @@ async function doSelfResetPassword() {
     }
 }
 
-
 // ===== WEBSITE SETTINGS =====
 async function loadWebsiteSettings() {
     var container = document.getElementById('adminLogsContainer');
@@ -8880,7 +8865,6 @@ function buildManualConfluenceHtml(ticker) {
     return '<div class="mb-3 p-3 rounded-xl bg-dark-800/60 border border-dark-600/30">' + buildConfluenceHtml(row, type === 'konglo' || type === 'nonkonglo') + '</div>';
 }
 
-
 function sanitizeConfluenceLookupRow(row) {
     var clean = Object.assign({}, row || {});
     delete clean.raw_payload;
@@ -9054,7 +9038,6 @@ function getDayTradeStatusBackground(status) {
 
     return 'rgba(234,179,8,0.1)';
 }
-
 
 function normalizeFilterToken(value) {
     return safeDisplayText(value, '').toLowerCase().replace(/[^a-z0-9+]+/g, ' ').trim();
@@ -9233,7 +9216,6 @@ function dtToggleView(mode) {
         if (btnT) { btnT.style.color = '#6b7280'; btnT.style.background = 'transparent'; }
     }
 }
-
 
 function freshnessText(r) {
     if (!r || !r.freshness_label) return '';
@@ -9740,8 +9722,6 @@ function renderKgCardGrid(results) {
     }
     container.innerHTML = html;
 }
-
-
 
 // ===== NON-KONGLO CARD GRID =====
 var _nkCardData = {};
@@ -11243,7 +11223,6 @@ function formatNumber(n) {
     return Number(n).toLocaleString('id-ID');
 }
 
-
 // ===== DASHBOARD TOP 5 + HOURLY MONITOR =====
 // The caches for this section are initialised near setTopLevelView, above their
 // first caller — see the "DASHBOARD MONITOR STATE" block there. Startup reaches
@@ -11935,7 +11914,6 @@ async function archiveTop5History(id) {
     if (!data.success) { alert(data.error || 'Gagal archive history.'); return; }
     loadTop5History(true);
 }
-
 
 async function loadDashboardTop5Monitor(silent, opts) {
     opts = opts || {};

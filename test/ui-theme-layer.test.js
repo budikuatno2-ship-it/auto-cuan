@@ -128,14 +128,29 @@ test('every dashboard destination and control survives the regrouping', () => {
 });
 
 test('approval-gated dashboard cards keep their premium markers', () => {
-  // Six gated nav buttons: three in the desktop nav, three in the mobile nav.
-  // The count used to be nine because the dashboard also carried a duplicate
-  // launcher for the same three destinations; removing that duplication removed
-  // gated controls, not gated capability.
+  // Two navigation surfaces remain: the left workspace rail (which marks its
+  // items with data-sidebar-page) and the mobile launcher source strip
+  // (#mainNav, which marks its buttons with data-page). The horizontal desktop
+  // header nav was a third copy of the same destinations and has been removed,
+  // so every gated page must still be tagged in BOTH remaining surfaces —
+  // dropping a tag would hand a non-approved account an unguarded entry point.
   assert.ok((html.match(/data-premium-nav="true"/g) || []).length >= 6);
   assert.ok((html.match(/data-premium-page="true"/g) || []).length >= 3);
-  ['sektor', 'screener', 'portofolio'].forEach(page => {
-    const nav = new RegExp('data-page="' + page + '"[^>]*data-premium-nav="true"|data-premium-nav="true"[^>]*data-page="' + page + '"', 'g');
-    assert.ok((html.match(nav) || []).length >= 2, page + ' must be gated in both navs');
+
+  const surfaces = [
+    { attr: 'data-sidebar-page', label: 'workspace rail' },
+    { attr: 'data-page', label: 'mobile launcher source' }
+  ];
+  surfaces.forEach(surface => {
+    ['sektor', 'screener', 'portofolio'].forEach(page => {
+      const nav = new RegExp(
+        surface.attr + '="' + page + '"[^>]*data-premium-nav="true"|data-premium-nav="true"[^>]*' + surface.attr + '="' + page + '"',
+        'g'
+      );
+      assert.ok(
+        (html.match(nav) || []).length >= 1,
+        page + ' must be gated in the ' + surface.label
+      );
+    });
   });
 });

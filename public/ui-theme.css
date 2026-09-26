@@ -2621,12 +2621,41 @@ html.light body {
    Fixed rail on the left; the app body gets matching padding so tables gain
    the reclaimed width the moment the rail collapses.
    ========================================================================== */
+/* ---- 11b. Hidden-rail guard -------------------------------------------
+   `.app-sidebar` declares `display: flex` below. `.hidden` (Tailwind, the
+   inline critical fallback in index.html, and index-shell.css) is a single
+   class of equal specificity, so whichever sheet comes LAST wins — and this
+   sheet is loaded last on purpose. The result was that `class="app-sidebar
+   hidden"` still painted the rail: it showed on the landing page and before
+   init, stacked above the app, which reads as a raw menu strip at the top of
+   the page. Raising the specificity of the hidden state (without !important,
+   which the specificity-discipline tests forbid here) makes the rail obey its
+   own `hidden` class again while leaving the visible rules untouched. */
+.app-sidebar.hidden {
+  display: none;
+}
+
+/* The rail is a real in-flow column, not a fixed overlay with the page padded
+   to make room for it. `position: fixed` + `body { padding-left: 240px }` only
+   worked while the rail's own display never lost to a sibling `.hidden` rule;
+   when it did, the rail painted over the content instead of beside it, and
+   every compensating offset had to stay in step by hand. As a sticky flex item
+   the sidebar and the content column are siblings in one flex row: the content
+   can only ever sit to the RIGHT of the rail, never under or below it, and the
+   collapsed width is just a width change — no body padding to re-sync. */
+.app-layout {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 100vh;
+}
+
 .app-sidebar {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  bottom: 0;
   width: 240px;
+  height: 100vh;
+  flex: 0 0 auto;
   background-color: #080c14;
   border-right: 1px solid rgba(148, 163, 184, 0.12);
   display: flex;
@@ -2638,27 +2667,6 @@ html.light body {
 
 .app-sidebar.is-collapsed {
   width: 72px;
-}
-
-/* Only pad the app when the rail is actually mounted (hidden on landing). */
-@media (min-width: 1024px) {
-  body.sidebar-open {
-    padding-left: 240px;
-    transition: padding-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  body.sidebar-open.sidebar-collapsed {
-    padding-left: 72px;
-  }
-  /* The header must start after the rail, not under it. */
-  body.sidebar-open .app-header {
-    left: 240px;
-    right: 0;
-    width: auto;
-    transition: left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  body.sidebar-open.sidebar-collapsed .app-header {
-    left: 72px;
-  }
 }
 
 .sidebar-scrim {
@@ -2688,6 +2696,16 @@ html.light body {
 }
 
 .app-main-viewport {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The content column. `min-width: 0` is what stops a wide table inside a page
+   from forcing the flex row wider than the viewport — without it the column
+   refuses to shrink below its content and the sidebar is pushed off-screen. */
+.app-main {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -2769,7 +2787,16 @@ html.light body {
 }
 
 @media (max-width: 1023px) {
+  /* Below 1024px the rail leaves the flex flow and becomes an overlay drawer,
+     so the content column keeps the full viewport width instead of being
+     squeezed to 240px less. `position: fixed` here is scoped to small screens
+     only — from 1024px up the rail is a real sticky flex column. */
   .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100dvh;
     transform: translateX(-100%);
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
     transition: transform 0.25s ease, width 0.22s ease;
@@ -2782,6 +2809,14 @@ html.light body {
   .app-sidebar.is-collapsed {
     width: 240px;
   }
+}
+
+/* Dynamic-viewport height for the flex shell. Declared AFTER the 100vh
+   fallbacks above so the dvh value wins wherever it is supported; on browsers
+   without dvh support the 100vh rules simply stand. */
+@supports (height: 100dvh) {
+  .app-layout { min-height: 100dvh; }
+  .app-sidebar { height: 100dvh; }
 }
 
 /* AUTO_CUAN_DESKTOP_HEADER_CENTER_V1 */
