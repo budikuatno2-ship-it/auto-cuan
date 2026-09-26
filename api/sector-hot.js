@@ -81,6 +81,7 @@ const fastWatcherMomentum = require('../lib/intraday-fast-watcher-momentum');
 const marketHoursGuard = require('../lib/market-hours-guard');
 const idxTradingCalendar = require('../lib/idx-trading-calendar');
 const crypto = require('crypto');
+const deepscanEngine = require('../lib/deepscan-engine');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
 const DAYTRADE_RUNNING_SKIP_MESSAGE = 'Day Trade scan already running; skipped to avoid overlap.';
@@ -104,7 +105,9 @@ const READ_ONLY_ACTIONS = new Set([
   'daytrade-screener',
   'screener',
   'nk-screener-results',
-  'web-daily-picks'
+  'web-daily-picks',
+  'deepscan',
+  'deepscan-results'
 ]);
 
 const DEPRECATED_ON_SERVERLESS_ERROR = 'DEPRECATED_ON_SERVERLESS: Heavy screener computation must be executed directly on the VPS daemon.';
@@ -210,7 +213,8 @@ module.exports = async function handler(req, res) {
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
       'create-screener-share-link', 'public-screener-share', 'refresh', 'debug-members',
-      'landing-snapshot', 'landing-snapshot-refresh'
+      'landing-snapshot', 'landing-snapshot-refresh',
+      'deepscan', 'deepscan-results'
     ]);
     if (action !== null && !knownActions.has(action)) {
       return res.status(400).json({ success: false, error: 'Aksi tidak valid.' });
@@ -221,7 +225,8 @@ module.exports = async function handler(req, res) {
     // landing-snapshot is intentionally public (no auth required) — it only serves
     // pre-built, anonymised snapshot data.
     const premiumBrowserRead = action === null || action === 'screener' ||
-      action === 'nk-screener-results' || action === 'daytrade-screener';
+      action === 'nk-screener-results' || action === 'daytrade-screener' ||
+      action === 'deepscan' || action === 'deepscan-results';
     if (premiumBrowserRead && !verifyCronSecret(req)) {
       const premiumAccess = await requirePremiumEntitlement(req, supabase);
       if (!premiumAccess.ok) return res.status(premiumAccess.status || 403).json({ success:false, error:premiumAccess.error || 'Akses premium diperlukan.' });
@@ -304,6 +309,11 @@ module.exports = async function handler(req, res) {
     // === NON-KONGLO SCREENER: READ (login-gated, same as Konglo screener) ===
     if (action === 'nk-screener-results') {
       return await handleNkScreenerResults(req, res, supabase);
+    }
+
+    // === DEEPSCAN READ MODE ===
+    if (action === 'deepscan' || action === 'deepscan-results') {
+      return await handleDeepScanEndpoint(req, res, supabase);
     }
 
     // === FOREIGN WATCHLIST IMPORT: UPLOAD CSV (Bearer CRON_SECRET protected) ===
@@ -630,6 +640,23 @@ function applyFallbackFibConfluence(r) {
     r.fib_levels = null;
   }
   return r;
+}
+
+// ============================================================
+// DEEPSCAN (MACRO SWING 1-3 BULAN) HANDLER
+// ============================================================
+async function handleDeepScanEndpoint(req, res, supabase) {
+  try {
+    const rootDir = process.env.AUTO_CUAN_ROOT || path.resolve(__dirname, '..');
+    const result = await deepscanEngine.getLatestDeepScan({ rootDir, db: supabase });
+    return res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (err) {
+    console.error('[DEEPSCAN API ERROR]', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
 }
 
 // ============================================================

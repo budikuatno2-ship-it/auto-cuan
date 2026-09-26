@@ -17,6 +17,10 @@
       "destination": "/api/review-access?surface=subscription-voucher"
     },
     {
+      "source": "/api/money-management",
+      "destination": "/api/review-access?surface=money-management"
+    },
+    {
       "source": "/dashboard",
       "destination": "/index.html"
     },
@@ -31,6 +35,18 @@
     {
       "source": "/portfolio-planner",
       "destination": "/portfolio-command-center-v2.html"
+    },
+    {
+      "source": "/deepscan",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/kelola-keuangan",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/money-management",
+      "destination": "/index.html"
     },
     {
       "source": "/analisis-saham",
