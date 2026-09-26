@@ -40,6 +40,23 @@
    render correctly on a network where this file never arrives.
    ------------------------------------------------------------------------- */
 :root {
+  --color-bg-canvas: #090d16;
+  --color-bg-surface: #0d1320;
+  --color-bg-elevated: #111a2a;
+  --color-bg-hover: #162033;
+  --color-text-primary: #f4f7fb;
+  --color-text-secondary: #aab4c3;
+  --color-text-muted: #738096;
+  --color-border-subtle: rgba(148, 163, 184, 0.12);
+  --color-border-default: rgba(148, 163, 184, 0.20);
+  --color-accent: #5b8cff;
+  --color-positive: #34d399;
+  --color-positive-soft: rgba(52, 211, 153, 0.12);
+  --color-negative: #fb7185;
+  --color-negative-soft: rgba(251, 113, 133, 0.12);
+  --grid-line: rgba(148, 163, 184, 0.10);
+  --grid-header-bg: #0d1320;
+
   /* --- Ground and surfaces ---------------------------------------------
      Flat, and stepped by lightness alone. Every repeated surface used to
      carry its own diagonal gradient, which is what made a dense screen read
@@ -168,6 +185,26 @@
 
   --ac-fab-size: 56px;
   --ac-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html.light,
+[data-theme="light"] {
+  --color-bg-canvas: #f5f7fa;
+  --color-bg-surface: #ffffff;
+  --color-bg-elevated: #f8fafc;
+  --color-bg-hover: #f1f5f9;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  --color-border-subtle: rgba(15, 23, 42, 0.08);
+  --color-border-default: rgba(15, 23, 42, 0.14);
+  --color-accent: #2563eb;
+  --color-positive: #059669;
+  --color-positive-soft: rgba(5, 150, 105, 0.10);
+  --color-negative: #e11d48;
+  --color-negative-soft: rgba(225, 29, 72, 0.10);
+  --grid-line: rgba(15, 23, 42, 0.08);
+  --grid-header-bg: #f8fafc;
 }
 
 /* ---- 1b. Viewport height ------------------------------------------------
@@ -452,6 +489,8 @@ body {
    protects it from legacy utility rules without coupling it to a literal hue. */
 #page-dashboard #dashGreeting {
   color: var(--color-text-primary);
+  font-size: 24px;
+  font-weight: 700;
 }
 
 /* .dashboard-card and .feature-card were separate copies of the surface rules
@@ -2651,6 +2690,7 @@ html.light body {
    the page. Raising the specificity of the hidden state (without !important,
    which the specificity-discipline tests forbid here) makes the rail obey its
    own `hidden` class again while leaving the visible rules untouched. */
+#appSidebar.hidden,
 .app-sidebar.hidden {
   display: none;
 }
@@ -2676,8 +2716,8 @@ html.light body {
   width: 240px;
   height: 100vh;
   flex: 0 0 auto;
-  background-color: #080c14;
-  border-right: 1px solid rgba(148, 163, 184, 0.12);
+  background: var(--color-bg-surface);
+  border-right: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
   z-index: 60;
@@ -2685,6 +2725,7 @@ html.light body {
   overflow-x: hidden;
 }
 
+.app-sidebar.collapsed,
 .app-sidebar.is-collapsed {
   width: 72px;
 }
@@ -2697,6 +2738,9 @@ html.light body {
   backdrop-filter: blur(3px);
 }
 
+.app-sidebar.collapsed .sidebar-label,
+.app-sidebar.collapsed .sidebar-brand-text,
+.app-sidebar.collapsed .sidebar-badge,
 .app-sidebar.is-collapsed .sidebar-label,
 .app-sidebar.is-collapsed .sidebar-brand-text,
 .app-sidebar.is-collapsed .sidebar-badge {
@@ -2709,11 +2753,57 @@ html.light body {
   padding-right: 0;
 }
 
+.app-sidebar.collapsed .sidebar-brand,
 .app-sidebar.is-collapsed .sidebar-brand {
   justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
 }
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 72px;
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.sidebar-brand-lockup { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sidebar-brand-text { display: grid; min-width: 0; }
+.sidebar-brand-text strong { color: var(--color-text-primary); font-size: 14px; line-height: 1.25; }
+.sidebar-brand-text span { color: var(--color-text-muted); font-size: 10px; }
+.sidebar-brand .brand-mark { display: grid; place-items: center; flex: 0 0 34px; }
+.sidebar-brand .brand-mark svg { width: 18px; height: 18px; }
+.sidebar-collapse-toggle,
+.theme-toggle-compact {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+}
+.sidebar-collapse-toggle:hover,
+.theme-toggle-compact:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
+.sidebar-collapse-toggle svg { width: 15px; height: 15px; transition: transform .18s ease; }
+.app-sidebar.collapsed .sidebar-collapse-toggle svg { transform: rotate(180deg); }
+.sidebar-nav { flex: 1; overflow-y: auto; padding: 12px; }
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+.user-profile-badge { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; }
+.user-avatar { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%; background: var(--color-bg-hover); color: var(--color-text-primary); font-size: 12px; font-weight: 700; }
+.user-info { display: grid; min-width: 0; }
+.user-name { overflow: hidden; color: var(--color-text-primary); font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.user-role { color: var(--color-text-muted); font-size: 9px; font-weight: 700; letter-spacing: .08em; }
+.app-sidebar.collapsed .sidebar-footer { flex-direction: column; }
 
 .app-main-viewport {
   flex: 1;
@@ -2763,11 +2853,12 @@ html.light body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
-  border-radius: 12px;
+  padding: 8px 12px;
+  min-height: 38px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #94a3b8;
+  color: #aab4c3;
   transition: all 0.15s ease;
   white-space: nowrap;
   width: 100%;
@@ -2776,14 +2867,14 @@ html.light body {
 }
 
 .sidebar-item:hover {
-  color: #ffffff;
-  background-color: rgba(148, 163, 184, 0.08);
+  color: #f4f7fb;
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 .sidebar-item.active {
-  color: #dbe3ec;
-  background-color: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.08);
+  color: #090d16;
+  background-color: #ffffff;
+  border-color: #ffffff;
 }
 
 .theme-toggle-btn {
@@ -2826,6 +2917,7 @@ html.light body {
   }
   /* The collapsed rail is a desktop affordance only; on phones the drawer
      always opens full width so labels stay readable. */
+  .app-sidebar.collapsed,
   .app-sidebar.is-collapsed {
     width: 240px;
   }

@@ -262,23 +262,33 @@ html.light .app-sidebar.is-collapsed .sidebar-item::after {
   white-space: nowrap;
 }
 
+.table-responsive-container {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: var(--color-bg-surface);
+}
+
 /* 3c.1. Shared compact contract for money-management and dashboard holdings.
    Runtime-generated classes still provide semantic P/L/status colour; structural
    chrome stays neutral so colour never masquerades as a trading signal. */
 #mmCashflowSpreadsheetTable,
 #mmJournalSpreadsheetTable,
 #portTableWrap > table {
+  width: 100%;
   border-collapse: separate;
   border-spacing: 0;
+  background: var(--color-bg-surface);
   font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 #page-money-management .overflow-x-auto,
 #page-money-management .overflow-y-auto,
 #portTableWrap {
-  border-color: var(--border-subtle);
-  background: var(--bg-surface);
-  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.14);
+  border-color: var(--color-border-subtle);
+  background: var(--color-bg-surface);
+  box-shadow: none;
 }
 
 #mmCashflowSpreadsheetTable thead th,
@@ -289,10 +299,13 @@ html.light .app-sidebar.is-collapsed .sidebar-item::after {
   z-index: 3;
   height: 34px;
   padding: 0 10px;
-  background: var(--bg-surface);
-  border-right-color: var(--border-subtle);
+  background: var(--grid-header-bg);
+  border-right-color: var(--grid-line);
   border-bottom: 1px solid var(--border-subtle);
-  color: var(--ac-text-muted);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  text-align: left;
   white-space: nowrap;
 }
 
@@ -300,9 +313,11 @@ html.light .app-sidebar.is-collapsed .sidebar-item::after {
 #mmJournalSpreadsheetTable tbody td,
 #portTableWrap tbody td {
   height: 36px;
-  padding: 8px 10px;
-  border-right-color: var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 6px 10px;
+  border-right-color: var(--grid-line);
+  border-bottom: 1px solid var(--grid-line);
+  color: var(--color-text-primary);
+  font-size: 12px;
 }
 
 #portTableWrap th:nth-child(n+2):nth-child(-n+6),
@@ -354,6 +369,9 @@ html.light #portTableWrap thead th {
 /* P/L tones, reinforced by the sign that is already in the string. */
 .sp-up { color: #34d399; }
 .sp-down { color: #fb7185; }
+.percentage-chip.is-up { color: var(--color-positive); background: var(--color-positive-soft); }
+.percentage-chip.is-down { color: var(--color-negative); background: var(--color-negative-soft); }
+.percentage-chip { display: inline-flex; align-items: center; min-height: 20px; padding: 1px 7px; border-radius: 999px; font-variant-numeric: tabular-nums; }
 .sp-flat { color: #94a3b8; }
 
 html.light .sp-up { color: #047857; }
