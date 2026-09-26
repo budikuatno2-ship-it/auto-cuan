@@ -2473,6 +2473,317 @@ body {
   }
 }
 
+/* ==========================================================================
+   AUTO-CUAN THEME SYSTEM: DARK (SLATE/ZINC) & LIGHT (CLEAN FINANCIAL)
+   ========================================================================== */
+html.light, body.light {
+  --pw-bg: #f8fafc;
+  --pw-panel: #ffffff;
+  --pw-panel-strong: #f1f5f9;
+  --pw-surface: #ffffff;
+  --pw-line: #e2e8f0;
+  --pw-line-strong: #cbd5e1;
+  --pw-text: #0f172a;
+  --pw-text-strong: #020617;
+  --pw-muted: #475569;
+  --pw-dim: #64748b;
+  --pw-grid: transparent;
+
+  --ac-bg: #f8fafc;
+  --ac-surface: #ffffff;
+  --ac-panel: #ffffff;
+  --ac-panel-header: #f1f5f9;
+  --ac-border: #e2e8f0;
+  --ac-text: #0f172a;
+  --ac-text-sub: #475569;
+  --ac-text-muted: #64748b;
+
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-dark-900,
+html.light .bg-dark-900\/80,
+html.light .bg-dark-900\/70,
+html.light .bg-dark-900\/60 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-dark-800,
+html.light .bg-dark-800\/80,
+html.light .bg-dark-800\/90,
+html.light .bg-dark-800\/60,
+html.light .bg-dark-800\/40 {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-dark-700,
+html.light .bg-dark-700\/80,
+html.light .bg-dark-700\/60,
+html.light .bg-dark-700\/40,
+html.light .bg-dark-700\/50 {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+html.light .border-dark-600,
+html.light .border-dark-600\/30,
+html.light .border-dark-600\/40,
+html.light .border-dark-600\/50,
+html.light .border-dark-600\/60,
+html.light .border-dark-700,
+html.light .border-dark-700\/30,
+html.light .border-dark-700\/40,
+html.light .border-dark-700\/50,
+html.light .border-dark-700\/60 {
+  border-color: #e2e8f0 !important;
+}
+
+html.light .text-white,
+html.light .text-gray-100,
+html.light .text-gray-200 {
+  color: #0f172a !important;
+}
+
+html.light .text-gray-300,
+html.light .text-gray-400 {
+  color: #334155 !important;
+}
+
+html.light .text-gray-500 {
+  color: #64748b !important;
+}
+
+html.light .app-header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light .panel,
+html.light .dashboard-card,
+html.light .screener-card,
+html.light .dashboard-hero {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.light .app-sidebar {
+  background-color: #ffffff !important;
+  border-right-color: #e2e8f0 !important;
+}
+
+html.light .sidebar-item {
+  color: #475569 !important;
+}
+
+html.light .sidebar-item:hover {
+  background-color: #f1f5f9 !important;
+  color: #047857 !important;
+}
+
+html.light .sidebar-item.active {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html.light .theme-toggle-btn,
+html.light .workspace-sidebar-toggle {
+  color: #475569 !important;
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light .theme-toggle-btn:hover,
+html.light .workspace-sidebar-toggle:hover {
+  color: #0f172a !important;
+  background-color: #e2e8f0 !important;
+}
+
+html.light .sidebar-brand {
+  border-bottom-color: #e2e8f0 !important;
+}
+
+html.light .sidebar-brand-text p {
+  color: #0f172a !important;
+}
+
+/* Kill the grid pattern in light mode too — the light sheet must read flat. */
+html.light body {
+  background-image: none !important;
+}
+
+/* ==========================================================================
+   COLLAPSIBLE WORKSPACE SIDEBAR
+   Fixed rail on the left; the app body gets matching padding so tables gain
+   the reclaimed width the moment the rail collapses.
+   ========================================================================== */
+.app-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 240px;
+  background-color: #080c14;
+  border-right: 1px solid rgba(148, 163, 184, 0.12);
+  display: flex;
+  flex-direction: column;
+  z-index: 60;
+  transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-x: hidden;
+}
+
+.app-sidebar.is-collapsed {
+  width: 72px;
+}
+
+/* Only pad the app when the rail is actually mounted (hidden on landing). */
+@media (min-width: 1024px) {
+  body.sidebar-open {
+    padding-left: 240px;
+    transition: padding-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  body.sidebar-open.sidebar-collapsed {
+    padding-left: 72px;
+  }
+  /* The header must start after the rail, not under it. */
+  body.sidebar-open .app-header {
+    left: 240px;
+    right: 0;
+    width: auto;
+    transition: left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  body.sidebar-open.sidebar-collapsed .app-header {
+    left: 72px;
+  }
+}
+
+.sidebar-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(2, 6, 12, 0.62);
+  backdrop-filter: blur(3px);
+}
+
+.app-sidebar.is-collapsed .sidebar-label,
+.app-sidebar.is-collapsed .sidebar-brand-text,
+.app-sidebar.is-collapsed .sidebar-badge {
+  display: none !important;
+}
+
+.app-sidebar.is-collapsed .sidebar-item {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.app-sidebar.is-collapsed .sidebar-brand {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.app-main-viewport {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile drawer trigger in the header. Hidden from 1024px up, where the rail
+   itself is permanently docked. */
+.workspace-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background-color: rgba(148, 163, 184, 0.06);
+  color: #cbd5e1;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.workspace-sidebar-toggle:hover {
+  background-color: rgba(148, 163, 184, 0.14);
+  color: #ffffff;
+}
+
+@media (min-width: 1024px) {
+  .workspace-sidebar-toggle {
+    display: none !important;
+  }
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  width: 100%;
+  border: 1px solid transparent;
+  text-align: left;
+}
+
+.sidebar-item:hover {
+  color: #ffffff;
+  background-color: rgba(148, 163, 184, 0.08);
+}
+
+.sidebar-item.active {
+  color: #34d399;
+  background-color: rgba(52, 211, 153, 0.10);
+  border-color: rgba(52, 211, 153, 0.25);
+}
+
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background-color: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  font-size: 12px;
+  font-weight: 600;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.theme-toggle-btn:hover {
+  background-color: rgba(148, 163, 184, 0.16);
+  color: #ffffff;
+}
+
+@media (max-width: 1023px) {
+  .app-sidebar {
+    transform: translateX(-100%);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+    transition: transform 0.25s ease, width 0.22s ease;
+  }
+  .app-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+  /* The collapsed rail is a desktop affordance only; on phones the drawer
+     always opens full width so labels stay readable. */
+  .app-sidebar.is-collapsed {
+    width: 240px;
+  }
+}
+
 /* AUTO_CUAN_DESKTOP_HEADER_CENTER_V1 */
 /* Keep the navigation centered on the viewport instead of centering it only
    inside the space left between unequal brand and account groups. */
