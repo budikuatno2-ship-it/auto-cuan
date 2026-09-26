@@ -71,17 +71,36 @@ fi
 # -----------------------------------------------------------------------------
 step "4/7  Nginx config + reload"
 # -----------------------------------------------------------------------------
-# The repo copy is the source of truth for the /api/track-record alias. Install
-# it, validate, then reload — a failed `nginx -t` must not take the site down.
-if [ -f deploy/nginx/autocuan ]; then
-  if sudo -n true 2>/dev/null; then
-    sudo cp deploy/nginx/autocuan "$NGINX_SITE"
-    ok "installed $NGINX_SITE from the repo"
-  else
-    printf '  [warn] no passwordless sudo — leaving %s untouched.\n' "$NGINX_SITE"
-    printf '         Install it manually if the alias block is missing:\n'
-    printf '           sudo cp deploy/nginx/autocuan %s && sudo nginx -t && sudo systemctl reload nginx\n' "$NGINX_SITE"
-  fi
+# The ONLY thing this step needs is the exact-match /api/track-record alias.
+# The installed file must NOT be replaced wholesale: certbot rewrites
+# sites-available/autocuan to add the TLS server block, so copying the repo
+# template over it would delete the certificate config and take HTTPS down.
+#
+# So: inspect, and only insert the alias block when it is genuinely missing.
+if [ ! -f "$NGINX_SITE" ]; then
+  printf '  [warn] %s not found — skipping the alias check.\n' "$NGINX_SITE"
+elif sudo grep -q 'location = /api/track-record' "$NGINX_SITE" 2>/dev/null; then
+  ok "the /api/track-record alias is already present"
+else
+  printf '  [warn] %s has no /api/track-record alias block.\n' "$NGINX_SITE"
+  printf '         Add this INSIDE the server { } block that proxies to the origin,\n'
+  printf '         ABOVE the generic "location /api/" block, then reload nginx:\n\n'
+  cat <<'NGINX_SNIPPET'
+    location = /api/track-record {
+        limit_req zone=autocuan_api burst=20 nodelay;
+        proxy_pass http://autocuan_web/api/sector-hot?action=track-record;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_intercept_errors off;
+        add_header Cache-Control "private, no-store, no-cache, must-revalidate, max-age=0" always;
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+    }
+NGINX_SNIPPET
+  printf '\n'
 fi
 
 sudo nginx -t || die "nginx config test failed — NOT reloading"
