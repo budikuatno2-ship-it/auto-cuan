@@ -810,7 +810,7 @@ test('state-machine: /setkey wizard Custom Provider flow with model fetching and
   const step4Ctx = createCtx({
     chat: { id: 400, type: 'private' },
     from: { id: 400, username: 'custom_wiz_user' },
-    message: { message_id: 20, text: 'sk-9router-secret-key-12345678' }
+    message: { message_id: 20, text: 'cr-custom-token-mock-12345678' }
   });
   await bot.handleUpdate(step4Ctx);
 
