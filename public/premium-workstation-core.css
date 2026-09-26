@@ -6,9 +6,7 @@
    emerald as the single primary accent, and mobile-first interaction safety.
    ========================================================================== */
 
-:root,
-[data-theme="dark"],
-html:not(.light) {
+:root {
   /* Semantic canvas contract. Components consume roles rather than assuming
      that a foreground is permanently light or a border permanently emerald. */
   --color-bg-canvas: #090d16;
@@ -27,10 +25,10 @@ html:not(.light) {
   --color-negative-soft: rgba(251, 113, 133, .12);
   --grid-line: rgba(148, 163, 184, .10);
   --grid-header-bg: #0d1320;
-  --bg-canvas: var(--color-bg-canvas);
-  --bg-surface: var(--color-bg-surface);
-  --text-primary: var(--color-text-primary);
-  --border-subtle: var(--color-border-subtle);
+  --bg-canvas: #090d16;
+  --bg-surface: #0d1320;
+  --text-primary: #f4f7fb;
+  --border-subtle: rgba(148, 163, 184, .12);
 
   --pw-bg: #06090e;
   --pw-bg-2: #080d14;
@@ -100,8 +98,7 @@ html:not(.light) {
   --ac-row-h-dense: 31px;
 }
 
-html.light,
-[data-theme="light"] {
+html.light {
   --color-bg-canvas: #f5f7fa;
   --color-bg-surface: #ffffff;
   --color-bg-elevated: #f8fafc;
@@ -118,10 +115,10 @@ html.light,
   --color-negative-soft: rgba(225, 29, 72, .10);
   --grid-line: rgba(15, 23, 42, .08);
   --grid-header-bg: #f8fafc;
-  --bg-canvas: var(--color-bg-canvas);
-  --bg-surface: var(--color-bg-surface);
-  --text-primary: var(--color-text-primary);
-  --border-subtle: var(--color-border-subtle);
+  --bg-canvas: #f5f7fa;
+  --bg-surface: #ffffff;
+  --text-primary: #111827;
+  --border-subtle: rgba(15, 23, 42, .08);
 }
 
 html {
@@ -511,7 +508,7 @@ body {
 
 #dashGreeting {
   max-width: 760px;
-  color: var(--color-text-primary) !important;
+  color: var(--text-primary) !important;
   font-size: 24px;
   font-weight: 700;
   line-height: 1.15;

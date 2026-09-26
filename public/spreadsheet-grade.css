@@ -301,7 +301,7 @@ html.light .app-sidebar.is-collapsed .sidebar-item::after {
   padding: 0 10px;
   background: var(--grid-header-bg);
   border-right-color: var(--grid-line);
-  border-bottom: 1px solid var(--grid-line);
+  border-bottom: 1px solid var(--border-subtle);
   color: var(--color-text-muted);
   font-size: 11px;
   text-transform: uppercase;
@@ -367,8 +367,10 @@ html.light #portTableWrap thead th {
 }
 
 /* P/L tones, reinforced by the sign that is already in the string. */
-.sp-up, .percentage-chip.is-up { color: var(--color-positive); background: var(--color-positive-soft); }
-.sp-down, .percentage-chip.is-down { color: var(--color-negative); background: var(--color-negative-soft); }
+.sp-up { color: #34d399; }
+.sp-down { color: #fb7185; }
+.percentage-chip.is-up { color: var(--color-positive); background: var(--color-positive-soft); }
+.percentage-chip.is-down { color: var(--color-negative); background: var(--color-negative-soft); }
 .percentage-chip { display: inline-flex; align-items: center; min-height: 20px; padding: 1px 7px; border-radius: 999px; font-variant-numeric: tabular-nums; }
 .sp-flat { color: #94a3b8; }
 

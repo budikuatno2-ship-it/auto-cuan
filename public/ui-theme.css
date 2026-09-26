@@ -39,9 +39,7 @@
    fallback — var(--ac-x, #hex) — so the maintenance and blocked screens still
    render correctly on a network where this file never arrives.
    ------------------------------------------------------------------------- */
-:root,
-[data-theme="dark"],
-html:not(.light) {
+:root {
   --color-bg-canvas: #090d16;
   --color-bg-surface: #0d1320;
   --color-bg-elevated: #111a2a;
@@ -490,7 +488,7 @@ body {
 /* The greeting inherits one semantic token in every theme. This selector also
    protects it from legacy utility rules without coupling it to a literal hue. */
 #page-dashboard #dashGreeting {
-  color: var(--color-text-primary) !important;
+  color: var(--color-text-primary);
   font-size: 24px;
   font-weight: 700;
 }
