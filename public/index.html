@@ -452,17 +452,20 @@
      header nav was a second copy of the same nine destinations. -->
 <div class="app-layout">
 <!-- ===== WORKSPACE SIDEBAR (collapsible left navigation) ===== -->
-<aside id="workspaceSidebar" class="app-sidebar hidden" aria-label="Navigasi workspace">
-    <div class="sidebar-brand flex items-center gap-3 px-4 py-4 border-b border-dark-600/40">
-        <button type="button" onclick="toggleSidebarCollapse()" class="brand-mark w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0" title="Ciutkan / bentangkan sidebar" aria-label="Ciutkan atau bentangkan sidebar navigasi">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-        </button>
-        <div class="sidebar-brand-text min-w-0">
-            <p class="text-sm font-black text-white leading-tight truncate">Auto-Cuan</p>
-            <p class="text-[10px] text-gray-500 truncate">IDX Workspace</p>
+<aside id="appSidebar" class="app-sidebar hidden" aria-label="Navigasi workspace">
+    <div class="sidebar-brand">
+        <div class="sidebar-brand-lockup">
+            <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l5-5 4 4 7-8"/></svg></span>
+            <div class="sidebar-brand-text">
+                <strong>Auto-Cuan</strong>
+                <span>IDX Workspace</span>
+            </div>
         </div>
+        <button type="button" onclick="toggleSidebarCollapse()" class="sidebar-collapse-toggle" title="Ciutkan sidebar" aria-label="Ciutkan atau bentangkan sidebar navigasi" aria-controls="appSidebar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 18l-6-6 6-6"/></svg>
+        </button>
     </div>
-    <nav class="flex-1 overflow-y-auto px-3 py-3 space-y-1 scrollbar-thin" aria-label="Menu utama workspace">
+    <nav class="sidebar-nav" aria-label="Menu utama workspace">
         <button type="button" onclick="navigateTo('dashboard')" class="sidebar-item" data-sidebar-page="dashboard" title="Dashboard">
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
             <span class="sidebar-label">Dashboard</span>
@@ -500,15 +503,22 @@
             <span class="sidebar-label">Kelola Keuangan</span>
         </button>
     </nav>
-    <div class="px-3 py-3 border-t border-dark-600/40 space-y-2">
-        <button type="button" onclick="toggleAppTheme()" class="theme-toggle-btn w-full justify-center" title="Ganti tema terang/gelap">
-            <span id="sidebarThemeIcon">🌙</span><span class="sidebar-label" id="sidebarThemeLabel">Dark Mode</span>
+    <div class="sidebar-footer">
+        <div class="user-profile-badge" title="Profil pengguna">
+            <div class="user-avatar" aria-hidden="true">B</div>
+            <div class="user-info sidebar-label">
+                <span class="user-name" id="sidebarUserName">budi</span>
+                <span class="user-role">PRO PLAN</span>
+            </div>
+        </div>
+        <button id="themeToggleCompact" type="button" onclick="toggleAppTheme()" class="theme-toggle-compact" aria-label="Toggle Theme" title="Ganti tema terang/gelap">
+            <span id="sidebarThemeIcon" aria-hidden="true">🌙</span><span class="sr-only" id="sidebarThemeLabel">Dark Mode</span>
         </button>
     </div>
 </aside>
 <div id="sidebarScrim" class="sidebar-scrim hidden" onclick="closeMobileSidebar()" aria-hidden="true"></div>
 
-<main class="app-main">
+<main class="app-main" id="appMain">
 
 <!-- HEADER -->
 <header class="app-header sticky top-0 z-50 backdrop-blur-xl flex-shrink-0">
@@ -2057,7 +2067,7 @@
         <input id="mmTradingCapital" type="hidden" value="0">
 
         <!-- Spreadsheet Grid Table: Life Cashflow ala Excel / Airtable -->
-        <div class="overflow-x-auto overflow-y-auto max-h-[580px] scrollbar-thin rounded-xl border border-dark-600/60 bg-dark-900/60 shadow-lg">
+        <div class="table-responsive-container overflow-x-auto overflow-y-auto max-h-[580px] scrollbar-thin">
             <table class="w-full text-xs border-collapse min-w-[850px]" id="mmCashflowSpreadsheetTable">
                 <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 border-b border-dark-600/70">
                     <tr class="text-gray-300 font-semibold text-left">
@@ -2183,7 +2193,7 @@
         </div>
 
         <!-- Editable Grid Spreadsheet Table: Jurnal Portofolio ala Excel / Airtable -->
-        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/60 bg-dark-900/60 shadow-lg">
+        <div class="table-responsive-container overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin">
             <table class="w-full text-xs border-collapse min-w-[1050px]" id="mmJournalSpreadsheetTable">
                 <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 border-b border-dark-600/70 shadow-sm">
                     <tr class="text-gray-300 text-left font-semibold">
@@ -4771,6 +4781,10 @@ function updateDashGreeting() {
         }
     }
     el.textContent = 'Halo, ' + displayName;
+    var sidebarName = document.getElementById('sidebarUserName');
+    if (sidebarName) sidebarName.textContent = displayName;
+    var sidebarAvatar = document.querySelector('#appSidebar .user-avatar');
+    if (sidebarAvatar) sidebarAvatar.textContent = displayName.charAt(0).toUpperCase() || 'T';
     // Show approved badge for non-guest logged-in users
     var approvedBadge = document.getElementById('approvedBadge');
     if (approvedBadge) {
@@ -7729,6 +7743,7 @@ function acKeepAliveFetch(url, options) {
 function applyAppTheme(theme) {
     var isLight = theme === 'light';
     document.documentElement.classList.toggle('light', isLight);
+    document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
     if (document.body) document.body.classList.toggle('light', isLight);
     document.documentElement.style.background = isLight ? '#f8fafc' : '#0b0e14';
     var icon = document.getElementById('themeSwitcherIcon');
@@ -7761,17 +7776,20 @@ if (document.readyState === 'loading') {
 // ===== COLLAPSIBLE WORKSPACE SIDEBAR =====
 var SIDEBAR_COLLAPSE_KEY = 'autocuan_sidebar_collapsed';
 function isWorkspaceSidebarVisible() {
-    var aside = document.getElementById('workspaceSidebar');
+    var aside = document.getElementById('appSidebar');
     return Boolean(aside && !aside.classList.contains('hidden'));
 }
 function applySidebarCollapse(collapsed) {
-    var aside = document.getElementById('workspaceSidebar');
-    if (aside) aside.classList.toggle('is-collapsed', Boolean(collapsed));
+    var aside = document.getElementById('appSidebar');
+    if (aside) {
+        aside.classList.toggle('collapsed', Boolean(collapsed));
+        aside.classList.toggle('is-collapsed', Boolean(collapsed));
+    }
     if (document.body) document.body.classList.toggle('sidebar-collapsed', Boolean(collapsed));
     try { localStorage.setItem(SIDEBAR_COLLAPSE_KEY, collapsed ? '1' : '0'); } catch (_) {}
 }
 function toggleSidebarCollapse() {
-    var aside = document.getElementById('workspaceSidebar');
+    var aside = document.getElementById('appSidebar');
     if (!aside) return;
     if (window.innerWidth < 1024) {
         aside.classList.toggle('mobile-open');
@@ -7782,20 +7800,20 @@ function toggleSidebarCollapse() {
     applySidebarCollapse(!aside.classList.contains('is-collapsed'));
 }
 function openMobileSidebar() {
-    var aside = document.getElementById('workspaceSidebar');
+    var aside = document.getElementById('appSidebar');
     if (!aside) return;
     aside.classList.add('mobile-open');
     var scrim = document.getElementById('sidebarScrim');
     if (scrim) scrim.classList.remove('hidden');
 }
 function closeMobileSidebar() {
-    var aside = document.getElementById('workspaceSidebar');
+    var aside = document.getElementById('appSidebar');
     if (aside) aside.classList.remove('mobile-open');
     var scrim = document.getElementById('sidebarScrim');
     if (scrim) scrim.classList.add('hidden');
 }
 function setWorkspaceSidebarVisible(visible) {
-    var aside = document.getElementById('workspaceSidebar');
+    var aside = document.getElementById('appSidebar');
     if (!aside) return;
     aside.classList.toggle('hidden', !visible);
     if (document.body) document.body.classList.toggle('sidebar-open', Boolean(visible));
@@ -7810,7 +7828,7 @@ function setWorkspaceSidebarVisible(visible) {
     }
 }
 function syncWorkspaceSidebarActive(page) {
-    document.querySelectorAll('#workspaceSidebar [data-sidebar-page]').forEach(function(btn) {
+    document.querySelectorAll('#appSidebar [data-sidebar-page]').forEach(function(btn) {
         btn.classList.toggle('active', btn.getAttribute('data-sidebar-page') === page);
     });
 }

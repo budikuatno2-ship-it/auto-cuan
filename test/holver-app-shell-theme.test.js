@@ -15,11 +15,11 @@ test('dashboard greeting is controlled by the semantic text token', () => {
   assert.ok(greeting, 'dashGreeting heading must exist');
   assert.doesNotMatch(greeting[0], /\btext-white\b/, 'dashGreeting must not hardcode a white utility');
   assert.match(theme, /#page-dashboard #dashGreeting\s*\{[^}]*color:\s*var\(--color-text-primary\)/s);
-  assert.match(theme, /html\.light, body\.light\s*\{[^}]*--color-text-primary:\s*#0f172a !important;/s);
+  assert.match(theme, /html\.light,\s*\[data-theme="light"\]\s*\{[^}]*--color-text-primary:\s*#0f172a;/s);
 });
 
 test('analysis, portfolio, and watchlist stay inside the shared app-main shell', () => {
-  const mainOpen = html.indexOf('<main class="app-main">');
+  const mainOpen = html.search(/<main\s+class="app-main"[^>]*id="appMain"[^>]*>/);
   const mainClose = html.indexOf('</main>', mainOpen);
   assert.ok(mainOpen >= 0 && mainClose > mainOpen, 'shared app-main must be structurally complete');
 
@@ -40,5 +40,5 @@ test('financial workspace uses neutral Holver-style structural surfaces', () => 
   assert.match(theme, /--ac-surface-1:\s*#0f1420;/);
   assert.match(theme, /\.app-sidebar\s*\{[^}]*width:\s*240px;/s);
   assert.match(theme, /\.dashboard-hero\s*\{[^}]*border-color:\s*rgba\(255, 255, 255, 0\.08\);[^}]*box-shadow:\s*none;/s);
-  assert.match(theme, /\.sidebar-item\.active\s*\{[^}]*border-color:\s*rgba\(255, 255, 255, 0\.08\);/s);
+  assert.match(theme, /\.sidebar-item\.active\s*\{[^}]*color:\s*#090d16;[^}]*background-color:\s*#ffffff;[^}]*border-color:\s*#ffffff;/s);
 });
