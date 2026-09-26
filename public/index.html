@@ -451,6 +451,8 @@
                 <button onclick="navigateTo('portofolio')" class="nav-btn hidden" data-page="portofolio" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg><span>Portofolio</span></button>
                 <button onclick="navigateTo('watchlist')" class="nav-btn hidden" data-page="watchlist" id="nav-watchlist" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg><span>Watchlist</span></button>
                 <button onclick="navigateTo('trackrecord')" class="nav-btn hidden" data-page="trackrecord" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg><span>Track Record</span></button>
+                <button onclick="navigateTo('deepscan')" class="nav-btn hidden" data-page="deepscan" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span>Macro DeepScan</span></button>
+                <button onclick="navigateTo('money-management')" class="nav-btn hidden" data-page="money-management" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span>Kelola Keuangan</span></button>
             </nav>
             <div class="desktop-header-chips items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
                 <span class="header-status-chip" id="globalLiveRadarChip" title="Status Live Radar"><span class="header-status-dot" id="globalLiveRadarDot"></span><span id="globalLiveRadarText">Live Radar</span></span>
@@ -507,6 +509,14 @@
             <button onclick="navigateTo('trackrecord')" class="nav-btn hidden" data-page="trackrecord" data-premium-nav="true">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 <span>Track Record</span>
+            </button>
+            <button onclick="navigateTo('deepscan')" class="nav-btn hidden" data-page="deepscan" data-premium-nav="true">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <span>DeepScan</span>
+            </button>
+            <button onclick="navigateTo('money-management')" class="nav-btn hidden" data-page="money-management" data-premium-nav="true">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Keuangan</span>
             </button>
         </div>
     </nav>
@@ -1846,6 +1856,275 @@
         </div>
     </div>
 </section>
+
+<!-- ===== PAGE: MACRO DEEPSCAN (SWING 1-3 BULAN) ===== -->
+<div id="page-deepscan" class="page-content hidden flex-1 max-w-[1200px] w-full mx-auto px-3 sm:px-5 py-4 space-y-4" data-premium-page="true">
+    <div class="dashboard-hero p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="dash-badge bg-emerald-500/15 text-emerald-300 border-emerald-500/25">Macro Swing 1–3 Bulan</span>
+                    <span class="dash-badge bg-blue-500/15 text-blue-300 border-blue-500/25">Akumulasi Bandar 3–6 Bulan</span>
+                </div>
+                <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight">Macro DeepScan</h2>
+                <p class="text-xs sm:text-sm text-gray-400 mt-1 max-w-2xl">Hasil screening macro swing berbasis akumulasi bandar (CR3/CR5) 3–6 bulan di lantai support. Level Entry Buy on Weakness, Stop Loss terukur (hingga batas Rp1), dan target fleksibel TP1/TP2 (R/R 1:3 hingga 1:6+).</p>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <span id="deepscanMetaBadge" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-dark-700 text-gray-300 border border-dark-600">Memuat status...</span>
+                <button onclick="loadDeepScan(true)" class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition inline-flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span>Pindai Ulang</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info bar -->
+    <div class="scr-info-bar text-amber-400/80"><strong class="text-amber-400">Aturan Macro DeepScan:</strong> Entry Buy on Weakness (BoW) di lantai akumulasi. Stop Loss terukur di bawah lantai (valid hingga batas Rp1 bursa). Target TP2 menembus resistance tahunan mayor (R/R 1:3 sampai 1:6+). Kelola risiko dan lakukan konfirmasi chart manual.</div>
+
+    <!-- Cards Grid (Top Picks) -->
+    <div>
+        <h3 class="text-sm font-bold uppercase tracking-wider text-gray-300 mb-3 flex items-center gap-2">
+            <span>🏆 Top Kandidat Terpilih (Akumulasi Bandar 3–6 Bulan)</span>
+        </h3>
+        <div id="deepscanCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            <div class="col-span-full py-12 text-center text-gray-500 text-xs">Memuat data DeepScan...</div>
+        </div>
+    </div>
+
+    <!-- Table View -->
+    <div class="space-y-2 pt-2">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
+            <span>📋 Tabel Lengkap Parameter Macro DeepScan</span>
+        </h3>
+        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30" id="deepscanTableWrap">
+            <table class="w-full text-xs border-collapse min-w-[900px]">
+                <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
+                    <tr class="bg-dark-700/80 text-gray-400 text-left border-b border-dark-600/40">
+                        <th class="px-3 py-2.5 text-center">#</th>
+                        <th class="px-3 py-2.5">Ticker</th>
+                        <th class="px-3 py-2.5 text-center">Score</th>
+                        <th class="px-3 py-2.5 text-right">Last</th>
+                        <th class="px-3 py-2.5 text-right text-emerald-300">Area Beli (BoW)</th>
+                        <th class="px-3 py-2.5 text-right text-rose-300">Stop Loss (s/d Rp1)</th>
+                        <th class="px-3 py-2.5 text-right text-emerald-300">TP1</th>
+                        <th class="px-3 py-2.5 text-right text-cyan-300">TP2 Mayor</th>
+                        <th class="px-3 py-2.5 text-center">R:R</th>
+                        <th class="px-3 py-2.5 text-center">Akumulasi Bandar</th>
+                    </tr>
+                </thead>
+                <tbody id="deepscanTableBody" class="text-gray-300 divide-y divide-dark-700/40">
+                    <tr><td colspan="10" class="text-center py-8 text-gray-500">Memuat tabel...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ===== PAGE: KELOLA KEUANGAN (ALL-IN-ONE MONEY MANAGEMENT) ===== -->
+<div id="page-money-management" class="page-content hidden flex-1 max-w-[1200px] w-full mx-auto px-3 sm:px-5 py-4 space-y-4" data-premium-page="true">
+    <div class="dashboard-hero p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="dash-badge bg-emerald-500/15 text-emerald-300 border-emerald-500/25">All-in-One Money Management</span>
+                    <span class="dash-badge bg-blue-500/15 text-blue-300 border-blue-500/25">Data Terisolasi & 100% Rahasia</span>
+                </div>
+                <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight">Kelola Keuangan & Jurnal Trading</h2>
+                <p class="text-xs sm:text-sm text-gray-400 mt-1 max-w-2xl">Atur arus kas hidup (Life Cashflow) agar kebutuhan harian tetap aman, dan catat jurnal transaksi saham secara disiplin dengan kalkulasi modal menganggur (RDL) & rasio kemenangan (Win Rate).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sub-tab Switcher -->
+    <div class="ac-segmented mb-3" role="group" aria-label="Sub-modul Money Management">
+        <button onclick="switchMoneySubTab('cashflow')" id="mmTabBtnCashflow" class="ac-segment is-active">💵 Arus Kas Pribadi (Life Cashflow)</button>
+        <button onclick="switchMoneySubTab('journal')" id="mmTabBtnJournal" class="ac-segment">📈 Jurnal Portofolio Trading</button>
+    </div>
+
+    <!-- PANEL 1: ARUS KAS PRIBADI (LIFE CASHFLOW) -->
+    <div id="mmPanelCashflow" class="space-y-4">
+        <!-- Safety Alert Banner -->
+        <div id="mmBudgetSafetyStatus" class="p-3.5 rounded-xl bg-dark-800/80 border border-dark-600/40 text-xs">
+            <span class="text-gray-400">Menghitung batas aman pengeluaran hidup...</span>
+        </div>
+
+        <!-- Metric Summary Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3 sm:p-4">
+                <p class="text-[11px] text-gray-400 uppercase tracking-wider">Total Pemasukan</p>
+                <p class="text-base sm:text-lg font-black text-white mt-1" id="mmTotalIncomeDisplay">Rp 0</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">Gaji + Sampingan</p>
+            </div>
+            <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3 sm:p-4">
+                <p class="text-[11px] text-rose-400/90 uppercase tracking-wider font-semibold">Kebutuhan Hidup & Gaya</p>
+                <p class="text-base sm:text-lg font-black text-rose-300 mt-1" id="mmTotalLivingExpenseDisplay">Rp 0</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">Kost + Makan + Hiburan</p>
+            </div>
+            <div class="bg-dark-800/60 border border-blue-500/25 rounded-xl p-3 sm:p-4 bg-gradient-to-b from-blue-500/5 to-transparent">
+                <p class="text-[11px] text-blue-300 uppercase tracking-wider font-semibold">Pos Modal Trading (Dana Dingin)</p>
+                <p class="text-base sm:text-lg font-black text-blue-300 mt-1" id="mmTradingCapDisplay">Rp 0</p>
+                <p class="text-[10px] text-blue-400/70 mt-0.5">Terhubung ke Jurnal</p>
+            </div>
+            <div class="bg-dark-800/60 border border-emerald-500/25 rounded-xl p-3 sm:p-4 bg-gradient-to-b from-emerald-500/5 to-transparent">
+                <p class="text-[11px] text-emerald-300 uppercase tracking-wider font-semibold">Sisa Kas Hidup Aman</p>
+                <p class="text-base sm:text-lg font-black text-emerald-300 mt-1" id="mmRemainingBudgetDisplay">Rp 0</p>
+                <p class="text-[10px] text-emerald-400/70 mt-0.5">Batas aman selain trading</p>
+            </div>
+        </div>
+
+        <!-- Budget Input Form -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Pemasukan -->
+            <div class="bg-dark-800/60 border border-dark-600/30 rounded-2xl p-4 sm:p-5 space-y-3">
+                <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span>1. Sumber Pemasukan Bulanan (Income)</span>
+                </h4>
+                <div>
+                    <label class="block text-[11px] text-gray-400 mb-1">Gaji Pokok / Uang Bulanan (Rp)</label>
+                    <input id="mmIncomeSalary" type="number" placeholder="Contoh: 6000000" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-dark-600/50 text-gray-100 text-sm focus:border-emerald-500/50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-gray-400 mb-1">Penghasilan Sampingan / Freelance (Rp)</label>
+                    <input id="mmIncomeSide" type="number" placeholder="Contoh: 1500000" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-dark-600/50 text-gray-100 text-sm focus:border-emerald-500/50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-gray-400 mb-1">Pemasukan Lain-lain (Rp)</label>
+                    <input id="mmIncomeOther" type="number" placeholder="0" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-dark-600/50 text-gray-100 text-sm focus:border-emerald-500/50 outline-none">
+                </div>
+            </div>
+
+            <!-- Alokasi & Pengeluaran -->
+            <div class="bg-dark-800/60 border border-dark-600/30 rounded-2xl p-4 sm:p-5 space-y-3">
+                <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+                    <span>2. Alokasi Pengeluaran & Modal Bursa</span>
+                </h4>
+                <div>
+                    <label class="block text-[11px] text-gray-400 mb-1">Kebutuhan Pokok (Makan, Kost, Listrik, Internet) (Rp)</label>
+                    <input id="mmExpNecessities" type="number" placeholder="Contoh: 3000000" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-dark-600/50 text-gray-100 text-sm focus:border-rose-500/50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-gray-400 mb-1">Keinginan & Hiburan (Nongkrong, Lifestyle) (Rp)</label>
+                    <input id="mmExpWants" type="number" placeholder="Contoh: 1000000" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-dark-600/50 text-gray-100 text-sm focus:border-rose-500/50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-gray-400 mb-1">Dana Darurat / Tabungan (Rp)</label>
+                    <input id="mmSavings" type="number" placeholder="Contoh: 1000000" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-dark-600/50 text-gray-100 text-sm focus:border-blue-500/50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-blue-300 font-semibold mb-1">🎯 Pos Modal Trading (Dana Dingin Khusus Bursa) (Rp)</label>
+                    <input id="mmTradingCapital" type="number" placeholder="Contoh: 1500000" oninput="recalculateCashflow()" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-blue-500/40 text-blue-300 font-bold text-sm focus:border-blue-400 outline-none">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 pt-2">
+            <div class="flex-1">
+                <input id="mmCashflowNotes" type="text" placeholder="Catatan anggaran bulan ini (opsional)..." class="w-full px-3.5 py-2 rounded-xl bg-dark-800/80 border border-dark-600/40 text-xs text-gray-200 outline-none">
+            </div>
+            <button id="mmSaveCashflowBtn" onclick="saveCashflowData()" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-xs hover:bg-emerald-400 transition flex items-center gap-1.5 shrink-0">
+                <span>Simpan Anggaran</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- PANEL 2: JURNAL PORTOFOLIO TRADING -->
+    <div id="mmPanelJournal" class="hidden space-y-4">
+        <!-- Summary Tiles -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div class="bg-dark-800/60 border border-blue-500/20 rounded-xl p-3 sm:p-4">
+                <p class="text-[11px] text-gray-400">Total Modal Trading</p>
+                <p class="text-base sm:text-lg font-black text-white mt-1" id="mmJrTotalCap">Rp 0</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">Dari Pos Cashflow</p>
+            </div>
+            <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3 sm:p-4">
+                <p class="text-[11px] text-cyan-300">Sisa Kas Menganggur (RDL)</p>
+                <p class="text-base sm:text-lg font-black text-cyan-300 mt-1" id="mmJrIdleRdl">Rp 0</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">Kas siap dibelanjakan</p>
+            </div>
+            <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3 sm:p-4">
+                <p class="text-[11px] text-gray-400">Total Realized P/L</p>
+                <p class="text-base sm:text-lg font-black text-gray-200 mt-1" id="mmJrTotalPl">Rp 0</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">Keuntungan/Kerugian</p>
+            </div>
+            <div class="bg-dark-800/60 border border-emerald-500/25 rounded-xl p-3 sm:p-4 bg-gradient-to-b from-emerald-500/5 to-transparent">
+                <p class="text-[11px] text-emerald-400 font-semibold">Rasio Kemenangan (Win Rate)</p>
+                <p class="text-base sm:text-lg font-black text-emerald-400 mt-1" id="mmJrWinRate">0% (0/0)</p>
+                <p class="text-[10px] text-emerald-400/70 mt-0.5">Persentase trade profit</p>
+            </div>
+        </div>
+
+        <!-- Add Trade Entry Row -->
+        <div class="bg-dark-800/80 border border-dark-600/40 rounded-2xl p-4 space-y-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-300 flex items-center justify-between">
+                <span>➕ Tambah Transaksi ke Jurnal</span>
+                <span class="text-[11px] text-gray-500">Modal dialokasikan: <strong class="text-blue-300" id="mmJrTradingCapRef">Rp 0</strong></span>
+            </h4>
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-xs">
+                <div>
+                    <label class="block text-[10px] text-gray-500 mb-1">Tanggal</label>
+                    <input id="mmJrDate" type="date" class="w-full px-2.5 py-1.5 rounded-lg bg-dark-900 border border-dark-600/40 text-gray-200 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-500 mb-1">Ticker</label>
+                    <input id="mmJrTicker" type="text" placeholder="BBCA" maxlength="6" class="w-full px-2.5 py-1.5 rounded-lg bg-dark-900 border border-dark-600/40 text-white font-bold uppercase outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-500 mb-1">Posisi</label>
+                    <select id="mmJrType" class="w-full px-2 py-1.5 rounded-lg bg-dark-900 border border-dark-600/40 text-gray-200 outline-none">
+                        <option value="BUY">BUY</option>
+                        <option value="SELL">SELL</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-500 mb-1">Harga Entry</label>
+                    <input id="mmJrEntryPrice" type="number" placeholder="5000" class="w-full px-2.5 py-1.5 rounded-lg bg-dark-900 border border-dark-600/40 text-gray-200 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-500 mb-1">Lot</label>
+                    <input id="mmJrLots" type="number" value="1" min="1" class="w-full px-2.5 py-1.5 rounded-lg bg-dark-900 border border-dark-600/40 text-gray-200 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-500 mb-1">Harga Exit (Jika Selesai)</label>
+                    <input id="mmJrExitPrice" type="number" placeholder="Kosong = Open" class="w-full px-2.5 py-1.5 rounded-lg bg-dark-900 border border-dark-600/40 text-gray-200 outline-none">
+                </div>
+                <div class="col-span-2 sm:col-span-4 lg:col-span-1 flex items-end">
+                    <button onclick="addJournalTrade()" class="w-full py-1.5 rounded-lg bg-emerald-500 text-black font-semibold text-xs hover:bg-emerald-400 transition">
+                        Simpan Trade
+                    </button>
+                </div>
+            </div>
+            <div>
+                <input id="mmJrNotes" type="text" placeholder="Alasan transaksi / strategi entry (mis. Breakout MA20, Pantulan Lantai DeepScan)..." class="w-full px-3 py-1.5 rounded-lg bg-dark-900 border border-dark-600/30 text-xs text-gray-300 outline-none">
+            </div>
+        </div>
+
+        <!-- Editable Grid Spreadsheet Table -->
+        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30">
+            <table class="w-full text-xs border-collapse min-w-[950px]">
+                <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
+                    <tr class="bg-dark-700/80 text-gray-400 text-left border-b border-dark-600/40">
+                        <th class="px-3 py-2.5 text-center">Tanggal</th>
+                        <th class="px-3 py-2.5">Kode Saham</th>
+                        <th class="px-3 py-2.5 text-center">Posisi</th>
+                        <th class="px-3 py-2.5 text-right">Harga Entry</th>
+                        <th class="px-3 py-2.5 text-center">Lot</th>
+                        <th class="px-3 py-2.5 text-right">Modal Digunakan</th>
+                        <th class="px-3 py-2.5 text-right">Harga Exit</th>
+                        <th class="px-3 py-2.5 text-right">Realized P/L</th>
+                        <th class="px-3 py-2.5">Catatan / Alasan</th>
+                        <th class="px-3 py-2.5 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="mmJournalTableBody" class="text-gray-300 divide-y divide-dark-700/40">
+                    <tr><td colspan="10" class="text-center py-8 text-gray-500">Memuat jurnal transaksi...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
 <!-- TRADINGVIEW WIDGET - Below chat (hidden by default, shown on demand) -->
 <section id="tvSection" class="hidden max-w-[1100px] w-full mx-auto px-3 sm:px-5 pb-6">
@@ -4014,7 +4293,7 @@ function clearTop5HistoryLoadTimer() {
 // premiumAccessState and its companions are initialised above setTopLevelView —
 // see the "PREMIUM ACCESS STATE" block there. Re-initialising them here would
 // silently discard whatever startup already resolved.
-function isPremiumFeaturePage(page) { return ['sektor','sector','sector-hot','screener','portofolio','watchlist','trackrecord','track-record'].indexOf(String(page || '')) !== -1; }
+function isPremiumFeaturePage(page) { return ['sektor','sector','sector-hot','screener','portofolio','watchlist','trackrecord','track-record','deepscan','money-management'].indexOf(String(page || '')) !== -1; }
 function hasConfirmedPremiumAccess() { return premiumAccessState.state === 'ready' && premiumAccessState.premium === true; }
 // Website access is approval-based: only a definitive server "no" locks features.
 // A pending check or a transient network failure must never lock out or bounce
@@ -4234,6 +4513,14 @@ function navigateTo(page) {
     // Watchlist loader
     if (page === 'watchlist') {
         if (typeof window.loadUserWatchlist === 'function') window.loadUserWatchlist(false);
+    }
+    // Macro DeepScan loader
+    if (page === 'deepscan') {
+        if (typeof window.loadDeepScan === 'function') window.loadDeepScan(false);
+    }
+    // Money Management loader
+    if (page === 'money-management') {
+        if (typeof window.initMoneyManagement === 'function') window.initMoneyManagement();
     }
 }
 
@@ -12448,6 +12735,8 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/unified-cockpit-runtime.js?v=20260905-v1"></script>
 <script src="/position-sizing-calculator.js?v=20260906-e1"></script>
 <script src="/signal-gate-transparency.js?v=20260906-e3"></script>
+<script src="/deepscan-runtime.js?v=20260926-v1"></script>
+<script src="/money-management-runtime.js?v=20260926-v1"></script>
 <script>
 // Kickoff landing showcase load as early as possible (non-blocking, fail-open).
 // Called here after all scripts are loaded so escapeHtml is available.

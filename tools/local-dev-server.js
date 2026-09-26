@@ -78,6 +78,9 @@ const ROUTE_REWRITES = {
   '/review': '/index.html',
   '/analisis-saham': '/analisis-saham.html',
   '/portfolio-planner': '/portfolio-command-center-v2.html',
+  '/deepscan': '/index.html',
+  '/kelola-keuangan': '/index.html',
+  '/money-management': '/index.html',
   // Public BYOK registration form (mirrors the Vercel rewrite so the VPS
   // fallback serves the same URL shape).
   '/register': '/register.html',
@@ -166,6 +169,13 @@ const server = http.createServer(async (req, res) => {
   if (pathname.startsWith('/api/')) {
     const endpointName = pathname.slice('/api/'.length).replace(/\.js$/, '');
     const apiFile = path.join(API_DIR, endpointName + '.js');
+
+    if (endpointName === 'money-management') {
+      req.query = Object.fromEntries(parsedUrl.searchParams.entries());
+      req.body = await parseBody(req);
+      const mmHandler = require('../lib/money-management-handler');
+      return await mmHandler(req, res);
+    }
 
     // Bypass maintenance screen on local dev server
     if (endpointName === 'maintenance-settings') {

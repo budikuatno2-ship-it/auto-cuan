@@ -18,10 +18,13 @@ const reviewAccessLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 8
  * checkout/voucher routes are rewritten here and delegated immediately to
  * isolated handlers that enforce their own same-origin and signed-session gates.
  */
+const moneyManagementHandler = require('../lib/money-management-handler');
+
 module.exports = async function handler(req, res) {
   const surface = String(req.query && req.query.surface || '').trim();
   if (surface === 'subscription-manual') return subscriptionManualHandler(req, res);
   if (surface === 'subscription-voucher') return subscriptionVoucherHandler(req, res);
+  if (surface === 'money-management') return moneyManagementHandler(req, res);
 
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
