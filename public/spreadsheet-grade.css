@@ -191,6 +191,60 @@ html.light .app-sidebar.is-collapsed .sidebar-item::after {
   background-color: var(--sp-zebra-hover);
 }
 
+/* Keep each broker table in its own scroll context. The header remains visible
+   while scanning a long broker list, and the paired panels can shrink without
+   forcing the application shell wider than the viewport. */
+.broker-summary-grid,
+.broker-summary-panel,
+.broker-summary-table-wrap {
+  min-width: 0;
+}
+
+.broker-summary-panel {
+  background: rgba(17, 24, 39, 0.72);
+  border-color: rgba(148, 163, 184, 0.12);
+  border-radius: 12px;
+}
+
+.broker-summary-table {
+  min-width: 520px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.broker-summary-table th {
+  min-height: 38px;
+  background: #111827;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  color: #a8b3c4;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.broker-summary-table td {
+  height: 38px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.07);
+}
+
+.broker-summary-table th:first-child,
+.broker-summary-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #111827;
+}
+
+.broker-summary-table thead th:first-child {
+  z-index: 4;
+}
+
+@media (max-width: 767px) {
+  .broker-summary-table {
+    min-width: 600px;
+  }
+}
+
 /* 3c. Numerals. Monospaced and right-aligned wherever a figure carries money.
    The `font-variant-numeric` in ui-theme.css already makes digits equal-width;
    the mono face additionally keeps the decimal point on the same column. */

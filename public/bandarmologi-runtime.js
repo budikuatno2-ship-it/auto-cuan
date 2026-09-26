@@ -2305,19 +2305,19 @@
       sellers = canonicalizeBrokerRows(sellers, false);
 
       var html = '';
-      html += '  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">';
+      html += '  <div class="broker-summary-grid grid grid-cols-1 md:grid-cols-2 gap-3">';
 
       // Top Buyers
-      html += '    <div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3 overflow-hidden">';
+      html += '    <section class="broker-summary-panel bg-dark-700/40 border border-dark-600/30 rounded-xl p-3 overflow-hidden" aria-label="Top broker pembeli">';
       html += '      <div class="text-[11px] font-bold text-emerald-400 mb-2 flex items-center justify-between pb-1.5 border-b border-dark-600/40 sticky top-0 bg-slate-900 z-10 p-1" style="position: sticky; top: 0; z-index: 10; background-color: #0f172a;">';
       html += '        <span>🟢 TOP BUYERS (' + (isGross ? 'FULL / GROSS' : 'NET VALUE &amp; VOL') + ') — ' + buyers.length + ' Broker</span>';
       html += '        <span class="text-[10px] text-gray-400 font-mono">' + (isGross ? 'BUY &amp; SELL VAL' : 'NET VAL') + '</span>';
       html += '      </div>';
-      html += '      <div class="overflow-y-auto overflow-x-auto pr-1" style="max-height: 480px; overflow-y: auto; overflow-x: auto;">';
+      html += '      <div class="broker-summary-table-wrap overflow-y-auto overflow-x-auto pr-1" style="max-height: 480px; overflow-y: auto; overflow-x: auto;">';
       if (buyers.length === 0) {
         html += '        <div class="text-gray-500 text-center py-6 text-xs">Tidak ada data buyer</div>';
       } else {
-        html += '        <table class="w-full text-xs text-left border-collapse">';
+        html += '        <table class="broker-summary-table w-full text-xs text-left border-collapse">';
         html += '          <thead class="sticky top-0 bg-slate-900 z-10 text-[10px] text-gray-400 font-mono border-b border-dark-600/40" style="position: sticky; top: 0; z-index: 10; background-color: #0f172a;">';
         html += '            <tr>';
         html += '              <th class="py-2 px-2 text-center w-7">#</th>';
@@ -2374,19 +2374,19 @@
         html += '        </table>';
       }
       html += '      </div>';
-      html += '    </div>';
+      html += '    </section>';
 
       // Top Sellers
-      html += '    <div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3 overflow-hidden">';
+      html += '    <section class="broker-summary-panel bg-dark-700/40 border border-dark-600/30 rounded-xl p-3 overflow-hidden" aria-label="Top broker penjual">';
       html += '      <div class="text-[11px] font-bold text-rose-400 mb-2 flex items-center justify-between pb-1.5 border-b border-dark-600/40 sticky top-0 bg-slate-900 z-10 p-1" style="position: sticky; top: 0; z-index: 10; background-color: #0f172a;">';
       html += '        <span>🔴 TOP SELLERS (' + (isGross ? 'FULL / GROSS' : 'NET VALUE &amp; VOL') + ') — ' + sellers.length + ' Broker</span>';
       html += '        <span class="text-[10px] text-gray-400 font-mono">' + (isGross ? 'SELL &amp; BUY VAL' : 'NET VAL') + '</span>';
       html += '      </div>';
-      html += '      <div class="overflow-y-auto overflow-x-auto pr-1" style="max-height: 480px; overflow-y: auto; overflow-x: auto;">';
+      html += '      <div class="broker-summary-table-wrap overflow-y-auto overflow-x-auto pr-1" style="max-height: 480px; overflow-y: auto; overflow-x: auto;">';
       if (sellers.length === 0) {
         html += '        <div class="text-gray-500 text-center py-6 text-xs">Tidak ada data seller</div>';
       } else {
-        html += '        <table class="w-full text-xs text-left border-collapse">';
+        html += '        <table class="broker-summary-table w-full text-xs text-left border-collapse">';
         html += '          <thead class="sticky top-0 bg-slate-900 z-10 text-[10px] text-gray-400 font-mono border-b border-dark-600/40" style="position: sticky; top: 0; z-index: 10; background-color: #0f172a;">';
         html += '            <tr>';
         html += '              <th class="py-2 px-2 text-center w-7">#</th>';
@@ -2442,7 +2442,7 @@
         html += '        </table>';
       }
       html += '      </div>';
-      html += '    </div>';
+      html += '    </section>';
 
       html += '  </div>';
       return html;
