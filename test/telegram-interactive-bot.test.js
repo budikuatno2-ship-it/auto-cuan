@@ -671,7 +671,9 @@ test('state-machine: /setkey wizard step-by-step Official Provider flow', async 
     credentials: mock,
     env: { ADMIN_TELEGRAM_ID: '7' },
     fetchFn: async (url) => {
-      if (url.includes('generativelanguage.googleapis.com')) {
+      let host = '';
+      try { host = new URL(url).hostname; } catch (_) {}
+      if (host === 'generativelanguage.googleapis.com') {
         return {
           ok: true,
           json: async () => ({
@@ -758,7 +760,9 @@ test('state-machine: /setkey wizard Custom Provider flow with model fetching and
     credentials: mock,
     env: { ADMIN_TELEGRAM_ID: '7' },
     fetchFn: async (url) => {
-      if (url.includes('api.9router.com/v1/models')) {
+      let host = '';
+      try { host = new URL(url).hostname; } catch (_) {}
+      if (host === 'api.9router.com') {
         return {
           ok: true,
           json: async () => ({
