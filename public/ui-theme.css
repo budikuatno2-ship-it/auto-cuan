@@ -45,12 +45,12 @@
      carry its own diagonal gradient, which is what made a dense screen read
      as muddy: eight cards, eight light sources. One gradient survives, on the
      dashboard hero, because there is exactly one of it. */
-  --ac-bg: #090c12;
-  --ac-bg-elevated: #0e121a;
-  --ac-surface-1: #11151e;      /* panel — the default card ground */
-  --ac-surface-2: #161b25;      /* raised block sitting on a panel */
-  --ac-surface-3: #0c1017;      /* recessed well — inputs, nested groups */
-  --ac-surface-hover: #1a202c;
+  --ac-bg: #090d16;
+  --ac-bg-elevated: #0c111b;
+  --ac-surface-1: #0f1420;      /* panel — Holver-style neutral card ground */
+  --ac-surface-2: #141a27;      /* raised block sitting on a panel */
+  --ac-surface-3: #0b101a;      /* recessed well — inputs, nested groups */
+  --ac-surface-hover: #19202e;
 
   /* --- Structure -------------------------------------------------------
      Three weights. A hairline states a boundary, a line draws a container,
@@ -66,7 +66,8 @@
      muted 6.1:1, dim 3.6:1. Everything that carries meaning clears 4.5:1;
      --ac-text-dim is reserved for non-essential ornament and uppercase
      micro-labels at >=11px, which clear the AA large-text threshold. */
-  --ac-text-strong: #f7fafc;
+  --color-text-primary: #f8fafc;
+  --ac-text-strong: var(--color-text-primary);
   --ac-text: #dbe3ec;
   --ac-text-muted: #93a1b5;
   --ac-text-dim: #6a7889;
@@ -325,9 +326,9 @@ body {
 .faq-item,
 .subscription-summary {
   background: var(--ac-surface-1);
-  border: 1px solid var(--ac-line);
-  border-radius: var(--ac-radius-lg);
-  box-shadow: var(--ac-edge), var(--ac-shadow-1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--ac-radius-md);
+  box-shadow: none;
 }
 
 .ac-surface,
@@ -441,9 +442,16 @@ body {
 }
 
 .dashboard-hero {
-  border-radius: var(--ac-radius-xl);
-  border-color: rgba(52, 211, 153, 0.16);
-  box-shadow: var(--ac-shadow-2);
+  border-radius: var(--ac-radius-md);
+  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--ac-surface-1);
+  box-shadow: none;
+}
+
+/* The greeting inherits one semantic token in every theme. This selector also
+   protects it from legacy utility rules without coupling it to a literal hue. */
+#page-dashboard #dashGreeting {
+  color: var(--color-text-primary);
 }
 
 /* .dashboard-card and .feature-card were separate copies of the surface rules
@@ -2489,7 +2497,12 @@ html.light, body.light {
   --pw-dim: #64748b;
   --pw-grid: transparent;
 
+  --color-text-primary: #0f172a !important;
   --ac-bg: #f8fafc;
+  --ac-surface-1: #ffffff;
+  --ac-surface-2: #f8fafc;
+  --ac-surface-3: #f1f5f9;
+  --ac-text-strong: var(--color-text-primary);
   --ac-surface: #ffffff;
   --ac-panel: #ffffff;
   --ac-panel-header: #f1f5f9;
@@ -2564,10 +2577,17 @@ html.light .app-header {
 html.light .panel,
 html.light .dashboard-card,
 html.light .screener-card,
-html.light .dashboard-hero {
+html.light .dashboard-hero,
+html.light .unified-card,
+html.light .portfolio-card,
+html.light .market-tile {
   background: #ffffff !important;
   border-color: #e2e8f0 !important;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+  box-shadow: none !important;
+}
+
+html.light #page-dashboard #dashGreeting {
+  color: var(--color-text-primary);
 }
 
 html.light .app-sidebar {
@@ -2761,9 +2781,9 @@ html.light body {
 }
 
 .sidebar-item.active {
-  color: #34d399;
-  background-color: rgba(52, 211, 153, 0.10);
-  border-color: rgba(52, 211, 153, 0.25);
+  color: #dbe3ec;
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .theme-toggle-btn {
