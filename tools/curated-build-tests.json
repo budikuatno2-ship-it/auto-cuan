@@ -277,6 +277,7 @@
   "test/header-profile-unification.test.js",
   "test/historical-incident-regression.test.js",
   "test/holiday-guard.test.js",
+  "test/holver-app-shell-theme.test.js",
   "test/idx-calendar-source-window.test.js",
   "test/idx-holidays-2026-seed.test.js",
   "test/idx-tick-breakout-confirmation.test.js",
