@@ -34,6 +34,7 @@ const byName = (name) => APPS.find((a) => a.name === name);
 // satu baris di sini — itu perubahan kontrak yang disengaja, bukan angka yang
 // kebetulan berubah. Daftar ini adalah kontraknya.
 const REQUIRED_DAEMONS = [
+  'autocuan-web',                // Web dashboard origin (port 3000 / standalone Next.js)
   'auto-cuan-vps-api',           // Express API bridge (port 3001)
   'auto-cuan-ai-eval-supervisor', // AI evaluator runner
   'autocuan-bot',                // Telegram interactive bot
@@ -48,7 +49,7 @@ test('Batch 12: ecosystem registers every required long-lived VPS daemon', () =>
   }
 });
 
-test('Batch 12: ecosystem declares exactly the five official daemons', () => {
+test('Batch 12: ecosystem declares exactly the official daemons', () => {
   // Angka ini tetap dijaga, tapi sebagai cerminan daftar kontrak di atas —
   // bukan literal yang harus ditebak. Bila daemon resmi bertambah, tambahkan ke
   // REQUIRED_DAEMONS dan test ini akan memberi tahu angka barunya.

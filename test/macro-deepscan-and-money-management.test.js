@@ -108,10 +108,11 @@ test('Telegram Group Bot: Zero BYOK in group chat for market commands', async ()
 
   const bot = createInteractiveBot({
     adminId: '999999',
-    env: { BOT_TOKEN: 'mock_token', PUBLIC_WEB_BASE_URL: 'https://autocuan.web.id' },
+    env: { BOT_TOKEN: 'mock_token', PUBLIC_WEB_BASE_URL: 'https://autocuan.web.id', BOT_GROUP_ZERO_BYOK: 'true' },
     getBotUser: async (id) => ({
       telegram_id: id,
       username: 'testmember',
+      email: 'testmember@gmail.com',
       status: 'active'
     }),
     loadScreener: () => ({

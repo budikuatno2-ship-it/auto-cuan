@@ -119,7 +119,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         TZ: 'Asia/Jakarta',
-        AUTO_CUAN_ROOT: ROOT
+        AUTO_CUAN_ROOT: ROOT,
+        BOT_GROUP_ZERO_BYOK: 'true'
       }
     },
     {
