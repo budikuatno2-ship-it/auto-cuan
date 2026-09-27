@@ -661,3 +661,23 @@ html.light .ticker-link:hover {
   color: #065f46 !important;
   text-decoration: underline !important;
 }
+
+/* Batch 4 Accessibility Focus Rings & Transitions */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.tab:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid #10b981 !important;
+  outline-offset: 2px !important;
+}
+
+.tab,
+.btn,
+.card,
+.metric-grid,
+.ticker-link {
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, color 150ms ease !important;
+}
