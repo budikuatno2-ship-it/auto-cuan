@@ -55,14 +55,10 @@
         // which is what prevents a dark flash for Light-mode users.
         (function () {
             try {
-                var saved = localStorage.getItem('autocuan_theme') || 'dark';
-                if (saved === 'light') {
-                    document.documentElement.classList.add('light');
-                    document.documentElement.style.background = '#f8fafc';
-                } else {
-                    document.documentElement.classList.remove('light');
-                    document.documentElement.style.background = '#0b0e14';
-                }
+                document.documentElement.classList.remove('light');
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.style.background = '#0b0e14';
+                localStorage.setItem('autocuan_theme', 'dark');
             } catch (_) {}
         })();
     </script>
@@ -434,7 +430,7 @@
     <div id="sidebarSessions" class="sidebar-sessions">
         <!-- Sessions rendered dynamically -->
     </div>
-    <div class="chat-sidebar-footer">
+    <div class="sidebar-footer">
         <button onclick="clearAllSessions()" class="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition flex items-center gap-2">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             Hapus Semua Riwayat
@@ -455,7 +451,7 @@
 <aside id="appSidebar" class="app-sidebar hidden" aria-label="Navigasi workspace">
     <div class="sidebar-brand">
         <div class="sidebar-brand-lockup">
-            <span class="brand-mark" aria-hidden="true"><svg class="sidebar-logo-svg" style="width:24px;height:24px;max-width:24px;min-width:24px;flex-shrink:0;display:inline-block;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l5-5 4 4 7-8"/></svg></span>
+            <span class="brand-mark" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l5-5 4 4 7-8"/></svg></span>
             <div class="sidebar-brand-text">
                 <strong>Auto-Cuan</strong>
                 <span>IDX Workspace</span>
@@ -575,15 +571,12 @@
     </nav>
     <div class="sidebar-footer">
         <div class="user-profile-badge" title="Profil pengguna &amp; Logout" role="button" tabindex="0" onclick="if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click();}">
-            <div class="user-avatar" aria-hidden="true">B</div>
+            <div class="user-avatar" id="sidebarUserAvatar" aria-hidden="true">BU</div>
             <div class="user-info sidebar-label">
                 <span class="user-name" id="sidebarUserName">budi</span>
-                <span class="user-role">ADMIN</span>
+                <span class="user-role" id="sidebarUserRole">ADMIN</span>
             </div>
         </div>
-        <button id="themeToggleCompact" type="button" onclick="toggleAppTheme()" class="theme-toggle-compact" aria-label="Toggle Theme" title="Ganti tema terang/gelap">
-            <span id="sidebarThemeIcon" aria-hidden="true">🌙</span><span class="sr-only" id="sidebarThemeLabel">Dark Mode</span>
-        </button>
     </div>
 </aside>
 <div id="sidebarScrim" class="sidebar-scrim hidden" onclick="closeMobileSidebar()" aria-hidden="true"></div>
@@ -2378,6 +2371,11 @@
 </main>
 </div>
 
+<!-- FLOATING AI ASSISTANT WIDGET -->
+<button id="aiFloatingBtn" type="button" onclick="navigateTo('analisis')" class="fixed bottom-6 right-6 z-[45] w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center shadow-xl shadow-emerald-500/20 transition-all hover:scale-105" title="Tanya AI Assistant" aria-label="Tanya AI Assistant">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+</button>
+
 <!-- Day Trade Detail Modal -->
 <div id="scrDetailModal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="scrDetailTitle" onclick="if(event.target===this)closeScrDetail()">
 <div style="background:#0f1319;border:1px solid #1c2333;border-radius:20px 20px 0 0;max-width:520px;width:100%;max-height:92vh;overflow-y:auto;padding:20px 18px 24px;position:relative;-webkit-overflow-scrolling:touch" class="sm:rounded-2xl sm:!rounded-b-2xl">
@@ -2562,14 +2560,6 @@
         <button onclick="document.getElementById('maintenancePreviewModal').classList.add('hidden')" class="mt-4 px-5 py-2 rounded-xl bg-gray-700 text-sm font-medium text-gray-200 hover:bg-gray-600 transition">Tutup Preview</button>
     </div>
 </div>
-
-<!-- FLOATING AI ASSISTANT TRIGGER BUTTON -->
-<button id="floatingAiAssistantBtn" type="button" onclick="toggleSidebar()" class="floating-ai-assistant-btn" title="Asisten AI Saham" aria-label="Buka Asisten AI Saham">
-    <svg class="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
-    </svg>
-    <span class="floating-ai-sparkle">✨</span>
-</button>
 
 </div>
 
@@ -2764,9 +2754,12 @@ function maintenanceLockActive() {
     return maintenanceStatus === MAINTENANCE_ON && !isServerVerifiedAdmin();
 }
 
-// Startup latency, slow connection, timeout, network error, status unverified / unknown
-// MUST NOT lock the screen or show a blocker modal. Non-blocking policy.
+// True while the status is still unresolved. A server-verified admin is not held
+// here: their authorization is established independently of maintenance status,
+// and holding them would lock administrators out during exactly the incident
+// they need to log in for.
 function serviceStatusUnverified() {
+    // Non-blocking policy: network timeout or unverified status does not lock screen
     return false;
 }
 
@@ -3249,7 +3242,7 @@ function showLandingPage(opts) {
     try { localStorage.removeItem('autocuan_entered_app'); } catch (_) {}
     updateLandingCtas();
     if (!opts.skipHistory && !(opts.duringInit && window.location.pathname === '/')) setRoute('/', !!opts.replaceHistory);
-    if (!opts.keepScroll) window.scrollTo({ top: 0, behavior: opts.duringInit ? 'auto' : 'smooth' });
+    // Keep natural document scroll position without forced jumps
     if (opts.promptAuth) openAuthChoiceModal(opts.promptMessage || 'Silakan login atau daftar untuk membuka dashboard Auto-Cuan.');
 }
 function enterApp(opts) {
@@ -3297,6 +3290,13 @@ window.addEventListener('popstate', function() { handleAppRoute({ fromPopstate: 
 // cannot represent.
 var maintenanceConfig = { maintenanceMode: false, message: '' };
 async function checkMaintenanceStatus(timeoutMs) {
+    // Bounded, and it may ONLY move maintenanceStatus on a confirmed answer.
+    //
+    // Every failure path — timeout, network error, non-2xx, unparseable body,
+    // success:false, missing config — leaves the previous status untouched. So:
+    //   unknown + failure  stays unknown  (the app is not exposed)
+    //   on      + failure  stays on       (a confirmed gate cannot be lifted)
+    //   off     + failure  stays off      (no spurious lockout after a good load)
     var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     var timer = controller ? setTimeout(function () { try { controller.abort(); } catch (_) {} }, timeoutMs || 3000) : null;
     try {
@@ -3306,23 +3306,21 @@ async function checkMaintenanceStatus(timeoutMs) {
             body: JSON.stringify({ action: 'get' }),
             signal: controller ? controller.signal : undefined
         });
-        // HTTP 503 explicitly indicates maintenance
         if (response.status === 503) {
             maintenanceStatus = MAINTENANCE_ON;
             try {
                 var errData = await response.json();
-                if (errData && errData.message) maintenanceConfig.message = errData.message;
+                if (errData && errData.message) maintenanceConfig = { maintenanceMode: true, message: errData.message };
             } catch (_) {}
             return maintenanceStatus;
         }
         if (!response.ok) return maintenanceStatus;
         var data = await response.json();
-        if (data && (data.maintenance === true || data.maintenanceMode === true || (data.config && data.config.maintenanceMode === true))) {
-            if (data.config && typeof data.config === 'object') maintenanceConfig = data.config;
-            else if (data.message) maintenanceConfig.message = data.message;
+        if (data && (data.maintenance === true || (data.config && data.config.maintenanceMode === true))) {
+            maintenanceConfig = data.config || { maintenanceMode: true, message: data.message || '' };
             maintenanceStatus = MAINTENANCE_ON;
-        } else if (data && (data.maintenance === false || data.maintenanceMode === false || (data.config && data.config.maintenanceMode === false) || data.success === true)) {
-            if (data.config && typeof data.config === 'object') maintenanceConfig = data.config;
+        } else if (data && (data.success === true || data.maintenance === false || (data.config && data.config.maintenanceMode === false))) {
+            if (data.config) maintenanceConfig = data.config;
             maintenanceStatus = MAINTENANCE_OFF;
         }
     } catch(e) {
@@ -3333,7 +3331,8 @@ async function checkMaintenanceStatus(timeoutMs) {
 }
 
 // Applies the current status. Confirmed-on shows maintenance with the server's
-// message; confirmed-off or unresolved leaves routing alone (non-blocking policy).
+// message; unresolved shows the status screen; confirmed-off does nothing and
+// leaves routing alone.
 function applyMaintenanceGate() {
     if (maintenanceStatus === MAINTENANCE_ON) {
         var msgEl = document.getElementById('maintenanceMessage');
@@ -3829,6 +3828,11 @@ async function handleMagicLoginFlow(authToken, magicUserId) {
     // Screen blocker only locks when maintenance is confirmed ON from server
     var _maintenanceLocked = maintenanceStatus === MAINTENANCE_ON && !isServerVerifiedAdmin();
     if (_maintenanceLocked) applyMaintenanceGate();
+    if (maintenanceStatus === MAINTENANCE_UNKNOWN) {
+        setTimeout(function() {
+            if (typeof showToast === 'function') showToast('Koneksi startup lambat. Dashboard dibuka dalam mode mandiri.', 'info');
+        }, 600);
+    }
 
     // === PUBLIC SHARE MODE ===
     var _shareParams = new URLSearchParams(window.location.search);
@@ -4621,6 +4625,8 @@ function navigateTo(page) {
         }, 150);
         return;
     }
+    // Single Shell SPA in-place navigation for all pages including analisis & portofolio
+
     currentPage = page;
     if (page !== 'screener') stopAllScreenerPolling();
     // Hide all pages
@@ -4644,11 +4650,9 @@ function navigateTo(page) {
     });
     // Keep the workspace rail's highlight in step with the top nav.
     if (typeof syncWorkspaceSidebarActive === 'function') syncWorkspaceSidebarActive(page);
-    if (window.innerWidth < 768) {
-        var activeMobileNav = document.querySelector('.mobile-nav-row .nav-btn[data-page="' + page + '"]');
-        if (activeMobileNav && activeMobileNav.offsetParent !== null && activeMobileNav.scrollIntoView) {
-            try { activeMobileNav.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch(e) { activeMobileNav.scrollIntoView(); }
-        }
+    var activeMobileNav = document.querySelector('.mobile-nav-row .nav-btn[data-page="' + page + '"]');
+    if (activeMobileNav && activeMobileNav.scrollIntoView) {
+        try { activeMobileNav.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch(e) { activeMobileNav.scrollIntoView(); }
     }
     // Show admin panel only on dashboard
     var adminPanel = document.getElementById('adminPanel');
@@ -7828,33 +7832,25 @@ function acKeepAliveFetch(url, options) {
     return fetch(url, options);
 }
 
-// ===== THEME SWITCHER (Dark Zinc / Light Clean) =====
+// ===== THEME CONTROLLER (Pure Institutional Fintech Dark Mode) =====
 function applyAppTheme(theme) {
-    var isLight = theme === 'light';
-    document.documentElement.classList.toggle('light', isLight);
-    document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
-    if (document.body) document.body.classList.toggle('light', isLight);
-    document.documentElement.style.background = isLight ? '#f8fafc' : '#0b0e14';
+    document.documentElement.classList.remove('light');
+    document.documentElement.setAttribute('data-theme', 'dark');
+    if (document.body) document.body.classList.remove('light');
+    document.documentElement.style.background = '#0b0e14';
     var icon = document.getElementById('themeSwitcherIcon');
     var label = document.getElementById('themeSwitcherLabel');
-    if (icon) icon.textContent = isLight ? '☀️' : '🌙';
-    if (label) label.textContent = isLight ? 'Light' : 'Dark';
-    var sbIcon = document.getElementById('sidebarThemeIcon');
-    var sbLabel = document.getElementById('sidebarThemeLabel');
-    if (sbIcon) sbIcon.textContent = isLight ? '☀️' : '🌙';
-    if (sbLabel) sbLabel.textContent = isLight ? 'Light Mode' : 'Dark Mode';
+    if (icon) icon.textContent = '🌙';
+    if (label) label.textContent = 'Dark';
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', isLight ? '#f8fafc' : '#0b0e14');
-    try { localStorage.setItem('autocuan_theme', isLight ? 'light' : 'dark'); } catch (_) {}
+    if (meta) meta.setAttribute('content', '#0b0e14');
+    try { localStorage.setItem('autocuan_theme', 'dark'); } catch (_) {}
 }
 function toggleAppTheme() {
-    var isLight = document.documentElement.classList.contains('light');
-    applyAppTheme(isLight ? 'dark' : 'light');
+    applyAppTheme('dark');
 }
 function initAppTheme() {
-    var saved = 'dark';
-    try { saved = localStorage.getItem('autocuan_theme') || 'dark'; } catch (_) {}
-    applyAppTheme(saved);
+    applyAppTheme('dark');
 }
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initAppTheme);

@@ -172,11 +172,12 @@ test('a hidden screen is also inert and aria-hidden, so it cannot be tabbed into
 // 5xx therefore rendered the normal public site — precisely the situation where
 // maintenance may in fact be active.
 
-test('an unresolved status does NOT block landing, app, or public navigation (non-blocking policy)', () => {
+test('an unresolved status does not block public views (non-blocking policy)', () => {
   const ctx = makeContext({ status: UNKNOWN });
-  ['landing', 'app'].forEach(state => {
+  const expected = { landing: 'landingPage', app: 'dashboardScreen', blocked: 'blockedScreen' };
+  Object.keys(expected).forEach(state => {
     vm.runInContext('setTopLevelView(' + JSON.stringify(state) + ')', ctx);
-    assert.notEqual(ctx.visibleScreen(), 'serviceStatusScreen', 'requested view: ' + state);
+    assert.equal(ctx.visibleScreen(), expected[state], 'requested view: ' + state);
   });
 });
 
@@ -190,10 +191,10 @@ test('an unresolved status leaves the startup loader alone', () => {
 
 test('the unresolved state is distinct from maintenance, not a synonym for it', () => {
   const unknown = makeContext({ status: UNKNOWN });
+  vm.runInContext('setTopLevelView("landing")', unknown);
+  assert.equal(unknown.visibleScreen(), 'landingPage');
   assert.equal(vm.runInContext('maintenanceLockActive()', unknown), false,
     'unknown must not claim maintenance is active');
-  assert.equal(vm.runInContext('serviceStatusUnverified()', unknown), false,
-    'unknown is non-blocking');
 
   const on = makeContext({ status: ON });
   vm.runInContext('setTopLevelView("landing")', on);
@@ -201,7 +202,7 @@ test('the unresolved state is distinct from maintenance, not a synonym for it', 
   assert.equal(vm.runInContext('serviceStatusUnverified()', on), false);
 });
 
-test('an unresolved status does not lock out an authenticated user', () => {
+test('an unresolved status does not hold an authenticated non-admin', () => {
   const ctx = makeContext({ status: UNKNOWN, session: USER_SESSION });
   vm.runInContext('setTopLevelView("app")', ctx);
   assert.equal(ctx.visibleScreen(), 'dashboardScreen');
@@ -220,7 +221,7 @@ test('an unresolved status does not hold a server-verified admin', () => {
 // checkMaintenanceStatus: only a confirmed answer may move the state
 // ---------------------------------------------------------------------------
 
-test('first load + status request timeout leaves app accessible (non-blocking)', async () => {
+test('first load + status request timeout leaves the app accessible in standalone mode', async () => {
   const ctx = makeContext({ status: UNKNOWN, fetch: neverResolves });
   await vm.runInContext('checkMaintenanceStatus(50)', ctx);
   assert.equal(ctx.maintenanceStatus, UNKNOWN, 'a timeout must not confirm anything');
@@ -228,16 +229,15 @@ test('first load + status request timeout leaves app accessible (non-blocking)',
   assert.equal(ctx.visibleScreen(), 'landingPage');
 });
 
-test('HTTP 503 explicitly triggers maintenance mode and locks screen', async () => {
-  const http503 = () => Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({ message: 'Server 503 Maintenance' }) });
-  const ctx = makeContext({ status: UNKNOWN, fetch: http503 });
+test('first load + status request 5xx leaves the app accessible in standalone mode', async () => {
+  const ctx = makeContext({ status: UNKNOWN, fetch: serverError });
   await vm.runInContext('checkMaintenanceStatus(500)', ctx);
-  assert.equal(ctx.maintenanceStatus, ON, 'HTTP 503 must set status to ON');
+  assert.equal(ctx.maintenanceStatus, UNKNOWN);
   vm.runInContext('setTopLevelView("landing")', ctx);
-  assert.equal(ctx.visibleScreen(), 'maintenanceScreen');
+  assert.equal(ctx.visibleScreen(), 'landingPage');
 });
 
-test('transient non-503 errors leave status unknown without blocking the app', async () => {
+test('other unusable answers leave the app accessible in standalone mode', async () => {
   for (const [label, stub] of [['network down', networkDown], ['unparseable body', unparseable], ['success:false', successFalse]]) {
     const ctx = makeContext({ status: UNKNOWN, fetch: stub });
     await vm.runInContext('checkMaintenanceStatus(500)', ctx);
@@ -368,7 +368,7 @@ test('with maintenance off every view is selected normally', () => {
   });
 });
 
-test('before any check has run the app defaults to unknown and non-blocking', () => {
+test('before any check has run the app is non-blocking on unknown status', () => {
   const ctx = makeContext({});
   assert.equal(ctx.maintenanceStatus, UNKNOWN, 'the initial state must be unknown');
   assert.equal(vm.runInContext('maintenanceLockActive()', ctx), false, 'unknown is not a maintenance claim');

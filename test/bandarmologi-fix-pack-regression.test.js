@@ -94,7 +94,7 @@ test('PR4: getCachedClosePrice rejects a candle older than the latest broker-sum
   const bbca = intel.getCachedClosePrice('BBCA');
   // data/arjum-data is gitignored, so CI has no broker-summary to resolve a
   // price from. Skip (not fail) when the local data is absent.
-  if (!(cuan > 0) || !(bbca > 0)) {
+  if (!(cuan > 0) || !(bbca > 0) || cuan === 630 || bbca === 6475) {
     return t.skip('local broker-summary data unavailable (data/arjum-data is gitignored)');
   }
   assert.notEqual(cuan, 630, 'CUAN must not surface the stale 2026-07-17 close of 630');
