@@ -2948,8 +2948,8 @@ function syncHeaderUsername() {
     }
 
     var sidebarUserEl = document.getElementById('sidebarUserName');
-    var sidebarAvatarEl = document.querySelector('#appSidebar .user-avatar');
-    var sidebarRoleEl = document.querySelector('#appSidebar .user-role');
+    var sidebarAvatarEl = typeof document.querySelector === 'function' ? document.querySelector('#appSidebar .user-avatar') : null;
+    var sidebarRoleEl = typeof document.querySelector === 'function' ? document.querySelector('#appSidebar .user-role') : null;
     if (sidebarUserEl) sidebarUserEl.textContent = isGuest ? 'Guest' : u;
     if (sidebarAvatarEl) sidebarAvatarEl.textContent = isGuest ? 'GU' : String(u || 'AC').slice(0, 2).toUpperCase();
     if (sidebarRoleEl) sidebarRoleEl.textContent = (isBudi || isAdm) ? 'ADMIN' : (isSubscribed ? 'PRO' : 'FREE');
@@ -4799,7 +4799,7 @@ function updateDashGreeting() {
     el.textContent = 'Halo, ' + displayName;
     var sidebarName = document.getElementById('sidebarUserName');
     if (sidebarName) sidebarName.textContent = displayName;
-    var sidebarAvatar = document.querySelector('#appSidebar .user-avatar');
+    var sidebarAvatar = typeof document.querySelector === 'function' ? document.querySelector('#appSidebar .user-avatar') : null;
     if (sidebarAvatar) sidebarAvatar.textContent = displayName.charAt(0).toUpperCase() || 'T';
     // Show approved badge for non-guest logged-in users
     var approvedBadge = document.getElementById('approvedBadge');

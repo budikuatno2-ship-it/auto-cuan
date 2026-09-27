@@ -71,7 +71,7 @@
 #page-dashboard > .space-y-4 {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 18px !important;
+  gap: 22px !important;
 }
 
 #page-dashboard > .space-y-4 > * {

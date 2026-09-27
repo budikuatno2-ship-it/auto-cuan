@@ -3098,3 +3098,43 @@ html.light body {
     justify-self: end;
   }
 }
+
+/* ===========================================================================
+   12. Phases 2–5 Visual Refinement (Radar, Stock Cards, Sektor Hot, Spacing)
+   =========================================================================== */
+#appMain {
+  overflow-x: hidden;
+}
+
+#sektorGroupsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.sektor-group-card,
+.dt-card-item,
+.kg-card-item,
+.nk-card-item {
+  border-radius: 12px !important;
+  padding: 16px !important;
+}
+
+.trade-plan-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  align-items: stretch !important;
+}
+
+.trade-plan-tile {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  min-height: 44px !important;
+  padding: 6px 8px !important;
+  border-radius: 8px !important;
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+}
