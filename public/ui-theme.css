@@ -3138,3 +3138,221 @@ html.light body {
   font-family: var(--ac-font-mono);
   font-variant-numeric: tabular-nums;
 }
+
+/* ===========================================================================
+   13. Batch 3 (Fase 13 - 14): #page-money-management Fintech & Table Overhaul
+   =========================================================================== */
+#page-money-management .dashboard-hero {
+  border-radius: 14px !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(11, 15, 25, 0.96)) !important;
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.28) !important;
+}
+
+#page-money-management .ac-segmented {
+  display: inline-flex !important;
+  gap: 6px !important;
+  padding: 5px !important;
+  background: rgba(15, 23, 42, 0.78) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 12px !important;
+}
+
+#page-money-management .ac-segment {
+  border-radius: 8px !important;
+  padding: 7px 14px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #94a3b8 !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  transition: all 0.16s ease !important;
+  cursor: pointer;
+}
+
+#page-money-management .ac-segment:hover {
+  color: #f1f5f9 !important;
+  background: rgba(30, 41, 59, 0.65) !important;
+}
+
+#page-money-management .ac-segment.is-active,
+#page-money-management .ac-segment.active {
+  color: #34d399 !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 78, 59, 0.32)) !important;
+  border-color: rgba(16, 185, 129, 0.48) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.14) !important;
+}
+
+/* TanStack-Grade Compact Density on Money Management Spreadsheet Tables */
+#mmCashflowSpreadsheetTable,
+#mmJournalSpreadsheetTable {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#mmCashflowSpreadsheetTable thead th,
+#mmJournalSpreadsheetTable thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  padding: 8px 10px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: #94a3b8 !important;
+  background-color: #0f172a !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24) !important;
+  white-space: nowrap !important;
+}
+
+#mmCashflowSpreadsheetTable tbody td,
+#mmJournalSpreadsheetTable tbody td {
+  padding: 7px 10px !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  font-variant-numeric: tabular-nums !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.09) !important;
+  vertical-align: middle !important;
+}
+
+#mmCashflowSpreadsheetTable tbody td.font-mono,
+#mmJournalSpreadsheetTable tbody td.font-mono,
+#mmCashflowSpreadsheetTable tfoot td.font-mono,
+#mmJournalSpreadsheetTable tfoot td.font-mono {
+  font-family: var(--ac-font-mono, 'JetBrains Mono', monospace) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#mmCashflowSpreadsheetTable tbody tr:hover,
+#mmJournalSpreadsheetTable tbody tr:hover {
+  background-color: rgba(30, 41, 59, 0.55) !important;
+}
+
+#mmCashflowSpreadsheetTable tfoot,
+#mmJournalSpreadsheetTable tfoot {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 15 !important;
+  background-color: #0f172a !important;
+  border-top: 2px solid rgba(16, 185, 129, 0.45) !important;
+}
+
+#mmCashflowSpreadsheetTable tfoot td,
+#mmJournalSpreadsheetTable tfoot td {
+  padding: 8px 10px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+  background-color: #0f172a !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+
+/* Light Mode Overrides for #page-money-management (WCAG AA >= 4.5:1) */
+html.light #page-money-management .dashboard-hero {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light #page-money-management .dashboard-hero h2 {
+  color: #0f172a !important;
+}
+
+html.light #page-money-management .dashboard-hero p {
+  color: #475569 !important;
+}
+
+html.light #page-money-management .ac-segmented {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.light #page-money-management .ac-segment {
+  color: #475569 !important;
+}
+
+html.light #page-money-management .ac-segment:hover {
+  color: #0f172a !important;
+  background: #ffffff !important;
+}
+
+html.light #page-money-management .ac-segment.is-active,
+html.light #page-money-management .ac-segment.active {
+  color: #047857 !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(5, 150, 105, 0.48) !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.light #page-money-management .bg-dark-800,
+html.light #page-money-management .bg-dark-800\/80,
+html.light #page-money-management .bg-dark-800\/60,
+html.light #page-money-management .bg-dark-900,
+html.light #page-money-management .bg-dark-900\/90 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light #mmCashflowSpreadsheetTable thead th,
+html.light #mmJournalSpreadsheetTable thead th {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+}
+
+html.light #mmCashflowSpreadsheetTable tbody td,
+html.light #mmJournalSpreadsheetTable tbody td {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light #mmCashflowSpreadsheetTable tbody tr:hover,
+html.light #mmJournalSpreadsheetTable tbody tr:hover {
+  background-color: #f1f5f9 !important;
+}
+
+html.light #mmCashflowSpreadsheetTable tfoot,
+html.light #mmJournalSpreadsheetTable tfoot,
+html.light #mmCashflowSpreadsheetTable tfoot td,
+html.light #mmJournalSpreadsheetTable tfoot td {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-top-color: #047857 !important;
+}
+
+html.light #page-money-management .text-white {
+  color: #0f172a !important;
+}
+
+html.light #page-money-management .text-gray-200,
+html.light #page-money-management .text-gray-300,
+html.light #page-money-management .text-gray-400,
+html.light #page-money-management .text-gray-500 {
+  color: #334155 !important;
+}
+
+html.light #page-money-management .text-emerald-400,
+html.light #page-money-management .text-emerald-300 {
+  color: #047857 !important;
+}
+
+html.light #page-money-management .text-rose-400,
+html.light #page-money-management .text-rose-300 {
+  color: #b91c1c !important;
+}
+
+html.light #page-money-management .text-blue-300,
+html.light #page-money-management .text-blue-400 {
+  color: #1d4ed8 !important;
+}
+
+html.light #page-money-management .text-cyan-300,
+html.light #page-money-management .text-cyan-400 {
+  color: #0369a1 !important;
+}
