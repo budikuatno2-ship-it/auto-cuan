@@ -461,3 +461,517 @@
 .scrollbar-thin::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* =========================================================================
+   BATCH 2 (FASE 6 - 9): /analisis-saham SUB-TAB VISUAL OVERHAUL
+   - Phase 6: 7 Sub-Tab Segmented Pill Navigation & Ticker Search Bar
+   - Phase 7: Bandarmologi & Broker Hunter TanStack-Density Tables
+   - Phase 8: Sinyal Intelijen & Pattern Radar Institutional Cards
+   - Phase 9: Jejaring Insider & Ranking Harian Leaderboard Hierarchy
+   - WCAG AA Light Mode (html.light) Full-Contrast Support
+   ========================================================================= */
+
+/* --- PHASE 6: 7 SUB-TAB NAVIGATION & HEADER /analisis-saham --- */
+.app-header {
+  background: rgba(11, 15, 25, 0.94) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+  box-shadow: 0 4px 20px rgba(2, 6, 23, 0.35);
+}
+
+.analisis-tab-strip {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px !important;
+  margin-bottom: 16px !important;
+  background: rgba(15, 23, 42, 0.78) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 14px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 6px 18px rgba(2, 6, 23, 0.28) !important;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+@media (min-width: 1024px) {
+  .analisis-tab-strip {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+  }
+}
+
+.analisis-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  padding: 7px 13px !important;
+  min-height: 36px !important;
+  border-radius: 10px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.01em !important;
+  color: #94a3b8 !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  white-space: nowrap !important;
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.analisis-tab:hover {
+  color: #f1f5f9 !important;
+  background: rgba(30, 41, 59, 0.72) !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+.analisis-tab.active {
+  color: #34d399 !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 78, 59, 0.32)) !important;
+  border-color: rgba(16, 185, 129, 0.48) !important;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  font-weight: 700 !important;
+}
+
+/* Search Bar & Popular Ticker Chips Refinement */
+#analisisChartHeader .unified-top-bar,
+.unified-top-bar {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(11, 15, 25, 0.94)) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 14px !important;
+  padding: 12px 16px !important;
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.28) !important;
+}
+
+#analisisInput,
+#bandarTickerSearchInput,
+#intelSearchInput,
+#insiderRosterTickerInput,
+#rankingSearchInput {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: 0.03em !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  background: rgba(15, 23, 42, 0.88) !important;
+  color: #f8fafc !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+#analisisInput:focus,
+#bandarTickerSearchInput:focus,
+#intelSearchInput:focus,
+#insiderRosterTickerInput:focus,
+#rankingSearchInput:focus {
+  border-color: rgba(16, 185, 129, 0.65) !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.16) !important;
+  outline: none !important;
+}
+
+/* Popular Ticker Pills in Top Bar */
+.unified-top-bar button[onclick*="quickAnalisis"] {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  border-radius: 8px !important;
+  padding: 4px 10px !important;
+  background: rgba(30, 41, 59, 0.75) !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  color: #cbd5e1 !important;
+  transition: all 0.15s ease !important;
+}
+
+.unified-top-bar button[onclick*="quickAnalisis"]:hover {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(16, 185, 129, 0.42) !important;
+  color: #34d399 !important;
+}
+
+/* --- PHASE 7: SUB-TAB BANDARMOLOGI & BROKER HUNTER (#panel-tab-bandarmologi, #panel-tab-hunter) --- */
+#panel-tab-bandarmologi .unified-card,
+#panel-tab-hunter .unified-card,
+#panel-tab-intel .unified-card,
+#panel-tab-insider .unified-card,
+#panel-tab-ranking .unified-card,
+#panel-tab-pattern .unified-card {
+  background: rgba(15, 23, 42, 0.86) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 28px rgba(2, 6, 23, 0.32) !important;
+}
+
+/* TanStack-grade density on Broker Summary, Akumulasi, and Broker Hunter tables */
+.broker-summary-table,
+#bandarmologiContent table,
+#brokerHunterContent table {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.broker-summary-table thead th,
+#bandarmologiContent table thead th,
+#brokerHunterContent table thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  padding: 8px 8px !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: #94a3b8 !important;
+  background-color: #0f172a !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22) !important;
+  white-space: nowrap !important;
+}
+
+.broker-summary-table tbody td,
+#bandarmologiContent table tbody td,
+#brokerHunterContent table tbody td {
+  padding: 7px 8px !important;
+  font-size: 11.5px !important;
+  line-height: 1.35 !important;
+  font-variant-numeric: tabular-nums !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08) !important;
+  vertical-align: middle !important;
+}
+
+.broker-summary-table thead th,
+.broker-summary-table tbody td {
+  padding: 7px 6px !important;
+  font-size: 11px !important;
+}
+
+/* Numeric right-aligned cells use crisp monospace figures */
+.broker-summary-table tbody td.text-right,
+#bandarmologiContent table tbody td.text-right,
+#brokerHunterContent table tbody td.text-right {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.broker-summary-table tbody tr:hover,
+#bandarmologiContent table tbody tr:hover,
+#brokerHunterContent table tbody tr:hover {
+  background-color: rgba(30, 41, 59, 0.55) !important;
+}
+
+/* Institutional Accumulation Green & Distribution Red Badges / Bars */
+#bandarmologiContent .text-emerald-400,
+#brokerHunterContent .text-emerald-400,
+#bandarmologiContent .text-emerald-300,
+#brokerHunterContent .text-emerald-300 {
+  color: #34d399 !important;
+  font-weight: 600 !important;
+}
+
+#bandarmologiContent .text-rose-400,
+#brokerHunterContent .text-rose-400,
+#bandarmologiContent .text-rose-300,
+#brokerHunterContent .text-rose-300 {
+  color: #fb7185 !important;
+  font-weight: 600 !important;
+}
+
+.broker-summary-panel {
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 12px !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+  overflow: hidden !important;
+}
+
+/* --- PHASE 8: SUB-TAB SINYAL INTELIJEN & PATTERN RADAR (#panel-tab-intel, #panel-tab-pattern) --- */
+#intelCardHargaModal,
+#intelCardSilentForeign,
+#intelCardRitelCutloss,
+#intelCardConcentrationRatio,
+#patternSubTabContainer .rounded-xl {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(11, 15, 25, 0.95)) !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  box-shadow: 0 6px 20px rgba(2, 6, 23, 0.26) !important;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease !important;
+}
+
+#intelCardHargaModal:hover,
+#intelCardSilentForeign:hover,
+#intelCardRitelCutloss:hover,
+#intelCardConcentrationRatio:hover {
+  border-color: rgba(148, 163, 184, 0.3) !important;
+  box-shadow: 0 10px 26px rgba(2, 6, 23, 0.36) !important;
+}
+
+/* High-contrast status badges inside Sinyal Intelijen & Pattern Radar */
+#bandarmologiIntelContent span[class*="rounded-md"][class*="border"],
+#bandarmologiIntelContent span[class*="rounded-lg"][class*="border"],
+#patternSubTabContainer span[class*="rounded"][class*="border"] {
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#bandarmologiIntelContent table thead th,
+#patternSubTabContainer table thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  padding: 8px 10px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  background-color: #0f172a !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22) !important;
+}
+
+#bandarmologiIntelContent table tbody td,
+#patternSubTabContainer table tbody td {
+  padding: 8px 10px !important;
+  font-size: 12px !important;
+  font-variant-numeric: tabular-nums !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08) !important;
+}
+
+/* --- PHASE 9: SUB-TAB JEJARING INSIDER & RANKING HARIAN (#panel-tab-insider, #panel-tab-ranking) --- */
+#insiderRosterSection,
+#insiderGraphSection,
+#insiderDetailPanel {
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 12px !important;
+  background: rgba(15, 23, 42, 0.78) !important;
+}
+
+#insiderRosterSection table thead th,
+#rankingTableWrap table thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  padding: 8px 10px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: #94a3b8 !important;
+  background-color: #0f172a !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22) !important;
+}
+
+#insiderRosterSection table tbody td,
+#rankingTableWrap table tbody td {
+  padding: 8px 10px !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  font-variant-numeric: tabular-nums !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08) !important;
+}
+
+#rankingTableWrap table tbody td.text-right,
+#insiderRosterSection table tbody td.text-right {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#rankingTableWrap table tbody tr:hover,
+#insiderRosterSection table tbody tr:hover {
+  background-color: rgba(30, 41, 59, 0.55) !important;
+}
+
+/* =========================================================================
+   WCAG AA LIGHT MODE OVERRIDES FOR /analisis-saham (html.light)
+   ========================================================================= */
+html.light,
+html.light body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light .app-header {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.light .app-header h1,
+html.light .app-header a,
+html.light .app-header .text-white,
+html.light .app-header span.text-white {
+  color: #0f172a !important;
+}
+
+html.light .app-header p,
+html.light .app-header .text-gray-400 {
+  color: #475569 !important;
+}
+
+html.light .analisis-tab-strip {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light .analisis-tab {
+  color: #475569 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+html.light .analisis-tab:hover {
+  color: #0f172a !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light .analisis-tab.active {
+  color: #047857 !important;
+  background: #ffffff !important;
+  border-color: rgba(5, 150, 105, 0.48) !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.light #analisisChartHeader .unified-top-bar,
+html.light .unified-top-bar {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light #analisisInput,
+html.light #bandarTickerSearchInput,
+html.light #intelSearchInput,
+html.light #insiderRosterTickerInput,
+html.light #rankingSearchInput {
+  background: #f8fafc !important;
+  border: 1px solid #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+html.light .unified-top-bar button[onclick*="quickAnalisis"] {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+html.light .unified-top-bar button[onclick*="quickAnalisis"]:hover {
+  background: #ecfdf5 !important;
+  border-color: #10b981 !important;
+  color: #047857 !important;
+}
+
+html.light .unified-card,
+html.light #panel-tab-bandarmologi .unified-card,
+html.light #panel-tab-hunter .unified-card,
+html.light #panel-tab-intel .unified-card,
+html.light #panel-tab-insider .unified-card,
+html.light #panel-tab-ranking .unified-card,
+html.light #panel-tab-pattern .unified-card,
+html.light #intelCardHargaModal,
+html.light #intelCardSilentForeign,
+html.light #intelCardRitelCutloss,
+html.light #intelCardConcentrationRatio,
+html.light .broker-summary-panel,
+html.light #insiderRosterSection,
+html.light #insiderGraphSection,
+html.light #insiderDetailPanel {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Override dark utility backgrounds and inline #0f172a sticky bars inside /analisis-saham in Light Mode */
+html.light #page-analisis .bg-slate-900,
+html.light #page-analisis [style*="background-color: #0f172a"],
+html.light #page-analisis [style*="background-color:#0f172a"],
+html.light #page-analisis .bg-dark-900,
+html.light #page-analisis .bg-dark-900\/80,
+html.light #page-analisis .bg-dark-900\/60,
+html.light #page-analisis .bg-dark-900\/50,
+html.light #page-analisis .bg-dark-900\/40,
+html.light #page-analisis .bg-dark-800,
+html.light #page-analisis .bg-dark-800\/95,
+html.light #page-analisis .bg-dark-800\/90,
+html.light #page-analisis .bg-dark-800\/80,
+html.light #page-analisis .bg-dark-800\/70,
+html.light #page-analisis .bg-dark-800\/60,
+html.light #page-analisis .bg-dark-700,
+html.light #page-analisis .bg-dark-700\/60,
+html.light #page-analisis .bg-dark-700\/50,
+html.light #page-analisis .bg-dark-700\/40,
+html.light #page-analisis .bg-dark-700\/30 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light .broker-summary-table thead th,
+html.light #bandarmologiContent table thead th,
+html.light #brokerHunterContent table thead th,
+html.light #bandarmologiIntelContent table thead th,
+html.light #insiderRosterSection table thead th,
+html.light #rankingTableWrap table thead th,
+html.light #page-analisis thead[style*="background-color"],
+html.light #page-analisis th[style*="background-color"] {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+}
+
+html.light .broker-summary-table tbody td,
+html.light #bandarmologiContent table tbody td,
+html.light #brokerHunterContent table tbody td,
+html.light #bandarmologiIntelContent table tbody td,
+html.light #insiderRosterSection table tbody td,
+html.light #rankingTableWrap table tbody td {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light .broker-summary-table tbody tr:hover,
+html.light #bandarmologiContent table tbody tr:hover,
+html.light #brokerHunterContent table tbody tr:hover,
+html.light #rankingTableWrap table tbody tr:hover,
+html.light #insiderRosterSection table tbody tr:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Light Mode Text & Semantic Contrast Enforcement (WCAG AA >= 4.5:1) */
+html.light #page-analisis .text-white,
+html.light #page-analisis .text-gray-100,
+html.light #page-analisis .text-gray-200 {
+  color: #0f172a !important;
+}
+
+html.light #page-analisis .text-gray-300,
+html.light #page-analisis .text-gray-400,
+html.light #page-analisis .text-gray-500 {
+  color: #334155 !important;
+}
+
+html.light #page-analisis .text-emerald-400,
+html.light #page-analisis .text-emerald-300 {
+  color: #047857 !important;
+}
+
+html.light #page-analisis .text-rose-400,
+html.light #page-analisis .text-rose-300 {
+  color: #b91c1c !important;
+}
+
+html.light #page-analisis .text-amber-400,
+html.light #page-analisis .text-amber-300 {
+  color: #b45309 !important;
+}
+
+html.light #page-analisis .text-blue-400,
+html.light #page-analisis .text-blue-300,
+html.light #page-analisis .text-cyan-400,
+html.light #page-analisis .text-cyan-300 {
+  color: #1d4ed8 !important;
+}
+
