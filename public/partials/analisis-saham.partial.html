@@ -1,0 +1,169 @@
+<!-- Partial: Analisis Saham & Cockpit AI -->
+<!-- Extracted from analisis-saham.html for SPA integration -->
+<!-- Duplicate header removed - uses app shell header instead -->
+
+<!-- ===== MAIN UNIFIED COCKPIT CONTAINER ===== -->
+<main id="page-analisis" class="page-content flex-1 flex flex-col max-w-[1280px] w-full mx-auto px-3 sm:px-5 py-3">
+    <!-- Main Tab Navigation Strip (Consolidated 5-Tab Architecture) -->
+    <nav class="analisis-tab-strip mb-4" role="tablist" aria-label="Tab Analisis Saham">
+        <button id="tabAnalisisChart" type="button" class="analisis-tab active" data-tab="analisis-chart" onclick="switchAnalisisTab('analisis-chart')">
+            <span class="text-base">💬</span>
+            <span>Analisis &amp; Chart</span>
+        </button>
+        <button id="tabBandarmologi" type="button" class="analisis-tab" data-tab="bandarmologi" onclick="switchAnalisisTab('bandarmologi')">
+            <span class="text-base">🏛️</span>
+            <span>Bandarmologi</span>
+        </button>
+        <button id="tabSignal" type="button" class="analisis-tab" data-tab="signal" onclick="switchAnalisisTab('signal')">
+            <span class="text-base">🧠</span>
+            <span>Sinyal Intelijen</span>
+        </button>
+        <button id="tabBrokerHunter" type="button" class="analisis-tab" data-tab="broker-hunter" onclick="switchAnalisisTab('broker-hunter')">
+            <span class="text-base">🔍</span>
+            <span>Broker Hunter</span>
+            <span class="lock-badge">🔒</span>
+        </button>
+        <button id="tabPatternRadar" type="button" class="analisis-tab" data-tab="pattern-radar" onclick="switchAnalisisTab('pattern-radar')">
+            <span class="text-base">📡</span>
+            <span>Pattern Radar</span>
+        </button>
+        <button id="tabAiCockpit" type="button" class="analisis-tab" data-tab="ai-cockpit" onclick="switchAnalisisTab('ai-cockpit')">
+            <span class="text-base">🤖</span>
+            <span>AI Cockpit</span>
+        </button>
+        <button id="tabEquityStory" type="button" class="analisis-tab" data-tab="equity-story" onclick="switchAnalisisTab('equity-story')">
+            <span class="text-base">📊</span>
+            <span>Equity Story</span>
+        </button>
+    </nav>
+
+    <!-- Tab Panels -->
+    <div id="analisisTabPanels" class="flex-1">
+        <!-- Tab Panel: Analisis & Chart -->
+        <div id="panel-analisis-chart" class="tab-panel active" role="tabpanel">
+            <div id="patternRadarCard" class="dashboard-card p-4 mb-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Pattern Radar</h3>
+                        <p class="text-xs text-gray-500 mt-1">Deteksi pattern ABCD, Breakout, dan divergences</p>
+                    </div>
+                    <button onclick="openAiApiKeyModal()" class="px-3 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-amber-300 hover:bg-dark-600/60 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0" title="Kelola Google Gemini API Key (BYOK)">
+                        <span>🔑 API Key (BYOK)</span>
+                    </button>
+                </div>
+                <div id="patternRadarContent" class="text-sm text-gray-400">Memuat Pattern Radar...</div>
+            </div>
+
+            <!-- Analysis Input Section -->
+            <div id="analisisInputSection" class="dashboard-card p-4 mb-4">
+                <h3 class="text-lg font-bold text-white mb-3">Analisis Saham</h3>
+                <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                    <div class="flex-1">
+                        <label for="tickerInput" class="block text-xs font-semibold text-gray-400 mb-1.5">Kode Saham</label>
+                        <input type="text" id="tickerInput" placeholder="Contoh: BBCA, TLKM, ASII" class="w-full px-3 py-2 rounded-lg bg-dark-700 border border-dark-600 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 transition-all" value="">
+                    </div>
+                    <div class="sm:w-32">
+                        <label for="timeframeSelect" class="block text-xs font-semibold text-gray-400 mb-1.5">Timeframe</label>
+                        <select id="timeframeSelect" class="w-full px-3 py-2 rounded-lg bg-dark-700 border border-dark-600 text-white focus:outline-none focus:border-emerald-500/50 transition-all">
+                            <option value="1d">Harian (1D)</option>
+                            <option value="1w">Mingguan (1W)</option>
+                            <option value="1m">Bulanan (1M)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button id="btnJalankanAnalisis" onclick="jalankanAnalisis()" class="px-6 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-all whitespace-nowrap">
+                            Jalankan Analisis
+                        </button>
+                    </div>
+                </div>
+                <div id="analisisStatus" class="text-xs text-gray-500"></div>
+            </div>
+
+            <!-- Analysis Results -->
+            <div id="analisisResultsSection" class="dashboard-card p-4 hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-white">Hasil Analisis</h3>
+                    <span id="analisisTimestamp" class="text-xs text-gray-500"></span>
+                </div>
+                <div id="analisisResultsContent" class="text-sm text-gray-300"></div>
+            </div>
+
+            <!-- Chart Section -->
+            <div id="chartSection" class="dashboard-card p-4 mb-4">
+                <h3 class="text-lg font-bold text-white mb-3">Chart Interaktif</h3>
+                <div id="tradingview-chart" class="chart-loading-overlay">
+                    <div class="flex items-center justify-center h-64">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Panel: Bandarmologi -->
+        <div id="panel-bandarmologi" class="tab-panel hidden" role="tabpanel">
+            <div id="bandarmologiContent" class="dashboard-card p-4">
+                <h3 class="text-lg font-bold text-white mb-3">Bandarmologi</h3>
+                <p class="text-sm text-gray-400 mb-4">Analisis aliran dana investor asing dan lokal</p>
+                <div id="bandarmologiData" class="text-sm text-gray-300">
+                    Memuat data bandarmologi...
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Panel: Sinyal Intelijen -->
+        <div id="panel-signal" class="tab-panel hidden" role="tabpanel">
+            <div id="signalContent" class="dashboard-card p-4">
+                <h3 class="text-lg font-bold text-white mb-3">Sinyal Intelijen</h3>
+                <p class="text-sm text-gray-400 mb-4">Sinyal trading berbasis AI dan analisis teknikal</p>
+                <div id="signalData" class="text-sm text-gray-300">
+                    Memuat sinyal intelijen...
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Panel: Broker Hunter -->
+        <div id="panel-broker-hunter" class="tab-panel hidden" role="tabpanel">
+            <div id="brokerHunterContent" class="dashboard-card p-4">
+                <h3 class="text-lg font-bold text-white mb-3">Broker Hunter</h3>
+                <span class="lock-badge">🔒 ADMIN</span>
+                <p class="text-sm text-gray-400 mt-2 mb-4">Analisis aktivitas broker dan volume trading</p>
+                <div id="brokerHunterData" class="text-sm text-gray-300">
+                    Memuat data broker hunter...
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Panel: Pattern Radar -->
+        <div id="panel-pattern-radar" class="tab-panel hidden" role="tabpanel">
+            <div id="patternRadarContent" class="dashboard-card p-4">
+                <h3 class="text-lg font-bold text-white mb-3">Pattern Radar Detail</h3>
+                <p class="text-sm text-gray-400 mb-4">Deteksi pattern otomatis dan alert</p>
+                <div id="patternRadarDetail" class="text-sm text-gray-300">
+                    Memuat pattern radar...
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Panel: AI Cockpit -->
+        <div id="panel-ai-cockpit" class="tab-panel hidden" role="tabpanel">
+            <div id="aiCockpitContent" class="dashboard-card p-4">
+                <h3 class="text-lg font-bold text-white mb-3">AI Cockpit</h3>
+                <p class="text-sm text-gray-400 mb-4">Asisten AI untuk analisis dan keputusan trading</p>
+                <div id="aiCockpitData" class="text-sm text-gray-300">
+                    Memuat AI cockpit...
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Panel: Equity Story -->
+        <div id="panel-equity-story" class="tab-panel hidden" role="tabpanel">
+            <div id="equityStoryContent" class="dashboard-card p-4">
+                <h3 class="text-lg font-bold text-white mb-3">Equity Story</h3>
+                <p class="text-sm text-gray-400 mb-4">Analisis fundamental dan cerita investasi</p>
+                <div id="equityStoryData" class="text-sm text-gray-300">
+                    Memuat equity story...
+                </div>
+            </div>
+        </div>
+    </div>
+</main>

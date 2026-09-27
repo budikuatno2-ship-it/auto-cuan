@@ -1,0 +1,190 @@
+<!-- Partial: Portfolio Command Center -->
+<!-- Extracted from portfolio-command-center.html for SPA integration -->
+<!-- Duplicate header removed - uses app shell header instead -->
+
+<div id="app" class="flex-1 flex flex-col">
+    <nav id="tabStrip" class="analisis-tab-strip mb-4" role="tablist" aria-label="Portfolio Command Center">
+        <button class="analisis-tab active" role="tab" aria-selected="true" data-tab="today" onclick="switchPortfolioTab('today')">
+            <span class="text-base">📊</span>
+            <span>Hari Ini</span>
+        </button>
+        <button class="analisis-tab" role="tab" aria-selected="false" data-tab="planner" onclick="switchPortfolioTab('planner')">
+            <span class="text-base">📝</span>
+            <span>Rencana Posisi</span>
+        </button>
+        <button class="analisis-tab" role="tab" aria-selected="false" data-tab="watch" onclick="switchPortfolioTab('watch')">
+            <span class="text-base">👀</span>
+            <span>Pantauan</span>
+        </button>
+        <button class="analisis-tab" role="tab" aria-selected="false" data-tab="risk" onclick="switchPortfolioTab('risk')">
+            <span class="text-base">🛡️</span>
+            <span>Risiko &amp; Avg Down</span>
+        </button>
+        <button class="analisis-tab" role="tab" aria-selected="false" data-tab="scenarios" onclick="switchPortfolioTab('scenarios')">
+            <span class="text-base">⚡</span>
+            <span>Skenario Posisi</span>
+        </button>
+        <button class="analisis-tab" role="tab" aria-selected="false" data-tab="journal" onclick="switchPortfolioTab('journal')">
+            <span class="text-base">📖</span>
+            <span>Jurnal</span>
+        </button>
+        <button class="analisis-tab" role="tab" aria-selected="false" data-tab="ai" onclick="switchPortfolioTab('ai')">
+            <span class="text-base">🤖</span>
+            <span>Asisten AI</span>
+        </button>
+    </nav>
+
+    <!-- Access Gate -->
+    <section id="accessGate" class="access-gate dashboard-card p-4 mb-4">
+        <div class="flex items-center gap-3">
+            <div class="spinner-sm"></div>
+            <div>
+                <h2 class="text-white font-semibold">Memeriksa akses aman…</h2>
+                <p class="text-xs text-gray-500 mt-1">Pemeriksaan dibatasi maksimal 9 detik.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Portfolio Content -->
+    <div id="portfolioContent" class="hidden">
+        <!-- Page: Today -->
+        <section id="page-today" class="page active" role="tabpanel">
+            <div class="decision-hero dashboard-card p-4 mb-4">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="eyebrow text-xs font-bold uppercase tracking-wider text-emerald-400 mb-2">DECISION COCKPIT · HARI INI</p>
+                        <h2 id="decisionTitle" class="text-xl font-bold text-white">Bangun rencana yang jelas sebelum mengambil posisi.</h2>
+                        <p id="decisionNote" class="text-sm text-gray-400 mt-2">Command Center membaca rencana, harga tersimpan, batas risiko, serta perubahan lokal.</p>
+                    </div>
+                    <div id="postureCard" class="posture neutral flex-shrink-0 px-4 py-3 rounded-xl">
+                        <span class="text-xs text-gray-400">Postur portofolio</span>
+                        <strong id="postureLabel" class="block text-lg font-bold text-white">Memuat…</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metric Grid -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                <div class="metric dashboard-card p-3">
+                    <span class="text-xs text-gray-500">Rencana / posisi</span>
+                    <strong id="sumPlans" class="block text-2xl font-bold text-white mt-1">0</strong>
+                    <small id="sumPriced" class="text-xs text-gray-400">0 memiliki harga</small>
+                </div>
+                <div class="metric dashboard-card p-3">
+                    <span class="text-xs text-gray-500">Perlu perhatian</span>
+                    <strong id="sumAttention" class="block text-2xl font-bold text-amber-400 mt-1">0</strong>
+                    <small class="text-xs text-gray-400">berdasarkan level tersimpan</small>
+                </div>
+                <div class="metric dashboard-card p-3">
+                    <span class="text-xs text-gray-500">Total eksposur</span>
+                    <strong id="sumExposure" class="block text-2xl font-bold text-white mt-1">Rp 0</strong>
+                    <small class="text-xs text-gray-400">nilai posisi/rencana</small>
+                </div>
+                <div class="metric dashboard-card p-3">
+                    <span class="text-xs text-gray-500">Estimasi risiko</span>
+                    <strong id="sumRisk" class="block text-2xl font-bold text-white mt-1">Rp 0</strong>
+                    <small id="sumPnl" class="text-xs text-gray-400">P/L —</small>
+                </div>
+            </div>
+
+            <!-- Dashboard Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <article class="dashboard-card p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h2 class="text-lg font-bold text-white">Tindakan Hari Ini</h2>
+                            <p class="text-xs text-gray-500 mt-1">Prioritas terurut dari level paling mendesak.</p>
+                        </div>
+                        <button id="refreshToday" class="px-3 py-1.5 rounded-lg bg-dark-700 border border-dark-600 text-gray-300 hover:border-emerald-500/50 transition-all text-xs font-semibold">
+                            Refresh data
+                        </button>
+                    </div>
+                    <div id="todayActions" class="text-sm text-gray-400">
+                        <p class="empty-state">Belum ada posisi yang perlu tindakan.</p>
+                    </div>
+                </article>
+
+                <article class="dashboard-card p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h2 class="text-lg font-bold text-white">Apa yang Berubah?</h2>
+                            <p class="text-xs text-gray-500 mt-1">Membandingkan snapshot lokal terakhir.</p>
+                        </div>
+                        <button id="captureSnapshot" class="px-3 py-1.5 rounded-lg bg-dark-700 border border-dark-600 text-gray-300 hover:border-emerald-500/50 transition-all text-xs font-semibold">
+                            Simpan snapshot
+                        </button>
+                    </div>
+                    <div id="changeTimeline" class="text-sm text-gray-400">
+                        <p class="empty-state">Belum ada snapshot pembanding.</p>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- Page: Planner (Placeholder) -->
+        <section id="page-planner" class="page hidden" role="tabpanel">
+            <div class="dashboard-card p-4">
+                <h2 class="text-lg font-bold text-white mb-3">Budget-to-Stock Planner</h2>
+                <p class="text-sm text-gray-400">Mulai dari modal dan batas alokasi, lalu lihat rentang harga saham yang masuk.</p>
+                <div id="plannerContent" class="text-sm text-gray-300 mt-4">
+                    <p class="empty-state">Memuat planner...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page: Watch (Placeholder) -->
+        <section id="page-watch" class="page hidden" role="tabpanel">
+            <div class="dashboard-card p-4">
+                <h2 class="text-lg font-bold text-white mb-3">Pantauan Saham</h2>
+                <p class="text-sm text-gray-400">Monitor posisi dan rencana yang perlu perhatian.</p>
+                <div id="watchContent" class="text-sm text-gray-300 mt-4">
+                    <p class="empty-state">Memuat watchlist...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page: Risk (Placeholder) -->
+        <section id="page-risk" class="page hidden" role="tabpanel">
+            <div class="dashboard-card p-4">
+                <h2 class="text-lg font-bold text-white mb-3">Risiko &amp; Avg Down</h2>
+                <p class="text-sm text-gray-400">Analisis risiko dan strategi average down.</p>
+                <div id="riskContent" class="text-sm text-gray-300 mt-4">
+                    <p class="empty-state">Memuat analisis risiko...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page: Scenarios (Placeholder) -->
+        <section id="page-scenarios" class="page hidden" role="tabpanel">
+            <div class="dashboard-card p-4">
+                <h2 class="text-lg font-bold text-white mb-3">Skenario Posisi</h2>
+                <p class="text-sm text-gray-400">Various position scenarios and simulations.</p>
+                <div id="scenariosContent" class="text-sm text-gray-300 mt-4">
+                    <p class="empty-state">Memuat skenario...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page: Journal (Placeholder) -->
+        <section id="page-journal" class="page hidden" role="tabpanel">
+            <div class="dashboard-card p-4">
+                <h2 class="text-lg font-bold text-white mb-3">Jurnal Trading</h2>
+                <p class="text-sm text-gray-400">Catatan dan evaluasi aktivitas trading.</p>
+                <div id="journalContent" class="text-sm text-gray-300 mt-4">
+                    <p class="empty-state">Memuat jurnal...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page: AI (Placeholder) -->
+        <section id="page-ai" class="page hidden" role="tabpanel">
+            <div class="dashboard-card p-4">
+                <h2 class="text-lg font-bold text-white mb-3">Asisten AI Portfolio</h2>
+                <p class="text-sm text-gray-400">AI-powered portfolio analysis and recommendations.</p>
+                <div id="aiContent" class="text-sm text-gray-300 mt-4">
+                    <p class="empty-state">Memuat AI assistant...</p>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

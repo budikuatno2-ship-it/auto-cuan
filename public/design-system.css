@@ -1,0 +1,369 @@
+/**
+ * Auto-Cuan Design System - Semantic Color & Motion Tokens
+ * Based on §2 Design System Document & §6 Motion System
+ * Implements WCAG AA-compliant color system for fintech dashboard
+ */
+
+/* ===== MOTION TOKENS §6.1 ===== */
+:root {
+  /* Durasi */
+  --motion-instant: 100ms;   /* Toggle kecil: checkbox, badge */
+  --motion-fast: 180ms;      /* Sidebar collapse, tab switch, hover state */
+  --motion-base: 260ms;      /* Modal/dropdown muncul, page transition ringan */
+  --motion-slow: 420ms;      /* Scroll reveal section landing page */
+
+  /* Easing */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);    /* Default, hampir semua transisi UI */
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1); /* Reveal scroll, terasa premium */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);          /* Elemen yang menghilang */
+}
+
+/* ===== DARK MODE TOKENS (Default) ===== */
+
+/* ===== DARK MODE TOKENS (Default) ===== */
+:root,
+:root[data-theme="dark"] {
+  /* Surface Colors */
+  --canvas: #090D16;                    /* Background utama aplikasi */
+  --surface: #10151F;                  /* Card, panel, sidebar */
+  --surface-elevated: #161C29;          /* Modal, dropdown, tooltip, popover */
+  
+  /* Border Colors */
+  --border-hairline: rgba(255, 255, 255, 0.08);      /* 1px border cards/divider */
+  --border-hairline-strong: rgba(255, 255, 255, 0.14); /* Border interactive hover/focus */
+  
+  /* Text Colors */
+  --text-primary: #F4F6F8;             /* Heading, angka utama */
+  --text-secondary: #9AA4B2;            /* Body text, label */
+  --text-muted: #626C7A;                /* Placeholder, timestamp, teks tersier */
+  
+  /* Accent Colors */
+  --accent-primary: #22C55E;            /* Brand accent (CTA utama, active tab) */
+  --accent-primary-hover: #16A34A;      /* Hover state accent */
+  
+  /* Data Colors */
+  --data-positive: #22C55E;             /* Angka naik, Buy, profit */
+  --data-negative: #EF4444;             /* Angka turun, Sell, loss */
+  --data-neutral: #F59E0B;             /* Warning, freshness alert */
+  
+  /* Focus State */
+  --focus-ring: rgba(34, 197, 94, 0.4); /* Focus keyboard nav - 2px ring */
+  
+  /* Typography */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-family-mono: 'JetBrains Mono', monospace;
+  
+  /* Spacing */
+  --spacing-unit: 4px;
+  --radius-sm: 8px;                    /* Button, badge, input */
+  --radius-md: 12px;                   /* Card besar */
+  --radius-lg: 16px;                   /* Modal, panels */
+  --radius-full: 999px;                /* Pills, badges */
+}
+
+/* ===== LIGHT MODE TOKENS ===== */
+:root[data-theme="light"] {
+  /* Surface Colors */
+  --canvas: #F7F8FA;                   /* Background utama */
+  --surface: #FFFFFF;                  /* Card, panel */
+  --surface-elevated: #FFFFFF;         /* Modal (pakai shadow untuk elevasi) */
+  
+  /* Border Colors */
+  --border-hairline: #E5E7EB;          /* Border cards/divider */
+  --border-hairline-strong: #D1D5DB;   /* Border interactive */
+  
+  /* Text Colors - WCAG AA Compliant */
+  --text-primary: #111827;             /* Heading - rasio kontras 16.1:1 */
+  --text-secondary: #4B5563;            /* Body text */
+  --text-muted: #9CA3AF;               /* Placeholder, teks tersier */
+  
+  /* Accent Colors */
+  --accent-primary: #16A34A;            /* Sedikit lebih gelap untuk kontras di putih */
+  --accent-primary-hover: #15803D;      /* Hover state */
+  
+  /* Data Colors */
+  --data-positive: #16A34A;             /* Angka naik, Buy */
+  --data-negative: #DC2626;             /* Angka turun, Sell */
+  --data-neutral: #D97706;             /* Warning */
+  
+  /* Focus State */
+  --focus-ring: rgba(22, 163, 74, 0.4); /* Focus keyboard nav */
+  
+  /* Elevation (Shadow untuk light mode) */
+  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.05);
+  --shadow-md: 0 4px 16px rgba(17, 24, 39, 0.08);
+  --shadow-lg: 0 10px 24px rgba(17, 24, 39, 0.12);
+  --shadow-xl: 0 20px 40px rgba(17, 24, 39, 0.16);
+}
+
+/* ===== APPLY TOKENS TO DOM ===== */
+
+/* Global Styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--canvas);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  font-weight: 600; /* §2.4 rule: satu weight per hierarki */
+  margin: 0 0 0.5em;
+  line-height: 1.3;
+}
+
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.125rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.875rem; }
+
+p {
+  color: var(--text-secondary);
+  margin: 0 0 1em;
+}
+
+a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  transition: color var(--motion-fast, 180ms) var(--ease-standard, ease-out);
+}
+
+a:hover {
+  color: var(--accent-primary-hover);
+}
+
+/* ===== COMPONENT TOKENS ===== */
+
+/* Cards */
+.dashboard-card,
+.card,
+.panel {
+  background-color: var(--surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+}
+
+/* Buttons */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--motion-fast, 180ms) var(--ease-standard, ease-out);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.btn {
+  padding: var(--spacing-unit) calc(var(--spacing-unit) * 3);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border: 1px solid var(--border-hairline);
+  background-color: var(--surface);
+  color: var(--text-primary);
+}
+
+.btn:hover {
+  background-color: var(--surface-elevated);
+  border-color: var(--border-hairline-strong);
+}
+
+.btn-primary {
+  background-color: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-primary-hover);
+  border-color: var(--accent-primary-hover);
+}
+
+/* Inputs */
+input,
+select,
+textarea {
+  font-family: inherit;
+  background-color: var(--surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+  transition: border-color var(--motion-fast, 180ms) var(--ease-standard, ease-out);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent-primary);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 0;
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Tables - §3 spreadsheet-grade */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface);
+  height: 36px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--border-hairline-strong);
+  text-align: left;
+  padding: 0 12px;
+}
+
+.data-table td {
+  height: 34px; /* Rentang 34-36px untuk tabel finansial padat */
+  padding: 0 12px;
+  font-size: 0.8125rem; /* 13px */
+  border-bottom: 1px solid var(--border-hairline);
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.data-table td.col-numeric {
+  text-align: right;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+.data-table tbody tr:hover {
+  background-color: var(--surface-elevated);
+}
+
+/* Data coloring */
+.positive,
+.col-numeric.positive {
+  color: var(--data-positive);
+}
+
+.negative,
+.col-numeric.negative {
+  color: var(--data-negative);
+}
+
+.neutral,
+.col-numeric.neutral {
+  color: var(--data-neutral);
+}
+
+/* ===== BADGES & PILLS ===== */
+/* §2.4 rule 3: Konsisten satu style badge */
+.badge,
+.lock-badge,
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.6875rem; /* 11px */
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.badge-primary {
+  background-color: var(--accent-primary);
+  color: white;
+}
+
+.badge-secondary {
+  background-color: var(--surface-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-hairline);
+}
+
+.badge-success {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: var(--data-positive);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge-warning {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--data-neutral);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-error {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--data-negative);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* ===== FOCUS STATES ===== */
+/* §2.4 rule: Focus ring hanya untuk keyboard nav */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ===== ANTI-AI-SLOP RULES ===== */
+/* §2.4 rule 1: Border cards SELALU 1px solid var(--border-hairline) */
+.no-decorative-borders > * {
+  border: 1px solid var(--border-hairline) !important;
+}
+
+/* §2.4 rule 2: Warna hijau/merah HANYA untuk data P/L dan status */
+.data-visualization .positive { color: var(--data-positive); }
+.data-visualization .negative { color: var(--data-negative); }
+
+/* §2.4 rule 4: Shadow HANYA di Light Mode */
+:root[data-theme="dark"] .elevated {
+  background-color: var(--surface-elevated);
+  /* Tidak pakai shadow di dark mode */
+}
+
+:root[data-theme="light"] .elevated {
+  background-color: var(--surface-elevated);
+  box-shadow: var(--shadow-md);
+}
+
+/* §2.4 rule 5: Radius konsisten */
+:root {
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+
+/* §2.4 rule 6: Satu font-weight per hierarki */
+h1, h2, h3 { font-weight: 600; }
+h4, h5, h6 { font-weight: 500; }
+body, p, span, div { font-weight: 400; }
+.label, .caption, .badge { font-weight: 500; }

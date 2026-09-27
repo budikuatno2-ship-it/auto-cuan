@@ -2854,24 +2854,53 @@ html.light body {
 .sidebar-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px; }
 .sidebar-footer {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 12px;
+  padding: 8px 12px;
   border-top: 1px solid var(--color-border-subtle);
-  overflow: hidden;
+  min-height: 52px;
 }
+
+/* User profile badge - horizontal layout for "BU budi ADMIN" */
 .user-profile-badge {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
-  flex: 1;
-  cursor: pointer;
+  gap: 8px;
+  padding: 6px 8px;
   border-radius: 8px;
-  padding: 4px;
-  transition: background-color 0.15s ease;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
+
+.user-profile-badge:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.user-profile-badge .user-info {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.user-profile-badge .user-info .user-name,
+.user-profile-badge .user-info .user-role {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Ensure user-profile-badge structure is preserved in collapsed state */
+.app-sidebar.is-collapsed .user-profile-badge,
+.app-sidebar.collapsed .user-profile-badge {
+  justify-content: center;
+  padding: 6px;
+}
+
 .user-profile-badge:hover {
   background-color: var(--color-bg-hover);
 }
@@ -2890,7 +2919,9 @@ html.light body {
 }
 .user-info {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
   overflow: hidden;
 }
@@ -3013,9 +3044,134 @@ html.light body {
 }
 
 .sidebar-item.active {
-  color: #090d16;
-  background-color: #ffffff;
-  border-color: #ffffff;
+  color: #10b981;
+  background-color: rgba(16, 185, 129, 0.12);
+  border-color: rgba(52, 211, 153, 0.30);
+  box-shadow: inset 0 -2px 0 rgba(52, 211, 153, 0.45);
+}
+
+/* ---- Tree-View Accordion Sub-menu (HolverAI style) ---- */
+.tree-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tree-item-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  min-height: 38px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #aab4c3;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  width: 100%;
+  border: 1px solid transparent;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  font-family: inherit;
+}
+
+.tree-item-header:hover {
+  color: #f4f7fb;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tree-item-header .tree-chevron {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  transition: transform 0.2s ease;
+  color: #738096;
+}
+
+.tree-item-header .tree-chevron svg {
+  width: 100%;
+  height: 100%;
+}
+
+.tree-group.open > .tree-item-header .tree-chevron {
+  transform: rotate(90deg);
+}
+
+.tree-item-header .tree-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.tree-item-header .tree-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-submenu {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 28px;
+  margin-top: 2px;
+}
+
+.tree-group.open > .tree-submenu {
+  display: flex;
+}
+
+/* Sub-menu items are proper buttons, not text */
+.tree-submenu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  min-height: 32px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #94a3b8;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  width: 100%;
+  border: 1px solid transparent;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  font-family: inherit;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.tree-submenu-item:hover {
+  color: #e2e8f0;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tree-submenu-item.active {
+  color: #10b981;
+  background-color: rgba(16, 185, 129, 0.12);
+  border-color: rgba(52, 211, 153, 0.25);
+}
+
+.tree-submenu-item:focus-visible {
+  outline: 2px solid rgba(52, 211, 153, 0.75);
+  outline-offset: 2px;
+}
+
+/* Collapsed sidebar hides tree-submenu */
+.app-sidebar.is-collapsed .tree-submenu,
+.app-sidebar.collapsed .tree-submenu {
+  display: none !important;
+}
+
+.app-sidebar.is-collapsed .tree-chevron,
+.app-sidebar.collapsed .tree-chevron {
+  display: none;
 }
 
 .theme-toggle-btn {

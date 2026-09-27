@@ -80,6 +80,8 @@
          The palette extension that used to live in the inline tailwind.config
          now lives in tailwind.config.js. -->
     <link rel="stylesheet" href="/tailwind-build.css?v=20260813-tw-v1">
+    <link rel="stylesheet" href="/design-system.css?v=20260927-ds-v1">
+    <link rel="stylesheet" href="/app-transition.css?v=20260927-transition-v1">
     <style id="critical-shell-fallback">
         /* Same-document startup safety net: remains available even if external CSS fails.
            Deliberately NOT !important, for the same reason as index-shell.css's own
@@ -470,10 +472,39 @@
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
             <span class="sidebar-label">Dashboard</span>
         </button>
-        <button type="button" onclick="navigateTo('analisis')" class="sidebar-item" data-sidebar-page="analisis" title="Analisis Saham">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-            <span class="sidebar-label">Analisis Saham</span>
-        </button>
+        <!-- Tree-View: Analisis Saham with ALL 7 modules -->
+        <div class="tree-group" data-page="analisis">
+            <button type="button" class="tree-item-header" aria-expanded="false">
+                <span class="tree-chevron">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                </span>
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <span class="sidebar-label">Analisis Saham</span>
+            </button>
+            <div class="tree-submenu" role="menu">
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('analisis'); document.querySelector('#unifiedChartContainer')?.scrollIntoView({behavior:'smooth'})">
+                    📊 Analisis & Chart
+                </button>
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('analisis'); document.querySelector('#bandarmologiCard')?.scrollIntoView({behavior:'smooth'})">
+                    📈 Bandarmologi
+                </button>
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('analisis'); document.querySelector('#signalIntelijenCard')?.scrollIntoView({behavior:'smooth'})">
+                    🧠 Sinyal Intelijen
+                </button>
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('analisis'); document.querySelector('#brokerHunterCard')?.scrollIntoView({behavior:'smooth'})">
+                    🏦 Broker Hunter
+                </button>
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('analisis'); document.querySelector('#jejaringInsiderCard')?.scrollIntoView({behavior:'smooth'})">
+                    🔗 Jejaring Insider
+                </button>
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('analisis'); document.querySelector('#rankingCardOuterWrap')?.scrollIntoView({behavior:'smooth'})">
+                    🏆 Ranking Harian
+                </button>
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('analisis'); document.querySelector('#patternRadarCard')?.scrollIntoView({behavior:'smooth'})">
+                    🔍 Pattern Radar
+                </button>
+            </div>
+        </div>
         <button type="button" onclick="navigateTo('sektor')" class="sidebar-item hidden" data-sidebar-page="sektor" data-premium-nav="true" title="Sektor Hot">
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             <span class="sidebar-label">Sektor Hot</span>
@@ -482,10 +513,39 @@
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             <span class="sidebar-label">Screener</span>
         </button>
-        <button type="button" onclick="navigateTo('portofolio')" class="sidebar-item hidden" data-sidebar-page="portofolio" data-premium-nav="true" title="Portofolio">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-            <span class="sidebar-label">Portofolio</span>
-        </button>
+        <!-- Tree-View: Portofolio with ALL 7 modules -->
+        <div class="tree-group" data-page="portofolio">
+            <button type="button" class="tree-item-header" aria-expanded="false">
+                <span class="tree-chevron">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                </span>
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                <span class="sidebar-label">Portofolio</span>
+            </button>
+            <div class="tree-submenu" role="menu">
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('portofolio')">
+                    📅 Hari Ini
+                </button>
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('portofolio')">
+                    📋 Rencana Posisi
+                </button>
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('portofolio')">
+                    👁️ Pantauan
+                </button>
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('portofolio')">
+                    ⚠️ Risiko & Avg Down
+                </button>
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('portofolio')">
+                    📊 Skenario Posisi
+                </button>
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('portofolio')">
+                    📝 Jurnal
+                </button>
+                <button type="button" class="tree-submenu-item" role="menuitem" onclick="navigateTo('portofolio')">
+                    🤖 Asisten AI
+                </button>
+            </div>
+        </div>
         <button type="button" onclick="navigateTo('watchlist')" class="sidebar-item hidden" data-sidebar-page="watchlist" data-premium-nav="true" title="Watchlist">
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
             <span class="sidebar-label">Watchlist</span>
@@ -12975,6 +13035,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/signal-gate-transparency.js?v=20260906-e3"></script>
 <script src="/deepscan-runtime.js?v=20260926-v1"></script>
 <script src="/money-management-runtime.js?v=20260926-v1"></script>
+<script src="/tree-view-nav.js?v=20260927-v1"></script>
 <script>
 // Kickoff landing showcase load as early as possible (non-blocking, fail-open).
 // Called here after all scripts are loaded so escapeHtml is available.
@@ -12990,5 +13051,73 @@ function forceNormalizeTechnicalDOM(root) {
     }
 })();
 </script>
+
+<!-- SPA Migration Runtime -->
+<script src="/spa-migration-runtime.js?v=20260927-spa-v1"></script>
+
+<!-- NumberFlow for live number animations -->
+<script src="/number-flow-integration.js?v=20260927-numberflow-v1"></script>
+
+<!-- Micro-interactions & loading states -->
+<script src="/micro-interactions.js?v=20260927-micro-v1"></script>
+
+<!-- Integration for SPA Migration -->
+<script>
+(function() {
+'use strict';
+
+// Override navigateTo for analisis page to load partial instead of standalone HTML
+const originalNavigateTo = window.navigateTo;
+
+window.navigateTo = function(page) {
+    if (page === 'analisis') {
+        // Load analisis-saham partial into appContent
+        const appContent = document.getElementById('appContent');
+        if (appContent) {
+            // Show loading state
+            appContent.innerHTML = '<div class="flex items-center justify-center py-16"><div class="spinner"></div></div>';
+            
+            // Load partial using our migration system
+            if (typeof window.loadTabPartial === 'function') {
+                window.loadTabPartial('analisis', '/partials/analisis-saham.partial.html', appContent)
+                    .then(() => console.log('[SPA Migration] Analisis page loaded via partial'))
+                    .catch(err => console.error('[SPA Migration] Error loading analisis partial:', err));
+            } else {
+                console.warn('[SPA Migration] loadTabPartial not available, using fallback');
+                appContent.innerHTML = '<p class="text-center text-gray-400 py-8">Memuat halaman Analisis...</p>';
+                // Fallback to original behavior
+                if (originalNavigateTo) originalNavigateTo(page);
+            }
+            return;
+        }
+    }
+    
+    // Portfolio page
+    if (page === 'portofolio') {
+        const appContent = document.getElementById('appContent');
+        if (appContent) {
+            appContent.innerHTML = '<div class="flex items-center justify-center py-16"><div class="spinner"></div></div>';
+            
+            if (typeof window.loadTabPartial === 'function') {
+                window.loadTabPartial('portofolio', '/partials/portfolio-command-center.partial.html', appContent)
+                    .then(() => console.log('[SPA Migration] Portfolio page loaded via partial'))
+                    .catch(err => console.error('[SPA Migration] Error loading portfolio partial:', err));
+            } else {
+                console.warn('[SPA Migration] loadTabPartial not available, using fallback');
+                appContent.innerHTML = '<p class="text-center text-gray-400 py-8">Memuat Portfolio Command Center...</p>';
+                if (originalNavigateTo) originalNavigateTo(page);
+            }
+            return;
+        }
+    }
+    
+    // Default behavior for other pages
+    if (originalNavigateTo) originalNavigateTo(page);
+};
+
+console.log('[SPA Migration] Integration ready - navigateTo enhanced for partial loading');
+})();
+</script>
+
 </body>
 </html>

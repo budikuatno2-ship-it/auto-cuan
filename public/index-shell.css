@@ -737,3 +737,69 @@ tbody tr { transition: background-color 0.12s ease; }
     [role="dialog"]:not(.hidden) > div { animation: none !important; }
     button:active:not(:disabled) { transform: none !important; }
 }
+
+/* ===== SUB-MENU STYLING FIX ===== */
+/* Fix for collapsed sub-menu text issue */
+.sidebar-submenu,
+.submenu-items,
+.nav-submenu {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    padding: 8px !important;
+    background: rgba(15, 23, 42, 0.4) !important;
+    border-radius: 8px !important;
+    margin-top: 4px !important;
+}
+
+.sidebar-submenu a,
+.submenu-items a,
+.nav-submenu a {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    color: #94a3b8 !important;
+    text-decoration: none !important;
+    transition: all 0.15s ease-out !important;
+}
+
+.sidebar-submenu a:hover,
+.submenu-items a:hover,
+.nav-submenu a:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: #e2e8f0 !important;
+}
+
+.sidebar-submenu a.active,
+.submenu-items a.active,
+.nav-submenu a.active {
+    background: rgba(16, 185, 129, 0.12) !important;
+    color: #10b981 !important;
+    border: 1px solid rgba(16, 185, 129, 0.25) !important;
+}
+
+/* ===== DESKTOP HEADER FIX ===== */
+/* Hide header INSIDE #appMain on desktop to prevent duplicate with sidebar.
+   Standalone pages (/analisis-saham, /portfolio-planner) have header
+   OUTSIDE #appMain so they remain visible. */
+@media (min-width: 1024px) {
+    #appMain > .app-header,
+    #appMain > header {
+        display: none !important;
+    }
+    
+    /* Ensure sidebar is always visible on desktop */
+    #appSidebar {
+        display: flex !important;
+    }
+}
+
+@media (max-width: 1023px) {
+    .app-header.mobile-hidden,
+    #appHeader.mobile-hidden {
+        display: none !important;
+    }
+}

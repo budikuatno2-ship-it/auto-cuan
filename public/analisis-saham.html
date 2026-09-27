@@ -513,5 +513,40 @@
     <script src="/pattern-safety-hardening-v1.js?v=20260813-v1"></script>
     <script src="/pattern-direction-safety.js?v=20260813-pattern-direction-safety-v2"></script>
     <script src="/pattern-stable-runtime.js?v=20260813-pattern-stable-v6"></script>
+
+    <script>
+    // ===== CHART LOADING FIX =====
+    // Prevent charts from getting stuck in loading state
+    (function() {
+        // Set a maximum loading time for charts
+        const MAX_LOADING_TIME = 30000; // 30 seconds
+        
+        // Function to force chart display after timeout
+        window.forceChartDisplay = function(chartId) {
+            const chartContainer = document.getElementById(chartId);
+            if (chartContainer) {
+                const loadingOverlay = chartContainer.querySelector('.chart-loading-overlay');
+                if (loadingOverlay) {
+                    loadingOverlay.style.display = 'none';
+                }
+                chartContainer.style.background = 'transparent';
+            }
+        };
+        
+        // Set timeout for chart loading
+        setTimeout(function() {
+            window.forceChartDisplay('tradingview-chart');
+            window.forceChartDisplay('mainChart');
+        }, MAX_LOADING_TIME);
+        
+        // Listen for chart load events
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                window.forceChartDisplay('tradingview-chart');
+                window.forceChartDisplay('mainChart');
+            }, 5000); // Force display after 5 seconds
+        });
+    })();
+    </script>
 </body>
 </html>
