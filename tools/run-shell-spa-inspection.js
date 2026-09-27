@@ -44,25 +44,46 @@ const MIME = {
   '.ico': 'image/x-icon', '.woff2': 'font/woff2'
 };
 
+/** Enumerate the static files this harness is allowed to serve. */
+function collectPublicFiles(dir, base) {
+  const root = dir || PUBLIC;
+  const prefix = base || '';
+  const out = [];
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const rel = prefix + '/' + entry.name;
+    if (entry.isDirectory()) out.push(...collectPublicFiles(path.join(root, entry.name), rel));
+    else out.push({ rel, abs: path.join(root, entry.name) });
+  }
+  return out;
+}
+
 function startServer() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
-      let p = req.url.split('?')[0];
-      if (p === '/' || p === '/dashboard') p = '/index.html';
-      const rewrites = {
-        '/analisis-saham': '/analisis-saham.html',
-        '/portfolio-command-center': '/portfolio-command-center.html'
-      };
-      if (rewrites[p]) p = rewrites[p];
-
-      if (p.startsWith('/api/')) {
+      if (req.url.split('?')[0].startsWith('/api/')) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, maintenance: false, data: [] }));
         return;
       }
-      let file = path.join(PUBLIC, p);
-      if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) {
-        file = path.join(PUBLIC, 'index.html');
+
+      // Serve ONLY files that are explicitly allow-listed. The request never
+      // reaches the filesystem as a path fragment, so no traversal is possible.
+      const requestPath = req.url.split('?')[0];
+      const rewrites = {
+        '/': '/index.html',
+        '/dashboard': '/index.html',
+        '/analisis-saham': '/analisis-saham.html',
+        '/portfolio-command-center': '/portfolio-command-center.html'
+      };
+      const target = rewrites[requestPath] || requestPath;
+
+      const served = new Set(collectPublicFiles().map((f) => f.rel));
+      let file = path.join(PUBLIC, 'index.html');
+      if (served.has(target)) {
+        const candidate = path.join(PUBLIC, target.replace(/^\//, ''));
+        const resolved = path.resolve(candidate);
+        // Belt and braces: the resolved path must stay inside PUBLIC.
+        if (resolved.startsWith(path.resolve(PUBLIC) + path.sep)) file = resolved;
       }
       const ext = path.extname(file).toLowerCase();
       res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
@@ -307,20 +328,33 @@ async function main() {
       JSON.stringify(header));
 
     // --- screenshots for the visual record ---------------------------------
-    const shot = async (name) => {
+    // Screenshots are written to a fixed, pre-created directory under a fixed
+    // set of names — no caller-controlled path fragment reaches the filesystem.
+    const SHOT_DIR = path.join(ROOT, 'tmp_investigasi');
+    const SHOT_NAMES = {
+      dashboard: 'inspect-dashboard.png',
+      bandarmologi: 'inspect-bandarmologi.png',
+      ranking: 'inspect-ranking.png'
+    };
+    fs.mkdirSync(SHOT_DIR, { recursive: true });
+    const shot = async (key) => {
+      const name = SHOT_NAMES[key];
+      if (!name) return false;
       try {
         const r = await sess.send('Page.captureScreenshot', { format: 'png' });
-        fs.writeFileSync(path.join(ROOT, 'tmp_investigasi', name), Buffer.from(r.data, 'base64'));
+        const out = path.resolve(SHOT_DIR, name);
+        if (!out.startsWith(path.resolve(SHOT_DIR) + path.sep)) return false;
+        fs.writeFileSync(out, Buffer.from(r.data, 'base64'));
         return true;
       } catch (_) { return false; }
     };
     await sess.eval(`(function(){ if (window.AutoCuanShellSpa) window.AutoCuanShellSpa.close(); navigateTo('dashboard'); return true; })()`);
     await sleep(1200);
-    await shot('inspect-dashboard.png');
+    await shot('dashboard');
     await clickAndProbe('bandarmologi');
-    await shot('inspect-bandarmologi.png');
+    await shot('bandarmologi');
     await clickAndProbe('ranking');
-    await shot('inspect-ranking.png');
+    await shot('ranking');
   } catch (err) {
     record('inspection harness', false, err.message);
   } finally {
