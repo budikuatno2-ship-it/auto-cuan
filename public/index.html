@@ -474,7 +474,7 @@
                 </div>
                 <svg class="sidebar-chevron w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </button>
-            <div id="submenuAnalisis" class="sidebar-submenu hidden">
+            <div id="submenuAnalisis" class="sidebar-submenu sidebar-submenu-container hidden" role="group" aria-label="Sub-menu Analisis Saham">
                 <button type="button" onclick="selectAnalisisSubView('chart')" class="sidebar-subitem active" data-subview="chart">
                     <span class="subitem-dot"></span>
                     <span class="sidebar-label">Analisis &amp; Chart</span>
@@ -521,7 +521,7 @@
                 </div>
                 <svg class="sidebar-chevron w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </button>
-            <div id="submenuPortofolio" class="sidebar-submenu hidden">
+            <div id="submenuPortofolio" class="sidebar-submenu sidebar-submenu-container hidden" role="group" aria-label="Sub-menu Portofolio">
                 <button type="button" onclick="selectPortfolioSubView('today')" class="sidebar-subitem active" data-subview="today">
                     <span class="subitem-dot"></span>
                     <span class="sidebar-label">Hari Ini</span>
@@ -4599,6 +4599,12 @@ async function loadPremiumAccess(force) {
 }
 
 function navigateTo(page) {
+    // FASE 10/14 — a native destination always closes the embedded workspace
+    // view first, so the two surfaces never stack. The check is a no-op when
+    // the router is absent (standalone pages) or nothing is open.
+    if (page !== 'analisis' && page !== 'portofolio' && typeof closeWorkspaceViewIfOpen === 'function') {
+        closeWorkspaceViewIfOpen();
+    }
     if (page !== 'chart' && typeof resetPatternMap === 'function') resetPatternMap();
     if (page === 'subscription') {
         // Subscription is postponed: no page, no redirect target.
@@ -7865,13 +7871,31 @@ function isWorkspaceSidebarVisible() {
     return Boolean(aside && !aside.classList.contains('hidden'));
 }
 function applySidebarCollapse(collapsed) {
+    var isCollapsed = Boolean(collapsed);
     var aside = document.getElementById('appSidebar');
     if (aside) {
-        aside.classList.toggle('collapsed', Boolean(collapsed));
-        aside.classList.toggle('is-collapsed', Boolean(collapsed));
+        aside.classList.toggle('collapsed', isCollapsed);
+        aside.classList.toggle('is-collapsed', isCollapsed);
     }
-    if (document.body) document.body.classList.toggle('sidebar-collapsed', Boolean(collapsed));
-    try { localStorage.setItem(SIDEBAR_COLLAPSE_KEY, collapsed ? '1' : '0'); } catch (_) {}
+    // FASE 2/15: the rail is fixed, so the content column is offset by a
+    // class on <body> (and on .app-layout for older snapshots). Toggling both
+    // keeps the 240px -> 72px transition in lockstep with the rail.
+    if (document.body) document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+    var layout = document.querySelector('.app-layout');
+    if (layout) layout.classList.toggle('sidebar-collapsed', isCollapsed);
+    if (isCollapsed) closeSidebarSubmenus();
+    try { localStorage.setItem(SIDEBAR_COLLAPSE_KEY, isCollapsed ? '1' : '0'); } catch (_) {}
+}
+
+// FASE 15 — collapsing the rail must also close any open accordion, or a
+// sub-menu is left rendered against a 72px column.
+function closeSidebarSubmenus() {
+    ['Analisis', 'Portofolio'].forEach(function (name) {
+        var sub = document.getElementById('submenu' + name);
+        var btn = document.querySelector('#sidebarGroup' + name + ' .sidebar-parent-item');
+        if (sub) sub.classList.add('hidden');
+        if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('open'); }
+    });
 }
 function toggleSidebarCollapse() {
     var aside = document.getElementById('appSidebar');
@@ -7952,61 +7976,67 @@ function toggleSidebarSubmenu(name) {
     }
 }
 
+// FASE 8 — Zero-dummy routing. Every sub-menu entry opens the REAL view.
+// The Bandarmologi / Intel / Hunter / Insider / Ranking / Pattern screens are
+// the standalone cockpit at /analisis-saham; the shell embeds that page and
+// drives its own tab API, so the canvas always changes on click.
+var ANALISIS_SUBVIEWS = ['chart', 'bandarmologi', 'intel', 'hunter', 'insider', 'ranking', 'pattern'];
+
 function selectAnalisisSubView(sub) {
-    navigateTo('analisis');
+    var view = ANALISIS_SUBVIEWS.indexOf(sub) >= 0 ? sub : 'chart';
+
     var subMenu = document.getElementById('submenuAnalisis');
     if (subMenu) subMenu.classList.remove('hidden');
     var parentBtn = document.querySelector('#sidebarGroupAnalisis .sidebar-parent-item');
     if (parentBtn) { parentBtn.setAttribute('aria-expanded', 'true'); parentBtn.classList.add('open'); }
+    syncWorkspaceSidebarActive('analisis');
 
     document.querySelectorAll('#submenuAnalisis .sidebar-subitem').forEach(function(item) {
-        item.classList.toggle('active', item.getAttribute('data-subview') === sub);
+        item.classList.toggle('active', item.getAttribute('data-subview') === view);
     });
+    if (window.innerWidth < 1024) closeMobileSidebar();
 
-    if (sub === 'chart') {
-        if (window.UnifiedCockpit && typeof window.UnifiedCockpit.switchAnalysisSubTab === 'function') {
-            window.UnifiedCockpit.switchAnalysisSubTab('text');
-        }
-        var chartBox = document.getElementById('unifiedChartContainer');
-        if (chartBox && chartBox.scrollIntoView) chartBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    } else if (sub === 'bandarmologi' || sub === 'hunter' || sub === 'insider') {
-        if (window.UnifiedCockpit && typeof window.UnifiedCockpit.switchAnalysisSubTab === 'function') {
-            window.UnifiedCockpit.switchAnalysisSubTab('text');
-        }
-        var res = document.getElementById('analisisResult');
-        if (res && res.scrollIntoView) res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    } else if (sub === 'intel' || sub === 'pattern') {
-        if (window.UnifiedCockpit && typeof window.UnifiedCockpit.switchAnalysisSubTab === 'function') {
-            window.UnifiedCockpit.switchAnalysisSubTab('vision');
-        }
-        var visionBox = document.getElementById('panelAnalisisVision');
-        if (visionBox && visionBox.scrollIntoView) visionBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    } else if (sub === 'ranking') {
-        var rWrap = document.getElementById('rankingCardOuterWrap');
-        if (rWrap && rWrap.scrollIntoView) rWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        if (typeof refreshRankingTable === 'function') refreshRankingTable();
+    // The embedded cockpit owns the real screens; the shell only routes to it.
+    if (window.AutoCuanShellSpa && typeof window.AutoCuanShellSpa.openAnalisis === 'function') {
+        window.AutoCuanShellSpa.openAnalisis(view);
+        return;
     }
+    navigateTo('analisis');
 }
 
+// FASE 9 — Portfolio sub-views embed the real Portfolio Command Center, whose
+// seven tabs (today/planner/watch/risk/scenarios/journal/ai) carry all the
+// position, risk and journal logic. No view is faked in the shell.
+var PORTFOLIO_SUBVIEWS = ['today', 'planner', 'watch', 'risk', 'scenarios', 'journal', 'ai'];
+
 function selectPortfolioSubView(sub) {
-    navigateTo('portofolio');
+    var view = PORTFOLIO_SUBVIEWS.indexOf(sub) >= 0 ? sub : 'today';
+
     var subMenu = document.getElementById('submenuPortofolio');
     if (subMenu) subMenu.classList.remove('hidden');
     var parentBtn = document.querySelector('#sidebarGroupPortofolio .sidebar-parent-item');
     if (parentBtn) { parentBtn.setAttribute('aria-expanded', 'true'); parentBtn.classList.add('open'); }
+    syncWorkspaceSidebarActive('portofolio');
 
     document.querySelectorAll('#submenuPortofolio .sidebar-subitem').forEach(function(item) {
-        item.classList.toggle('active', item.getAttribute('data-subview') === sub);
+        item.classList.toggle('active', item.getAttribute('data-subview') === view);
     });
+    if (window.innerWidth < 1024) closeMobileSidebar();
 
-    if (sub === 'today') {
-        var summary = document.getElementById('portSummary');
-        if (summary) summary.classList.remove('hidden');
-    } else if (sub === 'planner') {
-        var form = document.getElementById('addPositionForm');
-        if (form) form.classList.remove('hidden');
-    } else if (sub === 'ai') {
-        toggleSidebar();
+    if (window.AutoCuanShellSpa && typeof window.AutoCuanShellSpa.openPortfolio === 'function') {
+        window.AutoCuanShellSpa.openPortfolio(view);
+        return;
+    }
+    navigateTo('portofolio');
+}
+
+// FASE 10/14 — leaving a workspace view restores the native pages. Called by
+// navigateTo() so any rail item (Dashboard, Screener, Watchlist, …) closes the
+// embed instead of stacking a second surface underneath it.
+function closeWorkspaceViewIfOpen() {
+    if (window.AutoCuanShellSpa && typeof window.AutoCuanShellSpa.isOpen === 'function' &&
+        window.AutoCuanShellSpa.isOpen()) {
+        window.AutoCuanShellSpa.close();
     }
 }
 
@@ -13128,6 +13158,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/chart-viewer.js?v=20260905-v1"></script>
 <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
 <script src="/unified-cockpit-runtime.js?v=20260905-v1"></script>
+<script src="/shell-spa-router.js?v=20260927-spa1"></script>
 <script src="/position-sizing-calculator.js?v=20260906-e1"></script>
 <script src="/signal-gate-transparency.js?v=20260906-e3"></script>
 <script src="/deepscan-runtime.js?v=20260926-v1"></script>

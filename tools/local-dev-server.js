@@ -77,6 +77,9 @@ const ROUTE_REWRITES = {
   '/pattern': '/index.html',
   '/review': '/index.html',
   '/analisis-saham': '/analisis-saham.html',
+  // FASE 9: the shell embeds the Portfolio Command Center at this exact path,
+  // so the rewrite must exist for both the dev server and the VPS fallback.
+  '/portfolio-command-center': '/portfolio-command-center.html',
   '/portfolio-planner': '/portfolio-command-center-v2.html',
   '/deepscan': '/index.html',
   '/kelola-keuangan': '/index.html',

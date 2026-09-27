@@ -15,15 +15,23 @@ const indexHtml = read('public/index.html');
 const moneyRuntime = read('public/money-management-runtime.js');
 const portfolioRuntime = read('public/portfolio-command-center.js');
 
-test('semantic dark and light tokens keep canvas, surface, text, and borders paired', () => {
+// Dark-only policy: the product ships ONE theme. The semantic tokens still
+// exist (components must consume roles, not hardcoded colours) but there is no
+// light counterpart any more — the old html.light blocks were removed.
+test('semantic dark tokens keep canvas, surface, text, and borders paired', () => {
   assert.match(coreCss, /:root\s*\{[\s\S]*--bg-canvas:\s*#090d16;/);
   assert.match(coreCss, /:root\s*\{[\s\S]*--bg-surface:\s*#0d1320;/);
   assert.match(coreCss, /:root\s*\{[\s\S]*--text-primary:\s*#f4f7fb;/);
   assert.match(coreCss, /:root\s*\{[\s\S]*--border-subtle:\s*rgba\(148,\s*163,\s*184,\s*\.12\);/);
-  assert.match(coreCss, /html\.light\s*\{[\s\S]*--bg-canvas:\s*#f5f7fa;/);
-  assert.match(coreCss, /html\.light\s*\{[\s\S]*--bg-surface:\s*#ffffff;/);
-  assert.match(coreCss, /html\.light\s*\{[\s\S]*--text-primary:\s*#111827;/);
-  assert.match(coreCss, /html\.light\s*\{[\s\S]*--border-subtle:\s*rgba\(15,\s*23,\s*42,\s*\.08\);/);
+});
+
+test('the theme is dark-only: no light-mode override survives any sheet', () => {
+  for (const [name, css] of [['premium-workstation-core.css', coreCss],
+    ['spreadsheet-grade.css', spreadsheetCss],
+    ['portfolio-command-center.css', portfolioCss]]) {
+    assert.doesNotMatch(css, /html\.light/, name + ' must not declare light-mode overrides');
+    assert.doesNotMatch(css, /\[data-theme="light"\]/, name + ' must not declare a light theme attribute block');
+  }
 });
 
 test('dashboard greeting consumes semantic foreground instead of a fixed dark-theme color', () => {

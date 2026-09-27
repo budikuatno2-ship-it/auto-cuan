@@ -11,6 +11,21 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
   <link rel="stylesheet" href="/portfolio-command-center.css?v=20260727-v1">
+  <style>
+    /* FASE 9 — Embedded mode. Inside the shell workspace the host already
+       draws the brand and the rail, so this page's own header is removed and
+       the tab strip becomes the top row. */
+    html.ac-embed .app-header { display: none !important; }
+    html.ac-embed .app-shell { padding-top: 12px !important; }
+    html.ac-embed .tab-strip { position: sticky; top: 0; z-index: 20; background: rgba(8, 12, 18, 0.92); backdrop-filter: blur(10px); }
+  </style>
+  <script>
+    try {
+      if (new URLSearchParams(location.search).get('embed') === '1') {
+        document.documentElement.classList.add('ac-embed');
+      }
+    } catch (_) {}
+  </script>
 </head>
 <body>
   <main class="app-shell">
