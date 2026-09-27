@@ -41,19 +41,7 @@
   --sp-zebra: rgba(148, 163, 184, 0.030);
   --sp-zebra-hover: rgba(52, 211, 153, 0.055);
   --sp-pill-radius: 999px;
-}
-
-html.light {
-  --sp-bg-deep: #f8fafc;
-  --sp-bg-mid: #ffffff;
-  --sp-mesh-1: rgba(16, 185, 129, 0.05);
-  --sp-mesh-2: rgba(59, 130, 246, 0.035);
-  --sp-mesh-3: rgba(99, 102, 241, 0.025);
-  --sp-zebra: rgba(15, 23, 42, 0.022);
-  --sp-zebra-hover: rgba(16, 185, 129, 0.07);
-}
-
-/* The mesh: three wide, low-opacity radial pools. Fixed so scrolling content
+}/* The mesh: three wide, low-opacity radial pools. Fixed so scrolling content
    moves over a stable ground rather than dragging the light source with it. */
 body {
   background-color: var(--sp-bg-mid);
@@ -70,41 +58,12 @@ body {
    element out of the paint path entirely. */
 body::before {
   background-image: none;
-}
-
-html.light body {
-  background-image:
-    radial-gradient(1100px 620px at 12% -12%, var(--sp-mesh-1), transparent 62%),
-    radial-gradient(900px 540px at 88% -6%, var(--sp-mesh-2), transparent 60%),
-    radial-gradient(1000px 700px at 50% 108%, var(--sp-mesh-3), transparent 65%);
-}
-
-/* Light mode: sharp text, not washed-out grey. Zinc-50 ground, slate-900 ink. */
-html.light .page-content,
-html.light .panel,
-html.light .dashboard-card {
-  color: #0f172a;
-}
-
-html.light .text-gray-500,
-html.light .text-gray-600 {
-  color: #475569;
-}
-
-/* Thin, precise card border in dark mode — 1px at 8% white. */
+}/* Thin, precise card border in dark mode — 1px at 8% white. */
 .panel,
 .dashboard-card,
 .screener-card {
   border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-html.light .panel,
-html.light .dashboard-card,
-html.light .screener-card {
-  border-color: #e2e8f0;
-}
-
-/* --------------------------------------------------------------------------
+}/* --------------------------------------------------------------------------
    2. COLLAPSED SIDEBAR — tooltips that make a 72px rail usable
    -------------------------------------------------------------------------- */
 
@@ -143,16 +102,7 @@ html.light .screener-card {
 .app-sidebar.is-collapsed .sidebar-item:focus-visible::after {
   opacity: 1;
   transform: translateY(-50%) scale(1);
-}
-
-html.light .app-sidebar.is-collapsed .sidebar-item::after {
-  background: #ffffff;
-  border-color: #e2e8f0;
-  color: #0f172a;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
-}
-
-/* --------------------------------------------------------------------------
+}/* --------------------------------------------------------------------------
    3. SPREADSHEET-GRADE TABLES
    Scoped to the containers that actually hold long data runs, so prose tables
    elsewhere keep their own rhythm.
@@ -332,15 +282,7 @@ html.light .app-sidebar.is-collapsed .sidebar-item::after {
 #page-portofolio .portfolio-card,
 #page-portofolio .portfolio-row-card {
   outline: 0;
-}
-
-html.light #mmCashflowSpreadsheetTable thead th,
-html.light #mmJournalSpreadsheetTable thead th,
-html.light #portTableWrap thead th {
-  color: #475569;
-}
-
-/* Table footer totals read as a different class of row. */
+}/* Table footer totals read as a different class of row. */
 #mmCashflowSpreadsheetTable tfoot td,
 #mmJournalSpreadsheetTable tfoot td {
   border-top: 1px solid var(--ac-line, rgba(148, 163, 184, 0.13));
@@ -372,13 +314,7 @@ html.light #portTableWrap thead th {
 .percentage-chip.is-up { color: var(--color-positive); background: var(--color-positive-soft); }
 .percentage-chip.is-down { color: var(--color-negative); background: var(--color-negative-soft); }
 .percentage-chip { display: inline-flex; align-items: center; min-height: 20px; padding: 1px 7px; border-radius: 999px; font-variant-numeric: tabular-nums; }
-.sp-flat { color: #94a3b8; }
-
-html.light .sp-up { color: #047857; }
-html.light .sp-down { color: #be123c; }
-html.light .sp-flat { color: #475569; }
-
-/* --------------------------------------------------------------------------
+.sp-flat { color: #94a3b8; }/* --------------------------------------------------------------------------
    4. MICRO-MOTION
    -------------------------------------------------------------------------- */
 
@@ -399,16 +335,7 @@ html.light .sp-flat { color: #475569; }
   transform: scale(1.01);
   border-color: rgba(52, 211, 153, 0.28);
   box-shadow: 0 10px 26px rgba(2, 6, 12, 0.42);
-}
-
-html.light .dashboard-pick-card:hover,
-html.light .screener-card:hover,
-html.light .sektor-group-card:hover {
-  border-color: rgba(16, 185, 129, 0.35);
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.10);
-}
-
-/* Buttons get a border highlight rather than a lift, so a row of them does not
+}/* Buttons get a border highlight rather than a lift, so a row of them does not
    ripple while the pointer crosses it. */
 .nav-btn,
 .sidebar-item,
@@ -562,14 +489,7 @@ html {
   color: #34d399 !important;
   letter-spacing: 0.04em !important;
   white-space: nowrap !important;
-}
-
-html.light .user-role {
-  background: rgba(4, 120, 87, 0.12) !important;
-  color: #047857 !important;
-}
-
-.theme-toggle-compact {
+}.theme-toggle-compact {
   width: 28px !important;
   height: 28px !important;
   min-width: 28px !important;
@@ -689,24 +609,7 @@ html.light .user-role {
 .sidebar-subitem.active .subitem-dot {
   background-color: #34d399;
   box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
-}
-
-html.light .sidebar-subitem {
-  color: #475569;
-}
-html.light .sidebar-subitem:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-}
-html.light .sidebar-subitem.active {
-  background: #ecfdf5;
-  color: #047857;
-}
-html.light .sidebar-subitem.active .subitem-dot {
-  background-color: #047857;
-}
-
-/* --------------------------------------------------------------------------
+}/* --------------------------------------------------------------------------
    9. GOOGLE SHEETS / TANSTACK TABLE STYLING FOR KELOLA KEUANGAN
    -------------------------------------------------------------------------- */
 #mmCashflowSpreadsheetTable,
@@ -771,49 +674,7 @@ html.light .sidebar-subitem.active .subitem-dot {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
   font-variant-numeric: tabular-nums !important;
   font-weight: 700 !important;
-}
-
-html.light #mmCashflowSpreadsheetTable,
-html.light #mmJournalSpreadsheetTable {
-  border: 1px solid #e2e8f0 !important;
-  background-color: #ffffff !important;
-}
-
-html.light #mmCashflowSpreadsheetTable thead th,
-html.light #mmJournalSpreadsheetTable thead th {
-  background: #f1f5f9 !important;
-  color: #334155 !important;
-  border-right: 1px solid #e2e8f0 !important;
-  border-bottom: 1px solid #cbd5e1 !important;
-}
-
-html.light #mmCashflowSpreadsheetTable tbody td,
-html.light #mmJournalSpreadsheetTable tbody td {
-  border-right: 1px solid #f1f5f9 !important;
-  border-bottom: 1px solid #f1f5f9 !important;
-  color: #0f172a !important;
-}
-
-html.light #mmCashflowSpreadsheetTable tbody tr:nth-child(even),
-html.light #mmJournalSpreadsheetTable tbody tr:nth-child(even) {
-  background-color: #f8fafc !important;
-}
-
-html.light #mmCashflowSpreadsheetTable tbody tr:hover,
-html.light #mmJournalSpreadsheetTable tbody tr:hover {
-  background-color: #ecfdf5 !important;
-}
-
-html.light #mmCashflowSpreadsheetTable tfoot td,
-html.light #mmJournalSpreadsheetTable tfoot td {
-  background: #f8fafc !important;
-  color: #0f172a !important;
-  border-right: 1px solid #e2e8f0 !important;
-  border-top: 2px solid #047857 !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-}
-
-/* --------------------------------------------------------------------------
+}/* --------------------------------------------------------------------------
    10. FLOATING AI ASSISTANT BUTTON
    -------------------------------------------------------------------------- */
 .floating-ai-assistant-btn {
@@ -851,27 +712,4 @@ html.light #mmJournalSpreadsheetTable tfoot td {
   font-size: 14px;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
   pointer-events: none;
-}
-
-/* --------------------------------------------------------------------------
-   11. LIGHT MODE WCAG AA (CONTRAST RATIO >= 4.5:1)
-   -------------------------------------------------------------------------- */
-html.light {
-  --pw-bull: #047857 !important;
-  --pw-bear: #b91c1c !important;
-  --pw-warn: #b45309 !important;
-  --pw-info: #1d4ed8 !important;
-  --color-positive: #047857 !important;
-  --color-negative: #b91c1c !important;
-  --color-warning: #b45309 !important;
-  --ac-bull: #047857 !important;
-  --ac-bear: #b91c1c !important;
-  --ac-warn: #b45309 !important;
-}
-
-html.light #dashGreeting,
-html.light .dashboard-hero h2,
-html.light .dashboard-card h2,
-html.light .dashboard-card h3 {
-  color: #0f172a !important;
 }
