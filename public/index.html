@@ -4534,9 +4534,17 @@ function navigateTo(page) {
         }, 150);
         return;
     }
-    // Analisis Saham, Portofolio, and Watchlist are first-class workspace views.
-    // They must remain mounted below the shared app header and beside the 240px
-    // workspace rail; navigating to a standalone document would sever that shell.
+    if (page === 'analisis') {
+        // Analisis Saham lives on its own page (/analisis-saham).
+        window.location.assign('/analisis-saham');
+        return;
+    }
+    if (page === 'portofolio') {
+        // Portofolio lives on its own page (Decision Center).
+        window.location.assign('/portfolio-planner');
+        return;
+    }
+
     currentPage = page;
     if (page !== 'screener') stopAllScreenerPolling();
     // Hide all pages

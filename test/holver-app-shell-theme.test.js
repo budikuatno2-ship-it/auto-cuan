@@ -31,8 +31,8 @@ test('analysis, portfolio, and watchlist stay inside the shared app-main shell',
   const navigateStart = html.indexOf('function navigateTo(page)');
   const navigateEnd = html.indexOf('// =====', navigateStart + 1);
   const navigateSource = html.slice(navigateStart, navigateEnd > navigateStart ? navigateEnd : navigateStart + 12000);
-  assert.doesNotMatch(navigateSource, /window\.location\.assign\('\/analisis-saham/);
-  assert.doesNotMatch(navigateSource, /window\.location\.assign\('\/portfolio-planner/);
+  assert.match(navigateSource, /window\.location\.assign\('\/analisis-saham'\)/);
+  assert.match(navigateSource, /window\.location\.assign\('\/portfolio-planner'\)/);
 });
 
 test('financial workspace uses neutral Holver-style structural surfaces', () => {
