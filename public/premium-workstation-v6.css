@@ -131,7 +131,7 @@
 }
 
 .radar-panel:first-child {
-  border-color: var(--color-border-subtle) !important;
+  border-color: rgba(45, 212, 163, .12) !important;
 }
 
 .radar-panel .panel-header {
