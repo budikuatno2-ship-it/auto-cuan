@@ -455,18 +455,18 @@
 <aside id="appSidebar" class="app-sidebar hidden" aria-label="Navigasi workspace">
     <div class="sidebar-brand">
         <div class="sidebar-brand-lockup">
-            <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l5-5 4 4 7-8"/></svg></span>
+            <span class="brand-mark" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l5-5 4 4 7-8"/></svg></span>
             <div class="sidebar-brand-text">
                 <strong>Auto-Cuan</strong>
                 <span>IDX Workspace</span>
             </div>
         </div>
         <button type="button" onclick="toggleSidebarCollapse()" class="sidebar-collapse-toggle" title="Ciutkan sidebar" aria-label="Ciutkan atau bentangkan sidebar navigasi" aria-controls="appSidebar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 18l-6-6 6-6"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 18l-6-6 6-6"/></svg>
         </button>
     </div>
     <nav class="sidebar-nav" aria-label="Menu utama workspace">
-        <button type="button" onclick="navigateTo('dashboard')" class="sidebar-item" data-sidebar-page="dashboard" title="Dashboard">
+        <button type="button" onclick="navigateTo('dashboard')" class="sidebar-item active" data-sidebar-page="dashboard" title="Dashboard">
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
             <span class="sidebar-label">Dashboard</span>
         </button>
@@ -504,7 +504,7 @@
         </button>
     </nav>
     <div class="sidebar-footer">
-        <div class="user-profile-badge" title="Profil pengguna">
+        <div class="user-profile-badge" title="Profil pengguna" role="button" tabindex="0" onclick="if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click();}">
             <div class="user-avatar" aria-hidden="true">B</div>
             <div class="user-info sidebar-label">
                 <span class="user-name" id="sidebarUserName">budi</span>
@@ -2083,7 +2083,7 @@
                 <tbody id="mmCashflowSpreadsheetBody" class="divide-y divide-dark-700/40 text-gray-200">
                     <!-- Populated dynamically via renderCashflowSpreadsheetRows() -->
                 </tbody>
-                <tfoot class="sticky bottom-0 bg-dark-800/95 backdrop-blur border-t-2 border-emerald-500/40 font-bold font-mono text-xs z-10">
+                <tfoot class="sticky bottom-0 bg-dark-800/95 backdrop-blur border-t border-dark-600/60 font-bold font-mono text-xs z-10">
                     <tr class="border-b border-dark-700/40">
                         <td colspan="4" class="px-3 py-2 text-right border-r border-dark-600/60 text-gray-300">TOTAL PEMASUKAN BULANAN (INCOME):</td>
                         <td class="px-3 py-2 text-right border-r border-dark-600/60 text-emerald-400" id="mmCfFootIncome">Rp 0</td>
@@ -2215,7 +2215,7 @@
                 <tbody id="mmJournalTableBody" class="text-gray-300 divide-y divide-dark-700/40">
                     <tr><td colspan="13" class="text-center py-8 text-gray-500">Memuat jurnal transaksi...</td></tr>
                 </tbody>
-                <tfoot class="sticky bottom-0 bg-dark-800/95 backdrop-blur border-t-2 border-emerald-500/50 font-bold font-mono text-xs z-10">
+                <tfoot class="sticky bottom-0 bg-dark-800/95 backdrop-blur border-t border-dark-600/60 font-bold font-mono text-xs z-10">
                     <tr class="bg-dark-900/90 text-gray-200">
                         <td colspan="5" class="px-3 py-2.5 text-right border-r border-dark-600/60 font-black uppercase text-gray-300">TOTAL / RINGKASAN:</td>
                         <td class="px-3 py-2.5 text-right border-r border-dark-600/60 font-bold text-white" id="mmJrFootLots">0</td>
@@ -2938,6 +2938,15 @@ function syncHeaderUsername() {
             tierBadgeEl.classList.remove('hidden');
             tierBadgeEl.style.display = 'inline-block';
         }
+    }
+
+    var sidebarUserEl = typeof document.getElementById === 'function' ? document.getElementById('sidebarUserName') : null;
+    if (sidebarUserEl) sidebarUserEl.textContent = u || 'Guest User';
+    if (typeof document.querySelector === 'function') {
+        var sidebarAvatarEl = document.querySelector('#appSidebar .user-avatar');
+        var sidebarRoleEl = document.querySelector('#appSidebar .user-role');
+        if (sidebarAvatarEl) sidebarAvatarEl.textContent = u ? String(u).charAt(0).toUpperCase() : 'G';
+        if (sidebarRoleEl) sidebarRoleEl.textContent = !u ? 'GUEST' : (isBudi || isAdm) ? 'ADMIN' : isSubscribed ? 'PRO' : 'FREE';
     }
 
     if (tierBadgeEl && !tierBadgeEl.__boundClick && typeof tierBadgeEl.addEventListener === 'function') {
@@ -4341,6 +4350,7 @@ function showDashboard() {
     }
     clearLegacyDeviceBlock();
     setTopLevelView('app');
+    if (typeof setWorkspaceSidebarVisible === 'function') setWorkspaceSidebarVisible(true);
     var isGuest = (username === 'guest'); var isAdm = isAdmin();
     // Header & Profile synchronization
     syncHeaderUsername();
@@ -7758,6 +7768,7 @@ function applyAppTheme(theme) {
     if (meta) meta.setAttribute('content', isLight ? '#f8fafc' : '#0b0e14');
     try { localStorage.setItem('autocuan_theme', isLight ? 'light' : 'dark'); } catch (_) {}
 }
+window.setAppTheme = applyAppTheme;
 function toggleAppTheme() {
     var isLight = document.documentElement.classList.contains('light');
     applyAppTheme(isLight ? 'dark' : 'light');
