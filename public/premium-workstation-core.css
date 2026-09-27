@@ -99,26 +99,43 @@
 }
 
 html.light {
-  --color-bg-canvas: #f5f7fa;
+  --color-bg-canvas: #f8fafc;
   --color-bg-surface: #ffffff;
   --color-bg-elevated: #f8fafc;
   --color-bg-hover: #f1f5f9;
   --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-muted: #64748b;
-  --color-border-subtle: rgba(15, 23, 42, .08);
-  --color-border-default: rgba(15, 23, 42, .14);
+  --color-text-secondary: #334155;
+  --color-text-muted: #475569;
+  --color-border-subtle: rgba(15, 23, 42, .10);
+  --color-border-default: rgba(15, 23, 42, .16);
   --color-accent: #2563eb;
-  --color-positive: #059669;
-  --color-positive-soft: rgba(5, 150, 105, .10);
-  --color-negative: #e11d48;
-  --color-negative-soft: rgba(225, 29, 72, .10);
+  --color-positive: #047857;
+  --color-positive-soft: rgba(4, 120, 87, .10);
+  --color-negative: #b91c1c;
+  --color-negative-soft: rgba(185, 28, 28, .10);
+  --color-warning: #b45309;
   --grid-line: rgba(15, 23, 42, .08);
   --grid-header-bg: #f8fafc;
   --bg-canvas: #f5f7fa;
   --bg-surface: #ffffff;
   --text-primary: #111827;
   --border-subtle: rgba(15, 23, 42, .08);
+  --pw-bg: #f8fafc;
+  --pw-bg-2: #f1f5f9;
+  --pw-panel: #ffffff;
+  --pw-panel-2: #f8fafc;
+  --pw-panel-3: #f1f5f9;
+  --pw-panel-hover: #f1f5f9;
+  --pw-line: rgba(15, 23, 42, .10);
+  --pw-line-strong: rgba(15, 23, 42, .18);
+  --pw-text: #0f172a;
+  --pw-text-strong: #020617;
+  --pw-muted: #334155;
+  --pw-dim: #475569;
+  --pw-bull: #047857;
+  --pw-bear: #b91c1c;
+  --pw-warn: #b45309;
+  --pw-info: #1d4ed8;
 }
 
 html {
@@ -2304,4 +2321,135 @@ body::before {
   .skeleton-card {
     background-size: 100% 100%;
   }
+}
+
+/* ========================================================================
+   Light Mode WCAG AA Surface & Typography Overrides
+   ======================================================================== */
+html.light {
+  color-scheme: light;
+}
+
+html.light .dashboard-hero .dash-badge:first-child,
+html.light #approvedBadge,
+html.light .market-tile-link,
+html.light #top5HistoryTabActive {
+  color: #047857 !important;
+  border-color: rgba(4, 120, 87, .28) !important;
+  background: rgba(4, 120, 87, .08) !important;
+}
+
+html.light .dash-badge {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+html.light #dashGreeting + p,
+html.light .market-tile-label,
+html.light #page-dashboard .panel-title,
+html.light .ac-section-title,
+html.light .ac-section-kicker {
+  color: #1e293b !important;
+}
+
+html.light .market-tile-value,
+html.light #ihsgLast,
+html.light #dashMarketGate,
+html.light #dashMarketFreshness {
+  color: #0f172a !important;
+}
+
+html.light .market-tile-unit,
+html.light .market-tile-note,
+html.light #page-dashboard .panel-subtitle,
+html.light .ac-section-hint,
+html.light .empty-state-text,
+html.light .empty-state-icon {
+  color: #475569 !important;
+}
+
+html.light .dash-section-note {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #92400e !important;
+}
+
+html.light #page-dashboard .market-tile {
+  border-right-color: #e2e8f0 !important;
+}
+
+html.light #page-dashboard .market-tile:hover {
+  background: #f8fafc !important;
+}
+
+html.light #dashboardTop5List .dashboard-pick-card,
+html.light #dashboardMonitorList > *:not(.empty-state),
+html.light #top5HistoryList > *:not(.empty-state),
+html.light .action-card {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light #dashboardTop5List .dashboard-pick-card:hover,
+html.light #dashboardMonitorList > *:not(.empty-state):hover,
+html.light #top5HistoryList > *:not(.empty-state):hover {
+  background: #f1f5f9 !important;
+  border-color: #047857 !important;
+}
+
+html.light #dashboardMonitorUpdated,
+html.light #top5HistoryTabTp {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+html.light .empty-state {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light thead th,
+html.light #rankingTableWrap thead th:first-child,
+html.light #dtScreenerTableWrap thead th:first-child,
+html.light #kgScreenerTableWrap thead th:first-child,
+html.light #nkScreenerTableWrap thead th:first-child {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border-bottom-color: #cbd5e1 !important;
+}
+
+html.light tbody td {
+  color: #0f172a !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+html.light #rankingTableWrap,
+html.light #rankingTableWrap table,
+html.light #dtScreenerTableWrap table,
+html.light #kgScreenerTableWrap table,
+html.light #nkScreenerTableWrap table,
+html.light #sektorDetailTable table {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light #rankingTableWrap th:first-child,
+html.light #rankingTableWrap td:first-child,
+html.light #dtScreenerTableWrap th:first-child,
+html.light #dtScreenerTableWrap td:first-child,
+html.light #kgScreenerTableWrap th:first-child,
+html.light #kgScreenerTableWrap td:first-child,
+html.light #nkScreenerTableWrap th:first-child,
+html.light #nkScreenerTableWrap td:first-child {
+  background: #ffffff !important;
+  box-shadow: 1px 0 0 #e2e8f0;
+}
+
+html.light footer {
+  background: #f8fafc !important;
+  border-top-color: #e2e8f0 !important;
+  color: #475569 !important;
 }
