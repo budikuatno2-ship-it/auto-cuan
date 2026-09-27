@@ -103,48 +103,22 @@ html.light {
   --color-bg-surface: #ffffff;
   --color-bg-elevated: #f8fafc;
   --color-bg-hover: #f1f5f9;
-  --color-text-primary: #0f172a !important;
-  --color-text-secondary: #334155;
-  --color-text-muted: #475569;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
   --color-border-subtle: rgba(15, 23, 42, .08);
   --color-border-default: rgba(15, 23, 42, .14);
   --color-accent: #2563eb;
-  --color-positive: #047857;
-  --color-positive-soft: rgba(4, 120, 87, .10);
-  --color-negative: #b91c1c;
-  --color-negative-soft: rgba(185, 28, 28, .10);
+  --color-positive: #059669;
+  --color-positive-soft: rgba(5, 150, 105, .10);
+  --color-negative: #e11d48;
+  --color-negative-soft: rgba(225, 29, 72, .10);
   --grid-line: rgba(15, 23, 42, .08);
   --grid-header-bg: #f8fafc;
   --bg-canvas: #f5f7fa;
   --bg-surface: #ffffff;
   --text-primary: #111827;
   --border-subtle: rgba(15, 23, 42, .08);
-  --pw-bg: #f5f7fa;
-  --pw-bg-deep: #f1f5f9;
-  --pw-panel: #ffffff;
-  --pw-panel-2: #f8fafc;
-  --pw-panel-3: #f1f5f9;
-  --pw-panel-hover: #f1f5f9;
-  --pw-border: #cbd5e1;
-  --pw-line: rgba(15, 23, 42, .10);
-  --pw-line-soft: rgba(15, 23, 42, .06);
-  --pw-line-strong: rgba(15, 23, 42, .18);
-  --pw-text: #0f172a;
-  --pw-text-soft: #1e293b;
-  --pw-muted: #475569;
-  --pw-dim: #475569;
-  --pw-faint: #64748b;
-  --pw-accent: #047857;
-  --pw-accent-strong: #065f46;
-  --pw-accent-soft: rgba(4, 120, 87, .10);
-  --pw-bull: #047857 !important;
-  --pw-bull-soft: rgba(4, 120, 87, .10);
-  --pw-bear: #b91c1c !important;
-  --pw-bear-soft: rgba(185, 28, 28, .10);
-  --pw-warn: #b45309 !important;
-  --pw-warn-soft: rgba(180, 83, 9, .10);
-  --pw-info: #1d4ed8 !important;
-  --pw-info-soft: rgba(29, 78, 216, .10);
 }
 
 html {
@@ -500,10 +474,12 @@ body {
   overflow: hidden;
   min-height: 142px;
   padding: 22px 24px !important;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid rgba(45, 212, 163, .13);
   border-radius: var(--pw-r-xl);
-  background: var(--color-bg-surface);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.02), inset 0 -1px 0 rgba(0,0,0,.12);
+  background:
+    linear-gradient(90deg, rgba(45, 212, 163, .038), transparent 39%),
+    #091018;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.02), inset 0 -1px 0 rgba(0,0,0,.24);
 }
 
 .dashboard-hero::before {
@@ -511,8 +487,7 @@ body {
   position: absolute;
   inset: 0 auto 0 0;
   width: 2px;
-  background: none;
-  opacity: 0;
+  background: linear-gradient(180deg, rgba(45, 212, 163, .9), rgba(45, 212, 163, .08));
 }
 
 .dashboard-hero::after {
@@ -522,8 +497,7 @@ body {
   right: 24px;
   bottom: 0;
   height: 1px;
-  background: none;
-  opacity: 0;
+  background: linear-gradient(90deg, rgba(45, 212, 163, .2), rgba(148, 163, 184, .05) 48%, transparent 90%);
 }
 
 .dashboard-hero .dash-badge:first-child {
@@ -539,12 +513,6 @@ body {
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -.025em;
-}
-
-html.light #dashGreeting,
-html.light #page-dashboard #dashGreeting,
-html.light .dashboard-card {
-  color: var(--color-text-primary) !important;
 }
 
 #dashGreeting + p {
@@ -593,8 +561,7 @@ html.light .dashboard-card {
   z-index: 2;
   inset: 0 0 auto 0;
   height: 1px;
-  background: none;
-  opacity: 0;
+  background: linear-gradient(90deg, rgba(45,212,163,.28), rgba(148,163,184,.04) 38%, transparent 86%);
   pointer-events: none;
 }
 
@@ -707,8 +674,7 @@ html.light .dashboard-card {
   top: 12px;
   left: 0;
   border-radius: 0 2px 2px 0;
-  background: none;
-  opacity: 0;
+  background: rgba(45,212,163,.22);
 }
 
 #page-dashboard .panel-title {
@@ -2210,8 +2176,8 @@ body::before {
   position: absolute;
   inset: 0 0 auto;
   height: 1px;
-  background: none;
-  opacity: 0;
+  background: linear-gradient(90deg, rgba(45,212,163,.32), rgba(45,212,163,.04) 34%, transparent 72%);
+  opacity: .62;
 }
 
 .radar-panel .panel-header {
@@ -2230,8 +2196,8 @@ body::before {
   height: 5px;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: var(--color-text-muted);
-  box-shadow: none;
+  background: #45d2a7;
+  box-shadow: 0 0 0 3px rgba(45,212,163,.055);
 }
 
 /* Data regions communicate horizontal scroll instead of clipping silently. */
@@ -2338,453 +2304,4 @@ body::before {
   .skeleton-card {
     background-size: 100% 100%;
   }
-}
-
-/* ========================================================================
-   HOLVER-AI SINGLE SHELL & WCAG AA LIGHT MODE REFACTOR
-   1. Eliminate Double Header on Desktop (100% vertical sidebar navigation)
-   2. Unify 9 Tabs inside Single Shell with min-width: 0 flex/grid guards
-   3. Complete Light Mode Contrast (WCAG AA >= 4.5:1) across all tabs
-   ======================================================================== */
-.mobile-nav-row {
-  display: none !important;
-}
-
-@media (min-width: 1024px) {
-  :root {
-    --pw-header-h: 0px;
-    --pw-command-top: 8px;
-  }
-
-  #appMain > .app-header {
-    display: none !important;
-  }
-}
-
-.app-layout,
-.app-main,
-.page-content,
-#page-dashboard,
-#page-analisis,
-#page-sektor,
-#page-screener,
-#page-portofolio,
-#page-watchlist,
-#page-trackrecord,
-#page-deepscan,
-#page-money-management {
-  min-width: 0;
-  width: 100%;
-}
-
-.dt-card-item::after,
-.kg-card-item::after,
-.nk-card-item::after {
-  background: none !important;
-  opacity: 0 !important;
-}
-
-html.light {
-  color-scheme: light;
-  background: var(--color-bg-canvas);
-}
-
-html.light body {
-  background-color: var(--color-bg-canvas) !important;
-  color: var(--color-text-primary) !important;
-}
-
-html.light .app-header {
-  background: rgba(255, 255, 255, .96) !important;
-  border-bottom-color: var(--color-border-subtle) !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, .05) !important;
-}
-
-html.light .ac-surface,
-html.light .panel,
-html.light .dashboard-card,
-html.light .feature-card,
-html.light .portfolio-card,
-html.light .skeleton-card,
-html.light .landing-auth-card,
-html.light .faq-item,
-html.light .subscription-summary,
-html.light .dashboard-pick-card,
-html.light .portfolio-row-card,
-html.light .mock-card,
-html.light .chart-shell,
-html.light .portfolio-shell,
-html.light .dashboard-hero,
-html.light #page-dashboard .market-band-grid,
-html.light #page-dashboard .panel {
-  background: #ffffff !important;
-  border-color: rgba(15, 23, 42, .10) !important;
-  color: var(--color-text-primary) !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, .04) !important;
-}
-
-html.light .panel-title,
-html.light #page-dashboard .panel-title,
-html.light .market-tile-value,
-html.light #ihsgLast,
-html.light #dashMarketGate,
-html.light #dashMarketFreshness {
-  color: #0f172a !important;
-}
-
-html.light .panel-subtitle,
-html.light #page-dashboard .panel-subtitle,
-html.light #dashGreeting + p,
-html.light .ac-section-title,
-html.light .ac-section-hint,
-html.light .market-tile-label,
-html.light .market-tile-unit,
-html.light .market-tile-note {
-  color: #475569 !important;
-}
-
-html.light .market-tile-link {
-  color: #047857 !important;
-}
-
-html.light #page-dashboard .market-tile {
-  border-right-color: rgba(15, 23, 42, .08) !important;
-}
-
-html.light #page-dashboard .market-tile:hover {
-  background: #f8fafc !important;
-}
-
-html.light .dash-badge {
-  background: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
-  color: #334155 !important;
-}
-
-html.light .dashboard-hero .dash-badge:first-child,
-html.light #approvedBadge {
-  background: rgba(4, 120, 87, .10) !important;
-  border-color: rgba(4, 120, 87, .28) !important;
-  color: #047857 !important;
-}
-
-html.light .dash-section-note {
-  background: #fffbeb !important;
-  border-color: #fde68a !important;
-  color: #92400e !important;
-}
-
-html.light #dashboardTop5List .dashboard-pick-card,
-html.light #dashboardMonitorList > *:not(.empty-state),
-html.light #top5HistoryList > *:not(.empty-state),
-html.light .dt-card-item,
-html.light .kg-card-item,
-html.light .nk-card-item,
-html.light #sektorGroupsGrid > * {
-  background: #f8fafc !important;
-  border-color: rgba(15, 23, 42, .10) !important;
-  color: #0f172a !important;
-}
-
-html.light #dashboardTop5List .dashboard-pick-card:hover,
-html.light #dashboardMonitorList > *:not(.empty-state):hover,
-html.light #top5HistoryList > *:not(.empty-state):hover,
-html.light .dt-card-item:hover,
-html.light .kg-card-item:hover,
-html.light .nk-card-item:hover,
-html.light #sektorGroupsGrid > *:hover {
-  background: #f1f5f9 !important;
-  border-color: rgba(15, 23, 42, .18) !important;
-}
-
-html.light #dashboardMonitorUpdated,
-html.light #top5HistoryTabActive,
-html.light #top5HistoryTabTp {
-  background: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
-  color: #334155 !important;
-}
-
-html.light #top5HistoryTabActive {
-  background: rgba(4, 120, 87, .10) !important;
-  border-color: rgba(4, 120, 87, .28) !important;
-  color: #047857 !important;
-}
-
-html.light thead th,
-html.light #rankingTableWrap thead th:first-child,
-html.light #dtScreenerTableWrap thead th:first-child,
-html.light #kgScreenerTableWrap thead th:first-child,
-html.light #nkScreenerTableWrap thead th:first-child {
-  background: #f8fafc !important;
-  color: #334155 !important;
-  border-bottom-color: rgba(15, 23, 42, .10) !important;
-}
-
-html.light tbody td {
-  color: #0f172a !important;
-  border-bottom-color: rgba(15, 23, 42, .06) !important;
-}
-
-html.light tbody tr:hover,
-html.light #page-dashboard tbody tr:hover,
-html.light #page-screener tbody tr:hover,
-html.light #page-analisis tbody tr:hover,
-html.light #page-sektor tbody tr:hover {
-  background: #f1f5f9 !important;
-}
-
-html.light #rankingTableWrap,
-html.light #rankingTableWrap table,
-html.light #dtScreenerTableWrap table,
-html.light #kgScreenerTableWrap table,
-html.light #nkScreenerTableWrap table,
-html.light #sektorDetailTable table {
-  background: #ffffff !important;
-  border-color: rgba(15, 23, 42, .10) !important;
-}
-
-html.light #rankingTableWrap th:first-child,
-html.light #rankingTableWrap td:first-child,
-html.light #dtScreenerTableWrap th:first-child,
-html.light #dtScreenerTableWrap td:first-child,
-html.light #kgScreenerTableWrap th:first-child,
-html.light #kgScreenerTableWrap td:first-child,
-html.light #nkScreenerTableWrap th:first-child,
-html.light #nkScreenerTableWrap td:first-child {
-  background: #ffffff !important;
-  box-shadow: 1px 0 0 rgba(15, 23, 42, .08);
-}
-
-html.light .ac-segmented,
-html.light .scr-info-bar,
-html.light #screenerContent .scr-filter-grid,
-html.light #screenerContent .scr-filter-grid label,
-html.light #dtScreenerStats,
-html.light [id$='ScreenerStats'] {
-  background: #f8fafc !important;
-  border-color: rgba(15, 23, 42, .10) !important;
-  color: #334155 !important;
-}
-
-html.light #screenerContent .scr-filter-grid::before {
-  background: #f5f7fa !important;
-  color: #475569 !important;
-}
-
-html.light .ac-segment,
-html.light .kg-screener-tab,
-html.light .nk-screener-tab,
-html.light .dt-screener-tab,
-html.light .screener-tab {
-  color: #475569 !important;
-}
-
-html.light .ac-segment.is-active,
-html.light .ac-segment[aria-pressed="true"],
-html.light .kg-screener-tab.active,
-html.light .nk-screener-tab.active,
-html.light .dt-screener-tab.active,
-html.light .screener-tab.active {
-  background: rgba(4, 120, 87, .10) !important;
-  border-color: rgba(4, 120, 87, .28) !important;
-  color: #047857 !important;
-}
-
-html.light input:not([type="checkbox"]):not([type="radio"]),
-html.light select,
-html.light textarea,
-html.light #analisisInput,
-html.light #analysisChatInput {
-  background-color: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  color: #0f172a !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, .04) !important;
-}
-
-html.light #analisisInput::placeholder,
-html.light input::placeholder,
-html.light textarea::placeholder {
-  color: #64748b !important;
-}
-
-html.light #page-analisis > div:first-child,
-html.light #analisisFollowUp {
-  background: rgba(255, 255, 255, .96) !important;
-  border-color: rgba(15, 23, 42, .10) !important;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, .05) !important;
-}
-
-html.light #analisisResult h1,
-html.light #analisisResult h2,
-html.light #analisisResult h3,
-html.light #analisisResult h4,
-html.light #analisisResult strong,
-html.light .ai-rich-text h1,
-html.light .ai-rich-text h2,
-html.light .ai-rich-text h3 {
-  color: #0f172a !important;
-}
-
-html.light #analisisResult p,
-html.light #analisisResult li {
-  color: #334155 !important;
-}
-
-html.light #analisisResult pre,
-html.light .ai-rich-text code {
-  background: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
-  color: #0f172a !important;
-}
-
-html.light .empty-state {
-  background: #f8fafc !important;
-  border-color: #cbd5e1 !important;
-  color: #475569 !important;
-}
-
-html.light .uc-search-shell,
-html.light .uc-cmd-pill,
-html.light .uc-mode-switch,
-html.light .uc-card,
-html.light .uc-stat-card,
-html.light .uc-kpi-tile,
-html.light .uc-section-card,
-html.light .uc-table-shell,
-html.light .uc-subtab-bar,
-html.light .uc-drawer {
-  background: #ffffff !important;
-  border-color: rgba(15, 23, 42, .10) !important;
-  color: #0f172a !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, .04) !important;
-}
-
-html.light .uc-search-input,
-html.light .uc-stat-value,
-html.light .uc-kpi-val,
-html.light .uc-section-title,
-html.light .uc-table td {
-  color: #0f172a !important;
-}
-
-html.light .uc-stat-label,
-html.light .uc-stat-sub,
-html.light .uc-kpi-lbl,
-html.light .uc-kpi-sub,
-html.light .uc-section-subtitle,
-html.light .uc-table th,
-html.light .uc-mode-btn,
-html.light .uc-subtab-btn {
-  color: #475569 !important;
-}
-
-html.light .uc-table th {
-  background: #f8fafc !important;
-  border-bottom-color: rgba(15, 23, 42, .10) !important;
-}
-
-html.light .uc-table td {
-  border-bottom-color: rgba(15, 23, 42, .06) !important;
-}
-
-html.light .uc-chip,
-html.light .uc-quick-ticker {
-  background: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
-  color: #334155 !important;
-}
-
-html.light .unified-top-bar,
-html.light .unified-card {
-  background: #ffffff !important;
-  border-color: rgba(15, 23, 42, .10) !important;
-  color: #0f172a !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, .04) !important;
-}
-
-html.light .unified-card-header,
-html.light .unified-chart-legend,
-html.light .unified-chat-composer,
-html.light .unified-quick-prompts {
-  background: #f8fafc !important;
-  border-color: rgba(15, 23, 42, .08) !important;
-  color: #0f172a !important;
-}
-
-html.light .unified-subtabs {
-  background: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
-}
-
-html.light .unified-subtab-btn {
-  color: #475569 !important;
-}
-
-html.light .unified-subtab-btn:hover {
-  color: #0f172a !important;
-  background: #e2e8f0 !important;
-}
-
-html.light .unified-subtab-btn.active {
-  color: #047857 !important;
-  background: rgba(4, 120, 87, .12) !important;
-  border-color: rgba(4, 120, 87, .30) !important;
-}
-
-html.light .unified-prompt-chip,
-html.light .analisis-tab {
-  background: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  color: #334155 !important;
-}
-
-html.light .unified-prompt-chip:hover,
-html.light .analisis-tab:hover {
-  background: #f1f5f9 !important;
-  border-color: #94a3b8 !important;
-  color: #0f172a !important;
-}
-
-html.light .analisis-tab-strip {
-  background: linear-gradient(rgba(245, 247, 250, 0.98) 80%, transparent) !important;
-}
-
-html.light .chart-fib-strip {
-  background: #f8fafc !important;
-  border-color: rgba(15, 23, 42, .08) !important;
-}
-
-html.light .chart-fib-header span,
-html.light .chart-fib-header b {
-  color: #b45309 !important;
-}
-
-html.light .chart-fib-item {
-  background: #ffffff !important;
-  border-color: #cbd5e1 !important;
-}
-
-html.light .chart-fib-item span {
-  color: #475569 !important;
-}
-
-html.light .chart-fib-item b {
-  color: #0f172a !important;
-}
-
-html.light footer {
-  background: #f8fafc !important;
-  border-top-color: rgba(15, 23, 42, .08) !important;
-  color: #475569 !important;
-}
-
-html.light tfoot,
-html.light tfoot tr,
-html.light tfoot td,
-html.light #mmCashflowSpreadsheetTable tfoot,
-html.light #mmJournalSpreadsheetTable tfoot {
-  background: #f8fafc !important;
-  border-color: rgba(15, 23, 42, .12) !important;
-  color: #0f172a !important;
 }

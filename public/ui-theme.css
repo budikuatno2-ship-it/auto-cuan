@@ -2640,13 +2640,13 @@ html.light .sidebar-item {
 
 html.light .sidebar-item:hover {
   background-color: #f1f5f9 !important;
-  color: #0f172a !important;
+  color: #047857 !important;
 }
 
 html.light .sidebar-item.active {
-  background-color: #0f172a !important;
-  color: #ffffff !important;
-  border-color: #0f172a !important;
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
 }
 
 html.light .theme-toggle-btn,
@@ -2728,7 +2728,6 @@ html.light body {
 .app-sidebar.collapsed,
 .app-sidebar.is-collapsed {
   width: 72px;
-  overflow: hidden;
 }
 
 .sidebar-scrim {
@@ -2742,15 +2741,12 @@ html.light body {
 .app-sidebar.collapsed .sidebar-label,
 .app-sidebar.collapsed .sidebar-brand-text,
 .app-sidebar.collapsed .sidebar-badge,
-.app-sidebar.collapsed .user-info,
 .app-sidebar.is-collapsed .sidebar-label,
 .app-sidebar.is-collapsed .sidebar-brand-text,
-.app-sidebar.is-collapsed .sidebar-badge,
-.app-sidebar.is-collapsed .user-info {
+.app-sidebar.is-collapsed .sidebar-badge {
   display: none !important;
 }
 
-.app-sidebar.collapsed .sidebar-item,
 .app-sidebar.is-collapsed .sidebar-item {
   justify-content: center;
   padding-left: 0;
@@ -2759,10 +2755,7 @@ html.light body {
 
 .app-sidebar.collapsed .sidebar-brand,
 .app-sidebar.is-collapsed .sidebar-brand {
-  flex-direction: column;
   justify-content: center;
-  gap: 6px;
-  padding: 10px 6px;
 }
 
 .sidebar-brand {
@@ -2770,19 +2763,17 @@ html.light body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 64px;
+  min-height: 72px;
   padding: 12px;
   border-bottom: 1px solid var(--color-border-subtle);
-  flex-shrink: 0;
-  overflow: hidden;
 }
 
-.sidebar-brand-lockup { display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden; }
+.sidebar-brand-lockup { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sidebar-brand-text { display: grid; min-width: 0; }
-.sidebar-brand-text strong { color: var(--color-text-primary); font-size: 14px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sidebar-brand-text span { color: var(--color-text-muted); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sidebar-brand .brand-mark { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: 0 0 32px; border-radius: 8px; }
-.sidebar-brand .brand-mark svg { width: 24px; height: 24px; max-width: 24px; flex-shrink: 0; display: inline-block; }
+.sidebar-brand-text strong { color: var(--color-text-primary); font-size: 14px; line-height: 1.25; }
+.sidebar-brand-text span { color: var(--color-text-muted); font-size: 10px; }
+.sidebar-brand .brand-mark { display: grid; place-items: center; flex: 0 0 34px; }
+.sidebar-brand .brand-mark svg { width: 18px; height: 18px; }
 .sidebar-collapse-toggle,
 .theme-toggle-compact {
   display: inline-grid;
@@ -2794,43 +2785,25 @@ html.light body {
   border-radius: 8px;
   background: var(--color-bg-elevated);
   color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 .sidebar-collapse-toggle:hover,
 .theme-toggle-compact:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
-.sidebar-collapse-toggle svg { width: 15px; height: 15px; max-width: 15px; flex-shrink: 0; transition: transform .18s ease; }
-.app-sidebar.collapsed .sidebar-collapse-toggle svg,
-.app-sidebar.is-collapsed .sidebar-collapse-toggle svg { transform: rotate(180deg); }
-.sidebar-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px; }
+.sidebar-collapse-toggle svg { width: 15px; height: 15px; transition: transform .18s ease; }
+.app-sidebar.collapsed .sidebar-collapse-toggle svg { transform: rotate(180deg); }
+.sidebar-nav { flex: 1; overflow-y: auto; padding: 12px; }
 .sidebar-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   padding: 12px;
   border-top: 1px solid var(--color-border-subtle);
-  flex-shrink: 0;
-  overflow: hidden;
 }
-.user-profile-badge { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; cursor: pointer; border-radius: 8px; padding: 2px; transition: background-color 0.15s ease; overflow: hidden; }
-.user-profile-badge:hover { background: var(--color-bg-hover); }
-.user-avatar { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 32px; border-radius: 50%; background: var(--color-bg-hover); border: 1px solid var(--color-border-default); color: var(--color-text-primary); font-size: 12px; font-weight: 700; }
-.user-info { display: flex; flex-direction: column; min-width: 0; font-size: 12px; line-height: 1.25; overflow: hidden; }
+.user-profile-badge { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; }
+.user-avatar { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%; background: var(--color-bg-hover); color: var(--color-text-primary); font-size: 12px; font-weight: 700; }
+.user-info { display: grid; min-width: 0; }
 .user-name { overflow: hidden; color: var(--color-text-primary); font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.user-role { color: var(--color-text-muted); font-size: 9px; font-weight: 700; letter-spacing: .08em; white-space: nowrap; }
-.app-sidebar.collapsed .sidebar-footer,
-.app-sidebar.is-collapsed .sidebar-footer {
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 6px;
-}
-.app-sidebar.collapsed .user-profile-badge,
-.app-sidebar.is-collapsed .user-profile-badge {
-  flex: 0 0 auto;
-  justify-content: center;
-}
+.user-role { color: var(--color-text-muted); font-size: 9px; font-weight: 700; letter-spacing: .08em; }
+.app-sidebar.collapsed .sidebar-footer { flex-direction: column; }
 
 .app-main-viewport {
   flex: 1;
@@ -2891,10 +2864,6 @@ html.light body {
   width: 100%;
   border: 1px solid transparent;
   text-align: left;
-}
-
-.sidebar-item.hidden {
-  display: none;
 }
 
 .sidebar-item:hover {
