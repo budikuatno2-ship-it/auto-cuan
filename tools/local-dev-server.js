@@ -209,6 +209,41 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    // Dev fallback for approval-based portfolio access
+    if (endpointName === 'admin-users') {
+      const parsedBody = await parseBody(req);
+      if (parsedBody && parsedBody.action === 'portfolio_access') {
+        return res.status(200).json({
+          success: true,
+          user_id: 'local-dev-admin',
+          username: 'budi',
+          is_approved: true,
+          is_admin: true
+        });
+      }
+    }
+
+    // Dev fallback for subscription access profile
+    if (endpointName === 'reset-password') {
+      const parsedBody = await parseBody(req);
+      if (parsedBody && parsedBody.action === 'account-profile') {
+        return res.status(200).json({
+          success: true,
+          profile: {
+            username: 'budi',
+            is_admin: true,
+            is_approved: true,
+            subscription: {
+              entitlement: {
+                premium: true,
+                access_level: 'admin'
+              }
+            }
+          }
+        });
+      }
+    }
+
     if (fs.existsSync(apiFile)) {
       try {
         const handler = require(apiFile);
@@ -280,7 +315,12 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // 4. Serve from public directory
+  // 4. SPA rewrites matching vercel.json
+  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern') {
+    pathname = '/index.html';
+  }
+
+  // 5. Serve from public directory
   let filePath = path.join(PUBLIC_DIR, pathname);
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
     if (fs.existsSync(filePath + '.html')) {

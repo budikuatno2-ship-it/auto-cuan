@@ -434,7 +434,7 @@
     <div id="sidebarSessions" class="sidebar-sessions">
         <!-- Sessions rendered dynamically -->
     </div>
-    <div class="sidebar-footer">
+    <div class="chat-sidebar-footer">
         <button onclick="clearAllSessions()" class="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition flex items-center gap-2">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             Hapus Semua Riwayat
@@ -455,7 +455,7 @@
 <aside id="appSidebar" class="app-sidebar hidden" aria-label="Navigasi workspace">
     <div class="sidebar-brand">
         <div class="sidebar-brand-lockup">
-            <span class="brand-mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l5-5 4 4 7-8"/></svg></span>
+            <span class="brand-mark" aria-hidden="true"><svg class="sidebar-logo-svg" style="width:24px;height:24px;max-width:24px;min-width:24px;flex-shrink:0;display:inline-block;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l5-5 4 4 7-8"/></svg></span>
             <div class="sidebar-brand-text">
                 <strong>Auto-Cuan</strong>
                 <span>IDX Workspace</span>
@@ -470,10 +470,45 @@
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
             <span class="sidebar-label">Dashboard</span>
         </button>
-        <button type="button" onclick="navigateTo('analisis')" class="sidebar-item" data-sidebar-page="analisis" title="Analisis Saham">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-            <span class="sidebar-label">Analisis Saham</span>
-        </button>
+        <div class="sidebar-accordion-group" id="sidebarGroupAnalisis">
+            <button type="button" onclick="toggleSidebarSubmenu('analisis')" class="sidebar-item sidebar-parent-item" data-sidebar-page="analisis" title="Analisis Saham" aria-expanded="false" aria-controls="submenuAnalisis">
+                <div class="flex items-center gap-3 min-w-0">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    <span class="sidebar-label">Analisis Saham</span>
+                </div>
+                <svg class="sidebar-chevron w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <div id="submenuAnalisis" class="sidebar-submenu hidden">
+                <button type="button" onclick="selectAnalisisSubView('chart')" class="sidebar-subitem active" data-subview="chart">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Analisis &amp; Chart</span>
+                </button>
+                <button type="button" onclick="selectAnalisisSubView('bandarmologi')" class="sidebar-subitem" data-subview="bandarmologi">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Bandarmologi</span>
+                </button>
+                <button type="button" onclick="selectAnalisisSubView('intel')" class="sidebar-subitem" data-subview="intel">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Sinyal Intelijen</span>
+                </button>
+                <button type="button" onclick="selectAnalisisSubView('hunter')" class="sidebar-subitem" data-subview="hunter">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Broker Hunter</span>
+                </button>
+                <button type="button" onclick="selectAnalisisSubView('insider')" class="sidebar-subitem" data-subview="insider">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Jejaring Insider</span>
+                </button>
+                <button type="button" onclick="selectAnalisisSubView('ranking')" class="sidebar-subitem" data-subview="ranking">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Ranking Harian</span>
+                </button>
+                <button type="button" onclick="selectAnalisisSubView('pattern')" class="sidebar-subitem" data-subview="pattern">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Pattern Radar</span>
+                </button>
+            </div>
+        </div>
         <button type="button" onclick="navigateTo('sektor')" class="sidebar-item hidden" data-sidebar-page="sektor" data-premium-nav="true" title="Sektor Hot">
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             <span class="sidebar-label">Sektor Hot</span>
@@ -482,10 +517,45 @@
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             <span class="sidebar-label">Screener</span>
         </button>
-        <button type="button" onclick="navigateTo('portofolio')" class="sidebar-item hidden" data-sidebar-page="portofolio" data-premium-nav="true" title="Portofolio">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-            <span class="sidebar-label">Portofolio</span>
-        </button>
+        <div class="sidebar-accordion-group" id="sidebarGroupPortofolio">
+            <button type="button" onclick="toggleSidebarSubmenu('portofolio')" class="sidebar-item sidebar-parent-item hidden" data-sidebar-page="portofolio" data-premium-nav="true" title="Portofolio" aria-expanded="false" aria-controls="submenuPortofolio">
+                <div class="flex items-center gap-3 min-w-0">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                    <span class="sidebar-label">Portofolio</span>
+                </div>
+                <svg class="sidebar-chevron w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <div id="submenuPortofolio" class="sidebar-submenu hidden">
+                <button type="button" onclick="selectPortfolioSubView('today')" class="sidebar-subitem active" data-subview="today">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Hari Ini</span>
+                </button>
+                <button type="button" onclick="selectPortfolioSubView('planner')" class="sidebar-subitem" data-subview="planner">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Rencana Posisi</span>
+                </button>
+                <button type="button" onclick="selectPortfolioSubView('watch')" class="sidebar-subitem" data-subview="watch">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Pantauan</span>
+                </button>
+                <button type="button" onclick="selectPortfolioSubView('risk')" class="sidebar-subitem" data-subview="risk">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Risiko &amp; Avg Down</span>
+                </button>
+                <button type="button" onclick="selectPortfolioSubView('scenarios')" class="sidebar-subitem" data-subview="scenarios">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Skenario Posisi</span>
+                </button>
+                <button type="button" onclick="selectPortfolioSubView('journal')" class="sidebar-subitem" data-subview="journal">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Jurnal</span>
+                </button>
+                <button type="button" onclick="selectPortfolioSubView('ai')" class="sidebar-subitem" data-subview="ai">
+                    <span class="subitem-dot"></span>
+                    <span class="sidebar-label">Asisten AI</span>
+                </button>
+            </div>
+        </div>
         <button type="button" onclick="navigateTo('watchlist')" class="sidebar-item hidden" data-sidebar-page="watchlist" data-premium-nav="true" title="Watchlist">
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
             <span class="sidebar-label">Watchlist</span>
@@ -659,7 +729,7 @@
                         <span id="ihsgChange" class="market-tile-delta">—</span>
                     </div>
                 </div>
-                <button onclick="window.location.assign('/analisis-saham?ticker=IHSG')" class="market-tile-link">Buka analisis IHSG &rarr;</button>
+                <button onclick="quickAnalisis('IHSG')" class="market-tile-link">Buka analisis IHSG &rarr;</button>
             </div>
             <div class="market-tile">
                 <div class="market-tile-head"><span class="market-tile-label">Radar hari ini</span></div>
@@ -2493,6 +2563,14 @@
     </div>
 </div>
 
+<!-- FLOATING AI ASSISTANT TRIGGER BUTTON -->
+<button id="floatingAiAssistantBtn" type="button" onclick="toggleSidebar()" class="floating-ai-assistant-btn" title="Asisten AI Saham" aria-label="Buka Asisten AI Saham">
+    <svg class="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+    </svg>
+    <span class="floating-ai-sparkle">✨</span>
+</button>
+
 </div>
 
 <script src="/assets/idx-tickers.js"></script>
@@ -2686,12 +2764,10 @@ function maintenanceLockActive() {
     return maintenanceStatus === MAINTENANCE_ON && !isServerVerifiedAdmin();
 }
 
-// True while the status is still unresolved. A server-verified admin is not held
-// here: their authorization is established independently of maintenance status,
-// and holding them would lock administrators out during exactly the incident
-// they need to log in for.
+// Startup latency, slow connection, timeout, network error, status unverified / unknown
+// MUST NOT lock the screen or show a blocker modal. Non-blocking policy.
 function serviceStatusUnverified() {
-    return maintenanceStatus === MAINTENANCE_UNKNOWN && !isServerVerifiedAdmin();
+    return false;
 }
 
 // ===== TOP-LEVEL VIEW STATE =====
@@ -3221,13 +3297,6 @@ window.addEventListener('popstate', function() { handleAppRoute({ fromPopstate: 
 // cannot represent.
 var maintenanceConfig = { maintenanceMode: false, message: '' };
 async function checkMaintenanceStatus(timeoutMs) {
-    // Bounded, and it may ONLY move maintenanceStatus on a confirmed answer.
-    //
-    // Every failure path — timeout, network error, non-2xx, unparseable body,
-    // success:false, missing config — leaves the previous status untouched. So:
-    //   unknown + failure  stays unknown  (the app is not exposed)
-    //   on      + failure  stays on       (a confirmed gate cannot be lifted)
-    //   off     + failure  stays off      (no spurious lockout after a good load)
     var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     var timer = controller ? setTimeout(function () { try { controller.abort(); } catch (_) {} }, timeoutMs || 3000) : null;
     try {
@@ -3237,12 +3306,24 @@ async function checkMaintenanceStatus(timeoutMs) {
             body: JSON.stringify({ action: 'get' }),
             signal: controller ? controller.signal : undefined
         });
-        // A 5xx still parses as JSON on some hosts; require an ok response.
+        // HTTP 503 explicitly indicates maintenance
+        if (response.status === 503) {
+            maintenanceStatus = MAINTENANCE_ON;
+            try {
+                var errData = await response.json();
+                if (errData && errData.message) maintenanceConfig.message = errData.message;
+            } catch (_) {}
+            return maintenanceStatus;
+        }
         if (!response.ok) return maintenanceStatus;
         var data = await response.json();
-        if (data && data.success === true && data.config && typeof data.config === 'object') {
-            maintenanceConfig = data.config;
-            maintenanceStatus = (data.config.maintenanceMode === true) ? MAINTENANCE_ON : MAINTENANCE_OFF;
+        if (data && (data.maintenance === true || data.maintenanceMode === true || (data.config && data.config.maintenanceMode === true))) {
+            if (data.config && typeof data.config === 'object') maintenanceConfig = data.config;
+            else if (data.message) maintenanceConfig.message = data.message;
+            maintenanceStatus = MAINTENANCE_ON;
+        } else if (data && (data.maintenance === false || data.maintenanceMode === false || (data.config && data.config.maintenanceMode === false) || data.success === true)) {
+            if (data.config && typeof data.config === 'object') maintenanceConfig = data.config;
+            maintenanceStatus = MAINTENANCE_OFF;
         }
     } catch(e) {
     } finally {
@@ -3252,8 +3333,7 @@ async function checkMaintenanceStatus(timeoutMs) {
 }
 
 // Applies the current status. Confirmed-on shows maintenance with the server's
-// message; unresolved shows the status screen; confirmed-off does nothing and
-// leaves routing alone.
+// message; confirmed-off or unresolved leaves routing alone (non-blocking policy).
 function applyMaintenanceGate() {
     if (maintenanceStatus === MAINTENANCE_ON) {
         var msgEl = document.getElementById('maintenanceMessage');
@@ -3746,9 +3826,8 @@ async function handleMagicLoginFlow(authToken, magicUserId) {
     // and enterReviewMode() clears #maintenanceScreen directly, so evaluating
     // the gate after them would let a URL parameter walk past maintenance.
     await checkMaintenanceStatus(3000);
-    // Anything other than a confirmed OFF withholds the app, so an unverified
-    // status cannot be walked past with a share or review URL either.
-    var _maintenanceLocked = maintenanceStatus !== MAINTENANCE_OFF;
+    // Screen blocker only locks when maintenance is confirmed ON from server
+    var _maintenanceLocked = maintenanceStatus === MAINTENANCE_ON && !isServerVerifiedAdmin();
     if (_maintenanceLocked) applyMaintenanceGate();
 
     // === PUBLIC SHARE MODE ===
@@ -4542,17 +4621,6 @@ function navigateTo(page) {
         }, 150);
         return;
     }
-    if (page === 'analisis') {
-        // Analisis Saham lives on its own page (/analisis-saham).
-        window.location.assign('/analisis-saham');
-        return;
-    }
-    if (page === 'portofolio') {
-        // Portofolio lives on its own page (Decision Center).
-        window.location.assign('/portfolio-planner');
-        return;
-    }
-
     currentPage = page;
     if (page !== 'screener') stopAllScreenerPolling();
     // Hide all pages
@@ -4576,9 +4644,11 @@ function navigateTo(page) {
     });
     // Keep the workspace rail's highlight in step with the top nav.
     if (typeof syncWorkspaceSidebarActive === 'function') syncWorkspaceSidebarActive(page);
-    var activeMobileNav = document.querySelector('.mobile-nav-row .nav-btn[data-page="' + page + '"]');
-    if (activeMobileNav && activeMobileNav.scrollIntoView) {
-        try { activeMobileNav.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch(e) { activeMobileNav.scrollIntoView(); }
+    if (window.innerWidth < 768) {
+        var activeMobileNav = document.querySelector('.mobile-nav-row .nav-btn[data-page="' + page + '"]');
+        if (activeMobileNav && activeMobileNav.offsetParent !== null && activeMobileNav.scrollIntoView) {
+            try { activeMobileNav.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch(e) { activeMobileNav.scrollIntoView(); }
+        }
     }
     // Show admin panel only on dashboard
     var adminPanel = document.getElementById('adminPanel');
@@ -4825,11 +4895,14 @@ function handleAnalisisSubmit() {
     runAnalisisFromDashboard(val);
 }
 function quickAnalisis(ticker) {
+    navigateTo('analisis');
     if (ticker) {
-        window.location.assign('/analisis-saham?ticker=' + encodeURIComponent(ticker));
-        return;
+        var input = document.getElementById('analisisInput');
+        if (input) input.value = ticker;
+        if (window.UnifiedCockpit && typeof window.UnifiedCockpit.syncActiveTicker === 'function') {
+            window.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: true, forceChartReload: true });
+        }
     }
-    window.location.assign('/analisis-saham');
 }
 // ===== ANALISIS SAHAM: REQUEST GENERATION GUARD =====
 // Every run of runAnalisisFromDashboard() claims the next sequence number. A
@@ -7849,6 +7922,98 @@ function syncWorkspaceSidebarActive(page) {
     });
 }
 
+function toggleSidebarSubmenu(name) {
+    var aside = document.getElementById('appSidebar');
+    if (aside && aside.classList.contains('is-collapsed')) {
+        applySidebarCollapse(false);
+    }
+    if (name === 'analisis') {
+        var group = document.getElementById('sidebarGroupAnalisis');
+        var sub = document.getElementById('submenuAnalisis');
+        var btn = group ? group.querySelector('.sidebar-parent-item') : null;
+        var isHidden = !sub || sub.classList.contains('hidden');
+        if (isHidden) {
+            if (sub) sub.classList.remove('hidden');
+            if (btn) { btn.setAttribute('aria-expanded', 'true'); btn.classList.add('open'); }
+            navigateTo('analisis');
+        } else {
+            if (sub) sub.classList.add('hidden');
+            if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('open'); }
+        }
+    } else if (name === 'portofolio') {
+        var group2 = document.getElementById('sidebarGroupPortofolio');
+        var sub2 = document.getElementById('submenuPortofolio');
+        var btn2 = group2 ? group2.querySelector('.sidebar-parent-item') : null;
+        var isHidden2 = !sub2 || sub2.classList.contains('hidden');
+        if (isHidden2) {
+            if (sub2) sub2.classList.remove('hidden');
+            if (btn2) { btn2.setAttribute('aria-expanded', 'true'); btn2.classList.add('open'); }
+            navigateTo('portofolio');
+        } else {
+            if (sub2) sub2.classList.add('hidden');
+            if (btn2) { btn2.setAttribute('aria-expanded', 'false'); btn2.classList.remove('open'); }
+        }
+    }
+}
+
+function selectAnalisisSubView(sub) {
+    navigateTo('analisis');
+    var subMenu = document.getElementById('submenuAnalisis');
+    if (subMenu) subMenu.classList.remove('hidden');
+    var parentBtn = document.querySelector('#sidebarGroupAnalisis .sidebar-parent-item');
+    if (parentBtn) { parentBtn.setAttribute('aria-expanded', 'true'); parentBtn.classList.add('open'); }
+
+    document.querySelectorAll('#submenuAnalisis .sidebar-subitem').forEach(function(item) {
+        item.classList.toggle('active', item.getAttribute('data-subview') === sub);
+    });
+
+    if (sub === 'chart') {
+        if (window.UnifiedCockpit && typeof window.UnifiedCockpit.switchAnalysisSubTab === 'function') {
+            window.UnifiedCockpit.switchAnalysisSubTab('text');
+        }
+        var chartBox = document.getElementById('unifiedChartContainer');
+        if (chartBox && chartBox.scrollIntoView) chartBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else if (sub === 'bandarmologi' || sub === 'hunter' || sub === 'insider') {
+        if (window.UnifiedCockpit && typeof window.UnifiedCockpit.switchAnalysisSubTab === 'function') {
+            window.UnifiedCockpit.switchAnalysisSubTab('text');
+        }
+        var res = document.getElementById('analisisResult');
+        if (res && res.scrollIntoView) res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else if (sub === 'intel' || sub === 'pattern') {
+        if (window.UnifiedCockpit && typeof window.UnifiedCockpit.switchAnalysisSubTab === 'function') {
+            window.UnifiedCockpit.switchAnalysisSubTab('vision');
+        }
+        var visionBox = document.getElementById('panelAnalisisVision');
+        if (visionBox && visionBox.scrollIntoView) visionBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else if (sub === 'ranking') {
+        var rWrap = document.getElementById('rankingCardOuterWrap');
+        if (rWrap && rWrap.scrollIntoView) rWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (typeof refreshRankingTable === 'function') refreshRankingTable();
+    }
+}
+
+function selectPortfolioSubView(sub) {
+    navigateTo('portofolio');
+    var subMenu = document.getElementById('submenuPortofolio');
+    if (subMenu) subMenu.classList.remove('hidden');
+    var parentBtn = document.querySelector('#sidebarGroupPortofolio .sidebar-parent-item');
+    if (parentBtn) { parentBtn.setAttribute('aria-expanded', 'true'); parentBtn.classList.add('open'); }
+
+    document.querySelectorAll('#submenuPortofolio .sidebar-subitem').forEach(function(item) {
+        item.classList.toggle('active', item.getAttribute('data-subview') === sub);
+    });
+
+    if (sub === 'today') {
+        var summary = document.getElementById('portSummary');
+        if (summary) summary.classList.remove('hidden');
+    } else if (sub === 'planner') {
+        var form = document.getElementById('addPositionForm');
+        if (form) form.classList.remove('hidden');
+    } else if (sub === 'ai') {
+        toggleSidebar();
+    }
+}
+
 function renderSidebarSessions() {
     var container = document.getElementById('sidebarSessions');
     if (!container) return;
@@ -10485,11 +10650,7 @@ function screenerStatusShort(status) {
 }
 
 function screenerTickerClick(ticker) {
-    if (ticker) {
-        window.location.assign('/analisis-saham?ticker=' + encodeURIComponent(ticker));
-        return;
-    }
-    window.location.assign('/analisis-saham');
+    quickAnalisis(ticker);
 }
 
 // ===== NON-KONGLO SCREENER FUNCTIONS =====

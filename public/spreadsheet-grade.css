@@ -472,3 +472,406 @@ html {
     transition: none !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   6. DESKTOP SINGLE SHELL — REMOVE REPEATED HEADER AT >=1024px
+   -------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  #appMain > .app-header {
+    display: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   7. SIDEBAR BRAND HEADER & FOOTER ACCORDION / USER POLISH
+   -------------------------------------------------------------------------- */
+.sidebar-brand {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding-top: 20px !important;
+  padding-left: 16px !important;
+  padding-right: 14px !important;
+  padding-bottom: 14px !important;
+}
+
+.sidebar-brand .brand-mark svg,
+.sidebar-logo-svg {
+  width: 24px !important;
+  height: 24px !important;
+  max-width: 24px !important;
+  min-width: 24px !important;
+  flex-shrink: 0 !important;
+  display: inline-block !important;
+}
+
+.sidebar-footer {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 14px !important;
+  overflow: hidden !important;
+}
+
+.user-profile-badge {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  cursor: pointer;
+}
+
+.user-avatar {
+  display: grid !important;
+  place-items: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  max-width: 32px !important;
+  min-width: 32px !important;
+  flex: 0 0 32px !important;
+  border-radius: 50% !important;
+}
+
+.user-info {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.user-name {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--color-text-primary, #f1f5f9) !important;
+  white-space: nowrap !important;
+}
+
+.user-role {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  letter-spacing: 0.04em !important;
+  white-space: nowrap !important;
+}
+
+html.light .user-role {
+  background: rgba(4, 120, 87, 0.12) !important;
+  color: #047857 !important;
+}
+
+.theme-toggle-compact {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  flex: 0 0 28px !important;
+}
+
+/* Collapsed sidebar (72px) */
+.app-sidebar.collapsed,
+.app-sidebar.is-collapsed {
+  width: 72px !important;
+}
+
+.app-sidebar.collapsed .sidebar-label,
+.app-sidebar.collapsed .sidebar-brand-text,
+.app-sidebar.collapsed .sidebar-badge,
+.app-sidebar.collapsed .user-info,
+.app-sidebar.collapsed .sidebar-chevron,
+.app-sidebar.collapsed .sidebar-submenu,
+.app-sidebar.is-collapsed .sidebar-label,
+.app-sidebar.is-collapsed .sidebar-brand-text,
+.app-sidebar.is-collapsed .sidebar-badge,
+.app-sidebar.is-collapsed .user-info,
+.app-sidebar.is-collapsed .sidebar-chevron,
+.app-sidebar.is-collapsed .sidebar-submenu {
+  display: none !important;
+}
+
+.app-sidebar.collapsed .sidebar-footer,
+.app-sidebar.is-collapsed .sidebar-footer {
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 12px 6px !important;
+  overflow: hidden !important;
+}
+
+/* --------------------------------------------------------------------------
+   8. SIDEBAR ACCORDION TREE-VIEW
+   -------------------------------------------------------------------------- */
+.sidebar-accordion-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.sidebar-parent-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  cursor: pointer;
+}
+
+.sidebar-chevron {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--color-text-muted, #94a3b8);
+}
+
+.sidebar-parent-item.open .sidebar-chevron,
+.sidebar-parent-item[aria-expanded="true"] .sidebar-chevron {
+  transform: rotate(180deg);
+  color: var(--color-text-primary, #ffffff);
+}
+
+.sidebar-submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 18px;
+  padding-right: 4px;
+  margin-top: 2px;
+  margin-bottom: 6px;
+}
+
+.sidebar-subitem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--color-text-secondary, #94a3b8);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.sidebar-subitem:hover {
+  background: var(--color-bg-hover, rgba(255, 255, 255, 0.05));
+  color: var(--color-text-primary, #f1f5f9);
+}
+
+.sidebar-subitem.active {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  font-weight: 600;
+}
+
+.subitem-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--color-border-default, #475569);
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.sidebar-subitem:hover .subitem-dot {
+  background-color: var(--color-text-secondary, #cbd5e1);
+}
+
+.sidebar-subitem.active .subitem-dot {
+  background-color: #34d399;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+html.light .sidebar-subitem {
+  color: #475569;
+}
+html.light .sidebar-subitem:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+html.light .sidebar-subitem.active {
+  background: #ecfdf5;
+  color: #047857;
+}
+html.light .sidebar-subitem.active .subitem-dot {
+  background-color: #047857;
+}
+
+/* --------------------------------------------------------------------------
+   9. GOOGLE SHEETS / TANSTACK TABLE STYLING FOR KELOLA KEUANGAN
+   -------------------------------------------------------------------------- */
+#mmCashflowSpreadsheetTable,
+#mmJournalSpreadsheetTable {
+  width: 100%;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border: 1px solid #334155 !important;
+  background-color: #090d16 !important;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+#mmCashflowSpreadsheetTable thead th,
+#mmJournalSpreadsheetTable thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  height: 30px !important;
+  line-height: 30px !important;
+  padding: 0 10px !important;
+  background: #0f172a !important;
+  color: #94a3b8 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  border-right: 1px solid #334155 !important;
+  border-bottom: 1px solid #334155 !important;
+  white-space: nowrap !important;
+}
+
+#mmCashflowSpreadsheetTable tbody td,
+#mmJournalSpreadsheetTable tbody td {
+  height: 28px !important;
+  padding: 2px 10px !important;
+  border-right: 1px solid #1e293b !important;
+  border-bottom: 1px solid #1e293b !important;
+  font-size: 11px !important;
+  color: #e2e8f0 !important;
+  white-space: nowrap !important;
+}
+
+#mmCashflowSpreadsheetTable tbody tr:nth-child(even),
+#mmJournalSpreadsheetTable tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+#mmCashflowSpreadsheetTable tbody tr:hover,
+#mmJournalSpreadsheetTable tbody tr:hover {
+  background-color: rgba(16, 185, 129, 0.06) !important;
+}
+
+#mmCashflowSpreadsheetTable tfoot td,
+#mmJournalSpreadsheetTable tfoot td {
+  height: 30px !important;
+  padding: 2px 10px !important;
+  border-right: 1px solid #334155 !important;
+  border-top: 2px solid #10b981 !important;
+  border-bottom: 1px solid #334155 !important;
+  background: #0f172a !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-variant-numeric: tabular-nums !important;
+  font-weight: 700 !important;
+}
+
+html.light #mmCashflowSpreadsheetTable,
+html.light #mmJournalSpreadsheetTable {
+  border: 1px solid #e2e8f0 !important;
+  background-color: #ffffff !important;
+}
+
+html.light #mmCashflowSpreadsheetTable thead th,
+html.light #mmJournalSpreadsheetTable thead th {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border-right: 1px solid #e2e8f0 !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+}
+
+html.light #mmCashflowSpreadsheetTable tbody td,
+html.light #mmJournalSpreadsheetTable tbody td {
+  border-right: 1px solid #f1f5f9 !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+html.light #mmCashflowSpreadsheetTable tbody tr:nth-child(even),
+html.light #mmJournalSpreadsheetTable tbody tr:nth-child(even) {
+  background-color: #f8fafc !important;
+}
+
+html.light #mmCashflowSpreadsheetTable tbody tr:hover,
+html.light #mmJournalSpreadsheetTable tbody tr:hover {
+  background-color: #ecfdf5 !important;
+}
+
+html.light #mmCashflowSpreadsheetTable tfoot td,
+html.light #mmJournalSpreadsheetTable tfoot td {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border-right: 1px solid #e2e8f0 !important;
+  border-top: 2px solid #047857 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   10. FLOATING AI ASSISTANT BUTTON
+   -------------------------------------------------------------------------- */
+.floating-ai-assistant-btn {
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: #000000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+  z-index: 45 !important;
+  border: 2px solid rgba(255, 255, 255, 0.25) !important;
+  cursor: pointer !important;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease !important;
+}
+
+.floating-ai-assistant-btn:hover {
+  transform: scale(1.08) translateY(-2px) !important;
+  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.5), 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+.floating-ai-assistant-btn:active {
+  transform: scale(0.96) !important;
+}
+
+.floating-ai-sparkle {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  font-size: 14px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   11. LIGHT MODE WCAG AA (CONTRAST RATIO >= 4.5:1)
+   -------------------------------------------------------------------------- */
+html.light {
+  --pw-bull: #047857 !important;
+  --pw-bear: #b91c1c !important;
+  --pw-warn: #b45309 !important;
+  --pw-info: #1d4ed8 !important;
+  --color-positive: #047857 !important;
+  --color-negative: #b91c1c !important;
+  --color-warning: #b45309 !important;
+  --ac-bull: #047857 !important;
+  --ac-bear: #b91c1c !important;
+  --ac-warn: #b45309 !important;
+}
+
+html.light #dashGreeting,
+html.light .dashboard-hero h2,
+html.light .dashboard-card h2,
+html.light .dashboard-card h3 {
+  color: #0f172a !important;
+}
