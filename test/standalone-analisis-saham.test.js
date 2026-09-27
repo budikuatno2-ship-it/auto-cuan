@@ -116,11 +116,11 @@ test('Standalone Analisis Saham: Routing and caching config in vercel.json and r
   assert.match(robotsTxt, /Disallow:\s*\/analisis-saham/);
 });
 
-test('Standalone Analisis Saham: Navigation in index.html directs to /analisis-saham and keeps Chart page separate', () => {
-  // Navigation redirection
-  assert.ok(indexHtml.includes("window.location.assign('/analisis-saham');"), "navigateTo('analisis') redirects to /analisis-saham");
-  assert.ok(indexHtml.includes("window.location.assign('/analisis-saham?ticker=' + encodeURIComponent(ticker));"), 'quickAnalisis redirects to /analisis-saham?ticker=...');
-  assert.ok(indexHtml.includes("window.location.assign('/analisis-saham?ticker=IHSG')"), 'IHSG dashboard tile links to /analisis-saham?ticker=IHSG');
+test('Standalone Analisis Saham: Navigation in index.html keeps Single Shell SPA in-place and keeps Chart page separate', () => {
+  // In-place Single Shell SPA navigation
+  assert.ok(!indexHtml.includes("window.location.assign('/analisis-saham');"), "navigateTo('analisis') does not reload page");
+  assert.ok(indexHtml.includes("quickAnalisis('IHSG')"), 'IHSG dashboard tile links to quickAnalisis');
+  assert.ok(indexHtml.includes("function quickAnalisis(ticker)"), 'quickAnalisis function exists');
 
   // Chart page isolation
   assert.ok(indexHtml.includes('id="page-chart"'), '#page-chart preserved for plain chart viewing');
