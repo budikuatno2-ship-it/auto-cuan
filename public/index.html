@@ -455,18 +455,18 @@
 <aside id="appSidebar" class="app-sidebar hidden" aria-label="Navigasi workspace">
     <div class="sidebar-brand">
         <div class="sidebar-brand-lockup">
-            <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l5-5 4 4 7-8"/></svg></span>
+            <span class="brand-mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l5-5 4 4 7-8"/></svg></span>
             <div class="sidebar-brand-text">
                 <strong>Auto-Cuan</strong>
                 <span>IDX Workspace</span>
             </div>
         </div>
         <button type="button" onclick="toggleSidebarCollapse()" class="sidebar-collapse-toggle" title="Ciutkan sidebar" aria-label="Ciutkan atau bentangkan sidebar navigasi" aria-controls="appSidebar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 18l-6-6 6-6"/></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 18l-6-6 6-6"/></svg>
         </button>
     </div>
     <nav class="sidebar-nav" aria-label="Menu utama workspace">
-        <button type="button" onclick="navigateTo('dashboard')" class="sidebar-item" data-sidebar-page="dashboard" title="Dashboard">
+        <button type="button" onclick="navigateTo('dashboard')" class="sidebar-item active" data-sidebar-page="dashboard" title="Dashboard">
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
             <span class="sidebar-label">Dashboard</span>
         </button>
@@ -504,11 +504,11 @@
         </button>
     </nav>
     <div class="sidebar-footer">
-        <div class="user-profile-badge" title="Profil pengguna">
+        <div class="user-profile-badge" title="Profil pengguna &amp; Logout" role="button" tabindex="0" onclick="if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click();}">
             <div class="user-avatar" aria-hidden="true">B</div>
             <div class="user-info sidebar-label">
                 <span class="user-name" id="sidebarUserName">budi</span>
-                <span class="user-role">PRO PLAN</span>
+                <span class="user-role">ADMIN</span>
             </div>
         </div>
         <button id="themeToggleCompact" type="button" onclick="toggleAppTheme()" class="theme-toggle-compact" aria-label="Toggle Theme" title="Ganti tema terang/gelap">
@@ -2946,6 +2946,13 @@ function syncHeaderUsername() {
             if (labelEl && typeof labelEl.click === 'function') labelEl.click();
         });
     }
+
+    var sidebarUserEl = document.getElementById('sidebarUserName');
+    var sidebarAvatarEl = typeof document.querySelector === 'function' ? document.querySelector('#appSidebar .user-avatar') : null;
+    var sidebarRoleEl = typeof document.querySelector === 'function' ? document.querySelector('#appSidebar .user-role') : null;
+    if (sidebarUserEl) sidebarUserEl.textContent = isGuest ? 'Guest' : u;
+    if (sidebarAvatarEl) sidebarAvatarEl.textContent = isGuest ? 'GU' : String(u || 'AC').slice(0, 2).toUpperCase();
+    if (sidebarRoleEl) sidebarRoleEl.textContent = (isBudi || isAdm) ? 'ADMIN' : (isSubscribed ? 'PRO' : 'FREE');
 }
 window.syncHeaderUsername = syncHeaderUsername;
 
@@ -4341,6 +4348,7 @@ function showDashboard() {
     }
     clearLegacyDeviceBlock();
     setTopLevelView('app');
+    if (typeof setWorkspaceSidebarVisible === 'function') setWorkspaceSidebarVisible(true);
     var isGuest = (username === 'guest'); var isAdm = isAdmin();
     // Header & Profile synchronization
     syncHeaderUsername();
@@ -4791,7 +4799,7 @@ function updateDashGreeting() {
     el.textContent = 'Halo, ' + displayName;
     var sidebarName = document.getElementById('sidebarUserName');
     if (sidebarName) sidebarName.textContent = displayName;
-    var sidebarAvatar = document.querySelector('#appSidebar .user-avatar');
+    var sidebarAvatar = typeof document.querySelector === 'function' ? document.querySelector('#appSidebar .user-avatar') : null;
     if (sidebarAvatar) sidebarAvatar.textContent = displayName.charAt(0).toUpperCase() || 'T';
     // Show approved badge for non-guest logged-in users
     var approvedBadge = document.getElementById('approvedBadge');

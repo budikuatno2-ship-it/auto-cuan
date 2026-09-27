@@ -189,20 +189,21 @@
 
 html.light,
 [data-theme="light"] {
-  --color-bg-canvas: #f5f7fa;
+  --color-bg-canvas: #f8fafc;
   --color-bg-surface: #ffffff;
   --color-bg-elevated: #f8fafc;
   --color-bg-hover: #f1f5f9;
   --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-muted: #64748b;
-  --color-border-subtle: rgba(15, 23, 42, 0.08);
-  --color-border-default: rgba(15, 23, 42, 0.14);
+  --color-text-secondary: #334155;
+  --color-text-muted: #475569;
+  --color-border-subtle: rgba(15, 23, 42, 0.10);
+  --color-border-default: rgba(15, 23, 42, 0.16);
   --color-accent: #2563eb;
-  --color-positive: #059669;
-  --color-positive-soft: rgba(5, 150, 105, 0.10);
-  --color-negative: #e11d48;
-  --color-negative-soft: rgba(225, 29, 72, 0.10);
+  --color-positive: #047857;
+  --color-positive-soft: rgba(4, 120, 87, 0.10);
+  --color-negative: #b91c1c;
+  --color-negative-soft: rgba(185, 28, 28, 0.10);
+  --color-warning: #b45309;
   --grid-line: rgba(15, 23, 42, 0.08);
   --grid-header-bg: #f8fafc;
 }
@@ -2523,20 +2524,33 @@ body {
 /* ==========================================================================
    AUTO-CUAN THEME SYSTEM: DARK (SLATE/ZINC) & LIGHT (CLEAN FINANCIAL)
    ========================================================================== */
-html.light, body.light {
+html.light, body.light, [data-theme="light"] {
   --pw-bg: #f8fafc;
+  --pw-bg-2: #f1f5f9;
   --pw-panel: #ffffff;
+  --pw-panel-2: #f8fafc;
+  --pw-panel-3: #f1f5f9;
+  --pw-panel-hover: #f1f5f9;
   --pw-panel-strong: #f1f5f9;
   --pw-surface: #ffffff;
   --pw-line: #e2e8f0;
   --pw-line-strong: #cbd5e1;
   --pw-text: #0f172a;
   --pw-text-strong: #020617;
-  --pw-muted: #475569;
-  --pw-dim: #64748b;
+  --pw-muted: #334155;
+  --pw-dim: #475569;
+  --pw-bull: #047857;
+  --pw-bear: #b91c1c;
+  --pw-warn: #b45309;
+  --pw-info: #1d4ed8;
   --pw-grid: transparent;
 
   --color-text-primary: #0f172a !important;
+  --color-text-secondary: #334155 !important;
+  --color-text-muted: #475569 !important;
+  --color-positive: #047857 !important;
+  --color-negative: #b91c1c !important;
+  --color-warning: #b45309 !important;
   --ac-bg: #f8fafc;
   --ac-surface-1: #ffffff;
   --ac-surface-2: #f8fafc;
@@ -2547,8 +2561,12 @@ html.light, body.light {
   --ac-panel-header: #f1f5f9;
   --ac-border: #e2e8f0;
   --ac-text: #0f172a;
-  --ac-text-sub: #475569;
-  --ac-text-muted: #64748b;
+  --ac-text-sub: #334155;
+  --ac-text-muted: #475569;
+  --ac-text-dim: #475569;
+  --ac-bull: #047857;
+  --ac-bear: #b91c1c;
+  --ac-warn: #b45309;
 
   background-color: #f8fafc !important;
   color: #0f172a !important;
@@ -2604,8 +2622,37 @@ html.light .text-gray-400 {
   color: #334155 !important;
 }
 
-html.light .text-gray-500 {
-  color: #64748b !important;
+html.light .text-gray-500,
+html.light .text-gray-600 {
+  color: #475569 !important;
+}
+
+/* WCAG AA Semantic Contrast in Light Mode (> 4.5:1 on white) */
+html.light .text-emerald-300,
+html.light .text-emerald-400,
+html.light .text-emerald-500,
+html.light .text-green-300,
+html.light .text-green-400,
+html.light .text-green-500 {
+  color: #047857 !important;
+}
+
+html.light .text-red-300,
+html.light .text-red-400,
+html.light .text-red-500,
+html.light .text-rose-300,
+html.light .text-rose-400,
+html.light .text-rose-500 {
+  color: #b91c1c !important;
+}
+
+html.light .text-amber-200,
+html.light .text-amber-300,
+html.light .text-amber-400,
+html.light .text-amber-500,
+html.light .text-yellow-300,
+html.light .text-yellow-400 {
+  color: #b45309 !important;
 }
 
 html.light .app-header {
@@ -2622,7 +2669,8 @@ html.light .portfolio-card,
 html.light .market-tile {
   background: #ffffff !important;
   border-color: #e2e8f0 !important;
-  box-shadow: none !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
 }
 
 html.light #page-dashboard #dashGreeting {
@@ -2635,7 +2683,7 @@ html.light .app-sidebar {
 }
 
 html.light .sidebar-item {
-  color: #475569 !important;
+  color: #334155 !important;
 }
 
 html.light .sidebar-item:hover {
@@ -2650,24 +2698,45 @@ html.light .sidebar-item.active {
 }
 
 html.light .theme-toggle-btn,
-html.light .workspace-sidebar-toggle {
-  color: #475569 !important;
+html.light .workspace-sidebar-toggle,
+html.light .sidebar-collapse-toggle,
+html.light .theme-toggle-compact {
+  color: #334155 !important;
   background-color: #f1f5f9 !important;
-  border-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
 }
 
 html.light .theme-toggle-btn:hover,
-html.light .workspace-sidebar-toggle:hover {
+html.light .workspace-sidebar-toggle:hover,
+html.light .sidebar-collapse-toggle:hover,
+html.light .theme-toggle-compact:hover {
   color: #0f172a !important;
   background-color: #e2e8f0 !important;
 }
 
-html.light .sidebar-brand {
-  border-bottom-color: #e2e8f0 !important;
+html.light .sidebar-brand,
+html.light .sidebar-footer {
+  border-color: #e2e8f0 !important;
 }
 
-html.light .sidebar-brand-text p {
+html.light .sidebar-brand-text strong,
+html.light .sidebar-brand-text p,
+html.light .user-name {
   color: #0f172a !important;
+}
+
+html.light .sidebar-brand-text span {
+  color: #475569 !important;
+}
+
+html.light .user-role {
+  color: #047857 !important;
+}
+
+html.light .user-avatar {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #047857 !important;
 }
 
 /* Kill the grid pattern in light mode too — the light sheet must read flat. */
@@ -2680,29 +2749,11 @@ html.light body {
    Fixed rail on the left; the app body gets matching padding so tables gain
    the reclaimed width the moment the rail collapses.
    ========================================================================== */
-/* ---- 11b. Hidden-rail guard -------------------------------------------
-   `.app-sidebar` declares `display: flex` below. `.hidden` (Tailwind, the
-   inline critical fallback in index.html, and index-shell.css) is a single
-   class of equal specificity, so whichever sheet comes LAST wins — and this
-   sheet is loaded last on purpose. The result was that `class="app-sidebar
-   hidden"` still painted the rail: it showed on the landing page and before
-   init, stacked above the app, which reads as a raw menu strip at the top of
-   the page. Raising the specificity of the hidden state (without !important,
-   which the specificity-discipline tests forbid here) makes the rail obey its
-   own `hidden` class again while leaving the visible rules untouched. */
 #appSidebar.hidden,
 .app-sidebar.hidden {
   display: none;
 }
 
-/* The rail is a real in-flow column, not a fixed overlay with the page padded
-   to make room for it. `position: fixed` + `body { padding-left: 240px }` only
-   worked while the rail's own display never lost to a sibling `.hidden` rule;
-   when it did, the rail painted over the content instead of beside it, and
-   every compensating offset had to stay in step by hand. As a sticky flex item
-   the sidebar and the content column are siblings in one flex row: the content
-   can only ever sit to the RIGHT of the rail, never under or below it, and the
-   collapsed width is just a width change — no body padding to re-sync. */
 .app-layout {
   display: flex;
   align-items: flex-start;
@@ -2741,12 +2792,15 @@ html.light body {
 .app-sidebar.collapsed .sidebar-label,
 .app-sidebar.collapsed .sidebar-brand-text,
 .app-sidebar.collapsed .sidebar-badge,
+.app-sidebar.collapsed .user-info,
 .app-sidebar.is-collapsed .sidebar-label,
 .app-sidebar.is-collapsed .sidebar-brand-text,
-.app-sidebar.is-collapsed .sidebar-badge {
+.app-sidebar.is-collapsed .sidebar-badge,
+.app-sidebar.is-collapsed .user-info {
   display: none !important;
 }
 
+.app-sidebar.collapsed .sidebar-item,
 .app-sidebar.is-collapsed .sidebar-item {
   justify-content: center;
   padding-left: 0;
@@ -2755,7 +2809,11 @@ html.light body {
 
 .app-sidebar.collapsed .sidebar-brand,
 .app-sidebar.is-collapsed .sidebar-brand {
+  flex-direction: column;
   justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
 }
 
 .sidebar-brand {
@@ -2785,25 +2843,92 @@ html.light body {
   border-radius: 8px;
   background: var(--color-bg-elevated);
   color: var(--color-text-secondary);
+  cursor: pointer;
 }
 .sidebar-collapse-toggle:hover,
 .theme-toggle-compact:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
-.sidebar-collapse-toggle svg { width: 15px; height: 15px; transition: transform .18s ease; }
-.app-sidebar.collapsed .sidebar-collapse-toggle svg { transform: rotate(180deg); }
-.sidebar-nav { flex: 1; overflow-y: auto; padding: 12px; }
+.sidebar-collapse-toggle svg,
+.theme-toggle-compact svg { width: 15px; height: 15px; transition: transform .18s ease; }
+.app-sidebar.collapsed .sidebar-collapse-toggle svg,
+.app-sidebar.is-collapsed .sidebar-collapse-toggle svg { transform: rotate(180deg); }
+.sidebar-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px; }
 .sidebar-footer {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding: 12px;
   border-top: 1px solid var(--color-border-subtle);
+  overflow: hidden;
 }
-.user-profile-badge { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; }
-.user-avatar { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%; background: var(--color-bg-hover); color: var(--color-text-primary); font-size: 12px; font-weight: 700; }
-.user-info { display: grid; min-width: 0; }
-.user-name { overflow: hidden; color: var(--color-text-primary); font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.user-role { color: var(--color-text-muted); font-size: 9px; font-weight: 700; letter-spacing: .08em; }
-.app-sidebar.collapsed .sidebar-footer { flex-direction: column; }
+.user-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 4px;
+  transition: background-color 0.15s ease;
+}
+.user-profile-badge:hover {
+  background-color: var(--color-bg-hover);
+}
+.user-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 50%;
+  background: var(--color-bg-hover);
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.user-name {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-role {
+  overflow: hidden;
+  color: var(--color-positive);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-sidebar.collapsed .sidebar-footer,
+.app-sidebar.is-collapsed .sidebar-footer {
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 6px;
+  overflow: hidden;
+}
+.app-sidebar.collapsed .user-profile-badge,
+.app-sidebar.is-collapsed .user-profile-badge {
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
+  padding: 0;
+}
 
 .app-main-viewport {
   flex: 1;
@@ -2843,9 +2968,19 @@ html.light body {
   color: #ffffff;
 }
 
+/* Single Shell HolverAI on Desktop (>= 1024px):
+   Hide the horizontal top header bar inside #appMain so it never duplicates
+   #appSidebar on desktop. Standalone pages (/analisis-saham, /portfolio-planner)
+   do not wrap .app-header in #appMain, so their header remains 100% intact. */
 @media (min-width: 1024px) {
-  .workspace-sidebar-toggle {
+  .workspace-sidebar-toggle,
+  #appMain > .app-header,
+  #workspaceTabRail {
     display: none !important;
+  }
+
+  .app-sidebar:not(.hidden) {
+    display: flex !important;
   }
 }
 
@@ -2864,6 +2999,12 @@ html.light body {
   width: 100%;
   border: 1px solid transparent;
   text-align: left;
+}
+
+.sidebar-item svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
 }
 
 .sidebar-item:hover {
@@ -2956,4 +3097,44 @@ html.light body {
   .app-header > .header-shell > .flex > :last-child {
     justify-self: end;
   }
+}
+
+/* ===========================================================================
+   12. Phases 2–5 Visual Refinement (Radar, Stock Cards, Sektor Hot, Spacing)
+   =========================================================================== */
+#appMain {
+  overflow-x: hidden;
+}
+
+#sektorGroupsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.sektor-group-card,
+.dt-card-item,
+.kg-card-item,
+.nk-card-item {
+  border-radius: 12px !important;
+  padding: 16px !important;
+}
+
+.trade-plan-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  align-items: stretch !important;
+}
+
+.trade-plan-tile {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  min-height: 44px !important;
+  padding: 6px 8px !important;
+  border-radius: 8px !important;
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
 }

@@ -99,26 +99,43 @@
 }
 
 html.light {
-  --color-bg-canvas: #f5f7fa;
+  --color-bg-canvas: #f8fafc;
   --color-bg-surface: #ffffff;
   --color-bg-elevated: #f8fafc;
   --color-bg-hover: #f1f5f9;
   --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-muted: #64748b;
-  --color-border-subtle: rgba(15, 23, 42, .08);
-  --color-border-default: rgba(15, 23, 42, .14);
+  --color-text-secondary: #334155;
+  --color-text-muted: #475569;
+  --color-border-subtle: rgba(15, 23, 42, .10);
+  --color-border-default: rgba(15, 23, 42, .16);
   --color-accent: #2563eb;
-  --color-positive: #059669;
-  --color-positive-soft: rgba(5, 150, 105, .10);
-  --color-negative: #e11d48;
-  --color-negative-soft: rgba(225, 29, 72, .10);
+  --color-positive: #047857;
+  --color-positive-soft: rgba(4, 120, 87, .10);
+  --color-negative: #b91c1c;
+  --color-negative-soft: rgba(185, 28, 28, .10);
+  --color-warning: #b45309;
   --grid-line: rgba(15, 23, 42, .08);
   --grid-header-bg: #f8fafc;
   --bg-canvas: #f5f7fa;
   --bg-surface: #ffffff;
   --text-primary: #111827;
   --border-subtle: rgba(15, 23, 42, .08);
+  --pw-bg: #f8fafc;
+  --pw-bg-2: #f1f5f9;
+  --pw-panel: #ffffff;
+  --pw-panel-2: #f8fafc;
+  --pw-panel-3: #f1f5f9;
+  --pw-panel-hover: #f1f5f9;
+  --pw-line: rgba(15, 23, 42, .10);
+  --pw-line-strong: rgba(15, 23, 42, .18);
+  --pw-text: #0f172a;
+  --pw-text-strong: #020617;
+  --pw-muted: #334155;
+  --pw-dim: #475569;
+  --pw-bull: #047857;
+  --pw-bear: #b91c1c;
+  --pw-warn: #b45309;
+  --pw-info: #1d4ed8;
 }
 
 html {
@@ -2304,4 +2321,479 @@ body::before {
   .skeleton-card {
     background-size: 100% 100%;
   }
+}
+
+/* ========================================================================
+   Light Mode WCAG AA Surface & Typography Overrides
+   ======================================================================== */
+html.light {
+  color-scheme: light;
+}
+
+html.light .dashboard-hero .dash-badge:first-child,
+html.light #approvedBadge,
+html.light .market-tile-link,
+html.light #top5HistoryTabActive {
+  color: #047857 !important;
+  border-color: rgba(4, 120, 87, .28) !important;
+  background: rgba(4, 120, 87, .08) !important;
+}
+
+html.light .dash-badge {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+html.light #dashGreeting + p,
+html.light .market-tile-label,
+html.light #page-dashboard .panel-title,
+html.light .ac-section-title,
+html.light .ac-section-kicker {
+  color: #1e293b !important;
+}
+
+html.light .market-tile-value,
+html.light #ihsgLast,
+html.light #dashMarketGate,
+html.light #dashMarketFreshness {
+  color: #0f172a !important;
+}
+
+html.light .market-tile-unit,
+html.light .market-tile-note,
+html.light #page-dashboard .panel-subtitle,
+html.light .ac-section-hint,
+html.light .empty-state-text,
+html.light .empty-state-icon {
+  color: #475569 !important;
+}
+
+html.light .dash-section-note {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #92400e !important;
+}
+
+html.light #page-dashboard .market-tile {
+  border-right-color: #e2e8f0 !important;
+}
+
+html.light #page-dashboard .market-tile:hover {
+  background: #f8fafc !important;
+}
+
+html.light #dashboardTop5List .dashboard-pick-card,
+html.light #dashboardMonitorList > *:not(.empty-state),
+html.light #top5HistoryList > *:not(.empty-state),
+html.light .action-card {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light #dashboardTop5List .dashboard-pick-card:hover,
+html.light #dashboardMonitorList > *:not(.empty-state):hover,
+html.light #top5HistoryList > *:not(.empty-state):hover {
+  background: #f1f5f9 !important;
+  border-color: #047857 !important;
+}
+
+html.light #dashboardMonitorUpdated,
+html.light #top5HistoryTabTp {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+html.light .empty-state {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light thead th,
+html.light #rankingTableWrap thead th:first-child,
+html.light #dtScreenerTableWrap thead th:first-child,
+html.light #kgScreenerTableWrap thead th:first-child,
+html.light #nkScreenerTableWrap thead th:first-child {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border-bottom-color: #cbd5e1 !important;
+}
+
+html.light tbody td {
+  color: #0f172a !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+html.light #rankingTableWrap,
+html.light #rankingTableWrap table,
+html.light #dtScreenerTableWrap table,
+html.light #kgScreenerTableWrap table,
+html.light #nkScreenerTableWrap table,
+html.light #sektorDetailTable table {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light #rankingTableWrap th:first-child,
+html.light #rankingTableWrap td:first-child,
+html.light #dtScreenerTableWrap th:first-child,
+html.light #dtScreenerTableWrap td:first-child,
+html.light #kgScreenerTableWrap th:first-child,
+html.light #kgScreenerTableWrap td:first-child,
+html.light #nkScreenerTableWrap th:first-child,
+html.light #nkScreenerTableWrap td:first-child {
+  background: #ffffff !important;
+  box-shadow: 1px 0 0 #e2e8f0;
+}
+
+html.light footer {
+  background: #f8fafc !important;
+  border-top-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+/* ========================================================================
+   PHASES 2 - 5: PURE VISUAL & LAYOUT OVERHAUL
+   Radar Candidate & Market Status Bar, Daytrade/Swing Stock Cards,
+   Sektor Hot Grid, and Global Dashboard Spacing
+   ======================================================================== */
+
+/* Phase 5: Global Dashboard Spacing & Container Alignment */
+#appMain {
+  overflow-x: hidden;
+}
+
+#page-dashboard,
+#page-sektor,
+#page-screener {
+  max-width: 100%;
+}
+
+#page-dashboard .market-band,
+#page-dashboard .radar-band,
+#page-dashboard .history-band {
+  margin-bottom: 0;
+}
+
+/* Phase 2: Radar Candidate & Market Status Bar (Card Hierarchy) */
+#marketStatusBar,
+#page-dashboard #ihsgSummaryCard.market-band-grid {
+  border-radius: 12px !important;
+  border: 1px solid rgba(148, 163, 184, 0.14) !important;
+  background: #0c131d !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.24) !important;
+  overflow: hidden;
+}
+
+#page-dashboard .market-tile,
+.radar-card,
+.metric-tile {
+  padding: 16px !important;
+  border-right: 1px solid rgba(148, 163, 184, 0.12) !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+#page-dashboard .market-tile:last-child {
+  border-right: 0 !important;
+}
+
+#page-dashboard .market-tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#page-dashboard .market-tile-body {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+#page-dashboard .market-tile-value {
+  font-family: var(--pw-mono);
+  font-size: 1.15rem !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.015em;
+}
+
+#page-dashboard .radar-panel.panel {
+  border-radius: 12px !important;
+  padding: 16px !important;
+  border: 1px solid rgba(148, 163, 184, 0.14) !important;
+}
+
+#dashboardMonitorUpdated {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  font-family: var(--pw-mono);
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Phase 3: Daytrade & Swing Stock Cards (Data Density & Chips) */
+#dashboardTop5List .dashboard-pick-card,
+.dt-card-item,
+.kg-card-item,
+.nk-card-item {
+  border-radius: 12px !important;
+  padding: 16px !important;
+  border: 1px solid rgba(148, 163, 184, 0.14) !important;
+  background: #0d1520 !important;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+#dashboardTop5List .dashboard-pick-card:hover,
+.dt-card-item:hover,
+.kg-card-item:hover,
+.nk-card-item:hover {
+  border-color: rgba(52, 211, 153, 0.38) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28) !important;
+}
+
+#dashboardTop5List .dashboard-pick-card b:first-child,
+.dt-card-item span[style*="font-size:18px"],
+.kg-card-item span[style*="font-size:18px"],
+.nk-card-item span[style*="font-size:18px"],
+.ticker-badge,
+.ticker-symbol {
+  font-family: var(--pw-mono) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.03em !important;
+}
+
+/* Balanced 3-column Trade Plan Grid inside stock cards */
+.trade-plan-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  align-items: stretch !important;
+  margin-bottom: 10px !important;
+}
+
+.trade-plan-tile {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  min-height: 44px !important;
+  padding: 6px 8px !important;
+  border-radius: 8px !important;
+  text-align: center !important;
+  font-family: var(--pw-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.trade-plan-tile[data-type="entry"] {
+  background: rgba(59, 130, 246, 0.10) !important;
+  border: 1px solid rgba(59, 130, 246, 0.28) !important;
+}
+
+.trade-plan-tile[data-type="sl"] {
+  background: rgba(244, 63, 94, 0.10) !important;
+  border: 1px solid rgba(244, 63, 94, 0.28) !important;
+}
+
+.trade-plan-tile[data-type="tp"] {
+  background: rgba(16, 185, 129, 0.10) !important;
+  border: 1px solid rgba(16, 185, 129, 0.28) !important;
+}
+
+.trade-plan-tile[data-type="rr"] {
+  background: rgba(148, 163, 184, 0.08) !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+}
+
+/* Semantic Bullish / Bearish Saturation in Dark Mode */
+.dt-card-item .text-emerald-400,
+.kg-card-item .text-emerald-400,
+.nk-card-item .text-emerald-400,
+#dashboardTop5List .text-emerald-400 {
+  color: #34d399 !important;
+}
+
+.dt-card-item .text-red-400,
+.kg-card-item .text-red-400,
+.nk-card-item .text-red-400,
+#dashboardTop5List .text-red-400 {
+  color: #f87185 !important;
+}
+
+/* Phase 4: Sektor Hot View Refinement (#page-sektor) */
+#sektorGroupsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+  gap: 16px !important;
+  align-items: stretch;
+}
+
+.sektor-group-card {
+  border-radius: 12px !important;
+  padding: 16px !important;
+  border: 1px solid rgba(148, 163, 184, 0.14) !important;
+  background: #0d1520 !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.sektor-group-card:hover {
+  border-color: rgba(52, 211, 153, 0.38) !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.26) !important;
+}
+
+.sektor-group-card span.rounded-full {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.sektor-group-card .grid-cols-3 > div {
+  padding: 6px 4px !important;
+  min-width: 0 !important;
+  overflow: hidden;
+}
+
+.sektor-group-card .grid-cols-3 p:first-child {
+  font-size: 9px !important;
+  letter-spacing: 0.01em !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Light Mode WCAG AA Refinements for Phases 2 - 4 */
+html.light #marketStatusBar,
+html.light #page-dashboard #ihsgSummaryCard.market-band-grid {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.light #page-dashboard .market-tile,
+html.light .radar-card,
+html.light .metric-tile {
+  border-right-color: #e2e8f0 !important;
+}
+
+html.light #page-dashboard .radar-panel.panel {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.light #dashboardTop5List .dashboard-pick-card,
+html.light .dt-card-item,
+html.light .kg-card-item,
+html.light .nk-card-item,
+html.light .sektor-group-card {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+  color: #0f172a !important;
+}
+
+html.light #dashboardTop5List .dashboard-pick-card:hover,
+html.light .dt-card-item:hover,
+html.light .kg-card-item:hover,
+html.light .nk-card-item:hover,
+html.light .sektor-group-card:hover {
+  background: #f8fafc !important;
+  border-color: #047857 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.light .dt-card-item span[style*="color:#fff"],
+html.light .kg-card-item span[style*="color:#fff"],
+html.light .nk-card-item span[style*="color:#fff"],
+html.light .dt-card-item div[style*="color:#e5e7eb"],
+html.light .kg-card-item div[style*="color:#e5e7eb"],
+html.light .nk-card-item div[style*="color:#e5e7eb"],
+html.light .dt-card-item b,
+html.light .kg-card-item b,
+html.light .nk-card-item b {
+  color: #0f172a !important;
+}
+
+html.light .dt-card-item span[style*="color:#9ca3af"],
+html.light .kg-card-item span[style*="color:#9ca3af"],
+html.light .nk-card-item span[style*="color:#9ca3af"],
+html.light .dt-card-item span[style*="color:#d1d5db"],
+html.light .kg-card-item span[style*="color:#d1d5db"],
+html.light .nk-card-item span[style*="color:#d1d5db"],
+html.light .dt-card-item div[style*="color:#9ca3af"],
+html.light .kg-card-item div[style*="color:#9ca3af"],
+html.light .nk-card-item div[style*="color:#9ca3af"],
+html.light .dt-card-item div[style*="color:#d1d5db"],
+html.light .kg-card-item div[style*="color:#d1d5db"],
+html.light .nk-card-item div[style*="color:#d1d5db"] {
+  color: #334155 !important;
+}
+
+html.light .trade-plan-tile[data-type="entry"] {
+  background: #eff6ff !important;
+  border: 1px solid #93c5fd !important;
+}
+
+html.light .trade-plan-tile[data-type="entry"] div:first-child {
+  color: #1d4ed8 !important;
+}
+
+html.light .trade-plan-tile[data-type="entry"] div:last-child {
+  color: #1e3a8a !important;
+}
+
+html.light .trade-plan-tile[data-type="sl"] {
+  background: #fef2f2 !important;
+  border: 1px solid #fca5a5 !important;
+}
+
+html.light .trade-plan-tile[data-type="sl"] div:first-child {
+  color: #b91c1c !important;
+}
+
+html.light .trade-plan-tile[data-type="sl"] div:last-child {
+  color: #7f1d1d !important;
+}
+
+html.light .trade-plan-tile[data-type="tp"] {
+  background: #ecfdf5 !important;
+  border: 1px solid #6ee7b7 !important;
+}
+
+html.light .trade-plan-tile[data-type="tp"] div:first-child {
+  color: #047857 !important;
+}
+
+html.light .trade-plan-tile[data-type="tp"] div:last-child {
+  color: #064e3b !important;
+}
+
+html.light .trade-plan-tile[data-type="rr"] {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.light .trade-plan-tile[data-type="rr"] div:first-child {
+  color: #475569 !important;
+}
+
+html.light .trade-plan-tile[data-type="rr"] div:last-child {
+  color: #0f172a !important;
 }
