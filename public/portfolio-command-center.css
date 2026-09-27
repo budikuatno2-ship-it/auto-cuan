@@ -314,3 +314,350 @@
 @media (max-width: 900px) {
   .ai-shell { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* =========================================================================
+   BATCH 3 (FASE 10 - 14): PORTFOLIO COMMAND CENTER VISUAL & DENSITY OVERHAUL
+   - Phase 10: 7 Sub-Tab Segmented Pill Navigation & Header Summary
+   - Phase 11: Holdings & Journal TanStack-Grade Density Tables
+   - Phase 12: Budget-to-Stock Planner & Risk Control Forms
+   - Phase 14: WCAG AA Light Mode Full-Contrast Support
+   ========================================================================= */
+
+/* --- PHASE 10: 7 SUB-TAB NAVIGATION & HEADER --- */
+.tab-strip {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px !important;
+  margin-bottom: 16px !important;
+  background: rgba(15, 23, 42, 0.78) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 14px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 6px 18px rgba(2, 6, 23, 0.28) !important;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+@media (min-width: 1024px) {
+  .tab-strip {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+  }
+}
+
+.tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  padding: 7px 13px !important;
+  min-height: 36px !important;
+  border-radius: 10px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.01em !important;
+  color: #94a3b8 !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  white-space: nowrap !important;
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.tab:hover {
+  color: #f1f5f9 !important;
+  background: rgba(30, 41, 59, 0.72) !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+.tab.active,
+.tab[aria-selected="true"] {
+  color: #34d399 !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 78, 59, 0.32)) !important;
+  border: 1px solid rgba(16, 185, 129, 0.48) !important;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  font-weight: 700 !important;
+}
+
+/* Portfolio Header & Hero Polish */
+.app-header {
+  background: rgba(11, 15, 25, 0.94) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+  box-shadow: 0 4px 20px rgba(2, 6, 23, 0.35);
+  border-radius: 14px;
+  padding: 12px 18px !important;
+  margin-bottom: 16px;
+}
+
+.decision-hero {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(11, 15, 25, 0.94)) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 14px !important;
+  padding: 16px 20px !important;
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.28) !important;
+}
+
+.metric-grid {
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 14px !important;
+  background: rgba(15, 23, 42, 0.82) !important;
+  box-shadow: 0 6px 20px rgba(2, 6, 23, 0.24) !important;
+}
+
+.metric {
+  padding: 12px 16px !important;
+  border-left: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+
+.metric strong,
+.metric b {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-variant-numeric: tabular-nums !important;
+  font-weight: 800 !important;
+  color: #f8fafc !important;
+}
+
+/* --- PHASE 11: HOLDINGS & JOURNAL TRANSAKSI (TANSTACK DENSITY) --- */
+.card {
+  background: rgba(15, 23, 42, 0.86) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.26) !important;
+}
+
+.table-wrap {
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 12px !important;
+  background: rgba(11, 15, 25, 0.72) !important;
+  overflow: auto !important;
+}
+
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  padding: 8px 10px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: #94a3b8 !important;
+  background-color: #0f172a !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22) !important;
+  white-space: nowrap !important;
+}
+
+tbody td {
+  padding: 8px 10px !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  font-variant-numeric: tabular-nums !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08) !important;
+  vertical-align: middle !important;
+}
+
+tbody tr:hover {
+  background-color: rgba(30, 41, 59, 0.55) !important;
+}
+
+tfoot td {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 5 !important;
+  padding: 9px 10px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-variant-numeric: tabular-nums !important;
+  background-color: #0f172a !important;
+  border-top: 2px solid rgba(16, 185, 129, 0.4) !important;
+  border-bottom: 0 !important;
+}
+
+/* --- PHASE 12: BUDGET-TO-STOCK PLANNER & RISK FORMS --- */
+input,
+select,
+textarea {
+  font-family: inherit !important;
+  font-variant-numeric: tabular-nums !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  background: rgba(15, 23, 42, 0.88) !important;
+  color: #f8fafc !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(16, 185, 129, 0.65) !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.16) !important;
+  outline: none !important;
+}
+
+.btn.primary {
+  background: #10b981 !important;
+  border-color: #10b981 !important;
+  color: #04251c !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.24) !important;
+  transition: all 0.15s ease !important;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: #34d399 !important;
+  border-color: #34d399 !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn.primary:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+/* --- PHASE 14: WCAG AA LIGHT MODE OVERRIDES --- */
+html.light,
+html.light body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light .app-header {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.light .app-header h1,
+html.light .brand-copy h1,
+html.light .decision-hero h2,
+html.light .card h2,
+html.light .card h3 {
+  color: #0f172a !important;
+}
+
+html.light .brand-copy p,
+html.light .decision-hero p,
+html.light .card-head p,
+html.light .muted,
+html.light .fine-print {
+  color: #475569 !important;
+}
+
+html.light .tab-strip {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light .tab {
+  color: #475569 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+html.light .tab:hover {
+  color: #0f172a !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light .tab.active,
+html.light .tab[aria-selected="true"] {
+  color: #047857 !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(5, 150, 105, 0.48) !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.light .decision-hero,
+html.light .card,
+html.light .table-wrap {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light .metric-grid {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.light .metric {
+  border-left: 1px solid #cbd5e1 !important;
+}
+
+html.light .metric strong,
+html.light .metric b {
+  color: #0f172a !important;
+}
+
+html.light .metric span {
+  color: #64748b !important;
+}
+
+html.light input,
+html.light select,
+html.light textarea {
+  background: #f8fafc !important;
+  border: 1px solid #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+html.light thead th {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+}
+
+html.light tbody td {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light tbody tr:hover {
+  background-color: #f1f5f9 !important;
+}
+
+html.light tfoot td {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-top: 2px solid #047857 !important;
+}
+
+/* Semantic profit/loss colors with WCAG AA compliance (>= 4.5:1) */
+html.light .pnl-up,
+html.light .text-emerald-400,
+html.light .text-emerald-300,
+html.light .pill.good {
+  color: #047857 !important;
+}
+
+html.light .pnl-down,
+html.light .text-rose-400,
+html.light .text-rose-300,
+html.light .pill.danger {
+  color: #b91c1c !important;
+}
+
+html.light .ticker-link {
+  color: #047857 !important;
+}
+
+html.light .ticker-link:hover {
+  color: #065f46 !important;
+  text-decoration: underline !important;
+}
