@@ -3665,6 +3665,9 @@ html.light .ticker-link:hover {
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
+  .ac-launcher, .ac-navpanel-card, .action-card, .panel { transition: none !important; animation: none !important; }
+  .action-card:hover { transform: none; }
+  .panel table tbody tr { transition: none !important; }
   .radar-card,
   .metric-tile,
   .bandar-card,
