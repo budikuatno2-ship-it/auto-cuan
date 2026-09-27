@@ -3356,3 +3356,328 @@ html.light #page-money-management .text-cyan-300,
 html.light #page-money-management .text-cyan-400 {
   color: #0369a1 !important;
 }
+
+/* ===========================================================================
+   14. Batch 4 (Fase 15 - 19): Final UI/UX Polish, Accessibility & Responsiveness
+   =========================================================================== */
+
+/* --- FASE 15: Micro-interactions & Zero-Shift Transitions --- */
+.radar-card,
+.metric-tile,
+.bandar-card,
+.sector-card,
+.action-item,
+.journal-item,
+.position-card,
+.dashboard-card,
+.panel {
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease !important;
+}
+
+.radar-card:hover,
+.metric-tile:hover,
+.bandar-card:hover,
+.sector-card:hover,
+.action-item:hover,
+.dashboard-card:hover {
+  border-color: rgba(52, 211, 153, 0.38) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24) !important;
+  transform: translateY(-1px) !important;
+}
+
+.radar-card:active,
+.metric-tile:active,
+.bandar-card:active,
+.sector-card:active,
+.action-item:active,
+.dashboard-card:active {
+  transform: translateY(0) !important;
+}
+
+.sub-tab-btn,
+.tab,
+.tab-btn,
+.nav-btn,
+.sidebar-item,
+.theme-toggle-btn,
+.workspace-sidebar-toggle,
+.sidebar-collapse-toggle {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease !important;
+}
+
+/* --- FASE 16: Responsiveness - Sidebar Collapse & Mobile/Tablet Viewport --- */
+/* Desktop Collapsed Sidebar Rail (72px) */
+.app-sidebar.collapsed,
+.app-sidebar.is-collapsed {
+  width: 72px !important;
+  flex: 0 0 72px !important;
+}
+
+.app-sidebar.collapsed .sidebar-brand,
+.app-sidebar.is-collapsed .sidebar-brand {
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 10px 4px !important;
+  min-height: 72px !important;
+}
+
+.app-sidebar.collapsed .sidebar-brand-lockup,
+.app-sidebar.is-collapsed .sidebar-brand-lockup {
+  justify-content: center !important;
+  width: 100% !important;
+  gap: 0 !important;
+}
+
+.app-sidebar.collapsed .brand-mark,
+.app-sidebar.is-collapsed .brand-mark {
+  margin: 0 auto !important;
+}
+
+.app-sidebar.collapsed .sidebar-brand-text,
+.app-sidebar.collapsed .sidebar-label,
+.app-sidebar.collapsed .sidebar-badge,
+.app-sidebar.collapsed .user-info,
+.app-sidebar.is-collapsed .sidebar-brand-text,
+.app-sidebar.is-collapsed .sidebar-label,
+.app-sidebar.is-collapsed .sidebar-badge,
+.app-sidebar.is-collapsed .user-info {
+  display: none !important;
+}
+
+.app-sidebar.collapsed .sidebar-collapse-toggle,
+.app-sidebar.is-collapsed .sidebar-collapse-toggle {
+  margin: 2px auto 0 !important;
+}
+
+.app-sidebar.collapsed .sidebar-item,
+.app-sidebar.is-collapsed .sidebar-item {
+  justify-content: center !important;
+  padding: 10px 0 !important;
+  gap: 0 !important;
+  width: 100% !important;
+}
+
+.app-sidebar.collapsed .sidebar-item svg,
+.app-sidebar.is-collapsed .sidebar-item svg {
+  margin: 0 auto !important;
+}
+
+.app-sidebar.collapsed .sidebar-footer,
+.app-sidebar.is-collapsed .sidebar-footer {
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 10px 4px !important;
+  gap: 8px !important;
+}
+
+.app-sidebar.collapsed .user-profile-badge,
+.app-sidebar.is-collapsed .user-profile-badge {
+  justify-content: center !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  width: auto !important;
+}
+
+.app-sidebar.collapsed .user-avatar,
+.app-sidebar.is-collapsed .user-avatar {
+  width: 32px !important;
+  height: 32px !important;
+  margin: 0 auto !important;
+}
+
+.app-sidebar.collapsed .theme-toggle-compact,
+.app-sidebar.is-collapsed .theme-toggle-compact {
+  display: inline-grid !important;
+  margin: 0 auto !important;
+}
+
+/* Tablet Layout (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .app-main {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .page-content {
+    padding: 16px 20px !important;
+  }
+}
+
+/* Mobile Viewport (< 768px) */
+@media (max-width: 767px) {
+  .app-layout {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  .app-main {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  .page-content {
+    padding: 12px 10px !important;
+    max-width: 100% !important;
+  }
+  .workspace-sidebar-toggle {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+  .radar-grid,
+  .metric-grid,
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* --- FASE 17: Eliminasi Double Scrollbar & Horizontal Overflow --- */
+html {
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+}
+
+body {
+  overflow-x: hidden !important;
+  width: 100% !important;
+  max-width: 100vw !important;
+}
+
+.app-layout {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+.app-main {
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+}
+
+.page-content {
+  overflow-y: visible !important;
+  overflow-x: clip !important;
+}
+
+/* Isolated horizontal scroll for tables only */
+.table-responsive-container,
+.table-wrap,
+.overflow-x-auto {
+  overflow-x: auto !important;
+  max-width: 100% !important;
+  scrollbar-width: thin !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* --- FASE 18: Audit WCAG AA Lengkap (Light & Dark Mode) --- */
+/* Keyboard Accessibility Focus Visible Ring */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.btn:focus-visible,
+.tab:focus-visible,
+.sidebar-item:focus-visible,
+.sub-tab-btn:focus-visible,
+.workspace-sidebar-toggle:focus-visible,
+.sidebar-collapse-toggle:focus-visible {
+  outline: 2px solid #10b981 !important;
+  outline-offset: 2px !important;
+}
+
+/* Light Mode Comprehensive WCAG AA Contrast Overrides (>= 4.5:1) */
+html.light body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light .app-header {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light .app-sidebar {
+  background-color: #ffffff !important;
+  border-right: 1px solid #e2e8f0 !important;
+}
+
+html.light .dashboard-hero,
+html.light .dashboard-card,
+html.light .action-card,
+html.light .panel,
+html.light .metric-tile,
+html.light .radar-card {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.light .text-white,
+html.light .text-gray-100,
+html.light .text-gray-200,
+html.light .text-gray-300,
+html.light .card-title,
+html.light .panel-title {
+  color: #0f172a !important;
+}
+
+html.light .text-gray-400,
+html.light .text-gray-500,
+html.light .text-muted,
+html.light .text-dim,
+html.light .panel-subtitle,
+html.light .card-subtitle {
+  color: #334155 !important;
+}
+
+html.light .sidebar-item {
+  color: #334155 !important;
+}
+
+html.light .sidebar-item:hover {
+  background-color: #f1f5f9 !important;
+  color: #047857 !important;
+}
+
+html.light .sidebar-item.active {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html.light .bourse-status,
+html.light #marketStatusBourseChip {
+  background-color: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+html.light .ticker-link {
+  color: #047857 !important;
+}
+
+html.light .ticker-link:hover {
+  color: #065f46 !important;
+  text-decoration: underline !important;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .radar-card,
+  .metric-tile,
+  .bandar-card,
+  .sector-card,
+  .action-item,
+  .journal-item,
+  .position-card,
+  .dashboard-card,
+  .sub-tab-btn,
+  .tab,
+  .btn,
+  .sidebar-item {
+    transition: none !important;
+    transform: none !important;
+  }
+}
