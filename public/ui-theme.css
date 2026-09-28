@@ -3907,7 +3907,9 @@ html.light .ticker-link:hover {
     transition: margin-left var(--motion-fast, 180ms) var(--ease-standard) !important;
   }
   .app-sidebar.collapsed ~ .app-main,
-  .app-shell[data-sidebar-state="collapsed"] .app-main {
+  .app-shell[data-sidebar-state="collapsed"] .app-main,
+  body.sidebar-collapsed .app-main,
+  .app-layout.sidebar-collapsed .app-main {
     margin-left: 72px !important;
   }
 }
@@ -4368,6 +4370,13 @@ html.light .kg-card-item span[style*="6ee7b7"],
 html.light .nk-card-item span[style*="6ee7b7"],
 html.light .screener-card span[style*="6ee7b7"] {
   color: #15803D !important;
+}
+
+html.light .dt-card-item span[style*="e5e7eb"],
+html.light .kg-card-item span[style*="e5e7eb"],
+html.light .nk-card-item span[style*="e5e7eb"],
+html.light .screener-card span[style*="e5e7eb"] {
+  color: #0f172a !important;
 }
 
 /* Light mode Screener positive percentage contrast (WCAG AA >= 4.5:1 on #FFFFFF) */

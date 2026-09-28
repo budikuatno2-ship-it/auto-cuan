@@ -218,6 +218,7 @@ async function runAudit() {
     const sb = document.querySelector('#sidebar, #appSidebar, .app-sidebar');
     if (sb) sb.classList.add('collapsed');
   });
+  await new Promise(r => setTimeout(r, 250));
   const sidebarCollapsed = await page.evaluate(() => {
     const sb = document.querySelector('#sidebar, #appSidebar, .app-sidebar');
     const cs = window.getComputedStyle(sb);
