@@ -249,7 +249,11 @@
   }
   root.switchAnalisisSubTab = switchAnalisisSubTab;
 
+  var _isSwitchingTab = false;
   function switchAnalisisTab(tabName) {
+    if (_isSwitchingTab) return;
+    _isSwitchingTab = true;
+    try {
     var parentTab = tabName;
     if (tabName === 'analisis' || tabName === 'chart') {
       parentTab = 'analisis-chart';
@@ -408,6 +412,9 @@
         return;
       }
       loadPatternRadarTab();
+    }
+    } finally {
+      _isSwitchingTab = false;
     }
   }
   root.switchAnalisisTab = switchAnalisisTab;
@@ -1045,9 +1052,38 @@
   root.handleAnalisisLogout = handleAnalisisLogout;
   if (!root.logout) root.logout = handleAnalisisLogout;
 
+  function sanitizeUsername(val) {
+    if (!val) return 'guest';
+    if (typeof val === 'object') {
+      var cand = val.username || val.user || val.name || val.email || 'guest';
+      return typeof cand === 'string' ? sanitizeUsername(cand) : 'guest';
+    }
+    var str = String(val).trim();
+    if (!str || str === 'null' || str === 'undefined') return 'guest';
+    if (str.startsWith('{') && str.endsWith('}')) {
+      try {
+        var parsed = JSON.parse(str);
+        if (parsed && typeof parsed === 'object') {
+          if (parsed.role === 'ADMIN' || parsed.isAdmin === true) {
+            try { localStorage.setItem('autocuan_is_admin', 'true'); } catch (_) {}
+          }
+          var extracted = parsed.username || parsed.user || parsed.name || parsed.email || 'guest';
+          try { localStorage.setItem('autocuan_user', String(extracted).trim()); } catch (_) {}
+          return String(extracted).trim();
+        }
+      } catch (_) {}
+      return 'guest';
+    }
+    return str.replace(/[^\w\s@.-]/gi, '').slice(0, 50) || 'guest';
+  }
+  root.sanitizeUsername = sanitizeUsername;
+
   function syncHeaderUsername() {
     var u = 'guest';
-    try { u = (localStorage.getItem('autocuan_user') || '').trim(); } catch (_) {}
+    try {
+      var raw = localStorage.getItem('autocuan_user') || '';
+      u = sanitizeUsername(raw).trim();
+    } catch (_) {}
     var isAdmin = false;
     try {
       isAdmin = localStorage.getItem('autocuan_is_admin') === 'true' ||
@@ -1107,7 +1143,17 @@
       });
     }
   }
+  root.jalankanAnalisisSaham = function () {
+    if (root.UnifiedCockpit && typeof root.UnifiedCockpit.handleUnifiedAnalisisSubmit === 'function') {
+      root.UnifiedCockpit.handleUnifiedAnalisisSubmit();
+    } else {
+      var input = byId('analisisInput');
+      var val = input ? input.value.trim() : '';
+      if (val) root.runAnalisisFromDashboard(val);
+    }
+  };
   root.syncHeaderUsername = syncHeaderUsername;
+  root.initStandaloneAnalisisPage = initStandaloneAnalisisPage;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initStandaloneAnalisisPage);

@@ -161,8 +161,20 @@
       }
       if (!ALLOWED_AI_TAGS[tag]) {
         var parent = node.parentNode;
-        while (node.firstChild) parent.insertBefore(node.firstChild, node);
-        parent.removeChild(node);
+        if (parent && node.parentNode === parent) {
+          try {
+            while (node.firstChild && node.parentNode === parent) {
+              parent.insertBefore(node.firstChild, node);
+            }
+            if (node.parentNode === parent) {
+              parent.removeChild(node);
+            }
+          } catch (_) {
+            try {
+              if (node.parentNode) node.parentNode.removeChild(node);
+            } catch (__) {}
+          }
+        }
         return;
       }
       Array.prototype.slice.call(node.attributes || []).forEach(function (attr) {

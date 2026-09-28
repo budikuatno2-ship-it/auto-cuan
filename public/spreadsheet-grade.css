@@ -94,7 +94,8 @@ body::before {
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.14s ease, transform 0.14s ease;
+  transition: opacity var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              transform var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
   z-index: 70;
 }
 
@@ -342,9 +343,9 @@ body::before {
 .theme-toggle-btn,
 .analysis-tab,
 .unified-subtab-btn {
-  transition: background-color 0.15s ease,
-              border-color 0.15s ease,
-              color 0.15s ease;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 /* --------------------------------------------------------------------------
@@ -375,6 +376,129 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* --------------------------------------------------------------------------
+   3d. SPREADSHEET-GRADE DATA TABLE SPECIFICATION (§3)
+   -------------------------------------------------------------------------- */
+table,
+th,
+td,
+.tabular-nums,
+.ac-num,
+.mm-num {
+  font-feature-settings: 'tnum' on, 'lnum' on;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Dense table row height: 34px - 36px */
+.table-dense tbody tr,
+.spreadsheet-table tbody tr,
+.broker-summary-table tbody tr,
+#mmCashflowSpreadsheetTable tbody tr,
+#mmJournalSpreadsheetTable tbody tr,
+#rankingTableWrap tbody tr {
+  height: 36px;
+  max-height: 36px;
+}
+
+.table-dense td,
+.spreadsheet-table td,
+.broker-summary-table td,
+#rankingTableWrap td {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+/* Sticky Header */
+thead th,
+.table-dense thead th,
+.spreadsheet-table thead th,
+#rankingTableWrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface, #0E1524);
+}
+
+html.light thead th,
+html.light .table-dense thead th,
+html.light .spreadsheet-table thead th,
+html.light #rankingTableWrap thead th {
+  background: var(--surface, #FFFFFF);
+}
+
+/* Zebra Striping */
+tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+html.light tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.015);
+}
+tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+html.light tbody tr:hover {
+  background: rgba(0, 0, 0, 0.035) !important;
+}
+
+/* Positive / Negative Flow Color Semantics */
+.flow-inflow,
+.val-positive,
+.text-bull,
+.text-positive {
+  color: var(--accent-primary, #22C55E) !important;
+}
+.flow-outflow,
+.val-negative,
+.text-bear,
+.text-negative {
+  color: var(--danger, #EF4444) !important;
+}
+
+/* Alignment Semantics */
+.col-text,
+th[data-align="left"],
+td[data-align="left"] {
+  text-align: left;
+}
+.col-numeric,
+th[data-align="right"],
+td[data-align="right"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   4b. LIVE NUMBER FLASH ANIMATION (§6.4)
+   -------------------------------------------------------------------------- */
+@keyframes flashGreen {
+  0% { background-color: rgba(34, 197, 94, 0.25); }
+  100% { background-color: transparent; }
+}
+@keyframes flashRed {
+  0% { background-color: rgba(239, 68, 68, 0.25); }
+  100% { background-color: transparent; }
+}
+.flash-up {
+  animation: flashGreen 400ms var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
+}
+.flash-down {
+  animation: flashRed 400ms var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+/* Skeleton Loading State (§6.2) */
+.skeleton-box,
+.skeleton-row {
+  background: linear-gradient(90deg, var(--surface, #0E1524) 25%, var(--surface-elevated, #151F32) 50%, var(--surface, #0E1524) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+html.light .skeleton-box,
+html.light .skeleton-row {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+}
+
 /* Reduced motion: the brief's micro-interactions are decorative, so they stop
    entirely rather than being shortened. */
 @media (prefers-reduced-motion: reduce) {
@@ -398,8 +522,6 @@ html {
   .app-sidebar.is-collapsed .sidebar-item::after {
     transition: none !important;
   }
-}
-
 /* --------------------------------------------------------------------------
    6. DESKTOP SINGLE SHELL — REMOVE REPEATED HEADER AT >=1024px
    -------------------------------------------------------------------------- */
@@ -712,4 +834,39 @@ html {
   font-size: 14px;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
   pointer-events: none;
+}
+
+/* Semantic Flow Colors (§4) */
+.flow-positive {
+  color: #22C55E !important;
+}
+.flow-negative {
+  color: #EF4444 !important;
+}
+
+/* Spreadsheet-grade tabular numbers and sticky headers for Watchlist, Screener, Kelola Keuangan */
+.spreadsheet-table,
+.watchlist-table,
+#watchlistContainer table,
+#screenerTable,
+#nkScreenerTable,
+#dtScreenerTable,
+#mmCashflowSpreadsheetTable,
+#mmJournalSpreadsheetTable,
+#portTableWrap > table,
+.tabular-nums {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+.spreadsheet-table thead th,
+.watchlist-table thead th,
+#watchlistContainer thead th,
+#screenerTable thead th,
+#nkScreenerTable thead th,
+#dtScreenerTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background-color: var(--surface, #0E1524);
 }

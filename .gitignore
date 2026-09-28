@@ -118,3 +118,7 @@ data/bot-registration-tokens-fallback.json
 data/bot-magic-tokens-fallback.json
 data/keepalive-heartbeat.json
 data/screener-latest.json
+
+# Visual audit & test artifacts
+docs/motion-trace/
+screenshots/

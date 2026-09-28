@@ -96,10 +96,10 @@ test('the mesh uses one light source and stays fixed while content scrolls', () 
   assert.ok(pools >= 3, 'a mesh needs a few pools; found ' + pools);
 });
 
-test('the sheet is slate, not pure black, and dark-only', () => {
+test('dark mode is slate, not pure black, and light mode is off-white', () => {
   assert.match(declarations, /--sp-bg-deep:\s*#090d16/);
   assert.match(declarations, /--sp-bg-mid:\s*#0b0f19/);
-  assert.doesNotMatch(declarations, /html\.light\s*\{/);
+  assert.match(declarations, /html\.light\s*\{[\s\S]*--sp-bg-deep:\s*#f8fafc/);
 });
 
 test('dark-mode cards carry a 1px border at 8% white', () => {
@@ -212,9 +212,9 @@ test('no bare utility-class override is declared', () => {
   );
 });
 
-test('the sheet is dark-only: no light-mode override is declared', () => {
+test('the light-mode overrides are scoped under html.light', () => {
   const lightRules = declarations.match(/html\.light[^{]*\{/g) || [];
-  assert.equal(lightRules.length, 0, 'the spreadsheet sheet must not carry light-mode overrides');
+  assert.ok(lightRules.length >= 4, 'light mode needs explicit scoped overrides');
 });
 
 test('the collapsed sidebar tooltip is drawn only when the rail is collapsed', () => {
