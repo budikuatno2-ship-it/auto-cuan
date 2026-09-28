@@ -40,6 +40,35 @@
    render correctly on a network where this file never arrives.
    ------------------------------------------------------------------------- */
 :root {
+  /* --- Master Design Tokens (§2) --- */
+  --canvas: #090D16;
+  --surface: #10151F;
+  --surface-elevated: #161C29;
+  --border-hairline: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --text-primary: #F4F6F8;
+  --text-secondary: #9AA4B2;
+  --text-tertiary: #626C7A;
+  --text-muted: #626C7A;
+  --accent-primary: #22C55E;
+  --accent-primary-hover: #16A34A;
+  --accent-subtle: rgba(34, 197, 94, 0.12);
+  --data-positive: #22C55E;
+  --data-negative: #EF4444;
+  --data-neutral: #F59E0B;
+  --danger: #EF4444;
+  --warning: #F59E0B;
+  --info: #3B82F6;
+
+  /* --- Motion Tokens (§6.1) --- */
+  --motion-instant: 100ms;
+  --motion-fast: 180ms;
+  --motion-base: 260ms;
+  --motion-slow: 420ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
   --color-bg-canvas: #090d16;
   --color-bg-surface: #0d1320;
   --color-bg-elevated: #111a2a;
@@ -94,7 +123,7 @@
      One accent, spent deliberately: active navigation, primary action, and
      bullish direction. Nothing else earns it. */
   --ac-accent: #34d399;
-  --ac-accent-strong: #10b981;
+  --ac-accent-strong: #22c55e;
   --ac-accent-soft: rgba(16, 185, 129, 0.10);
   --ac-accent-line: rgba(52, 211, 153, 0.30);
   --ac-brand: var(--ac-accent-strong);         /* inline-sheet alias */
@@ -189,6 +218,26 @@
 
 html.light,
 [data-theme="light"] {
+  /* --- Master Design Tokens Light Mode (§2) --- */
+  --canvas: #F7F8FA;
+  --surface: #FFFFFF;
+  --surface-elevated: #F1F5F9;
+  --border-hairline: #E5E7EB;
+  --border-subtle: rgba(0, 0, 0, 0.12);
+  --text-primary: #111827; /* WAJIB: bukan #FFFFFF, kontras WCAG AA */
+  --text-secondary: #4B5563;
+  --text-tertiary: #9CA3AF;
+  --text-muted: #9CA3AF;
+  --accent-primary: #16A34A;
+  --accent-primary-hover: #15803D;
+  --accent-subtle: rgba(22, 163, 74, 0.10);
+  --data-positive: #16A34A;
+  --data-negative: #DC2626;
+  --data-neutral: #F59E0B;
+  --danger: #DC2626;
+  --warning: #D97706;
+  --info: #2563EB;
+
   --color-bg-canvas: #f8fafc;
   --color-bg-surface: #ffffff;
   --color-bg-elevated: #f8fafc;
@@ -1072,7 +1121,7 @@ table th.text-right,
 
 .panel table tbody tr,
 .overflow-x-auto > table tbody tr {
-  transition: background-color .12s ease;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard);
 }
 .panel table tbody tr:hover,
 .overflow-x-auto > table tbody tr:hover {
@@ -2614,17 +2663,17 @@ html.light .border-dark-700\/60 {
 html.light .text-white,
 html.light .text-gray-100,
 html.light .text-gray-200 {
-  color: #0f172a !important;
+  color: #111827 !important;
 }
 
 html.light .text-gray-300,
 html.light .text-gray-400 {
-  color: #334155 !important;
+  color: #4B5563 !important;
 }
 
 html.light .text-gray-500,
 html.light .text-gray-600 {
-  color: #475569 !important;
+  color: #6B7280 !important;
 }
 
 /* WCAG AA Semantic Contrast in Light Mode (> 4.5:1 on white) */
@@ -2761,21 +2810,49 @@ html.light body {
   min-height: 100vh;
 }
 
+#sidebar,
+#appSidebar,
 .app-sidebar {
   position: sticky;
   top: 0;
   width: 240px;
-  height: 100vh;
+  height: 100dvh;         /* §1.2: dynamic viewport height — accounts for mobile toolbars */
+  height: 100vh;          /* fallback for browsers without dvh support */
   flex: 0 0 auto;
   background: var(--color-bg-surface);
   border-right: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
   z-index: 60;
-  transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width var(--motion-base, 200ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
   overflow-x: hidden;
+  overflow-y: hidden;     /* children handle their own scroll */
 }
 
+/* §1.2: Nav area scrolls independently — footer is always visible */
+.sidebar-nav {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;          /* required for flex children to shrink-scroll */
+}
+
+/* §1.2: Footer locked at bottom — never clipped */
+.sidebar-footer {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--color-border-subtle);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+
+
+#sidebar.collapsed,
+#sidebar.is-collapsed,
+#appSidebar.collapsed,
+#appSidebar.is-collapsed,
 .app-sidebar.collapsed,
 .app-sidebar.is-collapsed {
   width: 72px;
@@ -2848,18 +2925,24 @@ html.light body {
 .sidebar-collapse-toggle:hover,
 .theme-toggle-compact:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
 .sidebar-collapse-toggle svg,
-.theme-toggle-compact svg { width: 15px; height: 15px; transition: transform .18s ease; }
+.theme-toggle-compact svg { width: 15px; height: 15px; transition: transform var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)); }
 .app-sidebar.collapsed .sidebar-collapse-toggle svg,
 .app-sidebar.is-collapsed .sidebar-collapse-toggle svg { transform: rotate(180deg); }
 .sidebar-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px; }
 .sidebar-footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
   padding: 12px;
   border-top: 1px solid var(--color-border-subtle);
   overflow: hidden;
+}
+.sidebar-footer .theme-toggle-compact {
+  width: 100%;
+  height: 32px;
+  border-radius: 8px;
+  justify-self: stretch;
 }
 .user-profile-badge {
   display: flex;
@@ -2870,7 +2953,7 @@ html.light body {
   cursor: pointer;
   border-radius: 8px;
   padding: 4px;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
 }
 .user-profile-badge:hover {
   background-color: var(--color-bg-hover);
@@ -2947,6 +3030,79 @@ html.light body {
   flex-direction: column;
 }
 
+/* App Content Transition (§6.5) */
+.app-content {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--motion-fast, 180ms) var(--ease-standard),
+              transform var(--motion-fast, 180ms) var(--ease-standard);
+  will-change: opacity, transform;
+}
+
+/* App Shell Sidebar State sync */
+.app-shell[data-sidebar-state="collapsed"] #appSidebar {
+  width: 72px;
+}
+
+/* Button Micro-interactions (§6.2) */
+.sidebar-item:active,
+.nav-btn:active,
+.analisis-tab:active,
+.pcc-subtab:active,
+.market-tile:active {
+  transform: scale(0.98);
+  transition: transform var(--motion-instant) var(--ease-standard);
+}
+
+/* Analisis Saham Sub-tab Strip (§1.3 & §6.3): Single Row Nowrap */
+.analisis-tab-strip {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 2px;
+  width: 100% !important;
+}
+.analisis-tab-strip::-webkit-scrollbar {
+  display: none;
+}
+.analisis-tab {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* Checkbox Standard Design System Token (§1.2 & §2.4) */
+input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px;
+  min-height: 16px;
+  accent-color: var(--accent-primary, #22C55E);
+  border-radius: var(--ac-radius-xs, 4px);
+  cursor: pointer;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+
+/* Scroll Reveal with Stagger (§6.3) */
+.scroll-reveal,
+.feature-card.scroll-reveal,
+.landing-card.scroll-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity var(--motion-slow, 420ms) var(--ease-emphasized, cubic-bezier(0.16, 1, 0.3, 1)),
+              transform var(--motion-slow, 420ms) var(--ease-emphasized, cubic-bezier(0.16, 1, 0.3, 1)) !important;
+  will-change: opacity, transform;
+}
+.scroll-reveal.is-revealed,
+.feature-card.scroll-reveal.is-revealed,
+.landing-card.scroll-reveal.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* Mobile drawer trigger in the header. Hidden from 1024px up, where the rail
    itself is permanently docked. */
 .workspace-sidebar-toggle {
@@ -2960,7 +3116,8 @@ html.light body {
   background-color: rgba(148, 163, 184, 0.06);
   color: #cbd5e1;
   flex-shrink: 0;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 .workspace-sidebar-toggle:hover {
@@ -2994,7 +3151,7 @@ html.light body {
   font-size: 13px;
   font-weight: 600;
   color: #aab4c3;
-  transition: all 0.15s ease;
+  transition: all var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
   white-space: nowrap;
   width: 100%;
   border: 1px solid transparent;
@@ -3030,7 +3187,9 @@ html.light body {
   font-weight: 600;
   color: #cbd5e1;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 .theme-toggle-btn:hover {
@@ -3370,8 +3529,12 @@ html.light #page-money-management .text-cyan-400 {
 .journal-item,
 .position-card,
 .dashboard-card,
+.dashboard-pick-card,
 .panel {
-  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease !important;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              box-shadow var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              transform var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
 }
 
 .radar-card:hover,
@@ -3379,7 +3542,8 @@ html.light #page-money-management .text-cyan-400 {
 .bandar-card:hover,
 .sector-card:hover,
 .action-item:hover,
-.dashboard-card:hover {
+.dashboard-card:hover,
+.dashboard-pick-card:hover {
   border-color: rgba(52, 211, 153, 0.38) !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24) !important;
   transform: translateY(-1px) !important;
@@ -3390,7 +3554,8 @@ html.light #page-money-management .text-cyan-400 {
 .bandar-card:active,
 .sector-card:active,
 .action-item:active,
-.dashboard-card:active {
+.dashboard-card:active,
+.dashboard-pick-card:active {
   transform: translateY(0) !important;
 }
 
@@ -3401,8 +3566,15 @@ html.light #page-money-management .text-cyan-400 {
 .sidebar-item,
 .theme-toggle-btn,
 .workspace-sidebar-toggle,
-.sidebar-collapse-toggle {
-  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease !important;
+.sidebar-collapse-toggle,
+.theme-toggle-compact,
+.market-tile-link,
+.analisis-tab,
+.ac-btn {
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              box-shadow var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
 }
 
 /* --- FASE 16: Responsiveness - Sidebar Collapse & Mobile/Tablet Viewport --- */
@@ -3582,24 +3754,46 @@ textarea:focus-visible,
 .sub-tab-btn:focus-visible,
 .workspace-sidebar-toggle:focus-visible,
 .sidebar-collapse-toggle:focus-visible {
-  outline: 2px solid #10b981 !important;
+  outline: 2px solid var(--accent-primary, #22c55e) !important;
   outline-offset: 2px !important;
 }
 
-/* Light Mode Comprehensive WCAG AA Contrast Overrides (>= 4.5:1) */
+/* Light Mode Comprehensive WCAG AA/AAA Contrast Overrides */
+html.light,
+[data-theme="light"] {
+  --canvas: #F7F8FA;
+  --surface: #FFFFFF;
+  --surface-elevated: #F1F5F9;
+  --border-hairline: #E5E7EB;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-tertiary: #9CA3AF;
+  --text-muted: #9CA3AF;
+  --accent-primary: #16A34A;
+  --accent-primary-hover: #15803D;
+  --data-positive: #16A34A;
+  --data-negative: #DC2626;
+  --color-bg-canvas: #F7F8FA;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-elevated: #F1F5F9;
+  --color-text-primary: #111827;
+  --color-text-secondary: #4B5563;
+  --color-text-muted: #4B5563;
+}
+
 html.light body {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+  background-color: #F7F8FA !important;
+  color: #111827 !important;
 }
 
 html.light .app-header {
-  background-color: #ffffff !important;
-  border-bottom: 1px solid #e2e8f0 !important;
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #E5E7EB !important;
 }
 
 html.light .app-sidebar {
-  background-color: #ffffff !important;
-  border-right: 1px solid #e2e8f0 !important;
+  background-color: #FFFFFF !important;
+  border-right: 1px solid #E5E7EB !important;
 }
 
 html.light .dashboard-hero,
@@ -3608,9 +3802,9 @@ html.light .action-card,
 html.light .panel,
 html.light .metric-tile,
 html.light .radar-card {
-  background-color: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+  background-color: #FFFFFF !important;
+  border-color: #E5E7EB !important;
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05) !important;
 }
 
 html.light .text-white,
@@ -3619,7 +3813,7 @@ html.light .text-gray-200,
 html.light .text-gray-300,
 html.light .card-title,
 html.light .panel-title {
-  color: #0f172a !important;
+  color: #111827 !important;
 }
 
 html.light .text-gray-400,
@@ -3628,7 +3822,7 @@ html.light .text-muted,
 html.light .text-dim,
 html.light .panel-subtitle,
 html.light .card-subtitle {
-  color: #334155 !important;
+  color: #4B5563 !important;
 }
 
 html.light .sidebar-item {
@@ -3684,3 +3878,557 @@ html.light .ticker-link:hover {
     transform: none !important;
   }
 }
+
+/* Semantic Flow Colors */
+.flow-positive {
+  color: var(--data-positive, #22C55E) !important;
+}
+.flow-negative {
+  color: var(--data-negative, #EF4444) !important;
+}
+
+/* Sidebar Viewport Lock & Precision Docking (§1.2 & §2) */
+#appSidebar,
+.app-sidebar,
+.sidebar {
+  position: fixed !important;
+  top: 0 !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 60 !important;
+  transition: width var(--motion-fast, 180ms) var(--ease-standard) !important;
+}
+
+@media (min-width: 1024px) {
+  .app-main {
+    margin-left: 240px !important;
+    transition: margin-left var(--motion-fast, 180ms) var(--ease-standard) !important;
+  }
+  .app-sidebar.collapsed ~ .app-main,
+  .app-shell[data-sidebar-state="collapsed"] .app-main {
+    margin-left: 72px !important;
+  }
+}
+
+.app-sidebar.collapsed {
+  width: 72px !important;
+  flex: 0 0 72px !important;
+}
+
+/* Sub-tab strip single row */
+.analisis-tab-strip,
+#analisisTabStrip,
+.subtab-strip {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  width: 100% !important;
+  gap: 6px !important;
+  scrollbar-width: none !important;
+}
+.analisis-tab-strip::-webkit-scrollbar,
+#analisisTabStrip::-webkit-scrollbar,
+.subtab-strip::-webkit-scrollbar {
+  display: none !important;
+}
+.analisis-tab {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* App Content Page Transitions */
+#appContent,
+.app-content {
+  transition: opacity var(--motion-fast, 180ms) var(--ease-standard),
+              transform var(--motion-fast, 180ms) var(--ease-standard) !important;
+}
+
+/* Dashboard Top 5 Cards Alignment */
+#dashboardTop5List,
+.dashboard-top5-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  gap: 12px !important;
+  margin-top: 0 !important;
+}
+#dashboardTop5List > *,
+.dashboard-top5-grid > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Standardize Tailwind & Component Transitions to Master Spec */
+.transition,
+.transition-all {
+  transition-duration: var(--motion-fast, 180ms) !important;
+  transition-timing-function: var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform !important;
+}
+
+button:not(.no-motion-override),
+.btn:not(.no-motion-override),
+.sidebar-item,
+.analisis-tab,
+.tab {
+  transition-duration: var(--motion-fast, 180ms) !important;
+  transition-timing-function: var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+}
+
+/* Progress Bar Motion Token (§6.1) */
+#psFill,
+.ps-fill {
+  transition: width var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+}
+
+/* Reduced Motion Enforcement (§6.1) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  #appContent,
+  .app-content {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ==========================================================================
+   WCAG AA ACCESSIBILITY & CONTRAST REMEDIATION (Master Spec §2)
+   ========================================================================== */
+
+/* --- DARK MODE CONTRAST REINFORCEMENTS --- */
+html:not(.light) .panel-subtitle,
+html:not(.light) #dashboardTop5LockNote,
+html:not(.light) p.panel-subtitle,
+html:not(.light) .dash-reason,
+html:not(.light) .empty-state-text {
+  color: #A0AEC0 !important;
+}
+
+html:not(.light) #dashboardTop5List .metric span,
+html:not(.light) .radar-card .metric span,
+html:not(.light) .dashboard-pick-card .metric span,
+html:not(.light) #dashboardTop5List span.text-gray-400,
+html:not(.light) #dashboardTop5List span.text-gray-500,
+html:not(.light) .dashboard-pick-card span:not(.badge):not(.pill):not(.font-bold) {
+  color: #CBD5E1 !important;
+}
+
+html:not(.light) #screenerStats p.uppercase,
+html:not(.light) #screenerStats .text-gray-500 {
+  color: #A0AEC0 !important;
+}
+
+html:not(.light) .scr-detail-hint {
+  color: #9AA4B2 !important;
+}
+
+/* --- LIGHT MODE CONTRAST & CARD / BADGE POLISH --- */
+html.light {
+  --surface: #FFFFFF;
+  --canvas: #F7F8FA;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
+}
+
+/* Light mode panels & cards ground */
+html.light .dashboard-pick-card,
+html.light .radar-card,
+html.light .screener-card,
+html.light .market-tile {
+  background: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  color: #111827 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Light mode headers and titles */
+html.light .page-title,
+html.light h1, html.light h2, html.light h3 {
+  color: #111827 !important;
+}
+
+html.light .page-subtitle,
+html.light .panel-subtitle,
+html.light p.panel-subtitle,
+html.light .empty-state-text,
+html.light #dashboardTop5LockNote {
+  color: #4B5563 !important;
+}
+
+/* Hardcoded dark backgrounds in HTML containers must become clean light surfaces */
+html.light .bg-dark-900\/80,
+html.light .bg-dark-900\/90,
+html.light .bg-dark-800\/60,
+html.light .bg-dark-800\/80,
+html.light .bg-dark-700\/40,
+html.light .bg-dark-600\/40,
+html.light .bg-dark-600\/60 {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #111827 !important;
+}
+
+html.light select.bg-dark-900\/90,
+html.light input.bg-dark-900\/90 {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #111827 !important;
+}
+
+/* Light mode price targets, current price, stop loss */
+html.light .is-now {
+  color: #1E293B !important;
+  font-weight: 600 !important;
+}
+
+html.light .is-target {
+  color: #B45309 !important;
+  font-weight: 600 !important;
+}
+
+html.light .is-stop {
+  color: #B91C1C !important;
+  font-weight: 600 !important;
+}
+
+html.light .dash-flag {
+  color: #92400E !important;
+  background: #FEF3C7 !important;
+  border-color: #FCD34D !important;
+}
+
+/* Light mode badges & grades */
+html.light .dashboard-pick-card b,
+html.light .radar-card b {
+  color: #15803D !important;
+}
+
+html.light .dashboard-pick-card b.warn,
+html.light .dashboard-pick-card b.text-amber-400,
+html.light .radar-card b.text-amber-400 {
+  color: #B45309 !important;
+}
+
+html.light .dashboard-pick-card b.info,
+html.light .dashboard-pick-card b.text-blue-400,
+html.light .radar-card b.text-blue-400 {
+  color: #1D4ED8 !important;
+}
+
+/* Light mode Position Sizing inline widget (.ac-pos-calc-box) */
+html.light .ac-pos-calc-box {
+  background: #F8FAFC !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #1E293B !important;
+}
+
+html.light .ac-pos-calc-box * {
+  color: #334155 !important;
+}
+
+html.light .ac-pos-calc-box strong,
+html.light .ac-pos-calc-box b {
+  color: #0F172A !important;
+}
+
+html.light .ac-pos-calc-box strong[style*="6ee7b7"],
+html.light .ac-pos-calc-box strong[style*="4ade80"] {
+  color: #15803D !important;
+}
+
+html.light .ac-pos-calc-box strong[style*="fca5a5"],
+html.light .ac-pos-calc-box strong[style*="f87171"] {
+  color: #B91C1C !important;
+}
+
+html.light .ac-pos-calc-box strong[style*="93c5fd"],
+html.light .ac-pos-calc-box span[style*="93c5fd"] {
+  color: #1D4ED8 !important;
+}
+
+html.light .ac-pos-calc-box strong[style*="f59e0b"],
+html.light .ac-pos-calc-box span[style*="fbbf24"] {
+  color: #B45309 !important;
+}
+
+html.light .ac-pos-calc-box button {
+  background: #EFF6FF !important;
+  border: 1px solid #93C5FD !important;
+  color: #1D4ED8 !important;
+}
+
+/* Light mode Signal Gate card trigger & drawer (.ac-gate-card-trigger) */
+html.light .ac-gate-card-trigger button {
+  background: #F1F5F9 !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #334155 !important;
+}
+
+html.light .ac-gate-card-trigger button * {
+  color: #334155 !important;
+}
+
+html.light .ac-gate-card-trigger button span[style*="6ee7b7"] {
+  color: #15803D !important;
+}
+
+html.light .ac-gate-card-trigger button span[style*="fca5a5"] {
+  color: #B91C1C !important;
+}
+
+html.light .ac-gate-card-trigger button span[style*="fbbf24"] {
+  color: #B45309 !important;
+}
+
+html.light .ac-gate-drawer,
+html.light .ac-gate-transparency-box {
+  background: #F8FAFC !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #1E293B !important;
+}
+
+html.light .ac-gate-drawer *,
+html.light .ac-gate-transparency-box * {
+  color: #334155 !important;
+}
+
+/* Light mode screener tabs & info bars */
+html.light .screener-tab.active {
+  color: #065F46 !important;
+  background: #D1FAE5 !important;
+  border: 1px solid #6EE7B7 !important;
+  font-weight: 700 !important;
+}
+
+html.light .screener-tab {
+  color: #4B5563 !important;
+  background: #F1F5F9 !important;
+}
+
+html.light .scr-info-bar {
+  background: #F8FAFC !important;
+  color: #4B5563 !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.light .scr-info-bar strong {
+  color: #111827 !important;
+}
+
+html.light .scr-info-bar.text-amber-400\/70 {
+  background: #FEF3C7 !important;
+  color: #92400E !important;
+  border-color: #FDE68A !important;
+}
+
+html.light .scr-info-bar.text-amber-400\/70 strong {
+  color: #78350F !important;
+}
+
+html.light #screenerMetaBadge {
+  background: #FEF3C7 !important;
+  color: #92400E !important;
+  border-color: #FDE68A !important;
+}
+
+html.light .screener-card strong {
+  color: #111827 !important;
+}
+
+html.light .screener-card span.text-emerald-300,
+html.light .screener-card span[class*="emerald"],
+html.light .screener-card strong.text-emerald-300 {
+  color: #15803D !important;
+}
+
+/* Light mode Analisis & Cockpit AI */
+html.light #page-analisis,
+html.light .analisis-header,
+html.light .analisis-cockpit {
+  background: transparent !important;
+}
+
+html.light .unified-prompt-chip {
+  color: #1F2937 !important;
+  background: #E2E8F0 !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+html.light .unified-ticker-badge {
+  color: #065F46 !important;
+  background: #D1FAE5 !important;
+  border: 1px solid #6EE7B7 !important;
+}
+
+html.light #analisisActiveTickerTag,
+html.light #chatActiveTickerTag {
+  color: #065F46 !important;
+  background: #E2E8F0 !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+html.light a.action-btn,
+html.light button.action-btn {
+  color: #065F46 !important;
+}
+
+/* Dark mode Market tile units and notes */
+html:not(.light) .market-tile-unit,
+html:not(.light) .market-tile-note,
+html:not(.light) #dashMarketGateNote {
+  color: #A0AEC0 !important;
+}
+
+/* Skenario Box Contrast in Position Sizing */
+html:not(.light) .ac-pos-scenario-box {
+  background: rgba(30, 41, 59, 0.5) !important;
+  color: #CBD5E1 !important;
+}
+html:not(.light) .ac-pos-scenario-a {
+  color: #93C5FD !important;
+}
+html:not(.light) .ac-pos-scenario-b {
+  color: #A7F3D0 !important;
+}
+
+html.light .ac-pos-scenario-box {
+  background: #F1F5F9 !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #1E293B !important;
+}
+html.light .ac-pos-scenario-box * {
+  color: #1E293B !important;
+}
+html.light .ac-pos-scenario-a {
+  color: #1D4ED8 !important;
+}
+html.light .ac-pos-scenario-b {
+  color: #15803D !important;
+}
+
+/* Light mode Sisa R/R warning text */
+html.light .dash-rr-sisa-warn,
+html.light [title*="Sisa R/R"],
+html.light span[style*="F59E0B"],
+html.light span[style*="f59e0b"] {
+  color: #92400E !important;
+}
+html.light [title*="Sisa R/R"] b {
+  color: #78350F !important;
+}
+
+/* Light mode Screener Cards, Labels, and Chips */
+html.light label.flex.items-center,
+html.light label[class*="bg-dark-900"],
+html.light label:has(#kgHideVeryHigh),
+html.light label:has(#nkHideVeryHigh),
+html.light label:has(#dtHideVeryHigh) {
+  background: #F1F5F9 !important;
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #111827 !important;
+}
+
+html.light [data-lifecycle-chip="1"],
+html.light [data-lifecycle-chip],
+html.light span[data-lifecycle-chip] {
+  color: #334155 !important;
+  background: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+}
+html.light [data-lifecycle-chip] * {
+  color: #334155 !important;
+}
+
+html.light .dt-card-item strong,
+html.light .kg-card-item strong,
+html.light .nk-card-item strong,
+html.light .screener-card strong {
+  color: #111827 !important;
+}
+
+html.light .dt-card-item strong[style*="6ee7b7"],
+html.light .kg-card-item strong[style*="6ee7b7"],
+html.light .nk-card-item strong[style*="6ee7b7"],
+html.light .screener-card strong[style*="6ee7b7"] {
+  color: #15803D !important;
+}
+
+html.light .dt-card-item span[style*="6ee7b7"],
+html.light .kg-card-item span[style*="6ee7b7"],
+html.light .nk-card-item span[style*="6ee7b7"],
+html.light .screener-card span[style*="6ee7b7"] {
+  color: #15803D !important;
+}
+
+/* Light mode Screener positive percentage contrast (WCAG AA >= 4.5:1 on #FFFFFF) */
+html.light .scr-chg-val,
+html.light .dt-card-item span.scr-chg-val,
+html.light .kg-card-item span.scr-chg-val,
+html.light .nk-card-item span.scr-chg-val,
+html.light .dt-card-item span[style*="var(--data-positive)"],
+html.light .kg-card-item span[style*="var(--data-positive)"],
+html.light .nk-card-item span[style*="var(--data-positive)"],
+html.light .screener-card span[style*="var(--data-positive)"],
+html.light .dt-card-item span[style*="16A34A"],
+html.light .kg-card-item span[style*="16A34A"],
+html.light .nk-card-item span[style*="16A34A"] {
+  color: #15803D !important;
+}
+
+/* Light mode Analisis header & command bar background override (v6.css override) */
+html.light #page-analisis > div:first-child,
+html.light #analisisPartialMount {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* Light mode Analisis header overrides */
+html.light #page-analisis,
+html.light .page-content#page-analisis,
+html.light #analisisContent,
+html.light .analisis-header,
+html.light .analisis-cockpit {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+html.light .page-title,
+html.light h1.page-title {
+  color: #111827 !important;
+}
+html.light .page-subtitle,
+html.light p.page-subtitle {
+  color: #4B5563 !important;
+}
+html.light #analisisActiveTickerTag,
+html.light #chatActiveTickerTag {
+  color: #064E3B !important;
+  background-color: #E2E8F0 !important;
+  border-color: #CBD5E1 !important;
+}
+html.light a[href*="chart"] span,
+html.light .action-btn span,
+html.light .unified-card-header button span,
+html.light #subPanelAnalisisAI button span,
+html.light button[onclick*="switchAnalisisSubTab('chart')"] span {
+  color: #064E3B !important;
+}
+
+/* Stabilize nested mini card utility buttons during theme toggle */
+.ac-pos-calc-box button,
+.ac-gate-card-trigger button {
+  transition: none !important;
+}
+
+
+

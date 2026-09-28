@@ -151,7 +151,7 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -218,7 +218,7 @@
   padding: 4px 10px;
   border-radius: 9999px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
   white-space: nowrap;
 }
 
@@ -336,7 +336,7 @@
   padding: 6px 10px;
   font-size: 12px;
   outline: none;
-  transition: all 0.15s ease;
+  transition: all var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 .tab-independent-search input:focus {
@@ -353,7 +353,7 @@
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
   white-space: nowrap;
 }
 
@@ -496,8 +496,8 @@
 
 @media (min-width: 1024px) {
   .analisis-tab-strip {
-    flex-wrap: wrap !important;
-    overflow-x: visible !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
   }
 }
 
@@ -518,7 +518,10 @@
   border: 1px solid transparent !important;
   white-space: nowrap !important;
   cursor: pointer;
-  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease !important;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              box-shadow var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
   flex-shrink: 0 !important;
 }
 
@@ -558,7 +561,8 @@
   border: 1px solid rgba(148, 163, 184, 0.22) !important;
   background: rgba(15, 23, 42, 0.88) !important;
   color: #f8fafc !important;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+  transition: border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              box-shadow var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
 }
 
 #analisisInput:focus,
@@ -581,7 +585,9 @@
   background: rgba(30, 41, 59, 0.75) !important;
   border: 1px solid rgba(148, 163, 184, 0.18) !important;
   color: #cbd5e1 !important;
-  transition: all 0.15s ease !important;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
 }
 
 .unified-top-bar button[onclick*="quickAnalisis"]:hover {
@@ -955,7 +961,7 @@ html.light #page-analisis .text-gray-500 {
 
 html.light #page-analisis .text-emerald-400,
 html.light #page-analisis .text-emerald-300 {
-  color: #047857 !important;
+  color: #064E3B !important;
 }
 
 html.light #page-analisis .text-rose-400,

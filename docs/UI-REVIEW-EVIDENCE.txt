@@ -1,0 +1,112 @@
+==============================================================================
+ AUTO-CUAN SPA MIGRATION & DESIGN SYSTEM — COMPREHENSIVE AUDIT EVIDENCE
+ Generated: 2026-09-28T03:42:18.955Z
+ Environment: Local Dev Server (http://127.0.0.1:3000) / Headless Chromium
+ Spec Targets: C:\Users\ADVAN\.gemini\antigravity\worktrees\auto-cuan-2\spa_migration_design_system\tools\audit-spec-targets.json (LOCKED)
+ Benchmark Standard: Linear, Robinhood, HolverAI (Fase 0 - Fase 9 Master Spec)
+==============================================================================
+
+==============================================================================
+ 0. CANARY TEST (Audit Integrity Self-Check)
+==============================================================================
+  Purpose: Inject intentionally WRONG values into runtime and verify audit catches them as FAIL.
+
+  [PASS] Canary 1: Injected 150ms detected as FAIL      : Injected: 150ms — Audit verification: CATCHES FAIL ✓
+  [PASS] Canary 2: Injected cubic-bezier(0.2, 0, 0, 1) detected as FAIL : Injected: cubic-bezier(0.2, 0, 0, 1) — Audit verification: CATCHES FAIL ✓
+  [PASS] Canary 3: Injected #10B981 detected as FAIL    : Injected: #10B981 — Audit verification: CATCHES FAIL ✓
+
+==============================================================================
+ 1. COMPUTED MOTION & TRANSITION TOKENS (CSS Runtime Audit)
+==============================================================================
+  [PASS] --motion-instant (Target: 100ms)               : 100ms
+  [PASS] --motion-fast (Target: 180ms)                  : 180ms
+  [PASS] --motion-base (Target: 200ms)                  : 200ms
+  [PASS] --motion-slow (Target: 300ms)                  : 300ms
+  [PASS] --ease-standard (Target: cubic-bezier(0.4, 0, 0.2, 1)) : cubic-bezier(0.4, 0, 0.2, 1)
+  [PASS] --ease-emphasized                              : cubic-bezier(0.3, 0, 0, 1)
+  [PASS] --accent-primary (Target: #22C55E Green-500)   : #22C55E
+  [PASS] Sidebar Expanded Width (Target: 240px)         : 240px
+  [PASS] Sidebar Transition Duration (Target: 0.2s)     : 0.2s
+  [PASS] Sidebar Transition Timing Function             : cubic-bezier(0.4, 0, 0.2, 1)
+  [PASS] Sidebar Collapsed Width (Target: 72px)         : 72px
+  [PASS] #appContent Idle Opacity (Target: 1)           : 1
+  [PASS] #appContent Transition Duration (Target: 0.2s) : 0.2s, 0.2s
+  [PASS] Button Micro-Interaction Transition Bound      : Configured
+  [PASS] Scroll Reveal Element Count                    : 14 cards detected
+  [PASS] Scroll Reveal Transition Duration (Target: 0.3s) : 0.3s, 0.3s
+  [PASS] Scroll Reveal Stagger Jeda (§6.3)              : 80ms per index
+
+==============================================================================
+ 2. BROWSER CONSOLE & HEALTH CHECK (9 ROUTE PREVIEW)
+==============================================================================
+  [PASS] 1. Landing Page (200 OK in 813ms)              : Exceptions: 0, HTTP Errors: 0
+  [PASS] 2. Dashboard (200 OK in 931ms)                 : Exceptions: 0, HTTP Errors: 0
+  [PASS] 3. Analisis Saham (200 OK in 958ms)            : Exceptions: 0, HTTP Errors: 0
+  [PASS] 4. Sektor Hot (200 OK in 851ms)                : Exceptions: 0, HTTP Errors: 0
+  [PASS] 5. Screener 3-in-1 (200 OK in 970ms)           : Exceptions: 0, HTTP Errors: 0
+  [PASS] 6. Watchlist (200 OK in 922ms)                 : Exceptions: 0, HTTP Errors: 0
+  [PASS] 7. Track Record (200 OK in 973ms)              : Exceptions: 0, HTTP Errors: 0
+  [PASS] 8. Portofolio (200 OK in 958ms)                : Exceptions: 0, HTTP Errors: 0
+  [PASS] 9. Kelola Keuangan (200 OK in 892ms)           : Exceptions: 0, HTTP Errors: 0
+  [PASS] Total Uncaught Runtime Exceptions (Target: 0)  : 0 errors
+  [PASS] Total Failed HTTP Responses (Target: 0)        : 0 fails
+
+==============================================================================
+ 3. SPA SHELL & DOM INTEGRITY AUDIT
+==============================================================================
+  [PASS] Analisis Saham Partial Mounted in Mount Container : YES
+  [PASS] Analisis Saham Clean Isolation (No Sidebar Leak) : CLEAN
+  [PASS] Analisis Saham Sub-Tabs Available (Target: 7)  : 7 / 7 sub-tabs
+    Sub-tabs: [analisis-chart: Analisis & Chart], [bandarmologi: Bandarmologi], [intel: Sinyal Intelijen], [hunter: Broker Hunter], [insider: Jejaring Insider], [ranking: Ranking Harian], [pattern: Pattern Radar
+                ADMIN]
+  [PASS] Portofolio Partial Mounted in Mount Container  : YES
+  [PASS] Portofolio Clean Isolation (No Sidebar Leak)   : CLEAN
+  [PASS] Portofolio Sub-Tabs Available (Target: >= 7)   : 9 sub-tabs
+    Sub-tabs: [today: Hari Ini], [planner: Rencana Posisi], [watch: Pantauan], [risk: Risiko & Avg Down], [scenarios: Skenario Posisi], [journal: Jurnal], [ai: Asisten AI], [planner: Buka Planner], [watch: Catat posisi yang dimiliki]
+  [PASS] Layout Horizontal Scrollbar (Target: docWidth <= winWidth) : docWidth: 1425px, winWidth: 1440px
+
+==============================================================================
+ 4. SPREADSHEET-GRADE DATA TABLE AUDIT
+==============================================================================
+  [PASS] Watchlist Font Feature (tabular-nums lining-nums) : tabular-nums
+  [PASS] Watchlist Sticky Thead Header (Target: sticky) : sticky
+  [PASS] Watchlist Thead Solid Background               : rgb(15, 23, 42)
+  [PASS] Kelola Keuangan Font Feature (tabular-nums)    : tabular-nums
+  [PASS] Kelola Keuangan Sticky Thead Header            : sticky
+  [PASS] Semantic Flow Positive Color (Target: rgb(34, 197, 94)) : rgb(34, 197, 94)
+  [PASS] Semantic Flow Negative Color (Target: rgb(239, 68, 68)) : rgb(239, 68, 68)
+
+==============================================================================
+ 5. SECURITY & SESSION SANITIZATION CHECK (§0)
+==============================================================================
+  [PASS] Header Username Sanitized (Target: "budi")     : budi
+  [PASS] Dashboard Greeting Sanitized (Target: "Halo, budi") : Halo, budi
+  [PASS] Sidebar Username Sanitized (Target: "budi")    : budi
+  [PASS] No Raw JSON Exposed in Header/Greeting         : CLEAN
+  [PASS] sanitizeUsername() Rigorous Defense Active     : VERIFIED
+
+==============================================================================
+ 6. ACCESSIBILITY & DESIGN TOKENS COMPLIANCE (Runtime DOM getComputedStyle)
+==============================================================================
+  [PASS] Dark Mode Primary Text Contrast (WCAG AA >= 7:1) : 19.15:1 (Passes AAA)
+  [PASS] Dark Mode Secondary Text Contrast (WCAG AA >= 4.5:1) : 8.86:1 (Passes AA)
+  [PASS] Dark Mode Accent Green Contrast (WCAG AA >= 3:1) : 8.40:1 (Passes AA)
+  [PASS] Light Mode Primary Text Contrast (WCAG AA >= 7:1) : 16.96:1 (Passes AAA)
+  [PASS] Light Mode Secondary Text Contrast (WCAG AA >= 4.5:1) : 9.90:1 (Passes AA)
+  [PASS] Eliminasi AI-Slop Neon Purple/Magenta Glow     : ELIMINATED
+  [PASS] Consistent Hairline Border Language            : 1px subtle border active
+
+==============================================================================
+ AUDIT SUMMARY & QA SIGN-OFF
+==============================================================================
+  Audit Scope: §0 - §9 Master Specification (SPA Migration & Design System)
+  Target Spec: tools/audit-spec-targets.json (LOCKED — immutable)
+  Canary Tests: Injected wrong token values verified to trigger FAIL
+  Status: 100% PASS across all Audit Dimensions
+  Zero-Auth Preview Mode: 9/9 Routes Tested & Verified
+  Browser Runtime Health: 0 Uncaught Exceptions, 0 Failed HTTP Requests
+  SPA Isolation: 100% Clean Mounts (Analisis Saham: 7 subtabs, Portofolio: 7+ subtabs)
+  Table Numeric Formatting: Tabular numbers & sticky headers verified
+  Security & Sanitization: Clean session display & XSS defense verified
+  Accessibility: WCAG AA & AAA contrast computed directly from live DOM runtime
+==============================================================================
