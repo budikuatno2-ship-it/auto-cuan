@@ -10,11 +10,14 @@
  * process:
  *   - Idempotent: any ticker whose broker-summary for today is already on
  *     disk is skipped on the next firing (mirrors tools/backfill-arjum-data.js).
- *   - A completion marker (data/arjum-data/_daily-update-marker/<date>.json)
- *     is written once every ticker's broker-summary for today is on disk, so
- *     later firings within the window become a fast no-op.
- *   - Pass --final on the LAST scheduled firing (22:00) so an incomplete run
- *     is reported as a real failure instead of "will retry in 30 minutes".
+ *   - Before the final firing, empty-but-successful broker-summary responses
+ *     remain pending so late publication can still arrive.
+ *   - On the 22:00 --final firing, an empty-but-successful response is terminal
+ *     NO_DATA (for example suspended/no-trade tickers); it is never fabricated
+ *     into a cache file. A completion marker is written only when every ticker
+ *     is either backed by valid broker-summary rows or terminal NO_DATA, with
+ *     no real upstream errors and no quota stop.
+ *   - A complete marker makes later firings a fast no-op.
  *
  * Usage:
  *   node tools/run-daily-broker-update.js --dry-run
