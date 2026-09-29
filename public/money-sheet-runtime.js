@@ -7,10 +7,12 @@
   const $ = id => doc.getElementById(id);
   const money = value => value == null ? '\u2014' : 'Rp ' + value.toLocaleString('id-ID');
   const format = value => value.toLocaleString('id-ID');
+  const metric = (id,value) => root.AutoCuanNumeric ? root.AutoCuanNumeric.set($(id),value,{prefix:'Rp '}) : ($(id).textContent=money(value));
   let sheet = null, month = Model.currentMonth(), notes = '', revision = null, userId = '';
   let lastSaveError = false;
   let saved = '', loading = false, saving = false, bound = false, generation = 0, totalsFrame = 0;
   let undo = [], redo = [], editBefore = null, nextId = 0, portfolioQueued = false, portfolioAt = 0;
+  let grid = null;
   const invalid = new Map(), rowNodes = new Map(), requests = new Set();
   const encode = () => JSON.stringify({ sheet, notes });
   const dirty = () => !!sheet && (encode() !== saved || invalid.size > 0);
@@ -53,10 +55,10 @@
     totalsFrame = 0;
     if (!sheet || loading) return;
     const t = Model.totals(sheet);
-    $('mmTotalIncomeDisplay').textContent = money(t.income);
-    $('mmTotalLivingExpenseDisplay').textContent = money(t.expense);
-    $('mmSheetAllocation').textContent = money(t.saving + t.transfer);
-    $('mmRemainingBudgetDisplay').textContent = money(t.remaining);
+    metric('mmTotalIncomeDisplay', t.income);
+    metric('mmTotalLivingExpenseDisplay', t.expense);
+    metric('mmSheetAllocation', t.saving + t.transfer);
+    metric('mmRemainingBudgetDisplay', t.remaining);
     $('mmRemainingBudgetDisplay').classList.toggle('ms-negative', t.remaining < 0);
     $('mmBudgetSafetyStatus').textContent = t.remaining < 0 ? 'Alokasi melebihi pemasukan bulan ini' : 'Pemasukan dikurangi semua alokasi';
     controls();
@@ -79,16 +81,17 @@
   }
   function makeRow(row) {
     const tr = doc.createElement('tr'); tr.dataset.rowId = row.id;
-    const number = doc.createElement('td'); number.className = 'ms-row-number'; tr.appendChild(number);
+    const number = doc.createElement('th'); number.className = 'ms-row-number'; number.scope = 'row';
+    const pick = doc.createElement('button'); pick.type = 'button'; pick.dataset.selectRow = row.id; number.appendChild(pick); tr.appendChild(number);
     Model.FIELDS.forEach((field, col) => {
-      const td = doc.createElement('td');
-      const input = doc.createElement(field === 'type' ? 'select' : 'input');
+      const td = doc.createElement('td'); td.setAttribute('role','gridcell');
+      const input = doc.createElement(field === 'type' ? 'select' : field === 'note' ? 'textarea' : 'input');
       input.dataset.field = field; input.dataset.col = String(col);
       if (field === 'type') Model.TYPES.forEach(type => { const option = doc.createElement('option'); option.value = type; option.textContent = Model.TYPE_LABELS[type]; input.appendChild(option); });
       else {
-        input.type = 'text'; input.autocomplete = 'off'; input.spellcheck = false;
-        input.maxLength = field === 'note' ? 500 : field === 'label' ? 160 : field === 'category' ? 80 : 24;
-        if (field === 'amount') input.inputMode = 'numeric';
+        if(field === 'note') input.rows=1; else input.type = 'text'; input.autocomplete = 'off'; input.spellcheck = false;
+        input.maxLength = field === 'note' ? 500 : field === 'label' ? 160 : field === 'category' ? 80 : 240;
+        if (field === 'amount') input.inputMode = 'text';
       }
       td.appendChild(input); tr.appendChild(td);
     });
@@ -108,21 +111,23 @@
   function renderRows(focus, force) {
     if (!sheet || loading) return;
     const rows = visibleRows(), fragment = doc.createDocumentFragment();
-    const keep = new Set(sheet.rows.map(r => r.id));
+    const keep = new Set(sheet.rows.map(r => r.id)), positions = new Map(sheet.rows.map((r,i)=>[r.id,i+1]));
     for (const key of rowNodes.keys()) if (!keep.has(key)) rowNodes.delete(key);
     rows.forEach((row, index) => {
       let tr = rowNodes.get(row.id);
       if (!tr) { tr = makeRow(row); rowNodes.set(row.id, tr); }
-      tr.firstChild.textContent = String(index + 1);
+      const physical = positions.get(row.id);
+      tr.firstChild.firstChild.textContent = String(physical); tr.firstChild.firstChild.setAttribute('aria-label','Pilih baris '+physical);
       Model.FIELDS.forEach((field, col) => {
         const input = tr.querySelector('[data-col="' + col + '"]');
-        input.setAttribute('aria-label', (field === 'amount' ? 'Nominal rupiah' : ['Jenis','Kategori','Nama pos','Nominal','Catatan'][col]) + ', baris ' + (index + 1));
+        input.setAttribute('aria-label', (field === 'amount' ? 'Nominal rupiah' : ['Jenis','Kategori','Nama pos','Nominal','Catatan'][col]) + ', baris ' + physical);
         const errorState = invalid.get(row.id + ':' + field);
         if (errorState) input.value = errorState.raw;
-        else if (force || input !== doc.activeElement) input.value = field === 'amount' ? format(row.amount) : row[field];
+        else if (force || input !== doc.activeElement) input.value = field === 'amount' ? (input === doc.activeElement && row.formula ? row.formula : format(row.amount)) : row[field];
+        if (field === 'amount') { input.dataset.formula = row.formula || ''; input.title = row.formula ? row.formula + ' = Rp ' + format(row.amount) : ''; }
         input.setAttribute('aria-invalid', invalid.has(row.id + ':' + field) ? 'true' : 'false');
       });
-      tr.querySelector('[data-remove]').setAttribute('aria-label', 'Hapus baris ' + (index + 1));
+      tr.querySelector('[data-remove]').setAttribute('aria-label', 'Hapus baris ' + physical);
       fragment.appendChild(tr);
     });
     $('mmCashflowSpreadsheetBody').replaceChildren(fragment);
@@ -131,6 +136,7 @@
     else if (!invalid.size) notice('');
     if (focus) focusCell(focus.id, focus.col);
     updateTotals();
+    if (grid) grid.refresh();
   }
   function transact(change, focus) {
     if (!sheet || loading) return;
@@ -150,7 +156,7 @@
     invalid.clear(); $('mmCashflowNotes').value = notes; renderRows(focus, true);
   }
   function blankOverview() {
-    ['mmTotalIncomeDisplay','mmTotalLivingExpenseDisplay','mmSheetAllocation','mmRemainingBudgetDisplay'].forEach(key => { $(key).textContent = '\u2014'; });
+    ['mmTotalIncomeDisplay','mmTotalLivingExpenseDisplay','mmSheetAllocation','mmRemainingBudgetDisplay'].forEach(key => { metric(key,null); });
     $('mmBudgetSafetyStatus').textContent = 'Menunggu data anggaran';
   }
   async function load(nextMonth, force) {
@@ -207,8 +213,8 @@
     } catch (_) { return null; }
   }
   function showPortfolio(summary, label) {
-    $('mmPortfolioExposure').textContent = money(summary ? summary.totalExposureIdr : null);
-    $('mmPortfolioPnl').textContent = money(summary ? summary.totalPnlIdr : null);
+    metric('mmPortfolioExposure', summary ? summary.totalExposureIdr : null);
+    metric('mmPortfolioPnl', summary ? summary.totalPnlIdr : null);
     $('mmPortfolioPnl').classList.toggle('ms-negative', !!summary && summary.totalPnlIdr < 0);
     $('mmPortfolioPnl').classList.toggle('ms-positive', !!summary && summary.totalPnlIdr > 0);
     let status = label || (summary ? (summary.source === 'local' ? 'Perangkat ini' : 'Cloud') + ' \u00b7 ' + summary.planCount + ' rencana' : 'Belum ada data Portofolio tersimpan');
@@ -249,14 +255,24 @@
     const row = sheet.rows.find(r => r.id === tr.dataset.rowId); if (!row) return;
     const key = row.id + ':' + input.dataset.field;
     try {
-      row[input.dataset.field] = input.dataset.field === 'amount' ? Model.amount(input.value) : input.value;
+      const candidate = JSON.parse(JSON.stringify(sheet));
+      Model.setRaw(candidate.rows.find(r => r.id === row.id), input.dataset.field, input.value);
+      sheet = Model.normalize(candidate);
       invalid.delete(key); input.setAttribute('aria-invalid','false');
       if (!invalid.size) notice('');
     } catch (error) { invalid.set(key, { message: error.message, raw: input.value }); input.setAttribute('aria-invalid','true'); notice(error.message,'error'); }
-    changed();
+    syncComputedCells(); changed();
+    if (grid) grid.paint();
+  }
+  function syncComputedCells() {
+    if (!sheet) return;
+    sheet.rows.forEach(row => { const node=rowNodes.get(row.id); const input=node && node.querySelector('[data-col="3"]');
+      if (input && input!==doc.activeElement && !invalid.has(row.id+':amount')) input.value=format(row.amount);
+      if (input) { input.dataset.formula=row.formula||''; input.title=row.formula ? row.formula+' = Rp '+format(row.amount):''; }
+    });
   }
   function onKey(event) {
-    if (!visible() || !sheet || loading) return;
+    if (event.defaultPrevented || !visible() || !sheet || loading) return;
     const modifier = event.ctrlKey || event.metaKey;
     if (modifier && event.key.toLowerCase() === 's') { event.preventDefault(); save(); return; }
     if (modifier && event.key.toLowerCase() === 'z') { event.preventDefault(); restore(event.shiftKey ? 'redo' : 'undo'); return; }
@@ -289,20 +305,27 @@
     $('mmSheetSearch').addEventListener('input', () => { commitEdit(); renderRows(); });
     $('mmSheetSort').addEventListener('change', () => { commitEdit(); renderRows(); });
     $('mmOpenPortfolio').addEventListener('click', () => { if (typeof root.navigateTo === 'function') root.navigateTo('portofolio'); });
+    if (root.AutoCuanMoneySheetGrid) grid = root.AutoCuanMoneySheetGrid.create({
+      sheet:()=>sheet, rows:()=>sheet&&!loading?visibleRows():[], focus:focusCell, notice,
+      cell:(rowId,col,value)=>{ const node=rowNodes.get(rowId), input=node&&node.querySelector('[data-col="'+col+'"]'); if(!input)return; commitEdit(); editBefore=encode(); input.value=value; onInput({target:input}); commitEdit(); syncComputedCells(); },
+      cells:changes=>transact(()=>{ const next=JSON.parse(JSON.stringify(sheet)); changes.forEach(p=>{const row=next.rows.find(r=>r.id===p.id); if(row)Model.setRaw(row,Model.FIELDS[p.col],p.value);}); sheet=Model.normalize(next); }),
+      insert:rowId=>{const row=Model.newRow(id());transact(()=>{sheet=Model.insertRows(sheet,sheet.rows.findIndex(r=>r.id===rowId),[row]);},{id:row.id,col:2});},
+      remove:ids=>transact(()=>{sheet=Model.removeRows(sheet,ids);})
+    });
     page.addEventListener('input', onInput);
     page.addEventListener('focusin', event => {
       if (event.target.dataset.field || event.target.id === 'mmCashflowNotes') { editBefore = encode(); controls(); }
       const tr = event.target.closest('[data-row-id]');
-      if (tr && event.target.dataset.col) { const index = visibleRows().findIndex(r => r.id === tr.dataset.rowId); $('mmCellAddress').textContent = String.fromCharCode(65 + Number(event.target.dataset.col)) + (index + 1); }
+      if (tr && event.target.dataset.field === 'amount' && !invalid.has(tr.dataset.rowId+':amount')) { const row=sheet.rows.find(r=>r.id===tr.dataset.rowId); if(row.formula) { event.target.value=row.formula; event.target.select(); } }
     });
     page.addEventListener('focusout', event => {
       if (event.target.dataset.field || event.target.id === 'mmCashflowNotes') commitEdit();
-      if (event.target.dataset.field === 'amount' && event.target.getAttribute('aria-invalid') !== 'true') event.target.value = format(Model.amount(event.target.value));
+      if (event.target.dataset.field === 'amount' && event.target.getAttribute('aria-invalid') !== 'true') { const tr=event.target.closest('[data-row-id]'), row=sheet&&sheet.rows.find(r=>r.id===tr.dataset.rowId); if(row) event.target.value=format(row.amount); }
       controls();
     });
     page.addEventListener('click', event => {
       const button = event.target.closest('[data-remove]');
-      if (button) { const index = sheet.rows.findIndex(r => r.id === button.dataset.remove); const adjacent = sheet.rows[index + 1] || sheet.rows[index - 1]; transact(() => { sheet.rows = sheet.rows.filter(r => r.id !== button.dataset.remove); }, adjacent ? {id:adjacent.id,col:2} : null); }
+      if (button) { const index = sheet.rows.findIndex(r => r.id === button.dataset.remove); const adjacent = sheet.rows[index + 1] || sheet.rows[index - 1]; transact(() => { sheet = Model.removeRows(sheet,[button.dataset.remove]); }, adjacent ? {id:adjacent.id,col:2} : null); }
     });
     page.addEventListener('paste', event => {
       const input = event.target, tr = input.closest('[data-row-id]');
@@ -325,6 +348,7 @@
     if (totalsFrame) root.cancelAnimationFrame(totalsFrame); totalsFrame = 0;
     lastSaveError = false; sheet = null; userId = ''; notes = ''; revision = null; saved = ''; loading = false; saving = false;
     undo = []; redo = []; editBefore = null; invalid.clear(); rowNodes.clear();
+    if (grid) grid.reset();
     if (!$('mmSheetViewport')) return;
     $('mmCashflowSpreadsheetBody').replaceChildren(); $('mmCashflowNotes').value = '';
     $('mmSheetViewport').hidden = true; blankOverview(); showPortfolio(null, 'Belum dimuat'); controls();

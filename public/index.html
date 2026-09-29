@@ -119,13 +119,14 @@
     <link rel="stylesheet" href="/index-shell.css?v=20260818-v1">
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
-    <link rel="stylesheet" href="/ui-theme.css?v=20260929-experience-v2">
+    <link rel="stylesheet" href="/ui-theme.css?v=20260929-detail-v3">
     <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=20260929-v1">
     <link rel="stylesheet" href="/spreadsheet-grade.css?v=20260926-sg1">
-    <link rel="stylesheet" href="/money-sheet.css?v=20260929-v1">
-    <link rel="stylesheet" href="/landing-experience.css?v=20260929-v2">
+    <link rel="stylesheet" href="/money-sheet.css?v=20260929-v2">
+    <link rel="stylesheet" href="/landing-experience.css?v=20260929-v3">
+<link rel="stylesheet" href="/number-flow.css?v=20260929-v1">
 </head>
 <body class="min-h-screen text-gray-100">
 <a href="#" class="skip-link" onclick="return skipToMainContent(event)">Lewati ke konten utama</a>
@@ -251,75 +252,87 @@
 
 <!-- ===== PUBLIC LANDING PAGE ===== -->
 <section id="landingPage" class="landing-shell hidden">
-    <div class="landing-promo">
-        <div class="landing-container py-2.5 flex items-center gap-2 overflow-x-auto">
-            <span class="landing-chip font-black text-emerald-300"><span class="landing-dot"></span>Auto-Cuan IDX Radar</span>
-            <span class="landing-chip">Analisis &amp; pencatatan</span>
-            <span class="landing-chip">Dashboard watchlist, radar, chart, dan trading plan</span>
-            <span class="landing-chip text-amber-200 border-amber-500/20 bg-amber-500/10">Bukan rekomendasi beli/jual</span>
-        </div>
+  <nav class="landing-nav" aria-label="Navigasi utama">
+    <div class="landing-container">
+      <button type="button" onclick="showLandingPage()" class="landing-brand text-left" aria-label="Auto-Cuan, halaman utama">
+        <span class="landing-logo" aria-hidden="true"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 17l6-6 4 4 6-9M14 6h6v6"/></svg></span>
+        <span><span class="block font-semibold">Auto-Cuan</span><span class="block text-xs">IDX Workspace</span></span>
+      </button>
+      <div id="landingMenu" class="landing-menu items-center" aria-label="Jelajahi Auto-Cuan">
+        <a href="#landingFeatures">Fitur</a><a href="#landingHow">Cara kerja</a><a href="#landingPreview">Lihat workspace</a><a href="#landingSafety">Tentang data</a><button type="button" onclick="openLoginModal()" class="landing-link">Masuk</button>
+      </div>
+      <div class="landing-nav-actions">
+        <button type="button" id="landingThemeToggle" onclick="toggleAppTheme()" class="landing-icon-button" aria-label="Ganti tema" title="Ganti tema"><span id="landingThemeIcon" aria-hidden="true">&#9680;</span></button>
+        <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span><span aria-hidden="true">&#8599;</span></button>
+        <button type="button" id="landingMenuToggle" class="landing-icon-button" aria-controls="landingMenu" aria-expanded="false" aria-label="Buka menu navigasi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      </div>
     </div>
-    <nav class="landing-nav">
-        <div class="landing-container py-3 flex items-center justify-between gap-4">
-            <button type="button" onclick="showLandingPage()" class="landing-brand text-left" aria-label="Auto-Cuan landing page">
-                <span class="landing-logo"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></span>
-                <span class="min-w-0"><span class="block text-white font-black leading-tight">Auto-Cuan</span><span class="block text-xs text-gray-500 truncate">IDX Stock Radar</span></span>
-            </button>
-            <div id="landingMenu" class="landing-menu items-center gap-6" aria-label="Navigasi landing">
-                <a href="#landingFeatures">Fitur</a><a href="#landingHow">Cara Kerja</a><a href="#landingSafety">Safety</a><a href="#landingPreview">Preview</a><button type="button" onclick="openLoginModal()" class="landing-link">Login</button>
-            </div>
-            <div class="landing-nav-actions">
-                <button type="button" id="landingThemeToggle" onclick="toggleAppTheme()" class="landing-icon-button" aria-label="Ganti tema" title="Ganti tema"><span id="landingThemeIcon" aria-hidden="true">&#9680;</span></button>
-                <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary shrink-0"><span class="landing-cta-label">Mulai Sekarang</span></button>
-                <button type="button" id="landingMenuToggle" class="landing-icon-button" aria-controls="landingMenu" aria-expanded="false" aria-label="Buka menu navigasi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-            </div>
+  </nav>
+  <main>
+    <section class="landing-hero" aria-labelledby="landingTitle">
+      <div class="landing-beams" aria-hidden="true"><span></span><span></span></div>
+      <div class="landing-container landing-hero-grid">
+        <div class="landing-hero-copy">
+          <p class="landing-eyebrow"><span class="landing-signal-dot" aria-hidden="true"></span> RISET SAHAM IDX &amp; KEUANGAN PRIBADI</p>
+          <div class="landing-wordmark" aria-hidden="true">
+            <svg viewBox="0 0 1200 208" focusable="false"><defs><pattern id="acHeroDots" x="0" y="0" width="5" height="5" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.35" fill="currentColor"/></pattern><mask id="acHeroText"><text x="600" y="163" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="190" font-weight="650" letter-spacing="-12" fill="white">Auto-Cuan</text></mask></defs><rect width="1200" height="208" fill="url(#acHeroDots)" mask="url(#acHeroText)"/></svg>
+          </div>
+          <h1 id="landingTitle">Riset lebih jernih.<br>Rencana lebih terarah.</h1>
+          <p>Satukan radar saham, analisis, portofolio, dan anggaran pribadi dalam satu ruang kerja. Dari membaca peluang sampai mencatat keputusan.</p>
+          <div class="landing-mobile-wrap"><button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span><span aria-hidden="true">&#8599;</span></button><a href="#landingPreview" class="landing-btn">Jelajahi workspace <span aria-hidden="true">&#8595;</span></a></div>
+          <p class="landing-hero-note">Alat bantu analisis, bukan rekomendasi beli/jual. Keputusan tetap milik Anda.</p>
         </div>
-    </nav>
-    <main>
-        <section class="landing-hero">
-            <div class="landing-container landing-hero-grid grid grid-cols-2 gap-8 items-center">
-                <div class="landing-hero-copy">
-                    <div class="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300 mb-5">IDX Stock Radar</div>
-                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.02] tracking-tight landing-gradient-text">Pantau saham IDX dengan radar yang lebih rapi.</h1>
-                    <p class="mt-5 text-base sm:text-lg text-gray-400 max-w-2xl leading-relaxed">Auto-Cuan membantu merapikan proses analisis saham: Day Trade Radar, Swing Konglo, Swing Non-Konglo, Sector Hot, Chart, dan Portofolio Manual — tetap dengan konfirmasi manual.</p>
-                    <p class="mt-4 text-sm text-amber-200/90 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3">Bukan rekomendasi beli/jual. Data bisa terlambat. Konfirmasi manual wajib.</p>
-                    <div class="mt-7 flex landing-mobile-wrap gap-3"><button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span></button><a href="#landingPreview" class="landing-btn">Lihat Preview</a><button type="button" onclick="openLoginModal()" class="landing-btn">Login</button></div>
-                    <div class="landing-trust-rail" aria-label="Prinsip operasional Auto-Cuan">
-                        <span class="landing-trust-item">Fokus pasar IDX</span>
-                        <span class="landing-trust-item">Keputusan & eksekusi manual</span>
-                        <span class="landing-trust-item">Freshness / stale warning</span>
-                    </div>
-                </div>
-                <div class="landing-card p-4 sm:p-5" aria-label="Showcase Auto-Cuan Radar">
-                    <div class="flex items-center justify-between mb-4"><div><p class="text-xs text-emerald-300 font-black uppercase tracking-wide">Ringkasan Radar</p><h2 class="text-lg font-black text-white">Auto-Cuan Radar</h2></div><span id="landingShowcaseChip" class="landing-chip" aria-live="polite">Memuat...</span></div>
-                    <div id="landingShowcaseBody" class="mock-grid">
-                        <!-- Rendered by loadLandingShowcase() — see script below -->
-                        <div class="mock-card"><div class="flex justify-between text-xs text-gray-500"><span>Sektor</span><span class="text-emerald-300">--</span></div><div class="mt-2 text-sm font-black text-white">Memuat data...</div></div>
-                        <div class="mock-card"><p class="text-xs text-gray-500">Sinyal DT</p><div class="mt-3 text-xs text-gray-500">--</div></div>
-                        <div class="mock-card"><p class="text-xs text-gray-500 mb-3">Radar</p><div class="space-y-2 text-xs text-gray-500">--</div></div>
-                        <div class="mock-card"><p class="text-xs text-gray-500 mb-2">Entry / TP / SL</p><div class="text-xs text-gray-500">--</div></div>
-                    </div>
-                    <div id="landingShowcaseSectors" class="mt-3 grid grid-cols-4 gap-2 text-[11px]"><div class="heat-cell">--</div><div class="heat-cell">--</div><div class="heat-cell">--</div><div class="heat-cell">--</div></div>
-                </div>
-            </div>
-        </section>
-        <section id="landingFeatures" class="landing-section"><div class="landing-container"><div class="max-w-2xl mb-8"><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Fitur</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Satu tempat untuk radar, chart, dan catatan posisi.</h2></div><div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div class="feature-card"><div class="feature-icon">DT</div><h3 class="mt-4 text-white font-black">Day Trade Radar</h3><p class="mt-2 text-sm text-gray-400">Pantau peluang jangka pendek dengan entry, target, stop loss, dan risk/reward yang lebih jelas.</p></div>
-            <div class="feature-card"><div class="feature-icon">SK</div><h3 class="mt-4 text-white font-black">Swing Konglo</h3><p class="mt-2 text-sm text-gray-400">Pantau saham grup konglomerasi dengan konteks trend, volume, dan risk label.</p></div>
-            <div class="feature-card"><div class="feature-icon">SN</div><h3 class="mt-4 text-white font-black">Swing Non-Konglo</h3><p class="mt-2 text-sm text-gray-400">Cari watchlist swing di luar grup besar dengan filter kualitas dan keamanan publik.</p></div>
-            <div class="feature-card"><div class="feature-icon">SH</div><h3 class="mt-4 text-white font-black">Sector Hot</h3><p class="mt-2 text-sm text-gray-400">Lihat sektor/grup yang sedang aktif, lengkap dengan peringatan freshness bila data lama.</p></div>
-            <div class="feature-card"><div class="feature-icon">CH</div><h3 class="mt-4 text-white font-black">Chart</h3><p class="mt-2 text-sm text-gray-400">Buka chart saham, candle, MA, RSI, volume, dan konteks teknikal dalam satu halaman.</p></div>
-            <div class="feature-card"><div class="feature-icon">PF</div><h3 class="mt-4 text-white font-black">Portofolio Manual</h3><p class="mt-2 text-sm text-gray-400">Catat posisi manual dan pantau P/L tanpa menghubungkan akun sekuritas.</p></div>
-        </div></div></section>
-        <section id="landingSafety" class="landing-section bg-slate-950/25"><div class="landing-container grid lg:grid-cols-2 gap-5 items-start"><div><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Safety</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Auto-Cuan dibuat untuk membantu membaca data, bukan menggantikan keputusan Anda.</h2></div><div class="landing-card p-5 sm:p-6 space-y-3 text-sm text-gray-300"><p>Watchlist/Pantau bukan BUY agresif.</p><p>Hindari / AVOID / SELL / LOW_TP / Very High Risk dipisahkan dari daftar aksi utama.</p><p>Pengguna wajib validasi manual, membaca freshness, dan mempertimbangkan risiko sendiri.</p><p>Auto-Cuan tidak mengeksekusi transaksi dan tidak menyimpan dana pengguna.</p></div></div></section>
-        <section id="landingSchedule" class="landing-section"><div class="landing-container"><div class="max-w-2xl mb-8"><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Update Schedule</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Jadwal data yang transparan dan tetap fleksibel.</h2><p class="mt-3 text-sm text-gray-400">Jadwal dapat bergeser mengikuti ketersediaan data, kondisi market, dan proses sistem.</p></div><div class="grid md:grid-cols-3 gap-4"><div class="feature-card"><h3 class="font-black text-white">Day Trade Screener</h3><p class="mt-2 text-sm text-gray-400">Refresh setiap 15 menit saat jam bursa.</p></div><div class="feature-card"><h3 class="font-black text-white">Swing Konglo</h3><p class="mt-2 text-sm text-gray-400">Biasanya tersedia malam hari setelah market close, sekitar 19:10 WIB.</p></div><div class="feature-card"><h3 class="font-black text-white">Swing Non-Konglo</h3><p class="mt-2 text-sm text-gray-400">Biasanya tersedia malam hari setelah market close, sekitar 19:30 WIB.</p></div></div></div></section>
-        <section id="landingRules" class="landing-section bg-slate-950/25"><div class="landing-container grid lg:grid-cols-2 gap-5 items-start"><div><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Aturan Pakai / Risk Notice</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Gunakan sebagai alat bantu analisis, bukan autopilot keputusan.</h2></div><div class="landing-card p-5 sm:p-6 space-y-3 text-sm text-gray-300"><p>Hasil screener bukan rekomendasi beli/jual otomatis.</p><p>Watchlist / Radar / Pantau bukan aggressive BUY.</p><p>Semua kandidat wajib konfirmasi manual.</p><p>Risiko market, false breakout, slippage, dan likuiditas tetap ada.</p><p>Keputusan akhir ada di tangan pengguna.</p></div></div></section>
-        <section class="landing-section"><div class="landing-container"><div class="max-w-3xl mb-8"><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Cara Konfirmasi Manual</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Checklist sebelum mengambil keputusan di sekuritas pilihan Anda.</h2><p class="mt-3 text-sm text-gray-400">Bot membantu menyaring kandidat, tetapi keputusan entry tetap ada di tangan masing-masing trader/investor.</p></div><div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"><div class="feature-card"><div class="step-num">1</div><p class="mt-4 text-sm text-gray-300">Buka broker/charting platform seperti Stockbit, Ajaib, KB Valbury, Semesta Indovest, atau platform lain.</p></div><div class="feature-card"><div class="step-num">2</div><p class="mt-4 text-sm text-gray-300">Cari ticker yang muncul di Auto-Cuan, buka chart, dan cek area harga.</p></div><div class="feature-card"><div class="step-num">3</div><p class="mt-4 text-sm text-gray-300">Bandingkan dengan entry, stop loss, target, orderbook / bid-offer, dan running trade.</p></div><div class="feature-card"><div class="step-num">4</div><p class="mt-4 text-sm text-gray-300">Perhatikan volume, momentum, likuiditas, lalu ambil keputusan manual sesuai profil risiko.</p></div></div></div></section>
-        <section id="landingHow" class="landing-section"><div class="landing-container"><div class="max-w-2xl mb-8"><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Cara Kerja</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Alur sederhana sebelum mengambil keputusan manual.</h2></div><div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"><div class="feature-card"><div class="step-num">1</div><h3 class="mt-4 font-black text-white">Pilih mode analisis</h3></div><div class="feature-card"><div class="step-num">2</div><h3 class="mt-4 font-black text-white">Cek entry, TP, SL, RR, risk label</h3></div><div class="feature-card"><div class="step-num">3</div><h3 class="mt-4 font-black text-white">Periksa freshness dan catatan risiko</h3></div><div class="feature-card"><div class="step-num">4</div><h3 class="mt-4 font-black text-white">Ambil keputusan manual di sekuritas pilihan Anda</h3></div></div></div></section>
-        <section id="landingPreview" class="landing-section bg-slate-950/25"><div class="landing-container"><div class="max-w-2xl mb-8"><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Preview</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Visual statis, bukan klaim hasil trading.</h2></div><div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"><div class="feature-card"><h3 class="font-black text-white">Dashboard Preview</h3><p class="mt-2 text-sm text-gray-400">Ringkasan radar dan watchlist.</p></div><div class="feature-card"><h3 class="font-black text-white">Telegram Signal Preview</h3><p class="mt-2 text-sm text-gray-400">AUTO-CUAN WATCHLIST, Entry, TP, SL, RR, dan disclaimer.</p></div><div class="feature-card"><h3 class="font-black text-white">Chart Preview</h3><p class="mt-2 text-sm text-gray-400">Candle, MA, RSI, volume.</p></div><div class="feature-card"><h3 class="font-black text-white">Portfolio Preview</h3><p class="mt-2 text-sm text-gray-400">P/L manual tanpa koneksi sekuritas.</p></div></div></div></section>
-        <section class="landing-section"><div class="landing-container"><div class="max-w-2xl mb-8"><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">FAQ</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Pertanyaan umum.</h2></div><div class="grid md:grid-cols-2 gap-4"><div class="faq-item"><h3 class="font-black text-white">Apakah ini rekomendasi beli/jual?</h3><p class="mt-2 text-sm text-gray-400">Tidak. Ini alat bantu analisis.</p></div><div class="faq-item"><h3 class="font-black text-white">Apakah Auto-Cuan menjamin profit?</h3><p class="mt-2 text-sm text-gray-400">Tidak. Pasar saham berisiko.</p></div><div class="faq-item"><h3 class="font-black text-white">Apakah Auto-Cuan pegang dana?</h3><p class="mt-2 text-sm text-gray-400">Tidak. Transaksi tetap di sekuritas masing-masing.</p></div><div class="faq-item"><h3 class="font-black text-white">Apakah data bisa terlambat?</h3><p class="mt-2 text-sm text-gray-400">Ya, sistem menampilkan freshness/stale warning bila terdeteksi.</p></div><div class="faq-item"><h3 class="font-black text-white">Apakah bisa dipakai di HP?</h3><p class="mt-2 text-sm text-gray-400">Ya, dashboard dibuat mobile responsive.</p></div></div></div></section>
-    </main>
-    <footer class="border-t border-slate-800/80"><div class="landing-container py-8 flex flex-col md:flex-row gap-4 md:items-center md:justify-between"><div><h2 class="font-black text-white">Auto-Cuan</h2><p class="text-sm text-gray-500">IDX Stock Radar</p></div><div class="flex flex-wrap gap-2 text-xs text-gray-500"><span>Bukan penasihat keuangan</span><span>•</span><span>Bukan rekomendasi beli/jual</span><span>•</span><span>Data bisa terlambat</span><span>•</span><span>Gunakan sebagai alat bantu analisis</span></div><button type="button" onclick="landingPrimaryAction()" class="landing-link text-left"><span class="landing-cta-label">Masuk Dashboard</span> →</button></div></footer>
+      </div>
+      <div class="landing-hero-index" aria-hidden="true"><span>01 / RISET. RENCANA. EVALUASI.</span><span>SCROLL UNTUK JELAJAHI &#8595;</span></div>
+    </section>
+    <section id="landingPreview" class="landing-section landing-preview-section" aria-labelledby="landingPreviewTitle">
+      <div class="landing-container">
+        <div class="landing-section-heading"><div><p class="landing-eyebrow">WORKSPACE PREVIEW</p><h2 id="landingPreviewTitle">Konteks dulu.<br>Keputusan kemudian.</h2></div><p>Ringkasan di bawah berasal dari snapshot yang tersedia. Waktu dan kelengkapan data perlu diperiksa sebelum digunakan.</p></div>
+        <div class="landing-card landing-radar-window" aria-label="Showcase Auto-Cuan Radar">
+          <div class="landing-window-bar"><span class="landing-window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>Auto-Cuan / Ringkasan pasar</span><span id="landingShowcaseChip" class="landing-chip" aria-live="polite">Memuat...</span><button type="button" class="landing-refresh" onclick="_landingShowcaseLoaded=false;loadLandingShowcase()" aria-label="Perbarui ringkasan pasar">Perbarui &#8635;</button></div>
+          <div id="landingShowcaseBody" class="mock-grid" aria-busy="true">
+            <div class="landing-data-empty"><strong>Menyiapkan ringkasan pasar</strong><p>Angka akan tampil setelah sumber data selesai dimuat.</p><span class="landing-loading-line" aria-hidden="true"></span></div>
+          </div>
+          <div id="landingShowcaseSectors" class="landing-sector-strip"></div>
+          <p class="landing-window-note">Snapshot bukan harga real-time. Nilai yang belum tersedia tidak dianggap nol.</p>
+        </div>
+      </div>
+    </section>
+    <section id="landingFeatures" class="landing-section" aria-labelledby="landingFeaturesTitle">
+      <div class="landing-container">
+        <div class="landing-section-heading"><div><p class="landing-eyebrow">SATU RUANG KERJA</p><h2 id="landingFeaturesTitle">Bukan sekadar sinyal.<br>Seluruh proses Anda.</h2></div><p>Alat yang saling melengkapi, dengan konteks risiko dan catatan pribadi tetap terlihat.</p></div>
+        <div class="landing-feature-grid">
+          <article class="feature-card"><div class="landing-feature-top"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="m12 12 7-7"/></svg></span><span class="landing-card-index">01</span></div><h3>Radar &amp; screener</h3><p>Pilah kandidat day trade dan swing. Bandingkan entry, target, stop loss, serta konteks risikonya.</p></article>
+          <article class="feature-card"><div class="landing-feature-top"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16M7 4v12M17 7v9"/><rect x="5" y="7" width="4" height="6" rx="1"/><rect x="15" y="10" width="4" height="3" rx="1"/></svg></span><span class="landing-card-index">02</span></div><h3>Analisis &amp; chart</h3><p>Baca harga, volume, indikator, dan konteks pasar. Periksa hasil analisis sebelum membuat rencana.</p></article>
+          <article class="feature-card"><div class="landing-feature-top"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="15" width="7" height="5" rx="1"/><path d="m15 19 2-2 2 2 2-4"/></svg></span><span class="landing-card-index">03</span></div><h3>Sektor &amp; arus pasar</h3><p>Lihat sektor aktif dan pembacaan broker. Bedakan temuan terbaru dari data yang perlu diperbarui.</p></article>
+          <article class="feature-card"><div class="landing-feature-top"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="15" rx="2"/><path d="M8 6V3h8v3M3 11h18M10 11v3h4v-3"/></svg></span><span class="landing-card-index">04</span></div><h3>Portofolio &amp; jurnal</h3><p>Rencanakan ukuran posisi, catat transaksi, dan evaluasi P/L. Dana serta eksekusi tetap di sekuritas Anda.</p></article>
+          <article class="feature-card"><div class="landing-feature-top"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18M9 15h12M15 9v12"/></svg></span><span class="landing-card-index">05</span></div><h3>Lembar keuangan</h3><p>Susun anggaran dalam sel dan rumus. Hubungkan konteks portofolio tanpa menghitung nilai aset sebagai pemasukan.</p></article>
+          <article class="feature-card"><div class="landing-feature-top"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5L3 10l6-1z"/></svg></span><span class="landing-card-index">06</span></div><h3>Watchlist pribadi</h3><p>Simpan saham yang sedang Anda pantau. Kembali ke konteks yang sama saat melanjutkan riset berikutnya.</p></article>
+        </div>
+      </div>
+    </section>
+    <section id="landingHow" class="landing-section" aria-labelledby="landingHowTitle"><div class="landing-container">
+      <div class="landing-section-heading"><div><p class="landing-eyebrow">CARA KERJA</p><h2 id="landingHowTitle">Dari data ke rencana,<br>tanpa kehilangan konteks.</h2></div></div>
+      <div class="landing-steps">
+        <article class="feature-card"><div class="step-num">01</div><h3>Temukan kandidat</h3><p>Mulai dari radar, sektor, atau watchlist. Pilih saham yang layak diteliti lebih lanjut.</p></article>
+        <article class="feature-card"><div class="step-num">02</div><h3>Periksa konteks</h3><p>Bandingkan chart, volume, likuiditas, waktu data, dan catatan risiko.</p></article>
+        <article class="feature-card"><div class="step-num">03</div><h3>Susun rencana</h3><p>Tentukan ukuran posisi, batas risiko, serta alokasi modal yang sesuai kebutuhan Anda.</p></article>
+        <article class="feature-card"><div class="step-num">04</div><h3>Catat &amp; evaluasi</h3><p>Eksekusi secara manual di sekuritas Anda. Gunakan jurnal untuk meninjau keputusan.</p></article>
+      </div>
+    </div></section>
+    <section id="landingSafety" class="landing-section" aria-labelledby="landingSafetyTitle"><div class="landing-container landing-data-principles">
+      <div><p class="landing-eyebrow">DATA DENGAN KONTEKS</p><h2 id="landingSafetyTitle">Kejelasan lebih penting<br>daripada janji hasil.</h2><p>Auto-Cuan tidak menjamin profit, tidak mengeksekusi transaksi, dan tidak menyimpan dana pengguna.</p></div>
+      <div class="landing-principle-list"><article id="landingSchedule"><span>01</span><div><h3>Periksa waktu pembaruan</h3><p>Snapshot dapat terlambat atau tidak lengkap. Pembaruan mengikuti proses sistem dan ketersediaan sumber data.</p></div></article><article id="landingRules"><span>02</span><div><h3>Risiko tetap nyata</h3><p>Watchlist bukan perintah beli. Validasi harga, volume, likuiditas, stop loss, serta risiko pasar secara mandiri.</p></div></article><article><span>03</span><div><h3>Anda memegang keputusan</h3><p>Hasil analisis adalah bahan pertimbangan, bukan nasihat investasi personal atau pengganti pemeriksaan Anda.</p></div></article></div>
+    </div></section>
+    <section class="landing-section" aria-labelledby="landingFaqTitle"><div class="landing-container"><div class="landing-section-heading"><div><p class="landing-eyebrow">PERTANYAAN UMUM</p><h2 id="landingFaqTitle">Sebelum Anda mulai.</h2></div></div><div class="landing-faq-grid">
+      <details class="faq-item"><summary>Apakah Auto-Cuan menjamin profit?</summary><p>Tidak. Pasar saham berisiko dan hasil analisis bisa keliru. Keputusan beli/jual tetap perlu konfirmasi manual.</p></details>
+      <details class="faq-item"><summary>Apakah akun sekuritas harus dihubungkan?</summary><p>Tidak. Portofolio dan jurnal dicatat secara manual. Auto-Cuan tidak menyimpan dana atau mengeksekusi transaksi.</p></details>
+      <details class="faq-item"><summary>Mengapa ada nilai yang belum tersedia?</summary><p>Sumber data mungkin belum lengkap, terlambat, atau sedang gagal dimuat. Status tersebut dibedakan dari angka nol agar tidak menyesatkan.</p></details>
+      <details class="faq-item"><summary>Apakah bisa digunakan dari ponsel?</summary><p>Ya. Navigasi dan formulir menyesuaikan layar. Lembar keuangan memiliki area gulir tersendiri agar kolom tetap terbaca.</p></details>
+    </div></div></section>
+    <section class="landing-section landing-closing"><div class="landing-container"><p class="landing-eyebrow">RUANG UNTUK KEPUTUSAN YANG LEBIH SADAR</p><h2>Mulai dari rencana yang jelas.</h2><button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span><span aria-hidden="true">&#8599;</span></button></div></section>
+  </main>
+  <footer><div class="landing-container landing-footer-inner"><div><strong>Auto-Cuan</strong><p>IDX Workspace</p></div><p>Alat bantu analisis. Bukan rekomendasi beli/jual.<br>Data dapat terlambat. Keputusan &amp; eksekusi tetap manual.</p><a href="#landingSafety" class="landing-link">Tentang data &amp; risiko &#8599;</a></div></footer>
 </section>
 
 <!-- AUTH CHOICE MODAL -->
@@ -1808,7 +1821,7 @@
     <p class="ms-portfolio-note">Ringkasan mengikuti sumber data Portofolio. Nilai rencana dan P/L bukan arus kas bulan ini; tidak ditambahkan atau dikurangkan otomatis dari anggaran.</p>
   </section>
   <section class="ms-workbook" aria-label="Lembar kerja anggaran">
-    <div class="ms-workbook-heading"><div><h2>Anggaran bulanan</h2><p>Edit sel langsung, tempel dari spreadsheet, dan tambahkan pos sesuai kebutuhan.</p></div><span id="mmSheetSaveState" class="ms-save-state" role="status" aria-live="polite">Belum dimuat</span></div>
+    <div class="ms-workbook-heading"><div><h2>Anggaran bulanan</h2><p>Sel, rentang, rumus, dan anggaran Anda. Ringkasan tetap menghitung seluruh baris.</p></div><div class="ms-heading-actions"><button type="button" id="mmExpandSheet" class="ms-button" aria-pressed="false">Fokus lembar</button><span id="mmSheetSaveState" class="ms-save-state" role="status" aria-live="polite">Belum dimuat</span></div></div>
     <div class="ms-toolbar" role="toolbar" aria-label="Alat lembar kerja">
       <button type="button" class="ms-button" id="mmAddRow" disabled><span aria-hidden="true">+</span> Tambah baris</button>
       <div class="ms-history"><button type="button" class="ms-icon-button" id="mmUndo" title="Urungkan (Ctrl+Z)" aria-label="Urungkan perubahan" disabled>&#8630;</button><button type="button" class="ms-icon-button" id="mmRedo" title="Ulangi (Ctrl+Shift+Z)" aria-label="Ulangi perubahan" disabled>&#8631;</button></div>
@@ -1818,16 +1831,25 @@
       <button type="button" class="ms-button ms-button-quiet" id="mmReload">Muat ulang</button>
       <button type="button" class="ms-button ms-button-primary" id="mmBtnSaveCashflow" disabled>Simpan</button>
     </div>
-    <div class="ms-formula-bar"><span class="ms-cell-address" id="mmCellAddress" aria-label="Sel aktif">A1</span><span id="mmSheetHint">Tab / Enter untuk berpindah sel. Nominal dalam rupiah bulat. Ctrl+S untuk menyimpan.</span></div>
+    <div class="ms-edit-toolbar" role="toolbar" aria-label="Edit rentang">
+      <button type="button" id="mmCopyCells" class="ms-button ms-button-quiet" disabled>Salin</button>
+      <button type="button" id="mmClearCells" class="ms-button ms-button-quiet" disabled>Kosongkan sel</button>
+      <button type="button" id="mmFillDown" class="ms-button ms-button-quiet" title="Isi ke bawah (Ctrl+D)" disabled>Isi ke bawah</button>
+      <button type="button" id="mmInsertRow" class="ms-button ms-button-quiet" disabled>Sisipkan baris</button>
+      <button type="button" id="mmDeleteRows" class="ms-button ms-button-quiet" disabled>Hapus baris</button>
+
+    </div>
+    <div class="ms-formula-bar"><input class="ms-cell-address" id="mmCellAddress" value="A1" aria-label="Alamat atau rentang sel" title="Ketik D1 atau D1:D4, lalu Enter" autocomplete="off" spellcheck="false"><span class="ms-fx" aria-hidden="true">fx</span><input id="mmFormulaInput" type="text" aria-label="Nilai atau rumus sel aktif" placeholder="Pilih sel. Nominal mendukung =SUM(D1:D3) atau =ROUND(D1*0.1)" autocomplete="off" spellcheck="false" maxlength="500" disabled></div>
+    <details class="ms-help"><summary>Pintasan &amp; rumus</summary><p id="mmSheetHint">Shift + klik atau Shift + panah untuk memilih rentang. Ctrl/Cmd + C untuk salin, + V untuk tempel, + D untuk isi ke bawah, + S untuk simpan. F2 membuka editor sel. Klik judul kolom untuk memilih; seret batasnya untuk mengatur lebar.</p><p>Kolom D mendukung +, -, *, /, SUM, AVERAGE, MIN, MAX, COUNT, dan ROUND. Gunakan angka tanpa pemisah ribuan di dalam rumus. Hasil harus rupiah bulat. Nomor baris tetap sama saat disaring atau diurutkan. Rumus disimpan bersama lembar; bukan mesin Excel lengkap.</p></details>
     <div id="mmSheetNotice" class="ms-notice" role="status" aria-live="polite">Memuat lembar kerja&hellip;</div>
     <div id="mmSheetViewport" class="ms-grid-viewport" tabindex="0" role="region" aria-label="Tabel anggaran, dapat digulir" hidden>
-      <table id="mmCashflowSpreadsheetTable" class="ms-grid" aria-label="Anggaran bulanan">
+      <table id="mmCashflowSpreadsheetTable" class="ms-grid" role="grid" aria-multiselectable="true" aria-label="Anggaran bulanan">
         <colgroup><col style="width:44px"><col style="width:148px"><col style="width:146px"><col style="width:248px"><col style="width:160px"><col style="width:250px"><col style="width:44px"></colgroup>
         <thead><tr><th scope="col" class="ms-row-number">#</th><th scope="col"><span>A</span> Jenis</th><th scope="col"><span>B</span> Kategori</th><th scope="col"><span>C</span> Nama pos</th><th scope="col" class="ms-number"><span>D</span> Nominal (Rp)</th><th scope="col"><span>E</span> Catatan</th><th scope="col"><span class="sr-only">Tindakan</span></th></tr></thead>
         <tbody id="mmCashflowSpreadsheetBody"></tbody>
       </table>
     </div>
-    <div class="ms-grid-status"><span id="mmSheetRowCount">Belum ada data dimuat</span><span>Ringkasan menghitung semua baris, termasuk yang disaring.</span></div>
+    <div class="ms-grid-status"><span id="mmSheetRowCount">Belum ada data dimuat</span><span id="mmSelectionStats" aria-live="polite">Pilih sel untuk mengedit</span></div>
     <label class="ms-month-notes" for="mmCashflowNotes">Catatan bulan ini <textarea id="mmCashflowNotes" rows="2" maxlength="500" placeholder="Tujuan, pengingat, atau konteks anggaran (opsional)" disabled></textarea></label>
   </section>
 </section>
@@ -3249,7 +3271,7 @@ function isAutocuanLoggedIn() {
 // ===== LANDING SHOWCASE — fetch real review data snapshot =====
 // Loads a pre-built snapshot from /api/sector-hot?action=landing-snapshot (public, no auth).
 // On success, replaces the placeholder mock-card content with real sector + DT signal data.
-// On any failure (network, empty DB, etc.) — silently keeps the placeholder intact.
+// A failed or incomplete source is rendered honestly, with an actionable retry.
 var _landingShowcaseLoaded = false;
 var _landingShowcaseRequest = null;
 function loadLandingShowcase() {
@@ -3280,85 +3302,56 @@ function loadLandingShowcase() {
         if (!data || !data.success || !data.snapshot) throw new Error('Snapshot invalid');
 
         var snap = data.snapshot;
-        var sectors = Array.isArray(snap.sectors) ? snap.sectors : [];
-        var signals = Array.isArray(snap.dt_signals) ? snap.dt_signals : [];
-
-        // ── Chip: show freshness ──
-        if (chip) {
-            chip.textContent = data.stale ? 'Data tersimpan / terlambat' : 'Snapshot tersedia';
-            chip.className = 'landing-chip' + (data.stale ? '' : ' bg-emerald-500/10 border-emerald-500/30 text-emerald-300');
+        var sectors = Array.isArray(snap.sectors) ? snap.sectors.filter(function (s) { return s && typeof s === 'object'; }) : [];
+        var signals = Array.isArray(snap.dt_signals) ? snap.dt_signals.filter(function (s) { return s && typeof s === 'object'; }) : [];
+        function finite(value) {
+            if (typeof value !== 'number' && typeof value !== 'string' || typeof value === 'string' && !value.trim()) return null;
+            var number = Number(value); return Number.isFinite(number) && Math.abs(number) <= Number.MAX_SAFE_INTEGER ? number : null;
         }
-
-        // ── Body: 4 mock-card ──
-        var html = '';
-
-        // Card 1: top sector
-        var topSector = sectors[0];
-        var secName = topSector ? escapeHtml(topSector.name || topSector.code || '--') : '--';
-        var secChg = topSector && topSector.avg_change_pct != null
-            ? (topSector.avg_change_pct >= 0 ? '+' : '') + topSector.avg_change_pct.toFixed(2) + '%'
-            : '--';
-        var secChgColor = topSector && topSector.avg_change_pct != null
-            ? (topSector.avg_change_pct >= 0 ? 'text-emerald-300' : 'text-red-300') : 'text-gray-500';
-        html += '<div class="mock-card"><div class="flex justify-between text-xs text-gray-500"><span>Sektor Aktif</span><span class="' + secChgColor + '">' + secChg + '</span></div>'
-            + '<div class="mt-2 text-sm font-black text-white">' + secName + '</div>';
-        // Score bar
-        if (topSector && topSector.score != null) {
-            var scoreW = Math.min(100, Math.round(topSector.score * 10)) + '%';
-            html += '<div class="mt-3 space-y-1.5"><div class="mock-bar" style="width:' + scoreW + '"></div><div class="mock-bar opacity-50" style="width:' + Math.round(parseInt(scoreW) * 0.7) + '%"></div></div>';
+        function text(id, value) { document.getElementById(id).textContent = value; }
+        function number(id, value, options) {
+            var el = document.getElementById(id), n = finite(value); options = options || {};
+            if (window.AutoCuanNumeric) window.AutoCuanNumeric.set(el,n,options);
+            else el.textContent = n == null ? (options.empty || 'Belum tersedia') : (options.prefix || '') + n.toLocaleString('id-ID',{minimumFractionDigits:options.digits || 0,maximumFractionDigits:options.digits || 0}) + (options.suffix || '');
         }
-        html += '</div>';
-
-        // Card 2: first DT signal type
-        var sig0 = signals[0];
-        var sig0Ticker = sig0 ? escapeHtml(sig0.ticker || '--') : '--';
-        var sig0Type = sig0 ? escapeHtml(sig0.signal_type || 'DT') : 'DT';
-        var sig0RR = sig0 && sig0.rr != null ? 'RR ' + Number(sig0.rr).toFixed(1) : '';
-        html += '<div class="mock-card"><p class="text-xs text-gray-500">Sinyal ' + sig0Type + '</p>'
-            + '<div class="mt-3 inline-flex rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-300">' + sig0Ticker + '</div>'
-            + (sig0RR ? '<div class="mt-2 text-xs text-gray-500">' + sig0RR + '</div>' : '')
-            + '<div class="mt-3 space-y-2"><div class="mock-bar w-5/6"></div><div class="mock-bar w-2/3 opacity-60"></div></div>'
-            + '</div>';
-
-        // Card 3: top 3 DT tickers (radar style)
-        var radarHtml = '<div class="space-y-2 text-xs">';
-        // Labels come from the snapshot, never from the array position.
-        for (var i = 0; i < Math.min(3, signals.length); i++) {
-            radarHtml += '<div class="flex justify-between"><b class="text-white">' + escapeHtml(signals[i].ticker || '--') + '</b>'
-                + '<span class="text-gray-400">' + escapeHtml(signals[i].signal_type || 'Pantau') + '</span></div>';
+        chip.textContent = data.stale ? 'Data tersimpan / terlambat' : sectors.length || signals.length ? 'Snapshot tersedia' : 'Belum ada kandidat';
+        chip.className = 'landing-chip';
+        var stamp = new Date(data.updated_at || snap.generated_at || '');
+        chip.title = Number.isFinite(stamp.getTime()) ? 'Waktu snapshot: ' + stamp.toLocaleString('id-ID',{timeZone:'Asia/Jakarta'}) + ' WIB. Bukan harga real-time.' : 'Waktu snapshot belum disertakan. Bukan harga real-time.';
+        // Stable numeric nodes survive manual refreshes so NumberFlow can update
+        // without replacing the live summary. Source strings never become HTML.
+        if (!document.getElementById('landingSectorValue')) {
+            body.innerHTML = '<div class="mock-card"><h3>Sektor aktif</h3><strong id="landingSectorValue" class="landing-market-value"></strong><p id="landingSectorName"></p><p>Perubahan rata-rata sektor</p></div>'
+              + '<div class="mock-card"><h3>Kandidat pertama</h3><strong id="landingSignalTicker" class="landing-market-value"></strong><p id="landingSignalType"></p><p id="landingSignalRr"></p></div>'
+              + '<div class="mock-card"><h3>Radar saat ini</h3><div id="landingRadarList"></div></div>'
+              + '<div class="mock-card"><h3>Rencana harga</h3><div class="landing-price-row"><span>Entry</span><strong id="landingEntry"></strong></div><div class="landing-price-row"><span>Target</span><strong id="landingTarget"></strong></div><div class="landing-price-row"><span>Stop loss</span><strong id="landingStop"></strong></div><p id="landingPriceNote"></p></div>';
         }
-        // Fill blanks if < 3 signals
-        for (var j = signals.length; j < 3; j++) {
-            radarHtml += '<div class="flex justify-between"><b class="text-gray-600">--</b><span class="text-gray-600">--</span></div>';
+        var top = sectors[0], change = finite(top && top.avg_change_pct), signal = signals[0];
+        number('landingSectorValue',change,{digits:2,prefix:change>0?'+':'',suffix:'%',empty:'Belum tersedia'});
+        document.getElementById('landingSectorValue').classList.toggle('landing-small-value',change===null);
+        document.getElementById('landingSectorValue').classList.toggle('landing-market-positive',change!==null&&change>0);
+        document.getElementById('landingSectorValue').classList.toggle('landing-market-negative',change!==null&&change<0);
+        text('landingSectorName',top ? String(top.name || top.code || 'Nama sektor belum tersedia') : 'Belum ada sektor pada snapshot ini');
+        text('landingSignalTicker',signal ? String(signal.ticker || 'Ticker belum tersedia') : 'Belum ada');
+        text('landingSignalType',signal ? String(signal.signal_type || 'Status belum disertakan') : 'Snapshot belum memuat sinyal');
+        var rr = finite(signal && signal.rr);
+        text('landingSignalRr',rr===null ? 'Risk/reward belum tersedia' : 'Risk/reward ' + rr.toLocaleString('id-ID',{maximumFractionDigits:2}) + 'x');
+        var radar = document.getElementById('landingRadarList'); radar.replaceChildren();
+        signals.slice(0,3).forEach(function (item) {
+            var line=document.createElement('div');line.className='landing-price-row';
+            var ticker=document.createElement('strong');ticker.textContent=String(item.ticker || 'Ticker belum tersedia');
+            var label=document.createElement('span');label.textContent=String(item.signal_type || 'Status belum disertakan');
+            line.append(ticker,label);radar.appendChild(line);
+        });
+        if (!signals.length) { var emptyRadar=document.createElement('p');emptyRadar.textContent='Belum ada kandidat pada snapshot ini.';radar.appendChild(emptyRadar); }
+        number('landingEntry',signal && signal.entry,{empty:'Belum ada'});
+        number('landingTarget',signal && signal.tp,{empty:'Belum ada'});
+        number('landingStop',signal && signal.sl,{empty:'Belum ada'});
+        text('landingPriceNote','Level dari snapshot, bukan harga langsung.');
+        if (sectorsEl) {
+            sectorsEl.replaceChildren();
+            sectors.slice(0,4).forEach(function (sector) { var el=document.createElement('span');el.className='heat-cell';el.textContent=String(sector.name || sector.code || 'Sektor belum bernama');sectorsEl.appendChild(el); });
         }
-        radarHtml += '</div>';
-        html += '<div class="mock-card"><p class="text-xs text-gray-500 mb-3">Top Radar</p>' + radarHtml + '</div>';
-
-        // Card 4: entry/TP/SL from first signal
-        var entry = sig0 && sig0.entry != null ? Number(sig0.entry).toLocaleString('id-ID') : '--';
-        var tp = sig0 && sig0.tp != null ? Number(sig0.tp).toLocaleString('id-ID') : '--';
-        var sl = sig0 && sig0.sl != null ? Number(sig0.sl).toLocaleString('id-ID') : '--';
-        html += '<div class="mock-card"><p class="text-xs text-gray-500 mb-2">Entry / TP / SL</p>'
-            + '<div class="grid grid-cols-3 gap-2 text-center text-[11px]">'
-            + '<div class="rounded-xl bg-slate-800/70 p-2"><span class="text-gray-500">Entry</span><b class="block text-white">' + entry + '</b></div>'
-            + '<div class="rounded-xl bg-emerald-500/10 p-2"><span class="text-gray-500">TP</span><b class="block text-emerald-300">' + tp + '</b></div>'
-            + '<div class="rounded-xl bg-red-500/10 p-2"><span class="text-gray-500">SL</span><b class="block text-red-300">' + sl + '</b></div>'
-            + '</div></div>';
-
-        if (body) body.innerHTML = html;
-
-        // ── Sectors heat-cells ──
-        var heatColors = ['', 'bg-blue-500/10 border-blue-500/20', 'bg-amber-500/10 border-amber-500/20', 'bg-purple-500/10 border-purple-500/20'];
-        if (sectorsEl && sectors.length > 0) {
-            var cellHtml = '';
-            for (var k = 0; k < 4; k++) {
-                var s = sectors[k];
-                var name = s ? escapeHtml((s.name || s.code || '--').slice(0, 8)) : '--';
-                cellHtml += '<div class="heat-cell ' + (heatColors[k] || '') + '">' + name + '</div>';
-            }
-            sectorsEl.innerHTML = cellHtml;
-        }
-
         _landingShowcaseLoaded = true;
     }).catch(function() {
         chip.textContent = 'Belum tersedia';
@@ -13523,13 +13516,16 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/position-sizing-calculator.js?v=20260906-e1"></script>
 <script src="/signal-gate-transparency.js?v=20260906-e3"></script>
 <script src="/deepscan-runtime.js?v=20260926-v1"></script>
-<script src="/money-sheet-model.js?v=20260929-v1"></script>
-<script src="/money-sheet-runtime.js?v=20260929-v1"></script>
+<script src="/number-flow-runtime.js?v=20260929-v1"></script>
+<script src="/money-sheet-formulas.js?v=20260929-v1"></script>
+<script src="/money-sheet-model.js?v=20260929-v2"></script>
+<script src="/money-sheet-grid.js?v=20260929-v1"></script>
+<script src="/money-sheet-runtime.js?v=20260929-v2"></script>
 <script src="/analisis-saham-runtime.js?v=20260929-workspace-v1"></script>
 <script src="/bandarmologi-runtime.js?v=20260928-spa1"></script>
 <script src="/portfolio-planner-v1.js?v=20260928-spa1"></script>
 <script src="/portfolio-command-center-model.js?v=20260928-spa1"></script>
-<script src="/portfolio-command-center.js?v=20260929-bridge-v1"></script>
+<script src="/portfolio-command-center.js?v=20260929-detail-v2"></script>
 <script src="/portfolio-position-scenarios.js?v=20260928-spa1"></script>
 <script>
 // Kickoff landing showcase load as early as possible (non-blocking, fail-open).
@@ -13546,6 +13542,6 @@ function forceNormalizeTechnicalDOM(root) {
     }
 })();
 </script>
-<script src="/landing-experience.js?v=20260929-v2"></script>
+<script src="/landing-experience.js?v=20260929-v3"></script>
 </body>
 </html>

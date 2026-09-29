@@ -3907,7 +3907,7 @@ html.light .ticker-link:hover {
 #appSidebar .sidebar-brand-text { display:grid; gap:3px; min-width:0; }
 #appSidebar .sidebar-brand-text strong { font-size:14px; font-weight:600; color:var(--color-text-primary); letter-spacing:-.025em; }
 #appSidebar .sidebar-brand-text > span { font-size:10px; color:var(--color-text-secondary); }
-#appSidebar .brand-mark { width:32px !important; height:32px !important; flex:0 0 32px; border-radius:9px; color:var(--color-accent); background:var(--color-bg-elevated); border:1px solid var(--color-border-default); box-shadow:none; }
+#appSidebar .brand-mark { width:32px !important; height:32px !important; flex:0 0 32px; border-radius:9px; color:var(--brand-mark-ink); background:var(--brand-mark-bg) !important; border:1px solid var(--brand-mark-line); box-shadow:none !important; }
 #appSidebar .sidebar-collapse-toggle { display:grid; place-items:center; width:24px; height:30px; flex-shrink:0; padding:0; margin-left:auto; border:0; background:transparent; color:var(--color-text-secondary); }
 #appSidebar > .sidebar-nav { display:block; flex:1 1 0%; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; padding:8px; }
 #appSidebar .sidebar-nav-group { padding-bottom:5px; }
@@ -4485,3 +4485,25 @@ html.light button[onclick*="switchAnalisisSubTab('chart')"] span {
 .ac-gate-card-trigger button {
   transition: none !important;
 }
+
+/* Shared brand contract: the arrow must remain legible in every shell/theme. */
+:root { --brand-mark-bg:#153f34; --brand-mark-ink:#a5f2da; --brand-mark-line:#38695a; }
+html.light { --brand-mark-bg:#e1f5eb; --brand-mark-ink:#07593f; --brand-mark-line:#badbcb; }
+#landingPage .landing-logo, .app-header .brand-mark { display:inline-grid; place-items:center; width:34px; height:34px; border-radius:9px; border:1px solid var(--brand-mark-line); background:var(--brand-mark-bg); color:var(--brand-mark-ink); flex:0 0 34px; }
+#landingPage .landing-logo svg, #appSidebar .brand-mark svg, .app-header .brand-mark svg { color:var(--brand-mark-ink) !important; stroke:currentColor; fill:none; }
+/* Accessible real value + decorative rolling glyphs; never duplicate speech. */
+
+/* The brand mark is not a live-status indicator. */
+#appSidebar .brand-mark::after,.app-header .brand-mark::after { display:none !important; }
+.app-header .brand-mark { background:var(--brand-mark-bg) !important; box-shadow:none !important; }
+
+/* Account controls follow the active theme, including the mobile header. */
+#appMain > .app-header #headerAccountSection { background:transparent !important; border:0 !important; box-shadow:none !important; min-width:0; }
+#appMain > .app-header :is(#headerUserLabel,#logoutBtn) { background:var(--color-bg-surface) !important; color:var(--color-text-primary) !important; border:1px solid var(--color-border-default) !important; box-shadow:none !important; }
+#appMain > .app-header #headerUsername { max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media(max-width:600px) {
+ #appMain > .app-header :is(#headerUserLabel,#logoutBtn) { min-height:44px; }
+ #appMain > .app-header #headerUsername { max-width:70px; }
+ #appMain > .app-header .header-account { min-width:0; }
+}
+@media(max-width:359px) { #appMain > .app-header #headerUsername { max-width:44px; } }

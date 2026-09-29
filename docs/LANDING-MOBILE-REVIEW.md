@@ -58,3 +58,39 @@ implemented, but full third-party NumberFlow digit rolling is not included.
 
 The unchanged money-sheet migration still requires the existing
 user_personal_cashflow table. Back up and test in staging before production.
+
+## Subsequent detail review: source after 2934e42
+
+The owner's video was inspected: centered dotted wordmark, quiet diagonal light
+bands, compact rounded navigation, and a restrained authenticated workspace.
+The implementation adapts that composition to Auto-Cuan, without copying the
+other brand or fabricating market numbers. Both light and dark remain supported.
+
+Replaced the crowded promo rail, clarified product/data copy, made step numbers
+visible, fixed logo contrast in landing/sidebar/header, removed the stray status
+dot, and themed mobile account/logout controls (including long account names).
+The hero uses an SVG dot mask, not a particle canvas. Two transform-only light
+bands pause offscreen, in hidden tabs, on mobile, and with reduced motion.
+
+Landing snapshot refresh keeps numeric nodes stable. Numeric source strings,
+actual zero, absent values, missing levels, malformed responses and text injection
+are checked separately. Unavailable data has explicit copy and retry; it is never
+replaced with invented returns or made-up prices.
+
+This follow-up supersedes the earlier NumberFlow-not-implemented status above:
+`public/number-flow-runtime.js` uses the actual self-hosted NumberFlow 0.6.2
+custom element. The legacy compatibility helper name is not used as evidence of
+library adoption. The official distribution's integrity, adaptations and license
+are recorded under `public/vendor/number-flow-0.6.2/PROVENANCE.json`.
+
+Local evidence: full 566-file registered test suite passed during review; focused
+formula/model tests and the newest browser tests were rerun after refinements.
+Browser runs: 35 worksheet component, 105 landing/auth, 42 detailed grid/NumberFlow
+checks, without uncaught page errors. API/auth are mocked. Full-app navigation
+and isolated fresh/legacy SQL scenarios run in CI; inspect the final SHA's checks.
+
+Some legacy source assertions required alignment with removed presentation nodes:
+responsive navigation no longer uses the conflicting hidden utility; manual-risk
+copy remains in the new hero/footer; removed admin catalog controls are accepted
+only as absent or disabled/hidden. Server capability/security checks are retained.
+No skipped failing assertions, disabled security gates, production SQL or deployment.

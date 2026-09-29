@@ -80,6 +80,23 @@
   } else targets.forEach(function (element) { seen.add(element); });
   function reduceChanged() { if (reduced.matches) { running.forEach(function (a) { a.cancel(); }); running.clear(); } }
   reduced.addEventListener('change', reduceChanged);
+  // Two compositor-only light bands echo the visual reference without a
+  // canvas particle engine. No animation work while the hero/tab is offscreen.
+  var ambient = [], hero = landing.querySelector ? landing.querySelector('.landing-hero') : null, heroVisible = true;
+  function updateAmbient() {
+    var allowed = !reduced.matches && !mobile.matches && doc.visibilityState === 'visible' && heroVisible;
+    ambient.forEach(function(a) { if (allowed) a.play(); else a.pause(); });
+  }
+  if (hero && hero.animate && !reduced.matches && !mobile.matches) {
+    hero.querySelectorAll('.landing-beams span').forEach(function(el,i) {
+      var a=el.animate([{transform:'rotate(-31deg) translateX(-8%)'},{transform:'rotate(-31deg) translateX(8%)'}],{duration:18000+i*4000,direction:'alternate',iterations:Infinity,easing:'ease-in-out'});
+      ambient.push(a);
+    });
+    if ('IntersectionObserver' in root) {
+      var heroObserver=new root.IntersectionObserver(function(entries){heroVisible=entries[0].isIntersecting;updateAmbient();});heroObserver.observe(hero);
+    }
+    doc.addEventListener('visibilitychange',updateAmbient);reduced.addEventListener('change',updateAmbient);mobile.addEventListener('change',updateAmbient);updateAmbient();
+  }
   // Existing compatibility name, not the third-party NumberFlow library. Always
   // display the exact source value immediately; only the cell color may flash.
   var flashes = new WeakMap();

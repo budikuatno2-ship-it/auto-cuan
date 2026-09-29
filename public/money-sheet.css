@@ -13,8 +13,8 @@
 }
 #page-money-management.money-sheet :is(input,select,textarea) { color:var(--ms-ink) !important; background:var(--ms-surface) !important; border-color:var(--ms-line) !important; }
 #page-money-management.money-sheet :is(input,textarea)::placeholder { color:var(--ms-muted) !important; opacity:1; }
-#page-money-management.money-sheet .ms-grid :is(input,select) { background:transparent !important; border:0 !important; border-radius:0 !important; box-shadow:none; }
-#page-money-management.money-sheet .ms-grid :is(input,select):focus { background:var(--ms-raised) !important; box-shadow:none !important; }
+#page-money-management.money-sheet .ms-grid :is(input,select,textarea) { background:transparent !important; border:0 !important; border-radius:0 !important; box-shadow:none; }
+#page-money-management.money-sheet .ms-grid :is(input,select,textarea):focus { background:var(--ms-raised) !important; box-shadow:none !important; }
 .money-sheet [hidden] { display: none !important; }
 .money-sheet button, .money-sheet input, .money-sheet select, .money-sheet textarea { font: inherit; }
 .money-sheet :is(button,input,select,textarea):focus-visible { outline: 2px solid var(--ms-accent); outline-offset: 2px; }
@@ -65,22 +65,22 @@ html.light .ms-month input { color-scheme:light; }
 .ms-search input { padding:7px 0; min-width:0; width:100%; color:var(--ms-ink); background:transparent; border:0; outline-offset:0; font-size:11px; }
 .ms-sort select { background:var(--ms-surface); border:1px solid var(--ms-line); color:var(--ms-muted); border-radius:6px; padding:7px; font-size:11px; max-width:140px; }
 .ms-formula-bar { display:flex; align-items:center; color:var(--ms-muted); border-bottom:1px solid var(--ms-line); font-size:10px; min-height:30px; }
-.ms-cell-address { display:block; padding:6px 14px; width:64px; flex-shrink:0; border-right:1px solid var(--ms-line); text-align:center; color:var(--ms-ink); font-variant-numeric:tabular-nums; }
+.ms-cell-address { display:block; padding:8px 6px; width:100px; min-width:0; flex:0 0 100px; border:0; border-right:1px solid var(--ms-line); border-radius:0; text-align:center; color:var(--ms-ink); font-variant-numeric:tabular-nums; }
 #mmSheetHint { padding:5px 12px; }
 .ms-notice { padding:18px 20px; color:var(--ms-muted); font-size:12px; border-bottom:1px solid var(--ms-line); }
 .ms-notice[data-tone="error"] { color:var(--color-negative); }
 .ms-grid-viewport { overflow:auto; max-height:520px; scrollbar-width:thin; overscroll-behavior:contain; background:var(--ms-surface); }
 #page-money-management #mmCashflowSpreadsheetTable.ms-grid { table-layout:fixed; width:100%; min-width:1060px; border-collapse:separate !important; border-spacing:0; font-variant-numeric:tabular-nums; }
 #page-money-management #mmCashflowSpreadsheetTable.ms-grid th { background:var(--ms-raised) !important; color:var(--ms-muted) !important; position:sticky; top:0; height:36px; padding:0 10px !important; border:0; border-right:1px solid var(--ms-line); border-bottom:1px solid var(--ms-line) !important; font-size:10px !important; font-weight:500 !important; text-transform:none !important; letter-spacing:0 !important; text-align:left; white-space:nowrap; z-index:2; }
-.ms-grid th > span:not(.sr-only) { margin-right:9px; opacity:.65; font-size:9px; }
+.ms-grid th span:not(.sr-only) { margin-right:9px; opacity:.65; font-size:9px; }
 #page-money-management #mmCashflowSpreadsheetTable.ms-grid td { height:36px; padding:0 !important; border:0; border-right:1px solid var(--ms-line); border-bottom:1px solid var(--ms-line) !important; color:var(--ms-ink) !important; background:transparent !important; position:relative; font-size:12px !important; }
 #page-money-management #mmCashflowSpreadsheetTable.ms-grid tr:hover { background:var(--ms-raised) !important; transform:none !important; }
 #page-money-management #mmCashflowSpreadsheetTable.ms-grid td.ms-row-number { color:var(--ms-muted) !important; background:var(--ms-raised) !important; text-align:center; font-size:10px !important; }
-.ms-grid :is(input,select) { display:block; width:100%; height:35px; min-height:0; border:0; border-radius:0; background:transparent; padding:0 10px; color:inherit; box-shadow:none; text-overflow:ellipsis; }
+.ms-grid :is(input,select,textarea) { display:block; width:100%; height:35px; min-height:0; border:0; border-radius:0; background:transparent; padding:0 10px; color:inherit; box-shadow:none; text-overflow:ellipsis; }
 .ms-grid select { font-size:11px; cursor:pointer; }
 .ms-grid option { background:var(--ms-surface); color:var(--ms-ink); }
 .ms-grid input[data-field="amount"] { text-align:right; font-variant-numeric:tabular-nums; }
-.ms-grid :is(input,select):focus { outline:2px solid var(--ms-accent) !important; outline-offset:-2px !important; background:var(--ms-raised); }
+.ms-grid :is(input,select,textarea):focus { outline:2px solid var(--ms-accent) !important; outline-offset:-2px !important; background:var(--ms-raised); }
 .ms-grid [aria-invalid="true"] { box-shadow:inset 0 -2px var(--color-negative); }
 .ms-grid .ms-delete { border:0; background:transparent; color:var(--ms-muted); width:100%; height:35px; font-size:18px; cursor:pointer; }
 .ms-grid .ms-delete:hover { color:var(--color-negative); }
@@ -90,3 +90,32 @@ html.light .ms-month input { color-scheme:light; }
 @media(max-width:1200px) { #page-money-management.money-sheet { padding:22px 20px 32px !important; } .ms-metric { padding:17px 16px; } }
 @media(max-width:767px) { #page-money-management.money-sheet { padding:18px 12px 28px !important; } .ms-page-heading { align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:18px; } .money-sheet h1 { font-size:24px; } .ms-description { font-size:12px; } .ms-overview { grid-template-columns:repeat(2,minmax(0,1fr)); } .ms-metric:nth-child(3) { border-left:0; border-top:1px solid var(--ms-line); } .ms-metric:nth-child(4) { border-top:1px solid var(--ms-line); } .ms-metric strong { font-size:21px; } .ms-portfolio { padding:14px; gap:14px 22px; } .ms-portfolio-label { flex-basis:100%; } .ms-portfolio-note { font-size:10px; } .ms-workbook-heading { padding:14px; align-items:flex-start; } .ms-workbook-heading p { max-width:220px; } .ms-toolbar { padding:10px; gap:6px; } .ms-search { flex-basis:160px; } .ms-grid-viewport { max-height:460px; } .money-sheet .ms-button,.money-sheet .ms-icon-button { min-height:40px; } }
 @media(prefers-reduced-motion:reduce) { .money-sheet * { transition:none !important; animation:none !important; } }
+
+/* Grid additions stay in this component, not a site-wide override layer. */
+.ms-edit-toolbar { display:flex; align-items:center; gap:4px; overflow-x:auto; padding:6px 12px; border-bottom:1px solid var(--ms-line); scrollbar-width:thin; }
+.money-sheet .ms-edit-toolbar .ms-button { flex:0 0 auto; font-size:11px; min-height:32px; border-color:transparent; }
+#mmExpandSheet { margin-left:auto; }
+.ms-fx { padding:0 12px; font:italic 14px Georgia,serif; color:var(--ms-muted); }
+#mmFormulaInput { flex:1; min-width:0; padding:8px 10px 8px 0; border:0; border-radius:0; height:36px; }
+.ms-help { padding:8px 16px; font-size:10px; color:var(--ms-muted); border-bottom:1px solid var(--ms-line); }
+.ms-help summary { cursor:pointer; min-height:24px; line-height:24px; }
+.ms-help p { line-height:1.7; margin:8px 0; max-width:950px; }
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid tbody th { position:sticky; left:0; top:auto; z-index:1; width:44px; text-align:center; padding:0 !important; }
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid thead th:first-child { left:0; z-index:4; }
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid thead th { padding:0 !important; }
+.ms-column-select { display:block; width:100%; height:36px; padding:0 10px; text-align:left; color:inherit; font:inherit; background:transparent; border:0; cursor:pointer; }
+.ms-column-select:hover { color:var(--ms-accent); }
+.ms-row-number button { width:100%; min-height:36px; background:none; border:0; color:inherit; cursor:pointer; }
+.ms-resizer { position:absolute; right:-3px; top:0; bottom:0; width:9px; background:transparent; border:0; padding:0; cursor:col-resize; touch-action:none; z-index:3; }
+.ms-resizer:hover, .ms-resizer:focus-visible { background:color-mix(in srgb,var(--ms-accent),transparent 60%); }
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid td.ms-selected { background:color-mix(in srgb,var(--ms-accent),var(--ms-surface) 90%) !important; }
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid td.ms-active-cell { box-shadow:inset 0 0 0 2px var(--ms-accent); }
+.ms-grid input[data-formula]:not([data-formula=""]) { font-style:normal; }
+.ms-grid td:has(input[data-formula]:not([data-formula=""]))::after { content:''; width:0; height:0; border-top:5px solid var(--ms-accent); border-left:5px solid transparent; position:absolute; top:1px; right:1px; pointer-events:none; }
+.money-sheet.ms-expanded > :is(.ms-overview,.ms-portfolio) { display:none; }
+#page-money-management.money-sheet.ms-expanded .ms-grid-viewport { max-height:calc(100dvh - 255px); min-height:220px; }
+@media(max-width:767px) { .money-sheet .ms-edit-toolbar .ms-button { min-height:44px; } .ms-cell-address { width:85px; flex-basis:85px; } .ms-fx { padding:0 8px; } .ms-help summary { min-height:36px;line-height:36px; } .ms-column-select,.ms-row-number button,.ms-grid .ms-delete { min-height:44px; } .ms-workbook-heading { flex-wrap:wrap; } .ms-grid-status { font-size:11px; gap:10px; } }
+
+.money-sheet .ms-grid textarea { display:block; resize:vertical; min-height:34px; max-height:120px; white-space:pre-wrap; }
+
+.ms-heading-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }

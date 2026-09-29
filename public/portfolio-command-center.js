@@ -13,6 +13,7 @@
   };
 
   function $(id) { return document.getElementById(id); }
+  function metric(id,value,options) { var el=$(id); if (!el)return; if(root.AutoCuanNumeric) root.AutoCuanNumeric.set(el,finite(value),options); else el.textContent=finite(value)==null?(options.empty||'\u2014'):(options.prefix||'')+Number(value).toLocaleString('id-ID',{minimumFractionDigits:options.digits||0,maximumFractionDigits:options.digits||0})+(options.suffix||''); }
   function portfolioRoot() { return $('portofolioPartialMount') || document; }
   function show(id) { var el = $(id); if (el) el.classList.remove('hidden'); }
   function hide(id) { var el = $(id); if (el) el.classList.add('hidden'); }
@@ -333,12 +334,12 @@
   function renderToday() {
     var summary = Model.summarize(state.plans, state.prices);
     renderEmptyPortfolioState(summary.planCount === 0);
-    $('sumPlans').textContent = summary.planCount;
+    metric('sumPlans',summary.planCount,{});
     $('sumPriced').textContent = summary.pricedCount + ' memiliki harga';
-    $('sumAttention').textContent = summary.attentionCount;
-    $('sumExposure').textContent = money(summary.totalExposureIdr);
-    $('sumRisk').textContent = money(summary.totalRiskIdr);
-    $('sumPnl').textContent = summary.totalPnlIdr == null ? 'P/L —' : 'P/L ' + money(summary.totalPnlIdr);
+    metric('sumAttention',summary.attentionCount,{});
+    metric('sumExposure', summary.totalExposureIdr, {prefix:'Rp '});
+    metric('sumRisk', summary.totalRiskIdr, {prefix:'Rp '});
+    metric('sumPnl',summary.totalPnlIdr,{prefix:'P/L Rp ',empty:'P/L \u2014'});
     $('sumPnl').className = pnlClass(summary.totalPnlIdr);
     $('postureLabel').textContent = summary.posture.label;
     $('postureCard').className = 'posture ' + summary.posture.tone;
@@ -514,10 +515,10 @@
       riskBudgetIdr: result.result.estimatedStopLossIdr.value, estimatedMaxLossIdr: result.result.estimatedStopLossIdr.value,
       capitalIdr: result.result.positionValueIdr.value, createdAt: new Date().toISOString(), source: 'planner', positionStatus: 'PLANNED'
     };
-    $('outLots').textContent = result.result.recommendedLots.value + ' lot'; $('outValue').textContent = money(result.result.positionValueIdr.value);
-    $('outLoss').textContent = money(result.result.estimatedStopLossIdr.value); $('outCash').textContent = money(result.result.remainingCashIdr.value);
+    $('outLots').textContent = result.result.recommendedLots.value + ' lot'; metric('outValue', result.result.positionValueIdr.value, {prefix:'Rp '});
+    metric('outLoss', result.result.estimatedStopLossIdr.value, {prefix:'Rp '}); metric('outCash', result.result.remainingCashIdr.value, {prefix:'Rp '});
     $('outAllocation').textContent = pct(result.result.allocationBps.value / 100); $('outRr1').textContent = result.result.rewardRiskTp1 ? (result.result.rewardRiskTp1.bps / 10000).toFixed(2) + 'x' : '—';
-    $('outRr2').textContent = result.result.rewardRiskTp2 ? (result.result.rewardRiskTp2.bps / 10000).toFixed(2) + 'x' : '—'; $('outMaxPrice').textContent = money(result.guidance.maxPricePerPositionOneLotIdr.value);
+    $('outRr2').textContent = result.result.rewardRiskTp2 ? (result.result.rewardRiskTp2.bps / 10000).toFixed(2) + 'x' : '—'; metric('outMaxPrice', result.guidance.maxPricePerPositionOneLotIdr.value, {prefix:'Rp '});
     $('planWarnings').innerHTML = (result.warnings || []).map(function (row) { return '<div class="note">' + escapeHtml(row.message) + '</div>'; }).join('');
     hide('planEmpty'); show('planResult'); $('savePlan').disabled = false;
   }

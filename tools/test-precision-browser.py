@@ -67,7 +67,7 @@ with sync_playwright() as pw:
     page.route('**/*',lambda r:r.abort())
     page.set_content(fixture,wait_until='domcontentloaded')
     page.add_script_tag(content=mock)
-    for file in ['money-sheet-model.js','portfolio-command-center-model.js','money-sheet-runtime.js']:page.add_script_tag(content=(ROOT/'public'/file).read_text())
+    for file in ['money-sheet-formulas.js','money-sheet-model.js','portfolio-command-center-model.js','money-sheet-grid.js','money-sheet-runtime.js']:page.add_script_tag(content=(ROOT/'public'/file).read_text())
     page.evaluate('AutoCuanMoneySheet.init()')
     page.wait_for_selector('#mmCashflowSpreadsheetBody tr')
     check('Seven legacy rows loaded',page.locator('#mmCashflowSpreadsheetBody tr').count()==7)

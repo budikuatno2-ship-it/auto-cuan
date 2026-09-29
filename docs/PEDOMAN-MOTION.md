@@ -84,3 +84,22 @@ This replaces the previous inline observer; do not initialize a second system.
   cell color. No interpolation of invented intermediate financial prices, no
   forced offsetWidth read and no animation of table rows. Full rolling digits
   remain outside this patch and must not be marked complete.
+
+
+## Implementasi NumberFlow dan landing terbaru (29 September 2026)
+
+`AutoCuanNumeric.set(element, value, options)` adalah facade untuk distribusi
+NumberFlow 0.6.2 yang di-host sendiri. Gunakan hanya pada ringkasan, bukan setiap
+baris tabel. Nilai pertama tampil langsung; pembaruan berikutnya memakai digit
+rolling. Teks aksesibel selalu berisi nilai sumber terbaru, bukan angka animasi.
+Nilai null/nonfinite tetap tidak tersedia; nol asli tetap nol. Efek berhenti pada
+reduced motion dan tab tersembunyi; kegagalan impor menyisakan angka biasa.
+`number-flow.css` wajib tersedia pada shell dan halaman Portfolio standalone.
+
+`AutoCuanNumberFlow` lama tetap merupakan helper kompatibilitas, bukan nama library.
+Jangan menambahkan Motion/GSAP hanya untuk menduplikasi efek yang sudah ditangani.
+
+Hero menggunakan wordmark SVG bertitik yang statis. Dua pita cahaya memiliki
+siklus ambient 18/22 detik (bukan durasi interaksi), transform-only, hanya desktop,
+berhenti ketika hero/tab tidak terlihat atau reduced motion aktif. Reveal bagian
+halaman tetap satu kali memakai token 100/180/260/420 ms yang sudah ada.

@@ -1,0 +1,21 @@
+'use strict';
+const test=require('node:test'), assert=require('node:assert/strict');
+const M=require('../public/money-sheet-model'), F=require('../public/money-sheet-formulas');
+const row=(id,amount,formula)=>({...M.newRow(id),amount,...(formula?{formula}:{} )});
+const sheet=()=>({version:1,rows:[row('one',12000000),row('two',2000000),row('three',999,'=ROUND(SUM(D1:D2)*0.1)')]});
+for(const [formula,value] of [['=2+3*4',14],['=(2+3)*4',20],['=-2+10',8],['=SUM(1,2,3)',6],['=SUM(1;2;3)',6],['=AVERAGE(10,20)',15],['=MIN(2,4)',2],['=MAX(2,4)',4],['=COUNT(0,2,4)',3],['=ROUND(1.7,0)',2],['=0',0]])test('bounded grammar '+formula,()=>assert.equal(F.evaluate(formula,()=>{throw Error('unexpected reference');}),value));
+for(const formula of ['=1/0','=window.alert(1)','=fetch(1)','=SUM(D999999999999999999999:D999999999999999999999)','=SUM(D1:D301)','=D0','=D1:D2','=ROUND(1,2)','='.repeat(2),'=SUM(1','=2**2','=1e9','=HYPERLINK(1)','='+ '('.repeat(34)+'1'+')'.repeat(34)])test('reject unsupported/unsafe '+formula.slice(0,40),()=>assert.throws(()=>F.evaluate(formula,()=>1)));
+test('computed amount is recalculated instead of trusting a client cache',()=>{const s=M.normalize(sheet());assert.equal(s.rows[2].amount,1400000);assert.equal(s.rows[2].formula,'=ROUND(SUM(D1:D2)*0.1)');assert.equal(sheet().rows[2].amount,999);});
+test('dependent changes are atomic and reject cycles, fractions and negative totals',()=>{for(const formula of ['=D3','=D1/7','=-1','=D4']){const s=sheet();s.rows[2].formula=formula;assert.throws(()=>M.normalize(s));assert.equal(s.rows[2].amount,999);}});
+test('mutual dependency cannot loop',()=>{const s=sheet();s.rows[0].formula='=D2';s.rows[1].formula='=D1';assert.throws(()=>M.normalize(s),/melingkar/);});
+test('blank formula is not silently converted into zero',()=>{const s=sheet();s.rows[0].formula='   ';assert.throws(()=>M.normalize(s));});
+test('insert rebases references to preserve the same source rows',()=>{const s=M.insertRows(M.normalize(sheet()),0,[row('new',0)]);assert.equal(s.rows[3].formula,'=ROUND(SUM(D2:D3)*0.1)');assert.equal(s.rows[3].amount,1400000);});
+test('remove referenced row is rejected without modifying input',()=>{const s=M.normalize(sheet()), before=JSON.stringify(s);assert.throws(()=>M.removeRows(s,['one']),/masih dipakai/);assert.equal(JSON.stringify(s),before);});
+test('removing unrelated preceding row rebases references',()=>{const s=M.insertRows(M.normalize(sheet()),0,[row('new',0)]);const result=M.removeRows(s,['new']);assert.equal(result.rows[2].formula,'=ROUND(SUM(D1:D2)*0.1)');});
+test('quoted clipboard round trip supports tabs, newlines, CRLF and doubled quotes',()=>{assert.deepEqual(M.parseTSV('"a\tb"\t"line1\nline2"\t"say ""hi"""\r\nnext\t\t'),[['a\tb','line1\nline2','say "hi"'],['next','','']]);assert.throws(()=>M.parseTSV('"unfinished'));});
+test('paste formulas evaluates the final block atomically',()=>{const result=M.paste(sheet(),0,3,'20000000\n1000000\n=SUM(D1:D2)',()=> 'unused');assert.equal(result.rows[2].amount,21000000);});
+test('clear formula with a plain value removes obsolete dependencies',()=>{const s=M.normalize(sheet());M.setRaw(s.rows[2],'amount','500');const result=M.normalize(s);assert.equal(result.rows[2].formula,undefined);assert.equal(result.rows[2].amount,500);});
+test('300 linked rows remain deterministic at the supported upper bound',()=>{const s={version:1,rows:Array.from({length:300},(_,i)=>row('r'+i,i?0:1,i?'=D'+i+'+1':undefined))};assert.equal(M.normalize(s).rows[299].amount,300);});
+test('CSV exports computed currency, never a raw formula',()=>{const csv=M.csv(M.normalize(sheet()));assert.ok(csv.includes('1400000'));assert.ok(!csv.includes('=ROUND'));});
+
+test('formula sheets use a fail-closed version boundary for legacy clients',()=>{assert.equal(M.normalize(sheet()).version,2);assert.equal(M.fromLegacy({}).version,1);assert.throws(()=>M.normalize({version:3,rows:[]}));});

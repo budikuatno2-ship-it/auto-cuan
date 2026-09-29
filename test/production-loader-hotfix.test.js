@@ -58,8 +58,12 @@ test('critical DOM ids are unique and api endpoint boundary remains unchanged', 
 
 test('disabled capability hides all unfinished dashboard and admin subscription controls', () => {
   assert.match(html, /id="subscriptionIdentityCard"[^>]*(?:hidden|class="hidden)/);
-  assert.match(html, /id="subscriptionPlansAdminButton"[^>]*disabled/);
-  assert.match(html, /id="subscriptionPlansAdminButton"[^>]*(?:hidden|class="hidden)/);
+  // The removed admin catalog control must not be reintroduced enabled.
+  const catalogButton = html.match(/<button[^>]*id="subscriptionPlansAdminButton"[^>]*>/);
+  if (catalogButton) {
+    assert.match(catalogButton[0], /disabled/);
+    assert.match(catalogButton[0], /hidden/);
+  }
   assert.equal((html.match(/voucher/gi) || []).length, 0, 'no voucher administration UI is rendered');
   const catalog = html.slice(html.indexOf('async function loadSubscriptionCatalog'));
   assert.match(catalog, /!subscriptionCapability\.ready\) return/);

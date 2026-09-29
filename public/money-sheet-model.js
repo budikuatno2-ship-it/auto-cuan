@@ -6,6 +6,7 @@
   else root.AutoCuanMoneySheetModel = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
+  var Formula = typeof module === 'object' && module.exports ? require('./money-sheet-formulas') : globalThis.AutoCuanMoneySheetFormulas;
   var MAX_ROWS = 300;
   var MAX_AMOUNT = 1000000000000;
   var TYPES = ['income', 'expense', 'saving', 'transfer'];
@@ -41,16 +42,25 @@
     return value;
   }
   function normalize(input) {
-    if (!input || input.version !== 1 || !Array.isArray(input.rows) || input.rows.length > MAX_ROWS) {
+    if (!input || (input.version !== 1 && input.version !== 2) || !Array.isArray(input.rows) || input.rows.length > MAX_ROWS) {
       throw new Error('Lembar kerja tidak valid (maksimal ' + MAX_ROWS + ' baris).');
     }
     var seen = new Set();
-    return { version: 1, rows: input.rows.map(function (row) {
+    var rows = input.rows.map(function (row) {
       if (!row || typeof row.id !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(row.id) || seen.has(row.id)) throw new Error('Identitas baris tidak valid atau duplikat.');
       seen.add(row.id);
       if (TYPES.indexOf(row.type) < 0) throw new Error('Jenis arus kas tidak valid.');
-      return { id: row.id, type: row.type, category: text(row.category, 80, 'Kategori'), label: text(row.label, 160, 'Nama pos'), amount: amount(row.amount), note: text(row.note, 500, 'Catatan') };
-    }) };
+      var out = { id: row.id, type: row.type, category: text(row.category, 80, 'Kategori'), label: text(row.label, 160, 'Nama pos'), amount: row.formula ? 0 : amount(row.amount), note: text(row.note, 500, 'Catatan') };
+      if (row.formula) { out.formula = text(row.formula, 240, 'Rumus').trim(); if (!out.formula.startsWith('=')) throw new Error('Rumus harus diawali =.'); }
+      return out;
+    });
+    if (rows.some(function (row) { return row.formula; })) {
+      if (!Formula) throw new Error('Mesin rumus belum tersedia. Muat ulang sebelum mengedit.');
+      Formula.calculate(rows, MAX_AMOUNT);
+    }
+    // Formula-bearing sheets advertise v2 so an older v1 client refuses them
+    // instead of silently dropping formulas on its next save.
+    return { version:input.version === 2 || rows.some(function(row) { return row.formula; }) ? 2 : 1, rows:rows };
   }
   function fromLegacy(data) {
     data = data || {};
@@ -82,23 +92,56 @@
     return TYPES.find(function (key) { return key === raw || TYPE_LABELS[key].toLowerCase() === raw; });
   }
   function newRow(id) { return { id: id, type: 'expense', category: '', label: '', amount: 0, note: '' }; }
-  function paste(sheet, startRow, startColumn, value, makeId) {
+  function parseTSV(value) {
     if (typeof value !== 'string' || value.length > 200000) throw new Error('Data tempel terlalu besar.');
+    var rows = [], cells = [], cell = '', quoted = false, closed = false;
+    for (var i=0; i<value.length; i++) {
+      var c = value[i];
+      if (quoted) {
+        if (c === '"' && value[i+1] === '"') { cell += '"'; i++; }
+        else if (c === '"') { quoted=false; closed=true; }
+        else cell += c;
+      } else if (c === '"' && !cell && !closed) quoted=true;
+      else if (c === '\t' || c === '\n' || c === '\r') {
+        cells.push(cell); cell=''; closed=false;
+        if (c !== '\t') { rows.push(cells); cells=[]; if(c==='\r'&&value[i+1]==='\n')i++; }
+      } else { if (closed) throw new Error('Teks setelah tanda kutip tidak valid.'); cell+=c; }
+    }
+    if (quoted) throw new Error('Tanda kutip pada data tempel belum ditutup.');
+    if (cell || cells.length || !rows.length || closed) { cells.push(cell); rows.push(cells); }
+    return rows;
+  }
+  function setRaw(row, field, value) {
+    if (field === 'amount') {
+      if (typeof value === 'string' && value.trim().startsWith('=')) { row.formula=value.trim(); row.amount=0; }
+      else { delete row.formula; row.amount=amount(value); }
+    } else row[field] = field === 'type' ? parseType(value) : value;
+  }
+  function paste(sheet, startRow, startColumn, value, makeId) {
     if (!Number.isInteger(startRow) || startRow < 0 || startRow > sheet.rows.length || !Number.isInteger(startColumn) || startColumn < 0 || startColumn >= FIELDS.length) throw new Error('Posisi tempel tidak valid.');
-    var lines = value.replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n');
+    var lines = parseTSV(value);
     if (startRow + lines.length > MAX_ROWS) throw new Error('Batas ' + MAX_ROWS + ' baris terlampaui.');
     var copy = JSON.parse(JSON.stringify(sheet));
-    lines.forEach(function (line, i) {
-      var cells = line.split('\t');
+    lines.forEach(function (cells, i) {
       if (startColumn + cells.length > FIELDS.length) throw new Error('Data melewati kolom Catatan. Tidak ada sel yang diubah.');
       var index = startRow + i;
       if (!copy.rows[index]) copy.rows[index] = newRow(makeId());
-      cells.forEach(function (cell, c) {
-        var key = FIELDS[startColumn + c];
-        copy.rows[index][key] = key === 'amount' ? amount(cell) : key === 'type' ? parseType(cell) : cell;
-      });
+      cells.forEach(function (cell,c) { setRaw(copy.rows[index], FIELDS[startColumn+c], cell); });
     });
-    return normalize(copy); // Validate the entire paste before changing any state.
+    return normalize(copy);
+  }
+  function insertRows(sheet, index, rows) {
+    if (!Number.isInteger(index) || index<0 || index>sheet.rows.length) throw new Error('Posisi baris tidak valid.');
+    var copy=JSON.parse(JSON.stringify(sheet));
+    copy.rows.forEach(function(row) { if(row.formula) row.formula=Formula.shift(row.formula,index,rows.length); });
+    copy.rows.splice.apply(copy.rows,[index,0].concat(rows)); return normalize(copy);
+  }
+  function removeRows(sheet, ids) {
+    var removed=new Set(); sheet.rows.forEach(function(row,i) { if(ids.includes(row.id)) removed.add(i); });
+    var copy=JSON.parse(JSON.stringify(sheet));
+    copy.rows=copy.rows.filter(function(_,i) { return !removed.has(i); });
+    copy.rows.forEach(function(row) { if(row.formula) row.formula=Formula.shift(row.formula,0,0,removed); });
+    return normalize(copy);
   }
   function csvCell(value) {
     var s = String(value == null ? '' : value);
@@ -111,5 +154,5 @@
     sheet.rows.forEach(function (row) { rows.push([TYPE_LABELS[row.type], row.category, row.label, row.amount, row.note]); });
     return '\uFEFF' + rows.map(function (row) { return row.map(csvCell).join(','); }).join('\r\n');
   }
-  return { MAX_ROWS: MAX_ROWS, MAX_AMOUNT: MAX_AMOUNT, TYPES: TYPES, TYPE_LABELS: TYPE_LABELS, FIELDS: FIELDS, validMonth: validMonth, currentMonth: currentMonth, amount: amount, normalize: normalize, fromLegacy: fromLegacy, totals: totals, toLegacy: toLegacy, newRow: newRow, paste: paste, csv: csv };
+  return { MAX_ROWS: MAX_ROWS, MAX_AMOUNT: MAX_AMOUNT, TYPES: TYPES, TYPE_LABELS: TYPE_LABELS, FIELDS: FIELDS, validMonth: validMonth, currentMonth: currentMonth, amount: amount, normalize: normalize, fromLegacy: fromLegacy, totals: totals, toLegacy: toLegacy, newRow: newRow, paste: paste, parseTSV: parseTSV, setRaw: setRaw, insertRows: insertRows, removeRows: removeRows, csv: csv };
 });
