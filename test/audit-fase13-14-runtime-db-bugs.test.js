@@ -126,9 +126,9 @@ test('F13-05b: broker-summary cron matches documented EOD retry cadence and avoi
   const brokerLines = raw.split('\n').filter(l => !l.trim().startsWith('#') && l.includes('run-daily-broker-update.sh'));
   assert.equal(brokerLines.length, 2, 'broker update must use one retry cadence line plus one final-attempt line');
 
-  const retry = brokerLines.find(l => /^0,30\s+20-21\s+/.test(l));
+  const retry = brokerLines.find(l => /^0,30\s+18-21\s+/.test(l));
   const final = brokerLines.find(l => /^0\s+22\s+/.test(l));
-  assert.ok(retry, 'must retry at 20:00, 20:30, 21:00, and 21:30 WIB');
+  assert.ok(retry, 'must retry every 30 minutes from 18:00 through 21:30 WIB');
   assert.ok(final, 'must run a final attempt at 22:00 WIB');
   assert.doesNotMatch(retry, /--fresh\b/, 'normal retries must reuse valid dated cache instead of refetching every ticker');
   assert.doesNotMatch(final, /--fresh\b/, 'final retry must also preserve valid dated cache');
