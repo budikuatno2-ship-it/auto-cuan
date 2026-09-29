@@ -1,0 +1,29 @@
+name: Workspace detail source snapshot
+on:
+  push:
+    branches: [fix/precision-workspace-finance]
+    paths: [.github/workflows/workspace-detail-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Archive tracked source and inspect official NumberFlow distribution
+        run: |
+          mkdir -p /tmp/workspace-detail-review
+          git rev-parse HEAD > /tmp/workspace-detail-review/source-sha.txt
+          git archive --format=zip --output=/tmp/workspace-detail-review/source.zip HEAD
+          cd /tmp/workspace-detail-review
+          npm view number-flow version dist.integrity license --json > number-flow-metadata.json
+          VERSION=$(npm view number-flow version)
+          npm pack "number-flow@$VERSION" --ignore-scripts
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: workspace-detail-source
+          path: /tmp/workspace-detail-review
+          retention-days: 2
