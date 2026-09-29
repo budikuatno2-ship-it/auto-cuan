@@ -5,25 +5,39 @@ on:
     paths: [.github/workflows/workspace-detail-snapshot.yml]
 permissions:
   contents: read
+  actions: read
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - name: Archive tracked source and inspect official NumberFlow distribution
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Collect isolated test dependencies and previous failed assertions
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p /tmp/workspace-detail-review
-          git rev-parse HEAD > /tmp/workspace-detail-review/source-sha.txt
-          git archive --format=zip --output=/tmp/workspace-detail-review/source.zip HEAD
+          tar -czf /tmp/workspace-detail-review/test-dependencies.tgz node_modules
+          gh api /repos/budikuatno2-ship-it/auto-cuan/actions/jobs/109264402882/logs > /tmp/old-hardening.log
+          python <<'PY'
+          from pathlib import Path
+          lines = Path('/tmp/old-hardening.log').read_text().splitlines()
+          indices = set()
+          for i, line in enumerate(lines):
+              if 'not ok ' in line or '# fail ' in line or '# cancelled ' in line:
+                  indices.update(range(max(0, i-3), min(len(lines), i+35)))
+          Path('/tmp/workspace-detail-review/failure-excerpts.txt').write_text('\n'.join(lines[i] for i in sorted(indices)))
+          PY
           cd /tmp/workspace-detail-review
-          npm view number-flow version dist.integrity license --json > number-flow-metadata.json
-          VERSION=$(npm view number-flow version)
-          npm pack "number-flow@$VERSION" --ignore-scripts
+          npm pack esm-env@1.2.2 --ignore-scripts
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: workspace-detail-source
+          name: workspace-detail-dependencies
           path: /tmp/workspace-detail-review
           retention-days: 2
