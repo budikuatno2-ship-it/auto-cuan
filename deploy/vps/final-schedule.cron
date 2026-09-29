@@ -21,8 +21,8 @@ CRON_TZ=Asia/Jakarta
 # carrying today's candle are skipped; stale tickers retry without redownloading
 # the full universe. Five firings cap the worst-case daily candle budget at
 # 962 x 5 = 4,810 requests, below the configured 5,000 candle-request budget.
-0,30 18-19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/fetch-daily-candles.log 2>&1
-0 20 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/fetch-daily-candles.log 2>&1
+0,30 18-19 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/fetch-daily-candles.log 2>&1
+0 20 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/fetch-daily-candles.log 2>&1
 # Landing refresh (22:15 WIB, harian)
 15 22 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/direct-refresh-landing.js >> /home/ubuntu/auto-cuan-runner/logs/landing-refresh.log 2>&1
 
