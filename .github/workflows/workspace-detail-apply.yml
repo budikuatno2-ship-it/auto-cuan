@@ -1,0 +1,124 @@
+name: Apply reviewed workspace detail
+on:
+  push:
+    branches: [fix/precision-workspace-finance]
+    paths: [.github/workflows/workspace-detail-apply.yml]
+permissions:
+  contents: read
+jobs:
+  apply:
+    if: github.ref == 'refs/heads/fix/precision-workspace-finance'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Retrieve exact official NumberFlow distribution
+        run: |
+          mkdir -p /tmp/detail-apply
+          cd /tmp/detail-apply
+          npm pack number-flow@0.6.2 --ignore-scripts
+      - name: Verify reviewed source and distribution before applying
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(git rev-parse HEAD^)" = f39d02cde963a6d724076a56378474b865cd763a
+          python <<'PY'
+          import base64, hashlib, io, json, lzma, os, tarfile, urllib.request
+          from pathlib import Path
+          chunks = ['e82a4b88e23161d0d54c6ea4622330ec8ab6d804', 'a9ccbd199d48265f19530574ca62df82e27b4d61', 'c32af0e0d926d3337d99d7244708e118014aeaf8', '36edb3fdf2d507c2bd620d4219e6f868e06893ad']
+          data = b''
+          for sha in chunks:
+              url = 'https://api.github.com/repos/budikuatno2-ship-it/auto-cuan/git/blobs/' + sha
+              request = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'})
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  blob = json.load(response)
+              data += base64.b64decode(blob['content'])
+          assert hashlib.sha256(data).hexdigest() == 'ee0b40f37280357bf7c9698cbaaf11f50336228bd1e0937212adb1b06060f936'
+          payload = json.loads(lzma.decompress(data))
+          allowed = {'.github/workflows/precision-workspace-tests.yml', 'docs/LANDING-MOBILE-REVIEW.md', 'docs/PEDOMAN-MOTION.md', 'docs/PRECISION-WORKSPACE-REVIEW.md', 'lib/money-sheet-handler.js', 'partials/money-management.partial.html', 'public/index.html', 'public/landing-experience.css', 'public/landing-experience.js', 'public/money-sheet-formulas.js', 'public/money-sheet-grid.js', 'public/money-sheet-model.js', 'public/money-sheet-runtime.js', 'public/money-sheet.css', 'public/number-flow-runtime.js', 'public/number-flow.css', 'public/portfolio-command-center-v2.html', 'public/portfolio-command-center.html', 'public/portfolio-command-center.js', 'public/ui-theme.css', 'public/vendor/number-flow-0.6.2/PROVENANCE.json', 'supabase/money-sheet-setup.sql', 'test/maintenance-and-hidden-resilience.test.js', 'test/money-sheet-formulas.test.js', 'test/premium-workstation-ui.test.js', 'test/production-loader-hotfix.test.js', 'test/sql/money-sheet/setup-check.sh', 'test/workspace-detail.test.js', 'tools/build-smoke-tests.json', 'tools/curated-build-tests.json', 'tools/test-landing-experience.py', 'tools/test-precision-browser.py', 'tools/test-workspace-detail.py'}
+          items = payload['items']
+          assert len(items) == len(allowed) == 33
+          assert {item['path'] for item in items} == allowed
+          pending = {}
+          for item in items:
+              path = Path(item['path'])
+              if item['sha'] is None:
+                  assert not path.exists(), str(path)
+                  content = item['content']
+              else:
+                  old = path.read_text()
+                  assert hashlib.sha256(old.encode()).hexdigest() == item['sha'], str(path)
+                  lines = old.splitlines(True)
+                  for start, end, text in reversed(item['edits']):
+                      lines[start:end] = text.splitlines(True)
+                  content = ''.join(lines)
+              assert hashlib.sha256(content.encode()).hexdigest() == item['after'], str(path)
+              if item['path'] == '.github/workflows/precision-workspace-tests.yml':
+                  continue
+              pending[str(path)] = content.encode()
+          archive = Path('/tmp/detail-apply/number-flow-0.6.2.tgz').read_bytes()
+          integrity = base64.b64encode(hashlib.sha512(archive).digest()).decode()
+          assert integrity == 'MCnImG4Q5vPwhSXnov56nOuyyKn6LC+Qd7II1UiKc+ACRtug5iAtn0+CwXNxM38AC5lSowEY+oYEtZX2qMnUyw=='
+          root = 'public/vendor/number-flow-0.6.2/'
+          vendor_names = {'index.mjs', 'lite.mjs', 'ssr-DvIINv8w.mjs', 'plugins.mjs', 'csp.mjs', 'LICENSE.md', 'browser-env.mjs'}
+          assert set(payload['vendors']) == {root + name for name in vendor_names}
+          with tarfile.open(fileobj=io.BytesIO(archive), mode='r:gz') as tar:
+              for name in sorted(vendor_names):
+                  if name == 'browser-env.mjs':
+                      content = '// Browser-only build of the esm-env BROWSER compile-time constant.\nexport const BROWSER = typeof window !== "undefined" && typeof document !== "undefined";\n'
+                  else:
+                      member = 'package/' + ('LICENSE.md' if name == 'LICENSE.md' else 'dist/' + name)
+                      content = tar.extractfile(member).read().decode()
+                      if name.endswith('.mjs'):
+                          content = content.replace('"esm-env"', '"./browser-env.mjs"')
+                  path = root + name
+                  assert not Path(path).exists(), path
+                  assert hashlib.sha256(content.encode()).hexdigest() == payload['vendors'][path], path
+                  pending[path] = content.encode()
+          assert len(pending) == 39
+          for name, content in pending.items():
+              path = Path(name)
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_bytes(content)
+          Path('/tmp/detail-apply/source-manifest.json').write_text(json.dumps({name: hashlib.sha256(content).hexdigest() for name, content in pending.items()}, indent=2))
+          print('Verified and applied 39 exact reviewed files; permanent CI updated separately.')
+          PY
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node tools/validate-full-syntax.js && node tools/check-precision-inline.js && node tools/build-portfolio-spa-css.js --check
+      - name: Focused contracts and production build
+        run: |
+          node --test test/money-sheet.test.js test/money-sheet-formulas.test.js test/workspace-detail.test.js > /tmp/detail-apply/focused.log
+          npm run build > /tmp/detail-apply/build.log
+      - name: Full regression suite without skipped files
+        run: npm test > /tmp/detail-apply/full-regression.log 2>&1
+      - name: Commit only checksum-verified reviewed source
+        run: |
+          python <<'PY'
+          import hashlib, json, subprocess
+          from pathlib import Path
+          files = json.loads(Path('/tmp/detail-apply/source-manifest.json').read_text())
+          for name, digest in files.items():
+              assert hashlib.sha256(Path(name).read_bytes()).hexdigest() == digest, name
+          subprocess.run(['git', 'diff', '--check'], check=True)
+          subprocess.run(['git', 'add', '--', *files], check=True)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(ui): refine landing identity, NumberFlow and spreadsheet interactions'
+          git push origin HEAD:refs/heads/fix/precision-workspace-finance
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: workspace-detail-source-validation
+          path: |
+            /tmp/detail-apply/*.log
+            /tmp/detail-apply/source-manifest.json
+          retention-days: 7
