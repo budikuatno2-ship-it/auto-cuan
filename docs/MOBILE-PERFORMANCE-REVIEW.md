@@ -3,10 +3,11 @@
 ## Scope and release state
 
 Continues PR #787 on `fix/precision-workspace-finance`, baseline `6bf44f8`.
-Portfolio arithmetic, its seven tabs, journal records, entitlement and account
-logic are unchanged. Vercel is not this owner's deployment target; its checks
-are not used to assess VPS readiness. No merge, SSH, Nginx reload, PM2 restart
-or VPS deployment has been performed in this follow-up.
+Portfolio arithmetic, its seven tabs, journal records and entitlement rules
+are preserved. A confirmed-access visibility bug is corrected without changing
+the authentication decision or relaxing access checks. Vercel is not this owner's
+deployment target; its checks are not used to assess VPS readiness. No merge,
+SSH, Nginx reload, PM2 restart or VPS deployment was performed in this follow-up.
 
 ## Supabase: applied and verified, not merely prepared
 
@@ -14,7 +15,7 @@ The owner connected Supabase and authorized automatic application. The active
 Auto-Cuan project was matched to the repository's deployment reference.
 Read-only preflight confirmed the UUID account primary key, absence of the
 cashflow table, and absence of the two trigger functions. The existing staging
-project was inactive and was not resumed or billed by this work.
+project was inactive and was not resumed by this work.
 
 `autocuan_money_sheet_setup`, version `20260929091801`, was successfully applied
 through the migration connector to the active MAIN project on 2026-09-29.
@@ -74,23 +75,54 @@ measurements are NOT evidence of the same percentage live-VPS speed improvement.
 
 `node tools/benchmark-static-assets.js` verifies decompressed byte equality,
 ETag responses and repeated compression reuse on a loopback-only server.
-For index.html, the measured body is 945,609 bytes raw / 207,230 bytes Brotli
+For index.html, the measured body is 945,954 bytes raw / 207,381 bytes Brotli
 (78.1% smaller). The CSS body is 148,601 / 36,292 bytes (75.6% smaller).
 The measurement report, not hardcoded percentages, is the source for later runs.
 
-## Tests and limits
+## Confirmed-access visibility regression
 
-At the recovered final implementation locally: 244 existing focused Node tests
-and 16 new viewport/static tests passed. Existing component/landing/detail
-Chromium suites passed 35 / 105 / 66 checks. The new simulated-keyboard fixture
-passed 39 checks, zero uncaught errors. Added tests are registered in the full
-568-file list; the original 75-file smoke selection is not expanded past its cap.
+A cold-start full-app test reproduced a real pending-to-approved transition bug:
+`applyPremiumAccessUi` hid the selected finance page while access was pending,
+but never removed that hidden class after the existing server check approved the
+user. The fix reveals only the currently selected page after confirmed access.
+Pending/unavailable responses remain inert/hidden; definitive denial still clears
+rendered data and routes away. Top-level account/maintenance gates are unchanged.
+Four dedicated tests cover the transition and denied/pending states.
 
-The new fixture runs on Chromium and can run on WebKit via `BROWSER_ENGINE`.
-Check the actual final CI result before claiming WebKit/full-app/full-suite
-success. Earlier pre-reset test results are not substituted for final-source
-validation. Simulated VisualViewport, IME events and desktop browser engines are
-NOT physical Android/iPhone keyboards. API/auth are mocked. No live VPS
-LCP/INP/latency, physical-device testing or whole master-checklist sign-off is
-claimed. Review the last source SHA's CI before merge, then deploy through the
-existing VPS preflight workflow and verify real authenticated saves.
+## Test synchronization
+
+Controlled WebKit runs showed that a fixed 70 ms fixture sleep sometimes read
+old published viewport/layout state. The fixture now awaits the owner's actual
+geometry (mapping offsetTop/offsetLeft to top/left), its keyboard class, and two
+render frames. This changes test scheduling, not application CSS or assertions:
+keyboard bounds, IME, pinch zoom, focus and restoration checks remain enforced.
+The deterministic fixture also passes locally on Chromium.
+
+## Tests and release boundary
+
+The final inspected source was committed as `37a8658524c38cbf8f1ac6736d3d4ae81051d3bd`
+only after run `36554738217` passed syntax/scoped CSS checks, 274 focused tests,
+the 75-file smoke build and all 569 registered regression files. No file was
+skipped to produce that passing full-suite result.
+
+Its artifact `11028020704` was downloaded, checksum-verified and inspected:
+SHA-256 `f180fbc82117620d66deded7023f00fe87a6887773ad5d2013ab5006158e2479`.
+The actual reports show 35 component, 44 whole-SPA, 105 landing/auth/sidebar,
+66 NumberFlow/grid/detail, 39 Chromium-keyboard and 39 WebKit-keyboard checks
+passing, with no uncaught page errors. These counts overlap in what they cover;
+they are not advertised as that many unique production user journeys.
+The 300-row, 15-input case recorded zero selection-class/ARIA mutations in both
+engines. This is not zero total work or a production speed guarantee.
+
+The permanent regression workflow now includes the new keyboard/static/access
+checks and a separate WebKit job. Temporary source/diagnostic transfer workflows
+are removed. The follow-up documentation/CI cleanup changes no production
+runtime beyond the verified source commit; check the latest PR checks before
+release as well as the source-validation run above.
+
+Physical Android/iPhone keyboards, authenticated production saving and real VPS
+LCP/INP/latency remain unverified. Desktop WebKit with a synthetic VisualViewport
+is not a physical iPhone. No whole master-checklist or zero-bug sign-off is
+claimed. Database setup succeeded independently of deployment; the new UI and
+static-serving path must still be released through the normal PR/VPS process.
+Inspect the actual PM2 entrypoint and Nginx configuration before deployment.
