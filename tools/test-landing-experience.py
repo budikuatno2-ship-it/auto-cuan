@@ -25,7 +25,9 @@ for element in soup.head.children:
     if getattr(element, 'name', None) == 'style': styles.append(str(element))
 landing = soup.select_one('#landingPage'); landing['class'] = ['landing-shell']
 modals = ''.join(str(soup.select_one('#'+i)) for i in ['authChoiceModal','loginModal','registerModal','selfResetModal'])
-aside = soup.select_one('#appSidebar'); aside['class'] = ['app-sidebar']
+# Preserve the real initial hidden sidebar state, rather than revealing it over
+# the guest landing page only in this isolated fixture.
+aside = soup.select_one('#appSidebar')
 for item in aside.select('[data-premium-nav],#tabAnalisisPattern'): item['class']=['sidebar-item']
 workspace = '<div id="appShell" class="app-shell hidden">'+str(aside)+'<main id="appMain">'+str(soup.select_one('#appMain > header'))+'</main></div>'+str(soup.select_one('#sidebarScrim'))
 fixture = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+''.join(styles)+'</head><body>'+str(landing)+modals+workspace+'</body></html>'
@@ -66,12 +68,15 @@ with sync_playwright() as pw:
         page.add_script_tag(content=(ROOT/'public/landing-experience.js').read_text())
         for color in ['light','dark']:
             page.evaluate('(t)=>applyAppTheme(t)',color)
+            page.wait_for_timeout(250)
             for width in [320,360,390,768,1024,1440]:
                 page.set_viewport_size({'width':width,'height':844});page.wait_for_timeout(50)
                 check(f'{color}/{width} page has no horizontal overflow',page.evaluate('document.documentElement.scrollWidth<=innerWidth'))
                 check(f'{color}/{width} desktop/mobile menu breakpoint',page.locator('#landingMenu').is_visible()==(width>900))
                 check(f'{color}/{width} heading contrast',contrast(page,'#landingPage h1')>=4.5)
                 check(f'{color}/{width} description contrast',contrast(page,'#landingPage h1 + p')>=4.5)
+                check(f'{color}/{width} guest landing has no workspace sidebar',not page.locator('#appSidebar').is_visible())
+                check(f'{color}/{width} primary CTA label contrast',contrast(page,'.landing-hero .landing-btn-primary .landing-cta-label')>=4.5)
         page.set_viewport_size({'width':390,'height':844})
         page.locator('#landingMenuToggle').click()
         check('Mobile navigation opens',page.locator('#landingMenu').is_visible())
@@ -118,10 +123,11 @@ with sync_playwright() as pw:
         check('Reduced motion change cancels every landing animation',page.evaluate("!document.getElementById('landingPage').getAnimations({subtree:true}).some(a=>a.playState==='running')"))
         check('Landing sections remain visible without opacity hiding',page.evaluate("Array.from(document.querySelectorAll('#landingPage .landing-section')).every(e=>getComputedStyle(e).contentVisibility==='visible'&&getComputedStyle(e).opacity==='1')"))
         for color,width in [('light',1440),('dark',1440),('light',390),('dark',390)]:
-            page.evaluate('(t)=>applyAppTheme(t)',color);page.set_viewport_size({'width':width,'height':950 if width>900 else 844});page.evaluate('window.scrollTo(0,0)');page.wait_for_timeout(120)
+            page.evaluate('(t)=>applyAppTheme(t)',color);page.set_viewport_size({'width':width,'height':950 if width>900 else 844});page.evaluate('document.activeElement.blur();window.scrollTo(0,0)');page.wait_for_timeout(250)
+            check(f'{color}/{width} final CTA contrast after auth runtime loads',contrast(page,'.landing-hero .landing-btn-primary .landing-cta-label')>=4.5)
             page.screenshot(path=str(OUT/f'landing-{color}-{width}.png'))
             if width==1440:page.screenshot(path=str(OUT/f'landing-{color}-full.png'),full_page=True)
-        page.evaluate("document.getElementById('landingPage').classList.add('hidden');document.getElementById('appShell').classList.remove('hidden');document.body.classList.add('sidebar-open');")
+        page.evaluate("document.getElementById('landingPage').classList.add('hidden');document.getElementById('appSidebar').classList.remove('hidden');document.getElementById('appShell').classList.remove('hidden');document.body.classList.add('sidebar-open');")
         page.locator('#workspaceSidebarToggle').click();page.wait_for_timeout(50)
         check('Real mobile sidebar makes background inert',page.evaluate("document.getElementById('appMain').inert"))
         page.evaluate('openMobileSidebar()');page.keyboard.press('Escape');page.wait_for_timeout(50)
