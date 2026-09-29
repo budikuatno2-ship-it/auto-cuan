@@ -1,9 +1,10 @@
 'use strict';
 
 /**
- * Daily candle close & volume fetch (cron 19:30 WIB).
+ * Daily candle close & volume fetch (EOD retry window from 18:00 WIB).
  * Uses lib/chart-engine/candle-fetcher.js against the Arjum history endpoint.
- * Idempotent: cached tickers are skipped.
+ * Idempotent by trade date: tickers whose latest cached daily candle already
+ * matches the current WIB trade date are skipped; stale tickers are refreshed.
  *
  * Usage (VPS):
  *   set -a; . ./.env.ai-eval-once; set +a
@@ -37,13 +38,38 @@ function loadEnvFile() {
 }
 
 function loadTickers() {
-  // Use the full universe index if present; otherwise derive from broker-summary dirs.
+  const master = path.join(process.cwd(), 'data', 'daytrade-observe-tickers.txt');
+  try {
+    if (fs.existsSync(master)) {
+      return Array.from(new Set(
+        fs.readFileSync(master, 'utf8').split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(isValidIdxTicker)
+      )).sort();
+    }
+  } catch (_) {}
+
   const idx = path.join(process.cwd(), 'data', 'arjum-data', 'broker-summary');
   try {
     const dirs = fs.readdirSync(idx, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name).filter(isValidIdxTicker);
     if (dirs.length) return dirs.sort();
   } catch (_) {}
   return [];
+}
+
+function todayWib() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date());
+}
+
+function latestCachedDate(ticker) {
+  const cache = fetcher.readCache(ticker);
+  const candles = cache && Array.isArray(cache.candles) ? cache.candles : [];
+  let latest = null;
+  for (const row of candles) {
+    const d = String(row && row.date || '').slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d) && (!latest || d > latest)) latest = d;
+  }
+  return latest;
 }
 
 async function main() {
@@ -53,13 +79,24 @@ async function main() {
   const tickers = loadTickers();
   const universe = limitArg > 0 ? tickers.slice(0, limitArg) : tickers;
 
-  const summary = { universe: universe.length, fetched: 0, cached: 0, failed: 0, quota_stop: false };
+  const targetDate = todayWib();
+  const summary = { universe: universe.length, target_date: targetDate, fetched: 0, cached: 0, stale: 0, failed: 0, quota_stop: false };
 
   for (const ticker of universe) {
-    if (dryRun) { summary.cached++; continue; }
-    const res = await fetcher.fetchDailyCandles(ticker, { limit: Number(process.env.CANDLE_LIMIT) || 200 });
-    if (res.ok && res.from_cache) summary.cached++;
-    else if (res.ok) summary.fetched++;
+    const latest = latestCachedDate(ticker);
+    if (latest === targetDate) {
+      summary.cached++;
+      continue;
+    }
+
+    summary.stale++;
+    if (dryRun) continue;
+
+    const res = await fetcher.fetchDailyCandles(ticker, {
+      limit: Number(process.env.CANDLE_LIMIT) || 500,
+      force: true
+    });
+    if (res.ok) summary.fetched++;
     else if (res.rateLimited) { summary.quota_stop = true; break; }
     else summary.failed++;
     if (summary.fetched % 50 === 0 && summary.fetched > 0) console.log('fetched=' + summary.fetched + ' last=' + ticker);
