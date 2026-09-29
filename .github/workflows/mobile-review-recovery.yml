@@ -1,0 +1,39 @@
+name: Recover inspected mobile source
+on:
+  push:
+    branches: [fix/precision-workspace-finance]
+    paths: [.github/workflows/mobile-review-recovery.yml]
+permissions:
+  contents: read
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Recover only complete checksum-bearing patch records
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python <<'PY'
+          import base64,hashlib,json,os,urllib.request,zlib
+          from pathlib import Path
+          request=urllib.request.Request('https://api.github.com/repos/budikuatno2-ship-it/auto-cuan/git/blobs/b8d99a9294e8d74303a95da262f1a73df4dcf29b',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+          with urllib.request.urlopen(request,timeout=30) as response: item=json.load(response)
+          raw=base64.b64decode(item['content'])
+          assert hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='b8d99a9294e8d74303a95da262f1a73df4dcf29b'
+          text=zlib.decompressobj().decompress(raw).decode('utf-8')
+          decoder=json.JSONDecoder(); pos=1; items=[]
+          while pos<len(text):
+              try: item,end=decoder.raw_decode(text,pos)
+              except ValueError: break
+              items.append(item);pos=end+1
+          out=Path('/tmp/recovered');out.mkdir()
+          (out/'complete-items.json').write_text(json.dumps(items))
+          (out/'remaining-prefix.txt').write_text(text[pos:])
+          print('Recovered complete files:', [item['path'] for item in items])
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: mobile-reviewed-prefix
+          path: /tmp/recovered
+          retention-days: 2
