@@ -18,25 +18,30 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Collect isolated test dependencies and previous failed assertions
+      - name: Collect isolated dependencies and sanitized previous failures
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p /tmp/workspace-detail-review
           tar -czf /tmp/workspace-detail-review/test-dependencies.tgz node_modules
-          gh api /repos/budikuatno2-ship-it/auto-cuan/actions/jobs/109264402882/logs > /tmp/old-hardening.log
           python <<'PY'
+          import os, re, urllib.request
           from pathlib import Path
-          lines = Path('/tmp/old-hardening.log').read_text().splitlines()
-          indices = set()
-          for i, line in enumerate(lines):
+          url='https://api.github.com/repos/budikuatno2-ship-it/auto-cuan/actions/jobs/109264402882/logs'
+          request=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+          with urllib.request.urlopen(request,timeout=60) as response:
+              text=response.read().decode('utf-8-sig')
+          lines=re.sub(r'\x1b\[[0-9;]*[A-Za-z]','',text).splitlines()
+          indices=set()
+          for i,line in enumerate(lines):
               if 'not ok ' in line or '# fail ' in line or '# cancelled ' in line:
-                  indices.update(range(max(0, i-3), min(len(lines), i+35)))
+                  indices.update(range(max(0,i-3),min(len(lines),i+40)))
           Path('/tmp/workspace-detail-review/failure-excerpts.txt').write_text('\n'.join(lines[i] for i in sorted(indices)))
           PY
           cd /tmp/workspace-detail-review
           npm pack esm-env@1.2.2 --ignore-scripts
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
           name: workspace-detail-dependencies
           path: /tmp/workspace-detail-review
