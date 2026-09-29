@@ -10,11 +10,14 @@
  * process:
  *   - Idempotent: any ticker whose broker-summary for today is already on
  *     disk is skipped on the next firing (mirrors tools/backfill-arjum-data.js).
- *   - A completion marker (data/arjum-data/_daily-update-marker/<date>.json)
- *     is written once every ticker's broker-summary for today is on disk, so
- *     later firings within the window become a fast no-op.
- *   - Pass --final on the LAST scheduled firing (22:00) so an incomplete run
- *     is reported as a real failure instead of "will retry in 30 minutes".
+ *   - Before the final firing, empty-but-successful broker-summary responses
+ *     remain pending so late publication can still arrive.
+ *   - On the 22:00 --final firing, an empty-but-successful response is terminal
+ *     NO_DATA (for example suspended/no-trade tickers); it is never fabricated
+ *     into a cache file. A completion marker is written only when every ticker
+ *     is either backed by valid broker-summary rows or terminal NO_DATA, with
+ *     no real upstream errors and no quota stop.
+ *   - A complete marker makes later firings a fast no-op.
  *
  * Usage:
  *   node tools/run-daily-broker-update.js --dry-run
@@ -241,7 +244,8 @@ async function run(argv) {
 
   let totalRequested = 0;
   let doneCount = 0;
-  let pendingCount = 0; // Arjum hasn't published today's data for this ticker yet
+  let pendingCount = 0; // Empty response before the final retry window closes.
+  let confirmedNoDataCount = 0; // Empty-but-successful response on --final (e.g. suspended/no-trade ticker).
   let errorCount = 0;
   let quotaReached = false;
 
@@ -277,10 +281,17 @@ async function run(argv) {
           bandarmologiService.writeDiskCache('broker-summary', ticker, dateArg, res.data);
           bandarmologiService.writeDiskCache('broker-summary', ticker, 'latest', res.data);
           doneCount++;
+        } else if (isFinal) {
+          // An empty-but-successful response can be legitimate for suspended,
+          // FCA/no-trade, or otherwise inactive tickers. During the retry
+          // window we keep it pending so late publication can still arrive;
+          // on the 22:00 --final attempt, treat it as terminal NO_DATA rather
+          // than requiring an impossible 957/957 non-empty universe.
+          confirmedNoDataCount++;
         } else {
-          // Empty buyer/seller lists for today's date: most likely Arjum
-          // hasn't published this session yet, not a real error. Leave
-          // uncached so the next 30-minute firing retries this ticker.
+          // Before the final attempt, keep successful empty responses pending.
+          // This preserves the late-publication retry behaviour for active
+          // tickers without permanently treating NO_DATA as a worker failure.
           pendingCount++;
         }
       } else {
@@ -325,8 +336,9 @@ async function run(argv) {
     }
   }
 
-  const remaining = tickers.length - doneCount;
-  const complete = !dryRun && remaining === 0;
+  const terminalCount = doneCount + confirmedNoDataCount;
+  const remaining = tickers.length - terminalCount;
+  const complete = !dryRun && remaining === 0 && errorCount === 0 && !quotaReached;
 
   console.log('\n----------------------------------------------------');
   console.log('=== RINGKASAN DAILY BROKER UPDATE ===');
@@ -334,6 +346,7 @@ async function run(argv) {
   console.log(`Total Terpakai Hari Ini (lintas-proses): ${arjumClient.getUsedQuotaToday()} / ${dailyLimit}`);
   console.log(`Broker Summary Selesai:        ${doneCount}/${tickers.length}`);
   console.log(`Belum Terbit (Pending Arjum):  ${pendingCount}`);
+  console.log(`Final NO_DATA (valid kosong):  ${confirmedNoDataCount}`);
   console.log(`Error / Gagal:                 ${errorCount}`);
   console.log(`Kuota Habis:                   ${quotaReached ? 'YA' : 'TIDAK'}`);
 
@@ -354,12 +367,28 @@ async function run(argv) {
   }
 
   if (complete) {
-    writeMarker(dateArg, { date: dateArg, complete: true, completed_at: new Date().toISOString(), total_tickers: tickers.length });
-    console.log(`Status: SELESAI LENGKAP — ${tickers.length} ticker punya broker summary ${dateArg}.`);
+    writeMarker(dateArg, {
+      date: dateArg,
+      complete: true,
+      completed_at: new Date().toISOString(),
+      broker_summary_rows: doneCount,
+      no_data: confirmedNoDataCount,
+      total_tickers: tickers.length
+    });
+    console.log(`Status: SELESAI — ${doneCount} ticker punya broker summary dan ${confirmedNoDataCount} ticker terkonfirmasi NO_DATA untuk ${dateArg}.`);
     return;
   }
 
-  writeMarker(dateArg, { date: dateArg, complete: false, updated_at: new Date().toISOString(), done: doneCount, pending: pendingCount, errors: errorCount, total_tickers: tickers.length });
+  writeMarker(dateArg, {
+    date: dateArg,
+    complete: false,
+    updated_at: new Date().toISOString(),
+    done: doneCount,
+    pending: pendingCount,
+    no_data: confirmedNoDataCount,
+    errors: errorCount,
+    total_tickers: tickers.length
+  });
 
   if (isFinal) {
     console.log(`Status: GAGAL — jendela retry (20:00-22:00 WIB) habis dengan ${remaining} ticker belum punya broker summary ${dateArg}.`);

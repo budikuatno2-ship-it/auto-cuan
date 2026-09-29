@@ -36,6 +36,17 @@ export TZ=Asia/Jakarta
 
 mkdir -p "$RUNNER_DIR/state" "$RUNNER_DIR/logs"
 
+# Cron gets a minimal environment and does not inherit PM2/shell variables.
+# Load runner-level secrets first; the JS worker then reads repo .env/.env.local
+# only for keys that are still unset, so a production runner secret cannot be
+# shadowed by a placeholder repo value.
+if [ -f "$RUNNER_DIR/.env" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$RUNNER_DIR/.env"
+  set +a
+fi
+
 if [ ! -x "$NODE_BIN" ]; then
   NODE_BIN="$(command -v node || echo "")"
 fi
