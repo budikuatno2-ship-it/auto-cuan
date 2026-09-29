@@ -1,0 +1,25 @@
+name: Mobile performance source review
+on:
+  push:
+    branches: [fix/precision-workspace-finance]
+    paths: [.github/workflows/mobile-performance-source.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Archive exact tracked source
+        run: |
+          mkdir -p /tmp/mobile-performance-source
+          git rev-parse HEAD > /tmp/mobile-performance-source/source-sha.txt
+          git archive --format=zip --output=/tmp/mobile-performance-source/source.zip HEAD
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: mobile-performance-source
+          path: /tmp/mobile-performance-source
+          retention-days: 2
