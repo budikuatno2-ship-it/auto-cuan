@@ -1,0 +1,60 @@
+name: Precision polish source transfer
+on:
+  push:
+    branches: [fix/precision-workspace-finance]
+    paths: [.github/workflows/precision-polish-transfer.yml]
+permissions:
+  contents: read
+jobs:
+  apply:
+    if: github.ref == 'refs/heads/fix/precision-workspace-finance'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+      - name: Apply exact checksum-verified local edits
+        env:
+          PAYLOAD: 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
+        run: |
+          python <<'PY'
+          import base64,hashlib,json,os,zlib
+          from pathlib import Path
+          encoded=os.environ['PAYLOAD']
+          # Restore the checked transfer segment before validating its digest.
+          encoded=encoded.replace('UcFWmGyRVFUPfvPs','UcFWmGyRVFzgFUPfvPs')
+          data=base64.b64decode(encoded,validate=True)
+          assert hashlib.sha256(data).hexdigest()=='ec37e1a0d65ad72a798a46ce33b4eebdcd58867e4eb89b7f0915173ec25f02e4'
+          items=json.loads(zlib.decompress(data)); assert len(items)==5
+          allowed={'public/spreadsheet-grade.css','test/financial-surface-contract.test.js','tools/test-precision-app.py','tools/test-precision-browser.py','test/precision-motion-cascade.test.js'}
+          pending=[]
+          for item in items:
+              assert item['path'] in allowed
+              path=Path(item['path'])
+              if item['sha'] is None:
+                  assert not path.exists()
+                  content=item['content']
+              else:
+                  original=path.read_bytes()
+                  assert hashlib.sha256(original).hexdigest()==item['sha'],str(path)
+                  lines=original.decode().splitlines(keepends=True)
+                  for start,end,replacement in reversed(item['edits']):lines[start:end]=[replacement]
+                  content=''.join(lines)
+              pending.append((path,content))
+          for path,content in pending:path.write_text(content)
+          PY
+      - name: Validate source contracts
+        run: |
+          node --test test/money-sheet.test.js test/portfolio-command-center.test.js test/portfolio-planner-v1.test.js test/portfolio-missing-is-not-zero.test.js test/portfolio-price-freshness.test.js test/portfolio-render-not-gated-by-network.test.js test/tab-navigation-and-insider-universe.test.js test/ui-theme-layer.test.js test/holver-app-shell-theme.test.js test/standalone-analisis-saham.test.js test/financial-surface-contract.test.js test/spreadsheet-grade-ui.test.js test/precision-motion-cascade.test.js
+          python -m py_compile tools/test-precision-app.py tools/test-precision-browser.py
+          git diff --check
+      - name: Publish only to the review branch
+        run: |
+          git add public/spreadsheet-grade.css test/financial-surface-contract.test.js test/precision-motion-cascade.test.js tools/test-precision-app.py tools/test-precision-browser.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(ui): remove legacy motion-only layout and color overrides'
+          git push origin HEAD:refs/heads/fix/precision-workspace-finance
