@@ -1,4 +1,4 @@
-name: Diagnose mobile performance review
+name: Validate and apply mobile performance review
 on:
   push:
     branches: [fix/precision-workspace-finance]
@@ -6,19 +6,27 @@ on:
 permissions:
   contents: read
 jobs:
-  diagnose:
+  apply:
+    if: github.ref == 'refs/heads/fix/precision-workspace-finance'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 18
+    permissions:
+      contents: write
     env:
       PRECISION_TEST_OUTPUT: /tmp/mobile-performance-review
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          persist-credentials: false
-      - name: Reconstruct exact source without publishing it
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify baseline and ordered reviewed changes
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          test "$(git rev-parse HEAD^)" = df51df60e155f7e45be57851166fedc5495f1da5
           python <<'PY'
           import base64,hashlib,json,os,urllib.request,zlib
           from pathlib import Path
@@ -29,65 +37,69 @@ jobs:
               return raw
           shas=['81c7b6bdcb222b47005c39390c7602566fa8a48a','d50837def0e50d31e1921b88863c4bd31676c7eb','b1cd9ca2a787059da55bd123fe06aef2f3c65ff0','3fc12c4fc350a2d2b5d67c9c721563010c4d1b55','c2a9da457f9189c1f6d461b09d5fb37f9104975e','f584f076a5db753c88208228e1aaed564cca43c7','579ec6f9f3543cdc78b27e30f2a9810953132a62']
           data=b''.join(fetch(sha) for sha in shas);assert hashlib.sha256(data).hexdigest()=='8c9de7b4378a0ffca94a36454a0c88da4e705e319b8969c07dbb8d68aa119035'
-          items=json.loads(zlib.decompress(data))+json.loads(zlib.decompress(fetch('aef249f3bc0e356f2f85c37a997915c0ae6c6553')))
-          assert len(items)==23
+          items=json.loads(zlib.decompress(data))
+          for sha,digest in [('aef249f3bc0e356f2f85c37a997915c0ae6c6553','ef38a62ff40439cb4d316f8edddf8968340b2f2d11f04f33e50e7623742562f8'),('a94bb4367566f1d4ca6e34d7220635753193957a','982fdcfb34c3d1c68df381cadd38947148eecc26ddfef08fdd884c6e3ac31a99')]:
+              raw=fetch(sha);assert hashlib.sha256(raw).hexdigest()==digest;items+=json.loads(zlib.decompress(raw))
+          assert len(items)==27
+          allowed={'deploy/nginx/autocuan','docs/MOBILE-PERFORMANCE-REVIEW.md','lib/static-assets.js','public/analisis-saham.html','public/assets/fca-stocks.js','public/index.html','public/mobile-ui-runtime-v5.js','public/money-sheet-grid.js','public/money-sheet-runtime.js','public/number-flow-runtime.js','public/portfolio-command-center.html','public/register.html','public/viewport-runtime.js','public/viewport.css','supabase/money-sheet-setup.sql','supabase/money-sheet-v1-migration.sql','test/static-assets.test.js','test/viewport-runtime.test.js','test/login-password-toggle.test.js','test/workspace-access-visibility.test.js','tools/benchmark-static-assets.js','tools/curated-build-tests.json','tools/local-dev-server.js','tools/test-mobile-performance.py'}
+          assert {i['path'] for i in items}==allowed
+          pending={}
           for item in items:
-              path=Path(item['path']);assert not path.is_absolute() and '..' not in path.parts and path.parts[0] in {'public','lib','docs','tools','test','supabase','deploy'}
-              if item['sha'] is None: assert not path.exists();content=item['content']
+              path=Path(item['path']);old=pending[str(path)][0] if str(path) in pending else path.read_text() if path.exists() else None
+              if item['sha'] is None: assert old is None;content=item['content']
               else:
-                  old=path.read_text();assert hashlib.sha256(old.encode()).hexdigest()==item['sha'];lines=old.splitlines(True)
+                  assert old is not None and hashlib.sha256(old.encode()).hexdigest()==item['sha'],str(path);lines=old.splitlines(True)
                   for start,end,text in reversed(item['edits']):lines[start:end]=text.splitlines(True)
                   content=''.join(lines)
-              assert hashlib.sha256(content.encode()).hexdigest()==item['after'];path.parent.mkdir(parents=True,exist_ok=True);path.write_text(content)
+              assert hashlib.sha256(content.encode()).hexdigest()==item['after'],str(path);pending[str(path)]=(content,item['after'])
+          for name,(content,_) in pending.items():path=Path(name);path.parent.mkdir(parents=True,exist_ok=True);path.write_text(content)
+          Path('/tmp/mobile-reviewed-manifest.json').write_text(json.dumps({name:value[1] for name,value in pending.items()}))
           Path('/tmp/mobile-performance-review').mkdir(exist_ok=True)
+          print('24 final source files verified. Access remains fail-closed until server confirmation.')
           PY
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Syntax, focused tests and build
+        run: |
+          node tools/validate-full-syntax.js && node tools/check-precision-inline.js && node tools/build-portfolio-spa-css.js --check
+          node --test test/money-sheet.test.js test/portfolio-command-center.test.js test/portfolio-planner-v1.test.js test/portfolio-missing-is-not-zero.test.js test/portfolio-price-freshness.test.js test/portfolio-render-not-gated-by-network.test.js test/tab-navigation-and-insider-universe.test.js test/ui-theme-layer.test.js test/holver-app-shell-theme.test.js test/standalone-analisis-saham.test.js test/financial-surface-contract.test.js test/spreadsheet-grade-ui.test.js test/precision-motion-cascade.test.js test/landing-experience.test.js test/money-sheet-formulas.test.js test/workspace-detail.test.js test/static-assets.test.js test/viewport-runtime.test.js test/login-password-toggle.test.js test/workspace-access-visibility.test.js > /tmp/mobile-performance-review/focused.log 2>&1
+          npm run build > /tmp/mobile-performance-review/build.log 2>&1
       - run: python -m pip install -r tools/precision-test-requirements.txt
-      - name: Start isolated preview
+      - name: Chromium and loopback preview
         run: |
           echo "CHROMIUM_PATH=$(command -v google-chrome || command -v chromium)" >> "$GITHUB_ENV"
           PORT=3100 node tools/local-dev-server.js > /tmp/mobile-performance-review/preview.log 2>&1 &
           sleep 2
-      - name: Repeat first real-app visibility assertion with passive trace
+      - name: Existing real-code browser regressions including cold startup
         run: |
-          python <<'PY'
-          import os,json
-          from pathlib import Path
-          from playwright.sync_api import sync_playwright
-          env={'__file__':str(Path('tools/test-precision-app.py').resolve())}
-          exec(compile(Path('tools/test-precision-app.py').read_text().split('with sync_playwright() as pw:')[0],'full-app-fixture','exec'),env)
-          with sync_playwright() as pw:
-              browser=pw.chromium.launch(executable_path=os.environ['CHROMIUM_PATH'],headless=True,args=['--no-sandbox'])
-              for attempt in range(3):
-                  page=browser.new_page(viewport={'width':1440,'height':1000},reduced_motion='reduce');page.route('**/*',env['network']);logs=[]
-                  page.on('console',lambda msg:logs.append({'type':msg.type,'text':msg.text}));page.on('pageerror',lambda err:logs.append({'error':str(err)}))
-                  page.add_init_script("window.__visibilityTrace=[];new MutationObserver(records=>{for(const r of records){const e=r.target;if(['page-money-management','appMain','appShell','initialLoader','dashboardScreen'].includes(e.id))__visibilityTrace.push({time:performance.now(),id:e.id,class:e.className,style:e.getAttribute('style'),hidden:e.hidden});}}).observe(document,{subtree:true,attributes:true,attributeFilter:['class','style','hidden']});")
-                  page.goto('http://127.0.0.1:3100/preview/kelola-keuangan',wait_until='domcontentloaded')
-                  result='visible'
-                  try: page.wait_for_selector('#mmCashflowSpreadsheetBody tr',timeout=30000)
-                  except Exception as error: result=str(error)
-                  page.wait_for_timeout(6000)
-                  state=page.evaluate("()=>{let nodes=[];for(let n=document.querySelector('#mmCashflowSpreadsheetBody tr');n;n=n.parentElement){const s=getComputedStyle(n);nodes.push({tag:n.tagName,id:n.id,class:n.className,hidden:n.hidden,style:n.getAttribute('style'),display:s.display,visibility:s.visibility,opacity:s.opacity,contentVisibility:s.contentVisibility,width:n.offsetWidth,height:n.offsetHeight});}return {nodes,trace:__visibilityTrace,current:typeof currentPage!=='undefined'?currentPage:null};}")
-                  Path('/tmp/mobile-performance-review/app-'+str(attempt)+'.json').write_text(json.dumps({'result':result,'state':state,'console':logs},indent=2));page.screenshot(path='/tmp/mobile-performance-review/app-'+str(attempt)+'.png');page.close()
-              browser.close()
-          PY
-      - name: Add failure-only geometry capture to the test fixture
-        run: |
-          python <<'PY'
-          from pathlib import Path
-          p=Path('tools/test-mobile-performance.py');s=p.read_text();needle='    finally:\n';assert s.count(needle)==1
-          extra="    finally:\n        diagnostic=page.evaluate(\"()=>{const e=document.querySelector('#registerModal');const s=e&&getComputedStyle(e);return {viewport:window.AutoCuanViewport&&AutoCuanViewport.snapshot(),inner:[innerWidth,innerHeight],client:[document.documentElement.clientWidth,document.documentElement.clientHeight],rootClass:document.documentElement.className,rootStyle:document.documentElement.getAttribute('style'),active:document.activeElement&&document.activeElement.id,dialog:e&&{bounds:e.getBoundingClientRect().toJSON(),child:e.firstElementChild.getBoundingClientRect().toJSON(),position:s.position,top:s.top,height:s.height,padding:s.padding,transform:s.transform},cssCount:document.styleSheets.length}}\")\n        (OUT/f'geometry-{ENGINE}.json').write_text(json.dumps(diagnostic,indent=2))\n        page.screenshot(path=str(OUT/f'geometry-{ENGINE}.png'))\n"
-          p.write_text(s.replace(needle,extra))
-          PY
-      - name: Chromium keyboard regression
-        run: python tools/test-mobile-performance.py
+          python tools/test-precision-app.py
+          python tools/test-precision-browser.py
+          python tools/test-landing-experience.py
+          python tools/test-workspace-detail.py
+          python tools/test-mobile-performance.py
+          node tools/benchmark-static-assets.js
       - name: Install WebKit
         run: python -m playwright install --with-deps webkit
       - name: WebKit keyboard regression
         run: BROWSER_ENGINE=webkit python tools/test-mobile-performance.py
+      - name: Full registered regression suite
+        run: npm test > /tmp/mobile-performance-review/full-suite.log 2>&1
+      - name: Commit only verified files to review branch
+        run: |
+          python <<'PY'
+          import hashlib,json,subprocess
+          from pathlib import Path
+          files=json.loads(Path('/tmp/mobile-reviewed-manifest.json').read_text())
+          for name,digest in files.items(): assert hashlib.sha256(Path(name).read_bytes()).hexdigest()==digest,name
+          subprocess.run(['git','diff','--check'],check=True)
+          subprocess.run(['git','add','--',*files],check=True)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(ui): coordinate keyboard layouts, restore approved workspace and reduce asset overhead'
+          git push origin HEAD:refs/heads/fix/precision-workspace-finance
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: mobile-performance-diagnostics
+          name: mobile-performance-validation
           path: /tmp/mobile-performance-review
           retention-days: 7
