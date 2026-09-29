@@ -71,6 +71,13 @@ with sync_playwright() as pw:
     page.evaluate('AutoCuanMoneySheet.init()')
     page.wait_for_selector('#mmCashflowSpreadsheetBody tr')
     check('Seven legacy rows loaded',page.locator('#mmCashflowSpreadsheetBody tr').count()==7)
+    for motion in ['reduce','no-preference']:
+        page.emulate_media(reduced_motion=motion)
+        page.evaluate("document.documentElement.classList.add('light')")
+        check('Light cell surface with '+motion,page.locator('#mmCashflowSpreadsheetBody input[data-field="label"]').first.evaluate("e=>{while(e){const c=getComputedStyle(e).backgroundColor;if(c!=='rgba(0, 0, 0, 0)')return c==='rgb(255, 255, 255)';e=e.parentElement}return false}"))
+        check('Vertical sidebar profile with '+motion,page.locator('#appSidebar .sidebar-footer').evaluate("e=>getComputedStyle(e).flexDirection==='column'"))
+    page.evaluate("document.documentElement.classList.remove('light')")
+
     check('Legacy remainder preserved',page.locator('#mmRemainingBudgetDisplay').inner_text()=='Rp 5.000.000')
     amount=page.locator('[data-row-id="legacy-income_salary"] [data-field="amount"]')
     amount.focus();page.evaluate('window.__original=document.activeElement')

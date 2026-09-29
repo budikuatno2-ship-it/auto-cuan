@@ -52,10 +52,26 @@ with sync_playwright() as pw:
         page.wait_for_timeout(250)
         check('Rapid navigation keeps last requested page',page.locator('#page-money-management').is_visible() and not page.locator('#page-analisis').is_visible())
         check('Unsaved sheet survives page navigation',original.input_value()=='Perubahan belum disimpan')
-        for theme in ['dark','light']:
-            page.evaluate("theme=>applyAppTheme(theme)",theme)
-            page.screenshot(path=str(OUT/('full-app-'+theme+'.png')))
-            check(theme+' workspace width stays inside viewport',page.evaluate('document.documentElement.scrollWidth<=innerWidth'))
+        page.mouse.move(1100, 100)
+        for motion in ['reduce','no-preference']:
+            page.emulate_media(reduced_motion=motion)
+            for theme in ['dark','light']:
+                page.evaluate("theme=>applyAppTheme(theme)",theme)
+                page.wait_for_timeout(180)
+                check(theme+' '+motion+' workspace width stays inside viewport',page.evaluate('document.documentElement.scrollWidth<=innerWidth'))
+                check(theme+' '+motion+' sidebar profile remains vertical',page.locator('#appSidebar .sidebar-footer').evaluate("e=>getComputedStyle(e).flexDirection==='column'"))
+                colors=page.locator('#mmCashflowSpreadsheetBody input[data-field="label"]').first.evaluate("e=>{const fg=getComputedStyle(e).color;while(e){const bg=getComputedStyle(e).backgroundColor;if(bg!=='rgba(0, 0, 0, 0)')return {bg,fg};e=e.parentElement}throw Error('No opaque cell background')}")
+                def luminance(css):
+                    channels=[int(n)/255 for n in __import__('re').findall(r'\d+',css)[:3]]
+                    linear=[v/12.92 if v<=0.04045 else ((v+0.055)/1.055)**2.4 for v in channels]
+                    return sum(v*w for v,w in zip(linear,[.2126,.7152,.0722]))
+                bg,fg=luminance(colors['bg']),luminance(colors['fg'])
+                check(theme+' '+motion+' cell text contrast at least 4.5', (max(bg,fg)+.05)/(min(bg,fg)+.05)>=4.5)
+                if theme=='light':check('Light '+motion+' editable cell surface is light',bg>.6)
+                if motion=='reduce':page.screenshot(path=str(OUT/('full-app-'+theme+'.png')))
+        page.emulate_media(reduced_motion='reduce')
+        page.set_viewport_size({'width':1440,'height':520})
+        check('Short desktop keeps brand and profile anchored',page.evaluate("()=>{const a=document.querySelector('#appSidebar .sidebar-brand').getBoundingClientRect();const b=document.querySelector('#appSidebar .sidebar-footer').getBoundingClientRect();return a.top>=0&&b.bottom<=innerHeight+1&&b.top>a.bottom}"))
         page.set_viewport_size({'width':390,'height':844})
         page.locator('#workspaceSidebarToggle').click()
         check('Mobile drawer opens with background inert',page.evaluate("document.getElementById('appMain').inert && document.getElementById('appSidebar').classList.contains('mobile-open')"))
