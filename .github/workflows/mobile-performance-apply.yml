@@ -14,7 +14,7 @@ jobs:
         with:
           persist-credentials: false
       - run: python -m pip install PyYAML==6.0.2 -r tools/precision-test-requirements.txt
-      - name: Reuse the immutable checksum-verifying source reconstruction
+      - name: Reuse immutable checksum-verifying reconstruction
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -28,31 +28,29 @@ jobs:
           command=step['run'];assert command.startswith('test "$(git rev-parse HEAD^)" = df51df60e155f7e45be57851166fedc5495f1da5\n')
           subprocess.run(['bash','-eu','-c',command.split('\n',1)[1]],check=True)
           PY
-      - name: Install WebKit once for isolated experiments
+      - name: Install WebKit once
         run: python -m playwright install --with-deps webkit
-      - name: Compare equivalent CSS and update ordering using unchanged assertions
+      - name: Compare equivalent CSS using unchanged keyboard bounds assertions
         run: |
           python <<'PY'
           import json,os,re,subprocess
           from pathlib import Path
           js=Path('public/viewport-runtime.js');css=Path('public/viewport.css');original_js=js.read_text();original_css=css.read_text()
-          class_line="    root.classList.toggle('ac-keyboard-open', state.keyboard);\n"
-          assert class_line in original_js
-          anchor="    css('--ac-keyboard-gap', state.keyboardGap);"
-          assert anchor in original_js
-          reordered=original_js.replace(class_line,'').replace(anchor,anchor+'\n'+class_line.rstrip())
           def expand(m):return ',\n'.join('html.ac-keyboard-open '+part.strip()+(m.group(2) or '') for part in m.group(1).split(','))
           expanded=re.sub(r'html\.ac-keyboard-open :is\(([^)]+)\)(\s*>\s*div)?',expand,original_css)
-          variants=[('baseline',original_js,original_css),('variables-before-class',reordered,original_css),('explicit-selectors',original_js,expanded),('explicit-and-ordered',reordered,expanded)]
+          logical=original_css.replace('top:var(--ac-vv-top,0px)!important;bottom:auto!important;','inset:var(--ac-vv-top,0px) 0 auto!important;')
+          logical=logical.replace('max-height:max(80px,calc(var(--ac-vv-height,100dvh) - 24px))!important;','max-height:calc(var(--ac-vv-height,100dvh) - 24px)!important;max-block-size:calc(var(--ac-vv-height,100dvh) - 24px)!important;')
+          combined=re.sub(r'html\.ac-keyboard-open :is\(([^)]+)\)(\s*>\s*div)?',expand,logical)
+          variants=[('baseline',original_css),('explicit-selectors',expanded),('inset-and-simple-calc',logical),('explicit-and-inset',combined)]
           summary=[]
-          for name,j,c in variants:
-              js.write_text(j);css.write_text(c)
+          for name,c in variants:
+              css.write_text(c)
               out=Path('/tmp/keyboard-cascade')/name;out.mkdir(parents=True,exist_ok=True)
               result=subprocess.run(['python','tools/test-mobile-performance.py'],env={**os.environ,'BROWSER_ENGINE':'webkit','PRECISION_TEST_OUTPUT':str(out)},stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=150)
               (out/'test.log').write_text(result.stdout)
               report=out/'mobile-results-webkit.json'
               summary.append({'variant':name,'returncode':result.returncode,'report':json.loads(report.read_text()) if report.exists() else None})
-          js.write_text(original_js);css.write_text(original_css)
+          css.write_text(original_css)
           Path('/tmp/keyboard-cascade/summary.json').write_text(json.dumps(summary,indent=2))
           print(json.dumps([{'variant':s['variant'],'returncode':s['returncode'],'passed':(s['report'] or {}).get('passed')} for s in summary]))
           PY
