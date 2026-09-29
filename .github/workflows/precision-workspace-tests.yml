@@ -1,5 +1,7 @@
 name: Precision workspace regression
 on:
+  push:
+    branches: [fix/precision-workspace-finance]
   pull_request:
     paths:
       - 'public/**'
@@ -14,6 +16,9 @@ on:
       - 'tools/*precision*'
       - 'tools/build-portfolio-spa-css.js'
       - '.github/workflows/precision-workspace-tests.yml'
+concurrency:
+  group: precision-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
