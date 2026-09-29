@@ -171,6 +171,48 @@ test('run-daily-broker-update: an already-complete marker makes the next firing 
   });
 });
 
+test('run-daily-broker-update: complete marker is reopened when active universe grows', async () => {
+  await withTempDataDir(async () => {
+    dailyUpdate.writeMarker('2026-09-07', {
+      date: '2026-09-07',
+      complete: true,
+      completed_at: new Date().toISOString(),
+      total_tickers: 1
+    });
+    bandarmologiService.writeDiskCache('broker-summary', 'BBCA', '2026-09-07', {
+      broker_start_date: '2026-09-07',
+      broker_end_date: '2026-09-07',
+      top_buyers: [{ broker: 'YU', bval: 100, bvol: 10 }],
+      top_sellers: []
+    });
+    let calls = 0;
+    const restore = mockArjum({
+      fetchBrokerSummary: async (ticker) => {
+        calls++;
+        return {
+          ok: true,
+          data: {
+            broker_start_date: '2026-09-07',
+            broker_end_date: '2026-09-07',
+            top_buyers: [{ broker: ticker === 'BBRI' ? 'CC' : 'YU', bval: 100, bvol: 10 }],
+            top_sellers: []
+          }
+        };
+      }
+    });
+    try {
+      await dailyUpdate.run(['--tickers', 'BBCA,BBRI', '--date', '2026-09-07', '--delay', '0']);
+      assert.equal(calls, 1, 'only the newly-added ticker should need broker-summary fetch');
+      const marker = dailyUpdate.readMarker('2026-09-07');
+      assert.equal(marker.complete, true);
+      assert.equal(marker.total_tickers, 2);
+      assert.equal(marker.broker_summary_rows, 2);
+    } finally {
+      restore();
+    }
+  });
+});
+
 test('run-daily-broker-update: historical recovery never downgrades a newer latest.json', async () => {
   await withTempDataDir(async () => {
     bandarmologiService.writeDiskCache('broker-summary', 'BBCA', '2026-09-29', {

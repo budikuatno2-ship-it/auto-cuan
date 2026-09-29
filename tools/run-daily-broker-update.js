@@ -264,9 +264,12 @@ async function run(argv) {
   console.log(`Trading day check: OK (calendar source: ${guard.calendarSource})`);
 
   const existingMarker = readMarker(dateArg);
-  if (!isFresh && existingMarker && existingMarker.complete) {
+  if (!isFresh && existingMarker && existingMarker.complete && Number(existingMarker.total_tickers) === tickers.length) {
     console.log(`[SUDAH SELESAI] Marker ${dateArg} sudah lengkap sejak ${existingMarker.completed_at}. Tidak ada yang perlu dikerjakan.`);
     return;
+  }
+  if (!isFresh && existingMarker && existingMarker.complete && Number(existingMarker.total_tickers) !== tickers.length) {
+    console.log(`[UNIVERSE BERUBAH] Marker ${dateArg} mencatat ${existingMarker.total_tickers} ticker, universe aktif sekarang ${tickers.length}. Hanya ticker yang belum punya dated cache yang akan diproses ulang.`);
   }
 
   if (!dryRun && !arjumClient.hasArjumApiKey()) {
