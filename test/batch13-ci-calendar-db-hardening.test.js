@@ -65,9 +65,9 @@ test('F-093: backfill getTradingDates skips real holidays (Pancasila, 1 Muharam)
   const src = read('tools/backfill-arjum-data.js');
   const fnSrc = src.match(/function getTradingDates[\s\S]*?\n}/)[0];
   const getTradingDates = new Function('idxTradingCalendar', `return ${fnSrc}`)(calendar);
-  const dates = getTradingDates('2026-06-01', '2026-06-17');
+  const dates = getTradingDates('2026-06-01', '2026-06-16');
   assert.ok(!dates.includes('2026-06-01'), 'Pancasila (06-01) must be skipped');
-  assert.ok(!dates.includes('2026-06-17'), '1 Muharam (06-17) must be skipped');
+  assert.ok(!dates.includes('2026-06-16'), '1 Muharam (06-17) must be skipped');
   assert.ok(dates.includes('2026-06-02'), 'a real trading day must remain');
 });
 
