@@ -19,12 +19,14 @@
   var menu = null;
   var suppressClickUntil = 0;
   var shellObserver = null;
+  var viewerSignature = null;
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
   }
 
   function visualBox() {
+    if(root.AutoCuanViewport && root.AutoCuanViewport.snapshot()) return root.AutoCuanViewport.snapshot();
     var vv = root.visualViewport;
     return {
       left: vv ? vv.offsetLeft : 0,
@@ -37,10 +39,12 @@
   function syncViewportVars() {
     var box = visualBox();
     var style = doc.documentElement.style;
+    if(!root.AutoCuanViewport) {
     style.setProperty('--ac-vv-left', box.left + 'px');
     style.setProperty('--ac-vv-top', box.top + 'px');
     style.setProperty('--ac-vv-width', box.width + 'px');
     style.setProperty('--ac-vv-height', box.height + 'px');
+    }
     if (launcher && position) applyPosition(true);
     if (menu) placeMenu();
     resizeOpenViewer();
@@ -299,7 +303,7 @@
   function installShellObserver() {
     var shell = doc.getElementById('dashboardScreen');
     if (!shell || typeof MutationObserver === 'undefined') return false;
-    if (shellObserver) shellObserver.disconnect();
+    if (shellObserver) return true;
     shellObserver = new MutationObserver(syncLauncherVisibility);
     shellObserver.observe(shell, { attributes: true, attributeFilter: ['class', 'aria-hidden', 'style'] });
     return true;
@@ -328,12 +332,14 @@
 
   function resizeOpenViewer() {
     var active = root.__AUTOCUAN_CHART_VIEWER__;
-    if (!active || !active.chartId || !root.__chartRegistry || typeof root.chartDims !== 'function') return;
+    if (!active || !active.chartId || !root.__chartRegistry || typeof root.chartDims !== 'function') {viewerSignature=null;return;}
     var entry = root.__chartRegistry[active.chartId];
     if (!entry) return;
     var dims = root.chartDims('fullscreen', visualBox().width, visualBox().height);
     var mainEl = doc.getElementById(active.chartId + '_container');
     var rsiEl = doc.getElementById(active.chartId + '_rsi');
+    var signature=[active.chartId,mainEl?mainEl.clientWidth:visualBox().width,dims.main,dims.rsi].join(':');
+    if(viewerSignature===signature)return;viewerSignature=signature;
     if (mainEl) mainEl.style.height = dims.main + 'px';
     if (rsiEl) rsiEl.style.height = dims.rsi + 'px';
     try { if (entry.mainChart && entry.mainChart.resize) entry.mainChart.resize(mainEl ? mainEl.clientWidth : visualBox().width, dims.main); } catch (_) {}
@@ -405,6 +411,7 @@
   }
 
   function onKeydown(event) {
+    if (event.isComposing || event.keyCode===229 || (root.AutoCuanViewport&&root.AutoCuanViewport.isComposing(event)))return;
     if (event.key === 'Escape' && menu) {
       event.preventDefault();
       closeMenu();
@@ -424,11 +431,15 @@
     if ((launcherReady && shellReady && chartReady) || attempts > 240) root.clearInterval(timer);
   }, 50);
 
+  if(root.AutoCuanViewport)doc.addEventListener('autocuan:viewportchange',syncViewportVars);
+  else {
   root.addEventListener('resize', syncViewportVars, { passive: true });
   root.addEventListener('orientationchange', function () { root.setTimeout(syncViewportVars, 80); }, { passive: true });
-  doc.addEventListener('visibilitychange', syncLauncherVisibility, { passive: true });
+
   if (root.visualViewport) {
     root.visualViewport.addEventListener('resize', syncViewportVars, { passive: true });
     root.visualViewport.addEventListener('scroll', syncViewportVars, { passive: true });
   }
+  }
+  doc.addEventListener('visibilitychange', syncLauncherVisibility, { passive: true });
 })(typeof window !== 'undefined' ? window : null);

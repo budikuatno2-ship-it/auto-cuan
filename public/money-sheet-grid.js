@@ -7,6 +7,10 @@
     const page=doc.getElementById('page-money-management'), table=doc.getElementById('mmCashflowSpreadsheetTable');
     const $=id=>doc.getElementById(id), address=$('mmCellAddress'), bar=$('mmFormulaInput'), status=$('mmSelectionStats');
     let anchor=null, end=null, hold=false, dragging=false, moved=false, barDirty=false, dragColumn=null;
+    const nodes=new Map(), selectedNodes=new Set(), composingInputs=new WeakSet();let activeNode=null;
+    const composing=e=>Boolean(e&&(e.isComposing||e.keyCode===229||composingInputs.has(e.target)));
+    page.addEventListener('compositionstart',e=>composingInputs.add(e.target),true);
+    page.addEventListener('compositionend',e=>composingInputs.delete(e.target),true);
     const widths=[44,148,146,248,160,250,44];
     const rows=()=>api.rows();
     const same=(a,b)=>a&&b&&a.id===b.id&&a.col===b.col;
@@ -22,7 +26,12 @@
     function raw(p) { const s=api.sheet(), row=s&&s.rows.find(r=>r.id===p.id); if(!row)return ''; const field=M.FIELDS[p.col]; const input=table.querySelector('[data-row-id="'+p.id+'"] [data-col="'+p.col+'"]'); if(input&&input.getAttribute('aria-invalid')==='true') return input.value; return field==='amount' ? row.formula||String(row.amount) : field==='type'?M.TYPE_LABELS[row.type]:row[field]; }
     function paint() {
       const chosen=range(), keys=new Set(chosen.map(p=>p.id+':'+p.col));
-      table.querySelectorAll('tbody [data-col]').forEach(input=>{const p=cell(input), td=input.parentElement, selected=keys.has(p.id+':'+p.col);td.classList.toggle('ms-selected',selected);td.classList.toggle('ms-active-cell',same(p,end));td.setAttribute('aria-selected',String(selected));});
+      const next=new Set();keys.forEach(key=>{const td=nodes.get(key);if(td)next.add(td);});
+      selectedNodes.forEach(td=>{if(!next.has(td)){td.classList.remove('ms-selected');td.setAttribute('aria-selected','false');}});
+      next.forEach(td=>{if(!selectedNodes.has(td)){td.classList.add('ms-selected');td.setAttribute('aria-selected','true');}});
+      selectedNodes.clear();next.forEach(td=>selectedNodes.add(td));
+      const active=end&&nodes.get(end.id+':'+end.col);if(activeNode!==active){if(activeNode)activeNode.classList.remove('ms-active-cell');if(active)active.classList.add('ms-active-cell');activeNode=active;}
+
       if(doc.activeElement!==address) address.value=label(anchor)+(anchor&&!same(anchor,end)?':'+label(end):'');
       bar.disabled=!end; if(doc.activeElement!==bar){bar.value=end?raw(end):'';barDirty=false;}
       bar.setAttribute('aria-label','Nilai atau rumus sel '+(label(end)||'aktif'));
@@ -35,6 +44,7 @@
     }
     function select(a,b,focus) {anchor=a;end=b||a;if(focus&&end){hold=true;api.focus(end.id,end.col);hold=false;}paint();}
     function refresh() {
+      nodes.clear();table.querySelectorAll('tbody [data-col]').forEach(input=>{const p=cell(input);nodes.set(p.id+':'+p.col,input.parentElement);});
       const current=rows();
       if(!anchor||!current.some(r=>r.id===anchor.id)||!end||!current.some(r=>r.id===end.id)) anchor=end=current.length?{id:current[0].id,col:0}:null;
       paint();
@@ -61,11 +71,11 @@
       const changes=selected.filter(p=>p.id!==source).map(p=>{let value=raw({id:source,col:p.col});if(p.col===3&&value[0]==='='){const delta=data.rows.findIndex(r=>r.id===p.id)-origin;value=value.replace(/\bD([1-9]\d*)\b/gi,(_,n)=>'D'+(Number(n)+delta));}return {...p,value};});
       api.cells(changes);paint();
     }
-    function applyBar() {if(!barDirty||!end)return;api.cell(end.id,end.col,bar.value);barDirty=false;paint();}
+    function applyBar() {if(composingInputs.has(bar)||!barDirty||!end)return;api.cell(end.id,end.col,bar.value);barDirty=false;paint();}
     bar.addEventListener('input',()=>{barDirty=true;});
     bar.addEventListener('change',applyBar);
-    bar.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();applyBar();if(end)api.focus(end.id,end.col);}if(event.key==='Escape'){barDirty=false;bar.value=raw(end);if(end)api.focus(end.id,end.col);}});
-    address.addEventListener('keydown',event=>{if(event.key!=='Enter')return;event.preventDefault();const match=/^([A-E])([1-9]\d*)(?::([A-E])([1-9]\d*))?$/i.exec(address.value.trim());const s=api.sheet();if(!match||!s)return api.notice('Alamat harus A1 sampai E'+(s?s.rows.length:0)+', atau rentang seperti D1:D4.','error');const a=s.rows[Number(match[2])-1],b=s.rows[Number(match[4]||match[2])-1];if(!a||!b)return api.notice('Baris alamat tersebut belum ada.','error');if(!rows().some(r=>r.id===a.id)||!rows().some(r=>r.id===b.id))return api.notice('Alamat tersebut tersembunyi oleh pencarian. Hapus pencarian dahulu.','error');select({id:a.id,col:match[1].toUpperCase().charCodeAt(0)-65},{id:b.id,col:(match[3]||match[1]).toUpperCase().charCodeAt(0)-65},true);});
+    bar.addEventListener('keydown',event=>{if(composing(event))return;if(event.key==='Enter'){event.preventDefault();applyBar();if(end)api.focus(end.id,end.col);}if(event.key==='Escape'){barDirty=false;bar.value=raw(end);if(end)api.focus(end.id,end.col);}});
+    address.addEventListener('keydown',event=>{if(composing(event))return;if(event.key!=='Enter')return;event.preventDefault();const match=/^([A-E])([1-9]\d*)(?::([A-E])([1-9]\d*))?$/i.exec(address.value.trim());const s=api.sheet();if(!match||!s)return api.notice('Alamat harus A1 sampai E'+(s?s.rows.length:0)+', atau rentang seperti D1:D4.','error');const a=s.rows[Number(match[2])-1],b=s.rows[Number(match[4]||match[2])-1];if(!a||!b)return api.notice('Baris alamat tersebut belum ada.','error');if(!rows().some(r=>r.id===a.id)||!rows().some(r=>r.id===b.id))return api.notice('Alamat tersebut tersembunyi oleh pencarian. Hapus pencarian dahulu.','error');select({id:a.id,col:match[1].toUpperCase().charCodeAt(0)-65},{id:b.id,col:(match[3]||match[1]).toUpperCase().charCodeAt(0)-65},true);});
     table.addEventListener('focusin',event=>{const p=cell(event.target);if(p&&!hold&&!dragging)select(p);});
     table.addEventListener('pointerdown',event=>{
       if(event.button!==0||event.target.closest('.ms-resizer'))return;
@@ -77,10 +87,14 @@
     doc.addEventListener('pointerup',()=>{if(dragging&&moved&&end){hold=true;api.focus(end.id,end.col);hold=false;paint();}dragging=false;dragColumn=null;});
     table.addEventListener('copy',event=>{const input=event.target;const hasText=input.selectionStart!=null&&input.selectionStart!==input.selectionEnd;if((range().length>1||!hasText)&&event.clipboardData){event.preventDefault();event.clipboardData.setData('text/plain',copyText());}});
     page.addEventListener('keydown',event=>{
-      if(event.defaultPrevented||event.isComposing)return;
+      if(event.defaultPrevented||composing(event))return;
       const p=cell(event.target), ctrl=event.ctrlKey||event.metaKey;
       if(event.key==='Escape'&&page.classList.contains('ms-expanded')){event.preventDefault();toggleExpand(false);return;}
       if(!p)return;
+      const input=event.target;
+      if(input.tagName==='TEXTAREA'&&event.key!=='F2')return;
+      if(input.selectionStart!=null&&input.selectionStart!==input.selectionEnd&&range().length<=1)return;
+      if(event.shiftKey&&/^Arrow/.test(event.key)&&input.selectionStart>0&&input.selectionStart<input.value.length&&range().length<=1)return;
       if(ctrl&&event.key.toLowerCase()==='d'){event.preventDefault();fillDown();return;}
       if(event.key==='F2'){event.preventDefault();bar.focus();bar.select();return;}
       if((event.key==='Delete'||event.key==='Backspace')&&range().length>1){event.preventDefault();clear();return;}
@@ -114,6 +128,6 @@
     $('mmCopyCells').addEventListener('click',copy);$('mmClearCells').addEventListener('click',clear);$('mmFillDown').addEventListener('click',fillDown);
     $('mmInsertRow').addEventListener('click',()=>{if(end)api.insert(end.id);});
     $('mmDeleteRows').addEventListener('click',()=>{const ids=Array.from(new Set(range().map(p=>p.id)));if(ids.length&&root.confirm('Hapus '+ids.length+' baris yang dipilih? Perubahan bisa diurungkan.'))api.remove(ids);});
-    return {refresh,reset(){anchor=end=null;bar.value='';barDirty=false;toggleExpand(false);paint();},paint};
+    return {refresh,reset(){anchor=end=null;bar.value='';barDirty=false;toggleExpand(false);paint();nodes.clear();selectedNodes.clear();activeNode=null;},paint};
   }};
 })(window);

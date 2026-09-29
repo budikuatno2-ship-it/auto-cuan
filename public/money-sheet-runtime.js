@@ -13,7 +13,7 @@
   let saved = '', loading = false, saving = false, bound = false, generation = 0, totalsFrame = 0;
   let undo = [], redo = [], editBefore = null, nextId = 0, portfolioQueued = false, portfolioAt = 0;
   let grid = null;
-  const invalid = new Map(), rowNodes = new Map(), requests = new Set();
+  const invalid = new Map(), rowNodes = new Map(), requests = new Set(), composingInputs = new WeakSet();
   const encode = () => JSON.stringify({ sheet, notes });
   const dirty = () => !!sheet && (encode() !== saved || invalid.size > 0);
   const visible = () => $('page-money-management') && !$('page-money-management').classList.contains('hidden');
@@ -24,19 +24,19 @@
     const el = $('mmSheetNotice');
     el.textContent = message || ''; el.hidden = !message; el.dataset.tone = tone || 'info';
   }
-  function stateLabel(label, state) { const el = $('mmSheetSaveState'); el.textContent = label; el.dataset.state = state || ''; }
+  function stateLabel(label, state) { const el = $('mmSheetSaveState'); if(el.textContent!==label)el.textContent=label;if(el.dataset.state!==(state||''))el.dataset.state=state||''; }
   function controls() {
-    const ready = !!sheet && !loading;
+    const ready = !!sheet && !loading, isDirty=ready && dirty();
     $('mmAddRow').disabled = !ready || sheet.rows.length >= Model.MAX_ROWS;
     $('mmUndo').disabled = !ready || (!undo.length && !editBefore);
     $('mmRedo').disabled = !ready || !redo.length;
     $('mmExport').disabled = !ready;
-    $('mmBtnSaveCashflow').disabled = !ready || saving || !dirty() || invalid.size > 0;
-    $('mmBtnSaveCashflow').textContent = saving ? 'Menyimpan...' : 'Simpan';
+    $('mmBtnSaveCashflow').disabled = !ready || saving || !isDirty || invalid.size > 0;
+    const saveLabel=saving?'Menyimpan...':'Simpan';if($('mmBtnSaveCashflow').textContent!==saveLabel)$('mmBtnSaveCashflow').textContent=saveLabel;
     $('mmSheetMonth').disabled = loading || saving;
     $('mmReload').disabled = loading || saving;
     $('mmCashflowNotes').disabled = !ready;
-    if (ready && !saving && !lastSaveError) stateLabel(dirty() ? 'Belum disimpan' : revision == null ? 'Bulan baru' : 'Tersimpan', dirty() ? 'dirty' : 'saved');
+    if (ready && !saving && !lastSaveError) stateLabel(isDirty ? 'Belum disimpan' : revision == null ? 'Bulan baru' : 'Tersimpan', isDirty ? 'dirty' : 'saved');
   }
   async function request(url, options) {
     const controller = new AbortController(); requests.add(controller);
@@ -77,7 +77,7 @@
   function focusCell(rowId, col) {
     const node = rowNodes.get(rowId);
     const input = node && node.querySelector('[data-col="' + col + '"]');
-    if (input) { input.focus({ preventScroll: true }); input.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+    if (input) { input.focus({ preventScroll: true }); input.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' }); if(root.AutoCuanViewport)root.AutoCuanViewport.reveal(input); }
   }
   function makeRow(row) {
     const tr = doc.createElement('tr'); tr.dataset.rowId = row.id;
@@ -86,7 +86,7 @@
     Model.FIELDS.forEach((field, col) => {
       const td = doc.createElement('td'); td.setAttribute('role','gridcell');
       const input = doc.createElement(field === 'type' ? 'select' : field === 'note' ? 'textarea' : 'input');
-      input.dataset.field = field; input.dataset.col = String(col);
+      input.dataset.field = field; input.dataset.col = String(col); input.enterKeyHint=field==='note'?'enter':'next';
       if (field === 'type') Model.TYPES.forEach(type => { const option = doc.createElement('option'); option.value = type; option.textContent = Model.TYPE_LABELS[type]; input.appendChild(option); });
       else {
         if(field === 'note') input.rows=1; else input.type = 'text'; input.autocomplete = 'off'; input.spellcheck = false;
@@ -250,6 +250,7 @@
   }
   function onInput(event) {
     const input = event.target;
+    if(event.isComposing||composingInputs.has(input))return;
     if (input.id === 'mmCashflowNotes') { notes = input.value; changed(); return; }
     const tr = input.closest('[data-row-id]'); if (!tr || !input.dataset.field || !sheet) return;
     const row = sheet.rows.find(r => r.id === tr.dataset.rowId); if (!row) return;
@@ -267,12 +268,12 @@
   function syncComputedCells() {
     if (!sheet) return;
     sheet.rows.forEach(row => { const node=rowNodes.get(row.id); const input=node && node.querySelector('[data-col="3"]');
-      if (input && input!==doc.activeElement && !invalid.has(row.id+':amount')) input.value=format(row.amount);
-      if (input) { input.dataset.formula=row.formula||''; input.title=row.formula ? row.formula+' = Rp '+format(row.amount):''; }
+      if (input && input!==doc.activeElement && !invalid.has(row.id+':amount')) {const value=format(row.amount);if(input.value!==value)input.value=value;}
+      if (input) {const formula=row.formula||'',title=row.formula?row.formula+' = Rp '+format(row.amount):'';if(input.dataset.formula!==formula)input.dataset.formula=formula;if(input.title!==title)input.title=title;}
     });
   }
   function onKey(event) {
-    if (event.defaultPrevented || !visible() || !sheet || loading) return;
+    if (event.defaultPrevented || event.isComposing || event.keyCode===229 || composingInputs.has(event.target) || !visible() || !sheet || loading) return;
     const modifier = event.ctrlKey || event.metaKey;
     if (modifier && event.key.toLowerCase() === 's') { event.preventDefault(); save(); return; }
     if (modifier && event.key.toLowerCase() === 'z') { event.preventDefault(); restore(event.shiftKey ? 'redo' : 'undo'); return; }
@@ -280,6 +281,8 @@
     const input = event.target, tr = input.closest && input.closest('[data-row-id]');
     if (!tr || !input.dataset.field || event.isComposing || modifier || event.altKey) return;
     const rows = visibleRows(), index = rows.findIndex(r => r.id === tr.dataset.rowId), col = Number(input.dataset.col);
+    if(input.tagName==='TEXTAREA'&&event.key!=='Tab')return;
+    if(event.shiftKey&&/^Arrow/.test(event.key))return;
     let rowIndex = index, column = col;
     if (event.key === 'Enter') rowIndex += event.shiftKey ? -1 : 1;
     else if (input.tagName !== 'SELECT' && event.key === 'ArrowDown') rowIndex++;
@@ -312,6 +315,8 @@
       insert:rowId=>{const row=Model.newRow(id());transact(()=>{sheet=Model.insertRows(sheet,sheet.rows.findIndex(r=>r.id===rowId),[row]);},{id:row.id,col:2});},
       remove:ids=>transact(()=>{sheet=Model.removeRows(sheet,ids);})
     });
+    page.addEventListener('compositionstart',event=>composingInputs.add(event.target));
+    page.addEventListener('compositionend',event=>{composingInputs.delete(event.target);onInput(event);});
     page.addEventListener('input', onInput);
     page.addEventListener('focusin', event => {
       if (event.target.dataset.field || event.target.id === 'mmCashflowNotes') { editBefore = encode(); controls(); }
@@ -332,6 +337,7 @@
       if (!tr || !input.dataset.field || !event.clipboardData) return;
       const raw = event.clipboardData.getData('text/plain');
       if (!/[\t\r\n]/.test(raw)) return;
+      if(input.tagName==='TEXTAREA'&&!raw.includes('\t')&&!raw.startsWith('"'))return;
       event.preventDefault();
       if ($('mmSheetSearch').value || $('mmSheetSort').value !== 'original') return notice('Hapus pencarian dan pilih Urutan asli sebelum menempel banyak sel.','error');
       const index = sheet.rows.findIndex(r => r.id === tr.dataset.rowId), col = Number(input.dataset.col);

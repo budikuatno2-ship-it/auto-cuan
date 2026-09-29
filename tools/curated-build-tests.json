@@ -564,5 +564,8 @@
   "test/precision-motion-cascade.test.js",
   "test/landing-experience.test.js",
   "test/money-sheet-formulas.test.js",
-  "test/workspace-detail.test.js"
+  "test/workspace-detail.test.js",
+  "test/viewport-runtime.test.js",
+  "test/static-assets.test.js",
+  "test/workspace-access-visibility.test.js"
 ]

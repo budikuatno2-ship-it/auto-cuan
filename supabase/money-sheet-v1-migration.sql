@@ -11,7 +11,7 @@ COMMENT ON COLUMN public.user_personal_cashflow.sheet_data IS
 COMMENT ON COLUMN public.user_personal_cashflow.sheet_revision IS
   'Optimistic concurrency counter for worksheet writes.';
 CREATE OR REPLACE FUNCTION public.guard_money_sheet_revision()
-RETURNS trigger LANGUAGE plpgsql AS $$
+RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
 BEGIN
   IF OLD.sheet_data IS NOT NULL AND NEW.sheet_revision <= OLD.sheet_revision THEN
     RAISE EXCEPTION 'Worksheet revision required. Reload the updated Finance view.';

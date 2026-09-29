@@ -66,8 +66,34 @@ test('login Forgot Password link is unchanged', () => {
   assert.ok(html.indexOf('>Lupa Password?<') >= 0, 'Forgot Password label intact');
 });
 
+function passwordKeyHandler() {
+  const match = loginPasswordInputTag().match(/onkeydown="([^"]+)"/);
+  assert.ok(match, 'password keyboard handler must exist');
+  // Evaluate the authored handler against isolated event/login doubles.
+  return new Function('event', 'window', 'doLogin', match[1]);
+}
+
 test('login Enter-to-submit behavior preserved on the password field', () => {
-  assert.match(loginPasswordInputTag(), /onkeydown="if\(event\.key==='Enter'\)doLogin\(\)"/);
+  const handle = passwordKeyHandler();
+  let calls = 0;
+  const login = () => { calls++; };
+  handle({ key: 'Enter' }, {}, login);
+  assert.equal(calls, 1, 'normal Enter submits exactly once without the viewport runtime');
+  handle({ key: 'Enter' }, { AutoCuanViewport: { isComposing: () => false } }, login);
+  assert.equal(calls, 2, 'normal Enter still submits once with the viewport runtime');
+  handle({ key: 'a' }, {}, login);
+  handle({ key: 'Escape' }, {}, login);
+  assert.equal(calls, 2, 'unrelated keys do not submit');
+});
+
+test('IME confirmation never submits the password while composing', () => {
+  const handle = passwordKeyHandler();
+  let calls = 0;
+  const login = () => { calls++; };
+  handle({ key: 'Enter', isComposing: true }, {}, login);
+  handle({ key: 'Enter', keyCode: 229 }, {}, login);
+  handle({ key: 'Enter' }, { AutoCuanViewport: { isComposing: () => true } }, login);
+  assert.equal(calls, 0, 'native, legacy Android and composition-lifecycle guards all apply');
 });
 
 // ---- Behavioral test of the shared toggle against the login field ----

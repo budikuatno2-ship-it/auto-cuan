@@ -5,20 +5,23 @@
   if(root.AutoCuanNumeric)return;
   const records=new WeakMap(), live=new Set(), reduced=root.matchMedia('(prefers-reduced-motion: reduce)');
   let library=null, pending=null;
+  const formatters=new Map();
+  function formatValue(value,options){const key=JSON.stringify(options);if(!formatters.has(key)){if(formatters.size>=24)formatters.delete(formatters.keys().next().value);formatters.set(key,new Intl.NumberFormat('id-ID',options));}return formatters.get(key).format(value);}
   function load() {
     if(!pending)pending=import('/vendor/number-flow-0.6.2/index.mjs').then(value=>{library=value;return value;}).catch(()=>null);
     return pending;
   }
   function sweep() {live.forEach(flow=>{if(!flow.isConnected){flow.animated=false;live.delete(flow);}});}
   function duration(name,fallback) {const raw=root.getComputedStyle(root.document.documentElement).getPropertyValue(name).trim(),n=parseFloat(raw);return Number.isFinite(n)?n*(raw.endsWith('ms')?1:1000):fallback;}
+  function easing(name,fallback){return root.getComputedStyle(root.document.documentElement).getPropertyValue(name).trim()||fallback;}
   function upgrade(element,record) {
     if(!library||!element.isConnected||records.get(element)!==record||record.value==null)return;
     try {
       if(!record.flow) {
         const flow=root.document.createElement('number-flow');flow.setAttribute('aria-hidden','true');flow.className='ac-number-flow';
         flow.locales='id-ID';flow.format=record.format;flow.numberPrefix=record.prefix;flow.numberSuffix=record.suffix;
-        flow.respectMotionPreference=true;flow.trend=0;flow.transformTiming={duration:duration('--motion-base',260),easing:'cubic-bezier(.16,1,.3,1)'};
-        flow.opacityTiming={duration:duration('--motion-fast',180),easing:'ease-out'};flow.animated=false;
+        flow.respectMotionPreference=true;flow.trend=0;flow.transformTiming={duration:duration('--motion-base',260),easing:easing('--ease-emphasized','cubic-bezier(.16,1,.3,1)')};
+        flow.opacityTiming={duration:duration('--motion-fast',180),easing:easing('--ease-exit','ease-out')};flow.animated=false;
         record.flow=flow;element.appendChild(flow);flow.update(record.value);record.text.classList.add('ac-numeric-readable');live.add(flow);
       } else {
         const flow=record.flow;flow.animated=!reduced.matches&&root.document.visibilityState==='visible'&&element.getClientRects().length>0;
@@ -31,10 +34,10 @@
     if(!element)return;
     options=options||{};const valid=typeof value==='number'&&Number.isFinite(value),prefix=options.prefix||'',suffix=options.suffix||'';
     const format={minimumFractionDigits:options.digits||0,maximumFractionDigits:options.digits||0};
-    const text=valid?prefix+new Intl.NumberFormat('id-ID',format).format(value)+suffix:(options.empty||'\u2014');
     let record=records.get(element);const key=JSON.stringify([prefix,suffix,format]);
+    if(valid&&record&&record.key===key&&record.value===value&&record.flow&&element.contains(record.text))return;
+    const text=valid?prefix+formatValue(value,format)+suffix:(options.empty||'\u2014');
     if(!valid){if(record&&record.flow){record.flow.animated=false;live.delete(record.flow);}records.delete(element);element.textContent=text;delete element.dataset.numberFlow;return;}
-    if(record && record.key===key && record.value===value && record.flow && element.contains(record.text)) return;
     if(!record||record.key!==key||!element.contains(record.text)){
       if(record&&record.flow){record.flow.animated=false;live.delete(record.flow);}
       const span=root.document.createElement('span');span.textContent=text;element.replaceChildren(span);
