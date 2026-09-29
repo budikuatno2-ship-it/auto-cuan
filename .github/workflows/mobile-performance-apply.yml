@@ -8,7 +8,7 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     env:
       PRECISION_TEST_OUTPUT: /tmp/mobile-performance-review
     steps:
@@ -48,7 +48,7 @@ jobs:
           echo "CHROMIUM_PATH=$(command -v google-chrome || command -v chromium)" >> "$GITHUB_ENV"
           PORT=3100 node tools/local-dev-server.js > /tmp/mobile-performance-review/preview.log 2>&1 &
           sleep 2
-      - name: Inspect full application without modifying its visibility
+      - name: Repeat first real-app visibility assertion with passive trace
         run: |
           python <<'PY'
           import os,json
@@ -56,17 +56,28 @@ jobs:
           from playwright.sync_api import sync_playwright
           env={'__file__':str(Path('tools/test-precision-app.py').resolve())}
           exec(compile(Path('tools/test-precision-app.py').read_text().split('with sync_playwright() as pw:')[0],'full-app-fixture','exec'),env)
-          logs=[];responses=[]
           with sync_playwright() as pw:
               browser=pw.chromium.launch(executable_path=os.environ['CHROMIUM_PATH'],headless=True,args=['--no-sandbox'])
-              page=browser.new_page(viewport={'width':1440,'height':1000},reduced_motion='reduce');page.route('**/*',env['network'])
-              page.on('console',lambda msg:logs.append({'type':msg.type,'text':msg.text}))
-              page.on('pageerror',lambda err:logs.append({'error':str(err)}))
-              page.on('response',lambda res:responses.append({'url':res.url,'status':res.status}))
-              page.goto('http://127.0.0.1:3100/preview/kelola-keuangan',wait_until='domcontentloaded');page.wait_for_timeout(3500)
-              state=page.evaluate('''()=>{const cell=document.querySelector('#mmCashflowSpreadsheetBody tr');let nodes=[];for(let n=cell;n;n=n.parentElement){const s=getComputedStyle(n);nodes.push({tag:n.tagName,id:n.id,class:n.className,hidden:n.hidden,style:n.getAttribute('style'),display:s.display,visibility:s.visibility,opacity:s.opacity,contentVisibility:s.contentVisibility,width:n.offsetWidth,height:n.offsetHeight});}return {nodes,pages:Array.from(document.querySelectorAll('.page-content')).map(n=>({id:n.id,class:n.className,hidden:n.hidden,style:n.getAttribute('style')})),current:typeof currentPage!=='undefined'?currentPage:null};}''')
-              Path('/tmp/mobile-performance-review/app-diagnostics.json').write_text(json.dumps({'state':state,'console':logs,'responses':responses},indent=2))
-              page.screenshot(path='/tmp/mobile-performance-review/diagnostic.png');browser.close()
+              for attempt in range(3):
+                  page=browser.new_page(viewport={'width':1440,'height':1000},reduced_motion='reduce');page.route('**/*',env['network']);logs=[]
+                  page.on('console',lambda msg:logs.append({'type':msg.type,'text':msg.text}));page.on('pageerror',lambda err:logs.append({'error':str(err)}))
+                  page.add_init_script("window.__visibilityTrace=[];new MutationObserver(records=>{for(const r of records){const e=r.target;if(['page-money-management','appMain','appShell','initialLoader','dashboardScreen'].includes(e.id))__visibilityTrace.push({time:performance.now(),id:e.id,class:e.className,style:e.getAttribute('style'),hidden:e.hidden});}}).observe(document,{subtree:true,attributes:true,attributeFilter:['class','style','hidden']});")
+                  page.goto('http://127.0.0.1:3100/preview/kelola-keuangan',wait_until='domcontentloaded')
+                  result='visible'
+                  try: page.wait_for_selector('#mmCashflowSpreadsheetBody tr',timeout=30000)
+                  except Exception as error: result=str(error)
+                  page.wait_for_timeout(6000)
+                  state=page.evaluate("()=>{let nodes=[];for(let n=document.querySelector('#mmCashflowSpreadsheetBody tr');n;n=n.parentElement){const s=getComputedStyle(n);nodes.push({tag:n.tagName,id:n.id,class:n.className,hidden:n.hidden,style:n.getAttribute('style'),display:s.display,visibility:s.visibility,opacity:s.opacity,contentVisibility:s.contentVisibility,width:n.offsetWidth,height:n.offsetHeight});}return {nodes,trace:__visibilityTrace,current:typeof currentPage!=='undefined'?currentPage:null};}")
+                  Path('/tmp/mobile-performance-review/app-'+str(attempt)+'.json').write_text(json.dumps({'result':result,'state':state,'console':logs},indent=2));page.screenshot(path='/tmp/mobile-performance-review/app-'+str(attempt)+'.png');page.close()
+              browser.close()
+          PY
+      - name: Add failure-only geometry capture to the test fixture
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          p=Path('tools/test-mobile-performance.py');s=p.read_text();needle='    finally:\n';assert s.count(needle)==1
+          extra="    finally:\n        diagnostic=page.evaluate(\"()=>{const e=document.querySelector('#registerModal');const s=e&&getComputedStyle(e);return {viewport:window.AutoCuanViewport&&AutoCuanViewport.snapshot(),inner:[innerWidth,innerHeight],client:[document.documentElement.clientWidth,document.documentElement.clientHeight],rootClass:document.documentElement.className,rootStyle:document.documentElement.getAttribute('style'),active:document.activeElement&&document.activeElement.id,dialog:e&&{bounds:e.getBoundingClientRect().toJSON(),child:e.firstElementChild.getBoundingClientRect().toJSON(),position:s.position,top:s.top,height:s.height,padding:s.padding,transform:s.transform},cssCount:document.styleSheets.length}}\")\n        (OUT/f'geometry-{ENGINE}.json').write_text(json.dumps(diagnostic,indent=2))\n        page.screenshot(path=str(OUT/f'geometry-{ENGINE}.png'))\n"
+          p.write_text(s.replace(needle,extra))
           PY
       - name: Chromium keyboard regression
         run: python tools/test-mobile-performance.py
