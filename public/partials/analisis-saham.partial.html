@@ -1,41 +1,8 @@
 <div class="page-header mb-4">
-  <h1 class="page-title text-2xl font-bold text-[var(--text-primary)]">Analisis &amp; Cockpit AI</h1>
+  <h1 id="analysisWorkspaceTitle" class="page-title text-2xl font-bold text-[var(--text-primary)]">Analisis &amp; Cockpit AI</h1>
   <p class="page-subtitle text-xs text-[var(--text-secondary)]">Chart interaktif, analisis teknikal komprehensif, dan pembacaan visual AI.</p>
 </div>
-
-        <!-- Main Tab Navigation Strip (Consolidated 5-Tab Architecture) -->
-        <nav class="analisis-tab-strip mb-4" role="tablist" aria-label="Tab Analisis Saham">
-            <button id="tabAnalisisChart" type="button" class="analisis-tab active" data-tab="analisis-chart" onclick="switchAnalisisTab('analisis-chart')">
-                <span class="text-base">💬</span>
-                <span>Analisis &amp; Chart</span>
-            </button>
-            <button id="tabBandarmologi" type="button" class="analisis-tab" data-tab="bandarmologi" onclick="switchAnalisisTab('bandarmologi')">
-                <span class="text-base">🏛️</span>
-                <span>Bandarmologi</span>
-            </button>
-            <button id="tabSinyalIntelijen" type="button" class="analisis-tab" data-tab="intel" onclick="switchAnalisisTab('intel')">
-                <span class="text-base">🎯</span>
-                <span>Sinyal Intelijen</span>
-            </button>
-            <button id="tabBrokerHunter" type="button" class="analisis-tab" data-tab="hunter" onclick="switchAnalisisTab('hunter')">
-                <span class="text-base">🎯</span>
-                <span>Broker Hunter</span>
-            </button>
-            <button id="tabJejaringInsider" type="button" class="analisis-tab" data-tab="insider" onclick="switchAnalisisTab('insider')">
-                <span class="text-base">🕸️</span>
-                <span>Jejaring Insider</span>
-            </button>
-            <button id="tabRankingHarian" type="button" class="analisis-tab" data-tab="ranking" onclick="switchAnalisisTab('ranking')">
-                <span class="text-base">🏆</span>
-                <span>Ranking Harian</span>
-                <span id="rankingLockIcon" class="text-xs text-amber-400 ml-1">🔒</span>
-            </button>
-            <button id="tabAnalisisPattern" type="button" class="analisis-tab hidden" data-tab="pattern" onclick="switchAnalisisTab('pattern')">
-                <span class="text-base">🎯</span>
-                <span>Pattern Radar</span>
-                <span class="text-[10px] text-emerald-400 font-mono font-bold ml-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">ADMIN</span>
-            </button>
-        </nav>
+        <!-- Analysis destinations live in the workspace sidebar. -->
 
         <!-- Header / Controls for Analisis & Chart (Global Search + Popular Chips + Subtabs) -->
         <div id="analisisChartHeader" class="analisis-saham-controls ticker-search-container mb-4">

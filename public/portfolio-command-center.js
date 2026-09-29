@@ -13,6 +13,7 @@
   };
 
   function $(id) { return document.getElementById(id); }
+  function portfolioRoot() { return $('portofolioPartialMount') || document; }
   function show(id) { var el = $(id); if (el) el.classList.remove('hidden'); }
   function hide(id) { var el = $(id); if (el) el.classList.add('hidden'); }
   function escapeHtml(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
@@ -81,7 +82,7 @@
   }
   function ticker(value) { return Model.tickerOf(value); }
   function safeJson(key, fallback) { try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch (_) { return fallback; } }
-  function saveJson(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (_) { return false; } }
+  function saveJson(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); window.dispatchEvent(new CustomEvent('autocuan:portfolio-changed', { detail: { userId: state.uid } })); return true; } catch (_) { return false; } }
   function plansKey() { return 'autocuan_portfolio_plans_' + state.uid; }
   function pricesKey() { return 'autocuan_portfolio_prices_' + state.uid; }
   function journalKey() { return 'autocuan_portfolio_journal_v1_' + state.uid; }
@@ -205,19 +206,15 @@
   }
 
   function bind() {
-    if (state.bound) {
-      document.querySelectorAll('[data-tab]').forEach(function (button) {
-        button.addEventListener('click', function () { openTab(button.dataset.tab); });
-        button.addEventListener('keydown', function (event) { navigateTabs(event, button); });
-      });
-      return;
-    }
-    state.bound = true;
-    function on(id, evt, fn) { var el = $(id); if (el) el[evt] = fn; }
-    document.querySelectorAll('[data-tab]').forEach(function (button) {
+    portfolioRoot().querySelectorAll('[data-tab]').forEach(function (button) {
+      if (button.__portfolioTabBound) return;
+      button.__portfolioTabBound = true;
       button.addEventListener('click', function () { openTab(button.dataset.tab); });
       button.addEventListener('keydown', function (event) { navigateTabs(event, button); });
     });
+    if (state.bound) return;
+    state.bound = true;
+    function on(id, evt, fn) { var el = $(id); if (el) el[evt] = fn; }
     on('refreshToday', 'onclick', function () { refreshAllPrices(true); });
     on('captureSnapshot', 'onclick', captureSnapshot);
     on('calculateBudget', 'onclick', calculateBudget);
@@ -250,7 +247,7 @@
   function navigateTabs(event, button) {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
-    var tabs = Array.prototype.slice.call(document.querySelectorAll('[data-tab]'));
+    var tabs = Array.prototype.slice.call(portfolioRoot().querySelectorAll('[data-tab]'));
     var index = tabs.indexOf(button);
     if (event.key === 'Home') index = 0;
     else if (event.key === 'End') index = tabs.length - 1;
@@ -259,12 +256,13 @@
   }
 
   function openTab(name) {
-    document.querySelectorAll('[data-tab]').forEach(function (button) {
+    if (['today', 'planner', 'watch', 'risk', 'scenarios', 'journal', 'ai', 'alerts'].indexOf(name) < 0) return;
+    portfolioRoot().querySelectorAll('[data-tab]').forEach(function (button) {
       var active = button.dataset.tab === name;
       button.classList.toggle('active', active);
       button.setAttribute('aria-selected', active ? 'true' : 'false');
     });
-    document.querySelectorAll('.page').forEach(function (page) { page.classList.remove('active'); });
+    portfolioRoot().querySelectorAll('.page').forEach(function (page) { page.classList.remove('active'); });
     var page = $('page-' + name); if (page) page.classList.add('active');
     if (name === 'watch') renderWatch();
     if (name === 'risk') renderRiskOptions();
@@ -273,6 +271,8 @@
   }
 
   function delegatedClick(event) {
+    var mount = $('portofolioPartialMount');
+    if (mount && !mount.contains(event.target)) return;
     var tickerButton = event.target.closest('[data-open-ticker]');
     if (tickerButton) return openTickerDrawer(tickerButton.getAttribute('data-open-ticker'));
     var remove = event.target.closest('[data-delete-plan]');

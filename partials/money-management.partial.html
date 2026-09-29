@@ -1,0 +1,42 @@
+<section id="page-money-management" class="page-content money-sheet hidden" data-premium-page="true" aria-labelledby="moneySheetTitle">
+  <div class="ms-page-heading">
+    <div><p class="ms-eyebrow">KEUANGAN PRIBADI</p><h1 id="moneySheetTitle">Kelola Keuangan</h1><p class="ms-description">Anggaran bulanan yang bisa Anda atur. Portofolio terhubung, tanpa pencatatan ganda.</p></div>
+    <label class="ms-month">Periode <input id="mmSheetMonth" type="month" min="1900-01" max="2199-12" aria-label="Bulan anggaran"></label>
+  </div>
+  <div class="ms-overview" aria-label="Ringkasan seluruh anggaran">
+    <div class="ms-metric"><span>Pemasukan</span><strong id="mmTotalIncomeDisplay">&mdash;</strong><small>Seluruh sumber penghasilan</small></div>
+    <div class="ms-metric"><span>Pengeluaran</span><strong id="mmTotalLivingExpenseDisplay">&mdash;</strong><small>Kebutuhan dan pengeluaran pilihan</small></div>
+    <div class="ms-metric"><span>Tabungan &amp; transfer</span><strong id="mmSheetAllocation">&mdash;</strong><small>Alokasi bulan ini, bukan nilai aset</small></div>
+    <div class="ms-metric ms-metric-balance"><span>Sisa anggaran</span><strong id="mmRemainingBudgetDisplay">&mdash;</strong><small id="mmBudgetSafetyStatus">Menunggu data anggaran</small></div>
+  </div>
+  <section class="ms-portfolio" aria-label="Ringkasan Portofolio terhubung">
+    <div class="ms-portfolio-label"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="15" rx="2"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M3 11h18M10 11v3h4v-3"/></svg><div><strong>Portofolio terhubung</strong><span id="mmPortfolioStatus" role="status">Belum dimuat</span></div></div>
+    <div class="ms-linked-metric"><span>Eksposur rencana</span><strong id="mmPortfolioExposure">&mdash;</strong></div>
+    <div class="ms-linked-metric"><span>P/L dari harga tersimpan</span><strong id="mmPortfolioPnl">&mdash;</strong></div>
+    <button type="button" id="mmOpenPortfolio" class="ms-button ms-button-quiet">Buka Portofolio <span aria-hidden="true">&#8599;</span></button>
+    <p class="ms-portfolio-note">Ringkasan mengikuti sumber data Portofolio. Nilai rencana dan P/L bukan arus kas bulan ini; tidak ditambahkan atau dikurangkan otomatis dari anggaran.</p>
+  </section>
+  <section class="ms-workbook" aria-label="Lembar kerja anggaran">
+    <div class="ms-workbook-heading"><div><h2>Anggaran bulanan</h2><p>Edit sel langsung, tempel dari spreadsheet, dan tambahkan pos sesuai kebutuhan.</p></div><span id="mmSheetSaveState" class="ms-save-state" role="status" aria-live="polite">Belum dimuat</span></div>
+    <div class="ms-toolbar" role="toolbar" aria-label="Alat lembar kerja">
+      <button type="button" class="ms-button" id="mmAddRow" disabled><span aria-hidden="true">+</span> Tambah baris</button>
+      <div class="ms-history"><button type="button" class="ms-icon-button" id="mmUndo" title="Urungkan (Ctrl+Z)" aria-label="Urungkan perubahan" disabled>&#8630;</button><button type="button" class="ms-icon-button" id="mmRedo" title="Ulangi (Ctrl+Shift+Z)" aria-label="Ulangi perubahan" disabled>&#8631;</button></div>
+      <label class="ms-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><input id="mmSheetSearch" type="search" placeholder="Cari pos anggaran" aria-label="Cari pos anggaran"></label>
+      <label class="ms-sort"><span class="sr-only">Urutkan baris</span><select id="mmSheetSort"><option value="original">Urutan asli</option><option value="amount">Nominal terbesar</option><option value="label">Nama A&ndash;Z</option></select></label>
+      <button type="button" class="ms-button ms-button-quiet" id="mmExport" disabled>Ekspor CSV</button>
+      <button type="button" class="ms-button ms-button-quiet" id="mmReload">Muat ulang</button>
+      <button type="button" class="ms-button ms-button-primary" id="mmBtnSaveCashflow" disabled>Simpan</button>
+    </div>
+    <div class="ms-formula-bar"><span class="ms-cell-address" id="mmCellAddress" aria-label="Sel aktif">A1</span><span id="mmSheetHint">Tab / Enter untuk berpindah sel. Nominal dalam rupiah bulat. Ctrl+S untuk menyimpan.</span></div>
+    <div id="mmSheetNotice" class="ms-notice" role="status" aria-live="polite">Memuat lembar kerja&hellip;</div>
+    <div id="mmSheetViewport" class="ms-grid-viewport" tabindex="0" role="region" aria-label="Tabel anggaran, dapat digulir" hidden>
+      <table id="mmCashflowSpreadsheetTable" class="ms-grid" aria-label="Anggaran bulanan">
+        <colgroup><col style="width:44px"><col style="width:148px"><col style="width:146px"><col style="width:248px"><col style="width:160px"><col style="width:250px"><col style="width:44px"></colgroup>
+        <thead><tr><th scope="col" class="ms-row-number">#</th><th scope="col"><span>A</span> Jenis</th><th scope="col"><span>B</span> Kategori</th><th scope="col"><span>C</span> Nama pos</th><th scope="col" class="ms-number"><span>D</span> Nominal (Rp)</th><th scope="col"><span>E</span> Catatan</th><th scope="col"><span class="sr-only">Tindakan</span></th></tr></thead>
+        <tbody id="mmCashflowSpreadsheetBody"></tbody>
+      </table>
+    </div>
+    <div class="ms-grid-status"><span id="mmSheetRowCount">Belum ada data dimuat</span><span>Ringkasan menghitung semua baris, termasuk yang disaring.</span></div>
+    <label class="ms-month-notes" for="mmCashflowNotes">Catatan bulan ini <textarea id="mmCashflowNotes" rows="2" maxlength="500" placeholder="Tujuan, pengingat, atau konteks anggaran (opsional)" disabled></textarea></label>
+  </section>
+</section>
