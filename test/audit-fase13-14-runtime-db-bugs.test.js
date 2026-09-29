@@ -120,6 +120,21 @@ test('F13-05: final-schedule.cron declares CRON_TZ and each command uses node ru
   }
 });
 
+test('F13-05b: broker-summary cron matches documented EOD retry cadence and avoids --fresh', () => {
+  const cronPath = path.join(__dirname, '..', 'deploy/vps/final-schedule.cron');
+  const raw = fs.readFileSync(cronPath, 'utf8');
+  const brokerLines = raw.split('\n').filter(l => !l.trim().startsWith('#') && l.includes('run-daily-broker-update.sh'));
+  assert.equal(brokerLines.length, 2, 'broker update must use one retry cadence line plus one final-attempt line');
+
+  const retry = brokerLines.find(l => /^0,30\s+20-21\s+/.test(l));
+  const final = brokerLines.find(l => /^0\s+22\s+/.test(l));
+  assert.ok(retry, 'must retry at 20:00, 20:30, 21:00, and 21:30 WIB');
+  assert.ok(final, 'must run a final attempt at 22:00 WIB');
+  assert.doesNotMatch(retry, /--fresh\b/, 'normal retries must reuse valid dated cache instead of refetching every ticker');
+  assert.doesNotMatch(final, /--fresh\b/, 'final retry must also preserve valid dated cache');
+  assert.match(final, /--final\b/, '22:00 run must report an incomplete EOD update as a real failure');
+});
+
 // ---------------------------------------------------------------------------
 // F13-06 — vps-data-fetcher stale-cache path labels truthfully
 // ---------------------------------------------------------------------------
