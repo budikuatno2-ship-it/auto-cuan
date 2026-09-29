@@ -26,7 +26,7 @@
 'use strict';
 
 const { createClient } = require('@supabase/supabase-js');
-const { buildSeedRows, SOURCE } = require('../lib/idx-holidays-2026-seed-data');
+const { buildSeedRows, SOURCE, SUPERSEDED_HOLIDAY_DATES } = require('../lib/idx-holidays-2026-seed-data');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -41,6 +41,7 @@ async function main() {
   if (isDryRun) {
     console.log('[seed-idx-holidays-2026] --dry-run: validation only, no writes performed.');
     rows.forEach((r) => console.log('  ' + r.trade_date + ' — ' + r.name));
+    SUPERSEDED_HOLIDAY_DATES.forEach((d) => console.log('  remove superseded source-owned holiday: ' + d));
     return;
   }
 
@@ -52,6 +53,20 @@ async function main() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
+
+  if (SUPERSEDED_HOLIDAY_DATES.length) {
+    const cleanup = await supabase
+      .from('idx_trading_calendar')
+      .delete()
+      .in('trade_date', SUPERSEDED_HOLIDAY_DATES)
+      .eq('source', SOURCE)
+      .eq('status', 'HOLIDAY');
+
+    if (cleanup.error) {
+      console.error('[seed-idx-holidays-2026] Superseded-row cleanup failed:', cleanup.error.message);
+      process.exit(1);
+    }
+  }
 
   const result = await supabase
     .from('idx_trading_calendar')

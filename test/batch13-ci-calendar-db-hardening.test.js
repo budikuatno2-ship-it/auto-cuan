@@ -67,8 +67,18 @@ test('F-093: backfill getTradingDates skips real holidays (Pancasila, 1 Muharam)
   const getTradingDates = new Function('idxTradingCalendar', `return ${fnSrc}`)(calendar);
   const dates = getTradingDates('2026-06-01', '2026-06-17');
   assert.ok(!dates.includes('2026-06-01'), 'Pancasila (06-01) must be skipped');
-  assert.ok(!dates.includes('2026-06-17'), '1 Muharam (06-17) must be skipped');
+  assert.ok(!dates.includes('2026-06-16'), '1 Muharam (06-16) must be skipped');
+  assert.ok(dates.includes('2026-06-17'), '06-17 must remain a trading day');
   assert.ok(dates.includes('2026-06-02'), 'a real trading day must remain');
+});
+
+
+test('F-093: reseeding removes the superseded June holiday row', () => {
+  const script = read('scripts/seed-idx-holidays-2026.js');
+  const sql = read('supabase/idx-holidays-2026-seed.sql');
+  assert.match(script, /SUPERSEDED_HOLIDAY_DATES/);
+  assert.match(script, /\.delete\(\)/);
+  assert.match(sql, /DELETE FROM idx_trading_calendar[\s\S]*2026-06-17/);
 });
 
 // ---------------------------------------------------------------------------

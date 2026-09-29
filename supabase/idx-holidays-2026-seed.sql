@@ -20,6 +20,11 @@
 -- manually against the target database.
 -- ============================================================
 
+DELETE FROM idx_trading_calendar
+WHERE trade_date = '2026-06-17'
+  AND status = 'HOLIDAY'
+  AND source = 'user_provided_2026_exchange_calendar_seed';
+
 INSERT INTO idx_trading_calendar (trade_date, status, name, source, verified_at, override_reason)
 VALUES
   ('2026-01-01', 'HOLIDAY', 'Tahun Baru 2026 Masehi', 'user_provided_2026_exchange_calendar_seed', NULL, NULL),
@@ -38,7 +43,7 @@ VALUES
   ('2026-05-27', 'HOLIDAY', 'Idul Adha 1447 Hijriah', 'user_provided_2026_exchange_calendar_seed', NULL, NULL),
   ('2026-05-28', 'HOLIDAY', 'Cuti Bersama Hari Raya Idul Adha 1447 Hijriah', 'user_provided_2026_exchange_calendar_seed', NULL, NULL),
   ('2026-06-01', 'HOLIDAY', 'Hari Lahir Pancasila', 'user_provided_2026_exchange_calendar_seed', NULL, NULL),
-  ('2026-06-17', 'HOLIDAY', '1 Muharam Tahun Baru Islam 1448 Hijriah', 'user_provided_2026_exchange_calendar_seed', NULL, NULL),
+  ('2026-06-16', 'HOLIDAY', '1 Muharam Tahun Baru Islam 1448 Hijriah', 'user_provided_2026_exchange_calendar_seed', NULL, NULL),
   ('2026-08-17', 'HOLIDAY', 'Proklamasi Kemerdekaan', 'user_provided_2026_exchange_calendar_seed', NULL, NULL),
   ('2026-08-25', 'HOLIDAY', 'Maulid Nabi Muhammad SAW', 'user_provided_2026_exchange_calendar_seed', NULL, NULL),
   ('2026-12-24', 'HOLIDAY', 'Cuti Bersama Kelahiran Yesus Kristus', 'user_provided_2026_exchange_calendar_seed', NULL, NULL),
