@@ -10,10 +10,12 @@ on:
       - 'supabase/money*'
       - 'test/money-sheet.test.js'
       - 'test/precision-motion-cascade.test.js'
+      - 'test/landing-experience.test.js'
       - 'test/financial-surface-contract.test.js'
       - 'test/spreadsheet-grade-ui.test.js'
       - 'test/sql/money-sheet/**'
       - 'tools/*precision*'
+      - 'tools/test-landing-experience.py'
       - 'tools/build-portfolio-spa-css.js'
       - '.github/workflows/precision-workspace-tests.yml'
 concurrency:
@@ -35,7 +37,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node tools/validate-full-syntax.js && node tools/check-precision-inline.js && node tools/build-portfolio-spa-css.js --check
-      - run: node --test test/money-sheet.test.js test/portfolio-command-center.test.js test/portfolio-planner-v1.test.js test/portfolio-missing-is-not-zero.test.js test/portfolio-price-freshness.test.js test/portfolio-render-not-gated-by-network.test.js test/tab-navigation-and-insider-universe.test.js test/ui-theme-layer.test.js test/holver-app-shell-theme.test.js test/standalone-analisis-saham.test.js test/financial-surface-contract.test.js test/spreadsheet-grade-ui.test.js test/precision-motion-cascade.test.js
+      - run: node --test test/money-sheet.test.js test/portfolio-command-center.test.js test/portfolio-planner-v1.test.js test/portfolio-missing-is-not-zero.test.js test/portfolio-price-freshness.test.js test/portfolio-render-not-gated-by-network.test.js test/tab-navigation-and-insider-universe.test.js test/ui-theme-layer.test.js test/holver-app-shell-theme.test.js test/standalone-analisis-saham.test.js test/financial-surface-contract.test.js test/spreadsheet-grade-ui.test.js test/precision-motion-cascade.test.js test/landing-experience.test.js
       - run: npm run build
   browser:
     runs-on: ubuntu-latest
@@ -58,6 +60,7 @@ jobs:
           for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:3100/preview/kelola-keuangan -o /dev/null && break; sleep 1; done
       - run: python tools/test-precision-browser.py
       - run: python tools/test-precision-app.py
+      - run: python tools/test-landing-experience.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
