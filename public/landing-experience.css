@@ -41,7 +41,10 @@
   border: 1px solid var(--border-hairline); background: var(--surface); border-radius: 8px;
   font-weight: 500; font-size: 13px; box-shadow: none; transform: none;
 }
-#landingPage .landing-btn-primary { background: var(--color-accent); border-color: transparent; color: var(--color-on-accent) !important; }
+/* Legacy mobile rules used a pale green background with white text. Both
+   background and foreground must come from the same accessible token pair. */
+#landingPage .landing-btn-primary { background: var(--color-accent) !important; border-color: transparent; color: var(--color-on-accent) !important; }
+#landingPage .landing-btn-primary .landing-cta-label { color: inherit !important; }
 #landingPage :is(.landing-btn,.landing-icon-button,.landing-link,.landing-menu a) {
   transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
 }
