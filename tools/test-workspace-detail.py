@@ -93,6 +93,11 @@ with sync_playwright() as pw:
             for width in [320,390,768,1024,1440]:
                 page.set_viewport_size({'width':width,'height':980 if width>900 else 844})
                 check(theme+'/'+str(width)+' worksheet has no page overflow',page.evaluate('document.documentElement.scrollWidth<=innerWidth'))
+                if width < 1024:
+                    for control in ['#workspaceSidebarToggle','#headerUserLabel','#logoutBtn']:
+                        box = page.locator(control).bounding_box()
+                        check(f'{theme}/{width} {control} fully visible', box['x'] >= 0 and box['x'] + box['width'] <= width and box['height'] >= 44)
+                    check(f'{theme}/{width} account has no dark block', page.locator('.header-account').evaluate("e=>getComputedStyle(e).backgroundColor==='rgba(0, 0, 0, 0)'"))
                 if width in [390,1440]:
                     page.evaluate('document.activeElement.blur();window.scrollTo(0,0)');page.screenshot(path=str(OUT/f'worksheet-{theme}-{width}.png'),full_page=True)
         page.evaluate("localStorage.setItem('autocuan_user_id','other');window.dispatchEvent(new StorageEvent('storage',{key:'autocuan_user_id',newValue:'other'}))")

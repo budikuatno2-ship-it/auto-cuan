@@ -4498,12 +4498,23 @@ html.light { --brand-mark-bg:#e1f5eb; --brand-mark-ink:#07593f; --brand-mark-lin
 .app-header .brand-mark { background:var(--brand-mark-bg) !important; box-shadow:none !important; }
 
 /* Account controls follow the active theme, including the mobile header. */
+#appMain > .app-header .header-account { background:transparent !important; border:0 !important; box-shadow:none !important; padding:0 !important; }
 #appMain > .app-header #headerAccountSection { background:transparent !important; border:0 !important; box-shadow:none !important; min-width:0; }
 #appMain > .app-header :is(#headerUserLabel,#logoutBtn) { background:var(--color-bg-surface) !important; color:var(--color-text-primary) !important; border:1px solid var(--color-border-default) !important; box-shadow:none !important; }
 #appMain > .app-header #headerUsername { max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 @media(max-width:600px) {
  #appMain > .app-header :is(#headerUserLabel,#logoutBtn) { min-height:44px; }
  #appMain > .app-header #headerUsername { max-width:70px; }
- #appMain > .app-header .header-account { min-width:0; }
+ #appMain > .app-header .header-account { min-width:0; flex:0 1 auto !important; margin-left:auto !important; }
+ #appMain > .app-header > .header-shell > .flex { gap:8px !important; min-width:0; }
+ #appMain > .app-header > .header-shell > .flex > :first-child { flex:1 1 auto !important; min-width:0 !important; gap:8px !important; }
+ #appMain > .app-header #headerAccountSection { padding:0 !important; gap:6px; }
+ #appMain > .app-header h1 { font-size:13px !important; overflow:hidden; text-overflow:ellipsis; }
+ #appMain > .app-header #headerUserLabel { padding-inline:8px !important; }
 }
-@media(max-width:359px) { #appMain > .app-header #headerUsername { max-width:44px; } }
+@media(max-width:359px) {
+ #appMain > .app-header #headerUsername { max-width:44px; }
+ #appMain > .app-header > .header-shell > .flex > :first-child > .min-w-0 { display:none; }
+}
+
+@media(max-width:1023px) { #appMain > .app-header :is(#headerUserLabel,#logoutBtn) { min-height:44px; } }
