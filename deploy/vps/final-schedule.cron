@@ -10,10 +10,10 @@ CRON_TZ=Asia/Jakarta
 # Lifecycle evaluator (sore, setelah bursa tutup)
 30 16 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-lifecycle-evaluator.js --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
 # Broker summary update: Arjum EOD biasanya baru stabil sekitar 18:00-20:00 WIB.
-# Retry idempoten pada 20:00, 20:30, 21:00, 21:30; 22:00 adalah final attempt.
+# Retry idempoten tiap 30 menit mulai 18:00 sampai 21:30; 22:00 adalah final attempt.
 # Jangan pakai --fresh di cron retry: dated broker-summary yang sudah valid harus di-skip
 # agar kuota harian tersisa untuk ticker yang memang masih missing/pending.
-0,30 20-21 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-broker-update.sh --limit 5000 >> /home/ubuntu/auto-cuan-runner/logs/daily-broker-update.log 2>&1
+0,30 18-21 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-broker-update.sh --limit 5000 >> /home/ubuntu/auto-cuan-runner/logs/daily-broker-update.log 2>&1
 0 22 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-broker-update.sh --limit 5000 --final >> /home/ubuntu/auto-cuan-runner/logs/daily-broker-update.log 2>&1
 # Afternoon recap (18:45 WIB)
 45 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-afternoon-recap.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daily-afternoon-recap.log 2>&1
