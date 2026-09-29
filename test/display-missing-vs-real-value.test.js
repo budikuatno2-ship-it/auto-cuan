@@ -39,6 +39,12 @@ function extractFunction(name) {
 function extractVar(name) {
   const start = html.indexOf('var ' + name + ' = ');
   assert.ok(start >= 0, 'missing var ' + name);
+  const nextSemicolon = html.indexOf(';', start);
+  const nextBrace = html.indexOf('{', start);
+  if (nextBrace < 0 || nextSemicolon < nextBrace) {
+    const line = html.indexOf('\n', start);
+    return html.slice(start, line + 1);
+  }
   const end = html.indexOf('\n};', start);
   if (end < 0) {
     const line = html.indexOf('\n', start);

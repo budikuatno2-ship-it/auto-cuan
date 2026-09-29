@@ -205,7 +205,7 @@
       return {
         isValid: false,
         emptySl: true,
-        reason: 'Level Entry atau Stop Loss belum terdefinisi.',
+        reason: 'Level Entry atau Stop Loss belum valid atau belum terdefinisi.',
         capital: capital,
         riskPct: riskPct
       };
@@ -215,16 +215,35 @@
     var calcIsFca = params.is_fca != null ? params.is_fca : (params.isFca != null ? params.isFca : null);
     var calcTicker = params.ticker || null;
 
-    // Auto-snap entry dan sl jika tidak persis pada kelipatan fraksi tick IDX (misal 4925 -> 4930/4920)
-    // Jangan lempar pesan error ke user jika berada di bawah Rp 5.000 atau di luar fraksi tick
-    if (!isValidIdxTick(entry, calcBoard, calcIsFca, calcTicker)) {
-      entry = snapToTick(entry, 'nearest', calcBoard, calcIsFca, calcTicker);
-    }
-    if (!isValidIdxTick(sl, calcBoard, calcIsFca, calcTicker)) {
-      sl = snapToTick(sl, 'nearest', calcBoard, calcIsFca, calcTicker);
-    }
-    if (kini > 0 && !isValidIdxTick(kini, calcBoard, calcIsFca, calcTicker)) {
-      kini = snapToTick(kini, 'nearest', calcBoard, calcIsFca, calcTicker);
+    // Auto-snap entry dan sl jika diminta (misal dari widget UI atau mode snapToTick)
+    // BUG-F7-002 / F11-02: Jika tidak dalam mode snapToTick, tolak harga yang tidak sesuai fraksi tick IDX
+    if (params.snapToTick || params.autoSnap) {
+      if (!isValidIdxTick(entry, calcBoard, calcIsFca, calcTicker)) {
+        entry = snapToTick(entry, 'nearest', calcBoard, calcIsFca, calcTicker);
+      }
+      if (!isValidIdxTick(sl, calcBoard, calcIsFca, calcTicker)) {
+        sl = snapToTick(sl, 'nearest', calcBoard, calcIsFca, calcTicker);
+      }
+      if (kini > 0 && !isValidIdxTick(kini, calcBoard, calcIsFca, calcTicker)) {
+        kini = snapToTick(kini, 'nearest', calcBoard, calcIsFca, calcTicker);
+      }
+    } else {
+      if (!isValidIdxTick(entry, calcBoard, calcIsFca, calcTicker)) {
+        return {
+          isValid: false,
+          reason: 'Harga Entry (' + entry + ') tidak sesuai fraksi tick IDX.',
+          capital: capital,
+          riskPct: riskPct
+        };
+      }
+      if (!isValidIdxTick(sl, calcBoard, calcIsFca, calcTicker)) {
+        return {
+          isValid: false,
+          reason: 'Harga Stop Loss (' + sl + ') tidak sesuai fraksi tick IDX.',
+          capital: capital,
+          riskPct: riskPct
+        };
+      }
     }
 
     var deltaP = entry - sl;

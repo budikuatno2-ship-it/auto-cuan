@@ -1,6 +1,6 @@
 ==============================================================================
  AUTO-CUAN SPA MIGRATION & DESIGN SYSTEM — COMPREHENSIVE AUDIT EVIDENCE
- Generated: 2026-09-28T15:40:55.375Z
+ Generated: 2026-09-29T01:57:10.439Z
  Environment: Local Dev Server (http://127.0.0.1:3000) / Headless Chromium
  Spec Targets: C:\Users\ADVAN\.gemini\antigravity\worktrees\auto-cuan-2\visual_refactor_auto_cuan\tools\audit-spec-targets.json (LOCKED)
  Benchmark Standard: Linear, Robinhood, HolverAI (Fase 0 - Fase 9 Master Spec)
@@ -39,15 +39,15 @@
 ==============================================================================
  2. BROWSER CONSOLE & HEALTH CHECK (9 ROUTE PREVIEW)
 ==============================================================================
-  [PASS] 1. Landing Page (200 OK in 762ms)              : Exceptions: 0, HTTP Errors: 0
-  [PASS] 2. Dashboard (200 OK in 969ms)                 : Exceptions: 0, HTTP Errors: 0
-  [PASS] 3. Analisis Saham (200 OK in 1047ms)           : Exceptions: 0, HTTP Errors: 0
-  [PASS] 4. Sektor Hot (200 OK in 972ms)                : Exceptions: 0, HTTP Errors: 0
-  [PASS] 5. Screener 3-in-1 (200 OK in 1028ms)          : Exceptions: 0, HTTP Errors: 0
-  [PASS] 6. Watchlist (200 OK in 1015ms)                : Exceptions: 0, HTTP Errors: 0
-  [PASS] 7. Track Record (200 OK in 1000ms)             : Exceptions: 0, HTTP Errors: 0
-  [PASS] 8. Portofolio (200 OK in 1139ms)               : Exceptions: 0, HTTP Errors: 0
-  [PASS] 9. Kelola Keuangan (200 OK in 1005ms)          : Exceptions: 0, HTTP Errors: 0
+  [PASS] 1. Landing Page (200 OK in 950ms)              : Exceptions: 0, HTTP Errors: 0
+  [PASS] 2. Dashboard (200 OK in 950ms)                 : Exceptions: 0, HTTP Errors: 0
+  [PASS] 3. Analisis Saham (200 OK in 1051ms)           : Exceptions: 0, HTTP Errors: 0
+  [PASS] 4. Sektor Hot (200 OK in 899ms)                : Exceptions: 0, HTTP Errors: 0
+  [PASS] 5. Screener 3-in-1 (200 OK in 948ms)           : Exceptions: 0, HTTP Errors: 0
+  [PASS] 6. Watchlist (200 OK in 875ms)                 : Exceptions: 0, HTTP Errors: 0
+  [PASS] 7. Track Record (200 OK in 1039ms)             : Exceptions: 0, HTTP Errors: 0
+  [PASS] 8. Portofolio (200 OK in 1000ms)               : Exceptions: 0, HTTP Errors: 0
+  [PASS] 9. Kelola Keuangan (200 OK in 1365ms)          : Exceptions: 0, HTTP Errors: 0
   [PASS] Total Uncaught Runtime Exceptions (Target: 0)  : 0 errors
   [PASS] Total Failed HTTP Responses (Target: 0)        : 0 fails
 

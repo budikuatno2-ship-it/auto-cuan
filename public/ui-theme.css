@@ -216,6 +216,10 @@
   --ac-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+html:not(.light) {
+  --text-primary: #F4F6F8;
+}
+
 html.light,
 [data-theme="light"] {
   /* --- Master Design Tokens Light Mode (§2) --- */
@@ -3565,17 +3569,23 @@ html.light #page-money-management .text-cyan-400 {
 .tab-btn,
 .nav-btn,
 .sidebar-item,
-.theme-toggle-btn,
 .workspace-sidebar-toggle,
 .sidebar-collapse-toggle,
-.theme-toggle-compact,
-.market-tile-link,
 .analisis-tab,
 .ac-btn {
   transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
               border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
               color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
               box-shadow var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+}
+
+.theme-toggle-btn,
+.theme-toggle-compact,
+.market-tile-link {
+  transition: background-color var(--motion-instant, 100ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-instant, 100ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-instant, 100ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              box-shadow var(--motion-instant, 100ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
 }
 
 /* --- FASE 16: Responsiveness - Sidebar Collapse & Mobile/Tablet Viewport --- */
@@ -3995,6 +4005,8 @@ button:not(.no-motion-override),
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  .action-card:hover { transform: none; }
+  .panel table tbody tr { transition: none; }
   #appContent,
   .app-content {
     transition: none !important;
@@ -4254,7 +4266,7 @@ html.light .screener-card strong.text-emerald-300 {
 }
 
 /* Light mode Analisis & Cockpit AI */
-html.light #page-analisis,
+html.light [id="page-analisis"],
 html.light .analisis-header,
 html.light .analisis-cockpit {
   background: transparent !important;
@@ -4396,16 +4408,19 @@ html.light .nk-card-item span[style*="16A34A"] {
 }
 
 /* Light mode Analisis header & command bar background override (v6.css override) */
-html.light #page-analisis > div:first-child,
-html.light #analisisPartialMount {
+html.light [id="page-analisis"] > div:first-child,
+html.light #analisisPartialMount,
+html.light [id="page-analisis"] #analisisPartialMount {
   background: #FFFFFF !important;
   background-color: #FFFFFF !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   border-color: #E2E8F0 !important;
 }
 
 /* Light mode Analisis header overrides */
-html.light #page-analisis,
-html.light .page-content#page-analisis,
+html.light [id="page-analisis"],
+html.light .page-content[id="page-analisis"],
 html.light #analisisContent,
 html.light .analisis-header,
 html.light .analisis-cockpit {
@@ -4419,6 +4434,11 @@ html.light h1.page-title {
 html.light .page-subtitle,
 html.light p.page-subtitle {
   color: #4B5563 !important;
+}
+html.light #analisisResult strong,
+html.light #analisisContent strong,
+html.light [id="page-analisis"] strong {
+  color: #0f172a !important;
 }
 html.light #analisisActiveTickerTag,
 html.light #chatActiveTickerTag {

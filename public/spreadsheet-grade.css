@@ -41,7 +41,19 @@
   --sp-zebra: rgba(148, 163, 184, 0.030);
   --sp-zebra-hover: rgba(52, 211, 153, 0.055);
   --sp-pill-radius: 999px;
-}/* The mesh: three wide, low-opacity radial pools. Fixed so scrolling content
+}
+
+html.light {
+  --sp-bg-deep: #f8fafc;
+  --sp-bg-mid: #ffffff;
+  --sp-mesh-1: rgba(16, 185, 129, 0.05);
+  --sp-mesh-2: rgba(59, 130, 246, 0.035);
+  --sp-mesh-3: rgba(99, 102, 241, 0.025);
+  --sp-zebra: rgba(15, 23, 42, 0.022);
+  --sp-zebra-hover: rgba(16, 185, 129, 0.07);
+}
+
+/* The mesh: three wide, low-opacity radial pools. Fixed so scrolling content
    moves over a stable ground rather than dragging the light source with it. */
 body {
   background-color: var(--sp-bg-mid);
@@ -434,24 +446,24 @@ html.light tbody tr:nth-child(even) {
   background: rgba(0, 0, 0, 0.015);
 }
 tbody tr:hover {
-  background: rgba(255, 255, 255, 0.04) !important;
+  background: rgba(255, 255, 255, 0.04);
 }
 html.light tbody tr:hover {
-  background: rgba(0, 0, 0, 0.035) !important;
+  background: rgba(0, 0, 0, 0.035);
 }
 
 /* Positive / Negative Flow Color Semantics */
 .flow-inflow,
 .val-positive,
-.text-bull,
-.text-positive {
-  color: var(--accent-primary, #22C55E) !important;
+.data-table .text-bull,
+.data-table .text-positive {
+  color: var(--accent-primary, #22C55E);
 }
 .flow-outflow,
 .val-negative,
-.text-bear,
-.text-negative {
-  color: var(--danger, #EF4444) !important;
+.data-table .text-bear,
+.data-table .text-negative {
+  color: var(--danger, #EF4444);
 }
 
 /* Alignment Semantics */

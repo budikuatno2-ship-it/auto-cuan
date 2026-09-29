@@ -1250,6 +1250,26 @@
 <div id="page-portofolio" class="page-content hidden flex-1 max-w-[1280px] w-full mx-auto px-3 sm:px-5 py-4" data-premium-page="true" data-partial-loaded="false">
     <div id="portofolioPartialMount">
         <!-- Rendered from template/partial on first navigation -->
+        <div class="bg-dark-700/30 border border-dark-600/30 rounded-xl overflow-hidden hidden sm:block">
+            <div id="portTableWrap" class="overflow-x-auto overflow-y-auto max-h-[520px] scrollbar-thin">
+                <table class="w-full text-xs sm:text-sm">
+                    <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-10 shadow-sm">
+                        <tr class="text-gray-400 border-b border-dark-600/40 text-left">
+                            <th class="px-3 py-2.5 font-medium">Ticker</th>
+                            <th class="px-3 py-2.5 font-medium">Lot</th>
+                            <th class="px-3 py-2.5 font-medium">Avg Buy</th>
+                            <th class="px-3 py-2.5 font-medium">Last Price</th>
+                            <th class="px-3 py-2.5 font-medium">P/L (Rp)</th>
+                            <th class="px-3 py-2.5 font-medium">P/L %</th>
+                            <th class="px-3 py-2.5 font-medium"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="portTableBody" class="text-gray-300">
+                        <tr><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -2334,7 +2354,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div id="rankingTableWrap" class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin">
+                        <div id="rankingTableWrap" class="overflow-x-auto scrollbar-thin">
                             <div class="text-center py-8 text-gray-500 text-xs">Memuat ranking harian...</div>
                         </div>
                     </div>
@@ -2474,44 +2494,7 @@
             <option value="MYOR">Mayora Indah</option>
             <option value="INCO">Vale Indonesia</option>
             <option value="GPRA">Perdana Gapuraprima</option>
-        </datalist>
-    
-
-    <!-- Hidden compatibility chart elements for viewer helper functions -->
-    <div style="display:none">
-        <input id="chartTickerInput" type="hidden" value="BBCA">
-    </div>
-
-    <!-- AI API KEY MODAL (BYOK Gemini) -->
-    <div id="aiApiKeyModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="w-full max-w-md rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
-                <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>
-                    <h3 class="text-base font-bold text-white">Google Gemini API Key</h3>
-                </div>
-                <button type="button" onclick="closeAiApiKeyModal()" class="text-gray-400 hover:text-white text-lg">&times;</button>
-            </div>
-            <p class="text-xs text-gray-400 leading-relaxed">
-                Fitur Analisis Chart (AI Vision) menggunakan model <strong>Gemini 3.8 Flash</strong> dengan API key pribadi Anda (Bring Your Own Key) yang disimpan aman dan terenkripsi.
-            </p>
-            <div id="aiApiKeyStatusText" class="text-xs text-gray-300 p-3 rounded-xl bg-dark-700/60 border border-dark-600/40">
-                Memeriksa status...
-            </div>
-            <div>
-                <label class="block text-xs font-semibold text-gray-300 mb-1">API Key Gemini</label>
-                <input id="aiApiKeyInput" type="password" placeholder="Tempel API key (AIza...)" class="w-full px-3.5 py-2.5 rounded-xl bg-dark-800 border border-dark-600/60 text-white text-xs placeholder-gray-500 focus:outline-none focus:border-emerald-500">
-                <p class="text-[11px] text-gray-500 mt-1">Dapatkan gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="text-blue-400 hover:underline">Google AI Studio</a>.</p>
-            </div>
-            <div class="flex items-center justify-between pt-2">
-                <button type="button" id="btnDeleteAiApiKey" onclick="deleteUserAiApiKey()" class="px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition" style="display:none">Hapus Key</button>
-                <div class="flex items-center gap-2 ml-auto">
-                    <button type="button" onclick="closeAiApiKeyModal()" class="px-4 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white transition">Batal</button>
-                    <button type="button" id="btnSaveAiApiKey" onclick="saveUserAiApiKey()" class="px-4 py-2 rounded-xl text-xs font-semibold text-black bg-emerald-500 hover:bg-emerald-400 transition">Simpan Key</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    </datalist>
 </template>
 
 <template id="tpl-portfolio-command-center">
@@ -3118,9 +3101,10 @@ function isBadUsername(name) {
 // visit then sat on the loading spinner until the 4.5s watchdog rescued it and
 // showed a "features temporarily unavailable" notice on a perfectly healthy site.
 // Keep these assignments above their first caller.
-var premiumAccessState = (typeof window !== 'undefined' && window.premiumAccessState)
-    ? window.premiumAccessState
-    : { state:'loading', premium:false, accessLevel:'free', checkedAt:0 };
+var premiumAccessState = { state:'loading', premium:false, accessLevel:'free', checkedAt:0 };
+if (typeof window !== 'undefined' && window.premiumAccessState) {
+    premiumAccessState = window.premiumAccessState;
+}
 var premiumAccessRequest = null;
 var premiumAccessController = null;
 var premiumAccessGeneration = 0;
@@ -3455,10 +3439,10 @@ function syncHeaderUsername() {
         if (tierBadgeEl) {
             if (isBudi || isAdm) {
                 tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shrink-0 cursor-pointer hover:opacity-80 transition-all';
-                tierBadgeEl.textContent = 'ADMIN';
+                tierBadgeEl.textContent = '👑 ADMIN';
             } else if (isSubscribed) {
                 tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 shrink-0 cursor-pointer hover:opacity-80 transition-all';
-                tierBadgeEl.textContent = 'PRO';
+                tierBadgeEl.textContent = '⭐ PRO';
             } else {
                 tierBadgeEl.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-dark-600/60 border border-dark-600 text-gray-400 shrink-0 cursor-pointer hover:opacity-80 transition-all';
                 tierBadgeEl.textContent = 'FREE';
@@ -3992,7 +3976,7 @@ function changeDisplay(value, digits) {
         flat: false,
         text: (number < 0 ? '−' : '+') + body + '%',
         cls: number > 0 ? 'text-emerald-400' : 'text-red-400',
-        hex: number > 0 ? 'var(--data-positive, #22C55E)' : 'var(--data-negative, #EF4444)'
+        hex: number > 0 ? '#6ee7b7' : '#fca5a5'
     };
 }
 
@@ -5164,7 +5148,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-function navigateTo(page, subTab) {
+function navigateTo(page) {
+    var subTab = arguments[1];
     if (page !== 'chart' && typeof resetPatternMap === 'function') resetPatternMap();
     if (page === 'subscription') {
         page = 'dashboard';
@@ -9496,7 +9481,7 @@ function patternPersonalityBadgeHtml(r) {
     var p = PATTERN_PERSONALITY_UI_CATALOG[key];
     if (!p) return '';
     var tip = 'Quant Edge: ' + p.key + ' · WR ' + p.wr.toFixed(1) + '% · PF ' + p.pf.toFixed(2) + ' (MFE +' + p.mfe.toFixed(1) + '% · MAE ' + p.mae.toFixed(1) + '%)';
-    return '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border ' + p.color + '" title="' + escapeHtml(tip) + '">' + escapeHtml(p.label) + '</span></div>';
+    return '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border ' + p.color + '" title="' + escapeHtml(tip) + '">⚡ ' + escapeHtml(p.label) + '</span></div>';
 }
 if (typeof window !== 'undefined') window.patternPersonalityBadgeHtml = patternPersonalityBadgeHtml;
 
@@ -12755,6 +12740,13 @@ function renderDashboardTop5MonitorData(data) {
     if (typeof updateGlobalLiveRadarStatus === 'function' && data) updateGlobalLiveRadarStatus(data);
     var note = document.getElementById('dashboardTop5LockNote');
     var top5Rows = data.top5 || data.picks || [];
+    var monitorRows = data.monitor || [];
+    var isLockedFinalSource = data.top5_locked === true && (data.top5_source === 'locked_rows' || data.top5_source === 'locked_rows_fallback');
+    var hasTop5Data = top5Rows.length > 0;
+    var isAwaiting = !isLockedFinalSource
+        || data.top5_source === 'awaiting_locked_rows'
+        || data.web_provisional === true
+        || (!hasTop5Data && monitorRows.length === 0);
     // "lolos gate: X/5" reflects FINAL actionable (safe) candidates, not the pre-safety pool.
     var safeRows = splitDashboardSafeRows(top5Rows).safe;
     var pickedCount = safeRows.length;
@@ -12776,14 +12768,6 @@ function renderDashboardTop5MonitorData(data) {
     var gateLabel = waitPullbackCount > 0
         ? actionableCount + '/5 lolos gate (Menunggu Pullback)'
         : pickedCount + '/5 lolos gate';
-    // Robust empty detection: treat as empty/awaiting if ANY of these are true
-    var monitorRows = data.monitor || [];
-    var isLockedFinalSource = data.top5_locked === true && (data.top5_source === 'locked_rows' || data.top5_source === 'locked_rows_fallback');
-    var hasTop5Data = top5Rows.length > 0;
-    var isAwaiting = !isLockedFinalSource
-        || data.top5_source === 'awaiting_locked_rows'
-        || data.web_provisional === true
-        || (!hasTop5Data && monitorRows.length === 0);
     // The note is written only now, once we know which body the panel is about to
     // render — see dashboardTop5NoteText.
     if (note) note.textContent = dashboardTop5NoteText(data, isAwaiting, gateLabel);
