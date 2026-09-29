@@ -1,0 +1,92 @@
+name: Precision workspace regression
+on:
+  pull_request:
+    paths:
+      - 'public/**'
+      - 'partials/**'
+      - 'lib/money*'
+      - 'supabase/money*'
+      - 'test/money-sheet.test.js'
+      - 'test/sql/money-sheet/**'
+      - 'tools/*precision*'
+      - 'tools/build-portfolio-spa-css.js'
+      - '.github/workflows/precision-workspace-tests.yml'
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node tools/validate-full-syntax.js && node tools/check-precision-inline.js && node tools/build-portfolio-spa-css.js --check
+      - run: node --test test/money-sheet.test.js test/portfolio-command-center.test.js test/portfolio-planner-v1.test.js test/portfolio-missing-is-not-zero.test.js test/portfolio-price-freshness.test.js test/portfolio-render-not-gated-by-network.test.js test/tab-navigation-and-insider-universe.test.js test/ui-theme-layer.test.js test/holver-app-shell-theme.test.js test/standalone-analisis-saham.test.js
+      - run: npm run build
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PRECISION_TEST_OUTPUT: /tmp/precision-review
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: python -m pip install -r tools/precision-test-requirements.txt
+      - name: Locate browser and start mock preview server
+        run: |
+          echo "CHROMIUM_PATH=$(command -v google-chrome || command -v chromium)" >> "$GITHUB_ENV"
+          PORT=3100 node tools/local-dev-server.js > /tmp/precision-preview.log 2>&1 &
+          for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:3100/preview/kelola-keuangan -o /dev/null && break; sleep 1; done
+      - run: python tools/test-precision-browser.py
+      - run: python tools/test-precision-app.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: precision-workspace-browser-review
+          path: |
+            /tmp/precision-review
+            /tmp/precision-preview.log
+          retention-days: 7
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: money_sheet_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d money_sheet_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: money_sheet_test
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-access/bootstrap.sql
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/money-management-migration.sql
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/money-sheet-v1-migration.sql
+      - run: psql -v ON_ERROR_STOP=1 -f test/sql/money-sheet/runtime.sql
+      - run: psql -v ON_ERROR_STOP=1 -f supabase/money-sheet-v1-migration.sql
+      - name: Verify migration re-apply preserves existing records
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF NOT EXISTS(SELECT 1 FROM public.user_personal_cashflow WHERE month='2026-09' AND income_salary=12500000 AND sheet_revision=1) THEN RAISE EXCEPTION 'Re-apply lost data'; END IF; END \$\$;"
