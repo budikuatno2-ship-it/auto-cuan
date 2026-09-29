@@ -20,6 +20,11 @@
 -- manually against the target database.
 -- ============================================================
 
+DELETE FROM idx_trading_calendar
+WHERE trade_date = '2026-06-17'
+  AND status = 'HOLIDAY'
+  AND source = 'user_provided_2026_exchange_calendar_seed';
+
 INSERT INTO idx_trading_calendar (trade_date, status, name, source, verified_at, override_reason)
 VALUES
   ('2026-01-01', 'HOLIDAY', 'Tahun Baru 2026 Masehi', 'user_provided_2026_exchange_calendar_seed', NULL, NULL),
