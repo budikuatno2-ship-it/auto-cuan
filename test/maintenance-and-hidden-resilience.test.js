@@ -70,8 +70,13 @@ test('the class the app actually toggles is the one defined', () => {
   assert.ok(html.includes("classList.remove('hidden')"), 'the app toggles .hidden');
 });
 
-test('the hidden-plus-responsive pattern this protects is still in use', () => {
-  assert.match(html, /class="landing-menu hidden md:flex/, 'the pattern the non-important rule protects');
+test('landing menu has one explicit responsive owner, not a conflicting hidden class', () => {
+  const menu = html.match(/<div[^>]*id="landingMenu"[^>]*>/);
+  assert.ok(menu, 'the single accessible landing navigation remains');
+  assert.doesNotMatch(menu[0], /class="[^"]*\bhidden\b/, 'landing disclosure is controlled by its responsive stylesheet');
+  const landing = fs.readFileSync(path.join(__dirname, '../public/landing-experience.css'), 'utf8');
+  assert.match(landing, /landing-menu-open/);
+  assert.match(landing, /max-width:900px/);
 });
 
 // ---------------------------------------------------------------------------

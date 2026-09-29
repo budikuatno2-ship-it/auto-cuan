@@ -47,9 +47,16 @@ test('standalone portfolio holdings use neutral compact table chrome', () => {
 });
 
 test('financial runtime IDs, calculations, and render entry points remain intact', () => {
-  for (const id of ['mmCashflowSpreadsheetTable', 'mmCashflowSpreadsheetBody', 'mmJournalSpreadsheetTable', 'mmJournalTableBody', 'portTableWrap', 'portTableBody']) {
+  // Finance now mounts its editable worksheet; the duplicate journal view is
+  // intentionally absent. Portfolio's journal and legacy storage API remain.
+  const financeHtml = read('partials/money-management.partial.html');
+  for (const id of ['mmCashflowSpreadsheetTable', 'mmCashflowSpreadsheetBody']) {
+    assert.match(financeHtml, new RegExp('id="' + id + '"'));
+  }
+  for (const id of ['portTableWrap', 'portTableBody']) {
     assert.match(indexHtml, new RegExp('id="' + id + '"'));
   }
+  assert.doesNotMatch(financeHtml, /id="mmPanelJournal"|id="mmTabBtnJournal"/);
   for (const fn of ['recalculateCashflow', 'renderCashflowSpreadsheetRows', 'renderJournalTable']) {
     assert.match(moneyRuntime, new RegExp('function\\s+' + fn + '|window\\.' + fn + '\\s*='));
   }

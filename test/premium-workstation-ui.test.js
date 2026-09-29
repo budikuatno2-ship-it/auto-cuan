@@ -97,8 +97,9 @@ test('premium workstation v4 adds product-grade semantics and trust without beha
   const css = readPremiumCss();
   assert.match(html, /rel="canonical" href="https:\/\/autocuan\.web\.id\/"/);
   assert.match(html, /property="og:title" content="Auto-Cuan \| IDX Stock Radar"/);
-  assert.match(html, /class="landing-trust-rail"/);
-  assert.match(html, /Keputusan & eksekusi manual/);
+  assert.match(html, /class="landing-hero-note"/);
+  assert.match(html, /Alat bantu analisis, bukan rekomendasi beli\/jual/);
+  assert.match(html, /Keputusan tetap milik Anda/);
   assert.match(html, /id="ihsgSummaryCard" class="market-band-grid" role="group"/);
   assert.match(html, /class="radar-panel lg:col-span-3 panel" aria-label="Top 5 Radar"/);
   assert.match(html, /id="dashboardMonitorUpdated"[^>]*aria-live="polite"/);

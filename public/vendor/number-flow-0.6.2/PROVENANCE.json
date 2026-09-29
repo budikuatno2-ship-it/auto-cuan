@@ -1,0 +1,17 @@
+{
+  "package": "number-flow",
+  "version": "0.6.2",
+  "source": "https://registry.npmjs.org/number-flow/-/number-flow-0.6.2.tgz",
+  "integrity": "sha512-MCnImG4Q5vPwhSXnov56nOuyyKn6LC+Qd7II1UiKc+ACRtug5iAtn0+CwXNxM38AC5lSowEY+oYEtZX2qMnUyw==",
+  "license": "MIT",
+  "adaptation": "Only esm-env import paths are replaced with the local browser-env.mjs compile-time environment shim. Other distribution code is unchanged.",
+  "files": {
+    "plugins.mjs": "5189ebb234bbd1cfcd4a6f1f02da8a8dfb36163784fbbe52a744331587127eac",
+    "lite.mjs": "21f0440ee476d41e43e15688b582a68ca3561a21f6d69ec9484c44a0b076bc52",
+    "index.mjs": "df08f25a6a37f0d30ba045caaab66c87ba95172df2ed5e9261e2b090aa8a9b8d",
+    "ssr-DvIINv8w.mjs": "067466c72695fec6916a79468176b2a1d665ec45e519d015d35ca651b5e85c1f",
+    "LICENSE.md": "f8a3eac9fd2ae94f18a2bf0459e57d90da539f015a7ec4ad6186a5ca33a6aa9a",
+    "csp.mjs": "ebd1628af43db47322906d277a21328bcc7c4585f8a5e9539fb948d035171807",
+    "browser-env.mjs": "d83fd2f7a2845af24598a7565c68c04f471f15530df401fe60011e05a6275241"
+  }
+}

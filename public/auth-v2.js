@@ -279,6 +279,10 @@
     var modal = document.createElement('div');
     modal.id = RESET_MODAL_ID;
     modal.className = 'hidden';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Pemulihan akun');
+    modal.style.zIndex = '100000';
     document.body.appendChild(modal);
     return modal;
   }

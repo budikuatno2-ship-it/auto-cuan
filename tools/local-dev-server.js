@@ -3,6 +3,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { createStaticResponder } = require('../lib/static-assets');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
@@ -392,9 +393,15 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
   '.webp': 'image/webp',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
   '.txt': 'text/plain; charset=utf-8',
   '.xml': 'application/xml; charset=utf-8'
 };
+
+const servePublic = createStaticResponder({ rootDir: PUBLIC_DIR, mimeTypes: MIME_TYPES });
+const serveData = createStaticResponder({ rootDir: DATA_DIR, mimeTypes: MIME_TYPES, maxBytes: 2*1024*1024 });
 
 const ROUTE_REWRITES = {
   '/': '/index.html',
@@ -932,42 +939,14 @@ const server = http.createServer(async (req, res) => {
     pathname = ROUTE_REWRITES[pathname];
   }
 
-  // 3. Serve from data directory
+  // API/auth handling above never enters the public static cache.
   if (pathname.startsWith('/data/')) {
-    const relativeDataPath = pathname.slice('/data/'.length);
-    const fullDataPath = path.join(DATA_DIR, relativeDataPath);
-    if (fs.existsSync(fullDataPath) && fs.statSync(fullDataPath).isFile()) {
-      const ext = path.extname(fullDataPath).toLowerCase();
-      res.setHeader('Content-Type', MIME_TYPES[ext] || 'application/octet-stream');
-      return fs.createReadStream(fullDataPath).pipe(res);
-    }
+    if (await serveData(req,res,pathname.slice('/data'.length),{noStore:true,extensionFallback:false})) return;
   }
-
-  // 4. SPA rewrites matching vercel.json
-  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern') {
-    pathname = '/index.html';
-  }
-
-  // 5. Serve from public directory
-  let filePath = path.join(PUBLIC_DIR, pathname);
-  if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-    if (fs.existsSync(filePath + '.html')) {
-      filePath = filePath + '.html';
-    } else {
-      const notFoundPath = path.join(PUBLIC_DIR, '404.html');
-      if (fs.existsSync(notFoundPath)) {
-        res.statusCode = 404;
-        res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        return fs.createReadStream(notFoundPath).pipe(res);
-      }
-      res.statusCode = 404;
-      return res.end('404 Not Found');
-    }
-  }
-
-  const ext = path.extname(filePath).toLowerCase();
-  res.setHeader('Content-Type', MIME_TYPES[ext] || 'application/octet-stream');
-  fs.createReadStream(filePath).pipe(res);
+  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern') pathname = '/index.html';
+  if (await servePublic(req,res,pathname)) return;
+  if (await servePublic(req,res,'/404.html',{status:404,noStore:true})) return;
+  res.statusCode=404;res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:'404 Not Found');
 });
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;

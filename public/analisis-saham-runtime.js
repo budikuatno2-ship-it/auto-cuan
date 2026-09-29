@@ -267,6 +267,12 @@
 
     var validParentTabs = ['analisis-chart', 'bandarmologi', 'intel', 'hunter', 'insider', 'ranking', 'pattern'];
     if (validParentTabs.indexOf(parentTab) < 0) parentTab = 'analisis-chart';
+    root.__ACTIVE_ANALISIS_SUBTAB__ = parentTab;
+    var workspace = byId('page-analisis');
+    if (workspace && !workspace.classList.contains('hidden') && typeof root.syncWorkspaceSidebarActive === 'function') root.syncWorkspaceSidebarActive('analisis');
+    var workspaceTitle = byId('analysisWorkspaceTitle');
+    if (workspaceTitle) workspaceTitle.textContent = ({ 'analisis-chart':'Analisis Saham', bandarmologi:'Bandarmologi', intel:'Sinyal Intelijen', hunter:'Broker Hunter', insider:'Jejaring Insider', ranking:'Ranking Harian', pattern:'Pattern Radar' })[parentTab];
+
 
     if (typeof document !== 'undefined' && document.querySelectorAll) {
       document.querySelectorAll('.analisis-tab').forEach(function (btn) {
@@ -953,12 +959,19 @@
   };
 
   // ===== PAGE BOOTSTRAP =====
+  var analysisMountInput = null;
+  var analysisAccessListenerBound = false;
   function initStandaloneAnalisisPage() {
+    // The SPA runtime also loads before its partial. Do not request data for
+    // unmounted UI, or bind another premium listener every time a tab opens.
+    var mountInput = byId('analisisInput');
+    if (!mountInput || analysisMountInput === mountInput) return;
+    analysisMountInput = mountInput;
     verifySubscriptionStatus();
     checkPatternTabVisibility();
 
     try {
-      window.addEventListener('autocuan:premium-access', function (ev) {
+      if (!analysisAccessListenerBound) window.addEventListener('autocuan:premium-access', function (ev) {
         if (ev && ev.detail && (ev.detail.accessLevel === 'admin' || ev.detail.isAdmin)) {
           try { localStorage.setItem('autocuan_is_admin', 'true'); } catch (_) {}
         }
@@ -969,6 +982,7 @@
           root.ensureRankingTableLoaded();
         }
       });
+      analysisAccessListenerBound = true;
     } catch (_) {}
 
     var params = (typeof URLSearchParams !== 'undefined' && window.location && window.location.search)
