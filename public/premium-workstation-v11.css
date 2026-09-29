@@ -247,6 +247,10 @@
   color: #edf4f8;
 }
 
+html.light #analisisResult strong {
+  color: #0f172a !important;
+}
+
 #analisisResult blockquote {
   margin: 16px 0;
   padding: 11px 14px;

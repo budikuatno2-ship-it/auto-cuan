@@ -460,27 +460,7 @@
 }
 .scrollbar-thin::-webkit-scrollbar-track {
   background: transparent;
-}
-
-/* =========================================================================
-   BATCH 2 (FASE 6 - 9): /analisis-saham SUB-TAB VISUAL OVERHAUL
-   - Phase 6: 7 Sub-Tab Segmented Pill Navigation & Ticker Search Bar
-   - Phase 7: Bandarmologi & Broker Hunter TanStack-Density Tables
-   - Phase 8: Sinyal Intelijen & Pattern Radar Institutional Cards
-   - Phase 9: Jejaring Insider & Ranking Harian Leaderboard Hierarchy
-   - WCAG AA Light Mode (html.light) Full-Contrast Support
-   ========================================================================= */
-
-/* --- PHASE 6: 7 SUB-TAB NAVIGATION & HEADER /analisis-saham --- */
-.app-header {
-  background: rgba(11, 15, 25, 0.94) !important;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
-  box-shadow: 0 4px 20px rgba(2, 6, 23, 0.35);
-}
-
-.analisis-tab-strip {
+}.analisis-tab-strip {
   display: flex !important;
   align-items: center !important;
   gap: 6px !important;
