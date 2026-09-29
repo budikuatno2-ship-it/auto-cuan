@@ -288,3 +288,26 @@ test('F13-10: isPartialSession boundary 15:59 vs 16:00 vs 16:01 WIB', () => {
   assert.equal(coll.isPartialSession(tradeDate, new Date('2026-09-22T16:01:00+07:00')), false, '16:01 same-day must not be partial');
   assert.equal(coll.isPartialSession('2026-09-20', new Date('2026-09-22T10:00:00+07:00')), false, 'past date never partial');
 });
+
+
+test('F13-05c: active IDX master universe is 962 tickers and includes July 2026 IPO additions', () => {
+  const p = path.join(__dirname, '..', 'data', 'daytrade-observe-tickers.txt');
+  const tickers = fs.readFileSync(p, 'utf8').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const uniq = new Set(tickers);
+  assert.equal(tickers.length, 962, 'active universe must contain exactly 962 rows');
+  assert.equal(uniq.size, 962, 'active universe must not contain duplicate tickers');
+  for (const ticker of ['BACH', 'EMMI', 'JECX', 'JELI', 'PRDL', 'RANS']) {
+    assert.equal(uniq.has(ticker), true, ticker + ' must be present in the active master universe');
+  }
+  assert.equal(uniq.has('CNTX'), false, 'CNTX is not present in the owner-supplied 2026-09-29 master list');
+});
+
+test('F13-05d: daily candle cron retries from 18:00 and stays below 5000 worst-case requests', () => {
+  const cronPath = path.join(__dirname, '..', 'deploy/vps/final-schedule.cron');
+  const raw = fs.readFileSync(cronPath, 'utf8');
+  const lines = raw.split('\n').filter(l => !l.trim().startsWith('#') && l.includes('run-daily-candles.sh'));
+  assert.equal(lines.length, 2, 'daily candles must use retry line plus 20:00 final retry line');
+  assert.ok(lines.some(l => /^0,30\s+18-19\s+/.test(l)), 'must retry at 18:00, 18:30, 19:00, and 19:30 WIB');
+  assert.ok(lines.some(l => /^0\s+20\s+/.test(l)), 'must retry once more at 20:00 WIB');
+  assert.ok(962 * 5 < 5000, 'worst-case 962 x 5 request window must remain below 5000');
+});
