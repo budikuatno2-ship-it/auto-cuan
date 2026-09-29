@@ -108,6 +108,53 @@ test('run-daily-broker-update: a quota-exceeded response stops the run cleanly a
   });
 });
 
+test('run-daily-broker-update: retry skips auxiliary endpoints for a ticker whose dated summary is already cached', async () => {
+  await withTempDataDir(async () => {
+    bandarmologiService.writeDiskCache('broker-summary', 'BBCA', '2026-09-07', {
+      top_buyers: [{ broker: 'YU', bval: 100, bvol: 10 }],
+      top_sellers: []
+    });
+    let summaryCalls = 0;
+    let accumulationCalls = 0;
+    let insiderCalls = 0;
+    const restore = mockArjum({
+      fetchBrokerSummary: async () => { summaryCalls++; return { ok: true, data: { top_buyers: [], top_sellers: [] } }; },
+      fetchBrokerAccumulation: async () => { accumulationCalls++; return { ok: true, data: { series: [] } }; },
+      fetchInsiders: async () => { insiderCalls++; return { ok: true, data: [] }; }
+    });
+    try {
+      await dailyUpdate.run(['--tickers', 'BBCA', '--date', '2026-09-07', '--delay', '0']);
+      assert.equal(summaryCalls, 0, 'cached dated summary must skip broker-summary request');
+      assert.equal(accumulationCalls, 0, 'cached ticker must not refetch accumulation on every retry');
+      assert.equal(insiderCalls, 0, 'cached ticker must not refetch insiders on every retry');
+    } finally {
+      restore();
+    }
+  });
+});
+
+test('run-daily-broker-update: pending empty summary does not spend auxiliary requests before final publication', async () => {
+  await withTempDataDir(async () => {
+    let accumulationCalls = 0;
+    let insiderCalls = 0;
+    const restore = mockArjum({
+      fetchBrokerSummary: async () => ({ ok: true, data: { top_buyers: [], top_sellers: [] } }),
+      fetchBrokerAccumulation: async () => { accumulationCalls++; return { ok: true, data: { series: [] } }; },
+      fetchInsiders: async () => { insiderCalls++; return { ok: true, data: [] }; }
+    });
+    try {
+      await dailyUpdate.run(['--tickers', 'BBCA', '--date', '2026-09-07', '--delay', '0']);
+      assert.equal(accumulationCalls, 0, 'pending summary must not trigger accumulation request');
+      assert.equal(insiderCalls, 0, 'pending summary must not trigger insiders request');
+      const marker = dailyUpdate.readMarker('2026-09-07');
+      assert.equal(marker.complete, false);
+      assert.equal(marker.pending, 1);
+    } finally {
+      restore();
+    }
+  });
+});
+
 test('run-daily-broker-update: an already-complete marker makes the next firing a fast no-op', async () => {
   await withTempDataDir(async () => {
     dailyUpdate.writeMarker('2026-09-07', { date: '2026-09-07', complete: true, completed_at: new Date().toISOString(), total_tickers: 1 });

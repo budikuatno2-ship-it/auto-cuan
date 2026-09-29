@@ -244,6 +244,7 @@ async function run(argv) {
 
   let totalRequested = 0;
   let doneCount = 0;
+  let newBrokerSummaryCount = 0;
   let pendingCount = 0; // Empty response before the final retry window closes.
   let confirmedNoDataCount = 0; // Empty-but-successful response on --final (e.g. suspended/no-trade ticker).
   let errorCount = 0;
@@ -264,8 +265,12 @@ async function run(argv) {
   for (let i = 0; i < tickers.length; i++) {
     if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
     const ticker = tickers[i];
+    let shouldRefreshAuxiliary = false;
 
     // 1. Broker Summary for TODAY — the critical, evening-gated data.
+    // Retry firings must be quota-safe: if the dated summary is already valid,
+    // the ticker is fully done for this worker and we must not re-fetch
+    // accumulation/insiders on every 30-minute retry.
     const alreadyCached = !isFresh && bandarmologiService.hasDiskCache('broker-summary', ticker, dateArg);
     if (alreadyCached) {
       doneCount++;
@@ -281,6 +286,8 @@ async function run(argv) {
           bandarmologiService.writeDiskCache('broker-summary', ticker, dateArg, res.data);
           bandarmologiService.writeDiskCache('broker-summary', ticker, 'latest', res.data);
           doneCount++;
+          newBrokerSummaryCount++;
+          shouldRefreshAuxiliary = true;
         } else if (isFinal) {
           // An empty-but-successful response can be legitimate for suspended,
           // FCA/no-trade, or otherwise inactive tickers. During the retry
@@ -303,36 +310,39 @@ async function run(argv) {
 
     if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
 
-    // 2. Broker Accumulation — always refreshed (Arjum's own trend endpoint
-    // is expected to append today's point once published).
-    if (!dryRun) {
-      totalRequested++;
-      const accRes = await arjumClient.fetchBrokerAccumulation(ticker);
-      if (accRes.ok && accRes.data) {
-        bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', accRes.data);
-      } else if (checkApiQuota(accRes)) {
-        break;
+    // 2-3. Auxiliary endpoints are refreshed only when this firing actually
+    // acquired a new valid broker-summary for the ticker. Pending/NO_DATA and
+    // already-cached tickers do not spend another two requests every 30 minutes.
+    // Dry-run keeps counting the historical three-request worst case.
+    if (shouldRefreshAuxiliary || dryRun) {
+      if (!dryRun) {
+        totalRequested++;
+        const accRes = await arjumClient.fetchBrokerAccumulation(ticker);
+        if (accRes.ok && accRes.data) {
+          bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', accRes.data);
+        } else if (checkApiQuota(accRes)) {
+          break;
+        }
+        await sleep(delayMs);
+      } else {
+        totalRequested++;
       }
-      await sleep(delayMs);
-    } else {
-      totalRequested++;
-    }
 
-    if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
+      if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
 
-    // 3. Insiders — cheap check for new transactions; not every ticker has
-    // one every day, so an empty result is normal, not an error.
-    if (!dryRun) {
-      totalRequested++;
-      const insRes = await arjumClient.fetchInsiders(ticker, 1, 15);
-      if (insRes.ok && insRes.data) {
-        bandarmologiService.writeDiskCache('insiders', ticker, 'p1', insRes.data);
-      } else if (checkApiQuota(insRes)) {
-        break;
+      // Insiders: an empty result is normal, not an error.
+      if (!dryRun) {
+        totalRequested++;
+        const insRes = await arjumClient.fetchInsiders(ticker, 1, 15);
+        if (insRes.ok && insRes.data) {
+          bandarmologiService.writeDiskCache('insiders', ticker, 'p1', insRes.data);
+        } else if (checkApiQuota(insRes)) {
+          break;
+        }
+        await sleep(delayMs);
+      } else {
+        totalRequested++;
       }
-      await sleep(delayMs);
-    } else {
-      totalRequested++;
     }
   }
 
@@ -345,6 +355,7 @@ async function run(argv) {
   console.log(`Total Permintaan Terkirim (run ini): ${totalRequested}`);
   console.log(`Total Terpakai Hari Ini (lintas-proses): ${arjumClient.getUsedQuotaToday()} / ${dailyLimit}`);
   console.log(`Broker Summary Selesai:        ${doneCount}/${tickers.length}`);
+  console.log(`Broker Summary Baru (run ini): ${newBrokerSummaryCount}`);
   console.log(`Belum Terbit (Pending Arjum):  ${pendingCount}`);
   console.log(`Final NO_DATA (valid kosong):  ${confirmedNoDataCount}`);
   console.log(`Error / Gagal:                 ${errorCount}`);
@@ -355,7 +366,7 @@ async function run(argv) {
     return;
   }
 
-  if (doneCount > 0) {
+  if (newBrokerSummaryCount > 0) {
     try {
       const bandarmologiIntelService = require('../lib/bandarmologi-intel-service');
       console.log('\n[INTEL] Menjalankan pre-calculation 4 sinyal intelijen bandarmologi...');
