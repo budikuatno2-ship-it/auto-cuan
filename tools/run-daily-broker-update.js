@@ -6,7 +6,7 @@
  *
  * Arjum's broker-summary data for the current session typically isn't
  * published until ~18:00-20:00 WIB, so this is meant to run every 30 minutes
- * from 20:00 to 22:00 WIB (5 cron firings) rather than as one long-running
+ * from 18:00 to 22:00 WIB (9 cron firings) rather than as one long-running
  * process:
  *   - Idempotent: any ticker whose broker-summary for today is already on
  *     disk is skipped on the next firing (mirrors tools/backfill-arjum-data.js).
@@ -391,7 +391,7 @@ async function run(argv) {
   });
 
   if (isFinal) {
-    console.log(`Status: GAGAL — jendela retry (20:00-22:00 WIB) habis dengan ${remaining} ticker belum punya broker summary ${dateArg}.`);
+    console.log(`Status: GAGAL — jendela retry (18:00-22:00 WIB) habis dengan ${remaining} ticker belum punya broker summary ${dateArg}.`);
     process.exitCode = 4;
   } else if (quotaReached) {
     console.log(`Status: TERHENTI SEMENTARA (kuota habis) — ${remaining} ticker akan dicoba lagi di run 30 menit berikutnya.`);
