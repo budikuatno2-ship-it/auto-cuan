@@ -7,6 +7,9 @@ on:
       - 'lib/money*'
       - 'supabase/money*'
       - 'test/money-sheet.test.js'
+      - 'test/precision-motion-cascade.test.js'
+      - 'test/financial-surface-contract.test.js'
+      - 'test/spreadsheet-grade-ui.test.js'
       - 'test/sql/money-sheet/**'
       - 'tools/*precision*'
       - 'tools/build-portfolio-spa-css.js'
@@ -27,7 +30,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node tools/validate-full-syntax.js && node tools/check-precision-inline.js && node tools/build-portfolio-spa-css.js --check
-      - run: node --test test/money-sheet.test.js test/portfolio-command-center.test.js test/portfolio-planner-v1.test.js test/portfolio-missing-is-not-zero.test.js test/portfolio-price-freshness.test.js test/portfolio-render-not-gated-by-network.test.js test/tab-navigation-and-insider-universe.test.js test/ui-theme-layer.test.js test/holver-app-shell-theme.test.js test/standalone-analisis-saham.test.js
+      - run: node --test test/money-sheet.test.js test/portfolio-command-center.test.js test/portfolio-planner-v1.test.js test/portfolio-missing-is-not-zero.test.js test/portfolio-price-freshness.test.js test/portfolio-render-not-gated-by-network.test.js test/tab-navigation-and-insider-universe.test.js test/ui-theme-layer.test.js test/holver-app-shell-theme.test.js test/standalone-analisis-saham.test.js test/financial-surface-contract.test.js test/spreadsheet-grade-ui.test.js test/precision-motion-cascade.test.js
       - run: npm run build
   browser:
     runs-on: ubuntu-latest
