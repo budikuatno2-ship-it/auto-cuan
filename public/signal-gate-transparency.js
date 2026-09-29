@@ -98,11 +98,50 @@
     var rsiThresholdText = '45 - 70 (Zona Gate Server)';
 
     // 5. Rasio Risiko/Keuntungan (Risk/Reward)
-    var rr = toNum(signal.risk_reward != null ? signal.risk_reward : signal.rr);
+    // Formula terpadu:
+    // R/R awal = (TP1 - Entry 1) / (Entry 1 - SL)
+    // Sisa R/R = (TP1 - Kini) / (Kini - SL)
+    var rawRR = toNum(signal.risk_reward != null ? signal.risk_reward : signal.rr);
+    var e1 = toNum(signal.entry1 || signal.entry_low || (signal.levels && (signal.levels.e1 || signal.levels.entry1)));
+    var sl = toNum(signal.sl || signal.stop_loss || (signal.levels && signal.levels.sl));
+    var tp1 = toNum(signal.tp1 || (signal.levels && (signal.levels.t1 || signal.levels.tp1)));
+    var kini = toNum(signal.last_price || signal.current_price || signal.close);
+
+    var rrAwal = (e1 !== null && sl !== null && tp1 !== null && e1 > sl && tp1 > e1)
+      ? ((tp1 - e1) / (e1 - sl))
+      : rawRR;
+    var rrSisa = (kini !== null && sl !== null && tp1 !== null && kini > sl && tp1 > kini)
+      ? ((tp1 - kini) / (kini - sl))
+      : null;
+
     var minRR = isDayTrade ? 1.2 : 1.5;
-    var rrPassed = rr !== null ? (rr >= minRR) : null;
-    var rrActualText = rr !== null ? (rr.toFixed(1) + ' : 1') : DATA_MISSING;
-    var rrThresholdText = 'Min ' + minRR.toFixed(1) + ' : 1';
+    var minRemainingRR = 1.3;
+
+    var rrPassed = null;
+    var rrActualText = DATA_MISSING;
+    var rrNoteText = '';
+
+    if (rrAwal !== null) {
+      var basePass = rrAwal >= minRR;
+      if (rrSisa !== null) {
+        // Jika sisa R/R < 1.3: jangan loloskan BUY gate!
+        if (rrSisa < minRemainingRR) {
+          rrPassed = false;
+          rrNoteText = 'Sisa R/R (' + rrSisa.toFixed(1) + ') < 1.3 — reward tidak memadai dari harga kini';
+        } else {
+          rrPassed = basePass;
+          rrNoteText = basePass
+            ? 'R/R awal ' + rrAwal.toFixed(1) + ' & sisa R/R ' + rrSisa.toFixed(1) + ' memadai'
+            : 'R/R awal di bawah standar ideal';
+        }
+        rrActualText = 'Awal ' + rrAwal.toFixed(1) + 'x · Sisa ' + rrSisa.toFixed(1) + 'x';
+      } else {
+        rrPassed = basePass;
+        rrActualText = rrAwal.toFixed(1) + ' : 1';
+        rrNoteText = basePass ? 'Potensi target reward melebihi batas risiko' : 'R/R di bawah standar ideal';
+      }
+    }
+    var rrThresholdText = 'Min ' + minRR.toFixed(1) + ' : 1 (Sisa ≥ 1.3x)';
 
     function noteFor(passed, passMsg, failMsg) {
       return passed === null ? DATA_MISSING : (passed ? passMsg : failMsg);
@@ -157,7 +196,7 @@
         threshold: rrThresholdText,
         passed: rrPassed,
         unverified: rrPassed === null,
-        note: noteFor(rrPassed, 'Potensi target reward melebihi batas risiko', 'R/R di bawah standar ideal')
+        note: rrNoteText || noteFor(rrPassed, 'Potensi target reward melebihi batas risiko', 'R/R di bawah standar ideal')
       }
     ];
 
@@ -183,8 +222,14 @@
     var evaluation = evaluateGates(signal, type);
     var passedCount = evaluation.passedCount;
     var totalCount = evaluation.totalCount;
-    var badgeCol = passedCount >= 4 ? '#6ee7b7' : (passedCount >= 3 ? '#fbbf24' : '#fca5a5');
-    var badgeBg = passedCount >= 4 ? 'rgba(16,185,129,0.12)' : (passedCount >= 3 ? 'rgba(234,179,8,0.12)' : 'rgba(239,68,68,0.12)');
+    var rrGate = null;
+    for (var j = 0; j < evaluation.gates.length; j++) {
+      if (evaluation.gates[j].id === 'rr') { rrGate = evaluation.gates[j]; break; }
+    }
+    var rrFailed = rrGate && rrGate.passed === false;
+    var badgeCol = (!rrFailed && passedCount >= 4) ? '#6ee7b7' : (passedCount >= 3 ? '#fbbf24' : '#fca5a5');
+    var badgeBg = (!rrFailed && passedCount >= 4) ? 'rgba(16,185,129,0.12)' : (passedCount >= 3 ? 'rgba(234,179,8,0.12)' : 'rgba(239,68,68,0.12)');
+    var headerCountText = rrFailed ? (passedCount + '/' + totalCount + ' (R/R Gate Failed)') : (passedCount + '/' + totalCount + ' Gate Terpenuhi');
 
     var html = '';
     html += '<div class="ac-gate-transparency-box" style="margin-bottom:16px;padding:14px;background:rgba(15,23,42,0.5);border:1px solid rgba(16,185,129,0.25);border-radius:12px">';
@@ -192,10 +237,10 @@
     // Header
     html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">';
     html += '<div style="display:flex;align-items:center;gap:7px">';
-    html += '<span style="font-size:14px">🔍</span>';
+    html += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#10b981"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
     html += '<div style="font-size:11px;font-weight:700;color:#f3f4f6;text-transform:uppercase;letter-spacing:0.6px">Kenapa Sinyal Ini Lolos Gate?</div>';
     html += '</div>';
-    html += '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;color:' + badgeCol + ';background:' + badgeBg + ';border:1px solid ' + badgeCol + '40">' + passedCount + '/' + totalCount + ' Gate Terpenuhi</span>';
+    html += '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;color:' + badgeCol + ';background:' + badgeBg + ';border:1px solid ' + badgeCol + '40">' + headerCountText + '</span>';
     html += '</div>';
 
     // Subtitle rationale
@@ -207,14 +252,14 @@
     html += '<div style="display:flex;flex-direction:column;gap:6px">';
     for (var i = 0; i < evaluation.gates.length; i++) {
       var g = evaluation.gates[i];
-      var icon = g.passed === true ? '✅' : (g.passed === null ? '➖' : '⚠️');
+      var icon = g.passed === true ? '✓' : (g.passed === null ? '—' : '⚠');
       var titleCol = g.passed === true ? '#e5e7eb' : (g.passed === null ? '#94a3b8' : '#fbbf24');
       var rowBorder = g.passed === true ? 'rgba(30,41,59,0.5)' : (g.passed === null ? 'rgba(100,116,139,0.25)' : 'rgba(234,179,8,0.2)');
       var rowBg = g.passed === true ? 'rgba(20,27,45,0.4)' : (g.passed === null ? 'rgba(100,116,139,0.06)' : 'rgba(234,179,8,0.04)');
 
       html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;background:' + rowBg + ';border:1px solid ' + rowBorder + ';border-radius:8px;font-size:11px">';
       html += '<div style="display:flex;align-items:center;gap:8px;min-width:0">';
-      html += '<span style="font-size:12px;line-height:1">' + icon + '</span>';
+      html += '<span style="font-size:12px;line-height:1;font-weight:700;color:' + (g.passed === true ? '#10b981' : (g.passed === null ? '#94a3b8' : '#fbbf24')) + '">' + icon + '</span>';
       html += '<div style="min-width:0">';
       html += '<div style="font-weight:600;color:' + titleCol + '">' + escapeHtml(g.title) + '</div>';
       html += '<div style="font-size:9.5px;color:#6b7280;margin-top:1px">' + escapeHtml(g.note) + '</div>';
@@ -240,15 +285,21 @@
     var evaluation = evaluateGates(signal, type);
     var passedCount = evaluation.passedCount;
     var totalCount = evaluation.totalCount;
-    var badgeCol = passedCount >= 4 ? '#6ee7b7' : (passedCount >= 3 ? '#fbbf24' : '#fca5a5');
+    var rrGate = null;
+    for (var j = 0; j < evaluation.gates.length; j++) {
+      if (evaluation.gates[j].id === 'rr') { rrGate = evaluation.gates[j]; break; }
+    }
+    var rrFailed = rrGate && rrGate.passed === false;
+    var badgeCol = (!rrFailed && passedCount >= 4) ? '#6ee7b7' : (passedCount >= 3 ? '#fbbf24' : '#fca5a5');
+    var countLabel = passedCount + '/' + totalCount + (rrFailed ? ' (R/R Gate Failed)' : '');
 
     var html = '';
     // Button on card
     html += '<div class="ac-gate-card-trigger" style="margin-top:6px;margin-bottom:2px">';
     html += '<button type="button" onclick="window.SignalGateTransparency.toggleCardDrawer(\'' + escapeHtml(ticker) + '\', event)" style="display:inline-flex;align-items:center;gap:5px;background:rgba(15,23,42,0.6);border:1px solid rgba(148,163,184,0.18);border-radius:6px;padding:3px 8px;font-size:9.5px;color:#94a3b8;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor=\'#10b981\';this.style.color=\'#6ee7b7\'" onmouseout="this.style.borderColor=\'rgba(148,163,184,0.18)\';this.style.color=\'#94a3b8\'" title="Lihat detail kenapa saham ini lolos kriteria">';
-    html += '<span style="color:' + badgeCol + ';font-size:11px">💡</span>';
+    html += '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:' + badgeCol + ';flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
     html += '<span>Mengapa muncul?</span>';
-    html += '<span style="color:' + badgeCol + ';font-weight:700;font-size:9px">(' + passedCount + '/' + totalCount + ')</span>';
+    html += '<span style="color:' + badgeCol + ';font-weight:700;font-size:9px">(' + countLabel + ')</span>';
     html += '<svg style="width:10px;height:10px;transition:transform .2s" class="ac-gate-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
     html += '</button>';
 
@@ -256,15 +307,15 @@
     html += '<div id="' + safeId + '" class="ac-gate-drawer hidden" style="margin-top:8px;padding:10px;background:rgba(10,14,24,0.85);border:1px solid rgba(16,185,129,0.2);border-radius:8px;font-size:10px;animation:fadeIn .2s ease-in-out">';
     html += '<div style="font-weight:700;color:#e2e8f0;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">';
     html += '<span>Kriteria Lolos Seleksi:</span>';
-    html += '<span style="color:' + badgeCol + ';font-size:9px">' + passedCount + '/' + totalCount + ' Terpenuhi</span>';
+    html += '<span style="color:' + badgeCol + ';font-size:9px">' + (rrFailed ? (passedCount + '/' + totalCount + ' (R/R Gate Failed)') : (passedCount + '/' + totalCount + ' Terpenuhi')) + '</span>';
     html += '</div>';
 
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-bottom:6px">';
     for (var i = 0; i < evaluation.gates.length; i++) {
       var g = evaluation.gates[i];
-      var icon = g.passed === true ? '✅' : (g.passed === null ? '➖' : '⚠️');
+      var icon = g.passed === true ? '✓' : (g.passed === null ? '—' : '⚠');
       html += '<div style="display:flex;align-items:center;gap:4px;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">';
-      html += '<span style="font-size:10px">' + icon + '</span>';
+      html += '<span style="font-size:10px;font-weight:700;color:' + (g.passed === true ? '#10b981' : (g.passed === null ? '#94a3b8' : '#fbbf24')) + '">' + icon + '</span>';
       html += '<span style="color:#94a3b8">' + escapeHtml(g.shortTitle) + ':</span>';
       html += '<span style="color:#60a5fa;font-weight:600">' + escapeHtml(g.actual.split(' ')[0]) + '</span>';
       html += '</div>';

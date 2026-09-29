@@ -110,44 +110,42 @@
       style.id = 'patternStableStyles';
       style.textContent = [
         '#patternChartTab,#patternPageContainer{display:none!important}',
-        '.ps-shell{padding:20px;border:1px solid var(--ac-line,rgba(148,163,184,.12));border-radius:var(--ac-radius-xl,20px);background:var(--ac-surface-1,linear-gradient(145deg,rgba(18,25,36,.98),rgba(8,14,22,.98)));box-shadow:var(--ac-shadow-2,0 24px 68px rgba(0,0,0,.22))}',
+        '.ps-shell{padding:16px;border:1px solid var(--ac-line,rgba(148,163,184,.12));border-radius:var(--ac-radius-lg,16px);background:var(--ac-surface-1,#0f1420);box-shadow:var(--ac-shadow-2,0 12px 32px rgba(0,0,0,.22))}',
         '.ps-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}',
-        '.ps-eyebrow{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#6ee7b7}',
-        '.ps-title{margin-top:6px;font-size:24px;line-height:1.15;font-weight:800;letter-spacing:-.02em;color:#f8fafc}.ps-sub{margin-top:6px;max-width:62ch;font-size:12.5px;line-height:1.6;color:#94a3b8}.ps-actions,.ps-card-actions{display:flex;gap:8px;flex-wrap:wrap}',
-        '.ps-btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:10px 14px;border:1px solid rgba(52,211,153,.30);border-radius:12px;background:rgba(16,185,129,.10);color:#6ee7b7;font-size:12.5px;font-weight:700;cursor:pointer;transition:background .15s ease,border-color .15s ease}.ps-btn:hover:not(:disabled){background:rgba(16,185,129,.16);border-color:rgba(52,211,153,.45)}.ps-btn.alt{border-color:rgba(148,163,184,.18);background:rgba(15,23,42,.58);color:#cbd5e1}.ps-btn.alt:hover:not(:disabled){background:rgba(30,41,59,.72)}.ps-btn:disabled{opacity:.5;cursor:not-allowed}',
-        '.ps-progress{margin-top:18px;padding:13px 15px;border:1px solid rgba(148,163,184,.12);border-radius:14px;background:rgba(2,6,23,.38)}.ps-progress-row{display:flex;justify-content:space-between;gap:12px;font-size:11.5px;color:#94a3b8}.ps-track{height:6px;margin-top:9px;overflow:hidden;border-radius:999px;background:#151a23}.ps-fill{height:100%;width:0;background:linear-gradient(90deg,#10b981,#22d3ee);transition:width .18s}',
-        '.ps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:14px;margin-top:18px}',
-        '.ps-card{display:flex;flex-direction:column;min-width:0;padding:16px;border:1px solid rgba(148,163,184,.13);border-radius:var(--ac-radius-lg,16px);background:var(--ac-surface-2,rgba(15,23,42,.52));box-shadow:var(--ac-shadow-1,0 10px 28px rgba(0,0,0,.18));transition:border-color .15s ease,transform .15s ease}.ps-card:hover{transform:translateY(-1px)}.ps-card.bullish{border-color:rgba(52,211,153,.26)}.ps-card.bearish{border-color:rgba(248,113,113,.24)}.ps-card.bilateral{border-color:rgba(96,165,250,.24)}',
-        '.ps-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.ps-ticker{font-size:21px;line-height:1.1;font-weight:800;letter-spacing:-.01em;color:#f8fafc}.ps-name{margin-top:3px;font-size:12px;line-height:1.5;color:#94a3b8}',
+        '.ps-eyebrow{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#22c55e}',
+        '.ps-title{margin-top:4px;font-size:20px;line-height:1.2;font-weight:800;letter-spacing:-.02em;color:#f8fafc}.ps-sub{margin-top:4px;max-width:62ch;font-size:12px;line-height:1.5;color:#94a3b8}.ps-actions,.ps-card-actions{display:flex;gap:8px;flex-wrap:wrap}',
+        '.ps-btn{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:6px 12px;border:1px solid rgba(34,197,94,.30);border-radius:8px;background:rgba(34,197,94,.10);color:#4ade80;font-size:12px;font-weight:700;cursor:pointer;transition:background var(--motion-fast, 180ms) var(--ease-standard),border-color var(--motion-fast, 180ms) var(--ease-standard)}.ps-btn:hover:not(:disabled){background:rgba(34,197,94,.16);border-color:rgba(34,197,94,.45)}.ps-btn.alt{border-color:rgba(148,163,184,.18);background:rgba(15,23,42,.58);color:#cbd5e1}.ps-btn.alt:hover:not(:disabled){background:rgba(30,41,59,.72)}.ps-btn:disabled{opacity:.5;cursor:not-allowed}',
+        '.ps-progress{margin-top:14px;padding:10px 14px;border:1px solid rgba(148,163,184,.10);border-radius:10px;background:rgba(2,6,23,.28)}.ps-progress-row{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:#94a3b8}.ps-track{height:5px;margin-top:7px;overflow:hidden;border-radius:999px;background:#151a23}.ps-fill{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#3b82f6);transition:width var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1))}',
+        '.ps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px;margin-top:14px}',
+        '.ps-card{display:flex;flex-direction:column;min-width:0;padding:14px;border:1px solid rgba(148,163,184,.12);border-radius:var(--ac-radius-md,12px);background:var(--ac-surface-2,rgba(15,23,42,.52));box-shadow:var(--ac-shadow-1,0 6px 16px rgba(0,0,0,.15));transition:border-color var(--motion-fast, 180ms) var(--ease-standard),transform var(--motion-fast, 180ms) var(--ease-standard)}.ps-card:hover{transform:translateY(-1px)}.ps-card.bullish{border-color:rgba(34,197,94,.28)}.ps-card.bearish{border-color:rgba(239,68,68,.24)}.ps-card.bilateral{border-color:rgba(59,130,246,.24)}',
+        '.ps-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.ps-ticker{font-size:20px;line-height:1.1;font-weight:800;letter-spacing:-.01em;color:#f8fafc}.ps-name{margin-top:2px;font-size:11.5px;line-height:1.4;color:#94a3b8}',
         // The verdict pill carries meaning, so each state gets its own colour
-        // rather than the single blue treatment every state used to share.
-        '.ps-badge{flex:0 0 auto;padding:5px 10px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.02em;white-space:nowrap;border:1px solid}',
-        '.ps-badge[data-tone="ok"]{border-color:rgba(52,211,153,.32);background:rgba(16,185,129,.12);color:#6ee7b7}',
-        '.ps-badge[data-tone="wait"]{border-color:rgba(96,165,250,.30);background:rgba(59,130,246,.10);color:#93c5fd}',
-        '.ps-badge[data-tone="muted"]{border-color:rgba(148,163,184,.22);background:rgba(148,163,184,.08);color:#94a3b8}',
-        '.ps-badge[data-tone="danger"]{border-color:rgba(248,113,113,.30);background:rgba(239,68,68,.10);color:#fca5a5}',
+        '.ps-badge{flex:0 0 auto;padding:4px 9px;border-radius:999px;font-size:9.5px;font-weight:800;letter-spacing:.02em;white-space:nowrap;border:1px solid}',
+        '.ps-badge[data-tone="ok"]{border-color:rgba(34,197,94,.32);background:rgba(34,197,94,.12);color:#4ade80}',
+        '.ps-badge[data-tone="wait"]{border-color:rgba(59,130,246,.30);background:rgba(59,130,246,.10);color:#93c5fd}',
+        '.ps-badge[data-tone="muted"]{border-color:rgba(148,163,184,.20);background:rgba(148,163,184,.08);color:#94a3b8}',
+        '.ps-badge[data-tone="danger"]{border-color:rgba(239,68,68,.30);background:rgba(239,68,68,.10);color:#fca5a5}',
         '.ps-card[data-tone="muted"],.ps-card[data-tone="danger"]{opacity:.86}',
-        '.ps-verdict{margin-top:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.34);color:#a9b6c9;font-size:11.5px;line-height:1.6}',
-        '.ps-verdict[data-tone="ok"]{border-color:rgba(52,211,153,.22);background:rgba(16,185,129,.06);color:#b7ead4}',
-        '.ps-verdict[data-tone="danger"]{border-color:rgba(248,113,113,.22);background:rgba(239,68,68,.06);color:#fecaca}',
-        '.ps-pattern-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.ps-pattern-chip{display:inline-flex;align-items:center;min-height:26px;padding:4px 10px;border:1px solid rgba(96,165,250,.20);border-radius:999px;background:rgba(59,130,246,.075);color:#bfdbfe;font-size:10.5px;font-weight:700}.ps-pattern-chip.bullish{border-color:rgba(52,211,153,.24);background:rgba(16,185,129,.08);color:#a7f3d0}.ps-pattern-chip.bearish{border-color:rgba(248,113,113,.24);background:rgba(239,68,68,.07);color:#fecaca}.ps-pattern-note{margin-top:10px;color:#8395ab;font-size:11px;line-height:1.6}',
-        // The pattern picture is the reason this page exists, so it is part of the
-        // card rather than something hidden behind a button.
-        '.ps-figure{margin-top:12px;border:1px solid rgba(148,163,184,.12);border-radius:14px;background:rgba(2,6,23,.44);overflow:hidden}',
+        // Streamlined verdict without heavy card borders
+        '.ps-verdict{margin-top:10px;padding:8px 10px;border-radius:8px;border:none;background:rgba(148,163,184,.06);color:#a9b6c9;font-size:11px;line-height:1.5}',
+        '.ps-verdict[data-tone="ok"]{background:rgba(34,197,94,.08);color:#b7ead4}',
+        '.ps-verdict[data-tone="danger"]{background:rgba(239,68,68,.08);color:#fecaca}',
+        '.ps-pattern-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}.ps-pattern-chip{display:inline-flex;align-items:center;min-height:24px;padding:3px 9px;border:1px solid rgba(59,130,246,.20);border-radius:999px;background:rgba(59,130,246,.08);color:#bfdbfe;font-size:10px;font-weight:700}.ps-pattern-chip.bullish{border-color:rgba(34,197,94,.24);background:rgba(34,197,94,.08);color:#86efac}.ps-pattern-chip.bearish{border-color:rgba(239,68,68,.24);background:rgba(239,68,68,.07);color:#fecaca}.ps-pattern-note{margin-top:8px;color:#8395ab;font-size:10.5px;line-height:1.5}',
+        // Pattern figure clean container
+        '.ps-figure{margin-top:10px;border:1px solid rgba(148,163,184,.10);border-radius:10px;background:rgba(2,6,23,.35);overflow:hidden}',
         '.ps-figure svg{display:block;width:100%;height:auto}',
-        '.ps-figure-empty{padding:26px 14px;color:#7c8ba1;font-size:11.5px;text-align:center}',
-        '.ps-levels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:12px}',
-        // A price must never be hyphen-free-wrapped mid-number: "1.090" split
-        // across two lines reads as "1.09" followed by a stray "0". The value
-        // is nowrap and the label is what gives way when space runs out.
-        '.ps-level{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:8px 11px;border:1px solid rgba(148,163,184,.10);border-radius:11px;background:rgba(2,6,23,.34)}',
-        '.ps-level span{min-width:0;color:#7c8ba1;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;overflow-wrap:break-word}',
-        '.ps-level b{flex:0 0 auto;white-space:nowrap;color:#e8edf5;font-size:13px;font-variant-numeric:tabular-nums;text-align:right}',
-        '.ps-level[data-role="confirmation"] b{color:#6ee7b7}.ps-level[data-role="invalidation"] b{color:#fca5a5}.ps-level[data-role="tp1"] b,.ps-level[data-role="tp2"] b{color:#fcd34d}.ps-level[data-role="prz"] b{color:#d8b4fe}',
+        '.ps-figure-empty{padding:20px 12px;color:#7c8ba1;font-size:11px;text-align:center}',
+        '.ps-levels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px}',
+        // Flattened level tiles without heavy nesting
+        '.ps-level{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:6px 9px;border:1px solid rgba(148,163,184,.08);border-radius:8px;background:rgba(2,6,23,.25)}',
+        '.ps-level span{min-width:0;color:#7c8ba1;font-size:9.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;overflow-wrap:break-word}',
+        '.ps-level b{flex:0 0 auto;white-space:nowrap;color:#e8edf5;font-size:12.5px;font-variant-numeric:tabular-nums;text-align:right}',
+        '.ps-level[data-role="confirmation"] b{color:#4ade80}.ps-level[data-role="invalidation"] b{color:#fca5a5}.ps-level[data-role="tp1"] b,.ps-level[data-role="tp2"] b{color:#fcd34d}.ps-level[data-role="prz"] b{color:#d8b4fe}',
         '.ps-level.wide{grid-column:1 / -1}',
-        '.ps-card-actions{margin-top:auto;padding-top:14px}',
-        '.ps-map-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}',
-        '.ps-map-tool{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 13px;border:1px solid rgba(148,163,184,.18);border-radius:11px;background:rgba(15,23,42,.66);color:#cbd5e1;font-size:11.5px;font-weight:700;text-decoration:none;cursor:pointer}.ps-map-tool:hover{border-color:rgba(52,211,153,.40);color:#6ee7b7}',
+        '.ps-card-actions{margin-top:auto;padding-top:12px}',
+        '.ps-map-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}',
+        '.ps-map-tool{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:6px 12px;border:1px solid rgba(148,163,184,.18);border-radius:8px;background:rgba(15,23,42,.66);color:#cbd5e1;font-size:11px;font-weight:700;text-decoration:none;cursor:pointer}.ps-map-tool:hover{border-color:rgba(34,197,94,.40);color:#4ade80}',
+
         '@media(max-width:520px){.ps-map-tools .ps-map-tool{flex:1 1 0}}',
         '.ps-empty{margin-top:18px;padding:36px 18px;border:1px dashed rgba(148,163,184,.18);border-radius:16px;background:rgba(2,6,23,.30);color:#94a3b8;font-size:12.5px;line-height:1.6;text-align:center}',
         '.ps-legend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:14px;color:#7c8ba1;font-size:10.5px}',
@@ -183,10 +181,18 @@
     }
     function place(node) {
       var screen = doc.getElementById('patternSubTabContainer') || doc.getElementById('dashboardScreen') || doc.getElementById('panel-tab-pattern');
-      var footer = screen && screen.querySelector('footer');
       if (!screen || !node) return node;
-      if (node.parentNode !== screen) footer ? screen.insertBefore(node, footer) : screen.appendChild(node);
-      else if (footer && node.nextSibling !== footer) screen.insertBefore(node, footer);
+      var footer = screen.querySelector('footer');
+      var isDirectFooter = footer && footer.parentNode === screen;
+      try {
+        if (node.parentNode !== screen) {
+          isDirectFooter ? screen.insertBefore(node, footer) : screen.appendChild(node);
+        } else if (isDirectFooter && node.nextSibling !== footer) {
+          screen.insertBefore(node, footer);
+        }
+      } catch (_) {
+        try { screen.appendChild(node); } catch (__) {}
+      }
       return node;
     }
     // Visibility is three attributes, not one. `applyPremiumAccessUi` in

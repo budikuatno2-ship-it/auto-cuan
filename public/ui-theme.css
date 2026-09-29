@@ -40,6 +40,35 @@
    render correctly on a network where this file never arrives.
    ------------------------------------------------------------------------- */
 :root {
+  /* --- Master Design Tokens (§2) --- */
+  --canvas: #090D16;
+  --surface: #10151F;
+  --surface-elevated: #161C29;
+  --border-hairline: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --text-primary: #F4F6F8;
+  --text-secondary: #9AA4B2;
+  --text-tertiary: #626C7A;
+  --text-muted: #626C7A;
+  --accent-primary: #22C55E;
+  --accent-primary-hover: #16A34A;
+  --accent-subtle: rgba(34, 197, 94, 0.12);
+  --data-positive: #22C55E;
+  --data-negative: #EF4444;
+  --data-neutral: #F59E0B;
+  --danger: #EF4444;
+  --warning: #F59E0B;
+  --info: #3B82F6;
+
+  /* --- Motion Tokens (§6.1) --- */
+  --motion-instant: 100ms;
+  --motion-fast: 180ms;
+  --motion-base: 260ms;
+  --motion-slow: 420ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
   --color-bg-canvas: #090d16;
   --color-bg-surface: #0d1320;
   --color-bg-elevated: #111a2a;
@@ -94,7 +123,7 @@
      One accent, spent deliberately: active navigation, primary action, and
      bullish direction. Nothing else earns it. */
   --ac-accent: #34d399;
-  --ac-accent-strong: #10b981;
+  --ac-accent-strong: #22c55e;
   --ac-accent-soft: rgba(16, 185, 129, 0.10);
   --ac-accent-line: rgba(52, 211, 153, 0.30);
   --ac-brand: var(--ac-accent-strong);         /* inline-sheet alias */
@@ -185,7 +214,54 @@
 
   --ac-fab-size: 56px;
   --ac-safe-bottom: env(safe-area-inset-bottom, 0px);
-}/* ---- 1b. Viewport height ------------------------------------------------
+}
+
+html:not(.light) {
+  --text-primary: #F4F6F8;
+}
+
+html.light,
+[data-theme="light"] {
+  /* --- Master Design Tokens Light Mode (§2) --- */
+  --canvas: #F7F8FA;
+  --surface: #FFFFFF;
+  --surface-elevated: #F1F5F9;
+  --border-hairline: #E5E7EB;
+  --border-subtle: rgba(0, 0, 0, 0.12);
+  --text-primary: #111827; /* WAJIB: bukan #FFFFFF, kontras WCAG AA */
+  --text-secondary: #4B5563;
+  --text-tertiary: #9CA3AF;
+  --text-muted: #9CA3AF;
+  --accent-primary: #16A34A;
+  --accent-primary-hover: #15803D;
+  --accent-subtle: rgba(22, 163, 74, 0.10);
+  --data-positive: #16A34A;
+  --data-negative: #DC2626;
+  --data-neutral: #F59E0B;
+  --danger: #DC2626;
+  --warning: #D97706;
+  --info: #2563EB;
+
+  --color-bg-canvas: #f8fafc;
+  --color-bg-surface: #ffffff;
+  --color-bg-elevated: #f8fafc;
+  --color-bg-hover: #f1f5f9;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #475569;
+  --color-border-subtle: rgba(15, 23, 42, 0.10);
+  --color-border-default: rgba(15, 23, 42, 0.16);
+  --color-accent: #2563eb;
+  --color-positive: #047857;
+  --color-positive-soft: rgba(4, 120, 87, 0.10);
+  --color-negative: #b91c1c;
+  --color-negative-soft: rgba(185, 28, 28, 0.10);
+  --color-warning: #b45309;
+  --grid-line: rgba(15, 23, 42, 0.08);
+  --grid-header-bg: #f8fafc;
+}
+
+/* ---- 1b. Viewport height ------------------------------------------------
    iOS Safari and Android Chrome both size 100vh to the viewport with the URL bar
    COLLAPSED, so a 100vh shell overshoots the visible area and shifts as the bar
    hides and shows. `dvh` tracks the real viewport; the `vh` line stays first as the
@@ -1049,7 +1125,7 @@ table th.text-right,
 
 .panel table tbody tr,
 .overflow-x-auto > table tbody tr {
-  transition: background-color .12s ease;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard);
 }
 .panel table tbody tr:hover,
 .overflow-x-auto > table tbody tr:hover {
@@ -2496,7 +2572,232 @@ body {
   .app-header > .header-shell > .flex > :last-child {
     justify-self: end;
   }
-}/* ==========================================================================
+}
+
+/* ==========================================================================
+   AUTO-CUAN THEME SYSTEM: DARK (SLATE/ZINC) & LIGHT (CLEAN FINANCIAL)
+   ========================================================================== */
+html.light, body.light, [data-theme="light"] {
+  --pw-bg: #f8fafc;
+  --pw-bg-2: #f1f5f9;
+  --pw-panel: #ffffff;
+  --pw-panel-2: #f8fafc;
+  --pw-panel-3: #f1f5f9;
+  --pw-panel-hover: #f1f5f9;
+  --pw-panel-strong: #f1f5f9;
+  --pw-surface: #ffffff;
+  --pw-line: #e2e8f0;
+  --pw-line-strong: #cbd5e1;
+  --pw-text: #0f172a;
+  --pw-text-strong: #020617;
+  --pw-muted: #334155;
+  --pw-dim: #475569;
+  --pw-bull: #047857;
+  --pw-bear: #b91c1c;
+  --pw-warn: #b45309;
+  --pw-info: #1d4ed8;
+  --pw-grid: transparent;
+
+  --color-text-primary: #0f172a !important;
+  --color-text-secondary: #334155 !important;
+  --color-text-muted: #475569 !important;
+  --color-positive: #047857 !important;
+  --color-negative: #b91c1c !important;
+  --color-warning: #b45309 !important;
+  --ac-bg: #f8fafc;
+  --ac-surface-1: #ffffff;
+  --ac-surface-2: #f8fafc;
+  --ac-surface-3: #f1f5f9;
+  --ac-text-strong: var(--color-text-primary);
+  --ac-surface: #ffffff;
+  --ac-panel: #ffffff;
+  --ac-panel-header: #f1f5f9;
+  --ac-border: #e2e8f0;
+  --ac-text: #0f172a;
+  --ac-text-sub: #334155;
+  --ac-text-muted: #475569;
+  --ac-text-dim: #475569;
+  --ac-bull: #047857;
+  --ac-bear: #b91c1c;
+  --ac-warn: #b45309;
+
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-dark-900,
+html.light .bg-dark-900\/80,
+html.light .bg-dark-900\/70,
+html.light .bg-dark-900\/60 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-dark-800,
+html.light .bg-dark-800\/80,
+html.light .bg-dark-800\/90,
+html.light .bg-dark-800\/60,
+html.light .bg-dark-800\/40 {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-dark-700,
+html.light .bg-dark-700\/80,
+html.light .bg-dark-700\/60,
+html.light .bg-dark-700\/40,
+html.light .bg-dark-700\/50 {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+html.light .border-dark-600,
+html.light .border-dark-600\/30,
+html.light .border-dark-600\/40,
+html.light .border-dark-600\/50,
+html.light .border-dark-600\/60,
+html.light .border-dark-700,
+html.light .border-dark-700\/30,
+html.light .border-dark-700\/40,
+html.light .border-dark-700\/50,
+html.light .border-dark-700\/60 {
+  border-color: #e2e8f0 !important;
+}
+
+html.light .text-white,
+html.light .text-gray-100,
+html.light .text-gray-200 {
+  color: #111827 !important;
+}
+
+html.light .text-gray-300,
+html.light .text-gray-400 {
+  color: #4B5563 !important;
+}
+
+html.light .text-gray-500,
+html.light .text-gray-600 {
+  color: #6B7280 !important;
+}
+
+/* WCAG AA Semantic Contrast in Light Mode (> 4.5:1 on white) */
+html.light .text-emerald-300,
+html.light .text-emerald-400,
+html.light .text-emerald-500,
+html.light .text-green-300,
+html.light .text-green-400,
+html.light .text-green-500 {
+  color: #047857 !important;
+}
+
+html.light .text-red-300,
+html.light .text-red-400,
+html.light .text-red-500,
+html.light .text-rose-300,
+html.light .text-rose-400,
+html.light .text-rose-500 {
+  color: #b91c1c !important;
+}
+
+html.light .text-amber-200,
+html.light .text-amber-300,
+html.light .text-amber-400,
+html.light .text-amber-500,
+html.light .text-yellow-300,
+html.light .text-yellow-400 {
+  color: #b45309 !important;
+}
+
+html.light .app-header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light .panel,
+html.light .dashboard-card,
+html.light .screener-card,
+html.light .dashboard-hero,
+html.light .unified-card,
+html.light .portfolio-card,
+html.light .market-tile {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light #page-dashboard #dashGreeting {
+  color: var(--color-text-primary);
+}
+
+html.light .app-sidebar {
+  background-color: #ffffff !important;
+  border-right-color: #e2e8f0 !important;
+}
+
+html.light .sidebar-item {
+  color: #334155 !important;
+}
+
+html.light .sidebar-item:hover {
+  background-color: #f1f5f9 !important;
+  color: #047857 !important;
+}
+
+html.light .sidebar-item.active {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html.light .theme-toggle-btn,
+html.light .workspace-sidebar-toggle,
+html.light .sidebar-collapse-toggle,
+html.light .theme-toggle-compact {
+  color: #334155 !important;
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light .theme-toggle-btn:hover,
+html.light .workspace-sidebar-toggle:hover,
+html.light .sidebar-collapse-toggle:hover,
+html.light .theme-toggle-compact:hover {
+  color: #0f172a !important;
+  background-color: #e2e8f0 !important;
+}
+
+html.light .sidebar-brand,
+html.light .sidebar-footer {
+  border-color: #e2e8f0 !important;
+}
+
+html.light .sidebar-brand-text strong,
+html.light .sidebar-brand-text p,
+html.light .user-name {
+  color: #0f172a !important;
+}
+
+html.light .sidebar-brand-text span {
+  color: #475569 !important;
+}
+
+html.light .user-role {
+  color: #047857 !important;
+}
+
+html.light .user-avatar {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #047857 !important;
+}
+
+/* Kill the grid pattern in light mode too — the light sheet must read flat. */
+html.light body {
+  background-image: none !important;
+}
+
+/* ==========================================================================
    COLLAPSIBLE WORKSPACE SIDEBAR
    Fixed rail on the left; the app body gets matching padding so tables gain
    the reclaimed width the moment the rail collapses.
@@ -2506,39 +2807,60 @@ body {
   display: none;
 }
 
-/* FASE 2 — TRUE TWO-COLUMN SHELL.
-   The rail is taken out of the document flow (`position: fixed`) and the
-   content column is offset by exactly the rail width. This is what makes the
-   sidebar physically incapable of scrolling with the page: no matter how tall
-   the workspace gets, the rail has no scroll context to move in, and the
-   document only ever has ONE scrollbar — the content one. */
 .app-layout {
-  display: block;
+  display: flex;
+  align-items: flex-start;
   width: 100%;
   min-height: 100vh;
 }
 
+#sidebar,
+#appSidebar,
 .app-sidebar {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  bottom: 0;
   width: 240px;
-  height: 100vh;
-  height: 100dvh;
+  height: 100dvh;         /* §1.2: dynamic viewport height — accounts for mobile toolbars */
+  height: 100vh;          /* fallback for browsers without dvh support */
   flex: 0 0 auto;
   background: var(--color-bg-surface);
   border-right: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
   z-index: 60;
-  transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width var(--motion-base, 200ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
   overflow-x: hidden;
+  overflow-y: hidden;     /* children handle their own scroll */
 }
 
+/* §1.2: Nav area scrolls independently — footer is always visible */
+.sidebar-nav {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;          /* required for flex children to shrink-scroll */
+}
+
+/* §1.2: Footer locked at bottom — never clipped */
+.sidebar-footer {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--color-border-subtle);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+
+
+#sidebar.collapsed,
+#sidebar.is-collapsed,
+#appSidebar.collapsed,
+#appSidebar.is-collapsed,
 .app-sidebar.collapsed,
 .app-sidebar.is-collapsed {
-  width: 72px;
+  width: 72px !important;
+  flex: 0 0 72px !important;
 }
 
 .sidebar-scrim {
@@ -2582,10 +2904,7 @@ body {
   justify-content: space-between;
   gap: 8px;
   min-height: 72px;
-  padding-top: 24px !important;
-  padding-left: 16px !important;
-  padding-right: 16px !important;
-  padding-bottom: 16px !important;
+  padding: 12px;
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
@@ -2593,9 +2912,10 @@ body {
 .sidebar-brand-text { display: grid; min-width: 0; }
 .sidebar-brand-text strong { color: var(--color-text-primary); font-size: 14px; line-height: 1.25; }
 .sidebar-brand-text span { color: var(--color-text-muted); font-size: 10px; }
-.sidebar-brand .brand-mark { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; }
-.sidebar-brand .brand-mark svg { width: 24px !important; height: 24px !important; max-width: 24px !important; max-height: 24px !important; flex-shrink: 0 !important; }
-.sidebar-collapse-toggle {
+.sidebar-brand .brand-mark { display: grid; place-items: center; flex: 0 0 34px; }
+.sidebar-brand .brand-mark svg { width: 18px; height: 18px; }
+.sidebar-collapse-toggle,
+.theme-toggle-compact {
   display: inline-grid;
   place-items: center;
   width: 28px;
@@ -2607,120 +2927,95 @@ body {
   color: var(--color-text-secondary);
   cursor: pointer;
 }
-.sidebar-collapse-toggle:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
-.sidebar-collapse-toggle svg { width: 15px; height: 15px; transition: transform .18s ease; }
+.sidebar-collapse-toggle:hover,
+.theme-toggle-compact:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
+.sidebar-collapse-toggle svg,
+.theme-toggle-compact svg { width: 15px; height: 15px; transition: transform var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)); }
 .app-sidebar.collapsed .sidebar-collapse-toggle svg,
 .app-sidebar.is-collapsed .sidebar-collapse-toggle svg { transform: rotate(180deg); }
-/* FASE 3 — the nav is the only scrollable part of the rail, and it scrolls
-   with a hairline custom thumb instead of the native grey slab. The rail
-   itself never scrolls, so the brand and the profile footer stay put. */
-.sidebar-nav {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 12px;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.22) transparent;
-}
-
-.sidebar-nav::-webkit-scrollbar { width: 6px; }
-.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-.sidebar-nav::-webkit-scrollbar-thumb {
-  background-color: rgba(148, 163, 184, 0.22);
-  border-radius: 999px;
-}
-.sidebar-nav:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(148, 163, 184, 0.34);
-}
-.sidebar-nav::-webkit-scrollbar-corner { background: transparent; }
+.sidebar-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px; }
 .sidebar-footer {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 10px !important;
-  padding: 14px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px;
   border-top: 1px solid var(--color-border-subtle);
-  overflow: hidden !important;
+  overflow: hidden;
+}
+.sidebar-footer .theme-toggle-compact {
+  width: 100%;
+  height: 32px;
+  border-radius: 8px;
+  justify-self: stretch;
 }
 .user-profile-badge {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 10px !important;
-  min-width: 0 !important;
-  flex: 1 !important;
-  cursor: pointer !important;
-  border-radius: 8px !important;
-  padding: 4px 6px !important;
-  transition: background-color 0.15s ease !important;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 4px;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
 }
 .user-profile-badge:hover {
-  background-color: var(--color-bg-hover) !important;
+  background-color: var(--color-bg-hover);
 }
 .user-avatar {
-  display: grid !important;
-  place-items: center !important;
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-  max-width: 32px !important;
-  min-height: 32px !important;
-  max-height: 32px !important;
-  flex: 0 0 32px !important;
-  border-radius: 50% !important;
-  background: var(--color-bg-hover, #1e293b) !important;
-  border: 1px solid var(--color-border-default, #334155) !important;
-  color: var(--color-text-primary, #ffffff) !important;
-  font-size: 12px !important;
-  font-weight: 700 !important;
-  flex-shrink: 0 !important;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 50%;
+  background: var(--color-bg-hover);
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 700;
 }
 .user-info {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 8px !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
 .user-name {
-  color: var(--color-text-primary, #f8fafc) !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  line-height: 1.25 !important;
-  white-space: nowrap !important;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .user-role {
-  display: inline-flex !important;
-  align-items: center !important;
-  padding: 2px 6px !important;
-  border-radius: 4px !important;
-  background: rgba(16, 185, 129, 0.15) !important;
-  color: #34d399 !important;
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.05em !important;
-  text-transform: uppercase !important;
-  border: 1px solid rgba(52, 211, 153, 0.25) !important;
-  white-space: nowrap !important;
+  overflow: hidden;
+  color: var(--color-positive);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .app-sidebar.collapsed .sidebar-footer,
 .app-sidebar.is-collapsed .sidebar-footer {
-  flex-direction: column !important;
-  justify-content: center !important;
-  align-items: center !important;
-  gap: 10px !important;
-  padding: 12px 6px !important;
-  overflow: hidden !important;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 6px;
+  overflow: hidden;
 }
 .app-sidebar.collapsed .user-profile-badge,
 .app-sidebar.is-collapsed .user-profile-badge {
-  justify-content: center !important;
-  flex: 0 0 auto !important;
-  width: auto !important;
-  padding: 0 !important;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
+  padding: 0;
 }
 
 .app-main-viewport {
@@ -2730,22 +3025,87 @@ body {
   flex-direction: column;
 }
 
-/* FASE 2 — the content column. Because the rail is `position: fixed` the
-   column is offset by the rail width instead of being flexed next to it.
-   `min-width: 0` stops a wide table from forcing the page wider than the
-   viewport; `min-height: 100vh` keeps the footer pinned on short pages. */
+/* The content column. `min-width: 0` is what stops a wide table inside a page
+   from forcing the flex row wider than the viewport — without it the column
+   refuses to shrink below its content and the sidebar is pushed off-screen. */
 .app-main {
   flex: 1;
   min-width: 0;
-  min-height: 100vh;
-  margin-left: 240px;
   display: flex;
   flex-direction: column;
 }
 
-body.sidebar-collapsed .app-main,
-.app-layout.sidebar-collapsed .app-main {
-  margin-left: 72px;
+/* App Content Transition (§6.5) */
+.app-content {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--motion-fast, 180ms) var(--ease-standard),
+              transform var(--motion-fast, 180ms) var(--ease-standard);
+  will-change: opacity, transform;
+}
+
+/* App Shell Sidebar State sync */
+.app-shell[data-sidebar-state="collapsed"] #appSidebar {
+  width: 72px;
+}
+
+/* Button Micro-interactions (§6.2) */
+.sidebar-item:active,
+.nav-btn:active,
+.analisis-tab:active,
+.pcc-subtab:active,
+.market-tile:active {
+  transform: scale(0.98);
+  transition: transform var(--motion-instant) var(--ease-standard);
+}
+
+/* Analisis Saham Sub-tab Strip (§1.3 & §6.3): Single Row Nowrap */
+.analisis-tab-strip {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 2px;
+  width: 100% !important;
+}
+.analisis-tab-strip::-webkit-scrollbar {
+  display: none;
+}
+.analisis-tab {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* Checkbox Standard Design System Token (§1.2 & §2.4) */
+input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px;
+  min-height: 16px;
+  accent-color: var(--accent-primary, #22C55E);
+  border-radius: var(--ac-radius-xs, 4px);
+  cursor: pointer;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+
+/* Scroll Reveal with Stagger (§6.3) */
+.scroll-reveal,
+.feature-card.scroll-reveal,
+.landing-card.scroll-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity var(--motion-slow, 420ms) var(--ease-emphasized, cubic-bezier(0.16, 1, 0.3, 1)),
+              transform var(--motion-slow, 420ms) var(--ease-emphasized, cubic-bezier(0.16, 1, 0.3, 1)) !important;
+  will-change: opacity, transform;
+}
+.scroll-reveal.is-revealed,
+.feature-card.scroll-reveal.is-revealed,
+.landing-card.scroll-reveal.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Mobile drawer trigger in the header. Hidden from 1024px up, where the rail
@@ -2761,7 +3121,8 @@ body.sidebar-collapsed .app-main,
   background-color: rgba(148, 163, 184, 0.06);
   color: #cbd5e1;
   flex-shrink: 0;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 .workspace-sidebar-toggle:hover {
@@ -2776,20 +3137,8 @@ body.sidebar-collapsed .app-main,
 @media (min-width: 1024px) {
   .workspace-sidebar-toggle,
   #appMain > .app-header,
-  .app-main > .app-header,
-  #appMain > header,
   #workspaceTabRail {
     display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    min-height: 0 !important;
-    max-height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-    overflow: hidden !important;
   }
 
   .app-sidebar:not(.hidden) {
@@ -2807,7 +3156,7 @@ body.sidebar-collapsed .app-main,
   font-size: 13px;
   font-weight: 600;
   color: #aab4c3;
-  transition: all 0.15s ease;
+  transition: all var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
   white-space: nowrap;
   width: 100%;
   border: 1px solid transparent;
@@ -2825,223 +3174,10 @@ body.sidebar-collapsed .app-main,
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-/* FASE 6 — HolverAI active pill. A solid white block on a near-black rail
-   reads as a rendering accident, not as a state: it detonates the dark mode
-   and fights every other surface in the product. The active state is the
-   product accent, expressed softly — emerald text on a 12% emerald wash. */
 .sidebar-item.active {
-  color: #10b981;
-  background-color: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.25);
-  font-weight: 600;
-}
-
-.sidebar-item.active svg {
-  color: #10b981;
-}
-
-.sidebar-item.active:hover {
-  background-color: rgba(16, 185, 129, 0.18);
-  color: #34d399;
-}
-
-/* Sidebar Tree-View Accordion & Submenu */
-.sidebar-accordion-group {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
-.sidebar-parent-item {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  width: 100% !important;
-}
-
-.sidebar-parent-item .sidebar-chevron {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  color: #64748b;
-  margin-left: auto;
-}
-
-.sidebar-parent-item[aria-expanded="true"] .sidebar-chevron {
-  transform: rotate(180deg);
-  color: #34d399;
-}
-
-.sidebar-submenu {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 4px !important;
-  padding-left: 28px !important;
-  padding-right: 8px !important;
-  margin-top: 6px !important;
-  margin-bottom: 6px !important;
-}
-
-.sidebar-submenu.hidden {
-  display: none !important;
-}
-
-.sidebar-subitem {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  width: 100% !important;
-  padding: 8px 12px !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  line-height: 1.3 !important;
-  color: #94a3b8 !important;
-  background: transparent !important;
-  border: 1px solid transparent !important;
-  border-radius: 6px !important;
-  cursor: pointer !important;
-  text-align: left !important;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
-  text-decoration: none !important;
-}
-
-.sidebar-subitem:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
-  color: #ffffff !important;
-}
-
-.sidebar-subitem.active {
-  background: rgba(16, 185, 129, 0.12) !important;
-  color: #34d399 !important;
-  font-weight: 600 !important;
-  border-color: rgba(52, 211, 153, 0.25) !important;
-}
-
-.subitem-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: #64748b;
-  flex-shrink: 0;
-  transition: background-color 0.15s ease;
-}
-
-.sidebar-subitem:hover .subitem-dot {
-  background-color: #cbd5e1;
-}
-
-.sidebar-subitem.active .subitem-dot {
-  background-color: #34d399;
-}
-
-.app-sidebar.collapsed .sidebar-submenu,
-.app-sidebar.is-collapsed .sidebar-submenu,
-.app-sidebar.collapsed .sidebar-parent-item .sidebar-chevron,
-.app-sidebar.is-collapsed .sidebar-parent-item .sidebar-chevron {
-  display: none !important;
-}
-
-/* FASE 8/9 — WORKSPACE VIEW HOST (embedded standalone pages).
-   The host fills the content column and gives the embedded page its own
-   scroll context, so the shell keeps exactly one outer scrollbar while the
-   iframe scrolls internally — never two document scrollbars. */
-.workspace-view-host {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
-}
-
-.workspace-view-host.hidden {
-  display: none !important;
-}
-
-.workspace-view-chrome {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 4px 12px;
-  flex: 0 0 auto;
-}
-
-.workspace-view-title {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--color-text-secondary, #aab4c3);
-}
-
-.workspace-view-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background-color: rgba(148, 163, 184, 0.06);
-  color: #cbd5e1;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-
-.workspace-view-back:hover {
-  background-color: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.28);
-  color: #34d399;
-}
-
-.workspace-view-frame-wrap {
-  flex: 1 1 auto;
-  min-height: 0;
-  border: 1px solid rgba(148, 163, 184, 0.10);
-  border-radius: 14px;
-  overflow: hidden;
-  background: #090d16;
-}
-
-.workspace-view-frame {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 70vh;
-  border: 0;
-  background: #090d16;
-}
-
-/* When a workspace view is open the native page blocks are hidden by the
-   router; this keeps the shell's own padding from showing through. */
-body.workspace-view-open #appMain > .page-content {
-  display: none !important;
-}
-
-/* FASE 11 — Floating AI launcher. Exactly one button, anchored 24px from the
-   bottom-right corner, lifted clear of the reCAPTCHA badge so the two can
-   never overlap or clip against the viewport edge. */
-#aiFloatingBtn {
-  position: fixed !important;
-  bottom: 24px !important;
-  right: 24px !important;
-  z-index: 50 !important;
-}
-
-/* The reCAPTCHA badge is injected by Google, not by us, so it is anchored
-   rather than removed: pinned 24px from the corner, below the launcher. */
-.grecaptcha-badge {
-  position: fixed !important;
-  bottom: 24px !important;
-  right: 24px !important;
-  top: auto !important;
-  left: auto !important;
-  z-index: 40 !important;
-}
-
-@media (max-width: 767px) {
-  /* On phones the launcher clears the badge vertically instead of colliding
-     with it horizontally. */
-  #aiFloatingBtn { bottom: 88px !important; right: 16px !important; }
-  .grecaptcha-badge { bottom: 16px !important; right: 16px !important; }
+  color: #090d16;
+  background-color: #ffffff;
+  border-color: #ffffff;
 }
 
 .theme-toggle-btn {
@@ -3056,7 +3192,9 @@ body.workspace-view-open #appMain > .page-content {
   font-weight: 600;
   color: #cbd5e1;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 .theme-toggle-btn:hover {
@@ -3064,16 +3202,16 @@ body.workspace-view-open #appMain > .page-content {
   color: #ffffff;
 }
 
-/* FASE 16 — below 1024px the rail becomes an off-canvas drawer and the
-   content column reclaims the full width. The drawer is opened by the
-   hamburger in the header (#workspaceSidebarToggle). */
 @media (max-width: 1023px) {
+  /* Below 1024px the rail leaves the flex flow and becomes an overlay drawer,
+     so the content column keeps the full viewport width instead of being
+     squeezed to 240px less. `position: fixed` here is scoped to small screens
+     only — from 1024px up the rail is a real sticky flex column. */
   .app-sidebar {
     position: fixed;
     top: 0;
     left: 0;
     bottom: 0;
-    width: 240px;
     height: 100dvh;
     transform: translateX(-100%);
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
@@ -3087,10 +3225,6 @@ body.workspace-view-open #appMain > .page-content {
   .app-sidebar.collapsed,
   .app-sidebar.is-collapsed {
     width: 240px;
-  }
-  .app-main,
-  body.sidebar-collapsed .app-main {
-    margin-left: 0 !important;
   }
 }
 
@@ -3279,7 +3413,115 @@ body.workspace-view-open #appMain > .page-content {
   font-variant-numeric: tabular-nums !important;
   background-color: #0f172a !important;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
-}/* ===========================================================================
+}
+
+/* Light Mode Overrides for #page-money-management (WCAG AA >= 4.5:1) */
+html.light #page-money-management .dashboard-hero {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light #page-money-management .dashboard-hero h2 {
+  color: #0f172a !important;
+}
+
+html.light #page-money-management .dashboard-hero p {
+  color: #475569 !important;
+}
+
+html.light #page-money-management .ac-segmented {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.light #page-money-management .ac-segment {
+  color: #475569 !important;
+}
+
+html.light #page-money-management .ac-segment:hover {
+  color: #0f172a !important;
+  background: #ffffff !important;
+}
+
+html.light #page-money-management .ac-segment.is-active,
+html.light #page-money-management .ac-segment.active {
+  color: #047857 !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(5, 150, 105, 0.48) !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.light #page-money-management .bg-dark-800,
+html.light #page-money-management .bg-dark-800\/80,
+html.light #page-money-management .bg-dark-800\/60,
+html.light #page-money-management .bg-dark-900,
+html.light #page-money-management .bg-dark-900\/90 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light #mmCashflowSpreadsheetTable thead th,
+html.light #mmJournalSpreadsheetTable thead th {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+}
+
+html.light #mmCashflowSpreadsheetTable tbody td,
+html.light #mmJournalSpreadsheetTable tbody td {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light #mmCashflowSpreadsheetTable tbody tr:hover,
+html.light #mmJournalSpreadsheetTable tbody tr:hover {
+  background-color: #f1f5f9 !important;
+}
+
+html.light #mmCashflowSpreadsheetTable tfoot,
+html.light #mmJournalSpreadsheetTable tfoot,
+html.light #mmCashflowSpreadsheetTable tfoot td,
+html.light #mmJournalSpreadsheetTable tfoot td {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-top-color: #047857 !important;
+}
+
+html.light #page-money-management .text-white {
+  color: #0f172a !important;
+}
+
+html.light #page-money-management .text-gray-200,
+html.light #page-money-management .text-gray-300,
+html.light #page-money-management .text-gray-400,
+html.light #page-money-management .text-gray-500 {
+  color: #334155 !important;
+}
+
+html.light #page-money-management .text-emerald-400,
+html.light #page-money-management .text-emerald-300 {
+  color: #047857 !important;
+}
+
+html.light #page-money-management .text-rose-400,
+html.light #page-money-management .text-rose-300 {
+  color: #b91c1c !important;
+}
+
+html.light #page-money-management .text-blue-300,
+html.light #page-money-management .text-blue-400 {
+  color: #1d4ed8 !important;
+}
+
+html.light #page-money-management .text-cyan-300,
+html.light #page-money-management .text-cyan-400 {
+  color: #0369a1 !important;
+}
+
+/* ===========================================================================
    14. Batch 4 (Fase 15 - 19): Final UI/UX Polish, Accessibility & Responsiveness
    =========================================================================== */
 
@@ -3292,8 +3534,12 @@ body.workspace-view-open #appMain > .page-content {
 .journal-item,
 .position-card,
 .dashboard-card,
+.dashboard-pick-card,
 .panel {
-  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease !important;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              box-shadow var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              transform var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
 }
 
 .radar-card:hover,
@@ -3301,7 +3547,8 @@ body.workspace-view-open #appMain > .page-content {
 .bandar-card:hover,
 .sector-card:hover,
 .action-item:hover,
-.dashboard-card:hover {
+.dashboard-card:hover,
+.dashboard-pick-card:hover {
   border-color: rgba(52, 211, 153, 0.38) !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24) !important;
   transform: translateY(-1px) !important;
@@ -3312,7 +3559,8 @@ body.workspace-view-open #appMain > .page-content {
 .bandar-card:active,
 .sector-card:active,
 .action-item:active,
-.dashboard-card:active {
+.dashboard-card:active,
+.dashboard-pick-card:active {
   transform: translateY(0) !important;
 }
 
@@ -3321,18 +3569,31 @@ body.workspace-view-open #appMain > .page-content {
 .tab-btn,
 .nav-btn,
 .sidebar-item,
-.theme-toggle-btn,
 .workspace-sidebar-toggle,
-.sidebar-collapse-toggle {
-  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease !important;
+.sidebar-collapse-toggle,
+.analisis-tab,
+.ac-btn {
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              box-shadow var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
 }
 
-/* --- FASE 15: Responsiveness - Sidebar Collapse to 72px rail ---
-   The rail keeps its icons centred, drops every text label and closes any
-   open sub-menu so nothing is left half-visible at 72px. */
+.theme-toggle-btn,
+.theme-toggle-compact,
+.market-tile-link {
+  transition: background-color var(--motion-instant, 100ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-instant, 100ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-instant, 100ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              box-shadow var(--motion-instant, 100ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+}
+
+/* --- FASE 16: Responsiveness - Sidebar Collapse & Mobile/Tablet Viewport --- */
+/* Desktop Collapsed Sidebar Rail (72px) */
 .app-sidebar.collapsed,
 .app-sidebar.is-collapsed {
   width: 72px !important;
+  flex: 0 0 72px !important;
 }
 
 .app-sidebar.collapsed .sidebar-brand,
@@ -3454,14 +3715,10 @@ body.workspace-view-open #appMain > .page-content {
   }
 }
 
-/* --- FASE 17: ONE scrollbar, no horizontal bleed ---
-   The document is the single scroll container. `overflow-y: auto` (not
-   `scroll`) means no permanent gutter is reserved when the page is short,
-   and the rail is `position: fixed`, so it can never contribute a second
-   scrollbar or drift with the content. */
+/* --- FASE 17: Eliminasi Double Scrollbar & Horizontal Overflow --- */
 html {
+  overflow-y: scroll !important;
   overflow-x: hidden !important;
-  overflow-y: auto !important;
 }
 
 body {
@@ -3477,9 +3734,11 @@ body {
 
 .app-main {
   overflow-x: hidden !important;
+  overflow-y: visible !important;
 }
 
 .page-content {
+  overflow-y: visible !important;
   overflow-x: clip !important;
 }
 
@@ -3506,9 +3765,110 @@ textarea:focus-visible,
 .sub-tab-btn:focus-visible,
 .workspace-sidebar-toggle:focus-visible,
 .sidebar-collapse-toggle:focus-visible {
-  outline: 2px solid #10b981 !important;
+  outline: 2px solid var(--accent-primary, #22c55e) !important;
   outline-offset: 2px !important;
-}/* Reduced motion support */
+}
+
+/* Light Mode Comprehensive WCAG AA/AAA Contrast Overrides */
+html.light,
+[data-theme="light"] {
+  --canvas: #F7F8FA;
+  --surface: #FFFFFF;
+  --surface-elevated: #F1F5F9;
+  --border-hairline: #E5E7EB;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-tertiary: #9CA3AF;
+  --text-muted: #9CA3AF;
+  --accent-primary: #16A34A;
+  --accent-primary-hover: #15803D;
+  --data-positive: #16A34A;
+  --data-negative: #DC2626;
+  --color-bg-canvas: #F7F8FA;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-elevated: #F1F5F9;
+  --color-text-primary: #111827;
+  --color-text-secondary: #4B5563;
+  --color-text-muted: #4B5563;
+}
+
+html.light body {
+  background-color: #F7F8FA !important;
+  color: #111827 !important;
+}
+
+html.light .app-header {
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #E5E7EB !important;
+}
+
+html.light .app-sidebar {
+  background-color: #FFFFFF !important;
+  border-right: 1px solid #E5E7EB !important;
+}
+
+html.light .dashboard-hero,
+html.light .dashboard-card,
+html.light .action-card,
+html.light .panel,
+html.light .metric-tile,
+html.light .radar-card {
+  background-color: #FFFFFF !important;
+  border-color: #E5E7EB !important;
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05) !important;
+}
+
+html.light .text-white,
+html.light .text-gray-100,
+html.light .text-gray-200,
+html.light .text-gray-300,
+html.light .card-title,
+html.light .panel-title {
+  color: #111827 !important;
+}
+
+html.light .text-gray-400,
+html.light .text-gray-500,
+html.light .text-muted,
+html.light .text-dim,
+html.light .panel-subtitle,
+html.light .card-subtitle {
+  color: #4B5563 !important;
+}
+
+html.light .sidebar-item {
+  color: #334155 !important;
+}
+
+html.light .sidebar-item:hover {
+  background-color: #f1f5f9 !important;
+  color: #047857 !important;
+}
+
+html.light .sidebar-item.active {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html.light .bourse-status,
+html.light #marketStatusBourseChip {
+  background-color: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+html.light .ticker-link {
+  color: #047857 !important;
+}
+
+html.light .ticker-link:hover {
+  color: #065f46 !important;
+  text-decoration: underline !important;
+}
+
+/* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .ac-launcher, .ac-navpanel-card, .action-card, .panel { transition: none !important; animation: none !important; }
   .action-card:hover { transform: none; }
@@ -3528,4 +3888,574 @@ textarea:focus-visible,
     transition: none !important;
     transform: none !important;
   }
+}
+
+/* Semantic Flow Colors */
+.flow-positive {
+  color: var(--data-positive, #22C55E) !important;
+}
+.flow-negative {
+  color: var(--data-negative, #EF4444) !important;
+}
+
+/* Sidebar Viewport Lock & Precision Docking (§1.2 & §2) */
+#appSidebar,
+.app-sidebar,
+.sidebar {
+  position: fixed !important;
+  top: 0 !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 60 !important;
+  transition: width var(--motion-fast, 180ms) var(--ease-standard) !important;
+}
+
+@media (min-width: 1024px) {
+  .app-main {
+    margin-left: 240px !important;
+    transition: margin-left var(--motion-fast, 180ms) var(--ease-standard) !important;
+  }
+  .app-sidebar.collapsed ~ .app-main,
+  .app-shell[data-sidebar-state="collapsed"] .app-main,
+  body.sidebar-collapsed .app-main,
+  .app-layout.sidebar-collapsed .app-main {
+    margin-left: 72px !important;
+  }
+}
+
+.app-sidebar.collapsed {
+  width: 72px !important;
+  flex: 0 0 72px !important;
+}
+
+/* Sub-tab strip single row */
+.analisis-tab-strip,
+#analisisTabStrip,
+.subtab-strip {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  width: 100% !important;
+  gap: 6px !important;
+  scrollbar-width: none !important;
+}
+.analisis-tab-strip::-webkit-scrollbar,
+#analisisTabStrip::-webkit-scrollbar,
+.subtab-strip::-webkit-scrollbar {
+  display: none !important;
+}
+.analisis-tab {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* App Content Page Transitions */
+#appContent,
+.app-content {
+  transition: opacity var(--motion-fast, 180ms) var(--ease-standard),
+              transform var(--motion-fast, 180ms) var(--ease-standard) !important;
+}
+
+/* Dashboard Top 5 Cards Alignment */
+#dashboardTop5List,
+.dashboard-top5-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  gap: 12px !important;
+  margin-top: 0 !important;
+}
+#dashboardTop5List > *,
+.dashboard-top5-grid > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Standardize Tailwind & Component Transitions to Master Spec */
+.transition,
+.transition-all {
+  transition-duration: var(--motion-fast, 180ms) !important;
+  transition-timing-function: var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform !important;
+}
+
+button:not(.no-motion-override),
+.btn:not(.no-motion-override),
+.sidebar-item,
+.analisis-tab,
+.tab {
+  transition-duration: var(--motion-fast, 180ms) !important;
+  transition-timing-function: var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+}
+
+/* Progress Bar Motion Token (§6.1) */
+#psFill,
+.ps-fill {
+  transition: width var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+}
+
+/* Reduced Motion Enforcement (§6.1) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .action-card:hover { transform: none; }
+  .panel table tbody tr { transition: none; }
+  #appContent,
+  .app-content {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ==========================================================================
+   WCAG AA ACCESSIBILITY & CONTRAST REMEDIATION (Master Spec §2)
+   ========================================================================== */
+
+/* --- DARK MODE CONTRAST REINFORCEMENTS --- */
+html:not(.light) .panel-subtitle,
+html:not(.light) #dashboardTop5LockNote,
+html:not(.light) p.panel-subtitle,
+html:not(.light) .dash-reason,
+html:not(.light) .empty-state-text {
+  color: #A0AEC0 !important;
+}
+
+html:not(.light) #dashboardTop5List .metric span,
+html:not(.light) .radar-card .metric span,
+html:not(.light) .dashboard-pick-card .metric span,
+html:not(.light) #dashboardTop5List span.text-gray-400,
+html:not(.light) #dashboardTop5List span.text-gray-500,
+html:not(.light) .dashboard-pick-card span:not(.badge):not(.pill):not(.font-bold) {
+  color: #CBD5E1 !important;
+}
+
+html:not(.light) #screenerStats p.uppercase,
+html:not(.light) #screenerStats .text-gray-500 {
+  color: #A0AEC0 !important;
+}
+
+html:not(.light) .scr-detail-hint {
+  color: #9AA4B2 !important;
+}
+
+/* --- LIGHT MODE CONTRAST & CARD / BADGE POLISH --- */
+html.light {
+  --surface: #FFFFFF;
+  --canvas: #F7F8FA;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
+}
+
+/* Light mode panels & cards ground */
+html.light .dashboard-pick-card,
+html.light .radar-card,
+html.light .screener-card,
+html.light .market-tile {
+  background: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  color: #111827 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Light mode headers and titles */
+html.light .page-title,
+html.light h1, html.light h2, html.light h3 {
+  color: #111827 !important;
+}
+
+html.light .page-subtitle,
+html.light .panel-subtitle,
+html.light p.panel-subtitle,
+html.light .empty-state-text,
+html.light #dashboardTop5LockNote {
+  color: #4B5563 !important;
+}
+
+/* Hardcoded dark backgrounds in HTML containers must become clean light surfaces */
+html.light .bg-dark-900\/80,
+html.light .bg-dark-900\/90,
+html.light .bg-dark-800\/60,
+html.light .bg-dark-800\/80,
+html.light .bg-dark-700\/40,
+html.light .bg-dark-600\/40,
+html.light .bg-dark-600\/60 {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #111827 !important;
+}
+
+html.light select.bg-dark-900\/90,
+html.light input.bg-dark-900\/90 {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #111827 !important;
+}
+
+/* Light mode price targets, current price, stop loss */
+html.light .is-now {
+  color: #1E293B !important;
+  font-weight: 600 !important;
+}
+
+html.light .is-target {
+  color: #B45309 !important;
+  font-weight: 600 !important;
+}
+
+html.light .is-stop {
+  color: #B91C1C !important;
+  font-weight: 600 !important;
+}
+
+html.light .dash-flag {
+  color: #92400E !important;
+  background: #FEF3C7 !important;
+  border-color: #FCD34D !important;
+}
+
+/* Light mode badges & grades */
+html.light .dashboard-pick-card b,
+html.light .radar-card b {
+  color: #15803D !important;
+}
+
+html.light .dashboard-pick-card b.warn,
+html.light .dashboard-pick-card b.text-amber-400,
+html.light .radar-card b.text-amber-400 {
+  color: #B45309 !important;
+}
+
+html.light .dashboard-pick-card b.info,
+html.light .dashboard-pick-card b.text-blue-400,
+html.light .radar-card b.text-blue-400 {
+  color: #1D4ED8 !important;
+}
+
+/* Light mode Position Sizing inline widget (.ac-pos-calc-box) */
+html.light .ac-pos-calc-box {
+  background: #F8FAFC !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #1E293B !important;
+}
+
+html.light .ac-pos-calc-box * {
+  color: #334155 !important;
+}
+
+html.light .ac-pos-calc-box strong,
+html.light .ac-pos-calc-box b {
+  color: #0F172A !important;
+}
+
+html.light .ac-pos-calc-box strong[style*="6ee7b7"],
+html.light .ac-pos-calc-box strong[style*="4ade80"] {
+  color: #15803D !important;
+}
+
+html.light .ac-pos-calc-box strong[style*="fca5a5"],
+html.light .ac-pos-calc-box strong[style*="f87171"] {
+  color: #B91C1C !important;
+}
+
+html.light .ac-pos-calc-box strong[style*="93c5fd"],
+html.light .ac-pos-calc-box span[style*="93c5fd"] {
+  color: #1D4ED8 !important;
+}
+
+html.light .ac-pos-calc-box strong[style*="f59e0b"],
+html.light .ac-pos-calc-box span[style*="fbbf24"] {
+  color: #B45309 !important;
+}
+
+html.light .ac-pos-calc-box button {
+  background: #EFF6FF !important;
+  border: 1px solid #93C5FD !important;
+  color: #1D4ED8 !important;
+}
+
+/* Light mode Signal Gate card trigger & drawer (.ac-gate-card-trigger) */
+html.light .ac-gate-card-trigger button {
+  background: #F1F5F9 !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #334155 !important;
+}
+
+html.light .ac-gate-card-trigger button * {
+  color: #334155 !important;
+}
+
+html.light .ac-gate-card-trigger button span[style*="6ee7b7"] {
+  color: #15803D !important;
+}
+
+html.light .ac-gate-card-trigger button span[style*="fca5a5"] {
+  color: #B91C1C !important;
+}
+
+html.light .ac-gate-card-trigger button span[style*="fbbf24"] {
+  color: #B45309 !important;
+}
+
+html.light .ac-gate-drawer,
+html.light .ac-gate-transparency-box {
+  background: #F8FAFC !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #1E293B !important;
+}
+
+html.light .ac-gate-drawer *,
+html.light .ac-gate-transparency-box * {
+  color: #334155 !important;
+}
+
+/* Light mode screener tabs & info bars */
+html.light .screener-tab.active {
+  color: #065F46 !important;
+  background: #D1FAE5 !important;
+  border: 1px solid #6EE7B7 !important;
+  font-weight: 700 !important;
+}
+
+html.light .screener-tab {
+  color: #4B5563 !important;
+  background: #F1F5F9 !important;
+}
+
+html.light .scr-info-bar {
+  background: #F8FAFC !important;
+  color: #4B5563 !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.light .scr-info-bar strong {
+  color: #111827 !important;
+}
+
+html.light .scr-info-bar.text-amber-400\/70 {
+  background: #FEF3C7 !important;
+  color: #92400E !important;
+  border-color: #FDE68A !important;
+}
+
+html.light .scr-info-bar.text-amber-400\/70 strong {
+  color: #78350F !important;
+}
+
+html.light #screenerMetaBadge {
+  background: #FEF3C7 !important;
+  color: #92400E !important;
+  border-color: #FDE68A !important;
+}
+
+html.light .screener-card strong {
+  color: #111827 !important;
+}
+
+html.light .screener-card span.text-emerald-300,
+html.light .screener-card span[class*="emerald"],
+html.light .screener-card strong.text-emerald-300 {
+  color: #15803D !important;
+}
+
+/* Light mode Analisis & Cockpit AI */
+html.light [id="page-analisis"],
+html.light .analisis-header,
+html.light .analisis-cockpit {
+  background: transparent !important;
+}
+
+html.light .unified-prompt-chip {
+  color: #1F2937 !important;
+  background: #E2E8F0 !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+html.light .unified-ticker-badge {
+  color: #065F46 !important;
+  background: #D1FAE5 !important;
+  border: 1px solid #6EE7B7 !important;
+}
+
+html.light #analisisActiveTickerTag,
+html.light #chatActiveTickerTag {
+  color: #065F46 !important;
+  background: #E2E8F0 !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+html.light a.action-btn,
+html.light button.action-btn {
+  color: #065F46 !important;
+}
+
+/* Dark mode Market tile units and notes */
+html:not(.light) .market-tile-unit,
+html:not(.light) .market-tile-note,
+html:not(.light) #dashMarketGateNote {
+  color: #A0AEC0 !important;
+}
+
+/* Skenario Box Contrast in Position Sizing */
+html:not(.light) .ac-pos-scenario-box {
+  background: rgba(30, 41, 59, 0.5) !important;
+  color: #CBD5E1 !important;
+}
+html:not(.light) .ac-pos-scenario-a {
+  color: #93C5FD !important;
+}
+html:not(.light) .ac-pos-scenario-b {
+  color: #A7F3D0 !important;
+}
+
+html.light .ac-pos-scenario-box {
+  background: #F1F5F9 !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #1E293B !important;
+}
+html.light .ac-pos-scenario-box * {
+  color: #1E293B !important;
+}
+html.light .ac-pos-scenario-a {
+  color: #1D4ED8 !important;
+}
+html.light .ac-pos-scenario-b {
+  color: #15803D !important;
+}
+
+/* Light mode Sisa R/R warning text */
+html.light .dash-rr-sisa-warn,
+html.light [title*="Sisa R/R"],
+html.light span[style*="F59E0B"],
+html.light span[style*="f59e0b"] {
+  color: #92400E !important;
+}
+html.light [title*="Sisa R/R"] b {
+  color: #78350F !important;
+}
+
+/* Light mode Screener Cards, Labels, and Chips */
+html.light label.flex.items-center,
+html.light label[class*="bg-dark-900"],
+html.light label:has(#kgHideVeryHigh),
+html.light label:has(#nkHideVeryHigh),
+html.light label:has(#dtHideVeryHigh) {
+  background: #F1F5F9 !important;
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #111827 !important;
+}
+
+html.light [data-lifecycle-chip="1"],
+html.light [data-lifecycle-chip],
+html.light span[data-lifecycle-chip] {
+  color: #334155 !important;
+  background: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+}
+html.light [data-lifecycle-chip] * {
+  color: #334155 !important;
+}
+
+html.light .dt-card-item strong,
+html.light .kg-card-item strong,
+html.light .nk-card-item strong,
+html.light .screener-card strong {
+  color: #111827 !important;
+}
+
+html.light .dt-card-item strong[style*="6ee7b7"],
+html.light .kg-card-item strong[style*="6ee7b7"],
+html.light .nk-card-item strong[style*="6ee7b7"],
+html.light .screener-card strong[style*="6ee7b7"] {
+  color: #15803D !important;
+}
+
+html.light .dt-card-item span[style*="6ee7b7"],
+html.light .kg-card-item span[style*="6ee7b7"],
+html.light .nk-card-item span[style*="6ee7b7"],
+html.light .screener-card span[style*="6ee7b7"] {
+  color: #15803D !important;
+}
+
+html.light .dt-card-item span[style*="e5e7eb"],
+html.light .kg-card-item span[style*="e5e7eb"],
+html.light .nk-card-item span[style*="e5e7eb"],
+html.light .screener-card span[style*="e5e7eb"] {
+  color: #0f172a !important;
+}
+
+/* Light mode Screener positive percentage contrast (WCAG AA >= 4.5:1 on #FFFFFF) */
+html.light .scr-chg-val,
+html.light .dt-card-item span.scr-chg-val,
+html.light .kg-card-item span.scr-chg-val,
+html.light .nk-card-item span.scr-chg-val,
+html.light .dt-card-item span[style*="var(--data-positive)"],
+html.light .kg-card-item span[style*="var(--data-positive)"],
+html.light .nk-card-item span[style*="var(--data-positive)"],
+html.light .screener-card span[style*="var(--data-positive)"],
+html.light .dt-card-item span[style*="16A34A"],
+html.light .kg-card-item span[style*="16A34A"],
+html.light .nk-card-item span[style*="16A34A"] {
+  color: #15803D !important;
+}
+
+/* Light mode Analisis header & command bar background override (v6.css override) */
+html.light [id="page-analisis"] > div:first-child,
+html.light #analisisPartialMount,
+html.light [id="page-analisis"] #analisisPartialMount {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* Light mode Analisis header overrides */
+html.light [id="page-analisis"],
+html.light .page-content[id="page-analisis"],
+html.light #analisisContent,
+html.light .analisis-header,
+html.light .analisis-cockpit {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+html.light .page-title,
+html.light h1.page-title {
+  color: #111827 !important;
+}
+html.light .page-subtitle,
+html.light p.page-subtitle {
+  color: #4B5563 !important;
+}
+html.light #analisisResult strong,
+html.light #analisisContent strong,
+html.light [id="page-analisis"] strong {
+  color: #0f172a !important;
+}
+html.light #analisisActiveTickerTag,
+html.light #chatActiveTickerTag {
+  color: #064E3B !important;
+  background-color: #E2E8F0 !important;
+  border-color: #CBD5E1 !important;
+}
+html.light a[href*="chart"] span,
+html.light .action-btn span,
+html.light .unified-card-header button span,
+html.light #subPanelAnalisisAI button span,
+html.light button[onclick*="switchAnalisisSubTab('chart')"] span {
+  color: #064E3B !important;
+}
+
+/* Stabilize nested mini card utility buttons during theme toggle */
+.ac-pos-calc-box button,
+.ac-gate-card-trigger button {
+  transition: none !important;
 }

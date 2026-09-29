@@ -1,6 +1,7 @@
 (function () {
   'use strict';
 
+  var root = typeof window !== 'undefined' ? window : this;
   var ACCESS_TIMEOUT_MS = 9000;
   var Model = window.AutoCuanPortfolioCommandModel;
   var Planner = window.AutoCuanPortfolioPlannerV1;
@@ -138,23 +139,47 @@
   }
 
   async function checkAccess() {
-    $('accessGate').innerHTML = '<span class="spinner" aria-hidden="true"></span><h2>Memeriksa akses aman…</h2><p class="muted">Maksimal 9 detik. Jika gagal, tombol coba lagi akan muncul.</p>';
+    var gate = $('accessGate');
+    if (!gate) return;
+    console.log('[Portfolio checkAccess] Starting access check...');
+    gate.innerHTML = '<span class="spinner" aria-hidden="true"></span><h2>Memeriksa akses aman…</h2><p class="muted">Maksimal 9 detik. Jika gagal, tombol coba lagi akan muncul.</p>';
     try {
       var response = await fetchWithTimeout('/api/admin-users', {
         method: 'POST', credentials: 'same-origin', cache: 'no-store',
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
         body: JSON.stringify({ action: 'portfolio_access' })
       }, ACCESS_TIMEOUT_MS);
-      var data = await response.json().catch(function () { return {}; });
+      console.log('[Portfolio checkAccess] HTTP Status:', response.status);
+      var data = await response.json().catch(function (err) {
+        console.error('[Portfolio checkAccess] JSON parse error:', err);
+        return {};
+      });
+      console.log('[Portfolio checkAccess] Received data:', JSON.stringify(data));
       if (!response.ok || !data || data.success !== true || !data.user_id) throw new Error(data.error || 'Akun belum mendapat akses.');
+      function cleanUname(val) {
+        if (!val) return '';
+        if (typeof val === 'object') return cleanUname(val.username || val.user || val.name || '');
+        var s = String(val).trim();
+        if (s.startsWith('{') && s.endsWith('}')) {
+          try {
+            var p = JSON.parse(s);
+            if (p && typeof p === 'object') return cleanUname(p.username || p.user || p.name || '');
+          } catch (_) {}
+          return '';
+        }
+        return s;
+      }
       state.uid = String(data.user_id);
-      state.username = String(data.username || '');
+      state.username = cleanUname(data.username || localStorage.getItem('autocuan_user') || '');
       localStorage.setItem('autocuan_user_id', state.uid);
       if (state.username) localStorage.setItem('autocuan_user', state.username);
       window.__AUTOCUAN_PORTFOLIO_ACCESS__ = { userId: state.uid, username: state.username };
       loadLocalState();
-      $('sessionChip').innerHTML = '<span class="status-dot"></span>' + escapeHtml(state.username || 'Sesi aktif');
+      var displaySession = state.username || 'Sesi aktif';
+      var sChip = $('sessionChip');
+      if (sChip) sChip.innerHTML = '<span class="status-dot"></span>' + escapeHtml(displaySession);
       hide('accessGate'); show('app'); bind();
+      console.log('[Portfolio checkAccess] Portfolio successfully unlocked and app shown!');
 
       // Render the user's own portfolio BEFORE anything that depends on a
       // network call. This used to `await loadSectorHot()` first, and that fetch
@@ -171,43 +196,51 @@
       // it. Deliberately not awaited, and independently time-boxed.
       loadSectorHot();
 
-      loadScript('/portfolio-ai-runtime-v2.js?v=20260727-premium-v2').catch(function (error) { $('aiStatus').textContent = error.message; });
+      loadScript('/portfolio-ai-runtime-v2.js?v=20260727-premium-v2').catch(function (error) { var ais = $('aiStatus'); if (ais) ais.textContent = error.message; });
       setTimeout(function () { loadLocalState(); renderAll(); }, 600);
     } catch (error) {
+      console.error('[Portfolio checkAccess error]:', error && error.message ? error.message : error);
       setGateError(error && error.name === 'AbortError' ? 'Pemeriksaan akses terlalu lama. Coba lagi atau login ulang.' : error.message);
     }
   }
 
   function bind() {
-    if (state.bound) return;
+    if (state.bound) {
+      document.querySelectorAll('[data-tab]').forEach(function (button) {
+        button.addEventListener('click', function () { openTab(button.dataset.tab); });
+        button.addEventListener('keydown', function (event) { navigateTabs(event, button); });
+      });
+      return;
+    }
     state.bound = true;
+    function on(id, evt, fn) { var el = $(id); if (el) el[evt] = fn; }
     document.querySelectorAll('[data-tab]').forEach(function (button) {
       button.addEventListener('click', function () { openTab(button.dataset.tab); });
       button.addEventListener('keydown', function (event) { navigateTabs(event, button); });
     });
-    $('refreshToday').onclick = function () { refreshAllPrices(true); };
-    $('captureSnapshot').onclick = captureSnapshot;
-    $('calculateBudget').onclick = calculateBudget;
-    $('checkBudgetTicker').onclick = checkBudgetTicker;
-    $('budgetProfile').onchange = applyBudgetProfile;
-    $('riskProfile').onchange = applyRiskProfile;
-    $('calculatePlan').onclick = calculatePlan;
-    $('resetPlan').onclick = resetPlanner;
-    $('savePlan').onclick = saveCalculatedPlan;
-    $('saveOwned').onclick = saveOwned;
-    $('refreshPrices').onclick = function () { refreshAllPrices(true); };
-    $('evaluateRisk').onclick = evaluateRisk;
-    $('riskPlan').onchange = fillRiskDefaults;
-    $('checkAlerts').onclick = checkAlertLevels;
-    $('alertPrices').onchange = saveManualPrice;
-    $('openJournalModal').onclick = function () { openJournalModal(); };
-    $('closeJournalModal').onclick = closeJournalModal;
-    $('cancelJournal').onclick = closeJournalModal;
-    $('journalBackdrop').onclick = closeJournalModal;
-    $('saveJournal').onclick = saveJournal;
-    $('exportJournal').onclick = exportJournal;
-    $('closeDrawer').onclick = closeDrawer;
-    $('drawerBackdrop').onclick = closeDrawer;
+    on('refreshToday', 'onclick', function () { refreshAllPrices(true); });
+    on('captureSnapshot', 'onclick', captureSnapshot);
+    on('calculateBudget', 'onclick', calculateBudget);
+    on('checkBudgetTicker', 'onclick', checkBudgetTicker);
+    on('budgetProfile', 'onchange', applyBudgetProfile);
+    on('riskProfile', 'onchange', applyRiskProfile);
+    on('calculatePlan', 'onclick', calculatePlan);
+    on('resetPlan', 'onclick', resetPlanner);
+    on('savePlan', 'onclick', saveCalculatedPlan);
+    on('saveOwned', 'onclick', saveOwned);
+    on('refreshPrices', 'onclick', function () { refreshAllPrices(true); });
+    on('evaluateRisk', 'onclick', evaluateRisk);
+    on('riskPlan', 'onchange', fillRiskDefaults);
+    on('checkAlerts', 'onclick', checkAlertLevels);
+    on('alertPrices', 'onchange', saveManualPrice);
+    on('openJournalModal', 'onclick', function () { openJournalModal(); });
+    on('closeJournalModal', 'onclick', closeJournalModal);
+    on('cancelJournal', 'onclick', closeJournalModal);
+    on('journalBackdrop', 'onclick', closeJournalModal);
+    on('saveJournal', 'onclick', saveJournal);
+    on('exportJournal', 'onclick', exportJournal);
+    on('closeDrawer', 'onclick', closeDrawer);
+    on('drawerBackdrop', 'onclick', closeDrawer);
     document.addEventListener('click', delegatedClick);
     document.addEventListener('keydown', function (event) { if (event.key === 'Escape') { closeDrawer(); closeJournalModal(); } });
     window.addEventListener('focus', resyncLocalState);
@@ -601,5 +634,14 @@
     var blob=new Blob([JSON.stringify({version:1,exportedAt:new Date().toISOString(),entries:state.journal},null,2)],{type:'application/json'}); var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='auto-cuan-journal-'+new Date().toISOString().slice(0,10)+'.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url);},500);
   }
 
-  checkAccess();
+  root.checkPortfolioAccess = checkAccess;
+  root.initPortfolioCommandCenter = function () {
+    checkAccess();
+    bind();
+  };
+  root.openPortfolioTab = openTab;
+  root.switchPccTab = openTab;
+  if ($('accessGate')) {
+    checkAccess();
+  }
 })();

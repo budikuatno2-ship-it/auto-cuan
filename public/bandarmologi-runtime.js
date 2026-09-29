@@ -1519,7 +1519,11 @@
     }
   }
 
+  var _settingBandarSection = false;
   function setBandarSection(section) {
+    if (_settingBandarSection) return;
+    _settingBandarSection = true;
+    try {
     bandarSection = (section === 'akumulasi' || section === 'intel' || section === 'network') ? section : 'summary';
     // FIX: the Akumulasi Broker tab must never inherit the Broker Summary bubble
     // cluster. Entering it resets the default to the consistency table + cumulative
@@ -1656,6 +1660,9 @@
           loadBandarmologiTab(currentBandarTicker);
         }
       }
+    }
+    } finally {
+      _settingBandarSection = false;
     }
   }
 

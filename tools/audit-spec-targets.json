@@ -1,0 +1,71 @@
+{
+  "_comment": "LOCKED MASTER SPEC TARGETS — Auto-Cuan SPA Migration §0-§9",
+  "_locked_by": "External Review Remediation — 2026-09-28",
+  "_rule": "DILARANG mengubah nilai di file ini agar cocok dengan implementasi. File ini adalah sumber kebenaran tunggal. Ubah implementasi, bukan threshold ini.",
+  "motionTokens": {
+    "--motion-instant": "100ms",
+    "--motion-fast": "180ms",
+    "--motion-base": "260ms",
+    "--motion-slow": "420ms",
+    "--ease-standard": "cubic-bezier(0.4, 0, 0.2, 1)",
+    "--ease-emphasized": "cubic-bezier(0.16, 1, 0.3, 1)",
+    "--ease-exit": "cubic-bezier(0.4, 0, 1, 1)"
+  },
+  "dark": {
+    "--canvas": "#090D16",
+    "--surface": "#10151F",
+    "--surface-elevated": "#161C29",
+    "--border-hairline": "rgba(255,255,255,0.08)",
+    "--text-primary": "#F4F6F8",
+    "--text-secondary": "#9AA4B2",
+    "--text-muted": "#626C7A",
+    "--accent-primary": "#22C55E",
+    "--accent-primary-hover": "#16A34A",
+    "--data-positive": "#22C55E",
+    "--data-negative": "#EF4444",
+    "--data-neutral": "#F59E0B"
+  },
+  "light": {
+    "--canvas": "#F7F8FA",
+    "--surface": "#FFFFFF",
+    "--border-hairline": "#E5E7EB",
+    "--text-primary": "#111827",
+    "--text-secondary": "#4B5563",
+    "--text-muted": "#9CA3AF",
+    "--accent-primary": "#16A34A",
+    "--data-positive": "#16A34A",
+    "--data-negative": "#DC2626"
+  },
+  "colorTokens": {
+    "--accent-primary": "#22C55E",
+    "flowPositiveRgb": "rgb(34, 197, 94)",
+    "flowNegativeRgb": "rgb(239, 68, 68)"
+  },
+  "layoutTokens": {
+    "sidebarExpandedWidth": "240px",
+    "sidebarCollapsedWidth": "72px",
+    "sidebarTransitionDuration": "0.18s",
+    "appContentTransitionDuration": "0.18s",
+    "scrollRevealTransitionDuration": "0.42s",
+    "scrollRevealStaggerMs": 80
+  },
+  "accessibilityThresholds": {
+    "wcagAA": 4.5,
+    "wcagAALarge": 3.0,
+    "darkModePrimaryMinContrast": 7.0,
+    "darkModeSecondaryMinContrast": 4.5,
+    "darkModeAccentMinContrast": 3.0,
+    "lightModePrimaryMinContrast": 7.0,
+    "lightModeSecondaryMinContrast": 4.5
+  },
+  "financialRules": {
+    "minRemainingRR": 1.3,
+    "rrWarnLabel": "R/R TIPIS"
+  },
+  "canaryTests": {
+    "description": "These are intentionally WRONG values used by the canary test. The audit MUST detect FAIL for these values.",
+    "motionFastWrong": "150ms",
+    "easeStandardWrong": "cubic-bezier(0.2, 0, 0, 1)",
+    "accentPrimaryWrong": "#10B981"
+  }
+}

@@ -4,6 +4,10 @@
   if (window.__AUTOCUAN_SUBSCRIPTION_ACCESS_GATE_V1__) return;
   window.__AUTOCUAN_SUBSCRIPTION_ACCESS_GATE_V1__ = true;
 
+  // NOTE: No preview-mode bypass here. Mock auth state is set exclusively by
+  // the dev server's injected <script> tag (tools/local-dev-server.js) before
+  // this file runs. This production file must remain auth-bypass-free.
+
   var requestInFlight = null;
   var cache = null;
   var CACHE_MS = 20000;
