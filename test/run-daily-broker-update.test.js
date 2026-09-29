@@ -124,14 +124,36 @@ test('run-daily-broker-update: an already-complete marker makes the next firing 
   });
 });
 
-test('run-daily-broker-update: --final on an incomplete run reports failure via a distinct exit code', async () => {
+test('run-daily-broker-update: --final treats successful empty broker-summary as terminal NO_DATA', async () => {
   await withTempDataDir(async () => {
     const restore = mockArjum({
       fetchBrokerSummary: async () => ({ ok: true, data: { top_buyers: [], top_sellers: [] } })
     });
     try {
       await dailyUpdate.run(['--tickers', 'BBCA', '--date', '2026-09-07', '--delay', '0', '--final']);
-      assert.equal(process.exitCode, 4, 'a --final run left incomplete must set a distinct failure exit code');
+      const marker = dailyUpdate.readMarker('2026-09-07');
+      assert.equal(marker.complete, true, 'successful empty final response should be terminal NO_DATA, not a permanent retry loop');
+      assert.equal(marker.broker_summary_rows, 0);
+      assert.equal(marker.no_data, 1);
+      assert.equal(process.exitCode, undefined, 'terminal NO_DATA on the final attempt is not an operational failure');
+      assert.equal(bandarmologiService.hasDiskCache('broker-summary', 'BBCA', '2026-09-07'), false, 'NO_DATA must not be fabricated into a broker-summary cache file');
+    } finally {
+      restore();
+    }
+  });
+});
+
+test('run-daily-broker-update: --final still fails closed on a real upstream error', async () => {
+  await withTempDataDir(async () => {
+    const restore = mockArjum({
+      fetchBrokerSummary: async () => ({ ok: false, status: 500, error: 'upstream failure' })
+    });
+    try {
+      await dailyUpdate.run(['--tickers', 'BBCA', '--date', '2026-09-07', '--delay', '0', '--final']);
+      const marker = dailyUpdate.readMarker('2026-09-07');
+      assert.equal(marker.complete, false);
+      assert.equal(marker.errors, 1);
+      assert.equal(process.exitCode, 4, 'real upstream errors must keep the final run incomplete');
     } finally {
       restore();
     }
