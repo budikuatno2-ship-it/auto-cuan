@@ -1,4 +1,4 @@
-name: Validate and apply mobile performance review
+name: Compare WebKit keyboard cascade
 on:
   push:
     branches: [fix/precision-workspace-finance]
@@ -6,100 +6,59 @@ on:
 permissions:
   contents: read
 jobs:
-  apply:
-    if: github.ref == 'refs/heads/fix/precision-workspace-finance'
+  inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
-    permissions:
-      contents: write
-    env:
-      PRECISION_TEST_OUTPUT: /tmp/mobile-performance-review
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ github.sha }}
-          fetch-depth: 2
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: '22'
-      - name: Verify baseline and ordered reviewed changes
+          persist-credentials: false
+      - run: python -m pip install PyYAML==6.0.2 -r tools/precision-test-requirements.txt
+      - name: Reuse the immutable checksum-verifying source reconstruction
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          test "$(git rev-parse HEAD^)" = df51df60e155f7e45be57851166fedc5495f1da5
           python <<'PY'
-          import base64,hashlib,json,os,urllib.request,zlib
-          from pathlib import Path
-          def fetch(sha):
-              request=urllib.request.Request('https://api.github.com/repos/budikuatno2-ship-it/auto-cuan/git/blobs/'+sha,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
-              with urllib.request.urlopen(request,timeout=30) as response: raw=base64.b64decode(json.load(response)['content'])
-              assert hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()==sha
-              return raw
-          shas=['81c7b6bdcb222b47005c39390c7602566fa8a48a','d50837def0e50d31e1921b88863c4bd31676c7eb','b1cd9ca2a787059da55bd123fe06aef2f3c65ff0','3fc12c4fc350a2d2b5d67c9c721563010c4d1b55','c2a9da457f9189c1f6d461b09d5fb37f9104975e','f584f076a5db753c88208228e1aaed564cca43c7','579ec6f9f3543cdc78b27e30f2a9810953132a62']
-          data=b''.join(fetch(sha) for sha in shas);assert hashlib.sha256(data).hexdigest()=='8c9de7b4378a0ffca94a36454a0c88da4e705e319b8969c07dbb8d68aa119035'
-          items=json.loads(zlib.decompress(data))
-          for sha,digest in [('aef249f3bc0e356f2f85c37a997915c0ae6c6553','ef38a62ff40439cb4d316f8edddf8968340b2f2d11f04f33e50e7623742562f8'),('a94bb4367566f1d4ca6e34d7220635753193957a','982fdcfb34c3d1c68df381cadd38947148eecc26ddfef08fdd884c6e3ac31a99')]:
-              raw=fetch(sha);assert hashlib.sha256(raw).hexdigest()==digest;items+=json.loads(zlib.decompress(raw))
-          assert len(items)==27
-          allowed={'deploy/nginx/autocuan','docs/MOBILE-PERFORMANCE-REVIEW.md','lib/static-assets.js','public/analisis-saham.html','public/assets/fca-stocks.js','public/index.html','public/mobile-ui-runtime-v5.js','public/money-sheet-grid.js','public/money-sheet-runtime.js','public/number-flow-runtime.js','public/portfolio-command-center.html','public/register.html','public/viewport-runtime.js','public/viewport.css','supabase/money-sheet-setup.sql','supabase/money-sheet-v1-migration.sql','test/static-assets.test.js','test/viewport-runtime.test.js','test/login-password-toggle.test.js','test/workspace-access-visibility.test.js','tools/benchmark-static-assets.js','tools/curated-build-tests.json','tools/local-dev-server.js','tools/test-mobile-performance.py'}
-          assert {i['path'] for i in items}==allowed
-          pending={}
-          for item in items:
-              path=Path(item['path']);old=pending[str(path)][0] if str(path) in pending else path.read_text() if path.exists() else None
-              if item['sha'] is None: assert old is None;content=item['content']
-              else:
-                  assert old is not None and hashlib.sha256(old.encode()).hexdigest()==item['sha'],str(path);lines=old.splitlines(True)
-                  for start,end,text in reversed(item['edits']):lines[start:end]=text.splitlines(True)
-                  content=''.join(lines)
-              assert hashlib.sha256(content.encode()).hexdigest()==item['after'],str(path);pending[str(path)]=(content,item['after'])
-          for name,(content,_) in pending.items():path=Path(name);path.parent.mkdir(parents=True,exist_ok=True);path.write_text(content)
-          Path('/tmp/mobile-reviewed-manifest.json').write_text(json.dumps({name:value[1] for name,value in pending.items()}))
-          Path('/tmp/mobile-performance-review').mkdir(exist_ok=True)
-          print('24 final source files verified. Access remains fail-closed until server confirmation.')
+          import base64,json,os,subprocess,urllib.request,yaml
+          url='https://api.github.com/repos/budikuatno2-ship-it/auto-cuan/contents/.github/workflows/mobile-performance-apply.yml?ref=a4f4c91c42ef59e7a6a97d520186252ad7cca940'
+          req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+          with urllib.request.urlopen(req,timeout=30) as res: source=base64.b64decode(json.load(res)['content']).decode()
+          workflow=yaml.safe_load(source)
+          step=next(s for s in workflow['jobs']['apply']['steps'] if s.get('name')=='Verify baseline and ordered reviewed changes')
+          command=step['run'];assert command.startswith('test "$(git rev-parse HEAD^)" = df51df60e155f7e45be57851166fedc5495f1da5\n')
+          subprocess.run(['bash','-eu','-c',command.split('\n',1)[1]],check=True)
           PY
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Syntax, focused tests and build
-        run: |
-          node tools/validate-full-syntax.js && node tools/check-precision-inline.js && node tools/build-portfolio-spa-css.js --check
-          node --test test/money-sheet.test.js test/portfolio-command-center.test.js test/portfolio-planner-v1.test.js test/portfolio-missing-is-not-zero.test.js test/portfolio-price-freshness.test.js test/portfolio-render-not-gated-by-network.test.js test/tab-navigation-and-insider-universe.test.js test/ui-theme-layer.test.js test/holver-app-shell-theme.test.js test/standalone-analisis-saham.test.js test/financial-surface-contract.test.js test/spreadsheet-grade-ui.test.js test/precision-motion-cascade.test.js test/landing-experience.test.js test/money-sheet-formulas.test.js test/workspace-detail.test.js test/static-assets.test.js test/viewport-runtime.test.js test/login-password-toggle.test.js test/workspace-access-visibility.test.js > /tmp/mobile-performance-review/focused.log 2>&1
-          npm run build > /tmp/mobile-performance-review/build.log 2>&1
-      - run: python -m pip install -r tools/precision-test-requirements.txt
-      - name: Chromium and loopback preview
-        run: |
-          echo "CHROMIUM_PATH=$(command -v google-chrome || command -v chromium)" >> "$GITHUB_ENV"
-          PORT=3100 node tools/local-dev-server.js > /tmp/mobile-performance-review/preview.log 2>&1 &
-          sleep 2
-      - name: Existing real-code browser regressions including cold startup
-        run: |
-          python tools/test-precision-app.py
-          python tools/test-precision-browser.py
-          python tools/test-landing-experience.py
-          python tools/test-workspace-detail.py
-          python tools/test-mobile-performance.py
-          node tools/benchmark-static-assets.js
-      - name: Install WebKit
+      - name: Install WebKit once for isolated experiments
         run: python -m playwright install --with-deps webkit
-      - name: WebKit keyboard regression
-        run: BROWSER_ENGINE=webkit python tools/test-mobile-performance.py
-      - name: Full registered regression suite
-        run: npm test > /tmp/mobile-performance-review/full-suite.log 2>&1
-      - name: Commit only verified files to review branch
+      - name: Compare equivalent CSS and update ordering using unchanged assertions
         run: |
           python <<'PY'
-          import hashlib,json,subprocess
+          import json,os,re,subprocess
           from pathlib import Path
-          files=json.loads(Path('/tmp/mobile-reviewed-manifest.json').read_text())
-          for name,digest in files.items(): assert hashlib.sha256(Path(name).read_bytes()).hexdigest()==digest,name
-          subprocess.run(['git','diff','--check'],check=True)
-          subprocess.run(['git','add','--',*files],check=True)
+          js=Path('public/viewport-runtime.js');css=Path('public/viewport.css');original_js=js.read_text();original_css=css.read_text()
+          class_line="    root.classList.toggle('ac-keyboard-open', state.keyboard);\n"
+          assert class_line in original_js
+          anchor="    css('--ac-keyboard-gap', state.keyboardGap);"
+          assert anchor in original_js
+          reordered=original_js.replace(class_line,'').replace(anchor,anchor+'\n'+class_line.rstrip())
+          def expand(m):return ',\n'.join('html.ac-keyboard-open '+part.strip()+(m.group(2) or '') for part in m.group(1).split(','))
+          expanded=re.sub(r'html\.ac-keyboard-open :is\(([^)]+)\)(\s*>\s*div)?',expand,original_css)
+          variants=[('baseline',original_js,original_css),('variables-before-class',reordered,original_css),('explicit-selectors',original_js,expanded),('explicit-and-ordered',reordered,expanded)]
+          summary=[]
+          for name,j,c in variants:
+              js.write_text(j);css.write_text(c)
+              out=Path('/tmp/keyboard-cascade')/name;out.mkdir(parents=True,exist_ok=True)
+              result=subprocess.run(['python','tools/test-mobile-performance.py'],env={**os.environ,'BROWSER_ENGINE':'webkit','PRECISION_TEST_OUTPUT':str(out)},stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=150)
+              (out/'test.log').write_text(result.stdout)
+              report=out/'mobile-results-webkit.json'
+              summary.append({'variant':name,'returncode':result.returncode,'report':json.loads(report.read_text()) if report.exists() else None})
+          js.write_text(original_js);css.write_text(original_css)
+          Path('/tmp/keyboard-cascade/summary.json').write_text(json.dumps(summary,indent=2))
+          print(json.dumps([{'variant':s['variant'],'returncode':s['returncode'],'passed':(s['report'] or {}).get('passed')} for s in summary]))
           PY
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'fix(ui): coordinate keyboard layouts, restore approved workspace and reduce asset overhead'
-          git push origin HEAD:refs/heads/fix/precision-workspace-finance
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: mobile-performance-validation
-          path: /tmp/mobile-performance-review
-          retention-days: 7
+          name: webkit-keyboard-cascade
+          path: /tmp/keyboard-cascade
+          retention-days: 2
