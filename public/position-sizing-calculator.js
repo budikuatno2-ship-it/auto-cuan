@@ -281,11 +281,11 @@
     var cappedByCapital = lotsByCapitalKini < lotsByRiskKini && lotsByCapitalKini > 0;
 
     var positionValue = lots * costPerLotKini;
-    
+
     // Label 1: Skenario Tunggu Entry 1 (lotsAtEntry1 x 100 x (Entry1 - SL))
     var riskAtEntry1 = lotsAtEntry1 * riskPerLotEntry;
     var riskAtEntry1Pct = capital > 0 ? (riskAtEntry1 / capital) * 100 : 0;
-    
+
     // Label 2: Skenario Beli Sekarang di Harga Kini (lotsAtCurrent x 100 x (Kini - SL))
     var riskAtCurrent = lotsAtCurrent * riskPerLotKini;
     var riskAtCurrentPct = capital > 0 ? (riskAtCurrent / capital) * 100 : 0;

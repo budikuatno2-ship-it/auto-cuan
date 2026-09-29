@@ -2,11 +2,11 @@
 
 /**
  * Auto-Cuan Comprehensive End-to-End Migration Audit & UI Evidence Generator
- * 
+ *
  * Spec targets loaded from: tools/audit-spec-targets.json (LOCKED — immutable)
  * RULE: Never change audit-spec-targets.json to match implementation.
  *       Change the implementation to match the spec.
- * 
+ *
  * Inspects all 7 audit dimensions:
  * 0. Canary Test (audit integrity self-check)
  * 1. Computed Motion & Transition Tokens (CSS Runtime Audit)
@@ -15,7 +15,7 @@
  * 4. Spreadsheet-Grade Data Table Audit (tabular-nums, sticky headers, semantic colors)
  * 5. Security & Session Sanitization Check (§0)
  * 6. Accessibility & Design Tokens Compliance (WCAG AA — computed from live DOM runtime)
- * 
+ *
  * Writes output to docs/UI-REVIEW-EVIDENCE.txt
  */
 
