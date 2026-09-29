@@ -158,6 +158,38 @@ function writeMarker(date, payload) {
   } catch (_) {}
 }
 
+function brokerSummaryPayloadDate(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const candidates = [payload.broker_end_date, payload.broker_start_date, payload.trade_date, payload.date];
+  for (const value of candidates) {
+    const key = String(value || '').slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return key;
+  }
+  return null;
+}
+
+function shouldAdvanceLatestBrokerSummary(ticker, targetDate) {
+  const target = String(targetDate || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(target)) return false;
+
+  let newestKnown = null;
+  try {
+    const dates = bandarmologiService.listDiskDates('broker-summary', ticker) || [];
+    for (const value of dates) {
+      const key = String(value || '').slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(key) && (!newestKnown || key > newestKnown)) newestKnown = key;
+    }
+  } catch (_) {}
+
+  try {
+    const latestRaw = bandarmologiService.readDiskCache('broker-summary', ticker, 'latest');
+    const latestDate = brokerSummaryPayloadDate(latestRaw);
+    if (latestDate && (!newestKnown || latestDate > newestKnown)) newestKnown = latestDate;
+  } catch (_) {}
+
+  return !newestKnown || target >= newestKnown;
+}
+
 async function run(argv) {
   const args = argv || process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
@@ -283,8 +315,13 @@ async function run(argv) {
         const norm = bandarmologiService.normalizeBrokerSummary(res.data, dateArg);
         const hasAnyRows = (norm.top_buyers && norm.top_buyers.length > 0) || (norm.top_sellers && norm.top_sellers.length > 0);
         if (hasAnyRows) {
+          const advanceLatest = shouldAdvanceLatestBrokerSummary(ticker, dateArg);
           bandarmologiService.writeDiskCache('broker-summary', ticker, dateArg, res.data);
-          bandarmologiService.writeDiskCache('broker-summary', ticker, 'latest', res.data);
+          if (advanceLatest) {
+            bandarmologiService.writeDiskCache('broker-summary', ticker, 'latest', res.data);
+          } else {
+            console.log(`[HISTORICAL] ${ticker} ${dateArg} disimpan sebagai dated cache; latest.json yang lebih baru dipertahankan.`);
+          }
           doneCount++;
           newBrokerSummaryCount++;
           shouldRefreshAuxiliary = true;
@@ -420,4 +457,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { run, getJakartaDateString, getJakartaTimeInfo, resolveTargetDate, markerPath, readMarker, writeMarker };
+module.exports = { run, getJakartaDateString, getJakartaTimeInfo, resolveTargetDate, markerPath, readMarker, writeMarker, brokerSummaryPayloadDate, shouldAdvanceLatestBrokerSummary };

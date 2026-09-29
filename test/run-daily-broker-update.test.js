@@ -171,6 +171,85 @@ test('run-daily-broker-update: an already-complete marker makes the next firing 
   });
 });
 
+test('run-daily-broker-update: historical recovery never downgrades a newer latest.json', async () => {
+  await withTempDataDir(async () => {
+    bandarmologiService.writeDiskCache('broker-summary', 'BBCA', '2026-09-29', {
+      broker_start_date: '2026-09-29',
+      broker_end_date: '2026-09-29',
+      top_buyers: [{ broker: 'YU', bval: 100, bvol: 10 }],
+      top_sellers: []
+    });
+    bandarmologiService.writeDiskCache('broker-summary', 'BBCA', 'latest', {
+      broker_start_date: '2026-09-29',
+      broker_end_date: '2026-09-29',
+      top_buyers: [{ broker: 'YU', bval: 100, bvol: 10 }],
+      top_sellers: []
+    });
+
+    const restore = mockArjum({
+      fetchBrokerSummary: async () => ({
+        ok: true,
+        data: {
+          broker_start_date: '2026-09-28',
+          broker_end_date: '2026-09-28',
+          top_buyers: [{ broker: 'CC', bval: 200, bvol: 20 }],
+          top_sellers: []
+        }
+      })
+    });
+
+    try {
+      await dailyUpdate.run(['--tickers', 'BBCA', '--date', '2026-09-28', '--delay', '0']);
+
+      const historical = bandarmologiService.readDiskCache('broker-summary', 'BBCA', '2026-09-28');
+      assert.equal(historical.broker_end_date, '2026-09-28', 'historical dated cache should still be written');
+
+      const latest = bandarmologiService.readDiskCache('broker-summary', 'BBCA', 'latest');
+      assert.equal(latest.broker_end_date, '2026-09-29', 'newer latest.json must not be downgraded by historical recovery');
+    } finally {
+      restore();
+    }
+  });
+});
+
+test('run-daily-broker-update: current/newer recovery may advance latest.json', async () => {
+  await withTempDataDir(async () => {
+    bandarmologiService.writeDiskCache('broker-summary', 'BBCA', '2026-09-28', {
+      broker_start_date: '2026-09-28',
+      broker_end_date: '2026-09-28',
+      top_buyers: [{ broker: 'CC', bval: 100, bvol: 10 }],
+      top_sellers: []
+    });
+    bandarmologiService.writeDiskCache('broker-summary', 'BBCA', 'latest', {
+      broker_start_date: '2026-09-28',
+      broker_end_date: '2026-09-28',
+      top_buyers: [{ broker: 'CC', bval: 100, bvol: 10 }],
+      top_sellers: []
+    });
+
+    const restore = mockArjum({
+      fetchBrokerSummary: async () => ({
+        ok: true,
+        data: {
+          broker_start_date: '2026-09-29',
+          broker_end_date: '2026-09-29',
+          top_buyers: [{ broker: 'YU', bval: 200, bvol: 20 }],
+          top_sellers: []
+        }
+      })
+    });
+
+    try {
+      await dailyUpdate.run(['--tickers', 'BBCA', '--date', '2026-09-29', '--delay', '0']);
+
+      const latest = bandarmologiService.readDiskCache('broker-summary', 'BBCA', 'latest');
+      assert.equal(latest.broker_end_date, '2026-09-29', 'newer data should still advance latest.json');
+    } finally {
+      restore();
+    }
+  });
+});
+
 test('run-daily-broker-update: --final treats successful empty broker-summary as terminal NO_DATA', async () => {
   await withTempDataDir(async () => {
     const restore = mockArjum({
