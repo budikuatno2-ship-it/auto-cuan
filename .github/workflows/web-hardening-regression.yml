@@ -11,6 +11,7 @@ on:
       - 'lib/**'
       - 'test/**'
       - 'tools/**'
+      - 'deploy/vps/**'
       - '.agents/**'
       - 'package.json'
       - 'package-lock.json'
