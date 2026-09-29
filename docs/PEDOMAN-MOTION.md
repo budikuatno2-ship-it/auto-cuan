@@ -63,3 +63,24 @@
 - [ ] Tidak menambah library motion baru kalau yang sudah ada (Motion/GSAP) bisa menangani.
 - [ ] Console browser nol error setelah perubahan.
 - [ ] Kalau pola motion ini baru (belum ada di tabel §2 di atas) → sudah ditambahkan ke `docs/PEDOMAN-MOTION.md` juga.
+
+
+## Implementation note: landing/mobile follow-up, 2026-09-29
+
+The guide above is preserved as the original design brief. The current vanilla
+HTML implementation uses native IntersectionObserver + Web Animations in
+`public/landing-experience.js`, not an installed Motion/GSAP/NumberFlow library.
+This replaces the previous inline observer; do not initialize a second system.
+
+- Reveal: `--motion-slow`, `--ease-emphasized`, `--motion-stagger: 70ms`.
+  Stagger follows actual grid columns. The first hero paint is never hidden.
+- Content has normal opacity and real section heights when JS or animation
+  support fails. No permanent will-change layers or per-card reveal timers.
+- A runtime reduced-motion change cancels running animations immediately.
+- Auth dialogs enter with opacity only using `--motion-base`; close is immediate.
+  No scale/slide that changes the visible form bounds on a short viewport.
+- The compatibility name `AutoCuanNumberFlow` is NOT the third-party library.
+  It writes the exact latest numeric value immediately and may flash only the
+  cell color. No interpolation of invented intermediate financial prices, no
+  forced offsetWidth read and no animation of table rows. Full rolling digits
+  remain outside this patch and must not be marked complete.

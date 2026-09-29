@@ -119,12 +119,13 @@
     <link rel="stylesheet" href="/index-shell.css?v=20260818-v1">
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
-    <link rel="stylesheet" href="/ui-theme.css?v=20260929-workspace-v1">
+    <link rel="stylesheet" href="/ui-theme.css?v=20260929-experience-v2">
     <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=20260929-v1">
     <link rel="stylesheet" href="/spreadsheet-grade.css?v=20260926-sg1">
     <link rel="stylesheet" href="/money-sheet.css?v=20260929-v1">
+    <link rel="stylesheet" href="/landing-experience.css?v=20260929-v2">
 </head>
 <body class="min-h-screen text-gray-100">
 <a href="#" class="skip-link" onclick="return skipToMainContent(event)">Lewati ke konten utama</a>
@@ -253,7 +254,7 @@
     <div class="landing-promo">
         <div class="landing-container py-2.5 flex items-center gap-2 overflow-x-auto">
             <span class="landing-chip font-black text-emerald-300"><span class="landing-dot"></span>Auto-Cuan IDX Radar</span>
-            <span class="landing-chip">Sistem aktif</span>
+            <span class="landing-chip">Analisis &amp; pencatatan</span>
             <span class="landing-chip">Dashboard watchlist, radar, chart, dan trading plan</span>
             <span class="landing-chip text-amber-200 border-amber-500/20 bg-amber-500/10">Bukan rekomendasi beli/jual</span>
         </div>
@@ -264,10 +265,14 @@
                 <span class="landing-logo"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></span>
                 <span class="min-w-0"><span class="block text-white font-black leading-tight">Auto-Cuan</span><span class="block text-xs text-gray-500 truncate">IDX Stock Radar</span></span>
             </button>
-            <div class="landing-menu hidden md:flex items-center gap-6">
+            <div id="landingMenu" class="landing-menu items-center gap-6" aria-label="Navigasi landing">
                 <a href="#landingFeatures">Fitur</a><a href="#landingHow">Cara Kerja</a><a href="#landingSafety">Safety</a><a href="#landingPreview">Preview</a><button type="button" onclick="openLoginModal()" class="landing-link">Login</button>
             </div>
-            <div class="flex gap-2"><button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary shrink-0"><span class="landing-cta-label">Mulai Sekarang</span></button></div>
+            <div class="landing-nav-actions">
+                <button type="button" id="landingThemeToggle" onclick="toggleAppTheme()" class="landing-icon-button" aria-label="Ganti tema" title="Ganti tema"><span id="landingThemeIcon" aria-hidden="true">&#9680;</span></button>
+                <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary shrink-0"><span class="landing-cta-label">Mulai Sekarang</span></button>
+                <button type="button" id="landingMenuToggle" class="landing-icon-button" aria-controls="landingMenu" aria-expanded="false" aria-label="Buka menu navigasi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+            </div>
         </div>
     </nav>
     <main>
@@ -286,7 +291,7 @@
                     </div>
                 </div>
                 <div class="landing-card p-4 sm:p-5" aria-label="Showcase Auto-Cuan Radar">
-                    <div class="flex items-center justify-between mb-4"><div><p class="text-xs text-emerald-300 font-black uppercase tracking-wide">Live Radar</p><h2 class="text-lg font-black text-white">Auto-Cuan Radar</h2></div><span id="landingShowcaseChip" class="landing-chip" aria-live="polite">Memuat...</span></div>
+                    <div class="flex items-center justify-between mb-4"><div><p class="text-xs text-emerald-300 font-black uppercase tracking-wide">Ringkasan Radar</p><h2 class="text-lg font-black text-white">Auto-Cuan Radar</h2></div><span id="landingShowcaseChip" class="landing-chip" aria-live="polite">Memuat...</span></div>
                     <div id="landingShowcaseBody" class="mock-grid">
                         <!-- Rendered by loadLandingShowcase() — see script below -->
                         <div class="mock-card"><div class="flex justify-between text-xs text-gray-500"><span>Sektor</span><span class="text-emerald-300">--</span></div><div class="mt-2 text-sm font-black text-white">Memuat data...</div></div>
@@ -360,8 +365,8 @@
             <button onclick="closeLoginModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal masuk">&times;</button>
         </div>
         <div class="space-y-3">
-            <div><label for="loginUsername" class="block text-xs font-medium text-gray-400 mb-1">Username atau Email</label><input type="text" id="loginUsername" placeholder="Masukkan username atau email" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label for="loginPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+            <div><label for="loginUsername" class="block text-xs font-medium text-gray-400 mb-1">Username atau Email</label><input type="text" id="loginUsername" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Masukkan username atau email" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label for="loginPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="loginPassword" autocomplete="current-password" placeholder="Masukkan password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
             <div id="loginError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
             <button onclick="doLogin()" id="loginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Masuk</button>
             <div class="text-center"><button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-blue-400 hover:underline">Lupa Password?</button></div>
@@ -377,10 +382,10 @@
             <button onclick="closeRegisterModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal daftar">&times;</button>
         </div>
         <div id="registerFormFields" class="space-y-3">
-            <div><label for="regEmail" class="block text-xs font-medium text-gray-400 mb-1">Email (Opsional)</label><input type="email" id="regEmail" placeholder="nama@email.com (opsional)" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="regPassword" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+            <div><label for="regEmail" class="block text-xs font-medium text-gray-400 mb-1">Email (Opsional)</label><input type="email" id="regEmail" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="nama@email.com (opsional)" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="regPassword" autocomplete="new-password" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+            <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" autocomplete="new-password" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
             <label class="flex items-start gap-2 text-xs text-gray-400"><input type="checkbox" id="regTermsAccepted" class="mt-0.5 h-4 w-4 rounded border-gray-700 bg-[#0b0e14] text-emerald-500 focus:ring-emerald-500/50"><span class="cursor-pointer hover:text-emerald-400" onclick="if(window.openStandaloneTermsModal)window.openStandaloneTermsModal();else if(window.openAccountTerms)window.openAccountTerms();">Saya menyetujui Syarat &amp; Ketentuan Layanan Auto-Cuan.</span></label>
             <div id="registerError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
             <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1" role="status" aria-live="polite"></div>
@@ -440,7 +445,7 @@
         <button id="chatThemeToggleCompact" type="button" onclick="toggleAppTheme()" class="theme-toggle-compact" aria-label="Ganti Tampilan AI" title="Ganti tema terang/gelap">
             <span id="chatSidebarThemeIcon" aria-hidden="true" style="display:inline-grid;place-items:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span><span class="sr-only" id="chatSidebarThemeLabel">Dark Mode</span>
         </button>
-        <div class="user-profile-badge" title="Profil pengguna &amp; Logout" role="button" tabindex="0" onclick="if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click();}">
+        <div class="user-profile-badge" title="Profil pengguna &amp; Logout" role="button" tabindex="0" onclick="closeMobileSidebar();if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeMobileSidebar();if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click();}">
             <div class="user-avatar" aria-hidden="true">B</div>
             <div class="user-info sidebar-label">
                 <span class="user-name" id="chatSidebarUserName">budi</span>
@@ -502,7 +507,7 @@
         <button id="themeToggleCompact" data-action="toggle-theme" type="button" onclick="toggleAppTheme()" class="theme-toggle-compact" aria-label="Toggle Theme" title="Ganti tema terang/gelap">
             <span id="sidebarThemeIcon" aria-hidden="true" style="display:inline-grid;place-items:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span><span class="sidebar-label" id="sidebarThemeLabel">Dark Mode</span>
         </button>
-        <div class="user-profile-badge" title="Profil pengguna &amp; Logout" role="button" tabindex="0" onclick="if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click();}">
+        <div class="user-profile-badge" title="Profil pengguna &amp; Logout" role="button" tabindex="0" onclick="closeMobileSidebar();if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeMobileSidebar();if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click();}">
             <div class="user-avatar" aria-hidden="true">B</div>
             <div class="user-info sidebar-label">
                 <span class="user-name" id="sidebarUserName">budi</span>
@@ -3246,25 +3251,33 @@ function isAutocuanLoggedIn() {
 // On success, replaces the placeholder mock-card content with real sector + DT signal data.
 // On any failure (network, empty DB, etc.) — silently keeps the placeholder intact.
 var _landingShowcaseLoaded = false;
+var _landingShowcaseRequest = null;
 function loadLandingShowcase() {
-    if (_landingShowcaseLoaded) return;
+    if (_landingShowcaseLoaded) return Promise.resolve();
+    if (_landingShowcaseRequest) return _landingShowcaseRequest;
     var chip = document.getElementById('landingShowcaseChip');
     var body = document.getElementById('landingShowcaseBody');
     var sectorsEl = document.getElementById('landingShowcaseSectors');
     if (!body || !chip) return;
 
     var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    var timer = controller ? setTimeout(function() { controller.abort(); }, 5000) : null;
+    var timer = null;
+    chip.textContent = 'Memuat...';
+    body.setAttribute('aria-busy', 'true');
+    var deadline = new Promise(function (_, reject) {
+        timer = setTimeout(function () { if (controller) controller.abort(); reject(new Error('Snapshot timeout')); }, 5000);
+    });
 
-    fetch('/api/sector-hot?action=landing-snapshot', {
+    var request = fetch('/api/sector-hot?action=landing-snapshot', {
         method: 'GET',
         signal: controller ? controller.signal : undefined,
         cache: 'no-cache'
     }).then(function(res) {
-        if (timer) clearTimeout(timer);
+        if (!res.ok) throw new Error('Snapshot unavailable');
         return res.json();
-    }).then(function(data) {
-        if (!data || !data.success || !data.snapshot) return; // keep placeholder
+    });
+    _landingShowcaseRequest = Promise.race([request, deadline]).then(function(data) {
+        if (!data || !data.success || !data.snapshot) throw new Error('Snapshot invalid');
 
         var snap = data.snapshot;
         var sectors = Array.isArray(snap.sectors) ? snap.sectors : [];
@@ -3272,7 +3285,7 @@ function loadLandingShowcase() {
 
         // ── Chip: show freshness ──
         if (chip) {
-            chip.textContent = data.stale ? 'Data tersedia' : 'Data terkini';
+            chip.textContent = data.stale ? 'Data tersimpan / terlambat' : 'Snapshot tersedia';
             chip.className = 'landing-chip' + (data.stale ? '' : ' bg-emerald-500/10 border-emerald-500/30 text-emerald-300');
         }
 
@@ -3309,11 +3322,10 @@ function loadLandingShowcase() {
 
         // Card 3: top 3 DT tickers (radar style)
         var radarHtml = '<div class="space-y-2 text-xs">';
-        var colorMap = ['text-emerald-300', 'text-blue-300', 'text-amber-200'];
-        var labelMap = ['Entry', 'Watch', 'Radar'];
+        // Labels come from the snapshot, never from the array position.
         for (var i = 0; i < Math.min(3, signals.length); i++) {
             radarHtml += '<div class="flex justify-between"><b class="text-white">' + escapeHtml(signals[i].ticker || '--') + '</b>'
-                + '<span class="' + colorMap[i] + '">' + labelMap[i] + '</span></div>';
+                + '<span class="text-gray-400">' + escapeHtml(signals[i].signal_type || 'Pantau') + '</span></div>';
         }
         // Fill blanks if < 3 signals
         for (var j = signals.length; j < 3; j++) {
@@ -3349,9 +3361,19 @@ function loadLandingShowcase() {
 
         _landingShowcaseLoaded = true;
     }).catch(function() {
-        // Silently keep placeholder — never show error to user on landing page
+        chip.textContent = 'Belum tersedia';
+        var empty = document.createElement('div'); empty.className = 'landing-data-empty';
+        var title = document.createElement('strong'); title.textContent = 'Ringkasan data belum tersedia';
+        var message = document.createElement('p'); message.textContent = 'Koneksi atau sumber data sedang tidak tersedia. Fitur lain tetap dapat dibuka.';
+        var retry = document.createElement('button'); retry.type = 'button'; retry.className = 'landing-btn'; retry.textContent = 'Coba lagi';
+        retry.addEventListener('click', function () { retry.disabled = true; loadLandingShowcase(); });
+        empty.append(title, message, retry); body.replaceChildren(empty);
+        if (sectorsEl) sectorsEl.replaceChildren();
+    }).finally(function () {
         if (timer) clearTimeout(timer);
+        body.removeAttribute('aria-busy'); _landingShowcaseRequest = null;
     });
+    return _landingShowcaseRequest;
 }
 
 function updateLandingCtas() {
@@ -8141,6 +8163,10 @@ function applyAppTheme(theme) {
     var sbLabel = document.getElementById('sidebarThemeLabel');
     if (sbIcon) sbIcon.innerHTML = isLight ? sunSvg : moonSvg;
     if (sbLabel) sbLabel.textContent = isLight ? 'Light Mode' : 'Dark Mode';
+    var landingIcon = document.getElementById('landingThemeIcon');
+    var landingToggle = document.getElementById('landingThemeToggle');
+    if (landingIcon) landingIcon.innerHTML = isLight ? sunSvg : moonSvg;
+    if (landingToggle) landingToggle.setAttribute('aria-label', isLight ? 'Gunakan tema gelap' : 'Gunakan tema terang');
     var meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', isLight ? '#f8fafc' : '#0b0e14');
     try { localStorage.setItem('autocuan_theme', isLight ? 'light' : 'dark'); } catch (_) {}
@@ -8182,6 +8208,7 @@ function applySidebarCollapse(collapsed) {
     try { localStorage.setItem(SIDEBAR_COLLAPSE_KEY, collapsed ? '1' : '0'); } catch (_) {}
 }
 var sidebarReturnFocus = null;
+var sidebarMainWasInert = false;
 function toggleSidebarCollapse() {
     var aside = document.getElementById('appSidebar');
     if (!aside) return;
@@ -8194,14 +8221,14 @@ function toggleSidebarCollapse() {
 }
 function openMobileSidebar() {
     var aside = document.getElementById('appSidebar');
-    if (!aside || aside.classList.contains('hidden') || window.innerWidth >= 1024) return;
+    if (!aside || aside.classList.contains('hidden') || aside.classList.contains('mobile-open') || window.innerWidth >= 1024) return;
     sidebarReturnFocus = document.activeElement;
     aside.classList.add('mobile-open');
     document.documentElement.classList.add('workspace-menu-open');
     var scrim = document.getElementById('sidebarScrim');
     if (scrim) scrim.classList.remove('hidden');
     var main = document.getElementById('appMain');
-    if (main) main.inert = true;
+    if (main) { sidebarMainWasInert = main.inert; main.inert = true; }
     var trigger = document.getElementById('workspaceSidebarToggle');
     if (trigger) trigger.setAttribute('aria-expanded', 'true');
     var focus = aside.querySelector('.sidebar-collapse-toggle');
@@ -8215,7 +8242,7 @@ function closeMobileSidebar() {
     var scrim = document.getElementById('sidebarScrim');
     if (scrim) scrim.classList.add('hidden');
     var main = document.getElementById('appMain');
-    if (main) main.inert = false;
+    if (main && wasOpen) main.inert = sidebarMainWasInert;
     var trigger = document.getElementById('workspaceSidebarToggle');
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
     if (wasOpen && sidebarReturnFocus && sidebarReturnFocus.isConnected) sidebarReturnFocus.focus({ preventScroll: true });
@@ -13353,6 +13380,8 @@ function forceNormalizeTechnicalDOM(root) {
         loginModal: 'closeLoginModal',
         registerModal: 'closeRegisterModal',
         selfResetModal: 'closeSelfResetModal',
+        authV2ResetModal: 'closeSelfResetModal',
+        standaloneTermsModal: null,
         resetPasswordModal: 'closeResetPasswordModal',
         deviceDetailsModal: 'closeDeviceModal',
         authChoiceModal: 'closeAuthChoiceModal',
@@ -13363,95 +13392,122 @@ function forceNormalizeTechnicalDOM(root) {
         wlAlertHistoryModal: 'closeAlertHistoryModal'
     };
     var MODAL_IDS = Object.keys(MODAL_CLOSERS);
-    var lastFocusByModal = {};
+    var lastFocusByModal = {}, openOrder = [], watched = new WeakSet();
     var FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-    function isVisible(el) { return el && !el.classList.contains('hidden'); }
-
+    var lockedBackground = new Map();
+    function isVisible(el) {
+        return Boolean(el && !el.hidden && !el.classList.contains('hidden') && el.getClientRects().length && getComputedStyle(el).display !== 'none');
+    }
     function focusableWithin(modal) {
-        var nodes = modal.querySelectorAll(FOCUSABLE), out = [];
-        for (var i = 0; i < nodes.length; i++) {
-            if (nodes[i].offsetParent !== null || nodes[i] === document.activeElement) out.push(nodes[i]);
-        }
-        return out;
+        return Array.from(modal.querySelectorAll(FOCUSABLE)).filter(function (el) {
+            return el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden' && !el.closest('[inert]');
+        });
     }
-
     function preferredInitialFocus(modal) {
-        var fields = modal.querySelectorAll('input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])');
-        for (var i = 0; i < fields.length; i++) { if (fields[i].offsetParent !== null) return fields[i]; }
+        // On touch devices focus the title/close control, not an input which
+        // would open the software keyboard before the visitor reads the form.
+        if (!window.matchMedia('(pointer: coarse)').matches) {
+            var field = modal.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([disabled])');
+            if (field && field.getClientRects().length) return field;
+        }
         var f = focusableWithin(modal);
-        return f.length ? f[0] : modal;
+        return f[0] || modal;
     }
-
     function closeModalById(id) {
         var fnName = MODAL_CLOSERS[id];
         if (fnName && typeof window[fnName] === 'function') { window[fnName](); return; }
         var el = document.getElementById(id);
+        if (id === 'standaloneTermsModal') {
+            var close = el && el.querySelector('#closeStandaloneTermsBtn');
+            if (close) { close.click(); return; }
+        }
         if (el) el.classList.add('hidden');
     }
-
     function topmostOpenModal() {
-        var open = [];
-        for (var i = 0; i < MODAL_IDS.length; i++) {
-            var el = document.getElementById(MODAL_IDS[i]);
-            if (isVisible(el)) open.push(el);
-        }
-        if (!open.length) return null;
+        var open = MODAL_IDS.map(function (id) { return document.getElementById(id); }).filter(isVisible);
         open.sort(function (a, b) {
-            return (parseInt(getComputedStyle(b).zIndex, 10) || 0) - (parseInt(getComputedStyle(a).zIndex, 10) || 0);
+            var za = parseInt(getComputedStyle(a).zIndex, 10) || 0, zb = parseInt(getComputedStyle(b).zIndex, 10) || 0;
+            return zb - za || openOrder.indexOf(b.id) - openOrder.indexOf(a.id);
         });
-        return open[0];
+        return open[0] || null;
     }
-
-    // Escape closes the topmost managed modal.
+    function releaseBackground() {
+        lockedBackground.forEach(function (prior, element) {
+            // A route/auth change may have hidden this screen in the meantime.
+            element.inert = prior || element.hidden || element.classList.contains('hidden');
+        });
+        lockedBackground.clear();
+    }
+    function syncModals() {
+        var visible = MODAL_IDS.filter(function (id) { return isVisible(document.getElementById(id)); });
+        var removed = openOrder.filter(function (id) { return visible.indexOf(id) < 0; });
+        var restore = null;
+        removed.forEach(function (id) { restore = lastFocusByModal[id] || restore; delete lastFocusByModal[id]; });
+        openOrder = openOrder.filter(function (id) { return visible.indexOf(id) >= 0; });
+        var added = visible.filter(function (id) { return openOrder.indexOf(id) < 0; });
+        added.forEach(function (id) {
+            lastFocusByModal[id] = restore || document.activeElement;
+            openOrder.push(id);
+        });
+        releaseBackground();
+        var top = topmostOpenModal();
+        var authOpen = top && /^(authChoiceModal|loginModal|registerModal|selfResetModal|authV2ResetModal|standaloneTermsModal)$/.test(top.id);
+        document.documentElement.classList.toggle('auth-dialog-open', Boolean(authOpen));
+        if (authOpen) {
+            Array.from(document.body.children).forEach(function (element) {
+                if (element === top || element.contains(top) || !isVisible(element) || /^(SCRIPT|STYLE|LINK)$/.test(element.tagName)) return;
+                lockedBackground.set(element, element.inert); element.inert = true;
+            });
+        }
+        if (top && (added.length || removed.length || !top.contains(document.activeElement))) {
+            if (!top.hasAttribute('tabindex')) top.setAttribute('tabindex', '-1');
+            var target = restore && top.contains(restore) && restore.getClientRects().length ? restore : preferredInitialFocus(top);
+            target.focus({ preventScroll: true });
+        } else if (!top && restore && restore.isConnected && restore.getClientRects().length && !restore.closest('[inert]')) {
+            restore.focus({ preventScroll: true });
+        }
+    }
+    // One capture handler: Escape must not also dismiss the parent form when
+    // the Terms dialog is nested. Reuse existing close functions, never auth.
     document.addEventListener('keydown', function (e) {
-        if (e.key !== 'Escape' && e.key !== 'Esc') return;
-        var modal = topmostOpenModal();
-        if (modal) closeModalById(modal.id);
-    });
-
-    // Trap Tab focus within the topmost managed modal.
-    document.addEventListener('keydown', function (e) {
-        if (e.key !== 'Tab') return;
         var modal = topmostOpenModal();
         if (!modal) return;
+        if (e.key !== 'Escape' && e.key !== 'Esc') return;
+        e.preventDefault(); e.stopImmediatePropagation(); closeModalById(modal.id);
+    }, true);
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Tab') return;
+        var modal = topmostOpenModal(); if (!modal) return;
         var f = focusableWithin(modal);
-        if (!f.length) { e.preventDefault(); return; }
+        if (!f.length) { e.preventDefault(); modal.focus(); return; }
         var first = f[0], last = f[f.length - 1], active = document.activeElement;
         if (!modal.contains(active)) { e.preventDefault(); first.focus(); return; }
         if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
         else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
     });
-
-    // On open: remember the trigger and move focus in. On close: restore focus.
     function watchModal(id) {
         var el = document.getElementById(id);
-        if (!el || typeof MutationObserver === 'undefined') return;
-        var wasHidden = el.classList.contains('hidden');
-        new MutationObserver(function () {
-            var hidden = el.classList.contains('hidden');
-            if (hidden === wasHidden) return;
-            wasHidden = hidden;
-            if (!hidden) {
-                lastFocusByModal[id] = document.activeElement;
-                var target = preferredInitialFocus(el);
-                setTimeout(function () { try { target.focus(); } catch (e) {} }, 0);
-            } else {
-                var prev = lastFocusByModal[id];
-                lastFocusByModal[id] = null;
-                if (prev && document.contains(prev) && typeof prev.focus === 'function') {
-                    setTimeout(function () { try { prev.focus(); } catch (e) {} }, 0);
-                }
-            }
-        }).observe(el, { attributes: true, attributeFilter: ['class'] });
+        if (!el || watched.has(el) || typeof MutationObserver === 'undefined') return;
+        watched.add(el);
+        new MutationObserver(syncModals).observe(el, { attributes: true, attributeFilter: ['class', 'hidden', 'style'], childList: true });
     }
-
-    function init() { MODAL_IDS.forEach(watchModal); }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    function init() {
+        MODAL_IDS.forEach(watchModal);
+        // Only direct body children: dynamic reset/terms containers. No whole
+        // application subtree observer and no timer for every focus change.
+        new MutationObserver(function (entries) {
+            var relevant = entries.some(function (entry) {
+                return Array.from(entry.addedNodes).concat(Array.from(entry.removedNodes)).some(function (node) { return MODAL_IDS.indexOf(node.id) >= 0; });
+            });
+            if (relevant) { MODAL_IDS.forEach(watchModal); syncModals(); }
+        }).observe(document.body, { childList: true });
+        syncModals();
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
     else init();
 })();
 </script>
-<script src="/website-approved-access.js?v=20260726-src1"></script>
+<script src="/website-approved-access.js?v=20260929-experience-v2"></script>
 <script src="/admin-user-delete-enhancement.js?v=20260726-src1"></script>
 <script src="/ai-chat-renderer.js?v=20260905-v2"></script>
 <script src="/stock-analysis-ai.js?v=20260905-v2"></script>
@@ -13490,87 +13546,6 @@ function forceNormalizeTechnicalDOM(root) {
     }
 })();
 </script>
-<script>
-// ===== LANDING SCROLL REVEAL WITH STAGGER (§6.3) =====
-(function initScrollReveal() {
-    if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    function setup() {
-        var targets = document.querySelectorAll('#landingFeatures .feature-card, #landingSchedule .feature-card, #landingPreview .feature-card, #landingRules .landing-card');
-        if (!targets.length) return;
-
-        targets.forEach(function(el) {
-            el.classList.add('scroll-reveal');
-        });
-
-        var observer = new IntersectionObserver(function(entries) {
-            entries.forEach(function(entry) {
-                if (entry.isIntersecting) {
-                    var parentGrid = entry.target.parentElement;
-                    var siblings = parentGrid ? Array.from(parentGrid.querySelectorAll('.scroll-reveal')) : [entry.target];
-                    var index = siblings.indexOf(entry.target);
-                    var colIndex = index >= 0 ? (index % 3) : 0;
-                    var delay = colIndex * 70; // 70ms stagger within row (spek 60-80ms, budget 420+2*80)
-                    setTimeout(function() {
-                        entry.target.classList.add('is-revealed');
-                    }, delay);
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-
-        targets.forEach(function(el) {
-            observer.observe(el);
-        });
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setup);
-    } else {
-        setup();
-    }
-})();
-
-// ===== ROLLING DIGIT / NUMBERFLOW & FLASH HELPER (§6.4) =====
-window.AutoCuanNumberFlow = {
-    animate: function (element, start, end, duration, formatter) {
-        if (!element) return;
-        if (start === end) return;
-        var isUp = end > start;
-        element.classList.remove('flash-up', 'flash-down');
-        void element.offsetWidth; // trigger reflow
-        element.classList.add(isUp ? 'flash-up' : 'flash-down');
-        setTimeout(function() {
-            element.classList.remove('flash-up', 'flash-down');
-        }, 400);
-
-        var startTime = null;
-        var dur = duration || 250;
-        function step(timestamp) {
-            if (!startTime) startTime = timestamp;
-            var progress = Math.min((timestamp - startTime) / dur, 1);
-            var easeOut = 1 - Math.pow(1 - progress, 3);
-            var current = Math.round(start + (end - start) * easeOut);
-            element.textContent = formatter ? formatter(current) : current.toLocaleString('id-ID');
-            if (progress < 1) {
-                window.requestAnimationFrame(step);
-            } else {
-                element.textContent = formatter ? formatter(end) : end.toLocaleString('id-ID');
-            }
-        }
-        window.requestAnimationFrame(step);
-    },
-    flash: function (element, isUp) {
-        if (!element) return;
-        element.classList.remove('flash-up', 'flash-down');
-        void element.offsetWidth;
-        element.classList.add(isUp ? 'flash-up' : 'flash-down');
-        setTimeout(function() {
-            element.classList.remove('flash-up', 'flash-down');
-        }, 400);
-    }
-};
-</script>
+<script src="/landing-experience.js?v=20260929-v2"></script>
 </body>
 </html>

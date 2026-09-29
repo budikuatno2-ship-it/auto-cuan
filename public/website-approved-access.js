@@ -26,7 +26,7 @@
     hideSubscriptionUi();
 
     loadScriptOnce('/maintenance-auth-guard.js?v=20260816-v1', 'data-autocuan-maintenance-auth-guard');
-    loadScriptOnce('/auth-v2.js?v=20260801-v1', 'data-autocuan-auth-v2');
+    loadScriptOnce('/auth-v2.js?v=20260929-dialog-v2', 'data-autocuan-auth-v2');
     loadScriptOnce('/account-center-lazy-loader-v1.js?v=20260816-v1', 'data-autocuan-account-center-lazy');
     loadScriptOnce('/subscription-access-gate-v1.js?v=20260816-v1', 'data-autocuan-subscription-access-gate');
 

@@ -560,5 +560,7 @@
   "test/weekly-timeframe.test.js",
   "test/wib-date-string.test.js",
   "test/zero-defect-cluster-recovery.test.js",
-  "test/money-sheet.test.js"
+  "test/money-sheet.test.js",
+  "test/precision-motion-cascade.test.js",
+  "test/landing-experience.test.js"
 ]

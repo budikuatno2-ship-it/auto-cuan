@@ -69,5 +69,7 @@
   "test/web-runtime-audit.test.js",
   "test/web-security-boundaries.test.js",
   "test/webhook-alert-engine.test.js",
-  "test/money-sheet.test.js"
+  "test/money-sheet.test.js",
+  "test/precision-motion-cascade.test.js",
+  "test/landing-experience.test.js"
 ]

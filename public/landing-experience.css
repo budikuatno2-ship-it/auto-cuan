@@ -1,0 +1,171 @@
+/* Landing owns its marketing surfaces. Shared palette/motion tokens stay global.
+   Explicit scope prevents legacy dark-only workstation styles leaking here. */
+#landingPage {
+  color: var(--color-text-primary); background: var(--canvas) !important;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+}
+#landingPage .landing-container {
+  width: min(1180px, calc(100% - 64px)); max-width: 1180px; margin-inline: auto;
+  padding-inline: 0 !important; min-width: 0;
+}
+#landingPage :is(h1,h2,h3,strong,b) { color: var(--color-text-primary) !important; }
+#landingPage :is(h1,h2,h3) { font-weight: 600 !important; }
+#landingPage :is(.text-white,.text-gray-100,.text-gray-200) { color: var(--color-text-primary) !important; }
+#landingPage :is(p,.text-gray-300,.text-gray-400,.text-gray-500,.text-gray-600) { color: var(--color-text-secondary) !important; }
+#landingPage :is(.landing-card,.feature-card,.mock-card,.faq-item,.heat-cell) {
+  background: var(--surface) !important; border: 1px solid var(--border-hairline) !important;
+  border-radius: 12px; box-shadow: none !important; min-width: 0;
+}
+#landingPage .landing-promo { background: var(--surface); border-bottom: 1px solid var(--border-hairline); }
+#landingPage .landing-promo .landing-container { min-height: 36px; padding-block: 6px; }
+#landingPage .landing-chip { border: 1px solid var(--border-hairline); color: var(--color-text-secondary); background: transparent; }
+#landingPage .landing-nav {
+  position: sticky; top: 0; z-index: 40; background: var(--surface) !important;
+  border-bottom: 1px solid var(--border-hairline); backdrop-filter: none;
+}
+#landingPage .landing-nav > .landing-container { min-height: 76px; display: flex; align-items: center; gap: 24px; }
+#landingPage .landing-brand { flex: 0 0 auto; gap: 10px; }
+#landingPage .landing-brand span.block { color: var(--color-text-primary); }
+#landingPage .landing-brand .text-xs { color: var(--color-text-secondary); }
+#landingPage .landing-menu { display: flex !important; margin-left: auto; gap: 22px; }
+#landingPage .landing-menu :is(a,button) { color: var(--color-text-secondary); min-height: 44px; font-size: 13px; font-weight: 500; }
+#landingPage .landing-nav-actions { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
+#landingPage .landing-icon-button {
+  display: inline-grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px;
+  border: 1px solid var(--border-hairline); border-radius: 8px;
+  color: var(--color-text-primary); background: var(--surface); cursor: pointer;
+}
+#landingPage #landingMenuToggle { display: none; }
+#landingPage .landing-btn {
+  min-height: 44px; padding: 11px 16px; color: var(--color-text-primary);
+  border: 1px solid var(--border-hairline); background: var(--surface); border-radius: 8px;
+  font-weight: 500; font-size: 13px; box-shadow: none; transform: none;
+}
+#landingPage .landing-btn-primary { background: var(--color-accent); border-color: transparent; color: var(--color-on-accent) !important; }
+#landingPage :is(.landing-btn,.landing-icon-button,.landing-link,.landing-menu a) {
+  transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+@media(hover:hover) {
+  #landingPage :is(.landing-icon-button,.landing-btn):hover { border-color: var(--color-text-secondary); transform: none; }
+  #landingPage .landing-menu :is(a,button):hover { color: var(--color-text-primary); }
+}
+#landingPage :is(button,a):focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+#landingPage .landing-hero { padding: clamp(44px,6vw,88px) 0 52px; min-height: 0; background: var(--canvas) !important; }
+#landingPage .landing-hero::before { display: none; }
+#landingPage .landing-hero-grid { grid-template-columns: minmax(0,1.08fr) minmax(0,1fr) !important; gap: 48px !important; }
+#landingPage .landing-hero h1 { font-size: clamp(36px,4.1vw,58px) !important; line-height: 1.08 !important; letter-spacing: -.045em !important; text-wrap: balance; }
+#landingPage .landing-hero h1 + p { font-size: 15px !important; line-height: 1.75 !important; color: var(--color-text-secondary) !important; }
+#landingPage .landing-hero-copy > .inline-flex { color: var(--color-text-secondary); border-color: var(--border-hairline); background: var(--surface); font-weight: 500; }
+#landingPage .landing-hero-copy > p.text-amber-200\/90 { color: var(--color-text-secondary) !important; background: transparent; border: 0; border-left: 2px solid var(--data-neutral); border-radius: 0; padding: 4px 0 4px 12px; }
+#landingPage .landing-hero .landing-card { transform: none !important; padding: 22px; }
+#landingPage .landing-hero .landing-card > div:first-child { gap: 12px; flex-wrap: wrap; }
+#landingPage .landing-hero .landing-card > div:first-child p { font-size: 10px; letter-spacing: .1em; }
+#landingPage .mock-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+#landingPage .mock-card { padding: 14px; min-height: 112px; border-radius: 8px; }
+#landingPage .mock-card .bg-slate-800\/70 { background: var(--surface-elevated); }
+#landingPage .landing-trust-rail { gap: 8px 12px; margin-top: 22px; }
+#landingPage .landing-trust-item { font-size: 10px; color: var(--color-text-secondary); border: 0; background: transparent; padding: 0; }
+/* Small static marketing sections must have real heights. Legacy guessed
+   content-visibility sizes caused scroll-position jumps and large blank gaps. */
+#landingPage .landing-section {
+  padding: 48px 0; content-visibility: visible; contain-intrinsic-size: none;
+  background: var(--canvas) !important; border-top: 1px solid var(--border-hairline);
+  scroll-margin-top: 100px;
+}
+#landingPage .landing-section h2 { font-size: clamp(25px,2.4vw,32px); line-height: 1.2; max-width: 720px; }
+#landingPage .landing-section > .landing-container > div:first-child { border: 0; padding-bottom: 0; margin-bottom: 24px; }
+#landingPage .landing-section > .landing-container.grid > div:first-child { margin-bottom: 0; }
+#landingPage .landing-section p { line-height: 1.7; }
+#landingPage .landing-section .feature-card { padding: 22px; min-height: 0; }
+#landingPage .feature-icon { width: 36px; height: 36px; border-radius: 8px; color: var(--color-text-secondary); border: 1px solid var(--border-hairline); background: var(--surface-elevated); box-shadow: none; }
+#landingPage .feature-card h3 { margin-top: 16px; font-size: 15px; }
+#landingPage .feature-card p { font-size: 13px; }
+#landingPage .faq-item { padding: 20px; }
+#landingPage .faq-item h3 { font-size: 14px; }
+#landingPage footer { background: var(--surface); border-color: var(--border-hairline); }
+#landingPage .landing-data-empty { grid-column: 1/-1; min-height: 180px; padding: 26px 18px; display: grid; justify-items: start; align-content: center; gap: 12px; }
+#landingPage .landing-data-empty p { margin: 0; font-size: 13px; line-height: 1.65; }
+#landingPage [aria-busy="true"] .landing-btn { cursor: progress; }
+/* Auth surfaces share tokens without changing authentication or approval. */
+:is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal), #authV2ResetModal > div {
+  padding: max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)) !important;
+  overflow-y: auto; overscroll-behavior: contain; backdrop-filter: none !important;
+}
+:is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal) > div, #authV2ResetModal > div > div {
+  box-sizing: border-box; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto; overscroll-behavior: contain; background: var(--surface) !important; color: var(--color-text-primary) !important;
+  border: 1px solid var(--border-hairline) !important; border-radius: 12px !important; transform: none !important;
+  animation: ac-auth-appear var(--motion-base) var(--ease-standard) !important;
+}
+:is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal,#authV2ResetModal) :is(h2,h3,.text-white,.text-gray-100,.text-slate-300) { color: var(--color-text-primary) !important; }
+:is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal,#authV2ResetModal) :is(label,p,.text-gray-400,.text-gray-500,.text-slate-400,.text-slate-500) { color: var(--color-text-secondary) !important; }
+:is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal,#authV2ResetModal) input { background: var(--canvas) !important; color: var(--color-text-primary) !important; border-color: var(--border-hairline) !important; }
+:is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal,#authV2ResetModal) button { min-height: 44px; min-width: 44px; }
+#authChoiceModal .landing-auth-card { background: var(--canvas); border: 1px solid var(--border-hairline); }
+#loginBtn,#registerBtn { color: var(--color-on-accent) !important; background: var(--color-accent) !important; box-shadow: none !important; transform: none !important; }
+html.auth-dialog-open, html.auth-dialog-open body { overflow: hidden !important; }
+@media(max-width:900px) {
+  #landingPage .landing-container { width: calc(100% - 40px); }
+  #landingPage .landing-nav > .landing-container { flex-wrap: wrap; gap: 8px; min-height: 68px; padding-block: 12px; }
+  #landingPage .landing-brand { margin-right: auto; }
+  #landingPage #landingMenuToggle { display: inline-grid; }
+  #landingPage .landing-menu { display: none !important; order: 3; flex: 1 0 100%; margin: 0; gap: 0; padding: 10px 0 0; border-top: 1px solid var(--border-hairline); }
+  #landingPage.landing-menu-open .landing-menu { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  #landingPage .landing-menu :is(a,button) { padding: 10px; justify-content: flex-start; }
+  #landingPage .landing-hero-grid { grid-template-columns: minmax(0,1fr) !important; gap: 32px !important; }
+  #landingPage .landing-hero h1 { max-width: 700px; font-size: clamp(36px,6.5vw,52px) !important; }
+  #landingPage .landing-hero .landing-card { max-width: 700px; width: 100%; }
+}
+@media(max-width:600px) {
+  #landingPage .landing-container { width: calc(100% - 32px); }
+  #landingPage .landing-promo { display: none; }
+  #landingPage .landing-nav-actions { gap: 6px; }
+  #landingPage .landing-nav-actions > .landing-btn { display: none; }
+  #landingPage .landing-hero { padding: 32px 0; }
+  #landingPage .landing-hero h1 { font-size: 36px !important; }
+  #landingPage .landing-hero h1 + p { font-size: 14px !important; }
+  #landingPage .landing-mobile-wrap { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  #landingPage .landing-mobile-wrap .landing-btn { width: 100%; }
+  #landingPage .landing-mobile-wrap > :first-child { grid-column: 1/-1; }
+  #landingPage .landing-trust-rail { display: flex; flex-wrap: wrap; }
+  #landingPage .landing-hero .landing-card { padding: 16px; }
+  #landingPage .mock-card { padding: 12px; }
+  #landingPage .landing-section { padding: 32px 0; scroll-margin-top: 90px; }
+  #landingPage .landing-section h2 { font-size: 25px; }
+  #landingPage .landing-section .feature-card { padding: 18px; }
+  #landingShowcaseSectors { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  #landingPage footer .landing-container { padding-block: 24px; }
+  :is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal,#authV2ResetModal) input:not([type="checkbox"]) { font-size: 16px !important; }
+}
+@media(max-width:380px) { #landingPage .mock-grid { grid-template-columns: minmax(0,1fr); } }
+@media(max-width:1023px) {
+  #appSidebar .sidebar-item { min-height: 44px; }
+  #appSidebar :is(.sidebar-collapse-toggle,.theme-toggle-compact,.user-profile-badge) { min-height: 44px; }
+  #appSidebar .sidebar-collapse-toggle { min-width: 44px; }
+  #appSidebar > .sidebar-footer { padding-bottom: max(12px,env(safe-area-inset-bottom)); }
+  #appSidebar > .sidebar-brand { padding-top: max(12px,env(safe-area-inset-top)) !important; }
+  .workspace-sidebar-toggle { width: 44px; height: 44px; }
+  #page-money-management .ms-workbook-heading { flex-wrap: wrap; }
+  #page-money-management :is(.ms-button,.ms-icon-button) { min-height: 44px; }
+  #page-money-management .ms-icon-button { min-width: 44px; }
+  #page-money-management :is(input,select,textarea) { font-size: 16px !important; min-height: 44px; }
+  #page-money-management .ms-grid :is(input,select) { height: 44px; }
+  #page-money-management .ms-sort select { max-width: 200px; }
+  #page-money-management .ms-grid-viewport { max-height: min(460px,65dvh); }
+}
+@media(prefers-reduced-motion:reduce) {
+  #landingPage *, #landingPage *::before, #landingPage *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+/* No inherited dark decorative strips on light marketing cards. */
+#landingPage .landing-card::before, #landingPage .landing-card::after { display: none !important; }
+#standaloneTermsModal > div { background: var(--surface) !important; color: var(--color-text-primary) !important; border-color: var(--border-hairline) !important; max-height: calc(100dvh - 32px) !important; }
+#standaloneTermsModal :is(h2,h3) { color: var(--color-text-primary) !important; }
+#standaloneTermsModal :is(p,div) { color: var(--color-text-secondary) !important; }
+#standaloneTermsModal > div > div, #standaloneTermsModal > div > div > div { background: var(--surface) !important; border-color: var(--border-hairline) !important; }
+#standaloneTermsModal button { min-height: 44px; min-width: 44px; }
+
+@keyframes ac-auth-appear { from { opacity: 0; } to { opacity: 1; } }
+#landingPage .step-num { background: var(--surface-elevated); color: var(--color-text-secondary); border-color: var(--border-hairline); }
+@media(prefers-reduced-motion:reduce) {
+  :is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal) > div, #authV2ResetModal > div > div { animation: none !important; }
+}

@@ -65,6 +65,7 @@
   --motion-fast: 180ms;
   --motion-base: 260ms;
   --motion-slow: 420ms;
+  --motion-stagger: 70ms;
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -3093,22 +3094,8 @@ input[type="checkbox"] {
 }
 
 
-/* Scroll Reveal with Stagger (§6.3) */
-.scroll-reveal,
-.feature-card.scroll-reveal,
-.landing-card.scroll-reveal {
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity var(--motion-slow, 420ms) var(--ease-emphasized, cubic-bezier(0.16, 1, 0.3, 1)),
-              transform var(--motion-slow, 420ms) var(--ease-emphasized, cubic-bezier(0.16, 1, 0.3, 1)) !important;
-  will-change: opacity, transform;
-}
-.scroll-reveal.is-revealed,
-.feature-card.scroll-reveal.is-revealed,
-.landing-card.scroll-reveal.is-revealed {
-  opacity: 1;
-  transform: translateY(0);
-}
+/* Content stays readable without animation support. Landing motion uses WAAPI. */
+.scroll-reveal { opacity: 1; transform: none; }
 
 /* Mobile drawer trigger in the header. Hidden from 1024px up, where the rail
    itself is permanently docked. */
