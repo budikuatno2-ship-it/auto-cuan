@@ -8,6 +8,7 @@ const path = require('node:path');
 
 const context = require('../lib/deepscan-context');
 const engine = require('../lib/deepscan-engine');
+const prepare = require('../tools/prepare-deepscan-weekly');
 
 function candle(date, close, volume) {
   return {
@@ -55,6 +56,60 @@ test('DeepScan full-history cache requires an explicit 2020 request boundary', (
   loaded = context.loadFullHistoryForTicker(root, 'BBCA');
   assert.equal(loaded.complete, false);
   assert.equal(loaded.reason, 'history_not_requested_from_2020');
+});
+
+test('DeepScan cache validation rejects a requested range that is stale for the weekend', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'deepscan-stale-'));
+  const dir = path.join(root, 'data', context.FULL_HISTORY_DIR);
+  fs.mkdirSync(dir, { recursive: true });
+
+  const rows = [];
+  for (let i = 0; i < 35; i++) {
+    const day = String((i % 28) + 1).padStart(2, '0');
+    rows.push(candle('2026-09-' + day, 100 + i));
+  }
+  fs.writeFileSync(path.join(dir, 'BBCA.json'), JSON.stringify({
+    requested_from: '2020-01-01',
+    requested_to: '2026-09-29',
+    candles: rows
+  }));
+
+  const loaded = context.loadFullHistoryForTicker(root, 'BBCA', {
+    requiredThrough: '2026-10-02',
+    requiredLatestCandleDate: '2026-10-02'
+  });
+  assert.equal(loaded.complete, false);
+  assert.equal(loaded.reason, 'history_stale_requested_range');
+});
+
+test('DeepScan Yahoo normalizer retains adjusted close separately from executable raw prices', () => {
+  const timestamps = [
+    Date.parse('2023-12-29T02:00:00Z') / 1000,
+    Date.parse('2024-01-02T02:00:00Z') / 1000
+  ];
+  const payload = {
+    chart: {
+      result: [{
+        timestamp: timestamps,
+        indicators: {
+          quote: [{
+            open: [100, 20],
+            high: [102, 21],
+            low: [98, 19],
+            close: [100, 20],
+            volume: [1000, 1200]
+          }],
+          adjclose: [{ adjclose: [20, 20] }]
+        }
+      }]
+    }
+  };
+  const rows = prepare.normalizeAdjustedYahoo(payload, { from: '2023-12-29', to: '2024-01-02' });
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].close, 100);
+  assert.equal(rows[0].adjusted_close, 20);
+  assert.equal(rows[1].close, 20);
+  assert.equal(rows[1].adjusted_close, 20);
 });
 
 test('DeepScan full-history metrics use old candles, not only recent 90/180 sessions', () => {
