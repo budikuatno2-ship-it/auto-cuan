@@ -573,5 +573,6 @@
   "test/workspace-access-visibility.test.js",
   "test/money-management-and-group-bot-regression.test.js",
   "test/market-structure-risk.test.js",
-  "test/market-structure-integration.test.js"
+  "test/market-structure-integration.test.js",
+  "test/market-structure-coverage.test.js"
 ]
