@@ -37,7 +37,6 @@
   "test/intraday-fast-watcher-v7-volume-pace.test.js",
   "test/intraday-fast-watcher.test.js",
   "test/login-localstorage-resilience.test.js",
-  "test/macro-deepscan-and-money-management.test.js",
   "test/maintenance-gate.test.js",
   "test/multiday-broker-aggregation.test.js",
   "test/openagentic-stream-reassembly.test.js",
@@ -73,5 +72,6 @@
   "test/precision-motion-cascade.test.js",
   "test/landing-experience.test.js",
   "test/money-sheet-formulas.test.js",
-  "test/workspace-detail.test.js"
+  "test/workspace-detail.test.js",
+  "test/money-management-and-group-bot-regression.test.js"
 ]

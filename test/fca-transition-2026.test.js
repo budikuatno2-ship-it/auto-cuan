@@ -8,7 +8,6 @@ const path = require('node:path');
 
 const transition = require('../lib/fca-transition-2026');
 const daytrade = require('../lib/daytrade-screener-engine');
-const deepscan = require('../lib/deepscan-engine');
 
 test('Sep-2026 FCA transition manifest is internally consistent', () => {
   const all = new Set(transition.manifest.all_exit_tickers);
@@ -114,49 +113,6 @@ test('transition helper admits verified-active exits but never treats board meta
     );
   }
 });
-
-test('DeepScan keeps snapshot-suspended exits blocked despite stale-safe board metadata', async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fca-deepscan-'));
-  try {
-    const dir = path.join(root, 'data', 'daily-candles');
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'PBRX.json'), '{}');
-    fs.writeFileSync(path.join(dir, 'POLL.json'), '{}');
-    fs.writeFileSync(path.join(dir, 'WIKA.json'), '{}');
-    fs.writeFileSync(path.join(dir, 'BBCA.json'), '{}');
-
-    const discovered = deepscan.listAllTickers(root).sort();
-    assert.deepEqual(discovered, ['BBCA', 'PBRX', 'POLL', 'WIKA']);
-
-    const db = {
-      from(table) {
-        assert.equal(table, 'stock_boards');
-        return {
-          select() {
-            return {
-              async in() {
-                return {
-                  error: null,
-                  data: [
-                    { ticker: 'PBRX', board: 'UTAMA', is_active: true, is_fca: false, note: null },
-                    { ticker: 'POLL', board: 'UTAMA', is_active: true, is_fca: false, note: null },
-                    { ticker: 'WIKA', board: 'PENGEMBANGAN', is_active: true, is_fca: false, note: 'SUSPENDED' }
-                  ]
-                };
-              }
-            };
-          }
-        };
-      }
-    };
-
-    const tradable = (await deepscan.filterTradableTransitionTickers(db, discovered)).sort();
-    assert.deepEqual(tradable, ['BBCA', 'PBRX']);
-  } finally {
-    fs.rmSync(root, { recursive: true, force: true });
-  }
-});
-
 
 test('ordinary FCA/Pemantauan Khusus rows are excluded from continuous-auction Swing universes', () => {
   for (const ticker of ['ABBA','ACST','BTEL','CSAP','INAF','MPPA','UNSP','WSBP']) {

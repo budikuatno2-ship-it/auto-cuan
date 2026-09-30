@@ -243,7 +243,6 @@
   "test/daytrade-vps-worker-observe.test.js",
   "test/design-system-institutional-pass.test.js",
   "test/design-system-tokens-typography.test.js",
-  "test/deepscan-full-history-contract.test.js",
   "test/desktop-header-center.test.js",
   "test/desktop-screener-dashboard-overhaul.test.js",
   "test/device-block-regression.test.js",
@@ -322,7 +321,6 @@
   "test/log-endpoint-identity.test.js",
   "test/login-localstorage-resilience.test.js",
   "test/login-password-toggle.test.js",
-  "test/macro-deepscan-and-money-management.test.js",
   "test/maintenance-and-hidden-resilience.test.js",
   "test/maintenance-gate.test.js",
   "test/major-zone-volume-profile.test.js",
@@ -572,5 +570,6 @@
   "test/workspace-detail.test.js",
   "test/viewport-runtime.test.js",
   "test/static-assets.test.js",
-  "test/workspace-access-visibility.test.js"
+  "test/workspace-access-visibility.test.js",
+  "test/money-management-and-group-bot-regression.test.js"
 ]

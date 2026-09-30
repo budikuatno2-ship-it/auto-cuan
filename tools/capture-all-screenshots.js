@@ -279,12 +279,6 @@ async function run() {
     });
     await takeShot('24-tab-trackrecord.png', 'Tab Track Record');
 
-    // 25. Tab Macro DeepScan
-    await page.evaluate(() => {
-      navigateTo('deepscan');
-    });
-    await takeShot('25-tab-deepscan.png', 'Tab Macro DeepScan');
-
     // 26. Tab Kelola Keuangan
     await page.evaluate(() => {
       navigateTo('money-management');

@@ -74,10 +74,6 @@ if (!indexHtml.includes('data-sidebar-page="bandarmologi"')) {
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
             <span class="sidebar-label">Track Record</span>
         </button>
-        <button type="button" onclick="navigateTo('deepscan')" class="sidebar-item hidden" data-sidebar-page="deepscan" data-label="Macro DeepScan" data-premium-nav="true" title="Macro DeepScan">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            <span class="sidebar-label">Macro DeepScan</span>
-        </button>
         <button type="button" onclick="navigateTo('money-management')" class="sidebar-item hidden" data-sidebar-page="money-management" data-label="Kelola Keuangan" data-premium-nav="true" title="Kelola Keuangan">
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <span class="sidebar-label">Kelola Keuangan</span>

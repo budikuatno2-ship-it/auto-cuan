@@ -422,7 +422,6 @@ const ROUTE_REWRITES = {
   // so the rewrite must exist for both the dev server and the VPS fallback.
   '/portfolio-command-center': '/portfolio-command-center.html',
   '/portfolio-planner': '/portfolio-command-center-v2.html',
-  '/deepscan': '/index.html',
   '/kelola-keuangan': '/index.html',
   '/money-management': '/index.html',
   // Public BYOK registration form (mirrors the Vercel rewrite so the VPS
