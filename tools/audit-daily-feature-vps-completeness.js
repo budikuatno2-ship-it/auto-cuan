@@ -8,6 +8,9 @@ const fcaTransition = require('../lib/fca-transition-2026');
 const contextBuilder = require('../lib/daily-market-context-builder');
 const historyStore = require('../lib/stock-daily-history-store');
 const dailyCollector = require('../lib/daily-history-collector');
+const { HISTORY_RETENTION_TRADING_SESSIONS } = require('../lib/daily-market-context-constants');
+
+const EXPECTED_ELIGIBLE_UNIVERSE = 800;
 
 const ROOT = path.resolve(__dirname, '..');
 const DAILY_CANDLES_DIR = process.env.AUTO_CUAN_DAILY_CANDLES_DIR ||
@@ -24,11 +27,21 @@ async function loadEligibleUniverse(store) {
     .limit(2000);
   if (result.error) throw new Error('Load stock_boards VPS gagal: ' + result.error.message);
 
-  return (result.data || [])
-    .filter((row) => fcaTransition.isEligibleContinuousAuctionRow(row))
-    .map((row) => cleanTicker(row.ticker))
-    .filter(Boolean)
-    .sort();
+  const eligible = Array.from(new Set(
+    (result.data || [])
+      .filter((row) => fcaTransition.isEligibleContinuousAuctionRow(row))
+      .map((row) => cleanTicker(row.ticker))
+      .filter(Boolean)
+  )).sort();
+
+  if (eligible.length !== EXPECTED_ELIGIBLE_UNIVERSE) {
+    throw new Error(
+      'Eligible scanner universe contract mismatch: expected=' +
+      EXPECTED_ELIGIBLE_UNIVERSE + ' actual=' + eligible.length
+    );
+  }
+
+  return eligible;
 }
 
 function normalizeCanonicalCandles(payload) {
@@ -310,7 +323,9 @@ async function repairFromLocalHistory(store, summary) {
     return { attempted: 0, built: 0, upserted: 0, skipped_no_history: [] };
   }
 
-  const built = await contextBuilder.buildFeatureSnapshotsForTickers(store, tickers, {});
+  const built = await contextBuilder.buildFeatureSnapshotsForTickers(store, tickers, {
+    historySessions: HISTORY_RETENTION_TRADING_SESSIONS
+  });
   const upserted = await historyStore.upsertDailyFeatures(store, built.rows);
 
   return {
@@ -424,6 +439,7 @@ if (require.main === module) {
 
 module.exports = {
   cleanTicker,
+  EXPECTED_ELIGIBLE_UNIVERSE,
   loadEligibleUniverse,
   normalizeCanonicalCandles,
   readCanonicalArchiveCandles,
