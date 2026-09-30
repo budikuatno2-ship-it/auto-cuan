@@ -22,7 +22,7 @@
  * - Does NOT print secrets
  */
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('../lib/hybrid-supabase-client');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
