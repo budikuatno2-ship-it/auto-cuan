@@ -106,3 +106,74 @@ test('CSV free-float percent normalization is complete and still range-validated
     'BAD,101%,idx_verified,2026-09-30'
   ].join('\n')), /free_float_pct tidak valid/);
 });
+
+test('market structure import rejects tickers outside the eligible universe', () => {
+  assert.equal(marketImport.validateRowsAgainstUniverse([{ ticker: 'BBCA' }], ['BBCA', 'BBRI']), true);
+  assert.throws(
+    () => marketImport.validateRowsAgainstUniverse([{ ticker: 'FCA1' }], ['BBCA', 'BBRI']),
+    /di luar universe continuous-auction/
+  );
+});
+
+test('market structure import rejects stale snapshots', () => {
+  assert.throws(() => marketImport.mergeMarketStructureRows(
+    [{
+      ticker: 'BBCA',
+      free_float_pct: 42,
+      free_float_source: 'idx_new',
+      free_float_as_of: '2026-09-30'
+    }],
+    [{
+      ticker: 'BBCA',
+      free_float_pct: 41,
+      free_float_source: 'idx_old',
+      free_float_as_of: '2026-09-01',
+      hsc_flag: null,
+      updated_at: '2026-09-30T00:00:00.000Z'
+    }]
+  ), /lebih lama/);
+});
+
+test('market structure import rejects conflicting same-date snapshots', () => {
+  assert.throws(() => marketImport.mergeMarketStructureRows(
+    [{
+      ticker: 'BBCA',
+      hsc_flag: false,
+      hsc_source: 'idx_hsc',
+      hsc_as_of: '2026-09-30'
+    }],
+    [{
+      ticker: 'BBCA',
+      hsc_flag: true,
+      hsc_source: 'idx_hsc',
+      hsc_as_of: '2026-09-30',
+      updated_at: '2026-09-30T00:00:00.000Z'
+    }]
+  ), /Konflik snapshot HSC/);
+});
+
+test('market structure import preserves the other metric on partial updates', () => {
+  const merged = marketImport.mergeMarketStructureRows(
+    [{
+      ticker: 'BBCA',
+      free_float_pct: 42,
+      free_float_source: 'idx_ff',
+      free_float_as_of: '2026-09-01',
+      hsc_flag: false,
+      hsc_source: 'idx_hsc',
+      hsc_as_of: '2026-09-01'
+    }],
+    [{
+      ticker: 'BBCA',
+      free_float_pct: 43,
+      free_float_source: 'idx_ff_new',
+      free_float_as_of: '2026-09-30',
+      hsc_flag: null,
+      updated_at: '2026-09-30T00:00:00.000Z'
+    }]
+  );
+
+  assert.equal(merged[0].free_float_pct, 43);
+  assert.equal(merged[0].hsc_flag, false);
+  assert.equal(merged[0].hsc_as_of, '2026-09-01');
+});
