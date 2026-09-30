@@ -44,3 +44,28 @@ test('Finance month navigation is cancelable and failed loads preserve the last 
   assert.match(finance, /month = previous\.month/);
   assert.match(finance, /Data sebelumnya dipertahankan/);
 });
+
+test('Finance tracks last successfully loaded month separately from in-flight selection', () => {
+  assert.match(finance, /loadedMonth = null/);
+  assert.match(finance, /month: loadedMonth \|\| month/);
+  assert.match(finance, /const requestMonth = nextMonth/);
+  assert.match(finance, /loadedMonth = requestMonth/);
+  assert.match(finance, /loadedMonth = previous\.month/);
+});
+
+test('Portfolio hydration preserves local edits made while cloud load is in flight', () => {
+  const sync = read('public/portfolio-supabase-sync.js');
+  assert.match(sync, /bootstrapSerialized = JSON\.stringify\(bootstrap\)/);
+  assert.match(sync, /changedDuringHydrate = currentSerialized !== bootstrapSerialized/);
+  assert.match(sync, /setStatus\('pending', 'Perubahan lokal menunggu sinkronisasi'\)/);
+  assert.match(sync, /scheduleSave\(\)/);
+});
+
+test('Portfolio change events mark pending immediately and successful save re-notifies Finance', () => {
+  const sync = read('public/portfolio-supabase-sync.js');
+  assert.match(sync, /addEventListener\('autocuan:portfolio-changed'/);
+  assert.match(sync, /dirty = true/);
+  assert.match(sync, /autocuan:portfolio-synced/);
+  assert.match(finance, /addEventListener\('autocuan:portfolio-synced'/);
+  assert.match(finance, /\['pending','saving','local-fallback','conflict'\]/);
+});
