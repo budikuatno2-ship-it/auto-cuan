@@ -965,3 +965,282 @@ html.light *::-webkit-scrollbar-thumb:hover {
     border-radius: 0 !important;
   }
 }
+
+
+/* ==========================================================================
+   ACCOUNT CENTER + SYSTEM STATES + MOBILE FINISHING
+   ========================================================================== */
+
+html.light #acAccountCenter {
+  background: rgba(23,33,30,.28) !important;
+  backdrop-filter: blur(10px) saturate(1.02) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.02) !important;
+}
+
+html.light #acAccountCenter .ac-center-shell {
+  color-scheme: light;
+  color: #17211e;
+  background:
+    radial-gradient(circle at 92% -12%, rgba(15,116,88,.07), transparent 32%),
+    #f8faf9 !important;
+  border-color: rgba(18,35,29,.11) !important;
+  border-radius: 22px !important;
+  box-shadow: 0 28px 80px rgba(18,35,29,.18), inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+
+html.light #acAccountCenter .ac-center-head {
+  border-bottom: 0;
+}
+
+html.light #acAccountCenter .ac-center-avatar {
+  background: #17211e !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  border-radius: 14px !important;
+}
+
+html.light #acAccountCenter :is(.ac-center-title,.ac-section-title,.ac-big-name,.ac-plan-name,.ac-plan-price) {
+  color: #17211e !important;
+}
+
+html.light #acAccountCenter :is(.ac-center-subtitle,.ac-muted,.ac-label,.ac-section-kicker,.ac-terms-footer) {
+  color: #6a7771 !important;
+}
+
+html.light #acAccountCenter .ac-center-eyebrow {
+  color: #0f7458 !important;
+}
+
+html.light #acAccountCenter .ac-center-close {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.11) !important;
+  color: #6a7771 !important;
+}
+
+html.light #acAccountCenter .ac-center-close:hover {
+  background: #f1f4f2 !important;
+  border-color: rgba(18,35,29,.18) !important;
+  color: #17211e !important;
+}
+
+html.light #acAccountCenter .ac-center-tabs {
+  border-bottom-color: rgba(18,35,29,.08) !important;
+}
+
+html.light #acAccountCenter .ac-center-tab {
+  color: #66736d !important;
+  border-radius: 999px !important;
+}
+
+html.light #acAccountCenter .ac-center-tab:hover {
+  color: #17211e !important;
+  background: #eef2f0 !important;
+}
+
+html.light #acAccountCenter .ac-center-tab[aria-selected="true"] {
+  color: #ffffff !important;
+  background: #17211e !important;
+  border-color: #17211e !important;
+  box-shadow: none !important;
+}
+
+html.light #acAccountCenter .ac-card,
+html.light #acAccountCenter .ac-term-section,
+html.light #acAccountCenter .ac-plan,
+html.light #acAccountCenter .ac-terms-intro {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.10) !important;
+  box-shadow: 0 1px 2px rgba(18,35,29,.035), 0 8px 20px rgba(18,35,29,.035) !important;
+}
+
+html.light #acAccountCenter .ac-card-accent {
+  background:
+    radial-gradient(circle at 100% 0, rgba(15,116,88,.06), transparent 34%),
+    #ffffff !important;
+  border-color: rgba(15,116,88,.16) !important;
+}
+
+html.light #acAccountCenter .ac-facts {
+  background: rgba(18,35,29,.06) !important;
+  border-color: rgba(18,35,29,.08) !important;
+}
+
+html.light #acAccountCenter .ac-fact {
+  background: #fbfcfb !important;
+}
+
+html.light #acAccountCenter .ac-fact dt {
+  color: #75817c !important;
+}
+
+html.light #acAccountCenter .ac-fact dd {
+  color: #26322e !important;
+}
+
+html.light #acAccountCenter :is(.ac-input,.ac-select) {
+  background: #fbfcfb !important;
+  color: #17211e !important;
+  border-color: rgba(18,35,29,.14) !important;
+}
+
+html.light #acAccountCenter :is(.ac-input,.ac-select):focus {
+  border-color: rgba(15,116,88,.42) !important;
+  box-shadow: 0 0 0 3px rgba(15,116,88,.09) !important;
+}
+
+html.light #acAccountCenter .ac-btn {
+  background: #ffffff !important;
+  color: #26322e !important;
+  border-color: rgba(18,35,29,.12) !important;
+}
+
+html.light #acAccountCenter .ac-btn:hover {
+  background: #f3f6f4 !important;
+  border-color: rgba(15,116,88,.20) !important;
+}
+
+html.light #acAccountCenter .ac-btn-primary {
+  background: #17211e !important;
+  color: #ffffff !important;
+  border-color: #17211e !important;
+}
+
+html.light #acAccountCenter .ac-chip {
+  background: #f3f6f4 !important;
+  border-color: rgba(18,35,29,.11) !important;
+  color: #5e6b65 !important;
+}
+
+html.light #acAccountCenter .ac-chip-ok {
+  background: rgba(15,116,88,.08) !important;
+  border-color: rgba(15,116,88,.17) !important;
+  color: #0f7458 !important;
+}
+
+html.light #acAccountCenter .ac-chip-warn {
+  background: rgba(169,109,19,.08) !important;
+  border-color: rgba(169,109,19,.18) !important;
+  color: #8c5a12 !important;
+}
+
+html.light #acAccountCenter .ac-loading {
+  color: #68756f !important;
+}
+
+html.light #acAccountCenter .ac-loading::before {
+  border-color: rgba(18,35,29,.12) !important;
+  border-top-color: #0f7458 !important;
+}
+
+html.light #acAccountCenter .ac-empty {
+  color: #68756f !important;
+}
+
+html.light #acAccountCenter .ac-callout {
+  background: #f6f8f7 !important;
+  border-color: rgba(18,35,29,.10) !important;
+  color: #66736d !important;
+}
+
+html.light #acAccountCenter .ac-callout-success {
+  background: rgba(15,116,88,.07) !important;
+  border-color: rgba(15,116,88,.16) !important;
+  color: #0f7458 !important;
+}
+
+html.light #acAccountCenter .ac-callout-warning {
+  background: rgba(169,109,19,.07) !important;
+  border-color: rgba(169,109,19,.16) !important;
+  color: #8c5a12 !important;
+}
+
+html.light #acAccountCenter .ac-term-section :is(h3,p,li) {
+  color: #52605b !important;
+}
+
+html.light #acAccountCenter .ac-term-section h3 {
+  color: #17211e !important;
+}
+
+/* Generic non-destructive state language. These selectors deliberately target
+   existing classes and do not alter runtime control flow. */
+html.light :is(
+  .ac-empty,
+  .empty-state,
+  .data-empty,
+  .ranking-empty,
+  .watchlist-empty
+) {
+  color: #6f7c76 !important;
+}
+
+html.light :is(
+  .error-state,
+  .data-error,
+  .loading-error,
+  [data-state="error"]
+) {
+  color: #b83847 !important;
+}
+
+html.light :is(
+  .stale-state,
+  .data-stale,
+  [data-state="stale"]
+) {
+  color: #8c5a12 !important;
+}
+
+/* Mobile: app-like sheet behavior and stable touch targets. */
+@media (max-width: 760px) {
+  html.light #acAccountCenter {
+    padding: 0 !important;
+    place-items: end center !important;
+    background: rgba(23,33,30,.34) !important;
+  }
+
+  html.light #acAccountCenter .ac-center-shell {
+    width: 100% !important;
+    max-height: 94dvh !important;
+    border-radius: 22px 22px 0 0 !important;
+    border-bottom: 0 !important;
+    box-shadow: 0 -18px 58px rgba(18,35,29,.16) !important;
+  }
+
+  html.light #acAccountCenter .ac-center-head {
+    padding-top: max(18px, env(safe-area-inset-top)) !important;
+  }
+
+  html.light #acAccountCenter .ac-center-tabs {
+    scroll-snap-type: x proximity;
+  }
+
+  html.light #acAccountCenter .ac-center-tab {
+    min-height: 42px;
+    scroll-snap-align: start;
+  }
+
+  html.light #acAccountCenter .ac-center-body {
+    padding-bottom: max(22px, env(safe-area-inset-bottom)) !important;
+  }
+
+  :is(button,a,[role="button"],summary) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .page-content {
+    overflow-x: clip;
+  }
+}
+
+/* Small-height devices: keep actions reachable when browser chrome is large. */
+@media (max-height: 620px) and (max-width: 900px) {
+  html.light #acAccountCenter .ac-center-shell {
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  html.light #landingPage .landing-hero {
+    min-height: auto !important;
+  }
+}
