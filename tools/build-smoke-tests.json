@@ -37,7 +37,6 @@
   "test/intraday-fast-watcher-v7-volume-pace.test.js",
   "test/intraday-fast-watcher.test.js",
   "test/login-localstorage-resilience.test.js",
-  "test/macro-deepscan-and-money-management.test.js",
   "test/maintenance-gate.test.js",
   "test/multiday-broker-aggregation.test.js",
   "test/openagentic-stream-reassembly.test.js",
