@@ -29,7 +29,13 @@ const ROOT = path.resolve(__dirname, '..');
 
 // Expected PM2 apps (must match ecosystem.config.js). Kept explicit so a renamed
 // or dropped app is a preflight failure, not a silent surprise at deploy time.
-const EXPECTED_APPS = ['auto-cuan-vps-api', 'auto-cuan-ai-eval-supervisor'];
+const EXPECTED_APPS = [
+  'autocuan-web',
+  'auto-cuan-vps-api',
+  'autocuan-bot',
+  'autocuan-web-tunnel',
+  'autocuan-verify-bot'
+];
 
 // Env files the VPS deploy expects. Optional-by-design ones are omitted here.
 const REQUIRED_ENV_FILES = []; // .env files are provisioned out-of-band; not repo-tracked.

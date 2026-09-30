@@ -421,8 +421,7 @@ test('vps status is admin-only and group cards expire after 60 seconds', async (
         cpuLoad: 0.42,
         processes: [
           { name: 'autocuan-bot', status: 'online' },
-          { name: 'vps-api-server', status: 'online' },
-          { name: 'ai-eval-once-supervisor', status: 'online' }
+          { name: 'vps-api-server', status: 'online' }
         ],
         wibTime: '2026-09-25 08:39 WIB'
       };
@@ -441,6 +440,7 @@ test('vps status is admin-only and group cards expire after 60 seconds', async (
   assert.match(admin.sent[0].text, /Uptime: 1j 1m/);
   assert.match(admin.sent[0].text, /RAM: 512 \/ 2048 MB/);
   assert.match(admin.sent[0].text, /autocuan-bot: online/);
+  assert.doesNotMatch(admin.sent[0].text, /ai-eval-once-supervisor/);
   assert.match(admin.sent[0].text, /08:39 WIB/);
   await new Promise((resolve) => setTimeout(resolve, 50));
   assert.deepEqual(admin.deleted, [1]);

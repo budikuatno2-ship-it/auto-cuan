@@ -36,7 +36,6 @@ const byName = (name) => APPS.find((a) => a.name === name);
 const REQUIRED_DAEMONS = [
   'autocuan-web',                // Web dashboard origin (port 3000 / standalone Next.js)
   'auto-cuan-vps-api',           // Express API bridge (port 3001)
-  'auto-cuan-ai-eval-supervisor', // AI evaluator runner
   'autocuan-bot',                // Telegram interactive bot
   'autocuan-web-tunnel',         // public HTTPS origin (cloudflared supervisor)
   'autocuan-verify-bot'          // @AutoCuanVerificationBot long-polling
@@ -88,12 +87,6 @@ test('Batch 12: apps auto-restart and use single-fork mode', () => {
   }
 });
 
-test('Batch 12: supervisor kill_timeout allows child SIGTERM before force-kill', () => {
-  const supervisor = byName('auto-cuan-ai-eval-supervisor');
-  assert.ok(supervisor.kill_timeout >= 30000,
-    'supervisor kill_timeout must give the child enough time to stop (got ' + supervisor.kill_timeout + 'ms)');
-});
-
 test('Batch 12: apps pin production env and Jakarta timezone', () => {
   for (const app of APPS) {
     assert.equal(app.env.NODE_ENV, 'production', app.name + ' NODE_ENV');
@@ -112,4 +105,9 @@ test('DayTrade production daemon uses bounded dual-worker pacing', () => {
   assert.equal(web.env.DAYTRADE_FETCH_CONCURRENCY, '2');
   assert.equal(web.env.DAYTRADE_FETCH_DELAY_MS, '200');
   assert.equal(web.max_memory_restart, '1G');
+});
+
+test('AI eval supervisor is not a default production daemon', () => {
+  assert.equal(byName('auto-cuan-ai-eval-supervisor'), undefined,
+    'one-time AI eval supervisor must not poll Supabase as a default long-lived daemon');
 });
