@@ -59,6 +59,66 @@ test('existing dataset adapter maps free float and HSC statuses conservatively',
   assert.equal(byTicker.get('CCC').hsc_source, null);
 });
 
+test('existing dataset adapter accepts canonical active/revoked HSC buckets', () => {
+  const market = {
+    stocks: [
+      { ticker: 'AAA', ownership: { as_of: '2026-08-31', derived_free_float_pct: 21 } },
+      { ticker: 'BBB', ownership: { as_of: '2026-08-31', derived_free_float_pct: 18 } },
+      { ticker: 'LUCY', ownership: { as_of: '2026-08-31', derived_free_float_pct: 14 } }
+    ]
+  };
+  const hsc = {
+    active_count: 2,
+    revoked_count: 1,
+    active: [
+      {
+        ticker: 'AAA',
+        hsc_2026_status: 'ACTIVE',
+        events: [
+          { event_type: 'HSC', event_date: '2026-04-10' },
+          { event_type: 'HSC', event_date: '2026-09-22' }
+        ]
+      },
+      {
+        ticker: 'BBB',
+        official_status: 'ACTIVE',
+        last_event: { event_date: '2026-08-15' }
+      }
+    ],
+    revoked: [
+      {
+        ticker: 'LUCY',
+        hsc_2026_status: 'REVOKED',
+        events: [{ event_type: 'HSC_REVOKED', event_date: '2026-07-02' }]
+      }
+    ]
+  };
+
+  const out = sync.buildExistingMarketStructureRows(market, hsc, ['AAA','BBB','LUCY']);
+  const byTicker = new Map(out.rows.map((row) => [row.ticker, row]));
+
+  assert.equal(out.summary.hsc_dataset_count, 3);
+  assert.equal(out.summary.hsc_active_in_universe, 2);
+  assert.equal(out.summary.hsc_revoked_in_universe, 1);
+  assert.equal(byTicker.get('AAA').hsc_flag, true);
+  assert.equal(byTicker.get('AAA').hsc_as_of, '2026-09-22');
+  assert.equal(byTicker.get('LUCY').hsc_flag, false);
+  assert.equal(byTicker.get('LUCY').hsc_as_of, '2026-07-02');
+});
+
+test('existing dataset adapter rejects a status that contradicts its HSC bucket', () => {
+  assert.throws(() => sync.normalizeHscDataset({
+    active: [
+      {
+        ticker: 'BAD',
+        hsc_2026_status: 'REVOKED',
+        last_event: { event_date: '2026-09-01' }
+      }
+    ],
+    revoked: []
+  }), /tidak cocok dengan bucket/);
+});
+
 test('existing dataset adapter reports missing free float without fabricating it', () => {
   const market = {
     stocks: [
