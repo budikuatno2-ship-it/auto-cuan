@@ -105,3 +105,10 @@ test('Batch 12: package.json exposes pm2 start & zero-downtime reload scripts', 
   assert.match(pkg.scripts['pm2:start'], /pm2 start ecosystem\.config\.js/);
   assert.match(pkg.scripts['pm2:reload'], /pm2 reload ecosystem\.config\.js/);
 });
+
+
+test('DayTrade production daemon uses the bounded 120ms sequential pacing override', () => {
+  const web = byName('autocuan-web');
+  assert.equal(web.env.DAYTRADE_FETCH_DELAY_MS, '120');
+  assert.equal(web.max_memory_restart, '1G');
+});

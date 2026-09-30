@@ -188,3 +188,27 @@ test('a fresh Yahoo series still wins over the cache when the provider is health
     assert.equal(candles[19].close, 205, 'live Yahoo data must take precedence over the cached closes');
   });
 });
+
+
+test('DayTrade fetch pacing keeps conservative defaults and accepts bounded VPS override', () => {
+  const previous = process.env.DAYTRADE_FETCH_DELAY_MS;
+  try {
+    delete process.env.DAYTRADE_FETCH_DELAY_MS;
+    assert.equal(engine.resolveDayTradeFetchDelayMs({}), 200);
+    assert.equal(engine.resolveDayTradeFetchDelayMs({ fastMode: true }), 180);
+
+    process.env.DAYTRADE_FETCH_DELAY_MS = '120';
+    assert.equal(engine.resolveDayTradeFetchDelayMs({}), 120);
+    assert.equal(engine.resolveDayTradeFetchDelayMs({ fastMode: true }), 120);
+
+    process.env.DAYTRADE_FETCH_DELAY_MS = '10';
+    assert.equal(engine.resolveDayTradeFetchDelayMs({}), 80, 'override must keep a hard minimum');
+    process.env.DAYTRADE_FETCH_DELAY_MS = '5000';
+    assert.equal(engine.resolveDayTradeFetchDelayMs({}), 1000, 'override must keep a hard maximum');
+
+    assert.equal(engine.resolveDayTradeFetchDelayMs({ fetchDelayMs: 140 }), 140, 'explicit option wins over env');
+  } finally {
+    if (previous == null) delete process.env.DAYTRADE_FETCH_DELAY_MS;
+    else process.env.DAYTRADE_FETCH_DELAY_MS = previous;
+  }
+});
