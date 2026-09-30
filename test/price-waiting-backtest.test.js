@@ -277,3 +277,14 @@ test('historical replay exports an explicit neutral confluence sentinel', () => 
   assert.equal(waiting.NEUTRAL_HISTORICAL_CONFLUENCE.confluence_penalty, 0);
   assert.equal(waiting.NEUTRAL_HISTORICAL_CONFLUENCE.confluence_flag, 'NETRAL_HISTORICAL_REPLAY');
 });
+
+test('post-split hygiene detects only split events inside the configured lookback', () => {
+  const rows = Array.from({ length: 260 }, (_, i) => candle(
+    '2026-01-' + String((i % 28) + 1).padStart(2, '0'),
+    100, 102, 98, 101
+  ));
+  rows[40].split_event = true;
+  assert.equal(waiting.hasRecentSplitEvent(rows, 100, 50), false);
+  assert.equal(waiting.hasRecentSplitEvent(rows, 100, 100), true);
+  assert.equal(waiting.hasRecentSplitEvent(rows, 250, 200), false);
+});
