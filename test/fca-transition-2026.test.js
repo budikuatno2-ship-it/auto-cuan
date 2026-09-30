@@ -42,6 +42,16 @@ test('verified active FCA exit bypasses stale board metadata but not explicit su
     }),
     'restricted_board_or_status'
   );
+
+  assert.equal(
+    daytrade.dayTradeEligibilityReason({
+      ticker: 'PBRX',
+      board: 'PEMANTAUAN_KHUSUS',
+      is_fca: true,
+      board_status: 'SUSPENDED'
+    }),
+    'restricted_board_or_status'
+  );
 });
 
 test('suspended FCA exit is fail-closed until current board metadata proves reactivation', () => {
@@ -86,6 +96,7 @@ test('ordinary board rules remain unchanged', () => {
 test('transition helper admits active exits and auto-reenters suspended exits from current board metadata', () => {
   assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'PACK', board: 'AKSELERASI', is_active: true }), true);
   assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'WIKA', board: 'PEMANTAUAN_KHUSUS', is_active: true, is_fca: true }), false);
+  assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'WIKA', board: 'PENGEMBANGAN', is_active: true }), false);
   assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'WIKA', board: 'PENGEMBANGAN', is_active: true, is_fca: false }), true);
   assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'WIKA', board: 'PENGEMBANGAN', is_active: true, is_fca: false, note: 'trading suspended' }), false);
   assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'BBCA', board: 'UTAMA', is_active: true }), true);
