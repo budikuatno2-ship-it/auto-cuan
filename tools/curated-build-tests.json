@@ -180,6 +180,7 @@
   "test/daily-market-context-api.test.js",
   "test/daily-market-context-builder.test.js",
   "test/daily-market-context-collector-runtime-bugfix.test.js",
+  "test/daily-feature-vps-completeness.test.js",
   "test/daily-market-context-endpoint.test.js",
   "test/daily-market-context-user-visible-fields.test.js",
   "test/daily-pbv.test.js",
