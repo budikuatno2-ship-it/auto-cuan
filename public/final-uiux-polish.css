@@ -1413,3 +1413,329 @@ html.light .ac-nav-icon {
     max-width: calc(100vw - 24px);
   }
 }
+
+
+/* ==========================================================================
+   SCREENER / WATCHLIST / SECTOR HOT / TRACK RECORD
+   ========================================================================== */
+
+#page-screener,
+#page-watchlist,
+#page-sektor,
+#page-trackrecord {
+  max-width: 1320px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Shared page headings */
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) :is(
+  .page-title,
+  h1,
+  h2,
+  h3,
+  h4,
+  .text-white,
+  .text-gray-100,
+  .text-gray-200
+) {
+  color: #17211e !important;
+}
+
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) :is(
+  .page-subtitle,
+  .text-gray-300,
+  .text-gray-400,
+  .text-gray-500,
+  .text-gray-600
+) {
+  color: #68756f !important;
+}
+
+/* Normalize legacy dark utility surfaces only inside these four pages. */
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) [class*="bg-dark-"] {
+  background-color: #ffffff !important;
+}
+
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) [class*="border-dark-"] {
+  border-color: rgba(18,35,29,.10) !important;
+}
+
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) :is(
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea
+) {
+  background: #fbfcfb !important;
+  color: #17211e !important;
+  border-color: rgba(18,35,29,.14) !important;
+}
+
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) :is(
+  input,
+  textarea
+)::placeholder {
+  color: #8a9691 !important;
+}
+
+/* Screener --------------------------------------------------------------- */
+html.light #page-screener .page-header {
+  margin-bottom: 18px !important;
+}
+
+html.light #page-screener .ac-segmented {
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px !important;
+  background: #eef2f0 !important;
+  border: 1px solid rgba(18,35,29,.08) !important;
+  border-radius: 11px !important;
+}
+
+html.light #page-screener .ac-segment {
+  color: #5f6d67 !important;
+  border-radius: 8px !important;
+}
+
+html.light #page-screener .ac-segment:hover {
+  color: #17211e !important;
+  background: rgba(255,255,255,.68) !important;
+}
+
+html.light #page-screener .ac-segment.is-active,
+html.light #page-screener .ac-segment[aria-pressed="true"] {
+  color: #ffffff !important;
+  background: #17211e !important;
+  box-shadow: 0 4px 12px rgba(18,35,29,.10) !important;
+}
+
+html.light #page-screener #patternFilterContainer,
+html.light #page-screener .scr-filter-grid {
+  background: #f8faf9 !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: none !important;
+}
+
+html.light #page-screener .scr-info-bar {
+  background: #f8faf9 !important;
+  border: 1px solid rgba(18,35,29,.08) !important;
+  color: #68756f !important;
+}
+
+html.light #page-screener .scr-info-bar strong {
+  color: #34413c !important;
+}
+
+html.light #page-screener #screenerStats > div,
+html.light #page-screener #nkScreenerStats > div,
+html.light #page-screener #dtScreenerStats > div {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: 0 1px 2px rgba(18,35,29,.025) !important;
+}
+
+html.light #page-screener :is(.screener-tab,.nk-screener-tab,.dt-screener-tab) {
+  color: #67746e !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+}
+
+html.light #page-screener :is(.screener-tab,.nk-screener-tab,.dt-screener-tab):hover {
+  color: #17211e !important;
+  background: #f3f6f4 !important;
+  border-color: rgba(18,35,29,.08) !important;
+}
+
+html.light #page-screener :is(.screener-tab,.nk-screener-tab,.dt-screener-tab).active {
+  color: #ffffff !important;
+  background: #17211e !important;
+  border-color: #17211e !important;
+}
+
+html.light #page-screener :is(
+  #screenerTableWrap,
+  #nkScreenerTableWrap,
+  #dtScreenerTableWrap
+) {
+  border: 1px solid rgba(18,35,29,.09) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: var(--ac-shadow-1);
+}
+
+/* Watchlist --------------------------------------------------------------- */
+html.light #page-watchlist .dashboard-hero {
+  background:
+    linear-gradient(110deg, rgba(169,109,19,.045), transparent 32%),
+    #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+}
+
+html.light #page-watchlist > .grid > div {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: var(--ac-shadow-1);
+}
+
+html.light #page-watchlist #watchlistList > *,
+html.light #page-watchlist #watchlistCards > * {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: 0 1px 2px rgba(18,35,29,.035) !important;
+}
+
+html.light #page-watchlist #watchlistList > *:hover,
+html.light #page-watchlist #watchlistCards > *:hover {
+  border-color: rgba(15,116,88,.18) !important;
+  box-shadow: var(--ac-shadow-1) !important;
+}
+
+/* Sector Hot -------------------------------------------------------------- */
+html.light #page-sektor #sektorListView > div:first-child {
+  padding: 2px 0 4px;
+}
+
+html.light #page-sektor #sektorGroupsGrid > * {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: var(--ac-shadow-1) !important;
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+@media (hover:hover) {
+  html.light #page-sektor #sektorGroupsGrid > *:hover {
+    transform: translateY(-1px);
+    border-color: rgba(15,116,88,.18) !important;
+    box-shadow: var(--ac-shadow-2) !important;
+  }
+}
+
+html.light #page-sektor #sektorDetailTable {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: var(--ac-shadow-1);
+}
+
+html.light #page-sektor #sektorStaleWarn {
+  color: #8c5a12 !important;
+}
+
+/* Track Record ------------------------------------------------------------ */
+html.light #page-trackrecord .dashboard-hero {
+  background:
+    linear-gradient(110deg, rgba(15,116,88,.05), transparent 36%),
+    #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+}
+
+html.light #page-trackrecord > .flex.items-center.gap-2.border-b {
+  border-bottom-color: rgba(18,35,29,.09) !important;
+}
+
+html.light #page-trackrecord :is(#trViewTabTable,#trViewTabBacktest) {
+  border-radius: 9px !important;
+}
+
+html.light #page-trackrecord #trViewTabTable,
+html.light #page-trackrecord #trViewTabBacktest {
+  color: #65726c !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+html.light #page-trackrecord #trViewTabTable.bg-emerald-500\/20,
+html.light #page-trackrecord #trViewTabBacktest.bg-emerald-500\/20 {
+  color: #ffffff !important;
+  background: #17211e !important;
+  border-color: #17211e !important;
+}
+
+html.light #page-trackrecord :is(
+  #trackRecordSummaryGrid > div,
+  #trBacktestViewPanel .grid > div,
+  #trTableViewPanel > div[class*="bg-dark-"],
+  #trBacktestViewPanel > div[class*="bg-dark-"]
+) {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: var(--ac-shadow-1);
+}
+
+html.light #page-trackrecord :is(
+  #trTableWrap,
+  #trBacktestTradesWrap
+) {
+  background: #ffffff !important;
+  scrollbar-gutter: stable;
+}
+
+html.light #page-trackrecord canvas {
+  filter: saturate(.92) contrast(.99);
+}
+
+/* Shared data tables ------------------------------------------------------ */
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) thead tr,
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) thead th {
+  background: rgba(247,249,248,.97) !important;
+  color: #5f6d67 !important;
+  border-color: rgba(18,35,29,.09) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) tbody tr:hover {
+  background: #f6f8f7 !important;
+}
+
+/* Desktop density: use available width without turning rows into billboards. */
+@media (min-width: 1280px) {
+  #page-screener,
+  #page-watchlist,
+  #page-sektor,
+  #page-trackrecord {
+    max-width: 1400px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  #page-screener,
+  #page-watchlist,
+  #page-sektor,
+  #page-trackrecord {
+    padding-inline: 0 !important;
+  }
+
+  html.light #page-screener .ac-segmented {
+    width: 100%;
+  }
+
+  html.light #page-screener .ac-segment {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  html.light #page-trackrecord > .flex.items-center.gap-2.border-b {
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+
+  html.light #page-trackrecord > .flex.items-center.gap-2.border-b::-webkit-scrollbar {
+    display: none;
+  }
+
+  html.light #page-trackrecord :is(#trViewTabTable,#trViewTabBacktest) {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    min-height: 42px;
+  }
+}
