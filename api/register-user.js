@@ -98,7 +98,10 @@ module.exports = async function handler(req, res) {
     if (!rawEmail) {
       return res.status(400).json({ success: false, code: 'GMAIL_REQUIRED', error: 'Gmail wajib diisi untuk pendaftaran baru.' });
     }
-    if (rawEmail.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail) || !rawEmail.endsWith('@gmail.com')) {
+    const gmailLocal = rawEmail.endsWith('@gmail.com') ? rawEmail.slice(0, -10) : '';
+    const gmailValid = gmailLocal.length >= 1 && gmailLocal.length <= 64 &&
+      /^[a-z0-9]+(?:\.[a-z0-9]+)*$/.test(gmailLocal);
+    if (rawEmail.length > 100 || !gmailValid) {
       return res.status(400).json({ success: false, code: 'GMAIL_REQUIRED', error: 'Gunakan alamat Gmail yang valid (@gmail.com).' });
     }
     const cleanEmail = rawEmail;
@@ -173,7 +176,7 @@ module.exports = async function handler(req, res) {
       const { data: existingEmail, error: emailFindErr } = await supabase
         .from("app_users")
         .select("id")
-        .ilike("email", cleanEmail)
+        .eq("email", cleanEmail)
         .maybeSingle();
       if (emailFindErr) {
         console.error("register-user email find error:", emailFindErr);
