@@ -72,16 +72,24 @@ async function syncExistingDailyFeatureRows(store, sourceRows) {
   return historyStore.upsertDailyFeatures(store, updates);
 }
 
-async function upsertPreparedFundamentals(store, rows) {
-  let count = 0;
-  for (const batch of chunk(rows || [], CHUNK_SIZE)) {
-    const result = await store
-      .from('stock_fundamentals')
-      .upsert(batch, { onConflict: 'ticker' });
-    if (result.error) throw new Error('Upsert stock_fundamentals VPS gagal: ' + result.error.message);
-    count += batch.length;
-  }
-  return count;
+function prepareAndUpsertFundamentalsAtomic(store, incomingRows) {
+  const rows = Array.isArray(incomingRows) ? incomingRows : [];
+  if (!rows.length) return { rows: [], count: 0 };
+
+  return store.transaction(() => {
+    const tickerSet = new Set(rows.map((row) => String(row && row.ticker || '').trim().toUpperCase()).filter(Boolean));
+    const existing = store.readTable('stock_fundamentals')
+      .filter((row) => tickerSet.has(String(row && row.ticker || '').trim().toUpperCase()));
+
+    // Re-run stale/same-date conflict validation INSIDE the write transaction.
+    // This closes the read/validate/write race that existed when prepare and
+    // upsert were separate async steps.
+    const prepared = marketImport.mergeMarketStructureRows(existing, rows);
+    for (const row of prepared) {
+      store.writeRow('stock_fundamentals', row, ['ticker'], true);
+    }
+    return { rows: prepared, count: prepared.length };
+  });
 }
 
 async function main() {
@@ -153,22 +161,27 @@ async function main() {
     return;
   }
 
-  const fundamentalsCount = await upsertPreparedFundamentals(store, prepared);
-  const featureCount = await syncExistingDailyFeatureRows(store, built.rows);
+  const atomicWrite = prepareAndUpsertFundamentalsAtomic(store, built.rows);
+  const fundamentalsCount = atomicWrite.count;
+  // Refresh cached daily features from the MERGED rows so a partial incoming
+  // dataset never clears a metric preserved from existing fundamentals.
+  const featureCount = await syncExistingDailyFeatureRows(store, atomicWrite.rows);
 
   console.log('Fundamentals upserted to VPS: ' + fundamentalsCount);
   console.log('Daily feature rows refreshed on VPS: ' + featureCount);
   console.log('Sync complete. Run tools/audit-market-structure-coverage.js next.');
 }
 
-main().catch((error) => {
-  console.error('[sync-existing-market-structure] Error:', error && error.message || error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error('[sync-existing-market-structure] Error:', error && error.message || error);
+    process.exit(1);
+  });
+}
 
 module.exports = {
   loadEligibleUniverse,
   syncExistingDailyFeatureRows,
-  upsertPreparedFundamentals,
+  prepareAndUpsertFundamentalsAtomic,
   main
 };
