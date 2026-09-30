@@ -248,6 +248,7 @@
   "test/device-block-regression.test.js",
   "test/display-missing-vs-real-value.test.js",
   "test/enforce-retention-row-cap-regression.test.js",
+  "test/fca-92-konglo-ownership-audit.test.js",
   "test/fca-transition-2026.test.js",
   "test/fase1-admin-login-and-track-record.test.js",
   "test/fast-watcher-daily-context-flag.test.js",
