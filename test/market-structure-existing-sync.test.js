@@ -73,7 +73,7 @@ test('existing dataset adapter accepts canonical active/revoked HSC buckets', ()
     active: [
       {
         ticker: 'AAA',
-        hsc_2026_status: 'ACTIVE',
+        hsc_2026_status: 'IMPOSED',
         events: [
           { event_type: 'HSC', event_date: '2026-04-10' },
           { event_type: 'HSC', event_date: '2026-09-22' }
@@ -106,6 +106,24 @@ test('existing dataset adapter accepts canonical active/revoked HSC buckets', ()
   assert.equal(byTicker.get('LUCY').hsc_as_of, '2026-07-02');
 });
 
+test('existing dataset adapter normalizes IMPOSED as active HSC state', () => {
+  const rows = sync.normalizeHscDataset({
+    active: [
+      {
+        ticker: 'NICK',
+        status: 'IMPOSED',
+        last_event: { event_date: '2026-09-22' }
+      }
+    ],
+    revoked: []
+  });
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].ticker, 'NICK');
+  assert.equal(rows[0].official_status, 'ACTIVE');
+  assert.equal(rows[0].last_event.event_date, '2026-09-22');
+});
+
 test('existing dataset adapter rejects a status that contradicts its HSC bucket', () => {
   assert.throws(() => sync.normalizeHscDataset({
     active: [
@@ -117,6 +135,19 @@ test('existing dataset adapter rejects a status that contradicts its HSC bucket'
     ],
     revoked: []
   }), /tidak cocok dengan bucket/);
+});
+
+test('existing dataset adapter rejects unknown raw HSC statuses fail-closed', () => {
+  assert.throws(() => sync.normalizeHscDataset({
+    active: [
+      {
+        ticker: 'BAD',
+        status: 'SOMETHING_NEW',
+        last_event: { event_date: '2026-09-01' }
+      }
+    ],
+    revoked: []
+  }), /Status HSC tidak valid/);
 });
 
 test('existing dataset adapter reports missing free float without fabricating it', () => {
