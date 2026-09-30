@@ -1244,3 +1244,172 @@ html.light :is(
     min-height: auto !important;
   }
 }
+
+
+/* ==========================================================================
+   MOBILE NAV + RESPONSIVE APP FEEL
+   ========================================================================== */
+
+html.light .workspace-sidebar-toggle {
+  background: rgba(255,255,255,.92) !important;
+  border-color: rgba(18,35,29,.11) !important;
+  color: #26322e !important;
+  box-shadow: 0 8px 22px rgba(18,35,29,.08) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html.light .ac-launcher {
+  background: #17211e !important;
+  border-color: #17211e !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 28px rgba(18,35,29,.18) !important;
+}
+
+html.light .ac-launcher-ring {
+  border-color: rgba(255,255,255,.18) !important;
+}
+
+html.light .ac-navpanel-backdrop {
+  background: rgba(23,33,30,.24) !important;
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+html.light .ac-navpanel-card {
+  background: rgba(255,255,255,.97) !important;
+  border-color: rgba(18,35,29,.11) !important;
+  color: #17211e !important;
+  box-shadow: 0 18px 58px rgba(18,35,29,.16) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+html.light .ac-navpanel-title {
+  color: #17211e !important;
+}
+
+html.light .ac-navpanel-close {
+  color: #6d7974 !important;
+  background: #f4f7f5 !important;
+  border-color: rgba(18,35,29,.09) !important;
+}
+
+html.light .ac-navpanel-item {
+  color: #4f5e58 !important;
+  background: #f8faf9 !important;
+  border-color: rgba(18,35,29,.08) !important;
+}
+
+html.light .ac-navpanel-item:hover {
+  color: #17211e !important;
+  border-color: rgba(15,116,88,.18) !important;
+  background: #f1f5f3 !important;
+}
+
+html.light .ac-navpanel-item.active,
+html.light .ac-navpanel-item[aria-current="page"] {
+  background: #17211e !important;
+  border-color: #17211e !important;
+  color: #ffffff !important;
+}
+
+html.light .ac-nav-icon {
+  color: inherit !important;
+}
+
+/* Reduce unnecessary paint work on long offscreen sections without hiding
+   their intrinsic footprint or creating scroll jumps. */
+@supports (content-visibility: auto) {
+  #page-dashboard > section,
+  #page-sektor > section,
+  #page-watchlist > section,
+  #page-money-management > section,
+  #page-analisis .analisis-tab-panel:not(.active) {
+    contain-intrinsic-size: auto 520px;
+  }
+}
+
+/* Keep horizontal data scroll local to its surface. */
+:is(
+  .table-responsive,
+  .overflow-x-auto,
+  .ms-grid-viewport,
+  #rankingTableWrap,
+  #screenerTableWrap,
+  #nkScreenerTableWrap,
+  #dtScreenerTableWrap
+) {
+  overscroll-behavior-inline: contain;
+}
+
+/* Consistent tap feedback without global scale animation conflicts. */
+@media (pointer: coarse) {
+  button,
+  a,
+  [role="button"],
+  summary,
+  .sidebar-item,
+  .ac-navpanel-item {
+    touch-action: manipulation;
+  }
+
+  html.light :is(
+    button,
+    a,
+    [role="button"],
+    .sidebar-item,
+    .ac-navpanel-item
+  ):active {
+    transition-duration: var(--motion-instant) !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  #appContent {
+    width: 100%;
+  }
+
+  html.light .app-sidebar.mobile-open {
+    border-right-color: rgba(18,35,29,.12) !important;
+  }
+
+  html.light .app-sidebar.mobile-open .sidebar-nav {
+    overscroll-behavior: contain;
+  }
+
+  html.workspace-menu-open,
+  html.workspace-menu-open body {
+    overscroll-behavior: none;
+  }
+}
+
+@media (max-width: 600px) {
+  :root {
+    --ac-page-pad: 14px;
+  }
+
+  #appContent {
+    padding-inline: 14px;
+  }
+
+  .page-content {
+    padding-top: 10px !important;
+  }
+
+  html.light :is(.panel,.dashboard-card,.unified-card,.portfolio-card) {
+    border-radius: 12px !important;
+  }
+
+  html.light #page-dashboard .dashboard-hero {
+    border-radius: 14px !important;
+  }
+
+  html.light #page-dashboard .action-card {
+    min-height: 76px;
+  }
+
+  html.light .ac-navpanel-card {
+    max-width: calc(100vw - 24px);
+  }
+}
