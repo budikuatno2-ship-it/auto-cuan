@@ -86,7 +86,7 @@ async function test3_adminEmailLogin_deviceApprovalFlowBypass() {
       if (table === 'app_users') {
         return {
           select: () => ({
-            ilike: () => ({
+            eq: () => ({
               maybeSingle: async () => ({
                 data: {
                   id: '00000000-0000-0000-0000-000000000001',
