@@ -15761,6 +15761,7 @@ module.exports.__test = {
   candidateTelegramEligible: candidateTelegramEligible,
   candidatePassesMinUpside: candidatePassesMinUpside,
   formatCandidateBlock: formatCandidateBlock,
+  decorateRowsWithMarketStructure: decorateRowsWithMarketStructure,
   sanitizeTop5ResponseForAudience: sanitizeTop5ResponseForAudience,
   sanitizeTop5RowForPublic: sanitizeTop5RowForPublic,
   isTop5PreviewOrProvisionalRow: isTop5PreviewOrProvisionalRow,
