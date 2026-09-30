@@ -18,6 +18,7 @@ const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const acquisition = require('./acquire-pattern-abcd-data');
 const t1Policy = require('../lib/chart-t1-policy');
+const idxTradingCalendar = require('../lib/idx-trading-calendar');
 const context = require('../lib/deepscan-context');
 
 const DEFAULT_CONCURRENCY = 2;
@@ -176,6 +177,10 @@ async function main(argv) {
   const limit = Math.max(0, Number(args.limit) || 0);
   const from = context.FULL_HISTORY_START;
   const to = previousJakartaDate(new Date());
+  const seedHolidays = idxTradingCalendar.getSeedHolidaySet();
+  const requiredLatestCandleDate = idxTradingCalendar.isTradingDay(to, seedHolidays)
+    ? to
+    : idxTradingCalendar.previousTradingDay(to, seedHolidays, { maxLookback: 30 });
 
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -189,6 +194,24 @@ async function main(argv) {
   const startedAt = new Date().toISOString();
   let completed = 0;
   const results = await mapBounded(tickers, concurrency, async (ticker) => {
+    const existing = context.loadFullHistoryForTicker(rootDir, ticker, {
+      requiredThrough: to,
+      requiredLatestCandleDate
+    });
+    if (existing.complete) {
+      completed += 1;
+      if (completed % 25 === 0 || completed === tickers.length) {
+        process.stdout.write('[DeepScan prepare] ' + completed + '/' + tickers.length + ' (cache)\n');
+      }
+      return {
+        ticker,
+        candle_count: existing.candle_count,
+        first_date: existing.first_date,
+        last_date: existing.last_date,
+        cached: true
+      };
+    }
+
     const candles = await fetchAdjustedTicker(ticker, {
       from,
       to,
@@ -262,6 +285,7 @@ async function main(argv) {
     finished_at: new Date().toISOString(),
     requested_from: from,
     requested_to: to,
+    required_latest_candle_date: requiredLatestCandleDate,
     concurrency,
     universe_count: tickers.length,
     full_universe_run: fullUniverseRun,
