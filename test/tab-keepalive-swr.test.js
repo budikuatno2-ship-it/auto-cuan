@@ -188,7 +188,7 @@ test('an HTML body from a proxy is treated as a failure, not as a payload', asyn
   assert.equal(bad.ok, false, 'a 200 carrying HTML is not a usable API answer');
 
   mode = 'json';
-  await api.cachedFetch('/api/sector-hot?action=deepscan');
+  await api.cachedFetch('/api/sector-hot?action=screener');
   assert.equal(calls.length, 2, 'the HTML answer must not have been cached');
 });
 
