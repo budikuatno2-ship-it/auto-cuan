@@ -307,3 +307,10 @@ if (require.main === module) {
     process.exit(1);
   });
 }
+
+module.exports = {
+  UNIVERSE_TICKERS,
+  fetchTickerCandles1Y,
+  generateMarkdownReport,
+  main
+};
