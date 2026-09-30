@@ -82,3 +82,35 @@ test('--dry-run never calls mutating screener endpoints', async () => {
   await runner.main(runner.parseArgs(['node','runner','--dry-run','--skip-progress']), {env:{CRON_SECRET:'test'},client,log:()=>{}});
   assert.equal(calls.some(q => ['refresh-screener','nk-screener-run','daytrade-screener-run'].includes(q.action)), false);
 });
+
+
+test('heavy-scan memory preflight reads MemAvailable and refuses dangerously low headroom', () => {
+  const fakeFs = {
+    readFileSync: () => 'MemTotal:       6000000 kB\nMemAvailable:    1024000 kB\n'
+  };
+  assert.equal(Math.round(runner.readLinuxMemAvailableMb(fakeFs)), 1000);
+  assert.throws(
+    () => runner.assertHeavyScanMemoryHeadroom({}, fakeFs),
+    /below safety floor 1536 MB/
+  );
+
+  const safeFs = {
+    readFileSync: () => 'MemTotal:       6000000 kB\nMemAvailable:    4608000 kB\n'
+  };
+  const safe = runner.assertHeavyScanMemoryHeadroom({}, safeFs);
+  assert.equal(Math.round(safe.availableMb), 4500);
+  assert.equal(safe.minMb, 1536);
+});
+
+test('makeClient surfaces action, URL, and network cause instead of opaque fetch failed', async () => {
+  const fetchImpl = async () => {
+    const err = new TypeError('fetch failed');
+    err.cause = { code: 'ECONNRESET', message: 'socket hang up' };
+    throw err;
+  };
+  const client = runner.makeClient('http://127.0.0.1:3000', 'secret', fetchImpl);
+  await assert.rejects(
+    client.call({ action: 'daytrade-screener-run', batch: 0 }),
+    /Fetch failed action=daytrade-screener-run .*cause=ECONNRESET: socket hang up/
+  );
+});
