@@ -106,3 +106,88 @@ test('one-time migration snapshots heavy market tables and never deletes Supabas
   assert.match(src, /row-count mismatch/);
   assert.match(src, /No Supabase rows were deleted/);
 });
+
+
+test('generic local table adapter supports screener upsert/update/delete and Telegram OR queries', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'autocuan-vps-tables-'));
+  const previousBackend = process.env.AUTO_CUAN_MARKET_DATA_BACKEND;
+  const previousRoot = process.env.AUTO_CUAN_DATA_ROOT;
+  process.env.AUTO_CUAN_MARKET_DATA_BACKEND = 'vps';
+  process.env.AUTO_CUAN_DATA_ROOT = tmp;
+
+  try {
+    delete require.cache[require.resolve('../lib/vps-local-table-query')];
+    delete require.cache[require.resolve('../lib/vps-market-data-store')];
+    const tables = require('../lib/vps-local-table-query');
+    const vps = require('../lib/vps-market-data-store');
+
+    tables.writeTableRows('daytrade_screener_latest', [
+      { ticker: 'BBCA', daytrade_score: 80, status: 'WATCHING' },
+      { ticker: 'BBRI', daytrade_score: 70, status: 'WATCHING' }
+    ], 'test');
+
+    tables.writeTableRows('telegram_daily_picks', [
+      { id: 1, date: '2026-09-30', ticker: 'BBCA', monitor_source: 'daily_top5', status: 'WAITING' },
+      { id: 2, date: '2026-09-30', ticker: 'BBRI', monitor_source: null, status: 'WAITING' },
+      { id: 3, date: '2026-09-30', ticker: 'TLKM', monitor_source: 'daytrade_signal', status: 'WAITING' }
+    ], 'test');
+
+    let delegated = 0;
+    const raw = { from(table) { delegated += 1; return { table }; } };
+    const hybrid = vps.wrapSupabaseClient(raw);
+
+    const up = await hybrid.from('daytrade_screener_latest')
+      .upsert([{ ticker: 'BBCA', daytrade_score: 91, status: 'READY_BREAKOUT' }], { onConflict: 'ticker' })
+      .select('ticker,daytrade_score,status');
+    assert.equal(up.error, null);
+    assert.equal(up.data[0].daytrade_score, 91);
+
+    const sorted = await hybrid.from('daytrade_screener_latest')
+      .select('ticker,daytrade_score')
+      .order('daytrade_score', { ascending: false });
+    assert.deepEqual(sorted.data.map((r) => r.ticker), ['BBCA', 'BBRI']);
+
+    const tg = await hybrid.from('telegram_daily_picks')
+      .select('id,ticker,monitor_source')
+      .eq('date', '2026-09-30')
+      .or('monitor_source.in.(daily_top5,top5),monitor_source.is.null')
+      .order('id', { ascending: true });
+    assert.deepEqual(tg.data.map((r) => r.ticker), ['BBCA', 'BBRI']);
+
+    const updated = await hybrid.from('daytrade_screener_latest')
+      .update({ status: 'PAUSED' })
+      .eq('ticker', 'BBRI')
+      .select('ticker,status');
+    assert.equal(updated.data[0].status, 'PAUSED');
+
+    const removed = await hybrid.from('daytrade_screener_latest')
+      .delete()
+      .eq('ticker', 'BBRI')
+      .select('ticker');
+    assert.deepEqual(removed.data.map((r) => r.ticker), ['BBRI']);
+
+    const left = await hybrid.from('daytrade_screener_latest').select('ticker');
+    assert.deepEqual(left.data.map((r) => r.ticker), ['BBCA']);
+    assert.equal(delegated, 0);
+
+    const control = hybrid.from('app_users');
+    assert.equal(control.table, 'app_users');
+    assert.equal(delegated, 1);
+  } finally {
+    if (previousBackend === undefined) delete process.env.AUTO_CUAN_MARKET_DATA_BACKEND;
+    else process.env.AUTO_CUAN_MARKET_DATA_BACKEND = previousBackend;
+    if (previousRoot === undefined) delete process.env.AUTO_CUAN_DATA_ROOT;
+    else process.env.AUTO_CUAN_DATA_ROOT = previousRoot;
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('migration seeds active local table files only for approved cutover tables', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'tools', 'migrate-market-data-to-vps.js'), 'utf8');
+  assert.match(src, /localTables\.writeTableRows\(table, result\.rows, 'supabase_cutover_snapshot'\)/);
+  const tableSrc = fs.readFileSync(path.join(__dirname, '..', 'lib', 'vps-local-table-query.js'), 'utf8');
+  assert.match(tableSrc, /'daytrade_screener_latest'/);
+  assert.match(tableSrc, /'telegram_daily_picks'/);
+  assert.match(tableSrc, /'sector_hot_latest'/);
+  assert.doesNotMatch(tableSrc, /LOCAL_TABLES[\s\S]*'app_users'/);
+});
