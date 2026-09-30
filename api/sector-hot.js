@@ -773,10 +773,12 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       return res.status(200).json({ success: false, error: 'No active members.' });
     }
 
-    // Reconcile the dated Sep-2026 suspension snapshot with current stock_boards.
-    // A formerly suspended exit automatically re-enters once the current board
-    // master says it is active, on UTAMA/PENGEMBANGAN, and is_fca=false.
-    // Explicit current suspension/inactive signals still win.
+    // Reconcile the dated Sep-2026 FCA transition against current stock_boards.
+    // IMPORTANT: stock_boards proves listing-board/FCA metadata only; it does
+    // NOT prove that an exchange trading suspension has been lifted. Tickers in
+    // the 2026-09-25 suspended snapshot therefore stay fail-closed until a newer
+    // authoritative IDX opening event is recorded in the transition manifest.
+    // Explicit current suspension/inactive signals always win.
     const transitionTickers = Array.from(new Set(
       membersRaw
         .map(function(m) { return fcaTransition2026.normalizeTicker(m && m.ticker); })
@@ -799,7 +801,8 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     }
 
     // A Konglo affiliation does not override tradability. Snapshot-suspended
-    // exits stay fail-closed until current stock_boards proves reactivation.
+    // exits stay fail-closed until the manifest records authoritative reactivation
+    // AND current stock_boards is otherwise eligible.
     const members = membersRaw.filter(function(m) {
       const ticker = fcaTransition2026.normalizeTicker(m && m.ticker);
       return !fcaTransition2026.shouldBlockTransitionTicker(ticker, transitionRows[ticker] || null);
