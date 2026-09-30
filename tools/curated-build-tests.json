@@ -571,5 +571,6 @@
   "test/viewport-runtime.test.js",
   "test/static-assets.test.js",
   "test/workspace-access-visibility.test.js",
-  "test/money-management-and-group-bot-regression.test.js"
+  "test/money-management-and-group-bot-regression.test.js",
+  "test/price-waiting-backtest.test.js"
 ]
