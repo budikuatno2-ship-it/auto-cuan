@@ -156,9 +156,9 @@ async function handleDailyMarketContextAction(req, res) {
 
   try {
     var { createClient } = require('@supabase/supabase-js');
-    var supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    var supabase = require('../lib/vps-market-data-store').wrapSupabaseClient(createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
-    });
+    }));
 
     var context = await dailyContextBuilder.buildContextForTicker(supabase, ticker, {});
     return res.status(200).json({ success: true, context: context });
@@ -207,9 +207,9 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
       return res.status(200).json({ success: false, error: 'Database belum dikonfigurasi.' });
     }
     var { createClient } = require('@supabase/supabase-js');
-    supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    supabase = require('../lib/vps-market-data-store').wrapSupabaseClient(createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
-    });
+    }));
   }
 
   try {
