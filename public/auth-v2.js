@@ -168,13 +168,6 @@
       errorEl.classList.remove('hidden');
       return;
     }
-    // New accounts authenticate with Gmail. Username remains accepted only as
-    // a compatibility path for legacy/admin accounts that predate Gmail identity.
-    if (username.includes('@') && !username.endsWith('@gmail.com')) {
-      errorEl.textContent = 'Gunakan Gmail terdaftar (@gmail.com).';
-      errorEl.classList.remove('hidden');
-      return;
-    }
     if (!password) {
       errorEl.textContent = 'Password tidak boleh kosong.';
       errorEl.classList.remove('hidden');
