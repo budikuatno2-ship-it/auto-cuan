@@ -94,7 +94,13 @@ async function main() {
   const universe = await loadEligibleUniverse(store);
 
   const built = existingSync.buildExistingMarketStructureRows(marketPayload, hscPayload, universe);
-  marketImport.validateRowsAgainstUniverse(built.rows, universe);
+  // Canonical market-structure storage covers the full listed-stock universe.
+  // Scanner eligibility (800) is a runtime subset, so validate writes against
+  // canonical market tickers instead of rejecting the 162 non-scanner names.
+  const canonicalTickers = (marketPayload.stocks || [])
+    .map((stock) => String(stock && stock.ticker || '').trim().toUpperCase())
+    .filter(Boolean);
+  marketImport.validateRowsAgainstUniverse(built.rows, canonicalTickers);
 
   // Merge against the LOCAL stock_fundamentals state first so stale snapshots
   // and same-date conflicts stay fail-closed before any local write occurs.
@@ -106,16 +112,27 @@ async function main() {
   console.log('Market structure source: ' + MARKET_PATH);
   console.log('HSC source: ' + HSC_PATH);
   console.log('Mode: ' + (apply ? 'APPLY' : 'VALIDATE_ONLY'));
-  console.log('Eligible universe: ' + built.summary.eligible_count);
+  console.log('Canonical market universe: ' + built.summary.canonical_count);
+  console.log('Eligible scanner universe: ' + built.summary.eligible_count);
   console.log('Market stocks: ' + built.summary.market_stock_count);
-  console.log('Free Float verified: ' + built.summary.free_float_verified + '/' + built.summary.eligible_count);
-  console.log('Missing Free Float: ' + built.summary.missing_free_float.length +
-    (built.summary.missing_free_float.length ? ' [' + built.summary.missing_free_float.join(', ') + ']' : ''));
+  console.log('Free Float verified canonical: ' +
+    built.summary.free_float_verified_canonical + '/' + built.summary.canonical_count);
+  console.log('Missing Free Float canonical: ' + built.summary.missing_free_float_canonical.length +
+    (built.summary.missing_free_float_canonical.length
+      ? ' [' + built.summary.missing_free_float_canonical.join(', ') + ']' : ''));
+  console.log('Free Float verified eligible: ' +
+    built.summary.free_float_verified_eligible + '/' + built.summary.eligible_count);
+  console.log('Missing Free Float eligible: ' + built.summary.missing_free_float_eligible.length +
+    (built.summary.missing_free_float_eligible.length
+      ? ' [' + built.summary.missing_free_float_eligible.join(', ') + ']' : ''));
   console.log('HSC dataset tickers: ' + built.summary.hsc_dataset_count);
   console.log('HSC outside eligible universe: ' + built.summary.hsc_outside_universe.length +
     (built.summary.hsc_outside_universe.length ? ' [' + built.summary.hsc_outside_universe.join(', ') + ']' : ''));
-  console.log('HSC verified in universe: ' + built.summary.hsc_verified_in_universe);
-  console.log('HSC active/revoked in universe: ' +
+  console.log('HSC verified canonical: ' + built.summary.hsc_verified_canonical);
+  console.log('HSC active/revoked canonical: ' +
+    built.summary.hsc_active_canonical + '/' + built.summary.hsc_revoked_canonical);
+  console.log('HSC verified eligible: ' + built.summary.hsc_verified_in_universe);
+  console.log('HSC active/revoked eligible: ' +
     built.summary.hsc_active_in_universe + '/' + built.summary.hsc_revoked_in_universe);
   console.log('Prepared fundamentals rows: ' + prepared.length);
 
