@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="id" style="background-color:#0b0e14">
+<html lang="id" style="background-color:#f3f5f4">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="color-scheme" content="dark">
-    <meta name="theme-color" content="#0b0e14">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f3f5f4">
     <meta name="description" content="Auto-Cuan IDX Stock Radar — dashboard watchlist, day trade & swing screener, chart, dan portofolio manual. Alat bantu analisis, bukan rekomendasi beli/jual.">
     <meta name="application-name" content="Auto-Cuan">
     <meta name="format-detection" content="telephone=no">
@@ -55,10 +55,10 @@
         // which is what prevents a dark flash for Light-mode users.
         (function () {
             try {
-                var saved = localStorage.getItem('autocuan_theme') || 'dark';
+                var saved = localStorage.getItem('autocuan_theme') || 'light';
                 if (saved === 'light') {
                     document.documentElement.classList.add('light');
-                    document.documentElement.style.background = '#f8fafc';
+                    document.documentElement.style.background = '#f3f5f4';
                 } else {
                     document.documentElement.classList.remove('light');
                     document.documentElement.style.background = '#0b0e14';
@@ -128,6 +128,7 @@
     <link rel="stylesheet" href="/landing-experience.css?v=20260929-v3">
 <link rel="stylesheet" href="/number-flow.css?v=20260929-v1">
 <link rel="stylesheet" href="/viewport.css?v=20260929-v1">
+<link rel="stylesheet" href="/final-uiux-polish.css?v=20260930-v1">
 <script src="/viewport-runtime.js?v=20260929-v1" defer></script>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -135,9 +136,9 @@
 <div id="toastContainer" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <!-- ===== INITIAL LOADING INDICATOR (visible before JS init completes) ===== -->
-<div id="initialLoader" class="min-h-screen w-full flex flex-col items-center justify-center" style="background-color:#0b0e14">
-    <div class="spinner" style="width:32px;height:32px;border:3px solid #242d3d;border-top-color:#10b981;border-radius:50%;animation:spin 0.8s linear infinite"></div>
-    <p style="margin-top:16px;font-size:13px;color:#94a3b8;font-family:Inter,-apple-system,sans-serif">Memuat Auto-Cuan...</p>
+<div id="initialLoader" class="min-h-screen w-full flex flex-col items-center justify-center" style="background-color:#f3f5f4">
+    <div class="spinner" style="width:32px;height:32px;border:3px solid #dfe5e1;border-top-color:#0f7458;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+    <p style="margin-top:16px;font-size:13px;color:#697670;font-family:Inter,-apple-system,sans-serif">Memuat Auto-Cuan...</p>
 </div>
 
 <!-- ===== BLOCKED SCREEN ===== -->
@@ -502,7 +503,7 @@
         </button><button type="button" onclick="navigateTo('watchlist')" class="sidebar-item hidden" data-sidebar-page="watchlist" data-label="Watchlist" data-premium-nav="true" title="Watchlist">
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
             <span class="sidebar-label">Watchlist</span>
-        </button></section><section class="sidebar-nav-group" aria-label="Riset pasar"><h2 class="sidebar-group-label">Riset pasar</h2><button id="tabAnalisisChart" type="button" onclick="navigateTo('analisis', 'analisis-chart')" class="sidebar-item" data-sidebar-page="analisis" data-analysis-tab="analisis-chart" data-tab="analisis-chart" data-label="Analisis Saham" title="Analisis Saham"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17V7m5 10V3m5 14v-5m5 5V8"/></svg><span class="sidebar-label">Analisis Saham</span></button><button id="tabBandarmologi" type="button" onclick="navigateTo('analisis', 'bandarmologi')" class="sidebar-item" data-sidebar-page="bandarmologi" data-analysis-tab="bandarmologi" data-tab="bandarmologi" data-label="Bandarmologi" title="Bandarmologi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-10M15 5h6v6"/></svg><span class="sidebar-label">Bandarmologi</span></button><button id="tabSinyalIntelijen" type="button" onclick="navigateTo('analisis', 'intel')" class="sidebar-item" data-sidebar-page="intel" data-analysis-tab="intel" data-tab="intel" data-label="Sinyal Intelijen" title="Sinyal Intelijen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7z"/></svg><span class="sidebar-label">Sinyal Intelijen</span></button><button id="tabBrokerHunter" type="button" onclick="navigateTo('analisis', 'hunter')" class="sidebar-item" data-sidebar-page="hunter" data-analysis-tab="hunter" data-tab="hunter" data-label="Broker Hunter" title="Broker Hunter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 21l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0"/></svg><span class="sidebar-label">Broker Hunter</span></button><button id="tabJejaringInsider" type="button" onclick="navigateTo('analisis', 'insider')" class="sidebar-item" data-sidebar-page="insider" data-analysis-tab="insider" data-tab="insider" data-label="Jejaring Insider" title="Jejaring Insider"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l8 4M8 17l8-4M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0M20 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0M8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0"/></svg><span class="sidebar-label">Jejaring Insider</span></button><button id="tabRankingHarian" type="button" onclick="navigateTo('analisis', 'ranking')" class="sidebar-item" data-sidebar-page="ranking" data-analysis-tab="ranking" data-tab="ranking" data-label="Ranking Harian" title="Ranking Harian"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7"/></svg><span class="sidebar-label">Ranking Harian</span><span id="rankingLockIcon" class="sidebar-badge" aria-label="Akses terbatas">PRO</span></button><button id="tabAnalisisPattern" type="button" onclick="navigateTo('analisis', 'pattern')" class="sidebar-item hidden" data-sidebar-page="pattern" data-analysis-tab="pattern" data-tab="pattern" data-label="Pattern Radar" title="Pattern Radar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg><span class="sidebar-label">Pattern Radar</span><span class="sidebar-badge">ADMIN</span></button><button type="button" onclick="navigateTo('sektor')" class="sidebar-item hidden" data-sidebar-page="sektor" data-label="Sektor Hot" data-premium-nav="true" title="Sektor Hot">
+        </button></section><section class="sidebar-nav-group" aria-label="Riset pasar"><h2 class="sidebar-group-label">Riset pasar</h2><button id="tabAnalisisChart" type="button" onclick="navigateTo('analisis', 'analisis-chart')" class="sidebar-item" data-sidebar-page="analisis" data-analysis-tab="analisis-chart" data-tab="analisis-chart" data-label="Analisis Saham" title="Analisis Saham"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17V7m5 10V3m5 14v-5m5 5V8"/></svg><span class="sidebar-label">Analisis Saham</span></button><button id="tabBandarmologi" type="button" onclick="navigateTo('analisis', 'bandarmologi')" class="sidebar-item" data-sidebar-page="bandarmologi" data-analysis-tab="bandarmologi" data-tab="bandarmologi" data-label="Bandarmologi" title="Bandarmologi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-10M15 5h6v6"/></svg><span class="sidebar-label">Bandarmologi</span></button><button id="tabSinyalIntelijen" type="button" onclick="navigateTo('analisis', 'intel')" class="sidebar-item" data-sidebar-page="intel" data-analysis-tab="intel" data-tab="intel" data-label="Sinyal Intelijen" title="Sinyal Intelijen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7z"/></svg><span class="sidebar-label">Sinyal Intelijen</span></button><button id="tabBrokerHunter" type="button" onclick="navigateTo('analisis', 'hunter')" class="sidebar-item" data-sidebar-page="hunter" data-analysis-tab="hunter" data-tab="hunter" data-label="Broker Hunter" title="Broker Hunter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 21l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0"/></svg><span class="sidebar-label">Broker Hunter</span></button><button id="tabJejaringInsider" type="button" onclick="navigateTo('analisis', 'insider')" class="sidebar-item" data-sidebar-page="insider" data-analysis-tab="insider" data-tab="insider" data-label="Jejaring Insider" title="Jejaring Insider"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l8 4M8 17l8-4M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0M20 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0M8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0"/></svg><span class="sidebar-label">Jejaring Insider</span></button><button id="tabRankingHarian" type="button" onclick="navigateTo('analisis', 'ranking')" class="sidebar-item" data-sidebar-page="ranking" data-analysis-tab="ranking" data-tab="ranking" data-label="Ranking Harian" title="Ranking Harian"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7"/></svg><span class="sidebar-label">Ranking Harian</span><span id="rankingLockIcon" class="sidebar-badge" aria-label="Akses terbatas">PRO</span></button><button id="tabFinancial" type="button" onclick="navigateTo('analisis', 'financial')" class="sidebar-item" data-sidebar-page="financial" data-analysis-tab="financial" data-tab="financial" data-label="Financial" title="Financial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/></svg><span class="sidebar-label">Financial</span></button><button id="tabMarketStructure" type="button" onclick="navigateTo('analisis', 'market-structure')" class="sidebar-item" data-sidebar-page="market-structure" data-analysis-tab="market-structure" data-tab="market-structure" data-label="Struktur Pasar" title="Struktur Pasar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="16" r="3"/><path d="M10.5 10.5l3 3M16 5v5M5 16h5"/></svg><span class="sidebar-label">Struktur Pasar</span></button><button id="tabAnalisisPattern" type="button" onclick="navigateTo('analisis', 'pattern')" class="sidebar-item hidden" data-sidebar-page="pattern" data-analysis-tab="pattern" data-tab="pattern" data-label="Pattern Radar" title="Pattern Radar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg><span class="sidebar-label">Pattern Radar</span><span class="sidebar-badge">ADMIN</span></button><button type="button" onclick="navigateTo('sektor')" class="sidebar-item hidden" data-sidebar-page="sektor" data-label="Sektor Hot" data-premium-nav="true" title="Sektor Hot">
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             <span class="sidebar-label">Sektor Hot</span>
         </button></section><section class="sidebar-nav-group" aria-label="Aset &amp; keuangan"><h2 class="sidebar-group-label">Aset &amp; keuangan</h2><button type="button" onclick="navigateTo('portofolio')" class="sidebar-item hidden" data-sidebar-page="portofolio" data-label="Portofolio" data-premium-nav="true" title="Portofolio">
@@ -4853,7 +4854,16 @@ function navigateTo(page) {
         var tokens = getComputedStyle(document.documentElement);
         var duration = parseFloat(tokens.getPropertyValue('--motion-fast')) || 180;
         if (target._workspaceFade) target._workspaceFade.cancel();
-        target._workspaceFade = target.animate([{ opacity: 0.94 }, { opacity: 1 }], { duration: duration, easing: tokens.getPropertyValue('--ease-standard').trim() || 'ease-out' });
+        target._workspaceFade = target.animate(
+            [
+                { opacity: 0.78, transform: 'translate3d(0, 4px, 0)' },
+                { opacity: 1, transform: 'translate3d(0, 0, 0)' }
+            ],
+            {
+                duration: duration,
+                easing: tokens.getPropertyValue('--ease-emphasized').trim() || 'cubic-bezier(.16,1,.3,1)'
+            }
+        );
     }
 
     // KEEP-ALIVE: the panel above is only ever hidden, never unmounted, so its
@@ -8093,7 +8103,7 @@ function applyAppTheme(theme) {
     if (landingIcon) landingIcon.innerHTML = isLight ? sunSvg : moonSvg;
     if (landingToggle) landingToggle.setAttribute('aria-label', isLight ? 'Gunakan tema gelap' : 'Gunakan tema terang');
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', isLight ? '#f8fafc' : '#0b0e14');
+    if (meta) meta.setAttribute('content', isLight ? '#f3f5f4' : '#0b0e14');
     try { localStorage.setItem('autocuan_theme', isLight ? 'light' : 'dark'); } catch (_) {}
 }
 function toggleAppTheme() {
@@ -8101,8 +8111,8 @@ function toggleAppTheme() {
     applyAppTheme(isLight ? 'dark' : 'light');
 }
 function initAppTheme() {
-    var saved = 'dark';
-    try { saved = localStorage.getItem('autocuan_theme') || 'dark'; } catch (_) {}
+    var saved = 'light';
+    try { saved = localStorage.getItem('autocuan_theme') || 'light'; } catch (_) {}
     applyAppTheme(saved);
 }
 if (document.readyState === 'loading') {
@@ -13472,7 +13482,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/money-sheet-model.js?v=20260929-v2"></script>
 <script src="/money-sheet-grid.js?v=20260929-keyboard-v1"></script>
 <script src="/money-sheet-runtime.js?v=20260929-keyboard-v1"></script>
-<script src="/analisis-saham-runtime.js?v=20260929-workspace-v1"></script>
+<script src="/analisis-saham-runtime.js?v=20261001-financial-v1"></script>
 <script src="/bandarmologi-runtime.js?v=20260928-spa1"></script>
 <script src="/portfolio-planner-v1.js?v=20260928-spa1"></script>
 <script src="/portfolio-command-center-model.js?v=20260928-spa1"></script>
@@ -13493,6 +13503,7 @@ function forceNormalizeTechnicalDOM(root) {
     }
 })();
 </script>
+<script src="/final-uiux-polish.js?v=20260930-v1"></script>
 <script src="/landing-experience.js?v=20260929-v3"></script>
 </body>
 </html>

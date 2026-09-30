@@ -1,0 +1,1999 @@
+/* Auto-Cuan final UI/UX polish — 2026-09-30
+   Foundation only: presentation, motion, density, and accessibility.
+   Data contracts / scoring / business rules intentionally untouched. */
+
+:root {
+  --motion-instant: 90ms;
+  --motion-fast: 140ms;
+  --motion-base: 190ms;
+  --motion-slow: 280ms;
+  --motion-stagger: 28ms;
+  --ease-standard: cubic-bezier(.2,.8,.2,1);
+  --ease-emphasized: cubic-bezier(.16,1,.3,1);
+  --ease-exit: cubic-bezier(.4,0,1,1);
+  --ac-page-max: 1560px;
+  --ac-page-pad: clamp(14px, 1.8vw, 28px);
+}
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+
+html.light,
+html.light body {
+  --canvas: #f3f5f4;
+  --surface: #ffffff;
+  --surface-elevated: #f8faf9;
+  --border-hairline: #e2e7e4;
+  --border-subtle: rgba(18, 35, 29, .10);
+  --text-primary: #17211e;
+  --text-secondary: #52605b;
+  --text-tertiary: #7b8883;
+  --text-muted: #697670;
+  --accent-primary: #0f7458;
+  --accent-primary-hover: #0b6049;
+  --accent-subtle: rgba(15, 116, 88, .09);
+  --data-positive: #0f7a57;
+  --data-negative: #c13f4d;
+  --data-neutral: #a96d13;
+  --danger: #c13f4d;
+  --warning: #a96d13;
+  --info: #315f9a;
+
+  --color-bg-canvas: #f3f5f4;
+  --color-bg-surface: #ffffff;
+  --color-bg-elevated: #f8faf9;
+  --color-bg-hover: #eef2f0;
+  --color-text-primary: #17211e;
+  --color-text-secondary: #52605b;
+  --color-text-muted: #697670;
+  --color-border-subtle: rgba(18, 35, 29, .09);
+  --color-border-default: rgba(18, 35, 29, .14);
+  --color-accent: #0f7458;
+  --color-on-accent: #ffffff;
+  --color-positive: #0f7a57;
+  --color-positive-soft: rgba(15, 122, 87, .09);
+  --color-negative: #c13f4d;
+  --color-negative-soft: rgba(193, 63, 77, .09);
+  --color-warning: #a96d13;
+  --grid-line: rgba(18, 35, 29, .07);
+  --grid-header-bg: #f8faf9;
+
+  --ac-bg: #f3f5f4;
+  --ac-surface-1: #ffffff;
+  --ac-surface-2: #fbfcfb;
+  --ac-surface-3: #f5f7f6;
+  --ac-line: rgba(18, 35, 29, .11);
+  --ac-line-strong: rgba(18, 35, 29, .17);
+  --ac-hairline: rgba(18, 35, 29, .08);
+  --ac-text: #17211e;
+  --ac-text-muted: #5f6d67;
+  --ac-text-dim: #84908b;
+  --ac-accent: #0f7458;
+  --ac-accent-soft: rgba(15, 116, 88, .08);
+  --ac-accent-line: rgba(15, 116, 88, .24);
+  --ac-shadow-1: 0 1px 2px rgba(18,35,29,.05), 0 8px 22px rgba(18,35,29,.045);
+  --ac-shadow-2: 0 2px 5px rgba(18,35,29,.06), 0 18px 48px rgba(18,35,29,.08);
+  --ac-edge: inset 0 1px 0 rgba(255,255,255,.86);
+}
+
+html.light body {
+  background:
+    radial-gradient(circle at 50% -20%, rgba(15,116,88,.035), transparent 34rem),
+    var(--color-bg-canvas) !important;
+  color: var(--color-text-primary);
+}
+
+/* ---- Native-feeling shell ------------------------------------------------ */
+html.light #dashboardScreen,
+html.light .app-shell,
+html.light .app-layout {
+  background: transparent !important;
+}
+
+#appMain {
+  min-width: 0;
+  isolation: isolate;
+}
+
+#appContent {
+  width: min(100%, var(--ac-page-max));
+  margin-inline: auto;
+  padding-inline: var(--ac-page-pad);
+  padding-bottom: max(28px, env(safe-area-inset-bottom));
+}
+
+html.light .app-sidebar {
+  background: rgba(250, 252, 251, .94) !important;
+  border-right: 1px solid var(--ac-line) !important;
+  box-shadow: 1px 0 0 rgba(255,255,255,.7);
+  backdrop-filter: blur(18px) saturate(1.05);
+  -webkit-backdrop-filter: blur(18px) saturate(1.05);
+}
+
+html.light .sidebar-brand {
+  border-bottom-color: var(--ac-line) !important;
+}
+
+html.light .brand-mark,
+html.light .landing-logo {
+  color: #ffffff !important;
+  background: #17211e !important;
+  border-color: #17211e !important;
+  box-shadow: none !important;
+}
+
+html.light .sidebar-brand-text strong,
+html.light .sidebar-item,
+html.light .sidebar-footer,
+html.light .user-profile-badge {
+  color: var(--ac-text) !important;
+}
+
+html.light .sidebar-brand-text span,
+html.light .sidebar-group-label,
+html.light .sidebar-footer .sidebar-label,
+html.light .user-role {
+  color: var(--ac-text-dim) !important;
+}
+
+html.light .sidebar-group-label {
+  letter-spacing: .12em;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+html.light .sidebar-item {
+  position: relative;
+  min-height: 40px;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--ac-text-muted) !important;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+html.light .sidebar-item:hover {
+  background: rgba(18,35,29,.045) !important;
+  border-color: rgba(18,35,29,.06) !important;
+  color: var(--ac-text) !important;
+}
+
+html.light .sidebar-item.active,
+html.light .sidebar-item[aria-current="page"] {
+  background: #17211e !important;
+  border-color: #17211e !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 16px rgba(18,35,29,.12) !important;
+}
+
+html.light .sidebar-item.active svg,
+html.light .sidebar-item[aria-current="page"] svg {
+  color: #dff8ef !important;
+}
+
+html.light .sidebar-badge {
+  background: rgba(15,116,88,.10) !important;
+  border-color: rgba(15,116,88,.18) !important;
+  color: #0b6049 !important;
+}
+
+html.light .sidebar-item.active .sidebar-badge {
+  background: rgba(255,255,255,.14) !important;
+  border-color: rgba(255,255,255,.18) !important;
+  color: #ffffff !important;
+}
+
+html.light .sidebar-collapse-toggle,
+html.light .theme-toggle-compact {
+  background: #ffffff !important;
+  border-color: var(--ac-line) !important;
+  color: var(--ac-text-muted) !important;
+}
+
+html.light .user-profile-badge {
+  background: #ffffff !important;
+  border-color: var(--ac-line) !important;
+  box-shadow: var(--ac-shadow-1);
+}
+
+html.light .user-avatar {
+  background: #17211e !important;
+  color: #ffffff !important;
+  border-color: #17211e !important;
+}
+
+/* ---- Top chrome ---------------------------------------------------------- */
+html.light .app-header,
+html.light .workspace-topbar {
+  background: rgba(250,252,251,.88) !important;
+  border-bottom-color: var(--ac-line) !important;
+  box-shadow: 0 1px 0 rgba(18,35,29,.04) !important;
+  backdrop-filter: blur(16px) saturate(1.05);
+  -webkit-backdrop-filter: blur(16px) saturate(1.05);
+}
+
+html.light .header-account,
+html.light .header-status-chip {
+  background: #ffffff !important;
+  border-color: var(--ac-line) !important;
+  color: var(--ac-text-muted) !important;
+}
+
+/* ---- Page rhythm --------------------------------------------------------- */
+.page-content {
+  min-width: 0;
+  transform-origin: 50% 0;
+  backface-visibility: hidden;
+}
+
+.page-content:not(.hidden) {
+  will-change: opacity, transform;
+}
+
+#page-dashboard,
+#page-screener,
+#page-watchlist,
+#page-sektor,
+#page-portofolio,
+#page-money-management,
+#page-analisis,
+#page-news {
+  padding-top: clamp(12px, 1.2vw, 20px);
+}
+
+html.light :is(
+  .panel,
+  .dashboard-card,
+  .unified-card,
+  .portfolio-card,
+  .skeleton-card,
+  .subscription-summary,
+  .chart-shell,
+  .portfolio-shell,
+  .money-sheet-shell,
+  .ms-workbook
+) {
+  background: #ffffff !important;
+  border-color: var(--ac-line) !important;
+  color: var(--ac-text) !important;
+  box-shadow: var(--ac-shadow-1) !important;
+}
+
+html.light :is(.panel,.dashboard-card,.unified-card,.portfolio-card) {
+  border-radius: 14px !important;
+}
+
+html.light :is(.dashboard-pick-card,.action-card,.feature-card,.portfolio-row-card) {
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+@media (hover:hover) {
+  html.light :is(.dashboard-pick-card,.action-card,.feature-card,.portfolio-row-card):hover {
+    transform: translateY(-1px);
+    border-color: rgba(15,116,88,.22) !important;
+    box-shadow: var(--ac-shadow-2) !important;
+  }
+}
+
+html.light :is(
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea
+) {
+  background: #fbfcfb !important;
+  color: var(--ac-text) !important;
+  border-color: var(--ac-line-strong) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+}
+
+html.light :is(input,select,textarea):focus {
+  border-color: rgba(15,116,88,.48) !important;
+  box-shadow: 0 0 0 3px rgba(15,116,88,.10) !important;
+  outline: none;
+}
+
+html.light button:focus-visible,
+html.light a:focus-visible,
+html.light [role="button"]:focus-visible,
+html.light summary:focus-visible {
+  outline: 2px solid rgba(15,116,88,.72) !important;
+  outline-offset: 3px;
+}
+
+/* ---- Dense data: calm and precise --------------------------------------- */
+html.light table {
+  border-color: var(--ac-line) !important;
+}
+
+html.light thead th {
+  background: #f7f9f8 !important;
+  color: #59665f !important;
+  border-bottom-color: var(--ac-line-strong) !important;
+}
+
+html.light tbody td {
+  color: #26322e !important;
+  border-bottom-color: rgba(18,35,29,.07) !important;
+}
+
+html.light tbody tr {
+  transition: background-color var(--motion-instant) linear;
+}
+
+html.light tbody tr:hover {
+  background: #f5f8f6 !important;
+}
+
+html.light :is(.text-emerald-300,.text-emerald-400,.text-green-300,.text-green-400) {
+  color: #0f7458 !important;
+}
+
+html.light :is(.text-rose-300,.text-rose-400,.text-red-300,.text-red-400) {
+  color: #b83847 !important;
+}
+
+html.light :is(.text-amber-300,.text-amber-400,.text-yellow-300,.text-yellow-400) {
+  color: #8c5a12 !important;
+}
+
+/* ---- Smooth loading without theatrical motion -------------------------- */
+@keyframes ac-polish-skeleton {
+  0% { background-position: 160% 0; }
+  100% { background-position: -60% 0; }
+}
+
+html.light :is(.animate-pulse,.skeleton,.skeleton-card) {
+  animation: none !important;
+}
+
+html.light :is(.skeleton,.skeleton-card) {
+  background:
+    linear-gradient(100deg,#eef2f0 20%,#fafcfb 38%,#eef2f0 58%) !important;
+  background-size: 220% 100% !important;
+  animation: ac-polish-skeleton 1.15s linear infinite !important;
+}
+
+/* ---- Landing: reference-inspired, Auto-Cuan-owned ----------------------- */
+html.light #landingPage {
+  --lp-bg: #f2f4f1;
+  --lp-surface: #ffffff;
+  --lp-raised: #e9eeeb;
+  --lp-text: #18211e;
+  --lp-muted: #63706a;
+  --lp-line: rgba(18,35,29,.12);
+  --lp-accent: #17211e;
+  --lp-on-accent: #ffffff;
+  --lp-wordmark: #27463b;
+  --lp-beam: rgba(35,68,57,.11);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.96) 0, rgba(255,255,255,.58) 26rem, transparent 54rem),
+    #f2f4f1 !important;
+}
+
+html.light #landingPage .landing-nav {
+  top: 16px;
+  width: min(1180px, calc(100% - 32px));
+  background: rgba(255,255,255,.83) !important;
+  border-color: rgba(18,35,29,.11) !important;
+  border-radius: 999px !important;
+  box-shadow: 0 12px 36px rgba(18,35,29,.08) !important;
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+}
+
+html.light #landingPage .landing-nav > .landing-container {
+  min-height: 64px;
+}
+
+html.light #landingPage .landing-brand {
+  color: var(--lp-text);
+}
+
+html.light #landingPage .landing-icon-button {
+  border-radius: 999px;
+  background: rgba(255,255,255,.76);
+}
+
+html.light #landingPage .landing-btn {
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+html.light #landingPage .landing-btn-primary {
+  background: #17211e !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(18,35,29,.12);
+}
+
+html.light #landingPage .landing-hero {
+  padding-top: clamp(76px, 9vw, 132px);
+  min-height: min(760px, calc(100dvh - 32px));
+  display: grid;
+  align-content: center;
+  background: transparent !important;
+}
+
+html.light #landingPage .landing-hero::after {
+  content: "";
+  position: absolute;
+  inset: 4% 5% 6%;
+  pointer-events: none;
+  background:
+    linear-gradient(118deg, transparent 0 19%, rgba(23,33,30,.075) 19.4% 31%, transparent 31.4% 53%, rgba(23,33,30,.055) 53.4% 65%, transparent 65.4%),
+    radial-gradient(ellipse at 52% 48%, rgba(255,255,255,.95), transparent 44%);
+  filter: blur(.2px);
+  opacity: .9;
+  z-index: 0;
+}
+
+html.light #landingPage .landing-beams {
+  opacity: .55;
+}
+
+html.light #landingPage .landing-beams span {
+  background: linear-gradient(90deg, transparent 6%, rgba(27,49,42,.12) 48%, transparent 68%);
+  filter: blur(14px);
+}
+
+html.light #landingPage .landing-wordmark {
+  color: rgba(39,70,59,.52);
+  max-width: 1040px;
+  margin-bottom: 8px;
+}
+
+html.light #landingPage .landing-hero h1 {
+  max-width: 860px !important;
+  font-size: clamp(36px, 4vw, 58px) !important;
+  line-height: 1.04 !important;
+  letter-spacing: -.055em !important;
+  font-weight: 650 !important;
+}
+
+html.light #landingPage .landing-hero h1 + p {
+  max-width: 660px;
+  font-size: clamp(14px, 1.25vw, 17px) !important;
+  line-height: 1.75 !important;
+}
+
+html.light #landingPage .landing-hero-note {
+  color: #7b8782 !important;
+}
+
+html.light #landingPage .landing-hero-index {
+  color: #78857f;
+  border-top-color: rgba(18,35,29,.10);
+}
+
+html.light #landingPage .landing-section {
+  background: transparent !important;
+  border-top-color: rgba(18,35,29,.09);
+  padding: clamp(58px, 7vw, 96px) 0;
+}
+
+html.light #landingPage .landing-section h2 {
+  max-width: 760px;
+  font-size: clamp(32px, 4vw, 52px);
+  font-weight: 600 !important;
+}
+
+html.light #landingPage .landing-card,
+html.light #landingPage .feature-card,
+html.light #landingPage .faq-item {
+  border-color: rgba(18,35,29,.10) !important;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(18,35,29,.025), 0 10px 28px rgba(18,35,29,.035) !important;
+}
+
+html.light #landingPage .feature-card {
+  min-height: 230px;
+}
+
+html.light #landingPage .feature-icon {
+  background: #f0f3f1;
+  border-color: rgba(18,35,29,.08);
+  color: #17211e;
+}
+
+html.light #landingPage .landing-radar-window {
+  overflow: hidden;
+  background: #101613 !important;
+  border-color: rgba(18,35,29,.18) !important;
+  box-shadow: 0 22px 64px rgba(18,35,29,.16) !important;
+}
+
+html.light #landingPage .landing-radar-window :is(.landing-window-bar,.mock-card,.landing-window-note,.landing-sector-strip) {
+  color: #aeb9b4 !important;
+}
+
+html.light #landingPage .landing-radar-window .landing-window-bar {
+  background: #151c19;
+  border-bottom-color: rgba(255,255,255,.08);
+}
+
+html.light #landingPage .landing-radar-window .mock-card {
+  border-color: rgba(255,255,255,.08) !important;
+}
+
+html.light #landingPage .landing-radar-window :is(h3,strong,.landing-market-value,.landing-small-value) {
+  color: #f2f6f4 !important;
+}
+
+html.light #landingPage .landing-radar-window .landing-chip {
+  background: #1c2521;
+  border-color: rgba(255,255,255,.09);
+  color: #c9d2ce;
+}
+
+html.light #landingPage .landing-radar-window .heat-cell {
+  background: #18201d !important;
+  border-color: rgba(255,255,255,.08) !important;
+  color: #c7d0cc !important;
+}
+
+html.light #landingPage .landing-radar-window .landing-window-note {
+  border-top-color: rgba(255,255,255,.07);
+}
+
+html.light #landingPage footer {
+  background: #e9eeeb;
+  border-top-color: rgba(18,35,29,.10);
+}
+
+/* ---- View transitions when supported ------------------------------------ */
+@supports (view-transition-name: none) {
+  #appMain { view-transition-name: app-main; }
+  #appSidebar { view-transition-name: app-sidebar; }
+  ::view-transition-group(app-sidebar) { animation-duration: var(--motion-fast); }
+  ::view-transition-old(app-main),
+  ::view-transition-new(app-main) {
+    animation-duration: var(--motion-base);
+    animation-timing-function: var(--ease-emphasized);
+  }
+  ::view-transition-old(app-main) {
+    animation-name: ac-vt-old;
+  }
+  ::view-transition-new(app-main) {
+    animation-name: ac-vt-new;
+  }
+}
+
+@keyframes ac-vt-old {
+  to { opacity: .72; transform: translateY(-2px); }
+}
+
+@keyframes ac-vt-new {
+  from { opacity: .72; transform: translateY(5px); }
+}
+
+/* ---- Responsive --------------------------------------------------------- */
+@media (max-width: 1023px) {
+  #appContent {
+    padding-inline: clamp(12px, 3.5vw, 18px);
+  }
+
+  html.light .app-sidebar {
+    background: rgba(250,252,251,.985) !important;
+    box-shadow: 18px 0 48px rgba(18,35,29,.13) !important;
+  }
+
+  html.light #landingPage .landing-nav {
+    top: 8px;
+    border-radius: 18px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  html.light #landingPage .landing-hero {
+    min-height: auto;
+    padding-top: 58px;
+  }
+
+  html.light #landingPage .landing-wordmark {
+    margin-inline: -12px;
+  }
+
+  html.light #landingPage .landing-section {
+    padding-block: 44px;
+  }
+
+  html.light #landingPage .feature-card {
+    min-height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+
+/* ==========================================================================
+   PER-SURFACE FINAL PASS
+   ========================================================================== */
+
+/* Analysis: keep the whole research workspace visually inside one product. */
+html.light #page-analisis {
+  --research-panel: #ffffff;
+  --research-well: #f7f9f8;
+  --research-line: rgba(18,35,29,.10);
+}
+
+html.light #page-analisis .analisis-tab-strip {
+  position: sticky;
+  top: 0;
+  z-index: 24;
+  margin-bottom: 14px !important;
+  padding: 6px !important;
+  background: rgba(247,249,248,.92) !important;
+  border-color: var(--research-line) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 0 rgba(18,35,29,.04) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+html.light #page-analisis .analisis-tab {
+  min-height: 38px !important;
+  color: #64716b !important;
+  border-radius: 9px !important;
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard) !important;
+}
+
+html.light #page-analisis .analisis-tab:hover {
+  color: #1e2a26 !important;
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.08) !important;
+}
+
+html.light #page-analisis .analisis-tab.active {
+  background: #17211e !important;
+  border-color: #17211e !important;
+  color: #ffffff !important;
+  box-shadow: 0 5px 14px rgba(18,35,29,.10) !important;
+}
+
+html.light #page-analisis :is(.unified-top-bar,.unified-card,.broker-summary-panel) {
+  background: #ffffff !important;
+  border-color: var(--research-line) !important;
+  box-shadow: var(--ac-shadow-1) !important;
+}
+
+html.light #page-analisis .unified-top-bar {
+  border-radius: 14px !important;
+}
+
+html.light #page-analisis :is(.unified-chat-messages,#analisisResult,#unifiedAiChartResultWrap) {
+  scrollbar-color: rgba(18,35,29,.20) transparent;
+  overscroll-behavior: contain;
+}
+
+html.light #page-analisis .unified-chat-composer {
+  background: rgba(255,255,255,.94) !important;
+  border-top-color: var(--research-line) !important;
+  backdrop-filter: blur(12px);
+}
+
+html.light #page-analisis :is(.unified-prompt-chip,.analisis-subtab) {
+  background: #f5f7f6 !important;
+  border-color: rgba(18,35,29,.10) !important;
+  color: #52605b !important;
+  box-shadow: none !important;
+}
+
+html.light #page-analisis :is(.unified-prompt-chip,.analisis-subtab):hover {
+  background: #eef3f0 !important;
+  border-color: rgba(15,116,88,.20) !important;
+  color: #0f7458 !important;
+}
+
+html.light #page-analisis .analisis-subtab.active {
+  background: #17211e !important;
+  border-color: #17211e !important;
+  color: #ffffff !important;
+}
+
+html.light #page-analisis #rankingPaywallGate {
+  background: #f8faf9 !important;
+  border-color: rgba(18,35,29,.10) !important;
+  box-shadow: none !important;
+}
+
+html.light #page-analisis #rankingContentWrap > div:first-child {
+  background: #f8faf9 !important;
+  border-color: rgba(18,35,29,.08) !important;
+}
+
+/* Portfolio: the generated scoped sheet is dark-first. This final layer keeps
+   the component functional while remapping it to the app's selected light theme. */
+html.light #portofolioPartialMount {
+  color-scheme: light;
+  --bg: #f3f5f4;
+  --surface: #ffffff;
+  --surface2: #f6f8f7;
+  --line: rgba(18,35,29,.10);
+  --line2: rgba(18,35,29,.18);
+  --text: #26322e;
+  --strong: #17211e;
+  --muted: #62706a;
+  --muted2: #84908b;
+  --accent: #0f7458;
+  --info: #315f9a;
+  --warn: #a96d13;
+  --danger: #c13f4d;
+  --shadow: 0 1px 2px rgba(18,35,29,.04), 0 12px 30px rgba(18,35,29,.06);
+}
+
+html.light #portofolioPartialMount .brand-mark {
+  background: #17211e !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+html.light #portofolioPartialMount :is(.btn,.tab,.session-chip) {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.11) !important;
+  color: #52605b !important;
+  box-shadow: none !important;
+}
+
+html.light #portofolioPartialMount :is(.btn,.tab):hover {
+  background: #f3f6f4 !important;
+  border-color: rgba(15,116,88,.20) !important;
+  color: #17211e !important;
+}
+
+html.light #portofolioPartialMount :is(.btn.primary,.tab.active,.tab[aria-selected="true"]) {
+  background: #17211e !important;
+  border-color: #17211e !important;
+  color: #ffffff !important;
+}
+
+html.light #portofolioPartialMount .tab-strip {
+  top: 0;
+  background: linear-gradient(rgba(243,245,244,.98) 78%, rgba(243,245,244,0)) !important;
+  border-bottom-color: rgba(18,35,29,.08) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+html.light #portofolioPartialMount :is(
+  .access-gate,
+  .panel,
+  .card,
+  .metric,
+  .position-card,
+  .planner-card,
+  .scenario-card,
+  .journal-card
+) {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.10) !important;
+  box-shadow: var(--ac-shadow-1) !important;
+}
+
+html.light #portofolioPartialMount :is(input,select,textarea) {
+  color-scheme: light;
+  background: #fbfcfb !important;
+  color: #17211e !important;
+  border-color: rgba(18,35,29,.14) !important;
+}
+
+html.light #portofolioPartialMount :is(input,textarea)::placeholder {
+  color: #89948f !important;
+}
+
+html.light #portofolioPartialMount :is(table,thead,tbody,tr,th,td) {
+  border-color: rgba(18,35,29,.08) !important;
+}
+
+html.light #portofolioPartialMount thead th {
+  background: #f7f9f8 !important;
+  color: #5f6d67 !important;
+}
+
+/* Finance: reduce visual chrome and maximize spreadsheet work area. */
+html.light #page-money-management.money-sheet {
+  --ms-surface: #ffffff;
+  --ms-canvas: #f3f5f4;
+  --ms-raised: #f7f9f8;
+  --ms-line: rgba(18,35,29,.11);
+  --ms-ink: #17211e;
+  --ms-muted: #68756f;
+  --ms-accent: #0f7458;
+}
+
+#page-money-management.money-sheet {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+html.light #page-money-management .ms-overview,
+html.light #page-money-management .ms-portfolio,
+html.light #page-money-management .ms-workbook {
+  box-shadow: var(--ac-shadow-1);
+}
+
+html.light #page-money-management .ms-workbook-heading {
+  background: #ffffff;
+}
+
+html.light #page-money-management .ms-toolbar,
+html.light #page-money-management .ms-edit-toolbar,
+html.light #page-money-management .ms-formula-bar,
+html.light #page-money-management .ms-grid-status {
+  background: #f8faf9;
+}
+
+html.light #page-money-management .ms-grid-viewport {
+  scrollbar-color: rgba(18,35,29,.22) transparent;
+  scrollbar-gutter: stable both-edges;
+}
+
+html.light #page-money-management #mmCashflowSpreadsheetTable.ms-grid th {
+  background: #f4f7f5 !important;
+}
+
+html.light #page-money-management #mmCashflowSpreadsheetTable.ms-grid td.ms-active-cell {
+  box-shadow: inset 0 0 0 2px #0f7458 !important;
+}
+
+/* Dashboard: information hierarchy before decoration. */
+html.light #page-dashboard .dashboard-hero {
+  background:
+    linear-gradient(110deg, rgba(15,116,88,.055), transparent 34%),
+    #ffffff !important;
+}
+
+html.light #page-dashboard :is(.dash-level,.market-tile,.dashboard-card) {
+  border-color: rgba(18,35,29,.09) !important;
+}
+
+html.light #page-dashboard .action-card {
+  min-height: 90px;
+}
+
+html.light #page-dashboard .dash-badge {
+  background: #f5f7f6 !important;
+  border-color: rgba(18,35,29,.10) !important;
+  color: #5f6d67 !important;
+}
+
+/* Modals: one predictable sheet language. */
+html.light :is(
+  #loginModal,
+  #registerModal,
+  #selfResetModal,
+  #authChoiceModal,
+  #accountModal,
+  #subscriptionModal
+) {
+  background: rgba(20,29,26,.30) !important;
+  backdrop-filter: blur(7px) !important;
+  -webkit-backdrop-filter: blur(7px) !important;
+}
+
+html.light :is(
+  #loginModal,
+  #registerModal,
+  #selfResetModal,
+  #authChoiceModal,
+  #accountModal,
+  #subscriptionModal
+) > div {
+  background: #ffffff !important;
+  color: #17211e !important;
+  border-color: rgba(18,35,29,.10) !important;
+  box-shadow: 0 24px 72px rgba(18,35,29,.16) !important;
+}
+
+/* Interaction feedback: ~100ms is perceptible, not theatrical. */
+.ac-pressing {
+  transform: scale(.985) !important;
+  transition-duration: var(--motion-instant) !important;
+}
+
+/* Scrollbars remain visible enough to communicate overflow, without taking
+   attention away from data. */
+html.light * {
+  scrollbar-color: rgba(18,35,29,.20) transparent;
+}
+
+html.light *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.light *::-webkit-scrollbar-thumb {
+  background: rgba(18,35,29,.18);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+
+html.light *::-webkit-scrollbar-thumb:hover {
+  background: rgba(18,35,29,.28);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* Long pages should not rubber-band nested data surfaces into the window. */
+:is(
+  #rankingTableWrap,
+  #screenerTableWrap,
+  #nkScreenerTableWrap,
+  #dtScreenerTableWrap,
+  #sektorDetailTable,
+  .ms-grid-viewport,
+  .unified-chat-messages
+) {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 767px) {
+  #page-money-management.money-sheet {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  html.light #page-analisis .analisis-tab-strip,
+  html.light #portofolioPartialMount .tab-strip {
+    margin-inline: calc(-1 * var(--ac-page-pad));
+    padding-inline: var(--ac-page-pad) !important;
+    border-radius: 0 !important;
+  }
+}
+
+
+/* ==========================================================================
+   ACCOUNT CENTER + SYSTEM STATES + MOBILE FINISHING
+   ========================================================================== */
+
+html.light #acAccountCenter {
+  background: rgba(23,33,30,.28) !important;
+  backdrop-filter: blur(10px) saturate(1.02) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.02) !important;
+}
+
+html.light #acAccountCenter .ac-center-shell {
+  color-scheme: light;
+  color: #17211e;
+  background:
+    radial-gradient(circle at 92% -12%, rgba(15,116,88,.07), transparent 32%),
+    #f8faf9 !important;
+  border-color: rgba(18,35,29,.11) !important;
+  border-radius: 22px !important;
+  box-shadow: 0 28px 80px rgba(18,35,29,.18), inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+
+html.light #acAccountCenter .ac-center-head {
+  border-bottom: 0;
+}
+
+html.light #acAccountCenter .ac-center-avatar {
+  background: #17211e !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  border-radius: 14px !important;
+}
+
+html.light #acAccountCenter :is(.ac-center-title,.ac-section-title,.ac-big-name,.ac-plan-name,.ac-plan-price) {
+  color: #17211e !important;
+}
+
+html.light #acAccountCenter :is(.ac-center-subtitle,.ac-muted,.ac-label,.ac-section-kicker,.ac-terms-footer) {
+  color: #6a7771 !important;
+}
+
+html.light #acAccountCenter .ac-center-eyebrow {
+  color: #0f7458 !important;
+}
+
+html.light #acAccountCenter .ac-center-close {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.11) !important;
+  color: #6a7771 !important;
+}
+
+html.light #acAccountCenter .ac-center-close:hover {
+  background: #f1f4f2 !important;
+  border-color: rgba(18,35,29,.18) !important;
+  color: #17211e !important;
+}
+
+html.light #acAccountCenter .ac-center-tabs {
+  border-bottom-color: rgba(18,35,29,.08) !important;
+}
+
+html.light #acAccountCenter .ac-center-tab {
+  color: #66736d !important;
+  border-radius: 999px !important;
+}
+
+html.light #acAccountCenter .ac-center-tab:hover {
+  color: #17211e !important;
+  background: #eef2f0 !important;
+}
+
+html.light #acAccountCenter .ac-center-tab[aria-selected="true"] {
+  color: #ffffff !important;
+  background: #17211e !important;
+  border-color: #17211e !important;
+  box-shadow: none !important;
+}
+
+html.light #acAccountCenter .ac-card,
+html.light #acAccountCenter .ac-term-section,
+html.light #acAccountCenter .ac-plan,
+html.light #acAccountCenter .ac-terms-intro {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.10) !important;
+  box-shadow: 0 1px 2px rgba(18,35,29,.035), 0 8px 20px rgba(18,35,29,.035) !important;
+}
+
+html.light #acAccountCenter .ac-card-accent {
+  background:
+    radial-gradient(circle at 100% 0, rgba(15,116,88,.06), transparent 34%),
+    #ffffff !important;
+  border-color: rgba(15,116,88,.16) !important;
+}
+
+html.light #acAccountCenter .ac-facts {
+  background: rgba(18,35,29,.06) !important;
+  border-color: rgba(18,35,29,.08) !important;
+}
+
+html.light #acAccountCenter .ac-fact {
+  background: #fbfcfb !important;
+}
+
+html.light #acAccountCenter .ac-fact dt {
+  color: #75817c !important;
+}
+
+html.light #acAccountCenter .ac-fact dd {
+  color: #26322e !important;
+}
+
+html.light #acAccountCenter :is(.ac-input,.ac-select) {
+  background: #fbfcfb !important;
+  color: #17211e !important;
+  border-color: rgba(18,35,29,.14) !important;
+}
+
+html.light #acAccountCenter :is(.ac-input,.ac-select):focus {
+  border-color: rgba(15,116,88,.42) !important;
+  box-shadow: 0 0 0 3px rgba(15,116,88,.09) !important;
+}
+
+html.light #acAccountCenter .ac-btn {
+  background: #ffffff !important;
+  color: #26322e !important;
+  border-color: rgba(18,35,29,.12) !important;
+}
+
+html.light #acAccountCenter .ac-btn:hover {
+  background: #f3f6f4 !important;
+  border-color: rgba(15,116,88,.20) !important;
+}
+
+html.light #acAccountCenter .ac-btn-primary {
+  background: #17211e !important;
+  color: #ffffff !important;
+  border-color: #17211e !important;
+}
+
+html.light #acAccountCenter .ac-chip {
+  background: #f3f6f4 !important;
+  border-color: rgba(18,35,29,.11) !important;
+  color: #5e6b65 !important;
+}
+
+html.light #acAccountCenter .ac-chip-ok {
+  background: rgba(15,116,88,.08) !important;
+  border-color: rgba(15,116,88,.17) !important;
+  color: #0f7458 !important;
+}
+
+html.light #acAccountCenter .ac-chip-warn {
+  background: rgba(169,109,19,.08) !important;
+  border-color: rgba(169,109,19,.18) !important;
+  color: #8c5a12 !important;
+}
+
+html.light #acAccountCenter .ac-loading {
+  color: #68756f !important;
+}
+
+html.light #acAccountCenter .ac-loading::before {
+  border-color: rgba(18,35,29,.12) !important;
+  border-top-color: #0f7458 !important;
+}
+
+html.light #acAccountCenter .ac-empty {
+  color: #68756f !important;
+}
+
+html.light #acAccountCenter .ac-callout {
+  background: #f6f8f7 !important;
+  border-color: rgba(18,35,29,.10) !important;
+  color: #66736d !important;
+}
+
+html.light #acAccountCenter .ac-callout-success {
+  background: rgba(15,116,88,.07) !important;
+  border-color: rgba(15,116,88,.16) !important;
+  color: #0f7458 !important;
+}
+
+html.light #acAccountCenter .ac-callout-warning {
+  background: rgba(169,109,19,.07) !important;
+  border-color: rgba(169,109,19,.16) !important;
+  color: #8c5a12 !important;
+}
+
+html.light #acAccountCenter .ac-term-section :is(h3,p,li) {
+  color: #52605b !important;
+}
+
+html.light #acAccountCenter .ac-term-section h3 {
+  color: #17211e !important;
+}
+
+/* Generic non-destructive state language. These selectors deliberately target
+   existing classes and do not alter runtime control flow. */
+html.light :is(
+  .ac-empty,
+  .empty-state,
+  .data-empty,
+  .ranking-empty,
+  .watchlist-empty
+) {
+  color: #6f7c76 !important;
+}
+
+html.light :is(
+  .error-state,
+  .data-error,
+  .loading-error,
+  [data-state="error"]
+) {
+  color: #b83847 !important;
+}
+
+html.light :is(
+  .stale-state,
+  .data-stale,
+  [data-state="stale"]
+) {
+  color: #8c5a12 !important;
+}
+
+/* Mobile: app-like sheet behavior and stable touch targets. */
+@media (max-width: 760px) {
+  html.light #acAccountCenter {
+    padding: 0 !important;
+    place-items: end center !important;
+    background: rgba(23,33,30,.34) !important;
+  }
+
+  html.light #acAccountCenter .ac-center-shell {
+    width: 100% !important;
+    max-height: 94dvh !important;
+    border-radius: 22px 22px 0 0 !important;
+    border-bottom: 0 !important;
+    box-shadow: 0 -18px 58px rgba(18,35,29,.16) !important;
+  }
+
+  html.light #acAccountCenter .ac-center-head {
+    padding-top: max(18px, env(safe-area-inset-top)) !important;
+  }
+
+  html.light #acAccountCenter .ac-center-tabs {
+    scroll-snap-type: x proximity;
+  }
+
+  html.light #acAccountCenter .ac-center-tab {
+    min-height: 42px;
+    scroll-snap-align: start;
+  }
+
+  html.light #acAccountCenter .ac-center-body {
+    padding-bottom: max(22px, env(safe-area-inset-bottom)) !important;
+  }
+
+  :is(button,a,[role="button"],summary) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .page-content {
+    overflow-x: clip;
+  }
+}
+
+/* Small-height devices: keep actions reachable when browser chrome is large. */
+@media (max-height: 620px) and (max-width: 900px) {
+  html.light #acAccountCenter .ac-center-shell {
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  html.light #landingPage .landing-hero {
+    min-height: auto !important;
+  }
+}
+
+
+/* ==========================================================================
+   MOBILE NAV + RESPONSIVE APP FEEL
+   ========================================================================== */
+
+html.light .workspace-sidebar-toggle {
+  background: rgba(255,255,255,.92) !important;
+  border-color: rgba(18,35,29,.11) !important;
+  color: #26322e !important;
+  box-shadow: 0 8px 22px rgba(18,35,29,.08) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html.light .ac-launcher {
+  background: #17211e !important;
+  border-color: #17211e !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 28px rgba(18,35,29,.18) !important;
+}
+
+html.light .ac-launcher-ring {
+  border-color: rgba(255,255,255,.18) !important;
+}
+
+html.light .ac-navpanel-backdrop {
+  background: rgba(23,33,30,.24) !important;
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+html.light .ac-navpanel-card {
+  background: rgba(255,255,255,.97) !important;
+  border-color: rgba(18,35,29,.11) !important;
+  color: #17211e !important;
+  box-shadow: 0 18px 58px rgba(18,35,29,.16) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+html.light .ac-navpanel-title {
+  color: #17211e !important;
+}
+
+html.light .ac-navpanel-close {
+  color: #6d7974 !important;
+  background: #f4f7f5 !important;
+  border-color: rgba(18,35,29,.09) !important;
+}
+
+html.light .ac-navpanel-item {
+  color: #4f5e58 !important;
+  background: #f8faf9 !important;
+  border-color: rgba(18,35,29,.08) !important;
+}
+
+html.light .ac-navpanel-item:hover {
+  color: #17211e !important;
+  border-color: rgba(15,116,88,.18) !important;
+  background: #f1f5f3 !important;
+}
+
+html.light .ac-navpanel-item.active,
+html.light .ac-navpanel-item[aria-current="page"] {
+  background: #17211e !important;
+  border-color: #17211e !important;
+  color: #ffffff !important;
+}
+
+html.light .ac-nav-icon {
+  color: inherit !important;
+}
+
+/* Reduce unnecessary paint work on long offscreen sections without hiding
+   their intrinsic footprint or creating scroll jumps. */
+@supports (content-visibility: auto) {
+  #page-dashboard > section,
+  #page-sektor > section,
+  #page-watchlist > section,
+  #page-money-management > section,
+  #page-analisis .analisis-tab-panel:not(.active) {
+    contain-intrinsic-size: auto 520px;
+  }
+}
+
+/* Keep horizontal data scroll local to its surface. */
+:is(
+  .table-responsive,
+  .overflow-x-auto,
+  .ms-grid-viewport,
+  #rankingTableWrap,
+  #screenerTableWrap,
+  #nkScreenerTableWrap,
+  #dtScreenerTableWrap
+) {
+  overscroll-behavior-inline: contain;
+}
+
+/* Consistent tap feedback without global scale animation conflicts. */
+@media (pointer: coarse) {
+  button,
+  a,
+  [role="button"],
+  summary,
+  .sidebar-item,
+  .ac-navpanel-item {
+    touch-action: manipulation;
+  }
+
+  html.light :is(
+    button,
+    a,
+    [role="button"],
+    .sidebar-item,
+    .ac-navpanel-item
+  ):active {
+    transition-duration: var(--motion-instant) !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  #appContent {
+    width: 100%;
+  }
+
+  html.light .app-sidebar.mobile-open {
+    border-right-color: rgba(18,35,29,.12) !important;
+  }
+
+  html.light .app-sidebar.mobile-open .sidebar-nav {
+    overscroll-behavior: contain;
+  }
+
+  html.workspace-menu-open,
+  html.workspace-menu-open body {
+    overscroll-behavior: none;
+  }
+}
+
+@media (max-width: 600px) {
+  :root {
+    --ac-page-pad: 14px;
+  }
+
+  #appContent {
+    padding-inline: 14px;
+  }
+
+  .page-content {
+    padding-top: 10px !important;
+  }
+
+  html.light :is(.panel,.dashboard-card,.unified-card,.portfolio-card) {
+    border-radius: 12px !important;
+  }
+
+  html.light #page-dashboard .dashboard-hero {
+    border-radius: 14px !important;
+  }
+
+  html.light #page-dashboard .action-card {
+    min-height: 76px;
+  }
+
+  html.light .ac-navpanel-card {
+    max-width: calc(100vw - 24px);
+  }
+}
+
+
+/* ==========================================================================
+   SCREENER / WATCHLIST / SECTOR HOT / TRACK RECORD
+   ========================================================================== */
+
+#page-screener,
+#page-watchlist,
+#page-sektor,
+#page-trackrecord {
+  max-width: 1320px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Shared page headings */
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) :is(
+  .page-title,
+  h1,
+  h2,
+  h3,
+  h4,
+  .text-white,
+  .text-gray-100,
+  .text-gray-200
+) {
+  color: #17211e !important;
+}
+
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) :is(
+  .page-subtitle,
+  .text-gray-300,
+  .text-gray-400,
+  .text-gray-500,
+  .text-gray-600
+) {
+  color: #68756f !important;
+}
+
+/* Normalize legacy dark utility surfaces only inside these four pages. */
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) [class*="bg-dark-"] {
+  background-color: #ffffff !important;
+}
+
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) [class*="border-dark-"] {
+  border-color: rgba(18,35,29,.10) !important;
+}
+
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) :is(
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea
+) {
+  background: #fbfcfb !important;
+  color: #17211e !important;
+  border-color: rgba(18,35,29,.14) !important;
+}
+
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) :is(
+  input,
+  textarea
+)::placeholder {
+  color: #8a9691 !important;
+}
+
+/* Screener --------------------------------------------------------------- */
+html.light #page-screener .page-header {
+  margin-bottom: 18px !important;
+}
+
+html.light #page-screener .ac-segmented {
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px !important;
+  background: #eef2f0 !important;
+  border: 1px solid rgba(18,35,29,.08) !important;
+  border-radius: 11px !important;
+}
+
+html.light #page-screener .ac-segment {
+  color: #5f6d67 !important;
+  border-radius: 8px !important;
+}
+
+html.light #page-screener .ac-segment:hover {
+  color: #17211e !important;
+  background: rgba(255,255,255,.68) !important;
+}
+
+html.light #page-screener .ac-segment.is-active,
+html.light #page-screener .ac-segment[aria-pressed="true"] {
+  color: #ffffff !important;
+  background: #17211e !important;
+  box-shadow: 0 4px 12px rgba(18,35,29,.10) !important;
+}
+
+html.light #page-screener #patternFilterContainer,
+html.light #page-screener .scr-filter-grid {
+  background: #f8faf9 !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: none !important;
+}
+
+html.light #page-screener .scr-info-bar {
+  background: #f8faf9 !important;
+  border: 1px solid rgba(18,35,29,.08) !important;
+  color: #68756f !important;
+}
+
+html.light #page-screener .scr-info-bar strong {
+  color: #34413c !important;
+}
+
+html.light #page-screener #screenerStats > div,
+html.light #page-screener #nkScreenerStats > div,
+html.light #page-screener #dtScreenerStats > div {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: 0 1px 2px rgba(18,35,29,.025) !important;
+}
+
+html.light #page-screener :is(.screener-tab,.nk-screener-tab,.dt-screener-tab) {
+  color: #67746e !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+}
+
+html.light #page-screener :is(.screener-tab,.nk-screener-tab,.dt-screener-tab):hover {
+  color: #17211e !important;
+  background: #f3f6f4 !important;
+  border-color: rgba(18,35,29,.08) !important;
+}
+
+html.light #page-screener :is(.screener-tab,.nk-screener-tab,.dt-screener-tab).active {
+  color: #ffffff !important;
+  background: #17211e !important;
+  border-color: #17211e !important;
+}
+
+html.light #page-screener :is(
+  #screenerTableWrap,
+  #nkScreenerTableWrap,
+  #dtScreenerTableWrap
+) {
+  border: 1px solid rgba(18,35,29,.09) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: var(--ac-shadow-1);
+}
+
+/* Watchlist --------------------------------------------------------------- */
+html.light #page-watchlist .dashboard-hero {
+  background:
+    linear-gradient(110deg, rgba(169,109,19,.045), transparent 32%),
+    #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+}
+
+html.light #page-watchlist > .grid > div {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: var(--ac-shadow-1);
+}
+
+html.light #page-watchlist #watchlistList > *,
+html.light #page-watchlist #watchlistCards > * {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: 0 1px 2px rgba(18,35,29,.035) !important;
+}
+
+html.light #page-watchlist #watchlistList > *:hover,
+html.light #page-watchlist #watchlistCards > *:hover {
+  border-color: rgba(15,116,88,.18) !important;
+  box-shadow: var(--ac-shadow-1) !important;
+}
+
+/* Sector Hot -------------------------------------------------------------- */
+html.light #page-sektor #sektorListView > div:first-child {
+  padding: 2px 0 4px;
+}
+
+html.light #page-sektor #sektorGroupsGrid > * {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: var(--ac-shadow-1) !important;
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+@media (hover:hover) {
+  html.light #page-sektor #sektorGroupsGrid > *:hover {
+    transform: translateY(-1px);
+    border-color: rgba(15,116,88,.18) !important;
+    box-shadow: var(--ac-shadow-2) !important;
+  }
+}
+
+html.light #page-sektor #sektorDetailTable {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: var(--ac-shadow-1);
+}
+
+html.light #page-sektor #sektorStaleWarn {
+  color: #8c5a12 !important;
+}
+
+/* Track Record ------------------------------------------------------------ */
+html.light #page-trackrecord .dashboard-hero {
+  background:
+    linear-gradient(110deg, rgba(15,116,88,.05), transparent 36%),
+    #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+}
+
+html.light #page-trackrecord > .flex.items-center.gap-2.border-b {
+  border-bottom-color: rgba(18,35,29,.09) !important;
+}
+
+html.light #page-trackrecord :is(#trViewTabTable,#trViewTabBacktest) {
+  border-radius: 9px !important;
+}
+
+html.light #page-trackrecord #trViewTabTable,
+html.light #page-trackrecord #trViewTabBacktest {
+  color: #65726c !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+html.light #page-trackrecord #trViewTabTable.bg-emerald-500\/20,
+html.light #page-trackrecord #trViewTabBacktest.bg-emerald-500\/20 {
+  color: #ffffff !important;
+  background: #17211e !important;
+  border-color: #17211e !important;
+}
+
+html.light #page-trackrecord :is(
+  #trackRecordSummaryGrid > div,
+  #trBacktestViewPanel .grid > div,
+  #trTableViewPanel > div[class*="bg-dark-"],
+  #trBacktestViewPanel > div[class*="bg-dark-"]
+) {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.09) !important;
+  box-shadow: var(--ac-shadow-1);
+}
+
+html.light #page-trackrecord :is(
+  #trTableWrap,
+  #trBacktestTradesWrap
+) {
+  background: #ffffff !important;
+  scrollbar-gutter: stable;
+}
+
+html.light #page-trackrecord canvas {
+  filter: saturate(.92) contrast(.99);
+}
+
+/* Shared data tables ------------------------------------------------------ */
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) thead tr,
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) thead th {
+  background: rgba(247,249,248,.97) !important;
+  color: #5f6d67 !important;
+  border-color: rgba(18,35,29,.09) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) tbody tr:hover {
+  background: #f6f8f7 !important;
+}
+
+/* Desktop density: use available width without turning rows into billboards. */
+@media (min-width: 1280px) {
+  #page-screener,
+  #page-watchlist,
+  #page-sektor,
+  #page-trackrecord {
+    max-width: 1400px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  #page-screener,
+  #page-watchlist,
+  #page-sektor,
+  #page-trackrecord {
+    padding-inline: 0 !important;
+  }
+
+  html.light #page-screener .ac-segmented {
+    width: 100%;
+  }
+
+  html.light #page-screener .ac-segment {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  html.light #page-trackrecord > .flex.items-center.gap-2.border-b {
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+
+  html.light #page-trackrecord > .flex.items-center.gap-2.border-b::-webkit-scrollbar {
+    display: none;
+  }
+
+  html.light #page-trackrecord :is(#trViewTabTable,#trViewTabBacktest) {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    min-height: 42px;
+  }
+}
+
+
+/* ==========================================================================
+   FINANCIAL + MARKET STRUCTURE RESEARCH
+   ========================================================================== */
+
+html.light #page-analisis :is(#panel-tab-financial,#panel-tab-market-structure) .ac-research-data-panel {
+  overflow: hidden;
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.10) !important;
+  box-shadow: var(--ac-shadow-1) !important;
+}
+
+.ac-research-data-head {
+  align-items: flex-start !important;
+  gap: 18px;
+}
+
+.ac-research-kicker {
+  margin: 0 0 5px;
+  color: var(--ac-accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.ac-research-ticker-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.ac-research-ticker-input {
+  width: 112px;
+  height: 36px;
+  padding: 0 11px;
+  border: 1px solid var(--ac-line-strong);
+  border-radius: 9px;
+  background: var(--ac-surface-2);
+  color: var(--ac-text);
+  font: 700 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.ac-research-ticker-input:focus {
+  border-color: rgba(15,116,88,.44);
+  box-shadow: 0 0 0 3px rgba(15,116,88,.09);
+}
+
+.ac-research-load-btn {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid #17211e;
+  border-radius: 9px;
+  background: #17211e;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+.ac-research-load-btn:hover {
+  background: #26322e;
+}
+
+.ac-research-load-btn:active {
+  transform: scale(.985);
+}
+
+.ac-research-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--ac-text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.ac-research-data-content {
+  padding: 18px;
+}
+
+.ac-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 10px;
+}
+
+.ac-metric-grid-financial {
+  grid-template-columns: repeat(4,minmax(0,1fr));
+}
+
+.ac-metric-tile {
+  min-width: 0;
+  padding: 17px;
+  border: 1px solid var(--ac-line);
+  border-radius: 12px;
+  background: #fbfcfb;
+}
+
+.ac-metric-tile span {
+  display: block;
+  color: var(--ac-text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .02em;
+}
+
+.ac-metric-tile strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--ac-text);
+  font-size: clamp(20px,2vw,28px);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -.035em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.ac-metric-tile small {
+  display: block;
+  margin-top: 7px;
+  color: var(--ac-text-dim);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.ac-research-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  margin-top: 12px;
+  border: 1px solid var(--ac-line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--ac-surface-2);
+}
+
+.ac-research-detail {
+  min-width: 0;
+  padding: 13px 15px;
+  background: #ffffff;
+}
+
+.ac-research-detail:nth-child(2n) {
+  border-left: 1px solid var(--ac-line);
+}
+
+.ac-research-detail:nth-child(n+3) {
+  border-top: 1px solid var(--ac-line);
+}
+
+.ac-research-detail span {
+  display: block;
+  color: var(--ac-text-dim);
+  font-size: 10px;
+}
+
+.ac-research-detail strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--ac-text);
+  font-size: 11px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.ac-research-note,
+.ac-research-footnote {
+  margin-top: 12px;
+  padding: 11px 13px;
+  border: 1px solid rgba(18,35,29,.08);
+  border-radius: 10px;
+  background: #f7f9f8;
+  color: var(--ac-text-muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.ac-research-note {
+  font-size: 11px;
+}
+
+html:not(.light) .ac-research-data-panel {
+  --ac-text: #edf4ef;
+  --ac-text-muted: #95a59f;
+  --ac-text-dim: #6f827b;
+  --ac-line: rgba(148,163,184,.14);
+  --ac-line-strong: rgba(148,163,184,.22);
+  --ac-surface-2: rgba(15,23,42,.56);
+}
+
+html:not(.light) .ac-research-ticker-input {
+  background: rgba(15,23,42,.7);
+  color: #edf4ef;
+}
+
+html:not(.light) .ac-research-load-btn {
+  background: #10b981;
+  border-color: #10b981;
+  color: #03140f;
+}
+
+html:not(.light) .ac-metric-tile,
+html:not(.light) .ac-research-detail {
+  background: rgba(15,23,42,.52);
+}
+
+html:not(.light) .ac-research-note,
+html:not(.light) .ac-research-footnote {
+  background: rgba(15,23,42,.45);
+}
+
+@media (max-width: 900px) {
+  .ac-metric-grid-financial {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .ac-research-data-head {
+    flex-direction: column;
+  }
+
+  .ac-research-ticker-tools {
+    width: 100%;
+  }
+
+  .ac-research-ticker-input {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
+  .ac-metric-grid,
+  .ac-metric-grid-financial,
+  .ac-research-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ac-research-detail:nth-child(2n) {
+    border-left: 0;
+  }
+
+  .ac-research-detail + .ac-research-detail {
+    border-top: 1px solid var(--ac-line);
+  }
+
+  .ac-research-data-content {
+    padding: 13px;
+  }
+}
