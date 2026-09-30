@@ -112,6 +112,8 @@ async function main() {
   console.log('Missing Free Float: ' + built.summary.missing_free_float.length +
     (built.summary.missing_free_float.length ? ' [' + built.summary.missing_free_float.join(', ') + ']' : ''));
   console.log('HSC dataset tickers: ' + built.summary.hsc_dataset_count);
+  console.log('HSC outside eligible universe: ' + built.summary.hsc_outside_universe.length +
+    (built.summary.hsc_outside_universe.length ? ' [' + built.summary.hsc_outside_universe.join(', ') + ']' : ''));
   console.log('HSC verified in universe: ' + built.summary.hsc_verified_in_universe);
   console.log('HSC active/revoked in universe: ' +
     built.summary.hsc_active_in_universe + '/' + built.summary.hsc_revoked_in_universe);
