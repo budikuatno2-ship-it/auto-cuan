@@ -80,6 +80,24 @@ test('DeepScan cache validation rejects a requested range that is stale for the 
   });
   assert.equal(loaded.complete, false);
   assert.equal(loaded.reason, 'history_stale_requested_range');
+
+  const oldRows = [];
+  const start = Date.parse('2026-08-20T00:00:00Z');
+  for (let i = 0; i < 35; i++) {
+    const date = new Date(start + i * 86400000).toISOString().slice(0, 10);
+    oldRows.push(candle(date, 100 + i));
+  }
+  fs.writeFileSync(path.join(dir, 'BBCA.json'), JSON.stringify({
+    requested_from: '2020-01-01',
+    requested_to: '2026-10-02',
+    candles: oldRows
+  }));
+  const staleSession = context.loadFullHistoryForTicker(root, 'BBCA', {
+    requiredThrough: '2026-10-02',
+    requiredLatestCandleDate: '2026-10-02'
+  });
+  assert.equal(staleSession.complete, false);
+  assert.equal(staleSession.reason, 'latest_session_stale');
 });
 
 test('DeepScan Yahoo normalizer retains adjusted close separately from executable raw prices', () => {
