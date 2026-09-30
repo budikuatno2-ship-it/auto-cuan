@@ -58,24 +58,49 @@ function readCanonicalArchiveMeta(archiveDir, ticker) {
       archive_exists: false,
       archive_candle_count: 0,
       archive_first_date: null,
-      archive_latest_date: null
+      archive_latest_date: null,
+      archive_last_positive_volume_date: null,
+      archive_positive_volume_last20: 0,
+      archive_positive_volume_last60: 0,
+      archive_zero_volume_tail: 0,
+      archive_distinct_close_last20: 0
     };
   }
   try {
     const payload = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     const candles = normalizeCanonicalCandles(payload);
+    const last20 = candles.slice(-20);
+    const last60 = candles.slice(-60);
+    const positive20 = last20.filter((row) => row.volume > 0);
+    const positive60 = last60.filter((row) => row.volume > 0);
+    const lastPositive = candles.slice().reverse().find((row) => row.volume > 0) || null;
+    let zeroVolumeTail = 0;
+    for (let i = candles.length - 1; i >= 0; i--) {
+      if (candles[i].volume > 0) break;
+      zeroVolumeTail += 1;
+    }
     return {
       archive_exists: true,
       archive_candle_count: candles.length,
       archive_first_date: candles.length ? candles[0].date : null,
-      archive_latest_date: candles.length ? candles[candles.length - 1].date : null
+      archive_latest_date: candles.length ? candles[candles.length - 1].date : null,
+      archive_last_positive_volume_date: lastPositive ? lastPositive.date : null,
+      archive_positive_volume_last20: positive20.length,
+      archive_positive_volume_last60: positive60.length,
+      archive_zero_volume_tail: zeroVolumeTail,
+      archive_distinct_close_last20: new Set(last20.map((row) => row.close)).size
     };
   } catch (_) {
     return {
       archive_exists: true,
       archive_candle_count: 0,
       archive_first_date: null,
-      archive_latest_date: null
+      archive_latest_date: null,
+      archive_last_positive_volume_date: null,
+      archive_positive_volume_last20: 0,
+      archive_positive_volume_last60: 0,
+      archive_zero_volume_tail: 0,
+      archive_distinct_close_last20: 0
     };
   }
 }
@@ -112,7 +137,12 @@ function summarizeFeatureCoverage(eligibleTickers, featureRows, historyRows, arc
       archive_exists: false,
       archive_candle_count: 0,
       archive_first_date: null,
-      archive_latest_date: null
+      archive_latest_date: null,
+      archive_last_positive_volume_date: null,
+      archive_positive_volume_last20: 0,
+      archive_positive_volume_last60: 0,
+      archive_zero_volume_tail: 0,
+      archive_distinct_close_last20: 0
     };
     return Object.assign({
       ticker,
@@ -215,6 +245,11 @@ function printSummary(summary) {
         ' archive=' + row.archive_candle_count +
         ' archive_first=' + (row.archive_first_date || '-') +
         ' archive_latest=' + (row.archive_latest_date || '-') +
+        ' last_positive=' + (row.archive_last_positive_volume_date || '-') +
+        ' vol20=' + row.archive_positive_volume_last20 +
+        ' vol60=' + row.archive_positive_volume_last60 +
+        ' zero_tail=' + row.archive_zero_volume_tail +
+        ' close20=' + row.archive_distinct_close_last20 +
         ' archive_repairable=' + (row.repairable_from_canonical_archive ? 'YES' : 'NO')
       );
     }
