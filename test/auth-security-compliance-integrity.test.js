@@ -218,7 +218,7 @@ test('PR #567: Login handles email and username without user enumeration', () =>
 
   // Email support
   assert.match(loginSource, /const isEmailInput = usernameLower\.includes\("@"\)/);
-  assert.match(loginSource, /userLookup\.ilike\("email", usernameLower\)/);
+  assert.match(loginSource, /userLookup\.eq\("email", usernameLower\)/);
   assert.match(loginSource, /userLookup\.eq\("username", usernameLower\)/);
 
   // Anti-enumeration: returns GENERIC_CREDENTIAL_ERROR whether user is missing or password mismatch
