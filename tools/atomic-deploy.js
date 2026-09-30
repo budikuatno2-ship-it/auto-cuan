@@ -141,10 +141,23 @@ function main(argv) {
     return decision.exit_code;
   }
 
-  // 5. Zero-downtime reload so disk code == RAM code.
+  // 5. Remove retired one-time supervisor from an existing PM2 process list.
+  // `pm2 reload ecosystem.config.js` does not delete apps removed from the
+  // ecosystem file, so explicitly delete it before reloading the active set.
+  const retiredDelete = run('pm2', ['delete', 'auto-cuan-ai-eval-supervisor'], { stdio: 'inherit' });
+  // PM2 returns non-zero when the app is already absent; that is the desired
+  // end-state, so deletion is best-effort and must not block deployment.
+
+  // 6. Zero-downtime reload so disk code == RAM code.
   const reloadRes = run('pm2', ['reload', ECOSYSTEM, '--update-env'], { stdio: 'inherit' });
   if (!reloadRes.ok) {
     console.error('pm2 reload failed: ' + reloadRes.stderr);
+    return 4;
+  }
+
+  const saveRes = run('pm2', ['save'], { stdio: 'inherit' });
+  if (!saveRes.ok) {
+    console.error('pm2 save failed: ' + saveRes.stderr);
     return 4;
   }
 
