@@ -73,5 +73,6 @@
   "test/landing-experience.test.js",
   "test/money-sheet-formulas.test.js",
   "test/workspace-detail.test.js",
-  "test/money-management-and-group-bot-regression.test.js"
+  "test/money-management-and-group-bot-regression.test.js",
+  "test/market-structure-coverage.test.js"
 ]
