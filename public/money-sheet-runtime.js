@@ -8,7 +8,7 @@
   const money = value => value == null ? '\u2014' : 'Rp ' + value.toLocaleString('id-ID');
   const format = value => value.toLocaleString('id-ID');
   const metric = (id,value) => root.AutoCuanNumeric ? root.AutoCuanNumeric.set($(id),value,{prefix:'Rp '}) : ($(id).textContent=money(value));
-  let sheet = null, month = Model.currentMonth(), notes = '', revision = null, userId = '';
+  let sheet = null, month = Model.currentMonth(), loadedMonth = null, notes = '', revision = null, userId = '';
   let lastSaveError = false;
   let saved = '', loading = false, saving = false, bound = false, generation = 0, totalsFrame = 0;
   let undo = [], redo = [], editBefore = null, nextId = 0, portfolioQueued = false, portfolioAt = 0;
@@ -179,7 +179,7 @@
     if (dirty() && !force && !root.confirm('Perubahan belum disimpan. Tinggalkan perubahan dan muat bulan ini?')) { $('mmSheetMonth').value = month; return; }
 
     const previous = {
-      month: month,
+      month: loadedMonth || month,
       sheet: sheet,
       notes: notes,
       revision: revision,
@@ -188,15 +188,20 @@
       undo: undo.slice(),
       redo: redo.slice()
     };
-    const gen = ++generation; month = nextMonth; loading = true;
-    $('mmSheetMonth').value = month;
+    const gen = ++generation;
+    const requestMonth = nextMonth;
+    month = requestMonth;
+    loading = true;
+    $('mmSheetMonth').value = requestMonth;
     if (!previous.sheet) $('mmSheetViewport').hidden = true;
     notice('Memuat lembar kerja...'); stateLabel('Memuat'); controls();
     try {
-      const data = await request('/api/money-management?action=get-sheet&month=' + encodeURIComponent(month));
+      const data = await request('/api/money-management?action=get-sheet&month=' + encodeURIComponent(requestMonth));
       if (gen !== generation) return;
-      if (!data.user_id || !data.data || data.data.month !== month || (data.data.revision !== null && (!Number.isInteger(data.data.revision) || data.data.revision < 0))) throw new Error('Respons data tidak sesuai. Lembar kerja tidak diganti.');
+      if (!data.user_id || !data.data || data.data.month !== requestMonth || (data.data.revision !== null && (!Number.isInteger(data.data.revision) || data.data.revision < 0))) throw new Error('Respons data tidak sesuai. Lembar kerja tidak diganti.');
       const normalized = Model.normalize(data.data.sheet);
+      month = requestMonth;
+      loadedMonth = requestMonth;
       userId = String(data.user_id); sheet = normalized; notes = String(data.data.notes || ''); revision = data.data.revision;
       lastSaveError = false; saved = encode(); undo = []; redo = []; invalid.clear(); rowNodes.clear(); editBefore = null;
       $('mmCashflowNotes').value = notes; loading = false; $('mmSheetViewport').hidden = false;
@@ -209,6 +214,7 @@
       // erase the last successfully loaded worksheet.
       if (previous.sheet) {
         month = previous.month;
+        loadedMonth = previous.month;
         sheet = previous.sheet;
         notes = previous.notes;
         revision = previous.revision;
@@ -297,7 +303,7 @@
       const currentLocal = localPortfolio();
       const sync = root.__AUTOCUAN_PORTFOLIO_SYNC_STATUS__ || {};
       const localIsPending = currentLocal !== undefined &&
-        ['saving','local-fallback','conflict'].includes(String(sync.status || ''));
+        ['pending','saving','local-fallback','conflict'].includes(String(sync.status || ''));
 
       if (localIsPending) {
         showPortfolio(currentLocal, 'Perubahan perangkat belum tersinkron ke cloud');
@@ -423,13 +429,14 @@
     doc.addEventListener('keydown', onKey);
     root.addEventListener('beforeunload', event => { if (dirty() || saving) { event.preventDefault(); event.returnValue = ''; } });
     root.addEventListener('autocuan:portfolio-changed', event => { if (!event.detail || event.detail.userId === userId) queuePortfolio(); });
+    root.addEventListener('autocuan:portfolio-synced', event => { if (!event.detail || event.detail.userId === userId) { portfolioAt = 0; queuePortfolio(); } });
     root.addEventListener('storage', event => { if (event.key === 'autocuan_user_id' && event.newValue !== userId) reset(); else if (userId && event.key && event.key.startsWith('autocuan_portfolio_') && event.key.includes(userId)) queuePortfolio(); });
     root.addEventListener('focus', () => { if (visible() && userId) { if (sessionId() !== userId) reset(); else refreshPortfolio(false); } });
   }
   function reset() {
     generation++; requests.forEach(c => c.abort()); requests.clear();
     if (totalsFrame) root.cancelAnimationFrame(totalsFrame); totalsFrame = 0;
-    lastSaveError = false; sheet = null; userId = ''; notes = ''; revision = null; saved = ''; loading = false; saving = false;
+    lastSaveError = false; sheet = null; loadedMonth = null; userId = ''; notes = ''; revision = null; saved = ''; loading = false; saving = false;
     undo = []; redo = []; editBefore = null; invalid.clear(); rowNodes.clear();
     if (grid) grid.reset();
     if (!$('mmSheetViewport')) return;
