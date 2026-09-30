@@ -179,7 +179,7 @@ async function registerWith(channelUrl) {
     const res = makeRes();
     await handler({
       method: 'POST',
-      body: { username: 'newuser', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'local-device', userAgent: 'local-test', termsAccepted: true, termsVersion: accountTerms.CURRENT_TERMS_VERSION }
+      body: { username: 'newuser', email: 'newuser@gmail.com', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'local-device', userAgent: 'local-test', termsAccepted: true, termsVersion: accountTerms.CURRENT_TERMS_VERSION }
     }, res);
     return { res: res, captured: mock.captured };
   });
