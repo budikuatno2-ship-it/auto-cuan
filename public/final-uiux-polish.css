@@ -622,3 +622,346 @@ html.light #landingPage footer {
     transition-duration: .001ms !important;
   }
 }
+
+
+/* ==========================================================================
+   PER-SURFACE FINAL PASS
+   ========================================================================== */
+
+/* Analysis: keep the whole research workspace visually inside one product. */
+html.light #page-analisis {
+  --research-panel: #ffffff;
+  --research-well: #f7f9f8;
+  --research-line: rgba(18,35,29,.10);
+}
+
+html.light #page-analisis .analisis-tab-strip {
+  position: sticky;
+  top: 0;
+  z-index: 24;
+  margin-bottom: 14px !important;
+  padding: 6px !important;
+  background: rgba(247,249,248,.92) !important;
+  border-color: var(--research-line) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 0 rgba(18,35,29,.04) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+html.light #page-analisis .analisis-tab {
+  min-height: 38px !important;
+  color: #64716b !important;
+  border-radius: 9px !important;
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard) !important;
+}
+
+html.light #page-analisis .analisis-tab:hover {
+  color: #1e2a26 !important;
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.08) !important;
+}
+
+html.light #page-analisis .analisis-tab.active {
+  background: #17211e !important;
+  border-color: #17211e !important;
+  color: #ffffff !important;
+  box-shadow: 0 5px 14px rgba(18,35,29,.10) !important;
+}
+
+html.light #page-analisis :is(.unified-top-bar,.unified-card,.broker-summary-panel) {
+  background: #ffffff !important;
+  border-color: var(--research-line) !important;
+  box-shadow: var(--ac-shadow-1) !important;
+}
+
+html.light #page-analisis .unified-top-bar {
+  border-radius: 14px !important;
+}
+
+html.light #page-analisis :is(.unified-chat-messages,#analisisResult,#unifiedAiChartResultWrap) {
+  scrollbar-color: rgba(18,35,29,.20) transparent;
+  overscroll-behavior: contain;
+}
+
+html.light #page-analisis .unified-chat-composer {
+  background: rgba(255,255,255,.94) !important;
+  border-top-color: var(--research-line) !important;
+  backdrop-filter: blur(12px);
+}
+
+html.light #page-analisis :is(.unified-prompt-chip,.analisis-subtab) {
+  background: #f5f7f6 !important;
+  border-color: rgba(18,35,29,.10) !important;
+  color: #52605b !important;
+  box-shadow: none !important;
+}
+
+html.light #page-analisis :is(.unified-prompt-chip,.analisis-subtab):hover {
+  background: #eef3f0 !important;
+  border-color: rgba(15,116,88,.20) !important;
+  color: #0f7458 !important;
+}
+
+html.light #page-analisis .analisis-subtab.active {
+  background: #17211e !important;
+  border-color: #17211e !important;
+  color: #ffffff !important;
+}
+
+html.light #page-analisis #rankingPaywallGate {
+  background: #f8faf9 !important;
+  border-color: rgba(18,35,29,.10) !important;
+  box-shadow: none !important;
+}
+
+html.light #page-analisis #rankingContentWrap > div:first-child {
+  background: #f8faf9 !important;
+  border-color: rgba(18,35,29,.08) !important;
+}
+
+/* Portfolio: the generated scoped sheet is dark-first. This final layer keeps
+   the component functional while remapping it to the app's selected light theme. */
+html.light #portofolioPartialMount {
+  color-scheme: light;
+  --bg: #f3f5f4;
+  --surface: #ffffff;
+  --surface2: #f6f8f7;
+  --line: rgba(18,35,29,.10);
+  --line2: rgba(18,35,29,.18);
+  --text: #26322e;
+  --strong: #17211e;
+  --muted: #62706a;
+  --muted2: #84908b;
+  --accent: #0f7458;
+  --info: #315f9a;
+  --warn: #a96d13;
+  --danger: #c13f4d;
+  --shadow: 0 1px 2px rgba(18,35,29,.04), 0 12px 30px rgba(18,35,29,.06);
+}
+
+html.light #portofolioPartialMount .brand-mark {
+  background: #17211e !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+html.light #portofolioPartialMount :is(.btn,.tab,.session-chip) {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.11) !important;
+  color: #52605b !important;
+  box-shadow: none !important;
+}
+
+html.light #portofolioPartialMount :is(.btn,.tab):hover {
+  background: #f3f6f4 !important;
+  border-color: rgba(15,116,88,.20) !important;
+  color: #17211e !important;
+}
+
+html.light #portofolioPartialMount :is(.btn.primary,.tab.active,.tab[aria-selected="true"]) {
+  background: #17211e !important;
+  border-color: #17211e !important;
+  color: #ffffff !important;
+}
+
+html.light #portofolioPartialMount .tab-strip {
+  top: 0;
+  background: linear-gradient(rgba(243,245,244,.98) 78%, rgba(243,245,244,0)) !important;
+  border-bottom-color: rgba(18,35,29,.08) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+html.light #portofolioPartialMount :is(
+  .access-gate,
+  .panel,
+  .card,
+  .metric,
+  .position-card,
+  .planner-card,
+  .scenario-card,
+  .journal-card
+) {
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.10) !important;
+  box-shadow: var(--ac-shadow-1) !important;
+}
+
+html.light #portofolioPartialMount :is(input,select,textarea) {
+  color-scheme: light;
+  background: #fbfcfb !important;
+  color: #17211e !important;
+  border-color: rgba(18,35,29,.14) !important;
+}
+
+html.light #portofolioPartialMount :is(input,textarea)::placeholder {
+  color: #89948f !important;
+}
+
+html.light #portofolioPartialMount :is(table,thead,tbody,tr,th,td) {
+  border-color: rgba(18,35,29,.08) !important;
+}
+
+html.light #portofolioPartialMount thead th {
+  background: #f7f9f8 !important;
+  color: #5f6d67 !important;
+}
+
+/* Finance: reduce visual chrome and maximize spreadsheet work area. */
+html.light #page-money-management.money-sheet {
+  --ms-surface: #ffffff;
+  --ms-canvas: #f3f5f4;
+  --ms-raised: #f7f9f8;
+  --ms-line: rgba(18,35,29,.11);
+  --ms-ink: #17211e;
+  --ms-muted: #68756f;
+  --ms-accent: #0f7458;
+}
+
+#page-money-management.money-sheet {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+html.light #page-money-management .ms-overview,
+html.light #page-money-management .ms-portfolio,
+html.light #page-money-management .ms-workbook {
+  box-shadow: var(--ac-shadow-1);
+}
+
+html.light #page-money-management .ms-workbook-heading {
+  background: #ffffff;
+}
+
+html.light #page-money-management .ms-toolbar,
+html.light #page-money-management .ms-edit-toolbar,
+html.light #page-money-management .ms-formula-bar,
+html.light #page-money-management .ms-grid-status {
+  background: #f8faf9;
+}
+
+html.light #page-money-management .ms-grid-viewport {
+  scrollbar-color: rgba(18,35,29,.22) transparent;
+  scrollbar-gutter: stable both-edges;
+}
+
+html.light #page-money-management #mmCashflowSpreadsheetTable.ms-grid th {
+  background: #f4f7f5 !important;
+}
+
+html.light #page-money-management #mmCashflowSpreadsheetTable.ms-grid td.ms-active-cell {
+  box-shadow: inset 0 0 0 2px #0f7458 !important;
+}
+
+/* Dashboard: information hierarchy before decoration. */
+html.light #page-dashboard .dashboard-hero {
+  background:
+    linear-gradient(110deg, rgba(15,116,88,.055), transparent 34%),
+    #ffffff !important;
+}
+
+html.light #page-dashboard :is(.dash-level,.market-tile,.dashboard-card) {
+  border-color: rgba(18,35,29,.09) !important;
+}
+
+html.light #page-dashboard .action-card {
+  min-height: 90px;
+}
+
+html.light #page-dashboard .dash-badge {
+  background: #f5f7f6 !important;
+  border-color: rgba(18,35,29,.10) !important;
+  color: #5f6d67 !important;
+}
+
+/* Modals: one predictable sheet language. */
+html.light :is(
+  #loginModal,
+  #registerModal,
+  #selfResetModal,
+  #authChoiceModal,
+  #accountModal,
+  #subscriptionModal
+) {
+  background: rgba(20,29,26,.30) !important;
+  backdrop-filter: blur(7px) !important;
+  -webkit-backdrop-filter: blur(7px) !important;
+}
+
+html.light :is(
+  #loginModal,
+  #registerModal,
+  #selfResetModal,
+  #authChoiceModal,
+  #accountModal,
+  #subscriptionModal
+) > div {
+  background: #ffffff !important;
+  color: #17211e !important;
+  border-color: rgba(18,35,29,.10) !important;
+  box-shadow: 0 24px 72px rgba(18,35,29,.16) !important;
+}
+
+/* Interaction feedback: ~100ms is perceptible, not theatrical. */
+.ac-pressing {
+  transform: scale(.985) !important;
+  transition-duration: var(--motion-instant) !important;
+}
+
+/* Scrollbars remain visible enough to communicate overflow, without taking
+   attention away from data. */
+html.light * {
+  scrollbar-color: rgba(18,35,29,.20) transparent;
+}
+
+html.light *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.light *::-webkit-scrollbar-thumb {
+  background: rgba(18,35,29,.18);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+
+html.light *::-webkit-scrollbar-thumb:hover {
+  background: rgba(18,35,29,.28);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* Long pages should not rubber-band nested data surfaces into the window. */
+:is(
+  #rankingTableWrap,
+  #screenerTableWrap,
+  #nkScreenerTableWrap,
+  #dtScreenerTableWrap,
+  #sektorDetailTable,
+  .ms-grid-viewport,
+  .unified-chat-messages
+) {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 767px) {
+  #page-money-management.money-sheet {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  html.light #page-analisis .analisis-tab-strip,
+  html.light #portofolioPartialMount .tab-strip {
+    margin-inline: calc(-1 * var(--ac-page-pad));
+    padding-inline: var(--ac-page-pad) !important;
+    border-radius: 0 !important;
+  }
+}
