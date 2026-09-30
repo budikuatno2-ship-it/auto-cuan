@@ -215,11 +215,11 @@ test('F-090: doRegister resolves errorEl before the email validation branch', ()
   const body = src.slice(start, end === -1 ? src.length : end);
 
   const assignIdx = body.indexOf("var errorEl = document.getElementById('registerError')");
-  const useIdx = body.indexOf('errorEl.textContent = "Format email tidak valid."');
+  const useIdx = body.indexOf('errorEl.textContent = "Gunakan alamat Gmail yang valid (@gmail.com)."');
   assert.notEqual(assignIdx, -1, 'errorEl must be assigned');
   assert.notEqual(useIdx, -1, 'the email validation branch must still exist');
   assert.ok(assignIdx < useIdx, 'errorEl must be assigned BEFORE the email branch uses it');
-  assert.match(body, /if \(errorEl\) \{ errorEl\.textContent = "Format email tidak valid\."/, 'the email branch must null-guard errorEl');
+  assert.match(body, /if \(errorEl\) \{ errorEl\.textContent = "Gunakan alamat Gmail yang valid \(@gmail\.com\)\."/, 'the email branch must null-guard errorEl');
 });
 
 test('F-091: openNewsFromAnalisis escapes news fields and guards the href scheme', () => {
