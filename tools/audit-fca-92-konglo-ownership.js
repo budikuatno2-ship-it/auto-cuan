@@ -27,9 +27,29 @@ const DEFAULT_OUT = path.join(ROOT, 'data', 'market-structure', 'audit', 'fca-92
 const NOMINEE_MARKERS = [
   'NOMINEE', 'A C CLIENT', 'AC CLIENT', 'CLIENTS', 'SECURITIES', 'SEKURITAS',
   'KUSTODIAN', 'CUSTODY', 'CUSTODIAN', 'CLEARING', 'DEPOSITORY',
-  'DBS VICKERS', 'UOB KAY HIAN', 'CGS INTERNATIONAL', 'UBS AG',
+  'DBS VICKERS', 'UOB KAY HIAN', 'CGS INTERNATIONAL', 'UBS AG', 'UBS SWITZERLAND',
   'CITIBANK', 'CITIBANK N A', 'HSBC', 'JPMORGAN', 'JP MORGAN',
-  'STANDARD CHARTERED', 'MORGAN STANLEY', 'CREDIT SUISSE'
+  'STANDARD CHARTERED', 'MORGAN STANLEY', 'CREDIT SUISSE',
+  'BANK JULIUS BAER', 'BANK OF SINGAPORE', 'LGT BANK',
+  'FIDELITY FUND', 'FIDELITY FUNDS'
+];
+
+const PASSIVE_INSTITUTION_MARKERS = [
+  'ASABRI',
+  'ASURANSI JIWA IFG',
+  'DANA PENSIUN',
+  'REKSA DANA',
+  'REKSADANA',
+  'BPJS',
+  'DJS KETENAGAKERJAAN',
+  'PENDANAAN EFEK INDONESIA',
+  'KEJAKSAAN REPUBLIK INDONESIA',
+  'JAKSA AGUNG MUDA BIDANG TINDAK PIDANA KHUSUS',
+  'FUND LP',
+  'MUTUAL FUND',
+  'PENSION FUND',
+  'ASSET MANAGEMENT',
+  'INVESTMENT MANAGEMENT'
 ];
 
 const LEGAL_TOKENS = new Set([
@@ -69,6 +89,16 @@ function isGenericNomineeOwner(value) {
   const normalized = normalizeOwnerName(value);
   if (!normalized || normalized.length < 6) return true;
   return NOMINEE_MARKERS.some(marker => normalized.includes(normalizeOwnerName(marker)));
+}
+
+function isPassiveInstitutionOwner(value) {
+  const normalized = normalizeOwnerName(value);
+  if (!normalized) return true;
+  return PASSIVE_INSTITUTION_MARKERS.some(marker => normalized.includes(normalizeOwnerName(marker)));
+}
+
+function isControllerFingerprintOwner(value) {
+  return !isGenericNomineeOwner(value) && !isPassiveInstitutionOwner(value);
 }
 
 function firstDefined(obj, keys) {
@@ -146,7 +176,7 @@ function buildGroupOwnerSignatures(marketByTicker, memberships) {
   for (const member of memberships) {
     const stock = marketByTicker.get(member.ticker);
     const investors = normalizeInvestors(stock)
-      .filter(row => !isGenericNomineeOwner(row.name));
+      .filter(row => isControllerFingerprintOwner(row.name));
 
     if (!groupSignatures.has(member.group_code)) {
       groupSignatures.set(member.group_code, new Map());
@@ -180,16 +210,30 @@ function inferCandidates(targetInvestors, groupSignatures) {
     const overlaps = [];
 
     for (const inv of targetInvestors) {
-      if (isGenericNomineeOwner(inv.name)) continue;
+      if (!isControllerFingerprintOwner(inv.name)) continue;
       const sig = signature.get(inv.normalized_name);
       if (!sig) continue;
+
+      const targetPct = Number.isFinite(inv.pct) ? inv.pct : 0;
+      const knownMaxPct = Number.isFinite(sig.max_pct) ? sig.max_pct : 0;
+      const knownMemberCount = sig.source_tickers.size;
+
+      const controllerQualified =
+        (targetPct >= 50 && knownMaxPct >= 1) ||
+        (targetPct >= 20 && knownMaxPct >= 5) ||
+        (targetPct >= 5 && knownMaxPct >= 5 && knownMemberCount >= 2);
+
+      if (!controllerQualified) continue;
+
       overlaps.push({
         investor_name: inv.name,
         normalized_name: inv.normalized_name,
         target_pct: inv.pct,
         target_rank: inv.rank,
         known_group_member_tickers: Array.from(sig.source_tickers).sort(),
-        known_display_names: Array.from(sig.display_names).sort()
+        known_display_names: Array.from(sig.display_names).sort(),
+        known_group_max_pct: Number(knownMaxPct.toFixed(4)),
+        controller_qualified: true
       });
     }
 
@@ -207,10 +251,14 @@ function inferCandidates(targetInvestors, groupSignatures) {
       0
     );
 
-    let confidence = 'WEAK';
-    if (distinctKnownMembers.size >= 2 && topMatchedPct >= 1) confidence = 'STRONG';
-    else if (topMatchedPct >= 5) confidence = 'STRONG';
-    else if (topMatchedPct >= 1 || overlaps.length >= 2) confidence = 'MEDIUM';
+    let confidence = 'MEDIUM';
+    if (
+      overlaps.some(row => Number(row.target_pct || 0) >= 50 && Number(row.known_group_max_pct || 0) >= 1) ||
+      overlaps.some(row => Number(row.target_pct || 0) >= 20 && Number(row.known_group_max_pct || 0) >= 5) ||
+      (distinctKnownMembers.size >= 2 && topMatchedPct >= 5)
+    ) {
+      confidence = 'STRONG';
+    }
 
     candidates.push({
       group_code: groupCode,
@@ -339,6 +387,9 @@ function buildAudit(options) {
       auto_apply_mapping: false,
       exact_shareholder_overlap_only: true,
       generic_nominee_names_excluded: true,
+      passive_financial_institutions_excluded: true,
+      controller_materiality_required: true,
+      controller_materiality_policy: 'target>=50% & known>=1% OR target>=20% & known>=5% OR target>=5% & known>=5% across >=2 known members',
       ambiguous_candidates_require_review: true
     },
     ticker_count: rows.length,
@@ -412,6 +463,8 @@ if (require.main === module) {
 module.exports = {
   normalizeOwnerName,
   isGenericNomineeOwner,
+  isPassiveInstitutionOwner,
+  isControllerFingerprintOwner,
   investorName,
   investorPct,
   normalizeInvestors,
