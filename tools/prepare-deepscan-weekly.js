@@ -230,12 +230,20 @@ async function main(argv) {
     else failures.push({ ticker: tickers[index], reason: row && row.error || 'unknown_failure' });
   });
 
-  const fundamentals = await context.loadFundamentalsMap(db, tickers);
+  const financialHistoryMap = await context.loadFinancialHistoryMap(db, tickers);
   let financialAvailable = 0;
   let brokerAvailable = 0;
   for (const ticker of tickers) {
-    const row = fundamentals.get(ticker) || null;
-    if (context.buildFundamentalContext(1, row).data_available) financialAvailable += 1;
+    const history = context.loadFullHistoryForTicker(rootDir, ticker);
+    const financial = context.buildMultiYearFinancialContext(
+      1,
+      financialHistoryMap.get(ticker) || [],
+      {
+        firstCandleDate: history.first_date,
+        asOfDate: to
+      }
+    );
+    if (financial.complete) financialAvailable += 1;
     if (context.loadBrokerContext(rootDir, ticker)) brokerAvailable += 1;
   }
 
@@ -256,6 +264,7 @@ async function main(argv) {
     full_universe_run: fullUniverseRun,
     history_complete_count: successes.length,
     history_failed_count: failures.length,
+    financial_history_start_year: 2020,
     financial_available_count: financialAvailable,
     financial_missing_count: tickers.length - financialAvailable,
     broker_available_count: brokerAvailable,
