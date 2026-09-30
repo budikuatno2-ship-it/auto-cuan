@@ -100,6 +100,39 @@ test('DeepScan cache validation rejects a requested range that is stale for the 
   assert.equal(staleSession.reason, 'latest_session_stale');
 });
 
+test('DeepScan Yahoo normalizer minimally repairs malformed OHLC envelopes', () => {
+  const timestamp = Date.parse('2026-09-29T02:00:00Z') / 1000;
+  const payload = {
+    chart: {
+      result: [{
+        timestamp: [timestamp],
+        indicators: {
+          quote: [{
+            open: [100],
+            high: [99],
+            low: [101],
+            close: [102],
+            volume: [1000]
+          }],
+          adjclose: [{ adjclose: [102] }]
+        }
+      }]
+    }
+  };
+
+  const rows = prepare.normalizeAdjustedYahoo(payload, {
+    from: '2026-09-29',
+    to: '2026-09-29'
+  });
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].open, 100);
+  assert.equal(rows[0].close, 102);
+  assert.equal(rows[0].high, 102);
+  assert.equal(rows[0].low, 99);
+  assert.equal(rows[0].adjusted_close, 102);
+});
+
 test('DeepScan Yahoo normalizer retains adjusted close separately from executable raw prices', () => {
   const timestamps = [
     Date.parse('2023-12-29T02:00:00Z') / 1000,
