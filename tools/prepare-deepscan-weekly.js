@@ -85,6 +85,85 @@ async function mapBounded(items, concurrency, fn) {
   return results;
 }
 
+function normalizeAdjustedYahoo(payload, options) {
+  options = options || {};
+  const result = payload && payload.chart && payload.chart.result && payload.chart.result[0];
+  const quote = result && result.indicators && result.indicators.quote && result.indicators.quote[0];
+  const adj = result && result.indicators && result.indicators.adjclose && result.indicators.adjclose[0];
+  const adjusted = adj && adj.adjclose;
+  const timestamps = result && result.timestamp;
+  if (!quote || !Array.isArray(timestamps) || !Array.isArray(adjusted)) {
+    throw new Error('invalid_adjusted_yahoo_schema');
+  }
+
+  const candles = [];
+  let previousDate = null;
+  const seen = new Set();
+  timestamps.forEach((ts, index) => {
+    const date = acquisition.yahooDate(ts);
+    if (!date) throw new Error('malformed_yahoo_timestamp');
+    if (seen.has(date)) throw new Error('duplicate_yahoo_date');
+    if (previousDate && date < previousDate) throw new Error('unordered_yahoo_dates');
+    seen.add(date);
+    previousDate = date;
+    if (options.from && date < options.from) return;
+    if (options.to && date > options.to) return;
+
+    const open = Array.isArray(quote.open) ? Number(quote.open[index]) : NaN;
+    const high = Array.isArray(quote.high) ? Number(quote.high[index]) : NaN;
+    const low = Array.isArray(quote.low) ? Number(quote.low[index]) : NaN;
+    const close = Array.isArray(quote.close) ? Number(quote.close[index]) : NaN;
+    const volume = Array.isArray(quote.volume) ? Number(quote.volume[index]) : 0;
+    const adjustedClose = Number(adjusted[index]);
+
+    if (![open, high, low, close].every((value) => Number.isFinite(value) && value > 0)) return;
+    if (!Number.isFinite(adjustedClose) || adjustedClose <= 0) {
+      throw new Error('missing_adjusted_close');
+    }
+    if (high < Math.max(open, close, low) || low > Math.min(open, close)) {
+      throw new Error('invalid_yahoo_ohlc');
+    }
+
+    candles.push({
+      date,
+      open,
+      high,
+      low,
+      close,
+      adjusted_close: adjustedClose,
+      volume: Number.isFinite(volume) && volume >= 0 ? volume : 0
+    });
+  });
+  return candles;
+}
+
+async function fetchAdjustedTicker(ticker, options) {
+  const baseUrl = acquisition.buildYahooUrl(ticker, options);
+  const url = baseUrl.replace('events=history', 'events=div%2Csplits');
+  let lastError = new Error('fetch_failed');
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), options.timeoutMs || 20000);
+    try {
+      const response = await options.fetchFn(url, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; auto-cuan-deepscan-weekly/1.0)' }
+      });
+      if (!response || !response.ok) throw new Error('yahoo_http_' + (response && response.status || 0));
+      let payload;
+      try { payload = await response.json(); } catch (_) { throw new Error('invalid_yahoo_json'); }
+      return normalizeAdjustedYahoo(payload, options);
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw lastError;
+}
+
 async function main(argv) {
   const rootDir = path.resolve(__dirname, '..');
   loadEnvFile(rootDir);
@@ -107,7 +186,7 @@ async function main(argv) {
   const startedAt = new Date().toISOString();
   let completed = 0;
   const results = await mapBounded(tickers, concurrency, async (ticker) => {
-    const candles = await acquisition.fetchTicker(ticker, {
+    const candles = await fetchAdjustedTicker(ticker, {
       from,
       to,
       fetchFn: fetch,
@@ -115,11 +194,14 @@ async function main(argv) {
     });
     const normalized = context.normalizeCandles(candles);
     if (normalized.length < 30) throw new Error('insufficient_history');
+    if (!normalized.every((row) => Number.isFinite(Number(row.adjusted_close)) && Number(row.adjusted_close) > 0)) {
+      throw new Error('missing_adjusted_close');
+    }
 
     const filePath = context.historyFilePath(rootDir, ticker);
     writeJsonAtomic(filePath, {
       ticker,
-      source: 'Yahoo Finance chart API (.JK)',
+      source: 'Yahoo Finance chart API (.JK, raw OHLCV + adjusted close)',
       requested_from: from,
       requested_to: to,
       first_date: normalized[0].date,
@@ -164,7 +246,7 @@ async function main(argv) {
   const readyForActivation = fullUniverseRun && historyReady && financialReady && brokerReady;
 
   const report = {
-    schema_version: 1,
+    schema_version: 2,
     started_at: startedAt,
     finished_at: new Date().toISOString(),
     requested_from: from,
@@ -200,6 +282,8 @@ module.exports = {
   parseArgs,
   previousJakartaDate,
   mapBounded,
+  normalizeAdjustedYahoo,
+  fetchAdjustedTicker,
   writeJsonAtomic,
   main
 };
