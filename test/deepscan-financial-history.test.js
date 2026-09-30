@@ -109,6 +109,51 @@ test('financial history CSV keeps period provenance and rejects duplicate period
   assert.throws(()=>financial.parseCsv(duplicate),/duplikat/i);
 });
 
-test('latest required FY is previous calendar year', () => {
-  assert.equal(financial.latestRequiredFiscalYear('2026-09-30'),2025);
+test('latest required FY respects conservative annual-report availability cutoff', () => {
+  assert.equal(financial.latestRequiredFiscalYear('2026-01-15'), 2024);
+  assert.equal(financial.latestRequiredFiscalYear('2026-04-30'), 2024);
+  assert.equal(financial.latestRequiredFiscalYear('2026-05-01'), 2025);
+  assert.equal(financial.latestRequiredFiscalYear('2026-09-30'), 2025);
+});
+
+test('single-year financial histories leave CAGR undefined', () => {
+  const metrics = financial.computeMetrics([fy('NEW', 2025, {
+    revenue: 100,
+    net_income: 10,
+    equity: 50,
+    eps: 5
+  })]);
+  assert.equal(metrics.revenue_cagr_pct, null);
+  assert.equal(metrics.net_income_cagr_pct, null);
+  assert.equal(metrics.equity_cagr_pct, null);
+  assert.equal(metrics.eps_cagr_pct, null);
+});
+
+test('missing optional cash-flow years are excluded from positivity ratios', () => {
+  const rows = [
+    fy('BBCA', 2022, { operating_cash_flow: 10, free_cash_flow: 5 }),
+    fy('BBCA', 2023, { operating_cash_flow: null, free_cash_flow: null }),
+    fy('BBCA', 2024, { operating_cash_flow: 12, free_cash_flow: 7 }),
+    fy('BBCA', 2025, { operating_cash_flow: null, free_cash_flow: null })
+  ];
+  const metrics = financial.computeMetrics(rows);
+  assert.equal(metrics.ocf_positive_ratio, 1);
+  assert.equal(metrics.fcf_positive_ratio, 1);
+});
+
+test('non-positive PBV never receives a low-valuation bonus', () => {
+  const rows = [
+    fy('NEG', 2024, { equity: -100, shares_outstanding: 100 }),
+    fy('NEG', 2025, { equity: -120, shares_outstanding: 100 })
+  ];
+  const financialOnly = financial.buildContext(rows, {
+    firstCandleDate: '2024-01-02',
+    latestFiscalYear: 2025
+  });
+  const combined = context.buildMultiYearFinancialContext(10, rows, {
+    firstCandleDate: '2024-01-02',
+    latestFiscalYear: 2025
+  });
+  assert.ok(combined.pbv < 0);
+  assert.equal(combined.score, financialOnly.score);
 });
