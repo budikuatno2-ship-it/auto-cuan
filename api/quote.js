@@ -155,7 +155,7 @@ async function handleDailyMarketContextAction(req, res) {
   }
 
   try {
-    var { createClient } = require('@supabase/supabase-js');
+    var { createClient } = require('../lib/hybrid-supabase-client');
     var supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
     });
@@ -206,7 +206,7 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
     if (!SUPABASE_URL || !SUPABASE_KEY) {
       return res.status(200).json({ success: false, error: 'Database belum dikonfigurasi.' });
     }
-    var { createClient } = require('@supabase/supabase-js');
+    var { createClient } = require('../lib/hybrid-supabase-client');
     supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
     });
