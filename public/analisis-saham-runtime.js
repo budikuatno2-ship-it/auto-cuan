@@ -1137,7 +1137,7 @@
       });
     }
 
-    ['bandarTickerSearchInput', 'akumulasiTickerSearchInput', 'bandarSummarySearchInput', 'rankingTickerSearchInput', 'patternTickerSearchInput'].forEach(function (id) {
+    ['bandarTickerSearchInput', 'akumulasiTickerSearchInput', 'bandarSummarySearchInput', 'rankingTickerSearchInput', 'financialTickerInput', 'marketStructureTickerInput', 'patternTickerSearchInput'].forEach(function (id) {
       var el = byId(id);
       if (el) el.value = initialTicker;
     });
