@@ -57,7 +57,12 @@ module.exports = {
       kill_timeout: 10000,
       time: true,
       merge_logs: true,
-      max_memory_restart: '512M',
+      // DayTrade full-universe batches can legitimately push the origin above
+      // 512 MB RSS for a short window. The previous 512M cap could make PM2
+      // recycle autocuan-web mid-request, surfacing as an opaque "fetch failed"
+      // in the VPS runner. Keep ample protection against leaks while leaving
+      // enough headroom on the 5.8 GiB production VPS.
+      max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
         TZ: 'Asia/Jakarta',
