@@ -144,6 +144,7 @@ function registrationSupabase(row) {
       return {
         select() { return this; },
         eq() { return this; },
+        update() { return this; },
         maybeSingle() { return Promise.resolve({ data: null, error: null }); },
         insert(inserted) {
           captured.inserted = inserted;
