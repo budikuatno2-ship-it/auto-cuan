@@ -184,7 +184,7 @@ test('an HTML body from a proxy is treated as a failure, not as a payload', asyn
     return { ok: true, body: '{"success":true}' };
   });
 
-  const bad = await api.cachedFetch('/api/sector-hot?action=deepscan');
+  const bad = await api.cachedFetch('/api/sector-hot?action=screener');
   assert.equal(bad.ok, false, 'a 200 carrying HTML is not a usable API answer');
 
   mode = 'json';
@@ -359,7 +359,6 @@ test('the runtime degrades to plain fetch when the store is unavailable', () => 
   for (const file of [
     'public/index.html',
     'public/watchlist-runtime.js',
-    'public/deepscan-runtime.js',
     'public/money-management-runtime.js',
     'public/bandarmologi-runtime.js'
   ]) {
