@@ -206,6 +206,7 @@
   "test/daytrade-experimental-admin-alert.test.js",
   "test/daytrade-finalizer-schema-contract.test.js",
   "test/daytrade-full-eligible-universe.test.js",
+  "test/daytrade-fca-live-trade-proof.test.js",
   "test/daytrade-intraday-adjustment-provider.test.js",
   "test/daytrade-intraday-dry-run-gate.test.js",
   "test/daytrade-intraday-eod-closeout.test.js",
