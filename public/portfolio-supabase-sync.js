@@ -153,12 +153,31 @@
     if (!access) return false;
     uid = access.userId;
     var bootstrap = readLocalState(uid);
+    var bootstrapSerialized = JSON.stringify(bootstrap);
     setStatus('loading', 'Memuat portofolio dari Supabase');
     try {
       var data = await post('portfolio-state-load', { bootstrap: bootstrap });
-      applyRemoteState(uid, data.state || {});
       cloudRevision = String(data.updated_at || '').trim() || null;
+
+      // Preserve edits made while the initial cloud read was in flight. The
+      // previous flow blindly applied remote state here and could erase a user
+      // action performed immediately after the app became interactive.
+      var currentLocal = readLocalState(uid);
+      var currentSerialized = JSON.stringify(currentLocal);
+      var changedDuringHydrate = currentSerialized !== bootstrapSerialized;
+
       hydrated = true;
+      if (changedDuringHydrate) {
+        dirty = true;
+        lastSerialized = currentSerialized;
+        startChangeWatcher();
+        setStatus('pending', 'Perubahan lokal menunggu sinkronisasi');
+        scheduleSave();
+        notifyRuntime();
+        return true;
+      }
+
+      applyRemoteState(uid, data.state || {});
       dirty = false;
       setStatus('synced', 'Portofolio tersimpan di Supabase');
       notifyRuntime();
@@ -220,6 +239,9 @@
         lastSerialized = current;
       }
       setStatus('synced', 'Portofolio tersimpan di Supabase');
+      try {
+        window.dispatchEvent(new CustomEvent('autocuan:portfolio-synced', { detail: { userId: uid } }));
+      } catch (_) {}
       return true;
     } catch (error) {
       dirty = true;
@@ -268,6 +290,15 @@
       });
     } catch (_) {}
   }
+
+  window.addEventListener('autocuan:portfolio-changed', function (event) {
+    if (!uid || !hydrated || applyingRemote) return;
+    if (event && event.detail && event.detail.userId && String(event.detail.userId) !== String(uid)) return;
+    dirty = true;
+    lastSerialized = JSON.stringify(readLocalState(uid));
+    setStatus('pending', 'Perubahan lokal menunggu sinkronisasi');
+    scheduleSave();
+  });
 
   window.addEventListener('focus', function () { setTimeout(refreshFromCloud, 80); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshFromCloud(); });
