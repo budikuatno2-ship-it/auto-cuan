@@ -3,7 +3,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { createClient } = require('@supabase/supabase-js');
+const { getVpsMarketStore } = require('../lib/vps-market-store');
 const fcaTransition = require('../lib/fca-transition-2026');
 const risk = require('../lib/market-structure-risk');
 const marketImport = require('../lib/market-structure-import');
@@ -11,34 +11,13 @@ const existingSync = require('../lib/market-structure-existing-sync');
 const historyStore = require('../lib/stock-daily-history-store');
 
 const ROOT = path.resolve(__dirname, '..');
-const MARKET_PATH = path.join(ROOT, 'data', 'market-structure', 'latest.json');
-const HSC_PATH = path.join(ROOT, 'data', 'market-structure', 'hsc', 'current-2026.json');
+const MARKET_PATH = process.env.AUTO_CUAN_MARKET_STRUCTURE_PATH ||
+  path.join(ROOT, 'data', 'market-structure', 'latest.json');
+const HSC_PATH = process.env.AUTO_CUAN_HSC_PATH ||
+  path.join(ROOT, 'data', 'market-structure', 'hsc', 'current-2026.json');
+const OVERRIDE_PATH = process.env.AUTO_CUAN_MARKET_STRUCTURE_OVERRIDE_PATH ||
+  path.join(ROOT, 'data', 'market-structure-manual-overrides.json');
 const CHUNK_SIZE = 200;
-
-function loadEnvFile(filePath) {
-  if (!fs.existsSync(filePath)) return;
-  const raw = fs.readFileSync(filePath, 'utf8');
-  raw.split(/\r?\n/).forEach((line) => {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) return;
-    const idx = trimmed.indexOf('=');
-    if (idx <= 0) return;
-    const key = trimmed.slice(0, idx).trim();
-    let value = trimmed.slice(idx + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    if (process.env[key] == null) process.env[key] = value;
-  });
-}
-
-function loadLocalEnv() {
-  [
-    path.join(ROOT, '.env.ai-eval-once'),
-    path.join(ROOT, '.env.local'),
-    path.join(ROOT, '.env')
-  ].forEach(loadEnvFile);
-}
 
 function chunk(items, size) {
   const out = [];
@@ -46,12 +25,12 @@ function chunk(items, size) {
   return out;
 }
 
-async function loadEligibleUniverse(supabase) {
-  const result = await supabase
+async function loadEligibleUniverse(store) {
+  const result = await store
     .from('stock_boards')
     .select('ticker,company_name,board,is_fca,is_active,note')
     .limit(2000);
-  if (result.error) throw new Error('Load stock_boards gagal: ' + result.error.message);
+  if (result.error) throw new Error('Load stock_boards VPS gagal: ' + result.error.message);
 
   return (result.data || [])
     .filter((row) => fcaTransition.isEligibleContinuousAuctionRow(row))
@@ -60,13 +39,13 @@ async function loadEligibleUniverse(supabase) {
     .sort();
 }
 
-async function syncExistingDailyFeatureRows(supabase, sourceRows) {
+async function syncExistingDailyFeatureRows(store, sourceRows) {
   const sourceByTicker = new Map(sourceRows.map((row) => [row.ticker, row]));
   const existingFeatures = [];
 
   for (const batch of chunk(Array.from(sourceByTicker.keys()), CHUNK_SIZE)) {
-    const result = await supabase.from('stock_daily_features').select('*').in('ticker', batch);
-    if (result.error) throw new Error('Load stock_daily_features gagal: ' + result.error.message);
+    const result = await store.from('stock_daily_features').select('*').in('ticker', batch);
+    if (result.error) throw new Error('Load stock_daily_features VPS gagal: ' + result.error.message);
     existingFeatures.push(...(result.data || []));
   }
 
@@ -90,7 +69,27 @@ async function syncExistingDailyFeatureRows(supabase, sourceRows) {
   }
 
   if (!updates.length) return 0;
-  return historyStore.upsertDailyFeatures(supabase, updates);
+  return historyStore.upsertDailyFeatures(store, updates);
+}
+
+function prepareAndUpsertFundamentalsAtomic(store, incomingRows) {
+  const rows = Array.isArray(incomingRows) ? incomingRows : [];
+  if (!rows.length) return { rows: [], count: 0 };
+
+  return store.transaction(() => {
+    const tickerSet = new Set(rows.map((row) => String(row && row.ticker || '').trim().toUpperCase()).filter(Boolean));
+    const existing = store.readTable('stock_fundamentals')
+      .filter((row) => tickerSet.has(String(row && row.ticker || '').trim().toUpperCase()));
+
+    // Re-run stale/same-date conflict validation INSIDE the write transaction.
+    // This closes the read/validate/write race that existed when prepare and
+    // upsert were separate async steps.
+    const prepared = marketImport.mergeMarketStructureRows(existing, rows);
+    for (const row of prepared) {
+      store.writeRow('stock_fundamentals', row, ['ticker'], true);
+    }
+    return { rows: prepared, count: prepared.length };
+  });
 }
 
 async function main() {
@@ -100,54 +99,89 @@ async function main() {
 
   const marketPayload = JSON.parse(fs.readFileSync(MARKET_PATH, 'utf8'));
   const hscPayload = JSON.parse(fs.readFileSync(HSC_PATH, 'utf8'));
+  const overridePayload = fs.existsSync(OVERRIDE_PATH)
+    ? JSON.parse(fs.readFileSync(OVERRIDE_PATH, 'utf8'))
+    : { rows: [] };
 
-  loadLocalEnv();
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.');
+  const store = getVpsMarketStore();
+  const universe = await loadEligibleUniverse(store);
 
-  const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-  const universe = await loadEligibleUniverse(supabase);
+  const built = existingSync.buildExistingMarketStructureRows(
+    marketPayload,
+    hscPayload,
+    universe,
+    overridePayload
+  );
+  // Canonical market-structure storage covers the full listed-stock universe.
+  // Scanner eligibility (800) is a runtime subset, so validate writes against
+  // canonical market tickers instead of rejecting the 162 non-scanner names.
+  const canonicalTickers = (marketPayload.stocks || [])
+    .map((stock) => String(stock && stock.ticker || '').trim().toUpperCase())
+    .filter(Boolean);
+  marketImport.validateRowsAgainstUniverse(built.rows, canonicalTickers);
 
-  const built = existingSync.buildExistingMarketStructureRows(marketPayload, hscPayload, universe);
-  marketImport.validateRowsAgainstUniverse(built.rows, universe);
-
-  const prepared = await marketImport.prepareMarketStructureRows(supabase, built.rows);
+  // Merge against the LOCAL stock_fundamentals state first so stale snapshots
+  // and same-date conflicts stay fail-closed before any local write occurs.
+  const prepared = await marketImport.prepareMarketStructureRows(store, built.rows);
 
   console.log('=== EXISTING MARKET STRUCTURE SYNC ===');
+  console.log('Storage: VPS_ONLY');
+  console.log('DB: ' + store.filePath);
+  console.log('Market structure source: ' + MARKET_PATH);
+  console.log('HSC source: ' + HSC_PATH);
+  console.log('Manual override source: ' + (fs.existsSync(OVERRIDE_PATH) ? OVERRIDE_PATH : '(none)'));
   console.log('Mode: ' + (apply ? 'APPLY' : 'VALIDATE_ONLY'));
-  console.log('Eligible universe: ' + built.summary.eligible_count);
+  console.log('Canonical market universe: ' + built.summary.canonical_count);
+  console.log('Eligible scanner universe: ' + built.summary.eligible_count);
   console.log('Market stocks: ' + built.summary.market_stock_count);
-  console.log('Free Float verified: ' + built.summary.free_float_verified + '/' + built.summary.eligible_count);
-  console.log('Missing Free Float: ' + built.summary.missing_free_float.length +
-    (built.summary.missing_free_float.length ? ' [' + built.summary.missing_free_float.join(', ') + ']' : ''));
+  console.log('Free Float verified canonical: ' +
+    built.summary.free_float_verified_canonical + '/' + built.summary.canonical_count);
+  console.log('Missing Free Float canonical: ' + built.summary.missing_free_float_canonical.length +
+    (built.summary.missing_free_float_canonical.length
+      ? ' [' + built.summary.missing_free_float_canonical.join(', ') + ']' : ''));
+  console.log('Free Float verified eligible: ' +
+    built.summary.free_float_verified_eligible + '/' + built.summary.eligible_count);
+  console.log('Missing Free Float eligible: ' + built.summary.missing_free_float_eligible.length +
+    (built.summary.missing_free_float_eligible.length
+      ? ' [' + built.summary.missing_free_float_eligible.join(', ') + ']' : ''));
   console.log('HSC dataset tickers: ' + built.summary.hsc_dataset_count);
-  console.log('HSC verified in universe: ' + built.summary.hsc_verified_in_universe);
-  console.log('HSC active/revoked in universe: ' +
+  console.log('HSC outside eligible universe: ' + built.summary.hsc_outside_universe.length +
+    (built.summary.hsc_outside_universe.length ? ' [' + built.summary.hsc_outside_universe.join(', ') + ']' : ''));
+  console.log('HSC verified canonical: ' + built.summary.hsc_verified_canonical);
+  console.log('HSC active/revoked canonical: ' +
+    built.summary.hsc_active_canonical + '/' + built.summary.hsc_revoked_canonical);
+  console.log('HSC verified eligible: ' + built.summary.hsc_verified_in_universe);
+  console.log('HSC active/revoked eligible: ' +
     built.summary.hsc_active_in_universe + '/' + built.summary.hsc_revoked_in_universe);
   console.log('Prepared fundamentals rows: ' + prepared.length);
 
   if (!apply) {
     console.log('Validation passed. No writes performed.');
-    console.log('Run again with --apply to sync existing data into Supabase.');
+    console.log('Run again with --apply to sync existing data into VPS market.sqlite.');
     return;
   }
 
-  const fundamentalsCount = await marketImport.upsertMarketStructureRows(supabase, built.rows);
-  const featureCount = await syncExistingDailyFeatureRows(supabase, built.rows);
+  const atomicWrite = prepareAndUpsertFundamentalsAtomic(store, built.rows);
+  const fundamentalsCount = atomicWrite.count;
+  // Refresh cached daily features from the MERGED rows so a partial incoming
+  // dataset never clears a metric preserved from existing fundamentals.
+  const featureCount = await syncExistingDailyFeatureRows(store, atomicWrite.rows);
 
-  console.log('Fundamentals upserted: ' + fundamentalsCount);
-  console.log('Daily feature rows refreshed: ' + featureCount);
+  console.log('Fundamentals upserted to VPS: ' + fundamentalsCount);
+  console.log('Daily feature rows refreshed on VPS: ' + featureCount);
   console.log('Sync complete. Run tools/audit-market-structure-coverage.js next.');
 }
 
-main().catch((error) => {
-  console.error('[sync-existing-market-structure] Error:', error && error.message || error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error('[sync-existing-market-structure] Error:', error && error.message || error);
+    process.exit(1);
+  });
+}
 
 module.exports = {
   loadEligibleUniverse,
   syncExistingDailyFeatureRows,
+  prepareAndUpsertFundamentalsAtomic,
   main
 };
