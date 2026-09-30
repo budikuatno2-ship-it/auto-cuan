@@ -67,10 +67,11 @@ module.exports = {
         NODE_ENV: 'production',
         TZ: 'Asia/Jakarta',
         AUTO_CUAN_ROOT: ROOT,
-        // Sequential Yahoo pacing for the full 800-name DayTrade sweep.
-        // 120ms saves ~64s versus the conservative 200ms default while the
-        // engine's adaptive error backoff still expands up to 2s.
-        DAYTRADE_FETCH_DELAY_MS: '120',
+        // Full-universe DayTrade fetches stay bounded: two workers, each paced
+        // at 200ms with adaptive error backoff up to 2s. This overlaps network
+        // latency without turning the screener into a high-concurrency crawler.
+        DAYTRADE_FETCH_CONCURRENCY: '2',
+        DAYTRADE_FETCH_DELAY_MS: '200',
         PORT: String(WEB_PORT),
         HOST: WEB_HOST,
         HOSTNAME: WEB_HOST
