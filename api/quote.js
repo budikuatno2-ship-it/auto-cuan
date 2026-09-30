@@ -14,6 +14,7 @@ var t1Policy = require('../lib/chart-t1-policy');
 var geminiProvider = require('../lib/ai-gemini-provider');
 var dailyContextBuilder = require('../lib/daily-market-context-builder');
 var dailyHistoryStore = require('../lib/stock-daily-history-store');
+var fcaTransition2026 = require('../lib/fca-transition-2026');
 var { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
 
 // This endpoint is unauthenticated and, with includeNews=1, triggers a paid
@@ -227,6 +228,30 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
     }
 
     var featureRows = await dailyHistoryStore.getAllDailyFeatures(supabase, { limit: 1000 });
+
+    // Ranking Harian is a trading-universe view, not a raw cache dump.
+    // Keep historical/stale feature rows outside the current eligible
+    // continuous-auction universe from leaking into runtime ranking.
+    var boardsResult = await supabase
+      .from('stock_boards')
+      .select('ticker,company_name,board,is_fca,is_active,note')
+      .limit(2000);
+    if (boardsResult.error) throw new Error('Load stock_boards for ranking failed: ' + boardsResult.error.message);
+    var eligibleSet = new Set((boardsResult.data || [])
+      .filter(function(row) { return fcaTransition2026.isEligibleContinuousAuctionRow(row); })
+      .map(function(row) { return String(row && row.ticker || '').trim().toUpperCase(); })
+      .filter(Boolean));
+
+    var rawFeatureCount = featureRows.length;
+    var excludedOutsideEligible = featureRows
+      .map(function(row) { return String(row && row.ticker || '').trim().toUpperCase(); })
+      .filter(function(ticker) { return ticker && !eligibleSet.has(ticker); })
+      .sort();
+
+    featureRows = featureRows.filter(function(row) {
+      return eligibleSet.has(String(row && row.ticker || '').trim().toUpperCase());
+    });
+
     var rows = dailyContextBuilder.buildRankingList(featureRows);
 
     if (sortBy) {
@@ -261,7 +286,12 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
       rows: rows,
       as_of: latestAsOf,
       updated_at: latestAsOf || new Date().toISOString(),
-      generated_at: new Date().toISOString()
+      generated_at: new Date().toISOString(),
+      universe_scope: 'eligible_continuous_auction',
+      eligible_universe_count: eligibleSet.size,
+      raw_feature_count: rawFeatureCount,
+      excluded_outside_eligible_count: excludedOutsideEligible.length,
+      excluded_outside_eligible: excludedOutsideEligible
     });
   } catch (error) {
     console.error('daily-market-context-list exception:', error);

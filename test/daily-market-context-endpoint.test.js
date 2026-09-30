@@ -36,20 +36,33 @@ test('handleDailyMarketContextListAction returns method not allowed on non-GET',
 test('handleDailyMarketContextListAction returns empty list when no rows in stock_daily_features', async () => {
   const mockSupabase = {
     from(table) {
-      assert.equal(table, 'stock_daily_features');
-      return {
-        select() {
-          return {
-            order() {
-              return {
-                limit() {
-                  return Promise.resolve({ data: [], error: null });
-                }
-              };
-            }
-          };
-        }
-      };
+      if (table === 'stock_daily_features') {
+        return {
+          select() {
+            return {
+              order() {
+                return {
+                  limit() {
+                    return Promise.resolve({ data: [], error: null });
+                  }
+                };
+              }
+            };
+          }
+        };
+      }
+      if (table === 'stock_boards') {
+        return {
+          select() {
+            return {
+              limit() {
+                return Promise.resolve({ data: [], error: null });
+              }
+            };
+          }
+        };
+      }
+      throw new Error('unexpected table ' + table);
     }
   };
 
@@ -104,20 +117,49 @@ test('handleDailyMarketContextListAction sorts and limits data accurately', asyn
 
   const mockSupabase = {
     from(table) {
-      assert.equal(table, 'stock_daily_features');
-      return {
-        select() {
-          return {
-            order() {
-              return {
-                limit() {
-                  return Promise.resolve({ data: mockFeatureRows, error: null });
-                }
-              };
-            }
-          };
-        }
-      };
+      if (table === 'stock_daily_features') {
+        return {
+          select() {
+            return {
+              order() {
+                return {
+                  limit() {
+                    return Promise.resolve({
+                      data: mockFeatureRows.concat([{
+                        ticker: 'OUT',
+                        as_of_trade_date: '2026-08-27',
+                        last_price: 100,
+                        rsi_14: 50
+                      }]),
+                      error: null
+                    });
+                  }
+                };
+              }
+            };
+          }
+        };
+      }
+      if (table === 'stock_boards') {
+        return {
+          select() {
+            return {
+              limit() {
+                return Promise.resolve({
+                  data: [
+                    { ticker: 'BBCA', board: 'UTAMA', is_fca: false, is_active: true },
+                    { ticker: 'BBRI', board: 'UTAMA', is_fca: false, is_active: true },
+                    { ticker: 'TLKM', board: 'UTAMA', is_fca: false, is_active: true },
+                    { ticker: 'OUT', board: 'PEMANTAUAN KHUSUS', is_fca: true, is_active: true }
+                  ],
+                  error: null
+                });
+              }
+            };
+          }
+        };
+      }
+      throw new Error('unexpected table ' + table);
     }
   };
 
@@ -141,6 +183,11 @@ test('handleDailyMarketContextListAction sorts and limits data accurately', asyn
   assert.equal(res1Data.rows[0].ticker, 'TLKM');
   assert.equal(res1Data.rows[1].ticker, 'BBCA');
   assert.equal(res1Data.rows[2].ticker, 'BBRI');
+  assert.equal(res1Data.universe_scope, 'eligible_continuous_auction');
+  assert.equal(res1Data.eligible_universe_count, 3);
+  assert.equal(res1Data.raw_feature_count, 4);
+  assert.equal(res1Data.excluded_outside_eligible_count, 1);
+  assert.deepEqual(res1Data.excluded_outside_eligible, ['OUT']);
 
   // 2. Sort by RSI ASC (lowest RSI first: BBRI (28.4), BBCA (65.2), TLKM (72.1)) with limit 2
   const req2 = {
