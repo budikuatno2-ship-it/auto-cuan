@@ -3,7 +3,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { createClient } = require('@supabase/supabase-js');
+const { getVpsMarketStore } = require('../lib/vps-market-store');
 const fcaTransition = require('../lib/fca-transition-2026');
 const risk = require('../lib/market-structure-risk');
 const marketImport = require('../lib/market-structure-import');
@@ -15,43 +15,18 @@ const MARKET_PATH = path.join(ROOT, 'data', 'market-structure', 'latest.json');
 const HSC_PATH = path.join(ROOT, 'data', 'market-structure', 'hsc', 'current-2026.json');
 const CHUNK_SIZE = 200;
 
-function loadEnvFile(filePath) {
-  if (!fs.existsSync(filePath)) return;
-  const raw = fs.readFileSync(filePath, 'utf8');
-  raw.split(/\r?\n/).forEach((line) => {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) return;
-    const idx = trimmed.indexOf('=');
-    if (idx <= 0) return;
-    const key = trimmed.slice(0, idx).trim();
-    let value = trimmed.slice(idx + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    if (process.env[key] == null) process.env[key] = value;
-  });
-}
-
-function loadLocalEnv() {
-  [
-    path.join(ROOT, '.env.ai-eval-once'),
-    path.join(ROOT, '.env.local'),
-    path.join(ROOT, '.env')
-  ].forEach(loadEnvFile);
-}
-
 function chunk(items, size) {
   const out = [];
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
   return out;
 }
 
-async function loadEligibleUniverse(supabase) {
-  const result = await supabase
+async function loadEligibleUniverse(store) {
+  const result = await store
     .from('stock_boards')
     .select('ticker,company_name,board,is_fca,is_active,note')
     .limit(2000);
-  if (result.error) throw new Error('Load stock_boards gagal: ' + result.error.message);
+  if (result.error) throw new Error('Load stock_boards VPS gagal: ' + result.error.message);
 
   return (result.data || [])
     .filter((row) => fcaTransition.isEligibleContinuousAuctionRow(row))
@@ -60,13 +35,13 @@ async function loadEligibleUniverse(supabase) {
     .sort();
 }
 
-async function syncExistingDailyFeatureRows(supabase, sourceRows) {
+async function syncExistingDailyFeatureRows(store, sourceRows) {
   const sourceByTicker = new Map(sourceRows.map((row) => [row.ticker, row]));
   const existingFeatures = [];
 
   for (const batch of chunk(Array.from(sourceByTicker.keys()), CHUNK_SIZE)) {
-    const result = await supabase.from('stock_daily_features').select('*').in('ticker', batch);
-    if (result.error) throw new Error('Load stock_daily_features gagal: ' + result.error.message);
+    const result = await store.from('stock_daily_features').select('*').in('ticker', batch);
+    if (result.error) throw new Error('Load stock_daily_features VPS gagal: ' + result.error.message);
     existingFeatures.push(...(result.data || []));
   }
 
@@ -90,7 +65,19 @@ async function syncExistingDailyFeatureRows(supabase, sourceRows) {
   }
 
   if (!updates.length) return 0;
-  return historyStore.upsertDailyFeatures(supabase, updates);
+  return historyStore.upsertDailyFeatures(store, updates);
+}
+
+async function upsertPreparedFundamentals(store, rows) {
+  let count = 0;
+  for (const batch of chunk(rows || [], CHUNK_SIZE)) {
+    const result = await store
+      .from('stock_fundamentals')
+      .upsert(batch, { onConflict: 'ticker' });
+    if (result.error) throw new Error('Upsert stock_fundamentals VPS gagal: ' + result.error.message);
+    count += batch.length;
+  }
+  return count;
 }
 
 async function main() {
@@ -101,20 +88,19 @@ async function main() {
   const marketPayload = JSON.parse(fs.readFileSync(MARKET_PATH, 'utf8'));
   const hscPayload = JSON.parse(fs.readFileSync(HSC_PATH, 'utf8'));
 
-  loadLocalEnv();
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.');
-
-  const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-  const universe = await loadEligibleUniverse(supabase);
+  const store = getVpsMarketStore();
+  const universe = await loadEligibleUniverse(store);
 
   const built = existingSync.buildExistingMarketStructureRows(marketPayload, hscPayload, universe);
   marketImport.validateRowsAgainstUniverse(built.rows, universe);
 
-  const prepared = await marketImport.prepareMarketStructureRows(supabase, built.rows);
+  // Merge against the LOCAL stock_fundamentals state first so stale snapshots
+  // and same-date conflicts stay fail-closed before any local write occurs.
+  const prepared = await marketImport.prepareMarketStructureRows(store, built.rows);
 
   console.log('=== EXISTING MARKET STRUCTURE SYNC ===');
+  console.log('Storage: VPS_ONLY');
+  console.log('DB: ' + store.filePath);
   console.log('Mode: ' + (apply ? 'APPLY' : 'VALIDATE_ONLY'));
   console.log('Eligible universe: ' + built.summary.eligible_count);
   console.log('Market stocks: ' + built.summary.market_stock_count);
@@ -129,15 +115,15 @@ async function main() {
 
   if (!apply) {
     console.log('Validation passed. No writes performed.');
-    console.log('Run again with --apply to sync existing data into Supabase.');
+    console.log('Run again with --apply to sync existing data into VPS market.sqlite.');
     return;
   }
 
-  const fundamentalsCount = await marketImport.upsertMarketStructureRows(supabase, built.rows);
-  const featureCount = await syncExistingDailyFeatureRows(supabase, built.rows);
+  const fundamentalsCount = await upsertPreparedFundamentals(store, prepared);
+  const featureCount = await syncExistingDailyFeatureRows(store, built.rows);
 
-  console.log('Fundamentals upserted: ' + fundamentalsCount);
-  console.log('Daily feature rows refreshed: ' + featureCount);
+  console.log('Fundamentals upserted to VPS: ' + fundamentalsCount);
+  console.log('Daily feature rows refreshed on VPS: ' + featureCount);
   console.log('Sync complete. Run tools/audit-market-structure-coverage.js next.');
 }
 
@@ -149,5 +135,6 @@ main().catch((error) => {
 module.exports = {
   loadEligibleUniverse,
   syncExistingDailyFeatureRows,
+  upsertPreparedFundamentals,
   main
 };
