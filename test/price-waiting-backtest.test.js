@@ -193,3 +193,87 @@ test('summarizeResolutions reports fill rate separately from trade performance',
   assert.equal(summary.avg_wait_days, 1.5);
   assert.equal(summary.trade_metrics.sample_size, 2);
 });
+
+test('waiting result is right-censored instead of expired when full wait horizon is unavailable', () => {
+  const candles = [
+    candle('2026-01-01', 110, 112, 108, 111),
+    candle('2026-01-02', 111, 113, 109, 112)
+  ];
+  const signal = {
+    signal_date: '2026-01-01', signal_index: 0, signal_price: 110,
+    entry_low: 95, entry_high: 100, stop_loss: 90, tp1: 120
+  };
+  const result = waiting.simulateWaitingSetup({
+    ticker: 'TEST', candles, signalIndex: 0, signal, maxWaitDays: 5, maxHoldingDays: 10
+  });
+  assert.equal(result.resolution, 'CENSORED_WAIT');
+  assert.equal(result.censored, true);
+  assert.equal(result.filled, false);
+});
+
+test('filled trade near end of history is right-censored instead of early TIMEOUT', () => {
+  const candles = [
+    candle('2026-01-01', 110, 112, 108, 111),
+    candle('2026-01-02', 100, 105, 98, 104),
+    candle('2026-01-03', 104, 108, 102, 107)
+  ];
+  const signal = {
+    signal_date: '2026-01-01', signal_index: 0, signal_price: 110,
+    entry_low: 95, entry_high: 100, stop_loss: 90, tp1: 120, score: 75, risk_reward: 2
+  };
+  const result = waiting.simulateWaitingSetup({
+    ticker: 'TEST', candles, signalIndex: 0, signal, maxWaitDays: 2, maxHoldingDays: 10
+  });
+  assert.equal(result.resolution, 'CENSORED_HOLD');
+  assert.equal(result.censored, true);
+  assert.equal(result.filled, true);
+  assert.equal(result.pnl_pct, null);
+});
+
+test('post-entry stop gap exits at the executable open price for wait and chase', () => {
+  const candles = [
+    candle('2026-01-01', 110, 112, 108, 111),
+    candle('2026-01-02', 100, 105, 98, 104),
+    candle('2026-01-03', 80, 85, 75, 82)
+  ];
+  const signal = {
+    signal_date: '2026-01-01', signal_index: 0, signal_price: 110,
+    entry_low: 95, entry_high: 100, stop_loss: 90, tp1: 120, score: 75, risk_reward: 2
+  };
+  const waited = waiting.simulateWaitingSetup({
+    ticker: 'TEST', candles, signalIndex: 0, signal, maxWaitDays: 2, maxHoldingDays: 5
+  });
+  assert.equal(waited.resolution, 'SL_GAP');
+  assert.equal(waited.exit_price, 80);
+  assert.equal(waited.r_multiple, -2);
+
+  const chaseCandles = [
+    candle('2026-01-01', 110, 112, 108, 111),
+    candle('2026-01-02', 100, 105, 98, 104),
+    candle('2026-01-03', 80, 85, 75, 82)
+  ];
+  const chased = waiting.simulateChaseSetup({
+    ticker: 'TEST', candles: chaseCandles, signalIndex: 0, signal, maxHoldingDays: 5
+  });
+  assert.equal(chased.resolution, 'SL_GAP');
+  assert.equal(chased.exit_price, 80);
+  assert.equal(chased.r_multiple, -2);
+});
+
+test('chronological drawdown metric is invariant to input ticker ordering', () => {
+  const recordsA = [
+    { ticker: 'ZZZ', filled: true, exit_date: '2026-01-03', pnl_pct: -10, r_multiple: -1, holding_days: 2 },
+    { ticker: 'AAA', filled: true, exit_date: '2026-01-02', pnl_pct: 10, r_multiple: 1, holding_days: 1 },
+    { ticker: 'BBB', filled: true, exit_date: '2026-01-03', pnl_pct: 4, r_multiple: 0.4, holding_days: 2 }
+  ];
+  const a = waiting.computeChronologicalTradeMetrics(recordsA);
+  const b = waiting.computeChronologicalTradeMetrics(recordsA.slice().reverse());
+  assert.equal(a.max_drawdown_pct, b.max_drawdown_pct);
+  assert.equal(a.expectancy_r, b.expectancy_r);
+  assert.equal(a.drawdown_method, 'EQUAL_WEIGHT_REALIZED_EXIT_DATE');
+});
+
+test('historical replay exports an explicit neutral confluence sentinel', () => {
+  assert.equal(waiting.NEUTRAL_HISTORICAL_CONFLUENCE.confluence_penalty, 0);
+  assert.equal(waiting.NEUTRAL_HISTORICAL_CONFLUENCE.confluence_flag, 'NETRAL_HISTORICAL_REPLAY');
+});
