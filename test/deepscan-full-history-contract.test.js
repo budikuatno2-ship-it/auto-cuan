@@ -152,6 +152,25 @@ test('DeepScan weekend freshness requires data requested through Friday', () => 
   assert.equal(engine.getRequiredHistoryThroughDate(new Date('2026-09-30T03:00:00Z')), null);
 });
 
+test('DeepScan weekly lock honors either local or DB state for the active weekend', () => {
+  const sunday = new Date('2026-10-04T03:00:00Z');
+  const currentKey = '2026-10-03';
+
+  const localWins = engine.resolveDeepScanGuardState(
+    sunday,
+    { last_weekend_key: currentKey },
+    { last_weekend_key: '2026-09-26' }
+  );
+  assert.equal(localWins.last_weekend_key, currentKey);
+
+  const dbWins = engine.resolveDeepScanGuardState(
+    sunday,
+    { last_weekend_key: '2026-09-26' },
+    { last_weekend_key: currentKey }
+  );
+  assert.equal(dbWins.last_weekend_key, currentKey);
+});
+
 test('DeepScan activation remains one time per WIB weekend', () => {
   const saturday = new Date('2026-10-03T03:00:00Z'); // 10:00 WIB Saturday
   const sunday = new Date('2026-10-04T03:00:00Z');   // same weekend
