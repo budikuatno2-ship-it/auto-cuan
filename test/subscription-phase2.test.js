@@ -15,6 +15,19 @@ test('trial is exactly ten 24-hour days and has an exclusive expiry boundary', (
   assert.equal(getEntitlements({}, account, [entitlement({ expires_at: '2026-07-23T12:00:00.000Z' })], new Date(now - 1)).premium, true);
   assert.equal(getEntitlements({}, account, [entitlement()], now).premium, false);
 });
+test('active trial surfaces as Trial 10 Hari instead of Free', () => {
+  const activeTrial = entitlement({
+    plan_code: null,
+    source: 'trial',
+    starts_at: '2026-07-20T00:00:00Z',
+    expires_at: '2026-07-30T00:00:00Z'
+  });
+  const out = getEntitlements({}, account, [activeTrial], now);
+  assert.equal(out.premium, true);
+  assert.equal(out.trial_state, 'active');
+  assert.equal(out.current_plan, 'TRIAL');
+});
+
 test('persistent entitlement priority is lifetime, paid term, then trial', () => {
   const rows = [entitlement(), entitlement({ source: 'payment', starts_at: '2026-07-20T00:00:00Z', expires_at: '2026-08-20T00:00:00Z' }), entitlement({ plan_code: 'LIFETIME', source: 'payment', lifetime: true, expires_at: null })];
   assert.equal(getEntitlements({}, account, rows, now).current_plan, 'LIFETIME');
