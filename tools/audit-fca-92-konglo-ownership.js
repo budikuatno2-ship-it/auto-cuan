@@ -92,7 +92,7 @@ function investorPct(row) {
     'percentage_owned', 'persentase', 'persentase_kepemilikan'
   ]);
   if (raw == null) return null;
-  const cleaned = String(raw).replace('%', '').replace(',', '.').trim();
+  const cleaned = String(raw).replace(/%/g, '').replace(',', '.').trim();
   const value = Number(cleaned);
   return Number.isFinite(value) ? value : null;
 }
