@@ -264,3 +264,30 @@ test('admin foreign upload client is wrapped so imported rows follow VPS backend
   assert.match(src, /vpsMarketDataStore\.wrapSupabaseClient\(createClient/);
   assert.match(src, /handleAdminForeignUpload/);
 });
+
+
+test('local BIGINT tables preserve monotonic sequence-style ids', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'autocuan-local-id-'));
+  const oldBackend = process.env.AUTO_CUAN_MARKET_DATA_BACKEND;
+  const oldRoot = process.env.AUTO_CUAN_DATA_ROOT;
+  process.env.AUTO_CUAN_MARKET_DATA_BACKEND = 'vps';
+  process.env.AUTO_CUAN_DATA_ROOT = tmp;
+  try {
+    delete require.cache[require.resolve('../lib/vps-local-table-query')];
+    const tables = require('../lib/vps-local-table-query');
+    tables.writeTableRows('telegram_daily_picks', [
+      { id: 41, date: '2026-09-30', ticker: 'BBCA' }
+    ], 'test');
+    const q = new tables.LocalTableQuery('telegram_daily_picks');
+    const inserted = await q.insert([{ date: '2026-09-30', ticker: 'BBRI' }]).select('id,ticker');
+    assert.equal(inserted.error, null);
+    assert.equal(inserted.data[0].id, 42);
+    assert.equal(typeof inserted.data[0].id, 'number');
+  } finally {
+    if (oldBackend === undefined) delete process.env.AUTO_CUAN_MARKET_DATA_BACKEND;
+    else process.env.AUTO_CUAN_MARKET_DATA_BACKEND = oldBackend;
+    if (oldRoot === undefined) delete process.env.AUTO_CUAN_DATA_ROOT;
+    else process.env.AUTO_CUAN_DATA_ROOT = oldRoot;
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
