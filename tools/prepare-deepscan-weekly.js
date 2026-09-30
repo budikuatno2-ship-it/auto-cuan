@@ -149,14 +149,17 @@ async function main(argv) {
   });
 
   const fundamentals = await context.loadFundamentalsMap(db, tickers);
+  let financialAvailable = 0;
   let brokerAvailable = 0;
   for (const ticker of tickers) {
+    const row = fundamentals.get(ticker) || null;
+    if (context.buildFundamentalContext(1, row).data_available) financialAvailable += 1;
     if (context.loadBrokerContext(rootDir, ticker)) brokerAvailable += 1;
   }
 
   const fullUniverseRun = limit === 0;
   const historyReady = successes.length === tickers.length && failures.length === 0;
-  const financialReady = fundamentals.size === tickers.length;
+  const financialReady = financialAvailable === tickers.length;
   const brokerReady = brokerAvailable === tickers.length;
   const readyForActivation = fullUniverseRun && historyReady && financialReady && brokerReady;
 
@@ -171,8 +174,8 @@ async function main(argv) {
     full_universe_run: fullUniverseRun,
     history_complete_count: successes.length,
     history_failed_count: failures.length,
-    financial_available_count: fundamentals.size,
-    financial_missing_count: tickers.length - fundamentals.size,
+    financial_available_count: financialAvailable,
+    financial_missing_count: tickers.length - financialAvailable,
     broker_available_count: brokerAvailable,
     broker_missing_count: tickers.length - brokerAvailable,
     ready_for_activation: readyForActivation,
