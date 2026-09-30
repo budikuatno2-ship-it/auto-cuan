@@ -12,6 +12,33 @@ const DATA_ROOT = process.env.AUTO_CUAN_DATA_ROOT || '/home/ubuntu/auto-cuan-dat
 const SNAPSHOT_ROOT = path.join(DATA_ROOT, 'supabase-snapshots');
 const PAGE_SIZE = 1000;
 
+const ORDER_KEYS = {
+  foreign_watchlist_daily: ['id'],
+  stock_daily_features: ['ticker'],
+  stock_boards: ['ticker'],
+  idx_trading_calendar: ['trade_date'],
+  daytrade_screener_latest: ['ticker'],
+  daytrade_screener_meta: ['id'],
+  daytrade_screener_runs: ['id'],
+  swing_screener_latest: ['ticker'],
+  swing_screener_meta: ['id'],
+  swing_screener_non_konglo_latest: ['ticker'],
+  swing_screener_non_konglo_meta: ['id'],
+  swing_screener_non_konglo_jobs: ['id'],
+  swing_screener_non_konglo_staging: ['id'],
+  telegram_daily_picks: ['id'],
+  sector_hot_latest: ['group_code'],
+  sector_hot_meta: ['id'],
+  sector_hot_group_members: ['id'],
+  sector_hot_members_latest: ['id'],
+  ai_analysis_cache: ['cache_key'],
+  ai_analysis_logs: ['id'],
+  ai_context_snapshots: ['id'],
+  ai_eval_runs: ['id'],
+  ai_usage_logs: ['id'],
+  stock_news_cache: ['ticker', 'period']
+};
+
 const TABLES = [
   'foreign_watchlist_daily',
   'stock_daily_features',
@@ -64,23 +91,42 @@ function loadEnv() {
   ].forEach(loadEnvFile);
 }
 
-async function fetchTable(supabase, table) {
-  const countRes = await supabase.from(table).select('*', { count: 'exact', head: true });
-  if (countRes.error) throw new Error(table + ' count failed: ' + countRes.error.message);
-  const expected = Number(countRes.count) || 0;
+async function fetchTablePass(supabase, table) {
+  const keys = ORDER_KEYS[table];
+  if (!keys || !keys.length) throw new Error('No deterministic export order configured for ' + table);
 
   const rows = [];
-  for (let offset = 0; offset < expected; offset += PAGE_SIZE) {
-    const end = Math.min(expected - 1, offset + PAGE_SIZE - 1);
-    const page = await supabase.from(table).select('*').range(offset, end);
+  let offset = 0;
+  while (true) {
+    let query = supabase.from(table).select('*');
+    for (const key of keys) query = query.order(key, { ascending: true });
+    const page = await query.range(offset, offset + PAGE_SIZE - 1);
     if (page.error) throw new Error(table + ' page ' + offset + ' failed: ' + page.error.message);
-    rows.push(...(page.data || []));
+    const pageRows = page.data || [];
+    rows.push(...pageRows);
+    if (pageRows.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+    if (offset > 2000000) throw new Error(table + ' export safety limit exceeded');
   }
+  return rows;
+}
 
-  if (rows.length !== expected) {
-    throw new Error(table + ' row-count mismatch: expected=' + expected + ' fetched=' + rows.length);
+async function fetchTable(supabase, table) {
+  // Offset pagination can observe moving rows on a live table. Two consecutive
+  // deterministic passes must therefore match exactly before a snapshot is
+  // accepted. Market writers run outside this one-time migration where
+  // possible; any concurrent mutation makes hashes differ and forces retry.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const first = await fetchTablePass(supabase, table);
+    const second = await fetchTablePass(supabase, table);
+    const firstSha = sha256Json(first);
+    const secondSha = sha256Json(second);
+    if (first.length === second.length && firstSha === secondSha) {
+      return { expected: second.length, rows: second, verified_sha256: secondSha, verification_attempt: attempt };
+    }
+    console.warn('[vps-migrate] ' + table + ': changed during export, retry ' + attempt + '/3');
   }
-  return { expected, rows };
+  throw new Error(table + ' changed during all verification passes; stop writers and retry migration.');
 }
 
 function sha256Json(value) {
@@ -118,7 +164,9 @@ async function main() {
     }
     manifest.tables[table] = {
       row_count: result.rows.length,
-      sha256: sha256Json(result.rows),
+      sha256: result.verified_sha256 || sha256Json(result.rows),
+      verification_attempt: result.verification_attempt || null,
+      deterministic_order: ORDER_KEYS[table],
       file: filePath,
       active_local_file: localTables.LOCAL_TABLES.has(table) ? localTables.tablePath(table) : null
     };
@@ -148,4 +196,4 @@ main().catch((error) => {
   process.exit(1);
 });
 
-module.exports = { TABLES, fetchTable, sha256Json };
+module.exports = { TABLES, ORDER_KEYS, fetchTablePass, fetchTable, sha256Json };
