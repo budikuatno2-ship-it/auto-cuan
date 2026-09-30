@@ -121,6 +121,7 @@ async function main() {
     ).createClient;
   }
   const sectorHot = require(path.join(REPO, 'api', 'sector-hot.js'));
+  const vpsMarketDataStore = require(path.join(REPO, 'lib', 'vps-market-data-store.js'));
 
   const handler =
     sectorHot.__test &&
@@ -130,7 +131,7 @@ async function main() {
     throw new Error('LOCAL_MONITOR_HANDLER_NOT_EXPORTED');
   }
 
-  const supabase = createClient(
+  const supabase = vpsMarketDataStore.wrapSupabaseClient(createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY,
     {
@@ -139,7 +140,7 @@ async function main() {
         autoRefreshToken: false
       }
     }
-  );
+  ));
 
   const query = {};
 
