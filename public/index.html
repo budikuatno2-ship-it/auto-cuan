@@ -12092,6 +12092,24 @@ function buildDashboardActionLine(r) {
     suffix = suffix.replace(/^entry\s+baru\s+/i, '').replace(/^trading\s+plan\s+/i, 'trading plan ');
     return 'Action: ' + actionLabel + (suffix ? ' — ' + suffix.charAt(0).toLowerCase() + suffix.slice(1) : '');
 }
+function dashboardMarketStructureHtml(row) {
+    if (!row || !row.market_structure_data_available) return '';
+    var parts = [];
+    var freeFloat = Number(row.free_float_pct);
+    if (isFinite(freeFloat)) {
+        parts.push('Free Float ' + freeFloat.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '%');
+    }
+    if (row.hsc_flag === true) parts.push('HSC');
+    if (!parts.length) return '';
+
+    var caution = String(row.market_structure_guard || '').toUpperCase() === 'CAUTION';
+    var label = parts.join(' · ');
+    var note = row.market_structure_note || '';
+    return '<div class="dash-flag" data-tone="' + (caution ? 'warn' : 'info') + '"' +
+        (note ? ' title="' + escapeHtml(note).replace(/"/g, '&quot;') + '"' : '') +
+        '>' + escapeHtml(label) + '</div>';
+}
+
 function renderDashboardTop5(picks) {
     var el = document.getElementById('dashboardTop5List');
     if (!el) return;
@@ -12193,6 +12211,7 @@ function renderDashboardTop5(picks) {
         if (actionLine) html += '<div class="dash-flag">' + escapeHtml(actionLine) + '</div>';
         var _top5BandarText = bandarBadgeText(r, true);
         if (_top5BandarText) html += '<div class="dash-flag" data-tone="info">' + escapeHtml(_top5BandarText) + '</div>';
+        html += dashboardMarketStructureHtml(r);
         html += '<p class="dash-reason">' + escapeHtml(reason) + '</p>';
         html += dashQualityChipsHtml(r.quality_chips);
         html += '</div>';

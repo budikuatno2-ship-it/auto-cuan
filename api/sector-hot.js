@@ -72,6 +72,8 @@ const bandarmologiIntelService = require('../lib/bandarmologi-intel-service');
 const swingEngine = require('../lib/swing-screener-engine');
 const screenerCandleSource = require('../lib/chart-engine/candle-fetcher');
 const top5FusionEngine = require('../lib/top5-fusion-engine');
+const stockDailyHistoryStore = require('../lib/stock-daily-history-store');
+const marketStructureRisk = require('../lib/market-structure-risk');
 const { passesRiskRewardFilter, MIN_RR_RATIO } = require('../lib/screener-config');
 const telegramDailyRecap = require('../lib/telegram-daily-recap');
 const userWatchlistService = require('../lib/user-watchlist-service');
@@ -8584,6 +8586,39 @@ function sendDashboardScreenerGate(res, extra) {
   }, extra || {}));
 }
 
+async function decorateRowsWithMarketStructure(supabase, rowGroups) {
+  try {
+    var rows = [];
+    (rowGroups || []).forEach(function(group) {
+      if (Array.isArray(group)) rows = rows.concat(group);
+    });
+    var tickers = Array.from(new Set(rows.map(function(row) {
+      return String(row && row.ticker || '').trim().toUpperCase();
+    }).filter(Boolean)));
+    if (!tickers.length) return;
+
+    var fundamentalsMap = await stockDailyHistoryStore.getFundamentalsForTickers(supabase, tickers);
+    rows.forEach(function(row) {
+      if (!row || !row.ticker) return;
+      var ticker = String(row.ticker).trim().toUpperCase();
+      var context = marketStructureRisk.buildMarketStructureContext(fundamentalsMap.get(ticker));
+      row.free_float_pct = context.free_float_pct;
+      row.free_float_source = context.free_float_source;
+      row.free_float_as_of = context.free_float_as_of;
+      row.hsc_flag = context.hsc_flag;
+      row.hsc_source = context.hsc_source;
+      row.hsc_as_of = context.hsc_as_of;
+      row.market_structure_status = context.market_structure_status;
+      row.market_structure_guard = context.market_structure_guard;
+      row.market_structure_note = context.market_structure_note;
+      row.market_structure_data_available = context.data_available;
+    });
+  } catch (_) {
+    // Fail-soft: missing migration/table columns or transient DB errors must
+    // never break the existing locked Top 5 read path.
+  }
+}
+
 async function handleWebDailyPicks(req, res, supabase) {
   if (!(await isDashboardScreenerLoggedIn(req, supabase))) {
     return sendDashboardScreenerGate(res, { date: getJakartaDateString(), top5_source: 'awaiting_locked_rows', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: false, update_note: 'Session perlu refresh/login ulang untuk membaca Top 5 locked.', last_updated_at: null, monitor_last_updated_at: null, awaiting_reason: 'auth_session_required', locked_rows_today_before_filter: null, locked_rows_today_after_filter: null, latest_locked_fallback_checked_count: 0, latest_locked_fallback_date: null, latest_locked_fallback_rows_before_filter: null, latest_locked_fallback_rows_after_filter: null });
@@ -8671,6 +8706,8 @@ async function handleWebDailyPicks(req, res, supabase) {
       // DISABLED: Dashboard path must never call selectDailyTop5 or any heavy screener/preview computation.
       // This block is dead code now that allowProvisional is always false.
     }
+    await decorateRowsWithMarketStructure(supabase, [top5, monitor]);
+
     if (latestPriceAt) { lastAt = latestPriceAt; monitorSourceLabel = 'latest price'; }
     else if (latestMonitorRunAt) { lastAt = latestMonitorRunAt; monitorSourceLabel = 'monitor run'; }
     else if (dailyLockFallbackAt) { lastAt = dailyLockFallbackAt; monitorSourceLabel = 'daily lock fallback'; }
@@ -15724,6 +15761,7 @@ module.exports.__test = {
   candidateTelegramEligible: candidateTelegramEligible,
   candidatePassesMinUpside: candidatePassesMinUpside,
   formatCandidateBlock: formatCandidateBlock,
+  decorateRowsWithMarketStructure: decorateRowsWithMarketStructure,
   sanitizeTop5ResponseForAudience: sanitizeTop5ResponseForAudience,
   sanitizeTop5RowForPublic: sanitizeTop5RowForPublic,
   isTop5PreviewOrProvisionalRow: isTop5PreviewOrProvisionalRow,
