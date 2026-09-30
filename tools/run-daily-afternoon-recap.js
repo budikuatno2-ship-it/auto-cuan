@@ -116,9 +116,10 @@ async function main(argv = process.argv.slice(2)) {
   }
 
   const { createClient } = require('@supabase/supabase-js');
-  const supabase = createClient(supabaseUrl, supabaseKey, {
+  const vpsMarketDataStore = require('../lib/vps-market-data-store');
+  const supabase = vpsMarketDataStore.wrapSupabaseClient(createClient(supabaseUrl, supabaseKey, {
     auth: { persistSession: false, autoRefreshToken: false }
-  });
+  }));
 
   try {
     const res = await recapService.sendDailyAfternoonRecap(supabase, {
