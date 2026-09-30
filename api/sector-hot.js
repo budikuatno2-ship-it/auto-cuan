@@ -82,6 +82,7 @@ const marketHoursGuard = require('../lib/market-hours-guard');
 const idxTradingCalendar = require('../lib/idx-trading-calendar');
 const crypto = require('crypto');
 const deepscanEngine = require('../lib/deepscan-engine');
+const fcaTransition2026 = require('../lib/fca-transition-2026');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
 const DAYTRADE_RUNNING_SKIP_MESSAGE = 'Day Trade scan already running; skipped to avoid overlap.';
@@ -762,14 +763,51 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
 
   try {
     // 1. Read universe from sector_hot_group_members
-    const { data: members, error: mErr } = await supabase
+    const { data: membersRaw, error: mErr } = await supabase
       .from('sector_hot_group_members')
       .select('group_code, ticker, stock_name')
       .eq('is_active', true);
 
-    if (mErr || !members || members.length === 0) {
+    if (mErr || !membersRaw || membersRaw.length === 0) {
       await updateScreenerMeta(supabase, { universe_count: 0, scanned_count: 0, failed_count: 0, ai_called_count: 0, status: 'failed', message: 'No active members found.' });
       return res.status(200).json({ success: false, error: 'No active members.' });
+    }
+
+    // Reconcile the dated Sep-2026 suspension snapshot with current stock_boards.
+    // A formerly suspended exit automatically re-enters once the current board
+    // master says it is active, on UTAMA/PENGEMBANGAN, and is_fca=false.
+    // Explicit current suspension/inactive signals still win.
+    const transitionTickers = Array.from(new Set(
+      membersRaw
+        .map(function(m) { return fcaTransition2026.normalizeTicker(m && m.ticker); })
+        .filter(function(ticker) { return ticker && fcaTransition2026.isTransitionTicker(ticker); })
+    ));
+    const transitionRows = {};
+    if (transitionTickers.length > 0) {
+      try {
+        const { data: currentRows, error: currentRowsErr } = await supabase
+          .from('stock_boards')
+          .select('ticker,board,is_active,is_fca,note')
+          .in('ticker', transitionTickers);
+        if (!currentRowsErr) {
+          (currentRows || []).forEach(function(row) {
+            const ticker = fcaTransition2026.normalizeTicker(row && row.ticker);
+            if (ticker) transitionRows[ticker] = row;
+          });
+        }
+      } catch (_) {}
+    }
+
+    // A Konglo affiliation does not override tradability. Snapshot-suspended
+    // exits stay fail-closed until current stock_boards proves reactivation.
+    const members = membersRaw.filter(function(m) {
+      const ticker = fcaTransition2026.normalizeTicker(m && m.ticker);
+      return !fcaTransition2026.shouldBlockTransitionTicker(ticker, transitionRows[ticker] || null);
+    });
+
+    if (members.length === 0) {
+      await updateScreenerMeta(supabase, { universe_count: 0, scanned_count: 0, failed_count: 0, ai_called_count: 0, status: 'failed', message: 'No tradable active members found.' });
+      return res.status(200).json({ success: false, error: 'No tradable active members.' });
     }
 
     // The Konglo universe is still affiliation-driven.  A board-validated IPO
@@ -10396,18 +10434,24 @@ async function handleNkScreenerStart(req, res, supabase) {
     .eq('is_active', true);
   const excludedTickers = new Set((kongloMembers || []).map(m => m.ticker));
 
-  // Get eligible stocks from stock_boards
-  const { data: boardStocks, error: boardErr } = await supabase
+  // Get the full active board master, then reconcile the dated Sep-2026 FCA
+  // transition. stock_boards can lag the official exit event, so filtering by
+  // UTAMA/PENGEMBANGAN in SQL would silently lose verified active exits.
+  const { data: boardStocksRaw, error: boardErr } = await supabase
     .from('stock_boards')
-    .select('ticker, board')
-    .in('board', ['UTAMA', 'PENGEMBANGAN']);
+    .select('ticker, board, is_active, is_fca, note')
+    .eq('is_active', true);
 
-  if (boardErr || !boardStocks) {
+  if (boardErr || !boardStocksRaw) {
     await updateNkMeta(supabase, { status: 'failed', message: 'Gagal memuat stock_boards: ' + (boardErr ? boardErr.message : 'no data') });
     return res.status(200).json({ success: false, error: 'Failed to load stock_boards.' });
   }
 
-  // Filter out verified Konglo tickers.  Foreign-only names are deliberately
+  const boardStocks = boardStocksRaw.filter(function(s) {
+    return fcaTransition2026.isEligibleContinuousAuctionRow(s);
+  });
+
+  // Filter out verified Konglo tickers. Foreign-only names are deliberately
   // treated as Non-Konglo/unverified rather than guessed into a konglo group.
   const universe = boardStocks.filter(s => !excludedTickers.has(s.ticker));
   const knownTickers = new Set(boardStocks.map(s => String(s.ticker || '').toUpperCase()));
