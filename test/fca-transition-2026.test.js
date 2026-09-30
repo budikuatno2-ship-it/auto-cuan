@@ -54,7 +54,7 @@ test('verified active FCA exit bypasses stale board metadata but not explicit su
   );
 });
 
-test('suspended FCA exit is fail-closed until current board metadata proves reactivation', () => {
+test('suspended FCA exit stays fail-closed until an authoritative reactivation is recorded', () => {
   assert.equal(
     daytrade.dayTradeEligibilityReason({
       ticker: 'POLL',
@@ -72,7 +72,7 @@ test('suspended FCA exit is fail-closed until current board metadata proves reac
       is_active: true,
       is_fca: false
     }),
-    null
+    'suspended_fca_exit'
   );
 
   assert.equal(
@@ -93,17 +93,29 @@ test('ordinary board rules remain unchanged', () => {
   assert.equal(daytrade.dayTradeEligibilityReason({ ticker: 'UNKNOWN', board: 'AKSELERASI' }), 'invalid_or_unknown_board');
 });
 
-test('transition helper admits active exits and auto-reenters suspended exits from current board metadata', () => {
+test('transition helper admits verified-active exits but never treats board metadata as unsuspension proof', () => {
   assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'PACK', board: 'AKSELERASI', is_active: true }), true);
   assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'WIKA', board: 'PEMANTAUAN_KHUSUS', is_active: true, is_fca: true }), false);
   assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'WIKA', board: 'PENGEMBANGAN', is_active: true }), false);
-  assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'WIKA', board: 'PENGEMBANGAN', is_active: true, is_fca: false }), true);
+  assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'WIKA', board: 'PENGEMBANGAN', is_active: true, is_fca: false }), false);
   assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'WIKA', board: 'PENGEMBANGAN', is_active: true, is_fca: false, note: 'trading suspended' }), false);
   assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'BBCA', board: 'UTAMA', is_active: true }), true);
   assert.equal(transition.isEligibleContinuousAuctionRow({ ticker: 'FOO', board: 'AKSELERASI', is_active: true }), false);
+
+  // Production examples found during the post-merge audit: these rows look
+  // ordinary in stock_boards but were part of the 2026-09-25 suspended set.
+  // They must stay blocked until a newer authoritative IDX opening event is
+  // explicitly recorded in reactivated_after_status_date.
+  for (const ticker of ['DPNS', 'EDGE', 'INCF', 'UNIT']) {
+    assert.equal(transition.isAuthoritativelyReactivated(ticker), false);
+    assert.equal(
+      transition.isEligibleContinuousAuctionRow({ ticker, board: 'PENGEMBANGAN', is_active: true, is_fca: false }),
+      false
+    );
+  }
 });
 
-test('DeepScan uses current stock_boards so suspended exits can re-enter automatically', async () => {
+test('DeepScan keeps snapshot-suspended exits blocked despite stale-safe board metadata', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fca-deepscan-'));
   try {
     const dir = path.join(root, 'data', 'daily-candles');
@@ -139,7 +151,7 @@ test('DeepScan uses current stock_boards so suspended exits can re-enter automat
     };
 
     const tradable = (await deepscan.filterTradableTransitionTickers(db, discovered)).sort();
-    assert.deepEqual(tradable, ['BBCA', 'PBRX', 'POLL']);
+    assert.deepEqual(tradable, ['BBCA', 'PBRX']);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
