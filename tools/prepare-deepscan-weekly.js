@@ -110,19 +110,22 @@ function normalizeAdjustedYahoo(payload, options) {
     if (options.to && date > options.to) return;
 
     const open = Array.isArray(quote.open) ? Number(quote.open[index]) : NaN;
-    const high = Array.isArray(quote.high) ? Number(quote.high[index]) : NaN;
-    const low = Array.isArray(quote.low) ? Number(quote.low[index]) : NaN;
+    const highRaw = Array.isArray(quote.high) ? Number(quote.high[index]) : NaN;
+    const lowRaw = Array.isArray(quote.low) ? Number(quote.low[index]) : NaN;
     const close = Array.isArray(quote.close) ? Number(quote.close[index]) : NaN;
     const volume = Array.isArray(quote.volume) ? Number(quote.volume[index]) : 0;
     const adjustedClose = Number(adjusted[index]);
 
-    if (![open, high, low, close].every((value) => Number.isFinite(value) && value > 0)) return;
+    if (![open, highRaw, lowRaw, close].every((value) => Number.isFinite(value) && value > 0)) return;
     if (!Number.isFinite(adjustedClose) || adjustedClose <= 0) {
       throw new Error('missing_adjusted_close');
     }
-    if (high < Math.max(open, close, low) || low > Math.min(open, close)) {
-      throw new Error('invalid_yahoo_ohlc');
-    }
+
+    // Yahoo occasionally emits an OHLC envelope inconsistency around corporate
+    // actions. Preserve the session instead of dropping the whole ticker:
+    // minimally widen only high/low so O/C remain untouched and low <= O/C <= high.
+    const high = Math.max(highRaw, open, close, lowRaw);
+    const low = Math.min(lowRaw, open, close, highRaw);
 
     candles.push({
       date,
