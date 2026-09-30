@@ -150,6 +150,22 @@ test('DeepScan full-history metrics use old candles, not only recent 90/180 sess
   assert.ok(metrics.years_observed > 6);
 });
 
+test('DeepScan analysis candles keep recent technical levels continuous across a split', () => {
+  const rows = [
+    { ...candle('2026-01-02', 100, 1000), adjusted_close: 20 },
+    { ...candle('2026-01-05', 105, 1100), adjusted_close: 21 },
+    { ...candle('2026-01-06', 21, 5500), adjusted_close: 21 },
+    { ...candle('2026-09-29', 22, 6000), adjusted_close: 22 }
+  ];
+  const normalized = context.buildAnalysisCandles(rows);
+  assert.equal(normalized.length, 4);
+  assert.ok(Math.abs(normalized[0].close - 20) < 1e-9);
+  assert.ok(Math.abs(normalized[1].close - 21) < 1e-9);
+  assert.ok(Math.abs(normalized[2].close - 21) < 1e-9);
+  assert.ok(Math.abs(normalized[3].close - 22) < 1e-9);
+  assert.ok(Math.abs(normalized[0].volume - 5000) < 1e-9);
+});
+
 test('DeepScan long-horizon return metrics use adjusted close across stock splits', () => {
   const rows = [
     { ...candle('2020-01-02', 100), adjusted_close: 20 },
