@@ -191,9 +191,11 @@ async function main() {
   console.log('No Supabase rows were deleted.');
 }
 
-main().catch((error) => {
-  console.error('[vps-migrate] ERROR:', error && error.message || error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error('[vps-migrate] ERROR:', error && error.message || error);
+    process.exit(1);
+  });
+}
 
-module.exports = { TABLES, ORDER_KEYS, fetchTablePass, fetchTable, sha256Json };
+module.exports = { TABLES, ORDER_KEYS, fetchTablePass, fetchTable, sha256Json, main };
