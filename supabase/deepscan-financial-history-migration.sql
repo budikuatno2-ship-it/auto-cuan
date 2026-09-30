@@ -44,3 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_stock_financial_history_period_end
   ON stock_financial_history (period_end DESC);
 
 ALTER TABLE stock_financial_history ENABLE ROW LEVEL SECURITY;
+
+-- Defense in depth: DeepScan financial history is server-side verified data.
+REVOKE ALL ON TABLE public.stock_financial_history FROM PUBLIC, anon, authenticated;
+GRANT ALL ON TABLE public.stock_financial_history TO service_role;
