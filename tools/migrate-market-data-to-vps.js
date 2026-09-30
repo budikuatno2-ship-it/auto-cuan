@@ -6,6 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const vpsStore = require('../lib/vps-market-data-store');
+const localTables = require('../lib/vps-local-table-query');
 
 const DATA_ROOT = process.env.AUTO_CUAN_DATA_ROOT || '/home/ubuntu/auto-cuan-data';
 const SNAPSHOT_ROOT = path.join(DATA_ROOT, 'supabase-snapshots');
@@ -112,10 +113,14 @@ async function main() {
     };
     const filePath = path.join(SNAPSHOT_ROOT, table + '.json');
     vpsStore.atomicWriteJson(filePath, payload);
+    if (localTables.LOCAL_TABLES.has(table)) {
+      localTables.writeTableRows(table, result.rows, 'supabase_cutover_snapshot');
+    }
     manifest.tables[table] = {
       row_count: result.rows.length,
       sha256: sha256Json(result.rows),
-      file: filePath
+      file: filePath,
+      active_local_file: localTables.LOCAL_TABLES.has(table) ? localTables.tablePath(table) : null
     };
     console.log('[vps-migrate] ' + table + ': ' + result.rows.length + ' rows');
   }
