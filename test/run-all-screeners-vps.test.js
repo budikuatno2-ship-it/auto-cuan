@@ -162,3 +162,29 @@ test('Non-Konglo runner accepts large universe with batch 50 and logs start diag
   assert.equal(result.finalized, true);
   assert.ok(logs.some((x) => /universe 635, batches 13, batch_size 50/.test(x)));
 });
+
+
+test('Non-Konglo force run does not short-circuit on stale published meta', async () => {
+  const calls = [];
+  let runCalls = 0;
+  const client = {
+    call: async (q) => {
+      calls.push(q);
+      if (q.action === 'nk-screener-results') {
+        if (runCalls === 0) return { meta: { status: 'published', run_date: '2026-09-24' } };
+        return { meta: { status: 'scanning', run_date: runner.wibDate() } };
+      }
+      if (q.action === 'nk-screener-run') {
+        runCalls += 1;
+        if (runCalls === 1) return { step:'start', status:'SCANNING', universe_count:635, batch_count:13, batch_size:50 };
+        return { step:'finalize', status:'PUBLISHED', message:'Published 21 top candidates.' };
+      }
+      throw new Error('unexpected');
+    }
+  };
+  const result = await runner.runNk(client, {
+    execute:true, force:true, maxAttempts:40, sleepMs:1, nkBatchSize:50
+  }, () => {});
+  assert.equal(result.finalized, true);
+  assert.equal(calls.some((q) => q.action === 'nk-screener-run' && q.force === 1), true);
+});
