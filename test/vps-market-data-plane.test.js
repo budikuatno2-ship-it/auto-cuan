@@ -191,3 +191,76 @@ test('migration seeds active local table files only for approved cutover tables'
   assert.match(tableSrc, /'sector_hot_latest'/);
   assert.doesNotMatch(tableSrc, /LOCAL_TABLES[\s\S]*'app_users'/);
 });
+
+
+test('bounded candle refresh merges by date and preserves older archive rows', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'autocuan-candle-merge-'));
+  const oldDir = process.env.CANDLE_CACHE_DIR;
+  process.env.CANDLE_CACHE_DIR = tmp;
+  try {
+    delete require.cache[require.resolve('../lib/chart-engine/candle-fetcher')];
+    const candles = require('../lib/chart-engine/candle-fetcher');
+    fs.writeFileSync(path.join(tmp, 'BBCA.json'), JSON.stringify({
+      ticker: 'BBCA',
+      candles: [
+        { date: '2020-01-02', open: 100, high: 110, low: 90, close: 105, volume: 1000 },
+        { date: '2026-09-29', open: 9000, high: 9200, low: 8950, close: 9100, volume: 2000 }
+      ]
+    }));
+    candles.writeCache('BBCA', {
+      ticker: 'BBCA',
+      candles: [
+        { date: '2026-09-29', open: 9100, high: 9250, low: 9050, close: 9200, volume: 2100 },
+        { date: '2026-09-30', open: 9200, high: 9400, low: 9150, close: 9350, volume: 2500 }
+      ]
+    });
+    const payload = JSON.parse(fs.readFileSync(path.join(tmp, 'BBCA.json'), 'utf8'));
+    assert.deepEqual(payload.candles.map((r) => r.date), ['2020-01-02','2026-09-29','2026-09-30']);
+    assert.equal(payload.candles.find((r) => r.date === '2026-09-29').close, 9200);
+  } finally {
+    if (oldDir === undefined) delete process.env.CANDLE_CACHE_DIR;
+    else process.env.CANDLE_CACHE_DIR = oldDir;
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('migration verifies two deterministic ordered export passes before accepting a table', async () => {
+  const migration = require('../tools/migrate-market-data-to-vps');
+  const rows = [
+    { ticker: 'BBCA', value: 1 },
+    { ticker: 'BBRI', value: 2 },
+    { ticker: 'TLKM', value: 3 }
+  ];
+  let passCount = 0;
+  const supabase = {
+    from(table) {
+      assert.equal(table, 'daytrade_screener_latest');
+      return {
+        select() {
+          const q = {
+            order(col, options) {
+              assert.equal(col, 'ticker');
+              assert.equal(options.ascending, true);
+              return q;
+            },
+            range(start, end) {
+              if (start === 0) passCount += 1;
+              return Promise.resolve({ data: rows.slice(start, end + 1), error: null });
+            }
+          };
+          return q;
+        }
+      };
+    }
+  };
+  const result = await migration.fetchTable(supabase, 'daytrade_screener_latest');
+  assert.equal(result.rows.length, 3);
+  assert.equal(result.verification_attempt, 1);
+  assert.equal(passCount, 2);
+});
+
+test('admin foreign upload client is wrapped so imported rows follow VPS backend', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'api', 'admin-users.js'), 'utf8');
+  assert.match(src, /vpsMarketDataStore\.wrapSupabaseClient\(createClient/);
+  assert.match(src, /handleAdminForeignUpload/);
+});
