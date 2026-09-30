@@ -106,3 +106,120 @@ test('CSV free-float percent normalization is complete and still range-validated
     'BAD,101%,idx_verified,2026-09-30'
   ].join('\n')), /free_float_pct tidak valid/);
 });
+
+test('market structure import rejects tickers outside the eligible universe', () => {
+  assert.equal(marketImport.validateRowsAgainstUniverse([{ ticker: 'BBCA' }], ['BBCA', 'BBRI']), true);
+  assert.throws(
+    () => marketImport.validateRowsAgainstUniverse([{ ticker: 'FCA1' }], ['BBCA', 'BBRI']),
+    /di luar universe continuous-auction/
+  );
+});
+
+test('market structure import rejects stale snapshots', () => {
+  assert.throws(() => marketImport.mergeMarketStructureRows(
+    [{
+      ticker: 'BBCA',
+      free_float_pct: 42,
+      free_float_source: 'idx_new',
+      free_float_as_of: '2026-09-30'
+    }],
+    [{
+      ticker: 'BBCA',
+      free_float_pct: 41,
+      free_float_source: 'idx_old',
+      free_float_as_of: '2026-09-01',
+      hsc_flag: null,
+      updated_at: '2026-09-30T00:00:00.000Z'
+    }]
+  ), /lebih lama/);
+});
+
+test('market structure import rejects conflicting same-date snapshots', () => {
+  assert.throws(() => marketImport.mergeMarketStructureRows(
+    [{
+      ticker: 'BBCA',
+      hsc_flag: false,
+      hsc_source: 'idx_hsc',
+      hsc_as_of: '2026-09-30'
+    }],
+    [{
+      ticker: 'BBCA',
+      hsc_flag: true,
+      hsc_source: 'idx_hsc',
+      hsc_as_of: '2026-09-30',
+      updated_at: '2026-09-30T00:00:00.000Z'
+    }]
+  ), /Konflik snapshot HSC/);
+});
+
+test('market structure import preserves the other metric on partial updates', () => {
+  const merged = marketImport.mergeMarketStructureRows(
+    [{
+      ticker: 'BBCA',
+      free_float_pct: 42,
+      free_float_source: 'idx_ff',
+      free_float_as_of: '2026-09-01',
+      hsc_flag: false,
+      hsc_source: 'idx_hsc',
+      hsc_as_of: '2026-09-01'
+    }],
+    [{
+      ticker: 'BBCA',
+      free_float_pct: 43,
+      free_float_source: 'idx_ff_new',
+      free_float_as_of: '2026-09-30',
+      hsc_flag: null,
+      updated_at: '2026-09-30T00:00:00.000Z'
+    }]
+  );
+
+  assert.equal(merged[0].free_float_pct, 43);
+  assert.equal(merged[0].hsc_flag, false);
+  assert.equal(merged[0].hsc_as_of, '2026-09-01');
+});
+
+
+test('market structure apply uses the atomic RPC, not a raw table upsert', async () => {
+  let rpcCalls = 0;
+  const supabase = {
+    rpc(name, args) {
+      rpcCalls += 1;
+      assert.equal(name, 'upsert_verified_market_structure_rows');
+      assert.ok(Array.isArray(args.p_rows));
+      return Promise.resolve({ data: args.p_rows.length, error: null });
+    }
+  };
+
+  const rows = [{
+    ticker: 'BBCA',
+    free_float_pct: 42,
+    free_float_source: 'idx',
+    free_float_as_of: '2026-08-31',
+    hsc_flag: null,
+    hsc_source: null,
+    hsc_as_of: null,
+    updated_at: '2026-09-30T00:00:00.000Z'
+  }];
+
+  const count = await marketImport.upsertMarketStructureRows(supabase, rows);
+  assert.equal(count, 1);
+  assert.equal(rpcCalls, 1);
+});
+
+test('atomic market-structure SQL blocks stale/conflicting writes and locks down execution', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const sql = fs.readFileSync(
+    path.resolve(__dirname, '../supabase/market-structure-atomic-upsert.sql'),
+    'utf8'
+  );
+
+  assert.match(sql, /ON CONFLICT \(ticker\) DO UPDATE/i);
+  assert.match(sql, /EXCLUDED\.free_float_as_of > stock_fundamentals\.free_float_as_of/i);
+  assert.match(sql, /EXCLUDED\.hsc_as_of > stock_fundamentals\.hsc_as_of/i);
+  assert.match(sql, /IS NOT DISTINCT FROM stock_fundamentals\.free_float_pct/i);
+  assert.match(sql, /IS NOT DISTINCT FROM stock_fundamentals\.hsc_flag/i);
+  assert.match(sql, /RAISE EXCEPTION 'stale or conflicting market-structure snapshot rejected/i);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.upsert_verified_market_structure_rows\(jsonb\) FROM PUBLIC/i);
+  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.upsert_verified_market_structure_rows\(jsonb\) TO service_role/i);
+});
