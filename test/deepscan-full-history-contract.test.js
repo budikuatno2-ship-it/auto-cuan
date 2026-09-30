@@ -16,6 +16,7 @@ function candle(date, close, volume) {
     high: close + 2,
     low: Math.max(1, close - 2),
     close,
+    adjusted_close: close,
     volume: volume == null ? 1000000 : volume
   };
 }
@@ -74,6 +75,19 @@ test('DeepScan full-history metrics use old candles, not only recent 90/180 sess
   assert.ok(metrics.max_drawdown_pct <= -50);
   assert.ok(metrics.total_return_pct >= 99);
   assert.ok(metrics.years_observed > 6);
+});
+
+test('DeepScan long-horizon return metrics use adjusted close across stock splits', () => {
+  const rows = [
+    { ...candle('2020-01-02', 100), adjusted_close: 20 },
+    { ...candle('2023-01-02', 120), adjusted_close: 24 },
+    // 1:5 split: raw price mechanically drops, adjusted series stays continuous.
+    { ...candle('2024-01-02', 24), adjusted_close: 24 },
+    { ...candle('2026-09-29', 30), adjusted_close: 30 }
+  ];
+  const metrics = context.computeFullHistoryMetrics(rows);
+  assert.ok(metrics.total_return_pct > 45 && metrics.total_return_pct < 55);
+  assert.ok(metrics.max_drawdown_pct > -5);
 });
 
 test('DeepScan verified financial context never fabricates missing fundamentals', () => {
@@ -149,6 +163,8 @@ test('DeepScan weekend freshness requires data requested through Friday', () => 
   const sunday = new Date('2026-10-04T03:00:00Z');
   assert.equal(engine.getRequiredHistoryThroughDate(saturday), '2026-10-02');
   assert.equal(engine.getRequiredHistoryThroughDate(sunday), '2026-10-02');
+  assert.equal(engine.getRequiredLatestCandleDate(saturday), '2026-10-02');
+  assert.equal(engine.getRequiredLatestCandleDate(sunday), '2026-10-02');
   assert.equal(engine.getRequiredHistoryThroughDate(new Date('2026-09-30T03:00:00Z')), null);
 });
 
