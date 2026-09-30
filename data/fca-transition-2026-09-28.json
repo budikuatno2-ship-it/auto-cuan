@@ -4,7 +4,7 @@
   "status_as_of": "2026-09-25",
   "official_announcement": "Peng-CK-00076/BEI.PLP/09-2026",
   "scope": "92 equities removed from IDX Special Monitoring Board / FCA after criteria 1, 6, 7 and 10 were removed.",
-  "safety_note": "Exit from FCA does not imply tradability. Only active_as_of_status_date may bypass stale FCA/board metadata. suspended_as_of_status_date remains fail-closed until a newer authoritative IDX suspension-opening update explicitly places the ticker in reactivated_after_status_date; listing board/is_fca metadata alone never proves an unsuspension.",
+  "safety_note": "Exit from FCA does not imply tradability. active_as_of_status_date may bypass stale FCA/board metadata. suspended_as_of_status_date remains fail-closed for Swing/DeepScan and global transition state until a newer authoritative IDX suspension-opening update is recorded in reactivated_after_status_date. DayTrade has a narrower run-scoped exception: a snapshot-suspended ticker may enter that DayTrade run only after fresh intraday trade proof; this does not mutate authoritative reactivation state.",
   "total_exit_count": 92,
   "active_as_of_status_date": [
     "ADES",
