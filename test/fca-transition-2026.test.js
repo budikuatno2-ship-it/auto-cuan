@@ -156,3 +156,41 @@ test('DeepScan keeps snapshot-suspended exits blocked despite stale-safe board m
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+
+test('ordinary FCA/Pemantauan Khusus rows are excluded from continuous-auction Swing universes', () => {
+  for (const ticker of ['ABBA','ACST','BTEL','CSAP','INAF','MPPA','UNSP','WSBP']) {
+    assert.equal(
+      transition.isEligibleContinuousAuctionRow({
+        ticker,
+        board: 'PENGEMBANGAN',
+        is_active: true,
+        is_fca: true,
+        note: 'Papan Pemantauan Khusus / FCA'
+      }),
+      false,
+      ticker + ' must stay outside continuous auction'
+    );
+  }
+  assert.equal(
+    transition.isEligibleContinuousAuctionRow({
+      ticker: 'BUKA',
+      board: 'EKONOMI_BARU',
+      is_active: true,
+      is_fca: false,
+      note: 'Papan Ekonomi Baru'
+    }),
+    false
+  );
+  assert.equal(
+    transition.isEligibleContinuousAuctionRow({
+      ticker: 'PBRX',
+      board: 'PEMANTAUAN_KHUSUS',
+      is_active: true,
+      is_fca: true,
+      note: 'Papan Pemantauan Khusus / FCA'
+    }),
+    true,
+    'verified-active Sep-2026 exit keeps the explicit transition override'
+  );
+});
