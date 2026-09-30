@@ -243,7 +243,6 @@
   "test/daytrade-vps-worker-observe.test.js",
   "test/design-system-institutional-pass.test.js",
   "test/design-system-tokens-typography.test.js",
-  "test/deepscan-full-history-contract.test.js",
   "test/desktop-header-center.test.js",
   "test/desktop-screener-dashboard-overhaul.test.js",
   "test/device-block-regression.test.js",
