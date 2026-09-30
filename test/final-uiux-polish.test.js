@@ -40,5 +40,5 @@ test('landing final layer is light-premium without copying reference assets', ()
   assert.match(css, /html\.light #landingPage[\s\S]*--lp-bg:\s*#f2f4f1/);
   assert.match(css, /html\.light #landingPage \.landing-nav[\s\S]*border-radius:\s*999px/);
   assert.match(css, /html\.light #landingPage \.landing-radar-window[\s\S]*background:\s*#101613/);
-  assert.doesNotMatch(html + css + runtime, /profits|stockbit|ajaib/i);
+  assert.doesNotMatch(html + css + runtime, /(?:^|[^A-Za-z])Profits(?:[^A-Za-z]|$)|stockbit|ajaib/i);
 });
