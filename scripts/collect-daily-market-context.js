@@ -38,6 +38,7 @@
 'use strict';
 
 const { createClient } = require('@supabase/supabase-js');
+const vpsMarketDataStore = require('../lib/vps-market-data-store');
 const calendar = require('../lib/idx-trading-calendar');
 const collector = require('../lib/daily-history-collector');
 const contextBuilder = require('../lib/daily-market-context-builder');
@@ -112,7 +113,7 @@ async function run(argv, options) {
 
   const supabase = isDryRun && (!SUPABASE_URL || !SUPABASE_KEY)
     ? null
-    : createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+    : vpsMarketDataStore.wrapSupabaseClient(createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false } }));
 
   const guard = await calendar.marketDayGuard(supabase, {});
   if (!guard.shouldRun) {
