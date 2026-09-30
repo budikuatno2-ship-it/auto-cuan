@@ -580,5 +580,6 @@
   "test/vps-market-data-plane.test.js",
   "test/final-uiux-polish.test.js",
   "test/final-uiux-surface-coverage.test.js",
-  "test/financial-market-structure-ui.test.js"
+  "test/financial-market-structure-ui.test.js",
+  "test/finance-portfolio-consistency.test.js"
 ]
