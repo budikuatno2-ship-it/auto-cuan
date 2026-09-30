@@ -39,9 +39,13 @@ test('existing dataset adapter maps free float and HSC statuses conservatively',
     ]
   };
 
-  const out = sync.buildExistingMarketStructureRows(market, hsc, ['AAA','BBB','CCC']);
+  const out = sync.buildExistingMarketStructureRows(market, hsc, ['AAA','BBB']);
 
-  assert.equal(out.summary.free_float_verified, 3);
+  assert.equal(out.summary.canonical_count, 3);
+  assert.equal(out.summary.eligible_count, 2);
+  assert.equal(out.summary.free_float_verified_canonical, 3);
+  assert.equal(out.summary.free_float_verified_eligible, 2);
+  assert.equal(out.summary.hsc_verified_canonical, 2);
   assert.equal(out.summary.hsc_verified_in_universe, 2);
   assert.equal(out.summary.hsc_active_in_universe, 1);
   assert.equal(out.summary.hsc_revoked_in_universe, 1);
@@ -187,8 +191,9 @@ test('existing dataset adapter reports missing free float without fabricating it
   };
   const hsc = { active_count: 0, revoked_count: 0, stocks: [] };
 
-  const out = sync.buildExistingMarketStructureRows(market, hsc, ['AAA','MISS']);
-  assert.deepEqual(out.summary.missing_free_float, ['MISS']);
+  const out = sync.buildExistingMarketStructureRows(market, hsc, ['AAA']);
+  assert.deepEqual(out.summary.missing_free_float_canonical, ['MISS']);
+  assert.deepEqual(out.summary.missing_free_float_eligible, []);
 
   const byTicker = new Map(out.rows.map((row) => [row.ticker, row]));
   assert.equal(byTicker.has('MISS'), false);
@@ -206,4 +211,35 @@ test('existing dataset adapter validates HSC declared counts', () => {
     },
     ['AAA']
   ), /active_count tidak cocok/);
+});
+
+
+test('canonical market structure includes non-scanner tickers while scanner summary stays eligible-only', () => {
+  const market = {
+    stocks: [
+      { ticker: 'AAA', ownership: { as_of: '2026-08-31', derived_free_float_pct: 25 } },
+      { ticker: 'OUT', ownership: { as_of: '2026-08-31', derived_free_float_pct: 30 } }
+    ]
+  };
+  const hsc = {
+    generated_at: '2026-09-30T10:00:00.000Z',
+    active_count: 1,
+    revoked_count: 0,
+    active: [{ ticker: 'OUT', hsc_2026_status: 'IMPOSED' }],
+    revoked: []
+  };
+
+  const out = sync.buildExistingMarketStructureRows(market, hsc, ['AAA']);
+  const byTicker = new Map(out.rows.map((row) => [row.ticker, row]));
+
+  assert.equal(out.summary.canonical_count, 2);
+  assert.equal(out.summary.eligible_count, 1);
+  assert.equal(out.summary.free_float_verified_canonical, 2);
+  assert.equal(out.summary.free_float_verified_eligible, 1);
+  assert.equal(out.summary.hsc_verified_canonical, 1);
+  assert.equal(out.summary.hsc_verified_in_universe, 0);
+  assert.deepEqual(out.summary.hsc_outside_universe, ['OUT']);
+  assert.equal(byTicker.has('OUT'), true);
+  assert.equal(byTicker.get('OUT').free_float_pct, 30);
+  assert.equal(byTicker.get('OUT').hsc_flag, true);
 });
