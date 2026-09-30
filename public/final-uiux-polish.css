@@ -1739,3 +1739,261 @@ html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) tb
     min-height: 42px;
   }
 }
+
+
+/* ==========================================================================
+   FINANCIAL + MARKET STRUCTURE RESEARCH
+   ========================================================================== */
+
+html.light #page-analisis :is(#panel-tab-financial,#panel-tab-market-structure) .ac-research-data-panel {
+  overflow: hidden;
+  background: #ffffff !important;
+  border-color: rgba(18,35,29,.10) !important;
+  box-shadow: var(--ac-shadow-1) !important;
+}
+
+.ac-research-data-head {
+  align-items: flex-start !important;
+  gap: 18px;
+}
+
+.ac-research-kicker {
+  margin: 0 0 5px;
+  color: var(--ac-accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.ac-research-ticker-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.ac-research-ticker-input {
+  width: 112px;
+  height: 36px;
+  padding: 0 11px;
+  border: 1px solid var(--ac-line-strong);
+  border-radius: 9px;
+  background: var(--ac-surface-2);
+  color: var(--ac-text);
+  font: 700 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.ac-research-ticker-input:focus {
+  border-color: rgba(15,116,88,.44);
+  box-shadow: 0 0 0 3px rgba(15,116,88,.09);
+}
+
+.ac-research-load-btn {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid #17211e;
+  border-radius: 9px;
+  background: #17211e;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+.ac-research-load-btn:hover {
+  background: #26322e;
+}
+
+.ac-research-load-btn:active {
+  transform: scale(.985);
+}
+
+.ac-research-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--ac-text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.ac-research-data-content {
+  padding: 18px;
+}
+
+.ac-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 10px;
+}
+
+.ac-metric-grid-financial {
+  grid-template-columns: repeat(4,minmax(0,1fr));
+}
+
+.ac-metric-tile {
+  min-width: 0;
+  padding: 17px;
+  border: 1px solid var(--ac-line);
+  border-radius: 12px;
+  background: #fbfcfb;
+}
+
+.ac-metric-tile span {
+  display: block;
+  color: var(--ac-text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .02em;
+}
+
+.ac-metric-tile strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--ac-text);
+  font-size: clamp(20px,2vw,28px);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -.035em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.ac-metric-tile small {
+  display: block;
+  margin-top: 7px;
+  color: var(--ac-text-dim);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.ac-research-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  margin-top: 12px;
+  border: 1px solid var(--ac-line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--ac-surface-2);
+}
+
+.ac-research-detail {
+  min-width: 0;
+  padding: 13px 15px;
+  background: #ffffff;
+}
+
+.ac-research-detail:nth-child(2n) {
+  border-left: 1px solid var(--ac-line);
+}
+
+.ac-research-detail:nth-child(n+3) {
+  border-top: 1px solid var(--ac-line);
+}
+
+.ac-research-detail span {
+  display: block;
+  color: var(--ac-text-dim);
+  font-size: 10px;
+}
+
+.ac-research-detail strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--ac-text);
+  font-size: 11px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.ac-research-note,
+.ac-research-footnote {
+  margin-top: 12px;
+  padding: 11px 13px;
+  border: 1px solid rgba(18,35,29,.08);
+  border-radius: 10px;
+  background: #f7f9f8;
+  color: var(--ac-text-muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.ac-research-note {
+  font-size: 11px;
+}
+
+html:not(.light) .ac-research-data-panel {
+  --ac-text: #edf4ef;
+  --ac-text-muted: #95a59f;
+  --ac-text-dim: #6f827b;
+  --ac-line: rgba(148,163,184,.14);
+  --ac-line-strong: rgba(148,163,184,.22);
+  --ac-surface-2: rgba(15,23,42,.56);
+}
+
+html:not(.light) .ac-research-ticker-input {
+  background: rgba(15,23,42,.7);
+  color: #edf4ef;
+}
+
+html:not(.light) .ac-research-load-btn {
+  background: #10b981;
+  border-color: #10b981;
+  color: #03140f;
+}
+
+html:not(.light) .ac-metric-tile,
+html:not(.light) .ac-research-detail {
+  background: rgba(15,23,42,.52);
+}
+
+html:not(.light) .ac-research-note,
+html:not(.light) .ac-research-footnote {
+  background: rgba(15,23,42,.45);
+}
+
+@media (max-width: 900px) {
+  .ac-metric-grid-financial {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .ac-research-data-head {
+    flex-direction: column;
+  }
+
+  .ac-research-ticker-tools {
+    width: 100%;
+  }
+
+  .ac-research-ticker-input {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
+  .ac-metric-grid,
+  .ac-metric-grid-financial,
+  .ac-research-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ac-research-detail:nth-child(2n) {
+    border-left: 0;
+  }
+
+  .ac-research-detail + .ac-research-detail {
+    border-top: 1px solid var(--ac-line);
+  }
+
+  .ac-research-data-content {
+    padding: 13px;
+  }
+}
