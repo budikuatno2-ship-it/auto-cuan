@@ -107,8 +107,9 @@ test('Batch 12: package.json exposes pm2 start & zero-downtime reload scripts', 
 });
 
 
-test('DayTrade production daemon uses the bounded 120ms sequential pacing override', () => {
+test('DayTrade production daemon uses bounded dual-worker pacing', () => {
   const web = byName('autocuan-web');
-  assert.equal(web.env.DAYTRADE_FETCH_DELAY_MS, '120');
+  assert.equal(web.env.DAYTRADE_FETCH_CONCURRENCY, '2');
+  assert.equal(web.env.DAYTRADE_FETCH_DELAY_MS, '200');
   assert.equal(web.max_memory_restart, '1G');
 });
