@@ -11,8 +11,10 @@ const existingSync = require('../lib/market-structure-existing-sync');
 const historyStore = require('../lib/stock-daily-history-store');
 
 const ROOT = path.resolve(__dirname, '..');
-const MARKET_PATH = path.join(ROOT, 'data', 'market-structure', 'latest.json');
-const HSC_PATH = path.join(ROOT, 'data', 'market-structure', 'hsc', 'current-2026.json');
+const MARKET_PATH = process.env.AUTO_CUAN_MARKET_STRUCTURE_PATH ||
+  path.join(ROOT, 'data', 'market-structure', 'latest.json');
+const HSC_PATH = process.env.AUTO_CUAN_HSC_PATH ||
+  path.join(ROOT, 'data', 'market-structure', 'hsc', 'current-2026.json');
 const CHUNK_SIZE = 200;
 
 function chunk(items, size) {
@@ -101,6 +103,8 @@ async function main() {
   console.log('=== EXISTING MARKET STRUCTURE SYNC ===');
   console.log('Storage: VPS_ONLY');
   console.log('DB: ' + store.filePath);
+  console.log('Market structure source: ' + MARKET_PATH);
+  console.log('HSC source: ' + HSC_PATH);
   console.log('Mode: ' + (apply ? 'APPLY' : 'VALIDATE_ONLY'));
   console.log('Eligible universe: ' + built.summary.eligible_count);
   console.log('Market stocks: ' + built.summary.market_stock_count);
