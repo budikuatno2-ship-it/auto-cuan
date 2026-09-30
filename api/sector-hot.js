@@ -40,7 +40,9 @@
  *   SCREENER_AI_MAX_OUTPUT_TOKENS — max tokens for AI response (default 700)
  */
 
-const { createClient } = require('../lib/hybrid-supabase-client');
+const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
+const { hybridizeClient } = require('../lib/hybrid-supabase-client');
+function createClient(url, key, options) { return hybridizeClient(createSupabaseClient(url, key, options)); }
 const { requirePremiumEntitlement, requireNonBlockedUser } = require('../lib/subscription-auth');
 const { requireAuthenticatedSession } = require('../lib/admin-session');
 const landingShowcase = require('../lib/landing-showcase-service');
