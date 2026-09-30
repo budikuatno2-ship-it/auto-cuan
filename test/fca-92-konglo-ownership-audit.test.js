@@ -11,10 +11,16 @@ test('owner normalization removes legal suffix noise but preserves identity toke
   assert.equal(audit.normalizeOwnerName('ABC Holdings Pte. Ltd.'), 'ABC HOLDINGS');
 });
 
-test('generic nominee/custody names are excluded from controller inference', () => {
+test('generic nominee/custody and passive financial holders are excluded from controller inference', () => {
   assert.equal(audit.isGenericNomineeOwner('HSBC - Fund Services Client'), true);
   assert.equal(audit.isGenericNomineeOwner('Citibank N.A. Custodian'), true);
   assert.equal(audit.isGenericNomineeOwner('PT Artha Graha Network'), false);
+
+  assert.equal(audit.isPassiveInstitutionOwner('PERUSAHAAN PERSEROAN (PERSERO) PT. ASABRI'), true);
+  assert.equal(audit.isPassiveInstitutionOwner('PT ASURANSI JIWA IFG'), true);
+  assert.equal(audit.isPassiveInstitutionOwner('DANA PENSIUN KARYAWAN PANIN BANK'), true);
+  assert.equal(audit.isPassiveInstitutionOwner('FIDELITY FUNDS'), false);
+  assert.equal(audit.isControllerFingerprintOwner('PT IFORTE SOLUSI INFOTEK'), true);
 });
 
 test('investor adapters accept common ownership snapshot field aliases', () => {
@@ -46,7 +52,7 @@ test('curated SQL membership parser recognizes CORE/AFFILIATE/RADAR rows', () =>
   ]);
 });
 
-test('exact shareholder overlap creates a strong candidate only when evidence is material', () => {
+test('exact shareholder overlap creates a candidate only when controller materiality is strong enough', () => {
   const signature = new Map([
     ['GROUP_A', new Map([
       ['ALPHA FAMILY', { normalized_name: 'ALPHA FAMILY', display_names: new Set(['Alpha Family']), source_tickers: new Set(['AAA','AAB']), max_pct: 40 }]
@@ -60,9 +66,47 @@ test('exact shareholder overlap creates a strong candidate only when evidence is
     { rank: 2, name: 'Small Owner', normalized_name: 'SMALL OWNER', pct: 0.2 }
   ];
   const candidates = audit.inferCandidates(investors, signature);
+  assert.equal(candidates.length, 1);
   assert.equal(candidates[0].group_code, 'GROUP_A');
   assert.equal(candidates[0].confidence, 'STRONG');
-  assert.equal(candidates[1].confidence, 'WEAK');
+});
+
+test('a near-total target owner may be a strong controller fingerprint even if it is a minority holder in one known member', () => {
+  const signature = new Map([
+    ['DJARUM_HARTONO_AFFILIATE', new Map([
+      ['IFORTE SOLUSI INFOTEK', {
+        normalized_name: 'IFORTE SOLUSI INFOTEK',
+        display_names: new Set(['IFORTE SOLUSI INFOTEK']),
+        source_tickers: new Set(['SUPR']),
+        max_pct: 2.59
+      }]
+    ])]
+  ]);
+  const investors = [
+    { rank: 1, name: 'IFORTE SOLUSI INFOTEK', normalized_name: 'IFORTE SOLUSI INFOTEK', pct: 99.96 }
+  ];
+  const candidates = audit.inferCandidates(investors, signature);
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].group_code, 'DJARUM_HARTONO_AFFILIATE');
+  assert.equal(candidates[0].confidence, 'STRONG');
+});
+
+test('passive institutions cannot create Konglo candidates even with large percentages', () => {
+  const signature = new Map([
+    ['BUMN_ENERGI_SEMEN_FARMA_TRANSPORT', new Map([
+      ['ASABRI', {
+        normalized_name: 'ASABRI',
+        display_names: new Set(['PT ASABRI']),
+        source_tickers: new Set(['AAA','BBB']),
+        max_pct: 25
+      }]
+    ])]
+  ]);
+  const investors = [
+    { rank: 1, name: 'PERUSAHAAN PERSEROAN (PERSERO) PT. ASABRI', normalized_name: 'ASABRI', pct: 26.19 }
+  ];
+  const candidates = audit.inferCandidates(investors, signature);
+  assert.equal(candidates.length, 0);
 });
 
 test('candidate state never auto-resolves ambiguous strong overlaps', () => {
