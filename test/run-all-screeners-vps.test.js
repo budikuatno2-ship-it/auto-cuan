@@ -114,3 +114,51 @@ test('makeClient surfaces action, URL, and network cause instead of opaque fetch
     /Fetch failed action=daytrade-screener-run .*cause=ECONNRESET: socket hang up/
   );
 });
+
+
+test('VPS runner defaults Non-Konglo to batch size 50 for the 635-name universe', () => {
+  const options = runner.parseArgs(['node','runner','--execute','--skip-daytrade','--skip-top5','--skip-progress']);
+  assert.equal(options.nkBatchSize, 50);
+  assert.equal(options.maxAttempts, 40);
+});
+
+test('Non-Konglo runner refuses impossible max-attempt capacity after start response', async () => {
+  const calls = [];
+  const client = {
+    call: async (q) => {
+      calls.push(q);
+      if (q.action === 'nk-screener-results') {
+        return { meta: { status: 'idle', run_date: runner.wibDate() } };
+      }
+      if (q.action === 'nk-screener-run') {
+        return { step: 'start', status: 'SCANNING', universe_count: 635, batch_count: 80, batch_size: 8 };
+      }
+      throw new Error('unexpected');
+    }
+  };
+  await assert.rejects(
+    runner.runNk(client, { execute:true, force:true, maxAttempts:40, sleepMs:1, nkBatchSize:8 }, () => {}),
+    /requires at least 82 attempts/
+  );
+});
+
+test('Non-Konglo runner accepts large universe with batch 50 and logs start diagnostics', async () => {
+  const logs = [];
+  let runCalls = 0;
+  const client = {
+    call: async (q) => {
+      if (q.action === 'nk-screener-results') {
+        return { meta: { status: runCalls >= 2 ? 'published' : 'scanning', run_date: runner.wibDate() } };
+      }
+      if (q.action === 'nk-screener-run') {
+        runCalls += 1;
+        if (runCalls === 1) return { step:'start', status:'SCANNING', universe_count:635, batch_count:13, batch_size:50 };
+        return { step:'finalize', status:'PUBLISHED', message:'Published 20 top candidates.' };
+      }
+      throw new Error('unexpected');
+    }
+  };
+  const result = await runner.runNk(client, { execute:true, force:true, maxAttempts:40, sleepMs:1, nkBatchSize:50 }, (x) => logs.push(x));
+  assert.equal(result.finalized, true);
+  assert.ok(logs.some((x) => /universe 635, batches 13, batch_size 50/.test(x)));
+});
