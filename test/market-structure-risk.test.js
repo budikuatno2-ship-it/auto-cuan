@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const risk = require('../lib/market-structure-risk');
 const marketImport = require('../lib/market-structure-import');
 
-test('free float below 15% becomes caution context, not auto reject', () => {
+test('free float below 15% becomes caution context, not regulatory non-compliance', () => {
   const result = risk.buildMarketStructureContext({
     free_float_pct: 12.5,
     free_float_source: 'idx_free_float_2026-09',
@@ -14,9 +14,11 @@ test('free float below 15% becomes caution context, not auto reject', () => {
   });
 
   assert.equal(result.free_float_pct, 12.5);
-  assert.equal(result.below_idx_min_free_float, true);
-  assert.equal(result.market_structure_status, 'BELOW_IDX_FREE_FLOAT_MINIMUM');
+  assert.equal(result.low_free_float_risk, true);
+  assert.equal(result.low_free_float_reference_pct, 15);
+  assert.equal(result.market_structure_status, 'LOW_FREE_FLOAT');
   assert.equal(result.market_structure_guard, 'CAUTION');
+  assert.equal(result.regulatory_compliance_status, 'NOT_EVALUATED');
 });
 
 test('verified free float >=15% and explicit non-HSC snapshot is normal context', () => {
@@ -31,7 +33,9 @@ test('verified free float >=15% and explicit non-HSC snapshot is normal context'
 
   assert.equal(result.market_structure_status, 'STRUCTURE_VERIFIED');
   assert.equal(result.market_structure_guard, 'NORMAL');
+  assert.equal(result.low_free_float_risk, false);
   assert.equal(result.hsc_flag, false);
+  assert.equal(result.regulatory_compliance_status, 'NOT_EVALUATED');
 });
 
 test('verified HSC flag has caution priority even when free float is above 15%', () => {
@@ -59,6 +63,7 @@ test('market structure fails closed when provenance is incomplete', () => {
   assert.equal(result.hsc_flag, null);
   assert.equal(result.data_available, false);
   assert.equal(result.market_structure_status, 'DATA_INCOMPLETE');
+  assert.equal(result.regulatory_compliance_status, 'NOT_EVALUATED');
 });
 
 test('market structure CSV requires provenance for every supplied metric', () => {

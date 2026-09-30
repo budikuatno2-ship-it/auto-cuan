@@ -95,7 +95,8 @@ async function main() {
     ' (' + report.coverage.hsc_verified_pct + '%)');
   console.log('Both verified: ' + report.coverage.both_verified + '/' + report.universe.actual +
     ' (' + report.coverage.both_verified_pct + '%)');
-  console.log('Below IDX min free float: ' + report.risk_context.below_idx_min_free_float);
+  console.log('Low free float (<15% risk ref): ' + report.risk_context.low_free_float_risk);
+  console.log('Regulatory compliance: ' + report.risk_context.regulatory_compliance_status);
   console.log('HSC flagged: ' + report.risk_context.hsc_flagged);
   console.log('Guard NORMAL/CAUTION/UNKNOWN: ' +
     report.risk_context.normal + '/' + report.risk_context.caution + '/' + report.risk_context.unknown);
