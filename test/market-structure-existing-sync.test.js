@@ -243,3 +243,36 @@ test('canonical market structure includes non-scanner tickers while scanner summ
   assert.equal(byTicker.get('OUT').free_float_pct, 30);
   assert.equal(byTicker.get('OUT').hsc_flag, true);
 });
+
+
+test('verified MSKY fallback closes canonical free-float gap and carries market cap', () => {
+  const market = {
+    stocks: [
+      { ticker: 'AAA', ownership: { as_of: '2026-08-31', derived_free_float_pct: 20 } },
+      { ticker: 'MSKY', ownership: null }
+    ]
+  };
+  const hsc = { active_count: 0, revoked_count: 0, stocks: [] };
+  const overrides = {
+    rows: [{
+      ticker: 'MSKY',
+      free_float_pct: 40.5,
+      free_float_source: 'IDX Peng-S-00011/BEI.PLP/04-2026',
+      free_float_as_of: '2026-03-31',
+      market_cap: 145589045040,
+      market_cap_source: 'IDX Peng-S-00011/BEI.PLP/04-2026',
+      market_cap_as_of: '2026-03-31'
+    }]
+  };
+
+  const out = sync.buildExistingMarketStructureRows(market, hsc, ['AAA','MSKY'], overrides);
+  const byTicker = new Map(out.rows.map((row) => [row.ticker, row]));
+
+  assert.equal(out.summary.free_float_verified_canonical, 2);
+  assert.deepEqual(out.summary.missing_free_float_canonical, []);
+  assert.equal(byTicker.get('MSKY').free_float_pct, 40.5);
+  assert.equal(byTicker.get('MSKY').free_float_source, 'IDX Peng-S-00011/BEI.PLP/04-2026');
+  assert.equal(byTicker.get('MSKY').free_float_as_of, '2026-03-31');
+  assert.equal(byTicker.get('MSKY').market_cap, 145589045040);
+  assert.equal(byTicker.get('MSKY').market_cap_as_of, '2026-03-31');
+});
