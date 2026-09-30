@@ -774,39 +774,40 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       return res.status(200).json({ success: false, error: 'No active members.' });
     }
 
-    // Reconcile the dated Sep-2026 FCA transition against current stock_boards.
-    // IMPORTANT: stock_boards proves listing-board/FCA metadata only; it does
-    // NOT prove that an exchange trading suspension has been lifted. Tickers in
-    // the 2026-09-25 suspended snapshot therefore stay fail-closed until a newer
-    // authoritative IDX opening event is recorded in the transition manifest.
-    // Explicit current suspension/inactive signals always win.
-    const transitionTickers = Array.from(new Set(
+    // A Konglo affiliation never overrides exchange-board eligibility. Resolve a
+    // current stock_boards row for EVERY active mapping (not only the 92 dated
+    // transition names), then apply the same continuous-auction gate used by
+    // Swing Non-Konglo. This keeps the two Swing universes a strict partition.
+    //
+    // Verified-active Sep-2026 exits may bypass stale FCA metadata through the
+    // transition helper. Snapshot-suspended exits remain fail-closed.
+    const memberTickers = Array.from(new Set(
       membersRaw
         .map(function(m) { return fcaTransition2026.normalizeTicker(m && m.ticker); })
-        .filter(function(ticker) { return ticker && fcaTransition2026.isTransitionTicker(ticker); })
+        .filter(Boolean)
     ));
-    const transitionRows = {};
-    if (transitionTickers.length > 0) {
+    const currentBoardRows = {};
+    if (memberTickers.length > 0) {
       try {
         const { data: currentRows, error: currentRowsErr } = await supabase
           .from('stock_boards')
           .select('ticker,board,is_active,is_fca,note')
-          .in('ticker', transitionTickers);
+          .in('ticker', memberTickers);
         if (!currentRowsErr) {
           (currentRows || []).forEach(function(row) {
             const ticker = fcaTransition2026.normalizeTicker(row && row.ticker);
-            if (ticker) transitionRows[ticker] = row;
+            if (ticker) currentBoardRows[ticker] = row;
           });
         }
       } catch (_) {}
     }
 
-    // A Konglo affiliation does not override tradability. Snapshot-suspended
-    // exits stay fail-closed until the manifest records authoritative reactivation
-    // AND current stock_boards is otherwise eligible.
     const members = membersRaw.filter(function(m) {
       const ticker = fcaTransition2026.normalizeTicker(m && m.ticker);
-      return !fcaTransition2026.shouldBlockTransitionTicker(ticker, transitionRows[ticker] || null);
+      const boardRow = currentBoardRows[ticker] || null;
+      return !!boardRow && fcaTransition2026.isEligibleContinuousAuctionRow(
+        Object.assign({}, boardRow, { ticker: ticker })
+      );
     });
 
     if (members.length === 0) {
