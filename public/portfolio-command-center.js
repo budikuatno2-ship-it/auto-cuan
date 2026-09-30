@@ -140,17 +140,31 @@
     });
   }
 
+  async function fetchPortfolioAccess() {
+    var lastError = null;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await fetchWithTimeout('/api/admin-users', {
+          method: 'POST', credentials: 'same-origin', cache: 'no-store',
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+          body: JSON.stringify({ action: 'portfolio_access' })
+        }, ACCESS_TIMEOUT_MS);
+      } catch (error) {
+        lastError = error;
+        if (!error || error.name !== 'AbortError' || attempt > 0) throw error;
+        await new Promise(function (resolve) { setTimeout(resolve, 250); });
+      }
+    }
+    throw lastError || new Error('Pemeriksaan akses gagal.');
+  }
+
   async function checkAccess() {
     var gate = $('accessGate');
     if (!gate) return;
     console.log('[Portfolio checkAccess] Starting access check...');
     gate.innerHTML = '<span class="spinner" aria-hidden="true"></span><h2>Memeriksa akses aman…</h2><p class="muted">Maksimal 9 detik. Jika gagal, tombol coba lagi akan muncul.</p>';
     try {
-      var response = await fetchWithTimeout('/api/admin-users', {
-        method: 'POST', credentials: 'same-origin', cache: 'no-store',
-        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-        body: JSON.stringify({ action: 'portfolio_access' })
-      }, ACCESS_TIMEOUT_MS);
+      var response = await fetchPortfolioAccess();
       console.log('[Portfolio checkAccess] HTTP Status:', response.status);
       var data = await response.json().catch(function (err) {
         console.error('[Portfolio checkAccess] JSON parse error:', err);
@@ -176,6 +190,15 @@
       localStorage.setItem('autocuan_user_id', state.uid);
       if (state.username) localStorage.setItem('autocuan_user', state.username);
       window.__AUTOCUAN_PORTFOLIO_ACCESS__ = { userId: state.uid, username: state.username };
+
+      // The SPA previously loaded Command Center without the persistence bridge,
+      // leaving localStorage and app_user_portfolio_state free to diverge. Load
+      // the bridge as soon as entitlement is verified; it hydrates local cache
+      // from cloud and notifies this runtime through the existing focus path.
+      loadScript('/portfolio-supabase-sync.js?v=20261001-consistency-v1').catch(function (error) {
+        console.warn('[Portfolio sync bridge]', error && error.message ? error.message : error);
+      });
+
       loadLocalState();
       var displaySession = state.username || 'Sesi aktif';
       var sChip = $('sessionChip');
