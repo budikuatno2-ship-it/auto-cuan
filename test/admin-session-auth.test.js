@@ -327,7 +327,7 @@ test('invalid username and invalid password return an identical generic error', 
     assert.equal(r1.statusCode, 400);
     assert.equal(r2.statusCode, 400);
     assert.equal(r1.body.error, r2.body.error);
-    assert.equal(r1.body.error, 'Username atau password salah.');
+    assert.equal(r1.body.error, 'Gmail/username atau password salah.');
   });
 });
 
@@ -396,7 +396,7 @@ test('existing valid login and register still succeed', async () => {
     const accountTerms = require('../lib/account-terms');
     const reg = requireApiWithSupabaseStub('../api/register-user', supabaseWithUser(null, capture));
     res = makeRes();
-    await reg({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'newuser', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev_x', userAgent: 'ua', termsAccepted: true, termsVersion: accountTerms.CURRENT_TERMS_VERSION } }, res);
+    await reg({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'newuser', email: 'newuser@gmail.com', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev_x', userAgent: 'ua', termsAccepted: true, termsVersion: accountTerms.CURRENT_TERMS_VERSION } }, res);
     assert.equal(res.body.success, true);
     assert.ok(!('password' in res.body));
   });
