@@ -114,7 +114,7 @@ test('registration with a valid client device id succeeds and inserts that id', 
     var mock = makeSupabaseMock({});
     var handler = loadHandlerWithMock(mock);
     var res = makeRes();
-    await handler({ method: 'POST', body: { username: 'alice', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev_client-1', userAgent: 'ua', ...TERMS_FIELDS } }, res);
+    await handler({ method: 'POST', body: { username: 'alice', email: 'alice@gmail.com', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev_client-1', userAgent: 'ua', ...TERMS_FIELDS } }, res);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.success, true);
     assert.equal(mock.captured.rpcName, 'register_pending_user_with_telegram_challenge');
@@ -127,7 +127,7 @@ test('registration without a device id receives a server-generated fallback', as
     var mock = makeSupabaseMock({});
     var handler = loadHandlerWithMock(mock);
     var res = makeRes();
-    await handler({ method: 'POST', body: { username: 'bob', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', ...TERMS_FIELDS } }, res);
+    await handler({ method: 'POST', body: { username: 'bob', email: 'bob@gmail.com', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', ...TERMS_FIELDS } }, res);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.success, true);
     assert.ok(mock.captured.rpcArgs.p_device_id, 'device_id must be present');
