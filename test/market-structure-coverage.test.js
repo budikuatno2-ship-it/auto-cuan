@@ -41,7 +41,9 @@ test('coverage report distinguishes verified, caution, normal, and unknown rows'
   assert.equal(report.coverage.hsc_verified, 3);
   assert.equal(report.coverage.both_verified, 2);
   assert.equal(report.coverage.missing_both, 1);
-  assert.equal(report.risk_context.below_idx_min_free_float, 1);
+  assert.equal(report.risk_context.low_free_float_risk, 1);
+  assert.equal(report.risk_context.low_free_float_reference_pct, 15);
+  assert.equal(report.risk_context.regulatory_compliance_status, 'NOT_EVALUATED');
   assert.equal(report.risk_context.hsc_flagged, 1);
   assert.equal(report.risk_context.normal, 1);
   assert.equal(report.risk_context.caution, 2);
