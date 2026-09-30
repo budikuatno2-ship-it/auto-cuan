@@ -106,6 +106,34 @@ test('existing dataset adapter accepts canonical active/revoked HSC buckets', ()
   assert.equal(byTicker.get('LUCY').hsc_as_of, '2026-07-02');
 });
 
+test('existing dataset adapter uses snapshot generated_at when canonical HSC rows have no event date', () => {
+  const rows = sync.normalizeHscDataset({
+    generated_at: '2026-09-30T09:15:00.000Z',
+    active: [
+      {
+        ticker: 'NICK',
+        hsc_2026_status: 'IMPOSED',
+        ownership_as_of: '2026-08-31',
+        derived_free_float_pct: 1.37
+      }
+    ],
+    revoked: [
+      {
+        ticker: 'LUCY',
+        hsc_2026_status: 'REVOKED',
+        ownership_as_of: '2026-08-31',
+        derived_free_float_pct: 28.97
+      }
+    ]
+  });
+
+  const byTicker = new Map(rows.map((row) => [row.ticker, row]));
+  assert.equal(byTicker.get('NICK').official_status, 'ACTIVE');
+  assert.equal(byTicker.get('NICK').hsc_as_of, '2026-09-30');
+  assert.equal(byTicker.get('LUCY').official_status, 'REVOKED');
+  assert.equal(byTicker.get('LUCY').hsc_as_of, '2026-09-30');
+});
+
 test('existing dataset adapter normalizes IMPOSED as active HSC state', () => {
   const rows = sync.normalizeHscDataset({
     active: [
