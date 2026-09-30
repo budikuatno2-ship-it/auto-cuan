@@ -37,7 +37,7 @@
 
 'use strict';
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('../lib/hybrid-supabase-client');
 const calendar = require('../lib/idx-trading-calendar');
 const collector = require('../lib/daily-history-collector');
 const contextBuilder = require('../lib/daily-market-context-builder');
