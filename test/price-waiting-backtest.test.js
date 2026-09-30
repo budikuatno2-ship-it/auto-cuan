@@ -288,3 +288,70 @@ test('post-split hygiene detects only split events inside the configured lookbac
   assert.equal(waiting.hasRecentSplitEvent(rows, 100, 100), true);
   assert.equal(waiting.hasRecentSplitEvent(rows, 250, 200), false);
 });
+
+
+test('fill candle descending from above cannot credit a TP high that may predate entry', () => {
+  const candles = [
+    candle('2026-01-01', 110, 112, 108, 111),
+    candle('2026-01-02', 121, 125, 99, 100),
+    candle('2026-01-03', 101, 110, 98, 105),
+    candle('2026-01-04', 106, 121, 105, 120)
+  ];
+  const signal = {
+    signal_date: '2026-01-01', signal_index: 0, signal_price: 111,
+    entry_low: 95, entry_high: 100, stop_loss: 90, tp1: 120, score: 75, risk_reward: 2
+  };
+
+  const result = waiting.simulateWaitingSetup({
+    ticker: 'TEST', candles, signalIndex: 0, signal, maxWaitDays: 3, maxHoldingDays: 4
+  });
+
+  assert.equal(result.filled, true);
+  assert.equal(result.entry_date, '2026-01-02');
+  assert.equal(result.entry_price, 100);
+  assert.equal(result.resolution, 'TP_HIT');
+  assert.equal(result.exit_date, '2026-01-04');
+});
+
+test('walk-forward boundary hygiene excludes in-sample signals whose outcomes resolve after the split', () => {
+  const inSet = new Set(['2026-01-01', '2026-01-02']);
+  const outSet = new Set(['2026-01-03', '2026-01-04']);
+  const row = {
+    ticker: 'TEST',
+    signal_date: '2026-01-02',
+    exit_date: '2026-01-03'
+  };
+
+  waiting.assignWalkForwardBucket(row, {
+    inSet,
+    outSet,
+    lastInSampleDate: '2026-01-02',
+    resolvedDate: '2026-01-03'
+  });
+
+  assert.equal(row.is_in_sample, false);
+  assert.equal(row.is_out_of_sample, false);
+  assert.equal(row.crosses_walk_forward_boundary, true);
+  assert.equal(row.resolved_date, '2026-01-03');
+});
+
+test('walk-forward boundary hygiene preserves clean in-sample and out-of-sample records', () => {
+  const inSet = new Set(['2026-01-01', '2026-01-02']);
+  const outSet = new Set(['2026-01-03', '2026-01-04']);
+
+  const cleanIn = { ticker: 'IN', signal_date: '2026-01-01', exit_date: '2026-01-02' };
+  waiting.assignWalkForwardBucket(cleanIn, {
+    inSet, outSet, lastInSampleDate: '2026-01-02', resolvedDate: '2026-01-02'
+  });
+  assert.equal(cleanIn.is_in_sample, true);
+  assert.equal(cleanIn.is_out_of_sample, false);
+  assert.equal(cleanIn.crosses_walk_forward_boundary, false);
+
+  const cleanOut = { ticker: 'OUT', signal_date: '2026-01-03', exit_date: '2026-01-04' };
+  waiting.assignWalkForwardBucket(cleanOut, {
+    inSet, outSet, lastInSampleDate: '2026-01-02', resolvedDate: '2026-01-04'
+  });
+  assert.equal(cleanOut.is_in_sample, false);
+  assert.equal(cleanOut.is_out_of_sample, true);
+  assert.equal(cleanOut.crosses_walk_forward_boundary, false);
+});
