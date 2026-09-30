@@ -41,6 +41,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const vpsMarketDataStore = require('../lib/vps-market-data-store');
 const { requirePremiumEntitlement, requireNonBlockedUser } = require('../lib/subscription-auth');
 const { requireAuthenticatedSession } = require('../lib/admin-session');
 const landingShowcase = require('../lib/landing-showcase-service');
@@ -199,9 +200,9 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: false, error: 'Database belum dikonfigurasi.' });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    const supabase = vpsMarketDataStore.wrapSupabaseClient(createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
-    });
+    }));
 
     // ===== ACTION ALLOWLIST (PHASE 6A.4) =====
     // Unknown actions must never fall through to the default Sektor Hot list/detail
