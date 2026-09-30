@@ -50,6 +50,7 @@
       PREMIUM_2_MONTHS:'Premium 2 Bulan',
       PREMIUM_3_MONTHS:'Premium 3 Bulan',
       LIFETIME:'Lifetime',
+      TRIAL:'Trial 10 Hari',
       FREE:'Free'
     };
     return names[code] || fallback || code || 'Free';
@@ -216,6 +217,7 @@
       '<div class="ac-profile-hero"><div><p class="ac-section-kicker">Identitas akun</p><p class="ac-big-name">' + esc(p.username) + (p.verified_badge ? ' <span class="ac-badge-verified" title="Akun terverifikasi">&#10003; Terverifikasi</span>' : '') + '</p><p class="ac-muted">ID akun disembunyikan dari tampilan; identitas diverifikasi dari sesi server.</p></div>' + chip(p.is_approved, 'Approved', 'Pending') + '</div>',
       '<dl class="ac-facts">',
       fact('Username', esc(p.username)),
+      fact('Gmail', p.email ? esc(p.email) : '<span class="ac-chip">Akun legacy · belum ada Gmail</span>'),
       fact('Status akun', chip(p.is_approved, 'Terverifikasi admin', 'Menunggu approval')),
       fact('Akun dibuat', esc(dateId(p.created_at, true))),
       fact('Login terakhir', esc(dateId(p.last_login_at, true))),
