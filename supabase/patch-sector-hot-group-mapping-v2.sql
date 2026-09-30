@@ -106,6 +106,7 @@ INSERT INTO sector_hot_group_members (group_code, ticker, stock_name, member_typ
 ('BUMN_ENERGI_SEMEN_FARMA_TRANSPORT', 'INAF', 'Indofarma', 'CORE', true, 8),
 ('BUMN_ENERGI_SEMEN_FARMA_TRANSPORT', 'GIAA', 'Garuda Indonesia', 'CORE', true, 9),
 ('BUMN_ENERGI_SEMEN_FARMA_TRANSPORT', 'IPCM', 'IPC Pelindo', 'CORE', true, 10),
+('BUMN_ENERGI_SEMEN_FARMA_TRANSPORT', 'SMCB', 'Solusi Bangun Indonesia', 'CORE', true, 11),
 ('TELCO_NON_BUMN', 'ISAT', 'Indosat Ooredoo Hutchison', 'CORE', true, 1),
 ('TELCO_NON_BUMN', 'EXCL', 'XL Axiata', 'CORE', true, 2)
 ON CONFLICT (group_code, ticker) DO UPDATE SET member_type = EXCLUDED.member_type, is_active = true, sort_order = EXCLUDED.sort_order, updated_at = now();
@@ -180,6 +181,7 @@ INSERT INTO sector_hot_group_members (group_code, ticker, stock_name, member_typ
 ('DJARUM_HARTONO_CORE', 'BELI', 'Blibli', 'CORE', true, 3),
 ('DJARUM_HARTONO_CORE', 'RANC', 'Supra Boga Lestari', 'CORE', true, 4),
 ('DJARUM_HARTONO_AFFILIATE', 'SUPR', 'Solusi Tunas Pratama', 'AFFILIATE', true, 1),
+('DJARUM_HARTONO_AFFILIATE', 'IBST', 'Inti Bangun Sejahtera', 'AFFILIATE', true, 2),
 ('DJARUM_HARTONO_RADAR', 'SSIA', 'Surya Semesta', 'RADAR', true, 1),
 ('DJARUM_HARTONO_RADAR', 'DATA', 'Remala Abadi', 'RADAR', true, 2),
 ('DJARUM_HARTONO_RADAR', 'HEAL', 'Medikaloka Hermina', 'RADAR', true, 3)
