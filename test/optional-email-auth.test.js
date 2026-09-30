@@ -25,14 +25,14 @@ test('registration handler requires normalized gmail.com identity and rejects du
   const source = read('api/register-user.js');
   assert.match(source, /GMAIL_REQUIRED/);
   assert.match(source, /rawEmail\.endsWith\('@gmail\.com'\)/);
-  assert.match(source, /\.ilike\("email", cleanEmail\)/);
+  assert.match(source, /\.eq\("email", cleanEmail\)/);
   assert.match(source, /Email sudah digunakan/);
 });
 
 test('login handler keeps case-insensitive email lookup plus legacy username fallback', () => {
   const source = read('api/login-user.js');
   assert.match(source, /isEmailInput/);
-  assert.match(source, /userLookup\.ilike\("email", usernameLower\)/);
+  assert.match(source, /userLookup\.eq\("email", usernameLower\)/);
   assert.match(source, /userLookup\.eq\("username", usernameLower\)/);
   assert.match(source, /effectiveUsername/);
 });
@@ -50,4 +50,18 @@ test('Telegram verification binds challenge to true user id, not free-form usern
   assert.match(source, /consume_challenge_and_bind_telegram/);
   assert.match(source, /userId: row \? row\.user_id : null/);
   assert.match(source, /p_user_id: userId/);
+});
+
+test('Gmail-backed accounts require Gmail while legacy rows retain username compatibility', () => {
+  const source = read('api/login-user.js');
+  assert.match(source, /gmailBacked = storedEmail\.endsWith\('@gmail\.com'\)/);
+  assert.match(source, /legacyUsernameAllowed = !gmailBacked \|\| effectiveUsername === 'budi' \|\| effectiveUsername === 'review'/);
+  assert.match(source, /gmail_identity_required/);
+});
+
+test('Gmail registration rejects pattern-wildcard and invalid local parts', () => {
+  const source = read('api/register-user.js');
+  assert.match(source, /\^\[a-z0-9\]\+\(\?:\\\.\[a-z0-9\]\+\)\*\$/);
+  assert.match(source, /\.eq\("email", cleanEmail\)/);
+  assert.doesNotMatch(source, /\.ilike\("email", cleanEmail\)/);
 });
