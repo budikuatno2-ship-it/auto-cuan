@@ -203,7 +203,7 @@ async function handleSubscriptionAction(req, res, action) {
 
 // Generic credential error to prevent username enumeration (invalid username and
 // invalid password produce the identical public response).
-const GENERIC_CREDENTIAL_ERROR = 'Username atau password salah.';
+const GENERIC_CREDENTIAL_ERROR = 'Gmail/username atau password salah.';
 
 // Issue the signed session cookie on a successful, DB-authenticated login.
 // Admin is derived SERVER-SIDE only (never from client input). Fail-closed: if no
