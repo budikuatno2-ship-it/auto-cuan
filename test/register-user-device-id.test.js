@@ -59,6 +59,7 @@ function makeSupabaseMock(opts) {
       return {
         select() { return this; },
         eq() { return this; },
+        update() { return this; },
         maybeSingle() { return Promise.resolve({ data: opts.existingUser || null, error: opts.findError || null }); },
         insert(row) {
           captured.inserted = row;
