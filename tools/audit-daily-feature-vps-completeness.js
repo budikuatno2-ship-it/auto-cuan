@@ -7,6 +7,7 @@ const { getVpsMarketStore } = require('../lib/vps-market-store');
 const fcaTransition = require('../lib/fca-transition-2026');
 const contextBuilder = require('../lib/daily-market-context-builder');
 const historyStore = require('../lib/stock-daily-history-store');
+const dailyCollector = require('../lib/daily-history-collector');
 
 const ROOT = path.resolve(__dirname, '..');
 const DAILY_CANDLES_DIR = process.env.AUTO_CUAN_DAILY_CANDLES_DIR ||
@@ -45,10 +46,29 @@ function normalizeCanonicalCandles(payload) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
       if (![open, high, low, close, volume].every(Number.isFinite)) return null;
       if (open <= 0 || high <= 0 || low <= 0 || close <= 0 || volume < 0) return null;
-      return { date, open, high, low, close, volume };
+      return {
+        date,
+        open,
+        high,
+        low,
+        close,
+        volume,
+        data_source: String(row && (row.data_source || row.source) || 'canonical_archive'),
+        data_quality_status: String(row && row.data_quality_status || 'ok')
+      };
     })
     .filter(Boolean)
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function readCanonicalArchiveCandles(archiveDir, ticker) {
+  const filePath = path.join(archiveDir, cleanTicker(ticker) + '.json');
+  if (!fs.existsSync(filePath)) return [];
+  try {
+    return normalizeCanonicalCandles(JSON.parse(fs.readFileSync(filePath, 'utf8')));
+  } catch (_) {
+    return [];
+  }
 }
 
 function readCanonicalArchiveMeta(archiveDir, ticker) {
@@ -67,8 +87,7 @@ function readCanonicalArchiveMeta(archiveDir, ticker) {
     };
   }
   try {
-    const payload = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    const candles = normalizeCanonicalCandles(payload);
+    const candles = readCanonicalArchiveCandles(archiveDir, ticker);
     const last20 = candles.slice(-20);
     const last60 = candles.slice(-60);
     const positive20 = last20.filter((row) => row.volume > 0);
@@ -165,6 +184,7 @@ function summarizeFeatureCoverage(eligibleTickers, featureRows, historyRows, arc
     no_history_count: missingDetails.filter((row) => !row.repairable_from_local_history).length,
     canonical_archive_available_count: missingDetails.filter((row) => row.repairable_from_canonical_archive).length,
     canonical_archive_missing_or_invalid_count: missingDetails.filter((row) => !row.repairable_from_canonical_archive).length,
+    canonical_archive_rehydrate_candidate_count: missingDetails.filter(isArchiveRehydrateCandidate).length,
     missing_details: missingDetails
   };
 }
@@ -202,6 +222,85 @@ async function readCoverage(store, eligibleTickers, archiveDir) {
   );
 }
 
+function isArchiveRehydrateCandidate(row) {
+  row = row || {};
+  return row.repairable_from_canonical_archive === true &&
+    !!row.archive_latest_date &&
+    row.archive_last_positive_volume_date === row.archive_latest_date &&
+    Number(row.archive_zero_volume_tail) === 0 &&
+    Number(row.archive_positive_volume_last20) > 0 &&
+    Number(row.archive_distinct_close_last20) > 1;
+}
+
+async function rehydrateFromCanonicalArchive(store, summary, archiveDir) {
+  const candidates = (summary.missing_details || []).filter(isArchiveRehydrateCandidate);
+  const sourceTimestamp = new Date().toISOString();
+  const allHistoryRows = [];
+  const tickers = [];
+  const week52ByTicker = {};
+  const rsiByTicker = {};
+  const skipped = [];
+
+  for (const detail of candidates) {
+    // Re-read at write time and re-check the trade-evidence guard so a changed
+    // archive cannot bypass the audit decision.
+    const liveMeta = readCanonicalArchiveMeta(archiveDir, detail.ticker);
+    if (!isArchiveRehydrateCandidate(Object.assign({}, detail, liveMeta, {
+      repairable_from_canonical_archive: liveMeta.archive_candle_count >= 20
+    }))) {
+      skipped.push(detail.ticker);
+      continue;
+    }
+
+    const candles = readCanonicalArchiveCandles(archiveDir, detail.ticker);
+    if (candles.length < 20) {
+      skipped.push(detail.ticker);
+      continue;
+    }
+
+    const historyRows = dailyCollector.candlesToHistoryRows(detail.ticker, candles, {
+      sourceTimestamp
+    });
+    if (!historyRows.length) {
+      skipped.push(detail.ticker);
+      continue;
+    }
+
+    allHistoryRows.push(...historyRows);
+    tickers.push(detail.ticker);
+    week52ByTicker[detail.ticker] = dailyCollector.computeWeek52FromCandles(candles);
+    rsiByTicker[detail.ticker] = dailyCollector.computeRsiFromCandles(candles, {});
+  }
+
+  const historyUpserted = allHistoryRows.length
+    ? await historyStore.upsertDailyHistory(store, allHistoryRows)
+    : 0;
+
+  if (!tickers.length) {
+    return {
+      attempted: candidates.length,
+      history_upserted: historyUpserted,
+      feature_built: 0,
+      feature_upserted: 0,
+      skipped
+    };
+  }
+
+  const built = await contextBuilder.buildFeatureSnapshotsForTickers(store, tickers, {
+    week52ByTicker,
+    rsiByTicker
+  });
+  const featureUpserted = await historyStore.upsertDailyFeatures(store, built.rows);
+
+  return {
+    attempted: candidates.length,
+    history_upserted: historyUpserted,
+    feature_built: built.rows.length,
+    feature_upserted: featureUpserted,
+    skipped: Array.from(new Set(skipped.concat(built.skippedTickers || []))).sort()
+  };
+}
+
 async function repairFromLocalHistory(store, summary) {
   const tickers = (summary.missing_details || [])
     .filter((row) => row.repairable_from_local_history)
@@ -235,6 +334,8 @@ function printSummary(summary) {
   console.log('No stock_daily_history: ' + summary.no_history_count);
   console.log('Canonical archive available (>=20 candles): ' + summary.canonical_archive_available_count);
   console.log('Canonical archive missing/invalid: ' + summary.canonical_archive_missing_or_invalid_count);
+  console.log('Archive rehydrate candidates (fresh positive-volume proof): ' +
+    summary.canonical_archive_rehydrate_candidate_count);
   if (summary.missing_details.length) {
     console.log('Missing detail:');
     for (const row of summary.missing_details) {
@@ -258,34 +359,51 @@ function printSummary(summary) {
 
 async function main() {
   const apply = process.argv.includes('--apply');
+  const applyArchive = process.argv.includes('--apply-archive');
+  if (apply && applyArchive) throw new Error('Pilih salah satu: --apply atau --apply-archive.');
   const store = getVpsMarketStore();
 
   console.log('=== DAILY FEATURE VPS COMPLETENESS ===');
   console.log('Storage: VPS_ONLY');
   console.log('DB: ' + store.filePath);
   console.log('Canonical candle archive: ' + DAILY_CANDLES_DIR);
-  console.log('Mode: ' + (apply ? 'APPLY_LOCAL_HISTORY_ONLY' : 'AUDIT_ONLY'));
+  console.log('Mode: ' + (applyArchive
+    ? 'APPLY_CANONICAL_ARCHIVE_REHYDRATE'
+    : (apply ? 'APPLY_LOCAL_HISTORY_ONLY' : 'AUDIT_ONLY')));
 
   const eligible = await loadEligibleUniverse(store);
   const before = await readCoverage(store, eligible, DAILY_CANDLES_DIR);
   printSummary(before);
 
-  if (!apply) {
+  if (!apply && !applyArchive) {
     console.log('Audit complete. No writes performed.');
-    if (before.repairable_count > 0) {
-      console.log('Run again with --apply to rebuild ONLY missing tickers already present in stock_daily_history.');
+    if (before.canonical_archive_rehydrate_candidate_count > 0) {
+      console.log('Run with --apply-archive to rehydrate ONLY missing tickers with fresh positive-volume canonical candles.');
+    } else if (before.repairable_count > 0) {
+      console.log('Run with --apply to rebuild ONLY missing tickers already present in stock_daily_history.');
     } else {
-      console.log('No --apply action is useful yet; inspect canonical archive freshness first.');
+      console.log('No safe repair action is available.');
     }
     return;
   }
 
-  const repair = await repairFromLocalHistory(store, before);
+  const repair = applyArchive
+    ? await rehydrateFromCanonicalArchive(store, before, DAILY_CANDLES_DIR)
+    : await repairFromLocalHistory(store, before);
+
   console.log('Repair attempted: ' + repair.attempted);
-  console.log('Feature rows built: ' + repair.built);
-  console.log('Feature rows upserted: ' + repair.upserted);
-  console.log('Builder skipped_no_history: ' + repair.skipped_no_history.length +
-    (repair.skipped_no_history.length ? ' [' + repair.skipped_no_history.join(', ') + ']' : ''));
+  if (applyArchive) {
+    console.log('History rows upserted: ' + repair.history_upserted);
+    console.log('Feature rows built: ' + repair.feature_built);
+    console.log('Feature rows upserted: ' + repair.feature_upserted);
+    console.log('Repair skipped: ' + repair.skipped.length +
+      (repair.skipped.length ? ' [' + repair.skipped.join(', ') + ']' : ''));
+  } else {
+    console.log('Feature rows built: ' + repair.built);
+    console.log('Feature rows upserted: ' + repair.upserted);
+    console.log('Builder skipped_no_history: ' + repair.skipped_no_history.length +
+      (repair.skipped_no_history.length ? ' [' + repair.skipped_no_history.join(', ') + ']' : ''));
+  }
 
   const after = await readCoverage(store, eligible, DAILY_CANDLES_DIR);
   console.log('--- AFTER REPAIR ---');
@@ -308,9 +426,12 @@ module.exports = {
   cleanTicker,
   loadEligibleUniverse,
   normalizeCanonicalCandles,
+  readCanonicalArchiveCandles,
   readCanonicalArchiveMeta,
+  isArchiveRehydrateCandidate,
   summarizeFeatureCoverage,
   readCoverage,
   repairFromLocalHistory,
+  rehydrateFromCanonicalArchive,
   main
 };
