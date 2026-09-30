@@ -159,9 +159,13 @@ node tools/run-all-screeners-vps.js --execute --send
 node tools/run-all-screeners-vps.js --dry-run --include-intraday-dry-run
 ```
 
-The sequence is Phase 0 preflight/status, Phase 1 board-sync check, Swing Konglo,
-Swing Non-Konglo, Day Trade, Top 5, Top 5 Progress, then optional intraday
-observation. A stale Non-Konglo scan requires `--resume-stale` or `--force`.
+The orchestration sequence is Swing Konglo, Swing Non-Konglo, Day Trade, Top 5,
+Top 5 Progress, snapshot materialization, then optional intraday observation.
+It reads screener status before mutating runs, but it does NOT sync
+`stock_boards` automatically. Official board XLSX synchronization remains the
+separate, explicit dry-run/apply workflow documented below. FCA transition
+suspensions are fail-closed and are not cleared merely by a board sync. A stale
+Non-Konglo scan requires `--resume-stale` or `--force`.
 
 ## Exact official board scope
 
