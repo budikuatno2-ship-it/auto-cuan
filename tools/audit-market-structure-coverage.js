@@ -3,37 +3,12 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { createClient } = require('@supabase/supabase-js');
+const { getVpsMarketStore } = require('../lib/vps-market-store');
 const fcaTransition = require('../lib/fca-transition-2026');
 const coverage = require('../lib/market-structure-coverage');
 
 const ROOT = path.resolve(__dirname, '..');
 const REPORT_PATH = path.join(ROOT, 'data', 'reports', 'market-structure-coverage-latest.json');
-
-function loadEnvFile(filePath) {
-  if (!fs.existsSync(filePath)) return;
-  const raw = fs.readFileSync(filePath, 'utf8');
-  raw.split(/\r?\n/).forEach((line) => {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) return;
-    const idx = trimmed.indexOf('=');
-    if (idx <= 0) return;
-    const key = trimmed.slice(0, idx).trim();
-    let value = trimmed.slice(idx + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    if (process.env[key] == null) process.env[key] = value;
-  });
-}
-
-function loadLocalEnv() {
-  [
-    path.join(ROOT, '.env.ai-eval-once'),
-    path.join(ROOT, '.env.local'),
-    path.join(ROOT, '.env')
-  ].forEach(loadEnvFile);
-}
 
 function chunk(items, size) {
   const out = [];
@@ -41,12 +16,12 @@ function chunk(items, size) {
   return out;
 }
 
-async function loadUniverse(supabase) {
-  const result = await supabase
+async function loadUniverse(store) {
+  const result = await store
     .from('stock_boards')
     .select('ticker,company_name,board,is_fca,is_active,note')
     .limit(2000);
-  if (result.error) throw new Error('Load stock_boards gagal: ' + result.error.message);
+  if (result.error) throw new Error('Load stock_boards VPS gagal: ' + result.error.message);
 
   return (result.data || [])
     .filter((row) => fcaTransition.isEligibleContinuousAuctionRow(row))
@@ -55,38 +30,32 @@ async function loadUniverse(supabase) {
     .sort();
 }
 
-async function loadFundamentals(supabase, tickers) {
+async function loadFundamentals(store, tickers) {
   const rows = [];
   for (const batch of chunk(tickers, 250)) {
-    const result = await supabase
+    const result = await store
       .from('stock_fundamentals')
       .select('ticker,free_float_pct,free_float_source,free_float_as_of,hsc_flag,hsc_source,hsc_as_of')
       .in('ticker', batch);
-    if (result.error) throw new Error('Load stock_fundamentals gagal: ' + result.error.message);
+    if (result.error) throw new Error('Load stock_fundamentals VPS gagal: ' + result.error.message);
     rows.push(...(result.data || []));
   }
   return rows;
 }
 
 async function main() {
-  loadLocalEnv();
+  const store = getVpsMarketStore();
 
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.');
-
-  const supabase = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
-
-  const universe = await loadUniverse(supabase);
-  const fundamentals = await loadFundamentals(supabase, universe);
+  const universe = await loadUniverse(store);
+  const fundamentals = await loadFundamentals(store, universe);
   const report = coverage.buildCoverageReport(universe, fundamentals, { expectedUniverse: 800 });
 
   fs.mkdirSync(path.dirname(REPORT_PATH), { recursive: true });
   fs.writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2) + '\n', 'utf8');
 
   console.log('=== MARKET STRUCTURE COVERAGE ===');
+  console.log('Storage: VPS_ONLY');
+  console.log('DB: ' + store.filePath);
   console.log('Universe: ' + report.universe.actual + '/' + report.universe.expected +
     ' contract=' + (report.universe.contract_ok ? 'OK' : 'MISMATCH'));
   console.log('Free Float verified: ' + report.coverage.free_float_verified + '/' + report.universe.actual +
