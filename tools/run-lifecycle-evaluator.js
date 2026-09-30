@@ -50,7 +50,7 @@ async function main() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) { console.error('ERROR: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY tidak tersedia.'); process.exit(1); }
 
-  const { createClient } = require('@supabase/supabase-js');
+  const { createClient } = require('../lib/hybrid-supabase-client');
   const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const { data: rows, error } = await supabase

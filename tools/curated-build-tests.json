@@ -575,5 +575,6 @@
   "test/market-structure-risk.test.js",
   "test/market-structure-integration.test.js",
   "test/market-structure-coverage.test.js",
-  "test/market-structure-existing-sync.test.js"
+  "test/market-structure-existing-sync.test.js",
+  "test/vps-market-data-plane.test.js"
 ]
