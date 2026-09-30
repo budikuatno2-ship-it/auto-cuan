@@ -1,0 +1,4 @@
+ticker,free_float_pct,free_float_source,free_float_as_of,hsc_flag,hsc_source,hsc_as_of
+EXAMPLE1,22.50,idx_verified_free_float_snapshot,2026-09-30,false,idx_verified_hsc_snapshot,2026-09-30
+EXAMPLE2,12.75,idx_verified_free_float_snapshot,2026-09-30,,,
+EXAMPLE3,,,,true,idx_verified_hsc_snapshot,2026-09-30
