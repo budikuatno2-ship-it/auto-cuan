@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sector-hot hybrid runner (Vercel primer → VPS local fallback).
+# Sector-hot runner (VPS-local primary after market-data cutover; legacy Vercel fallback otherwise).
 #
 # The cron runner triggers the Vercel sector-hot endpoint first. When Vercel does
 # NOT answer HTTP 200 (paused / 402 DEPLOYMENT_DISABLED / 5xx / timeout) the
@@ -69,6 +69,24 @@ log() { [ "$JSON_OUT" -eq 1 ] || echo "[$(stamp)] $*"; }
 
 VERCEL_CODE="skipped"
 LOCAL_RESULT="not_run"
+
+# Once market-data is cut over to the VPS, Vercel must no longer be a writer:
+# it cannot access Oracle's local table files. Run the canonical Sector Hot
+# refresher directly on the VPS and keep Supabase/Vercel as consumers/control.
+if [ "${AUTO_CUAN_MARKET_DATA_BACKEND:-}" = "vps" ] && [ "$DRY_RUN" -eq 0 ]; then
+  log "VPS market-data backend active — refreshing Sector Hot locally."
+  if "$NODE_BIN" scripts/refresh-sector-hot.js; then
+    LOCAL_RESULT="ok"
+  else
+    LOCAL_RESULT="failed"
+    log "Local Sector Hot refresh exited non-zero."
+  fi
+  if [ "$JSON_OUT" -eq 1 ]; then
+    echo "{\"ts\":\"$(stamp)\",\"vercel_http\":\"skipped_vps_backend\",\"local\":\"$LOCAL_RESULT\",\"mode\":\"sector-hot\",\"dry_run\":0}"
+  fi
+  [ "$LOCAL_RESULT" = "ok" ] && exit 0
+  exit 1
+fi
 
 if [ "$FORCE_LOCAL" -eq 0 ]; then
   log "Vercel primer: $VERCEL_URL"

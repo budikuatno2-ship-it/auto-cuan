@@ -51,7 +51,10 @@ async function main() {
 
   const { createClient } = require('@supabase/supabase-js');
   const landingShowcase = require('../lib/landing-showcase-service');
-  const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const vpsMarketDataStore = require('../lib/vps-market-data-store');
+  const supabase = vpsMarketDataStore.wrapSupabaseClient(
+    createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
+  );
 
   const result = await landingShowcase.refreshSnapshot(supabase);
   console.log(JSON.stringify({

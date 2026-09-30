@@ -14,11 +14,13 @@
  * Usage (from repo root):
  *   set -a; . ./.env.ai-eval-once; set +a
  *   node tools/run-lifecycle-evaluator.js            # dry-run (default)
- *   node tools/run-lifecycle-evaluator.js --apply    # write to Supabase
+ *   node tools/run-lifecycle-evaluator.js --apply    # write to active market-data backend
  */
 
 const fs = require('fs');
 const path = require('path');
+const vpsMarketDataStore = require('../lib/vps-market-data-store');
+const historyStore = require('../lib/stock-daily-history-store');
 
 function loadEnvFile() {
   const candidates = ['.env.ai-eval-once', '.env.local', '.env'].map(n => path.join(__dirname, '..', n));
@@ -51,7 +53,9 @@ async function main() {
   if (!url || !key) { console.error('ERROR: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY tidak tersedia.'); process.exit(1); }
 
   const { createClient } = require('@supabase/supabase-js');
-  const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const supabase = vpsMarketDataStore.wrapSupabaseClient(
+    createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
+  );
 
   const { data: rows, error } = await supabase
     .from('telegram_daily_picks')
@@ -68,14 +72,11 @@ async function main() {
     const tp1 = num(row.tp1), tp2 = num(row.tp2), sl = num(row.sl);
     if (!tp1 || !sl) { stats.skipped_no_levels++; continue; }
     try {
-      const { data: hist, error: hErr } = await supabase
-        .from('stock_daily_history')
-        .select('trade_date,high,low')
-        .eq('ticker', row.ticker)
-        .gt('trade_date', row.date)
-        .order('trade_date', { ascending: true })
-        .limit(60);
-      if (hErr) { stats.errors++; continue; }
+      const historyMap = await historyStore.getLatestSessionsForTickers(supabase, [row.ticker], 5000);
+      const hist = (historyMap.get(String(row.ticker || '').toUpperCase()) || [])
+        .filter(function(d) { return String(d.trade_date || '') > String(row.date || ''); })
+        .sort(function(a, b) { return String(a.trade_date).localeCompare(String(b.trade_date)); })
+        .slice(0, 60);
       if (!hist || hist.length === 0) { stats.skipped_no_history++; continue; }
 
       let outcome = null;

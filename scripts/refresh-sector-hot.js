@@ -23,6 +23,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const vpsMarketDataStore = require('../lib/vps-market-data-store');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -32,9 +33,9 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+const supabase = vpsMarketDataStore.wrapSupabaseClient(createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
-});
+}));
 
 // === YAHOO FINANCE FETCHER ===
 async function fetchYahooQuote(ticker) {
