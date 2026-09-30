@@ -72,5 +72,6 @@
   "test/precision-motion-cascade.test.js",
   "test/landing-experience.test.js",
   "test/money-sheet-formulas.test.js",
-  "test/workspace-detail.test.js"
+  "test/workspace-detail.test.js",
+  "test/money-management-and-group-bot-regression.test.js"
 ]
