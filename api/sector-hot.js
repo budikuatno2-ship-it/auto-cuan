@@ -83,6 +83,7 @@ const idxTradingCalendar = require('../lib/idx-trading-calendar');
 const crypto = require('crypto');
 const deepscanEngine = require('../lib/deepscan-engine');
 const fcaTransition2026 = require('../lib/fca-transition-2026');
+const daytradeFcaLiveTradeProof = require('../lib/daytrade-fca-live-trade-proof');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
 const DAYTRADE_RUNNING_SKIP_MESSAGE = 'Day Trade scan already running; skipped to avoid overlap.';
@@ -12948,12 +12949,38 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
     runId = 'dt-' + runDate + '-' + Date.now().toString(36);
   }
 
-  // 5. Build universe (fast mode uses curated liquid shortlist)
+  // 5. Build universe (fast mode uses curated liquid shortlist).
+  //
+  // Snapshot-suspended Sep-2026 FCA exits are fail-closed by default. DayTrade
+  // may admit them ONLY when this exact scan run has fresh 5-minute evidence of
+  // real trading activity. The proof helper checks only the 48 transition names,
+  // persists one tiny run-scoped snapshot on the VPS, and reuses it for every
+  // batch so this does not multiply network/RAM cost by batch count.
+  var fcaLiveProofSnapshot = null;
+  try {
+    fcaLiveProofSnapshot = await daytradeFcaLiveTradeProof.refreshSuspendedExitProof({
+      runId: runId
+    });
+  } catch (fcaProofErr) {
+    console.warn('[daytrade-screener-run] FCA live-trade proof unavailable; suspended exits remain blocked:', fcaProofErr && fcaProofErr.message);
+    fcaLiveProofSnapshot = {
+      run_id: runId,
+      checked_count: 0,
+      verified_count: 0,
+      verified_tickers: [],
+      by_ticker: {},
+      error: fcaProofErr && fcaProofErr.message ? fcaProofErr.message : String(fcaProofErr || 'unknown')
+    };
+  }
+
+  var dayTradeUniverseOptions = {
+    fcaLiveTradeProofByTicker: fcaLiveProofSnapshot.by_ticker || {}
+  };
   var universeResult;
   if (isFastMode) {
-    universeResult = await dtEngine.buildFastDayTradeUniverse(supabase);
+    universeResult = await dtEngine.buildFastDayTradeUniverse(supabase, dayTradeUniverseOptions);
   } else {
-    universeResult = await dtEngine.buildDayTradeUniverse(supabase);
+    universeResult = await dtEngine.buildDayTradeUniverse(supabase, dayTradeUniverseOptions);
   }
   if (universeResult.error || universeResult.tickers.length === 0) {
     await updateDtMeta(supabase, { status: 'failed', message: 'Universe kosong: ' + (universeResult.error || 'No tickers') });
@@ -12967,6 +12994,14 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
 
   var universe = universeResult.tickers;
   var universeDiagnostics = universeResult.diagnostics || {};
+  universeDiagnostics.fca_live_trade_proof = {
+    checked_count: Number(fcaLiveProofSnapshot && fcaLiveProofSnapshot.checked_count || 0),
+    verified_count: Number(fcaLiveProofSnapshot && fcaLiveProofSnapshot.verified_count || 0),
+    verified_tickers: (fcaLiveProofSnapshot && fcaLiveProofSnapshot.verified_tickers || []).slice(0, 48),
+    cache_source: fcaLiveProofSnapshot && fcaLiveProofSnapshot.cache_source || null,
+    checked_at: fcaLiveProofSnapshot && fcaLiveProofSnapshot.checked_at || null,
+    error: fcaLiveProofSnapshot && fcaLiveProofSnapshot.error || null
+  };
   var universeCount = universe.length;
   var batchCount = Math.ceil(universeCount / BATCH_SIZE);
   var startIdx = batchIndex * BATCH_SIZE;
