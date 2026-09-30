@@ -63,9 +63,6 @@
     'watchlist': function () {
       if (typeof root.loadUserWatchlist === 'function') root.loadUserWatchlist(false);
     },
-    'deepscan': function () {
-      if (typeof root.loadDeepScan === 'function') root.loadDeepScan(false);
-    },
     'money-management': function () {
       if (typeof root.initMoneyManagement === 'function') root.initMoneyManagement();
     },
