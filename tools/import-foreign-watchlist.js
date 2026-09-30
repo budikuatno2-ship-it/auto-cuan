@@ -18,6 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+const vpsStore = require('../lib/vps-market-data-store');
 
 const TABLE = 'foreign_watchlist_daily';
 const DEFAULT_CSV = path.join('data', 'foreign-watchlist.csv');
@@ -166,10 +167,6 @@ async function upsertChunkWithRetry(supabase, chunk, chunkLabel, maxAttempts) {
 
 async function main() {
   const csvPath = path.resolve(process.argv[2] || DEFAULT_CSV);
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.');
   if (!fs.existsSync(csvPath)) throw new Error('CSV file not found: ' + csvPath);
 
   const rows = readRows(csvPath);
@@ -178,9 +175,28 @@ async function main() {
     return;
   }
 
+  const tickers = Array.from(new Set(rows.map((r) => r.ticker))).sort();
+  const latestDate = rows.map((r) => r.trade_date).sort().slice(-1)[0];
+
+  if (vpsStore.enabled()) {
+    const total = vpsStore.upsertForeignRows(rows);
+    console.log('Foreign watchlist VPS import summary');
+    console.log('Imported rows: ' + rows.length);
+    console.log('Total local rows after upsert: ' + total);
+    console.log('Ticker count: ' + tickers.length);
+    console.log('Latest date: ' + latestDate);
+    console.log('Local file: ' + vpsStore.FOREIGN_FILE);
+    console.log('Historical rows are preserved; no 7-session deletion is applied on the VPS archive.');
+    return;
+  }
+
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseKey) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.');
+
   const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
-  // Chunked upsert with retry — smaller chunks avoid timeouts; idempotent on (trade_date,ticker).
+  // Legacy Supabase path retained for rollback until the VPS cut-over is fully verified.
   const UPSERT_CHUNK = 200;
   let upsertReturned = 0;
   let totalRetryAttempts = 0;
@@ -195,11 +211,9 @@ async function main() {
     console.log('[import-foreign-watchlist] ' + label + ' OK (attempt ' + result.attempts + ')');
   }
 
-  const tickers = Array.from(new Set(rows.map((r) => r.ticker))).sort();
   const deleted = await deleteOldRows(supabase, tickers);
-  const latestDate = rows.map((r) => r.trade_date).sort().slice(-1)[0];
 
-  console.log('Foreign watchlist import summary');
+  console.log('Foreign watchlist Supabase import summary');
   console.log('Imported rows: ' + rows.length);
   console.log('Upsert returned rows: ' + upsertReturned);
   console.log('Retry attempts (extra): ' + totalRetryAttempts);
