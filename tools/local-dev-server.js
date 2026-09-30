@@ -35,23 +35,32 @@ function loadEnvFile(filePath) {
 }
 
 // Batch 8 points the VPS runners (tools/run-all-screeners-vps.js,
-// tools/run-after-market-top5-lock.js) at this daemon on 127.0.0.1:3000, so it
-// must be able to reach Supabase; otherwise every heavy action answers
-// "Database belum dikonfigurasi." The VPS runtime env is the same file the
-// runner shell scripts source, and it is absent on a developer machine.
-// Hybrid: Vercel primer + VPS fallback — load all env sources so webhook secret
-// and Supabase are available even when .env contains placeholders.
-loadEnvFile(path.join(ROOT_DIR, '.env'));
-loadEnvFile(path.join(ROOT_DIR, '.env.intraday-runtime'));
-loadEnvFile(path.join(ROOT_DIR, '.env.bot'));
+// tools/run-after-market-top5-lock.js) at this daemon on 127.0.0.1:3000.
+// Shared screener credentials MUST resolve with the same precedence in both
+// processes. loadEnvFile() is first-wins, so this order mirrors the effective
+// priority of deploy/vps/run-screeners.sh and tools/run-all-screeners-vps.js:
+//
+//   .env.local > .env.intraday-runtime > .env > runner/.env
+//
+// Previously the daemon loaded .env first while the runner preferred
+// .env.local. If CRON_SECRET differed, the local origin correctly returned 401
+// even though both processes individually had a secret configured.
+const RUNNER_DIR = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
 loadEnvFile(path.join(ROOT_DIR, '.env.local'));
+loadEnvFile(path.join(ROOT_DIR, '.env.intraday-runtime'));
+loadEnvFile(path.join(ROOT_DIR, '.env'));
+loadEnvFile(path.join(RUNNER_DIR, '.env'));
+
+// Specialized service env files only fill keys that the shared runtime sources
+// above did not provide.
+loadEnvFile(path.join(ROOT_DIR, '.env.bot'));
 loadEnvFile(path.join(ROOT_DIR, '.env.preview.local'));
 loadEnvFile(path.join(ROOT_DIR, '.env.production.local'));
 // VPS runner secrets (owner-only, 600) — critical for telegram-verify-webhook-v3
-loadEnvFile('/home/ubuntu/auto-cuan-runner/telegram-webhook-v3-secret.env');
-loadEnvFile('/home/ubuntu/auto-cuan-runner/telegram-lifecycle.env');
-loadEnvFile('/home/ubuntu/auto-cuan-runner/telegram-auth-recovery-secret.env');
-loadEnvFile('/home/ubuntu/auto-cuan-runner/session-secret.env');
+loadEnvFile(path.join(RUNNER_DIR, 'telegram-webhook-v3-secret.env'));
+loadEnvFile(path.join(RUNNER_DIR, 'telegram-lifecycle.env'));
+loadEnvFile(path.join(RUNNER_DIR, 'telegram-auth-recovery-secret.env'));
+loadEnvFile(path.join(RUNNER_DIR, 'session-secret.env'));
 loadEnvFile(path.join(ROOT_DIR, '.env.ai-eval-once'));
 
 const {
