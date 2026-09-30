@@ -33,7 +33,9 @@
     $('mmExport').disabled = !ready;
     $('mmBtnSaveCashflow').disabled = !ready || saving || !isDirty || invalid.size > 0;
     const saveLabel=saving?'Menyimpan...':'Simpan';if($('mmBtnSaveCashflow').textContent!==saveLabel)$('mmBtnSaveCashflow').textContent=saveLabel;
-    $('mmSheetMonth').disabled = loading || saving;
+    // Month selection remains available during reads so a slow request can be
+    // superseded by the user's newer choice. Saving still locks navigation.
+    $('mmSheetMonth').disabled = saving;
     $('mmReload').disabled = loading || saving;
     $('mmCashflowNotes').disabled = !ready;
     if (ready && !saving && !lastSaveError) stateLabel(isDirty ? 'Belum disimpan' : revision == null ? 'Bulan baru' : 'Tersimpan', isDirty ? 'dirty' : 'saved');
@@ -160,12 +162,36 @@
     $('mmBudgetSafetyStatus').textContent = 'Menunggu data anggaran';
   }
   async function load(nextMonth, force) {
-    if (saving || loading) return;
+    if (saving) return;
+    nextMonth = String(nextMonth || '');
+    if (!Model.validMonth(nextMonth)) { $('mmSheetMonth').value = month; return; }
+
+    // A newer month choice supersedes an in-flight read. Abort old reads instead
+    // of forcing the user to wait for the timeout.
+    if (loading) {
+      if (nextMonth === month) return;
+      requests.forEach(function (controller) { controller.abort(); });
+      requests.clear();
+      loading = false;
+    }
+
     commitEdit();
     if (dirty() && !force && !root.confirm('Perubahan belum disimpan. Tinggalkan perubahan dan muat bulan ini?')) { $('mmSheetMonth').value = month; return; }
+
+    const previous = {
+      month: month,
+      sheet: sheet,
+      notes: notes,
+      revision: revision,
+      userId: userId,
+      saved: saved,
+      undo: undo.slice(),
+      redo: redo.slice()
+    };
     const gen = ++generation; month = nextMonth; loading = true;
-    $('mmSheetMonth').value = month; $('mmSheetViewport').hidden = true;
-    blankOverview(); notice('Memuat lembar kerja...'); stateLabel('Memuat'); controls();
+    $('mmSheetMonth').value = month;
+    if (!previous.sheet) $('mmSheetViewport').hidden = true;
+    notice('Memuat lembar kerja...'); stateLabel('Memuat'); controls();
     try {
       const data = await request('/api/money-management?action=get-sheet&month=' + encodeURIComponent(month));
       if (gen !== generation) return;
@@ -177,9 +203,34 @@
       renderRows(null, true); refreshPortfolio(true);
     } catch (error) {
       if (gen !== generation) return;
-      sheet = null; loading = false;
-      notice(error.name === 'AbortError' ? 'Koneksi terlalu lama. Tekan Muat ulang; tidak ada data yang diganti.' : error.message, 'error');
-      stateLabel('Gagal dimuat', 'error'); controls();
+      loading = false;
+
+      // Loading another month is transactional: a failed request must never
+      // erase the last successfully loaded worksheet.
+      if (previous.sheet) {
+        month = previous.month;
+        sheet = previous.sheet;
+        notes = previous.notes;
+        revision = previous.revision;
+        userId = previous.userId;
+        saved = previous.saved;
+        undo = previous.undo;
+        redo = previous.redo;
+        $('mmSheetMonth').value = month;
+        $('mmCashflowNotes').value = notes;
+        $('mmSheetViewport').hidden = false;
+        renderRows(null, true);
+      } else {
+        sheet = null;
+        $('mmSheetViewport').hidden = true;
+        blankOverview();
+      }
+
+      notice(error.name === 'AbortError'
+        ? 'Koneksi terlalu lama. Pilihan bulan sebelumnya tetap dipertahankan; coba Muat ulang.'
+        : error.message, 'error');
+      stateLabel(previous.sheet ? 'Data sebelumnya dipertahankan' : 'Gagal dimuat', 'error');
+      controls();
     }
   }
   async function save() {
@@ -224,17 +275,43 @@
   }
   async function refreshPortfolio(force) {
     if (!userId) return;
-    const local = localPortfolio();
-    if (local !== undefined) { showPortfolio(local, local === null ? 'Data perangkat ini tidak dapat dibaca; buka Portofolio untuk memeriksa.' : ''); return; }
+    const localAtStart = localPortfolio();
+
+    // Local cache is useful for instant paint, but it is not authoritative.
+    if (localAtStart !== undefined) {
+      showPortfolio(
+        localAtStart,
+        localAtStart === null ? 'Cache Portofolio perangkat tidak dapat dibaca.' : 'Cache perangkat · memeriksa cloud…'
+      );
+    }
+
     if (!force && Date.now() - portfolioAt < 10000) return;
     portfolioAt = Date.now(); const uid = userId, gen = generation;
-    $('mmPortfolioStatus').textContent = 'Memuat ringkasan Portofolio...';
+    if (localAtStart === undefined) $('mmPortfolioStatus').textContent = 'Memuat ringkasan Portofolio...';
+
     try {
       const result = await request('/api/money-management?action=portfolio-summary');
       if (uid !== userId || gen !== generation) return;
       if (String(result.user_id) !== userId) return showPortfolio(null, 'Sesi Portofolio berubah; muat ulang.');
-      const newerLocal = localPortfolio(); showPortfolio(newerLocal === undefined ? result.data : newerLocal);
-    } catch (_) { if (uid === userId && gen === generation) showPortfolio(null, 'Portofolio belum terhubung. Buka Portofolio atau coba Muat ulang.'); }
+
+      const currentLocal = localPortfolio();
+      const sync = root.__AUTOCUAN_PORTFOLIO_SYNC_STATUS__ || {};
+      const localIsPending = currentLocal !== undefined &&
+        ['saving','local-fallback','conflict'].includes(String(sync.status || ''));
+
+      if (localIsPending) {
+        showPortfolio(currentLocal, 'Perubahan perangkat belum tersinkron ke cloud');
+      } else {
+        showPortfolio(result.data, result.data ? 'Cloud · sumber Portofolio resmi' : 'Cloud · belum ada data Portofolio');
+      }
+    } catch (_) {
+      if (uid !== userId || gen !== generation) return;
+      const fallback = localPortfolio();
+      showPortfolio(
+        fallback === undefined ? null : fallback,
+        fallback === undefined ? 'Portofolio belum terhubung. Buka Portofolio atau coba Muat ulang.' : 'Cache perangkat · cloud belum tersedia'
+      );
+    }
   }
   function queuePortfolio() {
     if (portfolioQueued || !userId) return;
