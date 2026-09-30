@@ -212,3 +212,61 @@ test('DayTrade fetch pacing keeps conservative defaults and accepts bounded VPS 
     else process.env.DAYTRADE_FETCH_DELAY_MS = previous;
   }
 });
+
+
+test('DayTrade fetch concurrency defaults to one and clamps production override safely', () => {
+  const previous = process.env.DAYTRADE_FETCH_CONCURRENCY;
+  try {
+    delete process.env.DAYTRADE_FETCH_CONCURRENCY;
+    assert.equal(engine.resolveDayTradeFetchConcurrency({}), 1);
+
+    process.env.DAYTRADE_FETCH_CONCURRENCY = '2';
+    assert.equal(engine.resolveDayTradeFetchConcurrency({}), 2);
+
+    process.env.DAYTRADE_FETCH_CONCURRENCY = '99';
+    assert.equal(engine.resolveDayTradeFetchConcurrency({}), 3, 'provider pressure must have a hard ceiling');
+
+    assert.equal(engine.resolveDayTradeFetchConcurrency({ fetchConcurrency: 2 }), 2);
+  } finally {
+    if (previous == null) delete process.env.DAYTRADE_FETCH_CONCURRENCY;
+    else process.env.DAYTRADE_FETCH_CONCURRENCY = previous;
+  }
+});
+
+test('bounded DayTrade prefetch overlaps two workers but preserves ticker slot order', async () => {
+  let active = 0;
+  let peak = 0;
+  const started = [];
+  const tickers = ['AAA','BBB','CCC','DDD'].map((ticker) => ({ ticker }));
+  const fetcher = async (ticker) => {
+    active += 1;
+    peak = Math.max(peak, active);
+    started.push(ticker);
+    await new Promise((resolve) => setTimeout(resolve, ticker === 'AAA' ? 25 : 10));
+    active -= 1;
+    return cachedCandleRows(20).map((row, index) => ({
+      time: 1700000000 + index * 86400,
+      date: row.date,
+      open: row.open,
+      high: row.high,
+      low: row.low,
+      close: row.close + (ticker.charCodeAt(0) - 65),
+      volume: row.volume
+    }));
+  };
+
+  const prefetched = await engine.prefetchDayTradeCandles(tickers, fetcher, {
+    fetchConcurrency: 2,
+    fetchDelayMs: 80,
+    noDelay: true
+  });
+
+  assert.equal(prefetched.concurrency, 2);
+  assert.equal(peak, 2, 'exactly two fetches may overlap');
+  assert.equal(prefetched.slots.length, 4);
+  assert.equal(prefetched.slots[0].candles[19].close, 124);
+  assert.equal(prefetched.slots[1].candles[19].close, 125);
+  assert.equal(prefetched.slots[2].candles[19].close, 126);
+  assert.equal(prefetched.slots[3].candles[19].close, 127);
+  assert.equal(new Set(started).size, 4);
+});
