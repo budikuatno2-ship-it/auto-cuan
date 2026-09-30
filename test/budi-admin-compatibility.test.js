@@ -158,7 +158,7 @@ test('F-037: the retired dot hash no longer authenticates budi', async () => {
       username: 'budi', passwordHash: retiredDotHash, deviceId: 'budi_dev_1'
     } }, res);
     assert.equal(res.statusCode, 400);
-    assert.deepEqual(res.body, { success: false, error: 'Username atau password salah.' });
+    assert.deepEqual(res.body, { success: false, error: 'Gmail/username atau password salah.' });
     assert.equal(setCookie(res), '', 'the retired backdoor credential must issue no cookie');
     assert.equal(sink.length, 0, 'a rejected backdoor attempt must not mutate the database');
   });
@@ -194,7 +194,7 @@ test('1&2: existing budi credentials authenticate; wrong password rejected with 
     const res = makeRes();
     await handler({ method: 'POST', headers: sameOrigin(), body: { username: 'budi', passwordHash: 'WRONG', deviceId: 'budi_dev_1' } }, res);
     assert.equal(res.statusCode, 400);
-    assert.equal(res.body.error, 'Username atau password salah.');
+    assert.equal(res.body.error, 'Gmail/username atau password salah.');
     assert.ok(!setCookie(res), 'no session cookie on failed auth');
     assert.equal(sink.length, 0, 'no DB write on failed auth');
   });
