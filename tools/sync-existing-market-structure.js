@@ -15,6 +15,8 @@ const MARKET_PATH = process.env.AUTO_CUAN_MARKET_STRUCTURE_PATH ||
   path.join(ROOT, 'data', 'market-structure', 'latest.json');
 const HSC_PATH = process.env.AUTO_CUAN_HSC_PATH ||
   path.join(ROOT, 'data', 'market-structure', 'hsc', 'current-2026.json');
+const OVERRIDE_PATH = process.env.AUTO_CUAN_MARKET_STRUCTURE_OVERRIDE_PATH ||
+  path.join(ROOT, 'data', 'market-structure-manual-overrides.json');
 const CHUNK_SIZE = 200;
 
 function chunk(items, size) {
@@ -89,11 +91,19 @@ async function main() {
 
   const marketPayload = JSON.parse(fs.readFileSync(MARKET_PATH, 'utf8'));
   const hscPayload = JSON.parse(fs.readFileSync(HSC_PATH, 'utf8'));
+  const overridePayload = fs.existsSync(OVERRIDE_PATH)
+    ? JSON.parse(fs.readFileSync(OVERRIDE_PATH, 'utf8'))
+    : { rows: [] };
 
   const store = getVpsMarketStore();
   const universe = await loadEligibleUniverse(store);
 
-  const built = existingSync.buildExistingMarketStructureRows(marketPayload, hscPayload, universe);
+  const built = existingSync.buildExistingMarketStructureRows(
+    marketPayload,
+    hscPayload,
+    universe,
+    overridePayload
+  );
   // Canonical market-structure storage covers the full listed-stock universe.
   // Scanner eligibility (800) is a runtime subset, so validate writes against
   // canonical market tickers instead of rejecting the 162 non-scanner names.
@@ -111,6 +121,7 @@ async function main() {
   console.log('DB: ' + store.filePath);
   console.log('Market structure source: ' + MARKET_PATH);
   console.log('HSC source: ' + HSC_PATH);
+  console.log('Manual override source: ' + (fs.existsSync(OVERRIDE_PATH) ? OVERRIDE_PATH : '(none)'));
   console.log('Mode: ' + (apply ? 'APPLY' : 'VALIDATE_ONLY'));
   console.log('Canonical market universe: ' + built.summary.canonical_count);
   console.log('Eligible scanner universe: ' + built.summary.eligible_count);
