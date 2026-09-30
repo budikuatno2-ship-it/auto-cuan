@@ -4854,7 +4854,16 @@ function navigateTo(page) {
         var tokens = getComputedStyle(document.documentElement);
         var duration = parseFloat(tokens.getPropertyValue('--motion-fast')) || 180;
         if (target._workspaceFade) target._workspaceFade.cancel();
-        target._workspaceFade = target.animate([{ opacity: 0.94 }, { opacity: 1 }], { duration: duration, easing: tokens.getPropertyValue('--ease-standard').trim() || 'ease-out' });
+        target._workspaceFade = target.animate(
+            [
+                { opacity: 0.78, transform: 'translate3d(0, 4px, 0)' },
+                { opacity: 1, transform: 'translate3d(0, 0, 0)' }
+            ],
+            {
+                duration: duration,
+                easing: tokens.getPropertyValue('--ease-emphasized').trim() || 'cubic-bezier(.16,1,.3,1)'
+            }
+        );
     }
 
     // KEEP-ALIVE: the panel above is only ever hidden, never unmounted, so its
