@@ -144,6 +144,14 @@ test('DeepScan broker score distinguishes accumulation and distribution', () => 
   assert.ok(accumulation.score > distribution.score);
 });
 
+test('DeepScan weekend freshness requires data requested through Friday', () => {
+  const saturday = new Date('2026-10-03T03:00:00Z');
+  const sunday = new Date('2026-10-04T03:00:00Z');
+  assert.equal(engine.getRequiredHistoryThroughDate(saturday), '2026-10-02');
+  assert.equal(engine.getRequiredHistoryThroughDate(sunday), '2026-10-02');
+  assert.equal(engine.getRequiredHistoryThroughDate(new Date('2026-09-30T03:00:00Z')), null);
+});
+
 test('DeepScan activation remains one time per WIB weekend', () => {
   const saturday = new Date('2026-10-03T03:00:00Z'); // 10:00 WIB Saturday
   const sunday = new Date('2026-10-04T03:00:00Z');   // same weekend
