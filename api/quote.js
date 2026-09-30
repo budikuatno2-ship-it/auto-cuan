@@ -242,6 +242,12 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
       .map(function(row) { return String(row && row.ticker || '').trim().toUpperCase(); })
       .filter(Boolean));
 
+    var rawFeatureCount = featureRows.length;
+    var excludedOutsideEligible = featureRows
+      .map(function(row) { return String(row && row.ticker || '').trim().toUpperCase(); })
+      .filter(function(ticker) { return ticker && !eligibleSet.has(ticker); })
+      .sort();
+
     featureRows = featureRows.filter(function(row) {
       return eligibleSet.has(String(row && row.ticker || '').trim().toUpperCase());
     });
@@ -280,7 +286,12 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
       rows: rows,
       as_of: latestAsOf,
       updated_at: latestAsOf || new Date().toISOString(),
-      generated_at: new Date().toISOString()
+      generated_at: new Date().toISOString(),
+      universe_scope: 'eligible_continuous_auction',
+      eligible_universe_count: eligibleSet.size,
+      raw_feature_count: rawFeatureCount,
+      excluded_outside_eligible_count: excludedOutsideEligible.length,
+      excluded_outside_eligible: excludedOutsideEligible
     });
   } catch (error) {
     console.error('daily-market-context-list exception:', error);
