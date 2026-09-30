@@ -3386,6 +3386,7 @@ function parseForeignImportCsv(csvText) {
 }
 
 async function deleteOldForeignRows(supabase, tickers) {
+  if (vpsMarketDataStore.enabled()) return 0;
   var deleted = 0;
   // Parallelize retention cleanup in bounded chunks (was fully sequential — caused batch timeouts).
   var RETENTION_CHUNK = 8;
