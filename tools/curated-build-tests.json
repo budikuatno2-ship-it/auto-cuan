@@ -408,6 +408,7 @@
   "test/risk-reward-filter.test.js",
   "test/route-cache-preload.test.js",
   "test/rsi-zero-division-neutral-50.test.js",
+  "test/local-dev-server-env-precedence.test.js",
   "test/run-all-screeners-vps.test.js",
   "test/run-daily-afternoon-recap.test.js",
   "test/run-daily-broker-update.test.js",
