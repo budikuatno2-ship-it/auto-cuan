@@ -88,3 +88,16 @@ test('free float normalization rejects values outside 0..100', () => {
   assert.equal(risk.normalizeFreeFloatPct(101), null);
   assert.equal(risk.normalizeFreeFloatPct('15.25'), 15.25);
 });
+
+test('CSV free-float percent normalization is complete and still range-validated', () => {
+  const parsed = marketImport.parseMarketStructureCsv([
+    'ticker,free_float_pct,free_float_source,free_float_as_of',
+    'TEST,15%%,idx_verified,2026-09-30'
+  ].join('\n'));
+  assert.equal(parsed.rows[0].free_float_pct, 15);
+
+  assert.throws(() => marketImport.parseMarketStructureCsv([
+    'ticker,free_float_pct,free_float_source,free_float_as_of',
+    'BAD,101%,idx_verified,2026-09-30'
+  ].join('\n')), /free_float_pct tidak valid/);
+});
