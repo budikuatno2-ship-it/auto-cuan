@@ -177,3 +177,25 @@ python3 tools/sync-stock-boards-from-bei-xlsx.py --utama /data/Utama.xlsx --peng
 # when the table lacks is_active, with a warning).
 python3 tools/sync-stock-boards-from-bei-xlsx.py --utama /data/Utama.xlsx --pengembangan /data/Pengembangan.xlsx --replace-official-board-scope --apply
 ```
+
+
+## FCA-92 Konglo ownership audit
+
+Use the local 31-Aug-2026 market-structure snapshot to review the 92 Sep-2026
+FCA exits against the versioned Konglo mapping:
+
+```bash
+node tools/audit-fca-92-konglo-ownership.js \
+  > /home/ubuntu/auto-cuan-runner/fca-92-konglo-audit-v2.txt
+```
+
+The audit is read-only. It excludes nominee/custody/passive institutional
+holders from controller inference and requires material controller evidence.
+Existing curated mappings are retained; unresolved names must stay unresolved
+until stronger controller evidence is available.
+
+For the FCA-92 review completed on 2026-09-30, IBST was added to
+`DJARUM_HARTONO_AFFILIATE` and SMCB to
+`BUMN_ENERGI_SEMEN_FARMA_TRANSPORT`. SKYB remains unresolved because the
+available ownership/public evidence was not strong enough to justify a curated
+group mapping.
