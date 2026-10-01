@@ -45,6 +45,7 @@ function pendingDates(now=new Date()){
 }
 async function run(options={}){
   const dryRun=options.dryRun===true;
+  const {hour,minute}=broker.getJakartaTimeInfo(options.now || new Date());
   const dates=pendingDates(options.now);
   for(const date of dates){
     if(!dryRun)writeState(date,{date,complete:false,updated_at:new Date().toISOString()});
