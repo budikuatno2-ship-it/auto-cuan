@@ -12,12 +12,15 @@ const partial = read('public/partials/analisis-saham.partial.html');
 const runtime = read('public/analisis-saham-runtime.js');
 const builder = read('lib/daily-market-context-builder.js');
 
-test('financial and market structure are first-class research destinations', () => {
-  assert.match(indexHtml, /data-analysis-tab="financial"/);
-  assert.match(indexHtml, /data-analysis-tab="market-structure"/);
-  assert.match(partial, /id="panel-tab-financial"/);
-  assert.match(partial, /id="panel-tab-market-structure"/);
-  assert.match(runtime, /'financial', 'market-structure'/);
+test('financial and market structure are retired as standalone destinations', () => {
+  assert.doesNotMatch(indexHtml, /data-analysis-tab="financial"/);
+  assert.doesNotMatch(indexHtml, /data-analysis-tab="market-structure"/);
+  assert.doesNotMatch(indexHtml, /id="tabFinancial"/);
+  assert.doesNotMatch(indexHtml, /id="tabMarketStructure"/);
+  assert.match(runtime, /tabName === 'financial' \|\| tabName === 'market-structure'/);
+  assert.match(runtime, /tabName = 'analisis-chart'/);
+  // The provenance-aware renderer remains internal so financial/structure
+  // context can be composed into analysis later without exposing blank pages.
   assert.match(runtime, /root\.loadFinancialStructureTab = loadFinancialStructureTab/);
 });
 

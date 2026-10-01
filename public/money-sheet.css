@@ -119,3 +119,18 @@ html.light .ms-month input { color-scheme:light; }
 .money-sheet .ms-grid textarea { display:block; resize:vertical; min-height:34px; max-height:120px; white-space:pre-wrap; }
 
 .ms-heading-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+
+
+/* 2026-10-01 simplification: Kelola Keuangan owns cashflow only.
+   Portfolio has its own first-class page; advanced spreadsheet chrome is kept
+   in DOM for compatibility but hidden from the default workspace. */
+#page-money-management .ms-portfolio {
+  display:none !important;
+}
+#page-money-management .ms-toolbar {
+  justify-content:flex-start;
+  gap:8px;
+}
+#page-money-management .ms-workbook-heading {
+  padding-bottom:14px;
+}

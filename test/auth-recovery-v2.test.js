@@ -181,6 +181,42 @@ test('deleted account makes session-status fail closed and clear the cookie', as
   });
 });
 
+test('session-status requires Gmail onboarding for approved legacy users but exempts reserved accounts', async function () {
+  await withEnv(async function () {
+    const sessionPath = require.resolve('../lib/admin-session');
+    delete require.cache[sessionPath];
+    const session = require('../lib/admin-session');
+
+    const legacyToken = session.createSessionToken({ userId:'u-legacy', username:'alice', isAdmin:false });
+    const legacyHandler = requireApiWithDb(createDb({ user:{
+      id:'u-legacy', username:'alice', email:null, is_blocked:false, is_approved:true
+    }}));
+    const legacyRes = makeRes();
+    await legacyHandler({
+      method:'POST',
+      headers:sameOriginHeaders('ac_sess=' + legacyToken),
+      body:{ action:'session-status' }
+    }, legacyRes);
+    assert.equal(legacyRes.statusCode, 200);
+    assert.equal(legacyRes.body.gmailRequired, true);
+    assert.equal(legacyRes.body.email, null);
+
+    const gmailToken = session.createSessionToken({ userId:'u-gmail', username:'carol', isAdmin:false });
+    const gmailHandler = requireApiWithDb(createDb({ user:{
+      id:'u-gmail', username:'carol', email:'carol@gmail.com', is_blocked:false, is_approved:true
+    }}));
+    const gmailRes = makeRes();
+    await gmailHandler({
+      method:'POST',
+      headers:sameOriginHeaders('ac_sess=' + gmailToken),
+      body:{ action:'session-status' }
+    }, gmailRes);
+    assert.equal(gmailRes.statusCode, 200);
+    assert.equal(gmailRes.body.gmailRequired, false);
+    assert.equal(gmailRes.body.email, 'carol@gmail.com');
+  });
+});
+
 test('approved Telegram callback stores only a reset-token HMAC and sends a one-time website link', async function () {
   await withEnv(async function () {
     const recovery = require('../lib/auth-recovery');
@@ -240,6 +276,8 @@ test('frontend and SQL contracts keep browser access service-role only and login
   assert.match(frontend, /fetch\('\/api\/login-user'/);
   assert.match(frontend, /session-status/);
   assert.match(frontend, /clearLocalAuthState/);
+  assert.match(frontend, /authV2LegacyGmailModal/);
+  assert.match(frontend, /account-profile-set-gmail/);
   assert.doesNotMatch(endpoint, /matchesLegacyBudiPassword|LEGACY_BUDI_PASSWORD_HASH/);
   assert.doesNotMatch(endpoint, /\.select\([^\n]*device_id/);
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/);

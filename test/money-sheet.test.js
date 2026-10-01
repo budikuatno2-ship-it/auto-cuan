@@ -108,17 +108,27 @@ test('application footer is removed without hiding semantic footers by CSS',()=>
  assert.doesNotMatch(read('public/index.html'),/Auto-Cuan &copy; 2024/);
  assert.doesNotMatch(read('public/money-sheet.css'),/^footer\s*\{/m);
 });
-test('analysis has nine unique sidebar destinations and no duplicate strip in partials',()=>{
+test('analysis has seven intentional sidebar destinations and no duplicate strip in partials',()=>{
  const html=read('public/index.html');const nav=html.slice(html.indexOf('<aside id="appSidebar"'),html.indexOf('</aside>',html.indexOf('<aside id="appSidebar"')));
- assert.equal((nav.match(/data-analysis-tab=/g)||[]).length,9);
- for(const tab of ['analisis-chart','bandarmologi','intel','hunter','insider','ranking','financial','market-structure','pattern']) {
+ assert.equal((nav.match(/data-analysis-tab=/g)||[]).length,7);
+ for(const tab of ['analisis-chart','bandarmologi','intel','hunter','insider','ranking','pattern']) {
   assert.equal((nav.match(new RegExp('data-analysis-tab="' + tab + '"','g'))||[]).length,1,tab);
  }
  for(const file of ['partials/analisis-saham.partial.html','public/partials/analisis-saham.partial.html']) assert.doesNotMatch(read(file),/class="analisis-tab-strip/);
  assert.equal((html.match(/id="tabBandarmologi"/g)||[]).length,1);
- assert.equal((html.match(/id="tabFinancial"/g)||[]).length,1);
- assert.equal((html.match(/id="tabMarketStructure"/g)||[]).length,1);
+ assert.equal((html.match(/id="tabFinancial"/g)||[]).length,0);
+ assert.equal((html.match(/id="tabMarketStructure"/g)||[]).length,0);
 });
+test('Kelola Keuangan no longer auto-loads unrelated Portfolio summaries or advanced chrome',()=>{
+ const runtime=read('public/money-sheet-runtime.js');
+ const css=read('public/money-sheet.css');
+ assert.doesNotMatch(runtime,/renderRows\(null, true\); refreshPortfolio\(true\)/);
+ assert.doesNotMatch(runtime,/autocuan:portfolio-changed/);
+ assert.match(css,/#page-money-management \.ms-portfolio/);
+ assert.doesNotMatch(css,/#page-money-management \.ms-edit-toolbar,/);
+ assert.doesNotMatch(css,/#page-money-management \.ms-formula-bar,/);
+});
+
 test('Portfolio handlers are scoped and bound once, without changing its financial model',()=>{
  const source=read('public/portfolio-command-center.js');assert.match(source,/portfolioRoot\(\)\.querySelectorAll\('\[data-tab\]'\)/);assert.doesNotMatch(source,/document\.querySelectorAll\('\[data-tab\]'\)/);
  assert.match(source,/if \(button\.__portfolioTabBound\) return/);assert.match(source,/autocuan:portfolio-changed/);

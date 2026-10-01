@@ -108,7 +108,7 @@ test('run-daily-broker-update: a quota-exceeded response stops the run cleanly a
   });
 });
 
-test('run-daily-broker-update: retry skips auxiliary endpoints for a ticker whose dated summary is already cached', async () => {
+test('run-daily-broker-update: retry repairs missing auxiliary endpoints even when dated summary is already cached', async () => {
   await withTempDataDir(async () => {
     bandarmologiService.writeDiskCache('broker-summary', 'BBCA', '2026-09-07', {
       top_buyers: [{ broker: 'YU', bval: 100, bvol: 10 }],
@@ -125,8 +125,43 @@ test('run-daily-broker-update: retry skips auxiliary endpoints for a ticker whos
     try {
       await dailyUpdate.run(['--tickers', 'BBCA', '--date', '2026-09-07', '--delay', '0']);
       assert.equal(summaryCalls, 0, 'cached dated summary must skip broker-summary request');
-      assert.equal(accumulationCalls, 0, 'cached ticker must not refetch accumulation on every retry');
-      assert.equal(insiderCalls, 0, 'cached ticker must not refetch insiders on every retry');
+      assert.equal(accumulationCalls, 1, 'cached summary must still repair missing accumulation');
+      assert.equal(insiderCalls, 1, 'cached summary must still repair missing insiders');
+      const marker = dailyUpdate.readMarker('2026-09-07');
+      assert.equal(marker.complete, true);
+      assert.equal(marker.schema_version, 2);
+      assert.deepEqual(marker.aux_complete_tickers, ['BBCA']);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test('run-daily-broker-update: v1 complete marker is reopened to repair auxiliary data', async () => {
+  await withTempDataDir(async () => {
+    bandarmologiService.writeDiskCache('broker-summary', 'BBCA', '2026-09-07', {
+      top_buyers: [{ broker: 'YU', bval: 100, bvol: 10 }],
+      top_sellers: []
+    });
+    dailyUpdate.writeMarker('2026-09-07', {
+      date: '2026-09-07',
+      complete: true,
+      completed_at: new Date().toISOString(),
+      total_tickers: 1
+    });
+    let accumulationCalls = 0;
+    let insiderCalls = 0;
+    const restore = mockArjum({
+      fetchBrokerAccumulation: async () => { accumulationCalls++; return { ok:true, data:{ series:[] } }; },
+      fetchInsiders: async () => { insiderCalls++; return { ok:true, data:[] }; }
+    });
+    try {
+      await dailyUpdate.run(['--tickers', 'BBCA', '--date', '2026-09-07', '--delay', '0']);
+      assert.equal(accumulationCalls, 1);
+      assert.equal(insiderCalls, 1);
+      const marker = dailyUpdate.readMarker('2026-09-07');
+      assert.equal(marker.schema_version, 2);
+      assert.equal(marker.complete, true);
     } finally {
       restore();
     }
@@ -157,7 +192,7 @@ test('run-daily-broker-update: pending empty summary does not spend auxiliary re
 
 test('run-daily-broker-update: an already-complete marker makes the next firing a fast no-op', async () => {
   await withTempDataDir(async () => {
-    dailyUpdate.writeMarker('2026-09-07', { date: '2026-09-07', complete: true, completed_at: new Date().toISOString(), total_tickers: 1 });
+    dailyUpdate.writeMarker('2026-09-07', { schema_version: 2, date: '2026-09-07', complete: true, completed_at: new Date().toISOString(), total_tickers: 1, aux_complete_tickers: ['BBCA'], no_data_tickers: [] });
     let calledFetch = false;
     const restore = mockArjum({
       fetchBrokerSummary: async () => { calledFetch = true; return { ok: true, data: { top_buyers: [], top_sellers: [] } }; }
@@ -174,10 +209,13 @@ test('run-daily-broker-update: an already-complete marker makes the next firing 
 test('run-daily-broker-update: complete marker is reopened when active universe grows', async () => {
   await withTempDataDir(async () => {
     dailyUpdate.writeMarker('2026-09-07', {
+      schema_version: 2,
       date: '2026-09-07',
       complete: true,
       completed_at: new Date().toISOString(),
-      total_tickers: 1
+      total_tickers: 1,
+      aux_complete_tickers: ['BBCA'],
+      no_data_tickers: []
     });
     bandarmologiService.writeDiskCache('broker-summary', 'BBCA', '2026-09-07', {
       broker_start_date: '2026-09-07',
@@ -292,7 +330,27 @@ test('run-daily-broker-update: current/newer recovery may advance latest.json', 
   });
 });
 
-test('run-daily-broker-update: --final treats successful empty broker-summary as terminal NO_DATA', async () => {
+test('run-daily-broker-update: --final only seals a verified suspended ticker as terminal NO_DATA', async () => {
+  await withTempDataDir(async () => {
+    const restore = mockArjum({
+      fetchBrokerSummary: async () => ({ ok: true, data: { top_buyers: [], top_sellers: [] } })
+    });
+    try {
+      await dailyUpdate.run(['--tickers', 'DPNS', '--date', '2026-09-07', '--delay', '0', '--final']);
+      const marker = dailyUpdate.readMarker('2026-09-07');
+      assert.equal(marker.complete, true, 'verified suspended empty response may be terminal NO_DATA');
+      assert.equal(marker.broker_summary_rows, 0);
+      assert.equal(marker.no_data, 1);
+      assert.deepEqual(marker.no_data_tickers, ['DPNS']);
+      assert.equal(process.exitCode, undefined);
+      assert.equal(bandarmologiService.hasDiskCache('broker-summary', 'DPNS', '2026-09-07'), false);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test('run-daily-broker-update: --final keeps an ordinary empty ticker pending for later repair', async () => {
   await withTempDataDir(async () => {
     const restore = mockArjum({
       fetchBrokerSummary: async () => ({ ok: true, data: { top_buyers: [], top_sellers: [] } })
@@ -300,11 +358,10 @@ test('run-daily-broker-update: --final treats successful empty broker-summary as
     try {
       await dailyUpdate.run(['--tickers', 'BBCA', '--date', '2026-09-07', '--delay', '0', '--final']);
       const marker = dailyUpdate.readMarker('2026-09-07');
-      assert.equal(marker.complete, true, 'successful empty final response should be terminal NO_DATA, not a permanent retry loop');
-      assert.equal(marker.broker_summary_rows, 0);
-      assert.equal(marker.no_data, 1);
-      assert.equal(process.exitCode, undefined, 'terminal NO_DATA on the final attempt is not an operational failure');
-      assert.equal(bandarmologiService.hasDiskCache('broker-summary', 'BBCA', '2026-09-07'), false, 'NO_DATA must not be fabricated into a broker-summary cache file');
+      assert.equal(marker.complete, false);
+      assert.equal(marker.no_data, 0);
+      assert.equal(marker.pending, 1);
+      assert.equal(process.exitCode, 4, 'late publication remains operationally incomplete at final pass');
     } finally {
       restore();
     }

@@ -8,6 +8,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const terms = require('../lib/account-terms');
 const registerSource = fs.readFileSync(path.join(root, 'api', 'register-user.js'), 'utf8');
+const profileModule = require('../lib/account-profile-handler');
 const profileSource = fs.readFileSync(path.join(root, 'lib', 'account-profile-handler.js'), 'utf8');
 const gatewaySource = fs.readFileSync(path.join(root, 'api', 'reset-password.js'), 'utf8');
 const runtimeSource = fs.readFileSync(path.join(root, 'public', 'account-center-v1.js'), 'utf8');
@@ -50,6 +51,19 @@ test('profile is derived from signed server identity and omits sensitive account
   assert.doesNotMatch(profileSource, /select\([^\n]*device_id/);
   assert.doesNotMatch(profileSource, /telegram_private_chat_id/);
   assert.match(gatewaySource, /bodyAction === 'account-profile'/);
+});
+
+test('legacy Gmail completion is exact, one-time, and routed through signed account profile', () => {
+  assert.equal(profileModule.__test.normalizeGmail('User.Name@gmail.com'), 'user.name@gmail.com');
+  assert.equal(profileModule.__test.normalizeGmail('user@yahoo.com'), null);
+  assert.equal(profileModule.__test.normalizeGmail('bad..name@gmail.com'), null);
+  assert.equal(profileModule.__test.gmailRequired({ username:'alice', email:null }), true);
+  assert.equal(profileModule.__test.gmailRequired({ username:'alice', email:'alice@gmail.com' }), false);
+  assert.equal(profileModule.__test.gmailRequired({ username:'budi', email:null }), false);
+  assert.match(profileSource, /action === 'account-profile-set-gmail'/);
+  assert.match(profileSource, /\.eq\('email', cleanEmail\)/);
+  assert.match(profileSource, /\.is\('email', null\)/);
+  assert.match(gatewaySource, /bodyAction === 'account-profile-set-gmail'/);
 });
 
 test('account center exposes profile subscription terms and a scrollable rules document', () => {

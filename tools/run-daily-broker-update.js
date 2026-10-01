@@ -5,18 +5,19 @@
  * + Insiders refresh for TODAY's trading date, for the full ticker universe.
  *
  * Arjum's broker-summary data for the current session typically isn't
- * published until ~18:00-20:00 WIB, so this is meant to run every 30 minutes
- * from 18:00 to 22:00 WIB (9 cron firings) rather than as one long-running
- * process:
+ * published until the evening, so the canonical EOD wrapper runs hourly from
+ * 18:00 through 23:00 WIB and a morning repair pass can retry the previous
+ * trading session. The process remains idempotent across every firing:
  *   - Idempotent: any ticker whose broker-summary for today is already on
  *     disk is skipped on the next firing (mirrors tools/backfill-arjum-data.js).
  *   - Before the final firing, empty-but-successful broker-summary responses
  *     remain pending so late publication can still arrive.
- *   - On the 22:00 --final firing, an empty-but-successful response is terminal
- *     NO_DATA (for example suspended/no-trade tickers); it is never fabricated
- *     into a cache file. A completion marker is written only when every ticker
- *     is either backed by valid broker-summary rows or terminal NO_DATA, with
- *     no real upstream errors and no quota stop.
+ *   - Empty final responses are terminal NO_DATA only for a ticker that the
+ *     suspension sources already prove suspended. Ordinary empty responses stay
+ *     incomplete so the next repair firing can recover a late publication.
+ *   - A completion marker is written only when every ticker is either backed by
+ *     valid broker-summary rows or verified-suspended NO_DATA, with both
+ *     accumulation and insider auxiliary data complete.
  *   - A complete marker makes later firings a fast no-op.
  *
  * Usage:
@@ -31,6 +32,9 @@ const path = require('path');
 const arjumClient = require('../lib/arjum-client');
 const bandarmologiService = require('../lib/bandarmologi-service');
 const idxTradingCalendar = require('../lib/idx-trading-calendar');
+const suspensionGuard = require('../lib/idx-suspension-guard');
+const fcaTransitionManifest = require('../data/fca-transition-2026-09-28.json');
+const STATIC_SUSPENDED = new Set((fcaTransitionManifest.suspended_as_of_status_date || []).map(t => String(t || '').toUpperCase()));
 
 // Same .env loading convention as tools/backfill-arjum-data.js /
 // tools/run-daily-afternoon-recap.js.
@@ -135,6 +139,14 @@ function resolveTargetDate(options = {}) {
     shifted: false,
     reason: 'after_cutoff_today'
   };
+}
+
+function isVerifiedSuspendedNoData(ticker) {
+  const clean = String(ticker || '').trim().toUpperCase();
+  if (!clean) return false;
+  // A fresh authoritative opening overrides the dated fallback list.
+  if (suspensionGuard.isAuthoritativelyActive(clean)) return false;
+  return suspensionGuard.isSuspended(clean) || STATIC_SUSPENDED.has(clean);
 }
 
 function markerPath(date) {
@@ -264,12 +276,32 @@ async function run(argv) {
   console.log(`Trading day check: OK (calendar source: ${guard.calendarSource})`);
 
   const existingMarker = readMarker(dateArg);
-  if (!isFresh && existingMarker && existingMarker.complete && Number(existingMarker.total_tickers) === tickers.length) {
-    console.log(`[SUDAH SELESAI] Marker ${dateArg} sudah lengkap sejak ${existingMarker.completed_at}. Tidak ada yang perlu dikerjakan.`);
+  const markerSchema = Number(existingMarker && existingMarker.schema_version || 0);
+  const auxCompleteTickers = new Set(
+    !isFresh && existingMarker && Array.isArray(existingMarker.aux_complete_tickers)
+      ? existingMarker.aux_complete_tickers.map(t => String(t || '').toUpperCase())
+      : []
+  );
+  const noDataTickers = new Set(
+    !isFresh && existingMarker && Array.isArray(existingMarker.no_data_tickers)
+      ? existingMarker.no_data_tickers.map(t => String(t || '').toUpperCase())
+      : []
+  );
+
+  // Schema v2 completeness means broker-summary AND both auxiliary datasets
+  // (broker accumulation + insiders) were confirmed for every ticker that had
+  // a broker summary. Old v1 markers tracked only broker-summary, so they must
+  // be reopened once to repair the missing auxiliary data instead of silently
+  // skipping every later 18:00 retry.
+  if (!isFresh && existingMarker && existingMarker.complete &&
+      markerSchema >= 2 && Number(existingMarker.total_tickers) === tickers.length) {
+    console.log(`[SUDAH SELESAI] Marker EOD v2 ${dateArg} sudah lengkap sejak ${existingMarker.completed_at}. Broker summary + accumulation + insiders sudah selesai.`);
     return;
   }
-  if (!isFresh && existingMarker && existingMarker.complete && Number(existingMarker.total_tickers) !== tickers.length) {
-    console.log(`[UNIVERSE BERUBAH] Marker ${dateArg} mencatat ${existingMarker.total_tickers} ticker, universe aktif sekarang ${tickers.length}. Hanya ticker yang belum punya dated cache yang akan diproses ulang.`);
+  if (!isFresh && existingMarker && existingMarker.complete && markerSchema < 2) {
+    console.log(`[REPAIR MARKER LAMA] Marker ${dateArg} hanya membuktikan broker-summary. Auxiliary accumulation/insider akan dilengkapi sekarang.`);
+  } else if (!isFresh && existingMarker && existingMarker.complete && Number(existingMarker.total_tickers) !== tickers.length) {
+    console.log(`[UNIVERSE BERUBAH] Marker ${dateArg} mencatat ${existingMarker.total_tickers} ticker, universe aktif sekarang ${tickers.length}. Missing data akan dilengkapi.`);
   }
 
   if (!dryRun && !arjumClient.hasArjumApiKey()) {
@@ -280,8 +312,7 @@ async function run(argv) {
   let totalRequested = 0;
   let doneCount = 0;
   let newBrokerSummaryCount = 0;
-  let pendingCount = 0; // Empty response before the final retry window closes.
-  let confirmedNoDataCount = 0; // Empty-but-successful response on --final (e.g. suspended/no-trade ticker).
+  let pendingCount = 0;
   let errorCount = 0;
   let quotaReached = false;
 
@@ -290,7 +321,7 @@ async function run(argv) {
       const classified = arjumClient.classifyFailure(res);
       if (classified.reason === 'quota_exceeded') {
         quotaReached = true;
-        console.log(`\n[BERHENTI: KUOTA API HABIS] ${classified.detail || 'quota exceeded'}. Sisa ticker akan dicoba lagi di run berikutnya.`);
+        console.log(`\n[BERHENTI: KUOTA API HABIS] ${classified.detail || 'quota exceeded'}. Sisa ticker akan dicoba lagi di firing berikutnya.`);
         return true;
       }
     }
@@ -300,17 +331,18 @@ async function run(argv) {
   for (let i = 0; i < tickers.length; i++) {
     if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
     const ticker = tickers[i];
-    let shouldRefreshAuxiliary = false;
+    let summaryReady = false;
 
-    // 1. Broker Summary for TODAY — the critical, evening-gated data.
-    // Retry firings must be quota-safe: if the dated summary is already valid,
-    // the ticker is fully done for this worker and we must not re-fetch
-    // accumulation/insiders on every 30-minute retry.
+    if (noDataTickers.has(ticker)) continue;
+
+    // 1. Broker Summary dated cache is the gate for the two auxiliary endpoints.
     const alreadyCached = !isFresh && bandarmologiService.hasDiskCache('broker-summary', ticker, dateArg);
     if (alreadyCached) {
       doneCount++;
+      summaryReady = true;
     } else if (dryRun) {
       totalRequested++;
+      // Dry-run models the full three-request path without assuming publication.
     } else {
       totalRequested++;
       const res = await arjumClient.fetchBrokerSummary(ticker, dateArg);
@@ -320,25 +352,17 @@ async function run(argv) {
         if (hasAnyRows) {
           const advanceLatest = shouldAdvanceLatestBrokerSummary(ticker, dateArg);
           bandarmologiService.writeDiskCache('broker-summary', ticker, dateArg, res.data);
-          if (advanceLatest) {
-            bandarmologiService.writeDiskCache('broker-summary', ticker, 'latest', res.data);
-          } else {
-            console.log(`[HISTORICAL] ${ticker} ${dateArg} disimpan sebagai dated cache; latest.json yang lebih baru dipertahankan.`);
-          }
+          if (advanceLatest) bandarmologiService.writeDiskCache('broker-summary', ticker, 'latest', res.data);
+          else console.log(`[HISTORICAL] ${ticker} ${dateArg} disimpan sebagai dated cache; latest.json yang lebih baru dipertahankan.`);
           doneCount++;
           newBrokerSummaryCount++;
-          shouldRefreshAuxiliary = true;
-        } else if (isFinal) {
-          // An empty-but-successful response can be legitimate for suspended,
-          // FCA/no-trade, or otherwise inactive tickers. During the retry
-          // window we keep it pending so late publication can still arrive;
-          // on the 22:00 --final attempt, treat it as terminal NO_DATA rather
-          // than requiring an impossible 957/957 non-empty universe.
-          confirmedNoDataCount++;
+          summaryReady = true;
+        } else if (isFinal && isVerifiedSuspendedNoData(ticker)) {
+          noDataTickers.add(ticker);
         } else {
-          // Before the final attempt, keep successful empty responses pending.
-          // This preserves the late-publication retry behaviour for active
-          // tickers without permanently treating NO_DATA as a worker failure.
+          // An empty response for an ordinary ticker is not proof of "no data".
+          // Keep it pending so a later hourly/morning repair can recover a late
+          // Arjum publication instead of permanently sealing a false gap.
           pendingCount++;
         }
       } else {
@@ -350,56 +374,74 @@ async function run(argv) {
 
     if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
 
-    // 2-3. Auxiliary endpoints are refreshed only when this firing actually
-    // acquired a new valid broker-summary for the ticker. Pending/NO_DATA and
-    // already-cached tickers do not spend another two requests every 30 minutes.
-    // Dry-run keeps counting the historical three-request worst case.
-    if (shouldRefreshAuxiliary || dryRun) {
-      if (!dryRun) {
-        totalRequested++;
-        const accRes = await arjumClient.fetchBrokerAccumulation(ticker);
-        if (accRes.ok && accRes.data) {
-          bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', accRes.data);
-        } else if (checkApiQuota(accRes)) {
-          break;
-        }
-        await sleep(delayMs);
-      } else {
-        totalRequested++;
+    // 2-3. A cached broker summary no longer suppresses missing auxiliary work.
+    // The per-date marker remembers tickers for which BOTH endpoints succeeded,
+    // so every 18:00+ retry is idempotent but can repair a partial previous run.
+    const needsAuxiliary = summaryReady && (isFresh || !auxCompleteTickers.has(ticker));
+    if (needsAuxiliary || dryRun) {
+      if (dryRun) {
+        totalRequested += 2;
+        continue;
       }
+
+      let accumulationOk = false;
+      let insidersOk = false;
+
+      totalRequested++;
+      const accRes = await arjumClient.fetchBrokerAccumulation(ticker);
+      if (accRes.ok && accRes.data) {
+        bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', accRes.data);
+        accumulationOk = true;
+      } else if (checkApiQuota(accRes)) {
+        break;
+      } else {
+        errorCount++;
+      }
+      await sleep(delayMs);
 
       if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
 
-      // Insiders: an empty result is normal, not an error.
-      if (!dryRun) {
-        totalRequested++;
-        const insRes = await arjumClient.fetchInsiders(ticker, 1, 15);
-        if (insRes.ok && insRes.data) {
-          bandarmologiService.writeDiskCache('insiders', ticker, 'p1', insRes.data);
-        } else if (checkApiQuota(insRes)) {
-          break;
-        }
-        await sleep(delayMs);
+      totalRequested++;
+      const insRes = await arjumClient.fetchInsiders(ticker, 1, 15);
+      // Empty insider arrays are a valid successful result.
+      if (insRes.ok && insRes.data != null) {
+        bandarmologiService.writeDiskCache('insiders', ticker, 'p1', insRes.data);
+        insidersOk = true;
+      } else if (checkApiQuota(insRes)) {
+        break;
       } else {
-        totalRequested++;
+        errorCount++;
       }
+      await sleep(delayMs);
+
+      if (accumulationOk && insidersOk) auxCompleteTickers.add(ticker);
     }
   }
 
-  const terminalCount = doneCount + confirmedNoDataCount;
-  const remaining = tickers.length - terminalCount;
-  const complete = !dryRun && remaining === 0 && errorCount === 0 && !quotaReached;
+  // Recount from durable files/sets so a retry reports total EOD coverage, not
+  // merely what this one process happened to fetch.
+  const brokerReadyTickers = tickers.filter(t => bandarmologiService.hasDiskCache('broker-summary', t, dateArg));
+  doneCount = brokerReadyTickers.length;
+  const validNoData = tickers.filter(t => noDataTickers.has(t));
+  const auxiliaryReady = brokerReadyTickers.filter(t => auxCompleteTickers.has(t));
+  const terminalCount = doneCount + validNoData.length;
+  const brokerRemaining = Math.max(0, tickers.length - terminalCount);
+  const auxiliaryRemaining = Math.max(0, doneCount - auxiliaryReady.length);
+  const complete = !dryRun && brokerRemaining === 0 && auxiliaryRemaining === 0 && errorCount === 0 && !quotaReached;
 
   console.log('\n----------------------------------------------------');
-  console.log('=== RINGKASAN DAILY BROKER UPDATE ===');
+  console.log('=== RINGKASAN DAILY EOD MARKET DATA ===');
   console.log(`Total Permintaan Terkirim (run ini): ${totalRequested}`);
   console.log(`Total Terpakai Hari Ini (lintas-proses): ${arjumClient.getUsedQuotaToday()} / ${dailyLimit}`);
-  console.log(`Broker Summary Selesai:        ${doneCount}/${tickers.length}`);
-  console.log(`Broker Summary Baru (run ini): ${newBrokerSummaryCount}`);
-  console.log(`Belum Terbit (Pending Arjum):  ${pendingCount}`);
-  console.log(`Final NO_DATA (valid kosong):  ${confirmedNoDataCount}`);
-  console.log(`Error / Gagal:                 ${errorCount}`);
-  console.log(`Kuota Habis:                   ${quotaReached ? 'YA' : 'TIDAK'}`);
+  console.log(`Broker Summary Selesai:       ${doneCount}/${tickers.length}`);
+  console.log(`Broker Summary Baru:          ${newBrokerSummaryCount}`);
+  console.log(`Aux Accumulation+Insider:     ${auxiliaryReady.length}/${doneCount}`);
+  console.log(`Belum Terbit (Pending Arjum): ${pendingCount}`);
+  console.log(`Final NO_DATA:                ${validNoData.length}`);
+  console.log(`Broker Remaining:             ${brokerRemaining}`);
+  console.log(`Aux Remaining:                ${auxiliaryRemaining}`);
+  console.log(`Error / Gagal:                ${errorCount}`);
+  console.log(`Kuota Habis:                  ${quotaReached ? 'YA' : 'TIDAK'}`);
 
   if (dryRun) {
     console.log('Status: DRY-RUN, tidak ada perubahan disimpan.');
@@ -417,38 +459,38 @@ async function run(argv) {
     }
   }
 
+  const markerPayload = {
+    schema_version: 2,
+    date: dateArg,
+    complete,
+    updated_at: new Date().toISOString(),
+    broker_summary_rows: doneCount,
+    aux_complete_count: auxiliaryReady.length,
+    aux_complete_tickers: Array.from(auxCompleteTickers).filter(t => tickers.includes(t)).sort(),
+    no_data: validNoData.length,
+    no_data_tickers: validNoData.slice().sort(),
+    pending: brokerRemaining,
+    errors: errorCount,
+    total_tickers: tickers.length
+  };
+
   if (complete) {
-    writeMarker(dateArg, {
-      date: dateArg,
-      complete: true,
-      completed_at: new Date().toISOString(),
-      broker_summary_rows: doneCount,
-      no_data: confirmedNoDataCount,
-      total_tickers: tickers.length
-    });
-    console.log(`Status: SELESAI — ${doneCount} ticker punya broker summary dan ${confirmedNoDataCount} ticker terkonfirmasi NO_DATA untuk ${dateArg}.`);
+    markerPayload.completed_at = new Date().toISOString();
+    writeMarker(dateArg, markerPayload);
+    console.log(`Status: SELESAI — seluruh EOD ${dateArg} lengkap: broker summary ${doneCount}, auxiliary ${auxiliaryReady.length}, NO_DATA ${validNoData.length}.`);
     return;
   }
 
-  writeMarker(dateArg, {
-    date: dateArg,
-    complete: false,
-    updated_at: new Date().toISOString(),
-    done: doneCount,
-    pending: pendingCount,
-    no_data: confirmedNoDataCount,
-    errors: errorCount,
-    total_tickers: tickers.length
-  });
+  writeMarker(dateArg, markerPayload);
 
   if (isFinal) {
-    console.log(`Status: GAGAL — jendela retry (18:00-22:00 WIB) habis dengan ${remaining} ticker belum punya broker summary ${dateArg}.`);
+    console.log(`Status: GAGAL — jendela retry 18:00-22:00 WIB habis; broker remaining=${brokerRemaining}, auxiliary remaining=${auxiliaryRemaining}.`);
     process.exitCode = 4;
   } else if (quotaReached) {
-    console.log(`Status: TERHENTI SEMENTARA (kuota habis) — ${remaining} ticker akan dicoba lagi di run 30 menit berikutnya.`);
+    console.log(`Status: TERHENTI SEMENTARA (kuota habis) — broker remaining=${brokerRemaining}, auxiliary remaining=${auxiliaryRemaining}; akan dicoba lagi.`);
     process.exitCode = 2;
   } else {
-    console.log(`Status: BELUM LENGKAP — ${remaining} ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya.`);
+    console.log(`Status: BELUM LENGKAP — broker remaining=${brokerRemaining}, auxiliary remaining=${auxiliaryRemaining}; cron berikutnya akan melanjutkan.`);
     process.exitCode = 3;
   }
 }
