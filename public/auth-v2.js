@@ -69,6 +69,94 @@
     }
   }
 
+  function validGmail(value) {
+    var email = String(value || '').trim().toLowerCase();
+    if (!email.endsWith('@gmail.com') || email.length > 100) return '';
+    var local = email.slice(0, -10);
+    return local.length >= 1 && local.length <= 64 && /^[a-z0-9]+(?:\.[a-z0-9]+)*$/.test(local) ? email : '';
+  }
+
+  function closeLegacyGmailModal() {
+    var modal = byId('authV2LegacyGmailModal');
+    if (modal) modal.remove();
+    window.__AUTOCUAN_GMAIL_ONBOARDING_REQUIRED__ = false;
+  }
+
+  function showLegacyGmailModal(session) {
+    if (!session || session.gmailRequired !== true || session.isAdmin === true || session.isReview === true) {
+      closeLegacyGmailModal();
+      return false;
+    }
+    window.__AUTOCUAN_GMAIL_ONBOARDING_REQUIRED__ = true;
+    var modal = byId('authV2LegacyGmailModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'authV2LegacyGmailModal';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-labelledby', 'authV2LegacyGmailTitle');
+      modal.style.cssText = 'position:fixed;inset:0;z-index:100005;display:grid;place-items:center;padding:18px;background:rgba(2,6,12,.92);backdrop-filter:blur(10px)';
+      modal.innerHTML = [
+        '<div style="width:min(440px,100%);border:1px solid rgba(148,163,184,.2);border-radius:22px;background:#0b111b;padding:24px;box-shadow:0 30px 90px rgba(0,0,0,.55);color:#e5e7eb">',
+        '<p style="margin:0 0 6px;color:#34d399;font:800 10px/1.2 Inter,sans-serif;letter-spacing:.13em">PENYELESAIAN AKUN</p>',
+        '<h2 id="authV2LegacyGmailTitle" style="margin:0;font:800 22px/1.2 Inter,sans-serif">Hubungkan Gmail</h2>',
+        '<p style="margin:10px 0 18px;color:#94a3b8;font:400 13px/1.65 Inter,sans-serif">Akun lama perlu satu Gmail sebelum melanjutkan. Setelah tersimpan, login berikutnya menggunakan Gmail tersebut. Gmail hanya dapat dihubungkan satu kali dari layar ini.</p>',
+        '<label for="authV2LegacyGmailInput" style="display:block;margin-bottom:7px;color:#cbd5e1;font:700 12px Inter,sans-serif">Gmail</label>',
+        '<input id="authV2LegacyGmailInput" type="email" inputmode="email" autocomplete="email" placeholder="nama@gmail.com" style="box-sizing:border-box;width:100%;min-height:44px;border:1px solid #334155;border-radius:11px;background:#070b12;color:#f8fafc;padding:0 13px;font:500 14px Inter,sans-serif;outline:none">',
+        '<p id="authV2LegacyGmailError" role="alert" style="display:none;margin:9px 0 0;color:#fda4af;font:500 12px/1.5 Inter,sans-serif"></p>',
+        '<button id="authV2LegacyGmailSave" type="button" style="width:100%;margin-top:16px;min-height:44px;border:0;border-radius:11px;background:#34d399;color:#022c22;font:800 13px Inter,sans-serif;cursor:pointer">Simpan Gmail &amp; lanjutkan</button>',
+        '<button id="authV2LegacyGmailLogout" type="button" style="width:100%;margin-top:8px;min-height:40px;border:1px solid #334155;border-radius:11px;background:transparent;color:#94a3b8;font:700 12px Inter,sans-serif;cursor:pointer">Logout</button>',
+        '</div>'
+      ].join('');
+      document.body.appendChild(modal);
+
+      byId('authV2LegacyGmailSave').addEventListener('click', async function () {
+        var input = byId('authV2LegacyGmailInput');
+        var error = byId('authV2LegacyGmailError');
+        var button = byId('authV2LegacyGmailSave');
+        var email = validGmail(input && input.value);
+        if (!email) {
+          error.textContent = 'Gunakan alamat Gmail yang valid (@gmail.com).';
+          error.style.display = 'block';
+          return;
+        }
+        error.style.display = 'none';
+        button.disabled = true;
+        button.textContent = 'Menyimpan…';
+        try {
+          var result = await authRequest('account-profile-set-gmail', { email: email });
+          if (!result.response.ok || result.data.success !== true) {
+            error.textContent = result.data.error || 'Gmail belum berhasil dihubungkan.';
+            error.style.display = 'block';
+            return;
+          }
+          if (window.__AUTOCUAN_AUTHENTICATED_SESSION__) {
+            window.__AUTOCUAN_AUTHENTICATED_SESSION__.email = email;
+            window.__AUTOCUAN_AUTHENTICATED_SESSION__.gmailRequired = false;
+          }
+          closeLegacyGmailModal();
+          if (typeof window.showToast === 'function') {
+            try { window.showToast('Gmail berhasil dihubungkan.', 'success'); } catch (_) {}
+          }
+          if (typeof window.enterApp === 'function') window.enterApp({ replaceHistory:true });
+        } catch (_) {
+          error.textContent = 'Koneksi ke server sedang bermasalah. Coba lagi.';
+          error.style.display = 'block';
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Simpan Gmail & lanjutkan';
+        }
+      });
+      byId('authV2LegacyGmailLogout').addEventListener('click', function () {
+        if (typeof window.logout === 'function') window.logout();
+        else returnToGuest({ replaceHistory:true });
+      });
+    }
+    var input = byId('authV2LegacyGmailInput');
+    if (input) setTimeout(function () { try { input.focus(); } catch (_) {} }, 0);
+    return true;
+  }
+
   function returnToGuest(options) {
     clearLocalAuthState();
     if (typeof window.updateDashGreeting === 'function') {
@@ -97,15 +185,17 @@
         if (typeof window.updateDashGreeting === 'function') {
           try { window.updateDashGreeting(); } catch (_) {}
         }
-        if (window.location.pathname === '/dashboard' || window.location.pathname === '/dashboard/') {
+        var gmailBlocked = showLegacyGmailModal(result.data);
+        if (window.location.pathname === '/dashboard' || window.location.pathname === '/dashboard/' || gmailBlocked) {
           if (typeof window.closeAuthChoiceModal === 'function') {
             try { window.closeAuthChoiceModal(); } catch (_) {}
           }
           if (typeof window.enterApp === 'function') {
             try { window.enterApp({ replaceHistory: true }); } catch (_) {}
           }
+          if (gmailBlocked) showLegacyGmailModal(result.data);
         }
-        return { valid: true, data: result.data };
+        return { valid: true, data: result.data, gmailBlocked: gmailBlocked };
       }
 
       if (result.response.status === 401 || result.response.status === 403) {
@@ -226,6 +316,12 @@
         storeSession(data);
         window.__AUTOCUAN_AUTHENTICATED_SESSION__ = data;
         passwordEl.value = '';
+        var verified = await validateServerSession();
+        if (!verified.valid) {
+          errorEl.textContent = 'Sesi login belum dapat diverifikasi. Silakan coba lagi.';
+          errorEl.classList.remove('hidden');
+          return;
+        }
         if (typeof window.refreshSubscriptionStatus === 'function') {
           try { window.refreshSubscriptionStatus(); } catch (_) {}
         }
@@ -234,7 +330,7 @@
         }
         if (typeof window.closeLoginModal === 'function') window.closeLoginModal();
         if (typeof window.closeAuthChoiceModal === 'function') window.closeAuthChoiceModal();
-        if (typeof window.enterApp === 'function') window.enterApp({ replaceHistory: true });
+        if (!verified.gmailBlocked && typeof window.enterApp === 'function') window.enterApp({ replaceHistory: true });
         return;
       }
 
@@ -442,6 +538,7 @@
 
   window.clearAutocuanAuthState = clearLocalAuthState;
   window.validateAutocuanSession = validateServerSession;
+  window.showLegacyGmailOnboarding = showLegacyGmailModal;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init, { once: true });
