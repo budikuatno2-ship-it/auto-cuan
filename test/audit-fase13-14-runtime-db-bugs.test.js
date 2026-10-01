@@ -295,10 +295,12 @@ test('F13-05c: active IDX master universe is 962 tickers and includes July 2026 
   assert.equal(uniq.has('CNTX'), false, 'CNTX is not present in the owner-supplied 2026-09-29 master list');
 });
 
-test('F13-05d: candles share the trading-day EOD coordinator and quota budget', () => {
+test('F13-05d: candles share the trading-day EOD coordinator and terminal pass is only time-gated', () => {
  const raw=fs.readFileSync(path.join(__dirname,'..','tools/run-daily-market-update.js'),'utf8');
  assert.match(raw,/candles\.main\(\{targetDate:date\}\)/);
  assert.match(raw,/hour<18/);
  assert.match(raw,/calendar\.isTradingDay\(dateKey,holidays\)/);
- assert.doesNotMatch(raw,/--limit|--final/);
+ assert.match(raw,/hour===23 && minute>=30/);
+ assert.match(raw,/brokerArgs\.push\('--final'\)/);
+ assert.doesNotMatch(raw,/--limit/);
 });
