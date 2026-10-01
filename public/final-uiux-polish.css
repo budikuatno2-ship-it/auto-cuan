@@ -1997,3 +1997,50 @@ html:not(.light) .ac-research-footnote {
     padding: 13px;
   }
 }
+
+
+/* 2026-10-01 — shell/account cleanup + visible motion pass */
+.sidebar-account-actions {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  width:100%;
+  padding-top:2px;
+}
+.sidebar-account-action {
+  min-width:0;
+  min-height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  border:1px solid var(--color-border-default);
+  border-radius:9px;
+  background:color-mix(in srgb,var(--color-bg-elevated),transparent 22%);
+  color:var(--color-text-secondary);
+  font-size:10.5px;
+  font-weight:700;
+  cursor:pointer;
+  transition:transform 180ms var(--ease-emphasized),border-color 180ms var(--ease-standard),background-color 180ms var(--ease-standard),color 180ms var(--ease-standard);
+}
+.sidebar-account-action svg { width:14px; height:14px; flex:0 0 auto; }
+.sidebar-account-action:hover {
+  transform:translateY(-1px);
+  color:var(--color-text-primary);
+  border-color:color-mix(in srgb,var(--color-accent),transparent 45%);
+  background:color-mix(in srgb,var(--color-accent),transparent 90%);
+}
+.sidebar-account-action.danger:hover {
+  color:#fda4af;
+  border-color:rgba(244,63,94,.38);
+  background:rgba(244,63,94,.08);
+}
+.app-sidebar .sidebar-item {
+  transition:transform 180ms var(--ease-emphasized),background-color 180ms var(--ease-standard),border-color 180ms var(--ease-standard),color 180ms var(--ease-standard);
+}
+.app-sidebar .sidebar-item:hover { transform:translateX(3px); }
+.app-sidebar .sidebar-item.active { transform:translateX(2px); }
+.page-content:not(.hidden) { transform-origin:50% 0; }
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-account-action,.app-sidebar .sidebar-item { transition:none!important; transform:none!important; }
+}
