@@ -80,6 +80,31 @@
   } else targets.forEach(function (element) { seen.add(element); });
   function reduceChanged() { if (reduced.matches) { running.forEach(function (a) { a.cancel(); }); running.clear(); } }
   reduced.addEventListener('change', reduceChanged);
+  var heroMap = landing.querySelector ? landing.querySelector('.landing-product-map') : null;
+  if (heroMap && !reduced.matches) {
+    motion(heroMap, [
+      { opacity: 0, transform: 'translate3d(16px,12px,0) scale(.985)' },
+      { opacity: 1, transform: 'translate3d(0,0,0) scale(1)' }
+    ], {
+      duration: Math.max(milliseconds('--motion-slow'), 420),
+      delay: 90,
+      easing: token('--ease-emphasized') || 'cubic-bezier(.16,1,.3,1)',
+      fill: 'none'
+    });
+    var heroModules = heroMap.querySelectorAll ? Array.from(heroMap.querySelectorAll('.landing-module-grid article')) : [];
+    heroModules.forEach(function (element, index) {
+      motion(element, [
+        { opacity: 0, transform: 'translate3d(0,10px,0)' },
+        { opacity: 1, transform: 'translate3d(0,0,0)' }
+      ], {
+        duration: Math.max(milliseconds('--motion-base'), 260),
+        delay: 170 + Math.min(index, 4) * 55,
+        easing: token('--ease-emphasized') || 'cubic-bezier(.16,1,.3,1)',
+        fill: 'none'
+      });
+    });
+  }
+
   // Two compositor-only light bands echo the visual reference without a
   // canvas particle engine. No animation work while the hero/tab is offscreen.
   var ambient = [], hero = landing.querySelector ? landing.querySelector('.landing-hero') : null, heroVisible = true;
