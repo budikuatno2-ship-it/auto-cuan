@@ -2,7 +2,13 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const market=require('../tools/run-daily-market-update'),broker=require('../tools/run-daily-broker-update');
 function state(fn){const old=process.env.ARJUM_DATA_DIR,dir=fs.mkdtempSync(path.join(os.tmpdir(),'market-queue-'));process.env.ARJUM_DATA_DIR=dir;try{fn();}finally{if(old==null)delete process.env.ARJUM_DATA_DIR;else process.env.ARJUM_DATA_DIR=old;fs.rmSync(dir,{recursive:true,force:true});}}
+function markMarketComplete(date){
+ broker.writeMarker(date,{version:2,complete:true});
+ fs.mkdirSync(market.stateDir(),{recursive:true});
+ fs.writeFileSync(path.join(market.stateDir(),date+'.json'),JSON.stringify({date,complete:true}));
+}
 test('EOD queue runs only after 18 WIB on trading days; pending work pauses overnight/weekends',()=>state(()=>{
+ markMarketComplete('2026-09-30');
  assert.deepEqual(market.pendingDates(new Date('2026-10-01T17:59:00+07:00')),[]);
  assert.deepEqual(market.pendingDates(new Date('2026-10-01T18:00:00+07:00')),['2026-10-01']);
  broker.writeMarker('2026-10-01',{complete:false});
@@ -16,6 +22,7 @@ test('23:30 WIB uses the terminal empty-summary pass, earlier retries do not',as
  const brokerRun=broker.run,candleRun=candles.main;
  process.env.ARJUM_DATA_DIR=dir;const calls=[];
  try{
+  markMarketComplete('2026-09-30');
   broker.run=async(args)=>{calls.push(args);broker.writeMarker(args[1],{version:2,complete:true});};
   candles.main=async()=>({universe:1,cached:1,fetched:0,failed:0,quota_stop:false});
   await market.run({now:new Date('2026-10-01T23:00:00+07:00')});
@@ -64,6 +71,7 @@ test('a failed broker stage still runs candles and retains the date; closed sess
  process.env.ARJUM_DATA_DIR=dir;let candleCalls=0;
  const now=new Date('2026-10-01T18:00:00+07:00');
  try{
+  markMarketComplete('2026-09-30');
   broker.run=async()=>{throw new Error('fixture failure')};
   candles.main=async({targetDate})=>{assert.equal(targetDate,'2026-10-01');candleCalls++;return {skipped:true};};
   await market.run({now});assert.equal(candleCalls,1);assert.equal(process.exitCode,3);
