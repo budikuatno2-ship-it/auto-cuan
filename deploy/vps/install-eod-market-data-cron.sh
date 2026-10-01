@@ -18,16 +18,13 @@ cp "$CURRENT" "$BACKUP_DIR/crontab-before-eod-$STAMP.bak"
 # Remove superseded standalone broker/candle entries only.
 grep -v -E 'run-daily-broker-update\.sh|run-daily-candles\.sh|run-eod-market-data\.sh' "$CURRENT" > "$WORK" || true
 
-# Ensure timezone is explicitly pinned for all Auto-Cuan wall-clock schedules.
-if ! grep -q '^CRON_TZ=Asia/Jakarta$' "$WORK"; then
-  {
-    echo 'CRON_TZ=Asia/Jakarta'
-    cat "$WORK"
-  } > "$WORK.tz"
-  mv "$WORK.tz" "$WORK"
-fi
-
+# Do NOT prepend CRON_TZ above preserved entries: CRON_TZ affects every
+# subsequent line in the crontab. Appending the timezone declaration here keeps
+# all pre-existing jobs on their original timezone semantics while pinning only
+# the EOD block below to WIB.
 cat >> "$WORK" <<'EOF'
+
+CRON_TZ=Asia/Jakarta
 
 # Auto-Cuan previous-session broker repair (WIB)
 # before 16:30 the worker resolves T-1 and repairs late summary/accumulation/insider data
