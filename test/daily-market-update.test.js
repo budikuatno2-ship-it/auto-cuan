@@ -29,16 +29,30 @@ test('23:30 WIB uses the terminal empty-summary pass, earlier retries do not',as
  }
 });
 
-test('missed trading dates are recovered from the last durable date',()=>state(()=>{
- broker.writeMarker('2026-09-29',{complete:true,version:2});
- assert.deepEqual(market.pendingDates(new Date('2026-10-01T18:00:00+07:00')),['2026-10-01','2026-09-30']);
+test('automatic EOD recovery is bounded to today plus H-1 only',()=>state(()=>{
+ broker.writeMarker('2026-09-25',{complete:false});
+ broker.writeMarker('2026-09-28',{complete:false});
+ broker.writeMarker('2026-09-29',{complete:false});
+ broker.writeMarker('2026-09-30',{complete:false});
+ assert.deepEqual(
+   market.pendingDates(new Date('2026-10-01T18:00:00+07:00')),
+   ['2026-10-01','2026-09-30'],
+   'older incomplete markers must never be auto-swept'
+ );
+}));
+test('completed H-1 is skipped even when older historical markers are incomplete',()=>state(()=>{
+ broker.writeMarker('2026-09-29',{complete:false});
+ broker.writeMarker('2026-09-30',{complete:true,version:2});
+ fs.mkdirSync(market.stateDir(),{recursive:true});
+ fs.writeFileSync(path.join(market.stateDir(),'2026-09-30.json'),JSON.stringify({date:'2026-09-30',complete:true}));
+ assert.deepEqual(market.pendingDates(new Date('2026-10-01T18:00:00+07:00')),['2026-10-01']);
 }));
 test('IDX exchange holidays are hard no-op even when they fall on Monday-Friday',()=>state(()=>{
  broker.writeMarker('2026-01-15',{complete:false});
  assert.deepEqual(market.pendingDates(new Date('2026-01-16T19:00:00+07:00')),[],'2026-01-16 is in the IDX 2026 holiday seed');
  assert.deepEqual(market.pendingDates(new Date('2026-01-19T18:00:00+07:00')),['2026-01-19','2026-01-15'],'pending work resumes on next trading day');
 }));
-test('old completion markers are rechecked for auxiliary data only in the EOD trading-day window',()=>state(()=>{
+test('H-1 with legacy/incomplete completion metadata is rechecked only in the EOD window',()=>state(()=>{
  broker.writeMarker('2026-09-30',{complete:true});
  assert.deepEqual(market.pendingDates(new Date('2026-10-01T09:00:00+07:00')),[]);
  assert.deepEqual(market.pendingDates(new Date('2026-10-01T18:00:00+07:00')),['2026-10-01','2026-09-30']);
