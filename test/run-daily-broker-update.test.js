@@ -35,6 +35,26 @@ test('a swallowed disk write failure cannot create a completion marker',async()=
  });
 });
 
+test('dated auxiliary refresh bypasses undated local caches and rejects fallback payloads', async () => {
+  await withTempDataDir(async () => {
+    let accOptions=null, insOptions=null;
+    const restore=mockArjum({
+      fetchBrokerSummary:async()=>({ok:true,data:{top_buyers:[{broker:'YU',bval:100,bvol:10}],top_sellers:[]}}),
+      fetchBrokerAccumulation:async(_ticker,options)=>{accOptions=options;return {ok:true,data:{series:[1]},from_cache:true};},
+      fetchInsiders:async(_ticker,_page,_limit,options)=>{insOptions=options;return {ok:true,data:[],fallback:true};}
+    });
+    try{
+      await dailyUpdate.run(['--tickers','BBCA','--date','2026-09-07','--delay','1']);
+      const marker=dailyUpdate.readMarker('2026-09-07');
+      assert.equal(marker.complete,false);
+      assert.equal(accOptions.forceLive,true);
+      assert.equal(insOptions.forceLive,true);
+      assert.equal(bandarmologiService.hasDiskCache('broker-accumulation','BBCA','2026-09-07'),false);
+      assert.equal(bandarmologiService.hasDiskCache('insiders','BBCA','2026-09-07'),false);
+    } finally {restore();}
+  });
+});
+
 test('auxiliary failure remains pending and retries without refetching a valid summary', async () => {
   await withTempDataDir(async () => {
     let summaries=0, accumulations=0, insiders=0;
