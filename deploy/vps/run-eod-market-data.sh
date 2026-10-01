@@ -61,4 +61,9 @@ run_bundle() {
   return 0
 }
 
-/usr/bin/flock -n "$LOCK_FILE" bash -c "$(declare -f run_bundle); run_bundle"
+exec 9>"$LOCK_FILE"
+if ! /usr/bin/flock -n 9; then
+  echo "EOD bundle already running; skip overlapping firing."
+  exit 0
+fi
+run_bundle
