@@ -4,7 +4,7 @@
 (function (root) {
   'use strict';
   if (!root || !root.document || root.__AUTO_CUAN_FINAL_UIUX__) return;
-  root.__AUTO_CUAN_FINAL_UIUX__ = '20260930-v1';
+  root.__AUTO_CUAN_FINAL_UIUX__ = '20261001-v2';
 
   var doc = root.document;
   var prefetched = new Set();
@@ -22,7 +22,13 @@
   function enterPanel(panel) {
     if (!panel || !panel.animate || (reduced && reduced.matches)) return;
     if (lastAnimation) lastAnimation.cancel();
-    lastAnimation = panel.animate([{opacity:0.75,transform:'translateY(5px)'},{opacity:1,transform:'translateY(0)'}],{duration:160,easing:'cubic-bezier(.2,0,0,1)'});
+    lastAnimation = panel.animate(
+      [
+        { opacity: 0, transform: 'translate3d(0,9px,0) scale(.997)' },
+        { opacity: 1, transform: 'translate3d(0,0,0) scale(1)' }
+      ],
+      { duration: 220, easing: 'cubic-bezier(.16,1,.3,1)' }
+    );
   }
 
   function prefetchUrl(url) {
