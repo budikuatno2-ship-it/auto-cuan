@@ -8,40 +8,39 @@ function writeState(date,state){
   const p=path.join(stateDir(),date+'.json');fs.mkdirSync(stateDir(),{recursive:true});
   const temp=p+'.'+process.pid+'.tmp';fs.writeFileSync(temp,JSON.stringify(state,null,2));fs.renameSync(temp,p);
 }
+function readMarketState(date){
+  try{
+    const p=path.join(stateDir(),date+'.json');
+    if(!fs.existsSync(p))return null;
+    return JSON.parse(fs.readFileSync(p,'utf8'));
+  }catch(_){return null;}
+}
+function previousDateNeedsWork(date){
+  const marketState=readMarketState(date);
+  const brokerMarker=broker.readMarker(date);
+  const marketComplete=Boolean(marketState&&marketState.complete===true);
+  const brokerComplete=Boolean(brokerMarker&&brokerMarker.version===2&&brokerMarker.complete===true);
+  return !(marketComplete&&brokerComplete);
+}
 function pendingDates(now=new Date()){
-  const {dateKey,hour,minute}=broker.getJakartaTimeInfo(now);
+  const {dateKey,hour}=broker.getJakartaTimeInfo(now);
   const holidays=calendar.getSeedHolidaySet();
 
   // Hard guard in addition to crontab: EOD work is allowed only from 18:00 WIB
   // on an actual IDX trading day. Weekend / exchange-holiday firings are no-op.
   if(hour<18 || !calendar.isTradingDay(dateKey,holidays))return [];
 
-  const dates=new Set();
-  const known=new Set();
-  const brokerDir=path.dirname(broker.markerPath('unused'));
-  for(const dir of [stateDir(),brokerDir]) {
-    if(!fs.existsSync(dir))continue;
-    for(const name of fs.readdirSync(dir)) {
-      if(!/^\d{4}-\d{2}-\d{2}\.json$/.test(name))continue;
-      const date=name.slice(0,10);known.add(date);
-      try {const m=JSON.parse(fs.readFileSync(path.join(dir,name),'utf8'));if(m.complete!==true || (dir===brokerDir && m.version!==2))dates.add(date);}catch(_){dates.add(date);}
-    }
-  }
-
-  // Start today's EOD batch. Older incomplete dates remain in the set and are
-  // resumed now; they stay paused throughout weekends/holidays and before 18:00.
-  dates.add(dateKey);
-
-  // Recover any trading dates missed since the newest durable marker/state.
-  const last=[...known].filter(d=>d<=dateKey).sort().pop();
-  if(last && last<dateKey){
-    const cursor=new Date(last+'T12:00:00Z');
-    for(cursor.setUTCDate(cursor.getUTCDate()+1);cursor.toISOString().slice(0,10)<=dateKey;cursor.setUTCDate(cursor.getUTCDate()+1)){
-      const date=cursor.toISOString().slice(0,10);
-      if(!known.has(date)&&calendar.isTradingDay(date,holidays))dates.add(date);
-    }
-  }
-  return [...dates].filter(d=>d<=dateKey).sort().reverse();
+  // Automatic EOD work is deliberately bounded:
+  //   1) today's trading date
+  //   2) at most the immediately previous trading date (H-1), only if incomplete
+  //
+  // Never scan arbitrary historical incomplete markers here. Historical gaps
+  // older than H-1 require an explicit manual --date backfill so a single bad
+  // marker cannot consume the account's daily API quota.
+  const dates=[dateKey];
+  const previous=calendar.previousTradingDay(dateKey,holidays);
+  if(previous&&previousDateNeedsWork(previous))dates.push(previous);
+  return dates;
 }
 async function run(options={}){
   const dryRun=options.dryRun===true;
@@ -70,5 +69,5 @@ async function run(options={}){
     try{return JSON.parse(fs.readFileSync(path.join(stateDir(),date+'.json'),'utf8')).complete!==true;}catch(_){return true;}
   }))process.exitCode=3;
 }
-module.exports={run,pendingDates,stateDir};
+module.exports={run,pendingDates,stateDir,readMarketState,previousDateNeedsWork};
 if(require.main===module)run({dryRun:process.argv.includes('--dry-run')}).catch(error=>{console.error(error.message);process.exitCode=1;});
