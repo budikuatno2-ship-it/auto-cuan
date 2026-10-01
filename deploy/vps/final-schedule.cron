@@ -13,7 +13,7 @@ CRON_TZ=Asia/Jakarta
 # Cron is limited to Monday-Friday; the coordinator also checks the IDX 2026
 # holiday calendar, so weekends and exchange holidays send zero EOD requests.
 # Pending dates remain durable and resume at 18:00 on the next trading day.
-# No --final: late upstream publication must never be silently marked NO_DATA.
+# The coordinator uses its terminal --final pass only at 23:30 WIB; real upstream errors remain pending.
 0,30 18-23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
 # Afternoon recap (18:45 WIB)
 45 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-afternoon-recap.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daily-afternoon-recap.log 2>&1
@@ -57,10 +57,10 @@ CRON_TZ=Asia/Jakarta
 # buka komentar baris ini.
 # */10 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-webhook-failover.sh >> /home/ubuntu/auto-cuan-runner/logs/webhook-failover.log 2>&1
 
-# ── HYBRID SECTOR HOT (Vercel primer → runner lokal VPS) ────────────────
-# Pemicu endpoint Vercel dulu; jika response bukan HTTP 200, runner lokal
-# (tools/run-screener.js) dieksekusi mandiri agar snapshot sektor tetap segar.
-*/30 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-sector-hot.sh >> /home/ubuntu/auto-cuan-runner/logs/sector-hot.log 2>&1
+# ── SECTOR HOT — VPS LOCAL ONLY ──────────────────────────────────────────
+# Produksi tidak lagi bergantung pada Vercel. Runner lokal memperbarui screener
+# dan snapshot sektor setiap 30 menit selama jam bursa.
+*/30 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-sector-hot.sh --force-local >> /home/ubuntu/auto-cuan-runner/logs/sector-hot.log 2>&1
 
 # ── ORACLE ANTI-SUSPEND KEEP-ALIVE (ringan, setiap jam) ──────────────────
 # Sanitasi cache kadaluarsa + hash audit + heartbeat — <1s, <10MB, menjaga CPU p95 >20%
