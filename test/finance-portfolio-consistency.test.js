@@ -61,11 +61,11 @@ test('Portfolio hydration preserves local edits made while cloud load is in flig
   assert.match(sync, /scheduleSave\(\)/);
 });
 
-test('Portfolio change events mark pending immediately and successful save re-notifies Finance', () => {
+test('Portfolio change events stay scoped to Portfolio and do not wake Kelola Keuangan', () => {
   const sync = read('public/portfolio-supabase-sync.js');
   assert.match(sync, /addEventListener\('autocuan:portfolio-changed'/);
   assert.match(sync, /dirty = true/);
   assert.match(sync, /autocuan:portfolio-synced/);
-  assert.match(finance, /addEventListener\('autocuan:portfolio-synced'/);
-  assert.match(finance, /\['pending','saving','local-fallback','conflict'\]/);
+  assert.doesNotMatch(finance, /addEventListener\('autocuan:portfolio-synced'/);
+  assert.doesNotMatch(finance, /addEventListener\('autocuan:portfolio-changed'/);
 });
