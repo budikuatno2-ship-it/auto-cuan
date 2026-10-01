@@ -370,8 +370,8 @@ async function run(argv) {
       if (!dryRun && (isFresh || !bandarmologiService.readDiskCache('broker-accumulation', ticker, dateArg))) {
         if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
         totalRequested++;
-        const accRes = await arjumClient.fetchBrokerAccumulation(ticker);
-        if (accRes.ok && accRes.data) {
+        const accRes = await arjumClient.fetchBrokerAccumulation(ticker, { forceLive: true });
+        if (accRes.ok && accRes.data && !accRes.from_cache && !accRes.fallback) {
           bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', accRes.data);
           persistDatedCache('broker-accumulation', ticker, dateArg, accRes.data);
         } else if (checkApiQuota(accRes)) {
@@ -390,8 +390,8 @@ async function run(argv) {
       if (!dryRun && (isFresh || !bandarmologiService.readDiskCache('insiders', ticker, dateArg))) {
         if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
         totalRequested++;
-        const insRes = await arjumClient.fetchInsiders(ticker, 1, 15);
-        if (insRes.ok && insRes.data) {
+        const insRes = await arjumClient.fetchInsiders(ticker, 1, 15, { forceLive: true });
+        if (insRes.ok && insRes.data && !insRes.from_cache && !insRes.fallback) {
           bandarmologiService.writeDiskCache('insiders', ticker, 'p1', insRes.data);
           persistDatedCache('insiders', ticker, dateArg, insRes.data);
         } else if (checkApiQuota(insRes)) {
