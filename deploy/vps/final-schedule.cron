@@ -26,6 +26,11 @@ CRON_TZ=Asia/Jakarta
 # Landing refresh (22:15 WIB, harian)
 15 22 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/direct-refresh-landing.js >> /home/ubuntu/auto-cuan-runner/logs/landing-refresh.log 2>&1
 
+# Suspension Guard IDX: refresh official suspend/unsuspend events every 15 minutes.
+# Starts before market open and continues through EOD screeners. The updater is
+# state-preserving: a failed fetch never clears the previous suspension state.
+*/15 8-20 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-idx-suspension-guard.sh >> /home/ubuntu/auto-cuan-runner/logs/idx-suspension-guard.log 2>&1
+
 # ── LIVE BURSA (Senin-Jumat, 09:00-16:00 WIB) ────────────────────────────
 # FASTWATCHER LIVE: setiap 5 menit selama jam bursa aktif (menangkap spike volume mendadak)
 # WIB 09:00-15:59 = UTC 02:00-08:59 → dengan CRON_TZ=Asia/Jakarta cukup 9-15
