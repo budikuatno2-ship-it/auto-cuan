@@ -26,6 +26,12 @@ echo "Backup: $BACKUP_DIR/crontab-$STAMP.bak"
 
 # --- Entry definitions ------------------------------------------------------
 # Each entry is "<marker-regex>|<comment-block>|<cron-line>".
+SUSPENSION_GUARD_MARKER='run-idx-suspension-guard\\.sh'
+SUSPENSION_GUARD_BLOCK='# ── IDX SUSPENSION GUARD ────────────────────────────────────────────────
+# Refresh official IDX suspend/unsuspend events every 15 minutes, before open
+# through EOD screeners. Use bash explicitly; executable bit is not required.
+*/15 8-20 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-idx-suspension-guard.sh >> /home/ubuntu/auto-cuan-runner/logs/idx-suspension-guard.log 2>&1'
+
 SECTOR_HOT_MARKER='run-sector-hot\.sh'
 SECTOR_HOT_BLOCK='# ── HYBRID SECTOR HOT (Vercel primer → runner lokal VPS) ────────────────
 # Pemicu endpoint Vercel dulu; jika response bukan HTTP 200, runner lokal
@@ -72,6 +78,7 @@ add_block() {
 
 add_block "$WEBHOOK_MARKER" "$WEBHOOK_BLOCK" "webhook failover (ten-minute cron)"
 add_block "$SECTOR_HOT_MARKER" "$SECTOR_HOT_BLOCK" "sector hot hybrid runner"
+add_block "$SUSPENSION_GUARD_MARKER" "$SUSPENSION_GUARD_BLOCK" "IDX suspension guard (15-minute cron)"
 
 if [ "$DRY_RUN" -eq 1 ]; then
   echo
@@ -84,4 +91,4 @@ fi
 crontab "$WORK"
 echo
 echo "Installed. Active hybrid entries:"
-crontab -l | grep -E 'run-webhook-failover\.sh|run-sector-hot\.sh' || echo "NONE_FOUND"
+crontab -l | grep -E 'run-webhook-failover\.sh|run-sector-hot\.sh|run-idx-suspension-guard\.sh' || echo "NONE_FOUND"
