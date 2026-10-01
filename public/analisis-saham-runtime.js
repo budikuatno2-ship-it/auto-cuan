@@ -213,6 +213,22 @@
   // ===== SUB-TAB SWITCHER (POLA CONSOLIDATED TAB) =====
   var currentAnalisisSubTab = 'ai'; // 'ai' or 'chart'
 
+  function animateWorkspacePanel(panel) {
+    if (!panel || typeof panel.animate !== 'function') return;
+    try {
+      if (root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      if (panel.__acTabMotion && typeof panel.__acTabMotion.cancel === 'function') panel.__acTabMotion.cancel();
+      panel.__acTabMotion = panel.animate([
+        { opacity:0, transform:'translate3d(10px,0,0)' },
+        { opacity:1, transform:'translate3d(0,0,0)' }
+      ], {
+        duration:240,
+        easing:'cubic-bezier(.16,1,.3,1)',
+        fill:'both'
+      });
+    } catch (_) {}
+  }
+
   function switchAnalisisSubTab(subTab) {
     currentAnalisisSubTab = (subTab === 'chart') ? 'chart' : 'ai';
     var isChart = currentAnalisisSubTab === 'chart';
@@ -233,6 +249,7 @@
 
     if (pAnalisis) pAnalisis.style.display = isChart ? 'none' : 'block';
     if (pChart) pChart.style.display = isChart ? 'block' : 'none';
+    animateWorkspacePanel(isChart ? pChart : pAnalisis);
 
     if (isChart) {
       var ticker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
@@ -345,6 +362,15 @@
       if (pMarketStructure) pMarketStructure.style.display = (parentTab === 'market-structure' ? 'block' : 'none');
       if (pPattern) pPattern.style.display = (parentTab === 'pattern' ? 'block' : 'none');
     }
+
+    var visibleResearchPanel = parentTab === 'bandarmologi' ? pBandarmologi :
+      parentTab === 'intel' ? pIntel :
+      parentTab === 'hunter' ? pHunter :
+      parentTab === 'insider' ? pInsider :
+      parentTab === 'ranking' ? pRanking :
+      parentTab === 'pattern' ? pPattern :
+      (currentAnalisisSubTab === 'chart' ? pChart : pAnalisis);
+    animateWorkspacePanel(visibleResearchPanel);
 
     // Sync tab param in URL
     try {
