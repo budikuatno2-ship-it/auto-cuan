@@ -291,7 +291,7 @@ function buildDegradedBootstrapSnapshot(error, options) {
     feed_error: String(error && error.message || error || 'IDX suspension feed unavailable'),
     suspended_count: states.length,
     active_count: 0,
-    by_ticker
+    by_ticker: byTicker
   };
 }
 
