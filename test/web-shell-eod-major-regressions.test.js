@@ -77,8 +77,11 @@ test('canonical EOD cron is recurring WIB hourly and owns all requested datasets
   assert.match(cron, /^CRON_TZ=Asia\/Jakarta$/m);
   assert.match(cron, /^0 18-23 \* \* 1-5 bash \/home\/ubuntu\/auto-cuan\/deploy\/vps\/run-eod-market-data\.sh/m);
   assert.match(cron, /^30 7 \* \* 1-5 \/home\/ubuntu\/auto-cuan\/deploy\/vps\/run-daily-broker-update\.sh --limit 5000 --final/m);
-  assert.doesNotMatch(cron, /^[^#\n]*run-daily-broker-update\.sh/m);
-  assert.doesNotMatch(cron, /^[^#\n]*run-daily-candles\.sh/m);
+  const directBroker = cron.split('\n').filter(line => !line.trim().startsWith('#') && line.includes('run-daily-broker-update.sh'));
+  const directCandles = cron.split('\n').filter(line => !line.trim().startsWith('#') && line.includes('run-daily-candles.sh'));
+  assert.equal(directBroker.length, 1, 'only the 07:30 previous-session repair may call broker worker directly');
+  assert.match(directBroker[0], /^30 7 /);
+  assert.equal(directCandles.length, 0, 'evening candle refresh belongs to canonical EOD wrapper');
   assert.match(eod, /run-daily-broker-update\.sh/);
   assert.match(eod, /run-daily-candles\.sh/);
   assert.match(eod, /--final/);
