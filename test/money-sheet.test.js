@@ -125,8 +125,8 @@ test('Kelola Keuangan no longer auto-loads unrelated Portfolio summaries or adva
  assert.doesNotMatch(runtime,/renderRows\(null, true\); refreshPortfolio\(true\)/);
  assert.doesNotMatch(runtime,/autocuan:portfolio-changed/);
  assert.match(css,/#page-money-management \.ms-portfolio/);
- assert.match(css,/#page-money-management \.ms-edit-toolbar/);
- assert.match(css,/#page-money-management \.ms-formula-bar/);
+ assert.doesNotMatch(css,/#page-money-management \.ms-edit-toolbar,/);
+ assert.doesNotMatch(css,/#page-money-management \.ms-formula-bar,/);
 });
 
 test('Portfolio handlers are scoped and bound once, without changing its financial model',()=>{
