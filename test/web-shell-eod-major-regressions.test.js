@@ -76,6 +76,7 @@ test('Kelola Keuangan no longer auto-refreshes Portfolio and hides advanced chro
 test('canonical EOD cron is recurring WIB hourly and owns all requested datasets', () => {
   assert.match(cron, /^CRON_TZ=Asia\/Jakarta$/m);
   assert.match(cron, /^0 18-23 \* \* 1-5 bash \/home\/ubuntu\/auto-cuan\/deploy\/vps\/run-eod-market-data\.sh/m);
+  assert.match(cron, /^30 7 \* \* 1-5 \/home\/ubuntu\/auto-cuan\/deploy\/vps\/run-daily-broker-update\.sh --limit 5000 --final/m);
   assert.doesNotMatch(cron, /^[^#\n]*run-daily-broker-update\.sh/m);
   assert.doesNotMatch(cron, /^[^#\n]*run-daily-candles\.sh/m);
   assert.match(eod, /run-daily-broker-update\.sh/);
@@ -83,6 +84,7 @@ test('canonical EOD cron is recurring WIB hourly and owns all requested datasets
   assert.match(eod, /--final/);
   assert.match(eod, /export TZ=Asia\/Jakarta/);
   assert.match(eodInstaller, /run-daily-broker-update\\\.sh\|run-daily-candles\\\.sh\|run-eod-market-data\\\.sh/);
+  assert.match(eodInstaller, /30 7 \* \* 1-5 .*run-daily-broker-update\.sh --limit 5000 --final/);
 });
 
 test('broker marker v2 cannot complete before accumulation and insiders complete', () => {
