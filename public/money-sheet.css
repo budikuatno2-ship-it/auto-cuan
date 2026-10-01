@@ -128,10 +128,6 @@ html.light .ms-month input { color-scheme:light; }
 #page-money-management .ms-edit-toolbar,
 #page-money-management .ms-formula-bar,
 #page-money-management .ms-help,
-#page-money-management .ms-history,
-#page-money-management .ms-search,
-#page-money-management .ms-sort,
-#page-money-management #mmExport,
 #page-money-management #mmExpandSheet {
   display:none !important;
 }
