@@ -56,6 +56,30 @@
   mobile.addEventListener('change', menuBreakpoint);
   // Header and cards enter separately; offset is based on the real grid column.
   var targets = Array.from(landing.querySelectorAll('.landing-section > .landing-container > div:not(.grid), .feature-card, .faq-item, .landing-section .landing-card'));
+
+  // First paint deserves a deliberate entrance too. Scroll-reveal only covered
+  // sections below the fold, which made the landing hero feel static while the
+  // rest of the site moved. These are compositor-only transforms, staggered
+  // through Web Animations and fully disabled by prefers-reduced-motion.
+  if (!reduced.matches) {
+    var heroEntrance = Array.from(landing.querySelectorAll(
+      '.landing-nav .landing-brand, .landing-nav .landing-menu, .landing-nav .landing-nav-actions, ' +
+      '.landing-hero-copy .landing-eyebrow, .landing-hero-copy .landing-wordmark, .landing-hero-copy h1, ' +
+      '.landing-hero-copy > p:not(.landing-eyebrow), .landing-hero-copy .landing-mobile-wrap, .landing-hero-index'
+    ));
+    heroEntrance.forEach(function (element, index) {
+      motion(element, [
+        { opacity: 0, transform: index < 3 ? 'translateY(-10px)' : 'translateY(22px)' },
+        { opacity: 1, transform: 'translateY(0)' }
+      ], {
+        duration: Math.max(360, milliseconds('--motion-slow')),
+        delay: Math.min(index, 8) * Math.max(42, milliseconds('--motion-stagger')),
+        easing: token('--ease-emphasized') || 'cubic-bezier(.16,1,.3,1)',
+        fill: 'backwards'
+      });
+    });
+  }
+
   function reveal(element) {
     if (seen.has(element)) return;
     seen.add(element);
