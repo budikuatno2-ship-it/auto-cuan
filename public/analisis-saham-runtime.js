@@ -254,6 +254,11 @@
     if (_isSwitchingTab) return;
     _isSwitchingTab = true;
     try {
+    // Financial/market-structure used to be exposed as standalone destinations,
+    // but their data belongs inside the core analysis context. Keep old URLs
+    // harmless by redirecting them to Analisis Saham instead of rendering a
+    // heading-only workspace.
+    if (tabName === 'financial' || tabName === 'market-structure') tabName = 'analisis-chart';
     var parentTab = tabName;
     if (tabName === 'analisis' || tabName === 'chart') {
       parentTab = 'analisis-chart';
@@ -265,13 +270,13 @@
       parentTab = 'insider';
     }
 
-    var validParentTabs = ['analisis-chart', 'bandarmologi', 'intel', 'hunter', 'insider', 'ranking', 'financial', 'market-structure', 'pattern'];
+    var validParentTabs = ['analisis-chart', 'bandarmologi', 'intel', 'hunter', 'insider', 'ranking', 'pattern'];
     if (validParentTabs.indexOf(parentTab) < 0) parentTab = 'analisis-chart';
     root.__ACTIVE_ANALISIS_SUBTAB__ = parentTab;
     var workspace = byId('page-analisis');
     if (workspace && !workspace.classList.contains('hidden') && typeof root.syncWorkspaceSidebarActive === 'function') root.syncWorkspaceSidebarActive('analisis');
     var workspaceTitle = byId('analysisWorkspaceTitle');
-    if (workspaceTitle) workspaceTitle.textContent = ({ 'analisis-chart':'Analisis Saham', bandarmologi:'Bandarmologi', intel:'Sinyal Intelijen', hunter:'Broker Hunter', insider:'Jejaring Insider', ranking:'Ranking Harian', financial:'Financial', 'market-structure':'Struktur Pasar', pattern:'Pattern Radar' })[parentTab];
+    if (workspaceTitle) workspaceTitle.textContent = ({ 'analisis-chart':'Analisis Saham', bandarmologi:'Bandarmologi', intel:'Sinyal Intelijen', hunter:'Broker Hunter', insider:'Jejaring Insider', ranking:'Ranking Harian', pattern:'Pattern Radar' })[parentTab];
 
 
     if (typeof document !== 'undefined' && document.querySelectorAll) {
@@ -293,6 +298,8 @@
     var pRanking = byId('panel-tab-ranking');
     var pFinancial = byId('panel-tab-financial');
     var pMarketStructure = byId('panel-tab-market-structure');
+    if (pFinancial) pFinancial.style.display = 'none';
+    if (pMarketStructure) pMarketStructure.style.display = 'none';
     var pPattern = byId('panel-tab-pattern');
 
     if (parentTab === 'analisis-chart') {
@@ -362,10 +369,6 @@
         return;
       }
       root.ensureRankingTableLoaded();
-    } else if (parentTab === 'financial' || parentTab === 'market-structure') {
-      var activeResearchTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
-        ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
-      root.loadFinancialStructureTab(parentTab, activeResearchTicker);
     } else if (parentTab === 'bandarmologi') {
       var currentSection = (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.getBandarSection === 'function')
         ? root.BandarmologiRuntime.getBandarSection() : 'summary';
