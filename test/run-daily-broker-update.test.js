@@ -80,6 +80,8 @@ test('auxiliary failure remains pending and retries without refetching a valid s
 function withTempDataDir(fn) {
   const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'daily-update-'));
   const origEnv = process.env.ARJUM_DATA_DIR;
+  const origTestToday = process.env.AUTO_CUAN_EOD_TEST_TODAY;
+  process.env.AUTO_CUAN_EOD_TEST_TODAY = '2026-09-07';
   // HERMETIC: run() also triggers the intel pre-calculation, which writes the
   // PERSISTENT index dir. ARJUM_DATA_DIR alone did not cover it, so every run of
   // this test rewrote the committed data/bandarmologi-intel-indexes files
@@ -96,6 +98,8 @@ function withTempDataDir(fn) {
     .finally(() => {
       if (origEnv !== undefined) process.env.ARJUM_DATA_DIR = origEnv;
       else delete process.env.ARJUM_DATA_DIR;
+      if (origTestToday !== undefined) process.env.AUTO_CUAN_EOD_TEST_TODAY = origTestToday;
+      else delete process.env.AUTO_CUAN_EOD_TEST_TODAY;
       if (origIntelIndex !== undefined) process.env.INTEL_INDEX_DIR = origIntelIndex;
       else delete process.env.INTEL_INDEX_DIR;
       if (origIntelCache !== undefined) process.env.INTEL_CACHE_DIR = origIntelCache;
@@ -273,6 +277,40 @@ test('run-daily-broker-update: complete marker is reopened when active universe 
       assert.equal(marker.complete, true);
       assert.equal(marker.total_tickers, 2);
       assert.equal(marker.broker_summary_rows, 2);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test('run-daily-broker-update: historical target never fabricates dated accumulation or insider snapshots', async () => {
+  await withTempDataDir(async () => {
+    process.env.AUTO_CUAN_EOD_TEST_TODAY = '2026-10-01';
+    let accumulationCalls = 0;
+    let insiderCalls = 0;
+    const restore = mockArjum({
+      fetchBrokerSummary: async () => ({
+        ok: true,
+        data: {
+          broker_start_date: '2026-09-30',
+          broker_end_date: '2026-09-30',
+          top_buyers: [{ broker: 'YU', bval: 100, bvol: 10 }],
+          top_sellers: []
+        }
+      }),
+      fetchBrokerAccumulation: async () => { accumulationCalls++; return { ok: true, data: { series: [] } }; },
+      fetchInsiders: async () => { insiderCalls++; return { ok: true, data: [] }; }
+    });
+    try {
+      await dailyUpdate.run(['--tickers', 'BBCA', '--date', '2026-09-30', '--delay', '0']);
+      const marker = dailyUpdate.readMarker('2026-09-30');
+      assert.equal(marker.complete, true, 'historical broker-summary can complete without snapshot-only auxiliary endpoints');
+      assert.equal(marker.auxiliary_mode, 'historical_snapshot_not_backfillable');
+      assert.equal(marker.auxiliary_complete, null);
+      assert.equal(accumulationCalls, 0, 'historical recovery must not call current accumulation snapshot');
+      assert.equal(insiderCalls, 0, 'historical recovery must not call current insider snapshot');
+      assert.equal(bandarmologiService.hasDiskCache('broker-accumulation', 'BBCA', '2026-09-30'), false);
+      assert.equal(bandarmologiService.hasDiskCache('insiders', 'BBCA', '2026-09-30'), false);
     } finally {
       restore();
     }
