@@ -10,6 +10,12 @@ function writeState(date,state){
 }
 function pendingDates(now=new Date()){
   const {dateKey,hour}=broker.getJakartaTimeInfo(now);
+  const holidays=calendar.getSeedHolidaySet();
+
+  // Hard guard in addition to crontab: EOD work is allowed only from 18:00 WIB
+  // on an actual IDX trading day. Weekend / exchange-holiday firings are no-op.
+  if(hour<18 || !calendar.isTradingDay(dateKey,holidays))return [];
+
   const dates=new Set();
   const known=new Set();
   const brokerDir=path.dirname(broker.markerPath('unused'));
@@ -21,16 +27,18 @@ function pendingDates(now=new Date()){
       try {const m=JSON.parse(fs.readFileSync(path.join(dir,name),'utf8'));if(m.complete!==true || (dir===brokerDir && m.version!==2))dates.add(date);}catch(_){dates.add(date);}
     }
   }
-  // New work starts at 18:00 WIB on a trading weekday. Retry existing work
-  // at every firing, including weekends and after midnight; its date is fixed.
-  if(hour>=18 && calendar.isTradingDay(dateKey,calendar.getSeedHolidaySet()))dates.add(dateKey);
+
+  // Start today's EOD batch. Older incomplete dates remain in the set and are
+  // resumed now; they stay paused throughout weekends/holidays and before 18:00.
+  dates.add(dateKey);
+
+  // Recover any trading dates missed since the newest durable marker/state.
   const last=[...known].filter(d=>d<=dateKey).sort().pop();
-  const cutoff=hour>=18?dateKey:calendar.previousTradingDay(dateKey,calendar.getSeedHolidaySet());
-  if(last && cutoff && last<cutoff){
+  if(last && last<dateKey){
     const cursor=new Date(last+'T12:00:00Z');
-    for(cursor.setUTCDate(cursor.getUTCDate()+1);cursor.toISOString().slice(0,10)<=cutoff;cursor.setUTCDate(cursor.getUTCDate()+1)){
+    for(cursor.setUTCDate(cursor.getUTCDate()+1);cursor.toISOString().slice(0,10)<=dateKey;cursor.setUTCDate(cursor.getUTCDate()+1)){
       const date=cursor.toISOString().slice(0,10);
-      if(!known.has(date)&&calendar.isTradingDay(date,calendar.getSeedHolidaySet()))dates.add(date);
+      if(!known.has(date)&&calendar.isTradingDay(date,holidays))dates.add(date);
     }
   }
   return [...dates].filter(d=>d<=dateKey).sort().reverse();
