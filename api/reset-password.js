@@ -51,7 +51,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'POST' && (bodyAction === 'portfolio-state-load' || bodyAction === 'portfolio-state-save')) {
     return portfolioStateHandler(req, res);
   }
-  if (req.method === 'POST' && bodyAction === 'account-profile') {
+  if (req.method === 'POST' && (bodyAction === 'account-profile' || bodyAction === 'account-profile-set-gmail')) {
     return accountProfileHandler(req, res);
   }
 
