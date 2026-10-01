@@ -5,18 +5,19 @@
  * + Insiders refresh for TODAY's trading date, for the full ticker universe.
  *
  * Arjum's broker-summary data for the current session typically isn't
- * published until ~18:00-20:00 WIB, so this is meant to run every 30 minutes
- * from 18:00 to 22:00 WIB (9 cron firings) rather than as one long-running
- * process:
+ * published until the evening, so the canonical EOD wrapper runs hourly from
+ * 18:00 through 23:00 WIB and a morning repair pass can retry the previous
+ * trading session. The process remains idempotent across every firing:
  *   - Idempotent: any ticker whose broker-summary for today is already on
  *     disk is skipped on the next firing (mirrors tools/backfill-arjum-data.js).
  *   - Before the final firing, empty-but-successful broker-summary responses
  *     remain pending so late publication can still arrive.
- *   - On the 22:00 --final firing, an empty-but-successful response is terminal
- *     NO_DATA (for example suspended/no-trade tickers); it is never fabricated
- *     into a cache file. A completion marker is written only when every ticker
- *     is either backed by valid broker-summary rows or terminal NO_DATA, with
- *     no real upstream errors and no quota stop.
+ *   - Empty final responses are terminal NO_DATA only for a ticker that the
+ *     suspension sources already prove suspended. Ordinary empty responses stay
+ *     incomplete so the next repair firing can recover a late publication.
+ *   - A completion marker is written only when every ticker is either backed by
+ *     valid broker-summary rows or verified-suspended NO_DATA, with both
+ *     accumulation and insider auxiliary data complete.
  *   - A complete marker makes later firings a fast no-op.
  *
  * Usage:
@@ -31,6 +32,9 @@ const path = require('path');
 const arjumClient = require('../lib/arjum-client');
 const bandarmologiService = require('../lib/bandarmologi-service');
 const idxTradingCalendar = require('../lib/idx-trading-calendar');
+const suspensionGuard = require('../lib/idx-suspension-guard');
+const fcaTransitionManifest = require('../data/fca-transition-2026-09-28.json');
+const STATIC_SUSPENDED = new Set((fcaTransitionManifest.suspended_as_of_status_date || []).map(t => String(t || '').toUpperCase()));
 
 // Same .env loading convention as tools/backfill-arjum-data.js /
 // tools/run-daily-afternoon-recap.js.
@@ -135,6 +139,14 @@ function resolveTargetDate(options = {}) {
     shifted: false,
     reason: 'after_cutoff_today'
   };
+}
+
+function isVerifiedSuspendedNoData(ticker) {
+  const clean = String(ticker || '').trim().toUpperCase();
+  if (!clean) return false;
+  // A fresh authoritative opening overrides the dated fallback list.
+  if (suspensionGuard.isAuthoritativelyActive(clean)) return false;
+  return suspensionGuard.isSuspended(clean) || STATIC_SUSPENDED.has(clean);
 }
 
 function markerPath(date) {
@@ -345,9 +357,12 @@ async function run(argv) {
           doneCount++;
           newBrokerSummaryCount++;
           summaryReady = true;
-        } else if (isFinal) {
+        } else if (isFinal && isVerifiedSuspendedNoData(ticker)) {
           noDataTickers.add(ticker);
         } else {
+          // An empty response for an ordinary ticker is not proof of "no data".
+          // Keep it pending so a later hourly/morning repair can recover a late
+          // Arjum publication instead of permanently sealing a false gap.
           pendingCount++;
         }
       } else {
