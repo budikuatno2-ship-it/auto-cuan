@@ -35,7 +35,7 @@ test('login integration records failures without changing credential authority',
   // (including budi) must pass the standard database credential check.
   assert.match(login, /if \(!credentialCheck\.ok\) \{/);
   assert.doesNotMatch(login, /LEGACY_BUDI_PASSWORD_HASH|matchesLegacyBudiPassword/);
-  assert.match(login, /const GENERIC_CREDENTIAL_ERROR = 'Username atau password salah\.'/);
+  assert.match(login, /const GENERIC_CREDENTIAL_ERROR = 'Gmail\/username atau password salah\.'/);
   assert.doesNotMatch(login, /securityGuard[^\n]*(?:passwordHash|deviceId)/);
 });
 

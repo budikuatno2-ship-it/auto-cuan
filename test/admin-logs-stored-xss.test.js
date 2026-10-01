@@ -222,7 +222,7 @@ test('F-087 API: registration with an HTML/script username is rejected with a va
     const mock = makeSupabaseMock();
     const handler = loadHandlerWithMock(mock);
     const res = makeRes();
-    await handler({ method: 'POST', body: { username: XSS_USERNAME, passwordHash: VALID_HASH, deviceId: 'dev-1', userAgent: 'ua', ...TERMS_FIELDS } }, res);
+    await handler({ method: 'POST', body: { username: XSS_USERNAME, email: 'xsstest@gmail.com', passwordHash: VALID_HASH, deviceId: 'dev-1', userAgent: 'ua', ...TERMS_FIELDS } }, res);
     assert.equal(res.statusCode, 400);
     assert.equal(res.body.success, false);
     assert.ok(/Username hanya boleh/.test(res.body.error), 'must return the charset validation error');
@@ -235,7 +235,7 @@ test('F-087 API: registration with a valid username still succeeds', async funct
     const mock = makeSupabaseMock();
     const handler = loadHandlerWithMock(mock);
     const res = makeRes();
-    await handler({ method: 'POST', body: { username: 'alice', passwordHash: VALID_HASH, deviceId: 'dev-1', userAgent: 'ua', ...TERMS_FIELDS } }, res);
+    await handler({ method: 'POST', body: { username: 'alice', email: 'alice@gmail.com', passwordHash: VALID_HASH, deviceId: 'dev-1', userAgent: 'ua', ...TERMS_FIELDS } }, res);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.success, true);
     assert.equal(mock.captured.rpcName, 'register_pending_user_with_telegram_challenge');

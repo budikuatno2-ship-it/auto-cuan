@@ -203,7 +203,7 @@ async function handleSubscriptionAction(req, res, action) {
 
 // Generic credential error to prevent username enumeration (invalid username and
 // invalid password produce the identical public response).
-const GENERIC_CREDENTIAL_ERROR = 'Username atau password salah.';
+const GENERIC_CREDENTIAL_ERROR = 'Gmail/username atau password salah.';
 
 // Issue the signed session cookie on a successful, DB-authenticated login.
 // Admin is derived SERVER-SIDE only (never from client input). Fail-closed: if no
@@ -652,7 +652,7 @@ module.exports = async function handler(req, res) {
       .from("app_users")
       .select("id, username, email, password_hash, device_id, devices, is_blocked, is_approved, created_at");
     if (isEmailInput) {
-      userLookup = userLookup.ilike("email", usernameLower);
+      userLookup = userLookup.eq("email", usernameLower);
     } else {
       userLookup = userLookup.eq("username", usernameLower);
     }
@@ -671,6 +671,17 @@ module.exports = async function handler(req, res) {
     if (!user) {
       await loginGuard.failure('unknown_account');
       console.error('login-user: authentication failed (unknown account)');
+      return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
+    }
+
+    // Gmail-backed accounts must authenticate with their Gmail identity.
+    // Username login remains only for legacy rows (email NULL/non-Gmail) and
+    // reserved operational accounts, so old accounts are never stranded.
+    const storedEmail = String(user.email || '').trim().toLowerCase();
+    const gmailBacked = storedEmail.endsWith('@gmail.com');
+    const legacyUsernameAllowed = !gmailBacked || effectiveUsername === 'budi' || effectiveUsername === 'review';
+    if (!isEmailInput && !legacyUsernameAllowed) {
+      await loginGuard.failure('gmail_identity_required');
       return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
     }
 

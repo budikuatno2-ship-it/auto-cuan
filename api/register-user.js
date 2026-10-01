@@ -92,16 +92,19 @@ module.exports = async function handler(req, res) {
     const normalizedDeviceId = normalizeDeviceId(deviceId);
 
 
-    let cleanEmail = null;
-    if (email !== undefined && email !== null) {
-      const rawEmail = String(email).trim().toLowerCase();
-      if (rawEmail.length > 0) {
-        if (rawEmail.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
-          return res.status(400).json({ success: false, error: "Format email tidak valid." });
-        }
-        cleanEmail = rawEmail;
-      }
+    // New web registrations require a Gmail identity. Existing legacy rows
+    // remain nullable and are intentionally NOT migrated to NOT NULL.
+    const rawEmail = String(email == null ? '' : email).trim().toLowerCase();
+    if (!rawEmail) {
+      return res.status(400).json({ success: false, code: 'GMAIL_REQUIRED', error: 'Gmail wajib diisi untuk pendaftaran baru.' });
     }
+    const gmailLocal = rawEmail.endsWith('@gmail.com') ? rawEmail.slice(0, -10) : '';
+    const gmailValid = gmailLocal.length >= 1 && gmailLocal.length <= 64 &&
+      /^[a-z0-9]+(?:\.[a-z0-9]+)*$/.test(gmailLocal);
+    if (rawEmail.length > 100 || !gmailValid) {
+      return res.status(400).json({ success: false, code: 'GMAIL_REQUIRED', error: 'Gunakan alamat Gmail yang valid (@gmail.com).' });
+    }
+    const cleanEmail = rawEmail;
     const usernameLower = String(username).trim().toLowerCase();
 
     // Reject empty or too long
@@ -169,11 +172,11 @@ module.exports = async function handler(req, res) {
     }
 
 
-    if (cleanEmail) {
+    {
       const { data: existingEmail, error: emailFindErr } = await supabase
         .from("app_users")
         .select("id")
-        .ilike("email", cleanEmail)
+        .eq("email", cleanEmail)
         .maybeSingle();
       if (emailFindErr) {
         console.error("register-user email find error:", emailFindErr);
@@ -222,7 +225,7 @@ module.exports = async function handler(req, res) {
     // stored (for example the migration was not applied), fail closed and remove
     // the just-created account so there is no un-audited registration.
 
-    if (cleanEmail && registration && registration.id) {
+    if (registration && registration.id) {
       const { error: emailUpdateErr } = await supabase
         .from("app_users")
         .update({ email: cleanEmail })

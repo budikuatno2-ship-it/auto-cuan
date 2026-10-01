@@ -144,6 +144,7 @@ function registrationSupabase(row) {
       return {
         select() { return this; },
         eq() { return this; },
+        update() { return this; },
         maybeSingle() { return Promise.resolve({ data: null, error: null }); },
         insert(inserted) {
           captured.inserted = inserted;
@@ -179,7 +180,7 @@ async function registerWith(channelUrl) {
     const res = makeRes();
     await handler({
       method: 'POST',
-      body: { username: 'newuser', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'local-device', userAgent: 'local-test', termsAccepted: true, termsVersion: accountTerms.CURRENT_TERMS_VERSION }
+      body: { username: 'newuser', email: 'newuser@gmail.com', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'local-device', userAgent: 'local-test', termsAccepted: true, termsVersion: accountTerms.CURRENT_TERMS_VERSION }
     }, res);
     return { res: res, captured: mock.captured };
   });
@@ -238,7 +239,7 @@ test('registration UI contains the pending approval panel with recognition + one
   assert.ok(extractFunction(html, 'function displayApprovalPanel').includes("textContent = code"));
   const doRegister = extractFunction(html, 'async function doRegister');
   assert.doesNotMatch(doRegister, /setTimeout|openAuthChoiceModal|doLogin/);
-  const clearPasswords = doRegister.indexOf("if (data.success) { document.getElementById('regPassword').value = '';");
+  const clearPasswords = doRegister.indexOf("if (data.success) { document.getElementById('regEmail').value = '';");
   const validateApprovalPayload = doRegister.indexOf("if (data.success && data.approval_status === 'pending'");
   assert.ok(clearPasswords >= 0 && clearPasswords < validateApprovalPayload, 'every successful response clears password fields');
 });
@@ -651,7 +652,7 @@ test('a wrong password reveals no approval information and no session', async fu
     assert.equal(Object.prototype.hasOwnProperty.call(res.body, field), false, field + ' must not leak');
   });
   assert.ok(!res.headers['Set-Cookie']);
-  assert.match(res.body.error, /Username atau password salah\./);
+  assert.match(res.body.error, /Gmail\/username atau password salah\./);
 });
 
 test('an unknown username reveals no approval information', async function() {
@@ -664,7 +665,7 @@ test('an unknown username reveals no approval information', async function() {
   ['approval_status', 'approval_code', 'telegram_channel_url'].forEach(function(field) {
     assert.equal(Object.prototype.hasOwnProperty.call(res.body, field), false, field + ' must not leak');
   });
-  assert.match(res.body.error, /Username atau password salah\./);
+  assert.match(res.body.error, /Gmail\/username atau password salah\./);
 });
 
 test('unknown username and wrong password produce an identical generic error (no enumeration)', async function() {

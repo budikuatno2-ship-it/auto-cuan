@@ -469,7 +469,7 @@ test('valid registration still succeeds and passes the normalized device id to t
     const capture = {};
     const handler = requireApiWithSupabaseStub('../api/register-user', supabaseWithUser(null, capture));
     const res = makeRes();
-    await handler({ method: 'POST', body: { username: 'newuser', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev_x', userAgent: 'ua', ...TERMS_FIELDS } }, res);
+    await handler({ method: 'POST', body: { username: 'newuser', email: 'newuser@gmail.com', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev_x', userAgent: 'ua', ...TERMS_FIELDS } }, res);
     assert.equal(res.body.success, true);
     const call = (capture.rpc || []).find(function (c) { return c.name === 'register_pending_user_with_telegram_challenge'; });
     assert.ok(call, 'registration uses the atomic RPC');

@@ -164,7 +164,7 @@
     errorEl.classList.add('hidden');
 
     if (!username || username.length < 2) {
-      errorEl.textContent = 'Username tidak valid.';
+      errorEl.textContent = 'Gmail tidak valid.';
       errorEl.classList.remove('hidden');
       return;
     }

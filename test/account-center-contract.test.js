@@ -45,7 +45,7 @@ test('registration UI requires a checkbox and sends acceptance only during regis
 test('profile is derived from signed server identity and omits sensitive account fields', () => {
   assert.match(profileSource, /requireAuthenticatedSession\(req\)/);
   assert.match(profileSource, /isSameOrigin\(req\)/);
-  assert.match(profileSource, /select\('id, username, is_approved, is_blocked, created_at, last_login_at'\)/);
+  assert.match(profileSource, /select\('id, username, email, is_approved, is_blocked, created_at, last_login_at'\)/);
   assert.doesNotMatch(profileSource, /select\([^\n]*password_hash/);
   assert.doesNotMatch(profileSource, /select\([^\n]*device_id/);
   assert.doesNotMatch(profileSource, /telegram_private_chat_id/);

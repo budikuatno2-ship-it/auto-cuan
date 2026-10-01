@@ -55,6 +55,7 @@ function makeDoRegister(overrides) {
 
   var fields = Object.assign({
     regUsername: { value: 'newtrader' },
+    regEmail: { value: 'newtrader@gmail.com', focus() {} },
     regPassword: { value: 'Abcdef12' },
     regPasswordConfirm: { value: 'Abcdef12' },
     regTermsAccepted: { checked: true },
