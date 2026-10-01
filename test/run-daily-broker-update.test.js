@@ -330,7 +330,27 @@ test('run-daily-broker-update: current/newer recovery may advance latest.json', 
   });
 });
 
-test('run-daily-broker-update: --final treats successful empty broker-summary as terminal NO_DATA', async () => {
+test('run-daily-broker-update: --final only seals a verified suspended ticker as terminal NO_DATA', async () => {
+  await withTempDataDir(async () => {
+    const restore = mockArjum({
+      fetchBrokerSummary: async () => ({ ok: true, data: { top_buyers: [], top_sellers: [] } })
+    });
+    try {
+      await dailyUpdate.run(['--tickers', 'DPNS', '--date', '2026-09-07', '--delay', '0', '--final']);
+      const marker = dailyUpdate.readMarker('2026-09-07');
+      assert.equal(marker.complete, true, 'verified suspended empty response may be terminal NO_DATA');
+      assert.equal(marker.broker_summary_rows, 0);
+      assert.equal(marker.no_data, 1);
+      assert.deepEqual(marker.no_data_tickers, ['DPNS']);
+      assert.equal(process.exitCode, undefined);
+      assert.equal(bandarmologiService.hasDiskCache('broker-summary', 'DPNS', '2026-09-07'), false);
+    } finally {
+      restore();
+    }
+  });
+});
+
+test('run-daily-broker-update: --final keeps an ordinary empty ticker pending for later repair', async () => {
   await withTempDataDir(async () => {
     const restore = mockArjum({
       fetchBrokerSummary: async () => ({ ok: true, data: { top_buyers: [], top_sellers: [] } })
@@ -338,11 +358,10 @@ test('run-daily-broker-update: --final treats successful empty broker-summary as
     try {
       await dailyUpdate.run(['--tickers', 'BBCA', '--date', '2026-09-07', '--delay', '0', '--final']);
       const marker = dailyUpdate.readMarker('2026-09-07');
-      assert.equal(marker.complete, true, 'successful empty final response should be terminal NO_DATA, not a permanent retry loop');
-      assert.equal(marker.broker_summary_rows, 0);
-      assert.equal(marker.no_data, 1);
-      assert.equal(process.exitCode, undefined, 'terminal NO_DATA on the final attempt is not an operational failure');
-      assert.equal(bandarmologiService.hasDiskCache('broker-summary', 'BBCA', '2026-09-07'), false, 'NO_DATA must not be fabricated into a broker-summary cache file');
+      assert.equal(marker.complete, false);
+      assert.equal(marker.no_data, 0);
+      assert.equal(marker.pending, 1);
+      assert.equal(process.exitCode, 4, 'late publication remains operationally incomplete at final pass');
     } finally {
       restore();
     }
