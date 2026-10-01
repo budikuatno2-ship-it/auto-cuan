@@ -111,9 +111,10 @@ with sync_playwright() as pw:
     check('Month disabled only while saving',not page.locator('#mmSheetMonth').is_disabled())
     page.evaluate("window.__mode='ok'");page.locator('#mmBtnSaveCashflow').click();page.wait_for_timeout(100)
     check('Confirmed save clears dirty state',not page.evaluate('AutoCuanMoneySheet.hasUnsaved()'))
+    requests_before_portfolio_event = page.evaluate("window.__requests.length")
     page.evaluate("localStorage.setItem('autocuan_portfolio_plans_test-user',JSON.stringify([{ticker:'BBCA',lots:10,entryPriceIdr:9000,stopLossIdr:8800,capitalIdr:9000000}]));localStorage.setItem('autocuan_portfolio_prices_test-user',JSON.stringify({BBCA:9100}));window.dispatchEvent(new CustomEvent('autocuan:portfolio-changed',{detail:{userId:'test-user'}}))")
     page.wait_for_timeout(100)
-    check('Linked Portfolio updates without a page reload',page.locator('#mmPortfolioExposure').inner_text()=='Rp 9.000.000')
+    check('Kelola Keuangan ignores unrelated Portfolio mutation network work',page.evaluate("window.__requests.length")==requests_before_portfolio_event)
     check('Portfolio exposure is not deducted from cashflow',page.locator('#mmRemainingBudgetDisplay').inner_text()=='Rp 7.000.000')
     for theme in ['dark','light']:
         page.evaluate("document.documentElement.classList.toggle('light',%s)" % ('true' if theme=='light' else 'false'))
