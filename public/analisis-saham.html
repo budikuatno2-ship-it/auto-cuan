@@ -343,6 +343,71 @@
             </div>
         </section>
 
+        <!-- ===== FINANCIAL / FUNDAMENTAL ===== -->
+        <section id="panel-tab-financial" class="analisis-tab-panel" style="display:none">
+            <div class="unified-card ac-research-data-panel">
+                <div class="unified-card-header ac-research-data-head">
+                    <div>
+                        <p class="ac-research-kicker">Fundamental</p>
+                        <h2 class="text-sm font-bold text-gray-200">Financial Snapshot</h2>
+                        <p class="text-[11px] text-gray-500 mt-1">Valuasi dan struktur modal dari data terverifikasi yang tersedia. Nilai kosong tidak diestimasi diam-diam.</p>
+                    </div>
+                    <div class="ac-research-ticker-tools">
+                        <input id="financialTickerInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" placeholder="BBCA" class="ac-research-ticker-input" onkeydown="if(event.key==='Enter'&&!event.isComposing){loadFinancialStructureTab('financial', this.value)}">
+                        <button type="button" class="ac-research-load-btn" onclick="loadFinancialStructureTab('financial', document.getElementById('financialTickerInput').value)">Muat</button>
+                    </div>
+                </div>
+                <div id="financialDataState" class="ac-research-state">Pilih ticker untuk memuat data financial.</div>
+                <div id="financialDataContent" class="ac-research-data-content" hidden>
+                    <div class="ac-metric-grid ac-metric-grid-financial">
+                        <article class="ac-metric-tile"><span>PBV</span><strong id="financialPbv">—</strong><small id="financialPbvPrice">Harga acuan —</small></article>
+                        <article class="ac-metric-tile"><span>Book Value / Share</span><strong id="financialBvps">—</strong><small>Nilai buku per saham</small></article>
+                        <article class="ac-metric-tile"><span>Saham Beredar</span><strong id="financialShares">—</strong><small>Shares outstanding terverifikasi</small></article>
+                        <article class="ac-metric-tile"><span>Market Cap</span><strong id="financialMarketCap">—</strong><small id="financialMarketCapAsOf">Belum tersedia</small></article>
+                    </div>
+                    <div class="ac-research-detail-grid">
+                        <div class="ac-research-detail"><span>Periode Fundamental</span><strong id="financialPeriod">—</strong></div>
+                        <div class="ac-research-detail"><span>Sumber Fundamental</span><strong id="financialSource">—</strong></div>
+                        <div class="ac-research-detail"><span>Sumber Market Cap</span><strong id="financialMarketCapSource">—</strong></div>
+                        <div class="ac-research-detail"><span>Diperbarui</span><strong id="financialUpdatedAt">—</strong></div>
+                    </div>
+                    <p class="ac-research-footnote">Market cap hanya ditampilkan bila nilai tersimpan memiliki provenance. Sistem tidak mengarang market cap dari data yang belum diaudit.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== MARKET STRUCTURE / FREE FLOAT / HSC ===== -->
+        <section id="panel-tab-market-structure" class="analisis-tab-panel" style="display:none">
+            <div class="unified-card ac-research-data-panel">
+                <div class="unified-card-header ac-research-data-head">
+                    <div>
+                        <p class="ac-research-kicker">Struktur Pasar</p>
+                        <h2 class="text-sm font-bold text-gray-200">Free Float &amp; HSC</h2>
+                        <p class="text-[11px] text-gray-500 mt-1">Konteks risiko struktur kepemilikan. Bukan score beli/jual dan bukan penilaian kepatuhan regulasi.</p>
+                    </div>
+                    <div class="ac-research-ticker-tools">
+                        <input id="marketStructureTickerInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" placeholder="BBCA" class="ac-research-ticker-input" onkeydown="if(event.key==='Enter'&&!event.isComposing){loadFinancialStructureTab('market-structure', this.value)}">
+                        <button type="button" class="ac-research-load-btn" onclick="loadFinancialStructureTab('market-structure', document.getElementById('marketStructureTickerInput').value)">Muat</button>
+                    </div>
+                </div>
+                <div id="marketStructureDataState" class="ac-research-state">Pilih ticker untuk memuat struktur pasar.</div>
+                <div id="marketStructureDataContent" class="ac-research-data-content" hidden>
+                    <div class="ac-metric-grid">
+                        <article class="ac-metric-tile"><span>Free Float</span><strong id="marketStructureFreeFloat">—</strong><small id="marketStructureFreeFloatAsOf">As of —</small></article>
+                        <article class="ac-metric-tile"><span>Status HSC</span><strong id="marketStructureHsc">—</strong><small id="marketStructureHscAsOf">As of —</small></article>
+                        <article class="ac-metric-tile"><span>Risk Guard</span><strong id="marketStructureGuard">—</strong><small id="marketStructureStatus">—</small></article>
+                    </div>
+                    <div class="ac-research-detail-grid">
+                        <div class="ac-research-detail"><span>Sumber Free Float</span><strong id="marketStructureFreeFloatSource">—</strong></div>
+                        <div class="ac-research-detail"><span>Sumber HSC</span><strong id="marketStructureHscSource">—</strong></div>
+                        <div class="ac-research-detail"><span>Referensi Low Free Float</span><strong id="marketStructureReference">15%</strong></div>
+                        <div class="ac-research-detail"><span>Kepatuhan Regulasi</span><strong id="marketStructureCompliance">NOT_EVALUATED</strong></div>
+                    </div>
+                    <div id="marketStructureNote" class="ac-research-note">—</div>
+                </div>
+            </div>
+        </section>
+
         <!-- TAB 2: BANDARMOLOGI & AKUMULASI BROKER -->
         <section id="panel-tab-bandarmologi" class="analisis-tab-panel" style="display:none">
             <div class="unified-card p-3.5 sm:p-4">

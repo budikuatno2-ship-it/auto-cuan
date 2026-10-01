@@ -8,6 +8,18 @@ const path = require('node:path');
 
 const fetcher = require('../lib/chart-engine/candle-fetcher');
 const daily = require('../tools/fetch-daily-candles');
+test('dated retries reuse an older complete candle and reject missing volume without inventing zero',async()=>{
+ const read=fetcher.readCache,fetch=fetcher.fetchDailyCandles;let calls=0;
+ let row={date:'2026-09-30',open:100,high:101,low:99,close:100,volume:0};
+ fetcher.readCache=()=>({candles:[row,{...row,date:'2026-10-01'}]});
+ fetcher.fetchDailyCandles=async()=>{calls++;return {ok:false,rateLimited:false}};
+ try{
+  const options={argv:['node','worker'],tickers:['BBCA'],targetDate:'2026-09-30',calendarClient:null};
+  let result=await daily.main(options);assert.equal(result.cached,1);assert.equal(calls,0);
+  for(const volume of [null,'']){row={...row,volume};result=await daily.main(options);assert.equal(result.failed,1);assert.equal(result.cached,0);}
+  assert.equal(calls,2);
+ }finally{fetcher.readCache=read;fetcher.fetchDailyCandles=fetch;}
+});
 
 test('daily candle worker does not count HTTP success when target-date candle is still missing', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'daily-candle-freshness-'));

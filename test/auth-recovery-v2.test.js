@@ -180,6 +180,17 @@ test('deleted account makes session-status fail closed and clear the cookie', as
     assert.match(cookieValue(res), /Max-Age=0/);
   });
 });
+test('session-status declares Gmail completion only for a legacy account without email',async()=>{
+ await withEnv(async()=>{
+  const session=require('../lib/admin-session');
+  for(const email of [null,'   ','existing@gmail.com']){
+   const token=session.createSessionToken({userId:'user-1',username:'alice'});
+   const handler=requireApiWithDb(createDb({user:{id:'user-1',username:'alice',email,is_approved:true,is_blocked:false}}));
+   const res=makeRes();await handler({method:'POST',headers:sameOriginHeaders('ac_sess='+token),body:{action:'session-status'}},res);
+   assert.equal(res.statusCode,200);assert.equal(res.body.email_required,!String(email||'').trim());
+  }
+ });
+});
 
 test('approved Telegram callback stores only a reset-token HMAC and sends a one-time website link', async function () {
   await withEnv(async function () {

@@ -1,0 +1,15 @@
+.legacy-gmail-dialog{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid #334155;border-radius:20px;padding:24px;background:#111827;color:#f1f5f9}
+.legacy-gmail-dialog::backdrop{background:rgb(2 6 23 / .82)}
+.legacy-gmail-dialog form{display:grid;gap:14px}.legacy-gmail-dialog h2{font-size:22px;font-weight:700}.legacy-gmail-dialog p{font-size:14px;color:#cbd5e1;line-height:1.6}
+.legacy-gmail-dialog input{width:100%;padding:12px;background:#0b0e14;border:1px solid #475569;border-radius:10px;color:#fff}
+.legacy-gmail-dialog button{min-height:44px;border-radius:10px;background:#10b981;color:#022c22;font-weight:700}.legacy-gmail-dialog button[type=button]{background:#1e293b;color:#e2e8f0}
+.legacy-gmail-dialog :focus-visible,.account-subscription-control:focus-visible{outline:2px solid #34d399;outline-offset:3px}
+.legacy-gmail-dialog #legacyGmailError{color:#fda4af}.legacy-gmail-dialog button:disabled{opacity:.6}
+#headerAccountSection{flex-wrap:wrap;justify-content:flex-end}#headerAccountSection button,#headerUserLabel{min-height:40px}
+#appMain>.app-header{display:block!important}
+@media(min-width:1024px){#appMain>.app-header .workspace-header-brand,#appMain>.app-header .desktop-header-chips{display:none!important}}
+#financialDataState[hidden],#financialDataContent[hidden],#marketStructureDataState[hidden],#marketStructureDataContent[hidden]{display:none!important}
+body:has(#workspaceSidebarToggle) #acNavLauncher{display:none!important}
+@media(max-width:600px){.workspace-header-brand>.brand-mark,.workspace-header-brand>.min-w-0{display:none!important}.app-header .header-account{flex:1;min-width:0}#headerAccountSection{flex-shrink:1!important;min-width:0}#headerUserLabel{min-height:44px}#headerAccountSection button{min-height:44px}}
+@media(max-width:420px){#headerUsername{display:none}}
+@media(max-width:640px){.header-account{flex-wrap:wrap;justify-content:flex-end;gap:4px!important}#headerAccountSection{gap:4px}#headerUsername{max-width:72px;overflow:hidden;text-overflow:ellipsis}.account-subscription-control{font-size:11px}}

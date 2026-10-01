@@ -28,6 +28,7 @@
     loadScriptOnce('/maintenance-auth-guard.js?v=20260816-v1', 'data-autocuan-maintenance-auth-guard');
     loadScriptOnce('/auth-v2.js?v=20260929-dialog-v2', 'data-autocuan-auth-v2');
     loadScriptOnce('/account-center-lazy-loader-v1.js?v=20260816-v1', 'data-autocuan-account-center-lazy');
+    loadScriptOnce('/legacy-gmail-runtime.js?v=20261001-v1', 'data-autocuan-legacy-gmail');
     loadScriptOnce('/subscription-access-gate-v1.js?v=20260816-v1', 'data-autocuan-subscription-access-gate');
 
     // Maintenance code runtime v8: only watches while a maintenance/status gate

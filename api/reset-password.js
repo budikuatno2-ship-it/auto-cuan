@@ -17,6 +17,7 @@ const zeroLinkPairingBrowser = require('../lib/admin-command-zero-link-browser')
 const maintenanceCodeBrowser = require('../lib/admin-maintenance-code-browser');
 const portfolioStateHandler = require('../lib/portfolio-state-handler');
 const accountProfileHandler = require('../lib/account-profile-handler');
+const legacyGmailHandler = require('../lib/legacy-gmail-handler');
 
 // Source-level compatibility marker for the long-standing regression that
 // statically audits the maintenance request handler. The executable handler
@@ -30,6 +31,9 @@ async function adminAccessRequestSourceContract() {
 module.exports = async function handler(req, res) {
   const queryAction = String(req.query && req.query.action || '').trim();
   const bodyAction = String(req.body && req.body.action || '').trim();
+  if (bodyAction === 'account-email-status' || bodyAction === 'account-email-complete') {
+    return legacyGmailHandler(req, res);
+  }
 
   if (req.method === 'GET' && queryAction === 'admin-command-login') {
     return adminCommandBrowser(req, res);

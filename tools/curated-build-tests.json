@@ -584,5 +584,11 @@
   "test/wib-date-string.test.js",
   "test/workspace-access-visibility.test.js",
   "test/workspace-detail.test.js",
-  "test/zero-defect-cluster-recovery.test.js"
+  "test/zero-defect-cluster-recovery.test.js",
+  "test/cron-reconcile.test.js",
+  "test/daily-market-update.test.js",
+  "test/hardening-research-runtime.test.js",
+  "test/legacy-gmail.test.js",
+  "test/money-lazy-loader.test.js",
+  "test/dashboard-account-entry.test.js"
 ]

@@ -6,13 +6,13 @@
  *
  * Arjum's broker-summary data for the current session typically isn't
  * published until ~18:00-20:00 WIB, so this is meant to run every 30 minutes
- * from 18:00 to 22:00 WIB (9 cron firings) rather than as one long-running
- * process:
+ * through the durable run-daily-market-update coordinator. New sessions begin
+ * at 18:00 WIB; incomplete dates retry every 30 minutes without a cutoff:
  *   - Idempotent: any ticker whose broker-summary for today is already on
  *     disk is skipped on the next firing (mirrors tools/backfill-arjum-data.js).
  *   - Before the final firing, empty-but-successful broker-summary responses
  *     remain pending so late publication can still arrive.
- *   - On the 22:00 --final firing, an empty-but-successful response is terminal
+ *   - Only an explicit manual --final invocation treats an empty response as terminal
  *     NO_DATA (for example suspended/no-trade tickers); it is never fabricated
  *     into a cache file. A completion marker is written only when every ticker
  *     is either backed by valid broker-summary rows or terminal NO_DATA, with
@@ -28,6 +28,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const arjumClient = require('../lib/arjum-client');
 const bandarmologiService = require('../lib/bandarmologi-service');
 const idxTradingCalendar = require('../lib/idx-trading-calendar');
@@ -151,11 +152,11 @@ function readMarker(date) {
 }
 
 function writeMarker(date, payload) {
-  try {
     const p = markerPath(date);
     fs.mkdirSync(path.dirname(p), { recursive: true });
-    fs.writeFileSync(p, JSON.stringify(payload, null, 2));
-  } catch (_) {}
+    const temp = p + '.' + process.pid + '.tmp';
+    fs.writeFileSync(temp, JSON.stringify(payload, null, 2));
+    fs.renameSync(temp, p);
 }
 
 function brokerSummaryPayloadDate(payload) {
@@ -235,7 +236,7 @@ async function run(argv) {
   const delayIdx = args.indexOf('--delay');
   if (delayIdx >= 0 && args[delayIdx + 1]) delayMs = parseInt(args[delayIdx + 1], 10) || 250;
 
-  const dailyLimit = Math.min(arjumClient.getConfiguredDailyQuota(), isFinite(limit) ? limit : Infinity);
+  const dailyLimit = arjumClient.getConfiguredDailyQuota();
 
   console.log('=== AUTO-CUAN DAILY BROKER UPDATE (Bagian 3) ===');
   console.log(`Target Date (WIB): ${dateArg}`);
@@ -259,12 +260,14 @@ async function run(argv) {
   const guard = await idxTradingCalendar.marketDayGuard(supabase, { now: new Date(`${dateArg}T12:00:00+07:00`) });
   if (!guard.shouldRun) {
     console.log(`[LIBUR: ${guard.reason}] ${dateArg} bukan hari bursa (calendar source: ${guard.calendarSource}). Worker berhenti, tidak ada request dikirim.`);
-    return;
+    return { skipped: true, reason: guard.reason };
   }
   console.log(`Trading day check: OK (calendar source: ${guard.calendarSource})`);
 
+  tickers = [...new Set(tickers)].sort();
+  const universeHash = crypto.createHash('sha256').update(tickers.join(',')).digest('hex');
   const existingMarker = readMarker(dateArg);
-  if (!isFresh && existingMarker && existingMarker.complete && Number(existingMarker.total_tickers) === tickers.length) {
+  if (!isFresh && existingMarker && existingMarker.complete && existingMarker.version === 2 && existingMarker.universe_hash === universeHash) {
     console.log(`[SUDAH SELESAI] Marker ${dateArg} sudah lengkap sejak ${existingMarker.completed_at}. Tidak ada yang perlu dikerjakan.`);
     return;
   }
@@ -274,7 +277,7 @@ async function run(argv) {
 
   if (!dryRun && !arjumClient.hasArjumApiKey()) {
     console.error('ERROR: ARJUM_API_KEY tidak ditemukan di environment atau .env.');
-    process.exit(1);
+    throw new Error('ARJUM_API_KEY is required');
   }
 
   let totalRequested = 0;
@@ -284,6 +287,8 @@ async function run(argv) {
   let confirmedNoDataCount = 0; // Empty-but-successful response on --final (e.g. suspended/no-trade ticker).
   let errorCount = 0;
   let quotaReached = false;
+  let auxiliaryPending = 0;
+  const noDataTickers = new Set(isFinal && !isFresh && existingMarker && existingMarker.version === 2 && existingMarker.no_data_tickers || []);
 
   function checkApiQuota(res) {
     if (!res.ok) {
@@ -298,28 +303,35 @@ async function run(argv) {
   }
 
   for (let i = 0; i < tickers.length; i++) {
-    if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
+    if (quotaReached) break;
     const ticker = tickers[i];
     let shouldRefreshAuxiliary = false;
 
     // 1. Broker Summary for TODAY — the critical, evening-gated data.
     // Retry firings must be quota-safe: if the dated summary is already valid,
-    // the ticker is fully done for this worker and we must not re-fetch
-    // accumulation/insiders on every 30-minute retry.
-    const alreadyCached = !isFresh && bandarmologiService.hasDiskCache('broker-summary', ticker, dateArg);
+    // reuse it and retry only missing dated accumulation/insider caches.
+    const cached = !isFresh && bandarmologiService.readDiskCache('broker-summary', ticker, dateArg);
+    const normalized = cached && bandarmologiService.normalizeBrokerSummary(cached, dateArg);
+    const cachedDate = cached && brokerSummaryPayloadDate(cached);
+    const alreadyCached = normalized && (!cachedDate || cachedDate === dateArg) && ((normalized.top_buyers || []).length || (normalized.top_sellers || []).length);
     if (alreadyCached) {
       doneCount++;
+      shouldRefreshAuxiliary = true;
+    } else if (noDataTickers.has(ticker)) {
+      confirmedNoDataCount++;
+      shouldRefreshAuxiliary = true;
     } else if (dryRun) {
       totalRequested++;
     } else {
+      if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
       totalRequested++;
       const res = await arjumClient.fetchBrokerSummary(ticker, dateArg);
-      if (res.ok && res.data) {
+      if (res.ok && res.data && (!brokerSummaryPayloadDate(res.data) || brokerSummaryPayloadDate(res.data) === dateArg)) {
         const norm = bandarmologiService.normalizeBrokerSummary(res.data, dateArg);
         const hasAnyRows = (norm.top_buyers && norm.top_buyers.length > 0) || (norm.top_sellers && norm.top_sellers.length > 0);
         if (hasAnyRows) {
           const advanceLatest = shouldAdvanceLatestBrokerSummary(ticker, dateArg);
-          bandarmologiService.writeDiskCache('broker-summary', ticker, dateArg, res.data);
+          persistDatedCache('broker-summary', ticker, dateArg, res.data);
           if (advanceLatest) {
             bandarmologiService.writeDiskCache('broker-summary', ticker, 'latest', res.data);
           } else {
@@ -335,6 +347,8 @@ async function run(argv) {
           // on the 22:00 --final attempt, treat it as terminal NO_DATA rather
           // than requiring an impossible 957/957 non-empty universe.
           confirmedNoDataCount++;
+          noDataTickers.add(ticker);
+          shouldRefreshAuxiliary = true;
         } else {
           // Before the final attempt, keep successful empty responses pending.
           // This preserves the late-publication retry behaviour for active
@@ -348,39 +362,45 @@ async function run(argv) {
       await sleep(delayMs);
     }
 
-    if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
+    if (quotaReached) break;
 
-    // 2-3. Auxiliary endpoints are refreshed only when this firing actually
-    // acquired a new valid broker-summary for the ticker. Pending/NO_DATA and
-    // already-cached tickers do not spend another two requests every 30 minutes.
+    // 2-3. Reuse successful dated auxiliary caches, retry failed/missing ones.
     // Dry-run keeps counting the historical three-request worst case.
     if (shouldRefreshAuxiliary || dryRun) {
-      if (!dryRun) {
+      if (!dryRun && (isFresh || !bandarmologiService.readDiskCache('broker-accumulation', ticker, dateArg))) {
+        if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
         totalRequested++;
         const accRes = await arjumClient.fetchBrokerAccumulation(ticker);
         if (accRes.ok && accRes.data) {
           bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', accRes.data);
+          persistDatedCache('broker-accumulation', ticker, dateArg, accRes.data);
         } else if (checkApiQuota(accRes)) {
           break;
+        } else {
+          auxiliaryPending++; errorCount++;
         }
         await sleep(delayMs);
-      } else {
+      } else if (dryRun) {
         totalRequested++;
       }
 
-      if (quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
+      if (quotaReached) break;
 
       // Insiders: an empty result is normal, not an error.
-      if (!dryRun) {
+      if (!dryRun && (isFresh || !bandarmologiService.readDiskCache('insiders', ticker, dateArg))) {
+        if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
         totalRequested++;
         const insRes = await arjumClient.fetchInsiders(ticker, 1, 15);
         if (insRes.ok && insRes.data) {
           bandarmologiService.writeDiskCache('insiders', ticker, 'p1', insRes.data);
+          persistDatedCache('insiders', ticker, dateArg, insRes.data);
         } else if (checkApiQuota(insRes)) {
           break;
+        } else {
+          auxiliaryPending++; errorCount++;
         }
         await sleep(delayMs);
-      } else {
+      } else if (dryRun) {
         totalRequested++;
       }
     }
@@ -388,7 +408,10 @@ async function run(argv) {
 
   const terminalCount = doneCount + confirmedNoDataCount;
   const remaining = tickers.length - terminalCount;
-  const complete = !dryRun && remaining === 0 && errorCount === 0 && !quotaReached;
+  const auxiliaryComplete = tickers.every(ticker =>
+    bandarmologiService.readDiskCache('broker-accumulation', ticker, dateArg) &&
+    bandarmologiService.readDiskCache('insiders', ticker, dateArg));
+  const complete = !dryRun && tickers.length > 0 && remaining === 0 && auxiliaryComplete && auxiliaryPending === 0 && errorCount === 0 && !quotaReached;
 
   console.log('\n----------------------------------------------------');
   console.log('=== RINGKASAN DAILY BROKER UPDATE ===');
@@ -419,6 +442,7 @@ async function run(argv) {
 
   if (complete) {
     writeMarker(dateArg, {
+      version: 2, universe_hash: universeHash, no_data_tickers: [...noDataTickers],
       date: dateArg,
       complete: true,
       completed_at: new Date().toISOString(),
@@ -431,6 +455,7 @@ async function run(argv) {
   }
 
   writeMarker(dateArg, {
+    version: 2, universe_hash: universeHash, no_data_tickers: [...noDataTickers], auxiliary_pending: auxiliaryPending,
     date: dateArg,
     complete: false,
     updated_at: new Date().toISOString(),
@@ -451,6 +476,12 @@ async function run(argv) {
     console.log(`Status: BELUM LENGKAP — ${remaining} ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya.`);
     process.exitCode = 3;
   }
+}
+
+function persistDatedCache(endpoint, ticker, date, data) {
+  bandarmologiService.writeDiskCache(endpoint, ticker, date, data);
+  const saved = bandarmologiService.readDiskCache(endpoint, ticker, date);
+  if (JSON.stringify(saved) !== JSON.stringify(data)) throw new Error('Dated cache could not be persisted: ' + endpoint + '/' + ticker + '/' + date);
 }
 
 if (require.main === module) {

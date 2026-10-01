@@ -29,6 +29,7 @@
     ].forEach(function (key) {
       try { localStorage.removeItem(key); } catch (_) {}
     });
+    if (typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('autocuan:session-cleared'));
   }
 
   function storeSession(data) {
@@ -43,6 +44,7 @@
       if (data.isReview === true) localStorage.setItem('autocuan_is_review', 'true');
       else localStorage.removeItem('autocuan_is_review');
     } catch (_) {}
+    if (typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('autocuan:session-ready'));
   }
 
   async function authRequest(action, payload) {
@@ -92,8 +94,8 @@
     try {
       var result = await authRequest('session-status');
       if (result.response.ok && result.data.success === true && result.data.userId) {
-        storeSession(result.data);
         window.__AUTOCUAN_AUTHENTICATED_SESSION__ = result.data;
+        storeSession(result.data);
         if (typeof window.updateDashGreeting === 'function') {
           try { window.updateDashGreeting(); } catch (_) {}
         }
@@ -223,8 +225,8 @@
       }
 
       if (response && response.ok && data.success === true) {
-        storeSession(data);
         window.__AUTOCUAN_AUTHENTICATED_SESSION__ = data;
+        storeSession(data);
         passwordEl.value = '';
         if (typeof window.refreshSubscriptionStatus === 'function') {
           try { window.refreshSubscriptionStatus(); } catch (_) {}

@@ -18,6 +18,12 @@
       '/partials/portfolio-command-center.partial.html'
     ]
   };
+  var lastAnimation = null;
+  function enterPanel(panel) {
+    if (!panel || !panel.animate || (reduced && reduced.matches)) return;
+    if (lastAnimation) lastAnimation.cancel();
+    lastAnimation = panel.animate([{opacity:0.75,transform:'translateY(5px)'},{opacity:1,transform:'translateY(0)'}],{duration:160,easing:'cubic-bezier(.2,0,0,1)'});
+  }
 
   function prefetchUrl(url) {
     if (!url || prefetched.has(url)) return;
@@ -93,6 +99,7 @@
   doc.addEventListener('pointercancel', releasePress, { passive: true });
 
   root.AutoCuanFinalUiux = {
-    prefetchPage: prefetchPage
+    prefetchPage: prefetchPage,
+    enterPanel: enterPanel
   };
 })(window);

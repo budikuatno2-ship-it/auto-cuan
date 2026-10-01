@@ -3,8 +3,8 @@
 /**
  * Daily candle close & volume fetch (EOD retry window from 18:00 WIB).
  * Uses lib/chart-engine/candle-fetcher.js against the Arjum history endpoint.
- * Idempotent by trade date: tickers whose latest cached daily candle already
- * matches the current WIB trade date are skipped; stale tickers are refreshed.
+ * Idempotent by target trade date: a complete cached OHLCV row is reused,
+ * even when a newer session is present. Missing target rows are refreshed.
  *
  * Usage (VPS):
  *   set -a; . ./.env.ai-eval-once; set +a
@@ -114,7 +114,7 @@ async function main(options) {
   const tickers = options.tickers || loadTickers();
   const universe = limitArg > 0 ? tickers.slice(0, limitArg) : tickers;
 
-  const targetDate = todayWib(options.now);
+  const targetDate = options.targetDate || todayWib(options.now);
   const tradingDay = await resolveTradingDay(targetDate, options.calendarClient || createCalendarClient());
   if (!tradingDay.shouldRun) {
     const closedSummary = {
@@ -147,8 +147,12 @@ async function main(options) {
   };
 
   for (const ticker of universe) {
-    const latest = latestCachedDate(ticker);
-    if (latest === targetDate) {
+    const hasTarget = () => {
+      const cache = fetcher.readCache(ticker);
+      return (cache && cache.candles || []).some(row => String(row.date || '').slice(0,10) === targetDate &&
+        ['open','high','low','close','volume'].every(key => row[key] != null && String(row[key]).trim() !== '' && Number.isFinite(Number(row[key]))));
+    };
+    if (hasTarget()) {
       summary.cached++;
       continue;
     }
@@ -163,9 +167,8 @@ async function main(options) {
     if (res.ok) {
       // HTTP/API success is not freshness success. Arjum may answer before the
       // current EOD candle has been published. Re-read the persisted cache and
-      // only count the ticker fresh when its newest candle is targetDate.
-      const refreshedDate = latestCachedDate(ticker);
-      if (refreshedDate === targetDate) {
+      // only count it complete when the requested date has all OHLCV fields.
+      if (hasTarget()) {
         summary.fetched++;
       } else {
         summary.failed++;

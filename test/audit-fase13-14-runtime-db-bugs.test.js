@@ -120,19 +120,12 @@ test('F13-05: final-schedule.cron declares CRON_TZ and each command uses node ru
   }
 });
 
-test('F13-05b: broker-summary cron matches documented EOD retry cadence and avoids --fresh', () => {
-  const cronPath = path.join(__dirname, '..', 'deploy/vps/final-schedule.cron');
-  const raw = fs.readFileSync(cronPath, 'utf8');
-  const brokerLines = raw.split('\n').filter(l => !l.trim().startsWith('#') && l.includes('run-daily-broker-update.sh'));
-  assert.equal(brokerLines.length, 2, 'broker update must use one retry cadence line plus one final-attempt line');
-
-  const retry = brokerLines.find(l => /^0,30\s+18-21\s+/.test(l));
-  const final = brokerLines.find(l => /^0\s+22\s+/.test(l));
-  assert.ok(retry, 'must retry every 30 minutes from 18:00 through 21:30 WIB');
-  assert.ok(final, 'must run a final attempt at 22:00 WIB');
-  assert.doesNotMatch(retry, /--fresh\b/, 'normal retries must reuse valid dated cache instead of refetching every ticker');
-  assert.doesNotMatch(final, /--fresh\b/, 'final retry must also preserve valid dated cache');
-  assert.match(final, /--final\b/, '22:00 run must report an incomplete EOD update as a real failure');
+test('F13-05b: broker retries persist without a final cutoff', () => {
+ const raw=fs.readFileSync(path.join(__dirname,'..','deploy/vps/final-schedule.cron'),'utf8');
+ const lines=raw.split('\n').filter(l=>!l.trim().startsWith('#')&&l.includes('run-daily-market-update.sh'));
+ assert.equal(lines.length,1);
+ assert.match(lines[0],/^0,30\s+\*\s+\*\s+\*\s+\*\s+/);
+ assert.doesNotMatch(raw.split('\n').filter(l=>!l.trim().startsWith('#')).join('\n'),/--final|run-daily-broker-update\.sh/);
 });
 
 // ---------------------------------------------------------------------------
@@ -302,12 +295,9 @@ test('F13-05c: active IDX master universe is 962 tickers and includes July 2026 
   assert.equal(uniq.has('CNTX'), false, 'CNTX is not present in the owner-supplied 2026-09-29 master list');
 });
 
-test('F13-05d: daily candle cron retries from 18:00 and stays below 5000 worst-case requests', () => {
-  const cronPath = path.join(__dirname, '..', 'deploy/vps/final-schedule.cron');
-  const raw = fs.readFileSync(cronPath, 'utf8');
-  const lines = raw.split('\n').filter(l => !l.trim().startsWith('#') && l.includes('run-daily-candles.sh'));
-  assert.equal(lines.length, 2, 'daily candles must use retry line plus 20:00 final retry line');
-  assert.ok(lines.some(l => /^0,30\s+18-19\s+/.test(l)), 'must retry at 18:00, 18:30, 19:00, and 19:30 WIB');
-  assert.ok(lines.some(l => /^0\s+20\s+/.test(l)), 'must retry once more at 20:00 WIB');
-  assert.ok(962 * 5 < 5000, 'worst-case 962 x 5 request window must remain below 5000');
+test('F13-05d: candles share the durable EOD coordinator and quota budget', () => {
+ const raw=fs.readFileSync(path.join(__dirname,'..','tools/run-daily-market-update.js'),'utf8');
+ assert.match(raw,/candles\.main\(\{targetDate:date\}\)/);
+ assert.match(raw,/hour>=18/);
+ assert.doesNotMatch(raw,/--limit|--final/);
 });
