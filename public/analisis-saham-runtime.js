@@ -532,6 +532,7 @@
       var m = ctx.market_structure || {};
 
       if (isFinancial) {
+        researchText('financialTickerBadge', ticker);
         researchText('financialPbv', researchHasNumber(f.pbv) ? researchNumber(f.pbv, 2) + 'x' : '—');
         researchText('financialPbvPrice', researchHasNumber(f.pbv_as_of_price) ? 'Harga acuan ' + researchIdr(f.pbv_as_of_price) : 'Harga acuan —');
         researchText('financialBvps', researchHasNumber(f.book_value_per_share) ? researchIdr(f.book_value_per_share) : '—');
@@ -539,9 +540,20 @@
         researchText('financialMarketCap', researchHasNumber(f.market_cap) ? researchIdr(f.market_cap) : '—');
         researchText('financialMarketCapAsOf', f.market_cap_as_of ? 'As of ' + f.market_cap_as_of : 'Belum tersedia');
         researchText('financialPeriod', f.fundamental_period || 'Belum tersedia');
+        researchText('financialPeriodHero', f.fundamental_period ? 'Periode ' + f.fundamental_period : 'Periode belum tersedia');
         researchText('financialSource', f.fundamental_source || 'Belum tersedia');
         researchText('financialMarketCapSource', f.market_cap_source || 'Belum tersedia');
         researchText('financialUpdatedAt', f.fundamental_updated_at || 'Belum tersedia');
+
+        var coverageValues = [f.pbv, f.book_value_per_share, f.shares_outstanding, f.market_cap];
+        var coverageCount = coverageValues.reduce(function (count, value) {
+          return count + (researchHasNumber(value) ? 1 : 0);
+        }, 0);
+        researchText('financialCoverage', coverageCount + ' / 4');
+        var coverageBar = byId('financialCoverageBar');
+        if (coverageBar && coverageBar.style && coverageBar.style.setProperty) {
+          coverageBar.style.setProperty('--ac-financial-coverage', (coverageCount * 25) + '%');
+        }
       } else {
         researchText('marketStructureFreeFloat', researchHasNumber(m.free_float_pct) ? researchNumber(m.free_float_pct, 2) + '%' : '—');
         researchText('marketStructureFreeFloatAsOf', m.free_float_as_of ? 'As of ' + m.free_float_as_of : 'As of —');
@@ -557,7 +569,12 @@
       }
 
       if (state) state.hidden = true;
-      if (content) content.hidden = false;
+      if (content) {
+        content.hidden = false;
+        if (root.AutoCuanFinalUiux && typeof root.AutoCuanFinalUiux.enterPanel === 'function') {
+          root.AutoCuanFinalUiux.enterPanel(content);
+        }
+      }
     } catch (error) {
       if (generation !== researchGeneration) return;
       if (state) {
