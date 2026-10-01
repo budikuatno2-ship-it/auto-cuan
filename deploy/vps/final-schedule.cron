@@ -9,6 +9,11 @@ CRON_TZ=Asia/Jakarta
 5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
 # Lifecycle evaluator (sore, setelah bursa tutup)
 30 16 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-lifecycle-evaluator.js --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
+# Morning repair for the PREVIOUS trading session.
+# Before 16:30 WIB the broker worker intentionally resolves T-1, so this catches
+# late Arjum publication after the 23:00 pass without confusing it with today's
+# still-open session. Idempotent: complete marker v2 becomes a fast no-op.
+30 7 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-broker-update.sh --limit 5000 --final >> /home/ubuntu/auto-cuan-runner/logs/eod-market-data-repair.log 2>&1
 # Canonical EOD market-data bundle — SELAMANYA berulang setiap hari bursa.
 # CRON_TZ=Asia/Jakarta: 18:00 berarti 18:00 WIB, bukan UTC.
 # Tiap jam 18:00-23:00 wrapper melengkapi broker summary, broker accumulation,
