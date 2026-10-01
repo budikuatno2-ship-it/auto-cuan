@@ -15,6 +15,67 @@ const dailyUpdate = require('../tools/run-daily-broker-update');
 // one test's exit code doesn't leak into the next test or into the overall
 // process exit code for the whole suite.
 test.afterEach(() => { process.exitCode = undefined; });
+test('ticker limit never becomes a daily quota ceiling (September 30 regression)',async()=>{
+ await withTempDataDir(async()=>{
+  const quota=arjumClient.getConfiguredDailyQuota,used=arjumClient.getUsedQuotaToday;
+  arjumClient.getConfiguredDailyQuota=()=>10000;arjumClient.getUsedQuotaToday=()=>7862;
+  let calls=0;
+  const restore=mockArjum({fetchBrokerSummary:async()=>{calls++;return {ok:true,data:{top_buyers:[{broker:'YU',bval:100,bvol:10}],top_sellers:[]}};}});
+  try{await dailyUpdate.run(['--tickers','BBCA','--limit','5000','--date','2026-09-30','--delay','1']);assert.equal(calls,1);assert.equal(dailyUpdate.readMarker('2026-09-30').complete,true);}
+  finally{restore();arjumClient.getConfiguredDailyQuota=quota;arjumClient.getUsedQuotaToday=used;}
+ });
+});
+test('a swallowed disk write failure cannot create a completion marker',async()=>{
+ await withTempDataDir(async()=>{
+  const write=bandarmologiService.writeDiskCache;
+  const restore=mockArjum({fetchBrokerSummary:async()=>({ok:true,data:{top_buyers:[{broker:'YU',bval:100,bvol:10}],top_sellers:[]}})});
+  bandarmologiService.writeDiskCache=()=>{};
+  try{await assert.rejects(dailyUpdate.run(['--tickers','BBCA','--date','2026-09-30','--delay','1']),/could not be persisted/);assert.equal(dailyUpdate.readMarker('2026-09-30'),null);}
+  finally{bandarmologiService.writeDiskCache=write;restore();}
+ });
+});
+
+test('dated auxiliary refresh bypasses undated local caches and rejects fallback payloads', async () => {
+  await withTempDataDir(async () => {
+    let accOptions=null, insOptions=null;
+    const restore=mockArjum({
+      fetchBrokerSummary:async()=>({ok:true,data:{top_buyers:[{broker:'YU',bval:100,bvol:10}],top_sellers:[]}}),
+      fetchBrokerAccumulation:async(_ticker,options)=>{accOptions=options;return {ok:true,data:{series:[1]},from_cache:true};},
+      fetchInsiders:async(_ticker,_page,_limit,options)=>{insOptions=options;return {ok:true,data:[],fallback:true};}
+    });
+    try{
+      await dailyUpdate.run(['--tickers','BBCA','--date','2026-09-07','--delay','1']);
+      const marker=dailyUpdate.readMarker('2026-09-07');
+      assert.equal(marker.complete,false);
+      assert.equal(accOptions.forceLive,true);
+      assert.equal(insOptions.forceLive,true);
+      assert.equal(bandarmologiService.hasDiskCache('broker-accumulation','BBCA','2026-09-07'),false);
+      assert.equal(bandarmologiService.hasDiskCache('insiders','BBCA','2026-09-07'),false);
+    } finally {restore();}
+  });
+});
+
+test('auxiliary failure remains pending and retries without refetching a valid summary', async () => {
+  await withTempDataDir(async () => {
+    let summaries=0, accumulations=0, insiders=0;
+    const restore=mockArjum({
+      fetchBrokerSummary: async()=> { summaries++; return {ok:true,data:{top_buyers:[{broker:'YU',bval:100,bvol:10}],top_sellers:[]}}; },
+      fetchBrokerAccumulation: async()=> { accumulations++; return {ok:true,data:{series:[]}}; },
+      fetchInsiders: async()=> { insiders++; return insiders===1 ? {ok:false,status:503,error:'upstream unavailable'} : {ok:true,data:[]}; }
+    });
+    try {
+      const args=['--tickers','BBCA','--date','2026-09-07','--delay','1'];
+      await dailyUpdate.run(args);
+      assert.equal(dailyUpdate.readMarker('2026-09-07').complete,false,'insider failure cannot complete the day');
+      process.exitCode=undefined;
+      await dailyUpdate.run(args);
+      assert.equal(dailyUpdate.readMarker('2026-09-07').complete,true);
+      assert.equal(summaries,1);
+      assert.equal(accumulations,1);
+      assert.equal(insiders,2);
+    } finally {restore();}
+  });
+});
 
 function withTempDataDir(fn) {
   const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'daily-update-'));
@@ -46,6 +107,9 @@ function withTempDataDir(fn) {
 }
 
 function mockArjum(overrides) {
+  const intel = require('../lib/bandarmologi-intel-service');
+  const originalCompute = intel.computeAndSaveIntel;
+  intel.computeAndSaveIntel = () => {};
   const orig = {
     hasArjumApiKey: arjumClient.hasArjumApiKey,
     fetchBrokerSummary: arjumClient.fetchBrokerSummary,
@@ -56,7 +120,7 @@ function mockArjum(overrides) {
   arjumClient.fetchBrokerSummary = overrides.fetchBrokerSummary || (async () => ({ ok: true, data: { top_buyers: [], top_sellers: [] } }));
   arjumClient.fetchBrokerAccumulation = overrides.fetchBrokerAccumulation || (async () => ({ ok: true, data: { series: [] } }));
   arjumClient.fetchInsiders = overrides.fetchInsiders || (async () => ({ ok: true, data: [] }));
-  return () => Object.assign(arjumClient, orig);
+  return () => { Object.assign(arjumClient, orig); intel.computeAndSaveIntel = originalCompute; };
 }
 
 test('run-daily-broker-update: a ticker with real buy/sell rows is written to disk and counted done', async () => {
@@ -108,8 +172,10 @@ test('run-daily-broker-update: a quota-exceeded response stops the run cleanly a
   });
 });
 
-test('run-daily-broker-update: retry skips auxiliary endpoints for a ticker whose dated summary is already cached', async () => {
+test('run-daily-broker-update: retry skips endpoints whose date-specific data is already cached', async () => {
   await withTempDataDir(async () => {
+    bandarmologiService.writeDiskCache('broker-accumulation', 'BBCA', '2026-09-07', { series: [] });
+    bandarmologiService.writeDiskCache('insiders', 'BBCA', '2026-09-07', []);
     bandarmologiService.writeDiskCache('broker-summary', 'BBCA', '2026-09-07', {
       top_buyers: [{ broker: 'YU', bval: 100, bvol: 10 }],
       top_sellers: []
@@ -157,7 +223,7 @@ test('run-daily-broker-update: pending empty summary does not spend auxiliary re
 
 test('run-daily-broker-update: an already-complete marker makes the next firing a fast no-op', async () => {
   await withTempDataDir(async () => {
-    dailyUpdate.writeMarker('2026-09-07', { date: '2026-09-07', complete: true, completed_at: new Date().toISOString(), total_tickers: 1 });
+    dailyUpdate.writeMarker('2026-09-07', { version: 2, universe_hash: require('crypto').createHash('sha256').update('BBCA').digest('hex'), date: '2026-09-07', complete: true, completed_at: new Date().toISOString(), total_tickers: 1 });
     let calledFetch = false;
     const restore = mockArjum({
       fetchBrokerSummary: async () => { calledFetch = true; return { ok: true, data: { top_buyers: [], top_sellers: [] } }; }

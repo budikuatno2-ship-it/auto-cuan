@@ -41,6 +41,8 @@
     hunter: 'hunter',
     insider: 'insider',
     ranking: 'ranking',
+    financial: 'financial',
+    'market-structure': 'market-structure',
     pattern: 'pattern'
   };
   var PORTFOLIO_TAB = {

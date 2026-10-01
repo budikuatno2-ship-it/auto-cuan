@@ -101,7 +101,7 @@ test('portfolio summary is read-only and uses exactly the Portfolio model',async
 });
 test('Finance does not render a duplicate journal or load its legacy runtime',()=>{
  const html=read('public/index.html');assert.doesNotMatch(html,/id="mmPanelJournal"|id="mmTabBtnJournal"|src="\/money-management-runtime/);
- assert.match(html,/money-sheet-runtime\.js/);assert.match(read('lib/money-management-handler.js'),/action === 'get-journal'/);
+ assert.match(html,/money-sheet-lazy-loader\.js/);assert.match(read('public/money-sheet-lazy-loader.js'),/money-sheet-runtime\.js/);assert.match(read('lib/money-management-handler.js'),/action === 'get-journal'/);
  assert.doesNotMatch(read('supabase/money-sheet-v1-migration.sql'),/DELETE\s+FROM|DROP\s+TABLE/i);
 });
 test('application footer is removed without hiding semantic footers by CSS',()=>{

@@ -43,7 +43,7 @@ test('market structure panel preserves risk-context semantics', () => {
 });
 
 test('missing market cap and shares stay explicitly unavailable rather than synthesized', () => {
-  assert.match(runtime, /f\.market_cap\)\) \? researchIdr\(f\.market_cap\) : '—'/);
-  assert.match(runtime, /f\.shares_outstanding\)\) \? researchCompact\(f\.shares_outstanding\) : '—'/);
+  assert.match(runtime, /researchHasNumber\(f\.market_cap\) \? researchIdr\(f\.market_cap\) : '—'/);
+  assert.match(runtime, /researchHasNumber\(f\.shares_outstanding\) \? researchCompact\(f\.shares_outstanding\) : '—'/);
   assert.doesNotMatch(runtime, /shares_outstanding\s*\*\s*.*pbv_as_of_price|pbv_as_of_price\s*\*\s*.*shares_outstanding/);
 });

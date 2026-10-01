@@ -9,20 +9,14 @@ CRON_TZ=Asia/Jakarta
 5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
 # Lifecycle evaluator (sore, setelah bursa tutup)
 30 16 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-lifecycle-evaluator.js --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
-# Broker summary update: Arjum EOD biasanya baru stabil sekitar 18:00-20:00 WIB.
-# Retry idempoten tiap 30 menit mulai 18:00 sampai 21:30; 22:00 adalah final attempt.
-# Jangan pakai --fresh di cron retry: dated broker-summary yang sudah valid harus di-skip
-# agar kuota harian tersisa untuk ticker yang memang masih missing/pending.
-0,30 18-21 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-broker-update.sh --limit 5000 >> /home/ubuntu/auto-cuan-runner/logs/daily-broker-update.log 2>&1
-0 22 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-broker-update.sh --limit 5000 --final >> /home/ubuntu/auto-cuan-runner/logs/daily-broker-update.log 2>&1
+# EOD queue: starts at 18:00 WIB and retries every 30 minutes until 23:30.
+# Cron is limited to Monday-Friday; the coordinator also checks the IDX 2026
+# holiday calendar, so weekends and exchange holidays send zero EOD requests.
+# Pending dates remain durable and resume at 18:00 on the next trading day.
+# No --final: late upstream publication must never be silently marked NO_DATA.
+0,30 18-23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
 # Afternoon recap (18:45 WIB)
 45 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-afternoon-recap.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daily-afternoon-recap.log 2>&1
-# Fetch daily OHLCV candles from 18:00 WIB. Freshness-aware: tickers already
-# carrying today's candle are skipped; stale tickers retry without redownloading
-# the full universe. Five firings cap the worst-case daily candle budget at
-# 962 x 5 = 4,810 requests, below the configured 5,000 candle-request budget.
-0,30 18-19 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/fetch-daily-candles.log 2>&1
-0 20 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/fetch-daily-candles.log 2>&1
 # Landing refresh (22:15 WIB, harian)
 15 22 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/direct-refresh-landing.js >> /home/ubuntu/auto-cuan-runner/logs/landing-refresh.log 2>&1
 
