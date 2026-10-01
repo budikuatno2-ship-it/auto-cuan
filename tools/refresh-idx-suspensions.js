@@ -203,23 +203,61 @@ function applyEvents(previous, rows, options) {
 async function fetchSuspendPayload(fetchImpl, options) {
   options = options || {};
   const request = fetchImpl || fetch;
-  const controller = new AbortController();
   const timeoutMs = Math.max(1000, Number(options.timeoutMs) || DEFAULT_TIMEOUT_MS);
+  const baseHeaders = {
+    Accept: 'application/json, text/plain, */*',
+    'Accept-Language': 'id-ID,id;q=0.9,en;q=0.7',
+    Referer: REFERER,
+    'Upgrade-Insecure-Requests': '1',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+    'X-Requested-With': 'XMLHttpRequest'
+  };
+
+  // Match the existing IDX diagnostic pattern in this repo: establish an IDX
+  // web session first, then call /primary with the cookies. This is more robust
+  // against IDX WAF/Cloudflare than a naked API request from the VPS.
+  const sessionController = new AbortController();
+  const sessionTimer = setTimeout(() => sessionController.abort(), timeoutMs);
+  let cookie = '';
+  try {
+    const sessionResponse = await request('https://www.idx.co.id/id', {
+      signal: sessionController.signal,
+      headers: baseHeaders
+    });
+    if (!sessionResponse.ok) throw new Error('IDX session HTTP ' + sessionResponse.status);
+    const cookies = typeof sessionResponse.headers.getSetCookie === 'function'
+      ? sessionResponse.headers.getSetCookie()
+      : [];
+    cookie = cookies.length ? cookies.join('; ') : String(sessionResponse.headers.get('set-cookie') || '');
+    // Consume the body so the connection is cleanly reusable.
+    await sessionResponse.text();
+  } finally {
+    clearTimeout(sessionTimer);
+  }
+
+  const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const url = new URL(ENDPOINT);
   url.searchParams.set('resultCount', String(options.resultCount || RESULT_COUNT));
   try {
+    const headers = Object.assign({}, baseHeaders);
+    if (cookie) headers.Cookie = cookie;
     const response = await request(url.toString(), {
       signal: controller.signal,
-      headers: {
-        Accept: 'application/json, text/plain, */*',
-        'Accept-Language': 'id-ID,id;q=0.9,en;q=0.7',
-        Referer: REFERER,
-        'User-Agent': 'Mozilla/5.0 (compatible; AutoCuan-SuspensionGuard/1.0)'
-      }
+      headers
     });
     if (!response.ok) throw new Error('IDX suspend feed HTTP ' + response.status);
-    return await response.json();
+
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+    const body = await response.text();
+    if (!body.trim() || /text\/html/.test(contentType) || /^\s*</.test(body)) {
+      throw new Error('IDX suspend feed returned non-JSON/HTML response');
+    }
+    try {
+      return JSON.parse(body);
+    } catch (_) {
+      throw new Error('IDX suspend feed returned invalid JSON');
+    }
   } finally {
     clearTimeout(timer);
   }
