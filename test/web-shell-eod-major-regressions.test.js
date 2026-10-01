@@ -70,7 +70,7 @@ test('Kelola Keuangan no longer auto-refreshes Portfolio and hides advanced chro
   assert.doesNotMatch(money, /renderRows\(null, true\); refreshPortfolio\(true\)/);
   assert.doesNotMatch(money, /autocuan:portfolio-changed/);
   assert.match(moneyCss, /#page-money-management \.ms-portfolio/);
-  assert.match(moneyCss, /#page-money-management \.ms-edit-toolbar/);
+  assert.doesNotMatch(moneyCss, /#page-money-management \.ms-edit-toolbar,/);
 });
 
 test('canonical EOD cron is recurring WIB hourly and owns all requested datasets', () => {
