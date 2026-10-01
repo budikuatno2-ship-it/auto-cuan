@@ -1,23 +1,21 @@
 #!/usr/bin/env bash
-# Sector-hot hybrid runner (Vercel primer → VPS local fallback).
+# Sector-hot runner.
 #
-# The cron runner triggers the Vercel sector-hot endpoint first. When Vercel does
-# NOT answer HTTP 200 (paused / 402 DEPLOYMENT_DISABLED / 5xx / timeout) the
-# runner executes the local screener itself, so the sector snapshot keeps
-# refreshing even while the primary deployment is unavailable.
+# Production cron uses --force-local and refreshes sector-hot directly on the
+# VPS via scripts/refresh-sector-hot.js. A legacy Vercel-first mode remains
+# available only for manual compatibility when --force-local is omitted.
 #
 # Usage:
 #   deploy/vps/run-sector-hot.sh [--dry-run] [--force-local] [--json]
 #
 # Flags:
-#   --dry-run     Never call Vercel; always run the local screener (dry-run mode).
-#   --force-local Skip the Vercel attempt and run the local screener directly.
+#   --dry-run     Do not call Vercel or mutate sector-hot data; print intended local action.
+#   --force-local Skip the Vercel attempt and run the real local sector-hot refresher.
 #   --json        Emit a machine-readable summary line.
 #
 # Environment:
 #   SECTOR_HOT_VERCEL_URL   (default https://autocuan.web.id/api/sector-hot?action=refresh)
 #   SECTOR_HOT_CURL_TIMEOUT (default 15 seconds)
-#   SECTOR_HOT_LOCAL_MODE   (default daytrade)
 #   AUTO_CUAN_REPO / AUTO_CUAN_NODE_BIN / AUTO_CUAN_RUNNER_DIR — as elsewhere.
 #
 # Suggested crontab (WIB, every 30 minutes during market hours):
@@ -30,7 +28,6 @@ RUNNER_DIR="${AUTO_CUAN_RUNNER_DIR:-/home/ubuntu/auto-cuan-runner}"
 NODE_BIN="${AUTO_CUAN_NODE_BIN:-/home/ubuntu/.local/node-v22/bin/node}"
 VERCEL_URL="${SECTOR_HOT_VERCEL_URL:-https://autocuan.web.id/api/sector-hot?action=refresh}"
 CURL_TIMEOUT="${SECTOR_HOT_CURL_TIMEOUT:-15}"
-LOCAL_MODE="${SECTOR_HOT_LOCAL_MODE:-daytrade}"
 
 DRY_RUN=0
 FORCE_LOCAL=0
@@ -77,33 +74,31 @@ if [ "$FORCE_LOCAL" -eq 0 ]; then
 fi
 
 if [ "$VERCEL_CODE" = "200" ]; then
-  log "Vercel OK — local screener not needed."
+  log "Vercel OK — local refresh not needed."
 else
   if [ "$FORCE_LOCAL" -eq 0 ]; then
-    log "Vercel unavailable (HTTP $VERCEL_CODE) — running the local screener."
+    log "Vercel unavailable (HTTP $VERCEL_CODE) — running real local sector-hot refresh."
   else
-    log "Forced local run (mode=$LOCAL_MODE)."
+    log "Forced local sector-hot refresh."
   fi
 
-  LOCAL_ARGS=("--mode=$LOCAL_MODE")
   if [ "$DRY_RUN" -eq 1 ]; then
-    LOCAL_ARGS+=("--dry-run")
-  fi
-
-  # Run the local screener and ensure snapshot is materialized
-  if "$NODE_BIN" tools/run-screener.js "${LOCAL_ARGS[@]}"; then
+    LOCAL_RESULT="dry_run"
+    log "DRY_RUN: would execute scripts/refresh-sector-hot.js"
+  elif "$NODE_BIN" scripts/refresh-sector-hot.js; then
     LOCAL_RESULT="ok"
   else
     LOCAL_RESULT="failed"
-    log "Local screener exited non-zero."
+    log "Local sector-hot refresher exited non-zero."
   fi
-  # Always ensure local screener snapshot is up-to-date
-  "$NODE_BIN" tools/build-screener-snapshot.js 2>/dev/null || true
 fi
 
 if [ "$JSON_OUT" -eq 1 ]; then
-  echo "{\"ts\":\"$(stamp)\",\"vercel_http\":\"$VERCEL_CODE\",\"local\":\"$LOCAL_RESULT\",\"mode\":\"$LOCAL_MODE\",\"dry_run\":$DRY_RUN}"
+  echo "{\"ts\":\"$(stamp)\",\"vercel_http\":\"$VERCEL_CODE\",\"local\":\"$LOCAL_RESULT\",\"dry_run\":$DRY_RUN}"
 fi
 
-# Never fail the cron run because the primary was down and the fallback ran.
+# Production monitoring must see a failed local refresh as a failed cron run.
+if [ "$LOCAL_RESULT" = "failed" ]; then
+  exit 1
+fi
 exit 0
