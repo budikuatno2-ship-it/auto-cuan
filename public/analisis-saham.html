@@ -345,33 +345,93 @@
 
         <!-- ===== FINANCIAL / FUNDAMENTAL ===== -->
         <section id="panel-tab-financial" class="analisis-tab-panel" style="display:none">
-            <div class="unified-card ac-research-data-panel">
-                <div class="unified-card-header ac-research-data-head">
-                    <div>
-                        <p class="ac-research-kicker">Fundamental</p>
-                        <h2 class="text-sm font-bold text-gray-200">Financial Snapshot</h2>
-                        <p class="text-[11px] text-gray-500 mt-1">Valuasi dan struktur modal dari data terverifikasi yang tersedia. Nilai kosong tidak diestimasi diam-diam.</p>
+            <div class="ac-financial-shell">
+                <header class="ac-financial-head">
+                    <div class="ac-financial-heading">
+                        <p class="ac-research-kicker">Fundamental workspace</p>
+                        <h2>Financial Canvas</h2>
+                        <p>Ringkas valuasi dan struktur modal dari data yang benar-benar tersedia. Nilai kosong tetap kosong, bukan diisi asumsi.</p>
                     </div>
                     <div class="ac-research-ticker-tools">
+                        <label class="ac-financial-search-label" for="financialTickerInput">Ticker</label>
                         <input id="financialTickerInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" placeholder="BBCA" class="ac-research-ticker-input" onkeydown="if(event.key==='Enter'&&!event.isComposing){loadFinancialStructureTab('financial', this.value)}">
-                        <button type="button" class="ac-research-load-btn" onclick="loadFinancialStructureTab('financial', document.getElementById('financialTickerInput').value)">Muat</button>
+                        <button type="button" class="ac-research-load-btn" onclick="loadFinancialStructureTab('financial', document.getElementById('financialTickerInput').value)">Muat data</button>
                     </div>
+                </header>
+
+                <div id="financialDataState" class="ac-financial-state">
+                    <span class="ac-financial-state-dot" aria-hidden="true"></span>
+                    <span>Pilih ticker untuk membuka Financial Canvas.</span>
                 </div>
-                <div id="financialDataState" class="ac-research-state">Pilih ticker untuk memuat data financial.</div>
-                <div id="financialDataContent" class="ac-research-data-content" hidden>
-                    <div class="ac-metric-grid ac-metric-grid-financial">
-                        <article class="ac-metric-tile"><span>PBV</span><strong id="financialPbv">—</strong><small id="financialPbvPrice">Harga acuan —</small></article>
-                        <article class="ac-metric-tile"><span>Book Value / Share</span><strong id="financialBvps">—</strong><small>Nilai buku per saham</small></article>
-                        <article class="ac-metric-tile"><span>Saham Beredar</span><strong id="financialShares">—</strong><small>Shares outstanding terverifikasi</small></article>
-                        <article class="ac-metric-tile"><span>Market Cap</span><strong id="financialMarketCap">—</strong><small id="financialMarketCapAsOf">Belum tersedia</small></article>
+
+                <div id="financialDataContent" class="ac-financial-content" hidden>
+                    <div class="ac-financial-topline">
+                        <div class="ac-financial-identity">
+                            <span id="financialTickerBadge" class="ac-financial-symbol">—</span>
+                            <div>
+                                <span class="ac-financial-overline">Verified snapshot</span>
+                                <h3>Nilai inti, sumber jelas.</h3>
+                                <p id="financialPeriodHero">Periode belum tersedia</p>
+                            </div>
+                        </div>
+                        <div class="ac-financial-coverage" aria-label="Kelengkapan metrik utama">
+                            <span>Coverage</span>
+                            <strong id="financialCoverage">0 / 4</strong>
+                            <i id="financialCoverageBar" aria-hidden="true"></i>
+                        </div>
                     </div>
-                    <div class="ac-research-detail-grid">
-                        <div class="ac-research-detail"><span>Periode Fundamental</span><strong id="financialPeriod">—</strong></div>
-                        <div class="ac-research-detail"><span>Sumber Fundamental</span><strong id="financialSource">—</strong></div>
-                        <div class="ac-research-detail"><span>Sumber Market Cap</span><strong id="financialMarketCapSource">—</strong></div>
-                        <div class="ac-research-detail"><span>Diperbarui</span><strong id="financialUpdatedAt">—</strong></div>
+
+                    <div class="ac-financial-grid">
+                        <article class="ac-financial-focus-card">
+                            <div class="ac-financial-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
+                            <span class="ac-financial-focus-label">Price to Book Value</span>
+                            <strong id="financialPbv">—</strong>
+                            <small id="financialPbvPrice">Harga acuan —</small>
+                            <p>PBV ditampilkan apa adanya dari fundamental yang tersedia; tidak ada interpretasi otomatis beli atau jual.</p>
+                        </article>
+
+                        <div class="ac-financial-metric-stack">
+                            <article class="ac-financial-metric">
+                                <span>Book Value / Share</span>
+                                <strong id="financialBvps">—</strong>
+                                <small>Nilai buku per saham</small>
+                            </article>
+                            <article class="ac-financial-metric">
+                                <span>Market Cap</span>
+                                <strong id="financialMarketCap">—</strong>
+                                <small id="financialMarketCapAsOf">Belum tersedia</small>
+                            </article>
+                            <article class="ac-financial-metric">
+                                <span>Saham Beredar</span>
+                                <strong id="financialShares">—</strong>
+                                <small>Shares outstanding terverifikasi</small>
+                            </article>
+                        </div>
                     </div>
-                    <p class="ac-research-footnote">Market cap hanya ditampilkan bila nilai tersimpan memiliki provenance. Sistem tidak mengarang market cap dari data yang belum diaudit.</p>
+
+                    <div class="ac-financial-source-rail">
+                        <div class="ac-financial-source">
+                            <span>Periode fundamental</span>
+                            <strong id="financialPeriod">—</strong>
+                        </div>
+                        <div class="ac-financial-source">
+                            <span>Sumber fundamental</span>
+                            <strong id="financialSource">—</strong>
+                        </div>
+                        <div class="ac-financial-source">
+                            <span>Sumber market cap</span>
+                            <strong id="financialMarketCapSource">—</strong>
+                        </div>
+                        <div class="ac-financial-source">
+                            <span>Diperbarui</span>
+                            <strong id="financialUpdatedAt">—</strong>
+                        </div>
+                    </div>
+
+                    <div class="ac-financial-trust-note">
+                        <span aria-hidden="true">i</span>
+                        <p>Market cap hanya muncul bila nilai tersimpan memiliki provenance. Financial Canvas tidak membuat angka pengganti saat data sumber belum tersedia.</p>
+                    </div>
                 </div>
             </div>
         </section>
