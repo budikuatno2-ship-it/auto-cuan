@@ -243,6 +243,7 @@ function calcRSI(closes, period) {
   }
   const avgGain = gains / period;
   const avgLoss = losses / period;
+  if (avgGain === 0 && avgLoss === 0) return 50;
   if (avgLoss === 0) return 100;
   return 100 - (100 / (1 + avgGain / avgLoss));
 }

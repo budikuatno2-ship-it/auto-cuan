@@ -1,0 +1,10 @@
+{"ticker":"OVLA","scheduled_time":"09:15","sample_timestamp":"2026-07-22T09:15:03.000Z","current_price":1000,"reference_entry_price":1000}
+{"ticker":"OVLA","scheduled_time":"09:30","sample_timestamp":"2026-07-22T09:30:03.000Z","current_price":1010,"reference_entry_price":1010}
+{"ticker":"OVLA","scheduled_time":"10:30","sample_timestamp":"2026-07-22T10:30:03.000Z","current_price":1020,"reference_entry_price":1020}
+{"ticker":"OVLA","scheduled_time":"16:00","sample_timestamp":"2026-07-22T16:00:03.000Z","current_price":1050,"reference_entry_price":1050}
+{"ticker":"OVLB","scheduled_time":"09:45","sample_timestamp":"2026-07-22T09:45:03.000Z","current_price":2000,"reference_entry_price":2000}
+{"ticker":"OVLB","scheduled_time":"10:00","sample_timestamp":"2026-07-22T10:00:03.000Z","current_price":2010,"reference_entry_price":2010}
+{"ticker":"OVLB","scheduled_time":"16:00","sample_timestamp":"2026-07-22T16:00:03.000Z","current_price":2100,"reference_entry_price":2100}
+{"ticker":"MRGN","scheduled_time":"10:30","sample_timestamp":"2026-07-22T10:30:03.000Z","current_price":999,"reference_entry_price":999}
+{"ticker":"MRGN","scheduled_time":"10:45","sample_timestamp":"2026-07-22T10:45:03.000Z","current_price":1000,"reference_entry_price":1000}
+{"ticker":"MRGN","scheduled_time":"16:00","sample_timestamp":"2026-07-22T16:00:03.000Z","current_price":1001,"reference_entry_price":1001}

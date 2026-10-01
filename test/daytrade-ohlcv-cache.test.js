@@ -36,6 +36,24 @@ function make90DCandles(baseClose) {
   return candles;
 }
 
+// The cache TTL is market-aware: the configured TTL during IDX hours
+// (Mon-Fri 09:00-15:30 WIB) and 12 hours outside them, because the exchange is
+// shut and the candles cannot change. A test about STALE handling therefore has
+// to say WHEN it is running, otherwise "20 minutes old" means stale in the
+// morning and fresh at night. These two tests used the real wall clock and were
+// clock-dependent; they only ever passed at any hour because the market-aware
+// branch was unreachable (see lib/daytrade-ohlcv-cache.js fetchWithCache).
+// Pinning the clock to a trading-hours instant preserves their intent exactly
+// and removes the latent flake.
+// 2026-09-03 is a Thursday; 11:00 WIB is inside 09:00-15:30.
+const MARKET_HOURS_NOW = Date.parse('2026-09-03T04:00:00Z'); // 11:00 WIB
+
+function freezeClockDuringMarketHours(t) {
+  const realNow = Date.now;
+  Date.now = () => MARKET_HOURS_NOW;
+  t.after(() => { Date.now = realNow; });
+}
+
 async function tmpdir() {
   return fs.mkdtemp(path.join(os.tmpdir(), 'ohlcv-cache-test-'));
 }
@@ -79,7 +97,8 @@ test('fresh cache is used without calling Yahoo fetch', async () => {
 // TEST: Stale cache triggers Yahoo refresh
 // ============================================================
 
-test('stale cache triggers Yahoo refresh and updates cache', async () => {
+test('stale cache triggers Yahoo refresh and updates cache', async (t) => {
+  freezeClockDuringMarketHours(t);
   const dir = await tmpdir();
   const oldCandles = make90DCandles(100);
 
@@ -121,7 +140,8 @@ test('stale cache triggers Yahoo refresh and updates cache', async () => {
 // TEST: Yahoo failure falls back to stale cache
 // ============================================================
 
-test('Yahoo failure falls back to stale cache with staleFallback stat', async () => {
+test('Yahoo failure falls back to stale cache with staleFallback stat', async (t) => {
+  freezeClockDuringMarketHours(t);
   const dir = await tmpdir();
   const oldCandles = make90DCandles(300);
 
@@ -253,6 +273,24 @@ test('isCacheFresh returns true for old cache on weekend (12h effective TTL)', (
   const nowMs = Date.parse('2026-07-11T03:00:00Z');
   const updatedAtMs = nowMs - 2 * 60 * 60 * 1000;
   assert.equal(cache.isCacheFresh(updatedAtMs, nowMs, 900000), true);
+});
+
+test('isCacheFresh returns false when crossing market open 09:00 WIB boundary', () => {
+  // Wednesday: Updated at 08:55 WIB (01:55 UTC), Checked at 09:05 WIB (02:05 UTC).
+  // Elapsed time is 10 min (< 15 min TTL), but it crossed 09:00 WIB open boundary.
+  const updatedAtMs = Date.parse('2026-07-08T01:55:00Z');
+  const nowMs = Date.parse('2026-07-08T02:05:00Z');
+  assert.equal(cache.isCacheFresh(updatedAtMs, nowMs, 900000), false,
+    'Cache updated before 09:00 WIB must be stale after market open');
+});
+
+test('isCacheFresh returns true when updated after market open 09:00 WIB within TTL', () => {
+  // Wednesday: Updated at 09:02 WIB (02:02 UTC), Checked at 09:05 WIB (02:05 UTC).
+  // Elapsed time is 3 min (< 15 min TTL), both within active trading session.
+  const updatedAtMs = Date.parse('2026-07-08T02:02:00Z');
+  const nowMs = Date.parse('2026-07-08T02:05:00Z');
+  assert.equal(cache.isCacheFresh(updatedAtMs, nowMs, 900000), true,
+    'Cache updated after 09:00 WIB within TTL should be fresh');
 });
 
 // ============================================================

@@ -1,0 +1,735 @@
+/**
+ * Telegram Daily Picks Outcome/Win-Rate Report Generator
+ *
+ * Read-only script to analyze telegram_daily_picks from Supabase.
+ * Generates weekly outcome report for analysis purposes.
+ *
+ * Usage: node tools/report-telegram-outcomes.js
+ *
+ * Environment variables required:
+ *   SUPABASE_URL
+ *   SUPABASE_SERVICE_ROLE_KEY
+ *
+ * Optional:
+ *   DAYS_BACK - number of days to look back (default: 30)
+ *   OUTPUT_DIR - directory for markdown output (default: data/reports)
+ */
+
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+const helpers = require('../lib/report-helpers');
+
+// === Configuration ===
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const DAYS_BACK = parseInt(process.env.DAYS_BACK || '30', 10);
+const OUTPUT_DIR = process.env.OUTPUT_DIR || 'data/reports';
+
+// === Validate Environment ===
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('ERROR: Missing required environment variables.');
+  console.error('  SUPABASE_URL');
+  console.error('  SUPABASE_SERVICE_ROLE_KEY');
+  console.error('\nUsage:');
+  console.error('  SUPABASE_URL=https://xxx.supabase.co SUPABASE_SERVICE_ROLE_KEY=xxx node tools/report-telegram-outcomes.js');
+  process.exit(1);
+}
+
+// === Fetch Data from Supabase via REST API ===
+async function fetchDailyPicks() {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - DAYS_BACK);
+  const cutoffStr = cutoffDate.toISOString().split('T')[0];
+
+  console.log('Fetching telegram_daily_picks from last ' + DAYS_BACK + ' days (since ' + cutoffStr + ')...');
+
+  // Normalize SUPABASE_URL to avoid duplicate /rest/v1/
+  let baseUrl = SUPABASE_URL.replace(/\/rest\/v1\/?$/, '');
+  // Build REST API URL with filters
+  const url = new URL(`${baseUrl}/rest/v1/telegram_daily_picks`);
+  url.searchParams.set('select', '*');
+  url.searchParams.set('date', `gte.${cutoffStr}`);
+  url.searchParams.set('order', 'date.desc');
+
+  try {
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('ERROR fetching data:', response.status, errorText);
+      process.exit(1);
+    }
+
+    const data = await response.json();
+    console.log('Fetched ' + (data?.length || 0) + ' records\n');
+    return data || [];
+  } catch (error) {
+    console.error('ERROR fetching data:', error.message);
+    process.exit(1);
+  }
+}
+
+
+function calculatePickAgeDays(pick, now) {
+  if (!pick) return null;
+  const start = pick.first_sent_at || pick.created_at || pick.date || (pick.raw_payload && (pick.raw_payload.first_sent_at || pick.raw_payload.created_at || pick.raw_payload.date));
+  if (!start) return null;
+  const from = new Date(String(start).length === 10 ? String(start) + 'T00:00:00Z' : start);
+  const to = now ? new Date(now) : new Date();
+  if (isNaN(from.getTime()) || isNaN(to.getTime())) return null;
+  const diff = Math.max(0, to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24);
+  return Math.round(diff * 10) / 10;
+}
+
+function getAgeBucket(ageDays) {
+  if (ageDays == null || isNaN(ageDays)) return 'unknown';
+  if (ageDays <= 1) return '0-1d';
+  if (ageDays <= 3) return '2-3d';
+  if (ageDays <= 5) return '4-5d';
+  return '6+d';
+}
+
+// === Generate Report ===
+function generateReport(picks, opts) {
+  console.log('=== Generating Report ===\n');
+  opts = opts || {};
+  const reportNow = opts.now || null;
+
+  const total = picks.length;
+  const stats = {
+    total: total,
+    bySource: {},
+    entryCount: 0,
+    tp1Count: 0,
+    tp2Count: 0,
+    slCount: 0,
+    waitingCount: 0,
+    runningCount: 0,
+    expiredCount: 0,
+    scoreBuckets: {},
+    avgTimeToEntry: [],
+    avgTimeToTp1: [],
+    avgTimeToTp2: [],
+    avgTimeToSl: [],
+    outcomesByStatus: {},
+    outcomesBySource: {},
+    // NEW: Structured outcome by source
+    outcomeBySource: {},
+    // NEW: Structured status by source
+    statusBySource: {},
+    ageBySource: {},
+    expiredAgeBucketsBySource: {}
+  };
+
+  // Process each pick
+  for (const pick of picks) {
+    // Count by source
+    const source = helpers.getMonitorSource(pick) || 'unknown';
+    if (!stats.bySource[source]) stats.bySource[source] = 0;
+    stats.bySource[source]++;
+
+    if (!stats.ageBySource[source]) stats.ageBySource[source] = { totalAgeDays: 0, count: 0, averageAgeDays: null };
+    if (!stats.expiredAgeBucketsBySource[source]) stats.expiredAgeBucketsBySource[source] = { '0-1d': 0, '2-3d': 0, '4-5d': 0, '6+d': 0, unknown: 0 };
+    const ageDays = calculatePickAgeDays(pick, reportNow);
+    if (ageDays !== null) {
+      stats.ageBySource[source].totalAgeDays += ageDays;
+      stats.ageBySource[source].count++;
+    }
+
+    // Initialize outcomeBySource structure for this source
+    if (!stats.outcomeBySource[source]) {
+      stats.outcomeBySource[source] = {
+        total: 0,
+        entry: 0,
+        tp1: 0,
+        tp2: 0,
+        sl: 0,
+        expired: 0,
+        waiting: 0,
+        running: 0,
+        invalid: 0,
+        resolved: 0,
+        wins: 0,
+        losses: 0,
+        winRate: null
+      };
+    }
+    stats.outcomeBySource[source].total++;
+
+    // Initialize statusBySource structure for this source
+    if (!stats.statusBySource[source]) {
+      stats.statusBySource[source] = {};
+    }
+
+    // Count outcomes
+    const outcome = helpers.classifyOutcome(pick);
+    if (outcome === 'ENTRY_HIT') { stats.entryCount++; stats.outcomeBySource[source].entry++; }
+    if (outcome === 'TP1_HIT') { stats.tp1Count++; stats.outcomeBySource[source].tp1++; }
+    if (outcome === 'TP2_HIT') { stats.tp2Count++; stats.outcomeBySource[source].tp2++; }
+    if (outcome === 'SL_HIT') { stats.slCount++; stats.outcomeBySource[source].sl++; }
+    if (outcome === 'WAITING') { stats.waitingCount++; stats.outcomeBySource[source].waiting++; }
+    if (outcome === 'RUNNING') { stats.runningCount++; stats.outcomeBySource[source].running++; }
+    if (outcome === 'EXPIRED') {
+      stats.expiredCount++;
+      stats.outcomeBySource[source].expired++;
+      stats.expiredAgeBucketsBySource[source][getAgeBucket(ageDays)]++;
+    }
+    if (outcome === 'UNKNOWN') { stats.outcomeBySource[source].invalid++; }
+
+    // Group by score bucket
+    const scoreBucket = helpers.getScoreBucket(pick);
+    if (scoreBucket) {
+      if (!stats.scoreBuckets[scoreBucket]) stats.scoreBuckets[scoreBucket] = [];
+      stats.scoreBuckets[scoreBucket].push(pick);
+    }
+
+    // Group by status
+    const status = pick.status || 'UNKNOWN';
+    if (!stats.outcomesByStatus[status]) stats.outcomesByStatus[status] = 0;
+    stats.outcomesByStatus[status]++;
+
+    // Group status by source
+    if (!stats.statusBySource[source][status]) stats.statusBySource[source][status] = 0;
+    stats.statusBySource[source][status]++;
+
+    // Group outcome by source (legacy key-value)
+    const outcomeKey = source + ':' + outcome;
+    if (!stats.outcomesBySource[outcomeKey]) stats.outcomesBySource[outcomeKey] = 0;
+    stats.outcomesBySource[outcomeKey]++;
+
+    // Calculate time to outcomes (if timestamps exist)
+    const firstSent = pick.first_sent_at;
+    if (firstSent) {
+      const timeToEntry = helpers.calculateTimeDiffHours(firstSent, pick.hit_entry_at);
+      const timeToTp1 = helpers.calculateTimeDiffHours(firstSent, pick.hit_tp1_at);
+      const timeToTp2 = helpers.calculateTimeDiffHours(firstSent, pick.hit_tp2_at);
+      const timeToSl = helpers.calculateTimeDiffHours(firstSent, pick.hit_sl_at);
+
+      if (timeToEntry !== null) stats.avgTimeToEntry.push(timeToEntry);
+      if (timeToTp1 !== null) stats.avgTimeToTp1.push(timeToTp1);
+      if (timeToTp2 !== null) stats.avgTimeToTp2.push(timeToTp2);
+      if (timeToSl !== null) stats.avgTimeToSl.push(timeToSl);
+    }
+  }
+
+  for (const ageStats of Object.values(stats.ageBySource)) {
+    ageStats.averageAgeDays = ageStats.count > 0 ? Math.round((ageStats.totalAgeDays / ageStats.count) * 10) / 10 : null;
+  }
+
+  // Terminal, resolved-only trade quality.
+  // TP1/TP2 are wins; SL is a loss. WAITING/RUNNING/ENTRY/EXPIRED/UNKNOWN
+  // are intentionally excluded from the denominator so open/unresolved
+  // recommendations cannot dilute the reported win rate.
+  stats.winCount = stats.tp1Count + stats.tp2Count;
+  stats.lossCount = stats.slCount;
+  stats.resolvedTradeCount = stats.winCount + stats.lossCount;
+  stats.resolvedWinRate = helpers.calculateRate(stats.winCount, stats.resolvedTradeCount);
+
+  for (const sourceStats of Object.values(stats.outcomeBySource)) {
+    sourceStats.wins = sourceStats.tp1 + sourceStats.tp2;
+    sourceStats.losses = sourceStats.sl;
+    sourceStats.resolved = sourceStats.wins + sourceStats.losses;
+    sourceStats.winRate = helpers.calculateRate(sourceStats.wins, sourceStats.resolved);
+  }
+
+  // Monitoring/event rates across ALL picks. These are not called win rate.
+  stats.entryRate = helpers.calculateRate(stats.entryCount, total);
+  stats.tp1Rate = helpers.calculateRate(stats.tp1Count, total);
+  stats.tp2Rate = helpers.calculateRate(stats.tp2Count, total);
+  stats.slRate = helpers.calculateRate(stats.slCount, total);
+
+  // Calculate averages
+  stats.avgTimeToEntry = helpers.calculateAverage(stats.avgTimeToEntry);
+  stats.avgTimeToTp1 = helpers.calculateAverage(stats.avgTimeToTp1);
+  stats.avgTimeToTp2 = helpers.calculateAverage(stats.avgTimeToTp2);
+  stats.avgTimeToSl = helpers.calculateAverage(stats.avgTimeToSl);
+
+  // Generate observations
+  stats.observations = helpers.generateObservations(stats);
+
+  // Add expired rate observation if > 50%
+  if (total > 0 && stats.expiredCount > 0) {
+    const expiredRate = (stats.expiredCount / total) * 100;
+    if (expiredRate > 50) {
+      stats.observations.push('Expired tinggi (' + expiredRate.toFixed(1) + '%); cek expiry window/jenis sinyal per source.');
+    }
+  }
+
+  return stats;
+}
+
+// === Format Console Output ===
+function formatConsoleReport(stats) {
+  const lines = [];
+  const sep = '='.repeat(60);
+  const sub = '-'.repeat(40);
+
+  lines.push(sep);
+  lines.push('TELEGRAM DAILY PICKS - OUTCOME REPORT');
+  lines.push('Generated: ' + new Date().toISOString());
+  lines.push('Period: Last ' + DAYS_BACK + ' days');
+  lines.push(sep);
+  lines.push('');
+
+  // Summary
+  lines.push('## SUMMARY');
+  lines.push(sub);
+  lines.push('Total monitored picks: ' + stats.total);
+  lines.push('Resolved terminal trades: ' + (stats.resolvedTradeCount || 0));
+  lines.push('Wins (TP1/TP2): ' + (stats.winCount || 0));
+  lines.push('Losses (SL): ' + (stats.lossCount || 0));
+  lines.push('Resolved-only win rate: ' + (stats.resolvedWinRate || 'N/A'));
+  lines.push('');
+
+  // By Source
+  lines.push('## COUNTS BY SOURCE');
+  lines.push(sub);
+  if (Object.keys(stats.bySource).length > 0) {
+    for (const [source, count] of Object.entries(stats.bySource)) {
+      lines.push('  ' + source + ': ' + count);
+    }
+  } else {
+    lines.push('  (data tidak tersedia)');
+  }
+  lines.push('');
+
+  // Outcome counts and rates
+  lines.push('## OUTCOME COUNTS & RATES');
+  lines.push(sub);
+  lines.push('  Entry Hit:     ' + stats.entryCount + ' (' + (stats.entryRate || 'N/A') + ')');
+  lines.push('  TP1 Hit:       ' + stats.tp1Count + ' (' + (stats.tp1Rate || 'N/A') + ')');
+  lines.push('  TP2 Hit:       ' + stats.tp2Count + ' (' + (stats.tp2Rate || 'N/A') + ')');
+  lines.push('  SL Hit:        ' + stats.slCount + ' (' + (stats.slRate || 'N/A') + ')');
+  lines.push('  Waiting:       ' + stats.waitingCount);
+  lines.push('  Running:       ' + stats.runningCount);
+  lines.push('  Expired:       ' + stats.expiredCount);
+  lines.push('');
+
+  // Outcome by status
+  lines.push('## OUTCOME BY STATUS');
+  lines.push(sub);
+  if (Object.keys(stats.outcomesByStatus).length > 0) {
+    for (const [status, count] of Object.entries(stats.outcomesByStatus)) {
+      lines.push('  ' + status + ': ' + count);
+    }
+  } else {
+    lines.push('  (data tidak tersedia)');
+  }
+  lines.push('');
+
+  // Outcome by source (NEW)
+  lines.push('## OUTCOME BY SOURCE');
+  lines.push(sub);
+  lines.push('  Source          | Total | Entry | TP1  | TP2  | SL   | Expired | Wait | Run  | Invalid');
+  lines.push('  ----------------|-------|-------|------|------|------|----------|------|------|--------');
+  const sourceOrder = ['daytrade', 'swing_konglo', 'swing_nk', 'top5', 'watchlist', 'unknown'];
+  let hasOutcomeBySource = false;
+  const outcomeBySource = stats.outcomeBySource || {};
+  for (const src of sourceOrder) {
+    if (outcomeBySource[src]) {
+      const o = stats.outcomeBySource[src];
+      lines.push('  ' + String(src).padEnd(15) + ' | ' + String(o.total).padStart(5) + ' | ' +
+        String(o.entry).padStart(5) + ' | ' + String(o.tp1).padStart(4) + ' | ' +
+        String(o.tp2).padStart(4) + ' | ' + String(o.sl).padStart(4) + ' | ' +
+        String(o.expired).padStart(7) + ' | ' + String(o.waiting).padStart(4) + ' | ' +
+        String(o.running).padStart(4) + ' | ' + String(o.invalid).padStart(7));
+      hasOutcomeBySource = true;
+    }
+  }
+  // Add any sources not in predefined order
+  for (const [src, o] of Object.entries(outcomeBySource)) {
+    if (!sourceOrder.includes(src)) {
+      lines.push('  ' + String(src).padEnd(15) + ' | ' + String(o.total).padStart(5) + ' | ' +
+        String(o.entry).padStart(5) + ' | ' + String(o.tp1).padStart(4) + ' | ' +
+        String(o.tp2).padStart(4) + ' | ' + String(o.sl).padStart(4) + ' | ' +
+        String(o.expired).padStart(7) + ' | ' + String(o.waiting).padStart(4) + ' | ' +
+        String(o.running).padStart(4) + ' | ' + String(o.invalid).padStart(7));
+      hasOutcomeBySource = true;
+    }
+  }
+  if (!hasOutcomeBySource) {
+    lines.push('  (data tidak tersedia)');
+  }
+  lines.push('');
+
+  lines.push('## RESOLVED WIN RATE BY SOURCE');
+  lines.push(sub);
+  lines.push('  Source          | Resolved | Wins | Losses | Win Rate');
+  lines.push('  ----------------|----------|------|--------|---------');
+  for (const src of sourceOrder) {
+    if (outcomeBySource[src]) {
+      const o = outcomeBySource[src];
+      lines.push(
+        '  ' + String(src).padEnd(15) + ' | ' +
+        String(o.resolved || 0).padStart(8) + ' | ' +
+        String(o.wins || 0).padStart(4) + ' | ' +
+        String(o.losses || 0).padStart(6) + ' | ' +
+        String(o.winRate || 'N/A').padStart(8)
+      );
+    }
+  }
+  for (const [src, o] of Object.entries(outcomeBySource)) {
+    if (!sourceOrder.includes(src)) {
+      lines.push(
+        '  ' + String(src).padEnd(15) + ' | ' +
+        String(o.resolved || 0).padStart(8) + ' | ' +
+        String(o.wins || 0).padStart(4) + ' | ' +
+        String(o.losses || 0).padStart(6) + ' | ' +
+        String(o.winRate || 'N/A').padStart(8)
+      );
+    }
+  }
+  lines.push('');
+
+  // Status by source (NEW)
+  lines.push('## STATUS BY SOURCE');
+  lines.push(sub);
+  hasOutcomeBySource = false;
+  const statusBySource = stats.statusBySource || {};
+  for (const src of sourceOrder) {
+    if (statusBySource[src] && Object.keys(statusBySource[src]).length > 0) {
+      for (const [status, count] of Object.entries(statusBySource[src])) {
+        lines.push('  ' + String(src).padEnd(15) + ' | ' + String(status).padEnd(20) + ' | ' + count);
+        hasOutcomeBySource = true;
+      }
+    }
+  }
+  for (const [src, statusMap] of Object.entries(statusBySource)) {
+    if (!sourceOrder.includes(src) && statusMap && Object.keys(statusMap).length > 0) {
+      for (const [status, count] of Object.entries(statusMap)) {
+        lines.push('  ' + String(src).padEnd(15) + ' | ' + String(status).padEnd(20) + ' | ' + count);
+        hasOutcomeBySource = true;
+      }
+    }
+  }
+  if (!hasOutcomeBySource) {
+    lines.push('  (data tidak tersedia)');
+  }
+  lines.push('');
+
+  // Age visibility
+  lines.push('## AGE BY SOURCE');
+  lines.push(sub);
+  lines.push('  Source          | Avg Age (days) | Expired 0-1d | 2-3d | 4-5d | 6+d');
+  lines.push('  ----------------|----------------|--------------|------|------|----');
+  const ageBySource = stats.ageBySource || {};
+  const expiredAgeBucketsBySource = stats.expiredAgeBucketsBySource || {};
+  let hasAgeBySource = false;
+  for (const src of sourceOrder) {
+    if (ageBySource[src]) {
+      const a = ageBySource[src];
+      const b = expiredAgeBucketsBySource[src] || {};
+      lines.push('  ' + String(src).padEnd(15) + ' | ' + String(a.averageAgeDays != null ? a.averageAgeDays : 'N/A').padStart(14) + ' | ' + String(b['0-1d'] || 0).padStart(12) + ' | ' + String(b['2-3d'] || 0).padStart(4) + ' | ' + String(b['4-5d'] || 0).padStart(4) + ' | ' + String(b['6+d'] || 0).padStart(3));
+      hasAgeBySource = true;
+    }
+  }
+  for (const [src, a] of Object.entries(ageBySource)) {
+    if (!sourceOrder.includes(src)) {
+      const b = expiredAgeBucketsBySource[src] || {};
+      lines.push('  ' + String(src).padEnd(15) + ' | ' + String(a.averageAgeDays != null ? a.averageAgeDays : 'N/A').padStart(14) + ' | ' + String(b['0-1d'] || 0).padStart(12) + ' | ' + String(b['2-3d'] || 0).padStart(4) + ' | ' + String(b['4-5d'] || 0).padStart(4) + ' | ' + String(b['6+d'] || 0).padStart(3));
+      hasAgeBySource = true;
+    }
+  }
+  if (!hasAgeBySource) lines.push('  (data tidak tersedia)');
+  lines.push('');
+
+  // Score buckets
+  lines.push('## OUTCOME BY SCORE BUCKET');
+  lines.push(sub);
+  const bucketOrder = ['<50', '50-59', '60-69', '70-79', '80+'];
+  let hasBuckets = false;
+  for (const bucket of bucketOrder) {
+    if (stats.scoreBuckets[bucket]) {
+      const bucketItems = stats.scoreBuckets[bucket];
+      const tp2Hits = bucketItems.filter(i => helpers.classifyOutcome(i) === 'TP2_HIT').length;
+      const tp1Hits = bucketItems.filter(i => helpers.classifyOutcome(i) === 'TP1_HIT').length;
+      const slHits = bucketItems.filter(i => helpers.classifyOutcome(i) === 'SL_HIT').length;
+      const waiting = bucketItems.filter(i => helpers.classifyOutcome(i) === 'WAITING').length;
+      const running = bucketItems.filter(i => helpers.classifyOutcome(i) === 'RUNNING').length;
+
+      lines.push('  Score ' + bucket + ': ' + bucketItems.length + ' picks');
+      lines.push('    TP2: ' + tp2Hits + ', TP1: ' + tp1Hits + ', SL: ' + slHits + ', Waiting: ' + waiting + ', Running: ' + running);
+      hasBuckets = true;
+    }
+  }
+  if (!hasBuckets) {
+    lines.push('  (data tidak tersedia)');
+  }
+  lines.push('');
+
+  // Time averages
+  lines.push('## AVERAGE TIME TO OUTCOME (hours)');
+  lines.push(sub);
+  lines.push('  Entry:   ' + (stats.avgTimeToEntry !== null ? stats.avgTimeToEntry + ' jam' : 'data tidak tersedia'));
+  lines.push('  TP1:     ' + (stats.avgTimeToTp1 !== null ? stats.avgTimeToTp1 + ' jam' : 'data tidak tersedia'));
+  lines.push('  TP2:     ' + (stats.avgTimeToTp2 !== null ? stats.avgTimeToTp2 + ' jam' : 'data tidak tersedia'));
+  lines.push('  SL:      ' + (stats.avgTimeToSl !== null ? stats.avgTimeToSl + ' jam' : 'data tidak tersedia'));
+  lines.push('');
+
+  // Observations
+  lines.push('## OBSERVATIONS');
+  lines.push(sub);
+  for (const obs of stats.observations) {
+    lines.push('  - ' + obs);
+  }
+  lines.push('');
+
+  lines.push(sep);
+
+  return lines.join('\n');
+}
+
+// === Format Markdown Output ===
+function formatMarkdownReport(stats) {
+  const date = new Date().toISOString().split('T')[0];
+  const lines = [];
+
+  lines.push('# Telegram Daily Picks - Outcome Report');
+  lines.push('');
+  lines.push('**Generated:** ' + new Date().toISOString());
+  lines.push('**Period:** Last ' + DAYS_BACK + ' days');
+  lines.push('');
+
+  lines.push('## Summary');
+  lines.push('');
+  lines.push('| Metric | Value |');
+  lines.push('|--------|-------|');
+  lines.push('| Total Picks | ' + stats.total + ' |');
+  lines.push('| Resolved Terminal Trades | ' + (stats.resolvedTradeCount || 0) + ' |');
+  lines.push('| Wins (TP1/TP2) | ' + (stats.winCount || 0) + ' |');
+  lines.push('| Losses (SL) | ' + (stats.lossCount || 0) + ' |');
+  lines.push('| Resolved-only Win Rate | ' + (stats.resolvedWinRate || 'N/A') + ' |');
+  lines.push('');
+
+  // By Source
+  lines.push('## Counts by Source');
+  lines.push('');
+  lines.push('| Source | Count |');
+  lines.push('|--------|-------|');
+  if (Object.keys(stats.bySource).length > 0) {
+    for (const [source, count] of Object.entries(stats.bySource)) {
+      lines.push('| ' + source + ' | ' + count + ' |');
+    }
+  } else {
+    lines.push('| (data tidak tersedia) | 0 |');
+  }
+  lines.push('');
+
+  // Outcomes
+  lines.push('## Outcome Counts & Rates');
+  lines.push('');
+  lines.push('| Outcome | Count | Rate |');
+  lines.push('|---------|-------|------|');
+  lines.push('| Entry Hit | ' + stats.entryCount + ' | ' + (stats.entryRate || 'N/A') + ' |');
+  lines.push('| TP1 Hit | ' + stats.tp1Count + ' | ' + (stats.tp1Rate || 'N/A') + ' |');
+  lines.push('| TP2 Hit | ' + stats.tp2Count + ' | ' + (stats.tp2Rate || 'N/A') + ' |');
+  lines.push('| SL Hit | ' + stats.slCount + ' | ' + (stats.slRate || 'N/A') + ' |');
+  lines.push('| Waiting | ' + stats.waitingCount + ' | - |');
+  lines.push('| Running | ' + stats.runningCount + ' | - |');
+  lines.push('| Expired | ' + stats.expiredCount + ' | - |');
+  lines.push('');
+
+  // Outcome by source (NEW)
+  lines.push('## Outcome by Source');
+  lines.push('');
+  lines.push('| Source | Total | Entry | TP1 | TP2 | SL | Expired | Waiting | Running | Invalid |');
+  lines.push('|--------|-------|-------|-----|-----|----|---------|---------|---------|---------|');
+  const mdSourceOrder = ['daytrade', 'swing_konglo', 'swing_nk', 'top5', 'watchlist', 'unknown'];
+  let hasMdOutcomeBySource = false;
+  const mdOutcomeBySource = stats.outcomeBySource || {};
+  for (const src of mdSourceOrder) {
+    if (mdOutcomeBySource[src]) {
+      const o = mdOutcomeBySource[src];
+      lines.push('| ' + src + ' | ' + o.total + ' | ' + o.entry + ' | ' + o.tp1 + ' | ' + o.tp2 + ' | ' + o.sl + ' | ' + o.expired + ' | ' + o.waiting + ' | ' + o.running + ' | ' + o.invalid + ' |');
+      hasMdOutcomeBySource = true;
+    }
+  }
+  for (const [src, o] of Object.entries(mdOutcomeBySource)) {
+    if (!mdSourceOrder.includes(src)) {
+      lines.push('| ' + src + ' | ' + o.total + ' | ' + o.entry + ' | ' + o.tp1 + ' | ' + o.tp2 + ' | ' + o.sl + ' | ' + o.expired + ' | ' + o.waiting + ' | ' + o.running + ' | ' + o.invalid + ' |');
+      hasMdOutcomeBySource = true;
+    }
+  }
+  if (!hasMdOutcomeBySource) {
+    lines.push('| (data tidak tersedia) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |');
+  }
+  lines.push('');
+
+  lines.push('## Resolved Win Rate by Source');
+  lines.push('');
+  lines.push('| Source | Resolved | Wins | Losses | Win Rate |');
+  lines.push('|--------|----------|------|--------|----------|');
+  for (const src of mdSourceOrder) {
+    if (mdOutcomeBySource[src]) {
+      const o = mdOutcomeBySource[src];
+      lines.push('| ' + src + ' | ' + (o.resolved || 0) + ' | ' + (o.wins || 0) + ' | ' + (o.losses || 0) + ' | ' + (o.winRate || 'N/A') + ' |');
+    }
+  }
+  for (const [src, o] of Object.entries(mdOutcomeBySource)) {
+    if (!mdSourceOrder.includes(src)) {
+      lines.push('| ' + src + ' | ' + (o.resolved || 0) + ' | ' + (o.wins || 0) + ' | ' + (o.losses || 0) + ' | ' + (o.winRate || 'N/A') + ' |');
+    }
+  }
+  lines.push('');
+
+  // Status by source (NEW)
+  lines.push('## Status by Source');
+  lines.push('');
+  lines.push('| Source | Status | Count |');
+  lines.push('|--------|--------|-------|');
+  hasMdOutcomeBySource = false;
+  const mdStatusBySource = stats.statusBySource || {};
+  for (const src of mdSourceOrder) {
+    if (mdStatusBySource[src] && Object.keys(mdStatusBySource[src]).length > 0) {
+      for (const [status, count] of Object.entries(mdStatusBySource[src])) {
+        lines.push('| ' + src + ' | ' + status + ' | ' + count + ' |');
+        hasMdOutcomeBySource = true;
+      }
+    }
+  }
+  for (const [src, statusMap] of Object.entries(mdStatusBySource)) {
+    if (!mdSourceOrder.includes(src) && statusMap && Object.keys(statusMap).length > 0) {
+      for (const [status, count] of Object.entries(statusMap)) {
+        lines.push('| ' + src + ' | ' + status + ' | ' + count + ' |');
+        hasMdOutcomeBySource = true;
+      }
+    }
+  }
+  if (!hasMdOutcomeBySource) {
+    lines.push('| (data tidak tersedia) | - | 0 |');
+  }
+  lines.push('');
+
+  // Age visibility
+  lines.push('## Age by Source');
+  lines.push('');
+  lines.push('| Source | Avg Age (days) | Expired 0-1d | Expired 2-3d | Expired 4-5d | Expired 6+d |');
+  lines.push('|--------|----------------|--------------|--------------|--------------|-------------|');
+  const mdAgeBySource = stats.ageBySource || {};
+  const mdExpiredAgeBuckets = stats.expiredAgeBucketsBySource || {};
+  let hasMdAgeBySource = false;
+  for (const src of mdSourceOrder) {
+    if (mdAgeBySource[src]) {
+      const a = mdAgeBySource[src];
+      const b = mdExpiredAgeBuckets[src] || {};
+      lines.push('| ' + src + ' | ' + (a.averageAgeDays != null ? a.averageAgeDays : 'N/A') + ' | ' + (b['0-1d'] || 0) + ' | ' + (b['2-3d'] || 0) + ' | ' + (b['4-5d'] || 0) + ' | ' + (b['6+d'] || 0) + ' |');
+      hasMdAgeBySource = true;
+    }
+  }
+  for (const [src, a] of Object.entries(mdAgeBySource)) {
+    if (!mdSourceOrder.includes(src)) {
+      const b = mdExpiredAgeBuckets[src] || {};
+      lines.push('| ' + src + ' | ' + (a.averageAgeDays != null ? a.averageAgeDays : 'N/A') + ' | ' + (b['0-1d'] || 0) + ' | ' + (b['2-3d'] || 0) + ' | ' + (b['4-5d'] || 0) + ' | ' + (b['6+d'] || 0) + ' |');
+      hasMdAgeBySource = true;
+    }
+  }
+  if (!hasMdAgeBySource) lines.push('| (data tidak tersedia) | N/A | 0 | 0 | 0 | 0 |');
+  lines.push('');
+
+  // Score buckets
+  lines.push('## Outcome by Score Bucket');
+  lines.push('');
+  lines.push('| Score | Total | TP2 | TP1 | SL | Waiting | Running |');
+  lines.push('|-------|-------|-----|-----|----|---------|---------|');
+  const bucketOrder = ['<50', '50-59', '60-69', '70-79', '80+'];
+  for (const bucket of bucketOrder) {
+    if (stats.scoreBuckets[bucket]) {
+      const bucketItems = stats.scoreBuckets[bucket];
+      const tp2Hits = bucketItems.filter(i => helpers.classifyOutcome(i) === 'TP2_HIT').length;
+      const tp1Hits = bucketItems.filter(i => helpers.classifyOutcome(i) === 'TP1_HIT').length;
+      const slHits = bucketItems.filter(i => helpers.classifyOutcome(i) === 'SL_HIT').length;
+      const waiting = bucketItems.filter(i => helpers.classifyOutcome(i) === 'WAITING').length;
+      const running = bucketItems.filter(i => helpers.classifyOutcome(i) === 'RUNNING').length;
+      lines.push('| ' + bucket + ' | ' + bucketItems.length + ' | ' + tp2Hits + ' | ' + tp1Hits + ' | ' + slHits + ' | ' + waiting + ' | ' + running + ' |');
+    }
+  }
+  if (Object.keys(stats.scoreBuckets).length === 0) {
+    lines.push('| (data tidak tersedia) | 0 | 0 | 0 | 0 | 0 | 0 |');
+  }
+  lines.push('');
+
+  // Time averages
+  lines.push('## Average Time to Outcome');
+  lines.push('');
+  lines.push('| Milestone | Average (hours) |');
+  lines.push('|-----------|-----------------|');
+  lines.push('| Entry | ' + (stats.avgTimeToEntry !== null ? stats.avgTimeToEntry : 'N/A') + ' |');
+  lines.push('| TP1 | ' + (stats.avgTimeToTp1 !== null ? stats.avgTimeToTp1 : 'N/A') + ' |');
+  lines.push('| TP2 | ' + (stats.avgTimeToTp2 !== null ? stats.avgTimeToTp2 : 'N/A') + ' |');
+  lines.push('| SL | ' + (stats.avgTimeToSl !== null ? stats.avgTimeToSl : 'N/A') + ' |');
+  lines.push('');
+
+  // Observations
+  lines.push('## Observations');
+  lines.push('');
+  for (const obs of stats.observations) {
+    lines.push('- ' + obs);
+  }
+  lines.push('');
+
+  lines.push('---');
+  lines.push('*This report is generated for analysis purposes only. No production data is modified.*');
+
+  return lines.join('\n');
+}
+
+// === Write Markdown File ===
+function writeMarkdownReport(stats) {
+  try {
+    if (!fs.existsSync(OUTPUT_DIR)) {
+      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    }
+
+    const date = new Date().toISOString().split('T')[0];
+    const filename = path.join(OUTPUT_DIR, 'outcome-report-' + date + '.md');
+    const content = formatMarkdownReport(stats);
+
+    fs.writeFileSync(filename, content, 'utf8');
+    console.log('Markdown report saved to: ' + filename);
+    return filename;
+  } catch (e) {
+    console.error('Warning: Could not write markdown file:', e.message);
+    return null;
+  }
+}
+
+// === Main ===
+async function main() {
+  try {
+    const picks = await fetchDailyPicks();
+
+    if (picks.length === 0) {
+      console.log('No data found for the specified period.');
+      return;
+    }
+
+    const stats = generateReport(picks);
+    const consoleOutput = formatConsoleReport(stats);
+
+    console.log(consoleOutput);
+
+    // Write markdown file
+    writeMarkdownReport(stats);
+
+    console.log('\nReport generation complete.');
+
+  } catch (e) {
+    console.error('Error generating report:', e.message);
+    process.exit(1);
+  }
+}
+
+// Run if executed directly
+if (require.main === module) {
+  main();
+}
+
+module.exports = { fetchDailyPicks, generateReport, formatConsoleReport, formatMarkdownReport, calculatePickAgeDays, getAgeBucket };

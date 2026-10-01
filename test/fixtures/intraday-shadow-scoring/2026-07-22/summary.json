@@ -1,0 +1,6 @@
+{
+  "sample_date": "2026-07-22",
+  "timezone": "Asia/Jakarta",
+  "version": "intraday-sample-summary-v1.1",
+  "note": "Representative mocked fixture for shadow-scoring tests. Not real market data."
+}

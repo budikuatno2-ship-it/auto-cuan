@@ -1,0 +1,190 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const fs = require('node:fs');
+
+const brokerHunterService = require('../lib/broker-hunter-service');
+const bandarmologiRuntime = require('../public/bandarmologi-runtime');
+
+test('Broker Hunter: getBrokerFullName resolves correctly', () => {
+  assert.equal(brokerHunterService.getBrokerFullName('AK'), 'UBS Sekuritas Indonesia');
+  assert.equal(brokerHunterService.getBrokerFullName('BK'), 'J.P. Morgan Sekuritas Indonesia');
+  assert.equal(brokerHunterService.getBrokerFullName('YP'), 'Mirae Asset Sekuritas Indonesia');
+  assert.equal(brokerHunterService.getBrokerFullName('CC'), 'Mandiri Sekuritas');
+  assert.equal(brokerHunterService.getBrokerFullName('UNKNOWN'), 'Broker UNKNOWN');
+  assert.equal(brokerHunterService.getBrokerFullName(''), 'Unknown Broker');
+});
+
+test('Broker Hunter: getBrokerHunterData returns valid schema structure', async () => {
+  const result = await brokerHunterService.getBrokerHunterData('AK', { range: '1d' });
+  assert.equal(result.success, true);
+  assert.equal(result.broker, 'AK');
+  assert.equal(result.broker_name, 'UBS Sekuritas Indonesia');
+  assert.equal(result.range, '1d');
+  assert.ok(Array.isArray(result.top_accumulated));
+  assert.ok(Array.isArray(result.top_distributed));
+  assert.ok(typeof result.total_stocks_active === 'number');
+});
+
+test('Broker Hunter: AK and YP return completely distinct, non-identical stock lists (No fake uniform data)', async () => {
+  const ak1d = await brokerHunterService.getBrokerHunterData('AK', { range: '1d' });
+  const yp1d = await brokerHunterService.getBrokerHunterData('YP', { range: '1d' });
+
+  assert.equal(ak1d.success, true);
+  assert.equal(yp1d.success, true);
+  assert.equal(ak1d.broker, 'AK');
+  assert.equal(yp1d.broker, 'YP');
+
+  // A broker may be net-only (accumulated OR distributed), so compare the
+  // union of both sides. The invariant that matters: the two brokers must not
+  // return identical, fabricated-uniform lists.
+  const akTickers = [...ak1d.top_accumulated, ...ak1d.top_distributed].map(s => s.ticker);
+  const ypTickers = [...yp1d.top_accumulated, ...yp1d.top_distributed].map(s => s.ticker);
+
+  assert.ok(akTickers.length > 0, 'AK must have at least one active ticker');
+  assert.ok(ypTickers.length > 0, 'YP must have at least one active ticker');
+
+  // Verify they are NOT identical
+  assert.notDeepEqual(akTickers, ypTickers, 'AK and YP stock lists must not be identical');
+  assert.notEqual(akTickers[0], ypTickers[0], 'AK top stock must differ from YP top stock');
+
+  // date_range_label must be a real session key, not a stale hardcoded literal.
+  assert.match(String(ak1d.date_range_label), /\d{4}-\d{2}-\d{2}/, 'Date must reflect a real session');
+});
+
+
+test('Broker Hunter: getBrokerHunterData fast-path reads cached index file if present', async () => {
+  const fakeCacheDir = brokerHunterService.HUNTER_CACHE_DIR;
+  fs.mkdirSync(fakeCacheDir, { recursive: true });
+  const mockCachePath = path.join(fakeCacheDir, 'TEST_1d.json');
+
+  const mockPayload = {
+    success: true,
+    from_cache: false,
+    broker: 'TEST',
+    broker_name: 'Test Sekuritas',
+    range: '1d',
+    top_accumulated: [{ ticker: 'BBCA', net_val: 1000000000, net_lot: 1000, avg_buy_price: 10000 }],
+    top_distributed: [{ ticker: 'BBRI', net_val: -500000000, net_lot: -500, avg_sell_price: 5000 }],
+    total_stocks_active: 2
+  };
+  fs.writeFileSync(mockCachePath, JSON.stringify(mockPayload), 'utf8');
+
+  try {
+    const res = await brokerHunterService.getBrokerHunterData('TEST', { range: '1d' });
+    assert.equal(res.success, true);
+    assert.equal(res.from_cache, true);
+    assert.equal(res.broker, 'TEST');
+    assert.equal(res.top_accumulated.length, 1);
+    assert.equal(res.top_accumulated[0].ticker, 'BBCA');
+    assert.equal(res.top_distributed[0].ticker, 'BBRI');
+  } finally {
+    if (fs.existsSync(mockCachePath)) {
+      fs.unlinkSync(mockCachePath);
+    }
+  }
+});
+
+test('Broker Hunter: generateBrokerHunterIndex creates valid index files', async () => {
+  // HERMETIC: the generator writes BOTH the cache dir and the git-tracked index
+  // dir. Left unredirected it overwrote the committed production indexes under
+  // data/broker-hunter-indexes on every test run (verified by mtime bisection:
+  // AK-1d.json / AK_1d.json / catalog.json all mutated). Point both at a temp dir.
+  const os = require('node:os');
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hunter-index-'));
+  const origArjum = process.env.ARJUM_DATA_DIR;
+  const origGit = process.env.BROKER_HUNTER_INDEX_DIR;
+  process.env.ARJUM_DATA_DIR = tmpRoot;
+  process.env.BROKER_HUNTER_INDEX_DIR = path.join(tmpRoot, 'broker-hunter-indexes');
+
+  const repoIndexDir = path.join(__dirname, '..', 'data', 'broker-hunter-indexes');
+  const repoAkBefore = path.join(repoIndexDir, 'AK_1d.json');
+  const repoMtimeBefore = fs.existsSync(repoAkBefore) ? fs.statSync(repoAkBefore).mtimeMs : null;
+
+  try {
+    const res = await brokerHunterService.generateBrokerHunterIndex({
+      ranges: ['1d'],
+      brokers: ['AK', 'BK']
+    });
+
+    assert.equal(res.brokers_indexed, 2);
+    assert.equal(res.files_written, 2);
+
+    const cacheDir = path.join(tmpRoot, 'broker-hunter');
+    const akPath = path.join(cacheDir, 'AK_1d.json');
+    const bkPath = path.join(cacheDir, 'BK_1d.json');
+    // Guard: the isolated cache dir must be the one that actually received the files.
+    assert.equal(brokerHunterService.HUNTER_CACHE_DIR, cacheDir,
+      'the service must resolve HUNTER_CACHE_DIR from the active ARJUM_DATA_DIR');
+    assert.ok(fs.existsSync(akPath), 'AK_1d.json must exist');
+    assert.ok(fs.existsSync(bkPath), 'BK_1d.json must exist');
+
+    const akData = JSON.parse(fs.readFileSync(akPath, 'utf8'));
+    assert.equal(akData.broker, 'AK');
+    assert.equal(akData.range, '1d');
+
+    // The committed production index must be untouched by the test run.
+    if (repoMtimeBefore !== null) {
+      assert.equal(fs.statSync(repoAkBefore).mtimeMs, repoMtimeBefore,
+        'the test must not rewrite the committed data/broker-hunter-indexes files');
+    }
+  } finally {
+    if (origArjum !== undefined) process.env.ARJUM_DATA_DIR = origArjum;
+    else delete process.env.ARJUM_DATA_DIR;
+    if (origGit !== undefined) process.env.BROKER_HUNTER_INDEX_DIR = origGit;
+    else delete process.env.BROKER_HUNTER_INDEX_DIR;
+    try { fs.rmSync(tmpRoot, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
+test('Broker Hunter Frontend: runtime exports functions and handles render container', () => {
+  assert.equal(typeof bandarmologiRuntime.setHunterBroker, 'function');
+  assert.equal(typeof bandarmologiRuntime.setHunterRange, 'function');
+  assert.equal(typeof bandarmologiRuntime.applyCustomHunterRange, 'function');
+  assert.equal(typeof bandarmologiRuntime.renderBrokerHunterUI, 'function');
+
+  // Simulate minimal DOM container
+  const mockContainer = {
+    innerHTML: ''
+  };
+
+  bandarmologiRuntime.renderBrokerHunterUI(mockContainer);
+  assert.ok(mockContainer.innerHTML.includes('Broker Hunter — Top 10 Saham per Broker'));
+  assert.ok(mockContainer.innerHTML.includes('Pilih Broker Cepat:'));
+  assert.ok(mockContainer.innerHTML.includes('Semua Broker:'));
+  assert.ok(mockContainer.innerHTML.includes('Rentang:'));
+});
+
+test('Broker Hunter API: /api/sector-hot?action=broker-hunter invokes handler', async () => {
+  const handler = require('../api/sector-hot');
+  let responseStatus = null;
+  let responseData = null;
+
+  const req = {
+    method: 'GET',
+    query: {
+      action: 'broker-hunter',
+      broker: 'AK',
+      range: '1d'
+    }
+  };
+
+  const res = {
+    status(code) {
+      responseStatus = code;
+      return this;
+    },
+    json(data) {
+      responseData = data;
+      return this;
+    }
+  };
+
+  await handler(req, res);
+  assert.equal(responseStatus, 200);
+  assert.equal(responseData.success, true);
+  assert.equal(responseData.broker, 'AK');
+  assert.equal(responseData.range, '1d');
+});

@@ -149,10 +149,14 @@ test('Di atas area Fib: candidate above ideal Fib area still appears with warnin
   assert.equal(result.fib_confluence_label, 'Di atas area Fib');
   assert.ok(result.fib_confluence_note.indexOf('tunggu pullback') >= 0 || result.fib_confluence_note.indexOf('di atas') >= 0);
 
-  // Candidate must still pass digest gate — fib is NOT a hard gate
+  // Candidate must still pass digest gate — fib is NOT a hard gate.
+  // TP1/TP2 raised above the entry range so the candidate keeps a valid positive
+  // upside (conservative entry = entry_high = 5100); otherwise the min-upside gate
+  // correctly rejects a 0%-upside plan and this would not exercise the fib path.
   var fullCandidate = validSwingCandidate({
     last_price: 5050,
     entry_low: 5000, entry_high: 5100,
+    tp1: 5600, tp1n: 5600, tp2: 5900, tp2n: 5900,
     fib_confluence_status: result.fib_confluence_status,
     fib_confluence_label: result.fib_confluence_label
   });
@@ -428,13 +432,13 @@ test('Day Trade: Fib confluence does NOT appear in Day Trade telegram output', f
 // ============================================================
 // TEST 9: Endpoint count remains 12
 // ============================================================
-test('API endpoint file count remains exactly 12', function() {
+test('API endpoint file count remains exactly 13', function() {
   var apiDir = path.resolve(__dirname, '..', 'api');
   var files = fs.readdirSync(apiDir).filter(function(f) {
     return f.endsWith('.js') && !f.startsWith('.');
   });
-  assert.equal(files.length, 12,
-    'api/ directory must contain exactly 12 JS files. Found ' + files.length + ': ' + files.join(', '));
+  assert.equal(files.length, 13,
+    'api/ directory must contain exactly 13 JS files. Found ' + files.length + ': ' + files.join(', '));
 });
 
 // ============================================================

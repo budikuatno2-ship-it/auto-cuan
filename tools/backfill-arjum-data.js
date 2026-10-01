@@ -1,0 +1,436 @@
+'use strict';
+
+/**
+ * Backfill Script for stock.arjum.com Data
+ * Usage:
+ *   node tools/backfill-arjum-data.js --tickers BBCA,BBRI,BMRI,TLKM,ASII
+ *   node tools/backfill-arjum-data.js --all --limit 50
+ *   node tools/backfill-arjum-data.js --dry-run
+ */
+
+const fs = require('fs');
+const path = require('path');
+const arjumClient = require('../lib/arjum-client');
+const bandarmologiService = require('../lib/bandarmologi-service');
+const idxTradingCalendar = require('../lib/idx-trading-calendar');
+
+// Optional local/server .env or .env.local loader (without external dependencies)
+try {
+  const envCandidates = [
+    path.join(__dirname, '..', '.env'),
+    path.join(__dirname, '..', '.env.local')
+  ];
+  for (const envPath of envCandidates) {
+    if (fs.existsSync(envPath)) {
+      const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx > 0) {
+          const key = trimmed.slice(0, eqIdx).trim();
+          let val = trimmed.slice(eqIdx + 1).trim();
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+          }
+          if (!process.env[key]) {
+            process.env[key] = val;
+          }
+        }
+      }
+    }
+  }
+} catch (_) {}
+
+// Bursa Efek Indonesia trading calendar (weekdays, skip known holidays).
+// Uses the single canonical 2026 holiday list (lib/idx-holidays-2026-seed-data.js)
+// via the trading-calendar helper. The previous inline set held only HUT RI, so
+// runs over June-July treated real holidays (Pancasila, 1 Muharam) as trading days
+// and burned the tightly-quota'd Arjum requests. See F-093 in FULL_REPO_FIX_LOG.md.
+function getTradingDates(startDateStr = '2026-08-03', endDateStr = '2026-09-04') {
+  const dates = [];
+  const holidays = idxTradingCalendar.getSeedHolidaySet();
+  const [sy, sm, sd] = startDateStr.split('-').map(Number);
+  const [ey, em, ed] = endDateStr.split('-').map(Number);
+  const current = new Date(Date.UTC(sy, sm - 1, sd));
+  const end = new Date(Date.UTC(ey, em - 1, ed));
+
+  while (current <= end) {
+    const day = current.getUTCDay();
+    const iso = current.toISOString().slice(0, 10);
+    // 0 = Sunday, 6 = Saturday
+    if (day !== 0 && day !== 6 && !holidays.has(iso)) {
+      dates.push(iso);
+    }
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+  return dates;
+}
+
+// Default top universe tickers
+const TOP_TICKERS = [
+  'BBCA', 'BBRI', 'BMRI', 'BBNI', 'TLKM', 'ASII', 'ICBP', 'INDF',
+  'UNVR', 'KLBF', 'ADRO', 'PTBA', 'ITMG', 'ANTM', 'INCO', 'MDKA',
+  'AMMN', 'BREN', 'TPIA', 'BRPT', 'PGAS', 'CPIN', 'JPFA', 'GOTO',
+  'ACES', 'MYOR', 'SMGR', 'INTP', 'CTRA', 'BSDE', 'PWON', 'SMRA',
+  'MEDC', 'AKRA', 'ESSA', 'AUTO', 'HEAL', 'MIKA', 'SILO', 'SIDO'
+];
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function getStorageDir() {
+  if (typeof bandarmologiService.getStorageDir === 'function') {
+    return bandarmologiService.getStorageDir();
+  }
+  const configured = process.env.ARJUM_DATA_DIR;
+  if (configured && fs.existsSync(configured)) return configured;
+  return path.join(__dirname, '..', 'data', 'arjum-data');
+}
+
+function isValidCachedJson(endpoint, ticker, identifier) {
+  try {
+    const baseDir = getStorageDir();
+    const filePath = path.join(baseDir, endpoint, ticker, `${identifier}.json`);
+    if (!fs.existsSync(filePath)) return false;
+    const stat = fs.statSync(filePath);
+    if (!stat || stat.size <= 2) return false;
+    const content = fs.readFileSync(filePath, 'utf8');
+    const parsed = JSON.parse(content);
+    return parsed !== null && typeof parsed === 'object';
+  } catch (_) {
+    return false;
+  }
+}
+
+function isTickerFullyCached(ticker, tradingDates) {
+  if (!isValidCachedJson('broker-accumulation', ticker, 'series')) {
+    return false;
+  }
+  if (!isValidCachedJson('insiders', ticker, 'p1')) {
+    return false;
+  }
+  if (!Array.isArray(tradingDates) || tradingDates.length === 0) {
+    return true;
+  }
+  for (const date of tradingDates) {
+    if (!isValidCachedJson('broker-summary', ticker, date)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+async function run() {
+  const args = process.argv.slice(2);
+  const dryRun = args.includes('--dry-run');
+  const isAll = args.includes('--all');
+
+  let delayMs = 250;
+  const delayIdx = args.indexOf('--delay');
+  if (delayIdx >= 0 && args[delayIdx + 1]) {
+    delayMs = parseInt(args[delayIdx + 1], 10) || 250;
+  }
+
+  let limit = Infinity;
+  const limitIdx = args.indexOf('--limit');
+  if (limitIdx >= 0 && args[limitIdx + 1]) {
+    limit = parseInt(args[limitIdx + 1], 10) || Infinity;
+  }
+
+  // Default comes from ARJUM_DAILY_QUOTA env var (fallback: a constant in
+  // arjum-client.js) — update the env var when the Arjum plan changes,
+  // no code edit needed. --daily-limit / ARJUM_DAILY_LIMIT still override
+  // it explicitly for one-off runs.
+  let dailyLimit = arjumClient.getConfiguredDailyQuota();
+  const dailyLimitIdx = args.indexOf('--daily-limit');
+  if (dailyLimitIdx >= 0 && args[dailyLimitIdx + 1]) {
+    dailyLimit = parseInt(args[dailyLimitIdx + 1], 10) || dailyLimit;
+  } else if (process.env.ARJUM_DAILY_LIMIT) {
+    dailyLimit = parseInt(process.env.ARJUM_DAILY_LIMIT, 10) || dailyLimit;
+  }
+
+  // Reserve quota for the ~18:00-20:00 WIB daily update job (Bagian 3) so
+  // historical backfill never eats the whole day's quota before it runs.
+  let reserveQuota = 3000;
+  const reserveIdx = args.indexOf('--reserve-quota');
+  if (reserveIdx >= 0 && args[reserveIdx + 1]) {
+    reserveQuota = parseInt(args[reserveIdx + 1], 10) || 0;
+  }
+  const effectiveDailyLimit = Math.max(0, dailyLimit - reserveQuota);
+
+  // Hard wall-clock cutoff (Asia/Jakarta) as a second, independent safety
+  // net — stops even if the request-count math above is ever wrong.
+  let stopAtTime = '16:00';
+  const stopAtIdx = args.indexOf('--stop-at-time');
+  if (stopAtIdx >= 0 && args[stopAtIdx + 1]) {
+    stopAtTime = args[stopAtIdx + 1];
+  }
+  function pastStopTime() {
+    if (!/^\d{1,2}:\d{2}$/.test(stopAtTime)) return false;
+    const [h, m] = stopAtTime.split(':').map(Number);
+    const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    return nowWib.getHours() > h || (nowWib.getHours() === h && nowWib.getMinutes() >= m);
+  }
+
+  let tickers = TOP_TICKERS;
+  const tickerArgIdx = args.indexOf('--tickers');
+  if (tickerArgIdx >= 0 && args[tickerArgIdx + 1]) {
+    tickers = args[tickerArgIdx + 1].split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
+  } else if (isAll) {
+    try {
+      const txtFile = path.join(__dirname, '..', 'data', 'daytrade-observe-tickers.txt');
+      const jsonFile = path.join(__dirname, '..', 'data', 'bei_universe.json');
+      if (fs.existsSync(txtFile)) {
+        tickers = fs.readFileSync(txtFile, 'utf8').split(/\r?\n/).map(t => t.trim().toUpperCase()).filter(Boolean);
+      } else if (fs.existsSync(jsonFile)) {
+        tickers = JSON.parse(fs.readFileSync(jsonFile, 'utf8'));
+      }
+    } catch (_) {}
+  }
+
+  if (isFinite(limit)) {
+    tickers = tickers.slice(0, limit);
+  }
+
+  let startDate = '2026-08-03';
+  let endDate = '2026-09-04';
+  const startIdx = args.indexOf('--start-date');
+  if (startIdx >= 0 && args[startIdx + 1]) startDate = args[startIdx + 1];
+  const endIdx = args.indexOf('--end-date');
+  if (endIdx >= 0 && args[endIdx + 1]) endDate = args[endIdx + 1];
+
+  const tradingDates = getTradingDates(startDate, endDate);
+  const hasDirectKey = arjumClient.hasArjumApiKey();
+
+  console.log('=== AUTO-CUAN ARJUM BACKFILL WORKER ===');
+  console.log(`ARJUM_API_KEY: [${hasDirectKey ? 'ADA' : 'TIDAK ADA'}]`);
+  console.log(`Connection Source: Direct API (${arjumClient.ARJUM_BASE_URL})`);
+  console.log(`Daily Request Limit: ${dailyLimit} (reserve ${reserveQuota} for daily update job -> effective ${effectiveDailyLimit})`);
+  console.log(`Already used today (cross-process, all scripts): ${arjumClient.getUsedQuotaToday()}`);
+  console.log(`Stop-at-time (WIB): ${stopAtTime}`);
+  console.log(`Total Tickers to process: ${tickers.length}`);
+  console.log(`Trading Dates count: ${tradingDates.length} (${tradingDates[0]} s/d ${tradingDates[tradingDates.length - 1]})`);
+  console.log(`Delay per request: ${delayMs}ms | Mode: ${dryRun ? 'DRY-RUN' : 'LIVE'}`);
+  console.log('----------------------------------------------------');
+
+  if (!hasDirectKey && !dryRun) {
+    console.error('ERROR: ARJUM_API_KEY tidak ditemukan di environment atau .env.');
+    console.error('Direct API access membutuhkan ARJUM_API_KEY yang valid.');
+    process.exit(1);
+  }
+
+  let totalRequested = 0;
+  let totalSaved = 0;
+  let totalSkipped = 0;
+  let totalErrors = 0;
+  let quotaReached = false;
+  let stopReason = ''; // 'daily_limit' | 'api_quota_exceeded' | 'time_cutoff'
+
+  // A single 429/quota response from Arjum means the account's real quota is
+  // gone for the day — further requests just fail the same way and waste
+  // time. Stop immediately instead of grinding through every remaining
+  // ticker/date racking up errors.
+  function checkApiQuota(res) {
+    if (!res) return false;
+    if (res.ok) {
+      // Opportunistic: if Arjum ever sends a rate-limit-style header, use
+      // the REAL remaining count instead of just our own request tally.
+      if (res.quota && Number.isFinite(res.quota.remaining) && res.quota.remaining <= reserveQuota) {
+        quotaReached = true;
+        stopReason = 'api_quota_exceeded';
+        console.log(`\n[BERHENTI: KUOTA API HAMPIR HABIS] Header response Arjum melaporkan sisa kuota ${res.quota.remaining} (<= reserve ${reserveQuota}). Worker berhenti rapi.`);
+        return true;
+      }
+      return false;
+    }
+    const classified = arjumClient.classifyFailure(res);
+    if (classified.reason === 'quota_exceeded') {
+      quotaReached = true;
+      stopReason = 'api_quota_exceeded';
+      console.log(`\n[BERHENTI: KUOTA API HABIS] Arjum menolak request dengan status kuota (${classified.detail || 'quota exceeded'}). Worker berhenti rapi, tidak retry.`);
+      return true;
+    }
+    return false;
+  }
+
+  // Checked before every real (non-cached, non-dry-run) request. Two
+  // independent stop conditions, whichever fires first:
+  //   1. request counter hits effectiveDailyLimit (dailyLimit - reserveQuota)
+  //   2. wall clock (WIB) passes stopAtTime
+  function checkPreflightStop() {
+    // Cross-process usage (lib/arjum-quota-tracker.js), not this invocation's
+    // own totalRequested — this script is one of several cron-fired
+    // processes sharing the same daily quota (this backfill worker at
+    // 00:05, the daily-update job 5x between 20:00-22:00), and a counter
+    // that resets to 0 every run cannot actually reserve anything across
+    // processes.
+    const usedToday = arjumClient.getUsedQuotaToday();
+    if (usedToday >= effectiveDailyLimit) {
+      console.log(`\n[BERHENTI: BATAS HARIAN] Batas efektif tercapai (${usedToday}/${effectiveDailyLimit} terpakai hari ini lintas-proses = ${dailyLimit} - reserve ${reserveQuota}). Worker berhenti.`);
+      quotaReached = true;
+      stopReason = 'daily_limit';
+      return true;
+    }
+    if (pastStopTime()) {
+      console.log(`\n[BERHENTI: BATAS WAKTU] Sudah lewat jam cutoff ${stopAtTime} WIB. Worker berhenti supaya job update harian jam 18:00-20:00 WIB tetap dapat kuota.`);
+      quotaReached = true;
+      stopReason = 'time_cutoff';
+      return true;
+    }
+    return false;
+  }
+
+  for (let i = 0; i < tickers.length; i++) {
+    if (quotaReached) break;
+    const ticker = tickers[i];
+    console.log(`\n[${i + 1}/${tickers.length}] Memproses ${ticker}...`);
+
+    let resAcc = null;
+    let resIns = null;
+    let resSum = null;
+
+    try {
+      if (isTickerFullyCached(ticker, tradingDates)) {
+        console.log(`  -> [SMART-SKIP] Data ${ticker} sudah lengkap dan valid di disk cache (${tradingDates.length} tanggal). Melewati...`);
+        totalSkipped += (2 + tradingDates.length);
+        continue;
+      }
+
+      // 1. Broker Accumulation (1 call per ticker)
+      const accValid = isValidCachedJson('broker-accumulation', ticker, 'series');
+      if (accValid) {
+        totalSkipped++;
+      } else if (dryRun) {
+        totalRequested++;
+      } else {
+        if (checkPreflightStop()) break;
+        totalRequested++;
+        try {
+          resAcc = await arjumClient.fetchBrokerAccumulation(ticker);
+          if (resAcc && resAcc.ok && resAcc.data) {
+            bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', resAcc.data);
+            totalSaved++;
+          } else {
+            totalErrors++;
+            console.warn(`[WARN] Gagal mengambil akumulasi broker ${ticker}: ${(resAcc && (resAcc.error || resAcc.detail)) || 'Respon kosong / tidak valid'}`);
+          }
+        } catch (fetchErr) {
+          totalErrors++;
+          console.warn(`[WARN] Exception saat ambil akumulasi ${ticker}: ${fetchErr && fetchErr.message ? fetchErr.message : fetchErr}`);
+        }
+        if (checkApiQuota(resAcc)) break;
+        await sleep(delayMs);
+      }
+
+      // 2. Insiders (1 call per ticker)
+      if (quotaReached) break;
+      const insValid = isValidCachedJson('insiders', ticker, 'p1');
+      if (insValid) {
+        totalSkipped++;
+      } else if (dryRun) {
+        totalRequested++;
+      } else {
+        if (checkPreflightStop()) break;
+        totalRequested++;
+        try {
+          resIns = await arjumClient.fetchInsiders(ticker, 1, 15);
+          if (resIns && resIns.ok && resIns.data) {
+            bandarmologiService.writeDiskCache('insiders', ticker, 'p1', resIns.data);
+            totalSaved++;
+          } else {
+            totalErrors++;
+            console.warn(`[WARN] Gagal mengambil insider ${ticker}: ${(resIns && (resIns.error || resIns.detail)) || 'Respon kosong / tidak valid'}`);
+          }
+        } catch (fetchErr) {
+          totalErrors++;
+          console.warn(`[WARN] Exception saat ambil insider ${ticker}: ${fetchErr && fetchErr.message ? fetchErr.message : fetchErr}`);
+        }
+        if (checkApiQuota(resIns)) break;
+        await sleep(delayMs);
+      }
+
+      // 3. Broker Summary (per trading date)
+      for (const date of tradingDates) {
+        if (quotaReached) break;
+        const sumValid = isValidCachedJson('broker-summary', ticker, date);
+        if (sumValid) {
+          totalSkipped++;
+        } else if (dryRun) {
+          totalRequested++;
+        } else {
+          if (checkPreflightStop()) break;
+          totalRequested++;
+          try {
+            resSum = await arjumClient.fetchBrokerSummary(ticker, date);
+            if (resSum && resSum.ok && resSum.data) {
+              bandarmologiService.writeDiskCache('broker-summary', ticker, date, resSum.data);
+              if (date === tradingDates[tradingDates.length - 1]) {
+                bandarmologiService.writeDiskCache('broker-summary', ticker, 'latest', resSum.data);
+              }
+              totalSaved++;
+            } else {
+              totalErrors++;
+              console.warn(`[WARN] Gagal mengambil broker summary ${ticker} (${date}): ${(resSum && (resSum.error || resSum.detail)) || 'Respon kosong / tidak valid'}`);
+            }
+          } catch (fetchErr) {
+            totalErrors++;
+            console.warn(`[WARN] Exception saat ambil broker summary ${ticker} (${date}): ${fetchErr && fetchErr.message ? fetchErr.message : fetchErr}`);
+          }
+          if (checkApiQuota(resSum)) break;
+          await sleep(delayMs);
+        }
+      }
+    } catch (tickerErr) {
+      totalErrors++;
+      console.warn(`[WARN] Terjadi error/timeout saat memproses emiten ${ticker}: ${tickerErr && tickerErr.message ? tickerErr.message : tickerErr}. Melanjutkan ke emiten berikutnya...`);
+    } finally {
+      resAcc = null;
+      resIns = null;
+      resSum = null;
+    }
+  }
+
+  const stopReasonLabel = {
+    daily_limit: 'BERHENTI: BATAS EFEKTIF TERCAPAI (daily-limit - reserve-quota)',
+    api_quota_exceeded: 'BERHENTI: KUOTA API ARJUM HABIS (respons 429/quota dari Arjum)',
+    time_cutoff: 'BERHENTI: LEWAT JAM CUTOFF (menyisakan kuota untuk job update harian)',
+    '': 'SELESAI LENGKAP'
+  };
+  console.log('\n----------------------------------------------------');
+  console.log('=== RINGKASAN HASIL BACKFILL ===');
+  console.log(`Status Berhenti:               ${stopReasonLabel[stopReason] || stopReasonLabel['']}`);
+  console.log(`Batas Request Harian:          ${dailyLimit}`);
+  console.log(`Total Permintaan Terkirim (run ini): ${totalRequested}`);
+  console.log(`Total Terpakai Hari Ini (lintas-proses): ${arjumClient.getUsedQuotaToday()} / ${dailyLimit}`);
+  console.log(`Total File Tersimpan Baru:     ${totalSaved}`);
+  console.log(`Total Terlewati (Sudah Ada):   ${totalSkipped}`);
+  console.log(`Total Error / Gagal:           ${totalErrors}`);
+  console.log('Proses worker selesai.');
+
+  // Distinct exit code for "quota exhausted" so a wrapping cron/scheduler can
+  // tell it apart from a clean finish or a real crash, without parsing logs.
+  if (stopReason === 'api_quota_exceeded') process.exitCode = 2;
+  return {
+    totalRequested,
+    totalSaved,
+    totalSkipped,
+    totalErrors,
+    stopReason
+  };
+}
+
+if (require.main === module) {
+  run().catch(err => {
+    console.error('Fatal worker error:', err);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  run,
+  getTradingDates,
+  isValidCachedJson,
+  isTickerFullyCached
+};

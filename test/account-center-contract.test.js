@@ -1,0 +1,121 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const root = path.join(__dirname, '..');
+const terms = require('../lib/account-terms');
+const registerSource = fs.readFileSync(path.join(root, 'api', 'register-user.js'), 'utf8');
+const profileSource = fs.readFileSync(path.join(root, 'lib', 'account-profile-handler.js'), 'utf8');
+const gatewaySource = fs.readFileSync(path.join(root, 'api', 'reset-password.js'), 'utf8');
+const runtimeSource = fs.readFileSync(path.join(root, 'public', 'account-center-v1.js'), 'utf8');
+const lazySource = fs.readFileSync(path.join(root, 'public', 'account-center-lazy-loader-v1.js'), 'utf8');
+const cssSource = fs.readFileSync(path.join(root, 'public', 'account-center-v1.css'), 'utf8');
+const bootstrapSource = fs.readFileSync(path.join(root, 'public', 'website-approved-access.js'), 'utf8');
+const adminSource = fs.readFileSync(path.join(root, 'lib', 'admin-users-handler.js'), 'utf8');
+const migrationSource = fs.readFileSync(path.join(root, 'supabase', 'account-profile-terms-migration.sql'), 'utf8');
+
+test('registration accepts only an explicit acceptance of the exact current terms version', () => {
+  assert.equal(terms.registrationAcceptance({ termsAccepted:true, termsVersion:terms.CURRENT_TERMS_VERSION }).ok, true);
+  assert.equal(terms.registrationAcceptance({ termsAccepted:false, termsVersion:terms.CURRENT_TERMS_VERSION }).ok, false);
+  assert.equal(terms.registrationAcceptance({ termsAccepted:true, termsVersion:'old-version' }).ok, false);
+  assert.equal(terms.registrationAcceptance({ termsAccepted:'true', termsVersion:terms.CURRENT_TERMS_VERSION }).ok, false);
+});
+
+test('browser and server ship the exact same versioned terms contract', () => {
+  const versionPattern = new RegExp("TERMS_VERSION = '" + terms.CURRENT_TERMS_VERSION.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + "'");
+  assert.match(runtimeSource, versionPattern);
+  assert.match(lazySource, versionPattern);
+  assert.match(registerSource, /accountTerms\.registrationAcceptance\(req\.body\)/);
+  assert.match(registerSource, /TERMS_ACCEPTANCE_REQUIRED/);
+  assert.match(registerSource, /account_terms_acceptances/);
+  assert.match(registerSource, /rollbackIncompleteRegistration/);
+});
+
+test('registration UI requires a checkbox and sends acceptance only during register-user request', () => {
+  assert.match(lazySource, /id=\\?"acRegTermsAccepted/);
+  assert.match(lazySource, /checkbox\.checked !== true/);
+  assert.match(lazySource, /body\.termsAccepted = true/);
+  assert.match(lazySource, /body\.termsVersion = TERMS_VERSION/);
+  assert.match(lazySource, /url\.indexOf\('\/api\/register-user'\)/);
+});
+
+test('profile is derived from signed server identity and omits sensitive account fields', () => {
+  assert.match(profileSource, /requireAuthenticatedSession\(req\)/);
+  assert.match(profileSource, /isSameOrigin\(req\)/);
+  assert.match(profileSource, /select\('id, username, email, is_approved, is_blocked, created_at, last_login_at'\)/);
+  assert.doesNotMatch(profileSource, /select\([^\n]*password_hash/);
+  assert.doesNotMatch(profileSource, /select\([^\n]*device_id/);
+  assert.doesNotMatch(profileSource, /telegram_private_chat_id/);
+  assert.match(gatewaySource, /bodyAction === 'account-profile'/);
+});
+
+test('account center exposes profile subscription terms and a scrollable rules document', () => {
+  assert.match(runtimeSource, /data-ac-tab="profile"/);
+  assert.match(runtimeSource, /data-ac-tab="subscription"/);
+  assert.match(runtimeSource, /data-ac-tab="terms"/);
+  assert.match(runtimeSource, /headerUserLabel/);
+  assert.match(cssSource, /\.ac-terms-scroll\s*\{/);
+  assert.match(cssSource, /overflow:auto/);
+  assert.match(cssSource, /max-height:52dvh/);
+});
+
+test('Account Center is lazy-loaded while signup terms stay available at startup', () => {
+  assert.match(bootstrapSource, /account-center-lazy-loader-v1\.js/);
+  assert.doesNotMatch(bootstrapSource, /loadScriptOnce\('\/account-center-v1\.js/);
+  assert.match(lazySource, /script\.src = '\/account-center-v1\.js\?v=20260816-v2'/);
+  assert.match(lazySource, /function loadCenter\(tab\)/);
+  assert.match(lazySource, /installRegistrationContract\(\)/);
+  assert.match(lazySource, /backdrop-filter:none!important/);
+  assert.doesNotMatch(lazySource, /new\s+MutationObserver\s*\(/);
+});
+
+test('subscription cards read the narrow user catalog response, including promotion state', () => {
+  assert.match(runtimeSource, /p\.normal_price_idr/);
+  assert.match(runtimeSource, /p\.promotional_price_idr/);
+  assert.match(runtimeSource, /p\.promotion_active === true/);
+  assert.match(runtimeSource, /durationLabel\(p\)/);
+});
+
+test('voucher creation remains protected by signed budi admin checks and plaintext is not stored', () => {
+  assert.match(adminSource, /requireAdminSession\(req\)/);
+  assert.match(adminSource, /voucher_admin_create/);
+  assert.match(adminSource, /String\(auth\.session\.un \|\| ''\)\.toLowerCase\(\) !== 'budi'/);
+  assert.match(runtimeSource, /crypto\.getRandomValues/);
+  assert.match(runtimeSource, /action:'voucher_admin_create'/);
+  assert.match(adminSource, /vouchers\.voucherCodeHash/);
+  assert.match(adminSource, /code\.slice\(-4\)/);
+});
+
+test('terms audit storage is private and versioned', () => {
+  assert.match(migrationSource, /CREATE TABLE IF NOT EXISTS public\.account_terms_acceptances/);
+  assert.match(migrationSource, /UNIQUE \(user_id, terms_version\)/);
+  assert.match(migrationSource, /ENABLE ROW LEVEL SECURITY/);
+  assert.match(migrationSource, /REVOKE ALL ON TABLE public\.account_terms_acceptances FROM PUBLIC, anon, authenticated/);
+});
+
+test("profile response carries a combined verified_badge flag driven by telegram verification", () => {
+  assert.match(profileSource, /verified_badge: Boolean\(telegram && telegram\.verified\)/);
+});
+
+test("profile hero renders a Terverifikasi badge when verified_badge is true", () => {
+  assert.match(runtimeSource, /p\.verified_badge \? ' <span class="ac-badge-verified"/);
+  assert.match(cssSource, /\.ac-badge-verified\s*\{/);
+});
+
+test("Profil already lives as a tab inside the existing Account Center, not a separate nav destination", () => {
+  assert.match(runtimeSource, /data-ac-tab="profile" aria-selected="true">.*Profil/);
+  assert.doesNotMatch(bootstrapSource, /navigateTo\('profil'\)/);
+});
+
+test("admin bot command reference is gated to p.is_admin and never invented from unrelated auth-recovery codes", () => {
+  assert.match(runtimeSource, /p\.is_admin \? adminCommandsSectionHtml\(\) : ''/);
+  assert.match(runtimeSource, /'\/akses'/);
+  assert.match(runtimeSource, /'\/buatvoucher'/);
+  assert.match(runtimeSource, /'\/auditvoucher'/);
+  assert.match(runtimeSource, /'\/batal'/);
+  assert.doesNotMatch(runtimeSource, /AR-XXXX/);
+  assert.match(cssSource, /\.ac-admin-cmd-list\s*\{/);
+});

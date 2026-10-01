@@ -20,6 +20,8 @@ on:
           - 'true'
           - 'false'
 
+permissions: {}
+
 jobs:
   run-screener:
     runs-on: ubuntu-latest
@@ -27,12 +29,15 @@ jobs:
 
     steps:
       - name: Validate secrets
+        env:
+          SCREENER_URL: ${{ secrets.AUTOCUAN_SCREENER_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          if [ -z "${{ secrets.AUTOCUAN_SCREENER_URL }}" ]; then
+          if [ -z "${SCREENER_URL}" ]; then
             echo "::error::AUTOCUAN_SCREENER_URL secret is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+          if [ -z "${CRON_SECRET}" ]; then
             echo "::error::CRON_SECRET secret is not set"
             exit 1
           fi
@@ -42,16 +47,17 @@ jobs:
         env:
           SCREENER_URL: ${{ secrets.AUTOCUAN_SCREENER_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          FORCE_MODE: ${{ inputs.force_mode }}
         run: |
           FORCE_PARAM=""
-          if [ "${{ github.event.inputs.force_mode }}" = "true" ]; then
+          if [ "${FORCE_MODE}" = "true" ]; then
             FORCE_PARAM="&force=1"
           fi
 
           ENDPOINT="${SCREENER_URL}?action=nk-screener-run${FORCE_PARAM}"
 
           echo "Calling endpoint (URL redacted for security)..."
-          echo "Force mode: ${{ github.event.inputs.force_mode || 'false' }}"
+          echo "Force mode: ${FORCE_MODE:-false}"
 
           HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
             -H "Authorization: Bearer ${CRON_SECRET}" \
@@ -77,9 +83,9 @@ jobs:
               if 'passed' in data: print('Passed:', data['passed'])
               if 'published' in data: print('Published:', data['published'])
               if data.get('skipped'): print('Skipped: outside run window')
-          except:
-              print('Response (raw):', sys.stdin.read()[:200] if False else 'parse error')
-          " || echo "Response: ${RESPONSE_BODY:0:200}"
+          except Exception:
+              print('Response parse error')
+          " || echo "Response: parse error"
 
           if [ "$HTTP_CODE" -ge 400 ]; then
             echo "::error::Endpoint returned HTTP ${HTTP_CODE}"

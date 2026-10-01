@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /pattern
+Disallow: /review
+Disallow: /portfolio-planner
+Disallow: /analisis-saham
+
+Sitemap: https://autocuan.web.id/sitemap.xml

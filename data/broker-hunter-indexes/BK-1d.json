@@ -1,0 +1,108 @@
+{
+  "success": true,
+  "from_cache": false,
+  "broker": "BK",
+  "broker_name": "J.P. Morgan Sekuritas Indonesia",
+  "range": "1d",
+  "target_dates": [
+    "2026-09-08"
+  ],
+  "date_range_label": "2026-09-08",
+  "generated_at": "2026-09-09T05:21:29.815Z",
+  "top_accumulated": [
+    {
+      "ticker": "TLKM",
+      "net_val": 54358422000,
+      "net_vol": 20524300,
+      "net_lot": 205243,
+      "buy_val": 65191661000,
+      "sell_val": 10833239000,
+      "buy_vol": 24627800,
+      "sell_vol": 4103500,
+      "avg_buy_price": 2647,
+      "avg_sell_price": 2640,
+      "days_active": 1
+    },
+    {
+      "ticker": "BBRI",
+      "net_val": 31841461000,
+      "net_vol": 9379200,
+      "net_lot": 93792,
+      "buy_val": 34240982000,
+      "sell_val": 2399521000,
+      "buy_vol": 10086600,
+      "sell_vol": 707400,
+      "avg_buy_price": 3395,
+      "avg_sell_price": 3392,
+      "days_active": 1
+    },
+    {
+      "ticker": "BMRI",
+      "net_val": 11846206000,
+      "net_vol": 2687000,
+      "net_lot": 26870,
+      "buy_val": 18533518000,
+      "sell_val": 6687312000,
+      "buy_vol": 4201400,
+      "sell_vol": 1514400,
+      "avg_buy_price": 4411,
+      "avg_sell_price": 4416,
+      "days_active": 1
+    },
+    {
+      "ticker": "GOTO",
+      "net_val": 9930000,
+      "net_vol": 198600,
+      "net_lot": 1986,
+      "buy_val": 9930000,
+      "sell_val": 0,
+      "buy_vol": 198600,
+      "sell_vol": 0,
+      "avg_buy_price": 50,
+      "avg_sell_price": 0,
+      "days_active": 1
+    },
+    {
+      "ticker": "GPRA",
+      "net_val": 3418000,
+      "net_vol": 31400,
+      "net_lot": 314,
+      "buy_val": 6615100,
+      "sell_val": 3197100,
+      "buy_vol": 61800,
+      "sell_vol": 30400,
+      "avg_buy_price": 107,
+      "avg_sell_price": 105,
+      "days_active": 1
+    }
+  ],
+  "top_distributed": [
+    {
+      "ticker": "BBCA",
+      "net_val": -114372580000,
+      "net_vol": -17029800,
+      "net_lot": -170298,
+      "buy_val": 32450105000,
+      "sell_val": 146822685000,
+      "buy_vol": 4856300,
+      "sell_vol": 21886100,
+      "avg_buy_price": 6682,
+      "avg_sell_price": 6708,
+      "days_active": 1
+    },
+    {
+      "ticker": "ASII",
+      "net_val": -17488015000,
+      "net_vol": -3572700,
+      "net_lot": -35727,
+      "buy_val": 6591107000,
+      "sell_val": 24079122000,
+      "buy_vol": 1347200,
+      "sell_vol": 4919900,
+      "avg_buy_price": 4892,
+      "avg_sell_price": 4894,
+      "days_active": 1
+    }
+  ],
+  "total_stocks_active": 7
+}

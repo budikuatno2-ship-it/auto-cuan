@@ -1,0 +1,4520 @@
+/* =========================================================================
+   Auto-Cuan — UI theme layer
+   =========================================================================
+
+   Loaded AFTER the inline <style> block in index.html so it wins without
+   !important. It is deliberately a restyle of the component classes that
+   already exist (.panel, .action-card, .dashboard-hero, .empty-state, …)
+   rather than new markup: the app converges on one card language, one radius
+   scale and one type scale without touching behaviour.
+
+   Sections
+     1. Tokens
+     2. Base + typography
+     3. Surfaces and cards
+     4. Header and desktop navigation
+     5. Mobile bottom navigation + menu sheet
+     6. Tables, forms, misc
+     7. Reduced motion
+   ========================================================================= */
+
+/* ---- 1. Tokens ---------------------------------------------------------
+
+   THE token layer. This block is the only place in the product that assigns a
+   value to an --ac-* custom property.
+
+   It used to be two blocks: one here and one in the inline <style> of
+   index.html, declaring the SAME names with DIFFERENT values. Because custom
+   properties resolve from the winning declaration rather than from source
+   order, this file silently redefined every token the inline sheet had just
+   set — so `--ac-surface-1` was a flat colour where it was written and a
+   diagonal gradient where it was read, `--ac-space-1` was 4px in one file and
+   6px in the other, and `--ac-focus` was a colour in one and a box-shadow list
+   in the other. That last one made `outline: 2px solid var(--ac-focus)` an
+   invalid declaration, so the inline focus outline had simply stopped
+   existing. Focus is now one token per job: --ac-focus-color and
+   --ac-focus-ring.
+
+   The inline sheet no longer declares tokens. It reads them with a literal
+   fallback — var(--ac-x, #hex) — so the maintenance and blocked screens still
+   render correctly on a network where this file never arrives.
+   ------------------------------------------------------------------------- */
+:root {
+  /* --- Master Design Tokens (§2) --- */
+  --canvas: #090D16;
+  --surface: #10151F;
+  --surface-elevated: #161C29;
+  --border-hairline: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --text-primary: #F4F6F8;
+  --text-secondary: #9AA4B2;
+  --text-tertiary: #626C7A;
+  --text-muted: #626C7A;
+  --accent-primary: #22C55E;
+  --accent-primary-hover: #16A34A;
+  --accent-subtle: rgba(34, 197, 94, 0.12);
+  --data-positive: #22C55E;
+  --data-negative: #EF4444;
+  --data-neutral: #F59E0B;
+  --danger: #EF4444;
+  --warning: #F59E0B;
+  --info: #3B82F6;
+
+  /* --- Motion Tokens (§6.1) --- */
+  --motion-instant: 100ms;
+  --motion-fast: 180ms;
+  --motion-base: 260ms;
+  --motion-slow: 420ms;
+  --motion-stagger: 70ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  --color-bg-canvas: #090d16;
+  --color-bg-surface: #0d1320;
+  --color-bg-elevated: #111a2a;
+  --color-bg-hover: #162033;
+  --color-text-primary: #f4f7fb;
+  --color-text-secondary: #aab4c3;
+  --color-text-muted: #738096;
+  --color-border-subtle: rgba(148, 163, 184, 0.12);
+  --color-border-default: rgba(148, 163, 184, 0.20);
+  --color-accent: #5b8cff;
+  --color-on-accent: #091322;
+  --color-positive: #34d399;
+  --color-positive-soft: rgba(52, 211, 153, 0.12);
+  --color-negative: #fb7185;
+  --color-negative-soft: rgba(251, 113, 133, 0.12);
+  --grid-line: rgba(148, 163, 184, 0.10);
+  --grid-header-bg: #0d1320;
+
+  /* --- Ground and surfaces ---------------------------------------------
+     Flat, and stepped by lightness alone. Every repeated surface used to
+     carry its own diagonal gradient, which is what made a dense screen read
+     as muddy: eight cards, eight light sources. One gradient survives, on the
+     dashboard hero, because there is exactly one of it. */
+  --ac-bg: #090d16;
+  --ac-bg-elevated: #0c111b;
+  --ac-surface-1: #0f1420;      /* panel — Holver-style neutral card ground */
+  --ac-surface-2: #141a27;      /* raised block sitting on a panel */
+  --ac-surface-3: #0b101a;      /* recessed well — inputs, nested groups */
+  --ac-surface-hover: #19202e;
+
+  /* --- Structure -------------------------------------------------------
+     Three weights. A hairline states a boundary, a line draws a container,
+     a strong line means the container is interactive or focused. */
+  --ac-hairline: rgba(148, 163, 184, 0.085);
+  --ac-line: rgba(148, 163, 184, 0.13);
+  --ac-line-strong: rgba(148, 163, 184, 0.22);
+  --ac-border: var(--ac-line);                 /* inline-sheet alias */
+  --ac-border-strong: var(--ac-line-strong);   /* inline-sheet alias */
+
+  /* --- Text ------------------------------------------------------------
+     Measured against --ac-surface-1: strong 16.8:1, default 12.1:1,
+     muted 6.1:1, dim 3.6:1. Everything that carries meaning clears 4.5:1;
+     --ac-text-dim is reserved for non-essential ornament and uppercase
+     micro-labels at >=11px, which clear the AA large-text threshold. */
+  --color-text-primary: #f8fafc;
+  --ac-text-strong: var(--color-text-primary);
+  --ac-text: #dbe3ec;
+  --ac-text-muted: #93a1b5;
+  --ac-text-dim: #6a7889;
+  --ac-text-faint: var(--ac-text-dim);         /* inline-sheet alias */
+
+  /* --- Accent ----------------------------------------------------------
+     One accent, spent deliberately: active navigation, primary action, and
+     bullish direction. Nothing else earns it. */
+  --ac-accent: #34d399;
+  --ac-accent-strong: #22c55e;
+  --ac-accent-soft: rgba(16, 185, 129, 0.10);
+  --ac-accent-line: rgba(52, 211, 153, 0.30);
+  --ac-brand: var(--ac-accent-strong);         /* inline-sheet alias */
+  --ac-brand-strong: var(--ac-accent);         /* inline-sheet alias */
+  --ac-brand-ink: #04130d;
+
+  /* --- Financial semantics --------------------------------------------
+     Named by meaning, not hue. Colour is never the only cue: direction is
+     always repeated in text or glyph next to it. */
+  --ac-bull: #34d399;
+  --ac-bull-dim: rgba(52, 211, 153, 0.12);
+  --ac-bear: #f87171;
+  --ac-bear-dim: rgba(248, 113, 113, 0.12);
+  --ac-flat: #94a3b8;
+  --ac-flat-dim: rgba(148, 163, 184, 0.10);
+  --ac-warn: #fbbf24;
+  --ac-warn-dim: rgba(251, 191, 36, 0.12);
+  --ac-info: #60a5fa;
+  --ac-info-dim: rgba(96, 165, 250, 0.12);
+  --ac-danger: #f87171;
+
+  /* --- Radius: five steps, replacing the 6/8/10/12/13/14/16/17/18/20/22/24
+     mix that ran across the two sheets.
+
+     The steps are chosen to coincide with Tailwind's rounded-md / -lg / -xl /
+     -2xl, because the markup reaches for those utilities 264 times. A token
+     scale that disagreed with them would just be a seventh radius language.
+     Only rounded-3xl (24px) sits off the scale, and section 2b pulls it in. */
+  --ac-radius-xs: 6px;   /* = rounded-md  */
+  --ac-radius-sm: 8px;   /* = rounded-lg  */
+  --ac-radius-md: 12px;  /* = rounded-xl  */
+  --ac-radius-lg: 16px;  /* = rounded-2xl */
+  --ac-radius-xl: 20px;  /* rounded-3xl is mapped down to this */
+
+  /* --- Space: one 4px base scale. The two sheets previously ran a 4px and a
+     6px scale under identical names. */
+  --ac-space-1: 4px;
+  --ac-space-2: 8px;
+  --ac-space-3: 12px;
+  --ac-space-4: 16px;
+  --ac-space-5: 20px;
+  --ac-space-6: 24px;
+  --ac-space-8: 32px;
+
+  /* --- Elevation -------------------------------------------------------
+     A contact shadow plus a wide ambient one, and a 1px inner highlight on
+     the top edge. The highlight is what reads as craft on a dark surface —
+     it implies a light source above the page, so a card looks lit rather
+     than cut out. Previous ramp was a single 45-70px blur with no contact
+     shadow, which floats without ever landing. */
+  --ac-edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --ac-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.34), 0 6px 16px rgba(0, 0, 0, 0.18);
+  --ac-shadow-2: 0 2px 4px rgba(0, 0, 0, 0.38), 0 16px 40px rgba(0, 0, 0, 0.28);
+  --ac-shadow-sm: var(--ac-shadow-1);          /* inline-sheet alias */
+  --ac-shadow-md: var(--ac-shadow-1);          /* inline-sheet alias */
+  --ac-shadow-lg: var(--ac-shadow-2);          /* inline-sheet alias */
+
+  /* --- Type ramp -------------------------------------------------------
+     Seven steps. The markup reaches for text-[9px]/[10px]/[11px] in 229
+     places; section 2b maps those three arbitrary values onto micro and
+     caption so the ramp holds without touching a single class attribute. */
+  --ac-text-micro: 11px;      /* uppercase labels, table headers, meta */
+  --ac-text-caption: 12px;    /* secondary copy, hints, dense cells */
+  --ac-text-body: 13px;       /* default reading size */
+  --ac-text-lead: 15px;       /* card and panel titles */
+  --ac-text-title: 18px;      /* page and section headings */
+  --ac-text-metric: 21px;     /* single KPI figure */
+  --ac-text-display: 27px;    /* hero figure */
+
+  --ac-lh-tight: 1.2;
+  --ac-lh-snug: 1.45;
+  --ac-lh-normal: 1.55;
+
+  --ac-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ac-font-mono: 'JetBrains Mono', 'SF Mono', 'Roboto Mono', 'Cascadia Code', ui-monospace, monospace;
+
+  /* --- Focus: one job per token. See the header note above. */
+  --ac-focus-color: #34d399;
+  --ac-focus-ring: 0 0 0 2px rgba(9, 12, 18, 1), 0 0 0 4px rgba(52, 211, 153, 0.62);
+
+  /* A hairline that reads as structure rather than as a drawn box. */
+  --ac-control-h: 38px;
+  --ac-control-h-touch: 44px;
+
+  /* Table rhythm. Row height is a design decision, not an accident of padding. */
+  --ac-row-h: 38px;
+  --ac-row-h-dense: 32px;
+
+  --ac-fab-size: 56px;
+  --ac-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html:not(.light) {
+  --text-primary: #F4F6F8;
+}
+
+html.light,
+[data-theme="light"] {
+  /* --- Master Design Tokens Light Mode (§2) --- */
+  --canvas: #F7F8FA;
+  --surface: #FFFFFF;
+  --surface-elevated: #F1F5F9;
+  --border-hairline: #E5E7EB;
+  --border-subtle: rgba(0, 0, 0, 0.12);
+  --text-primary: #111827; /* WAJIB: bukan #FFFFFF, kontras WCAG AA */
+  --text-secondary: #4B5563;
+  --text-tertiary: #9CA3AF;
+  --text-muted: #9CA3AF;
+  --accent-primary: #16A34A;
+  --accent-primary-hover: #15803D;
+  --accent-subtle: rgba(22, 163, 74, 0.10);
+  --data-positive: #16A34A;
+  --data-negative: #DC2626;
+  --data-neutral: #F59E0B;
+  --danger: #DC2626;
+  --warning: #D97706;
+  --info: #2563EB;
+
+  --color-bg-canvas: #f8fafc;
+  --color-bg-surface: #ffffff;
+  --color-bg-elevated: #f8fafc;
+  --color-bg-hover: #f1f5f9;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #475569;
+  --color-border-subtle: rgba(15, 23, 42, 0.10);
+  --color-border-default: rgba(15, 23, 42, 0.16);
+  --color-accent: #2563eb;
+  --color-on-accent: #ffffff;
+  --color-positive: #047857;
+  --color-positive-soft: rgba(4, 120, 87, 0.10);
+  --color-negative: #b91c1c;
+  --color-negative-soft: rgba(185, 28, 28, 0.10);
+  --color-warning: #b45309;
+  --grid-line: rgba(15, 23, 42, 0.08);
+  --grid-header-bg: #f8fafc;
+}
+
+/* ---- 1b. Viewport height ------------------------------------------------
+   iOS Safari and Android Chrome both size 100vh to the viewport with the URL bar
+   COLLAPSED, so a 100vh shell overshoots the visible area and shifts as the bar
+   hides and shows. `dvh` tracks the real viewport; the `vh` line stays first as the
+   fallback for engines that do not support it. */
+body, #dashboardScreen, .landing-shell { min-height: 100vh; }
+.sidebar { height: 100vh; }
+#page-analisis { min-height: calc(100vh - 120px); }
+#aiSection { min-height: calc(100vh - 64px); }
+
+@supports (height: 100dvh) {
+  body, #dashboardScreen, .landing-shell { min-height: 100dvh; }
+  .sidebar { height: 100dvh; }
+  #page-analisis { min-height: calc(100dvh - 120px); }
+  #aiSection { min-height: calc(100dvh - 64px); }
+}
+
+/* The app footer sits at the foot of the shell; keep it clear of the home indicator. */
+#dashboardScreen > footer { padding-bottom: var(--ac-safe-bottom); }
+
+/* Global Scroll & Unclipped Card Grid Layout */
+html, body, #dashboardScreen, .page-content {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#kgCardGrid, #nkCardGrid, #dtCardGrid {
+  padding-bottom: 80px;
+  margin-bottom: 24px;
+  overflow: visible;
+}
+
+.dt-card-item, .kg-card-item, .nk-card-item {
+  min-height: fit-content;
+  height: auto;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.trade-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+  overflow: visible;
+}
+
+/* ---- 2. Base + typography ---------------------------------------------- */
+body {
+  font-family: var(--ac-font-sans);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Numbers in a trading dashboard must line up column to column. */
+.panel b, .panel-title, .ps-level b, .dashboard-card b,
+.tabular, [class*="tabular-nums"], .ac-num, [data-num],
+.dash-level b, .market-tile b, .price-value, .metric-value, .ticker-price {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+
+.ac-font-mono, .font-mono, .ac-num, [data-mono] {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 2b. Type scale ----------------------------------------------------
+   The markup sets its smallest sizes with Tailwind arbitrary values rather
+   than with the ramp: text-[9px] in 22 places, text-[10px] in 124, and
+   text-[11px] in 83. 9px is below the size at which Inter's numerals stay
+   separable on a phone, and three near-identical steps produce no hierarchy —
+   they just produce drift.
+
+   Rather than rewrite 229 class attributes (which would also mean 229 chances
+   to break a JS hook, and a Tailwind safelist change), the three utilities are
+   redefined here onto two real steps: micro (11px) for labels and meta, and
+   caption (12px) for dense copy. Tailwind generates these as single-class
+   rules, so an equal-specificity rule in this later sheet wins on source
+   order. A deliberate per-element override in markup still wins, because
+   nothing here is !important.
+
+   Growth is at most +2px, and only on the 9px labels. Line-height is set with
+   it: at these sizes the default leading is what makes a dense cell feel
+   cramped, not the glyph size. */
+.text-\[9px\],
+.text-\[10px\] {
+  font-size: var(--ac-text-micro);
+  line-height: var(--ac-lh-snug);
+}
+
+.text-\[11px\] {
+  font-size: var(--ac-text-caption);
+  line-height: var(--ac-lh-snug);
+}
+
+/* Uppercase micro-labels carry tracking, or they read as a smudge. The markup
+   already pairs `uppercase` with `tracking-*` in most places; this covers the
+   ones that only set the size. */
+.text-\[9px\].uppercase,
+.text-\[10px\].uppercase {
+  letter-spacing: 0.09em;
+}
+
+/* Weight hierarchy. The markup uses font-black 60 times, font-bold 80 and
+   font-semibold 91 — so nearly every string on the page was competing to be
+   the loudest, and none of them won. Inter at weight 900 also loses its
+   counters below ~16px and reads as a blob.
+
+   900 is retired in favour of 800; that single step down is the difference
+   between "shouting" and "emphatic". Headings keep their prominence through
+   size and tracking, which is where it belongs. */
+.font-black { font-weight: 800; }
+
+/* Optical sizing: tighten as type grows, so large headings do not read as
+   spaced-out and small labels stay separable. */
+.text-2xl, .text-3xl, .text-4xl, .text-5xl { letter-spacing: -0.022em; }
+.text-xl { letter-spacing: -0.016em; }
+.text-lg { letter-spacing: -0.011em; }
+
+/* The only Tailwind radius step that sits off the product scale. Ten uses, all
+   of them large decorative containers, and 24px next to the 20px shells read
+   as two different corner treatments on the same screen. */
+.rounded-3xl { border-radius: var(--ac-radius-xl); }
+
+/* ---- 3. Surfaces and cards ---------------------------------------------
+
+   ONE surface primitive, `.ac-surface`, with variants driven by data-*.
+
+   The product had accumulated sixty-odd card class names — .panel,
+   .dashboard-card, .feature-card, .portfolio-card, .landing-card, .mock-card,
+   .faq-item, .skeleton-card, .maintenance-card, .subscription-card,
+   .dt-card-item, .kg-card-item, .nk-card-item and the rest — each with its own
+   background, its own radius and its own shadow. Nothing was wrong with any
+   single one; the problem was that no two agreed, so the app read as several
+   products stacked together.
+
+   Those names are kept and aliased onto the primitive rather than renamed.
+   Every one of them is a JS hook, a querySelector target, or an assertion in
+   tools/apply-production-hotfixes.js, so renaming would be sixty chances to
+   break behaviour for zero visual gain. New markup should use `.ac-surface`
+   directly; existing markup inherits the same rules for free.
+
+   Three levels, and no more: the page ground, a surface on it, and a well
+   recessed into that surface. */
+.ac-surface,
+.panel,
+.dashboard-card,
+.feature-card,
+.portfolio-card,
+.skeleton-card,
+.landing-auth-card,
+.faq-item,
+.subscription-summary {
+  background: var(--ac-surface-1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--ac-radius-md);
+  box-shadow: none;
+}
+
+.ac-surface,
+.panel {
+  padding: var(--ac-space-4);
+}
+
+/* Raised: a block that sits ON a surface and must separate from it. */
+.ac-surface[data-elev="2"],
+.dashboard-pick-card,
+.portfolio-row-card,
+.mock-card {
+  background: var(--ac-surface-2);
+  border: 1px solid var(--ac-line);
+  border-radius: var(--ac-radius-md);
+  box-shadow: var(--ac-edge), var(--ac-shadow-1);
+}
+
+/* Recessed: a well cut INTO a surface — inputs, nested groups, stat strips,
+   the market band and the level tiles. No edge highlight and no shadow; light
+   does not fall into a hole.
+
+   These tiles each carried their own near-miss border — rgba(28,35,51,0.5) on
+   the market band, rgba(148,163,184,0.10) on the level tiles, rgba(2,6,23,0.25)
+   as a fill — values close enough to look like a mistake rather than a
+   decision. */
+.ac-surface[data-elev="0"],
+.ac-well,
+.market-tile,
+.dash-level {
+  background: var(--ac-surface-3);
+  border: 1px solid var(--ac-hairline);
+  border-radius: var(--ac-radius-md);
+  box-shadow: none;
+}
+
+/* Tone variants. The border carries the tone and the fill stays near-neutral,
+   so a coloured card never competes with the figures printed on it. */
+.ac-surface[data-tone="accent"] { border-color: var(--ac-accent-line); background: var(--ac-accent-soft); }
+.ac-surface[data-tone="warn"]   { border-color: rgba(251, 191, 36, 0.28); background: var(--ac-warn-dim); }
+.ac-surface[data-tone="danger"] { border-color: rgba(248, 113, 113, 0.30); background: var(--ac-bear-dim); }
+
+/* Interactive surfaces state it: they lift, and the border wakes up. Static
+   cards deliberately do not, so a hover means "this does something". */
+.ac-surface[data-interactive],
+.dashboard-pick-card,
+.action-card,
+.feature-card {
+  transition: border-color .16s ease, background-color .16s ease,
+              box-shadow .16s ease, transform .16s ease;
+}
+.ac-surface[data-interactive]:hover,
+.dashboard-pick-card:hover,
+.action-card:hover,
+.feature-card:hover {
+  border-color: var(--ac-accent-line);
+  box-shadow: var(--ac-edge), var(--ac-shadow-2);
+  transform: translateY(-1px);
+}
+.ac-surface[data-interactive]:active,
+.dashboard-pick-card:active,
+.action-card:active { transform: translateY(0); }
+
+.panel-header {
+  align-items: flex-start;
+  gap: var(--ac-space-3);
+  margin-bottom: var(--ac-space-3);
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--ac-text);
+}
+
+.panel-subtitle {
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--ac-text-muted);
+}
+
+/* Section band: a labelled group of panels on the dashboard. Gives the page a
+   scannable rhythm (act now → live radar → history) instead of one flat stack. */
+.ac-section { margin-top: var(--ac-space-5); }
+.ac-section:first-child { margin-top: 0; }
+
+.ac-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ac-space-3);
+  margin-bottom: var(--ac-space-3);
+  padding-bottom: var(--ac-space-2);
+  border-bottom: 1px solid var(--ac-line);
+}
+
+.ac-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ac-text-muted);
+}
+
+.ac-section-hint {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ac-text-dim);
+}
+
+.dashboard-hero {
+  border-radius: var(--ac-radius-md);
+  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--ac-surface-1);
+  box-shadow: none;
+}
+
+/* The greeting inherits one semantic token in every theme. This selector also
+   protects it from legacy utility rules without coupling it to a literal hue. */
+#page-dashboard #dashGreeting {
+  color: var(--color-text-primary);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+/* .dashboard-card and .feature-card were separate copies of the surface rules
+   above and are now aliased onto the primitive; only what makes them different
+   is stated here. */
+
+/* Page-level shells: the chart and the portfolio own a whole viewport of the
+   page, so they get the larger radius and the deeper shadow. This is the only
+   tier above a card. */
+.chart-shell, .portfolio-shell {
+  background: var(--ac-surface-1);
+  border: 1px solid var(--ac-line);
+  border-radius: var(--ac-radius-xl);
+  box-shadow: var(--ac-edge), var(--ac-shadow-2);
+}
+
+/* Quick-access card: layout only. Surface, hover and lift come from the
+   primitive block above. */
+.action-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 96px;
+  padding: var(--ac-space-3);
+  text-align: left;
+  border-radius: var(--ac-radius-md);
+}
+
+.action-card .action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--ac-radius-sm);
+  background: var(--ac-accent-soft);
+  margin-bottom: var(--ac-space-2);
+  transition: background-color .16s ease;
+}
+
+.action-card:hover .action-icon { background: rgba(16, 185, 129, 0.18); }
+.action-card .action-icon svg { width: 17px; height: 17px; color: var(--ac-accent); }
+
+.dash-badge {
+  padding: 4px 9px;
+  border-color: var(--ac-line-strong);
+  background: var(--ac-surface-3);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ac-text-muted);
+}
+
+.dash-section-note {
+  border-radius: var(--ac-radius-md);
+  padding: var(--ac-space-2) var(--ac-space-3);
+  line-height: 1.6;
+}
+
+/* .empty-state and .empty-state-text are defined once, in section 8i. */
+
+/* ---- 4. Header and desktop navigation ---------------------------------- */
+.app-header {
+  background: rgba(9, 12, 18, 0.84);
+  border-bottom: 1px solid var(--ac-line);
+  /* A sticky bar needs a contact edge, not a drop shadow: the content scrolls
+     under it, so what has to read is the boundary, not the depth. */
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5), 0 10px 26px rgba(0, 0, 0, 0.20);
+}
+
+/* Header chrome onto the same line and radius scale as everything else. */
+.header-status-chip { border-color: var(--ac-line); background: var(--ac-surface-3); color: var(--ac-text-muted); }
+.header-account { border-color: var(--ac-hairline); background: var(--ac-surface-3); }
+
+.nav-btn {
+  border-radius: var(--ac-radius-sm);
+  font-weight: 600;
+  color: var(--ac-text-muted);
+}
+
+.nav-btn:hover:not(.disabled) {
+  color: var(--ac-text);
+  background: rgba(148, 163, 184, 0.08);
+  border-color: var(--ac-line);
+}
+
+.nav-btn.active {
+  color: #6ee7b7;
+  background: var(--ac-accent-soft);
+  border-color: var(--ac-accent-line);
+  box-shadow: inset 0 -2px 0 rgba(52, 211, 153, 0.45);
+}
+
+/* ---- 5. Floating mobile navigation launcher ---------------------------- */
+/* Below 1024px the scrolling header strip is replaced by a draggable, edge-snapping
+   circular launcher. `#mainNav` stays in the DOM as the source of truth for
+   mobile-nav.js and for the runtimes that inject buttons into it — only its display
+   is dropped.
+
+   A floating control reserves no layout space, which is deliberate: the previous
+   fixed bottom bar required padding <body>, and with border-box that shrank the
+   100vh body content box below the 100vh shell, leaving a dead band containing the
+   footer at the foot of every page. */
+.ac-launcher, .ac-navpanel { display: none; }
+
+@media (max-width: 1023px) {
+  .mobile-nav-row { display: none !important; }
+
+  .ac-launcher {
+    position: fixed;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--ac-fab-size);
+    height: var(--ac-fab-size);
+    padding: 0;
+    border: 1px solid rgba(52, 211, 153, 0.34);
+    border-radius: 999px;
+    background: radial-gradient(circle at 32% 26%, rgba(52, 211, 153, 0.34), rgba(9, 14, 22, 0.94) 62%);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.44), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(14px);
+    color: #6ee7b7;
+    cursor: grab;
+    /* Idle at reduced opacity so it reads as an overlay control, not page content. */
+    opacity: 0.58;
+    touch-action: none;
+    transition: opacity 0.18s ease, transform 0.18s ease, left 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .ac-launcher.ac-hidden { display: none; }
+  .ac-launcher:hover, .ac-launcher:focus-visible { opacity: 1; }
+  .ac-launcher:focus-visible { outline: 2px solid rgba(52, 211, 153, 0.75); outline-offset: 3px; }
+  .ac-launcher.ac-launcher-open { opacity: 1; transform: scale(1.04); }
+  /* No position transition mid-drag, or the control lags the finger. */
+  .ac-launcher.ac-launcher-dragging { opacity: 1; cursor: grabbing; transition: none; }
+
+  .ac-launcher-ring {
+    position: absolute;
+    inset: 5px;
+    border: 1px solid rgba(148, 163, 184, 0.20);
+    border-radius: 999px;
+    pointer-events: none;
+  }
+
+  .ac-launcher-icon { display: flex; pointer-events: none; }
+  .ac-launcher-icon svg { width: 24px; height: 24px; }
+
+  .ac-navpanel { position: fixed; inset: 0; z-index: 41; display: block; }
+  .ac-navpanel.hidden { display: none; }
+
+  .ac-navpanel-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 6, 14, 0.52);
+    backdrop-filter: blur(2px);
+  }
+
+  .ac-navpanel-card {
+    position: absolute;
+    width: min(320px, calc(100vw - 24px));
+    max-height: min(60vh, 460px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 12px;
+    border: 1px solid var(--ac-line-strong);
+    border-radius: var(--ac-radius-xl);
+    background: rgba(13, 18, 27, 0.97);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.52);
+    animation: acPanelIn 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes acPanelIn { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+  .ac-navpanel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ac-space-2);
+    margin-bottom: var(--ac-space-2);
+  }
+
+  .ac-navpanel-title {
+    font-size: var(--ac-text-micro);
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ac-text-muted);
+  }
+
+  .ac-navpanel-close {
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--ac-line);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.6);
+    color: var(--ac-text-muted);
+    font-size: 17px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .ac-navpanel-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+  .ac-navpanel-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 10px 11px;
+    border: 1px solid var(--ac-line);
+    border-radius: var(--ac-radius-md);
+    background: var(--ac-surface-2);
+    color: #d7e0ec;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .ac-navpanel-item .ac-nav-icon { display: flex; flex: 0 0 auto; }
+  .ac-navpanel-item .ac-nav-icon svg { width: 17px; height: 17px; }
+  .ac-navpanel-item .ac-nav-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .ac-navpanel-item.active {
+    border-color: var(--ac-accent-line);
+    background: var(--ac-accent-soft);
+    color: #6ee7b7;
+  }
+}
+
+/* ---- 5b. Fullscreen chart viewer --------------------------------------- */
+/* Shared by the Chart page and Pattern so both read as the same viewer. */
+.ac-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  background: #080c12;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.ac-viewer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ac-space-3);
+  flex: 0 0 auto;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ac-line);
+  background: rgba(11, 15, 22, 0.96);
+}
+
+.ac-viewer-heading { min-width: 0; }
+.ac-viewer-title { font-size: 15px; font-weight: 700; color: var(--ac-text); }
+.ac-viewer-subtitle { margin-top: 2px; font-size: 11.5px; color: var(--ac-text-muted); }
+.ac-viewer-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+
+.ac-viewer-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 9px 13px;
+  border: 1px solid var(--ac-line-strong);
+  border-radius: var(--ac-radius-sm);
+  background: rgba(15, 23, 42, 0.7);
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ac-viewer-btn:hover { border-color: var(--ac-accent-line); color: #6ee7b7; }
+.ac-viewer-close { border-color: rgba(148, 163, 184, 0.3); }
+
+.ac-viewer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ac-viewer-chart { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.ac-viewer-main {
+  width: 100%;
+  /* renderLightweightChart sets an explicit pixel height from
+     chartDims('fullscreen', …); shrinking would fight it. */
+  flex: 0 0 auto;
+  min-height: 0;
+}
+.ac-viewer-rsi { width: 100%; flex: 0 0 auto; border-top: 1px solid rgba(148, 163, 184, 0.10); }
+
+.ac-viewer-metrics {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.10);
+  font-size: var(--ac-text-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 640px) { .ac-viewer-metrics { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+
+.ac-viewer-hint {
+  flex: 0 0 auto;
+  padding: 6px 12px 10px;
+  color: var(--ac-text-dim);
+  font-size: var(--ac-text-micro);
+  text-align: center;
+}
+
+.ac-viewer-imageframe {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* The frame owns every gesture so the page behind can never scroll or bounce. */
+  touch-action: none;
+  overscroll-behavior: contain;
+  background: #0b0e14;
+}
+
+.ac-viewer-image {
+  max-width: 100%;
+  max-height: 100%;
+  transform-origin: center center;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.ac-viewer-imageframe[data-zoomed="1"] { cursor: grab; }
+.ac-viewer-empty { padding: 32px; color: var(--ac-text-muted); font-size: 12.5px; text-align: center; }
+
+/* ---- 6. Tables, forms, misc -------------------------------------------- */
+/* Header rows read as labels, not data. Kept at the inherited size so the
+   dense screener tables do not reflow. */
+th {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ac-text-muted);
+}
+
+/* A horizontally scrolling table must not hand its overscroll to the page —
+   that is what makes a sideways swipe trigger back-navigation on Android and
+   rubber-band the whole document on iOS. */
+.overflow-x-auto, .overflow-y-auto, .nav-scroll-container {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---- 6b. Mobile refinement --------------------------------------------- */
+@media (max-width: 640px) {
+  .panel { padding: var(--ac-space-3); }
+  .ac-section { margin-top: var(--ac-space-4); }
+  .action-card { min-height: 88px; }
+  button, [role="button"] { touch-action: manipulation; }
+
+  /* Comfortable targets everywhere, not just where a utility happened to set one. */
+  .nav-btn, .screener-tab, .nk-screener-tab, .dt-screener-tab { min-height: 40px; }
+
+  /* Touch target standard >= 44px for all interactive controls on mobile */
+  .nav-btn, .screener-tab, .nk-screener-tab, .dt-screener-tab,
+  .ac-btn, .ac-segment, .ac-viewer-btn,
+  .action-card, .dashboard-pick-card,
+  .wl-star-btn, button, [role="button"], [role="tab"] {
+    min-height: var(--ac-control-h-touch, 44px);
+    touch-action: manipulation;
+  }
+
+  /* The sticky header must clear the notch. */
+  .app-header { padding-top: env(safe-area-inset-top, 0px); }
+
+  /* Side and bottom padding: clears floating launcher and safe areas on mobile */
+  .page-content {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-bottom: calc(var(--ac-fab-size, 56px) + var(--ac-safe-bottom, 16px) + 24px);
+  }
+
+  /* Bottom sheets and dialogs stay clear of the home indicator. */
+  [role="dialog"] { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+  /* Tighter rhythm: cards carried desktop-sized gaps into a 390px column. */
+  .dashboard-hero { border-radius: var(--ac-radius-lg); }
+  .ac-section-head { margin-bottom: var(--ac-space-2); }
+}
+
+/* On the narrowest phones the section hint competes with its own heading. */
+@media (max-width: 479px) {
+  .ac-section-hint { display: none; }
+}
+
+/* ---- 6c. Glow / readability balance ------------------------------------
+   The hero and panel gradients were competing with body copy. Softening the
+   decorative layers keeps the premium feel while text contrast wins. */
+.dashboard-hero::after { opacity: 0.55; }
+.glow-emerald { box-shadow: 0 0 16px rgba(16, 185, 129, 0.18), 0 0 44px rgba(16, 185, 129, 0.06); }
+.glow-emerald:hover { box-shadow: 0 0 22px rgba(16, 185, 129, 0.30), 0 0 58px rgba(16, 185, 129, 0.12); }
+
+/* =========================================================================
+   8. Institutional pass
+   =========================================================================
+
+   Sections 1–7 established one card language and one radius scale. This section
+   takes the product from coherent to institutional: the refinements a desk-grade
+   financial tool needs, applied to the component classes and element selectors
+   that already exist rather than to new markup. Nothing here requires an HTML
+   change, so none of it can alter behaviour.
+
+   Specificity note
+   ----------------
+   The Tailwind Play CDN injects its sheet at runtime, and the injection point is
+   not guaranteed to precede this file. Rules below that must beat a utility on
+   the same element therefore carry two or more classes (or an element + class)
+   so they win on specificity, not on source order. No !important is used, so a
+   deliberate utility on an individual element can still opt out.
+
+   Contents
+     8a. Extended tokens
+     8b. Numerals and financial typography
+     8c. Surface hierarchy
+     8d. Section rhythm and headings
+     8e. Tables
+     8f. Metric and KPI blocks
+     8g. Controls: buttons, tabs, inputs, selects
+     8h. Badges, pills, status
+     8i. Empty, loading and error states
+     8j. Modal and drawer chrome
+     8k. Interaction feedback
+     8l. Responsive composition
+   ========================================================================= */
+
+/* ---- 8a. Extended tokens ------------------------------------------------
+   Folded into the single :root block in section 1. This heading is kept so the
+   section numbering below still matches the contents list above. */
+
+/* ---- 8b. Numerals and financial typography ------------------------------ */
+/* Every figure in the product lines up column to column and does not reflow as
+   digits change. Section 2 applied this to a handful of classes; a financial
+   product needs it wherever a number can appear. */
+table td,
+table th,
+.panel td,
+.panel th,
+.metric-grid *,
+.dashboard-card b,
+.dashboard-pick-card b,
+[class*="text-right"],
+.ac-num,
+[data-num] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+
+/* Numeric columns and financial metric figures use monospace for optimal alignment */
+table td.text-right,
+table th.text-right,
+.panel table tbody td.text-right,
+.ps-level b,
+.dash-level b,
+.dash-level .text-lg,
+.dash-level .text-xl,
+#screenerStats p:last-child,
+#nkScreenerStats p:last-child,
+#dtScreenerStats p:last-child {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tickers are identifiers. Monospace font and fixed weight stop them reading
+   as prose and make a column of them immediately scannable. */
+.panel td:first-child b,
+.dashboard-pick-card b:first-child,
+.ticker-badge,
+.ticker-symbol {
+  font-family: var(--ac-font-mono);
+  letter-spacing: 0.02em;
+}
+
+/* ---- 8c. Surface hierarchy ---------------------------------------------- */
+/* Three levels, deliberately: the page ground, a panel, and content nested
+   inside a panel. Previously panels and their inner blocks shared a tone, so a
+   dense screen read as one undifferentiated field. */
+/* A panel nested inside a panel, and the utility-built blocks that act like
+   one, become a recessed well — the third and last level. Aliased onto the
+   `.ac-well` primitive rather than restated. */
+.panel .panel,
+.panel .bg-dark-700\/50,
+.panel .bg-dark-800\/50 {
+  background: var(--ac-surface-3);
+  border-color: var(--ac-hairline);
+  border-radius: var(--ac-radius-md);
+  box-shadow: none;
+}
+
+/* The hero is the one surface allowed to carry a gradient, so it stays the
+   visual anchor of the dashboard instead of competing with the cards below.
+   Its base rules live in section 3; nothing is restated here. */
+
+/* ---- 8d. Section rhythm and headings ------------------------------------ */
+/* Section labels are navigation, not content. Smaller, wider-tracked, dimmer —
+   so the eye lands on the data underneath them first. */
+.ac-section-title {
+  font-size: var(--ac-text-micro);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ac-text-dim);
+}
+.ac-section-hint {
+  font-size: var(--ac-text-caption);
+  color: var(--ac-text-dim);
+}
+.ac-section-head { border-bottom-color: var(--ac-hairline); }
+
+.panel-title {
+  font-size: var(--ac-text-lead);
+  letter-spacing: -0.012em;
+  line-height: var(--ac-lh-tight);
+}
+.panel-subtitle {
+  font-size: var(--ac-text-caption);
+  line-height: var(--ac-lh-normal);
+  color: var(--ac-text-muted);
+}
+
+/* ---- 8e. Tables --------------------------------------------------------- */
+/* The screener and ranking tables are the product's core reading surface.
+   Header rows become labels, body rows get a real rhythm and a hover, numeric
+   columns align on the decimal, and the header sticks so a long scan never
+   loses its column meanings. */
+.panel table,
+.overflow-x-auto > table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.panel table thead th,
+.overflow-x-auto > table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #10151f;
+  font-size: var(--ac-text-micro);
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ac-text-dim);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--ac-line);
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+
+.panel table tbody td,
+.overflow-x-auto > table tbody td {
+  height: var(--ac-row-h);
+  border-bottom: 1px solid var(--ac-hairline);
+  color: var(--ac-text-muted);
+}
+
+/* The identifier column carries the row. */
+.panel table tbody td:first-child,
+.overflow-x-auto > table tbody td:first-child {
+  color: var(--ac-text);
+  font-weight: 700;
+}
+
+.panel table tbody tr,
+.overflow-x-auto > table tbody tr {
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard);
+}
+.panel table tbody tr:hover,
+.overflow-x-auto > table tbody tr:hover {
+  background: rgba(52, 211, 153, 0.045);
+}
+.panel table tbody tr:last-child td,
+.overflow-x-auto > table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* A horizontally scrolling table gets a visible edge so it is obvious there is
+   more to the right, without adding a scrollbar that eats a row of height. */
+.overflow-x-auto {
+  scrollbar-width: thin;
+}
+.overflow-x-auto::-webkit-scrollbar { height: 6px; }
+.overflow-x-auto::-webkit-scrollbar-thumb { background: var(--ac-line-strong); border-radius: 999px; }
+
+/* 2-column sticky header support for screener tables (# and Ticker remain visible during horizontal scroll) */
+.panel table th.sticky-col-1,
+.panel table td.sticky-col-1,
+.overflow-x-auto > table th.sticky-col-1,
+.overflow-x-auto > table td.sticky-col-1 {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: #11151e;
+}
+
+.panel table th.sticky-col-2,
+.panel table td.sticky-col-2,
+.overflow-x-auto > table th.sticky-col-2,
+.overflow-x-auto > table td.sticky-col-2 {
+  position: sticky;
+  left: 36px;
+  z-index: 4;
+  background: #11151e;
+  border-right: 1px solid var(--ac-line);
+  box-shadow: 2px 0 6px -2px rgba(0, 0, 0, 0.45);
+}
+
+.panel table thead th.sticky-col-1,
+.panel table thead th.sticky-col-2,
+.overflow-x-auto > table thead th.sticky-col-1,
+.overflow-x-auto > table thead th.sticky-col-2 {
+  z-index: 6;
+  background: #10151f;
+}
+
+/* ---- 8f. Metric and KPI blocks ------------------------------------------ */
+/* A metric is a label and a figure, and the figure wins. These blocks are built
+   from utilities in generated markup, so target the shapes they actually take. */
+.metric-grid > div,
+.panel .grid > .rounded-xl {
+  border-color: var(--ac-hairline);
+}
+
+.dashboard-hero h1,
+.dashboard-hero .text-2xl,
+.dashboard-hero .text-3xl {
+  letter-spacing: -0.022em;
+  line-height: var(--ac-lh-tight);
+}
+
+/* ---- 8g. Controls --------------------------------------------------------
+
+   ONE control primitive, `.ac-btn`, with variants driven by data-variant and
+   data-size.
+
+   Buttons in this product were built inline: the screener's three type tabs
+   each carry their own hand-written string of eight utilities, and the active
+   and inactive appearances are two different strings swapped by JS. That is
+   why no two buttons in the app share a height, a radius or a focus ring.
+
+   As with the surface primitive, the existing control class names are aliased
+   rather than renamed — they are JS hooks and build-gate assertions. New
+   markup should use `.ac-btn`; the rest inherits the shared control shape and
+   keeps whatever it sets on top.
+
+   .landing-btn and .maintenance-btn deliberately keep their full definitions
+   in the inline sheet of index.html: those two render on screens that are
+   shown precisely when the network is failing, and they must not depend on
+   this file arriving. What is here only refines them. */
+.ac-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: var(--ac-control-h);
+  padding: 0 13px;
+  border: 1px solid var(--ac-line);
+  border-radius: var(--ac-radius-sm);
+  background: var(--ac-surface-2);
+  color: var(--ac-text);
+  font-family: inherit;
+  font-size: var(--ac-text-body);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color .14s ease, background-color .14s ease, color .14s ease;
+}
+
+.ac-btn:hover:not(:disabled) {
+  border-color: var(--ac-line-strong);
+  background: var(--ac-surface-hover);
+  color: var(--ac-text-strong);
+}
+
+/* Primary: the one action on a screen that the product wants taken. Solid, so
+   it cannot be confused with the outlined secondaries around it. */
+.ac-btn[data-variant="primary"] {
+  border-color: transparent;
+  background: linear-gradient(180deg, #3ddba4, var(--ac-accent-strong));
+  color: var(--ac-brand-ink);
+  font-weight: 700;
+}
+.ac-btn[data-variant="primary"]:hover:not(:disabled) {
+  background: linear-gradient(180deg, #5ce4b6, #14c98c);
+  color: var(--ac-brand-ink);
+}
+
+/* Ghost: navigation and low-stakes toggles. No border until touched. */
+.ac-btn[data-variant="ghost"] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ac-text-muted);
+}
+.ac-btn[data-variant="ghost"]:hover:not(:disabled) {
+  border-color: var(--ac-line);
+  background: rgba(148, 163, 184, 0.07);
+}
+
+/* Danger is stated, never merely tinted: destructive actions read as such
+   before the click, not after. */
+.ac-btn[data-variant="danger"] {
+  border-color: rgba(248, 113, 113, 0.32);
+  background: var(--ac-bear-dim);
+  color: #fca5a5;
+}
+.ac-btn[data-variant="danger"]:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.18);
+  color: #fecaca;
+}
+
+.ac-btn[data-size="sm"] { min-height: 30px; padding: 0 10px; font-size: var(--ac-text-caption); }
+.ac-btn[data-size="lg"] { min-height: var(--ac-control-h-touch); padding: 0 18px; font-size: var(--ac-text-lead); }
+
+/* A control that is working says so, and stops accepting input while it does. */
+.ac-btn[data-loading] { pointer-events: none; opacity: 0.7; }
+.ac-btn[data-loading]::before {
+  content: "";
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: acSpin .7s linear infinite;
+}
+@keyframes acSpin { to { transform: rotate(360deg); } }
+
+/* Segmented control: one track, N segments, exactly one selected. Used by the
+   screener's Konglo / Non-Konglo / Day Trade switch. A shared track is what
+   makes it read as a single choice rather than three unrelated buttons. */
+.ac-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--ac-hairline);
+  border-radius: var(--ac-radius-md);
+  background: var(--ac-surface-3);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ac-segmented::-webkit-scrollbar { display: none; }
+
+.ac-segment {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--ac-radius-sm);
+  background: transparent;
+  color: var(--ac-text-muted);
+  font-family: inherit;
+  font-size: var(--ac-text-body);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .14s ease, background-color .14s ease;
+}
+
+.ac-segment:hover:not(.is-active) {
+  color: var(--ac-text);
+  background: rgba(148, 163, 184, 0.07);
+}
+
+/* The selected segment is stated by fill AND weight AND colour, so it survives
+   a greyscale rendering and a colour-blind reader. */
+.ac-segment.is-active {
+  background: var(--ac-surface-2);
+  border: 1px solid var(--ac-accent-line);
+  color: var(--ac-accent);
+  font-weight: 700;
+  box-shadow: var(--ac-edge), 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+
+@media (max-width: 640px) {
+  .ac-segment { min-height: 38px; padding: 0 12px; font-size: var(--ac-text-caption); }
+}
+
+/* The existing control classes inherit the shared shape: one height, one
+   radius, one transition, one type size. Each keeps its own colours. */
+.nav-btn,
+.ac-viewer-btn,
+.new-chat-btn,
+.maintenance-btn,
+.landing-btn,
+.subscription-action,
+.screener-tab,
+.nk-screener-tab,
+.dt-screener-tab {
+  font-family: inherit;
+  line-height: 1.15;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color .14s ease, background-color .14s ease, color .14s ease;
+}
+
+/* One control height, one border tone, one focus ring, across buttons, tabs,
+   inputs and selects. Previously each surface set its own. */
+.panel input[type="text"],
+.panel input[type="search"],
+.panel input[type="number"],
+.panel select,
+.page-content input[type="text"],
+.page-content input[type="search"],
+.page-content input[type="number"],
+.page-content select {
+  min-height: 38px;
+  border-radius: var(--ac-radius-sm);
+  border: 1px solid var(--ac-line);
+  background: var(--ac-surface-3);
+  color: var(--ac-text);
+  font-size: var(--ac-text-body);
+  transition: border-color .14s ease, box-shadow .14s ease;
+}
+.panel input:hover,
+.panel select:hover,
+.page-content input:hover,
+.page-content select:hover {
+  border-color: var(--ac-line-strong);
+}
+.panel input:focus-visible,
+.panel select:focus-visible,
+.page-content input:focus-visible,
+.page-content select:focus-visible {
+  outline: none;
+  border-color: var(--ac-accent-line);
+  box-shadow: var(--ac-focus-ring);
+}
+
+/* Placeholder copy must read as a prompt, not as a value. */
+.page-content input::placeholder { color: var(--ac-text-dim); }
+
+/* Tabs: the selected one is stated, the rest recede. */
+.screener-tab,
+.nk-screener-tab,
+.dt-screener-tab {
+  font-size: var(--ac-text-body);
+  font-weight: 700;
+  color: var(--ac-text-dim);
+  border-radius: var(--ac-radius-sm);
+  transition: color .14s ease, background-color .14s ease;
+}
+.screener-tab:hover,
+.nk-screener-tab:hover,
+.dt-screener-tab:hover { color: var(--ac-text-muted); }
+.screener-tab.active,
+.nk-screener-tab.active,
+.dt-screener-tab.active {
+  color: var(--ac-accent);
+  background: var(--ac-accent-soft);
+}
+
+/* ---- 8h. Badges, pills, status ------------------------------------------ */
+/* Status is carried by weight and tracking as well as hue, so it survives a
+   greyscale print, a colour-blind reader, and a dim phone in daylight. */
+.panel span[class*="rounded"][class*="text-["],
+.panel span[class*="rounded-full"],
+.dashboard-pick-card span[class*="rounded"] {
+  font-weight: 800;
+  letter-spacing: 0.045em;
+}
+
+/* ---- 8i. Empty, loading and error states -------------------------------- */
+/* The empty state was a tall box with a small icon marooned in the middle. It
+   now sits at a deliberate height with its copy measured for reading. */
+.empty-state {
+  padding: 26px 20px;
+  border: 1px dashed var(--ac-line);
+  border-radius: var(--ac-radius-md);
+  background: var(--ac-surface-3);
+}
+.empty-state-icon {
+  width: 22px;
+  height: 22px;
+  color: var(--ac-text-dim);
+  opacity: 0.85;
+}
+.empty-state-text {
+  /* Sole source of the icon-to-copy gap: .empty-state-icon used to add its own
+     margin-bottom in the inline sheet, and consolidating the two definitions
+     left this one carrying the whole rhythm. */
+  margin-top: var(--ac-space-3);
+  max-width: 42ch;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: var(--ac-text-caption);
+  line-height: var(--ac-lh-normal);
+  color: var(--ac-text-muted);
+}
+.empty-state-amber { border-color: rgba(251, 191, 36, 0.28); background: var(--ac-warn-dim); }
+.empty-state-amber .empty-state-icon,
+.empty-state-amber .empty-state-text { color: #fcd34d; }
+
+/* The error tone was declared only in the inline sheet of index.html, which
+   loads BEFORE this file. `.empty-state` here sets border and background at the
+   same specificity and later in the cascade, so it overrode both — the three
+   .empty-state-error containers in the markup have been rendering with the
+   neutral tint. Only their text stayed red, because
+   `.empty-state-error .empty-state-text` is two classes and outranks it.
+   Stated here, alongside the amber tone, so it actually applies. */
+.empty-state-error { border-color: rgba(248, 113, 113, 0.30); background: var(--ac-bear-dim); }
+.empty-state-error .empty-state-icon,
+.empty-state-error .empty-state-text { color: #fca5a5; }
+
+/* Skeletons match the surface they stand in for, so the swap does not flash. */
+.skeleton { border-radius: var(--ac-radius-sm); }
+
+/* ---- 8j. Modal and drawer chrome ---------------------------------------- */
+[role="dialog"] > div {
+  border-color: var(--ac-hairline);
+  box-shadow: var(--ac-shadow-2);
+}
+
+/* ---- 8k. Interaction feedback ------------------------------------------- */
+/* One focus ring product-wide, replacing the mix of outlines and box-shadows. */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--ac-focus-ring);
+  border-radius: var(--ac-radius-sm);
+}
+
+/* Disabled means unavailable, not merely faded. */
+button:disabled,
+.panel button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---- 8m. Screener toolbar ------------------------------------------------
+   Two stacked full-width notice bars plus three oversized stat tiles were
+   spending roughly 150px of vertical space, above the fold, before a single
+   candidate appeared. They are reference material, not the reading surface, so
+   they are demoted rather than removed: nothing is hidden, it simply stops
+   outranking the data. */
+.page-content .scr-info-bar {
+  padding: 7px 0 7px 11px;
+  border: 0;
+  border-left: 2px solid var(--ac-line-strong);
+  border-radius: 0;
+  background: none;
+  font-size: var(--ac-text-caption);
+  line-height: 1.5;
+}
+/* The disclaimer keeps a warning accent; the legend is neutral reference. */
+.page-content .scr-info-bar.text-amber-400\/70 {
+  border-left-color: rgba(251, 191, 36, 0.42);
+}
+
+/* Stat tiles become a compact strip: label above figure, left aligned, one
+   shared rule between them instead of three separate boxes. */
+/* Flex rather than the markup's equal-width grid: three short figures stretched
+   across a 1100px row left most of each tile empty. Hugging the content turns
+   them into a scan-strip that reads in one pass. */
+#screenerStats, #nkScreenerStats, #dtScreenerStats {
+  display: flex;
+  flex-wrap: wrap;
+  width: max-content;
+  max-width: 100%;
+  gap: 0;
+  border: 1px solid var(--ac-hairline);
+  border-radius: var(--ac-radius-md);
+  background: var(--ac-surface-3);
+  overflow: hidden;
+}
+#screenerStats > div,
+#nkScreenerStats > div,
+#dtScreenerStats > div {
+  border: 0;
+  border-left: 1px solid var(--ac-hairline);
+  border-radius: 0;
+  background: none;
+  padding: 8px 18px;
+  text-align: left;
+  min-width: 104px;
+}
+#screenerStats > div:first-child,
+#nkScreenerStats > div:first-child,
+#dtScreenerStats > div:first-child { border-left: 0; }
+
+#screenerStats p:first-child,
+#nkScreenerStats p:first-child,
+#dtScreenerStats p:first-child {
+  font-size: var(--ac-text-micro);
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  color: var(--ac-text-dim);
+}
+#screenerStats p:last-child,
+#nkScreenerStats p:last-child,
+#dtScreenerStats p:last-child {
+  margin-top: 2px;
+  font-size: var(--ac-text-lead);
+  font-weight: 700;
+  color: var(--ac-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 8n. Screener result cards ------------------------------------------
+   The meta run under each ticker ("Score: 82  Exec: A  Vol: 1.8x  BCA") was a
+   single stream of text with no rhythm, so nothing in it could be found without
+   reading all of it. Separating the pairs and fixing the label weight makes the
+   row scannable at a glance. */
+.panel .grid > div > .text-\[11px\],
+.dashboard-pick-card .text-\[11px\] {
+  line-height: 1.7;
+}
+
+/* Level tiles (Entry 1 / Entry 2 / Stop Loss / TP1 / TP2 / R/R): the label is
+   reference, the figure is the reading. */
+.page-content .grid > div > .text-\[9px\],
+.page-content .grid > div > .text-\[10px\] {
+  font-size: var(--ac-text-micro);
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ac-text-dim);
+}
+
+/* Standardized Trade Plan Grid across Day Trade, Swing Konglo, Swing Non-Konglo cards */
+.trade-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.trade-plan-tile {
+  border-radius: var(--ac-radius-sm, 7px);
+  padding: 5px 6px;
+  text-align: center;
+}
+
+.trade-plan-tile .trade-plan-label {
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 1px;
+}
+
+.trade-plan-tile .trade-plan-value {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.trade-plan-tile[data-type="entry"] {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.22);
+}
+.trade-plan-tile[data-type="entry"] .trade-plan-label { color: #60a5fa; }
+.trade-plan-tile[data-type="entry"] .trade-plan-value { color: #93c5fd; }
+
+.trade-plan-tile[data-type="sl"] {
+  background: var(--ac-bear-dim);
+  border: 1px solid rgba(248, 113, 113, 0.22);
+}
+.trade-plan-tile[data-type="sl"] .trade-plan-label { color: var(--ac-bear); }
+.trade-plan-tile[data-type="sl"] .trade-plan-value { color: #fca5a5; }
+
+.trade-plan-tile[data-type="tp"] {
+  background: var(--ac-bull-dim);
+  border: 1px solid rgba(52, 211, 153, 0.22);
+}
+.trade-plan-tile[data-type="tp"] .trade-plan-label { color: var(--ac-bull); }
+.trade-plan-tile[data-type="tp"] .trade-plan-value { color: #6ee7b7; }
+
+.trade-plan-tile[data-type="rr"] {
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.22);
+}
+.trade-plan-tile[data-type="rr"] .trade-plan-label { color: #a78bfa; }
+.trade-plan-tile[data-type="rr"] .trade-plan-value { color: #c4b5fd; }
+
+/* ---- 8o. Landing ---------------------------------------------------------
+   The marketing surface shares the product's type ramp so the first impression
+   and the app do not read as two different companies. */
+/* .feature-card, .faq-item and .landing-card are aliased onto the surface
+   primitive in section 3, and .landing-card states its own larger radius in
+   the inline sheet. The hover lift comes from the interactive variant. Nothing
+   needs restating here. */
+
+/* ---- 8p. Dashboard information architecture ------------------------------
+   Second pass, from feedback on the real production page: the first viewport
+   was spent on a greeting, a full-width container holding one market number,
+   and five shortcut cards duplicating the primary navigation — while Radar Hari
+   Ini, the only genuinely decision-useful block, sat below the fold.
+
+   Nothing is removed and no markup changes. Priority is re-expressed through
+   size, weight and spacing: greeting and shortcuts recede, market status
+   compacts, radar rises.
+
+   Direction: Koyfin's habit of leading with market state at high density, and
+   its restraint with borders. */
+
+/* Greeting: context, not headline. It was set at text-3xl/font-black, making
+   "Halo, budi" the largest object on a financial dashboard. */
+#page-dashboard .dashboard-hero { padding: 13px 16px; }
+#page-dashboard #dashGreeting {
+  font-size: 17px;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+#page-dashboard .dashboard-hero > div > div > p {
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 3px;
+}
+#page-dashboard .dash-badge { padding: 3px 8px; font-size: var(--ac-text-micro); }
+
+/* Market status: a strip sized to the amount of information it actually holds.
+   One metric does not need a full-height panel. */
+#page-dashboard #ihsgSummaryCard {
+  padding: 11px 14px;
+  border-radius: var(--ac-radius-md);
+}
+#page-dashboard #ihsgSummaryCard .text-2xl,
+#page-dashboard #ihsgSummaryCard .text-3xl {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+/* Quick access: the same five destinations already sit in the header nav, so
+   they are demoted from 96px feature cards to a compact shortcut row. They stay
+   reachable — thumb-sized on phones — without outranking market data. */
+#page-dashboard .action-card {
+  min-height: 0;
+  padding: 10px 12px;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  box-shadow: none;
+  background: var(--ac-surface-3);
+}
+#page-dashboard .action-card .action-icon {
+  width: 26px;
+  height: 26px;
+  margin-bottom: 0;
+  flex: 0 0 auto;
+  border-radius: 8px;
+}
+#page-dashboard .action-card .action-icon svg { width: 14px; height: 14px; }
+#page-dashboard .action-card > div,
+#page-dashboard .action-card > span { min-width: 0; }
+#page-dashboard .action-card p:first-of-type { font-size: 12.5px; }
+/* The one-line description is redundant next to a labelled nav destination. */
+#page-dashboard .action-card p + p { display: none; }
+
+@media (max-width: 640px) {
+  /* Phones keep a comfortable target even in the compact row. */
+  #page-dashboard .action-card { min-height: 44px; }
+}
+
+/* Safety notice: important, but it was the widest, brightest band on the page.
+   Same words, same colour family, proportionate weight. */
+#page-dashboard .dash-section-note {
+  padding: 7px 0 7px 11px;
+  border: 0;
+  border-left: 2px solid rgba(251, 191, 36, 0.42);
+  border-radius: 0;
+  background: none;
+  font-size: var(--ac-text-caption);
+}
+
+/* Radar: the block a user actually came for. Give it the emphasis the greeting
+   used to hold. */
+#page-dashboard .ac-section:has(#dashboardTop5List) .ac-section-title,
+#page-dashboard .ac-section:has(.dashboard-pick-card) .ac-section-title {
+  font-size: var(--ac-text-caption);
+  color: var(--ac-text-muted);
+}
+
+/* Tighter vertical rhythm throughout: the page breathed at a rate suited to a
+   marketing site, not a terminal. */
+#page-dashboard .space-y-4 > * + * { margin-top: 12px; }
+#page-dashboard .ac-section { margin-top: 18px; }
+
+/* A data product should not letterbox itself on a business laptop. */
+@media (min-width: 1280px) {
+  #page-dashboard.page-content { max-width: 1240px; }
+}
+
+/* ---- 8q. Admin ----------------------------------------------------------
+   The action row used six different accent hues — blue, purple, amber, cyan,
+   green, red — for six equally routine operations, so colour carried no
+   meaning and the row read as noise. Administrative tools should be quiet;
+   colour is reserved for the ones that matter.
+
+   Access control is untouched: this is presentation only. */
+#adminPanel button {
+  border-color: var(--ac-hairline);
+  color: var(--ac-text-muted);
+  background: var(--ac-surface-3);
+  font-weight: 700;
+  transition: border-color .14s ease, color .14s ease, background-color .14s ease;
+}
+#adminPanel button:hover {
+  color: var(--ac-text);
+  border-color: var(--ac-line-strong);
+  background: rgba(148, 163, 184, 0.07);
+}
+#adminPanel button svg { color: inherit; opacity: .75; }
+
+/* Security Center is the one elevated-consequence entry point, so it keeps a
+   distinguishing tone — now the only coloured control in the row. */
+#adminPanel button[onclick*="ecurity"] {
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.28);
+  background: rgba(248, 113, 113, 0.07);
+}
+#adminPanel button[onclick*="ecurity"]:hover {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+/* Admin is an elevated context inside the same product, not a second website:
+   one hairline rule states it without a different visual language. */
+#adminPanel > div {
+  border-color: var(--ac-hairline);
+  border-top: 2px solid rgba(52, 211, 153, 0.28);
+}
+
+/* Long admin tables get the same treatment as the screener's. */
+#adminPanel table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #10151f;
+  font-size: var(--ac-text-micro);
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ac-text-dim);
+  white-space: nowrap;
+}
+#adminPanel table tbody td {
+  height: var(--ac-row-h);
+  border-bottom: 1px solid var(--ac-hairline);
+  font-variant-numeric: tabular-nums;
+}
+#adminPanel table tbody tr:hover { background: rgba(52, 211, 153, 0.045); }
+
+/* ---- 8r. Locked and subscription states ---------------------------------
+   A locked feature must read as a boundary the product drew on purpose, not as
+   something that broke. The gates already exist in markup; this gives them a
+   deliberate surface instead of a bare container. */
+#screenerLoginGate, #sektorLoginGate, #portofolioLoginGate {
+  padding: 26px 22px;
+  border: 1px dashed var(--ac-line-strong);
+  border-radius: var(--ac-radius-lg);
+  background: var(--ac-surface-3);
+  text-align: center;
+}
+#screenerLoginGate p, #sektorLoginGate p, #portofolioLoginGate p {
+  max-width: 46ch;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: var(--ac-text-body);
+  line-height: var(--ac-lh-normal);
+  color: var(--ac-text-muted);
+}
+
+/* ---- 8l. Responsive composition ----------------------------------------- */
+@media (max-width: 640px) {
+  /* Phones get the dense row height: the same information, less scrolling. */
+  .panel table tbody td,
+  .overflow-x-auto > table tbody td { height: var(--ac-row-h-dense); }
+
+  .panel-title { font-size: 14px; }
+  .empty-state { padding: 22px 16px; }
+}
+
+@media (min-width: 1536px) {
+  /* Very wide screens were letterboxing a data product into a 1100px column.
+     Widen the reading measure for the surfaces that benefit from it, and leave
+     prose-width sections alone. */
+  #page-screener.page-content,
+  #page-sektor.page-content { max-width: 1320px; }
+}
+
+/* =========================================================================
+   8s. Landing rhythm
+   =========================================================================
+
+   Measured on the Phase 1 build at 1440x900: the page ran 4367px — 4.9 screens
+   — to deliver 627 words. Eight sections, every one of them a 36px heading
+   over one sentence over a grid of cards, every one padded 72px top and
+   bottom. So the type ramp was 60px for the hero and then 36px eight times
+   running, which is not a hierarchy, it is a plateau; and roughly 7px of page
+   height was being spent per word of content.
+
+   Nothing is deleted here. The fix is rhythm, not subtraction:
+
+     - The section heading drops to 26px. That restores a real interval below
+       the 60px hero and puts card titles (15px) a legible step below it, so
+       the ramp becomes 60 / 26 / 15 / 13 instead of 60 / 36 / 36 / 36.
+     - Section padding drops from 72px to 44px, and the first section after the
+       hero gets less still, because the hero already supplies separation.
+     - Section intro copy is given a reading measure. A 60-word paragraph set
+       across 1180px is what made these sections read as empty: the eye has no
+       column to follow, so the whitespace reads as absence rather than as
+       breathing room.
+     - Card interiors tighten, which is what makes a grid of six read as one
+       object instead of six.
+   ========================================================================= */
+
+.landing-section { padding: 44px 0; }
+.landing-hero + .landing-section { padding-top: 32px; }
+
+.landing-section h2 {
+  font-size: 26px;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+}
+
+/* The one-line section intro is a deck, not body copy: it sits directly under
+   the heading and should read as one breath. */
+.landing-section h2 + p,
+.landing-section > div > p:first-of-type {
+  max-width: 62ch;
+  font-size: var(--ac-text-body);
+  line-height: var(--ac-lh-normal);
+  color: var(--ac-text-muted);
+}
+
+.landing-section .feature-card { padding: 16px; }
+.landing-section .faq-item { padding: 14px 16px; }
+
+/* Eight consecutive card grids is the monotony. A hairline rule under each
+   section heading gives the page a spine to scan down, so the sections read as
+   chapters of one document rather than as eight repetitions of one block. */
+.landing-section > .landing-container > div:first-child,
+.landing-section > .landing-container > header {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ac-hairline);
+  margin-bottom: 22px;
+}
+
+@media (max-width: 640px) {
+  .landing-section { padding: 32px 0; }
+  .landing-section h2 { font-size: 21px; }
+}
+
+/* =========================================================================
+   8t. Screener tables: semantic column groups and a pinned identity
+   =========================================================================
+
+   The three screener tables run 17, 18 and 22 columns. Their headers describe
+   five distinct things —
+
+     identity   who is this
+     verdict    what does the model think
+     market     what is price doing
+     plan       what would the trade be
+     context    timing, direction, notes
+
+   — but every column was drawn identically, so a reader scanning left to right
+   got no signal about where one kind of information ended and the next began,
+   and lost the ticker entirely once the table scrolled sideways.
+
+   Two changes, both functional:
+
+     1. A hairline at each group boundary. Not a border on every column, which
+        would add noise; one rule exactly where the meaning changes.
+     2. The identity columns are pinned, so the row keeps its name during the
+        horizontal scroll these widths make inevitable.
+
+   Boundaries are per-table because the column sets differ. They are keyed off
+   the tbody id, and stated as the FIRST column of each new group. Empty-state
+   rows use a single colspan cell, which no :nth-child(4+) selector matches, so
+   they are unaffected.
+   ========================================================================= */
+
+/* Swing Konglo — 17 cols: Ticker Group Tier | Exec Setup | Last Chg% RSI
+   Vol/Avg20 | Entry Area SL TP1 TP2 RR | Timing Arah Catatan */
+#screenerTableBody tr > :nth-child(4),
+#screenerTableBody tr > :nth-child(6),
+#screenerTableBody tr > :nth-child(10),
+#screenerTableBody tr > :nth-child(15),
+/* Swing Non-Konglo — 18 cols, same set with a leading rank column. */
+#nkScreenerTableBody tr > :nth-child(5),
+#nkScreenerTableBody tr > :nth-child(7),
+#nkScreenerTableBody tr > :nth-child(11),
+#nkScreenerTableBody tr > :nth-child(16),
+/* Day Trade — 22 cols: # Ticker Board | Status Setup-Score Exec Setup | Last
+   Chg% Vol/Avg20 Tx-Today Pre-Spike Momentum | Entry Area SL TP1 TP2 RR |
+   Timing Arah Time-Plan Catatan */
+#dtScreenerTableBody tr > :nth-child(4),
+#dtScreenerTableBody tr > :nth-child(8),
+#dtScreenerTableBody tr > :nth-child(14),
+#dtScreenerTableBody tr > :nth-child(19) {
+  border-left: 1px solid var(--ac-line);
+}
+
+/* The same boundaries in the header, so the grouping is stated before the data
+   rather than inferred from it. The tbody id cannot reach its own thead, so the
+   header rows carry a column-count class instead. */
+.scr-cols-17 > :nth-child(4),
+.scr-cols-17 > :nth-child(6),
+.scr-cols-17 > :nth-child(10),
+.scr-cols-17 > :nth-child(15),
+.scr-cols-18 > :nth-child(5),
+.scr-cols-18 > :nth-child(7),
+.scr-cols-18 > :nth-child(11),
+.scr-cols-18 > :nth-child(16),
+.scr-cols-22 > :nth-child(4),
+.scr-cols-22 > :nth-child(8),
+.scr-cols-22 > :nth-child(14),
+.scr-cols-22 > :nth-child(19) {
+  border-left: 1px solid var(--ac-line);
+}
+
+/* ---- Pinned identity ----------------------------------------------------
+   An opaque background is mandatory on a sticky cell or the scrolling columns
+   read straight through it. The header's own sticky rule from section 8e wins
+   at the intersection via a higher z-index. */
+#screenerTableBody tr > :nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--ac-surface-1);
+  box-shadow: 1px 0 0 var(--ac-line);
+}
+
+/* Where a rank column leads, both it and the ticker pin, and the rank is given
+   a fixed width so the ticker's offset is not a guess. */
+#nkScreenerTableBody tr > :nth-child(1),
+#dtScreenerTableBody tr > :nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 34px;
+  min-width: 34px;
+  max-width: 34px;
+  background: var(--ac-surface-1);
+}
+#nkScreenerTableBody tr > :nth-child(2),
+#dtScreenerTableBody tr > :nth-child(2) {
+  position: sticky;
+  left: 34px;
+  z-index: 1;
+  background: var(--ac-surface-1);
+  box-shadow: 1px 0 0 var(--ac-line);
+}
+
+/* Hover has to repaint the pinned cells too, or the row appears to break in
+   half as the cursor crosses it. */
+.panel table tbody tr:hover > :nth-child(1),
+.overflow-x-auto > table tbody tr:hover > :nth-child(1),
+.panel table tbody tr:hover > :nth-child(2),
+.overflow-x-auto > table tbody tr:hover > :nth-child(2) {
+  background: #16202b;
+}
+
+/* Deliberately NO blanket right-align rule here. The row builders already set
+   alignment per cell — text-right on figures, text-center on status columns,
+   left by default — and an id-scoped nth-child range would outrank all of it,
+   silently right-aligning the centred columns it happened to span. Section 8b
+   supplies the tabular figures; the existing per-cell classes stay in charge of
+   alignment. */
+
+@media (max-width: 640px) {
+  /* Pinning costs horizontal room that a phone does not have, and every
+     screener already renders a card grid at this width. */
+  #screenerTableBody tr > :nth-child(1),
+  #nkScreenerTableBody tr > :nth-child(1),
+  #nkScreenerTableBody tr > :nth-child(2),
+  #dtScreenerTableBody tr > :nth-child(1),
+  #dtScreenerTableBody tr > :nth-child(2) {
+    position: static;
+    box-shadow: none;
+  }
+}
+
+/* =========================================================================
+   9. The pick card
+   =========================================================================
+
+   The Top 5 card is the object a trader reads to make a decision, and it had
+   become twelve consecutive `mt-1` rows of label/value pairs at 10–11px, every
+   row the same weight and the same 4px gap. Three consequences:
+
+     - Nothing was grouped, so the eye had no landing point.
+     - Six accent hues were in play — emerald, blue, purple, cyan, amber, grey,
+       plus the dynamic grade/risk colours — which means colour carried no
+       information. Everything coloured is the same as nothing coloured.
+     - The trade itself (ladder, entry, stop, targets) sat BELOW six rows of
+       metadata, so the least decision-relevant content was read first.
+
+   The card is now three zones, separated by a hairline and a real spacing
+   step rather than by another 4px: what this is, what the trade is, and what
+   to be careful about. Every field that was rendered before is still rendered,
+   in the same order within its zone; only grouping, weight and colour change.
+
+   Colour is spent on direction and risk only. Targets are bull, stops are
+   bear, warnings are warn, and everything else — EntryQ, PlanQ, Breakout,
+   Setup Age, RR, action — is neutral. The grade and risk colours stay, because
+   those come from the scoring model and genuinely encode a scale.
+   ========================================================================= */
+
+.dashboard-pick-card { padding: 12px 13px; }
+
+/* Zones. The separator is what replaces eleven identical 4px gaps. */
+.dash-zone + .dash-zone {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--ac-hairline);
+}
+
+/* ---- Zone 1: what this is ---------------------------------------------- */
+.dash-ident { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
+.dash-ident-ticker {
+  font-size: var(--ac-text-lead);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--ac-text-strong);
+}
+.dash-ident-price {
+  font-size: var(--ac-text-body);
+  font-weight: 600;
+  color: var(--ac-text);
+  font-variant-numeric: tabular-nums;
+}
+.dash-ident-tag {
+  padding: 2px 7px;
+  border: 1px solid var(--ac-hairline);
+  border-radius: 999px;
+  background: var(--ac-surface-3);
+  font-size: var(--ac-text-micro);
+  font-weight: 600;
+  color: var(--ac-text-dim);
+}
+/* The score is the one figure the ranking is built on, so it reads as a
+   figure rather than as another label/value pair. */
+.dash-ident-score { margin-left: auto; text-align: right; flex: 0 0 auto; }
+.dash-ident-score span {
+  display: block;
+  font-size: var(--ac-text-micro);
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ac-text-dim);
+}
+.dash-ident-score b {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--ac-text-metric);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ac-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-verdict { display: flex; flex-wrap: wrap; gap: 3px 14px; margin-top: 6px; }
+.dash-verdict > span { font-size: var(--ac-text-caption); color: var(--ac-text-dim); }
+.dash-verdict > span > b { margin-left: 4px; font-weight: 700; color: var(--ac-text); }
+
+/* ---- Zone 2: the trade -------------------------------------------------- */
+/* Given the most room, because it is the reason the card exists. */
+.dash-trade .dash-ladder { margin-top: 0; }
+.dash-trade .dash-level-grid { margin-top: 8px; }
+
+.dash-level span {
+  font-size: var(--ac-text-micro);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ac-text-dim);
+}
+.dash-level b {
+  margin-top: 2px;
+  font-size: var(--ac-text-body);
+  font-weight: 700;
+  color: var(--ac-text);
+  font-variant-numeric: tabular-nums;
+}
+/* Direction, and only direction, is coloured. */
+.dash-level[data-tone="danger"] b { color: var(--ac-bear); }
+.dash-level[data-tone="target"] b { color: var(--ac-bull); }
+.dash-level[data-tone="danger"] { border-color: rgba(248, 113, 113, 0.18); }
+.dash-level[data-tone="target"] { border-color: rgba(52, 211, 153, 0.18); }
+
+/* ---- Zone 3: caveats and detail ---------------------------------------- */
+/* Reference material. Present, complete, and quieter than the trade. */
+/* Five reference fields stacked two-up cost three rows and made the caveat zone
+   taller than the trade above it — the least decision-relevant part of the card
+   dominating the most. Three columns on a desktop-width card puts them in two. */
+.dash-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 14px;
+}
+@media (min-width: 1024px) {
+  .dash-meta { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.dash-meta > span {
+  min-width: 0;
+  font-size: var(--ac-text-micro);
+  line-height: 1.38;
+  color: var(--ac-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-meta > span > b { font-weight: 600; color: var(--ac-text-muted); }
+
+/* A flag is a caution, so it is shaped like one: a rule in the margin rather
+   than another coloured sentence in a stack of coloured sentences.
+
+   Bounded to two lines. The markup these replaced used `truncate`, which caps a
+   note at one line and hides the rest; dropping that made the caveat zone grow
+   without limit on a verbose row — it measured taller than the trade above it.
+   Two lines keeps more of the note than the original single line did while
+   still giving the card a predictable height. */
+.dash-flag {
+  margin-top: 3px;
+  padding-left: 9px;
+  border-left: 2px solid var(--ac-line-strong);
+  font-size: var(--ac-text-micro);
+  line-height: var(--ac-lh-snug);
+  color: var(--ac-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dash-flag[data-tone="warn"] { border-left-color: rgba(251, 191, 36, 0.5); color: #e8c877; }
+.dash-flag[data-tone="info"] { border-left-color: var(--ac-accent-line); }
+
+/* Same reasoning as the flags: was `truncate` at one line, now bounded at two. */
+.dash-reason {
+  margin-top: 5px;
+  font-size: var(--ac-text-micro);
+  line-height: var(--ac-lh-snug);
+  color: var(--ac-text-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dash-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.dash-chips > span {
+  padding: 2px 7px;
+  border: 1px solid var(--ac-hairline);
+  border-radius: 999px;
+  background: var(--ac-surface-3);
+  font-size: var(--ac-text-micro);
+  color: var(--ac-text-muted);
+}
+
+/* ---- Loading -----------------------------------------------------------
+   The skeleton mirrors the card's real footprint — identity row, ladder, level
+   grid — so the arriving data fills a shape that is already there instead of
+   pushing the list down. */
+.dash-skeleton {
+  padding: 12px 13px;
+  border: 1px solid var(--ac-hairline);
+  border-radius: var(--ac-radius-md);
+  background: var(--ac-surface-1);
+}
+.dash-skeleton + .dash-skeleton { margin-top: 8px; }
+.dash-skeleton-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dash-skeleton-bar { height: 8px; margin-top: 14px; }
+.dash-skeleton-levels { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.dash-skeleton-levels .skeleton-line { height: 26px; border-radius: var(--ac-radius-xs); }
+.dash-skeleton-label {
+  margin-top: 10px;
+  text-align: center;
+  font-size: var(--ac-text-micro);
+  color: var(--ac-text-dim);
+}
+
+@media (max-width: 640px) {
+  .dash-skeleton-levels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* The rank badge stops being a coloured tile and becomes an ordinal. */
+.dash-rank {
+  flex: 0 0 auto;
+  width: 22px;
+  font-size: var(--ac-text-caption);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ac-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .dash-meta { grid-template-columns: minmax(0, 1fr); }
+  .dash-ident-score b { font-size: var(--ac-text-lead); }
+}
+
+/* ---- 8q. WCAG 2.1 AA accessible financial palette & text contrast overrides ---- */
+/* Low-contrast dark text classes are raised to clear the 4.5:1 AA contrast ratio on dark surfaces */
+.panel .text-slate-500,
+.panel .text-slate-600,
+.panel .text-gray-500,
+.panel .text-gray-600,
+.page-content .text-slate-500,
+.page-content .text-slate-600,
+.page-content .text-gray-500,
+.page-content .text-gray-600 {
+  color: var(--ac-text-muted);
+}
+
+/* Badge and indicator text contrast on dark badge background fills */
+.panel .text-emerald-500,
+.panel .text-green-500,
+.page-content .text-emerald-500,
+.page-content .text-green-500 {
+  color: var(--ac-bull);
+}
+
+.panel .text-rose-500,
+.panel .text-red-500,
+.page-content .text-rose-500,
+.page-content .text-red-500 {
+  color: var(--ac-bear);
+}
+
+.badge-bull {
+  background: var(--ac-bull-dim);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  color: var(--ac-bull);
+}
+
+.badge-bear {
+  background: var(--ac-bear-dim);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  color: var(--ac-bear);
+}
+
+.badge-neutral {
+  background: var(--ac-flat-dim);
+  border: 1px solid rgba(148, 163, 184, 0.20);
+  color: var(--ac-text-muted);
+}
+
+/* ---- 7. Reduced motion -------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ac-launcher, .ac-navpanel-card, .action-card, .panel { transition: none !important; animation: none !important; }
+  .action-card:hover { transform: none; }
+  .panel table tbody tr { transition: none !important; }
+}
+
+/* AUTO_CUAN_DESKTOP_HEADER_FLEX_NAVBAR_V2 */
+/* Single row desktop navbar with nowrap, space-between, and right-aligned account section */
+@media (min-width: 1280px) {
+  .app-header > .header-shell > .flex,
+  .header-shell > .flex {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    column-gap: 16px !important;
+  }
+
+  .app-header > .header-shell > .flex > :first-child,
+  .header-shell > .flex > :first-child {
+    flex-shrink: 0 !important;
+  }
+
+  .app-header > .header-shell > .flex > .desktop-nav,
+  .header-shell > .flex > .desktop-nav {
+    flex: 0 1 auto !important;
+    max-width: none !important;
+  }
+
+  .app-header > .header-shell > .flex > .desktop-header-chips,
+  .header-shell > .flex > .desktop-header-chips {
+    flex-shrink: 0 !important;
+  }
+
+  .app-header > .header-shell > .flex > .header-account,
+  .header-shell > .flex > .header-account {
+    display: flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    margin-left: auto !important;
+  }
+}
+
+/* Ticker Search Controls & Header Search Bar Fix */
+/* PR1 layout fix: a 24px top margin on BOTH `.analisis-saham-controls`
+   (the wrapper, `#analisisChartHeader`) and `.unified-top-bar` (its child)
+   stacked to ~48px of dead dark space below the sticky tab strip, which read
+   as a broken void. The wrapper owns the gap; the inner bar must not add its
+   own again. */
+.analisis-saham-controls,
+.ticker-search-container {
+  position: relative !important;
+  z-index: 10 !important;
+  margin-top: 12px !important;
+  margin-bottom: 16px !important;
+  clear: both !important;
+}
+
+#analisisChartHeader[style*="display: none"] {
+  display: none !important;
+}
+
+.unified-top-bar,
+.screener-search-bar,
+.screener-search-wrap,
+#screenerSearchWrap,
+#nkSearchWrap,
+#dtSearchWrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+  position: relative !important;
+  z-index: 10 !important;
+  margin-top: 0 !important;
+  margin-bottom: 12px !important;
+  clear: both !important;
+}
+
+/* Fallback static constraint for legacy recovery regression check */
+.ticker-search-container.is-static,
+.screener-search-bar.is-static {
+  position: static !important;
+}
+
+/* Floating AI Assistant input icon anchor */
+#analisisFollowUp .floating-ai-icon,
+.unified-chat-composer .floating-ai-icon,
+.unified-chat-composer .ai-icon,
+#analisisFollowUp .ai-icon,
+.ai-assistant-icon,
+#aiAssistantIcon,
+.chat-composer-wrapper .floating-ai-icon,
+.chat-composer-wrapper .ai-icon {
+  position: absolute !important;
+  right: 14px !important;
+  bottom: 12px !important;
+  top: auto !important;
+  transform: none !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
+}
+
+/* Eliminasi Double Scrollbar pada Hasil Analisis Saham */
+#panelAnalisisText,
+.unified-card:has(#analisisResult),
+.unified-primary-col:has(#analisisResult) {
+  overflow: visible !important;
+}
+
+#analisisResult {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  max-height: min(72vh, 680px) !important;
+  scrollbar-gutter: stable;
+  overscroll-behavior-y: contain;
+}
+
+#analisisResult .ai-content,
+#analisisResult .ai-rich-text,
+#analisisResult > div {
+  overflow-y: visible !important;
+  max-height: none !important;
+}
+
+#analisisResult::-webkit-scrollbar {
+  width: 6px;
+}
+#analisisResult::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+}
+#analisisResult::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Screener Card Grids Padding & Overflow */
+#screenerCardGrid,
+.screener-card-grid,
+.card-grid {
+  padding-bottom: 32px;
+  max-width: 100%;
+}
+
+#kgCardGrid,
+#nkCardGrid,
+#dtCardGrid {
+  padding-bottom: 80px !important;
+  margin-bottom: 24px !important;
+  overflow: visible !important;
+}
+
+#dashboardScreen {
+  overflow: visible !important;
+}
+
+.page-content {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Global scroll safety without breaking desktop reflow */
+html {
+  overflow-y: scroll;
+}
+
+body {
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Header status badge pills — restored visibility and layout */
+.desktop-header-chips {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.header-status-chip {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid var(--ac-line);
+  border-radius: 999px;
+  background: var(--ac-surface-3);
+  color: var(--ac-text-muted);
+  font-size: var(--ac-text-micro);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.header-status-chip.safe {
+  border-color: rgba(52, 211, 153, 0.30);
+  background: rgba(52, 211, 153, 0.08);
+  color: #6ee7b7;
+}
+
+.header-status-chip.warn {
+  border-color: rgba(251, 191, 36, 0.30);
+  background: rgba(251, 191, 36, 0.08);
+  color: #fcd34d;
+}
+
+.header-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.55);
+  animation: headerDotPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes headerDotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* Hide status chips on mobile — they clutter the compact header */
+@media (max-width: 1023px) {
+  .desktop-header-chips { display: none !important; }
+}
+
+/* AUTO_CUAN_DESKTOP_HEADER_CENTER_V2 */
+/* 4-column grid: Logo | Nav(center) | Status Chips | Account
+   Keeps navigation centered and badges visible without overlap. */
+@media (min-width: 1280px) {
+  .app-header > .header-shell > .flex {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    column-gap: 12px;
+  }
+
+  .app-header > .header-shell > .flex > :first-child {
+    justify-self: start;
+  }
+
+  .app-header > .header-shell > .flex > .desktop-nav {
+    justify-self: center;
+    width: max-content;
+    max-width: none;
+    flex: none;
+  }
+
+  .app-header > .header-shell > .flex > .desktop-header-chips {
+    justify-self: center;
+  }
+
+  .app-header > .header-shell > .flex > :last-child {
+    justify-self: end;
+  }
+}
+
+/* ==========================================================================
+   AUTO-CUAN THEME SYSTEM: DARK (SLATE/ZINC) & LIGHT (CLEAN FINANCIAL)
+   ========================================================================== */
+html.light, body.light, [data-theme="light"] {
+  --pw-bg: #f8fafc;
+  --pw-bg-2: #f1f5f9;
+  --pw-panel: #ffffff;
+  --pw-panel-2: #f8fafc;
+  --pw-panel-3: #f1f5f9;
+  --pw-panel-hover: #f1f5f9;
+  --pw-panel-strong: #f1f5f9;
+  --pw-surface: #ffffff;
+  --pw-line: #e2e8f0;
+  --pw-line-strong: #cbd5e1;
+  --pw-text: #0f172a;
+  --pw-text-strong: #020617;
+  --pw-muted: #334155;
+  --pw-dim: #475569;
+  --pw-bull: #047857;
+  --pw-bear: #b91c1c;
+  --pw-warn: #b45309;
+  --pw-info: #1d4ed8;
+  --pw-grid: transparent;
+
+  --color-text-primary: #0f172a !important;
+  --color-text-secondary: #334155 !important;
+  --color-text-muted: #475569 !important;
+  --color-positive: #047857 !important;
+  --color-negative: #b91c1c !important;
+  --color-warning: #b45309 !important;
+  --ac-bg: #f8fafc;
+  --ac-surface-1: #ffffff;
+  --ac-surface-2: #f8fafc;
+  --ac-surface-3: #f1f5f9;
+  --ac-text-strong: var(--color-text-primary);
+  --ac-surface: #ffffff;
+  --ac-panel: #ffffff;
+  --ac-panel-header: #f1f5f9;
+  --ac-border: #e2e8f0;
+  --ac-text: #0f172a;
+  --ac-text-sub: #334155;
+  --ac-text-muted: #475569;
+  --ac-text-dim: #475569;
+  --ac-bull: #047857;
+  --ac-bear: #b91c1c;
+  --ac-warn: #b45309;
+
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-dark-900,
+html.light .bg-dark-900\/80,
+html.light .bg-dark-900\/70,
+html.light .bg-dark-900\/60 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-dark-800,
+html.light .bg-dark-800\/80,
+html.light .bg-dark-800\/90,
+html.light .bg-dark-800\/60,
+html.light .bg-dark-800\/40 {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-dark-700,
+html.light .bg-dark-700\/80,
+html.light .bg-dark-700\/60,
+html.light .bg-dark-700\/40,
+html.light .bg-dark-700\/50 {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+html.light .border-dark-600,
+html.light .border-dark-600\/30,
+html.light .border-dark-600\/40,
+html.light .border-dark-600\/50,
+html.light .border-dark-600\/60,
+html.light .border-dark-700,
+html.light .border-dark-700\/30,
+html.light .border-dark-700\/40,
+html.light .border-dark-700\/50,
+html.light .border-dark-700\/60 {
+  border-color: #e2e8f0 !important;
+}
+
+html.light .text-white,
+html.light .text-gray-100,
+html.light .text-gray-200 {
+  color: #111827 !important;
+}
+
+html.light .text-gray-300,
+html.light .text-gray-400 {
+  color: #4B5563 !important;
+}
+
+html.light .text-gray-500,
+html.light .text-gray-600 {
+  color: #6B7280 !important;
+}
+
+/* WCAG AA Semantic Contrast in Light Mode (> 4.5:1 on white) */
+html.light .text-emerald-300,
+html.light .text-emerald-400,
+html.light .text-emerald-500,
+html.light .text-green-300,
+html.light .text-green-400,
+html.light .text-green-500 {
+  color: #047857 !important;
+}
+
+html.light .text-red-300,
+html.light .text-red-400,
+html.light .text-red-500,
+html.light .text-rose-300,
+html.light .text-rose-400,
+html.light .text-rose-500 {
+  color: #b91c1c !important;
+}
+
+html.light .text-amber-200,
+html.light .text-amber-300,
+html.light .text-amber-400,
+html.light .text-amber-500,
+html.light .text-yellow-300,
+html.light .text-yellow-400 {
+  color: #b45309 !important;
+}
+
+html.light .app-header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light .panel,
+html.light .dashboard-card,
+html.light .screener-card,
+html.light .dashboard-hero,
+html.light .unified-card,
+html.light .portfolio-card,
+html.light .market-tile {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light #page-dashboard #dashGreeting {
+  color: var(--color-text-primary);
+}
+
+html.light .app-sidebar {
+  background-color: #ffffff !important;
+  border-right-color: #e2e8f0 !important;
+}
+
+html.light .sidebar-item {
+  color: #334155 !important;
+}
+
+html.light .sidebar-item:hover {
+  background-color: #f1f5f9 !important;
+  color: #047857 !important;
+}
+
+html.light .sidebar-item.active {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html.light .theme-toggle-btn,
+html.light .workspace-sidebar-toggle,
+html.light .sidebar-collapse-toggle,
+html.light .theme-toggle-compact {
+  color: #334155 !important;
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light .theme-toggle-btn:hover,
+html.light .workspace-sidebar-toggle:hover,
+html.light .sidebar-collapse-toggle:hover,
+html.light .theme-toggle-compact:hover {
+  color: #0f172a !important;
+  background-color: #e2e8f0 !important;
+}
+
+html.light .sidebar-brand,
+html.light .sidebar-footer {
+  border-color: #e2e8f0 !important;
+}
+
+html.light .sidebar-brand-text strong,
+html.light .sidebar-brand-text p,
+html.light .user-name {
+  color: #0f172a !important;
+}
+
+html.light .sidebar-brand-text span {
+  color: #475569 !important;
+}
+
+html.light .user-role {
+  color: #047857 !important;
+}
+
+html.light .user-avatar {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #047857 !important;
+}
+
+/* Kill the grid pattern in light mode too — the light sheet must read flat. */
+html.light body {
+  background-image: none !important;
+}
+
+/* ==========================================================================
+   COLLAPSIBLE WORKSPACE SIDEBAR
+   Fixed rail on the left; the app body gets matching padding so tables gain
+   the reclaimed width the moment the rail collapses.
+   ========================================================================== */
+#appSidebar.hidden,
+.app-sidebar.hidden {
+  display: none;
+}
+
+.app-layout {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 100vh;
+}
+
+#sidebar,
+#appSidebar,
+.app-sidebar {
+  position: sticky;
+  top: 0;
+  width: 240px;
+  height: 100dvh;         /* §1.2: dynamic viewport height — accounts for mobile toolbars */
+  height: 100vh;          /* fallback for browsers without dvh support */
+  flex: 0 0 auto;
+  background: var(--color-bg-surface);
+  border-right: 1px solid var(--color-border-subtle);
+  display: flex;
+  flex-direction: column;
+  z-index: 60;
+  transition: width var(--motion-base, 200ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
+  overflow-x: hidden;
+  overflow-y: hidden;     /* children handle their own scroll */
+}
+
+/* §1.2: Nav area scrolls independently — footer is always visible */
+.sidebar-nav {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;          /* required for flex children to shrink-scroll */
+}
+
+/* §1.2: Footer locked at bottom — never clipped */
+.sidebar-footer {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--color-border-subtle);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+
+
+#sidebar.collapsed,
+#sidebar.is-collapsed,
+#appSidebar.collapsed,
+#appSidebar.is-collapsed,
+.app-sidebar.collapsed,
+.app-sidebar.is-collapsed {
+  width: 72px !important;
+  flex: 0 0 72px !important;
+}
+
+.sidebar-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(2, 6, 12, 0.62);
+  backdrop-filter: blur(3px);
+}
+
+.app-sidebar.collapsed .sidebar-label,
+.app-sidebar.collapsed .sidebar-brand-text,
+.app-sidebar.collapsed .sidebar-badge,
+.app-sidebar.collapsed .user-info,
+.app-sidebar.is-collapsed .sidebar-label,
+.app-sidebar.is-collapsed .sidebar-brand-text,
+.app-sidebar.is-collapsed .sidebar-badge,
+.app-sidebar.is-collapsed .user-info {
+  display: none !important;
+}
+
+.app-sidebar.collapsed .sidebar-item,
+.app-sidebar.is-collapsed .sidebar-item {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.app-sidebar.collapsed .sidebar-brand,
+.app-sidebar.is-collapsed .sidebar-brand {
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 72px;
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.sidebar-brand-lockup { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sidebar-brand-text { display: grid; min-width: 0; }
+.sidebar-brand-text strong { color: var(--color-text-primary); font-size: 14px; line-height: 1.25; }
+.sidebar-brand-text span { color: var(--color-text-muted); font-size: 10px; }
+.sidebar-brand .brand-mark { display: grid; place-items: center; flex: 0 0 34px; }
+.sidebar-brand .brand-mark svg { width: 18px; height: 18px; }
+.sidebar-collapse-toggle,
+.theme-toggle-compact {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.sidebar-collapse-toggle:hover,
+.theme-toggle-compact:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
+.sidebar-collapse-toggle svg,
+.theme-toggle-compact svg { width: 15px; height: 15px; transition: transform var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)); }
+.app-sidebar.collapsed .sidebar-collapse-toggle svg,
+.app-sidebar.is-collapsed .sidebar-collapse-toggle svg { transform: rotate(180deg); }
+.sidebar-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px; }
+.sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--color-border-subtle);
+  overflow: hidden;
+}
+.sidebar-footer .theme-toggle-compact {
+  width: 100%;
+  height: 32px;
+  border-radius: 8px;
+  justify-self: stretch;
+}
+.user-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 4px;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
+}
+.user-profile-badge:hover {
+  background-color: var(--color-bg-hover);
+}
+.user-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 50%;
+  background: var(--color-bg-hover);
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.user-name {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-role {
+  overflow: hidden;
+  color: var(--color-positive);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-sidebar.collapsed .sidebar-footer,
+.app-sidebar.is-collapsed .sidebar-footer {
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 6px;
+  overflow: hidden;
+}
+.app-sidebar.collapsed .user-profile-badge,
+.app-sidebar.is-collapsed .user-profile-badge {
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
+  padding: 0;
+}
+
+.app-main-viewport {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The content column. `min-width: 0` is what stops a wide table inside a page
+   from forcing the flex row wider than the viewport — without it the column
+   refuses to shrink below its content and the sidebar is pushed off-screen. */
+.app-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* App Content Transition (§6.5) */
+.app-content {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--motion-fast, 180ms) var(--ease-standard),
+              transform var(--motion-fast, 180ms) var(--ease-standard);
+  will-change: auto;
+}
+
+/* App Shell Sidebar State sync */
+.app-shell[data-sidebar-state="collapsed"] #appSidebar {
+  width: 72px;
+}
+
+/* Button Micro-interactions (§6.2) */
+.sidebar-item:active,
+.nav-btn:active,
+.analisis-tab:active,
+.pcc-subtab:active,
+.market-tile:active {
+  transform: scale(0.98);
+  transition: transform var(--motion-instant) var(--ease-standard);
+}
+
+/* Analisis Saham Sub-tab Strip (§1.3 & §6.3): Single Row Nowrap */
+.analisis-tab-strip {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 2px;
+  width: 100% !important;
+}
+.analisis-tab-strip::-webkit-scrollbar {
+  display: none;
+}
+.analisis-tab {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* Checkbox Standard Design System Token (§1.2 & §2.4) */
+input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px;
+  min-height: 16px;
+  accent-color: var(--accent-primary, #22C55E);
+  border-radius: var(--ac-radius-xs, 4px);
+  cursor: pointer;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+
+/* Content stays readable without animation support. Landing motion uses WAAPI. */
+.scroll-reveal { opacity: 1; transform: none; }
+
+/* Mobile drawer trigger in the header. Hidden from 1024px up, where the rail
+   itself is permanently docked. */
+.workspace-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background-color: rgba(148, 163, 184, 0.06);
+  color: #cbd5e1;
+  flex-shrink: 0;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.workspace-sidebar-toggle:hover {
+  background-color: rgba(148, 163, 184, 0.14);
+  color: #ffffff;
+}
+
+/* Single Shell HolverAI on Desktop (>= 1024px):
+   Hide the horizontal top header bar inside #appMain so it never duplicates
+   #appSidebar on desktop. Standalone pages (/analisis-saham, /portfolio-planner)
+   do not wrap .app-header in #appMain, so their header remains 100% intact. */
+@media (min-width: 1024px) {
+  .workspace-sidebar-toggle,
+  #appMain > .app-header,
+  #workspaceTabRail {
+    display: none !important;
+  }
+
+  .app-sidebar:not(.hidden) {
+    display: flex !important;
+  }
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  min-height: 38px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #aab4c3;
+  transition: all var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
+  white-space: nowrap;
+  width: 100%;
+  border: 1px solid transparent;
+  text-align: left;
+}
+
+.sidebar-item svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.sidebar-item:hover {
+  color: #f4f7fb;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-item.active {
+  color: #090d16;
+  background-color: #ffffff;
+  border-color: #ffffff;
+}
+
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background-color: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  font-size: 12px;
+  font-weight: 600;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.theme-toggle-btn:hover {
+  background-color: rgba(148, 163, 184, 0.16);
+  color: #ffffff;
+}
+
+@media (max-width: 1023px) {
+  /* Below 1024px the rail leaves the flex flow and becomes an overlay drawer,
+     so the content column keeps the full viewport width instead of being
+     squeezed to 240px less. `position: fixed` here is scoped to small screens
+     only — from 1024px up the rail is a real sticky flex column. */
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100dvh;
+    transform: translateX(-100%);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+    transition: transform 0.25s ease, width 0.22s ease;
+  }
+  .app-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+  /* The collapsed rail is a desktop affordance only; on phones the drawer
+     always opens full width so labels stay readable. */
+  .app-sidebar.collapsed,
+  .app-sidebar.is-collapsed {
+    width: 240px;
+  }
+}
+
+/* Dynamic-viewport height for the flex shell. Declared AFTER the 100vh
+   fallbacks above so the dvh value wins wherever it is supported; on browsers
+   without dvh support the 100vh rules simply stand. */
+@supports (height: 100dvh) {
+  .app-layout { min-height: 100dvh; }
+  .app-sidebar { height: 100dvh; }
+}
+
+/* AUTO_CUAN_DESKTOP_HEADER_CENTER_V1 */
+/* Keep the navigation centered on the viewport instead of centering it only
+   inside the space left between unequal brand and account groups. */
+@media (min-width: 1280px) {
+  .app-header > .header-shell > .flex {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 16px;
+  }
+
+  .app-header > .header-shell > .flex > :first-child {
+    justify-self: start;
+  }
+
+  .app-header > .header-shell > .flex > .desktop-nav {
+    justify-self: center;
+    width: max-content;
+    max-width: none;
+    flex: none;
+  }
+
+  .app-header > .header-shell > .flex > :last-child {
+    justify-self: end;
+  }
+}
+
+/* ===========================================================================
+   12. Phases 2–5 Visual Refinement (Radar, Stock Cards, Sektor Hot, Spacing)
+   =========================================================================== */
+#appMain {
+  overflow-x: hidden;
+}
+
+#sektorGroupsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.sektor-group-card,
+.dt-card-item,
+.kg-card-item,
+.nk-card-item {
+  border-radius: 12px !important;
+  padding: 16px !important;
+}
+
+.trade-plan-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  align-items: stretch !important;
+}
+
+.trade-plan-tile {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  min-height: 44px !important;
+  padding: 6px 8px !important;
+  border-radius: 8px !important;
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===========================================================================
+   13. Batch 3 (Fase 13 - 14): #page-money-management Fintech & Table Overhaul
+   =========================================================================== */
+#page-money-management .dashboard-hero {
+  border-radius: 14px !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(11, 15, 25, 0.96)) !important;
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.28) !important;
+}
+
+#page-money-management .ac-segmented {
+  display: inline-flex !important;
+  gap: 6px !important;
+  padding: 5px !important;
+  background: rgba(15, 23, 42, 0.78) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 12px !important;
+}
+
+#page-money-management .ac-segment {
+  border-radius: 8px !important;
+  padding: 7px 14px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #94a3b8 !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  transition: all 0.16s ease !important;
+  cursor: pointer;
+}
+
+#page-money-management .ac-segment:hover {
+  color: #f1f5f9 !important;
+  background: rgba(30, 41, 59, 0.65) !important;
+}
+
+#page-money-management .ac-segment.is-active,
+#page-money-management .ac-segment.active {
+  color: #34d399 !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 78, 59, 0.32)) !important;
+  border-color: rgba(16, 185, 129, 0.48) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.14) !important;
+}
+
+/* TanStack-Grade Compact Density on Money Management Spreadsheet Tables */
+#mmCashflowSpreadsheetTable,
+#mmJournalSpreadsheetTable {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#mmCashflowSpreadsheetTable thead th,
+#mmJournalSpreadsheetTable thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  padding: 8px 10px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: #94a3b8 !important;
+  background-color: #0f172a !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24) !important;
+  white-space: nowrap !important;
+}
+
+#mmCashflowSpreadsheetTable tbody td,
+#mmJournalSpreadsheetTable tbody td {
+  padding: 7px 10px !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  font-variant-numeric: tabular-nums !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.09) !important;
+  vertical-align: middle !important;
+}
+
+#mmCashflowSpreadsheetTable tbody td.font-mono,
+#mmJournalSpreadsheetTable tbody td.font-mono,
+#mmCashflowSpreadsheetTable tfoot td.font-mono,
+#mmJournalSpreadsheetTable tfoot td.font-mono {
+  font-family: var(--ac-font-mono, 'JetBrains Mono', monospace) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#mmCashflowSpreadsheetTable tbody tr:hover,
+#mmJournalSpreadsheetTable tbody tr:hover {
+  background-color: rgba(30, 41, 59, 0.55) !important;
+}
+
+#mmCashflowSpreadsheetTable tfoot,
+#mmJournalSpreadsheetTable tfoot {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 15 !important;
+  background-color: #0f172a !important;
+  border-top: 2px solid rgba(16, 185, 129, 0.45) !important;
+}
+
+#mmCashflowSpreadsheetTable tfoot td,
+#mmJournalSpreadsheetTable tfoot td {
+  padding: 8px 10px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+  background-color: #0f172a !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+
+/* Light Mode Overrides for #page-money-management (WCAG AA >= 4.5:1) */
+html.light #page-money-management .dashboard-hero {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light #page-money-management .dashboard-hero h2 {
+  color: #0f172a !important;
+}
+
+html.light #page-money-management .dashboard-hero p {
+  color: #475569 !important;
+}
+
+html.light #page-money-management .ac-segmented {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.light #page-money-management .ac-segment {
+  color: #475569 !important;
+}
+
+html.light #page-money-management .ac-segment:hover {
+  color: #0f172a !important;
+  background: #ffffff !important;
+}
+
+html.light #page-money-management .ac-segment.is-active,
+html.light #page-money-management .ac-segment.active {
+  color: #047857 !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(5, 150, 105, 0.48) !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.light #page-money-management .bg-dark-800,
+html.light #page-money-management .bg-dark-800\/80,
+html.light #page-money-management .bg-dark-800\/60,
+html.light #page-money-management .bg-dark-900,
+html.light #page-money-management .bg-dark-900\/90 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light #mmCashflowSpreadsheetTable thead th,
+html.light #mmJournalSpreadsheetTable thead th {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+}
+
+html.light #mmCashflowSpreadsheetTable tbody td,
+html.light #mmJournalSpreadsheetTable tbody td {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light #mmCashflowSpreadsheetTable tbody tr:hover,
+html.light #mmJournalSpreadsheetTable tbody tr:hover {
+  background-color: #f1f5f9 !important;
+}
+
+html.light #mmCashflowSpreadsheetTable tfoot,
+html.light #mmJournalSpreadsheetTable tfoot,
+html.light #mmCashflowSpreadsheetTable tfoot td,
+html.light #mmJournalSpreadsheetTable tfoot td {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-top-color: #047857 !important;
+}
+
+html.light #page-money-management .text-white {
+  color: #0f172a !important;
+}
+
+html.light #page-money-management .text-gray-200,
+html.light #page-money-management .text-gray-300,
+html.light #page-money-management .text-gray-400,
+html.light #page-money-management .text-gray-500 {
+  color: #334155 !important;
+}
+
+html.light #page-money-management .text-emerald-400,
+html.light #page-money-management .text-emerald-300 {
+  color: #047857 !important;
+}
+
+html.light #page-money-management .text-rose-400,
+html.light #page-money-management .text-rose-300 {
+  color: #b91c1c !important;
+}
+
+html.light #page-money-management .text-blue-300,
+html.light #page-money-management .text-blue-400 {
+  color: #1d4ed8 !important;
+}
+
+html.light #page-money-management .text-cyan-300,
+html.light #page-money-management .text-cyan-400 {
+  color: #0369a1 !important;
+}
+
+/* ===========================================================================
+   14. Batch 4 (Fase 15 - 19): Final UI/UX Polish, Accessibility & Responsiveness
+   =========================================================================== */
+
+/* --- FASE 15: Micro-interactions & Zero-Shift Transitions --- */
+.radar-card,
+.metric-tile,
+.bandar-card,
+.sector-card,
+.action-item,
+.journal-item,
+.position-card,
+.dashboard-card,
+.dashboard-pick-card,
+.panel {
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              box-shadow var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              transform var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+}
+
+.radar-card:hover,
+.metric-tile:hover,
+.bandar-card:hover,
+.sector-card:hover,
+.action-item:hover,
+.dashboard-card:hover,
+.dashboard-pick-card:hover {
+  border-color: rgba(52, 211, 153, 0.38) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24) !important;
+  transform: translateY(-1px) !important;
+}
+
+.radar-card:active,
+.metric-tile:active,
+.bandar-card:active,
+.sector-card:active,
+.action-item:active,
+.dashboard-card:active,
+.dashboard-pick-card:active {
+  transform: translateY(0) !important;
+}
+
+.sub-tab-btn,
+.tab,
+.tab-btn,
+.nav-btn,
+.sidebar-item,
+.workspace-sidebar-toggle,
+.sidebar-collapse-toggle,
+.analisis-tab,
+.ac-btn {
+  transition: background-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              box-shadow var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+}
+
+.theme-toggle-btn,
+.theme-toggle-compact,
+.market-tile-link {
+  transition: background-color var(--motion-instant, 100ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              border-color var(--motion-instant, 100ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              color var(--motion-instant, 100ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+              box-shadow var(--motion-instant, 100ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+}
+
+/* --- FASE 16: Responsiveness - Sidebar Collapse & Mobile/Tablet Viewport --- */
+/* Desktop Collapsed Sidebar Rail (72px) */
+.app-sidebar.collapsed,
+.app-sidebar.is-collapsed {
+  width: 72px !important;
+  flex: 0 0 72px !important;
+}
+
+.app-sidebar.collapsed .sidebar-brand,
+.app-sidebar.is-collapsed .sidebar-brand {
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 10px 4px !important;
+  min-height: 72px !important;
+}
+
+.app-sidebar.collapsed .sidebar-brand-lockup,
+.app-sidebar.is-collapsed .sidebar-brand-lockup {
+  justify-content: center !important;
+  width: 100% !important;
+  gap: 0 !important;
+}
+
+.app-sidebar.collapsed .brand-mark,
+.app-sidebar.is-collapsed .brand-mark {
+  margin: 0 auto !important;
+}
+
+.app-sidebar.collapsed .sidebar-brand-text,
+.app-sidebar.collapsed .sidebar-label,
+.app-sidebar.collapsed .sidebar-badge,
+.app-sidebar.collapsed .user-info,
+.app-sidebar.is-collapsed .sidebar-brand-text,
+.app-sidebar.is-collapsed .sidebar-label,
+.app-sidebar.is-collapsed .sidebar-badge,
+.app-sidebar.is-collapsed .user-info {
+  display: none !important;
+}
+
+.app-sidebar.collapsed .sidebar-collapse-toggle,
+.app-sidebar.is-collapsed .sidebar-collapse-toggle {
+  margin: 2px auto 0 !important;
+}
+
+.app-sidebar.collapsed .sidebar-item,
+.app-sidebar.is-collapsed .sidebar-item {
+  justify-content: center !important;
+  padding: 10px 0 !important;
+  gap: 0 !important;
+  width: 100% !important;
+}
+
+.app-sidebar.collapsed .sidebar-item svg,
+.app-sidebar.is-collapsed .sidebar-item svg {
+  margin: 0 auto !important;
+}
+
+.app-sidebar.collapsed .sidebar-footer,
+.app-sidebar.is-collapsed .sidebar-footer {
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 10px 4px !important;
+  gap: 8px !important;
+}
+
+.app-sidebar.collapsed .user-profile-badge,
+.app-sidebar.is-collapsed .user-profile-badge {
+  justify-content: center !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  width: auto !important;
+}
+
+.app-sidebar.collapsed .user-avatar,
+.app-sidebar.is-collapsed .user-avatar {
+  width: 32px !important;
+  height: 32px !important;
+  margin: 0 auto !important;
+}
+
+.app-sidebar.collapsed .theme-toggle-compact,
+.app-sidebar.is-collapsed .theme-toggle-compact {
+  display: inline-grid !important;
+  margin: 0 auto !important;
+}
+
+/* Tablet Layout (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .app-main {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .page-content {
+    padding: 16px 20px !important;
+  }
+}
+
+/* Mobile Viewport (< 768px) */
+@media (max-width: 767px) {
+  .app-layout {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  .app-main {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  .page-content {
+    padding: 12px 10px !important;
+    max-width: 100% !important;
+  }
+  .workspace-sidebar-toggle {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+  .radar-grid,
+  .metric-grid,
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* --- FASE 17: Eliminasi Double Scrollbar & Horizontal Overflow --- */
+html {
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+}
+
+body {
+  overflow-x: hidden !important;
+  width: 100% !important;
+  max-width: 100vw !important;
+}
+
+.app-layout {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+.app-main {
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+}
+
+.page-content {
+  overflow-y: visible !important;
+  overflow-x: clip !important;
+}
+
+/* Isolated horizontal scroll for tables only */
+.table-responsive-container,
+.table-wrap,
+.overflow-x-auto {
+  overflow-x: auto !important;
+  max-width: 100% !important;
+  scrollbar-width: thin !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* --- FASE 18: Audit WCAG AA Lengkap (Light & Dark Mode) --- */
+/* Keyboard Accessibility Focus Visible Ring */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.btn:focus-visible,
+.tab:focus-visible,
+.sidebar-item:focus-visible,
+.sub-tab-btn:focus-visible,
+.workspace-sidebar-toggle:focus-visible,
+.sidebar-collapse-toggle:focus-visible {
+  outline: 2px solid var(--accent-primary, #22c55e) !important;
+  outline-offset: 2px !important;
+}
+
+/* Light Mode Comprehensive WCAG AA/AAA Contrast Overrides */
+html.light,
+[data-theme="light"] {
+  --canvas: #F7F8FA;
+  --surface: #FFFFFF;
+  --surface-elevated: #F1F5F9;
+  --border-hairline: #E5E7EB;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-tertiary: #9CA3AF;
+  --text-muted: #9CA3AF;
+  --accent-primary: #16A34A;
+  --accent-primary-hover: #15803D;
+  --data-positive: #16A34A;
+  --data-negative: #DC2626;
+  --color-bg-canvas: #F7F8FA;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-elevated: #F1F5F9;
+  --color-text-primary: #111827;
+  --color-text-secondary: #4B5563;
+  --color-text-muted: #4B5563;
+}
+
+html.light body {
+  background-color: #F7F8FA !important;
+  color: #111827 !important;
+}
+
+html.light .app-header {
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #E5E7EB !important;
+}
+
+html.light .app-sidebar {
+  background-color: #FFFFFF !important;
+  border-right: 1px solid #E5E7EB !important;
+}
+
+html.light .dashboard-hero,
+html.light .dashboard-card,
+html.light .action-card,
+html.light .panel,
+html.light .metric-tile,
+html.light .radar-card {
+  background-color: #FFFFFF !important;
+  border-color: #E5E7EB !important;
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05) !important;
+}
+
+html.light .text-white,
+html.light .text-gray-100,
+html.light .text-gray-200,
+html.light .text-gray-300,
+html.light .card-title,
+html.light .panel-title {
+  color: #111827 !important;
+}
+
+html.light .text-gray-400,
+html.light .text-gray-500,
+html.light .text-muted,
+html.light .text-dim,
+html.light .panel-subtitle,
+html.light .card-subtitle {
+  color: #4B5563 !important;
+}
+
+html.light .sidebar-item {
+  color: #334155 !important;
+}
+
+html.light .sidebar-item:hover {
+  background-color: #f1f5f9 !important;
+  color: #047857 !important;
+}
+
+html.light .sidebar-item.active {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html.light .bourse-status,
+html.light #marketStatusBourseChip {
+  background-color: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+html.light .ticker-link {
+  color: #047857 !important;
+}
+
+html.light .ticker-link:hover {
+  color: #065f46 !important;
+  text-decoration: underline !important;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .ac-launcher, .ac-navpanel-card, .action-card, .panel { transition: none !important; animation: none !important; }
+  .action-card:hover { transform: none; }
+  .panel table tbody tr { transition: none !important; }
+  .radar-card,
+  .metric-tile,
+  .bandar-card,
+  .sector-card,
+  .action-item,
+  .journal-item,
+  .position-card,
+  .dashboard-card,
+  .sub-tab-btn,
+  .tab,
+  .btn,
+  .sidebar-item {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* Semantic Flow Colors */
+.flow-positive {
+  color: var(--data-positive, #22C55E) !important;
+}
+.flow-negative {
+  color: var(--data-negative, #EF4444) !important;
+}
+
+/* Workspace shell owner. Portfolio's standalone layout is scoped separately. */
+#appShell.app-shell {
+  display:flex; align-items:stretch; width:100%; max-width:none; margin:0; padding:0;
+  min-height:100vh; min-height:100dvh; overflow:visible !important;
+}
+#appMain.app-main { min-width:0; width:auto !important; max-width:none !important; margin:0 !important; padding:0; flex:1; }
+#appContent.app-content { min-width:0; transform:none; will-change:auto; }
+#appSidebar.app-sidebar {
+  position:fixed !important; top:0 !important; left:0; bottom:0; width:240px;
+  height:100vh !important; height:100dvh !important; max-height:100dvh !important;
+  display:flex !important; flex-direction:column; overflow:hidden; z-index:75;
+  background:var(--color-bg-surface); border:0; border-right:1px solid var(--color-border-default);
+  transition:width var(--motion-fast) var(--ease-standard),transform var(--motion-fast) var(--ease-standard);
+}
+#appSidebar.hidden { display:none !important; }
+#appSidebar > .sidebar-brand { display:flex !important; align-items:center !important; flex:0 0 auto; gap:10px; padding:20px 14px 16px; min-height:76px; border-bottom:1px solid var(--color-border-subtle); }
+#appSidebar .sidebar-brand-lockup { display:flex; align-items:center; gap:10px; min-width:0; }
+#appSidebar .sidebar-brand-text { display:grid; gap:3px; min-width:0; }
+#appSidebar .sidebar-brand-text strong { font-size:14px; font-weight:600; color:var(--color-text-primary); letter-spacing:-.025em; }
+#appSidebar .sidebar-brand-text > span { font-size:10px; color:var(--color-text-secondary); }
+#appSidebar .brand-mark { width:32px !important; height:32px !important; flex:0 0 32px; border-radius:9px; color:var(--brand-mark-ink); background:var(--brand-mark-bg) !important; border:1px solid var(--brand-mark-line); box-shadow:none !important; }
+#appSidebar .sidebar-collapse-toggle { display:grid; place-items:center; width:24px; height:30px; flex-shrink:0; padding:0; margin-left:auto; border:0; background:transparent; color:var(--color-text-secondary); }
+#appSidebar > .sidebar-nav { display:block; flex:1 1 0%; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; padding:8px; }
+#appSidebar .sidebar-nav-group { padding-bottom:5px; }
+#appSidebar .sidebar-group-label { color:var(--color-text-secondary); font-size:9px; font-weight:500; line-height:1.5; letter-spacing:.09em; text-transform:uppercase; padding:12px 12px 6px; margin:0; }
+#appSidebar .sidebar-item { position:relative; display:flex; align-items:center; justify-content:flex-start; min-height:35px; width:100%; padding:7px 11px; gap:10px; border:1px solid transparent; border-radius:7px; background:transparent; color:var(--color-text-secondary); font:500 12px/1.45 Inter,system-ui,sans-serif; text-align:left; box-shadow:none; }
+#appSidebar .sidebar-item.hidden { display:none !important; }
+#appSidebar .sidebar-item > svg { width:16px; height:16px; flex:0 0 16px; }
+#appSidebar .sidebar-item:hover { color:var(--color-text-primary); background:var(--color-bg-hover); }
+#appSidebar .sidebar-item.active { background:var(--color-bg-elevated) !important; color:var(--color-accent) !important; border-color:var(--color-border-default) !important; box-shadow:none !important; }
+#appSidebar .sidebar-item.active::before { content:''; position:absolute; left:-1px; top:10px; bottom:10px; width:2px; background:var(--color-accent); border-radius:2px; }
+#appSidebar .sidebar-item:active { transform:none; }
+#appSidebar .sidebar-badge { margin-left:auto; border:1px solid var(--color-border-default); border-radius:4px; padding:1px 4px; font-size:8px; color:var(--color-text-secondary); }
+#appSidebar > .sidebar-footer { flex:0 0 auto; display:flex; flex-direction:column; align-items:stretch; gap:8px; margin-top:auto; padding:12px; border-top:1px solid var(--color-border-default); background:var(--color-bg-surface); }
+#appSidebar .theme-toggle-compact { display:flex; align-items:center; justify-content:flex-start; gap:10px; width:100%; min-height:32px; padding:5px 9px; border:0; border-radius:7px; background:transparent; color:var(--color-text-secondary); font-size:11px; }
+#appSidebar .user-profile-badge { display:flex; align-items:center; justify-content:flex-start; gap:10px; min-width:0; width:100%; padding:5px 7px; border:0; border-radius:7px; background:transparent; }
+#appSidebar .user-avatar { display:grid; place-items:center; width:30px; height:30px; flex:0 0 30px; border-radius:9px; border:1px solid var(--color-border-default); background:var(--color-bg-elevated); color:var(--color-text-primary); font-size:12px; font-weight:600; }
+#appSidebar .user-info { display:grid; gap:2px; min-width:0; }
+#appSidebar .user-name { color:var(--color-text-primary); font-size:12px; font-weight:500; }
+#appSidebar .user-role { color:var(--color-text-secondary); font-size:9px; }
+#appSidebar :is(button,[role="button"]):focus-visible { outline:2px solid var(--color-accent); outline-offset:-2px; }
+#sidebarScrim { z-index:74; backdrop-filter:none; background:rgba(3,7,18,.56); }
+html.workspace-menu-open { overflow:hidden !important; }
+@media(min-width:1024px) {
+  body.sidebar-open #appMain.app-main { margin-left:240px !important; transition:margin-left var(--motion-fast) var(--ease-standard); }
+  body.sidebar-open.sidebar-collapsed #appMain.app-main { margin-left:72px !important; }
+  #appSidebar.is-collapsed { width:72px !important; }
+  #appSidebar.is-collapsed > .sidebar-brand { flex-direction:column; padding:14px 8px !important; gap:8px; }
+  #appSidebar.is-collapsed .sidebar-collapse-toggle { margin:0; }
+  #appSidebar.is-collapsed .sidebar-group-label { font-size:0; padding:6px 0; margin:4px 8px; border-top:1px solid var(--color-border-subtle); }
+  #appSidebar.is-collapsed .sidebar-item { justify-content:center; min-height:37px; padding:7px; }
+  #appSidebar.is-collapsed :is(.sidebar-label,.sidebar-brand-text,.sidebar-badge,.user-info) { display:none !important; }
+  #appSidebar.is-collapsed > .sidebar-footer { padding:12px 8px; }
+  #appSidebar.is-collapsed :is(.theme-toggle-compact,.user-profile-badge) { width:100%; display:flex !important; align-items:center; justify-content:center; margin:0 !important; }
+}
+@media(max-width:1023px) {
+  #appSidebar.app-sidebar { width:260px !important; max-width:calc(100vw - 48px); transform:translateX(-100%); visibility:hidden; pointer-events:none; }
+  #appSidebar.mobile-open { transform:translateX(0); visibility:visible; pointer-events:auto; }
+  #appSidebar.is-collapsed > .sidebar-brand { flex-direction:row !important; justify-content:flex-start !important; }
+  #appSidebar.is-collapsed .sidebar-item { justify-content:flex-start !important; padding:8px 11px !important; }
+  #appSidebar.is-collapsed :is(.sidebar-label,.sidebar-brand-text,.user-info) { display:grid !important; }
+  #appSidebar.is-collapsed .sidebar-badge { display:inline-block !important; }
+  #appSidebar .sidebar-item { min-height:40px; }
+  #appSidebar.is-collapsed .sidebar-footer { align-items:stretch !important; }
+  #appSidebar.is-collapsed .sidebar-collapse-toggle { margin-left:auto; }
+  #appMain > .app-header { background:var(--color-bg-surface); border-radius:0; padding:0; }
+}
+@media(prefers-reduced-motion:reduce) { #appSidebar.app-sidebar,body.sidebar-open #appMain.app-main { transition:none; } }
+
+/* Sub-tab strip single row */
+.analisis-tab-strip,
+#analisisTabStrip,
+.subtab-strip {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  width: 100% !important;
+  gap: 6px !important;
+  scrollbar-width: none !important;
+}
+.analisis-tab-strip::-webkit-scrollbar,
+#analisisTabStrip::-webkit-scrollbar,
+.subtab-strip::-webkit-scrollbar {
+  display: none !important;
+}
+.analisis-tab {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* App Content Page Transitions */
+#appContent,
+.app-content {
+  transition: opacity var(--motion-fast, 180ms) var(--ease-standard),
+              transform var(--motion-fast, 180ms) var(--ease-standard) !important;
+}
+
+/* Dashboard Top 5 Cards Alignment */
+#dashboardTop5List,
+.dashboard-top5-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  gap: 12px !important;
+  margin-top: 0 !important;
+}
+#dashboardTop5List > *,
+.dashboard-top5-grid > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Standardize Tailwind & Component Transitions to Master Spec */
+.transition,
+.transition-all {
+  transition-duration: var(--motion-fast, 180ms) !important;
+  transition-timing-function: var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform !important;
+}
+
+button:not(.no-motion-override),
+.btn:not(.no-motion-override),
+.sidebar-item,
+.analisis-tab,
+.tab {
+  transition-duration: var(--motion-fast, 180ms) !important;
+  transition-timing-function: var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+}
+
+/* Progress Bar Motion Token (§6.1) */
+#psFill,
+.ps-fill {
+  transition: width var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
+}
+
+/* Reduced Motion Enforcement (§6.1) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .action-card:hover { transform: none; }
+  .panel table tbody tr { transition: none; }
+  #appContent,
+  .app-content {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ==========================================================================
+   WCAG AA ACCESSIBILITY & CONTRAST REMEDIATION (Master Spec §2)
+   ========================================================================== */
+
+/* --- DARK MODE CONTRAST REINFORCEMENTS --- */
+html:not(.light) .panel-subtitle,
+html:not(.light) #dashboardTop5LockNote,
+html:not(.light) p.panel-subtitle,
+html:not(.light) .dash-reason,
+html:not(.light) .empty-state-text {
+  color: #A0AEC0 !important;
+}
+
+html:not(.light) #dashboardTop5List .metric span,
+html:not(.light) .radar-card .metric span,
+html:not(.light) .dashboard-pick-card .metric span,
+html:not(.light) #dashboardTop5List span.text-gray-400,
+html:not(.light) #dashboardTop5List span.text-gray-500,
+html:not(.light) .dashboard-pick-card span:not(.badge):not(.pill):not(.font-bold) {
+  color: #CBD5E1 !important;
+}
+
+html:not(.light) #screenerStats p.uppercase,
+html:not(.light) #screenerStats .text-gray-500 {
+  color: #A0AEC0 !important;
+}
+
+html:not(.light) .scr-detail-hint {
+  color: #9AA4B2 !important;
+}
+
+/* --- LIGHT MODE CONTRAST & CARD / BADGE POLISH --- */
+html.light {
+  --surface: #FFFFFF;
+  --canvas: #F7F8FA;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
+}
+
+/* Light mode panels & cards ground */
+html.light .dashboard-pick-card,
+html.light .radar-card,
+html.light .screener-card,
+html.light .market-tile {
+  background: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  color: #111827 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Light mode headers and titles */
+html.light .page-title,
+html.light h1, html.light h2, html.light h3 {
+  color: #111827 !important;
+}
+
+html.light .page-subtitle,
+html.light .panel-subtitle,
+html.light p.panel-subtitle,
+html.light .empty-state-text,
+html.light #dashboardTop5LockNote {
+  color: #4B5563 !important;
+}
+
+/* Hardcoded dark backgrounds in HTML containers must become clean light surfaces */
+html.light .bg-dark-900\/80,
+html.light .bg-dark-900\/90,
+html.light .bg-dark-800\/60,
+html.light .bg-dark-800\/80,
+html.light .bg-dark-700\/40,
+html.light .bg-dark-600\/40,
+html.light .bg-dark-600\/60 {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #111827 !important;
+}
+
+html.light select.bg-dark-900\/90,
+html.light input.bg-dark-900\/90 {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #111827 !important;
+}
+
+/* Light mode price targets, current price, stop loss */
+html.light .is-now {
+  color: #1E293B !important;
+  font-weight: 600 !important;
+}
+
+html.light .is-target {
+  color: #B45309 !important;
+  font-weight: 600 !important;
+}
+
+html.light .is-stop {
+  color: #B91C1C !important;
+  font-weight: 600 !important;
+}
+
+html.light .dash-flag {
+  color: #92400E !important;
+  background: #FEF3C7 !important;
+  border-color: #FCD34D !important;
+}
+
+/* Light mode badges & grades */
+html.light .dashboard-pick-card b,
+html.light .radar-card b {
+  color: #15803D !important;
+}
+
+html.light .dashboard-pick-card b.warn,
+html.light .dashboard-pick-card b.text-amber-400,
+html.light .radar-card b.text-amber-400 {
+  color: #B45309 !important;
+}
+
+html.light .dashboard-pick-card b.info,
+html.light .dashboard-pick-card b.text-blue-400,
+html.light .radar-card b.text-blue-400 {
+  color: #1D4ED8 !important;
+}
+
+/* Light mode Position Sizing inline widget (.ac-pos-calc-box) */
+html.light .ac-pos-calc-box {
+  background: #F8FAFC !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #1E293B !important;
+}
+
+html.light .ac-pos-calc-box * {
+  color: #334155 !important;
+}
+
+html.light .ac-pos-calc-box strong,
+html.light .ac-pos-calc-box b {
+  color: #0F172A !important;
+}
+
+html.light .ac-pos-calc-box strong[style*="6ee7b7"],
+html.light .ac-pos-calc-box strong[style*="4ade80"] {
+  color: #15803D !important;
+}
+
+html.light .ac-pos-calc-box strong[style*="fca5a5"],
+html.light .ac-pos-calc-box strong[style*="f87171"] {
+  color: #B91C1C !important;
+}
+
+html.light .ac-pos-calc-box strong[style*="93c5fd"],
+html.light .ac-pos-calc-box span[style*="93c5fd"] {
+  color: #1D4ED8 !important;
+}
+
+html.light .ac-pos-calc-box strong[style*="f59e0b"],
+html.light .ac-pos-calc-box span[style*="fbbf24"] {
+  color: #B45309 !important;
+}
+
+html.light .ac-pos-calc-box button {
+  background: #EFF6FF !important;
+  border: 1px solid #93C5FD !important;
+  color: #1D4ED8 !important;
+}
+
+/* Light mode Signal Gate card trigger & drawer (.ac-gate-card-trigger) */
+html.light .ac-gate-card-trigger button {
+  background: #F1F5F9 !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #334155 !important;
+}
+
+html.light .ac-gate-card-trigger button * {
+  color: #334155 !important;
+}
+
+html.light .ac-gate-card-trigger button span[style*="6ee7b7"] {
+  color: #15803D !important;
+}
+
+html.light .ac-gate-card-trigger button span[style*="fca5a5"] {
+  color: #B91C1C !important;
+}
+
+html.light .ac-gate-card-trigger button span[style*="fbbf24"] {
+  color: #B45309 !important;
+}
+
+html.light .ac-gate-drawer,
+html.light .ac-gate-transparency-box {
+  background: #F8FAFC !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #1E293B !important;
+}
+
+html.light .ac-gate-drawer *,
+html.light .ac-gate-transparency-box * {
+  color: #334155 !important;
+}
+
+/* Light mode screener tabs & info bars */
+html.light .screener-tab.active {
+  color: #065F46 !important;
+  background: #D1FAE5 !important;
+  border: 1px solid #6EE7B7 !important;
+  font-weight: 700 !important;
+}
+
+html.light .screener-tab {
+  color: #4B5563 !important;
+  background: #F1F5F9 !important;
+}
+
+html.light .scr-info-bar {
+  background: #F8FAFC !important;
+  color: #4B5563 !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.light .scr-info-bar strong {
+  color: #111827 !important;
+}
+
+html.light .scr-info-bar.text-amber-400\/70 {
+  background: #FEF3C7 !important;
+  color: #92400E !important;
+  border-color: #FDE68A !important;
+}
+
+html.light .scr-info-bar.text-amber-400\/70 strong {
+  color: #78350F !important;
+}
+
+html.light #screenerMetaBadge {
+  background: #FEF3C7 !important;
+  color: #92400E !important;
+  border-color: #FDE68A !important;
+}
+
+html.light .screener-card strong {
+  color: #111827 !important;
+}
+
+html.light .screener-card span.text-emerald-300,
+html.light .screener-card span[class*="emerald"],
+html.light .screener-card strong.text-emerald-300 {
+  color: #15803D !important;
+}
+
+/* Light mode Analisis & Cockpit AI */
+html.light [id="page-analisis"],
+html.light .analisis-header,
+html.light .analisis-cockpit {
+  background: transparent !important;
+}
+
+html.light .unified-prompt-chip {
+  color: #1F2937 !important;
+  background: #E2E8F0 !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+html.light .unified-ticker-badge {
+  color: #065F46 !important;
+  background: #D1FAE5 !important;
+  border: 1px solid #6EE7B7 !important;
+}
+
+html.light #analisisActiveTickerTag,
+html.light #chatActiveTickerTag {
+  color: #065F46 !important;
+  background: #E2E8F0 !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+html.light a.action-btn,
+html.light button.action-btn {
+  color: #065F46 !important;
+}
+
+/* Dark mode Market tile units and notes */
+html:not(.light) .market-tile-unit,
+html:not(.light) .market-tile-note,
+html:not(.light) #dashMarketGateNote {
+  color: #A0AEC0 !important;
+}
+
+/* Skenario Box Contrast in Position Sizing */
+html:not(.light) .ac-pos-scenario-box {
+  background: rgba(30, 41, 59, 0.5) !important;
+  color: #CBD5E1 !important;
+}
+html:not(.light) .ac-pos-scenario-a {
+  color: #93C5FD !important;
+}
+html:not(.light) .ac-pos-scenario-b {
+  color: #A7F3D0 !important;
+}
+
+html.light .ac-pos-scenario-box {
+  background: #F1F5F9 !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #1E293B !important;
+}
+html.light .ac-pos-scenario-box * {
+  color: #1E293B !important;
+}
+html.light .ac-pos-scenario-a {
+  color: #1D4ED8 !important;
+}
+html.light .ac-pos-scenario-b {
+  color: #15803D !important;
+}
+
+/* Light mode Sisa R/R warning text */
+html.light .dash-rr-sisa-warn,
+html.light [title*="Sisa R/R"],
+html.light span[style*="F59E0B"],
+html.light span[style*="f59e0b"] {
+  color: #92400E !important;
+}
+html.light [title*="Sisa R/R"] b {
+  color: #78350F !important;
+}
+
+/* Light mode Screener Cards, Labels, and Chips */
+html.light label.flex.items-center,
+html.light label[class*="bg-dark-900"],
+html.light label:has(#kgHideVeryHigh),
+html.light label:has(#nkHideVeryHigh),
+html.light label:has(#dtHideVeryHigh) {
+  background: #F1F5F9 !important;
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #111827 !important;
+}
+
+html.light [data-lifecycle-chip="1"],
+html.light [data-lifecycle-chip],
+html.light span[data-lifecycle-chip] {
+  color: #334155 !important;
+  background: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+}
+html.light [data-lifecycle-chip] * {
+  color: #334155 !important;
+}
+
+html.light .dt-card-item strong,
+html.light .kg-card-item strong,
+html.light .nk-card-item strong,
+html.light .screener-card strong {
+  color: #111827 !important;
+}
+
+html.light .dt-card-item strong[style*="6ee7b7"],
+html.light .kg-card-item strong[style*="6ee7b7"],
+html.light .nk-card-item strong[style*="6ee7b7"],
+html.light .screener-card strong[style*="6ee7b7"] {
+  color: #15803D !important;
+}
+
+html.light .dt-card-item span[style*="6ee7b7"],
+html.light .kg-card-item span[style*="6ee7b7"],
+html.light .nk-card-item span[style*="6ee7b7"],
+html.light .screener-card span[style*="6ee7b7"] {
+  color: #15803D !important;
+}
+
+html.light .dt-card-item span[style*="e5e7eb"],
+html.light .kg-card-item span[style*="e5e7eb"],
+html.light .nk-card-item span[style*="e5e7eb"],
+html.light .screener-card span[style*="e5e7eb"] {
+  color: #0f172a !important;
+}
+
+/* Light mode Screener positive percentage contrast (WCAG AA >= 4.5:1 on #FFFFFF) */
+html.light .scr-chg-val,
+html.light .dt-card-item span.scr-chg-val,
+html.light .kg-card-item span.scr-chg-val,
+html.light .nk-card-item span.scr-chg-val,
+html.light .dt-card-item span[style*="var(--data-positive)"],
+html.light .kg-card-item span[style*="var(--data-positive)"],
+html.light .nk-card-item span[style*="var(--data-positive)"],
+html.light .screener-card span[style*="var(--data-positive)"],
+html.light .dt-card-item span[style*="16A34A"],
+html.light .kg-card-item span[style*="16A34A"],
+html.light .nk-card-item span[style*="16A34A"] {
+  color: #15803D !important;
+}
+
+/* Light mode Analisis header & command bar background override (v6.css override) */
+html.light [id="page-analisis"] > div:first-child,
+html.light #analisisPartialMount,
+html.light [id="page-analisis"] #analisisPartialMount {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* Light mode Analisis header overrides */
+html.light [id="page-analisis"],
+html.light .page-content[id="page-analisis"],
+html.light #analisisContent,
+html.light .analisis-header,
+html.light .analisis-cockpit {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+html.light .page-title,
+html.light h1.page-title {
+  color: #111827 !important;
+}
+html.light .page-subtitle,
+html.light p.page-subtitle {
+  color: #4B5563 !important;
+}
+html.light #analisisResult strong,
+html.light #analisisContent strong,
+html.light [id="page-analisis"] strong {
+  color: #0f172a !important;
+}
+html.light #analisisActiveTickerTag,
+html.light #chatActiveTickerTag {
+  color: #064E3B !important;
+  background-color: #E2E8F0 !important;
+  border-color: #CBD5E1 !important;
+}
+html.light a[href*="chart"] span,
+html.light .action-btn span,
+html.light .unified-card-header button span,
+html.light #subPanelAnalisisAI button span,
+html.light button[onclick*="switchAnalisisSubTab('chart')"] span {
+  color: #064E3B !important;
+}
+
+/* Stabilize nested mini card utility buttons during theme toggle */
+.ac-pos-calc-box button,
+.ac-gate-card-trigger button {
+  transition: none !important;
+}
+
+/* Shared brand contract: the arrow must remain legible in every shell/theme. */
+:root { --brand-mark-bg:#153f34; --brand-mark-ink:#a5f2da; --brand-mark-line:#38695a; }
+html.light { --brand-mark-bg:#e1f5eb; --brand-mark-ink:#07593f; --brand-mark-line:#badbcb; }
+#landingPage .landing-logo, .app-header .brand-mark { display:inline-grid; place-items:center; width:34px; height:34px; border-radius:9px; border:1px solid var(--brand-mark-line); background:var(--brand-mark-bg); color:var(--brand-mark-ink); flex:0 0 34px; }
+#landingPage .landing-logo svg, #appSidebar .brand-mark svg, .app-header .brand-mark svg { color:var(--brand-mark-ink) !important; stroke:currentColor; fill:none; }
+/* Accessible real value + decorative rolling glyphs; never duplicate speech. */
+
+/* The brand mark is not a live-status indicator. */
+#appSidebar .brand-mark::after,.app-header .brand-mark::after { display:none !important; }
+.app-header .brand-mark { background:var(--brand-mark-bg) !important; box-shadow:none !important; }
+
+/* Account controls follow the active theme, including the mobile header. */
+#appMain > .app-header .header-account { background:transparent !important; border:0 !important; box-shadow:none !important; padding:0 !important; }
+#appMain > .app-header #headerAccountSection { background:transparent !important; border:0 !important; box-shadow:none !important; min-width:0; }
+#appMain > .app-header :is(#headerUserLabel,#logoutBtn) { background:var(--color-bg-surface) !important; color:var(--color-text-primary) !important; border:1px solid var(--color-border-default) !important; box-shadow:none !important; }
+#appMain > .app-header #headerUsername { max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media(max-width:600px) {
+ #appMain > .app-header :is(#headerUserLabel,#logoutBtn) { min-height:44px; }
+ #appMain > .app-header #headerUsername { max-width:70px; }
+ #appMain > .app-header .header-account { min-width:0; flex:0 1 auto !important; margin-left:auto !important; }
+ #appMain > .app-header > .header-shell > .flex { gap:8px !important; min-width:0; }
+ #appMain > .app-header > .header-shell > .flex > :first-child { flex:1 1 auto !important; min-width:0 !important; gap:8px !important; }
+ #appMain > .app-header #headerAccountSection { padding:0 !important; gap:6px; }
+ #appMain > .app-header h1 { font-size:13px !important; overflow:hidden; text-overflow:ellipsis; }
+ #appMain > .app-header #headerUserLabel { padding-inline:8px !important; }
+}
+@media(max-width:359px) {
+ #appMain > .app-header #headerUsername { max-width:44px; }
+ #appMain > .app-header > .header-shell > .flex > :first-child > .min-w-0 { display:none; }
+}
+
+@media(max-width:1023px) { #appMain > .app-header :is(#headerUserLabel,#logoutBtn) { min-height:44px; } }

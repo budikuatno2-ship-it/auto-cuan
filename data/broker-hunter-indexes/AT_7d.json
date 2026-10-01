@@ -1,0 +1,108 @@
+{
+  "success": true,
+  "from_cache": false,
+  "broker": "AT",
+  "broker_name": "Phintraco Sekuritas",
+  "range": "7d",
+  "target_dates": [
+    "2026-09-07"
+  ],
+  "date_range_label": "2026-09-07",
+  "generated_at": "2026-09-08T05:54:22.382Z",
+  "top_accumulated": [
+    {
+      "ticker": "BUMI",
+      "net_val": 103000000000,
+      "net_vol": 804687500,
+      "net_lot": 8046875,
+      "buy_val": 142000000000,
+      "sell_val": 39000000000,
+      "buy_vol": 1109375000,
+      "sell_vol": 304687500,
+      "avg_buy_price": 128,
+      "avg_sell_price": 128,
+      "days_active": 5
+    },
+    {
+      "ticker": "BRIS",
+      "net_val": 79500000000,
+      "net_vol": 27041000,
+      "net_lot": 270410,
+      "buy_val": 110500000000,
+      "sell_val": 31000000000,
+      "buy_vol": 37585000,
+      "sell_vol": 10544000,
+      "avg_buy_price": 2940,
+      "avg_sell_price": 2940,
+      "days_active": 5
+    },
+    {
+      "ticker": "CUAN",
+      "net_val": 66500000000,
+      "net_vol": 8417500,
+      "net_lot": 84175,
+      "buy_val": 89000000000,
+      "sell_val": 22500000000,
+      "buy_vol": 11265500,
+      "sell_vol": 2848000,
+      "avg_buy_price": 7900,
+      "avg_sell_price": 7900,
+      "days_active": 5
+    },
+    {
+      "ticker": "DEWA",
+      "net_val": 57500000000,
+      "net_vol": 653409500,
+      "net_lot": 6534095,
+      "buy_val": 77000000000,
+      "sell_val": 19500000000,
+      "buy_vol": 875000000,
+      "sell_vol": 221590500,
+      "avg_buy_price": 88,
+      "avg_sell_price": 88,
+      "days_active": 5
+    }
+  ],
+  "top_distributed": [
+    {
+      "ticker": "BBCA",
+      "net_val": -86500000000,
+      "net_vol": -8439000,
+      "net_lot": -84390,
+      "buy_val": 21000000000,
+      "sell_val": 107500000000,
+      "buy_vol": 2048500,
+      "sell_vol": 10487500,
+      "avg_buy_price": 10250,
+      "avg_sell_price": 10250,
+      "days_active": 5
+    },
+    {
+      "ticker": "BMRI",
+      "net_val": -73500000000,
+      "net_vol": -10352000,
+      "net_lot": -103520,
+      "buy_val": 17500000000,
+      "sell_val": 91000000000,
+      "buy_vol": 2464500,
+      "sell_vol": 12816500,
+      "avg_buy_price": 7100,
+      "avg_sell_price": 7100,
+      "days_active": 5
+    },
+    {
+      "ticker": "TLKM",
+      "net_val": -56500000000,
+      "net_vol": -18708500,
+      "net_lot": -187085,
+      "buy_val": 14000000000,
+      "sell_val": 70500000000,
+      "buy_vol": 4635500,
+      "sell_vol": 23344000,
+      "avg_buy_price": 3020,
+      "avg_sell_price": 3020,
+      "days_active": 5
+    }
+  ],
+  "total_stocks_active": 7
+}

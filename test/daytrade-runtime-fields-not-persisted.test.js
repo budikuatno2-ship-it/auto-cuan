@@ -16,8 +16,9 @@ const RUNTIME_ONLY_FIELDS = [
 
 test('daytrade_screener_latest insert rows do not persist major-zone runtime-only fields', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'api', 'sector-hot.js'), 'utf8');
-  const tableIndex = source.indexOf("from('daytrade_screener_latest').insert(batchRows)");
-  assert.notEqual(tableIndex, -1, 'daytrade_screener_latest batch insert should exist');
+  let tableIndex = source.indexOf("from('daytrade_screener_latest').upsert(batchRows, { onConflict: 'ticker' })");
+  if (tableIndex === -1) tableIndex = source.indexOf("from('daytrade_screener_latest').insert(batchRows)");
+  assert.notEqual(tableIndex, -1, 'daytrade_screener_latest batch save should exist');
 
   const mapStart = source.lastIndexOf('var batchRows = passedResults.map(function(r) {', tableIndex);
   assert.notEqual(mapStart, -1, 'batchRows mapper should exist before insert');

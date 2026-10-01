@@ -1,0 +1,12 @@
+# Default owner for every change.
+* @budikuatno2-ship-it
+
+# Security-sensitive surfaces.
+/.github/ @budikuatno2-ship-it
+/api/ @budikuatno2-ship-it
+/lib/ @budikuatno2-ship-it
+/supabase/ @budikuatno2-ship-it
+/tools/ @budikuatno2-ship-it
+/vercel.json @budikuatno2-ship-it
+/package.json @budikuatno2-ship-it
+/package-lock.json @budikuatno2-ship-it

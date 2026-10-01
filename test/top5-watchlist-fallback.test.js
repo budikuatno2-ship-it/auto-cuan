@@ -408,9 +408,8 @@ test('sendDailyTop5Telegram: watchlist mode with < 5 candidates shows availabili
     assert.ok(sentMessages.length >= 1, 'should have sent at least 1 message');
 
     var headerMsg = sentMessages[0];
-    assert.ok(headerMsg.indexOf('TOP 5 WATCHLIST') >= 0, 'header should contain TOP 5 WATCHLIST');
-    assert.ok(headerMsg.indexOf('PANTAUAN BESOK') >= 0, 'header should contain PANTAUAN BESOK');
-    assert.ok(headerMsg.indexOf('Kandidat aman tersedia 3 dari 5') >= 0, 'header should contain availability count');
+    assert.ok(headerMsg.indexOf('Top 5 Watchlist') >= 0, 'header should contain Top 5 Watchlist');
+    assert.ok(headerMsg.indexOf('lolos gate: 3/5') >= 0, 'header should contain available/gate count (3/5)');
     assert.ok(headerMsg.indexOf('Bukan sinyal entry langsung') >= 0, 'header should contain disclaimer');
   } finally {
     require('../lib/telegram-notifier').sendTelegramMessage = originalSendTelegramMessage;

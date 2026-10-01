@@ -1,40 +1,53 @@
+'use strict';
+
 const { createClient } = require('@supabase/supabase-js');
+const { requireAdminSession, isSameOrigin } = require('../lib/admin-session');
+const securityGuard = require('../lib/security-guard');
 
 module.exports = async function handler(req, res) {
+  res.setHeader('Cache-Control', 'private, no-store');
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   try {
-    const { adminName } = req.body || {};
-
-    if (!adminName || adminName.trim().toLowerCase() !== 'budi') {
-      return res.status(403).json({ success: false, error: 'Unauthorized. Admin only.' });
+    // Authorization is derived from the server-signed session ONLY. Any `adminName`
+    // supplied in the request body is intentionally ignored.
+    if (!isSameOrigin(req)) {
+      return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+    }
+    const auth = requireAdminSession(req);
+    if (!auth.ok) {
+      return res.status(auth.status).json({ success: false, error: auth.error });
     }
 
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!SUPABASE_URL || !SUPABASE_KEY) {
-      return res.status(200).json({ success: false, error: 'Database logging belum dikonfigurasi.' });
+      return res.status(503).json({ success: false, error: 'Database logging belum dikonfigurasi.' });
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
     });
 
-    // Fetch all 4 tables
-    const [loginRes, searchRes, analysisRes, usageRes] = await Promise.all([
+    // Existing analytics remain authoritative. Security events are loaded
+    // independently and degrade to an unavailable status until the additive
+    // Security Phase 1 migration is applied.
+    const [loginRes, searchRes, analysisRes, usageRes, security] = await Promise.all([
       supabase.from('login_logs').select('*').order('created_at', { ascending: false }).limit(50),
       supabase.from('search_logs').select('*').order('created_at', { ascending: false }).limit(100),
       supabase.from('ai_analysis_logs').select('id, username, ticker, mode, created_at').order('created_at', { ascending: false }).limit(50),
-      supabase.from('ai_usage_logs').select('*').order('created_at', { ascending: false }).limit(100)
+      supabase.from('ai_usage_logs').select('*').order('created_at', { ascending: false }).limit(100),
+      securityGuard.loadSecurityDashboard(supabase)
     ]);
 
     if (loginRes.error || searchRes.error || analysisRes.error || usageRes.error) {
       const err = loginRes.error || searchRes.error || analysisRes.error || usageRes.error;
       console.error('admin-logs fetch error:', err);
-      return res.status(200).json({ success: false, error: 'Database query failed: ' + err.message });
+      return res.status(500).json({ success: false, error: 'Database query failed.' });
     }
 
     const loginLogs = loginRes.data || [];
@@ -73,6 +86,12 @@ module.exports = async function handler(req, res) {
       searchLogs,
       aiAnalysisLogs,
       aiUsageLogs,
+      securityEvents: security.events,
+      securitySummary: security.summary,
+      securityStatus: Object.assign(
+        securityGuard.getPublicStatus(),
+        { available: security.available, reason: security.reason }
+      ),
       summary: {
         totalLogins,
         totalSearches,
@@ -82,6 +101,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (e) {
     console.error('admin-logs exception:', e);
-    return res.status(200).json({ success: false, error: 'Gagal memuat data log: ' + e.message });
+    return res.status(500).json({ success: false, error: 'Gagal memuat data log.' });
   }
 };

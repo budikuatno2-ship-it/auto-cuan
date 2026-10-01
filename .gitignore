@@ -54,3 +54,75 @@ logs/ai-research/
 # Uploads (if any temp files)
 uploads/
 tmp/
+
+# Investigation scratch artifacts (temporary probes + captured test output)
+tmp_investigasi/
+
+# Offline ABCD historical validation market data and generated reports
+data/abcd-validation/
+data/abcd-validation.staging-*/
+data/abcd-validation.previous-*/
+data/reports/abcd-validation-*.json
+data/reports/abcd-acquisition-*.json
+
+# Generated Day Trade cache audit reports
+data/reports/daytrade-cache-audit-*.md
+data/reports/daytrade-cache-audit-*.json
+
+# Generated Day Trade local-vs-Vercel comparison reports
+data/reports/daytrade-local-vs-vercel-*.md
+data/reports/daytrade-local-vs-vercel-*.json
+
+# Generated Day Trade intraday observe cache/reports
+data/daytrade-intraday-cache/
+data/reports/daytrade-intraday-observe-*.md
+data/reports/daytrade-intraday-observe-*.json
+
+# Generated Day Trade intraday score impact simulation reports
+data/reports/daytrade-intraday-score-impact-*.md
+data/reports/daytrade-intraday-score-impact-*.json
+# Generated Day Trade adjusted vs normal observe reports
+data/reports/daytrade-adjusted-vs-normal-*.md
+data/reports/daytrade-adjusted-vs-normal-*.json
+
+# Intraday sample collector research data (temporary, one-day only)
+data/intraday-samples/
+logs/intraday-samples/
+tmp/intraday-sample-collector.lock
+
+# Live intraday shadow-scoring outputs (research/shadow only; generated at runtime)
+data/intraday-shadow-scoring-live/
+data/intraday-shadow-scoring/
+tmp/intraday-shadow-scoring-live.lock
+
+# Intraday Fast Watcher shadow-only runtime outputs
+data/intraday-fast-watcher-observations/
+data/intraday-fast-watcher-state/
+data/intraday-fast-watcher-events/
+data/arjum-data/
+arjum-data/
+!data/broker-hunter-indexes/
+!data/broker-hunter-indexes/**
+!data/bandarmologi-intel-indexes/
+!data/bandarmologi-intel-indexes/**
+
+# Chart-engine candle cache (Arjum history; regenerable at runtime)
+data/daily-candles/
+data/candle-quota.json
+
+# Local test-runner output artifacts
+test*-out.txt
+testout.txt
+.aider*
+data/bot-registration-tokens-fallback.json
+data/bot-magic-tokens-fallback.json
+data/keepalive-heartbeat.json
+data/screener-latest.json
+
+# Visual audit & test artifacts
+docs/motion-trace/
+screenshots/
+
+# DeepScan weekly full-history cache and generated readiness report
+data/deepscan-history/
+data/reports/deepscan-weekly-preparation-*.json

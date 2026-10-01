@@ -1,0 +1,121 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const test = require('node:test');
+
+const securityGuard = require('../lib/security-guard');
+const authRecovery = require('../lib/auth-recovery');
+const uploader = require('../tools/upload-ai-eval-shards');
+const supervisor = require('../tools/ai-eval-once-supervisor');
+const top5Runner = require('../tools/run-top5-progress-monitor');
+
+test('security guard defaults to enforce and admin fail-closed in production', async () => {
+  const env = { NODE_ENV: 'production' };
+  assert.equal(securityGuard.getMode(env), 'enforce');
+  assert.equal(securityGuard.shouldFailClosedAdmin(env), true);
+  assert.equal(securityGuard.getPublicStatus(env).enforcement, true);
+
+  const guard = await securityGuard.beginLogin({
+    env,
+    username: 'budi',
+    req: { headers: {}, socket: {} },
+    db: null
+  });
+  assert.equal(guard.context.adminTarget, true);
+  assert.equal(guard.deny, true);
+  assert.equal(guard.httpStatus, 503);
+});
+
+test('security guard preserves explicit maintenance overrides and configurable admin identity', () => {
+  assert.equal(securityGuard.getMode({ NODE_ENV: 'production', SECURITY_GUARD_MODE: 'shadow' }), 'shadow');
+  assert.equal(securityGuard.getMode({ NODE_ENV: 'test' }), 'off');
+  assert.equal(securityGuard.shouldFailClosedAdmin({ NODE_ENV: 'production', SECURITY_GUARD_FAIL_CLOSED_ADMIN: '0' }), false);
+  assert.equal(securityGuard.getPrimaryAdminUsername({ PRIMARY_ADMIN_USERNAME: ' Owner ' }), 'owner');
+  const context = securityGuard.buildContext(
+    { headers: {}, socket: {} },
+    'OWNER',
+    { PRIMARY_ADMIN_USERNAME: 'owner' }
+  );
+  assert.equal(context.adminTarget, true);
+});
+
+test('auth recovery behavior rejects insecure reset origins and duplicate updates', async () => {
+  assert.equal(authRecovery.__test.safeBaseUrl('http://evil.example'), 'https://autocuan.web.id');
+  assert.equal(authRecovery.__test.safeBaseUrl('https://autocuan.web.id/path?q=1'), 'https://autocuan.web.id');
+  assert.equal(authRecovery.normalizeResetToken('short'), null);
+
+  const calls = [];
+  const db = {
+    async rpc(name, args) {
+      calls.push({ name, args });
+      if (name === 'claim_auth_recovery_webhook_update') return { data: { claimed: false }, error: null };
+      return { data: null, error: null };
+    }
+  };
+  const result = await authRecovery.handleRecoveryUpdate({
+    update_id: 123,
+    message: { text: 'AR-ABCD-EFGH', from: { id: 1 }, chat: { id: 1, type: 'private' } }
+  }, { db, bot: {} });
+  assert.equal(result.handled, true);
+  assert.equal(result.outcome, 'duplicate');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].name, 'claim_auth_recovery_webhook_update');
+});
+
+test('manifest reader self-heals duplicate shard indexes and keeps the latest row', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'autocuan-manifest-'));
+  const file = path.join(dir, 'manifest.jsonl');
+  fs.writeFileSync(file, [
+    JSON.stringify({ shard_index: 0, file: 'results-000000.jsonl.gz', sha256: 'a' }),
+    JSON.stringify({ shard_index: 1, file: 'results-000001-old.jsonl.gz', sha256: 'old' }),
+    JSON.stringify({ shard_index: 1, file: 'results-000001.jsonl.gz', sha256: 'new' })
+  ].join('\n') + '\n');
+
+  const rows = uploader.readJsonl(file);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[1].sha256, 'new');
+  const persisted = fs.readFileSync(file, 'utf8').trim().split(/\r?\n/);
+  assert.equal(persisted.length, 2);
+  assert.match(persisted[1], /"sha256":"new"/);
+});
+
+test('AI eval supervisor claims a run through the atomic database RPC before spawn', async () => {
+  const previousFetch = global.fetch;
+  let observed = null;
+  global.fetch = async function (url, options) {
+    observed = { url: String(url), options };
+    return { ok: true, status: 200, async text() { return 'true'; } };
+  };
+  try {
+    const claimed = await supervisor.claimRun('00000000-0000-4000-8000-000000000001');
+    assert.equal(claimed, true);
+    assert.match(observed.url, /\/rest\/v1\/rpc\/claim_ai_eval_run$/);
+    assert.equal(observed.options.method, 'POST');
+    assert.deepEqual(JSON.parse(observed.options.body), { p_run_id: '00000000-0000-4000-8000-000000000001' });
+  } finally {
+    global.fetch = previousFetch;
+  }
+});
+
+test('Top5 progress runner has no implicit 50-row cap and paginates until exhausted', async () => {
+  assert.equal(top5Runner.parseArgs(['node', 'runner']).limit, null);
+  const calls = [];
+  const fetchImpl = async function (url) {
+    const parsed = new URL(url);
+    calls.push({ limit: Number(parsed.searchParams.get('limit')), offset: Number(parsed.searchParams.get('offset')) });
+    const offset = Number(parsed.searchParams.get('offset'));
+    const size = offset === 0 ? 1000 : 37;
+    return {
+      ok: true,
+      async json() { return Array.from({ length: size }, (_, i) => ({ id: offset + i + 1, ticker: 'T' + (offset + i + 1) })); },
+      async text() { return ''; }
+    };
+  };
+
+  const rows = await top5Runner.fetchAllProgressRows(fetchImpl, 'https://example.supabase.co', 'key', null);
+  assert.equal(rows.length, 1037);
+  assert.deepEqual(calls, [{ limit: 1000, offset: 0 }, { limit: 1000, offset: 1000 }]);
+});

@@ -1,18 +1,110 @@
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
+const {
+  generateApprovalCode,
+  maskUsername
+} = require('../lib/free-user-approval');
+const telegramVerification = require('../lib/telegram-verification');
+const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+const accountTerms = require('../lib/account-terms');
+const passwordCredential = require('../lib/password-credential');
+const { verifyRecaptcha } = require('../lib/recaptcha-verify');
+
+// Registration is far more expensive than a read: it writes an app_users row
+// and mints a one-time Telegram verification challenge. It had no limit at all,
+// so a script could create pending accounts and walk the username namespace as
+// fast as the database would accept writes.
+//
+// Keyed on the address the platform edge observed, never on anything in the
+// body — a body-keyed bucket is minted fresh on every request and bounds
+// nothing. Per-instance, with the same honest caveat as api/log.js: this blunts
+// floods, it is not a hard global guarantee (see lib/request-rate-limit.js).
+const registrationLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 8 });
+
+// Bounds on values that are stored. passwordHash arrives from the client and
+// went straight into the database with no length or format check, so a caller
+// could push an arbitrarily large string into the row. The client always sends
+// a hex SHA-256 digest.
+const PASSWORD_HASH_RE = /^[a-f0-9]{64}$/i;
+const MAX_USER_AGENT = 256;
+
+// Username charset allowlist (stored-XSS defence in depth for the admin log
+// viewer). Letters/digits/dot/underscore/hyphen, 2-30 chars.
+const USERNAME_RE = /^[a-z0-9._-]{2,30}$/i;
+
+// Normalize a client-provided device ID and generate a secure server-side
+// fallback when an older client omits it. Keeps the NOT NULL `device_id`
+// column satisfied without exposing device ID as a required user input.
+function normalizeDeviceId(rawDeviceId) {
+  var id = typeof rawDeviceId === 'string' ? rawDeviceId.trim() : '';
+  // Strip control characters and cap length so the value is storage-safe.
+  id = id.replace(/[\u0000-\u001F\u007F]/g, '').slice(0, 128);
+  if (!id) {
+    id = 'srv_' + crypto.randomUUID();
+  }
+  return id;
+}
+
+async function rollbackIncompleteRegistration(supabase, userId) {
+  if (!userId) return;
+  try {
+    // Verification challenge rows cascade with app_users. If this cleanup ever
+    // fails, never expose database detail to the browser; the registration still
+    // returns a generic failure and the inconsistency is visible to operators.
+    await supabase.from('app_users').delete().eq('id', userId);
+  } catch (_) {}
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
-  try {
-    const { username, passwordHash, deviceId, userAgent } = req.body || {};
+  if (!registrationLimiter.check(clientAddress(req))) {
+    // Deliberately identical to no other branch: it says nothing about whether
+    // any username exists.
+    return res.status(429).json({ success: false, error: 'Terlalu banyak percobaan pendaftaran. Coba lagi dalam beberapa menit.' });
+  }
 
-    // Validate inputs
-    if (!username || !passwordHash || !deviceId) {
+  try {
+    const { username, email, passwordHash, deviceId, userAgent } = req.body || {};
+
+    // Validate required inputs. Device ID is auto-managed by the client and
+    // backfilled server-side, so it is NOT a required user input.
+    if (!username || !passwordHash) {
       return res.status(400).json({ success: false, error: 'Data tidak lengkap.' });
     }
 
+    // The agreement is a server contract, not a cosmetic checkbox. An older or
+    // modified client cannot create an account unless it explicitly accepts the
+    // exact current terms version published by this deployment.
+    const termsAcceptance = accountTerms.registrationAcceptance(req.body);
+    if (!termsAcceptance.ok) {
+      return res.status(400).json({
+        success: false,
+        code: 'TERMS_ACCEPTANCE_REQUIRED',
+        error: 'Baca dan setujui Peraturan & Ketentuan sebelum mendaftar.',
+        terms: accountTerms.publicTermsMetadata()
+      });
+    }
+
+    // Ensure we always have a non-null device ID for the NOT NULL column.
+    const normalizedDeviceId = normalizeDeviceId(deviceId);
+
+
+    // New web registrations require a Gmail identity. Existing legacy rows
+    // remain nullable and are intentionally NOT migrated to NOT NULL.
+    const rawEmail = String(email == null ? '' : email).trim().toLowerCase();
+    if (!rawEmail) {
+      return res.status(400).json({ success: false, code: 'GMAIL_REQUIRED', error: 'Gmail wajib diisi untuk pendaftaran baru.' });
+    }
+    const gmailLocal = rawEmail.endsWith('@gmail.com') ? rawEmail.slice(0, -10) : '';
+    const gmailValid = gmailLocal.length >= 1 && gmailLocal.length <= 64 &&
+      /^[a-z0-9]+(?:\.[a-z0-9]+)*$/.test(gmailLocal);
+    if (rawEmail.length > 100 || !gmailValid) {
+      return res.status(400).json({ success: false, code: 'GMAIL_REQUIRED', error: 'Gunakan alamat Gmail yang valid (@gmail.com).' });
+    }
+    const cleanEmail = rawEmail;
     const usernameLower = String(username).trim().toLowerCase();
 
     // Reject empty or too long
@@ -21,6 +113,33 @@ module.exports = async function handler(req, res) {
     }
     if (usernameLower.length > 30) {
       return res.status(400).json({ success: false, error: 'Username maksimal 30 karakter.' });
+    }
+    // Charset allowlist. Usernames are rendered into the admin log viewer and
+    // other HTML surfaces, so a value like `<img src=x onerror=...>` (28 chars,
+    // within the length bound) must never be storable. Only letters, digits,
+    // dot, underscore and hyphen are accepted — no whitespace, no tag or
+    // script metacharacters, no control characters.
+    if (!USERNAME_RE.test(usernameLower)) {
+      return res.status(400).json({ success: false, error: 'Username hanya boleh berisi huruf, angka, titik, underscore, dan tanda hubung (2-30 karakter).' });
+    }
+
+    if (typeof passwordHash !== 'string' || !PASSWORD_HASH_RE.test(passwordHash)) {
+      return res.status(400).json({ success: false, error: 'Data tidak lengkap.' });
+    }
+
+    // Google reCAPTCHA v3 Invisible (threshold 0.5, fail-open, review bypass)
+    const recaptchaToken = req.body && (req.body.recaptchaToken || req.body.recaptcha_token);
+    const recaptchaResult = await verifyRecaptcha({
+      token: recaptchaToken,
+      remoteIp: clientAddress(req),
+      expectedAction: 'register',
+      username: usernameLower
+    });
+    if (!recaptchaResult.ok) {
+      return res.status(400).json({
+        success: false,
+        error: recaptchaResult.error || 'Verifikasi keamanan reCAPTCHA gagal.'
+      });
     }
 
     // Reject reserved usernames
@@ -52,35 +171,109 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Gagal memeriksa username.' });
     }
 
+
+    {
+      const { data: existingEmail, error: emailFindErr } = await supabase
+        .from("app_users")
+        .select("id")
+        .eq("email", cleanEmail)
+        .maybeSingle();
+      if (emailFindErr) {
+        console.error("register-user email find error:", emailFindErr);
+        return res.status(500).json({ success: false, error: "Gagal memeriksa email." });
+      }
+      if (existingEmail) {
+        return res.status(400).json({ success: false, error: "Email sudah digunakan." });
+      }
+    }
     if (existingUser) {
       return res.status(400).json({ success: false, error: 'Username sudah digunakan.' });
     }
 
-    // Insert new user (pending approval by default, first device stored in devices array)
-    const { data, error: insertError } = await supabase
-      .from('app_users')
-      .insert({
-        username: usernameLower,
-        password_hash: passwordHash,
-        devices: [deviceId],
-        user_agent: userAgent || '',
-        is_blocked: false,
-        is_approved: false
-      })
-      .select('id, username, created_at');
-
-    if (insertError) {
-      console.error('register-user insert error:', insertError);
-      // Handle unique constraint violations
-      if (insertError.code === '23505') {
-        return res.status(400).json({ success: false, error: 'Username sudah digunakan.' });
-      }
-      return res.status(500).json({ success: false, error: 'Gagal membuat akun: ' + insertError.message });
+    // v2: Atomically create the pending user AND its first one-time verification
+    // challenge. The raw code is generated in Node; ONLY its HMAC is passed to
+    // SQL. Fail closed if the code secret is not configured — no user is created.
+    if (!telegramVerification.hasCodeSecret()) {
+      return res.status(500).json({ success: false, error: 'Verifikasi belum dikonfigurasi. Coba lagi nanti.' });
     }
 
-    return res.status(200).json({ success: true, pending: true });
+    let registration;
+    try {
+      registration = await telegramVerification.registerPendingUser(supabase, {
+        username: usernameLower,
+        passwordHash: passwordCredential.protectClientHash(passwordHash),
+        deviceId: normalizedDeviceId,
+        userAgent: String(userAgent || '').replace(/[\u0000-\u001F\u007F]/g, ' ').slice(0, MAX_USER_AGENT)
+      });
+    } catch (rpcError) {
+      // Never surface raw database constraint text. A username/device duplicate
+      // arrives as SQLSTATE 23505 (active-hash collisions are retried internally).
+      if (rpcError && rpcError.pgcode === '23505') {
+        return res.status(400).json({ success: false, error: 'Username sudah digunakan.' });
+      }
+      console.error('register-user rpc failed');
+      return res.status(500).json({ success: false, error: 'Gagal membuat akun. Silakan coba lagi beberapa saat lagi.' });
+    }
+
+    if (!registration || !registration.id) {
+      console.error('register-user rpc returned no public approval source');
+      return res.status(500).json({ success: false, error: 'Akun dibuat, tetapi kode verifikasi belum tersedia. Hubungi admin.' });
+    }
+
+    // Persist the acceptance only after the account/challenge transaction has
+    // committed. This table is service-role-only. If the audit row cannot be
+    // stored (for example the migration was not applied), fail closed and remove
+    // the just-created account so there is no un-audited registration.
+
+    if (registration && registration.id) {
+      const { error: emailUpdateErr } = await supabase
+        .from("app_users")
+        .update({ email: cleanEmail })
+        .eq("id", registration.id);
+      if (emailUpdateErr) {
+        console.error("register-user email update error:", emailUpdateErr);
+        await rollbackIncompleteRegistration(supabase, registration.id);
+        if (emailUpdateErr.code === "23505") {
+          return res.status(400).json({ success: false, error: "Email sudah digunakan." });
+        }
+        return res.status(500).json({ success: false, error: "Gagal menyimpan email." });
+      }
+    }
+    const accepted = await supabase.from('account_terms_acceptances').insert({
+      user_id: registration.id,
+      terms_version: accountTerms.CURRENT_TERMS_VERSION,
+      acceptance_source: 'registration'
+    });
+    if (accepted.error) {
+      console.error('register-user terms audit failed');
+      await rollbackIncompleteRegistration(supabase, registration.id);
+      return res.status(503).json({ success: false, error: 'Pendaftaran belum tersedia. Coba lagi beberapa saat.' });
+    }
+
+    // The raw one-time code is returned to the client ONLY after the RPC committed.
+    // The private channel invite link is NEVER exposed by the website.
+    return res.status(200).json({
+      success: true,
+      pending: true,
+      approval_status: 'pending',
+      masked_username: maskUsername(registration.username),
+      approval_code: generateApprovalCode({ id: registration.id, username: registration.username, created_at: registration.createdAt }),
+      telegram_verification_code: registration.displayCode,
+      telegram_verification_expires_at: registration.expiresAt,
+      telegram_bot_url: telegramVerification.BOT_URL,
+      terms_version: accountTerms.CURRENT_TERMS_VERSION
+    });
   } catch (e) {
     console.error('register-user exception:', e);
-    return res.status(500).json({ success: false, error: 'Server error: ' + e.message });
+    return res.status(500).json({ success: false, error: 'Gagal membuat akun. Silakan coba lagi beberapa saat lagi.' });
   }
+};
+
+// Exposed for focused unit tests only.
+module.exports.__test = {
+  normalizeDeviceId: normalizeDeviceId,
+  rollbackIncompleteRegistration: rollbackIncompleteRegistration,
+  registrationLimiter: registrationLimiter,
+  PASSWORD_HASH_RE: PASSWORD_HASH_RE,
+  USERNAME_RE: USERNAME_RE
 };

@@ -1,0 +1,13 @@
+{
+  "sample_date": "2026-07-21",
+  "snapshots": [
+    "09:15",
+    "09:30",
+    "09:45",
+    "10:00",
+    "10:15",
+    "10:30",
+    "16:00"
+  ],
+  "note": "Synthetic fixture lifecycle (context only)."
+}

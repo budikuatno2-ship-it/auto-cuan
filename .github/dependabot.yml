@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    target-branch: "feat/daytrade-screener-v1"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Jakarta"
+    open-pull-requests-limit: 5
+    versioning-strategy: "increase-if-necessary"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "feat/daytrade-screener-v1"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:15"
+      timezone: "Asia/Jakarta"
+    open-pull-requests-limit: 5

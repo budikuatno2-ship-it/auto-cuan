@@ -5,13 +5,33 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "build": "echo 'No build step needed'",
-    "start": "vercel dev"
+    "build": "node tools/run-build-test-suite.js",
+    "test": "node tools/run-build-test-suite.js --full",
+    "test:smoke": "node tools/run-build-test-suite.js --smoke",
+    "test:full": "node tools/run-build-test-suite.js --full",
+    "start": "node tools/local-dev-server.js",
+    "dev": "node --watch server.js",
+    "vercel:start": "vercel dev",
+    "aftermarket:top5-lock": "node tools/run-after-market-top5-lock.js",
+    "validate:syntax": "node tools/validate-full-syntax.js",
+    "deploy:preflight": "node tools/vps-deploy-preflight.js",
+    "monitor:live-session": "node tools/live-session-monitor.js",
+    "deploy:atomic": "node tools/atomic-deploy.js --branch feat/daytrade-screener-v1",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:reload": "pm2 reload ecosystem.config.js --update-env",
+    "pm2:stop": "pm2 stop ecosystem.config.js",
+    "pm2:restart": "pm2 restart ecosystem.config.js --update-env",
+    "pm2:status": "pm2 list",
+    "pm2:logs": "pm2 logs --lines 100",
+    "pm2:save": "pm2 save"
   },
   "engines": {
     "node": "22.x"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.1"
+    "@supabase/supabase-js": "^2.116.0"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.12.0"
   }
 }

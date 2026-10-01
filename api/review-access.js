@@ -1,19 +1,62 @@
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
+const subscriptionManualHandler = require('../lib/subscription-manual-handler');
+const subscriptionVoucherHandler = require('../lib/subscription-voucher-handler');
+const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+const passwordCredential = require('../lib/password-credential');
+
+// This endpoint's only gate is a static, source-visible token, so it needs a
+// timing-safe comparison and a floor on how often it can be probed — same
+// reasoning as the login/registration limiters (see lib/request-rate-limit.js).
+const reviewAccessLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 8 });
 
 /**
  * POST /api/review-access
  * Validates review token, seeds review user if needed, checks blocked status.
+ *
+ * Vercel Hobby is capped at 12 bundled Serverless Functions. Subscription
+ * checkout/voucher routes are rewritten here and delegated immediately to
+ * isolated handlers that enforce their own same-origin and signed-session gates.
  */
+const moneyManagementHandler = require('../lib/money-management-handler');
+
 module.exports = async function handler(req, res) {
+  const surface = String(req.query && req.query.surface || '').trim();
+  if (surface === 'subscription-manual') return subscriptionManualHandler(req, res);
+  if (surface === 'subscription-voucher') return subscriptionVoucherHandler(req, res);
+  if (surface === 'money-management') return moneyManagementHandler(req, res);
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
-  try {
-    const { token } = req.body || {};
+  if (!reviewAccessLimiter.check(clientAddress(req))) {
+    return res.status(403).json({ success: false, error: 'Token review tidak valid.' });
+  }
 
-    // Validate token
-    if (!token || token !== 'autocuan-review-2026') {
+  try {
+    if (req.query && req.query.token) {
+      return res.status(400).json({ success: false, error: 'Token review tidak boleh dikirim melalui query parameter.' });
+    }
+    const submittedToken = (req.body && req.body.token) || (req.headers && (req.headers['x-review-token'] || req.headers['X-Review-Token']));
+
+    // Fail closed. This used to fall back to a literal default token, which was
+    // also written twice into public/index.html — so the gate's secret was
+    // readable by anyone who opened the page or the (public) repository. There is
+    // no safe default for a credential: an unset variable now closes the door
+    // rather than opening it with a value everyone knows. There is no
+    // environment-specific exception either — a Vercel build token literal is
+    // just as public as the page one.
+    const EXPECTED_TOKEN = String(process.env.REVIEW_ACCESS_TOKEN || '').trim();
+    if (!EXPECTED_TOKEN || EXPECTED_TOKEN.length < 16) {
+      return res.status(403).json({ success: false, error: 'Token review tidak valid.' });
+    }
+
+    // Constant-time comparison using sha256 hashes to prevent length-leak timing attacks
+    const tokenHash = crypto.createHash('sha256').update(String(submittedToken || '')).digest();
+    const expectedHash = crypto.createHash('sha256').update(EXPECTED_TOKEN).digest();
+    const tokenValid = crypto.timingSafeEqual(tokenHash, expectedHash);
+    if (!tokenValid) {
       return res.status(403).json({ success: false, error: 'Token review tidak valid.' });
     }
 
@@ -28,8 +71,16 @@ module.exports = async function handler(req, res) {
       auth: { persistSession: false, autoRefreshToken: false }
     });
 
-    // SHA-256 hash of "Review12345_autocuan_salt_2024"
-    const REVIEW_PASSWORD_HASH = '42f38b0fcf1e35d9d2f82c462376f33145d1f450aeb216900db3356338686f2b';
+    // The reviewer credential comes from the environment, never from source.
+    //
+    // The previous constant here was described as safe because the plaintext was
+    // not recorded. It was not safe: the browser hashes passwords client-side
+    // (public/index.html hashPassword), /api/login-user accepts that hash as the
+    // submitted credential, and lib/password-credential.js compares a
+    // legacy-format stored hash against it directly. For a legacy row the hash IS
+    // the credential, so publishing it in a public repository published the
+    // reviewer login. Fail closed when it is not configured.
+    const REVIEW_PASSWORD_HASH = String(process.env.REVIEW_PASSWORD_HASH || '').trim().toLowerCase();
     const REVIEW_DEVICE_ID = 'REVIEW_ANY_DEVICE';
     const REVIEW_USERNAME = 'review';
 
@@ -62,12 +113,19 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, username: REVIEW_USERNAME, isReview: true });
     }
 
-    // User does not exist - create it
+    // User does not exist - create it. Seeding requires the configured credential.
+    if (!passwordCredential.normalizeClientHash(REVIEW_PASSWORD_HASH)) {
+      console.error('review-access: REVIEW_PASSWORD_HASH is not configured');
+      return res.status(503).json({ success: false, error: 'Akses review belum dikonfigurasi.' });
+    }
+
+    // Stored in the protected scrypt form, exactly as api/register-user.js does,
+    // so the row is never a directly replayable legacy hash.
     const { error: insertError } = await supabase
       .from('app_users')
       .insert({
         username: REVIEW_USERNAME,
-        password_hash: REVIEW_PASSWORD_HASH,
+        password_hash: passwordCredential.protectClientHash(REVIEW_PASSWORD_HASH),
         device_id: REVIEW_DEVICE_ID,
         user_agent: 'review_seed',
         is_blocked: false
@@ -75,13 +133,13 @@ module.exports = async function handler(req, res) {
 
     if (insertError) {
       console.error('review-access insert error:', insertError);
-      return res.status(500).json({ success: false, error: 'Gagal membuat user review: ' + insertError.message });
+      return res.status(500).json({ success: false, error: 'Gagal membuat user review.' });
     }
 
     return res.status(200).json({ success: true, username: REVIEW_USERNAME, isReview: true });
 
   } catch (e) {
     console.error('review-access exception:', e);
-    return res.status(500).json({ success: false, error: 'Server error: ' + e.message });
+    return res.status(500).json({ success: false, error: 'Server error. Silakan coba lagi.' });
   }
 };

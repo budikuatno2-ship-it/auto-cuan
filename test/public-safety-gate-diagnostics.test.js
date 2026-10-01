@@ -328,3 +328,139 @@ test('diagnosePublicSafetyGateRejection produces non-empty category for every kn
     assert.notEqual(diag.category, 'unknown', 'scenario ' + i + ' should not be unknown: ' + JSON.stringify(scenarios[i]));
   }
 });
+
+test('entry_low/entry_high only are normalized as valid entry aliases with conservative TP1 upside', () => {
+  const c = base({ entry1: null, entry2: null, entry_low: 1000, entry_high: 1050, tp1: 1200, tp1n: 1200, tp1_upside: null });
+  sectorHot.__test.normalizeEntryRangeAliases(c);
+  assert.equal(c.entry1, 1050);
+  assert.equal(c.entry2, 1000);
+  assert.equal(c.entry_mid, 1025);
+  assert.equal(c.entry_alias_used, 'entry_low_entry_high');
+  assert.equal(c.tp1_upside, 14.3);
+  assert.equal(c.tp1_upside_pct, 14.3);
+  assert.equal(candidatePassesPublicTelegramSafetyGate(c, 'daily_top5'), true);
+});
+
+test('entry range diagnostics count aliases and computed TP1 upside', () => {
+  const diagnostics = sectorHot.__test.buildEntryRangeNormalizationDiagnostics([
+    base({ ticker: 'RANG', entry1: null, entry2: null, entry_low: 1000, entry_high: 1050, tp1: 1200, tp1n: 1200, tp1_upside: null }),
+    base({ ticker: 'MISS', entry1: null, entry2: null, entry_low: null, entry_high: null, tp1: 1200, tp1n: 1200, tp1_upside: null })
+  ]);
+  assert.equal(diagnostics.entry_range_present_count, 1);
+  assert.equal(diagnostics.entry_alias_used_counts.entry_low_entry_high, 1);
+  assert.equal(diagnostics.computed_tp1_upside_count, 1);
+  assert.equal(diagnostics.computed_tp1_upside_pct_count, 1);
+  assert.equal(diagnostics.tp1_upside_null_after_normalization_count, 0);
+  assert.equal(diagnostics.tp1_upside_pct_null_after_normalization_count, 0);
+  assert.equal(diagnostics.sample_computed_tp1_upside_pct[0].ticker, 'RANG');
+  assert.equal(diagnostics.sample_entry_range_normalized[0].ticker, 'RANG');
+  assert.equal(diagnostics.sample_entry_range_normalized[0].entry1, 1050);
+  assert.equal(diagnostics.sample_entry_range_normalized[0].tp1_upside_pct, 14.3);
+});
+
+test('entry range normalization computes tp1_upside_pct from conservative entry_high examples', () => {
+  const lead = base({ ticker: 'LEAD', entry1: null, entry2: null, entry_low: 97, entry_high: 99, tp1: 105, tp1n: 105, tp1_upside: null, tp1_upside_pct: null });
+  sectorHot.__test.normalizeEntryRangeAliases(lead);
+  assert.equal(lead.entry1, 99);
+  assert.equal(lead.tp1_upside_pct, 6.1);
+
+  const bbrm = base({ ticker: 'BBRM', entry1: null, entry2: null, entry_low: 113, entry_high: 116, tp1: 142, tp1n: 142, tp1_upside: null, tp1_upside_pct: null });
+  sectorHot.__test.normalizeEntryRangeAliases(bbrm);
+  assert.equal(bbrm.entry1, 116);
+  assert.equal(bbrm.tp1_upside_pct, 22.4);
+});
+
+test('entry range normalization preserves valid tp1_upside_pct and mirrors tp1_upside safely', () => {
+  const preserved = base({ entry1: null, entry2: null, entry_low: 97, entry_high: 99, tp1: 105, tp1n: 105, tp1_upside: 5.5, tp1_upside_pct: 5.75 });
+  sectorHot.__test.normalizeEntryRangeAliases(preserved);
+  assert.equal(preserved.tp1_upside_pct, 5.75);
+  assert.equal(preserved.tp1_upside, 5.5);
+
+  const mirrored = base({ entry1: null, entry2: null, entry_low: 97, entry_high: 99, tp1: 105, tp1n: 105, tp1_upside: 6.06, tp1_upside_pct: null });
+  sectorHot.__test.normalizeEntryRangeAliases(mirrored);
+  assert.equal(mirrored.tp1_upside_pct, 6.06);
+});
+
+test('Day Trade public read normalization computes tp1_upside_pct before response', async () => {
+  const rows = [
+    {
+      ticker: 'LEAD', status: 'EARLY_RADAR', daytrade_score: 70,
+      entry_low: 97, entry_high: 99, entry1: null, entry2: null, entry_mid: null,
+      tp1: 105, tp1n: null, tp1_upside: null, tp1_upside_pct: null,
+      stop_loss: 95, last_price: 98, risk_reward: 2
+    },
+    {
+      ticker: 'BBRM', status: 'WAIT_PULLBACK', daytrade_score: 69,
+      entry_low: 113, entry_high: 116, entry1: null, entry2: null, entry_mid: null,
+      tp1: 142, tp1n: null, tp1_upside: null, tp1_upside_pct: null,
+      stop_loss: 110, last_price: 115, risk_reward: 2
+    }
+  ];
+  const meta = { calculated_at: '2026-07-09T00:00:00Z', status: 'completed', published_count: 2, scanned_count: 2 };
+  const supabase = {
+    from(table) {
+      if (table === 'daytrade_screener_meta') {
+        return { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: meta, error: null }; } };
+      }
+      if (table === 'daytrade_screener_latest') {
+        return { select() { return this; }, order() { return this; }, async limit() { return { data: rows, error: null }; } };
+      }
+      throw new Error('unexpected table ' + table);
+    }
+  };
+  let statusCode = null;
+  let body = null;
+  const res = {
+    status(code) { statusCode = code; return this; },
+    json(payload) { body = payload; return payload; }
+  };
+
+  await sectorHot.__test.handleDayTradeScreenerRead({ query: { action: 'daytrade-screener' } }, res, supabase);
+
+  assert.equal(statusCode, 200);
+  assert.equal(body.success, true);
+  assert.equal(body.computed_tp1_upside_pct_count, 2);
+  assert.equal(body.tp1_upside_pct_null_after_normalization_count, 0);
+  assert.equal(body.results[0].entry_low, 97);
+  assert.equal(body.results[0].entry_high, 99);
+  assert.equal(body.results[0].entry1, 99);
+  assert.equal(body.results[0].entry_mid, 98);
+  assert.equal(body.results[0].tp1, 105);
+  assert.equal(body.results[0].tp1_upside_pct, 6.1);
+  assert.equal(body.results[1].entry_high, 116);
+  assert.equal(body.results[1].tp1_upside_pct, 22.4);
+  assert.equal(body.results[1].status, 'WAIT_PULLBACK');
+});
+
+test('shared normalization computes Swing Konglo buy area target_1 upside', () => {
+  const c = sectorHot.__test.normalizeCombinedCandidate({ ticker: 'KONG', buy_area_low: 100, buy_area_high: 110, target_1: 121, stop_loss: 95, last_price: 108, status: 'WATCH_ONLY' }, 'Swing Konglo');
+  assert.equal(c.entry1, 110);
+  assert.equal(c.entry_mid, 105);
+  assert.equal(c.tp1n, 121);
+  assert.equal(c.tp1_upside_pct, 10);
+});
+
+test('shared normalization computes Swing Non-Konglo min TP1 diagnostics from aliases', () => {
+  const rows = [
+    { ticker: 'PASS', entry_1_price: 100, target_price_1: 108, stop_loss: 95, last_price: 101, status: 'WATCH_ONLY' },
+    { ticker: 'LOWT', trading_plan: { entry_high: 100, entry_low: 98, target_1: 103 }, stop_loss: 95, last_price: 99, status: 'WATCH_ONLY' },
+    { ticker: 'MISS', entry_price: 100, stop_loss: 95, last_price: 99, status: 'WATCH_ONLY' }
+  ];
+  const d = sectorHot.__test.buildMinTp1UpsideDiagnostics(rows, 'Swing Non-Konglo');
+  assert.equal(d.total_pre_tp_candidates, 3);
+  assert.equal(d.valid_tp1_upside_count, 2);
+  assert.equal(d.passed_min_tp1_upside_count, 1);
+  assert.equal(d.below_min_tp1_upside_count, 1);
+  assert.equal(d.missing_tp1_count, 1);
+  assert.equal(d.sample_below_min_tp1[0].ticker, 'LOWT');
+  assert.equal(d.sample_missing_tp1_or_entry[0].ticker, 'MISS');
+});
+
+test('shared normalization keeps AVOID and low TP candidates non-buy', () => {
+  const avoid = sectorHot.__test.normalizeCombinedCandidate({ ticker: 'AVOD', entry: 100, target1: 120, stop_loss: 95, last_price: 101, status: 'AVOID', action_label: 'Hindari' }, 'Swing Non-Konglo');
+  assert.match(String(avoid.status || avoid.action_label || ''), /AVOID|Hindari/i);
+  assert.notEqual(String(avoid.action || avoid.recommendation || avoid.signal || '').toUpperCase(), 'BUY');
+  const low = sectorHot.__test.normalizeCombinedCandidate({ ticker: 'LOWP', entry: 100, target1: 101, stop_loss: 95, last_price: 100, status: 'WATCH_ONLY' }, 'Swing Non-Konglo');
+  assert.equal(sectorHot.__test.candidatePassesMinUpside(low), false);
+  assert.notEqual(String(low.action || low.recommendation || low.signal || '').toUpperCase(), 'BUY');
+});

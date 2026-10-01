@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS swing_screener_non_konglo_latest (
   board TEXT,
   -- Price data
   last_price NUMERIC,
+  price_source TEXT,
+  price_asof TIMESTAMPTZ,
+  price_date DATE,
   change_pct NUMERIC,
   -- Liquidity & activity (required for audit)
   avg_volume_20d NUMERIC,
@@ -30,6 +33,9 @@ CREATE TABLE IF NOT EXISTS swing_screener_non_konglo_latest (
   tp1 NUMERIC,
   tp2 NUMERIC,
   risk_reward NUMERIC,
+  -- Canonical Trade Plan V2 snapshot (computed while full runtime structure exists)
+  trade_plan_v2 JSONB,
+  trade_plan_v2_structural JSONB,
   -- Scoring & classification
   score INTEGER DEFAULT 0,
   grade TEXT DEFAULT 'D',             -- 'A', 'B', 'C', 'D'
@@ -79,7 +85,7 @@ CREATE TABLE IF NOT EXISTS swing_screener_non_konglo_jobs (
   completed_at TIMESTAMPTZ
 );
 
-CREATE INDEX IF NOT EXISTS idx_nk_jobs_run_date ON swing_screener_non_konglo_jobs (run_date);
+DROP INDEX IF EXISTS idx_nk_jobs_run_date;
 CREATE INDEX IF NOT EXISTS idx_nk_jobs_status ON swing_screener_non_konglo_jobs (status);
 CREATE INDEX IF NOT EXISTS idx_nk_jobs_run_status ON swing_screener_non_konglo_jobs (run_date, status);
 
@@ -114,6 +120,9 @@ CREATE TABLE IF NOT EXISTS swing_screener_non_konglo_staging (
   tp1 NUMERIC,
   tp2 NUMERIC,
   risk_reward NUMERIC,
+  -- Canonical Trade Plan V2 snapshot (survives batch -> staging -> finalize)
+  trade_plan_v2 JSONB,
+  trade_plan_v2_structural JSONB,
   -- Scoring
   score INTEGER DEFAULT 0,
   grade TEXT DEFAULT 'D',
@@ -123,7 +132,7 @@ CREATE TABLE IF NOT EXISTS swing_screener_non_konglo_staging (
   calculated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_nk_staging_run_date ON swing_screener_non_konglo_staging (run_date);
+DROP INDEX IF EXISTS idx_nk_staging_run_date;
 CREATE INDEX IF NOT EXISTS idx_nk_staging_score ON swing_screener_non_konglo_staging (score DESC);
 CREATE INDEX IF NOT EXISTS idx_nk_staging_run_score ON swing_screener_non_konglo_staging (run_date, score DESC);
 
@@ -143,3 +152,7 @@ ALTER TABLE swing_screener_non_konglo_staging ENABLE ROW LEVEL SECURITY;
 -- No SELECT policy for anon or authenticated roles.
 -- Only service_role bypasses RLS.
 -- Our API endpoint enforces access control via X-User-Id + app_users check.
+
+-- F-092: table-level privilege hardening (see stock-daily-context-migration.sql).
+REVOKE ALL ON swing_screener_non_konglo_latest, swing_screener_non_konglo_meta, swing_screener_non_konglo_jobs, swing_screener_non_konglo_staging FROM PUBLIC, anon, authenticated;
+GRANT ALL ON swing_screener_non_konglo_latest, swing_screener_non_konglo_meta, swing_screener_non_konglo_jobs, swing_screener_non_konglo_staging TO service_role;

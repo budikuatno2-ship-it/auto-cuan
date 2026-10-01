@@ -9,6 +9,20 @@
 
 var dtEngine = require('../lib/daytrade-screener-engine');
 var idxTick = require('../lib/idx-tick-normalization');
+var latestPriceResolver = require('../lib/latest-price-resolver');
+var t1Policy = require('../lib/chart-t1-policy');
+var geminiProvider = require('../lib/ai-gemini-provider');
+var dailyContextBuilder = require('../lib/daily-market-context-builder');
+var dailyHistoryStore = require('../lib/stock-daily-history-store');
+var fcaTransition2026 = require('../lib/fca-transition-2026');
+var { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+
+// This endpoint is unauthenticated and, with includeNews=1, triggers a paid
+// upstream AI news lookup on a cache miss plus a live Yahoo Finance fetch. It
+// had no limit at all, so a scripted ticker sweep could drive unbounded
+// external-API spend. Keyed on the address the platform edge observed, same
+// pattern as api/register-user.js.
+var quoteLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 60 });
 
 var quoteCache = {};
 var QUOTE_CACHE_TTL = 5 * 60 * 1000;
@@ -16,13 +30,56 @@ var QUOTE_CACHE_TTL = 5 * 60 * 1000;
 var boardCache = {};
 var BOARD_CACHE_TTL = 12 * 60 * 60 * 1000;
 
+var MAX_CACHE_ENTRIES = 500;
+
+function setBoundedCache(cacheObj, key, data, ttl) {
+  var keys = Object.keys(cacheObj);
+  if (keys.length >= MAX_CACHE_ENTRIES) {
+    var now = Date.now();
+    var oldestKey = keys[0];
+    var oldestTime = Infinity;
+    var evicted = false;
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var entry = cacheObj[k];
+      if (entry && (now - entry.timestamp > ttl)) {
+        delete cacheObj[k];
+        evicted = true;
+      } else if (entry && entry.timestamp < oldestTime) {
+        oldestTime = entry.timestamp;
+        oldestKey = k;
+      }
+    }
+    if (!evicted && cacheObj[oldestKey]) {
+      delete cacheObj[oldestKey];
+    }
+  }
+  cacheObj[key] = { data: data, timestamp: Date.now() };
+}
+
 var NEWS_CACHE_TTL_DAYS = 30;
 var NEWS_PERIOD = '6m';
 
-function hasLoggedInHeaders(req) {
-  var username = String((req.headers && req.headers['x-username']) || '').trim().toLowerCase();
-  var userId = String((req.headers && req.headers['x-user-id']) || '').trim();
-  return !!((username && username !== 'guest') || (userId && userId.length > 10));
+// Advanced entry analysis (respect zones, half-candle levels, refinement and
+// respect-quality notes) is gated on a real session.
+//
+// This used to be decided by hasLoggedInHeaders(), which only looked at whether
+// X-Username / X-User-Id were present and non-"guest". Those are request
+// headers the browser sets from localStorage, so anyone could ask for the gated
+// fields with a single curl:
+//
+//   curl -H 'X-Username: anyone' https://.../api/quote?ticker=BBCA
+//
+// The value was never verified against anything; any non-empty string that was
+// not the literal "guest" passed. The gate now uses the same HMAC-signed
+// HttpOnly session cookie that /api/admin-users already requires for website
+// access, so it cannot be forged from the client. It fails closed: no session,
+// no secret, or an expired token all redact.
+var adminSession = require('../lib/admin-session');
+
+function hasVerifiedSession(req) {
+  var auth = adminSession.requireAuthenticatedSession(req);
+  return auth.ok === true;
 }
 
 function redactAdvancedQuoteFields(result) {
@@ -44,10 +101,222 @@ function redactAdvancedQuoteFields(result) {
   return result;
 }
 
+async function fetchFreshScreenerLatestPrice(ticker) {
+  var base = String(process.env.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '');
+  var key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!base || !key) return { price: null, stale: true, diagnostic: 'supabase_not_configured' };
+  var rows = {};
+  await Promise.all(latestPriceResolver.SOURCES.map(async function(source) {
+    try {
+      // BUG-QUOTE-02: tanpa klausa order, PostgREST mengembalikan baris pertama
+      // hasil disk scan — bisa run kemarin yang usang. Harga portofolio lalu
+      // dihitung dari data lama. Urutkan terbaru dulu, dan fail-safe bila tabel
+      // tidak punya kolom timestamp yang diminta.
+      var orderClause = source.order || 'calculated_at.desc,updated_at.desc';
+      var url = base + '/rest/v1/' + source.table + '?ticker=eq.' + encodeURIComponent(ticker) + '&order=' + orderClause + '&limit=1';
+      var response = await fetch(url, { headers: { apikey: key, Authorization: 'Bearer ' + key } });
+      if (!response.ok) {
+        // Fallback: sebagian deployment belum memiliki kolom order tersebut.
+        var fallbackUrl = base + '/rest/v1/' + source.table + '?ticker=eq.' + encodeURIComponent(ticker) + '&limit=1';
+        response = await fetch(fallbackUrl, { headers: { apikey: key, Authorization: 'Bearer ' + key } });
+        if (!response.ok) return;
+      }
+      var data = await response.json();
+      rows[source.table] = data && data[0] || null;
+    } catch (_) { /* a missing fallback table must not break quotes */ }
+  }));
+  return latestPriceResolver.resolveLatestPrice(rows, { now: new Date().toISOString() });
+}
+
+// ============================================================
+// DAILY MARKET CONTEXT ACTION — GET /api/quote?action=daily-market-context&ticker=BBCA
+// Additive read-only action folded into this endpoint (rather than a new
+// api/*.js file) to preserve the project's fixed Vercel function count.
+// Independent from the Yahoo quote path above; does not touch or reuse the
+// quoteCache/boardCache TTL state.
+// ============================================================
+function normalizeDailyContextTicker(raw) {
+  return String(raw || '').trim().toUpperCase().replace(/\.JK$/, '');
+}
+
+async function handleDailyMarketContextAction(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  var ticker = normalizeDailyContextTicker(req.query && req.query.ticker);
+  if (!ticker || !/^[A-Z]{1,6}$/.test(ticker)) {
+    return res.status(400).json({ success: false, error: 'Parameter ticker wajib diisi dan valid.' });
+  }
+
+  var SUPABASE_URL = process.env.SUPABASE_URL;
+  var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    return res.status(200).json({ success: false, error: 'Database belum dikonfigurasi.' });
+  }
+
+  try {
+    var { createClient } = require('../lib/hybrid-supabase-client');
+    var supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+
+    var context = await dailyContextBuilder.buildContextForTicker(supabase, ticker, {});
+    return res.status(200).json({ success: true, context: context });
+  } catch (error) {
+    console.error('daily-market-context exception:', error);
+    return res.status(200).json({
+      success: false,
+      error: 'Gagal memuat konteks pasar harian.'
+    });
+  }
+}
+
+// ============================================================
+// DAILY MARKET CONTEXT LIST ACTION — GET /api/quote?action=daily-market-context-list
+// Backs the "Ranking Harian" table on the Analisis Saham page. Reads the
+// precomputed stock_daily_features snapshot cache (rebuilt in batch by
+// scripts/collect-daily-market-context.js) in ONE query for the whole
+// universe. Sorting, ordering, and limiting are supported both server-side
+// and client-side.
+// ============================================================
+function normalizeRankingSortKey(raw) {
+  if (!raw) return null;
+  var key = String(raw).trim().toLowerCase();
+  if (key === 'high_52w_pct_dist' || key === '52w_high' || key === 'week52_high_dist_pct' || key === 'distance_to_high_52w_pct') return 'week52_high_dist_pct';
+  if (key === 'week52_low_dist_pct' || key === '52w_low') return 'week52_low_dist_pct';
+  if (key === 'rsi14' || key === 'rsi' || key === 'rsi_14') return 'rsi_14';
+  if (key === 'vol_ratio' || key === 'volume_ratio' || key === 'volume_ratio_vs_7d_avg') return 'volume_ratio_vs_7d_avg';
+  if (key === 'foreign_net_val' || key === 'foreign_net_7d' || key === 'foreign_7d' || key === 'foreign') return 'foreign_net_7d';
+  if (key === 'foreign_net_today' || key === 'foreign_today') return 'foreign_net_today';
+  if (key === 'change_pct' || key === 'change') return 'change_pct';
+  if (key === 'last_price' || key === 'price') return 'last_price';
+  if (key === 'ticker' || key === 'symbol') return 'ticker';
+  return null;
+}
+
+async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  var supabase = injectedSupabase;
+  if (!supabase) {
+    var SUPABASE_URL = process.env.SUPABASE_URL;
+    var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      return res.status(200).json({ success: false, error: 'Database belum dikonfigurasi.' });
+    }
+    var { createClient } = require('../lib/hybrid-supabase-client');
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+  }
+
+  try {
+    var query = req.query || {};
+    var sortBy = normalizeRankingSortKey(query.sort_by || query.sortBy);
+    var order = String(query.order || '').toLowerCase() === 'asc' ? 'asc' : (query.order ? 'desc' : (sortBy === 'ticker' ? 'asc' : 'desc'));
+
+    var rawLimit = query.limit;
+    var limit = 1000;
+    if (rawLimit && rawLimit !== 'all') {
+      var parsedLimit = parseInt(rawLimit, 10);
+      if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
+        limit = Math.min(parsedLimit, 1000);
+      }
+    }
+
+    var featureRows = await dailyHistoryStore.getAllDailyFeatures(supabase, { limit: 1000 });
+
+    // Ranking Harian is a trading-universe view, not a raw cache dump.
+    // Keep historical/stale feature rows outside the current eligible
+    // continuous-auction universe from leaking into runtime ranking.
+    var boardsResult = await supabase
+      .from('stock_boards')
+      .select('ticker,company_name,board,is_fca,is_active,note')
+      .limit(2000);
+    if (boardsResult.error) throw new Error('Load stock_boards for ranking failed: ' + boardsResult.error.message);
+    var eligibleSet = new Set((boardsResult.data || [])
+      .filter(function(row) { return fcaTransition2026.isEligibleContinuousAuctionRow(row); })
+      .map(function(row) { return String(row && row.ticker || '').trim().toUpperCase(); })
+      .filter(Boolean));
+
+    var rawFeatureCount = featureRows.length;
+    var excludedOutsideEligible = featureRows
+      .map(function(row) { return String(row && row.ticker || '').trim().toUpperCase(); })
+      .filter(function(ticker) { return ticker && !eligibleSet.has(ticker); })
+      .sort();
+
+    featureRows = featureRows.filter(function(row) {
+      return eligibleSet.has(String(row && row.ticker || '').trim().toUpperCase());
+    });
+
+    var rows = dailyContextBuilder.buildRankingList(featureRows);
+
+    if (sortBy) {
+      var dir = order === 'asc' ? 1 : -1;
+      rows.sort(function(a, b) {
+        if (sortBy === 'ticker') return dir * String(a.ticker || '').localeCompare(String(b.ticker || ''));
+        var av = a[sortBy], bv = b[sortBy];
+        var aNull = av === null || av === undefined || !Number.isFinite(Number(av));
+        var bNull = bv === null || bv === undefined || !Number.isFinite(Number(bv));
+        if (aNull && bNull) return 0;
+        if (aNull) return 1;
+        if (bNull) return -1;
+        return dir * (Number(av) - Number(bv));
+      });
+    }
+
+    var latestAsOf = null;
+    rows.forEach(function(r) {
+      if (r.as_of_trade_date && (!latestAsOf || r.as_of_trade_date > latestAsOf)) {
+        latestAsOf = r.as_of_trade_date;
+      }
+    });
+
+    if (rawLimit && rawLimit !== 'all' && rows.length > limit) {
+      rows = rows.slice(0, limit);
+    }
+
+    return res.status(200).json({
+      success: true,
+      count: rows.length,
+      data: rows,
+      rows: rows,
+      as_of: latestAsOf,
+      updated_at: latestAsOf || new Date().toISOString(),
+      generated_at: new Date().toISOString(),
+      universe_scope: 'eligible_continuous_auction',
+      eligible_universe_count: eligibleSet.size,
+      raw_feature_count: rawFeatureCount,
+      excluded_outside_eligible_count: excludedOutsideEligible.length,
+      excluded_outside_eligible: excludedOutsideEligible
+    });
+  } catch (error) {
+    console.error('daily-market-context-list exception:', error);
+    return res.status(200).json({
+      success: false,
+      error: 'Gagal memuat ranking konteks pasar harian.',
+      diagnostic: error && error.message
+    });
+  }
+}
+
 module.exports = async function handler(req, res) {
+  if (!quoteLimiter.check(clientAddress(req))) {
+    return res.status(429).json({ error: 'Too many requests. Please slow down.' });
+  }
+  if (req.query && req.query.action === 'daily-market-context') {
+    return handleDailyMarketContextAction(req, res);
+  }
+  if (req.query && req.query.action === 'daily-market-context-list') {
+    return handleDailyMarketContextListAction(req, res);
+  }
+
   var ticker = null;
   try {
-    var allowAdvancedEntryAnalysis = hasLoggedInHeaders(req);
+    var allowAdvancedEntryAnalysis = hasVerifiedSession(req);
     var includeNews = false;
 
     if (req.method === 'GET') {
@@ -68,12 +337,15 @@ module.exports = async function handler(req, res) {
     ticker = String(ticker).toUpperCase().trim().replace(/\.JK$/i, '');
     // Normalize IHSG aliases to canonical 'IHSG'
     if (ticker === 'JKSE' || ticker === 'JCI' || ticker === 'COMPOSITE') ticker = 'IHSG';
-    if (!/^[A-Z]{3,5}$/.test(ticker) && ticker !== 'IHSG') {
-      return res.status(400).json({ error: 'Format ticker tidak valid.' });
+    // BUG-QUOTE-05: simbol benchmark resmi BEI memuat angka (LQ45, IDX30).
+    // Pola huruf-saja menolaknya dengan 400 padahal itu instrumen perbandingan utama.
+    if (!/^[A-Z0-9]{3,6}$/.test(ticker) && ticker !== 'IHSG') {
+      return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
     }
 
     // IHSG/Index: skip board data, use ^JKSE for Yahoo
     var isIndex = (ticker === 'IHSG');
+    var portfolioPriceOnly = Boolean(req.query?.portfolio === '1' || req.body?.portfolio === '1' || req.body?.portfolio === true);
 
     // Run Yahoo quote and Supabase board in parallel first
     var baseResults = await Promise.all([
@@ -81,11 +353,44 @@ module.exports = async function handler(req, res) {
       isIndex ? Promise.resolve(makeIndexBoard(ticker)) : fetchBoardData(ticker)
     ]);
 
-    var quoteResult = baseResults[0] ? JSON.parse(JSON.stringify(baseResults[0])) : baseResults[0];
-    var boardResult = baseResults[1];
+    var quoteResult = (baseResults && baseResults[0]) ? JSON.parse(JSON.stringify(baseResults[0])) : null;
+    var boardResult = (baseResults && baseResults[1]) || null;
 
-    // Attach board to quote result
-    quoteResult.board = boardResult;
+    // Graceful fallback / 502 response if upstream provider failed completely
+    if (!quoteResult || typeof quoteResult !== 'object') {
+      return res.status(502).json({
+        success: false,
+        ticker: ticker,
+        error: 'Penyedia data pasar (upstream quote) tidak merespons atau mengembalikan data kosong.',
+        note: 'Data Historis T-1',
+        board: boardResult || makeBoardNotFound(ticker)
+      });
+    }
+
+    // If upstream Yahoo quote explicitly failed without candles/price
+    if (quoteResult.success === false && !quoteResult.last) {
+      quoteResult.board = boardResult || makeBoardNotFound(ticker);
+      return res.status(502).json(quoteResult);
+    }
+
+    // A manual Portfolio refresh must not reuse the Yahoo in-memory quote cache.
+    // Prefer the same fresh screener latest rows used by Day Trade/Swing displays.
+    if (portfolioPriceOnly && !isIndex) {
+      var latest = await fetchFreshScreenerLatestPrice(ticker);
+      if (latest && latest.price) {
+        quoteResult.last = latest.price;
+        quoteResult.price_source = latest.price_source;
+        quoteResult.price_date = latest.price_date;
+        quoteResult.price_age_hours = latest.price_age_hours;
+        quoteResult.price_stale = false;
+      } else {
+        quoteResult.price_stale = true;
+        quoteResult.price_diagnostic = latest ? latest.diagnostic : 'No latest price';
+      }
+    }
+
+    // Attach board to quote result safely
+    quoteResult.board = boardResult || makeBoardNotFound(ticker);
 
     // Fetch news after board is available (uses companyName for better search)
     if (includeNews) {
@@ -282,12 +587,21 @@ async function fetchYahooQuote(ticker) {
   for (var i = 0; i < timestamps.length; i++) {
     var c = closes[i], o = opens[i], h = highs[i], l = lows[i], v = volumes[i];
     if (c != null && o != null && h != null && l != null && !isNaN(c)) {
-      candles.push({ close: Math.round(c * 100) / 100, open: Math.round(o * 100) / 100, high: Math.round(h * 100) / 100, low: Math.round(l * 100) / 100, volume: v || 0, date: new Date(timestamps[i] * 1000).toISOString().slice(0, 10) });
+      // Jakarta (WIB) session date, never the naive UTC slice (a UTC bar at
+      // >=17:00 belongs to the next WIB day). Same label policy as /api/candles.
+      candles.push({ close: Math.round(c * 100) / 100, open: Math.round(o * 100) / 100, high: Math.round(h * 100) / 100, low: Math.round(l * 100) / 100, volume: v || 0, time: t1Policy.formatJakartaDate(new Date(timestamps[i] * 1000)) });
     }
   }
 
+  // Unify "last price" with /api/candles: drop today's still-open Jakarta bar
+  // and any future-dated provider row before latest/pivot/MA/RSI/fibonacci are
+  // derived. Without this, /api/quote reports an intraday price while the chart
+  // on the same page reports the T-1 close — the "harga ngaco" mismatch.
+  var cutoff = t1Policy.retainCompletedCandles(candles, new Date());
+  candles = cutoff.candles;
+
   if (candles.length === 0) {
-    return { success: false, ticker: ticker, error: 'Tidak ada candle valid.', note: 'Data Historis T-1' };
+    return { success: false, ticker: ticker, error: 'Tidak ada candle harian selesai sebelum tanggal Jakarta hari ini.', note: 'Data Historis T-1' };
   }
 
   var latest = candles[candles.length - 1];
@@ -330,7 +644,7 @@ async function fetchYahooQuote(ticker) {
     ticker: ticker,
     symbol: ticker === 'IHSG' ? '^JKSE' : symbol,
     isIndex: ticker === 'IHSG',
-    latestBarDate: latest.date,
+    latestBarDate: latest.time,
     last: lastPrice,
     open: latest.open,
     high: latest.high,
@@ -353,6 +667,10 @@ async function fetchYahooQuote(ticker) {
     priceVolumeReading: priceVolumeReading,
     priceVsMA: priceVsMA.join(', '),
     totalCandles: candles.length,
+    actual_data_date: cutoff.metadata.actual_data_date,
+    jakarta_today: cutoff.metadata.jakarta_today,
+    t1_status: cutoff.metadata.t1_status,
+    t1_verified: cutoff.metadata.t1_verified,
     note: 'Data Historis T-1'
   };
 
@@ -385,7 +703,7 @@ async function fetchYahooQuote(ticker) {
     prevLow: prevL,
     prevClose: prevC,
     pivotMethod: 'classic',
-    pivotSourceDate: latest.date,
+    pivotSourceDate: latest.time,
     flatRange: (range === 0 || range < 1),
     tickNormalized: true
   };
@@ -396,7 +714,7 @@ async function fetchYahooQuote(ticker) {
   // Store candles for respect zone analysis (will be deleted before response)
   result._candles = candles;
 
-  quoteCache[ticker] = { data: result, timestamp: Date.now() };
+  setBoundedCache(quoteCache, ticker, result, QUOTE_CACHE_TTL);
   return result;
 }
 
@@ -442,7 +760,7 @@ async function fetchBoardData(ticker) {
 
   if (!rows || rows.length === 0) {
     var notFound = makeBoardNotFound(ticker);
-    boardCache[ticker] = { data: notFound, timestamp: Date.now() };
+    setBoundedCache(boardCache, ticker, notFound, BOARD_CACHE_TTL);
     return notFound;
   }
 
@@ -452,11 +770,11 @@ async function fetchBoardData(ticker) {
     companyName: row.company_name || null,
     board: row.board || 'UNKNOWN',
     isFca: !!row.is_fca,
-    minPriceGuard: row.min_price_guard != null ? row.min_price_guard : 50,
+    minPriceGuard: row.min_price_guard != null ? row.min_price_guard : 1,
     note: row.note || getBoardNote(row.board)
   };
 
-  boardCache[ticker] = { data: boardResult, timestamp: Date.now() };
+  setBoundedCache(boardCache, ticker, boardResult, BOARD_CACHE_TTL);
   return boardResult;
 }
 
@@ -466,7 +784,7 @@ function makeBoardNotFound(ticker) {
     companyName: null,
     board: 'UNKNOWN',
     isFca: false,
-    minPriceGuard: 50,
+    minPriceGuard: 1,
     note: 'Board/FCA belum tersedia'
   };
 }
@@ -914,7 +1232,8 @@ async function fetchNewsFromGemini(apiKey, ticker, companyName) {
     '[{"date":"YYYY-MM-DD","title":"max 80 chars","source":"media","url":"url or null","summary":"max 15 words Indonesian","possibleImpact":"positive|negative|neutral|mixed"}]\n' +
     'If no news: []. Title max 80 chars. Summary max 15 words.';
 
-  var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
+  var geminiModel = geminiProvider.sanitizeGeminiModel(process.env.GEMINI_MODEL, geminiProvider.DEFAULT_GEMINI_MODEL);
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + geminiModel + ':generateContent?key=' + apiKey;
   var payload = {
     contents: [{ parts: [{ text: prompt }] }],
     tools: [{ google_search: {} }],
@@ -1209,19 +1528,38 @@ function calcMA(prices, period) {
   return Math.round((sum / period) * 100) / 100;
 }
 
+// BUG-QUOTE-06: satu elemen null/NaN membuat gains & losses menjadi NaN, dan
+// fungsi mengembalikan NaN. NaN itu lalu menular ke seluruh perbandingan
+// momentum di calculateAutoCuanScore/calculateSetupLabel tanpa melempar error
+// (silent failure). Data rusak harus dinyatakan sebagai null, bukan NaN.
 function calcRSI(closes, period) {
   if (!closes || closes.length < period + 1) return null;
+  var p = Number(period);
+  if (!Number.isFinite(p) || p <= 0) return null;
   var gains = 0, losses = 0;
-  for (var i = closes.length - period; i < closes.length; i++) {
-    var diff = closes[i] - closes[i - 1];
+  for (var i = closes.length - p; i < closes.length; i++) {
+    // Number(null) and Number('') are both 0, which would silently turn a
+    // missing reading into a real price. Reject the raw shape first.
+    var rawCurrent = closes[i];
+    var rawPrevious = closes[i - 1];
+    if (rawCurrent == null || rawPrevious == null) return null;
+    if (typeof rawCurrent === 'string' && !rawCurrent.trim()) return null;
+    if (typeof rawPrevious === 'string' && !rawPrevious.trim()) return null;
+    var current = Number(rawCurrent);
+    var previous = Number(rawPrevious);
+    if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
+    var diff = current - previous;
     if (diff > 0) gains += diff;
     else losses -= diff;
   }
-  var avgGain = gains / period;
-  var avgLoss = losses / period;
+  var avgGain = gains / p;
+  var avgLoss = losses / p;
+  if (!Number.isFinite(avgGain) || !Number.isFinite(avgLoss)) return null;
+  if (avgGain === 0 && avgLoss === 0) return 50;
   if (avgLoss === 0) return 100;
   var rs = avgGain / avgLoss;
-  return Math.round((100 - (100 / (1 + rs))) * 100) / 100;
+  var rsi = 100 - (100 / (1 + rs));
+  return Number.isFinite(rsi) ? Math.round(rsi * 100) / 100 : null;
 }
 
 
@@ -1606,9 +1944,12 @@ function calculateAutoCuanScore(quote, board) {
     }
     // UTAMA, PENGEMBANGAN, EKONOMI_BARU = no penalty
   }
-  // Low price penalty
-  if (price != null && price <= 50) { risk -= 8; warnings.push('Harga sangat rendah'); }
-  else if (price != null && price <= 100) { risk -= 4; warnings.push('Harga rendah'); }
+  // Low price penalty - FLOOR UPDATE 2026-09: floor Rp1, ARB -15%
+  // Harga <1 invalid, 1-10 sangat rendah, 11-50 rendah (tetap valid jika likuiditas ok)
+  if (price != null && price < 1) { risk -= 8; warnings.push('Harga di bawah floor Rp1'); }
+  else if (price != null && price <= 10) { risk -= 8; warnings.push('Harga sangat rendah'); }
+  else if (price != null && price <= 50) { risk -= 4; warnings.push('Harga rendah'); }
+  else if (price != null && price <= 100) { risk -= 2; warnings.push('Harga low-price'); }
   // Extreme RSI penalty (already captured in momentum but add risk warning)
   if (rsi != null && rsi > 80) { risk -= 5; }
   if (rsi != null && rsi < 25) { risk -= 5; }
@@ -1962,18 +2303,27 @@ function calculateRiskGuard(quote, board) {
   }
   // UTAMA/PENGEMBANGAN/EKONOMI_BARU: no board penalty
 
-  // === PRICE RISK ===
+  // === PRICE RISK === FLOOR UPDATE 2026-09: floor Rp1, ARB -15%
+  // Saham di bawah Rp50 tetap valid selama likuiditas & akumulasi memenuhi syarat
   if (price != null) {
-    if (price <= 50) {
+    if (price < 1) {
       riskScore += 20;
-      reasons.push('Harga sangat rendah (Rp ' + price + ') — area gocap/near-gocap');
+      reasons.push('Harga di bawah floor Rp1 (Rp ' + price + ') — invalid');
+      warnings.push('below_floor_1');
+    } else if (price <= 10) {
+      riskScore += 20;
+      reasons.push('Harga sangat rendah (Rp ' + price + ') — area floor Rp1');
       warnings.push('very_low_price');
-    } else if (price <= 100) {
-      riskScore += 15;
-      reasons.push('Harga rendah (Rp ' + price + ') — speculative area');
+    } else if (price <= 50) {
+      riskScore += 10;
+      reasons.push('Harga rendah (Rp ' + price + ') — perlu konfirmasi likuiditas');
       warnings.push('low_price');
-    } else if (price <= 200) {
+    } else if (price <= 100) {
       riskScore += 8;
+      reasons.push('Harga low-price (Rp ' + price + ') — speculative area');
+      warnings.push('low_price_area');
+    } else if (price <= 200) {
+      riskScore += 5;
       reasons.push('Harga masih low-price (Rp ' + price + ') — perlu konfirmasi kuat');
       warnings.push('low_price_area');
     }
@@ -1997,9 +2347,6 @@ function calculateRiskGuard(quote, board) {
     riskScore += 20;
     reasons.push('Setup Label: Bearish Continuation — trend turun berlanjut');
     warnings.push('bearish_continuation_label');
-  } else if (setupStatus === 'Breakdown Risk') {
-    riskScore += 15;
-    reasons.push('Setup Label: breakdown risk terdeteksi');
   } else if (setupStatus === 'Sideways / No Trade') {
     riskScore += 5;
   }
@@ -2132,8 +2479,15 @@ function calculateRiskGuard(quote, board) {
     if (!floorTrigger) floorTrigger = 'Grade C + speculative label → minimum Medium';
   }
 
-  // Enforce floor
-  if (riskScore < minimumScore) {
+  // Enforce floor.
+  //
+  // BUG-QUOTE-04: tanpa memeriksa minimumScore > 0, pengurangan skor oleh
+  // katalis positif bisa menurunkan riskScore di bawah 0 dan memicu
+  // floorApplied = true padahal tidak ada floor yang berlaku (floorTrigger
+  // tetap null). Klien lalu menerima metadata anomali
+  // { floors: { applied: true, trigger: null } } yang membingungkan UI.
+  // Floor hanya "applied" bila memang ada kebijakan floor yang aktif.
+  if (minimumScore > 0 && riskScore < minimumScore) {
     riskScore = minimumScore;
     floorApplied = true;
   }
@@ -2373,15 +2727,28 @@ function calculateFibonacciLevels(candles) {
     fibTrend = 'downward_retracement'; // near lows
   }
 
-  // Calculate Fibonacci levels
-  // For upward retracement: levels measured from swing high down
-  // fib236 = swingHigh - 0.236 * range (closest to high)
-  // fib786 = swingHigh - 0.786 * range (closest to low)
-  var fib236 = idxTick.roundToIdxTick(swingHigh - 0.236 * fibRange, 'nearest');
-  var fib382 = idxTick.roundToIdxTick(swingHigh - 0.382 * fibRange, 'nearest');
-  var fib500 = idxTick.roundToIdxTick(swingHigh - 0.500 * fibRange, 'nearest');
-  var fib618 = idxTick.roundToIdxTick(swingHigh - 0.618 * fibRange, 'nearest');
-  var fib786 = idxTick.roundToIdxTick(swingHigh - 0.786 * fibRange, 'nearest');
+  // Calculate Fibonacci levels.
+  //
+  // BUG-QUOTE-01: arah pengukuran bergantung pada konteks tren. Selalu
+  // mengurangkan dari swingHigh membalik level 180 derajat pada rebound dari
+  // harga rendah: level terendah dilabeli 78.6% dan tertinggi 23.6%, sehingga
+  // Fib 23.6% tidak lagi berada lebih dekat ke low dibanding Fib 78.6%.
+  //   upward_retracement   -> diukur dari swingHigh turun (koreksi dalam uptrend)
+  //   downward_retracement -> diukur dari swingLow naik (rebound dalam downtrend)
+  var fib236, fib382, fib500, fib618, fib786;
+  if (fibTrend === 'downward_retracement') {
+    fib236 = idxTick.roundToIdxTick(swingLow + 0.236 * fibRange, 'nearest');
+    fib382 = idxTick.roundToIdxTick(swingLow + 0.382 * fibRange, 'nearest');
+    fib500 = idxTick.roundToIdxTick(swingLow + 0.500 * fibRange, 'nearest');
+    fib618 = idxTick.roundToIdxTick(swingLow + 0.618 * fibRange, 'nearest');
+    fib786 = idxTick.roundToIdxTick(swingLow + 0.786 * fibRange, 'nearest');
+  } else {
+    fib236 = idxTick.roundToIdxTick(swingHigh - 0.236 * fibRange, 'nearest');
+    fib382 = idxTick.roundToIdxTick(swingHigh - 0.382 * fibRange, 'nearest');
+    fib500 = idxTick.roundToIdxTick(swingHigh - 0.500 * fibRange, 'nearest');
+    fib618 = idxTick.roundToIdxTick(swingHigh - 0.618 * fibRange, 'nearest');
+    fib786 = idxTick.roundToIdxTick(swingHigh - 0.786 * fibRange, 'nearest');
+  }
 
   // Find nearest Fibonacci level
   var fibLevels = [
@@ -2395,13 +2762,14 @@ function calculateFibonacciLevels(candles) {
   var nearest = findNearestFibLevel(latestClose, fibLevels);
   var positionReading = interpretFibonacciPosition(latestClose, fibTrend, nearest, fibLevels, swingHigh, swingLow);
 
-  // Invalidation level: depends on trend context
+  // Invalidation level: depends on trend context.
+  // Uptrend: breakdown di bawah Fib 61.8% melemahkan skenario rebound.
+  // Downtrend: level invalidasi harus dekat swing LOW (bukan dekat high),
+  // karena breakout ke atas level itulah yang membatalkan skenario downtrend.
   var invalidationLevel;
   if (fibTrend === 'upward_retracement') {
-    // Breakdown below Fib 61.8% weakens rebound scenario
     invalidationLevel = fib618;
   } else {
-    // Breakout above Fib 38.2% weakens downtrend scenario
     invalidationLevel = fib382;
   }
 
@@ -2493,3 +2861,15 @@ function interpretFibonacciPosition(close, trend, nearest, fibLevels, swingHigh,
     }
   }
 }
+
+module.exports.__test = {
+  normalizeDailyContextTicker: normalizeDailyContextTicker,
+  normalizeRankingSortKey: normalizeRankingSortKey,
+  handleDailyMarketContextListAction: handleDailyMarketContextListAction,
+  hasVerifiedSession: hasVerifiedSession,
+  redactAdvancedQuoteFields: redactAdvancedQuoteFields,
+  calcRSI: calcRSI,
+  calculateFibonacciLevels: calculateFibonacciLevels,
+  calculateSetupLabel: calculateSetupLabel,
+  calculateRiskGuard: typeof calculateRiskGuard === 'function' ? calculateRiskGuard : null
+};

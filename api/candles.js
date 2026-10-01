@@ -6,8 +6,74 @@
 
 var cache = {};
 var CACHE_TTL = 5 * 60 * 1000;
+var MAX_CACHE_ENTRIES = 500;
+
+function setBoundedCache(key, data) {
+  var keys = Object.keys(cache);
+  if (keys.length >= MAX_CACHE_ENTRIES) {
+    var now = Date.now();
+    var oldestKey = keys[0];
+    var oldestTime = Infinity;
+    var evicted = false;
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var entry = cache[k];
+      if (entry && (now - entry.timestamp > CACHE_TTL)) {
+        delete cache[k];
+        evicted = true;
+      } else if (entry && entry.timestamp < oldestTime) {
+        oldestTime = entry.timestamp;
+        oldestKey = k;
+      }
+    }
+    if (!evicted && cache[oldestKey]) {
+      delete cache[oldestKey];
+    }
+  }
+  cache[key] = { data: data, timestamp: Date.now() };
+}
+
+var t1Policy = require('../lib/chart-t1-policy');
+var patternDetector = require('../lib/pattern-abcd').detectAbcdPattern;
+var classicPatternDetector = require('../lib/classic-chart-patterns').detectClassicChartPatterns;
+var adminSession = require('../lib/admin-session');
+var { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+var clock = { now: function() { return new Date(); } };
+
+// Unauthenticated, and each unique ticker triggers a live Yahoo Finance fetch
+// beyond the 5-minute cache. Same reasoning as api/quote.js's limiter: bound
+// scripted ticker sweeps that would otherwise hammer the upstream provider.
+var candlesLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 60 });
+
+// BUG-CAN-01: akses Pattern Map/Classic Patterns adalah hak setiap sesi admin
+// yang sah, bukan milik satu username yang di-hardcode. Memeriksa nama personal
+// mematikan fitur visualisasi pattern untuk seluruh akun admin lain.
+function hasPatternMapAccess(req) {
+  var auth = adminSession.requireAdminSession(req);
+  return auth.ok === true;
+}
+
+function responseForRequest(data, req) {
+  if (!data || typeof data !== 'object' || hasPatternMapAccess(req)) return data;
+  var publicData = Object.assign({}, data);
+  delete publicData.patternMap;
+  delete publicData.pattern_map_meta;
+  delete publicData.classicPatterns;
+  delete publicData.classic_pattern_meta;
+  return publicData;
+}
+
+function setPrivateResponseHeaders(res) {
+  if (!res || typeof res.setHeader !== 'function') return;
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('Vary', 'Cookie');
+}
 
 module.exports = async function handler(req, res) {
+  setPrivateResponseHeaders(res);
+  if (!candlesLimiter.check(clientAddress(req))) {
+    return res.status(429).json({ error: 'Too many requests. Please slow down.' });
+  }
   try {
     var ticker = null;
 
@@ -27,13 +93,16 @@ module.exports = async function handler(req, res) {
     ticker = String(ticker).toUpperCase().trim().replace(/\.JK$/i, '');
     // Normalize IHSG aliases
     if (ticker === 'JKSE' || ticker === 'JCI' || ticker === 'COMPOSITE') ticker = 'IHSG';
-    if (!/^[A-Z]{3,5}$/.test(ticker)) {
-      return res.status(400).json({ error: 'Format ticker tidak valid.' });
+    // BUG-CAN-03: simbol benchmark resmi BEI memuat angka (LQ45, IDX30, ^JKSE),
+    // sehingga pola huruf-saja menolak instrumen perbandingan utama bursa.
+    if (!/^[A-Z0-9]{3,6}$/.test(ticker)) {
+      return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
     }
 
     var cached = cache[ticker];
-    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
-      return res.status(200).json(cached.data);
+    var requestJakartaToday = t1Policy.formatJakartaDate(clock.now());
+    if (cached && cached.data && cached.data.jakarta_today === requestJakartaToday && (Date.now() - cached.timestamp < CACHE_TTL)) {
+      return res.status(200).json(responseForRequest(cached.data, req));
     }
 
     // Map ticker to Yahoo Finance symbol
@@ -57,28 +126,28 @@ module.exports = async function handler(req, res) {
       });
     } catch (fetchErr) {
       clearTimeout(timeout);
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Gagal mengambil data.' });
+      return res.status(502).json({ success: false, ticker: ticker, error: 'Gagal mengambil data.' });
     }
     clearTimeout(timeout);
 
     if (!response.ok) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'HTTP ' + response.status });
+      return res.status(502).json({ success: false, ticker: ticker, error: 'HTTP ' + response.status });
     }
 
     var json;
     try { json = await response.json(); } catch (e) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Gagal parsing.' });
+      return res.status(502).json({ success: false, ticker: ticker, error: 'Gagal parsing.' });
     }
 
     var chartResult = json && json.chart && json.chart.result && json.chart.result[0];
     if (!chartResult || !chartResult.timestamp) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Data tidak ditemukan.' });
+      return res.status(200).json(Object.assign({ success: false, ticker: ticker, error: 'Data tidak ditemukan.' }, t1Policy.buildMetadata(null, clock.now())));
     }
 
     var timestamps = chartResult.timestamp || [];
     var indicators = chartResult.indicators && chartResult.indicators.quote && chartResult.indicators.quote[0];
     if (!indicators) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'OHLCV kosong.' });
+      return res.status(200).json(Object.assign({ success: false, ticker: ticker, error: 'OHLCV kosong.' }, t1Policy.buildMetadata(null, clock.now())));
     }
 
     var opens = indicators.open || [];
@@ -90,20 +159,32 @@ module.exports = async function handler(req, res) {
     var candles = [];
     for (var i = 0; i < timestamps.length; i++) {
       var c = closes[i], o = opens[i], h = highs[i], l = lows[i], v = volumes[i];
-      if (c != null && o != null && h != null && l != null && !isNaN(c)) {
+      var timestampSeconds = t1Policy.normalizeUnixTimestampSeconds(timestamps[i]);
+      var candleDate = timestampSeconds == null ? null : t1Policy.formatJakartaDate(new Date(timestampSeconds * 1000));
+      // BUG-CAN-02: `!isNaN(c)` meloloskan NaN pada open/high/low (dan menerima
+      // Infinity). Setiap field OHLC harus finite agar tidak ada candle rusak
+      // yang masuk ke indikator.
+      var oNum = Number(o), hNum = Number(h), lNum = Number(l), cNum = Number(c);
+      if (candleDate && Number.isFinite(oNum) && Number.isFinite(hNum) && Number.isFinite(lNum) && Number.isFinite(cNum)) {
         candles.push({
-          time: new Date(timestamps[i] * 1000).toISOString().slice(0, 10),
-          open: Math.round(o * 100) / 100,
-          high: Math.round(h * 100) / 100,
-          low: Math.round(l * 100) / 100,
-          close: Math.round(c * 100) / 100,
-          volume: v || 0
+          time: candleDate,
+          open: Math.round(oNum * 100) / 100,
+          high: Math.round(hNum * 100) / 100,
+          low: Math.round(lNum * 100) / 100,
+          close: Math.round(cNum * 100) / 100,
+          volume: Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : 0
         });
       }
     }
 
+    // Enforce the completed-daily-candle policy before latest or any indicator
+    // is calculated. This removes today's partial Jakarta candle and any
+    // future-dated provider rows while preserving the provider's chronology.
+    var cutoff = t1Policy.retainCompletedCandles(candles, clock.now());
+    candles = cutoff.candles;
+
     if (candles.length === 0) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Tidak ada candle valid.' });
+      return res.status(200).json(Object.assign({ success: false, ticker: ticker, error: 'Tidak ada candle harian selesai sebelum tanggal Jakarta hari ini.' }, cutoff.metadata));
     }
 
     // Calculate latest metrics
@@ -111,7 +192,7 @@ module.exports = async function handler(req, res) {
     var volumeArr = candles.map(function(c) { return c.volume; });
     var latest = candles[candles.length - 1];
 
-    var result = {
+    var result = Object.assign({
       success: true,
       ticker: ticker,
       source: 'Data Historis T-1',
@@ -130,46 +211,112 @@ module.exports = async function handler(req, res) {
         ma100: calcMA(closePrices, 100),
         ma200: calcMA(closePrices, 200),
         rsi14: calcRSI(closePrices, 14),
-        volumeAvg20: calcMA(volumeArr, 20) ? Math.round(calcMA(volumeArr, 20)) : null,
+        volumeAvg20: calcMA(volumeArr, 20) != null ? Math.round(calcMA(volumeArr, 20)) : null,
         volumeVsAvg20: calcVolumeRatio(volumeArr, latest.volume, 20)
       },
       candles: candles
-    };
+    }, cutoff.metadata);
 
-    cache[ticker] = { data: result, timestamp: Date.now() };
-    return res.status(200).json(result);
+    // Geometry consumes only the finalized candle array above. Its failure is
+    // isolated so Technical Chart retains the normal successful response.
+    try {
+      var patternResult = patternDetector(candles, { ticker: ticker, dataDate: cutoff.metadata.actual_data_date });
+      result.patternMap = patternResult.candidate || null;
+      result.pattern_map_meta = {
+        engine: 'abcd-t1-v1', status: patternResult.candidate ? 'found' : 'none',
+        reason: String(patternResult.reason || 'no_pattern').slice(0, 64)
+      };
+    } catch (detectorError) {
+      result.patternMap = null;
+      result.pattern_map_meta = { engine: 'abcd-t1-v1', status: 'none', reason: 'detector_error' };
+    }
+
+    // Classic formations are separate from ABCD geometry. They provide
+    // context/ranking only and deliberately do not fabricate Pattern Map lines.
+    try {
+      var classicResult = classicPatternDetector(candles.slice(-90), { ticker: ticker, dataDate: cutoff.metadata.actual_data_date });
+      result.classicPatterns = classicResult.patterns || [];
+      result.classic_pattern_meta = {
+        engine: classicResult.rule_version || 'classic-chart-patterns-v1',
+        status: result.classicPatterns.length ? 'found' : 'none',
+        count: result.classicPatterns.length,
+        score_adjustment: classicResult.score_adjustment || 0,
+        diagnostics: classicResult.diagnostics || []
+      };
+    } catch (classicError) {
+      result.classicPatterns = [];
+      result.classic_pattern_meta = { engine:'classic-chart-patterns-v1', status:'none', count:0, score_adjustment:0, diagnostics:['detector_error'] };
+    }
+
+    // Cache the complete deterministic result once, then apply the signed-session
+    // response policy per request. This prevents a guest/non-admin cache hit from
+    // receiving Pattern geometry while keeping Technical Chart caching unchanged.
+    setBoundedCache(ticker, result);
+    return res.status(200).json(responseForRequest(result, req));
 
   } catch (err) {
     console.error('candles error:', err);
-    return res.status(200).json({ success: false, ticker: 'unknown', error: 'Kesalahan internal.' });
+    return res.status(500).json({ success: false, ticker: 'unknown', error: 'Kesalahan internal.' });
   }
 };
 
+module.exports.__test = {
+  clock: clock,
+  clearCache: function() { cache = {}; },
+  setPatternDetector: function(detector) { patternDetector = detector; },
+  resetPatternDetector: function() { patternDetector = require('../lib/pattern-abcd').detectAbcdPattern; },
+  setClassicPatternDetector: function(detector) { classicPatternDetector = detector; },
+  resetClassicPatternDetector: function() { classicPatternDetector = require('../lib/classic-chart-patterns').detectClassicChartPatterns; },
+  hasPatternMapAccess: hasPatternMapAccess,
+  responseForRequest: responseForRequest,
+  calcRSI: calcRSI,
+  calcVolumeRatio: calcVolumeRatio
+};
+
 function calcMA(prices, period) {
-  if (!prices || prices.length < period) return null;
+  if (!prices || prices.length < period || !period || period <= 0) return null;
   var slice = prices.slice(prices.length - period);
   var sum = 0;
-  for (var i = 0; i < slice.length; i++) sum += slice[i];
-  return Math.round((sum / period) * 100) / 100;
+  for (var i = 0; i < slice.length; i++) {
+    var p = Number(slice[i]);
+    if (Number.isFinite(p)) sum += p;
+  }
+  var ma = sum / period;
+  return Number.isFinite(ma) ? Math.round(ma * 100) / 100 : null;
 }
 
 function calcRSI(closes, period) {
-  if (!closes || closes.length < period + 1) return null;
+  if (!closes || closes.length < period + 1 || !period || period <= 0) return null;
   var gains = 0, losses = 0;
   for (var i = closes.length - period; i < closes.length; i++) {
-    var diff = closes[i] - closes[i - 1];
-    if (diff > 0) gains += diff;
-    else losses -= diff;
+    var c1 = Number(closes[i]);
+    var c0 = Number(closes[i - 1]);
+    if (Number.isFinite(c1) && Number.isFinite(c0)) {
+      var diff = c1 - c0;
+      if (diff > 0) gains += diff;
+      else losses -= diff;
+    }
   }
   var avgGain = gains / period;
   var avgLoss = losses / period;
+  if (!Number.isFinite(avgGain) || !Number.isFinite(avgLoss)) return null;
+  if (avgGain === 0 && avgLoss === 0) return 50;
   if (avgLoss === 0) return 100;
   var rs = avgGain / avgLoss;
-  return Math.round((100 - (100 / (1 + rs))) * 100) / 100;
+  if (!Number.isFinite(rs)) return 100;
+  var rsi = 100 - (100 / (1 + rs));
+  return Number.isFinite(rsi) ? Math.round(rsi * 100) / 100 : null;
 }
 
+// Volume ratio vs the trailing `period`-bar average. The averaging window is
+// defined by test/chart-t1-candles.test.js (the SSOT for this endpoint): the
+// reported volumeAvg20 includes the latest bar, and volumeVsAvg20 is that same
+// latest volume divided by it. Kept as-is to preserve that contract.
 function calcVolumeRatio(volumeArr, latestVol, period) {
   var avg = calcMA(volumeArr, period);
-  if (!avg || avg <= 0) return null;
-  return Math.round((latestVol / avg) * 100) / 100;
+  if (!avg || avg <= 0 || !Number.isFinite(avg)) return 0;
+  var vol = Number(latestVol);
+  if (!Number.isFinite(vol) || vol <= 0) return 0;
+  var ratio = vol / avg;
+  return Number.isFinite(ratio) ? Math.round(ratio * 100) / 100 : 0;
 }

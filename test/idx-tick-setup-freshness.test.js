@@ -81,7 +81,7 @@ test('deriveSetupFreshness: price more than current too-far-from-entry threshold
 });
 
 test('deriveSetupFreshness: accepts existing freshness timestamp fields', () => {
-  const fields = ['freshness_timestamp', 'calculated_at', 'run_at', 'updated_at', 'last_checked_at', 'created_at', 'first_sent_at'];
+  const fields = ['setup_origin_at', 'freshness_timestamp', 'calculated_at', 'run_at', 'published_at', 'registered_at', 'created_at', 'first_sent_at', 'run_date', 'date'];
   for (const field of fields) {
     const base = { current_price: 101, entry_low: 100, entry_high: 102, stop_loss: 95 };
     base[field] = minutesAgo(15);
@@ -89,4 +89,19 @@ test('deriveSetupFreshness: accepts existing freshness timestamp fields', () => 
     assert.equal(result.setup_freshness_status, 'FRESH', field);
     assert.equal(result.setup_age_minutes, 15, field);
   }
+});
+
+
+test('deriveSetupFreshness: last_checked_at never resets setup age', () => {
+  const old = minutesAgo(300);
+  const recentCheck = minutesAgo(1);
+  const result = deriveSetupFreshness(candidate({ calculated_at: old, last_checked_at: recentCheck }), { now: NOW });
+  assert.equal(result.setup_freshness_status, 'EXPIRED');
+  assert.ok(result.setup_age_minutes >= 299);
+});
+
+test('deriveSetupFreshness: published_at is a stable Swing NK origin', () => {
+  const result = deriveSetupFreshness({ monitor_source: 'swing_nk', published_at: minutesAgo(300), last_checked_at: minutesAgo(1), current_price: 101, entry_low: 100, entry_high: 102, stop_loss: 95 }, { now: NOW });
+  assert.notEqual(result.setup_freshness_status, 'NEEDS_REVALIDATION');
+  assert.ok(result.setup_age_minutes >= 299);
 });

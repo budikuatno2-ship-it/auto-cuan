@@ -46,10 +46,10 @@ function baseSwing(overrides) {
 test('T-TPL-01: formatSignalCard produces structured premium card', function() {
   var card = templates.formatSignalCard(baseDayTrade(), 1, 'daytrade');
   assert.match(card, /EXCL/);
-  assert.match(card, /Signal: READY/);
+  assert.match(card, /Signal: Ready Breakout/);
   assert.match(card, /Trading Plan/);
-  assert.match(card, /Entry:/);
-  assert.match(card, /Take Profit:/);
+  assert.match(card, /Area Beli \(Entry\):/);
+  assert.match(card, /Target Profit 1/);
   assert.match(card, /Stop Loss:/);
   assert.match(card, /Risk\/Reward:/);
   assert.match(card, /Technical Context/);
@@ -84,7 +84,7 @@ test('T-TPL-03: formatSignalCard uses IDX flag emoji', function() {
 
 test('T-TPL-04: formatDayTradeSignalMessage produces clean header + cards + disclaimer', function() {
   var msg = templates.formatDayTradeSignalMessage([baseDayTrade(), baseDayTrade({ ticker: 'TLKM' })]);
-  assert.match(msg, /AUTO-CUAN IDX DAY TRADE SIGNAL/);
+  assert.match(msg, /AUTO-CUAN DAY TRADE — CONFIRMED BUY/);
   assert.match(msg, /Update:/);
   assert.match(msg, /EXCL/);
   assert.match(msg, /TLKM/);
@@ -96,14 +96,16 @@ test('T-TPL-04: formatDayTradeSignalMessage produces clean header + cards + disc
 
 test('T-TPL-05: formatSwingKongloSignalMessage has correct header', function() {
   var msg = templates.formatSwingKongloSignalMessage([baseSwing()]);
-  assert.match(msg, /AUTO-CUAN IDX SWING KONGLO SIGNAL/);
+  assert.match(msg, /AUTO-CUAN SWING TRADE — HIGH CONVICTION/);
+  assert.match(msg, /Kluster: Konglo/);
   assert.match(msg, /BBRI/);
   assert.match(msg, /Bukan rekomendasi beli\/jual/);
 });
 
 test('T-TPL-06: formatSwingNonKongloSignalMessage has correct header', function() {
   var msg = templates.formatSwingNonKongloSignalMessage([baseSwing({ ticker: 'ACES', status: 'Swing Ready' })]);
-  assert.match(msg, /AUTO-CUAN IDX SWING NON-KONGLO SIGNAL/);
+  assert.match(msg, /AUTO-CUAN SWING TRADE — HIGH CONVICTION/);
+  assert.match(msg, /Kluster: Non-Konglo/);
   assert.match(msg, /ACES/);
 });
 
@@ -111,50 +113,180 @@ test('T-TPL-07: formatDailyTop5Message works in normal and watchlist mode', func
   var msg = templates.formatDailyTop5Message([baseSwing()], '2026-07-06');
   assert.match(msg, /AUTO-CUAN SAHAM PILIHAN/);
   assert.match(msg, /2026-07-06/);
+  assert.match(msg, /lolos gate: 1\/5/);
   assert.doesNotMatch(msg, /WATCHLIST/);
 
   var watchMsg = templates.formatDailyTop5Message([baseSwing()], '2026-07-06', { watchlistMode: true });
-  assert.match(watchMsg, /WATCHLIST/);
+  assert.match(watchMsg, /Top 5 Watchlist/);
+  assert.match(watchMsg, /lolos gate: 1\/5/);
   assert.match(watchMsg, /Bukan sinyal entry langsung/);
+});
+
+test('T-TPL-07b: formatDailyTop5Message shows correct lolos gate count', function() {
+  // Test with 3 picks
+  var msg3 = templates.formatDailyTop5Message([baseSwing(), baseSwing(), baseSwing()], '2026-07-06', { pickedCount: 3 });
+  assert.match(msg3, /lolos gate: 3\/5/);
+
+  // Test with 5 picks
+  var msg5 = templates.formatDailyTop5Message([baseSwing(), baseSwing(), baseSwing(), baseSwing(), baseSwing()], '2026-07-06', { pickedCount: 5 });
+  assert.match(msg5, /lolos gate: 5\/5/);
+
+  // Test with 1 pick (the edge case from the requirement)
+  var msg1 = templates.formatDailyTop5Message([baseSwing()], '2026-07-06', { pickedCount: 1 });
+  assert.match(msg1, /lolos gate: 1\/5/);
+
+  // Watchlist mode with explicit pickedCount
+  var watchMsg3 = templates.formatDailyTop5Message([baseSwing()], '2026-07-06', { watchlistMode: true, pickedCount: 3 });
+  assert.match(watchMsg3, /Top 5 Watchlist — lolos gate: 3\/5/);
+});
+
+// ============================================================
+// TEST: ATR warning labels
+// ============================================================
+
+test('T-TPL-17: ATR SL_TOO_TIGHT warning renders without changing status label', function() {
+  var signal = baseDayTrade({ sl_atr_class: 'SL_TOO_TIGHT' });
+  var msg = templates.formatDayTradeSignalMessage([signal]);
+  assert.match(msg, /Signal: Ready Breakout/);
+  assert.match(msg, /Risk: SL ketat vs volatilitas harian; rawan noise\./);
+});
+
+test('T-TPL-18: ATR TP1 and TP2 stretched warnings render in swing templates', function() {
+  var signal = baseSwing({ tp1_atr_class: 'TP1_STRETCHED', tp2_atr_class: 'TP2_STRETCHED' });
+  var msg = templates.formatSwingKongloSignalMessage([signal]);
+  assert.match(msg, /Target: TP1 cukup jauh vs ATR; butuh momentum kuat\./);
+  assert.match(msg, /Target: TP2 agresif; anggap target lanjutan\./);
+});
+
+test('T-TPL-19: Telegram signal renders normally without ATR fields', function() {
+  var msg = templates.formatSwingNonKongloSignalMessage([baseSwing({ ticker: 'ACES' })]);
+  assert.match(msg, /ACES/);
+  assert.match(msg, /Area Beli \(Entry\): Rp5\.000 - Rp5\.050/);
+  assert.doesNotMatch(msg, /volatilitas harian|cukup jauh vs ATR|TP2 agresif/);
+});
+
+test('T-TPL-20: ATR warnings do not change entry TP SL values', function() {
+  var noAtr = templates.formatSignalCard(baseDayTrade(), 1, 'daytrade');
+  var withAtr = templates.formatSignalCard(baseDayTrade({ sl_atr_class: 'SL_TOO_TIGHT', tp1_atr_class: 'TP1_STRETCHED', tp2_atr_class: 'TP2_STRETCHED' }), 1, 'daytrade');
+  assert.match(withAtr, /Area Beli \(Entry\): Rp2\.870 - Rp2\.900/);
+  assert.match(withAtr, /Target Profit 1 \(\+3\.8%\): Rp3\.010/);
+  assert.match(withAtr, /Stop Loss: Rp2\.750/);
+  assert.equal(noAtr.includes('Area Beli (Entry): Rp2.870 - Rp2.900'), true);
+  assert.equal(withAtr.includes('Area Beli (Entry): Rp2.870 - Rp2.900'), true);
+});
+
+// ============================================================
+// TEST: ATR warning labels
+// ============================================================
+
+
+test('T-TPL-21: ATR warning string with semicolon is preserved as one full line', function() {
+  var warning = 'Risk: SL ketat vs volatilitas harian; rawan noise.';
+  var msg = templates.formatDayTradeSignalMessage([baseDayTrade({ atr_warning_notes: warning })]);
+  assert.equal(msg.includes(warning), true);
+  assert.doesNotMatch(msg, /Risk: SL ketat vs volatilitas harian\n/);
+});
+
+test('T-TPL-22: ATR warning JSON array string is parsed into warning lines', function() {
+  var notes = [
+    'Risk: SL ketat vs volatilitas harian; rawan noise.',
+    'Target: TP1 cukup jauh vs ATR; butuh momentum kuat.'
+  ];
+  var msg = templates.formatSwingKongloSignalMessage([baseSwing({ atr_warning_notes: JSON.stringify(notes) })]);
+  assert.match(msg, /Risk: SL ketat vs volatilitas harian; rawan noise\./);
+  assert.match(msg, /Target: TP1 cukup jauh vs ATR; butuh momentum kuat\./);
+});
+
+test('T-TPL-23: ATR warnings are not duplicated when notes and class fields overlap', function() {
+  var msg = templates.formatDayTradeSignalMessage([baseDayTrade({
+    atr_warning_notes: 'Risk: SL ketat vs volatilitas harian; rawan noise.',
+    sl_atr_class: 'SL_TOO_TIGHT'
+  })]);
+  var matches = msg.match(/Risk: SL ketat vs volatilitas harian; rawan noise\./g) || [];
+  assert.equal(matches.length, 1);
 });
 
 // ============================================================
 // TEST: Monitor Hit message
 // ============================================================
 
-test('T-TPL-08: formatMonitorHitMessage TP1 HIT produces short premium format', function() {
+test('T-TPL-08: formatMonitorHitMessage TP1 HIT shows trigger basis', function() {
   var pick = { ticker: 'KOBX', entry1: 176, tp1: 192, tp2: 210, sl: 160 };
   var ev = { status: 'TP1_HIT', label: 'TP1 Hit', note: 'TP1 tersentuh' };
-  var px = { last: 198 };
+  var px = { last: 198, high: 195, low: 190 };
   var msg = templates.formatMonitorHitMessage(pick, ev, px);
-  assert.match(msg, /TARGET HIT/);
-  assert.match(msg, /KOBX/);
   assert.match(msg, /TP1 HIT/);
-  assert.match(msg, /Entry:/);
-  assert.match(msg, /Harga sekarang:/);
+  assert.match(msg, /KOBX/);
+  assert.match(msg, /Trigger: high menyentuh TP1/);
+  assert.match(msg, /Last:/);
   assert.match(msg, /Profit:/);
   assert.match(msg, /Catatan:/);
   // Short format — should be under 500 chars
   assert.ok(msg.length < 500, 'Monitor hit should be short, got ' + msg.length + ' chars');
 });
 
-test('T-TPL-09: formatMonitorHitMessage SL HIT shows loss', function() {
+test('T-TPL-09: formatMonitorHitMessage SL HIT shows trigger and last price separately', function() {
   var pick = { ticker: 'EXCL', entry1: 2900, tp1: 3010, tp2: 3150, sl: 2750 };
   var ev = { status: 'SL_HIT', label: 'SL kena', note: 'SL tersentuh' };
-  var px = { last: 2740 };
+  // Last is ABOVE SL (rebound scenario) - this is the key clarity fix
+  var px = { last: 2800, high: 2810, low: 2740 };
   var msg = templates.formatMonitorHitMessage(pick, ev, px);
   assert.match(msg, /SL HIT/);
+  assert.match(msg, /Trigger: low menyentuh SL/);
+  assert.match(msg, /Last:/);
   assert.match(msg, /Loss:/);
-  assert.match(msg, /Stop loss tersentuh/);
+  assert.match(msg, /rebound/i);
 });
 
-test('T-TPL-10: formatMonitorHitMessage ENTRY ZONE', function() {
-  var pick = { ticker: 'BBRI', entry1: 5000, tp1: 5500, tp2: 5800, sl: 4800 };
+test('T-TPL-10: formatMonitorHitMessage ENTRY ZONE shows trigger basis', function() {
+  var pick = { ticker: 'BBRI', entry1: 5000, entry2: 4900, tp1: 5500, tp2: 5800, sl: 4800 };
   var ev = { status: 'IN_ENTRY_ZONE', label: 'In Entry Zone', note: 'Harga memasuki area entry' };
-  var px = { last: 5010 };
+  var px = { last: 5010, high: 5020, low: 4950 };
   var msg = templates.formatMonitorHitMessage(pick, ev, px);
   assert.match(msg, /ENTRY ZONE/);
-  assert.match(msg, /area entry/);
+  assert.match(msg, /Trigger: harga masuk area entry/);
+  assert.match(msg, /Last:/);
+});
+
+test('T-TPL-11: formatMonitorHitMessage TP2 HIT shows trigger basis', function() {
+  var pick = { ticker: 'ANTM', entry1: 1800, tp1: 1900, tp2: 2050, sl: 1700 };
+  var ev = { status: 'TP2_HIT', label: 'TP2 Hit', note: 'TP2 tersentuh' };
+  var px = { last: 2080, high: 2060, low: 1950 };
+  var msg = templates.formatMonitorHitMessage(pick, ev, px);
+  assert.match(msg, /TP2 HIT/);
+  assert.match(msg, /Trigger: high menyentuh TP2/);
+  assert.match(msg, /Last:/);
+  assert.match(msg, /Profit:/);
+});
+
+test('T-TPL-12: formatMonitorHitMessage EXPIRED uses daytrade wording', function() {
+  var pick = { ticker: 'GGRM', entry1: 32000, tp1: 34000, tp2: 36000, sl: 30000, category: 'Day Trade' };
+  var ev = { status: 'EXPIRED', label: 'Expired', note: 'Setup terlalu lama' };
+  var px = { last: 31000, high: 31500, low: 30500 };
+  var msg = templates.formatMonitorHitMessage(pick, ev, px);
+  assert.match(msg, /EXPIRED/);
+  assert.match(msg, /terlalu lama untuk konteks intraday/);
+});
+
+test('T-TPL-13: formatMonitorHitMessage EXPIRED uses swing wording', function() {
+  var pick = { ticker: 'BBCA', entry1: 8000, tp1: 8800, tp2: 9500, sl: 7500, category: 'Swing Konglo' };
+  // Provide a custom note that doesn't contain "terlalu lama" - it should still be overridden
+  var ev = { status: 'EXPIRED', label: 'Expired', note: 'Harga sudah terlalu jauh dari entry; tunggu pullback.' };
+  var px = { last: 8200, high: 8300, low: 8100 };
+  var msg = templates.formatMonitorHitMessage(pick, ev, px);
+  assert.match(msg, /EXPIRED/);
+  assert.match(msg, /melewati masa pantau/);
+  assert.match(msg, /revalidasi/);
+});
+
+test('T-TPL-14: formatMonitorHitMessage does not use AI narration', function() {
+  var pick = { ticker: 'TLKM', entry1: 3000, tp1: 3200, tp2: 3400, sl: 2800 };
+  var ev = { status: 'TP1_HIT', label: 'TP1 Hit', note: 'TP1 tersentuh' };
+  var px = { last: 3250, high: 3260, low: 3100 };
+  var msg = templates.formatMonitorHitMessage(pick, ev, px);
+  // Template itself should not contain AI-specific notes (AI note is appended by caller)
+  assert.doesNotMatch(msg, /Catatan AI/);
+  assert.doesNotMatch(msg, /narration/i);
 });
 
 // ============================================================
@@ -185,10 +317,10 @@ test('T-TPL-13: fmtValue formats large values', function() {
 });
 
 test('T-TPL-14: classifySignalLabel returns correct labels', function() {
-  assert.equal(templates.classifySignalLabel({ status: 'READY_BREAKOUT' }), 'READY');
-  assert.equal(templates.classifySignalLabel({ status: 'A_PLUS_SETUP' }), 'READY');
-  assert.equal(templates.classifySignalLabel({ status: 'EARLY_RADAR' }), 'EARLY RADAR');
-  assert.equal(templates.classifySignalLabel({ status: 'WAIT_PULLBACK' }), 'WATCHLIST');
+  assert.equal(templates.classifySignalLabel({ status: 'READY_BREAKOUT' }), 'Ready Breakout');
+  assert.equal(templates.classifySignalLabel({ status: 'A_PLUS_SETUP' }), 'A+ Setup');
+  assert.equal(templates.classifySignalLabel({ status: 'EARLY_RADAR' }), 'Early Radar');
+  assert.equal(templates.classifySignalLabel({ status: 'WAIT_PULLBACK' }), 'Tunggu Pullback');
 });
 
 test('T-TPL-15: getRiskShort normalizes risk labels', function() {
@@ -200,7 +332,27 @@ test('T-TPL-15: getRiskShort normalizes risk labels', function() {
 
 test('T-TPL-16: Template does not depend on AI — no AI-related text in output', function() {
   var msg = templates.formatDayTradeSignalMessage([baseDayTrade()]);
-  assert.doesNotMatch(msg, /AI/i);
+  assert.doesNotMatch(msg, /\bAI\b/i);
   assert.doesNotMatch(msg, /Gemini/i);
   assert.doesNotMatch(msg, /narration/i);
+});
+
+test('T-TPL-WEEKLY-01: swing Telegram includes weekly context line when label exists', function() {
+  var msg = templates.formatSwingKongloSignalMessage([baseSwing({ weekly_tf_label: 'WEEKLY_SUPPORT' })]);
+  assert.match(msg, /Weekly: trend mendukung swing\./);
+});
+
+test('T-TPL-WEEKLY-02: day trade Telegram ignores weekly context fields', function() {
+  var msg = templates.formatDayTradeSignalMessage([baseDayTrade({ weekly_tf_label: 'WEEKLY_WEAK' })]);
+  assert.doesNotMatch(msg, /Weekly:/);
+});
+
+test('T-TPL-MARKET-01: swing Telegram includes market regime line', function() {
+  var msg = templates.formatSwingKongloSignalMessage([baseSwing({ market_regime_label: 'RISK_OFF' })]);
+  assert.match(msg, /Market: risk-off; sizing dan validasi perlu lebih ketat\./);
+});
+
+test('T-TPL-MARKET-02: day trade Telegram ignores market regime scoring fields', function() {
+  var msg = templates.formatDayTradeSignalMessage([baseDayTrade({ market_regime_label: 'RISK_ON', market_regime_score_adjustment: 2 })]);
+  assert.doesNotMatch(msg, /Market:/);
 });

@@ -1,0 +1,7 @@
+{"ticker":"LOSR","snapshot":"09:15","shadow_score":70,"confirmation_state":"PROVISIONAL","confirmed_rank":null,"confirmation_reason":"SINGLE_SNAPSHOT_UNCONFIRMED"}
+{"ticker":"LOSR","snapshot":"09:30","shadow_score":70,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"LOSR","snapshot":"09:45","shadow_score":72,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"LOSR","snapshot":"10:00","shadow_score":72,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"LOWS","snapshot":"10:15","shadow_score":12,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"LOWS","snapshot":"10:30","shadow_score":12,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"NONX","snapshot":"10:45","shadow_score":50,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}

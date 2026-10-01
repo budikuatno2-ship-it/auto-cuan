@@ -1,0 +1,123 @@
+#!/usr/bin/env node
+'use strict';
+// VPS-only manual orchestration. Read-only unless --execute is explicit.
+//
+// BATCH 8 — DECOUPLED FROM VERCEL
+// -------------------------------
+// This runner used to default its base URL to the deployed Vercel origin, which
+// pushed the whole 150-175 ticker screener sweep through a serverless invocation
+// that cannot survive it. api/sector-hot.js now refuses those actions outright
+// when process.env.VERCEL === '1' (HTTP 403 DEPRECATED_ON_SERVERLESS).
+//
+// So the runner talks to the local VPS instance instead:
+//   * default base URL is http://127.0.0.1:3000 (tools/local-dev-server.js)
+//   * a *.vercel.app base URL is refused before any mutating action runs
+//   * APP_BASE_URL / VPS_LOCAL_BASE_URL still override, for an internal VPS port
+const fs = require('node:fs'); const path = require('node:path');
+const ROOT = path.resolve(__dirname, '..');
+const ENV_FILES = ['.env.local', '.env.intraday-runtime', '.env'];
+const DEFAULT_LOCAL_BASE_URL = 'http://127.0.0.1:3000';
+const SERVERLESS_HOST_PATTERN = /(^|\.)vercel\.app$/i;
+const SERVERLESS_REFUSAL = 'Refusing to run heavy screener computation against a Vercel host: serverless invocations cannot complete the full universe sweep and api/sector-hot.js returns 403 DEPRECATED_ON_SERVERLESS for them. Start the VPS daemon and use its local base URL (default ' + DEFAULT_LOCAL_BASE_URL + '), or set APP_BASE_URL to the internal VPS port.';
+function isServerlessHost(baseUrl) { try { return SERVERLESS_HOST_PATTERN.test(new URL(baseUrl).hostname); } catch (e) { return false; } }
+function resolveBaseUrl(env) { const raw = env.APP_BASE_URL || env.VPS_LOCAL_BASE_URL || DEFAULT_LOCAL_BASE_URL; return String(raw).replace(/\/+$/, ''); }
+function assertNotServerlessForExecute(baseUrl, execute) { if (execute && isServerlessHost(baseUrl)) throw new Error(SERVERLESS_REFUSAL); return true; }
+function loadEnvFiles(env = process.env, cwd = process.cwd()) {
+  const runnerDir = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
+  const filePaths = [
+    ...ENV_FILES.map((f) => path.join(cwd, f)),
+    path.join(runnerDir, '.env')
+  ];
+  for (const filePath of filePaths) {
+    let text;
+    try { text = fs.readFileSync(filePath, 'utf8'); } catch (e) { if (e.code === 'ENOENT') continue; throw e; }
+    text.split(/\r?\n/).forEach((line) => {
+      const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][\w]*)\s*=\s*(.*?)\s*$/);
+      if (!m || Object.prototype.hasOwnProperty.call(env, m[1])) return;
+      let v = m[2];
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+      else v = v.replace(/\s+#.*$/, '');
+      env[m[1]] = v;
+      if (process.env[m[1]] == null || process.env[m[1]] === '') process.env[m[1]] = v;
+    });
+  }
+  return env;
+}
+function parseArgs(argv) { const o={dryRun:true,execute:false,send:false,force:false,resumeStale:false,limit:50,nkBatchSize:50,sleepMs:1500,maxAttempts:40}; for(let i=2;i<argv.length;i++){const a=argv[i]; if(a==='--dry-run'){o.dryRun=true;} else if(a==='--execute'){o.execute=true;o.dryRun=false;} else if(a==='--send'){o.send=true;} else if(a==='--force')o.force=true; else if(a==='--resume-stale')o.resumeStale=true; else if(a==='--include-intraday-dry-run')o.includeIntradayDryRun=true; else if(a==='--skip-swing')o.skipSwing=true; else if(/^--skip-(konglo|nk|daytrade|top5|progress)$/.test(a))o[a.slice(7)]=true; else if(['--limit','--nk-batch-size','--sleep-ms','--max-attempts'].includes(a)){const k=a==='--sleep-ms'?'sleepMs':a==='--max-attempts'?'maxAttempts':a==='--nk-batch-size'?'nkBatchSize':'limit';o[k]=Math.max(1,Number(argv[++i])||o[k]);} else throw new Error('Unknown option: '+a);} if (![8,25,50].includes(o.nkBatchSize)) throw new Error('--nk-batch-size must be 8, 25, or 50'); return o; }
+function wibDate(now=new Date()){return new Date(now.getTime()+25200000).toISOString().slice(0,10);}
+function finalStatus(value){return ['PUBLISHED','DAILY','COMPLETED','COMPLETED_NO_CANDIDATES','ALREADY_DONE'].includes(String(value||'').toUpperCase());}
+function publishedToday(meta,today=wibDate()){return !!meta&&finalStatus(meta.status)&&String(meta.run_date||meta.calculated_at||'').slice(0,10)===today;}
+function finalizedResponse(data){return !!data&&(finalStatus(data.status)||String(data.step||'').toLowerCase()==='finalize'||/published\s+\d+\s+top candidates/i.test(String(data.message||'')));}
+function staleScanning(meta, now=Date.now()){if(String(meta&&meta.status||'').toLowerCase()!=='scanning')return false; const stamp=Date.parse(meta.updated_at||meta.calculated_at||''); return Number.isFinite(stamp)&&now-stamp>30*60*1000;}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function readLinuxMemAvailableMb(fsImpl=fs){
+  try {
+    const text=fsImpl.readFileSync('/proc/meminfo','utf8');
+    const m=String(text||'').match(/^MemAvailable:\s+(\d+)\s+kB$/m);
+    if(!m)return null;
+    const kb=Number(m[1]);
+    return Number.isFinite(kb)?kb/1024:null;
+  } catch (_) { return null; }
+}
+function assertHeavyScanMemoryHeadroom(env=process.env,fsImpl=fs){
+  const availableMb=readLinuxMemAvailableMb(fsImpl);
+  const configured=Number(env.AUTO_CUAN_MIN_HEAVY_SCAN_MEM_AVAILABLE_MB);
+  const minMb=Number.isFinite(configured)&&configured>0?configured:1536;
+  if(availableMb!=null&&availableMb<minMb){
+    throw new Error('Heavy scan refused: MemAvailable '+availableMb.toFixed(1)+' MB is below safety floor '+minMb.toFixed(0)+' MB.');
+  }
+  return {availableMb,minMb};
+}
+function describeFetchError(err){
+  const cause=err&&err.cause;
+  const bits=[];
+  if(cause&&cause.code)bits.push(String(cause.code));
+  if(cause&&cause.message)bits.push(String(cause.message));
+  if(!bits.length&&err&&err.message)bits.push(String(err.message));
+  return bits.join(': ')||'unknown network error';
+}
+function makeClient(baseUrl,secret,fetchImpl=fetch){async function call(query){const url=new URL('/api/sector-hot',baseUrl);Object.entries(query).forEach(([k,v])=>url.searchParams.set(k,String(v)));let r;try{r=await fetchImpl(url,{headers:{Authorization:'Bearer '+secret,Accept:'application/json'}});}catch(e){throw new Error('Fetch failed action='+(query.action||'unknown')+' url='+url.toString()+' cause='+describeFetchError(e));}const text=await r.text();let data;try{data=text?JSON.parse(text):{};}catch(e){throw new Error('Invalid JSON action='+(query.action||'unknown')+' url='+url.toString());}if(!r.ok)throw new Error('HTTP '+r.status+' action='+(query.action||'unknown')+' url='+url.toString());return data;}return {call};}
+async function nkStatus(client){return client.call({action:'nk-screener-results'});}
+async function runNk(client,opts,log=console.log){
+  const startedAt=Date.now();
+  let status=await nkStatus(client), meta=status.meta||{};
+  if(publishedToday(meta)&&!opts.force){log('Non-Konglo: terminal today; skipped.');return {skipped:true,status};}
+  if(!opts.execute){log('Non-Konglo: read-only; nk-screener-run not called.');return {planned:true,status};}
+  if(staleScanning(meta)&&!opts.resumeStale&&!opts.force){log('Non-Konglo: STALE SCAN; pass --resume-stale or --force.');return {stale:true,status};}
+  for(let attempt=1;attempt<=opts.maxAttempts;attempt++){
+    // Do not short-circuit merely because the cached meta is terminal: it may
+    // be from an older trading date (or the operator may have requested --force).
+    // Let the protected orchestrator decide whether to start, resume, or finalize.
+    const q={action:'nk-screener-run'};
+    if(opts.force&&attempt===1)q.force=1;
+    if(opts.nkBatchSize!==8&&attempt===1)q.batch_size=opts.nkBatchSize;
+    const response=await client.call(q);
+    if(String(response.step||'').toLowerCase()==='start'){
+      const batchCount=Number(response.batch_count||0);
+      const requiredAttempts=batchCount>0?batchCount+2:null;
+      log('Non-Konglo start: universe '+Number(response.universe_count||0)+', batches '+batchCount+', batch_size '+Number(response.batch_size||opts.nkBatchSize||0)+'.');
+      if(requiredAttempts&&opts.maxAttempts<requiredAttempts){
+        throw new Error('Non-Konglo requires at least '+requiredAttempts+' attempts for '+batchCount+' batches, but --max-attempts is '+opts.maxAttempts+'. Increase --max-attempts or use --nk-batch-size 25/50.');
+      }
+    } else {
+      log('Non-Konglo attempt '+attempt+': '+(response.step||response.status||response.message||'ok'));
+    }
+    if(finalizedResponse(response)){
+      log('Non-Konglo completed in '+((Date.now()-startedAt)/1000).toFixed(1)+'s.');
+      return {finalized:true,response,elapsed_ms:Date.now()-startedAt};
+    }
+    status=await nkStatus(client);
+    meta=status.meta||{};
+    if(finalStatus(meta.status)){
+      log('Non-Konglo completed in '+((Date.now()-startedAt)/1000).toFixed(1)+'s.');
+      return {finalized:true,status,elapsed_ms:Date.now()-startedAt};
+    }
+    await sleep(opts.sleepMs);
+  }
+  throw new Error('Non-Konglo reached --max-attempts without finalization; refusing to restart.');
+}
+async function ready(client,action){const data=await client.call({action});return {data,meta:data.meta||{}};}
+async function runDayTrade(client,opts,log=console.log){log('Day Trade: reading current status...');let status=await ready(client,'daytrade-screener');if(publishedToday(status.meta)&&Number(status.meta.scanned_count||0)>=Number(status.meta.universe_count||0)&&!opts.force)return {skipped:true,status};if(!opts.execute){log('Day Trade: read-only; run endpoint not called.');return {planned:true,status};}for(let batch=0;batch<opts.maxAttempts;batch++){log('Day Trade: requesting batch '+(batch+1)+' (index '+batch+', limit '+opts.limit+')...');const r=await client.call({action:'daytrade-screener-run',batch,limit:opts.limit,...(opts.force&&batch===0?{force:1}:{})});log('Day Trade batch '+(batch+1)+': '+(r.status||r.message||'ok'));if(finalStatus(r.status)||['already_done','completed','published'].includes(String(r.status||'').toLowerCase()))return {finalized:true,response:r};if(String(r.status||'').toLowerCase()!=='running')return {stopped:true,response:r};await sleep(opts.sleepMs);}throw new Error('Day Trade reached --max-attempts without completion; refusing to restart.');}
+async function main(options=parseArgs(process.argv),deps={}){const env=deps.env||loadEnvFiles();env.DAYTRADE_INTRADAY_SCORE_ENABLED='false';if(!env.CRON_SECRET)throw new Error('CRON_SECRET is required.');const base=deps.baseUrl||resolveBaseUrl(env);assertNotServerlessForExecute(base,options.execute);const log=deps.log||console.log;if(options.execute){const mem=assertHeavyScanMemoryHeadroom(env,deps.fs||fs);if(mem.availableMb!=null)log('Memory preflight: '+mem.availableMb.toFixed(1)+' MB available (safety floor '+mem.minMb.toFixed(0)+' MB).');}const client=deps.client||makeClient(base,env.CRON_SECRET,deps.fetch);log('Mode: '+(options.execute?'EXECUTE':'DRY-RUN'));log('Telegram: '+(options.send&&options.execute?'ON':'OFF'));log('Intraday production scoring: OFF');log('App base URL: '+base);if(isServerlessHost(base))log('WARNING: base URL is a serverless host; heavy screener actions will be refused (403 DEPRECATED_ON_SERVERLESS). Run against the VPS daemon instead.');const swing=await ready(client,'screener');log('[Phase 2] Swing Konglo');if(!options.skipSwing&&!options.konglo&&options.execute&&!(publishedToday(swing.meta)&&!options.force)){const swingStarted=Date.now();const swingResponse=await client.call({action:'refresh-screener',ai:0,...(options.force?{force:1}:{})});const sm=swingResponse&&swingResponse.meta?swingResponse.meta:(swingResponse||{});log('Swing Konglo completed in '+((Date.now()-swingStarted)/1000).toFixed(1)+'s | universe '+Number(sm.universe_count||0)+' | scanned '+Number(sm.scanned_count||0)+' | failed '+Number(sm.failed_count||0)+'.');}else log('Skipped/read-only: Swing Konglo.');log('[Phase 3] Swing Non-Konglo');if(!options.skipSwing&&!options.nk)await runNk(client,options,log);else log('Skipped: --skip-swing or --skip-nk.');log('[Phase 4] Day Trade');if(!options.daytrade)await runDayTrade(client,options,log);else log('Skipped: --skip-daytrade.');log('[Phase 5] Top 5');const check=await client.call({action:'telegram-daily-picks',lock_only:1,dry_run:1});const blocked=check.reason==='screeners_not_ready'||check.reason==='not_ready'||check.ready===false||check.status==='scanning';if(!options.top5&&!blocked&&options.execute)await client.call({action:'telegram-daily-picks',...(options.send?{}:{dry_run:1})});else log('Skipped/read-only: Top 5 generation.');log('[Phase 6] Top 5 Progress: '+(options.send&&options.execute?'send permitted':'dry-run only')+'.');if(options.includeIntradayDryRun)log('[Phase 7] Intraday validation: observe/dry-run only; production scoring remains OFF.');log('[Phase 8] Materialize screener snapshot');let snapshotResult=null;try{const buildSnapshot=deps.buildSnapshot||require(path.join(ROOT,'tools','build-screener-snapshot.js')).main;snapshotResult=await buildSnapshot({dryRun:!options.execute,print:false},{baseUrl:base,env,rootDir:ROOT});log('Snapshot materialization: '+(snapshotResult&&snapshotResult.ok?'ok ('+(snapshotResult.rows||0)+' rows)':'skipped/empty'));}catch(snapErr){log('Snapshot materialization warning: '+(snapErr&&snapErr.message?snapErr.message:'failed'));}return {base_url:base,dry_run:!options.execute,snapshot:snapshotResult};}
+if(require.main===module)main().catch(e=>{console.error(e.message);process.exitCode=1;});
+module.exports={ENV_FILES,DEFAULT_LOCAL_BASE_URL,SERVERLESS_HOST_PATTERN,SERVERLESS_REFUSAL,isServerlessHost,resolveBaseUrl,assertNotServerlessForExecute,loadEnvFiles,parseArgs,wibDate,finalStatus,publishedToday,finalizedResponse,staleScanning,readLinuxMemAvailableMb,assertHeavyScanMemoryHeadroom,describeFetchError,makeClient,nkStatus,runNk,runDayTrade,main};

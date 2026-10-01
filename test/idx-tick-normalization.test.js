@@ -153,3 +153,49 @@ test('normalizeLevelsToIdxTicks exposes normalized canonical levels and tick met
   assert.equal(levels.tick_normalized, true);
   assert.equal(levels.tick_notes, null);
 });
+
+test('getIdxTickSize and isValidIdxPriceLevel respect Akselerasi and FCA uniform Rp 1 tick', () => {
+  // Normally, prices >= 200 have ticks 2, 5, 10, 25
+  assert.equal(idx.getIdxTickSize(201), 2);
+  assert.equal(idx.isValidIdxPriceLevel(201), false);
+  assert.equal(idx.getIdxTickSize(503), 5);
+  assert.equal(idx.isValidIdxPriceLevel(503), false);
+
+  // Akselerasi board has uniform Rp 1 tick
+  assert.equal(idx.getIdxTickSize(201, 'AKSELERASI'), 1);
+  assert.equal(idx.isValidIdxPriceLevel(201, 'AKSELERASI'), true);
+  assert.equal(idx.getIdxTickSize(503, 'Papan Akselerasi'), 1);
+  assert.equal(idx.isValidIdxPriceLevel(503, 'Papan Akselerasi'), true);
+
+  // FCA flag or PEMANTAUAN_KHUSUS board
+  assert.equal(idx.getIdxTickSize(201, null, true), 1);
+  assert.equal(idx.isValidIdxPriceLevel(201, null, true), true);
+  assert.equal(idx.getIdxTickSize(503, 'PEMANTAUAN_KHUSUS'), 1);
+  assert.equal(idx.isValidIdxPriceLevel(503, 'PEMANTAUAN_KHUSUS'), true);
+
+  // Known FCA ticker (e.g. LUCK, MAHA)
+  assert.equal(idx.getIdxTickSize(201, null, false, 'LUCK'), 1);
+  assert.equal(idx.isValidIdxPriceLevel(201, null, false, 'LUCK'), true);
+  assert.equal(idx.getIdxTickSize(503, null, false, 'MAHA'), 1);
+  assert.equal(idx.isValidIdxPriceLevel(503, null, false, 'MAHA'), true);
+});
+
+test('normalizeTradingPlanLevels preserves Rp 1 ticks for Akselerasi and FCA', () => {
+  const plan = idx.normalizeTradingPlanLevels({
+    ticker: 'LUCK',
+    board: 'AKSELERASI',
+    is_fca: true,
+    entry1: 201,
+    entry2: 203,
+    sl: 195,
+    tp1: 215,
+    tp2: 225,
+    support: 195,
+    resistance: 220,
+    risk_reward: 1.5
+  });
+  assert.equal(plan.entry1, 201);
+  assert.equal(plan.entry2, 203);
+  assert.equal(plan.trading_plan_valid, true);
+  assert.equal(plan.tick_normalized, true);
+});

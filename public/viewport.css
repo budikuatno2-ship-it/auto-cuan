@@ -1,0 +1,26 @@
+/* Keyboard-only geometry. Do not replace the normal document/SPA height. */
+@media(max-width:1023px) {
+  :is(#appShell,#loginModal,#registerModal,#selfResetModal,#authChoiceModal,#authV2ResetModal,#standaloneTermsModal,.pcc-shell,.as-shell) :is(input,textarea,select) {
+    font-size:max(16px,1em)!important;scroll-margin-block:12px;
+  }
+  html.ac-keyboard-open:not(.auth-dialog-open) body {
+    padding-bottom:calc(var(--ac-keyboard-gap,0px) + max(16px,env(safe-area-inset-bottom)))!important;
+  }
+  html.ac-keyboard-open :is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal,#standaloneTermsModal),
+  html.ac-keyboard-open #authV2ResetModal > div {
+    position:fixed!important;top:var(--ac-vv-top,0px)!important;bottom:auto!important;
+    height:var(--ac-vv-height,100dvh)!important;min-height:0!important;
+    padding-block:12px!important;overflow-y:auto!important;
+  }
+  html.ac-keyboard-open :is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal,#standaloneTermsModal) > div,
+  html.ac-keyboard-open #authV2ResetModal > div > div {
+    max-height:max(80px,calc(var(--ac-vv-height,100dvh) - 24px))!important;
+    min-height:0!important;overflow-y:auto!important;scroll-behavior:auto!important;
+  }
+  html.ac-keyboard-open #page-money-management .ms-grid-viewport,
+  html.ac-keyboard-open #page-money-management.money-sheet.ms-expanded .ms-grid-viewport {
+    max-height:max(112px,calc(var(--ac-vv-height,100dvh) - 100px))!important;
+    min-height:0!important;scroll-behavior:auto;
+  }
+  html.ac-keyboard-open :is(.landing-beams,#acNavLauncher) {visibility:hidden!important;pointer-events:none!important;}
+}

@@ -1,0 +1,108 @@
+{
+  "success": true,
+  "from_cache": false,
+  "broker": "AK",
+  "broker_name": "UBS Sekuritas Indonesia",
+  "range": "1d",
+  "target_dates": [
+    "2026-09-08"
+  ],
+  "date_range_label": "2026-09-08",
+  "generated_at": "2026-09-09T05:21:29.782Z",
+  "top_accumulated": [
+    {
+      "ticker": "BBRI",
+      "net_val": 61437020000,
+      "net_vol": 18135600,
+      "net_lot": 181356,
+      "buy_val": 95969929000,
+      "sell_val": 34532909000,
+      "buy_vol": 28293700,
+      "sell_vol": 10158100,
+      "avg_buy_price": 3392,
+      "avg_sell_price": 3400,
+      "days_active": 1
+    },
+    {
+      "ticker": "BBCA",
+      "net_val": 49479052500,
+      "net_vol": 4827225,
+      "net_lot": 48272,
+      "buy_val": 94282360000,
+      "sell_val": 44803307500,
+      "buy_vol": 9198279,
+      "sell_vol": 4371054,
+      "avg_buy_price": 10250,
+      "avg_sell_price": 10250,
+      "days_active": 1
+    },
+    {
+      "ticker": "ASII",
+      "net_val": 40927035000,
+      "net_vol": 8381300,
+      "net_lot": 83813,
+      "buy_val": 75792022000,
+      "sell_val": 34864987000,
+      "buy_vol": 15493500,
+      "sell_vol": 7112200,
+      "avg_buy_price": 4892,
+      "avg_sell_price": 4902,
+      "days_active": 1
+    },
+    {
+      "ticker": "BMRI",
+      "net_val": 32982541000,
+      "net_vol": 7485500,
+      "net_lot": 74855,
+      "buy_val": 56782225000,
+      "sell_val": 23799684000,
+      "buy_vol": 12872700,
+      "sell_vol": 5387200,
+      "avg_buy_price": 4411,
+      "avg_sell_price": 4418,
+      "days_active": 1
+    },
+    {
+      "ticker": "GOTO",
+      "net_val": 1290000,
+      "net_vol": 25800,
+      "net_lot": 258,
+      "buy_val": 1290000,
+      "sell_val": 0,
+      "buy_vol": 25800,
+      "sell_vol": 0,
+      "avg_buy_price": 50,
+      "avg_sell_price": 0,
+      "days_active": 1
+    }
+  ],
+  "top_distributed": [
+    {
+      "ticker": "TLKM",
+      "net_val": -6094293000,
+      "net_vol": -2297300,
+      "net_lot": -22973,
+      "buy_val": 67152223000,
+      "sell_val": 73246516000,
+      "buy_vol": 25465000,
+      "sell_vol": 27762300,
+      "avg_buy_price": 2637,
+      "avg_sell_price": 2638,
+      "days_active": 1
+    },
+    {
+      "ticker": "GPRA",
+      "net_val": -1810787000,
+      "net_vol": -16739600,
+      "net_lot": -167396,
+      "buy_val": 305849900,
+      "sell_val": 2116636900,
+      "buy_vol": 2833800,
+      "sell_vol": 19573400,
+      "avg_buy_price": 108,
+      "avg_sell_price": 108,
+      "days_active": 1
+    }
+  ],
+  "total_stocks_active": 7
+}

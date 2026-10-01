@@ -82,7 +82,7 @@ ALTER TABLE public.sector_hot_members_latest ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sector_hot_meta ENABLE ROW LEVEL SECURITY;
 
 -- Indexes
-CREATE INDEX IF NOT EXISTS idx_shgm_group ON public.sector_hot_group_members(group_code);
+DROP INDEX IF EXISTS idx_shgm_group;
 CREATE INDEX IF NOT EXISTS idx_shml_group ON public.sector_hot_members_latest(group_code);
 
 -- =============================================
@@ -226,3 +226,7 @@ ON CONFLICT (id) DO UPDATE SET
   status = EXCLUDED.status,
   message = EXCLUDED.message,
   updated_at = now();
+
+-- F-092: table-level privilege hardening (see stock-daily-context-migration.sql).
+REVOKE ALL ON sector_hot_groups, sector_hot_group_members, sector_hot_latest, sector_hot_members_latest, sector_hot_meta FROM PUBLIC, anon, authenticated;
+GRANT ALL ON sector_hot_groups, sector_hot_group_members, sector_hot_latest, sector_hot_members_latest, sector_hot_meta TO service_role;

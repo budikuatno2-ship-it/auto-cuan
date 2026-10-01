@@ -1,0 +1,52 @@
+name: Fast Watcher Regression
+
+on:
+  pull_request:
+    branches:
+      - feat/daytrade-screener-v1
+      - main
+    paths:
+      - 'lib/intraday-fast-watcher*.js'
+      - 'test/*fast-watcher*.test.js'
+      - 'test/intraday-fast-watcher*.test.js'
+      - '.github/workflows/fast-watcher-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fast-watcher-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run project build
+        run: npm run build
+
+      - name: Run Fast Watcher tests
+        run: >-
+          node --test
+          test/fast-watcher-locked-setup-regression.test.js
+          test/fast-watcher-v6-structure-regression.test.js
+          test/fast-watcher-guarded-live-v2.test.js
+          test/fast-watcher-momentum-flow.test.js
+          test/intraday-fast-watcher-live-state.test.js
+          test/intraday-fast-watcher-lifecycle-reset.test.js
+          test/intraday-fast-watcher-production-payload.test.js
+          test/intraday-fast-watcher-recall.test.js
+          test/intraday-fast-watcher.test.js
+          test/fast-watcher-early-watch.test.js

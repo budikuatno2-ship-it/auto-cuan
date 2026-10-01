@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#080c12">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <title>Portfolio Command Center | Auto-Cuan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="/portfolio-command-center.css?v=20260728-ui2">
+  <link rel="stylesheet" href="/portfolio-ai-workspace-v1.css?v=20260816-v1">
+  <style>
+    #portfolioV2Loader{position:fixed;inset:0;z-index:2147483000;min-height:100dvh;display:grid;place-items:center;background:#080c12;color:#94a3b8;font:600 13px Inter,system-ui,sans-serif;text-align:center;padding:24px}
+    #portfolioV2Loader span{width:34px;height:34px;border:3px solid #1f2937;border-top-color:#34d399;border-radius:50%;animation:v2spin .8s linear infinite}
+    #portfolioV2Loader button,#portfolioV2Loader a{display:inline-block;margin-top:14px;padding:9px 13px;border-radius:9px;border:1px solid #2f3b4f;background:#111827;color:#6ee7b7;text-decoration:none;font:700 13px Inter,system-ui,sans-serif;cursor:pointer}
+    @keyframes v2spin{to{transform:rotate(360deg)}}
+  </style>
+<link rel="stylesheet" href="/number-flow.css?v=20260929-v1">
+</head>
+<body><div id="portfolioV2Loader"><div><span style="display:block;margin:0 auto 12px"></span>Menyiapkan Portfolio Command Center…</div></div>
+<script>
+(function () {
+  'use strict';
+  var LOADER_HTML = '<div id="portfolioV2Loader"><div><span style="display:block;margin:0 auto 12px"></span>Menyiapkan Portfolio Command Center…</div></div>';
+  var BOOT_TIMEOUT_MS = 15000;
+  var FETCH_TIMEOUT_MS = 7000;
+  var ASSET_TIMEOUT_MS = 5000;
+  var OPTIONAL_ASSET_TIMEOUT_MS = 8000;
+  var bootSettled = false;
+  var bootTimer = null;
+
+  // These assets define the actual Portfolio product contract. A failure here is
+  // allowed to stop boot because continuing would expose a partially functional
+  // financial surface or skip cloud persistence.
+  var criticalAssets = [
+    '/portfolio-planner-v1.js?v=20260726-src1',
+    '/ai-chat-renderer.js?v=20260728-premium-v3',
+    '/portfolio-command-center-model.js?v=20260727-v1',
+    '/portfolio-supabase-sync.js?v=20260816-v1',
+    '/portfolio-command-center.js?v=20260929-detail-v2',
+    '/portfolio-position-scenarios.js?v=20260727-v1'
+  ];
+
+  // Polish/repair layers must never be able to take the whole Portfolio offline.
+  // Production previously failed on ui-stability-fix.js after every core asset
+  // had already loaded successfully. Load these after reveal, independently.
+  var optionalAssets = [
+    '/number-flow-runtime.js?v=20260929-v1',
+    '/portfolio-runtime-fix.js?v=20260728-portfolio-runtime-fix-v1',
+    '/ui-stability-fix.js?v=20260802-ui-stability-v2',
+    '/ui-bugfix-pack-v1.js?v=20260803-v1',
+    '/portfolio-ai-workspace-v1.js?v=20260816-v1'
+  ];
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function (ch) {
+      return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[ch];
+    });
+  }
+
+  function failBoot(error) {
+    if (bootSettled) return;
+    bootSettled = true;
+    if (bootTimer) clearTimeout(bootTimer);
+    var message = error && error.message ? error.message : String(error || 'Portfolio gagal dimuat.');
+    document.body.innerHTML = '<main id="portfolioV2Loader"><div><strong style="display:block;color:#f8fafc;margin-bottom:8px">Portfolio belum berhasil dibuka</strong><div style="max-width:520px;line-height:1.55">' + escapeHtml(message) + '</div><button type="button" id="portfolioRetry">Coba lagi</button><br><a href="/dashboard">Kembali ke Dashboard</a></div></main>';
+    var retry = document.getElementById('portfolioRetry');
+    if (retry) retry.onclick = function () { location.reload(); };
+  }
+
+  function fetchCommandCenterWithTimeout() {
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, FETCH_TIMEOUT_MS);
+    // Keep this audited source path literal. The production build validates that
+    // V2 hydrates the reviewed Command Center shell rather than an alternate UI.
+    return fetch('/portfolio-command-center.html?v=20260727-v1', { credentials:'same-origin', cache:'no-store', signal:controller.signal })
+      .then(function (response) {
+        if (!response.ok) throw new Error('Gagal memuat struktur Portfolio (HTTP ' + response.status + ').');
+        return response.text();
+      })
+      .catch(function (error) {
+        if (error && error.name === 'AbortError') throw new Error('Struktur Portfolio terlalu lama dimuat. Coba lagi.');
+        throw error;
+      })
+      .finally(function () { clearTimeout(timer); });
+  }
+
+  function loadScript(src, timeoutMs) {
+    return new Promise(function (resolve, reject) {
+      var script = document.createElement('script');
+      var settled = false;
+      var timer = setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        script.onload = script.onerror = null;
+        if (script.parentNode) script.remove();
+        reject(new Error('Asset Portfolio terlalu lama dimuat: ' + src.split('?')[0]));
+      }, timeoutMs || ASSET_TIMEOUT_MS);
+      script.src = src;
+      script.async = false;
+      script.onload = function () {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve();
+      };
+      script.onerror = function () {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(new Error('Gagal memuat ' + src.split('?')[0]));
+      };
+      document.body.appendChild(script);
+    });
+  }
+
+  function revealStableUi() {
+    if (bootSettled) return;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        if (bootSettled) return;
+        bootSettled = true;
+        if (bootTimer) clearTimeout(bootTimer);
+        var loader = document.getElementById('portfolioV2Loader');
+        if (loader) loader.remove();
+        loadOptionalAssets();
+      });
+    });
+  }
+
+  function loadOptionalAssets() {
+    optionalAssets.forEach(function (src) {
+      loadScript(src, OPTIONAL_ASSET_TIMEOUT_MS).catch(function (error) {
+        // Enhancement failure is diagnostic only. Core Portfolio remains usable.
+        console.warn('portfolio optional asset skipped', src.split('?')[0], error && error.message);
+      });
+    });
+  }
+
+  bootTimer = setTimeout(function () {
+    failBoot(new Error('Portfolio membutuhkan waktu terlalu lama untuk disiapkan. Tidak ada proses yang dibiarkan loading tanpa batas.'));
+  }, BOOT_TIMEOUT_MS);
+
+  fetchCommandCenterWithTimeout()
+    .then(function (html) {
+      if (bootSettled) throw new Error('Boot dibatalkan.');
+      var parsed = new DOMParser().parseFromString(html, 'text/html');
+      Array.prototype.forEach.call(parsed.body.querySelectorAll('script'), function (node) { node.remove(); });
+      document.body.innerHTML = parsed.body.innerHTML + LOADER_HTML;
+      return criticalAssets.reduce(function (promise, src) {
+        return promise.then(function () { return loadScript(src, ASSET_TIMEOUT_MS); });
+      }, Promise.resolve());
+    })
+    .then(revealStableUi)
+    .catch(function (error) {
+      if (!bootSettled) failBoot(error);
+    });
+})();
+</script>
+</body>
+</html>

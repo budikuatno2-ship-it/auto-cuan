@@ -1,0 +1,9 @@
+{"ticker":"LOSR","scheduled_time":"09:15","sample_timestamp":"2026-07-21T09:15:03.000Z","current_price":200,"reference_entry_price":200}
+{"ticker":"LOSR","scheduled_time":"09:30","sample_timestamp":"2026-07-21T09:30:03.000Z","current_price":200,"reference_entry_price":200}
+{"ticker":"LOSR","scheduled_time":"09:45","sample_timestamp":"2026-07-21T09:45:03.000Z","current_price":198,"reference_entry_price":198}
+{"ticker":"LOSR","scheduled_time":"10:00","sample_timestamp":"2026-07-21T10:00:03.000Z","current_price":196,"reference_entry_price":196}
+{"ticker":"LOSR","scheduled_time":"10:45","sample_timestamp":"2026-07-21T10:45:03.000Z","current_price":194,"reference_entry_price":194}
+{"ticker":"LOSR","scheduled_time":"16:00","sample_timestamp":"2026-07-21T16:00:03.000Z","current_price":190,"reference_entry_price":190}
+{"ticker":"LOWS","scheduled_time":"10:15","sample_timestamp":"2026-07-21T10:15:03.000Z","current_price":50,"reference_entry_price":50}
+{"ticker":"LOWS","scheduled_time":"10:30","sample_timestamp":"2026-07-21T10:30:03.000Z","current_price":50,"reference_entry_price":50}
+{"ticker":"NONX","scheduled_time":"10:45","sample_timestamp":"2026-07-21T10:45:03.000Z","current_price":300,"reference_entry_price":300}

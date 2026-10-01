@@ -1,0 +1,94 @@
+-- ============================================================
+-- DOKUMENTASI SKEMA RETROAKTIF -- BUKAN MIGRATION AKTIF
+-- ============================================================
+-- File ini didokumentasikan berdasarkan INFERENSI struktur kolom
+-- dari data sample nyata (SELECT * LIMIT 1 per tabel) di database
+-- production yang sudah ada -- BUKAN dari introspeksi
+-- information_schema langsung (RPC exec_sql tidak tersedia di
+-- project Supabase ini).
+--
+-- PENTING -- KETERBATASAN DOKUMEN INI:
+-- - Nama kolom: AKURAT (diambil langsung dari row nyata).
+-- - Tipe data: PERKIRAAN berdasarkan nilai JavaScript yang terbaca
+--   (misal uuid dikenali dari pola string, timestamptz dari format
+--   ISO 8601). TIDAK PRESISI seperti hasil information_schema asli
+--   (contoh: tidak bisa membedakan varchar(255) vs text, tidak
+--   tahu constraint asli seperti UNIQUE/CHECK/precision numeric).
+-- - Primary key/foreign key/index: TIDAK DIKETAHUI dari cara ini,
+--   ditandai (?) di bawah -- perlu verifikasi manual lewat Supabase
+--   Dashboard > Database > Tables sebelum dipakai untuk disaster
+--   recovery sungguhan.
+-- - Kolom yang bernilai NULL di baris sample tidak bisa diketahui
+--   tipenya (ditandai eksplisit di bawah).
+--
+-- Untuk dokumentasi TERPRESISI, jalankan manual di Supabase SQL
+-- Editor (dashboard.supabase.com > project > SQL Editor):
+--   SELECT column_name, data_type, is_nullable, column_default
+--   FROM information_schema.columns
+--   WHERE table_schema = 'public' AND table_name = '<nama_tabel>'
+--   ORDER BY ordinal_position;
+--
+-- PERINGATAN: JANGAN jalankan DDL apa pun di file ini terhadap
+-- database yang sudah punya tabel-tabel ini tanpa review manual.
+--
+-- Dihasilkan: 29 Agustus 2026, dari VPS production, sample 1 row
+-- per tabel via Supabase client (bukan raw SQL introspection).
+-- ============================================================
+
+-- app_users (11 rows saat dokumentasi ini dibuat)
+-- id: uuid (PK, diduga)
+-- username: text/varchar
+-- password_hash: text/varchar
+-- device_id: text/varchar
+-- user_agent: text/varchar
+-- is_blocked: boolean
+-- created_at: timestamptz
+-- last_login_at: timestamptz
+-- is_approved: boolean
+-- updated_at: timestamptz
+-- devices: jsonb
+
+-- app_settings (3 rows)
+-- key: text/varchar (kemungkinan PK)
+-- value: jsonb
+-- updated_at: timestamptz
+
+-- stock_boards (963 rows)
+-- ticker: text/varchar (kemungkinan PK)
+-- company_name: text/varchar
+-- board: text/varchar
+-- is_fca: boolean
+-- min_price_guard: integer/bigint
+-- note: text/varchar
+-- is_active: boolean
+
+-- login_logs (250 rows)
+-- id: uuid (PK, diduga)
+-- username: text/varchar
+-- is_guest: boolean
+-- is_admin: boolean
+-- user_agent: text/varchar
+-- created_at: timestamptz
+
+-- search_logs (36 rows)
+-- id: uuid (PK, diduga)
+-- username: text/varchar
+-- ticker: text/varchar
+-- source: text/varchar
+-- created_at: timestamptz
+
+-- ai_analysis_logs (30 rows)
+-- id: uuid (PK, diduga)
+-- username: text/varchar
+-- ticker: text/varchar
+-- mode: text/varchar
+-- result_summary: text/varchar
+-- full_result_html: text/varchar
+-- created_at: timestamptz
+
+-- ai_usage_logs (516 rows)
+-- id: uuid (PK, diduga)
+-- username: text/varchar
+-- ticker: text/varchar
+-- action: text/varchar
+-- created_at: timestamptz

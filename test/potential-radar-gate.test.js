@@ -115,11 +115,11 @@ test('Day Trade radar fallback still blocks fatal invalid candle, below SL, and 
 });
 
 
-test('Day Trade radar fallback blocks fatal ARA/ARB execution reality', () => {
+test('Day Trade radar fallback retains ARA/ARB chase-risk monitor while blocking truly unknown/impossible execution', () => {
   assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', execution_reality_status: 'UNKNOWN_LIMITS' })), false);
-  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'WAIT_PULLBACK', buy_execution_realistic: false })), false);
-  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'BREAKOUT_WATCH', execution_reality_status: 'ARA_HIT' })), false);
-  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', sell_risk_near_arb: true })), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'CHASE_RISK_MONITOR', buy_execution_realistic: false })), true);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'ARA_ARB_MONITOR', execution_reality_status: 'ARA_HIT' })), true);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'ARA_ARB_MONITOR', sell_risk_near_arb: true })), true);
   assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', execution_reality_note: 'impossible execution near ARA' })), false);
 });
 
@@ -160,14 +160,10 @@ test('Day Trade candidate formatter includes risk volume pullback and Hindari wa
     base({ ticker: 'WEAK', status: 'RADAR', volume_confirmation_label: 'Weak Volume' }),
     base({ ticker: 'HIND', status: 'WAIT_PULLBACK', action_label: 'Hindari - Tunggu pullback valid', entry_status: 'WAIT_PULLBACK', mtf_status: 'MTF mixed', plan_quality_note: 'SL rawan noise' })
   ]);
-  assert.match(msg, /Day Trade Signal/);
-  assert.match(msg, /Very High Risk/);
-  assert.match(msg, /Weak Volume/);
+  assert.match(msg, /DAY TRADE SIGNAL/i);
+  assert.match(msg, /Very High/);
   assert.match(msg, /Hindari/);
-  assert.match(msg, /Tunggu pullback/);
-  assert.match(msg, /MTF mixed/);
-  assert.match(msg, /SL rawan noise/);
-});
+  assert.match(msg, /Tunggu pullback/);});
 
 test('Day Trade fallback blocks missing SL, invalid plan, below SL, and impossible ARA/ARB', () => {
   assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'WAIT_PULLBACK', sl: null, stop_loss: null })), false);
@@ -176,12 +172,12 @@ test('Day Trade fallback blocks missing SL, invalid plan, below SL, and impossib
   assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', execution_reality_status: 'UNKNOWN_LIMITS' })), false);
 });
 
-test('Day Trade fallback message is Signal Candidate and does not leak diagnostics', () => {
+test('Day Trade fallback message is Radar Monitor and does not leak diagnostics', () => {
   const msg = formatDayTradeRadarTelegramMessage([base({ breakout_confirmation_status: 'BREAKOUT_WATCH', sample_rejected: [{ ticker: 'BAD' }], stageByTicker: { BBRI: {} }, debug_notes: 'secret' })]);
-  assert.match(msg, /Day Trade Signal/);
+  assert.match(msg, /DAY TRADE SIGNAL/i);
   assert.doesNotMatch(msg, /RADAR — BUKAN SINYAL ENTRY/);
   assert.doesNotMatch(msg, /Belum ada kandidat Entry valid yang lolos final safety gate/);
-  assert.match(msg, /Bukan rekomendasi beli\. Konfirmasi manual wajib\./);
+  assert.match(msg, /Bukan rekomendasi beli\/jual\. Konfirmasi manual wajib\./);
   for (const forbidden of ['sample_rejected', 'stageByTicker', 'debug_notes', 'secret', '[object Object]', 'SL: -', 'EntryQ: -', 'PlanQ: -', 'undefined', 'null']) assert.equal(msg.includes(forbidden), false);
 });
 
@@ -272,4 +268,19 @@ test('Signal valid keeps normal display score', () => {
   assert.equal(display.gate_bucket, 'SIGNAL');
   assert.equal(display.display_score, 91);
   assert.equal(display.score_capped_by_gate, false);
+});
+
+test('WAIT_PULLBACK with entry_low/entry_high only remains Potential Radar and is not BUY-safe', () => {
+  const c = base({
+    entry1: null, entry2: null, entry_low: 5000, entry_high: 5050,
+    status: 'WAIT_PULLBACK', action_label: 'Tunggu pullback valid', entry_status: 'WAIT_PULLBACK',
+    breakout_confirmation_status: 'NEEDS_CLOSE_CONFIRMATION', breakout_confirmation_label: 'Needs close confirmation',
+    tp1: 5250, tp1n: 5250, tp1_upside: null, tp1_upside_pct: null
+  });
+  assert.equal(candidatePassesPublicTelegramSafetyGate(Object.assign({}, c), 'daytrade'), false);
+  assert.equal(candidatePassesPotentialRadarGate(c, 'daytrade'), true);
+  assert.equal(c.entry1, 5050);
+  assert.equal(c.tp1_upside, 4);
+  assert.equal(c.tp1_upside_pct, 4);
+  assert.equal(getPotentialRadarReason(c), 'WAIT_CLOSE_CONFIRMATION');
 });

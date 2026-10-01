@@ -28,9 +28,15 @@ Saat pertama kali menjalankan menu, kamu akan diminta:
 
 | Input | Keterangan | Contoh |
 |-------|-----------|--------|
-| API Base URL | URL deployment Vercel | `https://auto-cuan-xxxx.vercel.app` |
-| CRON_SECRET | Secret dari Vercel Env Variables | (tersembunyi saat diketik) |
+| API Base URL | URL VPS daemon (WAJIB untuk scan berat) | `http://127.0.0.1:3000` |
+| CRON_SECRET | Secret dari Env Variables | (tersembunyi saat diketik) |
 | Bypass Token | Opsional — kosongkan jika tidak perlu | (kosong) |
+
+> **Batch 8:** scan berat (`konglo`, `nonkonglo`, `swing-all`, `daytrade`,
+> `sektor-hot`, `refresh-all`) menembak 150-175 ticker. Origin `*.vercel.app`
+> akan **ditolak** (HTTP 403 `DEPRECATED_ON_SERVERLESS`) karena invocation
+> serverless mati di tengah scan dan meninggalkan data parsial. Arahkan
+> `API_BASE_URL` ke daemon VPS. Perintah read-only tetap aman di kedua origin.
 
 Nilai disimpan di: `%USERPROFILE%\.auto-cuan-scan.env`
 (di luar repo, tidak pernah ter-commit)
@@ -125,3 +131,71 @@ Day Trade auto loop tidak akan memulai scan baru pada jam istirahat:
 - Jumat: 11:30-14:00 WIB
 
 Kalau jadwal next run jatuh di jam istirahat, runner otomatis menunggu sampai jam istirahat selesai, lalu lanjut lagi.
+
+## Safe VPS manual runner (09:15 WIB preparation)
+
+The VPS orchestrator is read-only unless `--execute` is explicit.  It always keeps
+`DAYTRADE_INTRADAY_SCORE_ENABLED=false`; Phase 7 is observation-only and never
+changes environment flags, cron, webhook, or production intraday scoring.
+
+**Batch 8 — VPS-local only.** The runner no longer defaults to the deployed Vercel
+origin; it targets `http://127.0.0.1:3000` (the VPS daemon) unless `APP_BASE_URL` or
+`VPS_LOCAL_BASE_URL` overrides it. `--execute` against a `*.vercel.app` host is
+refused outright, because `api/sector-hot.js` answers HTTP 403
+`DEPRECATED_ON_SERVERLESS` for heavy screener actions on a serverless runtime.
+Dry-runs stay allowed for inspection.
+
+```bash
+# Plan/status only: no mutating endpoints and no Telegram sends.
+node tools/run-all-screeners-vps.js --dry-run
+
+# Run screeners and generate Top 5 dry-run output (no Telegram send).
+node tools/run-all-screeners-vps.js --execute
+
+# Run screeners and permit Telegram only after readiness passes.
+node tools/run-all-screeners-vps.js --execute --send
+
+# Later 09:15 preflight plus intraday observation only (not production scoring).
+node tools/run-all-screeners-vps.js --dry-run --include-intraday-dry-run
+```
+
+The orchestration sequence is Swing Konglo, Swing Non-Konglo, Day Trade, Top 5,
+Top 5 Progress, snapshot materialization, then optional intraday observation.
+It reads screener status before mutating runs, but it does NOT sync
+`stock_boards` automatically. Official board XLSX synchronization remains the
+separate, explicit dry-run/apply workflow documented below. FCA transition
+suspensions are fail-closed and are not cleared merely by a board sync. A stale
+Non-Konglo scan requires `--resume-stale` or `--force`.
+
+## Exact official board scope
+
+```bash
+# Report official totals and stale UTAMA/PENGEMBANGAN rows; no writes.
+python3 tools/sync-stock-boards-from-bei-xlsx.py --utama /data/Utama.xlsx --pengembangan /data/Pengembangan.xlsx --replace-official-board-scope
+
+# Explicitly upsert official rows and deactivate stale scope rows (or delete only
+# when the table lacks is_active, with a warning).
+python3 tools/sync-stock-boards-from-bei-xlsx.py --utama /data/Utama.xlsx --pengembangan /data/Pengembangan.xlsx --replace-official-board-scope --apply
+```
+
+
+## FCA-92 Konglo ownership audit
+
+Use the local 31-Aug-2026 market-structure snapshot to review the 92 Sep-2026
+FCA exits against the versioned Konglo mapping:
+
+```bash
+node tools/audit-fca-92-konglo-ownership.js \
+  > /home/ubuntu/auto-cuan-runner/fca-92-konglo-audit-v2.txt
+```
+
+The audit is read-only. It excludes nominee/custody/passive institutional
+holders from controller inference and requires material controller evidence.
+Existing curated mappings are retained; unresolved names must stay unresolved
+until stronger controller evidence is available.
+
+For the FCA-92 review completed on 2026-09-30, IBST was added to
+`DJARUM_HARTONO_AFFILIATE` and SMCB to
+`BUMN_ENERGI_SEMEN_FARMA_TRANSPORT`. SKYB remains unresolved because the
+available ownership/public evidence was not strong enough to justify a curated
+group mapping.

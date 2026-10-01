@@ -1,0 +1,103 @@
+{
+  "success": true,
+  "from_cache": true,
+  "broker": "OD",
+  "broker_name": "BRI Danareksa Sekuritas",
+  "range": "30d",
+  "target_dates": [
+    "2026-09-07",
+    "2026-09-04",
+    "2026-09-03",
+    "2026-09-02",
+    "2026-09-01",
+    "2026-08-28",
+    "2026-08-27",
+    "2026-08-26",
+    "2026-08-25",
+    "2026-08-22",
+    "2026-08-21",
+    "2026-08-20",
+    "2026-08-19",
+    "2026-08-18",
+    "2026-08-15",
+    "2026-08-14",
+    "2026-08-13",
+    "2026-08-12",
+    "2026-08-11",
+    "2026-08-08",
+    "2026-08-07",
+    "2026-08-04"
+  ],
+  "date_range_label": "2026-08-04 s/d 2026-09-07 (22 Hari Bursa)",
+  "generated_at": "2026-09-08T00:00:00.000Z",
+  "top_accumulated": [
+    {
+      "ticker": "BBRI",
+      "net_val": 501600000000,
+      "net_vol": 97398400,
+      "net_lot": 973984,
+      "buy_val": 686400000000,
+      "sell_val": 184800000000,
+      "buy_vol": 133280400,
+      "sell_vol": 35882000,
+      "avg_buy_price": 5150,
+      "avg_sell_price": 5150,
+      "days_active": 20
+    },
+    {
+      "ticker": "BMRI",
+      "net_val": 433400000000,
+      "net_vol": 61041200,
+      "net_lot": 610412,
+      "buy_val": 589600000000,
+      "sell_val": 156200000000,
+      "buy_vol": 83041200,
+      "sell_vol": 22000000,
+      "avg_buy_price": 7100,
+      "avg_sell_price": 7100,
+      "days_active": 20
+    },
+    {
+      "ticker": "PGAS",
+      "net_val": 319000000000,
+      "net_vol": 207143200,
+      "net_lot": 2071432,
+      "buy_val": 426800000000,
+      "sell_val": 107800000000,
+      "buy_vol": 277142800,
+      "sell_vol": 69999600,
+      "avg_buy_price": 1540,
+      "avg_sell_price": 1540,
+      "days_active": 20
+    }
+  ],
+  "top_distributed": [
+    {
+      "ticker": "GOTO",
+      "net_val": -250800000000,
+      "net_vol": -4324137400,
+      "net_lot": -43241374,
+      "buy_val": 52800000000,
+      "sell_val": 303600000000,
+      "buy_vol": 910344600,
+      "sell_vol": 5234482000,
+      "avg_buy_price": 58,
+      "avg_sell_price": 58,
+      "days_active": 20
+    },
+    {
+      "ticker": "BUKA",
+      "net_val": -162800000000,
+      "net_vol": -1356665200,
+      "net_lot": -13566652,
+      "buy_val": 33000000000,
+      "sell_val": 195800000000,
+      "buy_vol": 275000000,
+      "sell_vol": 1631665200,
+      "avg_buy_price": 120,
+      "avg_sell_price": 120,
+      "days_active": 20
+    }
+  ],
+  "total_stocks_active": 5
+}
