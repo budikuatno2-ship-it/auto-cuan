@@ -209,6 +209,8 @@ async function run(argv) {
 
   const resolved = resolveTargetDate({ dateArg: dateFromArg });
   const dateArg = resolved.targetDate;
+  const executionDate = String(process.env.AUTO_CUAN_EOD_TEST_TODAY || getJakartaDateString()).slice(0, 10);
+  const historicalTarget = /^\d{4}-\d{2}-\d{2}$/.test(dateArg) && dateArg < executionDate;
 
   if (resolved.shifted) {
     console.log(`[SAFETY GUARD] Script dieksekusi sebelum pukul 16:30 WIB (${resolved.timeString} WIB) tanpa argumen --date.`);
@@ -242,6 +244,9 @@ async function run(argv) {
   console.log(`Target Date (WIB): ${dateArg}`);
   console.log(`Total Tickers: ${tickers.length}`);
   console.log(`Mode: ${dryRun ? 'DRY-RUN' : (isFresh ? 'LIVE (FRESH OVERWRITE)' : 'LIVE')}${isFinal ? ' (FINAL ATTEMPT for tonight)' : ''}`);
+  if (historicalTarget) {
+    console.log('Historical safety: broker-summary only; accumulation/insider snapshot endpoints are not date-addressable and will not be backfilled.');
+  }
   console.log(`Daily Quota: ${dailyLimit} | Already used today (cross-process, all scripts): ${arjumClient.getUsedQuotaToday()}`);
   console.log('----------------------------------------------------');
 
@@ -366,7 +371,7 @@ async function run(argv) {
 
     // 2-3. Reuse successful dated auxiliary caches, retry failed/missing ones.
     // Dry-run keeps counting the historical three-request worst case.
-    if (shouldRefreshAuxiliary || dryRun) {
+    if ((shouldRefreshAuxiliary || dryRun) && !historicalTarget) {
       if (!dryRun && (isFresh || !bandarmologiService.readDiskCache('broker-accumulation', ticker, dateArg))) {
         if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
         totalRequested++;
@@ -408,7 +413,7 @@ async function run(argv) {
 
   const terminalCount = doneCount + confirmedNoDataCount;
   const remaining = tickers.length - terminalCount;
-  const auxiliaryComplete = tickers.every(ticker =>
+  const auxiliaryComplete = historicalTarget ? true : tickers.every(ticker =>
     bandarmologiService.readDiskCache('broker-accumulation', ticker, dateArg) &&
     bandarmologiService.readDiskCache('insiders', ticker, dateArg));
   const complete = !dryRun && tickers.length > 0 && remaining === 0 && auxiliaryComplete && auxiliaryPending === 0 && errorCount === 0 && !quotaReached;
@@ -448,6 +453,8 @@ async function run(argv) {
       completed_at: new Date().toISOString(),
       broker_summary_rows: doneCount,
       no_data: confirmedNoDataCount,
+      auxiliary_mode: historicalTarget ? 'historical_snapshot_not_backfillable' : 'same_day_required',
+      auxiliary_complete: historicalTarget ? null : auxiliaryComplete,
       total_tickers: tickers.length
     });
     console.log(`Status: SELESAI — ${doneCount} ticker punya broker summary dan ${confirmedNoDataCount} ticker terkonfirmasi NO_DATA untuk ${dateArg}.`);
@@ -463,6 +470,8 @@ async function run(argv) {
     pending: pendingCount,
     no_data: confirmedNoDataCount,
     errors: errorCount,
+    auxiliary_mode: historicalTarget ? 'historical_snapshot_not_backfillable' : 'same_day_required',
+    auxiliary_complete: historicalTarget ? null : auxiliaryComplete,
     total_tickers: tickers.length
   });
 
