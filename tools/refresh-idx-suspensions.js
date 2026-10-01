@@ -110,7 +110,20 @@ function parseEventTime(row) {
 }
 
 function seedState(previous) {
-  const byTicker = Object.assign({}, previous && previous.by_ticker || {});
+  const byTicker = {};
+  const previousRows = previous && previous.by_ticker && typeof previous.by_ticker === 'object'
+    ? previous.by_ticker
+    : {};
+
+  // Only carry forward verified SUSPENDED states. Carrying an old ACTIVE state
+  // into a newly fetched snapshot would accidentally make that opening look
+  // fresh again even when IDX did not re-confirm it in the current payload.
+  for (const [ticker, row] of Object.entries(previousRows)) {
+    if (guard.normalizeStatus(row && row.status) !== 'SUSPENDED') continue;
+    const clean = guard.normalizeTicker(ticker || row.ticker);
+    if (clean) byTicker[clean] = Object.assign({}, row, { ticker: clean, status: 'SUSPENDED' });
+  }
+
   const seedDate = String(manifest.status_date || manifest.generated_at || '2026-09-25').slice(0, 10);
   for (const ticker of (manifest.suspended_as_of_status_date || [])) {
     const clean = guard.normalizeTicker(ticker);
@@ -121,18 +134,6 @@ function seedState(previous) {
         event_at: seedDate + 'T00:00:00+07:00',
         source: 'fca_transition_2026_seed',
         evidence: 'suspended_as_of_status_date'
-      };
-    }
-  }
-  for (const ticker of (manifest.active_as_of_status_date || [])) {
-    const clean = guard.normalizeTicker(ticker);
-    if (!byTicker[clean]) {
-      byTicker[clean] = {
-        ticker: clean,
-        status: 'ACTIVE',
-        event_at: seedDate + 'T00:00:00+07:00',
-        source: 'fca_transition_2026_seed',
-        evidence: 'active_as_of_status_date'
       };
     }
   }
@@ -269,6 +270,69 @@ function atomicWrite(filePath, value) {
   fs.writeFileSync(temp, JSON.stringify(value, null, 2) + '\n', 'utf8');
   fs.renameSync(temp, filePath);
 }
+function buildDegradedBootstrapSnapshot(error, options) {
+  options = options || {};
+  const seedDate = String(manifest.status_date || manifest.generated_at || '2026-09-25').slice(0, 10);
+  const seedStamp = new Date(seedDate + 'T00:00:00+07:00').toISOString();
+  const byTicker = seedState(null);
+  const states = Object.values(byTicker);
+  return {
+    schema_version: 1,
+    source: 'FCA_TRANSITION_SUSPENDED_SEED_DEGRADED',
+    endpoint: ENDPOINT,
+    degraded: true,
+    fetched_at: seedStamp,
+    last_attempt_at: (options.now || new Date()).toISOString(),
+    latest_event_at: seedStamp,
+    feed_row_count: 0,
+    parsed_event_count: 0,
+    applied_event_count: 0,
+    skipped_unsafe_opening_count: 0,
+    feed_error: String(error && error.message || error || 'IDX suspension feed unavailable'),
+    suspended_count: states.length,
+    active_count: 0,
+    by_ticker: byTicker
+  };
+}
+
+function handleFetchFailure(previous, filePath, error, options) {
+  options = options || {};
+  const dryRun = !!options.dryRun;
+  const now = options.now || new Date();
+
+  if (previous) {
+    const rows = Object.values(previous.by_ticker || {});
+    console.log(JSON.stringify({
+      mode: dryRun ? 'DRY_RUN_DEGRADED_PRESERVE' : 'DEGRADED_PRESERVE',
+      state_path: filePath,
+      fetched_at: previous.fetched_at || null,
+      last_attempt_at: now.toISOString(),
+      fresh: guard.isSnapshotFresh(previous, { now }),
+      feed_error: String(error && error.message || error),
+      suspended: rows.filter((row) => guard.normalizeStatus(row && row.status) === 'SUSPENDED').length,
+      active: rows.filter((row) => guard.normalizeStatus(row && row.status) === 'ACTIVE').length
+    }, null, 2));
+    return previous;
+  }
+
+  const bootstrap = buildDegradedBootstrapSnapshot(error, { now });
+  if (!dryRun) {
+    atomicWrite(filePath, bootstrap);
+    guard.resetCache();
+  }
+  console.log(JSON.stringify({
+    mode: dryRun ? 'DRY_RUN_DEGRADED_BOOTSTRAP' : 'DEGRADED_BOOTSTRAP',
+    state_path: filePath,
+    fetched_at: bootstrap.fetched_at,
+    last_attempt_at: bootstrap.last_attempt_at,
+    fresh: false,
+    feed_error: bootstrap.feed_error,
+    suspended: bootstrap.suspended_count,
+    active: bootstrap.active_count
+  }, null, 2));
+  return bootstrap;
+}
+
 
 async function main(options) {
   options = options || {};
@@ -278,10 +342,24 @@ async function main(options) {
   const previous = guard.readSnapshot(options);
   const validTickers = options.validTickers || loadValidTickers(options.rootDir);
 
-  const payload = options.payload || await fetchSuspendPayload(options.fetch, options);
+  let payload;
+  try {
+    payload = options.payload || await fetchSuspendPayload(options.fetch, options);
+  } catch (error) {
+    return handleFetchFailure(previous, filePath, error, {
+      dryRun: options.dryRun,
+      now
+    });
+  }
+
   const rows = findEventRows(payload);
   if (!rows.length) {
-    throw new Error('IDX suspension feed tidak memiliki event rows; snapshot lama dipertahankan.');
+    return handleFetchFailure(
+      previous,
+      filePath,
+      new Error('IDX suspension feed tidak memiliki event rows'),
+      { dryRun: options.dryRun, now }
+    );
   }
 
   const applied = applyEvents(previous, rows, { fetchedAt, validTickers });
@@ -291,7 +369,10 @@ async function main(options) {
     schema_version: 1,
     source: 'IDX_PUBLIC_PRIMARY_HOME_GETSUSPENDDATA',
     endpoint: ENDPOINT,
+    degraded: false,
     fetched_at: fetchedAt,
+    last_attempt_at: fetchedAt,
+    feed_error: null,
     latest_event_at: latestEventAt,
     feed_row_count: rows.length,
     parsed_event_count: applied.parsedEvents.length,
@@ -344,5 +425,7 @@ module.exports = {
   applyEvents,
   fetchSuspendPayload,
   atomicWrite,
+  buildDegradedBootstrapSnapshot,
+  handleFetchFailure,
   main
 };

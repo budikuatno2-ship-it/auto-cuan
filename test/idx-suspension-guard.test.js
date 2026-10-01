@@ -99,3 +99,76 @@ test('fresh official suspension blocks ordinary ticker and fresh opening can rea
   delete process.env.AUTO_CUAN_SUSPENSION_STATE_PATH;
   guard.resetCache();
 });
+
+
+test('seedState carries forward only suspended rows, never stale active rows', () => {
+  const out = refresh.seedState({
+    by_ticker: {
+      BBCA: { ticker: 'BBCA', status: 'SUSPENDED', event_at: '2026-09-30T02:00:00.000Z' },
+      TLKM: { ticker: 'TLKM', status: 'ACTIVE', event_at: '2026-09-30T03:00:00.000Z' }
+    }
+  });
+
+  assert.equal(out.BBCA.status, 'SUSPENDED');
+  assert.equal(out.TLKM, undefined);
+});
+
+test('403-style fetch failure bootstraps degraded suspended-only state without marking it fresh', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'suspension-degraded-'));
+  const state = path.join(dir, 'state.json');
+
+  const out = await refresh.main({
+    statePath: state,
+    now: new Date('2026-10-01T02:30:00.000Z'),
+    fetch: async () => ({
+      ok: false,
+      status: 403,
+      headers: {
+        get() { return null; },
+        getSetCookie() { return []; }
+      },
+      async text() { return 'Forbidden'; }
+    })
+  });
+
+  assert.equal(out.degraded, true);
+  assert.equal(out.active_count, 0);
+  assert.ok(out.suspended_count > 0);
+  assert.match(out.feed_error, /403/);
+
+  const health = guard.health({
+    statePath: state,
+    now: new Date('2026-10-01T02:30:00.000Z')
+  });
+
+  assert.equal(health.available, true);
+  assert.equal(health.fresh, false);
+});
+
+test('fetch failure preserves an existing snapshot instead of rewriting freshness', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'suspension-preserve-'));
+  const state = path.join(dir, 'state.json');
+  const fetchedAt = '2026-09-30T02:00:00.000Z';
+
+  writeState(state, {
+    source: 'fixture',
+    fetched_at: fetchedAt,
+    by_ticker: {
+      BBCA: { ticker: 'BBCA', status: 'SUSPENDED', event_at: fetchedAt }
+    }
+  });
+
+  const out = await refresh.main({
+    statePath: state,
+    now: new Date('2026-10-01T02:30:00.000Z'),
+    fetch: async () => {
+      throw new Error('IDX session HTTP 403');
+    }
+  });
+
+  assert.equal(out.fetched_at, fetchedAt);
+
+  const persisted = JSON.parse(fs.readFileSync(state, 'utf8'));
+  assert.equal(persisted.fetched_at, fetchedAt);
+  assert.equal(persisted.by_ticker.BBCA.status, 'SUSPENDED');
+});
