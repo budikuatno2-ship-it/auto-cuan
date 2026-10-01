@@ -9,7 +9,7 @@ function writeState(date,state){
   const temp=p+'.'+process.pid+'.tmp';fs.writeFileSync(temp,JSON.stringify(state,null,2));fs.renameSync(temp,p);
 }
 function pendingDates(now=new Date()){
-  const {dateKey,hour}=broker.getJakartaTimeInfo(now);
+  const {dateKey,hour,minute}=broker.getJakartaTimeInfo(now);
   const holidays=calendar.getSeedHolidaySet();
 
   // Hard guard in addition to crontab: EOD work is allowed only from 18:00 WIB
@@ -52,7 +52,9 @@ async function run(options={}){
     let brokerOk=false,candleOk=false;
     try{
       process.exitCode=undefined;
-      const result=await broker.run(['--date',date]);
+      const brokerArgs=['--date',date];
+      if(hour===23 && minute>=30)brokerArgs.push('--final');
+      const result=await broker.run(brokerArgs);
       const marker=broker.readMarker(date);
       brokerOk=Boolean(result&&result.skipped || marker&&marker.version===2&&marker.complete);
     }catch(error){console.error('BROKER_RETRY_PENDING',date,error.message);}
