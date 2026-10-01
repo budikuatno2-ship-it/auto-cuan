@@ -205,7 +205,7 @@
       userId = String(data.user_id); sheet = normalized; notes = String(data.data.notes || ''); revision = data.data.revision;
       lastSaveError = false; saved = encode(); undo = []; redo = []; invalid.clear(); rowNodes.clear(); editBefore = null;
       $('mmCashflowNotes').value = notes; loading = false; $('mmSheetViewport').hidden = false;
-      renderRows(null, true); refreshPortfolio(true);
+      renderRows(null, true);
     } catch (error) {
       if (gen !== generation) return;
       loading = false;
@@ -428,10 +428,11 @@
     });
     doc.addEventListener('keydown', onKey);
     root.addEventListener('beforeunload', event => { if (dirty() || saving) { event.preventDefault(); event.returnValue = ''; } });
-    root.addEventListener('autocuan:portfolio-changed', event => { if (!event.detail || event.detail.userId === userId) queuePortfolio(); });
-    root.addEventListener('autocuan:portfolio-synced', event => { if (!event.detail || event.detail.userId === userId) { portfolioAt = 0; queuePortfolio(); } });
-    root.addEventListener('storage', event => { if (event.key === 'autocuan_user_id' && event.newValue !== userId) reset(); else if (userId && event.key && event.key.startsWith('autocuan_portfolio_') && event.key.includes(userId)) queuePortfolio(); });
-    root.addEventListener('focus', () => { if (visible() && userId) { if (sessionId() !== userId) reset(); else refreshPortfolio(false); } });
+    // Kelola Keuangan is intentionally independent from Portofolio. The old
+    // listeners reloaded the cloud portfolio summary on focus and every
+    // portfolio mutation, creating unrelated network/paint work on this page.
+    root.addEventListener('storage', event => { if (event.key === 'autocuan_user_id' && event.newValue !== userId) reset(); });
+    root.addEventListener('focus', () => { if (visible() && userId && sessionId() !== userId) reset(); });
   }
   function reset() {
     generation++; requests.forEach(c => c.abort()); requests.clear();
@@ -449,7 +450,6 @@
     bind();
     if (userId && sessionId() !== userId) reset();
     if (!sheet && !loading) return load(month, true);
-    if (sheet) refreshPortfolio(true);
   }
   root.initMoneyManagement = init;
   root.AutoCuanMoneySheet = { init, reset, hasUnsaved: dirty, refreshPortfolio, save };
