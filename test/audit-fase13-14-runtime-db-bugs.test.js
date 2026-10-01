@@ -120,11 +120,11 @@ test('F13-05: final-schedule.cron declares CRON_TZ and each command uses node ru
   }
 });
 
-test('F13-05b: broker retries persist without a final cutoff', () => {
+test('F13-05b: EOD retries stay inside trading evenings without a final cutoff', () => {
  const raw=fs.readFileSync(path.join(__dirname,'..','deploy/vps/final-schedule.cron'),'utf8');
  const lines=raw.split('\n').filter(l=>!l.trim().startsWith('#')&&l.includes('run-daily-market-update.sh'));
  assert.equal(lines.length,1);
- assert.match(lines[0],/^0,30\s+\*\s+\*\s+\*\s+\*\s+/);
+ assert.match(lines[0],/^0,30\s+18-23\s+\*\s+\*\s+1-5\s+/);
  assert.doesNotMatch(raw.split('\n').filter(l=>!l.trim().startsWith('#')).join('\n'),/--final|run-daily-broker-update\.sh/);
 });
 
@@ -295,9 +295,10 @@ test('F13-05c: active IDX master universe is 962 tickers and includes July 2026 
   assert.equal(uniq.has('CNTX'), false, 'CNTX is not present in the owner-supplied 2026-09-29 master list');
 });
 
-test('F13-05d: candles share the durable EOD coordinator and quota budget', () => {
+test('F13-05d: candles share the trading-day EOD coordinator and quota budget', () => {
  const raw=fs.readFileSync(path.join(__dirname,'..','tools/run-daily-market-update.js'),'utf8');
  assert.match(raw,/candles\.main\(\{targetDate:date\}\)/);
- assert.match(raw,/hour>=18/);
+ assert.match(raw,/hour<18/);
+ assert.match(raw,/calendar\.isTradingDay\(dateKey,holidays\)/);
  assert.doesNotMatch(raw,/--limit|--final/);
 });
