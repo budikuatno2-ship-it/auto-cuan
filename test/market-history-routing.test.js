@@ -34,40 +34,59 @@ function tempDb() {
 }
 
 test('ROUTING-A: production daily-market-update context resolves to VPS SQLite store', () => {
-  const env = {
-    AUTO_CUAN_MARKET_DATA_VPS: '1',
-    NODE_ENV: 'production'
-  };
-  const resolved = sync.resolveSyncClient(env);
-  assert.equal(resolved.store, 'vps_sqlite');
-  assert.ok(resolved.client, 'must return a valid VpsMarketStore client');
+  const tmp = tempDb();
+  try {
+    const env = {
+      AUTO_CUAN_MARKET_DATA_VPS: '1',
+      AUTO_CUAN_MARKET_DB: tmp.file,
+      NODE_ENV: 'production'
+    };
+    const resolved = sync.resolveSyncClient(env);
+    assert.equal(resolved.store, 'vps_sqlite');
+    assert.ok(resolved.client, 'must return a valid VpsMarketStore client');
+  } finally {
+    fs.rmSync(tmp.dir, { recursive: true, force: true });
+  }
 });
 
 test('ROUTING-B: production lifecycle evaluator context initializes VPS SQLite store', () => {
-  const evaluator = require('../tools/run-lifecycle-evaluator');
-  assert.equal(typeof evaluator.loadEnv, 'function');
-  assert.equal(typeof evaluator.main, 'function');
+  const tmp = tempDb();
+  try {
+    const evaluator = require('../tools/run-lifecycle-evaluator');
+    assert.equal(typeof evaluator.loadEnv, 'function');
+    assert.equal(typeof evaluator.main, 'function');
 
-  // When AUTO_CUAN_MARKET_DATA_VPS is 1, hybrid client enables VPS store
-  const env = {
-    AUTO_CUAN_MARKET_DATA_VPS: '1',
-    SUPABASE_URL: 'https://example.supabase.co',
-    SUPABASE_SERVICE_ROLE_KEY: 'test-key'
-  };
-  assert.equal(marketDataVpsEnabled(env), true);
+    // When AUTO_CUAN_MARKET_DATA_VPS is 1, hybrid client enables VPS store
+    const env = {
+      AUTO_CUAN_MARKET_DATA_VPS: '1',
+      AUTO_CUAN_MARKET_DB: tmp.file,
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_SERVICE_ROLE_KEY: 'test-key'
+    };
+    assert.equal(marketDataVpsEnabled(env), true);
 
-  const dummyRemote = {
-    from(table) {
-      return { _source: 'remote', table };
+    const dummyRemote = {
+      from(table) {
+        return { _source: 'remote', table };
+      }
+    };
+    const prevDb = process.env.AUTO_CUAN_MARKET_DB;
+    process.env.AUTO_CUAN_MARKET_DB = tmp.file;
+    try {
+      const hybridized = hybridizeClient(dummyRemote, env);
+      assert.equal(hybridized.__marketDataVpsEnabled, true);
+
+      // stock_daily_history is routed locally to VpsMarketStore
+      const historyQuery = hybridized.from('stock_daily_history');
+      assert.equal(typeof historyQuery.select, 'function');
+      assert.notEqual(historyQuery._source, 'remote');
+    } finally {
+      if (prevDb == null) delete process.env.AUTO_CUAN_MARKET_DB;
+      else process.env.AUTO_CUAN_MARKET_DB = prevDb;
     }
-  };
-  const hybridized = hybridizeClient(dummyRemote, env);
-  assert.equal(hybridized.__marketDataVpsEnabled, true);
-
-  // stock_daily_history is routed locally to VpsMarketStore
-  const historyQuery = hybridized.from('stock_daily_history');
-  assert.equal(typeof historyQuery.select, 'function');
-  assert.notEqual(historyQuery._source, 'remote');
+  } finally {
+    fs.rmSync(tmp.dir, { recursive: true, force: true });
+  }
 });
 
 test('ROUTING-C: PM2 ecosystem config explicitly sets AUTO_CUAN_MARKET_DATA_VPS=1 for active daemons', () => {
@@ -113,30 +132,45 @@ test('ROUTING-E: routing flag false/unset in non-production test provides docume
 });
 
 test('ROUTING-F: market-data routing affects only registered MARKET_TABLES; others remain Supabase', () => {
-  assert.equal(MARKET_TABLES.has('stock_daily_history'), true);
-  assert.equal(MARKET_TABLES.has('telegram_daily_picks'), true);
-  assert.equal(MARKET_TABLES.has('app_users'), false);
-  assert.equal(MARKET_TABLES.has('user_entitlements'), false);
+  const tmp = tempDb();
+  try {
+    assert.equal(MARKET_TABLES.has('stock_daily_history'), true);
+    assert.equal(MARKET_TABLES.has('telegram_daily_picks'), true);
+    assert.equal(MARKET_TABLES.has('app_users'), false);
+    assert.equal(MARKET_TABLES.has('user_entitlements'), false);
 
-  const env = { AUTO_CUAN_MARKET_DATA_VPS: '1' };
-  let remoteCalls = [];
-  const dummyRemote = {
-    from(table) {
-      remoteCalls.push(table);
-      return { _source: 'remote', table };
+    const env = {
+      AUTO_CUAN_MARKET_DATA_VPS: '1',
+      AUTO_CUAN_MARKET_DB: tmp.file
+    };
+    let remoteCalls = [];
+    const dummyRemote = {
+      from(table) {
+        remoteCalls.push(table);
+        return { _source: 'remote', table };
+      }
+    };
+
+    const prevDb = process.env.AUTO_CUAN_MARKET_DB;
+    process.env.AUTO_CUAN_MARKET_DB = tmp.file;
+    try {
+      const client = hybridizeClient(dummyRemote, env);
+
+      // Market table -> intercepted by local store
+      const marketQuery = client.from('stock_daily_history');
+      assert.equal(remoteCalls.includes('stock_daily_history'), false, 'stock_daily_history must NOT hit remote Supabase');
+
+      // Non-market table -> passes through to remote Supabase
+      const appUsersQuery = client.from('app_users');
+      assert.equal(remoteCalls.includes('app_users'), true, 'app_users must hit remote Supabase');
+      assert.equal(appUsersQuery._source, 'remote');
+    } finally {
+      if (prevDb == null) delete process.env.AUTO_CUAN_MARKET_DB;
+      else process.env.AUTO_CUAN_MARKET_DB = prevDb;
     }
-  };
-
-  const client = hybridizeClient(dummyRemote, env);
-
-  // Market table -> intercepted by local store
-  const marketQuery = client.from('stock_daily_history');
-  assert.equal(remoteCalls.includes('stock_daily_history'), false, 'stock_daily_history must NOT hit remote Supabase');
-
-  // Non-market table -> passes through to remote Supabase
-  const appUsersQuery = client.from('app_users');
-  assert.equal(remoteCalls.includes('app_users'), true, 'app_users must hit remote Supabase');
-  assert.equal(appUsersQuery._source, 'remote');
+  } finally {
+    fs.rmSync(tmp.dir, { recursive: true, force: true });
+  }
 });
 
 test('ROUTING-G (Section 13 Unity): writer and reader share the identical VPS SQLite store', async () => {
