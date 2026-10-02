@@ -8,6 +8,7 @@
 // A *.vercel.app host is refused before --execute-lock can mutate anything.
 const fs = require('node:fs');
 const path = require('node:path');
+// Repository env files, highest-first (this loader is FIRST-WINS).
 const ENV_FILES = ['.env.local', '.env.intraday-runtime', '.env'];
 const DEFAULT_BASE_URL = 'http://127.0.0.1:3000';
 const SERVERLESS_HOST_PATTERN = /(^|\.)vercel\.app$/i;
@@ -19,9 +20,13 @@ const ALREADY_LOCKED_REASONS = new Set(['already_locked_dry_run', 'already_locke
 function loadEnvFiles(options) {
   const cwd = (options && options.cwd) || process.cwd();
   const env = (options && options.env) || process.env;
-  for (const name of ENV_FILES) {
+  // BUG-RT-02: first-wins loader — the runner-owned .env is consulted FIRST so
+  // it overrides repository/local-development values.
+  const runnerDir = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
+  const orderedFiles = [path.join(runnerDir, '.env'), ...ENV_FILES.map((name) => path.join(cwd, name))];
+  for (const filePath of orderedFiles) {
     let content;
-    try { content = fs.readFileSync(path.join(cwd, name), 'utf8'); } catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    try { content = fs.readFileSync(filePath, 'utf8'); } catch (error) { if (error.code === 'ENOENT') continue; throw error; }
     for (const line of content.split(/\r?\n/)) {
       const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
       if (!match || Object.prototype.hasOwnProperty.call(env, match[1])) continue;
@@ -32,6 +37,7 @@ function loadEnvFiles(options) {
     }
   }
 }
+
 
 function isServerlessHost(baseUrl) {
   try { return SERVERLESS_HOST_PATTERN.test(new URL(baseUrl).hostname); } catch (error) { return false; }

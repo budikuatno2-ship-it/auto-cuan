@@ -3,6 +3,7 @@ const fs=require('fs'),path=require('path');
 const broker=require('./run-daily-broker-update');
 const candles=require('./fetch-daily-candles');
 const calendar=require('../lib/idx-trading-calendar');
+const historySync=require('../lib/daily-history-sqlite-sync');
 function stateDir(){return path.join(path.dirname(path.dirname(broker.markerPath('unused'))),'_daily-market-update');}
 function writeState(date,state){
   const p=path.join(stateDir(),date+'.json');fs.mkdirSync(stateDir(),{recursive:true});
@@ -44,12 +45,18 @@ function pendingDates(now=new Date()){
 }
 async function run(options={}){
   const dryRun=options.dryRun===true;
-  const {hour,minute}=broker.getJakartaTimeInfo(options.now || new Date());
+  const now=options.now || new Date();
+  const {hour,minute}=broker.getJakartaTimeInfo(now);
   const dates=pendingDates(options.now);
+  // BUG-3C-03: the flat-file candle stage alone is not success. The canonical
+  // SQLite stock_daily_history must also be synchronized (rolling window of
+  // recent trading sessions) or lifecycle consumers keep skipping history.
+  // Injectable for tests; production uses the real bounded sync.
+  const syncHistory=options.syncHistory || historySync.syncRecentHistoryToSqlite;
   for(const date of dates){
     if(!dryRun)writeState(date,{date,complete:false,updated_at:new Date().toISOString()});
     if(dryRun){console.log('PENDING_MARKET_DATE='+date);continue;}
-    let brokerOk=false,candleOk=false;
+    let brokerOk=false,candleOk=false,historyOk=false;
     try{
       process.exitCode=undefined;
       const brokerArgs=['--date',date];
@@ -62,7 +69,14 @@ async function run(options={}){
       const result=await candles.main({targetDate:date});
       candleOk=result.skipped===true || (result.universe>0 && !result.quota_stop && result.failed===0 && result.cached+result.fetched===result.universe);
     }catch(error){console.error('CANDLE_RETRY_PENDING',date,error.message);}
-    writeState(date,{date,complete:brokerOk&&candleOk,broker_complete:brokerOk,candle_complete:candleOk,updated_at:new Date().toISOString()});
+    if(candleOk){
+      try{
+        const result=await syncHistory({now});
+        historyOk=Boolean(result&&result.ok);
+        if(!historyOk)console.error('HISTORY_SYNC_RETRY_PENDING',date,'reason='+(result&&result.reason||'unknown'));
+      }catch(error){console.error('HISTORY_SYNC_RETRY_PENDING',date,error.message);}
+    }
+    writeState(date,{date,complete:brokerOk&&candleOk&&historyOk,broker_complete:brokerOk,candle_complete:candleOk,history_complete:historyOk,updated_at:new Date().toISOString()});
   }
   process.exitCode=undefined;
   if(!dryRun&&pendingDates(options.now).some(date=>{

@@ -30,14 +30,16 @@ export TZ=Asia/Jakarta
 
 mkdir -p "$RUNNER_DIR/state" "$RUNNER_DIR/logs"
 
-# Load environment files (runner-level first, then repo-level overrides like .env.local)
-for env_file in "$RUNNER_DIR/.env" "$REPO/.env" "$REPO/.env.intraday-runtime" "$REPO/.env.local"; do
-  if [ -f "$env_file" ]; then
-    set -a
-    source "$env_file" 2>/dev/null || true
-    set +a
-  fi
-done
+# Environment precedence (BUG-RT-02): repository files first, runner-owned
+# runtime env LAST so it deterministically overrides stale repo .env.local.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/load-env.sh
+source "$SCRIPT_DIR/lib/load-env.sh"
+load_auto_cuan_env "$REPO" "$RUNNER_DIR"
+
+# Fail closed: an empty CRON_SECRET (for example a blank runner value) must not
+# silently fall back to a stale repository secret. The value is never printed.
+require_nonempty_env "CRON_SECRET" "${CRON_SECRET:-}" || exit 1
 
 if [ ! -x "$NODE_BIN" ]; then
   NODE_BIN="$(command -v node || echo "")"

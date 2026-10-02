@@ -15,6 +15,7 @@
 //   * APP_BASE_URL / VPS_LOCAL_BASE_URL still override, for an internal VPS port
 const fs = require('node:fs'); const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
+// Repository env files, highest-first (this loader is FIRST-WINS).
 const ENV_FILES = ['.env.local', '.env.intraday-runtime', '.env'];
 const DEFAULT_LOCAL_BASE_URL = 'http://127.0.0.1:3000';
 const SERVERLESS_HOST_PATTERN = /(^|\.)vercel\.app$/i;
@@ -24,9 +25,13 @@ function resolveBaseUrl(env) { const raw = env.APP_BASE_URL || env.VPS_LOCAL_BAS
 function assertNotServerlessForExecute(baseUrl, execute) { if (execute && isServerlessHost(baseUrl)) throw new Error(SERVERLESS_REFUSAL); return true; }
 function loadEnvFiles(env = process.env, cwd = process.cwd()) {
   const runnerDir = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
+  // BUG-RT-02: this loader is first-wins, so the runner-owned .env is listed
+  // FIRST to override repository/local-development values. A stale CRON_SECRET
+  // in repo .env.local used to win over the canonical runner secret, and the
+  // local origin then answered HTTP 401 to the screener sweep.
   const filePaths = [
-    ...ENV_FILES.map((f) => path.join(cwd, f)),
-    path.join(runnerDir, '.env')
+    path.join(runnerDir, '.env'),
+    ...ENV_FILES.map((f) => path.join(cwd, f))
   ];
   for (const filePath of filePaths) {
     let text;
