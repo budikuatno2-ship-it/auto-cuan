@@ -8,7 +8,7 @@ CRON_TZ=Asia/Jakarta
 # Backfill candle historis (tengah malam)
 5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
 # Lifecycle evaluator (sore, setelah bursa tutup)
-30 16 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/run-lifecycle-evaluator.js --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
+30 16 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-lifecycle-evaluator.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
 # EOD queue: starts at 18:00 WIB and retries every 30 minutes until 23:30.
 # Cron is limited to Monday-Friday; the coordinator also checks the IDX 2026
 # holiday calendar, so weekends and exchange holidays send zero EOD requests.

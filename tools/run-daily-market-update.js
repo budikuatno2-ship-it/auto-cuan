@@ -4,6 +4,39 @@ const broker=require('./run-daily-broker-update');
 const candles=require('./fetch-daily-candles');
 const calendar=require('../lib/idx-trading-calendar');
 const historySync=require('../lib/daily-history-sqlite-sync');
+
+const RUNNER_DIR = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
+const ROOT_DIR = path.resolve(__dirname, '..');
+
+function loadEnvFile(file) {
+  try {
+    if (!fs.existsSync(file)) return;
+    for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t || t.startsWith('#')) continue;
+      const eq = t.indexOf('=');
+      if (eq <= 0) continue;
+      const k = t.slice(0, eq).trim();
+      let v = t.slice(eq + 1).trim();
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+      if (!process.env[k]) process.env[k] = v;
+    }
+  } catch (_) {}
+}
+
+function loadEnv() {
+  loadEnvFile(path.join(RUNNER_DIR, '.env'));
+  loadEnvFile(path.join(ROOT_DIR, '.env.local'));
+  loadEnvFile(path.join(ROOT_DIR, '.env.intraday-runtime'));
+  loadEnvFile(path.join(ROOT_DIR, '.env'));
+
+  // Canonical VPS market data routing (BUG-3C-03)
+  if (process.env.AUTO_CUAN_MARKET_DATA_VPS == null &&
+      (fs.existsSync(path.join(RUNNER_DIR, '.env')) || process.env.NODE_ENV === 'production')) {
+    process.env.AUTO_CUAN_MARKET_DATA_VPS = '1';
+  }
+}
+
 function stateDir(){return path.join(path.dirname(path.dirname(broker.markerPath('unused'))),'_daily-market-update');}
 function writeState(date,state){
   const p=path.join(stateDir(),date+'.json');fs.mkdirSync(stateDir(),{recursive:true});
@@ -44,8 +77,10 @@ function pendingDates(now=new Date()){
   return dates;
 }
 async function run(options={}){
+  loadEnv();
   const dryRun=options.dryRun===true;
   const now=options.now || new Date();
+  const env=options.env || process.env;
   const {hour,minute}=broker.getJakartaTimeInfo(now);
   const dates=pendingDates(options.now);
   // BUG-3C-03: the flat-file candle stage alone is not success. The canonical
@@ -71,7 +106,7 @@ async function run(options={}){
     }catch(error){console.error('CANDLE_RETRY_PENDING',date,error.message);}
     if(candleOk){
       try{
-        const result=await syncHistory({now});
+        const result=await syncHistory({now, env});
         historyOk=Boolean(result&&result.ok);
         if(!historyOk)console.error('HISTORY_SYNC_RETRY_PENDING',date,'reason='+(result&&result.reason||'unknown'));
       }catch(error){console.error('HISTORY_SYNC_RETRY_PENDING',date,error.message);}
@@ -83,5 +118,5 @@ async function run(options={}){
     try{return JSON.parse(fs.readFileSync(path.join(stateDir(),date+'.json'),'utf8')).complete!==true;}catch(_){return true;}
   }))process.exitCode=3;
 }
-module.exports={run,pendingDates,stateDir,readMarketState,previousDateNeedsWork};
+module.exports={run,pendingDates,stateDir,readMarketState,previousDateNeedsWork,loadEnv};
 if(require.main===module)run({dryRun:process.argv.includes('--dry-run')}).catch(error=>{console.error(error.message);process.exitCode=1;});
