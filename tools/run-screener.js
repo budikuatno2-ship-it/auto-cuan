@@ -27,6 +27,12 @@
  *
  * Exit codes: 0 ok, 2 no candidates / gate blocked, 1 configuration error.
  *
+ * BUG-3C-02 (freshness gate): a `--send` dispatch fails closed when the
+ * snapshot does not represent the current WIB trading date. The verdict comes
+ * from lib/snapshot-freshness.js (IDX trading calendar, never naive age < 24h).
+ * Dry-run inspection is never blocked; it reports the freshness verdict so a
+ * stale snapshot is visible instead of silently treated as fresh.
+ *
  * Usage:
  *   node tools/run-screener.js --mode=daytrade --dry-run
  *   node tools/run-screener.js --mode=daytrade --send
@@ -42,6 +48,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
+const snapshotFreshness = require(path.join(ROOT, 'lib', 'snapshot-freshness'));
 
 // Canonical 4-pilar modes + aliases. All aliases resolve to canonical key via normalizeMode().
 const MODES = {
@@ -93,11 +100,13 @@ function normalizeMode(raw) {
 
 function loadEnvFiles(env, cwd) {
   const runnerDir = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
+  // BUG-RT-02: first-wins loader — runner-owned .env first (highest priority),
+  // then repository files (.env.local > .env.intraday-runtime > .env).
   const files = [
-    path.join(cwd || ROOT, '.env'),
-    path.join(cwd || ROOT, '.env.intraday-runtime'),
+    path.join(runnerDir, '.env'),
     path.join(cwd || ROOT, '.env.local'),
-    path.join(runnerDir, '.env')
+    path.join(cwd || ROOT, '.env.intraday-runtime'),
+    path.join(cwd || ROOT, '.env')
   ];
   for (const filePath of files) {
     if (!fs.existsSync(filePath)) continue;
@@ -234,11 +243,22 @@ function analyze(opts, deps) {
   const snapshot = loadSnapshot(rootDir);
   const candidates = candidatesFor(snapshot, mode);
   const market = marketStatus(now, deps && deps.holidaySet);
+  const freshness = snapshotFreshness.evaluateSnapshotFreshness({
+    snapshot: snapshot.data,
+    mode,
+    now,
+    holidaySet: deps && deps.holidaySet
+  });
   const reasons = [];
 
   if (snapshot.missing) reasons.push('snapshot_missing: data/screener-latest.json belum ada (tidak ada producer yang jalan)');
   if (snapshot.corrupt) reasons.push('snapshot_corrupt: JSON screener tidak dapat dibaca');
   if (!snapshot.missing && !candidates.length) reasons.push('no_candidates: mode ' + mode + ' kosong di snapshot terakhir');
+  // BUG-3C-02: surface the freshness verdict as a diagnostic reason. Send mode
+  // additionally fails closed in main(); dry-run only reports it.
+  if (!snapshot.missing && !snapshot.corrupt && !freshness.fresh) {
+    reasons.push('stale_snapshot: ' + snapshotFreshness.describeFreshness(freshness));
+  }
   if (market.isOpen === false && opts.send) reasons.push('market_closed: broadcast akan di-skip kecuali skip_market_guard');
 
   const hasTelegramToken = Boolean((((deps && deps.env) || process.env).TELEGRAM_BOT_TOKEN) || '');
@@ -254,6 +274,7 @@ function analyze(opts, deps) {
     candidate_count: candidates.length,
     candidates: candidates.slice(0, 10),
     market,
+    freshness,
     has_telegram_token: hasTelegramToken,
     has_chat_id: hasChatId,
     reasons,
@@ -324,6 +345,18 @@ async function main(argv, deps) {
   if (!opts.send) return { exitCode: report.candidate_count ? 0 : 2, report };
 
   if (!report.candidate_count) return { exitCode: 2, report };
+
+  // BUG-3C-02 — fail-closed freshness gate. Production `--send` must never
+  // dispatch a snapshot that does not represent the current WIB trading date
+  // (stale producer output, weekend/holiday, missing date metadata, or a
+  // future-dated snapshot). No Telegram call happens past this point.
+  const freshness = report.freshness;
+  if (!freshness || freshness.fresh !== true) {
+    log(snapshotFreshness.describeFreshness(freshness));
+    log('Kirim: dibatalkan (snapshot tidak fresh untuk mode ' + report.mode + '; tidak ada pengiriman Telegram)');
+    return { exitCode: 2, report, blocked: 'STALE_SNAPSHOT' };
+  }
+
   const notifier = (deps && deps.notifier) || require(path.join(ROOT, 'lib', 'telegram-notifier'));
   const result = await notifier.sendTelegramMessage(report.message, {
     // A screener card is an after-session recap; skip the intraday-only guard.

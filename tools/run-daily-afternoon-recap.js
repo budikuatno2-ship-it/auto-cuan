@@ -56,11 +56,13 @@ function loadEnvFile(file) {
 
 function initEnv(baseDir = path.resolve(__dirname, '..')) {
   const runnerDir = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
+  // BUG-RT-02: first-wins loader — runner-owned .env first (highest priority),
+  // then repository files (.env.local > .env.intraday-runtime > .env).
   [
-    path.join(baseDir, '.env.intraday-runtime'),
+    path.join(runnerDir, '.env'),
     path.join(baseDir, '.env.local'),
-    path.join(baseDir, '.env'),
-    path.join(runnerDir, '.env')
+    path.join(baseDir, '.env.intraday-runtime'),
+    path.join(baseDir, '.env')
   ].forEach(loadEnvFile);
 }
 

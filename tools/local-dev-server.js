@@ -34,22 +34,24 @@ function loadEnvFile(filePath) {
   }
 }
 
-// Batch 8 points the VPS runners (tools/run-all-screeners-vps.js,
-// tools/run-after-market-top5-lock.js) at this daemon on 127.0.0.1:3000.
-// Shared screener credentials MUST resolve with the same precedence in both
-// processes. loadEnvFile() is first-wins, so this order mirrors the effective
-// priority of deploy/vps/run-screeners.sh and tools/run-all-screeners-vps.js:
+// BUG-RT-02 — runner-owned runtime env has the HIGHEST precedence.
 //
-//   .env.local > .env.intraday-runtime > .env > runner/.env
+// loadEnvFile() is first-wins, so the runner file is loaded FIRST. The runner
+// .env is the canonical production secret store (it is what the cron wrappers
+// export and what the PM2 web process was started with); repository files are
+// only fallbacks. Previously the daemon loaded .env.local first, so a stale
+// repository CRON_SECRET could win over the valid runner secret and the local
+// origin answered 401 to the screener runner (BUG-RT-02).
 //
-// Previously the daemon loaded .env first while the runner preferred
-// .env.local. If CRON_SECRET differed, the local origin correctly returned 401
-// even though both processes individually had a secret configured.
+//   runner/.env > .env.local > .env.intraday-runtime > .env
+//
+// On a development machine the runner directory does not exist, so repository
+// files keep working exactly as before.
 const RUNNER_DIR = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
+loadEnvFile(path.join(RUNNER_DIR, '.env'));
 loadEnvFile(path.join(ROOT_DIR, '.env.local'));
 loadEnvFile(path.join(ROOT_DIR, '.env.intraday-runtime'));
 loadEnvFile(path.join(ROOT_DIR, '.env'));
-loadEnvFile(path.join(RUNNER_DIR, '.env'));
 
 // Specialized service env files only fill keys that the shared runtime sources
 // above did not provide.
@@ -62,6 +64,25 @@ loadEnvFile(path.join(RUNNER_DIR, 'telegram-lifecycle.env'));
 loadEnvFile(path.join(RUNNER_DIR, 'telegram-auth-recovery-secret.env'));
 loadEnvFile(path.join(RUNNER_DIR, 'session-secret.env'));
 loadEnvFile(path.join(ROOT_DIR, '.env.ai-eval-once'));
+
+// BUG-RT-03 — production mock-routing gate (fail-closed).
+//
+// Every preview/mock interceptor below (preview HTML routes, zero-auth header
+// injection, and the endpoint-specific mock responses) is disabled whenever the
+// process is production. Production therefore always reaches the canonical
+// api/*.js handlers. Development previews remain available only outside a
+// production runtime; there is intentionally NO flag that can enable mocks in
+// production.
+//
+// Signals (any one is sufficient):
+//   - NODE_ENV=production          (ecosystem.config.js sets this for PM2)
+//   - VERCEL_ENV=production        (defensive: Vercel-managed runtimes)
+//   - pm_id                        (PM2 always injects this for managed apps)
+const IS_PRODUCTION_RUNTIME =
+  process.env.NODE_ENV === 'production' ||
+  process.env.VERCEL_ENV === 'production' ||
+  process.env.pm_id != null;
+const PREVIEW_MOCKS_ENABLED = !IS_PRODUCTION_RUNTIME;
 
 const {
   MOCK_IHSG,
@@ -516,6 +537,15 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
 
+  // 0. Production fail-closed: preview HTML and API mocks never exist here.
+  // Without this, /preview/<module> serves a page that seeds client-side admin
+  // state (window.__AUTOCUAN_PREVIEW_USER__ = budi/ADMIN) to any visitor.
+  if (!PREVIEW_MOCKS_ENABLED && (pathname === '/preview' || pathname.startsWith('/preview/'))) {
+    res.statusCode = 404;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    return res.end('Not Found');
+  }
+
   // 0. Handle Mock Preview Routes (/preview/<module>)
   if (pathname === '/preview' || pathname === '/preview/') {
     res.statusCode = 302;
@@ -573,8 +603,10 @@ const server = http.createServer(async (req, res) => {
       pathname = '/api/sector-hot';
     }
 
-    // Detect if this is a preview request or needs mock data
-    const isPreview = Boolean(
+    // Detect if this is a preview request or needs mock data.
+    // BUG-RT-03: the client-controllable preview signals only count while the
+    // development preview boundary is active; in production this is always false.
+    const isPreview = PREVIEW_MOCKS_ENABLED && Boolean(
       (req.headers.referer && req.headers.referer.includes('/preview')) ||
       req.headers['x-autocuan-preview'] === '1' ||
       parsedUrl.searchParams.get('preview') === '1'
@@ -590,12 +622,12 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Money management mock
+    // Money management mock (development only — BUG-RT-03)
     if (endpointName === 'money-management') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       req.body = await parseBody(req);
       const action = req.query.action || (req.body && req.body.action) || 'summary';
-      if (isPreview || !process.env.SUPABASE_URL) {
+      if (PREVIEW_MOCKS_ENABLED && (isPreview || !process.env.SUPABASE_URL)) {
         if (action === 'get-cashflow') {
           return res.status(200).json({ success: true, data: MOCK_MONEY_MANAGEMENT.cashflow });
         }
@@ -613,8 +645,9 @@ const server = http.createServer(async (req, res) => {
       return await mmHandler(req, res);
     }
 
-    // Bypass maintenance screen on local dev server
-    if (endpointName === 'maintenance-settings') {
+    // Bypass maintenance screen on local dev server (development only — BUG-RT-03).
+    // In production the canonical handler reads the real state from app_settings.
+    if (PREVIEW_MOCKS_ENABLED && endpointName === 'maintenance-settings') {
       return res.status(200).json({
         success: true,
         maintenance: false,
@@ -628,7 +661,9 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Support local admin / portfolio session authorization for SPA verification
-    if (endpointName === 'admin-users') {
+    // (development only — BUG-RT-03). In production the request falls through to
+    // the canonical api/admin-users.js handler, which requires a signed session.
+    if (PREVIEW_MOCKS_ENABLED && endpointName === 'admin-users') {
       const isLandingPreview = Boolean(
         (req.headers.referer && req.headers.referer.includes('/preview/landing')) ||
         (parsedUrl.searchParams.get('module') === 'landing') ||
@@ -652,7 +687,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Reset-password endpoint mock for session status and account profile
-    if (endpointName === 'reset-password') {
+    // (development only — BUG-RT-03).
+    if (PREVIEW_MOCKS_ENABLED && endpointName === 'reset-password') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       req.body = await parseBody(req);
       const action = req.query.action || (req.body && req.body.action) || '';
@@ -719,8 +755,10 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Review access mock
-    if (endpointName === 'review-access') {
+    // Review access mock (development only — BUG-RT-03). In production the
+    // canonical api/review-access.js handler answers (405 for GET, token-gated
+    // POST otherwise).
+    if (PREVIEW_MOCKS_ENABLED && endpointName === 'review-access') {
       return res.status(200).json({
         success: true,
         access: 'approved',
@@ -730,8 +768,8 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // Analyze status & AI analysis mock
-    if (endpointName === 'analyze') {
+    // Analyze status & AI analysis mock (development only — BUG-RT-03)
+    if (PREVIEW_MOCKS_ENABLED && endpointName === 'analyze') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       req.body = await parseBody(req);
       if (req.query.action === 'status') {
@@ -755,8 +793,8 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Dev fallback for approval-based portfolio access
-    if (endpointName === 'admin-users') {
+    // Dev fallback for approval-based portfolio access (development only — BUG-RT-03)
+    if (PREVIEW_MOCKS_ENABLED && endpointName === 'admin-users') {
       const parsedBody = await parseBody(req);
       if (parsedBody && parsedBody.action === 'portfolio_access') {
         return res.status(200).json({
@@ -769,10 +807,12 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Login user mock
+    // Login user mock (development only — BUG-RT-03). In production a magic-login
+    // request reaches the canonical api/login-user.js handler, which validates the
+    // single-use Telegram token before issuing anything.
     if (endpointName === 'login-user') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
-      if (isPreview || req.query.action === 'magic-login') {
+      if (PREVIEW_MOCKS_ENABLED && (isPreview || req.query.action === 'magic-login')) {
         return res.status(200).json({
           success: true,
           user: { username: 'budi', role: 'ADMIN', approved: true }
@@ -780,8 +820,8 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Dev fallback for subscription access profile
-    if (endpointName === 'reset-password') {
+    // Dev fallback for subscription access profile (development only — BUG-RT-03)
+    if (PREVIEW_MOCKS_ENABLED && endpointName === 'reset-password') {
       const parsedBody = await parseBody(req);
       if (parsedBody && parsedBody.action === 'account-profile') {
         return res.status(200).json({
@@ -801,21 +841,21 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Candles API mock for preview
+    // Candles API mock for preview (development only — BUG-RT-03)
     if (endpointName === 'candles') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       const ticker = (req.query.ticker || 'BBCA').toUpperCase();
-      if (isPreview || !process.env.SUPABASE_URL) {
+      if (PREVIEW_MOCKS_ENABLED && (isPreview || !process.env.SUPABASE_URL)) {
         return res.status(200).json(generateMockCandles(ticker));
       }
     }
 
-    // Quote API mock for preview
+    // Quote API mock for preview (development only — BUG-RT-03)
     if (endpointName === 'quote') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       const ticker = (req.query.ticker || '').toUpperCase();
       const action = req.query.action || '';
-      if (isPreview || !process.env.SUPABASE_URL) {
+      if (PREVIEW_MOCKS_ENABLED && (isPreview || !process.env.SUPABASE_URL)) {
         if (ticker === 'IHSG') {
           return res.status(200).json(MOCK_IHSG);
         }
@@ -837,13 +877,13 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Sector Hot API mock for preview
+    // Sector Hot API mock for preview (development only — BUG-RT-03)
     if (endpointName === 'sector-hot') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       req.body = await parseBody(req);
       const action = req.query.action || '';
 
-      if (isPreview || !process.env.SUPABASE_URL) {
+      if (PREVIEW_MOCKS_ENABLED && (isPreview || !process.env.SUPABASE_URL)) {
         if (action === 'landing-snapshot') return res.status(200).json(MOCK_LANDING_SNAPSHOT);
         if (action === 'web-daily-picks') return res.status(200).json(MOCK_DAILY_PICKS);
         if (action === 'screener') return res.status(200).json(MOCK_SWING_KONGLO);

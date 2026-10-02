@@ -25,8 +25,9 @@ test('23:30 WIB uses the terminal empty-summary pass, earlier retries do not',as
   markMarketComplete('2026-09-30');
   broker.run=async(args)=>{calls.push(args);broker.writeMarker(args[1],{version:2,complete:true});};
   candles.main=async()=>({universe:1,cached:1,fetched:0,failed:0,quota_stop:false});
-  await market.run({now:new Date('2026-10-01T23:00:00+07:00')});
-  await market.run({now:new Date('2026-10-01T23:30:00+07:00')});
+  const syncHistory=async()=>({ok:true,rows_upserted:1});
+  await market.run({now:new Date('2026-10-01T23:00:00+07:00'),syncHistory});
+  await market.run({now:new Date('2026-10-01T23:30:00+07:00'),syncHistory});
   assert.equal(calls[0].includes('--final'),false);
   assert.equal(calls[1].includes('--final'),true);
  } finally {
@@ -68,18 +69,51 @@ test('a failed broker stage still runs candles and retains the date; closed sess
  const candles=require('../tools/fetch-daily-candles');
  const old=process.env.ARJUM_DATA_DIR,dir=fs.mkdtempSync(path.join(os.tmpdir(),'market-run-'));
  const brokerRun=broker.run,candleRun=candles.main;
- process.env.ARJUM_DATA_DIR=dir;let candleCalls=0;
+ process.env.ARJUM_DATA_DIR=dir;let candleCalls=0,syncCalls=0;
  const now=new Date('2026-10-01T18:00:00+07:00');
+ // BUG-3C-03: candle success alone is not completion any more — the SQLite
+ // history sync stage must also succeed before the date is marked complete.
+ const syncHistory=async()=>{syncCalls++;return {ok:true,rows_upserted:1};};
  try{
   markMarketComplete('2026-09-30');
   broker.run=async()=>{throw new Error('fixture failure')};
   candles.main=async({targetDate})=>{assert.equal(targetDate,'2026-10-01');candleCalls++;return {skipped:true};};
-  await market.run({now});assert.equal(candleCalls,1);assert.equal(process.exitCode,3);
+  await market.run({now,syncHistory});assert.equal(candleCalls,1);assert.equal(process.exitCode,3);
   let saved=JSON.parse(fs.readFileSync(path.join(market.stateDir(),'2026-10-01.json')));assert.equal(saved.complete,false);
-  broker.run=async()=>({skipped:true});await market.run({now});
+  broker.run=async()=>({skipped:true});await market.run({now,syncHistory});
   saved=JSON.parse(fs.readFileSync(path.join(market.stateDir(),'2026-10-01.json')));assert.equal(saved.complete,true);
+  assert.equal(saved.history_complete,true);
+  assert.equal(syncCalls,2,'history sync must run for every candle-success pass');
  }finally{
   broker.run=brokerRun;candles.main=candleRun;process.exitCode=undefined;
+  if(old==null)delete process.env.ARJUM_DATA_DIR;else process.env.ARJUM_DATA_DIR=old;
+  fs.rmSync(dir,{recursive:true,force:true});
+ }
+});
+
+test('BUG-3C-03: flat-file success + SQLite sync failure reports incomplete and non-zero exit',async()=>{
+ const candles=require('../tools/fetch-daily-candles');
+ const old=process.env.ARJUM_DATA_DIR,dir=fs.mkdtempSync(path.join(os.tmpdir(),'market-syncfail-'));
+ const brokerRun=broker.run,candleRun=candles.main;
+ process.env.ARJUM_DATA_DIR=dir;
+ const now=new Date('2026-10-01T18:00:00+07:00');
+ const errors=[];
+ const origError=console.error;
+ try{
+  markMarketComplete('2026-09-30');
+  broker.run=async()=>({skipped:true});
+  candles.main=async()=>({universe:1,cached:1,fetched:0,failed:0,quota_stop:false});
+  console.error=(...args)=>errors.push(args.join(' '));
+  await market.run({now,syncHistory:async()=>({ok:false,reason:'upsert_failed'})});
+  const saved=JSON.parse(fs.readFileSync(path.join(market.stateDir(),'2026-10-01.json')));
+  assert.equal(saved.candle_complete,true,'flat-file stage succeeded');
+  assert.equal(saved.history_complete,false,'SQLite sync failure must be recorded');
+  assert.equal(saved.complete,false,'overall completion must reflect the sync failure');
+  assert.equal(process.exitCode,3,'non-zero exit for an incomplete critical persistence stage');
+  assert.ok(errors.some((line)=>line.includes('HISTORY_SYNC_RETRY_PENDING')),'sanitized failure reason must be logged');
+  assert.ok(errors.every((line)=>!/SUPABASE_SERVICE_ROLE_KEY|CRON_SECRET|TELEGRAM_BOT_TOKEN/.test(line)),'no secret names/values in failure logs');
+ }finally{
+  broker.run=brokerRun;candles.main=candleRun;console.error=origError;process.exitCode=undefined;
   if(old==null)delete process.env.ARJUM_DATA_DIR;else process.env.ARJUM_DATA_DIR=old;
   fs.rmSync(dir,{recursive:true,force:true});
  }

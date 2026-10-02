@@ -38,6 +38,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
+// Repository env files, highest-first (this loader is FIRST-WINS).
 const ENV_FILES = ['.env.local', '.env.intraday-runtime', '.env'];
 const DEFAULT_BASE_URL = 'http://127.0.0.1:3000';
 
@@ -59,9 +60,11 @@ const SOURCES = [
 
 function loadEnvFiles(env = process.env, cwd = ROOT) {
   const runnerDir = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
+  // BUG-RT-02: first-wins loader — the runner-owned .env is listed FIRST so it
+  // overrides repository/local-development values (see run-all-screeners-vps.js).
   const filePaths = [
-    ...ENV_FILES.map((f) => path.join(cwd, f)),
-    path.join(runnerDir, '.env')
+    path.join(runnerDir, '.env'),
+    ...ENV_FILES.map((f) => path.join(cwd, f))
   ];
   for (const filePath of filePaths) {
     let text;
