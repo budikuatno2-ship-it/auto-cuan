@@ -21,7 +21,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const sync = require('../lib/daily-history-sqlite-sync');
-const { getVpsMarketStore, VpsMarketStore, MARKET_TABLES } = require('../lib/vps-market-store');
+const { getVpsMarketStore, closeVpsMarketStore, VpsMarketStore, MARKET_TABLES } = require('../lib/vps-market-store');
 const { createClient, hybridizeClient, marketDataVpsEnabled } = require('../lib/hybrid-supabase-client');
 
 function tempCandleDir() {
@@ -45,6 +45,7 @@ test('ROUTING-A: production daily-market-update context resolves to VPS SQLite s
     assert.equal(resolved.store, 'vps_sqlite');
     assert.ok(resolved.client, 'must return a valid VpsMarketStore client');
   } finally {
+    closeVpsMarketStore();
     fs.rmSync(tmp.dir, { recursive: true, force: true });
   }
 });
@@ -70,21 +71,15 @@ test('ROUTING-B: production lifecycle evaluator context initializes VPS SQLite s
         return { _source: 'remote', table };
       }
     };
-    const prevDb = process.env.AUTO_CUAN_MARKET_DB;
-    process.env.AUTO_CUAN_MARKET_DB = tmp.file;
-    try {
-      const hybridized = hybridizeClient(dummyRemote, env);
-      assert.equal(hybridized.__marketDataVpsEnabled, true);
+    const hybridized = hybridizeClient(dummyRemote, env);
+    assert.equal(hybridized.__marketDataVpsEnabled, true);
 
-      // stock_daily_history is routed locally to VpsMarketStore
-      const historyQuery = hybridized.from('stock_daily_history');
-      assert.equal(typeof historyQuery.select, 'function');
-      assert.notEqual(historyQuery._source, 'remote');
-    } finally {
-      if (prevDb == null) delete process.env.AUTO_CUAN_MARKET_DB;
-      else process.env.AUTO_CUAN_MARKET_DB = prevDb;
-    }
+    // stock_daily_history is routed locally to VpsMarketStore
+    const historyQuery = hybridized.from('stock_daily_history');
+    assert.equal(typeof historyQuery.select, 'function');
+    assert.notEqual(historyQuery._source, 'remote');
   } finally {
+    closeVpsMarketStore();
     fs.rmSync(tmp.dir, { recursive: true, force: true });
   }
 });
@@ -151,24 +146,18 @@ test('ROUTING-F: market-data routing affects only registered MARKET_TABLES; othe
       }
     };
 
-    const prevDb = process.env.AUTO_CUAN_MARKET_DB;
-    process.env.AUTO_CUAN_MARKET_DB = tmp.file;
-    try {
-      const client = hybridizeClient(dummyRemote, env);
+    const client = hybridizeClient(dummyRemote, env);
 
-      // Market table -> intercepted by local store
-      const marketQuery = client.from('stock_daily_history');
-      assert.equal(remoteCalls.includes('stock_daily_history'), false, 'stock_daily_history must NOT hit remote Supabase');
+    // Market table -> intercepted by local store
+    const marketQuery = client.from('stock_daily_history');
+    assert.equal(remoteCalls.includes('stock_daily_history'), false, 'stock_daily_history must NOT hit remote Supabase');
 
-      // Non-market table -> passes through to remote Supabase
-      const appUsersQuery = client.from('app_users');
-      assert.equal(remoteCalls.includes('app_users'), true, 'app_users must hit remote Supabase');
-      assert.equal(appUsersQuery._source, 'remote');
-    } finally {
-      if (prevDb == null) delete process.env.AUTO_CUAN_MARKET_DB;
-      else process.env.AUTO_CUAN_MARKET_DB = prevDb;
-    }
+    // Non-market table -> passes through to remote Supabase
+    const appUsersQuery = client.from('app_users');
+    assert.equal(remoteCalls.includes('app_users'), true, 'app_users must hit remote Supabase');
+    assert.equal(appUsersQuery._source, 'remote');
   } finally {
+    closeVpsMarketStore();
     fs.rmSync(tmp.dir, { recursive: true, force: true });
   }
 });
