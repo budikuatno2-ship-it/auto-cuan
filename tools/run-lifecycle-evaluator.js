@@ -4,54 +4,84 @@
  * Lifecycle outcome evaluator for telegram_daily_picks (MUTATING).
  *
  * For every row still in status WAITING, fetch actual post-signal OHLC from
- * public.stock_daily_history (trade_date > signal date) and decide:
+ * stock_daily_history (trade_date > signal date) and decide:
  *   High >= tp2                    -> TP2_HIT
  *   High >= tp1 (and < tp2)        -> TP1_HIT
  *   Low  <= sl                     -> SL_HIT
  * First qualifying trading day wins; within a day TP is checked before SL,
  * matching the user-specified precedence.
  *
- * Usage (from repo root):
- *   set -a; . ./.env.ai-eval-once; set +a
+ * BUG-3C-03 Store Routing Alignment:
+ *   Canonical production history store is VPS SQLite (/home/ubuntu/auto-cuan-data/market.sqlite)
+ *   via hybrid client (lib/hybrid-supabase-client.js).
+ *   On VPS production (runner directory present or NODE_ENV=production),
+ *   AUTO_CUAN_MARKET_DATA_VPS defaults to '1' so history reads resolve to VPS SQLite.
+ *
+ * Usage:
  *   node tools/run-lifecycle-evaluator.js            # dry-run (default)
- *   node tools/run-lifecycle-evaluator.js --apply    # write to Supabase
+ *   node tools/run-lifecycle-evaluator.js --apply    # persist updates
  */
 
 const fs = require('fs');
 const path = require('path');
 
-function loadEnvFile() {
-  const candidates = ['.env.ai-eval-once', '.env.local', '.env'].map(n => path.join(__dirname, '..', n));
-  for (const file of candidates) {
-    try {
-      if (!fs.existsSync(file)) continue;
-      for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
-        const t = line.trim();
-        if (!t || t.startsWith('#')) continue;
-        const eq = t.indexOf('=');
-        if (eq <= 0) continue;
-        const k = t.slice(0, eq).trim();
-        let v = t.slice(eq + 1).trim();
-        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
-        if (!process.env[k]) process.env[k] = v;
-      }
-    } catch (_) {}
+const RUNNER_DIR = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
+const ROOT_DIR = path.resolve(__dirname, '..');
+
+function loadEnvFile(file) {
+  try {
+    if (!fs.existsSync(file)) return;
+    for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t || t.startsWith('#')) continue;
+      const eq = t.indexOf('=');
+      if (eq <= 0) continue;
+      const k = t.slice(0, eq).trim();
+      let v = t.slice(eq + 1).trim();
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+      if (!Object.prototype.hasOwnProperty.call(process.env, k)) process.env[k] = v;
+    }
+  } catch (_) {}
+}
+
+function loadEnv() {
+  // BUG-RT-02 precedence: runner-owned env first (wins on first-wins loadEnvFile),
+  // then repo files (.env.local > .env.intraday-runtime > .env > .env.ai-eval-once).
+  loadEnvFile(path.join(RUNNER_DIR, '.env'));
+  loadEnvFile(path.join(ROOT_DIR, '.env.local'));
+  loadEnvFile(path.join(ROOT_DIR, '.env.intraday-runtime'));
+  loadEnvFile(path.join(ROOT_DIR, '.env'));
+  loadEnvFile(path.join(ROOT_DIR, '.env.ai-eval-once'));
+
+  // BUG-3C-03: On VPS production (runner dir exists or NODE_ENV=production),
+  // market data routing canonical target is VPS SQLite unless explicitly disabled.
+  if (process.env.AUTO_CUAN_MARKET_DATA_VPS == null &&
+      (fs.existsSync(path.join(RUNNER_DIR, '.env')) || process.env.NODE_ENV === 'production')) {
+    process.env.AUTO_CUAN_MARKET_DATA_VPS = '1';
   }
 }
 
 function num(v) { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; }
 
-async function main() {
-  loadEnvFile();
-  const apply = process.argv.includes('--apply');
-  const limit = Number((process.argv.find(a => a.startsWith('--limit=')) || '').split('=')[1]) || 2000;
+async function main(options = {}) {
+  loadEnv();
+  const apply = options.apply != null ? options.apply : process.argv.includes('--apply');
+  const limit = options.limit != null ? options.limit : (Number((process.argv.find(a => a.startsWith('--limit=')) || '').split('=')[1]) || 2000);
 
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) { console.error('ERROR: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY tidak tersedia.'); process.exit(1); }
+  if (!url || !key) {
+    if (!options.client && !options.supabase) {
+      console.error('ERROR: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY tidak tersedia.');
+      process.exit(1);
+    }
+  }
 
   const { createClient } = require('../lib/hybrid-supabase-client');
-  const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const supabase = options.client || options.supabase || createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+
+  const storeType = supabase.__marketDataVpsEnabled ? 'VPS_SQLITE' : 'SUPABASE';
+  console.log('LIFECYCLE_EVALUATOR_STORE=' + storeType);
 
   const { data: rows, error } = await supabase
     .from('telegram_daily_picks')
@@ -61,10 +91,10 @@ async function main() {
     .limit(limit);
   if (error) { console.error('Read error:', error.message); process.exit(1); }
 
-  const stats = { scanned: rows.length, resolved: 0, TP1_HIT: 0, TP2_HIT: 0, SL_HIT: 0, skipped_no_levels: 0, skipped_no_history: 0, errors: 0 };
+  const stats = { scanned: rows ? rows.length : 0, resolved: 0, TP1_HIT: 0, TP2_HIT: 0, SL_HIT: 0, skipped_no_levels: 0, skipped_no_history: 0, errors: 0 };
   const plan = [];
 
-  for (const row of rows) {
+  for (const row of (rows || [])) {
     const tp1 = num(row.tp1), tp2 = num(row.tp2), sl = num(row.sl);
     if (!tp1 || !sl) { stats.skipped_no_levels++; continue; }
     try {
@@ -96,7 +126,8 @@ async function main() {
     }
   }
 
-  console.log(JSON.stringify({ mode: apply ? 'APPLY' : 'DRY_RUN', stats }, null, 2));
+  const resultSummary = { mode: apply ? 'APPLY' : 'DRY_RUN', store: storeType, stats };
+  console.log(JSON.stringify(resultSummary, null, 2));
 
   if (apply && plan.length) {
     let updated = 0;
@@ -111,6 +142,12 @@ async function main() {
   } else if (!apply) {
     console.log('Dry-run only. Re-run with --apply to persist.');
   }
+
+  return resultSummary;
 }
 
-main().catch(err => { console.error('Fatal:', err && err.message); process.exit(1); });
+module.exports = { main, loadEnv, num };
+
+if (require.main === module) {
+  main().catch(err => { console.error('Fatal:', err && err.message); process.exit(1); });
+}

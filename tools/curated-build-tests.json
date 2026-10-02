@@ -348,6 +348,7 @@
   "test/manual-latest-snapshot.test.js",
   "test/manual-previous-trading-day.test.js",
   "test/manual-subscription-review-flow.test.js",
+  "test/market-history-routing.test.js",
   "test/market-hours-guard.test.js",
   "test/market-regime.test.js",
   "test/market-structure-coverage.test.js",

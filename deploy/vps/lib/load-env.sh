@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Canonical environment loader for production wrappers (BUG-RT-02).
+# Canonical environment loader for production wrappers (BUG-RT-02 / BUG-3C-03).
 #
 # Precedence — LAST file sourced wins, because sourcing reassigns the variable:
 #   1. $REPO/.env                   repository defaults
@@ -31,6 +31,8 @@ load_auto_cuan_env() {
       set +a
     fi
   done
+  # Canonical production market-data routing: VPS SQLite (BUG-3C-03)
+  export AUTO_CUAN_MARKET_DATA_VPS="${AUTO_CUAN_MARKET_DATA_VPS:-1}"
 }
 
 # require_nonempty_env NAME VALUE — fail closed when a required key resolves to

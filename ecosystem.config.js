@@ -69,6 +69,7 @@ module.exports = {
         NODE_ENV: 'production',
         TZ: 'Asia/Jakarta',
         AUTO_CUAN_ROOT: ROOT,
+        AUTO_CUAN_MARKET_DATA_VPS: '1',
         // Full-universe DayTrade fetches stay bounded: two workers, each paced
         // at 200ms with adaptive error backoff up to 2s. This overlaps network
         // latency without turning the screener into a high-concurrency crawler.
@@ -94,7 +95,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         TZ: 'Asia/Jakarta',
-        AUTO_CUAN_ROOT: ROOT
+        AUTO_CUAN_ROOT: ROOT,
+        AUTO_CUAN_MARKET_DATA_VPS: '1'
       }
     },
     {
@@ -113,6 +115,7 @@ module.exports = {
         NODE_ENV: 'production',
         TZ: 'Asia/Jakarta',
         AUTO_CUAN_ROOT: ROOT,
+        AUTO_CUAN_MARKET_DATA_VPS: '1',
         BOT_GROUP_ZERO_BYOK: 'true'
       }
     },
@@ -165,7 +168,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         TZ: 'Asia/Jakarta',
-        AUTO_CUAN_ROOT: ROOT
+        AUTO_CUAN_ROOT: ROOT,
+        AUTO_CUAN_MARKET_DATA_VPS: '1'
       }
     }
   ]

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One durable EOD queue for broker summary, accumulation, insiders and OHLCV.
+# Lifecycle outcome evaluator for telegram_daily_picks (BUG-3C-03 routing alignment).
 set -euo pipefail
 REPO="${AUTO_CUAN_REPO:-/home/ubuntu/auto-cuan}"
 RUNNER_DIR="${AUTO_CUAN_RUNNER_DIR:-/home/ubuntu/auto-cuan-runner}"
@@ -16,4 +16,4 @@ export AUTO_CUAN_MARKET_DATA_VPS="${AUTO_CUAN_MARKET_DATA_VPS:-1}"
 
 if [ ! -x "$NODE_BIN" ]; then NODE_BIN="$(command -v node)"; fi
 cd "$REPO"
-exec /usr/bin/flock -n "$RUNNER_DIR/state/daily-market-update.lock" "$NODE_BIN" tools/run-daily-market-update.js "$@"
+exec "$NODE_BIN" tools/run-lifecycle-evaluator.js "$@"
