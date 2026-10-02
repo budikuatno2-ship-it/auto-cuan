@@ -39,7 +39,7 @@ function loadEnvFile(file) {
       const k = t.slice(0, eq).trim();
       let v = t.slice(eq + 1).trim();
       if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
-      if (!process.env[k]) process.env[k] = v;
+      if (!Object.prototype.hasOwnProperty.call(process.env, k)) process.env[k] = v;
     }
   } catch (_) {}
 }
