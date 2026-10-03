@@ -37,7 +37,13 @@ test('W2-05/W2-30: 134 zero-volume + 1 traded-empty costs 1 request instead of 4
     BROKER_HUNTER_INDEX_DIR: process.env.BROKER_HUNTER_INDEX_DIR,
     CANDLE_CACHE_DIR: process.env.CANDLE_CACHE_DIR
   };
-  process.env.ARJUM_DATA_DIR = path.join(tmpBase, 'arjum-data');
+  // The dir must EXIST: bandarmologi-service.getStorageDir() and
+  // arjum-quota-tracker.getArjumDataDir() both ignore ARJUM_DATA_DIR unless it
+  // is already a directory (otherwise the test would silently read the
+  // repository's own data/arjum-data caches and quota state).
+  const tempArjumDir = path.join(tmpBase, 'arjum-data');
+  fs.mkdirSync(tempArjumDir, { recursive: true });
+  process.env.ARJUM_DATA_DIR = tempArjumDir;
   process.env.AUTO_CUAN_EOD_TEST_TODAY = '2026-10-01';
   process.env.INTEL_INDEX_DIR = path.join(tmpBase, 'indexes');
   process.env.INTEL_CACHE_DIR = path.join(tmpBase, 'intel-cache');
