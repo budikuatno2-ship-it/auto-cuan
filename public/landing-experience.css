@@ -137,20 +137,20 @@ html.light #landingPage {
 @media(prefers-reduced-motion:reduce){#landingPage *,#landingPage *::before,#landingPage *::after{animation:none !important;transition:none !important;scroll-behavior:auto !important;}}
 
 /* Auth surfaces share tokens without changing authentication or approval. */
-:is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal), #authV2ResetModal > div {
+:is(#loginModal,#registerModal,#selfResetModal,#resetPasswordModal,#authChoiceModal), #authV2ResetModal > div {
   padding: max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)) !important;
   overflow-y: auto; overscroll-behavior: contain; backdrop-filter: none !important;
 }
-:is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal) > div, #authV2ResetModal > div > div {
+:is(#loginModal,#registerModal,#selfResetModal,#resetPasswordModal,#authChoiceModal) > div, #authV2ResetModal > div > div {
   box-sizing: border-box; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   overflow-y: auto; overscroll-behavior: contain; background: var(--surface) !important; color: var(--color-text-primary) !important;
   border: 1px solid var(--border-hairline) !important; border-radius: 12px !important; transform: none !important;
   animation: ac-auth-appear var(--motion-base) var(--ease-standard) !important;
 }
-:is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal,#authV2ResetModal) :is(h2,h3,.text-white,.text-gray-100,.text-slate-300) { color: var(--color-text-primary) !important; }
-:is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal,#authV2ResetModal) :is(label,p,.text-gray-400,.text-gray-500,.text-slate-400,.text-slate-500) { color: var(--color-text-secondary) !important; }
-:is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal,#authV2ResetModal) input { background: var(--canvas) !important; color: var(--color-text-primary) !important; border-color: var(--border-hairline) !important; }
-:is(#loginModal,#registerModal,#selfResetModal,#authChoiceModal,#authV2ResetModal) button { min-height: 44px; min-width: 44px; }
+:is(#loginModal,#registerModal,#selfResetModal,#resetPasswordModal,#authChoiceModal,#authV2ResetModal) :is(h2,h3,.text-white,.text-gray-100,.text-slate-300) { color: var(--color-text-primary) !important; }
+:is(#loginModal,#registerModal,#selfResetModal,#resetPasswordModal,#authChoiceModal,#authV2ResetModal) :is(label,p,.text-gray-400,.text-gray-500,.text-slate-400,.text-slate-500) { color: var(--color-text-secondary) !important; }
+:is(#loginModal,#registerModal,#selfResetModal,#resetPasswordModal,#authChoiceModal,#authV2ResetModal) input { background: var(--canvas) !important; color: var(--color-text-primary) !important; border-color: var(--border-hairline) !important; }
+:is(#loginModal,#registerModal,#selfResetModal,#resetPasswordModal,#authChoiceModal,#authV2ResetModal) button { min-height: 44px; min-width: 44px; }
 #authChoiceModal .landing-auth-card { background: var(--canvas); border: 1px solid var(--border-hairline); }
 #loginBtn,#registerBtn { color: var(--color-on-accent) !important; background: var(--color-accent) !important; box-shadow: none !important; transform: none !important; }
 html.auth-dialog-open, html.auth-dialog-open body { overflow: hidden !important; }
