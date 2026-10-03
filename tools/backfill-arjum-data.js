@@ -263,7 +263,7 @@ async function run() {
     // Cross-process usage (lib/arjum-quota-tracker.js), not this invocation's
     // own totalRequested — this script is one of several cron-fired
     // processes sharing the same daily quota (this backfill worker at
-    // 00:05, the daily-update job 5x between 20:00-22:00), and a counter
+    // 00:05, the daily-update job repeatedly across 18:00-23:30), and a counter
     // that resets to 0 every run cannot actually reserve anything across
     // processes.
     const usedToday = arjumClient.getUsedQuotaToday();
