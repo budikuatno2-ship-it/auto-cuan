@@ -26,7 +26,12 @@
     hideSubscriptionUi();
 
     loadScriptOnce('/maintenance-auth-guard.js?v=20260816-v1', 'data-autocuan-maintenance-auth-guard');
-    loadScriptOnce('/auth-v2.js?v=20260929-dialog-v2', 'data-autocuan-auth-v2');
+    // v2 -> v3: auth-v2 now preserves guest-permitted routes (FINAL-HC-002) and
+    // re-enters protected SPA routes after session restore. The query string is
+    // the cache key: Nginx serves .js as `max-age=604800, immutable` behind a
+    // Cloudflare edge cache, so the version must move with the file or the fix
+    // stays pinned to the old copy for up to seven days.
+    loadScriptOnce('/auth-v2.js?v=20261003-dialog-v3', 'data-autocuan-auth-v2');
     loadScriptOnce('/account-center-lazy-loader-v1.js?v=20260816-v1', 'data-autocuan-account-center-lazy');
     loadScriptOnce('/legacy-gmail-runtime.js?v=20261001-v1', 'data-autocuan-legacy-gmail');
     loadScriptOnce('/subscription-access-gate-v1.js?v=20260816-v1', 'data-autocuan-subscription-access-gate');

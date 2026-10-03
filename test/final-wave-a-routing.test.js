@@ -176,6 +176,16 @@ test('FINAL-HC-001: pattern-screener-extension skips protected screener fetch wh
   const html = fs.readFileSync(INDEX_HTML_PATH, 'utf8');
   assert.match(html, /<script src="\/assets\/fca-stocks\.js\?v=[^"]+"><\/script>/, 'index.html must load fca-stocks.js with a cache-busting query');
   assert.ok(!html.includes('<script src="/assets/fca-stocks.js"></script>'), 'unversioned fca-stocks.js script tag must not return');
+
+  // Same chain for auth-v2.js: FINAL-HC-002 (guest news survives session 401)
+  // and the protected-route re-entry both live in that file. Production proved
+  // the stale v2 asset still ran the old returnToGuest path, so BOTH the
+  // bootstrapper's version and the bootstrapper's own tag must be cache-busted.
+  const bootstrap = fs.readFileSync(path.join(ROOT, 'public', 'website-approved-access.js'), 'utf8');
+  assert.ok(!bootstrap.includes('/auth-v2.js?v=20260929-dialog-v2'), 'stale auth-v2 v2 query must be bumped so the FINAL-HC-002 fix is not served from an immutable edge cache');
+  assert.match(bootstrap, /\/auth-v2\.js\?v=[^']+/, 'bootstrapper must version the auth-v2 URL');
+  assert.match(html, /<script src="\/website-approved-access\.js\?v=[^"]+"><\/script>/, 'index.html must load the approved-access bootstrapper with a cache-busting query');
+  assert.ok(!html.includes('<script src="/website-approved-access.js?v=20260929-experience-v2"></script>'), 'stale bootstrapper v2 query must be bumped');
 });
 
 test('FINAL-HC-002: auth-v2.js preserves guest-permitted routes on session-status 401', () => {
