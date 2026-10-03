@@ -136,12 +136,31 @@
       }
     }
 
-    // 1. Sync input elements
-    var analisisInput = byId('analisisInput');
-    if (analisisInput && analisisInput.value !== ticker) analisisInput.value = ticker;
+    // 1. Sync input elements across all primary analysis surfaces silently without feedback loops
+    var primaryInputs = ['analisisInput', 'chartTickerInput', 'newsTickerInput', 'financialTickerInput', 'marketStructureTickerInput'];
+    primaryInputs.forEach(function(id) {
+      var inp = byId(id);
+      if (inp && inp.value !== ticker) {
+        inp.value = ticker;
+      }
+    });
 
-    var chartInput = byId('chartTickerInput');
-    if (chartInput && chartInput.value !== ticker) chartInput.value = ticker;
+    // Sync badges across views
+    var finBadge = byId('financialTickerBadge');
+    if (finBadge) finBadge.textContent = ticker;
+    var msBadge = byId('marketStructureTickerBadge');
+    if (msBadge) msBadge.textContent = ticker;
+
+    // URL ticker synchronization (FINAL-RISK-005) - replaceState only, no pushState loop
+    if (!options.skipUrlSync && typeof window !== 'undefined' && window.location && window.history && window.history.replaceState) {
+      try {
+        var url = new URL(window.location.href);
+        if (url.searchParams.get('ticker') !== ticker) {
+          url.searchParams.set('ticker', ticker);
+          window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+        }
+      } catch (_) {}
+    }
 
     // 2. Update badges & labels
     var badge = byId('unifiedActiveTickerBadge');
@@ -342,6 +361,16 @@
       });
     }
 
+    // Read initial ticker from URL parameter if available
+    try {
+      if (typeof window !== 'undefined' && window.location) {
+        var urlParams = new URLSearchParams(window.location.search);
+        var urlTicker = cleanTicker(urlParams.get('ticker'));
+        if (urlTicker) {
+          root.activeTicker = urlTicker;
+        }
+      }
+    } catch (_) {}
     // Auto-sync initial ticker if present
     var current = getActiveTicker();
     if (current && byId('page-analisis') && !byId('page-analisis').classList.contains('hidden')) {

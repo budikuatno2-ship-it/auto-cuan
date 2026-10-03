@@ -3,6 +3,24 @@
    Data contracts / scoring / business rules intentionally untouched. */
 
 :root {
+  --canvas: #090D16;
+  --surface: #10151F;
+  --surface-elevated: #161C29;
+  --border-hairline: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --text-primary: #F4F6F8;
+  --text-secondary: #9AA4B2;
+  --text-tertiary: #626C7A;
+  --text-muted: #9AA4B2;
+  --accent-primary: #22C55E;
+  --accent-primary-hover: #16A34A;
+  --accent-subtle: rgba(34, 197, 94, 0.12);
+  --data-positive: #22C55E;
+  --data-negative: #EF4444;
+  --data-neutral: #F59E0B;
+  --danger: #EF4444;
+  --warning: #F59E0B;
+  --info: #3B82F6;
   --motion-instant: 90ms;
   --motion-fast: 140ms;
   --motion-base: 190ms;
@@ -28,9 +46,9 @@ html.light body {
   --border-hairline: #e2e7e4;
   --border-subtle: rgba(18, 35, 29, .10);
   --text-primary: #17211e;
-  --text-secondary: #52605b;
-  --text-tertiary: #7b8883;
-  --text-muted: #697670;
+  --text-secondary: #475569;
+  --text-tertiary: #475569;
+  --text-muted: #475569;
   --accent-primary: #0f7458;
   --accent-primary-hover: #0b6049;
   --accent-subtle: rgba(15, 116, 88, .09);
@@ -892,10 +910,16 @@ html.light #page-dashboard .action-card {
   min-height: 90px;
 }
 
-html.light #page-dashboard .dash-badge {
+html.light #page-dashboard .dash-badge:not([class*="amber"]):not(.dash-badge-warning) {
   background: #f5f7f6 !important;
   border-color: rgba(18,35,29,.10) !important;
   color: #5f6d67 !important;
+}
+html.light #page-dashboard .dash-badge:is([class*="amber"], .dash-badge-warning),
+html.light .dash-badge:is([class*="amber"], .dash-badge-warning) {
+  background: #fef3c7 !important;
+  border-color: rgba(217, 119, 6, 0.35) !important;
+  color: #92400e !important;
 }
 
 /* Modals: one predictable sheet language. */
@@ -903,6 +927,7 @@ html.light :is(
   #loginModal,
   #registerModal,
   #selfResetModal,
+  #resetPasswordModal,
   #authChoiceModal,
   #accountModal,
   #subscriptionModal
@@ -1821,4 +1846,49 @@ html.light .sidebar-utility-button:hover {
 }
 html.light .sidebar-utility-danger {
   color:#a33943 !important;
+}
+
+/* Sidebar group empty collapse (FINAL-BUG-007) */
+.sidebar-nav-group:not(:has(.sidebar-item:not(.hidden):not([hidden]))) {
+  display: none !important;
+}
+
+html.light .sidebar-group-label {
+  color: #475569 !important;
+}
+html.light .text-muted {
+  color: #475569 !important;
+}
+
+/* Riset Pasar Subgroup Labels (FINAL-RISK-003) */
+.sidebar-subgroup-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding: 6px 12px 2px;
+  margin-top: 4px;
+}
+html.light .sidebar-subgroup-label {
+  color: #475569 !important;
+}
+#appSidebar.is-collapsed .sidebar-subgroup-label {
+  display: none !important;
+}
+
+/* Mobile Touch Ergonomics Polish (FINAL-POLISH-002) */
+@media (max-width: 768px) {
+  .nav-btn,
+  .mobile-nav-row .nav-btn,
+  .theme-toggle-compact,
+  .sidebar-item,
+  .header-actions button,
+  .header-actions a,
+  #logoutBtn,
+  #headerUserLabel,
+  #btnJalankanAnalisis,
+  .analisis-subtab {
+    min-height: 44px !important;
+  }
 }
