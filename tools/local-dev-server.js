@@ -436,6 +436,10 @@ const serveData = createStaticResponder({ rootDir: DATA_DIR, mimeTypes: MIME_TYP
 const ROUTE_REWRITES = {
   '/': '/index.html',
   '/dashboard': '/index.html',
+  '/screener': '/index.html',
+  '/watchlist': '/index.html',
+  '/sektor': '/index.html',
+  '/trackrecord': '/index.html',
   '/pattern': '/index.html',
   '/review': '/index.html',
   '/analisis-saham': '/analisis-saham.html',
@@ -991,7 +995,7 @@ const server = http.createServer(async (req, res) => {
   if (pathname.startsWith('/data/')) {
     if (await serveData(req,res,pathname.slice('/data'.length),{noStore:true,extensionFallback:false})) return;
   }
-  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern') pathname = '/index.html';
+  if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern' || pathname === '/screener' || pathname === '/watchlist' || pathname === '/sektor' || pathname === '/trackrecord') pathname = '/index.html';
   if (await servePublic(req,res,pathname)) return;
   if (await servePublic(req,res,'/404.html',{status:404,noStore:true})) return;
   res.statusCode=404;res.setHeader('Cache-Control','no-store');res.end(req.method==='HEAD'?undefined:'404 Not Found');

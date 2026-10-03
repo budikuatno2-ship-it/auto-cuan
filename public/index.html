@@ -3463,11 +3463,144 @@ function updateLandingCtas() {
     var isLoggedIn = isAutocuanLoggedIn();
     document.querySelectorAll('.landing-cta-label').forEach(function(el) { el.textContent = isLoggedIn ? 'Masuk Dashboard' : 'Mulai Sekarang'; });
 }
+var PROMOTED_ANALISIS_MAP = {
+    'chart': 'analisis-chart',
+    'analisis-chart': 'analisis-chart',
+    'bandarmologi': 'bandarmologi',
+    'intel': 'intel',
+    'hunter': 'hunter',
+    'insider': 'insider',
+    'ranking': 'ranking',
+    'financial': 'financial',
+    'market-structure': 'market-structure',
+    'pattern': 'pattern'
+};
+
+function parseAppRoute() {
+    var rawPath = (window.location.pathname || '/').toLowerCase();
+    var path = rawPath.replace(/\/$/, '') || '/';
+    var params = new URLSearchParams(window.location.search);
+    var hash = (window.location.hash || '').replace(/^#/, '').toLowerCase();
+    var pageParam = (params.get('page') || '').toLowerCase();
+    var tabParam = (params.get('tab') || '').toLowerCase();
+
+    // Direct path deep links (FINAL-BUG-002)
+    if (path === '/screener') return { page: 'screener', subTab: null, authRequired: true };
+    if (path === '/watchlist') return { page: 'watchlist', subTab: null, authRequired: true };
+    if (path === '/sektor') return { page: 'sektor', subTab: null, authRequired: true };
+    if (path === '/trackrecord') return { page: 'trackrecord', subTab: null, authRequired: true };
+
+    // Preview routes
+    if (path.startsWith('/preview/')) {
+        var pMod = path.slice('/preview/'.length);
+        if (pMod === 'landing') return { page: 'landing', isPreview: true };
+        var prevMap = {
+            'dashboard': 'dashboard',
+            'analisis-saham': 'analisis',
+            'analisis': 'analisis',
+            'sektor-hot': 'sektor',
+            'sektor': 'sektor',
+            'screener': 'screener',
+            'watchlist': 'watchlist',
+            'track-record': 'trackrecord',
+            'trackrecord': 'trackrecord',
+            'portofolio': 'portofolio',
+            'portfolio': 'portofolio'
+        };
+        return { page: prevMap[pMod] || 'dashboard', isPreview: true };
+    }
+
+    if (path === '/dashboard') {
+        var target = pageParam || hash;
+        if (target === 'news') return { page: 'news', subTab: null, allowGuest: true };
+        if (target === 'analisis' || target === 'chart') {
+            var sub = tabParam ? (PROMOTED_ANALISIS_MAP[tabParam] || tabParam) : 'analisis-chart';
+            return { page: 'analisis', subTab: sub, allowGuest: true };
+        }
+        if (target in PROMOTED_ANALISIS_MAP) {
+            return { page: 'analisis', subTab: PROMOTED_ANALISIS_MAP[target], allowGuest: true };
+        }
+        if (target === 'screener') return { page: 'screener', subTab: null, authRequired: true };
+        if (target === 'watchlist') return { page: 'watchlist', subTab: null, authRequired: true };
+        if (target === 'sektor') return { page: 'sektor', subTab: null, authRequired: true };
+        if (target === 'trackrecord') return { page: 'trackrecord', subTab: null, authRequired: true };
+        if (target === 'portofolio') return { page: 'portofolio', subTab: null, authRequired: true };
+        return { page: 'dashboard', subTab: null, authRequired: true };
+    }
+
+    if (path === '/subscription') {
+        return { page: 'subscription', allowGuest: true };
+    }
+
+    if (path === '/' || path === '') {
+        return { page: 'landing', allowGuest: true };
+    }
+
+    return { page: 'unknown', isUnknown: true };
+}
+
+window.isCurrentRouteGuestAllowed = function() {
+    var route = parseAppRoute();
+    return route.allowGuest === true || route.page === 'landing' || route.page === 'news';
+};
+
+function getCanonicalRouteUrl(page, subTab) {
+    if (page in PROMOTED_ANALISIS_MAP) {
+        subTab = PROMOTED_ANALISIS_MAP[page];
+        page = 'analisis';
+    }
+    var searchParams = new URLSearchParams(window.location.search);
+    searchParams.delete('page');
+    searchParams.delete('tab');
+    if (page === 'screener') {
+        var qs = searchParams.toString();
+        return '/screener' + (qs ? '?' + qs : '');
+    }
+    if (page === 'watchlist') {
+        var qs = searchParams.toString();
+        return '/watchlist' + (qs ? '?' + qs : '');
+    }
+    if (page === 'sektor') {
+        var qs = searchParams.toString();
+        return '/sektor' + (qs ? '?' + qs : '');
+    }
+    if (page === 'trackrecord') {
+        var qs = searchParams.toString();
+        return '/trackrecord' + (qs ? '?' + qs : '');
+    }
+    if (page === 'news') {
+        searchParams.set('page', 'news');
+        var qs = searchParams.toString();
+        return '/dashboard?' + qs;
+    }
+    if (page === 'analisis') {
+        searchParams.set('page', 'analisis');
+        if (subTab && subTab !== 'analisis-chart') {
+            searchParams.set('tab', subTab);
+        }
+        var qs = searchParams.toString();
+        return '/dashboard?' + qs;
+    }
+    if (page === 'portofolio') {
+        searchParams.set('page', 'portofolio');
+        var qs = searchParams.toString();
+        return '/dashboard?' + qs;
+    }
+    if (page === 'dashboard') {
+        var qs = searchParams.toString();
+        return '/dashboard' + (qs ? '?' + qs : '');
+    }
+    var qs = searchParams.toString();
+    return '/dashboard' + (qs ? '?' + qs : '');
+}
+
 function setRoute(path, replace) {
-    if (!window.history || window.location.pathname === path) return;
+    if (!window.history) return;
+    var currentFull = (window.location.pathname || '') + (window.location.search || '');
+    if (currentFull === path) return;
     if (window.location.pathname.startsWith('/preview/') && !path.startsWith('/preview/')) return;
-    if (replace) window.history.replaceState({}, '', path);
-    else window.history.pushState({}, '', path);
+    if (replace) window.history.replaceState({ path: path }, '', path);
+    else window.history.pushState({ path: path }, '', path);
 }
 function openAuthChoiceModal(message) {
     // The landing page prompts this when it wants a login/register choice. While
@@ -3503,11 +3636,25 @@ function enterApp(opts) {
         return;
     }
     try { localStorage.setItem('autocuan_entered_app', 'true'); } catch (_) {}
-    setRoute('/dashboard', !!opts.replaceHistory);
     var landing = document.getElementById('landingPage');
     if (landing) landing.classList.add('hidden');
     if (typeof setWorkspaceSidebarVisible === 'function') setWorkspaceSidebarVisible(true);
-    showDashboard();
+
+    var targetPage = opts.targetPage;
+    var targetSubTab = opts.targetSubTab;
+    if (!targetPage) {
+        var parsed = parseAppRoute();
+        targetPage = parsed.page;
+        targetSubTab = parsed.subTab;
+    }
+    if (targetPage && targetPage !== 'dashboard' && targetPage !== 'landing' && targetPage !== 'unknown') {
+        navigateTo(targetPage, targetSubTab, { replaceState: !!opts.replaceHistory, skipHistory: !!opts.skipHistory });
+    } else {
+        showDashboard();
+        if (!opts.skipHistory) {
+            setRoute(getCanonicalRouteUrl('dashboard'), !!opts.replaceHistory);
+        }
+    }
 }
 function landingPrimaryAction() {
     if (isAutocuanLoggedIn()) enterApp();
@@ -3515,31 +3662,62 @@ function landingPrimaryAction() {
 }
 function handleAppRoute(opts) {
     opts = opts || {};
-    var path = window.location.pathname || '/';
-    if (path.startsWith('/preview/')) {
-        var pMod = path.slice('/preview/'.length).replace(/\/$/, '').toLowerCase();
-        if (pMod === 'landing') {
+    var route = parseAppRoute();
+
+    if (route.isPreview) {
+        if (route.page === 'landing') {
             showLandingPage({ skipHistory: true, duringInit: opts.duringInit });
             return;
         }
-        enterApp({ replaceHistory: true, duringInit: opts.duringInit });
+        enterApp({ replaceHistory: true, duringInit: opts.duringInit, targetPage: route.page, targetSubTab: route.subTab, skipHistory: true });
         return;
     }
-    if (path === '/dashboard' || path === '/dashboard/') {
-        // Berita & Katalis is a guest-accessible feature (same as Analisis Saham
-        // itself), so a deep link to it must not be blocked by the full-login
-        // gate that guards the rest of /dashboard.
-        var isNewsDeepLink = (new URLSearchParams(window.location.search).get('page') || '').toLowerCase() === 'news';
-        if (isAutocuanLoggedIn() || isNewsDeepLink) enterApp({ replaceHistory: opts.duringInit, allowGuest: isNewsDeepLink });
-        else showLandingPage({ skipHistory: true, duringInit: opts.duringInit, promptAuth: true, promptMessage: 'Login atau daftar diperlukan untuk membuka /dashboard.' });
+
+    if (route.page === 'subscription') {
+        openSubscriptionPage();
         return;
     }
-    if (path === '/subscription' || path === '/subscription/') { openSubscriptionPage(); return; }
-    if ((path === '/' || path === '') && isAutocuanLoggedIn()) {
-        enterApp({ replaceHistory: true });
+
+    if (route.page === 'landing') {
+        if (isAutocuanLoggedIn()) {
+            enterApp({ replaceHistory: true, duringInit: opts.duringInit, targetPage: 'dashboard', skipHistory: opts.fromPopstate });
+            return;
+        }
+        showLandingPage({ duringInit: opts.duringInit, replaceHistory: opts.replaceHistory, skipHistory: opts.fromPopstate });
         return;
     }
-    showLandingPage({ duringInit: opts.duringInit, replaceHistory: opts.replaceHistory });
+
+    if (route.page === 'news' || route.page === 'analisis') {
+        enterApp({
+            replaceHistory: opts.duringInit,
+            allowGuest: true,
+            targetPage: route.page,
+            targetSubTab: route.subTab,
+            skipHistory: opts.fromPopstate
+        });
+        return;
+    }
+
+    if (route.authRequired) {
+        if (isAutocuanLoggedIn()) {
+            enterApp({
+                replaceHistory: opts.duringInit,
+                targetPage: route.page,
+                targetSubTab: route.subTab,
+                skipHistory: opts.fromPopstate
+            });
+        } else {
+            showLandingPage({
+                skipHistory: true,
+                duringInit: opts.duringInit,
+                promptAuth: true,
+                promptMessage: 'Login atau daftar diperlukan untuk membuka ' + (route.page === 'dashboard' ? '/dashboard' : '/' + route.page) + '.'
+            });
+        }
+        return;
+    }
+
+    showLandingPage({ duringInit: opts.duringInit, replaceHistory: opts.replaceHistory, skipHistory: opts.fromPopstate });
 }
 window.addEventListener('popstate', function() { handleAppRoute({ fromPopstate: true }); });
 
@@ -4701,43 +4879,19 @@ function showDashboard() {
 
 function checkInitialUrlTargetPage() {
     try {
-        var hash = (window.location.hash || '').replace(/^#/, '').toLowerCase();
-        var params = new URLSearchParams(window.location.search);
-        var pageParam = (params.get('page') || '').toLowerCase();
-        var target = pageParam || hash;
-
-        if (window.location.pathname && window.location.pathname.startsWith('/preview/')) {
-            var prevMod = window.location.pathname.slice('/preview/'.length).replace(/\/$/, '').toLowerCase();
-            var prevMap = {
-                'dashboard': 'dashboard',
-                'analisis-saham': 'analisis',
-                'analisis': 'analisis',
-                'sektor-hot': 'sektor',
-                'sektor': 'sektor',
-                'screener': 'screener',
-                'watchlist': 'watchlist',
-                'track-record': 'trackrecord',
-                'trackrecord': 'trackrecord',
-                'portofolio': 'portofolio',
-                'portfolio': 'portofolio',
-                'kelola-keuangan': 'money-management',
-                'money-management': 'money-management'
-            };
-            if (prevMap[prevMod]) {
-                target = prevMap[prevMod];
-            }
-        }
-        if (target === 'news') {
+        var route = parseAppRoute();
+        if (route.page === 'news') {
+            var params = new URLSearchParams(window.location.search);
             var t = (params.get('ticker') || '').toUpperCase() || 'BBCA';
-            navigateTo('news');
+            navigateTo('news', null, { skipHistory: true });
             if (typeof loadStockNewsPage === 'function') {
                 var inp = document.getElementById('newsTickerInput');
                 if (inp) inp.value = t;
                 loadStockNewsPage(t);
             }
             return true;
-        } else if (target && target !== 'dashboard' && document.getElementById('page-' + target)) {
-            navigateTo(target);
+        } else if (route.page && route.page !== 'dashboard' && route.page !== 'landing' && route.page !== 'unknown') {
+            navigateTo(route.page, route.subTab, { skipHistory: true });
             return true;
         }
     } catch (_) {}
@@ -4977,25 +5131,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function navigateTo(page) {
     var subTab = arguments[1];
+    var options = arguments[2] || {};
     if (page !== 'chart' && typeof resetPatternMap === 'function') resetPatternMap();
     if (page === 'subscription') {
+        page = 'dashboard';
+    }
+    if (page === 'kelola-keuangan' || page === 'money-management') {
         page = 'dashboard';
     }
     if (isPremiumFeaturePage(page) && isDeniedWebsiteAccess()) {
         if (typeof showToast === 'function') showToast('Fitur ini terbuka setelah login dengan akun yang sudah di-approve admin.', 'warning');
         page = 'dashboard';
     }
-    if (page === 'chart') {
-        navigateTo('analisis', 'analisis-chart');
+    if (page in PROMOTED_ANALISIS_MAP) {
+        var targetSubTab = PROMOTED_ANALISIS_MAP[page];
+        if (targetSubTab === 'pattern' && !isAdmin()) {
+            if (typeof showToast === 'function') showToast('Fitur Pattern Radar khusus untuk Admin.', 'warning');
+            targetSubTab = 'analisis-chart';
+        }
+        navigateTo('analisis', targetSubTab, options);
         return;
     }
-    if (page === 'ranking') {
-        navigateTo('analisis', 'ranking');
-        return;
-    }
-    if (page === 'bandarmologi') {
-        navigateTo('analisis', 'bandarmologi');
-        return;
+    if (page === 'analisis') {
+        if (subTab in PROMOTED_ANALISIS_MAP) {
+            subTab = PROMOTED_ANALISIS_MAP[subTab];
+        }
+        if (subTab === 'pattern' && !isAdmin()) {
+            if (typeof showToast === 'function') showToast('Fitur Pattern Radar khusus untuk Admin.', 'warning');
+            subTab = 'analisis-chart';
+        }
+        subTab = subTab || 'analisis-chart';
     }
     // Standalone fallback (satisfies test/holver-app-shell-theme.test.js & test/standalone-analisis-saham.test.js)
     if (window.__STANDALONE_FALLBACK__) {
@@ -5003,10 +5168,24 @@ function navigateTo(page) {
         if (page === 'portofolio') { window.location.assign('/portfolio-planner'); return; }
     }
     var navigationId = ++workspaceNavigationId;
-    if (page === 'analisis') window.__ACTIVE_ANALISIS_SUBTAB__ = subTab || 'analisis-chart';
+    if (page === 'analisis') window.__ACTIVE_ANALISIS_SUBTAB__ = subTab;
     if (typeof closeMobileSidebar === 'function') closeMobileSidebar();
     currentPage = page;
     if (page !== 'screener') stopAllScreenerPolling();
+
+    // History & URL update (FINAL-BUG-003)
+    if (!options.skipHistory && !window.__STANDALONE_FALLBACK__) {
+        var targetUrl = getCanonicalRouteUrl(page, subTab);
+        var currentFull = (window.location.pathname || '') + (window.location.search || '');
+        if (options.replaceState || options.replaceHistory) {
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState({ page: page, subTab: subTab }, '', targetUrl);
+            }
+        } else if (currentFull !== targetUrl && window.history && window.history.pushState) {
+            window.history.pushState({ page: page, subTab: subTab }, '', targetUrl);
+        }
+    }
+
     // Hide all pages
     document.querySelectorAll('.page-content').forEach(function(el) { el.classList.add('hidden'); });
     // Show target page
@@ -9471,6 +9650,11 @@ function sanitizeConfluenceLookupRow(row) {
 }
 
 async function fetchManualConfluenceRow(ticker, targetId) {
+    if (!isAutocuanLoggedIn()) {
+        var fallbackEl = document.getElementById(targetId);
+        if (fallbackEl) fallbackEl.textContent = 'Data confluence belum dimuat dari screener. Login untuk melihat data lengkap.';
+        return;
+    }
     var t = String(ticker || '').toUpperCase().replace(/\.JK$/, '');
     var sources = [
         { url: '/api/sector-hot?action=screener', cache: '_kgCardData', includeForeign: true, keys: ['results', 'rows', 'data'] },
