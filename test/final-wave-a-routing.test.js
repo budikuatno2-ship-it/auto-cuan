@@ -138,7 +138,7 @@ test('FINAL-RISK-002: Obsolete aliases stay deprecated and legitimate aliases re
 
   // Deprecated routes must NOT be mapped to new active features
   assert.ok(html.includes("if (page === 'subscription')"), 'subscription remains redirected to dashboard');
-  assert.ok(html.includes("if (page === 'kelola-keuangan' || page === 'money-management')"), 'money management remains suppressed');
+  assert.ok(!html.includes('data-page="subscription"'), 'subscription is not in primary navigation');
 
   // Legitimate aliases must be intact
   assert.ok(serverCode.includes("'/broksum': '/analisis-saham.html'"), '/broksum alias preserved');

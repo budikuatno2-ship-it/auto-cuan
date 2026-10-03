@@ -3505,7 +3505,9 @@ function parseAppRoute() {
             'track-record': 'trackrecord',
             'trackrecord': 'trackrecord',
             'portofolio': 'portofolio',
-            'portfolio': 'portofolio'
+            'portfolio': 'portofolio',
+            'kelola-keuangan': 'money-management',
+            'money-management': 'money-management'
         };
         return { page: prevMap[pMod] || 'dashboard', isPreview: true };
     }
@@ -5134,9 +5136,6 @@ function navigateTo(page) {
     var options = arguments[2] || {};
     if (page !== 'chart' && typeof resetPatternMap === 'function') resetPatternMap();
     if (page === 'subscription') {
-        page = 'dashboard';
-    }
-    if (page === 'kelola-keuangan' || page === 'money-management') {
         page = 'dashboard';
     }
     if (isPremiumFeaturePage(page) && isDeniedWebsiteAccess()) {
