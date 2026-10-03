@@ -85,6 +85,15 @@ test('FINAL-BUG-001: index.html maps promoted Riset Pasar keys to analisis subta
     assert.ok(html.includes(`'${key}':`), `PROMOTED_ANALISIS_MAP must contain entry for ${key}`);
   });
 
+  // BandarmologiRuntime rewrites the URL tab to its section name, so those
+  // values must resolve back to the Bandarmologi sub-tool on Back/Forward —
+  // and the SECTION must survive, not collapse to the runtime default.
+  assert.match(html, /'summary': 'bandarmologi'/, 'summary tab alias must map to bandarmologi');
+  assert.match(html, /'akumulasi': 'bandarmologi'/, 'akumulasi tab alias must map to bandarmologi');
+  assert.match(html, /var BANDAR_SECTION_TABS = \{ 'summary': 'summary', 'akumulasi': 'akumulasi' \};/, 'bandarmologi section names must be tracked separately');
+  assert.match(html, /bandarSection: BANDAR_SECTION_TABS\[tabParam\] \|\| null/, 'analisis route must carry the requested bandar section');
+  assert.match(html, /BandarmologiRuntime\.setBandarSection\(route\.bandarSection\)/, 'checkInitialUrlTargetPage must re-apply the requested bandar section');
+
   // Verify navigateTo forwards promoted keys
   assert.ok(html.includes('if (page in PROMOTED_ANALISIS_MAP)'), 'navigateTo must detect promoted keys');
   assert.ok(html.includes("navigateTo('analisis', targetSubTab"), 'navigateTo must map promoted keys to analisis page');
