@@ -4903,7 +4903,16 @@ function checkInitialUrlTargetPage() {
                 loadStockNewsPage(t);
             }
             return true;
-        } else if (route.page && route.page !== 'dashboard' && route.page !== 'landing' && route.page !== 'unknown') {
+        }
+        if (route.page === 'dashboard') {
+            // Browser Back to a plain /dashboard must actually re-mount the
+            // dashboard page. Without this the previous sub-page (analisis,
+            // trackrecord, …) stayed visible while the URL said /dashboard, so
+            // the URL, the sidebar highlight and the canvas disagreed.
+            if (currentPage !== 'dashboard') navigateTo('dashboard', null, { skipHistory: true });
+            return true;
+        }
+        if (route.page && route.page !== 'landing' && route.page !== 'unknown') {
             navigateTo(route.page, route.subTab, { skipHistory: true });
             return true;
         }

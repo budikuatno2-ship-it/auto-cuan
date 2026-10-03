@@ -132,6 +132,15 @@ test('FINAL-BUG-003: index.html implements URL canonicalization, history pushSta
   assert.ok(html.includes('window.history.pushState('), 'navigateTo must use history.pushState() for new navigation');
   assert.ok(html.includes("window.addEventListener('popstate'"), 'popstate listener must be active');
   assert.ok(html.includes('fromPopstate: true'), 'popstate must trigger handleAppRoute with fromPopstate');
+
+  // Back to a plain /dashboard must re-mount the dashboard. Production probing
+  // showed the previous sub-page stayed visible with the sidebar highlight
+  // still on it while the URL read /dashboard.
+  const fnMatch = html.match(/function checkInitialUrlTargetPage\(\)\s*\{([\s\S]*?)\n\}/);
+  assert.ok(fnMatch, 'checkInitialUrlTargetPage must exist');
+  const body = fnMatch[1];
+  assert.match(body, /if \(route\.page === 'dashboard'\)/, 'checkInitialUrlTargetPage must handle the plain dashboard route');
+  assert.match(body, /navigateTo\('dashboard', null, \{ skipHistory: true \}\)/, 'Back to /dashboard must re-mount the dashboard page');
 });
 
 test('FINAL-HC-001: fetchManualConfluenceRow guards against unauthenticated 401 screener requests', () => {
