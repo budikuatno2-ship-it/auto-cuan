@@ -4556,8 +4556,6 @@ function closeSelfResetModal() { document.getElementById('selfResetModal').class
 // ===== LOGIN =====
 async function doLogin() {
     clearLegacyDeviceBlock();
-    if (doLogin._busy) return;
-    doLogin._busy = true;
     var usernameInput = document.getElementById('loginUsername').value.trim();
     var password = document.getElementById('loginPassword').value;
     var errorEl = document.getElementById('loginError');
@@ -4573,6 +4571,8 @@ async function doLogin() {
     // Existing accounts are authenticated by the server. Do not locally block a
     // device or reject a stored account using a browser-only name heuristic.
     if (!password) { errorEl.textContent = 'Password tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
+    if (doLogin._busy) return;
+    doLogin._busy = true;
     loginBtn.disabled = true; loginBtn.innerHTML = '<span class="spinner-sm"></span>Masuk...';
     try {
         var recaptchaToken = '';
@@ -4814,8 +4814,6 @@ var REGISTRATION_TERMS_VERSION = '2026-08-16-v1';
 
 async function doRegister() {
     clearLegacyDeviceBlock();
-    if (doRegister._busy) return;
-    doRegister._busy = true;
     // F-090: resolve the feedback elements BEFORE any validation branch uses
     // them. Previously errorEl was assigned below the email check, so an
     // invalid email threw a TypeError instead of showing the validation message.
@@ -4840,6 +4838,8 @@ async function doRegister() {
     if (!isValidPassword(password)) { errorEl.textContent = 'Password terlalu lemah. Gunakan kombinasi huruf besar, huruf kecil, dan angka (min 8 karakter).'; errorEl.classList.remove('hidden'); return; }
     if (password !== passwordConfirm) { errorEl.textContent = 'Konfirmasi password tidak sama.'; errorEl.classList.remove('hidden'); return; }
     if (!termsEl || !termsEl.checked) { errorEl.textContent = 'Baca dan setujui Peraturan & Ketentuan sebelum mendaftar.'; errorEl.classList.remove('hidden'); return; }
+    if (doRegister._busy) return;
+    doRegister._busy = true;
     registerBtn.disabled = true; registerBtn.innerHTML = '<span class="spinner-sm"></span>Mendaftar...';
     try {
         var recaptchaToken = '';
@@ -13835,8 +13835,7 @@ function forceNormalizeTechnicalDOM(root) {
         openOrder = openOrder.filter(function (id) { return visible.indexOf(id) >= 0; });
         var added = visible.filter(function (id) { return openOrder.indexOf(id) < 0; });
         added.forEach(function (id) {
-            var resolvedTrigger = restore || resolveTriggerOutsideModals(document.activeElement);
-            lastFocusByModal[id] = resolvedTrigger || document.activeElement;
+            lastFocusByModal[id] = restore || document.activeElement;
             openOrder.push(id);
         });
         releaseBackground();
