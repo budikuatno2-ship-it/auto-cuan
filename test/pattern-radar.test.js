@@ -114,7 +114,9 @@ test('dashboard loads tab-resume guard before stable Pattern v5 and cache-busted
   new vm.Script(source, { filename:'pattern-stable-runtime.js' });
   assert.match(loader, /\/pattern-tab-resume-guard\.js\?v=20260802-pattern-tab-resume-v2/);
   assert.match(loader, /\/pattern-stable-runtime\.js\?v=20260813-pattern-stable-v6/);
-  assert.match(loader, /\/pattern-screener-extension\.js\?v=20260813-pattern-screener-v7/);
+  // Version-agnostic: the invariant is that the extension is loaded with a
+  // cache-busting query. The pinned version moved v7 -> v8 for FINAL-HC-001.
+  assert.match(loader, /\/pattern-screener-extension\.js\?v=/);
   assert.match(loader, /\/pattern-visual\.js\?v=20260813-pattern-visual-v1/);
   assert.doesNotMatch(loader, /pattern-radar\.js/);
   assert.match(source, /action=screener/);

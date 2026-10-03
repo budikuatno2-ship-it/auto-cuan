@@ -56,7 +56,12 @@ window.FCA_STOCKS = {
     append('/pattern-safety-hardening-v1.js?v=20260813-v1', 'data-pattern-safety-hardening-loader', function () {
       append('/pattern-direction-safety.js?v=20260813-pattern-direction-safety-v2', 'data-pattern-direction-safety-loader');
       append('/pattern-stable-runtime.js?v=20260813-pattern-stable-v6', 'data-pattern-stable-loader');
-      append('/pattern-screener-extension.js?v=20260813-pattern-screener-v7', 'data-pattern-screener-extension-loader');
+      // v7 -> v8: the extension now skips its protected screener fetch until a
+      // session is confirmed (FINAL-HC-001). The query string is the cache key —
+      // Nginx serves .js with `max-age=604800, immutable` and Cloudflare caches
+      // it at the edge, so without this bump the fixed file would not reach
+      // browsers for up to seven days.
+      append('/pattern-screener-extension.js?v=20261003-pattern-screener-v8', 'data-pattern-screener-extension-loader');
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load, { once: true });
