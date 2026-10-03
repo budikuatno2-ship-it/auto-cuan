@@ -239,7 +239,10 @@ const candlesApi = read('api/candles.js');
 assertOk(fcaLoader.includes('/security-admin-runtime.js?v=20260729-security-admin-v1'), 'Security Center runtime loader is missing.');
 assertOk(fcaLoader.includes('/ui-stability-fix.js?v=20260802-ui-stability-v2'), 'Shared UI stability runtime loader is missing.');
 assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260813-pattern-stable-v6'), 'Stable Pattern v6 runtime loader is missing.');
-assertOk(fcaLoader.includes('/pattern-screener-extension.js?v=20260813-pattern-screener-v7'), 'Screener Pattern v7 extension loader is missing.');
+// v7 -> v8: FINAL-HC-001 gated the extension's protected screener fetch on a
+// confirmed session. The query string is the cache key for an immutable edge
+// asset, so the version bump is required for the fix to actually reach browsers.
+assertOk(fcaLoader.includes('/pattern-screener-extension.js?v=20261003-pattern-screener-v8'), 'Screener Pattern v8 extension loader is missing.');
 assertOk(fcaLoader.includes('/pattern-visual.js?v=20260813-pattern-visual-v1'), 'Local Pattern SVG renderer loader is missing.');
 assertOk(fcaLoader.includes('/pattern-direction-safety.js?v=20260813-pattern-direction-safety-v2'), 'Pattern safety model loader is missing.');
 assertOk(!/pattern-stable-runtime\.js[^]*?function \(\) \{\s*\n\s*append\('\/pattern-screener-extension/.test(fcaLoader), 'Pattern runtimes are chained serially again.');

@@ -162,6 +162,13 @@ test('FINAL-HC-001: pattern-screener-extension skips protected screener fetch wh
   assert.ok(ext.includes("root.addEventListener('autocuan:session-ready'"), 'extension must retry loadSetups on autocuan:session-ready');
   const authCode = fs.readFileSync(AUTH_V2_PATH, 'utf8');
   assert.ok(authCode.includes("new CustomEvent('autocuan:session-ready')"), 'auth-v2 must emit autocuan:session-ready (contract the retry depends on)');
+
+  // Cache-busting contract: Nginx serves .js as `max-age=604800, immutable` and
+  // Cloudflare caches it at the edge, so a changed extension only reaches
+  // browsers when the loader's query string changes with it.
+  const loader = fs.readFileSync(path.join(ROOT, 'public', 'assets', 'fca-stocks.js'), 'utf8');
+  assert.ok(/pattern-screener-extension\.js\?v=/.test(loader), 'loader must version the extension URL');
+  assert.ok(!loader.includes('pattern-screener-extension.js?v=20260813-pattern-screener-v7'), 'stale frozen v7 query must be bumped so the FINAL-HC-001 fix is not served from an immutable edge cache');
 });
 
 test('FINAL-HC-002: auth-v2.js preserves guest-permitted routes on session-status 401', () => {
