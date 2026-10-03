@@ -208,6 +208,12 @@
     }
     async function loadSetups(force) {
       if (state.loading || (state.loaded && !force)) return state.setups;
+      // FINAL-HC-001: this extension installs on EVERY page, including the cold
+      // anonymous landing. Its three SOURCES are protected screener endpoints, so
+      // an unauthenticated visitor would otherwise trigger a 401 cascade. Skip the
+      // fetch until a real session is confirmed; authenticated users (the only
+      // ones who can reach the Pattern cards these setups enrich) are unaffected.
+      if (typeof root.isAutocuanLoggedIn === 'function' && !root.isAutocuanLoggedIn()) return state.setups;
       state.loading = true;
       try {
         var payloads = await Promise.all(SOURCES.map(function (source) { return fetchJson(source.url).catch(function () { return null; }); }));

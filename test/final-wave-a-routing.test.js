@@ -144,6 +144,18 @@ test('FINAL-HC-001: fetchManualConfluenceRow guards against unauthenticated 401 
   assert.ok(fnBody.includes('return;'), 'fetchManualConfluenceRow must early-return for unauthenticated sessions');
 });
 
+test('FINAL-HC-001: pattern-screener-extension skips protected screener fetch when unauthenticated', () => {
+  // Production root-cause: this extension auto-installs on EVERY page (including
+  // the cold landing) and loadSetups() hits three protected screener endpoints,
+  // producing the 401 cascade. It must gate the fetch on a confirmed session.
+  const ext = fs.readFileSync(path.join(ROOT, 'public', 'pattern-screener-extension.js'), 'utf8');
+  const fnMatch = ext.match(/async function loadSetups\(force\)\s*\{([\s\S]*?)\n    \}/);
+  assert.ok(fnMatch, 'loadSetups must exist in pattern-screener-extension.js');
+  const body = fnMatch[1];
+  assert.ok(body.includes('isAutocuanLoggedIn'), 'loadSetups must consult isAutocuanLoggedIn() before fetching protected sources');
+  assert.match(body, /if \(typeof root\.isAutocuanLoggedIn === 'function' && !root\.isAutocuanLoggedIn\(\)\) return/, 'loadSetups must early-return for unauthenticated visitors');
+});
+
 test('FINAL-HC-002: auth-v2.js preserves guest-permitted routes on session-status 401', () => {
   const authCode = fs.readFileSync(AUTH_V2_PATH, 'utf8');
 
