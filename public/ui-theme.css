@@ -118,7 +118,7 @@
   --ac-text-strong: var(--color-text-primary);
   --ac-text: #dbe3ec;
   --ac-text-muted: #93a1b5;
-  --ac-text-dim: #6a7889;
+  --ac-text-dim: #475569;
   --ac-text-faint: var(--ac-text-dim);         /* inline-sheet alias */
 
   /* --- Accent ----------------------------------------------------------
@@ -232,8 +232,8 @@ html.light,
   --border-subtle: rgba(0, 0, 0, 0.12);
   --text-primary: #111827; /* WAJIB: bukan #FFFFFF, kontras WCAG AA */
   --text-secondary: #4B5563;
-  --text-tertiary: #9CA3AF;
-  --text-muted: #9CA3AF;
+  --text-tertiary: #475569;
+  --text-muted: #475569;
   --accent-primary: #16A34A;
   --accent-primary-hover: #15803D;
   --accent-subtle: rgba(22, 163, 74, 0.10);
@@ -3882,8 +3882,8 @@ html.light,
   --border-hairline: #E5E7EB;
   --text-primary: #111827;
   --text-secondary: #4B5563;
-  --text-tertiary: #9CA3AF;
-  --text-muted: #9CA3AF;
+  --text-tertiary: #475569;
+  --text-muted: #475569;
   --accent-primary: #16A34A;
   --accent-primary-hover: #15803D;
   --data-positive: #16A34A;
@@ -4192,7 +4192,7 @@ html.light {
   --canvas: #F7F8FA;
   --text-primary: #111827;
   --text-secondary: #4B5563;
-  --text-muted: #9CA3AF;
+  --text-muted: #475569;
 }
 
 /* Light mode panels & cards ground */

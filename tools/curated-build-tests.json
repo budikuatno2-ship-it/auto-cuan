@@ -277,6 +277,8 @@
   "test/final-uiux-polish.test.js",
   "test/final-uiux-surface-coverage.test.js",
   "test/final-wave-3-accessibility.test.js",
+  "test/final-wave-4a-targeted.test.js",
+  "test/final-wave-4b-targeted.test.js",
   "test/final-wave-a-routing.test.js",
   "test/finance-portfolio-consistency.test.js",
   "test/financial-market-structure-ui.test.js",

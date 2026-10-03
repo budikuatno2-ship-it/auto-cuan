@@ -48,6 +48,7 @@
     </script>
     <link rel="stylesheet" href="/viewport.css?v=20260929-v1">
     <script src="/viewport-runtime.js?v=20260929-v1" defer></script>
+    <script src="/analysis-tools-registry.js?v=20261003-v1"></script>
 </head>
 <body>
     <div id="toastContainer" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -63,10 +64,10 @@
         </div>
         <div class="header-actions">
             <a href="/dashboard?page=news#news" onclick="event.preventDefault(); var t = (window.UnifiedCockpit && typeof window.UnifiedCockpit.getActiveTicker === 'function' ? window.UnifiedCockpit.getActiveTicker() : '') || 'BBCA'; window.location.href='/dashboard?page=news&ticker=' + encodeURIComponent(t) + '#news';" class="px-3.5 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-300 hover:text-white hover:border-emerald-500/40 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0" title="Buka Berita Pasar &amp; Katalis">
-                <span>📰 Berita &amp; Katalis</span>
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2m-4-3H9M7 16h6M7 8h6m-6 4h10"/></svg><span>Berita & Katalis</span>
             </a>
             <button type="button" onclick="openAiApiKeyModal()" class="px-3 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-amber-300 hover:bg-dark-600/60 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0" title="Kelola Google Gemini API Key (BYOK)">
-                <span>🔑 API Key (BYOK)</span>
+                <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg><span>API Key (BYOK)</span>
             </button>
             <a href="/dashboard" class="px-3.5 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-300 hover:text-white hover:border-emerald-500/40 transition-all text-xs font-semibold flex items-center gap-1 shrink-0">
                 <span>&larr; Dashboard</span>
@@ -89,32 +90,40 @@
         <!-- Main Tab Navigation Strip (Consolidated 5-Tab Architecture) -->
         <nav class="analisis-tab-strip mb-4" role="tablist" aria-label="Tab Analisis Saham">
             <button id="tabAnalisisChart" type="button" class="analisis-tab active" data-tab="analisis-chart" onclick="switchAnalisisTab('analisis-chart')">
-                <span class="text-base">💬</span>
-                <span>Analisis &amp; Chart</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17V7m5 10V3m5 14v-5m5 5V8"/></svg>
+                <span>Analisis & Chart</span>
             </button>
             <button id="tabBandarmologi" type="button" class="analisis-tab" data-tab="bandarmologi" onclick="switchAnalisisTab('bandarmologi')">
-                <span class="text-base">🏛️</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-10M15 5h6v6"/></svg>
                 <span>Bandarmologi</span>
             </button>
-            <button id="tabSinyalIntelijen" type="button" class="analisis-tab" data-tab="intel" onclick="switchAnalisisTab('intel')">
-                <span class="text-base">🎯</span>
-                <span>Sinyal Intelijen</span>
-            </button>
             <button id="tabBrokerHunter" type="button" class="analisis-tab" data-tab="hunter" onclick="switchAnalisisTab('hunter')">
-                <span class="text-base">🎯</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 21l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0"/></svg>
                 <span>Broker Hunter</span>
             </button>
+            <button id="tabSinyalIntelijen" type="button" class="analisis-tab" data-tab="intel" onclick="switchAnalisisTab('intel')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7z"/></svg>
+                <span>Sinyal Intelijen</span>
+            </button>
             <button id="tabJejaringInsider" type="button" class="analisis-tab" data-tab="insider" onclick="switchAnalisisTab('insider')">
-                <span class="text-base">🕸️</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l8 4M8 17l8-4M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0M20 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0M8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0"/></svg>
                 <span>Jejaring Insider</span>
             </button>
+            <button id="tabFinancial" type="button" class="analisis-tab" data-tab="financial" onclick="switchAnalisisTab('financial')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/></svg>
+                <span>Financial</span>
+            </button>
+            <button id="tabMarketStructure" type="button" class="analisis-tab" data-tab="market-structure" onclick="switchAnalisisTab('market-structure')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="16" r="3"/><path d="M10.5 10.5l3 3M16 5v5M5 16h5"/></svg>
+                <span>Struktur Pasar</span>
+            </button>
             <button id="tabRankingHarian" type="button" class="analisis-tab" data-tab="ranking" onclick="switchAnalisisTab('ranking')">
-                <span class="text-base">🏆</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7"/></svg>
                 <span>Ranking Harian</span>
-                <span id="rankingLockIcon" class="text-xs text-amber-400 ml-1">🔒</span>
+                <span id="rankingLockIcon" class="text-[10px] text-amber-300 font-mono font-bold ml-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30">PRO</span>
             </button>
             <button id="tabAnalisisPattern" type="button" class="analisis-tab hidden" data-tab="pattern" onclick="switchAnalisisTab('pattern')">
-                <span class="text-base">🎯</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>
                 <span>Pattern Radar</span>
                 <span class="text-[10px] text-emerald-400 font-mono font-bold ml-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">ADMIN</span>
             </button>
