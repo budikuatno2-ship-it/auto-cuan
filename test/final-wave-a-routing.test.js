@@ -152,8 +152,16 @@ test('FINAL-HC-001: pattern-screener-extension skips protected screener fetch wh
   const fnMatch = ext.match(/async function loadSetups\(force\)\s*\{([\s\S]*?)\n    \}/);
   assert.ok(fnMatch, 'loadSetups must exist in pattern-screener-extension.js');
   const body = fnMatch[1];
-  assert.ok(body.includes('isAutocuanLoggedIn'), 'loadSetups must consult isAutocuanLoggedIn() before fetching protected sources');
-  assert.match(body, /if \(typeof root\.isAutocuanLoggedIn === 'function' && !root\.isAutocuanLoggedIn\(\)\) return/, 'loadSetups must early-return for unauthenticated visitors');
+  assert.ok(body.includes('isConfirmedSession()'), 'loadSetups must consult the confirmed-session helper before fetching protected sources');
+  assert.match(body, /if \(!isConfirmedSession\(\)\) return state\.setups;/, 'loadSetups must early-return for unauthenticated visitors');
+  assert.ok(ext.includes('function isConfirmedSession()'), 'isConfirmedSession helper must exist');
+  assert.match(ext, /root\.isAutocuanLoggedIn\(\) === true/, 'isConfirmedSession must require an explicit true');
+
+  // Cold load with a valid HttpOnly cookie: auth-v2 resolves the session AFTER
+  // this install runs, so the extension must retry when the session is ready.
+  assert.ok(ext.includes("root.addEventListener('autocuan:session-ready'"), 'extension must retry loadSetups on autocuan:session-ready');
+  const authCode = fs.readFileSync(AUTH_V2_PATH, 'utf8');
+  assert.ok(authCode.includes("new CustomEvent('autocuan:session-ready')"), 'auth-v2 must emit autocuan:session-ready (contract the retry depends on)');
 });
 
 test('FINAL-HC-002: auth-v2.js preserves guest-permitted routes on session-status 401', () => {
