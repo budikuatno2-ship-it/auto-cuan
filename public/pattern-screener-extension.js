@@ -206,8 +206,17 @@
       var data = await response.json().catch(function () { return null; });
       return data && data.success !== false ? data : null;
     }
+    function isConfirmedSession() {
+      // FINAL-HC-001: this extension installs on EVERY page, including the cold
+      // anonymous landing. Its three SOURCES are protected screener endpoints, so
+      // an unauthenticated visitor would otherwise trigger a 401 cascade.
+      return typeof root.isAutocuanLoggedIn === 'function' && root.isAutocuanLoggedIn() === true;
+    }
     async function loadSetups(force) {
       if (state.loading || (state.loaded && !force)) return state.setups;
+      // Only fetch once a session is confirmed; authenticated users (the only
+      // ones who can reach the Pattern cards these setups enrich) are unaffected.
+      if (!isConfirmedSession()) return state.setups;
       state.loading = true;
       try {
         var payloads = await Promise.all(SOURCES.map(function (source) { return fetchJson(source.url).catch(function () { return null; }); }));
@@ -348,6 +357,11 @@
     }
 
     addStyles(); cleanArtifacts(doc.body); removeRedundantChartControl(); loadSetups(false);
+    // A visitor can hold a valid HttpOnly session cookie with no localStorage
+    // auth state yet; auth-v2.js resolves that AFTER this install runs. Without
+    // this retry the restored user would never receive Screener labels or trade
+    // levels for the remainder of the page lifetime.
+    root.addEventListener('autocuan:session-ready', function () { loadSetups(false); });
     var scheduled = false;
     new MutationObserver(function (records) {
       if (scheduled) return;
