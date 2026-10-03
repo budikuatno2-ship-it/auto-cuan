@@ -3471,6 +3471,12 @@ var PROMOTED_ANALISIS_MAP = {
     'chart': 'analisis-chart',
     'analisis-chart': 'analisis-chart',
     'bandarmologi': 'bandarmologi',
+    // BandarmologiRuntime rewrites the URL tab to its own section name
+    // (`?tab=summary` / `?tab=akumulasi`), so a Back/Forward or reload of that
+    // URL must still resolve to the Bandarmologi sub-tool instead of falling
+    // through to the default chart tab.
+    'summary': 'bandarmologi',
+    'akumulasi': 'bandarmologi',
     'intel': 'intel',
     'hunter': 'hunter',
     'insider': 'insider',
