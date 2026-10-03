@@ -332,19 +332,24 @@
     modal.innerHTML = modalShell([
       '<div class="flex items-start justify-between gap-4">',
       '  <div><p class="text-xs font-bold uppercase tracking-wider text-emerald-300">Pemulihan akun</p><h2 class="mt-1 text-xl font-black text-white">Reset lewat Telegram</h2></div>',
-      '  <button id="authV2ResetClose" class="text-2xl leading-none text-slate-400 hover:text-white" aria-label="Tutup">&times;</button>',
+      '  <button type="button" id="authV2ResetClose" class="text-2xl leading-none text-slate-400 hover:text-white" aria-label="Tutup">&times;</button>',
       '</div>',
-      '<p class="mt-3 text-sm leading-6 text-slate-400">Masukkan username. Bot verifikasi akan meminta konfirmasi pada akun Telegram yang sudah terhubung.</p>',
-      '<label class="mt-5 block text-sm text-slate-300" for="authV2ResetUsername">Username</label>',
-      '<input id="authV2ResetUsername" autocomplete="username" class="mt-2 w-full rounded-xl border border-slate-600 bg-slate-950/70 px-4 py-3 text-white outline-none focus:border-emerald-400" />',
-      '<p id="authV2ResetMessage" class="mt-3 hidden rounded-xl border px-3 py-2 text-sm"></p>',
-      '<button id="authV2ResetRequestBtn" class="mt-5 w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400">Kirim konfirmasi ke bot</button>',
+      '<form id="authV2ResetRequestForm" class="mt-3" onsubmit="return false;">',
+      '  <p class="text-sm leading-6 text-slate-400">Masukkan username. Bot verifikasi akan meminta konfirmasi pada akun Telegram yang sudah terhubung.</p>',
+      '  <label class="mt-5 block text-sm text-slate-300" for="authV2ResetUsername">Username</label>',
+      '  <input id="authV2ResetUsername" name="username" aria-label="Username pemulihan akun" autocomplete="username" class="mt-2 w-full rounded-xl border border-slate-600 bg-slate-950/70 px-4 py-3 text-white outline-none focus:border-emerald-400" />',
+      '  <p id="authV2ResetMessage" class="mt-3 hidden rounded-xl border px-3 py-2 text-sm" role="alert" aria-live="assertive"></p>',
+      '  <button type="submit" id="authV2ResetRequestBtn" class="mt-5 w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400">Kirim konfirmasi ke bot</button>',
+      '</form>',
       '<p class="mt-4 text-xs leading-5 text-slate-500">Password tidak dikirim ke Telegram. Bot hanya menyetujui atau menolak permintaan reset.</p>'
     ].join(''));
     modal.classList.remove('hidden');
 
     byId('authV2ResetClose').addEventListener('click', closeResetModal);
-    byId('authV2ResetRequestBtn').addEventListener('click', requestResetFromBot);
+    byId('authV2ResetRequestForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      requestResetFromBot();
+    });
     var oldModal = byId('selfResetModal');
     if (oldModal) oldModal.classList.add('hidden');
   }
@@ -393,19 +398,22 @@
     modal.innerHTML = modalShell([
       '<div class="flex items-start justify-between gap-4">',
       '  <div><p class="text-xs font-bold uppercase tracking-wider text-emerald-300">Telegram terkonfirmasi</p><h2 class="mt-1 text-xl font-black text-white">Buat password baru</h2></div>',
-      '  <button id="authV2ResetClose" class="text-2xl leading-none text-slate-400 hover:text-white" aria-label="Tutup">&times;</button>',
+      '  <button type="button" id="authV2ResetClose" class="text-2xl leading-none text-slate-400 hover:text-white" aria-label="Tutup">&times;</button>',
       '</div>',
-      '<p class="mt-3 text-sm leading-6 text-slate-400">Gunakan minimal 8 karakter dengan huruf besar, huruf kecil, dan angka.</p>',
-      '<label class="mt-5 block text-sm text-slate-300" for="authV2NewPassword">Password baru</label>',
-      '<input id="authV2NewPassword" type="password" autocomplete="new-password" class="mt-2 w-full rounded-xl border border-slate-600 bg-slate-950/70 px-4 py-3 text-white outline-none focus:border-emerald-400" />',
-      '<label class="mt-4 block text-sm text-slate-300" for="authV2NewPasswordConfirm">Konfirmasi password</label>',
-      '<input id="authV2NewPasswordConfirm" type="password" autocomplete="new-password" class="mt-2 w-full rounded-xl border border-slate-600 bg-slate-950/70 px-4 py-3 text-white outline-none focus:border-emerald-400" />',
-      '<p id="authV2ResetMessage" class="mt-3 hidden rounded-xl border px-3 py-2 text-sm"></p>',
-      '<button id="authV2ResetCompleteBtn" class="mt-5 w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400">Simpan password baru</button>'
+      '<form id="authV2ResetCompleteForm" class="mt-3" onsubmit="return false;">',
+      '  <p class="text-sm leading-6 text-slate-400">Gunakan minimal 8 karakter dengan huruf besar, huruf kecil, dan angka.</p>',
+      '  <label class="mt-5 block text-sm text-slate-300" for="authV2NewPassword">Password baru</label>',
+      '  <input id="authV2NewPassword" name="password" type="password" aria-label="Password baru" autocomplete="new-password" class="mt-2 w-full rounded-xl border border-slate-600 bg-slate-950/70 px-4 py-3 text-white outline-none focus:border-emerald-400" />',
+      '  <label class="mt-4 block text-sm text-slate-300" for="authV2NewPasswordConfirm">Konfirmasi password</label>',
+      '  <input id="authV2NewPasswordConfirm" name="passwordConfirm" type="password" aria-label="Konfirmasi password baru" autocomplete="new-password" class="mt-2 w-full rounded-xl border border-slate-600 bg-slate-950/70 px-4 py-3 text-white outline-none focus:border-emerald-400" />',
+      '  <p id="authV2ResetMessage" class="mt-3 hidden rounded-xl border px-3 py-2 text-sm" role="alert" aria-live="assertive"></p>',
+      '  <button type="submit" id="authV2ResetCompleteBtn" class="mt-5 w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400">Simpan password baru</button>',
+      '</form>'
     ].join(''));
     modal.classList.remove('hidden');
     byId('authV2ResetClose').addEventListener('click', closeResetModal);
-    byId('authV2ResetCompleteBtn').addEventListener('click', function () {
+    byId('authV2ResetCompleteForm').addEventListener('submit', function (e) {
+      e.preventDefault();
       completeReset(resetToken);
     });
   }
@@ -457,6 +465,7 @@
 
   function installRecoveryUi() {
     window.openSelfResetModal = showResetRequest;
+  window.closeAuthV2ResetModal = closeResetModal;
     window.closeSelfResetModal = closeResetModal;
     window.doSelfResetPassword = showResetRequest;
 

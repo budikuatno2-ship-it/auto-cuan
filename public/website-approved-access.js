@@ -31,7 +31,7 @@
     // the cache key: Nginx serves .js as `max-age=604800, immutable` behind a
     // Cloudflare edge cache, so the version must move with the file or the fix
     // stays pinned to the old copy for up to seven days.
-    loadScriptOnce('/auth-v2.js?v=20261003-dialog-v3', 'data-autocuan-auth-v2');
+    loadScriptOnce('/auth-v2.js?v=20261003-dialog-v4', 'data-autocuan-auth-v2');
     loadScriptOnce('/account-center-lazy-loader-v1.js?v=20260816-v1', 'data-autocuan-account-center-lazy');
     loadScriptOnce('/legacy-gmail-runtime.js?v=20261001-v1', 'data-autocuan-legacy-gmail');
     loadScriptOnce('/subscription-access-gate-v1.js?v=20260816-v1', 'data-autocuan-subscription-access-gate');

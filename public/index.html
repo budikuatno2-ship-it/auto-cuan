@@ -133,7 +133,7 @@
 <link rel="stylesheet" href="/account-hardening.css?v=20261001-v1">
 </head>
 <body class="min-h-screen text-gray-100">
-<a href="#" class="skip-link" onclick="return skipToMainContent(event)">Lewati ke konten utama</a>
+<a href="#appMain" id="skipToContentLink" class="skip-link" onclick="return skipToMainContent(event)" onkeydown="if(event.key==='Enter'||event.keyCode===13){return skipToMainContent(event);}">Lewati ke konten utama</a>
 <div id="toastContainer" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <!-- ===== INITIAL LOADING INDICATOR (visible before JS init completes) ===== -->
@@ -272,7 +272,7 @@
       </div>
     </div>
   </nav>
-  <main>
+  <main id="landingMain">
     <section class="landing-hero landing-hero-v2" aria-labelledby="landingTitle">
       <div class="landing-beams" aria-hidden="true"><span></span><span></span></div>
       <div class="landing-container landing-hero-grid landing-hero-grid-v2">
@@ -405,13 +405,13 @@
             <h3 id="loginModalTitle" class="text-base font-bold text-white">Masuk</h3>
             <button onclick="closeLoginModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal masuk">&times;</button>
         </div>
-        <div class="space-y-3">
-            <div><label for="loginUsername" class="block text-xs font-medium text-gray-400 mb-1">Gmail</label><input type="text" id="loginUsername" autocomplete="username" autocapitalize="none" spellcheck="false" inputmode="email" placeholder="nama@gmail.com" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><p class="mt-1.5 text-[11px] text-gray-500">Akun lama dan administrator tetap dapat masuk menggunakan username.</p></div>
-            <div><label for="loginPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="loginPassword" autocomplete="current-password" placeholder="Masukkan password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doLogin()"><button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+        <form id="loginForm" class="space-y-3" onsubmit="event.preventDefault();doLogin();return false;">
+            <div><label for="loginUsername" class="block text-xs font-medium text-gray-400 mb-1">Gmail</label><input type="text" id="loginUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" inputmode="email" placeholder="nama@gmail.com" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><p class="mt-1.5 text-[11px] text-gray-500">Akun lama dan administrator tetap dapat masuk menggunakan username.</p></div>
+            <div><label for="loginPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="loginPassword" name="password" autocomplete="current-password" placeholder="Masukkan password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doLogin()"><button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
             <div id="loginError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
-            <button onclick="doLogin()" id="loginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Masuk</button>
+            <button type="submit" id="loginBtn" onclick="doLogin()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Masuk</button>
             <div class="text-center"><button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-blue-400 hover:underline">Lupa Password?</button></div>
-        </div>
+        </form>
     </div>
 </div>
 
@@ -422,16 +422,16 @@
             <h3 id="registerModalTitle" class="text-base font-bold text-white">Daftar</h3>
             <button onclick="closeRegisterModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal daftar">&times;</button>
         </div>
-        <div id="registerFormFields" class="space-y-3">
-            <div><label for="regEmail" class="block text-xs font-medium text-gray-400 mb-1">Gmail</label><input type="email" id="regEmail" autocomplete="email" autocapitalize="none" spellcheck="false" inputmode="email" required placeholder="nama@gmail.com" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><p class="mt-1.5 text-[11px] text-gray-500">Wajib untuk akun baru. Gmail dipakai sebagai identitas login; verifikasi Telegram tetap melalui bot resmi.</p></div>
-            <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="regPassword" autocomplete="new-password" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" autocomplete="new-password" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <label class="flex items-start gap-2 text-xs text-gray-400"><input type="checkbox" id="regTermsAccepted" class="mt-0.5 h-4 w-4 rounded border-gray-700 bg-[#0b0e14] text-emerald-500 focus:ring-emerald-500/50"><span class="cursor-pointer hover:text-emerald-400" onclick="if(window.openStandaloneTermsModal)window.openStandaloneTermsModal();else if(window.openAccountTerms)window.openAccountTerms();">Saya menyetujui Syarat &amp; Ketentuan Layanan Auto-Cuan.</span></label>
+        <form id="registerFormFields" class="space-y-3" onsubmit="event.preventDefault();doRegister();return false;">
+            <div><label for="regEmail" class="block text-xs font-medium text-gray-400 mb-1">Gmail</label><input type="email" id="regEmail" name="email" autocomplete="email" autocapitalize="none" spellcheck="false" inputmode="email" required placeholder="nama@gmail.com" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><p class="mt-1.5 text-[11px] text-gray-500">Wajib untuk akun baru. Gmail dipakai sebagai identitas login; verifikasi Telegram tetap melalui bot resmi.</p></div>
+            <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="regPassword" name="password" autocomplete="new-password" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+            <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+            <label class="flex items-start gap-2 text-xs text-gray-400"><input type="checkbox" id="regTermsAccepted" name="termsAccepted" class="mt-0.5 h-4 w-4 rounded border-gray-700 bg-[#0b0e14] text-emerald-500 focus:ring-emerald-500/50"><span class="cursor-pointer hover:text-emerald-400" onclick="if(window.openStandaloneTermsModal)window.openStandaloneTermsModal();else if(window.openAccountTerms)window.openAccountTerms();">Saya menyetujui Syarat &amp; Ketentuan Layanan Auto-Cuan.</span></label>
             <div id="registerError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
             <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1" role="status" aria-live="polite"></div>
-            <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
-        </div>
+            <button type="submit" id="registerBtn" onclick="doRegister()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
+        </form>
         <div id="registerApprovalPanel" class="hidden space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
             <h4 class="text-lg font-bold text-emerald-300">Pendaftaran berhasil</h4>
             <p class="text-sm text-gray-300">Akun Anda sedang menunggu persetujuan admin.</p>
@@ -455,13 +455,15 @@
     <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
         <h3 id="selfResetModalTitle" class="text-base font-bold text-white text-center">Reset Password</h3>
         <p class="text-xs text-gray-500 text-center">Masukkan username dan password baru. Reset hanya bisa dilakukan dari perangkat yang terdaftar.</p>
-        <div><label for="selfResetUsername" class="block text-xs font-medium text-gray-400 mb-1.5">Username</label><input type="text" id="selfResetUsername" placeholder="Username terdaftar" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
-        <div><label for="selfResetPw" class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="selfResetPw" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
-        <div><label for="selfResetPwConfirm" class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="selfResetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doSelfResetPassword()"></div>
+        <form id="selfResetForm" class="space-y-4" onsubmit="event.preventDefault();doSelfResetPassword();return false;">
+        <div><label for="selfResetUsername" class="block text-xs font-medium text-gray-400 mb-1.5">Username</label><input type="text" id="selfResetUsername" name="username" autocomplete="username" placeholder="Username terdaftar" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
+        <div><label for="selfResetPw" class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="selfResetPw" name="password" autocomplete="new-password" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
+        <div><label for="selfResetPwConfirm" class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="selfResetPwConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doSelfResetPassword()"></div>
         <div id="selfResetError" class="hidden text-sm text-red-400 text-center" role="alert" aria-live="assertive"></div>
         <div id="selfResetSuccess" class="hidden text-sm text-emerald-400 text-center" role="status" aria-live="polite"></div>
-        <button id="selfResetSubmitBtn" onclick="doSelfResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
-        <button onclick="closeSelfResetModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
+        <button type="submit" id="selfResetSubmitBtn" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
+        <button type="button" onclick="closeSelfResetModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
+        </form>
     </div>
 </div>
 
@@ -933,11 +935,11 @@
         </div>
         <!-- Lightweight result filters -->
         <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
-            <select id="kgRiskFilter" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
-            <select id="kgStatusFilter" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-            <select id="kgTypeFilter" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
+            <select id="kgRiskFilter" aria-label="Filter profil risiko swing konglomerasi" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+            <select id="kgStatusFilter" aria-label="Filter status setup swing konglomerasi" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
+            <select id="kgTypeFilter" aria-label="Filter tipe setup swing konglomerasi" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
             <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="kgHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('konglo')" class="accent-emerald-500"> Hide Very High</label>
-            <input id="kgTickerSearch" oninput="applyScreenerUiFilters('konglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+            <input id="kgTickerSearch" aria-label="Cari ticker swing konglomerasi" oninput="applyScreenerUiFilters('konglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
         </div>
         <!-- Filter tabs -->
         <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
@@ -951,7 +953,7 @@
         <!-- Konglo Card Grid -->
         <div id="kgCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
         <!-- Table (hidden by default) -->
-        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden" id="screenerTableWrap">
+        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden focus:outline-none focus:ring-2 focus:ring-emerald-500" id="screenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi">
             <table class="w-full text-xs border-collapse min-w-[1100px]">
                 <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
                     <tr class="scr-cols-17 bg-dark-700/80">
@@ -1033,11 +1035,11 @@
             <div class="scr-info-bar text-amber-400/70"><strong class="text-amber-400/90">Disclaimer:</strong> Bukan rekomendasi beli. Watchlist swing trading. Kelola risiko sendiri.</div>
             <!-- Lightweight result filters -->
             <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
-            <select id="nkRiskFilter" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
-            <select id="nkStatusFilter" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-            <select id="nkTypeFilter" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
+            <select id="nkRiskFilter" aria-label="Filter profil risiko swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+            <select id="nkStatusFilter" aria-label="Filter status setup swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
+            <select id="nkTypeFilter" aria-label="Filter tipe setup swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
             <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="nkHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('nonkonglo')" class="accent-emerald-500"> Hide Very High</label>
-            <input id="nkTickerSearch" oninput="applyScreenerUiFilters('nonkonglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+            <input id="nkTickerSearch" aria-label="Cari ticker swing non-konglomerasi" oninput="applyScreenerUiFilters('nonkonglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
             </div>
             <!-- Status filter tabs -->
             <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
@@ -1050,7 +1052,7 @@
             <!-- Non-Konglo Card Grid -->
             <div id="nkCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-bottom:12px"></div>
             <!-- Table (hidden by default) -->
-            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden" id="nkScreenerTableWrap">
+            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden focus:outline-none focus:ring-2 focus:ring-emerald-500" id="nkScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi">
                 <table class="w-full text-xs border-collapse min-w-[1200px]">
                     <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
                         <tr class="scr-cols-18 bg-dark-700/80">
@@ -1137,11 +1139,11 @@
             </div>
             <!-- Lightweight result filters -->
             <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
-            <select id="dtRiskFilter" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
-            <select id="dtStatusFilter" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-            <select id="dtTypeFilter" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
+            <select id="dtRiskFilter" aria-label="Filter profil risiko day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+            <select id="dtStatusFilter" aria-label="Filter status setup day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
+            <select id="dtTypeFilter" aria-label="Filter tipe setup day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
             <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="dtHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('daytrade')" class="accent-emerald-500"> Hide Very High</label>
-            <input id="dtTickerSearch" oninput="applyScreenerUiFilters('daytrade')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+            <input id="dtTickerSearch" aria-label="Cari ticker day trade" oninput="applyScreenerUiFilters('daytrade')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
             </div>
             <!-- Filter tabs -->
             <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
@@ -1160,7 +1162,7 @@
             <!-- Day Trade Card Grid -->
             <div id="dtCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
             <!-- Table (hidden by default, shown via toggle) -->
-            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden" id="dtScreenerTableWrap">
+            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden focus:outline-none focus:ring-2 focus:ring-emerald-500" id="dtScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data day trade screener">
                 <table class="w-full text-xs border-collapse min-w-[1100px]">
                     <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
                         <tr class="scr-cols-22 bg-dark-700/80">
@@ -1203,7 +1205,7 @@
     <div id="chartSection" class="chart-shell p-3 sm:p-5 space-y-4">
         <div><h2 class="text-xl font-extrabold text-white">Chart</h2><p class="text-sm text-gray-400 mt-1">Lihat candlestick, MA, RSI, volume, dan Fibonacci tanpa mengubah sumber data.</p></div>
         <div class="chart-search-row flex items-center gap-2">
-            <input id="chartTickerInput" type="text" placeholder="Ketik ticker: BBCA, IHSG..." class="flex-1 px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))loadChartPage()">
+            <input id="chartTickerInput" aria-label="Cari ticker saham untuk candlestick chart" type="text" placeholder="Ketik ticker: BBCA, IHSG..." class="flex-1 px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))loadChartPage()">
             <button onclick="loadChartPage()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all">Lihat Chart</button>
             <button id="btnInteractiveAiChart" class="hidden" style="display:none" aria-hidden="true" tabindex="-1"></button>
         </div>
@@ -1249,7 +1251,7 @@
     <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-4 space-y-3">
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <div class="relative flex-1">
-                <input id="newsTickerInput" type="text" placeholder="Ketik ticker untuk cari berita: BBCA, BBRI, TLKM..." class="w-full px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500/50 text-sm font-semibold tracking-wide" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))loadStockNewsPage()">
+                <input id="newsTickerInput" aria-label="Cari ticker saham untuk berita" type="text" placeholder="Ketik ticker untuk cari berita: BBCA, BBRI, TLKM..." class="w-full px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500/50 text-sm font-semibold tracking-wide" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))loadStockNewsPage()">
             </div>
             <button onclick="loadStockNewsPage()" class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-500 transition-all flex items-center justify-center gap-1.5 shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -1421,7 +1423,7 @@
 
                 <!-- Status & Search Inputs -->
                 <div class="flex items-center gap-2">
-                    <select id="trStatusFilter" onchange="renderTrackRecordTable()" class="rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
+                    <select id="trStatusFilter" aria-label="Filter status sinyal track record" onchange="renderTrackRecordTable()" class="rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
                         <option value="all">Status: Semua</option>
                         <option value="TP2_HIT">TP2 Hit (Maksimal)</option>
                         <option value="TP1_HIT">TP1 Hit (Target 1)</option>
@@ -1430,14 +1432,14 @@
                         <option value="WAITING">Menunggu</option>
                         <option value="EXPIRED">Sinyal Kedaluwarsa</option>
                     </select>
-                    <input id="trSearchInput" oninput="renderTrackRecordTable()" placeholder="Cari ticker..." class="w-28 sm:w-36 rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+                    <input id="trSearchInput" aria-label="Cari ticker track record" oninput="renderTrackRecordTable()" placeholder="Cari ticker..." class="w-28 sm:w-36 rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-500 outline-none focus:border-emerald-500/40">
                 </div>
             </div>
         </div>
 
         <!-- Table of Signals -->
         <div class="bg-dark-800/40 border border-dark-600/30 rounded-xl overflow-hidden">
-            <div id="trTableWrap" class="overflow-x-auto overflow-y-auto max-h-[580px] scrollbar-thin">
+            <div id="trTableWrap" class="overflow-x-auto overflow-y-auto max-h-[580px] scrollbar-thin focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel riwayat sinyal track record">
                 <table class="w-full text-xs border-collapse min-w-[700px]">
                     <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
                         <tr class="bg-dark-700/80 text-gray-400 font-medium border-b border-dark-600/50 text-left">
@@ -1485,7 +1487,7 @@
             <!-- Filters Grid -->
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Kategori Sinyal</label>
+                    <label for="btCategoryFilter" class="block text-[11px] font-medium text-gray-400 mb-1">Kategori Sinyal</label>
                     <select id="btCategoryFilter" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
                         <option value="all">Semua Kategori</option>
                         <option value="daytrade">Day Trade</option>
@@ -1496,7 +1498,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Periode Histori</label>
+                    <label for="btPeriodFilter" class="block text-[11px] font-medium text-gray-400 mb-1">Periode Histori</label>
                     <select id="btPeriodFilter" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
                         <option value="all">Semua Histori Tersedia</option>
                         <option value="30">30 Hari Terakhir</option>
@@ -1506,7 +1508,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Min. Risk/Reward (R:R)</label>
+                    <label for="btMinRrFilter" class="block text-[11px] font-medium text-gray-400 mb-1">Min. Risk/Reward (R:R)</label>
                     <select id="btMinRrFilter" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
                         <option value="0">Semua R:R</option>
                         <option value="1.5">R:R ≥ 1.5x</option>
@@ -1516,7 +1518,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Target Strategi</label>
+                    <label for="btTargetStrategyFilter" class="block text-[11px] font-medium text-gray-400 mb-1">Target Strategi</label>
                     <select id="btTargetStrategyFilter" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
                         <option value="max_tp">Maksimal (TP2 jika tercapai)</option>
                         <option value="tp1">Konservatif (Amankan TP1)</option>
@@ -1524,12 +1526,12 @@
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Modal Awal (Rp)</label>
+                    <label for="btInitialCapitalInput" class="block text-[11px] font-medium text-gray-400 mb-1">Modal Awal (Rp)</label>
                     <input id="btInitialCapitalInput" type="number" step="1000000" min="1000000" value="10000000" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Model Alokasi / Sizing</label>
+                    <label for="btSizingModeFilter" class="block text-[11px] font-medium text-gray-400 mb-1">Model Alokasi / Sizing</label>
                     <select id="btSizingModeFilter" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
                         <option value="fixed_amount">Nominal Tetap per Trade</option>
                         <option value="fixed_pct">10% Modal per Trade</option>
@@ -1538,7 +1540,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-400 mb-1">Alokasi per Posisi (Rp)</label>
+                    <label for="btPositionAmountInput" class="block text-[11px] font-medium text-gray-400 mb-1">Alokasi per Posisi (Rp)</label>
                     <input id="btPositionAmountInput" type="number" step="500000" min="500000" value="2000000" onchange="triggerBacktestSimulation()" class="w-full rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
                 </div>
             </div>
@@ -1613,7 +1615,7 @@
                     <span>Log Transaksi Hasil Simulasi</span>
                 </h4>
             </div>
-            <div id="trBacktestTradesWrap" class="overflow-x-auto overflow-y-auto max-h-[500px] scrollbar-thin">
+            <div id="trBacktestTradesWrap" class="overflow-x-auto overflow-y-auto max-h-[500px] scrollbar-thin focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel log transaksi hasil simulasi backtest">
                 <table class="w-full text-xs border-collapse min-w-[700px]">
                     <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
                         <tr class="bg-dark-700/80 text-gray-400 font-medium border-b border-dark-600/50 text-left">
@@ -1743,13 +1745,13 @@
             <div id="limitWarning" class="hidden text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mb-2 text-center"></div>
             <div class="flex items-end gap-2">
                 <!-- Upload button -->
-                <input id="generalFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
+                <input id="generalFileInput" aria-label="Upload file atau screenshot" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
                 <button onclick="openActiveFileInput()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file" aria-label="Upload gambar/file">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                 </button>
                 <!-- Text input -->
                 <div class="flex-1 relative">
-                    <textarea id="generalChatInput" rows="1" placeholder="Ketik BBCA, IHSG, atau tanya lanjutan..." class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
+                    <textarea id="generalChatInput" aria-label="Pesan konsultasi asisten AI" rows="1" placeholder="Ketik BBCA, IHSG, atau tanya lanjutan..." class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
                 </div>
                 <!-- Send button -->
                 <button id="generalSendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim" aria-label="Kirim pesan">
@@ -2677,7 +2679,7 @@
             <button onclick="closeCreateAlertModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal alert">&times;</button>
         </div>
         <div class="space-y-3">
-            <input type="hidden" id="wlAlertId" value="">
+            <input type="hidden" id="wlAlertId" value="" aria-label="ID alert watchlist">
             <div>
                 <label for="wlAlertTicker" class="block text-xs font-medium text-gray-400 mb-1">Ticker Saham</label>
                 <input type="text" id="wlAlertTicker" placeholder="Contoh: BBCA" class="w-full px-4 py-2.5 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 font-bold uppercase focus:outline-none focus:border-amber-500/50 text-sm">
@@ -2713,7 +2715,7 @@
             <button onclick="closeEditNotesModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal catatan">&times;</button>
         </div>
         <div class="space-y-3">
-            <input type="hidden" id="wlNotesTicker">
+            <input type="hidden" id="wlNotesTicker" aria-label="Ticker catatan watchlist">
             <div>
                 <label for="wlNotesText" class="block text-xs font-medium text-gray-400 mb-1">Catatan Trading Plan / Alasan Pantau</label>
                 <textarea id="wlNotesText" rows="3" maxlength="500" placeholder="Contoh: Buy on weakness dekat MA20, TP 4600, pantau volume..." class="w-full px-4 py-2.5 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-amber-500/50 text-xs resize-none"></textarea>
@@ -2751,11 +2753,13 @@
     <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
         <h3 id="resetPasswordModalTitle" class="text-base font-bold text-white text-center">Reset Password User</h3>
         <p id="resetPasswordTarget" class="text-sm text-gray-400 text-center"></p>
-        <div><label for="resetPwInput" class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="resetPwInput" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
-        <div><label for="resetPwConfirm" class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="resetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doResetPassword()"></div>
+        <form id="resetPasswordForm" class="space-y-4" onsubmit="event.preventDefault();doResetPassword();return false;">
+        <div><label for="resetPwInput" class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="resetPwInput" name="password" autocomplete="new-password" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
+        <div><label for="resetPwConfirm" class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="resetPwConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doResetPassword()"></div>
         <div id="resetPwError" class="hidden text-sm text-red-400 text-center" role="alert" aria-live="assertive"></div>
-        <button id="resetPwSubmitBtn" onclick="doResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
-        <button onclick="closeResetPasswordModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
+        <button type="submit" id="resetPwSubmitBtn" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
+        <button type="button" onclick="closeResetPasswordModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
+        </form>
     </div>
 </div>
 
@@ -3032,6 +3036,11 @@ function setTopLevelView(state) {
         el.setAttribute('aria-hidden', active ? 'false' : 'true');
         if ('inert' in el) el.inert = !active;
     });
+    var skipLink = document.getElementById('skipToContentLink');
+    if (skipLink) {
+        var targetId = state === 'landing' ? 'landingMain' : (state === 'app' ? 'appMain' : (ids[state] || 'appMain'));
+        skipLink.setAttribute('href', '#' + targetId);
+    }
 }
 // ===== LEGACY DEVICE-BLOCK CLEANUP =====
 // A browser-local flag must never decide account access. Older builds stored a
@@ -3994,7 +4003,7 @@ function renderShareKonglo(d) {
     var meta = d.meta || {};
     var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
     var html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · ' + d.results.length + ' ticker · Swing 3-7 Hari · Grup Konglomerat</p>';
-    html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
+    html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5 text-left">Grup</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Setup</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
     d.results.forEach(function(r) {
         var chgView = changeDisplay(r.change_pct);
@@ -4059,7 +4068,7 @@ function renderShareNk(d) {
     var meta = d.meta || {};
     var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
     var html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · Top ' + d.results.length + ' · Non-Konglomerat · Papan Utama & Pengembangan</p>';
-    html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
+    html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5">#</th><th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Board</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Setup</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
     d.results.forEach(function(r) {
         var chgView = changeDisplay(r.change_pct);
@@ -4111,7 +4120,7 @@ function renderShareDt(d) {
     // legitimate priority of 0 survives.
     var sorted = d.results.sort(function(a, b) { return (statusPri[a.status] != null ? statusPri[a.status] : 10) - (statusPri[b.status] != null ? statusPri[b.status] : 10) || (b.daytrade_score || 0) - (a.daytrade_score || 0); });
     html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · Mode: ' + (meta.run_mode || '—') + ' · ' + sorted.length + ' kandidat · Intraday Radar</p>';
-    html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
+    html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel data day trade screener"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Setup Score</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Status</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">Vol</th><th class="px-2 py-1.5">PreSpike</th><th class="px-2 py-1.5">Momentum</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th><th class="px-2 py-1.5 text-left">Setup</th><th class="px-2 py-1.5 text-left">Catatan</th></tr></thead><tbody>';
     sorted.forEach(function(r) {
         var chgView = changeDisplay(r.change_pct);
@@ -4542,11 +4551,13 @@ function openRegisterModal() {
     resetRegisterApprovalView(); document.getElementById('registerModal').classList.remove('hidden'); document.getElementById('registerError').classList.add('hidden'); document.getElementById('registerSuccess').classList.add('hidden'); }
 function closeRegisterModal() { document.getElementById('registerModal').classList.add('hidden'); }
 function openSelfResetModal() { document.getElementById('selfResetModal').classList.remove('hidden'); document.getElementById('selfResetError').classList.add('hidden'); document.getElementById('selfResetSuccess').classList.add('hidden'); }
-function closeSelfResetModal() { document.getElementById('selfResetModal').classList.add('hidden'); }
+function closeSelfResetModal() { document.getElementById('selfResetModal').classList.add('hidden'); var v2 = document.getElementById('authV2ResetModal'); if (v2) v2.classList.add('hidden'); if (typeof window.closeAuthV2ResetModal === 'function') window.closeAuthV2ResetModal(); }
 
 // ===== LOGIN =====
 async function doLogin() {
     clearLegacyDeviceBlock();
+    if (doLogin._busy) return;
+    doLogin._busy = true;
     var usernameInput = document.getElementById('loginUsername').value.trim();
     var password = document.getElementById('loginPassword').value;
     var errorEl = document.getElementById('loginError');
@@ -4594,7 +4605,7 @@ async function doLogin() {
             showAdminDeviceApprovalModal(data);
         } else { errorEl.textContent = data.error || 'Login gagal.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
-    finally { loginBtn.disabled = false; loginBtn.innerHTML = 'Masuk'; }
+    finally { doLogin._busy = false; loginBtn.disabled = false; loginBtn.innerHTML = 'Masuk'; }
 }
 
 // ===== PASSWORD VISIBILITY TOGGLE =====
@@ -4803,6 +4814,8 @@ var REGISTRATION_TERMS_VERSION = '2026-08-16-v1';
 
 async function doRegister() {
     clearLegacyDeviceBlock();
+    if (doRegister._busy) return;
+    doRegister._busy = true;
     // F-090: resolve the feedback elements BEFORE any validation branch uses
     // them. Previously errorEl was assigned below the email check, so an
     // invalid email threw a TypeError instead of showing the validation message.
@@ -4842,7 +4855,7 @@ async function doRegister() {
         else if (data.success) { errorEl.textContent = 'Registrasi berhasil, tetapi kode approval belum tersedia. Hubungi admin.'; errorEl.classList.remove('hidden'); }
         else { errorEl.textContent = data.error || 'Registrasi gagal.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
-    finally { registerBtn.disabled = false; registerBtn.innerHTML = 'Daftar'; }
+    finally { doRegister._busy = false; registerBtn.disabled = false; registerBtn.innerHTML = 'Daftar'; }
 }
 
 // ===== LOGOUT =====
@@ -13697,19 +13710,34 @@ function forceNormalizeTechnicalDOM(root) {
     // Send keyboard / assistive-tech users straight to the visible main region.
     window.skipToMainContent = function (event) {
         if (event && typeof event.preventDefault === 'function') event.preventDefault();
-        var candidates = ['#page-dashboard', '#page-analisis', '#page-sektor', '#page-screener',
-            '#page-chart', '#page-portofolio', '#page-subscription', '#aiSection', '#landingPage', 'main'];
+        var link = document.getElementById('skipToContentLink');
+        var href = link ? link.getAttribute('href') : '';
         var target = null;
-        for (var i = 0; i < candidates.length && !target; i++) {
-            var els = document.querySelectorAll(candidates[i]);
-            for (var j = 0; j < els.length; j++) {
-                if (els[j] && !els[j].classList.contains('hidden') && els[j].offsetParent !== null) { target = els[j]; break; }
+        if (href && href.startsWith('#') && href.length > 1) {
+            try {
+                var el = document.querySelector(href);
+                if (el && !el.closest('.hidden')) target = el;
+            } catch (_) {}
+        }
+        if (!target) {
+            var landing = document.getElementById('landingPage');
+            if (landing && !landing.classList.contains('hidden')) {
+                target = document.getElementById('landingMain') || landing.querySelector('main') || landing;
+            } else {
+                target = document.getElementById('appMain');
             }
         }
         if (!target) return false;
-        if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
-        try { target.focus(); } catch (e) {}
-        try { target.scrollIntoView({ block: 'start' }); } catch (e) {}
+        var hadTabindex = target.hasAttribute('tabindex');
+        if (!hadTabindex) target.setAttribute('tabindex', '-1');
+        try { target.focus({ preventScroll: true }); } catch (e) { try { target.focus(); } catch (_) {} }
+        try { target.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { try { target.scrollIntoView(); } catch (_) {} }
+        if (!hadTabindex) {
+            target.addEventListener('blur', function onBlur() {
+                target.removeEventListener('blur', onBlur);
+                target.removeAttribute('tabindex');
+            }, { once: true });
+        }
         return false;
     };
 
@@ -13770,10 +13798,34 @@ function forceNormalizeTechnicalDOM(root) {
     }
     function releaseBackground() {
         lockedBackground.forEach(function (prior, element) {
-            // A route/auth change may have hidden this screen in the meantime.
-            element.inert = prior || element.hidden || element.classList.contains('hidden');
+            var shouldBeInert = Boolean(prior || element.hidden || element.classList.contains('hidden'));
+            element.inert = shouldBeInert;
+            if (!shouldBeInert) element.removeAttribute('inert');
         });
         lockedBackground.clear();
+    }
+    function findSafeFallbackControl() {
+        var landing = document.getElementById('landingPage');
+        if (landing && !landing.classList.contains('hidden')) {
+            var cta = landing.querySelector('.landing-btn-primary') || landing.querySelector('button, a');
+            if (cta) return cta;
+        }
+        var app = document.getElementById('appMain') || document.getElementById('dashboardScreen');
+        if (app && !app.classList.contains('hidden')) {
+            var appCtrl = app.querySelector('button:not([disabled]), a[href], input:not([disabled])') || app;
+            return appCtrl;
+        }
+        return document.querySelector('button:not([disabled]), a[href]') || document.body;
+    }
+    function resolveTriggerOutsideModals(candidate) {
+        if (!candidate || candidate === document.body) return null;
+        for (var i = 0; i < MODAL_IDS.length; i++) {
+            var m = document.getElementById(MODAL_IDS[i]);
+            if (m && m.contains(candidate)) {
+                return lastFocusByModal[MODAL_IDS[i]] || null;
+            }
+        }
+        return candidate;
     }
     function syncModals() {
         var visible = MODAL_IDS.filter(function (id) { return isVisible(document.getElementById(id)); });
@@ -13783,7 +13835,8 @@ function forceNormalizeTechnicalDOM(root) {
         openOrder = openOrder.filter(function (id) { return visible.indexOf(id) >= 0; });
         var added = visible.filter(function (id) { return openOrder.indexOf(id) < 0; });
         added.forEach(function (id) {
-            lastFocusByModal[id] = restore || document.activeElement;
+            var resolvedTrigger = restore || resolveTriggerOutsideModals(document.activeElement);
+            lastFocusByModal[id] = resolvedTrigger || document.activeElement;
             openOrder.push(id);
         });
         releaseBackground();
@@ -13800,8 +13853,13 @@ function forceNormalizeTechnicalDOM(root) {
             if (!top.hasAttribute('tabindex')) top.setAttribute('tabindex', '-1');
             var target = restore && top.contains(restore) && restore.getClientRects().length ? restore : preferredInitialFocus(top);
             target.focus({ preventScroll: true });
-        } else if (!top && restore && restore.isConnected && restore.getClientRects().length && !restore.closest('[inert]')) {
-            restore.focus({ preventScroll: true });
+        } else if (!top && removed.length) {
+            if (restore && restore.isConnected && !restore.disabled && isVisible(restore) && !restore.closest('[inert]')) {
+                restore.focus({ preventScroll: true });
+            } else {
+                var fallback = findSafeFallbackControl();
+                if (fallback && typeof fallback.focus === 'function') fallback.focus({ preventScroll: true });
+            }
         }
     }
     // One capture handler: Escape must not also dismiss the parent form when
@@ -13841,13 +13899,23 @@ function forceNormalizeTechnicalDOM(root) {
         }).observe(document.body, { childList: true });
         syncModals();
     }
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        var wrap = document.activeElement;
+        if (!wrap || !wrap.classList || !wrap.classList.contains('overflow-x-auto')) return;
+        if (e.key === 'ArrowRight') {
+            wrap.scrollLeft += 40;
+        } else if (e.key === 'ArrowLeft') {
+            wrap.scrollLeft -= 40;
+        }
+    });
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
     else init();
 })();
 </script>
 <!-- v2 -> v3: carries the auth-v2 loader bump (FINAL-HC-002 guest-news fix).
      The query string is the cache key for an immutable edge asset. -->
-<script src="/website-approved-access.js?v=20261003-experience-v3"></script>
+<script src="/website-approved-access.js?v=20261003-experience-v4"></script>
 <script src="/admin-user-delete-enhancement.js?v=20260726-src1"></script>
 <script src="/ai-chat-renderer.js?v=20260905-v2"></script>
 <script src="/stock-analysis-ai.js?v=20260905-v2"></script>
