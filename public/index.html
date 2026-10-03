@@ -3638,6 +3638,12 @@ function enterApp(opts) {
         return;
     }
     try { localStorage.setItem('autocuan_entered_app', 'true'); } catch (_) {}
+    // Activate the app shell BEFORE any page navigation. navigateTo() only
+    // toggles .page-content blocks inside #dashboardScreen; on a cold deep-link
+    // load that shell still carries its initial `hidden` class, so without this
+    // the requested page would mount inside an invisible container and the
+    // visitor would be stranded on the loader/landing view.
+    setTopLevelView('app');
     var landing = document.getElementById('landingPage');
     if (landing) landing.classList.add('hidden');
     if (typeof setWorkspaceSidebarVisible === 'function') setWorkspaceSidebarVisible(true);
@@ -3649,13 +3655,14 @@ function enterApp(opts) {
         targetPage = parsed.page;
         targetSubTab = parsed.subTab;
     }
-    if (targetPage && targetPage !== 'dashboard' && targetPage !== 'landing' && targetPage !== 'unknown') {
-        navigateTo(targetPage, targetSubTab, { replaceState: !!opts.replaceHistory, skipHistory: !!opts.skipHistory });
-    } else {
-        showDashboard();
-        if (!opts.skipHistory) {
-            setRoute(getCanonicalRouteUrl('dashboard'), !!opts.replaceHistory);
-        }
+    // showDashboard() owns the full workspace initialization (greeting, badges,
+    // top5 monitor, chat history) and, via checkInitialUrlTargetPage(), mounts
+    // any deep-linked page from the current URL. Preserving that single init
+    // path avoids a second, divergent navigation codepath.
+    showDashboard();
+    if (!opts.skipHistory) {
+        var urlPage = (targetPage && targetPage !== 'landing' && targetPage !== 'unknown') ? targetPage : 'dashboard';
+        setRoute(getCanonicalRouteUrl(urlPage, targetSubTab), !!opts.replaceHistory);
     }
 }
 function landingPrimaryAction() {

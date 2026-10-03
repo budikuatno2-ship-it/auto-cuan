@@ -93,16 +93,35 @@ test('FINAL-BUG-001: index.html maps promoted Riset Pasar keys to analisis subta
   assert.ok(html.includes("if (targetSubTab === 'pattern' && !isAdmin())"), 'Pattern radar must be admin-gated in navigateTo');
 });
 
-test('FINAL-BUG-002: local-dev-server and nginx rewrite/proxy all 4 active deep links to /index.html', () => {
+test('FINAL-BUG-002: local-dev-server, nginx, and vercel.json all resolve the 4 active deep links to the SPA shell', () => {
   const serverCode = fs.readFileSync(LOCAL_DEV_SERVER_PATH, 'utf8');
+  const vercelJson = JSON.parse(fs.readFileSync(VERCEL_JSON_PATH, 'utf8'));
   const activeLinks = ['/screener', '/watchlist', '/sektor', '/trackrecord'];
 
   activeLinks.forEach((link) => {
     assert.ok(serverCode.includes(`'${link}': '/index.html'`), `local-dev-server ROUTE_REWRITES must contain ${link}`);
+    const vMatch = vercelJson.rewrites.find((r) => r.source === link && r.destination === '/index.html');
+    assert.ok(vMatch, `vercel.json rewrites must contain ${link} -> /index.html`);
   });
 
   const nginxConf = fs.readFileSync(NGINX_CONF_PATH, 'utf8');
   assert.ok(nginxConf.includes('screener|watchlist|sektor|trackrecord'), 'nginx config must explicitly proxy active SPA deep links');
+});
+
+test('FINAL-BUG-002: enterApp activates the app shell before navigating (cold deep-link visibility)', () => {
+  const html = fs.readFileSync(INDEX_HTML_PATH, 'utf8');
+  const fnMatch = html.match(/function enterApp\(opts\)\s*\{([\s\S]*?)\n\}/);
+  assert.ok(fnMatch, 'enterApp must exist');
+  const body = fnMatch[1];
+  assert.ok(body.includes("setTopLevelView('app')"), 'enterApp must activate the app top-level view so #dashboardScreen is not left hidden');
+  assert.ok(body.includes('showDashboard()'), 'enterApp must preserve the showDashboard() initialization path');
+});
+
+test('FINAL-HC-002: auth-v2 re-enters the app for any protected SPA route after session restore', () => {
+  const authCode = fs.readFileSync(AUTH_V2_PATH, 'utf8');
+  assert.ok(authCode.includes('isProtectedSpaRoute'), 'auth-v2 must compute a protected-route flag, not only check /dashboard');
+  assert.ok(authCode.includes("route.authRequired === true"), 'auth-v2 must honor parseAppRoute().authRequired');
+  assert.ok(authCode.includes("p === '/screener'"), 'auth-v2 fallback must include the new deep-link paths');
 });
 
 test('FINAL-BUG-003: index.html implements URL canonicalization, history pushState, and popstate handling', () => {

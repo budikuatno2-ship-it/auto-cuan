@@ -170,7 +170,16 @@ test('9: existing /review and /dashboard rewrites remain intact', () => {
   var trackRecord = rewrites.find(function (r) { return r.source === '/api/track-record'; });
   assert.ok(trackRecord, 'expected /api/track-record rewrite');
   assert.match(trackRecord.destination, /action=track-record/);
-  assert.equal(rewrites.length, 9, 'no unexpected extra rewrites were introduced');
+  // 9 -> 13: Wave A (FINAL-BUG-002) added the four active SPA deep links
+  // /screener, /watchlist, /sektor, /trackrecord -> /index.html so a direct
+  // entry or hard reload of those canonical URLs serves the SPA shell instead
+  // of a platform 404 (mirrors tools/local-dev-server.js and the Nginx rules).
+  ['/screener', '/watchlist', '/sektor', '/trackrecord'].forEach(function (link) {
+    var deepLink = rewrites.find(function (r) { return r.source === link; });
+    assert.ok(deepLink, 'expected ' + link + ' rewrite');
+    assert.equal(deepLink.destination, '/index.html');
+  });
+  assert.equal(rewrites.length, 13, 'no unexpected extra rewrites were introduced');
 });
 
 // 10. Existing Vercel cron remains unchanged.
