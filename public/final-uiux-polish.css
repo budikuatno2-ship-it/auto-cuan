@@ -1866,7 +1866,9 @@ html.light .text-muted {
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  /* FINAL-A11Y-005 dark-mode parity: --text-secondary clears WCAG AA
+     (>=4.5:1) on the dark sidebar surfaces where --text-tertiary was ~3.5:1. */
+  color: var(--text-secondary, #9AA4B2);
   padding: 6px 12px 2px;
   margin-top: 4px;
 }

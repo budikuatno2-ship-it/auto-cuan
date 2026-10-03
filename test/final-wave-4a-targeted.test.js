@@ -67,6 +67,10 @@ test('FINAL-RISK-001: Landing page markets only verified active capabilities (ze
   // Active verified capability replacement: Struktur Pasar is present on card 05
   assert.ok(INDEX_HTML.includes('<h3>Struktur pasar</h3>'), 'Card 05 is replaced with active verified capability: Struktur pasar');
   assert.ok(INDEX_HTML.includes('relasi emiten'), 'Card 05 copy accurately describes market structure');
+
+  // The workspace-map module 05 must not retain the stale cashflow/budget subtitle.
+  assert.equal(INDEX_HTML.includes('Cashflow & budget'), false, 'Module 05 must not advertise the decommissioned cashflow/budget capability');
+  assert.ok(INDEX_HTML.includes('Sinyal Intelijen</strong><small>Deteksi & konfluensi</small>'), 'Module 05 subtitle describes the intelligence feature it actually is');
 });
 
 // ----------------------------------------------------------------------------
@@ -154,4 +158,15 @@ test('FINAL-A11Y-005: Secondary/muted text and sidebar group labels pass WCAG AA
     THEME_CSS.includes('--text-muted: #475569;'),
     'ui-theme.css defines --text-muted as #475569 in light mode'
   );
+
+  // Dark-mode subgroup labels must also clear AA: the sidebar-subgroup-label rule
+  // must not fall back to the low-contrast tertiary token (~3.5:1).
+  assert.ok(
+    POLISH_CSS.includes('color: var(--text-secondary, #9AA4B2);'),
+    'sidebar-subgroup-label must use the AA-safe secondary token in dark mode'
+  );
+  const darkRatioSurface = contrastRatio('#9AA4B2', '#0D1320');
+  const darkRatioFlat = contrastRatio('#9AA4B2', '#10151F');
+  assert.ok(darkRatioSurface >= 4.5, `Dark subgroup label contrast on #0D1320 must be >= 4.5:1 (measured ${darkRatioSurface.toFixed(2)}:1)`);
+  assert.ok(darkRatioFlat >= 4.5, `Dark subgroup label contrast on #10151F must be >= 4.5:1 (measured ${darkRatioFlat.toFixed(2)}:1)`);
 });
