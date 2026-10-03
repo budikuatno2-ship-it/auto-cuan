@@ -105,7 +105,8 @@ test('FINAL-BUG-008: no nested <form> elements exist in source', () => {
 test('FINAL-A11Y-002: modal management maintains a focus stack across modal handoffs', () => {
   assert.match(indexHtml, /function resolveTriggerOutsideModals\(candidate\)/, 'Modal focus routine must resolve ancestor trigger for nested modals');
   assert.match(indexHtml, /function findSafeFallbackControl\(\)/, 'Modal focus routine must define deterministic safe control fallback');
-  assert.match(indexHtml, /var resolvedTrigger = restore \|\| resolveTriggerOutsideModals\(document\.activeElement\)/, 'Modal opener must resolve trigger outside open modals');
+  assert.match(indexHtml, /lastFocusByModal\[id\] = restore \|\| document\.activeElement/, 'Modal opener must preserve direct trigger for nested dialogs');
+  assert.doesNotMatch(indexHtml, /var resolvedTrigger = restore \|\| resolveTriggerOutsideModals/, 'Must not resolve outside trigger for newly opened modals');
 });
 
 test('FINAL-A11Y-002: modal dismissal falls back to deterministic safe control rather than document.body', () => {
