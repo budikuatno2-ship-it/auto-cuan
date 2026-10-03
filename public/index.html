@@ -5184,6 +5184,14 @@ function navigateTo(page) {
     if (page === 'subscription') {
         page = 'dashboard';
     }
+    // FINAL-BUG-004: Money Management / Kelola Keuangan is permanently
+    // decommissioned. A stale bookmark, cached link, or old SPA state must
+    // never blank the workspace - it lands deterministically on Dashboard.
+    if (page === 'money-management' || page === 'kelola-keuangan') {
+        if (typeof showToast === 'function') showToast('Fitur Kelola Keuangan sudah dinonaktifkan permanen.', 'warning');
+        page = 'dashboard';
+        subTab = undefined;
+    }
     if (isPremiumFeaturePage(page) && isDeniedWebsiteAccess()) {
         if (typeof showToast === 'function') showToast('Fitur ini terbuka setelah login dengan akun yang sudah di-approve admin.', 'warning');
         page = 'dashboard';
