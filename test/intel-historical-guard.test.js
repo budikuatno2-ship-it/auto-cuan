@@ -164,6 +164,60 @@ test('W2-03: historical recompute uses the target-date candle, not the newest ca
   });
 });
 
+test('W2-03 review: a historical target with no target-date candle reports NO_CURRENT_PRICE, never the newest candle', async () => {
+  await withTempEnv(async () => {
+    bandarmologiService.writeDiskCache('broker-summary', 'GUARD5', '2026-09-04', {
+      stock_code: 'GUARD5', date: '2026-09-04',
+      top_buyers: [{ broker: 'AK', bval: 10000000, bvol: 10000 }],
+      top_sellers: [{ broker: 'YP', sval: 10000000, svol: 10000 }]
+    });
+    // The cache holds ONLY a later session — the target date has no candle.
+    writeOhlcv('GUARD5', [{ date: '2026-09-30', close: 5000, volume: 99999 }]);
+    seedIndexFiles();
+
+    const intel = require('../lib/bandarmologi-intel-service');
+    const payload = intel.computeAndSaveIntel({ tickers: ['GUARD5'], date: '2026-09-04', historical: true });
+    const s1 = payload.tickers.GUARD5.signals.harga_di_bawah_modal_bandar;
+    assert.equal(s1.reason, 'NO_CURRENT_PRICE', 'a missing target-date candle must surface NO_CURRENT_PRICE');
+    assert.equal(s1.current_price, null);
+    assert.notEqual(s1.current_price, 5000, 'a later session price must never be substituted');
+  });
+});
+
+test('W2-03 review: historical signal windows exclude broker summaries newer than the target date', async () => {
+  await withTempEnv(async () => {
+    // Three days of foreign accumulation AT the target window...
+    for (const d of ['2026-09-02', '2026-09-03', '2026-09-04']) {
+      bandarmologiService.writeDiskCache('broker-summary', 'GUARD6', d, {
+        stock_code: 'GUARD6', date: d,
+        gross_buyers: [
+          { broker: 'AK', bval: 5000000, bvol: 5000, sval: 0, svol: 0, net_val: 5000000 },
+          { broker: 'BK', bval: 5000000, bvol: 5000, sval: 0, svol: 0, net_val: 5000000 }
+        ],
+        gross_sellers: [{ broker: 'YP', sval: 10000000, svol: 10000, bval: 0, bvol: 0, net_val: -10000000 }]
+      });
+    }
+    // ...and a LATER session that breaks the streak.
+    bandarmologiService.writeDiskCache('broker-summary', 'GUARD6', '2026-09-30', {
+      stock_code: 'GUARD6', date: '2026-09-30',
+      gross_buyers: [{ broker: 'YP', bval: 100, bvol: 100, net_val: 100 }],
+      gross_sellers: [{ broker: 'AK', sval: 500000000, svol: 100000, net_val: -500000000 }]
+    });
+    writeOhlcv('GUARD6', [
+      { date: '2026-09-02', close: 1000, volume: 1000 },
+      { date: '2026-09-03', close: 1005, volume: 1000 },
+      { date: '2026-09-04', close: 1010, volume: 1000 }
+    ]);
+    seedIndexFiles();
+
+    const intel = require('../lib/bandarmologi-intel-service');
+    const payload = intel.computeAndSaveIntel({ tickers: ['GUARD6'], date: '2026-09-04', historical: true });
+    const s2 = payload.tickers.GUARD6.signals.silent_foreign_accumulation;
+    assert.equal(s2.consecutive_days, 3, 'the post-target session must not truncate the historical streak');
+    assert.equal(s2.triggered, true, 'the historical window must be evaluated without future data');
+  });
+});
+
 test('W2-11: historical recompute is deterministic — same fixture twice, identical payload', async () => {
   await withTempEnv(async () => {
     bandarmologiService.writeDiskCache('broker-summary', 'GUARD4', '2026-09-04', {

@@ -15,6 +15,10 @@ const crypto = require('crypto');
 const scanner = require('../tools/scan-aux-provenance');
 const quarantine = require('../tools/quarantine-aux-provenance');
 
+// quarantine.main() sets process.exitCode on failures/refusals; reset it after
+// every test so it cannot leak into the test runner's own exit code.
+test.afterEach(() => { process.exitCode = undefined; });
+
 function sha256(content) {
   return crypto.createHash('sha256').update(content).digest('hex');
 }
@@ -71,7 +75,7 @@ function makeFixtureRoot() {
 test('W2-01 scanner: payload end_date after logical date + duplicate hash -> VERIFIED_INVALID_PROVENANCE', () => {
   const fx = makeFixtureRoot();
   try {
-    const manifest = scanner.scan({ root: fx.root, logEvidence: true });
+    const manifest = scanner.scan({ root: fx.root });
     assert.equal(manifest.totals.scanned, 9, 'scans dated accumulation+insiders files (6 contaminated + 2 later + 1 clean)');
     assert.ok(manifest.totals.verified_invalid >= 6, `expected >=6 verified invalid, got ${manifest.totals.verified_invalid}`);
     const verified = manifest.files.filter(f => f.classification === 'VERIFIED_INVALID_PROVENANCE');
@@ -80,6 +84,36 @@ test('W2-01 scanner: payload end_date after logical date + duplicate hash -> VER
     assert.ok(verified.every(f => f.sha256 && f.endpoint_semantics === 'current_snapshot_only'));
   } finally {
     fs.rmSync(fx.root, { recursive: true, force: true });
+  }
+});
+
+test('W2-01 review: a --log-path flag alone cannot manufacture evidence — only a real matching log does', () => {
+  const fx = makeFixtureRoot();
+  const logPath = path.join(os.tmpdir(), `prov-log-${Date.now()}.txt`);
+  try {
+    // Log that does NOT mention the fixture dates -> no promotion from log.
+    fs.writeFileSync(logPath, 'Target Date (WIB): 2026-10-02\n');
+    const withoutLog = scanner.scan({ root: fx.root });
+    const withUnrelatedLog = scanner.scan({ root: fx.root, logPath });
+    assert.equal(
+      withUnrelatedLog.totals.verified_invalid,
+      withoutLog.totals.verified_invalid,
+      'an unrelated log must not change any classification'
+    );
+
+    // Real sweep lines for the fixture dates.
+    fs.writeFileSync(logPath, [
+      '[HISTORICAL] BBCA 2026-09-28 disimpan sebagai dated cache; latest.json yang lebih baru dipertahankan.',
+      '[HISTORICAL] BBCA 2026-09-29 disimpan sebagai dated cache; latest.json yang lebih baru dipertahankan.',
+      '[HISTORICAL] BBCA 2026-09-30 disimpan sebagai dated cache; latest.json yang lebih baru dipertahankan.'
+    ].join('\n'));
+    const dates = scanner.extractSweepDatesFromLog(logPath);
+    assert.deepEqual([...dates].sort(), ['2026-09-28', '2026-09-29', '2026-09-30']);
+    const withLog = scanner.scan({ root: fx.root, logPath });
+    assert.ok(withLog.totals.verified_invalid >= 6);
+  } finally {
+    fs.rmSync(fx.root, { recursive: true, force: true });
+    fs.rmSync(logPath, { force: true });
   }
 });
 
@@ -116,7 +150,7 @@ test('W2-01 scanner: a later mtime alone (no payload/duplicate evidence) is not 
 test('W2-01 quarantine: dry-run leaves the filesystem byte-for-byte unchanged', () => {
   const fx = makeFixtureRoot();
   try {
-    const manifest = scanner.scan({ root: fx.root, logEvidence: true });
+    const manifest = scanner.scan({ root: fx.root });
     const manifestPath = path.join(fx.root, '..', `prov-manifest-${Date.now()}.json`);
     fs.writeFileSync(manifestPath, JSON.stringify(manifest));
     const before = {};
@@ -146,7 +180,7 @@ test('W2-01 quarantine: execute moves ONLY verified-invalid files, preserves pat
   const quarantineRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'prov-q-exec-'));
   const manifestPath = path.join(os.tmpdir(), `prov-manifest-exec-${Date.now()}.json`);
   try {
-    const manifest = scanner.scan({ root: fx.root, logEvidence: true });
+    const manifest = scanner.scan({ root: fx.root });
     fs.writeFileSync(manifestPath, JSON.stringify(manifest));
     const verified = manifest.files.filter(f => f.classification === 'VERIFIED_INVALID_PROVENANCE');
     const untouched = manifest.files.filter(f => f.classification !== 'VERIFIED_INVALID_PROVENANCE');
@@ -179,6 +213,30 @@ test('W2-01 quarantine: execute moves ONLY verified-invalid files, preserves pat
       assert.equal(fs.existsSync(f.path), true, `${f.path} must be restored`);
       assert.equal(sha256(fs.readFileSync(f.path)), beforeHashes[f.path], 'restored content is byte-identical');
     }
+  } finally {
+    fs.rmSync(fx.root, { recursive: true, force: true });
+    fs.rmSync(quarantineRoot, { recursive: true, force: true });
+    fs.rmSync(manifestPath, { force: true });
+  }
+});
+
+test('W2-01 review: a source updated after scanning is skipped, not quarantined under a stale hash', () => {
+  const fx = makeFixtureRoot();
+  const quarantineRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'prov-q-stale-'));
+  const manifestPath = path.join(os.tmpdir(), `prov-manifest-stale-${Date.now()}.json`);
+  try {
+    const manifest = scanner.scan({ root: fx.root });
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+    // Simulate a corrected rewrite of one verified file AFTER the scan.
+    const verified = manifest.files.filter(f => f.classification === 'VERIFIED_INVALID_PROVENANCE');
+    const corrected = verified[0];
+    fs.writeFileSync(corrected.path, JSON.stringify({ corrected: true, end_date: corrected.logical_date }));
+
+    const result = quarantine.main(['--manifest', manifestPath, '--quarantine-root', quarantineRoot, '--execute']);
+    process.exitCode = undefined; // main() sets exit code on failures — do not leak it
+    assert.ok(result.failures.some(f => f.source === corrected.path && f.reason === 'source_changed_since_scan'), 'changed source must be skipped');
+    assert.equal(fs.existsSync(corrected.path), true, 'changed source must remain in place');
+    assert.equal(result.moved.some(m => m.original_path === corrected.path), false, 'changed source must not be moved');
   } finally {
     fs.rmSync(fx.root, { recursive: true, force: true });
     fs.rmSync(quarantineRoot, { recursive: true, force: true });

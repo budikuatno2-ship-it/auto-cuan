@@ -273,6 +273,28 @@ test('W2-07: coordinator backlog invariant — only today + H-1, never older gap
   }
 });
 
+test('W2 review: --fresh clears prior terminal claims when a ticker now has real rows', async () => {
+  await withTempEnv(async () => {
+    // Prior marker claims NOTRD3 was NO_TRADE on this date.
+    dailyUpdate.writeMarker('2026-09-30', {
+      version: 2, date: '2026-09-30', complete: true,
+      no_trade_tickers: ['NOTRD3'], no_data_tickers: ['NOTRD3'], no_data: 1, total_tickers: 1
+    });
+    writeCandle('NOTRD3', '2026-09-30', 100, 500);
+    const restore = mockArjum({
+      fetchBrokerSummary: async () => ({ ok: true, data: { top_buyers: [{ broker: 'YU', bval: 100, bvol: 10 }], top_sellers: [] } })
+    });
+    try {
+      await dailyUpdate.run(['--tickers', 'NOTRD3', '--date', '2026-09-30', '--delay', '0', '--fresh']);
+      const marker = dailyUpdate.readMarker('2026-09-30');
+      assert.equal(marker.complete, true);
+      assert.deepEqual(marker.no_trade_tickers, [], '--fresh must drop the stale NO_TRADE claim');
+      assert.deepEqual(marker.no_data_tickers, [], 'legacy union must be cleared too');
+      assert.equal(marker.no_trade_count, 0);
+    } finally { restore(); }
+  });
+});
+
 test('W2-10: runtime schedule text consistently describes the 23:30 WIB final window', () => {
   const repoRoot = path.join(__dirname, '..');
   const runtimeFiles = [

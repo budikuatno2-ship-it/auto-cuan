@@ -371,8 +371,11 @@ async function run(argv) {
       if (Array.isArray(list)) list.forEach(t => priorMarkerTerminal.add(t));
     }
   }
-  const noTradeTickers = new Set(Array.isArray(existingMarker && existingMarker.no_trade_tickers) ? existingMarker.no_trade_tickers : []);
-  const brokerDataUnavailableTickers = new Set(Array.isArray(existingMarker && existingMarker.broker_data_unavailable_tickers) ? existingMarker.broker_data_unavailable_tickers : []);
+  // Review fix (P2): --fresh discards prior terminal claims entirely. If a
+  // formerly NO_TRADE ticker now returns valid rows, it must not remain listed
+  // in the new marker's terminal arrays.
+  const noTradeTickers = new Set(!isFresh && Array.isArray(existingMarker && existingMarker.no_trade_tickers) ? existingMarker.no_trade_tickers : []);
+  const brokerDataUnavailableTickers = new Set(!isFresh && Array.isArray(existingMarker && existingMarker.broker_data_unavailable_tickers) ? existingMarker.broker_data_unavailable_tickers : []);
 
   function checkApiQuota(res) {
     if (!res.ok) {

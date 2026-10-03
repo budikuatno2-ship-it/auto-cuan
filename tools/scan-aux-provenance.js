@@ -163,14 +163,41 @@ function classifyBrokerSummary(entry) {
 }
 
 /**
+ * Read an execution log and extract the set of logical dates for which the
+ * log PROVES a historical auxiliary sweep happened (the pre-#835 worker wrote
+ * dated auxiliary files for dates it swept). A boolean flag can never stand in
+ * for this — only a real log file that actually mentions the date counts.
+ *
+ * @param {string} logPath
+ * @returns {Set<string>} dates with matching sweep evidence
+ */
+function extractSweepDatesFromLog(logPath) {
+  const dates = new Set();
+  if (!logPath) return dates;
+  let content = '';
+  try {
+    content = fs.readFileSync(logPath, 'utf8');
+  } catch (_) {
+    return dates;
+  }
+  for (const line of content.split(/\r?\n/)) {
+    // The pre-#835 worker logged "[HISTORICAL] TICKER YYYY-MM-DD disimpan ..."
+    // when it wrote a dated auxiliary cache during a sweep.
+    const m = /\[HISTORICAL\]\s+\S+\s+(\d{4}-\d{2}-\d{2})/.exec(line);
+    if (m) dates.add(m[1]);
+  }
+  return dates;
+}
+
+/**
  * Scan the data root read-only and return the manifest object.
  *
- * @param {{root?: string, includeBrokerSummary?: boolean, logEvidence?: boolean}} options
+ * @param {{root?: string, includeBrokerSummary?: boolean, logPath?: string}} options
  */
 function scan(options = {}) {
   const root = options.root || defaultRoot();
   const includeBrokerSummary = options.includeBrokerSummary === true;
-  const logEvidence = options.logEvidence === true;
+  const logDates = extractSweepDatesFromLog(options.logPath);
   const datasets = includeBrokerSummary
     ? AUXILIARY_DATASETS.concat(['broker-summary'])
     : AUXILIARY_DATASETS;
@@ -246,10 +273,10 @@ function scan(options = {}) {
           result = { classification: CLASSIFICATIONS.UNKNOWN, signals: ['unparseable_payload'] };
         } else if (entry.dataset === 'broker-accumulation') {
           const duplicates = entries.filter(o => o !== entry && o.sha256 && o.sha256 === entry.sha256);
-          result = classifyAccumulation(entry, duplicates, logEvidence);
+          result = classifyAccumulation(entry, duplicates, logDates.has(entry.logical_date));
         } else if (entry.dataset === 'insiders') {
           const duplicates = entries.filter(o => o !== entry && o.sha256 && o.sha256 === entry.sha256);
-          result = classifyInsiders(entry, duplicates, logEvidence);
+          result = classifyInsiders(entry, duplicates, logDates.has(entry.logical_date));
         } else {
           result = classifyBrokerSummary(entry);
         }
@@ -320,10 +347,11 @@ function main(argv) {
   const args = argv || process.argv.slice(2);
   const rootIdx = args.indexOf('--root');
   const outIdx = args.indexOf('--out');
+  const logIdx = args.indexOf('--log-path');
   const manifest = scan({
     root: rootIdx >= 0 ? args[rootIdx + 1] : undefined,
     includeBrokerSummary: args.includes('--include-broker-summary'),
-    logEvidence: args.includes('--log-evidence')
+    logPath: logIdx >= 0 ? args[logIdx + 1] : undefined
   });
   if (outIdx >= 0 && args[outIdx + 1]) {
     fs.writeFileSync(args[outIdx + 1], JSON.stringify(manifest, null, 2));
@@ -346,4 +374,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { scan, main, CLASSIFICATIONS, AUXILIARY_DATASETS, accumulationPayloadEndDate, jakartaDateOf };
+module.exports = { scan, main, CLASSIFICATIONS, AUXILIARY_DATASETS, accumulationPayloadEndDate, jakartaDateOf, extractSweepDatesFromLog };

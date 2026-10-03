@@ -85,6 +85,19 @@ function executePlan(plan, quarantineRoot, stamp) {
         failures.push({ source: item.source, reason: 'quarantine_artifact_exists' });
         continue;
       }
+      // Review fix (P2): the source must still match the scanned hash at the
+      // moment of the move. A file updated between scan and --execute is
+      // freshly-corrected data and must NOT be quarantined under a stale
+      // manifest (whose restore hash would then reject it).
+      if (!fs.existsSync(item.source)) {
+        failures.push({ source: item.source, reason: 'source_missing' });
+        continue;
+      }
+      const currentHash = sha256File(item.source);
+      if (item.record.sha256 && currentHash !== item.record.sha256) {
+        failures.push({ source: item.source, reason: 'source_changed_since_scan' });
+        continue;
+      }
       ensureDir(destDir);
       let method = 'rename';
       try {
@@ -142,7 +155,21 @@ function restore(restoreManifestPath) {
         failures.push({ quarantine_path: entry.quarantine_path, reason: 'hash_mismatch' });
         continue;
       }
-      fs.renameSync(entry.quarantine_path, entry.original_path);
+      // Review fix (P2): restoration must support the same cross-device layout
+      // the move already supports. renameSync throws EXDEV across filesystems;
+      // fall back to verified copy + unlink.
+      try {
+        fs.renameSync(entry.quarantine_path, entry.original_path);
+      } catch (renameErr) {
+        fs.copyFileSync(entry.quarantine_path, entry.original_path);
+        const dstHash = sha256File(entry.original_path);
+        if (dstHash !== currentHash) {
+          failures.push({ quarantine_path: entry.quarantine_path, reason: 'restore_copy_hash_mismatch' });
+          try { fs.unlinkSync(entry.original_path); } catch (_) {}
+          continue;
+        }
+        fs.unlinkSync(entry.quarantine_path);
+      }
       restored.push({ original_path: entry.original_path, sha256: currentHash });
     } catch (err) {
       failures.push({ quarantine_path: entry.quarantine_path, reason: String(err && err.message || err) });
