@@ -99,7 +99,22 @@
         if (typeof window.updateDashGreeting === 'function') {
           try { window.updateDashGreeting(); } catch (_) {}
         }
-        if (window.location.pathname === '/dashboard' || window.location.pathname === '/dashboard/') {
+        // Re-enter the app for ANY protected SPA route, not just /dashboard.
+        // A valid session cookie with no matching localStorage state lands on
+        // the login prompt for /screener, /watchlist, /sektor, /trackrecord and
+        // the /dashboard?page=... deep links; without this the user stays
+        // stranded on the prompt despite being authenticated.
+        var isProtectedSpaRoute = false;
+        if (typeof window.parseAppRoute === 'function') {
+          try {
+            var route = window.parseAppRoute();
+            isProtectedSpaRoute = route && (route.authRequired === true || route.page === 'dashboard' || route.page === 'analisis' || route.page === 'news' || route.page === 'portofolio');
+          } catch (_) {}
+        } else {
+          var p = window.location.pathname || '/';
+          isProtectedSpaRoute = p === '/dashboard' || p === '/dashboard/' || p === '/screener' || p === '/watchlist' || p === '/sektor' || p === '/trackrecord';
+        }
+        if (isProtectedSpaRoute) {
           if (typeof window.closeAuthChoiceModal === 'function') {
             try { window.closeAuthChoiceModal(); } catch (_) {}
           }
@@ -112,10 +127,28 @@
 
       if (result.response.status === 401 || result.response.status === 403) {
         window.__AUTOCUAN_AUTHENTICATED_SESSION__ = null;
-        returnToGuest({ skipHistory: true });
-        if (window.location.pathname === '/dashboard' || window.location.pathname === '/dashboard/') {
-          if (typeof window.openAuthChoiceModal === 'function') {
-            try { window.openAuthChoiceModal('Sesi sudah tidak berlaku. Silakan login kembali.'); } catch (_) {}
+        var isGuestPermitted = false;
+        if (typeof window.isCurrentRouteGuestAllowed === 'function') {
+          try { isGuestPermitted = window.isCurrentRouteGuestAllowed(); } catch (_) {}
+        } else {
+          var params = new URLSearchParams(window.location.search);
+          var path = window.location.pathname || '/';
+          isGuestPermitted = (path === '/dashboard' || path === '/dashboard/') && (params.get('page') || '').toLowerCase() === 'news';
+        }
+        if (!isGuestPermitted) {
+          returnToGuest({ skipHistory: true });
+          if (window.location.pathname === '/dashboard' || window.location.pathname === '/dashboard/') {
+            if (typeof window.openAuthChoiceModal === 'function') {
+              try { window.openAuthChoiceModal('Sesi sudah tidak berlaku. Silakan login kembali.'); } catch (_) {}
+            }
+          }
+        } else {
+          clearLocalAuthState();
+          if (typeof window.updateDashGreeting === 'function') {
+            try { window.updateDashGreeting(); } catch (_) {}
+          }
+          if (typeof window.updateLandingCtas === 'function') {
+            try { window.updateLandingCtas(); } catch (_) {}
           }
         }
       }

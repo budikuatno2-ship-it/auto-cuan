@@ -25,6 +25,22 @@
       "destination": "/index.html"
     },
     {
+      "source": "/screener",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/watchlist",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/sektor",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/trackrecord",
+      "destination": "/index.html"
+    },
+    {
       "source": "/pattern",
       "destination": "/index.html"
     },
