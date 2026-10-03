@@ -2805,7 +2805,11 @@
 </div>
 
 <script src="/assets/idx-tickers.js"></script>
-<script src="/assets/fca-stocks.js"></script>
+<!-- ?v= is a cache key, not decoration: Nginx serves .js with
+     `max-age=604800, immutable` behind a Cloudflare edge cache, so an
+     unversioned loader URL can keep serving a stale copy for up to 7 days.
+     v20261003-fca-stocks-v2 carries the FINAL-HC-001 pattern-extension fix. -->
+<script src="/assets/fca-stocks.js?v=20261003-fca-stocks-v2"></script>
 <script>
 // ===== PDF LIBRARY LOADER (multi-CDN fallback, on demand) =====
 // jsPDF + autoTable are ~350KB and are only needed when someone actually

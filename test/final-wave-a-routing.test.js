@@ -169,6 +169,13 @@ test('FINAL-HC-001: pattern-screener-extension skips protected screener fetch wh
   const loader = fs.readFileSync(path.join(ROOT, 'public', 'assets', 'fca-stocks.js'), 'utf8');
   assert.ok(/pattern-screener-extension\.js\?v=/.test(loader), 'loader must version the extension URL');
   assert.ok(!loader.includes('pattern-screener-extension.js?v=20260813-pattern-screener-v7'), 'stale frozen v7 query must be bumped so the FINAL-HC-001 fix is not served from an immutable edge cache');
+
+  // The loader itself must also be cache-busted from index.html: an unversioned
+  // /assets/fca-stocks.js keeps serving the pre-fix loader for up to 7 days
+  // (Nginx immutable + Cloudflare edge), which silently re-pins the old query.
+  const html = fs.readFileSync(INDEX_HTML_PATH, 'utf8');
+  assert.match(html, /<script src="\/assets\/fca-stocks\.js\?v=[^"]+"><\/script>/, 'index.html must load fca-stocks.js with a cache-busting query');
+  assert.ok(!html.includes('<script src="/assets/fca-stocks.js"></script>'), 'unversioned fca-stocks.js script tag must not return');
 });
 
 test('FINAL-HC-002: auth-v2.js preserves guest-permitted routes on session-status 401', () => {
