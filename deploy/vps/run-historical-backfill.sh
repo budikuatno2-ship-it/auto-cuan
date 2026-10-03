@@ -5,8 +5,9 @@
 #   5 0 * * *  /home/ubuntu/auto-cuan/deploy/vps/run-historical-backfill.sh >> /home/ubuntu/auto-cuan-runner/logs/historical-backfill.log 2>&1
 #
 # That's 00:05 WIB every day — just after Arjum's daily quota resets. The
-# worker stops itself well before the 18:00-20:00 WIB daily update job
-# (Bagian 3) via --stop-at-time and --reserve-quota (see backfill-arjum-data.js),
+# worker stops itself well before the 18:00 WIB start of the EOD window
+# (Bagian 3, 18:00-23:30 WIB) via --stop-at-time and --reserve-quota
+# (see backfill-arjum-data.js),
 # so this cron entry is safe to run every day, including weekends, until the
 # Juni-Juli backfill is complete. After that it becomes a fast no-op (every
 # date is already cached) — no need to remove the cron line urgently.

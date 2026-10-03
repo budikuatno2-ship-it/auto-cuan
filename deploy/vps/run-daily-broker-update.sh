@@ -1,22 +1,25 @@
 #!/usr/bin/env bash
 # Daily Bandarmologi Update (Bagian 3) — safe VPS runner wrapper.
 #
+# NOTE (Wave 2): production does not call this wrapper directly any more.
+# The durable coordinator deploy/vps/run-daily-market-update.sh fires every
+# 30 minutes across the EOD window (18:00-23:30 WIB, Mon-Fri) and appends
+# --final only on its 23:30 WIB pass. This wrapper remains for manual runs
+# and is kept in sync with that schedule.
+#
 # Arjum's broker-summary for today's session is usually published between
-# 18:00-20:00 WIB, so this fires every 30 minutes from 20:00 to 22:00 WIB
-# (5 firings). Each firing is a fast no-op once a completion marker exists
-# for the day (see tools/run-daily-broker-update.js), so it is safe to run
-# on this cadence every day — it self-skips on non-trading days too (no
-# broker-summary is ever published then, so every ticker just stays
-# "pending" until the marker naturally never completes; --final at 22:00
-# reports that plainly rather than looping forever).
+# 18:00-20:00 WIB. Each firing is a fast no-op once a completion marker
+# exists for the day (see tools/run-daily-broker-update.js); it self-skips on
+# non-trading days too. The terminal --final pass runs at 23:30 WIB — the end
+# of the EOD operating window — and reports a real failure if still
+# incomplete instead of promising a retry that will never come.
 #
-# Usage in VPS crontab (after testing):
-#   0,30 20-21 * * *  /home/ubuntu/auto-cuan/deploy/vps/run-daily-broker-update.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-broker-update.log 2>&1
-#   0 22 * * *        /home/ubuntu/auto-cuan/deploy/vps/run-daily-broker-update.sh --final >> /home/ubuntu/auto-cuan-runner/logs/daily-broker-update.log 2>&1
+# Usage in VPS crontab (manual wrapper form):
+#   0,30 18-23 * * 1-5  /home/ubuntu/auto-cuan/deploy/vps/run-daily-broker-update.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-broker-update.log 2>&1
+#   # the coordinator adds --final on the 23:30 firing only
 #
-# That's 20:00, 20:30, 21:00, 21:30 as normal retries, and 22:00 as the
-# final attempt for the night (reports a real failure if still incomplete,
-# instead of silently promising another retry that will never come).
+# That's 18:00 through 23:00 as normal retries, and 23:30 as the final
+# attempt for the night.
 #
 # Guarantees:
 #   - forces TZ=Asia/Jakarta for child process;
