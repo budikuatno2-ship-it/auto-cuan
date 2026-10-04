@@ -145,14 +145,14 @@
 }
 
 #page-dashboard td,
-#page-screener td,
+#page-screener td:not(#screenerContent[data-ui-version="v2"] td),
 #page-analisis td,
 #page-sektor td {
   border-bottom-color: var(--pw-v11-hairline) !important;
 }
 
 #page-dashboard th,
-#page-screener th,
+#page-screener th:not(#screenerContent[data-ui-version="v2"] th),
 #page-analisis th,
 #page-sektor th {
   letter-spacing: .035em;

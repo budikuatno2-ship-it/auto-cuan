@@ -806,7 +806,7 @@ thead th {
   z-index: 2;
 }
 
-tbody td {
+tbody td:not(#screenerContent[data-ui-version="v2"] td) {
   border-bottom-color: rgba(148, 163, 184, .06) !important;
   color: #bac6d3;
 }
@@ -2417,17 +2417,17 @@ html.light .empty-state {
   border-color: #cbd5e1 !important;
 }
 
-html.light thead th,
+html.light thead th:not(#screenerContent[data-ui-version="v2"] th),
 html.light #rankingTableWrap thead th:first-child,
-html.light #dtScreenerTableWrap thead th:first-child,
-html.light #kgScreenerTableWrap thead th:first-child,
-html.light #nkScreenerTableWrap thead th:first-child {
+html.light #dtScreenerTableWrap:not(#screenerContent[data-ui-version="v2"] *) thead th:first-child,
+html.light #kgScreenerTableWrap:not(#screenerContent[data-ui-version="v2"] *) thead th:first-child,
+html.light #nkScreenerTableWrap:not(#screenerContent[data-ui-version="v2"] *) thead th:first-child {
   background: #f1f5f9 !important;
   color: #334155 !important;
   border-bottom-color: #cbd5e1 !important;
 }
 
-html.light tbody td {
+html.light tbody td:not(#screenerContent[data-ui-version="v2"] td) {
   color: #0f172a !important;
   border-bottom-color: #e2e8f0 !important;
 }

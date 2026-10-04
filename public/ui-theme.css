@@ -5724,6 +5724,7 @@ html.dark [data-ui-version="v2"]:not([data-theme="light"]),
 #screenerContent[data-ui-version="v2"] tbody tr {
   height: 38px;
   max-height: 42px;
+  border-bottom: 1px solid var(--ac-line-hairline);
 }
 #screenerContent[data-ui-version="v2"] tbody td {
   padding: 4px var(--ac-space-2);
@@ -5732,6 +5733,7 @@ html.dark [data-ui-version="v2"]:not([data-theme="light"]),
   font-variant-numeric: tabular-nums lining-nums;
   height: 38px;
   box-sizing: border-box;
+  color: var(--ac-ink);
 }
 
 /* Canonical Focus Primitives */

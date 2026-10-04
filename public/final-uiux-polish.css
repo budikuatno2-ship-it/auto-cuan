@@ -351,13 +351,13 @@ html.light table {
   border-color: var(--ac-line) !important;
 }
 
-html.light thead th {
+html.light thead th:not(#screenerContent[data-ui-version="v2"] th) {
   background: #f7f9f8 !important;
   color: #59665f !important;
   border-bottom-color: var(--ac-line-strong) !important;
 }
 
-html.light tbody td {
+html.light tbody td:not(#screenerContent[data-ui-version="v2"] td) {
   color: #26322e !important;
   border-bottom-color: rgba(18,35,29,.07) !important;
 }
@@ -1500,7 +1500,7 @@ html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) [c
   background-color: #ffffff !important;
 }
 
-html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) [class*="border-dark-"] {
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) [class*="border-dark-"]:not(#screenerContent[data-ui-version="v2"] *) {
   border-color: rgba(18,35,29,.10) !important;
 }
 
@@ -1726,8 +1726,8 @@ html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) th
   z-index: 10;
 }
 
-html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) thead tr,
-html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) thead th {
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) thead tr:not(#screenerContent[data-ui-version="v2"] tr),
+html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) thead th:not(#screenerContent[data-ui-version="v2"] th) {
   background: rgba(247,249,248,.97) !important;
   color: #5f6d67 !important;
   border-color: rgba(18,35,29,.09) !important;

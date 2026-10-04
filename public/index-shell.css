@@ -411,7 +411,7 @@ input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px rgba(16,185,12
 .page-content { max-width: 1180px; }
 table { border-collapse: separate; border-spacing: 0; }
 th { color: #cbd5e1; font-weight: 700; }
-td { border-color: rgba(148,163,184,0.08) !important; }
+td:not(#screenerContent[data-ui-version="v2"] td) { border-color: rgba(148,163,184,0.08) !important; }
 .action-card, .dt-card-item, .kg-card-item, .nk-card-item { box-shadow: 0 12px 26px rgba(0,0,0,0.14); }
 .action-card:focus-visible, .nav-btn:focus-visible, button:focus-visible { outline: 2px solid rgba(52,211,153,0.55); outline-offset: 2px; }
 

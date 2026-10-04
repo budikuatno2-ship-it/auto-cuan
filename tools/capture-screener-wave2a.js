@@ -282,7 +282,7 @@ const server = http.createServer((req, res) => {
       }));
       return;
     }
-    if (action === 'non_konglo_screener') {
+    if (action === 'non_konglo_screener' || action === 'nk-screener-results' || action === 'nk_screener_results') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         success: true,
@@ -423,7 +423,7 @@ async function capture() {
             firstColWidth: firstCol ? Math.round(firstCol.getBoundingClientRect().width) : 0,
             actionColWidth: actionCol ? Math.round(actionCol.getBoundingClientRect().width) : 0,
             hasHorizontalOverflow: wrap ? wrap.scrollWidth > wrap.clientWidth : false,
-            badgeCount: firstRow ? firstRow.querySelectorAll('.scr-status-badge, .dash-badge, .dt-badge, [class*="badge"]').length : 0,
+            badgeCount: firstRow ? firstRow.querySelectorAll('td:nth-child(3) span, .scr-status-badge, .dash-badge, .dt-badge, [class*="badge"]').length : 0,
             numericFontFamily: numericFontFamily
           };
         });
@@ -431,7 +431,7 @@ async function capture() {
         // Test Non-Konglo mode
         await page.evaluate(async () => {
           if (typeof switchScreenerType === 'function') switchScreenerType('nonkonglo');
-          if (typeof loadNonKongloScreener === 'function') await loadNonKongloScreener(true);
+          if (typeof loadNkScreenerResults === 'function') await loadNkScreenerResults(true);
         });
         await new Promise(r => setTimeout(r, 600));
 
@@ -454,7 +454,7 @@ async function capture() {
             headerHeight: headerRow ? Math.round(headerRow.getBoundingClientRect().height) : 0,
             firstColWidth: firstCol ? Math.round(firstCol.getBoundingClientRect().width) : 0,
             actionColWidth: actionCol ? Math.round(actionCol.getBoundingClientRect().width) : 0,
-            badgeCount: firstRow ? firstRow.querySelectorAll('.scr-status-badge, .dash-badge, .dt-badge, [class*="badge"]').length : 0,
+            badgeCount: firstRow ? firstRow.querySelectorAll('td:nth-child(3) span, .scr-status-badge, .dash-badge, .dt-badge, [class*="badge"]').length : 0,
             hasHorizontalOverflow: wrap ? wrap.scrollWidth > wrap.clientWidth : false
           };
         });
@@ -485,7 +485,7 @@ async function capture() {
             headerHeight: headerRow ? Math.round(headerRow.getBoundingClientRect().height) : 0,
             firstColWidth: firstCol ? Math.round(firstCol.getBoundingClientRect().width) : 0,
             actionColWidth: actionCol ? Math.round(actionCol.getBoundingClientRect().width) : 0,
-            badgeCount: firstRow ? firstRow.querySelectorAll('.scr-status-badge, .dash-badge, .dt-badge, [class*="badge"]').length : 0,
+            badgeCount: firstRow ? firstRow.querySelectorAll('td:nth-child(3) span, .scr-status-badge, .dash-badge, .dt-badge, [class*="badge"]').length : 0,
             hasHorizontalOverflow: wrap ? wrap.scrollWidth > wrap.clientWidth : false
           };
         });
