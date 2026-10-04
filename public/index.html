@@ -704,13 +704,13 @@
 
 <div class="app-content" id="appContent">
 <!-- Access Recovery Banner (§79.1 / Wave 2A) -->
-<div id="accessRecoveryBanner" class="hidden max-w-[1180px] w-full mx-auto px-3 sm:px-5 pt-3 pb-1" role="alert" aria-live="assertive">
-    <div class="flex items-center justify-between gap-3 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 text-xs sm:text-sm shadow-sm">
-        <div class="flex items-center gap-2.5">
-            <svg class="w-4 h-4 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            <span id="accessRecoveryMsg">Koneksi terputus saat verifikasi akses.</span>
+<div id="accessRecoveryBanner" class="hidden max-w-[1180px] w-full mx-auto px-3 sm:px-5 pt-2 pb-1" role="alert" aria-live="assertive">
+    <div class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-amber-500/40 bg-amber-500/10 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs shadow-sm">
+        <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <span id="accessRecoveryMsg" class="font-medium">Koneksi terputus saat verifikasi akses.</span>
         </div>
-        <button type="button" onclick="retryPremiumAccess()" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 text-xs font-semibold shrink-0 transition-colors cursor-pointer">
+        <button type="button" onclick="retryPremiumAccess()" class="px-2.5 py-1 rounded bg-amber-600/15 hover:bg-amber-600/25 dark:bg-amber-400/15 dark:hover:bg-amber-400/25 text-amber-900 dark:text-amber-100 border border-amber-600/30 dark:border-amber-400/30 text-xs font-semibold shrink-0 transition-colors cursor-pointer">
             Coba Lagi
         </button>
     </div>
@@ -1010,8 +1010,8 @@
             <button onclick="filterScreener('Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
             <button onclick="filterScreener('Invalid')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Invalid">Invalid</button>
         </div>
-        <!-- View Toggle & Count Context -->
-        <div class="flex items-center justify-between gap-2 mb-2">
+        <!-- View Toggle & Count Context (hidden in v2 table-first presentation) -->
+        <div class="hidden items-center justify-between gap-2 mb-2" id="kgViewToggleWrap" aria-hidden="true">
             <span class="text-xs text-gray-400 font-medium">Tampilan Screener</span>
             <div class="inline-flex rounded-lg border border-dark-600/30 bg-dark-900/80 p-0.5 text-xs" role="group" aria-label="Pilihan tampilan konglo">
                 <button type="button" id="kgBtnTable" onclick="kgToggleView('table')" class="px-2.5 py-1 rounded font-semibold text-emerald-400 bg-emerald-500/10 transition-colors">Tabel</button>
@@ -1117,8 +1117,8 @@
                 <button onclick="filterNkScreener('Rebound Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
                 <button onclick="filterNkScreener('Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
             </div>
-            <!-- View Toggle & Count Context -->
-            <div class="flex items-center justify-between gap-2 mb-2">
+            <!-- View Toggle & Count Context (hidden in v2 table-first presentation) -->
+            <div class="hidden items-center justify-between gap-2 mb-2" id="nkViewToggleWrap" aria-hidden="true">
                 <span class="text-xs text-gray-400 font-medium">Tampilan Screener</span>
                 <div class="inline-flex rounded-lg border border-dark-600/30 bg-dark-900/80 p-0.5 text-xs" role="group" aria-label="Pilihan tampilan non-konglo">
                     <button type="button" id="nkBtnTable" onclick="nkToggleView('table')" class="px-2.5 py-1 rounded font-semibold text-emerald-400 bg-emerald-500/10 transition-colors">Tabel</button>
@@ -1235,8 +1235,8 @@
                 <span class="text-yellow-400 font-semibold">Pullback</span> = tunggu area harga.
                 <span class="text-red-400 font-semibold">Spike/Hindari</span> = jangan chase atau jangan entry.
             </div>
-            <!-- View Toggle & Count Context -->
-            <div class="flex items-center justify-between gap-2 mb-2">
+            <!-- View Toggle & Count Context (hidden in v2 table-first presentation) -->
+            <div class="hidden items-center justify-between gap-2 mb-2" id="dtViewToggleWrap" aria-hidden="true">
                 <span class="text-xs text-gray-400 font-medium">Tampilan Screener</span>
                 <div class="inline-flex rounded-lg border border-dark-600/30 bg-dark-900/80 p-0.5 text-xs" role="group" aria-label="Pilihan tampilan day trade">
                     <button type="button" id="dtBtnTable" onclick="dtToggleView('table')" class="px-2.5 py-1 rounded font-semibold text-emerald-400 bg-emerald-500/10 transition-colors">Tabel</button>
@@ -5080,12 +5080,7 @@ function cancelPremiumAccessRequest() {
     premiumAccessRequest = null;
     if (premiumAccessRefreshTimer) { clearTimeout(premiumAccessRefreshTimer); premiumAccessRefreshTimer=null; }
 }
-var _premiumAccessRetryAttempts = 0;
-var MAX_PREMIUM_ACCESS_RETRIES = 3;
-var PREMIUM_ACCESS_RETRY_DELAYS = [2000, 5000, 10000];
-
 function retryPremiumAccess() {
-    _premiumAccessRetryAttempts = 0;
     return loadPremiumAccess(true);
 }
 if (typeof window !== 'undefined') window.retryPremiumAccess = retryPremiumAccess;
@@ -5099,7 +5094,6 @@ function schedulePremiumAccessRefresh(expiresAt) {
 function resetPremiumAccess() {
     var wasPremium=premiumAccessState.premium===true;
     cancelPremiumAccessRequest();
-    _premiumAccessRetryAttempts = 0;
     premiumAccessState={state:'loading',premium:false,accessLevel:'free',checkedAt:0};
     if (wasPremium) clearRenderedPremiumData();
     applyPremiumAccessUi();
@@ -5131,11 +5125,9 @@ async function loadPremiumAccess(force) {
             var payload=null; try { payload=await response.json(); } catch (_) {}
             if (generation!==premiumAccessGeneration) return premiumAccessState;
             if (response.ok && payload && payload.success===true && payload.user_id) {
-                _premiumAccessRetryAttempts = 0;
                 premiumAccessState={state:'ready',premium:true,accessLevel:'approved',checkedAt:Date.now(),expiresAt:null};
             } else if (response.status===401 || response.status===403) {
                 // Definitive server "no" (anonymous, blocked, or unapproved).
-                _premiumAccessRetryAttempts = 0;
                 premiumAccessState={state:'ready',premium:false,accessLevel:'free',checkedAt:Date.now(),expiresAt:null};
             } else {
                 if (response.status >= 500) is5xx = true;
@@ -5144,7 +5136,7 @@ async function loadPremiumAccess(force) {
         } catch (_) {
             if (generation!==premiumAccessGeneration) return premiumAccessState;
             // Transient failure: keep confirmed access instead of logging the user
-            // out of features; retry happens via bounded auto-retry or manual retry affordance.
+            // out of features; retry is orchestrated by subscription-access-gate-v1.js or manual retry affordance.
             var errType = isTimeout ? 'timeout' : (is5xx ? 'server_error' : 'network_error');
             if (!(priorState.state==='ready' && priorState.premium===true)) {
                 premiumAccessState={state:'unavailable',premium:false,accessLevel:'free',checkedAt:Date.now(),errorType:errType};
@@ -5153,19 +5145,7 @@ async function loadPremiumAccess(force) {
             if (timer) clearTimeout(timer);
             if (generation===premiumAccessGeneration) {
                 premiumAccessController=null; premiumAccessRequest=null; applyPremiumAccessUi();
-                if (premiumAccessState.state === 'unavailable') {
-                    if (_premiumAccessRetryAttempts < MAX_PREMIUM_ACCESS_RETRIES) {
-                        var retryDelay = PREMIUM_ACCESS_RETRY_DELAYS[_premiumAccessRetryAttempts] || 10000;
-                        _premiumAccessRetryAttempts++;
-                        if (premiumAccessRefreshTimer) clearTimeout(premiumAccessRefreshTimer);
-                        premiumAccessRefreshTimer = setTimeout(function() {
-                            premiumAccessRefreshTimer = null;
-                            loadPremiumAccess(true);
-                        }, retryDelay);
-                    } else {
-                        schedulePremiumAccessRefresh(null);
-                    }
-                } else {
+                if (premiumAccessState.state !== 'unavailable') {
                     schedulePremiumAccessRefresh(premiumAccessState.expiresAt||null);
                 }
             }
@@ -9682,7 +9662,7 @@ function patternPersonalityBadgeHtml(r) {
     var p = PATTERN_PERSONALITY_UI_CATALOG[key];
     if (!p) return '';
     var tip = 'Quant Edge: ' + p.key + ' · WR ' + p.wr.toFixed(1) + '% · PF ' + p.pf.toFixed(2) + ' (MFE +' + p.mfe.toFixed(1) + '% · MAE ' + p.mae.toFixed(1) + '%)';
-    return '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border ' + p.color + '" title="' + escapeHtml(tip) + '">⚡ ' + escapeHtml(p.label) + '</span></div>';
+    return '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold border ' + p.color + '" title="' + escapeHtml(tip) + '">⚡ ' + escapeHtml(p.label) + '</span></div>';
 }
 if (typeof window !== 'undefined') window.patternPersonalityBadgeHtml = patternPersonalityBadgeHtml;
 
@@ -9727,18 +9707,18 @@ function humanizeRawStatus(val) {
         'SPECULATIVE': 'Spekulatif',
         'SPEC': 'Spekulatif',
         'INVALID': 'Invalid / Batal',
-        'READY_BREAKOUT': 'Ready Breakout',
-        'PRE_SPIKE_WATCH': 'Pre-Spike Watch',
+        'READY_BREAKOUT': 'Siap Breakout',
+        'PRE_SPIKE_WATCH': 'Pantau Pre-Spike',
         'EARLY_RADAR': 'Radar Awal',
         'MOMENTUM_CONTINUATION': 'Momentum Lanjutan',
         'RECLAIM_CANDIDATE': 'Kandidat Reclaim',
-        'HARD_REJECT': 'Hard Reject',
+        'HARD_REJECT': 'Ditolak Keras',
         'SIGNAL': 'Signal',
         'RADAR': 'Radar',
-        'LOW_RISK': 'Low Risk',
-        'MEDIUM_RISK': 'Medium Risk',
-        'HIGH_RISK': 'High Risk',
-        'VERY_HIGH_RISK': 'Very High Risk'
+        'LOW_RISK': 'Risiko Rendah',
+        'MEDIUM_RISK': 'Risiko Sedang',
+        'HIGH_RISK': 'Risiko Tinggi',
+        'VERY_HIGH_RISK': 'Risiko Sangat Tinggi'
     };
     if (ENUM_MAP[upper]) return ENUM_MAP[upper];
 
@@ -11402,16 +11382,16 @@ function renderScreenerTable(results) {
         html += '<td class="px-2 py-2 text-gray-400 whitespace-nowrap text-[10px]">' + (r.group_code || '—') + '</td>';
         html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + escapeHtml(tierLabel) + '</span></td>';
         html += '<td class="px-2 py-2 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
-        html += '<td class="px-2 py-2 text-center font-mono tabular-nums ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + bandarScoreBadgeHtml(r) + patternPersonalityBadgeHtml(r) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-200 font-mono tabular-nums whitespace-nowrap">' + (r.last_price ? formatPrice(r.last_price) : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right font-mono tabular-nums whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap">' + (r.volume_ratio_avg20 != null ? formatRatio(r.volume_ratio_avg20) : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap text-[10px]">' + ((r.entry_low != null && r.entry_high != null) ? (formatPrice(r.entry_low) + '-' + formatPrice(r.entry_high)) : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-red-400/80 font-mono tabular-nums whitespace-nowrap">' + (r.stop_loss ? formatPrice(r.stop_loss) : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-emerald-400/80 font-mono tabular-nums whitespace-nowrap">' + (r.tp1 ? formatPrice(r.tp1) : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-emerald-400/60 font-mono tabular-nums whitespace-nowrap">' + (r.tp2 ? formatPrice(r.tp2) : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-center tabular-nums ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + bandarScoreBadgeHtml(r) + patternPersonalityBadgeHtml(r) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-200 tabular-nums whitespace-nowrap">' + (r.last_price ? formatPrice(r.last_price) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right tabular-nums whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 tabular-nums whitespace-nowrap">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 tabular-nums whitespace-nowrap">' + (r.volume_ratio_avg20 != null ? formatRatio(r.volume_ratio_avg20) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 tabular-nums whitespace-nowrap text-[10px]">' + ((r.entry_low != null && r.entry_high != null) ? (formatPrice(r.entry_low) + '-' + formatPrice(r.entry_high)) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-red-400/80 tabular-nums whitespace-nowrap">' + (r.stop_loss ? formatPrice(r.stop_loss) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-emerald-400/80 tabular-nums whitespace-nowrap">' + (r.tp1 ? formatPrice(r.tp1) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-emerald-400/60 tabular-nums whitespace-nowrap">' + (r.tp2 ? formatPrice(r.tp2) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 tabular-nums whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '—') + '</td>';
         html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + timingColor + '" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml(timingLabel) + '</td>';
         html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + escapeHtml(dirLabel) + '</td>';
         html += '<td class="px-2 py-2 text-left text-gray-500 whitespace-nowrap text-[10px] max-w-[120px] truncate" title="' + escapeHtml((r.status_reason || '') + (r.invalidation ? ' | ' + r.invalidation : '')) + '">' + escapeHtml(humanizeRawStatus(r.status_reason || r.invalidation || '—')) + '</td>';
@@ -11870,21 +11850,21 @@ function renderNkScreenerTable(results) {
 
         var rowPayload = escapeHtml(JSON.stringify(r));
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="openScrDetail(_nkCardData[\'' + r.ticker + '\']||' + rowPayload + ',\'nonkonglo\')">';
-        html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[11px] sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px] font-mono tabular-nums">' + (r.rank || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[11px] sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px] tabular-nums">' + (r.rank || '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + escapeHtml(tierLabel) + '</span></td>';
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
-        html += '<td class="px-2 py-1.5 text-center font-mono tabular-nums ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + bandarScoreBadgeHtml(r) + patternPersonalityBadgeHtml(r) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-mono tabular-nums whitespace-nowrap">' + (r.last_price ? formatPrice(r.last_price) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right font-mono tabular-nums whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap">' + rsiStr + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap">' + (r.volume_ratio_avg20 != null ? formatRatio(r.volume_ratio_avg20) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap text-[10px]">' + entryStr + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-red-400 font-mono tabular-nums whitespace-nowrap">' + (r.stop_loss ? formatPrice(r.stop_loss) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400 font-mono tabular-nums whitespace-nowrap">' + (r.tp1 ? formatPrice(r.tp1) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400 font-mono tabular-nums whitespace-nowrap">' + (r.tp2 ? formatPrice(r.tp2) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold font-mono tabular-nums whitespace-nowrap">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center tabular-nums ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + bandarScoreBadgeHtml(r) + patternPersonalityBadgeHtml(r) + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-200 tabular-nums whitespace-nowrap">' + (r.last_price ? formatPrice(r.last_price) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right tabular-nums whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-300 tabular-nums whitespace-nowrap">' + rsiStr + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-300 tabular-nums whitespace-nowrap">' + (r.volume_ratio_avg20 != null ? formatRatio(r.volume_ratio_avg20) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-300 tabular-nums whitespace-nowrap text-[10px]">' + entryStr + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-red-400 tabular-nums whitespace-nowrap">' + (r.stop_loss ? formatPrice(r.stop_loss) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400 tabular-nums whitespace-nowrap">' + (r.tp1 ? formatPrice(r.tp1) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400 tabular-nums whitespace-nowrap">' + (r.tp2 ? formatPrice(r.tp2) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold tabular-nums whitespace-nowrap">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + timingColor + '" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml(timingLabel) + '</td>';
         html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + escapeHtml(dirLabel) + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-gray-500 text-[10px] whitespace-nowrap overflow-hidden max-w-[150px] truncate" title="' + escapeHtml(r.status_reason || '') + '">' + escapeHtml(humanizeRawStatus((r.status_reason || '').slice(0, 50) || '—')) + '</td>';

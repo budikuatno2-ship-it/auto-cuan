@@ -104,17 +104,17 @@ test('WAVE-2A-03: Raw enum humanization prevents leaking internal snake_case/upp
   assert.equal(humanize('A_PLUS_SWING'), 'Swing A+');
   assert.equal(humanize('ENTRY_AREA'), 'Area Entry');
   assert.equal(humanize('ENTRY_TOUCHED'), 'Entry Tersentuh');
-  assert.equal(humanize('READY_BREAKOUT'), 'Ready Breakout');
-  assert.equal(humanize('PRE_SPIKE_WATCH'), 'Pre-Spike Watch');
+  assert.equal(humanize('READY_BREAKOUT'), 'Siap Breakout');
+  assert.equal(humanize('PRE_SPIKE_WATCH'), 'Pantau Pre-Spike');
   assert.equal(humanize('AVOID'), 'Hindari');
   assert.equal(humanize('TRADE_CANDIDATE'), 'Kandidat Trade');
   assert.equal(humanize('SWING_READY'), 'Swing Ready');
   assert.equal(humanize('WATCHLIST'), 'Watchlist');
   assert.equal(humanize('REBOUND_CANDIDATE'), 'Kandidat Rebound');
   assert.equal(humanize('SPECULATIVE'), 'Spekulatif');
-  assert.equal(humanize('HARD_REJECT'), 'Hard Reject');
-  assert.equal(humanize('LOW_RISK'), 'Low Risk');
-  assert.equal(humanize('VERY_HIGH_RISK'), 'Very High Risk');
+  assert.equal(humanize('HARD_REJECT'), 'Ditolak Keras');
+  assert.equal(humanize('LOW_RISK'), 'Risiko Rendah');
+  assert.equal(humanize('VERY_HIGH_RISK'), 'Risiko Sangat Tinggi');
 
   // Missing values display '—'
   assert.equal(humanize(null), '—');
@@ -264,10 +264,13 @@ test('WAVE-2A-05: Screener Access Recovery: States A, B, C, and D', () => {
   assert.match(stateD.elements.accessRecoveryMsg.textContent, /timed out/i);
   assert.equal(stateD.dataLoaded, false, 'State D: data must not load');
 
-  // Runtime subscription-access-gate-v1 bounded retry and retry affordance
+  // Runtime subscription-access-gate-v1 bounded retry and retry affordance (single authority)
   assert.match(subGate, /MAX_SUB_RETRIES\s*=\s*3/, 'subscription-access-gate-v1 must define MAX_SUB_RETRIES = 3');
   assert.match(subGate, /window\.retryPremiumAccess\s*=/, 'subscription-access-gate-v1 must expose retry affordance');
   assert.match(subGate, /errorType:\s*errType/, 'subscription-access-gate-v1 must preserve errorType');
+
+  // Single authority: index.html fallback must NOT maintain duplicate retry attempts or timeout loop
+  assert.doesNotMatch(html, /_premiumAccessRetryAttempts/, 'index.html must not define duplicate _premiumAccessRetryAttempts');
 });
 
 test('WAVE-2A-06: Silent polling preserves currently visible table data', () => {
@@ -293,11 +296,44 @@ test('WAVE-2A-06: Silent polling preserves currently visible table data', () => 
   );
 });
 
-test('WAVE-2A-07: Tabular financial numerals and precision styling', () => {
-  // Table numerals use font-mono tabular-nums in Konglo table renderer
-  assert.match(html, /px-2 py-2 text-right text-gray-200 font-mono tabular-nums whitespace-nowrap/);
-  // Table numerals use font-mono tabular-nums in Non-Konglo table renderer
-  assert.match(html, /px-2 py-1\.5 text-right text-gray-200 font-mono tabular-nums whitespace-nowrap/);
-  // Table numerals use font-mono tabular-nums in Day Trade table renderer
-  assert.match(dtRuntime, /px-2 py-2 text-right text-gray-200 font-mono tabular-nums/);
+test('WAVE-2A-07: Tabular financial numerals and precision styling (sans font, tabular-nums)', () => {
+  // Table numerals use tabular-nums in Konglo table renderer (no font-mono)
+  assert.match(html, /px-2 py-2 text-right text-gray-200 tabular-nums whitespace-nowrap/);
+  assert.doesNotMatch(html, /px-2 py-2 text-right text-gray-200 font-mono tabular-nums/);
+
+  // Table numerals use tabular-nums in Non-Konglo table renderer (no font-mono)
+  assert.match(html, /px-2 py-1\.5 text-right text-gray-200 tabular-nums whitespace-nowrap/);
+  assert.doesNotMatch(html, /px-2 py-1\.5 text-right text-gray-200 font-mono tabular-nums/);
+
+  // Table numerals use tabular-nums in Day Trade table renderer (no font-mono)
+  assert.match(dtRuntime, /px-2 py-2 text-right text-gray-200 tabular-nums/);
+  assert.doesNotMatch(dtRuntime, /px-2 py-2 text-right text-gray-200 font-mono tabular-nums/);
+
+  // CSS enforces sans font with tabular figures on screener workstation table cells
+  assert.match(theme, /#screenerContent\[data-ui-version="v2"\]\s+table\s+td/);
+  assert.match(theme, /font-family:\s*var\(--ac-font-sans\);/);
+});
+
+test('WAVE-2A-08: Table-First Screener hides Card-mode toggle bars in v2 presentation', () => {
+  // Toggle wrappers must have class="hidden" to enforce table-first workstation layout
+  assert.match(
+    html,
+    /<div\s+[^>]*id="kgViewToggleWrap"[^>]*>/,
+    'Konglo view toggle wrapper #kgViewToggleWrap must exist'
+  );
+  assert.match(
+    html,
+    /<div\s+[^>]*id="kgViewToggleWrap"[^>]*class="[^"]*\bhidden\b[^"]*"|<div\s+[^>]*class="[^"]*\bhidden\b[^"]*"[^>]*id="kgViewToggleWrap"/,
+    'Konglo view toggle wrapper #kgViewToggleWrap must be hidden in v2'
+  );
+  assert.match(
+    html,
+    /<div\s+[^>]*id="nkViewToggleWrap"[^>]*class="[^"]*\bhidden\b[^"]*"|<div\s+[^>]*class="[^"]*\bhidden\b[^"]*"[^>]*id="nkViewToggleWrap"/,
+    'Non-Konglo view toggle wrapper #nkViewToggleWrap must be hidden in v2'
+  );
+  assert.match(
+    html,
+    /<div\s+[^>]*id="dtViewToggleWrap"[^>]*class="[^"]*\bhidden\b[^"]*"|<div\s+[^>]*class="[^"]*\bhidden\b[^"]*"[^>]*id="dtViewToggleWrap"/,
+    'Day Trade view toggle wrapper #dtViewToggleWrap must be hidden in v2'
+  );
 });

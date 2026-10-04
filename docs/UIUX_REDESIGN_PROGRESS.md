@@ -385,16 +385,58 @@ The access runtime state machine now deterministically handles all four lifecycl
 
 ---
 
-## 5. Verification & Test Evidence
+# Auto-Cuan UI/UX Redesign — Wave 2A UI/UX Seal
+**Milestone:** Wave 2A Screener Workstation & Access Recovery Seal  
+**Design Authority:** `DESIGN.md` FINAL v1.1  
+**Branch:** `feat/uiux-redesign-v1.1`  
+**Status:** PASS — Sealed  
 
-- `npm run validate:syntax`: **1052 .js files parsed cleanly**, 0 errors.
-- `npm run test:smoke`: **75 test files passed, 271 assertions passed**, 0 failures.
-- `node --test test/screener-workstation-wave2a.test.js`: **7/7 PASS**.
-- `node --test test/approved-website-access-shell.test.js test/subscription-enforcement-v1.test.js test/subscription-phase6a-access.test.js`: **26/26 PASS**.
-- **Real-Browser Visual QA (`tools/capture-screener-wave2a.js`):**
-  - Captured 8 screenshots across 4 responsive viewports (1440px desktop, 1024px laptop, 768px tablet, 390px mobile) in both dark and light themes.
-  - Verified table-first density, high contrast, clean typography, badge humanization, and responsive reflow with zero horizontal page scroll leaks.
+---
 
+## 1. Summary of Changes
 
+1. **Typography Direction Enforcement:**
+   - Removed `font-mono` from normal financial values (Price, Chg%, RSI, Vol/Avg20, Entry, SL, TP1, TP2, R/R, Score, Rank) in Konglo, Non-Konglo, and Day Trade tables.
+   - Preserved canonical sans UI font (`Inter`, `var(--ac-font-sans)`) paired with `font-variant-numeric: tabular-nums lining-nums;` (`.tabular-nums`).
+   - Monospace is kept solely for code-like identifiers or machine-readable technical symbols if required.
+   - Cleaned `font-mono` from status/score badge helpers (`bandarScoreBadgeHtml`, `patternPersonalityBadgeHtml`, `dtBdBadgeHtml`).
 
+2. **Table-First Workstation Presentation:**
+   - Hidden the dual "Tabel / Kartu" view toggles (`#kgViewToggleWrap`, `#nkViewToggleWrap`, `#dtViewToggleWrap`) with `class="hidden"` in the v2 Screener toolbar.
+   - Table presentation is the sole canonical primary view on both desktop and responsive viewports.
+   - Legacy card DOM grids are preserved with `display: none` for complete backwards compatibility without cluttering the UI.
 
+3. **Access Recovery Single Authority:**
+   - `public/subscription-access-gate-v1.js` is the sole authoritative scheduler and state machine for retry loops (`_subRetryAttempts`, `MAX_SUB_RETRIES`, `SUB_RETRY_DELAYS`, `subRetryTimer`).
+   - Duplicate retry counters and retry loops in `public/index.html` were completely removed.
+   - `#accessRecoveryBanner` updated to compact, high-contrast accessible styling.
+
+4. **Indonesian Status Humanization:**
+   - Refined `humanizeRawStatus` mapping across both `public/index.html` and `public/daytrade-runtime.js`:
+     - `READY_BREAKOUT` -> `Siap Breakout`
+     - `PRE_SPIKE_WATCH` -> `Pantau Pre-Spike`
+     - `HARD_REJECT` -> `Ditolak Keras`
+     - `LOW_RISK` -> `Risiko Rendah`
+     - `MEDIUM_RISK` -> `Risiko Sedang`
+     - `HIGH_RISK` -> `Risiko Tinggi`
+     - `VERY_HIGH_RISK` -> `Risiko Sangat Tinggi`
+
+5. **Exact Default Column Contracts:**
+   - **Konglo (17 columns):** `#`, `Ticker`, `Grup`, `Tier`, `Konf`, `Skor`, `Last`, `Chg%`, `RSI`, `Vol/Avg20`, `Area Entry`, `SL`, `TP1`, `TP2`, `RR`, `Timing`, `Arah`, `Catatan`.
+   - **Non-Konglo (18 columns):** `#`, `Ticker`, `Board`, `Tier`, `Konf`, `Skor`, `Last`, `Chg%`, `RSI`, `Vol/Avg20`, `Area Entry`, `SL`, `TP1`, `TP2`, `RR`, `Timing`, `Arah`, `Alasan`.
+   - **Day Trade (22 columns):** `#`, `Ticker`, `Board`, `Status`, `Skor`, `Konf`, `Setup`, `Last`, `Chg%`, `Vol/Avg`, `Nilai`, `PreSpk`, `Mom`, `Area Entry`, `SL`, `TP1`, `TP2`, `RR`, `Timing`, `Arah`, `Time Plan`, `Sinyal`.
+
+6. **Real-Browser Geometry & Density Verification:**
+   - Measured across 4 viewports (1440x900 desktop, 1024x768 laptop, 768x1024 tablet, 390x844 mobile) in both dark and light modes via Puppeteer.
+   - Desktop 1440px dark:
+     - Outer width: 1121px
+     - Header height: 34px, Row height: 35px
+     - Konglo: 17 cols, scroll width 1322px
+     - Non-Konglo: 18 cols, scroll width 1200px
+     - Day Trade: 22 cols, scroll width 1137px
+     - Numeric font family: `Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` (zero monospace on normal table numbers).
+
+7. **Test Suites:**
+   - `test/screener-workstation-wave2a.test.js`: **8/8 PASS**.
+   - `npm run validate:syntax`: **1054 .js files parsed cleanly**, 0 errors.
+   - `npm run test:smoke`: **75 test files passed, 271 assertions passed**, 0 failures.

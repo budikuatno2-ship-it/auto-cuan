@@ -5648,8 +5648,18 @@ html.dark [data-ui-version="v2"]:not([data-theme="light"]),
 #screenerContent[data-ui-version="v2"] table {
   width: 100%;
   border-collapse: collapse;
+  font-family: var(--ac-font-sans);
   font-variant-numeric: tabular-nums lining-nums;
   font-size: 0.75rem;
+}
+
+#screenerContent[data-ui-version="v2"] table td,
+#screenerContent[data-ui-version="v2"] table th,
+#screenerContent[data-ui-version="v2"] table td.text-right,
+#screenerContent[data-ui-version="v2"] table th.text-right,
+#screenerContent[data-ui-version="v2"] .tabular-nums {
+  font-family: var(--ac-font-sans);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 #screenerContent[data-ui-version="v2"] thead th {

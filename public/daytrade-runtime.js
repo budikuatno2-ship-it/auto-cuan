@@ -29,16 +29,16 @@ var humanizeRawStatus = (typeof window !== 'undefined' && typeof window.humanize
             'SWING_READY': 'Swing Ready',
             'WATCHLIST': 'Watchlist',
             'WATCH': 'Watchlist',
-            'READY_BREAKOUT': 'Ready Breakout',
-            'PRE_SPIKE_WATCH': 'Pre-Spike Watch',
+            'READY_BREAKOUT': 'Siap Breakout',
+            'PRE_SPIKE_WATCH': 'Pantau Pre-Spike',
             'EARLY_RADAR': 'Radar Awal',
             'MOMENTUM_CONTINUATION': 'Momentum Lanjutan',
             'RECLAIM_CANDIDATE': 'Kandidat Reclaim',
-            'HARD_REJECT': 'Hard Reject',
-            'LOW_RISK': 'Low Risk',
-            'MEDIUM_RISK': 'Medium Risk',
-            'HIGH_RISK': 'High Risk',
-            'VERY_HIGH_RISK': 'Very High Risk'
+            'HARD_REJECT': 'Ditolak Keras',
+            'LOW_RISK': 'Risiko Rendah',
+            'MEDIUM_RISK': 'Risiko Sedang',
+            'HIGH_RISK': 'Risiko Tinggi',
+            'VERY_HIGH_RISK': 'Risiko Sangat Tinggi'
         };
         if (ENUM_MAP[upper]) return ENUM_MAP[upper];
         if (upper.indexOf('_') >= 0 || text === upper) {
@@ -280,7 +280,7 @@ function renderDtTable(results, data) {
 
         var rowPayload = escapeHtml(JSON.stringify(r));
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 transition cursor-pointer" onclick="if(typeof openScrDetail===\'function\')openScrDetail(_dtCardData[\'' + r.ticker + '\']||' + rowPayload + ',\'daytrade\')">';
-        html += '<td class="px-2 py-2 text-center text-gray-500 font-mono tabular-nums sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (i + 1) + '</td>';
+        html += '<td class="px-2 py-2 text-center text-gray-500 tabular-nums sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (i + 1) + '</td>';
         html += '<td class="px-2 py-2 font-medium text-white sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px]">' + (r.board || '—') + '</td>';
         html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ' + statusClass + '">' + escapeHtml(humanizeRawStatus(getStatusLabel(r, formatDtStatus(r.status)))) + '</span></td>';
@@ -289,23 +289,23 @@ function renderDtTable(results, data) {
             var dtBColor = r.bandarmologi_badge_color === 'emerald' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : (r.bandarmologi_badge_color === 'cyan' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' : 'bg-gray-700/60 text-gray-300 border-gray-600/40');
             var dtBText = r.bandarmologi_badge || ((r.bandarmologi_score >= 0 ? '+' : '') + r.bandarmologi_score + ' BD');
             var dtBTip = r.bandarmologi_breakdown || r.bandarmologi_breakdown_text || 'Metrik Bandarmologi';
-            dtBdBadgeHtml = '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border ' + dtBColor + '" title="' + escapeHtml(dtBTip) + '">' + dtBText + '</span></div>';
+            dtBdBadgeHtml = '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold border ' + dtBColor + '" title="' + escapeHtml(dtBTip) + '">' + dtBText + '</span></div>';
         }
         var dtPatternBadgeHtml = typeof patternPersonalityBadgeHtml === 'function' ? patternPersonalityBadgeHtml(r) : '';
-        html += '<td class="px-2 py-2 text-center font-bold font-mono tabular-nums ' + getDtScoreClass(r.daytrade_score) + '">' + r.daytrade_score + dtBdBadgeHtml + dtPatternBadgeHtml + '</td>';
+        html += '<td class="px-2 py-2 text-center font-bold tabular-nums ' + getDtScoreClass(r.daytrade_score) + '">' + r.daytrade_score + dtBdBadgeHtml + dtPatternBadgeHtml + '</td>';
         html += '<td class="px-2 py-2 text-center ' + confColor + ' text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
         html += '<td class="px-2 py-2 text-gray-300 text-[10px] max-w-[100px] truncate" title="' + escapeHtml(humanizeRawStatus(r.setup || '')) + '">' + escapeHtml(humanizeRawStatus(r.setup || '—')) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-200 font-mono tabular-nums">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right font-mono tabular-nums ' + chgClass + '">' + (r.change_pct != null ? r.change_pct.toFixed(2) + '%' : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 font-mono tabular-nums">' + volRatioStr + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 font-mono tabular-nums">' + txStr + '</td>';
-        html += '<td class="px-2 py-2 text-right text-cyan-400 font-mono tabular-nums">' + (r.prespike_score || 0) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-violet-400 font-mono tabular-nums">' + (r.momentum_score || 0) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-200 text-[10px] font-mono tabular-nums">' + entryStr + '</td>';
-        html += '<td class="px-2 py-2 text-right text-red-400 font-mono tabular-nums">' + (r.stop_loss ? r.stop_loss.toLocaleString('id-ID') : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-emerald-400 font-mono tabular-nums">' + (r.tp1 ? r.tp1.toLocaleString('id-ID') : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-emerald-300 font-mono tabular-nums">' + (r.tp2 ? r.tp2.toLocaleString('id-ID') : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right font-medium font-mono tabular-nums ' + (r.risk_reward >= 2.0 ? 'text-emerald-400' : r.risk_reward >= 1.5 ? 'text-yellow-400' : 'text-red-400') + '">' + rrStr + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-200 tabular-nums">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right tabular-nums ' + chgClass + '">' + (r.change_pct != null ? r.change_pct.toFixed(2) + '%' : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 tabular-nums">' + volRatioStr + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 tabular-nums">' + txStr + '</td>';
+        html += '<td class="px-2 py-2 text-right text-cyan-400 tabular-nums">' + (r.prespike_score || 0) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-violet-400 tabular-nums">' + (r.momentum_score || 0) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-200 text-[10px] tabular-nums">' + entryStr + '</td>';
+        html += '<td class="px-2 py-2 text-right text-red-400 tabular-nums">' + (r.stop_loss ? r.stop_loss.toLocaleString('id-ID') : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-emerald-400 tabular-nums">' + (r.tp1 ? r.tp1.toLocaleString('id-ID') : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-emerald-300 tabular-nums">' + (r.tp2 ? r.tp2.toLocaleString('id-ID') : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right font-medium tabular-nums ' + (r.risk_reward >= 2.0 ? 'text-emerald-400' : r.risk_reward >= 1.5 ? 'text-yellow-400' : 'text-red-400') + '">' + rrStr + '</td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px] whitespace-nowrap" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml(humanizeRawStatus(r.entry_window_label || rawTiming || '—')) + '</td>';
         html += '<td class="px-2 py-2 ' + dirColor + ' text-[10px] whitespace-nowrap">' + escapeHtml(humanizeRawStatus(rawDir)) + '</td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + escapeHtml(r.time_plan || '') + '">' + escapeHtml(r.time_plan || '—') + '</td>';
