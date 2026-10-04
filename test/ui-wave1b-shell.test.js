@@ -35,26 +35,40 @@ test('WAVE-1B-01: Canonical desktop navigation groups and hierarchy', () => {
   assert.match(sidebarNav, /data-sidebar-page="screener"[^>]*data-premium-nav="true"/, 'Discover must contain Screener with premium nav');
   assert.match(sidebarNav, /id="tabSektorHot"[^>]*data-sidebar-page="sektor"[^>]*data-premium-nav="true"/, 'Discover must contain Sektor Hot with premium nav');
 
-  // 3. RESEARCH group with 5 semantic subgroups
+  // 3. RESEARCH group with canonical flat hierarchy (DESIGN.md §10.2)
   assert.match(sidebarNav, /aria-label="Research"[^>]*>[\s\S]*?<h2 class="sidebar-group-label">Research<\/h2>/);
   const subgroups = ['Teknikal', 'Arus Bandar', 'Intel & Relasi', 'Struktur & Valuasi', 'Peringkat & Sektor'];
   subgroups.forEach(label => {
-    assert.ok(
+    assert.equal(
       sidebarNav.includes(`<div class="sidebar-subgroup-label">${label}</div>`),
-      `Research group must contain subgroup label "${label}"`
+      false,
+      `Canonical v2 sidebarNav must NOT contain subgroup label "${label}"`
     );
   });
 
-  // Verify research tools
-  assert.match(sidebarNav, /id="tabAnalisisChart"[^>]*data-analysis-tab="analisis-chart"/);
-  assert.match(sidebarNav, /id="tabBandarmologi"[^>]*data-analysis-tab="bandarmologi"/);
-  assert.match(sidebarNav, /id="tabBrokerHunter"[^>]*data-analysis-tab="hunter"/);
-  assert.match(sidebarNav, /id="tabSinyalIntelijen"[^>]*data-analysis-tab="intel"/);
-  assert.match(sidebarNav, /id="tabJejaringInsider"[^>]*data-analysis-tab="insider"/);
-  assert.match(sidebarNav, /id="tabFinancial"[^>]*data-analysis-tab="financial"/);
-  assert.match(sidebarNav, /id="tabMarketStructure"[^>]*data-analysis-tab="market-structure"/);
-  assert.match(sidebarNav, /id="tabRankingHarian"[^>]*data-analysis-tab="ranking"/);
-  assert.match(sidebarNav, /id="tabAnalisisPattern"[^>]*class="[^"]*hidden[^"]*"[^>]*data-analysis-tab="pattern"/);
+  // Verify canonical flat research tools in DESIGN.md §10.2 order
+  const researchGroupMatch = sidebarNav.match(/<section class="sidebar-nav-group" aria-label="Research">([\s\S]*?)<\/section>/);
+  assert.ok(researchGroupMatch, 'Research group must exist in sidebar');
+  const researchHtml = researchGroupMatch[1];
+
+  const posChart = researchHtml.indexOf('id="tabAnalisisChart"');
+  const posBandar = researchHtml.indexOf('id="tabBandarmologi"');
+  const posIntel = researchHtml.indexOf('id="tabSinyalIntelijen"');
+  const posHunter = researchHtml.indexOf('id="tabBrokerHunter"');
+  const posInsider = researchHtml.indexOf('id="tabJejaringInsider"');
+  const posRanking = researchHtml.indexOf('id="tabRankingHarian"');
+  const posFinancial = researchHtml.indexOf('id="tabFinancial"');
+  const posStruktur = researchHtml.indexOf('id="tabMarketStructure"');
+  const posPattern = researchHtml.indexOf('id="tabAnalisisPattern"');
+
+  assert.ok(posChart > -1 && posBandar > posChart, 'Analisis & Chart -> Bandarmologi');
+  assert.ok(posIntel > posBandar, 'Bandarmologi -> Sinyal Intelijen');
+  assert.ok(posHunter > posIntel, 'Sinyal Intelijen -> Broker Hunter');
+  assert.ok(posInsider > posHunter, 'Broker Hunter -> Insider');
+  assert.ok(posRanking > posInsider, 'Insider -> Ranking');
+  assert.ok(posFinancial > posRanking, 'Ranking -> Financial');
+  assert.ok(posStruktur > posFinancial, 'Financial -> Struktur Pasar');
+  assert.ok(posPattern > posStruktur, 'Struktur Pasar -> Pattern Radar');
 
   // 4. MONITOR group
   assert.match(sidebarNav, /aria-label="Monitor"[^>]*>[\s\S]*?<h2 class="sidebar-group-label">Monitor<\/h2>/);
