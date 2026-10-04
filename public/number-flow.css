@@ -1,3 +1,3 @@
 /* Shared exact-text accessibility and self-hosted NumberFlow presentation. */
 .ac-numeric-readable { position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); clip-path:inset(50%); white-space:nowrap; border:0; }
-number-flow.ac-number-flow { display:inline-block; font:inherit; color:inherit; font-variant-numeric:tabular-nums; --number-flow-mask-height:.08em; --number-flow-mask-width:.06em; }
+number-flow.ac-number-flow { display:inline-block; font:inherit; color:inherit; font-variant-numeric:tabular-nums lining-nums; font-feature-settings: "tnum" 1, "lnum" 1; --number-flow-mask-height:.08em; --number-flow-mask-width:.06em; }

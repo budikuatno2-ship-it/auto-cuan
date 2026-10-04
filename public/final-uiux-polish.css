@@ -325,48 +325,48 @@ html.light :is(
   input:not([type="checkbox"]):not([type="radio"]),
   select,
   textarea
-) {
+):not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)) {
   background: #fbfcfb !important;
   color: var(--ac-text) !important;
   border-color: var(--ac-line-strong) !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
 }
 
-html.light :is(input,select,textarea):focus {
+html.light :is(input,select,textarea):focus:not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)) {
   border-color: rgba(15,116,88,.48) !important;
   box-shadow: 0 0 0 3px rgba(15,116,88,.10) !important;
   outline: none;
 }
 
-html.light button:focus-visible,
-html.light a:focus-visible,
-html.light [role="button"]:focus-visible,
-html.light summary:focus-visible {
+html.light button:focus-visible:not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)),
+html.light a:focus-visible:not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)),
+html.light [role="button"]:focus-visible:not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)),
+html.light summary:focus-visible:not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)) {
   outline: 2px solid rgba(15,116,88,.72) !important;
   outline-offset: 3px;
 }
 
 /* ---- Dense data: calm and precise --------------------------------------- */
-html.light table {
+html.light table:not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)) {
   border-color: var(--ac-line) !important;
 }
 
-html.light thead th {
+html.light thead th:not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)) {
   background: #f7f9f8 !important;
   color: #59665f !important;
   border-bottom-color: var(--ac-line-strong) !important;
 }
 
-html.light tbody td {
+html.light tbody td:not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)) {
   color: #26322e !important;
   border-bottom-color: rgba(18,35,29,.07) !important;
 }
 
-html.light tbody tr {
+html.light tbody tr:not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)) {
   transition: background-color var(--motion-instant) linear;
 }
 
-html.light tbody tr:hover {
+html.light tbody tr:hover:not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)) {
   background: #f5f8f6 !important;
 }
 
