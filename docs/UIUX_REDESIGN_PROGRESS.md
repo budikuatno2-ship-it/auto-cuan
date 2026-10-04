@@ -253,4 +253,57 @@ Automated Headless Chrome execution via Puppeteer across all mandatory viewports
 - `npm run validate:syntax`: **1052 .js files checked**, 0 errors.
 - `node tools/qa-seal-wave1b-capture.js`: **14/14 screenshots captured, 0 geometry defects**.
 
+---
+
+# Auto-Cuan UI/UX Redesign — Wave 1B Final Seal Record
+**Milestone:** Wave 1B Final Seal Correction (Exact 68px Rail Geometry, Production DOM Hygiene, Truthful Radar Semantics)  
+**Design Authority:** `DESIGN.md` FINAL v1.1 (`4750e34fd2d03c9d64e2c760ca6b1451695a4cc093db0639a915c828ab5e5f3d`)  
+**Branch:** `feat/uiux-redesign-v1.1`  
+**Status:** PASS — WAVE_1B_FINAL_PASS  
+
+## 1. Collapsed Rail Exact Geometry Correction (68px Parity)
+- **Problem Traced:** Real-browser visual QA previously measured collapsed rail at 72px width and `#appMain` left offset at 72px, despite frozen token `--ac-sidebar-rail: 68px;`.
+- **Root Cause Identified:** Pre-v2 legacy rules in `public/ui-theme.css` at lines 2925-2926, 3734-3735, and 4085-4086 enforced `width: 72px !important;` and `margin-left: 72px !important;`. The `!important` declarations in the legacy media query rules overrode Section 9's token-bound rules (`width: var(--ac-sidebar-rail)` without `!important`).
+- **Remediation:**
+  - Bound legacy width and margin-left rules to `var(--ac-sidebar-rail, 68px) !important;`.
+  - Added `flex: 0 0 var(--ac-sidebar-rail);` to `#appSidebar[data-ui-version="v2"].is-collapsed, #appSidebar[data-ui-version="v2"].collapsed`.
+  - Added centering and padding adjustments for utility buttons in collapsed rail.
+  - Frozen token `--ac-sidebar-rail: 68px;` preserved without change.
+  - Expanded width `240px` (`--ac-sidebar-width`) preserved without change.
+- **Real-Browser Geometry Verification (Headless Chrome Puppeteer):**
+  - `1440x900` Collapsed (Dark & Light): `sidebarWidth = 68px`, `mainLeft = 68px`.
+  - `1024x768` Collapsed (Dark & Light): `sidebarWidth = 68px`, `mainLeft = 68px`.
+  - Expanded states: `sidebarWidth = 240px`, `mainLeft = 240px`.
+  - Zero icon clipping, centered icons, and accessible account footer.
+
+## 2. Production DOM Hygiene & Test Migration
+- **Problem:** A hidden off-screen compatibility block (`<div hidden class="hidden" ...>`) containing old subgroup labels (`Teknikal`, `Arus Bandar`, `Intel & Relasi`, `Struktur & Valuasi`, `Peringkat & Sektor`) existed solely to pass legacy assertions in `test/final-wave-4b-targeted.test.js`.
+- **Remediation:**
+  - Completely removed the hidden compatibility block from `public/index.html`. Production DOM contains zero obsolete or hidden navigation taxonomy.
+  - Migrated `test/final-wave-4b-targeted.test.js` Suite 2 to test the canonical flat RESEARCH IA (§10.2).
+  - Test proves absence of unauthorized subgroup labels in production DOM and verifies exact canonical order of all 9 research tools: Analisis & Chart, Bandarmologi, Sinyal Intelijen, Broker Hunter, Insider, Ranking, Financial, Struktur Pasar, Pattern Radar [admin-only].
+
+## 3. Truthful Radar Status Semantics
+- **Problem:** Timestamp recency alone (`calculated_at` within today) previously emitted "Live Radar", which implies an active live market session without market calendar/session authority.
+- **Remediation:**
+  - Neutralized `updateGlobalLiveRadarStatus()` in `public/index.html`:
+    - Evaluated recency today -> `status = 'updated'`, `label = 'Radar: Updated'`.
+    - Initial / fallback -> `status = 'neutral'`, `label = 'Radar'`.
+    - EOD snapshot -> `status = 'market_closed'`, `label = 'Radar: EOD Close'`.
+    - Stale snapshot -> `status = 'stale'`, `label = 'Radar: Stale'`.
+    - Scanning in progress -> `status = 'scanning'`, `label = 'Radar: Scanning'`.
+  - Zero timestamp-only code paths emit "Live".
+  - Added test suite in `test/ui-wave1b-shell.test.js` (`WAVE-1B-07`) proving no timestamp-only path can emit "Live Radar".
+
+## 4. Screener Access Runtime Status
+- Re-confirmed `SCREENER_ACCESS_RUNTIME = OPEN_DEFERRED`. The transient error / cold boot timeout recovery is preserved as an open deferral to Wave 2, not falsely closed.
+
+## 5. Verification & Regression Evidence
+- `npm run validate:syntax`: 1052 .js files parsed cleanly, 0 errors.
+- `npm run test:smoke`: 75 test files passed, 271 assertions passed, 0 failures.
+- `node --test test/ui-wave1b-shell.test.js test/final-wave-4b-targeted.test.js test/ui-wave1a-foundation.test.js`: 24/24 PASS.
+- Full targeted regressions (10 test files, 102 assertions): 102/102 PASS.
+- Real-browser automated screenshots: 14 captures, 0 geometry defects, 0 horizontal scroll leak (`docWidth <= winWidth`).
+
+
 

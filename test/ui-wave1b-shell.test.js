@@ -227,3 +227,31 @@ test('WAVE-1B-06: Screener access-aware navigation and group visibility synchron
   assert.doesNotMatch(indexHtml, /data-analysis-tab="analisis-chart"[^>]*data-premium-nav="true"/);
 });
 
+// ---------------------------------------------------------------------------
+// SUITE 7: TRUTHFUL RADAR STATUS SEMANTICS (NO TIMESTAMP-ONLY "LIVE" CLAIM)
+// ---------------------------------------------------------------------------
+test('WAVE-1B-07: Radar status helper emits truthful neutral status and never claims "Live" from recency alone', () => {
+  // Static HTML must not contain hardcoded "Live Radar"
+  assert.equal(indexHtml.includes('>Live Radar<'), false, 'Static HTML must not contain hardcoded "Live Radar"');
+  assert.match(indexHtml, /id="globalLiveRadarText">Radar<\/span>/, 'Initial topbar radar text must be neutral "Radar"');
+  assert.match(indexHtml, /id="heroLiveRadarText">Radar<\/span>/, 'Initial hero radar text must be neutral "Radar"');
+
+  // updateGlobalLiveRadarStatus function inspection
+  const funcStart = indexHtml.indexOf('function updateGlobalLiveRadarStatus(');
+  assert.ok(funcStart > -1, 'updateGlobalLiveRadarStatus must exist');
+  const funcEnd = indexHtml.indexOf('function updateDashGreeting()', funcStart);
+  assert.ok(funcEnd > funcStart);
+  const funcBody = indexHtml.slice(funcStart, funcEnd);
+
+  // Must not assign "Live Radar" or status 'live' from recency
+  assert.equal(funcBody.includes("'Live Radar'"), false, 'Must not emit "Live Radar" from recency alone');
+  assert.equal(funcBody.includes('"Live Radar"'), false, 'Must not emit "Live Radar" string');
+  assert.equal(funcBody.includes("status = 'live'"), false, 'Must not set status to live from recency alone');
+
+  // Allowed neutral labels
+  assert.match(funcBody, /label\s*=\s*'Radar:\s*Updated'/);
+  assert.match(funcBody, /label\s*=\s*'Radar:\s*EOD Close'/);
+  assert.match(funcBody, /label\s*=\s*'Radar:\s*Stale/);
+  assert.match(funcBody, /label\s*=\s*'Radar:\s*Scanning'/);
+});
+

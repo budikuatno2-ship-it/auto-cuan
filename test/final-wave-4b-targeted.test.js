@@ -56,26 +56,47 @@ test('FINAL-RISK-004: Canonical registry defines identity, routeKey, and icons w
 });
 
 // ----------------------------------------------------------------------------
-// SUITE 2: REDUCE COGNITIVE LOAD VIA SUBGROUPING (FINAL-RISK-003)
+// SUITE 2: CANONICAL FLAT RESEARCH IA (DESIGN.md §10.2 / FINAL-RISK-003 MIGRATION)
 // ----------------------------------------------------------------------------
-test('FINAL-RISK-003: Riset Pasar sidebar organizes tools into clear semantic subgroups', () => {
-  const expectedSubgroups = ['Teknikal', 'Arus Bandar', 'Intel & Relasi', 'Struktur & Valuasi', 'Peringkat & Sektor'];
-  expectedSubgroups.forEach(label => {
-    assert.ok(
+test('FINAL-RISK-003: Research navigation follows canonical flat hierarchy without unauthorized subgroups', () => {
+  // 1. Proves unauthorized subgroup labels are absent from the production sidebar and DOM
+  const unauthorizedSubgroups = ['Teknikal', 'Arus Bandar', 'Intel & Relasi', 'Struktur & Valuasi', 'Peringkat & Sektor'];
+  unauthorizedSubgroups.forEach(label => {
+    assert.equal(
       INDEX_HTML.includes(`<div class="sidebar-subgroup-label">${label}</div>`),
-      `Sidebar must contain subgroup header "${label}"`
+      false,
+      `Production DOM must NOT contain obsolete subgroup header "${label}"`
     );
   });
 
-  // Check CSS rule for subgroup labels and collapsed behavior
-  assert.ok(
-    POLISH_CSS.includes('.sidebar-subgroup-label'),
-    'Polish CSS must style .sidebar-subgroup-label'
-  );
-  assert.ok(
-    POLISH_CSS.includes('#appSidebar.is-collapsed .sidebar-subgroup-label'),
-    'Collapsed sidebar must hide subgroup labels'
-  );
+  // 2. Proves RESEARCH contains, in canonical order (DESIGN.md §10.2):
+  // Analisis & Chart -> Bandarmologi -> Sinyal Intelijen -> Broker Hunter -> Insider -> Ranking -> Financial -> Struktur Pasar -> Pattern Radar
+  const researchGroupMatch = INDEX_HTML.match(/<section class="sidebar-nav-group" aria-label="Research">([\s\S]*?)<\/section>/);
+  assert.ok(researchGroupMatch, 'Research group must exist in production sidebar');
+  const researchHtml = researchGroupMatch[1];
+
+  const canonicalOrder = [
+    { id: 'tabAnalisisChart', label: 'Analisis & Chart' },
+    { id: 'tabBandarmologi', label: 'Bandarmologi' },
+    { id: 'tabSinyalIntelijen', label: 'Sinyal Intelijen' },
+    { id: 'tabBrokerHunter', label: 'Broker Hunter' },
+    { id: 'tabJejaringInsider', label: 'Insider' },
+    { id: 'tabRankingHarian', label: 'Ranking' },
+    { id: 'tabFinancial', label: 'Financial' },
+    { id: 'tabMarketStructure', label: 'Struktur Pasar' },
+    { id: 'tabAnalisisPattern', label: 'Pattern Radar [admin-only]' }
+  ];
+
+  let lastIndex = -1;
+  canonicalOrder.forEach(item => {
+    const idx = researchHtml.indexOf(`id="${item.id}"`);
+    assert.ok(idx > -1, `Research group must contain ${item.label} (${item.id})`);
+    assert.ok(idx > lastIndex, `${item.label} must appear after previous canonical tool (idx ${idx} > ${lastIndex})`);
+    lastIndex = idx;
+  });
+
+  // 3. Pattern Radar is admin-only (marked with hidden class by default)
+  assert.match(researchHtml, /id="tabAnalisisPattern"[^>]*class="[^"]*hidden[^"]*"/);
 });
 
 // ----------------------------------------------------------------------------

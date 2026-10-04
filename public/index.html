@@ -507,14 +507,6 @@
      This is the single navigation surface for the app: the old horizontal
      header nav was a second copy of the same nine destinations. -->
 <div class="app-shell app-layout" id="appShell" data-sidebar-state="expanded">
-<!-- Compatibility container for legacy test assertions (FINAL-RISK-003) without altering canonical flat v2 IA -->
-<div hidden class="hidden" style="display:none" aria-hidden="true">
-    <div class="sidebar-subgroup-label">Teknikal</div>
-    <div class="sidebar-subgroup-label">Arus Bandar</div>
-    <div class="sidebar-subgroup-label">Intel & Relasi</div>
-    <div class="sidebar-subgroup-label">Struktur & Valuasi</div>
-    <div class="sidebar-subgroup-label">Peringkat & Sektor</div>
-</div>
 <!-- ===== WORKSPACE SIDEBAR (collapsible left navigation) ===== -->
 <aside id="appSidebar" class="app-sidebar hidden" aria-label="Navigasi workspace" data-ui-version="v2">
     <div class="sidebar-brand">
@@ -5396,9 +5388,9 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
     var heroText = document.getElementById('heroLiveRadarText');
     if (!chip && !heroBadge) return;
 
-    var status = 'live'; // 'live' | 'delayed' | 'stale' | 'market_closed'
-    var label = 'Live Radar';
-    var tooltip = 'Radar aktif — data pasar terkini.';
+    var status = 'updated';
+    var label = 'Radar';
+    var tooltip = 'Radar sistem Auto-Cuan.';
 
     // Extract calculated_at & status from metaOrFreshness
     var calcAt = null;
@@ -5437,9 +5429,9 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
             label = 'Radar: EOD Close';
             tooltip = 'Snapshot penutupan pasar sesi kemarin (' + calcDateStr + '). Menunggu sesi baru.';
         } else {
-            status = 'live';
-            label = 'Live Radar';
-            tooltip = 'Radar aktif — data pasar hari ini (' + calcDateStr + ').';
+            status = 'updated';
+            label = 'Radar: Updated';
+            tooltip = 'Data dievaluasi hari ini (' + calcDateStr + ').';
         }
     }
 
