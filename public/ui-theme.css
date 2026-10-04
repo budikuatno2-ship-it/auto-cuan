@@ -4882,13 +4882,13 @@ html.dark [data-ui-version="v2"]:not([data-theme="light"]),
 
   --ac-ink: #E6EDF3;
   --ac-text-secondary: #9AA7B4;
-  --ac-text-muted: #6E7D8C;
+  --ac-text-muted: #788999;
   --ac-text-tertiary: var(--ac-text-muted);
 
   --ac-line-hairline: rgba(255, 255, 255, 0.08);
   --ac-line-default: rgba(255, 255, 255, 0.14);
   --ac-line-strong: rgba(255, 255, 255, 0.22);
-  --ac-control-border: #5A6977;
+  --ac-control-border: #5E6F7E;
   --ac-control-border-hover: #7E8D9C;
 
   --ac-brand: #1FAF82;
@@ -4899,8 +4899,8 @@ html.dark [data-ui-version="v2"]:not([data-theme="light"]),
   --ac-positive: #34A853;
   --ac-positive-soft: rgba(52, 168, 83, 0.14);
 
-  --ac-negative: #E05260;
-  --ac-negative-soft: rgba(224, 82, 96, 0.14);
+  --ac-negative: #E86371;
+  --ac-negative-soft: rgba(232, 99, 113, 0.14);
 
   --ac-warning: #D28C1E;
   --ac-warning-text: #E5A338;
@@ -4910,7 +4910,7 @@ html.dark [data-ui-version="v2"]:not([data-theme="light"]),
   --ac-info-soft: rgba(91, 140, 255, 0.14);
 
   --ac-success: #34A853;
-  --ac-danger: #E05260;
+  --ac-danger: #E86371;
 
   --ac-shadow-0: none;
   --ac-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);

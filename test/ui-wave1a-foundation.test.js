@@ -143,3 +143,56 @@ test('WAVE-1A-09: No !important rules introduced in Wave 1A scoped CSS additions
   const v2Section = css.slice(v2Index);
   assert.doesNotMatch(v2Section, /!important/, 'Wave 1A scoped CSS additions must not contain !important');
 });
+
+function sRGBtoLin(c) {
+  c = c / 255;
+  return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+function getLuminance(hex) {
+  hex = hex.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return 0.2126 * sRGBtoLin(r) + 0.7152 * sRGBtoLin(g) + 0.0722 * sRGBtoLin(b);
+}
+
+function contrastRatio(hex1, hex2) {
+  const L1 = getLuminance(hex1);
+  const L2 = getLuminance(hex2);
+  return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+}
+
+test('WAVE-1A-10: Light mode contrast ratios meet WCAG standards via deterministic formula', () => {
+  const white = '#FFFFFF';
+  assert.ok(contrastRatio(white, '#17211E') >= 4.5, '#17211E on #FFFFFF must be >= 4.5:1');
+  assert.ok(contrastRatio(white, '#52605B') >= 4.5, '#52605B on #FFFFFF must be >= 4.5:1');
+  assert.ok(contrastRatio(white, '#5F6C66') >= 4.5, '#5F6C66 on #FFFFFF must be >= 4.5:1');
+  assert.ok(contrastRatio(white, '#247A43') >= 4.5, '#247A43 on #FFFFFF must be >= 4.5:1');
+  assert.ok(contrastRatio(white, '#C13F4D') >= 4.5, '#C13F4D on #FFFFFF must be >= 4.5:1');
+  assert.ok(contrastRatio(white, '#96610F') >= 4.5, '#96610F on #FFFFFF must be >= 4.5:1');
+  assert.ok(contrastRatio(white, '#7D8683') >= 3.0, '#7D8683 control border on #FFFFFF must be >= 3.0:1');
+  assert.ok(contrastRatio(white, '#0F7458') >= 3.0, '#0F7458 brand on #FFFFFF must be >= 3.0:1');
+});
+
+test('WAVE-1A-11: Dark mode implementation-parity tokens meet WCAG standards via deterministic formula', () => {
+  const surface = '#121820';
+  const raised = '#18202A';
+
+  // Surface (#121820) checks
+  assert.ok(contrastRatio(surface, '#E6EDF3') >= 4.5, '#E6EDF3 on dark surface must be >= 4.5:1');
+  assert.ok(contrastRatio(surface, '#9AA7B4') >= 4.5, '#9AA7B4 on dark surface must be >= 4.5:1');
+  assert.ok(contrastRatio(surface, '#788999') >= 4.5, '#788999 on dark surface must be >= 4.5:1');
+  assert.ok(contrastRatio(surface, '#5E6F7E') >= 3.0, '#5E6F7E control border on dark surface must be >= 3.0:1');
+  assert.ok(contrastRatio(surface, '#1FAF82') >= 3.0, '#1FAF82 brand on dark surface must be >= 3.0:1');
+  assert.ok(contrastRatio(surface, '#34A853') >= 4.5, '#34A853 positive on dark surface must be >= 4.5:1');
+  assert.ok(contrastRatio(surface, '#E86371') >= 4.5, '#E86371 negative on dark surface must be >= 4.5:1');
+  assert.ok(contrastRatio(surface, '#E5A338') >= 4.5, '#E5A338 warning on dark surface must be >= 4.5:1');
+  assert.ok(contrastRatio(surface, '#5B8CFF') >= 4.5, '#5B8CFF info on dark surface must be >= 4.5:1');
+
+  // Raised (#18202A) checks
+  assert.ok(contrastRatio(raised, '#788999') >= 4.5, '#788999 on raised surface must be >= 4.5:1');
+  assert.ok(contrastRatio(raised, '#5E6F7E') >= 3.0, '#5E6F7E control border on raised surface must be >= 3.0:1');
+  assert.ok(contrastRatio(raised, '#E86371') >= 4.5, '#E86371 negative on raised surface must be >= 4.5:1');
+});
+
