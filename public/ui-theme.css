@@ -216,6 +216,41 @@
 
   --ac-fab-size: 56px;
   --ac-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* --- v2 Foundation Shared Sizing Tokens (§12 / DESIGN.md §103.3) --- */
+  --ac-row-dense: 38px;
+  --ac-row-comfort: 42px;
+  --ac-control-sm: 36px;
+  --ac-control-md: 42px;
+  --ac-touch-target: 44px;
+  --ac-topbar-height: 52px;
+  --ac-sidebar-width: 240px;
+  --ac-sidebar-rail: 68px;
+
+  /* --- v2 Foundation Semantic Z-Index Tokens (§13 / DESIGN.md §103.2) --- */
+  --ac-z-base: 0;
+  --ac-z-sticky: 20;
+  --ac-z-shell: 40;
+  --ac-z-popover: 60;
+  --ac-z-drawer: 80;
+  --ac-z-modal: 100;
+  --ac-z-toast: 120;
+  --ac-z-critical-gate: 140;
+
+  /* --- v2 Foundation Categorical Chart Palette (§14 / DESIGN.md §103.1) --- */
+  --ac-chart-cat-1: #315F9A;
+  --ac-chart-cat-2: #7357A6;
+  --ac-chart-cat-3: #94602B;
+  --ac-chart-cat-4: #2F6F86;
+  --ac-chart-cat-5: #8C4F73;
+  --ac-chart-cat-6: #536A7C;
+
+  --ac-chart-cat-1-dark: #8BB2E8;
+  --ac-chart-cat-2-dark: #B9A0E3;
+  --ac-chart-cat-3-dark: #DFB277;
+  --ac-chart-cat-4-dark: #7FB7CF;
+  --ac-chart-cat-5-dark: #D995B7;
+  --ac-chart-cat-6-dark: #A9BDCF;
 }
 
 html:not(.light) {
@@ -4633,3 +4668,547 @@ html.light { --brand-mark-bg:#e1f5eb; --brand-mark-ink:#07593f; --brand-mark-lin
 }
 
 @media(max-width:1023px) { #appMain > .app-header :is(#headerUserLabel,#logoutBtn) { min-height:44px; } }
+
+/* =========================================================================
+   9. Auto-Cuan v2 Foundation Contract (DESIGN.md FINAL v1.1 — Wave 1A)
+   =========================================================================
+
+   Scoped rollout mechanism for the redesigned financial workstation.
+   Scope selector: [data-ui-version="v2"]
+   In Wave 1A, this scope is NOT applied globally. Legacy routes remain intact.
+   ========================================================================= */
+
+[data-ui-version="v2"],
+:root[data-ui-version="v2"] {
+  /* Canonical Light Surfaces (§4.1 / §10) */
+  --ac-canvas: #F3F5F4;
+  --ac-surface: #FFFFFF;
+  --ac-surface-raised: #F8FAF9;
+  --ac-surface-hover: #EEF2F0;
+
+  /* Canonical Ink & Typography Colors (§4.1 / §10) */
+  --ac-ink: #17211E;
+  --ac-text-secondary: #52605B;
+  --ac-text-muted: #5F6C66;
+  --ac-text-tertiary: var(--ac-text-muted);
+
+  /* Canonical Lines & Interactive Control Boundaries (§4.1 / §11) */
+  --ac-line-hairline: #E2E7E4;
+  --ac-line-default: rgba(18, 35, 29, 0.14);
+  --ac-line-strong: rgba(18, 35, 29, 0.20);
+  --ac-control-border: #7D8683;
+  --ac-control-border-hover: #65726C;
+
+  /* Brand Emerald (Selection, Navigation, Identity - NOT Financial Positive) */
+  --ac-brand: #0F7458;
+  --ac-brand-hover: #0B6049;
+  --ac-brand-soft: #E8F3EE;
+  --ac-focus: #0F7458;
+
+  /* Financial Semantics (Distinct from Brand Emerald) */
+  --ac-positive: #247A43;
+  --ac-positive-soft: rgba(36, 122, 67, 0.09);
+
+  --ac-negative: #C13F4D;
+  --ac-negative-soft: rgba(193, 63, 77, 0.09);
+
+  --ac-warning: #A96D13;
+  --ac-warning-text: #96610F;
+  --ac-warning-soft: rgba(169, 109, 19, 0.09);
+
+  --ac-info: #315F9A;
+  --ac-info-soft: rgba(49, 95, 154, 0.09);
+
+  --ac-success: #247A43;
+  --ac-danger: #C13F4D;
+
+  /* Canonical Spacing (§7) */
+  --ac-space-1: 4px;
+  --ac-space-2: 8px;
+  --ac-space-3: 12px;
+  --ac-space-4: 16px;
+  --ac-space-5: 20px;
+  --ac-space-6: 24px;
+  --ac-space-8: 32px;
+  --ac-space-10: 40px;
+  --ac-space-12: 48px;
+  --ac-space-16: 64px;
+  --ac-space-20: 80px;
+  --ac-space-24: 96px;
+  --ac-space-32: 128px;
+
+  /* Canonical Radius Scale (§8) */
+  --ac-radius-xs: 4px;
+  --ac-radius-sm: 6px;
+  --ac-radius-md: 8px;
+  --ac-radius-lg: 12px;
+  --ac-radius-xl: 16px;
+  --ac-radius-full: 9999px;
+
+  /* Canonical Elevation (§9) */
+  --ac-shadow-0: none;
+  --ac-shadow-1: 0 1px 2px rgba(18, 35, 29, 0.05);
+  --ac-shadow-2: 0 4px 16px rgba(18, 35, 29, 0.08), 0 1px 3px rgba(18, 35, 29, 0.04);
+
+  /* Canonical Motion Tokens (§50) */
+  --motion-press: 90ms;
+  --motion-hover: 140ms;
+  --motion-state: 190ms;
+  --motion-panel: 260ms;
+  --motion-story: 420ms;
+  --motion-hero-max: 560ms;
+
+  --motion-stagger-tight: 28ms;
+  --motion-stagger-story: 64ms;
+
+  --ease-standard: cubic-bezier(.2,.8,.2,1);
+  --ease-emphasized: cubic-bezier(.16,1,.3,1);
+  --ease-exit: cubic-bezier(.4,0,1,1);
+
+  /* Focus separation ring token (§11) */
+  --ac-focus-ring: 0 0 0 2px var(--ac-surface), 0 0 0 4px var(--ac-focus);
+
+  /* Shared Sizing Tokens (§12 / DESIGN.md §103.3) */
+  --ac-row-dense: 38px;
+  --ac-row-comfort: 42px;
+  --ac-control-sm: 36px;
+  --ac-control-md: 42px;
+  --ac-touch-target: 44px;
+  --ac-topbar-height: 52px;
+  --ac-sidebar-width: 240px;
+  --ac-sidebar-rail: 68px;
+
+  /* Semantic Z-Index Tokens (§13 / DESIGN.md §103.2) */
+  --ac-z-base: 0;
+  --ac-z-sticky: 20;
+  --ac-z-shell: 40;
+  --ac-z-popover: 60;
+  --ac-z-drawer: 80;
+  --ac-z-modal: 100;
+  --ac-z-toast: 120;
+  --ac-z-critical-gate: 140;
+
+  /* Categorical Chart Tokens (§14 / DESIGN.md §103.1) */
+  --ac-chart-cat-1: #315F9A;
+  --ac-chart-cat-2: #7357A6;
+  --ac-chart-cat-3: #94602B;
+  --ac-chart-cat-4: #2F6F86;
+  --ac-chart-cat-5: #8C4F73;
+  --ac-chart-cat-6: #536A7C;
+
+  --ac-chart-cat-1-dark: #8BB2E8;
+  --ac-chart-cat-2-dark: #B9A0E3;
+  --ac-chart-cat-3-dark: #DFB277;
+  --ac-chart-cat-4-dark: #7FB7CF;
+  --ac-chart-cat-5-dark: #D995B7;
+  --ac-chart-cat-6-dark: #A9BDCF;
+
+  /* Legacy variable mappings within v2 scope */
+  --canvas: var(--ac-canvas);
+  --surface: var(--ac-surface);
+  --surface-elevated: var(--ac-surface-raised);
+  --text-primary: var(--ac-ink);
+  --text-secondary: var(--ac-text-secondary);
+  --text-muted: var(--ac-text-muted);
+  --text-tertiary: var(--ac-text-muted);
+
+  --accent-primary: var(--ac-brand);
+  --accent-primary-hover: var(--ac-brand-hover);
+  --accent-subtle: var(--ac-brand-soft);
+
+  --data-positive: var(--ac-positive);
+  --data-negative: var(--ac-negative);
+  --danger: var(--ac-danger);
+  --warning: var(--ac-warning);
+  --info: var(--ac-info);
+
+  --color-bg-canvas: var(--ac-canvas);
+  --color-bg-surface: var(--ac-surface);
+  --color-bg-elevated: var(--ac-surface-raised);
+  --color-bg-hover: var(--ac-surface-hover);
+
+  --color-text-primary: var(--ac-ink);
+  --color-text-secondary: var(--ac-text-secondary);
+  --color-text-muted: var(--ac-text-muted);
+
+  --color-border-subtle: var(--ac-line-hairline);
+  --color-border-default: var(--ac-line-default);
+
+  --color-accent: var(--ac-brand);
+  --color-positive: var(--ac-positive);
+  --color-positive-soft: var(--ac-positive-soft);
+  --color-negative: var(--ac-negative);
+  --color-negative-soft: var(--ac-negative-soft);
+  --color-warning: var(--ac-warning);
+
+  --ac-bg: var(--ac-canvas);
+  --ac-bg-elevated: var(--ac-surface-raised);
+  --ac-surface-1: var(--ac-surface);
+  --ac-surface-2: var(--ac-surface-raised);
+  --ac-surface-3: var(--ac-surface-hover);
+  --ac-hairline: var(--ac-line-hairline);
+  --ac-line: var(--ac-line-default);
+  --ac-line-strong: var(--ac-line-strong);
+  --ac-border: var(--ac-line-default);
+  --ac-border-strong: var(--ac-line-strong);
+
+  --ac-text-strong: var(--ac-ink);
+  --ac-text: var(--ac-ink);
+  --ac-text-dim: var(--ac-text-muted);
+  --ac-text-faint: var(--ac-text-muted);
+
+  --ac-accent: var(--ac-brand);
+  --ac-accent-strong: var(--ac-brand);
+  --ac-accent-soft: var(--ac-brand-soft);
+  --ac-brand-strong: var(--ac-brand);
+
+  --ac-bull: var(--ac-positive);
+  --ac-bull-dim: var(--ac-positive-soft);
+  --ac-bear: var(--ac-negative);
+  --ac-bear-dim: var(--ac-negative-soft);
+  --ac-warn: var(--ac-warning);
+  --ac-warn-dim: var(--ac-warning-soft);
+}
+
+/* Canonical Dark / Night Research Mode under v2 scope (§4.2 / §92 / §103.1) */
+[data-ui-version="v2"][data-theme="dark"],
+[data-ui-version="v2"] [data-theme="dark"],
+html.dark [data-ui-version="v2"]:not([data-theme="light"]),
+[data-ui-version="v2"].dark {
+  --ac-canvas: #0B1015;
+  --ac-surface: #121820;
+  --ac-surface-raised: #18202A;
+  --ac-surface-hover: #1E2834;
+
+  --ac-ink: #E6EDF3;
+  --ac-text-secondary: #9AA7B4;
+  --ac-text-muted: #6E7D8C;
+  --ac-text-tertiary: var(--ac-text-muted);
+
+  --ac-line-hairline: rgba(255, 255, 255, 0.08);
+  --ac-line-default: rgba(255, 255, 255, 0.14);
+  --ac-line-strong: rgba(255, 255, 255, 0.22);
+  --ac-control-border: #5A6977;
+  --ac-control-border-hover: #7E8D9C;
+
+  --ac-brand: #1FAF82;
+  --ac-brand-hover: #26C291;
+  --ac-brand-soft: rgba(31, 175, 130, 0.14);
+  --ac-focus: #1FAF82;
+
+  --ac-positive: #34A853;
+  --ac-positive-soft: rgba(52, 168, 83, 0.14);
+
+  --ac-negative: #E05260;
+  --ac-negative-soft: rgba(224, 82, 96, 0.14);
+
+  --ac-warning: #D28C1E;
+  --ac-warning-text: #E5A338;
+  --ac-warning-soft: rgba(210, 140, 30, 0.14);
+
+  --ac-info: #5B8CFF;
+  --ac-info-soft: rgba(91, 140, 255, 0.14);
+
+  --ac-success: #34A853;
+  --ac-danger: #E05260;
+
+  --ac-shadow-0: none;
+  --ac-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --ac-shadow-2: 0 4px 16px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.25);
+  --ac-focus-ring: 0 0 0 2px var(--ac-surface), 0 0 0 4px var(--ac-focus);
+}
+
+/* Accessibility & Focus Primitives (§11 / §67) */
+[data-ui-version="v2"] :focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: 2px;
+}
+
+[data-ui-version="v2"] .ac-focus-ring {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: 2px;
+}
+
+[data-ui-version="v2"] .ac-btn-primary:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--ac-surface), 0 0 0 4px var(--ac-focus);
+}
+
+/* Typography Primitives (§15 / DESIGN.md §5.2) */
+[data-ui-version="v2"] .ac-page-title {
+  font-family: var(--ac-font-sans);
+  font-size: clamp(1.5rem, 2vw + 1rem, 2rem);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ac-ink);
+  letter-spacing: -0.02em;
+}
+
+[data-ui-version="v2"] .ac-section-title {
+  font-family: var(--ac-font-sans);
+  font-size: clamp(1.25rem, 1.5vw + 0.8rem, 1.5rem);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ac-ink);
+  letter-spacing: -0.01em;
+}
+
+[data-ui-version="v2"] .ac-component-title {
+  font-family: var(--ac-font-sans);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ac-ink);
+}
+
+[data-ui-version="v2"] .ac-body {
+  font-family: var(--ac-font-sans);
+  font-size: 0.9375rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--ac-ink);
+}
+
+[data-ui-version="v2"] .ac-dense-ui {
+  font-family: var(--ac-font-sans);
+  font-size: 0.84375rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--ac-ink);
+}
+
+[data-ui-version="v2"] .ac-table-text {
+  font-family: var(--ac-font-sans);
+  font-size: 0.78125rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--ac-ink);
+}
+
+/* Evidence metadata: Source, As-of, Updated, data-quality trust.
+   MUST be >=12px and at least secondary-text contrast! */
+[data-ui-version="v2"] .ac-evidence-meta {
+  font-family: var(--ac-font-sans);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ac-text-secondary);
+}
+
+/* Auxiliary metadata: hints not required to establish data trust */
+[data-ui-version="v2"] .ac-auxiliary-meta {
+  font-family: var(--ac-font-sans);
+  font-size: 0.71875rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--ac-text-muted);
+}
+
+/* Tabular figures for financial numbers */
+[data-ui-version="v2"] .ac-tabular-num,
+[data-ui-version="v2"] .tabular-nums {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Base button primitives (§76.1 / §77) */
+[data-ui-version="v2"] .ac-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-2);
+  height: var(--ac-control-sm);
+  min-height: var(--ac-control-sm);
+  padding: 0 var(--ac-space-3);
+  border-radius: var(--ac-radius-sm);
+  font-family: var(--ac-font-sans);
+  font-size: 0.84375rem;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--motion-hover) var(--ease-standard),
+              border-color var(--motion-hover) var(--ease-standard),
+              color var(--motion-hover) var(--ease-standard);
+}
+
+@media (pointer: coarse) {
+  [data-ui-version="v2"] .ac-btn {
+    min-height: var(--ac-touch-target);
+  }
+}
+
+[data-ui-version="v2"] .ac-btn-primary {
+  background-color: var(--ac-brand);
+  color: #FFFFFF;
+  border: 1px solid transparent;
+}
+[data-ui-version="v2"] .ac-btn-primary:hover {
+  background-color: var(--ac-brand-hover);
+}
+[data-ui-version="v2"] .ac-btn-primary:active {
+  background-color: var(--ac-brand-hover);
+}
+
+[data-ui-version="v2"] .ac-btn-secondary {
+  background-color: var(--ac-surface);
+  color: var(--ac-ink);
+  border: 1px solid var(--ac-control-border);
+}
+[data-ui-version="v2"] .ac-btn-secondary:hover {
+  background-color: var(--ac-surface-hover);
+  border-color: var(--ac-control-border-hover);
+}
+
+[data-ui-version="v2"] .ac-btn-quiet {
+  background-color: transparent;
+  color: var(--ac-text-secondary);
+  border: 1px solid transparent;
+}
+[data-ui-version="v2"] .ac-btn-quiet:hover {
+  background-color: var(--ac-surface-hover);
+  color: var(--ac-ink);
+}
+
+[data-ui-version="v2"] .ac-btn-danger {
+  background-color: var(--ac-negative);
+  color: #FFFFFF;
+  border: 1px solid transparent;
+}
+
+[data-ui-version="v2"] .ac-btn:disabled,
+[data-ui-version="v2"] .ac-btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Base input / field primitives (§76.2) */
+[data-ui-version="v2"] .ac-field-label {
+  display: block;
+  font-family: var(--ac-font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ac-text-secondary);
+  margin-bottom: var(--ac-space-1);
+}
+
+[data-ui-version="v2"] .ac-input,
+[data-ui-version="v2"] .ac-select,
+[data-ui-version="v2"] .ac-textarea {
+  display: block;
+  width: 100%;
+  font-family: var(--ac-font-sans);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--ac-ink);
+  background-color: var(--ac-surface);
+  border: 1px solid var(--ac-control-border);
+  border-radius: var(--ac-radius-md);
+  padding: var(--ac-space-2) var(--ac-space-3);
+  transition: border-color var(--motion-hover) var(--ease-standard);
+}
+
+@media (max-width: 767px) {
+  [data-ui-version="v2"] .ac-input,
+  [data-ui-version="v2"] .ac-select,
+  [data-ui-version="v2"] .ac-textarea {
+    font-size: 16px;
+    min-height: var(--ac-touch-target);
+  }
+}
+
+[data-ui-version="v2"] .ac-input:hover,
+[data-ui-version="v2"] .ac-select:hover,
+[data-ui-version="v2"] .ac-textarea:hover {
+  border-color: var(--ac-control-border-hover);
+}
+
+[data-ui-version="v2"] .ac-input:focus-visible,
+[data-ui-version="v2"] .ac-select:focus-visible,
+[data-ui-version="v2"] .ac-textarea:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: 1px;
+  border-color: var(--ac-focus);
+}
+
+/* Base surface containers */
+[data-ui-version="v2"] .ac-surface-base {
+  background-color: var(--ac-surface);
+  border: 1px solid var(--ac-line-hairline);
+  border-radius: var(--ac-radius-lg);
+}
+
+[data-ui-version="v2"] .ac-surface-raised {
+  background-color: var(--ac-surface-raised);
+  border: 1px solid var(--ac-line-hairline);
+  border-radius: var(--ac-radius-lg);
+  box-shadow: var(--ac-shadow-1);
+}
+
+/* Base table primitives (§76.9) */
+[data-ui-version="v2"] .ac-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+[data-ui-version="v2"] .ac-table th {
+  height: 36px;
+  padding: 0 var(--ac-space-3);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ac-text-secondary);
+  border-bottom: 1px solid var(--ac-line-default);
+  background-color: var(--ac-surface);
+  text-align: left;
+}
+
+[data-ui-version="v2"] .ac-table td {
+  height: var(--ac-row-dense);
+  padding: 0 var(--ac-space-3);
+  font-size: 0.8125rem;
+  color: var(--ac-ink);
+  border-bottom: 1px solid var(--ac-line-hairline);
+}
+
+[data-ui-version="v2"] .ac-table tr:hover td {
+  background-color: var(--ac-surface-hover);
+}
+
+/* Selected row: brand-soft background + 3px solid brand indicator (non-color-only cue) */
+[data-ui-version="v2"] .ac-table tr[aria-selected="true"] td,
+[data-ui-version="v2"] .ac-table tr.is-selected td {
+  background-color: var(--ac-brand-soft);
+  position: relative;
+}
+
+[data-ui-version="v2"] .ac-table tr[aria-selected="true"] td:first-child::before,
+[data-ui-version="v2"] .ac-table tr.is-selected td:first-child::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--ac-brand);
+}
+
+/* Financial direction classes - distinct from selection */
+[data-ui-version="v2"] .ac-val-positive {
+  color: var(--ac-positive);
+}
+
+[data-ui-version="v2"] .ac-val-negative {
+  color: var(--ac-negative);
+}
+
+[data-ui-version="v2"] .ac-val-warning {
+  color: var(--ac-warning-text);
+}
+
+[data-ui-version="v2"] .ac-val-info {
+  color: var(--ac-info);
+}
