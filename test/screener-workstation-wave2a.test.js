@@ -467,3 +467,75 @@ test('WAVE-2A-15: Truthful price and freshness language', () => {
   assert.doesNotMatch(scSection, /Real-time\s+streaming/i, 'Screener must not claim real-time streaming');
 });
 
+test('WAVE-2A-16: Exact frozen light semantic token enforcement (Brand != Positive)', () => {
+  const pwCore = fs.readFileSync(path.join(ROOT, 'public', 'premium-workstation-core.css'), 'utf8');
+  const polishCss = fs.readFileSync(path.join(ROOT, 'public', 'final-uiux-polish.css'), 'utf8');
+
+  // Parse light token block from ui-theme.css
+  const lightStart = theme.indexOf(':root[data-ui-version="v2"]');
+  const lightEnd = theme.indexOf('[data-ui-version="v2"].dark');
+  assert.ok(lightStart > -1 && lightEnd > lightStart, 'Light mode token block must exist');
+  const lightBlock = theme.slice(lightStart, lightEnd);
+
+  function extractToken(name) {
+    const match = lightBlock.match(new RegExp(`${name}:\\s*([^;]+);`));
+    return match ? match[1].trim().toUpperCase() : null;
+  }
+
+  const brand = extractToken('--ac-brand');
+  const focus = extractToken('--ac-focus');
+  const positive = extractToken('--ac-positive');
+  const negative = extractToken('--ac-negative');
+  const textSecondary = extractToken('--ac-text-secondary');
+  const textMuted = extractToken('--ac-text-muted');
+  const ink = extractToken('--ac-ink');
+  const lineHairline = extractToken('--ac-line-hairline');
+  const surface = extractToken('--ac-surface');
+
+  // Exact frozen light values without OR expressions
+  assert.equal(brand, '#0F7458', '--ac-brand must equal #0F7458');
+  assert.equal(focus, '#0F7458', '--ac-focus must equal #0F7458');
+  assert.equal(positive, '#247A43', '--ac-positive must equal #247A43');
+  assert.equal(negative, '#C13F4D', '--ac-negative must equal #C13F4D');
+  assert.equal(textSecondary, '#52605B', '--ac-text-secondary must equal #52605B');
+  assert.equal(textMuted, '#5F6C66', '--ac-text-muted must equal #5F6C66');
+  assert.equal(ink, '#17211E', '--ac-ink must equal #17211E');
+  assert.equal(lineHairline, '#E2E7E4', '--ac-line-hairline must equal #E2E7E4');
+  assert.equal(surface, '#FFFFFF', '--ac-surface must equal #FFFFFF');
+
+  // Crucial distinction: BRAND != FINANCIAL POSITIVE
+  assert.notEqual(positive, brand, 'Financial positive (#247A43) must be strictly distinct from brand (#0F7458)');
+
+  // Table header text maps to --ac-text-secondary
+  assert.match(
+    theme,
+    /#screenerContent\[data-ui-version="v2"\]\s+thead\s+th[^}]*color:\s*var\(--ac-text-secondary\)/,
+    'Screener table header text must map to var(--ac-text-secondary)'
+  );
+
+  // Badge background maps to --ac-positive-soft
+  assert.match(
+    theme,
+    /#screenerContent\[data-ui-version="v2"\][^}]*bg-emerald[^}]*background-color:\s*var\(--ac-positive-soft\)/,
+    'Screener positive badge background must map to var(--ac-positive-soft)'
+  );
+
+  // Legacy overrides must exclude v2 screener scope
+  assert.match(
+    theme,
+    /html\.light\s+:is\([^)]*text-emerald-400[^)]*\):not\(#screenerContent\[data-ui-version="v2"\]\s*\*\)/,
+    'ui-theme.css light emerald utility override must exclude v2 screener'
+  );
+  assert.match(
+    pwCore,
+    /:is\(\.text-emerald-300,\s*\.text-emerald-400\):not\(#screenerContent\[data-ui-version="v2"\]\s*\*\)/,
+    'premium-workstation-core.css emerald utility override must exclude v2 screener'
+  );
+  assert.match(
+    polishCss,
+    /html\.light\s+:is\([^)]*text-emerald-400[^)]*\):not\(#screenerContent\[data-ui-version="v2"\]\s*\*\)/,
+    'final-uiux-polish.css light emerald utility override must exclude v2 screener'
+  );
+});
+
+

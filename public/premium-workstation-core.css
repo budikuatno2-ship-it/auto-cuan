@@ -872,24 +872,19 @@ th[class*="text-right"] {
   font-variant-numeric: tabular-nums;
 }
 
-.text-emerald-300,
-.text-emerald-400 {
+:is(.text-emerald-300, .text-emerald-400):not(#screenerContent[data-ui-version="v2"] *) {
   color: var(--pw-bull) !important;
 }
 
-.text-red-300,
-.text-red-400 {
+:is(.text-red-300, .text-red-400):not(#screenerContent[data-ui-version="v2"] *) {
   color: var(--pw-bear) !important;
 }
 
-.text-amber-200,
-.text-amber-300,
-.text-amber-400 {
+:is(.text-amber-200, .text-amber-300, .text-amber-400):not(#screenerContent[data-ui-version="v2"] *) {
   color: var(--pw-warn) !important;
 }
 
-.text-blue-300,
-.text-blue-400 {
+:is(.text-blue-300, .text-blue-400):not(#screenerContent[data-ui-version="v2"] *) {
   color: var(--pw-info) !important;
 }
 

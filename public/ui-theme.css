@@ -2738,47 +2738,49 @@ html.light .border-dark-700\/60 {
   border-color: #e2e8f0 !important;
 }
 
-html.light .text-white,
-html.light .text-gray-100,
-html.light .text-gray-200 {
+html.light :is(.text-white, .text-gray-100, .text-gray-200):not(#screenerContent[data-ui-version="v2"] *) {
   color: #111827 !important;
 }
 
-html.light .text-gray-300,
-html.light .text-gray-400 {
+html.light :is(.text-gray-300, .text-gray-400):not(#screenerContent[data-ui-version="v2"] *) {
   color: #4B5563 !important;
 }
 
-html.light .text-gray-500,
-html.light .text-gray-600 {
+html.light :is(.text-gray-500, .text-gray-600):not(#screenerContent[data-ui-version="v2"] *) {
   color: #6B7280 !important;
 }
 
 /* WCAG AA Semantic Contrast in Light Mode (> 4.5:1 on white) */
-html.light .text-emerald-300,
-html.light .text-emerald-400,
-html.light .text-emerald-500,
-html.light .text-green-300,
-html.light .text-green-400,
-html.light .text-green-500 {
+html.light :is(
+  .text-emerald-300,
+  .text-emerald-400,
+  .text-emerald-500,
+  .text-green-300,
+  .text-green-400,
+  .text-green-500
+):not(#screenerContent[data-ui-version="v2"] *) {
   color: #047857 !important;
 }
 
-html.light .text-red-300,
-html.light .text-red-400,
-html.light .text-red-500,
-html.light .text-rose-300,
-html.light .text-rose-400,
-html.light .text-rose-500 {
+html.light :is(
+  .text-red-300,
+  .text-red-400,
+  .text-red-500,
+  .text-rose-300,
+  .text-rose-400,
+  .text-rose-500
+):not(#screenerContent[data-ui-version="v2"] *) {
   color: #b91c1c !important;
 }
 
-html.light .text-amber-200,
-html.light .text-amber-300,
-html.light .text-amber-400,
-html.light .text-amber-500,
-html.light .text-yellow-300,
-html.light .text-yellow-400 {
+html.light :is(
+  .text-amber-200,
+  .text-amber-300,
+  .text-amber-400,
+  .text-amber-500,
+  .text-yellow-300,
+  .text-yellow-400
+):not(#screenerContent[data-ui-version="v2"] *) {
   color: #b45309 !important;
 }
 
@@ -3968,21 +3970,11 @@ html.light .radar-card {
   box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05) !important;
 }
 
-html.light .text-white,
-html.light .text-gray-100,
-html.light .text-gray-200,
-html.light .text-gray-300,
-html.light .card-title,
-html.light .panel-title {
+html.light :is(.text-white, .text-gray-100, .text-gray-200, .text-gray-300, .card-title, .panel-title):not(#screenerContent[data-ui-version="v2"] *) {
   color: #111827 !important;
 }
 
-html.light .text-gray-400,
-html.light .text-gray-500,
-html.light .text-muted,
-html.light .text-dim,
-html.light .panel-subtitle,
-html.light .card-subtitle {
+html.light :is(.text-gray-400, .text-gray-500, .text-muted, .text-dim, .panel-subtitle, .card-subtitle):not(#screenerContent[data-ui-version="v2"] *) {
   color: #4B5563 !important;
 }
 
@@ -5673,7 +5665,8 @@ html.dark [data-ui-version="v2"]:not([data-theme="light"]),
   font-variant-numeric: tabular-nums lining-nums;
 }
 
-#screenerContent[data-ui-version="v2"] thead th {
+#screenerContent[data-ui-version="v2"] thead th,
+#screenerContent[data-ui-version="v2"] thead th[class*="text-gray-"] {
   background-color: var(--ac-surface-raised);
   color: var(--ac-text-secondary);
   font-size: 0.6875rem;
@@ -5747,19 +5740,46 @@ html.dark [data-ui-version="v2"]:not([data-theme="light"]),
 
 /* Canonical Semantic Financial & Status Token Parity */
 #screenerContent[data-ui-version="v2"] .text-emerald-400,
-#screenerContent[data-ui-version="v2"] .text-emerald-300 {
+#screenerContent[data-ui-version="v2"] .text-emerald-300,
+#screenerContent[data-ui-version="v2"] .text-emerald-500,
+#screenerContent[data-ui-version="v2"] .text-green-400,
+#screenerContent[data-ui-version="v2"] .text-green-300 {
   color: var(--ac-positive);
 }
-#screenerContent[data-ui-version="v2"] .text-red-400 {
+#screenerContent[data-ui-version="v2"] .text-red-400,
+#screenerContent[data-ui-version="v2"] .text-red-300,
+#screenerContent[data-ui-version="v2"] .text-red-500,
+#screenerContent[data-ui-version="v2"] .text-rose-400 {
   color: var(--ac-negative);
 }
 #screenerContent[data-ui-version="v2"] .text-yellow-400,
-#screenerContent[data-ui-version="v2"] .text-amber-400 {
+#screenerContent[data-ui-version="v2"] .text-amber-400,
+#screenerContent[data-ui-version="v2"] .text-orange-400 {
   color: var(--ac-warning-text);
 }
 #screenerContent[data-ui-version="v2"] .text-cyan-400,
-#screenerContent[data-ui-version="v2"] .text-blue-400 {
+#screenerContent[data-ui-version="v2"] .text-blue-400,
+#screenerContent[data-ui-version="v2"] .text-violet-400,
+#screenerContent[data-ui-version="v2"] .text-purple-400 {
   color: var(--ac-info);
+}
+
+/* Canonical Badge Background & Border Semantics (§4.1 / §103.1) */
+#screenerContent[data-ui-version="v2"] :is([class*="bg-emerald-500"], [class*="bg-emerald-400"]) {
+  background-color: var(--ac-positive-soft);
+  border-color: var(--ac-positive-soft);
+}
+#screenerContent[data-ui-version="v2"] :is([class*="bg-red-500"], [class*="bg-rose-500"]) {
+  background-color: var(--ac-negative-soft);
+  border-color: var(--ac-negative-soft);
+}
+#screenerContent[data-ui-version="v2"] :is([class*="bg-amber-500"], [class*="bg-yellow-500"], [class*="bg-orange-500"]) {
+  background-color: var(--ac-warning-soft);
+  border-color: var(--ac-warning-soft);
+}
+#screenerContent[data-ui-version="v2"] :is([class*="bg-blue-500"], [class*="bg-cyan-500"], [class*="bg-violet-500"], [class*="bg-purple-500"]) {
+  background-color: var(--ac-info-soft);
+  border-color: var(--ac-info-soft);
 }
 
 /* Mobile Touch Target Contract (>= 44px) */

@@ -370,15 +370,15 @@ html.light tbody tr:hover {
   background: #f5f8f6 !important;
 }
 
-html.light :is(.text-emerald-300,.text-emerald-400,.text-green-300,.text-green-400) {
+html.light :is(.text-emerald-300,.text-emerald-400,.text-green-300,.text-green-400):not(#screenerContent[data-ui-version="v2"] *) {
   color: #0f7458 !important;
 }
 
-html.light :is(.text-rose-300,.text-rose-400,.text-red-300,.text-red-400) {
+html.light :is(.text-rose-300,.text-rose-400,.text-red-300,.text-red-400):not(#screenerContent[data-ui-version="v2"] *) {
   color: #b83847 !important;
 }
 
-html.light :is(.text-amber-300,.text-amber-400,.text-yellow-300,.text-yellow-400) {
+html.light :is(.text-amber-300,.text-amber-400,.text-yellow-300,.text-yellow-400):not(#screenerContent[data-ui-version="v2"] *) {
   color: #8c5a12 !important;
 }
 
@@ -1491,7 +1491,7 @@ html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) :i
   .text-gray-400,
   .text-gray-500,
   .text-gray-600
-) {
+):not(#screenerContent[data-ui-version="v2"] *) {
   color: #68756f !important;
 }
 
