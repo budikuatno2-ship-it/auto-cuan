@@ -5774,4 +5774,16 @@ html.dark [data-ui-version="v2"]:not([data-theme="light"]),
     min-height: 44px;
     box-sizing: border-box;
   }
+
+  /* Interactive row hit-box contract on mobile (>= 44px) */
+  #screenerContent[data-ui-version="v2"] tbody tr {
+    min-height: 44px;
+    height: 44px;
+  }
+  #screenerContent[data-ui-version="v2"] tbody td {
+    min-height: 44px;
+    height: 44px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
 }

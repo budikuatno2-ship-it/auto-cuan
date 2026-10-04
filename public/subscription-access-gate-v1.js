@@ -77,7 +77,7 @@
   async function loadPremiumAccessFromSubscription(force) {
     var now = Date.now();
     if (!force && cache && now - cache.checkedAt < CACHE_MS) return setState(cache);
-    if (requestInFlight && !force) return requestInFlight;
+    if (requestInFlight) return requestInFlight;
 
     requestInFlight = (async function () {
       var isTimeout = false;
@@ -114,7 +114,7 @@
           if (subRetryTimer) clearTimeout(subRetryTimer);
           subRetryTimer = setTimeout(function () {
             subRetryTimer = null;
-            loadPremiumAccessFromSubscription(true);
+            return loadPremiumAccessFromSubscription(true);
           }, delay);
         }
         return unavail;
@@ -132,7 +132,7 @@
           if (subRetryTimer) clearTimeout(subRetryTimer);
           subRetryTimer = setTimeout(function () {
             subRetryTimer = null;
-            loadPremiumAccessFromSubscription(true);
+            return loadPremiumAccessFromSubscription(true);
           }, delay);
         }
         return unavail;
@@ -156,6 +156,10 @@
     // sync with the signed server entitlement.
     window.loadPremiumAccess = loadPremiumAccessFromSubscription;
     window.retryPremiumAccess = function () {
+      if (subRetryTimer) {
+        clearTimeout(subRetryTimer);
+        subRetryTimer = null;
+      }
       _subRetryAttempts = 0;
       cache = null;
       return loadPremiumAccessFromSubscription(true);
@@ -163,6 +167,13 @@
     window.refreshSubscriptionStatus = function () {
       cache = null;
       return loadPremiumAccessFromSubscription(true);
+    };
+
+    window.__subRetryInternal = {
+      getAttempts: function () { return _subRetryAttempts; },
+      hasTimer: function () { return !!subRetryTimer; },
+      clearTimer: function () { if (subRetryTimer) { clearTimeout(subRetryTimer); subRetryTimer = null; } },
+      resetAttempts: function () { _subRetryAttempts = 0; }
     };
 
     var ready = window.autocuanAuthReady;

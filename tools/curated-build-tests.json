@@ -484,6 +484,7 @@
   "test/stock-daily-history-store-bugs.test.js",
   "test/stock-daily-history-store.test.js",
   "test/stress-test-replay.test.js",
+  "test/subscription-access-retry-deterministic.test.js",
   "test/subscription-auth.test.js",
   "test/subscription-enforcement-v1.test.js",
   "test/subscription-manual-admin-notification.test.js",

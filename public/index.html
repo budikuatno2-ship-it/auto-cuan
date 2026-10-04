@@ -710,7 +710,7 @@
             <svg class="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
             <span id="accessRecoveryMsg" class="font-medium">Koneksi terputus saat verifikasi akses.</span>
         </div>
-        <button type="button" onclick="retryPremiumAccess()" class="px-2.5 py-1 rounded bg-amber-600/15 hover:bg-amber-600/25 dark:bg-amber-400/15 dark:hover:bg-amber-400/25 text-amber-900 dark:text-amber-100 border border-amber-600/30 dark:border-amber-400/30 text-xs font-semibold shrink-0 transition-colors cursor-pointer">
+        <button id="screenerRetryBtn" type="button" onclick="retryPremiumAccess()" class="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 py-2 rounded bg-amber-600/15 hover:bg-amber-600/25 dark:bg-amber-400/15 dark:hover:bg-amber-400/25 text-amber-900 dark:text-amber-100 border border-amber-600/30 dark:border-amber-400/30 text-xs font-semibold shrink-0 transition-colors cursor-pointer">
             Coba Lagi
         </button>
     </div>
@@ -2628,7 +2628,7 @@
 <div id="scrDetailModal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="scrDetailTitle" onclick="if(event.target===this)closeScrDetail()">
 <div style="background:#0f1319;border:1px solid #1c2333;border-radius:20px 20px 0 0;max-width:520px;width:100%;max-height:92vh;overflow-y:auto;padding:20px 18px 24px;position:relative;-webkit-overflow-scrolling:touch" class="sm:rounded-2xl sm:!rounded-b-2xl">
 <div style="width:36px;height:4px;background:#2a3444;border-radius:2px;margin:0 auto 12px;display:block" class="sm:hidden"></div>
-<button onclick="closeScrDetail()" aria-label="Tutup detail day trade" style="position:absolute;top:14px;right:14px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#1e2530;border:1px solid #2a3444;color:#9ca3af;font-size:18px;cursor:pointer;z-index:2">&times;</button>
+<button onclick="closeScrDetail()" aria-label="Tutup detail day trade" style="position:absolute;top:10px;right:10px;width:46px;height:46px;min-width:46px;min-height:46px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#1e2530;border:1px solid #2a3444;color:#9ca3af;font-size:22px;cursor:pointer;z-index:2">&times;</button>
 <h3 id="scrDetailTitle" class="sr-only">Detail Day Trade</h3>
 <div id="scrDetailContent"></div>
 </div>

@@ -415,6 +415,7 @@ async function capture() {
           return {
             tableOuterWidth: wrap ? wrap.clientWidth : 0,
             tableScrollWidth: wrap ? wrap.scrollWidth : 0,
+            bodyScrollWidth: document.body.scrollWidth,
             visibleViewportWidth: window.innerWidth,
             defaultColumnCount: headerCols.length,
             rowHeight: firstRow ? Math.round(firstRow.getBoundingClientRect().height) : 0,
@@ -422,6 +423,7 @@ async function capture() {
             firstColWidth: firstCol ? Math.round(firstCol.getBoundingClientRect().width) : 0,
             actionColWidth: actionCol ? Math.round(actionCol.getBoundingClientRect().width) : 0,
             hasHorizontalOverflow: wrap ? wrap.scrollWidth > wrap.clientWidth : false,
+            badgeCount: firstRow ? firstRow.querySelectorAll('.scr-status-badge, .dash-badge, .dt-badge, [class*="badge"]').length : 0,
             numericFontFamily: numericFontFamily
           };
         });
@@ -445,12 +447,14 @@ async function capture() {
           return {
             tableOuterWidth: wrap ? wrap.clientWidth : 0,
             tableScrollWidth: wrap ? wrap.scrollWidth : 0,
+            bodyScrollWidth: document.body.scrollWidth,
             visibleViewportWidth: window.innerWidth,
             defaultColumnCount: headerCols.length,
             rowHeight: firstRow ? Math.round(firstRow.getBoundingClientRect().height) : 0,
             headerHeight: headerRow ? Math.round(headerRow.getBoundingClientRect().height) : 0,
             firstColWidth: firstCol ? Math.round(firstCol.getBoundingClientRect().width) : 0,
             actionColWidth: actionCol ? Math.round(actionCol.getBoundingClientRect().width) : 0,
+            badgeCount: firstRow ? firstRow.querySelectorAll('.scr-status-badge, .dash-badge, .dt-badge, [class*="badge"]').length : 0,
             hasHorizontalOverflow: wrap ? wrap.scrollWidth > wrap.clientWidth : false
           };
         });
@@ -474,12 +478,14 @@ async function capture() {
           return {
             tableOuterWidth: wrap ? wrap.clientWidth : 0,
             tableScrollWidth: wrap ? wrap.scrollWidth : 0,
+            bodyScrollWidth: document.body.scrollWidth,
             visibleViewportWidth: window.innerWidth,
             defaultColumnCount: headerCols.length,
             rowHeight: firstRow ? Math.round(firstRow.getBoundingClientRect().height) : 0,
             headerHeight: headerRow ? Math.round(headerRow.getBoundingClientRect().height) : 0,
             firstColWidth: firstCol ? Math.round(firstCol.getBoundingClientRect().width) : 0,
             actionColWidth: actionCol ? Math.round(actionCol.getBoundingClientRect().width) : 0,
+            badgeCount: firstRow ? firstRow.querySelectorAll('.scr-status-badge, .dash-badge, .dt-badge, [class*="badge"]').length : 0,
             hasHorizontalOverflow: wrap ? wrap.scrollWidth > wrap.clientWidth : false
           };
         });
@@ -494,13 +500,55 @@ async function capture() {
         const touchTargets = await page.evaluate(() => {
           const modeBtn = document.getElementById('scrTypeKonglo');
           const tabBtn = document.querySelector('.screener-tab');
-          const retryBtn = document.getElementById('screenerRetryBtn');
           const selectEl = document.querySelector('#screenerContent select');
+          const firstRow = document.querySelector('#screenerTableWrap tbody tr');
+          const rowBtn = firstRow ? firstRow.querySelector('button') : null;
+
+          // Measure retry button by temporarily revealing banner if hidden
+          const recoveryBanner = document.getElementById('accessRecoveryBanner');
+          const retryBtn = document.getElementById('screenerRetryBtn');
+          let rbRect = { width: 0, height: 0 };
+          if (recoveryBanner && retryBtn) {
+            const wasHidden = recoveryBanner.classList.contains('hidden');
+            if (wasHidden) recoveryBanner.classList.remove('hidden');
+            const rb = retryBtn.getBoundingClientRect();
+            rbRect = { width: Math.round(rb.width), height: Math.round(rb.height) };
+            if (wasHidden) recoveryBanner.classList.add('hidden');
+          }
+
+          // Measure detail close button by temporarily revealing detail modal if hidden
+          const detailModal = document.getElementById('scrDetailModal');
+          let detailCloseBtnRect = { width: 0, height: 0 };
+          if (detailModal) {
+            const wasHidden = detailModal.classList.contains('hidden');
+            if (wasHidden) detailModal.classList.remove('hidden');
+            const closeBtn = detailModal.querySelector('button[onclick*="closeScrDetail"]');
+            if (closeBtn) {
+              const r = closeBtn.getBoundingClientRect();
+              detailCloseBtnRect = { width: Math.round(r.width), height: Math.round(r.height) };
+            }
+            if (wasHidden) detailModal.classList.add('hidden');
+          }
+
+          const mb = modeBtn ? modeBtn.getBoundingClientRect() : { width: 0, height: 0 };
+          const tb = tabBtn ? tabBtn.getBoundingClientRect() : { width: 0, height: 0 };
+          const sb = selectEl ? selectEl.getBoundingClientRect() : { width: 0, height: 0 };
+          const rowB = firstRow ? firstRow.getBoundingClientRect() : { width: 0, height: 0 };
+          const rowBtnB = rowBtn ? rowBtn.getBoundingClientRect() : { width: 0, height: 0 };
+
           return {
-            modeSelectorHeight: modeBtn ? Math.round(modeBtn.getBoundingClientRect().height) : 0,
-            tabHeight: tabBtn ? Math.round(tabBtn.getBoundingClientRect().height) : 0,
-            retryBtnHeight: retryBtn ? Math.round(retryBtn.getBoundingClientRect().height) : 0,
-            selectHeight: selectEl ? Math.round(selectEl.getBoundingClientRect().height) : 0
+            modeSelector: { width: Math.round(mb.width), height: Math.round(mb.height) },
+            tab: { width: Math.round(tb.width), height: Math.round(tb.height) },
+            retryBtn: rbRect,
+            select: { width: Math.round(sb.width), height: Math.round(sb.height) },
+            firstRow: { width: Math.round(rowB.width), height: Math.round(rowB.height) },
+            rowActionBtn: { width: Math.round(rowBtnB.width), height: Math.round(rowBtnB.height) },
+            detailCloseBtn: detailCloseBtnRect,
+            // Compatibility fields
+            modeSelectorHeight: Math.round(mb.height),
+            tabHeight: Math.round(tb.height),
+            retryBtnHeight: rbRect.height,
+            selectHeight: Math.round(sb.height)
           };
         });
 
