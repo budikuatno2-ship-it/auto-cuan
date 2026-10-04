@@ -123,6 +123,7 @@ data/fastwatcher-shortlist.json
 # Visual audit & test artifacts
 docs/motion-trace/
 screenshots/
+test-artifacts/
 
 # DeepScan weekly full-history cache and generated readiness report
 data/deepscan-history/

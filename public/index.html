@@ -703,6 +703,18 @@
 </header>
 
 <div class="app-content" id="appContent">
+<!-- Access Recovery Banner (§79.1 / Wave 2A) -->
+<div id="accessRecoveryBanner" class="hidden max-w-[1180px] w-full mx-auto px-3 sm:px-5 pt-3 pb-1" role="alert" aria-live="assertive">
+    <div class="flex items-center justify-between gap-3 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 text-xs sm:text-sm shadow-sm">
+        <div class="flex items-center gap-2.5">
+            <svg class="w-4 h-4 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <span id="accessRecoveryMsg">Koneksi terputus saat verifikasi akses.</span>
+        </div>
+        <button type="button" onclick="retryPremiumAccess()" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 text-xs font-semibold shrink-0 transition-colors cursor-pointer">
+            Coba Lagi
+        </button>
+    </div>
+</div>
 <!-- ===== PAGE: SUBSCRIPTION ===== -->
 <div id="page-subscription" class="page-content hidden flex-1 max-w-[1180px] w-full mx-auto px-3 sm:px-5 py-5 sm:py-7" aria-labelledby="subscriptionPageTitle"><div class="subscription-hero p-5 sm:p-7"><div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div class="max-w-2xl"><p class="text-xs font-black uppercase tracking-[.16em] text-emerald-300">Paket Langganan Auto-Cuan</p><h1 id="subscriptionPageTitle" class="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Pilih paket yang sesuai dengan ritme trading Anda.</h1><p class="mt-2 text-sm leading-6 text-slate-300">Bandingkan manfaat, harga, dan masa aktif setiap paket secara transparan.</p></div><button onclick="loadSubscriptionExperience(true)" class="nav-btn border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">↻ Muat ulang data</button></div><div id="subscriptionSummary" class="subscription-summary mt-6 p-4 sm:p-5" aria-live="polite">Memuat ringkasan langganan…</div></div><section class="mt-7" aria-labelledby="subscriptionPlansTitle"><div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p class="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Perbandingan paket</p><h2 id="subscriptionPlansTitle" class="mt-1 text-xl font-black text-white">Pilih paket dengan informasi yang jelas.</h2></div><p class="text-xs text-slate-500">Akses tidak pernah diberikan dari halaman ini.</p></div><div id="subscriptionPlans" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">Memuat daftar paket…</div></section></div>
 
@@ -896,7 +908,7 @@
         </div>
     </div>
     <!-- Content -->
-    <div id="screenerContent" class="hidden space-y-4">
+    <div id="screenerContent" class="hidden space-y-4" data-ui-version="v2">
         <!-- Page Header (§1.3 & §2.4) -->
         <div class="page-header mb-4">
             <h1 class="page-title text-2xl font-bold text-[var(--text-primary)]">Screener Saham</h1>
@@ -998,10 +1010,18 @@
             <button onclick="filterScreener('Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
             <button onclick="filterScreener('Invalid')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Invalid">Invalid</button>
         </div>
-        <!-- Konglo Card Grid -->
-        <div id="kgCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
-        <!-- Table (hidden by default) -->
-        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden focus:outline-none focus:ring-2 focus:ring-emerald-500" id="screenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi">
+        <!-- View Toggle & Count Context -->
+        <div class="flex items-center justify-between gap-2 mb-2">
+            <span class="text-xs text-gray-400 font-medium">Tampilan Screener</span>
+            <div class="inline-flex rounded-lg border border-dark-600/30 bg-dark-900/80 p-0.5 text-xs" role="group" aria-label="Pilihan tampilan konglo">
+                <button type="button" id="kgBtnTable" onclick="kgToggleView('table')" class="px-2.5 py-1 rounded font-semibold text-emerald-400 bg-emerald-500/10 transition-colors">Tabel</button>
+                <button type="button" id="kgBtnCard" onclick="kgToggleView('card')" class="px-2.5 py-1 rounded font-semibold text-gray-400 hover:text-gray-200 transition-colors">Kartu</button>
+            </div>
+        </div>
+        <!-- Konglo Card Grid (hidden by default) -->
+        <div id="kgCardGrid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
+        <!-- Table (table-first default) -->
+        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" id="screenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi">
             <table class="w-full text-xs border-collapse min-w-[1100px]">
                 <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
                     <tr class="scr-cols-17 bg-dark-700/80">
@@ -1097,10 +1117,18 @@
                 <button onclick="filterNkScreener('Rebound Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
                 <button onclick="filterNkScreener('Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
             </div>
-            <!-- Non-Konglo Card Grid -->
-            <div id="nkCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-bottom:12px"></div>
-            <!-- Table (hidden by default) -->
-            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden focus:outline-none focus:ring-2 focus:ring-emerald-500" id="nkScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi">
+            <!-- View Toggle & Count Context -->
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <span class="text-xs text-gray-400 font-medium">Tampilan Screener</span>
+                <div class="inline-flex rounded-lg border border-dark-600/30 bg-dark-900/80 p-0.5 text-xs" role="group" aria-label="Pilihan tampilan non-konglo">
+                    <button type="button" id="nkBtnTable" onclick="nkToggleView('table')" class="px-2.5 py-1 rounded font-semibold text-emerald-400 bg-emerald-500/10 transition-colors">Tabel</button>
+                    <button type="button" id="nkBtnCard" onclick="nkToggleView('card')" class="px-2.5 py-1 rounded font-semibold text-gray-400 hover:text-gray-200 transition-colors">Kartu</button>
+                </div>
+            </div>
+            <!-- Non-Konglo Card Grid (hidden by default) -->
+            <div id="nkCardGrid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-bottom:12px"></div>
+            <!-- Table (table-first default) -->
+            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" id="nkScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi">
                 <table class="w-full text-xs border-collapse min-w-[1200px]">
                     <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
                         <tr class="scr-cols-18 bg-dark-700/80">
@@ -1207,10 +1235,18 @@
                 <span class="text-yellow-400 font-semibold">Pullback</span> = tunggu area harga.
                 <span class="text-red-400 font-semibold">Spike/Hindari</span> = jangan chase atau jangan entry.
             </div>
-            <!-- Day Trade Card Grid -->
-            <div id="dtCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
-            <!-- Table (hidden by default, shown via toggle) -->
-            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden focus:outline-none focus:ring-2 focus:ring-emerald-500" id="dtScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data day trade screener">
+            <!-- View Toggle & Count Context -->
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <span class="text-xs text-gray-400 font-medium">Tampilan Screener</span>
+                <div class="inline-flex rounded-lg border border-dark-600/30 bg-dark-900/80 p-0.5 text-xs" role="group" aria-label="Pilihan tampilan day trade">
+                    <button type="button" id="dtBtnTable" onclick="dtToggleView('table')" class="px-2.5 py-1 rounded font-semibold text-emerald-400 bg-emerald-500/10 transition-colors">Tabel</button>
+                    <button type="button" id="dtBtnCard" onclick="dtToggleView('card')" class="px-2.5 py-1 rounded font-semibold text-gray-400 hover:text-gray-200 transition-colors">Kartu</button>
+                </div>
+            </div>
+            <!-- Day Trade Card Grid (hidden by default) -->
+            <div id="dtCardGrid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
+            <!-- Table (table-first default) -->
+            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" id="dtScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data day trade screener">
                 <table class="w-full text-xs border-collapse min-w-[1100px]">
                     <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
                         <tr class="scr-cols-22 bg-dark-700/80">
@@ -5005,13 +5041,36 @@ function applyPremiumAccessUi() {
             // A pending access check may have hidden the already selected page.
             // Restore only that page after a confirmed server approval; never
             // reveal other pages or bypass the ancestor maintenance/login gate.
-            if (page.id === 'page-' + currentPage) page.classList.remove('hidden');
+            if (page.id === 'page-' + currentPage) {
+                page.classList.remove('hidden');
+                // If the restored page is screener, ensure active screener data loads
+                if (currentPage === 'screener' && typeof loadSwingScreener === 'function' && (!_screenerCache || !_screenerCache.results)) {
+                    loadSwingScreener(true);
+                }
+            }
         }
         else { page.classList.add('hidden'); page.setAttribute('aria-hidden','true'); if ('inert' in page) page.inert=true; }
     });
     if (isDeniedWebsiteAccess() && isPremiumFeaturePage(currentPage)) {
         clearRenderedPremiumData();
         navigateTo('dashboard');
+    }
+    // Update access recovery banner affordance if DOM element exists
+    if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+        var recBanner = document.getElementById('accessRecoveryBanner');
+        if (recBanner) {
+            var showRecovery = !allowed && !isDeniedWebsiteAccess() && typeof premiumAccessState !== 'undefined' && premiumAccessState.state === 'unavailable' && (typeof isLoggedInUser === 'function' && isLoggedInUser());
+            recBanner.classList.toggle('hidden', !showRecovery);
+            if (showRecovery) {
+                var recMsg = document.getElementById('accessRecoveryMsg');
+                if (recMsg) {
+                    var errType = premiumAccessState.errorType;
+                    if (errType === 'timeout') recMsg.textContent = 'Verifikasi akses timed out. Periksa jaringan Anda.';
+                    else if (errType === 'server_error') recMsg.textContent = 'Server verifikasi sedang sibuk.';
+                    else recMsg.textContent = 'Koneksi terputus saat verifikasi akses.';
+                }
+            }
+        }
     }
 }
 function cancelPremiumAccessRequest() {
@@ -5021,6 +5080,16 @@ function cancelPremiumAccessRequest() {
     premiumAccessRequest = null;
     if (premiumAccessRefreshTimer) { clearTimeout(premiumAccessRefreshTimer); premiumAccessRefreshTimer=null; }
 }
+var _premiumAccessRetryAttempts = 0;
+var MAX_PREMIUM_ACCESS_RETRIES = 3;
+var PREMIUM_ACCESS_RETRY_DELAYS = [2000, 5000, 10000];
+
+function retryPremiumAccess() {
+    _premiumAccessRetryAttempts = 0;
+    return loadPremiumAccess(true);
+}
+if (typeof window !== 'undefined') window.retryPremiumAccess = retryPremiumAccess;
+
 function schedulePremiumAccessRefresh(expiresAt) {
     if (premiumAccessRefreshTimer) clearTimeout(premiumAccessRefreshTimer);
     var regularDelay=5*60*1000, expiryDelay=expiresAt?new Date(expiresAt).getTime()-Date.now()+1000:regularDelay;
@@ -5030,6 +5099,7 @@ function schedulePremiumAccessRefresh(expiresAt) {
 function resetPremiumAccess() {
     var wasPremium=premiumAccessState.premium===true;
     cancelPremiumAccessRequest();
+    _premiumAccessRetryAttempts = 0;
     premiumAccessState={state:'loading',premium:false,accessLevel:'free',checkedAt:0};
     if (wasPremium) clearRenderedPremiumData();
     applyPremiumAccessUi();
@@ -5050,7 +5120,9 @@ async function loadPremiumAccess(force) {
         applyPremiumAccessUi();
     }
     var request=(async function(){
-        var timer=controller?setTimeout(function(){controller.abort();},6500):null;
+        var isTimeout = false;
+        var is5xx = false;
+        var timer=controller?setTimeout(function(){isTimeout = true; controller.abort();},6500):null;
         try {
             // Approval-based website access: the signed server session plus
             // is_approved/is_blocked in the database decide access. Subscription
@@ -5059,25 +5131,43 @@ async function loadPremiumAccess(force) {
             var payload=null; try { payload=await response.json(); } catch (_) {}
             if (generation!==premiumAccessGeneration) return premiumAccessState;
             if (response.ok && payload && payload.success===true && payload.user_id) {
+                _premiumAccessRetryAttempts = 0;
                 premiumAccessState={state:'ready',premium:true,accessLevel:'approved',checkedAt:Date.now(),expiresAt:null};
             } else if (response.status===401 || response.status===403) {
                 // Definitive server "no" (anonymous, blocked, or unapproved).
+                _premiumAccessRetryAttempts = 0;
                 premiumAccessState={state:'ready',premium:false,accessLevel:'free',checkedAt:Date.now(),expiresAt:null};
             } else {
+                if (response.status >= 500) is5xx = true;
                 throw new Error('premium_access_unavailable');
             }
         } catch (_) {
             if (generation!==premiumAccessGeneration) return premiumAccessState;
             // Transient failure: keep confirmed access instead of logging the user
-            // out of features; retry happens via the scheduled refresh.
+            // out of features; retry happens via bounded auto-retry or manual retry affordance.
+            var errType = isTimeout ? 'timeout' : (is5xx ? 'server_error' : 'network_error');
             if (!(priorState.state==='ready' && priorState.premium===true)) {
-                premiumAccessState={state:'unavailable',premium:false,accessLevel:'free',checkedAt:Date.now()};
+                premiumAccessState={state:'unavailable',premium:false,accessLevel:'free',checkedAt:Date.now(),errorType:errType};
             }
         } finally {
             if (timer) clearTimeout(timer);
             if (generation===premiumAccessGeneration) {
                 premiumAccessController=null; premiumAccessRequest=null; applyPremiumAccessUi();
-                schedulePremiumAccessRefresh(premiumAccessState.expiresAt||null);
+                if (premiumAccessState.state === 'unavailable') {
+                    if (_premiumAccessRetryAttempts < MAX_PREMIUM_ACCESS_RETRIES) {
+                        var retryDelay = PREMIUM_ACCESS_RETRY_DELAYS[_premiumAccessRetryAttempts] || 10000;
+                        _premiumAccessRetryAttempts++;
+                        if (premiumAccessRefreshTimer) clearTimeout(premiumAccessRefreshTimer);
+                        premiumAccessRefreshTimer = setTimeout(function() {
+                            premiumAccessRefreshTimer = null;
+                            loadPremiumAccess(true);
+                        }, retryDelay);
+                    } else {
+                        schedulePremiumAccessRefresh(null);
+                    }
+                } else {
+                    schedulePremiumAccessRefresh(premiumAccessState.expiresAt||null);
+                }
             }
         }
         return premiumAccessState;
@@ -9610,6 +9700,58 @@ function getRiskColor(label) {
     if (risk === 'Very High Risk' || risk === 'Hindari') return '#fca5a5';
     return '#9ca3af';
 }
+function humanizeRawStatus(val) {
+    if (!val && val !== 0) return '—';
+    var text = String(val).trim();
+    if (!text || text === '-' || text === '—') return '—';
+    var upper = text.toUpperCase().replace(/[\s-]+/g, '_');
+
+    var ENUM_MAP = {
+        'WAIT_PULLBACK': 'Tunggu Pullback',
+        'WAIT_PB': 'Tunggu Pullback',
+        'TUNGGU_PULLBACK': 'Tunggu Pullback',
+        'A_PLUS_SETUP': 'Setup A+',
+        'A_PLUS_SWING': 'Swing A+',
+        'ENTRY_AREA': 'Area Entry',
+        'ENTRY_TOUCHED': 'Entry Tersentuh',
+        'AVOID': 'Hindari',
+        'TRADE_CANDIDATE': 'Kandidat Trade',
+        'TRADE': 'Kandidat Trade',
+        'SWING_READY': 'Swing Ready',
+        'READY': 'Swing Ready',
+        'WATCHLIST': 'Watchlist',
+        'WATCH': 'Watchlist',
+        'REBOUND_CANDIDATE': 'Kandidat Rebound',
+        'REBOUND_SPECULATIVE': 'Rebound Spekulatif',
+        'REBOUND': 'Kandidat Rebound',
+        'SPECULATIVE': 'Spekulatif',
+        'SPEC': 'Spekulatif',
+        'INVALID': 'Invalid / Batal',
+        'READY_BREAKOUT': 'Ready Breakout',
+        'PRE_SPIKE_WATCH': 'Pre-Spike Watch',
+        'EARLY_RADAR': 'Radar Awal',
+        'MOMENTUM_CONTINUATION': 'Momentum Lanjutan',
+        'RECLAIM_CANDIDATE': 'Kandidat Reclaim',
+        'HARD_REJECT': 'Hard Reject',
+        'SIGNAL': 'Signal',
+        'RADAR': 'Radar',
+        'LOW_RISK': 'Low Risk',
+        'MEDIUM_RISK': 'Medium Risk',
+        'HIGH_RISK': 'High Risk',
+        'VERY_HIGH_RISK': 'Very High Risk'
+    };
+    if (ENUM_MAP[upper]) return ENUM_MAP[upper];
+
+    if (upper.indexOf('_') >= 0 || text === upper) {
+        return text.split(/[_\s]+/).map(function(w) {
+            if (!w) return '';
+            return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+        }).join(' ');
+    }
+    return text;
+}
+if (typeof window !== 'undefined') window.humanizeRawStatus = humanizeRawStatus;
+
 function normalizeActionLabel(label) {
     var text = safeDisplayText(label, '');
     var compact = text.toLowerCase().replace(/[\s_-]+/g, ' ').trim();
@@ -10562,6 +10704,25 @@ function renderKgCardGrid(results) {
 // ===== NON-KONGLO CARD GRID =====
 var _nkCardData = {};
 
+function nkToggleView(mode) {
+    var cardEl = document.getElementById('nkCardGrid');
+    var tableEl = document.getElementById('nkScreenerTableWrap');
+    var btnC = document.getElementById('nkBtnCard');
+    var btnT = document.getElementById('nkBtnTable');
+    if (mode === 'table') {
+        if (cardEl) cardEl.style.display = 'none';
+        if (tableEl) { tableEl.classList.remove('hidden'); tableEl.style.display = ''; }
+        if (btnC) { btnC.style.color = '#6b7280'; btnC.style.background = 'transparent'; }
+        if (btnT) { btnT.style.color = '#6ee7b7'; btnT.style.background = 'rgba(16,185,129,0.1)'; }
+    } else {
+        if (cardEl) cardEl.style.display = '';
+        if (tableEl) { tableEl.classList.add('hidden'); tableEl.style.display = 'none'; }
+        if (btnC) { btnC.style.color = '#6ee7b7'; btnC.style.background = 'rgba(16,185,129,0.1)'; }
+        if (btnT) { btnT.style.color = '#6b7280'; btnT.style.background = 'transparent'; }
+    }
+}
+if (typeof window !== 'undefined') window.nkToggleView = nkToggleView;
+
 function renderNkCardGrid(results) {
     var container = document.getElementById('nkCardGrid');
     if (!container) return;
@@ -11148,7 +11309,11 @@ async function loadSwingScreener(silent) {
         renderScreenerTable(validResults);
         renderKgCardGrid(validResults);
     } catch (e) {
-        tbody.innerHTML = screenerEmptyRowHtml(17, DASHBOARD_ERROR_TEXT, 'error');
+        if (!(_screenerCache && _screenerCache.results && _screenerCache.results.length)) {
+            tbody.innerHTML = screenerEmptyRowHtml(17, DASHBOARD_ERROR_TEXT, 'error');
+        } else {
+            renderScreenerTable(_screenerCache.results);
+        }
         // Card grid: keep showing cached cards on a failed background refresh (just drop the
         // banner); only replace with an error state if there is no cache to fall back to.
         var kgCardElErr = document.getElementById('kgCardGrid');
@@ -11197,14 +11362,16 @@ function renderScreenerTable(results) {
 
     var html = '';
     filtered.forEach(function(r) {
+        _kgCardData[r.ticker] = r;
         var chgView = changeDisplay(r.change_pct);
 
-        // Tier badge color
-        var tierLabel = swingTierShort(r.swing_tier);
+        // Tier badge color & humanized label
+        var tierRaw = swingTierShort(r.swing_tier);
+        var tierLabel = humanizeRawStatus(tierRaw);
         var tierClass = swingTierColor(r.swing_tier);
 
         // Confidence color
-        var confLabel = r.confidence || '-';
+        var confLabel = r.confidence || '—';
         var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-amber-400' : 'text-red-400')));
 
         // Score color
@@ -11214,37 +11381,40 @@ function renderScreenerTable(results) {
         else if (r.score >= 50) scoreColor = 'text-amber-400';
         else scoreColor = 'text-red-400';
 
-        // Timing color
-        var timingLabel = r.entry_timing || '-';
+        // Timing color & humanized label
+        var rawTiming = r.entry_timing || '—';
+        var timingLabel = humanizeRawStatus(r.entry_window_label || rawTiming);
         var timingColor = 'text-gray-400';
-        if (timingLabel.indexOf('Masih dekat') >= 0) timingColor = 'text-emerald-400';
-        else if (timingLabel.indexOf('Tunggu breakout') >= 0) timingColor = 'text-blue-400';
-        else if (timingLabel.indexOf('Tunggu pullback') >= 0) timingColor = 'text-orange-400';
-        else if (timingLabel.indexOf('telat') >= 0 || timingLabel.indexOf('chase') >= 0) timingColor = 'text-red-400';
-        else if (timingLabel.indexOf('Hindari') >= 0) timingColor = 'text-red-400';
+        if (rawTiming.indexOf('Masih dekat') >= 0) timingColor = 'text-emerald-400';
+        else if (rawTiming.indexOf('Tunggu breakout') >= 0) timingColor = 'text-blue-400';
+        else if (rawTiming.indexOf('Tunggu pullback') >= 0 || rawTiming.indexOf('WAIT_PULLBACK') >= 0) timingColor = 'text-orange-400';
+        else if (rawTiming.indexOf('telat') >= 0 || rawTiming.indexOf('chase') >= 0) timingColor = 'text-red-400';
+        else if (rawTiming.indexOf('Hindari') >= 0 || rawTiming.indexOf('AVOID') >= 0) timingColor = 'text-red-400';
 
-        // Direction color
-        var dirLabel = r.direction || '-';
-        var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
+        // Direction color & humanized label
+        var rawDir = r.direction || '—';
+        var dirLabel = humanizeRawStatus(rawDir);
+        var dirColor = (rawDir.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((rawDir.indexOf('moderat') >= 0) ? 'text-blue-400' : ((rawDir.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((rawDir.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
 
-        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
+        var rowPayload = escapeHtml(JSON.stringify(r));
+        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="openScrDetail(_kgCardData[\'' + r.ticker + '\']||' + rowPayload + ',\'konglo\')">';
         html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
-        html += '<td class="px-2 py-2 text-gray-500 whitespace-nowrap text-[10px]">' + (r.group_code || '-') + '</td>';
-        html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
+        html += '<td class="px-2 py-2 text-gray-400 whitespace-nowrap text-[10px]">' + (r.group_code || '—') + '</td>';
+        html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + escapeHtml(tierLabel) + '</span></td>';
         html += '<td class="px-2 py-2 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
-        html += '<td class="px-2 py-2 text-center ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + bandarScoreBadgeHtml(r) + patternPersonalityBadgeHtml(r) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
-        html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatPrice(r.entry_low) + '-' + formatPrice(r.entry_high) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-red-400/80 whitespace-nowrap">' + formatPrice(r.stop_loss) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-emerald-400/80 whitespace-nowrap">' + formatPrice(r.tp1) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-emerald-400/60 whitespace-nowrap">' + formatPrice(r.tp2) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '-') + '</td>';
-        html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + timingColor + '" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml((r.entry_window_label || timingLabel || '-')) + '</td>';
-        html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
-        html += '<td class="px-2 py-2 text-left text-gray-500 whitespace-nowrap text-[10px] max-w-[120px] truncate" title="' + escapeHtml((r.status_reason || '') + (r.invalidation ? ' | ' + r.invalidation : '')) + '">' + escapeHtml(r.status_reason || r.invalidation || '-') + '</td>';
+        html += '<td class="px-2 py-2 text-center font-mono tabular-nums ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + bandarScoreBadgeHtml(r) + patternPersonalityBadgeHtml(r) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-200 font-mono tabular-nums whitespace-nowrap">' + (r.last_price ? formatPrice(r.last_price) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right font-mono tabular-nums whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap">' + (r.volume_ratio_avg20 != null ? formatRatio(r.volume_ratio_avg20) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap text-[10px]">' + ((r.entry_low != null && r.entry_high != null) ? (formatPrice(r.entry_low) + '-' + formatPrice(r.entry_high)) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-red-400/80 font-mono tabular-nums whitespace-nowrap">' + (r.stop_loss ? formatPrice(r.stop_loss) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-emerald-400/80 font-mono tabular-nums whitespace-nowrap">' + (r.tp1 ? formatPrice(r.tp1) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-emerald-400/60 font-mono tabular-nums whitespace-nowrap">' + (r.tp2 ? formatPrice(r.tp2) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + timingColor + '" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml(timingLabel) + '</td>';
+        html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + escapeHtml(dirLabel) + '</td>';
+        html += '<td class="px-2 py-2 text-left text-gray-500 whitespace-nowrap text-[10px] max-w-[120px] truncate" title="' + escapeHtml((r.status_reason || '') + (r.invalidation ? ' | ' + r.invalidation : '')) + '">' + escapeHtml(humanizeRawStatus(r.status_reason || r.invalidation || '—')) + '</td>';
         html += '</tr>';
     });
     tbody.innerHTML = html;
@@ -11524,7 +11694,11 @@ async function loadNkScreenerResults(silent) {
             if (nkInfoNote) nkInfoNote.remove();
         }
     } catch (e) {
-        tbody.innerHTML = screenerEmptyRowHtml(18, DASHBOARD_ERROR_TEXT, 'error', 'loadNkScreenerResults()');
+        if (!(_nkScreenerCache && _nkScreenerCache.results && _nkScreenerCache.results.length)) {
+            tbody.innerHTML = screenerEmptyRowHtml(18, DASHBOARD_ERROR_TEXT, 'error', 'loadNkScreenerResults()');
+        } else {
+            renderNkScreenerTable(_nkScreenerCache.results);
+        }
         // Card grid: keep showing cached cards on a failed background refresh (just drop the
         // banner); only replace with an error state if there is no cache to fall back to.
         var nkCardElErr = document.getElementById('nkCardGrid');
@@ -11650,6 +11824,7 @@ function renderNkScreenerTable(results) {
 
     var html = '';
     filtered.forEach(function(r) {
+        _nkCardData[r.ticker] = r;
         var chgView = changeDisplay(r.change_pct);
 
         var scoreColor = 'text-gray-400';
@@ -11657,58 +11832,62 @@ function renderNkScreenerTable(results) {
         else if (r.score >= 65) scoreColor = 'text-blue-400 font-semibold';
         else if (r.score >= 50) scoreColor = 'text-amber-400';
 
-        // Tier badge using shared helper
-        var tierLabel = swingTierShort(r.swing_tier);
+        // Tier badge using shared helper & humanized label
+        var tierRaw = swingTierShort(r.swing_tier);
+        var tierLabel = humanizeRawStatus(tierRaw);
         var tierClass = swingTierColor(r.swing_tier);
 
         // Confidence color
-        var confLabel = r.confidence || '-';
+        var confLabel = r.confidence || '—';
         var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-amber-400' : 'text-red-400')));
 
         // RSI display
-        var rsiStr = '-';
+        var rsiStr = '—';
         if (r.rsi14 !== null && r.rsi14 !== undefined) rsiStr = Number(r.rsi14).toFixed(1);
 
         // Entry area
-        var entryStr = '-';
+        var entryStr = '—';
         if (r.entry_low != null && r.entry_high != null) entryStr = formatPrice(r.entry_low) + ' - ' + formatPrice(r.entry_high);
 
         // Grade badge
         var gradeStr = r.grade || '';
         var scoreLabel = (r.score || 0) + (gradeStr ? ' (' + gradeStr + ')' : '');
 
-        // Timing color
-        var timingLabel = r.entry_timing || '-';
+        // Timing color & humanized label
+        var rawTiming = r.entry_timing || '—';
+        var timingLabel = humanizeRawStatus(r.entry_window_label || rawTiming);
         var timingColor = 'text-gray-400';
-        if (timingLabel.indexOf('Masih dekat') >= 0) timingColor = 'text-emerald-400';
-        else if (timingLabel.indexOf('Tunggu breakout') >= 0) timingColor = 'text-blue-400';
-        else if (timingLabel.indexOf('Tunggu pullback') >= 0) timingColor = 'text-orange-400';
-        else if (timingLabel.indexOf('telat') >= 0 || timingLabel.indexOf('chase') >= 0) timingColor = 'text-red-400';
-        else if (timingLabel.indexOf('Hindari') >= 0) timingColor = 'text-red-400';
+        if (rawTiming.indexOf('Masih dekat') >= 0) timingColor = 'text-emerald-400';
+        else if (rawTiming.indexOf('Tunggu breakout') >= 0) timingColor = 'text-blue-400';
+        else if (rawTiming.indexOf('Tunggu pullback') >= 0 || rawTiming.indexOf('WAIT_PULLBACK') >= 0) timingColor = 'text-orange-400';
+        else if (rawTiming.indexOf('telat') >= 0 || rawTiming.indexOf('chase') >= 0) timingColor = 'text-red-400';
+        else if (rawTiming.indexOf('Hindari') >= 0 || rawTiming.indexOf('AVOID') >= 0) timingColor = 'text-red-400';
 
-        // Direction color
-        var dirLabel = r.direction || '-';
-        var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
+        // Direction color & humanized label
+        var rawDir = r.direction || '—';
+        var dirLabel = humanizeRawStatus(rawDir);
+        var dirColor = (rawDir.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((rawDir.indexOf('moderat') >= 0) ? 'text-blue-400' : ((rawDir.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((rawDir.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
 
-        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
-        html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[11px] sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (r.rank || '-') + '</td>';
+        var rowPayload = escapeHtml(JSON.stringify(r));
+        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="openScrDetail(_nkCardData[\'' + r.ticker + '\']||' + rowPayload + ',\'nonkonglo\')">';
+        html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[11px] sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px] font-mono tabular-nums">' + (r.rank || '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
-        html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
+        html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + escapeHtml(tierLabel) + '</span></td>';
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
-        html += '<td class="px-2 py-1.5 text-center ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + bandarScoreBadgeHtml(r) + patternPersonalityBadgeHtml(r) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap">' + rsiStr + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap text-[10px]">' + entryStr + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-red-400 whitespace-nowrap">' + formatPrice(r.stop_loss) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400 whitespace-nowrap">' + formatPrice(r.tp1) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400 whitespace-nowrap">' + formatPrice(r.tp2) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold whitespace-nowrap">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + timingColor + '" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml((r.entry_window_label || timingLabel || '-')) + '</td>';
-        html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
-        html += '<td class="px-2 py-1.5 text-left text-gray-500 text-[10px] whitespace-nowrap overflow-hidden max-w-[150px] truncate" title="' + escapeHtml(r.status_reason || '') + '">' + escapeHtml((r.status_reason || '').slice(0, 50)) + '</td>';
+        html += '<td class="px-2 py-1.5 text-center font-mono tabular-nums ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + bandarScoreBadgeHtml(r) + patternPersonalityBadgeHtml(r) + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-mono tabular-nums whitespace-nowrap">' + (r.last_price ? formatPrice(r.last_price) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono tabular-nums whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap">' + rsiStr + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap">' + (r.volume_ratio_avg20 != null ? formatRatio(r.volume_ratio_avg20) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap text-[10px]">' + entryStr + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-red-400 font-mono tabular-nums whitespace-nowrap">' + (r.stop_loss ? formatPrice(r.stop_loss) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400 font-mono tabular-nums whitespace-nowrap">' + (r.tp1 ? formatPrice(r.tp1) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400 font-mono tabular-nums whitespace-nowrap">' + (r.tp2 ? formatPrice(r.tp2) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold font-mono tabular-nums whitespace-nowrap">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + timingColor + '" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml(timingLabel) + '</td>';
+        html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + escapeHtml(dirLabel) + '</td>';
+        html += '<td class="px-2 py-1.5 text-left text-gray-500 text-[10px] whitespace-nowrap overflow-hidden max-w-[150px] truncate" title="' + escapeHtml(r.status_reason || '') + '">' + escapeHtml(humanizeRawStatus((r.status_reason || '').slice(0, 50) || '—')) + '</td>';
         html += '</tr>';
     });
     tbody.innerHTML = html;

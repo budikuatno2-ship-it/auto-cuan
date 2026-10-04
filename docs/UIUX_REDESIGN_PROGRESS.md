@@ -305,5 +305,96 @@ Automated Headless Chrome execution via Puppeteer across all mandatory viewports
 - Full targeted regressions (10 test files, 102 assertions): 102/102 PASS.
 - Real-browser automated screenshots: 14 captures, 0 geometry defects, 0 horizontal scroll leak (`docWidth <= winWidth`).
 
+---
+
+# Auto-Cuan UI/UX Redesign — Wave 2A Progress Log
+**Milestone:** Wave 2A Screener Workstation + Access Recovery  
+**Design Authority:** `DESIGN.md` FINAL v1.1 (`4750e34fd2d03c9d64e2c760ca6b1451695a4cc093db0639a915c828ab5e5f3d`)  
+**Branch:** `feat/uiux-redesign-v1.1`  
+**Status:** PASS — WAVE_2A_PASS  
+
+## 1. Executive Summary
+
+Wave 2A delivers the two core product objectives specified for the Screener workstation:
+1. **Goal A: Fix Screener Access Recovery:** Resolves the `OPEN_DEFERRED` status from Wave 1B into a robust, secure, and fail-closed state machine with bounded auto-retry and explicit user retry affordance (`#accessRecoveryBanner`). Legitimate users are never permanently stranded after a transient network failure or timeout.
+2. **Goal B: Screener Precision Financial Workstation (v2):** Transforms the Screener presentation into a table-first workstation layout across all three supported modes (Konglo, Non-Konglo, Day Trade), with tabular financial numerals, raw enum humanization, dynamic gate denominator calculation, and silent polling data preservation.
+
+Zero changes were made to trade calculations, signal rules, gate definitions, or unauthorized waves (Wave 2B, Sektor Hot, Financial, Struktur Pasar, Portfolio remain untouched).
+
+---
+
+## 2. File Change Manifest
+
+| File | Change Type | Purpose |
+|------|-------------|---------|
+| `public/index.html` | Modified | Added `#accessRecoveryBanner` with `retryPremiumAccess()`, bounded auto-retry (3 attempts at 2s, 5s, 10s), `humanizeRawStatus()` canonical helper, table-first view toggles (`nkToggleView`), scoped `data-ui-version="v2"` on `#screenerContent`, updated table renderers with tabular numerals, cache-preserving silent polling. |
+| `public/daytrade-runtime.js` | Modified | Updated Day Trade table renderer to use tabular numerals (`tabular-nums font-mono`), humanized raw enums via `humanizeRawStatus()`, and cache-preserving catch block during background polling. |
+| `public/subscription-access-gate-v1.js` | Modified | Added bounded auto-retry (up to 3 attempts with exponential backoff) and `errorType` classification on transient failures; exposed `window.retryPremiumAccess` affordance. |
+| `public/ui-theme.css` | Modified | Added scoped Screener workstation styles under `#screenerContent[data-ui-version="v2"]` without `!important`. |
+| `test/screener-workstation-wave2a.test.js` | New File | 7 deterministic test suites verifying all Wave 2A requirements (access states A/B/C/D, table-first contract, enum humanization, gate denominators, polling preservation, tabular figures, scoped v2 rollout). |
+| `tools/capture-screener-wave2a.js` | New File | Automated visual validation capture script using Puppeteer across 4 viewports (1440px, 1024px, 768px, 390px) in both dark and light modes. |
+| `docs/UIUX_REDESIGN_PROGRESS.md` | Modified | Progress and audit log updated for Wave 2A. |
+
+---
+
+## 3. Access Recovery Architecture (State Machine A / B / C / D)
+
+The access runtime state machine now deterministically handles all four lifecycle states:
+
+- **State A (Loading / Unverified):**
+  - Fail-closed: Protected pages remain hidden (`aria-hidden="true"`, `inert=true`).
+  - No speculative data loading.
+  - Recovery banner hidden.
+- **State B (Confirmed Premium / Admin):**
+  - Server confirms valid approval/entitlement.
+  - Reveals active page and navigation items without requiring full page refresh.
+  - Protected screener data loaded eagerly if not cached.
+  - Recovery banner hidden.
+- **State C (Confirmed Unauthorized - 401 / 403):**
+  - Definitive server rejection (anonymous, blocked, or unapproved).
+  - Protected pages remain hidden, rendered premium data cleared.
+  - No retries initiated (do not treat confirmed denials as transient).
+  - Recovery banner hidden.
+- **State D (Unavailable / Timeout / 5xx / Network Error):**
+  - Fail-closed: Protected pages hidden, protected data not exposed.
+  - Error type classified: `'timeout'`, `'server_error'`, or `'network_error'`.
+  - Bounded automatic retry: Maximum 3 attempts with backoff (2s, 5s, 10s).
+  - Explicit manual retry affordance displayed in UI (`#accessRecoveryBanner` with "Coba Lagi" button calling `retryPremiumAccess()`).
+  - When later confirmed via auto-retry or manual retry, navigation and active page access are restored immediately without a full browser reload.
+
+---
+
+## 4. Screener Workstation Implementation Details
+
+1. **Table-First Contract:**
+   - Desktop and tablet screener views present the primary table by default across Konglo, Non-Konglo, and Day Trade modes.
+   - Card grids are styled with `display: none` by default, preserved for user toggle via "Kartu" / "Tabel" buttons.
+2. **Tabular Financial Numerals:**
+   - All monetary amounts, percentages, RSI values, and volume ratios use `font-mono tabular-nums`.
+   - Right-aligned numeric columns prevent ragged alignment during price updates.
+3. **Raw Enum Humanization:**
+   - Raw internal enums (`WAIT_PULLBACK`, `A_PLUS_SWING`, `ENTRY_AREA`, `AVOID`, `SWING_READY`, `WATCHLIST`, etc.) are mapped to clean Indonesian workstation text ("Tunggu Pullback", "Swing A+", "Area Entry", "Hindari", "Swing Ready", "Watchlist", etc.).
+   - Missing or empty values render truthfully as `—`.
+4. **Gate Display Truthfulness:**
+   - Denominator derived dynamically from the number of evaluated gates (e.g. `res.passedCount + '/' + res.totalCount + ' Gate'`). Never hardcoded as `5/5`.
+5. **Silent Polling Preservation:**
+   - Catch handlers in `loadSwingScreener`, `loadNonKongloScreener`, and `loadDayTradeScreener` preserve existing cached table rows on background polling failure, avoiding blanking or flashing.
+6. **Scoped Rollout:**
+   - Scope attribute `data-ui-version="v2"` is applied directly to `#screenerContent`.
+   - The shell wrapper `<div id="page-screener">` remains without `data-ui-version="v2"`, preventing CSS bleed into the shell.
+
+---
+
+## 5. Verification & Test Evidence
+
+- `npm run validate:syntax`: **1052 .js files parsed cleanly**, 0 errors.
+- `npm run test:smoke`: **75 test files passed, 271 assertions passed**, 0 failures.
+- `node --test test/screener-workstation-wave2a.test.js`: **7/7 PASS**.
+- `node --test test/approved-website-access-shell.test.js test/subscription-enforcement-v1.test.js test/subscription-phase6a-access.test.js`: **26/26 PASS**.
+- **Real-Browser Visual QA (`tools/capture-screener-wave2a.js`):**
+  - Captured 8 screenshots across 4 responsive viewports (1440px desktop, 1024px laptop, 768px tablet, 390px mobile) in both dark and light themes.
+  - Verified table-first density, high contrast, clean typography, badge humanization, and responsive reflow with zero horizontal page scroll leaks.
+
+
 
 

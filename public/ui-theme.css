@@ -5585,3 +5585,117 @@ html.dark [data-ui-version="v2"]:not([data-theme="light"]),
   }
 }
 
+/* ==========================================================================
+   Wave 2A: Screener Precision Financial Workstation Styles
+   Scoped strictly under [data-ui-version="v2"]
+   ========================================================================== */
+
+#screenerContent[data-ui-version="v2"] {
+  font-family: var(--ac-font-sans);
+  color: var(--ac-ink);
+}
+
+#screenerContent[data-ui-version="v2"] .page-header {
+  border-bottom: 1px solid var(--ac-line-hairline);
+  padding-bottom: var(--ac-space-3);
+  margin-bottom: var(--ac-space-4);
+}
+
+#screenerContent[data-ui-version="v2"] .page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ac-ink);
+}
+
+#screenerContent[data-ui-version="v2"] .page-subtitle {
+  font-size: 0.8125rem;
+  color: var(--ac-text-secondary);
+  margin-top: var(--ac-space-1);
+}
+
+/* Screener Stats Summary Bar */
+#screenerContent[data-ui-version="v2"] #screenerStats,
+#screenerContent[data-ui-version="v2"] #nkScreenerStats,
+#screenerContent[data-ui-version="v2"] #dtScreenerStats {
+  background-color: var(--ac-surface);
+  border: 1px solid var(--ac-line-hairline);
+  border-radius: var(--ac-radius-md);
+  padding: var(--ac-space-2);
+}
+
+/* Filter Controls Toolbar */
+#screenerContent[data-ui-version="v2"] .scr-filter-grid,
+#screenerContent[data-ui-version="v2"] #patternFilterContainer {
+  background-color: var(--ac-surface);
+  border: 1px solid var(--ac-line-hairline);
+  border-radius: var(--ac-radius-md);
+}
+
+/* Table Workstation Containers */
+#screenerContent[data-ui-version="v2"] #screenerTableWrap,
+#screenerContent[data-ui-version="v2"] #nkScreenerTableWrap,
+#screenerContent[data-ui-version="v2"] #dtScreenerTableWrap {
+  background-color: var(--ac-surface);
+  border: 1px solid var(--ac-line-hairline);
+  border-radius: var(--ac-radius-md);
+  box-shadow: var(--ac-shadow-1);
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+#screenerContent[data-ui-version="v2"] table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 0.75rem;
+}
+
+#screenerContent[data-ui-version="v2"] thead th {
+  background-color: var(--ac-surface-raised);
+  color: var(--ac-text-secondary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--ac-space-2) var(--ac-space-2);
+  border-bottom: 1px solid var(--ac-line-default);
+  white-space: nowrap;
+}
+
+#screenerContent[data-ui-version="v2"] tbody td {
+  padding: 6px var(--ac-space-2);
+  border-bottom: 1px solid var(--ac-line-hairline);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+#screenerContent[data-ui-version="v2"] tbody tr:hover td {
+  background-color: var(--ac-surface-hover);
+}
+
+#screenerContent[data-ui-version="v2"] thead th.sticky-col-1,
+#screenerContent[data-ui-version="v2"] thead th.sticky-col-2,
+#screenerContent[data-ui-version="v2"] tbody td.sticky-col-1,
+#screenerContent[data-ui-version="v2"] tbody td.sticky-col-2 {
+  background-color: var(--ac-surface);
+}
+
+#screenerContent[data-ui-version="v2"] tbody tr:hover td.sticky-col-1,
+#screenerContent[data-ui-version="v2"] tbody tr:hover td.sticky-col-2 {
+  background-color: var(--ac-surface-hover);
+}
+
+/* Precision status badge sizing */
+#screenerContent[data-ui-version="v2"] .scr-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-1);
+  padding: 2px 6px;
+  border-radius: var(--ac-radius-sm);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+

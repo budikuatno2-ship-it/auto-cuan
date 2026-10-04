@@ -69,20 +69,31 @@
     }
   }
 
+  var _subRetryAttempts = 0;
+  var MAX_SUB_RETRIES = 3;
+  var SUB_RETRY_DELAYS = [2000, 5000, 10000];
+  var subRetryTimer = null;
+
   async function loadPremiumAccessFromSubscription(force) {
     var now = Date.now();
     if (!force && cache && now - cache.checkedAt < CACHE_MS) return setState(cache);
     if (requestInFlight && !force) return requestInFlight;
 
     requestInFlight = (async function () {
+      var isTimeout = false;
+      var is5xx = false;
       try {
         var result = await fetchProfile();
         if (result.response.ok && result.data && result.data.success === true && result.data.profile) {
+          _subRetryAttempts = 0;
+          if (subRetryTimer) { clearTimeout(subRetryTimer); subRetryTimer = null; }
           cache = stateFromProfile(result.data.profile);
           return setState(cache);
         }
 
         if (result.response.status === 401 || result.response.status === 403) {
+          _subRetryAttempts = 0;
+          if (subRetryTimer) { clearTimeout(subRetryTimer); subRetryTimer = null; }
           cache = {
             state:'ready', premium:false, accessLevel:'free', checkedAt:Date.now(),
             expiresAt:null, subscriptionRequired:false, approved:false
@@ -90,17 +101,41 @@
           return setState(cache);
         }
 
+        if (result.response && result.response.status >= 500) is5xx = true;
         cache = null;
-        return setState({
+        var errType = isTimeout ? 'timeout' : (is5xx ? 'server_error' : 'network_error');
+        var unavail = setState({
           state:'unavailable', premium:false, accessLevel:'free', checkedAt:Date.now(),
-          expiresAt:null, subscriptionRequired:false, approved:false
+          expiresAt:null, subscriptionRequired:false, approved:false, errorType:errType
         });
-      } catch (_) {
+        if (_subRetryAttempts < MAX_SUB_RETRIES) {
+          var delay = SUB_RETRY_DELAYS[_subRetryAttempts] || 10000;
+          _subRetryAttempts++;
+          if (subRetryTimer) clearTimeout(subRetryTimer);
+          subRetryTimer = setTimeout(function () {
+            subRetryTimer = null;
+            loadPremiumAccessFromSubscription(true);
+          }, delay);
+        }
+        return unavail;
+      } catch (err) {
+        if (err && err.name === 'AbortError') isTimeout = true;
         cache = null;
-        return setState({
+        var errType = isTimeout ? 'timeout' : (is5xx ? 'server_error' : 'network_error');
+        var unavail = setState({
           state:'unavailable', premium:false, accessLevel:'free', checkedAt:Date.now(),
-          expiresAt:null, subscriptionRequired:false, approved:false
+          expiresAt:null, subscriptionRequired:false, approved:false, errorType:errType
         });
+        if (_subRetryAttempts < MAX_SUB_RETRIES) {
+          var delay = SUB_RETRY_DELAYS[_subRetryAttempts] || 10000;
+          _subRetryAttempts++;
+          if (subRetryTimer) clearTimeout(subRetryTimer);
+          subRetryTimer = setTimeout(function () {
+            subRetryTimer = null;
+            loadPremiumAccessFromSubscription(true);
+          }, delay);
+        }
+        return unavail;
       } finally {
         requestInFlight = null;
       }
@@ -120,6 +155,11 @@
     // actual security boundary; this replacement keeps page/navigation UX in
     // sync with the signed server entitlement.
     window.loadPremiumAccess = loadPremiumAccessFromSubscription;
+    window.retryPremiumAccess = function () {
+      _subRetryAttempts = 0;
+      cache = null;
+      return loadPremiumAccessFromSubscription(true);
+    };
     window.refreshSubscriptionStatus = function () {
       cache = null;
       return loadPremiumAccessFromSubscription(true);

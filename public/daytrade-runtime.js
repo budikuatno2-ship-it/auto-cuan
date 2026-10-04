@@ -10,6 +10,43 @@ var DAYTRADE_WATCH_STATUSES = ['WATCH_PULLBACK', 'WAIT_PULLBACK', 'RECLAIM_CANDI
 function isDayTradeWatchStatus(status) { return DAYTRADE_WATCH_STATUSES.indexOf(status) >= 0; }
 function getDayTradeEmptyMessage(data) { return data && data.latest_rows_empty ? DAYTRADE_LATEST_EMPTY_TEXT : DAYTRADE_EMPTY_TEXT; }
 
+var _dtCardData = (typeof window !== 'undefined' && window._dtCardData) || {};
+var humanizeRawStatus = (typeof window !== 'undefined' && typeof window.humanizeRawStatus === 'function')
+    ? window.humanizeRawStatus
+    : function(val) {
+        if (!val && val !== 0) return '—';
+        var text = String(val).trim();
+        if (!text || text === '-' || text === '—') return '—';
+        var upper = text.toUpperCase().replace(/[\s-]+/g, '_');
+        var ENUM_MAP = {
+            'WAIT_PULLBACK': 'Tunggu Pullback',
+            'A_PLUS_SETUP': 'Setup A+',
+            'A_PLUS_SWING': 'Swing A+',
+            'ENTRY_AREA': 'Area Entry',
+            'ENTRY_TOUCHED': 'Entry Tersentuh',
+            'AVOID': 'Hindari',
+            'TRADE_CANDIDATE': 'Kandidat Trade',
+            'SWING_READY': 'Swing Ready',
+            'WATCHLIST': 'Watchlist',
+            'WATCH': 'Watchlist',
+            'READY_BREAKOUT': 'Ready Breakout',
+            'PRE_SPIKE_WATCH': 'Pre-Spike Watch',
+            'EARLY_RADAR': 'Radar Awal',
+            'MOMENTUM_CONTINUATION': 'Momentum Lanjutan',
+            'RECLAIM_CANDIDATE': 'Kandidat Reclaim',
+            'HARD_REJECT': 'Hard Reject',
+            'LOW_RISK': 'Low Risk',
+            'MEDIUM_RISK': 'Medium Risk',
+            'HIGH_RISK': 'High Risk',
+            'VERY_HIGH_RISK': 'Very High Risk'
+        };
+        if (ENUM_MAP[upper]) return ENUM_MAP[upper];
+        if (upper.indexOf('_') >= 0 || text === upper) {
+            return text.split(/[_\s]+/).map(function(w) { return w ? (w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()) : ''; }).join(' ');
+        }
+        return text;
+    };
+
 async function loadDayTradeScreener() {
     if (_dtScreenerInFlight) return _dtScreenerInFlight;
     var tbody = document.getElementById('dtScreenerTableBody');
@@ -100,7 +137,11 @@ async function loadDayTradeScreener() {
         renderDtTable(data.results || [], data);
         renderDtCardGrid(data.results || [], data);
     } catch (e) {
-        tbody.innerHTML = screenerEmptyRowHtml(22, DASHBOARD_ERROR_TEXT, 'error', 'loadDayTradeScreener()');
+        if (!(_dtScreenerCache && _dtScreenerCache.results && _dtScreenerCache.results.length)) {
+            tbody.innerHTML = screenerEmptyRowHtml(22, DASHBOARD_ERROR_TEXT, 'error', 'loadDayTradeScreener()');
+        } else {
+            renderDtTable(_dtScreenerCache.results, _dtScreenerCache);
+        }
         // Card grid: keep showing cached cards on a failed background refresh (just drop the
         // banner); only replace with an error state if there is no cache to fall back to.
         var dtCardElErr = document.getElementById('dtCardGrid');
@@ -223,24 +264,26 @@ function renderDtTable(results, data) {
     var html = '';
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
+        _dtCardData[r.ticker] = r;
         var statusClass = getDtStatusClass(r.status);
         var chgClass = r.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400';
         var volRatioStr = r.volume_ratio_20d != null ? r.volume_ratio_20d.toFixed(1) + 'x' : '—';
         var txStr = r.value_today ? formatTxValue(r.value_today) : '—';
-        var entryStr = r.entry_low && r.entry_high ? r.entry_low.toLocaleString('id-ID') + '–' + r.entry_high.toLocaleString('id-ID') : '—';
+        var entryStr = (r.entry_low && r.entry_high) ? (r.entry_low.toLocaleString('id-ID') + '–' + r.entry_high.toLocaleString('id-ID')) : '—';
         var rrStr = r.risk_reward != null ? r.risk_reward.toFixed(2) : '—';
         // V3: Confidence/Timing/Direction labels (from API or derive client-side)
-        var confLabel = r.confidence || '-';
-        var timingLabel = r.entry_timing || '-';
-        var dirLabel = r.direction || '-';
+        var confLabel = r.confidence || '—';
+        var rawTiming = r.entry_timing || '—';
+        var rawDir = r.direction || '—';
         var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-gray-400' : 'text-red-400')));
-        var dirColor = dirLabel.indexOf('naik kuat') >= 0 ? 'text-emerald-400' : (dirLabel.indexOf('naik moderat') >= 0 ? 'text-blue-400' : (dirLabel.indexOf('radar') >= 0 ? 'text-violet-400' : (dirLabel.indexOf('Rawan') >= 0 ? 'text-orange-400' : 'text-red-400')));
+        var dirColor = rawDir.indexOf('naik kuat') >= 0 ? 'text-emerald-400' : (rawDir.indexOf('naik moderat') >= 0 ? 'text-blue-400' : (rawDir.indexOf('radar') >= 0 ? 'text-violet-400' : (rawDir.indexOf('Rawan') >= 0 ? 'text-orange-400' : 'text-red-400')));
 
-        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 transition">';
-        html += '<td class="px-2 py-2 text-center text-gray-500 sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (i + 1) + '</td>';
+        var rowPayload = escapeHtml(JSON.stringify(r));
+        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 transition cursor-pointer" onclick="if(typeof openScrDetail===\'function\')openScrDetail(_dtCardData[\'' + r.ticker + '\']||' + rowPayload + ',\'daytrade\')">';
+        html += '<td class="px-2 py-2 text-center text-gray-500 font-mono tabular-nums sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (i + 1) + '</td>';
         html += '<td class="px-2 py-2 font-medium text-white sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px]">' + (r.board || '—') + '</td>';
-        html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ' + statusClass + '">' + escapeHtml(getStatusLabel(r, formatDtStatus(r.status))) + '</span></td>';
+        html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ' + statusClass + '">' + escapeHtml(humanizeRawStatus(getStatusLabel(r, formatDtStatus(r.status)))) + '</span></td>';
         var dtBdBadgeHtml = '';
         if (r.bandarmologi_badge || r.bandarmologi_score != null) {
             var dtBColor = r.bandarmologi_badge_color === 'emerald' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : (r.bandarmologi_badge_color === 'cyan' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' : 'bg-gray-700/60 text-gray-300 border-gray-600/40');
@@ -249,25 +292,25 @@ function renderDtTable(results, data) {
             dtBdBadgeHtml = '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border ' + dtBColor + '" title="' + escapeHtml(dtBTip) + '">' + dtBText + '</span></div>';
         }
         var dtPatternBadgeHtml = typeof patternPersonalityBadgeHtml === 'function' ? patternPersonalityBadgeHtml(r) : '';
-        html += '<td class="px-2 py-2 text-center font-bold ' + getDtScoreClass(r.daytrade_score) + '">' + r.daytrade_score + dtBdBadgeHtml + dtPatternBadgeHtml + '</td>';
+        html += '<td class="px-2 py-2 text-center font-bold font-mono tabular-nums ' + getDtScoreClass(r.daytrade_score) + '">' + r.daytrade_score + dtBdBadgeHtml + dtPatternBadgeHtml + '</td>';
         html += '<td class="px-2 py-2 text-center ' + confColor + ' text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
-        html += '<td class="px-2 py-2 text-gray-300 text-[10px] max-w-[100px] truncate" title="' + (r.setup || '') + '">' + (r.setup || '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-200">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right ' + chgClass + '">' + (r.change_pct != null ? r.change_pct.toFixed(2) + '%' : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300">' + volRatioStr + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300">' + txStr + '</td>';
-        html += '<td class="px-2 py-2 text-right text-cyan-400">' + (r.prespike_score || 0) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-violet-400">' + (r.momentum_score || 0) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-200 text-[10px]">' + entryStr + '</td>';
-        html += '<td class="px-2 py-2 text-right text-red-400">' + (r.stop_loss ? r.stop_loss.toLocaleString('id-ID') : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-emerald-400">' + (r.tp1 ? r.tp1.toLocaleString('id-ID') : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-emerald-300">' + (r.tp2 ? r.tp2.toLocaleString('id-ID') : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right font-medium ' + (r.risk_reward >= 2.0 ? 'text-emerald-400' : r.risk_reward >= 1.5 ? 'text-yellow-400' : 'text-red-400') + '">' + rrStr + '</td>';
-        html += '<td class="px-2 py-2 text-gray-400 text-[10px] whitespace-nowrap" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml((r.entry_window_label || timingLabel || '-')) + '</td>';
-        html += '<td class="px-2 py-2 ' + dirColor + ' text-[10px] whitespace-nowrap">' + dirLabel + '</td>';
-        html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + (r.time_plan || '') + '">' + (r.time_plan || '—') + '</td>';
+        html += '<td class="px-2 py-2 text-gray-300 text-[10px] max-w-[100px] truncate" title="' + escapeHtml(humanizeRawStatus(r.setup || '')) + '">' + escapeHtml(humanizeRawStatus(r.setup || '—')) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-200 font-mono tabular-nums">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right font-mono tabular-nums ' + chgClass + '">' + (r.change_pct != null ? r.change_pct.toFixed(2) + '%' : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 font-mono tabular-nums">' + volRatioStr + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 font-mono tabular-nums">' + txStr + '</td>';
+        html += '<td class="px-2 py-2 text-right text-cyan-400 font-mono tabular-nums">' + (r.prespike_score || 0) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-violet-400 font-mono tabular-nums">' + (r.momentum_score || 0) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-200 text-[10px] font-mono tabular-nums">' + entryStr + '</td>';
+        html += '<td class="px-2 py-2 text-right text-red-400 font-mono tabular-nums">' + (r.stop_loss ? r.stop_loss.toLocaleString('id-ID') : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-emerald-400 font-mono tabular-nums">' + (r.tp1 ? r.tp1.toLocaleString('id-ID') : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-emerald-300 font-mono tabular-nums">' + (r.tp2 ? r.tp2.toLocaleString('id-ID') : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right font-medium font-mono tabular-nums ' + (r.risk_reward >= 2.0 ? 'text-emerald-400' : r.risk_reward >= 1.5 ? 'text-yellow-400' : 'text-red-400') + '">' + rrStr + '</td>';
+        html += '<td class="px-2 py-2 text-gray-400 text-[10px] whitespace-nowrap" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml(humanizeRawStatus(r.entry_window_label || rawTiming || '—')) + '</td>';
+        html += '<td class="px-2 py-2 ' + dirColor + ' text-[10px] whitespace-nowrap">' + escapeHtml(humanizeRawStatus(rawDir)) + '</td>';
+        html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + escapeHtml(r.time_plan || '') + '">' + escapeHtml(r.time_plan || '—') + '</td>';
         var _dtReason = getSignalReason(r);
-        html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + escapeHtml(_dtReason) + '">' + escapeHtml(_dtReason || '—') + '</td>';
+        html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + escapeHtml(_dtReason) + '">' + escapeHtml(humanizeRawStatus(_dtReason || '—')) + '</td>';
         html += '</tr>';
     }
     tbody.innerHTML = html;
