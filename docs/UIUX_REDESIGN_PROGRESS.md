@@ -112,3 +112,79 @@ The following items are documented in DESIGN.md / audit logs and intentionally d
 4. Duplicate Account/Profile chrome (Wave 4)
 
 Wave 1A established the foundation tokens and primitives required to support these migrations cleanly without prematurely fixing features.
+
+---
+
+# Auto-Cuan UI/UX Redesign — Wave 1B Progress Log
+**Milestone:** Wave 1B Workspace Shell, Sidebar, Navigation & Account Entry  
+**Design Authority:** `DESIGN.md` FINAL v1.1 (`4750e34fd2d03c9d64e2c760ca6b1451695a4cc093db0639a915c828ab5e5f3d`)  
+**Branch:** `feat/uiux-redesign-v1.1`  
+**Base Commit:** `5113570bdc4fcd70d40f4d47c30d540dae8b3201`  
+**Status:** PASS — Shell Migration Ready  
+
+---
+
+## 1. Executive Summary
+
+Wave 1B implements the canonical signed-in Workspace Shell, desktop sidebar, topbar shell, navigation hierarchy, active destination treatment, and single account identity surface under a scoped `[data-ui-version="v2"]` activation, with 100% preservation of existing business contracts, entitlement logic, SPA routing, and mobile launcher parity.
+
+Key achievements:
+1. **Canonical Desktop Navigation IA:** Restructured `#appSidebar` navigation into the four canonical groups:
+   - `OVERVIEW`: Dashboard
+   - `DISCOVER`: Screener, Sektor Hot (both with `data-premium-nav="true"`)
+   - `RESEARCH`: Semantic subgroups (`Teknikal`, `Arus Bandar`, `Intel & Relasi`, `Struktur & Valuasi`, `Peringkat & Sektor`) hosting all 9 canonical analysis tools (`analisis-chart`, `bandarmologi`, `hunter`, `intel`, `insider`, `financial`, `market-structure`, `ranking`, and admin-only `pattern`).
+   - `MONITOR`: Watchlist, Portfolio, Track Record (all with `data-premium-nav="true"`).
+2. **Single Primary Account Identity Surface:** Docked at the bottom of the sidebar (`#sidebarAccountBtn` / `.user-profile-badge`) with avatar, username, and role, opening the existing Account Center. Logout remains directly accessible (`#sidebarLogoutBtn`). The duplicated standalone subscription button was removed from the footer.
+3. **Topbar Chrome De-duplication:** Qualified topbar rules under `[data-ui-version="v2"]` to hide `#headerAccountSection` in CSS, eliminating the competing Profile/Subscription/Logout cluster from the topbar while keeping all DOM elements and IDs intact for test and runtime parity.
+4. **Active Destination Treatment:** Implemented restrained, non-glow active indicator with pale brand-soft background (`var(--ac-brand-soft)`), deep ink text (`var(--ac-ink)`), and 3px emerald inset bar (`var(--ac-brand)`), strictly differentiated from financial-positive greens (`var(--ac-positive)`).
+5. **Scoped v2 Shell Rollout:** Activated `data-ui-version="v2"` strictly on `#appSidebar` and `.app-header`. Unfinished feature page content remains completely un-scoped, preventing half-styled feature interiors.
+6. **Mobile & Responsive Parity:** Preserved the floating mobile launcher source (`#mainNav`) in the DOM for `mobile-nav.js` MutationObserver compatibility. Maintained safe drawer collapse/expand, focus trapping, Escape behavior, and 44px touch targets.
+7. **Access-Aware Synchronization:** Synchronized sidebar group collapse (`updateSidebarGroupVisibility()`) with entitlement gates (`applyPremiumAccessUi()`), ensuring unconfirmed access cleanly collapses empty groups without stranding users.
+
+---
+
+## 2. File Change Manifest
+
+| File | Change Type | Purpose |
+|------|-------------|---------|
+| `public/index.html` | Modified | Added `data-ui-version="v2"` to `#appSidebar` and `.app-header`. Structured `<nav class="sidebar-nav">` into canonical groups (Overview, Discover, Research, Monitor). Unified footer account entry (`#sidebarAccountBtn`). |
+| `public/ui-theme.css` | Modified | Exempted v2 topbar from desktop `display:none` legacy rule. Added Wave 1B Workspace Shell CSS rules (topbar 52px, sidebar 240px, rail 68px, active destination indicator, docked footer account, topbar de-duplication, zero `!important`). |
+| `test/ui-wave1b-shell.test.js` | New File | Dedicated test suite verifying canonical navigation IA, single account entry, v2 scope activation, CSS contracts, mobile parity, and access-aware visibility synchronization. |
+| `docs/UIUX_REDESIGN_PROGRESS.md` | Modified | Appended Wave 1B implementation record, verification evidence, and deferred scope. |
+
+---
+
+## 3. Verification & Test Evidence
+
+All automated test suites executed cleanly against worktree state:
+1. `node test/ui-wave1b-shell.test.js`: **6/6 PASS** (Canonical IA, Single Account, Scoped v2, Shell CSS, Mobile Parity, Access-Aware Sync).
+2. `node test/ui-wave1a-foundation.test.js`: **11/11 PASS** (SHA, Tokens, Sizing, Contrast, Zero `!important` in v2 section).
+3. `node test/ui-theme-layer.test.js`: **13/13 PASS**.
+4. `node test/final-wave-4b-targeted.test.js`: **6/6 PASS** (Subgroups, Analysis Registry, SVG icons).
+5. `node test/final-wave-4a-targeted.test.js`: **7/7 PASS** (Empty group collapse, Modal surfaces, Light/dark tokens).
+6. `node test/final-wave-a-routing.test.js`: **12/12 PASS** (Promoted keys routing, Deep links).
+7. `node test/header-profile-unification.test.js`: **3/3 PASS** (DOM markup parity, CSS parity, Admin runtime).
+8. `node test/workspace-access-visibility.test.js`: **4/4 PASS** (Premium access gate restoration and clearance).
+9. `node test/money-sheet.test.js`: **12/12 PASS** (9 analysis tabs present, Worksheet safety).
+10. `node test/mobile-nav.test.js`: **27/27 PASS** (Floating launcher, AssistiveTouch model, Keyboard roving).
+11. `npm run test:smoke`: **75 test files passed, 271 assertions passed**, 0 failures, 0 skipped.
+12. `npm run validate:syntax`: **1051 .js files checked**, 0 syntax errors.
+
+---
+
+## 4. Intentional Deferrals & Boundaries
+
+The following items are outside Wave 1B scope and deferred to subsequent waves:
+1. **Wave 2 (Feature Pages — Discovery & Screener):** Redesigning Screener and Sektor Hot page contents.
+2. **Wave 3 (Feature Pages — Research & Analysis):** Redesigning Analisis Saham, Chart, Bandarmologi, Financial, and Struktur Pasar interiors.
+3. **Wave 4 (Feature Pages — Monitor & Portfolio):** Redesigning Watchlist, Portfolio, and Track Record interiors.
+4. **Class C Global Command Search:** Full command palette (`Ctrl+K`) remains deferred; existing search and navigation structures are preserved without inventing unsupported interactions.
+
+---
+
+## 5. Risk Watchpoints for Next Wave
+
+- Feature page interiors must remain compatible with the sticky shell layout.
+- Access gates must continue to drive visibility through `applyPremiumAccessUi()` without modifying authoritative server session validation.
+- Mobile floating launcher must remain active until a full bottom-navigation replacement passes complete regression.
+
