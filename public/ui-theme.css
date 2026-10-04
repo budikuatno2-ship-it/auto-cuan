@@ -2806,21 +2806,21 @@ html.light #page-dashboard #dashGreeting {
   color: var(--color-text-primary);
 }
 
-html.light .app-sidebar {
+html.light .app-sidebar:not([data-ui-version="v2"]) {
   background-color: #ffffff !important;
   border-right-color: #e2e8f0 !important;
 }
 
-html.light .sidebar-item {
+html.light .sidebar-item:not([data-ui-version="v2"] *) {
   color: #334155 !important;
 }
 
-html.light .sidebar-item:hover {
+html.light .sidebar-item:not([data-ui-version="v2"] *):hover {
   background-color: #f1f5f9 !important;
   color: #047857 !important;
 }
 
-html.light .sidebar-item.active {
+html.light .sidebar-item.active:not([data-ui-version="v2"] *) {
   background-color: #ecfdf5 !important;
   color: #047857 !important;
   border-color: #a7f3d0 !important;
@@ -3949,12 +3949,12 @@ html.light body {
   color: #111827 !important;
 }
 
-html.light .app-header {
+html.light .app-header:not([data-ui-version="v2"]) {
   background-color: #FFFFFF !important;
   border-bottom: 1px solid #E5E7EB !important;
 }
 
-html.light .app-sidebar {
+html.light .app-sidebar:not([data-ui-version="v2"]) {
   background-color: #FFFFFF !important;
   border-right: 1px solid #E5E7EB !important;
 }
@@ -3978,16 +3978,16 @@ html.light :is(.text-gray-400, .text-gray-500, .text-muted, .text-dim, .panel-su
   color: #4B5563 !important;
 }
 
-html.light .sidebar-item {
+html.light .sidebar-item:not([data-ui-version="v2"] *) {
   color: #334155 !important;
 }
 
-html.light .sidebar-item:hover {
+html.light .sidebar-item:not([data-ui-version="v2"] *):hover {
   background-color: #f1f5f9 !important;
   color: #047857 !important;
 }
 
-html.light .sidebar-item.active {
+html.light .sidebar-item.active:not([data-ui-version="v2"] *) {
   background-color: #ecfdf5 !important;
   color: #047857 !important;
   border-color: #a7f3d0 !important;
@@ -4874,10 +4874,13 @@ html.light { --brand-mark-bg:#e1f5eb; --brand-mark-ink:#07593f; --brand-mark-lin
 }
 
 /* Canonical Dark / Night Research Mode under v2 scope (§4.2 / §92 / §103.1) */
-[data-ui-version="v2"][data-theme="dark"],
-[data-ui-version="v2"] [data-theme="dark"],
+[data-theme="dark"] [data-ui-version="v2"]:not([data-theme="light"]),
+[data-theme="dark"][data-ui-version="v2"],
+:root[data-theme="dark"] [data-ui-version="v2"]:not([data-theme="light"]),
 html.dark [data-ui-version="v2"]:not([data-theme="light"]),
-[data-ui-version="v2"].dark {
+[data-ui-version="v2"].dark,
+[data-ui-version="v2"][data-theme="dark"],
+[data-ui-version="v2"] [data-theme="dark"] {
   --ac-canvas: #0B1015;
   --ac-surface: #121820;
   --ac-surface-raised: #18202A;

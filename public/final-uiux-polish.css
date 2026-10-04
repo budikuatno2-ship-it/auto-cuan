@@ -122,7 +122,7 @@ html.light .app-layout {
   padding-bottom: max(28px, env(safe-area-inset-bottom));
 }
 
-html.light .app-sidebar {
+html.light .app-sidebar:not([data-ui-version="v2"]) {
   background: rgba(250, 252, 251, .94) !important;
   border-right: 1px solid var(--ac-line) !important;
   box-shadow: 1px 0 0 rgba(255,255,255,.7);
@@ -130,11 +130,11 @@ html.light .app-sidebar {
   -webkit-backdrop-filter: blur(18px) saturate(1.05);
 }
 
-html.light .sidebar-brand {
+html.light .app-sidebar:not([data-ui-version="v2"]) .sidebar-brand {
   border-bottom-color: var(--ac-line) !important;
 }
 
-html.light .brand-mark,
+html.light .brand-mark:not([data-ui-version="v2"] *),
 html.light .landing-logo {
   color: #ffffff !important;
   background: #17211e !important;
@@ -142,27 +142,27 @@ html.light .landing-logo {
   box-shadow: none !important;
 }
 
-html.light .sidebar-brand-text strong,
-html.light .sidebar-item,
-html.light .sidebar-footer,
-html.light .user-profile-badge {
+html.light .app-sidebar:not([data-ui-version="v2"]) .sidebar-brand-text strong,
+html.light .sidebar-item:not([data-ui-version="v2"] *),
+html.light .app-sidebar:not([data-ui-version="v2"]) .sidebar-footer,
+html.light .app-sidebar:not([data-ui-version="v2"]) .user-profile-badge {
   color: var(--ac-text) !important;
 }
 
-html.light .sidebar-brand-text span,
-html.light .sidebar-group-label,
-html.light .sidebar-footer .sidebar-label,
-html.light .user-role {
+html.light .app-sidebar:not([data-ui-version="v2"]) .sidebar-brand-text span,
+html.light .app-sidebar:not([data-ui-version="v2"]) .sidebar-group-label,
+html.light .app-sidebar:not([data-ui-version="v2"]) .sidebar-footer .sidebar-label,
+html.light .app-sidebar:not([data-ui-version="v2"]) .user-role {
   color: var(--ac-text-dim) !important;
 }
 
-html.light .sidebar-group-label {
+html.light .app-sidebar:not([data-ui-version="v2"]) .sidebar-group-label {
   letter-spacing: .12em;
   font-size: 10px;
   font-weight: 700;
 }
 
-html.light .sidebar-item {
+html.light .sidebar-item:not([data-ui-version="v2"] *) {
   position: relative;
   min-height: 40px;
   border: 1px solid transparent !important;
@@ -176,59 +176,59 @@ html.light .sidebar-item {
     transform var(--motion-fast) var(--ease-standard);
 }
 
-html.light .sidebar-item:hover {
+html.light .sidebar-item:not([data-ui-version="v2"] *):hover {
   background: rgba(18,35,29,.045) !important;
   border-color: rgba(18,35,29,.06) !important;
   color: var(--ac-text) !important;
 }
 
-html.light .sidebar-item.active,
-html.light .sidebar-item[aria-current="page"] {
+html.light .sidebar-item.active:not([data-ui-version="v2"] *),
+html.light .sidebar-item[aria-current="page"]:not([data-ui-version="v2"] *) {
   background: #17211e !important;
   border-color: #17211e !important;
   color: #ffffff !important;
   box-shadow: 0 6px 16px rgba(18,35,29,.12) !important;
 }
 
-html.light .sidebar-item.active svg,
-html.light .sidebar-item[aria-current="page"] svg {
+html.light .sidebar-item.active:not([data-ui-version="v2"] *) svg,
+html.light .sidebar-item[aria-current="page"]:not([data-ui-version="v2"] *) svg {
   color: #dff8ef !important;
 }
 
-html.light .sidebar-badge {
+html.light .sidebar-badge:not([data-ui-version="v2"] *) {
   background: rgba(15,116,88,.10) !important;
   border-color: rgba(15,116,88,.18) !important;
   color: #0b6049 !important;
 }
 
-html.light .sidebar-item.active .sidebar-badge {
+html.light .sidebar-item.active:not([data-ui-version="v2"] *) .sidebar-badge {
   background: rgba(255,255,255,.14) !important;
   border-color: rgba(255,255,255,.18) !important;
   color: #ffffff !important;
 }
 
-html.light .sidebar-collapse-toggle,
-html.light .theme-toggle-compact {
+html.light .app-sidebar:not([data-ui-version="v2"]) .sidebar-collapse-toggle,
+html.light .app-sidebar:not([data-ui-version="v2"]) .theme-toggle-compact {
   background: #ffffff !important;
   border-color: var(--ac-line) !important;
   color: var(--ac-text-muted) !important;
 }
 
-html.light .user-profile-badge {
+html.light .app-sidebar:not([data-ui-version="v2"]) .user-profile-badge {
   background: #ffffff !important;
   border-color: var(--ac-line) !important;
   box-shadow: var(--ac-shadow-1);
 }
 
-html.light .user-avatar {
+html.light .app-sidebar:not([data-ui-version="v2"]) .user-avatar {
   background: #17211e !important;
   color: #ffffff !important;
   border-color: #17211e !important;
 }
 
 /* ---- Top chrome ---------------------------------------------------------- */
-html.light .app-header,
-html.light .workspace-topbar {
+html.light .app-header:not([data-ui-version="v2"]),
+html.light .workspace-topbar:not([data-ui-version="v2"]) {
   background: rgba(250,252,251,.88) !important;
   border-bottom-color: var(--ac-line) !important;
   box-shadow: 0 1px 0 rgba(18,35,29,.04) !important;
@@ -236,8 +236,8 @@ html.light .workspace-topbar {
   -webkit-backdrop-filter: blur(16px) saturate(1.05);
 }
 
-html.light .header-account,
-html.light .header-status-chip {
+html.light .app-header:not([data-ui-version="v2"]) .header-account,
+html.light .app-header:not([data-ui-version="v2"]) .header-status-chip {
   background: #ffffff !important;
   border-color: var(--ac-line) !important;
   color: var(--ac-text-muted) !important;
@@ -617,7 +617,7 @@ html.light #landingPage footer {
     padding-inline: clamp(12px, 3.5vw, 18px);
   }
 
-  html.light .app-sidebar {
+  html.light .app-sidebar:not([data-ui-version="v2"]) {
     background: rgba(250,252,251,.985) !important;
     box-shadow: 18px 0 48px rgba(18,35,29,.13) !important;
   }
@@ -1413,11 +1413,11 @@ html.light .ac-nav-icon {
     width: 100%;
   }
 
-  html.light .app-sidebar.mobile-open {
+  html.light .app-sidebar:not([data-ui-version="v2"]).mobile-open {
     border-right-color: rgba(18,35,29,.12) !important;
   }
 
-  html.light .app-sidebar.mobile-open .sidebar-nav {
+  html.light .app-sidebar:not([data-ui-version="v2"]).mobile-open .sidebar-nav {
     overscroll-behavior: contain;
   }
 

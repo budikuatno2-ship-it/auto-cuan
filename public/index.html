@@ -3271,9 +3271,15 @@ function syncHeaderUsername() {
                 else if (typeof handleAnalisisLogout === 'function') handleAnalisisLogout();
             };
         }
+        var isV2Header = Boolean(accountSection && typeof accountSection.closest === 'function' && accountSection.closest('.app-header[data-ui-version="v2"]'));
         if (accountSection) {
-            accountSection.classList.remove('hidden');
-            accountSection.style.display = 'inline-flex';
+            if (isV2Header) {
+                accountSection.classList.add('hidden');
+                accountSection.style.display = 'none';
+            } else {
+                accountSection.classList.remove('hidden');
+                accountSection.style.display = 'inline-flex';
+            }
         }
         if (tierBadgeEl) {
             if (isBudi || isAdm) {

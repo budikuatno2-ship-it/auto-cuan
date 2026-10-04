@@ -77,19 +77,11 @@ async function runQa() {
         localStorage.setItem('autocuan_user_id', 'admin-budi-id');
         localStorage.setItem('auto_cuan_onboarding_seen', 'true');
         localStorage.setItem('autocuan_entered_app', 'true');
-        localStorage.setItem('autocuan_sidebar_collapsed', '0');
-        if (th === 'light') {
-          document.documentElement.classList.add('light-theme');
-          document.documentElement.classList.remove('dark-theme');
-          localStorage.setItem('autocuan_theme', 'light');
-        } else {
-          document.documentElement.classList.remove('light-theme');
-          document.documentElement.classList.add('dark-theme');
-          localStorage.setItem('autocuan_theme', 'dark');
-        }
+        localStorage.setItem('autocuan_theme', th);
       }, theme);
 
       await page.evaluate((th) => {
+        if (typeof applyAppTheme === 'function') applyAppTheme(th);
         if (typeof setWorkspaceSidebarVisible === 'function') setWorkspaceSidebarVisible(true);
         if (typeof syncHeaderUsername === 'function') syncHeaderUsername();
         if (typeof premiumAccessState !== 'undefined') {
@@ -98,17 +90,6 @@ async function runQa() {
         if (typeof applyPremiumAccessUi === 'function') applyPremiumAccessUi();
         if (typeof navigateTo === 'function') navigateTo('dashboard');
 
-        if (th === 'light') {
-          document.documentElement.classList.add('light-theme');
-          document.documentElement.classList.remove('dark-theme');
-          const root = document.querySelector(':root');
-          if (root) root.setAttribute('data-theme', 'light');
-        } else {
-          document.documentElement.classList.remove('light-theme');
-          document.documentElement.classList.add('dark-theme');
-          const root = document.querySelector(':root');
-          if (root) root.setAttribute('data-theme', 'dark');
-        }
         const om = document.getElementById('onboardingModal');
         if (om) om.style.display = 'none';
       }, theme);
@@ -116,13 +97,16 @@ async function runQa() {
       await new Promise(r => setTimeout(r, 600));
     }
 
-    async function measureShell(viewportName) {
-      const metrics = await page.evaluate((vp) => {
+    async function measureShell(viewportName, theme = 'dark') {
+      const metrics = await page.evaluate((args) => {
+        const vp = args.vp;
+        const th = args.th;
         const sidebar = document.getElementById('appSidebar');
         const header = document.querySelector('.app-header');
         const main = document.getElementById('appMain');
         const accountBtn = document.getElementById('sidebarAccountBtn');
-        const activeItem = document.querySelector('.sidebar-item.active');
+        const headerAccount = document.getElementById('headerAccountSection');
+        const activeItem = document.querySelector('#appSidebar .sidebar-item.active');
         const docWidth = document.documentElement.scrollWidth;
         const winWidth = window.innerWidth;
 
@@ -137,28 +121,45 @@ async function runQa() {
           activeStyles = {
             bg: comp.backgroundColor,
             color: comp.color,
+            boxShadow: comp.boxShadow,
             borderRadius: comp.borderRadius
           };
         }
 
+        const sbCs = sidebar ? window.getComputedStyle(sidebar) : null;
+        const hdrCs = header ? window.getComputedStyle(header) : null;
+        const hdrAcctCs = headerAccount ? window.getComputedStyle(headerAccount) : null;
+
+        const accountDuplication = Boolean(
+          headerAccount &&
+          hdrAcctCs &&
+          hdrAcctCs.display !== 'none' &&
+          hdrAcctCs.visibility !== 'hidden' &&
+          headerAccount.offsetWidth > 0
+        );
+
         return {
           viewport: vp,
+          theme: th,
           sidebarWidth: sbRect ? sbRect.width : 0,
           sidebarHeight: sbRect ? sbRect.height : 0,
           sidebarVisible: sidebar ? !sidebar.classList.contains('hidden') : false,
           sidebarIsCollapsed: sidebar ? sidebar.classList.contains('is-collapsed') : false,
+          sidebarBackground: sbCs ? sbCs.backgroundColor : null,
           headerHeight: hdrRect ? hdrRect.height : 0,
           headerWidth: hdrRect ? hdrRect.width : 0,
+          headerBackground: hdrCs ? hdrCs.backgroundColor : null,
           mainLeft: mainRect ? mainRect.left : 0,
           mainWidth: mainRect ? mainRect.width : 0,
           accountVisible: acctRect ? acctRect.top >= 0 && acctRect.bottom <= window.innerHeight : false,
           accountTop: acctRect ? acctRect.top : 0,
+          accountDuplication,
           horizontalScrollLeak: docWidth > winWidth,
           docWidth,
           winWidth,
           activeItem: activeStyles
         };
-      }, viewportName);
+      }, { vp: viewportName, th: theme });
 
       measurements.push(metrics);
       console.log(`[QA Measurement: ${viewportName}]`, JSON.stringify(metrics, null, 2));
@@ -175,23 +176,23 @@ async function runQa() {
     await initAuthenticatedState('dark');
     await page.evaluate(() => { if (typeof applySidebarCollapse === 'function') applySidebarCollapse(false); });
     await takeShot('01-desktop-1440x900-dark-expanded.png', 'Desktop 1440x900 Dark Expanded');
-    await measureShell('1440x900-dark-expanded');
+    await measureShell('1440x900-dark-expanded', 'dark');
 
     // 1B. Dark Collapsed
     await page.evaluate(() => { if (typeof applySidebarCollapse === 'function') applySidebarCollapse(true); });
     await takeShot('02-desktop-1440x900-dark-collapsed.png', 'Desktop 1440x900 Dark Collapsed Rail');
-    await measureShell('1440x900-dark-collapsed');
+    await measureShell('1440x900-dark-collapsed', 'dark');
 
     // 1C. Light Expanded
     await initAuthenticatedState('light');
     await page.evaluate(() => { if (typeof applySidebarCollapse === 'function') applySidebarCollapse(false); });
     await takeShot('03-desktop-1440x900-light-expanded.png', 'Desktop 1440x900 Light Expanded');
-    await measureShell('1440x900-light-expanded');
+    await measureShell('1440x900-light-expanded', 'light');
 
     // 1D. Light Collapsed
     await page.evaluate(() => { if (typeof applySidebarCollapse === 'function') applySidebarCollapse(true); });
     await takeShot('04-desktop-1440x900-light-collapsed.png', 'Desktop 1440x900 Light Collapsed Rail');
-    await measureShell('1440x900-light-collapsed');
+    await measureShell('1440x900-light-collapsed', 'light');
 
     // =========================================================================
     // 2. DESKTOP 1024x768
@@ -203,18 +204,18 @@ async function runQa() {
     await initAuthenticatedState('dark');
     await page.evaluate(() => { if (typeof applySidebarCollapse === 'function') applySidebarCollapse(false); });
     await takeShot('05-desktop-1024x768-dark-expanded.png', 'Desktop 1024x768 Dark Expanded');
-    await measureShell('1024x768-dark-expanded');
+    await measureShell('1024x768-dark-expanded', 'dark');
 
     // 2B. Dark Collapsed
     await page.evaluate(() => { if (typeof applySidebarCollapse === 'function') applySidebarCollapse(true); });
     await takeShot('06-desktop-1024x768-dark-collapsed.png', 'Desktop 1024x768 Dark Collapsed Rail');
-    await measureShell('1024x768-dark-collapsed');
+    await measureShell('1024x768-dark-collapsed', 'dark');
 
     // 2C. Light Expanded
     await initAuthenticatedState('light');
     await page.evaluate(() => { if (typeof applySidebarCollapse === 'function') applySidebarCollapse(false); });
     await takeShot('07-desktop-1024x768-light-expanded.png', 'Desktop 1024x768 Light Expanded');
-    await measureShell('1024x768-light-expanded');
+    await measureShell('1024x768-light-expanded', 'light');
 
     // =========================================================================
     // 3. TABLET 768x1024
@@ -225,7 +226,7 @@ async function runQa() {
     // 3A. Dark Closed Drawer
     await initAuthenticatedState('dark');
     await takeShot('08-tablet-768x1024-dark-closed.png', 'Tablet 768x1024 Dark Drawer Closed');
-    await measureShell('768x1024-dark-closed');
+    await measureShell('768x1024-dark-closed', 'dark');
 
     // 3B. Dark Drawer Open
     await page.evaluate(() => {
@@ -234,7 +235,7 @@ async function runQa() {
     });
     await new Promise(r => setTimeout(r, 400));
     await takeShot('09-tablet-768x1024-dark-drawer-open.png', 'Tablet 768x1024 Dark Drawer Open');
-    await measureShell('768x1024-dark-drawer-open');
+    await measureShell('768x1024-dark-drawer-open', 'dark');
 
     // 3C. Light Drawer Open
     await initAuthenticatedState('light');
@@ -244,7 +245,7 @@ async function runQa() {
     });
     await new Promise(r => setTimeout(r, 400));
     await takeShot('10-tablet-768x1024-light-drawer-open.png', 'Tablet 768x1024 Light Drawer Open');
-    await measureShell('768x1024-light-drawer-open');
+    await measureShell('768x1024-light-drawer-open', 'light');
 
     // Close drawer
     await page.evaluate(() => {
@@ -260,12 +261,12 @@ async function runQa() {
     // 4A. Dark Mobile Home
     await initAuthenticatedState('dark');
     await takeShot('11-mobile-390x844-dark-home.png', 'Mobile 390x844 Dark Home');
-    await measureShell('390x844-dark-home');
+    await measureShell('390x844-dark-home', 'dark');
 
     // 4B. Light Mobile Home
     await initAuthenticatedState('light');
     await takeShot('12-mobile-390x844-light-home.png', 'Mobile 390x844 Light Home');
-    await measureShell('390x844-light-home');
+    await measureShell('390x844-light-home', 'light');
 
     // 4C. Mobile Drawer Open
     await page.evaluate(() => {
@@ -274,7 +275,7 @@ async function runQa() {
     });
     await new Promise(r => setTimeout(r, 400));
     await takeShot('13-mobile-390x844-dark-drawer-open.png', 'Mobile 390x844 Drawer Open');
-    await measureShell('390x844-drawer-open');
+    await measureShell('390x844-drawer-open', 'dark');
 
     // Close mobile drawer
     await page.evaluate(() => {
@@ -292,7 +293,7 @@ async function runQa() {
       if (userSpan) userSpan.textContent = 'budi.supercalifragilisticexpialidocious_long_identity';
     });
     await takeShot('14-sidebar-account-long-username.png', 'Sidebar Account Long Username (Short Viewport 1440x600)');
-    await measureShell('1440x600-long-username');
+    await measureShell('1440x600-long-username', 'dark');
 
     // Write measurements summary to file
     const reportPath = path.join(SCREENSHOT_DIR, 'qa-measurements.json');

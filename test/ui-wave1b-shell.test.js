@@ -8,9 +8,13 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const INDEX_HTML_PATH = path.join(ROOT, 'public', 'index.html');
 const UI_THEME_CSS_PATH = path.join(ROOT, 'public', 'ui-theme.css');
+const POLISH_CSS_PATH = path.join(ROOT, 'public', 'final-uiux-polish.css');
+const ANALISIS_RUNTIME_PATH = path.join(ROOT, 'public', 'analisis-saham-runtime.js');
 
 const indexHtml = fs.readFileSync(INDEX_HTML_PATH, 'utf8');
 const uiThemeCss = fs.readFileSync(UI_THEME_CSS_PATH, 'utf8');
+const polishCss = fs.readFileSync(POLISH_CSS_PATH, 'utf8');
+const analisisRuntimeJs = fs.readFileSync(ANALISIS_RUNTIME_PATH, 'utf8');
 
 // ---------------------------------------------------------------------------
 // SUITE 1: CANONICAL DESKTOP NAVIGATION IA (WAVE 1B)
@@ -253,5 +257,111 @@ test('WAVE-1B-07: Radar status helper emits truthful neutral status and never cl
   assert.match(funcBody, /label\s*=\s*'Radar:\s*EOD Close'/);
   assert.match(funcBody, /label\s*=\s*'Radar:\s*Stale/);
   assert.match(funcBody, /label\s*=\s*'Radar:\s*Scanning'/);
+});
+
+// ---------------------------------------------------------------------------
+// SUITE 8: LEGACY LIGHT ACTIVE ITEM ISOLATION (WAVE 1A/1B REPAIR)
+// ---------------------------------------------------------------------------
+test('WAVE-1B-08: Legacy light active item styling is scoped away from v2 shell', () => {
+  // Verify public/final-uiux-polish.css scopes sidebar items away from v2
+  assert.match(
+    polishCss,
+    /html\.light\s+\.sidebar-item(?:\.active:not|:not\([^)]+\)\.active)/,
+    'final-uiux-polish.css must scope legacy light active sidebar items away from v2'
+  );
+
+  // Verify public/ui-theme.css scopes legacy light active sidebar items away from v2
+  assert.match(
+    uiThemeCss,
+    /html\.light\s+\.sidebar-item(?:\.active:not|:not\([^)]+\)\.active)/,
+    'ui-theme.css must scope legacy light active sidebar items away from v2'
+  );
+
+  // Verify v2 sidebar item active styles preserve canonical design contract:
+  // Brand-soft background, ink color, 8px radius, no box-shadow
+  const v2ActiveMatch = uiThemeCss.match(/\[data-ui-version=["']v2["']\]\s+\.sidebar-item\.active[^\{]*\{([\s\S]*?)\}/);
+  assert.ok(v2ActiveMatch, 'Must find scoped v2 sidebar-item.active rule');
+  const v2ActiveBody = v2ActiveMatch[1];
+
+  assert.match(v2ActiveBody, /background-color:\s*var\(--ac-brand-soft\)/i, 'Active item background must be var(--ac-brand-soft)');
+  assert.match(v2ActiveBody, /color:\s*var\(--ac-ink\)/i, 'Active item text color must be var(--ac-ink)');
+  assert.match(v2ActiveBody, /box-shadow:\s*none/i, 'Active item must have box-shadow: none');
+
+  const v2ItemMatch = uiThemeCss.match(/\[data-ui-version=["']v2["']\]\s+\.sidebar-item\s*\{([\s\S]*?)\}/);
+  assert.ok(v2ItemMatch, 'Must find scoped v2 sidebar-item rule');
+  assert.match(v2ItemMatch[1], /border-radius:\s*var\(--ac-radius-md\)/i, 'Sidebar item must have canonical radius');
+});
+
+// ---------------------------------------------------------------------------
+// SUITE 9: LEGACY SIDEBAR/HEADER SURFACE ISOLATION (WAVE 1A/1B REPAIR)
+// ---------------------------------------------------------------------------
+test('WAVE-1B-09: Legacy light sidebar and header surface rules are scoped away from v2 shell', () => {
+  // In final-uiux-polish.css, legacy html.light .app-sidebar and .app-header must not match v2
+  assert.match(
+    polishCss,
+    /html\.light\s+\.app-sidebar:not\(\[data-ui-version=["']v2["']\]\)/,
+    'final-uiux-polish.css must scope legacy light .app-sidebar away from v2'
+  );
+  assert.match(
+    polishCss,
+    /html\.light\s+\.app-header:not\(\[data-ui-version=["']v2["']\]\)/,
+    'final-uiux-polish.css must scope legacy light .app-header away from v2'
+  );
+
+  // In ui-theme.css, legacy html.light .app-sidebar and .app-header must not match v2
+  assert.match(
+    uiThemeCss,
+    /html\.light\s+\.app-sidebar:not\(\[data-ui-version=["']v2["']\]\)/,
+    'ui-theme.css must scope legacy light .app-sidebar away from v2'
+  );
+  assert.match(
+    uiThemeCss,
+    /html\.light\s+\.app-header:not\(\[data-ui-version=["']v2["']\]\)/,
+    'ui-theme.css must scope legacy light .app-header away from v2'
+  );
+
+  // Verify v2 shell consumes semantic tokens
+  const v2SidebarMatch = uiThemeCss.match(/(?:#appSidebar|\.app-sidebar)\[data-ui-version=["']v2["']\][^\{]*\{([\s\S]*?)\}/);
+  assert.ok(v2SidebarMatch, 'Must find v2 sidebar rule');
+  assert.match(v2SidebarMatch[1], /background:\s*var\(--ac-surface\)/i, 'v2 sidebar must consume var(--ac-surface)');
+
+  const v2HeaderMatch = uiThemeCss.match(/(?:#appHeader|\.app-header)\[data-ui-version=["']v2["']\][^\{]*\{([\s\S]*?)\}/);
+  assert.ok(v2HeaderMatch, 'Must find v2 .app-header rule');
+  assert.match(v2HeaderMatch[1], /background:\s*var\(--ac-surface\)/i, 'v2 .app-header must consume var(--ac-surface)');
+});
+
+// ---------------------------------------------------------------------------
+// SUITE 10: TOPBAR ACCOUNT CLUSTER SUPPRESSION IN V2 (WAVE 1A/1B REPAIR)
+// ---------------------------------------------------------------------------
+test('WAVE-1B-10: syncHeaderUsername preserves hidden topbar account cluster in v2 shell', () => {
+  const syncFuncMatch = indexHtml.match(/function syncHeaderUsername\(\)\s*\{([\s\S]*?)\n\}\s*\nwindow\.syncHeaderUsername/);
+  assert.ok(syncFuncMatch, 'syncHeaderUsername function must exist');
+  const syncFuncBody = syncFuncMatch[1];
+
+  // Must detect v2 header
+  assert.match(
+    syncFuncBody,
+    /accountSection\.closest\('\.app-header\[data-ui-version="v2"\]'\)/,
+    'syncHeaderUsername must check if accountSection is within .app-header[data-ui-version="v2"]'
+  );
+
+  // Must suppress display inside v2 header while allowing inline-flex for legacy header
+  assert.match(
+    syncFuncBody,
+    /if\s*\(\s*isV2Header\s*\)\s*\{[\s\S]*?accountSection\.style\.display\s*=\s*'none'[\s\S]*?\}\s*else\s*\{[\s\S]*?accountSection\.style\.display\s*=\s*'inline-flex'/,
+    'syncHeaderUsername must keep accountSection hidden in v2 header and preserve legacy display in unmigrated header'
+  );
+
+  // Also verify analisis-saham-runtime.js enforces the identical v2 scoping contract
+  assert.match(
+    analisisRuntimeJs,
+    /accountSection\.closest\('\.app-header\[data-ui-version="v2"\]'\)/,
+    'analisis-saham-runtime.js must check if accountSection is within .app-header[data-ui-version="v2"]'
+  );
+  assert.match(
+    analisisRuntimeJs,
+    /if\s*\(\s*isV2Header\s*\)\s*\{[\s\S]*?accountSection\.style\.display\s*=\s*'none'[\s\S]*?\}\s*else\s*\{[\s\S]*?accountSection\.style\.display\s*=\s*'inline-flex'/,
+    'analisis-saham-runtime.js must keep accountSection hidden in v2 header and preserve legacy display in unmigrated header'
+  );
 });
 

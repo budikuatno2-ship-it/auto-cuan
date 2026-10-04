@@ -1275,7 +1275,15 @@
     var tierBadgeEl = byId('headerTierBadge');
     var logoutEl = byId('logoutBtn');
     var accountSection = byId('headerAccountSection');
-    if (accountSection) accountSection.style.display = 'inline-flex';
+    var isV2Header = Boolean(accountSection && typeof accountSection.closest === 'function' && accountSection.closest('.app-header[data-ui-version="v2"]'));
+    if (accountSection) {
+      if (isV2Header) {
+        accountSection.classList.add('hidden');
+        accountSection.style.display = 'none';
+      } else {
+        accountSection.style.display = 'inline-flex';
+      }
+    }
 
     var isGuest = !u || u.toLowerCase() === 'guest';
 

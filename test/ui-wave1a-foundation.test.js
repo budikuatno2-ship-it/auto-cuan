@@ -196,3 +196,31 @@ test('WAVE-1A-11: Dark mode implementation-parity tokens meet WCAG standards via
   assert.ok(contrastRatio(raised, '#E86371') >= 4.5, '#E86371 negative on raised surface must be >= 4.5:1');
 });
 
+test('WAVE-1A-12: Dark v2 selector hierarchy matches runtime html[data-theme="dark"] contract', () => {
+  const css = fs.readFileSync(UI_THEME_CSS_PATH, 'utf8');
+
+  // Must match html[data-theme="dark"] ancestor with descendant [data-ui-version="v2"]
+  assert.match(
+    css,
+    /\[data-theme=["']dark["']\]\s+\[data-ui-version=["']v2["']\]/,
+    'ui-theme.css must support runtime dark theme on html ancestor with scoped v2 descendant'
+  );
+
+  // Must define authoritative dark tokens within the scoped v2 dark block
+  const darkBlockMatch = css.match(/\[data-theme=["']dark["']\]\s+\[data-ui-version=["']v2["']\][^\{]*\{([\s\S]*?)\}/);
+  assert.ok(darkBlockMatch, 'Must find scoped dark v2 token block');
+  const darkBlock = darkBlockMatch[1];
+
+  assert.match(darkBlock, /--ac-canvas:\s*#0B1015/i, 'Dark canvas must be #0B1015');
+  assert.match(darkBlock, /--ac-surface:\s*#121820/i, 'Dark surface must be #121820');
+  assert.match(darkBlock, /--ac-surface-raised:\s*#18202A/i, 'Dark raised surface must be #18202A');
+  assert.match(darkBlock, /--ac-surface-hover:\s*#1E2834/i, 'Dark hover surface must be #1E2834');
+  assert.match(darkBlock, /--ac-ink:\s*#E6EDF3/i, 'Dark ink must be #E6EDF3');
+  assert.match(darkBlock, /--ac-text-secondary:\s*#9AA7B4/i, 'Dark secondary text must be #9AA7B4');
+  assert.match(darkBlock, /--ac-text-muted:\s*#788999/i, 'Dark muted text must be #788999');
+  assert.match(darkBlock, /--ac-control-border:\s*#5E6F7E/i, 'Dark control border must be #5E6F7E');
+  assert.match(darkBlock, /--ac-brand:\s*#1FAF82/i, 'Dark brand must be #1FAF82');
+  assert.match(darkBlock, /--ac-positive:\s*#34A853/i, 'Dark positive must be #34A853');
+  assert.match(darkBlock, /--ac-negative:\s*#E86371/i, 'Dark negative must be #E86371');
+});
+
