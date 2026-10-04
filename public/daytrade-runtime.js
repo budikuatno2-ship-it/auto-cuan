@@ -257,7 +257,7 @@ function renderDtTable(results, data) {
         var emptyMsg = typeof getPatternPersonalityEmptyMessage === 'function'
             ? getPatternPersonalityEmptyMessage(getDayTradeEmptyMessage(data))
             : getDayTradeEmptyMessage(data);
-        tbody.innerHTML = screenerEmptyRowHtml(22, emptyMsg);
+        tbody.innerHTML = screenerEmptyRowHtml(12, emptyMsg);
         return;
     }
 
@@ -268,49 +268,23 @@ function renderDtTable(results, data) {
         var statusClass = getDtStatusClass(r.status);
         var chgClass = r.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400';
         var volRatioStr = r.volume_ratio_20d != null ? r.volume_ratio_20d.toFixed(1) + 'x' : '—';
-        var txStr = r.value_today ? formatTxValue(r.value_today) : '—';
         var entryStr = (r.entry_low && r.entry_high) ? (r.entry_low.toLocaleString('id-ID') + '–' + r.entry_high.toLocaleString('id-ID')) : '—';
         var rrStr = r.risk_reward != null ? r.risk_reward.toFixed(2) : '—';
-        // V3: Confidence/Timing/Direction labels (from API or derive client-side)
-        var confLabel = r.confidence || '—';
-        var rawTiming = r.entry_timing || '—';
-        var rawDir = r.direction || '—';
-        var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-gray-400' : 'text-red-400')));
-        var dirColor = rawDir.indexOf('naik kuat') >= 0 ? 'text-emerald-400' : (rawDir.indexOf('naik moderat') >= 0 ? 'text-blue-400' : (rawDir.indexOf('radar') >= 0 ? 'text-violet-400' : (rawDir.indexOf('Rawan') >= 0 ? 'text-orange-400' : 'text-red-400')));
 
         var rowPayload = escapeHtml(JSON.stringify(r));
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 transition cursor-pointer" onclick="if(typeof openScrDetail===\'function\')openScrDetail(_dtCardData[\'' + r.ticker + '\']||' + rowPayload + ',\'daytrade\')">';
         html += '<td class="px-2 py-2 text-center text-gray-500 tabular-nums sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (i + 1) + '</td>';
         html += '<td class="px-2 py-2 font-medium text-white sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
-        html += '<td class="px-2 py-2 text-gray-400 text-[10px]">' + (r.board || '—') + '</td>';
-        html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ' + statusClass + '">' + escapeHtml(humanizeRawStatus(getStatusLabel(r, formatDtStatus(r.status)))) + '</span></td>';
-        var dtBdBadgeHtml = '';
-        if (r.bandarmologi_badge || r.bandarmologi_score != null) {
-            var dtBColor = r.bandarmologi_badge_color === 'emerald' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : (r.bandarmologi_badge_color === 'cyan' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' : 'bg-gray-700/60 text-gray-300 border-gray-600/40');
-            var dtBText = r.bandarmologi_badge || ((r.bandarmologi_score >= 0 ? '+' : '') + r.bandarmologi_score + ' BD');
-            var dtBTip = r.bandarmologi_breakdown || r.bandarmologi_breakdown_text || 'Metrik Bandarmologi';
-            dtBdBadgeHtml = '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold border ' + dtBColor + '" title="' + escapeHtml(dtBTip) + '">' + dtBText + '</span></div>';
-        }
-        var dtPatternBadgeHtml = typeof patternPersonalityBadgeHtml === 'function' ? patternPersonalityBadgeHtml(r) : '';
-        html += '<td class="px-2 py-2 text-center font-bold tabular-nums ' + getDtScoreClass(r.daytrade_score) + '">' + r.daytrade_score + dtBdBadgeHtml + dtPatternBadgeHtml + '</td>';
-        html += '<td class="px-2 py-2 text-center ' + confColor + ' text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
-        html += '<td class="px-2 py-2 text-gray-300 text-[10px] max-w-[100px] truncate" title="' + escapeHtml(humanizeRawStatus(r.setup || '')) + '">' + escapeHtml(humanizeRawStatus(r.setup || '—')) + '</td>';
+        html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[11px] ac-auxiliary-meta font-semibold ' + statusClass + '">' + escapeHtml(humanizeRawStatus(getStatusLabel(r, formatDtStatus(r.status)))) + '</span></td>';
+        html += '<td class="px-2 py-2 text-gray-300 text-[11px] ac-auxiliary-meta max-w-[120px] truncate" title="' + escapeHtml(humanizeRawStatus(r.setup || '')) + '">' + escapeHtml(humanizeRawStatus(r.setup || '—')) + '</td>';
+        html += '<td class="px-2 py-2 text-center font-bold tabular-nums ' + getDtScoreClass(r.daytrade_score) + '">' + (r.daytrade_score || 0) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200 tabular-nums">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right tabular-nums ' + chgClass + '">' + (r.change_pct != null ? r.change_pct.toFixed(2) + '%' : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 tabular-nums">' + volRatioStr + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 tabular-nums">' + txStr + '</td>';
-        html += '<td class="px-2 py-2 text-right text-cyan-400 tabular-nums">' + (r.prespike_score || 0) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-violet-400 tabular-nums">' + (r.momentum_score || 0) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-200 text-[10px] tabular-nums">' + entryStr + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-200 text-[11px] tabular-nums">' + entryStr + '</td>';
         html += '<td class="px-2 py-2 text-right text-red-400 tabular-nums">' + (r.stop_loss ? r.stop_loss.toLocaleString('id-ID') : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right text-emerald-400 tabular-nums">' + (r.tp1 ? r.tp1.toLocaleString('id-ID') : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-emerald-300 tabular-nums">' + (r.tp2 ? r.tp2.toLocaleString('id-ID') : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right font-medium tabular-nums ' + (r.risk_reward >= 2.0 ? 'text-emerald-400' : r.risk_reward >= 1.5 ? 'text-yellow-400' : 'text-red-400') + '">' + rrStr + '</td>';
-        html += '<td class="px-2 py-2 text-gray-400 text-[10px] whitespace-nowrap" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml(humanizeRawStatus(r.entry_window_label || rawTiming || '—')) + '</td>';
-        html += '<td class="px-2 py-2 ' + dirColor + ' text-[10px] whitespace-nowrap">' + escapeHtml(humanizeRawStatus(rawDir)) + '</td>';
-        html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + escapeHtml(r.time_plan || '') + '">' + escapeHtml(r.time_plan || '—') + '</td>';
-        var _dtReason = getSignalReason(r);
-        html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + escapeHtml(_dtReason) + '">' + escapeHtml(humanizeRawStatus(_dtReason || '—')) + '</td>';
         html += '</tr>';
     }
     tbody.innerHTML = html;
@@ -399,12 +373,12 @@ function exportDayTradePDF() {
         if (metaText) { doc.text(metaText, 5, startY); startY += 4; }
 
         // Extract table data from DOM
-        var heads = [['#', 'Ticker', 'Board', 'Status', 'Setup Score', 'Setup', 'Last', 'Chg%', 'Vol/Avg', 'Tx', 'PreSpk', 'Mom', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Time Plan', 'Catatan']];
+        var heads = [['#', 'Ticker', 'Status', 'Setup', 'Skor', 'Last', 'Chg%', 'Vol/Avg', 'Entry Area', 'SL', 'TP', 'RR']];
         var body = [];
         var rows = document.querySelectorAll('#dtScreenerTableBody tr');
         rows.forEach(function(row) {
             var cells = row.querySelectorAll('td');
-            if (cells.length < 17) return;
+            if (cells.length < 10) return;
             var rowData = [];
             for (var ci = 0; ci < cells.length; ci++) {
                 rowData.push((cells[ci].textContent || '').trim());
@@ -418,11 +392,11 @@ function exportDayTradePDF() {
             body: body,
             theme: 'grid',
             margin: { left: 3, right: 3 },
-            styles: { fontSize: 5, cellPadding: 0.8, lineColor: [40, 50, 60], lineWidth: 0.1, textColor: [50, 50, 50], overflow: 'linebreak' },
-            headStyles: { fillColor: [20, 30, 40], textColor: [180, 200, 210], fontSize: 5.5, fontStyle: 'bold', cellPadding: 1 },
-            columnStyles: { 0: { cellWidth: 5 }, 5: { cellWidth: 22 }, 17: { cellWidth: 25 }, 18: { cellWidth: 25 } },
+            styles: { fontSize: 6, cellPadding: 1, lineColor: [40, 50, 60], lineWidth: 0.1, textColor: [50, 50, 50], overflow: 'linebreak' },
+            headStyles: { fillColor: [20, 30, 40], textColor: [180, 200, 210], fontSize: 6.5, fontStyle: 'bold', cellPadding: 1.2 },
+            columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 18 } },
             didParseCell: function(data) {
-                if (data.column.index === 3 && data.section === 'body') {
+                if (data.column.index === 2 && data.section === 'body') {
                     var val = (data.cell.raw || '').toUpperCase();
                     if (val.indexOf('READY') >= 0) data.cell.styles.textColor = [16, 185, 129];
                     else if (val.indexOf('PRE') >= 0 || val.indexOf('SPIKE') >= 0) data.cell.styles.textColor = [6, 182, 212];

@@ -291,7 +291,7 @@ const server = http.createServer((req, res) => {
       }));
       return;
     }
-    if (action === 'daytrade_screener') {
+    if (action === 'daytrade_screener' || action === 'daytrade-screener') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         success: true,
@@ -490,13 +490,28 @@ async function capture() {
         });
         await new Promise(r => setTimeout(r, 400));
 
+        // Measure interactive touch targets
+        const touchTargets = await page.evaluate(() => {
+          const modeBtn = document.getElementById('scrTypeKonglo');
+          const tabBtn = document.querySelector('.screener-tab');
+          const retryBtn = document.getElementById('screenerRetryBtn');
+          const selectEl = document.querySelector('#screenerContent select');
+          return {
+            modeSelectorHeight: modeBtn ? Math.round(modeBtn.getBoundingClientRect().height) : 0,
+            tabHeight: tabBtn ? Math.round(tabBtn.getBoundingClientRect().height) : 0,
+            retryBtnHeight: retryBtn ? Math.round(retryBtn.getBoundingClientRect().height) : 0,
+            selectHeight: selectEl ? Math.round(selectEl.getBoundingClientRect().height) : 0
+          };
+        });
+
         const key = `${vp.name}-${theme}`;
         measurements[key] = {
           viewport: vp,
           theme: theme,
           konglo: kongloMetrics,
           nonKonglo: nonKongloMetrics,
-          dayTrade: dayTradeMetrics
+          dayTrade: dayTradeMetrics,
+          touchTargets: touchTargets
         };
 
         console.log(`[${key}] Measurements captured.`);

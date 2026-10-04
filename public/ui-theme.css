@@ -1404,7 +1404,18 @@ table th.text-right,
 }
 
 @media (max-width: 640px) {
-  .ac-segment { min-height: 38px; padding: 0 12px; font-size: var(--ac-text-caption); }
+  .ac-segment { min-height: 44px; padding: 0 12px; font-size: var(--ac-text-caption); }
+  .screener-tab,
+  .nk-screener-tab,
+  .dt-screener-tab,
+  .panel select,
+  .page-content select,
+  .panel input[type="text"],
+  .page-content input[type="text"],
+  .panel input[type="search"],
+  .page-content input[type="search"] {
+    min-height: 44px;
+  }
 }
 
 /* The existing control classes inherit the shared shape: one height, one
@@ -5709,3 +5720,58 @@ html.dark [data-ui-version="v2"]:not([data-theme="light"]),
   line-height: 1.2;
 }
 
+/* Precision row rhythm: 38px dense canonical workstation height */
+#screenerContent[data-ui-version="v2"] tbody tr {
+  height: 38px;
+  max-height: 42px;
+}
+#screenerContent[data-ui-version="v2"] tbody td {
+  padding: 4px var(--ac-space-2);
+  border-bottom: 1px solid var(--ac-line-hairline);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums lining-nums;
+  height: 38px;
+  box-sizing: border-box;
+}
+
+/* Canonical Focus Primitives */
+#screenerContent[data-ui-version="v2"] #screenerTableWrap:focus-visible,
+#screenerContent[data-ui-version="v2"] #nkScreenerTableWrap:focus-visible,
+#screenerContent[data-ui-version="v2"] #dtScreenerTableWrap:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--ac-canvas), 0 0 0 4px var(--ac-focus);
+}
+
+/* Canonical Semantic Financial & Status Token Parity */
+#screenerContent[data-ui-version="v2"] .text-emerald-400,
+#screenerContent[data-ui-version="v2"] .text-emerald-300 {
+  color: var(--ac-positive);
+}
+#screenerContent[data-ui-version="v2"] .text-red-400 {
+  color: var(--ac-negative);
+}
+#screenerContent[data-ui-version="v2"] .text-yellow-400,
+#screenerContent[data-ui-version="v2"] .text-amber-400 {
+  color: var(--ac-warning-text);
+}
+#screenerContent[data-ui-version="v2"] .text-cyan-400,
+#screenerContent[data-ui-version="v2"] .text-blue-400 {
+  color: var(--ac-info);
+}
+
+/* Mobile Touch Target Contract (>= 44px) */
+@media (max-width: 640px) {
+  #screenerContent[data-ui-version="v2"] .ac-segment,
+  #screenerContent[data-ui-version="v2"] .screener-tab,
+  #screenerContent[data-ui-version="v2"] .nk-screener-tab,
+  #screenerContent[data-ui-version="v2"] .dt-screener-tab,
+  #screenerContent[data-ui-version="v2"] select,
+  #screenerContent[data-ui-version="v2"] input[type="text"],
+  #screenerContent[data-ui-version="v2"] button.scr-filter-btn,
+  #screenerContent[data-ui-version="v2"] .ac-btn,
+  #screenerContent[data-ui-version="v2"] #screenerRetryBtn {
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+}

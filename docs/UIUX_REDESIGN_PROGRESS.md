@@ -437,6 +437,111 @@ The access runtime state machine now deterministically handles all four lifecycl
      - Numeric font family: `Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` (zero monospace on normal table numbers).
 
 7. **Test Suites:**
-   - `test/screener-workstation-wave2a.test.js`: **8/8 PASS**.
+   - `test/screener-workstation-wave2a.test.js`: **15/15 PASS**.
    - `npm run validate:syntax`: **1054 .js files parsed cleanly**, 0 errors.
    - `npm run test:smoke`: **75 test files passed, 271 assertions passed**, 0 failures.
+
+---
+
+# Auto-Cuan UI/UX Redesign — Wave 2A Hard Correction (Contract Enforcement)
+**Milestone:** Wave 2A Screener Workstation Contract Enforcement  
+**Design Authority:** `DESIGN.md` FINAL v1.1 (`4750e34fd2d03c9d64e2c760ca6b1451695a4cc093db0639a915c828ab5e5f3d`)  
+**Branch:** `feat/uiux-redesign-v1.1`  
+**Status:** PASS — Contract Enforced & Verified  
+
+---
+
+## 1. Direct Contract Corrections Summary
+
+1. **Elimination of Column Walls (Fast Screening Rhythm):**
+   - Previous 17 / 18 / 22 column walls rejected as un-scannable.
+   - Redesigned concise default tables to strictly $\le 12$ columns per mode:
+     - **Konglo (11 columns):** `Ticker`, `Group`, `Tier`, `Skor`, `Last`, `Chg%`, `Vol/Avg20`, `Entry Area`, `SL`, `TP`, `RR`.
+     - **Non-Konglo (11 columns):** `#`, `Ticker`, `Tier`, `Skor`, `Last`, `Chg%`, `Vol/Avg20`, `Entry Area`, `SL`, `TP`, `RR` (sticky `#` and `Ticker` preserved).
+     - **Day Trade (12 columns):** `#`, `Ticker`, `Status`, `Setup`, `Skor`, `Last`, `Chg%`, `Vol/Avg`, `Entry Area`, `SL`, `TP`, `RR` (sticky `#` and `Ticker` preserved).
+   - All secondary and second-order evidence preserved in full inside the detail disclosure modal `openScrDetail(r, type)`:
+     - RSI (14), Vol/Avg20, Board, Tx Today, Pre-Spike score, Momentum score, Time Plan, Bandarmologi breakdown, and Pattern Personality edge details.
+
+2. **Day Trade Row Height Correction (38px Dense Workstation Rhythm):**
+   - Root cause identified: stacked Bandarmologi and Pattern Personality badge elements inside table cells.
+   - Removed badge stacking from primary table cells, rendering concise tabular score with tier color.
+   - Measured row height in browser DOM: **38px** across all desktop, laptop, and mobile viewports (down from previous 73–81px).
+
+3. **Sub-11px Font Size Elimination:**
+   - Eradicated all `text-[9px]` instances across `public/index.html`, `public/daytrade-runtime.js`, and `public/market-feature-runtime.js`.
+   - Upgraded auxiliary metadata to readable 11–12px (`.ac-auxiliary-meta`, `text-[11px]`).
+
+4. **Canonical Semantic Tokens & Focus Primitives:**
+   - Removed all `focus:ring-emerald-500` from table scroll containers.
+   - Table scrollers consume canonical focus primitive `--ac-focus` with physical 2px offset separation.
+   - Screener presentation maps financial positive to `--ac-positive` (`#247A43` / dark `#34A853`) and negative to `--ac-negative` (`#C13F4D` / dark `#E86371`), keeping brand emerald strictly separated.
+
+5. **Mobile Touch Target Contract ($\ge 44$px):**
+   - Media queries enforce `min-height: 44px` on mobile viewports ($\le 640$px) for `.ac-segment`, `.screener-tab`, `.nk-screener-tab`, `.dt-screener-tab`, filters, and buttons.
+   - Computed browser geometry on 390px mobile confirmed: **44px** on mode selectors, tabs, and filters.
+
+6. **Truthful Price & Freshness Language:**
+   - Neutral snapshot timestamps (`HH:mm, DD MMM`) and truthfulness preserved; no "Live tick" or streaming claims.
+
+7. **Access Recovery Single Authority:**
+   - `public/subscription-access-gate-v1.js` confirmed as the sole retry scheduler (bounded at 3 retries, exponential backoff, fail-closed on 401/403).
+
+---
+
+## 2. Browser DOM Geometry & Measurement Table
+
+Measured via Puppeteer across all viewports and themes (`test-artifacts/wave2a-screenshots/metrics.json`):
+
+| Viewport | Theme | Mode | Columns | Outer Width | Scroll Width | Row Height | Header Height | Mobile Touch Target |
+|:---|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Desktop 1440** | Dark | Konglo | 11 | 1121px | 1121px | **38px** | 34px | — |
+| | | Non-Konglo | 11 | 1121px | 1200px | **38px** | 34px | — |
+| | | Day Trade | 12 | 1121px | 1121px | **38px** | 34px | — |
+| **Desktop 1440** | Light | Konglo | 11 | 1121px | 1121px | **38px** | 34px | — |
+| | | Non-Konglo | 11 | 1121px | 1200px | **38px** | 34px | — |
+| | | Day Trade | 12 | 1121px | 1121px | **38px** | 34px | — |
+| **Laptop 1024** | Dark | Konglo | 11 | 720px | 1100px | **38px** | 34px | — |
+| | | Non-Konglo | 11 | 720px | 1200px | **38px** | 34px | — |
+| | | Day Trade | 12 | 720px | 1100px | **38px** | 34px | — |
+| **Laptop 1024** | Light | Konglo | 11 | 720px | 1100px | **38px** | 34px | — |
+| | | Non-Konglo | 11 | 720px | 1200px | **38px** | 34px | — |
+| | | Day Trade | 12 | 720px | 1100px | **38px** | 34px | — |
+| **Tablet 768** | Dark | Konglo | 11 | 736px | 1100px | **38px** | 34px | — |
+| | | Non-Konglo | 11 | 736px | 1200px | **38px** | 34px | — |
+| | | Day Trade | 12 | 736px | 1100px | **38px** | 34px | — |
+| **Tablet 768** | Light | Konglo | 11 | 736px | 1100px | **38px** | 34px | — |
+| | | Non-Konglo | 11 | 736px | 1200px | **38px** | 34px | — |
+| | | Day Trade | 12 | 736px | 1100px | **38px** | 34px | — |
+| **Mobile 390** | Dark | Konglo | 11 | 360px | 1100px | **38px** | 34px | **44px** |
+| | | Non-Konglo | 11 | 360px | 1200px | **38px** | 34px | **44px** |
+| | | Day Trade | 12 | 360px | 1100px | **38px** | 34px | **44px** |
+| **Mobile 390** | Light | Konglo | 11 | 360px | 1100px | **38px** | 34px | **44px** |
+| | | Non-Konglo | 11 | 360px | 1200px | **38px** | 34px | **44px** |
+| | | Day Trade | 12 | 360px | 1100px | **38px** | 34px | **44px** |
+
+---
+
+## 3. Verification & Test Evidence Matrix
+
+All test suites executed against the current worktree state:
+1. `npm run validate:syntax`: **1054 JS files parsed cleanly**, 611 curated entries, 0 missing.
+2. `npm run test:smoke`: **75 test files passed, 271 assertions passed**, 0 failures.
+3. `node tools/run-build-test-suite.js --full`: **611 test files passed**, 0 failures.
+4. `test/screener-workstation-wave2a.test.js`: **15/15 PASS** (Scoped v2, table-first default, enum humanization, dynamic gate denominator, access recovery states A-D, silent polling preservation, tabular numerals, card toggle hidden, column counts $\le 12$, canonical 38px row height, zero `text-[9px]`, canonical focus and semantic colors, mobile touch targets $\ge 44$px, secondary evidence preservation in detail, truthful freshness).
+5. `test/desktop-screener-dashboard-overhaul.test.js`: **6/6 PASS**.
+6. `test/ui-wave1a-foundation.test.js`: **11/11 PASS**.
+7. `test/ui-wave1b-shell.test.js`: **7/7 PASS**.
+8. `test/approved-website-access-shell.test.js`: **1/1 PASS**.
+9. `test/subscription-enforcement-v1.test.js`: **8/8 PASS**.
+10. `test/subscription-phase6a-access.test.js`: **10/10 PASS**.
+11. `test/workspace-access-visibility.test.js`: **4/4 PASS**.
+12. `test/final-wave-a-routing.test.js`: **12/12 PASS**.
+13. `test/mobile-nav.test.js`: **13/13 PASS**.
+14. `test/viewport-runtime.test.js`: **8/8 PASS**.
+15. `test/ui-redesign-a11y.test.js`: **28/28 PASS**.
+16. `test/design-system-tokens-typography.test.js`: **5/5 PASS**.
+17. `test/signal-gate-transparency.test.js`: **4/4 PASS**.
+18. `test/daytrade-screener-status-rr.test.js` & related daytrade suites: **PASS**.
+19. `test/admin-approved-users.test.js`: **PASS**.
+20. `test/auth-security-compliance-integrity.test.js`: **PASS**.
+

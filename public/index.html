@@ -981,15 +981,15 @@
         <!-- Stats row -->
         <div class="grid grid-cols-3 gap-1.5" id="screenerStats">
             <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Universe</p>
+                <p class="text-[11px] text-gray-500 uppercase tracking-wide ac-auxiliary-meta">Universe</p>
                 <p class="text-sm font-bold text-gray-200" id="screenerStatUniverse">—</p>
             </div>
             <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Scanned</p>
+                <p class="text-[11px] text-gray-500 uppercase tracking-wide ac-auxiliary-meta">Scanned</p>
                 <p class="text-sm font-bold text-gray-200" id="screenerStatScanned">—</p>
             </div>
             <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Failed</p>
+                <p class="text-[11px] text-gray-500 uppercase tracking-wide ac-auxiliary-meta">Failed</p>
                 <p class="text-sm font-bold text-gray-200" id="screenerStatFailed">—</p>
             </div>
         </div>
@@ -1003,12 +1003,12 @@
         </div>
         <!-- Filter tabs -->
         <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
-            <button onclick="filterScreener('all')" class="screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
-            <button onclick="filterScreener('Swing Ready')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Swing Ready">Swing Ready</button>
-            <button onclick="filterScreener('Watchlist')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Watchlist">Watchlist</button>
-            <button onclick="filterScreener('Rebound Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
-            <button onclick="filterScreener('Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
-            <button onclick="filterScreener('Invalid')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Invalid">Invalid</button>
+            <button onclick="filterScreener('all')" class="screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="all">Semua</button>
+            <button onclick="filterScreener('Swing Ready')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="Swing Ready">Swing Ready</button>
+            <button onclick="filterScreener('Watchlist')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="Watchlist">Watchlist</button>
+            <button onclick="filterScreener('Rebound Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="Rebound Speculative">Rebound Spec.</button>
+            <button onclick="filterScreener('Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="Speculative">Speculative</button>
+            <button onclick="filterScreener('Invalid')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="Invalid">Invalid</button>
         </div>
         <!-- View Toggle & Count Context (hidden in v2 table-first presentation) -->
         <div class="hidden items-center justify-between gap-2 mb-2" id="kgViewToggleWrap" aria-hidden="true">
@@ -1021,31 +1021,25 @@
         <!-- Konglo Card Grid (hidden by default) -->
         <div id="kgCardGrid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
         <!-- Table (table-first default) -->
-        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" id="screenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi">
+        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none" id="screenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi">
             <table class="w-full text-xs border-collapse min-w-[1100px]">
                 <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
                     <tr class="scr-cols-17 bg-dark-700/80">
                         <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/95 z-30">Ticker</th>
                         <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Group</th>
                         <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
-                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
-                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
+                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Skor</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
-                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Entry Area</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">SL</th>
-                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
-                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP2</th>
+                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RR</th>
-                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
-                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Arah</th>
-                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
                     </tr>
                 </thead>
                 <tbody id="screenerTableBody">
-                    <tr><td colspan="17" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
+                    <tr><td colspan="11" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -1066,19 +1060,19 @@
             <!-- Non-Konglo run summary -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-1.5" id="nkScreenerStats">
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Universe</p>
+                    <p class="text-[11px] text-gray-500 uppercase tracking-wide ac-auxiliary-meta">Universe</p>
                     <p id="nkUniverseCount" class="text-sm font-bold text-gray-200">-</p>
                 </div>
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Scanned</p>
+                    <p class="text-[11px] text-gray-500 uppercase tracking-wide ac-auxiliary-meta">Scanned</p>
                     <p id="nkScannedCount" class="text-sm font-bold text-gray-200">-</p>
                 </div>
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Published / Results</p>
+                    <p class="text-[11px] text-gray-500 uppercase tracking-wide ac-auxiliary-meta">Published / Results</p>
                     <p id="nkPublishedCount" class="text-sm font-bold text-emerald-400">-</p>
                 </div>
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Failed</p>
+                    <p class="text-[11px] text-gray-500 uppercase tracking-wide ac-auxiliary-meta">Failed</p>
                     <p id="nkFailedCount" class="text-sm font-bold text-amber-400">-</p>
                     <p id="nkStagingCount" class="text-[10px] text-gray-500">Staging: -</p>
                 </div>
@@ -1111,11 +1105,11 @@
             </div>
             <!-- Status filter tabs -->
             <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
-                <button onclick="filterNkScreener('all')" class="nk-screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
-                <button onclick="filterNkScreener('Swing Ready')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Swing Ready">Swing Ready</button>
-                <button onclick="filterNkScreener('Watchlist')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Watchlist">Watchlist</button>
-                <button onclick="filterNkScreener('Rebound Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
-                <button onclick="filterNkScreener('Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
+                <button onclick="filterNkScreener('all')" class="nk-screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="all">Semua</button>
+                <button onclick="filterNkScreener('Swing Ready')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="Swing Ready">Swing Ready</button>
+                <button onclick="filterNkScreener('Watchlist')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="Watchlist">Watchlist</button>
+                <button onclick="filterNkScreener('Rebound Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="Rebound Speculative">Rebound Spec.</button>
+                <button onclick="filterNkScreener('Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="Speculative">Speculative</button>
             </div>
             <!-- View Toggle & Count Context (hidden in v2 table-first presentation) -->
             <div class="hidden items-center justify-between gap-2 mb-2" id="nkViewToggleWrap" aria-hidden="true">
@@ -1128,32 +1122,25 @@
             <!-- Non-Konglo Card Grid (hidden by default) -->
             <div id="nkCardGrid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-bottom:12px"></div>
             <!-- Table (table-first default) -->
-            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" id="nkScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi">
+            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none" id="nkScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi">
                 <table class="w-full text-xs border-collapse min-w-[1200px]">
                     <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
                         <tr class="scr-cols-18 bg-dark-700/80">
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap sticky-col-1 sticky left-0 bg-dark-700 z-20 w-[36px] min-w-[36px]">#</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-700 z-20 min-w-[80px] border-r border-dark-600/30">Ticker</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Board</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Skor</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Entry Area</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">SL</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP2</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RR</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Arah</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
                         </tr>
                     </thead>
                     <tbody id="nkScreenerTableBody">
-                        <tr><td colspan="18" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
+                        <tr><td colspan="11" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1177,19 +1164,19 @@
             <!-- Stats row -->
             <div class="grid grid-cols-4 gap-1.5" id="dtScreenerStats">
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Universe</p>
+                    <p class="text-[11px] text-gray-500 uppercase tracking-wide ac-auxiliary-meta">Universe</p>
                     <p class="text-sm font-bold text-gray-200" id="dtStatUniverse">&mdash;</p>
                 </div>
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Scanned</p>
+                    <p class="text-[11px] text-gray-500 uppercase tracking-wide ac-auxiliary-meta">Scanned</p>
                     <p class="text-sm font-bold text-gray-200" id="dtStatScanned">&mdash;</p>
                 </div>
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Published</p>
+                    <p class="text-[11px] text-gray-500 uppercase tracking-wide ac-auxiliary-meta">Published</p>
                     <p class="text-sm font-bold text-gray-200" id="dtStatPublished">&mdash;</p>
                 </div>
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Run Mode</p>
+                    <p class="text-[11px] text-gray-500 uppercase tracking-wide ac-auxiliary-meta">Run Mode</p>
                     <p class="text-sm font-bold text-gray-200" id="dtStatRunMode">&mdash;</p>
                 </div>
             </div>
@@ -1223,11 +1210,11 @@
             </div>
             <!-- Filter tabs -->
             <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
-                <button onclick="filterDtScreener('all')" class="dt-screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
-                <button onclick="filterDtScreener('READY_BREAKOUT')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="READY_BREAKOUT">Signal</button>
-                <button onclick="filterDtScreener('PRE_SPIKE_WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="PRE_SPIKE_WATCH">Radar Prioritas</button>
-                <button onclick="filterDtScreener('WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="WATCH">Radar Aktif</button>
-                <button onclick="filterDtScreener('AVOID')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="AVOID">Hindari</button>
+                <button onclick="filterDtScreener('all')" class="dt-screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="all">Semua</button>
+                <button onclick="filterDtScreener('READY_BREAKOUT')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="READY_BREAKOUT">Signal</button>
+                <button onclick="filterDtScreener('PRE_SPIKE_WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="PRE_SPIKE_WATCH">Radar Prioritas</button>
+                <button onclick="filterDtScreener('WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="WATCH">Radar Aktif</button>
+                <button onclick="filterDtScreener('AVOID')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium min-h-[44px] transition" data-filter="AVOID">Hindari</button>
             </div>
             <div class="mt-2 rounded-lg border border-dark-600/30 bg-dark-800/40 px-3 py-2 text-[10px] leading-relaxed text-gray-400">
                 <span class="text-emerald-400 font-semibold">Signal Terkonfirmasi</span> = konfirmasi lengkap.
@@ -1246,36 +1233,26 @@
             <!-- Day Trade Card Grid (hidden by default) -->
             <div id="dtCardGrid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
             <!-- Table (table-first default) -->
-            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" id="dtScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data day trade screener">
+            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none" id="dtScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data day trade screener">
                 <table class="w-full text-xs border-collapse min-w-[1100px]">
                     <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
                         <tr class="scr-cols-22 bg-dark-700/80">
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap sticky-col-1 sticky left-0 bg-dark-700 z-20 w-[36px] min-w-[36px]">#</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-700 z-20 min-w-[80px] border-r border-dark-600/30">Ticker</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Board</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup Score</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Setup</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Skor</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Tx Today</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Pre-Spike</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Momentum</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Entry Area</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">SL</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP2</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RR</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Arah</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Time Plan</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
                         </tr>
                     </thead>
                     <tbody id="dtScreenerTableBody">
-                        <tr><td colspan="22" class="text-center py-8 text-gray-500">Belum ada Radar Day Trade yang layak dipantau. Tunggu setup baru atau close confirmation.</td></tr>
+                        <tr><td colspan="12" class="text-center py-8 text-gray-500">Belum ada Radar Day Trade yang layak dipantau. Tunggu setup baru atau close confirmation.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -4049,7 +4026,7 @@ function renderShareKonglo(d) {
         html += '<tr class="border-b border-dark-700/30 hover:bg-dark-700/20">';
         html += '<td class="px-2 py-1.5 font-medium text-white whitespace-nowrap">' + r.ticker + '</td>';
         html += '<td class="px-2 py-1.5 text-gray-500 text-[10px] whitespace-nowrap">' + (r.group_code || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
+        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-xs font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + '">' + (r.score || 0) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price || '—') + '</td>';
@@ -4118,7 +4095,7 @@ function renderShareNk(d) {
         html += '<td class="px-2 py-1.5 text-center text-gray-500">' + (r.rank || '—') + '</td>';
         html += '<td class="px-2 py-1.5 font-medium text-white whitespace-nowrap">' + r.ticker + '</td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + boardLabel + '</td>';
-        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
+        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-xs font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price != null ? Number(r.last_price).toFixed(0) : '—') + '</td>';
@@ -4172,7 +4149,7 @@ function renderShareDt(d) {
         html += '<td class="px-2 py-1.5 font-medium text-white whitespace-nowrap">' + r.ticker + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + '" title="' + (gateScore.label + (gateScore.reason ? ' · ' + gateScore.reason : '')).replace(/"/g, '&quot;') + '">' + gateScore.score + (gateScore.capped ? ' (Blocked)' : '') + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
-        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + stColor + '">' + statusLabel + '</span></td>';
+        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-xs font-bold ' + stColor + '">' + statusLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price || '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_20d != null ? r.volume_ratio_20d.toFixed(2) + 'x' : '—') + '</td>';
@@ -6017,7 +5994,7 @@ function renderRankingTable() {
             (active ? 'text-emerald-400 bg-emerald-500/5' : 'text-gray-500 hover:text-gray-300') + '" ' +
             'onclick="setRankingSort(\'' + col.key + '\')" title="Urutkan berdasarkan ' + col.label + '">' +
             '<span class="inline-flex items-center gap-1' + (col.align === 'right' ? ' flex-row-reverse' : '') + '">' +
-            col.label + (arrow ? '<span class="text-[9px]">' + arrow + '</span>' : '') + '</span></th>';
+            col.label + (arrow ? '<span class="text-[10px]">' + arrow + '</span>' : '') + '</span></th>';
     });
     html += '</tr></thead><tbody>';
 
@@ -9607,7 +9584,7 @@ function bandarScoreBadgeHtml(r) {
     var sign = r.bandar_score_bonus > 0 ? '+' : '';
     var color = r.bandar_score_bonus > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30';
     var title = (r.bandar_breakdown && Array.isArray(r.bandar_breakdown.reasons)) ? r.bandar_breakdown.reasons.join(' | ') : ('Bandarmologi: ' + sign + r.bandar_score_bonus);
-    return '<div class="mt-0.5"><span class="inline-block px-1 py-0.2 text-[9px] font-bold rounded ' + color + '" title="' + escapeHtml(title) + '">' + sign + r.bandar_score_bonus + ' BD</span></div>';
+    return '<div class="mt-0.5"><span class="inline-block px-1 py-0.2 text-[11px] font-bold rounded ' + color + '" title="' + escapeHtml(title) + '">' + sign + r.bandar_score_bonus + ' BD</span></div>';
 }
 var PATTERN_PERSONALITY_UI_CATALOG = {
     COMBO_FX_TECH_MA5: { key: 'COMBO_FX_TECH_MA5', label: 'Combo FX+MA5', pf: 2.06, wr: 64.2, mfe: 9.8, mae: -5.9, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
@@ -9662,7 +9639,7 @@ function patternPersonalityBadgeHtml(r) {
     var p = PATTERN_PERSONALITY_UI_CATALOG[key];
     if (!p) return '';
     var tip = 'Quant Edge: ' + p.key + ' · WR ' + p.wr.toFixed(1) + '% · PF ' + p.pf.toFixed(2) + ' (MFE +' + p.mfe.toFixed(1) + '% · MAE ' + p.mae.toFixed(1) + '%)';
-    return '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold border ' + p.color + '" title="' + escapeHtml(tip) + '">⚡ ' + escapeHtml(p.label) + '</span></div>';
+    return '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[11px] font-semibold border ' + p.color + '" title="' + escapeHtml(tip) + '">⚡ ' + escapeHtml(p.label) + '</span></div>';
 }
 if (typeof window !== 'undefined') window.patternPersonalityBadgeHtml = patternPersonalityBadgeHtml;
 
@@ -10382,10 +10359,10 @@ function openScrDetail(r, type) {
     // --- METRICS BAR: Grade / Risk / RR / Action ---
     var _actionLabel = getActionLabel(r);
     html += '<div style="display:grid;grid-template-columns:repeat(' + (_actionLabel ? '4' : '3') + ',1fr);gap:6px;margin-bottom:16px">';
-    html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Grade</div><div style="font-size:18px;font-weight:800;color:' + _gCol + '">' + escapeHtml(_grade || '-') + '</div></div>';
-    html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Risk</div><div style="font-size:12px;font-weight:700;color:' + _rlCol + '">' + escapeHtml(_risk || '-') + '</div></div>';
-    html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">R/R</div><div style="font-size:16px;font-weight:800;color:#c4b5fd">' + rrVal + '</div></div>';
-    if (_actionLabel) html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Action</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + escapeHtml(_actionLabel) + '</div></div>';
+    html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:11px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Grade</div><div style="font-size:18px;font-weight:800;color:' + _gCol + '">' + escapeHtml(_grade || '-') + '</div></div>';
+    html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:11px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Risk</div><div style="font-size:12px;font-weight:700;color:' + _rlCol + '">' + escapeHtml(_risk || '-') + '</div></div>';
+    html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:11px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">R/R</div><div style="font-size:16px;font-weight:800;color:#c4b5fd">' + rrVal + '</div></div>';
+    if (_actionLabel) html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:11px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Action</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + escapeHtml(_actionLabel) + '</div></div>';
     html += '</div>';
     var _riskFactors = getRiskReasonFactors(r).slice(0, 4);
     if (_riskFactors.length) {
@@ -10451,15 +10428,59 @@ function openScrDetail(r, type) {
     }
     // --- TRADING PLAN LEVELS (Premium grouped layout) ---
     html += '<div style="margin-bottom:16px;padding:14px;background:rgba(15,23,42,0.4);border:1px solid #1c2333;border-radius:12px">';
-    html += '<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Trading Plan</div>';
+    html += '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Trading Plan</div>';
     html += '<div class="scr-detail-levels" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
-    html += '<div style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#6b9fd8;margin-bottom:4px;font-weight:500">Entry 1</div><div style="font-size:15px;font-weight:700;color:#93c5fd">' + e1 + '</div></div>';
-    html += '<div style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#6b9fd8;margin-bottom:4px;font-weight:500">Entry 2</div><div style="font-size:15px;font-weight:700;color:#93c5fd">' + e2 + '</div></div>';
-    html += '<div style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#d87171;margin-bottom:4px;font-weight:500">Stop Loss</div><div style="font-size:15px;font-weight:700;color:#fca5a5">' + slVal + '</div></div>';
-    html += '<div style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#4ead8a;margin-bottom:4px;font-weight:500">Target 1</div><div style="font-size:15px;font-weight:700;color:#6ee7b7">' + t1 + '</div></div>';
-    html += '<div style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#4ead8a;margin-bottom:4px;font-weight:500">Target 2</div><div style="font-size:15px;font-weight:700;color:#6ee7b7">' + t2 + '</div></div>';
-    html += '<div style="background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#a78bfa;margin-bottom:4px;font-weight:500">Risk / Reward</div><div style="font-size:15px;font-weight:700;color:#c4b5fd">' + rrVal + '</div></div>';
+    html += '<div style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#6b9fd8;margin-bottom:4px;font-weight:500">Entry 1</div><div style="font-size:15px;font-weight:700;color:#93c5fd">' + e1 + '</div></div>';
+    html += '<div style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#6b9fd8;margin-bottom:4px;font-weight:500">Entry 2</div><div style="font-size:15px;font-weight:700;color:#93c5fd">' + e2 + '</div></div>';
+    html += '<div style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#d87171;margin-bottom:4px;font-weight:500">Stop Loss</div><div style="font-size:15px;font-weight:700;color:#fca5a5">' + slVal + '</div></div>';
+    html += '<div style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#4ead8a;margin-bottom:4px;font-weight:500">Target 1</div><div style="font-size:15px;font-weight:700;color:#6ee7b7">' + t1 + '</div></div>';
+    html += '<div style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#4ead8a;margin-bottom:4px;font-weight:500">Target 2</div><div style="font-size:15px;font-weight:700;color:#6ee7b7">' + t2 + '</div></div>';
+    html += '<div style="background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#a78bfa;margin-bottom:4px;font-weight:500">Risk / Reward</div><div style="font-size:15px;font-weight:700;color:#c4b5fd">' + rrVal + '</div></div>';
     html += '</div></div>';
+
+    // --- INDIKATOR & BUKTI TEKNIS (Evidence moved from default table) ---
+    html += '<div style="margin-bottom:14px;padding:12px;background:rgba(15,23,42,0.4);border:1px solid #1c2333;border-radius:10px">';
+    html += '<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px">Indikator & Bukti Teknis</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:6px;font-size:11px">';
+    var rsiVal = r.rsi14 != null ? Number(r.rsi14).toFixed(1) : (r.rsi != null ? Number(r.rsi).toFixed(1) : '—');
+    var volVal = r.volume_ratio_avg20 != null ? formatRatio(r.volume_ratio_avg20) : (r.volume_ratio_20d != null ? (r.volume_ratio_20d.toFixed(1) + 'x') : '—');
+    html += '<div style="padding:6px 8px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:6px"><span style="color:#6b7280;display:block;font-size:11px">RSI (14)</span><strong style="color:#d1d5db;font-size:12px">' + rsiVal + '</strong></div>';
+    html += '<div style="padding:6px 8px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:6px"><span style="color:#6b7280;display:block;font-size:11px">Vol / Avg20</span><strong style="color:#d1d5db;font-size:12px">' + volVal + '</strong></div>';
+    if (r.board) {
+        html += '<div style="padding:6px 8px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:6px"><span style="color:#6b7280;display:block;font-size:11px">Papan Bursa</span><strong style="color:#d1d5db;font-size:12px">' + escapeHtml(r.board) + '</strong></div>';
+    }
+    if (type === 'daytrade') {
+        var txStr = r.value_today ? (typeof formatTxValue === 'function' ? formatTxValue(r.value_today) : r.value_today) : '—';
+        html += '<div style="padding:6px 8px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:6px"><span style="color:#6b7280;display:block;font-size:11px">Tx Today</span><strong style="color:#d1d5db;font-size:12px">' + escapeHtml(txStr) + '</strong></div>';
+        html += '<div style="padding:6px 8px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:6px"><span style="color:#6b7280;display:block;font-size:11px">Pre-Spike</span><strong style="color:#38bdf8;font-size:12px">' + (r.prespike_score || 0) + '</strong></div>';
+        html += '<div style="padding:6px 8px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:6px"><span style="color:#6b7280;display:block;font-size:11px">Momentum</span><strong style="color:#c084fc;font-size:12px">' + (r.momentum_score || 0) + '</strong></div>';
+        if (r.time_plan) {
+            html += '<div style="padding:6px 8px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:6px"><span style="color:#6b7280;display:block;font-size:11px">Time Plan</span><strong style="color:#fbbf24;font-size:12px">' + escapeHtml(r.time_plan) + '</strong></div>';
+        }
+    }
+    html += '</div>';
+
+    // Bandarmologi Evidence Details in Modal
+    if (r.bandarmologi_badge || r.bandarmologi_score != null || r.bandar_status || r.bandar_score_bonus) {
+        var bdTitle = r.bandarmologi_badge || ((r.bandarmologi_score != null ? (r.bandarmologi_score >= 0 ? '+' : '') + r.bandarmologi_score : '') + (r.bandar_score_bonus ? ' (Bonus: +' + r.bandar_score_bonus + ')' : '') + ' Bandarmologi');
+        var bdBreakdown = r.bandarmologi_breakdown || r.bandarmologi_breakdown_text || r.broker_summary || 'Metrik akumulasi / distribusi bandar terdeteksi.';
+        html += '<div style="margin-top:8px;padding:8px 10px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:6px;font-size:11px">';
+        html += '<div style="font-weight:700;color:#6ee7b7;margin-bottom:2px">Bandarmologi Edge: ' + escapeHtml(bdTitle) + '</div>';
+        html += '<div style="color:#9ca3af;font-size:10px">' + escapeHtml(bdBreakdown) + '</div>';
+        html += '</div>';
+    }
+
+    // Pattern Personality Evidence Details in Modal
+    if (r.pattern_edge || r.pattern_personality || (typeof patternPersonalityBadgeHtml === 'function' && patternPersonalityBadgeHtml(r))) {
+        var patName = r.pattern_personality || (r.pattern_edge && r.pattern_edge.label) || 'Pola Personality Terdeteksi';
+        var patDesc = (r.pattern_edge && r.pattern_edge.description) || 'Setup memiliki konfluensi historis dengan probabilitas tinggi.';
+        html += '<div style="margin-top:6px;padding:8px 10px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:6px;font-size:11px">';
+        html += '<div style="font-weight:700;color:#818cf8;margin-bottom:2px">Pattern Edge: ' + escapeHtml(patName) + '</div>';
+        html += '<div style="color:#9ca3af;font-size:10px">' + escapeHtml(patDesc) + '</div>';
+        html += '</div>';
+    }
+    html += '</div>';
+
     if (window.PositionSizing && typeof window.PositionSizing.renderDetailSection === 'function') {
         html += window.PositionSizing.renderDetailSection(r);
     }
@@ -10623,7 +10644,7 @@ function renderKgCardGrid(results) {
         var volR = (r.volume_ratio != null && Number.isFinite(r.volume_ratio)) ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="kg-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(tierTitle) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span class="scr-chg-val" style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[11px] font-bold ' + tierCls + '" title="' + escapeHtml(tierTitle) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span class="scr-chg-val" style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         var scBreakdown = '';
         if (r.score_before_bandarmologi != null && r.bandar_score_bonus) {
@@ -10746,7 +10767,7 @@ function renderNkCardGrid(results) {
         var volR = (r.volume_ratio != null && Number.isFinite(r.volume_ratio)) ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="nk-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(tierTitle) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span class="scr-chg-val" style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[11px] font-bold ' + tierCls + '" title="' + escapeHtml(tierTitle) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span class="scr-chg-val" style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         var nkScBreakdown = '';
         if (r.score_before_bandarmologi != null && r.bandar_score_bonus) {
@@ -11336,7 +11357,7 @@ function renderScreenerTable(results) {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = screenerEmptyRowHtml(17, getPatternPersonalityEmptyMessage(STRICT_EMPTY_TEXT));
+        tbody.innerHTML = screenerEmptyRowHtml(11, getPatternPersonalityEmptyMessage(STRICT_EMPTY_TEXT));
         return;
     }
 
@@ -11350,10 +11371,6 @@ function renderScreenerTable(results) {
         var tierLabel = humanizeRawStatus(tierRaw);
         var tierClass = swingTierColor(r.swing_tier);
 
-        // Confidence color
-        var confLabel = r.confidence || '—';
-        var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-amber-400' : 'text-red-400')));
-
         // Score color
         var scoreColor = 'text-gray-400';
         if (r.score >= 80) scoreColor = 'text-emerald-400 font-bold';
@@ -11361,40 +11378,19 @@ function renderScreenerTable(results) {
         else if (r.score >= 50) scoreColor = 'text-amber-400';
         else scoreColor = 'text-red-400';
 
-        // Timing color & humanized label
-        var rawTiming = r.entry_timing || '—';
-        var timingLabel = humanizeRawStatus(r.entry_window_label || rawTiming);
-        var timingColor = 'text-gray-400';
-        if (rawTiming.indexOf('Masih dekat') >= 0) timingColor = 'text-emerald-400';
-        else if (rawTiming.indexOf('Tunggu breakout') >= 0) timingColor = 'text-blue-400';
-        else if (rawTiming.indexOf('Tunggu pullback') >= 0 || rawTiming.indexOf('WAIT_PULLBACK') >= 0) timingColor = 'text-orange-400';
-        else if (rawTiming.indexOf('telat') >= 0 || rawTiming.indexOf('chase') >= 0) timingColor = 'text-red-400';
-        else if (rawTiming.indexOf('Hindari') >= 0 || rawTiming.indexOf('AVOID') >= 0) timingColor = 'text-red-400';
-
-        // Direction color & humanized label
-        var rawDir = r.direction || '—';
-        var dirLabel = humanizeRawStatus(rawDir);
-        var dirColor = (rawDir.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((rawDir.indexOf('moderat') >= 0) ? 'text-blue-400' : ((rawDir.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((rawDir.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
-
         var rowPayload = escapeHtml(JSON.stringify(r));
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="openScrDetail(_kgCardData[\'' + r.ticker + '\']||' + rowPayload + ',\'konglo\')">';
-        html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
-        html += '<td class="px-2 py-2 text-gray-400 whitespace-nowrap text-[10px]">' + (r.group_code || '—') + '</td>';
-        html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + escapeHtml(tierLabel) + '</span></td>';
-        html += '<td class="px-2 py-2 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
-        html += '<td class="px-2 py-2 text-center tabular-nums ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + bandarScoreBadgeHtml(r) + patternPersonalityBadgeHtml(r) + '</td>';
+        html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '<span class="inline-block ml-1">' + freshnessChipHtml(r) + '</span></td>';
+        html += '<td class="px-2 py-2 text-gray-400 whitespace-nowrap text-xs">' + (r.group_code || '—') + '</td>';
+        html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-xs font-bold ' + tierClass + '">' + escapeHtml(tierLabel) + '</span></td>';
+        html += '<td class="px-2 py-2 text-center tabular-nums font-bold ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200 tabular-nums whitespace-nowrap">' + (r.last_price ? formatPrice(r.last_price) : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right tabular-nums whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 tabular-nums whitespace-nowrap">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 tabular-nums whitespace-nowrap">' + (r.volume_ratio_avg20 != null ? formatRatio(r.volume_ratio_avg20) : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 tabular-nums whitespace-nowrap text-[10px]">' + ((r.entry_low != null && r.entry_high != null) ? (formatPrice(r.entry_low) + '-' + formatPrice(r.entry_high)) : '—') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 tabular-nums whitespace-nowrap text-xs">' + ((r.entry_low != null && r.entry_high != null) ? (formatPrice(r.entry_low) + '-' + formatPrice(r.entry_high)) : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right text-red-400/80 tabular-nums whitespace-nowrap">' + (r.stop_loss ? formatPrice(r.stop_loss) : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right text-emerald-400/80 tabular-nums whitespace-nowrap">' + (r.tp1 ? formatPrice(r.tp1) : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-emerald-400/60 tabular-nums whitespace-nowrap">' + (r.tp2 ? formatPrice(r.tp2) : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 tabular-nums whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '—') + '</td>';
-        html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + timingColor + '" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml(timingLabel) + '</td>';
-        html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + escapeHtml(dirLabel) + '</td>';
-        html += '<td class="px-2 py-2 text-left text-gray-500 whitespace-nowrap text-[10px] max-w-[120px] truncate" title="' + escapeHtml((r.status_reason || '') + (r.invalidation ? ' | ' + r.invalidation : '')) + '">' + escapeHtml(humanizeRawStatus(r.status_reason || r.invalidation || '—')) + '</td>';
         html += '</tr>';
     });
     tbody.innerHTML = html;
@@ -11788,7 +11784,7 @@ function renderNkScreenerTable(results) {
     if (!tbody) return;
 
     if (!results || results.length === 0) {
-        tbody.innerHTML = screenerEmptyRowHtml(18, STRICT_EMPTY_TEXT);
+        tbody.innerHTML = screenerEmptyRowHtml(11, STRICT_EMPTY_TEXT);
         return;
     }
 
@@ -11798,7 +11794,7 @@ function renderNkScreenerTable(results) {
         filtered = filtered.filter(function(r) { return r.status === _nkScreenerFilter || r.swing_tier === _nkScreenerFilter; });
     }
     if (filtered.length === 0) {
-        tbody.innerHTML = screenerEmptyRowHtml(18, getPatternPersonalityEmptyMessage(STRICT_EMPTY_TEXT));
+        tbody.innerHTML = screenerEmptyRowHtml(11, getPatternPersonalityEmptyMessage(STRICT_EMPTY_TEXT));
         return;
     }
 
@@ -11817,14 +11813,6 @@ function renderNkScreenerTable(results) {
         var tierLabel = humanizeRawStatus(tierRaw);
         var tierClass = swingTierColor(r.swing_tier);
 
-        // Confidence color
-        var confLabel = r.confidence || '—';
-        var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-amber-400' : 'text-red-400')));
-
-        // RSI display
-        var rsiStr = '—';
-        if (r.rsi14 !== null && r.rsi14 !== undefined) rsiStr = Number(r.rsi14).toFixed(1);
-
         // Entry area
         var entryStr = '—';
         if (r.entry_low != null && r.entry_high != null) entryStr = formatPrice(r.entry_low) + ' - ' + formatPrice(r.entry_high);
@@ -11833,41 +11821,19 @@ function renderNkScreenerTable(results) {
         var gradeStr = r.grade || '';
         var scoreLabel = (r.score || 0) + (gradeStr ? ' (' + gradeStr + ')' : '');
 
-        // Timing color & humanized label
-        var rawTiming = r.entry_timing || '—';
-        var timingLabel = humanizeRawStatus(r.entry_window_label || rawTiming);
-        var timingColor = 'text-gray-400';
-        if (rawTiming.indexOf('Masih dekat') >= 0) timingColor = 'text-emerald-400';
-        else if (rawTiming.indexOf('Tunggu breakout') >= 0) timingColor = 'text-blue-400';
-        else if (rawTiming.indexOf('Tunggu pullback') >= 0 || rawTiming.indexOf('WAIT_PULLBACK') >= 0) timingColor = 'text-orange-400';
-        else if (rawTiming.indexOf('telat') >= 0 || rawTiming.indexOf('chase') >= 0) timingColor = 'text-red-400';
-        else if (rawTiming.indexOf('Hindari') >= 0 || rawTiming.indexOf('AVOID') >= 0) timingColor = 'text-red-400';
-
-        // Direction color & humanized label
-        var rawDir = r.direction || '—';
-        var dirLabel = humanizeRawStatus(rawDir);
-        var dirColor = (rawDir.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((rawDir.indexOf('moderat') >= 0) ? 'text-blue-400' : ((rawDir.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((rawDir.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
-
         var rowPayload = escapeHtml(JSON.stringify(r));
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="openScrDetail(_nkCardData[\'' + r.ticker + '\']||' + rowPayload + ',\'nonkonglo\')">';
-        html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[11px] sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px] tabular-nums">' + (r.rank || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
-        html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + escapeHtml(tierLabel) + '</span></td>';
-        html += '<td class="px-2 py-1.5 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
-        html += '<td class="px-2 py-1.5 text-center tabular-nums ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + bandarScoreBadgeHtml(r) + patternPersonalityBadgeHtml(r) + '</td>';
+        html += '<td class="px-2 py-1.5 text-center text-gray-500 text-xs sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px] tabular-nums">' + (r.rank || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<span class="inline-block ml-1">' + freshnessChipHtml(r) + '</span></td>';
+        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-xs font-bold ' + tierClass + '">' + escapeHtml(tierLabel) + '</span></td>';
+        html += '<td class="px-2 py-1.5 text-center tabular-nums font-bold ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200 tabular-nums whitespace-nowrap">' + (r.last_price ? formatPrice(r.last_price) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right tabular-nums whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 tabular-nums whitespace-nowrap">' + rsiStr + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 tabular-nums whitespace-nowrap">' + (r.volume_ratio_avg20 != null ? formatRatio(r.volume_ratio_avg20) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 tabular-nums whitespace-nowrap text-[10px]">' + entryStr + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-300 tabular-nums whitespace-nowrap text-xs">' + entryStr + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-red-400 tabular-nums whitespace-nowrap">' + (r.stop_loss ? formatPrice(r.stop_loss) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400 tabular-nums whitespace-nowrap">' + (r.tp1 ? formatPrice(r.tp1) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400 tabular-nums whitespace-nowrap">' + (r.tp2 ? formatPrice(r.tp2) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold tabular-nums whitespace-nowrap">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + timingColor + '" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml(timingLabel) + '</td>';
-        html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + escapeHtml(dirLabel) + '</td>';
-        html += '<td class="px-2 py-1.5 text-left text-gray-500 text-[10px] whitespace-nowrap overflow-hidden max-w-[150px] truncate" title="' + escapeHtml(r.status_reason || '') + '">' + escapeHtml(humanizeRawStatus((r.status_reason || '').slice(0, 50) || '—')) + '</td>';
         html += '</tr>';
     });
     tbody.innerHTML = html;

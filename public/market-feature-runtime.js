@@ -443,8 +443,8 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             }
         }
         if (fibStripEl) {
-            var fHtml = '<div class="chart-fib-header"><span class="text-amber-400/70 text-[9px]">Fib Levels (lihat chart)</span>';
-            if (fibQuote.nearestLabel) fHtml += '<span class="text-gray-500 text-[9px]">Nearest: <b class="text-amber-400/80">' + fibQuote.nearestLabel + '</b></span>';
+            var fHtml = '<div class="chart-fib-header"><span class="text-amber-400/70 text-[11px] ac-auxiliary-meta">Fib Levels (lihat chart)</span>';
+            if (fibQuote.nearestLabel) fHtml += '<span class="text-gray-500 text-[11px] ac-auxiliary-meta">Nearest: <b class="text-amber-400/80">' + fibQuote.nearestLabel + '</b></span>';
             fHtml += '</div><div class="chart-fib-grid">';
             if (fibQuote.levels.fib382 != null) fHtml += '<div class="chart-fib-item"><span>38.2%</span><b>' + fibQuote.levels.fib382 + '</b></div>';
             if (fibQuote.levels.fib500 != null) fHtml += '<div class="chart-fib-item"><span>50%</span><b>' + fibQuote.levels.fib500 + '</b></div>';
@@ -1406,12 +1406,12 @@ function exportKongloScreenerPDF() {
         startY += 4;
 
         // Extract table data from DOM
-        var heads = [['Ticker', 'Group', 'Tier', 'Exec', 'Setup', 'Last', 'Chg%', 'RSI', 'Vol/Avg20', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Timing', 'Arah', 'Catatan']];
+        var heads = [['Ticker', 'Grup', 'Tier', 'Skor', 'Last', 'Chg%', 'Vol/Avg', 'Entry Area', 'SL', 'TP', 'RR']];
         var body = [];
         var rows = document.querySelectorAll('#screenerTableBody tr');
         rows.forEach(function(row) {
             var cells = row.querySelectorAll('td');
-            if (cells.length < 14) return;
+            if (cells.length < 10) return;
             var rowData = [];
             for (var i = 0; i < cells.length; i++) {
                 rowData.push((cells[i].textContent || '').trim());
@@ -1425,9 +1425,9 @@ function exportKongloScreenerPDF() {
             body: body,
             theme: 'grid',
             margin: { left: 5, right: 5 },
-            styles: { fontSize: 5.5, cellPadding: 1.2, lineColor: [40, 50, 60], lineWidth: 0.1, textColor: [50, 50, 50], overflow: 'linebreak' },
-            headStyles: { fillColor: [20, 30, 40], textColor: [180, 200, 210], fontSize: 6, fontStyle: 'bold', cellPadding: 1.5 },
-            columnStyles: { 16: { cellWidth: 25 } },
+            styles: { fontSize: 6.5, cellPadding: 1.2, lineColor: [40, 50, 60], lineWidth: 0.1, textColor: [50, 50, 50], overflow: 'linebreak' },
+            headStyles: { fillColor: [20, 30, 40], textColor: [180, 200, 210], fontSize: 7, fontStyle: 'bold', cellPadding: 1.5 },
+            columnStyles: { 0: { cellWidth: 18 } },
             didParseCell: function(data) {
                 // Color status cells
                 if (data.column.index === 2 && data.section === 'body') {
@@ -1468,12 +1468,12 @@ function exportNonKongloScreenerPDF() {
         if (metaText) { doc.text(metaText, 5, startY); startY += 4; }
 
         // Extract table data from DOM
-        var heads = [['#', 'Ticker', 'Board', 'Tier', 'Exec', 'Setup', 'Last', 'Chg%', 'RSI', 'Vol/Avg20', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Timing', 'Arah', 'Catatan']];
+        var heads = [['#', 'Ticker', 'Tier', 'Skor', 'Last', 'Chg%', 'Vol/Avg', 'Entry Area', 'SL', 'TP', 'RR']];
         var body = [];
         var rows = document.querySelectorAll('#nkScreenerTableBody tr');
         rows.forEach(function(row) {
             var cells = row.querySelectorAll('td');
-            if (cells.length < 16) return;
+            if (cells.length < 10) return;
             var rowData = [];
             for (var i = 0; i < cells.length; i++) {
                 rowData.push((cells[i].textContent || '').trim());
@@ -1487,11 +1487,11 @@ function exportNonKongloScreenerPDF() {
             body: body,
             theme: 'grid',
             margin: { left: 5, right: 5 },
-            styles: { fontSize: 5, cellPadding: 1, lineColor: [40, 50, 60], lineWidth: 0.1, textColor: [50, 50, 50], overflow: 'linebreak' },
-            headStyles: { fillColor: [20, 30, 40], textColor: [180, 200, 210], fontSize: 5.5, fontStyle: 'bold', cellPadding: 1.3 },
-            columnStyles: { 0: { cellWidth: 6 }, 17: { cellWidth: 22 } },
+            styles: { fontSize: 6.5, cellPadding: 1.2, lineColor: [40, 50, 60], lineWidth: 0.1, textColor: [50, 50, 50], overflow: 'linebreak' },
+            headStyles: { fillColor: [20, 30, 40], textColor: [180, 200, 210], fontSize: 7, fontStyle: 'bold', cellPadding: 1.5 },
+            columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 18 } },
             didParseCell: function(data) {
-                if (data.column.index === 3 && data.section === 'body') {
+                if (data.column.index === 2 && data.section === 'body') {
                     var val = (data.cell.raw || '').toUpperCase();
                     if (val.indexOf('READY') >= 0 || val.indexOf('A+') >= 0 || val.indexOf('TRADE') >= 0) data.cell.styles.textColor = [16, 185, 129];
                     else if (val.indexOf('WATCH') >= 0 && val.indexOf('WAIT') < 0) data.cell.styles.textColor = [59, 130, 246];

@@ -337,3 +337,133 @@ test('WAVE-2A-08: Table-First Screener hides Card-mode toggle bars in v2 present
     'Day Trade view toggle wrapper #dtViewToggleWrap must be hidden in v2'
   );
 });
+
+test('WAVE-2A-09: No column walls — default table schemas strictly <= 12 columns per mode', () => {
+  // Count <th> elements in the main table thead rows
+  function getThCount(wrapperId) {
+    const wrapIdx = html.indexOf(`id="${wrapperId}"`);
+    assert.ok(wrapIdx > -1, `${wrapperId} must exist`);
+    const theadStart = html.indexOf('<thead', wrapIdx);
+    const theadEnd = html.indexOf('</thead>', theadStart);
+    const theadHtml = html.slice(theadStart, theadEnd);
+    const thMatches = theadHtml.match(/<th\b/g);
+    return thMatches ? thMatches.length : 0;
+  }
+
+  const kgCols = getThCount('screenerTableWrap');
+  const nkCols = getThCount('nkScreenerTableWrap');
+  const dtCols = getThCount('dtScreenerTableWrap');
+
+  // Must not remain 17 / 18 / 22 column walls
+  assert.notEqual(kgCols, 17, 'Konglo must not remain 17 columns');
+  assert.notEqual(nkCols, 18, 'Non-Konglo must not remain 18 columns');
+  assert.notEqual(dtCols, 22, 'Day Trade must not remain 22 columns');
+
+  // Must be strictly <= 12 columns for fast screening
+  assert.equal(kgCols, 11, 'Konglo default table must have exactly 11 columns');
+  assert.equal(nkCols, 11, 'Non-Konglo default table must have exactly 11 columns');
+  assert.equal(dtCols, 12, 'Day Trade default table must have exactly 12 columns');
+});
+
+test('WAVE-2A-10: Day Trade canonical dense row height rhythm without stacked badge soup', () => {
+  // Skor cell must not contain stacked dtBdBadgeHtml or dtPatternBadgeHtml inside the table row
+  assert.doesNotMatch(
+    dtRuntime,
+    /getDtScoreClass\(r\.daytrade_score\)\s*\+\s*['"]>[^<]*\+?\s*dtBdBadgeHtml/,
+    'Day Trade table row must not stack Bandarmologi badges in the score cell'
+  );
+  assert.doesNotMatch(
+    dtRuntime,
+    /getDtScoreClass\(r\.daytrade_score\)\s*\+\s*['"]>[^<]*\+?\s*dtPatternBadgeHtml/,
+    'Day Trade table row must not stack Pattern badges in the score cell'
+  );
+
+  // CSS targets canonical 38px dense row height
+  assert.match(
+    theme,
+    /#screenerContent\[data-ui-version="v2"\]\s+tbody\s+tr\s*\{[^}]*height:\s*38px;/,
+    'Screener v2 workstation must enforce canonical 38px dense row height'
+  );
+});
+
+test('WAVE-2A-11: Zero sub-11px font sizes (text-[9px]) in migrated Screener scopes', () => {
+  // Check index.html within #screenerContent
+  const scStart = html.indexOf('id="screenerContent"');
+  assert.ok(scStart > -1);
+  const scEnd = html.indexOf('<!-- END SCREENER CONTENT -->') > -1
+    ? html.indexOf('<!-- END SCREENER CONTENT -->')
+    : html.indexOf('id="page-portfolio"');
+  const scSection = html.slice(scStart, scEnd);
+  assert.doesNotMatch(scSection, /text-\[9px\]/, 'index.html screener content must not use text-[9px]');
+
+  // Check daytrade-runtime.js
+  assert.doesNotMatch(dtRuntime, /text-\[9px\]/, 'daytrade-runtime.js must not use text-[9px]');
+
+  // Check market-feature-runtime.js
+  const mfRuntime = fs.readFileSync(path.join(ROOT, 'public', 'market-feature-runtime.js'), 'utf8');
+  assert.doesNotMatch(mfRuntime, /text-\[9px\]/, 'market-feature-runtime.js must not use text-[9px]');
+});
+
+test('WAVE-2A-12: Canonical v2 semantic token usage & focus primitive', () => {
+  // Table wrap containers must not use hard-coded focus:ring-emerald-500
+  assert.doesNotMatch(
+    html,
+    /id="(?:screener|nkScreener|dtScreener)TableWrap"[^>]*focus:ring-emerald-500/,
+    'Table wraps must not rely on focus:ring-emerald-500'
+  );
+
+  // ui-theme.css provides canonical focus primitive using --ac-focus
+  assert.match(
+    theme,
+    /#screenerContent\[data-ui-version="v2"\]\s+#[a-zA-Z0-9_]+TableWrap:focus-visible[\s\S]*?var\(--ac-focus\)/,
+    'Screener table wrap focus must consume var(--ac-focus)'
+  );
+
+  // Semantic positive / negative colors are defined under #screenerContent[data-ui-version="v2"]
+  assert.match(
+    theme,
+    /#screenerContent\[data-ui-version="v2"\]\s+\.text-emerald-400[\s\S]*?var\(--ac-positive\)/,
+    'Screener positive color must map to var(--ac-positive)'
+  );
+  assert.match(
+    theme,
+    /#screenerContent\[data-ui-version="v2"\]\s+\.text-red-400[\s\S]*?var\(--ac-negative\)/,
+    'Screener negative color must map to var(--ac-negative)'
+  );
+});
+
+test('WAVE-2A-13: Mobile touch target contract (>= 44px)', () => {
+  // CSS media query enforces >= 44px min-height for interactive controls
+  assert.match(
+    theme,
+    /@media\s*\(max-width:\s*640px\)[\s\S]*?\.ac-segment[\s\S]*?min-height:\s*44px/,
+    'Mobile .ac-segment must enforce >= 44px min-height'
+  );
+  assert.match(
+    theme,
+    /@media\s*\(max-width:\s*640px\)[\s\S]*?\.screener-tab[\s\S]*?min-height:\s*44px/,
+    'Mobile screener tabs must enforce >= 44px min-height'
+  );
+});
+
+test('WAVE-2A-14: Secondary indicators and evidence preserved in disclosure surface (openScrDetail)', () => {
+  // openScrDetail function in index.html renders secondary indicators
+  assert.match(html, /function openScrDetail\(/, 'openScrDetail function must exist');
+  assert.match(html, /Indikator\s+(?:&|&amp;)\s+Bukti Teknis/, 'openScrDetail must render Indikator & Bukti Teknis section');
+  assert.match(html, /RSI \(14\)/, 'openScrDetail must display RSI');
+  assert.match(html, /Vol \/ Avg20/, 'openScrDetail must display Volume Ratio');
+  assert.match(html, /Papan Bursa/, 'openScrDetail must display Board info');
+  assert.match(html, /Pre-Spike/, 'openScrDetail must display Pre-Spike');
+  assert.match(html, /Momentum/, 'openScrDetail must display Momentum');
+  assert.match(html, /Time Plan/, 'openScrDetail must display Time Plan');
+});
+
+test('WAVE-2A-15: Truthful price and freshness language', () => {
+  // No "Live tick" or misleading exchange session claims in screener user-facing strings
+  const scStart = html.indexOf('id="screenerContent"');
+  const scEnd = html.indexOf('id="page-portfolio"');
+  const scSection = html.slice(scStart, scEnd);
+  assert.doesNotMatch(scSection, /Live\s+tick/i, 'Screener must not use "Live tick"');
+  assert.doesNotMatch(scSection, /Real-time\s+streaming/i, 'Screener must not claim real-time streaming');
+});
+
