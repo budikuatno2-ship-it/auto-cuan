@@ -268,14 +268,15 @@ async function runQa() {
     await takeShot('12-mobile-390x844-light-home.png', 'Mobile 390x844 Light Home');
     await measureShell('390x844-light-home', 'light');
 
-    // 4C. Mobile Drawer Open
+    // 4C. Dark Mobile Drawer Open
+    await initAuthenticatedState('dark');
     await page.evaluate(() => {
       const toggle = document.getElementById('workspaceSidebarToggle');
       if (toggle) toggle.click();
     });
     await new Promise(r => setTimeout(r, 400));
-    await takeShot('13-mobile-390x844-dark-drawer-open.png', 'Mobile 390x844 Drawer Open');
-    await measureShell('390x844-drawer-open', 'dark');
+    await takeShot('13-mobile-390x844-dark-drawer-open.png', 'Mobile 390x844 Dark Drawer Open');
+    await measureShell('390x844-dark-drawer-open', 'dark');
 
     // Close mobile drawer
     await page.evaluate(() => {
