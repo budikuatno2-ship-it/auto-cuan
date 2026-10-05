@@ -365,10 +365,12 @@
         return;
       }
       root.ensureRankingTableLoaded();
-    } else if (parentTab === 'financial' || parentTab === 'market-structure') {
+    } else if (parentTab === 'financial') {
       var activeResearchTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
         ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
-      root.loadFinancialStructureTab(parentTab, activeResearchTicker);
+      root.loadFinancialStructureTab('financial', activeResearchTicker);
+    } else if (parentTab === 'market-structure') {
+      root.loadStrukturPasarUniverse();
     } else if (parentTab === 'bandarmologi') {
       var currentSection = (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.getBandarSection === 'function')
         ? root.BandarmologiRuntime.getBandarSection() : 'summary';
@@ -489,32 +491,623 @@
     }
   }
 
+  var MARKET_STRUCTURE_LOW_FF_REFERENCE_PCT = 15;
+  root.MARKET_STRUCTURE_LOW_FF_REFERENCE_PCT = MARKET_STRUCTURE_LOW_FF_REFERENCE_PCT;
+
+  var ENUM_PRESENTATION_MAP = {
+    'NORMAL': 'Normal',
+    'CAUTION': 'Perhatian',
+    'UNKNOWN': 'Belum diketahui',
+    'STRUCTURE_VERIFIED': 'Struktur terverifikasi',
+    'LOW_FREE_FLOAT': 'Free Float rendah',
+    'HIGH_SHAREHOLDING_CONCENTRATION': 'Konsentrasi kepemilikan tinggi',
+    'FREE_FLOAT_VERIFIED_HSC_UNKNOWN': 'Free Float terverifikasi, HSC belum diketahui',
+    'HSC_VERIFIED_FREE_FLOAT_UNKNOWN': 'HSC terverifikasi, Free Float belum diketahui',
+    'DATA_INCOMPLETE': 'Data belum lengkap',
+    'NOT_EVALUATED': 'Tidak dievaluasi'
+  };
+
+  function formatEnumPresentation(val) {
+    if (!val) return '—';
+    var k = String(val).trim().toUpperCase();
+    if (Object.prototype.hasOwnProperty.call(ENUM_PRESENTATION_MAP, k)) {
+      return ENUM_PRESENTATION_MAP[k];
+    }
+    return 'Status belum dikenali';
+  }
+
   function researchHasNumber(value) {
     return value != null && String(value).trim() !== '' && Number.isFinite(Number(value));
   }
   var researchGeneration = 0;
+  var financialCache = {};
+  var financialRenderedTicker = null;
+
+  var marketStructureUniverse = [];
+  var marketStructureFilter = 'all';
+  var marketStructureSort = 'free_float_asc';
+  var marketStructureSearchQuery = '';
+  var marketStructureSelectedTicker = null;
+  var marketStructureLoading = false;
+  var marketStructureLastFocusedElement = null;
+  var marketStructureUniverseLoaded = false;
+  var marketStructureBoundEvents = false;
+  var marketStructureDetailToken = 0;
+
+  function getFilteredMarketStructureItems() {
+    var items = marketStructureUniverse.slice();
+
+    // 1. Search Query filter
+    if (marketStructureSearchQuery) {
+      var q = marketStructureSearchQuery.trim().toUpperCase();
+      items = items.filter(function (it) {
+        return it.ticker && it.ticker.toUpperCase().includes(q);
+      });
+    }
+
+    // 2. Category Chip filter
+    if (marketStructureFilter === 'low-ff') {
+      // Strict < reference rule: only valid numbers where free_float_pct < MARKET_STRUCTURE_LOW_FF_REFERENCE_PCT.
+      items = items.filter(function (it) {
+        return researchHasNumber(it.free_float_pct) && Number(it.free_float_pct) < MARKET_STRUCTURE_LOW_FF_REFERENCE_PCT;
+      });
+    } else if (marketStructureFilter === 'hsc') {
+      // Explicitly flagged HSC only
+      items = items.filter(function (it) {
+        return it.hsc_flag === true;
+      });
+    } else if (marketStructureFilter === 'incomplete') {
+      // INCOMPLETE_RECORD_RULE
+      items = items.filter(function (it) {
+        return it.free_float_pct == null ||
+          it.hsc_flag == null ||
+          it.market_structure_status === 'DATA_INCOMPLETE' ||
+          it.market_structure_guard === 'UNKNOWN';
+      });
+    }
+
+    // 3. Sorting
+    items.sort(function (a, b) {
+      if (marketStructureSort === 'free_float_asc') {
+        var aHas = researchHasNumber(a.free_float_pct);
+        var bHas = researchHasNumber(b.free_float_pct);
+        if (aHas && bHas) {
+          var diff = Number(a.free_float_pct) - Number(b.free_float_pct);
+          if (diff !== 0) return diff;
+          return a.ticker.localeCompare(b.ticker);
+        }
+        // Missing free float values MUST sort LAST
+        if (aHas && !bHas) return -1;
+        if (!aHas && bHas) return 1;
+        return a.ticker.localeCompare(b.ticker);
+      } else if (marketStructureSort === 'ticker_asc') {
+        return a.ticker.localeCompare(b.ticker);
+      } else if (marketStructureSort === 'hsc_first') {
+        // Flagged (true) -> 0, Non-flagged (false) -> 1, Unknown (null/other) -> 2
+        var aRank = a.hsc_flag === true ? 0 : (a.hsc_flag === false ? 1 : 2);
+        var bRank = b.hsc_flag === true ? 0 : (b.hsc_flag === false ? 1 : 2);
+        if (aRank !== bRank) return aRank - bRank;
+        return a.ticker.localeCompare(b.ticker);
+      }
+      return 0;
+    });
+
+    return items;
+  }
+
+  function renderMarketStructureTable() {
+    var tbody = byId('marketStructureTableBody');
+    if (!tbody) return;
+
+    var items = getFilteredMarketStructureItems();
+    if (items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="ac-table-empty text-center py-8 text-xs">Tidak ada saham yang sesuai dengan filter.</td></tr>';
+      return;
+    }
+
+    var html = items.map(function (item) {
+      var isSelected = marketStructureSelectedTicker && marketStructureSelectedTicker.toUpperCase() === item.ticker.toUpperCase();
+      var ffStr = researchHasNumber(item.free_float_pct) ? researchNumber(item.free_float_pct, 2) + '%' : '—';
+
+      var hscBadge;
+      if (item.hsc_flag === true) {
+        hscBadge = '<span class="ac-badge ac-badge-warning">HSC Aktif</span>';
+      } else if (item.hsc_flag === false) {
+        hscBadge = '<span class="ac-badge ac-badge-neutral">Non-HSC</span>';
+      } else {
+        hscBadge = '<span class="ac-badge ac-badge-dim">Belum terverifikasi</span>';
+      }
+
+      var guardBadge;
+      var g = String(item.market_structure_guard || '').toUpperCase();
+      var guardLabel = formatEnumPresentation(item.market_structure_guard);
+      if (g === 'NORMAL') {
+        guardBadge = '<span class="ac-badge ac-badge-good">' + escapeHtml(guardLabel) + '</span>';
+      } else if (g === 'CAUTION') {
+        guardBadge = '<span class="ac-badge ac-badge-warning">' + escapeHtml(guardLabel) + '</span>';
+      } else {
+        guardBadge = '<span class="ac-badge ac-badge-dim">' + escapeHtml(guardLabel) + '</span>';
+      }
+
+      var dateStr = item.as_of_trade_date || (item.free_float_as_of || '—');
+
+      return '<tr class="ac-table-row cursor-pointer transition' + (isSelected ? ' is-selected' : '') + '" data-ticker="' + escapeHtml(item.ticker) + '" tabindex="0" role="button" aria-pressed="' + (isSelected ? 'true' : 'false') + '" aria-label="Lihat struktur pasar ' + escapeHtml(item.ticker) + '">' +
+        '<td class="py-2.5 px-3 font-mono font-bold ac-cell-ticker">' + escapeHtml(item.ticker) + '</td>' +
+        '<td class="py-2.5 px-3 font-mono ac-cell-value">' + ffStr + '</td>' +
+        '<td class="py-2.5 px-3">' + hscBadge + '</td>' +
+        '<td class="py-2.5 px-3">' + guardBadge + '</td>' +
+        '<td class="py-2.5 px-3 text-xs ac-cell-date">' + escapeHtml(dateStr) + '</td>' +
+      '</tr>';
+    }).join('');
+
+    tbody.innerHTML = html;
+
+    var rows = tbody.querySelectorAll('tr[data-ticker]');
+    rows.forEach(function (row) {
+      var t = row.getAttribute('data-ticker');
+      row.addEventListener('click', function () {
+        selectMarketStructureRow(t, row, true);
+      });
+      row.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectMarketStructureRow(t, row, true);
+        }
+      });
+    });
+  }
+
+  function populateMarketStructureDetail(item) {
+    if (!item) return;
+
+    var ffText = researchHasNumber(item.free_float_pct) ? researchNumber(item.free_float_pct, 2) + '%' : '—';
+    var ffAsOfText = item.free_float_as_of ? 'As of ' + item.free_float_as_of : 'As of —';
+    var hscText = item.hsc_flag === true ? 'HSC Aktif' : (item.hsc_flag === false ? 'Non-HSC' : 'Belum terverifikasi');
+    var hscAsOfText = item.hsc_as_of ? 'As of ' + item.hsc_as_of : 'As of —';
+    var guardText = formatEnumPresentation(item.market_structure_guard);
+    var statusText = formatEnumPresentation(item.market_structure_status);
+    var ffSourceText = item.free_float_source || 'Belum tersedia';
+    var hscSourceText = item.hsc_source || 'Belum tersedia';
+    var refPct = researchHasNumber(item.low_free_float_reference_pct) ? Number(item.low_free_float_reference_pct) : MARKET_STRUCTURE_LOW_FF_REFERENCE_PCT;
+    var refText = refPct + '%';
+    var complianceText = formatEnumPresentation(item.regulatory_compliance_status);
+    var noteText = item.market_structure_note || 'Data struktur pasar belum lengkap.';
+
+    // Desktop elements
+    researchText('marketStructureDetailTickerBadge', item.ticker);
+    researchText('marketStructureDetailTitle', 'Detail Struktur ' + item.ticker);
+    researchText('marketStructureFreeFloat', ffText);
+    researchText('marketStructureFreeFloatAsOf', ffAsOfText);
+    researchText('marketStructureHsc', hscText);
+    researchText('marketStructureHscAsOf', hscAsOfText);
+    researchText('marketStructureGuard', guardText);
+    researchText('marketStructureStatus', statusText);
+    researchText('marketStructureFreeFloatSource', ffSourceText);
+    researchText('marketStructureHscSource', hscSourceText);
+    researchText('marketStructureReference', refText);
+    researchText('marketStructureCompliance', complianceText);
+    researchText('marketStructureNote', noteText);
+
+    // Mobile sheet elements (Dedicated IDs to prevent duplicate IDs in DOM)
+    researchText('marketStructureSheetTickerBadge', item.ticker);
+    researchText('marketStructureSheetTitle', 'Detail Struktur Pasar — ' + item.ticker);
+    researchText('marketStructureSheetFreeFloat', ffText);
+    researchText('marketStructureSheetFreeFloatAsOf', ffAsOfText);
+    researchText('marketStructureSheetHsc', hscText);
+    researchText('marketStructureSheetHscAsOf', hscAsOfText);
+    researchText('marketStructureSheetGuard', guardText);
+    researchText('marketStructureSheetStatus', statusText);
+    researchText('marketStructureSheetFreeFloatSource', ffSourceText);
+    researchText('marketStructureSheetHscSource', hscSourceText);
+    researchText('marketStructureSheetReference', refText);
+    researchText('marketStructureSheetCompliance', complianceText);
+    researchText('marketStructureSheetNote', noteText);
+
+    var content = byId('marketStructureDataContent');
+    if (content) content.hidden = false;
+  }
+
+  function openMarketStructureMobileSheet(ticker) {
+    var sheet = byId('marketStructureDetailSheet');
+    if (!sheet) return;
+    sheet.hidden = false;
+
+    var bgWrapper = byId('marketStructureBackgroundWrapper') || byId('marketStructureMainRegion');
+    if (bgWrapper) {
+      bgWrapper.setAttribute('aria-hidden', 'true');
+      try { bgWrapper.inert = true; } catch (_) {}
+    }
+
+    var closeBtn = byId('marketStructureSheetClose');
+    if (closeBtn && typeof closeBtn.focus === 'function') {
+      try { closeBtn.focus(); } catch (_) {}
+    }
+  }
+
+  function closeMarketStructureMobileSheet() {
+    var sheet = byId('marketStructureDetailSheet');
+    if (!sheet) return;
+    sheet.hidden = true;
+
+    var bgWrapper = byId('marketStructureBackgroundWrapper') || byId('marketStructureMainRegion');
+    if (bgWrapper) {
+      bgWrapper.removeAttribute('aria-hidden');
+      try { bgWrapper.inert = false; } catch (_) {}
+    }
+  }
+
+  function selectMarketStructureRow(ticker, originElement, syncCockpit) {
+    if (!ticker) return;
+    ticker = ticker.trim().toUpperCase();
+    marketStructureSelectedTicker = ticker;
+    if (originElement) {
+      marketStructureLastFocusedElement = originElement;
+    }
+
+    var tbody = byId('marketStructureTableBody');
+    if (tbody) {
+      var rows = tbody.querySelectorAll('tr[data-ticker]');
+      rows.forEach(function (row) {
+        var isThis = row.getAttribute('data-ticker') === ticker;
+        if (isThis) {
+          row.classList.add('is-selected');
+          row.setAttribute('aria-pressed', 'true');
+        } else {
+          row.classList.remove('is-selected');
+          row.setAttribute('aria-pressed', 'false');
+        }
+      });
+    }
+
+    var item = marketStructureUniverse.find(function (it) {
+      return it.ticker && it.ticker.toUpperCase() === ticker;
+    });
+
+    if (item) {
+      populateMarketStructureDetail(item);
+    }
+
+    var isMobile = (typeof window !== 'undefined' && window.innerWidth < 1024);
+    var pane = byId('marketStructureDetailPane');
+    var sheet = byId('marketStructureDetailSheet');
+
+    if (isMobile) {
+      if (pane) pane.hidden = true;
+      openMarketStructureMobileSheet(ticker);
+    } else {
+      closeMarketStructureMobileSheet();
+      if (pane) pane.hidden = false;
+    }
+
+    if (syncCockpit && root.activeTicker !== ticker) {
+      root.activeTicker = ticker;
+      if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
+        root.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: false, preserveTab: true, runAnalysis: false });
+      }
+    }
+
+    // Lazy load authoritative single-ticker context with race condition protection
+    var currentDetailToken = ++marketStructureDetailToken;
+    fetch('/api/quote?action=daily-market-context&ticker=' + encodeURIComponent(ticker), {
+      credentials: 'same-origin',
+      cache: 'no-store'
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; });
+    }).then(function (payload) {
+      if (currentDetailToken !== marketStructureDetailToken) return; // Discard stale response
+      if (marketStructureSelectedTicker !== ticker) return;
+      if (!payload || !payload.success || !payload.context) return;
+
+      var ms = payload.context.market_structure || {};
+      if (researchHasNumber(ms.low_free_float_reference_pct)) {
+        var refStr = researchNumber(ms.low_free_float_reference_pct, 0) + '%';
+        researchText('marketStructureReference', refStr);
+        researchText('marketStructureSheetReference', refStr);
+      }
+      if (ms.regulatory_compliance_status) {
+        var compLabel = formatEnumPresentation(ms.regulatory_compliance_status);
+        researchText('marketStructureCompliance', compLabel);
+        researchText('marketStructureSheetCompliance', compLabel);
+      }
+      if (ms.market_structure_guard) {
+        var guardLabel = formatEnumPresentation(ms.market_structure_guard);
+        researchText('marketStructureGuard', guardLabel);
+        researchText('marketStructureSheetGuard', guardLabel);
+      }
+      if (ms.market_structure_status) {
+        var statLabel = formatEnumPresentation(ms.market_structure_status);
+        researchText('marketStructureStatus', statLabel);
+        researchText('marketStructureSheetStatus', statLabel);
+      }
+      if (ms.market_structure_note) {
+        researchText('marketStructureNote', ms.market_structure_note);
+        researchText('marketStructureSheetNote', ms.market_structure_note);
+      }
+    }).catch(function () {});
+  }
+
+  function closeMarketStructureDetail() {
+    marketStructureSelectedTicker = null;
+    var pane = byId('marketStructureDetailPane');
+    if (pane) pane.hidden = true;
+    closeMarketStructureMobileSheet();
+
+    var tbody = byId('marketStructureTableBody');
+    if (tbody) {
+      var rows = tbody.querySelectorAll('tr[data-ticker]');
+      rows.forEach(function (row) {
+        row.classList.remove('is-selected');
+        row.setAttribute('aria-pressed', 'false');
+      });
+    }
+
+    if (marketStructureLastFocusedElement && typeof marketStructureLastFocusedElement.focus === 'function') {
+      try { marketStructureLastFocusedElement.focus(); } catch (_) {}
+    }
+  }
+  root.closeMarketStructureDetail = closeMarketStructureDetail;
+
+  function bindMarketStructureEventsOnce() {
+    if (marketStructureBoundEvents) return;
+    marketStructureBoundEvents = true;
+
+    // Search input
+    var searchInput = byId('marketStructureSearchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', function (e) {
+        marketStructureSearchQuery = (e && e.target && e.target.value != null ? e.target.value : (searchInput ? searchInput.value : '')) || '';
+        renderMarketStructureTable();
+      });
+    }
+
+    // Filter Chips
+    var lowFfBtn = byId('marketStructureFilterLowFF');
+    if (lowFfBtn) {
+      lowFfBtn.textContent = '[FF Rendah <' + MARKET_STRUCTURE_LOW_FF_REFERENCE_PCT + '%]';
+    }
+
+    var filterBtns = [
+      { id: 'marketStructureFilterAll', filter: 'all' },
+      { id: 'marketStructureFilterLowFF', filter: 'low-ff' },
+      { id: 'marketStructureFilterHsc', filter: 'hsc' },
+      { id: 'marketStructureFilterIncomplete', filter: 'incomplete' }
+    ];
+    filterBtns.forEach(function (btnDef) {
+      var el = byId(btnDef.id);
+      if (el) {
+        el.addEventListener('click', function () {
+          marketStructureFilter = btnDef.filter;
+          filterBtns.forEach(function (b) {
+            var o = byId(b.id);
+            if (!o) return;
+            if (b.filter === marketStructureFilter) {
+              o.classList.add('is-active');
+            } else {
+              o.classList.remove('is-active');
+            }
+          });
+          renderMarketStructureTable();
+        });
+      }
+    });
+
+    // Sort select
+    var sortSelect = byId('marketStructureSortSelect');
+    if (sortSelect) {
+      sortSelect.addEventListener('change', function (e) {
+        marketStructureSort = (e && e.target && e.target.value ? e.target.value : (sortSelect ? sortSelect.value : 'free_float_asc')) || 'free_float_asc';
+        renderMarketStructureTable();
+      });
+    }
+
+    // Close buttons
+    var detailCloseBtn = byId('marketStructureDetailClose');
+    if (detailCloseBtn) {
+      detailCloseBtn.addEventListener('click', closeMarketStructureDetail);
+    }
+    var sheetCloseBtn = byId('marketStructureSheetClose');
+    if (sheetCloseBtn) {
+      sheetCloseBtn.addEventListener('click', closeMarketStructureDetail);
+    }
+    var sheetBackdrop = byId('marketStructureSheetBackdrop');
+    if (sheetBackdrop) {
+      sheetBackdrop.addEventListener('click', closeMarketStructureDetail);
+    }
+
+    // Sheet keyboard focus trap & Escape handling
+    window.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        var openSheet = byId('marketStructureDetailSheet');
+        var openPane = byId('marketStructureDetailPane');
+        if ((openSheet && !openSheet.hidden) || (openPane && !openPane.hidden)) {
+          e.preventDefault();
+          closeMarketStructureDetail();
+        }
+      }
+    });
+
+    var sheet = byId('marketStructureDetailSheet');
+    if (sheet) {
+      sheet.addEventListener('keydown', function (e) {
+        if (e.key === 'Tab') {
+          var focusable = sheet.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+          if (!focusable || focusable.length === 0) return;
+          var first = focusable[0];
+          var last = focusable[focusable.length - 1];
+          if (e.shiftKey) {
+            if (document.activeElement === first) {
+              e.preventDefault();
+              last.focus();
+            }
+          } else {
+            if (document.activeElement === last) {
+              e.preventDefault();
+              first.focus();
+            }
+          }
+        }
+      });
+    }
+
+    // Refresh button
+    var refreshBtn = byId('marketStructureRefreshBtn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function () {
+        loadStrukturPasarUniverse(marketStructureSelectedTicker);
+      });
+    }
+  }
+
+  async function loadStrukturPasarUniverse(selectTicker) {
+    if (marketStructureLoading) return;
+    marketStructureLoading = true;
+    bindMarketStructureEventsOnce();
+
+    var state = byId('marketStructureDataState');
+    var container = byId('marketStructureTableContainer');
+    var refreshBanner = byId('marketStructureRefreshBanner');
+
+    if (!marketStructureUniverseLoaded && state) {
+      state.hidden = false;
+      state.innerHTML = '<span class="spinner-sm"></span> Memuat daftar struktur pasar…';
+    } else if (refreshBanner) {
+      refreshBanner.hidden = false;
+      refreshBanner.innerHTML = '<span class="ac-refresh-banner-text"><span class="spinner-sm"></span> Memperbarui daftar struktur pasar…</span>';
+    }
+
+    try {
+      var response = await fetch('/api/quote?action=daily-market-context-list', {
+        credentials: 'same-origin',
+        cache: 'no-store'
+      });
+      var payload = await response.json().catch(function () { return {}; });
+      var list = Array.isArray(payload.data)
+        ? payload.data
+        : Array.isArray(payload.rows)
+          ? payload.rows
+          : null;
+
+      if (!response.ok || !payload.success || !list) {
+        throw new Error((payload && payload.error) || 'Gagal memuat daftar struktur pasar.');
+      }
+
+      marketStructureUniverse = list;
+      marketStructureUniverseLoaded = true;
+
+      if (state) state.hidden = true;
+      if (container) container.hidden = false;
+      if (refreshBanner) refreshBanner.hidden = true;
+
+      renderMarketStructureTable();
+
+      if (selectTicker) {
+        selectMarketStructureRow(selectTicker, null, false);
+      }
+    } catch (err) {
+      if (!marketStructureUniverseLoaded && state) {
+        state.hidden = false;
+        state.textContent = (err && err.message) || 'Gagal memuat struktur pasar.';
+      } else if (refreshBanner) {
+        refreshBanner.hidden = false;
+        refreshBanner.innerHTML = '<span class="ac-refresh-banner-text is-error">Gagal memperbarui: ' + escapeHtml((err && err.message) || 'Koneksi terputus') + '</span>';
+      }
+    } finally {
+      marketStructureLoading = false;
+    }
+  }
+  root.loadStrukturPasarUniverse = loadStrukturPasarUniverse;
+  root.refreshStrukturPasarUniverse = function () {
+    loadStrukturPasarUniverse(marketStructureSelectedTicker);
+  };
+
+  function renderFinancialFundamental(ticker, f) {
+    if (!f) return;
+    researchText('financialTickerBadge', ticker);
+    researchText('financialPbv', researchHasNumber(f.pbv) ? researchNumber(f.pbv, 2) + 'x' : '—');
+    researchText('financialPbvPrice', researchHasNumber(f.pbv_as_of_price) ? 'Harga acuan ' + researchIdr(f.pbv_as_of_price) : 'Harga acuan —');
+    researchText('financialBvps', researchHasNumber(f.book_value_per_share) ? researchIdr(f.book_value_per_share) : '—');
+    researchText('financialShares', researchHasNumber(f.shares_outstanding) ? researchCompact(f.shares_outstanding) : '—');
+    researchText('financialMarketCap', researchHasNumber(f.market_cap) ? researchIdr(f.market_cap) : '—');
+    researchText('financialMarketCapAsOf', f.market_cap_as_of ? 'As of ' + f.market_cap_as_of : 'Belum tersedia');
+    researchText('financialPeriod', f.fundamental_period || 'Belum tersedia');
+    researchText('financialPeriodHero', f.fundamental_period ? 'Periode ' + f.fundamental_period : 'Periode belum tersedia');
+    researchText('financialSource', f.fundamental_source || 'Belum tersedia');
+    researchText('financialMarketCapSource', f.market_cap_source || 'Belum tersedia');
+    researchText('financialUpdatedAt', f.fundamental_updated_at || 'Belum tersedia');
+
+    var coverageValues = [f.pbv, f.book_value_per_share, f.shares_outstanding, f.market_cap];
+    var coverageCount = coverageValues.reduce(function (count, value) {
+      return count + (researchHasNumber(value) ? 1 : 0);
+    }, 0);
+    researchText('financialCoverage', coverageCount + ' / 4');
+    var coverageBar = byId('financialCoverageBar');
+    if (coverageBar && coverageBar.style && coverageBar.style.setProperty) {
+      coverageBar.style.setProperty('--ac-financial-coverage', (coverageCount * 25) + '%');
+    }
+
+    var allUnavailEl = byId('financialAllUnavailableState');
+    var metricGrid = byId('financialMetricGrid');
+    if (coverageCount === 0) {
+      if (allUnavailEl) allUnavailEl.hidden = false;
+      if (metricGrid) metricGrid.hidden = true;
+    } else {
+      if (allUnavailEl) allUnavailEl.hidden = true;
+      if (metricGrid) metricGrid.hidden = false;
+    }
+  }
+
   async function loadFinancialStructureTab(tabName, rawTicker) {
     var generation = ++researchGeneration;
     var ticker = researchTicker(rawTicker || (root.UnifiedCockpit && root.UnifiedCockpit.getActiveTicker ? root.UnifiedCockpit.getActiveTicker() : root.activeTicker));
     if (!ticker) return;
+
+    var isFinancial = tabName === 'financial';
+    if (!isFinancial) {
+      return root.loadStrukturPasarUniverse(ticker);
+    }
 
     root.activeTicker = ticker;
     if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
       root.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: false, preserveTab: true, runAnalysis: false });
     }
     var financialInput = byId('financialTickerInput');
-    var marketInput = byId('marketStructureTickerInput');
     if (financialInput) financialInput.value = ticker;
-    if (marketInput) marketInput.value = ticker;
 
-    var isFinancial = tabName === 'financial';
-    var state = byId(isFinancial ? 'financialDataState' : 'marketStructureDataState');
-    var content = byId(isFinancial ? 'financialDataContent' : 'marketStructureDataContent');
-    if (state) {
-      state.hidden = false;
-      state.textContent = 'Memuat ' + ticker + '…';
+    var state = byId('financialDataState');
+    var content = byId('financialDataContent');
+    var refreshBanner = byId('financialRefreshBanner');
+    var allUnavailEl = byId('financialAllUnavailableState');
+
+    var isSameTickerRefresh = financialRenderedTicker === ticker;
+    var cachedFundamental = financialCache[ticker];
+
+    if (!isSameTickerRefresh) {
+      // Cross-ticker safety: hide different ticker's metrics immediately
+      if (cachedFundamental) {
+        renderFinancialFundamental(ticker, cachedFundamental);
+        financialRenderedTicker = ticker;
+        if (state) state.hidden = true;
+        if (content) content.hidden = false;
+        if (refreshBanner) {
+          refreshBanner.hidden = false;
+          refreshBanner.innerHTML = '<span class="ac-refresh-banner-text"><span class="spinner-sm"></span> Memperbarui data fundamental ' + escapeHtml(ticker) + '…</span>';
+        }
+      } else {
+        financialRenderedTicker = null;
+        if (content) content.hidden = true;
+        if (allUnavailEl) allUnavailEl.hidden = true;
+        if (refreshBanner) refreshBanner.hidden = true;
+        if (state) {
+          state.hidden = false;
+          state.textContent = 'Memuat ' + ticker + '…';
+        }
+      }
+    } else {
+      if (refreshBanner) {
+        refreshBanner.hidden = false;
+        refreshBanner.innerHTML = '<span class="ac-refresh-banner-text"><span class="spinner-sm"></span> Memperbarui data fundamental ' + escapeHtml(ticker) + '…</span>';
+      }
     }
-    if (content) content.hidden = true;
 
     try {
       var response = await fetch('/api/quote?action=daily-market-context&ticker=' + encodeURIComponent(ticker), {
@@ -529,46 +1122,13 @@
 
       var ctx = payload.context || {};
       var f = ctx.fundamental || {};
-      var m = ctx.market_structure || {};
 
-      if (isFinancial) {
-        researchText('financialTickerBadge', ticker);
-        researchText('financialPbv', researchHasNumber(f.pbv) ? researchNumber(f.pbv, 2) + 'x' : '—');
-        researchText('financialPbvPrice', researchHasNumber(f.pbv_as_of_price) ? 'Harga acuan ' + researchIdr(f.pbv_as_of_price) : 'Harga acuan —');
-        researchText('financialBvps', researchHasNumber(f.book_value_per_share) ? researchIdr(f.book_value_per_share) : '—');
-        researchText('financialShares', researchHasNumber(f.shares_outstanding) ? researchCompact(f.shares_outstanding) : '—');
-        researchText('financialMarketCap', researchHasNumber(f.market_cap) ? researchIdr(f.market_cap) : '—');
-        researchText('financialMarketCapAsOf', f.market_cap_as_of ? 'As of ' + f.market_cap_as_of : 'Belum tersedia');
-        researchText('financialPeriod', f.fundamental_period || 'Belum tersedia');
-        researchText('financialPeriodHero', f.fundamental_period ? 'Periode ' + f.fundamental_period : 'Periode belum tersedia');
-        researchText('financialSource', f.fundamental_source || 'Belum tersedia');
-        researchText('financialMarketCapSource', f.market_cap_source || 'Belum tersedia');
-        researchText('financialUpdatedAt', f.fundamental_updated_at || 'Belum tersedia');
-
-        var coverageValues = [f.pbv, f.book_value_per_share, f.shares_outstanding, f.market_cap];
-        var coverageCount = coverageValues.reduce(function (count, value) {
-          return count + (researchHasNumber(value) ? 1 : 0);
-        }, 0);
-        researchText('financialCoverage', coverageCount + ' / 4');
-        var coverageBar = byId('financialCoverageBar');
-        if (coverageBar && coverageBar.style && coverageBar.style.setProperty) {
-          coverageBar.style.setProperty('--ac-financial-coverage', (coverageCount * 25) + '%');
-        }
-      } else {
-        researchText('marketStructureFreeFloat', researchHasNumber(m.free_float_pct) ? researchNumber(m.free_float_pct, 2) + '%' : '—');
-        researchText('marketStructureFreeFloatAsOf', m.free_float_as_of ? 'As of ' + m.free_float_as_of : 'As of —');
-        researchText('marketStructureHsc', m.hsc_flag === true ? 'HSC Aktif' : (m.hsc_flag === false ? 'Tidak Flagged' : 'Belum terverifikasi'));
-        researchText('marketStructureHscAsOf', m.hsc_as_of ? 'As of ' + m.hsc_as_of : 'As of —');
-        researchText('marketStructureGuard', m.market_structure_guard || 'UNKNOWN');
-        researchText('marketStructureStatus', m.market_structure_status || 'DATA_INCOMPLETE');
-        researchText('marketStructureFreeFloatSource', m.free_float_source || 'Belum tersedia');
-        researchText('marketStructureHscSource', m.hsc_source || 'Belum tersedia');
-        researchText('marketStructureReference', researchHasNumber(m.low_free_float_reference_pct) ? researchNumber(m.low_free_float_reference_pct, 0) + '%' : '15%');
-        researchText('marketStructureCompliance', m.regulatory_compliance_status || 'NOT_EVALUATED');
-        researchText('marketStructureNote', m.market_structure_note || 'Data struktur pasar belum lengkap.');
-      }
+      financialCache[ticker] = f;
+      financialRenderedTicker = ticker;
+      renderFinancialFundamental(ticker, f);
 
       if (state) state.hidden = true;
+      if (refreshBanner) refreshBanner.hidden = true;
       if (content) {
         content.hidden = false;
         if (root.AutoCuanFinalUiux && typeof root.AutoCuanFinalUiux.enterPanel === 'function') {
@@ -577,11 +1137,16 @@
       }
     } catch (error) {
       if (generation !== researchGeneration) return;
-      if (state) {
-        state.hidden = false;
-        state.textContent = (error && error.message) || 'Gagal memuat data.';
+      if (isSameTickerRefresh && refreshBanner) {
+        refreshBanner.hidden = false;
+        refreshBanner.innerHTML = '<span class="ac-refresh-banner-text is-error">Gagal memperbarui: ' + escapeHtml((error && error.message) || 'Koneksi terputus') + '. Menampilkan data tersimpan.</span>';
+      } else {
+        if (state) {
+          state.hidden = false;
+          state.textContent = (error && error.message) || 'Gagal memuat data.';
+        }
+        if (content) content.hidden = true;
       }
-      if (content) content.hidden = true;
     }
   }
   root.loadFinancialStructureTab = loadFinancialStructureTab;
