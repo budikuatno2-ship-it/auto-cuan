@@ -9,14 +9,26 @@
     </section>
 
     <div id="app" class="hidden">
+      <!-- Mobile Section Selector (<= 767px) -->
+      <div id="pccMobileNav" class="pcc-mobile-nav" aria-label="Navigasi Portofolio Mobile">
+        <label for="pccMobileSectionSelect" class="sr-only">Pilih Bagian Portofolio</label>
+        <select id="pccMobileSectionSelect" class="pcc-mobile-select" aria-label="Pilih Bagian Portofolio">
+          <option value="today" selected>Overview</option>
+          <option value="planner">Planner</option>
+          <option value="watch">Positions</option>
+          <option value="risk">Risk Lab</option>
+          <option value="journal">Journal</option>
+          <option value="ai">AI Assistant</option>
+        </select>
+      </div>
+
       <nav id="tabStrip" class="tab-strip" role="tablist" aria-label="Portfolio Command Center">
-        <button class="tab active" role="tab" aria-selected="true" data-tab="today"><span>📊</span><span>Hari Ini</span></button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="planner"><span>📝</span><span>Rencana Posisi</span></button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="watch"><span>👀</span><span>Pantauan</span></button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="risk"><span>🛡️</span><span>Risiko &amp; Avg Down</span></button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="scenarios"><span>⚡</span><span>Skenario Posisi</span></button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="journal"><span>📖</span><span>Jurnal</span></button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="ai"><span>🤖</span><span>Asisten AI</span></button>
+        <button class="tab active" role="tab" aria-selected="true" data-tab="today"><span>📊</span><span>Overview</span></button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="planner"><span>📝</span><span>Planner</span></button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="watch"><span>👀</span><span>Positions</span></button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="risk"><span>🛡️</span><span>Risk Lab</span></button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="journal"><span>📖</span><span>Journal</span></button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="ai"><span>🤖</span><span>AI Assistant</span></button>
       </nav>
 
       <section id="page-today" class="page active" role="tabpanel">
@@ -152,6 +164,10 @@
       </section>
 
       <section id="page-risk" class="page" role="tabpanel">
+        <div class="pcc-subnav">
+          <button type="button" class="btn small primary" data-tab="risk">🛡️ Cut Loss &amp; Avg Down Guard</button>
+          <button type="button" class="btn small" data-tab="scenarios">⚡ What-if Skenario Posisi</button>
+        </div>
         <div class="grid two">
           <article class="card">
             <div class="card-head"><div><h2>Cut Loss & Average Down Guard</h2><p>Guard matematis, bukan perintah transaksi otomatis.</p></div></div>
@@ -170,6 +186,10 @@
       </section>
 
       <section id="page-scenarios" class="page" role="tabpanel">
+        <div class="pcc-subnav">
+          <button type="button" class="btn small" data-tab="risk">🛡️ Cut Loss &amp; Avg Down Guard</button>
+          <button type="button" class="btn small primary" data-tab="scenarios">⚡ What-if Skenario Posisi</button>
+        </div>
         <div class="decision-hero">
           <div>
             <p class="eyebrow">WHAT-IF · SKENARIO POSISI</p>

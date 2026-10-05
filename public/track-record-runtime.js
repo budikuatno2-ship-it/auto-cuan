@@ -38,7 +38,7 @@ function trEntryBounds(s) {
 }
 
 function trSkeletonHtml() {
-    return '<tr><td colspan="10" class="text-center py-10 text-gray-500"><div class="spinner mx-auto mb-2"></div>Memuat data track record sinyal...</td></tr>';
+    return '<tr><td colspan="10" class="text-center py-10 tr-loading-cell"><div class="spinner mx-auto mb-2"></div>Memuat data track record sinyal...</td></tr>';
 }
 
 async function loadTrackRecord(force) {
@@ -95,14 +95,14 @@ async function loadTrackRecord(force) {
         }
 
         if (!data || !data.success) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-400">Gagal memuat track record: ' + escapeHtml((data && data.error) || 'Terjadi kesalahan.') + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 tr-error-cell">Gagal memuat track record: ' + escapeHtml((data && data.error) || 'Terjadi kesalahan.') + '</td></tr>';
             return;
         }
 
         _trData = data;
         renderTrackRecordUI(data);
     } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-400">Gagal terhubung ke server: ' + escapeHtml(err.message || String(err)) + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 tr-error-cell">Gagal terhubung ke server: ' + escapeHtml(err.message || String(err)) + '</td></tr>';
     } finally {
         _trInFlight = false;
         if (refreshBtn) refreshBtn.classList.remove('opacity-50', 'pointer-events-none');
@@ -155,26 +155,45 @@ function renderTrackRecordUI(data) {
         order.forEach(function(key) {
             var c = cats[key];
             if (!c) return;
-            var m = meta[key] || { icon: '📌', label: c.label || key, description: '' };
-            html += '<div class="bg-dark-800/50 border border-dark-600/25 rounded-xl p-3.5 flex flex-col justify-between hover:border-emerald-500/30 transition cursor-pointer" onclick="filterTrackRecordCategory(\'' + key + '\')">' +
+            var m = meta[key] || { label: c.label || key, description: '' };
+            function formatSafeVal(v, suffix) {
+                if (v == null || v === 'undefined' || v === 'null') return '—';
+                var str = String(v).trim();
+                if (!str || str === 'undefined' || str === 'null' || str === 'NaN') return '—';
+                return suffix ? (str + suffix) : str;
+            }
+            var winRateStr = formatSafeVal(c.win_rate_tp1, ' TP');
+            var totalStr = formatSafeVal(c.total);
+            var tpHitsStr = formatSafeVal(c.tp1_hits);
+            var slRateStr = formatSafeVal(c.sl_rate);
+
+            html += '<div class="tr-cat-card" onclick="filterTrackRecordCategory(\'' + key + '\')">' +
                 '<div>' +
-                    '<div class="flex items-center justify-between gap-2 mb-1.5">' +
-                        '<div class="flex items-center gap-1.5 font-bold text-xs text-white">' +
-                            '<span>' + m.icon + '</span>' +
-                            '<span>' + m.label + '</span>' +
+                    '<div class="tr-cat-card-header">' +
+                        '<div class="tr-cat-card-title">' +
+                            '<span>' + escapeHtml(m.label || key) + '</span>' +
                         '</div>' +
-                        '<span class="text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">' + c.win_rate_tp1 + ' TP</span>' +
+                        '<span class="tr-cat-pill font-mono">' + escapeHtml(winRateStr) + '</span>' +
                     '</div>' +
-                    '<p class="text-[11px] text-gray-500 line-clamp-1 mb-2.5">' + (m.description || '') + '</p>' +
+                    (m.description ? ('<p class="tr-cat-desc">' + escapeHtml(m.description) + '</p>') : '') +
                 '</div>' +
-                '<div class="grid grid-cols-3 gap-1 pt-2 border-t border-dark-600/30 text-center text-[10px]">' +
-                    '<div><span class="text-gray-500 block">Total</span><span class="font-bold text-gray-200 text-xs">' + c.total + '</span></div>' +
-                    '<div><span class="text-gray-500 block">TP1/TP2</span><span class="font-bold text-emerald-400 text-xs">' + c.tp1_hits + '</span></div>' +
-                    '<div><span class="text-gray-500 block">SL Rate</span><span class="font-bold text-red-400 text-xs">' + c.sl_rate + '</span></div>' +
+                '<div class="tr-cat-stats font-mono">' +
+                    '<div class="tr-cat-stat"><span class="tr-stat-lbl">Total</span><span class="tr-stat-val">' + totalStr + '</span></div>' +
+                    '<div class="tr-cat-stat"><span class="tr-stat-lbl">TP1/TP2</span><span class="tr-stat-val ac-num-positive">' + tpHitsStr + '</span></div>' +
+                    '<div class="tr-cat-stat"><span class="tr-stat-lbl">SL Rate</span><span class="tr-stat-val ac-num-negative">' + slRateStr + '</span></div>' +
                 '</div>' +
             '</div>';
         });
         catGrid.innerHTML = html;
+    }
+
+    var catDetails = document.getElementById('trCatDetails');
+    if (catDetails) {
+        if (window.innerWidth < 768) {
+            catDetails.removeAttribute('open');
+        } else {
+            catDetails.setAttribute('open', '');
+        }
     }
 
     renderTrackRecordTable();
@@ -189,19 +208,49 @@ function filterTrackRecordCategory(cat) {
     // Update Category Tabs Pill UI
     var tabs = document.querySelectorAll('#trCategoryTabs button');
     tabs.forEach(function(btn) {
-        btn.classList.remove('active');
-        if (btn.getAttribute('data-tr-cat') === _trCategoryFilter) {
-            btn.classList.add('active');
-        }
+        var active = btn.getAttribute('data-tr-cat') === _trCategoryFilter;
+        btn.classList.toggle('active', active);
     });
 
     renderTrackRecordTable();
+}
+
+function getOutcomeClass(outcome) {
+    if (outcome === 'TP2_HIT') return 'tr-status-tp2';
+    if (outcome === 'TP1_HIT') return 'tr-status-tp1';
+    if (outcome === 'SL_HIT') return 'tr-status-sl';
+    if (outcome === 'RUNNING' || outcome === 'ENTRY_HIT') return 'tr-status-running';
+    if (outcome === 'WAITING') return 'tr-status-waiting';
+    if (outcome === 'EXPIRED') return 'tr-status-expired';
+    return 'tr-status-default';
+}
+
+function formatOutcomeLabel(s) {
+    if (!s) return 'Status belum dikenali';
+    var isExpiredSignal = s.outcome === 'EXPIRED' || s.status === 'EXPIRED' || s.status_label === 'Sinyal Kedaluwarsa' || s.status_label === 'Expired';
+    if (isExpiredSignal) return 'Sinyal Kedaluwarsa';
+
+    var rawEnums = ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'RUNNING', 'ENTRY_HIT', 'WAITING', 'EXPIRED'];
+    if (s.status_label && typeof s.status_label === 'string' && rawEnums.indexOf(s.status_label) === -1) {
+        return s.status_label;
+    }
+
+    var raw = s.outcome || s.status || '';
+    if (raw === 'TP2_HIT') return 'TP2 tercapai';
+    if (raw === 'TP1_HIT') return 'TP1 tercapai';
+    if (raw === 'SL_HIT') return 'Stop Loss terkena';
+    if (raw === 'RUNNING') return 'Berjalan';
+    if (raw === 'ENTRY_HIT') return 'Entry tercapai';
+    if (raw === 'WAITING') return 'Menunggu';
+    if (raw === 'EXPIRED') return 'Sinyal Kedaluwarsa';
+    return 'Status belum dikenali';
 }
 
 function renderTrackRecordTable() {
     if (!_trData) return;
     var tbody = document.getElementById('trTableBody');
     var emptyEl = document.getElementById('trEmptyState');
+    var mobileHost = document.getElementById('trMobileList');
     if (!tbody) return;
 
     var signals = _trData.signals || [];
@@ -224,6 +273,7 @@ function renderTrackRecordTable() {
 
     if (!filtered.length) {
         tbody.innerHTML = '';
+        if (mobileHost) mobileHost.innerHTML = '';
         if (emptyEl) emptyEl.classList.remove('hidden');
         return;
     }
@@ -231,13 +281,16 @@ function renderTrackRecordTable() {
     if (emptyEl) emptyEl.classList.add('hidden');
 
     var rowsHtml = '';
+    var mobileHtml = '';
+
     filtered.forEach(function(s) {
         var gainHtml = '—';
+        var gainClass = 'ac-num-neutral';
         if (s.gain_pct != null) {
             var isPos = s.gain_pct > 0;
             var isNeg = s.gain_pct < 0;
-            var colorClass = isPos ? 'text-emerald-400 font-bold' : (isNeg ? 'text-red-400 font-bold' : 'text-gray-400');
-            gainHtml = '<span class="' + colorClass + '">' + (isPos ? '+' : '') + s.gain_pct.toFixed(1) + '%</span>';
+            gainClass = isPos ? 'ac-num-positive font-bold' : (isNeg ? 'ac-num-negative font-bold' : 'ac-num-neutral');
+            gainHtml = '<span class="' + gainClass + '">' + (isPos ? '+' : '') + s.gain_pct.toFixed(1) + '%</span>';
         }
 
         var entryBounds = trEntryBounds(s);
@@ -245,55 +298,84 @@ function renderTrackRecordTable() {
 
         var signalSubtext = '';
         if (s.signal_time_wib && s.signal_time_wib !== '—') {
-            signalSubtext = '<div class="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1 font-mono">' +
-                '<span class="text-gray-500">🕒</span><span>' + s.signal_time_wib + '</span>' +
-                (s.price_at_signal ? '<span class="text-gray-600">·</span><span class="text-gray-300 font-medium">' + formatRp(s.price_at_signal) + '</span>' : '') +
+            signalSubtext = '<div class="tr-subtext-line font-mono">' +
+                '<span class="tr-subtext-icon">🕒</span><span>' + escapeHtml(s.signal_time_wib) + '</span>' +
+                (s.price_at_signal ? '<span class="tr-subtext-sep">·</span><span class="tr-subtext-val font-medium">' + formatRp(s.price_at_signal) + '</span>' : '') +
                 '</div>';
         }
 
-        var isExpiredSignal = s.outcome === 'EXPIRED' || s.status_label === 'Sinyal Kedaluwarsa' || s.status_label === 'Expired';
+        var isExpiredSignal = s.outcome === 'EXPIRED' || s.status === 'EXPIRED' || s.status_label === 'Sinyal Kedaluwarsa' || s.status_label === 'Expired';
         var statusTooltip = isExpiredSignal ? ' title="Harga tidak pernah masuk area beli (Entry 1 / Entry 2) dalam batas waktu pengamatan sinyal."' : '';
-        var statusLabelText = isExpiredSignal ? 'Sinyal Kedaluwarsa' : s.status_label;
-        var infoIcon = isExpiredSignal ? '<svg class="w-3 h-3 ml-1 inline text-gray-400 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : '';
+        var statusLabelText = formatOutcomeLabel(s);
+        var infoIcon = isExpiredSignal ? '<svg class="w-3 h-3 ml-1 inline opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : '';
+        var statusClass = getOutcomeClass(s.outcome || s.status);
 
         var hitSubtext = '';
         if (s.hit_time_wib && s.hit_time_wib !== '—') {
-            hitSubtext = '<div class="text-[10px] text-gray-400 font-mono mt-0.5 flex items-center justify-center gap-1">' +
-                '<span class="text-emerald-400/70">⚡</span><span>' + s.hit_time_wib + '</span>' +
-                (s.price_at_hit ? '<span class="text-gray-600">·</span><span class="text-gray-300 font-medium">' + formatRp(s.price_at_hit) + '</span>' : '') +
+            hitSubtext = '<div class="tr-subtext-line font-mono tr-subtext-center">' +
+                '<span class="tr-subtext-bolt">⚡</span><span>' + escapeHtml(s.hit_time_wib) + '</span>' +
+                (s.price_at_hit ? '<span class="tr-subtext-sep">·</span><span class="tr-subtext-val font-medium">' + formatRp(s.price_at_hit) + '</span>' : '') +
                 '</div>';
         }
 
-        rowsHtml += '<tr class="hover:bg-dark-700/40 transition">' +
-            '<td class="px-3 py-2.5 font-bold text-white sticky left-0 bg-dark-800/90 z-10">' +
-                '<div class="flex items-center gap-1.5">' +
-                    '<span>' + s.ticker + '</span>' +
-                    (s.score ? '<span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-dark-600/60 text-gray-300 border border-dark-500/30">' + s.score + '</span>' : '') +
+        // 1. Desktop table row
+        rowsHtml += '<tr class="tr-row">' +
+            '<td class="tr-col-ticker font-bold">' +
+                '<div class="tr-ticker-group">' +
+                    '<span>' + escapeHtml(s.ticker) + '</span>' +
+                    (s.score ? '<span class="tr-score-chip font-mono">' + escapeHtml(s.score) + '</span>' : '') +
                 '</div>' +
             '</td>' +
-            '<td class="px-3 py-2.5 text-gray-400 whitespace-nowrap">' +
-                '<span class="text-[11px] px-2 py-0.5 rounded-md bg-dark-700/60 border border-dark-600/40">' + s.source_short + '</span>' +
+            '<td class="tr-col-source whitespace-nowrap">' +
+                '<span class="tr-source-chip">' + escapeHtml(s.source_short || s.source_label) + '</span>' +
             '</td>' +
-            '<td class="px-3 py-2.5 text-gray-400 whitespace-nowrap font-mono text-[11px]">' +
-                '<div class="font-medium text-gray-200">' + (s.date || '—') + '</div>' +
+            '<td class="tr-col-date whitespace-nowrap font-mono">' +
+                '<div class="tr-date-main">' + escapeHtml(s.date || '—') + '</div>' +
                 signalSubtext +
             '</td>' +
-            '<td class="px-3 py-2.5 text-right font-mono text-gray-300">' + entryText + '</td>' +
-            '<td class="px-3 py-2.5 text-right font-mono text-emerald-400 font-medium">' + formatRp(s.tp1) + '</td>' +
-            '<td class="px-3 py-2.5 text-right font-mono text-emerald-300">' + formatRp(s.tp2) + '</td>' +
-            '<td class="px-3 py-2.5 text-right font-mono text-red-400">' + formatRp(s.sl) + '</td>' +
-            '<td class="px-3 py-2 text-center whitespace-nowrap">' +
-                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold tracking-wide' + (isExpiredSignal ? ' cursor-help' : '') + '" style="color:' + s.status_tone + ';background-color:' + s.status_bg + ';border:1px solid ' + s.status_border + '"' + statusTooltip + '>' +
-                    statusLabelText + infoIcon +
+            '<td class="text-right font-mono tabular-nums">' + entryText + '</td>' +
+            '<td class="text-right font-mono tabular-nums ac-num-positive font-medium">' + formatRp(s.tp1) + '</td>' +
+            '<td class="text-right font-mono tabular-nums ac-num-positive">' + formatRp(s.tp2) + '</td>' +
+            '<td class="text-right font-mono tabular-nums ac-num-negative">' + formatRp(s.sl) + '</td>' +
+            '<td class="text-center whitespace-nowrap">' +
+                '<span class="tr-status-pill ' + statusClass + (isExpiredSignal ? ' cursor-help' : '') + '"' + statusTooltip + '>' +
+                    escapeHtml(statusLabelText) + infoIcon +
                 '</span>' +
                 hitSubtext +
             '</td>' +
-            '<td class="px-3 py-2.5 text-right font-mono">' + gainHtml + '</td>' +
-            '<td class="px-3 py-2.5 text-right text-gray-400 whitespace-nowrap text-[11px]">' + (s.duration_text || '—') + '</td>' +
+            '<td class="text-right font-mono tabular-nums">' + gainHtml + '</td>' +
+            '<td class="text-right font-mono tabular-nums tr-col-duration">' + escapeHtml(s.duration_text || '—') + '</td>' +
         '</tr>';
+
+        // 2. Mobile card row
+        mobileHtml += '<div class="tr-mobile-card">' +
+            '<div class="tr-mobile-card-top">' +
+                '<div class="tr-mobile-ticker-group">' +
+                    '<span class="tr-mobile-ticker font-bold">' + escapeHtml(s.ticker) + '</span>' +
+                    '<span class="tr-source-chip">' + escapeHtml(s.source_short || s.source_label) + '</span>' +
+                    (s.score ? '<span class="tr-score-chip font-mono">' + escapeHtml(s.score) + '</span>' : '') +
+                '</div>' +
+                '<div class="tr-mobile-gain-group">' +
+                    '<span class="tr-status-pill ' + statusClass + '">' + escapeHtml(statusLabelText) + '</span>' +
+                '</div>' +
+            '</div>' +
+            '<div class="tr-mobile-grid font-mono tabular-nums">' +
+                '<div class="tr-mobile-stat"><span class="tr-stat-lbl">Area Beli</span><span class="tr-stat-val">' + entryText + '</span></div>' +
+                '<div class="tr-mobile-stat"><span class="tr-stat-lbl">Target (TP1/TP2)</span><span class="tr-stat-val ac-num-positive">' + formatRp(s.tp1) + ' / ' + formatRp(s.tp2) + '</span></div>' +
+                '<div class="tr-mobile-stat"><span class="tr-stat-lbl">Stop Loss</span><span class="tr-stat-val ac-num-negative">' + formatRp(s.sl) + '</span></div>' +
+                '<div class="tr-mobile-stat"><span class="tr-stat-lbl">Hasil Gain</span><span class="tr-stat-val font-bold ' + gainClass + '">' + (s.gain_pct != null ? ((s.gain_pct > 0 ? '+' : '') + s.gain_pct.toFixed(1) + '%') : '—') + '</span></div>' +
+            '</div>' +
+            '<div class="tr-mobile-footer">' +
+                '<span>📅 ' + escapeHtml(s.date || '—') + (s.signal_time_wib ? ' ' + escapeHtml(s.signal_time_wib) : '') + '</span>' +
+                '<span>⏱️ ' + escapeHtml(s.duration_text || '—') + '</span>' +
+            '</div>' +
+        '</div>';
     });
 
     tbody.innerHTML = rowsHtml;
+    if (mobileHost) {
+        mobileHost.innerHTML = mobileHtml;
+    }
 }
 
 // ===== CSV EXPORT TOOL =====
@@ -352,62 +434,52 @@ function formatTrackRecordCsvRow(s) {
 }
 
 function generateTrackRecordCsv(signals) {
-    var rows = [TRACK_RECORD_CSV_HEADERS.map(escapeCsvCell).join(',')];
+    var rows = [TRACK_RECORD_CSV_HEADERS.slice()];
     (signals || []).forEach(function(s) {
-        var rowData = formatTrackRecordCsvRow(s);
-        rows.push(rowData.map(escapeCsvCell).join(','));
+        rows.push(formatTrackRecordCsvRow(s));
     });
-    return rows.join('\r\n');
+    return rows.map(function(r) {
+        return r.map(escapeCsvCell).join(',');
+    }).join('\r\n');
 }
 
 function exportTrackRecordCsv() {
-    if (!_trData || !_trData.signals || !_trData.signals.length) {
-        if (typeof showToast === 'function') showToast('Belum ada data track record untuk diunduh.', 'warning');
+    if (!_trData || !Array.isArray(_trData.signals) || !_trData.signals.length) {
+        if (typeof showToast === 'function') {
+            showToast('Tidak ada data track record untuk diunduh.', 'warning');
+        }
         return;
     }
-    var csvContent = generateTrackRecordCsv(_trData.signals);
-    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    var url = URL.createObjectURL(blob);
-    var filename = getTrackRecordCsvFilename();
 
+    var csvContent = generateTrackRecordCsv(_trData.signals);
+    var blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
     var link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.display = 'none';
+    link.setAttribute('download', getTrackRecordCsvFilename());
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-    if (typeof showToast === 'function') showToast('📥 File ' + filename + ' berhasil diunduh!', 'success');
+    URL.revokeObjectURL(url);
+
+    if (typeof showToast === 'function') {
+        showToast('Track Record berhasil diunduh (CSV).', 'success');
+    }
 }
 
-// ===== BACKTESTING & SIMULASI STRATEGI CONTROLLER =====
-var _trCurrentView = 'table'; // 'table' | 'backtest'
-var _trDataInitialized = false;
-
-function switchTrackRecordView(view) {
-    _trCurrentView = view || 'table';
-    var isBacktest = _trCurrentView === 'backtest';
-
+function switchTrackRecordView(viewName) {
+    var isBacktest = viewName === 'backtest';
     var tabTable = document.getElementById('trViewTabTable');
     var tabBacktest = document.getElementById('trViewTabBacktest');
     var panelTable = document.getElementById('trTableViewPanel');
     var panelBacktest = document.getElementById('trBacktestViewPanel');
 
     if (tabTable) {
-        if (isBacktest) {
-            tabTable.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-gray-200 border border-transparent hover:bg-dark-700/50 transition flex items-center gap-1.5';
-        } else {
-            tabTable.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5';
-        }
+        tabTable.classList.toggle('active', !isBacktest);
     }
 
     if (tabBacktest) {
-        if (isBacktest) {
-            tabBacktest.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5';
-        } else {
-            tabBacktest.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-gray-200 border border-transparent hover:bg-dark-700/50 transition flex items-center gap-1.5';
-        }
+        tabBacktest.classList.toggle('active', isBacktest);
     }
 
     if (panelTable) {
@@ -459,7 +531,7 @@ function triggerBacktestSimulation() {
     var elReturn = document.getElementById('btMetricNetReturn');
     if (elReturn) {
         var isProfit = m.netProfitRp >= 0;
-        elReturn.className = 'text-[11px] font-semibold mt-1 ' + (isProfit ? 'text-emerald-400' : 'text-red-400');
+        elReturn.className = 'text-[11px] font-semibold mt-1 ' + (isProfit ? 'ac-num-positive' : 'ac-num-negative');
         elReturn.textContent = (isProfit ? '+' : '') + 'Rp ' + Number(m.netProfitRp).toLocaleString('id-ID') + ' (' + (isProfit ? '+' : '') + m.totalReturnPct + '%)';
     }
 
@@ -486,7 +558,7 @@ function triggerBacktestSimulation() {
     var elExp = document.getElementById('btMetricExpectancy');
     if (elExp) {
         var isExpPos = m.expectancyRp >= 0;
-        elExp.className = 'text-xl sm:text-2xl font-black ' + (isExpPos ? 'text-emerald-300' : 'text-red-400');
+        elExp.className = 'text-xl sm:text-2xl font-black ' + (isExpPos ? 'ac-num-positive' : 'ac-num-negative');
         elExp.textContent = (isExpPos ? '+' : '') + 'Rp ' + Number(m.expectancyRp).toLocaleString('id-ID');
     }
 

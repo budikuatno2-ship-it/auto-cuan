@@ -1,4 +1,5 @@
-:root{color-scheme:dark;--bg:#080c12;--surface:#10151F;--surface2:#0c141e;--line:rgba(148,163,184,.16);--line2:rgba(148,163,184,.28);--text:#e8eef7;--strong:#f8fafc;--muted:#91a0b5;--muted2:#64748b;--accent:#34d399;--info:#60a5fa;--warn:#fbbf24;--danger:#fb7185;--radius:15px;--shadow:0 22px 64px rgba(0,0,0,.25)}
+:root{color-scheme:dark;--bg:var(--ac-surface-ground);--surface:var(--ac-surface-1);--surface2:var(--ac-surface-2);--line:var(--ac-line);--line2:var(--ac-line-subtle);--text:var(--ac-text);--strong:var(--ac-text-strong);--muted:var(--ac-text-muted);--muted2:var(--ac-text-dim);--accent:var(--ac-brand);--info:var(--ac-info);--warn:var(--ac-warning);--danger:var(--ac-negative);--radius:var(--ac-radius-lg);--shadow:var(--ac-shadow-panel)}
+html.light{--bg:var(--ac-surface-ground);--surface:var(--ac-surface-1);--surface2:var(--ac-surface-2);--line:var(--ac-line);--line2:var(--ac-line-subtle);--text:var(--ac-text);--strong:var(--ac-text-strong);--muted:var(--ac-text-muted);--muted2:var(--ac-text-dim);--accent:var(--ac-brand);--info:var(--ac-info);--warn:var(--ac-warning);--danger:var(--ac-negative);--radius:var(--ac-radius-lg);--shadow:var(--ac-shadow-subtle)}
 *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;min-height:100vh;min-height:100dvh;background:radial-gradient(circle at 8% 0,rgba(16,185,129,.09),transparent 28%),radial-gradient(circle at 95% 8%,rgba(59,130,246,.07),transparent 25%),var(--bg);color:var(--text);font:14px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}button,input,select,textarea{font:inherit}.hidden{display:none!important}.muted{color:var(--muted)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid rgba(110,231,183,.82);outline-offset:2px}
 .app-shell{max-width:1440px;margin:auto;padding:18px 24px 52px}.app-header{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:10px 2px 18px;border-bottom:1px solid rgba(148,163,184,.11)}.brand{display:flex;align-items:center;gap:13px;min-width:0}.brand-mark{width:46px;height:46px;display:grid;place-items:center;flex:0 0 auto;border-radius:14px;background:linear-gradient(145deg,#34d399,#22d3ee);color:#04251c;font-weight:950;box-shadow:0 14px 34px rgba(16,185,129,.18),inset 0 1px rgba(255,255,255,.28)}.brand-copy h1{margin:0;color:var(--strong);font-size:clamp(19px,2vw,24px);letter-spacing:-.035em}.brand-copy p{margin:3px 0 0;color:var(--muted);font-size:12px}.header-actions{display:flex;align-items:center;gap:9px}.session-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(15,23,42,.48);color:var(--muted);font-size:11.5px}.status-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 5px rgba(52,211,153,.08)}
 .btn,.tab{min-height:40px;padding:9px 13px;border:1px solid var(--line);border-radius:11px;background:#151f2c;color:var(--text);font-weight:760;cursor:pointer;transition:var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1))}.btn:hover,.tab:hover{border-color:var(--line2);background:#192534}.btn:active,.tab:active{transform:translateY(1px)}.btn:disabled{opacity:.48;cursor:not-allowed;transform:none}.btn.primary{border-color:var(--accent);background:var(--accent);color:#04251c}.btn.primary:hover{background:#6ee7b7}.btn.ghost{background:transparent}.btn.danger{color:#fecdd3;border-color:rgba(244,63,94,.34);background:rgba(127,29,29,.2)}.btn.small{min-height:33px;padding:6px 9px;border-radius:9px;font-size:11.5px}.link-btn{text-decoration:none}.full-button{width:100%;margin-top:13px}
@@ -128,19 +129,21 @@
 }
 
 /* ---- Empty portfolio ----------------------------------------------------
-   A row of dominant zeroes is not a portfolio summary; it is the absence of
-   one. When there is nothing to summarise the figures are demoted so they stop
-   posing as statistics, and the page leads with what to do next instead.
-   Driven by a single class on the shell, set in renderSummary(). */
-.portfolio-empty .metric-grid { opacity: .55; }
+   When there are zero plans and zero owned positions, the meaningless zero KPI
+   wall is hidden completely. The page leads with a calm empty state and
+   concrete next actions instead. */
 .portfolio-empty .metric strong { font-size: 15px; color: var(--muted); }
+.portfolio-empty .metric-grid,
+.portfolio-empty #page-today .metric-grid {
+  display: none;
+}
 
 .empty-portfolio-cta {
-  margin-top: 10px;
-  padding: 16px 18px;
+  margin-top: var(--ac-space-12, 12px);
+  padding: var(--ac-space-16, 16px);
   border: 1px dashed var(--line2);
-  border-radius: 13px;
-  background: rgba(7, 13, 22, .55);
+  border-radius: var(--ac-radius-md);
+  background: var(--surface2);
 }
 .empty-portfolio-cta h3 {
   margin: 0;
@@ -150,18 +153,102 @@
   letter-spacing: -0.01em;
 }
 .empty-portfolio-cta p {
-  margin: 5px 0 0;
-  font-size: 12.5px;
+  margin: var(--ac-space-4, 4px) 0 0;
+  font-size: 13px;
   line-height: 1.55;
   color: var(--muted);
   max-width: 62ch;
 }
-.empty-portfolio-cta .actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+.empty-portfolio-cta .actions {
+  margin-top: var(--ac-space-12, 12px);
+  display: flex;
+  gap: var(--ac-space-8, 8px);
+  flex-wrap: wrap;
+}
+
+html.light .empty-portfolio-cta {
+  background: var(--surface2);
+  border-color: var(--line);
+}
+html.light .btn,
+html.light .tab {
+  background: var(--surface2);
+  color: var(--text);
+  border-color: var(--line);
+}
+html.light .btn:hover,
+html.light .tab:hover {
+  background: var(--surface);
+  border-color: var(--line2);
+}
+html.light .btn.primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+html.light .posture {
+  background: var(--surface2);
+  border-color: var(--line);
+}
+html.light .posture.good strong { color: var(--accent); }
+html.light .posture.warn strong { color: var(--warn); }
+html.light .posture.danger strong { color: var(--danger); }
+html.light .posture.neutral strong { color: var(--strong); }
+html.light .posture span { color: var(--muted); }
+html.light .decision-hero {
+  background: var(--surface);
+  border-color: var(--line);
+}
+html.light .decision-hero p:not(.eyebrow) {
+  color: var(--muted);
+}
+html.light .action-rank {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+/* ---- Mobile Section Selector (<= 767px) ---- */
+.pcc-mobile-nav {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .app-shell .tab-strip,
+  .portfolio-command-center .tab-strip,
+  .tab-strip {
+    display: none;
+  }
+  .app-shell .pcc-mobile-nav,
+  .portfolio-command-center .pcc-mobile-nav,
+  .pcc-mobile-nav {
+    display: block;
+    width: 100%;
+    margin-bottom: var(--ac-space-16, 16px);
+  }
+  .pcc-mobile-select {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    height: 44px;
+    padding: 0 var(--ac-space-12, 12px);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 44px;
+    border-radius: var(--ac-radius-md);
+    border: 1px solid var(--ac-line);
+    background-color: var(--ac-surface-2);
+    color: var(--ac-text);
+    cursor: pointer;
+  }
+  html.light .pcc-mobile-select {
+    background-color: var(--ac-surface);
+    color: var(--ac-text);
+    border-color: var(--ac-line);
+  }
+}
 
 /* ---- Tabs: a rail, not seven buttons ------------------------------------ */
-/* Seven filled pills of equal weight gave no clue which one you were on or
-   which you use most. An underlined rail states the active tab and lets the
-   rest recede. */
 .tab-strip {
   gap: 2px;
   border-bottom: 1px solid var(--line);
@@ -325,7 +412,7 @@
 
 /* --- PHASE 10: 7 SUB-TAB NAVIGATION & HEADER --- */
 .tab-strip {
-  display: flex !important;
+  display: flex;
   align-items: center !important;
   gap: 6px !important;
   padding: 6px !important;
@@ -342,6 +429,15 @@
   .tab-strip {
     flex-wrap: wrap !important;
     overflow-x: visible !important;
+  }
+}
+
+@media (max-width: 767px) {
+  #tabStrip.tab-strip,
+  .app-shell .tab-strip,
+  .portfolio-command-center .tab-strip,
+  .tab-strip {
+    display: none;
   }
 }
 
