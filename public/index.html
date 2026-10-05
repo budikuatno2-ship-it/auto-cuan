@@ -871,12 +871,37 @@
     <div id="sektorContent" class="hidden space-y-4">
         <!-- List view -->
         <div id="sektorListView">
-            <div class="mb-4">
-                <h2 class="text-lg font-bold text-white">Grup Konglomerat Hot</h2>
-                <p class="text-xs text-gray-500 mt-1" id="sektorSubtitle">T+1 · BY GROUP · Kinerja rata-rata per grup konglomerat besar. Klik grup untuk detail.</p>
-                <p id="sektorStaleWarn" class="text-[11px] mt-1" style="display:none"></p>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                <div>
+                    <h2 class="text-lg font-bold ac-wave5-text">Grup Konglomerat Hot</h2>
+                    <p class="text-xs ac-wave5-muted mt-1" id="sektorSubtitle">T+1 · BY GROUP · Kinerja rata-rata per grup konglomerat besar. Klik grup untuk detail.</p>
+                    <p id="sektorStaleWarn" class="text-[11px] mt-1" style="display:none"></p>
+                </div>
+                <div class="ac-segmented ac-wave5-segmented flex-shrink-0" role="group" aria-label="Tampilan Sektor Hot">
+                    <button type="button" id="sektorBtnTable" onclick="sektorToggleView('table')" aria-pressed="true" class="ac-segment is-active">Tabel</button>
+                    <button type="button" id="sektorBtnCard" onclick="sektorToggleView('card')" aria-pressed="false" class="ac-segment">Kartu</button>
+                </div>
             </div>
-            <div id="sektorGroupsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <!-- Dense Group Table View (table-first default) -->
+            <div id="sektorGroupTableWrap" class="overflow-x-auto rounded-xl ac-wave5-table-wrap mb-3 focus:outline-none" tabindex="0" role="region" aria-label="Tabel data grup konglomerat hot">
+                <table class="w-full text-xs border-collapse">
+                    <thead class="sticky top-0 ac-wave5-thead">
+                        <tr>
+                            <th class="px-3 py-2.5 text-left ac-wave5-th font-semibold whitespace-nowrap">Grup</th>
+                            <th class="px-3 py-2.5 text-left ac-wave5-th font-semibold whitespace-nowrap">Nama Grup</th>
+                            <th class="px-3 py-2.5 text-center ac-wave5-th font-semibold whitespace-nowrap">Saham</th>
+                            <th class="px-3 py-2.5 text-right ac-wave5-th font-semibold whitespace-nowrap">Avg Chg%</th>
+                            <th class="px-3 py-2.5 text-left ac-wave5-th font-semibold whitespace-nowrap">Top Mover</th>
+                            <th class="px-3 py-2.5 text-right ac-wave5-th font-semibold whitespace-nowrap">Vol Aktif</th>
+                            <th class="px-3 py-2.5 text-center ac-wave5-th font-semibold whitespace-nowrap">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sektorGroupTableBody">
+                        <tr><td colspan="7" class="text-center py-8 ac-wave5-muted">Memuat data grup...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="sektorGroupsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" style="display:none">
                 <!-- Cards rendered dynamically -->
             </div>
         </div>
@@ -960,6 +985,9 @@
                 </label>
             </div>
         </div>
+        <!-- Screener Main Layout: Table/Card View + Desktop Detail Pane (§16, §63) -->
+        <div class="flex flex-col xl:flex-row gap-4 items-start">
+        <div class="flex-1 min-w-0 w-full space-y-3">
         <!-- Konglo Pane -->
         <div id="screenerKongloPane" class="space-y-3">
         <!-- Header -->
@@ -1000,19 +1028,23 @@
             <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="kgHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('konglo')" class="accent-emerald-500"> Hide Very High</label>
             <input id="kgTickerSearch" aria-label="Cari ticker swing konglomerasi" oninput="applyScreenerUiFilters('konglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
         </div>
-        <!-- Filter tabs -->
-        <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
-            <button onclick="filterScreener('all')" class="screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
-            <button onclick="filterScreener('Swing Ready')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Swing Ready">Swing Ready</button>
-            <button onclick="filterScreener('Watchlist')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Watchlist">Watchlist</button>
-            <button onclick="filterScreener('Rebound Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
-            <button onclick="filterScreener('Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
-            <button onclick="filterScreener('Invalid')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Invalid">Invalid</button>
+        <!-- Filter tabs & View toggle -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-1">
+            <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5">
+                <button onclick="filterScreener('all')" class="screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
+                <button onclick="filterScreener('Swing Ready')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Swing Ready">Swing Ready</button>
+                <button onclick="filterScreener('Watchlist')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Watchlist">Watchlist</button>
+                <button onclick="filterScreener('Rebound Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
+                <button onclick="filterScreener('Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
+                <button onclick="filterScreener('Invalid')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Invalid">Invalid</button>
+            </div>
+            <div class="ac-segmented ac-wave5-segmented flex-shrink-0" role="group" aria-label="Tampilan Konglo Screener">
+                <button type="button" id="kgBtnTable" onclick="kgToggleView('table')" aria-pressed="true" class="ac-segment is-active">Tabel</button>
+                <button type="button" id="kgBtnCard" onclick="kgToggleView('card')" aria-pressed="false" class="ac-segment">Plan</button>
+            </div>
         </div>
-        <!-- Konglo Card Grid -->
-        <div id="kgCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
-        <!-- Table (hidden by default) -->
-        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden focus:outline-none focus:ring-2 focus:ring-emerald-500" id="screenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi">
+        <!-- Table (default visible on desktop) -->
+        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl ac-wave5-table-wrap focus:outline-none" id="screenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi">
             <table class="w-full text-xs border-collapse min-w-[1100px]">
                 <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
                     <tr class="scr-cols-17 bg-dark-700/80">
@@ -1040,6 +1072,8 @@
                 </tbody>
             </table>
         </div>
+        <!-- Konglo Card Grid (toggled via Plan view) -->
+        <div id="kgCardGrid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
         </div><!-- /screenerKongloPane -->
         <!-- Non-Konglo Pane (hidden by default) -->
         <div id="screenerNonKongloPane" class="hidden space-y-3">
@@ -1100,18 +1134,22 @@
             <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="nkHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('nonkonglo')" class="accent-emerald-500"> Hide Very High</label>
             <input id="nkTickerSearch" aria-label="Cari ticker swing non-konglomerasi" oninput="applyScreenerUiFilters('nonkonglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
             </div>
-            <!-- Status filter tabs -->
-            <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
-                <button onclick="filterNkScreener('all')" class="nk-screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
-                <button onclick="filterNkScreener('Swing Ready')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Swing Ready">Swing Ready</button>
-                <button onclick="filterNkScreener('Watchlist')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Watchlist">Watchlist</button>
-                <button onclick="filterNkScreener('Rebound Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
-                <button onclick="filterNkScreener('Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
+            <!-- Status filter tabs & View toggle -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-1">
+                <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5">
+                    <button onclick="filterNkScreener('all')" class="nk-screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
+                    <button onclick="filterNkScreener('Swing Ready')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Swing Ready">Swing Ready</button>
+                    <button onclick="filterNkScreener('Watchlist')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Watchlist">Watchlist</button>
+                    <button onclick="filterNkScreener('Rebound Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
+                    <button onclick="filterNkScreener('Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
+                </div>
+                <div class="ac-segmented ac-wave5-segmented flex-shrink-0" role="group" aria-label="Tampilan Non-Konglo Screener">
+                    <button type="button" id="nkBtnTable" onclick="nkToggleView('table')" aria-pressed="true" class="ac-segment is-active">Tabel</button>
+                    <button type="button" id="nkBtnCard" onclick="nkToggleView('card')" aria-pressed="false" class="ac-segment">Plan</button>
+                </div>
             </div>
-            <!-- Non-Konglo Card Grid -->
-            <div id="nkCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-bottom:12px"></div>
-            <!-- Table (hidden by default) -->
-            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden focus:outline-none focus:ring-2 focus:ring-emerald-500" id="nkScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi">
+            <!-- Table (default visible on desktop) -->
+            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl ac-wave5-table-wrap focus:outline-none" id="nkScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi">
                 <table class="w-full text-xs border-collapse min-w-[1200px]">
                     <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
                         <tr class="scr-cols-18 bg-dark-700/80">
@@ -1140,6 +1178,8 @@
                     </tbody>
                 </table>
             </div>
+            <!-- Non-Konglo Card Grid (toggled via Plan view) -->
+            <div id="nkCardGrid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
         </div><!-- /screenerNonKongloPane -->
         <!-- Day Trade Pane (hidden by default) -->
         <div id="screenerDayTradePane" class="hidden space-y-3">
@@ -1204,13 +1244,19 @@
             <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="dtHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('daytrade')" class="accent-emerald-500"> Hide Very High</label>
             <input id="dtTickerSearch" aria-label="Cari ticker day trade" oninput="applyScreenerUiFilters('daytrade')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
             </div>
-            <!-- Filter tabs -->
-            <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
-                <button onclick="filterDtScreener('all')" class="dt-screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
-                <button onclick="filterDtScreener('READY_BREAKOUT')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="READY_BREAKOUT">Signal</button>
-                <button onclick="filterDtScreener('PRE_SPIKE_WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="PRE_SPIKE_WATCH">Radar Prioritas</button>
-                <button onclick="filterDtScreener('WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="WATCH">Radar Aktif</button>
-                <button onclick="filterDtScreener('AVOID')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="AVOID">Hindari</button>
+            <!-- Filter tabs & View toggle -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-1">
+                <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5">
+                    <button onclick="filterDtScreener('all')" class="dt-screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
+                    <button onclick="filterDtScreener('READY_BREAKOUT')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="READY_BREAKOUT">Signal</button>
+                    <button onclick="filterDtScreener('PRE_SPIKE_WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="PRE_SPIKE_WATCH">Radar Prioritas</button>
+                    <button onclick="filterDtScreener('WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="WATCH">Radar Aktif</button>
+                    <button onclick="filterDtScreener('AVOID')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="AVOID">Hindari</button>
+                </div>
+                <div class="ac-segmented ac-wave5-segmented flex-shrink-0" role="group" aria-label="Tampilan Day Trade Screener">
+                    <button type="button" id="dtBtnTable" onclick="dtToggleView('table')" aria-pressed="true" class="ac-segment is-active">Tabel</button>
+                    <button type="button" id="dtBtnCard" onclick="dtToggleView('card')" aria-pressed="false" class="ac-segment">Plan</button>
+                </div>
             </div>
             <div class="mt-2 rounded-lg border border-dark-600/30 bg-dark-800/40 px-3 py-2 text-[10px] leading-relaxed text-gray-400">
                 <span class="text-emerald-400 font-semibold">Signal Terkonfirmasi</span> = konfirmasi lengkap.
@@ -1218,10 +1264,8 @@
                 <span class="text-yellow-400 font-semibold">Pullback</span> = tunggu area harga.
                 <span class="text-red-400 font-semibold">Spike/Hindari</span> = jangan chase atau jangan entry.
             </div>
-            <!-- Day Trade Card Grid -->
-            <div id="dtCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
-            <!-- Table (hidden by default, shown via toggle) -->
-            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden focus:outline-none focus:ring-2 focus:ring-emerald-500" id="dtScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data day trade screener">
+            <!-- Table (default visible on desktop) -->
+            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl ac-wave5-table-wrap focus:outline-none" id="dtScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data day trade screener">
                 <table class="w-full text-xs border-collapse min-w-[1100px]">
                     <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
                         <tr class="scr-cols-22 bg-dark-700/80">
@@ -1254,8 +1298,21 @@
                     </tbody>
                 </table>
             </div>
-            <!-- Day Trade Card Grid (compact, below table) -->
+            <!-- Day Trade Card Grid (toggled via Plan view) -->
+            <div id="dtCardGrid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
         </div><!-- /screenerDayTradePane -->
+        </div><!-- /screenerPanesContainer -->
+        <!-- Desktop Screener Detail Pane (§16, §63, §76.12) -->
+        <aside id="screenerDetailPane" class="hidden xl:flex flex-col xl:w-[360px] w-full flex-shrink-0 rounded-xl p-4 sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-thin ac-screener-detail-pane" aria-label="Detail Saham Terpilih">
+            <div class="flex items-center justify-between pb-3 ac-wave5-border-b mb-3">
+                <span class="text-xs font-bold ac-wave5-text uppercase tracking-wider">Detail Saham</span>
+                <button type="button" onclick="closeScreenerDetailPane()" aria-label="Tutup detail pane" class="ac-wave5-detail-close text-lg leading-none p-1 rounded-md transition">&times;</button>
+            </div>
+            <div id="screenerDetailPaneContent">
+                <div class="text-center py-12 ac-wave5-muted text-xs">Pilih salah satu saham di tabel untuk melihat detail sinyal, rencana trading, dan evaluasi gate.</div>
+            </div>
+        </aside>
+        </div><!-- /screenerFlexRow -->
     </div>
 </div>
 
@@ -9638,6 +9695,17 @@ function normalizeActionLabel(label) {
     if (compact === 'radar' || compact === 'early radar') return 'Radar';
     if (compact === 'final' || compact === 'locked' || compact === 'final locked') return 'Final / Locked';
     if (compact === 'preview' || compact === 'provisional' || compact === 'preview provisional') return 'Preview / Provisional';
+    if (compact === 'a plus setup' || compact === 'a+ setup') return 'Setup A+';
+    if (compact === 'ready breakout') return 'Siap Breakout';
+    if (compact === 'entry area' || compact === 'masuk area entry') return 'Area Entry';
+    if (compact === 'entry touched' || compact === 'entry tersentuh') return 'Entry Tersentuh';
+    if (compact === 'trade candidate') return 'Kandidat Trading';
+    if (compact === 'reclaim candidate') return 'Kandidat Reclaim';
+    if (compact === 'pre spike watch') return 'Pantau Pre-Spike';
+    if (compact === 'swing ready') return 'Swing Ready';
+    if (compact === 'rebound speculative') return 'Spekulatif Rebound';
+    if (compact === 'speculative') return 'Spekulatif';
+    if (compact === 'invalid') return 'Invalid';
     return text.replace(/_/g, ' ');
 }
 
@@ -10056,17 +10124,11 @@ function dtToggleView(mode) {
     var tableEl = document.getElementById('dtScreenerTableWrap');
     var btnC = document.getElementById('dtBtnCard');
     var btnT = document.getElementById('dtBtnTable');
-    if (mode === 'table') {
-        if (cardEl) cardEl.style.display = 'none';
-        if (tableEl) { tableEl.classList.remove('hidden'); tableEl.style.display = ''; }
-        if (btnC) { btnC.style.color = '#6b7280'; btnC.style.background = 'transparent'; }
-        if (btnT) { btnT.style.color = '#6ee7b7'; btnT.style.background = 'rgba(16,185,129,0.1)'; }
-    } else {
-        if (cardEl) cardEl.style.display = '';
-        if (tableEl) { tableEl.classList.add('hidden'); tableEl.style.display = 'none'; }
-        if (btnC) { btnC.style.color = '#6ee7b7'; btnC.style.background = 'rgba(16,185,129,0.1)'; }
-        if (btnT) { btnT.style.color = '#6b7280'; btnT.style.background = 'transparent'; }
-    }
+    var isTable = mode === 'table';
+    if (cardEl) cardEl.style.display = isTable ? 'none' : '';
+    if (tableEl) { tableEl.classList.toggle('hidden', !isTable); tableEl.style.display = isTable ? '' : 'none'; }
+    if (btnC) { btnC.classList.toggle('is-active', !isTable); btnC.setAttribute('aria-pressed', String(!isTable)); }
+    if (btnT) { btnT.classList.toggle('is-active', isTable); btnT.setAttribute('aria-pressed', String(isTable)); }
 }
 
 function freshnessText(r) {
@@ -10233,9 +10295,8 @@ function buildRespectQualityLine(r) {
     return (r.respect_quality_label + score + warn);
 }
 
-function openScrDetail(r, type) {
-    var modal = document.getElementById('scrDetailModal');
-    if (!modal) return;
+function renderScrDetailHtml(r, type) {
+    if (!r) return '';
     var chgView = changeDisplay(r.change_pct, 2);
     var sc = r.daytrade_score || r.score || 0;
     var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
@@ -10439,19 +10500,111 @@ function openScrDetail(r, type) {
     var warningText = type === 'daytrade' ? 'Day Trade scan berbasis candle harian sebagai radar awal. Konfirmasi intraday tetap wajib.' : 'Swing screener berbasis analisis teknikal harian. Entry bertahap dan konfirmasi manual tetap wajib.';
     html += '<div style="font-size:10px;color:#6b7280;margin-bottom:16px;padding:10px 12px;background:rgba(234,179,8,0.04);border:1px solid rgba(234,179,8,0.1);border-radius:10px;line-height:1.4">' + warningText + '</div>';
     // Buttons
-    html += '<div style="display:flex;gap:10px"><button onclick="closeScrDetail()" style="flex:1;padding:12px;border-radius:10px;font-size:13px;font-weight:500;color:#9ca3af;background:#1a1f2b;border:1px solid #2a3444;cursor:pointer;transition:background .2s">Tutup</button><button onclick="closeScrDetail();navigateTo(\'chart\');setTimeout(function(){var i=document.getElementById(\'chartTickerInput\');if(i){i.value=\'' + escapeHtml(r.ticker) + '\';loadChartPage();}},200)" style="flex:1;padding:12px;border-radius:10px;font-size:13px;font-weight:600;color:#6ee7b7;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);cursor:pointer;transition:background .2s">Buka Chart</button></div>';
-    document.getElementById('scrDetailContent').innerHTML = html;
+    html += '<div style="display:flex;gap:8px;margin-top:4px">';
+    html += '<button onclick="closeScrDetail();closeScreenerDetailPane()" class="ac-wave5-detail-btn ac-wave5-detail-btn-muted">Tutup</button>';
+    html += '<a href="/analisis-saham?ticker=' + encodeURIComponent(r.ticker) + '" onclick="closeScrDetail();closeScreenerDetailPane();if(window.navigateToPage){navigateToPage(\'analisis\');if(typeof loadStockAnalysis===\'function\'){loadStockAnalysis(\'' + escapeHtml(r.ticker) + '\');}return false;}" class="ac-wave5-detail-btn ac-wave5-detail-btn-research">Riset &rarr;</a>';
+    html += '<button onclick="closeScrDetail();closeScreenerDetailPane();navigateTo(\'chart\');setTimeout(function(){var i=document.getElementById(\'chartTickerInput\');if(i){i.value=\'' + escapeHtml(r.ticker) + '\';loadChartPage();}},200)" class="ac-wave5-detail-btn ac-wave5-detail-btn-chart">Chart</button>';
+    html += '</div>';
+    return html;
+}
+
+var _lastScrFocusTrigger = null;
+
+function openScrDetail(r, type) {
+    var modal = document.getElementById('scrDetailModal');
+    if (!modal || !r) return;
+    _lastScrFocusTrigger = document.activeElement;
+    var content = document.getElementById('scrDetailContent');
+    if (content) content.innerHTML = renderScrDetailHtml(r, type);
     modal.classList.remove('hidden');
+    var closeBtn = modal.querySelector('button');
+    if (closeBtn) closeBtn.focus();
 }
 
 function closeScrDetail() {
     var modal = document.getElementById('scrDetailModal');
     if (modal) modal.classList.add('hidden');
+    if (_lastScrFocusTrigger && typeof _lastScrFocusTrigger.focus === 'function') {
+        try { _lastScrFocusTrigger.focus(); } catch (e) {}
+        _lastScrFocusTrigger = null;
+    }
 }
 
+// Modal A11y Focus Trap & Escape handler
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeScrDetail();
+    var modal = document.getElementById('scrDetailModal');
+    if (!modal || modal.classList.contains('hidden')) return;
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        closeScrDetail();
+        return;
+    }
+    if (e.key === 'Tab') {
+        var focusables = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (!focusables || !focusables.length) return;
+        var first = focusables[0];
+        var last = focusables[focusables.length - 1];
+        if (e.shiftKey) {
+            if (document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            }
+        } else {
+            if (document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        }
+    }
 });
+
+function selectScreenerRow(rowEl, ticker, type) {
+    if (!ticker) return;
+    // Clear previous selected row styles
+    document.querySelectorAll('.kg-table-row.is-selected, .nk-table-row.is-selected, .dt-table-row.is-selected').forEach(function(el) {
+        el.classList.remove('is-selected');
+        el.removeAttribute('aria-selected');
+    });
+
+    if (rowEl) {
+        rowEl.classList.add('is-selected');
+        rowEl.setAttribute('aria-selected', 'true');
+    }
+
+    var r = null;
+    if (type === 'konglo' && _kgCardData) r = _kgCardData[ticker];
+    else if (type === 'nonkonglo' && _nkCardData) r = _nkCardData[ticker];
+    else if (type === 'daytrade' && _dtCardData) r = _dtCardData[ticker];
+    if (!r && window._dtCardData) r = window._dtCardData[ticker];
+    if (!r && _screenerCache && _screenerCache.results) r = _screenerCache.results.find(function(x) { return x.ticker === ticker; });
+    if (!r && _nkScreenerCache && _nkScreenerCache.results) r = _nkScreenerCache.results.find(function(x) { return x.ticker === ticker; });
+    if (!r && typeof _dtScreenerCache !== 'undefined' && _dtScreenerCache && _dtScreenerCache.results) r = _dtScreenerCache.results.find(function(x) { return x.ticker === ticker; });
+    if (!r) return;
+
+    var isDesktop = window.innerWidth >= 1280;
+    if (isDesktop) {
+        var pane = document.getElementById('screenerDetailPane');
+        var content = document.getElementById('screenerDetailPaneContent');
+        if (pane && content) {
+            content.innerHTML = renderScrDetailHtml(r, type);
+            pane.classList.remove('hidden');
+            pane.style.display = 'flex';
+        }
+    } else {
+        openScrDetail(r, type);
+    }
+}
+
+function closeScreenerDetailPane() {
+    document.querySelectorAll('.kg-table-row.is-selected, .nk-table-row.is-selected, .dt-table-row.is-selected').forEach(function(el) {
+        el.classList.remove('is-selected');
+        el.removeAttribute('aria-selected');
+    });
+    var content = document.getElementById('screenerDetailPaneContent');
+    if (content) {
+        content.innerHTML = '<div class="text-center py-12 ac-wave5-muted text-xs">Pilih salah satu saham di tabel untuk melihat detail sinyal, rencana trading, dan evaluasi gate.</div>';
+    }
+}
 
 // ===== KONGLO CARD GRID =====
 var _kgCardData = {};
@@ -10461,17 +10614,11 @@ function kgToggleView(mode) {
     var tableEl = document.getElementById('screenerTableWrap');
     var btnC = document.getElementById('kgBtnCard');
     var btnT = document.getElementById('kgBtnTable');
-    if (mode === 'table') {
-        if (cardEl) cardEl.style.display = 'none';
-        if (tableEl) { tableEl.classList.remove('hidden'); tableEl.style.display = ''; }
-        if (btnC) { btnC.style.color = '#6b7280'; btnC.style.background = 'transparent'; }
-        if (btnT) { btnT.style.color = '#6ee7b7'; btnT.style.background = 'rgba(16,185,129,0.1)'; }
-    } else {
-        if (cardEl) cardEl.style.display = '';
-        if (tableEl) { tableEl.classList.add('hidden'); tableEl.style.display = 'none'; }
-        if (btnC) { btnC.style.color = '#6ee7b7'; btnC.style.background = 'rgba(16,185,129,0.1)'; }
-        if (btnT) { btnT.style.color = '#6b7280'; btnT.style.background = 'transparent'; }
-    }
+    var isTable = mode === 'table';
+    if (cardEl) cardEl.style.display = isTable ? 'none' : '';
+    if (tableEl) { tableEl.classList.toggle('hidden', !isTable); tableEl.style.display = isTable ? '' : 'none'; }
+    if (btnC) { btnC.classList.toggle('is-active', !isTable); btnC.setAttribute('aria-pressed', String(!isTable)); }
+    if (btnT) { btnT.classList.toggle('is-active', isTable); btnT.setAttribute('aria-pressed', String(isTable)); }
 }
 
 function renderKgCardGrid(results) {
@@ -10577,6 +10724,18 @@ function renderKgCardGrid(results) {
 
 // ===== NON-KONGLO CARD GRID =====
 var _nkCardData = {};
+
+function nkToggleView(mode) {
+    var cardEl = document.getElementById('nkCardGrid');
+    var tableEl = document.getElementById('nkScreenerTableWrap');
+    var btnC = document.getElementById('nkBtnCard');
+    var btnT = document.getElementById('nkBtnTable');
+    var isTable = mode === 'table';
+    if (cardEl) cardEl.style.display = isTable ? 'none' : '';
+    if (tableEl) { tableEl.classList.toggle('hidden', !isTable); tableEl.style.display = isTable ? '' : 'none'; }
+    if (btnC) { btnC.classList.toggle('is-active', !isTable); btnC.setAttribute('aria-pressed', String(!isTable)); }
+    if (btnT) { btnT.classList.toggle('is-active', isTable); btnT.setAttribute('aria-pressed', String(isTable)); }
+}
 
 function renderNkCardGrid(results) {
     var container = document.getElementById('nkCardGrid');
@@ -10779,23 +10938,61 @@ function closeUsageReminder() {
 
 // ===== SEKTOR HOT / GRUP KONGLOMERAT HOT =====
 var _sektorCache = null;
+var _sektorViewMode = 'table';
+
+function sektorToggleView(mode) {
+    if (mode === 'card' || mode === 'table') {
+        _sektorViewMode = mode;
+    } else if (!_sektorViewMode) {
+        _sektorViewMode = 'table';
+    }
+    var isTable = _sektorViewMode === 'table';
+    var cardEl = document.getElementById('sektorGroupsGrid');
+    var tableEl = document.getElementById('sektorGroupTableWrap');
+    var btnC = document.getElementById('sektorBtnCard');
+    var btnT = document.getElementById('sektorBtnTable');
+    if (cardEl) {
+        cardEl.classList.toggle('hidden', isTable);
+        if (isTable) {
+            cardEl.style.setProperty('display', 'none', 'important');
+        } else {
+            cardEl.style.removeProperty('display');
+        }
+    }
+    if (tableEl) {
+        tableEl.classList.toggle('hidden', !isTable);
+        if (!isTable) {
+            tableEl.style.setProperty('display', 'none', 'important');
+        } else {
+            tableEl.style.removeProperty('display');
+        }
+    }
+    if (btnC) { btnC.classList.toggle('is-active', !isTable); btnC.setAttribute('aria-pressed', String(!isTable)); }
+    if (btnT) { btnT.classList.toggle('is-active', isTable); btnT.setAttribute('aria-pressed', String(isTable)); }
+}
+try { sektorToggleView('table'); } catch (_) {}
 
 async function loadSektorHot(silent) {
     var grid = document.getElementById('sektorGroupsGrid');
+    var tbody = document.getElementById('sektorGroupTableBody');
     var listView = document.getElementById('sektorListView');
     var detailView = document.getElementById('sektorDetailView');
-    if (!grid) return;
+    if (!grid && !tbody) return;
+    if (listView) listView.classList.remove('hidden');
+    if (detailView) detailView.classList.add('hidden');
+    sektorToggleView(_sektorViewMode || 'table');
     // Rapid re-navigation must not stack overlapping fetches onto the grid.
     if (loadSektorHot._busy) return;
     loadSektorHot._busy = true;
-    listView.classList.remove('hidden');
-    detailView.classList.add('hidden');
 
     // KEEP-ALIVE: a silent (revisit) load must not blank the grid it is about
     // to refresh, or the user sees the spinner they already sat through once.
-    var keepAliveCards = silent && grid.querySelector('.sektor-group-card');
-    if (!keepAliveCards) {
+    var keepAliveCards = silent && grid && grid.querySelector('.sektor-group-card');
+    if (!keepAliveCards && grid) {
         grid.innerHTML = '<div class="col-span-full flex justify-center py-8"><div class="spinner"></div></div>';
+    }
+    if (!silent && tbody && (!tbody.querySelector('tr') || tbody.innerHTML.indexOf('Memuat') >= 0)) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 ac-wave5-muted"><div class="spinner mx-auto mb-2"></div>Memuat data grup...</td></tr>';
     }
 
     try {
@@ -10806,7 +11003,8 @@ async function loadSektorHot(silent) {
         _sektorCache = data;
 
         if (!data.success || !data.groups || data.groups.length === 0) {
-            grid.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-sm text-gray-500">Data Grup Konglomerat Hot belum tersedia.</p><p class="text-xs text-gray-600 mt-2">Sedang disiapkan.</p></div>';
+            if (grid) grid.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-sm ac-wave5-muted">Data Grup Konglomerat Hot belum tersedia.</p><p class="text-xs ac-wave5-dim mt-2">Sedang disiapkan.</p></div>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 ac-wave5-muted">Data Grup Konglomerat Hot belum tersedia.</td></tr>';
             return;
         }
 
@@ -10847,30 +11045,56 @@ async function loadSektorHot(silent) {
             }
         }
 
+        // Render table rows (Dense Table First)
+        if (tbody) {
+            var tRowsHtml = '';
+            data.groups.forEach(function(g) {
+                var chgView = changeDisplay(g.avg_change_pct);
+                var topChgView = changeDisplay(g.top_change_pct);
+                var chgColor = chgView.cls;
+                var avgChgDisplay = chgView.text;
+                var topMoverStr = (g.top_ticker && g.top_change_pct != null) ? (escapeHtml(g.top_ticker) + ' ' + topChgView.text) : (g.top_ticker || '—');
+                var volAktif = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '—';
+                tRowsHtml += '<tr onclick="showGroupDetail(\'' + escapeHtml(g.group_code) + '\')" class="ac-wave5-row cursor-pointer transition">';
+                tRowsHtml += '<td class="px-3 py-2 text-left font-bold ac-wave5-text whitespace-nowrap"><span class="px-2 py-0.5 rounded ac-wave5-badge-brand font-mono text-[11px]">' + escapeHtml(g.group_code) + '</span></td>';
+                tRowsHtml += '<td class="px-3 py-2 text-left ac-wave5-text font-medium whitespace-nowrap">' + escapeHtml(g.group_name || g.group_code) + '</td>';
+                tRowsHtml += '<td class="px-3 py-2 text-center ac-wave5-muted whitespace-nowrap">' + (g.stock_count || 0) + '</td>';
+                tRowsHtml += '<td class="px-3 py-2 text-right font-bold ' + chgColor + ' whitespace-nowrap">' + avgChgDisplay + '</td>';
+                tRowsHtml += '<td class="px-3 py-2 text-left ' + topChgView.cls + ' whitespace-nowrap">' + topMoverStr + '</td>';
+                tRowsHtml += '<td class="px-3 py-2 text-right ac-wave5-text whitespace-nowrap">' + volAktif + '</td>';
+                tRowsHtml += '<td class="px-3 py-2 text-center whitespace-nowrap"><button type="button" onclick="event.stopPropagation();showGroupDetail(\'' + escapeHtml(g.group_code) + '\')" class="px-2.5 py-1 rounded-md text-[11px] font-semibold ac-wave5-btn-action transition">Detail</button></td>';
+                tRowsHtml += '</tr>';
+            });
+            tbody.innerHTML = tRowsHtml;
+        }
+
         // Render cards
-        var html = '';
-        data.groups.forEach(function(g) {
-            var chgView = changeDisplay(g.avg_change_pct);
-            var topChgView = changeDisplay(g.top_change_pct);
-            var chgColor = chgView.cls;
-            var avgChgDisplay = chgView.text;
-            html += '<div onclick="showGroupDetail(\'' + g.group_code + '\')" class="sektor-group-card bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 cursor-pointer hover:border-emerald-500/30 hover:bg-dark-700/80 transition-all">';
-            html += '<div class="flex items-start justify-between mb-2"><h3 class="text-sm font-semibold text-gray-200 leading-tight">' + escapeHtml(g.group_name || g.group_code) + '</h3>';
-            html += '<span class="text-lg font-bold ' + chgColor + ' flex-shrink-0 ml-2">' + avgChgDisplay + '</span></div>';
-            html += '<div class="flex items-center gap-3 text-xs text-gray-500">';
-            html += '<span>' + (g.stock_count || 0) + ' saham</span>';
-            if (g.top_ticker && g.top_change_pct != null) {
-                html += '<span class="' + topChgView.cls + '">Top: ' + escapeHtml(g.top_ticker) + ' ' + topChgView.text + '</span>';
-            } else if (g.valid_count === 0 || !g.top_ticker) {
-                html += '<span class="text-gray-600">Data belum tersedia</span>';
-            }
-            html += '</div>';
-            html += '<div class="mt-2 text-xs text-gray-600">Vol aktif: ' + (g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '-') + '</div>';
-            html += '</div>';
-        });
-        grid.innerHTML = html;
+        if (grid) {
+            var html = '';
+            data.groups.forEach(function(g) {
+                var chgView = changeDisplay(g.avg_change_pct);
+                var topChgView = changeDisplay(g.top_change_pct);
+                var chgColor = chgView.cls;
+                var avgChgDisplay = chgView.text;
+                html += '<div onclick="showGroupDetail(\'' + g.group_code + '\')" class="sektor-group-card ac-wave5-card rounded-xl p-4 cursor-pointer transition-all">';
+                html += '<div class="flex items-start justify-between mb-2"><h3 class="text-sm font-semibold ac-wave5-text leading-tight">' + escapeHtml(g.group_name || g.group_code) + '</h3>';
+                html += '<span class="text-lg font-bold ' + chgColor + ' flex-shrink-0 ml-2">' + avgChgDisplay + '</span></div>';
+                html += '<div class="flex items-center gap-3 text-xs ac-wave5-muted">';
+                html += '<span>' + (g.stock_count || 0) + ' saham</span>';
+                if (g.top_ticker && g.top_change_pct != null) {
+                    html += '<span class="' + topChgView.cls + '">Top: ' + escapeHtml(g.top_ticker) + ' ' + topChgView.text + '</span>';
+                } else if (g.valid_count === 0 || !g.top_ticker) {
+                    html += '<span class="ac-wave5-dim">Data belum tersedia</span>';
+                }
+                html += '</div>';
+                html += '<div class="mt-2 text-xs ac-wave5-dim">Vol aktif: ' + (g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '-') + '</div>';
+                html += '</div>';
+            });
+            grid.innerHTML = html;
+        }
     } catch (e) {
-        grid.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-sm text-red-400">Gagal memuat data Sektor Hot.</p></div>';
+        if (grid) grid.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-sm ac-wave5-danger">Gagal memuat data Sektor Hot.</p></div>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 ac-wave5-danger">Gagal memuat data Sektor Hot.</td></tr>';
     } finally {
         loadSektorHot._busy = false;
     }
@@ -10920,6 +11144,7 @@ async function showGroupDetail(groupCode) {
         tHtml += '<th class="px-2 py-2 text-right text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Vol Hari Ini</th>';
         tHtml += '<th class="px-2 py-2 text-right text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Vol/Avg30</th>';
         tHtml += '<th class="px-2 py-2 text-center text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Tipe</th>';
+        tHtml += '<th class="px-2 py-2 text-center ac-wave5-th font-medium ac-wave5-border-b whitespace-nowrap">Riset</th>';
         tHtml += '</tr></thead><tbody>';
 
         members.forEach(function(m) {
@@ -10940,6 +11165,7 @@ async function showGroupDetail(groupCode) {
             tHtml += '<td class="px-2 py-2 text-right text-gray-400 whitespace-nowrap">' + volDisplay + '</td>';
             tHtml += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + ratioDisplay + '</td>';
             tHtml += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ' + (isAnchor ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/15 text-gray-500') + '">' + (m.member_type || 'Member') + '</span></td>';
+            tHtml += '<td class="px-2 py-2 text-center whitespace-nowrap"><a href="/analisis-saham?ticker=' + encodeURIComponent(m.ticker) + '" onclick="if(window.navigateToPage){navigateToPage(\'analisis\');if(typeof loadStockAnalysis===\'function\'){loadStockAnalysis(\'' + escapeHtml(m.ticker) + '\');}return false;}" class="px-2 py-0.5 rounded text-[10px] font-semibold ac-wave5-btn-action transition inline-block">Riset &rarr;</a></td>';
             tHtml += '</tr>';
         });
         tHtml += '</tbody></table>';
@@ -10954,6 +11180,7 @@ function backToSektorList() {
     var detailView = document.getElementById('sektorDetailView');
     if (listView) listView.classList.remove('hidden');
     if (detailView) detailView.classList.add('hidden');
+    sektorToggleView(_sektorViewMode || 'table');
 }
 
 // Sektor Hot formatting helpers
@@ -11075,8 +11302,8 @@ async function loadSwingScreener(silent) {
         if (data.meta || (data.results && data.results.length > 0)) {
             if (typeof updateGlobalLiveRadarStatus === 'function') updateGlobalLiveRadarStatus(data.meta || {});
             var m = data.meta || {};
-            var realUniverse = m.universe_count || 52;
-            var realScanned = m.scanned_count || (data.results ? data.results.length : 52);
+            var realUniverse = (m.universe_count != null && m.universe_count > 0) ? m.universe_count : '—';
+            var realScanned = (m.scanned_count != null && m.scanned_count > 0) ? m.scanned_count : (data.results && data.results.length > 0 ? data.results.length : '—');
             var statU = document.getElementById('screenerStatUniverse');
             var statS = document.getElementById('screenerStatScanned');
             var statF = document.getElementById('screenerStatFailed');
@@ -11212,7 +11439,9 @@ function renderScreenerTable(results) {
     }
 
     var html = '';
+    _kgCardData = _kgCardData || {};
     filtered.forEach(function(r) {
+        if (r && r.ticker) _kgCardData[r.ticker] = r;
         var chgView = changeDisplay(r.change_pct);
 
         // Tier badge color
@@ -11243,7 +11472,7 @@ function renderScreenerTable(results) {
         var dirLabel = r.direction || '-';
         var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
 
-        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
+        html += '<tr class="kg-table-row ac-wave5-row cursor-pointer" data-ticker="' + escapeHtml(r.ticker) + '" onclick="selectScreenerRow(this, \'' + escapeHtml(r.ticker) + '\', \'konglo\')">';
         html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-2 text-gray-500 whitespace-nowrap text-[10px]">' + (r.group_code || '-') + '</td>';
         html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
@@ -11377,6 +11606,18 @@ function switchScreenerType(type) {
     stopScreenerPolling();
     stopNkPolling();
     stopDtPolling();
+
+    // Close detail pane on mode switch to avoid stale rows from previous mode
+    closeScreenerDetailPane();
+
+    // Preserve search query across modes where sensible
+    var prevSearch = '';
+    var activeInput = document.getElementById(type === 'konglo' ? 'kgTickerSearch' : (type === 'nonkonglo' ? 'nkTickerSearch' : 'dtTickerSearch'));
+    var allInputs = [document.getElementById('kgTickerSearch'), document.getElementById('nkTickerSearch'), document.getElementById('dtTickerSearch')];
+    allInputs.forEach(function(inp) { if (inp && inp.value && !prevSearch) prevSearch = inp.value; });
+    if (activeInput && prevSearch && !activeInput.value) {
+        activeInput.value = prevSearch;
+    }
 
     if (type === 'konglo') {
         if (kongloPane) { kongloPane.classList.remove('hidden'); kongloPane.classList.remove('scr-pane-anim'); void kongloPane.offsetWidth; kongloPane.classList.add('scr-pane-anim'); }
@@ -11559,8 +11800,8 @@ async function loadNkScreenerResults(silent) {
 function updateNkScreenerMeta(meta) {
     if (typeof updateGlobalLiveRadarStatus === 'function') updateGlobalLiveRadarStatus(meta || {});
     if (!meta) return;
-    var uVal = (meta.universe_count != null && meta.universe_count > 0) ? meta.universe_count : 720;
-    var sVal = (meta.scanned_count != null && meta.scanned_count > 0) ? meta.scanned_count : (meta.result_count || 720);
+    var uVal = (meta.universe_count != null && meta.universe_count > 0) ? meta.universe_count : '—';
+    var sVal = (meta.scanned_count != null && meta.scanned_count > 0) ? meta.scanned_count : (meta.result_count != null ? meta.result_count : '—');
     var pVal = meta.published_count != null ? meta.published_count : (meta.result_count || 0);
     var countFields = [['nkUniverseCount', uVal], ['nkScannedCount', sVal], ['nkPublishedCount', pVal], ['nkFailedCount', meta.failed_count != null ? meta.failed_count : 0]];
     countFields.forEach(function(pair) { var el = document.getElementById(pair[0]); if (el) el.textContent = pair[1] != null ? pair[1] : '-'; });
@@ -11665,7 +11906,9 @@ function renderNkScreenerTable(results) {
     }
 
     var html = '';
+    _nkCardData = _nkCardData || {};
     filtered.forEach(function(r) {
+        if (r && r.ticker) _nkCardData[r.ticker] = r;
         var chgView = changeDisplay(r.change_pct);
 
         var scoreColor = 'text-gray-400';
@@ -11706,7 +11949,7 @@ function renderNkScreenerTable(results) {
         var dirLabel = r.direction || '-';
         var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
 
-        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
+        html += '<tr class="nk-table-row ac-wave5-row cursor-pointer" data-ticker="' + escapeHtml(r.ticker) + '" onclick="selectScreenerRow(this, \'' + escapeHtml(r.ticker) + '\', \'nonkonglo\')">';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[11px] sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (r.rank || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '-') + '</td>';

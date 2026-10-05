@@ -182,6 +182,7 @@
   --ac-shadow-sm: var(--ac-shadow-1);          /* inline-sheet alias */
   --ac-shadow-md: var(--ac-shadow-1);          /* inline-sheet alias */
   --ac-shadow-lg: var(--ac-shadow-2);          /* inline-sheet alias */
+  --ac-shadow-panel: var(--ac-shadow-2);
 
   /* --- Type ramp -------------------------------------------------------
      Seven steps. The markup reaches for text-[9px]/[10px]/[11px] in 229
@@ -6421,4 +6422,150 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
   #acMoreSheetBackdrop {
     display: none !important;
   }
+}
+
+/* =========================================================================
+   WAVE 5 — SCREENER & SEKTOR HOT CANONICAL STYLES
+   ========================================================================= */
+
+/* Screener selected row with semantic edge indicator (§87.1, §88) */
+.kg-table-row.is-selected,
+.nk-table-row.is-selected,
+.dt-table-row.is-selected,
+.ac-wave5-row.is-selected {
+  background-color: var(--ac-brand-soft);
+  border-left: 3px solid var(--ac-brand);
+}
+
+/* Screener dense table rows (§13, §14) */
+#screenerTableBody tr,
+#nkScreenerTableBody tr,
+#dtScreenerTableBody tr,
+#sektorGroupTableBody tr {
+  min-height: var(--ac-row-dense);
+}
+
+/* Screener desktop detail pane (§16, §63, §76.12) */
+.ac-screener-detail-pane {
+  background: var(--ac-surface);
+  border: 1px solid var(--ac-line);
+  border-radius: var(--ac-radius-lg);
+  box-shadow: var(--ac-shadow-panel);
+}
+
+/* Dialog focus & accessibility (§49, §67) */
+#scrDetailModal:focus-visible,
+#screenerDetailPane:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: -2px;
+}
+
+/* Wave 5 semantic utility classes */
+.ac-wave5-table-wrap {
+  border: 1px solid var(--ac-line);
+  background: var(--ac-surface-1);
+}
+.ac-wave5-table-wrap:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: -2px;
+}
+.ac-wave5-thead {
+  background: var(--ac-surface-1);
+  border-bottom: 1px solid var(--ac-line);
+  z-index: var(--ac-z-sticky);
+}
+.ac-wave5-th {
+  color: var(--ac-text-muted);
+}
+.ac-wave5-row {
+  border-bottom: 1px solid var(--ac-hairline);
+  transition: background-color var(--motion-fast) ease;
+}
+.ac-wave5-row:hover {
+  background-color: var(--ac-surface-hover);
+}
+.ac-wave5-border-b {
+  border-bottom: 1px solid var(--ac-line);
+}
+.ac-wave5-text {
+  color: var(--ac-text);
+}
+.ac-wave5-muted {
+  color: var(--ac-text-muted);
+}
+.ac-wave5-dim {
+  color: var(--ac-text-dim);
+}
+.ac-wave5-danger {
+  color: var(--ac-danger);
+}
+.ac-wave5-detail-close {
+  color: var(--ac-text-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.ac-wave5-detail-close:hover {
+  color: var(--ac-text);
+  background: var(--ac-surface-hover);
+}
+.ac-wave5-detail-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: var(--ac-radius-sm);
+  font-size: var(--ac-text-caption);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--motion-fast) ease;
+}
+.ac-wave5-detail-btn-muted {
+  color: var(--ac-text-muted);
+  background: var(--ac-surface-2);
+  border: 1px solid var(--ac-line);
+}
+.ac-wave5-detail-btn-muted:hover {
+  background: var(--ac-surface-hover);
+  color: var(--ac-text);
+}
+.ac-wave5-detail-btn-research {
+  color: var(--ac-info);
+  background: var(--ac-info-dim);
+  border: 1px solid var(--ac-line);
+}
+.ac-wave5-detail-btn-research:hover {
+  background: var(--ac-surface-hover);
+}
+.ac-wave5-detail-btn-chart {
+  color: var(--ac-brand);
+  background: var(--ac-brand-soft);
+  border: 1px solid var(--ac-accent-line);
+}
+.ac-wave5-detail-btn-chart:hover {
+  background: var(--ac-accent-soft);
+}
+.ac-wave5-badge-brand {
+  background: var(--ac-brand-soft);
+  border: 1px solid var(--ac-accent-line);
+  color: var(--ac-brand);
+}
+.ac-wave5-card {
+  background: var(--ac-surface-1);
+  border: 1px solid var(--ac-line);
+}
+.ac-wave5-card:hover {
+  background: var(--ac-surface-hover);
+  border-color: var(--ac-line-strong);
+}
+.ac-wave5-btn-action {
+  background: var(--ac-brand-soft);
+  color: var(--ac-brand);
+  border: 1px solid var(--ac-accent-line);
+}
+.ac-wave5-btn-action:hover {
+  background: var(--ac-accent-soft);
 }
