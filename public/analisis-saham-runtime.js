@@ -103,7 +103,7 @@
     }
     var raw = row[col.key];
     if (raw === null || raw === undefined || !Number.isFinite(Number(raw))) {
-      return '<span class="text-gray-600">N/A</span>';
+      return '<span class="ac-cell-empty">&mdash;</span>';
     }
     var num = Number(raw);
     var text = col.fmt(num);

@@ -505,7 +505,7 @@
   var currentBandarDate = '';
   var lastBandarData = null;
   var brokerSummaryMode = 'gross'; // 'gross' or 'net'
-  var brokerSummaryView = 'bubble'; // 'bubble' (default) or 'table'
+  var brokerSummaryView = 'table'; // 'table' (default) or 'bubble'
   var brokerAccumulationView = 'table'; // 'table' (default) or 'bubble'
   var brokerSummaryRange = '1d'; // '1d' (default), '7d', '30d', 'custom'
   var customRangeStart = '';
@@ -516,6 +516,7 @@
   var selectedBrokerSide = '';
   var bubbleFilterSide = 'all'; // 'all', 'buy', 'sell'
   var insiderActionFilter = 'all'; // 'all', 'BUY', 'SELL'
+  var insiderMobileView = 'roster'; // 'roster' (default) or 'graph'
   var lastBrokerItems = [];
 
   // Bandarmologi Intelligence State
@@ -1409,7 +1410,7 @@
         var isSmallBubble = b.size < 64;
         var animString = isSelected
           ? 'none'
-          : 'acBubbleFloat' + b.floatId + ' ' + b.floatDuration + 's ease-in-out infinite alternate, acBubblePopIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) ' + b.staggerDelay + 's backwards';
+          : 'acBubblePopIn var(--motion-panel, 260ms) var(--ease-standard, cubic-bezier(.2,.8,.2,1)) ' + b.staggerDelay + 's backwards';
 
         var bubbleKey = b.broker + (isGross ? ('-' + (b.side || (b.isBuyer ? 'buy' : 'sell'))) : '');
 
@@ -1493,15 +1494,8 @@
       if (isMatch) {
         el.classList.add('ac-bubble-selected');
         el.style.animation = 'none';
-      } else {
         el.classList.remove('ac-bubble-selected');
-        // Restore float animation
-        var match = lastBrokerItems.find(function (it) {
-          return it.broker === code && (!bSide || !it.side || it.side === bSide);
-        }) || lastBrokerItems.find(function (it) { return it.broker === code; });
-        if (match) {
-          el.style.animation = 'acBubbleFloat' + match.floatId + ' ' + match.floatDuration + 's ease-in-out infinite alternate';
-        }
+        el.style.animation = 'none';
       }
     }
 
@@ -4018,6 +4012,41 @@
     }
   }
 
+  function setInsiderMobileView(view) {
+    insiderMobileView = (view === 'graph') ? 'graph' : 'roster';
+    var rosterSec = byId('insiderRosterSection');
+    var graphSec = byId('insiderGraphSection');
+    var tabRoster = byId('insiderTabRoster');
+    var tabGraph = byId('insiderTabGraph');
+    if (rosterSec) {
+      if (insiderMobileView === 'graph') {
+        rosterSec.classList.add('insider-mobile-hidden');
+      } else {
+        rosterSec.classList.remove('insider-mobile-hidden');
+      }
+    }
+    if (graphSec) {
+      if (insiderMobileView === 'roster') {
+        graphSec.classList.add('insider-mobile-hidden');
+      } else {
+        graphSec.classList.remove('insider-mobile-hidden');
+      }
+    }
+    if (tabRoster && tabGraph) {
+      if (insiderMobileView === 'roster') {
+        tabRoster.classList.add('ac-tab-active');
+        tabRoster.setAttribute('aria-selected', 'true');
+        tabGraph.classList.remove('ac-tab-active');
+        tabGraph.setAttribute('aria-selected', 'false');
+      } else {
+        tabGraph.classList.add('ac-tab-active');
+        tabGraph.setAttribute('aria-selected', 'true');
+        tabRoster.classList.remove('ac-tab-active');
+        tabRoster.setAttribute('aria-selected', 'false');
+      }
+    }
+  }
+
   function renderInsiderNetworkUI(container, data) {
     if (!container) return;
     injectBubbleStyles();
@@ -4044,6 +4073,13 @@
     html += '      <span class="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full font-semibold">⚡ Interactive Radial Graph</span>';
     html += '    </div>';
     html += '  </div>';
+    html += '</div>';
+
+    // Mobile View Toggle: [ Daftar Pemegang Saham ] [ Graf Jejaring ]
+    var isGraphView = insiderMobileView === 'graph';
+    html += '<div id="insiderMobileTabs" class="insider-mobile-tabs" role="tablist" aria-label="Tampilan Insider">';
+    html += '  <button type="button" role="tab" id="insiderTabRoster" onclick="BandarmologiRuntime.setInsiderMobileView(\'roster\')" class="ac-tab-btn' + (!isGraphView ? ' ac-tab-active' : '') + '" aria-selected="' + (!isGraphView ? 'true' : 'false') + '">Daftar Pemegang Saham</button>';
+    html += '  <button type="button" role="tab" id="insiderTabGraph" onclick="BandarmologiRuntime.setInsiderMobileView(\'graph\')" class="ac-tab-btn' + (isGraphView ? ' ac-tab-active' : '') + '" aria-selected="' + (isGraphView ? 'true' : 'false') + '">Graf Jejaring</button>';
     html += '</div>';
 
     // 2. TABEL TERSTRUKTUR: DAFTAR PEMEGANG SAHAM & INSIDER (DITAMPILKAN LENGKAP DI ATAS GRAF)
@@ -4177,6 +4213,7 @@
     html += '</div>';
 
     container.innerHTML = html;
+    setInsiderMobileView(insiderMobileView);
 
     // Load full roster for active emiten from VPS
     loadRosterForTicker(ticker);
@@ -5565,6 +5602,8 @@
     loadRosterForTicker: loadRosterForTicker,
     filterRosterTable: filterRosterTable,
     setRosterCategoryFilter: setRosterCategoryFilter,
+    setInsiderMobileView: setInsiderMobileView,
+    getInsiderMobileView: function () { return insiderMobileView; },
     selectInsiderForGraph: selectInsiderForGraph,
     renderRosterTableRows: renderRosterTableRows,
     formatDateDisplay: formatDateDisplay,
@@ -5660,6 +5699,8 @@
       loadRosterForTicker: loadRosterForTicker,
       filterRosterTable: filterRosterTable,
       setRosterCategoryFilter: setRosterCategoryFilter,
+      setInsiderMobileView: setInsiderMobileView,
+      getInsiderMobileView: function () { return insiderMobileView; },
       selectInsiderForGraph: selectInsiderForGraph,
       renderRosterTableRows: renderRosterTableRows,
       getCurrentInsiderRoster: function () { return currentInsiderRosterData; },

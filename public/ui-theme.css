@@ -77,6 +77,8 @@
   --color-text-primary: #f4f7fb;
   --color-text-secondary: #aab4c3;
   --color-text-muted: #738096;
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
   --color-border-subtle: rgba(148, 163, 184, 0.12);
   --color-border-default: rgba(148, 163, 184, 0.20);
   --color-accent: #5b8cff;
@@ -5525,17 +5527,19 @@ html.workspace-menu-open { overflow:hidden !important; }
 }
 
 /* Dashboard Top 5 Cards Alignment */
-#dashboardTop5List,
-.dashboard-top5-grid {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
-  gap: 12px !important;
-  margin-top: 0 !important;
+#page-dashboard #dashboardTop5List,
+#dashboardTop5List.dashboard-top5-grid {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 12px;
+  margin-top: 0;
 }
-#dashboardTop5List > *,
-.dashboard-top5-grid > * {
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
+#page-dashboard #dashboardTop5List > *,
+#dashboardTop5List.dashboard-top5-grid > * {
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 /* Standardize Tailwind & Component Transitions to Master Spec */
@@ -6568,4 +6572,69 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
 }
 .ac-wave5-btn-action:hover {
   background: var(--ac-accent-soft);
+}
+
+/* Wave 6: Dashboard & Research Lenses Design System Tokens */
+.ac-cell-empty {
+  color: var(--ac-text-faint);
+}
+
+.insider-mobile-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.insider-mobile-tabs .ac-tab-btn {
+  flex: 1 1 0%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: var(--ac-text-caption);
+  font-weight: 600;
+  border-radius: var(--ac-radius-md);
+  border: 1px solid var(--ac-hairline);
+  background: var(--ac-surface-2);
+  color: var(--ac-text-muted);
+  cursor: pointer;
+}
+
+.insider-mobile-tabs .ac-tab-btn.ac-tab-active {
+  background: var(--ac-accent);
+  color: var(--color-on-accent);
+  border-color: var(--ac-accent);
+}
+
+@media (min-width: 1024px) {
+  .insider-mobile-tabs {
+    display: none;
+  }
+}
+
+@media (max-width: 1023.98px) {
+  .insider-mobile-hidden {
+    display: none;
+  }
+}
+
+/* Wave 6: Search controls and title contrast */
+#insiderRosterTickerInput {
+  width: 108px;
+  max-width: 100%;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+#insiderRosterTickerInput + button {
+  flex-shrink: 0;
+}
+
+.page-title {
+  color: var(--color-text-primary);
+}
+
+.page-subtitle {
+  color: var(--color-text-secondary);
 }

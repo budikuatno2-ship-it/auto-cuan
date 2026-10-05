@@ -806,7 +806,7 @@
                     <div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</p></div>
                 </div>
             </section>
-            <aside class="radar-panel lg:col-span-2 panel" aria-label="Auto Monitor">
+            <aside class="radar-panel lg:col-span-2 panel" aria-label="Auto Monitor" hidden aria-hidden="true" style="display:none">
                 <div class="panel-header" style="min-height:48px;display:flex;align-items:flex-start;justify-content:space-between;">
                     <div>
                         <h3 class="panel-title">Auto Monitor</h3>
@@ -13121,10 +13121,23 @@ async function loadDashboardTop5Monitor(silent, opts) {
         var top = document.getElementById('dashboardTop5List');
         var mon = document.getElementById('dashboardMonitorList');
         var isSessionErr = e && e.message === 'Session perlu refresh/login ulang';
-        if (top) top.innerHTML = dashboardEmptyHtml(isSessionErr ? 'Session perlu refresh/login ulang' : DASHBOARD_ERROR_TEXT, isSessionErr ? 'amber' : 'error');
+        var hasExistingCards = top && top.querySelectorAll('.dashboard-pick-card').length > 0;
+        if (hasExistingCards && silent) {
+            var errIndicator = document.getElementById('dashboardTop5RefreshError');
+            if (!errIndicator && top && top.parentNode) {
+                var banner = document.createElement('div');
+                banner.id = 'dashboardTop5RefreshError';
+                banner.className = 'dash-flag mb-2';
+                banner.setAttribute('data-tone', 'danger');
+                banner.textContent = 'Gagal memperbarui data terkini. Menampilkan data sebelumnya.';
+                top.parentNode.insertBefore(banner, top);
+            }
+        } else if (top) {
+            top.innerHTML = dashboardEmptyHtml(isSessionErr ? 'Session perlu refresh/login ulang' : DASHBOARD_ERROR_TEXT, isSessionErr ? 'amber' : 'error');
+        }
         var note = document.getElementById('dashboardTop5LockNote');
-        if (note) note.textContent = '';
-        if (mon) mon.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
+        if (note && !hasExistingCards) note.textContent = '';
+        if (mon && !hasExistingCards) mon.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
     } finally { clearTimeout(_fallbackTimer); _dashboardTop5InFlight = null; }
     })();
     return _dashboardTop5InFlight;
