@@ -213,6 +213,319 @@
     doc.body.appendChild(launcher);
     doc.body.appendChild(panel);
 
+    // ---- Wave 2: Mobile Bottom Bar & More Sheet -----------------------------
+    var v2BottomBar = doc.createElement('nav');
+    v2BottomBar.id = 'acBottomBar';
+    v2BottomBar.className = 'ac-bottom-bar';
+    v2BottomBar.setAttribute('data-ac-ui', 'v2');
+    v2BottomBar.setAttribute('aria-label', 'Navigasi Bawah');
+
+    var v2SheetBackdrop = doc.createElement('div');
+    v2SheetBackdrop.id = 'acMoreSheetBackdrop';
+    v2SheetBackdrop.className = 'ac-sheet-backdrop';
+    v2SheetBackdrop.hidden = true;
+
+    var v2MoreSheet = doc.createElement('div');
+    v2MoreSheet.id = 'acMoreSheet';
+    v2MoreSheet.className = 'ac-more-sheet';
+    v2MoreSheet.setAttribute('role', 'dialog');
+    v2MoreSheet.setAttribute('aria-modal', 'true');
+    v2MoreSheet.setAttribute('aria-label', 'Menu Navigasi Lainnya');
+    v2MoreSheet.setAttribute('data-ac-ui', 'v2');
+    v2MoreSheet.hidden = true;
+
+    function makeBottomBtn(page, label, svgPath, isMore) {
+      var btn = doc.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ac-bottom-nav-item';
+      if (!isMore) btn.setAttribute('data-page', page);
+      btn.setAttribute('aria-label', label);
+      if (isMore) {
+        btn.id = 'acBottomMoreBtn';
+        btn.setAttribute('aria-haspopup', 'dialog');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+      var iconWrap = doc.createElement('span');
+      iconWrap.className = 'ac-bottom-icon';
+      iconWrap.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + svgPath + '</svg>';
+      var textWrap = doc.createElement('span');
+      textWrap.className = 'ac-bottom-text';
+      textWrap.textContent = label;
+      btn.appendChild(iconWrap);
+      btn.appendChild(textWrap);
+      return btn;
+    }
+
+    var dashBtn = makeBottomBtn('dashboard', 'Dashboard', '<path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>', false);
+    var screenerBtn = makeBottomBtn('screener', 'Screener', '<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>', false);
+    screenerBtn.setAttribute('data-premium-nav', 'true');
+    var watchlistBtn = makeBottomBtn('watchlist', 'Watchlist', '<path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>', false);
+    watchlistBtn.setAttribute('data-premium-nav', 'true');
+    var moreBtn = makeBottomBtn('more', 'Lainnya', '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>', true);
+
+    function clickNav(page, targetId) {
+      closeMoreSheet(false);
+      if (targetId) {
+        var el = doc.getElementById(targetId);
+        if (el && typeof el.click === 'function') {
+          el.click();
+          return;
+        }
+      }
+      activate(page);
+    }
+
+    dashBtn.addEventListener('click', function () { clickNav('dashboard'); });
+    screenerBtn.addEventListener('click', function () { clickNav('screener'); });
+    watchlistBtn.addEventListener('click', function () { clickNav('watchlist'); });
+
+    v2BottomBar.appendChild(dashBtn);
+    v2BottomBar.appendChild(screenerBtn);
+    v2BottomBar.appendChild(watchlistBtn);
+    v2BottomBar.appendChild(moreBtn);
+
+    var sheetHead = doc.createElement('div');
+    sheetHead.className = 'ac-sheet-head';
+    var sheetTitle = doc.createElement('p');
+    sheetTitle.className = 'ac-sheet-title';
+    sheetTitle.textContent = 'Menu Navigasi';
+    var sheetClose = doc.createElement('button');
+    sheetClose.type = 'button';
+    sheetClose.className = 'ac-sheet-close';
+    sheetClose.setAttribute('aria-label', 'Tutup menu');
+    sheetClose.textContent = '×';
+    sheetHead.appendChild(sheetTitle);
+    sheetHead.appendChild(sheetClose);
+
+    var sheetBody = doc.createElement('div');
+    sheetBody.className = 'ac-sheet-body';
+
+    v2MoreSheet.appendChild(sheetHead);
+    v2MoreSheet.appendChild(sheetBody);
+
+    doc.body.appendChild(v2BottomBar);
+    doc.body.appendChild(v2SheetBackdrop);
+    doc.body.appendChild(v2MoreSheet);
+
+    var lastSheetTrigger = null;
+    function isMoreSheetOpen() { return !v2MoreSheet.hidden; }
+
+    function isDestAuthorized(idOrSelector) {
+      var el = typeof idOrSelector === 'string'
+        ? (doc.getElementById(idOrSelector) || doc.querySelector(idOrSelector))
+        : idOrSelector;
+      if (!el) return false;
+      if (el.classList.contains('hidden') || el.hasAttribute('hidden')) return false;
+      if (el.getAttribute('aria-hidden') === 'true') return false;
+      if (el.disabled || el.getAttribute('aria-disabled') === 'true') return false;
+      if (el.style.display === 'none') return false;
+      return true;
+    }
+
+    function syncBottomNavVisibility() {
+      var screenerAllowed = isDestAuthorized('tabScreener') || isDestAuthorized('#appSidebar [data-sidebar-page="screener"]');
+      var watchlistAllowed = isDestAuthorized('tabWatchlist') || isDestAuthorized('#appSidebar [data-sidebar-page="watchlist"]');
+      screenerBtn.classList.toggle('hidden', !screenerAllowed);
+      watchlistBtn.classList.toggle('hidden', !watchlistAllowed);
+    }
+
+    function openMoreSheet() {
+      lastSheetTrigger = (doc.activeElement && doc.activeElement !== doc.body) ? doc.activeElement : moreBtn;
+      syncBottomNavVisibility();
+      renderMoreSheetContent();
+      v2SheetBackdrop.hidden = false;
+      v2MoreSheet.hidden = false;
+      moreBtn.setAttribute('aria-expanded', 'true');
+      var appContent = doc.getElementById('appContent');
+      if (appContent) appContent.setAttribute('aria-hidden', 'true');
+      scrollLock(true);
+      if (sheetClose && typeof sheetClose.focus === 'function') sheetClose.focus();
+    }
+    function closeMoreSheet(restoreFocus) {
+      if (!isMoreSheetOpen()) return;
+      v2SheetBackdrop.hidden = true;
+      v2MoreSheet.hidden = true;
+      moreBtn.setAttribute('aria-expanded', 'false');
+      var appContent = doc.getElementById('appContent');
+      if (appContent) appContent.removeAttribute('aria-hidden');
+      scrollLock(false);
+      if (restoreFocus !== false && lastSheetTrigger && typeof lastSheetTrigger.focus === 'function') {
+        try { lastSheetTrigger.focus(); } catch (_) {}
+      }
+    }
+
+    moreBtn.addEventListener('click', function () {
+      if (isMoreSheetOpen()) closeMoreSheet(true);
+      else openMoreSheet();
+    });
+    v2SheetBackdrop.addEventListener('click', function () { closeMoreSheet(true); });
+    sheetClose.addEventListener('click', function () { closeMoreSheet(true); });
+
+    doc.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && isMoreSheetOpen()) {
+        event.preventDefault();
+        closeMoreSheet(true);
+      }
+    });
+
+    // Trap focus inside More sheet when open
+    v2MoreSheet.addEventListener('keydown', function (e) {
+      if (e.key !== 'Tab') return;
+      var focusables = v2MoreSheet.querySelectorAll('button:not([disabled]):not([hidden]), [tabindex="0"]');
+      if (!focusables || focusables.length === 0) return;
+      var first = focusables[0];
+      var last = focusables[focusables.length - 1];
+      if (e.shiftKey) {
+        if (doc.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (doc.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    });
+
+    if (root.visualViewport && typeof root.visualViewport.addEventListener === 'function') {
+      root.visualViewport.addEventListener('resize', function () {
+        var isKeyboard = root.visualViewport.height < (root.innerHeight || 720) * 0.75;
+        if (v2BottomBar) {
+          if (isKeyboard) v2BottomBar.classList.add('ac-keyboard-active');
+          else v2BottomBar.classList.remove('ac-keyboard-active');
+        }
+      });
+    }
+
+    function makeSheetItem(label, iconSvg, onClick, isActive, badgeText) {
+      var btn = doc.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ac-sheet-item' + (isActive ? ' active' : '');
+      if (isActive) btn.setAttribute('aria-current', 'page');
+      var icon = doc.createElement('span');
+      icon.className = 'ac-sheet-item-icon';
+      icon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + iconSvg + '</svg>';
+      var text = doc.createElement('span');
+      text.className = 'ac-sheet-item-text';
+      text.textContent = label;
+      btn.appendChild(icon);
+      btn.appendChild(text);
+      if (badgeText) {
+        var badge = doc.createElement('span');
+        badge.className = 'ac-sheet-badge';
+        badge.textContent = badgeText;
+        btn.appendChild(badge);
+      }
+      btn.addEventListener('click', function () {
+        closeMoreSheet(false);
+        onClick();
+      });
+      return btn;
+    }
+
+    function renderMoreSheetContent() {
+      sheetBody.textContent = '';
+      var curPage = root.currentPage || 'dashboard';
+      var curSubTab = root.__ACTIVE_ANALISIS_SUBTAB__ || 'analisis-chart';
+      var isAdm = typeof root.isAdmin === 'function' && root.isAdmin();
+
+      // 1. DISCOVER GROUP
+      var sektorAllowed = isDestAuthorized('tabSektor') || isDestAuthorized('#appSidebar [data-sidebar-page="sektor"]');
+      if (sektorAllowed) {
+        var groupDiscover = doc.createElement('div');
+        groupDiscover.className = 'ac-sheet-group';
+        var gDiscLabel = doc.createElement('p');
+        gDiscLabel.className = 'ac-sheet-group-label';
+        gDiscLabel.textContent = 'Discover';
+        groupDiscover.appendChild(gDiscLabel);
+
+        groupDiscover.appendChild(makeSheetItem('Sektor Hot', '<path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>', function () {
+          clickNav('sektor', 'tabSektorHot');
+        }, curPage === 'sektor'));
+        sheetBody.appendChild(groupDiscover);
+      }
+
+      // 2. RESEARCH GROUP
+      var groupResearch = doc.createElement('div');
+      groupResearch.className = 'ac-sheet-group';
+      var gResLabel = doc.createElement('p');
+      gResLabel.className = 'ac-sheet-group-label';
+      gResLabel.textContent = 'Research';
+      groupResearch.appendChild(gResLabel);
+
+      var researchItems = [
+        { label: 'Analisis & Chart', subTab: 'analisis-chart', elId: 'tabAnalisisChart', icon: '<path d="M4 17V7m5 10V3m5 14v-5m5 5V8"/>' },
+        { label: 'Bandarmologi', subTab: 'bandarmologi', elId: 'tabBandarmologi', icon: '<path d="M3 17l6-6 4 4 8-10M15 5h6v6"/>' },
+        { label: 'Sinyal Intelijen', subTab: 'intel', elId: 'tabSinyalIntelijen', icon: '<path d="m13 2-9 12h7l-1 8 10-13h-7z"/>' },
+        { label: 'Broker Hunter', subTab: 'hunter', elId: 'tabBrokerHunter', icon: '<path d="M21 21l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0114 0z"/>' },
+        { label: 'Insider', subTab: 'insider', elId: 'tabJejaringInsider', icon: '<path d="M8 7l8 4M8 17l8-4M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0M20 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0M8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0"/>' },
+        { label: 'Ranking', subTab: 'ranking', elId: 'tabRankingHarian', icon: '<path d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7"/>' },
+        { label: 'Financial', subTab: 'financial', elId: 'tabFinancial', icon: '<path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/>' },
+        { label: 'Struktur Pasar', subTab: 'market-structure', elId: 'tabMarketStructure', icon: '<circle cx="8" cy="8" r="3"/><circle cx="16" cy="16" r="3"/><path d="M10.5 10.5l3 3M16 5v5M5 16h5"/>' }
+      ];
+
+      researchItems.forEach(function (r) {
+        var isAct = curPage === 'analisis' && curSubTab === r.subTab;
+        groupResearch.appendChild(makeSheetItem(r.label, r.icon, function () {
+          clickNav('analisis', r.elId);
+        }, isAct));
+      });
+
+      if (isAdm && isDestAuthorized('tabAnalisisPattern')) {
+        groupResearch.appendChild(makeSheetItem('Pattern Radar', '<path d="M3 12h4l3-7 4 14 3-7h4"/>', function () {
+          clickNav('analisis', 'tabAnalisisPattern');
+        }, curPage === 'analisis' && curSubTab === 'pattern', 'ADMIN'));
+      }
+      sheetBody.appendChild(groupResearch);
+
+      // 3. MONITOR GROUP
+      var portfolioAllowed = isDestAuthorized('tabPortfolio') || isDestAuthorized('#appSidebar [data-sidebar-page="portofolio"]');
+      var trackrecordAllowed = isDestAuthorized('tabTrackRecord') || isDestAuthorized('#appSidebar [data-sidebar-page="trackrecord"]');
+      if (portfolioAllowed || trackrecordAllowed) {
+        var groupMonitor = doc.createElement('div');
+        groupMonitor.className = 'ac-sheet-group';
+        var gMonLabel = doc.createElement('p');
+        gMonLabel.className = 'ac-sheet-group-label';
+        gMonLabel.textContent = 'Monitor';
+        groupMonitor.appendChild(gMonLabel);
+
+        if (portfolioAllowed) {
+          groupMonitor.appendChild(makeSheetItem('Portfolio', '<path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>', function () {
+            clickNav('portofolio');
+          }, curPage === 'portofolio'));
+        }
+
+        if (trackrecordAllowed) {
+          groupMonitor.appendChild(makeSheetItem('Track Record', '<path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>', function () {
+            clickNav('trackrecord');
+          }, curPage === 'trackrecord'));
+        }
+        sheetBody.appendChild(groupMonitor);
+      }
+
+      // 4. AKUN & PREFERENSI GROUP
+      var groupAccount = doc.createElement('div');
+      groupAccount.className = 'ac-sheet-group';
+      var gAccLabel = doc.createElement('p');
+      gAccLabel.className = 'ac-sheet-group-label';
+      gAccLabel.textContent = 'Akun & Preferensi';
+      groupAccount.appendChild(gAccLabel);
+
+      groupAccount.appendChild(makeSheetItem('Account Center', '<circle cx="12" cy="7" r="4"/><path d="M5.5 21a8.5 8.5 0 0 1 13 0"/>', function () {
+        if (typeof root.openAccountProfile === 'function') root.openAccountProfile();
+      }, false));
+
+      groupAccount.appendChild(makeSheetItem('Ganti Tema (Terang / Gelap)', '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>', function () {
+        if (typeof root.toggleAppTheme === 'function') root.toggleAppTheme();
+      }, false));
+
+      groupAccount.appendChild(makeSheetItem('Logout', '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>', function () {
+        if (typeof root.logout === 'function') root.logout();
+      }, false));
+      sheetBody.appendChild(groupAccount);
+    }
+
     var insets = { top: readInset(root, 'safe-area-inset-top'), right: readInset(root, 'safe-area-inset-right'),
       bottom: readInset(root, 'safe-area-inset-bottom'), left: readInset(root, 'safe-area-inset-left') };
 
@@ -227,8 +540,6 @@
 
     var stored = readStoredPosition(root);
     var position = stored || { x: 1e6, y: (root.innerHeight || 720) - 180, side: 'right' };
-    // `keepSide` re-snaps to the remembered edge (rotation, resize); a finished drag
-    // passes nothing so the edge is re-derived from where the finger let go.
     function applyPosition(keepSide) {
       var next = snapPosition(position, viewport(), keepSide === false ? null : position.side);
       position = { x: next.x, y: next.y, side: next.side };
@@ -410,6 +721,39 @@
       var signature = model.all.map(function (item) {
         return item.page + (item.active ? '!' : '');
       }).join(',') + '|' + (onShell ? '1' : '0');
+      if (v2BottomBar) {
+        v2BottomBar.classList.toggle('ac-hidden', !onShell);
+        if (!onShell) closeMoreSheet(false);
+
+        var cur = (root.currentPage) || (model.active && model.active.page) || 'dashboard';
+        var isDirect = (cur === 'dashboard' || cur === 'screener' || cur === 'watchlist');
+
+        dashBtn.classList.toggle('active', cur === 'dashboard');
+        if (cur === 'dashboard') dashBtn.setAttribute('aria-current', 'page'); else dashBtn.removeAttribute('aria-current');
+
+        screenerBtn.classList.toggle('active', cur === 'screener');
+        if (cur === 'screener') screenerBtn.setAttribute('aria-current', 'page'); else screenerBtn.removeAttribute('aria-current');
+
+        watchlistBtn.classList.toggle('active', cur === 'watchlist');
+        if (cur === 'watchlist') watchlistBtn.setAttribute('aria-current', 'page'); else watchlistBtn.removeAttribute('aria-current');
+
+        moreBtn.classList.toggle('active', !isDirect);
+        if (!isDirect) moreBtn.setAttribute('data-active-child', cur); else moreBtn.removeAttribute('data-active-child');
+
+        var screenerSrc = byPage['screener'];
+        if (screenerSrc && screenerSrc.hidden) {
+          screenerBtn.classList.add('hidden');
+        } else if (screenerSrc) {
+          screenerBtn.classList.remove('hidden');
+        }
+        var watchlistSrc = byPage['watchlist'];
+        if (watchlistSrc && watchlistSrc.hidden) {
+          watchlistBtn.classList.add('hidden');
+        } else if (watchlistSrc) {
+          watchlistBtn.classList.remove('hidden');
+        }
+      }
+
       if (signature === lastSignature) return model;
       lastSignature = signature;
 

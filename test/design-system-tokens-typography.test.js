@@ -394,7 +394,8 @@ test('Wave 1U: Reduced motion query scopes v2 primitives properly', () => {
   assert.match(theme, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?:is\(\[data-ac-ui="v2"\],\s*\.ac-ui-v2\)\s+\.ac-input/);
 });
 
-test('Wave 1U: index.html has no v2 scope marker, preserving legacy styling across all routes', () => {
-  assert.doesNotMatch(html, /data-ac-ui="v2"/);
-  assert.doesNotMatch(html, /class="[^"]*\bac-ui-v2\b[^"]*"/);
+test('Wave 2: index.html scopes v2 marker to shell elements without contaminating unmigrated body', () => {
+  assert.match(html, /data-ac-ui="v2"/);
+  assert.doesNotMatch(html, /<body[^>]*data-ac-ui="v2"/);
+  assert.doesNotMatch(html, /<html[^>]*data-ac-ui="v2"/);
 });

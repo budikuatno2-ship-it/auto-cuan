@@ -110,6 +110,7 @@
   function term(title, body) {
     return '<section class="ac-term-section"><h3>' + esc(title) + '</h3><p>' + esc(body) + '</p></section>';
   }
+  var lastCenterFocus = null;
   function ensureCenter() {
     var root = byId('acAccountCenter');
     if (root) return root;
@@ -162,8 +163,26 @@
     var root = byId('acAccountCenter');
     if (root) root.hidden = true;
     document.documentElement.style.removeProperty('overflow');
+    if (lastCenterFocus && typeof lastCenterFocus.setAttribute === 'function') {
+      try {
+        if (lastCenterFocus.getAttribute('aria-haspopup') === 'dialog') {
+          lastCenterFocus.setAttribute('aria-expanded', 'false');
+        }
+      } catch (_) {}
+    }
+    if (lastCenterFocus && typeof lastCenterFocus.focus === 'function') {
+      try { lastCenterFocus.focus(); } catch (_) {}
+    }
   }
-  async function openCenter(tab) {
+  async function openCenter(tab, triggerEl) {
+    lastCenterFocus = triggerEl || ((document.activeElement && document.activeElement !== document.body) ? document.activeElement : byId('sidebarAccountEntry'));
+    if (lastCenterFocus && typeof lastCenterFocus.setAttribute === 'function') {
+      try {
+        if (lastCenterFocus.getAttribute('aria-haspopup') === 'dialog') {
+          lastCenterFocus.setAttribute('aria-expanded', 'true');
+        }
+      } catch (_) {}
+    }
     var root = ensureCenter();
     root.hidden = false;
     document.documentElement.style.overflow = 'hidden';
@@ -235,6 +254,7 @@
       fact('Channel', tg.channel_joined ? '<span class="ac-chip ac-chip-ok">Sudah bergabung</span>' : '<span class="ac-chip">Belum tercatat</span>') +
       '</dl></section>',
       '<section class="ac-card"><p class="ac-section-kicker">Subscription</p><h2 class="ac-section-title">Status akses</h2>' + subscriptionMini(ent, sub) + '<button type="button" class="ac-btn ac-btn-primary" style="margin-top:12px;width:100%" data-ac-open-sub>Kelola subscription &amp; voucher</button></section>',
+      '<section class="ac-card ac-card-soft"><p class="ac-section-kicker">Sesi Akun</p><h2 class="ac-section-title">Keluar dari Sesi</h2><p class="ac-muted" style="margin-top:4px">Keluar dari sesi Auto-Cuan pada perangkat ini.</p><button type="button" class="ac-btn ac-btn-danger" id="acCenterLogoutBtn" style="margin-top:10px;width:100%" onclick="if(typeof window.closeAccountCenter===\'function\')window.closeAccountCenter();if(typeof window.logout===\'function\')window.logout();">Logout</button></section>',
       p.is_admin ? adminCommandsSectionHtml() : '',
       '</div></div>',
       '<div class="ac-hint">Peraturan &amp; Ketentuan dapat dibuka kapan saja dari tab di atas. Untuk akun baru, persetujuan versi aktif diwajibkan sebelum pendaftaran diproses.</div>'
@@ -542,9 +562,10 @@
   function init() {
     ensureCss(); ensureCenter(); installRegistrationContract(); installHeaderProfileTrigger();
     window.openStandaloneTermsModal = openStandaloneTermsModal;
-    window.openAccountProfile=function(){return openCenter('profile');};
-    window.openAccountTerms=function(){return openCenter('terms');};
-    window.openAccountSubscription=function(){return openCenter('subscription');};
+    window.closeAccountCenter = closeCenter;
+    window.openAccountProfile=function(triggerEl){return openCenter('profile', triggerEl);};
+    window.openAccountTerms=function(triggerEl){return openCenter('terms', triggerEl);};
+    window.openAccountSubscription=function(triggerEl){return openCenter('subscription', triggerEl);};
     // Other runtimes can replace/re-render header and registration state after
     // session validation. Re-attach idempotently without using MutationObserver
     // on the entire document tree.

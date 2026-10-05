@@ -5311,3 +5311,368 @@ html.light { --brand-mark-bg:#e1f5eb; --brand-mark-ink:#07593f; --brand-mark-lin
 }
 
 @media(max-width:1023px) { #appMain > .app-header :is(#headerUserLabel,#logoutBtn) { min-height:44px; } }
+
+/* ==========================================================================
+   WAVE 2: APPLICATION SHELL, NAVIGATION & ACCOUNT ENTRY
+   Scoped strictly under [data-ac-ui="v2"]
+   ========================================================================== */
+
+:root {
+  --ac-sidebar-width: 240px;
+  --ac-topbar-height: 52px;
+}
+
+/* Scoped Desktop Shell */
+#appSidebar[data-ac-ui="v2"] {
+  width: var(--ac-sidebar-width, 240px);
+  background: var(--ac-surface);
+  border-right: 1px solid var(--ac-line-default);
+}
+
+.app-header[data-ac-ui="v2"] {
+  height: var(--ac-topbar-height, 52px);
+  min-height: var(--ac-topbar-height, 52px);
+}
+
+.app-header[data-ac-ui="v2"] .header-shell {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* Hide duplicate horizontal navigation in V2 shell */
+.app-header[data-ac-ui="v2"] .mobile-nav-row {
+  display: none !important;
+}
+
+/* De-duplicate account controls from topbar */
+.app-header[data-ac-ui="v2"] #headerAccountSection {
+  display: none !important;
+}
+
+#appSidebar[data-ac-ui="v2"] .sidebar-subgroup-label {
+  display: none !important;
+}
+
+#appSidebar[data-ac-ui="v2"] .sidebar-utility-actions {
+  display: none !important;
+}
+
+#appSidebar[data-ac-ui="v2"] .sidebar-group-label {
+  color: var(--ac-text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 14px 12px 6px;
+}
+
+#appSidebar[data-ac-ui="v2"] .sidebar-item {
+  color: var(--ac-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  min-height: 36px;
+  padding: 7px 11px;
+  gap: 10px;
+  border-radius: var(--ac-radius-md, 8px);
+}
+
+#appSidebar[data-ac-ui="v2"] .sidebar-item:hover {
+  color: var(--ac-ink);
+  background: var(--ac-surface-hover);
+}
+
+#appSidebar[data-ac-ui="v2"] .sidebar-item.active {
+  background: var(--ac-surface-raised) !important;
+  color: var(--ac-ink) !important;
+  font-weight: 600;
+  border-color: var(--ac-line-hairline) !important;
+}
+
+#appSidebar[data-ac-ui="v2"] .sidebar-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  background: var(--ac-brand);
+  border-radius: 0 var(--ac-radius-xs, 4px) var(--ac-radius-xs, 4px) 0;
+}
+
+#appSidebar[data-ac-ui="v2"] .sidebar-item.active svg {
+  color: var(--ac-brand) !important;
+}
+
+#appSidebar[data-ac-ui="v2"] .sidebar-item:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: -2px;
+}
+
+/* Docked Sidebar Account Entry */
+#sidebarAccountEntry[data-ac-ui="v2"] {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--ac-radius-md, 8px);
+  border: 1px solid var(--ac-line-default);
+  background: var(--ac-surface);
+  color: var(--ac-ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--motion-hover) var(--ease-standard), border-color var(--motion-hover) var(--ease-standard);
+}
+
+#sidebarAccountEntry[data-ac-ui="v2"]:hover {
+  background: var(--ac-surface-hover);
+  border-color: var(--ac-line-strong);
+}
+
+#sidebarAccountEntry[data-ac-ui="v2"]:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: 2px;
+}
+
+/* Mobile launcher replacement: scoped ONLY when V2 bottom bar is active on the shell */
+#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden) ~ .ac-launcher,
+.app-shell:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launcher,
+body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launcher {
+  display: none !important;
+}
+
+/* Mobile Navigation Bar & More Sheet */
+@media (max-width: 1023px) {
+  #appMain {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 12px) !important;
+  }
+}
+
+#acBottomBar[data-ac-ui="v2"] {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--ac-z-shell, 40);
+  height: calc(56px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--ac-surface);
+  border-top: 1px solid var(--ac-line-default);
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  transition: transform var(--motion-hover) var(--ease-standard);
+}
+
+#acBottomBar.ac-keyboard-active {
+  transform: translateY(100%);
+  pointer-events: none;
+}
+
+#acBottomBar.ac-hidden {
+  display: none !important;
+}
+
+.ac-bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: var(--ac-touch-target, 44px);
+  border: 0;
+  background: transparent;
+  color: var(--ac-text-secondary);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  padding: 6px 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ac-bottom-nav-item:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: -2px;
+}
+
+.ac-bottom-nav-item.active {
+  color: var(--ac-brand);
+  font-weight: 600;
+}
+
+.ac-bottom-nav-item.active .ac-bottom-icon {
+  color: var(--ac-brand);
+}
+
+.ac-bottom-nav-item.hidden {
+  display: none !important;
+}
+
+#acMoreSheetBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: var(--ac-z-drawer, 80);
+}
+
+#acMoreSheetBackdrop[hidden] {
+  display: none !important;
+}
+
+#acMoreSheet[data-ac-ui="v2"] {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: min(85dvh, 680px);
+  background: var(--ac-surface);
+  color: var(--ac-ink);
+  border-top: 1px solid var(--ac-line-default);
+  border-radius: var(--ac-radius-xl, 16px) var(--ac-radius-xl, 16px) 0 0;
+  z-index: var(--ac-z-drawer, 80);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+#acMoreSheet[data-ac-ui="v2"][hidden] {
+  display: none !important;
+}
+
+.ac-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--ac-line-hairline);
+  flex-shrink: 0;
+}
+
+.ac-sheet-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ac-ink);
+}
+
+.ac-sheet-close {
+  width: var(--ac-control-sm, 36px);
+  height: var(--ac-control-sm, 36px);
+  border-radius: var(--ac-radius-md, 8px);
+  border: 1px solid var(--ac-line-default);
+  background: var(--ac-surface-raised);
+  color: var(--ac-text-secondary);
+  font-size: 20px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.ac-sheet-close:hover {
+  color: var(--ac-ink);
+}
+
+.ac-sheet-close:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: 2px;
+}
+
+.ac-sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overscroll-behavior: contain;
+}
+
+.ac-sheet-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ac-sheet-group-label {
+  margin: 0 0 6px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ac-text-secondary);
+}
+
+.ac-sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--ac-touch-target, 44px);
+  padding: 8px 12px;
+  border-radius: var(--ac-radius-md, 8px);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ac-ink);
+  font-size: 13px;
+  font-weight: 500;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.ac-sheet-item:hover {
+  background: var(--ac-surface-hover);
+}
+
+.ac-sheet-item:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: -2px;
+}
+
+.ac-sheet-item.active {
+  background: var(--ac-surface-raised);
+  color: var(--ac-brand);
+  font-weight: 600;
+  border-color: var(--ac-line-hairline);
+}
+
+.ac-sheet-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: var(--ac-text-secondary);
+}
+
+.ac-sheet-item.active .ac-sheet-item-icon {
+  color: var(--ac-brand);
+}
+
+.ac-sheet-badge {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--ac-radius-xs, 4px);
+  border: 1px solid var(--ac-line-default);
+  background: var(--ac-surface-raised);
+  color: var(--ac-text-secondary);
+}
+
+@media (min-width: 1024px) {
+  #acBottomBar,
+  #acMoreSheet,
+  #acMoreSheetBackdrop {
+    display: none !important;
+  }
+}
