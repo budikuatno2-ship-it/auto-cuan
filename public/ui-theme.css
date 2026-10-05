@@ -839,8 +839,15 @@ html.light :where([data-ac-ui="v2"], .ac-ui-v2),
   }
 }
 
-/* Table Primitives (Scoped) */
-:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-container {
+/* =========================================================================
+   Wave 3 — Data Primitives & Detail Pattern (Scoped V2)
+   Authority: DESIGN.md FINAL v1.1 (§14, §14.1, §62.1, §63, §76.4, §76.8-§76.14,
+   §78.1-§78.5, §80, §87, §88, §89, §90, §91, §92, §103)
+   ========================================================================= */
+
+/* ---- Table Primitives (§14, §76.9) ------------------------------------- */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-container,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-wrap {
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -849,12 +856,26 @@ html.light :where([data-ac-ui="v2"], .ac-ui-v2),
   background-color: var(--ac-surface);
 }
 
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-container:focus-visible,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-wrap:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: -2px;
+}
+
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-table {
   width: 100%;
   border-collapse: collapse;
   font-family: var(--ac-font-sans);
   font-size: 13px;
   text-align: left;
+}
+
+/* Dense & Comfort Row Height Standards (§14, §103.3) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ac-line-hairline);
+  white-space: nowrap;
 }
 
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th {
@@ -866,56 +887,403 @@ html.light :where([data-ac-ui="v2"], .ac-ui-v2),
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  padding: 8px 12px;
   border-bottom: 1px solid var(--ac-line-default);
-  white-space: nowrap;
+  height: 36px;
 }
 
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td {
-  padding: 8px 12px;
   color: var(--ac-ink);
-  border-bottom: 1px solid var(--ac-line-hairline);
-  white-space: nowrap;
+  height: var(--ac-row-dense, 38px);
 }
 
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-dense th {
+  height: 34px;
+  padding: 6px 10px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-dense td {
+  height: var(--ac-row-dense, 38px);
+  padding: 6px 10px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-comfort th {
+  height: 36px;
+  padding: 8px 14px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-comfort td {
+  height: var(--ac-row-comfort, 42px);
+  padding: 10px 14px;
+}
+
+/* Sticky Column / Identity Cell (§14, §14.1) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table .ac-col-sticky,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table .ac-table-sticky-col {
+  position: sticky;
+  left: 0;
+  background-color: var(--ac-surface);
+  box-shadow: 2px 0 0 0 var(--ac-line-hairline);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th.ac-col-sticky,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th.ac-table-sticky-col {
+  background-color: var(--ac-surface-raised);
+  z-index: var(--ac-z-sticky, 20);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr:hover td.ac-col-sticky,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr:hover td.ac-table-sticky-col {
+  background-color: var(--ac-surface-hover);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr.is-selected td.ac-col-sticky,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr[aria-selected="true"] td.ac-col-sticky,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr.is-selected td.ac-table-sticky-col,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr[aria-selected="true"] td.ac-table-sticky-col {
+  background-color: var(--ac-brand-soft);
+}
+
+/* Sortable Headers (§78.3) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th.is-sortable,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th[data-sortable="true"],
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th button.ac-table-sort-btn {
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--motion-hover, 140ms) var(--ease-standard),
+              background-color var(--motion-hover, 140ms) var(--ease-standard);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th.is-sortable:hover,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th[data-sortable="true"]:hover {
+  background-color: var(--ac-surface-hover);
+  color: var(--ac-ink);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th.is-sortable:focus-visible,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th[data-sortable="true"]:focus-visible,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th button.ac-table-sort-btn:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: -2px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-sort-indicator {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 10px;
+  vertical-align: middle;
+  color: var(--ac-text-muted);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .is-sorted .ac-sort-indicator {
+  color: var(--ac-brand);
+}
+
+/* Numeric Columns (§6, §76.9) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table .is-numeric,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th.is-numeric,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td.is-numeric,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* Row Hover, Selection & Keyboard Focus (§14, §19, §87.1, §88) */
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr {
-  transition: background-color var(--motion-hover, 140ms) var(--ease-standard, cubic-bezier(.2,.8,.2,1));
+  transition: background-color var(--motion-hover, 140ms) var(--ease-standard);
 }
 
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr:hover {
   background-color: var(--ac-surface-hover);
 }
 
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr[tabindex]:focus-visible,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr.is-interactive:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: -2px;
+  position: relative;
+}
+
+/* Selected row: uses brand semantics, NOT positive green semantics (§2.4, §88) */
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr.is-selected,
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr[aria-selected="true"] {
   background-color: var(--ac-brand-soft);
   box-shadow: inset 3px 0 0 var(--ac-brand);
 }
 
+/* Numeric semantic styling on table cells (§6, §14, §88) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td.ac-positive,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td.ac-num-positive,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td .ac-positive,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td .ac-num-positive {
+  color: var(--ac-positive);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td.ac-negative,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td.ac-num-negative,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td .ac-negative,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td .ac-num-negative {
+  color: var(--ac-negative);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td.ac-num-neutral,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td .ac-num-neutral {
+  color: var(--ac-text-muted);
+}
+
+/* Data meaning precedence: financial direction survives row selection (§88) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr.is-selected td.ac-positive,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr[aria-selected="true"] td.ac-positive,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr.is-selected td.ac-num-positive,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr[aria-selected="true"] td.ac-num-positive,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr.is-selected .ac-positive,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr[aria-selected="true"] .ac-positive,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr.is-selected .ac-num-positive,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr[aria-selected="true"] .ac-num-positive {
+  color: var(--ac-positive);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr.is-selected td.ac-negative,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr[aria-selected="true"] td.ac-negative,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr.is-selected td.ac-num-negative,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr[aria-selected="true"] td.ac-num-negative,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr.is-selected .ac-negative,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr[aria-selected="true"] .ac-negative,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr.is-selected .ac-num-negative,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr[aria-selected="true"] .ac-num-negative {
+  color: var(--ac-negative);
+}
+
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table .is-numeric,
-:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table th.is-numeric,
-:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table td.is-numeric {
+/* Embedded action isolation: prevent button clicks from bubbling unintentionally (§19) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table .ac-cell-action {
+  white-space: nowrap;
   text-align: right;
-  font-variant-numeric: tabular-nums lining-nums;
 }
 
-:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-dense td,
-:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-dense th {
-  height: var(--ac-row-dense, 38px);
-  padding: 6px 10px;
+/* ---- Two Mobile Data Strategies (§14.1, §48, §76.10, §87.2) ----------- */
+
+/* Strategy A: Decision List */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-decision-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 1px solid var(--ac-line-hairline);
+  border-radius: var(--ac-radius-md, 8px);
+  background-color: var(--ac-surface);
+  overflow: hidden;
 }
 
-:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-comfort td,
-:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-comfort th {
-  height: var(--ac-row-comfort, 42px);
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-decision-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--ac-touch-target, 44px);
   padding: 10px 14px;
+  border-bottom: 1px solid var(--ac-line-hairline);
+  background-color: var(--ac-surface);
+  color: var(--ac-ink);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--motion-hover, 140ms) var(--ease-standard);
 }
 
-/* Status & Badge Primitives (Scoped) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-decision-row:last-child {
+  border-bottom: none;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-decision-row:hover {
+  background-color: var(--ac-surface-hover);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-decision-row:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: -2px;
+  position: relative;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-decision-row.is-selected,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-decision-row[aria-selected="true"] {
+  background-color: var(--ac-brand-soft);
+  box-shadow: inset 3px 0 0 var(--ac-brand);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-decision-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-decision-ticker {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ac-ink);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-decision-sub {
+  font-size: 11px;
+  color: var(--ac-text-muted);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-decision-metrics {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 13px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-decision-affordance {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ac-text-muted);
+  font-size: 16px;
+}
+
+/* Strategy B: Comparative / Matrix Table retains real table with horizontal scroll */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-matrix {
+  min-width: 640px;
+}
+
+/* ---- Canonical Filter Bar (§76.4, §78.4) ------------------------------- */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--ac-line-hairline);
+  border-radius: var(--ac-radius-md, 8px);
+  background-color: var(--ac-surface);
+  margin-bottom: 12px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-search {
+  position: relative;
+  flex: 1 1 200px;
+  min-width: 160px;
+  max-width: 320px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-search input {
+  width: 100%;
+  height: var(--ac-control-sm, 36px);
+  padding-left: 32px;
+  padding-right: 44px;
+  font-size: 13px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ac-text-muted);
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-search-clear {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--ac-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ac-radius-xs, 4px);
+  min-width: var(--ac-touch-target, 44px);
+  min-height: var(--ac-touch-target, 44px);
+  width: var(--ac-touch-target, 44px);
+  height: var(--ac-touch-target, 44px);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-search-clear:hover {
+  color: var(--ac-ink);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-search-clear:focus-visible {
+  outline: 2px solid var(--ac-focus);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 4px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  font-size: 11.5px;
+  font-weight: 500;
+  border-radius: var(--ac-radius-sm, 6px);
+  background-color: var(--ac-surface-raised);
+  border: 1px solid var(--ac-line-default);
+  color: var(--ac-ink);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-chip-remove {
+  background: none;
+  border: none;
+  padding: 0 4px;
+  color: var(--ac-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  min-height: 20px;
+  position: relative;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-chip-remove::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: var(--ac-touch-target, 44px);
+  min-height: var(--ac-touch-target, 44px);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-chip-remove:hover {
+  color: var(--ac-negative);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-status {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ac-text-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Status / Availability Grammar (§76.8, §78.1, §88) ---------------- */
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-badge,
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-status {
   display: inline-flex;
@@ -931,6 +1299,43 @@ html.light :where([data-ac-ui="v2"], .ac-ui-v2),
   white-space: nowrap;
 }
 
+/* Availability states (§78.1) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-status-available,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-badge-available {
+  background-color: var(--ac-surface-hover);
+  color: var(--ac-ink);
+  border-color: var(--ac-line-default);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-status-partial,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-badge-partial {
+  background-color: var(--ac-warning-soft);
+  color: var(--ac-warning-text);
+  border-color: color-mix(in srgb, var(--ac-warning) 25%, transparent);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-status-unavailable,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-badge-unavailable {
+  background-color: var(--ac-surface-raised);
+  color: var(--ac-text-muted);
+  border-color: var(--ac-line-hairline);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-status-stale,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-badge-stale {
+  background-color: var(--ac-warning-soft);
+  color: var(--ac-warning-text);
+  border-color: color-mix(in srgb, var(--ac-warning) 30%, transparent);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-status-unknown,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-badge-unknown {
+  background-color: var(--ac-surface-raised);
+  color: var(--ac-text-muted);
+  border-color: var(--ac-line-hairline);
+}
+
+/* System & Directional states */
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-badge-positive,
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-status-positive {
   background-color: var(--ac-positive-soft);
@@ -966,7 +1371,328 @@ html.light :where([data-ac-ui="v2"], .ac-ui-v2),
   border-color: var(--ac-line-default);
 }
 
-/* Surface Primitives (Scoped) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-status-error,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-badge-error {
+  background-color: var(--ac-negative-soft);
+  color: var(--ac-negative);
+  border-color: color-mix(in srgb, var(--ac-negative) 25%, transparent);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-status-sample,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-badge-sample {
+  background-color: var(--ac-info-soft);
+  color: var(--ac-info);
+  border-color: color-mix(in srgb, var(--ac-info) 30%, transparent);
+}
+
+/* ---- Provenance Row (§76.11, §78.2) ------------------------------------ */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-provenance-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--ac-text-secondary);
+  border-top: 1px solid var(--ac-line-hairline);
+  background-color: var(--ac-surface);
+  border-radius: 0 0 var(--ac-radius-md, 8px) var(--ac-radius-md, 8px);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-provenance-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-provenance-label {
+  color: var(--ac-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-provenance-value {
+  color: var(--ac-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* ---- Detail Pane & Sheet Grammar (§63, §76.12, §87.1, §87.2) ----------- */
+
+/* Desktop List -> Detail Layout Container */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-list-detail-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-list-pane {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+/* Desktop Docked Detail Pane (320-380px target width) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-detail-pane {
+  width: 360px;
+  min-width: 320px;
+  max-width: 380px;
+  flex-shrink: 0;
+  border: 1px solid var(--ac-line-hairline);
+  border-radius: var(--ac-radius-md, 8px);
+  background-color: var(--ac-surface);
+  padding: 16px;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-detail-pane[hidden] {
+  display: none;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ac-line-hairline);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-detail-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ac-ink);
+  margin: 0;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-detail-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: var(--ac-radius-sm, 6px);
+  border: 1px solid var(--ac-line-hairline);
+  background: transparent;
+  color: var(--ac-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--motion-hover, 140ms) var(--ease-standard),
+              color var(--motion-hover, 140ms) var(--ease-standard);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-detail-close:hover {
+  background-color: var(--ac-surface-hover);
+  color: var(--ac-ink);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-detail-close:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: 2px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ac-ink);
+}
+
+/* Mobile Detail Sheet (§76.12, §87.2) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ac-z-drawer, 80);
+  background-color: color-mix(in srgb, var(--ac-canvas) 70%, transparent);
+  backdrop-filter: blur(2px);
+  touch-action: none;
+}
+
+html.light :is([data-ac-ui="v2"], .ac-ui-v2) .ac-sheet-backdrop {
+  background-color: color-mix(in srgb, var(--ac-ink) 50%, transparent);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-sheet-backdrop[hidden] {
+  display: none;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-detail-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 85vh;
+  z-index: var(--ac-z-drawer, 80);
+  background-color: var(--ac-surface);
+  border-top: 1px solid var(--ac-line-strong);
+  border-radius: var(--ac-radius-xl, 16px) var(--ac-radius-xl, 16px) 0 0;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  box-shadow: var(--ac-shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-detail-sheet[hidden] {
+  display: none;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-sheet-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--ac-touch-target, 44px);
+  min-height: var(--ac-touch-target, 44px);
+  border-radius: var(--ac-radius-sm, 6px);
+  border: 1px solid var(--ac-line-hairline);
+  background: var(--ac-surface-raised);
+  color: var(--ac-text-secondary);
+  cursor: pointer;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-sheet-close:hover {
+  background-color: var(--ac-surface-hover);
+  color: var(--ac-ink);
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-sheet-close:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: 2px;
+}
+
+/* ---- Feedback / Loading / Empty / Error Grammar (§56, §57, §58, §76.14, §80, §90) -- */
+
+/* Skeletons */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-skeleton {
+  background-color: var(--ac-surface-raised);
+  border-radius: var(--ac-radius-xs, 4px);
+  display: block;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-skeleton-text {
+  height: 14px;
+  width: 75%;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-skeleton-cell {
+  height: 18px;
+  width: 60%;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-skeleton-row {
+  height: var(--ac-row-dense, 38px);
+  width: 100%;
+  border-bottom: 1px solid var(--ac-line-hairline);
+}
+
+/* Empty State (§57) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 20px;
+  text-align: center;
+  border: 1px dashed var(--ac-line-default);
+  border-radius: var(--ac-radius-md, 8px);
+  background-color: var(--ac-surface);
+  gap: 10px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ac-ink);
+  margin: 0;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-empty-desc {
+  font-size: 13px;
+  color: var(--ac-text-secondary);
+  margin: 0;
+  max-width: 420px;
+  line-height: 1.5;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-empty-action {
+  margin-top: 8px;
+}
+
+/* Error State (§58) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  text-align: center;
+  border: 1px solid color-mix(in srgb, var(--ac-negative) 25%, transparent);
+  border-radius: var(--ac-radius-md, 8px);
+  background-color: var(--ac-negative-soft);
+  gap: 10px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-error-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ac-negative);
+  margin: 0;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-error-desc {
+  font-size: 13px;
+  color: var(--ac-ink);
+  margin: 0;
+  max-width: 420px;
+  line-height: 1.5;
+}
+
+/* Refresh Error with Previous Data Preserved (§20, §58, §90) */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-refresh-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: var(--ac-radius-sm, 6px);
+  background-color: var(--ac-warning-soft);
+  border: 1px solid color-mix(in srgb, var(--ac-warning) 30%, transparent);
+  color: var(--ac-warning-text);
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-refresh-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+/* Partial & Stale Notification Banners */
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-stale-banner,
+:is([data-ac-ui="v2"], .ac-ui-v2) .ac-partial-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--ac-radius-sm, 6px);
+  background-color: var(--ac-surface-raised);
+  border: 1px solid var(--ac-line-default);
+  color: var(--ac-text-secondary);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+/* ---- Surface Primitives (Scoped) --------------------------------------- */
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-surface-card {
   background-color: var(--ac-surface);
   border: 1px solid var(--ac-line-hairline);
@@ -979,6 +1705,24 @@ html.light :where([data-ac-ui="v2"], .ac-ui-v2),
   border: none;
   margin: 0;
 }
+
+/* ---- Responsive Overrides (§48, §49, §91.1) ---------------------------- */
+@media (max-width: 1023px) {
+  :is([data-ac-ui="v2"], .ac-ui-v2) .ac-list-detail-layout {
+    flex-direction: column;
+  }
+
+  :is([data-ac-ui="v2"], .ac-ui-v2) .ac-detail-pane {
+    display: none;
+  }
+
+  :is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-search input,
+  :is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-bar input,
+  :is([data-ac-ui="v2"], .ac-ui-v2) .ac-filter-bar select {
+    font-size: 16px;
+  }
+}
+
 
 /* ---- 2. Base + typography ---------------------------------------------- */
 body {
@@ -3019,7 +3763,9 @@ button:disabled,
   :is([data-ac-ui="v2"], .ac-ui-v2) .ac-input,
   :is([data-ac-ui="v2"], .ac-ui-v2) .ac-select,
   :is([data-ac-ui="v2"], .ac-ui-v2) .ac-textarea,
-  :is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr {
+  :is([data-ac-ui="v2"], .ac-ui-v2) .ac-table tbody tr,
+  :is([data-ac-ui="v2"], .ac-ui-v2) .ac-skeleton,
+  :is([data-ac-ui="v2"], .ac-ui-v2) .ac-detail-sheet {
     transition: none !important;
     animation: none !important;
   }
