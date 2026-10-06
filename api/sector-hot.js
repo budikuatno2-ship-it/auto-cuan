@@ -11152,7 +11152,7 @@ function formatSwingNkNoMinTpHeartbeatMessage(diagnostics) {
 
 async function sendSwingNkNoMinTpHeartbeat(diagnostics) {
   var message = formatSwingNkNoMinTpHeartbeatMessage(diagnostics);
-  var sendRes = await telegramNotifier.sendTelegramMessage(message);
+  var sendRes = await sendSwingEodTelegramMessage(message);
   return {
     sent: !!(sendRes && sendRes.sent),
     skipped: !(sendRes && sendRes.sent),
@@ -15005,6 +15005,18 @@ function formatSwingNoCandidateTelegramMessage(title) {
   return [title, 'Update: ' + timeStr, '', 'Belum ada kandidat ' + label + ' yang lolos final quality gate hari ini.', 'Bukan rekomendasi beli. Konfirmasi manual wajib.'].join('\n');
 }
 
+// Canonical Swing notifications are EOD products (the producer runs after the
+// cash-market session). The global Telegram notifier intentionally blocks
+// out-of-session intraday alerts, so every Swing EOD delivery must opt out of
+// that intraday-only guard explicitly. Keeping the bypass in one helper avoids
+// reintroducing a silent 19:00 market_closed failure in any Swing branch.
+function sendSwingEodTelegramMessage(text, options) {
+  return telegramNotifier.sendTelegramMessage(
+    text,
+    Object.assign({ skip_market_guard: true }, options || {})
+  );
+}
+
 // ============================================================
 // SWING KONGLO TELEGRAM NOTIFICATION (after manual refresh publish)
 // ============================================================
@@ -15025,7 +15037,7 @@ function formatSwingKongloNoSavedRowsHeartbeatMessage(counts) {
 async function sendSwingKongloNoSavedRowsHeartbeat(counts) {
   try {
     var msg = formatSwingKongloNoSavedRowsHeartbeatMessage(counts);
-    var hbRes = await telegramNotifier.sendTelegramMessage(msg);
+    var hbRes = await sendSwingEodTelegramMessage(msg);
     return {
       sent: !!hbRes.sent,
       skipped: !hbRes.sent,
@@ -15319,11 +15331,11 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
       var hbMinTp1Diagnostics = buildMinTp1UpsideDiagnostics(rows, 'Swing Konglo');
       if (monitorCandidates.length > 0) {
         var monitorMsg = formatSwingMonitorFallbackTelegramMessage(monitorCandidates, 'Swing Konglo');
-        var monitorRes = await telegramNotifier.sendTelegramMessage(monitorMsg);
+        var monitorRes = await sendSwingEodTelegramMessage(monitorMsg);
         return Object.assign({ sent: !!monitorRes.sent, skipped: !monitorRes.sent, reason: monitorRes.sent ? 'swing_monitor_fallback_sent' : 'swing_monitor_fallback_failed', message: monitorMsg, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: monitorCandidates.length, monitor_fallback_sent: !!monitorRes.sent, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics, swingMetaFallbackDiagnostics);
       }
       var hb = formatSwingEmptyHeartbeatTelegramMessage('Swing Konglo', { scanned_count: rows.length, generated_count: rows.length, latest_published_count: savedCount, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, selected_count: 0, passed_count: strictCandidates.length || digestCandidates.length, reason: publicSafetyDiagnostics.public_safety_filtered_count > 0 ? 'selected_count_zero_after_public_safety_filter' : 'selected_count_zero_after_final_gate', monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count });
-      var hbRes = await telegramNotifier.sendTelegramMessage(hb);
+      var hbRes = await sendSwingEodTelegramMessage(hb);
       return Object.assign({ sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, monitor_fallback_sent: false, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics, swingMetaFallbackDiagnostics);
     }
 
@@ -15379,7 +15391,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     // Append AI note to deterministic template
     var skFinalMsg = skAiNote ? msg + '\n\nCatatan AI:\n' + skAiNote : msg;
 
-    var result = await telegramNotifier.sendTelegramMessage(skFinalMsg, {
+    var result = await sendSwingEodTelegramMessage(skFinalMsg, {
       timeout_ms: 3000,
       ticker: finalList[0] ? String(finalList[0].ticker || '').toUpperCase() : undefined,
       status: finalList[0] ? finalList[0].status : undefined
@@ -15457,7 +15469,7 @@ function formatSwingEmptyHeartbeatTelegramMessage(label, counts) {
 async function sendSwingNkTelegramNotification(supabase, publishedCount) {
   if (publishedCount === 0) {
     var hb0 = formatSwingEmptyHeartbeatTelegramMessage('Swing Non-Konglo', { latest_published_count: publishedCount, published_count: publishedCount, selected_count: 0, reason: 'published_count_zero' });
-    var hb0Res = await telegramNotifier.sendTelegramMessage(hb0);
+    var hb0Res = await sendSwingEodTelegramMessage(hb0);
     return { sent: !!hb0Res.sent, skipped: !hb0Res.sent, reason: hb0Res.sent ? 'swing_empty_heartbeat_sent' : 'no_published_rows', message: hb0, latest_published_count: publishedCount, published_count: publishedCount, selected_count: 0 };
   }
   try {
@@ -15531,11 +15543,11 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
       var monitorTopReject = monitorDiagnostics.top_rejection_reasons[0] || null;
       if (monitorCandidates.length > 0) {
         var monitorMsg = formatSwingMonitorFallbackTelegramMessage(monitorCandidates, 'Swing Non-Konglo');
-        var monitorRes = await telegramNotifier.sendTelegramMessage(monitorMsg);
+        var monitorRes = await sendSwingEodTelegramMessage(monitorMsg);
         return Object.assign({ sent: !!monitorRes.sent, skipped: !monitorRes.sent, reason: monitorRes.sent ? 'swing_monitor_fallback_sent' : 'swing_monitor_fallback_failed', message: monitorMsg, latest_published_count: publishedCount, published_count: publishedCount, generated_count: rows.length, saved_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: monitorCandidates.length, monitor_fallback_sent: !!monitorRes.sent, selected_count: 0, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics);
       }
       var hb = formatSwingEmptyHeartbeatTelegramMessage('Swing Non-Konglo', { scanned_count: rows.length, generated_count: rows.length, latest_published_count: publishedCount, published_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, selected_count: 0, passed_count: strictCandidates.length || digestCandidates.length, reason: publicSafetyDiagnostics.public_safety_filtered_count > 0 ? 'selected_count_zero_after_public_safety_filter' : 'selected_count_zero_after_final_gate', monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count });
-      var hbRes = await telegramNotifier.sendTelegramMessage(hb);
+      var hbRes = await sendSwingEodTelegramMessage(hb);
       return Object.assign({ sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: publishedCount, published_count: publishedCount, generated_count: rows.length, saved_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, monitor_fallback_sent: false, selected_count: 0, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics);
     }
 
@@ -15591,7 +15603,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     // Append AI note to deterministic template
     var nkFinalMsg = nkAiNote ? msg + '\n\nCatatan AI:\n' + nkAiNote : msg;
 
-    var result = await telegramNotifier.sendTelegramMessage(nkFinalMsg, {
+    var result = await sendSwingEodTelegramMessage(nkFinalMsg, {
       timeout_ms: 3000,
       ticker: finalList[0] ? String(finalList[0].ticker || '').toUpperCase() : undefined,
       status: finalList[0] ? finalList[0].status : undefined
@@ -15748,6 +15760,7 @@ module.exports.__test = {
   buildSwingMonitorFallbackDiagnostics: buildSwingMonitorFallbackDiagnostics,
   selectSafeSwingMonitorCandidates: selectSafeSwingMonitorCandidates,
   formatSwingMonitorFallbackTelegramMessage: formatSwingMonitorFallbackTelegramMessage,
+  sendSwingEodTelegramMessage: sendSwingEodTelegramMessage,
   sendSwingKongloTelegramNotification: sendSwingKongloTelegramNotification,
   formatSwingKongloNoSavedRowsHeartbeatMessage: formatSwingKongloNoSavedRowsHeartbeatMessage,
   sendSwingKongloNoSavedRowsHeartbeat: sendSwingKongloNoSavedRowsHeartbeat,
