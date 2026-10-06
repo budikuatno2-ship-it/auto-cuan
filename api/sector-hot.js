@@ -13334,13 +13334,13 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
   // Preserve batch progress diagnostics separately from rows that survive DB read/trim.
   // This prevents a production false-zero from hiding the fact that earlier batches had candidates.
   var totalPassed = Math.max(prePublishCandidateCount, rawBatchPassedCount);
-  var publishedRows = selectTopCandidatesWithSectorDiversification(currentRunRows, 10, 3);
+  var publishedRows = selectTopCandidatesWithSectorDiversification(currentRunRows, 12, 3);
   var savedCount = publishedRows.length;
 
-  // Prune rows that are not in the top 10 of the current run (cleans up both lower-ranked rows and stale rows from prior runs)
-  var top10Tickers = new Set(publishedRows.map(function(r) { return r.ticker; }));
+  // Prune rows that are not in the top 12 of the current run (cleans up both lower-ranked rows and stale rows from prior runs)
+  var top12Tickers = new Set(publishedRows.map(function(r) { return r.ticker; }));
   var tickersToRemove = allRows
-    .filter(function(r) { return !top10Tickers.has(r.ticker); })
+    .filter(function(r) { return !top12Tickers.has(r.ticker); })
     .map(function(r) { return r.ticker; });
 
   if (tickersToRemove.length > 0) {

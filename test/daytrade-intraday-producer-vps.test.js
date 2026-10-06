@@ -136,8 +136,8 @@ test('IDTP-05: versioned schedule restores the 15-minute intraday producer befor
   const cron = fs.readFileSync(path.join(ROOT, 'deploy', 'vps', 'final-schedule.cron'), 'utf8');
   assert.match(
     cron,
-    /10,25,40,55 9-15 \* \* 1-5 \/home\/ubuntu\/auto-cuan\/deploy\/vps\/run-daytrade-producer\.sh --execute/,
-    'DayTrade FAST producer must run every 15 minutes from 09:10 cadence'
+    /2,17,32,47 9-15 \* \* 1-5 \/home\/ubuntu\/auto-cuan\/deploy\/vps\/run-daytrade-producer\.sh --execute/,
+    'DayTrade FAST producer must run every 15 minutes from 09:02 cadence'
   );
   assert.match(cron, /run-fastwatcher\.sh --send/);
   assert.doesNotMatch(cron, /run-daytrade\.sh --send/,
