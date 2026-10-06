@@ -25,6 +25,7 @@ const HELPER = path.join(ROOT, 'deploy', 'vps', 'lib', 'load-env.sh');
 const FIXED_WRAPPERS = [
   'run-screeners.sh',
   'run-daytrade.sh',
+  'run-daytrade-producer.sh',
   'run-fastwatcher.sh',
   'run-screener-dispatch.sh',
   'run-swing-konglo.sh',
