@@ -174,7 +174,12 @@ async function handleSubscriptionAction(req, res, action) {
   const rows=await db.from('user_entitlements').select('source,status,starts_at,expires_at,lifetime').eq('user_id',account.id);
   const entitlement=await resolveEntitlements(auth.user,account,db);
   const trial=(rows.data||[]).filter(r=>r.source==='trial')[0]; const linked=await subscriptionLinkStatus(db,account.id);
-  if(action==='subscription-trial-status') return res.status(200).json({success:true,available:auth.user.username==='budi'?false:!trial,consumed:!!trial,active:entitlement.trial_state==='active',starts_at:trial&&trial.starts_at||null,expires_at:trial&&trial.expires_at||null,duration_days:10,telegram_link_required:!linked,account_approval_state:account.is_approved===true?'approved':'pending',admin:auth.user.username==='budi'});
+  if(action==='subscription-trial-status') {
+    const trialDays = (trial && trial.starts_at && trial.expires_at)
+      ? Math.round((new Date(trial.expires_at).getTime() - new Date(trial.starts_at).getTime()) / (24 * 60 * 60 * 1000))
+      : 14;
+    return res.status(200).json({success:true,available:auth.user.username==='budi'?false:!trial,consumed:!!trial,active:entitlement.trial_state==='active',starts_at:trial&&trial.starts_at||null,expires_at:trial&&trial.expires_at||null,duration_days:trialDays,telegram_link_required:!linked,account_approval_state:account.is_approved===true?'approved':'pending',admin:auth.user.username==='budi'});
+  }
   if(action==='subscription-trial-activate') {
     if(!isSameOrigin(req)) return res.status(403).json({success:false,error:'Permintaan ditolak.'});
     const id=req.body&&req.body.idempotency_key; if(!isUuid(id)) return res.status(400).json({success:false,error:'Permintaan tidak valid.'});
@@ -182,7 +187,11 @@ async function handleSubscriptionAction(req, res, action) {
     const activated=await db.rpc('activate_subscription_trial',{p_user_id:account.id,p_activation_idempotency_key:id,p_activation_time:new Date().toISOString()});
     if(activated.error || !activated.data) return res.status(409).json({success:false,error:'Trial tidak dapat diaktifkan.'});
     if(auth.onboarding) res.setHeader('Set-Cookie',buildClearOnboardingCookie());
-    return res.status(200).json({success:true,active:activated.data.active===true,starts_at:activated.data.starts_at,expires_at:activated.data.expires_at,duration_days:10,normal_login_required:auth.onboarding===true});
+    const actDays = activated.data.duration_days
+      || ((activated.data.starts_at && activated.data.expires_at)
+          ? Math.round((new Date(activated.data.expires_at).getTime() - new Date(activated.data.starts_at).getTime()) / (24 * 60 * 60 * 1000))
+          : 14);
+    return res.status(200).json({success:true,active:activated.data.active===true,starts_at:activated.data.starts_at,expires_at:activated.data.expires_at,duration_days:actDays,normal_login_required:auth.onboarding===true});
   }
   if(action==='voucher-quote'||action==='voucher-redeem') {
     if(!isSameOrigin(req)) return res.status(403).json({success:false,error:'Permintaan ditolak.'});

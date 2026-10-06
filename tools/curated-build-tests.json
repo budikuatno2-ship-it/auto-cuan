@@ -598,6 +598,7 @@
   "test/vps-monitor-local-runner.test.js",
   "test/watchlist-alert-notification-target.test.js",
   "test/wave2-quota-savings.test.js",
+  "test/wave8-trial-google-link-contract.test.js",
   "test/web-runtime-audit.test.js",
   "test/web-security-boundaries.test.js",
   "test/webhook-alert-engine.test.js",

@@ -3,15 +3,18 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { TRIAL_DURATION_HOURS, TRIAL_DURATION_MS, getEntitlements } = require('../lib/entitlements');
+const { TRIAL_DURATION_HOURS, TRIAL_DURATION_MS, LEGACY_TRIAL_DURATION_HOURS, LEGACY_TRIAL_DURATION_MS, getEntitlements } = require('../lib/entitlements');
 const migration = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'subscription-phase-2-migration.sql'), 'utf8');
 const redemptionCorrection = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'subscription-phase-5c-redemption-correction.sql'), 'utf8');
 const now = new Date('2026-07-23T12:00:00.000Z');
 const account = { username: 'alice', is_blocked: false };
 const entitlement = (overrides) => Object.assign({ plan_code: 'PREMIUM_1_MONTH', source: 'trial', status: 'active', starts_at: '2026-07-13T12:00:00.000Z', expires_at: '2026-07-23T12:00:00.000Z', lifetime: false }, overrides);
 
-test('trial is exactly ten 24-hour days and has an exclusive expiry boundary', () => {
-  assert.equal(TRIAL_DURATION_HOURS, 240); assert.equal(TRIAL_DURATION_MS, 10 * 24 * 60 * 60 * 1000);
+test('trial preserves legacy 10-day truth and sets new initial trial to 14 days with exclusive expiry boundary', () => {
+  assert.equal(TRIAL_DURATION_HOURS, 14 * 24);
+  assert.equal(TRIAL_DURATION_MS, 14 * 24 * 60 * 60 * 1000);
+  assert.equal(LEGACY_TRIAL_DURATION_HOURS, 240);
+  assert.equal(LEGACY_TRIAL_DURATION_MS, 10 * 24 * 60 * 60 * 1000);
   assert.equal(getEntitlements({}, account, [entitlement({ expires_at: '2026-07-23T12:00:00.000Z' })], new Date(now - 1)).premium, true);
   assert.equal(getEntitlements({}, account, [entitlement()], now).premium, false);
 });

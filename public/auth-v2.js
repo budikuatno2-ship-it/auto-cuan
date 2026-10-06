@@ -99,6 +99,21 @@
         if (typeof window.updateDashGreeting === 'function') {
           try { window.updateDashGreeting(); } catch (_) {}
         }
+        if (result.data.email_required === true) {
+          if (typeof window.closeAuthChoiceModal === 'function') {
+            try { window.closeAuthChoiceModal(); } catch (_) {}
+          }
+          if (typeof window.closeLoginModal === 'function') {
+            try { window.closeLoginModal(); } catch (_) {}
+          }
+          if (typeof window.showLandingPage === 'function') {
+            try { window.showLandingPage({ replaceHistory: true, keepScroll: true }); } catch (_) {}
+          }
+          if (typeof window.enforceLegacyGmail === 'function') {
+            try { window.enforceLegacyGmail(); } catch (_) {}
+          }
+          return { valid: true, data: result.data, email_required: true };
+        }
         // Re-enter the app for ANY protected SPA route, not just /dashboard.
         // A valid session cookie with no matching localStorage state lands on
         // the login prompt for /screener, /watchlist, /sektor, /trackrecord and
@@ -139,7 +154,12 @@
           returnToGuest({ skipHistory: true });
           if (window.location.pathname === '/dashboard' || window.location.pathname === '/dashboard/') {
             if (typeof window.openAuthChoiceModal === 'function') {
-              try { window.openAuthChoiceModal('Sesi sudah tidak berlaku. Silakan login kembali.'); } catch (_) {}
+              try {
+                var message = result.response.status === 403
+                  ? 'Akses ditolak. Akun Anda belum disetujui atau tidak memiliki izin.'
+                  : 'Sesi sudah tidak berlaku. Silakan login kembali.';
+                window.openAuthChoiceModal(message);
+              } catch (_) {}
             }
           }
         } else {
@@ -151,6 +171,7 @@
             try { window.updateLandingCtas(); } catch (_) {}
           }
         }
+        return { valid: false, status: result.response.status };
       }
       return { valid: false, transient: result.response.status >= 500 };
     } catch (_) {
@@ -269,6 +290,11 @@
         }
         if (typeof window.closeLoginModal === 'function') window.closeLoginModal();
         if (typeof window.closeAuthChoiceModal === 'function') window.closeAuthChoiceModal();
+
+        var sessionCheck = await validateServerSession();
+        if (sessionCheck && sessionCheck.email_required === true) {
+          return;
+        }
         if (typeof window.enterApp === 'function') window.enterApp({ replaceHistory: true });
         return;
       }
@@ -300,8 +326,8 @@
 
   function modalShell(inner) {
     return [
-      '<div class="fixed inset-0 z-[100000] flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm">',
-      '  <div class="w-full max-w-md rounded-3xl border border-slate-700 bg-[#111827] p-6 shadow-2xl">',
+      '<div class="fixed inset-0 z-[100000] flex items-center justify-center p-4" style="background:var(--backdrop-surface, rgba(15,23,42,0.75));">',
+      '  <div class="w-full max-w-md rounded-2xl p-6" style="background:var(--surface); border:1px solid var(--border-subtle); color:var(--text-primary); box-shadow:0 20px 40px rgba(0,0,0,0.35);">',
       inner,
       '  </div>',
       '</div>'
@@ -331,17 +357,17 @@
     var modal = ensureResetModal();
     modal.innerHTML = modalShell([
       '<div class="flex items-start justify-between gap-4">',
-      '  <div><p class="text-xs font-bold uppercase tracking-wider text-emerald-300">Pemulihan akun</p><h2 class="mt-1 text-xl font-black text-white">Reset lewat Telegram</h2></div>',
-      '  <button type="button" id="authV2ResetClose" class="text-2xl leading-none text-slate-400 hover:text-white" aria-label="Tutup">&times;</button>',
+      '  <div><p class="text-xs font-bold uppercase tracking-wider" style="color:var(--accent-primary);">Pemulihan akun</p><h2 class="mt-1 text-xl font-black" style="color:var(--text-primary);">Reset lewat Telegram</h2></div>',
+      '  <button type="button" id="authV2ResetClose" class="text-2xl leading-none" style="color:var(--text-secondary); background:transparent; border:none; cursor:pointer;" aria-label="Tutup">&times;</button>',
       '</div>',
       '<form id="authV2ResetRequestForm" class="mt-3" onsubmit="return false;">',
-      '  <p class="text-sm leading-6 text-slate-400">Masukkan username. Bot verifikasi akan meminta konfirmasi pada akun Telegram yang sudah terhubung.</p>',
-      '  <label class="mt-5 block text-sm text-slate-300" for="authV2ResetUsername">Username</label>',
-      '  <input id="authV2ResetUsername" name="username" aria-label="Username pemulihan akun" autocomplete="username" class="mt-2 w-full rounded-xl border border-slate-600 bg-slate-950/70 px-4 py-3 text-white outline-none focus:border-emerald-400" />',
+      '  <p class="text-sm leading-6" style="color:var(--text-secondary);">Masukkan username. Bot verifikasi akan meminta konfirmasi pada akun Telegram yang sudah terhubung.</p>',
+      '  <label class="mt-5 block text-sm font-medium" style="color:var(--text-secondary);" for="authV2ResetUsername">Username</label>',
+      '  <input id="authV2ResetUsername" name="username" aria-label="Username pemulihan akun" autocomplete="username" class="mt-2 w-full rounded-xl px-4 py-3 outline-none" style="background:var(--canvas); border:1px solid var(--border-subtle); color:var(--text-primary); font-size:16px; min-height:44px;" />',
       '  <p id="authV2ResetMessage" class="mt-3 hidden rounded-xl border px-3 py-2 text-sm" role="alert" aria-live="assertive"></p>',
-      '  <button type="submit" id="authV2ResetRequestBtn" class="mt-5 w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400">Kirim konfirmasi ke bot</button>',
+      '  <button type="submit" id="authV2ResetRequestBtn" class="mt-5 w-full rounded-xl px-4 py-3 font-bold" style="background:var(--accent-primary); color:var(--color-on-accent,#ffffff); min-height:44px; border:none; cursor:pointer;">Kirim konfirmasi ke bot</button>',
       '</form>',
-      '<p class="mt-4 text-xs leading-5 text-slate-500">Password tidak dikirim ke Telegram. Bot hanya menyetujui atau menolak permintaan reset.</p>'
+      '<p class="mt-4 text-xs leading-5" style="color:var(--text-muted);">Password tidak dikirim ke Telegram. Bot hanya menyetujui atau menolak permintaan reset.</p>'
     ].join(''));
     modal.classList.remove('hidden');
 
@@ -397,17 +423,17 @@
     var modal = ensureResetModal();
     modal.innerHTML = modalShell([
       '<div class="flex items-start justify-between gap-4">',
-      '  <div><p class="text-xs font-bold uppercase tracking-wider text-emerald-300">Telegram terkonfirmasi</p><h2 class="mt-1 text-xl font-black text-white">Buat password baru</h2></div>',
-      '  <button type="button" id="authV2ResetClose" class="text-2xl leading-none text-slate-400 hover:text-white" aria-label="Tutup">&times;</button>',
+      '  <div><p class="text-xs font-bold uppercase tracking-wider" style="color:var(--accent-primary);">Telegram terkonfirmasi</p><h2 class="mt-1 text-xl font-black" style="color:var(--text-primary);">Buat password baru</h2></div>',
+      '  <button type="button" id="authV2ResetClose" class="text-2xl leading-none" style="color:var(--text-secondary); background:transparent; border:none; cursor:pointer;" aria-label="Tutup">&times;</button>',
       '</div>',
       '<form id="authV2ResetCompleteForm" class="mt-3" onsubmit="return false;">',
-      '  <p class="text-sm leading-6 text-slate-400">Gunakan minimal 8 karakter dengan huruf besar, huruf kecil, dan angka.</p>',
-      '  <label class="mt-5 block text-sm text-slate-300" for="authV2NewPassword">Password baru</label>',
-      '  <input id="authV2NewPassword" name="password" type="password" aria-label="Password baru" autocomplete="new-password" class="mt-2 w-full rounded-xl border border-slate-600 bg-slate-950/70 px-4 py-3 text-white outline-none focus:border-emerald-400" />',
-      '  <label class="mt-4 block text-sm text-slate-300" for="authV2NewPasswordConfirm">Konfirmasi password</label>',
-      '  <input id="authV2NewPasswordConfirm" name="passwordConfirm" type="password" aria-label="Konfirmasi password baru" autocomplete="new-password" class="mt-2 w-full rounded-xl border border-slate-600 bg-slate-950/70 px-4 py-3 text-white outline-none focus:border-emerald-400" />',
+      '  <p class="text-sm leading-6" style="color:var(--text-secondary);">Gunakan minimal 8 karakter dengan huruf besar, huruf kecil, dan angka.</p>',
+      '  <label class="mt-5 block text-sm font-medium" style="color:var(--text-secondary);" for="authV2NewPassword">Password baru</label>',
+      '  <input id="authV2NewPassword" name="password" type="password" aria-label="Password baru" autocomplete="new-password" class="mt-2 w-full rounded-xl px-4 py-3 outline-none" style="background:var(--canvas); border:1px solid var(--border-subtle); color:var(--text-primary); font-size:16px; min-height:44px;" />',
+      '  <label class="mt-4 block text-sm font-medium" style="color:var(--text-secondary);" for="authV2NewPasswordConfirm">Konfirmasi password</label>',
+      '  <input id="authV2NewPasswordConfirm" name="passwordConfirm" type="password" aria-label="Konfirmasi password baru" autocomplete="new-password" class="mt-2 w-full rounded-xl px-4 py-3 outline-none" style="background:var(--canvas); border:1px solid var(--border-subtle); color:var(--text-primary); font-size:16px; min-height:44px;" />',
       '  <p id="authV2ResetMessage" class="mt-3 hidden rounded-xl border px-3 py-2 text-sm" role="alert" aria-live="assertive"></p>',
-      '  <button type="submit" id="authV2ResetCompleteBtn" class="mt-5 w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400">Simpan password baru</button>',
+      '  <button type="submit" id="authV2ResetCompleteBtn" class="mt-5 w-full rounded-xl px-4 py-3 font-bold" style="background:var(--accent-primary); color:var(--color-on-accent,#ffffff); min-height:44px; border:none; cursor:pointer;">Simpan password baru</button>',
       '</form>'
     ].join(''));
     modal.classList.remove('hidden');
@@ -465,9 +491,13 @@
 
   function installRecoveryUi() {
     window.openSelfResetModal = showResetRequest;
-  window.closeAuthV2ResetModal = closeResetModal;
+    window.closeAuthV2ResetModal = closeResetModal;
     window.closeSelfResetModal = closeResetModal;
     window.doSelfResetPassword = showResetRequest;
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeResetModal();
+    });
 
     var params = new URLSearchParams(window.location.search);
     var resetToken = params.get('reset_token');

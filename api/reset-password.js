@@ -31,7 +31,14 @@ async function adminAccessRequestSourceContract() {
 module.exports = async function handler(req, res) {
   const queryAction = String(req.query && req.query.action || '').trim();
   const bodyAction = String(req.body && req.body.action || '').trim();
-  if (bodyAction === 'account-email-status' || bodyAction === 'account-email-complete') {
+  if (
+    bodyAction === 'account-email-status' ||
+    bodyAction === 'account-email-complete' ||
+    bodyAction === 'account-google-status' ||
+    bodyAction === 'account-google-link-url' ||
+    bodyAction === 'account-google-link-callback' ||
+    (req.method === 'GET' && queryAction === 'account-google-link-callback')
+  ) {
     return legacyGmailHandler(req, res);
   }
 

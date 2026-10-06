@@ -1,10 +1,27 @@
-.legacy-gmail-dialog{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid #334155;border-radius:20px;padding:24px;background:#111827;color:#f1f5f9}
-.legacy-gmail-dialog::backdrop{background:rgb(2 6 23 / .82)}
-.legacy-gmail-dialog form{display:grid;gap:14px}.legacy-gmail-dialog h2{font-size:22px;font-weight:700}.legacy-gmail-dialog p{font-size:14px;color:#cbd5e1;line-height:1.6}
-.legacy-gmail-dialog input{width:100%;padding:12px;background:#0b0e14;border:1px solid #475569;border-radius:10px;color:#fff}
-.legacy-gmail-dialog button{min-height:44px;border-radius:10px;background:#10b981;color:#022c22;font-weight:700}.legacy-gmail-dialog button[type=button]{background:#1e293b;color:#e2e8f0}
-.legacy-gmail-dialog :focus-visible,.account-subscription-control:focus-visible{outline:2px solid #34d399;outline-offset:3px}
-.legacy-gmail-dialog #legacyGmailError{color:#fda4af}.legacy-gmail-dialog button:disabled{opacity:.6}
+.legacy-gmail-dialog{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid var(--border-subtle);border-radius:var(--radius-lg,16px);padding:24px;background:var(--surface);color:var(--text-primary);box-shadow:var(--ac-shadow-lg);}
+.legacy-gmail-dialog::backdrop{background:var(--backdrop-surface,rgba(15,23,42,.75))}
+.legacy-gmail-dialog form,.google-link-content{display:grid;gap:14px}
+.legacy-gmail-dialog h2{font-size:20px;font-weight:700;color:var(--text-primary);margin:0}
+.legacy-gmail-dialog p{font-size:14px;color:var(--text-secondary);line-height:1.6;margin:0}
+.legacy-gmail-dialog .legacy-gmail-notice{font-size:13px;color:var(--text-muted);border-left:2px solid var(--accent-primary);padding-left:10px}
+.legacy-gmail-dialog label{font-size:12px;font-weight:600;color:var(--text-secondary)}
+.legacy-gmail-dialog input{width:100%;min-height:44px;padding:10px 12px;background:var(--canvas);border:1px solid var(--border-subtle);border-radius:var(--radius-md,8px);color:var(--text-primary);font-size:16px;outline:none;box-sizing:border-box}
+.legacy-gmail-dialog input:focus-visible{border-color:var(--accent-primary);outline:2px solid var(--accent-primary);outline-offset:1px}
+.legacy-gmail-actions{display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:6px}
+.legacy-gmail-dialog button{min-height:44px;padding:0 16px;border-radius:var(--radius-md,8px);font-weight:700;font-size:14px;cursor:pointer;border:1px solid transparent}
+.legacy-gmail-dialog button[type=submit],.google-link-btn{background:var(--accent-primary);color:var(--color-on-accent,#ffffff);border-color:var(--accent-primary);width:100%}
+.legacy-gmail-dialog button[type=submit]:hover,.google-link-btn:hover{background:var(--accent-primary-hover)}
+.legacy-gmail-dialog button[type=button]{background:var(--surface-elevated);border-color:var(--border-subtle);color:var(--text-secondary)}
+.legacy-gmail-dialog button[type=button]:hover{color:var(--text-primary)}
+.google-link-card{display:grid;gap:10px;padding:16px;background:var(--surface-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md,8px);}
+.google-link-success{padding:16px;border-radius:var(--radius-md,8px);border:1px solid var(--border-subtle);background:var(--surface-elevated);text-align:center;display:grid;gap:6px}
+.google-link-success-title{font-size:16px;font-weight:700;color:var(--text-primary);margin:0}
+.google-link-masked-email{font-size:14px;color:var(--text-secondary);font-family:monospace;margin:0}
+.google-link-success-badge{font-size:13px;font-weight:600;color:var(--accent-primary);margin:0}
+.legacy-gmail-dialog :focus-visible,.account-subscription-control:focus-visible{outline:2px solid var(--accent-primary);outline-offset:2px}
+.legacy-gmail-dialog #legacyGmailError{color:var(--danger);font-size:13px;margin:0;min-height:18px}
+.legacy-gmail-dialog button:disabled{opacity:.6;cursor:not-allowed}
+@media(max-width:480px){.legacy-gmail-actions{grid-template-columns:1fr}}
 #headerAccountSection{flex-wrap:wrap;justify-content:flex-end}#headerAccountSection button,#headerUserLabel{min-height:40px}
 #appMain>.app-header{display:block!important}
 @media(min-width:1024px){#appMain>.app-header .workspace-header-brand,#appMain>.app-header .desktop-header-chips{display:none!important}}
