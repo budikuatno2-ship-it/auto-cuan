@@ -80,47 +80,17 @@
   } else targets.forEach(function (element) { seen.add(element); });
   function reduceChanged() { if (reduced.matches) { running.forEach(function (a) { a.cancel(); }); running.clear(); } }
   reduced.addEventListener('change', reduceChanged);
-  var heroMap = landing.querySelector ? landing.querySelector('.landing-product-map') : null;
-  if (heroMap && !reduced.matches) {
-    motion(heroMap, [
-      { opacity: 0, transform: 'translate3d(16px,12px,0) scale(.985)' },
-      { opacity: 1, transform: 'translate3d(0,0,0) scale(1)' }
+  var heroPreview = landing.querySelector ? landing.querySelector('.landing-hero-preview') : null;
+  if (heroPreview && !reduced.matches) {
+    motion(heroPreview, [
+      { opacity: 0, transform: 'translate3d(12px,8px,0)' },
+      { opacity: 1, transform: 'translate3d(0,0,0)' }
     ], {
       duration: Math.max(milliseconds('--motion-slow'), 420),
       delay: 90,
       easing: token('--ease-emphasized') || 'cubic-bezier(.16,1,.3,1)',
       fill: 'none'
     });
-    var heroModules = heroMap.querySelectorAll ? Array.from(heroMap.querySelectorAll('.landing-module-grid article')) : [];
-    heroModules.forEach(function (element, index) {
-      motion(element, [
-        { opacity: 0, transform: 'translate3d(0,10px,0)' },
-        { opacity: 1, transform: 'translate3d(0,0,0)' }
-      ], {
-        duration: Math.max(milliseconds('--motion-base'), 260),
-        delay: 170 + Math.min(index, 4) * 55,
-        easing: token('--ease-emphasized') || 'cubic-bezier(.16,1,.3,1)',
-        fill: 'none'
-      });
-    });
-  }
-
-  // Two compositor-only light bands echo the visual reference without a
-  // canvas particle engine. No animation work while the hero/tab is offscreen.
-  var ambient = [], hero = landing.querySelector ? landing.querySelector('.landing-hero') : null, heroVisible = true;
-  function updateAmbient() {
-    var allowed = !reduced.matches && !mobile.matches && doc.visibilityState === 'visible' && heroVisible;
-    ambient.forEach(function(a) { if (allowed) a.play(); else a.pause(); });
-  }
-  if (hero && hero.animate && !reduced.matches && !mobile.matches) {
-    hero.querySelectorAll('.landing-beams span').forEach(function(el,i) {
-      var a=el.animate([{transform:'rotate(-31deg) translateX(-8%)'},{transform:'rotate(-31deg) translateX(8%)'}],{duration:18000+i*4000,direction:'alternate',iterations:Infinity,easing:'ease-in-out'});
-      ambient.push(a);
-    });
-    if ('IntersectionObserver' in root) {
-      var heroObserver=new root.IntersectionObserver(function(entries){heroVisible=entries[0].isIntersecting;updateAmbient();});heroObserver.observe(hero);
-    }
-    doc.addEventListener('visibilitychange',updateAmbient);reduced.addEventListener('change',updateAmbient);mobile.addEventListener('change',updateAmbient);updateAmbient();
   }
   // Existing compatibility name, not the third-party NumberFlow library. Always
   // display the exact source value immediately; only the cell color may flash.

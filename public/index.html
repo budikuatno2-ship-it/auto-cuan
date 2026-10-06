@@ -263,104 +263,419 @@
         <span><span class="block font-semibold">Auto-Cuan</span><span class="block text-xs">IDX Workspace</span></span>
       </button>
       <div id="landingMenu" class="landing-menu items-center" aria-label="Jelajahi Auto-Cuan">
-        <a href="#landingFeatures">Fitur</a><a href="#landingHow">Cara kerja</a><a href="#landingPreview">Lihat workspace</a><a href="#landingSafety">Tentang data</a><button type="button" onclick="openLoginModal()" class="landing-link">Masuk</button>
+        <a href="#landingMarket">Pasar</a>
+        <a href="#landingScan">Scan</a>
+        <a href="#landingInvestigate">Riset</a>
+        <a href="#landingValidate">Validasi</a>
+        <a href="#landingAI">Ask AI</a>
+        <a href="#landingMonitor">Monitor</a>
+        <a href="#landingSafety">Data &amp; Risiko</a>
+        <button type="button" onclick="openLoginModal()" class="landing-link">Masuk</button>
       </div>
       <div class="landing-nav-actions">
         <button type="button" id="landingThemeToggle" onclick="toggleAppTheme()" class="landing-icon-button" aria-label="Ganti tema" title="Ganti tema"><span id="landingThemeIcon" aria-hidden="true">&#9680;</span></button>
-        <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span><span aria-hidden="true">&#8599;</span></button>
+        <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span><span aria-hidden="true">&rarr;</span></button>
         <button type="button" id="landingMenuToggle" class="landing-icon-button" aria-controls="landingMenu" aria-expanded="false" aria-label="Buka menu navigasi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       </div>
     </div>
   </nav>
   <main id="landingMain">
-    <section class="landing-hero landing-hero-v2" aria-labelledby="landingTitle">
-      <div class="landing-beams" aria-hidden="true"><span></span><span></span></div>
-      <div class="landing-container landing-hero-grid landing-hero-grid-v2">
-        <div class="landing-hero-copy landing-hero-copy-v2">
-          <p class="landing-eyebrow"><span class="landing-signal-dot" aria-hidden="true"></span> IDX DECISION WORKSPACE</p>
+    <!-- 1. HERO -->
+    <section class="landing-hero" aria-labelledby="landingTitle">
+      <div class="landing-container landing-hero-grid">
+        <div class="landing-hero-copy">
+          <p class="landing-eyebrow"><span class="landing-signal-dot" aria-hidden="true"></span> IDX FINANCIAL INTELLIGENCE WORKSPACE</p>
           <h1 id="landingTitle">Baca pasar.<br>Susun rencana.<br><span>Jaga konteks.</span></h1>
-          <p class="landing-hero-lead">Auto-Cuan menyatukan riset saham, struktur pasar, portofolio, dan sinyal intelijen dalam satu meja kerja yang ringan. Tidak ada angka rekaan saat sumber belum tersedia.</p>
+          <p class="landing-hero-lead">Auto-Cuan adalah workstation intelijen keuangan untuk riset saham Indonesia. Menyatukan data pasar, struktur kepemilikan, analisis broker, dan verifikasi bukti dalam satu alur kerja yang tenang dan berdisiplin.</p>
           <div class="landing-mobile-wrap landing-hero-actions">
-            <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Buka Workspace</span><span aria-hidden="true">&#8599;</span></button>
-            <a href="#landingPreview" class="landing-btn">Lihat data nyata <span aria-hidden="true">&#8595;</span></a>
+            <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span><span aria-hidden="true">&rarr;</span></button>
+            <a href="#landingMarket" class="landing-btn">Lihat Ringkasan Pasar <span aria-hidden="true">&darr;</span></a>
           </div>
-          <div class="landing-proof-row" aria-label="Prinsip produk">
-            <span><b>01</b> Source-aware data</span>
-            <span><b>02</b> Execution tetap manual</span>
-            <span><b>03</b> Empty bukan nol</span>
+          <div class="landing-proof-row" aria-label="Prinsip workstation">
+            <span><b>01</b> Sumber Data Terverifikasi</span>
+            <span><b>02</b> Eksekusi Tetap Manual</span>
+            <span><b>03</b> Kosong Bukan Berarti Nol</span>
           </div>
           <p class="landing-hero-note">Alat bantu analisis, bukan rekomendasi beli/jual. Keputusan tetap milik Anda.</p>
         </div>
 
-        <div class="landing-product-map" aria-label="Peta modul Auto-Cuan">
-          <div class="landing-product-map-head">
-            <div><span class="landing-map-kicker">WORKSPACE MAP</span><strong>Semua konteks, satu alur.</strong></div>
-            <span class="landing-map-status"><i aria-hidden="true"></i> Modular</span>
+        <div class="landing-hero-preview" aria-label="Preview meja kerja Auto-Cuan">
+          <div class="landing-window-bar">
+            <span class="landing-window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="landing-window-title">Auto-Cuan / Research Desk</span>
+            <span class="landing-preview-badge">Preview statis</span>
           </div>
-          <div class="landing-product-core">
-            <div class="landing-product-core-mark" aria-hidden="true">AC</div>
-            <div><span>Auto-Cuan</span><strong>IDX Workspace</strong><small>Research → Plan → Review</small></div>
+          <div class="landing-hero-preview-body">
+            <div class="landing-preview-topbar">
+              <div class="landing-preview-ticker-info">
+                <span class="landing-preview-ticker">BBCA</span>
+                <span class="landing-preview-company">Bank Central Asia Tbk.</span>
+                <span class="landing-preview-tag">LQ45 / Finansial</span>
+              </div>
+              <div class="landing-preview-stat-group">
+                <span class="landing-preview-stat-label">Konsensus Lensa</span>
+                <span class="landing-preview-stat-val text-positive">Akumulasi Institusi</span>
+              </div>
+            </div>
+            <div class="landing-preview-grid">
+              <div class="landing-preview-cell">
+                <span class="landing-cell-kicker">Lensa 01: Broker Flow</span>
+                <strong>Big Acc (Top 3 Net Buy)</strong>
+                <p>Inflow dominan broker institusi pada rentang harga konsolidasi.</p>
+              </div>
+              <div class="landing-preview-cell">
+                <span class="landing-cell-kicker">Lensa 02: Market Structure</span>
+                <strong>Free Float 45.1%</strong>
+                <p>Kepemilikan pengendali stabil tanpa perubahan signifikan 90 hari.</p>
+              </div>
+              <div class="landing-preview-cell">
+                <span class="landing-cell-kicker">Lensa 03: Financial Base</span>
+                <strong>ROE 21.4% / PBV 4.8x</strong>
+                <p>Pertumbuhan laba bersih konsisten, modal kerja terjaga sehat.</p>
+              </div>
+              <div class="landing-preview-cell">
+                <span class="landing-cell-kicker">Lensa 04: Planning Guard</span>
+                <strong>SL Defensif: Terukur</strong>
+                <p>Batas risiko ditetapkan manual sebelum memasukkan order.</p>
+              </div>
+            </div>
+            <div class="landing-preview-footer">
+              <span>Data contoh untuk ilustrasi alur riset terpadu.</span>
+              <span>Bukan jaminan hasil &rarr;</span>
+            </div>
           </div>
-          <div class="landing-module-grid">
-            <article><span>01</span><div><strong>Market Radar</strong><small>Kandidat &amp; momentum</small></div></article>
-            <article><span>02</span><div><strong>Financial</strong><small>Valuasi &amp; modal</small></div></article>
-            <article><span>03</span><div><strong>Market Structure</strong><small>Free float &amp; HSC</small></div></article>
-            <article><span>04</span><div><strong>Portfolio</strong><small>Posisi &amp; jurnal</small></div></article>
-            <article><span>05</span><div><strong>Sinyal Intelijen</strong><small>Deteksi & konfluensi</small></div></article>
-          </div>
-          <div class="landing-map-footer"><span>Data yang tersedia ditampilkan apa adanya.</span><span>Tanpa angka sintetis &#8599;</span></div>
         </div>
       </div>
-      <div class="landing-hero-index" aria-hidden="true"><span>01 / RESEARCH. PLAN. REVIEW.</span><span>SCROLL UNTUK JELAJAHI &#8595;</span></div>
+      <div class="landing-hero-index" aria-hidden="true">
+        <span>01 / RESEARCH. PLAN. REVIEW.</span>
+        <span>SCROLL UNTUK JELAJAHI &darr;</span>
+      </div>
     </section>
-    <section id="landingPreview" class="landing-section landing-preview-section" aria-labelledby="landingPreviewTitle">
+
+    <!-- 2. MARKET PULSE -->
+    <section id="landingMarket" class="landing-section landing-preview-section" aria-labelledby="landingMarketTitle">
+      <div id="landingPreview" class="landing-anchor-target" aria-hidden="true"></div>
       <div class="landing-container">
-        <div class="landing-section-heading"><div><p class="landing-eyebrow">WORKSPACE PREVIEW</p><h2 id="landingPreviewTitle">Konteks dulu.<br>Keputusan kemudian.</h2></div><p>Ringkasan di bawah berasal dari snapshot yang tersedia. Waktu dan kelengkapan data perlu diperiksa sebelum digunakan.</p></div>
+        <div class="landing-section-heading">
+          <div>
+            <p class="landing-eyebrow">01 / MARKET PULSE</p>
+            <h2 id="landingMarketTitle">Konteks Pasar Terkini</h2>
+          </div>
+          <p>Pahami pergerakan sektor dan arus modal sebelum menyusun rencana. Ringkasan di bawah dimuat dari feed sistem yang tersedia.</p>
+        </div>
         <div class="landing-card landing-radar-window" aria-label="Showcase Auto-Cuan Radar">
-          <div class="landing-window-bar"><span class="landing-window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>Auto-Cuan / Ringkasan pasar</span><span id="landingShowcaseChip" class="landing-chip" aria-live="polite">Memuat...</span><button type="button" class="landing-refresh" onclick="_landingShowcaseLoaded=false;loadLandingShowcase()" aria-label="Perbarui ringkasan pasar">Perbarui &#8635;</button></div>
+          <div class="landing-window-bar">
+            <span class="landing-window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span>Auto-Cuan / Ringkasan pasar</span>
+            <span class="landing-preview-badge">Snapshot</span>
+            <span id="landingShowcaseChip" class="landing-chip" aria-live="polite">Memuat...</span>
+            <button type="button" class="landing-refresh" onclick="_landingShowcaseLoaded=false;loadLandingShowcase()" aria-label="Perbarui ringkasan pasar">Perbarui &#8635;</button>
+          </div>
           <div id="landingShowcaseBody" class="mock-grid" aria-busy="true">
-            <div class="landing-data-empty"><strong>Menyiapkan ringkasan pasar</strong><p>Angka akan tampil setelah sumber data selesai dimuat.</p><span class="landing-loading-line" aria-hidden="true"></span></div>
+            <div class="landing-data-empty">
+              <strong>Menyiapkan ringkasan pasar</strong>
+              <p>Angka akan tampil setelah sumber data selesai dimuat.</p>
+              <span class="landing-loading-line" aria-hidden="true"></span>
+            </div>
           </div>
           <div id="landingShowcaseSectors" class="landing-sector-strip"></div>
-          <p class="landing-window-note">Snapshot bukan harga real-time. Nilai yang belum tersedia tidak dianggap nol.</p>
+          <p class="landing-window-note">Snapshot bukan harga real-time. Nilai yang belum tersedia tidak dianggap nol. Data contoh atau tertunda diberi label transparan.</p>
         </div>
       </div>
     </section>
-    <section id="landingFeatures" class="landing-section" aria-labelledby="landingFeaturesTitle">
+
+    <!-- 3. SCAN -->
+    <section id="landingScan" class="landing-section" aria-labelledby="landingScanTitle">
+      <div id="landingFeatures" class="landing-anchor-target" aria-hidden="true"></div>
       <div class="landing-container">
-        <div class="landing-section-heading"><div><p class="landing-eyebrow">SATU RUANG KERJA</p><h2 id="landingFeaturesTitle">Bukan sekadar sinyal.<br>Seluruh proses Anda.</h2></div><p>Alat yang saling melengkapi, dengan konteks risiko dan catatan pribadi tetap terlihat.</p></div>
-        <div class="landing-feature-grid">
-          <article class="feature-card"><div class="landing-feature-top"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="m12 12 7-7"/></svg></span><span class="landing-card-index">01</span></div><h3>Radar &amp; screener</h3><p>Pilah kandidat day trade dan swing. Bandingkan entry, target, stop loss, serta konteks risikonya.</p></article>
-          <article class="feature-card"><div class="landing-feature-top"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16M7 4v12M17 7v9"/><rect x="5" y="7" width="4" height="6" rx="1"/><rect x="15" y="10" width="4" height="3" rx="1"/></svg></span><span class="landing-card-index">02</span></div><h3>Analisis &amp; chart</h3><p>Baca harga, volume, indikator, dan konteks pasar. Periksa hasil analisis sebelum membuat rencana.</p></article>
-          <article class="feature-card"><div class="landing-feature-top"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="15" width="7" height="5" rx="1"/><path d="m15 19 2-2 2 2 2-4"/></svg></span><span class="landing-card-index">03</span></div><h3>Sektor &amp; arus pasar</h3><p>Lihat sektor aktif dan pembacaan broker. Bedakan temuan terbaru dari data yang perlu diperbarui.</p></article>
-          <article class="feature-card"><div class="landing-feature-top"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="15" rx="2"/><path d="M8 6V3h8v3M3 11h18M10 11v3h4v-3"/></svg></span><span class="landing-card-index">04</span></div><h3>Portofolio &amp; jurnal</h3><p>Rencanakan ukuran posisi, catat transaksi, dan evaluasi P/L. Dana serta eksekusi tetap di sekuritas Anda.</p></article>
-          <article class="feature-card"><div class="landing-feature-top"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="16" r="3"/><path d="M10.5 10.5l3 3M16 5v5M5 16h5"/></svg></span><span class="landing-card-index">05</span></div><h3>Struktur pasar</h3><p>Pantau konglomerasi, kepemilikan pengendali, dan relasi emiten untuk membaca aliran modal secara menyeluruh.</p></article>
-          <article class="feature-card"><div class="landing-feature-top"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5L3 10l6-1z"/></svg></span><span class="landing-card-index">06</span></div><h3>Watchlist pribadi</h3><p>Simpan saham yang sedang Anda pantau. Kembali ke konteks yang sama saat melanjutkan riset berikutnya.</p></article>
+        <div class="landing-section-heading">
+          <div>
+            <p class="landing-eyebrow">02 / SCAN &amp; DISCOVERY</p>
+            <h2 id="landingScanTitle">Penyaringan Saham Terarah</h2>
+          </div>
+          <p>Dari ratusan emiten di Bursa Efek Indonesia, temukan kandidat potensial melalui penyaringan berbasis kriteria terukur dan rotasi sektor aktif.</p>
+        </div>
+        <div class="landing-process-grid">
+          <article class="landing-process-card feature-card">
+            <div class="landing-card-kicker">Langkah A &bull; Sektor</div>
+            <h3>Pemetaan Sektor Hot</h3>
+            <p>Identifikasi sektor industri yang sedang menerima inflow modal atau memimpin pergerakan indeks IHSG, memisahkan sektor defensif dari sektor akseleratif.</p>
+            <div class="landing-card-meta"><span>Tujuan:</span> Menemukan arah aliran dana utama</div>
+          </article>
+          <article class="landing-process-card feature-card">
+            <div class="landing-card-kicker">Langkah B &bull; Kriteria</div>
+            <h3>Screener Multikriteria</h3>
+            <p>Saring emiten berdasarkan volume transaksi, volatilitas, momentum teknikal, dan formasi chart. Parameter dapat disesuaikan untuk gaya swing maupun day trade.</p>
+            <div class="landing-card-meta"><span>Akses:</span> Menyesuaikan paket akun dan lisensi</div>
+          </article>
+          <article class="landing-process-card feature-card">
+            <div class="landing-card-kicker">Langkah C &bull; Eliminasi</div>
+            <h3>Penyaringan Likuiditas</h3>
+            <p>Keluarkan saham dengan bid-offer tipis atau spread lebar untuk menjaga keamanan modal sebelum kandidat dimasukkan ke daftar investigasi mendalam.</p>
+            <div class="landing-card-meta"><span>Prinsip:</span> Perlindungan modal diutamakan</div>
+          </article>
         </div>
       </div>
     </section>
-    <section id="landingHow" class="landing-section" aria-labelledby="landingHowTitle"><div class="landing-container">
-      <div class="landing-section-heading"><div><p class="landing-eyebrow">CARA KERJA</p><h2 id="landingHowTitle">Dari data ke rencana,<br>tanpa kehilangan konteks.</h2></div></div>
-      <div class="landing-steps">
-        <article class="feature-card"><div class="step-num">01</div><h3>Temukan kandidat</h3><p>Mulai dari radar, sektor, atau watchlist. Pilih saham yang layak diteliti lebih lanjut.</p></article>
-        <article class="feature-card"><div class="step-num">02</div><h3>Periksa konteks</h3><p>Bandingkan chart, volume, likuiditas, waktu data, dan catatan risiko.</p></article>
-        <article class="feature-card"><div class="step-num">03</div><h3>Susun rencana</h3><p>Tentukan ukuran posisi, batas risiko, serta alokasi modal yang sesuai kebutuhan Anda.</p></article>
-        <article class="feature-card"><div class="step-num">04</div><h3>Catat &amp; evaluasi</h3><p>Eksekusi secara manual di sekuritas Anda. Gunakan jurnal untuk meninjau keputusan.</p></article>
+
+    <!-- 4. INVESTIGATE -->
+    <section id="landingInvestigate" class="landing-section" aria-labelledby="landingInvestigateTitle">
+      <div class="landing-container">
+        <div class="landing-section-heading">
+          <div>
+            <p class="landing-eyebrow">03 / INVESTIGATE</p>
+            <h2 id="landingInvestigateTitle">Satu Emiten, Beragam Lensa Riset</h2>
+          </div>
+          <p>Hindari ketergantungan pada satu indikator tunggal. Analisis menyeluruh memeriksa aliran modal, perilaku broker, serta riwayat aksi orang dalam.</p>
+        </div>
+        <div class="landing-investigate-desk">
+          <div class="landing-investigate-main feature-card">
+            <div class="landing-lens-header">
+              <div>
+                <span class="landing-lens-tag">FOKUS UTAMA</span>
+                <h3>Bandarmologi &amp; Broker Flow</h3>
+              </div>
+              <span class="landing-preview-badge">Data contoh</span>
+            </div>
+            <p>Membaca konsentrasi transaksi broker: apakah akumulasi dilakukan secara terkoordinasi oleh institusi atau sekadar distribusi ritel di area pucuk.</p>
+            <div class="landing-lens-metrics">
+              <div class="landing-lens-stat">
+                <span class="stat-caption">Top Net Buyer</span>
+                <strong>BK, CC, AK</strong>
+              </div>
+              <div class="landing-lens-stat">
+                <span class="stat-caption">Rasio Akumulasi</span>
+                <strong>Terkonsentrasi</strong>
+              </div>
+              <div class="landing-lens-stat">
+                <span class="stat-caption">Rentang Harga Rata-rata</span>
+                <strong>Level 9.850 - 10.050</strong>
+              </div>
+            </div>
+          </div>
+          <div class="landing-investigate-subgrid">
+            <article class="feature-card">
+              <h4>Broker Hunter</h4>
+              <p>Lacak jejak broker spesifik untuk mendeteksi transaksi anomali pada emiten berkapitalisasi menengah dan besar.</p>
+            </article>
+            <article class="feature-card">
+              <h4>Transaksi Insider</h4>
+              <p>Pantau laporan perubahan kepemilikan oleh direksi, komisaris, atau pemegang saham utama dari keterbukaan informasi.</p>
+            </article>
+            <article class="feature-card">
+              <h4>Analisis &amp; Chart</h4>
+              <p>Grafik candlestick interaktif dengan level support, resistance, dan volume profile untuk penentuan titik entry defensif.</p>
+            </article>
+          </div>
+        </div>
       </div>
-    </div></section>
-    <section id="landingSafety" class="landing-section" aria-labelledby="landingSafetyTitle"><div class="landing-container landing-data-principles">
-      <div><p class="landing-eyebrow">DATA DENGAN KONTEKS</p><h2 id="landingSafetyTitle">Kejelasan lebih penting<br>daripada janji hasil.</h2><p>Auto-Cuan tidak menjamin profit, tidak mengeksekusi transaksi, dan tidak menyimpan dana pengguna.</p></div>
-      <div class="landing-principle-list"><article id="landingSchedule"><span>01</span><div><h3>Periksa waktu pembaruan</h3><p>Snapshot dapat terlambat atau tidak lengkap. Pembaruan mengikuti proses sistem dan ketersediaan sumber data.</p></div></article><article id="landingRules"><span>02</span><div><h3>Risiko tetap nyata</h3><p>Watchlist bukan perintah beli. Validasi harga, volume, likuiditas, stop loss, serta risiko pasar secara mandiri.</p></div></article><article><span>03</span><div><h3>Anda memegang keputusan</h3><p>Hasil analisis adalah bahan pertimbangan, bukan nasihat investasi personal atau pengganti pemeriksaan Anda.</p></div></article></div>
-    </div></section>
-    <section class="landing-section" aria-labelledby="landingFaqTitle"><div class="landing-container"><div class="landing-section-heading"><div><p class="landing-eyebrow">PERTANYAAN UMUM</p><h2 id="landingFaqTitle">Sebelum Anda mulai.</h2></div></div><div class="landing-faq-grid">
-      <details class="faq-item"><summary>Apakah Auto-Cuan menjamin profit?</summary><p>Tidak. Pasar saham berisiko dan hasil analisis bisa keliru. Keputusan beli/jual tetap perlu konfirmasi manual.</p></details>
-      <details class="faq-item"><summary>Apakah akun sekuritas harus dihubungkan?</summary><p>Tidak. Portofolio dan jurnal dicatat secara manual. Auto-Cuan tidak menyimpan dana atau mengeksekusi transaksi.</p></details>
-      <details class="faq-item"><summary>Mengapa ada nilai yang belum tersedia?</summary><p>Sumber data mungkin belum lengkap, terlambat, atau sedang gagal dimuat. Status tersebut dibedakan dari angka nol agar tidak menyesatkan.</p></details>
-      <details class="faq-item"><summary>Apakah bisa digunakan dari ponsel?</summary><p>Ya. Navigasi dan formulir menyesuaikan layar. Tabel data dan grafik memiliki area penyesuaian tersendiri agar tetap terbaca.</p></details>
-    </div></div></section>
-    <section class="landing-section landing-closing"><div class="landing-container"><p class="landing-eyebrow">RUANG UNTUK KEPUTUSAN YANG LEBIH SADAR</p><h2>Mulai dari rencana yang jelas.</h2><button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span><span aria-hidden="true">&#8599;</span></button></div></section>
+    </section>
+
+    <!-- 5. VALIDATE -->
+    <section id="landingValidate" class="landing-section" aria-labelledby="landingValidateTitle">
+      <div class="landing-container">
+        <div class="landing-section-heading">
+          <div>
+            <p class="landing-eyebrow">04 / VALIDATE</p>
+            <h2 id="landingValidateTitle">Verifikasi Struktur &amp; Bukti Keuangan</h2>
+          </div>
+          <p>Sebelum menyusun rencana transaksi, uji hipotesis teknikal Anda terhadap struktur pasar nyata dan data fundamental yang tercatat resmi.</p>
+        </div>
+        <div class="landing-validate-grid">
+          <article class="feature-card">
+            <div class="landing-card-top">
+              <span class="landing-card-index">01</span>
+              <span class="landing-preview-badge">Data contoh</span>
+            </div>
+            <h3>Struktur pasar</h3>
+            <p>Memetakan relasi grup pengendali, afiliasi korporasi, dan relasi emiten di Indonesia. Mengetahui apakah suatu emiten bergerak karena dorongan induk grup atau fundamental mandiri.</p>
+          </article>
+          <article class="feature-card">
+            <div class="landing-card-top">
+              <span class="landing-card-index">02</span>
+              <span class="landing-preview-badge">Data contoh</span>
+            </div>
+            <h3>Free Float &amp; HSC</h3>
+            <p>Memeriksa proporsi saham beredar di publik serta rasio kepemilikan pengendali (HSC). Nilai yang tidak tersedia tetap dinyatakan belum tersedia, tanpa rekayasa data.</p>
+          </article>
+          <article class="feature-card">
+            <div class="landing-card-top">
+              <span class="landing-card-index">03</span>
+              <span class="landing-preview-badge">Data contoh</span>
+            </div>
+            <h3>Fondasi Finansial</h3>
+            <p>Pemeriksaan rasio solvabilitas, laba operasional, dan arus kas kasual. Auto-Cuan tidak mengarang proyeksi laporan keuangan di luar rilis emiten.</p>
+          </article>
+          <article class="feature-card">
+            <div class="landing-card-top">
+              <span class="landing-card-index">04</span>
+              <span class="landing-preview-badge">Integritas</span>
+            </div>
+            <h3>As-of &amp; Freshness Audit</h3>
+            <p>Setiap informasi menyertakan penanda waktu data. Perbedaan tanggal laporan tidak disembunyikan agar Anda selalu mengetahui batas validitas bukti.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. ASK AI -->
+    <section id="landingAI" class="landing-section" aria-labelledby="landingAITitle">
+      <div class="landing-container">
+        <div class="landing-section-heading">
+          <div>
+            <p class="landing-eyebrow">05 / ASK AI RESEARCH</p>
+            <h2 id="landingAITitle">Interpretasi Berbasis Bukti Nyata</h2>
+          </div>
+          <p>Kecerdasan buatan di Auto-Cuan berperan sebagai asisten pembaca data setelah bukti mentah terkumpul, bukan pembuat keputusan otomatis atau peramal harga.</p>
+        </div>
+        <div class="landing-ai-card feature-card" aria-label="Struktur analisis AI">
+          <div class="landing-ai-header">
+            <div>
+              <span class="landing-card-kicker">STRUKTUR INTERPRETASI</span>
+              <h3>Format Analisis Terstruktur</h3>
+            </div>
+            <span class="landing-preview-badge">Preview statis</span>
+          </div>
+          <div class="landing-ai-breakdown">
+            <div class="landing-ai-step">
+              <span class="landing-step-label">Ringkasan</span>
+              <p>Sintesis objektif mengenai kondisi saham saat ini berdasarkan data harga dan transaksi yang tercatat.</p>
+            </div>
+            <div class="landing-ai-step">
+              <span class="landing-step-label">Bukti Teridentifikasi</span>
+              <p>Fakta empiris yang terdeteksi: volume akumulasi, posisi net broker, dan pengujian level support.</p>
+            </div>
+            <div class="landing-ai-step">
+              <span class="landing-step-label">Risiko &amp; Ketidakpastian</span>
+              <p>Faktor yang dapat membatalkan skenario, seperti tekanan jual sektor atau volume yang menipis.</p>
+            </div>
+            <div class="landing-ai-step">
+              <span class="landing-step-label">Yang Perlu Dipantau</span>
+              <p>Level teknikal kritis dan peristiwa korporasi mendatang yang wajib diverifikasi secara mandiri.</p>
+            </div>
+            <div class="landing-ai-step">
+              <span class="landing-step-label">Konteks Digunakan</span>
+              <p>Rentang tanggal data dan batasan parameter yang dijadikan dasar dalam merumuskan ringkasan.</p>
+            </div>
+          </div>
+          <div class="landing-ai-footer">
+            <p>Interpretasi ini bersifat pendukung keputusan. Keputusan beli atau jual sepenuhnya tetap berada pada pertimbangan Anda.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. MONITOR -->
+    <section id="landingMonitor" class="landing-section" aria-labelledby="landingMonitorTitle">
+      <div id="landingHow" class="landing-anchor-target" aria-hidden="true"></div>
+      <div class="landing-container">
+        <div class="landing-section-heading">
+          <div>
+            <p class="landing-eyebrow">06 / MONITOR &amp; AUDIT</p>
+            <h2 id="landingMonitorTitle">Pantau Rencana, Catat Jurnal, Audit Hasil</h2>
+          </div>
+          <p>Pemisahan fungsional yang tegas antara daftar pantauan riset, portofolio pencatatan manual, dan audit performa sinyal historis.</p>
+        </div>
+        <div class="landing-monitor-grid">
+          <article class="feature-card">
+            <div class="landing-card-top">
+              <span class="landing-card-index">A &bull; Niat &amp; Riset</span>
+            </div>
+            <h3>Watchlist Terfokus</h3>
+            <p>Ruang untuk mengelompokkan saham yang sedang dalam pengamatan. Membantu menjaga fokus pada rencana sebelum membuka posisi.</p>
+            <div class="landing-card-foot-note">Bukan kepemilikan aset aktif</div>
+          </article>
+          <article class="feature-card">
+            <div class="landing-card-top">
+              <span class="landing-card-index">B &bull; Rencana Posisi</span>
+            </div>
+            <h3>Portofolio &amp; Jurnal Manual</h3>
+            <p>Menghitung ukuran posisi (position sizing), batas risiko stop loss, dan mengevaluasi jurnal trading. Dana serta eksekusi tetap berada di akun sekuritas Anda.</p>
+            <div class="landing-card-foot-note">Pencatatan non-kustodian, tanpa eksekusi broker</div>
+          </article>
+          <article class="feature-card">
+            <div class="landing-card-top">
+              <span class="landing-card-index">C &bull; Audit Sistem</span>
+            </div>
+            <h3>Track Record Sinyal</h3>
+            <p>Audit transparan atas keluaran sinyal sistemik Auto-Cuan dari waktu ke waktu untuk mengukur akurasi metodologi secara objektif.</p>
+            <div class="landing-card-foot-note">Audit model sistem, bukan imbal hasil pengguna</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. DATA TRUST -->
+    <section id="landingSafety" class="landing-section" aria-labelledby="landingSafetyTitle">
+      <div class="landing-container landing-data-principles">
+        <div>
+          <p class="landing-eyebrow">07 / DATA INTEGRITY &amp; TRUST</p>
+          <h2 id="landingSafetyTitle">Kejelasan Data Jauh Lebih Berharga</h2>
+          <p>Kami meyakini bahwa keputusan yang bijak lahir dari data yang transparan, bukan dari janji profit semu atau optimisme berlebihan.</p>
+        </div>
+        <div class="landing-principle-list">
+          <article id="landingSchedule">
+            <span>01</span>
+            <div>
+              <h3>Keaslian Sumber &amp; Status Pembaruan</h3>
+              <p>Waktu pembaruan data dicantumkan secara terbuka. Jika feed data mengalami keterlambatan atau ketidaklengkapan, sistem menampilkannya apa adanya tanpa mengisi angka buatan.</p>
+            </div>
+          </article>
+          <article id="landingRules">
+            <span>02</span>
+            <div>
+              <h3>Validasi Risiko Mandiri</h3>
+              <p>Watchlist dan pemetaan teknikal adalah alat bantu peninjauan, bukan rekomendasi beli atau jual. Anda wajib memvalidasi harga, volume, batas kerugian, dan profil risiko sebelum mengambil tindakan.</p>
+            </div>
+          </article>
+          <article>
+            <span>03</span>
+            <div>
+              <h3>Batas Eksekusi &amp; Tanggung Jawab</h3>
+              <p>Auto-Cuan tidak menyimpan dana nasabah, tidak memiliki akses rekening dana nasabah (RDN), dan tidak mengeksekusi order perdagangan. Seluruh transaksi dilakukan secara mandiri melalui sekuritas berizin pilihan Anda.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. FAQ -->
+    <section class="landing-section" aria-labelledby="landingFaqTitle">
+      <div class="landing-container">
+        <div class="landing-section-heading">
+          <div>
+            <p class="landing-eyebrow">PERTANYAAN UMUM</p>
+            <h2 id="landingFaqTitle">Pertanyaan yang Sering Diajukan</h2>
+          </div>
+        </div>
+        <div class="landing-faq-grid">
+          <details class="faq-item"><summary>Apakah Auto-Cuan memberikan jaminan profit?</summary><p>Tidak. Berinvestasi di pasar saham memiliki risiko kerugian modal. Auto-Cuan adalah workstation riset untuk membantu analisis mandiri, bukan penyedia garansi hasil.</p></details>
+          <details class="faq-item"><summary>Apakah akun sekuritas saya terhubung langsung?</summary><p>Tidak. Auto-Cuan adalah perangkat lunak non-kustodian. Kami tidak menyimpan dana dan tidak mengeksekusi order transaksi Anda ke bursa.</p></details>
+          <details class="faq-item"><summary>Mengapa ada metrik atau nilai yang belum tersedia?</summary><p>Data yang belum dirilis oleh emiten atau belum terverifikasi oleh feed bursa ditampilkan sebagai belum tersedia, bukan diisi angka nol atau estimasi sepihak.</p></details>
+          <details class="faq-item"><summary>Apakah workstation ini dapat diakses melalui ponsel?</summary><p>Ya. Tampilan landing, navigasi, dan antarmuka dirancang responsif untuk desktop, tablet, maupun layar ponsel pintar.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. CLOSING CTA -->
+    <section class="landing-section landing-closing">
+      <div class="landing-container">
+        <p class="landing-eyebrow">DISIPLIN RISET &amp; KEPUTUSAN</p>
+        <h2>Mulai Riset dengan Konteks yang Jernih.</h2>
+        <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span><span aria-hidden="true">&rarr;</span></button>
+      </div>
+    </section>
   </main>
-  <footer><div class="landing-container landing-footer-inner"><div><strong>Auto-Cuan</strong><p>IDX Workspace</p></div><p>Alat bantu analisis. Bukan rekomendasi beli/jual.<br>Data dapat terlambat. Keputusan &amp; eksekusi tetap manual.</p><a href="#landingSafety" class="landing-link">Tentang data &amp; risiko &#8599;</a></div></footer>
+  <footer>
+    <div class="landing-container landing-footer-inner">
+      <div>
+        <strong>Auto-Cuan</strong>
+        <p>IDX Financial Intelligence Workstation</p>
+      </div>
+      <p>Alat bantu analisis mandiri. Bukan rekomendasi beli atau jual.<br>Data dapat tertunda. Keputusan dan eksekusi tetap berada di tangan pengguna.</p>
+      <a href="#landingSafety" class="landing-link">Integritas data &amp; risiko &rarr;</a>
+    </div>
+  </footer>
 </section>
 
 <!-- AUTH CHOICE MODAL -->
