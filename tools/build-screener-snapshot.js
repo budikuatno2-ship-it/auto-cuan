@@ -38,6 +38,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
+const snapshotFreshness = require(path.join(ROOT, 'lib', 'snapshot-freshness'));
 // Repository env files, highest-first (this loader is FIRST-WINS).
 const ENV_FILES = ['.env.local', '.env.intraday-runtime', '.env'];
 const DEFAULT_BASE_URL = 'http://127.0.0.1:3000';
@@ -52,10 +53,10 @@ const DEFAULT_BASE_URL = 'http://127.0.0.1:3000';
  * AI grounding layer.
  */
 const SOURCES = [
-  { action: 'screener', keys: ['swing'] },
-  { action: 'nk-screener-results', keys: ['swing_non_konglo', 'nk'] },
-  { action: 'daytrade-screener', keys: ['daytrade'] },
-  { action: 'telegram-daily-picks', keys: ['top5'], optional: true }
+  { action: 'screener', mode: 'swing-konglo', keys: ['swing'] },
+  { action: 'nk-screener-results', mode: 'swing-non-konglo', keys: ['swing_non_konglo', 'nk'] },
+  { action: 'daytrade-screener', mode: 'daytrade', keys: ['daytrade'] },
+  { action: 'telegram-daily-picks', mode: 'top5', keys: ['top5'], optional: true }
 ];
 
 function loadEnvFiles(env = process.env, cwd = ROOT) {
@@ -119,6 +120,18 @@ function usableRows(rows) {
   return (rows || []).filter((r) => r && typeof r === 'object' && String(r.ticker || '').trim());
 }
 
+function extractSourceDate(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const candidates = [];
+  if (payload.meta && typeof payload.meta === 'object' && !Array.isArray(payload.meta)) candidates.push(payload.meta);
+  candidates.push(payload);
+  for (const candidate of candidates) {
+    const extracted = snapshotFreshness.extractSnapshotDate(candidate);
+    if (extracted) return extracted.date;
+  }
+  return null;
+}
+
 async function fetchAction(baseUrl, secret, action, fetchFn) {
   const url = new URL('/api/sector-hot', baseUrl);
   url.searchParams.set('action', action);
@@ -146,12 +159,16 @@ function buildSnapshot(payloads, options) {
   const snapshot = {
     updated_at: opts.updatedAt || new Date().toISOString(),
     generated_by: 'tools/build-screener-snapshot.js',
-    source: 'local-vps-api'
+    source: 'local-vps-api',
+    freshness_schema_version: 2,
+    source_dates: {}
   };
   const counts = {};
 
   for (const src of SOURCES) {
-    const rows = usableRows(extractRows(payloads[src.action]));
+    const payload = payloads[src.action];
+    snapshot.source_dates[src.mode] = extractSourceDate(payload);
+    const rows = usableRows(extractRows(payload));
     counts[src.action] = rows.length;
     if (!rows.length) continue;
     for (const key of src.keys) snapshot[key] = rows;
@@ -255,6 +272,7 @@ module.exports = {
   parseArgs,
   extractRows,
   usableRows,
+  extractSourceDate,
   fetchAction,
   buildSnapshot,
   main
