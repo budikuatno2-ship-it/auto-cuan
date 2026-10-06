@@ -426,6 +426,7 @@
   "test/quote-candles-latest-price-consistency.test.js",
   "test/ranking-page-scroll.test.js",
   "test/ranking-session-label-regression.test.js",
+  "test/quiet-signal-routing.test.js",
   "test/recent-failure-cooldown.test.js",
   "test/regime-adaptive-and-foreign-confluence.test.js",
   "test/register-monitor.test.js",

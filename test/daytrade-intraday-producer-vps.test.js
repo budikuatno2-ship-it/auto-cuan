@@ -140,7 +140,8 @@ test('IDTP-05: versioned schedule restores the 15-minute intraday producer befor
     'DayTrade FAST producer must run every 15 minutes from 09:10 cadence'
   );
   assert.match(cron, /run-fastwatcher\.sh --send/);
-  assert.match(cron, /run-daytrade\.sh --send/);
+  assert.doesNotMatch(cron, /run-daytrade\.sh --send/,
+    'generic DayTrade snapshot sender must not bypass FastWatcher confirmation ownership');
 });
 
 test('IDTP-06: VPS producer wrapper uses canonical env loader and single-flight lock', () => {
