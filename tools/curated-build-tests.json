@@ -219,6 +219,7 @@
   "test/daytrade-intraday-eod-closeout.test.js",
   "test/daytrade-intraday-observe.test.js",
   "test/daytrade-intraday-policy.test.js",
+  "test/daytrade-intraday-producer-vps.test.js",
   "test/daytrade-intraday-provider-cache-quality.test.js",
   "test/daytrade-intraday-readiness.test.js",
   "test/daytrade-intraday-score-adjustment.test.js",

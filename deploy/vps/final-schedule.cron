@@ -26,6 +26,11 @@ CRON_TZ=Asia/Jakarta
 */15 8-20 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-idx-suspension-guard.sh >> /home/ubuntu/auto-cuan-runner/logs/idx-suspension-guard.log 2>&1
 
 # ── LIVE BURSA (Senin-Jumat, 09:00-16:00 WIB) ────────────────────────────
+# DAYTRADE INTRADAY PRODUCER: FAST universe every 15 minutes, starting 09:10 WIB.
+# The Node runner skips lunch breaks / closed sessions / holidays fail-closed.
+# Public stock-signal delivery is deferred to FastWatcher; this job refreshes
+# the canonical DayTrade latest table + screener snapshot for intraday consumers.
+10,25,40,55 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade-producer.sh --execute >> /home/ubuntu/auto-cuan-runner/logs/daytrade-producer.log 2>&1
 # FASTWATCHER LIVE: setiap 5 menit selama jam bursa aktif (menangkap spike volume mendadak)
 # WIB 09:00-15:59 = UTC 02:00-08:59 → dengan CRON_TZ=Asia/Jakarta cukup 9-15
 */5 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-fastwatcher.sh --send >> /home/ubuntu/auto-cuan-runner/logs/fastwatcher.log 2>&1
