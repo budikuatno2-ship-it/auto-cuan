@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
-# Swing Non-Konglomerat — 4 Pilar (Bagian 3: Jadwal EOD 19:30 WIB / 12:30 UTC)
-# Filter saham swing untuk emiten potensial di luar konglomerasi (UTAMA/PENGEMBANGAN ex-konglo).
-# Dijalankan pukul 19:30 WIB setelah Swing Konglo selesai.
+# Swing Non-Konglo — diagnostic-only wrapper.
 #
-# Crontab (WIB, CRON_TZ=Asia/Jakarta):
-#   30 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-swing-non-konglo.sh --send >> /home/ubuntu/auto-cuan-runner/logs/swing-non-konglo.log 2>&1
-# Crontab (UTC):
-#   30 12 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-swing-non-konglo.sh --send >> /home/ubuntu/auto-cuan-runner/logs/swing-non-konglo.log 2>&1
+# Public delivery is intentionally NOT owned by this generic snapshot runner.
+# The canonical nk-screener finalizer owns public Swing Non-Konglo delivery and applies the real Swing signal gates.
 #
-# Defaults to dry-run when no arguments are provided.
-# --send broadcasts via Telegram (skip_market_guard=true for screener card).
+# Any --send request is refused fail-closed so production cannot bypass the
+# canonical quality/confirmation/dedupe/cooldown path by accident.
 
 set -euo pipefail
 
@@ -22,8 +18,6 @@ export TZ=Asia/Jakarta
 
 mkdir -p "$RUNNER_DIR/state" "$RUNNER_DIR/logs"
 
-# Environment precedence (BUG-RT-02): repository files first, runner-owned
-# runtime env LAST so it deterministically overrides stale repo .env.local.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/load-env.sh
 source "$SCRIPT_DIR/lib/load-env.sh"
@@ -38,19 +32,15 @@ fi
   exit 1
 }
 
-cd "$REPO"
-
-SEND_FLAG=""
 for arg in "$@"; do
-  [ "$arg" = "--send" ] && SEND_FLAG="--send"
-  [ "$arg" = "--dry-run" ] && SEND_FLAG="--dry-run"
+  if [ "$arg" = "--send" ]; then
+    echo "DIRECT_GENERIC_SEND_DISABLED mode=swing-non-konglo"
+    echo "Use the canonical signal owner; this wrapper is diagnostic-only."
+    exit 2
+  fi
 done
 
-if [ -z "$SEND_FLAG" ]; then
-  SEND_FLAG="--dry-run"
-fi
+cd "$REPO"
+echo "[$(date +"%Y-%m-%d %H:%M:%S %Z")] Swing Non-Konglo — diagnostic dry-run"
 
-echo "[$(date +"%Y-%m-%d %H:%M:%S %Z")] Swing Non-Konglo — mode=swing-non-konglo $SEND_FLAG"
-
-exec /usr/bin/flock -n "$LOCK_FILE" \
-  "$NODE_BIN" tools/run-screener.js --mode=swing-non-konglo "$SEND_FLAG"
+exec /usr/bin/flock -n "$LOCK_FILE"   "$NODE_BIN" tools/run-screener.js --mode=swing-non-konglo --dry-run
