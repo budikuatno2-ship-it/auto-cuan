@@ -502,6 +502,7 @@
   "test/supabase-fase8-batch2-bugs.test.js",
   "test/supabase-fase8-batch3-bugs.test.js",
   "test/swing-konglo-fibonacci-confluence.test.js",
+  "test/swing-eod-market-guard.test.js",
   "test/swing-konglo-no-saved-rows-heartbeat.test.js",
   "test/swing-nk-high-rr-warning.test.js",
   "test/swing-nk-trade-plan-v2-persistence.test.js",
