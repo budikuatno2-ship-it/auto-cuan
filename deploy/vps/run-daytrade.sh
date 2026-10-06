@@ -1,18 +1,11 @@
 #!/usr/bin/env bash
-# Daytrade Screener — 4 Pilar (Bagian 3: Jadwal Live Bursa 09:00-16:00 WIB)
-# Screener harian momentum — dijalankan berkala saat pembukaan dan pertengahan sesi.
+# DayTrade screener — diagnostic-only wrapper.
 #
-# Crontab (WIB, CRON_TZ=Asia/Jakarta):
-#   15 9 * * 1-5  /home/ubuntu/auto-cuan/deploy/vps/run-daytrade.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daytrade.log 2>&1
-#   30 10 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daytrade.log 2>&1
-#   45 13 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daytrade.log 2>&1
-# Crontab (UTC):
-#   15 2 * * 1-5  /home/ubuntu/auto-cuan/deploy/vps/run-daytrade.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daytrade.log 2>&1
-#   30 3 * * 1-5  /home/ubuntu/auto-cuan/deploy/vps/run-daytrade.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daytrade.log 2>&1
-#   45 6 * * 1-5  /home/ubuntu/auto-cuan/deploy/vps/run-daytrade.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daytrade.log 2>&1
+# Public delivery is intentionally NOT owned by this generic snapshot runner.
+# FastWatcher is the exclusive owner of public DayTrade signals; DayTrade only scans/saves/prepares the shortlist.
 #
-# Defaults to dry-run when no arguments are provided.
-# --send broadcasts via Telegram (skip_market_guard=true for screener card).
+# Any --send request is refused fail-closed so production cannot bypass the
+# canonical quality/confirmation/dedupe/cooldown path by accident.
 
 set -euo pipefail
 
@@ -25,8 +18,6 @@ export TZ=Asia/Jakarta
 
 mkdir -p "$RUNNER_DIR/state" "$RUNNER_DIR/logs"
 
-# Environment precedence (BUG-RT-02): repository files first, runner-owned
-# runtime env LAST so it deterministically overrides stale repo .env.local.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/load-env.sh
 source "$SCRIPT_DIR/lib/load-env.sh"
@@ -41,19 +32,15 @@ fi
   exit 1
 }
 
-cd "$REPO"
-
-SEND_FLAG=""
 for arg in "$@"; do
-  [ "$arg" = "--send" ] && SEND_FLAG="--send"
-  [ "$arg" = "--dry-run" ] && SEND_FLAG="--dry-run"
+  if [ "$arg" = "--send" ]; then
+    echo "DIRECT_GENERIC_SEND_DISABLED mode=daytrade"
+    echo "Use the canonical signal owner; this wrapper is diagnostic-only."
+    exit 2
+  fi
 done
 
-if [ -z "$SEND_FLAG" ]; then
-  SEND_FLAG="--dry-run"
-fi
+cd "$REPO"
+echo "[$(date +"%Y-%m-%d %H:%M:%S %Z")] DayTrade screener — diagnostic dry-run"
 
-echo "[$(date +"%Y-%m-%d %H:%M:%S %Z")] Daytrade screener — mode=daytrade $SEND_FLAG"
-
-exec /usr/bin/flock -n "$LOCK_FILE" \
-  "$NODE_BIN" tools/run-screener.js --mode=daytrade "$SEND_FLAG"
+exec /usr/bin/flock -n "$LOCK_FILE"   "$NODE_BIN" tools/run-screener.js --mode=daytrade --dry-run
