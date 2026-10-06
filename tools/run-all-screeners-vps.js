@@ -95,7 +95,11 @@ async function runNk(client,opts,log=console.log){
     // Let the protected orchestrator decide whether to start, resume, or finalize.
     const q={action:'nk-screener-run'};
     if(opts.force&&attempt===1)q.force=1;
-    if(opts.nkBatchSize!==8&&attempt===1)q.batch_size=opts.nkBatchSize;
+    // Keep the Non-Konglo batch plan stable across every orchestrator call.
+    // The endpoint defaults to batch_size=8 when this parameter is omitted;
+    // sending it only on attempt 1 can restart/reinterpret a 50-size run as
+    // 80 batches on attempt 2 and abort the producer before snapshot materialization.
+    if(opts.nkBatchSize!=null)q.batch_size=opts.nkBatchSize;
     const response=await client.call(q);
     if(String(response.step||'').toLowerCase()==='start'){
       const batchCount=Number(response.batch_count||0);
