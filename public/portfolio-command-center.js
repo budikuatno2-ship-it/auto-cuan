@@ -269,17 +269,7 @@
     document.addEventListener('keydown', function (event) { if (event.key === 'Escape') { closeDrawer(); closeJournalModal(); } });
     window.addEventListener('focus', resyncLocalState);
     document.addEventListener('visibilitychange', function () { if (!document.hidden) resyncLocalState(); });
-    function normalizeLegacyMobileStyles() {
-      var bugfixStyle = document.getElementById('autocuanUiBugfixPackV1');
-      if (bugfixStyle && bugfixStyle.textContent) {
-        bugfixStyle.textContent = bugfixStyle.textContent.replace(
-          /@media \(max-width:1180px\)\s*\{\s*#tabStrip/g,
-          '@media (min-width:768px) and (max-width:1180px){\n  #tabStrip'
-        );
-      }
-    }
     function syncMobileNav() {
-      normalizeLegacyMobileStyles();
       var tabStrip = $('tabStrip');
       var mobileNav = $('pccMobileNav');
       if (window.innerWidth <= 767) {

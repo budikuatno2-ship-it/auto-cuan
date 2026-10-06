@@ -53,13 +53,17 @@ test('Wave 1S: Baseline global contract in :root is strictly preserved without c
   assert.match(rootBlock, /--ac-radius-lg:\s*16px/);
   assert.match(rootBlock, /--ac-radius-xl:\s*20px/);
 
-  // Baseline motion in :root
-  assert.match(rootBlock, /--motion-instant:\s*100ms/);
-  assert.match(rootBlock, /--motion-fast:\s*180ms/);
-  assert.match(rootBlock, /--motion-base:\s*260ms/);
-  assert.match(rootBlock, /--motion-slow:\s*420ms/);
-  assert.match(rootBlock, /--motion-stagger:\s*70ms/);
-  assert.match(rootBlock, /--ease-standard:\s*cubic-bezier\(0\.4,\s*0,\s*0\.2,\s*1\)/);
+  // Canonical motion and compatibility aliases in :root
+  assert.match(rootBlock, /--motion-press:\s*90ms/);
+  assert.match(rootBlock, /--motion-hover:\s*140ms/);
+  assert.match(rootBlock, /--motion-panel:\s*260ms/);
+  assert.match(rootBlock, /--ease-standard:\s*cubic-bezier\(\.2,\s*\.8,\s*\.2,\s*1\)/);
+  assert.match(rootBlock, /--ease-emphasized:\s*cubic-bezier\(\.16,\s*1,\s*\.3,\s*1\)/);
+  assert.match(rootBlock, /--motion-instant:\s*var\(--motion-press\)/);
+  assert.match(rootBlock, /--motion-fast:\s*var\(--motion-state\)/);
+  assert.match(rootBlock, /--motion-base:\s*var\(--motion-panel\)/);
+  assert.match(rootBlock, /--motion-slow:\s*var\(--motion-story\)/);
+  assert.match(rootBlock, /--motion-stagger:\s*var\(--motion-stagger-story\)/);
 
   // Baseline surfaces and semantics in :root
   assert.match(rootBlock, /--ac-surface-hover:\s*#19202e/);

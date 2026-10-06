@@ -20,8 +20,8 @@
       if(!record.flow) {
         const flow=root.document.createElement('number-flow');flow.setAttribute('aria-hidden','true');flow.className='ac-number-flow';
         flow.locales='id-ID';flow.format=record.format;flow.numberPrefix=record.prefix;flow.numberSuffix=record.suffix;
-        flow.respectMotionPreference=true;flow.trend=0;flow.transformTiming={duration:duration('--motion-base',260),easing:easing('--ease-emphasized','cubic-bezier(.16,1,.3,1)')};
-        flow.opacityTiming={duration:duration('--motion-fast',180),easing:easing('--ease-exit','ease-out')};flow.animated=false;
+        flow.respectMotionPreference=true;flow.trend=0;flow.transformTiming={duration:duration('--motion-panel',duration('--motion-base',260)),easing:easing('--ease-emphasized','cubic-bezier(.16,1,.3,1)')};
+        flow.opacityTiming={duration:duration('--motion-state',duration('--motion-fast',190)),easing:easing('--ease-exit','ease-out')};flow.animated=false;
         record.flow=flow;element.appendChild(flow);flow.update(record.value);record.text.classList.add('ac-numeric-readable');live.add(flow);
       } else {
         const flow=record.flow;flow.animated=!reduced.matches&&root.document.visibilityState==='visible'&&element.getClientRects().length>0;

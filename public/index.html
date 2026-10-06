@@ -128,7 +128,6 @@
     <link rel="stylesheet" href="/landing-experience.css?v=20261003-v4">
 <link rel="stylesheet" href="/number-flow.css?v=20260929-v1">
 <link rel="stylesheet" href="/viewport.css?v=20260929-v1">
-<link rel="stylesheet" href="/final-uiux-polish.css?v=20261003-v2">
 <script src="/viewport-runtime.js?v=20260929-v1" defer></script>
 <link rel="stylesheet" href="/account-hardening.css?v=20261001-v1">
 </head>
@@ -935,9 +934,6 @@
             <span class="sidebar-profile-chevron sidebar-label" aria-hidden="true">&#8250;</span>
         </button>
         <div class="sidebar-utility-actions">
-            <button type="button" id="sidebarSubscriptionBtn" class="sidebar-utility-button" onclick="closeMobileSidebar();if(typeof openAccountSubscription==='function')openAccountSubscription();else if(typeof openSubscriptionPage==='function')openSubscriptionPage()" title="Subscription">
-                <span aria-hidden="true">&#9733;</span><span class="sidebar-label">Subscription</span>
-            </button>
             <button type="button" id="sidebarLogoutBtn" class="sidebar-utility-button sidebar-utility-danger" onclick="closeMobileSidebar();logout()" title="Logout">
                 <span aria-hidden="true">&#8618;</span><span class="sidebar-label">Logout</span>
             </button>
@@ -986,7 +982,6 @@
                         <span>Profil</span><span id="headerUsername">Akun</span>
                     </span>
                     <span id="headerTierBadge" class="hidden text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-dark-600/60 border border-dark-600 text-gray-400 shrink-0 cursor-pointer hover:opacity-80 transition-all">FREE</span>
-                    <button type="button" onclick="openAccountSubscription()" class="account-subscription-control px-2.5 py-1.5 rounded-xl text-xs border border-dark-600/40" aria-label="Buka subscription">Subscription</button>
                     <button id="logoutBtn" onclick="logout()" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-medium text-gray-400 border border-dark-600/40 hover:border-rose-500/40 hover:text-rose-400 transition-all shrink-0" title="Logout dari akun">
                         Logout
                     </button>
@@ -1031,7 +1026,7 @@
 
 <div class="app-content" id="appContent">
 <!-- ===== PAGE: SUBSCRIPTION ===== -->
-<div id="page-subscription" class="page-content hidden flex-1 max-w-[1180px] w-full mx-auto px-3 sm:px-5 py-5 sm:py-7" aria-labelledby="subscriptionPageTitle"><div class="subscription-hero p-5 sm:p-7"><div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div class="max-w-2xl"><p class="text-xs font-black uppercase tracking-[.16em] text-emerald-300">Paket Langganan Auto-Cuan</p><h1 id="subscriptionPageTitle" class="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Pilih paket yang sesuai dengan ritme trading Anda.</h1><p class="mt-2 text-sm leading-6 text-slate-300">Bandingkan manfaat, harga, dan masa aktif setiap paket secara transparan.</p></div><button onclick="loadSubscriptionExperience(true)" class="nav-btn border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">↻ Muat ulang data</button></div><div id="subscriptionSummary" class="subscription-summary mt-6 p-4 sm:p-5" aria-live="polite">Memuat ringkasan langganan…</div></div><section class="mt-7" aria-labelledby="subscriptionPlansTitle"><div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p class="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Perbandingan paket</p><h2 id="subscriptionPlansTitle" class="mt-1 text-xl font-black text-white">Pilih paket dengan informasi yang jelas.</h2></div><p class="text-xs text-slate-500">Akses tidak pernah diberikan dari halaman ini.</p></div><div id="subscriptionPlans" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">Memuat daftar paket…</div></section></div>
+<div id="page-subscription" class="page-content hidden flex-1 max-w-[1180px] w-full mx-auto px-3 sm:px-5 py-5 sm:py-7" aria-labelledby="subscriptionPageTitle" hidden style="display:none !important;"><div class="subscription-hero p-5 sm:p-7"><div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div class="max-w-2xl"><p class="text-xs font-black uppercase tracking-[.16em] text-emerald-300">Paket Langganan Auto-Cuan</p><h1 id="subscriptionPageTitle" class="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Pilih paket yang sesuai dengan ritme trading Anda.</h1><p class="mt-2 text-sm leading-6 text-slate-300">Bandingkan manfaat, harga, dan masa aktif setiap paket secara transparan.</p></div><button onclick="loadSubscriptionExperience(true)" class="nav-btn border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">↻ Muat ulang data</button></div><div id="subscriptionSummary" class="subscription-summary mt-6 p-4 sm:p-5" aria-live="polite">Memuat ringkasan langganan…</div></div><section class="mt-7" aria-labelledby="subscriptionPlansTitle"><div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p class="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Perbandingan paket</p><h2 id="subscriptionPlansTitle" class="mt-1 text-xl font-black text-white">Pilih paket dengan informasi yang jelas.</h2></div><p class="text-xs text-slate-500">Akses tidak pernah diberikan dari halaman ini.</p></div><div id="subscriptionPlans" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">Memuat daftar paket…</div></section></div>
 
 <!-- ===== PAGE: DASHBOARD HOME ===== -->
 <div id="page-dashboard" class="page-content flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
@@ -2410,13 +2405,8 @@
                         <p class="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-md mx-auto mb-6">
                             Akses ranking harian pasar modal, jarak 52W High/Low, net foreign flow 7D, dan status Overbought/Oversold (RSI 14) seluruh emiten IHSG hanya tersedia untuk member berlangganan (Bulanan &amp; Lifetime).
                         </p>
-                        <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
-                            <a href="/dashboard" onclick="if(window.openAccountSubscription){window.openAccountSubscription();return false;}" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 hover:brightness-110 transition text-center">
-                                Upgrade ke Bulanan / Lifetime
-                            </a>
-                        </div>
                         <p class="text-[11px] text-gray-500 mt-4">
-                            Sudah berlangganan? Pastikan Anda sudah login dengan akun yang aktif.
+                            Akses ranking harian terbuka untuk akun dengan otorisasi aktif. Pastikan Anda sudah login dengan akun yang terverifikasi.
                         </p>
                     </div>
 
@@ -14583,7 +14573,7 @@ function forceNormalizeTechnicalDOM(root) {
     }
 })();
 </script>
-<script src="/final-uiux-polish.js?v=20261001-v2"></script>
+<script src="/canonical-motion.js?v=20261006-v1"></script>
 <script src="/landing-experience.js?v=20261001-v4"></script>
 </body>
 </html>

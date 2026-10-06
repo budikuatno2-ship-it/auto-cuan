@@ -123,17 +123,16 @@
     root.innerHTML = [
       '<div class="ac-center-shell">',
       '<header class="ac-center-head">',
-      '<div class="ac-center-identity"><div id="acCenterAvatar" class="ac-center-avatar">AC</div><div class="min-w-0"><p class="ac-center-eyebrow">Auto-Cuan Account Center</p><h1 id="acCenterTitle" class="ac-center-title">Profil &amp; Keanggotaan</h1><p id="acCenterSubtitle" class="ac-center-subtitle">Identitas, keamanan, subscription, dan ketentuan dalam satu tempat.</p></div></div>',
+      '<div class="ac-center-identity"><div id="acCenterAvatar" class="ac-center-avatar">AC</div><div class="min-w-0"><p class="ac-center-eyebrow">Auto-Cuan Account Center</p><h1 id="acCenterTitle" class="ac-center-title">Profil &amp; Keanggotaan</h1><p id="acCenterSubtitle" class="ac-center-subtitle">Identitas, keamanan, dan ketentuan dalam satu tempat.</p></div></div>',
       '<button type="button" id="acCenterClose" class="ac-center-close" aria-label="Tutup Account Center">&times;</button>',
       '</header>',
       '<nav class="ac-center-tabs" aria-label="Bagian Account Center">',
       '<button type="button" class="ac-center-tab" data-ac-tab="profile" aria-selected="true">● Profil</button>',
-      '<button type="button" class="ac-center-tab" data-ac-tab="subscription" aria-selected="false" hidden>◇ Subscription</button>',
       '<button type="button" class="ac-center-tab" data-ac-tab="terms" aria-selected="false">▤ Peraturan &amp; Ketentuan</button>',
       '</nav>',
       '<main class="ac-center-body">',
       '<section id="acPanelProfile" class="ac-center-panel"></section>',
-      '<section id="acPanelSubscription" class="ac-center-panel" hidden></section>',
+      '<section id="acPanelSubscription" class="ac-center-panel" hidden style="display:none !important;"></section>',
       '<section id="acPanelTerms" class="ac-center-panel" hidden>' + termsHtml() + '</section>',
       '</main></div>'
     ].join('');
@@ -149,6 +148,7 @@
     return root;
   }
   function switchTab(name) {
+    if (name === 'subscription') name = 'profile';
     var root = ensureCenter();
     root.querySelectorAll('[data-ac-tab]').forEach(function (b) {
       b.setAttribute('aria-selected', b.getAttribute('data-ac-tab') === name ? 'true' : 'false');
@@ -157,7 +157,6 @@
       var panel = byId('acPanel' + tab.charAt(0).toUpperCase() + tab.slice(1));
       if (panel) panel.hidden = tab !== name;
     });
-    if (name === 'subscription' && isLoggedIn()) loadSubscription();
   }
   function closeCenter() {
     var root = byId('acAccountCenter');
@@ -186,6 +185,7 @@
     var root = ensureCenter();
     root.hidden = false;
     document.documentElement.style.overflow = 'hidden';
+    if (tab === 'subscription') tab = 'profile';
     switchTab(tab || 'profile');
     if (tab === 'terms') return;
     if (!isLoggedIn()) {

@@ -8,7 +8,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const INDEX_HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 const THEME_CSS = fs.readFileSync(path.join(ROOT, 'public', 'ui-theme.css'), 'utf8');
-const POLISH_CSS = fs.readFileSync(path.join(ROOT, 'public', 'final-uiux-polish.css'), 'utf8');
+const POLISH_CSS = THEME_CSS;
 const LANDING_CSS = fs.readFileSync(path.join(ROOT, 'public', 'landing-experience.css'), 'utf8');
 
 function relativeLuminance(hex) {

@@ -9,12 +9,13 @@ const vm = require('node:vm');
 const ROOT = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const html = read('public/index.html');
-const css = read('public/final-uiux-polish.css');
-const runtime = read('public/final-uiux-polish.js');
+const css = read('public/ui-theme.css');
+const runtime = read('public/canonical-motion.js');
 
 test('final UI polish assets are loaded once and light is the first-run default', () => {
-  assert.equal((html.match(/\/final-uiux-polish\.css/g) || []).length, 1);
-  assert.equal((html.match(/\/final-uiux-polish\.js/g) || []).length, 1);
+  assert.equal((html.match(/\/ui-theme\.css/g) || []).length, 1);
+  assert.equal((html.match(/\/canonical-motion\.js/g) || []).length, 1);
+  assert.equal((html.match(/\/final-uiux-polish/g) || []).length, 0);
   assert.match(html, /localStorage\.getItem\('autocuan_theme'\) \|\| 'light'/);
   assert.match(html, /<meta name="color-scheme" content="light dark">/);
   assert.match(html, /<meta name="theme-color" content="#f3f5f4">/);

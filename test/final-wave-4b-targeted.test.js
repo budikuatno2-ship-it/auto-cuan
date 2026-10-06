@@ -10,7 +10,7 @@ const ROOT = path.resolve(__dirname, '..');
 const INDEX_HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 const STANDALONE_HTML = fs.readFileSync(path.join(ROOT, 'public', 'analisis-saham.html'), 'utf8');
 const COCKPIT_JS = fs.readFileSync(path.join(ROOT, 'public', 'unified-cockpit-runtime.js'), 'utf8');
-const POLISH_CSS = fs.readFileSync(path.join(ROOT, 'public', 'final-uiux-polish.css'), 'utf8');
+const POLISH_CSS = fs.readFileSync(path.join(ROOT, 'public', 'ui-theme.css'), 'utf8');
 
 // ----------------------------------------------------------------------------
 // SUITE 1: CANONICAL ANALYSIS TOOL REGISTRY (FINAL-RISK-003, FINAL-RISK-004)

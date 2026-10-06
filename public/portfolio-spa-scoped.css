@@ -882,6 +882,52 @@ html.light :where(#portofolioPartialMount) .ticker-link:hover{
               box-shadow var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
               color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
 }
+@media (max-width: 767px){
+:where(#portofolioPartialMount) html body #tabStrip,
+:where(#portofolioPartialMount) html body #tabStrip.tab-strip{
+    display: none !important;
+  }
+:where(#portofolioPartialMount) html body #pccMobileNav{
+    display: block !important;
+  }
+}
+@media (min-width: 768px) and (max-width: 1180px){
+:where(#portofolioPartialMount) html body #tabStrip,
+:where(#portofolioPartialMount) html body #tabStrip.tab-strip{
+    display: flex !important;
+    overflow-x: auto !important;
+  }
+:where(#portofolioPartialMount) html body #tabStrip.tab-strip > .tab{
+    width: auto !important;
+    min-width: max-content !important;
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+  }
+:where(#portofolioPartialMount) html body #pccMobileNav{
+    display: none !important;
+  }
+}
+@media (min-width: 1181px){
+:where(#portofolioPartialMount) html body #tabStrip,
+:where(#portofolioPartialMount) html body #tabStrip.tab-strip{
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+  }
+:where(#portofolioPartialMount) html body #tabStrip.tab-strip > .tab{
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: none !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    white-space: normal !important;
+    text-align: center !important;
+  }
+:where(#portofolioPartialMount) html body #pccMobileNav{
+    display: none !important;
+  }
+}
 
 :where(#portofolioPartialMount) #page-ai.active{
   scroll-margin-top: 82px;

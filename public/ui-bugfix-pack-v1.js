@@ -36,25 +36,7 @@
     '.dt-card-item,.kg-card-item,.nk-card-item{min-height:fit-content!important;height:auto!important;overflow:visible!important;box-sizing:border-box!important;}',
     '.trade-plan-grid{overflow:visible!important;}',
     '#analisisResult,#aiMessages,.chat-messages,.ai-messages,.table-wrap{overscroll-behavior-y:auto!important;}',
-    '#trTableWrap,#trBacktestTradesWrap,#portTableWrap,.overflow-x-auto.overflow-y-auto{overscroll-behavior-y:auto!important;-webkit-overflow-scrolling:touch!important;}',
-    '',
-    '/* Portfolio tabs share equal tracks on wide screens. The compact layout keeps',
-    '   horizontal scrolling below the breakpoint, so long labels never collide. */',
-    '@media (min-width:1181px){',
-    '  #tabStrip.tab-strip{display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;overflow:visible!important;}',
-    '  #tabStrip.tab-strip>.tab{width:100%!important;min-width:0!important;max-width:none!important;flex:none!important;padding-left:8px!important;padding-right:8px!important;white-space:normal!important;text-align:center!important;}',
-    '}',
-    '@media (max-width:1180px){',
-    '  #tabStrip.tab-strip{display:flex!important;overflow-x:auto!important;}',
-    '  #tabStrip.tab-strip>.tab{width:auto!important;min-width:max-content!important;flex:0 0 auto!important;white-space:nowrap!important;}',
-    '}',
-    '',
-    '/* Keep one active-tab accent. Older portfolio polish could leave a cyan',
-    '   underline under the green selected state, producing the double-accent seen',
-    '   on the Asisten AI tab. */',
-    '#tabStrip.tab-strip>.tab{position:relative!important;}',
-    '#tabStrip.tab-strip>.tab::after{content:none!important;}',
-    '#tabStrip.tab-strip>.tab.active::after,#tabStrip.tab-strip>.tab[aria-selected="true"]::after{content:""!important;position:absolute!important;left:25%!important;right:25%!important;bottom:6px!important;height:2px!important;border:0!important;border-radius:999px!important;background:#34d399!important;box-shadow:none!important;transform:none!important;opacity:1!important;}'
+    '#trTableWrap,#trBacktestTradesWrap,#portTableWrap,.overflow-x-auto.overflow-y-auto{overscroll-behavior-y:auto!important;-webkit-overflow-scrolling:touch!important;}'
   ].join('\n');
 
   function decodeNumericEntities(value) {

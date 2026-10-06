@@ -68,7 +68,7 @@
       return other !== element && Math.abs(other.offsetTop - element.offsetTop) < 2 && other.offsetLeft < element.offsetLeft;
     }).length;
     motion(element, [{ opacity: 0, transform: 'translateY(20px)' }, { opacity: 1, transform: 'none' }], {
-      duration: milliseconds('--motion-slow'), delay: Math.min(column, 3) * milliseconds('--motion-stagger'),
+      duration: milliseconds('--motion-story') || milliseconds('--motion-slow'), delay: Math.min(column, 3) * (milliseconds('--motion-stagger-story') || milliseconds('--motion-stagger')),
       easing: token('--ease-emphasized') || 'linear', fill: 'none'
     });
   }
@@ -86,7 +86,7 @@
       { opacity: 0, transform: 'translate3d(12px,8px,0)' },
       { opacity: 1, transform: 'translate3d(0,0,0)' }
     ], {
-      duration: Math.max(milliseconds('--motion-slow'), 420),
+      duration: Math.max(milliseconds('--motion-story') || milliseconds('--motion-slow'), 420),
       delay: 90,
       easing: token('--ease-emphasized') || 'cubic-bezier(.16,1,.3,1)',
       fill: 'none'
@@ -101,7 +101,7 @@
     element.classList.remove('flash-up', 'flash-down');
     if (reduced.matches || !element.animate) return;
     var value = token(up ? '--data-positive' : '--data-negative');
-    var animation = element.animate([{ color: value }, { color: root.getComputedStyle(element).color }], { duration: milliseconds('--motion-base'), easing: token('--ease-standard') || 'linear' });
+    var animation = element.animate([{ color: value }, { color: root.getComputedStyle(element).color }], { duration: milliseconds('--motion-panel') || milliseconds('--motion-base'), easing: token('--ease-standard') || 'linear' });
     flashes.set(element, animation); running.add(animation);
     animation.onfinish = animation.oncancel = function () { running.delete(animation); if (flashes.get(element) === animation) flashes.delete(element); };
   }

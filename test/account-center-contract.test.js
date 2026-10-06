@@ -52,14 +52,15 @@ test('profile is derived from signed server identity and omits sensitive account
   assert.match(gatewaySource, /bodyAction === 'account-profile'/);
 });
 
-test('account center exposes profile subscription terms and a scrollable rules document', () => {
+test('account center exposes profile and terms while keeping dormant subscription hidden', () => {
   assert.match(runtimeSource, /data-ac-tab="profile"/);
-  assert.match(runtimeSource, /data-ac-tab="subscription"/);
+  assert.doesNotMatch(runtimeSource, /<button[^>]*data-ac-tab="subscription"/);
   assert.match(runtimeSource, /data-ac-tab="terms"/);
   assert.match(runtimeSource, /headerUserLabel/);
   assert.match(cssSource, /\.ac-terms-scroll\s*\{/);
   assert.match(cssSource, /overflow:auto/);
   assert.match(cssSource, /max-height:52dvh/);
+  assert.match(cssSource, /\.ac-center-tab\[hidden\]\s*\{\s*display:\s*none\s*!important;\s*\}/);
 });
 
 test('Account Center is lazy-loaded while signup terms stay available at startup', () => {

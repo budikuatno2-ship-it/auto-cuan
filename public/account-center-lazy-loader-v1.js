@@ -127,7 +127,7 @@
 
   function openProfileStub() { return loadCenter('profile'); }
   function openTermsStub() { return openStandaloneTermsModal(); }
-  function openSubscriptionStub() { return loadCenter('subscription'); }
+  function openSubscriptionStub() { return loadCenter('profile'); }
 
   function openStandaloneTermsModal() {
     var modalId = 'standaloneTermsModal';
