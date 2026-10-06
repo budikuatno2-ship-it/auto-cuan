@@ -216,3 +216,67 @@ test('FR-K: the trading-session age helper is bounded and calendar-driven', () =
   assert.equal(freshness.tradingSessionsBetween('2026-09-25', '2026-09-28', holidays), 1);
   assert.equal(freshness.tradingSessionsBetween('2026-09-24', '2026-09-30', holidays), 4);
 });
+
+
+test('FR-L: calculated_at is valid source provenance metadata', () => {
+  const result = freshness.evaluateSnapshotFreshness({
+    snapshot: { calculated_at: '2026-10-05T12:01:12.763Z' },
+    mode: 'daytrade',
+    now: new Date('2026-10-06T02:15:00Z')
+  });
+  assert.equal(result.snapshot_date, '2026-10-05');
+  assert.equal(result.snapshot_date_field, 'calculated_at');
+  assert.equal(result.fresh, true);
+});
+
+test('FR-M: explicit missing per-source date fails closed instead of falling back to fresh file timestamp', () => {
+  const result = freshness.evaluateSnapshotFreshness({
+    snapshot: { updated_at: '2026-10-06T01:00:00.000Z' },
+    snapshotDate: null,
+    mode: 'daytrade',
+    now: new Date('2026-10-06T02:15:00Z')
+  });
+  assert.equal(result.fresh, false);
+  assert.equal(result.reason, 'MISSING_SNAPSHOT_DATE');
+  assert.equal(result.snapshot_date, null);
+  assert.equal(result.snapshot_date_field, 'snapshotDate');
+});
+
+test('FR-N: run-screener uses mode-specific source date even when file updated_at is current', () => {
+  const root = freshRoot({
+    freshness_schema_version: 2,
+    source_dates: { daytrade: '2026-09-30' },
+    updated_at: '2026-10-06T01:00:00.000Z',
+    daytrade: [{ ticker: 'BBCA', score: 90 }]
+  });
+  try {
+    const report = runner.analyze(
+      { mode: 'daytrade', dryRun: true, send: false, json: false },
+      { rootDir: root, env: {}, now: new Date('2026-10-06T02:15:00Z') }
+    );
+    assert.equal(report.source_date, '2026-09-30');
+    assert.equal(report.freshness.fresh, false);
+    assert.equal(report.freshness.reason, 'STALE_SNAPSHOT');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('FR-O: freshness-v2 snapshot with missing mode provenance is blocked', () => {
+  const root = freshRoot({
+    freshness_schema_version: 2,
+    source_dates: {},
+    updated_at: '2026-10-06T01:00:00.000Z',
+    daytrade: [{ ticker: 'BBCA', score: 90 }]
+  });
+  try {
+    const report = runner.analyze(
+      { mode: 'daytrade', dryRun: true, send: false, json: false },
+      { rootDir: root, env: {}, now: new Date('2026-10-06T02:15:00Z') }
+    );
+    assert.equal(report.freshness.fresh, false);
+    assert.equal(report.freshness.reason, 'MISSING_SNAPSHOT_DATE');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

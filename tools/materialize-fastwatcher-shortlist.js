@@ -43,6 +43,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const calendar = require(path.resolve(__dirname, '..', 'lib', 'idx-trading-calendar'));
+const snapshotFreshness = require(path.resolve(__dirname, '..', 'lib', 'snapshot-freshness'));
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_BASE_URL = 'http://127.0.0.1:3000';
@@ -107,6 +108,22 @@ function usableRows(rows) {
   });
 }
 
+function sourceStatus(payload) {
+  return String((payload && ((payload.meta && payload.meta.status) || payload.status)) || '').trim().toLowerCase();
+}
+
+function extractSourceDate(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const candidates = [];
+  if (payload.meta && typeof payload.meta === 'object' && !Array.isArray(payload.meta)) candidates.push(payload.meta);
+  candidates.push(payload);
+  for (const candidate of candidates) {
+    const extracted = snapshotFreshness.extractSnapshotDate(candidate);
+    if (extracted) return extracted.date;
+  }
+  return null;
+}
+
 async function fetchAction(baseUrl, secret, action, fetchFn) {
   const url = new URL('/api/sector-hot', baseUrl);
   url.searchParams.set('action', action);
@@ -136,14 +153,14 @@ async function fetchAction(baseUrl, secret, action, fetchFn) {
  */
 function buildShortlist(payload, options) {
   const opts = options || {};
-  const sourceStatus = String((payload && payload.status) || '').trim();
-  if (sourceStatus.toLowerCase() === 'running' || sourceStatus.toLowerCase() === 'scanning') {
+  const status = sourceStatus(payload);
+  if (status === 'running' || status === 'scanning') {
     return {
       payload: {
         status: 'running',
         source: 'local-vps-api:daytrade-screener',
         generated_at: new Date().toISOString(),
-        run_date: opts.runDate || null,
+        run_date: opts.sourceRunDate || extractSourceDate(payload) || null,
         results: []
       },
       counts: { rows: 0, running: true }
@@ -155,7 +172,7 @@ function buildShortlist(payload, options) {
       status: 'published',
       source: 'local-vps-api:daytrade-screener',
       generated_at: new Date().toISOString(),
-      run_date: opts.runDate || (payload && (payload.run_date || payload.runDate)) || null,
+      run_date: opts.sourceRunDate || extractSourceDate(payload) || null,
       results: rows
     },
     counts: { rows: rows.length, running: false }
@@ -196,8 +213,37 @@ async function main(options, deps) {
   log('  mode     : ' + (options.dryRun ? 'DRY-RUN (nothing written)' : 'WRITE'));
 
   const payload = await fetchAction(baseUrl, secret, 'daytrade-screener', fetchFn);
-  const { payload: shortlist, counts } = buildShortlist(payload, { runDate });
+  const status = sourceStatus(payload);
+  const sourceDate = extractSourceDate(payload);
 
+  // FastWatcher is allowed to seed its live scan from today's DayTrade full
+  // screener or the latest completed trading session. Anything older (or
+  // missing provenance) fails closed so stale shortlist rows can never be
+  // relabelled as today's data by this materializer.
+  if (status !== 'running' && status !== 'scanning') {
+    const evaluationNow = deps.now || new Date(runDate + 'T12:00:00+07:00');
+    const sourceFreshness = snapshotFreshness.evaluateSnapshotFreshness({
+      snapshotDate: sourceDate,
+      mode: 'daytrade',
+      now: evaluationNow,
+      holidaySet
+    });
+    if (!sourceFreshness.fresh) {
+      log('  STALE_SOURCE: DayTrade source=' + (sourceDate || 'none') +
+        ' acceptable=' + JSON.stringify(sourceFreshness.acceptable_dates) +
+        ' reason=' + sourceFreshness.reason);
+      return {
+        ok: false,
+        reason: 'STALE_SOURCE',
+        sourceDate,
+        freshness: sourceFreshness
+      };
+    }
+  }
+
+  const { payload: shortlist, counts } = buildShortlist(payload, { sourceRunDate: sourceDate });
+
+  log('  source date: ' + (sourceDate || 'none'));
   log('  rows     : ' + counts.rows + (counts.running ? ' (full screener running)' : ''));
 
   if (options.dryRun) {
@@ -236,6 +282,8 @@ module.exports = {
   parseArgs,
   extractRows,
   usableRows,
+  sourceStatus,
+  extractSourceDate,
   fetchAction,
   buildShortlist,
   main

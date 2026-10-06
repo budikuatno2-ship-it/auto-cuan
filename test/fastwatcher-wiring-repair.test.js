@@ -273,15 +273,16 @@ test('FW-07: materializer builds the engine-accepted contract and skips non-trad
   const built = materializer.buildShortlist({
     success: true,
     status: 'published',
+    meta: { run_date: '2026-10-02' },
     results: [{ ticker: 'MMIX', score: 88 }, { ticker: 'AMRT' }]
-  }, { runDate: '2026-10-02' });
+  });
   assert.equal(built.payload.status, 'published');
   assert.equal(built.payload.run_date, '2026-10-02');
   assert.equal(built.counts.rows, 2);
   assert.deepEqual(built.payload.results.map((r) => r.ticker), ['MMIX', 'AMRT']);
 
   // A still-running full screener is preserved so the engine can skip it.
-  const running = materializer.buildShortlist({ status: 'running' }, { runDate: '2026-10-02' });
+  const running = materializer.buildShortlist({ status: 'running' }, { sourceRunDate: '2026-10-02' });
   assert.equal(running.payload.status, 'running');
   assert.equal(running.counts.running, true);
 
@@ -299,4 +300,78 @@ test('FW-07: materializer builds the engine-accepted contract and skips non-trad
     { env: { CRON_SECRET: 'dummy' }, runDate: '2026-05-14', log: () => {} }
   );
   assert.equal(holiday.skipped, true);
+});
+
+
+test('FW-08: stale DayTrade source is rejected before FastWatcher shortlist is written', async () => {
+  const root = tempDir();
+  const output = path.join(root, 'fastwatcher-shortlist.json');
+  const stalePayload = {
+    success: true,
+    status: 'published',
+    meta: { run_date: '2026-09-30' },
+    results: [{ ticker: 'BINA', score: 88 }]
+  };
+  const fakeFetch = async () => ({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify(stalePayload)
+  });
+
+  try {
+    const res = await materializer.main(
+      { dryRun: false, print: false, output },
+      {
+        env: { CRON_SECRET: 'dummy' },
+        runDate: '2026-10-06',
+        now: new Date('2026-10-06T02:10:00Z'),
+        fetchFn: fakeFetch,
+        baseUrl: 'http://127.0.0.1:3000',
+        log: () => {}
+      }
+    );
+    assert.equal(res.ok, false);
+    assert.equal(res.reason, 'STALE_SOURCE');
+    assert.equal(res.sourceDate, '2026-09-30');
+    assert.equal(fs.existsSync(output), false, 'stale source must never be materialized');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('FW-09: previous completed trading session remains valid seed for live FastWatcher', async () => {
+  const root = tempDir();
+  const output = path.join(root, 'fastwatcher-shortlist.json');
+  const previousSessionPayload = {
+    success: true,
+    status: 'published',
+    meta: { run_date: '2026-10-05' },
+    results: [{ ticker: 'PADA', score: 88 }]
+  };
+  const fakeFetch = async () => ({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify(previousSessionPayload)
+  });
+
+  try {
+    const res = await materializer.main(
+      { dryRun: false, print: false, output },
+      {
+        env: { CRON_SECRET: 'dummy' },
+        runDate: '2026-10-06',
+        now: new Date('2026-10-06T02:10:00Z'),
+        fetchFn: fakeFetch,
+        baseUrl: 'http://127.0.0.1:3000',
+        log: () => {}
+      }
+    );
+    assert.equal(res.ok, true);
+    const written = JSON.parse(fs.readFileSync(output, 'utf8'));
+    assert.equal(written.run_date, '2026-10-05',
+      'materializer must preserve the source session date, not relabel it as today');
+    assert.deepEqual(written.results.map((r) => r.ticker), ['PADA']);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
