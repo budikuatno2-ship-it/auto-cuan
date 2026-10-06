@@ -188,3 +188,38 @@ test('Non-Konglo force run does not short-circuit on stale published meta', asyn
   assert.equal(result.finalized, true);
   assert.equal(calls.some((q) => q.action === 'nk-screener-run' && q.force === 1), true);
 });
+
+
+test('REGRESSION: Non-Konglo keeps batch_size 50 on every attempt so the producer does not fall back to 8', async () => {
+  const runQueries = [];
+  let runCalls = 0;
+  const client = {
+    call: async (q) => {
+      if (q.action === 'nk-screener-results') {
+        return { meta: { status: runCalls >= 2 ? 'published' : 'scanning', run_date: runner.wibDate() } };
+      }
+      if (q.action === 'nk-screener-run') {
+        runQueries.push({ ...q });
+        runCalls += 1;
+        if (q.batch_size !== 50) {
+          return { step:'start', status:'SCANNING', universe_count:635, batch_count:80, batch_size:8 };
+        }
+        if (runCalls === 1) {
+          return { step:'start', status:'SCANNING', universe_count:635, batch_count:13, batch_size:50 };
+        }
+        return { step:'finalize', status:'PUBLISHED', message:'Published 20 top candidates.' };
+      }
+      throw new Error('unexpected');
+    }
+  };
+
+  const result = await runner.runNk(client, {
+    execute:true, force:true, maxAttempts:40, sleepMs:1, nkBatchSize:50
+  }, () => {});
+
+  assert.equal(result.finalized, true);
+  assert.equal(runQueries.length, 2);
+  assert.deepEqual(runQueries.map((q) => q.batch_size), [50, 50]);
+  assert.equal(runQueries[0].force, 1);
+  assert.equal(runQueries[1].force, undefined);
+});
