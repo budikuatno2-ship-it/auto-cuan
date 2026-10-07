@@ -92,7 +92,8 @@ with sync_playwright() as pw:
         page.evaluate('window.scrollTo(0,0)');page.wait_for_timeout(500)
         page.locator('.landing-hero .landing-btn-primary').click();page.wait_for_timeout(25)
         check('Auth choice focuses inside and locks page',page.evaluate("document.getElementById('authChoiceModal').contains(document.activeElement)&&document.getElementById('landingPage').inert&&document.documentElement.classList.contains('auth-dialog-open')"))
-        page.locator('#authChoiceModal .landing-auth-card').nth(1).click();page.wait_for_timeout(25)
+        page.locator('#authChoiceModal .landing-auth-card').nth(1).click()
+        page.wait_for_function("document.getElementById('registerModal').contains(document.activeElement)",timeout=1000)
         check('Choice to register focuses new form without stale timer',page.evaluate("document.getElementById('registerModal').contains(document.activeElement)"))
         page.locator('#regUsername').fill('local-test')
         for height in [320,450,568,844]:
