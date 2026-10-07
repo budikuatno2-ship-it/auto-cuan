@@ -369,6 +369,9 @@
       var activeResearchTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
         ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
       root.loadFinancialStructureTab(parentTab, activeResearchTicker);
+      if (parentTab === 'market-structure' && root.AutoCuanMarketStructure && typeof root.AutoCuanMarketStructure.loadUniverse === 'function') {
+        root.AutoCuanMarketStructure.loadUniverse();
+      }
     } else if (parentTab === 'bandarmologi') {
       var currentSection = (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.getBandarSection === 'function')
         ? root.BandarmologiRuntime.getBandarSection() : 'summary';
@@ -489,9 +492,332 @@
     }
   }
 
+  function formatIndonesianDateWithWib(isoStr) {
+    if (!isoStr) return '—';
+    if (typeof isoStr !== 'string') return String(isoStr);
+    var cleanStr = isoStr.replace(/\s*WIB$/i, '').trim();
+    var d = new Date(cleanStr);
+    if (isNaN(d.getTime())) return isoStr;
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    var day = ('0' + d.getDate()).slice(-2);
+    var month = months[d.getMonth()];
+    var year = d.getFullYear();
+    if (isoStr.indexOf('T') !== -1 || isoStr.indexOf(':') !== -1) {
+      var hours = ('0' + d.getHours()).slice(-2);
+      var minutes = ('0' + d.getMinutes()).slice(-2);
+      return day + ' ' + month + ' ' + year + ', ' + hours + ':' + minutes + ' WIB';
+    }
+    return day + ' ' + month + ' ' + year;
+  }
+
+  function formatIndonesianSharesCount(val) {
+    if (!researchHasNumber(val)) return '—';
+    var n = Number(val);
+    if (n >= 1e12) {
+      return (n / 1e12).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' triliun lembar';
+    }
+    if (n >= 1e9) {
+      return (n / 1e9).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' miliar lembar';
+    }
+    if (n >= 1e6) {
+      return (n / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' juta lembar';
+    }
+    return n.toLocaleString('id-ID') + ' lembar';
+  }
+
+  function formatIndonesianMarketCap(val) {
+    if (!researchHasNumber(val)) return '—';
+    var n = Number(val);
+    if (n >= 1e12) {
+      return 'Rp ' + (n / 1e12).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' T';
+    }
+    if (n >= 1e9) {
+      return 'Rp ' + (n / 1e9).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' M';
+    }
+    return 'Rp ' + n.toLocaleString('id-ID');
+  }
+
+  function formatMarketStructureStatus(status) {
+    switch (status) {
+      case 'STRUCTURE_VERIFIED': return 'Struktur Terverifikasi';
+      case 'HIGH_SHAREHOLDING_CONCENTRATION': return 'Konsentrasi Kepemilikan Tinggi';
+      case 'LOW_FREE_FLOAT': return 'Free Float Rendah';
+      case 'DATA_INCOMPLETE': return 'Data Belum Lengkap';
+      case 'NORMAL': return 'Normal';
+      case 'CAUTION': return 'Perhatian';
+      case 'WATCHLIST': return 'Pantauan';
+      case 'NOT_EVALUATED': return 'Belum Dievaluasi';
+      default: return status ? String(status).replace(/_/g, ' ') : 'Belum Dievaluasi';
+    }
+  }
+
+  function formatMarketStructureGuard(guard) {
+    switch (guard) {
+      case 'NORMAL': return 'Normal';
+      case 'CAUTION': return 'Perhatian';
+      case 'RESTRICTED': return 'Terbatas';
+      case 'HIGH_RISK': return 'Risiko Tinggi';
+      case 'UNKNOWN':
+      case 'NOT_EVALUATED': return 'Belum Dievaluasi';
+      default: return guard ? String(guard).replace(/_/g, ' ') : 'Belum Dievaluasi';
+    }
+  }
+
+  function formatComplianceStatus(status) {
+    switch (status) {
+      case 'NOT_EVALUATED': return 'Belum Dievaluasi';
+      case 'COMPLIANT': return 'Memenuhi Acuan';
+      case 'NON_COMPLIANT': return 'Di Bawah Acuan';
+      default: return status ? String(status).replace(/_/g, ' ') : 'Belum Dievaluasi';
+    }
+  }
+
+  function formatHscStatus(flag) {
+    if (flag === true) return 'HSC Aktif';
+    if (flag === false) return 'Tidak Terindikasi HSC';
+    return 'Belum Terverifikasi';
+  }
+
   function researchHasNumber(value) {
     return value != null && String(value).trim() !== '' && Number.isFinite(Number(value));
   }
+
+  // ===== FINANCIAL STATEMENTS CONTROLLER (WAVE 4B, §79.2, §26) =====
+  var AutoCuanFinancialStatements = {
+    activeMode: 'income', // 'income' | 'balance' | 'cashflow' | 'ratios'
+    activePeriod: 'quarterly', // 'quarterly' | 'annual'
+    currentTicker: null,
+    statementsData: null,
+
+    setStatementMode: function (mode) {
+      if (!mode) return;
+      this.activeMode = mode;
+      var group = byId('financialStatementModeGroup');
+      if (group) {
+        var btns = group.querySelectorAll('button[data-statement-mode]');
+        btns.forEach(function (btn) {
+          var isTarget = btn.getAttribute('data-statement-mode') === mode;
+          if (isTarget) {
+            btn.classList.add('is-active');
+            btn.setAttribute('aria-selected', 'true');
+            btn.setAttribute('tabindex', '0');
+          } else {
+            btn.classList.remove('is-active');
+            btn.setAttribute('aria-selected', 'false');
+            btn.setAttribute('tabindex', '-1');
+          }
+        });
+      }
+      this.renderTable();
+    },
+
+    setPeriodMode: function (period) {
+      if (!period) return;
+      this.activePeriod = period;
+      var group = byId('financialPeriodModeGroup');
+      if (group) {
+        var btns = group.querySelectorAll('button[data-period-mode]');
+        btns.forEach(function (btn) {
+          var isTarget = btn.getAttribute('data-period-mode') === period;
+          if (isTarget) {
+            btn.classList.add('is-active');
+            btn.setAttribute('aria-pressed', 'true');
+          } else {
+            btn.classList.remove('is-active');
+            btn.setAttribute('aria-pressed', 'false');
+          }
+        });
+      }
+      this.renderTable();
+    },
+
+    loadStatements: function (ticker, context) {
+      this.currentTicker = ticker;
+      this.statementsData = this.normalizeStatements(context);
+      this.renderTable();
+    },
+
+    normalizeStatements: function (context) {
+      if (!context) return null;
+      var raw = context.financial_statements || context.statements || (context.fundamental && context.fundamental.statements) || null;
+      if (!raw) return null;
+
+      return {
+        quarterly: raw.quarterly || null,
+        annual: raw.annual || null,
+        source: raw.source || (context.fundamental && context.fundamental.fundamental_source) || 'IDX Financial Statement',
+        updated_at: raw.updated_at || (context.fundamental && context.fundamental.fundamental_updated_at) || null
+      };
+    },
+
+    renderTable: function () {
+      var wrap = byId('financialStatementsTableWrap');
+      var unavailable = byId('financialStatementUnavailable');
+      var unavailTitle = byId('financialStatementUnavailableTitle');
+      var unavailDesc = byId('financialStatementUnavailableDesc');
+      var thead = byId('financialStatementsTableHead');
+      var tbody = byId('financialStatementsTableBody');
+
+      var catLabel = byId('financialStatementCategoryLabel');
+      var freqLabel = byId('financialStatementFrequencyLabel');
+      var unitLabel = byId('financialStatementUnitLabel');
+
+      var mode = this.activeMode;
+      var period = this.activePeriod;
+
+      var modeName = mode === 'income' ? 'Laba Rugi' : (mode === 'balance' ? 'Neraca' : (mode === 'cashflow' ? 'Arus Kas' : 'Rasio'));
+      var periodName = period === 'quarterly' ? 'Kuartalan' : 'Tahunan';
+
+      if (catLabel) catLabel.textContent = modeName;
+      if (freqLabel) freqLabel.textContent = periodName;
+      if (unitLabel) unitLabel.textContent = mode === 'ratios' ? 'Rasio & Kelipatan' : 'Miliar IDR (kecuali rasio & EPS)';
+
+      var periodData = this.statementsData ? this.statementsData[period] : null;
+      var statementKey = mode === 'income' ? 'income_statement' : (mode === 'balance' ? 'balance_sheet' : (mode === 'cashflow' ? 'cash_flow' : 'ratios'));
+      var statement = periodData ? (periodData[statementKey] || (mode === 'ratios' ? periodData.ratios : null)) : null;
+
+      var hasData = statement && Array.isArray(statement.rows) && statement.rows.length > 0 && Array.isArray(statement.periods) && statement.periods.length > 0;
+
+      if (!hasData) {
+        if (wrap) wrap.hidden = true;
+        if (unavailable) {
+          unavailable.hidden = false;
+          if (unavailTitle) unavailTitle.textContent = 'Data ' + modeName + ' rinci belum tersedia';
+          if (unavailDesc) unavailDesc.textContent = 'Belum ada data laporan ' + modeName.toLowerCase() + ' terverifikasi untuk mode ' + periodName.toLowerCase() + '. Data snapshot di atas tetap aktif dan valid.';
+        }
+        return;
+      }
+
+      if (unavailable) unavailable.hidden = true;
+      if (wrap) wrap.hidden = false;
+
+      // Render <thead>
+      if (thead) {
+        var headerHtml = '<tr><th scope="col" style="text-align: left;">Komponen</th>';
+        statement.periods.forEach(function (p) {
+          headerHtml += '<th scope="col">' + escapeHtml(p) + '</th>';
+        });
+        headerHtml += '</tr>';
+        thead.innerHTML = headerHtml;
+      }
+
+      // Render <tbody>
+      if (tbody) {
+        tbody.innerHTML = '';
+        var frag = document.createDocumentFragment();
+
+        statement.rows.forEach(function (row) {
+          var tr = document.createElement('tr');
+          if (row.type === 'group') {
+            tr.className = 'ac-fin-row-group';
+            var td = document.createElement('td');
+            td.setAttribute('colspan', String(statement.periods.length + 1));
+            var stickyDiv = document.createElement('div');
+            stickyDiv.className = 'ac-fin-group-label-sticky';
+            var span = document.createElement('span');
+            span.className = 'ac-fin-group-title';
+            span.textContent = (row.label && row.label.startsWith('▸') ? '' : '▸ ') + row.label;
+            stickyDiv.appendChild(span);
+            td.appendChild(stickyDiv);
+            tr.appendChild(td);
+          } else {
+            tr.className = row.type === 'total' ? 'ac-fin-row-total' : 'ac-fin-row-child';
+            var tdLabel = document.createElement('td');
+            tdLabel.textContent = row.label;
+            tr.appendChild(tdLabel);
+
+            var values = Array.isArray(row.values) ? row.values : [];
+            for (var i = 0; i < statement.periods.length; i++) {
+              var val = values[i];
+              var tdVal = document.createElement('td');
+
+              if (val == null || val === '—' || val === '') {
+                tdVal.textContent = '—';
+                tdVal.style.color = 'var(--ac-text-muted)';
+              } else if (typeof val === 'number') {
+                var isNegative = val < 0;
+                var formatted = '';
+                if (row.unit === 'pct' || row.unit === '%') {
+                  formatted = val.toFixed(2) + '%';
+                } else if (row.unit === 'x') {
+                  formatted = val.toFixed(2) + 'x';
+                } else if (row.unit === 'idr' || row.unit === 'currency') {
+                  formatted = (isNegative ? '(' : '') + Math.abs(val).toLocaleString('id-ID') + (isNegative ? ')' : '');
+                } else {
+                  formatted = (isNegative ? '(' : '') + Math.abs(val).toLocaleString('id-ID') + (isNegative ? ')' : '');
+                }
+
+                if (isNegative) {
+                  tdVal.innerHTML = '<span class="ac-fin-negative">' + escapeHtml(formatted) + '</span>';
+                } else {
+                  // Normal positive ink - never globally forced green!
+                  tdVal.textContent = formatted;
+                }
+              } else {
+                var strVal = String(val);
+                if (strVal.startsWith('-') || strVal.startsWith('(')) {
+                  tdVal.innerHTML = '<span class="ac-fin-negative">' + escapeHtml(strVal) + '</span>';
+                } else {
+                  tdVal.textContent = strVal;
+                }
+              }
+
+              tr.appendChild(tdVal);
+            }
+          }
+          frag.appendChild(tr);
+        });
+
+        tbody.appendChild(frag);
+      }
+
+      var wrap = byId('financialStatementsTableWrap');
+      var hint = byId('financialScrollHint');
+      if (wrap && hint && typeof wrap.addEventListener === 'function' && !wrap._hasScrollHintListener) {
+        wrap._hasScrollHintListener = true;
+        wrap.addEventListener('scroll', function () {
+          if (wrap.scrollLeft > 24) {
+            hint.classList.add('is-scrolled');
+          } else {
+            hint.classList.remove('is-scrolled');
+          }
+        }, { passive: true });
+      }
+    }
+  };
+  root.AutoCuanFinancialStatements = AutoCuanFinancialStatements;
+
+  if (typeof document !== 'undefined') {
+    var initTablistNav = function () {
+      var stmtGroup = byId('financialStatementModeGroup');
+      if (stmtGroup && typeof stmtGroup.addEventListener === 'function' && !stmtGroup._hasKeyNav) {
+        stmtGroup._hasKeyNav = true;
+        stmtGroup.addEventListener('keydown', function (e) {
+          if (!e || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+          if (typeof stmtGroup.querySelectorAll !== 'function') return;
+          var tabs = Array.from(stmtGroup.querySelectorAll('button[data-statement-mode]'));
+          var activeTab = typeof stmtGroup.querySelector === 'function' ? stmtGroup.querySelector('button[data-statement-mode].is-active') : null;
+          var idx = tabs.indexOf(activeTab);
+          if (idx === -1) return;
+          if (typeof e.preventDefault === 'function') e.preventDefault();
+          var nextIdx = e.key === 'ArrowRight' ? (idx + 1) % tabs.length : (idx - 1 + tabs.length) % tabs.length;
+          var nextTab = tabs[nextIdx];
+          if (nextTab) {
+            if (typeof nextTab.focus === 'function') nextTab.focus();
+            var mode = nextTab.getAttribute('data-statement-mode');
+            AutoCuanFinancialStatements.setStatementMode(mode);
+          }
+        });
+      }
+    };
+    if (document.readyState === 'loading' && typeof document.addEventListener === 'function') {
+      document.addEventListener('DOMContentLoaded', initTablistNav);
+    } else {
+      initTablistNav();
+    }
+  }
+
+  var financialSnapshotCache = {};
   var researchGeneration = 0;
   async function loadFinancialStructureTab(tabName, rawTicker) {
     var generation = ++researchGeneration;
@@ -510,11 +836,14 @@
     var isFinancial = tabName === 'financial';
     var state = byId(isFinancial ? 'financialDataState' : 'marketStructureDataState');
     var content = byId(isFinancial ? 'financialDataContent' : 'marketStructureDataContent');
+    var unavailable = isFinancial ? byId('financialDataUnavailable') : null;
+
     if (state) {
       state.hidden = false;
       state.textContent = 'Memuat ' + ticker + '…';
     }
     if (content) content.hidden = true;
+    if (unavailable) unavailable.hidden = true;
 
     try {
       var response = await fetch('/api/quote?action=daily-market-context&ticker=' + encodeURIComponent(ticker), {
@@ -532,40 +861,76 @@
       var m = ctx.market_structure || {};
 
       if (isFinancial) {
+        var hasPbv = researchHasNumber(f.pbv);
+        var hasBvps = researchHasNumber(f.book_value_per_share);
+        var hasShares = researchHasNumber(f.shares_outstanding);
+        var hasMarketCap = researchHasNumber(f.market_cap);
+        var coverageCount = (hasPbv ? 1 : 0) + (hasBvps ? 1 : 0) + (hasShares ? 1 : 0) + (hasMarketCap ? 1 : 0);
+
+        if (coverageCount === 0) {
+          if (unavailable) unavailable.hidden = false;
+          if (content) content.hidden = true;
+          if (state) state.hidden = true;
+          return;
+        }
+
+        financialSnapshotCache[ticker] = {
+          ticker: ticker,
+          fundamental: f,
+          context: ctx,
+          timestamp: Date.now()
+        };
+
+        if (unavailable) unavailable.hidden = true;
         researchText('financialTickerBadge', ticker);
-        researchText('financialPbv', researchHasNumber(f.pbv) ? researchNumber(f.pbv, 2) + 'x' : '—');
+        var companyNameEl = byId('financialCompanyName');
+        if (companyNameEl) {
+          companyNameEl.textContent = f.company_name || ('PT ' + ticker + ' Tbk');
+        }
+        researchText('financialPbv', hasPbv ? researchNumber(f.pbv, 2) + 'x' : '—');
         researchText('financialPbvPrice', researchHasNumber(f.pbv_as_of_price) ? 'Harga acuan ' + researchIdr(f.pbv_as_of_price) : 'Harga acuan —');
-        researchText('financialBvps', researchHasNumber(f.book_value_per_share) ? researchIdr(f.book_value_per_share) : '—');
-        researchText('financialShares', researchHasNumber(f.shares_outstanding) ? researchCompact(f.shares_outstanding) : '—');
-        researchText('financialMarketCap', researchHasNumber(f.market_cap) ? researchIdr(f.market_cap) : '—');
-        researchText('financialMarketCapAsOf', f.market_cap_as_of ? 'As of ' + f.market_cap_as_of : 'Belum tersedia');
+        researchText('financialBvps', hasBvps ? researchIdr(f.book_value_per_share) : '—');
+        researchText('financialShares', researchHasNumber(f.shares_outstanding) ? formatIndonesianSharesCount(f.shares_outstanding) : '—');
+        var mCapEl = byId('financialMarketCap');
+        if (mCapEl) {
+          mCapEl.textContent = researchHasNumber(f.market_cap) ? formatIndonesianMarketCap(f.market_cap) : '—';
+          if (researchHasNumber(f.market_cap)) {
+            mCapEl.title = 'Rp ' + Number(f.market_cap).toLocaleString('id-ID');
+          }
+        }
+        researchText('financialMarketCapAsOf', f.market_cap_as_of ? 'Per ' + formatIndonesianDateWithWib(f.market_cap_as_of) : 'Belum tersedia');
         researchText('financialPeriod', f.fundamental_period || 'Belum tersedia');
         researchText('financialPeriodHero', f.fundamental_period ? 'Periode ' + f.fundamental_period : 'Periode belum tersedia');
         researchText('financialSource', f.fundamental_source || 'Belum tersedia');
         researchText('financialMarketCapSource', f.market_cap_source || 'Belum tersedia');
-        researchText('financialUpdatedAt', f.fundamental_updated_at || 'Belum tersedia');
+        researchText('financialUpdatedAt', f.fundamental_updated_at ? formatIndonesianDateWithWib(f.fundamental_updated_at) : 'Belum tersedia');
 
-        var coverageValues = [f.pbv, f.book_value_per_share, f.shares_outstanding, f.market_cap];
-        var coverageCount = coverageValues.reduce(function (count, value) {
-          return count + (researchHasNumber(value) ? 1 : 0);
-        }, 0);
         researchText('financialCoverage', coverageCount + ' / 4');
         var coverageBar = byId('financialCoverageBar');
         if (coverageBar && coverageBar.style && coverageBar.style.setProperty) {
           coverageBar.style.setProperty('--ac-financial-coverage', (coverageCount * 25) + '%');
         }
+
+        // Load and render multi-period detailed statements (Wave 4B, §79.2, §26)
+        if (root.AutoCuanFinancialStatements && typeof root.AutoCuanFinancialStatements.loadStatements === 'function') {
+          root.AutoCuanFinancialStatements.loadStatements(ticker, ctx);
+        }
       } else {
         researchText('marketStructureFreeFloat', researchHasNumber(m.free_float_pct) ? researchNumber(m.free_float_pct, 2) + '%' : '—');
-        researchText('marketStructureFreeFloatAsOf', m.free_float_as_of ? 'As of ' + m.free_float_as_of : 'As of —');
-        researchText('marketStructureHsc', m.hsc_flag === true ? 'HSC Aktif' : (m.hsc_flag === false ? 'Tidak Flagged' : 'Belum terverifikasi'));
-        researchText('marketStructureHscAsOf', m.hsc_as_of ? 'As of ' + m.hsc_as_of : 'As of —');
-        researchText('marketStructureGuard', m.market_structure_guard || 'UNKNOWN');
-        researchText('marketStructureStatus', m.market_structure_status || 'DATA_INCOMPLETE');
+        researchText('marketStructureFreeFloatAsOf', m.free_float_as_of ? 'Per ' + formatIndonesianDateWithWib(m.free_float_as_of) : 'Per —');
+        researchText('marketStructureHsc', formatHscStatus(m.hsc_flag));
+        researchText('marketStructureHscAsOf', m.hsc_as_of ? 'Per ' + formatIndonesianDateWithWib(m.hsc_as_of) : 'Per —');
+        researchText('marketStructureGuard', formatMarketStructureGuard(m.market_structure_guard));
+        researchText('marketStructureStatus', formatMarketStructureStatus(m.market_structure_status));
         researchText('marketStructureFreeFloatSource', m.free_float_source || 'Belum tersedia');
         researchText('marketStructureHscSource', m.hsc_source || 'Belum tersedia');
         researchText('marketStructureReference', researchHasNumber(m.low_free_float_reference_pct) ? researchNumber(m.low_free_float_reference_pct, 0) + '%' : '15%');
-        researchText('marketStructureCompliance', m.regulatory_compliance_status || 'NOT_EVALUATED');
+        researchText('marketStructureCompliance', formatComplianceStatus(m.regulatory_compliance_status));
         researchText('marketStructureNote', m.market_structure_note || 'Data struktur pasar belum lengkap.');
+
+        if (root.AutoCuanMarketStructure && typeof root.AutoCuanMarketStructure.selectRow === 'function') {
+          root.AutoCuanMarketStructure.selectRow(ticker, false);
+        }
       }
 
       if (state) state.hidden = true;
@@ -577,14 +942,382 @@
       }
     } catch (error) {
       if (generation !== researchGeneration) return;
+      if (isFinancial && financialSnapshotCache[ticker]) {
+        if (state) {
+          state.hidden = false;
+          state.textContent = 'Gagal memperbarui data: mempertahankan snapshot terakhir.';
+        }
+        if (content) content.hidden = false;
+        if (typeof root.showToast === 'function') {
+          root.showToast('Gagal memuat snapshot baru: menampilkan snapshot terakhir untuk ' + ticker, 'warning');
+        }
+        return;
+      }
       if (state) {
         state.hidden = false;
         state.textContent = (error && error.message) || 'Gagal memuat data.';
       }
       if (content) content.hidden = true;
+      if (unavailable) unavailable.hidden = true;
     }
   }
   root.loadFinancialStructureTab = loadFinancialStructureTab;
+
+  // ===== AUTO-CUAN MARKET STRUCTURE CONTROLLER (WAVE 4, §79.3, LIST-FIRST) =====
+  var AutoCuanMarketStructure = {
+    universe: [],
+    filteredUniverse: [],
+    activeFilter: 'all',
+    searchQuery: '',
+    sortKey: 'ticker_asc',
+    selectedTicker: null,
+    lastSelectedRowEl: null,
+    isLoading: false,
+    hasLoaded: false,
+
+    loadUniverse: async function (force) {
+      if (this.isLoading) return;
+      if (this.hasLoaded && !force) {
+        if (!this.selectedTicker) {
+          var curTicker = (root.UnifiedCockpit && root.UnifiedCockpit.getActiveTicker) ? root.UnifiedCockpit.getActiveTicker() : root.activeTicker;
+          if (curTicker) this.selectRow(curTicker, false);
+        }
+        return;
+      }
+
+      this.isLoading = true;
+      var skeleton = byId('marketStructureTableSkeleton');
+      var wrap = byId('marketStructureTableWrap');
+      var errBox = byId('marketStructureTableError');
+      var emptyBox = byId('marketStructureTableEmpty');
+
+      if (skeleton) skeleton.hidden = false;
+      if (wrap) wrap.style.opacity = '0.5';
+      if (errBox) errBox.hidden = true;
+      if (emptyBox) emptyBox.hidden = true;
+
+      try {
+        var response = await fetch('/api/quote?action=daily-market-context-list', {
+          credentials: 'same-origin',
+          cache: 'no-store'
+        });
+        var payload = await response.json().catch(function () { return {}; });
+        var list = Array.isArray(payload.universe) ? payload.universe : (Array.isArray(payload.rows) ? payload.rows : (Array.isArray(payload.data) ? payload.data : null));
+        if (!response.ok || !payload.success || !list) {
+          throw new Error(payload.error || 'Gagal memuat universe struktur pasar.');
+        }
+
+        this.universe = list;
+        this.hasLoaded = true;
+        this.applyFilters();
+
+        var targetTicker = this.selectedTicker || (root.UnifiedCockpit && root.UnifiedCockpit.getActiveTicker ? root.UnifiedCockpit.getActiveTicker() : root.activeTicker) || (this.universe[0] && this.universe[0].ticker);
+        if (targetTicker) {
+          this.selectRow(targetTicker, false);
+        }
+      } catch (err) {
+        if (errBox) {
+          errBox.hidden = false;
+          var msg = byId('marketStructureErrorMessage');
+          if (msg) msg.textContent = (err && err.message) || 'Terjadi kendala saat mengambil data snapshot struktur pasar.';
+        }
+      } finally {
+        this.isLoading = false;
+        if (skeleton) skeleton.hidden = true;
+        if (wrap) wrap.style.opacity = '1';
+      }
+    },
+
+    setFilter: function (filterKey) {
+      this.activeFilter = filterKey;
+      var group = byId('marketStructureFilterGroup');
+      if (group) {
+        var btns = group.querySelectorAll('button[data-filter]');
+        btns.forEach(function (btn) {
+          if (btn.getAttribute('data-filter') === filterKey) {
+            btn.classList.add('is-active');
+          } else {
+            btn.classList.remove('is-active');
+          }
+        });
+      }
+      this.applyFilters();
+    },
+
+    setSort: function (sortKey) {
+      this.sortKey = sortKey;
+      this.applyFilters();
+    },
+
+    onSearchInput: function (val) {
+      this.searchQuery = String(val || '').trim().toLowerCase();
+      this.applyFilters();
+    },
+
+    resetFilters: function () {
+      this.searchQuery = '';
+      this.activeFilter = 'all';
+      this.sortKey = 'ticker_asc';
+      var inp = byId('marketStructureSearchInput');
+      if (inp) inp.value = '';
+      var sel = byId('marketStructureSortSelect');
+      if (sel) sel.value = 'ticker_asc';
+      this.setFilter('all');
+    },
+
+    applyFilters: function () {
+      var q = this.searchQuery;
+      var f = this.activeFilter;
+      var sort = this.sortKey;
+
+      var rows = this.universe.slice();
+
+      // 1. Search Query
+      if (q) {
+        rows = rows.filter(function (r) {
+          var t = (r.ticker || '').toLowerCase();
+          var name = (r.company_name || '').toLowerCase();
+          var sec = (r.sector || '').toLowerCase();
+          return t.indexOf(q) !== -1 || name.indexOf(q) !== -1 || sec.indexOf(q) !== -1;
+        });
+      }
+
+      // 2. Filter Rules
+      if (f === 'low_ff') {
+        rows = rows.filter(function (r) {
+          return r.free_float_pct != null && Number.isFinite(Number(r.free_float_pct)) && Number(r.free_float_pct) < 15;
+        });
+      } else if (f === 'hsc') {
+        rows = rows.filter(function (r) {
+          return r.hsc_flag === true;
+        });
+      } else if (f === 'incomplete') {
+        rows = rows.filter(function (r) {
+          return r.free_float_pct == null || !Number.isFinite(Number(r.free_float_pct)) || r.hsc_flag == null || r.market_structure_status === 'DATA_INCOMPLETE';
+        });
+      }
+
+      // 3. Sorting (missing numbers sorted at end, never coerced to 0)
+      rows.sort(function (a, b) {
+        if (sort === 'ticker_asc') {
+          return (a.ticker || '').localeCompare(b.ticker || '');
+        }
+        if (sort === 'ff_asc') {
+          var aHas = a.free_float_pct != null && Number.isFinite(Number(a.free_float_pct));
+          var bHas = b.free_float_pct != null && Number.isFinite(Number(b.free_float_pct));
+          if (!aHas && !bHas) return 0;
+          if (!aHas) return 1;
+          if (!bHas) return -1;
+          return Number(a.free_float_pct) - Number(b.free_float_pct);
+        }
+        if (sort === 'ff_desc') {
+          var aHas = a.free_float_pct != null && Number.isFinite(Number(a.free_float_pct));
+          var bHas = b.free_float_pct != null && Number.isFinite(Number(b.free_float_pct));
+          if (!aHas && !bHas) return 0;
+          if (!aHas) return 1;
+          if (!bHas) return -1;
+          return Number(b.free_float_pct) - Number(a.free_float_pct);
+        }
+        if (sort === 'status') {
+          return (a.market_structure_status || '').localeCompare(b.market_structure_status || '');
+        }
+        return 0;
+      });
+
+      this.filteredUniverse = rows;
+      this.renderTable();
+    },
+
+    renderTable: function () {
+      var tbody = byId('marketStructureTableBody');
+      var emptyBox = byId('marketStructureTableEmpty');
+      var countText = byId('marketStructureCountText');
+
+      if (countText) {
+        countText.textContent = this.filteredUniverse.length + ' Saham';
+      }
+
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (this.filteredUniverse.length === 0) {
+        if (emptyBox) emptyBox.hidden = false;
+        return;
+      }
+      if (emptyBox) emptyBox.hidden = true;
+
+      var self = this;
+      var frag = document.createDocumentFragment();
+
+      this.filteredUniverse.forEach(function (row) {
+        var tr = document.createElement('tr');
+        tr.setAttribute('data-ticker', row.ticker);
+        tr.setAttribute('tabindex', '0');
+        tr.setAttribute('role', 'button');
+        tr.setAttribute('aria-label', 'Pilih saham ' + row.ticker);
+
+        if (self.selectedTicker === row.ticker) {
+          tr.classList.add('is-selected');
+          self.lastSelectedRowEl = tr;
+        }
+
+        tr.onclick = function () {
+          self.selectRow(row.ticker, true);
+        };
+        tr.onkeydown = function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            self.selectRow(row.ticker, true);
+          }
+        };
+
+        var tdTicker = document.createElement('td');
+        tdTicker.innerHTML = '<span class="ac-ticker-symbol">' + escapeHtml(row.ticker) + '</span>' +
+          (row.company_name ? '<span class="ac-company-sub">' + escapeHtml(row.company_name) + '</span>' : '');
+        tr.appendChild(tdTicker);
+
+        var tdFf = document.createElement('td');
+        tdFf.style.textAlign = 'right';
+        var hasFf = row.free_float_pct != null && Number.isFinite(Number(row.free_float_pct));
+        var ffVal = hasFf ? Number(row.free_float_pct) : null;
+        var ffHtml = hasFf ? '<span class="ac-num ' + (ffVal < 15 ? 'text-amber-400 font-semibold' : '') + '">' + ffVal.toFixed(2) + '%</span>' : '<span class="text-gray-500">—</span>';
+        tdFf.innerHTML = ffHtml;
+        tr.appendChild(tdFf);
+
+        var tdHsc = document.createElement('td');
+        var hscHtml = row.hsc_flag === true
+          ? '<span class="ac-status-badge ac-status-badge--negative">HSC Aktif</span>'
+          : (row.hsc_flag === false
+            ? '<span class="ac-status-badge ac-status-badge--positive">Tidak Terindikasi HSC</span>'
+            : '<span class="ac-status-badge ac-status-badge--neutral">Belum Lengkap</span>');
+        tdHsc.innerHTML = hscHtml;
+        tr.appendChild(tdHsc);
+
+        var tdStatus = document.createElement('td');
+        var st = row.market_structure_status || 'DATA_INCOMPLETE';
+        var stLabel = formatMarketStructureStatus(st);
+        var stBadge = (st === 'NORMAL' || st === 'STRUCTURE_VERIFIED')
+          ? '<span class="ac-status-badge ac-status-badge--positive">' + escapeHtml(stLabel) + '</span>'
+          : ((st === 'CAUTION' || st === 'WATCHLIST' || st === 'LOW_FREE_FLOAT' || st === 'HIGH_SHAREHOLDING_CONCENTRATION')
+            ? '<span class="ac-status-badge ac-status-badge--warning">' + escapeHtml(stLabel) + '</span>'
+            : '<span class="ac-status-badge ac-status-badge--neutral">' + escapeHtml(stLabel) + '</span>');
+        tdStatus.innerHTML = stBadge;
+        tr.appendChild(tdStatus);
+
+        var tdDate = document.createElement('td');
+        tdDate.style.fontSize = '11.5px';
+        tdDate.style.color = 'var(--ac-text-secondary)';
+        tdDate.textContent = formatIndonesianDateWithWib(row.free_float_as_of || row.updated_at || '—');
+        tr.appendChild(tdDate);
+
+        frag.appendChild(tr);
+      });
+
+      tbody.appendChild(frag);
+    },
+
+    selectRow: function (ticker, userInitiated) {
+      if (!ticker) return;
+      this.selectedTicker = ticker;
+
+      var tbody = byId('marketStructureTableBody');
+      if (tbody) {
+        var rows = tbody.querySelectorAll('tr');
+        rows.forEach(function (r) {
+          if (r.getAttribute('data-ticker') === ticker) {
+            r.classList.add('is-selected');
+          } else {
+            r.classList.remove('is-selected');
+          }
+        });
+      }
+
+      var activeRow = tbody ? tbody.querySelector('tr[data-ticker="' + ticker + '"]') : null;
+      if (activeRow) {
+        this.lastSelectedRowEl = activeRow;
+      }
+
+      var row = this.universe.find(function (r) { return r.ticker === ticker; }) || { ticker: ticker };
+
+      var paneTicker = byId('marketStructureDetailTicker');
+      if (paneTicker) paneTicker.textContent = ticker;
+      var paneCompany = byId('marketStructureDetailCompanyName');
+      if (paneCompany) paneCompany.textContent = row.company_name || ('PT ' + ticker + ' Tbk');
+
+      var guardBadge = byId('marketStructureDetailGuardBadge');
+      var guard = row.market_structure_guard || 'UNKNOWN';
+      var guardLabel = formatMarketStructureGuard(guard);
+      if (guardBadge) {
+        guardBadge.textContent = guardLabel;
+        guardBadge.className = 'ac-status-badge ' + (guard === 'NORMAL' ? 'ac-status-badge--positive' : (guard === 'RESTRICTED' || guard === 'HIGH_RISK' ? 'ac-status-badge--negative' : 'ac-status-badge--neutral'));
+      }
+
+      var hasFf = row.free_float_pct != null && Number.isFinite(Number(row.free_float_pct));
+      researchText('marketStructureFreeFloat', hasFf ? Number(row.free_float_pct).toFixed(2) + '%' : '—');
+      researchText('marketStructureFreeFloatAsOf', row.free_float_as_of ? 'Per ' + formatIndonesianDateWithWib(row.free_float_as_of) : 'Per —');
+      researchText('marketStructureHsc', formatHscStatus(row.hsc_flag));
+      researchText('marketStructureHscAsOf', row.hsc_as_of ? 'Per ' + formatIndonesianDateWithWib(row.hsc_as_of) : 'Per —');
+      researchText('marketStructureGuard', guardLabel);
+      researchText('marketStructureStatus', formatMarketStructureStatus(row.market_structure_status));
+      researchText('marketStructureFreeFloatSource', row.free_float_source || 'IDX / KSEI');
+      researchText('marketStructureHscSource', row.hsc_source || 'IDX');
+      researchText('marketStructureReference', researchHasNumber(row.low_free_float_reference_pct) ? researchNumber(row.low_free_float_reference_pct, 0) + '%' : '15%');
+      researchText('marketStructureCompliance', formatComplianceStatus(row.regulatory_compliance_status));
+      researchText('marketStructureNote', row.market_structure_note || (hasFf && Number(row.free_float_pct) < 15 ? 'Free Float emiten berada di bawah batas referensi 15%. Likuiditas pasar dapat lebih tipis dari rata-rata.' : 'Data struktur kepemilikan terverifikasi dari keterbukaan IDX.'));
+
+      var sheetTicker = byId('marketStructureSheetTicker');
+      if (sheetTicker) sheetTicker.textContent = ticker;
+      var sheetGuard = byId('marketStructureSheetGuardBadge');
+      if (sheetGuard) {
+        sheetGuard.textContent = guardLabel;
+        sheetGuard.className = 'ac-status-badge ' + (guard === 'NORMAL' ? 'ac-status-badge--positive' : 'ac-status-badge--neutral');
+      }
+      var sheetBody = byId('marketStructureSheetBody');
+      var deskBody = byId('marketStructureDetailBody');
+      if (sheetBody && deskBody) {
+        sheetBody.innerHTML = deskBody.innerHTML;
+      }
+
+      if (typeof window !== 'undefined' && window.innerWidth < 1024 && userInitiated) {
+        var sheet = byId('marketStructureMobileSheet');
+        if (sheet) {
+          sheet.classList.add('is-open');
+          var closeBtn = byId('marketStructureSheetCloseBtn');
+          if (closeBtn) closeBtn.focus();
+        }
+      }
+
+      if (userInitiated) {
+        root.activeTicker = ticker;
+        if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
+          root.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: false, preserveTab: true, runAnalysis: false });
+        }
+      }
+    },
+
+    closeDetail: function () {
+      var sheet = byId('marketStructureMobileSheet');
+      if (sheet) {
+        sheet.classList.remove('is-open');
+      }
+      if (this.lastSelectedRowEl && typeof this.lastSelectedRowEl.focus === 'function') {
+        this.lastSelectedRowEl.focus();
+      }
+    },
+
+    bukaAnalisisSaham: function () {
+      if (!this.selectedTicker) return;
+      this.closeDetail();
+      if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
+        root.UnifiedCockpit.syncActiveTicker(this.selectedTicker, { loadChart: true, preserveTab: false });
+      }
+      if (typeof root.switchAnalisisTab === 'function') {
+        root.switchAnalisisTab('analisis-chart');
+      }
+    }
+  };
+
+  root.AutoCuanMarketStructure = AutoCuanMarketStructure;
 
   root.switchAnalisisTab = switchAnalisisTab;
 

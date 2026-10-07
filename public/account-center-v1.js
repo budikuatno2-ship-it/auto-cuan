@@ -462,10 +462,36 @@
   }
   function installHeaderProfileTrigger() {
     var label=byId('headerUserLabel');
-    if(!label||label.classList.contains('ac-profile-trigger')) return;
-    label.classList.add('ac-profile-trigger'); label.setAttribute('role','button'); label.setAttribute('tabindex','0'); label.setAttribute('aria-label','Buka profil akun');
-    label.addEventListener('click',function(){openCenter('profile');});
-    label.addEventListener('keydown',function(event){if(event.key==='Enter'||event.key===' '){event.preventDefault();openCenter('profile');}});
+    if(label&&!label.classList.contains('ac-profile-trigger')) {
+      label.classList.add('ac-profile-trigger'); label.setAttribute('role','button'); label.setAttribute('tabindex','0'); label.setAttribute('aria-label','Buka profil akun');
+      label.addEventListener('click',function(){openCenter('profile');});
+      label.addEventListener('keydown',function(event){if(event.key==='Enter'||event.key===' '){event.preventDefault();openCenter('profile');}});
+    }
+    var sidebarBtns = document.querySelectorAll('#appSidebar .sidebar-profile-button, #appSidebar .user-profile-badge');
+    sidebarBtns.forEach(function(btn) {
+      if (!btn || btn.classList.contains('ac-profile-trigger')) return;
+      btn.classList.add('ac-profile-trigger');
+      btn.setAttribute('aria-label', 'Buka profil akun');
+      btn.addEventListener('click', function() {
+        if (typeof window.closeMobileSidebar === 'function') window.closeMobileSidebar();
+        openCenter('profile');
+      });
+      btn.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          if (typeof window.closeMobileSidebar === 'function') window.closeMobileSidebar();
+          openCenter('profile');
+        }
+      });
+    });
+    var sidebarSub = byId('sidebarSubscriptionBtn');
+    if (sidebarSub && !sidebarSub.classList.contains('ac-sub-trigger')) {
+      sidebarSub.classList.add('ac-sub-trigger');
+      sidebarSub.addEventListener('click', function() {
+        if (typeof window.closeMobileSidebar === 'function') window.closeMobileSidebar();
+        openCenter('subscription');
+      });
+    }
   }
   function openStandaloneTermsModal() {
     var modalId = 'standaloneTermsModal';

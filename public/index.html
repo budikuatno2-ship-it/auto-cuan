@@ -521,75 +521,98 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 18l-6-6 6-6"/></svg>
         </button>
     </div>
-    <nav class="sidebar-nav" aria-label="Menu utama workspace"><section class="sidebar-nav-group" aria-label="Workspace"><h2 class="sidebar-group-label">Workspace</h2><button type="button" onclick="navigateTo('dashboard')" class="sidebar-item active" data-sidebar-page="dashboard" data-label="Dashboard" title="Dashboard">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-            <span class="sidebar-label">Dashboard</span>
-        </button><button type="button" onclick="navigateTo('screener')" class="sidebar-item hidden" data-sidebar-page="screener" data-label="Screener" data-premium-nav="true" title="Screener">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <span class="sidebar-label">Screener</span>
-        </button><button type="button" onclick="navigateTo('watchlist')" class="sidebar-item hidden" data-sidebar-page="watchlist" data-label="Watchlist" data-premium-nav="true" title="Watchlist">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-            <span class="sidebar-label">Watchlist</span>
-        </button></section><section class="sidebar-nav-group" aria-label="Riset pasar">
-        <h2 class="sidebar-group-label">Riset pasar</h2>
+    <nav class="sidebar-nav" aria-label="Menu utama workspace">
+        <!-- GROUP 1: OVERVIEW -->
+        <section class="sidebar-nav-group" aria-label="Overview">
+            <h2 class="sidebar-group-label">Overview</h2>
+            <button type="button" onclick="navigateTo('dashboard')" class="sidebar-item active" data-sidebar-page="dashboard" data-label="Dashboard" title="Dashboard">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                <span class="sidebar-label">Dashboard</span>
+            </button>
+        </section>
 
-        <div class="sidebar-subgroup-label">Teknikal</div>
-        <button id="tabAnalisisChart" type="button" onclick="navigateTo('analisis', 'analisis-chart')" class="sidebar-item" data-sidebar-page="analisis" data-analysis-tab="analisis-chart" data-tab="analisis-chart" data-label="Analisis Saham" title="Analisis Saham">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17V7m5 10V3m5 14v-5m5 5V8"/></svg>
-            <span class="sidebar-label">Analisis Saham</span>
-        </button>
+        <!-- GROUP 2: DISCOVER -->
+        <section class="sidebar-nav-group" aria-label="Discover">
+            <h2 class="sidebar-group-label">Discover</h2>
+            <button type="button" onclick="navigateTo('screener')" class="sidebar-item hidden" data-sidebar-page="screener" data-label="Screener" data-premium-nav="true" title="Screener">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <span class="sidebar-label">Screener</span>
+            </button>
+            <button id="tabSektorHot" type="button" onclick="navigateTo('sektor')" class="sidebar-item hidden" data-sidebar-page="sektor" data-label="Sektor Hot" data-premium-nav="true" title="Sektor Hot">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span class="sidebar-label">Sektor Hot</span>
+            </button>
+        </section>
 
-        <div class="sidebar-subgroup-label">Arus Bandar</div>
-        <button id="tabBandarmologi" type="button" onclick="navigateTo('analisis', 'bandarmologi')" class="sidebar-item" data-sidebar-page="bandarmologi" data-analysis-tab="bandarmologi" data-tab="bandarmologi" data-label="Bandarmologi" title="Bandarmologi">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-10M15 5h6v6"/></svg>
-            <span class="sidebar-label">Bandarmologi</span>
-        </button>
-        <button id="tabBrokerHunter" type="button" onclick="navigateTo('analisis', 'hunter')" class="sidebar-item" data-sidebar-page="hunter" data-analysis-tab="hunter" data-tab="hunter" data-label="Broker Hunter" title="Broker Hunter">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 21l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0"/></svg>
-            <span class="sidebar-label">Broker Hunter</span>
-        </button>
+        <!-- GROUP 3: RESEARCH -->
+        <section class="sidebar-nav-group" aria-label="Research">
+            <h2 class="sidebar-group-label">Research</h2>
 
-        <div class="sidebar-subgroup-label">Intel & Relasi</div>
-        <button id="tabSinyalIntelijen" type="button" onclick="navigateTo('analisis', 'intel')" class="sidebar-item" data-sidebar-page="intel" data-analysis-tab="intel" data-tab="intel" data-label="Sinyal Intelijen" title="Sinyal Intelijen">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7z"/></svg>
-            <span class="sidebar-label">Sinyal Intelijen</span>
-        </button>
-        <button id="tabJejaringInsider" type="button" onclick="navigateTo('analisis', 'insider')" class="sidebar-item" data-sidebar-page="insider" data-analysis-tab="insider" data-tab="insider" data-label="Jejaring Insider" title="Jejaring Insider">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l8 4M8 17l8-4M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0M20 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0M8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0"/></svg>
-            <span class="sidebar-label">Jejaring Insider</span>
-        </button>
+            <div class="sidebar-subgroup-label">Teknikal</div>
+            <button id="tabAnalisisChart" type="button" onclick="navigateTo('analisis', 'analisis-chart')" class="sidebar-item" data-sidebar-page="analisis" data-analysis-tab="analisis-chart" data-tab="analisis-chart" data-label="Analisis &amp; Chart" title="Analisis &amp; Chart">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17V7m5 10V3m5 14v-5m5 5V8"/></svg>
+                <span class="sidebar-label">Analisis &amp; Chart</span>
+            </button>
 
-        <div class="sidebar-subgroup-label">Struktur & Valuasi</div>
-        <button id="tabFinancial" type="button" onclick="navigateTo('analisis', 'financial')" class="sidebar-item" data-sidebar-page="financial" data-analysis-tab="financial" data-tab="financial" data-label="Financial" title="Financial">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/></svg>
-            <span class="sidebar-label">Financial</span>
-        </button>
-        <button id="tabMarketStructure" type="button" onclick="navigateTo('analisis', 'market-structure')" class="sidebar-item" data-sidebar-page="market-structure" data-analysis-tab="market-structure" data-tab="market-structure" data-label="Struktur Pasar" title="Struktur Pasar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="16" r="3"/><path d="M10.5 10.5l3 3M16 5v5M5 16h5"/></svg>
-            <span class="sidebar-label">Struktur Pasar</span>
-        </button>
+            <div class="sidebar-subgroup-label">Arus Bandar</div>
+            <button id="tabBandarmologi" type="button" onclick="navigateTo('analisis', 'bandarmologi')" class="sidebar-item" data-sidebar-page="bandarmologi" data-analysis-tab="bandarmologi" data-tab="bandarmologi" data-label="Bandarmologi" title="Bandarmologi">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-10M15 5h6v6"/></svg>
+                <span class="sidebar-label">Bandarmologi</span>
+            </button>
+            <button id="tabBrokerHunter" type="button" onclick="navigateTo('analisis', 'hunter')" class="sidebar-item" data-sidebar-page="hunter" data-analysis-tab="hunter" data-tab="hunter" data-label="Broker Hunter" title="Broker Hunter">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 21l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0114 0z"/></svg>
+                <span class="sidebar-label">Broker Hunter</span>
+            </button>
 
-        <div class="sidebar-subgroup-label">Peringkat & Sektor</div>
-        <button id="tabRankingHarian" type="button" onclick="navigateTo('analisis', 'ranking')" class="sidebar-item" data-sidebar-page="ranking" data-analysis-tab="ranking" data-tab="ranking" data-label="Ranking Harian" title="Ranking Harian">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7"/></svg>
-            <span class="sidebar-label">Ranking Harian</span><span id="rankingLockIcon" class="sidebar-badge" aria-label="Akses terbatas">PRO</span>
-        </button>
-        <button id="tabSektorHot" type="button" onclick="navigateTo('sektor')" class="sidebar-item hidden" data-sidebar-page="sektor" data-label="Sektor Hot" data-premium-nav="true" title="Sektor Hot">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            <span class="sidebar-label">Sektor Hot</span>
-        </button>
+            <div class="sidebar-subgroup-label">Intel & Relasi</div>
+            <button id="tabSinyalIntelijen" type="button" onclick="navigateTo('analisis', 'intel')" class="sidebar-item" data-sidebar-page="intel" data-analysis-tab="intel" data-tab="intel" data-label="Sinyal Intelijen" title="Sinyal Intelijen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7z"/></svg>
+                <span class="sidebar-label">Sinyal Intelijen</span>
+            </button>
+            <button id="tabJejaringInsider" type="button" onclick="navigateTo('analisis', 'insider')" class="sidebar-item" data-sidebar-page="insider" data-analysis-tab="insider" data-tab="insider" data-label="Insider" title="Insider">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l8 4M8 17l8-4M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0M20 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0M8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0"/></svg>
+                <span class="sidebar-label">Insider</span>
+            </button>
 
-        <button id="tabAnalisisPattern" type="button" onclick="navigateTo('analisis', 'pattern')" class="sidebar-item hidden" data-sidebar-page="pattern" data-analysis-tab="pattern" data-tab="pattern" data-label="Pattern Radar" title="Pattern Radar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>
-            <span class="sidebar-label">Pattern Radar</span><span class="sidebar-badge">ADMIN</span>
-        </button>
-    </section><section class="sidebar-nav-group" aria-label="Aset &amp; keuangan"><h2 class="sidebar-group-label">Aset &amp; keuangan</h2><button type="button" onclick="navigateTo('portofolio')" class="sidebar-item hidden" data-sidebar-page="portofolio" data-label="Portofolio" data-premium-nav="true" title="Portofolio">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-            <span class="sidebar-label">Portofolio</span>
-        </button><button type="button" onclick="navigateTo('trackrecord')" class="sidebar-item hidden" data-sidebar-page="trackrecord" data-label="Track Record" data-premium-nav="true" title="Track Record">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-            <span class="sidebar-label">Track Record</span>
-        </button></section></nav>
+            <div class="sidebar-subgroup-label">Struktur & Valuasi</div>
+            <button id="tabFinancial" type="button" onclick="navigateTo('analisis', 'financial')" class="sidebar-item" data-sidebar-page="financial" data-analysis-tab="financial" data-tab="financial" data-label="Financial" title="Financial">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/></svg>
+                <span class="sidebar-label">Financial</span>
+            </button>
+            <button id="tabMarketStructure" type="button" onclick="navigateTo('analisis', 'market-structure')" class="sidebar-item" data-sidebar-page="market-structure" data-analysis-tab="market-structure" data-tab="market-structure" data-label="Struktur Pasar" title="Struktur Pasar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="16" r="3"/><path d="M10.5 10.5l3 3M16 5v5M5 16h5"/></svg>
+                <span class="sidebar-label">Struktur Pasar</span>
+            </button>
+
+            <div class="sidebar-subgroup-label">Peringkat & Sektor</div>
+            <button id="tabRankingHarian" type="button" onclick="navigateTo('analisis', 'ranking')" class="sidebar-item" data-sidebar-page="ranking" data-analysis-tab="ranking" data-tab="ranking" data-label="Ranking" title="Ranking">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7"/></svg>
+                <span class="sidebar-label">Ranking</span><span id="rankingLockIcon" class="sidebar-badge" aria-label="Akses terbatas">PRO</span>
+            </button>
+
+            <button id="tabAnalisisPattern" type="button" onclick="navigateTo('analisis', 'pattern')" class="sidebar-item hidden" data-sidebar-page="pattern" data-analysis-tab="pattern" data-tab="pattern" data-label="Pattern Radar" title="Pattern Radar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>
+                <span class="sidebar-label">Pattern Radar</span><span class="sidebar-badge">ADMIN</span>
+            </button>
+        </section>
+
+        <!-- GROUP 4: MONITOR -->
+        <section class="sidebar-nav-group" aria-label="Monitor">
+            <h2 class="sidebar-group-label">Monitor</h2>
+            <button type="button" onclick="navigateTo('watchlist')" class="sidebar-item hidden" data-sidebar-page="watchlist" data-label="Watchlist" data-premium-nav="true" title="Watchlist">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                <span class="sidebar-label">Watchlist</span>
+            </button>
+            <button type="button" onclick="navigateTo('portofolio')" class="sidebar-item hidden" data-sidebar-page="portofolio" data-label="Portfolio" data-premium-nav="true" title="Portfolio">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                <span class="sidebar-label">Portfolio</span>
+            </button>
+            <button type="button" onclick="navigateTo('trackrecord')" class="sidebar-item hidden" data-sidebar-page="trackrecord" data-label="Track Record" data-premium-nav="true" title="Track Record">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <span class="sidebar-label">Track Record</span>
+            </button>
+        </section>
+    </nav>
     <div class="sidebar-footer">
         <button id="themeToggleCompact" data-action="toggle-theme" type="button" onclick="toggleAppTheme()" class="theme-toggle-compact" aria-label="Toggle Theme" title="Ganti tema terang/gelap">
             <span id="sidebarThemeIcon" aria-hidden="true" style="display:inline-grid;place-items:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span><span class="sidebar-label" id="sidebarThemeLabel">Dark Mode</span>
@@ -637,7 +660,7 @@
                 </div>
             </div>
             <div class="desktop-header-chips items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
-                <span class="header-status-chip" id="globalLiveRadarChip" title="Status Live Radar"><span class="header-status-dot" id="globalLiveRadarDot"></span><span id="globalLiveRadarText">Live Radar</span></span>
+                <span class="header-status-chip" id="globalLiveRadarChip" title="Status Radar Pasar"><span class="header-status-dot" id="globalLiveRadarDot"></span><span id="globalLiveRadarText">Radar Pasar</span></span>
                 <span class="header-status-chip safe">Safety ON</span>
                 <span class="header-status-chip warn">Manual Confirm</span>
                 <span class="header-status-chip">Watchlist ≠ BUY</span>
@@ -709,7 +732,7 @@
         <div class="dashboard-hero p-4 sm:p-5">
             <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="dashboard-hero-main">
-                    <div class="flex items-center gap-2 mb-2"><span class="dash-badge" id="heroLiveRadarBadge"><span class="header-status-dot" id="heroLiveRadarDot" style="margin-right:3px"></span><span id="heroLiveRadarText">Live Radar</span></span><span class="dash-badge text-amber-200 border-amber-500/20 bg-amber-500/10">Konfirmasi manual wajib</span></div>
+                    <div class="flex items-center gap-2 mb-2"><span class="dash-badge" id="heroLiveRadarBadge"><span class="header-status-dot" id="heroLiveRadarDot" style="margin-right:3px"></span><span id="heroLiveRadarText">Radar Pasar</span></span><span class="dash-badge text-amber-200 border-amber-500/20 bg-amber-500/10">Konfirmasi manual wajib</span></div>
                     <h2 class="text-2xl sm:text-3xl font-black tracking-tight" id="dashGreeting">Halo, Trader</h2>
                     <p class="text-sm text-gray-400 mt-1 max-w-2xl">Dashboard ringkas untuk Day Trade, Swing Konglo, dan Swing Non-Konglo. Watchlist/pantau tidak sama dengan BUY agresif.</p>
                 </div>
@@ -838,7 +861,7 @@
 </div>
 
 <!-- ===== PAGE: SEKTOR HOT (Grup Konglomerat Hot) ===== -->
-<div id="page-sektor" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4" data-premium-page="true">
+<div id="page-sektor" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4" data-premium-page="true" data-ac-ui="v2">
     <!-- Login gate (shown if not logged in) -->
     <div id="sektorLoginGate" class="hidden flex flex-col items-center justify-center py-16 text-center">
         <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
@@ -855,12 +878,41 @@
     <div id="sektorContent" class="hidden space-y-4">
         <!-- List view -->
         <div id="sektorListView">
-            <div class="mb-4">
-                <h2 class="text-lg font-bold text-white">Grup Konglomerat Hot</h2>
-                <p class="text-xs text-gray-500 mt-1" id="sektorSubtitle">T+1 · BY GROUP · Kinerja rata-rata per grup konglomerat besar. Klik grup untuk detail.</p>
-                <p id="sektorStaleWarn" class="text-[11px] mt-1" style="display:none"></p>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white">Grup Konglomerat Hot</h2>
+                    <p class="text-xs text-gray-500 mt-1" id="sektorSubtitle">T+1 · BY GROUP · Kinerja rata-rata per grup konglomerat besar. Klik grup untuk detail.</p>
+                    <p id="sektorStaleWarn" class="text-[11px] mt-1" style="display:none"></p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="ac-segmented text-xs" role="group" aria-label="Tampilan Sektor Hot">
+                        <button id="sektorBtnTable" onclick="toggleSektorView('table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
+                        <button id="sektorBtnGrid" onclick="toggleSektorView('grid')" class="ac-segment" aria-pressed="false">Grid</button>
+                    </div>
+                </div>
             </div>
-            <div id="sektorGroupsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <!-- Sektor Groups Table (Table-First default) -->
+            <div id="sektorTableWrap" class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel peringkat grup konglomerat hot">
+                <table id="sektorGroupsTable" class="w-full text-xs border-collapse min-w-[760px]">
+                    <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
+                        <tr class="bg-dark-700/80 border-b border-dark-600/40">
+                            <th class="px-3 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap w-[48px]">#</th>
+                            <th class="px-3 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Grup</th>
+                            <th class="px-3 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Nama Konglomerasi</th>
+                            <th class="px-3 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Saham</th>
+                            <th class="px-3 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Rata-rata %</th>
+                            <th class="px-3 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Top Saham</th>
+                            <th class="px-3 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg30</th>
+                            <th class="px-3 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sektorGroupsTableBody">
+                        <tr><td colspan="8" class="text-center py-8 text-gray-500">Memuat data grup konglomerat...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Sektor Groups Grid (alternate view, hidden by default) -->
+            <div id="sektorGroupsGrid" class="hidden" style="display:none;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
                 <!-- Cards rendered dynamically -->
             </div>
         </div>
@@ -877,7 +929,7 @@
 </div>
 
 <!-- ===== PAGE: SCREENER SWING KONGLO 3-7D ===== -->
-<div id="page-screener" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4" data-premium-page="true">
+<div id="page-screener" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4" data-premium-page="true" data-ac-ui="v2">
     <!-- Login gate -->
     <div id="screenerLoginGate" class="hidden flex flex-col items-center justify-center py-16 text-center">
         <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
@@ -954,6 +1006,10 @@
             </div>
             <div class="flex items-center gap-2">
                 <span id="screenerMetaBadge" class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
+                <div class="ac-segmented text-xs" role="group" aria-label="Tampilan Konglo">
+                    <button id="kgBtnTable" onclick="toggleScreenerView('konglo', 'table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
+                    <button id="kgBtnCard" onclick="toggleScreenerView('konglo', 'card')" class="ac-segment" aria-pressed="false">Plan View</button>
+                </div>
                 <button onclick="exportKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>PDF</button>
             </div>
         </div>
@@ -993,36 +1049,58 @@
             <button onclick="filterScreener('Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
             <button onclick="filterScreener('Invalid')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Invalid">Invalid</button>
         </div>
-        <!-- Konglo Card Grid -->
-        <div id="kgCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
-        <!-- Table (hidden by default) -->
-        <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden focus:outline-none focus:ring-2 focus:ring-emerald-500" id="screenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi">
-            <table class="w-full text-xs border-collapse min-w-[1100px]">
-                <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
-                    <tr class="scr-cols-17 bg-dark-700/80">
-                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/95 z-30">Ticker</th>
-                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Group</th>
-                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
-                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
-                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
-                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
-                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
-                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
-                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
-                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Entry Area</th>
-                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">SL</th>
-                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
-                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP2</th>
-                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RR</th>
-                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
-                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Arah</th>
-                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
-                    </tr>
-                </thead>
-                <tbody id="screenerTableBody">
-                    <tr><td colspan="17" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
-                </tbody>
-            </table>
+        <!-- Konglo Split View: Table / Cards + Docked Detail Pane -->
+        <div class="ac-split-view" id="kgSplitView">
+            <div class="ac-split-view__main">
+                <!-- Table (Table-First default) -->
+                <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" id="screenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi">
+                    <table class="w-full text-xs border-collapse min-w-[1100px]">
+                        <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
+                            <tr class="scr-cols-17 bg-dark-700/80">
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/95 z-30">Ticker</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Group</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Arah</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="screenerTableBody">
+                            <tr><td colspan="17" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Konglo Card Grid (hidden by default) -->
+                <div id="kgCardGrid" class="hidden" style="display:none;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
+            </div>
+            <!-- Docked Side Column: Desktop Detail Pane (320-380px) -->
+            <div class="ac-split-view__pane" id="kgSplitPane">
+                <aside class="ac-detail-pane" id="screenerDetailPane" aria-label="Detail Trading Plan Konglo">
+                    <div class="ac-detail-pane__header">
+                        <div class="ac-detail-pane__title">
+                            <span id="screenerDetailTicker" style="color: var(--ac-brand, #10b981); font-weight: 700; font-size: 15px;">Trading Plan</span>
+                            <span id="screenerDetailTierBadge" class="ac-status-badge ac-status-badge--neutral" style="font-size: 10px;">Pilih Saham</span>
+                        </div>
+                        <button type="button" class="ac-detail-pane__close" aria-label="Tutup detail trading plan" onclick="AutoCuanScreener && AutoCuanScreener.closeDetail()">&times;</button>
+                    </div>
+                    <div class="ac-detail-pane__body" id="screenerDetailBody">
+                        <div class="text-center py-8">
+                            <svg class="w-10 h-10 mx-auto mb-2 text-gray-500 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                            <p class="text-xs text-gray-300 font-medium">Pilih Saham pada Tabel</p>
+                            <p class="text-[11px] text-gray-500 mt-1 max-w-[220px] mx-auto">Klik salah satu baris untuk melihat detail trading plan, level entry, SL, TP, dan metrik risiko.</p>
+                        </div>
+                    </div>
+                    <div class="ac-detail-pane__footer" id="screenerDetailFooter">
+                        <button type="button" class="ac-btn ac-btn-primary" id="screenerDetailActionBtn" style="flex: 1; min-height: 38px; font-size: 12px;" onclick="AutoCuanScreener && AutoCuanScreener.openSelectedTicker()">Buka Analisis Saham</button>
+                    </div>
+                </aside>
+            </div>
         </div>
         </div><!-- /screenerKongloPane -->
         <!-- Non-Konglo Pane (hidden by default) -->
@@ -1035,6 +1113,10 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <span id="nkScreenerMetaBadge" class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
+                    <div class="ac-segmented text-xs" role="group" aria-label="Tampilan Non-Konglo">
+                        <button id="nkBtnTable" onclick="toggleScreenerView('nonkonglo', 'table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
+                        <button id="nkBtnCard" onclick="toggleScreenerView('nonkonglo', 'card')" class="ac-segment" aria-pressed="false">Plan View</button>
+                    </div>
                     <button onclick="exportNonKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>PDF</button>
                 </div>
             </div>
@@ -1092,38 +1174,60 @@
                 <button onclick="filterNkScreener('Rebound Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
                 <button onclick="filterNkScreener('Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
             </div>
-            <!-- Non-Konglo Card Grid -->
-            <div id="nkCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-bottom:12px"></div>
-            <!-- Table (hidden by default) -->
-            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden focus:outline-none focus:ring-2 focus:ring-emerald-500" id="nkScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi">
-                <table class="w-full text-xs border-collapse min-w-[1200px]">
-                    <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
-                        <tr class="scr-cols-18 bg-dark-700/80">
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap sticky-col-1 sticky left-0 bg-dark-700 z-20 w-[36px] min-w-[36px]">#</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-700 z-20 min-w-[80px] border-r border-dark-600/30">Ticker</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Board</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Entry Area</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">SL</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP2</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RR</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Arah</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
-                        </tr>
-                    </thead>
-                    <tbody id="nkScreenerTableBody">
-                        <tr><td colspan="18" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
-                    </tbody>
-                </table>
+        <!-- Non-Konglo Split View: Table / Cards + Docked Detail Pane -->
+        <div class="ac-split-view" id="nkSplitView">
+            <div class="ac-split-view__main">
+                <!-- Table (Table-First default) -->
+                <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" id="nkScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi">
+                    <table class="w-full text-xs border-collapse min-w-[1200px]">
+                        <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
+                            <tr class="scr-cols-18 bg-dark-700/80">
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap sticky-col-1 sticky left-0 bg-dark-700 z-20 w-[36px] min-w-[36px]">#</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-700 z-20 min-w-[80px] border-r border-dark-600/30">Ticker</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Board</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Arah</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nkScreenerTableBody">
+                            <tr><td colspan="18" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Non-Konglo Card Grid (hidden by default) -->
+                <div id="nkCardGrid" class="hidden" style="display:none;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-bottom:12px"></div>
             </div>
+            <!-- Docked Side Column: Desktop Detail Pane (320-380px) -->
+            <div class="ac-split-view__pane" id="nkSplitPane">
+                <aside class="ac-detail-pane" id="nkDetailPane" aria-label="Detail Trading Plan Non-Konglo">
+                    <div class="ac-detail-pane__header">
+                        <div class="ac-detail-pane__title">
+                            <span id="nkDetailTicker" style="color: var(--ac-brand, #10b981); font-weight: 700; font-size: 15px;">Trading Plan</span>
+                            <span id="nkDetailTierBadge" class="ac-status-badge ac-status-badge--neutral" style="font-size: 10px;">Pilih Saham</span>
+                        </div>
+                        <button type="button" class="ac-detail-pane__close" aria-label="Tutup detail trading plan" onclick="AutoCuanScreener && AutoCuanScreener.closeDetail()">&times;</button>
+                    </div>
+                    <div class="ac-detail-pane__body" id="nkDetailBody">
+                        <div class="text-center py-8">
+                            <svg class="w-10 h-10 mx-auto mb-2 text-gray-500 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                            <p class="text-xs text-gray-300 font-medium">Pilih Saham pada Tabel</p>
+                            <p class="text-[11px] text-gray-500 mt-1 max-w-[220px] mx-auto">Klik salah satu baris untuk melihat detail trading plan, level entry, SL, TP, dan metrik risiko.</p>
+                        </div>
+                    </div>
+                    <div class="ac-detail-pane__footer" id="nkDetailFooter">
+                        <button type="button" class="ac-btn ac-btn-primary" style="flex: 1; min-height: 38px; font-size: 12px;" onclick="AutoCuanScreener && AutoCuanScreener.openSelectedTicker()">Buka Analisis Saham</button>
+                    </div>
+                </aside>
+            </div>
+        </div>
         </div><!-- /screenerNonKongloPane -->
         <!-- Day Trade Pane (hidden by default) -->
         <div id="screenerDayTradePane" class="hidden space-y-3">
@@ -1135,6 +1239,10 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <span id="dtMetaBadge" class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
+                    <div class="ac-segmented text-xs" role="group" aria-label="Tampilan Day Trade">
+                        <button id="dtBtnTable" onclick="toggleScreenerView('daytrade', 'table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
+                        <button id="dtBtnCard" onclick="toggleScreenerView('daytrade', 'card')" class="ac-segment" aria-pressed="false">Plan View</button>
+                    </div>
                     <button onclick="exportDayTradePDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>PDF</button>
                 </div>
             </div>
@@ -1202,44 +1310,86 @@
                 <span class="text-yellow-400 font-semibold">Pullback</span> = tunggu area harga.
                 <span class="text-red-400 font-semibold">Spike/Hindari</span> = jangan chase atau jangan entry.
             </div>
-            <!-- Day Trade Card Grid -->
-            <div id="dtCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
-            <!-- Table (hidden by default, shown via toggle) -->
-            <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 hidden focus:outline-none focus:ring-2 focus:ring-emerald-500" id="dtScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data day trade screener">
-                <table class="w-full text-xs border-collapse min-w-[1100px]">
-                    <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
-                        <tr class="scr-cols-22 bg-dark-700/80">
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap sticky-col-1 sticky left-0 bg-dark-700 z-20 w-[36px] min-w-[36px]">#</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-700 z-20 min-w-[80px] border-r border-dark-600/30">Ticker</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Board</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup Score</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Setup</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Tx Today</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Pre-Spike</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Momentum</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Entry Area</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">SL</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP2</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RR</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Arah</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Time Plan</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dtScreenerTableBody">
-                        <tr><td colspan="22" class="text-center py-8 text-gray-500">Belum ada Radar Day Trade yang layak dipantau. Tunggu setup baru atau close confirmation.</td></tr>
-                    </tbody>
-                </table>
+        <!-- Day Trade Split View: Table / Cards + Docked Detail Pane -->
+        <div class="ac-split-view" id="dtSplitView">
+            <div class="ac-split-view__main">
+                <!-- Table (Table-First default) -->
+                <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" id="dtScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data day trade screener">
+                    <table class="w-full text-xs border-collapse min-w-[1100px]">
+                        <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
+                            <tr class="scr-cols-22 bg-dark-700/80">
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap sticky-col-1 sticky left-0 bg-dark-700 z-20 w-[36px] min-w-[36px]">#</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-700 z-20 min-w-[80px] border-r border-dark-600/30">Ticker</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Board</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup Score</th>
+                                <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Setup</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Tx Today</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Pre-Spike</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Momentum</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Arah</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Time Plan</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dtScreenerTableBody">
+                            <tr><td colspan="22" class="text-center py-8 text-gray-500">Belum ada Radar Day Trade yang layak dipantau. Tunggu setup baru atau close confirmation.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Day Trade Card Grid (hidden by default) -->
+                <div id="dtCardGrid" class="hidden" style="display:none;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
             </div>
-            <!-- Day Trade Card Grid (compact, below table) -->
+            <!-- Docked Side Column: Desktop Detail Pane (320-380px) -->
+            <div class="ac-split-view__pane" id="dtSplitPane">
+                <aside class="ac-detail-pane" id="dtDetailPane" aria-label="Detail Trading Plan Day Trade">
+                    <div class="ac-detail-pane__header">
+                        <div class="ac-detail-pane__title">
+                            <span id="dtDetailTicker" style="color: var(--ac-brand, #10b981); font-weight: 700; font-size: 15px;">Trading Plan</span>
+                            <span id="dtDetailTierBadge" class="ac-status-badge ac-status-badge--neutral" style="font-size: 10px;">Pilih Saham</span>
+                        </div>
+                        <button type="button" class="ac-detail-pane__close" aria-label="Tutup detail trading plan" onclick="AutoCuanScreener && AutoCuanScreener.closeDetail()">&times;</button>
+                    </div>
+                    <div class="ac-detail-pane__body" id="dtDetailBody">
+                        <div class="text-center py-8">
+                            <svg class="w-10 h-10 mx-auto mb-2 text-gray-500 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                            <p class="text-xs text-gray-300 font-medium">Pilih Saham pada Tabel</p>
+                            <p class="text-[11px] text-gray-500 mt-1 max-w-[220px] mx-auto">Klik salah satu baris untuk melihat detail trading plan, level entry, SL, TP, dan metrik risiko.</p>
+                        </div>
+                    </div>
+                    <div class="ac-detail-pane__footer" id="dtDetailFooter">
+                        <button type="button" class="ac-btn ac-btn-primary" style="flex: 1; min-height: 38px; font-size: 12px;" onclick="AutoCuanScreener && AutoCuanScreener.openSelectedTicker()">Buka Analisis Saham</button>
+                    </div>
+                </aside>
+            </div>
+        </div>
         </div><!-- /screenerDayTradePane -->
+
+        <!-- Screener Mobile / Tablet Detail Sheet Overlay -->
+        <div class="ac-detail-sheet" id="screenerMobileSheet" role="dialog" aria-modal="true" aria-label="Detail Trading Plan Mobile">
+            <div class="ac-sheet-backdrop" id="screenerSheetBackdrop" onclick="AutoCuanScreener && AutoCuanScreener.closeDetail()"></div>
+            <div class="ac-sheet-content">
+                <div class="ac-sheet-handle"></div>
+                <div class="ac-detail-pane__header" style="border-radius: 0;">
+                    <div class="ac-detail-pane__title">
+                        <span id="screenerSheetTicker" style="color: var(--ac-brand, #10b981); font-weight: 700; font-size: 16px;">—</span>
+                        <span id="screenerSheetTierBadge" class="ac-status-badge ac-status-badge--neutral" style="font-size: 10.5px;">—</span>
+                    </div>
+                    <button type="button" class="ac-detail-pane__close" id="screenerSheetCloseBtn" aria-label="Tutup detail sheet" style="min-width: 44px; min-height: 44px; font-size: 20px;" onclick="AutoCuanScreener && AutoCuanScreener.closeDetail()">&times;</button>
+                </div>
+                <div class="ac-detail-pane__body" id="screenerSheetBody">
+                    <!-- Populated dynamically -->
+                </div>
+                <div class="ac-detail-pane__footer">
+                    <button type="button" class="ac-btn ac-btn-primary" id="screenerSheetActionBtn" style="flex: 1; min-height: 44px; font-size: 13px;" onclick="AutoCuanScreener && AutoCuanScreener.openSelectedTicker()">Buka Analisis Saham</button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -2052,128 +2202,406 @@
             </div>
         </section>
 
-        <!-- ===== FINANCIAL / FUNDAMENTAL ===== -->
-        <section id="panel-tab-financial" class="analisis-tab-panel" style="display:none">
-            <div class="ac-financial-shell">
-                <header class="ac-financial-head">
-                    <div class="ac-financial-heading">
-                        <p class="ac-research-kicker">Fundamental workspace</p>
-                        <h2>Financial Canvas</h2>
-                        <p>Ringkas valuasi dan struktur modal dari data yang benar-benar tersedia. Nilai kosong tetap kosong, bukan diisi asumsi.</p>
+        <!-- ===== FINANCIAL / FUNDAMENTAL (§79.2) ===== -->
+        <section id="panel-tab-financial" class="analisis-tab-panel" style="display:none" data-ac-ui="v2">
+            <div class="ac-financial-container ac-surface-bounded">
+                <header class="ac-financial-header">
+                    <div>
+                        <div class="ac-provenance-row" style="margin-bottom: 2px;">
+                            <span class="ac-provenance-item">
+                                <span class="ac-provenance-label">Lensa Riset:</span>
+                                <span class="ac-provenance-value">Fundamental</span>
+                            </span>
+                        </div>
+                        <h2 class="ac-financial-title">Financial</h2>
+                        <p class="ac-financial-subtitle">Snapshot terverifikasi dari laporan keuangan resmi emiten. Nilai tidak tersedia tetap kosong tanpa asumsi.</p>
                     </div>
-                    <div class="ac-research-ticker-tools">
-                        <label class="ac-financial-search-label" for="financialTickerInput">Ticker</label>
-                        <input id="financialTickerInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" placeholder="BBCA" class="ac-research-ticker-input" onkeydown="if(event.key==='Enter'&&!event.isComposing){loadFinancialStructureTab('financial', this.value)}">
-                        <button type="button" class="ac-research-load-btn" onclick="loadFinancialStructureTab('financial', document.getElementById('financialTickerInput').value)">Muat data</button>
+                    <div class="ac-financial-ticker-bar">
+                        <label class="sr-only" for="financialTickerInput">Ticker Saham</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input id="financialTickerInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" placeholder="BBCA" class="ac-input uppercase" style="width: 110px; font-weight: 700; font-family: var(--ac-font-mono, monospace);" onkeydown="if(event.key==='Enter'&&!event.isComposing){loadFinancialStructureTab('financial', this.value)}">
+                            <button type="button" class="ac-btn ac-btn-primary" onclick="loadFinancialStructureTab('financial', document.getElementById('financialTickerInput').value)" style="min-height: 36px; font-size: 13px;">Muat</button>
+                        </div>
                     </div>
                 </header>
 
-                <div id="financialDataState" class="ac-financial-state">
-                    <span class="ac-financial-state-dot" aria-hidden="true"></span>
-                    <span>Pilih ticker untuk membuka Financial Canvas.</span>
+                <!-- Initial Prompt State -->
+                <div id="financialDataState" class="ac-financial-state-box">
+                    <span class="ac-status-dot ac-status-dot--neutral" aria-hidden="true"></span>
+                    <span id="financialStateText">Pilih atau masukkan ticker untuk membuka snapshot fundamental terverifikasi.</span>
                 </div>
 
-                <div id="financialDataContent" class="ac-financial-content" hidden>
-                    <div class="ac-financial-topline">
-                        <div class="ac-financial-identity">
-                            <span id="financialTickerBadge" class="ac-financial-symbol">—</span>
-                            <div>
-                                <span class="ac-financial-overline">Verified snapshot</span>
-                                <h3>Nilai inti, sumber jelas.</h3>
-                                <p id="financialPeriodHero">Periode belum tersedia</p>
+                <!-- Single Compact Unavailable State (§79.2) -->
+                <div id="financialDataUnavailable" class="ac-empty-state" style="padding: 24px 16px;" hidden>
+                    <svg class="ac-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <div class="ac-empty-state__title" id="financialUnavailableTitle">Data Fundamental Belum Tersedia</div>
+                    <div class="ac-empty-state__desc" id="financialUnavailableDesc">Belum ada laporan keuangan terverifikasi yang tersimpan untuk emiten ini. Auto-Cuan tidak membuat rasio sintetis saat sumber data belum tersedia.</div>
+                </div>
+
+                <!-- Verified Snapshot Content -->
+                <div id="financialDataContent" class="ac-financial-content-wrap" hidden>
+                    <!-- Ticker Context Sub-header -->
+                    <div class="ac-financial-ticker-context">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span id="financialTickerBadge" class="ac-financial-symbol">BBCA</span>
+                            <span id="financialCompanyName" class="ac-financial-company-name">PT Bank Central Asia Tbk</span>
+                        </div>
+                        <div class="ac-provenance-row" style="font-size: 11.5px;">
+                            <span class="ac-provenance-item">
+                                <span class="ac-provenance-label">Status Snapshot:</span>
+                                <span class="ac-status-badge ac-status-badge--positive" id="financialStatusBadge">Snapshot Terverifikasi</span>
+                            </span>
+                            <span class="ac-provenance-sep">·</span>
+                            <span class="ac-provenance-item">
+                                <span class="ac-provenance-label">Kelengkapan:</span>
+                                <span class="ac-num" id="financialCoverage" style="font-weight: 600;">4 / 4</span>
+                            </span>
+                            <i id="financialCoverageBar" style="display: none;" aria-hidden="true"></i>
+                        </div>
+                    </div>
+
+                    <!-- Compact Metric Strip: PBV, BVPS, Market Cap, Saham Beredar -->
+                    <div class="ac-financial-metric-strip">
+                        <article class="ac-financial-metric-item">
+                            <span class="ac-financial-metric-label">Price to Book Value (PBV)</span>
+                            <strong class="ac-financial-metric-num ac-num" id="financialPbv">—</strong>
+                            <small class="ac-financial-metric-sub" id="financialPbvPrice">Harga acuan —</small>
+                        </article>
+                        <article class="ac-financial-metric-item">
+                            <span class="ac-financial-metric-label">Nilai Buku / Saham (BVPS)</span>
+                            <strong class="ac-financial-metric-num ac-num" id="financialBvps">—</strong>
+                            <small class="ac-financial-metric-sub">Nilai buku per saham</small>
+                        </article>
+                        <article class="ac-financial-metric-item">
+                            <span class="ac-financial-metric-label">Kapitalisasi Pasar</span>
+                            <strong class="ac-financial-metric-num ac-num" id="financialMarketCap">—</strong>
+                            <small class="ac-financial-metric-sub" id="financialMarketCapAsOf">Per —</small>
+                        </article>
+                        <article class="ac-financial-metric-item">
+                            <span class="ac-financial-metric-label">Saham Beredar</span>
+                            <strong class="ac-financial-metric-num ac-num" id="financialShares">—</strong>
+                            <small class="ac-financial-metric-sub">Lembar saham tercatat</small>
+                        </article>
+                    </div>
+
+                    <!-- Provenance Row Grammar (§79.2, §97) -->
+                    <div class="ac-provenance-row ac-financial-provenance">
+                        <span class="ac-provenance-item">
+                            <span class="ac-provenance-label">Periode fundamental:</span>
+                            <span class="ac-provenance-value" id="financialPeriod">—</span>
+                        </span>
+                        <span class="ac-provenance-sep">·</span>
+                        <span class="ac-provenance-item">
+                            <span class="ac-provenance-label">Sumber Fundamental:</span>
+                            <span class="ac-provenance-value" id="financialSource">—</span>
+                        </span>
+                        <span class="ac-provenance-sep">·</span>
+                        <span class="ac-provenance-item">
+                            <span class="ac-provenance-label">Sumber Market Cap:</span>
+                            <span class="ac-provenance-value" id="financialMarketCapSource">—</span>
+                        </span>
+                        <span class="ac-provenance-sep">·</span>
+                        <span class="ac-provenance-item">
+                            <span class="ac-provenance-label">Diperbarui:</span>
+                            <span class="ac-provenance-value" id="financialUpdatedAt">—</span>
+                        </span>
+                    </div>
+
+                    <!-- Concise Supporting Trust Note -->
+                    <div class="ac-financial-note">
+                        <span style="font-weight: 600; color: var(--ac-text-secondary);">Catatan Metrik:</span>
+                        <span>PBV dan kapitalisasi pasar dihitung langsung dari data fundamental emiten dan harga penutupan acuan. Tidak ada angka estimasi atau proyeksi spekulatif.</span>
+                    </div>
+
+                    <!-- Detailed Financial Statements Section (Wave 4B, §79.2, §26) -->
+                    <section class="ac-financial-statements" id="financialStatementsSection">
+                        <div class="ac-financial-statements-toolbar">
+                            <div class="ac-financial-statements-title-wrap">
+                                <h3 class="ac-financial-statements-title">Laporan Keuangan</h3>
+                                <p class="ac-financial-statements-subtitle">Data multi-periode resmi emiten. Format terstruktur, konsisten, dan terverifikasi.</p>
+                            </div>
+                            <div class="ac-financial-statements-controls">
+                                <!-- Local Statement Tabs (Level 2) -->
+                                <div class="ac-fin-mode-group" role="tablist" aria-label="Kategori Laporan Keuangan" id="financialStatementModeGroup">
+                                    <button type="button" role="tab" class="ac-fin-tab-btn is-active" data-statement-mode="income" aria-selected="true" tabindex="0" onclick="window.AutoCuanFinancialStatements && window.AutoCuanFinancialStatements.setStatementMode('income')">Laba Rugi</button>
+                                    <button type="button" role="tab" class="ac-fin-tab-btn" data-statement-mode="balance" aria-selected="false" tabindex="-1" onclick="window.AutoCuanFinancialStatements && window.AutoCuanFinancialStatements.setStatementMode('balance')">Neraca</button>
+                                    <button type="button" role="tab" class="ac-fin-tab-btn" data-statement-mode="cashflow" aria-selected="false" tabindex="-1" onclick="window.AutoCuanFinancialStatements && window.AutoCuanFinancialStatements.setStatementMode('cashflow')">Arus Kas</button>
+                                    <button type="button" role="tab" class="ac-fin-tab-btn" data-statement-mode="ratios" aria-selected="false" tabindex="-1" onclick="window.AutoCuanFinancialStatements && window.AutoCuanFinancialStatements.setStatementMode('ratios')">Rasio</button>
+                                </div>
+                                <!-- Local Period Toggle (Kuartalan / Tahunan) -->
+                                <div class="ac-fin-period-group" role="group" aria-label="Mode Periode Laporan" id="financialPeriodModeGroup">
+                                    <button type="button" class="ac-fin-period-btn is-active" data-period-mode="quarterly" aria-pressed="true" onclick="window.AutoCuanFinancialStatements && window.AutoCuanFinancialStatements.setPeriodMode('quarterly')">Kuartalan</button>
+                                    <button type="button" class="ac-fin-period-btn" data-period-mode="annual" aria-pressed="false" onclick="window.AutoCuanFinancialStatements && window.AutoCuanFinancialStatements.setPeriodMode('annual')">Tahunan</button>
+                                </div>
                             </div>
                         </div>
-                        <div class="ac-financial-coverage" aria-label="Kelengkapan metrik utama">
-                            <span>Coverage</span>
-                            <strong id="financialCoverage">0 / 4</strong>
-                            <i id="financialCoverageBar" aria-hidden="true"></i>
-                        </div>
-                    </div>
 
-                    <div class="ac-financial-grid">
-                        <article class="ac-financial-focus-card">
-                            <div class="ac-financial-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
-                            <span class="ac-financial-focus-label">Price to Book Value</span>
-                            <strong id="financialPbv">—</strong>
-                            <small id="financialPbvPrice">Harga acuan —</small>
-                            <p>PBV ditampilkan apa adanya dari fundamental yang tersedia; tidak ada interpretasi otomatis beli atau jual.</p>
-                        </article>
+                        <!-- Statement Unavailable State (Single compact state inside statement container if data absent) -->
+                        <div id="financialStatementUnavailable" class="ac-empty-state" style="padding: 24px 16px; margin-top: 10px;" hidden>
+                            <svg class="ac-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <div class="ac-empty-state__title" id="financialStatementUnavailableTitle">Data Laba Rugi rinci belum tersedia</div>
+                            <div class="ac-empty-state__desc" id="financialStatementUnavailableDesc">Belum ada laporan rinci terverifikasi untuk mode ini. Data snapshot di atas tetap aktif dan valid.</div>
+                        </div>
 
-                        <div class="ac-financial-metric-stack">
-                            <article class="ac-financial-metric">
-                                <span>Book Value / Share</span>
-                                <strong id="financialBvps">—</strong>
-                                <small>Nilai buku per saham</small>
-                            </article>
-                            <article class="ac-financial-metric">
-                                <span>Market Cap</span>
-                                <strong id="financialMarketCap">—</strong>
-                                <small id="financialMarketCapAsOf">Belum tersedia</small>
-                            </article>
-                            <article class="ac-financial-metric">
-                                <span>Saham Beredar</span>
-                                <strong id="financialShares">—</strong>
-                                <small>Shares outstanding terverifikasi</small>
-                            </article>
+                        <!-- Multi-Period Financial Table Container with Subtle Scroll Affordance -->
+                        <div class="ac-fin-table-scroll-container">
+                            <div class="ac-fin-scroll-hint" id="financialScrollHint" aria-hidden="true">
+                                <span class="ac-fin-scroll-hint-text">Geser untuk periode lain &rarr;</span>
+                            </div>
+                            <div class="ac-fin-table-wrap" id="financialStatementsTableWrap">
+                            <table class="ac-table ac-table--dense ac-table--financial" id="financialStatementsTable">
+                                <thead id="financialStatementsTableHead">
+                                    <!-- Populated dynamically: Komponen | Q2 2026 | Q1 2026 | ... -->
+                                </thead>
+                                <tbody id="financialStatementsTableBody">
+                                    <!-- Populated dynamically with grouped & indented financial rows -->
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
+                        </div>
 
-                    <div class="ac-financial-source-rail">
-                        <div class="ac-financial-source">
-                            <span>Periode fundamental</span>
-                            <strong id="financialPeriod">—</strong>
+                        <!-- Statements Provenance Row -->
+                        <div class="ac-provenance-row ac-financial-provenance" style="margin-top: 10px;">
+                            <span class="ac-provenance-item">
+                                <span class="ac-provenance-label">Kategori:</span>
+                                <span class="ac-provenance-value" id="financialStatementCategoryLabel">Laba Rugi</span>
+                            </span>
+                            <span class="ac-provenance-sep">·</span>
+                            <span class="ac-provenance-item">
+                                <span class="ac-provenance-label">Frekuensi:</span>
+                                <span class="ac-provenance-value" id="financialStatementFrequencyLabel">Kuartalan</span>
+                            </span>
+                            <span class="ac-provenance-sep">·</span>
+                            <span class="ac-provenance-item">
+                                <span class="ac-provenance-label">Satuan Nilai:</span>
+                                <span class="ac-provenance-value" id="financialStatementUnitLabel">Miliar IDR (kecuali rasio &amp; EPS)</span>
+                            </span>
                         </div>
-                        <div class="ac-financial-source">
-                            <span>Sumber Fundamental</span>
-                            <strong id="financialSource">—</strong>
-                        </div>
-                        <div class="ac-financial-source">
-                            <span>Sumber Market Cap</span>
-                            <strong id="financialMarketCapSource">—</strong>
-                        </div>
-                        <div class="ac-financial-source">
-                            <span>Diperbarui</span>
-                            <strong id="financialUpdatedAt">—</strong>
-                        </div>
-                    </div>
-
-                    <div class="ac-financial-trust-note">
-                        <span aria-hidden="true">i</span>
-                        <p>Market cap hanya muncul bila nilai tersimpan memiliki provenance. Financial Canvas tidak membuat angka pengganti saat data sumber belum tersedia.</p>
-                    </div>
+                    </section>
                 </div>
             </div>
         </section>
 
-        <!-- ===== MARKET STRUCTURE / FREE FLOAT / HSC ===== -->
-        <section id="panel-tab-market-structure" class="analisis-tab-panel" style="display:none">
-            <div class="unified-card ac-research-data-panel">
-                <div class="unified-card-header ac-research-data-head">
-                    <div>
-                        <p class="ac-research-kicker">Struktur Pasar</p>
-                        <h2 class="text-sm font-bold text-gray-200">Free Float &amp; HSC</h2>
-                        <p class="text-[11px] text-gray-500 mt-1">Konteks risiko struktur kepemilikan. Bukan score beli/jual dan bukan penilaian kepatuhan regulasi.</p>
+        <!-- ===== MARKET STRUCTURE / STRUKTUR PASAR (§79.3, LIST-FIRST) ===== -->
+        <section id="panel-tab-market-structure" class="analisis-tab-panel" style="display:none" data-ac-ui="v2">
+            <div class="ac-market-structure-container" id="marketStructureDataContent">
+                
+                <!-- Header with Title & Reference Threshold -->
+                <header class="ac-surface-bounded" style="padding: 14px 18px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <div class="ac-provenance-row" style="margin-bottom: 2px;">
+                                <span class="ac-provenance-item">
+                                    <span class="ac-provenance-label">Lensa Riset:</span>
+                                    <span class="ac-provenance-value">Struktur Pasar &amp; Likuiditas</span>
+                                </span>
+                            </div>
+                            <h2 class="ac-title-component" style="font-size: 18px;">Struktur Pasar</h2>
+                            <p style="font-size: 12px; color: var(--ac-text-secondary); margin-top: 2px;">
+                                Konteks risiko struktur kepemilikan emiten: Free Float dan High Shareholding Concentration (HSC). Bukan score beli/jual dan bukan vonis kepatuhan regulasi.
+                            </p>
+                        </div>
+                        <div class="ac-provenance-row" style="font-size: 11.5px;">
+                            <span class="ac-provenance-item">
+                                <span class="ac-provenance-label">Sumber data:</span>
+                                <span class="ac-provenance-value">IDX Ownership &amp; HSC</span>
+                            </span>
+                            <span class="ac-provenance-sep">·</span>
+                            <span class="ac-provenance-item">
+                                <span class="ac-provenance-label">Ambang referensi:</span>
+                                <span class="ac-provenance-value" id="marketStructureRefThreshold">15%</span>
+                            </span>
+                        </div>
                     </div>
-                    <div class="ac-research-ticker-tools">
-                        <input id="marketStructureTickerInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" placeholder="BBCA" class="ac-research-ticker-input" onkeydown="if(event.key==='Enter'&&!event.isComposing){loadFinancialStructureTab('market-structure', this.value)}">
-                        <button type="button" class="ac-research-load-btn" onclick="loadFinancialStructureTab('market-structure', document.getElementById('marketStructureTickerInput').value)">Muat</button>
+                </header>
+
+                <!-- Filter Bar Grammar (§76.4, §79.3) -->
+                <div class="ac-filter-bar" style="margin-bottom: 14px;">
+                    <!-- Search Slot -->
+                    <div class="ac-filter-bar__search">
+                        <input id="marketStructureSearchInput" type="text" placeholder="Cari saham (ticker atau nama)..." aria-label="Cari emiten struktur pasar" class="ac-input" style="font-size: 16px; min-width: 220px;" oninput="window.AutoCuanMarketStructure && window.AutoCuanMarketStructure.onSearchInput(this.value)">
+                    </div>
+
+                    <!-- Primary Quick Filters Slot -->
+                    <div class="ac-filter-bar__primary">
+                        <div class="ac-btn-group" role="group" aria-label="Filter struktur pasar" id="marketStructureFilterGroup">
+                            <button type="button" class="ac-btn ac-btn-secondary is-active" data-filter="all" onclick="window.AutoCuanMarketStructure && window.AutoCuanMarketStructure.setFilter('all')">Semua</button>
+                            <button type="button" class="ac-btn ac-btn-secondary" data-filter="low_ff" onclick="window.AutoCuanMarketStructure && window.AutoCuanMarketStructure.setFilter('low_ff')">FF Rendah &lt;15%</button>
+                            <button type="button" class="ac-btn ac-btn-secondary" data-filter="hsc" onclick="window.AutoCuanMarketStructure && window.AutoCuanMarketStructure.setFilter('hsc')">HSC Aktif</button>
+                            <button type="button" class="ac-btn ac-btn-secondary" data-filter="incomplete" onclick="window.AutoCuanMarketStructure && window.AutoCuanMarketStructure.setFilter('incomplete')">Data Belum Lengkap</button>
+                        </div>
+                    </div>
+
+                    <!-- Sort Slot -->
+                    <div class="ac-filter-bar__sort">
+                        <label for="marketStructureSortSelect" class="sr-only">Urutkan</label>
+                        <select id="marketStructureSortSelect" class="ac-select" onchange="window.AutoCuanMarketStructure && window.AutoCuanMarketStructure.setSort(this.value)">
+                            <option value="ticker_asc">Ticker (A–Z)</option>
+                            <option value="ff_asc">Free Float (Terendah)</option>
+                            <option value="ff_desc">Free Float (Tertinggi)</option>
+                            <option value="status">Status Struktur</option>
+                        </select>
+                    </div>
+
+                    <!-- Status Slot -->
+                    <div class="ac-filter-bar__status" id="marketStructureUniverseStatus">
+                        <span class="ac-num" id="marketStructureCountText" style="font-weight: 600;">— Saham</span>
                     </div>
                 </div>
-                <div id="marketStructureDataState" class="ac-research-state">Pilih ticker untuk memuat struktur pasar.</div>
-                <div id="marketStructureDataContent" class="ac-research-data-content" hidden>
-                    <div class="ac-metric-grid">
-                        <article class="ac-metric-tile"><span>Free Float</span><strong id="marketStructureFreeFloat">—</strong><small id="marketStructureFreeFloatAsOf">As of —</small></article>
-                        <article class="ac-metric-tile"><span>Status HSC</span><strong id="marketStructureHsc">—</strong><small id="marketStructureHscAsOf">As of —</small></article>
-                        <article class="ac-metric-tile"><span>Risk Guard</span><strong id="marketStructureGuard">—</strong><small id="marketStructureStatus">—</small></article>
+
+                <!-- Split View: Universe Table + Docked Detail Pane (320-380px) on Desktop -->
+                <div class="ac-split-view" id="marketStructureSplitView">
+                    
+                    <!-- Main Column: Table -->
+                    <div class="ac-split-view__main">
+                        <div class="ac-surface-bounded" style="overflow: hidden;">
+                            
+                            <!-- Loading Skeleton -->
+                            <div id="marketStructureTableSkeleton" style="padding: 18px;" hidden>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <span class="ac-skeleton ac-skeleton-rect" style="height: 36px;"></span>
+                                    <span class="ac-skeleton ac-skeleton-rect" style="height: 38px;"></span>
+                                    <span class="ac-skeleton ac-skeleton-rect" style="height: 38px;"></span>
+                                    <span class="ac-skeleton ac-skeleton-rect" style="height: 38px;"></span>
+                                    <span class="ac-skeleton ac-skeleton-rect" style="height: 38px;"></span>
+                                </div>
+                            </div>
+
+                            <!-- Empty Search Result -->
+                            <div id="marketStructureTableEmpty" class="ac-empty-state" style="padding: 32px 16px;" hidden>
+                                <svg class="ac-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                <div class="ac-empty-state__title">Tidak Ada Saham yang Cocok</div>
+                                <div class="ac-empty-state__desc" id="marketStructureEmptyDesc">Tidak ditemukan emiten yang memenuhi kriteria pencarian dan filter aktif.</div>
+                                <div class="ac-empty-state__action">
+                                    <button type="button" class="ac-btn ac-btn-secondary" onclick="window.AutoCuanMarketStructure && window.AutoCuanMarketStructure.resetFilters()">Reset Filter &amp; Pencarian</button>
+                                </div>
+                            </div>
+
+                            <!-- Local Error State -->
+                            <div id="marketStructureTableError" class="ac-error-state" style="padding: 24px 16px;" hidden>
+                                <div class="ac-error-state__title">Gagal Memuat Universe Struktur Pasar</div>
+                                <div class="ac-error-state__message" id="marketStructureErrorMessage">Terjadi kendala saat mengambil data snapshot struktur pasar.</div>
+                                <div class="ac-error-state__retry">
+                                    <button type="button" class="ac-btn ac-btn-secondary" onclick="window.AutoCuanMarketStructure && window.AutoCuanMarketStructure.loadUniverse(true)">Coba Lagi</button>
+                                </div>
+                            </div>
+
+                            <!-- Table Wrap -->
+                            <div class="ac-table-wrap" id="marketStructureTableWrap">
+                                <table class="ac-table ac-table--dense" id="marketStructureTable">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col" style="width: 100px;">TICKER</th>
+                                            <th scope="col" style="text-align: right; width: 120px;">FREE FLOAT</th>
+                                            <th scope="col" style="width: 110px;">STATUS HSC</th>
+                                            <th scope="col">STATUS STRUKTUR</th>
+                                            <th scope="col" style="width: 120px;">PER TANGGAL</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="marketStructureTableBody">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                    <div class="ac-research-detail-grid">
-                        <div class="ac-research-detail"><span>Sumber Free Float</span><strong id="marketStructureFreeFloatSource">—</strong></div>
-                        <div class="ac-research-detail"><span>Sumber HSC</span><strong id="marketStructureHscSource">—</strong></div>
-                        <div class="ac-research-detail"><span>Referensi Low Free Float</span><strong id="marketStructureReference">15%</strong></div>
-                        <div class="ac-research-detail"><span>Kepatuhan Regulasi</span><strong id="marketStructureCompliance">NOT_EVALUATED</strong></div>
+
+                    <!-- Docked Side Column: Desktop Detail Pane (320-380px) (§63, §76.12) -->
+                    <div class="ac-split-view__pane">
+                        <aside class="ac-detail-pane" id="marketStructureDetailPane" aria-label="Detail emiten struktur pasar">
+                            <div class="ac-detail-pane__header">
+                                <div class="ac-detail-pane__title">
+                                    <span id="marketStructureDetailTicker" style="color: var(--ac-brand); font-weight: 700; font-size: 16px;">—</span>
+                                    <span id="marketStructureDetailGuardBadge" class="ac-status-badge ac-status-badge--neutral" style="font-size: 10.5px;">Belum Dievaluasi</span>
+                                </div>
+                                <button type="button" class="ac-detail-pane__close" id="marketStructurePaneCloseBtn" aria-label="Tutup detail emiten" onclick="window.AutoCuanMarketStructure && window.AutoCuanMarketStructure.closeDetail()">&times;</button>
+                            </div>
+
+                            <div class="ac-detail-pane__body" id="marketStructureDetailBody">
+                                <div id="marketStructureDetailCompanyName" style="font-size: 12px; color: var(--ac-text-secondary); line-height: 1.3;">
+                                    Pilih saham pada tabel untuk melihat analisis struktur.
+                                </div>
+
+                                <!-- Metric Summary Strip -->
+                                <div class="ac-metric-strip" style="padding: 8px 10px; gap: 12px; margin-top: 10px;">
+                                    <div class="ac-metric">
+                                        <span class="ac-metric-label">Free Float</span>
+                                        <span class="ac-metric-value ac-num" id="marketStructureFreeFloat" style="font-size: 15px;">—</span>
+                                        <small id="marketStructureFreeFloatAsOf" style="font-size: 10px; color: var(--ac-text-muted);">Per —</small>
+                                    </div>
+                                    <div class="ac-metric">
+                                        <span class="ac-metric-label">Status HSC</span>
+                                        <span class="ac-metric-value" id="marketStructureHsc" style="font-size: 13px;">—</span>
+                                        <small id="marketStructureHscAsOf" style="font-size: 10px; color: var(--ac-text-muted);">Per —</small>
+                                    </div>
+                                    <div class="ac-metric">
+                                        <span class="ac-metric-label">Risk Guard</span>
+                                        <span class="ac-metric-value" id="marketStructureGuard" style="font-size: 13px;">—</span>
+                                        <small id="marketStructureStatus" style="font-size: 10px; color: var(--ac-text-muted);">—</small>
+                                    </div>
+                                </div>
+
+                                <!-- Structured Evidence Box -->
+                                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
+                                    <span style="font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ac-text-secondary);">Verifikasi Sumber</span>
+                                    
+                                    <div style="background: var(--ac-surface-raised); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--ac-line-hairline); font-size: 12px; display: flex; flex-direction: column; gap: 6px;">
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="color: var(--ac-text-secondary);">Sumber Free Float:</span>
+                                            <strong id="marketStructureFreeFloatSource" style="font-weight: 500;">—</strong>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="color: var(--ac-text-secondary);">Sumber HSC:</span>
+                                            <strong id="marketStructureHscSource" style="font-weight: 500;">—</strong>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="color: var(--ac-text-secondary);">Referensi Low Free Float:</span>
+                                            <strong id="marketStructureReference" style="font-weight: 500;">15%</strong>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="color: var(--ac-text-secondary);">Kepatuhan Regulasi:</span>
+                                            <strong id="marketStructureCompliance" style="font-weight: 500;">Belum Dievaluasi</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Catatan Risiko Struktur -->
+                                <div style="margin-top: 10px;">
+                                    <span style="font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ac-text-secondary);">Catatan Risiko</span>
+                                    <p id="marketStructureNote" class="ac-research-note" style="margin-top: 4px; font-size: 11.5px; line-height: 1.5; color: var(--ac-text-secondary);">
+                                        Data struktur pasar belum dimuat.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="ac-detail-pane__footer">
+                                <button type="button" class="ac-btn ac-btn-primary" id="marketStructureBukaAnalisisBtn" style="flex: 1; min-height: 40px; font-size: 13px;" onclick="window.AutoCuanMarketStructure && window.AutoCuanMarketStructure.bukaAnalisisSaham()">Buka Analisis Chart</button>
+                            </div>
+                        </aside>
                     </div>
-                    <div id="marketStructureNote" class="ac-research-note">—</div>
                 </div>
+
+                <!-- Mobile / Tablet Detail Sheet Overlay (§76.12, §76.13, §2346) -->
+                <div class="ac-detail-sheet" id="marketStructureMobileSheet" role="dialog" aria-modal="true" aria-label="Detail emiten struktur pasar">
+                    <div class="ac-sheet-backdrop" id="marketStructureSheetBackdrop" onclick="window.AutoCuanMarketStructure && window.AutoCuanMarketStructure.closeDetail()"></div>
+                    <div class="ac-sheet-content">
+                        <div class="ac-sheet-handle"></div>
+                        <div class="ac-detail-pane__header" style="border-radius: 0;">
+                            <div class="ac-detail-pane__title">
+                                <span id="marketStructureSheetTicker" style="color: var(--ac-brand); font-weight: 700; font-size: 16px;">—</span>
+                                <span id="marketStructureSheetGuardBadge" class="ac-status-badge ac-status-badge--neutral" style="font-size: 10.5px;">Belum Dievaluasi</span>
+                            </div>
+                            <button type="button" class="ac-detail-pane__close" id="marketStructureSheetCloseBtn" aria-label="Tutup detail sheet" style="min-width: 44px; min-height: 44px; font-size: 20px;" onclick="window.AutoCuanMarketStructure && window.AutoCuanMarketStructure.closeDetail()">&times;</button>
+                        </div>
+                        <div class="ac-detail-pane__body" id="marketStructureSheetBody">
+                            <!-- Populated dynamically / mirrors desktop body -->
+                        </div>
+                        <div class="ac-detail-pane__footer">
+                            <button type="button" class="ac-btn ac-btn-primary" style="flex: 1; min-height: 44px; font-size: 13px;" onclick="window.AutoCuanMarketStructure && window.AutoCuanMarketStructure.bukaAnalisisSaham()">Buka Analisis Chart</button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </section>
 
@@ -2596,7 +3024,7 @@
 
 <!-- ONBOARDING GUIDE MODAL -->
 <div id="onboardingModal" class="hidden fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3">
-    <div class="w-full max-w-[520px] rounded-2xl border border-gray-700/60 bg-[#0f1319] shadow-2xl overflow-hidden">
+    <div class="onboarding-modal-card w-full max-w-[520px] rounded-2xl border border-gray-700/60 bg-[#0f1319] shadow-2xl overflow-hidden">
         <div id="onboardingContent" class="p-5 sm:p-6 space-y-4"></div>
         <div id="onboardingFooter" class="px-5 sm:px-6 pb-5 flex items-center justify-between gap-3"></div>
     </div>
@@ -5383,14 +5811,15 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
     var heroText = document.getElementById('heroLiveRadarText');
     if (!chip && !heroBadge) return;
 
-    var status = 'live'; // 'live' | 'delayed' | 'stale' | 'market_closed'
-    var label = 'Live Radar';
-    var tooltip = 'Radar aktif — data pasar terkini.';
+    var status = 'neutral'; // 'live' | 'intraday' | 'delayed' | 'stale' | 'scanning' | 'neutral'
+    var label = 'Radar Pasar';
+    var tooltip = 'Radar aktif — pemantauan pasar terkini.';
 
     // Extract calculated_at & status from metaOrFreshness
     var calcAt = null;
     var isStale = false;
     var isScanning = false;
+    var isLiveContract = false;
     if (metaOrFreshness) {
         if (typeof metaOrFreshness === 'string') calcAt = metaOrFreshness;
         else if (metaOrFreshness.calculated_at) calcAt = metaOrFreshness.calculated_at;
@@ -5399,6 +5828,7 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
 
         if (metaOrFreshness.data_stale || metaOrFreshness.is_stale || metaOrFreshness.freshness_is_stale) isStale = true;
         if (metaOrFreshness.status === 'scanning' || metaOrFreshness.status === 'finalizing') isScanning = true;
+        if (metaOrFreshness.is_live === true || metaOrFreshness.stream_live === true) isLiveContract = true;
     }
 
     var nowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
@@ -5421,12 +5851,16 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
             tooltip = 'Data stale (evaluasi terakhir ' + ageHours + ' jam lalu pada ' + calcDateStr + '). Refresh diperlukan.';
         } else if (calcDateStr === yesterdayStr) {
             status = 'delayed';
-            label = 'Radar: EOD Close';
+            label = 'EOD / T-1';
             tooltip = 'Snapshot penutupan pasar sesi kemarin (' + calcDateStr + '). Menunggu sesi baru.';
-        } else {
+        } else if (isLiveContract) {
             status = 'live';
-            label = 'Live Radar';
-            tooltip = 'Radar aktif — data pasar hari ini (' + calcDateStr + ').';
+            label = 'Live';
+            tooltip = 'Radar aktif — data real-time sesi hari ini (' + calcDateStr + ').';
+        } else {
+            status = 'intraday';
+            label = 'Intraday';
+            tooltip = 'Sesi pasar hari ini (' + calcDateStr + '). Bukan stream real-time tick-by-tick.';
         }
     }
 
@@ -5459,9 +5893,12 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
             chip.style.borderColor = 'rgba(59,130,246,0.3)';
             chip.style.backgroundColor = 'rgba(59,130,246,0.1)';
             chip.style.color = '#93c5fd';
+        } else if (status === 'live') {
+            dot.style.background = '#34d399';
+            dot.style.boxShadow = '0 0 10px rgba(52,211,153,0.55)';
         } else {
             dot.style.background = '#34d399';
-            dot.style.boxShadow = '0 0 12px rgba(52,211,153,0.55)';
+            dot.style.boxShadow = '';
         }
         txt.textContent = label;
         chip.title = tooltip;
@@ -5490,8 +5927,10 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
             heroBadge.style.backgroundColor = 'rgba(59,130,246,0.12)';
             heroBadge.style.color = '#93c5fd';
             if (heroDot) { heroDot.style.background = '#60a5fa'; heroDot.style.boxShadow = '0 0 8px rgba(96,165,250,0.6)'; }
-        } else {
+        } else if (status === 'live') {
             if (heroDot) { heroDot.style.background = '#34d399'; heroDot.style.boxShadow = '0 0 8px rgba(52,211,153,0.55)'; }
+        } else {
+            if (heroDot) { heroDot.style.background = '#34d399'; heroDot.style.boxShadow = ''; }
         }
         heroText.textContent = label;
         heroBadge.title = tooltip;
@@ -10159,16 +10598,7 @@ function renderDtCardGrid(results, data) {
         html += '<div class="trade-plan-tile" data-type="tp"><div class="trade-plan-label">Target 2</div><div class="trade-plan-value">' + t2 + '</div></div>';
         html += '<div class="trade-plan-tile" data-type="rr"><div class="trade-plan-label">R/R Awal</div><div class="trade-plan-value">' + rrVal + '</div></div>';
         html += '</div>';
-        if (window.PositionSizing && typeof window.PositionSizing.renderCardWidget === 'function') {
-            html += window.PositionSizing.renderCardWidget(r, { levels: _l });
-        }
-        var _riskReason = getRiskReasonOnly(r);
-        if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
-        if (notes) html += '<div style="font-size:10px;color:#9ca3af;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + escapeHtml(notes) + '</div>';
-        if (window.SignalGateTransparency && typeof window.SignalGateTransparency.renderCardButton === 'function') {
-            html += window.SignalGateTransparency.renderCardButton(r, 'daytrade');
-        }
-        html += '<div class="scr-detail-hint" style="font-size:9px;color:var(--text-secondary,#9aa4b2);margin-top:6px;text-align:right">Klik untuk detail</div>';
+        html += '<div class="scr-detail-hint" style="font-size:9.5px;color:var(--text-secondary,#9aa4b2);margin-top:8px;text-align:right">Klik untuk detail trading plan &rarr;</div>';
         html += '</div>';
     }
     container.innerHTML = html;
@@ -10539,16 +10969,7 @@ function renderKgCardGrid(results) {
         html += '<div class="trade-plan-tile" data-type="tp"><div class="trade-plan-label">Target 2</div><div class="trade-plan-value">' + t2 + '</div></div>';
         html += '<div class="trade-plan-tile" data-type="rr"><div class="trade-plan-label">R/R Awal</div><div class="trade-plan-value">' + rrVal + '</div></div>';
         html += '</div>';
-        if (window.PositionSizing && typeof window.PositionSizing.renderCardWidget === 'function') {
-            html += window.PositionSizing.renderCardWidget(r, { levels: _l });
-        }
-        var _riskReason = getRiskReasonOnly(r);
-        if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
-        if (notes) html += '<div style="font-size:10px;color:#9ca3af;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + escapeHtml(notes) + '</div>';
-        if (window.SignalGateTransparency && typeof window.SignalGateTransparency.renderCardButton === 'function') {
-            html += window.SignalGateTransparency.renderCardButton(r, 'konglo');
-        }
-        html += '<div class="scr-detail-hint" style="font-size:9px;color:var(--text-secondary,#9aa4b2);margin-top:6px;text-align:right">Klik untuk detail</div>';
+        html += '<div class="scr-detail-hint" style="font-size:9.5px;color:var(--text-secondary,#9aa4b2);margin-top:8px;text-align:right">Klik untuk detail trading plan &rarr;</div>';
         html += '</div>';
     }
     container.innerHTML = html;
@@ -10637,16 +11058,7 @@ function renderNkCardGrid(results) {
         html += '<div class="trade-plan-tile" data-type="tp"><div class="trade-plan-label">Target 2</div><div class="trade-plan-value">' + t2 + '</div></div>';
         html += '<div class="trade-plan-tile" data-type="rr"><div class="trade-plan-label">R/R Awal</div><div class="trade-plan-value">' + rrVal + '</div></div>';
         html += '</div>';
-        if (window.PositionSizing && typeof window.PositionSizing.renderCardWidget === 'function') {
-            html += window.PositionSizing.renderCardWidget(r, { levels: _l });
-        }
-        var _riskReason = getRiskReasonOnly(r);
-        if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
-        if (notes) html += '<div style="font-size:10px;color:#9ca3af;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + escapeHtml(notes) + '</div>';
-        if (window.SignalGateTransparency && typeof window.SignalGateTransparency.renderCardButton === 'function') {
-            html += window.SignalGateTransparency.renderCardButton(r, 'nonkonglo');
-        }
-        html += '<div class="scr-detail-hint" style="font-size:9px;color:var(--text-secondary,#9aa4b2);margin-top:6px;text-align:right">Klik untuk detail</div>';
+        html += '<div class="scr-detail-hint" style="font-size:9.5px;color:var(--text-secondary,#9aa4b2);margin-top:8px;text-align:right">Klik untuk detail trading plan &rarr;</div>';
         html += '</div>';
     }
     container.innerHTML = html;
@@ -10661,17 +11073,38 @@ document.addEventListener('click', function(e) {
     var dtCard = e.target.closest('.dt-card-item');
     if (dtCard) {
         var dtTicker = dtCard.getAttribute('data-ticker');
-        if (dtTicker && _dtCardData && _dtCardData[dtTicker]) { openScrDetail(_dtCardData[dtTicker], 'daytrade'); return; }
+        if (dtTicker) {
+            if (window.AutoCuanScreener) {
+                window.AutoCuanScreener.selectRow('daytrade', dtTicker, dtCard);
+            } else if (_dtCardData && _dtCardData[dtTicker]) {
+                openScrDetail(_dtCardData[dtTicker], 'daytrade');
+            }
+            return;
+        }
     }
     var kgCard = e.target.closest('.kg-card-item');
     if (kgCard) {
         var kgTicker = kgCard.getAttribute('data-ticker');
-        if (kgTicker && _kgCardData && _kgCardData[kgTicker]) { openScrDetail(_kgCardData[kgTicker], 'konglo'); return; }
+        if (kgTicker) {
+            if (window.AutoCuanScreener) {
+                window.AutoCuanScreener.selectRow('konglo', kgTicker, kgCard);
+            } else if (_kgCardData && _kgCardData[kgTicker]) {
+                openScrDetail(_kgCardData[kgTicker], 'konglo');
+            }
+            return;
+        }
     }
     var nkCard = e.target.closest('.nk-card-item');
     if (nkCard) {
         var nkTicker = nkCard.getAttribute('data-ticker');
-        if (nkTicker && _nkCardData && _nkCardData[nkTicker]) { openScrDetail(_nkCardData[nkTicker], 'nonkonglo'); return; }
+        if (nkTicker) {
+            if (window.AutoCuanScreener) {
+                window.AutoCuanScreener.selectRow('nonkonglo', nkTicker, nkCard);
+            } else if (_nkCardData && _nkCardData[nkTicker]) {
+                openScrDetail(_nkCardData[nkTicker], 'nonkonglo');
+            }
+            return;
+        }
     }
 
     // 2. Modal backdrop click delegation
@@ -10761,6 +11194,7 @@ var _sektorCache = null;
 
 async function loadSektorHot(silent) {
     var grid = document.getElementById('sektorGroupsGrid');
+    var tblBody = document.getElementById('sektorGroupsTableBody');
     var listView = document.getElementById('sektorListView');
     var detailView = document.getElementById('sektorDetailView');
     if (!grid) return;
@@ -10775,6 +11209,7 @@ async function loadSektorHot(silent) {
     var keepAliveCards = silent && grid.querySelector('.sektor-group-card');
     if (!keepAliveCards) {
         grid.innerHTML = '<div class="col-span-full flex justify-center py-8"><div class="spinner"></div></div>';
+        if (tblBody) tblBody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500"><div class="spinner inline-block mr-2"></div> Memuat data grup konglomerasi...</td></tr>';
     }
 
     try {
@@ -10786,6 +11221,7 @@ async function loadSektorHot(silent) {
 
         if (!data.success || !data.groups || data.groups.length === 0) {
             grid.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-sm text-gray-500">Data Grup Konglomerat Hot belum tersedia.</p><p class="text-xs text-gray-600 mt-2">Sedang disiapkan.</p></div>';
+            if (tblBody) tblBody.innerHTML = '<tr><td colspan="8" class="text-center py-12 text-gray-500">Data Grup Konglomerat Hot belum tersedia.</td></tr>';
             return;
         }
 
@@ -10801,9 +11237,9 @@ async function loadSektorHot(silent) {
             } else if (data.meta.calculated_at) {
                 var dt = new Date(data.meta.calculated_at);
                 var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-                var baseTxt = 'T+1 \u00B7 BY GROUP \u00B7 Update: ' + wibStr + ' WIB';
-                if (mStatus === 'failed') baseTxt = 'FAILED \u00B7 ' + DASHBOARD_ERROR_TEXT + ' \u00B7 ' + baseTxt;
-                else if (data.meta.failed_count > 0) baseTxt += ' \u00B7 ' + data.meta.failed_count + ' ticker gagal';
+                var baseTxt = 'T+1 · BY GROUP · Update: ' + wibStr + ' WIB';
+                if (mStatus === 'failed') baseTxt = 'FAILED · ' + DASHBOARD_ERROR_TEXT + ' · ' + baseTxt;
+                else if (data.meta.failed_count > 0) baseTxt += ' · ' + data.meta.failed_count + ' ticker gagal';
                 sub.textContent = baseTxt;
             }
         }
@@ -10826,18 +11262,48 @@ async function loadSektorHot(silent) {
             }
         }
 
-        // Render cards
+        // Render table-first rows
+        if (tblBody) {
+            var tRowsHtml = '';
+            data.groups.forEach(function(g, idx) {
+                var chgView = changeDisplay(g.avg_change_pct);
+                var topChgView = changeDisplay(g.top_change_pct);
+                var chgColor = chgView.cls;
+                var avgChgDisplay = chgView.text;
+                var topTickerDisplay = (g.top_ticker && g.top_change_pct != null)
+                    ? '<span class="font-mono font-bold text-gray-200">' + escapeHtml(g.top_ticker) + '</span> <span class="' + topChgView.cls + '">' + topChgView.text + '</span>'
+                    : '<span class="text-gray-500">—</span>';
+                var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '—';
+                var memberCountVal = g.stock_count != null ? g.stock_count : (g.member_count != null ? g.member_count : (Array.isArray(g.members) ? g.members.length : null));
+                var memberCountDisplay = (memberCountVal != null && !isNaN(Number(memberCountVal))) ? String(memberCountVal) : '—';
+                tRowsHtml += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="showGroupDetail(\'' + escapeHtml(g.group_code) + '\')">';
+                tRowsHtml += '<td class="px-3 py-2.5 text-center text-gray-500 text-xs">' + (idx + 1) + '</td>';
+                tRowsHtml += '<td class="px-3 py-2.5 font-mono font-semibold text-emerald-400 whitespace-nowrap">' + escapeHtml(g.group_code) + '</td>';
+                tRowsHtml += '<td class="px-3 py-2.5 text-gray-200 font-medium whitespace-nowrap">' + escapeHtml(g.group_name || g.group_code) + '</td>';
+                tRowsHtml += '<td class="px-3 py-2.5 text-center text-gray-300 text-xs">' + memberCountDisplay + '</td>';
+                tRowsHtml += '<td class="px-3 py-2.5 text-right font-semibold whitespace-nowrap font-mono ' + chgColor + '">' + avgChgDisplay + '</td>';
+                tRowsHtml += '<td class="px-3 py-2.5 text-left text-xs whitespace-nowrap">' + topTickerDisplay + '</td>';
+                tRowsHtml += '<td class="px-3 py-2.5 text-right text-gray-300 text-xs whitespace-nowrap font-mono">' + volDisplay + '</td>';
+                tRowsHtml += '<td class="px-3 py-2.5 text-center whitespace-nowrap"><button type="button" class="px-2.5 py-1 rounded text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors">Detail &rarr;</button></td>';
+                tRowsHtml += '</tr>';
+            });
+            tblBody.innerHTML = tRowsHtml;
+        }
+
+        // Render cards (secondary grid view)
         var html = '';
         data.groups.forEach(function(g) {
             var chgView = changeDisplay(g.avg_change_pct);
             var topChgView = changeDisplay(g.top_change_pct);
             var chgColor = chgView.cls;
             var avgChgDisplay = chgView.text;
+            var memberCountVal = g.stock_count != null ? g.stock_count : (g.member_count != null ? g.member_count : (Array.isArray(g.members) ? g.members.length : null));
+            var memberCountDisplay = (memberCountVal != null && !isNaN(Number(memberCountVal))) ? String(memberCountVal) : '—';
             html += '<div onclick="showGroupDetail(\'' + g.group_code + '\')" class="sektor-group-card bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 cursor-pointer hover:border-emerald-500/30 hover:bg-dark-700/80 transition-all">';
             html += '<div class="flex items-start justify-between mb-2"><h3 class="text-sm font-semibold text-gray-200 leading-tight">' + escapeHtml(g.group_name || g.group_code) + '</h3>';
             html += '<span class="text-lg font-bold ' + chgColor + ' flex-shrink-0 ml-2">' + avgChgDisplay + '</span></div>';
             html += '<div class="flex items-center gap-3 text-xs text-gray-500">';
-            html += '<span>' + (g.stock_count || 0) + ' saham</span>';
+            html += '<span>' + (memberCountDisplay === '—' ? '— saham' : (memberCountDisplay + ' saham')) + '</span>';
             if (g.top_ticker && g.top_change_pct != null) {
                 html += '<span class="' + topChgView.cls + '">Top: ' + escapeHtml(g.top_ticker) + ' ' + topChgView.text + '</span>';
             } else if (g.valid_count === 0 || !g.top_ticker) {
@@ -10850,10 +11316,35 @@ async function loadSektorHot(silent) {
         grid.innerHTML = html;
     } catch (e) {
         grid.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-sm text-red-400">Gagal memuat data Sektor Hot.</p></div>';
+        if (tblBody) tblBody.innerHTML = '<tr><td colspan="8" class="text-center py-12 text-red-400">Gagal memuat data Sektor Hot.</td></tr>';
     } finally {
         loadSektorHot._busy = false;
     }
 }
+
+function toggleSektorView(viewType) {
+    var tblWrap = document.getElementById('sektorTableWrap');
+    var gridWrap = document.getElementById('sektorGroupsGrid');
+    var btnTbl = document.getElementById('sektorBtnTable');
+    var btnGrd = document.getElementById('sektorBtnGrid');
+    if (!tblWrap || !gridWrap) return;
+    if (viewType === 'grid') {
+        tblWrap.classList.add('hidden');
+        tblWrap.style.display = 'none';
+        gridWrap.classList.remove('hidden');
+        gridWrap.style.display = 'grid';
+        if (btnTbl) { btnTbl.classList.remove('is-active'); btnTbl.setAttribute('aria-pressed', 'false'); }
+        if (btnGrd) { btnGrd.classList.add('is-active'); btnGrd.setAttribute('aria-pressed', 'true'); }
+    } else {
+        gridWrap.classList.add('hidden');
+        gridWrap.style.display = 'none';
+        tblWrap.classList.remove('hidden');
+        tblWrap.style.display = '';
+        if (btnGrd) { btnGrd.classList.remove('is-active'); btnGrd.setAttribute('aria-pressed', 'false'); }
+        if (btnTbl) { btnTbl.classList.add('is-active'); btnTbl.setAttribute('aria-pressed', 'true'); }
+    }
+}
+window.toggleSektorView = toggleSektorView;
 
 async function showGroupDetail(groupCode) {
     var listView = document.getElementById('sektorListView');
@@ -10877,15 +11368,17 @@ async function showGroupDetail(groupCode) {
         }
 
         var g = data.group;
+        var members = data.members || [];
+        var memberCnt = g.stock_count != null ? g.stock_count : (g.member_count != null ? g.member_count : (members.length > 0 ? members.length : null));
+        var memberCntDisplay = (memberCnt != null && !isNaN(Number(memberCnt))) ? String(memberCnt) : '—';
+        var groupTitle = g.group_name || ('Grup ' + (g.group_code || groupCode));
         var chgView = changeDisplay(g.avg_change_pct);
         var chgColor = chgView.cls;
         var avgDisplay = chgView.text;
-        var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '-';
-        header.innerHTML = '<h2 class="text-base font-bold text-white">Grup ' + escapeHtml(groupCode) + '</h2>' +
-            '<p class="text-xs text-gray-400 mt-0.5">' + escapeHtml(g.group_name || '') + ' \u00B7 ' + (g.stock_count || 0) + ' saham</p>' +
-            '<p class="text-sm mt-1 font-semibold ' + chgColor + '">Avg: ' + avgDisplay + ' \u00B7 Vol: ' + volDisplay + '</p>';
-
-        var members = data.members || [];
+        var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '—';
+        header.innerHTML = '<h2 class="text-base font-bold text-white">' + escapeHtml(groupTitle) + '</h2>' +
+            '<p class="text-xs text-gray-400 mt-0.5">' + escapeHtml(g.group_code || groupCode) + ' · ' + (memberCntDisplay === '—' ? '— saham' : (memberCntDisplay + ' saham')) + '</p>' +
+            '<p class="text-sm mt-1 font-semibold ' + chgColor + '">Avg: ' + avgDisplay + ' · Vol: ' + volDisplay + '</p>';
         if (members.length === 0) {
             table.innerHTML = '<p class="text-sm text-gray-500 py-4">Tidak ada member aktif untuk grup ini.</p>';
             return;
@@ -10899,6 +11392,7 @@ async function showGroupDetail(groupCode) {
         tHtml += '<th class="px-2 py-2 text-right text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Vol Hari Ini</th>';
         tHtml += '<th class="px-2 py-2 text-right text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Vol/Avg30</th>';
         tHtml += '<th class="px-2 py-2 text-center text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Tipe</th>';
+        tHtml += '<th class="px-2 py-2 text-center text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Aksi</th>';
         tHtml += '</tr></thead><tbody>';
 
         members.forEach(function(m) {
@@ -10910,15 +11404,16 @@ async function showGroupDetail(groupCode) {
             var volDisplay = hasData ? formatVolume(m.volume_today) : '-';
             var ratioDisplay = hasData ? formatRatio(m.volume_ratio_30d) : '-';
             var isAnchor = m.member_type === 'ANCHOR';
-            var tickerLabel = isAnchor ? m.ticker + ' \u2605' : m.ticker;
-            tHtml += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30">';
-            tHtml += '<td class="px-2 py-2 text-gray-200 font-semibold whitespace-nowrap">' + tickerLabel + '</td>';
+            var tickerLabel = isAnchor ? m.ticker + ' ★' : m.ticker;
+            tHtml += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + m.ticker + '\')">';
+            tHtml += '<td class="px-2 py-2 text-emerald-400 font-semibold whitespace-nowrap hover:underline font-mono" title="Buka analisis ' + m.ticker + '">' + tickerLabel + '</td>';
             tHtml += '<td class="px-2 py-2 text-gray-400 whitespace-nowrap max-w-[150px] truncate">' + escapeHtml(m.stock_name || '-') + '</td>';
-            tHtml += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + priceDisplay + '</td>';
-            tHtml += '<td class="px-2 py-2 text-right font-semibold whitespace-nowrap ' + pctColor + '">' + pctDisplay + '</td>';
+            tHtml += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap font-mono">' + priceDisplay + '</td>';
+            tHtml += '<td class="px-2 py-2 text-right font-semibold whitespace-nowrap font-mono ' + pctColor + '">' + pctDisplay + '</td>';
             tHtml += '<td class="px-2 py-2 text-right text-gray-400 whitespace-nowrap">' + volDisplay + '</td>';
-            tHtml += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + ratioDisplay + '</td>';
+            tHtml += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap font-mono">' + ratioDisplay + '</td>';
             tHtml += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ' + (isAnchor ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/15 text-gray-500') + '">' + (m.member_type || 'Member') + '</span></td>';
+            tHtml += '<td class="px-2 py-2 text-center whitespace-nowrap"><button type="button" onclick="event.stopPropagation(); screenerTickerClick(\'' + m.ticker + '\')" class="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors">Analisis &rarr;</button></td>';
             tHtml += '</tr>';
         });
         tHtml += '</tbody></table>';
@@ -11083,39 +11578,43 @@ async function loadSwingScreener(silent) {
                 }
             }
 
-            // Meta badge
+            // Meta badge (Indonesian-first / EOD freshness, eliminating misleading LIVE labels)
             var badge = document.getElementById('screenerMetaBadge');
             if (badge) {
                 var isPreviewRoute = Boolean(window.location && (window.location.pathname.indexOf('/preview') >= 0 || window.location.search.indexOf('preview=1') >= 0));
-                if (m.status === 'ok' || (!m.status && data.results && data.results.length > 0)) {
-                    badge.textContent = isPreviewRoute ? 'MOCK DATA' : 'LIVE';
-                    badge.className = isPreviewRoute
-                        ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
-                        : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25';
-                }
-                else if (m.status === 'scanning') { badge.textContent = 'SCANNING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 animate-pulse-glow'; }
-                else if (m.status === 'failed') { badge.textContent = 'ERROR'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25'; }
-                else { badge.textContent = 'PENDING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25'; }
-
-                // V2 Freshness label: show STALE warning if data is not from today
-                if (m.calculated_at && m.status !== 'scanning') {
-                    var calcDate = new Date(m.calculated_at);
+                if (m.status === 'scanning') {
+                    badge.textContent = 'SCANNING';
+                    badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 animate-pulse-glow';
+                } else if (m.status === 'failed') {
+                    badge.textContent = 'ERROR';
+                    badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25';
+                } else if (m.status === 'ok' || (!m.status && data.results && data.results.length > 0)) {
+                    var calcDate = m.calculated_at ? new Date(m.calculated_at) : new Date();
                     var nowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
                     var calcDateStr = calcDate.toISOString().slice(0, 10);
                     var todayStr = nowWib.toISOString().slice(0, 10);
                     var yesterdayWib = new Date(nowWib.getTime() - 86400000);
                     var yesterdayStr = yesterdayWib.toISOString().slice(0, 10);
-                    // Daily/EOD screener: T-1 data is fresh if scan is from today or yesterday
+
                     if (calcDateStr !== todayStr && calcDateStr !== yesterdayStr) {
-                        badge.textContent = 'STALE';
+                        badge.textContent = isPreviewRoute ? 'MOCK DATA' : 'STALE';
                         badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25';
                         var staleSub = document.getElementById('screenerSubtitle');
                         if (staleSub) { staleSub.textContent = '\u26A0 Data stale \u2014 scan terakhir sudah lama (' + calcDateStr + '). Refresh wajib sebelum analisis. ' + (staleSub.textContent || ''); }
-                    } else if (calcDateStr === yesterdayStr) {
-                        // T-1 data, show as FRESH DAILY
-                        badge.textContent = 'DAILY';
-                        badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25';
+                    } else if (calcDateStr === todayStr) {
+                        badge.textContent = isPreviewRoute ? 'MOCK DATA' : 'EOD · TODAY';
+                        badge.className = isPreviewRoute
+                            ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
+                            : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25';
+                    } else {
+                        badge.textContent = isPreviewRoute ? 'MOCK DATA' : 'EOD · T-1';
+                        badge.className = isPreviewRoute
+                            ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
+                            : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25';
                     }
+                } else {
+                    badge.textContent = 'PENDING';
+                    badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25';
                 }
             }
 
@@ -11222,7 +11721,7 @@ function renderScreenerTable(results) {
         var dirLabel = r.direction || '-';
         var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
 
-        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
+        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" data-ticker="' + r.ticker + '" onclick="selectScreenerRow(\'konglo\', \'' + r.ticker + '\', this)" ondblclick="screenerTickerClick(\'' + r.ticker + '\')">';
         html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-2 text-gray-500 whitespace-nowrap text-[10px]">' + (r.group_code || '-') + '</td>';
         html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
@@ -11232,17 +11731,18 @@ function renderScreenerTable(results) {
         html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatPrice(r.entry_low) + '-' + formatPrice(r.entry_high) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-red-400/80 whitespace-nowrap">' + formatPrice(r.stop_loss) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-emerald-400/80 whitespace-nowrap">' + formatPrice(r.tp1) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-emerald-400/60 whitespace-nowrap">' + formatPrice(r.tp2) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '-') + '</td>';
         html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + timingColor + '" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml((r.entry_window_label || timingLabel || '-')) + '</td>';
         html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
         html += '<td class="px-2 py-2 text-left text-gray-500 whitespace-nowrap text-[10px] max-w-[120px] truncate" title="' + escapeHtml((r.status_reason || '') + (r.invalidation ? ' | ' + r.invalidation : '')) + '">' + escapeHtml(r.status_reason || r.invalidation || '-') + '</td>';
         html += '</tr>';
     });
     tbody.innerHTML = html;
+    if (window.innerWidth >= 1024 && filtered.length > 0 && (!window.AutoCuanScreener || !window.AutoCuanScreener.selectedTicker)) {
+        var firstTr = tbody.querySelector('tr[data-ticker]');
+        if (firstTr && window.AutoCuanScreener) {
+            window.AutoCuanScreener.selectRow('konglo', filtered[0].ticker, firstTr);
+        }
+    }
 }
 
 // Swing tier display helpers
@@ -11303,6 +11803,245 @@ function screenerTickerClick(ticker) {
     }
     window.location.assign('/analisis-saham');
 }
+
+// ===== AUTOCUAN SCREENER RUNTIME (WAVE 5 WORKSTATION) =====
+var AutoCuanScreener = {
+    selectedTicker: null,
+    selectedMode: 'konglo',
+
+    selectRow: function(mode, ticker, rowEl) {
+        if (!ticker) return;
+        this.selectedMode = mode || 'konglo';
+        this.selectedTicker = ticker;
+
+        // Visual selection on table row & cards
+        var wrapId = mode === 'daytrade' ? 'dtScreenerTableWrap' : (mode === 'nonkonglo' ? 'nkScreenerTableWrap' : 'screenerTableWrap');
+        var wrapEl = document.getElementById(wrapId);
+        if (wrapEl) {
+            wrapEl.querySelectorAll('tbody tr.is-selected').forEach(function(tr) {
+                tr.classList.remove('is-selected');
+            });
+        }
+        var gridId = mode === 'daytrade' ? 'dtCardGrid' : (mode === 'nonkonglo' ? 'nkCardGrid' : 'kgCardGrid');
+        var gridEl = document.getElementById(gridId);
+        if (gridEl) {
+            gridEl.querySelectorAll('.is-selected').forEach(function(c) {
+                c.classList.remove('is-selected');
+            });
+        }
+        if (rowEl) {
+            rowEl.classList.add('is-selected');
+        } else {
+            if (wrapEl) {
+                var matchingRow = wrapEl.querySelector('tbody tr[data-ticker="' + ticker + '"]');
+                if (matchingRow) matchingRow.classList.add('is-selected');
+            }
+            if (gridEl) {
+                var matchingCard = gridEl.querySelector('[data-ticker="' + ticker + '"]');
+                if (matchingCard) matchingCard.classList.add('is-selected');
+            }
+        }
+
+        var r = this.getRowData(mode, ticker);
+        if (!r) return;
+
+        // Render desktop detail pane
+        this.renderDesktopPane(mode, r);
+
+        // If viewport is tablet/mobile (< 1024px), trigger mobile sheet
+        if (window.innerWidth < 1024) {
+            this.openMobileSheet(mode, r);
+        }
+    },
+
+    getRowData: function(mode, ticker) {
+        var list = [];
+        if (mode === 'konglo' && _screenerCache && _screenerCache.results) list = _screenerCache.results;
+        else if (mode === 'nonkonglo' && _nkScreenerCache && _nkScreenerCache.results) list = _nkScreenerCache.results;
+        else if (mode === 'daytrade' && _dtScreenerCache && _dtScreenerCache.results) list = _dtScreenerCache.results;
+
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].ticker === ticker) return list[i];
+        }
+        if (mode === 'konglo' && _kgCardData && _kgCardData[ticker]) return _kgCardData[ticker];
+        if (mode === 'nonkonglo' && _nkCardData && _nkCardData[ticker]) return _nkCardData[ticker];
+        if (mode === 'daytrade' && _dtCardData && _dtCardData[ticker]) return _dtCardData[ticker];
+        return null;
+    },
+
+    renderDesktopPane: function(mode, r) {
+        var prefix = mode === 'daytrade' ? 'dt' : (mode === 'nonkonglo' ? 'nk' : 'screener');
+        var tickerEl = document.getElementById(prefix + 'DetailTicker');
+        var badgeEl = document.getElementById(prefix + 'DetailTierBadge');
+        var bodyEl = document.getElementById(prefix + 'DetailBody');
+
+        var isDt = mode === 'daytrade';
+        var tierLabel = isDt ? (typeof formatDtStatus === 'function' ? formatDtStatus(r.status) : (r.status || 'READY')) : swingTierShort(r.swing_tier);
+        var tierClass = isDt ? (typeof getDtStatusClass === 'function' ? getDtStatusClass(r.status) : 'bg-emerald-500/20 text-emerald-400') : swingTierColor(r.swing_tier);
+
+        if (tickerEl) tickerEl.textContent = r.ticker;
+        if (badgeEl) {
+            badgeEl.textContent = tierLabel;
+            badgeEl.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold ' + tierClass;
+        }
+        if (bodyEl) {
+            bodyEl.innerHTML = this.buildDetailContentHtml(mode, r);
+        }
+    },
+
+    buildDetailContentHtml: function(mode, r) {
+        var isDt = mode === 'daytrade';
+        var scoreVal = isDt 
+            ? (r.daytrade_score != null ? r.daytrade_score : (r.score != null ? r.score : (r.unified_score != null ? r.unified_score : (r.setup_score != null ? r.setup_score : '—'))))
+            : (r.score != null ? r.score : '—');
+        var scoreColor = (scoreVal !== '—' && scoreVal >= 80) ? 'text-emerald-400' : ((scoreVal !== '—' && scoreVal >= 65) ? 'text-blue-400' : ((scoreVal !== '—' && scoreVal >= 50) ? 'text-amber-400' : 'text-gray-400'));
+        var chg = changeDisplay(r.change_pct);
+        var rrVal = (r.risk_reward != null && !isNaN(Number(r.risk_reward))) ? Number(r.risk_reward).toFixed(2) : (r.risk_reward != null ? String(r.risk_reward) : '—');
+        var entryStr = (r.entry_low != null && r.entry_high != null) ? (formatPrice(r.entry_low) + ' – ' + formatPrice(r.entry_high)) : (r.entry1 != null && r.entry2 != null ? (formatPrice(r.entry1) + ' – ' + formatPrice(r.entry2)) : '—');
+        var slStr = r.stop_loss != null ? formatPrice(r.stop_loss) : '—';
+        var tp1Str = r.tp1 != null ? formatPrice(r.tp1) : '—';
+        var tp2Str = r.tp2 != null ? formatPrice(r.tp2) : '—';
+        var lastPriceStr = r.last_price != null ? formatPrice(r.last_price) : (r.close != null ? formatPrice(r.close) : '—');
+
+        var confLabel = r.confidence || '—';
+        var timingLabel = r.entry_timing || r.entry_window_label || '—';
+        var dirLabel = r.direction || '—';
+        var reasonStr = r.status_reason || r.signal_reason || r.invalidation || r.notes || r.setup || '—';
+        var compName = r.company_name || r.stock_name || (r.group_code ? 'Grup ' + r.group_code : '') || 'Saham Terverifikasi';
+
+        var html = '<div class="space-y-3.5">';
+        
+        // Stock summary
+        html += '<div class="p-3 rounded-lg bg-dark-700/50 border border-dark-600/30 flex items-center justify-between">';
+        html += '  <div><div class="text-xs font-semibold text-gray-200">' + escapeHtml(compName) + '</div><div class="text-[10px] text-gray-400 mt-0.5">' + (r.board ? r.board + ' · ' : '') + (r.group_code || 'Universe Resmi') + '</div></div>';
+        html += '  <div class="text-right"><div class="text-sm font-bold font-mono text-gray-100">' + lastPriceStr + '</div><div class="text-xs font-semibold font-mono ' + chg.cls + '">' + chg.text + '</div></div>';
+        html += '</div>';
+
+        // Trade Plan Grid
+        html += '<div>';
+        html += '  <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center justify-between"><span>Rencana Trading</span><span class="text-emerald-400 font-mono">R:R ' + rrVal + '</span></div>';
+        html += '  <div class="grid grid-cols-2 gap-2 text-xs">';
+        html += '    <div class="p-2.5 rounded-lg bg-dark-700/60 border border-dark-600/40"><div class="text-[9.5px] text-gray-400 uppercase font-medium">Area Entry</div><div class="font-bold text-gray-100 font-mono mt-0.5">' + entryStr + '</div></div>';
+        html += '    <div class="p-2.5 rounded-lg bg-dark-700/60 border border-red-500/20"><div class="text-[9.5px] text-red-400 uppercase font-medium">Stop Loss</div><div class="font-bold text-red-400 font-mono mt-0.5">' + slStr + '</div></div>';
+        html += '    <div class="p-2.5 rounded-lg bg-dark-700/60 border border-emerald-500/20"><div class="text-[9.5px] text-emerald-400 uppercase font-medium">Target 1 (TP1)</div><div class="font-bold text-emerald-300 font-mono mt-0.5">' + tp1Str + '</div></div>';
+        html += '    <div class="p-2.5 rounded-lg bg-dark-700/60 border border-emerald-500/20"><div class="text-[9.5px] text-emerald-400 uppercase font-medium">Target 2 (TP2)</div><div class="font-bold text-emerald-300 font-mono mt-0.5">' + tp2Str + '</div></div>';
+        html += '  </div>';
+        html += '</div>';
+
+        // Execution & Risk Metrics
+        html += '<div class="grid grid-cols-3 gap-1.5 p-2 rounded-lg bg-dark-800/60 border border-dark-600/25 text-center text-xs">';
+        html += '  <div><div class="text-[9px] text-gray-400 uppercase">Score</div><div class="font-black text-sm ' + scoreColor + '">' + scoreVal + '</div></div>';
+        html += '  <div><div class="text-[9px] text-gray-400 uppercase">Confidence</div><div class="font-bold text-sm text-gray-200">' + escapeHtml(confLabel) + '</div></div>';
+        html += '  <div><div class="text-[9px] text-gray-400 uppercase">Risk / R</div><div class="font-bold text-sm text-gray-200 font-mono">' + rrVal + '</div></div>';
+        html += '</div>';
+
+        // Timing & Direction Info
+        html += '<div class="space-y-1.5 text-xs">';
+        html += '  <div class="flex items-center justify-between py-1 border-b border-dark-600/20"><span class="text-gray-400 text-[11px]">Timing Entry</span><span class="text-gray-200 font-medium text-[11px] text-right">' + escapeHtml(timingLabel) + '</span></div>';
+        html += '  <div class="flex items-center justify-between py-1 border-b border-dark-600/20"><span class="text-gray-400 text-[11px]">Arah / Sinyal</span><span class="text-gray-200 font-medium text-[11px] text-right">' + escapeHtml(dirLabel) + '</span></div>';
+        if (r.bandarmologi_score != null || r.bandarmologi_badge) {
+            var bdB = r.bandarmologi_badge || ((r.bandarmologi_score >= 0 ? '+' : '') + r.bandarmologi_score + ' BD');
+            html += '  <div class="flex items-center justify-between py-1 border-b border-dark-600/20"><span class="text-gray-400 text-[11px]">Bandarmologi</span><span class="text-emerald-400 font-mono font-bold text-[11px] text-right">' + escapeHtml(bdB) + '</span></div>';
+        }
+        html += '  <div class="pt-1"><div class="text-[9.5px] text-gray-400 uppercase font-semibold">Alasan / Invalidation</div><div class="text-[11px] text-gray-300 mt-0.5 leading-relaxed bg-dark-800/40 p-2 rounded border border-dark-600/20">' + escapeHtml(reasonStr) + '</div></div>';
+        html += '</div>';
+
+        html += '</div>';
+        return html;
+    },
+
+    openMobileSheet: function(mode, r) {
+        var sheet = document.getElementById('screenerMobileSheet');
+        var tickerEl = document.getElementById('screenerSheetTicker');
+        var badgeEl = document.getElementById('screenerSheetTierBadge');
+        var bodyEl = document.getElementById('screenerSheetBody');
+        var actionBtn = document.getElementById('screenerSheetActionBtn');
+        if (!sheet || !bodyEl) return;
+
+        var isDt = mode === 'daytrade';
+        var tierLabel = isDt ? (typeof formatDtStatus === 'function' ? formatDtStatus(r.status) : (r.status || 'READY')) : swingTierShort(r.swing_tier);
+        var tierClass = isDt ? (typeof getDtStatusClass === 'function' ? getDtStatusClass(r.status) : 'bg-emerald-500/20 text-emerald-400') : swingTierColor(r.swing_tier);
+
+        if (tickerEl) tickerEl.textContent = r.ticker;
+        if (badgeEl) {
+            badgeEl.textContent = tierLabel;
+            badgeEl.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold ' + tierClass;
+        }
+        bodyEl.innerHTML = this.buildDetailContentHtml(mode, r);
+        if (actionBtn) {
+            actionBtn.textContent = 'Buka Analisis Saham (' + r.ticker + ')';
+        }
+
+        sheet.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+    },
+
+    closeDetail: function() {
+        this.closeMobileSheet();
+    },
+
+    closeMobileSheet: function() {
+        var sheet = document.getElementById('screenerMobileSheet');
+        if (sheet) sheet.classList.remove('is-open');
+        document.body.style.overflow = '';
+    },
+
+    openSelectedTicker: function() {
+        if (this.selectedTicker) {
+            screenerTickerClick(this.selectedTicker);
+        } else {
+            screenerTickerClick();
+        }
+    },
+
+    toggleView: function(mode, viewType) {
+        var tableWrap = null;
+        var cardWrap = null;
+        var btnTable = null;
+        var btnCard = null;
+
+        if (mode === 'konglo') {
+            tableWrap = document.getElementById('screenerTableWrap');
+            cardWrap = document.getElementById('kgCardGrid');
+            btnTable = document.getElementById('kgBtnTable');
+            btnCard = document.getElementById('kgBtnCard');
+        } else if (mode === 'nonkonglo') {
+            tableWrap = document.getElementById('nkScreenerTableWrap');
+            cardWrap = document.getElementById('nkCardGrid');
+            btnTable = document.getElementById('nkBtnTable');
+            btnCard = document.getElementById('nkBtnCard');
+        } else if (mode === 'daytrade') {
+            tableWrap = document.getElementById('dtScreenerTableWrap');
+            cardWrap = document.getElementById('dtCardGrid');
+            btnTable = document.getElementById('dtBtnTable');
+            btnCard = document.getElementById('dtBtnCard');
+        }
+
+        if (!tableWrap || !cardWrap) return;
+
+        if (viewType === 'card') {
+            tableWrap.classList.add('hidden');
+            cardWrap.classList.remove('hidden');
+            cardWrap.style.display = 'grid';
+            if (btnTable) { btnTable.classList.remove('is-active'); btnTable.setAttribute('aria-pressed', 'false'); }
+            if (btnCard) { btnCard.classList.add('is-active'); btnCard.setAttribute('aria-pressed', 'true'); }
+        } else {
+            cardWrap.classList.add('hidden');
+            cardWrap.style.display = 'none';
+            tableWrap.classList.remove('hidden');
+            if (btnCard) { btnCard.classList.remove('is-active'); btnCard.setAttribute('aria-pressed', 'false'); }
+            if (btnTable) { btnTable.classList.add('is-active'); btnTable.setAttribute('aria-pressed', 'true'); }
+        }
+    }
+};
+
+window.AutoCuanScreener = AutoCuanScreener;
+window.selectScreenerRow = function(mode, ticker, rowEl) {
+    AutoCuanScreener.selectRow(mode, ticker, rowEl);
+};
+window.toggleScreenerView = function(mode, viewType) {
+    AutoCuanScreener.toggleView(mode, viewType);
+};
 
 // ===== NON-KONGLO SCREENER FUNCTIONS =====
 var _nkScreenerCache = null;
@@ -11547,35 +12286,43 @@ function updateNkScreenerMeta(meta) {
     var badge = document.getElementById('nkScreenerMetaBadge');
     if (badge) {
         var isPreviewRouteNk = Boolean(window.location && (window.location.pathname.indexOf('/preview') >= 0 || window.location.search.indexOf('preview=1') >= 0));
-        if (meta.status === 'published') {
-            badge.textContent = isPreviewRouteNk ? 'MOCK DATA' : (meta.status_label === 'DAILY/PUBLISHED' ? 'DAILY/PUBLISHED' : 'LIVE');
-            badge.className = isPreviewRouteNk
-                ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
-                : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25';
-        }
-        else if (meta.status === 'failed') { badge.textContent = 'ERROR'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25'; }
-        else if (meta.status === 'scanning' || meta.status === 'finalizing') {
-            // Check if scanning is stale (> 10 minutes)
+        if (meta.status === 'failed') {
+            badge.textContent = 'ERROR';
+            badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25';
+        } else if (meta.status === 'scanning' || meta.status === 'finalizing') {
             var scanAge = meta.updated_at ? (Date.now() - new Date(meta.updated_at).getTime()) / 60000 : 999;
-            if (scanAge > 10) { badge.textContent = 'STALE SCAN'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'; }
-            else { badge.textContent = 'SCANNING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25 animate-pulse-glow'; }
-        }
-        else { badge.textContent = 'IDLE'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25'; }
-        // V2 Freshness label: show STALE warning if data is not from today
-        if (meta.calculated_at && meta.status !== 'scanning' && meta.status !== 'finalizing') {
-            var nkCalcDate = new Date(meta.calculated_at);
+            if (scanAge > 10) {
+                badge.textContent = 'STALE SCAN';
+                badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25';
+            } else {
+                badge.textContent = 'SCANNING';
+                badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25 animate-pulse-glow';
+            }
+        } else if (meta.status === 'published' || meta.status === 'ok') {
+            var nkCalcDate = meta.calculated_at ? new Date(meta.calculated_at) : new Date();
             var nkNowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
             var nkCalcDateStr = nkCalcDate.toISOString().slice(0, 10);
             var nkTodayStr = nkNowWib.toISOString().slice(0, 10);
             var nkYesterdayWib = new Date(nkNowWib.getTime() - 86400000);
             var nkYesterdayStr = nkYesterdayWib.toISOString().slice(0, 10);
+
             if (nkCalcDateStr !== nkTodayStr && nkCalcDateStr !== nkYesterdayStr) {
-                badge.textContent = 'STALE';
+                badge.textContent = isPreviewRouteNk ? 'MOCK DATA' : 'STALE';
                 badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25';
-            } else if (nkCalcDateStr === nkYesterdayStr) {
-                badge.textContent = 'DAILY';
-                badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25';
+            } else if (nkCalcDateStr === nkTodayStr) {
+                badge.textContent = isPreviewRouteNk ? 'MOCK DATA' : 'EOD · TODAY';
+                badge.className = isPreviewRouteNk
+                    ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
+                    : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25';
+            } else {
+                badge.textContent = isPreviewRouteNk ? 'MOCK DATA' : 'EOD · T-1';
+                badge.className = isPreviewRouteNk
+                    ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
+                    : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25';
             }
+        } else {
+            badge.textContent = 'IDLE';
+            badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25';
         }
     }
     var sub = document.getElementById('nkScreenerSubtitle');
@@ -11685,7 +12432,7 @@ function renderNkScreenerTable(results) {
         var dirLabel = r.direction || '-';
         var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
 
-        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
+        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" data-ticker="' + r.ticker + '" onclick="selectScreenerRow(\'nonkonglo\', \'' + r.ticker + '\', this)" ondblclick="screenerTickerClick(\'' + r.ticker + '\')">';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[11px] sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (r.rank || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '-') + '</td>';
@@ -11696,17 +12443,18 @@ function renderNkScreenerTable(results) {
         html += '<td class="px-2 py-1.5 text-right whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap">' + rsiStr + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap text-[10px]">' + entryStr + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-red-400 whitespace-nowrap">' + formatPrice(r.stop_loss) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400 whitespace-nowrap">' + formatPrice(r.tp1) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400 whitespace-nowrap">' + formatPrice(r.tp2) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold whitespace-nowrap">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + timingColor + '" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml((r.entry_window_label || timingLabel || '-')) + '</td>';
         html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-gray-500 text-[10px] whitespace-nowrap overflow-hidden max-w-[150px] truncate" title="' + escapeHtml(r.status_reason || '') + '">' + escapeHtml((r.status_reason || '').slice(0, 50)) + '</td>';
         html += '</tr>';
     });
     tbody.innerHTML = html;
+    if (window.innerWidth >= 1024 && filtered.length > 0 && (!window.AutoCuanScreener || !window.AutoCuanScreener.selectedTicker)) {
+        var firstTr = tbody.querySelector('tr[data-ticker]');
+        if (firstTr && window.AutoCuanScreener) {
+            window.AutoCuanScreener.selectRow('nonkonglo', filtered[0].ticker, firstTr);
+        }
+    }
 }
 
 // ===== PORTOFOLIO FEATURE (Phase 15A) =====
@@ -13939,6 +14687,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/position-sizing-calculator.js?v=20260906-e1"></script>
 <script src="/signal-gate-transparency.js?v=20260906-e3"></script>
 <script src="/number-flow-runtime.js?v=20260929-keyboard-v1"></script>
+<script src="/data-primitives-runtime.js?v=20261007-w3"></script>
 <script src="/analisis-saham-runtime.js?v=20261001-financial-v2"></script>
 <script src="/bandarmologi-runtime.js?v=20260928-spa1"></script>
 <script src="/portfolio-planner-v1.js?v=20260928-spa1"></script>

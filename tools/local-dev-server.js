@@ -611,7 +611,7 @@ const server = http.createServer(async (req, res) => {
     // BUG-RT-03: the client-controllable preview signals only count while the
     // development preview boundary is active; in production this is always false.
     const isPreview = PREVIEW_MOCKS_ENABLED && Boolean(
-      (req.headers.referer && req.headers.referer.includes('/preview')) ||
+      (req.headers.referer && (req.headers.referer.includes('/preview') || req.headers.referer.includes('preview=1'))) ||
       req.headers['x-autocuan-preview'] === '1' ||
       parsedUrl.searchParams.get('preview') === '1'
     );
@@ -864,7 +864,221 @@ const server = http.createServer(async (req, res) => {
           return res.status(200).json(MOCK_IHSG);
         }
         if (action === 'daily-market-context-list') {
-          return res.status(200).json({ success: true, tickers: ['BBCA', 'MEDC', 'BRPT', 'BMRI', 'ASII'] });
+          const universeRows = [
+            { ticker: 'BBCA', company_name: 'Bank Central Asia Tbk', last_price: 10450, change_pct: 2.45, free_float_pct: 41.82, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Free float aman di atas 15%, HSC clear.', as_of_trade_date: '2026-10-07' },
+            { ticker: 'BREN', company_name: 'Barito Renewables Energy Tbk', last_price: 6850, change_pct: -1.25, free_float_pct: 11.75, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: true, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'HIGH_SHAREHOLDING_CONCENTRATION', market_structure_guard: 'CAUTION', market_structure_note: 'HSC terverifikasi aktif; free float di bawah ambang referensi 15%.', as_of_trade_date: '2026-10-07' },
+            { ticker: 'CUAN', company_name: 'Petrindo Jaya Kreasi Tbk', last_price: 7200, change_pct: 3.60, free_float_pct: 14.10, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'LOW_FREE_FLOAT', market_structure_guard: 'CAUTION', market_structure_note: 'Free float di bawah 15%; tidak flagged HSC.', as_of_trade_date: '2026-10-07' },
+            { ticker: 'AMMN', company_name: 'Amman Mineral Internasional Tbk', last_price: 8900, change_pct: 0.56, free_float_pct: 17.30, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: true, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'HIGH_SHAREHOLDING_CONCENTRATION', market_structure_guard: 'CAUTION', market_structure_note: 'HSC terverifikasi aktif oleh bursa.', as_of_trade_date: '2026-10-07' },
+            { ticker: 'BMRI', company_name: 'Bank Mandiri (Persero) Tbk', last_price: 6850, change_pct: -0.72, free_float_pct: 39.95, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Struktur kepemilikan terverifikasi normal.', as_of_trade_date: '2026-10-07' },
+            { ticker: 'GOTO', company_name: 'GoTo Gojek Tokopedia Tbk', last_price: 65, change_pct: 1.56, free_float_pct: 78.40, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Free float sangat tinggi, tidak flagged HSC.', as_of_trade_date: '2026-10-07' },
+            { ticker: 'DATA', company_name: 'Duta Pertiwi Nusantara Tbk', last_price: 450, change_pct: 0.00, free_float_pct: null, free_float_source: null, free_float_as_of: null, hsc_flag: null, hsc_source: null, hsc_as_of: null, market_structure_status: 'DATA_INCOMPLETE', market_structure_guard: 'UNKNOWN', market_structure_note: 'Data struktur kepemilikan belum lengkap.', as_of_trade_date: '2026-10-07' },
+            { ticker: 'MEDC', company_name: 'Medco Energi Internasional Tbk', last_price: 1420, change_pct: 1.43, free_float_pct: 48.20, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Struktur kepemilikan terverifikasi normal.', as_of_trade_date: '2026-10-07' },
+            { ticker: 'BRPT', company_name: 'Barito Pacific Tbk', last_price: 1050, change_pct: 0.96, free_float_pct: 28.50, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Struktur kepemilikan terverifikasi normal.', as_of_trade_date: '2026-10-07' },
+            { ticker: 'TLKM', company_name: 'Telkom Indonesia Tbk', last_price: 3150, change_pct: -0.63, free_float_pct: 47.90, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Struktur kepemilikan terverifikasi normal.', as_of_trade_date: '2026-10-07' },
+            { ticker: 'TPIA', company_name: 'Chandra Asri Pacific Tbk', last_price: 8800, change_pct: -0.28, free_float_pct: 7.80, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: true, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'HIGH_SHAREHOLDING_CONCENTRATION', market_structure_guard: 'CAUTION', market_structure_note: 'Free float sangat rendah di bawah 10% dan HSC aktif.', as_of_trade_date: '2026-10-07' },
+            { ticker: 'WMUU', company_name: 'Widodo Makmur Unggas Tbk', last_price: 50, change_pct: 0.00, free_float_pct: null, free_float_source: null, free_float_as_of: null, hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'DATA_INCOMPLETE', market_structure_guard: 'UNKNOWN', market_structure_note: 'Free float belum tersedia.', as_of_trade_date: '2026-10-07' }
+          ];
+          return res.status(200).json({
+            success: true,
+            count: universeRows.length,
+            universe: universeRows,
+            rows: universeRows,
+            data: universeRows,
+            as_of: '2026-10-07',
+            updated_at: '2026-10-07T15:45:00.000Z'
+          });
+        }
+        if (action === 'daily-market-context') {
+          if (ticker === 'XYZW' || ticker === 'EMPTY') {
+            return res.status(200).json({
+              success: true,
+              context: {
+                ticker: ticker,
+                as_of: '2026-10-07',
+                fundamental: {
+                  pbv: null,
+                  pbv_as_of_price: null,
+                  book_value_per_share: null,
+                  shares_outstanding: null,
+                  market_cap: null,
+                  market_cap_as_of: null,
+                  market_cap_source: null,
+                  fundamental_period: null,
+                  fundamental_source: null,
+                  fundamental_updated_at: null
+                },
+                market_structure: {
+                  free_float_pct: null,
+                  free_float_source: null,
+                  free_float_as_of: null,
+                  free_float_available: false,
+                  hsc_flag: null,
+                  hsc_source: null,
+                  hsc_as_of: null,
+                  hsc_available: false,
+                  low_free_float_reference_pct: 15,
+                  low_free_float_risk: null,
+                  regulatory_compliance_status: 'NOT_EVALUATED',
+                  market_structure_status: 'DATA_INCOMPLETE',
+                  market_structure_guard: 'UNKNOWN',
+                  market_structure_note: 'Data struktur kepemilikan belum tersedia.',
+                  data_available: false
+                }
+              }
+            });
+          }
+          const isBbca = ticker === 'BBCA' || !ticker;
+          const isBmri = ticker === 'BMRI';
+
+          const bbcaStatements = {
+            quarterly: {
+              periods: ['Q2 2026', 'Q1 2026', 'Q4 2025', 'Q3 2025', 'Q2 2025', 'Q1 2025'],
+              income_statement: {
+                periods: ['Q2 2026', 'Q1 2026', 'Q4 2025', 'Q3 2025', 'Q2 2025', 'Q1 2025'],
+                rows: [
+                  { type: 'group', label: 'Pendapatan & Beban Operasional' },
+                  { type: 'item', label: 'Pendapatan Bunga Bersih', values: [19520, 18910, 19240, 18450, 17820, 17150], unit: 'idr' },
+                  { type: 'item', label: 'Pendapatan Operasional Lainnya', values: [6120, 5840, 6310, 5720, 5490, 5210], unit: 'idr' },
+                  { type: 'item', label: 'Beban Operasional Lainnya', values: [-9850, -9420, -10150, -9230, -8950, -8640], unit: 'idr' },
+                  { type: 'total', label: 'Laba Operasional', values: [15790, 15330, 15400, 14940, 14360, 13720], unit: 'idr' },
+                  { type: 'group', label: 'Laba Bersih & Pajak' },
+                  { type: 'item', label: 'Beban Pajak Penghasilan', values: [-3120, -3050, -3080, -2990, -2870, -2740], unit: 'idr' },
+                  { type: 'total', label: 'Laba Bersih Periode Berjalan', values: [12670, 12280, 12320, 11950, 11490, 10980], unit: 'idr' },
+                  { type: 'item', label: 'Laba per Saham (EPS) - IDR', values: [102.78, 99.61, 99.94, 96.94, 93.21, 89.07], unit: 'number' }
+                ]
+              },
+              balance_sheet: {
+                periods: ['Q2 2026', 'Q1 2026', 'Q4 2025', 'Q3 2025', 'Q2 2025', 'Q1 2025'],
+                rows: [
+                  { type: 'group', label: 'Aset' },
+                  { type: 'item', label: 'Kas & Setara Kas', values: [38520, 36410, 39120, 35890, 34210, 32950], unit: 'idr' },
+                  { type: 'item', label: 'Penempatan pada Bank Indonesia', values: [112450, 108320, 115200, 104500, 99800, 95200], unit: 'idr' },
+                  { type: 'item', label: 'Kredit yang Diberikan (Gross)', values: [865400, 842100, 831200, 805400, 782100, 755300], unit: 'idr' },
+                  { type: 'total', label: 'Total Aset', values: [1448200, 1412500, 1408100, 1375400, 1342100, 1305600], unit: 'idr' },
+                  { type: 'group', label: 'Liabilitas' },
+                  { type: 'item', label: 'Dana Pihak Ketiga (CASA)', values: [952400, 931200, 928500, 908100, 885200, 862400], unit: 'idr' },
+                  { type: 'item', label: 'Deposito Berjangka', values: [215600, 212400, 210800, 206500, 201200, 198400], unit: 'idr' },
+                  { type: 'total', label: 'Total Liabilitas', values: [1180900, 1151200, 1147600, 1121500, 1092400, 1062100], unit: 'idr' },
+                  { type: 'group', label: 'Ekuitas' },
+                  { type: 'item', label: 'Modal Saham', values: [1541, 1541, 1541, 1541, 1541, 1541], unit: 'idr' },
+                  { type: 'item', label: 'Saldo Laba Ditahan', values: [265759, 259759, 258959, 252359, 248159, 242059], unit: 'idr' },
+                  { type: 'total', label: 'Total Ekuitas', values: [267300, 261300, 260500, 253900, 249700, 243500], unit: 'idr' }
+                ]
+              },
+              cash_flow: {
+                periods: ['Q2 2026', 'Q1 2026', 'Q4 2025', 'Q3 2025', 'Q2 2025', 'Q1 2025'],
+                rows: [
+                  { type: 'group', label: 'Arus Kas Operasi' },
+                  { type: 'item', label: 'Penerimaan Pendapatan Bunga', values: [22450, 21850, 22100, 21200, 20500, 19800], unit: 'idr' },
+                  { type: 'item', label: 'Pembayaran Beban Operasional', values: [-8420, -8120, -8650, -7950, -7650, -7350], unit: 'idr' },
+                  { type: 'total', label: 'Arus Kas Bersih Aktivitas Operasi', values: [18450, 17820, 18120, 17150, 16420, 15650], unit: 'idr' },
+                  { type: 'group', label: 'Arus Kas Investasi & Pendanaan' },
+                  { type: 'item', label: 'Belanja Modal (Capex)', values: [-1250, -1180, -1450, -1120, -980, -920], unit: 'idr' },
+                  { type: 'item', label: 'Pembayaran Dividen Kas', values: [-6850, 0, -5420, 0, -6150, 0], unit: 'idr' },
+                  { type: 'total', label: 'Kenaikan / (Penurunan) Kas Bersih', values: [10350, 16640, 11250, 16030, 9290, 14730], unit: 'idr' }
+                ]
+              },
+              ratios: {
+                periods: ['Q2 2026', 'Q1 2026', 'Q4 2025', 'Q3 2025', 'Q2 2025', 'Q1 2025'],
+                rows: [
+                  { type: 'group', label: 'Valuasi & Profitabilitas' },
+                  { type: 'item', label: 'Price to Earnings (PER)', values: [25.42, 26.22, 26.14, 26.95, 28.02, 29.32], unit: 'x' },
+                  { type: 'item', label: 'Price to Book Value (PBV)', values: [4.82, 4.93, 4.94, 5.07, 5.16, 5.29], unit: 'x' },
+                  { type: 'item', label: 'Return on Equity (ROE)', values: [18.96, 18.80, 18.91, 18.82, 18.41, 18.03], unit: 'pct' },
+                  { type: 'item', label: 'Return on Assets (ROA)', values: [3.50, 3.48, 3.50, 3.48, 3.42, 3.36], unit: 'pct' },
+                  { type: 'item', label: 'Net Interest Margin (NIM)', values: [5.62, 5.58, 5.55, 5.50, 5.48, 5.42], unit: 'pct' },
+                  { type: 'item', label: 'Non-Performing Loan (NPL Gross)', values: [1.90, 1.92, 1.90, 1.95, 1.98, 2.02], unit: 'pct' },
+                  { type: 'item', label: 'Capital Adequacy Ratio (CAR)', values: [29.10, 28.85, 29.40, 28.60, 28.20, 27.90], unit: 'pct' }
+                ]
+              }
+            },
+            annual: {
+              periods: ['FY 2025', 'FY 2024', 'FY 2023', 'FY 2022'],
+              income_statement: {
+                periods: ['FY 2025', 'FY 2024', 'FY 2023', 'FY 2022'],
+                rows: [
+                  { type: 'group', label: 'Pendapatan & Beban Operasional' },
+                  { type: 'item', label: 'Pendapatan Bunga Bersih', values: [75820, 69540, 64210, 58420], unit: 'idr' },
+                  { type: 'item', label: 'Pendapatan Operasional Lainnya', values: [23850, 21450, 19820, 17950], unit: 'idr' },
+                  { type: 'item', label: 'Beban Operasional Lainnya', values: [-38450, -35210, -32450, -29850], unit: 'idr' },
+                  { type: 'total', label: 'Laba Operasional', values: [61220, 55780, 51580, 46520], unit: 'idr' },
+                  { type: 'group', label: 'Laba Bersih & Pajak' },
+                  { type: 'item', label: 'Beban Pajak Penghasilan', values: [-12410, -11250, -10420, -9450], unit: 'idr' },
+                  { type: 'total', label: 'Laba Bersih Tahun Berjalan', values: [48810, 44530, 41160, 37070], unit: 'idr' },
+                  { type: 'item', label: 'Laba per Saham (EPS) - IDR', values: [396.01, 361.27, 333.92, 300.74], unit: 'number' }
+                ]
+              },
+              balance_sheet: {
+                periods: ['FY 2025', 'FY 2024', 'FY 2023', 'FY 2022'],
+                rows: [
+                  { type: 'group', label: 'Aset' },
+                  { type: 'item', label: 'Total Aset', values: [1408100, 1342100, 1250800, 1165400], unit: 'idr' },
+                  { type: 'group', label: 'Liabilitas' },
+                  { type: 'item', label: 'Total Liabilitas', values: [1147600, 1092400, 1018500, 948200], unit: 'idr' },
+                  { type: 'group', label: 'Ekuitas' },
+                  { type: 'item', label: 'Total Ekuitas', values: [260500, 249700, 232300, 217200], unit: 'idr' }
+                ]
+              },
+              cash_flow: {
+                periods: ['FY 2025', 'FY 2024', 'FY 2023', 'FY 2022'],
+                rows: [
+                  { type: 'group', label: 'Arus Kas' },
+                  { type: 'item', label: 'Arus Kas Bersih Aktivitas Operasi', values: [71250, 65420, 59850, 54210], unit: 'idr' },
+                  { type: 'item', label: 'Arus Kas Bersih Aktivitas Investasi', values: [-5120, -4850, -4320, -3950], unit: 'idr' },
+                  { type: 'item', label: 'Arus Kas Bersih Aktivitas Pendanaan', values: [-24500, -22100, -19800, -17500], unit: 'idr' },
+                  { type: 'total', label: 'Kenaikan Bersih Kas', values: [41630, 38470, 35730, 32760], unit: 'idr' }
+                ]
+              },
+              ratios: {
+                periods: ['FY 2025', 'FY 2024', 'FY 2023', 'FY 2022'],
+                rows: [
+                  { type: 'group', label: 'Rasio Tahunan' },
+                  { type: 'item', label: 'Price to Earnings (PER)', values: [26.39, 28.92, 27.85, 26.50], unit: 'x' },
+                  { type: 'item', label: 'Price to Book Value (PBV)', values: [4.94, 5.16, 4.93, 4.52], unit: 'x' },
+                  { type: 'item', label: 'Return on Equity (ROE)', values: [18.74, 17.83, 17.72, 17.07], unit: 'pct' },
+                  { type: 'item', label: 'Return on Assets (ROA)', values: [3.47, 3.32, 3.29, 3.18], unit: 'pct' }
+                ]
+              }
+            }
+          };
+
+          return res.status(200).json({
+            success: true,
+            context: {
+              ticker: ticker || 'BBCA',
+              as_of: '2026-10-07',
+              fundamental: {
+                pbv: isBbca ? 4.82 : 1.35,
+                pbv_as_of_price: isBbca ? 10450 : 1420,
+                book_value_per_share: isBbca ? 2168.05 : 1051.85,
+                shares_outstanding: isBbca ? 123275050000 : 25139000000,
+                market_cap: isBbca ? 1288224272500000 : 35697380000000,
+                market_cap_as_of: '2026-10-07',
+                market_cap_source: 'IDX Trade Data',
+                fundamental_period: 'Q2 2026',
+                fundamental_source: 'IDX Financial Statement',
+                fundamental_updated_at: '2026-09-15 14:30:00 WIB'
+              },
+              financial_statements: isBbca ? bbcaStatements : null,
+              market_structure: {
+                free_float_pct: isBbca ? 41.82 : 48.20,
+                free_float_source: 'IDX ownership',
+                free_float_as_of: '2026-08-31',
+                free_float_available: true,
+                hsc_flag: false,
+                hsc_source: 'IDX HSC',
+                hsc_as_of: '2026-09-01',
+                hsc_available: true,
+                low_free_float_reference_pct: 15,
+                low_free_float_risk: false,
+                regulatory_compliance_status: 'NOT_EVALUATED',
+                market_structure_status: 'STRUCTURE_VERIFIED',
+                market_structure_guard: 'NORMAL',
+                market_structure_note: 'Free float terverifikasi aman di atas referensi 15%; snapshot HSC tidak flagged.',
+                data_available: true
+              }
+            }
+          });
         }
         if (ticker) {
           const base = ticker === 'BBCA' ? 10250 : (ticker === 'MEDC' ? 1420 : (ticker === 'BRPT' ? 1050 : (ticker === 'BMRI' ? 6800 : 5100)));
@@ -925,6 +1139,72 @@ const server = http.createServer(async (req, res) => {
               { name: 'PT Dwimuria Investama Andalan', shares: '67.729.700.000', pct: 54.94, change: 0, date: '2026-09-01' }
             ]
           });
+        }
+        if (req.query.group) {
+          const rawCode = String(req.query.group).toUpperCase().trim();
+          const normCode = rawCode.startsWith('KONGLO_') ? rawCode : ('KONGLO_' + rawCode);
+          const grp = (MOCK_SECTORS.groups || []).find(g => g.group_code === rawCode || g.group_code === normCode || g.group_code === ('SEKTOR_' + rawCode)) || {
+            group_code: rawCode,
+            group_name: 'Konglomerasi ' + rawCode,
+            stock_count: 5,
+            member_count: 5,
+            avg_change_pct: 2.5,
+            avg_volume_ratio: 1.8
+          };
+          const MOCK_GROUP_MEMBERS = {
+            'KONGLO_BARITO': [
+              { ticker: 'BREN', stock_name: 'Barito Renewables Energy Tbk', last_price: 6800, change_pct: 5.88, volume_today: 14200000, volume_ratio_30d: 2.4, member_type: 'ANCHOR' },
+              { ticker: 'BRPT', stock_name: 'Barito Pacific Tbk', last_price: 1120, change_pct: 3.22, volume_today: 35000000, volume_ratio_30d: 1.7, member_type: 'MEMBER' },
+              { ticker: 'CUAN', stock_name: 'Petrindo Jaya Kreasi Tbk', last_price: 7450, change_pct: 2.15, volume_today: 8900000, volume_ratio_30d: 1.5, member_type: 'MEMBER' },
+              { ticker: 'TPIA', stock_name: 'Chandra Asri Pacific Tbk', last_price: 8900, change_pct: 1.42, volume_today: 12000000, volume_ratio_30d: 1.2, member_type: 'MEMBER' },
+              { ticker: 'PTRO', stock_name: 'Petrosea Tbk', last_price: 13500, change_pct: -0.74, volume_today: 4500000, volume_ratio_30d: 0.9, member_type: 'MEMBER' }
+            ],
+            'KONGLO_SALIM': [
+              { ticker: 'ICBP', stock_name: 'Indofood CBP Sukses Makmur Tbk', last_price: 11450, change_pct: 2.23, volume_today: 9500000, volume_ratio_30d: 1.6, member_type: 'ANCHOR' },
+              { ticker: 'INDF', stock_name: 'Indofood Sukses Makmur Tbk', last_price: 6950, change_pct: 1.83, volume_today: 11200000, volume_ratio_30d: 1.4, member_type: 'ANCHOR' },
+              { ticker: 'AMMN', stock_name: 'Amman Mineral Internasional Tbk', last_price: 9800, change_pct: 3.43, volume_today: 28400000, volume_ratio_30d: 2.1, member_type: 'MEMBER' },
+              { ticker: 'MEDC', stock_name: 'Medco Energi Internasional Tbk', last_price: 1420, change_pct: 3.75, volume_today: 42100000, volume_ratio_30d: 2.5, member_type: 'MEMBER' },
+              { ticker: 'SIMP', stock_name: 'Salim Ivomas Pratama Tbk', last_price: 430, change_pct: 0.94, volume_today: 3800000, volume_ratio_30d: 1.1, member_type: 'MEMBER' },
+              { ticker: 'LSIP', stock_name: 'PP London Sumatra Indonesia Tbk', last_price: 1060, change_pct: 1.44, volume_today: 6700000, volume_ratio_30d: 1.3, member_type: 'MEMBER' },
+              { ticker: 'DCII', stock_name: 'DCI Indonesia Tbk', last_price: 43500, change_pct: 0.00, volume_today: 120000, volume_ratio_30d: 0.8, member_type: 'MEMBER' },
+              { ticker: 'FAST', stock_name: 'Fast Food Indonesia Tbk', last_price: 720, change_pct: -1.37, volume_today: 850000, volume_ratio_30d: 0.7, member_type: 'MEMBER' }
+            ],
+            'KONGLO_ASTRA': [
+              { ticker: 'ASII', stock_name: 'Astra International Tbk', last_price: 5200, change_pct: 2.85, volume_today: 48000000, volume_ratio_30d: 1.9, member_type: 'ANCHOR' },
+              { ticker: 'UNTR', stock_name: 'United Tractors Tbk', last_price: 27150, change_pct: 1.88, volume_today: 5600000, volume_ratio_30d: 1.4, member_type: 'MEMBER' },
+              { ticker: 'AALI', stock_name: 'Astra Agro Lestari Tbk', last_price: 6475, change_pct: 1.17, volume_today: 2300000, volume_ratio_30d: 1.0, member_type: 'MEMBER' },
+              { ticker: 'AUTO', stock_name: 'Astra Otoparts Tbk', last_price: 2180, change_pct: 1.40, volume_today: 4200000, volume_ratio_30d: 1.2, member_type: 'MEMBER' },
+              { ticker: 'ASGR', stock_name: 'Astra Graphia Tbk', last_price: 935, change_pct: 0.54, volume_today: 780000, volume_ratio_30d: 0.9, member_type: 'MEMBER' }
+            ],
+            'KONGLO_DJARUM': [
+              { ticker: 'BBCA', stock_name: 'Bank Central Asia Tbk', last_price: 10250, change_pct: 1.72, volume_today: 55000000, volume_ratio_30d: 1.8, member_type: 'ANCHOR' },
+              { ticker: 'TOWR', stock_name: 'Sarana Menara Nusantara Tbk', last_price: 840, change_pct: 1.20, volume_today: 18000000, volume_ratio_30d: 1.3, member_type: 'MEMBER' },
+              { ticker: 'BELI', stock_name: 'Global Digital Niaga Tbk', last_price: 450, change_pct: 0.45, volume_today: 12000000, volume_ratio_30d: 1.0, member_type: 'MEMBER' },
+              { ticker: 'RANC', stock_name: 'Supra Boga Lestari Tbk', last_price: 410, change_pct: 0.00, volume_today: 450000, volume_ratio_30d: 0.6, member_type: 'MEMBER' }
+            ],
+            'SEKTOR_ENERGY': [
+              { ticker: 'ADRO', stock_name: 'Adaro Energy Indonesia Tbk', last_price: 3650, change_pct: 4.65, volume_today: 62000000, volume_ratio_30d: 2.3, member_type: 'ANCHOR' },
+              { ticker: 'PTBA', stock_name: 'Bukit Asam Tbk', last_price: 2980, change_pct: 2.76, volume_today: 19000000, volume_ratio_30d: 1.6, member_type: 'MEMBER' },
+              { ticker: 'PGAS', stock_name: 'Perusahaan Gas Negara Tbk', last_price: 1580, change_pct: 1.94, volume_today: 42100000, volume_ratio_30d: 1.4, member_type: 'MEMBER' },
+              { ticker: 'ITMG', stock_name: 'Indo Tambangraya Megah Tbk', last_price: 26800, change_pct: 2.29, volume_today: 2800000, volume_ratio_30d: 1.5, member_type: 'MEMBER' },
+              { ticker: 'AKRA', stock_name: 'AKR Corporindo Tbk', last_price: 1610, change_pct: 1.26, volume_today: 15000000, volume_ratio_30d: 1.2, member_type: 'MEMBER' }
+            ],
+            'SEKTOR_FINANCE': [
+              { ticker: 'BBCA', stock_name: 'Bank Central Asia Tbk', last_price: 10250, change_pct: 1.72, volume_today: 55000000, volume_ratio_30d: 1.8, member_type: 'ANCHOR' },
+              { ticker: 'BBRI', stock_name: 'Bank Rakyat Indonesia Tbk', last_price: 5100, change_pct: 1.49, volume_today: 72000000, volume_ratio_30d: 1.6, member_type: 'ANCHOR' },
+              { ticker: 'BMRI', stock_name: 'Bank Mandiri Tbk', last_price: 6800, change_pct: 2.10, volume_today: 32100000, volume_ratio_30d: 1.5, member_type: 'MEMBER' },
+              { ticker: 'BBNI', stock_name: 'Bank Negara Indonesia Tbk', last_price: 5400, change_pct: 1.41, volume_today: 22000000, volume_ratio_30d: 1.3, member_type: 'MEMBER' },
+              { ticker: 'BRIS', stock_name: 'Bank Syariah Indonesia Tbk', last_price: 2850, change_pct: 2.52, volume_today: 18000000, volume_ratio_30d: 1.7, member_type: 'MEMBER' }
+            ]
+          };
+          const matchedKey = Object.keys(MOCK_GROUP_MEMBERS).find(k => k === rawCode || k === normCode || k.endsWith('_' + rawCode));
+          const mockMembers = matchedKey ? MOCK_GROUP_MEMBERS[matchedKey] : (MOCK_GROUP_MEMBERS['KONGLO_' + rawCode] || []);
+          const finalGrp = {
+            ...grp,
+            stock_count: mockMembers.length || grp.member_count || grp.stock_count || 0,
+            member_count: mockMembers.length || grp.member_count || grp.stock_count || 0
+          };
+          return res.status(200).json({ success: true, group: finalGrp, members: mockMembers });
         }
         if (!action || action === 'sectors') return res.status(200).json(MOCK_SECTORS);
       }

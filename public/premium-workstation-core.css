@@ -2642,11 +2642,14 @@ html.light footer {
 }
 
 /* Phase 4: Sektor Hot View Refinement (#page-sektor) */
-#sektorGroupsGrid {
+#sektorGroupsGrid:not(.hidden) {
   display: grid !important;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
   gap: 16px !important;
   align-items: stretch;
+}
+#sektorGroupsGrid.hidden {
+  display: none !important;
 }
 
 .sektor-group-card {

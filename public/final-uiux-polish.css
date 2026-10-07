@@ -78,22 +78,20 @@ html.light body {
   --grid-line: rgba(18, 35, 29, .07);
   --grid-header-bg: #f8faf9;
 
-  --ac-bg: #f3f5f4;
-  --ac-surface-1: #ffffff;
-  --ac-surface-2: #fbfcfb;
-  --ac-surface-3: #f5f7f6;
-  --ac-line: rgba(18, 35, 29, .11);
-  --ac-line-strong: rgba(18, 35, 29, .17);
-  --ac-hairline: rgba(18, 35, 29, .08);
-  --ac-text: #17211e;
-  --ac-text-muted: #5f6d67;
-  --ac-text-dim: #84908b;
-  --ac-accent: #0f7458;
-  --ac-accent-soft: rgba(15, 116, 88, .08);
-  --ac-accent-line: rgba(15, 116, 88, .24);
-  --ac-shadow-1: 0 1px 2px rgba(18,35,29,.05), 0 8px 22px rgba(18,35,29,.045);
-  --ac-shadow-2: 0 2px 5px rgba(18,35,29,.06), 0 18px 48px rgba(18,35,29,.08);
-  --ac-edge: inset 0 1px 0 rgba(255,255,255,.86);
+  /* Compatibility aliases: defer to canonical --ac-* authority in ui-theme.css */
+  --ac-bg: var(--ac-canvas);
+  --ac-surface-1: var(--ac-surface);
+  --ac-surface-2: var(--ac-surface-subtle);
+  --ac-surface-3: var(--ac-surface-muted);
+  --ac-line: var(--ac-border);
+  --ac-line-strong: var(--ac-border-strong);
+  --ac-hairline: var(--ac-border-subtle);
+  --ac-text-dim: var(--ac-text-secondary);
+  --ac-accent-soft: var(--ac-brand-soft);
+  --ac-accent-line: var(--ac-brand-border);
+  --ac-shadow-1: var(--ac-shadow-sm);
+  --ac-shadow-2: var(--ac-shadow-md);
+  --ac-edge: inset 0 1px 0 rgba(255, 255, 255, .86);
 }
 
 html.light body {

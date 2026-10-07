@@ -23,9 +23,9 @@ test('financial and market structure are first-class research destinations', () 
 
 test('financial panel exposes only supported provenance-aware fields', () => {
   assert.match(partial, /PBV/);
-  assert.match(partial, /Book Value \/ Share/);
+  assert.match(partial, /Book Value \/ Share|Nilai Buku \/ Saham/);
   assert.match(partial, /Saham Beredar/);
-  assert.match(partial, /Market Cap/);
+  assert.match(partial, /Market Cap|Kapitalisasi Pasar/);
   assert.match(partial, /Sumber Fundamental/);
   assert.match(partial, /Sumber Market Cap/);
   assert.match(builder, /shares_outstanding/);
@@ -43,7 +43,7 @@ test('market structure panel preserves risk-context semantics', () => {
 });
 
 test('missing market cap and shares stay explicitly unavailable rather than synthesized', () => {
-  assert.match(runtime, /researchHasNumber\(f\.market_cap\) \? researchIdr\(f\.market_cap\) : '—'/);
-  assert.match(runtime, /researchHasNumber\(f\.shares_outstanding\) \? researchCompact\(f\.shares_outstanding\) : '—'/);
+  assert.match(runtime, /formatIndonesianMarketCap\(f\.market_cap\)|researchHasNumber\(f\.market_cap\)/);
+  assert.match(runtime, /formatIndonesianSharesCount\(f\.shares_outstanding\)|researchCompact\(f\.shares_outstanding\)/);
   assert.doesNotMatch(runtime, /shares_outstanding\s*\*\s*.*pbv_as_of_price|pbv_as_of_price\s*\*\s*.*shares_outstanding/);
 });

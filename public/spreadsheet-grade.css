@@ -220,7 +220,8 @@ body::before {
 #trTableBody td[class*="text-right"],
 .broker-summary-table td[class*="text-right"] {
   font-family: var(--ac-font-mono, ui-monospace, monospace);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
   text-align: right;
   white-space: nowrap;
 }
