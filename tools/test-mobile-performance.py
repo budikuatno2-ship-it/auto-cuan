@@ -29,7 +29,11 @@ with sync_playwright() as pw:
         page.add_script_tag(content=viewport)
         page.add_script_tag(content=(ROOT/'public/viewport-runtime.js').read_text())
         page.add_script_tag(content='\n'.join(landing[k] for k in ['mock','handlers','theme','sidebar','manager']))
-        page.evaluate('()=>{window.__logins=0;window.doLogin=()=>__logins++;}')
+        # This fixture exercises VisualViewport/IME geometry, not registration
+        # eligibility. openRegisterModal() legitimately invokes the production
+        # consent synchronizer, so provide that unrelated dependency explicitly
+        # instead of letting the keyboard harness crash before its assertions.
+        page.evaluate('()=>{window.syncRegistrationConsent=()=>{};window.__logins=0;window.doLogin=()=>__logins++;}')
         for color in ['light','dark']:
             page.evaluate('(t)=>applyAppTheme(t)',color)
             for width in [320,390,768]:
