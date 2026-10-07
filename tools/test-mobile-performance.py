@@ -57,6 +57,17 @@ with sync_playwright() as pw:
         field.dispatch_event('compositionend')
         field.dispatch_event('keydown',{'key':'Enter','code':'Enter','bubbles':True,'keyCode':13,'which':13})
         check('Ordinary Enter submits exactly once',page.evaluate('__logins===1'))
+        # Synthetic keydown above isolates the IME guard. Native Enter also
+        # triggers implicit form submission; exercise the real login busy guard
+        # and count requests, rather than calls to a synchronous fixture stub.
+        page.add_script_tag(content=landing['function']('doLogin'))
+        page.evaluate("()=>{window.clearLegacyDeviceBlock=()=>{};window.hashPassword=async()=> 'fixture-hash';window.getOrCreateDeviceId=()=> 'fixture-device';window.__nativeLoginRequests=0;window.fetch=()=>{__nativeLoginRequests++;return new Promise(resolve=>{window.__finishNativeLogin=()=>resolve({json:async()=>({success:false,error:'Fixture denial'})})})}}")
+        page.locator('#loginUsername').fill('local-test')
+        field.fill('fixture-password');field.focus();field.press('Enter')
+        page.wait_for_function('__nativeLoginRequests===1&&doLogin._busy===true')
+        check('Native Enter after composition sends exactly one login request',page.evaluate('__nativeLoginRequests===1'))
+        page.evaluate('__finishNativeLogin()')
+        page.wait_for_function('doLogin._busy===false')
         geometry(page,height=330,scale=2)
         check('Pinch zoom is not treated as a keyboard',page.evaluate('!AutoCuanViewport.snapshot().keyboard'))
         geometry(page,height=330,scale=1)
