@@ -82,8 +82,13 @@ with sync_playwright() as pw:
         check('Mobile navigation opens',page.locator('#landingMenu').is_visible())
         page.keyboard.press('Escape')
         check('Mobile Escape closes and restores trigger',not page.locator('#landingMenu').is_visible() and page.evaluate("document.activeElement.id==='landingMenuToggle'"))
-        page.locator('#landingMenuToggle').click();page.locator('#landingMenu a').first.click()
-        check('Anchor closes menu and focuses destination',not page.locator('#landingMenu').is_visible() and page.evaluate("document.activeElement.id==='landingFeatures'"))
+        page.locator('#landingMenuToggle').click()
+        first_anchor=page.locator('#landingMenu a').first
+        expected_target=(first_anchor.get_attribute('href') or '').lstrip('#')
+        first_anchor.click()
+        check('Anchor closes menu and focuses its declared destination',
+              not page.locator('#landingMenu').is_visible()
+              and page.evaluate("(id)=>document.activeElement&&document.activeElement.id===id",expected_target))
         page.evaluate('window.scrollTo(0,0)');page.wait_for_timeout(500)
         page.locator('.landing-hero .landing-btn-primary').click();page.wait_for_timeout(25)
         check('Auth choice focuses inside and locks page',page.evaluate("document.getElementById('authChoiceModal').contains(document.activeElement)&&document.getElementById('landingPage').inert&&document.documentElement.classList.contains('auth-dialog-open')"))
