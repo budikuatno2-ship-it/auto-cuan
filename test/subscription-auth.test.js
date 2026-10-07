@@ -89,3 +89,31 @@ test('subscription safety invariants retain 12 API files and a guarded delete fl
     .map((name) => fs.readFileSync(path.join(ROOT, 'api', name), 'utf8')).join('\n');
   assert.doesNotMatch(others, /action\s*===\s*['"]delete|action\s*:\s*['"]delete/i);
 });
+
+
+test('initial-trial status ignores bonus rows, preserves row dates, and reports combined expiry', async () => {
+  const names=['SESSION_SECRET','SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','SUBSCRIPTION_FEATURE_ENABLED'];
+  const old=Object.fromEntries(names.map(n=>[n,process.env[n]]));
+  Object.assign(process.env,{SESSION_SECRET:'phase-1-test-secret',SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'fixture-only',SUBSCRIPTION_FEATURE_ENABLED:'true'});
+  const uid='11111111-1111-4111-8111-111111111111';
+  const now=Date.now(), day=86400000, iso=n=>new Date(now+n*day).toISOString();
+  const initial={source:'trial',trial_kind:'initial',status:'active',starts_at:iso(-1),expires_at:iso(13),lifetime:false};
+  const bonus={source:'trial',trial_kind:'google_link_bonus',status:'active',starts_at:iso(13),expires_at:iso(20),lifetime:false};
+  async function status(rows,mode) {
+    const selections=[];
+    const db={from(table){let columns='';const q={select(s){columns=s;selections.push(s);return q;},eq(){return q;},limit:async()=>({data:[],error:null}),maybeSingle:async()=>({data:table==='app_users'?{id:uid,username:'alice',is_approved:true,is_blocked:false}:{link_state:'linked'},error:null}),then(resolve,reject){const error=mode==='unavailable'?{code:'XX000',message:'unavailable'}:mode==='legacy'&&columns.includes('trial_kind')?{code:'42703',message:'column trial_kind does not exist'}:null;return Promise.resolve({error,data:error?null:rows.map(row=>Object.fromEntries(columns.split(',').map(k=>[k,row[k]])))}).then(resolve,reject)}};return q;}};
+    const handler=loadHandler(()=>db),res=response();await handler(request(token(uid,'alice'),{method:'POST',query:{action:'subscription-trial-status'},body:{action:'subscription-trial-status'}}),res);return {res,selections};
+  }
+  try {
+    const onlyBonus={...bonus,starts_at:iso(-1),expires_at:iso(6)};
+    let {res,selections}=await status([onlyBonus]);
+    assert.equal(res.statusCode,200);assert.equal(res.body.available,true);assert.equal(res.body.consumed,false);assert.equal(res.body.active,false);assert.equal(res.body.starts_at,null);assert.equal(res.body.duration_days,14);assert.equal(res.body.effective_expires_at,onlyBonus.expires_at);assert.ok(selections.some(s=>s.includes('trial_kind')));
+    for(const rows of [[bonus,initial],[initial,bonus]]) {
+      ({res}=await status(rows));assert.equal(res.body.available,false);assert.equal(res.body.consumed,true);assert.equal(res.body.duration_days,14);assert.equal(res.body.starts_at,initial.starts_at);assert.equal(res.body.expires_at,initial.expires_at);assert.equal(res.body.effective_expires_at,bonus.expires_at);
+    }
+    const legacy={...initial,trial_kind:'legacy_initial',expires_at:iso(9)};
+    ({res}=await status([bonus,legacy]));assert.equal(res.body.duration_days,10);assert.equal(res.body.expires_at,legacy.expires_at);
+    ({res}=await status([{...legacy,trial_kind:undefined}],'legacy'));assert.equal(res.statusCode,200);assert.equal(res.body.consumed,true);assert.equal(res.body.duration_days,10);
+    ({res}=await status([initial],'unavailable'));assert.equal(res.statusCode,503);assert.equal(res.body.available,undefined);
+  } finally {for(const n of names)if(old[n]===undefined)delete process.env[n];else process.env[n]=old[n];}
+});

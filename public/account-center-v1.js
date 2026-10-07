@@ -350,9 +350,10 @@
     if (!result.ok || !result.data.success) { target.textContent = result.data.error || 'Status trial belum tersedia.'; return; }
     var d = result.data;
     if (d.admin) { target.innerHTML = 'Akun administrator tidak menggunakan trial.'; return; }
-    if (d.active) { target.innerHTML = '<strong>Trial aktif.</strong> Berlaku sampai ' + esc(dateId(d.expires_at,true)) + '.'; return; }
-    if (d.consumed) { target.innerHTML = 'Trial 10 hari sudah pernah digunakan.'; return; }
-    target.innerHTML = '<strong>Trial 10 hari tersedia.</strong><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px"><button type="button" id="acTrialActivate" class="ac-btn ac-btn-primary">Aktifkan trial</button>' + (d.telegram_link_required ? '<button type="button" id="acSubscriptionTelegram" class="ac-btn">Hubungkan Telegram</button>' : '') + '</div>';
+    var trialDays = Number(d.duration_days) || 14;
+    if (d.active) { target.innerHTML = '<strong>Trial aktif.</strong> Berlaku sampai ' + esc(dateId(d.effective_expires_at || d.expires_at,true)) + '.'; return; }
+    if (d.consumed) { target.innerHTML = 'Trial ' + trialDays + ' hari sudah pernah digunakan.'; return; }
+    target.innerHTML = '<strong>Trial ' + trialDays + ' hari tersedia.</strong><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px"><button type="button" id="acTrialActivate" class="ac-btn ac-btn-primary">Aktifkan trial</button>' + (d.telegram_link_required ? '<button type="button" id="acSubscriptionTelegram" class="ac-btn">Hubungkan Telegram</button>' : '') + '</div>';
     var tg = byId('acSubscriptionTelegram'); if (tg) tg.addEventListener('click', linkSubscriptionTelegram);
     var activate = byId('acTrialActivate'); if (activate) activate.addEventListener('click', activateTrial);
   }

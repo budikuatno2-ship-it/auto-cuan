@@ -123,3 +123,16 @@ test("admin bot command reference is gated to p.is_admin and never invented from
   assert.doesNotMatch(runtimeSource, /AR-XXXX/);
   assert.match(cssSource, /\.ac-admin-cmd-list\s*\{/);
 });
+
+
+test('trial display offers fourteen-day activation for bonus-only status and uses combined expiry', async () => {
+  const vm=require('node:vm'),source=require('node:fs').readFileSync(require('node:path').join(__dirname,'../public/account-center-v1.js'),'utf8');
+  const body=source.slice(source.indexOf('  async function loadTrialStatus()'),source.indexOf('  async function linkSubscriptionTelegram()'));
+  for(const data of [{available:true,consumed:false,active:false,duration_days:14},{active:true,expires_at:'initial-expiry',effective_expires_at:'combined-expiry'},{consumed:true,duration_days:10}]) {
+    const target={innerHTML:''};let wired=false;
+    await vm.runInNewContext('(async()=>{'+body+'await loadTrialStatus();})()', {byId:id=>id==='acTrialStatus'?target:id==='acTrialActivate'?{addEventListener:()=>{wired=true}}:null,request:async()=>({ok:true,data:{success:true,...data}}),esc:String,dateId:String,activateTrial(){},linkSubscriptionTelegram(){}});
+    if(data.available){assert.match(target.innerHTML,/Trial 14 hari tersedia/);assert.equal(wired,true)}
+    if(data.active){assert.match(target.innerHTML,/combined-expiry/);assert.doesNotMatch(target.innerHTML,/initial-expiry/)}
+    if(data.consumed)assert.match(target.innerHTML,/Trial 10 hari sudah pernah digunakan/);
+  }
+});

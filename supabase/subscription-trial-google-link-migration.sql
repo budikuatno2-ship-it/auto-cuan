@@ -232,7 +232,14 @@ BEGIN
   IF FOUND THEN
     IF e.user_id <> p_user_id THEN RAISE EXCEPTION 'activation rejected'; END IF;
     RETURN jsonb_build_object(
-      'active', e.status = 'active' AND e.starts_at <= now() AND now() < e.expires_at,
+      'active', e.status = 'active' AND now() < e.expires_at AND (
+        e.starts_at <= now() OR EXISTS (
+          SELECT 1 FROM public.user_entitlements bonus
+          WHERE bonus.user_id = e.user_id AND bonus.source = 'trial'
+            AND bonus.trial_kind = 'google_link_bonus' AND bonus.status = 'active'
+            AND bonus.starts_at <= now() AND now() < bonus.expires_at
+        )
+      ),
       'starts_at', e.starts_at,
       'expires_at', e.expires_at,
       'duration_days', ROUND(EXTRACT(EPOCH FROM (e.expires_at - e.starts_at)) / 86400)::integer
@@ -255,7 +262,13 @@ BEGIN
     RAISE EXCEPTION 'trial consumed';
   END IF;
 
-  v_start := p_activation_time;
+  -- Google linking can precede initial activation. Preserve the remaining
+  -- bonus first, then grant fourteen full days without overlapping it.
+  SELECT expires_at INTO v_start FROM public.user_entitlements
+    WHERE user_id = u.id AND source = 'trial' AND trial_kind = 'google_link_bonus'
+      AND status = 'active' AND starts_at <= p_activation_time AND expires_at > p_activation_time
+    ORDER BY expires_at DESC LIMIT 1 FOR UPDATE;
+  IF NOT FOUND THEN v_start := p_activation_time; END IF;
   v_expiry := v_start + interval '14 days';
 
   INSERT INTO public.user_entitlements(user_id, source, trial_kind, status, starts_at, expires_at, lifetime, activation_idempotency_key)

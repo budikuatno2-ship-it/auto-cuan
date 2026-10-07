@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { createSessionToken, buildSessionCookie, buildClearCookie, buildClearOnboardingCookie, isSameOrigin } = require('../lib/admin-session');
 const { requireUserSession, requireNonBlockedUser, requireSubscriptionOnboardingUser, resolvePremiumAccess } = require('../lib/subscription-auth');
 const identity = require('../lib/subscription-identity');
-const { resolveEntitlements } = require('../lib/entitlements');
+const { resolveEntitlements, getEntitlements } = require('../lib/entitlements');
 const { isSubscriptionFeatureEnabled, getSubscriptionCapability, isVoucherAdminBotEnabled, getVoucherAdminCapability } = require('../lib/subscription-capability');
 const voucherAdminBot = require('../lib/voucher-admin-bot');
 const vouchers = require('../lib/vouchers');
@@ -171,14 +171,22 @@ async function handleSubscriptionAction(req, res, action) {
   const account = auth.account;
   if (action === 'subscription-telegram-link-status') return res.status(200).json({success:true,linked:await subscriptionLinkStatus(db,account.id)});
   if (action === 'subscription-telegram-link-token-create') { let token,hash; try { token=identity.createLinkToken();hash=identity.linkTokenHash(token); } catch (_) { return res.status(503).json({success:false,error:'Tautan Telegram tidak tersedia.'}); } const requestId=safeRequestId('telegram'); const issued=await db.rpc('issue_subscription_telegram_link_token',{p_user_id:account.id,p_token_hash:hash,p_request_id:requestId,p_expires_at:new Date(Date.now()+identity.LINK_TTL_MS).toISOString()}); if(issued.error)return res.status(503).json({success:false,error:'Tautan Telegram tidak tersedia.'}); if(issued.data==='rate_limited') return res.status(429).json({success:false,error:'Tunggu sebentar sebelum membuat tautan baru.'}); const bot=String(process.env.TELEGRAM_SUBSCRIPTION_BOT_USERNAME||'').replace(/^@/,''); return res.status(200).json({success:true,telegram_link:bot?'https://t.me/'+encodeURIComponent(bot)+'?start='+token:token}); }
-  const rows=await db.from('user_entitlements').select('source,status,starts_at,expires_at,lifetime').eq('user_id',account.id);
+  let rows=await db.from('user_entitlements').select('source,trial_kind,status,starts_at,expires_at,lifetime').eq('user_id',account.id);
+  // Historical schemas have only the initial trial; retain that read path
+  // until the kind-aware rollout is installed, without masking other errors.
+  if (rows.error && ['42703','PGRST204'].includes(rows.error.code) && /trial_kind/.test(rows.error.message || '')) {
+    rows=await db.from('user_entitlements').select('source,status,starts_at,expires_at,lifetime').eq('user_id',account.id);
+  }
+  if (rows.error) return res.status(503).json({success:false,error:'Status trial belum tersedia.'});
   const entitlement=await resolveEntitlements(auth.user,account,db);
-  const trial=(rows.data||[]).filter(r=>r.source==='trial')[0]; const linked=await subscriptionLinkStatus(db,account.id);
+  const trialRows=(rows.data||[]).filter(r=>r.source==='trial');
+  const trial=trialRows.find(r=>r.trial_kind==null || r.trial_kind==='legacy_initial' || r.trial_kind==='initial');
+  const linked=await subscriptionLinkStatus(db,account.id);
   if(action==='subscription-trial-status') {
     const trialDays = (trial && trial.starts_at && trial.expires_at)
       ? Math.round((new Date(trial.expires_at).getTime() - new Date(trial.starts_at).getTime()) / (24 * 60 * 60 * 1000))
       : 14;
-    return res.status(200).json({success:true,available:auth.user.username==='budi'?false:!trial,consumed:!!trial,active:entitlement.trial_state==='active',starts_at:trial&&trial.starts_at||null,expires_at:trial&&trial.expires_at||null,duration_days:trialDays,telegram_link_required:!linked,account_approval_state:account.is_approved===true?'approved':'pending',admin:auth.user.username==='budi'});
+    return res.status(200).json({success:true,available:auth.user.username==='budi'?false:!trial,consumed:!!trial,active:!!trial&&entitlement.trial_state==='active',starts_at:trial&&trial.starts_at||null,expires_at:trial&&trial.expires_at||null,effective_expires_at:getEntitlements(auth.user,account,trialRows).expires_at,duration_days:trialDays,telegram_link_required:!linked,account_approval_state:account.is_approved===true?'approved':'pending',admin:auth.user.username==='budi'});
   }
   if(action==='subscription-trial-activate') {
     if(!isSameOrigin(req)) return res.status(403).json({success:false,error:'Permintaan ditolak.'});
