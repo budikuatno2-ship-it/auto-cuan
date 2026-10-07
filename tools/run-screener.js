@@ -177,6 +177,19 @@ function candidatesFor(snapshot, mode) {
   return [];
 }
 
+function sourceDateForMode(snapshotData, mode) {
+  if (!snapshotData || typeof snapshotData !== 'object') return undefined;
+  const canonical = normalizeMode(mode);
+  const sourceDates = snapshotData.source_dates;
+  const schemaV2 = Number(snapshotData.freshness_schema_version || 0) >= 2 ||
+    (sourceDates && typeof sourceDates === 'object' && !Array.isArray(sourceDates));
+  if (!schemaV2) return undefined;
+  if (!sourceDates || typeof sourceDates !== 'object') return null;
+  return Object.prototype.hasOwnProperty.call(sourceDates, canonical)
+    ? sourceDates[canonical]
+    : null;
+}
+
 function formatCard(mode, candidates, updatedAt) {
   const canonical = normalizeMode(mode);
   const def = MODES[canonical] || MODES[mode] || MODES.daytrade;
@@ -243,12 +256,15 @@ function analyze(opts, deps) {
   const snapshot = loadSnapshot(rootDir);
   const candidates = candidatesFor(snapshot, mode);
   const market = marketStatus(now, deps && deps.holidaySet);
-  const freshness = snapshotFreshness.evaluateSnapshotFreshness({
+  const modeSourceDate = sourceDateForMode(snapshot.data, mode);
+  const freshnessOptions = {
     snapshot: snapshot.data,
     mode,
     now,
     holidaySet: deps && deps.holidaySet
-  });
+  };
+  if (modeSourceDate !== undefined) freshnessOptions.snapshotDate = modeSourceDate;
+  const freshness = snapshotFreshness.evaluateSnapshotFreshness(freshnessOptions);
   const reasons = [];
 
   if (snapshot.missing) reasons.push('snapshot_missing: data/screener-latest.json belum ada (tidak ada producer yang jalan)');
@@ -270,6 +286,7 @@ function analyze(opts, deps) {
     mode,
     dry_run: opts.dryRun,
     updated_at: snapshot.updatedAt,
+    source_date: modeSourceDate === undefined ? null : modeSourceDate,
     snapshot_missing: snapshot.missing,
     candidate_count: candidates.length,
     candidates: candidates.slice(0, 10),
@@ -384,6 +401,7 @@ module.exports = {
   screenerSnapshotPath,
   loadSnapshot,
   candidatesFor,
+  sourceDateForMode,
   formatCard,
   marketStatus,
   analyze,

@@ -43,6 +43,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const calendar = require(path.resolve(__dirname, '..', 'lib', 'idx-trading-calendar'));
+const snapshotFreshness = require(path.resolve(__dirname, '..', 'lib', 'snapshot-freshness'));
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_BASE_URL = 'http://127.0.0.1:3000';
@@ -92,6 +93,8 @@ function parseArgs(argv) {
   return o;
 }
 
+const DEFAULT_MAX_SHORTLIST_ROWS = 12;
+
 function extractRows(payload) {
   if (!payload || payload.success === false) return [];
   for (const key of ['results', 'rows', 'data', 'radar_candidates']) {
@@ -100,11 +103,56 @@ function extractRows(payload) {
   return [];
 }
 
-function usableRows(rows) {
-  return (rows || []).filter((r) => {
-    if (typeof r === 'string') return r.trim() !== '';
-    return r && typeof r === 'object' && String(r.ticker || r.symbol || '').trim() !== '';
-  });
+function isValidCandidateSetup(row) {
+  if (typeof row === 'string') return row.trim() !== '';
+  if (!row || typeof row !== 'object') return false;
+  const ticker = String(row.ticker || row.symbol || row.code || '').trim();
+  if (!ticker) return false;
+  const status = String(row.status || row.current_status || row.signal_status || row.production_status || '').trim().toUpperCase();
+  if (['AVOID', 'INVALIDATED', 'INVALID_DATA', 'STALE', 'BLOCKED', 'BLOCKED_CHASE'].includes(status)) {
+    return false;
+  }
+  const riskLabel = String(row.risk_label || row.risk_status || row.risk_grade || '').trim().toUpperCase();
+  if (riskLabel.includes('VERY HIGH') || riskLabel === 'VERY_HIGH' || row.high_risk_blocked === true) {
+    return false;
+  }
+  const entryLow = Number(row.entry_low);
+  const entryHigh = Number(row.entry_high);
+  const stopLoss = Number(row.stop_loss != null ? row.stop_loss : row.sl);
+  const tp1 = Number(row.tp1);
+
+  if (Number.isFinite(entryLow) && Number.isFinite(entryHigh) && entryLow > entryHigh) {
+    return false;
+  }
+  if (Number.isFinite(stopLoss) && Number.isFinite(entryLow) && stopLoss >= entryLow) {
+    return false;
+  }
+  if (Number.isFinite(tp1) && Number.isFinite(entryHigh) && tp1 <= entryHigh) {
+    return false;
+  }
+  return true;
+}
+
+function usableRows(rows, maxLimit = DEFAULT_MAX_SHORTLIST_ROWS) {
+  return (rows || [])
+    .filter(isValidCandidateSetup)
+    .slice(0, maxLimit);
+}
+
+function sourceStatus(payload) {
+  return String((payload && ((payload.meta && payload.meta.status) || payload.status)) || '').trim().toLowerCase();
+}
+
+function extractSourceDate(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const candidates = [];
+  if (payload.meta && typeof payload.meta === 'object' && !Array.isArray(payload.meta)) candidates.push(payload.meta);
+  candidates.push(payload);
+  for (const candidate of candidates) {
+    const extracted = snapshotFreshness.extractSnapshotDate(candidate);
+    if (extracted) return extracted.date;
+  }
+  return null;
 }
 
 async function fetchAction(baseUrl, secret, action, fetchFn) {
@@ -131,34 +179,54 @@ async function fetchAction(baseUrl, secret, action, fetchFn) {
  *
  * Output shape is intentionally one the guarded-live engine already accepts:
  *   { status, source, generated_at, run_date, results: [ {ticker,...}, ... ] }
- * A `status: 'running'` daemon answer is preserved so the engine can skip a
- * still-running full screener instead of reading partial rows.
+ * If DayTrade producer is running, a valid, fresh completed shortlist from the
+ * existing file on disk may be safely reused with producer_overlap_reuse=true.
+ * Otherwise a `status: 'running'` answer is preserved so the engine skips fail-closed.
  */
 function buildShortlist(payload, options) {
   const opts = options || {};
-  const sourceStatus = String((payload && payload.status) || '').trim();
-  if (sourceStatus.toLowerCase() === 'running' || sourceStatus.toLowerCase() === 'scanning') {
+  const maxRows = opts.maxShortlist || DEFAULT_MAX_SHORTLIST_ROWS;
+  const status = sourceStatus(payload);
+  if (status === 'running' || status === 'scanning') {
+    if (opts.existingShortlist && opts.existingShortlist.status === 'published' &&
+        Array.isArray(opts.existingShortlist.results) && opts.existingShortlist.results.length > 0 &&
+        opts.existingFreshness && opts.existingFreshness.fresh) {
+      const reusedRows = usableRows(opts.existingShortlist.results, maxRows);
+      return {
+        payload: Object.assign({}, opts.existingShortlist, {
+          status: 'published',
+          source: opts.existingShortlist.source || 'local-vps-api:daytrade-screener',
+          generated_at: opts.existingShortlist.generated_at || new Date().toISOString(),
+          run_date: opts.existingShortlist.run_date || opts.sourceRunDate || null,
+          results: reusedRows,
+          producer_overlap_reuse: true
+        }),
+        counts: { rows: reusedRows.length, running: true, producer_overlap_reuse: true }
+      };
+    }
     return {
       payload: {
         status: 'running',
         source: 'local-vps-api:daytrade-screener',
         generated_at: new Date().toISOString(),
-        run_date: opts.runDate || null,
-        results: []
+        run_date: opts.sourceRunDate || extractSourceDate(payload) || null,
+        results: [],
+        producer_overlap_reuse: false
       },
-      counts: { rows: 0, running: true }
+      counts: { rows: 0, running: true, producer_overlap_reuse: false }
     };
   }
-  const rows = usableRows(extractRows(payload));
+  const rows = usableRows(extractRows(payload), maxRows);
   return {
     payload: {
       status: 'published',
       source: 'local-vps-api:daytrade-screener',
       generated_at: new Date().toISOString(),
-      run_date: opts.runDate || (payload && (payload.run_date || payload.runDate)) || null,
-      results: rows
+      run_date: opts.sourceRunDate || extractSourceDate(payload) || null,
+      results: rows,
+      producer_overlap_reuse: false
     },
-    counts: { rows: rows.length, running: false }
+    counts: { rows: rows.length, running: false, producer_overlap_reuse: false }
   };
 }
 
@@ -196,17 +264,79 @@ async function main(options, deps) {
   log('  mode     : ' + (options.dryRun ? 'DRY-RUN (nothing written)' : 'WRITE'));
 
   const payload = await fetchAction(baseUrl, secret, 'daytrade-screener', fetchFn);
-  const { payload: shortlist, counts } = buildShortlist(payload, { runDate });
+  const status = sourceStatus(payload);
+  const sourceDate = extractSourceDate(payload);
 
-  log('  rows     : ' + counts.rows + (counts.running ? ' (full screener running)' : ''));
+  const target = options.output || DEFAULT_OUTPUT;
+  const evaluationNow = deps.now || new Date(runDate + 'T12:00:00+07:00');
+
+  let existingShortlist = deps.existingShortlist || null;
+  if (!existingShortlist && fs.existsSync(target)) {
+    try {
+      existingShortlist = JSON.parse(fs.readFileSync(target, 'utf8'));
+    } catch (_) {
+      existingShortlist = null;
+    }
+  }
+
+  let existingFreshness = { fresh: false, reason: 'no_existing_shortlist' };
+  if (existingShortlist && existingShortlist.status === 'published' &&
+      Array.isArray(existingShortlist.results) && existingShortlist.results.length > 0) {
+    const existingSourceDate = extractSourceDate(existingShortlist) || existingShortlist.run_date;
+    if (existingSourceDate) {
+      existingFreshness = snapshotFreshness.evaluateSnapshotFreshness({
+        snapshotDate: existingSourceDate,
+        mode: 'daytrade',
+        now: evaluationNow,
+        holidaySet
+      });
+    }
+  }
+
+  // FastWatcher is allowed to seed its live scan from today's DayTrade full
+  // screener or the latest completed trading session. Anything older (or
+  // missing provenance) fails closed so stale shortlist rows can never be
+  // relabelled as today's data by this materializer.
+  if (status !== 'running' && status !== 'scanning') {
+    const sourceFreshness = snapshotFreshness.evaluateSnapshotFreshness({
+      snapshotDate: sourceDate,
+      mode: 'daytrade',
+      now: evaluationNow,
+      holidaySet
+    });
+    if (!sourceFreshness.fresh) {
+      log('  STALE_SOURCE: DayTrade source=' + (sourceDate || 'none') +
+        ' acceptable=' + JSON.stringify(sourceFreshness.acceptable_dates) +
+        ' reason=' + sourceFreshness.reason);
+      return {
+        ok: false,
+        reason: 'STALE_SOURCE',
+        sourceDate,
+        freshness: sourceFreshness
+      };
+    }
+  }
+
+  const { payload: shortlist, counts } = buildShortlist(payload, {
+    sourceRunDate: sourceDate,
+    existingShortlist,
+    existingFreshness
+  });
+
+  if (counts.producer_overlap_reuse) {
+    log('  OVERLAP_REUSE: producer is running, reusing last completed fresh shortlist (' +
+      counts.rows + ' rows, source date ' + (shortlist.run_date || 'unknown') + ')');
+  }
+
+  log('  source date: ' + (shortlist.run_date || sourceDate || 'none'));
+  log('  rows     : ' + counts.rows + (counts.running ? (counts.producer_overlap_reuse ? ' (producer running, overlap reuse)' : ' (full screener running)') : ''));
 
   if (options.dryRun) {
     log('  dry-run: shortlist NOT written');
     if (options.print) log(JSON.stringify(shortlist, null, 2));
-    return { ok: true, dryRun: true, counts, shortlist };
+    return { ok: true, dryRun: true, counts, shortlist, producer_overlap_reuse: counts.producer_overlap_reuse === true };
   }
 
-  const target = options.output || DEFAULT_OUTPUT;
   fs.mkdirSync(path.dirname(target), { recursive: true });
   const tmp = target + '.tmp-' + process.pid;
   fs.writeFileSync(tmp, JSON.stringify(shortlist, null, 2) + '\n');
@@ -215,7 +345,7 @@ async function main(options, deps) {
   log('  wrote ' + target + ' (' + fs.statSync(target).size + ' bytes)');
   if (options.print) log(JSON.stringify(shortlist, null, 2));
 
-  return { ok: true, path: target, counts, shortlist };
+  return { ok: true, path: target, counts, shortlist, producer_overlap_reuse: counts.producer_overlap_reuse === true };
 }
 
 if (require.main === module) {
@@ -236,6 +366,8 @@ module.exports = {
   parseArgs,
   extractRows,
   usableRows,
+  sourceStatus,
+  extractSourceDate,
   fetchAction,
   buildShortlist,
   main

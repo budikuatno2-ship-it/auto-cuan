@@ -243,3 +243,19 @@ test('the produced snapshot round-trips through a real read/write cycle', async 
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+
+test('freshness v2 records authoritative per-mode source dates instead of trusting file generation time', () => {
+  const { snapshot } = producer.buildSnapshot({
+    screener: payload([ROW_KONGLO], { status: 'published', calculated_at: '2026-10-05T12:01:12.763Z' }),
+    'nk-screener-results': payload([ROW_NK], { status: 'published', run_date: '2026-10-05' }),
+    'daytrade-screener': payload([ROW_DT], { status: 'published', run_date: '2026-10-05' })
+  }, { updatedAt: '2026-10-06T01:00:00.000Z' });
+
+  assert.strictEqual(snapshot.freshness_schema_version, 2);
+  assert.strictEqual(snapshot.source_dates['swing-konglo'], '2026-10-05');
+  assert.strictEqual(snapshot.source_dates['swing-non-konglo'], '2026-10-05');
+  assert.strictEqual(snapshot.source_dates.daytrade, '2026-10-05');
+  assert.strictEqual(snapshot.updated_at, '2026-10-06T01:00:00.000Z',
+    'file generation time may differ, but source_dates remain authoritative');
+});
