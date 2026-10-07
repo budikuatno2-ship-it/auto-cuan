@@ -171,7 +171,7 @@
   // cachedFetch — the SWR read path
   // ------------------------------------------------------------------------
 
-  function cachedFetch(url, options) {
+  function cachedFetch(url, options, intent) {
     if (!isCacheable(url, options)) return root.fetch(url, options);
 
     var key;
@@ -182,28 +182,33 @@
     }
 
     var entry = STORE.get(key);
+    var explicitRevalidation = !!(intent && intent.revalidate);
+    if (explicitRevalidation) options = Object.assign({}, options, { cache: 'no-cache' });
 
     // Fresh: serve the stored payload, no network at all.
-    if (entry && (Date.now() - entry.at) < TTL_MS) {
+    if (!explicitRevalidation && entry && (Date.now() - entry.at) < TTL_MS) {
       STATS.hits++;
       return Promise.resolve(jsonResponse(entry.data));
     }
 
     // Stale: serve the stored payload now, refresh in the background. The
     // caller renders immediately and the next visit sees the new payload.
-    if (entry) {
+    if (!explicitRevalidation && entry) {
       STATS.revalidations++;
       revalidate(key, url, options);
       return Promise.resolve(jsonResponse(entry.data));
     }
 
     // Cold: single-flight so ten simultaneous callers make one request.
-    STATS.misses++;
-    if (INFLIGHT.has(key)) return INFLIGHT.get(key).then(jsonResponse);
+    if (explicitRevalidation) STATS.revalidations++;
+    else STATS.misses++;
+    if (INFLIGHT.has(key)) return INFLIGHT.get(key).then(function (payload) {
+      return jsonResponse(payload.data, payload.status, payload.ok);
+    });
 
     var promise = root.fetch(url, options).then(function (res) {
       return readJson(res).then(function (payload) {
-        if (payload.ok) store(key, payload.data);
+        if (payload.ok && !(payload.data && payload.data.success === false)) store(key, payload.data);
         INFLIGHT.delete(key);
         return payload;
       });
@@ -222,7 +227,7 @@
     if (INFLIGHT.has(key)) return;
     var promise = root.fetch(url, options).then(function (res) {
       return readJson(res).then(function (payload) {
-        if (payload.ok) store(key, payload.data);
+        if (payload.ok && !(payload.data && payload.data.success === false)) store(key, payload.data);
         INFLIGHT.delete(key);
         return payload;
       });

@@ -75,6 +75,10 @@ function createDb(options) {
           if (table === 'app_users') {
             return Promise.resolve({ data: opts.user || null, error: opts.findError || null });
           }
+          if (table === 'app_user_google_links') {
+            if (opts.googleThrow) return Promise.reject(new Error('Lookup offline'));
+            return Promise.resolve({ data: opts.googleLink || null, error: opts.googleError || null });
+          }
           return Promise.resolve({ data: null, error: null });
         },
         update(payload) {
@@ -180,14 +184,39 @@ test('deleted account makes session-status fail closed and clear the cookie', as
     assert.match(cookieValue(res), /Max-Age=0/);
   });
 });
-test('session-status declares Gmail completion only for a legacy account without email',async()=>{
+test('session-status requires Google linking only from an authoritative link lookup, independent of legacy email',async()=>{
  await withEnv(async()=>{
   const session=require('../lib/admin-session');
   for(const email of [null,'   ','existing@gmail.com']){
    const token=session.createSessionToken({userId:'user-1',username:'alice'});
    const handler=requireApiWithDb(createDb({user:{id:'user-1',username:'alice',email,is_approved:true,is_blocked:false}}));
    const res=makeRes();await handler({method:'POST',headers:sameOriginHeaders('ac_sess='+token),body:{action:'session-status'}},res);
-   assert.equal(res.statusCode,200);assert.equal(res.body.email_required,!String(email||'').trim());
+   assert.equal(res.statusCode,200);assert.equal(res.body.email_required,true);
+   assert.equal(res.body.google_link_state,'unlinked');
+  }
+ });
+});
+
+test('session bootstrap preserves approved pre-Wave-8 accounts on unavailable Google storage', async()=>{
+ await withEnv(async()=>{
+  const {createSessionToken}=require('../lib/admin-session');
+  for(const failure of [{googleError:{code:'42P01',message:'Missing table'}},{googleError:{code:'42501',message:'Permission denied'}},{googleError:{message:'Transient read error'}},{googleThrow:true}]){
+   const handler=requireApiWithDb(createDb({...failure,user:{id:'user-1',username:'alice',email:null,is_approved:true,is_blocked:false}}));
+   const res=makeRes();await handler({method:'POST',headers:sameOriginHeaders('ac_sess='+createSessionToken({userId:'user-1',username:'alice'})),body:{action:'session-status'}},res);
+   assert.equal(res.statusCode,200);assert.equal(res.body.success,true);
+   assert.equal(res.body.google_link_state,'unavailable');assert.equal(res.body.google_linked,null);
+   assert.equal(res.body.email_required,false);assert.equal(res.body.google_link_required,false);
+  }
+ });
+});
+
+test('session bootstrap retains linked and exempt accounts without mandatory onboarding', async()=>{
+ await withEnv(async()=>{
+  const {createSessionToken}=require('../lib/admin-session');
+  for(const [username,googleLink,state] of [['alice',{user_id:'user-1',unlinked_at:null},'linked'],['review',null,'exempt']]){
+   const handler=requireApiWithDb(createDb({googleLink,user:{id:'user-1',username,email:null,is_approved:true,is_blocked:false}}));
+   const res=makeRes();await handler({method:'POST',headers:sameOriginHeaders('ac_sess='+createSessionToken({userId:'user-1',username})),body:{action:'session-status'}},res);
+   assert.equal(res.statusCode,200);assert.equal(res.body.google_link_state,state);assert.equal(res.body.email_required,false);
   }
  });
 });

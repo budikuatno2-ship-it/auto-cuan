@@ -20,15 +20,17 @@ test('scroll chaining is enabled for common inner content regions', () => {
   assert.match(runtime.STYLE_TEXT, /#analisisResult,#aiMessages,\.chat-messages,\.ai-messages,\.table-wrap\{overscroll-behavior-y:auto!important/);
 });
 
-test('portfolio tabs use seven equal desktop tracks and mobile overflow', () => {
-  assert.match(runtime.STYLE_TEXT, /grid-template-columns:repeat\(7,minmax\(0,1fr\)\)!important/);
-  assert.match(runtime.STYLE_TEXT, /@media \(max-width:1180px\)/);
-  assert.match(runtime.STYLE_TEXT, /#tabStrip\.tab-strip>.tab\{[^}]*flex:0 0 auto!important/);
+test('portfolio tabs use canonical static ownership and obsolete injected styles are retired', () => {
+  assert.doesNotMatch(runtime.STYLE_TEXT, /#tabStrip/);
+  const pccCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'portfolio-command-center.css'), 'utf8');
+  assert.match(pccCss, /grid-template-columns:\s*repeat\(7,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(pccCss, /@media\s*\(min-width:\s*768px\)\s*and\s*\(max-width:\s*1180px\)/);
 });
 
-test('portfolio selected tab uses a single green active indicator', () => {
-  assert.match(runtime.STYLE_TEXT, /#tabStrip\.tab-strip>.tab::after\{content:none!important/);
-  assert.match(runtime.STYLE_TEXT, /aria-selected="true"\]::after\{[^}]*background:#34d399!important/);
+test('portfolio selected tab uses canonical static active indicator', () => {
+  const pccCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'portfolio-command-center.css'), 'utf8');
+  assert.match(pccCss, /\.tab\[aria-selected="true"\]/);
+  assert.match(pccCss, /border-bottom-color:\s*var\(--accent\)/);
 });
 
 test('AI URL hardening rejects direct and entity-obfuscated active schemes', () => {

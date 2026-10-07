@@ -47,3 +47,31 @@ test('missing market cap and shares stay explicitly unavailable rather than synt
   assert.match(runtime, /researchHasNumber\(f\.shares_outstanding\) \? researchCompact\(f\.shares_outstanding\) : '—'/);
   assert.doesNotMatch(runtime, /shares_outstanding\s*\*\s*.*pbv_as_of_price|pbv_as_of_price\s*\*\s*.*shares_outstanding/);
 });
+
+test('market structure runtime consumes canonical data / rows and does not depend on items', () => {
+  assert.match(runtime, /payload\.data/);
+  assert.match(runtime, /payload\.rows/);
+  assert.doesNotMatch(runtime, /payload\.items/);
+});
+
+test('raw enum codes are not emitted as user labels in markup or runtime detail mappings', () => {
+  assert.doesNotMatch(partial, />\s*(NOT_EVALUATED|DATA_INCOMPLETE|UNKNOWN)\s*</);
+  assert.match(runtime, /'NOT_EVALUATED': 'Tidak dievaluasi'/);
+  assert.match(runtime, /'DATA_INCOMPLETE': 'Data belum lengkap'/);
+  assert.match(runtime, /'UNKNOWN': 'Belum diketahui'/);
+});
+
+test('financial panel is quiet and verified without canvas, orbit, or giant hero grammar', () => {
+  assert.doesNotMatch(partial, /Financial Canvas/i);
+  assert.doesNotMatch(partial, /orbit|ac-financial-focus-card/i);
+});
+
+test('frontend low free float reference matches backend authoritative constant', () => {
+  const riskLib = read('lib/market-structure-risk.js');
+  const match = riskLib.match(/LOW_FREE_FLOAT_REFERENCE_PCT\s*=\s*(\d+)/);
+  assert.ok(match, 'backend must export LOW_FREE_FLOAT_REFERENCE_PCT');
+  const backendVal = Number(match[1]);
+  assert.match(runtime, /MARKET_STRUCTURE_LOW_FF_REFERENCE_PCT\s*=\s*(\d+)/);
+  const feMatch = runtime.match(/MARKET_STRUCTURE_LOW_FF_REFERENCE_PCT\s*=\s*(\d+)/);
+  assert.equal(Number(feMatch[1]), backendVal);
+});

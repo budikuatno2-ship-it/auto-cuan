@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -170,7 +170,7 @@ test('handleTrackRecord handles database error safely with valid fallback format
 // the API function budget is untouched. Every layer that can answer the request
 // must carry the alias, or the tab regresses on whichever layer is missing it.
 // ---------------------------------------------------------------------------
-test('the /api/track-record alias exists on every layer that can answer it', () => {
+test('the /api/track-record alias exists on every layer that can answer it', async () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const ROOT = path.join(__dirname, '..');
@@ -196,7 +196,7 @@ test('the /api/track-record alias exists on every layer that can answer it', () 
   // keep-alive SWR store when it is present and to plain `fetch` otherwise, so
   // the contract is the alias URL being requested — not the callee's name.
   const runtime = fs.readFileSync(path.join(ROOT, 'public', 'track-record-runtime.js'), 'utf8');
-  assert.match(runtime, /\(\s*'\/api\/track-record'\s*\)/, 'runtime must call the stable alias URL');
+  await assertTrackRecordRequest(runtime);
   assert.match(runtime, /action=track-record/, 'runtime must keep the sector-hot fallback');
   assert.match(runtime, /startsWith\('<'\)/, 'runtime must detect an HTML response before parsing');
   assert.match(
@@ -204,4 +204,25 @@ test('the /api/track-record alias exists on every layer that can answer it', () 
     /AutoCuanKeepAlive[\s\S]{0,120}cachedFetch/,
     'the bridge must resolve to the keep-alive store when it exists'
   );
+});
+
+async function assertTrackRecordRequest(source) {
+  const start = source.indexOf('var trFetch ='); const end = source.indexOf('// 2. Fallback', start);
+  assert.ok(start >= 0 && end > start, 'authoritative request block exists');
+  const vm = require('node:vm');
+  for (const force of [false, true]) for (const cached of [false, true]) {
+    const calls = []; const fetch = async (url, options, intent) => { calls.push({ url, options, intent }); return { ok: true, text: async () => '{"success":true}' }; };
+    const window = cached ? { AutoCuanKeepAlive: { cachedFetch: fetch } } : {};
+    const request = vm.runInNewContext('(async function(force){var res,rawText,data;' + source.slice(start, end) + ';return data;})', { window, fetch });
+    await request(force); assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, '/api/track-record');
+    assert.equal(calls[0].options?.cache, force ? 'no-cache' : undefined);
+    assert.equal(calls[0].intent?.revalidate, force);
+  }
+}
+test('Track Record request negative controls reject wrong endpoint and lost forced revalidation', async () => {
+  const fs = require('node:fs'), path = require('node:path');
+  const source = fs.readFileSync(path.join(__dirname, '../public/track-record-runtime.js'), 'utf8');
+  await assert.rejects(() => assertTrackRecordRequest(source.replace("trFetch('/api/track-record'", "trFetch('/api/wrong-endpoint'")), assert.AssertionError);
+  await assert.rejects(() => assertTrackRecordRequest(source.replace('{ revalidate: !!force }', '{ revalidate: false }')), assert.AssertionError);
 });

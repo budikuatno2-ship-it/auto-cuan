@@ -72,15 +72,15 @@ async function loadDayTradeScreener() {
             }
         }
 
-        var realDtUniverse = meta.universe_count || 760;
-        var realDtScanned = meta.scanned_count || (data.results ? data.results.length : 760);
+        var realDtUniverse = meta.universe_count != null ? meta.universe_count : '—';
+        var realDtScanned = meta.scanned_count != null ? meta.scanned_count : (data.results ? data.results.length : '—');
         var statU = document.getElementById('dtStatUniverse');
         var statS = document.getElementById('dtStatScanned');
         var statP = document.getElementById('dtStatPublished');
         var statM = document.getElementById('dtStatRunMode');
         if (statU) statU.textContent = realDtUniverse;
         if (statS) statS.textContent = realDtScanned;
-        if (statP) statP.textContent = meta.published_count || (data.results ? data.results.length : 0);
+        if (statP) statP.textContent = meta.published_count != null ? meta.published_count : (data.results ? data.results.length : 0);
         if (statM) statM.textContent = meta.run_mode || 'EOD';
 
         var dtUCountEl = document.getElementById('universeCount');
@@ -199,6 +199,8 @@ function updateDtMetaUI(meta) {
 function renderDtTable(results, data) {
     var tbody = document.getElementById('dtScreenerTableBody');
     if (!tbody) return;
+    window._dtCardData = window._dtCardData || {};
+    (results || []).forEach(function(item) { if (item && item.ticker) window._dtCardData[item.ticker] = item; });
 
     // Apply filter
     var filtered = applyScreenerUiFilters('daytrade', results || []);
@@ -216,13 +218,14 @@ function renderDtTable(results, data) {
         var emptyMsg = typeof getPatternPersonalityEmptyMessage === 'function'
             ? getPatternPersonalityEmptyMessage(getDayTradeEmptyMessage(data))
             : getDayTradeEmptyMessage(data);
-        tbody.innerHTML = screenerEmptyRowHtml(22, emptyMsg);
+        setScreenerResultRows(tbody, screenerEmptyRowHtml(22, emptyMsg));
         return;
     }
 
     var html = '';
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
+        window._dtCardData[r.ticker] = r;
         var statusClass = getDtStatusClass(r.status);
         var chgClass = r.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400';
         var volRatioStr = r.volume_ratio_20d != null ? r.volume_ratio_20d.toFixed(1) + 'x' : '—';
@@ -236,9 +239,9 @@ function renderDtTable(results, data) {
         var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-gray-400' : 'text-red-400')));
         var dirColor = dirLabel.indexOf('naik kuat') >= 0 ? 'text-emerald-400' : (dirLabel.indexOf('naik moderat') >= 0 ? 'text-blue-400' : (dirLabel.indexOf('radar') >= 0 ? 'text-violet-400' : (dirLabel.indexOf('Rawan') >= 0 ? 'text-orange-400' : 'text-red-400')));
 
-        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 transition">';
+        html += '<tr class="dt-table-row ac-table-row ac-wave5-row cursor-pointer" data-ticker="' + escapeHtml(r.ticker) + '" onclick="if(typeof selectScreenerRow===\'function\'){selectScreenerRow(this,\'' + escapeHtml(r.ticker) + '\',\'daytrade\');}else if(typeof openScrDetail===\'function\'){openScrDetail(window._dtCardData[\'' + escapeHtml(r.ticker) + '\'],\'daytrade\');}">';
         html += '<td class="px-2 py-2 text-center text-gray-500 sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (i + 1) + '</td>';
-        html += '<td class="px-2 py-2 font-medium text-white sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
+        html += '<td class="px-2 py-2 font-medium text-white sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + screenerResultActionHtml(r.ticker, 'daytrade') + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px]">' + (r.board || '—') + '</td>';
         html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ' + statusClass + '">' + escapeHtml(getStatusLabel(r, formatDtStatus(r.status))) + '</span></td>';
         var dtBdBadgeHtml = '';
@@ -270,7 +273,7 @@ function renderDtTable(results, data) {
         html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + escapeHtml(_dtReason) + '">' + escapeHtml(_dtReason || '—') + '</td>';
         html += '</tr>';
     }
-    tbody.innerHTML = html;
+    setScreenerResultRows(tbody, html);
 }
 
 function filterDtScreener(filter) {

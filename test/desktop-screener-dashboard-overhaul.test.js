@@ -25,7 +25,7 @@ test('PR 4: Day Trade table has sticky # and Ticker headers and row cells', () =
 test('PR 4: Non-Konglo table has sticky # and Ticker headers and row cells', () => {
   assert.match(html, /<tr class="scr-cols-18 bg-dark-700\/80">\s*<th[^>]*sticky-col-1[^>]*>#<\/th>\s*<th[^>]*sticky-col-2[^>]*>Ticker<\/th>/);
   assert.match(html, /sticky-col-1 sticky left-0[^>]*>\'\s*\+\s*\(r\.rank/);
-  assert.match(html, /sticky-col-2 sticky left-\[36px\][^>]*>\'\s*\+\s*r\.ticker/);
+  assert.match(html, /sticky-col-2 sticky left-\[36px\][^>]*>\'\s*\+\s*screenerResultActionHtml\(r\.ticker, 'nonkonglo'\)/);
 });
 
 test('PR 4: Standardized trade-plan-grid is defined in ui-theme.css and used in card grids', () => {

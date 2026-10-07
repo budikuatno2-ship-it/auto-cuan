@@ -8,8 +8,6 @@
   var accountCenterLoad = null;
   var manualPaymentLoad = null;
   var voucherClaimLoad = null;
-  var originalDoRegister = null;
-  var originalOpenRegister = null;
 
   function byId(id) { return document.getElementById(id); }
 
@@ -127,7 +125,7 @@
 
   function openProfileStub() { return loadCenter('profile'); }
   function openTermsStub() { return openStandaloneTermsModal(); }
-  function openSubscriptionStub() { return loadCenter('subscription'); }
+  function openSubscriptionStub() { return loadCenter('profile'); }
 
   function openStandaloneTermsModal() {
     var modalId = 'standaloneTermsModal';
@@ -211,92 +209,10 @@
     }
   }
 
-  function registrationMarkup() {
-    return [
-      '<label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">',
-      '<input type="checkbox" id="acRegTermsAccepted" style="width:17px;height:17px;flex:0 0 17px;margin-top:2px;accent-color:#10b981">',
-      '<span style="color:#94a3b8;font-size:11px;line-height:1.55">Saya menyetujui ',
-      '<button type="button" id="acOpenTermsFromRegister" style="padding:0;border:0;background:transparent;color:#6ee7b7;font:inherit;font-weight:800;text-decoration:underline;cursor:pointer">Syarat &amp; Ketentuan Layanan Auto-Cuan</button>.</span></label>'
-    ].join('');
-  }
-
-  function injectRegistrationTerms() {
-    if (byId('acTermsRegistration')) return;
-    var error = byId('registerError');
-    var button = byId('registerBtn');
-    if (!error || !error.parentNode || !button) return;
-
-    var box = document.createElement('div');
-    box.id = 'acTermsRegistration';
-    box.style.cssText = 'margin-top:2px;padding:11px 12px;border:1px solid rgba(148,163,184,.14);border-radius:12px;background:rgba(15,23,42,.45)';
-    box.innerHTML = registrationMarkup();
-    error.parentNode.insertBefore(box, error);
-
-    var checkbox = byId('acRegTermsAccepted');
-    var open = byId('acOpenTermsFromRegister');
-    function sync() { if (button && checkbox) button.disabled = checkbox.checked !== true; }
-    if (checkbox) checkbox.addEventListener('change', sync);
-    if (open) open.addEventListener('click', function (event) {
-      event.preventDefault();
-      openStandaloneTermsModal();
-    });
-    sync();
-  }
-
-  function showRegisterTermsError() {
-    var error = byId('registerError');
-    if (!error) return;
-    error.textContent = 'Baca dan setujui Peraturan & Ketentuan sebelum mendaftar.';
-    error.classList.remove('hidden');
-  }
-
   function installRegistrationContract() {
-    injectRegistrationTerms();
-
-    if (typeof window.doRegister === 'function' && !originalDoRegister) {
-      originalDoRegister = window.doRegister;
-      window.doRegister = async function () {
-        var checkbox = byId('acRegTermsAccepted');
-        if (!checkbox || checkbox.checked !== true) {
-          showRegisterTermsError();
-          return;
-        }
-
-        var nativeFetch = window.fetch;
-        window.fetch = function (input, init) {
-          var url = typeof input === 'string' ? input : (input && input.url) || '';
-          if (url.indexOf('/api/register-user') !== -1 && init && typeof init.body === 'string') {
-            try {
-              var body = JSON.parse(init.body);
-              body.termsAccepted = true;
-              body.termsVersion = TERMS_VERSION;
-              init = Object.assign({}, init, { body:JSON.stringify(body) });
-            } catch (_) {}
-          }
-          return nativeFetch.call(window, input, init);
-        };
-
-        try { return await originalDoRegister.apply(this, arguments); }
-        finally { window.fetch = nativeFetch; }
-      };
-    }
-
-    if (typeof window.openRegisterModal === 'function' && !originalOpenRegister) {
-      originalOpenRegister = window.openRegisterModal;
-      window.openRegisterModal = function () {
-        var out = originalOpenRegister.apply(this, arguments);
-        setTimeout(function () {
-          injectRegistrationTerms();
-          var checkbox = byId('acRegTermsAccepted');
-          if (checkbox) checkbox.checked = false;
-          var button = byId('registerBtn');
-          if (button) button.disabled = true;
-        }, 0);
-        return out;
-      };
-    }
+    // The native form owns consent validation and the versioned payload.
+    if (typeof window.syncRegistrationConsent === 'function') window.syncRegistrationConsent();
   }
-
   function installHeaderTrigger() {
     var label = byId('headerUserLabel');
     if (!label || label.getAttribute('data-ac-lazy-trigger') === '1') return;

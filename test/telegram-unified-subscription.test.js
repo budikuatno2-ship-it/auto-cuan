@@ -230,3 +230,13 @@ test('unified dispatcher stays fail-closed when subscription feature is disabled
   assert.equal(result.handled, false);
   assert.equal(result.outcome, 'subscription_disabled');
 });
+
+
+test('trial confirmation uses RPC duration and retains ten-day historical replay', async () => {
+  for(const days of [14,10]) {
+    const sent=[];
+    const db={from(){const q={select(){return q},eq(){return q},maybeSingle:async()=>({data:{user_id:'fixture-user'},error:null})};return q},rpc:async()=>({error:null,data:{active:true,duration_days:days,starts_at:'2026-10-01T00:00:00Z',expires_at:new Date(Date.parse('2026-10-01T00:00:00Z')+days*86400000).toISOString()}})};
+    const result=await unified.handleUpdate(privateUpdate('/trial'),{db,env:{SUBSCRIPTION_FEATURE_ENABLED:'true'},bot:{sendMessage:async(_,text)=>{sent.push(text);return {message_id:99}},deleteMessage:async()=>true}});
+    assert.equal(result.outcome,'trial_activated');assert.match(sent[0],new RegExp('selama '+days+' hari'));assert.match(sent[0],/Berlaku sampai:/);
+  }
+});

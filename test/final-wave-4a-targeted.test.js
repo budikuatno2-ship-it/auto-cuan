@@ -8,7 +8,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const INDEX_HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 const THEME_CSS = fs.readFileSync(path.join(ROOT, 'public', 'ui-theme.css'), 'utf8');
-const POLISH_CSS = fs.readFileSync(path.join(ROOT, 'public', 'final-uiux-polish.css'), 'utf8');
+const POLISH_CSS = THEME_CSS;
 const LANDING_CSS = fs.readFileSync(path.join(ROOT, 'public', 'landing-experience.css'), 'utf8');
 
 function relativeLuminance(hex) {
@@ -70,7 +70,16 @@ test('FINAL-RISK-001: Landing page markets only verified active capabilities (ze
 
   // The workspace-map module 05 must not retain the stale cashflow/budget subtitle.
   assert.equal(INDEX_HTML.includes('Cashflow & budget'), false, 'Module 05 must not advertise the decommissioned cashflow/budget capability');
-  assert.ok(INDEX_HTML.includes('Sinyal Intelijen</strong><small>Deteksi & konfluensi</small>'), 'Module 05 subtitle describes the intelligence feature it actually is');
+
+  // Active verified intelligence & signal capability representation in Wave 9 research story
+  assert.ok(INDEX_HTML.includes('<h3>Track Record Sinyal</h3>'), 'Landing markets verified systemic signal audit capability rather than decommissioned personal finance');
+  assert.ok(INDEX_HTML.includes('sinyal sistemik Auto-Cuan'), 'Landing copy accurately describes systemic signal outputs');
+
+  // The approved research workflow structure is present in the landing story
+  const expectedStory = ['#landingMarket', '#landingScan', '#landingInvestigate', '#landingValidate', '#landingAI', '#landingMonitor'];
+  for (const sectionId of expectedStory) {
+    assert.ok(INDEX_HTML.includes(`href="${sectionId}"`) && INDEX_HTML.includes(`id="${sectionId.slice(1)}"`), `Landing presents active research workflow section ${sectionId}`);
+  }
 });
 
 // ----------------------------------------------------------------------------

@@ -8,8 +8,6 @@
   var currentProfile = null;
   var subscriptionPlans = [];
   var quotedVoucher = null;
-  var originalDoRegister = null;
-  var originalOpenRegister = null;
 
   function byId(id) { return document.getElementById(id); }
   function text(value) { return String(value == null ? '' : value); }
@@ -50,7 +48,7 @@
       PREMIUM_2_MONTHS:'Premium 2 Bulan',
       PREMIUM_3_MONTHS:'Premium 3 Bulan',
       LIFETIME:'Lifetime',
-      TRIAL:'Trial 10 Hari',
+      TRIAL:'Trial',
       FREE:'Free'
     };
     return names[code] || fallback || code || 'Free';
@@ -110,6 +108,7 @@
   function term(title, body) {
     return '<section class="ac-term-section"><h3>' + esc(title) + '</h3><p>' + esc(body) + '</p></section>';
   }
+  var lastCenterFocus = null;
   function ensureCenter() {
     var root = byId('acAccountCenter');
     if (root) return root;
@@ -122,17 +121,16 @@
     root.innerHTML = [
       '<div class="ac-center-shell">',
       '<header class="ac-center-head">',
-      '<div class="ac-center-identity"><div id="acCenterAvatar" class="ac-center-avatar">AC</div><div class="min-w-0"><p class="ac-center-eyebrow">Auto-Cuan Account Center</p><h1 id="acCenterTitle" class="ac-center-title">Profil &amp; Keanggotaan</h1><p id="acCenterSubtitle" class="ac-center-subtitle">Identitas, keamanan, subscription, dan ketentuan dalam satu tempat.</p></div></div>',
+      '<div class="ac-center-identity"><div id="acCenterAvatar" class="ac-center-avatar">AC</div><div class="min-w-0"><p class="ac-center-eyebrow">Auto-Cuan Account Center</p><h1 id="acCenterTitle" class="ac-center-title">Profil &amp; Keanggotaan</h1><p id="acCenterSubtitle" class="ac-center-subtitle">Identitas, keamanan, dan ketentuan dalam satu tempat.</p></div></div>',
       '<button type="button" id="acCenterClose" class="ac-center-close" aria-label="Tutup Account Center">&times;</button>',
       '</header>',
       '<nav class="ac-center-tabs" aria-label="Bagian Account Center">',
       '<button type="button" class="ac-center-tab" data-ac-tab="profile" aria-selected="true">● Profil</button>',
-      '<button type="button" class="ac-center-tab" data-ac-tab="subscription" aria-selected="false">◇ Subscription</button>',
       '<button type="button" class="ac-center-tab" data-ac-tab="terms" aria-selected="false">▤ Peraturan &amp; Ketentuan</button>',
       '</nav>',
       '<main class="ac-center-body">',
       '<section id="acPanelProfile" class="ac-center-panel"></section>',
-      '<section id="acPanelSubscription" class="ac-center-panel" hidden></section>',
+      '<section id="acPanelSubscription" class="ac-center-panel" hidden style="display:none !important;"></section>',
       '<section id="acPanelTerms" class="ac-center-panel" hidden>' + termsHtml() + '</section>',
       '</main></div>'
     ].join('');
@@ -148,6 +146,7 @@
     return root;
   }
   function switchTab(name) {
+    if (name === 'subscription') name = 'profile';
     var root = ensureCenter();
     root.querySelectorAll('[data-ac-tab]').forEach(function (b) {
       b.setAttribute('aria-selected', b.getAttribute('data-ac-tab') === name ? 'true' : 'false');
@@ -156,17 +155,40 @@
       var panel = byId('acPanel' + tab.charAt(0).toUpperCase() + tab.slice(1));
       if (panel) panel.hidden = tab !== name;
     });
-    if (name === 'subscription' && isLoggedIn()) loadSubscription();
   }
   function closeCenter() {
     var root = byId('acAccountCenter');
     if (root) root.hidden = true;
     document.documentElement.style.removeProperty('overflow');
+    if (lastCenterFocus && typeof lastCenterFocus.setAttribute === 'function') {
+      try {
+        if (lastCenterFocus.getAttribute('aria-haspopup') === 'dialog') {
+          lastCenterFocus.setAttribute('aria-expanded', 'false');
+        }
+      } catch (_) {}
+    }
+    if (lastCenterFocus && typeof lastCenterFocus.focus === 'function') {
+      try { lastCenterFocus.focus(); } catch (_) {}
+    }
   }
-  async function openCenter(tab) {
+  async function openCenter(tab, triggerEl) {
     var root = ensureCenter();
+    if (root.hidden) {
+      lastCenterFocus = triggerEl || ((document.activeElement && document.activeElement !== document.body) ? document.activeElement : byId('sidebarAccountEntry'));
+      if (lastCenterFocus && typeof lastCenterFocus.setAttribute === 'function') {
+        try {
+          if (lastCenterFocus.getAttribute('aria-haspopup') === 'dialog') {
+            lastCenterFocus.setAttribute('aria-expanded', 'true');
+          }
+        } catch (_) {}
+      }
+      if (lastCenterFocus && typeof lastCenterFocus.focus === 'function') {
+        try { lastCenterFocus.focus({ preventScroll: true }); } catch (_) {}
+      }
+    }
     root.hidden = false;
     document.documentElement.style.overflow = 'hidden';
+    if (tab === 'subscription') tab = 'profile';
     switchTab(tab || 'profile');
     if (tab === 'terms') return;
     if (!isLoggedIn()) {
@@ -234,13 +256,12 @@
       fact('Diverifikasi', esc(dateId(tg.verified_at, true))) +
       fact('Channel', tg.channel_joined ? '<span class="ac-chip ac-chip-ok">Sudah bergabung</span>' : '<span class="ac-chip">Belum tercatat</span>') +
       '</dl></section>',
-      '<section class="ac-card"><p class="ac-section-kicker">Subscription</p><h2 class="ac-section-title">Status akses</h2>' + subscriptionMini(ent, sub) + '<button type="button" class="ac-btn ac-btn-primary" style="margin-top:12px;width:100%" data-ac-open-sub>Kelola subscription &amp; voucher</button></section>',
+      '<section class="ac-card"><p class="ac-section-kicker">Subscription</p><h2 class="ac-section-title">Status akses</h2>' + subscriptionMini(ent, sub) + '</section>',
+      '<section class="ac-card ac-card-soft"><p class="ac-section-kicker">Sesi Akun</p><h2 class="ac-section-title">Keluar dari Sesi</h2><p class="ac-muted" style="margin-top:4px">Keluar dari sesi Auto-Cuan pada perangkat ini.</p><button type="button" class="ac-btn ac-btn-danger" id="acCenterLogoutBtn" style="margin-top:10px;width:100%" onclick="if(typeof window.closeAccountCenter===\'function\')window.closeAccountCenter();if(typeof window.logout===\'function\')window.logout();">Logout</button></section>',
       p.is_admin ? adminCommandsSectionHtml() : '',
       '</div></div>',
       '<div class="ac-hint">Peraturan &amp; Ketentuan dapat dibuka kapan saja dari tab di atas. Untuk akun baru, persetujuan versi aktif diwajibkan sebelum pendaftaran diproses.</div>'
     ].join('');
-    var openSub = panel.querySelector('[data-ac-open-sub]');
-    if (openSub) openSub.addEventListener('click', function () { switchTab('subscription'); });
   }
   // Read-only cheat-sheet of the Telegram admin bot commands, for `budi`
   // only (gated by p.is_admin server-side, same signal already used for
@@ -329,9 +350,10 @@
     if (!result.ok || !result.data.success) { target.textContent = result.data.error || 'Status trial belum tersedia.'; return; }
     var d = result.data;
     if (d.admin) { target.innerHTML = 'Akun administrator tidak menggunakan trial.'; return; }
-    if (d.active) { target.innerHTML = '<strong>Trial aktif.</strong> Berlaku sampai ' + esc(dateId(d.expires_at,true)) + '.'; return; }
-    if (d.consumed) { target.innerHTML = 'Trial 10 hari sudah pernah digunakan.'; return; }
-    target.innerHTML = '<strong>Trial 10 hari tersedia.</strong><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px"><button type="button" id="acTrialActivate" class="ac-btn ac-btn-primary">Aktifkan trial</button>' + (d.telegram_link_required ? '<button type="button" id="acSubscriptionTelegram" class="ac-btn">Hubungkan Telegram</button>' : '') + '</div>';
+    var trialDays = Number(d.duration_days) || 14;
+    if (d.active) { target.innerHTML = '<strong>Trial aktif.</strong> Berlaku sampai ' + esc(dateId(d.effective_expires_at || d.expires_at,true)) + '.'; return; }
+    if (d.consumed) { target.innerHTML = 'Trial ' + trialDays + ' hari sudah pernah digunakan.'; return; }
+    target.innerHTML = '<strong>Trial ' + trialDays + ' hari tersedia.</strong><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px"><button type="button" id="acTrialActivate" class="ac-btn ac-btn-primary">Aktifkan trial</button>' + (d.telegram_link_required ? '<button type="button" id="acSubscriptionTelegram" class="ac-btn">Hubungkan Telegram</button>' : '') + '</div>';
     var tg = byId('acSubscriptionTelegram'); if (tg) tg.addEventListener('click', linkSubscriptionTelegram);
     var activate = byId('acTrialActivate'); if (activate) activate.addEventListener('click', activateTrial);
   }
@@ -417,48 +439,9 @@
     if(!result.data.vouchers.length){target.innerHTML='<div class="ac-muted">Belum ada voucher.</div>';return;}
     target.innerHTML=result.data.vouchers.slice(0,30).map(function(v){return '<div class="ac-admin-row"><span><strong style="color:#e5edf7">••••' + esc(v.code_hint||'') + '</strong><br>' + esc(planName(v.plan_code)) + '</span><span>' + esc(Number(v.redemption_count)||0) + ' / ' + esc(Number(v.max_redemptions)||0) + ' dipakai</span><span>' + (v.active && !v.revoked_at ? '<span class="ac-chip ac-chip-ok">Aktif</span>' : '<span class="ac-chip">Dicabut</span>') + '</span></div>';}).join('');
   }
-  function injectRegistrationTerms() {
-    if (byId('acTermsRegistration')) return;
-    var error = byId('registerError'); var button=byId('registerBtn');
-    if (!error || !error.parentNode || !button) return;
-    var box=document.createElement('div'); box.id='acTermsRegistration';
-    box.innerHTML='<label class="ac-reg-terms-row"><input type="checkbox" id="acRegTermsAccepted"><span class="ac-reg-terms-copy">Saya menyetujui <button type="button" id="acOpenTermsFromRegister" class="ac-reg-terms-link">Syarat &amp; Ketentuan Layanan Auto-Cuan</button>.</span></label>';
-    error.parentNode.insertBefore(box,error);
-    var checkbox=byId('acRegTermsAccepted'); var open=byId('acOpenTermsFromRegister');
-    function sync(){ if(button) button.disabled=!checkbox.checked; }
-    checkbox.addEventListener('change',sync); if(open) open.addEventListener('click',function(event){event.preventDefault();if(typeof window.openStandaloneTermsModal==='function'){window.openStandaloneTermsModal();}else{openStandaloneTermsModal();}});
-    sync();
-  }
-  function showRegisterTermsError() {
-    var error=byId('registerError');
-    if(error){error.textContent='Baca dan setujui Peraturan & Ketentuan sebelum mendaftar.';error.classList.remove('hidden');}
-  }
   function installRegistrationContract() {
-    injectRegistrationTerms();
-    if (typeof window.doRegister === 'function' && !originalDoRegister) {
-      originalDoRegister=window.doRegister;
-      window.doRegister=async function(){
-        var checkbox=byId('acRegTermsAccepted');
-        if(!checkbox||checkbox.checked!==true){showRegisterTermsError();return;}
-        var nativeFetch=window.fetch;
-        window.fetch=function(input,init){
-          var url=typeof input==='string'?input:(input&&input.url)||'';
-          if(url.indexOf('/api/register-user')!==-1 && init && typeof init.body==='string'){
-            try{var body=JSON.parse(init.body);body.termsAccepted=true;body.termsVersion=TERMS_VERSION;init=Object.assign({},init,{body:JSON.stringify(body)});}catch(_){}
-          }
-          return nativeFetch.call(window,input,init);
-        };
-        try{return await originalDoRegister.apply(this,arguments);}finally{window.fetch=nativeFetch;}
-      };
-    }
-    if (typeof window.openRegisterModal === 'function' && !originalOpenRegister) {
-      originalOpenRegister=window.openRegisterModal;
-      window.openRegisterModal=function(){
-        var out=originalOpenRegister.apply(this,arguments);
-        setTimeout(function(){injectRegistrationTerms();var c=byId('acRegTermsAccepted');if(c)c.checked=false;var b=byId('registerBtn');if(b)b.disabled=true;},0);
-        return out;
-      };
-    }
+    // The native form owns consent validation and the versioned payload.
+    if (typeof window.syncRegistrationConsent === 'function') window.syncRegistrationConsent();
   }
   function installHeaderProfileTrigger() {
     var label=byId('headerUserLabel');
@@ -476,18 +459,18 @@
       modal.setAttribute('role', 'dialog');
       modal.setAttribute('aria-modal', 'true');
       modal.setAttribute('aria-labelledby', 'standaloneTermsTitle');
-      modal.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+      modal.style.cssText = 'position:fixed;inset:0;z-index:var(--ac-z-modal, 100001);background:var(--backdrop-surface, rgba(15,23,42,0.75));display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
 
       var card = document.createElement('div');
-      card.style.cssText = 'width:100%;max-width:680px;max-height:85vh;background:#0f172a;border:1px solid rgba(148,163,184,0.25);border-radius:20px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.7);display:flex;flex-direction:column;overflow:hidden;color:#e2e8f0;font-family:system-ui,-apple-system,sans-serif;';
+      card.style.cssText = 'width:100%;max-width:680px;max-height:85vh;background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--radius-xl, 16px);box-shadow:var(--ac-shadow-2);display:flex;flex-direction:column;overflow:hidden;color:var(--text-primary);font-family:inherit;';
 
       var header = document.createElement('div');
-      header.style.cssText = 'padding:18px 22px 14px;border-bottom:1px solid rgba(148,163,184,0.15);display:flex;align-items:center;justify-content:space-between;gap:12px;';
-      header.innerHTML = '<div><h2 id="standaloneTermsTitle" style="margin:0;font-size:16px;font-weight:700;color:#f8fafc;display:flex;align-items:center;gap:8px"><span>📜</span> Peraturan &amp; Ketentuan Auto-Cuan</h2><p style="margin:4px 0 0;font-size:11px;color:#94a3b8">Dokumen Resmi Syarat &amp; Ketentuan Layanan (Versi ' + TERMS_VERSION + ')</p></div>' +
-        '<button type="button" id="closeStandaloneTermsBtn" style="padding:4px 8px;border:0;background:transparent;color:#94a3b8;font-size:24px;line-height:1;cursor:pointer;border-radius:6px" aria-label="Tutup">&times;</button>';
+      header.style.cssText = 'padding:18px 22px 14px;border-bottom:1px solid var(--border-hairline);display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);';
+      header.innerHTML = '<div><h2 id="standaloneTermsTitle" style="margin:0;font-size:16px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:8px"><span>📜</span> Peraturan &amp; Ketentuan Auto-Cuan</h2><p style="margin:4px 0 0;font-size:11px;color:var(--text-secondary)">Dokumen Resmi Syarat &amp; Ketentuan Layanan (Versi ' + TERMS_VERSION + ')</p></div>' +
+        '<button type="button" id="closeStandaloneTermsBtn" style="min-height:44px;min-width:44px;padding:4px 8px;border:0;background:transparent;color:var(--text-secondary);font-size:24px;line-height:1;cursor:pointer;border-radius:var(--radius-md,8px);display:grid;place-items:center;" aria-label="Tutup">&times;</button>';
 
       var body = document.createElement('div');
-      body.style.cssText = 'padding:18px 22px;overflow-y:auto;max-height:calc(85vh - 140px);display:flex;flex-direction:column;gap:14px;font-size:12px;line-height:1.6;color:#cbd5e1;';
+      body.style.cssText = 'padding:18px 22px;overflow-y:auto;max-height:calc(85vh - 140px);display:flex;flex-direction:column;gap:12px;font-size:12px;line-height:1.6;color:var(--text-secondary);background:var(--canvas);';
 
       var termsList = [
         ['1. Ruang lingkup layanan', 'Auto-Cuan adalah alat bantu pemantauan, pencatatan, penyaringan, dan analisis pasar saham. Informasi pada layanan tidak merupakan jaminan keuntungan, tidak menggantikan penilaian pribadi pengguna, dan tidak merupakan perintah beli atau jual yang bersifat pasti.'],
@@ -505,14 +488,14 @@
       ];
 
       var sectionsHtml = termsList.map(function (item) {
-        return '<div style="background:rgba(30,41,59,0.5);border:1px solid rgba(148,163,184,0.1);border-radius:10px;padding:12px 14px"><h3 style="margin:0 0 6px;font-size:12px;font-weight:700;color:#38bdf8">' + item[0] + '</h3><p style="margin:0;color:#94a3b8;font-size:11.5px;line-height:1.55">' + item[1] + '</p></div>';
+        return '<div style="background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--radius-md,10px);padding:12px 14px"><h3 style="margin:0 0 6px;font-size:12px;font-weight:800;color:var(--text-primary)">' + item[0] + '</h3><p style="margin:0;color:var(--text-secondary);font-size:11.5px;line-height:1.55">' + item[1] + '</p></div>';
       }).join('');
 
-      body.innerHTML = sectionsHtml + '<div style="font-size:11px;color:#64748b;margin-top:6px;padding-top:10px;border-top:1px solid rgba(148,163,184,0.1)">Dokumen ini menjelaskan aturan penggunaan produk Auto-Cuan. Kebijakan pembayaran/refund spesifik mengikuti mekanisme pembayaran resmi saat transaksi diproses.</div>';
+      body.innerHTML = sectionsHtml + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;padding-top:10px;border-top:1px solid var(--border-hairline)">Dokumen ini menjelaskan aturan penggunaan produk Auto-Cuan. Kebijakan pembayaran/refund spesifik mengikuti mekanisme pembayaran resmi saat transaksi diproses.</div>';
 
       var footer = document.createElement('div');
-      footer.style.cssText = 'padding:12px 22px;border-top:1px solid rgba(148,163,184,0.15);display:flex;justify-content:flex-end;background:rgba(15,23,42,0.6);';
-      footer.innerHTML = '<button type="button" id="dismissStandaloneTermsBtn" style="padding:8px 20px;border:0;border-radius:10px;background:#10b981;color:#042f2e;font-size:12px;font-weight:700;cursor:pointer;transition:background 0.2s">Tutup</button>';
+      footer.style.cssText = 'padding:12px 22px;border-top:1px solid var(--border-hairline);display:flex;justify-content:flex-end;background:var(--surface);';
+      footer.innerHTML = '<button type="button" id="dismissStandaloneTermsBtn" style="min-height:44px;padding:0 24px;border:0;border-radius:var(--radius-md,8px);background:var(--accent-primary);color:var(--color-on-accent,#ffffff);font-size:13px;font-weight:700;cursor:pointer;">Tutup</button>';
 
       card.appendChild(header);
       card.appendChild(body);
@@ -542,9 +525,10 @@
   function init() {
     ensureCss(); ensureCenter(); installRegistrationContract(); installHeaderProfileTrigger();
     window.openStandaloneTermsModal = openStandaloneTermsModal;
-    window.openAccountProfile=function(){return openCenter('profile');};
-    window.openAccountTerms=function(){return openCenter('terms');};
-    window.openAccountSubscription=function(){return openCenter('subscription');};
+    window.closeAccountCenter = closeCenter;
+    window.openAccountProfile=function(triggerEl){return openCenter('profile', triggerEl);};
+    window.openAccountTerms=function(triggerEl){return openCenter('terms', triggerEl);};
+    window.openAccountSubscription=function(triggerEl){return openCenter('subscription', triggerEl);};
     // Other runtimes can replace/re-render header and registration state after
     // session validation. Re-attach idempotently without using MutationObserver
     // on the entire document tree.

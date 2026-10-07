@@ -176,9 +176,35 @@ test('the stat strip hugs its content instead of stretching', () => {
   assert.match(section8, /#screenerStats[^{]*\{[\s\S]*?width: max-content/);
 });
 
-test('wide screens widen only the data surfaces', () => {
-  const wide = section8.slice(section8.indexOf('@media (min-width: 1536px)'));
-  assert.match(wide, /#page-screener\.page-content/);
-  assert.match(wide, /#page-sektor\.page-content/);
-  assert.doesNotMatch(wide, /#page-analisis/, 'prose-width surfaces should keep their measure');
+function protectedWideRules(css) {
+  const clean = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const header = /@media\s*\(\s*min-width\s*:\s*1536px\s*\)\s*\{/g;
+  const blocks = []; let match;
+  while ((match = header.exec(clean))) {
+    const start = header.lastIndex; let depth = 1, quote = '', escaped = false, end = start;
+    for (; end < clean.length && depth; end++) {
+      const c = clean[end];
+      if (quote) { if (escaped) escaped = false; else if (c === '\\') escaped = true; else if (c === quote) quote = ''; }
+      else if (c === '"' || c === "'") quote = c;
+      else if (c === '{') depth++;
+      else if (c === '}') depth--;
+    }
+    assert.equal(depth, 0, 'protected media rule must be balanced');
+    blocks.push(clean.slice(start, end - 1)); header.lastIndex = end;
+  }
+  return blocks;
+}
+function assertWideScope(css) {
+  const blocks = protectedWideRules(css); assert.ok(blocks.length, 'wide-screen rule exists');
+  for (const wide of blocks) {
+    assert.match(wide, /#page-screener\.page-content/);
+    assert.match(wide, /#page-sektor\.page-content/);
+    assert.doesNotMatch(wide, /#page-analisis/, 'prose-width surfaces should keep their measure');
+  }
+}
+test('wide screens widen only the data surfaces', () => assertWideScope(section8));
+test('wide-screen guard rejects analysis inside its media block, permits unrelated later rules', () => {
+  const css = '@media (min-width: 1536px) { #page-screener.page-content, #page-sektor.page-content { max-width:1320px; } }';
+  assertWideScope(css + '#page-analisis { color: green; }');
+  assert.throws(() => assertWideScope(css.replace('max-width:1320px;', 'max-width:1320px; } #page-analisis { max-width:1320px;')), assert.AssertionError);
 });

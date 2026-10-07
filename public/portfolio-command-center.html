@@ -54,6 +54,20 @@
     </section>
 
     <div id="app" class="hidden">
+      <!-- Mobile Section Selector (<= 767px) -->
+      <div id="pccMobileNav" class="pcc-mobile-nav" aria-label="Navigasi Portofolio Mobile">
+        <label for="pccMobileSectionSelect" class="sr-only">Pilih Bagian Portofolio</label>
+        <select id="pccMobileSectionSelect" class="pcc-mobile-select" aria-label="Pilih Bagian Portofolio">
+          <option value="today" selected>Hari Ini</option>
+          <option value="planner">Rencana Posisi</option>
+          <option value="watch">Pantauan</option>
+          <option value="risk">Risiko &amp; Avg Down</option>
+          <option value="scenarios">Skenario Posisi</option>
+          <option value="journal">Jurnal</option>
+          <option value="ai">Asisten AI</option>
+        </select>
+      </div>
+
       <nav id="tabStrip" class="tab-strip" role="tablist" aria-label="Portfolio Command Center">
         <button class="tab active" role="tab" aria-selected="true" data-tab="today"><span>📊</span><span>Hari Ini</span></button>
         <button class="tab" role="tab" aria-selected="false" data-tab="planner"><span>📝</span><span>Rencana Posisi</span></button>

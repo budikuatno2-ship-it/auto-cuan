@@ -239,6 +239,9 @@
     if (state.bound) return;
     state.bound = true;
     function on(id, evt, fn) { var el = $(id); if (el) el[evt] = fn; }
+    on('pccMobileSectionSelect', 'onchange', function (e) {
+      if (e && e.target && e.target.value) openTab(e.target.value);
+    });
     on('refreshToday', 'onclick', function () { refreshAllPrices(true); });
     on('captureSnapshot', 'onclick', captureSnapshot);
     on('calculateBudget', 'onclick', calculateBudget);
@@ -266,6 +269,26 @@
     document.addEventListener('keydown', function (event) { if (event.key === 'Escape') { closeDrawer(); closeJournalModal(); } });
     window.addEventListener('focus', resyncLocalState);
     document.addEventListener('visibilitychange', function () { if (!document.hidden) resyncLocalState(); });
+    function syncMobileNav() {
+      var tabStrip = $('tabStrip');
+      var mobileNav = $('pccMobileNav');
+      if (window.innerWidth <= 767) {
+        if (tabStrip) tabStrip.style.display = 'none';
+        if (mobileNav) mobileNav.style.display = 'block';
+      } else {
+        if (tabStrip) tabStrip.style.display = '';
+        if (mobileNav) mobileNav.style.display = '';
+      }
+    }
+    window.addEventListener('resize', syncMobileNav);
+    syncMobileNav();
+    window.openPortfolioTab = openTab;
+    window.openTab = openTab;
+    window.__AUTOCUAN_PORTFOLIO_CONTROLLER__ = {
+      getState: function () { return state; },
+      setPlans: function (plans) { state.plans = Array.isArray(plans) ? plans : []; renderAll(); },
+      renderAll: renderAll
+    };
   }
 
   function navigateTabs(event, button) {
@@ -288,6 +311,11 @@
     });
     portfolioRoot().querySelectorAll('.page').forEach(function (page) { page.classList.remove('active'); });
     var page = $('page-' + name); if (page) page.classList.add('active');
+    var mobileSelect = $('pccMobileSectionSelect');
+    if (mobileSelect) {
+      var targetVal = name === 'scenarios' ? 'risk' : name;
+      if (mobileSelect.value !== targetVal) mobileSelect.value = targetVal;
+    }
     if (name === 'watch') renderWatch();
     if (name === 'risk') renderRiskOptions();
     if (name === 'alerts') renderAlerts();
@@ -330,12 +358,18 @@
   function renderEmptyPortfolioState(isEmpty) {
     var shell = document.querySelector('.app-shell') || document.body;
     shell.classList.toggle('portfolio-empty', isEmpty);
+    var app = $('app');
+    if (app) app.classList.toggle('portfolio-empty', isEmpty);
+    var pageToday = $('page-today');
+    if (pageToday) pageToday.classList.toggle('portfolio-empty', isEmpty);
+
+    var grid = document.querySelector('#page-today .metric-grid');
+    if (grid) grid.style.display = isEmpty ? 'none' : '';
 
     var host = $('emptyPortfolioCta');
     if (!isEmpty) { if (host) host.remove(); return; }
     if (host) return;
 
-    var grid = document.querySelector('#page-today .metric-grid');
     if (!grid || !grid.parentNode) return;
     var node = document.createElement('div');
     node.id = 'emptyPortfolioCta';

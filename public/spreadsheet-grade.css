@@ -439,16 +439,16 @@ html.light #rankingTableWrap thead th {
 }
 
 /* Zebra Striping */
-tbody tr:nth-child(even) {
+tbody tr:nth-child(even):not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)) {
   background: rgba(255, 255, 255, 0.015);
 }
-html.light tbody tr:nth-child(even) {
+html.light tbody tr:nth-child(even):not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)) {
   background: rgba(0, 0, 0, 0.015);
 }
-tbody tr:hover {
+tbody tr:hover:not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)) {
   background: rgba(255, 255, 255, 0.04);
 }
-html.light tbody tr:hover {
+html.light tbody tr:hover:not(:where([data-ac-ui="v2"], .ac-ui-v2, [data-ac-ui="v2"] *, .ac-ui-v2 *)) {
   background: rgba(0, 0, 0, 0.035);
 }
 

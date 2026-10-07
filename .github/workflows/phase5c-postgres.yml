@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'supabase/subscription-phase-2-migration.sql'
+      - 'supabase/subscription-trial-google-link-migration.sql'
       - 'supabase/subscription-phase-5c-voucher-admin-migration.sql'
       - 'supabase/subscription-phase-5c-lifecycle-correction.sql'
       - 'supabase/subscription-phase-5c-admin-command-correction.sql'
@@ -216,6 +217,18 @@ jobs:
           cat "$LOG_DIR/redemption-runtime.log"
           sed -i "s/^redemption_runtime=.*/redemption_runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
           exit "$status"
+      - name: Verify initial trial after Google bonus in isolated fixture
+        run: |
+          createdb trial_google_bonus_fixture
+          psql -d trial_google_bonus_fixture -v ON_ERROR_STOP=1 -f test/sql/phase5c/trial-google-bonus-bootstrap.sql
+          node <<'JS' | psql -d trial_google_bonus_fixture -v ON_ERROR_STOP=1
+          const sql = require('fs').readFileSync('supabase/subscription-trial-google-link-migration.sql', 'utf8');
+          const start = sql.indexOf('CREATE OR REPLACE FUNCTION public.activate_subscription_trial(');
+          const end = sql.indexOf('REVOKE ALL ON FUNCTION public.activate_subscription_trial', start);
+          if (start < 0 || end < start) throw new Error('Trial RPC definition missing');
+          console.log(sql.slice(start, end));
+          JS
+          psql -d trial_google_bonus_fixture -v ON_ERROR_STOP=1 -f test/sql/phase5c/trial-google-bonus-runtime.sql
       - name: Upload PostgreSQL diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

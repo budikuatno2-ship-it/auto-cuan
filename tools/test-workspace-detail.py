@@ -9,6 +9,8 @@ ROOT=Path(__file__).resolve().parents[1]
 OUT=Path(os.environ.get('PRECISION_TEST_OUTPUT','/mnt/data/detail-review'));OUT.mkdir(parents=True,exist_ok=True)
 env={'__file__':str(ROOT/'tools/test-precision-browser.py')}
 exec(compile((ROOT/'tools/test-precision-browser.py').read_text().split('with sync_playwright() as pw:')[0],'fixture','exec'),env)
+landing={'__file__':str(ROOT/'tools/test-landing-experience.py')}
+exec(compile((ROOT/'tools/test-landing-experience.py').read_text().split('checks=[];errors=[]')[0],'landing-fixture','exec'),landing)
 fixture=env['fixture'].replace('<head>','<head><base href="https://autocuan.test/">'); mock=env['mock']
 checks=[];errors=[]
 def check(name,condition):
@@ -33,6 +35,7 @@ with sync_playwright() as pw:
     try:
         page.set_content(fixture,wait_until='domcontentloaded')
         page.add_script_tag(content=mock)
+        page.add_script_tag(content=landing['sidebar'])
         for name in ['money-sheet-formulas.js','money-sheet-model.js','portfolio-command-center-model.js','number-flow-runtime.js','money-sheet-grid.js','money-sheet-runtime.js']:
             page.add_script_tag(content=(ROOT/'public'/name).read_text())
         page.evaluate('AutoCuanMoneySheet.init()')
@@ -94,10 +97,19 @@ with sync_playwright() as pw:
                 page.set_viewport_size({'width':width,'height':980 if width>900 else 844})
                 check(theme+'/'+str(width)+' worksheet has no page overflow',page.evaluate('document.documentElement.scrollWidth<=innerWidth'))
                 if width < 1024:
-                    for control in ['#workspaceSidebarToggle','#headerUserLabel','#logoutBtn']:
-                        box = page.locator(control).bounding_box()
-                        check(f'{theme}/{width} {control} fully visible', box['x'] >= 0 and box['x'] + box['width'] <= width and box['height'] >= 44)
-                    check(f'{theme}/{width} account has no dark block', page.locator('.header-account').evaluate("e=>getComputedStyle(e).backgroundColor==='rgba(0, 0, 0, 0)'"))
+                    # V2 deliberately moves Account Center into the drawer;
+                    # the duplicate username/logout topbar controls stay hidden.
+                    box=page.locator('#workspaceSidebarToggle').bounding_box()
+                    check(f'{theme}/{width} mobile menu trigger fully visible',box is not None and box['x']>=0 and box['x']+box['width']<=width and box['height']>=44)
+                    check(f'{theme}/{width} duplicate topbar account controls stay hidden',not page.locator('#headerUserLabel').is_visible() and not page.locator('#logoutBtn').is_visible())
+                    page.locator('#workspaceSidebarToggle').click()
+                    page.wait_for_function("document.getElementById('appSidebar').classList.contains('mobile-open')")
+                    page.wait_for_timeout(250)
+                    account=page.locator('#sidebarAccountEntry');box=account.bounding_box()
+                    check(f'{theme}/{width} canonical drawer account entry fully visible',box is not None and box['x']>=0 and box['x']+box['width']<=width and box['y']>=0 and box['y']+box['height']<=page.viewport_size['height'] and box['height']>=44)
+                    check(f'{theme}/{width} canonical account center hit reaches entry',account.evaluate("e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}"))
+                    page.keyboard.press('Escape')
+                    check(f'{theme}/{width} drawer closes and restores menu focus',page.evaluate("!document.getElementById('appSidebar').classList.contains('mobile-open')&&document.activeElement.id==='workspaceSidebarToggle'&&!document.getElementById('appMain').inert"))
                 if width in [390,1440]:
                     page.evaluate('document.activeElement.blur();window.scrollTo(0,0)');page.screenshot(path=str(OUT/f'worksheet-{theme}-{width}.png'),full_page=True)
         page.evaluate("localStorage.setItem('autocuan_user_id','other');window.dispatchEvent(new StorageEvent('storage',{key:'autocuan_user_id',newValue:'other'}))")

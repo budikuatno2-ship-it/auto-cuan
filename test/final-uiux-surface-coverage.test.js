@@ -7,13 +7,13 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
-const css = read('public/final-uiux-polish.css');
+const css = read('public/ui-theme.css');
 const html = read('public/index.html');
 
 test('final polish covers all primary workspace surfaces without business logic', () => {
   [
     '#page-dashboard', '#page-analisis', '#page-screener', '#page-watchlist',
-    '#page-sektor', '#page-portofolio', '#page-money-management',
+    '#page-sektor', '#page-portofolio',
     '#page-trackrecord', '#acAccountCenter'
   ].forEach((selector) => assert.ok(css.includes(selector), selector + ' must be covered'));
   assert.doesNotMatch(css, /fetch\(|localStorage|recommendation\s*=|score\s*=/i);

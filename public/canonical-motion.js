@@ -1,10 +1,10 @@
-/* Auto-Cuan final UI/UX runtime polish.
-   Performance-only layer: prefetch + interaction readiness.
-   It intentionally does not own auth, data, scoring, or navigation state. */
+/* Auto-Cuan Canonical Motion & Interaction Runtime (Wave 10 Final).
+   Performance & interaction layer: canonical panel motion, prefetch, and press feedback.
+   Strictly presentation-only: does not own auth, data, scoring, or navigation state. */
 (function (root) {
   'use strict';
-  if (!root || !root.document || root.__AUTO_CUAN_FINAL_UIUX__) return;
-  root.__AUTO_CUAN_FINAL_UIUX__ = '20261001-v2';
+  if (!root || !root.document || root.__AUTOCUAN_CANONICAL_MOTION__) return;
+  root.__AUTOCUAN_CANONICAL_MOTION__ = '20261006-v1';
 
   var doc = root.document;
   var prefetched = new Set();
@@ -18,16 +18,45 @@
       '/partials/portfolio-command-center.partial.html'
     ]
   };
+
+  function getMotionConfig() {
+    var duration = 260;
+    var easing = 'cubic-bezier(.16,1,.3,1)';
+    if (root.getComputedStyle && doc.documentElement) {
+      try {
+        var style = root.getComputedStyle(doc.documentElement);
+        var durVal = (style.getPropertyValue('--motion-panel') || '').trim();
+        var easeVal = (style.getPropertyValue('--ease-emphasized') || '').trim();
+        if (durVal) {
+          var parsed = parseFloat(durVal);
+          if (durVal.endsWith('s') && !durVal.endsWith('ms')) {
+            parsed = parsed * 1000;
+          }
+          if (Number.isFinite(parsed) && parsed > 0) {
+            duration = parsed;
+          }
+        }
+        if (easeVal) {
+          easing = easeVal;
+        }
+      } catch (_) {}
+    }
+    return { duration: duration, easing: easing };
+  }
+
   var lastAnimation = null;
   function enterPanel(panel) {
     if (!panel || !panel.animate || (reduced && reduced.matches)) return;
-    if (lastAnimation) lastAnimation.cancel();
+    if (lastAnimation) {
+      try { lastAnimation.cancel(); } catch (_) {}
+    }
+    var config = getMotionConfig();
     lastAnimation = panel.animate(
       [
-        { opacity: 0, transform: 'translate3d(0,9px,0) scale(.997)' },
+        { opacity: 0, transform: 'translate3d(0,8px,0) scale(.998)' },
         { opacity: 1, transform: 'translate3d(0,0,0) scale(1)' }
       ],
-      { duration: 220, easing: 'cubic-bezier(.16,1,.3,1)' }
+      { duration: config.duration, easing: config.easing }
     );
   }
 
@@ -85,8 +114,7 @@
     root.setTimeout(idleWarm, 1200);
   }
 
-  /* Keep active pointer feedback compositor-only. This makes dense dashboard
-     controls feel responsive without creating layout work or long animations. */
+  /* Keep active pointer feedback compositor-only with canonical --motion-press */
   doc.addEventListener('pointerdown', function (event) {
     var el = event.target && event.target.closest
       ? event.target.closest('button,.sidebar-item,.action-card,[role="button"]')
@@ -104,8 +132,12 @@
   doc.addEventListener('pointerup', releasePress, { passive: true });
   doc.addEventListener('pointercancel', releasePress, { passive: true });
 
-  root.AutoCuanFinalUiux = {
+  var api = {
     prefetchPage: prefetchPage,
     enterPanel: enterPanel
   };
-})(window);
+
+  root.AutoCuanMotion = api;
+  /* Compatibility facade for legacy consumers */
+  root.AutoCuanFinalUiux = api;
+})(typeof window !== 'undefined' ? window : this);

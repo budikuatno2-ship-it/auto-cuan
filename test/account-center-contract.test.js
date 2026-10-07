@@ -34,12 +34,15 @@ test('browser and server ship the exact same versioned terms contract', () => {
   assert.match(registerSource, /rollbackIncompleteRegistration/);
 });
 
-test('registration UI requires a checkbox and sends acceptance only during register-user request', () => {
-  assert.match(lazySource, /id=\\?"acRegTermsAccepted/);
-  assert.match(lazySource, /checkbox\.checked !== true/);
-  assert.match(lazySource, /body\.termsAccepted = true/);
-  assert.match(lazySource, /body\.termsVersion = TERMS_VERSION/);
-  assert.match(lazySource, /url\.indexOf\('\/api\/register-user'\)/);
+test('registration consent is owned by the native form, not Account Center injection', () => {
+  const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
+  assert.match(html, /id="regTermsAccepted"/);
+  assert.match(html, /var termsEl = document.getElementById\('regTermsAccepted'\)/);
+  assert.match(html, /termsAccepted: true, termsVersion: REGISTRATION_TERMS_VERSION/);
+  for (const source of [lazySource, runtimeSource]) {
+    assert.doesNotMatch(source, /acRegTermsAccepted|window\.fetch\s*=/);
+    assert.match(source, /window\.syncRegistrationConsent\(\)/);
+  }
 });
 
 test('profile is derived from signed server identity and omits sensitive account fields', () => {
@@ -52,14 +55,15 @@ test('profile is derived from signed server identity and omits sensitive account
   assert.match(gatewaySource, /bodyAction === 'account-profile'/);
 });
 
-test('account center exposes profile subscription terms and a scrollable rules document', () => {
+test('account center exposes profile and terms while keeping dormant subscription hidden', () => {
   assert.match(runtimeSource, /data-ac-tab="profile"/);
-  assert.match(runtimeSource, /data-ac-tab="subscription"/);
+  assert.doesNotMatch(runtimeSource, /<button[^>]*data-ac-tab="subscription"/);
   assert.match(runtimeSource, /data-ac-tab="terms"/);
   assert.match(runtimeSource, /headerUserLabel/);
   assert.match(cssSource, /\.ac-terms-scroll\s*\{/);
   assert.match(cssSource, /overflow:auto/);
   assert.match(cssSource, /max-height:52dvh/);
+  assert.match(cssSource, /\.ac-center-tab\[hidden\]\s*\{\s*display:\s*none\s*!important;\s*\}/);
 });
 
 test('Account Center is lazy-loaded while signup terms stay available at startup', () => {
@@ -118,4 +122,17 @@ test("admin bot command reference is gated to p.is_admin and never invented from
   assert.match(runtimeSource, /'\/batal'/);
   assert.doesNotMatch(runtimeSource, /AR-XXXX/);
   assert.match(cssSource, /\.ac-admin-cmd-list\s*\{/);
+});
+
+
+test('trial display offers fourteen-day activation for bonus-only status and uses combined expiry', async () => {
+  const vm=require('node:vm'),source=require('node:fs').readFileSync(require('node:path').join(__dirname,'../public/account-center-v1.js'),'utf8');
+  const body=source.slice(source.indexOf('  async function loadTrialStatus()'),source.indexOf('  async function linkSubscriptionTelegram()'));
+  for(const data of [{available:true,consumed:false,active:false,duration_days:14},{active:true,expires_at:'initial-expiry',effective_expires_at:'combined-expiry'},{consumed:true,duration_days:10}]) {
+    const target={innerHTML:''};let wired=false;
+    await vm.runInNewContext('(async()=>{'+body+'await loadTrialStatus();})()', {byId:id=>id==='acTrialStatus'?target:id==='acTrialActivate'?{addEventListener:()=>{wired=true}}:null,request:async()=>({ok:true,data:{success:true,...data}}),esc:String,dateId:String,activateTrial(){},linkSubscriptionTelegram(){}});
+    if(data.available){assert.match(target.innerHTML,/Trial 14 hari tersedia/);assert.equal(wired,true)}
+    if(data.active){assert.match(target.innerHTML,/combined-expiry/);assert.doesNotMatch(target.innerHTML,/initial-expiry/)}
+    if(data.consumed)assert.match(target.innerHTML,/Trial 10 hari sudah pernah digunakan/);
+  }
 });

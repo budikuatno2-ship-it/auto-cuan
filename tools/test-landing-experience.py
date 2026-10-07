@@ -46,6 +46,7 @@ window.fetch=async()=>{__calls++;if(__mode==='hang')return new Promise(()=>{});i
 if(__mode==='error')return {ok:false,status:503};if(__mode==='malformed')return {ok:true,json:async()=>({success:false})};
 return {ok:true,json:async()=>({success:true,stale:true,snapshot:{sectors:[{name:'Data contoh',avg_change_pct:0.5}],dt_signals:[{ticker:'TEST',signal_type:'RADAR',entry:100,tp:110,sl:95}]}})};};
 window.updateLandingCtas=()=>{};window.resetRegisterApprovalView=()=>{};
+window.syncRegistrationConsent=()=>{};
 window.maintenanceLockActive=()=>false;window.applyMaintenanceGate=()=>{};
 window.escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 window.landingPrimaryAction=()=>openAuthChoiceModal();
@@ -56,7 +57,20 @@ def check(name,value):
     assert value,name
     checks.append(name)
 def contrast(page, selector):
-    return page.locator(selector).first.evaluate('''e=>{let fg=getComputedStyle(e).color,bg='';let n=e;while(n){bg=getComputedStyle(n).backgroundColor;if(bg!=='rgba(0, 0, 0, 0)')break;n=n.parentElement}function l(s){let x=s.match(/[\\d.]+/g).slice(0,3).map(Number).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);return x[0]*.2126+x[1]*.7152+x[2]*.0722}let a=l(fg),b=l(bg);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05)}''')
+    # Chromium serializes color-mix() as color(srgb ...) with 0..1 channels.
+    # Let the browser resolve every CSS color into sRGB bytes; extracting numbers
+    # and dividing by 255 misreads those normalized channels as nearly black.
+    return page.locator(selector).first.evaluate("""e=>{
+        const ctx=document.createElement('canvas').getContext('2d',{willReadFrequently:true});
+        ctx.canvas.width=ctx.canvas.height=1;
+        function rgba(color){ctx.clearRect(0,0,1,1);ctx.fillStyle=color;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data]}
+        function over(front,back){const a=front[3]/255;return front.slice(0,3).map((v,i)=>v*a+back[i]*(1-a)).concat(255)}
+        const ancestors=[];for(let n=e;n;n=n.parentElement)ancestors.unshift(n);
+        let bg=[255,255,255,255];for(const n of ancestors)bg=over(rgba(getComputedStyle(n).backgroundColor),bg);
+        const fg=over(rgba(getComputedStyle(e).color),bg);
+        function luminance(rgb){const c=rgb.slice(0,3).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);return c[0]*.2126+c[1]*.7152+c[2]*.0722}
+        const a=luminance(fg),b=luminance(bg);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05)
+    }""")
 with sync_playwright() as pw:
     browser=pw.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH','/usr/bin/chromium'),headless=True,args=['--no-sandbox'])
     page=browser.new_page(viewport={'width':1440,'height':950})
@@ -82,12 +96,18 @@ with sync_playwright() as pw:
         check('Mobile navigation opens',page.locator('#landingMenu').is_visible())
         page.keyboard.press('Escape')
         check('Mobile Escape closes and restores trigger',not page.locator('#landingMenu').is_visible() and page.evaluate("document.activeElement.id==='landingMenuToggle'"))
-        page.locator('#landingMenuToggle').click();page.locator('#landingMenu a').first.click()
-        check('Anchor closes menu and focuses destination',not page.locator('#landingMenu').is_visible() and page.evaluate("document.activeElement.id==='landingFeatures'"))
+        page.locator('#landingMenuToggle').click()
+        first_anchor=page.locator('#landingMenu a').first
+        expected_target=(first_anchor.get_attribute('href') or '').lstrip('#')
+        first_anchor.click()
+        check('Anchor closes menu and focuses its declared destination',
+              not page.locator('#landingMenu').is_visible()
+              and page.evaluate("(id)=>document.activeElement&&document.activeElement.id===id",expected_target))
         page.evaluate('window.scrollTo(0,0)');page.wait_for_timeout(500)
         page.locator('.landing-hero .landing-btn-primary').click();page.wait_for_timeout(25)
         check('Auth choice focuses inside and locks page',page.evaluate("document.getElementById('authChoiceModal').contains(document.activeElement)&&document.getElementById('landingPage').inert&&document.documentElement.classList.contains('auth-dialog-open')"))
-        page.locator('#authChoiceModal .landing-auth-card').nth(1).click();page.wait_for_timeout(25)
+        page.locator('#authChoiceModal .landing-auth-card').nth(1).click()
+        page.wait_for_function("document.getElementById('registerModal').contains(document.activeElement)",timeout=1000)
         check('Choice to register focuses new form without stale timer',page.evaluate("document.getElementById('registerModal').contains(document.activeElement)"))
         page.locator('#regUsername').fill('local-test')
         for height in [320,450,568,844]:
@@ -132,9 +152,23 @@ with sync_playwright() as pw:
         check('Landing sections remain visible without opacity hiding',page.evaluate("Array.from(document.querySelectorAll('#landingPage .landing-section')).every(e=>getComputedStyle(e).contentVisibility==='visible'&&getComputedStyle(e).opacity==='1')"))
         for color,width in [('light',1440),('dark',1440),('light',390),('dark',390)]:
             page.evaluate('(t)=>applyAppTheme(t)',color);page.set_viewport_size({'width':width,'height':950 if width>900 else 844});page.evaluate('document.activeElement.blur();window.scrollTo(0,0)');page.wait_for_timeout(250)
-            check(f'{color}/{width} final CTA contrast after auth runtime loads',contrast(page,'.landing-hero .landing-btn-primary .landing-cta-label')>=4.5)
+            check(f'{color}/{width} final CTA contrast after auth runtime loads',
+                  contrast(page,'.landing-hero .landing-btn-primary .landing-cta-label')>=4.5
+                  and page.locator('.landing-hero .landing-btn-primary .landing-cta-label').evaluate(
+                      "e=>getComputedStyle(e).color===getComputedStyle(e.parentElement).color"))
             page.screenshot(path=str(OUT/f'landing-{color}-{width}.png'))
             if width==1440:page.screenshot(path=str(OUT/f'landing-{color}-full.png'),full_page=True)
+        # A same-color foreground must fail even when the background uses the
+        # CSS Color 4 serialization that caused the false CI failure.
+        page.evaluate("()=>{const e=document.createElement('span');e.id='contrastNegative';e.textContent='Low contrast';e.style.cssText='color:rgb(128,128,128);background:color(srgb .5 .5 .5)';document.body.appendChild(e)}")
+        check('Contrast negative control rejects normalized sRGB same-color text',contrast(page,'#contrastNegative')<4.5)
+        page.evaluate("document.getElementById('contrastNegative').remove()")
+        label=page.locator('.landing-hero .landing-btn-primary .landing-cta-label')
+        old_style=label.get_attribute('style')
+        label.evaluate("e=>e.style.setProperty('color',getComputedStyle(e.parentElement).backgroundColor,'important')")
+        check('Contrast negative control rejects actual CTA label matching its surface',contrast(page,'.landing-hero .landing-btn-primary .landing-cta-label')<4.5)
+        label.evaluate("(e,s)=>{if(s===null)e.removeAttribute('style');else e.setAttribute('style',s)}",old_style)
+        check('Restored CTA label retains 4.5 minimum',contrast(page,'.landing-hero .landing-btn-primary .landing-cta-label')>=4.5)
         page.evaluate("document.getElementById('landingPage').classList.add('hidden');document.getElementById('appSidebar').classList.remove('hidden');document.getElementById('appShell').classList.remove('hidden');document.body.classList.add('sidebar-open');")
         page.locator('#workspaceSidebarToggle').click();page.wait_for_timeout(50)
         check('Real mobile sidebar makes background inert',page.evaluate("document.getElementById('appMain').inert"))

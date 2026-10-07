@@ -181,6 +181,10 @@ function extractFunction(source, signature) {
 
 function makeRuntime() {
   const dom = buildDom(parseStructure(html));
+  // Native input values exist in the browser even before the visitor types.
+  ['regUsername', 'regEmail', 'regPassword', 'regPasswordConfirm'].forEach((id) => {
+    dom.byId.get(id).value = '';
+  });
   const sandbox = {
     document: dom.document,
     // The landing page is the signed-out view: maintenance resolved OFF and no
@@ -196,7 +200,19 @@ function makeRuntime() {
     setTimeout: (fn) => { fn(); return 0; }
   };
   vm.createContext(sandbox);
+  // Load the current consent helper's real validation data and functions.
+  // doRegister is defined for its _busy state; this modal harness never submits.
+  ['badWords', 'WEAK_PASSWORDS'].forEach((name) => {
+    const declaration = new RegExp('\\bvar ' + name + '\\s*=\\s*\\[[\\s\\S]*?\\];').exec(html);
+    assert.ok(declaration, 'registration validation data must exist: ' + name);
+    vm.runInContext(declaration[0], sandbox);
+  });
   [
+    'function normalizeNameForCheck(',
+    'function isBadUsername(',
+    'function isValidPassword(',
+    'async function doRegister(',
+    'function syncRegistrationConsent(',
     'function setTopLevelView(',
     'function openLoginModal(',
     'function closeLoginModal(',
@@ -262,6 +278,8 @@ test('openRegisterModal() on the landing page yields a visible, interactive regi
   const modal = byId.get('registerModal');
   assert.equal(hiddenAncestor(modal), null, 'register modal must not sit under a display:none ancestor');
   assert.equal(inertAncestor(modal), null, 'register modal must not sit under an inert ancestor');
+  assert.equal(byId.get('registerBtn').disabled, true, 'fresh registration requires valid fields and consent');
+  assert.equal(byId.get('regTermsAccepted').checked, false, 'opening registration clears consent');
 
   // Registration cannot succeed without the terms checkbox: the server rejects
   // any payload that does not echo the current terms version.
