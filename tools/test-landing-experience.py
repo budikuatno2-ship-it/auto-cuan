@@ -46,6 +46,7 @@ window.fetch=async()=>{__calls++;if(__mode==='hang')return new Promise(()=>{});i
 if(__mode==='error')return {ok:false,status:503};if(__mode==='malformed')return {ok:true,json:async()=>({success:false})};
 return {ok:true,json:async()=>({success:true,stale:true,snapshot:{sectors:[{name:'Data contoh',avg_change_pct:0.5}],dt_signals:[{ticker:'TEST',signal_type:'RADAR',entry:100,tp:110,sl:95}]}})};};
 window.updateLandingCtas=()=>{};window.resetRegisterApprovalView=()=>{};
+window.syncRegistrationConsent=()=>{};
 window.maintenanceLockActive=()=>false;window.applyMaintenanceGate=()=>{};
 window.escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 window.landingPrimaryAction=()=>openAuthChoiceModal();
