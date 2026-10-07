@@ -51,13 +51,14 @@ with sync_playwright() as pw:
         page.evaluate("navigateTo('portofolio')")
         page.wait_for_selector('#portofolioPartialMount #tabStrip',timeout=30000)
         page.wait_for_function("document.querySelector('#portofolioPartialMount #app') && !document.querySelector('#portofolioPartialMount #app').classList.contains('hidden')",timeout=30000)
-        check('Portfolio keeps six primary tabs plus scenario subview',
+        check('Portfolio keeps six primary tabs and scenarios out of the primary strip',
               page.locator('#portofolioPartialMount #tabStrip [data-tab]').count()==6
-              and page.locator('#portofolioPartialMount .pcc-subnav [data-tab="scenarios"]').count()==1)
+              and page.locator('#portofolioPartialMount #tabStrip [data-tab="scenarios"]').count()==0
+              and page.locator('#portofolioPartialMount .pcc-subnav [data-tab="scenarios"]').count()>=1)
         for tab in ['today','planner','watch','risk']:
             page.locator('#portofolioPartialMount #tabStrip [data-tab="'+tab+'"]').click()
             check('Portfolio '+tab+' opens',page.locator('#portofolioPartialMount #page-'+tab).is_visible())
-        page.locator('#portofolioPartialMount .pcc-subnav [data-tab="scenarios"]').click()
+        page.locator('#portofolioPartialMount .pcc-subnav [data-tab="scenarios"]').first.click()
         check('Portfolio scenarios subview opens',page.locator('#portofolioPartialMount #page-scenarios').is_visible())
         for tab in ['journal','ai']:
             page.locator('#portofolioPartialMount #tabStrip [data-tab="'+tab+'"]').click()
