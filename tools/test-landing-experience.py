@@ -139,7 +139,10 @@ with sync_playwright() as pw:
         check('Landing sections remain visible without opacity hiding',page.evaluate("Array.from(document.querySelectorAll('#landingPage .landing-section')).every(e=>getComputedStyle(e).contentVisibility==='visible'&&getComputedStyle(e).opacity==='1')"))
         for color,width in [('light',1440),('dark',1440),('light',390),('dark',390)]:
             page.evaluate('(t)=>applyAppTheme(t)',color);page.set_viewport_size({'width':width,'height':950 if width>900 else 844});page.evaluate('document.activeElement.blur();window.scrollTo(0,0)');page.wait_for_timeout(250)
-            check(f'{color}/{width} final CTA contrast after auth runtime loads',contrast(page,'.landing-hero .landing-btn-primary .landing-cta-label')>=4.5)
+            check(f'{color}/{width} final CTA contrast after auth runtime loads',
+                  contrast(page,'.landing-hero .landing-btn-primary')>=4.5
+                  and page.locator('.landing-hero .landing-btn-primary .landing-cta-label').evaluate(
+                      "e=>getComputedStyle(e).color===getComputedStyle(e.parentElement).color"))
             page.screenshot(path=str(OUT/f'landing-{color}-{width}.png'))
             if width==1440:page.screenshot(path=str(OUT/f'landing-{color}-full.png'),full_page=True)
         page.evaluate("document.getElementById('landingPage').classList.add('hidden');document.getElementById('appSidebar').classList.remove('hidden');document.getElementById('appShell').classList.remove('hidden');document.body.classList.add('sidebar-open');")
