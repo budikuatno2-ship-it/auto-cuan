@@ -14,6 +14,7 @@ var t1Policy = require('../lib/chart-t1-policy');
 var geminiProvider = require('../lib/ai-gemini-provider');
 var dailyContextBuilder = require('../lib/daily-market-context-builder');
 var dailyHistoryStore = require('../lib/stock-daily-history-store');
+var { buildFinancialSnapshot } = require('../lib/financial-snapshot');
 var fcaTransition2026 = require('../lib/fca-transition-2026');
 var { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
 
@@ -137,6 +138,30 @@ async function fetchFreshScreenerLatestPrice(ticker) {
 // ============================================================
 function normalizeDailyContextTicker(raw) {
   return String(raw || '').trim().toUpperCase().replace(/\.JK$/, '');
+}
+
+async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
+  if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' });
+  var ticker = normalizeDailyContextTicker(req.query && req.query.ticker);
+  if (!ticker || !/^[A-Z]{1,6}$/.test(ticker)) {
+    return res.status(400).json({ success: false, error: 'Parameter ticker wajib diisi dan valid.' });
+  }
+  var db = injectedSupabase;
+  if (!db) {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(503).json({ success: false, error: 'Data Financial belum tersedia.' });
+    }
+    var { createClient } = require('../lib/hybrid-supabase-client');
+    db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+  }
+  try {
+    var snapshot = await buildFinancialSnapshot(db, ticker);
+    return res.status(200).json({ success: true, snapshot: snapshot });
+  } catch (_) {
+    return res.status(503).json({ success: false, error: 'Data Financial belum dapat dimuat. Coba lagi.' });
+  }
 }
 
 async function handleDailyMarketContextAction(req, res) {
@@ -306,6 +331,9 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
 module.exports = async function handler(req, res) {
   if (!quoteLimiter.check(clientAddress(req))) {
     return res.status(429).json({ error: 'Too many requests. Please slow down.' });
+  }
+  if (req.query && req.query.action === 'financial-snapshot') {
+    return handleFinancialSnapshotAction(req, res);
   }
   if (req.query && req.query.action === 'daily-market-context') {
     return handleDailyMarketContextAction(req, res);
@@ -2863,6 +2891,7 @@ function interpretFibonacciPosition(close, trend, nearest, fibLevels, swingHigh,
 }
 
 module.exports.__test = {
+  handleFinancialSnapshotAction: handleFinancialSnapshotAction,
   normalizeDailyContextTicker: normalizeDailyContextTicker,
   normalizeRankingSortKey: normalizeRankingSortKey,
   handleDailyMarketContextListAction: handleDailyMarketContextListAction,

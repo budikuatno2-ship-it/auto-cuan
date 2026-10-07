@@ -39,7 +39,7 @@ test('a known legacy requirement remains mandatory when the status request fails
  const listeners={};
  const dialog={open:false,setAttribute(){},addEventListener(name,fn){listeners[name]=fn;},showModal(){this.open=true;},close(){this.open=false;}};
  const document={body:{appendChild(){}},createElement(){return dialog},getElementById(){return {addEventListener(){}}}};
- const root={__AUTOCUAN_AUTHENTICATED_SESSION__:{userId:'legacy',email_required:true},setTimeout,clearTimeout,fetch:async()=>{throw new Error('offline')},addEventListener(name,fn){listeners[name]=fn}};
+ const root={__AUTOCUAN_AUTHENTICATED_SESSION__:{userId:'legacy',google_link_state:'unlinked',email_required:true},setTimeout,clearTimeout,fetch:async()=>{throw new Error('offline')},addEventListener(name,fn){listeners[name]=fn}};
  vm.runInNewContext(fs.readFileSync('public/legacy-gmail-runtime.js','utf8'),{window:root,document,AbortController});
  await root.enforceLegacyGmail();assert.equal(dialog.open,true);
  let prevented=false;listeners.cancel({preventDefault(){prevented=true}});assert.equal(prevented,true);

@@ -4136,9 +4136,9 @@
       var popName = popularEntities[p];
       var isCur = popName.toLowerCase() === activeEntityLabel.toLowerCase();
       var chipClass = isCur
-        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
-        : 'bg-dark-700/70 text-gray-300 border-dark-600/60 hover:text-emerald-300 hover:border-emerald-500/40 hover:bg-emerald-500/10';
-      html += '      <button type="button" onclick="BandarmologiRuntime.selectInsiderQuickChip(\'' + escapeHtml(popName) + '\')" class="px-3 py-1 rounded-full text-xs font-medium border transition ' + chipClass + '">' + escapeHtml(popName) + '</button>';
+        ? 'ac-insider-quick-chip-selected font-bold'
+        : '';
+      html += '      <button type="button" onclick="BandarmologiRuntime.selectInsiderQuickChip(\'' + escapeHtml(popName) + '\')" class="ac-insider-quick-chip px-3 py-1 rounded-full text-xs font-medium border transition ' + chipClass + '">' + escapeHtml(popName) + '</button>';
     }
     html += '    </div>';
     html += '  </div>';
@@ -5356,7 +5356,7 @@
     html += '    <div>';
     html += '      <div class="flex items-center gap-2">';
     html += '        <h4 class="text-sm font-bold text-gray-100">' + escapeHtml(bName) + '</h4>';
-    html += '        <span class="text-[10px] px-2 py-0.5 rounded font-semibold ' + (bIsForeign ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30') + '">' + (bIsForeign ? '🌐 Asing / Foreign' : '🇮🇩 Domestik') + '</span>';
+    html += '        <span class="text-[10px] px-2 py-0.5 rounded font-semibold ' + (bIsForeign ? 'ac-hunter-legend ac-hunter-legend-foreign bg-sky-500/10 border border-sky-500/30' : 'ac-hunter-legend ac-hunter-legend-local bg-emerald-500/10 border border-emerald-500/30') + '">' + (bIsForeign ? '🌐 Asing / Foreign' : '🇮🇩 Domestik') + '</span>';
     html += '      </div>';
     html += '      <div class="text-[11px] text-gray-400 mt-0.5">';
     html += '        <span>Periode: <strong class="text-gray-200">' + escapeHtml(hunterData.date_range_label || hunterRange) + '</strong></span> &bull; ';

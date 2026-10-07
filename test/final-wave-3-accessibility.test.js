@@ -16,6 +16,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..');
 const INDEX_HTML_PATH = path.join(ROOT, 'public', 'index.html');
@@ -60,7 +61,7 @@ test('FINAL-BUG-008: login modal credentials reside inside a semantic <form>', (
 
 test('FINAL-BUG-008: register modal credentials reside inside a semantic <form>', () => {
   const regModalSlice = indexHtml.slice(indexHtml.indexOf('id="registerModal"'), indexHtml.indexOf('id="selfResetModal"'));
-  assert.match(regModalSlice, /<form id="registerFormFields" class="space-y-3" onsubmit="event\.preventDefault\(\);doRegister\(\);return false;">/, 'registerFormFields must be a form with onsubmit prevention');
+  assertRegisterSubmitContract(regModalSlice);
   assert.match(regModalSlice, /id="regEmail" name="email" autocomplete="email"/, 'regEmail must have name and autocomplete');
   assert.match(regModalSlice, /id="regUsername" name="username" autocomplete="username"/, 'regUsername must have name and autocomplete');
   assert.match(regModalSlice, /id="regPassword" name="password" autocomplete="new-password"/, 'regPassword must have name and autocomplete');
@@ -204,4 +205,32 @@ test('RECHALLENGE: simple tables are NOT falsely forced to have redundant scope=
 
 test('FINAL-POLISH-004: active landing view heading hierarchy has single clear top-level heading', () => {
   assert.match(indexHtml, /<h1 id="landingTitle">Baca pasar\.<br>Susun rencana\.<br><span>Jaga konteks\.<\/span><\/h1>/, 'Landing page must preserve its canonical top-level heading');
+});
+
+function assertRegisterSubmitContract(source) {
+  const form = source.match(/<form\b[^>]*\bid="registerFormFields"[^>]*>([\s\S]*?)<\/form>/);
+  assert.ok(form, 'registration requires a semantic form');
+  const opening = form[0].slice(0, form[0].indexOf('>') + 1);
+  const attr = name => opening.match(new RegExp('\\b' + name + '="([^\"]*)"'))?.[1];
+  const handler = attr('onsubmit'); assert.ok(handler, 'native submit handler exists');
+  const calls = { prevented: 0, submitted: 0, synced: 0 };
+  const context = { event: { preventDefault() { calls.prevented++; } }, doRegister() { calls.submitted++; }, syncRegistrationConsent() { calls.synced++; } };
+  const result = vm.runInNewContext('(function(){' + handler + '})()', context);
+  assert.equal(result, false); assert.equal(calls.prevented, 1); assert.equal(calls.submitted, 1);
+  for (const name of ['oninput', 'onchange']) {
+    const sync = attr(name); assert.ok(sync, name + ' sync exists');
+    const prior = calls.synced; vm.runInNewContext(sync, context); assert.equal(calls.synced, prior + 1);
+  }
+  const button = form[1].match(/<button\b[^>]*\bid="registerBtn"[^>]*>/)?.[0];
+  assert.ok(button); assert.match(button, /\btype="submit"/);
+  assert.doesNotMatch(button, /\bonclick=/, 'submit button must not duplicate form dispatch');
+}
+test('registration form negative controls reject missing prevention, duplicate dispatch and broken sync', () => {
+  for (const broken of [
+    indexHtml.replace('<form id="registerFormFields"', '<div id="registerFormFields"'),
+    indexHtml.replace('event.preventDefault();doRegister();return false;', 'doRegister();return false;'),
+    indexHtml.replace('doRegister();return false;', 'doRegister();doRegister();return false;'),
+    indexHtml.replace('oninput="syncRegistrationConsent()"', ''),
+    indexHtml.replace('type="submit" id="registerBtn"', 'type="submit" onclick="doRegister()" id="registerBtn"')
+  ]) assert.throws(() => assertRegisterSubmitContract(broken), assert.AssertionError);
 });

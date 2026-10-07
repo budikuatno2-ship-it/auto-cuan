@@ -34,12 +34,15 @@ test('browser and server ship the exact same versioned terms contract', () => {
   assert.match(registerSource, /rollbackIncompleteRegistration/);
 });
 
-test('registration UI requires a checkbox and sends acceptance only during register-user request', () => {
-  assert.match(lazySource, /id=\\?"acRegTermsAccepted/);
-  assert.match(lazySource, /checkbox\.checked !== true/);
-  assert.match(lazySource, /body\.termsAccepted = true/);
-  assert.match(lazySource, /body\.termsVersion = TERMS_VERSION/);
-  assert.match(lazySource, /url\.indexOf\('\/api\/register-user'\)/);
+test('registration consent is owned by the native form, not Account Center injection', () => {
+  const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
+  assert.match(html, /id="regTermsAccepted"/);
+  assert.match(html, /var termsEl = document.getElementById\('regTermsAccepted'\)/);
+  assert.match(html, /termsAccepted: true, termsVersion: REGISTRATION_TERMS_VERSION/);
+  for (const source of [lazySource, runtimeSource]) {
+    assert.doesNotMatch(source, /acRegTermsAccepted|window\.fetch\s*=/);
+    assert.match(source, /window\.syncRegistrationConsent\(\)/);
+  }
 });
 
 test('profile is derived from signed server identity and omits sensitive account fields', () => {

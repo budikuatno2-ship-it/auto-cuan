@@ -26,9 +26,10 @@
   // KEEP-ALIVE: read through the shared SWR store when it is present. The
   // store is read-only for GETs, so every watchlist mutation below still goes
   // straight to the server and explicitly invalidates this key afterwards.
-  function watchlistFetch(url, options) {
+  function watchlistFetch(url, options, forceRefresh) {
+    if (forceRefresh) options = Object.assign({}, options, { cache: 'no-cache' });
     if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.cachedFetch === 'function') {
-      return window.AutoCuanKeepAlive.cachedFetch(url, options);
+      return window.AutoCuanKeepAlive.cachedFetch(url, options, { revalidate: !!forceRefresh });
     }
     return fetch(url, options);
   }
@@ -49,15 +50,30 @@
     var errorBanner = document.getElementById('wlErrorBanner');
     var refreshBtn = document.getElementById('wlRefreshBtn');
 
-    if (isLoading && !force) return;
+    if (isLoading) return;
     isLoading = true;
-    if (refreshBtn) refreshBtn.setAttribute('aria-busy', 'true');
+    var status = document.getElementById('wlRefreshStatus');
+    if (!status && refreshBtn) {
+      status = document.createElement('div');
+      status.id = 'wlRefreshStatus';
+      status.setAttribute('role', 'status');
+      status.setAttribute('aria-live', 'polite');
+      status.style.cssText = 'min-height:3em;font-size:12px;line-height:1.5;color:var(--ac-text-muted)';
+      var page = document.getElementById('page-watchlist');
+      if (page) page.insertBefore(status, page.children[1] || null);
+    }
+    if (status) status.textContent = 'Memperbarui watchlist…';
+    if (refreshBtn) {
+      refreshBtn.setAttribute('aria-busy', 'true');
+      refreshBtn.disabled = true;
+    }
 
     try {
-      var res = await watchlistFetch('/api/sector-hot?action=watchlist', { credentials: 'same-origin' });
+      var res = await watchlistFetch('/api/sector-hot?action=watchlist', { credentials: 'same-origin' }, force);
       var data = await res.json();
 
       if (!data || !data.success) {
+        if (status) status.textContent = 'Gagal memperbarui watchlist.';
         if (data && data.error && /login|sesi/i.test(data.error)) {
           if (container) {
             container.innerHTML = '<div class="wl-login-prompt">Silakan <a href="#" onclick="openLoginModal();return false;" class="wl-login-link">Login</a> untuk melihat dan mengelola Watchlist Pribadi Anda.</div>';
@@ -91,7 +107,9 @@
 
       renderWatchlistView(items);
       updateAllWatchlistStars();
+      if (status) status.textContent = force ? 'Diperbarui. Watchlist terbaru ditampilkan.' : 'Data watchlist tersedia.';
     } catch (err) {
+      if (status) status.textContent = 'Gagal memperbarui watchlist.';
       console.error('Error loading watchlist:', err);
       if (window.__AUTOCUAN_WATCHLIST_DATA__ && window.__AUTOCUAN_WATCHLIST_DATA__.length) {
         if (errorBanner) {
@@ -101,7 +119,10 @@
       }
     } finally {
       isLoading = false;
-      if (refreshBtn) refreshBtn.removeAttribute('aria-busy');
+      if (refreshBtn) {
+        refreshBtn.removeAttribute('aria-busy');
+        refreshBtn.disabled = false;
+      }
     }
   }
 

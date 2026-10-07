@@ -71,7 +71,7 @@ function makeDoRegister(overrides) {
     return Promise.resolve({ json: () => Promise.resolve({ success: true, approval_status: 'pending', approval_code: 'AC-ABC123' }) });
   };
 
-  var sandboxSrc = versionSrc + '\n' + fnSrc + '\nreturn doRegister;';
+  var sandboxSrc = versionSrc + '\n' + extractFunction(html, 'function syncRegistrationConsent') + '\n' + fnSrc + '\nreturn doRegister;';
   var factory = new Function(
     'document', 'fetch', 'navigator', 'hashPassword', 'getOrCreateDeviceId',
     'isBadUsername', 'isValidPassword', 'clearLegacyDeviceBlock', 'showRegistrationApproval',

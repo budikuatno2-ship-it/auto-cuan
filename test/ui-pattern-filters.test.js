@@ -16,26 +16,30 @@ test('T-UIPF-01: HTML contains quick filter container, dropdown and checkbox tog
   assert.match(indexHtml, /Hanya Win Rate ≥ 60%/, 'Should contain label Hanya Win Rate ≥ 60%');
 });
 
-test('T-UIPF-02: Dropdown contains default option and all 10 canonical Pattern Personality setups', () => {
+function assertPatternOptions(source) {
   const expectedOptions = [
-    { value: 'all', label: 'Semua Pola Personality (All)' },
-    { value: 'COMBO_FX_TECH_MA5', label: 'COMBO_FX_TECH_MA5 (WR 64.2% · PF 2.06)' },
-    { value: 'FX_STRONG_BUY', label: 'FX_STRONG_BUY (WR 61.2% · PF 1.80)' },
-    { value: 'TECH_ABOVE_MA20', label: 'TECH_ABOVE_MA20 (WR 60.6% · PF 1.90)' },
-    { value: 'TECH_ABOVE_MA5', label: 'TECH_ABOVE_MA5 (WR 60.1% · PF 1.89)' },
-    { value: 'VOL_WARM_1P2_1P5', label: 'VOL_WARM_1P2_1P5 (WR 60.0% · PF 1.46)' },
-    { value: 'RSI_OVERBOUGHT_65P', label: 'RSI_OVERBOUGHT_65P (WR 59.8% · PF 1.73)' },
-    { value: 'COMBO_BROKER_FX', label: 'COMBO_BROKER_FX (WR 57.1% · PF 1.71)' },
-    { value: 'COMBO_BROKER_TECH', label: 'COMBO_BROKER_TECH (WR 56.1% · PF 1.67)' },
-    { value: 'TRAP_CHG5_VOL3_CLIMAX', label: 'TRAP_CHG5_VOL3_CLIMAX (WR 55.6% · PF 1.84)' },
-    { value: 'BROKER_TOP3_CONCENTRATION', label: 'BROKER_TOP3_CONCENTRATION (WR 54.5% · PF 1.57)' }
+    { value: 'all', label: 'Semua pola' },
+    { value: 'COMBO_FX_TECH_MA5', label: 'Aliran asing + harga di atas MA5 (WR 64.2% · PF 2.06)' },
+    { value: 'FX_STRONG_BUY', label: 'Akumulasi asing kuat (WR 61.2% · PF 1.80)' },
+    { value: 'TECH_ABOVE_MA20', label: 'Harga di atas MA20 (WR 60.6% · PF 1.90)' },
+    { value: 'TECH_ABOVE_MA5', label: 'Harga di atas MA5 (WR 60.1% · PF 1.89)' },
+    { value: 'VOL_WARM_1P2_1P5', label: 'Volume 1,2–1,5× rata-rata (WR 60.0% · PF 1.46)' },
+    { value: 'RSI_OVERBOUGHT_65P', label: 'Momentum RSI 65–69 (WR 59.8% · PF 1.73)' },
+    { value: 'COMBO_BROKER_FX', label: 'Akumulasi broker + aliran asing (WR 57.1% · PF 1.71)' },
+    { value: 'COMBO_BROKER_TECH', label: 'Akumulasi broker + harga di atas MA (WR 56.1% · PF 1.67)' },
+    { value: 'TRAP_CHG5_VOL3_CLIMAX', label: 'Kenaikan ≥5% + volume ≥3× (WR 55.6% · PF 1.84)' },
+    { value: 'BROKER_TOP3_CONCENTRATION', label: 'Konsentrasi akumulasi 3 broker teratas (WR 54.5% · PF 1.57)' }
   ];
-
-  expectedOptions.forEach((opt) => {
-    const valRegex = new RegExp(`value="${opt.value}"`);
-    assert.match(indexHtml, valRegex, `Option value "${opt.value}" should exist in index.html`);
-    assert.ok(indexHtml.includes(opt.label), `Option label "${opt.label}" should exist in index.html`);
-  });
+  const select = source.match(/<select\b[^>]*id="filter-pattern-personality"[^>]*>([\s\S]*?)<\/select>/);
+  assert.ok(select, 'canonical filter select exists');
+  const actual = [...select[1].matchAll(/<option\b[^>]*value="([^"]+)"[^>]*>([\s\S]*?)<\/option>/g)].map(m => ({ value: m[1], label: m[2].trim() }));
+  assert.deepEqual(actual.map(o => o.value), expectedOptions.map(o => o.value), 'internal enum values are unchanged');
+  assert.deepEqual(actual.map(o => o.label), expectedOptions.map(o => o.label), 'visible labels are human-readable with original metrics');
+}
+test('T-UIPF-02: human labels retain all 10 original filter enum values and metrics', () => assertPatternOptions(indexHtml));
+test('pattern filter negative controls reject changed enum values and raw labels', () => {
+  assert.throws(() => assertPatternOptions(indexHtml.replace('value="FX_STRONG_BUY"', 'value="FX_CHANGED"')), assert.AssertionError);
+  assert.throws(() => assertPatternOptions(indexHtml.replace('Akumulasi asing kuat (WR', 'FX_STRONG_BUY (WR')), assert.AssertionError);
 });
 
 test('T-UIPF-03: PATTERN_PERSONALITY_UI_CATALOG contains all 10 patterns with WR and PF metrics', () => {

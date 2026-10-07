@@ -244,7 +244,7 @@ test('T-PP-10: Frontend patternPersonalityBadgeHtml renders badges for candidate
   vm.runInNewContext(match[0], ctx);
 
   const badge = ctx.patternPersonalityBadgeHtml({ ticker: 'BBCA', pattern_personality: 'COMBO_FX_TECH_MA5' });
-  assert.match(badge, /⚡ Combo FX\+MA5/);
+  assert.match(badge, /⚡ Aliran asing \+ harga di atas MA5/);
   assert.match(badge, /PF 2\.06/);
 
   const emptyBadge = ctx.patternPersonalityBadgeHtml({ ticker: 'XYZ' });

@@ -2,6 +2,8 @@
 var _trData = null;
 var _trCategoryFilter = 'all';
 var _trInFlight = false;
+var _trLoadedAt = 0;
+var _trDataUrl = '/api/track-record';
 
 function formatRp(val) {
     if (val == null || !isFinite(val)) return '—';
@@ -47,20 +49,46 @@ async function loadTrackRecord(force) {
     if (!tbody) return;
 
     if (!force && _trData) {
-        renderTrackRecordUI(_trData);
-        return;
+        var cache = window.AutoCuanKeepAlive;
+        var snapshot = cache && typeof cache.peek === 'function' ? cache.peek(_trDataUrl) : null;
+        var fresh = cache && typeof cache.peek === 'function'
+            ? snapshot && snapshot.fresh && snapshot.data && snapshot.data.success
+            : Date.now() - _trLoadedAt < 10 * 60 * 1000;
+        if (fresh) {
+            if (snapshot) {
+                _trData = snapshot.data;
+                _trLoadedAt = Date.now() - snapshot.ageMs;
+            }
+            renderTrackRecordUI(_trData);
+            return;
+        }
     }
 
-    tbody.innerHTML = trSkeletonHtml();
+    if (!_trData) tbody.innerHTML = trSkeletonHtml();
     _trInFlight = true;
 
     var refreshBtn = document.getElementById('trackRecordRefreshBtn');
-    if (refreshBtn) refreshBtn.classList.add('opacity-50', 'pointer-events-none');
+    var status = document.getElementById('trRefreshStatus');
+    if (!status && refreshBtn) {
+        status = document.createElement('div');
+        status.id = 'trRefreshStatus';
+        status.setAttribute('role', 'status');
+        status.setAttribute('aria-live', 'polite');
+        status.style.cssText = 'min-height:3em;font-size:12px;line-height:1.5;color:var(--ac-text-muted)';
+        var page = document.getElementById('page-trackrecord');
+        if (page) page.insertBefore(status, page.children[1] || null);
+    }
+    if (status) status.textContent = 'Memperbarui track record…';
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.setAttribute('aria-busy', 'true');
+    }
 
     try {
         var res = null;
         var rawText = '';
         var data = null;
+        var loadedUrl = '/api/track-record';
 
         // KEEP-ALIVE: read through the shared SWR store when present so a tab
         // revisit renders the previous rows instead of the skeleton.
@@ -70,7 +98,7 @@ async function loadTrackRecord(force) {
 
         // 1. Try dedicated route /api/track-record
         try {
-            res = await trFetch('/api/track-record');
+            res = await trFetch('/api/track-record', force ? { cache: 'no-cache' } : undefined, { revalidate: !!force });
             if (res && res.ok) {
                 rawText = await res.text();
                 if (rawText && !rawText.trim().startsWith('<')) {
@@ -82,7 +110,8 @@ async function loadTrackRecord(force) {
         // 2. Fallback to /api/sector-hot?action=track-record if needed
         if (!data || !data.success) {
             try {
-                res = await trFetch('/api/sector-hot?action=track-record');
+                loadedUrl = '/api/sector-hot?action=track-record';
+                res = await trFetch(loadedUrl, force ? { cache: 'no-cache' } : undefined, { revalidate: !!force });
                 rawText = await res.text();
                 if (rawText && !rawText.trim().startsWith('<')) {
                     data = JSON.parse(rawText);
@@ -95,17 +124,25 @@ async function loadTrackRecord(force) {
         }
 
         if (!data || !data.success) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 tr-error-cell">Gagal memuat track record: ' + escapeHtml((data && data.error) || 'Terjadi kesalahan.') + '</td></tr>';
+            if (status) status.textContent = _trData ? 'Gagal memperbarui. Data terakhir tetap ditampilkan.' : 'Gagal memuat track record.';
+            if (!_trData) tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 tr-error-cell">Gagal memuat track record: ' + escapeHtml((data && data.error) || 'Terjadi kesalahan.') + '</td></tr>';
             return;
         }
 
         _trData = data;
+        _trDataUrl = loadedUrl;
+        _trLoadedAt = Date.now();
         renderTrackRecordUI(data);
+        if (status) status.textContent = force ? 'Diperbarui. Track record terbaru ditampilkan.' : 'Data track record tersedia.';
     } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 tr-error-cell">Gagal terhubung ke server: ' + escapeHtml(err.message || String(err)) + '</td></tr>';
+        if (status) status.textContent = _trData ? 'Gagal memperbarui. Data terakhir tetap ditampilkan.' : 'Gagal memuat track record.';
+        if (!_trData) tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 tr-error-cell">Gagal terhubung ke server: ' + escapeHtml(err.message || String(err)) + '</td></tr>';
     } finally {
         _trInFlight = false;
-        if (refreshBtn) refreshBtn.classList.remove('opacity-50', 'pointer-events-none');
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.removeAttribute('aria-busy');
+        }
     }
 }
 

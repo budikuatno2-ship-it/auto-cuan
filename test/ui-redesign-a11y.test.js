@@ -3,10 +3,10 @@
 // ===========================================================================
 // Focused regression tests for the PREMIUM UI ELEVATION redesign.
 //
-// LOCAL / STATIC + MOCKED ONLY. These tests parse public/index.html and, where
-// behaviour is asserted, execute small extracted helpers in a headless Node vm
-// sandbox with a minimal fake DOM. No browser, network, Supabase, Telegram,
-// secret, or backend behaviour is touched.
+// LOCAL / STATIC + MOCKED ONLY. Most tests parse public/index.html or execute
+// extracted helpers in a Node vm. The two registration contracts use the existing
+// Chromium/Puppeteer stack with a localhost fixture and blocked external requests.
+// No real auth backend, Supabase, Telegram, or credentials are touched.
 //
 // Purpose: prove the redesign preserved every critical existing behaviour and
 // added the intended accessibility / usability improvements, so the elevated UI
@@ -54,12 +54,8 @@ test('login controls remain available (username, password, submit, forgot-pw)', 
   assert.ok(html.indexOf('>Lupa Password?<') >= 0);
 });
 
-test('registration controls remain available (username, password x2, submit)', () => {
-  assert.ok(html.indexOf('id="regUsername"') >= 0);
-  assert.ok(html.indexOf('id="regPassword"') >= 0);
-  assert.ok(html.indexOf('id="regPasswordConfirm"') >= 0);
-  assert.ok(html.indexOf('id="registerBtn"') >= 0);
-  assert.ok(html.indexOf('onclick="doRegister()"') >= 0);
+test('registration controls remain available (username, password x2, submit)', async () => {
+  await withRegistrationPage(checkRegistrationControls);
 });
 
 // ---------------------------------------------------------------------------
@@ -248,9 +244,8 @@ test('login re-enables its button in finally (recovers after error)', () => {
   assert.match(src, /loginBtn\.innerHTML = 'Masuk'/);
 });
 
-test('register re-enables its button in finally (recovers after error)', () => {
-  const src = extractFunction('async function doRegister');
-  assert.match(src, /finally\s*\{[^}]*registerBtn\.disabled = false/);
+test('register re-enables its button in finally (recovers after error)', async () => {
+  await withRegistrationPage(checkRegistrationRecovery);
 });
 
 test('validation/status messages expose accessible live regions', () => {
@@ -348,3 +343,116 @@ test('every inline <script> block still parses (no syntax breakage from redesign
   }
   assert.ok(checked >= 1);
 });
+
+// Local runtime fixture reused from the D2 browser testing approach.
+const http = require('node:http');
+const puppeteer = require('puppeteer-core');
+const REGISTRATION_IDS = ['regEmail', 'regUsername', 'regPassword', 'regPasswordConfirm', 'regTermsAccepted', 'registerBtn'];
+async function withRegistrationPage(check) {
+  const publicRoot = path.join(ROOT, 'public');
+  const evidenceRoot = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'auto-cuan-auth-'));
+  const fixture = { requests: [], pending: [] };
+  const server = http.createServer(async (req, res) => {
+    const url = new URL(req.url, 'http://localhost');
+    if (url.pathname.startsWith('/api/')) {
+      let raw = ''; for await (const part of req) raw += part;
+      let input = {}; try { input = JSON.parse(raw); } catch (_) {}
+      if (url.pathname === '/api/register-user') {
+        fixture.requests.push(input); fixture.pending.push(res); return;
+      }
+      let data = { success: true, data: [], rows: [] };
+      if (input.action === 'session-status') data = { success: false, error: 'Local guest fixture' };
+      if (input.action === 'account-google-status') data = { success: true, google_link_state: 'unavailable', required: false };
+      if (url.pathname === '/api/maintenance-settings') data = { success: true, config: { maintenanceMode: false } };
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data)); return;
+    }
+    const file = path.resolve(publicRoot, '.' + (path.extname(url.pathname) ? url.pathname : '/index.html'));
+    if (!file.startsWith(publicRoot + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); res.end(); return; }
+    const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png', '.woff2': 'font/woff2' };
+    res.writeHead(200, { 'Content-Type': mime[path.extname(file)] || 'application/octet-stream' }); res.end(fs.readFileSync(file));
+  });
+  let browser;
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const origin = 'http://127.0.0.1:' + server.address().port;
+    browser = await puppeteer.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true, userDataDir: fs.mkdtempSync(path.join(evidenceRoot, 'auth-profile-')), args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+    const page = await browser.newPage(); page.setDefaultTimeout(5000);
+    await page.setRequestInterception(true);
+    page.on('request', req => req.url().startsWith(origin + '/') ? req.continue() : req.abort());
+    fixture.open = async width => {
+      await page.setViewport({ width, height: 900 });
+      await page.goto(origin + '/', { waitUntil: 'networkidle0' });
+      await page.evaluate(() => hideOnboardingGuide(true));
+      await page.waitForFunction(() => window.__AUTOCUAN_ACCOUNT_CENTER_LAZY_V1__);
+      await page.addScriptTag({ url: origin + '/account-center-v1.js' });
+      await page.evaluate(() => openRegisterModal());
+      await page.waitForSelector('#regEmail', { visible: true });
+    };
+    fixture.fill = async () => {
+      for (const [id, value] of Object.entries({ regEmail: 't1fixture@gmail.com', regUsername: 't1fixture', regPassword: 'StrongPass123', regPasswordConfirm: 'StrongPass123' })) await page.type('#' + id, value);
+      await page.click('#regTermsAccepted');
+    };
+    fixture.reply = payload => {
+      const res = fixture.pending.shift(); assert.ok(res, 'one pending registration request');
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(typeof payload === 'string' ? payload : JSON.stringify(payload));
+    };
+    fixture.waitPending = async () => {
+      for (let n = 0; !fixture.pending.length && n < 100; n++) await new Promise(r => setTimeout(r, 20));
+      assert.equal(fixture.pending.length, 1, 'one pending request');
+    };
+    await check(page, fixture);
+  } finally {
+    for (const res of fixture.pending) res.destroy();
+    try { if (browser) await browser.close(); } finally {
+      try { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
+      finally { fs.rmSync(evidenceRoot, { recursive: true, force: true }); }
+    }
+  }
+}
+async function assertRegisterControls(page) {
+  const controls = await page.evaluate(ids => ids.map(id => {
+    const el = document.getElementById(id);
+    if (!el) return { id, present: false };
+    const style = getComputedStyle(el);
+    return { id, present: true, inForm: el.form?.id === 'registerFormFields', visible: !!el.getClientRects().length && style.visibility === 'visible' && style.opacity !== '0' && !el.closest('[hidden], [inert], [aria-hidden="true"]'), disabled: el.disabled, type: el.type };
+  }), REGISTRATION_IDS);
+  for (const c of controls) {
+    assert.equal(c.present, true, c.id + ' exists'); assert.equal(c.inForm, true, c.id + ' belongs to the registration form');
+    assert.equal(c.visible, true, c.id + ' is visible'); assert.equal(c.disabled, false, c.id + ' is usable with valid fields and consent');
+  }
+  assert.deepEqual(controls.map(c => c.type), ['email', 'text', 'password', 'password', 'checkbox', 'submit']);
+  assert.equal(await page.$$eval('#registerFormFields input[type=checkbox]', els => els.length), 1, 'single consent');
+}
+async function assertRegisterRecovered(page) {
+  assert.equal(await page.$eval('#registerBtn', el => el.disabled), false, 'failed registration restores submit usability');
+  assert.equal(await page.evaluate(() => Boolean(doRegister._busy)), false, 'pending guard released');
+  assert.equal(await page.$eval('#registerBtn', el => el.textContent.trim()), 'Daftar');
+}
+async function checkRegistrationControls(page, fixture) {
+  for (const width of [390, 1440]) {
+    await fixture.open(width);
+    assert.equal(await page.$eval('#registerBtn', el => el.disabled), true, 'invalid form cannot submit');
+    await fixture.fill(); await assertRegisterControls(page);
+  }
+}
+async function checkRegistrationRecovery(page, fixture) {
+  for (const failure of [{ success: false, error: 'Local registration failure' }, 'not valid JSON']) {
+    await fixture.open(390); await fixture.fill();
+    const snapshot = () => page.evaluate(() => ['regEmail','regUsername','regPassword','regPasswordConfirm'].map(id => document.getElementById(id).value).concat(document.getElementById('regTermsAccepted').checked));
+    const before = await snapshot(), count = fixture.requests.length;
+    await page.click('#registerBtn'); await fixture.waitPending();
+    assert.equal(await page.$eval('#registerBtn', el => el.disabled), true, 'pending submit disabled');
+    assert.equal(await page.evaluate(() => Boolean(doRegister._busy)), true);
+    await page.evaluate(() => Promise.all([doRegister(), doRegister()]));
+    assert.equal(fixture.requests.length, count + 1, 'pending guard prevents duplicate requests');
+    fixture.reply(failure);
+    await page.waitForFunction(() => !doRegister._busy && !document.getElementById('registerError').classList.contains('hidden'));
+    await assertRegisterRecovered(page); assert.deepEqual(await snapshot(), before, 'failure preserves fields and consent');
+    await page.click('#registerBtn'); await fixture.waitPending();
+    assert.equal(fixture.requests.length, count + 2, 'retry submits exactly once');
+    fixture.reply({ success: true, approval_status: 'pending', approval_code: 'AC-ABC123' });
+    await page.waitForFunction(() => !doRegister._busy && !document.getElementById('registerApprovalPanel').classList.contains('hidden'));
+    await new Promise(resolve => setTimeout(resolve, 100));
+    assert.equal(fixture.requests.length, count + 2, 'no duplicate retry request');
+  }
+}

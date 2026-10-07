@@ -30,3 +30,5 @@ body:has(#workspaceSidebarToggle) #acNavLauncher{display:none!important}
 @media(max-width:600px){.workspace-header-brand>.brand-mark,.workspace-header-brand>.min-w-0{display:none!important}.app-header .header-account{flex:1;min-width:0}#headerAccountSection{flex-shrink:1!important;min-width:0}#headerUserLabel{min-height:44px}#headerAccountSection button{min-height:44px}}
 @media(max-width:420px){#headerUsername{display:none}}
 @media(max-width:640px){.header-account{flex-wrap:wrap;justify-content:flex-end;gap:4px!important}#headerAccountSection{gap:4px}#headerUsername{max-width:72px;overflow:hidden;text-overflow:ellipsis}.account-subscription-control{font-size:11px}}
+
+.legacy-gmail-dialog [hidden]{display:none!important}

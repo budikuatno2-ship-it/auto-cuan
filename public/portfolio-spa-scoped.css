@@ -82,9 +82,9 @@ html.light :where(#portofolioPartialMount){--bg:var(--ac-surface-ground);--surfa
 :where(#portofolioPartialMount) .note,
 :where(#portofolioPartialMount) .error,
 :where(#portofolioPartialMount) .success{margin-top:10px;padding:10px 12px;border-radius:11px;font-size:12px}
-:where(#portofolioPartialMount) .note{color:#bfdbfe;border:1px solid rgba(59,130,246,.3);background:rgba(59,130,246,.08)}
-:where(#portofolioPartialMount) .error{color:#fecdd3;border:1px solid rgba(244,63,94,.35);background:rgba(244,63,94,.08)}
-:where(#portofolioPartialMount) .success{color:#bbf7d0;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08)}
+:where(#portofolioPartialMount) .note{color:var(--pw-info, var(--info));border:1px solid rgba(59,130,246,.3);background:rgba(59,130,246,.08)}
+:where(#portofolioPartialMount) .error{color:var(--ac-bear, var(--danger));border:1px solid rgba(244,63,94,.35);background:rgba(244,63,94,.08)}
+:where(#portofolioPartialMount) .success{color:var(--ac-bull, var(--success));border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08)}
 :where(#portofolioPartialMount) .fine-print{margin:13px 0 0;color:var(--muted);font-size:11px}
 :where(#portofolioPartialMount) .actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:13px}
 :where(#portofolioPartialMount) .action-list,
@@ -119,7 +119,7 @@ html.light :where(#portofolioPartialMount){--bg:var(--ac-surface-ground);--surfa
 :where(#portofolioPartialMount) .field{display:flex;flex-direction:column;gap:6px}
 :where(#portofolioPartialMount) .field.full,
 :where(#portofolioPartialMount) .check-row.full{grid-column:1/-1}
-:where(#portofolioPartialMount) .field label{font-size:11.5px;font-weight:760;color:#cbd5e1}
+:where(#portofolioPartialMount) .field label{font-size:11.5px;font-weight:760;color:var(--color-text-secondary,var(--muted))}
 :where(#portofolioPartialMount) input,
 :where(#portofolioPartialMount) select,
 :where(#portofolioPartialMount) textarea{width:100%;min-height:42px;padding:10px 11px;border:1px solid var(--line);border-radius:10px;outline:none;background:#08111b;color:var(--text)}
@@ -127,10 +127,10 @@ html.light :where(#portofolioPartialMount){--bg:var(--ac-surface-ground);--surfa
 :where(#portofolioPartialMount) input:focus,
 :where(#portofolioPartialMount) select:focus,
 :where(#portofolioPartialMount) textarea:focus{border-color:rgba(52,211,153,.58);box-shadow:0 0 0 3px rgba(52,211,153,.08)}
-:where(#portofolioPartialMount) .check-row{display:flex;align-items:center;gap:8px;color:#cbd5e1;font-size:12px}
+:where(#portofolioPartialMount) .check-row{display:flex;align-items:center;gap:8px;color:var(--color-text-secondary,var(--muted));font-size:12px}
 :where(#portofolioPartialMount) .check-row input{width:auto;min-height:auto}
 :where(#portofolioPartialMount) .budget-band-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}
-:where(#portofolioPartialMount) .budget-band{padding:11px;border:1px solid var(--line);border-radius:12px;background:rgba(6,12,20,.55)}
+:where(#portofolioPartialMount) .budget-band{padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}
 :where(#portofolioPartialMount) .budget-band span{color:var(--muted);font-size:10px}
 :where(#portofolioPartialMount) .budget-band strong{display:block;margin-top:3px;color:var(--strong);font-size:15px}
 :where(#portofolioPartialMount) .candidate-item{grid-template-columns:minmax(0,1fr) auto;align-items:center}
@@ -185,7 +185,7 @@ html.light :where(#portofolioPartialMount){--bg:var(--ac-surface-ground);--surfa
 :where(#portofolioPartialMount) .ai-status{margin-top:7px;color:#7f9bb7;font-size:11.5px}
 :where(#portofolioPartialMount) .ai-data-grid{display:grid;gap:8px}
 :where(#portofolioPartialMount) .ai-data-card{padding:10px 11px;border:1px solid var(--line);border-radius:10px;background:rgba(5,10,17,.62)}
-:where(#portofolioPartialMount) .ai-data-card span{display:block;color:var(--muted2);font-size:9.5px;text-transform:uppercase}
+:where(#portofolioPartialMount) .ai-data-card span{display:block;color:var(--color-text-secondary,var(--muted));font-size:9.5px;text-transform:uppercase}
 :where(#portofolioPartialMount) .ai-data-card b{display:block;margin-top:3px;font-size:15px}
 :where(#portofolioPartialMount) .ai-disclaimer{color:var(--muted);font-size:11px}
 :where(#portofolioPartialMount) .ai-jump-latest{position:absolute;z-index:5;right:26px;bottom:104px;padding:7px 11px;border:1px solid rgba(52,211,153,.35);border-radius:999px;background:rgba(6,78,59,.94);color:#d1fae5;font:700 11px/1.2 inherit;cursor:pointer}
@@ -484,7 +484,7 @@ html.light :where(#portofolioPartialMount) .pcc-mobile-select{
   gap: 0;
   border: 1px solid var(--line);
   border-radius: 11px;
-  background: rgba(5, 10, 17, .62);
+  background: var(--surface2);
   overflow: hidden;
 }
 :where(#portofolioPartialMount) .ai-data-card{
@@ -500,7 +500,10 @@ html.light :where(#portofolioPartialMount) .pcc-mobile-select{
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--muted2);
+  color: var(--color-text-secondary, var(--muted));
+}
+:where(#portofolioPartialMount) #page-ai .ai-data-grid .ai-data-card{
+  background: var(--surface2);
 }
 :where(#portofolioPartialMount) .ai-data-card strong,
 :where(#portofolioPartialMount) .ai-data-card b{
@@ -883,38 +886,39 @@ html.light :where(#portofolioPartialMount) .ticker-link:hover{
               color var(--motion-fast, 180ms) var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) !important;
 }
 @media (max-width: 767px){
-:where(#portofolioPartialMount) html body #tabStrip,
-:where(#portofolioPartialMount) html body #tabStrip.tab-strip{
+:where(#portofolioPartialMount) #tabStrip,
+:where(#portofolioPartialMount) #tabStrip.tab-strip{
     display: none !important;
   }
-:where(#portofolioPartialMount) html body #pccMobileNav{
+:where(#portofolioPartialMount) #pccMobileNav{
     display: block !important;
   }
 }
 @media (min-width: 768px) and (max-width: 1180px){
-:where(#portofolioPartialMount) html body #tabStrip,
-:where(#portofolioPartialMount) html body #tabStrip.tab-strip{
+:where(#portofolioPartialMount) #tabStrip,
+:where(#portofolioPartialMount) #tabStrip.tab-strip{
     display: flex !important;
+    flex-wrap: nowrap !important;
     overflow-x: auto !important;
   }
-:where(#portofolioPartialMount) html body #tabStrip.tab-strip > .tab{
+:where(#portofolioPartialMount) #tabStrip.tab-strip > .tab{
     width: auto !important;
     min-width: max-content !important;
     flex: 0 0 auto !important;
     white-space: nowrap !important;
   }
-:where(#portofolioPartialMount) html body #pccMobileNav{
+:where(#portofolioPartialMount) #pccMobileNav{
     display: none !important;
   }
 }
 @media (min-width: 1181px){
-:where(#portofolioPartialMount) html body #tabStrip,
-:where(#portofolioPartialMount) html body #tabStrip.tab-strip{
+:where(#portofolioPartialMount) #tabStrip,
+:where(#portofolioPartialMount) #tabStrip.tab-strip{
     display: grid !important;
     grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
     overflow: visible !important;
   }
-:where(#portofolioPartialMount) html body #tabStrip.tab-strip > .tab{
+:where(#portofolioPartialMount) #tabStrip.tab-strip > .tab{
     width: 100% !important;
     min-width: 0 !important;
     max-width: none !important;
@@ -924,8 +928,14 @@ html.light :where(#portofolioPartialMount) .ticker-link:hover{
     white-space: normal !important;
     text-align: center !important;
   }
-:where(#portofolioPartialMount) html body #pccMobileNav{
+:where(#portofolioPartialMount) #pccMobileNav{
     display: none !important;
+  }
+}
+@media (min-width: 768px) and (pointer: coarse){
+:where(#portofolioPartialMount) #tabStrip.tab-strip > .tab{
+    min-width: 44px !important;
+    min-height: 44px !important;
   }
 }
 

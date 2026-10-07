@@ -8,8 +8,6 @@
   var currentProfile = null;
   var subscriptionPlans = [];
   var quotedVoucher = null;
-  var originalDoRegister = null;
-  var originalOpenRegister = null;
 
   function byId(id) { return document.getElementById(id); }
   function text(value) { return String(value == null ? '' : value); }
@@ -50,7 +48,7 @@
       PREMIUM_2_MONTHS:'Premium 2 Bulan',
       PREMIUM_3_MONTHS:'Premium 3 Bulan',
       LIFETIME:'Lifetime',
-      TRIAL:'Trial 10 Hari',
+      TRIAL:'Trial',
       FREE:'Free'
     };
     return names[code] || fallback || code || 'Free';
@@ -174,15 +172,20 @@
     }
   }
   async function openCenter(tab, triggerEl) {
-    lastCenterFocus = triggerEl || ((document.activeElement && document.activeElement !== document.body) ? document.activeElement : byId('sidebarAccountEntry'));
-    if (lastCenterFocus && typeof lastCenterFocus.setAttribute === 'function') {
-      try {
-        if (lastCenterFocus.getAttribute('aria-haspopup') === 'dialog') {
-          lastCenterFocus.setAttribute('aria-expanded', 'true');
-        }
-      } catch (_) {}
-    }
     var root = ensureCenter();
+    if (root.hidden) {
+      lastCenterFocus = triggerEl || ((document.activeElement && document.activeElement !== document.body) ? document.activeElement : byId('sidebarAccountEntry'));
+      if (lastCenterFocus && typeof lastCenterFocus.setAttribute === 'function') {
+        try {
+          if (lastCenterFocus.getAttribute('aria-haspopup') === 'dialog') {
+            lastCenterFocus.setAttribute('aria-expanded', 'true');
+          }
+        } catch (_) {}
+      }
+      if (lastCenterFocus && typeof lastCenterFocus.focus === 'function') {
+        try { lastCenterFocus.focus({ preventScroll: true }); } catch (_) {}
+      }
+    }
     root.hidden = false;
     document.documentElement.style.overflow = 'hidden';
     if (tab === 'subscription') tab = 'profile';
@@ -435,48 +438,9 @@
     if(!result.data.vouchers.length){target.innerHTML='<div class="ac-muted">Belum ada voucher.</div>';return;}
     target.innerHTML=result.data.vouchers.slice(0,30).map(function(v){return '<div class="ac-admin-row"><span><strong style="color:#e5edf7">••••' + esc(v.code_hint||'') + '</strong><br>' + esc(planName(v.plan_code)) + '</span><span>' + esc(Number(v.redemption_count)||0) + ' / ' + esc(Number(v.max_redemptions)||0) + ' dipakai</span><span>' + (v.active && !v.revoked_at ? '<span class="ac-chip ac-chip-ok">Aktif</span>' : '<span class="ac-chip">Dicabut</span>') + '</span></div>';}).join('');
   }
-  function injectRegistrationTerms() {
-    if (byId('acTermsRegistration')) return;
-    var error = byId('registerError'); var button=byId('registerBtn');
-    if (!error || !error.parentNode || !button) return;
-    var box=document.createElement('div'); box.id='acTermsRegistration';
-    box.innerHTML='<label class="ac-reg-terms-row"><input type="checkbox" id="acRegTermsAccepted"><span class="ac-reg-terms-copy">Saya menyetujui <button type="button" id="acOpenTermsFromRegister" class="ac-reg-terms-link">Syarat &amp; Ketentuan Layanan Auto-Cuan</button>.</span></label>';
-    error.parentNode.insertBefore(box,error);
-    var checkbox=byId('acRegTermsAccepted'); var open=byId('acOpenTermsFromRegister');
-    function sync(){ if(button) button.disabled=!checkbox.checked; }
-    checkbox.addEventListener('change',sync); if(open) open.addEventListener('click',function(event){event.preventDefault();if(typeof window.openStandaloneTermsModal==='function'){window.openStandaloneTermsModal();}else{openStandaloneTermsModal();}});
-    sync();
-  }
-  function showRegisterTermsError() {
-    var error=byId('registerError');
-    if(error){error.textContent='Baca dan setujui Peraturan & Ketentuan sebelum mendaftar.';error.classList.remove('hidden');}
-  }
   function installRegistrationContract() {
-    injectRegistrationTerms();
-    if (typeof window.doRegister === 'function' && !originalDoRegister) {
-      originalDoRegister=window.doRegister;
-      window.doRegister=async function(){
-        var checkbox=byId('acRegTermsAccepted');
-        if(!checkbox||checkbox.checked!==true){showRegisterTermsError();return;}
-        var nativeFetch=window.fetch;
-        window.fetch=function(input,init){
-          var url=typeof input==='string'?input:(input&&input.url)||'';
-          if(url.indexOf('/api/register-user')!==-1 && init && typeof init.body==='string'){
-            try{var body=JSON.parse(init.body);body.termsAccepted=true;body.termsVersion=TERMS_VERSION;init=Object.assign({},init,{body:JSON.stringify(body)});}catch(_){}
-          }
-          return nativeFetch.call(window,input,init);
-        };
-        try{return await originalDoRegister.apply(this,arguments);}finally{window.fetch=nativeFetch;}
-      };
-    }
-    if (typeof window.openRegisterModal === 'function' && !originalOpenRegister) {
-      originalOpenRegister=window.openRegisterModal;
-      window.openRegisterModal=function(){
-        var out=originalOpenRegister.apply(this,arguments);
-        setTimeout(function(){injectRegistrationTerms();var c=byId('acRegTermsAccepted');if(c)c.checked=false;var b=byId('registerBtn');if(b)b.disabled=true;},0);
-        return out;
-      };
-    }
+    // The native form owns consent validation and the versioned payload.
+    if (typeof window.syncRegistrationConsent === 'function') window.syncRegistrationConsent();
   }
   function installHeaderProfileTrigger() {
     var label=byId('headerUserLabel');

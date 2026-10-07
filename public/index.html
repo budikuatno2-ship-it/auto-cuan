@@ -737,15 +737,15 @@
             <h3 id="registerModalTitle" class="text-base font-bold" style="color:var(--text-primary);">Daftar</h3>
             <button onclick="closeRegisterModal()" class="text-2xl leading-none" style="color:var(--text-secondary); background:transparent; border:none; cursor:pointer; min-height:44px; min-width:44px; display:grid; place-items:center;" aria-label="Tutup modal daftar">&times;</button>
         </div>
-        <form id="registerFormFields" class="space-y-3" onsubmit="event.preventDefault();doRegister();return false;">
+        <form id="registerFormFields" class="space-y-3" oninput="syncRegistrationConsent()" onchange="syncRegistrationConsent()" onsubmit="event.preventDefault();doRegister();return false;">
             <div><label for="regEmail" class="block text-xs font-semibold mb-1" style="color:var(--text-secondary);">Gmail</label><input type="email" id="regEmail" name="email" autocomplete="email" autocapitalize="none" spellcheck="false" inputmode="email" required placeholder="nama@gmail.com" class="w-full px-4 py-3 rounded-xl outline-none text-sm" style="background:var(--canvas); border:1px solid var(--border-subtle); color:var(--text-primary); font-size:16px; min-height:44px;"><p class="mt-1.5 text-[11px]" style="color:var(--text-muted);">Wajib untuk akun baru. Gmail dipakai sebagai identitas login; verifikasi Telegram tetap melalui bot resmi.</p></div>
             <div><label for="regUsername" class="block text-xs font-semibold mb-1" style="color:var(--text-secondary);">Username</label><input type="text" id="regUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl outline-none text-sm" style="background:var(--canvas); border:1px solid var(--border-subtle); color:var(--text-primary); font-size:16px; min-height:44px;"></div>
             <div><label for="regPassword" class="block text-xs font-semibold mb-1" style="color:var(--text-secondary);">Password</label><div class="relative"><input type="password" id="regPassword" name="password" autocomplete="new-password" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl outline-none text-sm" style="background:var(--canvas); border:1px solid var(--border-subtle); color:var(--text-primary); font-size:16px; min-height:44px;"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center justify-center px-3 text-lg" style="color:var(--text-secondary); background:transparent; border:none; min-height:44px; min-width:44px; cursor:pointer;">👁</button></div></div>
             <div><label for="regPasswordConfirm" class="block text-xs font-semibold mb-1" style="color:var(--text-secondary);">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl outline-none text-sm" style="background:var(--canvas); border:1px solid var(--border-subtle); color:var(--text-primary); font-size:16px; min-height:44px;" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center justify-center px-3 text-lg" style="color:var(--text-secondary); background:transparent; border:none; min-height:44px; min-width:44px; cursor:pointer;">👁</button></div></div>
-            <label class="flex items-start gap-2 text-xs" style="color:var(--text-secondary); cursor:pointer;"><input type="checkbox" id="regTermsAccepted" name="termsAccepted" class="mt-0.5 h-4 w-4 rounded" style="accent-color:var(--accent-primary);"><span onclick="if(window.openStandaloneTermsModal)window.openStandaloneTermsModal();else if(window.openAccountTerms)window.openAccountTerms();">Saya menyetujui Syarat &amp; Ketentuan Layanan Auto-Cuan.</span></label>
+            <label class="flex items-start gap-2 text-xs" style="color:var(--text-secondary); cursor:pointer; min-height:44px;"><input type="checkbox" id="regTermsAccepted" name="termsAccepted" class="mt-3 h-5 w-5 rounded shrink-0" style="accent-color:var(--accent-primary);"><span>Saya menyetujui <button type="button" id="regOpenTerms" onclick="event.preventDefault();if(window.openStandaloneTermsModal)window.openStandaloneTermsModal();else if(window.openAccountTerms)window.openAccountTerms();" style="font:inherit; color:var(--accent-primary); background:transparent; border:none; text-decoration:underline; text-align:left; cursor:pointer; min-height:44px;">Syarat &amp; Ketentuan Layanan Auto-Cuan</button>.</span></label>
             <div id="registerError" class="hidden text-sm text-center py-1" style="color:var(--danger);" role="alert" aria-live="assertive"></div>
             <div id="registerSuccess" class="hidden text-sm text-center py-1" style="color:var(--accent-primary);" role="status" aria-live="polite"></div>
-            <button type="submit" id="registerBtn" onclick="doRegister()" class="w-full py-3 rounded-xl font-bold transition-all" style="background:var(--accent-primary); color:var(--color-on-accent, #ffffff); min-height:44px; border:none; cursor:pointer;">Daftar</button>
+            <button type="submit" id="registerBtn" disabled class="w-full py-3 rounded-xl font-bold transition-all" style="background:var(--accent-primary); color:var(--color-on-accent, #ffffff); min-height:44px; border:none; cursor:pointer;">Daftar</button>
         </form>
         <div id="registerApprovalPanel" class="hidden space-y-4 rounded-xl p-4 text-center" style="background:var(--surface-elevated); border:1px solid var(--accent-primary);">
             <h4 class="text-lg font-bold" style="color:var(--accent-primary);">Pendaftaran berhasil</h4>
@@ -925,7 +925,7 @@
         <button id="themeToggleCompact" data-action="toggle-theme" type="button" onclick="toggleAppTheme()" class="theme-toggle-compact" aria-label="Toggle Theme" title="Ganti tema terang/gelap">
             <span id="sidebarThemeIcon" aria-hidden="true" style="display:inline-grid;place-items:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span><span class="sidebar-label" id="sidebarThemeLabel">Dark Mode</span>
         </button>
-        <button type="button" id="sidebarAccountEntry" class="user-profile-badge sidebar-profile-button" title="Buka Account Center" aria-label="Buka Account Center" aria-haspopup="dialog" aria-expanded="false" data-ac-ui="v2" onclick="closeMobileSidebar();if(typeof openAccountProfile==='function')openAccountProfile(this);else if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeMobileSidebar();if(typeof openAccountProfile==='function')openAccountProfile(this);else if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click();}">
+        <button type="button" id="sidebarAccountEntry" class="user-profile-badge sidebar-profile-button" title="Buka Account Center" aria-label="Buka Account Center" aria-haspopup="dialog" aria-expanded="false" data-ac-ui="v2" onclick="if(typeof openAccountProfile==='function')openAccountProfile(this);else if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();if(typeof openAccountProfile==='function')openAccountProfile(this);else if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click();}">
             <div class="user-avatar" aria-hidden="true">B</div>
             <div class="user-info sidebar-label">
                 <span class="user-name" id="sidebarUserName">budi</span>
@@ -965,7 +965,7 @@
                 </div>
             </div>
             <div class="desktop-header-chips items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
-                <span class="header-status-chip" id="globalLiveRadarChip" title="Status Live Radar"><span class="header-status-dot" id="globalLiveRadarDot"></span><span id="globalLiveRadarText">Live Radar</span></span>
+                <span class="header-status-chip" id="globalLiveRadarChip" title="Kesegaran data belum dapat dipastikan." aria-label="Belum pasti. Kesegaran data belum dapat dipastikan." style="color:var(--color-text-secondary)!important;border-color:var(--color-text-secondary)!important;background-color:var(--ac-surface-3)!important"><span class="header-status-dot" id="globalLiveRadarDot" style="background:var(--color-text-secondary);box-shadow:none"></span><span id="globalLiveRadarText">Belum pasti</span></span>
                 <span class="header-status-chip safe">Safety ON</span>
                 <span class="header-status-chip warn">Manual Confirm</span>
                 <span class="header-status-chip">Watchlist ≠ BUY</span>
@@ -1036,7 +1036,7 @@
         <div class="dashboard-hero p-4 sm:p-5">
             <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="dashboard-hero-main">
-                    <div class="flex items-center gap-2 mb-2"><span class="dash-badge" id="heroLiveRadarBadge"><span class="header-status-dot" id="heroLiveRadarDot" style="margin-right:3px"></span><span id="heroLiveRadarText">Live Radar</span></span><span class="dash-badge text-amber-200 border-amber-500/20 bg-amber-500/10">Konfirmasi manual wajib</span></div>
+                    <div class="flex items-center gap-2 mb-2"><span class="dash-badge" id="heroLiveRadarBadge" title="Kesegaran data belum dapat dipastikan." aria-label="Belum pasti. Kesegaran data belum dapat dipastikan." style="color:var(--color-text-secondary)!important;border-color:var(--color-text-secondary)!important;background-color:var(--ac-surface-3)!important"><span class="header-status-dot" id="heroLiveRadarDot" style="margin-right:3px;background:var(--color-text-secondary);box-shadow:none"></span><span id="heroLiveRadarText">Belum pasti</span></span><span class="dash-badge text-amber-200 border-amber-500/20 bg-amber-500/10">Konfirmasi manual wajib</span></div>
                     <h2 class="text-2xl sm:text-3xl font-black tracking-tight" id="dashGreeting">Halo, Trader</h2>
                     <p class="text-sm text-gray-400 mt-1 max-w-2xl">Dashboard ringkas untuk Day Trade, Swing Konglo, dan Swing Non-Konglo. Watchlist/pantau tidak sama dengan BUY agresif.</p>
                 </div>
@@ -1276,17 +1276,17 @@
                     <span>Pola:</span>
                 </label>
                 <select id="filter-pattern-personality" onchange="onPatternPersonalityFilterChange()" class="w-full sm:max-w-md rounded-lg border border-dark-600/40 bg-dark-900/90 px-2.5 py-1.5 text-xs text-gray-100 outline-none focus:border-emerald-500/50">
-                    <option value="all">Semua Pola Personality (All)</option>
-                    <option value="COMBO_FX_TECH_MA5">COMBO_FX_TECH_MA5 (WR 64.2% · PF 2.06)</option>
-                    <option value="FX_STRONG_BUY">FX_STRONG_BUY (WR 61.2% · PF 1.80)</option>
-                    <option value="TECH_ABOVE_MA20">TECH_ABOVE_MA20 (WR 60.6% · PF 1.90)</option>
-                    <option value="TECH_ABOVE_MA5">TECH_ABOVE_MA5 (WR 60.1% · PF 1.89)</option>
-                    <option value="VOL_WARM_1P2_1P5">VOL_WARM_1P2_1P5 (WR 60.0% · PF 1.46)</option>
-                    <option value="RSI_OVERBOUGHT_65P">RSI_OVERBOUGHT_65P (WR 59.8% · PF 1.73)</option>
-                    <option value="COMBO_BROKER_FX">COMBO_BROKER_FX (WR 57.1% · PF 1.71)</option>
-                    <option value="COMBO_BROKER_TECH">COMBO_BROKER_TECH (WR 56.1% · PF 1.67)</option>
-                    <option value="TRAP_CHG5_VOL3_CLIMAX">TRAP_CHG5_VOL3_CLIMAX (WR 55.6% · PF 1.84)</option>
-                    <option value="BROKER_TOP3_CONCENTRATION">BROKER_TOP3_CONCENTRATION (WR 54.5% · PF 1.57)</option>
+                    <option value="all">Semua pola</option>
+                    <option value="COMBO_FX_TECH_MA5">Aliran asing + harga di atas MA5 (WR 64.2% · PF 2.06)</option>
+                    <option value="FX_STRONG_BUY">Akumulasi asing kuat (WR 61.2% · PF 1.80)</option>
+                    <option value="TECH_ABOVE_MA20">Harga di atas MA20 (WR 60.6% · PF 1.90)</option>
+                    <option value="TECH_ABOVE_MA5">Harga di atas MA5 (WR 60.1% · PF 1.89)</option>
+                    <option value="VOL_WARM_1P2_1P5">Volume 1,2–1,5× rata-rata (WR 60.0% · PF 1.46)</option>
+                    <option value="RSI_OVERBOUGHT_65P">Momentum RSI 65–69 (WR 59.8% · PF 1.73)</option>
+                    <option value="COMBO_BROKER_FX">Akumulasi broker + aliran asing (WR 57.1% · PF 1.71)</option>
+                    <option value="COMBO_BROKER_TECH">Akumulasi broker + harga di atas MA (WR 56.1% · PF 1.67)</option>
+                    <option value="TRAP_CHG5_VOL3_CLIMAX">Kenaikan ≥5% + volume ≥3× (WR 55.6% · PF 1.84)</option>
+                    <option value="BROKER_TOP3_CONCENTRATION">Konsentrasi akumulasi 3 broker teratas (WR 54.5% · PF 1.57)</option>
                 </select>
             </div>
             <div class="flex items-center gap-2">
@@ -2437,12 +2437,11 @@
         </section>
 
         <!-- ===== FINANCIAL / FUNDAMENTAL ===== -->
-        <section id="panel-tab-financial" class="analisis-tab-panel" style="display:none">
+        <section id="panel-tab-financial" class="analisis-tab-panel ac-ui-v2" data-ac-ui="v2" style="display:none">
             <div class="ac-financial-shell">
                 <header class="ac-financial-head">
                     <div class="ac-financial-heading">
-                        <p class="ac-research-kicker">Fundamental workspace</p>
-                        <h2>Financial Canvas</h2>
+                        <h2>Financial</h2>
                         <p>Ringkas valuasi dan struktur modal dari data yang benar-benar tersedia. Nilai kosong tetap kosong, bukan diisi asumsi.</p>
                     </div>
                     <div class="ac-research-ticker-tools">
@@ -2452,9 +2451,15 @@
                     </div>
                 </header>
 
-                <div id="financialDataState" class="ac-financial-state">
-                    <span class="ac-financial-state-dot" aria-hidden="true"></span>
-                    <span>Pilih ticker untuk membuka Financial Canvas.</span>
+                <div id="financialRefreshBanner" class="ac-refresh-banner" role="status" aria-live="polite" hidden></div>
+
+                <div id="financialDataState" class="ac-financial-state" role="status" aria-live="polite">
+                    <span>Pilih ticker untuk membuka data fundamental.</span>
+                </div>
+
+                <div id="financialAllUnavailableState" class="ac-empty-state ac-financial-all-unavailable" role="status" hidden>
+                    <h4 class="text-sm font-semibold ac-empty-title">Data Fundamental Belum Tersedia</h4>
+                    <p class="text-xs ac-empty-desc mt-1">Belum ada metrik fundamental terverifikasi (PBV, BVPS, Market Cap, Saham Beredar) untuk ticker ini.</p>
                 </div>
 
                 <div id="financialDataContent" class="ac-financial-content" hidden>
@@ -2462,8 +2467,7 @@
                         <div class="ac-financial-identity">
                             <span id="financialTickerBadge" class="ac-financial-symbol">—</span>
                             <div>
-                                <span class="ac-financial-overline">Verified snapshot</span>
-                                <h3>Nilai inti, sumber jelas.</h3>
+                                <h3>Snapshot terverifikasi</h3>
                                 <p id="financialPeriodHero">Periode belum tersedia</p>
                             </div>
                         </div>
@@ -2474,32 +2478,27 @@
                         </div>
                     </div>
 
-                    <div class="ac-financial-grid">
-                        <article class="ac-financial-focus-card">
-                            <div class="ac-financial-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
-                            <span class="ac-financial-focus-label">Price to Book Value</span>
+                    <div id="financialMetricGrid" class="ac-financial-grid">
+                        <article class="ac-financial-metric-card">
+                            <span class="ac-financial-metric-label">Price to Book Value (PBV)</span>
                             <strong id="financialPbv">—</strong>
                             <small id="financialPbvPrice">Harga acuan —</small>
-                            <p>PBV ditampilkan apa adanya dari fundamental yang tersedia; tidak ada interpretasi otomatis beli atau jual.</p>
                         </article>
-
-                        <div class="ac-financial-metric-stack">
-                            <article class="ac-financial-metric">
-                                <span>Book Value / Share</span>
-                                <strong id="financialBvps">—</strong>
-                                <small>Nilai buku per saham</small>
-                            </article>
-                            <article class="ac-financial-metric">
-                                <span>Market Cap</span>
-                                <strong id="financialMarketCap">—</strong>
-                                <small id="financialMarketCapAsOf">Belum tersedia</small>
-                            </article>
-                            <article class="ac-financial-metric">
-                                <span>Saham Beredar</span>
-                                <strong id="financialShares">—</strong>
-                                <small>Shares outstanding terverifikasi</small>
-                            </article>
-                        </div>
+                        <article class="ac-financial-metric-card">
+                            <span class="ac-financial-metric-label">Book Value / Share</span>
+                            <strong id="financialBvps">—</strong>
+                            <small>Nilai buku per saham</small>
+                        </article>
+                        <article class="ac-financial-metric-card">
+                            <span class="ac-financial-metric-label">Market Cap</span>
+                            <strong id="financialMarketCap">—</strong>
+                            <small id="financialMarketCapAsOf">Belum tersedia</small>
+                        </article>
+                        <article class="ac-financial-metric-card">
+                            <span class="ac-financial-metric-label">Saham Beredar</span>
+                            <strong id="financialShares">—</strong>
+                            <small>Shares outstanding terverifikasi</small>
+                        </article>
                     </div>
 
                     <div class="ac-financial-source-rail">
@@ -2523,40 +2522,137 @@
 
                     <div class="ac-financial-trust-note">
                         <span aria-hidden="true">i</span>
-                        <p>Market cap hanya muncul bila nilai tersimpan memiliki provenance. Financial Canvas tidak membuat angka pengganti saat data sumber belum tersedia.</p>
+                        <p>Market cap hanya muncul bila nilai tersimpan memiliki provenance. Financial tidak membuat angka pengganti saat data sumber belum tersedia.</p>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- ===== MARKET STRUCTURE / FREE FLOAT / HSC ===== -->
-        <section id="panel-tab-market-structure" class="analisis-tab-panel" style="display:none">
+        <section id="panel-tab-market-structure" class="analisis-tab-panel ac-ui-v2" data-ac-ui="v2" style="display:none">
             <div class="unified-card ac-research-data-panel">
-                <div class="unified-card-header ac-research-data-head">
-                    <div>
-                        <p class="ac-research-kicker">Struktur Pasar</p>
-                        <h2 class="text-sm font-bold text-gray-200">Free Float &amp; HSC</h2>
-                        <p class="text-[11px] text-gray-500 mt-1">Konteks risiko struktur kepemilikan. Bukan score beli/jual dan bukan penilaian kepatuhan regulasi.</p>
+                <!-- Background interaction wrapper for desktop/list surface (inert when mobile sheet opens) -->
+                <div id="marketStructureBackgroundWrapper" class="ac-market-structure-background">
+                    <div class="unified-card-header ac-research-data-head">
+                        <div>
+                            <p class="ac-research-kicker">Struktur Pasar</p>
+                            <h2 class="text-sm font-bold ac-section-title">Struktur Pasar</h2>
+                            <p class="text-[11px] ac-label-muted mt-1">Konteks risiko struktur kepemilikan. Bukan score beli/jual dan bukan penilaian kepatuhan regulasi.</p>
+                        </div>
                     </div>
-                    <div class="ac-research-ticker-tools">
-                        <input id="marketStructureTickerInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" placeholder="BBCA" class="ac-research-ticker-input" onkeydown="if(event.key==='Enter'&&!event.isComposing){loadFinancialStructureTab('market-structure', this.value)}">
-                        <button type="button" class="ac-research-load-btn" onclick="loadFinancialStructureTab('market-structure', document.getElementById('marketStructureTickerInput').value)">Muat</button>
+
+                    <div id="marketStructureRefreshBanner" class="ac-refresh-banner" role="status" aria-live="polite" hidden></div>
+
+                    <!-- List-First Toolbar -->
+                    <div class="ac-filter-bar flex flex-wrap items-center justify-between gap-3 p-3 border-b">
+                        <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+                            <input id="marketStructureSearchInput" type="text" placeholder="Cari saham..." autocomplete="off" spellcheck="false" class="ac-search-input w-full sm:w-56 px-3 py-1.5 rounded-lg text-xs" aria-label="Cari saham di struktur pasar">
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <div class="ac-filter-chips flex items-center gap-1.5" role="group" aria-label="Filter status struktur pasar">
+                                <button type="button" id="marketStructureFilterAll" class="ac-filter-chip is-active px-2.5 py-1 text-xs rounded-md transition" data-filter="all">[Semua]</button>
+                                <button type="button" id="marketStructureFilterLowFF" class="ac-filter-chip px-2.5 py-1 text-xs rounded-md transition" data-filter="low-ff">[FF Rendah &lt;15%]</button>
+                                <button type="button" id="marketStructureFilterHsc" class="ac-filter-chip px-2.5 py-1 text-xs rounded-md transition" data-filter="hsc">[HSC Aktif]</button>
+                                <button type="button" id="marketStructureFilterIncomplete" class="ac-filter-chip px-2.5 py-1 text-xs rounded-md transition" data-filter="incomplete">[Data Belum Lengkap]</button>
+                            </div>
+                            <div class="flex items-center gap-1.5 text-xs ml-auto">
+                                <label for="marketStructureSortSelect" class="text-[11px] ac-label-muted">Urutkan:</label>
+                                <select id="marketStructureSortSelect" class="ac-filter-select text-xs rounded px-2 py-1" aria-label="Urutkan daftar struktur pasar">
+                                    <option value="free_float_asc">Free Float ↑</option>
+                                    <option value="ticker_asc">Ticker</option>
+                                    <option value="hsc_first">Status HSC</option>
+                                </select>
+                                <button type="button" id="marketStructureRefreshBtn" class="ac-icon-btn p-1.5 rounded-lg transition" title="Muat ulang data" aria-label="Muat ulang data struktur pasar">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ac-market-structure-layout">
+                        <!-- Universe List Main Area -->
+                        <div id="marketStructureMainRegion" class="ac-market-structure-main">
+                            <div id="marketStructureDataState" class="ac-research-state py-8 text-center" role="status" aria-live="polite">Pilih ticker untuk memuat struktur pasar.</div>
+                            <div id="marketStructureTableContainer" class="ac-table-container overflow-x-auto scrollbar-thin" hidden>
+                                <table id="marketStructureTable" class="ac-table ac-table-dense w-full text-left">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col" class="py-2.5 px-3 font-semibold text-xs">Ticker</th>
+                                            <th scope="col" class="py-2.5 px-3 font-semibold text-xs">Free Float</th>
+                                            <th scope="col" class="py-2.5 px-3 font-semibold text-xs">Status HSC</th>
+                                            <th scope="col" class="py-2.5 px-3 font-semibold text-xs">Risk Guard</th>
+                                            <th scope="col" class="py-2.5 px-3 font-semibold text-xs">Per tanggal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="marketStructureTableBody">
+                                        <!-- Rendered dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Docked Detail Pane (Desktop >=1024px) -->
+                        <aside id="marketStructureDetailPane" class="ac-detail-pane" aria-label="Detail Struktur Pasar Saham" hidden>
+                            <div class="ac-detail-header flex items-center justify-between pb-2.5 border-b">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span id="marketStructureDetailTickerBadge" class="ac-financial-symbol font-mono font-bold text-xs">—</span>
+                                    <div class="min-w-0">
+                                        <h3 id="marketStructureDetailTitle" class="ac-detail-title text-xs font-bold truncate">Detail Struktur Pasar</h3>
+                                        <p id="marketStructureDetailSubtitle" class="text-[10px] ac-detail-sub truncate">Bukti struktur &amp; kepemilikan.</p>
+                                    </div>
+                                </div>
+                                <button type="button" id="marketStructureDetailClose" class="ac-detail-close p-1.5 rounded-lg transition shrink-0" aria-label="Tutup panel detail">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                            <div class="ac-detail-body pt-2.5">
+                                <div id="marketStructureDataContent" class="ac-research-data-content" hidden>
+                                    <div class="ac-metric-grid">
+                                        <article class="ac-metric-tile"><span>Free Float</span><strong id="marketStructureFreeFloat">—</strong><small id="marketStructureFreeFloatAsOf">As of —</small></article>
+                                        <article class="ac-metric-tile"><span>Status HSC</span><strong id="marketStructureHsc">—</strong><small id="marketStructureHscAsOf">As of —</small></article>
+                                        <article class="ac-metric-tile"><span>Risk Guard</span><strong id="marketStructureGuard">—</strong><small id="marketStructureStatus">—</small></article>
+                                    </div>
+                                    <div class="ac-research-detail-grid">
+                                        <div class="ac-research-detail"><span>Sumber Free Float</span><strong id="marketStructureFreeFloatSource">—</strong></div>
+                                        <div class="ac-research-detail"><span>Sumber HSC</span><strong id="marketStructureHscSource">—</strong></div>
+                                        <div class="ac-research-detail"><span>Referensi Low Free Float</span><strong id="marketStructureReference">—</strong></div>
+                                        <div class="ac-research-detail"><span>Kepatuhan Regulasi</span><strong id="marketStructureCompliance">—</strong></div>
+                                    </div>
+                                    <div id="marketStructureNote" class="ac-research-note">—</div>
+                                </div>
+                            </div>
+                        </aside>
                     </div>
                 </div>
-                <div id="marketStructureDataState" class="ac-research-state">Pilih ticker untuk memuat struktur pasar.</div>
-                <div id="marketStructureDataContent" class="ac-research-data-content" hidden>
-                    <div class="ac-metric-grid">
-                        <article class="ac-metric-tile"><span>Free Float</span><strong id="marketStructureFreeFloat">—</strong><small id="marketStructureFreeFloatAsOf">As of —</small></article>
-                        <article class="ac-metric-tile"><span>Status HSC</span><strong id="marketStructureHsc">—</strong><small id="marketStructureHscAsOf">As of —</small></article>
-                        <article class="ac-metric-tile"><span>Risk Guard</span><strong id="marketStructureGuard">—</strong><small id="marketStructureStatus">—</small></article>
+
+                <!-- Mobile Detail Sheet (Bottom Sheet for <1024px) -->
+                <div id="marketStructureDetailSheet" class="ac-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="marketStructureSheetTitle" hidden>
+                    <div id="marketStructureSheetBackdrop" class="ac-detail-sheet-backdrop" aria-hidden="true"></div>
+                    <div class="ac-detail-sheet-panel" role="document">
+                        <div class="ac-detail-sheet-header flex items-center justify-between pb-3 border-b">
+                            <div class="flex items-center gap-2">
+                                <span id="marketStructureSheetTickerBadge" class="ac-financial-symbol font-mono font-bold text-xs">—</span>
+                                <h3 id="marketStructureSheetTitle" class="text-sm font-bold ac-sheet-title">Detail Struktur Pasar</h3>
+                            </div>
+                            <button type="button" id="marketStructureSheetClose" class="ac-detail-sheet-close min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg" aria-label="Tutup sheet detail">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div id="marketStructureSheetBody" class="ac-detail-sheet-body pt-3">
+                            <div class="ac-metric-grid">
+                                <article class="ac-metric-tile"><span>Free Float</span><strong id="marketStructureSheetFreeFloat">—</strong><small id="marketStructureSheetFreeFloatAsOf">As of —</small></article>
+                                <article class="ac-metric-tile"><span>Status HSC</span><strong id="marketStructureSheetHsc">—</strong><small id="marketStructureSheetHscAsOf">As of —</small></article>
+                                <article class="ac-metric-tile"><span>Risk Guard</span><strong id="marketStructureSheetGuard">—</strong><small id="marketStructureSheetStatus">—</small></article>
+                            </div>
+                            <div class="ac-research-detail-grid">
+                                <div class="ac-research-detail"><span>Sumber Free Float</span><strong id="marketStructureSheetFreeFloatSource">—</strong></div>
+                                <div class="ac-research-detail"><span>Sumber HSC</span><strong id="marketStructureSheetHscSource">—</strong></div>
+                                <div class="ac-research-detail"><span>Referensi Low Free Float</span><strong id="marketStructureSheetReference">—</strong></div>
+                                <div class="ac-research-detail"><span>Kepatuhan Regulasi</span><strong id="marketStructureSheetCompliance">—</strong></div>
+                            </div>
+                            <div id="marketStructureSheetNote" class="ac-research-note">—</div>
+                        </div>
                     </div>
-                    <div class="ac-research-detail-grid">
-                        <div class="ac-research-detail"><span>Sumber Free Float</span><strong id="marketStructureFreeFloatSource">—</strong></div>
-                        <div class="ac-research-detail"><span>Sumber HSC</span><strong id="marketStructureHscSource">—</strong></div>
-                        <div class="ac-research-detail"><span>Referensi Low Free Float</span><strong id="marketStructureReference">15%</strong></div>
-                        <div class="ac-research-detail"><span>Kepatuhan Regulasi</span><strong id="marketStructureCompliance">NOT_EVALUATED</strong></div>
-                    </div>
-                    <div id="marketStructureNote" class="ac-research-note">—</div>
                 </div>
             </div>
         </section>
@@ -4945,7 +5041,7 @@ function openRegisterModal() {
     // account creation is unchanged; this only removes the entry point so the
     // maintenance screen cannot be used to start a signup.
     if (maintenanceLockActive()) { applyMaintenanceGate(); return; }
-    resetRegisterApprovalView(); document.getElementById('registerModal').classList.remove('hidden'); document.getElementById('registerError').classList.add('hidden'); document.getElementById('registerSuccess').classList.add('hidden'); }
+    resetRegisterApprovalView(); document.getElementById('regTermsAccepted').checked = false; syncRegistrationConsent(); document.getElementById('registerModal').classList.remove('hidden'); document.getElementById('registerError').classList.add('hidden'); document.getElementById('registerSuccess').classList.add('hidden'); }
 function closeRegisterModal() { document.getElementById('registerModal').classList.add('hidden'); }
 function openSelfResetModal() { document.getElementById('selfResetModal').classList.remove('hidden'); document.getElementById('selfResetError').classList.add('hidden'); document.getElementById('selfResetSuccess').classList.add('hidden'); }
 function closeSelfResetModal() { document.getElementById('selfResetModal').classList.add('hidden'); var v2 = document.getElementById('authV2ResetModal'); if (v2) v2.classList.add('hidden'); if (typeof window.closeAuthV2ResetModal === 'function') window.closeAuthV2ResetModal(); }
@@ -5209,6 +5305,19 @@ async function copyRegistrationApprovalCode() {
 // registration unless this exact version string is echoed back.
 var REGISTRATION_TERMS_VERSION = '2026-08-16-v1';
 
+function syncRegistrationConsent() {
+    var button = document.getElementById('registerBtn');
+    if (!button) return;
+    var username = document.getElementById('regUsername').value.trim();
+    var email = document.getElementById('regEmail').value.trim().toLowerCase();
+    var password = document.getElementById('regPassword').value;
+    var confirmation = document.getElementById('regPasswordConfirm').value;
+    var consent = document.getElementById('regTermsAccepted');
+    button.disabled = Boolean(doRegister._busy) || !username || username.toLowerCase() === 'budi' || isBadUsername(username) ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !email.endsWith('@gmail.com') ||
+        !isValidPassword(password) || password !== confirmation || !consent || !consent.checked;
+}
+
 async function doRegister() {
     clearLegacyDeviceBlock();
     // F-090: resolve the feedback elements BEFORE any validation branch uses
@@ -5252,7 +5361,7 @@ async function doRegister() {
         else if (data.success) { errorEl.textContent = 'Registrasi berhasil, tetapi kode approval belum tersedia. Hubungi admin.'; errorEl.classList.remove('hidden'); }
         else { errorEl.textContent = data.error || 'Registrasi gagal.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
-    finally { doRegister._busy = false; registerBtn.disabled = false; registerBtn.innerHTML = 'Daftar'; }
+    finally { doRegister._busy = false; syncRegistrationConsent(); registerBtn.innerHTML = 'Daftar'; }
 }
 
 // ===== LOGOUT =====
@@ -5789,127 +5898,91 @@ function navigateTo(page) {
 
 // ===== GLOBAL LIVE RADAR FRESHNESS STATUS HELPER (Temuan #6) =====
 function updateGlobalLiveRadarStatus(metaOrFreshness) {
-    var chip = document.getElementById('globalLiveRadarChip');
-    var dot = document.getElementById('globalLiveRadarDot');
-    var txt = document.getElementById('globalLiveRadarText');
-    var heroBadge = document.getElementById('heroLiveRadarBadge');
-    var heroDot = document.getElementById('heroLiveRadarDot');
-    var heroText = document.getElementById('heroLiveRadarText');
-    if (!chip && !heroBadge) return;
+    var meta = metaOrFreshness && typeof metaOrFreshness === 'object' ? metaOrFreshness : {};
+    var calcAt = typeof metaOrFreshness === 'string' ? metaOrFreshness :
+        (meta.calculated_at || meta.last_updated_at || meta.updated_at || null);
+    var calcMs = calcAt ? new Date(calcAt).getTime() : NaN;
+    var now = Date.now();
+    var usableTime = Number.isFinite(calcMs) && calcMs <= now;
+    var freshness = String(meta.freshness_label || '').toLowerCase();
+    var sourceStatus = String(meta.status || '').toLowerCase();
+    var stale = meta.data_stale === true || meta.is_stale === true ||
+        meta.freshness_is_stale === true || freshness === 'stale';
+    var unavailable = meta.success === false || Boolean(meta.error) ||
+        ['failed', 'error', 'unavailable', 'not_configured'].indexOf(sourceStatus) >= 0;
+    var status = 'unknown';
+    var label = 'Belum pasti';
+    var tooltip = 'Kesegaran data belum dapat dipastikan.';
 
-    var status = 'live'; // 'live' | 'delayed' | 'stale' | 'market_closed'
-    var label = 'Live Radar';
-    var tooltip = 'Radar aktif — data pasar terkini.';
-
-    // Extract calculated_at & status from metaOrFreshness
-    var calcAt = null;
-    var isStale = false;
-    var isScanning = false;
-    if (metaOrFreshness) {
-        if (typeof metaOrFreshness === 'string') calcAt = metaOrFreshness;
-        else if (metaOrFreshness.calculated_at) calcAt = metaOrFreshness.calculated_at;
-        else if (metaOrFreshness.last_updated_at) calcAt = metaOrFreshness.last_updated_at;
-        else if (metaOrFreshness.updated_at) calcAt = metaOrFreshness.updated_at;
-
-        if (metaOrFreshness.data_stale || metaOrFreshness.is_stale || metaOrFreshness.freshness_is_stale) isStale = true;
-        if (metaOrFreshness.status === 'scanning' || metaOrFreshness.status === 'finalizing') isScanning = true;
-    }
-
-    var nowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
-    var todayStr = nowWib.toISOString().slice(0, 10);
-    var yesterdayWib = new Date(nowWib.getTime() - 86400000);
-    var yesterdayStr = yesterdayWib.toISOString().slice(0, 10);
-
-    if (isScanning) {
+    // A request/update time alone does not prove live market data. The backend
+    // Fresh label already includes the dataset's age and market-session rules.
+    // Its backend contract is <=45 minutes; cached claims must still agree.
+    if (stale) {
+        status = 'stale';
+    } else if (unavailable) {
+        status = 'unavailable';
+        label = 'Tak tersedia';
+        tooltip = 'Status data belum tersedia. Coba muat ulang.';
+    } else if (sourceStatus === 'scanning' || sourceStatus === 'finalizing') {
         status = 'scanning';
-        label = 'Radar: Scanning';
-        tooltip = 'Screener sedang memproses data terkini...';
-    } else if (calcAt) {
-        var calcDate = new Date(calcAt);
-        var calcDateStr = calcDate.toISOString().slice(0, 10);
-        var ageHours = Math.max(0, Math.round((Date.now() - calcDate.getTime()) / (1000 * 60 * 60)));
-
-        if (isStale || (calcDateStr !== todayStr && calcDateStr !== yesterdayStr) || ageHours >= 24) {
+        label = 'Radar: Memproses';
+        tooltip = 'Data sedang diproses. Kesegarannya belum terverifikasi.';
+    } else if (usableTime) {
+        var today = new Date(now + 7 * 3600000).toISOString().slice(0, 10);
+        var yesterday = new Date(now + 7 * 3600000 - 86400000).toISOString().slice(0, 10);
+        var dataDay = new Date(calcMs + 7 * 3600000).toISOString().slice(0, 10);
+        var ageHours = Math.max(0, Math.round((now - calcMs) / 3600000));
+        if (ageHours >= 24 || (dataDay !== today && dataDay !== yesterday)) {
             status = 'stale';
-            label = 'Radar: Stale (' + ageHours + 'h)';
-            tooltip = 'Data stale (evaluasi terakhir ' + ageHours + ' jam lalu pada ' + calcDateStr + '). Refresh diperlukan.';
-        } else if (calcDateStr === yesterdayStr) {
+        } else if (freshness === 'market close snapshot' || sourceStatus === 'market_closed') {
             status = 'delayed';
-            label = 'Radar: EOD Close';
-            tooltip = 'Snapshot penutupan pasar sesi kemarin (' + calcDateStr + '). Menunggu sesi baru.';
-        } else {
+            label = 'Radar: Sesi tutup';
+            tooltip = 'Snapshot sesi pasar yang telah ditutup.';
+        } else if (dataDay === yesterday) {
+            status = 'delayed';
+            label = 'Radar: Sesi kemarin';
+            tooltip = 'Snapshot sesi kemarin. Menunggu data sesi berikutnya.';
+        } else if (freshness === 'delayed') {
+            status = 'delayed';
+            label = 'Radar: Tertunda';
+            tooltip = 'Pembaruan data tertunda. Validasi kembali sebelum digunakan.';
+        } else if (freshness === 'fresh' && (now - calcMs) / 60000 <= 45 &&
+            ['pending', 'idle'].indexOf(sourceStatus) < 0) {
             status = 'live';
             label = 'Live Radar';
-            tooltip = 'Radar aktif — data pasar hari ini (' + calcDateStr + ').';
+            tooltip = 'Kesegaran data pasar telah terverifikasi untuk sesi berjalan.';
         }
     }
-
-    // Apply UI styles to Navbar Chip
-    if (chip && dot && txt) {
-        chip.className = 'header-status-chip';
-        dot.style.background = '';
-        dot.style.boxShadow = '';
-        chip.style.borderColor = '';
-        chip.style.backgroundColor = '';
-        chip.style.color = '';
-
-        if (status === 'stale') {
-            chip.classList.add('warn');
-            dot.style.background = '#f87171';
-            dot.style.boxShadow = '0 0 10px rgba(248,113,113,0.6)';
-            chip.style.borderColor = 'rgba(239,68,68,0.3)';
-            chip.style.backgroundColor = 'rgba(239,68,68,0.1)';
-            chip.style.color = '#fca5a5';
-        } else if (status === 'delayed') {
-            chip.classList.add('warn');
-            dot.style.background = '#fbbf24';
-            dot.style.boxShadow = '0 0 10px rgba(251,191,36,0.5)';
-            chip.style.borderColor = 'rgba(245,158,11,0.3)';
-            chip.style.backgroundColor = 'rgba(245,158,11,0.1)';
-            chip.style.color = '#fcd34d';
-        } else if (status === 'scanning') {
-            dot.style.background = '#60a5fa';
-            dot.style.boxShadow = '0 0 10px rgba(96,165,250,0.6)';
-            chip.style.borderColor = 'rgba(59,130,246,0.3)';
-            chip.style.backgroundColor = 'rgba(59,130,246,0.1)';
-            chip.style.color = '#93c5fd';
-        } else {
-            dot.style.background = '#34d399';
-            dot.style.boxShadow = '0 0 12px rgba(52,211,153,0.55)';
-        }
-        txt.textContent = label;
-        chip.title = tooltip;
+    if (status === 'stale') {
+        label = 'Radar: Data lama';
+        tooltip = 'Data belum diperbarui. Muat ulang dan validasi sebelum digunakan.';
     }
 
-    // Apply UI styles to Hero Badge
-    if (heroBadge && heroText) {
-        heroBadge.className = 'dash-badge';
-        heroBadge.style.borderColor = '';
-        heroBadge.style.backgroundColor = '';
-        heroBadge.style.color = '';
-        if (heroDot) { heroDot.style.background = ''; heroDot.style.boxShadow = ''; }
-
-        if (status === 'stale') {
-            heroBadge.style.borderColor = 'rgba(239,68,68,0.3)';
-            heroBadge.style.backgroundColor = 'rgba(239,68,68,0.12)';
-            heroBadge.style.color = '#fca5a5';
-            if (heroDot) { heroDot.style.background = '#f87171'; heroDot.style.boxShadow = '0 0 8px rgba(248,113,113,0.6)'; }
-        } else if (status === 'delayed') {
-            heroBadge.style.borderColor = 'rgba(245,158,11,0.3)';
-            heroBadge.style.backgroundColor = 'rgba(245,158,11,0.12)';
-            heroBadge.style.color = '#fcd34d';
-            if (heroDot) { heroDot.style.background = '#fbbf24'; heroDot.style.boxShadow = '0 0 8px rgba(251,191,36,0.6)'; }
-        } else if (status === 'scanning') {
-            heroBadge.style.borderColor = 'rgba(59,130,246,0.3)';
-            heroBadge.style.backgroundColor = 'rgba(59,130,246,0.12)';
-            heroBadge.style.color = '#93c5fd';
-            if (heroDot) { heroDot.style.background = '#60a5fa'; heroDot.style.boxShadow = '0 0 8px rgba(96,165,250,0.6)'; }
-        } else {
-            if (heroDot) { heroDot.style.background = '#34d399'; heroDot.style.boxShadow = '0 0 8px rgba(52,211,153,0.55)'; }
+    var color = status === 'live' ? 'var(--ac-bull)' :
+        (status === 'stale' || status === 'delayed') ? 'var(--ac-warn)' :
+        status === 'unavailable' ? 'var(--ac-bear)' :
+        status === 'scanning' ? 'var(--pw-info, var(--info))' : 'var(--color-text-secondary)';
+    [['globalLiveRadarChip', 'globalLiveRadarDot', 'globalLiveRadarText', 'header-status-chip'],
+     ['heroLiveRadarBadge', 'heroLiveRadarDot', 'heroLiveRadarText', 'dash-badge']].forEach(function(ids) {
+        var badge = document.getElementById(ids[0]);
+        var dot = document.getElementById(ids[1]);
+        var text = document.getElementById(ids[2]);
+        if (!badge || !text) return;
+        badge.className = ids[3];
+        if (status === 'live') badge.classList.add('safe');
+        if (status === 'stale' || status === 'delayed') badge.classList.add('warn');
+        badge.style.setProperty('color', color, 'important');
+        badge.style.setProperty('border-color', color, 'important');
+        badge.style.setProperty('background-color', 'var(--ac-surface-3)', 'important');
+        badge.setAttribute('data-freshness-state', status);
+        text.textContent = label;
+        badge.title = tooltip;
+        badge.setAttribute('aria-label', label + '. ' + tooltip);
+        if (dot) {
+            dot.style.background = color;
+            dot.style.boxShadow = 'none';
         }
-        heroText.textContent = label;
-        heroBadge.title = tooltip;
-    }
+    });
 }
 function updateDashGreeting() {
     var el = document.getElementById('dashGreeting');
@@ -9949,16 +10022,16 @@ function bandarScoreBadgeHtml(r) {
     return '<div class="mt-0.5"><span class="inline-block px-1 py-0.2 text-[9px] font-bold rounded ' + color + '" title="' + escapeHtml(title) + '">' + sign + r.bandar_score_bonus + ' BD</span></div>';
 }
 var PATTERN_PERSONALITY_UI_CATALOG = {
-    COMBO_FX_TECH_MA5: { key: 'COMBO_FX_TECH_MA5', label: 'Combo FX+MA5', pf: 2.06, wr: 64.2, mfe: 9.8, mae: -5.9, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
-    FX_STRONG_BUY: { key: 'FX_STRONG_BUY', label: 'FX Strong Buy', pf: 1.80, wr: 61.2, mfe: 10.8, mae: -5.4, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
-    TECH_ABOVE_MA20: { key: 'TECH_ABOVE_MA20', label: 'Above MA20', pf: 1.90, wr: 60.6, mfe: 11.0, mae: -8.2, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
-    TECH_ABOVE_MA5: { key: 'TECH_ABOVE_MA5', label: 'Above MA5', pf: 1.89, wr: 60.1, mfe: 10.8, mae: -8.0, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
-    VOL_WARM_1P2_1P5: { key: 'VOL_WARM_1P2_1P5', label: 'Vol Warm 1.2-1.5x', pf: 1.46, wr: 60.0, mfe: 11.8, mae: -7.1, color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' },
-    RSI_OVERBOUGHT_65P: { key: 'RSI_OVERBOUGHT_65P', label: 'RSI Bull Momentum', pf: 1.73, wr: 59.8, mfe: 10.2, mae: -8.7, color: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
-    COMBO_BROKER_FX: { key: 'COMBO_BROKER_FX', label: 'Combo Broker+FX', pf: 1.71, wr: 57.1, mfe: 12.3, mae: -5.9, color: 'bg-purple-500/20 text-purple-300 border-purple-500/40' },
-    COMBO_BROKER_TECH: { key: 'COMBO_BROKER_TECH', label: 'Combo Broker+Tech', pf: 1.67, wr: 56.1, mfe: 12.6, mae: -9.2, color: 'bg-purple-500/20 text-purple-300 border-purple-500/40' },
-    TRAP_CHG5_VOL3_CLIMAX: { key: 'TRAP_CHG5_VOL3_CLIMAX', label: 'Climax Vol Reversal', pf: 1.84, wr: 55.6, mfe: 29.1, mae: -5.9, color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
-    BROKER_TOP3_CONCENTRATION: { key: 'BROKER_TOP3_CONCENTRATION', label: 'Broker Top 3', pf: 1.57, wr: 54.5, mfe: 11.7, mae: -10.3, color: 'bg-violet-500/20 text-violet-300 border-violet-500/40' },
+    COMBO_FX_TECH_MA5: { key: 'COMBO_FX_TECH_MA5', label: 'Aliran asing + harga di atas MA5', pf: 2.06, wr: 64.2, mfe: 9.8, mae: -5.9, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
+    FX_STRONG_BUY: { key: 'FX_STRONG_BUY', label: 'Akumulasi asing kuat', pf: 1.80, wr: 61.2, mfe: 10.8, mae: -5.4, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
+    TECH_ABOVE_MA20: { key: 'TECH_ABOVE_MA20', label: 'Harga di atas MA20', pf: 1.90, wr: 60.6, mfe: 11.0, mae: -8.2, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
+    TECH_ABOVE_MA5: { key: 'TECH_ABOVE_MA5', label: 'Harga di atas MA5', pf: 1.89, wr: 60.1, mfe: 10.8, mae: -8.0, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
+    VOL_WARM_1P2_1P5: { key: 'VOL_WARM_1P2_1P5', label: 'Volume 1,2–1,5× rata-rata', pf: 1.46, wr: 60.0, mfe: 11.8, mae: -7.1, color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' },
+    RSI_OVERBOUGHT_65P: { key: 'RSI_OVERBOUGHT_65P', label: 'Momentum RSI 65–69', pf: 1.73, wr: 59.8, mfe: 10.2, mae: -8.7, color: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
+    COMBO_BROKER_FX: { key: 'COMBO_BROKER_FX', label: 'Akumulasi broker + aliran asing', pf: 1.71, wr: 57.1, mfe: 12.3, mae: -5.9, color: 'bg-purple-500/20 text-purple-300 border-purple-500/40' },
+    COMBO_BROKER_TECH: { key: 'COMBO_BROKER_TECH', label: 'Akumulasi broker + harga di atas MA', pf: 1.67, wr: 56.1, mfe: 12.6, mae: -9.2, color: 'bg-purple-500/20 text-purple-300 border-purple-500/40' },
+    TRAP_CHG5_VOL3_CLIMAX: { key: 'TRAP_CHG5_VOL3_CLIMAX', label: 'Kenaikan ≥5% + volume ≥3×', pf: 1.84, wr: 55.6, mfe: 29.1, mae: -5.9, color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+    BROKER_TOP3_CONCENTRATION: { key: 'BROKER_TOP3_CONCENTRATION', label: 'Konsentrasi akumulasi 3 broker teratas', pf: 1.57, wr: 54.5, mfe: 11.7, mae: -10.3, color: 'bg-violet-500/20 text-violet-300 border-violet-500/40' },
     MA5_MA20_CROSS: { key: 'MA5_MA20_CROSS', label: 'MA5xMA20 Cross', pf: 1.82, wr: 59.8, mfe: 10.9, mae: -8.2, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
     STOCH_RSI_OVERSOLD: { key: 'STOCH_RSI_OVERSOLD', label: 'Stoch RSI Oversold', pf: 1.51, wr: 54.2, mfe: 9.5, mae: -8.8, color: 'bg-teal-500/20 text-teal-300 border-teal-500/40' }
 };
@@ -10000,7 +10073,7 @@ function patternPersonalityBadgeHtml(r) {
     if (!key) return '';
     var p = PATTERN_PERSONALITY_UI_CATALOG[key];
     if (!p) return '';
-    var tip = 'Quant Edge: ' + p.key + ' · WR ' + p.wr.toFixed(1) + '% · PF ' + p.pf.toFixed(2) + ' (MFE +' + p.mfe.toFixed(1) + '% · MAE ' + p.mae.toFixed(1) + '%)';
+    var tip = 'Pola: ' + p.label + ' · WR ' + p.wr.toFixed(1) + '% · PF ' + p.pf.toFixed(2) + ' (MFE +' + p.mfe.toFixed(1) + '% · MAE ' + p.mae.toFixed(1) + '%)';
     return '<div class="mt-0.5"><span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border ' + p.color + '" title="' + escapeHtml(tip) + '">⚡ ' + escapeHtml(p.label) + '</span></div>';
 }
 if (typeof window !== 'undefined') window.patternPersonalityBadgeHtml = patternPersonalityBadgeHtml;
@@ -10844,6 +10917,33 @@ function renderScrDetailHtml(r, type) {
     return html;
 }
 
+function screenerResultActionHtml(ticker, type) {
+    return '<button type="button" class="ac-screener-result-action" data-screener-type="' + escapeHtml(type) + '" aria-pressed="false" aria-label="Lihat detail ' + escapeHtml(ticker) + '">' + escapeHtml(ticker) + '</button>';
+}
+
+function setScreenerResultRows(tbody, html) {
+    var active = document.activeElement;
+    var ticker = tbody.contains(active) && active.closest('tr[data-ticker]');
+    ticker = ticker && ticker.dataset.ticker;
+    tbody.innerHTML = html;
+    if (ticker) {
+        var actions = Array.from(tbody.querySelectorAll('.ac-screener-result-action'));
+        var next = actions.find(function (el) { return el.closest('tr').dataset.ticker === ticker; }) || actions[0] || document.getElementById('filter-pattern-personality');
+        if (next) next.focus({ preventScroll: true });
+    }
+}
+
+function restoreScreenerResultFocus() {
+    if (!_lastScrFocusTrigger) return;
+    var trigger = _lastScrFocusTrigger;
+    if (!trigger.isConnected) {
+        var actions = Array.from(document.querySelectorAll('#page-screener .ac-screener-result-action'));
+        trigger = actions.find(function (el) { return el.dataset.screenerType === _lastScrFocusTrigger.dataset.screenerType && el.closest('tr').dataset.ticker === _lastScrFocusTrigger.closest('tr').dataset.ticker; }) || actions.find(function (el) { return el.getClientRects().length; }) || document.getElementById('filter-pattern-personality');
+    }
+    if (trigger && typeof trigger.focus === 'function') trigger.focus({ preventScroll: true });
+    _lastScrFocusTrigger = null;
+}
+
 var _lastScrFocusTrigger = null;
 
 function openScrDetail(r, type) {
@@ -10860,10 +10960,7 @@ function openScrDetail(r, type) {
 function closeScrDetail() {
     var modal = document.getElementById('scrDetailModal');
     if (modal) modal.classList.add('hidden');
-    if (_lastScrFocusTrigger && typeof _lastScrFocusTrigger.focus === 'function') {
-        try { _lastScrFocusTrigger.focus(); } catch (e) {}
-        _lastScrFocusTrigger = null;
-    }
+    restoreScreenerResultFocus();
 }
 
 // Modal A11y Focus Trap & Escape handler
@@ -10900,11 +10997,15 @@ function selectScreenerRow(rowEl, ticker, type) {
     document.querySelectorAll('.kg-table-row.is-selected, .nk-table-row.is-selected, .dt-table-row.is-selected').forEach(function(el) {
         el.classList.remove('is-selected');
         el.removeAttribute('aria-selected');
+        var action = el.querySelector('.ac-screener-result-action');
+        if (action) action.setAttribute('aria-pressed', 'false');
     });
 
     if (rowEl) {
         rowEl.classList.add('is-selected');
         rowEl.setAttribute('aria-selected', 'true');
+        var action = rowEl.querySelector('.ac-screener-result-action');
+        if (action) { action.setAttribute('aria-pressed', 'true'); action.focus({ preventScroll: true }); _lastScrFocusTrigger = action; }
     }
 
     var r = null;
@@ -10925,6 +11026,8 @@ function selectScreenerRow(rowEl, ticker, type) {
             content.innerHTML = renderScrDetailHtml(r, type);
             pane.classList.remove('hidden');
             pane.style.display = 'flex';
+            var close = pane.querySelector('button');
+            if (close) close.focus();
         }
     } else {
         openScrDetail(r, type);
@@ -10935,11 +11038,14 @@ function closeScreenerDetailPane() {
     document.querySelectorAll('.kg-table-row.is-selected, .nk-table-row.is-selected, .dt-table-row.is-selected').forEach(function(el) {
         el.classList.remove('is-selected');
         el.removeAttribute('aria-selected');
+        var action = el.querySelector('.ac-screener-result-action');
+        if (action) action.setAttribute('aria-pressed', 'false');
     });
     var content = document.getElementById('screenerDetailPaneContent');
     if (content) {
         content.innerHTML = '<div class="text-center py-12 ac-wave5-muted text-xs">Pilih salah satu saham di tabel untuk melihat detail sinyal, rencana trading, dan evaluasi gate.</div>';
     }
+    restoreScreenerResultFocus();
 }
 
 // ===== KONGLO CARD GRID =====
@@ -11770,7 +11876,7 @@ function renderScreenerTable(results) {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = screenerEmptyRowHtml(17, getPatternPersonalityEmptyMessage(STRICT_EMPTY_TEXT));
+        setScreenerResultRows(tbody, screenerEmptyRowHtml(17, getPatternPersonalityEmptyMessage(STRICT_EMPTY_TEXT)));
         return;
     }
 
@@ -11809,7 +11915,7 @@ function renderScreenerTable(results) {
         var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
 
         html += '<tr class="kg-table-row ac-wave5-row cursor-pointer" data-ticker="' + escapeHtml(r.ticker) + '" onclick="selectScreenerRow(this, \'' + escapeHtml(r.ticker) + '\', \'konglo\')">';
-        html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
+        html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + screenerResultActionHtml(r.ticker, 'konglo') + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-2 text-gray-500 whitespace-nowrap text-[10px]">' + (r.group_code || '-') + '</td>';
         html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-2 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
@@ -11828,7 +11934,7 @@ function renderScreenerTable(results) {
         html += '<td class="px-2 py-2 text-left text-gray-500 whitespace-nowrap text-[10px] max-w-[120px] truncate" title="' + escapeHtml((r.status_reason || '') + (r.invalidation ? ' | ' + r.invalidation : '')) + '">' + escapeHtml(r.status_reason || r.invalidation || '-') + '</td>';
         html += '</tr>';
     });
-    tbody.innerHTML = html;
+    setScreenerResultRows(tbody, html);
 }
 
 // Swing tier display helpers
@@ -12227,7 +12333,7 @@ function renderNkScreenerTable(results) {
     if (!tbody) return;
 
     if (!results || results.length === 0) {
-        tbody.innerHTML = screenerEmptyRowHtml(18, STRICT_EMPTY_TEXT);
+        setScreenerResultRows(tbody, screenerEmptyRowHtml(18, STRICT_EMPTY_TEXT));
         return;
     }
 
@@ -12237,7 +12343,7 @@ function renderNkScreenerTable(results) {
         filtered = filtered.filter(function(r) { return r.status === _nkScreenerFilter || r.swing_tier === _nkScreenerFilter; });
     }
     if (filtered.length === 0) {
-        tbody.innerHTML = screenerEmptyRowHtml(18, getPatternPersonalityEmptyMessage(STRICT_EMPTY_TEXT));
+        setScreenerResultRows(tbody, screenerEmptyRowHtml(18, getPatternPersonalityEmptyMessage(STRICT_EMPTY_TEXT)));
         return;
     }
 
@@ -12287,7 +12393,7 @@ function renderNkScreenerTable(results) {
 
         html += '<tr class="nk-table-row ac-wave5-row cursor-pointer" data-ticker="' + escapeHtml(r.ticker) + '" onclick="selectScreenerRow(this, \'' + escapeHtml(r.ticker) + '\', \'nonkonglo\')">';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[11px] sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (r.rank || '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
+        html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + screenerResultActionHtml(r.ticker, 'nonkonglo') + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
@@ -12306,7 +12412,7 @@ function renderNkScreenerTable(results) {
         html += '<td class="px-2 py-1.5 text-left text-gray-500 text-[10px] whitespace-nowrap overflow-hidden max-w-[150px] truncate" title="' + escapeHtml(r.status_reason || '') + '">' + escapeHtml((r.status_reason || '').slice(0, 50)) + '</td>';
         html += '</tr>';
     });
-    tbody.innerHTML = html;
+    setScreenerResultRows(tbody, html);
 }
 
 // ===== PORTOFOLIO FEATURE (Phase 15A) =====
@@ -14363,6 +14469,7 @@ function forceNormalizeTechnicalDOM(root) {
     };
 
     var MODAL_CLOSERS = {
+        acAccountCenter: 'closeAccountCenter',
         loginModal: 'closeLoginModal',
         registerModal: 'closeRegisterModal',
         selfResetModal: 'closeSelfResetModal',
@@ -14463,7 +14570,7 @@ function forceNormalizeTechnicalDOM(root) {
         var top = topmostOpenModal();
         var authOpen = top && /^(authChoiceModal|loginModal|registerModal|selfResetModal|authV2ResetModal|standaloneTermsModal)$/.test(top.id);
         document.documentElement.classList.toggle('auth-dialog-open', Boolean(authOpen));
-        if (authOpen) {
+        if (authOpen || (top && top.id === 'acAccountCenter')) {
             Array.from(document.body.children).forEach(function (element) {
                 if (element === top || element.contains(top) || !isVisible(element) || /^(SCRIPT|STYLE|LINK)$/.test(element.tagName)) return;
                 lockedBackground.set(element, element.inert); element.inert = true;

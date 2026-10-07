@@ -13,6 +13,7 @@
     signal:controller.signal
    });
    var d=await r.json();
+   if(action==='account-google-status'&&d.google_link_state==='unavailable')return d;
    if(!r.ok||!d.success)throw new Error(d.error||'Data akun belum tersedia. Coba lagi.');
    return d;
   }finally{root.clearTimeout(timer);}
@@ -26,10 +27,10 @@
   dialog.innerHTML=[
    '<div id="legacyGmailContent" class="google-link-content">',
    '<h2 id="legacyGmailTitle">Hubungkan Akun Google</h2>',
-   '<p class="legacy-gmail-desc">Tautkan akun Google untuk melanjutkan dan mendapatkan bonus trial 7 hari.</p>',
+   '<p id="legacyGmailDescription" class="legacy-gmail-desc">Tautkan akun Google untuk melanjutkan.</p>',
    '<div class="google-link-card">',
    '<button type="button" id="googleLinkBtn" class="google-link-btn">Tautkan Akun Google</button>',
-   '<p class="legacy-gmail-notice">Bonus hanya berlaku satu kali.</p>',
+   '<p id="legacyGmailBonusNotice" class="legacy-gmail-notice" hidden>Bonus hanya berlaku satu kali.</p>',
    '</div>',
    '<div id="googleLinkSuccess" class="google-link-success" hidden>',
    '<p class="google-link-success-title">Google terhubung</p>',
@@ -72,8 +73,16 @@
   });
   return dialog;
  }
+ function bonusCopy(data){
+  var eligible=data&&data.google_bonus_eligible===true&&data.google_bonus_granted!==true&&data.google_link_state!=='unavailable';
+  var description=document.getElementById('legacyGmailDescription');
+  var notice=document.getElementById('legacyGmailBonusNotice');
+  if(description)description.textContent=eligible?'Tautkan akun Google untuk melanjutkan dan mendapatkan bonus trial 7 hari.':'Tautkan akun Google untuk melanjutkan.';
+  if(notice)notice.hidden=!eligible;
+ }
  async function check(){
-  if(root.__AUTOCUAN_AUTHENTICATED_SESSION__&&(root.__AUTOCUAN_AUTHENTICATED_SESSION__.google_link_required===true||root.__AUTOCUAN_AUTHENTICATED_SESSION__.email_required===true)){
+  bonusCopy(null);
+  if(root.__AUTOCUAN_AUTHENTICATED_SESSION__&&root.__AUTOCUAN_AUTHENTICATED_SESSION__.google_link_state==='unlinked'&&(root.__AUTOCUAN_AUTHENTICATED_SESSION__.google_link_required===true||root.__AUTOCUAN_AUTHENTICATED_SESSION__.email_required===true)){
    var requiredDialog=mount();
    if(!requiredDialog.open)requiredDialog.showModal();
   }
@@ -81,10 +90,18 @@
   var current=++generation;
   var pending=request('account-google-status').then(function(data){
    if(current!==generation)return;
-   var req=Boolean(data.google_link_required||data.required);
+   var unavailable=data.google_link_state==='unavailable';
+   var req=!unavailable&&(data.google_link_required===true||data.required===true);
    if(root.__AUTOCUAN_AUTHENTICATED_SESSION__){
+    root.__AUTOCUAN_AUTHENTICATED_SESSION__.google_link_state=data.google_link_state;
     root.__AUTOCUAN_AUTHENTICATED_SESSION__.google_link_required=req;
     root.__AUTOCUAN_AUTHENTICATED_SESSION__.email_required=req;
+   }
+   if(req||data.google_linked===true)mount();
+   bonusCopy(data);
+   if(unavailable){
+    if(dialog&&dialog.open)dialog.close();
+    return;
    }
    if(data.google_linked){
     var d=mount();

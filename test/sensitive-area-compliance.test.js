@@ -87,16 +87,40 @@ test('Item 6.1: Landing showcase service outputs sanitized read-only review data
   assert.equal(res.snapshot.dt_signals[0].password_hash, undefined);
 });
 
-test('Item 6.3: Checkbox 1 and Checkbox 2 have exact text, effective date is hidden', () => {
-  assert.match(indexSource, /Saya menyetujui Syarat &amp; Ketentuan Layanan Auto-Cuan/);
-  assert.match(accountCenterSource, /Saya menyetujui\s*<button[^>]*>Syarat &amp; Ketentuan Layanan Auto-Cuan<\/button>/);
-  assert.match(lazyLoaderSource, /Saya menyetujui\s*['",\s]*<button[^>]*>Syarat &amp; Ketentuan Layanan Auto-Cuan<\/button>/);
-
+function assertSingleRegistrationConsent(html, account, lazy, server) {
+  const form = html.match(/<form\b[^>]*\bid="registerFormFields"[^>]*>([\s\S]*?)<\/form>/);
+  assert.ok(form, 'native registration form exists');
+  const inputs = form[1].match(/<input\b[^>]*\btype="checkbox"[^>]*>/g) || [];
+  assert.equal(inputs.length, 1, 'one visible native consent owner');
+  assert.match(inputs[0], /\bid="regTermsAccepted"/);
+  assert.equal((html.match(/\bid="regTermsAccepted"/g) || []).length, 1);
+  assert.match(form[1], /<button\b[^>]*id="regOpenTerms"[^>]*>Syarat &amp; Ketentuan Layanan Auto-Cuan<\/button>/);
+  for (const source of [account, lazy]) assert.doesNotMatch(source, /acRegTermsAccepted/, 'Account Center must not inject another registration consent');
+  const start = server.indexOf('const termsAcceptance = accountTerms.registrationAcceptance(req.body);');
+  const end = server.indexOf('// Ensure we always have a non-null device ID', start);
+  assert.ok(start >= 0 && end > start, 'server acceptance guard exists');
+  const guard = new Function('req', 'res', 'accountTerms', server.slice(start, end) + '\nreturn { allowed: true };');
+  const terms = require('../lib/account-terms');
+  const decide = body => guard({ body }, { status(status) { return { json(payload) { return { status, payload }; } }; } }, terms);
+  for (const body of [{}, { termsAccepted: false, termsVersion: terms.CURRENT_TERMS_VERSION }, { termsAccepted: true, termsVersion: 'obsolete' }]) {
+    const result = decide(body); assert.equal(result.status, 400); assert.equal(result.payload.code, 'TERMS_ACCEPTANCE_REQUIRED');
+  }
+  assert.equal(decide({ termsAccepted: true, termsVersion: terms.CURRENT_TERMS_VERSION }).allowed, true);
+}
+test('Item 6.3: one authoritative native registration consent, server validation and independent payment terms', () => {
+  assertSingleRegistrationConsent(indexSource, accountCenterSource, lazyLoaderSource, registerUserSource);
   assert.match(accountCenterSource, /Saya memahami Kebijakan Pembayaran, Refund, dan Disclaimer Risiko Finansial/);
   assert.match(manualPaymentSource, /Saya memahami Kebijakan Pembayaran, Refund, dan Disclaimer Risiko Finansial/);
-
   assert.doesNotMatch(accountCenterSource, /var TERMS_EFFECTIVE/);
   assert.doesNotMatch(accountCenterSource, /16 Agustus 2026/);
+});
+test('registration consent negative controls detect missing/duplicate owners and missing server enforcement', () => {
+  const check = (html, account = accountCenterSource, server = registerUserSource) => assertSingleRegistrationConsent(html, account, lazyLoaderSource, server);
+  const input = indexSource.match(/<input\b[^>]*id="regTermsAccepted"[^>]*>/)[0];
+  assert.throws(() => check(indexSource.replace(input, '')), assert.AssertionError);
+  assert.throws(() => check(indexSource.replace(input, input + input.replace('regTermsAccepted', 'duplicateConsent'))), assert.AssertionError);
+  assert.throws(() => check(indexSource, accountCenterSource + ' acRegTermsAccepted'), assert.AssertionError);
+  assert.throws(() => check(indexSource, accountCenterSource, registerUserSource.replace('if (!termsAcceptance.ok)', 'if (false)')), assert.AssertionError);
 });
 
 test('Item 6.5: reCAPTCHA v3 verification logic, fail-open, review bypass', async () => {

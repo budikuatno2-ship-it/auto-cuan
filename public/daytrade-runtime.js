@@ -218,7 +218,7 @@ function renderDtTable(results, data) {
         var emptyMsg = typeof getPatternPersonalityEmptyMessage === 'function'
             ? getPatternPersonalityEmptyMessage(getDayTradeEmptyMessage(data))
             : getDayTradeEmptyMessage(data);
-        tbody.innerHTML = screenerEmptyRowHtml(22, emptyMsg);
+        setScreenerResultRows(tbody, screenerEmptyRowHtml(22, emptyMsg));
         return;
     }
 
@@ -241,7 +241,7 @@ function renderDtTable(results, data) {
 
         html += '<tr class="dt-table-row ac-table-row ac-wave5-row cursor-pointer" data-ticker="' + escapeHtml(r.ticker) + '" onclick="if(typeof selectScreenerRow===\'function\'){selectScreenerRow(this,\'' + escapeHtml(r.ticker) + '\',\'daytrade\');}else if(typeof openScrDetail===\'function\'){openScrDetail(window._dtCardData[\'' + escapeHtml(r.ticker) + '\'],\'daytrade\');}">';
         html += '<td class="px-2 py-2 text-center text-gray-500 sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (i + 1) + '</td>';
-        html += '<td class="px-2 py-2 font-medium text-white sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
+        html += '<td class="px-2 py-2 font-medium text-white sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + screenerResultActionHtml(r.ticker, 'daytrade') + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px]">' + (r.board || '—') + '</td>';
         html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ' + statusClass + '">' + escapeHtml(getStatusLabel(r, formatDtStatus(r.status))) + '</span></td>';
         var dtBdBadgeHtml = '';
@@ -273,7 +273,7 @@ function renderDtTable(results, data) {
         html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + escapeHtml(_dtReason) + '">' + escapeHtml(_dtReason || '—') + '</td>';
         html += '</tr>';
     }
-    tbody.innerHTML = html;
+    setScreenerResultRows(tbody, html);
 }
 
 function filterDtScreener(filter) {

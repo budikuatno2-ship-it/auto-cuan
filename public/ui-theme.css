@@ -3042,7 +3042,7 @@ button:disabled,
   font-weight: 800;
   letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: var(--ac-text-dim);
+  color: var(--color-text-secondary);
 }
 
 /* Standardized Trade Plan Grid across Day Trade, Swing Konglo, Swing Non-Konglo cards */
@@ -5488,6 +5488,14 @@ html.light .ticker-link:hover {
 #appSidebar :is(button,[role="button"]):focus-visible { outline:2px solid var(--color-accent); outline-offset:-2px; }
 #sidebarScrim { z-index:74; backdrop-filter:none; background:rgba(3,7,18,.56); }
 html.workspace-menu-open { overflow:hidden !important; }
+@media(max-width:1023px) {
+  /* The drawer and scrim live in the dashboard's isolated stacking context.
+     Lift that owner above the body-level bottom bar only while the menu is open. */
+  html.workspace-menu-open #dashboardScreen {
+    position: relative;
+    z-index: var(--ac-z-drawer, 80);
+  }
+}
 @media(min-width:1024px) {
   body.sidebar-open #appMain.app-main { margin-left:240px !important; transition:margin-left var(--motion-fast) var(--ease-standard); }
   body.sidebar-open.sidebar-collapsed #appMain.app-main { margin-left:72px !important; }
@@ -6691,8 +6699,8 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
 }
 .wl-filter-btn.active {
   background: var(--ac-brand-soft);
-  color: var(--ac-brand);
-  border-color: var(--ac-brand);
+  color: var(--ac-bull);
+  border-color: var(--ac-bull);
 }
 
 /* --- Watchlist Error Banner --- */
@@ -6768,7 +6776,7 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
   padding: var(--ac-space-4, 4px) var(--ac-space-8, 8px);
   border-radius: var(--ac-radius-sm);
   background: var(--ac-brand-soft);
-  color: var(--ac-brand);
+  color: var(--ac-bull);
   border: 1px solid var(--ac-line);
   cursor: pointer;
 }
@@ -6824,7 +6832,7 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
 .wl-no-alert {
   font-size: var(--ac-text-caption);
   font-style: italic;
-  color: var(--ac-text-dim);
+  color: var(--color-text-secondary);
 }
 .wl-icon-btn {
   background: none;
@@ -6862,8 +6870,12 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
   border-color: var(--ac-line-strong);
 }
 .wl-action-btn.wl-action-alert {
-  color: var(--ac-info);
-  border-color: var(--ac-line);
+  color: var(--pw-info, var(--info));
+  border-color: var(--pw-info, var(--info));
+}
+.wl-action-btn.wl-action-alert:focus-visible {
+  outline: 2px solid var(--pw-info, var(--info));
+  outline-offset: 3px;
 }
 .wl-action-btn.wl-action-danger {
   color: var(--ac-negative);
@@ -6915,7 +6927,7 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
   padding: var(--ac-space-4, 4px) var(--ac-space-8, 8px);
   border-radius: var(--ac-radius-sm);
   background: var(--ac-brand-soft);
-  color: var(--ac-brand);
+  color: var(--ac-bull);
   border: 1px solid var(--ac-line);
   cursor: pointer;
   word-break: break-word;
@@ -6968,8 +6980,12 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
   background: var(--ac-surface-3);
 }
 .wl-mobile-btn.wl-mobile-btn-alert {
-  color: var(--ac-info);
-  border-color: var(--ac-line);
+  color: var(--pw-info, var(--info));
+  border-color: var(--pw-info, var(--info));
+}
+.wl-mobile-btn.wl-mobile-btn-alert:focus-visible {
+  outline: 2px solid var(--pw-info, var(--info));
+  outline-offset: 3px;
 }
 .wl-mobile-btn.wl-mobile-btn-danger {
   color: var(--ac-negative);
@@ -6997,6 +7013,11 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
 }
 
 /* --- Watchlist Alert History Cards & States --- */
+/* The legacy fixed dark panel otherwise makes light-theme metadata unreadable. */
+#wlAlertHistoryModal > div {
+  background-color: var(--ac-surface-1);
+}
+
 .wl-hist-card {
   display: flex;
   align-items: flex-start;
@@ -7027,23 +7048,23 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
 }
 .wl-hist-time {
   font-size: var(--ac-text-micro);
-  color: var(--ac-text-dim);
+  color: var(--color-text-secondary);
 }
 .wl-hist-detail {
   font-size: var(--ac-text-micro);
   color: var(--ac-text-muted);
   margin-top: var(--ac-space-4, 4px);
 }
-.wl-hist-created { color: var(--ac-positive); }
-.wl-hist-updated { color: var(--ac-info); }
-.wl-hist-deleted { color: var(--ac-negative); }
-.wl-hist-triggered { color: var(--ac-warning); }
+.wl-hist-created { color: var(--ac-bull); }
+.wl-hist-updated { color: var(--pw-info, var(--info)); }
+.wl-hist-deleted { color: var(--ac-bear); }
+.wl-hist-triggered { color: var(--ac-warn); }
 .wl-hist-default { color: var(--ac-text-muted); }
 .wl-hist-loading, .wl-hist-empty {
   text-align: center;
   padding: var(--ac-space-24, 24px) 0;
   font-size: var(--ac-text-caption);
-  color: var(--ac-text-dim);
+  color: var(--color-text-secondary);
 }
 .wl-hist-error {
   text-align: center;
@@ -7066,7 +7087,7 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
   padding: var(--ac-space-32, 32px) var(--ac-space-16, 16px);
   text-align: center;
   font-size: var(--ac-text-caption);
-  color: var(--ac-text-dim);
+  color: var(--color-text-secondary);
 }
 .wl-empty-filter-icon {
   font-size: var(--ac-text-lead);
@@ -7079,7 +7100,12 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
 }
 .wl-empty-filter-sub {
   margin: var(--ac-space-4, 4px) 0 0;
-  color: var(--ac-text-dim);
+  color: var(--color-text-secondary);
+}
+
+/* Warning copy uses warning ink, not a translucent accent. */
+#page-watchlist .text-amber-400\/70 {
+  color: var(--ac-warn);
 }
 
 /* --- Track Record Styles --- */
@@ -7118,7 +7144,14 @@ body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launch
   color: var(--ac-text-strong);
 }
 .tr-stat-card #trBestGainSub {
-  color: var(--ac-text-dim);
+  color: var(--color-text-secondary);
+}
+
+#page-trackrecord #trSlHitsSub {
+  color: var(--ac-bear);
+}
+#page-trackrecord #trTp1HitsSub {
+  color: var(--ac-bull);
 }
 
 /* Category Collapsible Wrapper */
@@ -7174,7 +7207,7 @@ details.tr-cat-collapsible > #trCategoryGrid {
 }
 .tr-cat-desc {
   font-size: var(--ac-text-micro);
-  color: var(--ac-text-dim);
+  color: var(--color-text-secondary);
   margin: 0 0 var(--ac-space-12, 12px) 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -7191,7 +7224,7 @@ details.tr-cat-collapsible > #trCategoryGrid {
 }
 .tr-stat-lbl {
   display: block;
-  color: var(--ac-text-dim);
+  color: var(--color-text-secondary);
   font-size: var(--ac-text-micro);
 }
 .tr-stat-val {
@@ -7242,7 +7275,7 @@ details.tr-cat-collapsible > #trCategoryGrid {
 }
 .tr-subtext-line {
   font-size: var(--ac-text-micro);
-  color: var(--ac-text-dim);
+  color: var(--color-text-secondary);
   margin-top: var(--ac-space-4, 4px);
   display: flex;
   align-items: center;
@@ -7270,27 +7303,27 @@ details.tr-cat-collapsible > #trCategoryGrid {
 }
 .tr-status-tp2, .tr-status-tp1 {
   background: var(--ac-positive-soft);
-  color: var(--ac-positive);
-  border-color: var(--ac-positive);
+  color: var(--ac-bull);
+  border-color: var(--ac-bull);
 }
 .tr-status-sl {
   background: var(--ac-negative-soft);
-  color: var(--ac-negative);
-  border-color: var(--ac-negative);
+  color: var(--ac-bear);
+  border-color: var(--ac-bear);
 }
 .tr-status-running {
   background: var(--ac-info-soft);
-  color: var(--ac-info);
-  border-color: var(--ac-info);
+  color: var(--pw-info, var(--info));
+  border-color: var(--pw-info, var(--info));
 }
 .tr-status-waiting {
   background: var(--ac-warning-soft);
-  color: var(--ac-warning);
-  border-color: var(--ac-warning);
+  color: var(--ac-warn);
+  border-color: var(--ac-warn);
 }
 .tr-status-expired {
   background: var(--ac-surface-3);
-  color: var(--ac-text-dim);
+  color: var(--ac-text-muted);
   border-color: var(--ac-line);
 }
 .tr-loading-cell {
@@ -7338,7 +7371,7 @@ details.tr-cat-collapsible > #trCategoryGrid {
 }
 .tr-mobile-stat .tr-stat-lbl {
   font-size: var(--ac-text-micro);
-  color: var(--ac-text-dim);
+  color: var(--color-text-secondary);
 }
 .tr-mobile-stat .tr-stat-val {
   font-size: var(--ac-text-caption);
@@ -7350,7 +7383,7 @@ details.tr-cat-collapsible > #trCategoryGrid {
   align-items: center;
   justify-content: space-between;
   font-size: var(--ac-text-micro);
-  color: var(--ac-text-dim);
+  color: var(--color-text-secondary);
 }
 
 @media (max-width: 767.98px) {
@@ -9326,6 +9359,10 @@ html.light .sidebar-subgroup-label {
 
 /* --- Struktur Pasar V2 Scoped Overrides --- */
 
+#panel-tab-market-structure[data-ac-ui="v2"] .ac-research-kicker {
+  color: var(--ac-text-secondary);
+}
+
 #panel-tab-market-structure[data-ac-ui="v2"] .ac-market-structure-layout {
   display: flex;
   gap: var(--ac-space-4);
@@ -9363,7 +9400,7 @@ html.light .sidebar-subgroup-label {
 
 #panel-tab-market-structure[data-ac-ui="v2"] .ac-badge-warning {
   background: var(--ac-warning-soft);
-  color: var(--ac-warning);
+  color: var(--ac-warning-text);
   border: 1px solid var(--ac-line-hairline);
   padding: 2px 8px;
   border-radius: var(--ac-radius-sm);
@@ -9600,7 +9637,7 @@ html.light .sidebar-subgroup-label {
 #panel-tab-market-structure[data-ac-ui="v2"] .ac-table-empty,
 #panel-tab-market-structure[data-ac-ui="v2"] .ac-label-muted,
 #panel-tab-market-structure[data-ac-ui="v2"] .ac-detail-sub {
-  color: var(--ac-text-muted);
+  color: var(--ac-text-secondary);
 }
 
 #panel-tab-market-structure[data-ac-ui="v2"] .ac-section-title,
@@ -9703,6 +9740,87 @@ html.light .sidebar-subgroup-label {
   }
 }
 
+/* Financial keeps metric cells compact; source details share the same ink. */
+#panel-tab-financial[data-ac-ui="v2"] :is(.ac-financial-heading h2, .ac-financial-identity h3) {
+  color: var(--ac-ink);
+}
+#panel-tab-financial[data-ac-ui="v2"] :is(.ac-financial-heading p, .ac-financial-identity p, .ac-financial-coverage span, .ac-financial-source span, .ac-financial-trust-note p, .ac-refresh-banner-text) {
+  color: var(--ac-text-secondary);
+  font-size: 12px;
+}
+#panel-tab-financial[data-ac-ui="v2"] .ac-financial-head {
+  flex-wrap: wrap;
+  gap: var(--ac-space-3);
+}
+#panel-tab-financial[data-ac-ui="v2"] .ac-research-ticker-tools {
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+#panel-tab-financial[data-ac-ui="v2"] #financialTickerInput {
+  background: var(--ac-surface);
+  color: var(--ac-ink);
+  border: 1px solid var(--ac-text-secondary);
+  width: 104px;
+  min-height: 44px;
+  font-size: 16px;
+}
+#panel-tab-financial[data-ac-ui="v2"] .ac-financial-search-label {
+  color: var(--ac-text-secondary);
+  font-size: 12px;
+}
+#panel-tab-financial[data-ac-ui="v2"] .ac-research-load-btn {
+  background: var(--ac-brand);
+  color: var(--ac-surface);
+  border: 1px solid var(--ac-brand);
+  min-height: 44px;
+}
+#panel-tab-financial[data-ac-ui="v2"] :is(#financialTickerInput, .ac-research-load-btn):focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: 2px;
+}
+#panel-tab-financial[data-ac-ui="v2"] .ac-financial-metric-card {
+  min-width: 0;
+  min-height: 0;
+}
+#panel-tab-financial[data-ac-ui="v2"] :is(#financialPbv, #financialBvps, #financialMarketCap, #financialShares, .ac-financial-source span, .ac-financial-source strong) {
+  overflow-wrap: anywhere;
+}
+#panel-tab-financial[data-ac-ui="v2"] .ac-financial-source {
+  min-width: 0;
+}
+#panel-tab-financial[data-ac-ui="v2"] .ac-financial-source strong {
+  font-size: 12px;
+}
+#panel-tab-financial[data-ac-ui="v2"] .ac-financial-state {
+  min-height: 0;
+  padding: var(--ac-space-4);
+}
+@media (max-width: 640px) {
+  #panel-tab-financial[data-ac-ui="v2"] .ac-financial-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  #panel-tab-financial[data-ac-ui="v2"] .ac-financial-metric-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+    align-items: baseline;
+    padding: var(--ac-space-3) 0;
+    background: var(--ac-surface);
+    border: 0;
+    border-bottom: 1px solid var(--ac-line-hairline);
+    border-radius: 0;
+  }
+  #panel-tab-financial[data-ac-ui="v2"] .ac-financial-metric-card strong {
+    text-align: right;
+    line-height: 1.2;
+  }
+  #panel-tab-financial[data-ac-ui="v2"] .ac-financial-metric-card small {
+    grid-column: 1 / -1;
+    line-height: 1.4;
+  }
+}
+
 /* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
   .action-card:hover { transform: none; }
@@ -9712,4 +9830,93 @@ html.light .sidebar-subgroup-label {
     transition: none !important;
     animation: none !important;
   }
+}
+
+#page-screener .ac-screener-result-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: var(--ac-radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+#page-screener .ac-screener-result-action:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: 2px;
+}
+@media (max-width: 1023px), (pointer: coarse) {
+  #page-screener :is(.ac-segment, .screener-tab, .nk-screener-tab, .dt-screener-tab, .ac-screener-result-action) {
+    min-height: 44px;
+  }
+  #page-screener :is(select, input:not([type="checkbox"]), .scr-filter-grid label, #patternFilterContainer label:has(input)) {
+    min-height: 44px;
+  }
+  #page-screener #screenerContent :is(select, input:not([type="checkbox"])),
+  #page-screener #filter-pattern-personality {
+    font-size: 16px !important;
+    min-width: 0;
+  }
+  #page-screener #patternFilterContainer > div:first-child {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* UX-002: component-owned contrast. Preserve geometry and semantic hierarchy
+   while outranking private utility colors in the later workstation sheets. */
+#page-analisis #insiderRosterSection :is(button, input, select),
+#page-analisis #insiderMobileTabs .ac-tab-btn {
+  color: var(--ac-text-muted) !important;
+  background-color: var(--ac-surface-2) !important;
+  border-color: var(--ac-control-border-hover, var(--ac-text-muted)) !important;
+  box-shadow: inset 0 0 0 1px var(--ac-control-border-hover, var(--ac-text-muted)) !important;
+}
+#page-analisis #insiderRosterSection button.bg-emerald-500,
+#page-analisis #insiderMobileTabs .ac-tab-active {
+  color: var(--ac-bull) !important;
+  background-color: var(--ac-accent-soft) !important;
+  border-color: var(--ac-bull) !important;
+  box-shadow: inset 0 0 0 1px var(--ac-bull) !important;
+}
+#page-analisis #insiderRosterSection input::placeholder {
+  color: var(--ac-text-muted) !important;
+  opacity: 1;
+}
+#page-analisis #insiderRosterSection :is(button, input, select):focus-visible,
+#page-analisis #insiderMobileTabs .ac-tab-btn:focus-visible,
+#page-watchlist .wl-filter-btn:focus-visible {
+  outline: 2px solid var(--ac-bull) !important;
+  outline-offset: 3px;
+}
+#page-dashboard .ac-section-hint {
+  color: var(--ac-text-muted) !important;
+}
+
+/* Broker origin is informational; both legend states keep their existing tint. */
+#panel-tab-hunter .ac-hunter-legend-foreign {
+  color: var(--pw-info, var(--info));
+}
+#panel-tab-hunter .ac-hunter-legend-local {
+  color: var(--ac-bull);
+}
+
+/* D8: graph quick-picks own their theme and selection colors. */
+#insiderGraphSection .ac-insider-quick-chip {
+  color: var(--color-text-secondary) !important;
+  background-color: var(--ac-surface-2) !important;
+  border-color: var(--ac-control-border-hover) !important;
+}
+#insiderGraphSection .ac-insider-quick-chip:hover,
+#insiderGraphSection .ac-insider-quick-chip-selected {
+  color: var(--ac-bull) !important;
+  background-color: var(--ac-accent-soft) !important;
+  border-color: var(--ac-bull) !important;
+}
+#insiderGraphSection .ac-insider-quick-chip:focus-visible {
+  outline: 2px solid var(--ac-bull) !important;
+  outline-offset: 3px;
 }
