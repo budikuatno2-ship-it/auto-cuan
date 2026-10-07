@@ -26,7 +26,9 @@ permissions:
 jobs:
   build-and-focused-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The 628-file suite also isolates failed batches; allow that diagnostic
+    # pass to finish rather than cancelling before it can report failures.
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
