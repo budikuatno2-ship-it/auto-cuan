@@ -468,7 +468,7 @@ body {
 }
 
 .ac-section-hint {
-  color: #596779;
+  color: var(--ac-text-muted, #94a3b8);
   font-size: 10.5px;
   line-height: 1.45;
 }

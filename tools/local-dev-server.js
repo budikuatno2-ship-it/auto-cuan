@@ -116,9 +116,10 @@ const PREVIEW_MODULE_MAP = {
   'money-management': 'kelola-keuangan'
 };
 
-function getPreviewInjectionHtml(module) {
+function getPreviewInjectionHtml(module, options = {}) {
+  const hideBar = Boolean(options.hideBar);
   return `
-  <!-- AUTO-CUAN PREVIEW ZERO-AUTH BOOTSTRAP — DEV SERVER ONLY -->
+  <!-- AUTO-CUAN PREVIEW ZERO-AUTH BOOTSTRAP — QA & DEV SERVER ONLY (NEVER IN PRODUCTION) -->
   <style id="autocuan-preview-style">
     /* ── TOP MOCK-STATE BANNER ─────────────────────────────────────── */
     #autocuan-mock-banner {
@@ -235,6 +236,22 @@ function getPreviewInjectionHtml(module) {
     }
     #autocuan-preview-bar .close-btn:hover {
       color: #f8fafc;
+    }
+
+    @media (max-width: 768px) {
+      #autocuan-preview-bar {
+        bottom: 8px;
+        padding: 4px 8px;
+        font-size: 10px;
+        gap: 4px;
+        max-width: 98vw;
+      }
+      #autocuan-preview-bar a {
+        padding: 2px 5px;
+      }
+      body:has(#autocuan-preview-bar) {
+        padding-bottom: 56px !important;
+      }
     }
   </style>
 
@@ -391,6 +408,7 @@ function getPreviewInjectionHtml(module) {
   })();
   </script>
 
+  ${hideBar ? '' : `
   <div id="autocuan-preview-bar">
     <span class="preview-badge"><span class="preview-badge-dot"></span> Preview</span>
     <a href="/preview/landing" class="${module === 'landing' ? 'active' : ''}">1. Landing</a>
@@ -401,9 +419,9 @@ function getPreviewInjectionHtml(module) {
     <a href="/preview/watchlist" class="${module === 'watchlist' ? 'active' : ''}">6. Watchlist</a>
     <a href="/preview/track-record" class="${module === 'track-record' ? 'active' : ''}">7. Track Record</a>
     <a href="/preview/portofolio" class="${module === 'portofolio' ? 'active' : ''}">8. Portofolio</a>
-    <a href="/preview/kelola-keuangan" class="${module === 'kelola-keuangan' ? 'active' : ''}">9. Kelola Keuangan</a>
     <button class="close-btn" onclick="document.getElementById('autocuan-preview-bar').remove()" title="Tutup preview toolbar">&times;</button>
   </div>
+  `}
   `;
 }
 
@@ -569,7 +587,7 @@ const server = http.createServer(async (req, res) => {
         <head><title>Preview Not Found - Auto-Cuan</title></head>
         <body style="font-family:sans-serif;background:#090d14;color:#f0f4fc;padding:40px;">
           <h2>Preview Modul '${rawSub}' Tidak Ditemukan</h2>
-          <p>Silakan pilih salah satu dari 9 modul preview berikut:</p>
+          <p>Silakan pilih salah satu dari 8 modul preview berikut:</p>
           <ol>
             <li><a style="color:#10b981;" href="/preview/landing">/preview/landing</a> (Landing Page Publik)</li>
             <li><a style="color:#10b981;" href="/preview/dashboard">/preview/dashboard</a> (Dashboard Utama)</li>
@@ -579,16 +597,16 @@ const server = http.createServer(async (req, res) => {
             <li><a style="color:#10b981;" href="/preview/watchlist">/preview/watchlist</a> (Watchlist Spreadsheet)</li>
             <li><a style="color:#10b981;" href="/preview/track-record">/preview/track-record</a> (Track Record Sinyal)</li>
             <li><a style="color:#10b981;" href="/preview/portofolio">/preview/portofolio</a> (Portofolio - 7 Sub-tab)</li>
-            <li><a style="color:#10b981;" href="/preview/kelola-keuangan">/preview/kelola-keuangan</a> (Kelola Keuangan)</li>
           </ol>
         </body>
         </html>
       `);
     }
 
+    const hideBar = req.headers['x-autocuan-hide-preview-bar'] === '1' || parsedUrl.searchParams.get('nobar') === '1';
     const indexPath = path.join(PUBLIC_DIR, 'index.html');
     let html = fs.readFileSync(indexPath, 'utf8');
-    const injection = getPreviewInjectionHtml(moduleName);
+    const injection = getPreviewInjectionHtml(moduleName, { hideBar });
     html = html.replace('</head>', injection + '\n</head>');
 
     res.statusCode = 200;
@@ -1344,6 +1362,5 @@ server.listen(PORT, HOST, () => {
   console.log(' 6. Watchlist:        http://' + HOST + ':' + PORT + '/preview/watchlist');
   console.log(' 7. Track Record:     http://' + HOST + ':' + PORT + '/preview/track-record');
   console.log(' 8. Portofolio:       http://' + HOST + ':' + PORT + '/preview/portofolio');
-  console.log(' 9. Kelola Keuangan:  http://' + HOST + ':' + PORT + '/preview/kelola-keuangan');
   console.log('=================================================');
 });

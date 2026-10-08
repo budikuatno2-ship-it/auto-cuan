@@ -21,12 +21,12 @@
 .ac-card { min-width: 0; padding: 17px; border: 1px solid rgba(148,163,184,.14); border-radius: 18px; background: linear-gradient(155deg,rgba(17,27,41,.90),rgba(10,17,27,.78)); box-shadow: 0 10px 30px rgba(0,0,0,.12); }
 .ac-card-soft { background: rgba(10,17,27,.56); }
 .ac-card-accent { border-color: rgba(16,185,129,.24); background: radial-gradient(circle at 100% 0,rgba(16,185,129,.10),transparent 38%),rgba(10,17,27,.70); }
-.ac-section-kicker { margin: 0; color: #64748b; font-size: 10px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+.ac-section-kicker { margin: 0; color: #94a3b8; font-size: 10px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
 .ac-section-title { margin: 5px 0 0; color: #f1f5f9; font-size: 15px; font-weight: 900; }
 .ac-muted { color:#8191a6; font-size:12px; line-height:1.55; }
 .ac-facts { display:grid; gap: 1px; margin-top: 13px; overflow:hidden; border:1px solid rgba(148,163,184,.10); border-radius:14px; background:rgba(148,163,184,.08); }
 .ac-fact { display:grid; grid-template-columns: minmax(120px,.7fr) minmax(0,1.3fr); gap:14px; padding:11px 13px; background:#0d1520; align-items:center; }
-.ac-fact dt { color:#718299; font-size:11px; }
+.ac-fact dt { color:#94a3b8; font-size:11px; }
 .ac-fact dd { margin:0; color:#e5edf7; font-size:12px; font-weight:700; text-align:right; overflow-wrap:anywhere; }
 .ac-chip { display:inline-flex; align-items:center; gap:6px; min-height:25px; padding:0 9px; border-radius:999px; border:1px solid rgba(148,163,184,.18); background:rgba(148,163,184,.08); color:#cbd5e1; font-size:10px; font-weight:900; letter-spacing:.025em; }
 .ac-chip::before { content:''; width:6px; height:6px; border-radius:50%; background:#64748b; box-shadow:0 0 0 3px rgba(100,116,139,.12); }
@@ -48,8 +48,8 @@
 .ac-plan-current { border-color:rgba(16,185,129,.35); box-shadow:inset 0 0 0 1px rgba(16,185,129,.07); }
 .ac-plan-name { margin:0; color:#f1f5f9; font-size:13px; font-weight:900; }
 .ac-plan-price { margin:9px 0 0; color:#fff; font-size:20px; font-weight:950; letter-spacing:-.03em; }
-.ac-plan-normal { margin-left:6px; color:#64748b; font-size:10px; text-decoration:line-through; }
-.ac-plan-meta { margin:4px 0 0; color:#718299; font-size:10px; line-height:1.45; }
+.ac-plan-normal { margin-left:6px; color:#94a3b8; font-size:10px; text-decoration:line-through; }
+.ac-plan-meta { margin:4px 0 0; color:#94a3b8; font-size:10px; line-height:1.45; }
 .ac-divider { height:1px; margin:15px 0; background:rgba(148,163,184,.10); }
 .ac-form-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:end; }
 .ac-label { display:block; margin:0 0 6px; color:#8495aa; font-size:10px; font-weight:800; }
@@ -74,8 +74,8 @@
 .ac-term-section p,.ac-term-section li { margin:0; color:#91a2b7; font-size:11px; line-height:1.68; }
 .ac-term-section ul { margin:7px 0 0; padding-left:17px; }
 .ac-term-section li + li { margin-top:4px; }
-.ac-terms-footer { margin-top:11px; color:#66788e; font-size:10px; line-height:1.55; }
-.ac-empty { padding:28px 16px; text-align:center; color:#718299; font-size:12px; }
+.ac-terms-footer { margin-top:11px; color:#94a3b8; font-size:10px; line-height:1.55; }
+.ac-empty { padding:28px 16px; text-align:center; color:#94a3b8; font-size:12px; }
 .ac-loading { display:grid; place-items:center; min-height:260px; color:#8495aa; font-size:12px; }
 .ac-loading::before { content:''; width:22px; height:22px; margin-bottom:12px; border:2px solid rgba(148,163,184,.16); border-top-color:#34d399; border-radius:50%; animation:acSpin .7s linear infinite; }
 @keyframes acSpin { to { transform:rotate(360deg); } }
@@ -103,4 +103,15 @@
   .ac-admin-row { grid-template-columns:1fr 1fr; }
   .ac-admin-row > :last-child { grid-column:1 / -1; }
   .ac-terms-scroll { max-height:58dvh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-loading::before { animation: none !important; }
+  #headerUserLabel.ac-profile-trigger,
+  .ac-tab,
+  .ac-btn,
+  .ac-center-shell {
+    transition: none !important;
+    animation: none !important;
+  }
 }

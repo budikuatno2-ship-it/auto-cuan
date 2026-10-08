@@ -177,7 +177,9 @@ test('the stat strip hugs its content instead of stretching', () => {
 });
 
 test('wide screens widen only the data surfaces', () => {
-  const wide = section8.slice(section8.indexOf('@media (min-width: 1536px)'));
+  const atMq = section8.indexOf('@media (min-width: 1536px)');
+  const nextSection = section8.indexOf('/* =========================================================================', atMq);
+  const wide = nextSection > 0 ? section8.slice(atMq, nextSection) : section8.slice(atMq);
   assert.match(wide, /#page-screener\.page-content/);
   assert.match(wide, /#page-sektor\.page-content/);
   assert.doesNotMatch(wide, /#page-analisis/, 'prose-width surfaces should keep their measure');

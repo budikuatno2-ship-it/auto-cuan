@@ -685,7 +685,7 @@
         if (unavailable) {
           unavailable.hidden = false;
           if (unavailTitle) unavailTitle.textContent = 'Data ' + modeName + ' rinci belum tersedia';
-          if (unavailDesc) unavailDesc.textContent = 'Belum ada data laporan ' + modeName.toLowerCase() + ' terverifikasi untuk mode ' + periodName.toLowerCase() + '. Data snapshot di atas tetap aktif dan valid.';
+          if (unavailDesc) unavailDesc.textContent = 'Belum ada data laporan ' + modeName.toLowerCase() + ' resmi untuk mode ' + periodName.toLowerCase() + '. Data snapshot di atas tetap aktif dan valid.';
         }
         return;
       }
@@ -844,6 +844,14 @@
       state.hidden = false;
       state.textContent = 'Memuat ' + ticker + '…';
     }
+    if (isFinancial) {
+      var initBadge = byId('financialStatusBadge');
+      if (initBadge) {
+        initBadge.textContent = 'Memuat...';
+        initBadge.className = 'ac-status-badge ac-status-badge--neutral';
+      }
+      researchText('financialCoverage', '— / 4');
+    }
     if (content) content.hidden = true;
     if (unavailable) unavailable.hidden = true;
 
@@ -911,6 +919,23 @@
         var coverageBar = byId('financialCoverageBar');
         if (coverageBar && coverageBar.style && coverageBar.style.setProperty) {
           coverageBar.style.setProperty('--ac-financial-coverage', (coverageCount * 25) + '%');
+        }
+        var statusBadge = byId('financialStatusBadge');
+        if (statusBadge) {
+          var hasVerifiedProvenance = Boolean(f.verified || f.provenance_verified);
+          if (hasVerifiedProvenance) {
+            statusBadge.textContent = 'Snapshot Terverifikasi';
+            statusBadge.className = 'ac-status-badge ac-status-badge--positive';
+          } else if (coverageCount >= 4) {
+            statusBadge.textContent = 'Data Lengkap 4/4';
+            statusBadge.className = 'ac-status-badge ac-status-badge--positive';
+          } else if (coverageCount > 0) {
+            statusBadge.textContent = 'Sebagian Lengkap ' + coverageCount + '/4';
+            statusBadge.className = 'ac-status-badge ac-status-badge--warning';
+          } else {
+            statusBadge.textContent = 'Data Belum Lengkap';
+            statusBadge.className = 'ac-status-badge ac-status-badge--neutral';
+          }
         }
 
         // Load and render multi-period detailed statements (Wave 4B, §79.2, §26)

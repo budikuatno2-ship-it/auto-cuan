@@ -341,8 +341,9 @@ html:not(.light),
 
   --ac-ink: #F4F6F8;
   --ac-text-secondary: #9AA4B2;
-  --ac-text-muted: #626C7A;
+  --ac-text-muted: #94a3b8;
   --ac-text-tertiary: var(--ac-text-muted);
+  --ac-text-dim: #94a3b8;
 
   --ac-line-hairline: rgba(255, 255, 255, 0.08);
   --ac-line-default: rgba(148, 163, 184, 0.14);
@@ -2315,7 +2316,7 @@ body {
 .ac-section-hint {
   font-size: 11px;
   line-height: 1.5;
-  color: var(--ac-text-dim);
+  color: var(--ac-text-muted);
 }
 
 .dashboard-hero {
@@ -2877,7 +2878,7 @@ table th.text-right,
 }
 .ac-section-hint {
   font-size: var(--ac-text-caption);
-  color: var(--ac-text-dim);
+  color: var(--ac-text-muted);
 }
 .ac-section-head { border-bottom-color: var(--ac-hairline); }
 
@@ -3545,6 +3546,7 @@ button:disabled,
   border-radius: 0;
   background: none;
   font-size: var(--ac-text-caption);
+  color: var(--ac-text-secondary, #9AA4B2);
 }
 
 /* Radar: the block a user actually came for. Give it the emphasis the greeting
@@ -3654,6 +3656,120 @@ button:disabled,
 
   .panel-title { font-size: 14px; }
   .empty-state { padding: 22px 16px; }
+
+  /* Screener mobile density (§82 Wave 10, Task 1 & Final Blocker Closure) */
+  #page-screener.page-content {
+    padding-top: 4px;
+  }
+  #page-screener.page-content .page-header {
+    display: block;
+    margin-bottom: 4px;
+    padding: 0;
+  }
+  #page-screener.page-content .page-header .page-title {
+    font-size: 15px;
+    line-height: 1.25;
+    margin: 0;
+    font-weight: 700;
+  }
+  #page-screener.page-content #screenerContent.space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: 4px;
+    margin-bottom: 0;
+  }
+  #page-screener.page-content #screenerKongloPane.space-y-3 > :not([hidden]) ~ :not([hidden]),
+  #page-screener.page-content #screenerNonKongloPane.space-y-3 > :not([hidden]) ~ :not([hidden]),
+  #page-screener.page-content #screenerDayTradePane.space-y-3 > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: 4px;
+    margin-bottom: 0;
+  }
+  #page-screener.page-content .page-subtitle,
+  #page-screener.page-content #screenerSubtitle,
+  #page-screener.page-content #nkScreenerSubtitle,
+  #page-screener.page-content #dtScreenerSubtitle {
+    display: none;
+  }
+  #page-screener.page-content .ac-segmented {
+    margin-bottom: 4px;
+  }
+  #page-screener.page-content .scr-info-bar {
+    padding: 3px 6px;
+    margin-bottom: 3px;
+    font-size: 9.5px;
+    line-height: 1.3;
+  }
+  #page-screener.page-content #patternFilterContainer {
+    padding: 3px 6px;
+    margin-bottom: 3px;
+    gap: 3px;
+  }
+  #page-screener.page-content #patternFilterContainer select {
+    min-height: 30px;
+    padding: 2px 6px;
+    font-size: 11px;
+  }
+  #page-screener.page-content #screenerStats,
+  #page-screener.page-content #nkScreenerStats,
+  #page-screener.page-content #dtScreenerStats {
+    gap: 4px;
+    margin-bottom: 3px;
+  }
+  #page-screener.page-content #screenerStats > div,
+  #page-screener.page-content #nkScreenerStats > div,
+  #page-screener.page-content #dtScreenerStats > div {
+    padding: 2px 4px;
+  }
+  #page-screener.page-content #screenerStats p:last-child,
+  #page-screener.page-content #nkScreenerStats p:last-child,
+  #page-screener.page-content #dtScreenerStats p:last-child {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+  #page-screener.page-content .scr-filter-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 4px 6px;
+    gap: 4px;
+    margin-bottom: 3px;
+  }
+  #page-screener.page-content #kgTickerSearch,
+  #page-screener.page-content #nkTickerSearch,
+  #page-screener.page-content #dtTickerSearch {
+    grid-column: span 2;
+    min-height: 32px;
+    font-size: 11px;
+    padding: 2px 8px;
+  }
+  #page-screener.page-content #kgStatusFilter,
+  #page-screener.page-content #kgRiskFilter,
+  #page-screener.page-content #nkStatusFilter,
+  #page-screener.page-content #nkRiskFilter,
+  #page-screener.page-content #dtStatusFilter,
+  #page-screener.page-content #dtRiskFilter {
+    min-height: 30px;
+    font-size: 10.5px;
+    padding: 2px 4px;
+  }
+  #page-screener.page-content .flex.items-center.overflow-x-auto,
+  #page-screener.page-content .overflow-x-auto.scrollbar-hide {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+    gap: 4px;
+    padding-bottom: 3px;
+    margin-bottom: 3px;
+  }
+  #page-screener.page-content .screener-tab,
+  #page-screener.page-content .nk-screener-tab,
+  #page-screener.page-content .dt-screener-tab {
+    min-height: 30px;
+    padding: 4px 8px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
 }
 
 @media (min-width: 1536px) {
@@ -7192,6 +7308,8 @@ html.light #page-dashboard[data-ac-ui="v2"] #top5HistoryList thead th {
 
 /* 6. Research Lenses Motion Restraint */
 @media (prefers-reduced-motion: reduce) {
+  .action-card:hover { transform: none; }
+  .panel table tbody tr { transition: none !important; }
   .ac-broker-bubble,
   #insiderNetworkSvg *,
   .dashboard-decision-row {

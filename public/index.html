@@ -303,7 +303,7 @@
             <span><b>02</b> Eksekusi mandiri di sekuritas</span>
             <span><b>03</b> Nilai kosong bukan nol</span>
           </div>
-          <p class="landing-hero-note">Alat bantu riset dan perencanaan mandiri. Bukan rekomendasi beli/jual dan bukan eksekutor transaksi.</p>
+          <p class="landing-hero-note">Alat bantu analisis, bukan rekomendasi beli/jual. Keputusan tetap milik Anda.</p>
         </div>
 
         <!-- REAL WORKSTATION PREVIEW -->
@@ -1231,7 +1231,7 @@
                 <div class="market-tile-body">
                     <span id="dashMarketFreshness" class="market-tile-value is-text">—</span>
                 </div>
-                <p class="market-tile-note">Semua angka radar memakai candle harian yang sudah selesai (T-1).</p>
+                <p id="dashMarketFreshnessNote" class="market-tile-note">Semua angka radar memakai candle harian yang sudah selesai (T-1).</p>
             </div>
         </div>
         <div class="dash-section-note mt-3">Hindari, AVOID, SELL, LOW_TP dan Very High Risk selalu dipisahkan dari daftar utama, jadi tidak pernah muncul sebagai kandidat yang bisa langsung dieksekusi.</div>
@@ -1457,8 +1457,17 @@
         </div>
         <p id="screenerFailedDiag" class="hidden text-[10px] text-red-400/70 mt-1"></p>
         <!-- Compact info bars (disclaimer + legend merged) -->
-        <div class="scr-info-bar text-amber-400/70"><strong class="text-amber-400/90">Disclaimer:</strong> Bukan rekomendasi beli. Watchlist swing 3–7 hari. Kelola risiko sendiri. Invalid jika harga menembus level invalidasi.</div>
-        <div class="scr-info-bar"><strong>Score (0–100)</strong> = kekuatan setup. <strong>Exec (A+/A/B/C)</strong> = kelayakan entry. Score tinggi + Exec C = setup menarik tapi entry telat. <strong>Bukan winrate.</strong></div>
+        <div class="scr-info-bar text-amber-400/80 text-[11px]"><strong class="text-amber-400">Disclaimer:</strong> Bukan rekomendasi beli. Watchlist swing 3–7 hari. Kelola risiko mandiri.</div>
+        <details class="scr-info-bar text-[11px] cursor-pointer group" id="kgScoreDetails">
+            <summary class="cursor-pointer font-semibold text-emerald-400/90 hover:text-emerald-300 list-none flex items-center justify-between select-none">
+                <span>Panduan Score (0–100) &amp; Kelayakan Exec (A+/A/B/C)</span>
+                <span class="text-xs text-gray-500 group-open:rotate-180 transition-transform">▾</span>
+            </summary>
+            <div class="mt-1.5 pt-1.5 border-t border-dark-600/30 text-gray-400 space-y-1">
+                <p><strong>Score (0–100)</strong> = kekuatan setup teknikal &amp; momentum.</p>
+                <p><strong>Exec (A+/A/B/C)</strong> = kelayakan entry. Score tinggi + Exec C = setup menarik tapi entry telat. <strong>Bukan winrate.</strong></p>
+            </div>
+        </details>
         <!-- Stats row -->
         <div class="grid grid-cols-3 gap-1.5" id="screenerStats">
             <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
@@ -1475,12 +1484,20 @@
             </div>
         </div>
         <!-- Lightweight result filters -->
-        <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
-            <select id="kgRiskFilter" aria-label="Filter profil risiko swing konglomerasi" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+        <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
+            <input id="kgTickerSearch" aria-label="Cari ticker swing konglomerasi" oninput="applyScreenerUiFilters('konglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40 col-span-1 sm:col-span-2 lg:col-span-1">
             <select id="kgStatusFilter" aria-label="Filter status setup swing konglomerasi" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-            <select id="kgTypeFilter" aria-label="Filter tipe setup swing konglomerasi" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
-            <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="kgHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('konglo')" class="accent-emerald-500"> Hide Very High</label>
-            <input id="kgTickerSearch" aria-label="Cari ticker swing konglomerasi" oninput="applyScreenerUiFilters('konglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+            <select id="kgRiskFilter" aria-label="Filter profil risiko swing konglomerasi" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+            <details class="col-span-full text-[11px] pt-0.5">
+                <summary class="cursor-pointer text-gray-400 hover:text-gray-300 select-none py-0.5 text-[10px] font-semibold flex items-center gap-1">
+                    <svg class="w-3 h-3 text-emerald-400 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                    <span>Filter Lanjutan (Tipe &amp; Risk Cut) ▾</span>
+                </summary>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1.5 pt-1.5 border-t border-dark-600/30">
+                    <select id="kgTypeFilter" aria-label="Filter tipe setup swing konglomerasi" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
+                    <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="kgHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('konglo')" class="accent-emerald-500"> Hide Very High</label>
+                </div>
+            </details>
         </div>
         <!-- Filter tabs -->
         <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
@@ -1599,14 +1616,22 @@
                 </div>
             </div>
             <!-- Compact disclaimer -->
-            <div class="scr-info-bar text-amber-400/70"><strong class="text-amber-400/90">Disclaimer:</strong> Bukan rekomendasi beli. Watchlist swing trading. Kelola risiko sendiri.</div>
+            <div class="scr-info-bar text-amber-400/80 text-[11px]"><strong class="text-amber-400">Disclaimer:</strong> Bukan rekomendasi beli. Watchlist swing trading papan Utama &amp; Pengembangan. Kelola risiko sendiri.</div>
             <!-- Lightweight result filters -->
-            <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
-            <select id="nkRiskFilter" aria-label="Filter profil risiko swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
-            <select id="nkStatusFilter" aria-label="Filter status setup swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-            <select id="nkTypeFilter" aria-label="Filter tipe setup swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
-            <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="nkHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('nonkonglo')" class="accent-emerald-500"> Hide Very High</label>
-            <input id="nkTickerSearch" aria-label="Cari ticker swing non-konglomerasi" oninput="applyScreenerUiFilters('nonkonglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+            <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
+                <input id="nkTickerSearch" aria-label="Cari ticker swing non-konglomerasi" oninput="applyScreenerUiFilters('nonkonglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40 col-span-1 sm:col-span-2 lg:col-span-1">
+                <select id="nkStatusFilter" aria-label="Filter status setup swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
+                <select id="nkRiskFilter" aria-label="Filter profil risiko swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+                <details class="col-span-full text-[11px] pt-0.5">
+                    <summary class="cursor-pointer text-gray-400 hover:text-gray-300 select-none py-0.5 text-[10px] font-semibold flex items-center gap-1">
+                        <svg class="w-3 h-3 text-emerald-400 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                        <span>Filter Lanjutan (Tipe &amp; Risk Cut) ▾</span>
+                    </summary>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1.5 pt-1.5 border-t border-dark-600/30">
+                        <select id="nkTypeFilter" aria-label="Filter tipe setup swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
+                        <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="nkHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('nonkonglo')" class="accent-emerald-500"> Hide Very High</label>
+                    </div>
+                </details>
             </div>
             <!-- Status filter tabs -->
             <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
@@ -1689,8 +1714,17 @@
                 </div>
             </div>
             <!-- Compact info bars -->
-            <div class="scr-info-bar text-amber-400/70"><strong class="text-amber-400/90">Disclaimer:</strong> Bukan rekomendasi beli/jual. Radar intraday pre-spike &amp; momentum. Jangan chase. Entry hanya jika konfirmasi terpenuhi.</div>
-            <div class="scr-info-bar"><strong>Score (0–100)</strong> = Liquidity + Pre-Spike + Momentum + RR + Trend − Penalty. <strong>Exec (A+/A/B/C)</strong> = kelayakan eksekusi. TRADE = serius dipantau. READY = dekat trigger.</div>
+            <div class="scr-info-bar text-amber-400/80 text-[11px]"><strong class="text-amber-400">Disclaimer:</strong> Bukan rekomendasi beli/jual. Radar intraday pre-spike &amp; momentum. Jangan chase. Entry hanya jika konfirmasi terpenuhi.</div>
+            <details class="scr-info-bar text-[11px] cursor-pointer group" id="dtScoreDetails">
+                <summary class="cursor-pointer font-semibold text-emerald-400/90 hover:text-emerald-300 list-none flex items-center justify-between select-none">
+                    <span>Panduan Day Trade Score (0–100) &amp; Status Radar</span>
+                    <span class="text-xs text-gray-500 group-open:rotate-180 transition-transform">▾</span>
+                </summary>
+                <div class="mt-1.5 pt-1.5 border-t border-dark-600/30 text-gray-400 space-y-1">
+                    <p><strong>Score (0–100)</strong> = Liquidity + Pre-Spike + Momentum + RR + Trend − Penalty.</p>
+                    <p><strong>Exec (A+/A/B/C)</strong> = kelayakan eksekusi. TRADE = serius dipantau. READY = dekat trigger.</p>
+                </div>
+            </details>
             <!-- Stats row -->
             <div class="grid grid-cols-4 gap-1.5" id="dtScreenerStats">
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
@@ -1731,12 +1765,20 @@
                 </div>
             </div>
             <!-- Lightweight result filters -->
-            <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
-            <select id="dtRiskFilter" aria-label="Filter profil risiko day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
-            <select id="dtStatusFilter" aria-label="Filter status setup day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-            <select id="dtTypeFilter" aria-label="Filter tipe setup day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
-            <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="dtHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('daytrade')" class="accent-emerald-500"> Hide Very High</label>
-            <input id="dtTickerSearch" aria-label="Cari ticker day trade" oninput="applyScreenerUiFilters('daytrade')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+            <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
+                <input id="dtTickerSearch" aria-label="Cari ticker day trade" oninput="applyScreenerUiFilters('daytrade')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40 col-span-1 sm:col-span-2 lg:col-span-1">
+                <select id="dtStatusFilter" aria-label="Filter status setup day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
+                <select id="dtRiskFilter" aria-label="Filter profil risiko day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+                <details class="col-span-full text-[11px] pt-0.5">
+                    <summary class="cursor-pointer text-gray-400 hover:text-gray-300 select-none py-0.5 text-[10px] font-semibold flex items-center gap-1">
+                        <svg class="w-3 h-3 text-emerald-400 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                        <span>Filter Lanjutan (Tipe &amp; Risk Cut) ▾</span>
+                    </summary>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1.5 pt-1.5 border-t border-dark-600/30">
+                        <select id="dtTypeFilter" aria-label="Filter tipe setup day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
+                        <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="dtHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('daytrade')" class="accent-emerald-500"> Hide Very High</label>
+                    </div>
+                </details>
             </div>
             <!-- Filter tabs -->
             <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
@@ -2629,7 +2671,7 @@
                             </span>
                         </div>
                         <h2 class="ac-financial-title">Financial</h2>
-                        <p class="ac-financial-subtitle">Snapshot terverifikasi dari laporan keuangan resmi emiten. Nilai tidak tersedia tetap kosong tanpa asumsi.</p>
+                        <p class="ac-financial-subtitle">Snapshot rasio dan nilai buku dari laporan keuangan resmi emiten. Nilai tidak tersedia tetap kosong tanpa asumsi.</p>
                     </div>
                     <div class="ac-financial-ticker-bar">
                         <label class="sr-only" for="financialTickerInput">Ticker Saham</label>
@@ -2643,14 +2685,14 @@
                 <!-- Initial Prompt State -->
                 <div id="financialDataState" class="ac-financial-state-box">
                     <span class="ac-status-dot ac-status-dot--neutral" aria-hidden="true"></span>
-                    <span id="financialStateText">Pilih atau masukkan ticker untuk membuka snapshot fundamental terverifikasi.</span>
+                    <span id="financialStateText">Pilih atau masukkan ticker untuk membuka snapshot fundamental resmi emiten.</span>
                 </div>
 
                 <!-- Single Compact Unavailable State (§79.2) -->
                 <div id="financialDataUnavailable" class="ac-empty-state" style="padding: 24px 16px;" hidden>
                     <svg class="ac-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     <div class="ac-empty-state__title" id="financialUnavailableTitle">Data Fundamental Belum Tersedia</div>
-                    <div class="ac-empty-state__desc" id="financialUnavailableDesc">Belum ada laporan keuangan terverifikasi yang tersimpan untuk emiten ini. Auto-Cuan tidak membuat rasio sintetis saat sumber data belum tersedia.</div>
+                    <div class="ac-empty-state__desc" id="financialUnavailableDesc">Belum ada laporan keuangan resmi yang tersimpan untuk emiten ini. Auto-Cuan tidak membuat rasio sintetis saat sumber data belum tersedia.</div>
                 </div>
 
                 <!-- Verified Snapshot Content -->
@@ -2664,12 +2706,12 @@
                         <div class="ac-provenance-row" style="font-size: 11.5px;">
                             <span class="ac-provenance-item">
                                 <span class="ac-provenance-label">Status Snapshot:</span>
-                                <span class="ac-status-badge ac-status-badge--positive" id="financialStatusBadge">Snapshot Terverifikasi</span>
+                                <span class="ac-status-badge ac-status-badge--neutral" id="financialStatusBadge">Memuat...</span>
                             </span>
                             <span class="ac-provenance-sep">·</span>
                             <span class="ac-provenance-item">
                                 <span class="ac-provenance-label">Kelengkapan:</span>
-                                <span class="ac-num" id="financialCoverage" style="font-weight: 600;">4 / 4</span>
+                                <span class="ac-num" id="financialCoverage" style="font-weight: 600;">— / 4</span>
                             </span>
                             <i id="financialCoverageBar" style="display: none;" aria-hidden="true"></i>
                         </div>
@@ -2733,7 +2775,7 @@
                         <div class="ac-financial-statements-toolbar">
                             <div class="ac-financial-statements-title-wrap">
                                 <h3 class="ac-financial-statements-title">Laporan Keuangan</h3>
-                                <p class="ac-financial-statements-subtitle">Data multi-periode resmi emiten. Format terstruktur, konsisten, dan terverifikasi.</p>
+                                <p class="ac-financial-statements-subtitle">Data multi-periode resmi emiten (format transparan dan konsisten).</p>
                             </div>
                             <div class="ac-financial-statements-controls">
                                 <!-- Local Statement Tabs (Level 2) -->
@@ -2755,7 +2797,7 @@
                         <div id="financialStatementUnavailable" class="ac-empty-state" style="padding: 24px 16px; margin-top: 10px;" hidden>
                             <svg class="ac-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                             <div class="ac-empty-state__title" id="financialStatementUnavailableTitle">Data Laba Rugi rinci belum tersedia</div>
-                            <div class="ac-empty-state__desc" id="financialStatementUnavailableDesc">Belum ada laporan rinci terverifikasi untuk mode ini. Data snapshot di atas tetap aktif dan valid.</div>
+                            <div class="ac-empty-state__desc" id="financialStatementUnavailableDesc">Belum ada laporan rinci multi-periode untuk mode ini. Data snapshot di atas tetap aktif dan valid.</div>
                         </div>
 
                         <!-- Multi-Period Financial Table Container with Subtle Scroll Affordance -->
@@ -6245,7 +6287,7 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
     var heroText = document.getElementById('heroLiveRadarText');
     if (!chip && !heroBadge) return;
 
-    var status = 'neutral'; // 'live' | 'intraday' | 'delayed' | 'stale' | 'scanning' | 'neutral'
+    var status = 'neutral'; // 'live' | 'intraday' | 'delayed' | 'eod' | 'stale' | 'scanning' | 'neutral'
     var label = 'Radar Pasar';
     var tooltip = 'Radar aktif — pemantauan pasar terkini.';
 
@@ -6254,19 +6296,26 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
     var isStale = false;
     var isScanning = false;
     var isLiveContract = false;
+    var isEodFinal = false;
+    var isIntradayContract = false;
     if (metaOrFreshness) {
         if (typeof metaOrFreshness === 'string') calcAt = metaOrFreshness;
-        else if (metaOrFreshness.calculated_at) calcAt = metaOrFreshness.calculated_at;
-        else if (metaOrFreshness.last_updated_at) calcAt = metaOrFreshness.last_updated_at;
-        else if (metaOrFreshness.updated_at) calcAt = metaOrFreshness.updated_at;
-
-        if (metaOrFreshness.data_stale || metaOrFreshness.is_stale || metaOrFreshness.freshness_is_stale) isStale = true;
-        if (metaOrFreshness.status === 'scanning' || metaOrFreshness.status === 'finalizing') isScanning = true;
-        if (metaOrFreshness.is_live === true || metaOrFreshness.stream_live === true) isLiveContract = true;
+        else {
+            calcAt = metaOrFreshness.trading_date || metaOrFreshness.calculated_at || metaOrFreshness.last_updated_at || metaOrFreshness.updated_at || null;
+            if (metaOrFreshness.data_stale || metaOrFreshness.is_stale || metaOrFreshness.freshness_is_stale) isStale = true;
+            if (metaOrFreshness.status === 'scanning' || metaOrFreshness.status === 'finalizing') isScanning = true;
+            if (metaOrFreshness.is_live === true || metaOrFreshness.stream_live === true) isLiveContract = true;
+            if (metaOrFreshness.is_eod_final === true || metaOrFreshness.session_status === 'FINAL_EOD' || metaOrFreshness.top5_locked === true || metaOrFreshness.eod_complete === true) isEodFinal = true;
+            if (metaOrFreshness.is_intraday === true || metaOrFreshness.session_status === 'INTRADAY_PARTIAL') isIntradayContract = true;
+        }
     }
 
     var nowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
     var todayStr = nowWib.toISOString().slice(0, 10);
+    var dayOfWeek = nowWib.getUTCDay();
+    var daysBack = (dayOfWeek === 0) ? 2 : (dayOfWeek === 1 ? 3 : (dayOfWeek === 6 ? 1 : 1));
+    var prevTradingWib = new Date(nowWib.getTime() - daysBack * 86400000);
+    var prevTradingStr = prevTradingWib.toISOString().slice(0, 10);
     var yesterdayWib = new Date(nowWib.getTime() - 86400000);
     var yesterdayStr = yesterdayWib.toISOString().slice(0, 10);
 
@@ -6275,26 +6324,56 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
         label = 'Radar: Scanning';
         tooltip = 'Screener sedang memproses data terkini...';
     } else if (calcAt) {
-        var calcDate = new Date(calcAt);
-        var calcDateStr = calcDate.toISOString().slice(0, 10);
+        var calcDate = (typeof calcAt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(calcAt))
+            ? new Date(calcAt + 'T00:00:00Z')
+            : new Date(calcAt);
+        var calcDateStr = (typeof calcAt === 'string' && /^\d{4}-\d{2}-\d{2}/.test(calcAt))
+            ? calcAt.slice(0, 10)
+            : calcDate.toISOString().slice(0, 10);
         var ageHours = Math.max(0, Math.round((Date.now() - calcDate.getTime()) / (1000 * 60 * 60)));
+        var isKnownRecentTradingSession = (calcDateStr === todayStr || calcDateStr === yesterdayStr || calcDateStr === prevTradingStr);
 
-        if (isStale || (calcDateStr !== todayStr && calcDateStr !== yesterdayStr) || ageHours >= 24) {
+        if (isStale || (!isKnownRecentTradingSession && ageHours >= 48) || (calcDateStr === todayStr && !isEodFinal && ageHours >= 24)) {
             status = 'stale';
             label = 'Radar: Stale (' + ageHours + 'h)';
             tooltip = 'Data stale (evaluasi terakhir ' + ageHours + ' jam lalu pada ' + calcDateStr + '). Refresh diperlukan.';
-        } else if (calcDateStr === yesterdayStr) {
-            status = 'delayed';
-            label = 'EOD / T-1';
-            tooltip = 'Snapshot penutupan pasar sesi kemarin (' + calcDateStr + '). Menunggu sesi baru.';
         } else if (isLiveContract) {
             status = 'live';
             label = 'Live';
             tooltip = 'Radar aktif — data real-time sesi hari ini (' + calcDateStr + ').';
-        } else {
+        } else if (isEodFinal) {
+            if (calcDateStr === todayStr) {
+                status = 'eod';
+                label = 'EOD (Selesai)';
+                tooltip = 'Snapshot penutupan pasar sesi hari ini (' + calcDateStr + '). Angka radar berbasis candle harian final.';
+            } else {
+                status = 'delayed';
+                label = 'EOD / T-1';
+                tooltip = 'Snapshot penutupan pasar sesi sebelumnya (' + calcDateStr + '). Menunggu sesi baru.';
+            }
+        } else if (isIntradayContract) {
             status = 'intraday';
             label = 'Intraday';
             tooltip = 'Sesi pasar hari ini (' + calcDateStr + '). Bukan stream real-time tick-by-tick.';
+        } else if (calcDateStr === todayStr) {
+            var nowHourWib = nowWib.getUTCHours();
+            if (dayOfWeek >= 1 && dayOfWeek <= 5 && nowHourWib >= 9 && nowHourWib < 16) {
+                status = 'intraday';
+                label = 'Intraday';
+                tooltip = 'Sesi pasar hari ini (' + calcDateStr + '). Menunggu penutupan EOD.';
+            } else {
+                status = 'eod';
+                label = 'EOD (Selesai)';
+                tooltip = 'Snapshot penutupan pasar sesi hari ini (' + calcDateStr + ').';
+            }
+        } else if (calcDateStr === yesterdayStr || calcDateStr === prevTradingStr) {
+            status = 'delayed';
+            label = 'EOD / T-1';
+            tooltip = 'Snapshot penutupan pasar sesi sebelumnya (' + calcDateStr + ').';
+        } else {
+            status = 'delayed';
+            label = 'EOD / T-1';
+            tooltip = 'Snapshot candle harian (' + calcDateStr + ').';
         }
     }
 
@@ -6321,6 +6400,12 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
             chip.style.borderColor = 'rgba(245,158,11,0.3)';
             chip.style.backgroundColor = 'rgba(245,158,11,0.1)';
             chip.style.color = '#fcd34d';
+        } else if (status === 'eod') {
+            dot.style.background = '#38bdf8';
+            dot.style.boxShadow = '';
+            chip.style.borderColor = 'rgba(56,189,248,0.25)';
+            chip.style.backgroundColor = 'rgba(56,189,248,0.08)';
+            chip.style.color = '#7dd3fc';
         } else if (status === 'scanning') {
             dot.style.background = '#60a5fa';
             dot.style.boxShadow = '0 0 10px rgba(96,165,250,0.6)';
@@ -6356,6 +6441,11 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
             heroBadge.style.backgroundColor = 'rgba(245,158,11,0.12)';
             heroBadge.style.color = '#fcd34d';
             if (heroDot) { heroDot.style.background = '#fbbf24'; heroDot.style.boxShadow = '0 0 8px rgba(251,191,36,0.6)'; }
+        } else if (status === 'eod') {
+            heroBadge.style.borderColor = 'rgba(56,189,248,0.25)';
+            heroBadge.style.backgroundColor = 'rgba(56,189,248,0.08)';
+            heroBadge.style.color = '#7dd3fc';
+            if (heroDot) { heroDot.style.background = '#38bdf8'; heroDot.style.boxShadow = ''; }
         } else if (status === 'scanning') {
             heroBadge.style.borderColor = 'rgba(59,130,246,0.3)';
             heroBadge.style.backgroundColor = 'rgba(59,130,246,0.12)';
@@ -11921,6 +12011,190 @@ function stopScreenerPolling() {
     document.removeEventListener('visibilitychange', _onScreenerVisibilityChange);
 }
 
+// ===== EOD TRADING-DATE ACCURACY & BADGE RESOLVER =====
+function resolveScreenerEodBadge(meta, referenceNowWib, isPreview) {
+    if (!meta) {
+        return {
+            badgeCode: 'PENDING',
+            label: isPreview ? 'MOCK DATA' : 'PENDING',
+            className: 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25',
+            status: 'pending',
+            dateStr: null,
+            reason: 'no_metadata'
+        };
+    }
+
+    if (meta.status === 'scanning' || meta.status === 'finalizing') {
+        return {
+            badgeCode: 'SCANNING',
+            label: 'SCANNING',
+            className: 'px-2 py-1 rounded-md text-[10px] font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 animate-pulse-glow',
+            status: 'scanning',
+            dateStr: null,
+            reason: 'scanning'
+        };
+    }
+
+    if (meta.status === 'failed') {
+        return {
+            badgeCode: 'ERROR',
+            label: 'ERROR',
+            className: 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25',
+            status: 'failed',
+            dateStr: null,
+            reason: 'failed'
+        };
+    }
+
+    // 1. Authoritative recorded trading date
+    var rawDate = meta.trading_date || meta.run_date || meta.calculated_at || meta.last_updated_at;
+    if (!rawDate) {
+        return {
+            badgeCode: 'PENDING',
+            label: isPreview ? 'MOCK DATA' : 'PENDING',
+            className: 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25',
+            status: 'unknown_session',
+            dateStr: null,
+            reason: 'no_recorded_date'
+        };
+    }
+
+    var recDateStr = (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(rawDate))
+        ? rawDate.slice(0, 10)
+        : (new Date(new Date(rawDate).getTime() + 7 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+
+    // 2. Authoritative finalization markers
+    var isFinalEod = meta.session_status === 'FINAL_EOD' || Boolean(meta.is_eod_final) || Boolean(meta.eod_complete);
+    var isIntradayPartial = meta.session_status === 'INTRADAY_PARTIAL' || Boolean(meta.is_intraday);
+    var isHoliday = Boolean(meta.is_holiday || meta.market_holiday || meta.session_status === 'HOLIDAY_CLOSED');
+    var isExplicitStale = Boolean(meta.data_stale || meta.is_stale || meta.freshness_is_stale);
+
+    // 3. Current reference time in WIB
+    var nowWib = referenceNowWib instanceof Date
+        ? referenceNowWib
+        : (typeof referenceNowWib === 'string' ? new Date(referenceNowWib) : new Date(Date.now() + 7 * 60 * 60 * 1000));
+    var todayStr = nowWib.toISOString().slice(0, 10);
+    var dayOfWeek = nowWib.getUTCDay(); // 0: Sun, 1: Mon, ..., 6: Sat
+
+    var daysBackToPrevWeekday = (dayOfWeek === 0) ? 2 : (dayOfWeek === 1 ? 3 : (dayOfWeek === 6 ? 1 : 1));
+    var prevWeekday = new Date(nowWib.getTime() - daysBackToPrevWeekday * 86400000);
+    var prevWeekdayStr = prevWeekday.toISOString().slice(0, 10);
+    var yesterday = new Date(nowWib.getTime() - 86400000);
+    var yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+    // 4. Stale check
+    if (isExplicitStale) {
+        return {
+            badgeCode: 'STALE',
+            label: isPreview ? 'MOCK DATA' : 'STALE',
+            className: 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25',
+            status: 'stale',
+            dateStr: recDateStr,
+            reason: 'explicit_stale'
+        };
+    }
+
+    // 5. Evaluate relative date
+    if (recDateStr === todayStr) {
+        if (isFinalEod) {
+            // Case (b): Weekdays after close with authoritative completion marker
+            return {
+                badgeCode: 'TODAY',
+                label: isPreview ? 'MOCK DATA' : 'EOD · TODAY',
+                className: isPreview
+                    ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
+                    : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25',
+                status: 'final_eod_today',
+                dateStr: recDateStr,
+                reason: 'today_eod_final'
+            };
+        } else if (isIntradayPartial) {
+            // Case (a): Weekdays before close with intraday partial data
+            return {
+                badgeCode: 'INTRADAY',
+                label: isPreview ? 'MOCK DATA' : 'INTRADAY',
+                className: 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25',
+                status: 'intraday_partial',
+                dateStr: recDateStr,
+                reason: 'today_intraday_partial'
+            };
+        } else {
+            // Case (e): Today's data but missing finalization marker (not marked FINAL_EOD)
+            return {
+                badgeCode: 'PENDING',
+                label: isPreview ? 'MOCK DATA' : 'EOD · PENDING',
+                className: 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25',
+                status: 'unfinalized',
+                dateStr: recDateStr,
+                reason: 'today_unfinalized_missing_marker'
+            };
+        }
+    }
+
+    // Is recorded date matching the previous valid trading session?
+    var isPrevTradingMatch = (recDateStr === prevWeekdayStr) || (recDateStr === yesterdayStr);
+    if (meta.holiday_prior_trading_date && recDateStr === meta.holiday_prior_trading_date) {
+        isPrevTradingMatch = true;
+    }
+
+    if (isPrevTradingMatch) {
+        // Case (a) previous trading session when viewing today before close,
+        // Case (c) Saturday/Sunday viewing Friday close,
+        // Case (d) Market holiday viewing prior trading session.
+        return {
+            badgeCode: 'T1',
+            label: isPreview ? 'MOCK DATA' : 'EOD · T-1',
+            className: isPreview
+                ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
+                : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25',
+            status: 'eod_t1',
+            dateStr: recDateStr,
+            reason: isHoliday ? 'holiday_prior_session' : ((dayOfWeek === 0 || dayOfWeek === 6) ? 'weekend_prior_session' : 'weekday_t1_session')
+        };
+    }
+
+    // Market holiday handling: if today is a holiday and recorded session date is known:
+    if (isHoliday && meta.trading_date) {
+        var ageDays = Math.round((new Date(todayStr).getTime() - new Date(recDateStr).getTime()) / 86400000);
+        if (ageDays >= 1 && ageDays <= 7) {
+            return {
+                badgeCode: 'T1',
+                label: isPreview ? 'MOCK DATA' : 'EOD · T-1',
+                className: isPreview
+                    ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
+                    : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25',
+                status: 'eod_t1_holiday',
+                dateStr: recDateStr,
+                reason: 'market_holiday_prior_session'
+            };
+        }
+    }
+
+    // If session is older than expected:
+    var diffDays = Math.round((new Date(todayStr).getTime() - new Date(recDateStr).getTime()) / 86400000);
+    if (diffDays > 3) {
+        // Case (f): Stale historical snapshot
+        return {
+            badgeCode: 'STALE',
+            label: isPreview ? 'MOCK DATA' : 'STALE',
+            className: 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25',
+            status: 'stale',
+            dateStr: recDateStr,
+            reason: 'historical_stale'
+        };
+    }
+
+    return {
+        badgeCode: 'UNCERTAIN',
+        label: isPreview ? 'MOCK DATA' : ('EOD · ' + recDateStr),
+        className: 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25',
+        status: 'uncertain_session',
+        dateStr: recDateStr,
+        reason: 'uncertain_session_date'
+    };
+}
+window.resolveScreenerEodBadge = resolveScreenerEodBadge;
+
 async function loadSwingScreener(silent) {
     if (_screenerInFlight) return _screenerInFlight;
     var tbody = document.getElementById('screenerTableBody');
@@ -12016,39 +12290,31 @@ async function loadSwingScreener(silent) {
             var badge = document.getElementById('screenerMetaBadge');
             if (badge) {
                 var isPreviewRoute = Boolean(window.location && (window.location.pathname.indexOf('/preview') >= 0 || window.location.search.indexOf('preview=1') >= 0));
-                if (m.status === 'scanning') {
+                var eodResolution = resolveScreenerEodBadge(m, null, isPreviewRoute);
+                if (eodResolution.badgeCode === 'SCANNING') {
                     badge.textContent = 'SCANNING';
-                    badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 animate-pulse-glow';
-                } else if (m.status === 'failed') {
+                    badge.className = eodResolution.className;
+                } else if (eodResolution.badgeCode === 'ERROR') {
                     badge.textContent = 'ERROR';
-                    badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25';
-                } else if (m.status === 'ok' || (!m.status && data.results && data.results.length > 0)) {
-                    var calcDate = m.calculated_at ? new Date(m.calculated_at) : new Date();
-                    var nowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
-                    var calcDateStr = calcDate.toISOString().slice(0, 10);
-                    var todayStr = nowWib.toISOString().slice(0, 10);
-                    var yesterdayWib = new Date(nowWib.getTime() - 86400000);
-                    var yesterdayStr = yesterdayWib.toISOString().slice(0, 10);
-
-                    if (calcDateStr !== todayStr && calcDateStr !== yesterdayStr) {
-                        badge.textContent = isPreviewRoute ? 'MOCK DATA' : 'STALE';
-                        badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25';
-                        var staleSub = document.getElementById('screenerSubtitle');
-                        if (staleSub) { staleSub.textContent = '\u26A0 Data stale \u2014 scan terakhir sudah lama (' + calcDateStr + '). Refresh wajib sebelum analisis. ' + (staleSub.textContent || ''); }
-                    } else if (calcDateStr === todayStr) {
-                        badge.textContent = isPreviewRoute ? 'MOCK DATA' : 'EOD · TODAY';
-                        badge.className = isPreviewRoute
-                            ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
-                            : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25';
-                    } else {
-                        badge.textContent = isPreviewRoute ? 'MOCK DATA' : 'EOD · T-1';
-                        badge.className = isPreviewRoute
-                            ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
-                            : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25';
-                    }
+                    badge.className = eodResolution.className;
+                } else if (eodResolution.badgeCode === 'STALE') {
+                    badge.textContent = isPreviewRoute ? 'MOCK DATA' : 'STALE';
+                    badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25';
+                    var staleSub = document.getElementById('screenerSubtitle');
+                    if (staleSub) { staleSub.textContent = '\u26A0 Data stale \u2014 scan terakhir sudah lama (' + (eodResolution.dateStr || 'lama') + '). Refresh wajib sebelum analisis. ' + (staleSub.textContent || ''); }
+                } else if (eodResolution.badgeCode === 'TODAY') {
+                    badge.textContent = isPreviewRoute ? 'MOCK DATA' : 'EOD · TODAY';
+                    badge.className = isPreviewRoute
+                        ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
+                        : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25';
+                } else if (eodResolution.badgeCode === 'T1') {
+                    badge.textContent = isPreviewRoute ? 'MOCK DATA' : 'EOD · T-1';
+                    badge.className = isPreviewRoute
+                        ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
+                        : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25';
                 } else {
-                    badge.textContent = 'PENDING';
-                    badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25';
+                    badge.textContent = eodResolution.label;
+                    badge.className = eodResolution.className;
                 }
             }
 
@@ -12720,7 +12986,8 @@ function updateNkScreenerMeta(meta) {
     var badge = document.getElementById('nkScreenerMetaBadge');
     if (badge) {
         var isPreviewRouteNk = Boolean(window.location && (window.location.pathname.indexOf('/preview') >= 0 || window.location.search.indexOf('preview=1') >= 0));
-        if (meta.status === 'failed') {
+        var nkEodResolution = resolveScreenerEodBadge(meta, null, isPreviewRouteNk);
+        if (meta.status === 'failed' || nkEodResolution.badgeCode === 'ERROR') {
             badge.textContent = 'ERROR';
             badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25';
         } else if (meta.status === 'scanning' || meta.status === 'finalizing') {
@@ -12732,31 +12999,22 @@ function updateNkScreenerMeta(meta) {
                 badge.textContent = 'SCANNING';
                 badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25 animate-pulse-glow';
             }
-        } else if (meta.status === 'published' || meta.status === 'ok') {
-            var nkCalcDate = meta.calculated_at ? new Date(meta.calculated_at) : new Date();
-            var nkNowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
-            var nkCalcDateStr = nkCalcDate.toISOString().slice(0, 10);
-            var nkTodayStr = nkNowWib.toISOString().slice(0, 10);
-            var nkYesterdayWib = new Date(nkNowWib.getTime() - 86400000);
-            var nkYesterdayStr = nkYesterdayWib.toISOString().slice(0, 10);
-
-            if (nkCalcDateStr !== nkTodayStr && nkCalcDateStr !== nkYesterdayStr) {
-                badge.textContent = isPreviewRouteNk ? 'MOCK DATA' : 'STALE';
-                badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25';
-            } else if (nkCalcDateStr === nkTodayStr) {
-                badge.textContent = isPreviewRouteNk ? 'MOCK DATA' : 'EOD · TODAY';
-                badge.className = isPreviewRouteNk
-                    ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
-                    : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25';
-            } else {
-                badge.textContent = isPreviewRouteNk ? 'MOCK DATA' : 'EOD · T-1';
-                badge.className = isPreviewRouteNk
-                    ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
-                    : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25';
-            }
+        } else if (nkEodResolution.badgeCode === 'STALE') {
+            badge.textContent = isPreviewRouteNk ? 'MOCK DATA' : 'STALE';
+            badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25';
+        } else if (nkEodResolution.badgeCode === 'TODAY') {
+            badge.textContent = isPreviewRouteNk ? 'MOCK DATA' : 'EOD · TODAY';
+            badge.className = isPreviewRouteNk
+                ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
+                : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25';
+        } else if (nkEodResolution.badgeCode === 'T1') {
+            badge.textContent = isPreviewRouteNk ? 'MOCK DATA' : 'EOD · T-1';
+            badge.className = isPreviewRouteNk
+                ? 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'
+                : 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25';
         } else {
-            badge.textContent = 'IDLE';
-            badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25';
+            badge.textContent = nkEodResolution.label || 'IDLE';
+            badge.className = nkEodResolution.className;
         }
     }
     var sub = document.getElementById('nkScreenerSubtitle');
@@ -13426,6 +13684,28 @@ function renderMarketBand(data, isAwaiting, pickedCount, waitPullbackCount, acti
             }) + ' WIB';
         } else {
             freshness.textContent = 'Belum tersedia';
+        }
+    }
+    var freshnessNote = document.getElementById('dashMarketFreshnessNote');
+    if (freshnessNote) {
+        var rawDate = payload.trading_date || payload.run_date || payload.calculated_at || payload.last_updated_at || payload.monitor_last_updated_at || null;
+        var isEodFinal = Boolean(payload.is_eod_final || payload.session_status === 'FINAL_EOD' || payload.top5_locked || payload.eod_complete);
+        if (!rawDate) {
+            freshnessNote.textContent = 'Status pembaruan data radar belum tersedia.';
+        } else {
+            var nowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
+            var todayStr = nowWib.toISOString().slice(0, 10);
+            var parsedDateStr = (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(rawDate))
+                ? rawDate.slice(0, 10)
+                : (new Date(new Date(rawDate).getTime() + 7 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+
+            if (parsedDateStr === todayStr && isEodFinal) {
+                freshnessNote.textContent = 'Semua angka radar memakai snapshot penutupan harian sesi hari ini (EOD).';
+            } else if (parsedDateStr && !isNaN(new Date(parsedDateStr).getTime())) {
+                freshnessNote.textContent = 'Semua angka radar memakai candle harian yang sudah selesai (T-1).';
+            } else {
+                freshnessNote.textContent = 'Status pembaruan data radar belum tersedia.';
+            }
         }
     }
 }

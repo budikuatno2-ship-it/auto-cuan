@@ -247,7 +247,7 @@
                             </span>
                         </div>
                         <h2 class="ac-financial-title">Financial</h2>
-                        <p class="ac-financial-subtitle">Snapshot terverifikasi dari laporan keuangan resmi emiten. Nilai tidak tersedia tetap kosong tanpa asumsi.</p>
+                        <p class="ac-financial-subtitle">Snapshot rasio dan nilai buku dari laporan keuangan resmi emiten. Nilai tidak tersedia tetap kosong tanpa asumsi.</p>
                     </div>
                     <div class="ac-financial-ticker-bar">
                         <label class="sr-only" for="financialTickerInput">Ticker Saham</label>
@@ -261,14 +261,14 @@
                 <!-- Initial Prompt State -->
                 <div id="financialDataState" class="ac-financial-state-box">
                     <span class="ac-status-dot ac-status-dot--neutral" aria-hidden="true"></span>
-                    <span id="financialStateText">Pilih atau masukkan ticker untuk membuka snapshot fundamental terverifikasi.</span>
+                    <span id="financialStateText">Pilih atau masukkan ticker untuk membuka snapshot fundamental resmi emiten.</span>
                 </div>
 
                 <!-- Single Compact Unavailable State (§79.2) -->
                 <div id="financialDataUnavailable" class="ac-empty-state" style="padding: 24px 16px;" hidden>
                     <svg class="ac-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     <div class="ac-empty-state__title" id="financialUnavailableTitle">Data Fundamental Belum Tersedia</div>
-                    <div class="ac-empty-state__desc" id="financialUnavailableDesc">Belum ada laporan keuangan terverifikasi yang tersimpan untuk emiten ini. Auto-Cuan tidak membuat rasio sintetis saat sumber data belum tersedia.</div>
+                    <div class="ac-empty-state__desc" id="financialUnavailableDesc">Belum ada laporan keuangan resmi yang tersimpan untuk emiten ini. Auto-Cuan tidak membuat rasio sintetis saat sumber data belum tersedia.</div>
                 </div>
 
                 <!-- Verified Snapshot Content -->
@@ -282,12 +282,12 @@
                         <div class="ac-provenance-row" style="font-size: 11.5px;">
                             <span class="ac-provenance-item">
                                 <span class="ac-provenance-label">Status Snapshot:</span>
-                                <span class="ac-status-badge ac-status-badge--positive" id="financialStatusBadge">Snapshot Terverifikasi</span>
+                                <span class="ac-status-badge ac-status-badge--neutral" id="financialStatusBadge">Memuat...</span>
                             </span>
                             <span class="ac-provenance-sep">·</span>
                             <span class="ac-provenance-item">
                                 <span class="ac-provenance-label">Kelengkapan:</span>
-                                <span class="ac-num" id="financialCoverage" style="font-weight: 600;">4 / 4</span>
+                                <span class="ac-num" id="financialCoverage" style="font-weight: 600;">— / 4</span>
                             </span>
                             <i id="financialCoverageBar" style="display: none;" aria-hidden="true"></i>
                         </div>
@@ -351,7 +351,7 @@
                         <div class="ac-financial-statements-toolbar">
                             <div class="ac-financial-statements-title-wrap">
                                 <h3 class="ac-financial-statements-title">Laporan Keuangan</h3>
-                                <p class="ac-financial-statements-subtitle">Data multi-periode resmi emiten. Format terstruktur, konsisten, dan terverifikasi.</p>
+                                <p class="ac-financial-statements-subtitle">Data multi-periode resmi emiten (format transparan dan konsisten).</p>
                             </div>
                             <div class="ac-financial-statements-controls">
                                 <!-- Local Statement Tabs (Level 2) -->
@@ -373,7 +373,7 @@
                         <div id="financialStatementUnavailable" class="ac-empty-state" style="padding: 24px 16px; margin-top: 10px;" hidden>
                             <svg class="ac-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                             <div class="ac-empty-state__title" id="financialStatementUnavailableTitle">Data Laba Rugi rinci belum tersedia</div>
-                            <div class="ac-empty-state__desc" id="financialStatementUnavailableDesc">Belum ada laporan rinci terverifikasi untuk mode ini. Data snapshot di atas tetap aktif dan valid.</div>
+                            <div class="ac-empty-state__desc" id="financialStatementUnavailableDesc">Belum ada laporan rinci multi-periode untuk mode ini. Data snapshot di atas tetap aktif dan valid.</div>
                         </div>
 
                         <!-- Multi-Period Financial Table Container with Subtle Scroll Affordance -->

@@ -612,6 +612,8 @@
   "test/wave8-auth-account-system-states.test.js",
   "test/wave8b-login-account-refinements.test.js",
   "test/wave9-landing-redesign.test.js",
+  "test/wave10-eod-freshness-accuracy.test.js",
+  "test/wave10-motion-legacy-polish.test.js",
   "test/web-runtime-audit.test.js",
   "test/web-security-boundaries.test.js",
   "test/webhook-alert-engine.test.js",
