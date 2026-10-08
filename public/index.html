@@ -1491,113 +1491,94 @@
 </div>
 
 <!-- ===== PAGE: TRACK RECORD ===== -->
-<div id="page-trackrecord" class="page-content hidden flex-1 w-full mx-auto space-y-4" data-premium-page="true">
-    <!-- Header Hero -->
-    <div class="dashboard-hero p-4 sm:p-5">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-                <div class="flex items-center gap-2 mb-1.5">
-                    <span class="dash-badge bg-emerald-500/15 text-emerald-300 border-emerald-500/25">Audit Sinyal Sistem</span>
-                    <span class="dash-badge bg-dark-700/60 text-gray-400 border-dark-600/30">Transparan &amp; Terukur</span>
-                </div>
-                <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight">Track Record &amp; Rapor Sinyal</h2>
-                <p class="text-xs sm:text-sm text-gray-400 mt-1 max-w-2xl">Performa historis rekomendasi sinyal trading berbasis aturan (Day Trade, Swing Konglo, Swing Non-Konglo, dan Top 5 Radar).</p>
+<div id="page-trackrecord" class="page-content hidden flex-1 w-full mx-auto space-y-4" data-premium-page="true" data-ac-ui="v2">
+    <!-- Header Hero -> Workstation Page Header -->
+    <div class="page-header mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+            <div class="ac-provenance-row mb-1">
+                <span class="ac-provenance-item">
+                    <span class="ac-provenance-label">Lensa Audit:</span>
+                    <span class="ac-provenance-value">Audit Sinyal Sistem</span>
+                </span>
+                <span class="ac-provenance-sep">·</span>
+                <span class="ac-provenance-item">
+                    <span class="ac-provenance-label">Metode:</span>
+                    <span class="ac-provenance-value">Evaluasi Berbasis Aturan</span>
+                </span>
             </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
-                <button onclick="exportTrackRecordCsv()" id="trackRecordExportBtn" class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition inline-flex items-center gap-1.5" title="Export data track record ke CSV">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
-                    <span>Unduh CSV</span>
-                </button>
-                <button onclick="loadTrackRecord(true)" id="trackRecordRefreshBtn" class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-gray-300 border border-dark-600/40 hover:bg-dark-700/60 transition inline-flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    <span>Muat Ulang</span>
-                </button>
-            </div>
+            <h1 class="page-title text-2xl font-bold text-[var(--text-primary)]">Track Record</h1>
+            <p class="page-subtitle text-xs text-[var(--text-secondary)] mt-0.5">Audit transparan hasil sinyal historis sistem (Day Trade, Swing Konglo, Swing Non-Konglo, Top 5 Radar).</p>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+            <button onclick="exportTrackRecordCsv()" id="trackRecordExportBtn" class="ac-btn ac-btn-secondary inline-flex items-center gap-1.5 text-xs py-1.5 px-3" title="Export data track record ke CSV">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                <span>Unduh CSV</span>
+            </button>
+            <button onclick="loadTrackRecord(true)" id="trackRecordRefreshBtn" class="ac-btn ac-btn-secondary inline-flex items-center gap-1.5 text-xs py-1.5 px-3">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <span>Muat Ulang</span>
+            </button>
         </div>
     </div>
 
     <!-- View Switcher (Rekap vs Backtesting) -->
-    <div class="flex items-center gap-2 border-b border-dark-600/40 pb-2.5">
-        <button id="trViewTabTable" onclick="switchTrackRecordView('table')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5">
+    <div class="flex items-center gap-2 border-b border-[var(--ac-line-hairline,#374151)] pb-2.5">
+        <button id="trViewTabTable" onclick="switchTrackRecordView('table')" class="ac-btn ac-btn-secondary is-active text-xs py-1.5 px-3 inline-flex items-center gap-1.5 font-semibold">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             <span>Rekap Sinyal Realtime</span>
         </button>
-        <button id="trViewTabBacktest" onclick="switchTrackRecordView('backtest')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-gray-200 border border-transparent hover:bg-dark-700/50 transition flex items-center gap-1.5">
+        <button id="trViewTabBacktest" onclick="switchTrackRecordView('backtest')" class="ac-btn ac-btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5 font-semibold">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693l-1.57-.393m15.6 0a4.5 4.5 0 01-8.8 0m0 0a4.5 4.5 0 01-6.8 0"/></svg>
             <span>Simulasi &amp; Backtesting Strategi</span>
-            <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono">Baru</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-mono">Baru</span>
         </button>
     </div>
 
     <!-- WRAPPER 1: TABEL REKAP SINYAL (DEFAULT) -->
     <div id="trTableViewPanel" class="space-y-4">
-        <!-- Summary Metrics Cards Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5" id="trackRecordSummaryGrid">
-            <!-- Total Signals -->
-            <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3 sm:p-4">
-                <div class="flex items-center justify-between text-gray-400 text-xs mb-1">
-                    <span>Total Sinyal</span>
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
-                </div>
-                <div class="text-xl sm:text-2xl font-black text-white" id="trTotalSignals">—</div>
-                <p class="text-[11px] text-gray-500 mt-1" id="trTotalSignalsSub">Rekomendasi tercatat</p>
+        <!-- Continuous Audit Metric Strip (§76.7) -->
+        <div class="ac-metric-strip" id="trackRecordSummaryGrid">
+            <div class="ac-metric flex-1">
+                <span class="ac-metric-label">Total Sinyal Tercatat</span>
+                <span class="ac-metric-value" id="trTotalSignals">—</span>
+                <span class="text-[11px] text-[var(--ac-text-secondary,#9ca3af)]" id="trTotalSignalsSub">Rekomendasi tercatat</span>
             </div>
-
-            <!-- Win Rate TP1 -->
-            <div class="bg-dark-800/60 border border-emerald-500/25 rounded-xl p-3 sm:p-4 bg-gradient-to-b from-emerald-500/5 to-transparent">
-                <div class="flex items-center justify-between text-emerald-400 text-xs mb-1">
-                    <span class="font-semibold">Win Rate (TP1)</span>
-                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="2"/></svg>
-                </div>
-                <div class="text-xl sm:text-2xl font-black text-emerald-400" id="trWinRateTp1">—</div>
-                <p class="text-[11px] text-emerald-400/70 mt-1" id="trTp1HitsSub">— sinyal tercapai</p>
+            <div class="ac-metric flex-1">
+                <span class="ac-metric-label">Capaian Target TP1</span>
+                <span class="ac-metric-value" id="trWinRateTp1" style="color: var(--ac-gain,#10b981);">—</span>
+                <span class="text-[11px] text-[var(--ac-text-secondary,#9ca3af)]" id="trTp1HitsSub">— sinyal tercapai</span>
             </div>
-
-            <!-- Win Rate TP2 -->
-            <div class="bg-dark-800/60 border border-emerald-500/20 rounded-xl p-3 sm:p-4">
-                <div class="flex items-center justify-between text-emerald-300 text-xs mb-1">
-                    <span>Target Maks (TP2)</span>
-                    <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.58-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/></svg>
-                </div>
-                <div class="text-xl sm:text-2xl font-black text-emerald-300" id="trWinRateTp2">—</div>
-                <p class="text-[11px] text-gray-400 mt-1" id="trTp2HitsSub">— target maksimal</p>
+            <div class="ac-metric flex-1">
+                <span class="ac-metric-label">Capaian Target TP2</span>
+                <span class="ac-metric-value" id="trWinRateTp2" style="color: var(--ac-gain,#10b981);">—</span>
+                <span class="text-[11px] text-[var(--ac-text-secondary,#9ca3af)]" id="trTp2HitsSub">— target maksimal</span>
             </div>
-
-            <!-- SL Rate / Risk Control -->
-            <div class="bg-dark-800/60 border border-red-500/20 rounded-xl p-3 sm:p-4">
-                <div class="flex items-center justify-between text-red-400 text-xs mb-1">
-                    <span>SL Hit Rate</span>
-                    <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.002A11.959 11.959 0 0112 2.714zm0 13.036h.008v.008H12v-.008z"/></svg>
-                </div>
-                <div class="text-xl sm:text-2xl font-black text-red-400" id="trSlRate">—</div>
-                <p class="text-[11px] text-red-400/70 mt-1" id="trSlHitsSub">— kena Stop Loss</p>
+            <div class="ac-metric flex-1">
+                <span class="ac-metric-label">Kena Stop Loss</span>
+                <span class="ac-metric-value" id="trSlRate" style="color: var(--ac-loss,#ef4444);">—</span>
+                <span class="text-[11px] text-[var(--ac-text-secondary,#9ca3af)]" id="trSlHitsSub">— kena Stop Loss</span>
             </div>
-
-            <!-- Largest Profit % (all-time) -->
-            <div class="bg-dark-800/60 border border-amber-400/25 rounded-xl p-3 sm:p-4 bg-gradient-to-b from-amber-400/5 to-transparent">
-                <div class="flex items-center justify-between text-amber-300 text-xs mb-1">
-                    <span class="font-semibold">Untung Terbesar</span>
-                    <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.504-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.004 0H9.496m5.004 0A6.75 6.75 0 0018 7.5V6a2.25 2.25 0 00-2.25-2.25H8.25A2.25 2.25 0 006 6v1.5a6.75 6.75 0 003.496 5.875M18 7.5h1.875A2.625 2.625 0 0122.5 10.125v.75a2.625 2.625 0 01-2.625 2.625H18M6 7.5H4.125A2.625 2.625 0 001.5 10.125v.75A2.625 2.625 0 004.125 13.5H6"/></svg>
-                </div>
-                <div class="text-xl sm:text-2xl font-black text-amber-300" id="trBestGain">—</div>
-                <p class="text-[11px] text-amber-300/70 mt-1" id="trBestGainSub">Sepanjang waktu</p>
+            <div class="ac-metric flex-1">
+                <span class="ac-metric-label">Gain Maks. Tercatat</span>
+                <span class="ac-metric-value" id="trBestGain" style="color: var(--ac-gain,#10b981);">—</span>
+                <span class="text-[11px] text-[var(--ac-text-secondary,#9ca3af)]" id="trBestGainSub">Sepanjang waktu</span>
             </div>
         </div>
 
         <!-- Category Breakdown Cards -->
         <div class="space-y-2">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400">Performa Per Kategori</h3>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--ac-text-secondary,#9ca3af)]">Ringkasan per Kategori</h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="trCategoryGrid">
                 <!-- Rendered by JS -->
             </div>
         </div>
 
         <!-- Filter Bar -->
-        <div class="bg-dark-800/50 border border-dark-600/30 rounded-xl p-3 space-y-2">
+        <div class="ac-surface-bounded p-3 space-y-2">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
                 <!-- Category Tab Pill Filters -->
                 <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5" id="trCategoryTabs">
-                    <button onclick="filterTrackRecordCategory('all')" class="screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="all">Semua</button>
+                    <button onclick="filterTrackRecordCategory('all')" class="screener-tab is-active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="all">Semua</button>
                     <button onclick="filterTrackRecordCategory('daytrade')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="daytrade">Day Trade</button>
                     <button onclick="filterTrackRecordCategory('swing_konglo')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="swing_konglo">Swing Konglo</button>
                     <button onclick="filterTrackRecordCategory('swing_nk')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="swing_nk">Swing Non-Konglo</button>
@@ -1606,7 +1587,7 @@
 
                 <!-- Status & Search Inputs -->
                 <div class="flex items-center gap-2">
-                    <select id="trStatusFilter" aria-label="Filter status sinyal track record" onchange="renderTrackRecordTable()" class="rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
+                    <select id="trStatusFilter" aria-label="Filter status sinyal track record" onchange="renderTrackRecordTable()" class="ac-select text-xs py-1.5 px-2.5">
                         <option value="all">Status: Semua</option>
                         <option value="TP2_HIT">TP2 Hit (Maksimal)</option>
                         <option value="TP1_HIT">TP1 Hit (Target 1)</option>
@@ -1615,18 +1596,18 @@
                         <option value="WAITING">Menunggu</option>
                         <option value="EXPIRED">Sinyal Kedaluwarsa</option>
                     </select>
-                    <input id="trSearchInput" aria-label="Cari ticker track record" oninput="renderTrackRecordTable()" placeholder="Cari ticker..." class="w-28 sm:w-36 rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+                    <input id="trSearchInput" aria-label="Cari ticker track record" oninput="renderTrackRecordTable()" placeholder="Cari ticker..." class="ac-input text-xs py-1.5 px-2.5 w-28 sm:w-36">
                 </div>
             </div>
         </div>
 
         <!-- Table of Signals -->
-        <div class="bg-dark-800/40 border border-dark-600/30 rounded-xl overflow-hidden">
+        <div class="ac-surface-bounded overflow-hidden">
             <div id="trTableWrap" class="overflow-x-auto overflow-y-auto max-h-[580px] scrollbar-thin focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel riwayat sinyal track record">
                 <table class="w-full text-xs border-collapse min-w-[700px]">
-                    <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
-                        <tr class="bg-dark-700/80 text-gray-400 font-medium border-b border-dark-600/50 text-left">
-                            <th class="px-3 py-2.5 sticky left-0 bg-dark-700/95 z-30">Ticker</th>
+                    <thead class="sticky top-0 bg-[var(--ac-surface,#181d28)]/95 backdrop-blur z-20 shadow-sm">
+                        <tr class="border-b border-[var(--ac-line-hairline,#374151)] text-[var(--ac-text-secondary,#9ca3af)] font-medium text-left">
+                            <th class="px-3 py-2.5 sticky left-0 bg-[var(--ac-surface,#181d28)] z-30">Ticker</th>
                             <th class="px-3 py-2.5">Kategori</th>
                             <th class="px-3 py-2.5">Waktu Sinyal</th>
                             <th class="px-3 py-2.5 text-right">Entry</th>
@@ -1638,12 +1619,12 @@
                             <th class="px-3 py-2.5 text-right">Durasi</th>
                         </tr>
                     </thead>
-                    <tbody id="trTableBody" class="divide-y divide-dark-600/20 text-gray-300">
+                    <tbody id="trTableBody" class="divide-y divide-[var(--ac-line-hairline,#374151)]/30 text-[var(--text-primary,#d1d5db)]">
                         <!-- Dynamic rows or skeleton -->
                     </tbody>
                 </table>
             </div>
-            <div id="trEmptyState" class="hidden py-12 text-center text-gray-500 text-xs">
+            <div id="trEmptyState" class="hidden py-12 text-center text-[var(--ac-text-muted,#6b7280)] text-xs">
                 Tidak ada sinyal yang sesuai dengan filter.
             </div>
         </div>
@@ -1827,74 +1808,66 @@
 </div>
 
 <!-- ===== PAGE: WATCHLIST PRIBADI ===== -->
-<div id="page-watchlist" class="page-content hidden flex-1 w-full mx-auto space-y-4" data-premium-page="true">
-    <!-- Header Hero -->
-    <div class="dashboard-hero p-4 sm:p-5">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-                <div class="flex items-center gap-2 mb-1.5">
-                    <span class="dash-badge bg-amber-500/15 text-amber-300 border-amber-500/25">Pantauan Pribadi</span>
-                    <span class="dash-badge bg-dark-700/60 text-gray-400 border-dark-600/30">Custom Alert Aktif</span>
-                </div>
-                <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight">Watchlist &amp; Alert Saya</h2>
-                <p class="text-xs sm:text-sm text-gray-400 mt-1 max-w-2xl">Simpan saham favorit dari screener dan atur alert target harga personal via notifikasi Telegram.</p>
+<div id="page-watchlist" class="page-content hidden flex-1 w-full mx-auto space-y-4" data-premium-page="true" data-ac-ui="v2">
+    <!-- Header Hero -> Workstation Page Header -->
+    <div class="page-header mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+            <div class="ac-provenance-row mb-1">
+                <span class="ac-provenance-item">
+                    <span class="ac-provenance-label">Lensa Monitor:</span>
+                    <span class="ac-provenance-value">Watchlist &amp; Alert Pribadi</span>
+                </span>
             </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
-                <button onclick="openAlertHistoryModal()" class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-gray-300 border border-dark-600/40 hover:bg-dark-700/40 transition inline-flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span>Riwayat Alert</span>
-                </button>
-                <button onclick="loadUserWatchlist(true)" class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-amber-400 border border-amber-500/30 hover:bg-amber-500/10 transition inline-flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    <span>Refresh</span>
-                </button>
-            </div>
+            <h1 class="page-title text-2xl font-bold text-[var(--text-primary)]">Watchlist</h1>
+            <p class="page-subtitle text-xs text-[var(--text-secondary)] mt-0.5">Daftar pantauan saham terfokus dan alert harga otomatis via Telegram.</p>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+            <button onclick="openAlertHistoryModal()" class="ac-btn ac-btn-secondary inline-flex items-center gap-1.5 text-xs py-1.5 px-3">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Riwayat Alert</span>
+            </button>
+            <button onclick="loadUserWatchlist(true)" class="ac-btn ac-btn-secondary inline-flex items-center gap-1.5 text-xs py-1.5 px-3">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <span>Refresh</span>
+            </button>
         </div>
     </div>
 
-    <!-- Summary Metrics -->
-    <div class="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
-        <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3 sm:p-4">
-            <div class="flex items-center justify-between text-gray-400 text-xs mb-1">
-                <span>Total Saham Dipantau</span>
-                <span class="text-base">⭐</span>
-            </div>
-            <div class="text-xl sm:text-2xl font-black text-white" id="wlTotalCount">0</div>
-            <p class="text-[11px] text-gray-500 mt-1">Dalam watchlist aktif</p>
+    <!-- Continuous Summary Strip (§76.7) -->
+    <div class="ac-metric-strip mb-4" id="watchlistSummaryStrip">
+        <div class="ac-metric">
+            <span class="ac-metric-label">Total Saham Dipantau</span>
+            <span class="ac-metric-value" id="wlTotalCount">0</span>
         </div>
-        <div class="bg-dark-800/60 border border-amber-500/25 rounded-xl p-3 sm:p-4 bg-gradient-to-b from-amber-500/5 to-transparent">
-            <div class="flex items-center justify-between text-amber-400 text-xs mb-1">
-                <span class="font-semibold">Alert Harga Aktif</span>
-                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
-            </div>
-            <div class="text-xl sm:text-2xl font-black text-amber-400" id="wlActiveAlertCount">0</div>
-            <p class="text-[11px] text-amber-400/70 mt-1">Menunggu trigger harga</p>
+        <div class="ac-metric">
+            <span class="ac-metric-label">Alert Harga Aktif</span>
+            <span class="ac-metric-value" id="wlActiveAlertCount" style="color: var(--ac-amber, #d97706);">0</span>
         </div>
     </div>
 
     <!-- Table Container -->
-    <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3 sm:p-4 space-y-3">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pb-1 border-b border-dark-700/40">
+    <div class="ac-surface-bounded p-3 sm:p-4 space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pb-2 border-b border-[var(--ac-line-hairline,#374151)]">
             <div>
-                <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400">Daftar Pantauan Saham</h3>
-                <span class="text-[11px] text-gray-500">Klik bintang pada kartu Screener untuk tambah/hapus</span>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--ac-text-secondary,#9ca3af)]">Daftar Pantauan Saham</h3>
+                <span class="text-[11px] text-[var(--ac-text-muted,#6b7280)]">Klik bintang pada screener atau analisis untuk kelola pantauan</span>
             </div>
             <!-- Quick Filter Bar -->
-            <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5" id="watchlistFilterTabs">
-                <button onclick="filterWatchlist('all')" class="wl-filter-btn active px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30 transition" data-wl-filter="all">Semua</button>
-                <button onclick="filterWatchlist('alert')" class="wl-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 transition" data-wl-filter="alert">Ada Alert</button>
-                <button onclick="filterWatchlist('gain')" class="wl-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 transition" data-wl-filter="gain">Naik Hari Ini</button>
-                <button onclick="filterWatchlist('loss')" class="wl-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 transition" data-wl-filter="loss">Turun Hari Ini</button>
+            <div class="grid grid-cols-2 sm:flex sm:items-center gap-1.5 w-full sm:w-auto" id="watchlistFilterTabs">
+                <button onclick="filterWatchlist('all')" class="wl-filter-btn is-active ac-btn ac-btn-secondary text-xs py-1 px-2.5 text-center justify-center" data-wl-filter="all">Semua</button>
+                <button onclick="filterWatchlist('alert')" class="wl-filter-btn ac-btn ac-btn-secondary text-xs py-1 px-2.5 text-center justify-center" data-wl-filter="alert">Ada Alert</button>
+                <button onclick="filterWatchlist('gain')" class="wl-filter-btn ac-btn ac-btn-secondary text-xs py-1 px-2.5 text-center justify-center" data-wl-filter="gain">Naik Hari Ini</button>
+                <button onclick="filterWatchlist('loss')" class="wl-filter-btn ac-btn ac-btn-secondary text-xs py-1 px-2.5 text-center justify-center" data-wl-filter="loss">Turun Hari Ini</button>
             </div>
         </div>
         <div id="watchlistContainer">
             <!-- Dynamic Table injected by watchlist-runtime.js -->
         </div>
-        <div id="watchlistEmpty" class="hidden py-12 text-center text-gray-500 text-xs">
-            <div class="w-10 h-10 mx-auto mb-2 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+        <div id="watchlistEmpty" class="hidden py-12 text-center text-[var(--ac-text-muted,#6b7280)] text-xs">
+            <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-[var(--ac-surface-sunken,#111827)] border border-[var(--ac-line-hairline,#374151)] flex items-center justify-center text-[var(--ac-amber,#d97706)]">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>
             </div>
-            <p class="font-semibold text-gray-400" id="watchlistEmptyTitle">Watchlist Anda masih kosong.</p>
+            <p class="font-semibold text-[var(--text-primary,#e5e7eb)]" id="watchlistEmptyTitle">Belum ada saham dalam Watchlist.</p>
             <p class="mt-1" id="watchlistEmptyDesc">Gunakan ikon bintang pada kartu Screener atau Modal Detail untuk menambahkan saham ke pantauan.</p>
         </div>
     </div>
