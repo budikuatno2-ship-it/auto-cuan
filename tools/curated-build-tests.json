@@ -607,6 +607,7 @@
   "test/wave3-data-primitives.test.js",
   "test/wave4-financial-market-structure.test.js",
   "test/wave5-screener-sektor-hot.test.js",
+  "test/wave6-dashboard-research-lenses.test.js",
   "test/web-runtime-audit.test.js",
   "test/web-security-boundaries.test.js",
   "test/webhook-alert-engine.test.js",

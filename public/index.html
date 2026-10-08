@@ -524,7 +524,6 @@
     <nav class="sidebar-nav" aria-label="Menu utama workspace">
         <!-- GROUP 1: OVERVIEW -->
         <section class="sidebar-nav-group" aria-label="Overview">
-            <h2 class="sidebar-group-label">Overview</h2>
             <button type="button" onclick="navigateTo('dashboard')" class="sidebar-item active" data-sidebar-page="dashboard" data-label="Dashboard" title="Dashboard">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                 <span class="sidebar-label">Dashboard</span>
@@ -533,7 +532,6 @@
 
         <!-- GROUP 2: DISCOVER -->
         <section class="sidebar-nav-group" aria-label="Discover">
-            <h2 class="sidebar-group-label">Discover</h2>
             <button type="button" onclick="navigateTo('screener')" class="sidebar-item hidden" data-sidebar-page="screener" data-label="Screener" data-premium-nav="true" title="Screener">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <span class="sidebar-label">Screener</span>
@@ -546,15 +544,11 @@
 
         <!-- GROUP 3: RESEARCH -->
         <section class="sidebar-nav-group" aria-label="Research">
-            <h2 class="sidebar-group-label">Research</h2>
-
-            <div class="sidebar-subgroup-label">Teknikal</div>
             <button id="tabAnalisisChart" type="button" onclick="navigateTo('analisis', 'analisis-chart')" class="sidebar-item" data-sidebar-page="analisis" data-analysis-tab="analisis-chart" data-tab="analisis-chart" data-label="Analisis &amp; Chart" title="Analisis &amp; Chart">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17V7m5 10V3m5 14v-5m5 5V8"/></svg>
                 <span class="sidebar-label">Analisis &amp; Chart</span>
             </button>
 
-            <div class="sidebar-subgroup-label">Arus Bandar</div>
             <button id="tabBandarmologi" type="button" onclick="navigateTo('analisis', 'bandarmologi')" class="sidebar-item" data-sidebar-page="bandarmologi" data-analysis-tab="bandarmologi" data-tab="bandarmologi" data-label="Bandarmologi" title="Bandarmologi">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-10M15 5h6v6"/></svg>
                 <span class="sidebar-label">Bandarmologi</span>
@@ -564,7 +558,6 @@
                 <span class="sidebar-label">Broker Hunter</span>
             </button>
 
-            <div class="sidebar-subgroup-label">Intel & Relasi</div>
             <button id="tabSinyalIntelijen" type="button" onclick="navigateTo('analisis', 'intel')" class="sidebar-item" data-sidebar-page="intel" data-analysis-tab="intel" data-tab="intel" data-label="Sinyal Intelijen" title="Sinyal Intelijen">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7z"/></svg>
                 <span class="sidebar-label">Sinyal Intelijen</span>
@@ -574,7 +567,6 @@
                 <span class="sidebar-label">Insider</span>
             </button>
 
-            <div class="sidebar-subgroup-label">Struktur & Valuasi</div>
             <button id="tabFinancial" type="button" onclick="navigateTo('analisis', 'financial')" class="sidebar-item" data-sidebar-page="financial" data-analysis-tab="financial" data-tab="financial" data-label="Financial" title="Financial">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/></svg>
                 <span class="sidebar-label">Financial</span>
@@ -584,7 +576,6 @@
                 <span class="sidebar-label">Struktur Pasar</span>
             </button>
 
-            <div class="sidebar-subgroup-label">Peringkat & Sektor</div>
             <button id="tabRankingHarian" type="button" onclick="navigateTo('analisis', 'ranking')" class="sidebar-item" data-sidebar-page="ranking" data-analysis-tab="ranking" data-tab="ranking" data-label="Ranking" title="Ranking">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7"/></svg>
                 <span class="sidebar-label">Ranking</span><span id="rankingLockIcon" class="sidebar-badge" aria-label="Akses terbatas">PRO</span>
@@ -598,7 +589,6 @@
 
         <!-- GROUP 4: MONITOR -->
         <section class="sidebar-nav-group" aria-label="Monitor">
-            <h2 class="sidebar-group-label">Monitor</h2>
             <button type="button" onclick="navigateTo('watchlist')" class="sidebar-item hidden" data-sidebar-page="watchlist" data-label="Watchlist" data-premium-nav="true" title="Watchlist">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
                 <span class="sidebar-label">Watchlist</span>
@@ -722,10 +712,10 @@
 
 <div class="app-content" id="appContent">
 <!-- ===== PAGE: SUBSCRIPTION ===== -->
-<div id="page-subscription" class="page-content hidden flex-1 max-w-[1180px] w-full mx-auto px-3 sm:px-5 py-5 sm:py-7" aria-labelledby="subscriptionPageTitle"><div class="subscription-hero p-5 sm:p-7"><div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div class="max-w-2xl"><p class="text-xs font-black uppercase tracking-[.16em] text-emerald-300">Paket Langganan Auto-Cuan</p><h1 id="subscriptionPageTitle" class="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Pilih paket yang sesuai dengan ritme trading Anda.</h1><p class="mt-2 text-sm leading-6 text-slate-300">Bandingkan manfaat, harga, dan masa aktif setiap paket secara transparan.</p></div><button onclick="loadSubscriptionExperience(true)" class="nav-btn border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">↻ Muat ulang data</button></div><div id="subscriptionSummary" class="subscription-summary mt-6 p-4 sm:p-5" aria-live="polite">Memuat ringkasan langganan…</div></div><section class="mt-7" aria-labelledby="subscriptionPlansTitle"><div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p class="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Perbandingan paket</p><h2 id="subscriptionPlansTitle" class="mt-1 text-xl font-black text-white">Pilih paket dengan informasi yang jelas.</h2></div><p class="text-xs text-slate-500">Akses tidak pernah diberikan dari halaman ini.</p></div><div id="subscriptionPlans" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">Memuat daftar paket…</div></section></div>
+<div id="page-subscription" class="page-content hidden flex-1 w-full mx-auto" aria-labelledby="subscriptionPageTitle"><div class="subscription-hero p-5 sm:p-7"><div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div class="max-w-2xl"><p class="text-xs font-black uppercase tracking-[.16em] text-emerald-300">Paket Langganan Auto-Cuan</p><h1 id="subscriptionPageTitle" class="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Pilih paket yang sesuai dengan ritme trading Anda.</h1><p class="mt-2 text-sm leading-6 text-slate-300">Bandingkan manfaat, harga, dan masa aktif setiap paket secara transparan.</p></div><button onclick="loadSubscriptionExperience(true)" class="nav-btn border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">↻ Muat ulang data</button></div><div id="subscriptionSummary" class="subscription-summary mt-6 p-4 sm:p-5" aria-live="polite">Memuat ringkasan langganan…</div></div><section class="mt-7" aria-labelledby="subscriptionPlansTitle"><div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p class="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Perbandingan paket</p><h2 id="subscriptionPlansTitle" class="mt-1 text-xl font-black text-white">Pilih paket dengan informasi yang jelas.</h2></div><p class="text-xs text-slate-500">Akses tidak pernah diberikan dari halaman ini.</p></div><div id="subscriptionPlans" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">Memuat daftar paket…</div></section></div>
 
 <!-- ===== PAGE: DASHBOARD HOME ===== -->
-<div id="page-dashboard" class="page-content flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
+<div id="page-dashboard" class="page-content flex-1 w-full mx-auto" data-ac-ui="v2">
     <section id="subscriptionIdentityCard" class="hidden dashboard-card p-4 mb-4" aria-label="Identitas langganan" hidden><h2 class="font-black text-white">Identitas Langganan</h2><p id="subscriptionIdentityStatus" class="text-sm text-gray-400 mt-1">Fitur langganan sedang disiapkan.</p><div class="flex flex-wrap gap-2 mt-3"><button id="subscriptionTelegramLink" class="nav-btn" disabled aria-disabled="true">Hubungkan Telegram</button><button id="subscriptionTrialActivate" class="nav-btn hidden" disabled aria-disabled="true">Mulai Trial 10 Hari</button></div><p id="subscriptionTrialStatus" class="text-xs text-gray-500 mt-3">Kontrol trial dan Telegram akan tersedia setelah konfigurasi langganan siap.</p></section>
     <div class="space-y-4">
         <!-- Greeting -->
@@ -801,8 +791,8 @@
             <h3 id="dashRadarTitle" class="ac-section-title">Radar Hari Ini</h3>
             <p class="ac-section-hint">Watchlist bukan sinyal BUY</p>
         </div>
-        <div class="dashboard-radar-grid grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
-            <section class="radar-panel lg:col-span-3 panel" aria-label="Top 5 Radar">
+        <div class="dashboard-radar-grid grid grid-cols-1 gap-3 items-start">
+            <section class="radar-panel w-full panel" aria-label="Top 5 Radar">
                 <div class="panel-header" style="min-height:48px;display:flex;align-items:flex-start;justify-content:space-between;">
                     <div>
                         <h3 class="panel-title">Top 5 Radar</h3>
@@ -813,7 +803,7 @@
                     <div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</p></div>
                 </div>
             </section>
-            <aside class="radar-panel lg:col-span-2 panel" aria-label="Auto Monitor">
+            <aside class="radar-panel panel" aria-label="Auto Monitor" hidden style="display:none !important;" aria-hidden="true">
                 <div class="panel-header" style="min-height:48px;display:flex;align-items:flex-start;justify-content:space-between;">
                     <div>
                         <h3 class="panel-title">Auto Monitor</h3>
@@ -854,14 +844,14 @@
 </div>
 
 <!-- ===== PAGE: ANALISIS SAHAM (Unified AI Cockpit - Full SPA) ===== -->
-<div id="page-analisis" class="page-content hidden flex-1 flex flex-col max-w-[1280px] w-full mx-auto px-3 sm:px-5 py-3" data-partial-loaded="false">
+<div id="page-analisis" class="page-content hidden flex-1 flex flex-col w-full mx-auto" data-partial-loaded="false">
     <div id="analisisPartialMount">
         <!-- Rendered from template/partial on first navigation -->
     </div>
 </div>
 
 <!-- ===== PAGE: SEKTOR HOT (Grup Konglomerat Hot) ===== -->
-<div id="page-sektor" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4" data-premium-page="true" data-ac-ui="v2">
+<div id="page-sektor" class="page-content hidden flex-1 w-full mx-auto" data-premium-page="true" data-ac-ui="v2">
     <!-- Login gate (shown if not logged in) -->
     <div id="sektorLoginGate" class="hidden flex flex-col items-center justify-center py-16 text-center">
         <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
@@ -929,7 +919,7 @@
 </div>
 
 <!-- ===== PAGE: SCREENER SWING KONGLO 3-7D ===== -->
-<div id="page-screener" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4" data-premium-page="true" data-ac-ui="v2">
+<div id="page-screener" class="page-content hidden flex-1 w-full mx-auto" data-premium-page="true" data-ac-ui="v2">
     <!-- Login gate -->
     <div id="screenerLoginGate" class="hidden flex flex-col items-center justify-center py-16 text-center">
         <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
@@ -1394,7 +1384,7 @@
 </div>
 
 <!-- ===== PAGE: CHART ===== -->
-<div id="page-chart" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
+<div id="page-chart" class="page-content hidden flex-1 w-full mx-auto">
     <div id="chartSection" class="chart-shell p-3 sm:p-5 space-y-4">
         <div><h2 class="text-xl font-extrabold text-white">Chart</h2><p class="text-sm text-gray-400 mt-1">Lihat candlestick, MA, RSI, volume, dan Fibonacci tanpa mengubah sumber data.</p></div>
         <div class="chart-search-row flex items-center gap-2">
@@ -1426,7 +1416,7 @@
 </div>
 
 <!-- ===== PAGE: NEWS (Berita & Katalis Emiten) ===== -->
-<div id="page-news" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4 space-y-4">
+<div id="page-news" class="page-content hidden flex-1 w-full mx-auto space-y-4">
     <div class="dashboard-hero p-4 sm:p-5">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
@@ -1474,7 +1464,7 @@
 </div>
 
 <!-- ===== PAGE: PORTOFOLIO ===== -->
-<div id="page-portofolio" class="page-content hidden flex-1 max-w-[1280px] w-full mx-auto px-3 sm:px-5 py-4" data-premium-page="true" data-partial-loaded="false">
+<div id="page-portofolio" class="page-content hidden flex-1 w-full mx-auto" data-premium-page="true" data-partial-loaded="false">
     <div id="portofolioPartialMount">
         <!-- Rendered from template/partial on first navigation -->
         <div class="bg-dark-700/30 border border-dark-600/30 rounded-xl overflow-hidden hidden sm:block">
@@ -1501,7 +1491,7 @@
 </div>
 
 <!-- ===== PAGE: TRACK RECORD ===== -->
-<div id="page-trackrecord" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4 space-y-4" data-premium-page="true">
+<div id="page-trackrecord" class="page-content hidden flex-1 w-full mx-auto space-y-4" data-premium-page="true">
     <!-- Header Hero -->
     <div class="dashboard-hero p-4 sm:p-5">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -1837,7 +1827,7 @@
 </div>
 
 <!-- ===== PAGE: WATCHLIST PRIBADI ===== -->
-<div id="page-watchlist" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4 space-y-4" data-premium-page="true">
+<div id="page-watchlist" class="page-content hidden flex-1 w-full mx-auto space-y-4" data-premium-page="true">
     <!-- Header Hero -->
     <div class="dashboard-hero p-4 sm:p-5">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -13137,13 +13127,13 @@ function splitDashboardSafeRows(rows) {
 }
 function dashboardExcludedHtml(excluded) {
     if (!excluded || excluded.length === 0) return '';
-    return '<details class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-100"><summary class="cursor-pointer font-semibold">Excluded / Avoid / High Risk (' + excluded.length + ')</summary><div class="mt-2 space-y-1 text-amber-200/80">' + excluded.slice(0, 8).map(function(item) {
+    return '<details class="dashboard-excluded-disclosure mt-3 rounded-xl border border-dark-600/30 bg-dark-800/40 px-3.5 py-2.5 text-[11px] text-gray-400"><summary class="cursor-pointer font-medium hover:text-gray-200 select-none">Daftar Dikecualikan / Filter Risiko (' + excluded.length + ' saham)</summary><div class="mt-2.5 space-y-1.5 text-gray-300 border-t border-dark-600/30 pt-2">' + excluded.slice(0, 8).map(function(item) {
         var r = item.row || {};
         var action = getActionLabel(r) || r.action_label || r.status || 'Filtered by safety rules';
         var risk = getRiskLabel(r) || '—';
         var reason = getSignalReason(r);
-        var reasonHtml = reason ? '<span class="w-full text-amber-200/60">' + escapeHtml(reason) + '</span>' : '';
-        return '<div class="flex flex-wrap gap-2"><b>' + escapeHtml(r.ticker || '-') + '</b><span>' + escapeHtml(action) + '</span><span>Risk: ' + escapeHtml(risk) + '</span>' + reasonHtml + '</div>';
+        var reasonHtml = reason ? '<span class="text-gray-400 italic text-[10px]">' + escapeHtml(reason) + '</span>' : '';
+        return '<div class="flex flex-wrap items-center gap-2"><b class="font-mono text-white">' + escapeHtml(r.ticker || '-') + '</b><span class="text-amber-300 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">' + escapeHtml(action) + '</span><span class="text-gray-400">Risk: ' + escapeHtml(risk) + '</span>' + reasonHtml + '</div>';
     }).join('') + '</div></details>';
 }
 // The tone moves from a Tailwind colour class to a data attribute so the level
@@ -13285,7 +13275,7 @@ function renderDashboardTop5(picks) {
         el.innerHTML = dashboardEmptyHtml('No safe candidates right now. Candidates were filtered by safety rules.', 'amber') + dashboardExcludedHtml(split.excluded);
         return;
     }
-    var html = '';
+    var html = '<div class="dashboard-decision-list space-y-2">';
     split.safe.slice(0, 5).forEach(function(p, idx) {
         var r = normalizeDashboardPick(p);
         _dashboardPickData[r.ticker] = r;
@@ -13294,31 +13284,13 @@ function renderDashboardTop5(picks) {
         var risk = getRiskLabel(r) || '—';
         var rr = Number(r.risk_reward || r.rr);
         var action = getActionLabel(r) || getStatusLabel(r, r.status || r.final_status || '') || '—';
-        var actionLine = buildDashboardActionLine(r);
-        var reason = dashShortText(getSignalReason(r) || r.status_reason || r.grade_reason || r.notes, 96);
         var rank = p.rank || (idx + 1);
         var tickerJs = escapeHtml(dashJsString(r.ticker));
-        // Three zones, separated by a hairline instead of by an eleventh 4px gap:
-        // what this is, what the trade is, what to be careful about. Every field
-        // rendered before is still rendered; only grouping and order-between-zones
-        // change, so the trade is no longer the last thing on the card.
+
         var planWarn = getPlanWarningLine(r);
         var execLine = dashExecutionRealityLine(r);
         var realismLine = dashTpRealismLine(r);
-        var safetyNote = r.entry_safety_note || r.invalidation_note || r.trading_plan_note || '';
 
-        html += '<article role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + tickerJs + '\')" onkeydown="dashOpenKey(event, \'' + tickerJs + '\')" class="dashboard-pick-card cursor-pointer focus:outline-none transition">';
-        html += '<div class="flex items-start gap-2"><div class="dash-rank">' + escapeHtml(rank) + '</div>';
-        html += '<div class="min-w-0 flex-1">';
-
-        // Zone 1 — identity and verdict.
-        html += '<div class="dash-zone">';
-        html += '<div class="dash-ident"><span class="dash-ident-ticker">' + escapeHtml(r.ticker || '-') + '</span>';
-        html += '<span class="dash-ident-tag">' + escapeHtml(r.category || '-') + '</span>';
-        html += '<span class="dash-ident-price">' + dashFmtPrice(r.last_price) + '</span>';
-        html += '<span class="dash-ident-score"><span>Score</span><b>' + (sc ? sc.toFixed(0) : '—') + '</b></span></div>';
-        html += '<div class="dash-verdict"><span>Grade <b style="color:' + getSignalQualityColor(grade) + '">' + escapeHtml(grade) + '</b></span>';
-        html += '<span>Risk <b style="color:' + getRiskColor(risk) + '">' + escapeHtml(risk) + '</b></span>';
         // R/R: Pisahkan basis kalkulasi sesuai spek finansial
         var rrAwal = '—', rrSisa = '—', rrSisaWarn = false;
         var _e1 = Number(r.entry1), _sl = Number(r.stop_loss), _tp1 = Number(r.tp1), _kini = Number(r.last_price);
@@ -13339,47 +13311,57 @@ function renderDashboardTop5(picks) {
         if (action === 'WAIT_PULLBACK') {
             action = 'TUNGGU PULLBACK';
         }
-        html += '<span title="R/R Awal: (TP1 - Entry 1) / (Entry 1 - SL)">R/R Awal <b>' + rrAwal + '</b></span>';
-        html += '<span class="' + (rrSisaWarn ? 'dash-rr-sisa-warn' : '') + '" title="Sisa R/R: (TP1 - Harga Kini) / (Harga Kini - SL)" style="' + (rrSisaWarn ? 'color:var(--color-warn-text, var(--warning, #F59E0B))' : '') + '">Sisa R/R <b>' + rrSisa + (rrSisaWarn ? ' (!)' : '') + '</b></span>';
-        html += '<span>Action <b>' + escapeHtml(action) + '</b></span></div>';
-        if (rrSisaWarn) html += '<div class="dash-flag" data-tone="warn" title="Sisa R/R di bawah ambang minimum 1.3 — sinyal masih aktif tapi potensi sisa profit tipis">R/R TIPIS — Sisa R/R ' + rrSisa + ' (min 1.3). Status disesuaikan ke TUNGGU PULLBACK.</div>';
-        html += '<div class="mt-2">' + freshnessChipHtml(r) + '</div>';
-        html += '</div>';
 
-
-        // Zone 2 — the trade. Promoted above the metadata it used to sit under.
-        html += '<div class="dash-zone dash-trade">';
-        html += dashRiskLadderHtml(r);
-        html += '<div class="dash-level-grid">' + dashLevelHtml('Entry 1', r.entry1) + dashLevelHtml('Entry 2', r.entry2) + dashLevelHtml('Stop Loss', r.stop_loss, 'danger') + dashLevelHtml('TP1', r.tp1, 'target') + dashLevelHtml('TP2', r.tp2, 'target') + '</div>';
-        if (window.PositionSizing && typeof window.PositionSizing.renderCardWidget === 'function') {
-            html += window.PositionSizing.renderCardWidget(r, { levels: { e1: r.entry1, e2: r.entry2, sl: r.stop_loss, t1: r.tp1, t2: r.tp2, kini: r.last_price } });
+        var caveatNote = '';
+        if (rrSisaWarn) {
+            caveatNote = 'R/R Tipis (' + rrSisa + ') · Tunggu pullback';
+        } else if (execLine) {
+            caveatNote = execLine;
+        } else if (realismLine) {
+            caveatNote = realismLine;
+        } else if (planWarn) {
+            caveatNote = planWarn;
         }
-        if (window.SignalGateTransparency && typeof window.SignalGateTransparency.renderCardButton === 'function') {
-            html += window.SignalGateTransparency.renderCardButton(r, 'top5');
+
+        var actClass = (action === 'BUY' || String(action).indexOf('BUY') >= 0)
+            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+            : (action === 'TUNGGU PULLBACK' ? 'bg-amber-500/15 border-amber-500/30 text-amber-300' : 'bg-dark-700/80 border-dark-600/40 text-gray-300');
+
+        html += '<article role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + tickerJs + '\')" onkeydown="dashOpenKey(event, \'' + tickerJs + '\')" class="dashboard-decision-row cursor-pointer focus:outline-none transition rounded-xl border border-dark-600/35 bg-dark-800/60 hover:bg-dark-700/50 hover:border-emerald-500/30 p-3 sm:px-4">';
+        html += '<div class="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">';
+
+        // Left: Rank, Ticker, Category tag, Price
+        html += '<div class="flex items-center gap-3 min-w-0">';
+        html += '<div class="dash-rank">' + escapeHtml(rank) + '</div>';
+        html += '<div class="min-w-0">';
+        html += '<div class="flex items-center gap-2 flex-wrap">';
+        html += '<span class="font-mono font-black text-sm text-white tracking-wide">' + escapeHtml(r.ticker || '-') + '</span>';
+        html += '<span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-700 text-gray-300 font-medium">' + escapeHtml(r.category || '-') + '</span>';
+        html += '</div>';
+        html += '<div class="text-[11px] text-gray-400 font-mono tabular-nums mt-0.5">' + dashFmtPrice(r.last_price) + '</div>';
+        html += '</div>';
+        html += '</div>';
+
+        // Center / Metrics: Score, Grade, Risk, R/R
+        html += '<div class="flex items-center gap-3 sm:gap-4 text-xs tabular-nums text-gray-300 font-mono">';
+        html += '<div title="Conviction Score"><span class="text-[10px] text-gray-500 uppercase block font-sans">Score</span><b class="text-white">' + (sc ? sc.toFixed(0) : '—') + '</b></div>';
+        html += '<div title="Signal Grade"><span class="text-[10px] text-gray-500 uppercase block font-sans">Grade</span><b style="color:' + getSignalQualityColor(grade) + '">' + escapeHtml(grade) + '</b></div>';
+        html += '<div title="Risk Profile"><span class="text-[10px] text-gray-500 uppercase block font-sans">Risk</span><b style="color:' + getRiskColor(risk) + '">' + escapeHtml(risk) + '</b></div>';
+        html += '<div title="R/R Awal: ' + rrAwal + (rrSisa !== '—' ? ' | Sisa: ' + rrSisa : '') + '"><span class="text-[10px] text-gray-500 uppercase block font-sans">R/R</span><b class="' + (rrSisaWarn ? 'text-amber-400' : 'text-emerald-400') + '">' + rrAwal + '</b></div>';
+        html += '</div>';
+
+        // Right: Caveat chip, Action badge, Detail button
+        html += '<div class="flex items-center gap-2 flex-shrink-0">';
+        if (caveatNote) {
+            html += '<span class="hidden md:inline-block text-[10px] px-2 py-0.5 rounded ' + (rrSisaWarn ? 'bg-amber-500/10 border border-amber-500/25 text-amber-300' : 'bg-dark-700 text-gray-300 border border-dark-600/40') + ' max-w-[210px] truncate" title="' + escapeHtml(caveatNote) + '">' + escapeHtml(caveatNote) + '</span>';
         }
+        html += '<span class="text-[11px] font-bold px-2 py-1 rounded-lg border ' + actClass + '">' + escapeHtml(action) + '</span>';
+        html += '<button type="button" onclick="event.stopPropagation(); openDashboardPickDetail(\'' + tickerJs + '\')" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 transition">Detail &rarr;</button>';
         html += '</div>';
 
-        // Zone 3 — caveats and reference.
-        html += '<div class="dash-zone">';
-        html += '<div class="dash-meta"><span>Kualitas entry <b>' + escapeHtml(r.entry_quality_label || r.entry_status_label || '—') + '</b></span>';
-        html += '<span>Kualitas plan <b>' + escapeHtml(r.plan_quality_label || '—') + '</b></span>';
-        html += '<span>Jarak invalidasi <b>' + escapeHtml(r.invalidation_distance_label || '—') + '</b></span>';
-        html += '<span>Konfirmasi <b>' + escapeHtml(r.breakout_confirmation_label || 'Watch') + '</b></span>';
-        html += '<span>Umur setup <b>' + escapeHtml(r.setup_freshness_label || 'Needs Revalidation') + '</b></span></div>';
-        if (execLine) html += '<div class="dash-flag" data-tone="info">' + escapeHtml(execLine) + '</div>';
-        if (realismLine) html += '<div class="dash-flag" data-tone="warn">TP Realism: ' + escapeHtml(realismLine) + '</div>';
-        if (planWarn) html += '<div class="dash-flag" data-tone="warn">' + escapeHtml(planWarn) + '</div>';
-        if (safetyNote) html += '<div class="dash-flag">' + escapeHtml(safetyNote) + '</div>';
-        if (actionLine) html += '<div class="dash-flag">' + escapeHtml(actionLine) + '</div>';
-        var _top5BandarText = bandarBadgeText(r, true);
-        if (_top5BandarText) html += '<div class="dash-flag" data-tone="info">' + escapeHtml(_top5BandarText) + '</div>';
-        html += dashboardMarketStructureHtml(r);
-        html += '<p class="dash-reason">' + escapeHtml(reason) + '</p>';
-        html += dashQualityChipsHtml(r.quality_chips);
-        html += '</div>';
-
-        html += '</div></div></article>';
+        html += '</div></article>';
     });
+    html += '</div>';
     el.innerHTML = html + dashboardExcludedHtml(split.excluded);
 }
 function dashSignedPct(v) { var n = Number(v); return isFinite(n) ? ((n >= 0 ? '+' : '') + n.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%') : ''; }
@@ -13485,8 +13467,6 @@ function renderTop5History(activeRows, tpRows) {
     if (!el) return;
     _dashboardPickData = _dashboardPickData || {};
     if (!rows || rows.length === 0) {
-        // Do not show a false "empty" message if we've never actually received data yet
-        // (e.g. user switched to TP History tab before the initial fetch resolved).
         if (!_top5HistoryLoaded) {
             el.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">' + DASHBOARD_LOADING_TEXT + '</div>';
             return;
@@ -13494,7 +13474,18 @@ function renderTop5History(activeRows, tpRows) {
         el.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">' + (_top5HistoryTab === 'tp' ? 'Belum ada saham Top 5 yang kena TP. TP History terisi otomatis setelah harga menyentuh TP1/TP2.' : 'Belum ada history aktif.') + '</div>';
         return;
     }
-    var html = '';
+    var html = '<div class="overflow-x-auto"><table class="w-full text-xs text-left border-collapse min-w-[700px] tabular-nums lining-nums">';
+    html += '<thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-10"><tr class="border-b border-dark-600/40 text-gray-400 font-semibold text-[11px] uppercase tracking-wider">';
+    html += '<th class="py-2.5 px-3">Tanggal</th>';
+    html += '<th class="py-2.5 px-3">Ticker</th>';
+    html += '<th class="py-2.5 px-3">Kategori</th>';
+    html += '<th class="py-2.5 px-3">Status</th>';
+    html += '<th class="py-2.5 px-3 text-right">Entry Aktif</th>';
+    html += '<th class="py-2.5 px-3 text-right">TP1</th>';
+    html += '<th class="py-2.5 px-3 text-right">Stop Loss</th>';
+    html += '<th class="py-2.5 px-3 text-right">Gain / Distance</th>';
+    html += '<th class="py-2.5 px-3 text-center">Aksi</th>';
+    html += '</tr></thead><tbody class="divide-y divide-dark-600/20">';
     rows.forEach(function(p) {
         var r = normalizeDashboardPick(p);
         var historyKey = 'history-' + p.id;
@@ -13502,17 +13493,26 @@ function renderTop5History(activeRows, tpRows) {
         var historyKeyJs = dashJsString(historyKey);
         var pctText = top5HistoryPctLine(p);
         var pctNum = p.active_entry_price != null ? Number(p.return_from_entry_pct) : Number(p.distance_to_entry1_pct);
-        var pctClass = pctNum >= 0 ? 'text-emerald-300' : 'text-red-300';
-        var action = p.action_label || p.signal_action_label || getActionLabel(r) || '—';
-        var adminBtn = isAdmin() ? '<button onclick="event.stopPropagation(); archiveTop5History(' + Number(p.id) + ')" class="px-2 py-1 rounded text-[10px] text-red-300 border border-red-500/30 hover:bg-red-500/10">Archive</button>' : '';
-        var entryUsed = p.entry_used_label || p.active_entry_label || 'Belum kena Entry 1';
-        html += '<article class="rounded-xl border border-dark-600/30 bg-dark-800/55 px-3 py-2 hover:border-emerald-500/30 transition">';
-        html += '<div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-2"><div role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + historyKeyJs + '\')" onkeydown="dashOpenKey(event, \'' + historyKeyJs + '\')" class="min-w-0 flex-1 cursor-pointer">';
-        html += '<div class="flex flex-wrap items-center gap-2"><span class="text-[11px] text-gray-500">' + escapeHtml(p.date || '-') + '</span><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(p.category || r.category || '-') + '</span><span class="text-[11px] text-blue-300">' + escapeHtml(p.status_label || '-') + '</span>' + freshnessChipHtml(r) + '</div>';
-        html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-6 gap-1 text-[10px]"><span class="text-blue-300">' + escapeHtml(entryUsed) + ' ' + dashFmtPrice(p.active_entry_price) + '</span><span class="text-blue-300">E1 ' + dashFmtPrice(p.entry1) + '</span><span class="text-red-300">SL ' + dashFmtPrice(p.sl) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(p.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(p.tp2) + '</span><span class="text-gray-300">Last ' + dashFmtPrice(p.last_price || p.current_price) + '</span></div>';
-        html += '<div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-400"><span class="' + pctClass + '">' + escapeHtml(pctText) + '</span><span>Action <b class="text-blue-300">' + escapeHtml(action) + '</b></span><span>Risk <b class="text-amber-300">' + escapeHtml(p.risk_label_v2 || '—') + '</b></span><span>Plan <b class="text-purple-300">' + escapeHtml(p.plan_label || p.plan_quality_label || '—') + '</b></span></div>';
-        html += '</div><div class="flex gap-1"><button onclick="openDashboardPickDetail(\'' + historyKeyJs + '\')" class="px-2 py-1 rounded text-[10px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10">Detail</button>' + adminBtn + '</div></div></article>';
+        var pctClass = pctNum >= 0 ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold';
+        var adminBtn = isAdmin() ? '<button type="button" onclick="event.stopPropagation(); archiveTop5History(' + Number(p.id) + ')" class="px-2 py-0.5 rounded text-[10px] text-red-300 border border-red-500/30 hover:bg-red-500/10">Archive</button>' : '';
+        var entryUsed = p.entry_used_label || p.active_entry_label || 'Entry 1';
+
+        html += '<tr class="hover:bg-dark-700/40 transition cursor-pointer" onclick="openDashboardPickDetail(\'' + historyKeyJs + '\')">';
+        html += '<td class="py-2.5 px-3 whitespace-nowrap text-gray-400 font-mono text-[11px]">' + escapeHtml(p.date || '-') + '</td>';
+        html += '<td class="py-2.5 px-3 whitespace-nowrap"><span class="font-bold text-white font-mono">' + escapeHtml(r.ticker || '-') + '</span></td>';
+        html += '<td class="py-2.5 px-3 whitespace-nowrap"><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(p.category || r.category || '-') + '</span></td>';
+        html += '<td class="py-2.5 px-3 whitespace-nowrap"><span class="text-blue-300 font-medium">' + escapeHtml(p.status_label || '-') + '</span></td>';
+        html += '<td class="py-2.5 px-3 text-right whitespace-nowrap font-mono text-blue-300" title="' + escapeHtml(entryUsed) + '">' + dashFmtPrice(p.active_entry_price || p.entry1) + '</td>';
+        html += '<td class="py-2.5 px-3 text-right whitespace-nowrap font-mono text-emerald-400">' + dashFmtPrice(p.tp1) + '</td>';
+        html += '<td class="py-2.5 px-3 text-right whitespace-nowrap font-mono text-rose-400">' + dashFmtPrice(p.sl) + '</td>';
+        html += '<td class="py-2.5 px-3 text-right whitespace-nowrap font-mono ' + pctClass + '">' + escapeHtml(pctText) + '</td>';
+        html += '<td class="py-2.5 px-3 text-center whitespace-nowrap">';
+        html += '<div class="inline-flex items-center gap-1.5">';
+        html += '<button type="button" onclick="event.stopPropagation(); openDashboardPickDetail(\'' + historyKeyJs + '\')" class="px-2.5 py-1 rounded text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 font-semibold transition">Detail</button>';
+        html += adminBtn;
+        html += '</div></td></tr>';
     });
+    html += '</tbody></table></div>';
     el.innerHTML = html;
 }
 

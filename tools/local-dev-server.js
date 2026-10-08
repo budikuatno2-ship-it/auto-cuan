@@ -1131,6 +1131,47 @@ const server = http.createServer(async (req, res) => {
             ]
           });
         }
+        if (action === 'broker-hunter') {
+          const brokerCode = (req.query.broker || 'AK').toUpperCase();
+          const brokerNames = {
+            'AK': 'UBS Sekuritas Indonesia',
+            'BK': 'J.P. Morgan Sekuritas Indonesia',
+            'CC': 'Mandiri Sekuritas',
+            'RX': 'Macquarie Sekuritas Indonesia',
+            'DX': 'Bahana Sekuritas',
+            'KZ': 'CLSA Sekuritas Indonesia',
+            'ZP': 'Maybank Sekuritas Indonesia',
+            'YP': 'Mirae Asset Sekuritas Indonesia',
+            'XC': 'Ajaib Sekuritas Asia',
+            'PD': 'Indo Premier Sekuritas',
+            'NI': 'BNI Sekuritas',
+            'MG': 'Semesta Indovest Sekuritas',
+            'SQ': 'BCA Sekuritas'
+          };
+          return res.status(200).json({
+            success: true,
+            from_cache: true,
+            broker: brokerCode,
+            broker_name: brokerNames[brokerCode] || (brokerCode + ' Sekuritas'),
+            range: req.query.range || '1d',
+            target_dates: ['2026-10-07'],
+            date_range_label: '07 Okt 2026 (1D)',
+            generated_at: new Date().toISOString(),
+            top_accumulated: [
+              { ticker: 'BBCA', bval: 142500000000, sval: 12000000000, net_val: 130500000000, avg_buy: 10250, avg_sell: 10200 },
+              { ticker: 'BMRI', bval: 85000000000, sval: 15000000000, net_val: 70000000000, avg_buy: 6850, avg_sell: 6800 },
+              { ticker: 'BREN', bval: 64000000000, sval: 9000000000, net_val: 55000000000, avg_buy: 6800, avg_sell: 6750 },
+              { ticker: 'ASII', bval: 52000000000, sval: 8000000000, net_val: 44000000000, avg_buy: 5100, avg_sell: 5050 },
+              { ticker: 'MEDC', bval: 38000000000, sval: 6000000000, net_val: 32000000000, avg_buy: 1410, avg_sell: 1395 }
+            ],
+            top_distributed: [
+              { ticker: 'TLKM', bval: 10000000000, sval: 45000000000, net_val: -35000000000, avg_buy: 3120, avg_sell: 3150 },
+              { ticker: 'GOTO', bval: 5000000000, sval: 28000000000, net_val: -23000000000, avg_buy: 64, avg_sell: 65 },
+              { ticker: 'KLBF', bval: 3000000000, sval: 18000000000, net_val: -15000000000, avg_buy: 1450, avg_sell: 1460 }
+            ],
+            total_stocks_active: 45
+          });
+        }
         if (action === 'insider-roster') {
           return res.status(200).json({
             success: true,

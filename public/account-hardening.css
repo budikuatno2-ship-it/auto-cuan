@@ -6,8 +6,8 @@
 .legacy-gmail-dialog :focus-visible,.account-subscription-control:focus-visible{outline:2px solid #34d399;outline-offset:3px}
 .legacy-gmail-dialog #legacyGmailError{color:#fda4af}.legacy-gmail-dialog button:disabled{opacity:.6}
 #headerAccountSection{flex-wrap:wrap;justify-content:flex-end}#headerAccountSection button,#headerUserLabel{min-height:40px}
-#appMain>.app-header{display:block!important}
-@media(min-width:1024px){#appMain>.app-header .workspace-header-brand,#appMain>.app-header .desktop-header-chips{display:none!important}}
+@media(max-width:1023px){#appMain>.app-header{display:block!important}}
+@media(min-width:1024px){#appMain>.app-header{display:none!important}}
 #financialDataState[hidden],#financialDataContent[hidden],#marketStructureDataState[hidden],#marketStructureDataContent[hidden]{display:none!important}
 body:has(#workspaceSidebarToggle) #acNavLauncher{display:none!important}
 @media(max-width:600px){.workspace-header-brand>.brand-mark,.workspace-header-brand>.min-w-0{display:none!important}.app-header .header-account{flex:1;min-width:0}#headerAccountSection{flex-shrink:1!important;min-width:0}#headerUserLabel{min-height:44px}#headerAccountSection button{min-height:44px}}

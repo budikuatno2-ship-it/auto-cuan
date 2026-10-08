@@ -103,7 +103,7 @@
     }
     var raw = row[col.key];
     if (raw === null || raw === undefined || !Number.isFinite(Number(raw))) {
-      return '<span class="text-gray-600">N/A</span>';
+      return '<span class="text-gray-500">—</span>';
     }
     var num = Number(raw);
     var text = col.fmt(num);
@@ -164,8 +164,9 @@
       return;
     }
 
-    var html = '<table class="w-full text-xs border-collapse">';
+    var html = '<table class="w-full text-xs border-collapse tabular-nums lining-nums">';
     html += '<thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="border-b border-dark-600/30">';
+    html += '<th class="px-2 py-2 text-center font-medium text-gray-500 w-10">#</th>';
     RANKING_COLUMNS.forEach(function (col) {
       var active = rankingState.sortKey === col.key;
       var arrow = active ? (rankingState.sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '';
@@ -177,10 +178,11 @@
     });
     html += '</tr></thead><tbody>';
 
-    filtered.forEach(function (row) {
+    filtered.forEach(function (row, idx) {
       var isSelected = rankingState.selectedTicker && row.ticker === rankingState.selectedTicker;
       html += '<tr class="border-b border-dark-600/10 hover:bg-dark-600/20 transition cursor-pointer ' +
         (isSelected ? 'bg-emerald-500/10' : '') + '" onclick="quickAnalisis(\'' + escapeHtml(row.ticker) + '\')" title="Analisis ' + escapeHtml(row.ticker) + '">';
+      html += '<td class="px-2 py-1.5 text-center text-gray-400 font-mono text-[11px] tabular-nums">' + (idx + 1) + '</td>';
       RANKING_COLUMNS.forEach(function (col) {
         html += '<td class="px-3 py-1.5 text-' + col.align + ' whitespace-nowrap">' + rankingCellHtml(row, col) + '</td>';
       });

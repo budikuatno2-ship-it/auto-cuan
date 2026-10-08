@@ -15,17 +15,25 @@ const MOBILE_NAV_JS = read('public/mobile-nav.js');
 const ACCOUNT_CENTER_JS = read('public/account-center-v1.js');
 const SUB_GATE_JS = read('public/subscription-access-gate-v1.js');
 
-test('Wave 2: Sidebar IA matches DESIGN.md §10.2 canonical 4-group hierarchy', () => {
+test('Wave 2: Sidebar IA matches direct navigation simplification per Wave 6B', () => {
   const sidebarNavMatch = INDEX_HTML.match(/<nav class="sidebar-nav"[^>]*>([\s\S]*?)<\/nav>/);
   assert.ok(sidebarNavMatch, 'Sidebar <nav class="sidebar-nav"> must exist in index.html');
   const sidebarHtml = sidebarNavMatch[1];
 
-  // Verify the 4 canonical groups exist in order
+  // Verify visible category headers have been removed per Wave 6B direct navigation list simplification
   const groupHeaders = [...sidebarHtml.matchAll(/<h2 class="sidebar-group-label">([^<]+)<\/h2>/g)].map(m => m[1].trim().toUpperCase());
+  assert.equal(
+    groupHeaders.length,
+    0,
+    'Sidebar visible group headers must be removed in favor of direct navigation per Wave 6B'
+  );
+
+  // Verify semantic sections exist in order
+  const sectionAriaLabels = [...sidebarHtml.matchAll(/<section class="sidebar-nav-group" aria-label="([^"]+)">/g)].map(m => m[1]);
   assert.deepEqual(
-    groupHeaders,
-    ['OVERVIEW', 'DISCOVER', 'RESEARCH', 'MONITOR'],
-    'Sidebar group headers must be OVERVIEW, DISCOVER, RESEARCH, MONITOR in canonical order'
+    sectionAriaLabels,
+    ['Overview', 'Discover', 'Research', 'Monitor'],
+    'Sidebar semantic sections must retain accessible group labels'
   );
 
   // Group 1: OVERVIEW -> Dashboard

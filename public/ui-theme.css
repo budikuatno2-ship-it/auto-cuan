@@ -3562,7 +3562,7 @@ button:disabled,
 
 /* A data product should not letterbox itself on a business laptop. */
 @media (min-width: 1280px) {
-  #page-dashboard.page-content { max-width: 1240px; }
+  #page-dashboard.page-content { max-width: 100%; }
 }
 
 /* ---- 8q. Admin ----------------------------------------------------------
@@ -3657,11 +3657,9 @@ button:disabled,
 }
 
 @media (min-width: 1536px) {
-  /* Very wide screens were letterboxing a data product into a 1100px column.
-     Widen the reading measure for the surfaces that benefit from it, and leave
-     prose-width sections alone. */
+  /* Very wide screens allow full available width without artificial clamping. */
   #page-screener.page-content,
-  #page-sektor.page-content { max-width: 1320px; }
+  #page-sektor.page-content { max-width: 100%; }
 }
 
 /* =========================================================================
@@ -5825,9 +5823,11 @@ html.light .ticker-link:hover {
 #appSidebar .sidebar-brand-text > span { font-size:10px; color:var(--color-text-secondary); }
 #appSidebar .brand-mark { width:32px !important; height:32px !important; flex:0 0 32px; border-radius:9px; color:var(--brand-mark-ink); background:var(--brand-mark-bg) !important; border:1px solid var(--brand-mark-line); box-shadow:none !important; }
 #appSidebar .sidebar-collapse-toggle { display:grid; place-items:center; width:24px; height:30px; flex-shrink:0; padding:0; margin-left:auto; border:0; background:transparent; color:var(--color-text-secondary); }
-#appSidebar > .sidebar-nav { display:block; flex:1 1 0%; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; padding:8px; }
-#appSidebar .sidebar-nav-group { padding-bottom:5px; }
-#appSidebar .sidebar-group-label { color:var(--color-text-secondary); font-size:9px; font-weight:500; line-height:1.5; letter-spacing:.09em; text-transform:uppercase; padding:12px 12px 6px; margin:0; }
+#appSidebar > .sidebar-nav { display:flex; flex-direction:column; flex:1 1 0%; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; padding:8px; gap:0; }
+#appSidebar .sidebar-nav-group { display:flex; flex-direction:column; gap:2px; padding-bottom:8px; margin-bottom:8px; border-bottom:1px solid var(--color-border-subtle); }
+#appSidebar .sidebar-nav-group:last-child { border-bottom:none; margin-bottom:0; padding-bottom:0; }
+#appSidebar .sidebar-group-label,
+#appSidebar .sidebar-subgroup-label { display:none !important; }
 #appSidebar .sidebar-item { position:relative; display:flex; align-items:center; justify-content:flex-start; min-height:35px; width:100%; padding:7px 11px; gap:10px; border:1px solid transparent; border-radius:7px; background:transparent; color:var(--color-text-secondary); font:500 12px/1.45 Inter,system-ui,sans-serif; text-align:left; box-shadow:none; }
 #appSidebar .sidebar-item.hidden { display:none !important; }
 #appSidebar .sidebar-item > svg { width:16px; height:16px; flex:0 0 16px; }
@@ -5852,7 +5852,9 @@ html.workspace-menu-open { overflow:hidden !important; }
   #appSidebar.is-collapsed { width:72px !important; }
   #appSidebar.is-collapsed > .sidebar-brand { flex-direction:column; padding:14px 8px !important; gap:8px; }
   #appSidebar.is-collapsed .sidebar-collapse-toggle { margin:0; }
-  #appSidebar.is-collapsed .sidebar-group-label { font-size:0; padding:6px 0; margin:4px 8px; border-top:1px solid var(--color-border-subtle); }
+  #appSidebar.is-collapsed .sidebar-group-label { display:none !important; }
+  #appSidebar.is-collapsed .sidebar-nav-group { padding-bottom:8px; margin-bottom:8px; border-bottom:1px solid var(--color-border-subtle); }
+  #appSidebar.is-collapsed .sidebar-nav-group:last-child { border-bottom:none; margin-bottom:0; padding-bottom:0; }
   #appSidebar.is-collapsed .sidebar-item { justify-content:center; min-height:37px; padding:7px; }
   #appSidebar.is-collapsed :is(.sidebar-label,.sidebar-brand-text,.sidebar-badge,.user-info) { display:none !important; }
   #appSidebar.is-collapsed > .sidebar-footer { padding:12px 8px; }
@@ -5865,7 +5867,7 @@ html.workspace-menu-open { overflow:hidden !important; }
   #appSidebar.is-collapsed .sidebar-item { justify-content:flex-start !important; padding:8px 11px !important; }
   #appSidebar.is-collapsed :is(.sidebar-label,.sidebar-brand-text,.user-info) { display:grid !important; }
   #appSidebar.is-collapsed .sidebar-badge { display:inline-block !important; }
-  #appSidebar .sidebar-item { min-height:40px; }
+  #appSidebar .sidebar-item { min-height:44px; padding:10px 12px; font-size:13px; }
   #appSidebar.is-collapsed .sidebar-footer { align-items:stretch !important; }
   #appSidebar.is-collapsed .sidebar-collapse-toggle { margin-left:auto; }
   #appMain > .app-header { background:var(--color-bg-surface); border-radius:0; padding:0; }
@@ -6349,15 +6351,22 @@ html.light .nk-card-item span[style*="16A34A"] {
   color: #15803D !important;
 }
 
-/* Light mode Analisis header & command bar background override (v6.css override) */
+/* Light & dark mode Analisis mount container flattening: avoid nested box-inside-a-box framing */
 html.light [id="page-analisis"] > div:first-child,
 html.light #analisisPartialMount,
-html.light [id="page-analisis"] #analisisPartialMount {
-  background: #FFFFFF !important;
-  background-color: #FFFFFF !important;
+html.light [id="page-analisis"] #analisisPartialMount,
+html:not(.light) [id="page-analisis"] > div:first-child,
+html:not(.light) #analisisPartialMount,
+html:not(.light) [id="page-analisis"] #analisisPartialMount {
+  background: transparent !important;
+  background-color: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border-color: #E2E8F0 !important;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
 }
 
 /* Light mode Analisis header overrides */
@@ -7060,6 +7069,302 @@ html.light { --brand-mark-bg:#e1f5eb; --brand-mark-ink:#07593f; --brand-mark-lin
   border-color: rgba(16, 185, 129, 0.35);
 }
 
+/* ==========================================================================
+   Wave 6: Dashboard & Research Lenses (DESIGN.md §15, §18-§25, §82)
+   ========================================================================== */
 
+/* 1. Continuous Calm Market-Condition Strip */
+#page-dashboard[data-ac-ui="v2"] .market-band-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: var(--ac-surface, #131922);
+  border: 1px solid var(--ac-border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: var(--ac-radius-lg, 12px);
+  overflow: hidden;
+  gap: 0;
+}
 
+#page-dashboard[data-ac-ui="v2"] .market-tile {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 1rem 1.25rem;
+  border-right: 1px solid var(--ac-border-subtle, rgba(255, 255, 255, 0.08)) !important;
+  min-height: auto;
+}
+
+#page-dashboard[data-ac-ui="v2"] .market-tile:last-child {
+  border-right: none !important;
+}
+
+@media (max-width: 768px) {
+  #page-dashboard[data-ac-ui="v2"] .market-band-grid {
+    grid-template-columns: 1fr;
+  }
+  #page-dashboard[data-ac-ui="v2"] .market-tile {
+    border-right: none !important;
+    border-bottom: 1px solid var(--ac-border-subtle, rgba(255, 255, 255, 0.08)) !important;
+  }
+  #page-dashboard[data-ac-ui="v2"] .market-tile:last-child {
+    border-bottom: none !important;
+  }
+}
+
+html.light #page-dashboard[data-ac-ui="v2"] .market-band-grid {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+html.light #page-dashboard[data-ac-ui="v2"] .market-tile {
+  border-right-color: #e2e8f0 !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+/* 2. Compact Top 5 Decision Rows */
+#page-dashboard[data-ac-ui="v2"] .dashboard-decision-row {
+  outline: none;
+  border-color: var(--ac-border-subtle, rgba(255, 255, 255, 0.08));
+  background: var(--ac-surface-2, rgba(255, 255, 255, 0.02));
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+#page-dashboard[data-ac-ui="v2"] .dashboard-decision-row:hover,
+#page-dashboard[data-ac-ui="v2"] .dashboard-decision-row:focus-visible {
+  background: var(--ac-surface-3, rgba(255, 255, 255, 0.04));
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+html.light #page-dashboard[data-ac-ui="v2"] .dashboard-decision-row {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+html.light #page-dashboard[data-ac-ui="v2"] .dashboard-decision-row:hover,
+html.light #page-dashboard[data-ac-ui="v2"] .dashboard-decision-row:focus-visible {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+/* 3. Subtle Low-Noise Excluded Disclosure */
+#page-dashboard[data-ac-ui="v2"] .dashboard-excluded-disclosure {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--ac-border-subtle, rgba(255, 255, 255, 0.06));
+}
+
+#page-dashboard[data-ac-ui="v2"] .dashboard-excluded-disclosure[open] {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+html.light #page-dashboard[data-ac-ui="v2"] .dashboard-excluded-disclosure {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+/* 4. Top 5 History Table */
+#page-dashboard[data-ac-ui="v2"] #top5HistoryList table {
+  border-collapse: collapse;
+}
+
+#page-dashboard[data-ac-ui="v2"] #top5HistoryList thead th {
+  position: sticky;
+  top: 0;
+  background: var(--ac-surface-1, #101620);
+  z-index: 10;
+}
+
+html.light #page-dashboard[data-ac-ui="v2"] #top5HistoryList thead th {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* 5. Ranking Spreadsheet Table */
+#rankingTableWrap table {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+#rankingTableWrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* 6. Research Lenses Motion Restraint */
+@media (prefers-reduced-motion: reduce) {
+  .ac-broker-bubble,
+  #insiderNetworkSvg *,
+  .dashboard-decision-row {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* =========================================================================
+   WAVE 6D: FINAL GEOMETRY CORRECTION — DESKTOP + MOBILE + LIGHT/DARK
+   ========================================================================= */
+
+/* 1. Desktop: Completely remove .app-header from desktop layout flow */
+@media (min-width: 1024px) {
+  #appMain > .app-header {
+    display: none !important;
+  }
+
+  /* Single canonical owner of desktop outer page gutter */
+  #appContent {
+    padding-top: 14px !important;
+    padding-bottom: 32px !important;
+    padding-inline: 18px !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Eliminate accumulated nested padding on all authenticated pages */
+  .page-content,
+  #page-dashboard,
+  #page-screener,
+  #page-sektor,
+  #page-analisis,
+  #page-chart,
+  #page-news,
+  #page-portofolio,
+  #page-trackrecord,
+  #page-watchlist,
+  #page-subscription {
+    padding-inline: 0 !important;
+    padding-top: 0 !important;
+    margin-inline: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* 2. Mobile & Tablet: Header remains; Drawer footer separates strictly */
+@media (max-width: 1023px) {
+  #appMain > .app-header {
+    display: block !important;
+  }
+  #appMain > .app-header #headerAccountSection {
+    display: flex !important;
+  }
+  #appSidebar .user-profile-badge,
+  #appSidebar .sidebar-utility-actions {
+    display: none !important;
+  }
+  #appSidebar .sidebar-footer {
+    padding: 10px 12px !important;
+  }
+
+  /* Mobile: Single outer gutter (12px) without nested multiplication */
+  #appContent {
+    padding-inline: 12px !important;
+    padding-top: 10px !important;
+    padding-bottom: 32px !important;
+    max-width: 100% !important;
+  }
+  .page-content,
+  #page-dashboard,
+  #page-screener,
+  #page-sektor,
+  #page-analisis,
+  #page-portofolio,
+  #page-trackrecord,
+  #page-watchlist {
+    padding-inline: 0 !important;
+    padding-top: 0 !important;
+    margin-inline: 0 !important;
+    max-width: 100% !important;
+  }
+}
+
+/* 3. Mobile Dashboard Density & Market Condition Surface */
+@media (max-width: 640px) {
+  .dashboard-hero {
+    padding: 12px 14px !important;
+    margin-bottom: 12px !important;
+    border-radius: 12px !important;
+  }
+  .dashboard-hero h2,
+  .dashboard-hero h1 {
+    font-size: 18px !important;
+    margin-top: 6px !important;
+    margin-bottom: 4px !important;
+  }
+  .dashboard-hero p {
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+    margin-top: 4px !important;
+  }
+  #page-dashboard .ac-section,
+  #page-dashboard .space-y-4 > * + * {
+    margin-top: 14px !important;
+  }
+  #page-dashboard[data-ac-ui="v2"] .market-tile {
+    padding: 8px 12px !important;
+  }
+  #page-dashboard[data-ac-ui="v2"] .market-tile .market-tile-value {
+    font-size: 18px !important;
+    line-height: 1.1 !important;
+  }
+}
+
+/* 4. Research Routes: Remove decorative page-sized white sheets and black frames */
+.analisis-tab-panel > .unified-card,
+html.light .analisis-tab-panel > .unified-card,
+html:not(.light) .analisis-tab-panel > .unified-card {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+#analisisPartialMount,
+html.light #analisisPartialMount,
+html:not(.light) #analisisPartialMount {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* 5. Desktop Page Headings sit clean and high */
+#page-analisis .page-header,
+.page-header {
+  margin-top: 0 !important;
+  margin-bottom: 12px !important;
+}
+#page-analisis .page-title,
+.page-title {
+  font-size: 20px !important;
+  line-height: 1.2 !important;
+  margin-bottom: 2px !important;
+}
+#page-analisis .page-subtitle,
+.page-subtitle {
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+
+/* 6. Dark Mode: Flat matte clean surfaces without noisy radial gradients or glows */
+html:not(.light) .dashboard-hero {
+  background: var(--color-bg-surface, #11161d) !important;
+  border-color: var(--color-border-subtle, #1e2632) !important;
+  box-shadow: none !important;
+}
+html:not(.light) .dashboard-hero::after {
+  display: none !important;
+}
+
+/* 7. Compact Local Error States (Requirement 16) */
+.ac-error-state,
+#brokerHunterContent .border-red-500\/20,
+#bandarmologiIntelContent .border-red-500\/20 {
+  max-width: 520px !important;
+  margin: 16px auto !important;
+  padding: 14px 18px !important;
+}
 

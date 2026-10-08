@@ -29,8 +29,8 @@
   --ease-standard: cubic-bezier(.2,.8,.2,1);
   --ease-emphasized: cubic-bezier(.16,1,.3,1);
   --ease-exit: cubic-bezier(.4,0,1,1);
-  --ac-page-max: 1560px;
-  --ac-page-pad: clamp(14px, 1.8vw, 28px);
+  --ac-page-max: 100%;
+  --ac-page-pad: 18px;
 }
 
 html {
@@ -278,7 +278,8 @@ html.light .header-status-chip {
 #page-money-management,
 #page-analisis,
 #page-news {
-  padding-top: clamp(12px, 1.2vw, 20px);
+  padding-top: 0;
+  padding-inline: 0 !important;
 }
 
 html.light :is(
@@ -707,10 +708,20 @@ html.light #page-analisis .analisis-tab.active {
   box-shadow: 0 5px 14px rgba(18,35,29,.10) !important;
 }
 
-html.light #page-analisis :is(.unified-top-bar,.unified-card,.broker-summary-panel) {
+html.light #page-analisis :is(.unified-top-bar,.broker-summary-panel) {
   background: #ffffff !important;
   border-color: var(--research-line) !important;
   box-shadow: var(--ac-shadow-1) !important;
+}
+
+.analisis-tab-panel > .unified-card,
+html.light .analisis-tab-panel > .unified-card,
+html:not(.light) .analisis-tab-panel > .unified-card {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
 }
 
 html.light #page-analisis .unified-top-bar {
@@ -1737,13 +1748,15 @@ html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) tb
   background: #f6f8f7 !important;
 }
 
-/* Desktop density: use available width without turning rows into billboards. */
+/* Desktop density: use available width without artificial column clamping. */
 @media (min-width: 1280px) {
   #page-screener,
   #page-watchlist,
   #page-sektor,
-  #page-trackrecord {
-    max-width: 1400px !important;
+  #page-trackrecord,
+  #page-analisis,
+  #page-dashboard {
+    max-width: 100% !important;
   }
 }
 
@@ -1804,7 +1817,7 @@ html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) tb
 .ac-financial-coverage{min-width:132px;padding:10px 11px;border:1px solid var(--fin-line);border-radius:12px;background:rgba(255,255,255,.68)}.ac-financial-coverage span,.ac-financial-coverage strong{display:block}.ac-financial-coverage span{color:var(--ac-text-dim);font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.ac-financial-coverage strong{margin-top:3px;color:var(--ac-text);font-size:13px;font-variant-numeric:tabular-nums}
 .ac-financial-coverage i{--ac-financial-coverage:0%;display:block;position:relative;overflow:hidden;height:3px;margin-top:8px;border-radius:999px;background:rgba(15,116,88,.10)}.ac-financial-coverage i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--ac-financial-coverage);border-radius:inherit;background:#0f7458;transition:width 320ms var(--ease-emphasized)}
 .ac-financial-grid{display:grid;grid-template-columns:minmax(260px,.92fr) minmax(0,1.6fr);gap:12px;align-items:stretch}
-.ac-financial-focus-card{position:relative;overflow:hidden;min-height:240px;padding:22px;border:1px solid rgba(15,116,88,.16);border-radius:16px;background:radial-gradient(circle at 82% 20%,rgba(15,116,88,.13),transparent 34%),linear-gradient(145deg,#10231d 0%,#162b24 100%);color:#f3faf7}.ac-financial-focus-card::after{content:"";position:absolute;width:210px;height:210px;right:-105px;bottom:-110px;border:1px solid rgba(152,232,207,.12);border-radius:50%}
+.ac-financial-focus-card{position:relative;overflow:hidden;min-height:240px;padding:22px;border:1px solid rgba(15,116,88,.16);border-radius:16px;background:#10231d;color:#f3faf7}
 .ac-financial-focus-label{position:relative;z-index:1;display:block;color:#a8bdb6;font-size:9px;font-weight:760;letter-spacing:.09em;text-transform:uppercase}.ac-financial-focus-card>strong{position:relative;z-index:1;display:block;margin-top:26px;color:#f7fffb;font-size:clamp(40px,6vw,68px);line-height:.9;letter-spacing:-.07em;font-weight:620;font-variant-numeric:tabular-nums}.ac-financial-focus-card>small{position:relative;z-index:1;display:block;margin-top:12px;color:#b6c8c2;font-size:10px}.ac-financial-focus-card>p{position:absolute;z-index:1;left:22px;right:22px;bottom:18px;margin:0;color:#8ca49b;font-size:9.5px;line-height:1.55}
 .ac-financial-orbit{position:absolute;inset:0;pointer-events:none;opacity:.36}.ac-financial-orbit i{position:absolute;border:1px solid rgba(136,223,197,.18);border-radius:50%}.ac-financial-orbit i:nth-child(1){width:180px;height:180px;right:-60px;top:-72px}.ac-financial-orbit i:nth-child(2){width:112px;height:112px;right:-16px;top:-34px}.ac-financial-orbit i:nth-child(3){width:6px;height:6px;right:58px;top:38px;background:#75d8ba;border:0;box-shadow:0 0 0 8px rgba(117,216,186,.08)}
 .ac-financial-metric-stack{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.ac-financial-metric{min-width:0;padding:17px 18px;border:1px solid var(--fin-line);border-radius:15px;background:rgba(255,255,255,.88)}.ac-financial-metric:first-child{grid-column:1/-1}.ac-financial-metric span{display:block;color:var(--ac-text-dim);font-size:9px;font-weight:760;letter-spacing:.04em}.ac-financial-metric strong{display:block;margin-top:9px;color:var(--ac-text);font-size:clamp(22px,3vw,36px);line-height:1;letter-spacing:-.045em;font-weight:620;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.ac-financial-metric small{display:block;margin-top:8px;color:var(--ac-text-muted);font-size:9px;line-height:1.45}
@@ -1813,7 +1826,7 @@ html.light :is(#page-screener,#page-watchlist,#page-sektor,#page-trackrecord) tb
 
 .ac-research-data-head{align-items:flex-start!important;gap:18px}.ac-research-state{min-height:180px;display:grid;place-items:center;padding:24px;color:var(--ac-text-muted);font-size:12px;text-align:center}.ac-research-data-content{padding:18px}.ac-metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.ac-metric-tile{min-width:0;padding:17px;border:1px solid var(--ac-line);border-radius:12px;background:#fbfcfb}.ac-metric-tile span{display:block;color:var(--ac-text-muted);font-size:10px;font-weight:650;letter-spacing:.02em}.ac-metric-tile strong{display:block;margin-top:8px;color:var(--ac-text);font-size:clamp(20px,2vw,28px);font-weight:650;line-height:1.15;letter-spacing:-.035em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.ac-metric-tile small{display:block;margin-top:7px;color:var(--ac-text-dim);font-size:10px;line-height:1.45}.ac-research-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px;border:1px solid var(--ac-line);border-radius:12px;overflow:hidden;background:var(--ac-surface-2)}.ac-research-detail{min-width:0;padding:13px 15px;background:#fff}.ac-research-detail:nth-child(2n){border-left:1px solid var(--ac-line)}.ac-research-detail:nth-child(n+3){border-top:1px solid var(--ac-line)}.ac-research-detail span{display:block;color:var(--ac-text-dim);font-size:10px}.ac-research-detail strong{display:block;margin-top:5px;color:var(--ac-text);font-size:11px;font-weight:650;overflow-wrap:anywhere}.ac-research-note,.ac-research-footnote{margin-top:12px;padding:11px 13px;border:1px solid rgba(18,35,29,.08);border-radius:10px;background:#f7f9f8;color:var(--ac-text-muted);font-size:10px;line-height:1.6}
 
-html:not(.light) .ac-financial-shell{--fin-bg:#0b1110;--fin-panel:#101816;--fin-line:rgba(168,195,184,.12);--fin-soft:rgba(52,211,153,.08);background:radial-gradient(900px 360px at 92% -10%,rgba(52,211,153,.08),transparent 60%),linear-gradient(180deg,#0d1412 0%,#090e0d 100%);box-shadow:none}
+html:not(.light) .ac-financial-shell{--fin-bg:#0b1110;--fin-panel:#101816;--fin-line:rgba(168,195,184,.12);--fin-soft:rgba(52,211,153,.08);background:var(--color-bg-surface,#11161d);box-shadow:none}
 html:not(.light) .ac-financial-symbol{color:#8ce5c8;background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.14)}html:not(.light) .ac-financial-coverage,html:not(.light) .ac-financial-metric,html:not(.light) .ac-financial-source{background:rgba(15,23,21,.76)}html:not(.light) .ac-research-ticker-input{background:rgba(15,23,42,.7);color:#edf4ef}html:not(.light) .ac-research-load-btn{background:#10b981;border-color:#10b981;color:#03140f}html:not(.light) .ac-metric-tile,html:not(.light) .ac-research-detail{background:rgba(15,23,42,.52)}html:not(.light) .ac-research-note,html:not(.light) .ac-research-footnote{background:rgba(15,23,42,.45)}
 
 #landingPage .landing-hero-v2{min-height:min(860px,calc(100svh - 64px))}

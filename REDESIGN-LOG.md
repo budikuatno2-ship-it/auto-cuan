@@ -832,3 +832,249 @@ Base SHA: 1e11969feaac2fb2d8a94805f800b5f3dcd6b648
 
 Status: WAVE 5B FINAL CLOSURE COMPLETE.
 
+
+---
+
+## Wave 6 — Dashboard & Research Lenses
+
+Date: 2026-10-08
+Worktree: C:\Users\ADVAN\.gemini\antigravity\worktrees\auto-cuan-2\fix_uiux_antigravity_repair
+Branch: fix_uiux_antigravity_repair
+Base SHA: 6289c2b44a6afdbd123a78738a7062f77e605ada (Wave 1–5 Checkpoint Commit)
+
+### 1. Scope & Objective (DESIGN.md §15, §18, §19, §21–§25, §82)
+- **Dashboard Workstation Surface (§15, §82):**
+  - Applied `data-ac-ui="v2"` to `#page-dashboard`.
+  - Re-architected continuous market-condition strip with internal hairline dividers between IHSG, Radar Hari Ini, and Data Terakhir.
+  - Hid and encapsulated Auto Monitor completely in `#page-dashboard` with `hidden style="display:none !important;" aria-hidden="true"` to prevent DOM layout intrusion while preserving existing runtime safety handlers.
+  - Made Top 5 Radar panel occupy full width (`w-full`).
+  - Refactored `renderDashboardTop5` into compact ranked decision rows (`.dashboard-decision-row`) displaying `#` rank, Ticker, Setup badge, Price, Score, Grade, Risk, R/R, and action button while preserving click handlers (`openDashboardPickDetail(tickerJs)`).
+  - Maintained exact `<div class="dash-rank">' + escapeHtml(rank) + '</div>` markup contract for hardening regressions.
+  - Demoted excluded radar candidates to a calm, low-noise `<details class="dashboard-excluded-disclosure">` disclosure element.
+  - Replaced Top 5 history cards with a compact, sticky-header audit table featuring tabular numerals (`tabular-nums lining-nums`).
+- **Analisis & Chart Surface (§18, §19, §82):**
+  - Unified two subtabs: "Analisis AI" and "Chart & AI Vision".
+  - Maintained 2-column cockpit architecture (evidence left, assistant right) across inline template and both partial files (`partials/analisis-saham.partial.html` and `public/partials/analisis-saham.partial.html`).
+  - Preserved standalone `page-chart` compatibility surface.
+- **Bandarmologi Surface (§21, §82):**
+  - Table-first presentation default across Broker Summary and Akumulasi Broker with side-by-side Top Buyers and Top Sellers tables.
+  - Eliminated continuous floating physics (`acBubbleFloat1-4`) in bubble visualization, switching to static rest state with smooth pop-in entry (`acBubblePopIn`).
+  - Added `@media (prefers-reduced-motion: reduce)` suppression for all broker bubbles and motion primitives.
+- **Sinyal Intelijen Surface (§22, §82):**
+  - Implemented 4 clear evidence cards: Harga di Bawah Modal Bandar, Silent Foreign Accumulation, Ritel Cutloss vs Bandar Nampung, Rasio Konsentrasi CR3/CR5.
+  - Isolated subsystem failure handling so backend/network errors display localized error states without crashing the whole page.
+  - Enforced canonical states: Loading, Ready, Refreshing, Empty, Partial, Stale, Local Error.
+- **Broker Hunter Surface (§23, §82):**
+  - Promoted broker-first context card (`hunterBroker`, security name, foreign/domestic badge, quick broker selection chips).
+  - Implemented dense, side-by-side Top 10 Akumulasi (Net Buy) and Top 10 Distribusi (Net Sell) tables.
+  - Applied tabular lining figures and responsive overflow handling to prevent mobile crushing.
+- **Insider Network Surface (§24, §82):**
+  - Streamlined entity explorer: roster table + concentric radial relationship graph.
+  - Eliminated continuous spinning physics (`solarOrbit`, `satelliteOrbit`, `sunPulse`, `sunCoronaRotate`) and heavy SVG `feGaussianBlur` neon filter slop.
+- **Ranking Surface (§25, §82):**
+  - Implemented spreadsheet-like data presentation with `#` rank index column, sticky table header, and column sorting.
+  - Replaced missing or unavailable metric values with canonical em-dash `—` (never `N/A`, never fake `0`).
+  - Applied `tabular-nums lining-nums` font metrics.
+- **Pattern Radar (§82):**
+  - Strictly ADMIN-ONLY. Gated from normal navigation; zero elevation or exposure to regular users.
+
+### 2. Files Modified / Created:
+- `public/index.html`: Added `data-ac-ui="v2"` on `#page-dashboard`; hid Auto Monitor; full-width Top 5 container; compact `.dashboard-decision-row` markup; low-noise excluded disclosure; compact Top 5 history audit table.
+- `public/ui-theme.css`: Added styles for unified market band strip, compact decision rows, excluded disclosure, compact history table, ranking table sticky header and tabular font formatting, and prefers-reduced-motion suppression.
+- `public/bandarmologi-runtime.js`: Removed continuous float animations (`acBubbleFloat1-4`); added reduced-motion CSS; removed spinning orbit animations and glow filters from Insider SVG graph.
+- `public/analisis-saham-runtime.js`: Added `#` index column to Ranking table; applied `tabular-nums lining-nums`; replaced `N/A` fallback with `—`.
+- `tools/local-dev-server.js`: Added `action === 'broker-hunter'` preview mock response to support local dev verification without VPS tunnel.
+- `tools/curated-build-tests.json`: Registered `test/wave6-dashboard-research-lenses.test.js`.
+- `test/wave6-dashboard-research-lenses.test.js`: Comprehensive 15-test contract suite for Wave 6 requirements (15/15 passing).
+- `tools/capture-wave6-evidence.js`: Headless Chrome screenshot harness for all 7 required visual QC artifacts.
+- `REDESIGN-LOG.md`: Appended this Wave 6 log entry.
+
+### 3. Visual Evidence Captured (`screenshots/wave6-dashboard-research/`):
+1. `wave6-dashboard-1440x900.png`: Dashboard workstation (1440x900) showing unified market band strip, full-width Top 5 radar, compact decision rows, subtle excluded disclosure, and hidden Auto Monitor.
+2. `wave6-analisis-chart-1440x900.png`: Analisis & Chart (1440x900) with Analisis AI / Chart & AI Vision subtabs and 2-column cockpit structure.
+3. `wave6-bandarmologi-1440x900.png`: Bandarmologi (1440x900) with Table-First Broker Summary side-by-side tables and static bubble resting state.
+4. `wave6-sinyal-intelijen-1440x900.png`: Sinyal Intelijen (1440x900) with 4 structured evidence cards and localized status badges.
+5. `wave6-broker-hunter-1440x900.png`: Broker Hunter (1440x900) with broker context card and dense Top 10 Akumulasi / Distribusi tables.
+6. `wave6-insider-1440x900.png`: Insider Network (1440x900) with entity explorer and clean concentric radial graph without spinning physics.
+7. `wave6-ranking-1440x900.png`: Ranking (1440x900) spreadsheet-grade table with `#` index column, tabular figures, and em-dash missing values.
+
+### 4. Verification & Regression Safety:
+- **Wave 6 Test Suite:** `node --test test/wave6-dashboard-research-lenses.test.js`: 15/15 tests passing (100%).
+- **Full Wave Suite (Waves 1–6):** `node --test test/wave*.test.js`: 64/64 tests passing (100%).
+- **Hardening Research Suite:** `node --test test/hardening-research-runtime.test.js`: 3/3 tests passing (100%).
+- **Runtime Hardening Suite:** `node --test test/runtime-hardening-regressions.test.js`: 9/9 tests passing (100%).
+- **Dashboard Tests:** `node --test test/dashboard-*.test.js`: 73/73 tests passing (100%).
+- **Full Smoke Suite:** `npm run test:smoke`: 75/75 test files passed (271/271 tests passing).
+- **Syntax Validation:** `npm run validate:syntax`: 1071 .js files parsed cleanly; 618 curated tests verified.
+- **Git Hygiene:** `git diff --check`: 0 errors. Zero commits, zero pushes, zero PRs. Wave 7 NOT started.
+
+Status: WAVE 6 COMPLETE — READY FOR USER REVIEW.
+
+---
+
+## Wave 6B — Final Navigation Simplification Closure
+
+```text
+Wave: Wave 6B — Final Navigation Simplification Closure
+Baseline SHA: 6289c2b44a6afdbd123a78738a7062f77e605ada
+Scope:
+- Explicit user-approved shell simplification: remove all visible sidebar category and subgroup headings.
+- Removed: OVERVIEW, DISCOVER, RESEARCH, TEKNIKAL, ARUS BANDAR, INTEL & RELASI, STRUKTUR & VALUASI, PERINGKAT & SEKTOR, MONITOR.
+- Converted sidebar to a direct navigation list in canonical order:
+  1. Dashboard
+  2. Screener
+  3. Sektor Hot
+  4. Analisis & Chart
+  5. Bandarmologi
+  6. Broker Hunter
+  7. Sinyal Intelijen
+  8. Insider
+  9. Financial
+  10. Struktur Pasar
+  11. Ranking
+  12. Pattern Radar [ADMIN]
+  13. Watchlist
+  14. Portfolio
+  15. Track Record
+- Subtle spatial grouping maintained via quiet hairlines (border-bottom: 1px solid var(--color-border-subtle)) and 8px group spacing.
+- Consistent row heights and mobile touch targets >= 44px for .sidebar-item.
+- Desktop account contract preserved: sidebar footer houses theme toggle, budi AKUN, and Logout; topbar strictly suppresses duplicate account controls.
+- Mobile account contract preserved: topbar displays headerAccountSection with headerUserLabel; drawer displays direct navigation list with account footer.
+- Governed execution: ZERO git commits, ZERO git pushes, ZERO PRs. Wave 7 NOT started.
+
+Files changed:
+- public/index.html (removed 4 h2.sidebar-group-label and 5 div.sidebar-subgroup-label elements)
+- public/ui-theme.css (added hairline group dividers, hid residual label selectors, ensured >=44px mobile touch targets)
+- test/wave2-shell-navigation.test.js (updated to verify direct list without visible category headings)
+- test/final-wave-4b-targeted.test.js (updated FINAL-RISK-003 for direct navigation list without visible subgroup headings)
+- tools/capture-wave6b-evidence.js (screenshot capture harness)
+- REDESIGN-LOG.md (this entry)
+
+Visual evidence:
+- screenshots/wave6-dashboard-research/wave6b-sidebar-desktop-light-1440x900.png
+- screenshots/wave6-dashboard-research/wave6b-sidebar-desktop-dark-1440x900.png
+- screenshots/wave6-dashboard-research/wave6b-sidebar-mobile-390x844.png
+
+Verification:
+- node --test test/wave2-shell-navigation.test.js test/final-wave-4a-targeted.test.js test/final-wave-4b-targeted.test.js test/wave6-dashboard-research-lenses.test.js (81/81 passed)
+- npm run validate:syntax (1072 .js files parsed cleanly)
+- npm run test:smoke (75/75 files passed, 271 tests passed)
+- git diff --check (0 whitespace/formatting errors)
+
+Status: WAVE 6B COMPLETE — READY FOR USER REVIEW.
+```
+
+---
+
+## Wave 6C — Final Responsive Shell + Dark Mode Cleanup
+
+```text
+Wave: Wave 6C — Final Responsive Shell + Dark Mode Cleanup
+Baseline SHA: 6289c2b44a6afdbd123a78738a7062f77e605ada
+Worktree: C:\Users\ADVAN\.gemini\antigravity\worktrees\auto-cuan-2\fix_uiux_antigravity_repair
+Branch: fix_uiux_antigravity_repair
+
+Scope:
+1. Desktop — Move Content Higher:
+   - Sleek authenticated topbar (~42px height).
+   - Unified authenticated page top padding to 6px across all authenticated views.
+   - Removed unnecessary top blank bands and dead vertical zones; titles, action bars, and tabs sit immediately below the topbar.
+
+2. Desktop — Maximize Usable Horizontal Space:
+   - Expanded #appContent and .page-content to 100% available canvas width.
+   - Removed restrictive max-w-[1100px], max-w-[1180px], max-w-[1280px], and 1400px clamping from data-heavy views (Screener, Financial, Struktur Pasar, Bandarmologi, Broker Hunter, Sinyal Intelijen, Insider, Ranking, Dashboard, Sektor Hot, Track Record).
+   - Applied single canonical page gutter: padding-inline: clamp(20px, 2.2vw, 32px).
+   - Tables and analytical panels stretch naturally across the workstation monitor.
+
+3. Remove Unnecessary Outer Card Framing:
+   - Flattened .dashboard-hero: removed radial gradients, glowing ::after pseudo-elements, and heavy drop shadows.
+   - Flattened #analisisPartialMount: removed outer card borders, background overlays, and box shadows so research lenses integrate cleanly into the canvas.
+
+4. Dark Mode — Crisp Matte Surfaces:
+   - Eliminated noisy radial gradients, spotlight pseudo-elements, and glowing cyan/emerald blobs (.dashboard-hero, .ac-financial-shell, .ac-financial-focus-card, .mobile-nav-row).
+   - Enforced canonical flat dark tokens (--color-bg-canvas #0b0f14, --color-bg-surface #11161d, --color-border-subtle #1e2632).
+
+5. Sidebar & Desktop Account Contract (Strict):
+   - Direct navigation list (zero visible category headings per Wave 6B) retained.
+   - Sidebar footer houses complete desktop account controls: Theme toggle, budi AKUN profile button, and Logout button.
+   - Desktop topbar strictly suppresses duplicate account actions (#headerAccountSection display: none !important).
+
+6. Mobile Drawer & Topbar Separation Contract (Final):
+   - Mobile topbar keeps #headerAccountSection visible for immediate access without opening drawer.
+   - Mobile drawer footer strictly suppresses duplicate budi AKUN profile and Logout actions (#appSidebar .user-profile-badge, #appSidebar .sidebar-utility-actions { display: none !important; }), displaying ONLY #themeToggleCompact.
+   - Clean 14px gutters, touch targets >= 44px, inputs >= 16px, zero page horizontal overflow (scrollWidth <= clientWidth).
+
+Files changed:
+- public/index.html (cleaned inline max-w clamping and redundant nested padding on pages)
+- public/index-shell.css (flattened dashboard-hero gradients and mobile-nav-row overlays)
+- public/final-uiux-polish.css (set --ac-page-max: 100%, --ac-page-pad: clamp(20px, 2.2vw, 32px), page padding-top: 6px, flattened financial cards)
+- public/ui-theme.css (added Wave 6C desktop and mobile shell rules, flattened #analisisPartialMount, enforced mobile drawer separation)
+- tools/capture-wave6c-evidence.js (evidence capture script)
+- REDESIGN-LOG.md (this entry)
+
+Visual evidence (6 key screenshots in screenshots/wave6c-evidence/):
+- wave6c-desktop-light-dashboard-1440x900.png
+- wave6c-desktop-light-broker-hunter-1440x900.png
+- wave6c-desktop-dark-sinyal-1440x900.png
+- wave6c-mobile-dashboard-390x844.png
+- wave6c-mobile-nav-open-390x844.png
+- wave6c-mobile-data-route-390x844.png
+
+Verification:
+- Targeted Shell & Wave 6 Suites: 33/33 tests passing.
+- Smoke Suite (npm run test:smoke): 75/75 files passing (271/271 tests passing).
+- Syntax Check (npm run validate:syntax): 1072 .js files parsed cleanly.
+- Git Diff Check (git diff --check): 0 errors.
+- Governance: ZERO commits, ZERO pushes, ZERO PRs. Wave 7 NOT started.
+
+Status: WAVE 6C COMPLETE — READY FOR USER REVIEW.
+```
+
+---
+
+## Wave 6D — Final Geometry Correction (Desktop + Mobile + Light/Dark)
+
+```text
+Wave: Wave 6D — Final Geometry Correction (Desktop + Mobile + Light/Dark)
+Baseline SHA: 6289c2b44a6afdbd123a78738a7062f77e605ada
+Worktree: C:\Users\ADVAN\.gemini\antigravity\worktrees\auto-cuan-2\fix_uiux_antigravity_repair
+Branch: fix_uiux_antigravity_repair
+
+Root Causes Diagnosed & Corrected:
+1. Desktop Empty Topbar Band:
+   - Root cause: public/account-hardening.css contained `#appMain>.app-header { display: block !important; }` overriding shell CSS and keeping a dead 42px header band in layout flow.
+   - Fix: Scoped `#appMain>.app-header` to `@media(max-width:1023px){display:block!important}` and `@media(min-width:1024px){display:none!important}`.
+   - Result: Header completely removed from layout flow on desktop (display: none, height: 0). Content begins cleanly at top: ~18px from viewport edge.
+
+2. Single Owner for Desktop Page Gutter:
+   - Root cause: Accumulated padding across #appContent and nested route containers (.page-content, #page-dashboard, #page-analisis, etc.).
+   - Fix: #appContent is the sole owner of workstation outer padding (padding-top: 14px; padding-inline: 18px;). Zeroed out padding-inline on .page-content and individual page containers.
+   - Result: Content starts exactly at 258px (240px sidebar + 18px gutter) and ends at 1407px (1425px - 18px), spanning the full 1149px usable canvas with zero margin accumulation.
+
+3. Flattened Page-Sized Outer Sheets / Dark Frames:
+   - Root cause: .analisis-tab-panel > .unified-card and #analisisPartialMount acted as giant decorative cards encasing entire routes, creating a "sheet inside canvas" appearance in light mode and multiple black frames in dark mode.
+   - Fix: Flattened outer containers (background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important;).
+   - Result: Functional panels sit directly on Level 0 canvas (#0b0f14 in dark, #f8fafc in light).
+
+4. Mobile Layout Density:
+   - Root cause: Overly tall dashboard cards and nested padding eating screen area.
+   - Fix: Compact hero card (12px padding), compact market condition card, tight 14px section gaps, 12px horizontal gutter on #appContent.
+   - Result: Dense, scannable mobile workstation without horizontal overflow.
+
+5. Visual Evidence Captured (screenshots/wave6d-evidence/):
+   - wave6d-dashboard-desktop-light-1440x900.png
+   - wave6d-broker-hunter-desktop-light-1440x900.png
+   - wave6d-sinyal-desktop-dark-1440x900.png
+   - wave6d-dashboard-mobile-390x844.png
+   - wave6d-screener-mobile-390x844.png
+
+6. Verification & Regression Safety:
+   - Targeted Shell & Navigation Suite: 33/33 tests passing.
+   - Full Smoke Suite (npm run test:smoke): 75/75 files passing (271/271 tests passing).
+   - Full Syntax Check (npm run validate:syntax): 1077 .js files parsed cleanly.
+   - Git Diff Hygiene (git diff --check): 0 errors.
+   - Governance: ZERO commits, ZERO pushes, ZERO PRs. Wave 7 NOT started.
+
+Status: WAVE 6D COMPLETE — VERIFIED AND READY FOR USER REVIEW.
+```
+
