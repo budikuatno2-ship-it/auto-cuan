@@ -609,6 +609,8 @@
   "test/wave5-screener-sektor-hot.test.js",
   "test/wave6-dashboard-research-lenses.test.js",
   "test/wave7-monitoring.test.js",
+  "test/wave8-auth-account-system-states.test.js",
+  "test/wave8b-login-account-refinements.test.js",
   "test/web-runtime-audit.test.js",
   "test/web-security-boundaries.test.js",
   "test/webhook-alert-engine.test.js",

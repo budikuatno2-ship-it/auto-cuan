@@ -406,10 +406,18 @@
             <button onclick="closeLoginModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal masuk">&times;</button>
         </div>
         <form id="loginForm" class="space-y-3" onsubmit="event.preventDefault();doLogin();return false;">
-            <div><label for="loginUsername" class="block text-xs font-medium text-gray-400 mb-1">Gmail</label><input type="text" id="loginUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" inputmode="email" placeholder="nama@gmail.com" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><p class="mt-1.5 text-[11px] text-gray-500">Akun lama dan administrator tetap dapat masuk menggunakan username.</p></div>
+            <div><label for="loginUsername" class="block text-xs font-medium text-gray-400 mb-1">Email atau username</label><input type="text" id="loginUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" inputmode="email" placeholder="email atau username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><p class="mt-1.5 text-[11px] text-gray-500">Masukkan Gmail atau username. Keduanya dapat digunakan untuk login.</p></div>
             <div><label for="loginPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="loginPassword" name="password" autocomplete="current-password" placeholder="Masukkan password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))doLogin()"><button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
             <div id="loginError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
             <button type="submit" id="loginBtn" onclick="doLogin()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Masuk</button>
+            <div class="login-google-divider" aria-hidden="true"><span>atau</span></div>
+            <button type="button" class="login-google-btn" disabled aria-disabled="true" aria-label="Masuk dengan Google - segera tersedia">
+                <span class="login-google-btn-inner">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                    <span>Masuk dengan Google</span>
+                </span>
+                <span class="login-google-badge">Segera tersedia</span>
+            </button>
             <div class="text-center"><button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-blue-400 hover:underline">Lupa Password?</button></div>
         </form>
     </div>
@@ -441,6 +449,16 @@
                 <p><strong id="registerVerificationCode" class="font-mono text-lg tracking-widest text-white"></strong></p>
                 <p id="registerVerificationExpiry" class="text-[11px] text-gray-400"></p>
                 <p class="text-[11px] leading-relaxed text-gray-400">Salin kode ini, lalu buka bot verifikasi dan kirim kodenya ke chat bot. Jangan bagikan kode ini ke siapa pun.</p>
+            </div>
+            <!-- Prominent single active status card -->
+            <div class="approval-active-status" role="status" aria-label="Status pendaftaran akun">
+                <div class="approval-state-card approval-state-pending" aria-current="true">
+                    <span class="approval-state-icon" aria-hidden="true">&#9676;</span>
+                    <div class="approval-state-content">
+                        <span class="approval-state-label">Menunggu Persetujuan Admin</span>
+                        <span class="approval-state-note">Pendaftaran berhasil diterima. Akses akun Anda akan diaktifkan setelah diverifikasi administrator.</span>
+                    </div>
+                </div>
             </div>
             <div class="space-y-2">
                 <button type="button" id="copyApprovalCodeBtn" onclick="copyRegistrationApprovalCode()" class="w-full rounded-xl border border-emerald-500/40 px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10 transition">Salin Kode Verifikasi</button>
@@ -4013,14 +4031,33 @@ function openAuthChoiceModal(message) {
     // suppressed and the gate reasserted. Admins reach login through the
     // dedicated control on the maintenance screen instead.
     if (maintenanceLockActive()) { applyMaintenanceGate(); return; }
+    // Ensure clean single-dialog stacking: close any secondary forms
+    var loginM = document.getElementById('loginModal');
+    var regM = document.getElementById('registerModal');
+    if (loginM) loginM.classList.add('hidden');
+    if (regM) regM.classList.add('hidden');
+
     var modal = document.getElementById('authChoiceModal');
     var msg = document.getElementById('authChoiceMessage');
     if (msg && message) msg.textContent = message;
-    if (modal) modal.classList.remove('hidden');
+    // When triggered by session expiry, emphasize "Masuk kembali" over "Daftar"
+    var isExpiry = message && message.indexOf('Sesi') === 0;
+    if (modal) {
+        modal.setAttribute('data-context', isExpiry ? 'expiry' : 'default');
+        var loginLabel = modal.querySelector('.landing-auth-card:first-of-type > span:first-child');
+        if (loginLabel) loginLabel.textContent = isExpiry ? 'Masuk Kembali' : 'Login';
+        modal.classList.remove('hidden');
+        document.documentElement.classList.add('auth-dialog-open');
+        var primaryAction = modal.querySelector('.landing-auth-card:first-of-type');
+        if (primaryAction && typeof primaryAction.focus === 'function') {
+            setTimeout(function () { try { primaryAction.focus(); } catch (_) {} }, 50);
+        }
+    }
 }
 function closeAuthChoiceModal() {
     var modal = document.getElementById('authChoiceModal');
     if (modal) modal.classList.add('hidden');
+    document.documentElement.classList.remove('auth-dialog-open');
 }
 function showLandingPage(opts) {
     opts = opts || {};
