@@ -55,7 +55,7 @@
   function menuBreakpoint() { setMenu(false); }
   mobile.addEventListener('change', menuBreakpoint);
   // Header and cards enter separately; offset is based on the real grid column.
-  var targets = Array.from(landing.querySelectorAll('.landing-section > .landing-container > div:not(.grid), .feature-card, .faq-item, .landing-section .landing-card'));
+  var targets = Array.from(landing.querySelectorAll('.landing-section > .landing-container > div:not(.grid), .feature-card, .workflow-card, .lens-card, .validate-card, .ai-role-card, .principle-item, .faq-item, .landing-section .landing-card'));
   function reveal(element) {
     if (seen.has(element)) return;
     seen.add(element);
@@ -80,28 +80,16 @@
   } else targets.forEach(function (element) { seen.add(element); });
   function reduceChanged() { if (reduced.matches) { running.forEach(function (a) { a.cancel(); }); running.clear(); } }
   reduced.addEventListener('change', reduceChanged);
-  var heroMap = landing.querySelector ? landing.querySelector('.landing-product-map') : null;
-  if (heroMap && !reduced.matches) {
-    motion(heroMap, [
-      { opacity: 0, transform: 'translate3d(16px,12px,0) scale(.985)' },
+  var heroPreview = landing.querySelector ? (landing.querySelector('.landing-workstation-preview') || landing.querySelector('.landing-product-map')) : null;
+  if (heroPreview && !reduced.matches) {
+    motion(heroPreview, [
+      { opacity: 0, transform: 'translate3d(0,14px,0) scale(.99)' },
       { opacity: 1, transform: 'translate3d(0,0,0) scale(1)' }
     ], {
       duration: Math.max(milliseconds('--motion-slow'), 420),
       delay: 90,
       easing: token('--ease-emphasized') || 'cubic-bezier(.16,1,.3,1)',
       fill: 'none'
-    });
-    var heroModules = heroMap.querySelectorAll ? Array.from(heroMap.querySelectorAll('.landing-module-grid article')) : [];
-    heroModules.forEach(function (element, index) {
-      motion(element, [
-        { opacity: 0, transform: 'translate3d(0,10px,0)' },
-        { opacity: 1, transform: 'translate3d(0,0,0)' }
-      ], {
-        duration: Math.max(milliseconds('--motion-base'), 260),
-        delay: 170 + Math.min(index, 4) * 55,
-        easing: token('--ease-emphasized') || 'cubic-bezier(.16,1,.3,1)',
-        fill: 'none'
-      });
     });
   }
 

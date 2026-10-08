@@ -451,24 +451,21 @@ html.light #landingPage .landing-btn-primary {
 }
 
 html.light #landingPage .landing-hero {
-  padding-top: clamp(76px, 9vw, 132px);
-  min-height: min(760px, calc(100dvh - 32px));
-  display: grid;
-  align-content: center;
+  padding-top: clamp(24px, 4vw, 48px);
+  min-height: auto;
+  display: block;
   background: transparent !important;
 }
 
 html.light #landingPage .landing-hero::after {
-  content: "";
-  position: absolute;
-  inset: 4% 5% 6%;
-  pointer-events: none;
-  background:
-    linear-gradient(118deg, transparent 0 19%, rgba(23,33,30,.075) 19.4% 31%, transparent 31.4% 53%, rgba(23,33,30,.055) 53.4% 65%, transparent 65.4%),
-    radial-gradient(ellipse at 52% 48%, rgba(255,255,255,.95), transparent 44%);
-  filter: blur(.2px);
-  opacity: .9;
-  z-index: 0;
+  display: none !important;
+}
+
+@media(max-width: 900px) {
+  html.light #landingPage .landing-hero {
+    padding-top: 14px !important;
+    min-height: auto !important;
+  }
 }
 
 html.light #landingPage .landing-beams {

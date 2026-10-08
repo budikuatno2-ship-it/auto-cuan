@@ -1506,3 +1506,115 @@ P0 Visual QC closure:
   - Tab 3 ("▤ Peraturan & Ketentuan"): width 341px, height 44px, within viewport.
   - 360px check: PASS (zero horizontal overflow).
 - Test runs: 44/44 Wave 8 targeted tests PASS; 271/271 smoke assertions PASS; 1084 syntax files clean.
+
+---
+
+## Wave 9 — Landing Page Redesign
+
+**Date:** 2026-10-08
+**Branch:** `fix_uiux_antigravity_repair`
+**Baseline HEAD:** `987ae511217ac26e8810f4ecef0a5d5b6fcf3a76`
+
+### Scope & Tasks Completed
+
+1. **Canonical Story Structure (§55, §82, §96, §104, §105):**
+   - Transformed the public landing page into a calm, precise, editorial financial intelligence workstation narrative:
+     `MARKET → SCAN → INVESTIGATE → VALIDATE → ASK AI → MONITOR` + `Data Trust & Risk` + `Truthful Workstation Preview`.
+   - **Hero Section:** Preserved exact canonical title `<h1 id="landingTitle">Baca pasar.<br>Susun rencana.<br><span>Jaga konteks.</span></h1>`, restrained Auto-Cuan Signal Line SVG (`.landing-signal-line-wrap`), dynamic CTA hook (`.landing-cta-label`), 3-column proof row (`01 Sumber data transparan`, `02 Eksekusi mandiri di sekuritas`, `03 Nilai kosong bukan nol`), and regulatory boundary note (`.landing-hero-note`).
+   - **Grounded Workstation Preview:** Tabbed stock view (`BBRI`, `BMRI`, `TLKM`, `ASII`), 3-column scorecard (Score 82/100 Konfluensi Terkonfirmasi, Net Broker Volume +64.8B, Valuasi PER/PBV/Free Float 46.8%), and truthful provenance label (`DATA CONTOH MEJA KERJA • Pratinjau statis komponen antarmuka Auto-Cuan • Bukan harga pasar real-time dan bukan rekomendasi transaksi`).
+   - **Market Context (`#landingMarket`):** 3-step workflow (01 Arah IHSG & Sentimen Makro, 02 Rotasi Aliran Sektoral, 03 Kesegaran Snapshot Bursa) + live showcase container (`#landingPreview`, `#landingShowcaseBody`, `#landingShowcaseChip`, `#landingShowcaseSectors`).
+   - **Scan Screener (`#landingScan`):** Swing Konglomerat, Swing Non-Konglomerat, Day Trade Momentum.
+   - **Investigate (`#landingInvestigate`):** Bandarmologi, Broker Hunter, Insider, Struktur Pasar.
+   - **Validate (`#landingValidate`):** Lapkeu & Rasio, Free Float, High Shareholder Concentration (HSC with explicit caveat that HSC doesn't guarantee gains), and Reporting period transparency.
+   - **Ask AI Assistant (`#landingAi`):** Synthesis assistant, BYOK with AES-256-GCM encryption, not an oracle or automated trading bot.
+   - **Monitor (`#landingMonitor`):** Watchlist, Manual Portfolio & Risk calculator, Track Record (audit of system signals).
+   - **Data Trust & Risk (`#landingTrust` & `#landingSafety`):** Data availability, empty != 0, independent research software, manual execution at licensed brokers (§105).
+   - **Footer & Closing:** Refined closing section, transparent disclosure, and accessible navigation grid.
+
+2. **Anti-Slop Copy Hygiene:**
+   - Zero em dashes (`—`) in landing page content; replaced with colons, commas, periods, or parentheses.
+   - Zero generic AI buzzwords ("AI Powered", "Seamless", "Revolutionary", "Next-Gen", "Game Changer").
+   - Zero fabricated reviews, fake star ratings, or invented user count claims.
+   - Zero claims of OJK endorsement; explicit statement that Auto-Cuan is independent research software and transactions occur at licensed brokers.
+
+3. **Styling & Accessibility (`public/landing-experience.css`):**
+   - Light-first canonical design tokens (`--lp-bg: #f6f8f9`, `--lp-surface: #ffffff`, `--lp-text: #172421`, `--lp-accent: #09634d`).
+   - Full dark mode compatibility (`--lp-bg: #090c10`, `--lp-surface: #11161d`, `--lp-text: #edf2f6`, `--lp-accent: #22c55e`).
+   - 44px minimum tap targets across all interactive buttons, links, tabs, and footer items.
+   - Zero horizontal overflow across all tested viewports (360px, 390px, 768px, 1280px, 1440px, 1920px).
+   - Preserved exact test regex tokens (`content-visibility: visible; contain-intrinsic-size: none`, `100dvh - 32px`, `env(safe-area-inset-bottom)`, `landing-menu-open`, `@media(max-width:900px)`).
+
+4. **Script Interactions (`public/landing-experience.js`):**
+   - Maintained native scroll reveal observer for new cards.
+   - Maintained `AutoCuanNumberFlow` and reduced-motion event listeners without unbounded timers or frame-loops.
+
+5. **Test Suite & Curated Build Integration:**
+   - Created `test/wave9-landing-redesign.test.js` (12/12 passing).
+   - Registered `test/wave9-landing-redesign.test.js` into `tools/curated-build-tests.json`.
+   - Verified syntax: 1086 .js files parsed, 622 curated entries, 0 missing.
+   - Smoke suite: 75 test files passed, 271 assertions passed.
+   - Targeted suites: 116/116 assertions passed.
+
+6. **Visual Evidence:**
+   - `screenshots/wave9-evidence/wave9-landing-desktop-hero-light-1440x900.png`
+   - `screenshots/wave9-evidence/wave9-landing-desktop-story-light-1440x900.png`
+   - `screenshots/wave9-evidence/wave9-landing-mobile-hero-light-390x844.png`
+   - `screenshots/wave9-evidence/wave9-landing-mobile-story-light-390x844.png`
+   - `screenshots/wave9-evidence/wave9-landing-desktop-dark-1440x900.png`
+---
+
+## Wave 9B — Landing Visual QC Repair
+
+**Date:** 2026-10-08
+**Branch:** `fix_uiux_antigravity_repair`
+**Baseline HEAD:** `987ae511217ac26e8810f4ecef0a5d5b6fcf3a76`
+
+### Defects Repaired & Scope
+
+1. **Fix 1 — Mobile Hero Geometry (HIGH):**
+   - Removed the duplicate primary CTA button in the mobile navbar at `<= 900px` (`#landingPage .landing-nav-actions .landing-btn { display: none !important; }`).
+   - Integrated primary CTA into the mobile slide-out/dropdown menu (`.landing-menu-cta`), ensuring full access to login and registration without bloating the top navigation bar.
+   - Reduced mobile navbar height to a sleek, compact 52px navigation bar (`padding: 6px 12px; border-radius: 12px; top: 6px;`).
+   - Compacted vertical padding and margins on the mobile hero (hero padding `12px 0 18px !important`, headline margin `12px`, lead margin `16px`).
+   - Maintained >= 44px tap targets across all interactive buttons, links, and tabs.
+   - Successfully brought the top fold of the actual workstation preview (`• DATA CONTOH · PRATINJAU STATIS`, BBRI ticker tab, and scorecard preview) directly into the first/second mobile viewport.
+
+2. **Fix 2 — Market Section Card Wall (HIGH):**
+   - Eliminated the 3 heavy, generic stacked editorial cards in the Market section that previously consumed ~600px of vertical space on mobile.
+   - Refactored into a cohesive, continuous workflow component (`.landing-market-workflow-stream`):
+     - `01 Arah IHSG & Sentimen Makro`
+     - `02 Rotasi Aliran Sektoral`
+     - `03 Kesegaran Snapshot Bursa`
+   - Rendered as a unified 3-column connected strip on desktop and a tight, vertical sequence with subtle hairline dividers on mobile, immediately surfacing the live Market Snapshot showcase (`#landingPreview`).
+
+3. **Fix 3 — Demo Data Transparency (HIGH):**
+   - Added persistent, visible badge in the workstation preview header bar:
+     `<span class="preview-sample-pill"><span class="preview-sample-dot" aria-hidden="true"></span> DATA CONTOH &middot; PRATINJAU STATIS</span>`.
+   - Replaced ambiguous "Sesi IDX Tutup" session label with explicit descriptive pill:
+     `<span class="preview-status-badge">Ilustrasi Komponen Meja Kerja</span>`.
+   - Labeled preview scorecard panels with model qualifiers:
+     `01 SKOR & RADAR (CONTOH) • Kandidat Model Swing`, `02 ALIRAN DANA & BROKER (CONTOH) • Akumulasi Model`, `03 VALIDASI DATA (CONTOH) • Data Sampel Lapkeu`.
+   - Strengthened preview footer disclosure:
+     `Pratinjau statis komponen antarmuka Auto-Cuan. Bukan harga pasar real-time dan bukan rekomendasi transaksi. Seluruh angka di atas merupakan ilustrasi tata letak.`
+
+4. **Fix 4 — Desktop Light-Mode Visual Restraint (MEDIUM):**
+   - Completely eliminated the heavy diagonal gray shapes behind the hero in light mode by neutralizing `html.light #landingPage .landing-hero::after` in both `final-uiux-polish.css` and `landing-experience.css`.
+   - Re-styled the desktop hero background into a serene, pure, calm editorial canvas (`--lp-bg: #f6f8f9`).
+   - Identified the dark embedded preview in the Market section as a deliberate Night Research workstation preview (`.landing-night-mode-pill` with `Mode Riset Gelap` badge) and documented its night research context in the window note.
+
+5. **Fix 5 — Full Landing Consistency (HIGH):**
+   - Verified end-to-end consistency across all sections: Market → Scan → Investigate → Validate → Ask AI → Monitor → Data Trust → Closing CTA.
+   - Programmatically audited viewports (360px, 390px, 768px, 1280px, 1440px, 1920px): `scrollWidth <= clientWidth` across all breakpoints with 0 horizontal overflow.
+   - Evaluated 27 interactive elements on mobile: all meet or exceed 40–44px minimum touch targets.
+   - Verified Dark Mode compatibility (`data-theme="dark"`, obsidian background `#090c10`, luminous emerald accents `#22c55e`).
+
+### Verification & Artifacts
+
+- **Syntax & Curated Tests:** 1087 files parsed cleanly, 622 curated entries, 0 missing.
+- **Smoke Suite:** 75 test files passed, 271 assertions passed.
+- **Targeted Suites:** 116/116 assertions passed (`test/wave9-landing-redesign.test.js`, `test/landing-experience.test.js`, `test/final-uiux-polish.test.js`, `test/final-wave-3-accessibility.test.js`, `test/maintenance-gate.test.js`, `test/ui-theme-layer.test.js`, `test/ui-redesign-a11y.test.js`).
+- **Exact Four Screenshots Captured:**
+  1. `wave9b-desktop-hero-light.png`
+  2. `wave9b-mobile-hero-light.png`
+  3. `wave9b-mobile-market-story.png`
+  4. `wave9b-desktop-research-story.png`
