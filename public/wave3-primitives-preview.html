@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="id" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Auto-Cuan — Wave 3 Data Primitives & Detail Pattern</title>
+  <link rel="stylesheet" href="/ui-theme.css">
+  <link rel="stylesheet" href="/number-flow.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--ac-canvas);
+      color: var(--ac-ink);
+      font-family: var(--ac-font-sans);
+    }
+    .preview-shell {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+    .preview-section-header {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border-bottom: 1px solid var(--ac-line-hairline);
+      padding-bottom: 8px;
+    }
+    .preview-section-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--ac-ink);
+    }
+    .preview-section-desc {
+      font-size: 12.5px;
+      color: var(--ac-text-secondary);
+    }
+  </style>
+</head>
+<body data-ac-ui="v2">
+  <div class="preview-shell">
+    
+    <!-- Topbar Provenance & Freshness Bar -->
+    <header class="ac-surface-bounded" style="padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span class="ac-title-component" style="font-size: 15px;">Auto-Cuan Data Primitives</span>
+        <span class="ac-freshness ac-freshness--intraday">
+          <span class="ac-status-dot ac-status-dot--positive"></span>
+          <span>Intraday</span>
+          <span style="color: var(--ac-text-muted);">·</span>
+          <span>Diperbarui 15:45:00 WIB</span>
+        </span>
+      </div>
+      <div class="ac-provenance-row">
+        <span class="ac-provenance-item">
+          <span class="ac-provenance-label">Sumber:</span>
+          <span class="ac-provenance-value">IDX Trade Data</span>
+        </span>
+        <span class="ac-provenance-sep">·</span>
+        <span class="ac-provenance-item">
+          <span class="ac-provenance-label">Per tanggal:</span>
+          <span class="ac-provenance-value">07 Okt 2026</span>
+        </span>
+        <span class="ac-provenance-sep">·</span>
+        <span class="ac-provenance-item">
+          <span class="ac-provenance-label">Status sesi:</span>
+          <span class="ac-status-badge ac-status-badge--positive">Sesi 2 Selesai</span>
+        </span>
+      </div>
+    </header>
+
+    <!-- Filter Bar Grammar (§76.4) -->
+    <section>
+      <div class="preview-section-header">
+        <span class="preview-section-title">1. Filter Bar Grammar & Overflow Contract (§76.4)</span>
+        <span class="preview-section-desc">Search → primary filters → sort → view/options → result count & freshness status</span>
+      </div>
+      <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+        <div class="ac-filter-bar">
+          <div class="ac-filter-bar__search">
+            <svg class="ac-filter-bar__search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" class="ac-input" placeholder="Cari ticker (e.g. BBCA, ADRO)..." value="BB">
+          </div>
+          <div class="ac-filter-bar__primary">
+            <select class="ac-select" style="width: auto; min-width: 130px;">
+              <option>Semua Sektor</option>
+              <option selected>Financials (24)</option>
+              <option>Energy (18)</option>
+            </select>
+            <select class="ac-select" style="width: auto; min-width: 120px;">
+              <option>Semua Tier</option>
+              <option selected>Tier 1 Prime</option>
+              <option>Tier 2 Momentum</option>
+            </select>
+          </div>
+          <div class="ac-filter-bar__sort">
+            <span>Urutkan:</span>
+            <select class="ac-select" style="width: auto; min-width: 130px;">
+              <option selected>Score Tertinggi</option>
+              <option>Change % Terbesar</option>
+              <option>Volume Terbesar</option>
+            </select>
+          </div>
+          <div class="ac-filter-bar__view">
+            <button type="button" class="ac-btn ac-btn-primary" style="min-height: 32px; padding: 0 10px; font-size: 12px;">Tabel</button>
+            <button type="button" class="ac-btn ac-btn-secondary" style="min-height: 32px; padding: 0 10px; font-size: 12px;">Plan View</button>
+          </div>
+          <button type="button" class="ac-filter-more-btn">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+            <span>Filter Lanjutan</span>
+          </button>
+          <div class="ac-filter-bar__status">
+            <span style="font-weight: 600; color: var(--ac-ink);">18 Saham</span>
+            <span>·</span>
+            <span>Diperbarui 15:45 WIB</span>
+          </div>
+          
+          <!-- Active Removable Chips -->
+          <div class="ac-filter-chips">
+            <span class="ac-filter-chip">
+              <span class="ac-filter-chip__label">Sektor:</span>
+              <span class="ac-filter-chip__value">Financials</span>
+              <button type="button" class="ac-filter-chip__remove" aria-label="Hapus filter Sektor">&times;</button>
+            </span>
+            <span class="ac-filter-chip">
+              <span class="ac-filter-chip__label">Tier:</span>
+              <span class="ac-filter-chip__value">Tier 1</span>
+              <button type="button" class="ac-filter-chip__remove" aria-label="Hapus filter Tier">&times;</button>
+            </span>
+            <span class="ac-filter-chip">
+              <span class="ac-filter-chip__label">R/R Min:</span>
+              <span class="ac-filter-chip__value">&ge; 2.0x</span>
+              <button type="button" class="ac-filter-chip__remove" aria-label="Hapus filter R/R">&times;</button>
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Table Primitives & Desktop Detail Pane (320-380px) (§76.9, §63, §76.12) -->
+    <section>
+      <div class="preview-section-header">
+        <span class="preview-section-title">2. Table Primitives & Docked Detail Pane (320–380px) (§76.9, §63)</span>
+        <span class="preview-section-desc">Dense rows (38px), tabular numbers, non-color-only row selection indicator, docked detail pane with independent scroll</span>
+      </div>
+      <div style="margin-top: 12px;">
+        <div class="ac-split-view">
+          <!-- Main Table Column -->
+          <div class="ac-split-view__main">
+            <div class="ac-table-container">
+              <table class="ac-table ac-table--dense" id="previewTable">
+                <thead>
+                  <tr>
+                    <th style="width: 80px;" class="ac-th--sortable">Ticker <span class="ac-sort-icon">&uarr;</span></th>
+                    <th>Nama Emiten</th>
+                    <th class="ac-th-num ac-th--sortable is-sorted-desc">Score <span class="ac-sort-icon">&darr;</span></th>
+                    <th class="ac-th-num">Harga</th>
+                    <th class="ac-th-num">Change</th>
+                    <th class="ac-th-num">Vol / Avg</th>
+                    <th>Setup / Status</th>
+                    <th class="ac-th-num">R/R Plan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="is-selected" id="row-bbca" aria-selected="true" tabindex="0">
+                    <td style="font-weight: 700; color: var(--ac-brand);">BBCA</td>
+                    <td>Bank Central Asia Tbk</td>
+                    <td class="ac-td-num" style="font-weight: 700;">88</td>
+                    <td class="ac-td-num">10.450</td>
+                    <td class="ac-td-num ac-positive-text">+2,45%</td>
+                    <td class="ac-td-num">1,82x</td>
+                    <td><span class="ac-status-badge ac-status-badge--positive">Day Trade Ready</span></td>
+                    <td class="ac-td-num">2.4x</td>
+                  </tr>
+                  <tr id="row-bbri" tabindex="0">
+                    <td style="font-weight: 700;">BBRI</td>
+                    <td>Bank Rakyat Indonesia Tbk</td>
+                    <td class="ac-td-num" style="font-weight: 700;">82</td>
+                    <td class="ac-td-num">4.980</td>
+                    <td class="ac-td-num ac-positive-text">+1,22%</td>
+                    <td class="ac-td-num">1,45x</td>
+                    <td><span class="ac-status-badge ac-status-badge--info">Swing Konglo</span></td>
+                    <td class="ac-td-num">2.1x</td>
+                  </tr>
+                  <tr id="row-bmri" tabindex="0">
+                    <td style="font-weight: 700;">BMRI</td>
+                    <td>Bank Mandiri Tbk</td>
+                    <td class="ac-td-num" style="font-weight: 700;">79</td>
+                    <td class="ac-td-num">6.850</td>
+                    <td class="ac-td-num ac-negative-text">-0,72%</td>
+                    <td class="ac-td-num">0,95x</td>
+                    <td><span class="ac-status-badge ac-status-badge--warning">Konsolidasi</span></td>
+                    <td class="ac-td-num">1.9x</td>
+                  </tr>
+                  <tr id="row-bbni" tabindex="0">
+                    <td style="font-weight: 700;">BBNI</td>
+                    <td>Bank Negara Indonesia Tbk</td>
+                    <td class="ac-td-num" style="font-weight: 700;">74</td>
+                    <td class="ac-td-num">5.325</td>
+                    <td class="ac-td-num ac-positive-text">+0,47%</td>
+                    <td class="ac-td-num">1,10x</td>
+                    <td><span class="ac-status-badge ac-status-badge--neutral">Pantau Support</span></td>
+                    <td class="ac-td-num">1.8x</td>
+                  </tr>
+                  <tr id="row-btn" tabindex="0">
+                    <td style="font-weight: 700;">BBTN</td>
+                    <td>Bank Tabungan Negara Tbk</td>
+                    <td class="ac-td-num" style="font-weight: 700;">65</td>
+                    <td class="ac-td-num">1.280</td>
+                    <td class="ac-td-num" style="color: var(--ac-text-secondary);">0,00%</td>
+                    <td class="ac-td-num">0,64x</td>
+                    <td><span class="ac-status-badge ac-status-badge--neutral">Netral</span></td>
+                    <td class="ac-td-num ac-cell-empty">&mdash;</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="margin-top: 8px; display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; color: var(--ac-text-muted);">
+              <span>Klik baris untuk membuka detail emiten di panel kanan</span>
+              <span>Menampilkan 5 dari 18 emiten</span>
+            </div>
+          </div>
+
+          <!-- Docked Desktop Detail Pane (~360px target) -->
+          <div class="ac-split-view__pane">
+            <aside class="ac-detail-pane" id="desktopDetailPane" aria-label="Detail Ticker BBCA">
+              <div class="ac-detail-pane__header">
+                <div class="ac-detail-pane__title">
+                  <span style="color: var(--ac-brand);">BBCA</span>
+                  <span class="ac-status-badge ac-status-badge--positive" style="font-size: 10px;">TIER 1</span>
+                </div>
+                <button type="button" class="ac-detail-pane__close" aria-label="Tutup detail" id="paneCloseBtn">&times;</button>
+              </div>
+              <div class="ac-detail-pane__body">
+                <div style="font-size: 12px; color: var(--ac-text-secondary); line-height: 1.3;">
+                  Bank Central Asia Tbk · Financials
+                </div>
+                
+                <!-- Metric Summary Strip -->
+                <div class="ac-metric-strip" style="padding: 8px 10px; gap: 12px;">
+                  <div class="ac-metric">
+                    <span class="ac-metric-label">Harga</span>
+                    <span class="ac-metric-value" style="font-size: 15px;">10.450</span>
+                  </div>
+                  <div class="ac-metric">
+                    <span class="ac-metric-label">Perubahan</span>
+                    <span class="ac-metric-value ac-positive-text" style="font-size: 15px;">+2,45%</span>
+                  </div>
+                  <div class="ac-metric">
+                    <span class="ac-metric-label">Score</span>
+                    <span class="ac-metric-value" style="font-size: 15px;">88</span>
+                  </div>
+                </div>
+
+                <!-- Structured Evidence Plan -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <span style="font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ac-text-secondary);">Trading Plan Skenario</span>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                    <div style="background: var(--ac-surface-raised); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--ac-line-hairline);">
+                      <div style="color: var(--ac-text-muted); font-size: 10.5px;">Area Entry</div>
+                      <div class="ac-num" style="font-weight: 600;">10.350 – 10.450</div>
+                    </div>
+                    <div style="background: var(--ac-surface-raised); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--ac-line-hairline);">
+                      <div style="color: var(--ac-text-muted); font-size: 10.5px;">Stop Loss (SL)</div>
+                      <div class="ac-num ac-negative-text" style="font-weight: 600;">10.150 (-2,8%)</div>
+                    </div>
+                    <div style="background: var(--ac-surface-raised); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--ac-line-hairline);">
+                      <div style="color: var(--ac-text-muted); font-size: 10.5px;">Target 1 (TP1)</div>
+                      <div class="ac-num ac-positive-text" style="font-weight: 600;">10.850 (+3,8%)</div>
+                    </div>
+                    <div style="background: var(--ac-surface-raised); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--ac-line-hairline);">
+                      <div style="color: var(--ac-text-muted); font-size: 10.5px;">Target 2 (TP2)</div>
+                      <div class="ac-num ac-positive-text" style="font-weight: 600;">11.100 (+6,2%)</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Bandarmologi & Flow Signal -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <span style="font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ac-text-secondary);">Bandarmologi & Flow</span>
+                  <div style="background: var(--ac-surface-raised); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--ac-line-hairline); font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; justify-content: space-between;">
+                      <span style="color: var(--ac-text-secondary);">Akumulasi Bandar:</span>
+                      <span class="ac-positive-text" style="font-weight: 600;">Big Accumulation</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                      <span style="color: var(--ac-text-secondary);">Top 3 Buyer:</span>
+                      <span class="ac-num" style="font-weight: 500;">BK, CC, ZP</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                      <span style="color: var(--ac-text-secondary);">Net Foreign Flow:</span>
+                      <span class="ac-num ac-positive-text" style="font-weight: 600;">+Rp 142,5 M</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Provenance Metadata -->
+                <div class="ac-provenance-row" style="font-size: 11px; margin-top: 4px;">
+                  <span>Sumber: IDX Trade Data</span>
+                  <span class="ac-provenance-sep">·</span>
+                  <span>Evaluasi: 15:45 WIB</span>
+                </div>
+              </div>
+              <div class="ac-detail-pane__footer">
+                <button type="button" class="ac-btn ac-btn-primary" style="flex: 1; font-size: 12.5px;">Buka Analisis</button>
+                <button type="button" class="ac-btn ac-btn-secondary" style="font-size: 12.5px;">+ Watchlist</button>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lifecycle & Feedback Surfaces (§76.14) -->
+    <section>
+      <div class="preview-section-header">
+        <span class="preview-section-title">3. Lifecycle & Feedback Grammar (§76.14)</span>
+        <span class="preview-section-desc">Shape-matched skeletons, quiet inline refresh, empty state, local scoped error state, and stale warning</span>
+      </div>
+      <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+        
+        <!-- Shape-Matched Skeleton Loading -->
+        <div class="ac-surface-bounded" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 12px; font-weight: 600; color: var(--ac-text-secondary);">1. Structural Skeleton</span>
+            <span class="ac-refresh-banner">
+              <span class="ac-refresh-spinner"></span>
+              <span>Memperbarui data</span>
+            </span>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <span class="ac-skeleton ac-skeleton-circle"></span>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+              <span class="ac-skeleton ac-skeleton-text" style="width: 50%;"></span>
+              <span class="ac-skeleton ac-skeleton-text" style="width: 80%;"></span>
+            </div>
+            <span class="ac-skeleton ac-skeleton-num"></span>
+          </div>
+          <span class="ac-skeleton ac-skeleton-rect" style="height: 32px;"></span>
+          <span class="ac-skeleton ac-skeleton-rect" style="height: 32px;"></span>
+        </div>
+
+        <!-- Empty State -->
+        <div class="ac-empty-state" style="padding: 24px 16px;">
+          <svg class="ac-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <div class="ac-empty-state__title">Tidak Ada Saham yang Cocok</div>
+          <div class="ac-empty-state__desc">Filter saat ini tidak menghasilkan ticker yang memenuhi kriteria R/R &ge; 3.0x.</div>
+          <div class="ac-empty-state__action">
+            <button type="button" class="ac-btn ac-btn-secondary" style="font-size: 12px; min-height: 32px;">Reset Filter</button>
+          </div>
+        </div>
+
+        <!-- Local Error State (Scoped) -->
+        <div class="ac-error-state" style="padding: 24px 16px;">
+          <div class="ac-error-state__title">Gagal Memuat Data Flow</div>
+          <div class="ac-error-state__message">Koneksi feed broker summary terputus sementara. Bagian lain tetap berjalan normal.</div>
+          <div class="ac-error-state__retry">
+            <button type="button" class="ac-btn ac-btn-secondary" style="font-size: 12px; min-height: 32px;">Coba Lagi</button>
+          </div>
+        </div>
+
+        <!-- Stale Data Warning Banner -->
+        <div class="ac-surface-bounded" style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 12px; font-weight: 600; color: var(--ac-text-secondary);">4. Stale State Banner</span>
+          <div class="ac-stale-banner">
+            <div>
+              <div style="font-weight: 600;">Data Penutupan Belum Terbaru</div>
+              <div style="font-size: 11px; opacity: 0.85;">Snapshot terakhir dicatat pada 06 Okt 2026 16:00 WIB.</div>
+            </div>
+            <button type="button" class="ac-btn ac-btn-secondary" style="font-size: 11px; min-height: 28px; padding: 0 8px; white-space: nowrap;">Refresh Feed</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Mobile / Tablet Detail Sheet Overlay (§76.12, §76.13, §2346) -->
+  <div class="ac-detail-sheet" id="mobileDetailSheet" role="dialog" aria-modal="true" aria-label="Detail Saham Mobile">
+    <div class="ac-sheet-backdrop" id="sheetBackdrop"></div>
+    <div class="ac-sheet-content">
+      <div class="ac-sheet-handle"></div>
+      <div class="ac-detail-pane__header" style="border-radius: 0;">
+        <div class="ac-detail-pane__title">
+          <span style="color: var(--ac-brand);" id="sheetTicker">BBCA</span>
+          <span class="ac-status-badge ac-status-badge--positive" style="font-size: 10px;">TIER 1</span>
+        </div>
+        <button type="button" class="ac-detail-pane__close" aria-label="Tutup detail sheet" id="sheetCloseBtn" style="min-width: 44px; min-height: 44px; font-size: 20px;">&times;</button>
+      </div>
+      <div class="ac-detail-pane__body">
+        <div style="font-size: 12px; color: var(--ac-text-secondary); line-height: 1.3;">
+          Bank Central Asia Tbk · Financials
+        </div>
+        
+        <!-- Metric Summary Strip -->
+        <div class="ac-metric-strip" style="padding: 8px 10px; gap: 12px;">
+          <div class="ac-metric">
+            <span class="ac-metric-label">Harga</span>
+            <span class="ac-metric-value" style="font-size: 15px;">10.450</span>
+          </div>
+          <div class="ac-metric">
+            <span class="ac-metric-label">Perubahan</span>
+            <span class="ac-metric-value ac-positive-text" style="font-size: 15px;">+2,45%</span>
+          </div>
+          <div class="ac-metric">
+            <span class="ac-metric-label">Score</span>
+            <span class="ac-metric-value" style="font-size: 15px;">88</span>
+          </div>
+        </div>
+
+        <!-- Structured Evidence Plan -->
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ac-text-secondary);">Trading Plan Skenario</span>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+            <div style="background: var(--ac-surface-raised); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--ac-line-hairline);">
+              <div style="color: var(--ac-text-muted); font-size: 10.5px;">Area Entry</div>
+              <div class="ac-num" style="font-weight: 600;">10.350 – 10.450</div>
+            </div>
+            <div style="background: var(--ac-surface-raised); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--ac-line-hairline);">
+              <div style="color: var(--ac-text-muted); font-size: 10.5px;">Stop Loss (SL)</div>
+              <div class="ac-num ac-negative-text" style="font-weight: 600;">10.150 (-2,8%)</div>
+            </div>
+            <div style="background: var(--ac-surface-raised); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--ac-line-hairline);">
+              <div style="color: var(--ac-text-muted); font-size: 10.5px;">Target 1 (TP1)</div>
+              <div class="ac-num ac-positive-text" style="font-weight: 600;">10.850 (+3,8%)</div>
+            </div>
+            <div style="background: var(--ac-surface-raised); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--ac-line-hairline);">
+              <div style="color: var(--ac-text-muted); font-size: 10.5px;">Target 2 (TP2)</div>
+              <div class="ac-num ac-positive-text" style="font-weight: 600;">11.100 (+6,2%)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bandarmologi & Flow Signal -->
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ac-text-secondary);">Bandarmologi & Flow</span>
+          <div style="background: var(--ac-surface-raised); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--ac-line-hairline); font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--ac-text-secondary);">Akumulasi Bandar:</span>
+              <span class="ac-positive-text" style="font-weight: 600;">Big Accumulation</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--ac-text-secondary);">Top 3 Buyer:</span>
+              <span class="ac-num" style="font-weight: 500;">BK, CC, ZP</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Provenance Metadata -->
+        <div class="ac-provenance-row" style="font-size: 11px; margin-top: 4px;">
+          <span>Sumber: IDX Trade Data</span>
+          <span class="ac-provenance-sep">·</span>
+          <span>Evaluasi: 15:45 WIB</span>
+        </div>
+      </div>
+      <div class="ac-detail-pane__footer">
+        <button type="button" class="ac-btn ac-btn-primary" style="flex: 1; min-height: 44px; font-size: 13px;">Buka Analisis</button>
+        <button type="button" class="ac-btn ac-btn-secondary" style="min-height: 44px; font-size: 13px;">+ Watchlist</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/data-primitives-runtime.js"></script>
+  <script>
+    // Wire interactive table row selection & detail pane/sheet focus restoration
+    const table = document.getElementById('previewTable');
+    const pane = document.getElementById('desktopDetailPane');
+    const sheet = document.getElementById('mobileDetailSheet');
+    const closeBtn = document.getElementById('paneCloseBtn');
+    const sheetCloseBtn = document.getElementById('sheetCloseBtn');
+    const sheetBackdrop = document.getElementById('sheetBackdrop');
+
+    const isSmallViewport = () => window.innerWidth < 1024;
+    
+    if (table && window.AutoCuanDataPrimitives) {
+      table.querySelectorAll('tbody tr').forEach(row => {
+        const handleSelect = () => {
+          window.AutoCuanDataPrimitives.selectTableRow(table, row);
+          if (isSmallViewport()) {
+            window.AutoCuanDataPrimitives.openDetail({ originElement: row, sheetElement: sheet });
+          } else {
+            window.AutoCuanDataPrimitives.openDetail({ originElement: row, paneElement: pane });
+          }
+        };
+        row.addEventListener('click', handleSelect);
+        row.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleSelect();
+          }
+        });
+      });
+    }
+
+    if (closeBtn && window.AutoCuanDataPrimitives) {
+      closeBtn.addEventListener('click', () => {
+        window.AutoCuanDataPrimitives.closeDetail({ paneElement: pane });
+      });
+    }
+
+    if (sheetCloseBtn && window.AutoCuanDataPrimitives) {
+      sheetCloseBtn.addEventListener('click', () => {
+        window.AutoCuanDataPrimitives.closeDetail({ sheetElement: sheet });
+      });
+    }
+
+    if (sheetBackdrop && window.AutoCuanDataPrimitives) {
+      sheetBackdrop.addEventListener('click', () => {
+        window.AutoCuanDataPrimitives.closeDetail({ sheetElement: sheet });
+      });
+    }
+  </script>
+</body>
+</html>

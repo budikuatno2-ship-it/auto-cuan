@@ -58,16 +58,36 @@ test('FINAL-RISK-004: Canonical registry defines identity, routeKey, and icons w
 // ----------------------------------------------------------------------------
 // SUITE 2: REDUCE COGNITIVE LOAD VIA SUBGROUPING (FINAL-RISK-003)
 // ----------------------------------------------------------------------------
-test('FINAL-RISK-003: Riset Pasar sidebar organizes tools into clear semantic subgroups', () => {
+test('FINAL-RISK-003: Riset Pasar sidebar organizes tools into direct navigation list without visible subgroup labels (Wave 6B)', () => {
+  // Wave 6B simplification: visible subgroup text labels removed from HTML
   const expectedSubgroups = ['Teknikal', 'Arus Bandar', 'Intel & Relasi', 'Struktur & Valuasi', 'Peringkat & Sektor'];
   expectedSubgroups.forEach(label => {
     assert.ok(
-      INDEX_HTML.includes(`<div class="sidebar-subgroup-label">${label}</div>`),
-      `Sidebar must contain subgroup header "${label}"`
+      !INDEX_HTML.includes(`<div class="sidebar-subgroup-label">${label}</div>`),
+      `Sidebar must NOT contain visible subgroup header "${label}" after Wave 6B simplification`
     );
   });
 
-  // Check CSS rule for subgroup labels and collapsed behavior
+  // Verify all research tools remain present and ordered in the Research group
+  const researchGroupMatch = INDEX_HTML.match(/<section class="sidebar-nav-group" aria-label="Research">([\s\S]*?)<\/section>/);
+  assert.ok(researchGroupMatch, 'Research section must exist in sidebar');
+  const researchHtml = researchGroupMatch[1];
+  const expectedTools = [
+    'tabAnalisisChart',
+    'tabBandarmologi',
+    'tabBrokerHunter',
+    'tabSinyalIntelijen',
+    'tabJejaringInsider',
+    'tabFinancial',
+    'tabMarketStructure',
+    'tabRankingHarian',
+    'tabAnalisisPattern'
+  ];
+  expectedTools.forEach(toolId => {
+    assert.ok(researchHtml.includes(`id="${toolId}"`), `Research tool ${toolId} must be present`);
+  });
+
+  // Check CSS rule for subgroup labels and collapsed behavior remains intact
   assert.ok(
     POLISH_CSS.includes('.sidebar-subgroup-label'),
     'Polish CSS must style .sidebar-subgroup-label'

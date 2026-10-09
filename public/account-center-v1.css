@@ -96,7 +96,7 @@
 #headerUserLabel.ac-profile-trigger:hover, #headerUserLabel.ac-profile-trigger:focus-visible { background: var(--accent-subtle); border-color: var(--accent-primary); outline: none; }
 @media (max-width: 760px) {
   #acAccountCenter { padding: 0; place-items: end center; }
-  .ac-center-shell { width: 100%; max-height: 96dvh; border-top-left-radius: var(--radius-xl, 16px); border-top-right-radius: var(--radius-xl, 16px); border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0; }
+  .ac-center-shell { width: 100%; max-height: 96dvh; border-radius: 24px 24px 0 0; border-bottom: 0; }
   .ac-center-head { padding: 16px 16px 12px; }
   .ac-center-tabs { padding: 0 16px 10px; }
   .ac-center-body { padding: 16px; }
@@ -112,4 +112,15 @@
   .ac-admin-row { grid-template-columns: 1fr 1fr; }
   .ac-admin-row > :last-child { grid-column: 1 / -1; }
   .ac-terms-scroll { max-height: 56dvh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-loading::before { animation: none !important; }
+  #headerUserLabel.ac-profile-trigger,
+  .ac-tab,
+  .ac-btn,
+  .ac-center-shell {
+    transition: none !important;
+    animation: none !important;
+  }
 }

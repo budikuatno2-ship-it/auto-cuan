@@ -101,7 +101,7 @@ test('premium workstation v4 adds product-grade semantics and trust without beha
   assert.match(html, /Alat bantu analisis, bukan rekomendasi beli\/jual/);
   assert.match(html, /Keputusan tetap milik Anda/);
   assert.match(html, /id="ihsgSummaryCard" class="market-band-grid" role="group"/);
-  assert.match(html, /class="radar-panel lg:col-span-3 panel" aria-label="Top 5 Radar"/);
+  assert.match(html, /class="radar-panel (?:lg:col-span-3|w-full) panel" aria-label="Top 5 Radar"/);
   assert.match(html, /id="dashboardMonitorUpdated"[^>]*aria-live="polite"/);
   assert.match(css, /AUTO-CUAN PREMIUM WORKSTATION V4/);
   assert.match(css, /\.landing-trust-rail/);

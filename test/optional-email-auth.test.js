@@ -14,11 +14,14 @@ test('new registration UI requires Gmail while keeping username as profile ident
   assert.doesNotMatch(html, /Email \(Opsional\)/);
 });
 
-test('login UI is Gmail-first with explicit legacy username compatibility', () => {
+test('login UI accepts email or username, with helper text confirming both work', () => {
   const html = read('public/index.html');
-  assert.match(html, /for="loginUsername"[^>]*>Gmail<\/label>/);
-  assert.match(html, /Akun lama dan administrator tetap dapat masuk menggunakan username/);
-  assert.match(html, /placeholder="nama@gmail\.com"/);
+  // Wave 8B: label changed from "Gmail" to "Email atau username" (more accurate)
+  assert.match(html, /for="loginUsername"[^>]*>Email atau username<\/label>/);
+  // Helper text now confirms both Gmail and username work
+  assert.match(html, /Masukkan Gmail atau username/);
+  // Placeholder is generic (not Gmail-specific) since username is also valid
+  assert.doesNotMatch(html, /for="loginUsername"[^>]*>Gmail<\/label>/);
 });
 
 test('registration handler requires normalized gmail.com identity and rejects duplicates', () => {

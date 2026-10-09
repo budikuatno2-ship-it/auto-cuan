@@ -131,11 +131,13 @@
     var tabs = document.querySelectorAll('#watchlistFilterTabs button');
     tabs.forEach(function (btn) {
       if (btn.getAttribute('data-wl-filter') === _wlFilter) {
-        btn.classList.add('active');
+      if (btn.dataset.filter === filter) {
+        btn.className = 'wl-filter-btn is-active active ac-btn ac-btn-secondary text-xs py-1 px-2.5';
         btn.setAttribute('aria-selected', 'true');
       } else {
-        btn.classList.remove('active');
+        btn.className = 'wl-filter-btn ac-btn ac-btn-secondary text-xs py-1 px-2.5';
         btn.setAttribute('aria-selected', 'false');
+      }
       }
     });
     renderWatchlistView(window.__AUTOCUAN_WATCHLIST_DATA__);
@@ -152,7 +154,7 @@
         emptyState.classList.remove('hidden');
         var emptyTitle = document.getElementById('watchlistEmptyTitle');
         var emptyDesc = document.getElementById('watchlistEmptyDesc');
-        if (emptyTitle) emptyTitle.textContent = 'Watchlist Anda masih kosong.';
+        if (emptyTitle) emptyTitle.textContent = 'Belum ada saham dalam Watchlist.';
         if (emptyDesc) emptyDesc.textContent = 'Gunakan ikon bintang pada kartu Screener atau Modal Detail untuk menambahkan saham ke pantauan.';
       }
       return;
@@ -174,115 +176,121 @@
     });
 
     if (!filtered.length) {
-      container.innerHTML = '<div class="wl-empty-filter"><div class="wl-empty-filter-icon">🔍</div><p class="wl-empty-filter-title">Tidak ada saham yang sesuai dengan filter ini.</p><p class="wl-empty-filter-sub">Coba pilih filter [Semua] untuk melihat seluruh daftar pantauan.</p></div>';
+      container.innerHTML = '<div class="py-10 text-center text-[var(--ac-text-muted,#6b7280)] text-xs"><div class="text-2xl mb-1.5">🔍</div><p class="font-medium text-[var(--ac-text-secondary,#9ca3af)]">Tidak ada saham yang sesuai dengan filter ini.</p><p class="mt-1 text-[var(--ac-text-muted,#6b7280)]">Coba pilih tab filter [Semua] untuk melihat seluruh daftar pantauan.</p></div>';
       return;
     }
 
-    // 1. Desktop Table
-    var html = '<div class="wl-table-wrap"><table class="wl-table ac-table">';
-    html += '<thead><tr>';
-    html += '<th>Ticker &amp; Catatan</th>';
-    html += '<th class="text-right">Harga</th>';
-    html += '<th class="text-right">Perubahan</th>';
-    html += '<th>Alert Aktif</th>';
-    html += '<th class="text-right">Aksi</th>';
-    html += '</tr></thead><tbody>';
+    // Desktop Table View
+    var tableHtml = '<div class="hidden sm:block overflow-x-auto overflow-y-auto max-h-[540px] scrollbar-thin rounded-lg"><table class="w-full text-left text-xs border-collapse">';
+    tableHtml += '<thead class="sticky top-0 bg-[var(--ac-surface,#181d28)]/95 backdrop-blur z-10 shadow-sm"><tr class="border-b border-[var(--ac-line-hairline,#374151)] text-[var(--ac-text-secondary,#9ca3af)] uppercase tracking-wider text-[11px]">';
+    tableHtml += '<th class="py-2.5 px-3 font-semibold text-center w-10 text-[var(--ac-text-muted,#6b7280)]">#</th>';
+    tableHtml += '<th class="py-2.5 px-3 font-semibold">Ticker &amp; Catatan</th>';
+    tableHtml += '<th class="py-2.5 px-3 font-semibold text-right">Harga</th>';
+    tableHtml += '<th class="py-2.5 px-3 font-semibold text-right">Perubahan</th>';
+    tableHtml += '<th class="py-2.5 px-3 font-semibold">Alert Aktif</th>';
+    tableHtml += '<th class="py-2.5 px-3 font-semibold text-right">Aksi</th>';
+    tableHtml += '</tr></thead><tbody class="divide-y divide-[var(--ac-line-hairline,#374151)]/30">';
 
-    filtered.forEach(function (item) {
-      var last = item.last_price != null && isFinite(item.last_price) ? Number(item.last_price).toLocaleString('id-ID') : '—';
-      var chg = item.change_pct != null && isFinite(item.change_pct) ? Number(item.change_pct) : null;
+    // Mobile Compact List View
+    var mobileHtml = '<div class="sm:hidden space-y-2.5">';
+
+    filtered.forEach(function (item, idx) {
+      var last = item.last_price ? Number(item.last_price).toLocaleString('id-ID') : '—';
+      var chg = item.change_pct != null ? Number(item.change_pct) : null;
       var chgText = chg != null ? ((chg >= 0 ? '+' : '') + chg.toFixed(2) + '%') : '—';
-      var chgClass = chg != null ? (chg > 0 ? 'ac-num-positive' : (chg < 0 ? 'ac-num-negative' : 'ac-num-neutral')) : 'ac-num-neutral';
+      var chgColor = chg != null ? (chg > 0 ? 'var(--ac-gain,#10b981)' : (chg < 0 ? 'var(--ac-loss,#ef4444)' : 'var(--ac-text-muted,#9ca3af)')) : 'var(--ac-text-muted,#9ca3af)';
 
-      var alertsHtml = '';
+
+      var alertsDesktopHtml = '';
+      var alertsMobileHtml = '';
       if (item.alerts && item.alerts.length) {
-        alertsHtml = item.alerts.map(function (a) {
-          var label = a.condition_type === 'PRICE_ABOVE' ? ('▲ > Rp' + Number(a.target_price).toLocaleString('id-ID')) :
-                      (a.condition_type === 'PRICE_BELOW' ? ('▼ < Rp' + Number(a.target_price).toLocaleString('id-ID')) : a.condition_type);
+        alertsDesktopHtml = item.alerts.map(function (a) {
+          var cond = String(a.condition_type || a.condition || '').toUpperCase();
+          var targetPrice = a.target_price != null ? Number(a.target_price).toLocaleString('id-ID') : '—';
+          var label = (cond === 'PRICE_ABOVE' || cond === 'ABOVE') ? ('▲ > Rp' + targetPrice) :
+                      ((cond === 'PRICE_BELOW' || cond === 'BELOW') ? ('▼ < Rp' + targetPrice) :
+                      (cond ? (cond + ' Rp' + targetPrice) : ('Target Rp' + targetPrice)));
           var statusBadge = a.is_triggered ?
-            '<span class="wl-badge-triggered">Triggered</span>' :
-            '<span class="wl-badge-active">Aktif</span>';
+            '<span class="px-1.5 py-0.5 rounded text-[10px] bg-[var(--ac-surface-sunken,#374151)] text-[var(--ac-text-muted,#9ca3af)] border border-[var(--ac-line-hairline,#4b5563)]">Triggered</span>' :
+            '<span class="px-1.5 py-0.5 rounded text-[10px] bg-[var(--ac-gain,#059669)]/15 text-[var(--ac-gain,#059669)] border border-[var(--ac-gain,#059669)]/30 font-medium">Aktif</span>';
 
-          return '<div class="wl-alert-row">' +
-            '<span class="wl-alert-label">' + escapeHtml(label) + '</span> ' + statusBadge +
-            ' <button onclick="window.openEditAlertModal(\'' + a.id + '\', \'' + escapeAttr(item.ticker) + '\', \'' + a.condition_type + '\', ' + Number(a.target_price) + ')" class="wl-icon-btn" title="Edit Alert">✎</button>' +
-            '<button onclick="window.deleteUserAlert(\'' + a.id + '\')" class="wl-icon-btn wl-icon-danger" title="Hapus Alert">×</button></div>';
+          return '<div class="flex items-center gap-1.5 mb-1">' +
+            '<span class="font-mono text-gray-300 tabular-nums">' + label + '</span> ' + statusBadge +
+            ' <button onclick="window.openEditAlertModal(\'' + escapeAttr(a.id) + '\', \'' + escapeAttr(item.ticker) + '\', \'' + escapeAttr(a.condition_type || a.condition || 'PRICE_ABOVE') + '\', ' + Number(a.target_price || 0) + ')" class="text-gray-500 hover:text-amber-300 ml-1 text-xs" title="Edit Alert">✎</button>' +
+            '<button onclick="window.deleteUserAlert(\'' + escapeAttr(a.id) + '\')" class="text-gray-500 hover:text-red-400 ml-0.5 text-xs" title="Hapus Alert">×</button></div>';
+
         }).join('');
+
+        alertsMobileHtml = item.alerts.map(function (a) {
+          var cond = String(a.condition_type || a.condition || '').toUpperCase();
+          var targetPrice = a.target_price != null ? Number(a.target_price).toLocaleString('id-ID') : '—';
+          var label = (cond === 'PRICE_ABOVE' || cond === 'ABOVE') ? ('> Rp' + targetPrice) :
+                      ((cond === 'PRICE_BELOW' || cond === 'BELOW') ? ('< Rp' + targetPrice) :
+                      ('Rp' + targetPrice));
+          return '<span class="inline-flex items-center gap-1 text-[11px] font-mono tabular-nums text-[var(--ac-text-secondary,#9ca3af)]">' +
+            '<span>' + label + '</span>' +
+            (a.is_triggered ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-[var(--ac-surface-sunken,#374151)] text-[var(--ac-text-muted,#9ca3af)] border border-[var(--ac-line-hairline,#4b5563)]">Triggered</span>' : '<span class="text-[9px] px-1.5 py-0.5 rounded bg-[var(--ac-gain,#059669)]/15 text-[var(--ac-gain,#059669)] border border-[var(--ac-gain,#059669)]/30 font-medium">Aktif</span>') +
+            '</span>';
+        }).join(' ');
       } else {
-        alertsHtml = '<span class="wl-no-alert">Belum ada alert</span>';
+        alertsDesktopHtml = '<span class="text-[var(--ac-text-muted,#6b7280)] italic">Belum ada alert</span>';
+        alertsMobileHtml = '<span class="text-[var(--ac-text-muted,#6b7280)] text-[11px] italic">Belum ada alert</span>';
       }
 
-      var noteHtml = item.notes ?
-        '<span data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="wl-note-tag" title="Klik untuk edit catatan">📝 ' + escapeHtml(item.notes) + '</span>' :
-        '<button type="button" data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="wl-note-btn" title="Tambah catatan">+ Catatan</button>';
+      var noteText = item.notes ? escapeHtml(item.notes) : '';
+      var noteDesktopHtml = item.notes ?
+        '<span data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="cursor-pointer text-[11px] text-[var(--ac-text-secondary,#9ca3af)] bg-[var(--ac-surface-3,#1f2937)] border border-[var(--ac-line-hairline,#374151)] px-2 py-0.5 rounded max-w-[220px] truncate hover:border-[var(--ac-line-default,#4b5563)] transition" title="Klik untuk edit catatan">' + noteText + '</span>' :
+        '<button type="button" data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="text-[11px] text-[var(--ac-text-muted,#6b7280)] hover:text-[var(--ac-text,#e5e7eb)] transition" title="Tambah catatan">+ Catatan</button>';
 
-      html += '<tr class="wl-row">';
-      html += '<td><div class="wl-ticker-cell"><span class="wl-ticker-symbol">' + escapeHtml(item.ticker) + '</span>' + noteHtml + '</div></td>';
-      html += '<td class="text-right font-mono tabular-nums">' + last + '</td>';
-      html += '<td class="text-right font-mono tabular-nums font-semibold ' + chgClass + '">' + chgText + '</td>';
-      html += '<td>' + alertsHtml + '</td>';
-      html += '<td class="text-right whitespace-nowrap">';
-      html += '<button type="button" data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="wl-action-btn" title="Edit Catatan">📝 Edit</button>';
-      html += '<button onclick="window.openCreateAlertModal(\'' + escapeAttr(item.ticker) + '\')" class="wl-action-btn wl-action-alert">+ Alert</button>';
-      html += '<button onclick="window.toggleWatchlistTicker(\'' + escapeAttr(item.ticker) + '\', null, event)" class="wl-action-btn wl-action-danger">Hapus</button>';
-      html += '</td>';
-      html += '</tr>';
-    });
+      var tickerBtn = '<button type="button" class="ticker-link font-bold text-[var(--text-primary,#ffffff)] hover:text-[var(--ac-primary,#10b981)] font-mono text-sm tracking-wide transition" onclick="if(typeof navigateTo===\'function\')navigateTo(\'analisis\',null,\'' + escapeAttr(item.ticker) + '\')" title="Buka Riset ' + escapeAttr(item.ticker) + '">' + escapeHtml(item.ticker) + '</button>';
 
-    html += '</tbody></table></div>';
+      // Append Desktop Row
+      tableHtml += '<tr class="hover:bg-[var(--ac-surface-hover,rgba(255,255,255,0.03))] transition-colors" data-ticker="' + escapeAttr(item.ticker) + '">';
+      tableHtml += '<td class="py-2.5 px-3 text-center text-[var(--ac-text-secondary,#9ca3af)] font-mono text-[11px] tabular-nums lining-nums">' + (idx + 1) + '</td>';
+      tableHtml += '<td class="py-2.5 px-3 font-bold text-[var(--text-primary,#ffffff)] text-sm"><div class="flex items-center gap-2 flex-wrap">' + tickerBtn + noteDesktopHtml + '</div></td>';
+      tableHtml += '<td class="py-2.5 px-3 text-right font-medium text-[var(--text-primary,#e5e7eb)] font-mono tabular-nums lining-nums">' + last + '</td>';
+      tableHtml += '<td class="py-2.5 px-3 text-right font-semibold font-mono tabular-nums lining-nums" style="color:' + chgColor + '">' + chgText + '</td>';
+      tableHtml += '<td class="py-2.5 px-3">' + alertsDesktopHtml + '</td>';
+      tableHtml += '<td class="py-2.5 px-3 text-right whitespace-nowrap">';
+      tableHtml += '<button type="button" data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="ac-btn ac-btn-secondary text-xs py-1 px-2.5 mr-1.5" title="Edit Catatan">Edit</button>';
+      tableHtml += '<button onclick="window.openCreateAlertModal(\'' + escapeAttr(item.ticker) + '\')" class="ac-btn ac-btn-secondary text-xs py-1 px-2.5 mr-1.5">+ Alert</button>';
+      tableHtml += '<button onclick="window.toggleWatchlistTicker(\'' + escapeAttr(item.ticker) + '\', null, event)" class="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-[var(--ac-loss,#dc2626)] border border-red-500/25 rounded-md text-xs transition-all">Hapus</button>';
+      tableHtml += '</td>';
+      tableHtml += '</tr>';
 
-    // 2. Mobile Decision Rows
-    html += '<div class="wl-mobile-cards">';
-    filtered.forEach(function (item) {
-      var last = item.last_price != null && isFinite(item.last_price) ? Number(item.last_price).toLocaleString('id-ID') : '—';
-      var chg = item.change_pct != null && isFinite(item.change_pct) ? Number(item.change_pct) : null;
-      var chgText = chg != null ? ((chg >= 0 ? '+' : '') + chg.toFixed(2) + '%') : '—';
-      var chgClass = chg != null ? (chg > 0 ? 'ac-num-positive' : (chg < 0 ? 'ac-num-negative' : 'ac-num-neutral')) : 'ac-num-neutral';
+      // Append Mobile Compact Card
+      mobileHtml += '<div class="ac-surface-bounded p-3 space-y-2" data-ticker="' + escapeAttr(item.ticker) + '">';
+      mobileHtml += '<div class="flex items-center justify-between gap-2">';
+      mobileHtml += '<div class="flex items-center gap-2">';
+      mobileHtml += '<span class="text-xs text-[var(--ac-text-muted,#6b7280)] font-mono tabular-nums lining-nums w-4 text-center">' + (idx + 1) + '</span>';
+      mobileHtml += tickerBtn;
+      mobileHtml += '</div>';
+      mobileHtml += '<div class="flex items-baseline gap-2 font-mono tabular-nums lining-nums text-right">';
+      mobileHtml += '<span class="text-sm font-semibold text-[var(--text-primary,#ffffff)]">' + last + '</span>';
+      mobileHtml += '<span class="text-xs font-bold" style="color:' + chgColor + '">' + chgText + '</span>';
+      mobileHtml += '</div>';
+      mobileHtml += '</div>';
 
-      var mobileAlertsHtml = '';
-      if (item.alerts && item.alerts.length) {
-        mobileAlertsHtml = item.alerts.map(function (a) {
-          var label = a.condition_type === 'PRICE_ABOVE' ? ('▲ > Rp' + Number(a.target_price).toLocaleString('id-ID')) :
-                      (a.condition_type === 'PRICE_BELOW' ? ('▼ < Rp' + Number(a.target_price).toLocaleString('id-ID')) : a.condition_type);
-          var statusBadge = a.is_triggered ?
-            '<span class="wl-badge-triggered">Triggered</span>' :
-            '<span class="wl-badge-active">Aktif</span>';
-
-          return '<div class="wl-alert-row">' +
-            '<span class="wl-alert-label">' + escapeHtml(label) + '</span> ' + statusBadge +
-            ' <button onclick="window.openEditAlertModal(\'' + a.id + '\', \'' + escapeAttr(item.ticker) + '\', \'' + a.condition_type + '\', ' + Number(a.target_price) + ')" class="wl-icon-btn" title="Edit Alert">✎</button>' +
-            '<button onclick="window.deleteUserAlert(\'' + a.id + '\')" class="wl-icon-btn wl-icon-danger" title="Hapus Alert">×</button></div>';
-        }).join('');
-      } else {
-        mobileAlertsHtml = '<span class="wl-no-alert">Belum ada alert</span>';
+      if (item.notes) {
+        mobileHtml += '<div data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="cursor-pointer text-xs text-[var(--ac-text-secondary,#9ca3af)] bg-[var(--ac-surface-3,#1f2937)] px-2.5 py-1.5 rounded border border-[var(--ac-line-hairline,#374151)] leading-relaxed hover:border-[var(--ac-line-default,#4b5563)] transition" title="Klik untuk edit catatan">' + noteText + '</div>';
       }
 
-      var mobileNoteHtml = item.notes ?
-        '<div data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="wl-mobile-note" title="Klik untuk edit catatan">📝 ' + escapeHtml(item.notes) + '</div>' :
-        '<button type="button" data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="wl-note-btn">+ Tambah Catatan</button>';
-
-      html += '<div class="wl-mobile-card">';
-      html += '  <div class="wl-mobile-card-top">';
-      html += '    <div class="wl-mobile-card-symbol-wrap">';
-      html += '      <span class="wl-mobile-ticker">' + escapeHtml(item.ticker) + '</span>';
-      html += '    </div>';
-      html += '    <div class="wl-mobile-card-price-wrap">';
-      html += '      <span class="wl-mobile-price font-mono tabular-nums">' + last + '</span>';
-      html += '      <span class="wl-mobile-change font-mono tabular-nums ' + chgClass + '">' + chgText + '</span>';
-      html += '    </div>';
-      html += '  </div>';
-      html += '  <div class="wl-mobile-card-note">' + mobileNoteHtml + '</div>';
-      html += '  <div class="wl-mobile-card-alerts">' + mobileAlertsHtml + '</div>';
-      html += '  <div class="wl-mobile-card-actions">';
-      html += '    <button type="button" data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="wl-mobile-btn">📝 Catatan</button>';
-      html += '    <button onclick="window.openCreateAlertModal(\'' + escapeAttr(item.ticker) + '\')" class="wl-mobile-btn wl-mobile-btn-alert">🔔 + Alert</button>';
-      html += '    <button onclick="window.toggleWatchlistTicker(\'' + escapeAttr(item.ticker) + '\', null, event)" class="wl-mobile-btn wl-mobile-btn-danger">Hapus</button>';
-      html += '  </div>';
-      html += '</div>';
+      mobileHtml += '<div class="flex items-center justify-between gap-2 pt-1 border-t border-[var(--ac-line-hairline,#374151)]/40 text-xs">';
+      mobileHtml += '<div class="flex items-center gap-1.5 overflow-hidden">' + alertsMobileHtml + '</div>';
+      mobileHtml += '<div class="flex items-center gap-1 flex-shrink-0">';
+      mobileHtml += '<button type="button" data-action="edit-notes" data-ticker="' + escapeAttr(item.ticker) + '" class="ac-btn ac-btn-secondary text-[11px] py-0.5 px-2">Edit</button>';
+      mobileHtml += '<button onclick="window.openCreateAlertModal(\'' + escapeAttr(item.ticker) + '\')" class="ac-btn ac-btn-secondary text-[11px] py-0.5 px-2">+ Alert</button>';
+      mobileHtml += '<button onclick="window.toggleWatchlistTicker(\'' + escapeAttr(item.ticker) + '\', null, event)" class="px-2 py-0.5 bg-red-500/10 hover:bg-red-500/20 text-[var(--ac-loss,#dc2626)] border border-red-500/25 rounded text-[11px]">Hapus</button>';
+      mobileHtml += '</div>';
+      mobileHtml += '</div>';
+      mobileHtml += '</div>';
     });
-    html += '</div>';
 
-    container.innerHTML = html;
+    tableHtml += '</tbody></table></div>';
+    mobileHtml += '</div>';
+
+    container.innerHTML = tableHtml + mobileHtml;
+
     if (container && !container.__notesDelegationBound) {
       container.__notesDelegationBound = true;
       container.addEventListener('click', function (e) {
@@ -567,7 +575,8 @@
       var data = await res.json();
 
       if (!data || !data.success) {
-        list.innerHTML = '<div class="wl-hist-error">' + escapeHtml((data && data.error) || 'Gagal memuat riwayat alert.') + '</div>';
+        list.innerHTML = '<div class="text-center text-[var(--ac-loss,#dc2626)] text-xs py-6">' + escapeHtml((data && data.error) || 'Gagal memuat riwayat alert.') + '</div>';
+
         return;
       }
 
