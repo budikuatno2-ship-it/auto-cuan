@@ -111,7 +111,7 @@ test(
       confirmed.buildTelegramMessage(
         {
           ticker: 'TEST',
-          ready_streak: 2,
+          ready_streak: 3,
           watch_score: 80,
           publish_score: 85,
           observation: {
@@ -134,7 +134,7 @@ test(
 
     assert.match(
       message,
-      /aturan 2 dari 3 snapshot/
+      /minimal 3 dari 5 snapshot/
     );
 
     assert.doesNotMatch(

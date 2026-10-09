@@ -111,7 +111,11 @@ test('locked setup blocks shifted target after original TP1 is reached', () => {
   assert.equal(second.publishable.length, 0);
 });
 
-test('plan lock change resets confirmation streak before another pass', () => {
+// BUG-FW-SETUP-CHURN (2026-10-09): the reset contract is now MATERIAL-change
+// based. A ±1 tick producer refresh is tolerated (identity preserved, window
+// kept); a materially different plan still resets. This test was updated from
+// the old any-diff-resets contract to the structural-tolerance contract.
+test('material plan lock change resets confirmation streak before another pass', () => {
   const first = pool.process({
     sampleDate: '2099-01-01',
     scheduledTime: '09:10',
@@ -130,10 +134,10 @@ test('plan lock change resets confirmation streak before another pass', () => {
       current_price: 101,
       volume: 1800,
       relative_volume: 1.8,
-      entry_low: 99,
-      entry_high: 104,
-      tp1: 113,
-      stop_loss: 96,
+      entry_low: 108,
+      entry_high: 113,
+      tp1: 125,
+      stop_loss: 100,
       plan_lock_id: 'PLAN_B'
     })],
     priorState: first.state
@@ -146,6 +150,42 @@ test('plan lock change resets confirmation streak before another pass', () => {
   assert.deepEqual(state.confirmation_window, [true]);
   assert.ok(state.last_reasons.includes('source_plan_identity_changed_locked_setup_preserved'));
   assert.ok(state.last_reasons.includes('confirmation_reset_source_setup_changed'));
+  assert.equal(second.publishable.length, 0);
+});
+
+test('benign plan lock drift preserves confirmation window (FW-04 contract)', () => {
+  const first = pool.process({
+    sampleDate: '2099-01-08',
+    scheduledTime: '09:10',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:10')],
+    priorState: null
+  });
+  assert.equal(first.state.tickers.ZZZZ.ready_streak, 1);
+
+  const second = pool.process({
+    sampleDate: '2099-01-08',
+    scheduledTime: '09:13',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:13', {
+      current_price: 101,
+      volume: 1800,
+      relative_volume: 1.8,
+      entry_low: 99,
+      entry_high: 104,
+      tp1: 113,
+      stop_loss: 96,
+      plan_lock_id: 'PLAN_B'
+    })],
+    priorState: first.state
+  });
+
+  const state = second.state.tickers.ZZZZ;
+  assert.equal(state.status, 'READY_PENDING');
+  assert.equal(state.ready_streak, 2, 'drift within tolerance must advance, not reset');
+  assert.deepEqual(state.confirmation_window, [true, true]);
+  assert.ok(state.last_reasons.includes('source_identity_drift_tolerated'));
+  assert.ok(!state.last_reasons.includes('confirmation_reset_source_setup_changed'));
   assert.equal(second.publishable.length, 0);
 });
 
@@ -167,10 +207,10 @@ test('material source setup change resets confirmation even without plan lock id
       current_price: 101,
       volume: 1800,
       relative_volume: 1.8,
-      entry_low: 99,
-      entry_high: 104,
-      tp1: 113,
-      stop_loss: 96,
+      entry_low: 108,
+      entry_high: 113,
+      tp1: 125,
+      stop_loss: 100,
       plan_lock_id: null
     })],
     priorState: first.state
@@ -343,14 +383,18 @@ test('stable changed source resets once then continues confirmation against lock
   assert.equal(first.diagnostics.source_identity[0].reset, false);
   assert.equal(first.diagnostics.source_identity[0].reason, 'SOURCE_IDENTITY_INITIALIZED');
 
+  // Materially different levels (well outside IDX tick / 0.1% tolerance):
+  // this is a NEW setup, so the confirmation window must reset. The current
+  // price stays inside the LOCKED entry zone (98-103) so the engine still
+  // evaluates a passing setup against the locked plan.
   const sourceB = {
     current_price: 101,
     volume: 1800,
     relative_volume: 1.8,
-    entry_low: 99,
-    entry_high: 104,
-    tp1: 113,
-    stop_loss: 96,
+    entry_low: 80,
+    entry_high: 84,
+    tp1: 130,
+    stop_loss: 76,
     plan_lock_id: 'PLAN_B'
   };
 
