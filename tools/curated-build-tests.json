@@ -275,6 +275,7 @@
   "test/fast-watcher-v6-structure-regression.test.js",
   "test/fast-watcher-web-refresh.test.js",
   "test/fastwatcher-early-recall-and-overlap.test.js",
+  "test/fastwatcher-vps-routing-regression.test.js",
   "test/fastwatcher-wiring-repair.test.js",
   "test/fca-92-konglo-ownership-audit.test.js",
   "test/fca-transition-2026.test.js",
