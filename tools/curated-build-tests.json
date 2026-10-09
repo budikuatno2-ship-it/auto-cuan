@@ -491,6 +491,7 @@
   "test/security-hardening-batch3.test.js",
   "test/security-phase1.test.js",
   "test/sensitive-area-compliance.test.js",
+  "test/signal-followup-failclosed-regression.test.js",
   "test/signal-gate-transparency.test.js",
   "test/smart-setup-labels.test.js",
   "test/snapshot-freshness-gate.test.js",
