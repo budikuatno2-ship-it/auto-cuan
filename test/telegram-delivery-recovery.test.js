@@ -93,6 +93,69 @@ test('TEL-07/TEL-08: timeout classification stays retryable (bounded by caller),
   assert.equal(timeout.permanent, false);
 });
 
+test('TEL-04b: prepareCandidatesForDelivery invokes stale-claim recovery before reading rows', async () => {
+  // BUG-TEL-PENDING-DEADLOCK follow-up: the recovery helper must be wired into
+  // the production delivery path, not only exported. The prepare read must see
+  // post-recovery state, so the stale PENDING row is reclassified before the
+  // blocked-retry decision is made.
+  const now = Date.parse('2026-10-09T00:00:00Z');
+  const updates = [];
+  const selectRows = [{
+    id: 21, date: '2026-10-09', ticker: 'AAAA', monitor_source: 'daytrade',
+    plan_lock_id: 'tplock_X', status: 'DELIVERY_PENDING', first_sent_at: null,
+    updated_at: null, raw_payload: { telegram_delivery_prepared_at: '2026-10-05T12:01:13.120Z' }
+  }];
+
+  const supabase = {
+    from() {
+      let action = 'select';
+      let payload = null;
+      let inFilter = null;
+      const builder = {
+        select() { return builder; },
+        eq() { return builder; },
+        in(field, values) { inFilter = { field, values }; return builder; },
+        update(values) { action = 'update'; payload = values; updates.push(values); return builder; },
+        insert() { action = 'insert'; return builder; },
+        then(resolve) {
+          if (action === 'update') return resolve({ data: [], error: null });
+          return resolve({ data: selectRows, error: null });
+        }
+      };
+      return builder;
+    }
+  };
+
+  const result = await delivery.prepareCandidatesForDelivery({
+    supabase,
+    candidates: [{
+      ticker: 'AAAA',
+      entry1: 100, entry2: 105, sl: 95, tp1: 120, tp2: 130,
+      monitor_source: 'daytrade'
+    }],
+    date: '2026-10-09',
+    source: 'daytrade',
+    now,
+    build_identity: (c, date, source) => ({
+      valid: true, ticker: 'AAAA', monitor_source: 'daytrade', plan_lock_id: 'tplock_X'
+    }),
+    build_row: (c, date, sentAt) => ({
+      date, ticker: 'AAAA', monitor_source: 'daytrade', plan_lock_id: 'tplock_X',
+      status: 'WAITING', first_sent_at: sentAt || null, raw_payload: {}
+    })
+  });
+
+  // Recovery ran (either it expired or requeued the stale claim).
+  assert.ok(
+    result.recovered_expired_count > 0 || result.recovered_retryable_count > 0,
+    'stale claim must be recovered during prepare'
+  );
+  assert.ok(
+    updates.some((u) => u.status === 'EXPIRED' || u.status === 'DELIVERY_RETRYABLE'),
+    'a recovery state transition must be persisted'
+  );
+});
+
 test('TEL-14: delivery store unavailable fails closed (no blind send)', async () => {
   const result = await delivery.prepareCandidatesForDelivery({
     candidates: [{ ticker: 'AAAA' }],

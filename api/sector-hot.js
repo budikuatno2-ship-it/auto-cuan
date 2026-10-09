@@ -10477,9 +10477,14 @@ async function buildNkFinalizeStagingDiagnostics(supabase, runDate, rows, totalS
 // same geometry.
 async function handleNkScreenerStart(req, res, supabase) {
   const runDate = getWibDateString();
+  // A forced run (force=1) is routed here explicitly to CLEAR and rebuild the
+  // jobs + staging tables (see handleNkScreenerRun). Resuming the old plan in
+  // that case would defeat the force semantics and merely re-mark an old plan
+  // as scanning, so resumption is skipped whenever force is requested.
+  const forceRun = req && req.query && req.query.force === '1';
 
-  // Resume-first: an initialized run keeps its plan identity.
-  try {
+  // Resume-first: an initialized run keeps its plan identity (non-forced only).
+  if (!forceRun) try {
     const resumeRes = await supabase
       .from('swing_screener_non_konglo_meta')
       .select('*')

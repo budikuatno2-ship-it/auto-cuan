@@ -233,6 +233,29 @@ test('NK-10: a truly active scan is not disturbed (runner skips fresh published 
   assert.equal(store.tables.swing_screener_non_konglo_jobs[0].status, 'processing', 'fresh job untouched');
 });
 
+test('NK-04b: forced START bypasses resume and rebuilds the plan (force semantics)', async () => {
+  // A forced run is routed to START precisely to CLEAR and rebuild jobs/staging.
+  const jobs = [];
+  for (let i = 0; i < 13; i++) jobs.push({ id: i + 1, run_date: '2026-10-09', batch_index: i, status: 'pending', tickers: [] });
+  const store = makeStore({
+    swing_screener_non_konglo_meta: [{
+      id: 'latest', status: 'scanning', run_date: '2026-10-09',
+      batch_size: 50, total_batches: 13, universe_count: 635
+    }],
+    swing_screener_non_konglo_jobs: jobs,
+    stock_boards: [{ ticker: 'AAAA', board: 'UTAMA', is_active: true, is_fca: false, note: null }],
+    sector_hot_group_members: []
+  });
+
+  let responded = null;
+  const res = { status() { return res; }, json(body) { responded = body; return res; } };
+
+  await sectorHot.__test.handleNkScreenerStart(authedReq({ force: '1' }), res, store);
+
+  assert.ok(responded, 'handler must respond');
+  assert.notEqual(responded.resumed, true, 'forced run must NOT resume the old plan');
+});
+
 test('NK-08b: stale processing job is recovered back to pending deterministically', async () => {
   const runDate = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
   const store = makeStore({
