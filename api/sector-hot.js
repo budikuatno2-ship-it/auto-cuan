@@ -10313,6 +10313,47 @@ async function handleNkScreenerRun(req, res, supabase) {
 
   // If scanning (without force), process next batch
   if (meta.status === 'scanning') {
+    // BUG-NK-STALE-PROCESSING (2026-10-09): a batch is processed synchronously
+    // inside one API request, so a 'processing' job older than the recovery
+    // threshold can only come from a crashed/timed-out request. It used to
+    // block every future call with "Batch masih dalam status processing" until
+    // an operator passed force=1 — a permanent stall. Recover deterministically:
+    // stale processing jobs go back to pending and are picked up again.
+    const NK_PROCESSING_STALE_MS = 15 * 60 * 1000;
+    const { data: processingJobs } = await supabase
+      .from('swing_screener_non_konglo_jobs')
+      .select('id,batch_index,started_at')
+      .eq('run_date', runDate)
+      .eq('status', 'processing');
+
+    if (processingJobs && processingJobs.length > 0) {
+      const nowMs = Date.now();
+      const staleIds = processingJobs.filter(function(job) {
+        const started = Date.parse(job && job.started_at || '');
+        return !Number.isFinite(started) || (nowMs - started) > NK_PROCESSING_STALE_MS;
+      }).map(function(job) { return job.id; });
+
+      if (staleIds.length > 0) {
+        await supabase
+          .from('swing_screener_non_konglo_jobs')
+          .update({ status: 'pending', started_at: null })
+          .in('id', staleIds);
+        await updateNkMeta(supabase, {
+          status: 'scanning',
+          message: 'Recovered ' + staleIds.length + ' stale processing batch(es) back to pending.'
+        });
+        return await handleNkScreenerBatch(req, res, supabase);
+      }
+
+      // Genuinely fresh processing job: a worker may still be running.
+      return res.status(200).json({
+        success: false,
+        error: 'Batch masih dalam status processing (kemungkinan timeout). Gunakan force=1 untuk reset.',
+        step: 'blocked',
+        processing_count: processingJobs.length
+      });
+    }
+
     // Check if pending batches exist
     const { data: pendingJobs } = await supabase
       .from('swing_screener_non_konglo_jobs')
@@ -10323,23 +10364,6 @@ async function handleNkScreenerRun(req, res, supabase) {
 
     if (pendingJobs && pendingJobs.length > 0) {
       return await handleNkScreenerBatch(req, res, supabase);
-    }
-
-    // Check if there are still-stuck processing jobs (block finalize)
-    const { data: processingJobs } = await supabase
-      .from('swing_screener_non_konglo_jobs')
-      .select('id')
-      .eq('run_date', runDate)
-      .eq('status', 'processing')
-      .limit(1);
-
-    if (processingJobs && processingJobs.length > 0) {
-      return res.status(200).json({
-        success: false,
-        error: 'Batch masih dalam status processing (kemungkinan timeout). Gunakan force=1 untuk reset.',
-        step: 'blocked',
-        processing_count: processingJobs.length
-      });
     }
 
     // No pending, no processing → finalize
@@ -10438,8 +10462,52 @@ async function buildNkFinalizeStagingDiagnostics(supabase, runDate, rows, totalS
 }
 
 // --- START: build universe, create batches ---
+//
+// BUG-NK-PLAN-RESUME (2026-10-09): the batch plan must be STABLE for one run.
+// Production evidence (2026-10-05): attempt #1 created 13 batches at
+// batch_size=50, but a later attempt re-entered START (after the meta row lost
+// its run_date) and re-planned the SAME day as 80 batches at batch_size=8. The
+// producer then aborted with "requires at least 82 attempts for 80 batches, but
+// --max-attempts is 40" and the feature died for three days.
+//
+// Fix: if this run_date already has a persisted plan (meta.batch_size +
+// meta.total_batches) AND the jobs for that run_date still exist, RESUME the
+// existing plan instead of rebuilding it. Explicit caller batch_size is
+// persisted in meta so later attempts (which may omit the parameter) keep the
+// same geometry.
 async function handleNkScreenerStart(req, res, supabase) {
   const runDate = getWibDateString();
+
+  // Resume-first: an initialized run keeps its plan identity.
+  try {
+    const resumeRes = await supabase
+      .from('swing_screener_non_konglo_meta')
+      .select('*')
+      .eq('id', 'latest')
+      .maybeSingle();
+    const resumeMeta = resumeRes && resumeRes.data;
+    if (resumeMeta && resumeMeta.run_date === runDate && Number(resumeMeta.total_batches) > 0) {
+      const jobsRes = await supabase
+        .from('swing_screener_non_konglo_jobs')
+        .select('batch_index,status')
+        .eq('run_date', runDate);
+      const jobs = jobsRes && jobsRes.data;
+      if (Array.isArray(jobs) && jobs.length === Number(resumeMeta.total_batches)) {
+        // Plan identity intact — never rebuild it.
+        await updateNkMeta(supabase, { status: 'scanning', message: 'Resumed existing batch plan (' + jobs.length + ' batches).' });
+        return res.status(200).json({
+          success: true,
+          step: 'start',
+          resumed: true,
+          universe_count: Number(resumeMeta.universe_count) || 0,
+          batch_count: jobs.length,
+          batch_size: Number(resumeMeta.batch_size) || 8
+        });
+      }
+    }
+  } catch (resumeErr) {
+    // Fall through to a fresh start; resume is an optimization, not a gate.
+  }
 
   // Update meta to scanning
   await updateNkMeta(supabase, { status: 'scanning', run_date: runDate, message: 'Building universe...', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 });
@@ -10534,7 +10602,19 @@ async function handleNkScreenerStart(req, res, supabase) {
     return res.status(200).json({ success: false, error: 'Failed to create batch jobs.' });
   }
 
-  await updateNkMeta(supabase, { status: 'scanning', message: `Created ${batches.length} batches for ${universe.length} tickers.` });
+  // Persist the plan identity (run_date + batch_size + total_batches) so every
+  // later attempt resumes this exact geometry instead of falling back to the
+  // batch_size=8 default (BUG-NK-PLAN-RESUME).
+  await updateNkMeta(supabase, {
+    status: 'scanning',
+    run_date: runDate,
+    universe_count: universe.length,
+    scanned_count: 0,
+    failed_count: 0,
+    batch_size: BATCH_SIZE,
+    total_batches: batches.length,
+    message: `Created ${batches.length} batches for ${universe.length} tickers.`
+  });
 
   return res.status(200).json({
     success: true,
@@ -11507,19 +11587,46 @@ async function handleNkScreenerResults(req, res, supabase) {
 }
 
 // --- META helper ---
+//
+// BUG-NK-META-REPLACE (2026-10-09): this helper used to build a FRESH object
+// containing only the fields present in `fields` and then upsert it. The VPS
+// market store (lib/vps-market-store.js) persists rows as a single JSON blob in
+// `market_rows.row_json` and its upsert REPLACES the whole blob — it does not
+// merge column-by-column like Postgres. A partial call such as
+//   updateNkMeta(supabase, { status: 'scanning', message: 'Created 80 batches...' })
+// therefore DELETED run_date / universe_count / scanned_count from the live row.
+// Production evidence (2026-10-05..08): the meta row ended up as
+//   {"id":"latest","status":"scanning","message":"Created 80 batches for 635 tickers."}
+// with no run_date at all, the orchestrator stopped recognizing the active run,
+// and the Non-Konglo producer was stuck in a permanent STALE SCAN loop.
+//
+// Fix: read-merge-write. Existing keys are preserved unless the patch explicitly
+// overrides them, so progress updates can never wipe scan identity again.
 async function updateNkMeta(supabase, fields) {
-  const updateData = {
+  const patch = fields || {};
+  var existing = null;
+  try {
+    var readRes = await supabase
+      .from('swing_screener_non_konglo_meta')
+      .select('*')
+      .eq('id', 'latest')
+      .maybeSingle();
+    existing = (readRes && readRes.data) || null;
+  } catch (readErr) {
+    existing = null;
+  }
+
+  const updateData = Object.assign({}, existing || {}, {
     id: 'latest',
     updated_at: new Date().toISOString()
-  };
-  if (fields.status !== undefined) updateData.status = fields.status;
-  if (fields.run_date !== undefined) updateData.run_date = fields.run_date;
-  if (fields.message !== undefined) updateData.message = fields.message;
-  if (fields.universe_count !== undefined) updateData.universe_count = fields.universe_count;
-  if (fields.scanned_count !== undefined) updateData.scanned_count = fields.scanned_count;
-  if (fields.failed_count !== undefined) updateData.failed_count = fields.failed_count;
-  if (fields.published_count !== undefined) updateData.published_count = fields.published_count;
-  if (fields.calculated_at !== undefined) updateData.calculated_at = fields.calculated_at;
+  });
+
+  // Explicit field list (back-compat) plus any extra persisted plan fields
+  // (batch_size, total_batches, run_id) that newer callers persist.
+  var passthroughKeys = ['status', 'run_date', 'message', 'universe_count', 'scanned_count', 'failed_count', 'published_count', 'calculated_at', 'batch_size', 'total_batches', 'run_id'];
+  passthroughKeys.forEach(function(key) {
+    if (patch[key] !== undefined) updateData[key] = patch[key];
+  });
 
   await supabase.from('swing_screener_non_konglo_meta').upsert([updateData], { onConflict: 'id' });
 }
@@ -15833,7 +15940,14 @@ module.exports.__test = {
   isOpeningRangeVelocityWindow: fastWatcherMomentum.isOpeningRangeVelocityWindow,
   evaluateOpeningVelocityGuard: fastWatcherMomentum.evaluateOpeningVelocityGuard,
   selectTopCandidatesWithSectorDiversification: selectTopCandidatesWithSectorDiversification,
-  enrichCandidateWithPatternPersonality: enrichCandidateWithPatternPersonality
+  enrichCandidateWithPatternPersonality: enrichCandidateWithPatternPersonality,
+  // BUG-NK-META-REPLACE / BUG-NK-PLAN-RESUME: expose the Non-Konglo meta merge
+  // seam and the orchestrator entry points so partial-update preservation and
+  // batch-plan resume are directly testable.
+  updateNkMeta: updateNkMeta,
+  handleNkScreenerRun: handleNkScreenerRun,
+  handleNkScreenerStart: handleNkScreenerStart,
+  getNkActiveRunDate: getNkActiveRunDate
 };
 
 module.exports.isSignalPublicationTimeRestrictedWib = isSignalPublicationTimeRestrictedWib;

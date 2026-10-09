@@ -54,6 +54,14 @@ function finalStatus(value){return ['PUBLISHED','DAILY','COMPLETED','COMPLETED_N
 function publishedToday(meta,today=wibDate()){return !!meta&&finalStatus(meta.status)&&String(meta.run_date||meta.calculated_at||'').slice(0,10)===today;}
 function finalizedResponse(data){return !!data&&(finalStatus(data.status)||String(data.step||'').toLowerCase()==='finalize'||/published\s+\d+\s+top candidates/i.test(String(data.message||'')));}
 function staleScanning(meta, now=Date.now()){if(String(meta&&meta.status||'').toLowerCase()!=='scanning')return false; const stamp=Date.parse(meta.updated_at||meta.calculated_at||''); return Number.isFinite(stamp)&&now-stamp>30*60*1000;}
+// BUG-NK-STALE-RECOVERY (2026-10-09): a stale scan used to abort the producer
+// with "STALE SCAN; pass --resume-stale or --force" and stay dead for days
+// (production evidence 2026-10-05..08). A stale scan is only dangerous when a
+// worker is genuinely mid-run; the server orchestrator already recovers stale
+// processing batches deterministically, so the runner should self-heal once
+// per invocation instead of failing closed forever. Fresh active scans
+// (updated_at within the stale window) are still never touched.
+function staleScanRecoverable(meta, now=Date.now()){return staleScanning(meta, now);}
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 function readLinuxMemAvailableMb(fsImpl=fs){
   try {
@@ -88,7 +96,24 @@ async function runNk(client,opts,log=console.log){
   let status=await nkStatus(client), meta=status.meta||{};
   if(publishedToday(meta)&&!opts.force){log('Non-Konglo: terminal today; skipped.');return {skipped:true,status};}
   if(!opts.execute){log('Non-Konglo: read-only; nk-screener-run not called.');return {planned:true,status};}
-  if(staleScanning(meta)&&!opts.resumeStale&&!opts.force){log('Non-Konglo: STALE SCAN; pass --resume-stale or --force.');return {stale:true,status};}
+  // BUG-NK-STALE-RECOVERY: a stale scan must self-heal. The server orchestrator
+  // now recovers stale processing batches and resumes persisted plans, so the
+  // runner sends one recovery attempt instead of dying with STALE SCAN. A scan
+  // that is genuinely fresh (worker still running) is still never disturbed:
+  // the recovery attempt is bounded to a single extra call and the server
+  // refuses to start a parallel plan while a legitimate worker is active.
+  if(staleScanning(meta)&&!opts.resumeStale&&!opts.force){
+    log('Non-Konglo: STALE SCAN detected; attempting bounded recovery.');
+    try{
+      const recovery=await client.call({action:'nk-screener-run',batch_size:opts.nkBatchSize,recover_stale:1});
+      if(recovery&&(recovery.step||recovery.status))log('Non-Konglo recovery response: '+(recovery.step||recovery.status)+'.');
+      if(finalizedResponse(recovery)){log('Non-Konglo completed in '+((Date.now()-startedAt)/1000).toFixed(1)+'s.');return {finalized:true,response:recovery,recovered:true,elapsed_ms:Date.now()-startedAt};}
+      status=await nkStatus(client);meta=status.meta||{};
+      if(staleScanning(meta)){log('Non-Konglo: recovery did not clear stale scan; continuing with bounded attempts.');}
+    }catch(recoveryErr){
+      log('Non-Konglo: recovery attempt failed ('+recoveryErr.message+'); continuing with bounded attempts.');
+    }
+  }
   for(let attempt=1;attempt<=opts.maxAttempts;attempt++){
     // Do not short-circuit merely because the cached meta is terminal: it may
     // be from an older trading date (or the operator may have requested --force).
