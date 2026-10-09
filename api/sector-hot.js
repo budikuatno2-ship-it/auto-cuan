@@ -11616,9 +11616,15 @@ async function updateNkMeta(supabase, fields) {
       .select('*')
       .eq('id', 'latest')
       .maybeSingle();
-    existing = (readRes && readRes.data) || null;
+    // Supabase query errors can be returned in-band; treating one as an
+    // absent row risks overwriting the complete JSON metadata on VPS.
+    if (!readRes || readRes.error) {
+      throw new Error('NK meta read failed: ' + String(readRes && readRes.error && readRes.error.message || 'no response'));
+    }
+    existing = readRes.data || null;
   } catch (readErr) {
-    existing = null;
+    // Fail closed: do not persist a partial row after a failed read.
+    throw new Error('NK meta read unavailable: ' + String(readErr && readErr.message || readErr));
   }
 
   const updateData = Object.assign({}, existing || {}, {
@@ -11633,7 +11639,10 @@ async function updateNkMeta(supabase, fields) {
     if (patch[key] !== undefined) updateData[key] = patch[key];
   });
 
-  await supabase.from('swing_screener_non_konglo_meta').upsert([updateData], { onConflict: 'id' });
+  var writeRes = await supabase.from('swing_screener_non_konglo_meta').upsert([updateData], { onConflict: 'id' });
+  if (!writeRes || writeRes.error) {
+    throw new Error('NK meta write failed: ' + String(writeRes && writeRes.error && writeRes.error.message || 'no response'));
+  }
 }
 
 // Builds the Non-Konglo candle series from Yahoo's independent OHLCV arrays.
