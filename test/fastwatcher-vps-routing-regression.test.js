@@ -42,6 +42,49 @@ test('FastWatcher market read/write routed to SQLite, no remote fallback', async
   }
 });
 
+test('FastWatcher SQLite publisher preserves unrelated existing DayTrade fields', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fw-vps-merge-'));
+  const dbFile = path.join(root, 'market.sqlite');
+  const remote = { from() { throw new Error('remote Supabase must not be used'); } };
+  const client = hybridizeClient(remote, { AUTO_CUAN_MARKET_DATA_VPS: '1', AUTO_CUAN_MARKET_DB: dbFile });
+  try {
+    const seed = await client.from('daytrade_screener_latest')
+      .insert({ ticker: 'BBCA', status: 'WATCHING', historical_source: 'preserve-this', entry_low: 95 });
+    assert.equal(seed.error, null);
+    const written = await publisher.upsertSystemRows(client, [{
+      ticker: 'BBCA', status: 'READY_BREAKOUT', daytrade_score: 91
+    }]);
+    assert.equal(written.ok, true);
+    const result = await client.from('daytrade_screener_latest').select('*').eq('ticker', 'BBCA');
+    assert.equal(result.error, null);
+    assert.equal(result.data.length, 1);
+    assert.equal(result.data[0].historical_source, 'preserve-this');
+    assert.equal(result.data[0].entry_low, 95);
+    assert.equal(result.data[0].status, 'READY_BREAKOUT');
+    assert.equal(result.data[0].daytrade_score, 91);
+  } finally {
+    closeVpsMarketStore();
+    fs.rmSync(root, {recursive: true, force: true});
+  }
+});
+
+test('FastWatcher SQLite publisher inserts new ticker when no row exists', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fw-vps-insert-'));
+  const dbFile = path.join(root, 'market.sqlite');
+  const remote = { from() { throw new Error('remote Supabase must not be used'); } };
+  const client = hybridizeClient(remote, { AUTO_CUAN_MARKET_DATA_VPS: '1', AUTO_CUAN_MARKET_DB: dbFile });
+  try {
+    const written = await publisher.upsertSystemRows(client, [{ ticker: 'BBRI', status: 'READY_BREAKOUT', daytrade_score: 93 }]);
+    assert.equal(written.ok, true);
+    const result = await client.from('daytrade_screener_latest').select('*').eq('ticker','BBRI');
+    assert.equal(result.data.length, 1);
+    assert.equal(result.data[0].daytrade_score, 93);
+  } finally {
+    closeVpsMarketStore();
+    fs.rmSync(root, {recursive: true, force: true});
+  }
+});
+
 test('FastWatcher remains read/write-compatible with injected test store without Supabase credentials', async () => {
   const store = { from(table) {
     assert.equal(table, 'daytrade_screener_latest');
