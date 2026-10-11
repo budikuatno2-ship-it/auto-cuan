@@ -11320,9 +11320,7 @@ html:not(.light),
   #appMain > .app-header {
     display: block !important;
   }
-  #appMain > .app-header:not([data-ac-ui="v2"]) #headerAccountSection {
-    display: flex !important;
-  }
+
   #appSidebar .sidebar-footer {
     padding: 10px 12px !important;
   }
@@ -11685,6 +11683,11 @@ html:not(.light),
    The workstation sidebar footer owns the single primary account entry.
    Duplicate permanent profile, subscription, and logout chrome is suppressed on desktop. */
 @media (min-width: 1024px) {
+  .app-shell .app-header #headerAccountSection {
+    display: none !important;
+  }
+}
+@media (max-width: 1023px) {
   .app-shell .app-header #headerAccountSection {
     display: none !important;
   }
@@ -12485,9 +12488,7 @@ html.light #page-dashboard[data-ac-ui="v2"] #top5HistoryList thead th {
   #appMain > .app-header {
     display: block !important;
   }
-  #appMain > .app-header:not([data-ac-ui="v2"]) #headerAccountSection {
-    display: flex !important;
-  }
+
   #appSidebar .sidebar-footer {
     padding: 10px 12px !important;
   }
