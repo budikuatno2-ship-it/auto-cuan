@@ -149,6 +149,18 @@ Batch 1 difokuskan sepenuhnya pada **P0: Safety Gate dan Jam Bursa** untuk menja
   - Alias legacy valid (`entry1`/`entry2`/`sl`/`tp1n`/`entry_high` dalam satu sumber) tetap didukung.
 - **Bukti:** `test/batch1-fastwatcher-rr-status-closure.test.js` P0-2a s/d P0-2e; seluruh suite safety gate lama tetap lulus.
 
+### P0-2 Lanjutan (Review Akhir): Provenance Root vs Nested — Root Final Tidak Boleh Tertimpa
+- **Masalah terkonfirmasi (reproduksi empiris, sebelum perbaikan):**
+  1. Root `entry_high=1000, stop_loss=1100` (eksplisit invalid) + nested `levels:{entry_high:1000, stop_loss:900, tp1:1200}` → pasangan nested menyelamatkan root ⇒ R/R palsu 2.0 lolos, termasuk `candidatePassesPublicTelegramSafetyGate` mengembalikan `true`.
+  2. Root `entry_high=1000, tp1=900` (eksplisit invalid) + nested `levels:{stop_loss:900, tp1:1200}` → R/R palsu 2.0 lolos.
+  3. Root hanya `entry_high=1000` + nested `levels:{stop_loss:900, tp1:1600}` → R/R palsu 6.0 lolos (provenance tidak dapat dibuktikan).
+- **Perbaikan (`extractCandidateLevels`):**
+  - Pasangan SL/TP1 wajib LENGKAP di sumber pertama yang memuat salah satunya; pasangan parsial tidak boleh dilengkapi dari sumber lain ⇒ fail-closed.
+  - Provenance same-setup ditegakkan: pasangan harus berasal dari sumber level pertama (sumber batas entry final), atau dari sumber fallback entry bila entry memakai referensi harga; entry root + pasangan nested (atau sebaliknya) ⇒ fail-closed.
+  - Validasi struktural terhadap entry final (SL < entry dan TP1 > entry) tanpa substitusi dari sumber lain ⇒ fail-closed bila invalid.
+  - Root final tetap berprioritas tertinggi: nilai nested lama tidak dapat menimpa atau menyelamatkan level root yang invalid.
+- **Bukti (sesudah perbaikan):** skenario 1–3 `recalculateRiskReward=null` + `passesRiskRewardFilter=false` (default & recalculate) + gate publik `false`; payload sah (nested-only valid, alias legacy, setup lengkap R/R ≥ 1.5, nested `observation.metrics`) tetap lolos. Regression: `test/batch1-fastwatcher-rr-status-closure.test.js` P0-2f s/d P0-2j (16/16 PASS).
+
 ### Catatan Scope Dokumentasi BSJP
 - Dokumen `docs/EVALUASI_CUTOFF_1530_DAN_STRATEGI_BSJP.md` SECARA HISTORIS SUDAH TERMASUK dalam diff PR #862 (terbawa oleh commit `40a388a0` saat normalisasi line ending). Dokumen tersebut murni perencanaan dan TIDAK mengubah perilaku kode apa pun di PR ini.
 - Sesuai batas scope: implementasi BSJP TIDAK dilakukan di PR #862. Isi dokumen tetap disimpan untuk fase berikutnya pada branch terpisah (`feat/bsjp-strategy-cutoff-1530`) setelah PR #862 stabil.
@@ -161,7 +173,8 @@ Batch 1 difokuskan sepenuhnya pada **P0: Safety Gate dan Jam Bursa** untuk menja
 - **Branch:** `fix/audit-okt2026-batch-1`
 - **Target Integrasi:** `feat/daytrade-screener-v1`
 - **Branch `main`:** Bersih dan TIDAK DISENTUH.
-- **SHA Referensi:** `e4362cd672cdb199feffb9fdd0d3090117dc2ef1` (sebelum koreksi final review; SHA koreksi final = HEAD branch setelah push).
+- **SHA Referensi:** `e4362cd672cdb199feffb9fdd0d3090117dc2ef1` (sebelum koreksi final review).
+- **SHA Koreksi Final Review (P0-1 + P0-2 + provenance lanjutan):** HEAD branch setelah push koreksi provenance terakhir; lihat `git log` untuk nilai pasti.
 - **Pull Request URL:** https://github.com/budikuatno2-ship-it/auto-cuan/pull/862
 - **Status:** SIAP DIREVIEW — BELUM DI-MERGE (Menunggu persetujuan pengguna).
 

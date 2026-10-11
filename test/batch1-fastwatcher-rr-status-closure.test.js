@@ -300,3 +300,110 @@ test('P0-2e: explicit invalid stop_loss/tp1 values fail closed instead of silent
   assert.equal(recalculateRiskReward(negative), null);
   assert.equal(passesRiskRewardFilter(negative, MIN_RR_RATIO), false);
 });
+
+// ===========================================================================
+// P0-2f..i — FINAL REVIEW: root explicit invalid SL/TP1 must not be rescued
+// by a complete nested pair. Root final levels take precedence; the SL/TP1
+// pair must be complete in ONE source AND match the entry source provenance.
+// ===========================================================================
+test('P0-2f: root stop_loss=1100 (invalid) is NOT rescued by nested valid pair => fail-closed', () => {
+  const candidate = {
+    entry_high: 1000,
+    stop_loss: 1100, // explicit invalid: SL above entry
+    levels: { entry_high: 1000, stop_loss: 900, tp1: 1200 } // complete nested pair
+  };
+  assert.equal(recalculateRiskReward(candidate), null, 'nested pair must not rescue invalid root SL');
+  assert.equal(passesRiskRewardFilter(candidate, MIN_RR_RATIO), false);
+  assert.equal(passesRiskRewardFilter(candidate, MIN_RR_RATIO, { recalculate: true }), false);
+
+  // The public Telegram safety gate must also reject it.
+  const sectorHot = require('../api/sector-hot');
+  const gate = sectorHot.__test && sectorHot.__test.candidatePassesPublicTelegramSafetyGate;
+  assert.ok(typeof gate === 'function', 'public safety gate must be exposed');
+  assert.equal(gate({ ticker: 'BBCA', category: 'daytrade', last_price: 1000, status: 'READY_BREAKOUT', ...candidate }, 'daytrade'), false);
+});
+
+test('P0-2g: root tp1=900 (invalid) is NOT rescued by nested pair => fail-closed', () => {
+  const candidate = {
+    entry_high: 1000,
+    tp1: 900, // explicit invalid: TP1 below entry
+    levels: { stop_loss: 900, tp1: 1200 }
+  };
+  assert.equal(recalculateRiskReward(candidate), null, 'nested pair must not rescue invalid root TP1');
+  assert.equal(passesRiskRewardFilter(candidate, MIN_RR_RATIO), false);
+  assert.equal(passesRiskRewardFilter(candidate, MIN_RR_RATIO, { recalculate: true }), false);
+});
+
+test('P0-2h: entry from root + SL/TP1 pair from nested is mixed provenance => fail-closed', () => {
+  const candidate = {
+    entry_high: 1000,
+    levels: { stop_loss: 900, tp1: 1600 } // nested pair, no nested entry
+  };
+  assert.equal(
+    recalculateRiskReward(candidate),
+    null,
+    'root entry + nested pair cannot be proven same-setup; fake R/R 6.0 must not materialize'
+  );
+  assert.equal(passesRiskRewardFilter(candidate, MIN_RR_RATIO, { recalculate: true }), false);
+
+  // Partial pair in the nested source (only SL) must also fail closed, even
+  // when a lower nested source carries the TP1.
+  const partialNested = {
+    entry_high: 1000,
+    levels: { stop_loss: 900 },
+    trade_plan_v2: { tp1: 1600 }
+  };
+  assert.equal(recalculateRiskReward(partialNested), null, 'partial pair must not be completed from another source');
+  assert.equal(passesRiskRewardFilter(partialNested, MIN_RR_RATIO, { recalculate: true }), false);
+});
+
+test('P0-2i: structurally invalid pair (SL >= entry or TP1 <= entry) fails closed without substitution', () => {
+  // Root pair invalid, nested pair valid => root final wins => fail-closed.
+  const invalidRootPair = {
+    entry_high: 1000,
+    stop_loss: 1000, // SL == entry
+    tp1: 1200,
+    levels: { stop_loss: 900, tp1: 1400 }
+  };
+  assert.equal(recalculateRiskReward(invalidRootPair), null);
+  assert.equal(passesRiskRewardFilter(invalidRootPair, MIN_RR_RATIO, { recalculate: true }), false);
+
+  const tpBelowEntry = {
+    entry_high: 1000,
+    stop_loss: 900,
+    tp1: 1000, // TP1 == entry
+    levels: { stop_loss: 800, tp1: 1300 }
+  };
+  assert.equal(recalculateRiskReward(tpBelowEntry), null);
+  assert.equal(passesRiskRewardFilter(tpBelowEntry, MIN_RR_RATIO, { recalculate: true }), false);
+});
+
+test('P0-2j: legitimate payloads keep passing (nested-only, aliases, complete setup, production nested metrics)', () => {
+  // Nested-only valid setup: single source provides entry + pair.
+  const nestedOnly = { levels: { entry_high: 1000, stop_loss: 900, tp1: 1200 } };
+  assert.equal(recalculateRiskReward(nestedOnly), 2);
+  assert.equal(passesRiskRewardFilter(nestedOnly, MIN_RR_RATIO, { recalculate: true }), true);
+
+  // Legacy aliases inside ONE source stay supported.
+  const aliasLegacy = { entry_high: 1000, sl: 900, tp1n: 1200 };
+  assert.equal(recalculateRiskReward(aliasLegacy), 2);
+  assert.equal(passesRiskRewardFilter(aliasLegacy, MIN_RR_RATIO, { recalculate: true }), true);
+
+  // Complete root setup with R/R >= 1.5 stays executable.
+  const complete = { entry_low: 98, entry_high: 100, stop_loss: 90, tp1: 116 };
+  assert.equal(recalculateRiskReward(complete), 1.6);
+  assert.equal(passesRiskRewardFilter(complete, MIN_RR_RATIO, { recalculate: true }), true);
+
+  // Production nested metrics shape (FastWatcher publisher observation).
+  const production = {
+    ticker: 'BBRI',
+    observation: { metrics: { entry_high: 4000, stop_loss: 3800, tp1: 4350 } }
+  };
+  assert.equal(recalculateRiskReward(production), 1.75);
+  assert.equal(passesRiskRewardFilter(production, MIN_RR_RATIO, { recalculate: true }), true);
+
+  // Root-level entry + pair in the SAME source (production root rows) stays valid.
+  const rootComplete = { entry_high: 4000, stop_loss: 3800, tp1: 4350 };
+  assert.equal(recalculateRiskReward(rootComplete), 1.75);
+  assert.equal(passesRiskRewardFilter(rootComplete, MIN_RR_RATIO, { recalculate: true }), true);
+});
