@@ -19,10 +19,12 @@ function selectors(value) {
 }
 function namespace(selector) {
   const s = selector.trim();
-  if (['html', 'body', '.app-shell', 'html.light body', 'html.light .app-shell'].includes(s)) return '';
+  if (['html', 'body', '.app-shell', 'html.light body', 'html.light .app-shell', '[data-theme="light"] body', '[data-theme="light"] .app-shell'].includes(s)) return '';
   if (s === ':root') return scope;
   if (s === 'html.light') return 'html.light ' + scope;
+  if (s === '[data-theme="light"]') return '[data-theme="light"] ' + scope;
   if (s.startsWith('html.light ')) return 'html.light ' + scope + ' ' + s.slice(11);
+  if (s.startsWith('[data-theme="light"] ')) return '[data-theme="light"] ' + scope + ' ' + s.slice(21);
   if (s.startsWith('body ')) return scope + ' ' + s.slice(5);
   return scope + ' ' + s;
 }

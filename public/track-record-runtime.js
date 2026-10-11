@@ -17,6 +17,10 @@ function escapeHtml(value) {
     });
 }
 
+function escapeAttr(value) {
+    return escapeHtml(value);
+}
+
 // Entry bounds, always low-to-high.
 //
 // In `telegram_daily_picks`, entry1 is the UPPER bound and entry2 the LOWER one.
@@ -125,7 +129,8 @@ async function loadTrackRecord(force) {
 
         if (!data || !data.success) {
             if (status) status.textContent = _trData ? 'Gagal memperbarui. Data terakhir tetap ditampilkan.' : 'Gagal memuat track record.';
-            if (!_trData) tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 tr-error-cell">Gagal memuat track record: ' + escapeHtml((data && data.error) || 'Terjadi kesalahan.') + '</td></tr>';
+            if (!_trData) tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 tr-error-cell text-[var(--ac-loss,#dc2626)]">Gagal memuat track record: ' + escapeHtml((data && data.error) || 'Terjadi kesalahan.') + '</td></tr>';
+
             return;
         }
 
@@ -136,7 +141,8 @@ async function loadTrackRecord(force) {
         if (status) status.textContent = force ? 'Diperbarui. Track record terbaru ditampilkan.' : 'Data track record tersedia.';
     } catch (err) {
         if (status) status.textContent = _trData ? 'Gagal memperbarui. Data terakhir tetap ditampilkan.' : 'Gagal memuat track record.';
-        if (!_trData) tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 tr-error-cell">Gagal terhubung ke server: ' + escapeHtml(err.message || String(err)) + '</td></tr>';
+        if (!_trData) tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 tr-error-cell text-[var(--ac-loss,#dc2626)]">Gagal terhubung ke server: ' + escapeHtml(err.message || String(err)) + '</td></tr>';
+
     } finally {
         _trInFlight = false;
         if (refreshBtn) {
@@ -193,31 +199,23 @@ function renderTrackRecordUI(data) {
             var c = cats[key];
             if (!c) return;
             var m = meta[key] || { label: c.label || key, description: '' };
-            function formatSafeVal(v, suffix) {
-                if (v == null || v === 'undefined' || v === 'null') return '—';
-                var str = String(v).trim();
-                if (!str || str === 'undefined' || str === 'null' || str === 'NaN') return '—';
-                return suffix ? (str + suffix) : str;
-            }
-            var winRateStr = formatSafeVal(c.win_rate_tp1, ' TP');
-            var totalStr = formatSafeVal(c.total);
-            var tpHitsStr = formatSafeVal(c.tp1_hits);
-            var slRateStr = formatSafeVal(c.sl_rate);
-
-            html += '<div class="tr-cat-card" onclick="filterTrackRecordCategory(\'' + key + '\')">' +
+            var wrTp1Text = c.win_rate_tp1 != null ? c.win_rate_tp1 : (c.total ? ((c.tp1_hits / c.total) * 100).toFixed(1) + '%' : '—');
+            var slRateText = c.sl_rate != null ? c.sl_rate : (c.total ? ((c.sl_hits / c.total) * 100).toFixed(1) + '%' : '—');
+            html += '<div class="ac-surface-bounded p-3 flex flex-col justify-between hover:border-[var(--ac-primary,#10b981)] transition cursor-pointer" onclick="filterTrackRecordCategory(\'' + key + '\')">' +
                 '<div>' +
-                    '<div class="tr-cat-card-header">' +
-                        '<div class="tr-cat-card-title">' +
-                            '<span>' + escapeHtml(m.label || key) + '</span>' +
+                    '<div class="flex items-center justify-between gap-2 mb-1">' +
+                        '<div class="flex items-center gap-1.5 font-bold text-xs text-[var(--text-primary,#ffffff)]">' +
+                            '<span>' + escapeHtml(m.label) + '</span>' +
                         '</div>' +
-                        '<span class="tr-cat-pill font-mono">' + escapeHtml(winRateStr) + '</span>' +
+                        '<span class="text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 tabular-nums lining-nums">' + wrTp1Text + ' TP</span>' +
                     '</div>' +
-                    (m.description ? ('<p class="tr-cat-desc">' + escapeHtml(m.description) + '</p>') : '') +
+                    '<p class="text-[11px] text-[var(--ac-text-secondary,#9ca3af)] line-clamp-1 mb-2">' + (m.description || '') + '</p>' +
                 '</div>' +
-                '<div class="tr-cat-stats font-mono">' +
-                    '<div class="tr-cat-stat"><span class="tr-stat-lbl">Total</span><span class="tr-stat-val">' + totalStr + '</span></div>' +
-                    '<div class="tr-cat-stat"><span class="tr-stat-lbl">TP1/TP2</span><span class="tr-stat-val ac-num-positive">' + tpHitsStr + '</span></div>' +
-                    '<div class="tr-cat-stat"><span class="tr-stat-lbl">SL Rate</span><span class="tr-stat-val ac-num-negative">' + slRateStr + '</span></div>' +
+                '<div class="grid grid-cols-3 gap-1 pt-2 border-t border-[var(--ac-line-hairline,#374151)] text-center text-[10px]">' +
+                    '<div><span class="text-[var(--ac-text-muted,#6b7280)] block">Total</span><span class="font-bold text-[var(--text-primary,#e5e7eb)] text-xs font-mono tabular-nums lining-nums">' + c.total + '</span></div>' +
+                    '<div><span class="text-[var(--ac-text-muted,#6b7280)] block">TP1/TP2</span><span class="font-bold text-emerald-400 text-xs font-mono tabular-nums lining-nums">' + c.tp1_hits + '</span></div>' +
+                    '<div><span class="text-[var(--ac-text-muted,#6b7280)] block">SL Rate</span><span class="font-bold text-red-400 text-xs font-mono tabular-nums lining-nums">' + slRateText + '</span></div>' +
+
                 '</div>' +
             '</div>';
         });
@@ -247,6 +245,7 @@ function filterTrackRecordCategory(cat) {
     tabs.forEach(function(btn) {
         var active = btn.getAttribute('data-tr-cat') === _trCategoryFilter;
         btn.classList.toggle('active', active);
+        btn.classList.toggle('is-active', active);
     });
 
     renderTrackRecordTable();
@@ -295,16 +294,18 @@ function renderTrackRecordTable() {
     var search = (document.getElementById('trSearchInput') && document.getElementById('trSearchInput').value.trim().toUpperCase()) || '';
 
     var filtered = signals.filter(function(s) {
-        if (_trCategoryFilter !== 'all' && s.source !== _trCategoryFilter) return false;
+        var sourceCat = s.source || s.category || '';
+        if (_trCategoryFilter !== 'all' && sourceCat !== _trCategoryFilter && s.source_short !== _trCategoryFilter) return false;
+        var outcome = s.outcome || s.status || '';
         if (statusFilter !== 'all') {
-            if (statusFilter === 'TP1_HIT' && s.outcome !== 'TP1_HIT' && s.outcome !== 'TP2_HIT') return false;
-            else if (statusFilter === 'TP2_HIT' && s.outcome !== 'TP2_HIT') return false;
-            else if (statusFilter === 'SL_HIT' && s.outcome !== 'SL_HIT') return false;
-            else if (statusFilter === 'RUNNING' && s.outcome !== 'RUNNING' && s.outcome !== 'ENTRY_HIT') return false;
-            else if (statusFilter === 'WAITING' && s.outcome !== 'WAITING') return false;
-            else if (statusFilter === 'EXPIRED' && s.outcome !== 'EXPIRED') return false;
+            if (statusFilter === 'TP1_HIT' && outcome !== 'TP1_HIT' && outcome !== 'TP2_HIT') return false;
+            else if (statusFilter === 'TP2_HIT' && outcome !== 'TP2_HIT') return false;
+            else if (statusFilter === 'SL_HIT' && outcome !== 'SL_HIT') return false;
+            else if (statusFilter === 'RUNNING' && outcome !== 'RUNNING' && outcome !== 'ENTRY_HIT') return false;
+            else if (statusFilter === 'WAITING' && outcome !== 'WAITING') return false;
+            else if (statusFilter === 'EXPIRED' && outcome !== 'EXPIRED') return false;
         }
-        if (search && s.ticker.indexOf(search) === -1) return false;
+        if (search && String(s.ticker || '').toUpperCase().indexOf(search) === -1) return false;
         return true;
     });
 
@@ -321,13 +322,16 @@ function renderTrackRecordTable() {
     var mobileHtml = '';
 
     filtered.forEach(function(s) {
+        var gainVal = s.gain_pct != null ? s.gain_pct : (s.max_gain_pct != null ? s.max_gain_pct : null);
         var gainHtml = '—';
         var gainClass = 'ac-num-neutral';
-        if (s.gain_pct != null) {
-            var isPos = s.gain_pct > 0;
-            var isNeg = s.gain_pct < 0;
+        if (gainVal != null && isFinite(gainVal)) {
+            var numGain = Number(gainVal);
+            var isPos = numGain > 0;
+            var isNeg = numGain < 0;
             gainClass = isPos ? 'ac-num-positive font-bold' : (isNeg ? 'ac-num-negative font-bold' : 'ac-num-neutral');
-            gainHtml = '<span class="' + gainClass + '">' + (isPos ? '+' : '') + s.gain_pct.toFixed(1) + '%</span>';
+            var colorClass = isPos ? 'text-emerald-400 font-bold' : (isNeg ? 'text-red-400 font-bold' : 'text-gray-400');
+            gainHtml = '<span class="' + colorClass + ' font-mono tabular-nums">' + (isPos ? '+' : '') + numGain.toFixed(1) + '%</span>';
         }
 
         var entryBounds = trEntryBounds(s);
@@ -341,11 +345,16 @@ function renderTrackRecordTable() {
                 '</div>';
         }
 
-        var isExpiredSignal = s.outcome === 'EXPIRED' || s.status === 'EXPIRED' || s.status_label === 'Sinyal Kedaluwarsa' || s.status_label === 'Expired';
+        var outcome = s.outcome || s.status || '';
+        var isExpiredSignal = outcome === 'EXPIRED' || s.status_label === 'Sinyal Kedaluwarsa' || s.status_label === 'Expired';
         var statusTooltip = isExpiredSignal ? ' title="Harga tidak pernah masuk area beli (Entry 1 / Entry 2) dalam batas waktu pengamatan sinyal."' : '';
         var statusLabelText = formatOutcomeLabel(s);
-        var infoIcon = isExpiredSignal ? '<svg class="w-3 h-3 ml-1 inline opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : '';
-        var statusClass = getOutcomeClass(s.outcome || s.status);
+        var infoIcon = isExpiredSignal ? '<svg class="w-3 h-3 ml-1 inline text-gray-400 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : '';
+        var statusClass = getOutcomeClass(outcome);
+
+        var statusTone = s.status_tone || (outcome.indexOf('TP') !== -1 ? 'var(--ac-gain,#10b981)' : (outcome === 'SL_HIT' ? 'var(--ac-loss,#ef4444)' : (outcome === 'RUNNING' ? 'var(--ac-info,#3b82f6)' : (outcome === 'WAITING' ? 'var(--ac-amber,#d97706)' : 'var(--ac-text-secondary,#94a3b8)'))));
+        var statusBg = s.status_bg || (outcome.indexOf('TP') !== -1 ? 'rgba(16,185,129,0.12)' : (outcome === 'SL_HIT' ? 'rgba(239,68,68,0.12)' : (outcome === 'RUNNING' ? 'rgba(59,130,246,0.12)' : (outcome === 'WAITING' ? 'rgba(217,119,6,0.12)' : 'var(--ac-surface-sunken,rgba(148,163,184,0.1))'))));
+        var statusBorder = s.status_border || (outcome.indexOf('TP') !== -1 ? 'rgba(16,185,129,0.28)' : (outcome === 'SL_HIT' ? 'rgba(239,68,68,0.28)' : (outcome === 'RUNNING' ? 'rgba(59,130,246,0.28)' : (outcome === 'WAITING' ? 'rgba(217,119,6,0.28)' : 'var(--ac-line-hairline,rgba(148,163,184,0.2))'))));
 
         var hitSubtext = '';
         if (s.hit_time_wib && s.hit_time_wib !== '—') {
@@ -355,33 +364,35 @@ function renderTrackRecordTable() {
                 '</div>';
         }
 
-        // 1. Desktop table row
-        rowsHtml += '<tr class="tr-row">' +
-            '<td class="tr-col-ticker font-bold">' +
-                '<div class="tr-ticker-group">' +
-                    '<span>' + escapeHtml(s.ticker) + '</span>' +
-                    (s.score ? '<span class="tr-score-chip font-mono">' + escapeHtml(s.score) + '</span>' : '') +
+        var sourceText = s.source_short || s.source || s.category || '—';
+        var tickerBtn = '<button type="button" class="ticker-link font-bold text-[var(--text-primary,#ffffff)] hover:text-[var(--ac-primary,#10b981)] font-mono text-sm tracking-wide transition" onclick="if(typeof navigateTo===\'function\')navigateTo(\'analisis\',null,\'' + escapeAttr(s.ticker) + '\')" title="Buka Riset ' + escapeAttr(s.ticker) + '">' + escapeHtml(s.ticker) + '</button>';
+
+        rowsHtml += '<tr class="hover:bg-[var(--ac-surface-hover,rgba(255,255,255,0.03))] transition">' +
+            '<td class="px-3 py-2.5 font-bold text-[var(--text-primary,#ffffff)] sticky left-0 bg-[var(--ac-surface,#181d28)] z-10">' +
+                '<div class="flex items-center gap-1.5">' +
+                    tickerBtn +
+                    (s.score ? '<span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[var(--ac-surface-sunken,#111827)] text-[var(--ac-text-secondary,#9ca3af)] border border-[var(--ac-line-hairline,#374151)] tabular-nums lining-nums">' + s.score + '</span>' : '') +
                 '</div>' +
             '</td>' +
-            '<td class="tr-col-source whitespace-nowrap">' +
-                '<span class="tr-source-chip">' + escapeHtml(s.source_short || s.source_label) + '</span>' +
+            '<td class="px-3 py-2.5 text-[var(--ac-text-secondary,#9ca3af)] whitespace-nowrap">' +
+                '<span class="text-[11px] px-2 py-0.5 rounded-md bg-[var(--ac-surface-sunken,#111827)] border border-[var(--ac-line-hairline,#374151)] font-medium">' + escapeHtml(sourceText) + '</span>' +
             '</td>' +
-            '<td class="tr-col-date whitespace-nowrap font-mono">' +
-                '<div class="tr-date-main">' + escapeHtml(s.date || '—') + '</div>' +
+            '<td class="px-3 py-2.5 text-[var(--ac-text-secondary,#9ca3af)] whitespace-nowrap font-mono text-[11px] tabular-nums lining-nums">' +
+                '<div class="font-medium text-[var(--text-primary,#e5e7eb)]">' + (s.date || '—') + '</div>' +
                 signalSubtext +
             '</td>' +
-            '<td class="text-right font-mono tabular-nums">' + entryText + '</td>' +
-            '<td class="text-right font-mono tabular-nums ac-num-positive font-medium">' + formatRp(s.tp1) + '</td>' +
-            '<td class="text-right font-mono tabular-nums ac-num-positive">' + formatRp(s.tp2) + '</td>' +
-            '<td class="text-right font-mono tabular-nums ac-num-negative">' + formatRp(s.sl) + '</td>' +
-            '<td class="text-center whitespace-nowrap">' +
+            '<td class="px-3 py-2.5 text-right font-mono text-[var(--text-primary,#e5e7eb)] tabular-nums lining-nums">' + entryText + '</td>' +
+            '<td class="px-3 py-2.5 text-right font-mono text-[var(--ac-gain,#10b981)] font-medium tabular-nums lining-nums">' + formatRp(s.tp1) + '</td>' +
+            '<td class="px-3 py-2.5 text-right font-mono text-[var(--ac-gain,#10b981)]/90 tabular-nums lining-nums">' + formatRp(s.tp2) + '</td>' +
+            '<td class="px-3 py-2.5 text-right font-mono text-[var(--ac-loss,#ef4444)] tabular-nums lining-nums">' + formatRp(s.sl) + '</td>' +
+            '<td class="px-3 py-2 text-center whitespace-nowrap">' +
                 '<span class="tr-status-pill ' + statusClass + (isExpiredSignal ? ' cursor-help' : '') + '"' + statusTooltip + '>' +
                     escapeHtml(statusLabelText) + infoIcon +
                 '</span>' +
                 hitSubtext +
             '</td>' +
-            '<td class="text-right font-mono tabular-nums">' + gainHtml + '</td>' +
-            '<td class="text-right font-mono tabular-nums tr-col-duration">' + escapeHtml(s.duration_text || '—') + '</td>' +
+            '<td class="px-3 py-2.5 text-right font-mono tabular-nums lining-nums">' + gainHtml + '</td>' +
+            '<td class="px-3 py-2.5 text-right text-[var(--ac-text-secondary,#9ca3af)] whitespace-nowrap text-[11px]">' + (s.duration_text || '—') + '</td>' +
         '</tr>';
 
         // 2. Mobile card row
@@ -513,10 +524,12 @@ function switchTrackRecordView(viewName) {
 
     if (tabTable) {
         tabTable.classList.toggle('active', !isBacktest);
+        tabTable.classList.toggle('is-active', !isBacktest);
     }
 
     if (tabBacktest) {
         tabBacktest.classList.toggle('active', isBacktest);
+        tabBacktest.classList.toggle('is-active', isBacktest);
     }
 
     if (panelTable) {

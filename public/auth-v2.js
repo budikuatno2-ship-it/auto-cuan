@@ -155,10 +155,11 @@
           if (window.location.pathname === '/dashboard' || window.location.pathname === '/dashboard/') {
             if (typeof window.openAuthChoiceModal === 'function') {
               try {
-                var message = result.response.status === 403
-                  ? 'Akses ditolak. Akun Anda belum disetujui atau tidak memiliki izin.'
-                  : 'Sesi sudah tidak berlaku. Silakan login kembali.';
-                window.openAuthChoiceModal(message);
+                if (result.response.status === 403) {
+                  window.openAuthChoiceModal('Akses ditolak. Akun Anda belum disetujui atau tidak memiliki izin.');
+                } else {
+                  window.openAuthChoiceModal('Sesi sudah tidak berlaku. Silakan login kembali.');
+                }
               } catch (_) {}
             }
           }

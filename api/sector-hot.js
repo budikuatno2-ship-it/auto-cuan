@@ -10491,11 +10491,12 @@ async function handleNkScreenerStart(req, res, supabase) {
       .eq('id', 'latest')
       .maybeSingle();
     const resumeMeta = resumeRes && resumeRes.data;
-    if (resumeMeta && resumeMeta.run_date === runDate && Number(resumeMeta.total_batches) > 0) {
+    const targetRunDate = (resumeMeta && resumeMeta.run_date) || runDate;
+    if (resumeMeta && Number(resumeMeta.total_batches) > 0) {
       const jobsRes = await supabase
         .from('swing_screener_non_konglo_jobs')
         .select('batch_index,status')
-        .eq('run_date', runDate);
+        .eq('run_date', targetRunDate);
       const jobs = jobsRes && jobsRes.data;
       if (Array.isArray(jobs) && jobs.length === Number(resumeMeta.total_batches)) {
         // Plan identity intact — never rebuild it.

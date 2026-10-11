@@ -567,26 +567,8 @@
     style.id = 'ac-broker-bubble-styles';
     style.textContent = [
       '@keyframes acBubblePopIn {',
-      '  0% { opacity: 0; transform: scale(0.25); }',
-      '  70% { transform: scale(1.08); }',
+      '  0% { opacity: 0; transform: scale(0.65); }',
       '  100% { opacity: 1; transform: scale(1); }',
-      '}',
-      '@keyframes acBubbleFloat1 {',
-      '  0%, 100% { transform: translateY(0px) rotate(0deg); }',
-      '  50% { transform: translateY(-7px) rotate(1deg); }',
-      '}',
-      '@keyframes acBubbleFloat2 {',
-      '  0%, 100% { transform: translateY(0px) rotate(0deg); }',
-      '  50% { transform: translateY(7px) rotate(-1deg); }',
-      '}',
-      '@keyframes acBubbleFloat3 {',
-      '  0%, 100% { transform: translate(0px, 0px); }',
-      '  33% { transform: translate(4px, -5px); }',
-      '  66% { transform: translate(-3px, 4px); }',
-      '}',
-      '@keyframes acBubbleFloat4 {',
-      '  0%, 100% { transform: translate(0px, 0px); }',
-      '  50% { transform: translate(-4px, -6px); }',
       '}',
       '@keyframes acFadeIn {',
       '  from { opacity: 0; transform: translateY(6px); }',
@@ -602,28 +584,33 @@
       '  justify-content: center;',
       '  cursor: pointer;',
       '  user-select: none;',
-      '  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, border-color 0.2s ease;',
+      '  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;',
       '  position: relative;',
-      '  will-change: transform;',
       '  border-style: solid;',
       '  border-width: 1.5px;',
       '  touch-action: manipulation;',
       '  -webkit-tap-highlight-color: transparent;',
       '}',
       '.ac-broker-bubble:hover {',
-      '  transform: scale(1.1) !important;',
+      '  transform: scale(1.06) !important;',
       '  z-index: 20;',
       '}',
       '.ac-broker-bubble.ac-bubble-selected {',
-      '  transform: scale(1.18) !important;',
+      '  transform: scale(1.12) !important;',
       '  z-index: 30;',
-      '  box-shadow: 0 0 24px rgba(255, 255, 255, 0.5), inset 0 0 14px rgba(255, 255, 255, 0.3) !important;',
+      '  box-shadow: 0 0 16px rgba(16, 185, 129, 0.45) !important;',
       '  border-color: #ffffff !important;',
       '  border-width: 2.5px !important;',
       '  animation: none !important;',
       '}',
       '.ac-fade-in {',
-      '  animation: acFadeIn 0.25s ease-out forwards;',
+      '  animation: acFadeIn 0.2s ease-out forwards;',
+      '}',
+      '@media (prefers-reduced-motion: reduce) {',
+      '  .ac-broker-bubble {',
+      '    animation: none !important;',
+      '    transition: none !important;',
+      '  }',
       '}'
     ].join('\n');
     document.head.appendChild(style);
@@ -3570,24 +3557,19 @@
     svg += '      .solar-system-orbit-group {\n';
     svg += '        transform-origin: 450px 350px;\n';
     svg += '      }\n';
+    svg += '      .emiten-counter-group {\n';
+    svg += '        transform-origin: 450px 350px;\n';
+    svg += '      }\n';
+    svg += '      .satellite-orbit-group {\n';
+    svg += '        transform-origin: 450px 350px;\n';
+    svg += '      }\n';
+    svg += '      .satellite-counter-group {\n';
+    svg += '        transform-origin: 450px 350px;\n';
+    svg += '      }\n';
     svg += '      @media (prefers-reduced-motion: reduce) {\n';
     svg += '        * { animation: none !important; }\n';
     svg += '      }\n';
     svg += '    </style>\n';
-    svg += '    <filter id="glowCentral" x="-30%" y="-30%" width="160%" height="160%">\n';
-    svg += '      <feGaussianBlur stdDeviation="7" result="blur" />\n';
-    svg += '      <feMerge>\n';
-    svg += '        <feMergeNode in="blur" />\n';
-    svg += '        <feMergeNode in="SourceGraphic" />\n';
-    svg += '      </feMerge>\n';
-    svg += '    </filter>\n';
-    svg += '    <filter id="glowNode" x="-25%" y="-25%" width="150%" height="150%">\n';
-    svg += '      <feGaussianBlur stdDeviation="4" result="blur" />\n';
-    svg += '      <feMerge>\n';
-    svg += '        <feMergeNode in="blur" />\n';
-    svg += '        <feMergeNode in="SourceGraphic" />\n';
-    svg += '      </feMerge>\n';
-    svg += '    </filter>\n';
     svg += '    <linearGradient id="edgeCurvedGrad" x1="0%" y1="0%" x2="100%" y2="100%">\n';
     svg += '      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.9" />\n';
     svg += '      <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.75" />\n';
@@ -3689,7 +3671,7 @@
 
       // Counter-rotating Planet Body (keeps text readable while orbiting)
       svg += '      <g class="emiten-counter-group" style="transform-origin: ' + ex2.toFixed(1) + 'px ' + ey2.toFixed(1) + 'px;">\n';
-      svg += '        <circle cx="' + ex2.toFixed(1) + '" cy="' + ey2.toFixed(1) + '" r="31" fill="' + nodeFill + '" stroke="' + nodeStroke + '" stroke-width="' + nodeWidth + '" filter="url(#glowNode)"/>\n';
+      svg += '        <circle cx="' + ex2.toFixed(1) + '" cy="' + ey2.toFixed(1) + '" r="31" fill="' + nodeFill + '" stroke="' + nodeStroke + '" stroke-width="' + nodeWidth + '"/>\n';
       svg += '        <text x="' + ex2.toFixed(1) + '" y="' + (ey2 - 6).toFixed(1) + '" fill="#f8fafc" font-size="11" font-family="monospace" font-weight="bold" text-anchor="middle">' + escapeHtml(emNode2.ticker) + '</text>\n';
       svg += '        <text x="' + ex2.toFixed(1) + '" y="' + (ey2 + 7).toFixed(1) + '" fill="#34d399" font-size="9.5" font-family="monospace" font-weight="semibold" text-anchor="middle">' + escapeHtml(pctText) + '</text>\n';
       svg += '        <text x="' + ex2.toFixed(1) + '" y="' + (ey2 + 18).toFixed(1) + '" fill="#94a3b8" font-size="8" font-family="sans-serif" text-anchor="middle">' + escapeHtml(sharesShort) + '</text>\n';
@@ -3707,7 +3689,7 @@
     var emitensCount = centralNode.total_emitens != null ? centralNode.total_emitens : numEmitens;
 
     svg += '  <g class="central-insider-node cursor-pointer">\n';
-    svg += '    <circle cx="' + cx + '" cy="' + cy + '" r="46" fill="#451a03" stroke="#f59e0b" stroke-width="3" filter="url(#glowCentral)"/>\n';
+    svg += '    <circle cx="' + cx + '" cy="' + cy + '" r="46" fill="#451a03" stroke="#f59e0b" stroke-width="3"/>\n';
     svg += '    <circle cx="' + cx + '" cy="' + cy + '" r="39" fill="#1c1202" stroke="#b45309" stroke-width="1"/>\n';
     svg += '    <text x="' + cx + '" y="' + (cy - 11) + '" fill="#f59e0b" font-size="18" text-anchor="middle">👑</text>\n';
     svg += '    <text x="' + cx + '" y="' + (cy + 6) + '" fill="#fbbf24" font-size="11" font-weight="bold" font-family="sans-serif" text-anchor="middle">' + labelName + '</text>\n';
