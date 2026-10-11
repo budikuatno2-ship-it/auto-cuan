@@ -51,8 +51,10 @@ test('reported RR cannot override poorer RR derived from locked levels', () => {
   });
 
   const state = result.state.tickers.SAFE;
-  assert.equal(state.locked_risk_reward, 0.13);
-  assert.equal(state.last_metrics.risk_reward, 0.13);
+  // P0 (PR #862): R/R derived from final levels is NOT rounded prematurely:
+  // (104 - 103) / (103 - 95) = 1/8 = 0.125 (previously round2 => 0.13).
+  assert.equal(state.locked_risk_reward, 0.125);
+  assert.equal(state.last_metrics.risk_reward, 0.125);
   assert.equal(state.status, 'WATCHING');
   assert.equal(state.ready_streak, 0);
   assert.ok(state.last_reasons.includes('risk_reward_below_minimum'));

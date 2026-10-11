@@ -2,11 +2,12 @@
 
 **Branch Perbaikan:** `fix/audit-okt2026-batch-1`
 **Baseline Git:** `origin/feat/daytrade-screener-v1` (commit `554810fcd3090ee77085e020ffb1ebe09b6af691`)
-**Commit SHA:** `40a388a032906df076ae4cf9659b8eb6a58397a0`
+**SHA Referensi (pre-koreksi final):** `e4362cd672cdb199feffb9fdd0d3090117dc2ef1`
+**SHA Koreksi Final:** Menyusul pada HEAD commit koreksi final review (commit ini sendiri belum dapat memuat SHA-nya sendiri; lihat riwayat `git log` branch untuk nilai final).
 **Target Pull Request:** `feat/daytrade-screener-v1`
 **Pull Request URL:** https://github.com/budikuatno2-ship-it/auto-cuan/pull/862
 **Tanggal:** Minggu, 11 Oktober 2026
-**Status Batch:** REVISI REVIEW PR #862 SELESAI — SIAP REVIEW ULANG.
+**Status Batch:** REVISI REVIEW FINAL PR #862 SELESAI — SIAP REVIEW ULANG.
 
 ---
 
@@ -125,18 +126,49 @@ Batch 1 difokuskan sepenuhnya pada **P0: Safety Gate dan Jam Bursa** untuk menja
 
 ---
 
-## 6. STATUS PULL REQUEST
+## 6. KOREKSI FINAL REVIEW PR #862 (P0-1 DAN P0-2)
+
+### P0-1: FastWatcher Status Internal Konsisten dengan Entry Eligibility
+- **Masalah terkonfirmasi (reproduksi empiris):** `entry_eligible` sudah memakai minimum R/R 1.5, tetapi `passes` tetap `true` dan `status` tetap `READY_PASS` saat R/R di bawah minimum eksekusi. Pool membangun confirmation window dari `result.passes`, sehingga payload dengan R/R 1.2 + `minimum_risk_reward=1.0` mencapai `READY_CONFIRMED` dan `publishable` pada menit konfirmasi ke-3. Selain itu R/R hasil hitung ulang dibulatkan `round2` sehingga 1.496 tampak 1.5 dan lolos gate.
+- **Perbaikan:**
+  - `lib/intraday-fast-watcher-momentum.js` — `passes`, `entry_eligible`, dan `status` kini fail-closed dan konsisten: R/R aktual di bawah `execution_minimum_risk_reward` (floor 1.5) tidak pernah menghasilkan `READY_PASS`; setup tetap boleh menjadi radar informasional `WATCHING` dengan reason `risk_reward_below_execution_minimum`.
+  - `lib/intraday-fast-watcher-momentum.js` — R/R aktual DIHITUNG ULANG dari level final (bukan metadata basi) dan TIDAK dibulatkan sebelum gate (`reported_risk_reward` disimpan terpisah untuk observabilitas).
+  - `lib/intraday-fast-watcher-pool.js` — `canonicalSetupMetrics` tidak lagi membulatkan R/R sebelum penguncian; ditambah verifikasi pertahanan-berlapis sebelum confirmation window sehingga R/R < 1.5 tidak pernah masuk `READY_PENDING`/`READY_CONFIRMED`/`publishable`.
+- **Bukti:** `test/batch1-fastwatcher-rr-status-closure.test.js` (11 test) — pool.process() lintas menit berbeda; R/R 1.2 & 1.496 & metadata basi tidak pernah `READY_CONFIRMED`; R/R 1.6 tetap terkonfirmasi normal (tanpa over-blocking).
+
+### P0-2: Ekstraksi Level Final Wajib Fail-Closed
+- **Masalah terkonfirmasi (reproduksi empiris):**
+  1. `entry_high=NaN, entry_low=950, sl=900, tp1=1100` → level eksplisit invalid lolos lewat fallback ke `entry_low` (R/R palsu 3.0).
+  2. Root `entry_low=950, sl=900, tp1=1100` + `candidate.levels.entry_high=1000` → entry konservatif 950 dipilih (R/R palsu 3.0) alih-alih batas atas 1000 (R/R 1.0).
+  3. Level dari setup/snapshot berbeda (entry+SL root, TP1 nested) digabung menjadi R/R valid palsu 6.0.
+- **Perbaikan (`lib/screener-config.js` — `extractCandidateLevels`):**
+  - Nilai eksplisit invalid (NaN/Infinity/negatif) pada level apa pun ⇒ fail-closed; tidak boleh diselamatkan fallback.
+  - Entry = batas ATAS paling konservatif dari seluruh sumber (batas atas kapan pun mengalahkan lower bound).
+  - SL & TP1 wajib berasal dari SATU sumber yang sama; gabungan lintas sumber ⇒ fail-closed.
+  - Level yang diisi tapi tidak lengkap ⇒ `passesRiskRewardFilter` fail-closed dan tidak boleh fallback ke metadata `risk_reward` lama (berlaku juga pada jalur non-recalculate).
+  - Alias legacy valid (`entry1`/`entry2`/`sl`/`tp1n`/`entry_high` dalam satu sumber) tetap didukung.
+- **Bukti:** `test/batch1-fastwatcher-rr-status-closure.test.js` P0-2a s/d P0-2e; seluruh suite safety gate lama tetap lulus.
+
+### Catatan Scope Dokumentasi BSJP
+- Dokumen `docs/EVALUASI_CUTOFF_1530_DAN_STRATEGI_BSJP.md` SECARA HISTORIS SUDAH TERMASUK dalam diff PR #862 (terbawa oleh commit `40a388a0` saat normalisasi line ending). Dokumen tersebut murni perencanaan dan TIDAK mengubah perilaku kode apa pun di PR ini.
+- Sesuai batas scope: implementasi BSJP TIDAK dilakukan di PR #862. Isi dokumen tetap disimpan untuk fase berikutnya pada branch terpisah (`feat/bsjp-strategy-cutoff-1530`) setelah PR #862 stabil.
+- Angka historis pada dokumen BSJP (peningkatan volume 20–35%, akumulasi 15:00–15:30, dll.) adalah HIPOTESIS perencanaan yang BELUM terbukti — bukan hasil backtest. Dokumen telah ditandai demikian; verifikasi dengan sampel data, metodologi, dan hasil terukur adalah prasyarat fase implementasi.
+
+---
+
+## 7. STATUS PULL REQUEST
 
 - **Branch:** `fix/audit-okt2026-batch-1`
 - **Target Integrasi:** `feat/daytrade-screener-v1`
 - **Branch `main`:** Bersih dan TIDAK DISENTUH.
-- **Commit SHA:** `e9f95c6fcd86515490b2be5826bc75a7d0a9e010`
+- **SHA Referensi:** `e4362cd672cdb199feffb9fdd0d3090117dc2ef1` (sebelum koreksi final review; SHA koreksi final = HEAD branch setelah push).
 - **Pull Request URL:** https://github.com/budikuatno2-ship-it/auto-cuan/pull/862
 - **Status:** SIAP DIREVIEW — BELUM DI-MERGE (Menunggu persetujuan pengguna).
 
 ---
 
-## 7. TINDAKAN PRODUKSI YANG MASIH MEMBUTUHKAN PERSETUJUAN
+## 8. TINDAKAN PRODUKSI YANG MASIH MEMBUTUHKAN PERSETUJUAN
 
 1. Persetujuan untuk me-merge Pull Request #862 ke branch `feat/daytrade-screener-v1`.
 2. Persetujuan untuk memulai **BATCH 2 (P1: Financial Data Pipeline)**.
+3. Persetujuan fase implementasi BSJP (branch terpisah) setelah PR #862 stabil.

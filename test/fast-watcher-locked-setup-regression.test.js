@@ -20,6 +20,9 @@ function msky(time, overrides = {}) {
   };
 }
 
+// P0 (PR #862): fixture levels must yield an ACTUAL R/R >= 1.5 because the
+// engine now derives R/R from final levels (stale risk_reward metadata is
+// ignored). Entry 103, SL 95 (risk 8), TP1 116 => R/R 1.625.
 function readyObservation(time, overrides = {}) {
   return {
     ticker: 'ZZZZ',
@@ -28,7 +31,7 @@ function readyObservation(time, overrides = {}) {
     current_price: 100,
     entry_low: 98,
     entry_high: 103,
-    tp1: 112,
+    tp1: 116,
     stop_loss: 95,
     high: 103,
     low: 98,
@@ -63,7 +66,11 @@ test('pool preserves source status and origin from raw payload', () => {
 
 test('metrics read canonical trade-plan RR', () => {
   const metrics = momentum.metricsFrom(msky('09:58'));
-  assert.equal(metrics.risk_reward, 0.33);
+  // P0 (PR #862): R/R is DERIVED from final levels without premature rounding:
+  // (tp1 70 - entry_high 69) / (entry_high 69 - sl 66) = 1/3.
+  assert.equal(metrics.risk_reward, 1 / 3);
+  assert.equal(metrics.reported_risk_reward, 0.33);
+  assert.equal(metrics.risk_reward_source, 'derived_final_levels');
   assert.equal(metrics.minimum_risk_reward, 1);
   assert.equal(metrics.plan_lock_id, 'tplock_A');
 });
@@ -136,7 +143,7 @@ test('material plan lock change resets confirmation streak before another pass',
       relative_volume: 1.8,
       entry_low: 108,
       entry_high: 113,
-      tp1: 125,
+      tp1: 135,
       stop_loss: 100,
       plan_lock_id: 'PLAN_B'
     })],
@@ -173,7 +180,7 @@ test('benign plan lock drift preserves confirmation window (FW-04 contract)', ()
       relative_volume: 1.8,
       entry_low: 99,
       entry_high: 104,
-      tp1: 113,
+      tp1: 117,
       stop_loss: 96,
       plan_lock_id: 'PLAN_B'
     })],
@@ -209,7 +216,7 @@ test('material source setup change resets confirmation even without plan lock id
       relative_volume: 1.8,
       entry_low: 108,
       entry_high: 113,
-      tp1: 125,
+      tp1: 135,
       stop_loss: 100,
       plan_lock_id: null
     })],

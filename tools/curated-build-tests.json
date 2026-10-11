@@ -127,6 +127,7 @@
   "test/batch-consolidation-signoff.test.js",
   "test/batch1-market-hours-synchronization.test.js",
   "test/batch1-pre-pr-verification.test.js",
+  "test/batch1-fastwatcher-rr-status-closure.test.js",
   "test/batch1-risk-reward-safety-gates.test.js",
   "test/batch10-fabricated-tp-and-backtest-demo.test.js",
   "test/batch11-utc-naive-date-formatting.test.js",

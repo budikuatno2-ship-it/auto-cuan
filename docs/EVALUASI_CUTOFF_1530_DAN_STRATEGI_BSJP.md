@@ -3,8 +3,20 @@
 **Dokumen Perencanaan Teknis & Analisis Risiko**
 **Penyusun:** Tim Engineering Auto-Cuan
 **Tanggal:** 11 Oktober 2026
-**Status:** DRAFT EVALUASI — FASE B (Khusus Perencanaan; Tidak Dimasukkan ke PR #862)
+**Status:** DRAFT EVALUASI — FASE B (Khusus Perencanaan; tanpa perubahan perilaku kode)
 **Target Rilis:** Branch & PR Terpisah (setelah Safety Gate PR #862 stabil dan disetujui)
+
+> **CATATAN SCOPE (koreksi final review PR #862):** Dokumen ini SECARA HISTORIS SUDAH
+> TERMASUK dalam diff PR #862 (terbawa saat normalisasi line ending commit `40a388a0`).
+> Dokumen murni perencanaan dan TIDAK mengubah perilaku kode apa pun di PR #862.
+> Sesuai batas scope, implementasi BSJP TIDAK dilakukan di PR #862 dan disimpan untuk
+> fase berikutnya pada branch terpisah (`feat/bsjp-strategy-cutoff-1530`).
+
+> **PERINGATAN METODOLOGI:** Seluruh angka historis pada dokumen ini (persentase
+> peningkatan volume, pola akumulasi, karakteristik risiko) adalah **HIPOTESIS
+> perencanaan yang BELUM terbukti** — BUKAN hasil backtest. Belum ada sampel data,
+> metodologi, dan hasil terukur yang memverifikasi angka-angka tersebut. Verifikasi
+> eksplisit adalah prasyarat wajib sebelum fase implementasi dimulai.
 
 ---
 
@@ -39,17 +51,22 @@ Audit kode menunjukkan cutoff 14:30 WIB terdistribusi pada modul-modul berikut:
 
 ---
 
-## 3. EVALUASI EMPIRIS PELUANG 14:31–15:30 WIB (BEBAS LOOK-AHEAD BIAS)
+## 3. HIPOTESIS PELUANG 14:31–15:30 WIB (BELUM DIVERIFIKASI — BUKAN BACKTEST)
 
-Berdasarkan analisis sampel historis tick snapshot intraday IDX:
+> **STATUS BUKTI: HIPOTESIS.** Bagian ini sebelumnya diberi judul "Evaluasi Empiris".
+> Tidak ada sampel data, metodologi, maupun hasil terukur yang disertakan; karena itu
+> angka-angka di bawah adalah hipotesis perencanaan, bukan temuan terverifikasi.
+> Implementasi BSJP tidak boleh dimulai sebelum hipotesis ini diuji dengan data nyata.
 
-1. **Karakteristik Volume:**
-   - 14:30–15:00 WIB: Volume perdagangan biasanya mengalami peningkatan 20–35% dibanding sesi siang (13:30–14:30) karena institusi mulai menyelesaikan order execution (TWAP/VWAP).
-   - 15:00–15:30 WIB: Akumulasi agresif terjadi pada saham-saham breakout yang bertahan di atas resistance harian (*high of the day / HOD*).
-2. **Karakteristik Risiko:**
-   - **Overnight Gap Risk:** Saham yang dibeli pada 15:15–15:30 WIB menghadapi risiko gap-down keesokan hari akibat sentimen bursa global (Dow Jones/Nasdaq/EIDO) atau berita emiten semalam.
+Hipotesis awal (perlu pengujian data sebelum dijadikan dasar keputusan):
+
+1. **Karakteristik Volume (hipotesis):**
+   - 14:30–15:00 WIB: Diduga volume perdagangan cenderung meningkat dibanding sesi siang (13:30–14:30) karena institusi menyelesaikan order execution (TWAP/VWAP). Besaran peningkatan **belum diukur**.
+   - 15:00–15:30 WIB: Diduga akumulasi terjadi pada saham-saham breakout yang bertahan di atas resistance harian (*high of the day / HOD*). **Belum diukur**.
+2. **Karakteristik Risiko (kualitatif):**
+   - **Overnight Gap Risk:** Saham yang dibeli sore menghadapi risiko gap-down keesokan hari akibat sentimen bursa global atau berita emiten semalam. Besaran risiko **belum diukur**.
    - **Pre-Closing Auction Lock (15:50–16:00 WIB):** Likuiditas membeku pada order book blind-auction; trader tidak dapat langsung keluar dengan market order jika terjadi penurunan tiba-tiba.
-   - **False Breakout Sore:** Sebagian saham dinaikkan untuk kebutuhan *marking the close* tanpa akumulasi riil bandar (*spoofing/pumping*).
+   - **False Breakout Sore:** Sebagian saham dinaikkan untuk kebutuhan *marking the close* tanpa akumulasi riil bandar (*spoofing/pumping*) — indikasi anekdotal, belum diuji statistik.
 
 ---
 
