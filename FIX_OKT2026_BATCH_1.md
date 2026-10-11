@@ -1,25 +1,33 @@
-# LAPORAN PERBAIKAN TAHAP 2 — BATCH 1: SAFETY GATE DAN JAM BURSA
+# LAPORAN PERBAIKAN TAHAP 2 — BATCH 1: SAFETY GATE DAN JAM BURSA (REVISI REVIEW PR #862)
 
-**Branch Perbaikan:** `fix/audit-okt2026-batch-1`  
-**Baseline Git:** `origin/feat/daytrade-screener-v1` (commit `554810fcd3090ee77085e020ffb1ebe09b6af691`)  
-**Commit SHA:** `e9f95c6fcd86515490b2be5826bc75a7d0a9e010`  
-**Target Pull Request:** `feat/daytrade-screener-v1`  
-**Pull Request URL:** https://github.com/budikuatno2-ship-it/auto-cuan/pull/862  
-**Tanggal:** Minggu, 11 Oktober 2026  
-**Status Batch:** PULL REQUEST DIBUKA — MENUNGGU PERSETUJUAN MERGE.
+**Branch Perbaikan:** `fix/audit-okt2026-batch-1`
+**Baseline Git:** `origin/feat/daytrade-screener-v1` (commit `554810fcd3090ee77085e020ffb1ebe09b6af691`)
+**Target Pull Request:** `feat/daytrade-screener-v1`
+**Pull Request URL:** https://github.com/budikuatno2-ship-it/auto-cuan/pull/862
+**Tanggal:** Minggu, 11 Oktober 2026
+**Status Batch:** REVISI REVIEW PR #862 SELESAI — SIAP REVIEW ULANG.
 
 ---
 
-## 1. RINGKASAN TEMUAN YANG DIPERBAIKI
+## 1. RINGKASAN TEMUAN YANG DIPERBAIKI (TERMASUK TEMUAN REVIEW)
 
 Batch 1 difokuskan sepenuhnya pada **P0: Safety Gate dan Jam Bursa** untuk menjamin tidak ada sinyal yang tidak valid, tidak aman, salah waktu, atau memiliki rasio Risk/Reward (R/R) di bawah standar produk (minimal 1.5) yang lolos ke status siap eksekusi / broadcast channel Telegram.
 
-### A. Risk/Reward (R/R) Gate
+### A. Risk/Reward (R/R) Gate & Review Findings
 1. **Penyeragaman Minimum R/R 1.5 di Seluruh Jalur Eksekusi:** Menghilangkan disparitas threshold R/R 1.3 pada Day Trade (`api/sector-hot.js`) dan 1.2 pada `lib/idx-tick-normalization.js`, sehingga seluruh kategori sinyal siap eksekusi (Day Trade, Swing Konglo, Swing Non-Konglo, Top 5) seragam wajib memiliki R/R aktual ke TP1 minimal 1.5.
-2. **Pencegahan Stale R/R & Recalculation Integrity:** `passesRiskRewardFilter` di `lib/screener-config.js` kini menghitung ulang R/R aktual dari level final (`entry_high`, `stop_loss`, `tp1`) dan fail-closed jika data level tidak valid (`stop_loss >= entry_high`, `tp1 <= entry_high`, `sl <= 0`, non-finite, NaN, Infinity).
-3. **Pemisahan Sinyal Terkonfirmasi vs Radar Pantauan:** Sinyal dengan R/R 1.0–1.49 tetap diizinkan di Radar Pantauan FastWatcher (`lib/intraday-fast-watcher-radar-publisher.js`) dengan label informasional eksplisit *"Pantauan, belum sinyal beli"*, tetapi dicegah naik menjadi sinyal siap eksekusi (`READY_CONFIRMED` / `entry_eligible`).
-4. **FastWatcher Confirmed Publisher Gate:** Menambahkan pemeriksaan wajib `passesRiskRewardFilter(..., 1.5, { recalculate: true })` pada fungsi `publishConfirmed` (`lib/intraday-fast-watcher-publisher.js`) sebelum sinyal live dapat dikirim via Telegram atau disimpan ke database publik.
-5. **Trade Plan Legacy Fallback Gate:** Memastikan trade plan fallback tidak dapat melewati gerbang keselamatan `candidatePassesPublicTelegramSafetyGate`.
+2. **P0 Recalculation R/R Fail-Closed & Level Priority:**
+   - Pemanggilan `passesRiskRewardFilter` di `candidatePassesPublicTelegramSafetyGate` (`api/sector-hot.js`) dan `publishConfirmed` (`lib/intraday-fast-watcher-publisher.js`) kini mengaktifkan `{ recalculate: true }`.
+   - Jika recalculation diwajibkan tetapi level tidak lengkap atau invalid, evaluasi wajib FAIL-CLOSED (`return false;`), tidak boleh fallback ke nilai `risk_reward` lama.
+   - Prioritas ekstraksi level menempatkan root candidate di posisi teratas sehingga level final aktual tidak dapat dikalahkan oleh level lama pada objek nested (`candidate.levels`, `candidate.trade_plan_v2`, `candidate.metrics`, `candidate.observation`).
+   - Teruji langsung pada regression test: `entry_high=1000, stop_loss=900, tp1=1120, risk_reward=1.8` ditolak karena R/R aktual 1.2 (< 1.5).
+3. **P0 Presisi Float Asli Tanpa Pembulatan Dua Desimal Sebelum Gate:**
+   - `recalculateRiskReward` di `lib/screener-config.js` mengembalikan nilai float murni tanpa `Math.round(rr * 100) / 100`. Pembulatan dua desimal hanya boleh digunakan untuk tampilan UI/notifikasi.
+   - Teruji pada batas kritis: R/R 1.496 dan 1.499 gagal, sedangkan 1.500 dan 1.501 lolos.
+4. **P0 Minimum R/R Floor FastWatcher:**
+   - `metricsFrom()` pada `lib/intraday-fast-watcher-momentum.js` menggunakan `Math.max(1.5, ...)` sehingga `observation.minimum_risk_reward=1.0` atau `plan.minimum_rr_to_tp1=1.2` tidak dapat menurunkan ambang minimum 1.5 sinyal eksekusi (`READY_CONFIRMED` / `entry_eligible`).
+   - Radar informasional (`SPIKE_RADAR`, pre-confirmation radar) tetap dipisahkan dari sinyal terkonfirmasi.
+5. **Pemisahan Sinyal Terkonfirmasi vs Radar Pantauan:** Sinyal dengan R/R 1.0–1.49 tetap diizinkan di Radar Pantauan FastWatcher (`lib/intraday-fast-watcher-radar-publisher.js`) dengan label informasional eksplisit *"Pantauan, belum sinyal beli"*, tetapi dicegah naik menjadi sinyal siap eksekusi (`READY_CONFIRMED` / `entry_eligible`).
+6. **FastWatcher Confirmed Publisher Gate:** Menambahkan pemeriksaan wajib `passesRiskRewardFilter(..., 1.5, { recalculate: true })` pada fungsi `publishConfirmed` (`lib/intraday-fast-watcher-publisher.js`) sebelum sinyal live dapat dikirim via Telegram atau disimpan ke database publik.
 
 ### B. Jam Bursa & Sinkronisasi Sesi
 1. **Penyelarasan Sumber Waktu (Single Source of Truth):** Menyelaraskan kontrak waktu antara `lib/market-hours-guard.js`, `lib/intraday-volume-pace.js`, dan `lib/intraday-fast-watcher-live.js`.
@@ -92,19 +100,27 @@ Batch 1 difokuskan sepenuhnya pada **P0: Safety Gate dan Jam Bursa** untuk menja
 - `test/batch1-market-hours-synchronization.test.js`:
   - **3 FAIL, 3 PASS**
 
-### Sesudah Perbaikan (Commit `e9f95c6fcd86515490b2be5826bc75a7d0a9e010`)
+### Sesudah Perbaikan Review PR #862
 - `test/batch1-risk-reward-safety-gates.test.js`:
-  - **8 PASS, 0 FAIL** (100% lulus)
+  - **10 PASS, 0 FAIL** (100% lulus, termasuk uji 1.496, 1.499, 1.500, 1.501, dan recalculate fail-closed)
 - `test/batch1-market-hours-synchronization.test.js`:
-  - **6 PASS, 0 FAIL** (100% lulus)
+  - **6 PASS, 0 FAIL** (100% lulus, mencakup batas 15:45, 15:46, 15:49:59, 15:50 Senin–Kamis dan Jumat)
 - `test/batch1-pre-pr-verification.test.js`:
   - **8 PASS, 0 FAIL** (100% lulus)
-- **Suite Regresi Lengkap Modul Terkait (22 file uji):**
-  - **Total 300 tests: 300 PASS, 0 FAIL**
+- `test/potential-radar-gate.test.js`:
+  - **42 PASS, 0 FAIL** (100% lulus)
+- `test/telegram-public-safety.test.js`:
+  - **66 PASS, 0 FAIL** (100% lulus)
+- `test/tp1-observed-high-publication-guard.test.js`:
+  - **10 PASS, 0 FAIL** (100% lulus)
+- `test/stage-2-daytrade-live-and-telegram-cleanup.test.js`:
+  - **26 PASS, 0 FAIL** (100% lulus)
+- `test/ui-redesign-a11y.test.js`:
+  - **28 PASS, 0 FAIL** (100% lulus)
 - **Syntax Check Seluruh Repository (`npm run validate:syntax`):**
-  - 1,179 file `.js` ter-parse bersih (Zero syntax errors).
+  - 1,179 file `.js` ter-parse bersih, 649 entri curated test terdaftar, 0 missing.
 - **Smoke / Contract Build Suite (`npm run test:smoke`):**
-  - 75 test files: 272 tests: **272 PASS, 0 FAIL**.
+  - 75 test files: 273 tests: **273 PASS, 0 FAIL**.
 
 ---
 

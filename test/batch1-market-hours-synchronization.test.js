@@ -42,22 +42,33 @@ test('BATCH 1 - B1: Regular session boundaries (Mon-Thu vs Friday)', () => {
   assert.equal(monS2.session, 'SESSION_2');
   assert.equal(monS2.broadcast_allowed, true);
 
-  // 15:45: Broadcast S2 tutup (buffer pengaman 15:45)
+  // 15:45: Sesi reguler aktif, broadcast S2 masih diizinkan
   const monS2BroadcastEnd = marketHoursGuard.getMarketSessionStatus('2026-10-12 15:45:00');
+  assert.equal(monS2BroadcastEnd.isOpen, true, '15:45 Mon-Thu regular session must be open');
   assert.equal(monS2BroadcastEnd.session, 'SESSION_2');
-  assert.equal(monS2BroadcastEnd.broadcast_allowed, true);
+  assert.equal(monS2BroadcastEnd.status, 'LIVE_MARKET');
+  assert.equal(monS2BroadcastEnd.broadcast_allowed, true, '15:45 Mon-Thu broadcast must be allowed');
 
+  // 15:46: Sesi reguler aktif, broadcast sudah diblokir
   const monS2PostBuffer = marketHoursGuard.getMarketSessionStatus('2026-10-12 15:46:00');
-  assert.equal(monS2PostBuffer.isOpen, false);
-  assert.equal(monS2PostBuffer.session, 'CLOSED');
-  assert.equal(monS2PostBuffer.status, 'OUTSIDE_MARKET');
+  assert.equal(monS2PostBuffer.isOpen, true, '15:46 Mon-Thu regular session must remain active');
+  assert.equal(monS2PostBuffer.session, 'SESSION_2');
+  assert.equal(monS2PostBuffer.status, 'LIVE_MARKET');
   assert.equal(monS2PostBuffer.broadcast_allowed, false, '15:46 Mon-Thu broadcast must be blocked');
+
+  // 15:49:59: Sesi reguler masih aktif, broadcast tetap diblokir
+  const monS2PreClose = marketHoursGuard.getMarketSessionStatus('2026-10-12 15:49:59');
+  assert.equal(monS2PreClose.isOpen, true, '15:49:59 Mon-Thu regular session must remain active');
+  assert.equal(monS2PreClose.session, 'SESSION_2');
+  assert.equal(monS2PreClose.status, 'LIVE_MARKET');
+  assert.equal(monS2PreClose.broadcast_allowed, false, '15:49:59 Mon-Thu broadcast must remain blocked');
 
   // 15:50:00+: Sesi reguler resmi selesai (CLOSED / after_close)
   const monAfterClose = marketHoursGuard.getMarketSessionStatus('2026-10-12 15:50:00');
   assert.equal(monAfterClose.isOpen, false);
   assert.equal(monAfterClose.session, 'CLOSED');
   assert.equal(monAfterClose.status, 'OUTSIDE_MARKET');
+  assert.equal(monAfterClose.broadcast_allowed, false);
   assert.equal(monAfterClose.reason, 'after_close');
 
   // Jumat (2026-10-16):
@@ -77,6 +88,35 @@ test('BATCH 1 - B1: Regular session boundaries (Mon-Thu vs Friday)', () => {
   assert.equal(friS2.isOpen, true);
   assert.equal(friS2.session, 'SESSION_2');
   assert.equal(friS2.broadcast_allowed, true);
+
+  // 15:45: Sesi 2 Jumat aktif, broadcast diizinkan
+  const friS2BroadcastEnd = marketHoursGuard.getMarketSessionStatus('2026-10-16 15:45:00');
+  assert.equal(friS2BroadcastEnd.isOpen, true, '15:45 Friday regular session must be open');
+  assert.equal(friS2BroadcastEnd.session, 'SESSION_2');
+  assert.equal(friS2BroadcastEnd.status, 'LIVE_MARKET');
+  assert.equal(friS2BroadcastEnd.broadcast_allowed, true, '15:45 Friday broadcast must be allowed');
+
+  // 15:46: Sesi 2 Jumat aktif, broadcast diblokir
+  const friS2PostBuffer = marketHoursGuard.getMarketSessionStatus('2026-10-16 15:46:00');
+  assert.equal(friS2PostBuffer.isOpen, true, '15:46 Friday regular session must remain active');
+  assert.equal(friS2PostBuffer.session, 'SESSION_2');
+  assert.equal(friS2PostBuffer.status, 'LIVE_MARKET');
+  assert.equal(friS2PostBuffer.broadcast_allowed, false, '15:46 Friday broadcast must be blocked');
+
+  // 15:49:59: Sesi 2 Jumat aktif, broadcast diblokir
+  const friS2PreClose = marketHoursGuard.getMarketSessionStatus('2026-10-16 15:49:59');
+  assert.equal(friS2PreClose.isOpen, true, '15:49:59 Friday regular session must remain active');
+  assert.equal(friS2PreClose.session, 'SESSION_2');
+  assert.equal(friS2PreClose.status, 'LIVE_MARKET');
+  assert.equal(friS2PreClose.broadcast_allowed, false, '15:49:59 Friday broadcast must remain blocked');
+
+  // 15:50:00: Sesi 2 Jumat selesai
+  const friAfterClose = marketHoursGuard.getMarketSessionStatus('2026-10-16 15:50:00');
+  assert.equal(friAfterClose.isOpen, false);
+  assert.equal(friAfterClose.session, 'CLOSED');
+  assert.equal(friAfterClose.status, 'OUTSIDE_MARKET');
+  assert.equal(friAfterClose.broadcast_allowed, false);
+  assert.equal(friAfterClose.reason, 'after_close');
 });
 
 test('BATCH 1 - B2: Weekend and Exchange Holiday handling (fail-closed)', () => {

@@ -119,9 +119,79 @@ test('BATCH 1 - A4: idx-tick-normalization derivePlanQuality flags R/R < 1.5 as 
   assert.equal(quality.plan_quality_status, 'POOR_RR', 'Daytrade R/R 1.3 must be classified as POOR_RR');
 });
 
-test('BATCH 1 - A5: candidatePassesPublicTelegramSafetyGate strictly rejects R/R < 1.5', () => {
+test('BATCH 1 - A5: candidatePassesPublicTelegramSafetyGate strictly rejects R/R < 1.5 and recalculates from final levels', () => {
   const safetyGate = sectorHot.__test.candidatePassesPublicTelegramSafetyGate;
   assert.ok(typeof safetyGate === 'function', 'candidatePassesPublicTelegramSafetyGate must be exposed');
+
+  // Review finding P0: Direct regression test on production path:
+  // entry_high=1000, stop_loss=900, tp1=1120, risk_reward=1.8
+  // Actual R/R is 1.2, so it MUST be rejected even though metadata claims 1.8.
+  const candidateStaleClaim = {
+    ticker: 'BBCA',
+    category: 'daytrade',
+    last_price: 1000,
+    entry_high: 1000,
+    entry_low: 980,
+    stop_loss: 900,
+    tp1: 1120, // (1120 - 1000) / (1000 - 900) = 1.2
+    risk_reward: 1.8, // stale claim
+    status: 'READY_BREAKOUT',
+    execution_reality_status: 'NORMAL',
+    breakout_confirmation_status: 'CONFIRMED'
+  };
+  assert.equal(
+    safetyGate(candidateStaleClaim, 'daytrade'),
+    false,
+    'Candidate claiming 1.8 but with actual levels yielding 1.2 must be rejected by public Telegram safety gate'
+  );
+
+  // Nested levels priority test:
+  // Root candidate has final levels (entry_high=1000, stop_loss=900, tp1=1120 => R/R 1.2)
+  // while nested candidate.levels has old levels (tp1=1600 => R/R 6.0).
+  // Final levels must win and reject!
+  const candidateNestedStale = {
+    ticker: 'BBCA',
+    category: 'daytrade',
+    last_price: 1000,
+    entry_high: 1000,
+    entry_low: 980,
+    stop_loss: 900,
+    tp1: 1120,
+    risk_reward: 1.8,
+    levels: {
+      entry_high: 1000,
+      stop_loss: 900,
+      tp1: 1600,
+      risk_reward: 6.0
+    },
+    status: 'READY_BREAKOUT',
+    execution_reality_status: 'NORMAL',
+    breakout_confirmation_status: 'CONFIRMED'
+  };
+  assert.equal(
+    safetyGate(candidateNestedStale, 'daytrade'),
+    false,
+    'Root final levels must take precedence over nested candidate.levels and reject sub-1.5 actual R/R'
+  );
+
+  // Recalculation fail-closed test:
+  // When recalculate is required, if levels are missing/invalid, it must FAIL-CLOSED,
+  // not fall back to old risk_reward value.
+  const candidateMissingLevels = {
+    ticker: 'BBCA',
+    category: 'daytrade',
+    last_price: 1000,
+    risk_reward: 2.0, // High claimed R/R but no levels
+    status: 'READY_BREAKOUT',
+    execution_reality_status: 'NORMAL',
+    breakout_confirmation_status: 'CONFIRMED'
+  };
+  assert.equal(
+    safetyGate(candidateMissingLevels, 'daytrade'),
+    false,
+    'Public safety gate with recalculate:true must fail-closed if levels are missing/incomplete'
+  );
+
   const candidate13 = {
     ticker: 'BBCA',
     category: 'daytrade',
@@ -135,8 +205,11 @@ test('BATCH 1 - A5: candidatePassesPublicTelegramSafetyGate strictly rejects R/R
     execution_reality_status: 'NORMAL',
     breakout_confirmation_status: 'CONFIRMED'
   };
-  const passed = safetyGate(candidate13, 'daytrade');
-  assert.equal(passed, false, 'Candidate with R/R 1.3 must fail public Telegram safety gate');
+  assert.equal(
+    safetyGate(candidate13, 'daytrade'),
+    false,
+    'Candidate with R/R 1.3 must fail public Telegram safety gate'
+  );
 });
 
 test('BATCH 1 - A6: FastWatcher momentum & pool enforce minimum R/R >= 1.5 for READY_CONFIRMED', () => {
@@ -222,5 +295,111 @@ test('BATCH 1 - A8: Trade Plan V2 isPlanV2Usable rejects plans with rr_to_tp1 < 
     tpv2Integration.isPlanV2Usable(planLowRR),
     false,
     'Plan with rr_to_tp1 1.14 must not be usable when below profile minimum'
+  );
+});
+
+test('BATCH 1 - A9: Raw floating point R/R verification (1.496, 1.499, 1.500, 1.501) without 2-decimal rounding before gate', () => {
+  // Test raw values without premature rounding
+  // 1.496 -> must fail
+  assert.equal(
+    passesRiskRewardFilter({ risk_reward: 1.496 }, 1.5),
+    false,
+    'R/R 1.496 must fail threshold 1.5'
+  );
+  // 1.499 -> must fail
+  assert.equal(
+    passesRiskRewardFilter({ risk_reward: 1.499 }, 1.5),
+    false,
+    'R/R 1.499 must fail threshold 1.5'
+  );
+  // 1.500 -> must pass
+  assert.equal(
+    passesRiskRewardFilter({ risk_reward: 1.500 }, 1.5),
+    true,
+    'R/R 1.500 must pass threshold 1.5'
+  );
+  // 1.501 -> must pass
+  assert.equal(
+    passesRiskRewardFilter({ risk_reward: 1.501 }, 1.5),
+    true,
+    'R/R 1.501 must pass threshold 1.5'
+  );
+
+  // Also test through recalculateRiskReward:
+  // Risk = 1000. Entry = 2000, SL = 1000.
+  // TP1 = 2000 + 1000 * 1.496 = 3496 => raw R/R = 1.496
+  const cand1496 = { entry_high: 2000, stop_loss: 1000, tp1: 3496 };
+  assert.equal(recalculateRiskReward(cand1496), 1.496);
+  assert.equal(passesRiskRewardFilter(cand1496, 1.5, { recalculate: true }), false);
+
+  // TP1 = 2000 + 1000 * 1.499 = 3499 => raw R/R = 1.499
+  const cand1499 = { entry_high: 2000, stop_loss: 1000, tp1: 3499 };
+  assert.equal(recalculateRiskReward(cand1499), 1.499);
+  assert.equal(passesRiskRewardFilter(cand1499, 1.5, { recalculate: true }), false);
+
+  // TP1 = 2000 + 1000 * 1.500 = 3500 => raw R/R = 1.500
+  const cand1500 = { entry_high: 2000, stop_loss: 1000, tp1: 3500 };
+  assert.equal(recalculateRiskReward(cand1500), 1.5);
+  assert.equal(passesRiskRewardFilter(cand1500, 1.5, { recalculate: true }), true);
+
+  // TP1 = 2000 + 1000 * 1.501 = 3501 => raw R/R = 1.501
+  const cand1501 = { entry_high: 2000, stop_loss: 1000, tp1: 3501 };
+  assert.equal(recalculateRiskReward(cand1501), 1.501);
+  assert.equal(passesRiskRewardFilter(cand1501, 1.5, { recalculate: true }), true);
+});
+
+test('BATCH 1 - A10: FastWatcher observation minimum_risk_reward=1.0 or plan.minimum_rr_to_tp1=1.2 cannot lower execution threshold below 1.5', () => {
+  // Observation specifying minimum_risk_reward = 1.0
+  const obsWithLowMin = {
+    ticker: 'TEST',
+    current_price: 1000,
+    entry_high: 1000,
+    entry_low: 980,
+    stop_loss: 900,
+    tp1: 1120, // R/R = 1.2
+    risk_reward: 1.2,
+    minimum_risk_reward: 1.0,
+    relative_volume: 2.0,
+    change_pct: 2.5
+  };
+
+  const metrics = momentum.metricsFrom(obsWithLowMin);
+  assert.ok(
+    metrics.minimum_risk_reward >= 1.5,
+    'minimum_risk_reward must not be lowered below 1.5 even if observation requests 1.0'
+  );
+
+  const evalResult = momentum.evaluate(obsWithLowMin);
+  assert.equal(
+    evalResult.entry_eligible,
+    false,
+    'FastWatcher must not be entry_eligible when R/R is 1.2 even if observation.minimum_risk_reward=1.0'
+  );
+
+  // Plan specifying minimum_rr_to_tp1 = 1.2
+  const obsWithPlanLowMin = {
+    ticker: 'TEST2',
+    current_price: 1000,
+    entry_high: 1000,
+    entry_low: 980,
+    stop_loss: 900,
+    tp1: 1120, // R/R = 1.2
+    risk_reward: 1.2,
+    plan: { minimum_rr_to_tp1: 1.2 },
+    relative_volume: 2.0,
+    change_pct: 2.5
+  };
+
+  const metrics2 = momentum.metricsFrom(obsWithPlanLowMin);
+  assert.ok(
+    metrics2.minimum_risk_reward >= 1.5,
+    'minimum_risk_reward must not be lowered below 1.5 even if plan requests 1.2'
+  );
+
+  const evalResult2 = momentum.evaluate(obsWithPlanLowMin);
+  assert.equal(
+    evalResult2.entry_eligible,
+    false,
+    'FastWatcher must not be entry_eligible when R/R is 1.2 even if plan.minimum_rr_to_tp1=1.2'
   );
 });

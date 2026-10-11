@@ -375,7 +375,8 @@ async function withRegistrationPage(check) {
   try {
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const origin = 'http://127.0.0.1:' + server.address().port;
-    browser = await puppeteer.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true, userDataDir: fs.mkdtempSync(path.join(evidenceRoot, 'auth-profile-')), args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+    const chromiumPath = process.env.CHROMIUM_PATH || (process.platform === 'win32' && fs.existsSync('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe') ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '/usr/bin/chromium');
+    browser = await puppeteer.launch({ executablePath: chromiumPath, headless: true, userDataDir: fs.mkdtempSync(path.join(evidenceRoot, 'auth-profile-')), args: ['--no-sandbox', '--disable-dev-shm-usage'] });
     const page = await browser.newPage(); page.setDefaultTimeout(5000);
     await page.setRequestInterception(true);
     page.on('request', req => req.url().startsWith(origin + '/') ? req.continue() : req.abort());

@@ -4865,8 +4865,9 @@ function publicTelegramSafetyTextHasReject(text) {
 
 function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   if (!candidate) return false;
-  // Audit Tahap 1B / SAFE-3: Enforce strict R/R gate (minimum 1.5) pada gerbang final Telegram
-  if (!passesRiskRewardFilter(candidate, MIN_RR_RATIO)) return false;
+  // Audit Tahap 1B / SAFE-3 & P0: Enforce strict R/R gate (minimum 1.5) dengan recalculation wajib
+  // Sinyal siap eksekusi wajib menggunakan R/R aktual dari level final, bukan nilai risk_reward lama.
+  if (!passesRiskRewardFilter(candidate, MIN_RR_RATIO, { recalculate: true })) return false;
   corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
   if (candidate.corporate_action_guard === 'BLOCKED') return false;
   normalizeEntryRangeAliases(candidate);
