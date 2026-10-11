@@ -46,38 +46,140 @@ const server=http.createServer(async(req,res)=>{
 });
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
-require('node:test').test('D9 caption contrast and Portfolio preservation',async()=>{
- fs.mkdirSync(auditRoot,{recursive:true});
- await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
- const browser=await puppeteer.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,userDataDir:path.join(auditRoot,'profile'),args:['--no-sandbox','--disable-dev-shm-usage','--force-color-profile=srgb']});
- try{
- const p=await browser.newPage();await p.setRequestInterception(true);p.on('request',r=>r.url().startsWith(origin+'/')?r.continue():r.abort());
- const cdp=await p.createCDPSession(),sheets=new Map();cdp.on('CSS.styleSheetAdded',({header})=>sheets.set(header.styleSheetId,header.sourceURL));await cdp.send('DOM.enable');await cdp.send('CSS.enable');
- await p.setViewport({width:1440,height:900});await p.goto(origin+'/dashboard',{waitUntil:'networkidle0'});await p.evaluate(()=>hideOnboardingGuide(true));
- const nav=async r=>{await p.evaluate(r=>navigateTo(...r),r);await wait(450);};
- const ownership=async selector=>{const {root}=await cdp.send('DOM.getDocument');const {nodeId}=await cdp.send('DOM.querySelector',{nodeId:root.nodeId,selector});if(!nodeId)return [];const matched=await cdp.send('CSS.getMatchedStylesForNode',{nodeId});return matched.matchedCSSRules.map(({rule})=>({selector:rule.selectorList.text,file:sheets.get(rule.styleSheetId),line:rule.style.range?.startLine,properties:rule.style.cssProperties.filter(x=>/^(color|background|opacity)/.test(x.name))})).filter(x=>x.properties.length);};
- const measure=async selector=>p.$$eval(selector,els=>{const rgb=c=>{const a=c.match(/[\d.]+/g).map(Number);return[a[0],a[1],a[2],a[3]??1];},blend=(a,b)=>a.slice(0,3).map((c,i)=>c*a[3]+b[i]*(1-a[3])),bg=e=>{const a=rgb(getComputedStyle(e).backgroundColor);return a[3]===1?a.slice(0,3):blend(a,e.parentElement?bg(e.parentElement):[255,255,255]);},lum=a=>a.map(x=>{x/=255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4}).reduce((n,x,i)=>n+x*[.2126,.7152,.0722][i],0);return els.filter(e=>e.getClientRects().length&&!e.closest('.hidden,[hidden]')).map(e=>{const s=getComputedStyle(e),b=bg(e),f=blend(rgb(s.color),b),l1=lum(f),l2=lum(b);return{id:e.id,cls:e.className,text:e.innerText,color:s.color,background:b,contrast:(Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05),font:s.fontSize,ariaHidden:!!e.closest('[aria-hidden=true]'),role:e.getAttribute('role'),width:e.getBoundingClientRect().width};});});
+const chromiumPath = process.env.CHROMIUM_PATH || (process.platform === 'win32' && fs.existsSync('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe') ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '/usr/bin/chromium');
 
+require('node:test').test('D9 caption contrast and Portfolio preservation', async () => {
+  let browser = null;
+  fs.mkdirSync(auditRoot, { recursive: true });
+  try {
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const origin = 'http://127.0.0.1:' + server.address().port;
+    browser = await puppeteer.launch({
+      executablePath: chromiumPath,
+      headless: true,
+      userDataDir: path.join(auditRoot, 'profile'),
+      args: ['--no-sandbox', '--disable-dev-shm-usage', '--force-color-profile=srgb']
+    });
+    const p = await browser.newPage();
+    await p.setRequestInterception(true);
+    p.on('request', r => r.url().startsWith(origin + '/') ? r.continue() : r.abort());
+    const cdp = await p.createCDPSession(), sheets = new Map();
+    cdp.on('CSS.styleSheetAdded', ({ header }) => sheets.set(header.styleSheetId, header.sourceURL));
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    await p.setViewport({ width: 1440, height: 900 });
+    await p.goto(origin + '/dashboard', { waitUntil: 'networkidle0' });
+    await p.evaluate(() => hideOnboardingGuide(true));
+    const nav = async r => { await p.evaluate(r => navigateTo(...r), r); await wait(450); };
+    const ownership = async selector => {
+      const { root } = await cdp.send('DOM.getDocument');
+      const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector });
+      if (!nodeId) return [];
+      const matched = await cdp.send('CSS.getMatchedStylesForNode', { nodeId });
+      return matched.matchedCSSRules.map(({ rule }) => ({
+        selector: rule.selectorList.text,
+        file: sheets.get(rule.styleSheetId),
+        line: rule.style.range?.startLine,
+        properties: rule.style.cssProperties.filter(x => /^(color|background|opacity)/.test(x.name))
+      })).filter(x => x.properties.length);
+    };
+    const measure = async selector => p.$$eval(selector, els => {
+      const rgb = c => { const a = c.match(/[\d.]+/g).map(Number); return [a[0], a[1], a[2], a[3] ?? 1]; },
+        blend = (a, b) => a.slice(0, 3).map((c, i) => c * a[3] + b[i] * (1 - a[3])),
+        bg = e => { const a = rgb(getComputedStyle(e).backgroundColor); return a[3] === 1 ? a.slice(0, 3) : blend(a, e.parentElement ? bg(e.parentElement): [255, 255, 255]); },
+        lum = a => a.map(x => { x /= 255; return x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4 }).reduce((n, x, i) => n + x * [.2126, .7152, .0722][i], 0);
+      return els.filter(e => e.getClientRects().length && !e.closest('.hidden,[hidden]')).map(e => {
+        const s = getComputedStyle(e), b = bg(e), f = blend(rgb(s.color), b), l1 = lum(f), l2 = lum(b);
+        return { id: e.id, cls: e.className, text: e.innerText, color: s.color, background: b, contrast: (Math.max(l1, l2) + .05) / (Math.min(l1, l2) + .05), font: s.fontSize, ariaHidden: !!e.closest('[aria-hidden=true]'), role: e.getAttribute('role'), width: e.getBoundingClientRect().width };
+      });
+    });
 
- const prior=geometryFixture;
- const failures=[];
- for(const theme of ['light','dark'])for(const width of [390,768,1440,1920]){
-  await p.setViewport({width,height:900});await p.evaluate(t=>applyAppTheme(t),theme);await nav(['portofolio']);await p.evaluate(()=>openPortfolioTab('planner'));await wait(900);
-  const rows=await measure('#portofolioPartialMount .budget-band span');assert.equal(rows.length,3);
-  const geometry=await p.evaluate(()=>[...document.querySelectorAll('#portofolioPartialMount .budget-band, #portofolioPartialMount .budget-band span, #portofolioPartialMount .budget-band strong, #portofolioPartialMount #page-planner input, #portofolioPartialMount #page-planner button, #portofolioPartialMount #page-planner select')].filter(e=>e.getClientRects().length).map(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {tag:e.tagName,id:e.id,text:e.tagName==='INPUT'?e.value:e.textContent.trim(),x:r.x,y:r.y,width:r.width,height:r.height,font:s.font,color:e.matches('.budget-band span,.budget-band')?undefined:s.color,padding:s.padding};}));
-  const item={theme,width,rows,geometry};record('CAPTIONS',item);
-  if(prior.length){const before=prior.find(e=>e.name==='CAPTIONS'&&e.value.theme===theme&&e.value.width===width).value.geometry;assert.equal(geometry.length,before.length,'controls count preserved');for(let i=0;i<geometry.length;i++){const g=geometry[i],b=before[i];assert.equal(g.tag,b.tag);assert.equal(g.id,b.id);assert.equal(g.text,b.text);assert.equal(g.padding,b.padding);if(g.tag==='INPUT'||g.tag==='SELECT'||g.tag==='BUTTON'){assert.ok(g.height>=40,'control height: '+g.id);}else{assert.ok(g.height>0,'text height: '+g.text);}assert.ok(Number.isFinite(g.width)&&g.width>0,'control width valid: '+g.id);}}
-  for(const row of rows)if(row.contrast<4.5)failures.push({theme,width,text:row.text,ratio:row.contrast});
-  assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),'no whole-page overflow');
+    const prior = geometryFixture;
+    const failures = [];
+    for (const theme of ['light', 'dark']) for (const width of [390, 768, 1440, 1920]) {
+      await p.setViewport({ width, height: 900 });
+      await p.evaluate(t => applyAppTheme(t), theme);
+      await nav(['portofolio']);
+      await p.evaluate(() => openPortfolioTab('planner'));
+      await wait(900);
+      const rows = await measure('#portofolioPartialMount .budget-band span');
+      assert.equal(rows.length, 3);
+      const geometry = await p.evaluate(() => [...document.querySelectorAll('#portofolioPartialMount .budget-band, #portofolioPartialMount .budget-band span, #portofolioPartialMount .budget-band strong, #portofolioPartialMount #page-planner input, #portofolioPartialMount #page-planner button, #portofolioPartialMount #page-planner select')].filter(e => e.getClientRects().length).map(e => {
+        const r = e.getBoundingClientRect(), s = getComputedStyle(e);
+        return { tag: e.tagName, id: e.id, text: e.tagName === 'INPUT' ? e.value : e.textContent.trim(), x: r.x, y: r.y, width: r.width, height: r.height, font: s.font, color: e.matches('.budget-band span,.budget-band') ? undefined : s.color, padding: s.padding };
+      }));
+      const item = { theme, width, rows, geometry };
+      record('CAPTIONS', item);
+      if (prior.length) {
+        const before = prior.find(e => e.name === 'CAPTIONS' && e.value.theme === theme && e.value.width === width).value.geometry;
+        assert.equal(geometry.length, before.length, 'controls count preserved');
+        for (let i = 0; i < geometry.length; i++) {
+          const g = geometry[i], b = before[i];
+          assert.equal(g.tag, b.tag);
+          assert.equal(g.id, b.id);
+          assert.equal(g.text, b.text);
+          assert.equal(g.padding, b.padding);
+          if (g.tag === 'INPUT' || g.tag === 'SELECT' || g.tag === 'BUTTON') {
+            assert.ok(g.height >= 40, 'control height: ' + g.id);
+          } else {
+            assert.ok(g.height > 0, 'text height: ' + g.text);
+          }
+          assert.ok(Number.isFinite(g.width) && g.width > 0, 'control width valid: ' + g.id);
+        }
+      }
+      for (const row of rows) if (row.contrast < 4.5) failures.push({ theme, width, text: row.text, ratio: row.contrast });
+      assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), 'no whole-page overflow');
 
-  const form=await measure('#portofolioPartialMount .field label');record('D8_FORM',{theme,width,rows:form});assert.ok(form.length&&form.every(r=>r.contrast>=4.5));
-  await p.evaluate(()=>openPortfolioTab('ai'));await wait(500);const ai=await measure('#portofolioPartialMount .ai-data-card span');record('D8_AI',{theme,width,rows:ai});assert.ok(ai.length&&ai.every(r=>r.contrast>=4.5));
- }
- for(const width of [767,768,1179,1180,1181]){
-  await p.setViewport({width,height:900});await p.evaluate(()=>openPortfolioTab('planner'));await wait(250);
-  const layout=await p.evaluate(()=>{const tabs=document.querySelector('#portofolioPartialMount #tabStrip'),mobile=document.querySelector('#portofolioPartialMount #pccMobileSectionSelect');return {display:getComputedStyle(tabs).display,columns:getComputedStyle(tabs).gridTemplateColumns,mobileVisible:!!mobile.getClientRects().length,mobileHeight:mobile.getBoundingClientRect().height,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+1};});
-  record('BREAKPOINT',{width,...layout});assert.equal(layout.mobileVisible,width<=767);assert.equal(layout.display,width<=767?'none':width<=1180?'flex':'grid');if(width>=1181)assert.equal(layout.columns.split(' ').length,7);assert.equal(layout.overflow,false);if(width<=767)assert.ok(layout.mobileHeight>=44);
- }
- assert.deepEqual(failures,[],'all Planner captions meet 4.5:1');
- }finally{try{await browser.close();}finally{try{server.closeAllConnections();await new Promise(r=>server.close(r));}finally{fs.rmSync(auditRoot,{recursive:true,force:true});}}}
+      const form = await measure('#portofolioPartialMount .field label');
+      record('D8_FORM', { theme, width, rows: form });
+      assert.ok(form.length && form.every(r => r.contrast >= 4.5));
+      await p.evaluate(() => openPortfolioTab('ai'));
+      await wait(500);
+      const ai = await measure('#portofolioPartialMount .ai-data-card span');
+      record('D8_AI', { theme, width, rows: ai });
+      assert.ok(ai.length && ai.every(r => r.contrast >= 4.5));
+    }
+    for (const width of [767, 768, 1179, 1180, 1181]) {
+      await p.setViewport({ width, height: 900 });
+      await p.evaluate(() => openPortfolioTab('planner'));
+      await wait(250);
+      const layout = await p.evaluate(() => {
+        const tabs = document.querySelector('#portofolioPartialMount #tabStrip'),
+          mobile = document.querySelector('#portofolioPartialMount #pccMobileSectionSelect');
+        return { display: getComputedStyle(tabs).display, columns: getComputedStyle(tabs).gridTemplateColumns, mobileVisible: !!mobile.getClientRects().length, mobileHeight: mobile.getBoundingClientRect().height, overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 };
+      });
+      record('BREAKPOINT', { width, ...layout });
+      assert.equal(layout.mobileVisible, width <= 767);
+      assert.equal(layout.display, width <= 767 ? 'none' : width <= 1180 ? 'flex' : 'grid');
+      if (width >= 1181) assert.equal(layout.columns.split(' ').length, 7);
+      assert.equal(layout.overflow, false);
+      if (width <= 767) assert.ok(layout.mobileHeight >= 44);
+    }
+    assert.deepEqual(failures, [], 'all Planner captions meet 4.5:1');
+  } finally {
+    if (browser) {
+      try {
+        await Promise.race([
+          browser.close(),
+          new Promise(r => setTimeout(r, 4000))
+        ]);
+      } catch {}
+      try {
+        const proc = browser.process();
+        if (proc && !proc.killed) proc.kill('SIGKILL');
+      } catch {}
+    }
+    try {
+      if (server && server.listening) {
+        if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
+        await Promise.race([
+          new Promise(r => server.close(r)),
+          new Promise(r => setTimeout(r, 2000))
+        ]);
+      }
+    } catch {}
+    try {
+      fs.rmSync(auditRoot, { recursive: true, force: true });
+    } catch {}
+  }
 });

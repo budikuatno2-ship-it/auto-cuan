@@ -123,6 +123,8 @@ html.light :where(#portofolioPartialMount){--bg:var(--ac-canvas,#F3F5F4);--surfa
 :where(#portofolioPartialMount) input,
 :where(#portofolioPartialMount) select,
 :where(#portofolioPartialMount) textarea{width:100%;min-height:42px;padding:10px 11px;border:1px solid var(--line);border-radius:10px;outline:none;background:#08111b;color:var(--text)}
+#portofolioPartialMount select#budgetProfile,
+#portofolioPartialMount select#riskProfile{min-height:41px !important;padding:10px 11px !important;box-sizing:border-box !important}
 :where(#portofolioPartialMount) textarea{min-height:90px;resize:vertical}
 :where(#portofolioPartialMount) input:focus,
 :where(#portofolioPartialMount) select:focus,
@@ -952,6 +954,10 @@ html.light :where(#portofolioPartialMount) .budget-band,
 [data-theme="light"] :where(#portofolioPartialMount) .budget-band{
   background: #f8fafc !important;
   border-color: #e2e8f0 !important;
+}
+html.light :where(#portofolioPartialMount) .budget-band span,
+[data-theme="light"] :where(#portofolioPartialMount) .budget-band span{
+  color: var(--ac-text-secondary, #52605b) !important;
 }
 html.light :where(#portofolioPartialMount) .action-copy strong,
 [data-theme="light"] :where(#portofolioPartialMount) .action-copy strong,
