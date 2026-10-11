@@ -365,8 +365,8 @@ test('BATCH 1 - A10: FastWatcher observation minimum_risk_reward=1.0 or plan.min
 
   const metrics = momentum.metricsFrom(obsWithLowMin);
   assert.ok(
-    metrics.minimum_risk_reward >= 1.5,
-    'minimum_risk_reward must not be lowered below 1.5 even if observation requests 1.0'
+    metrics.execution_minimum_risk_reward >= 1.5,
+    'execution_minimum_risk_reward must not be lowered below 1.5 even if observation requests 1.0'
   );
 
   const evalResult = momentum.evaluate(obsWithLowMin);
@@ -392,8 +392,8 @@ test('BATCH 1 - A10: FastWatcher observation minimum_risk_reward=1.0 or plan.min
 
   const metrics2 = momentum.metricsFrom(obsWithPlanLowMin);
   assert.ok(
-    metrics2.minimum_risk_reward >= 1.5,
-    'minimum_risk_reward must not be lowered below 1.5 even if plan requests 1.2'
+    metrics2.execution_minimum_risk_reward >= 1.5,
+    'execution_minimum_risk_reward must not be lowered below 1.5 even if plan requests 1.2'
   );
 
   const evalResult2 = momentum.evaluate(obsWithPlanLowMin);
