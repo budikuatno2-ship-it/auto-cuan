@@ -167,7 +167,7 @@ function renderTrackRecordUI(data) {
     if (elWr1) elWr1.textContent = sum.win_rate_tp1 || '0.0%';
 
     var elTp1Sub = document.getElementById('trTp1HitsSub');
-    if (elTp1Sub) elTp1Sub.textContent = (sum.tp1_hits || 0) + ' dari ' + (sum.total_signals || 0) + ' capai TP1';
+    if (elTp1Sub) elTp1Sub.textContent = (sum.tp1_hits || 0) + ' dari ' + (sum.total_signals || 0) + ' total sinyal (selesai: ' + (sum.resolved_win_rate || '—') + ')';
 
     var elWr2 = document.getElementById('trWinRateTp2');
     if (elWr2) elWr2.textContent = sum.win_rate_tp2 || '0.0%';
@@ -179,7 +179,7 @@ function renderTrackRecordUI(data) {
     if (elSl) elSl.textContent = sum.sl_rate || '0.0%';
 
     var elSlSub = document.getElementById('trSlHitsSub');
-    if (elSlSub) elSlSub.textContent = (sum.sl_hits || 0) + ' kena Stop Loss';
+    if (elSlSub) elSlSub.textContent = (sum.sl_hits || 0) + ' dari ' + (sum.total_signals || 0) + ' total sinyal';
 
     var elBestGain = document.getElementById('trBestGain');
     var elBestGainSub = document.getElementById('trBestGainSub');
@@ -322,7 +322,11 @@ function renderTrackRecordTable() {
     var mobileHtml = '';
 
     filtered.forEach(function(s) {
-        var gainVal = s.gain_pct != null ? s.gain_pct : (s.max_gain_pct != null ? s.max_gain_pct : null);
+        var outcome = s.outcome || s.status || '';
+        var isUnentered = outcome === 'WAITING' || outcome === 'NEVER_ENTERED' || outcome === 'EXPIRED';
+        var isRunningSignal = outcome === 'RUNNING' || outcome === 'ENTRY_HIT';
+        var hasExited = !isUnentered && !isRunningSignal && (outcome.indexOf('TP') !== -1 || outcome === 'SL_HIT');
+        var gainVal = hasExited ? (s.gain_pct != null ? s.gain_pct : null) : null;
         var gainHtml = '—';
         var gainClass = 'ac-num-neutral';
         if (gainVal != null && isFinite(gainVal)) {
@@ -411,7 +415,7 @@ function renderTrackRecordTable() {
                 '<div class="tr-mobile-stat"><span class="tr-stat-lbl">Area Beli</span><span class="tr-stat-val">' + entryText + '</span></div>' +
                 '<div class="tr-mobile-stat"><span class="tr-stat-lbl">Target (TP1/TP2)</span><span class="tr-stat-val ac-num-positive">' + formatRp(s.tp1) + ' / ' + formatRp(s.tp2) + '</span></div>' +
                 '<div class="tr-mobile-stat"><span class="tr-stat-lbl">Stop Loss</span><span class="tr-stat-val ac-num-negative">' + formatRp(s.sl) + '</span></div>' +
-                '<div class="tr-mobile-stat"><span class="tr-stat-lbl">Hasil Gain</span><span class="tr-stat-val font-bold ' + gainClass + '">' + (s.gain_pct != null ? ((s.gain_pct > 0 ? '+' : '') + s.gain_pct.toFixed(1) + '%') : '—') + '</span></div>' +
+                '<div class="tr-mobile-stat"><span class="tr-stat-lbl">Hasil Gain</span><span class="tr-stat-val font-bold ' + gainClass + '">' + gainHtml + '</span></div>' +
             '</div>' +
             '<div class="tr-mobile-footer">' +
                 '<span>📅 ' + escapeHtml(s.date || '—') + (s.signal_time_wib ? ' ' + escapeHtml(s.signal_time_wib) : '') + '</span>' +

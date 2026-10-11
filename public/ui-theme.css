@@ -13377,3 +13377,71 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
     height: 44px !important;
   }
 }
+
+
+/* Market Structure Isolated Scroll & Sticky Header (Batch 3) */
+#marketStructureTableContainer {
+  max-height: min(65vh, 680px);
+  overflow-y: auto;
+  border-radius: var(--ac-radius-sm, 6px);
+  position: relative;
+}
+
+#marketStructureTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--ac-surface-raised, #0f172a);
+}
+
+.ac-research-shareholders table {
+  table-layout: auto;
+}
+
+.ac-research-shareholders table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+
+/* Track Record Table Layout Alignment (Batch 4) */
+#trTableWrap table {
+  table-layout: fixed !important;
+  min-width: 960px;
+}
+#trTableWrap th,
+#trTableWrap td {
+  box-sizing: border-box;
+}
+
+
+/* BATCH 5: Global Layout & Screener Responsive Optimization */
+#page-analisis,
+.unified-cockpit-shell {
+  max-width: 1600px !important;
+  width: 100% !important;
+}
+
+[data-ac-ui="v2"] .ac-financial-container,
+#panel-tab-market-structure[data-ac-ui="v2"] .ac-market-structure-layout {
+  max-width: 1600px !important;
+  width: 100% !important;
+}
+
+.ac-split-view.is-card-mode {
+  display: block !important;
+}
+
+.ac-split-view.is-card-mode .ac-split-view__main {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.ac-split-view.is-card-mode .ac-split-view__pane {
+  display: none !important;
+}
+
+@media (min-width: 1024px) {
+  #appContent {
+    padding-top: 8px !important;
+  }
+}

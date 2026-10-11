@@ -148,13 +148,26 @@ async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
   }
   var db = injectedSupabase;
   if (!db) {
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return res.status(503).json({ success: false, error: 'Data Financial belum tersedia.' });
+    var hybrid = require("../lib/hybrid-supabase-client");
+    if (hybrid.marketDataVpsEnabled()) {
+      var marketStore = require("../lib/vps-market-store");
+      var vpsDbPath = process.env.AUTO_CUAN_MARKET_DB || '/home/ubuntu/auto-cuan-data/market.sqlite';
+      var fs = require("node:fs");
+      if (!fs.existsSync(vpsDbPath)) {
+        return res.status(503).json({ success: false, error: "Data Financial belum tersedia (database market VPS belum diinisialisasi)." });
+      }
+      try {
+        db = marketStore.getVpsMarketStore(vpsDbPath);
+      } catch (err) {
+        return res.status(503).json({ success: false, error: "Koneksi ke VPS market store gagal: " + (err && err.message || err) });
+      }
+    } else if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(503).json({ success: false, error: "Data Financial belum tersedia." });
+    } else {
+      db = hybrid.createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
     }
-    var { createClient } = require('../lib/hybrid-supabase-client');
-    db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false }
-    });
   }
   try {
     var snapshot = await buildFinancialSnapshot(db, ticker);

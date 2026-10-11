@@ -116,3 +116,114 @@ test('every served Financial panel uses the same scoped snapshot structure',()=>
   assert.match(canonical,/data-ac-ui="v2"/);assert.match(canonical,/Snapshot terverifikasi/);assert.match(canonical,/id="financialRefreshBanner"/);
   assert.doesNotMatch(canonical,/Financial Canvas|orbit|ac-financial-focus-card/);
 });
+
+test('PostgreSQL 42703 error on missing market_cap falls back truthfully to base schema', async () => {
+  const { queryStockFundamentals } = require('../lib/financial-snapshot');
+  const executedSelects = [];
+  const fakePgDb = {
+    from(table) {
+      assert.equal(table, 'stock_fundamentals');
+      return {
+        select(cols) {
+          executedSelects.push(cols);
+          return {
+            eq(col, val) {
+              return {
+                maybeSingle: async () => {
+                  if (cols.includes('market_cap') || cols.includes('financial_statements')) {
+                    return {
+                      data: null,
+                      error: {
+                        code: '42703',
+                        message: 'column stock_fundamentals.market_cap does not exist'
+                      }
+                    };
+                  }
+                  return {
+                    data: {
+                      ticker: 'BBCA',
+                      book_value_per_share: 3000,
+                      equity: 3000000000,
+                      shares_outstanding: 1000000,
+                      fundamental_period: 'Q3-2026',
+                      source: 'Postgres verified',
+                      updated_at: '2026-10-06T00:00:00Z'
+                    },
+                    error: null
+                  };
+                }
+              };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  const fundRes = await queryStockFundamentals(fakePgDb, 'BBCA');
+  assert.equal(fundRes.error, null);
+  assert.equal(fundRes.data.ticker, 'BBCA');
+  assert.equal(fundRes.data.book_value_per_share, 3000);
+  assert.equal(executedSelects.length, 3);
+});
+
+test('queryStockFundamentals does not hide real storage errors (network/500/syntax)', async () => {
+  const { queryStockFundamentals } = require('../lib/financial-snapshot');
+  const executedSelects = [];
+  const failingDb = {
+    from(table) {
+      return {
+        select(cols) {
+          executedSelects.push(cols);
+          return {
+            eq() {
+              return {
+                maybeSingle: async () => {
+                  return {
+                    data: null,
+                    error: { code: 'ECONNREFUSED', message: 'connection refused to postgres' }
+                  };
+                }
+              };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  const fundRes = await queryStockFundamentals(failingDb, 'BBCA');
+  assert.ok(fundRes.error);
+  assert.equal(fundRes.error.code, 'ECONNREFUSED');
+  assert.equal(executedSelects.length, 1);
+});
+
+test('handleFinancialSnapshotAction fails closed when VPS SQLite does not exist and never creates empty database', async () => {
+  const path = require('node:path');
+  const origVps = process.env.AUTO_CUAN_MARKET_DATA_VPS;
+  const origDb = process.env.AUTO_CUAN_MARKET_DB;
+  const nonExistentPath = path.join(__dirname, '..', 'tmp_nonexistent_test_' + Date.now() + '.sqlite');
+
+  process.env.AUTO_CUAN_MARKET_DATA_VPS = '1';
+  process.env.AUTO_CUAN_MARKET_DB = nonExistentPath;
+
+  try {
+    const res = {
+      status(n) { this.code = n; return this; },
+      json(body) { this.body = body; return this; }
+    };
+    await handleFinancialSnapshotAction({ method: 'GET', query: { ticker: 'BBCA' } }, res);
+
+    assert.equal(res.code, 503);
+    assert.equal(res.body.success, false);
+    assert.match(res.body.error, /market VPS|VPS market store/i);
+    // CRITICAL: Must not create empty DB file on GET request
+    assert.equal(fs.existsSync(nonExistentPath), false, 'GET endpoint must never create an empty SQLite database');
+  } finally {
+    if (origVps != null) process.env.AUTO_CUAN_MARKET_DATA_VPS = origVps;
+    else delete process.env.AUTO_CUAN_MARKET_DATA_VPS;
+    if (origDb != null) process.env.AUTO_CUAN_MARKET_DB = origDb;
+    else delete process.env.AUTO_CUAN_MARKET_DB;
+    try { if (fs.existsSync(nonExistentPath)) fs.unlinkSync(nonExistentPath); } catch (_) {}
+  }
+});
