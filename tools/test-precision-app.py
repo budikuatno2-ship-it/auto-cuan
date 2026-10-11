@@ -83,8 +83,8 @@ with sync_playwright() as pw:
                 page.wait_for_timeout(180)
                 check(theme+' '+motion+' workspace width stays inside viewport',page.evaluate('document.documentElement.scrollWidth<=innerWidth'))
                 check(theme+' '+motion+' sidebar profile remains vertical',page.locator('#appSidebar .sidebar-footer').evaluate("e=>getComputedStyle(e).flexDirection==='column'"))
-                # FINAL-A11Y-005: sidebar group label must clear AA contrast in both themes.
-                colors=page.locator('#appSidebar .sidebar-group-label').first.evaluate("e=>{const fg=getComputedStyle(e).color;while(e){const bg=getComputedStyle(e).backgroundColor;if(bg!=='rgba(0, 0, 0, 0)')return {bg,fg};e=e.parentElement}throw Error('No opaque sidebar background')}")
+                # FINAL-A11Y-005: sidebar group label or navigation label must clear AA contrast in both themes.
+                colors=page.locator('#appSidebar :is(.sidebar-group-label, .sidebar-label)').first.evaluate("e=>{const fg=getComputedStyle(e).color;while(e){const bg=getComputedStyle(e).backgroundColor;if(bg!=='rgba(0, 0, 0, 0)')return {bg,fg};e=e.parentElement}throw Error('No opaque sidebar background')}")
                 bg,fg=luminance(colors['bg']),luminance(colors['fg'])
                 check(theme+' '+motion+' sidebar label contrast at least 4.5', (max(bg,fg)+.05)/(min(bg,fg)+.05)>=4.5)
                 if theme=='light':check('Light '+motion+' sidebar surface is light',bg>.6)
