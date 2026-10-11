@@ -83,8 +83,8 @@ test('A4: Friday uses the Friday calendar (09:00-11:30 and 14:00-15:45)', () => 
 test('A5: outside trading hours is OUTSIDE_MARKET (pre, post, weekend)', () => {
   assert.equal(guard.getMarketSessionStatus(wib(THU, '08:59')).status, 'OUTSIDE_MARKET');
   assert.equal(guard.getMarketSessionStatus(wib(THU, '08:59')).session, 'PRE');
-  assert.equal(guard.getMarketSessionStatus(wib(THU, '15:46')).status, 'OUTSIDE_MARKET');
-  assert.equal(guard.getMarketSessionStatus(wib(THU, '15:46')).session, 'CLOSED');
+  assert.equal(guard.getMarketSessionStatus(wib(THU, '15:50')).status, 'OUTSIDE_MARKET');
+  assert.equal(guard.getMarketSessionStatus(wib(THU, '15:50')).session, 'CLOSED');
   assert.equal(guard.getMarketSessionStatus(wib(SAT, '10:00')).status, 'OUTSIDE_MARKET');
   assert.equal(guard.getMarketSessionStatus(wib(SAT, '10:00')).session, 'CLOSED');
 });
@@ -106,6 +106,37 @@ test('A7: broadcast_allowed stays conservative (2-minute buffer before the Sesi 
   assert.equal(guard.isMarketOpen(wib(THU, '11:59')), false);
   // Inside the window both agree.
   assert.equal(guard.getMarketSessionStatus(wib(THU, '11:00')).broadcast_allowed, true);
+});
+
+test('A7b: Session 2 regular session stays active until 15:50 while broadcast buffer closes at 15:45', () => {
+  // At 15:45 regular session is open and broadcast is allowed
+  const at1545 = guard.getMarketSessionStatus(wib(THU, '15:45'));
+  assert.equal(at1545.isOpen, true);
+  assert.equal(at1545.session, 'SESSION_2');
+  assert.equal(at1545.status, 'LIVE_MARKET');
+  assert.equal(at1545.broadcast_allowed, true);
+
+  // At 15:46 regular session is STILL active, but broadcast is blocked
+  const at1546 = guard.getMarketSessionStatus(wib(THU, '15:46'));
+  assert.equal(at1546.isOpen, true);
+  assert.equal(at1546.session, 'SESSION_2');
+  assert.equal(at1546.status, 'LIVE_MARKET');
+  assert.equal(at1546.broadcast_allowed, false);
+  assert.equal(guard.isMarketOpen(wib(THU, '15:46')), false);
+
+  // At 15:49:59 regular session is STILL active, broadcast blocked
+  const at1549 = guard.getMarketSessionStatus(wib(THU, '15:49'));
+  assert.equal(at1549.isOpen, true);
+  assert.equal(at1549.session, 'SESSION_2');
+  assert.equal(at1549.status, 'LIVE_MARKET');
+  assert.equal(at1549.broadcast_allowed, false);
+
+  // At 15:50 regular session officially ends
+  const at1550 = guard.getMarketSessionStatus(wib(THU, '15:50'));
+  assert.equal(at1550.isOpen, false);
+  assert.equal(at1550.session, 'CLOSED');
+  assert.equal(at1550.status, 'OUTSIDE_MARKET');
+  assert.equal(at1550.broadcast_allowed, false);
 });
 
 test('A8: invalid timestamps fail closed to OUTSIDE_MARKET', () => {

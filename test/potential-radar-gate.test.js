@@ -207,7 +207,19 @@ test('admin Top 5 sanitizer keeps Potential Radar / Watchlist bucket safely', ()
 
 
 test('gate bucket classifier marks valid Signal as SIGNAL', () => {
-  const c = base({ telegram_verdict: 'Entry valid dengan risk terukur.', status: 'READY_BREAKOUT', breakout_confirmation_status: 'CONFIRMED' });
+  const c = base({
+    telegram_verdict: 'Entry valid dengan risk terukur.',
+    status: 'READY_BREAKOUT',
+    breakout_confirmation_status: 'CONFIRMED',
+    risk_reward: 2.0,
+    entry_high: 5000,
+    entry1: 5000,
+    entry2: 4950,
+    sl: 4900,
+    stop_loss: 4900,
+    tp1: 5200,
+    tp1n: 5200
+  });
   assert.equal(classifyCandidateGateBucket(c, 'daytrade').gate_bucket, 'SIGNAL');
 });
 
@@ -235,7 +247,20 @@ test('gate bucket classifier keeps unsafe candidates in HARD_REJECT', () => {
 
 test('gate calibration diagnostics classifies every candidate into one bucket', () => {
   const candidates = [
-    base({ ticker: 'SIG', telegram_verdict: 'Entry valid dengan risk terukur.', status: 'READY_BREAKOUT', breakout_confirmation_status: 'CONFIRMED' }),
+    base({
+      ticker: 'SIG',
+      telegram_verdict: 'Entry valid dengan risk terukur.',
+      status: 'READY_BREAKOUT',
+      breakout_confirmation_status: 'CONFIRMED',
+      risk_reward: 2.0,
+      entry_high: 5000,
+      entry1: 5000,
+      entry2: 4950,
+      sl: 4900,
+      stop_loss: 4900,
+      tp1: 5200,
+      tp1n: 5200
+    }),
     base({ ticker: 'RAD', final_quality_pass: false, breakout_confirmation_status: 'BREAKOUT_WATCH', breakout_confirmation_label: 'Breakout watch' }),
     base({ ticker: 'BAD', action: 'Hindari' })
   ];
@@ -264,7 +289,20 @@ test('Radar with raw score 100 remains Radar display and not Signal', () => {
 });
 
 test('Signal valid keeps normal display score', () => {
-  const display = sectorHot.__test.normalizeCandidateScoreForGate(base({ daytrade_score: 91, telegram_verdict: 'Entry valid dengan risk terukur.', status: 'READY_BREAKOUT', breakout_confirmation_status: 'CONFIRMED' }), 'daytrade');
+  const display = sectorHot.__test.normalizeCandidateScoreForGate(base({
+    daytrade_score: 91,
+    telegram_verdict: 'Entry valid dengan risk terukur.',
+    status: 'READY_BREAKOUT',
+    breakout_confirmation_status: 'CONFIRMED',
+    risk_reward: 2.0,
+    entry_high: 5000,
+    entry1: 5000,
+    entry2: 4950,
+    sl: 4900,
+    stop_loss: 4900,
+    tp1: 5200,
+    tp1n: 5200
+  }), 'daytrade');
   assert.equal(display.gate_bucket, 'SIGNAL');
   assert.equal(display.display_score, 91);
   assert.equal(display.score_capped_by_gate, false);

@@ -77,7 +77,7 @@ test('Finding #6: Fast Watcher registers delivered signals into telegram_daily_p
         current_price: 101,
         entry_low: 98,
         entry_high: 103,
-        tp1: 115,
+        tp1: 119,
         tp2: 125,
         stop_loss: 94
       })
@@ -112,7 +112,7 @@ test('Finding #6: Fast Watcher registers delivered signals into telegram_daily_p
   assert.equal(pick.is_final, false);
   assert.equal(pick.entry1, 103);
   assert.equal(pick.entry2, 98);
-  assert.equal(pick.tp1, 115);
+  assert.equal(pick.tp1, 119);
   assert.equal(pick.tp2, 125);
   assert.equal(pick.sl, 94);
   assert.ok(pick.first_sent_at, 'first_sent_at must be populated for public signal');
@@ -126,7 +126,7 @@ test('Finding #6: Fast Watcher deduplicates and does not insert duplicate monito
     {
       ticker: 'BBCA',
       monitor_source: 'daytrade_signal',
-      plan_lock_id: 'fw-2026-08-27-BBCA-98-103-115-94'
+      plan_lock_id: 'fw-2026-08-27-BBCA-98-103-119-94'
     }
   ];
 
@@ -171,7 +171,7 @@ test('Finding #6: Fast Watcher deduplicates and does not insert duplicate monito
         current_price: 101,
         entry_low: 98,
         entry_high: 103,
-        tp1: 115,
+        tp1: 119,
         tp2: 125,
         stop_loss: 94
       })

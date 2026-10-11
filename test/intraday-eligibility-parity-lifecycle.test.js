@@ -60,8 +60,8 @@ function previousProductionDataQualityExcludes(c) {
 function safeCandidate(overrides) {
   return Object.assign({
     ticker: 'BBRI', category: 'Day Trade', status: 'READY', setup: 'Signal',
-    risk_label: 'Low Risk', risk_reward: 1.8, entry1: 5000, entry2: 5050, sl: 4900,
-    tp1n: 5150, tp2n: 5300, tp1_upside: 3, last_price: 5025, value_today: 20000000000,
+    risk_label: 'Low Risk', risk_reward: 2.0, entry_high: 5000, entry1: 5000, entry2: 4950, sl: 4900, stop_loss: 4900,
+    tp1n: 5200, tp1: 5200, tp2n: 5300, tp1_upside: 4, last_price: 5025, value_today: 20000000000,
     volume_ratio_20d: 1.4, volume_confirmation_label: 'Volume kuat', liquidity_label: 'Liquid',
     trading_plan_valid: true, plan_quality_status: 'VALID', plan_quality_label: 'Plan valid',
     rr_quality_label: 'RR sehat', sl_quality_label: 'SL wajar', tp_quality_label: 'TP realistis',

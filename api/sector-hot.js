@@ -4145,8 +4145,9 @@ function getMinTp1UpsideForCategory(category) {
 
 
 function getMinRRForCategory(category) {
-  var cat = String(category || '').toLowerCase();
-  return cat.indexOf('day') >= 0 ? 1.3 : 1.5;
+  // Audit Tahap 1B / SAFE-5: Seluruh kategori (Day Trade, Swing Konglo, Swing Non-Konglo, Top 5)
+  // wajib seragam minimum R/R 1.5 untuk sinyal eksekusi/terkonfirmasi.
+  return MIN_RR_RATIO;
 }
 
 function countWeekdaysBetween(startDate, endDate) {
@@ -4864,6 +4865,9 @@ function publicTelegramSafetyTextHasReject(text) {
 
 function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   if (!candidate) return false;
+  // Audit Tahap 1B / SAFE-3 & P0: Enforce strict R/R gate (minimum 1.5) dengan recalculation wajib
+  // Sinyal siap eksekusi wajib menggunakan R/R aktual dari level final, bukan nilai risk_reward lama.
+  if (!passesRiskRewardFilter(candidate, MIN_RR_RATIO, { recalculate: true })) return false;
   corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
   if (candidate.corporate_action_guard === 'BLOCKED') return false;
   normalizeEntryRangeAliases(candidate);
@@ -15782,6 +15786,7 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 }
 
 module.exports.__test = {
+  getMinRRForCategory: getMinRRForCategory,
   // BUG-F7-07: publish guard for paused (BREAK/CLOSED) batches.
   shouldSkipDayTradePublish: shouldSkipDayTradePublish,
   // BATCH4-F8-03/04: sector rotation aggregation + JSONB payload sanitisation.

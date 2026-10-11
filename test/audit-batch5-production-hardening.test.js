@@ -105,7 +105,7 @@ test('B5-03: lastPrice >= stopLoss lolos (bukan zombie)', () => {
   // sehingga gate jarak-entry (modul yang sama) tidak ikut men-drop.
   const passes = gate()(zombieCandidate({
     last_price: 150, lastn: 150, stop_loss: 140, sl: 140,
-    entry_low: 145, entry_high: 200
+    entry_low: 145, entry_high: 160, tp1: 200
   }), 'daily_top5');
   assert.equal(passes, true, 'harga di atas SL harus tetap lolos semua gate lain');
 });
