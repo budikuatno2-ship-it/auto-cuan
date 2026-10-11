@@ -85,7 +85,7 @@
     </header>
 
     <!-- ===== MAIN UNIFIED COCKPIT CONTAINER ===== -->
-    <main id="page-analisis" class="page-content flex-1 flex flex-col max-w-[1280px] w-full mx-auto px-3 sm:px-5 py-3">
+    <main id="page-analisis" class="page-content flex-1 flex flex-col max-w-[1600px] w-full mx-auto px-3 sm:px-5 py-3">
         <!-- Main Tab Navigation Strip (Consolidated 5-Tab Architecture) -->
         <nav class="analisis-tab-strip mb-4" role="tablist" aria-label="Tab Analisis Saham">
             <button id="tabAnalisisChart" type="button" class="analisis-tab active" data-tab="analisis-chart" onclick="switchAnalisisTab('analisis-chart')">
@@ -609,7 +609,7 @@
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
                             </div>
-                            <div class="ac-detail-body pt-2.5">
+                            <div class="ac-detail-body pt-2.5" id="marketStructureDetailBody">
                                 <div id="marketStructureDataContent" class="ac-research-data-content" hidden>
                                     <div class="ac-metric-grid">
                                         <article class="ac-metric-tile"><span>Free Float</span><strong id="marketStructureFreeFloat">—</strong><small id="marketStructureFreeFloatAsOf">As of —</small></article>
@@ -623,6 +623,30 @@
                                         <div class="ac-research-detail"><span>Kepatuhan Regulasi</span><strong id="marketStructureCompliance">—</strong></div>
                                     </div>
                                     <div id="marketStructureNote" class="ac-research-note">—</div>
+                                    <!-- Shareholders & Insider Roster Section (Batch 3) -->
+                                    <div id="marketStructureShareholderSection" class="ac-research-shareholders mt-3 pt-3 border-t border-slate-700/50">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <h4 class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                                                <span>👥</span> Pemegang Saham & Insider
+                                            </h4>
+                                            <span id="marketStructureRosterBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">Memuat…</span>
+                                        </div>
+                                        <div id="marketStructureRosterWrap" class="overflow-x-auto overflow-y-auto max-h-[260px] scrollbar-thin rounded-lg border border-slate-700/60">
+                                            <table class="w-full text-[11px] text-left border-collapse min-w-[300px]">
+                                                <thead class="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-slate-700 text-slate-400 font-semibold">
+                                                    <tr>
+                                                        <th class="py-1.5 px-2">Nama Pemilik</th>
+                                                        <th class="py-1.5 px-2">Kategori</th>
+                                                        <th class="py-1.5 px-2 text-right">Lembar Saham</th>
+                                                        <th class="py-1.5 px-2 text-right">%</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="marketStructureRosterTbody" class="divide-y divide-slate-700/40 text-slate-300">
+                                                    <tr><td colspan="4" class="py-4 text-center text-xs text-slate-400"><span class="spinner-sm"></span> Memuat daftar pemegang saham…</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </aside>

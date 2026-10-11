@@ -2097,19 +2097,19 @@
         <!-- Table of Signals -->
         <div class="ac-surface-bounded overflow-hidden">
             <div id="trTableWrap" class="overflow-x-auto overflow-y-auto max-h-[580px] scrollbar-thin focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel riwayat sinyal track record">
-                <table class="w-full text-xs border-collapse min-w-[700px]">
+                <table class="w-full text-xs border-collapse min-w-[960px] table-fixed">
                     <thead class="sticky top-0 bg-[var(--ac-surface,#181d28)]/95 backdrop-blur z-20 shadow-sm">
                         <tr class="border-b border-[var(--ac-line-hairline,#374151)] text-[var(--ac-text-secondary,#9ca3af)] font-medium text-left">
-                            <th class="px-3 py-2.5 sticky left-0 bg-[var(--ac-surface,#181d28)] z-30">Ticker</th>
-                            <th class="px-3 py-2.5">Kategori</th>
-                            <th class="px-3 py-2.5">Waktu Sinyal</th>
-                            <th class="px-3 py-2.5 text-right">Entry</th>
-                            <th class="px-3 py-2.5 text-right">Target 1</th>
-                            <th class="px-3 py-2.5 text-right">Target 2</th>
-                            <th class="px-3 py-2.5 text-right">Stop Loss</th>
-                            <th class="px-3 py-2.5 text-center">Status / Eksekusi</th>
-                            <th class="px-3 py-2.5 text-right">Gain / Loss</th>
-                            <th class="px-3 py-2.5 text-right">Durasi</th>
+                            <th class="w-[110px] px-3 py-2.5 sticky left-0 bg-[var(--ac-surface,#181d28)] z-30">Ticker</th>
+                            <th class="w-[95px] px-3 py-2.5">Kategori</th>
+                            <th class="w-[125px] px-3 py-2.5">Waktu Sinyal</th>
+                            <th class="w-[110px] px-3 py-2.5 text-right">Entry</th>
+                            <th class="w-[90px] px-3 py-2.5 text-right">Target 1</th>
+                            <th class="w-[90px] px-3 py-2.5 text-right">Target 2</th>
+                            <th class="w-[90px] px-3 py-2.5 text-right">Stop Loss</th>
+                            <th class="w-[140px] px-3 py-2.5 text-center">Status / Eksekusi</th>
+                            <th class="w-[90px] px-3 py-2.5 text-right">Gain / Loss</th>
+                            <th class="w-[90px] px-3 py-2.5 text-right">Durasi</th>
                         </tr>
                     </thead>
                     <tbody id="trTableBody" class="divide-y divide-[var(--ac-line-hairline,#374151)]/30 text-[var(--text-primary,#d1d5db)]">
@@ -2922,7 +2922,7 @@
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
                             </div>
-                            <div class="ac-detail-body pt-2.5">
+                            <div class="ac-detail-body pt-2.5" id="marketStructureDetailBody">
                                 <div id="marketStructureDataContent" class="ac-research-data-content" hidden>
                                     <div class="ac-metric-grid">
                                         <article class="ac-metric-tile"><span>Free Float</span><strong id="marketStructureFreeFloat">—</strong><small id="marketStructureFreeFloatAsOf">As of —</small></article>
@@ -2936,6 +2936,30 @@
                                         <div class="ac-research-detail"><span>Kepatuhan Regulasi</span><strong id="marketStructureCompliance">—</strong></div>
                                     </div>
                                     <div id="marketStructureNote" class="ac-research-note">—</div>
+                                    <!-- Shareholders & Insider Roster Section (Batch 3) -->
+                                    <div id="marketStructureShareholderSection" class="ac-research-shareholders mt-3 pt-3 border-t border-slate-700/50">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <h4 class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                                                <span>👥</span> Pemegang Saham & Insider
+                                            </h4>
+                                            <span id="marketStructureRosterBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">Memuat…</span>
+                                        </div>
+                                        <div id="marketStructureRosterWrap" class="overflow-x-auto overflow-y-auto max-h-[260px] scrollbar-thin rounded-lg border border-slate-700/60">
+                                            <table class="w-full text-[11px] text-left border-collapse min-w-[300px]">
+                                                <thead class="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-slate-700 text-slate-400 font-semibold">
+                                                    <tr>
+                                                        <th class="py-1.5 px-2">Nama Pemilik</th>
+                                                        <th class="py-1.5 px-2">Kategori</th>
+                                                        <th class="py-1.5 px-2 text-right">Lembar Saham</th>
+                                                        <th class="py-1.5 px-2 text-right">%</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="marketStructureRosterTbody" class="divide-y divide-slate-700/40 text-slate-300">
+                                                    <tr><td colspan="4" class="py-4 text-center text-xs text-slate-400"><span class="spinner-sm"></span> Memuat daftar pemegang saham…</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </aside>
@@ -12786,12 +12810,16 @@ var AutoCuanScreener = {
             tableWrap.classList.add('hidden');
             cardWrap.classList.remove('hidden');
             cardWrap.style.display = 'grid';
+            var splitView = document.getElementById(mode === 'daytrade' ? 'dtSplitView' : (mode === 'nonkonglo' ? 'nkSplitView' : 'kgSplitView'));
+            if (splitView) splitView.classList.add('is-card-mode');
             if (btnTable) { btnTable.classList.remove('is-active'); btnTable.setAttribute('aria-pressed', 'false'); }
             if (btnCard) { btnCard.classList.add('is-active'); btnCard.setAttribute('aria-pressed', 'true'); }
         } else {
             cardWrap.classList.add('hidden');
             cardWrap.style.display = 'none';
             tableWrap.classList.remove('hidden');
+            var splitView = document.getElementById(mode === 'daytrade' ? 'dtSplitView' : (mode === 'nonkonglo' ? 'nkSplitView' : 'kgSplitView'));
+            if (splitView) splitView.classList.remove('is-card-mode');
             if (btnCard) { btnCard.classList.remove('is-active'); btnCard.setAttribute('aria-pressed', 'false'); }
             if (btnTable) { btnTable.classList.add('is-active'); btnTable.setAttribute('aria-pressed', 'true'); }
         }

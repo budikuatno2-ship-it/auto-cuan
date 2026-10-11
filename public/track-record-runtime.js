@@ -167,7 +167,7 @@ function renderTrackRecordUI(data) {
     if (elWr1) elWr1.textContent = sum.win_rate_tp1 || '0.0%';
 
     var elTp1Sub = document.getElementById('trTp1HitsSub');
-    if (elTp1Sub) elTp1Sub.textContent = (sum.tp1_hits || 0) + ' dari ' + (sum.total_signals || 0) + ' capai TP1';
+    if (elTp1Sub) elTp1Sub.textContent = (sum.tp1_hits || 0) + ' dari ' + (sum.total_signals || 0) + ' total sinyal (selesai: ' + (sum.resolved_win_rate || '—') + ')';
 
     var elWr2 = document.getElementById('trWinRateTp2');
     if (elWr2) elWr2.textContent = sum.win_rate_tp2 || '0.0%';
@@ -179,7 +179,7 @@ function renderTrackRecordUI(data) {
     if (elSl) elSl.textContent = sum.sl_rate || '0.0%';
 
     var elSlSub = document.getElementById('trSlHitsSub');
-    if (elSlSub) elSlSub.textContent = (sum.sl_hits || 0) + ' kena Stop Loss';
+    if (elSlSub) elSlSub.textContent = (sum.sl_hits || 0) + ' dari ' + (sum.total_signals || 0) + ' total sinyal';
 
     var elBestGain = document.getElementById('trBestGain');
     var elBestGainSub = document.getElementById('trBestGainSub');
@@ -322,7 +322,9 @@ function renderTrackRecordTable() {
     var mobileHtml = '';
 
     filtered.forEach(function(s) {
-        var gainVal = s.gain_pct != null ? s.gain_pct : (s.max_gain_pct != null ? s.max_gain_pct : null);
+        var outcome = s.outcome || s.status || '';
+        var isUnentered = outcome === 'WAITING' || outcome === 'NEVER_ENTERED' || outcome === 'EXPIRED';
+        var gainVal = isUnentered ? null : (s.gain_pct != null ? s.gain_pct : (s.max_gain_pct != null ? s.max_gain_pct : null));
         var gainHtml = '—';
         var gainClass = 'ac-num-neutral';
         if (gainVal != null && isFinite(gainVal)) {

@@ -148,13 +148,17 @@ async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
   }
   var db = injectedSupabase;
   if (!db) {
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return res.status(503).json({ success: false, error: 'Data Financial belum tersedia.' });
+    var hybrid = require("../lib/hybrid-supabase-client");
+    if (hybrid.marketDataVpsEnabled() && (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
+      var marketStore = require("../lib/vps-market-store");
+      db = marketStore.getVpsMarketStore();
+    } else if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(503).json({ success: false, error: "Data Financial belum tersedia." });
+    } else {
+      db = hybrid.createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
     }
-    var { createClient } = require('../lib/hybrid-supabase-client');
-    db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false }
-    });
   }
   try {
     var snapshot = await buildFinancialSnapshot(db, ticker);
