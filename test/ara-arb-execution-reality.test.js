@@ -10,8 +10,8 @@ const { candidatePassesPublicTelegramSafetyGate, formatCandidateBlock } = sector
 function daytrade(overrides) {
   return Object.assign({
     ticker: 'TEST', category: 'Day Trade', status: 'READY', setup: 'Signal', risk_label: 'Low Risk',
-    risk_reward: 1.8, entry1: 100, entry2: 102, sl: 96, tp1n: 106, tp2n: 110,
-    tp1_upside: 4, last_price: 101, value_today: 20000000000, volume_ratio_20d: 1.3,
+    risk_reward: 2.0, entry1: 100, entry2: 102, sl: 96, tp1n: 112, tp2n: 120,
+    tp1_upside: 10, last_price: 101, value_today: 20000000000, volume_ratio_20d: 1.3,
     liquidity_label: 'Liquid', trading_plan_valid: true, plan_quality_status: 'VALID',
     entry_quality_status: 'IN_ENTRY_AREA', entry_status: 'IN_ENTRY_AREA', telegram_verdict: 'Watchlist'
   }, overrides || {});
