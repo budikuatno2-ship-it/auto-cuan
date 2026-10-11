@@ -10,6 +10,9 @@ const {
   extractFirstNumber,
   numOrNull,
   toMiliarIdr,
+  parseDateToEpoch,
+  canUpdateProvenance,
+  canUpdateStatementsProvenance,
   loadMarketCapData,
   parseTickerStatements,
   buildMergedFundamentalRecord
@@ -141,6 +144,83 @@ test('Batch 2: Provenance rules prevent older snapshot from overwriting newer re
   assert.equal(incomingUndated.market_cap, 800000000000000, 'Undated market cap must not overwrite dated market cap');
   assert.equal(incomingUndated.market_cap_as_of, '2026-10-05', 'Existing market_cap_as_of must not be lost');
   assert.equal(incomingUndated.financial_statements.updated_at, '2026-10-05T10:00:00Z', 'Undated statements must not overwrite dated statements');
+});
+
+test('Batch 2: canUpdateProvenance normalizes dates across timezones and compares epoch ms (not lexicographical string)', () => {
+  // Reproduction:
+  // Existing: 2026-10-05T14:00:00Z (14:00 UTC)
+  // Incoming: 2026-10-05T20:00:00+07:00 (13:00 UTC, which is 1 hour older)
+  // Lexicographical string comparison would mistakenly evaluate '2026-10-05T20...' >= '2026-10-05T14...' as TRUE!
+  // Time-normalized epoch comparison must correctly evaluate this as FALSE (reject overwrite)!
+  const existingUtc = '2026-10-05T14:00:00Z';
+  const incomingOlderWib = '2026-10-05T20:00:00+07:00'; // 13:00 UTC
+  assert.equal(canUpdateProvenance(existingUtc, incomingOlderWib), false, 'Older timestamp in different timezone must NOT overwrite');
+
+  // Truly newer incoming timestamp (22:00 WIB = 15:00 UTC > 14:00 UTC) must be accepted
+  const incomingNewerWib = '2026-10-05T22:00:00+07:00';
+  assert.equal(canUpdateProvenance(existingUtc, incomingNewerWib), true, 'Newer timestamp across timezones must be accepted');
+
+  // Date-only vs timestamp: Date-only 2026-10-05 (00:00 UTC) cannot overwrite 14:00 UTC of the same day
+  assert.equal(canUpdateProvenance(existingUtc, '2026-10-05'), false);
+
+  // But later day 2026-10-06 can overwrite 2026-10-05T14:00:00Z
+  assert.equal(canUpdateProvenance(existingUtc, '2026-10-06'), true);
+
+  // Invalid date strings fail closed
+  assert.equal(canUpdateProvenance(existingUtc, 'not-a-date'), false);
+  assert.equal(canUpdateProvenance(existingUtc, null), false);
+  assert.equal(canUpdateProvenance(null, '2026-10-05'), true);
+});
+
+test('Batch 2: Source provenance uses collected_at, not local DB updated_at (legacy record compatibility)', () => {
+  // Legacy record imported yesterday has updated_at = 2026-10-11, but collected_at = null
+  const legacyRecord = {
+    ticker: 'BBCA',
+    fundamental_period: 'Q1 2026',
+    financial_statements: {
+      period: 'Q1 2026',
+      collected_at: null,
+      updated_at: '2026-10-11T16:00:00Z', // Local DB write timestamp
+      quarterly: { periods: ['Q1 2026'] }
+    }
+  };
+
+  // New valid report collected on 2026-10-01 arrives
+  const newReport = {
+    ticker: 'BBCA',
+    fundamental_period: 'Q1 2026',
+    collected_at: '2026-10-01T00:00:00Z',
+    equity: 280000000000000,
+    quarterly: { periods: ['Q1 2026'] }
+  };
+
+  // Must NOT be rejected by yesterday's DB write updated_at! It must be accepted to upgrade legacy record!
+  const merged = buildMergedFundamentalRecord({
+    ticker: 'BBCA',
+    existingRecord: legacyRecord,
+    parsedStatements: newReport
+  });
+
+  assert.equal(merged.financial_statements.collected_at, '2026-10-01T00:00:00Z', 'Must upgrade legacy record with genuine source collected_at');
+  assert.equal(merged.equity, 280000000000000);
+
+  // However, once a record has a verified source collected_at (e.g. 2026-10-05),
+  // an older incoming statement (2026-10-01) is strictly rejected
+  const olderReport = {
+    ticker: 'BBCA',
+    fundamental_period: 'Q1 2026',
+    collected_at: '2026-09-20T00:00:00Z',
+    equity: 100000000000000
+  };
+
+  const mergedRejected = buildMergedFundamentalRecord({
+    ticker: 'BBCA',
+    existingRecord: merged, // has collected_at 2026-10-01
+    parsedStatements: olderReport // older collected_at 2026-09-20
+  });
+
+  assert.equal(mergedRejected.financial_statements.collected_at, '2026-10-01T00:00:00Z', 'Older statement must NOT overwrite newer statement');
+  assert.equal(mergedRejected.equity, 280000000000000, 'Existing equity must be preserved');
 });
 
 test('Batch 2: loadMarketCapData resolves duplicate tickers strictly by valid source date, independent of file read order', () => {

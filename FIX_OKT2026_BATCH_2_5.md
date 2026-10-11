@@ -299,3 +299,21 @@ Semua safety gate Batch 1 (R/R >= 1.5, Provenance Fail-Closed, FastWatcher Prote
   3. Pada `api/quote.js`, diperiksa keberadaan berkas SQLite terlebih dahulu menggunakan `fs.existsSync()`. Endpoint GET tidak akan pernah membuat file database kosong baru.
   4. Saat `AUTO_CUAN_MARKET_DATA_VPS=1`, kegagalan SQLite gagal tertutup (fail-closed) dengan respons HTTP 503 yang jelas, tanpa pernah beralih diam-diam ke Supabase.
 - **Test:** Ditambahkan pengujian fail-closed pada `test/final-audit-batch-b.test.js` dan verifikasi guard pada `test/batch2-financial-pipeline.test.js`.
+
+---
+
+## 8. ADDENDUM MICRO-FIX FINAL PR #863 (PROVENANCE DATE SAFETY & TIMESTAMP NORMALIZATION)
+
+### 1. Normalisasi Timestamp Numerik Lintas Zona Waktu
+- **Masalah:** Fungsi `canUpdateProvenance()` sebelumnya membandingkan string ISO secara leksikografis (`incomingDate >= existingDate`). Akibatnya, timestamp lokal dengan offset positif (misal `2026-10-05T20:00:00+07:00` = 13:00 UTC) keliru dianggap lebih baru daripada `2026-10-05T14:00:00Z` (14:00 UTC), sehingga data lama dapat menimpa data yang lebih baru.
+- **Perbaikan:** Diterapkan fungsi `parseDateToEpoch(value)` yang menormalisasi format tanggal tanpa jam (`YYYY-MM-DD` ke UTC midnight) dan timestamp ISO lengkap dengan offset zona waktu menjadi milidetik epoch UTC numerik (`Date.parse()`). Perbandingan waktu dilakukan secara numerik (`incomingEpoch >= existingEpoch`). String yang tidak valid atau kosong dievaluasi sebagai `null` dan ditolak secara fail-closed.
+- **Test:** Kasus uji pada `test/batch2-financial-pipeline.test.js` membuktikan bahwa `2026-10-05T20:00:00+07:00` ditolak menimpa `2026-10-05T14:00:00Z`, sedangkan `2026-10-05T22:00:00+07:00` (15:00 UTC) diterima.
+
+### 2. Pemisahan Stempel Waktu Lokal (`updated_at`) dari Provenance Sumber (`collected_at`)
+- **Masalah:** Fallback provenance laporan keuangan sebelumnya membaca `current.financial_statements.updated_at` (stempel penulisan database lokal). Hal ini menyebabkan laporan keuangan baru yang valid ditolak hanya karena stempel penulisan DB lokal lebih baru daripada waktu pengambilan file sumber, atau record yang tak terverifikasi dianggap memiliki provenance sah.
+- **Perbaikan:**
+  1. Diterapkan `canUpdateStatementsProvenance(current, parsedStatements)` yang mengisolasi evaluasi ke stempel waktu pengambilan sumber (`collected_at`). Stempel penulisan lokal `updated_at` tidak pernah dijadikan acuan provenance sumber.
+  2. Disediakan aturan kompatibilitas untuk record lama: jika record tersimpan belum memiliki `collected_at`, kedatangan data baru dengan `collected_at` sah diterima untuk meng-upgrade kualitas provenance.
+  3. Jika kedua pihak tidak memiliki `collected_at`, sistem membandingkan periode kuartal/tahun secara terstruktur (`parsePeriodScore`, contoh: Q2 2026 >= Q1 2026).
+  4. Aturan fail-closed tetap berlaku: data tanpa tanggal dilarang menimpa record yang telah memiliki `collected_at` sah.
+- **Test:** Kasus uji pada `test/batch2-financial-pipeline.test.js` memverifikasi kompatibilitas record lama dan proteksi fail-closed laporan keuangan.
