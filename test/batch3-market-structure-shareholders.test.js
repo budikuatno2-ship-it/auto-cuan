@@ -60,13 +60,89 @@ test('Batch 3: Ownership percentage invariant — Unknown is never 0% or 0.00%',
   assert.match(runtimeSource, /var pctStr = r\.percentage_formatted \|\| \(pct != null \? pct\.toFixed\(2\) \+ '%' : '—'\)/);
 });
 
-test('Batch 3: HSC Status formatting is strictly fail-closed when as_of date is missing', () => {
-  const runtimeSource = read('public/analisis-saham-runtime.js');
-  // function formatHscStatus(flag, asOf)
-  assert.match(runtimeSource, /function formatHscStatus\(flag,\s*asOf\)\s*\{/);
-  assert.match(runtimeSource, /if \(!asOf && flag !== true\) return 'Belum Terverifikasi';/);
-  assert.match(runtimeSource, /if \(flag === true\) return 'HSC Aktif';/);
-  assert.match(runtimeSource, /if \(flag === false\) return 'Tidak Terindikasi HSC';/);
+test('Batch 3: HSC Status actual rendering is strictly fail-closed when as_of date is missing', () => {
+  const elements = new Map();
+  function makeEl(id) {
+    if (!elements.has(id)) {
+      elements.set(id, {
+        id,
+        innerHTML: '',
+        textContent: '',
+        className: '',
+        hidden: false,
+        style: { setProperty() {} },
+        classList: {
+          add(c) { this.className += ' ' + c; },
+          remove(c) { this.className = (this.className || '').replace(c, ''); },
+          contains(c) { return (this.className || '').includes(c); }
+        },
+        querySelectorAll() { return []; },
+        querySelector() { return null; },
+        setAttribute() {},
+        getAttribute() { return null; },
+        appendChild() {},
+        addEventListener() {}
+      });
+    }
+    return elements.get(id);
+  }
+
+  const document = {
+    readyState: 'complete',
+    addEventListener() {},
+    getElementById(id) { return makeEl(id); },
+    createElement(tag) { return makeEl('elem_' + Math.random().toString(36).slice(2)); },
+    createDocumentFragment() { return { appendChild() {} }; },
+    querySelectorAll() { return []; }
+  };
+  const window = {
+    document,
+    addEventListener() {},
+    localStorage: { getItem() { return null; } },
+    location: { href: 'http://localhost/analisis-saham', pathname: '/analisis-saham', search: '' }
+  };
+
+  const code = read('public/analisis-saham-runtime.js');
+  vm.runInNewContext(code, {
+    window,
+    document,
+    console,
+    setTimeout,
+    clearTimeout,
+    URL,
+    Intl
+  });
+
+  const AutoCuanMarketStructure = window.AutoCuanMarketStructure;
+  assert.ok(AutoCuanMarketStructure, 'AutoCuanMarketStructure must be defined on window');
+
+  const testRows = [
+    { ticker: 'TRUE_NODATE', hsc_flag: true, hsc_as_of: null, free_float_pct: 20 },
+    { ticker: 'FALSE_WITHDATE', hsc_flag: false, hsc_as_of: '2026-10-01', free_float_pct: 20 },
+    { ticker: 'UNKNOWN_WITHDATE', hsc_flag: null, hsc_as_of: '2026-10-01', free_float_pct: 20 },
+    { ticker: 'UNKNOWN_NODATE', hsc_flag: null, hsc_as_of: null, free_float_pct: 20 },
+    { ticker: 'TRUE_WITHDATE', hsc_flag: true, hsc_as_of: '2026-10-01', free_float_pct: 20 }
+  ];
+
+  AutoCuanMarketStructure.universe = testRows;
+
+  // 1. HSC true without verified date must NOT be claimed verified
+  AutoCuanMarketStructure.selectRow('TRUE_NODATE');
+  assert.equal(document.getElementById('marketStructureHsc').textContent, 'Belum Terverifikasi');
+
+  // 2. HSC false with verified date must display Tidak Terindikasi HSC
+  AutoCuanMarketStructure.selectRow('FALSE_WITHDATE');
+  assert.equal(document.getElementById('marketStructureHsc').textContent, 'Tidak Terindikasi HSC');
+
+  // 3. Unknown (null/undefined) must remain unknown (Belum Terverifikasi)
+  AutoCuanMarketStructure.selectRow('UNKNOWN_WITHDATE');
+  assert.equal(document.getElementById('marketStructureHsc').textContent, 'Belum Terverifikasi');
+  AutoCuanMarketStructure.selectRow('UNKNOWN_NODATE');
+  assert.equal(document.getElementById('marketStructureHsc').textContent, 'Belum Terverifikasi');
+
+  // 4. HSC true with verified date displays HSC Aktif
+  AutoCuanMarketStructure.selectRow('TRUE_WITHDATE');
+  assert.equal(document.getElementById('marketStructureHsc').textContent, 'HSC Aktif');
 });
 
 test('Batch 3: Struktur Pasar markup includes isolated scroll and shareholder roster table', () => {
@@ -132,11 +208,14 @@ test('Batch 3: Runtime controller renders shareholder roster into detail pane', 
   ];
 
   let requestedUrl = null;
+  let fetchResponseGen = () => ({
+    ok: true,
+    json: async () => ({ success: true, ticker: 'BBCA', count: 2, roster: sampleRoster })
+  });
+
   const fetchMock = async (url) => {
     requestedUrl = url;
-    return {
-      json: async () => ({ success: true, ticker: 'BBCA', count: 2, roster: sampleRoster })
-    };
+    return fetchResponseGen();
   };
 
   const sandbox = {
@@ -166,4 +245,52 @@ test('Batch 3: Runtime controller renders shareholder roster into detail pane', 
 
   const badge = elements.get('marketStructureRosterBadge');
   assert.equal(badge.textContent, '2 Entitas');
+  assert.equal(controller.getRosterCache()['BBCA'].length, 2);
+
+  // Test 1: Valid empty data (success: true, roster: [])
+  controller.clearRosterCache();
+  fetchResponseGen = () => ({
+    ok: true,
+    json: async () => ({ success: true, ticker: 'EMPTY', count: 0, roster: [] })
+  });
+  await controller.loadMarketStructureShareholders('EMPTY');
+  assert.equal(badge.textContent, 'Belum tersedia');
+  assert.ok(tbody.innerHTML.includes('belum dilaporkan pada feed resmi bursa'));
+  assert.ok(Array.isArray(controller.getRosterCache()['EMPTY']));
+  assert.equal(controller.getRosterCache()['EMPTY'].length, 0);
+
+  // Test 2: HTTP Error response (ok: false, status: 500)
+  controller.clearRosterCache();
+  fetchResponseGen = () => ({
+    ok: false,
+    status: 500,
+    json: async () => ({ error: 'Internal Server Error' })
+  });
+  await controller.loadMarketStructureShareholders('ERR500');
+  assert.equal(badge.textContent, 'Gagal memuat');
+  assert.ok(tbody.innerHTML.includes('Gagal memuat data pemegang saham: HTTP 500'));
+  // CRITICAL: Failed HTTP response must NEVER be cached!
+  assert.equal(controller.getRosterCache()['ERR500'], undefined);
+
+  // Test 3: API success: false response
+  controller.clearRosterCache();
+  fetchResponseGen = () => ({
+    ok: true,
+    json: async () => ({ success: false, error: 'Database service unavailable' })
+  });
+  await controller.loadMarketStructureShareholders('ERR_API');
+  assert.equal(badge.textContent, 'Gagal memuat');
+  assert.ok(tbody.innerHTML.includes('Gagal memuat data pemegang saham: Database service unavailable'));
+  // CRITICAL: success:false must NEVER be cached!
+  assert.equal(controller.getRosterCache()['ERR_API'], undefined);
+
+  // Test 4: Network throw
+  controller.clearRosterCache();
+  fetchResponseGen = () => {
+    throw new Error('Network offline');
+  };
+  await controller.loadMarketStructureShareholders('ERR_NET');
+  assert.equal(badge.textContent, 'Gagal memuat');
+  assert.ok(tbody.innerHTML.includes('Gagal memuat data pemegang saham: Network offline'));
+  assert.equal(controller.getRosterCache()['ERR_NET'], undefined);
 });

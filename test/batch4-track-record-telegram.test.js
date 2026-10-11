@@ -50,7 +50,7 @@ test('Batch 4: Floating and waiting signals are never counted as TP or SL outcom
   assert.equal(sum.sl_rate, '20.0%');
 });
 
-test('Batch 4: Signals in WAITING state are ineligible for best_gain or realized gain', () => {
+test('Batch 4: Signals in WAITING or RUNNING state are ineligible for best_gain or realized gain', () => {
   const rows = [
     {
       ticker: 'BBCA',
@@ -59,6 +59,15 @@ test('Batch 4: Signals in WAITING state are ineligible for best_gain or realized
       sl: 9500,
       high: 11500, // High reached on day, but signal is WAITING (entry not hit yet)
       outcome: 'WAITING',
+      category: 'Day Trade'
+    },
+    {
+      ticker: 'RUN1',
+      entry1: 1000,
+      tp1: 1500,
+      sl: 900,
+      high: 1400, // +40% floating high, but trade is still RUNNING (not exited)
+      outcome: 'RUNNING',
       category: 'Day Trade'
     },
     {
@@ -74,10 +83,12 @@ test('Batch 4: Signals in WAITING state are ineligible for best_gain or realized
 
   const data = buildTrackRecordData(rows);
 
-  // Best gain should be MEDC (TP1_HIT), NOT BBCA (WAITING)
+  // Best gain must reflect realized profit from exited trade (MEDC TP1_HIT),
+  // NEVER unexited/floating gain from RUNNING (RUN1) or WAITING (BBCA)
   assert.ok(data.summary.best_gain, 'best_gain should exist');
   assert.equal(data.summary.best_gain.ticker, 'MEDC');
   assert.equal(data.signals[0].gain_pct, null, 'BBCA WAITING signal must have null gain_pct');
+  assert.equal(data.signals[1].gain_pct, null, 'RUN1 RUNNING signal must have null realized gain_pct');
 });
 
 test('Batch 4: WIB time formatting is consistent and valid', () => {

@@ -116,3 +116,84 @@ test('every served Financial panel uses the same scoped snapshot structure',()=>
   assert.match(canonical,/data-ac-ui="v2"/);assert.match(canonical,/Snapshot terverifikasi/);assert.match(canonical,/id="financialRefreshBanner"/);
   assert.doesNotMatch(canonical,/Financial Canvas|orbit|ac-financial-focus-card/);
 });
+
+test('PostgreSQL 42703 error on missing market_cap falls back truthfully to base schema', async () => {
+  const { queryStockFundamentals } = require('../lib/financial-snapshot');
+  const executedSelects = [];
+  const fakePgDb = {
+    from(table) {
+      assert.equal(table, 'stock_fundamentals');
+      return {
+        select(cols) {
+          executedSelects.push(cols);
+          return {
+            eq(col, val) {
+              return {
+                maybeSingle: async () => {
+                  if (cols.includes('market_cap') || cols.includes('financial_statements')) {
+                    return {
+                      data: null,
+                      error: {
+                        code: '42703',
+                        message: 'column stock_fundamentals.market_cap does not exist'
+                      }
+                    };
+                  }
+                  return {
+                    data: {
+                      ticker: 'BBCA',
+                      book_value_per_share: 3000,
+                      equity: 3000000000,
+                      shares_outstanding: 1000000,
+                      fundamental_period: 'Q3-2026',
+                      source: 'Postgres verified',
+                      updated_at: '2026-10-06T00:00:00Z'
+                    },
+                    error: null
+                  };
+                }
+              };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  const fundRes = await queryStockFundamentals(fakePgDb, 'BBCA');
+  assert.equal(fundRes.error, null);
+  assert.equal(fundRes.data.ticker, 'BBCA');
+  assert.equal(fundRes.data.book_value_per_share, 3000);
+  assert.equal(executedSelects.length, 3);
+});
+
+test('queryStockFundamentals does not hide real storage errors (network/500/syntax)', async () => {
+  const { queryStockFundamentals } = require('../lib/financial-snapshot');
+  const executedSelects = [];
+  const failingDb = {
+    from(table) {
+      return {
+        select(cols) {
+          executedSelects.push(cols);
+          return {
+            eq() {
+              return {
+                maybeSingle: async () => {
+                  return {
+                    data: null,
+                    error: { code: 'ECONNREFUSED', message: 'connection refused to postgres' }
+                  };
+                }
+              };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  const fundRes = await queryStockFundamentals(failingDb, 'BBCA');
+  assert.ok(fundRes.error);
+  assert.equal(fundRes.error.code, 'ECONNREFUSED');
+  assert.equal(executedSelects.length, 1);
+});

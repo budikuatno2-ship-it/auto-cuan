@@ -149,15 +149,20 @@ async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
   var db = injectedSupabase;
   if (!db) {
     var hybrid = require("../lib/hybrid-supabase-client");
-    if (hybrid.marketDataVpsEnabled() && (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
-      var marketStore = require("../lib/vps-market-store");
-      db = marketStore.getVpsMarketStore();
-    } else if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return res.status(503).json({ success: false, error: "Data Financial belum tersedia." });
-    } else {
-      db = hybrid.createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-        auth: { persistSession: false, autoRefreshToken: false }
-      });
+    if (hybrid.marketDataVpsEnabled()) {
+      try {
+        var marketStore = require("../lib/vps-market-store");
+        db = marketStore.getVpsMarketStore();
+      } catch (_) {}
+    }
+    if (!db) {
+      if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return res.status(503).json({ success: false, error: "Data Financial belum tersedia." });
+      } else {
+        db = hybrid.createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+          auth: { persistSession: false, autoRefreshToken: false }
+        });
+      }
     }
   }
   try {

@@ -1,10 +1,10 @@
 # LAPORAN PERBAIKAN KOMPREHENSIF GABUNGAN BATCH 2–5
-**Proyek:** Auto-Cuan — Indonesian Stock Exchange (IDX) Radar & Screener Platform  
-**Repository:** `budikuatno2-ship-it/auto-cuan`  
-**Branch Integrasi:** `feat/daytrade-screener-v1`  
-**Baseline Terverifikasi:** Commit `f130a37b60e683d0dfe796ec0b4d1138104e7ddd` (Merge PR #862 / Batch 1)  
-**Branch Perbaikan:** `fix/audit-okt2026-batch-2-5`  
-**Waktu Penyelesaian:** Minggu, 11 Oktober 2026  
+**Proyek:** Auto-Cuan — Indonesian Stock Exchange (IDX) Radar & Screener Platform
+**Repository:** `budikuatno2-ship-it/auto-cuan`
+**Branch Integrasi:** `feat/daytrade-screener-v1`
+**Baseline Terverifikasi:** Commit `f130a37b60e683d0dfe796ec0b4d1138104e7ddd` (Merge PR #862 / Batch 1)
+**Branch Perbaikan:** `fix/audit-okt2026-batch-2-5`
+**Waktu Penyelesaian:** Minggu, 11 Oktober 2026
 
 ---
 
@@ -227,3 +227,47 @@ Semua safety gate Batch 1 (R/R >= 1.5, Provenance Fail-Closed, FastWatcher Prote
 3. **Database Produksi & VPS:** SQLite produksi, Oracle VPS, PM2, dan cron produksi TIDAK DIMODIFIKASI.
 4. **Telegram:** Tidak ada pengiriman pesan ke channel aktif selama pengujian.
 5. **Vercel:** Pengaturan Vercel tidak dimodifikasi.
+
+---
+
+## 6. ADDENDUM PERBAIKAN FINAL REVIEW PR #863 (POST-AUDIT INDEPENDEN)
+
+### 1. P0 — PostgreSQL Fallback `queryStockFundamentals`
+- **Sebelum:** Fallback hanya menghapus `financial_statements` tetapi tetap memilih kolom `market_cap,market_cap_source,market_cap_as_of` yang belum ada di schema remote PostgreSQL Supabase. Akibatnya kueri gagal lagi dengan error code `42703` (`column stock_fundamentals.market_cap does not exist`) dan endpoint `/api/quote?action=financial-snapshot` melempar 503.
+- **Sesudah:** Dibuat fallback bertingkat (cascading column set) yang mundur secara anggun dari full schema ke base schema PostgreSQL (`ticker,book_value_per_share,equity,shares_outstanding,fundamental_period,source,updated_at`). Jika terjadi non-column error (kegagalan koneksi/storage down), error tidak disembunyikan dan langsung dilempar secara transparan. SQLite VPS tetap diprioritaskan sebagai market data store utama ketika `AUTO_CUAN_MARKET_DATA_VPS=1`.
+- **Test:** Ditambahkan pengujian reproduksi error 42703 dan pengujian non-column error non-suppression pada `test/final-audit-batch-b.test.js`.
+
+### 2. P1 — HSC as-of Diteruskan ke Renderer
+- **Sebelum:** Fungsi `formatHscStatus(flag, asOf)` di `public/analisis-saham-runtime.js` dipanggil hanya dengan `row.hsc_flag` tanpa meneruskan `row.hsc_as_of`. Selain itu, kondisi `flag === true` tanpa tanggal verifikasi sah otomatis mengklaim `HSC Aktif`.
+- **Sesudah:** Pemanggilan diperbaiki menjadi `formatHscStatus(row.hsc_flag, row.hsc_as_of)` pada panel riset dan tabel workstation. HSC true tanpa verifikasi tanggal tidak lagi diklaim aktif melainkan berstatus fail-closed `Belum Terverifikasi`. HSC false dengan tanggal sah ditampilkan sesuai data (`Tidak Terindikasi HSC`), dan unknown tetap `Belum Terverifikasi`.
+- **Test:** Ditambahkan pengujian rendering aktual DOM dalam lingkungan VM (bukan sekadar regex source code) pada `test/batch3-market-structure-shareholders.test.js`.
+
+### 3. P1 — Ketepatan Importer Financial
+- **Sebelum:**
+  1. `toMiliarIdr()` memakai threshold angka `1e8` untuk menebak satuan, sehingga Rp50.000.000 menjadi 50.000.000 miliar.
+  2. Pemilihan ticker hanya membaca direktori laporan keuangan, mengabaikan emiten yang hanya tercatat pada berkas market cap.
+  3. Tanggal snapshot pasar dipalsukan ke `'2026-09-29'` saat metadata tanggal absen.
+  4. Snapshot lama dapat menimpa data yang lebih baru tanpa aturan provenance.
+  5. Flag `--apply --dry-run` mengeksekusi perubahan apply.
+  6. Mode `--apply` tidak memiliki safety guard target database.
+- **Sesudah:**
+  1. `toMiliarIdr()` membagi nilai mentah IDR dengan `1e9` secara deterministik (Rp50.000.000 menjadi 0,05 miliar).
+  2. Pemilihan ticker mencakup gabungan (union) sumber laporan keuangan dan market cap.
+  3. Snapshot pasar tanpa metadata tanggal tidak pernah memalsukan tanggal (`null`).
+  4. Diterapkan aturan provenance: data dengan tanggal lebih lama (`incomingDate < existingDate`) tidak menimpa record yang sudah ada.
+  5. Argumen konflik `--apply --dry-run` ditolak keras dengan melempar error `ARGUMENT_CONFLICT`.
+  6. Mode `--apply` mewajibkan parameter eksplisit `--db-path` dan memblokir penulisan ke database produksi (`/home/ubuntu/auto-cuan-data/market.sqlite`) tanpa flag izin lingkungan.
+- **Test:** Ditambahkan pengujian unit dan verifikasi end-to-end CLI dengan SQLite temporer pada `test/batch2-financial-pipeline.test.js`.
+
+### 4. P1 — Insider Roster: Error Bukan Data Kosong
+- **Sebelum:** Pada `loadMarketStructureShareholders()`, kegagalan HTTP atau `success:false` diubah menjadi `roster=[]` dan dicache sebagai data kosong, menampilkan pesan bahwa data belum dilaporkan bursa.
+- **Sesudah:** Dipisahkan dengan tegas antara respons error HTTP/server, data kosong yang valid (`success:true, roster:[]`), dan data tersedia. Respons gagal tidak pernah dicache sebagai data kosong, dan menampilkan badge 'Gagal memuat' beserta pesan error transparan.
+- **Test:** Ditambahkan pengujian 4 kondisi (HTTP 500, API success:false, Network Error, Valid Empty) pada `test/batch3-market-structure-shareholders.test.js`.
+
+### 5. P1/P2 — Track Record & UI
+- **Sebelum:** `best_gain` mengizinkan sinyal `RUNNING` dengan floating MFE untuk diklaim sebagai profit terbesar all-time, dan tampilan kartu mobile menampilkan floating gain seolah-olah profit terealisasi.
+- **Sesudah:** `best_gain` dibatasi hanya untuk sinyal yang telah exit dengan profit (`TP1_HIT` atau `TP2_HIT`). Sinyal `RUNNING` tidak lagi diklaim sebagai best gain dan kolom gain menampilkan `—`.
+- **Layout:** Validasi layout melalui browser nyata (Chrome) pada resolusi 1920px (Desktop Wide), 1366×768 (Desktop Standard), 768px (Tablet), dan 390px (Mobile iPhone) membuktikan nol horizontal clipping, nol layout breaking, dan Plan View full-width responsif.
+
+### 6. Perbaikan CI GitHub
+- Trailing whitespace pada baris 2-7 file `FIX_OKT2026_BATCH_2_5.md` telah dibersihkan. Perintah `git diff --check` lulus 100% tanpa peringatan whitespace.

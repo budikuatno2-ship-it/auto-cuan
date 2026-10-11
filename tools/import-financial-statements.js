@@ -28,11 +28,22 @@ const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_STATEMENTS_DIR = path.join(ROOT, 'data', 'arjum-data', 'financial-statements');
 const DEFAULT_MARKET_CAP_DIR = path.join(ROOT, 'data', 'arjum-data', 'market-cap');
 
-function parseArgs() {
-  const args = process.argv.slice(2);
+const PROD_MARKET_DB = '/home/ubuntu/auto-cuan-data/market.sqlite';
+
+function parseArgs(customArgs) {
+  const args = customArgs || process.argv.slice(2);
+  const hasApply = args.includes('--apply');
+  const hasDryRun = args.includes('--dry-run');
+
+  if (hasApply && hasDryRun) {
+    const err = new Error('Konflik argumen: --apply dan --dry-run tidak boleh digunakan bersamaan.');
+    err.code = 'ARGUMENT_CONFLICT';
+    throw err;
+  }
+
   const options = {
-    apply: args.includes('--apply'),
-    dryRun: args.includes('--dry-run') || !args.includes('--apply'),
+    apply: hasApply,
+    dryRun: hasDryRun || !hasApply,
     statementsDir: DEFAULT_STATEMENTS_DIR,
     marketCapDir: DEFAULT_MARKET_CAP_DIR,
     dbPath: process.env.AUTO_CUAN_MARKET_DB || null,
@@ -54,11 +65,21 @@ function parseArgs() {
   return options;
 }
 
-async function main() {
-  const options = parseArgs();
+async function main(customArgs) {
+  const options = parseArgs(customArgs);
   console.log('[import-financial-statements] Mode:', options.apply ? 'APPLY' : 'DRY_RUN (Validation Only)');
   console.log('[import-financial-statements] Statements directory:', options.statementsDir);
   console.log('[import-financial-statements] Market cap directory:', options.marketCapDir);
+
+  if (options.apply) {
+    if (!options.dbPath) {
+      throw new Error('Safety guard: Mode --apply membutuhkan target database eksplisit via --db-path <path-ke-sqlite> untuk mencegah penulisan tidak disengaja.');
+    }
+    const resolvedDbPath = path.resolve(options.dbPath);
+    if (resolvedDbPath === path.resolve(PROD_MARKET_DB) && process.env.ALLOW_PROD_DB_WRITE !== '1') {
+      throw new Error('Safety guard: Penulisan langsung ke database produksi (' + PROD_MARKET_DB + ') diblokir. Jalankan hanya pada database pengujian atau staging.');
+    }
+  }
 
   const hasStatements = fs.existsSync(options.statementsDir);
   const hasMarketCap = fs.existsSync(options.marketCapDir);
@@ -68,7 +89,7 @@ async function main() {
     console.warn('  - statementsDir:', options.statementsDir);
     console.warn('  - marketCapDir:', options.marketCapDir);
     console.warn('[import-financial-statements] Pada runtime produksi VPS, data tersedia di /home/ubuntu/auto-cuan/data/arjum-data/');
-    return;
+    return { countProcessed: 0, updates: [] };
   }
 
   // 1. Load Market Cap Data
@@ -76,15 +97,21 @@ async function main() {
   const marketCapMap = loadMarketCapData(options.marketCapDir);
   console.log('[import-financial-statements] Loaded market cap for ' + marketCapMap.size + ' tickers.');
 
-  // 2. Discover tickers
+  // 2. Discover tickers (Union of statementsDir and marketCapMap)
   let targetTickers = options.tickers;
   if (!targetTickers) {
+    const tickerSet = new Set();
     if (hasStatements) {
-      targetTickers = fs.readdirSync(options.statementsDir)
+      const dirs = fs.readdirSync(options.statementsDir)
         .filter((name) => !name.startsWith('.') && fs.statSync(path.join(options.statementsDir, name)).isDirectory());
-    } else {
-      targetTickers = Array.from(marketCapMap.keys());
+      for (const d of dirs) {
+        tickerSet.add(d.toUpperCase());
+      }
     }
+    for (const k of marketCapMap.keys()) {
+      tickerSet.add(k.toUpperCase());
+    }
+    targetTickers = Array.from(tickerSet).sort();
   }
 
   console.log('[import-financial-statements] Target emiten: ' + targetTickers.length);
@@ -159,4 +186,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { main };
+module.exports = { main, parseArgs };

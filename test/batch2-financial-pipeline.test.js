@@ -16,6 +16,7 @@ const {
 } = require('../lib/financial-statements-import');
 const { buildFinancialSnapshot } = require('../lib/financial-snapshot');
 const marketStore = require('../lib/vps-market-store');
+const importFinancialStatements = require('../tools/import-financial-statements');
 
 test('Batch 2: extractFirstNumber handles deeply nested and alternative paths', () => {
   const sample = {
@@ -42,10 +43,73 @@ test('Batch 2: extractFirstNumber handles deeply nested and alternative paths', 
 });
 
 test('Batch 2: toMiliarIdr scales raw IDR to Miliar accurately without corrupting smaller numbers', () => {
+  // Rp 50.000.000 (50 juta) must be 0.05 miliar, not 50.000.000 miliar
+  assert.equal(toMiliarIdr(50000000), 0.05);
   assert.equal(toMiliarIdr(281687555000000), 281687.56);
   assert.equal(toMiliarIdr(15000000000), 15);
-  assert.equal(toMiliarIdr(500), 500); // Already in smaller scale or ratio
+  assert.equal(toMiliarIdr(0), 0);
   assert.equal(toMiliarIdr(null), null);
+});
+
+test('Batch 2: CLI argument parsing rejects conflicting --apply and --dry-run flags', () => {
+  assert.throws(() => {
+    importFinancialStatements.parseArgs(['--apply', '--dry-run']);
+  }, /Konflik argumen: --apply dan --dry-run/);
+});
+
+test('Batch 2: Importer enforces explicit target DB guard and prevents accidental production writes', async () => {
+  // Mode --apply without --db-path must throw
+  await assert.rejects(async () => {
+    await importFinancialStatements.main(['--apply']);
+  }, /Safety guard: Mode --apply membutuhkan target database eksplisit/);
+
+  // Mode --apply targeting production DB without env must throw
+  await assert.rejects(async () => {
+    await importFinancialStatements.main(['--apply', '--db-path', '/home/ubuntu/auto-cuan-data/market.sqlite']);
+  }, /Safety guard: Penulisan langsung ke database produksi/);
+});
+
+test('Batch 2: Provenance rules prevent older snapshot from overwriting newer record', () => {
+  const existing = {
+    ticker: 'BBCA',
+    market_cap: 800000000000000,
+    market_cap_as_of: '2026-10-05',
+    financial_statements: {
+      updated_at: '2026-10-05T10:00:00Z',
+      quarterly: { periods: ['Q2 2026'] }
+    }
+  };
+
+  // Incoming older snapshot (2026-09-29 < 2026-10-05)
+  const mergedOlder = buildMergedFundamentalRecord({
+    ticker: 'BBCA',
+    existingRecord: existing,
+    parsedStatements: {
+      collected_at: '2026-09-29T10:00:00Z',
+      equity: 200000000000000,
+      fundamental_period: 'Q1 2026'
+    },
+    marketCapInfo: {
+      market_cap: 700000000000000,
+      date: '2026-09-29'
+    }
+  });
+
+  // Older market cap and statements must NOT overwrite newer existing record
+  assert.equal(mergedOlder.market_cap, 800000000000000);
+  assert.equal(mergedOlder.market_cap_as_of, '2026-10-05');
+  assert.equal(mergedOlder.financial_statements.updated_at, '2026-10-05T10:00:00Z');
+
+  // When date is missing, do NOT fabricate fake date
+  const mergedNoDate = buildMergedFundamentalRecord({
+    ticker: 'UNVR',
+    existingRecord: null,
+    marketCapInfo: {
+      market_cap: 100000000000,
+      date: null
+    }
+  });
+  assert.equal(mergedNoDate.market_cap_as_of, null);
 });
 
 test('Batch 2: buildMergedFundamentalRecord strictly preserves market structure invariants', () => {
@@ -222,6 +286,106 @@ test('Batch 2: Isolated SQLite store end-to-end import and buildFinancialSnapsho
   } finally {
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch (_) {}
+  }
+});
+
+test('Batch 2: End-to-end CLI importer processes union of statement and market cap sources into temp SQLite', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cuan-importer-e2e-'));
+  const statementsDir = path.join(tmpRoot, 'financial-statements');
+  const marketCapDir = path.join(tmpRoot, 'market-cap');
+  const dbPath = path.join(tmpRoot, 'e2e-market.sqlite');
+
+  fs.mkdirSync(statementsDir, { recursive: true });
+  fs.mkdirSync(marketCapDir, { recursive: true });
+
+  try {
+    // 1. Ticker STMT: only has statement directory (no market cap)
+    const stmtOnlyDir = path.join(statementsDir, 'STMT');
+    fs.mkdirSync(stmtOnlyDir, { recursive: true });
+    fs.writeFileSync(path.join(stmtOnlyDir, 'INCOME_STATEMENT-quarterly.json'), JSON.stringify({
+      ticker: 'STMT',
+      period: 'Q1 2026',
+      collected_at: '2026-10-01T00:00:00Z',
+      items: [{
+        label: 'Q1 2026',
+        data: {
+          pendapatan: { pendapatan: 50000000 },
+          laba_rugi_periode_berjalan: 10000000
+        }
+      }]
+    }));
+    fs.writeFileSync(path.join(stmtOnlyDir, 'BALANCE_SHEET-quarterly.json'), JSON.stringify({
+      ticker: 'STMT',
+      period: 'Q1 2026',
+      collected_at: '2026-10-01T00:00:00Z',
+      items: [{
+        label: 'Q1 2026',
+        data: { total_ekuitas: 100000000 }
+      }]
+    }));
+
+    // 2. Ticker MCAP: only has market cap file (no statement directory)
+    fs.writeFileSync(path.join(marketCapDir, 'market-cap-batch.json'), JSON.stringify({
+      date: '2026-10-08',
+      items: [
+        { ticker: 'MCAP', listed_shares: 5000000, market_cap: 25000000000, close: 5000 },
+        { ticker: 'BOTH', listed_shares: 1000000, market_cap: 10000000000, close: 10000 }
+      ]
+    }));
+
+    // 3. Ticker BOTH: also has statement directory
+    const bothDir = path.join(statementsDir, 'BOTH');
+    fs.mkdirSync(bothDir, { recursive: true });
+    fs.writeFileSync(path.join(bothDir, 'BALANCE_SHEET-quarterly.json'), JSON.stringify({
+      ticker: 'BOTH',
+      period: 'Q1 2026',
+      collected_at: '2026-10-02T00:00:00Z',
+      items: [{
+        label: 'Q1 2026',
+        data: { total_ekuitas: 5000000000 }
+      }]
+    }));
+
+    // Run import via main with CLI args
+    await importFinancialStatements.main([
+      '--apply',
+      '--db-path', dbPath,
+      '--statements-dir', statementsDir,
+      '--market-cap-dir', marketCapDir
+    ]);
+
+    // Verify stored records in SQLite
+    const store = new marketStore.VpsMarketStore(dbPath);
+    const rows = store.readTable('stock_fundamentals');
+
+    const tickers = rows.map((r) => r.ticker).sort();
+    assert.deepEqual(tickers, ['BOTH', 'MCAP', 'STMT'], 'Union of statements and market-cap must be imported');
+
+    // Verify STMT
+    const stmtRow = rows.find((r) => r.ticker === 'STMT');
+    assert.equal(stmtRow.equity, 100000000);
+    assert.equal(stmtRow.market_cap == null, true);
+    // Verify 50.000.000 IDR -> 0.05 miliar in statement table!
+    const incRow = stmtRow.financial_statements.quarterly.income_statement.rows.find((r) => r.type === 'item' && r.label === 'Pendapatan Usaha');
+    assert.equal(incRow.values[0], 0.05);
+
+    // Verify MCAP
+    const mcapRow = rows.find((r) => r.ticker === 'MCAP');
+    assert.equal(mcapRow.market_cap, 25000000000);
+    assert.equal(mcapRow.shares_outstanding, 5000000);
+    assert.equal(mcapRow.market_cap_as_of, '2026-10-08');
+
+    // Verify BOTH
+    const bothRow = rows.find((r) => r.ticker === 'BOTH');
+    assert.equal(bothRow.equity, 5000000000);
+    assert.equal(bothRow.shares_outstanding, 1000000);
+    assert.equal(bothRow.market_cap, 10000000000);
+    // BVPS = 5.000.000.000 / 1.000.000 = 5000
+    assert.equal(bothRow.book_value_per_share, 5000);
+  } finally {
+    try {
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
     } catch (_) {}
   }
 });

@@ -603,7 +603,7 @@
   }
 
   function formatHscStatus(flag, asOf) {
-    if (!asOf && flag !== true) return 'Belum Terverifikasi';
+    if (!asOf) return 'Belum Terverifikasi';
     if (flag === true) return 'HSC Aktif';
     if (flag === false) return 'Tidak Terindikasi HSC';
     return 'Belum Terverifikasi';
@@ -1535,6 +1535,20 @@
   var marketStructureRosterCache = {};
   var marketStructureRosterGen = 0;
 
+  function renderMarketStructureShareholdersError(ticker, errorMsg) {
+    var tbody = byId('marketStructureRosterTbody');
+    var badge = byId('marketStructureRosterBadge');
+    if (badge) {
+      badge.textContent = 'Gagal memuat';
+      badge.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20';
+    }
+    if (tbody) {
+      var msg = errorMsg ? escapeHtml(errorMsg) : 'Gagal memuat data pemegang saham.';
+      tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-xs text-rose-400">Gagal memuat data pemegang saham: ' + msg + '</td></tr>';
+    }
+    syncMarketStructureDetailToSheet();
+  }
+
   async function loadMarketStructureShareholders(ticker) {
     var curGen = ++marketStructureRosterGen;
     var clean = String(ticker || '').trim().toUpperCase();
@@ -1560,21 +1574,26 @@
         credentials: 'same-origin',
         cache: 'no-store'
       });
-      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) {
+        if (curGen !== marketStructureRosterGen) return;
+        renderMarketStructureShareholdersError(clean, 'HTTP ' + res.status);
+        return;
+      }
+      var data = await res.json().catch(function () { return null; });
       if (curGen !== marketStructureRosterGen) return;
 
-      var roster = (data && data.success && Array.isArray(data.roster)) ? data.roster : [];
+      if (!data || data.success !== true || !Array.isArray(data.roster)) {
+        renderMarketStructureShareholdersError(clean, (data && data.error) || 'Format data tidak valid');
+        return;
+      }
+
+      var roster = data.roster;
+      // Only cache valid successful responses (whether empty array or populated)
       marketStructureRosterCache[clean] = roster;
       renderMarketStructureShareholders(clean, roster);
-    } catch (_) {
+    } catch (err) {
       if (curGen !== marketStructureRosterGen) return;
-      if (badge) {
-        badge.textContent = 'Gagal memuat';
-        badge.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20';
-      }
-      if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-xs text-rose-400">Gagal memuat data pemegang saham.</td></tr>';
-      }
+      renderMarketStructureShareholdersError(clean, (err && err.message) || 'Koneksi bermasalah');
     }
   }
 
@@ -1857,11 +1876,13 @@
         tr.appendChild(tdFf);
 
         var tdHsc = document.createElement('td');
-        var hscHtml = row.hsc_flag === true
-          ? '<span class="ac-status-badge ac-status-badge--negative">HSC Aktif</span>'
-          : (row.hsc_flag === false && row.hsc_as_of
-            ? '<span class="ac-status-badge ac-status-badge--positive">Tidak Terindikasi HSC</span>'
-            : '<span class="ac-status-badge ac-status-badge--neutral">Belum Terverifikasi</span>');
+        var hscLabel = formatHscStatus(row.hsc_flag, row.hsc_as_of);
+        var hscBadgeClass = hscLabel === 'HSC Aktif'
+          ? 'ac-status-badge--negative'
+          : (hscLabel === 'Tidak Terindikasi HSC'
+            ? 'ac-status-badge--positive'
+            : 'ac-status-badge--neutral');
+        var hscHtml = '<span class="ac-status-badge ' + hscBadgeClass + '">' + escapeHtml(hscLabel) + '</span>';
         tdHsc.innerHTML = hscHtml;
         tr.appendChild(tdHsc);
 
@@ -1927,7 +1948,7 @@
       var hasFf = row.free_float_pct != null && Number.isFinite(Number(row.free_float_pct));
       researchText('marketStructureFreeFloat', hasFf ? Number(row.free_float_pct).toFixed(2) + '%' : '—');
       researchText('marketStructureFreeFloatAsOf', row.free_float_as_of ? 'Per ' + formatIndonesianDateWithWib(row.free_float_as_of) : 'Per —');
-      researchText('marketStructureHsc', formatHscStatus(row.hsc_flag));
+      researchText('marketStructureHsc', formatHscStatus(row.hsc_flag, row.hsc_as_of));
       researchText('marketStructureHscAsOf', row.hsc_as_of ? 'Per ' + formatIndonesianDateWithWib(row.hsc_as_of) : 'Per —');
       researchText('marketStructureGuard', guardLabel);
       researchText('marketStructureStatus', formatMarketStructureStatus(row.market_structure_status));
@@ -1989,7 +2010,10 @@
       }
     },
 
-    loadMarketStructureShareholders: loadMarketStructureShareholders
+    loadMarketStructureShareholders: loadMarketStructureShareholders,
+    renderMarketStructureShareholdersError: renderMarketStructureShareholdersError,
+    getRosterCache: function () { return marketStructureRosterCache; },
+    clearRosterCache: function () { marketStructureRosterCache = {}; }
   };
 
   root.AutoCuanMarketStructure = AutoCuanMarketStructure;
