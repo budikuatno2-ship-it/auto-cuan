@@ -223,4 +223,3 @@ test('Wave 4: AutoCuanMarketStructure controller enforces filter and sort semant
   // Invariant 5: Sheet close restores keyboard focus
   assert.match(runtime, /if \(this\.lastSelectedRowEl && typeof this\.lastSelectedRowEl\.focus === 'function'\)/);
 });
-

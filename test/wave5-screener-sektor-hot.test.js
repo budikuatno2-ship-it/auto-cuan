@@ -177,4 +177,3 @@ test('Wave 5B: Sektor Hot group constituent integrity and member count consisten
   assert.match(html, /var memberCnt = g\.stock_count != null \? g\.stock_count : \(g\.member_count != null \? g\.member_count :/);
   assert.match(html, /var groupTitle = g\.group_name \|\| \(\'Grup \' \+ \(g\.group_code \|\| groupCode\)\);/);
 });
-

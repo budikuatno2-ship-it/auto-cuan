@@ -324,13 +324,14 @@ function renderTrackRecordTable() {
     filtered.forEach(function(s) {
         var gainVal = s.gain_pct != null ? s.gain_pct : (s.max_gain_pct != null ? s.max_gain_pct : null);
         var gainHtml = '—';
+        var gainClass = 'ac-num-neutral';
         if (gainVal != null && isFinite(gainVal)) {
             var numGain = Number(gainVal);
             var isPos = numGain > 0;
             var isNeg = numGain < 0;
+            gainClass = isPos ? 'ac-num-positive font-bold' : (isNeg ? 'ac-num-negative font-bold' : 'ac-num-neutral');
             var colorClass = isPos ? 'text-emerald-400 font-bold' : (isNeg ? 'text-red-400 font-bold' : 'text-gray-400');
             gainHtml = '<span class="' + colorClass + ' font-mono tabular-nums">' + (isPos ? '+' : '') + numGain.toFixed(1) + '%</span>';
-
         }
 
         var entryBounds = trEntryBounds(s);
@@ -347,16 +348,9 @@ function renderTrackRecordTable() {
         var outcome = s.outcome || s.status || '';
         var isExpiredSignal = outcome === 'EXPIRED' || s.status_label === 'Sinyal Kedaluwarsa' || s.status_label === 'Expired';
         var statusTooltip = isExpiredSignal ? ' title="Harga tidak pernah masuk area beli (Entry 1 / Entry 2) dalam batas waktu pengamatan sinyal."' : '';
-        var statusLabelText = isExpiredSignal ? 'Sinyal Kedaluwarsa' : (s.status_label || (
-            outcome === 'TP1_HIT' ? 'TP1 Hit' :
-            outcome === 'TP2_HIT' ? 'TP2 Hit' :
-            outcome === 'SL_HIT' ? 'Stop Loss' :
-            outcome === 'RUNNING' ? 'Berjalan' :
-            outcome === 'WAITING' ? 'Menunggu Entry' :
-            (outcome || '—')
-        ));
+        var statusLabelText = formatOutcomeLabel(s);
         var infoIcon = isExpiredSignal ? '<svg class="w-3 h-3 ml-1 inline text-gray-400 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : '';
-
+        var statusClass = getOutcomeClass(outcome);
 
         var statusTone = s.status_tone || (outcome.indexOf('TP') !== -1 ? 'var(--ac-gain,#10b981)' : (outcome === 'SL_HIT' ? 'var(--ac-loss,#ef4444)' : (outcome === 'RUNNING' ? 'var(--ac-info,#3b82f6)' : (outcome === 'WAITING' ? 'var(--ac-amber,#d97706)' : 'var(--ac-text-secondary,#94a3b8)'))));
         var statusBg = s.status_bg || (outcome.indexOf('TP') !== -1 ? 'rgba(16,185,129,0.12)' : (outcome === 'SL_HIT' ? 'rgba(239,68,68,0.12)' : (outcome === 'RUNNING' ? 'rgba(59,130,246,0.12)' : (outcome === 'WAITING' ? 'rgba(217,119,6,0.12)' : 'var(--ac-surface-sunken,rgba(148,163,184,0.1))'))));
@@ -392,15 +386,13 @@ function renderTrackRecordTable() {
             '<td class="px-3 py-2.5 text-right font-mono text-[var(--ac-gain,#10b981)]/90 tabular-nums lining-nums">' + formatRp(s.tp2) + '</td>' +
             '<td class="px-3 py-2.5 text-right font-mono text-[var(--ac-loss,#ef4444)] tabular-nums lining-nums">' + formatRp(s.sl) + '</td>' +
             '<td class="px-3 py-2 text-center whitespace-nowrap">' +
-                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold tracking-wide' + (isExpiredSignal ? ' cursor-help' : '') + '" style="color:' + statusTone + ';background-color:' + statusBg + ';border:1px solid ' + statusBorder + '"' + statusTooltip + '>' +
-
+                '<span class="tr-status-pill ' + statusClass + (isExpiredSignal ? ' cursor-help' : '') + '"' + statusTooltip + '>' +
                     escapeHtml(statusLabelText) + infoIcon +
                 '</span>' +
                 hitSubtext +
             '</td>' +
             '<td class="px-3 py-2.5 text-right font-mono tabular-nums lining-nums">' + gainHtml + '</td>' +
             '<td class="px-3 py-2.5 text-right text-[var(--ac-text-secondary,#9ca3af)] whitespace-nowrap text-[11px]">' + (s.duration_text || '—') + '</td>' +
-
         '</tr>';
 
         // 2. Mobile card row

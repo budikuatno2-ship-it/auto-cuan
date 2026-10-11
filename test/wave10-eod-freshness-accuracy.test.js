@@ -168,4 +168,3 @@ test('Wave 10 Acceptance: Mobile Screener restores compact readable title while 
   assert.match(css, /#page-screener\.page-content \.page-header \.page-title\s*\{\s*font-size:\s*15px;/);
   assert.match(css, /#page-screener\.page-content \.page-subtitle[^{]*\{\s*display:\s*none;\s*\}/);
 });
-

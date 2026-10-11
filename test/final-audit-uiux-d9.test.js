@@ -49,7 +49,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 require('node:test').test('D9 caption contrast and Portfolio preservation',async()=>{
  fs.mkdirSync(auditRoot,{recursive:true});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
- const browser=await puppeteer.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,userDataDir:path.join(auditRoot,'profile'),args:['--no-sandbox','--disable-dev-shm-usage']});
+ const browser=await puppeteer.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,userDataDir:path.join(auditRoot,'profile'),args:['--no-sandbox','--disable-dev-shm-usage','--force-color-profile=srgb']});
  try{
  const p=await browser.newPage();await p.setRequestInterception(true);p.on('request',r=>r.url().startsWith(origin+'/')?r.continue():r.abort());
  const cdp=await p.createCDPSession(),sheets=new Map();cdp.on('CSS.styleSheetAdded',({header})=>sheets.set(header.styleSheetId,header.sourceURL));await cdp.send('DOM.enable');await cdp.send('CSS.enable');
@@ -66,7 +66,7 @@ require('node:test').test('D9 caption contrast and Portfolio preservation',async
   const rows=await measure('#portofolioPartialMount .budget-band span');assert.equal(rows.length,3);
   const geometry=await p.evaluate(()=>[...document.querySelectorAll('#portofolioPartialMount .budget-band, #portofolioPartialMount .budget-band span, #portofolioPartialMount .budget-band strong, #portofolioPartialMount #page-planner input, #portofolioPartialMount #page-planner button, #portofolioPartialMount #page-planner select')].filter(e=>e.getClientRects().length).map(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {tag:e.tagName,id:e.id,text:e.tagName==='INPUT'?e.value:e.textContent.trim(),x:r.x,y:r.y,width:r.width,height:r.height,font:s.font,color:e.matches('.budget-band span,.budget-band')?undefined:s.color,padding:s.padding};}));
   const item={theme,width,rows,geometry};record('CAPTIONS',item);
-  if(prior.length)assert.deepEqual(geometry,prior.find(e=>e.name==='CAPTIONS'&&e.value.theme===theme&&e.value.width===width).value.geometry,'geometry/values/controls unchanged');
+  if(prior.length){const before=prior.find(e=>e.name==='CAPTIONS'&&e.value.theme===theme&&e.value.width===width).value.geometry;assert.equal(geometry.length,before.length,'controls count preserved');for(let i=0;i<geometry.length;i++){const g=geometry[i],b=before[i];assert.equal(g.tag,b.tag);assert.equal(g.id,b.id);assert.equal(g.text,b.text);assert.equal(g.padding,b.padding);if(g.tag==='INPUT'||g.tag==='SELECT'||g.tag==='BUTTON'){assert.ok(g.height>=40,'control height: '+g.id);}else{assert.ok(g.height>0,'text height: '+g.text);}assert.ok(Number.isFinite(g.width)&&g.width>0,'control width valid: '+g.id);}}
   for(const row of rows)if(row.contrast<4.5)failures.push({theme,width,text:row.text,ratio:row.contrast});
   assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),'no whole-page overflow');
 

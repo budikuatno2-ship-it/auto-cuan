@@ -1,25 +1,25 @@
 # Auto-Cuan UI/UX Redesign — Append-Only Progress & Handoff Log
 
-**Canonical Authority:** `./DESIGN.md` (v1.1 Frozen Authority, Lines 1–2844)  
-**Authority Hierarchy:**  
-1. Verified security / authentication / entitlement / data / backend contracts  
-2. `./DESIGN.md`  
-3. Existing verified runtime behavior and regression tests  
-4. Six Anti-Slop skills (`antislop`, `antislop-code`, `antislop-copywriting`, `antislop-human`, `antislop-layoutmobile`, `antislop-ui`)  
-5. Existing legacy CSS / current visual appearance  
+**Canonical Authority:** `./DESIGN.md` (v1.1 Frozen Authority, Lines 1–2844)
+**Authority Hierarchy:**
+1. Verified security / authentication / entitlement / data / backend contracts
+2. `./DESIGN.md`
+3. Existing verified runtime behavior and regression tests
+4. Six Anti-Slop skills (`antislop`, `antislop-code`, `antislop-copywriting`, `antislop-human`, `antislop-layoutmobile`, `antislop-ui`)
+5. Existing legacy CSS / current visual appearance
 
-**Implementation Wave Sequencing (§82):**  
-- Wave 0 — Freeze & Regression Baseline *(Current)*  
-- Wave 1 — Foundations  
-- Wave 2 — Shell, Navigation & Account Entry  
-- Wave 3 — Data Primitives & Detail Pattern  
-- Wave 4 — Financial & Struktur Pasar  
-- Wave 5 — Screener & Sektor Hot  
-- Wave 6 — Dashboard & Research Lenses  
-- Wave 7 — Monitoring  
-- Wave 8 — Auth, Account & System States  
-- Wave 9 — Landing  
-- Wave 10 — Motion Polish & Legacy Retirement  
+**Implementation Wave Sequencing (§82):**
+- Wave 0 — Freeze & Regression Baseline *(Current)*
+- Wave 1 — Foundations
+- Wave 2 — Shell, Navigation & Account Entry
+- Wave 3 — Data Primitives & Detail Pattern
+- Wave 4 — Financial & Struktur Pasar
+- Wave 5 — Screener & Sektor Hot
+- Wave 6 — Dashboard & Research Lenses
+- Wave 7 — Monitoring
+- Wave 8 — Auth, Account & System States
+- Wave 9 — Landing
+- Wave 10 — Motion Polish & Legacy Retirement
 
 ---
 
@@ -117,17 +117,17 @@ Follow-ups: Begin Wave 1 (Foundations) upon user authorization.
 
 ### Current Verified Visual & Functional Bugs (Wave 0 Baseline)
 
-1. **Financial Structural / Plain-Text Failure:**  
+1. **Financial Structural / Plain-Text Failure:**
    - The Financial page (`#page-financial`) collapses into a massive empty container labeled "Financial Canvas" with centered unstyled text: *"Data belum tersedia."* No financial statement primitives, balance sheet metrics, or tabular structures are rendered.
-2. **Struktur Pasar Empty / Ticker-First State:**  
+2. **Struktur Pasar Empty / Ticker-First State:**
    - Struktur Pasar (`#page-market-structure`) renders an empty ticker input (`#marketStructureTickerInput`) requiring manual typing, rather than presenting a default market universe list or screener-ranked candidates.
-3. **Screener Giant Plan / Card Presentation:**  
+3. **Screener Giant Plan / Card Presentation:**
    - Screener defaults to a large grid of card tiles (`#kgCardGrid`), pushing the comprehensive analytical data table (`#screenerTableWrap`) into hidden display mode (`class="hidden"`).
-4. **Duplicate Permanent Account Controls:**  
+4. **Duplicate Permanent Account Controls:**
    - The workstation shell displays duplicated account entry points: top-right topbar has `Profil budi`, `ADMIN`, `Subscription`, `Logout`, while the sidebar bottom has an additional `budi AKUN` profile row and `Logout` button.
-5. **Track Record Horizontal Overflow & Mobile Clipping:**  
+5. **Track Record Horizontal Overflow & Mobile Clipping:**
    - `#page-trackrecord` container is constrained with `max-w-[1100px]`, causing columns to clip and horizontal scrolling to truncate data labels on mobile viewports (390px).
-6. **Sinyal Intelijen Presentation:**  
+6. **Sinyal Intelijen Presentation:**
    - Scanner presentation lacks unified state handling for partial data vs engine timeouts, falling back to unstructured error cards.
 
 
@@ -539,10 +539,10 @@ Status: WAVE 4 COMPLETE.
 
 ## Wave 4B — Financial Deep Dive & Final Wave 4 Closure
 
-Date: 2026-10-07  
-Worktree: C:\Users\ADVAN\.gemini\antigravity\worktrees\auto-cuan-2\fix_uiux_antigravity_repair  
-Branch: fix_uiux_antigravity_repair  
-Base SHA: 1e11969feaac2fb2d8a94805f800b5f3dcd6b648  
+Date: 2026-10-07
+Worktree: C:\Users\ADVAN\.gemini\antigravity\worktrees\auto-cuan-2\fix_uiux_antigravity_repair
+Branch: fix_uiux_antigravity_repair
+Base SHA: 1e11969feaac2fb2d8a94805f800b5f3dcd6b648
 
 ### 1. Scope & Objective (§82, §26, §79.2, §79.3)
 - **DESIGN.md Authority Update (§26, §79.2):** Recorded the explicit user-approved extension of Financial from a 4-metric verified snapshot into a calm, serious financial research workstation. Updated local DESIGN.md with full specifications for multi-period statement matrix, Level-2 statement modes, period toggle, and future data ingestion strategy without committing or pushing the file.
@@ -609,10 +609,10 @@ Status: WAVE 4 & WAVE 4B COMPLETE. Ready for Wave 5 upon authorization.
 
 ## Wave 4C — Final Visual & Usability Closure
 
-Date: 2026-10-07  
-Worktree: C:\Users\ADVAN\.gemini\antigravity\worktrees\auto-cuan-2\fix_uiux_antigravity_repair  
-Branch: fix_uiux_antigravity_repair  
-Base SHA: 1e11969feaac2fb2d8a94805f800b5f3dcd6b648  
+Date: 2026-10-07
+Worktree: C:\Users\ADVAN\.gemini\antigravity\worktrees\auto-cuan-2\fix_uiux_antigravity_repair
+Branch: fix_uiux_antigravity_repair
+Base SHA: 1e11969feaac2fb2d8a94805f800b5f3dcd6b648
 
 ### 1. Scope & Accomplishments (§1–§6)
 - **Mobile Financial Matrix Sticky Contract (§1):**
@@ -770,10 +770,10 @@ Status: WAVE 5 COMPLETE.
 
 ## Wave 5B — Final Closure: Screener & Sektor Hot
 
-Date: 2026-10-07  
-Worktree: C:\Users\ADVAN\.gemini\antigravity\worktrees\auto-cuan-2\fix_uiux_antigravity_repair  
-Branch: fix_uiux_antigravity_repair  
-Base SHA: 1e11969feaac2fb2d8a94805f800b5f3dcd6b648  
+Date: 2026-10-07
+Worktree: C:\Users\ADVAN\.gemini\antigravity\worktrees\auto-cuan-2\fix_uiux_antigravity_repair
+Branch: fix_uiux_antigravity_repair
+Base SHA: 1e11969feaac2fb2d8a94805f800b5f3dcd6b648
 
 ### 1. Scope & Objective (DESIGN.md §82, §83.2)
 - **Screener Default Tables — Elimination of Redundant Plan Columns (§1):**
@@ -1869,7 +1869,3 @@ Quality Gate Status: PASS — Wave 10 Final Blocker Closure Complete
    - Verified that QA preview toolbar and banners cannot leak into production builds.
 
 Quality Gate Status: PASS — Wave 10 Ready for Checkpoint Commit
-
-
-
-
