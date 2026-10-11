@@ -21,7 +21,8 @@ Dokumen pelacakan komprehensif pelaksanaan perbaikan Tahap 2 berdasarkan temuan 
 ### Batch 1 — P0: Safety Gate dan Jam Bursa
 - **Tanggal Selesai:** 11 Oktober 2026 (revisi final review PR #862: 11 Oktober 2026)
 - **Branch:** `fix/audit-okt2026-batch-1` (dibuat dari `origin/feat/daytrade-screener-v1` commit `554810fc`)
-- **SHA Referensi:** `e4362cd672cdb199feffb9fdd0d3090117dc2ef1` (sebelum koreksi final review). SHA koreksi final = HEAD branch setelah push koreksi.
+- **SHA Referensi:** `e4362cd672cdb199feffb9fdd0d3090117dc2ef1` (sebelum koreksi final review).
+- **SHA Koreksi Final Review (kode + test):** `30130b7e` (seluruh perubahan P0-1/P0-2 + 11 test closure; commit dokumentasi setelahnya hanya Markdown).
 - **Pull Request:** #862 (https://github.com/budikuatno2-ship-it/auto-cuan/pull/862)
 - **Target Integrasi:** `feat/daytrade-screener-v1` (Branch `main` TIDAK DISENTUH)
 - **Bug ID Diselesaikan:** E4 (SAFE-1 s/d SAFE-7), E5 (SAFE-8 s/d SAFE-10), PF-7 (Addendum Jam Bursa).
