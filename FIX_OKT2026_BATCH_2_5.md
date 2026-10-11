@@ -271,3 +271,31 @@ Semua safety gate Batch 1 (R/R >= 1.5, Provenance Fail-Closed, FastWatcher Prote
 
 ### 6. Perbaikan CI GitHub
 - Trailing whitespace pada baris 2-7 file `FIX_OKT2026_BATCH_2_5.md` telah dibersihkan. Perintah `git diff --check` lulus 100% tanpa peringatan whitespace.
+
+---
+
+## 7. ADDENDUM FINAL CLOSURE REVIEW (DATA INTEGRITY & FAIL-CLOSED GUARDS)
+
+### 1. P0 — Undated Incoming Data Protection (Fail-Closed)
+- **Sebelum:** Pada `buildMergedFundamentalRecord()`, kondisi `!incomingDate` mengevaluasi ke `true`, sehingga data baru yang tidak memiliki tanggal dapat menimpa data tersimpan yang sudah bertanggal dan menghapus `market_cap_as_of` menjadi `null`. Begitu pula pada `financial_statements` saat `incomingCollectedAt=null`.
+- **Sesudah:** Diterapkan fungsi fail-closed `canUpdateProvenance(existingDate, incomingDate)`: jika data yang tersimpan telah memiliki tanggal sah, data masuk tanpa tanggal ditolak keras untuk menimpa field tersebut. Tanggal laporan, tanggal snapshot, waktu pengambilan (`collected_at`), waktu impor (`imported_at`), dan waktu pembaruan (`updated_at`) dipisahkan secara eksplisit.
+- **Test:** Ditambahkan kasus uji reproduksi di `test/batch2-financial-pipeline.test.js` membuktikan snapshot terverifikasi bertanggal 2026-10-05 tetap utuh saat menerima incoming snapshot undated (700T, date=null).
+
+### 2. P1 — Duplicate Ticker dalam Market Cap Batches
+- **Sebelum:** Pada `loadMarketCapData()`, jika ticker yang sama terdapat di lebih dari satu berkas batch, berkas yang dibaca terakhir selalu memenangkan data tanpa memedulikan tanggal snapshot.
+- **Sesudah:** Pemilihan snapshot untuk ticker duplikat dilakukan strictly berdasarkan validitas dan kebaruan tanggal sumber (`candidate.date > existing.date`). Jika berkas dibaca dalam urutan terbalik, snapshot terbaru tetap dipilih secara konsisten. Format tanggal yang tidak valid atau absen ditolak secara fail-closed dan tidak mengarang tanggal palsu.
+- **Test:** Ditambahkan pengujian pembacaan batch dalam urutan normal dan terbalik serta format tanggal rusak pada `test/batch2-financial-pipeline.test.js`.
+
+### 3. P1 — Track Record `best_gain` Jujur & Konsisten
+- **Sebelum:** Perhitungan `best_gain` menggunakan nilai `signalMfe` (Maximum Favorable Excursion), sehingga jika Entry=100, TP1=110, dan harga tertinggi menyentuh 150 (MFE 50%), sistem mencatat `best_gain` sebesar 50%, padahal trade keluar pada TP1 (+10%).
+- **Sesudah:** `best_gain` secara ketat hanya mencerminkan hasil keuntungan terealisasi dari target exit (`gainPct` pada `TP1_HIT` atau `TP2_HIT`). Sinyal `RUNNING` tidak diklaim sebagai profit terealisasi. Metrik MFE dipisahkan ke properti `mfe_pct` tersendiri pada daftar sinyal.
+- **Test:** Ditambahkan pengujian reproduksi pada `test/batch4-track-record-telegram.test.js` membuktikan bahwa sinyal dengan exit TP1 (+10%) dan floating high 150 (MFE 50%) menghasilkan `best_gain: 10%`, bukan 50%.
+
+### 4. P1 — Keamanan CLI dan Fail-Closed SQLite
+- **Sebelum:** Mode `--apply` pada `tools/import-financial-statements.js` dapat mewarisi target database secara diam-diam dari environment `AUTO_CUAN_MARKET_DB`. Pada `api/quote.js`, saat `AUTO_CUAN_MARKET_DATA_VPS=1`, kegagalan koneksi SQLite VPS ditangkap secara diam-diam dan beralih ke Supabase, atau membuat database kosong baru pada endpoint GET.
+- **Sesudah:**
+  1. Mode `--apply` mewajibkan argumen CLI eksplisit `--db-path <path>` dan menolak pewarisan diam-diam.
+  2. Dilakukan resolusi realpath dan deteksi symlink/alias terhadap path database produksi (`/home/ubuntu/auto-cuan-data/market.sqlite`), yang memblokir penulisan produksi tanpa `ALLOW_PROD_DB_WRITE=1`.
+  3. Pada `api/quote.js`, diperiksa keberadaan berkas SQLite terlebih dahulu menggunakan `fs.existsSync()`. Endpoint GET tidak akan pernah membuat file database kosong baru.
+  4. Saat `AUTO_CUAN_MARKET_DATA_VPS=1`, kegagalan SQLite gagal tertutup (fail-closed) dengan respons HTTP 503 yang jelas, tanpa pernah beralih diam-diam ke Supabase.
+- **Test:** Ditambahkan pengujian fail-closed pada `test/final-audit-batch-b.test.js` dan verifikasi guard pada `test/batch2-financial-pipeline.test.js`.

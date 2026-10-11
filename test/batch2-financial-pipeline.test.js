@@ -110,6 +110,93 @@ test('Batch 2: Provenance rules prevent older snapshot from overwriting newer re
     }
   });
   assert.equal(mergedNoDate.market_cap_as_of, null);
+
+  // P0 REPRODUCTION: Undated incoming data must NEVER overwrite dated verified snapshot (fail-closed)
+  const existingDated = {
+    ticker: 'BBCA',
+    market_cap: 800000000000000,
+    market_cap_as_of: '2026-10-05',
+    financial_statements: {
+      updated_at: '2026-10-05T10:00:00Z',
+      collected_at: '2026-10-05T10:00:00Z',
+      quarterly: { periods: ['Q2 2026'] }
+    }
+  };
+
+  const incomingUndated = buildMergedFundamentalRecord({
+    ticker: 'BBCA',
+    existingRecord: existingDated,
+    parsedStatements: {
+      collected_at: null, // Undated statements
+      equity: 100000000000000,
+      fundamental_period: 'Q1 2026'
+    },
+    marketCapInfo: {
+      market_cap: 700000000000000, // Undated market cap
+      date: null
+    }
+  });
+
+  // Must preserve existing verified snapshot and date!
+  assert.equal(incomingUndated.market_cap, 800000000000000, 'Undated market cap must not overwrite dated market cap');
+  assert.equal(incomingUndated.market_cap_as_of, '2026-10-05', 'Existing market_cap_as_of must not be lost');
+  assert.equal(incomingUndated.financial_statements.updated_at, '2026-10-05T10:00:00Z', 'Undated statements must not overwrite dated statements');
+});
+
+test('Batch 2: loadMarketCapData resolves duplicate tickers strictly by valid source date, independent of file read order', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cuan-mcap-dupe-'));
+  try {
+    // File 1: dated 2026-10-05
+    fs.writeFileSync(path.join(tmpDir, '01_latest.json'), JSON.stringify({
+      date: '2026-10-05',
+      items: [
+        { ticker: 'BBCA', market_cap: 850000000000000, listed_shares: 123000000000, close: 10500 }
+      ]
+    }));
+    // File 2: dated 2026-09-29 (older)
+    fs.writeFileSync(path.join(tmpDir, '02_older.json'), JSON.stringify({
+      date: '2026-09-29',
+      items: [
+        { ticker: 'BBCA', market_cap: 750000000000000, listed_shares: 122000000000, close: 10000 }
+      ]
+    }));
+    // File 3: invalid/corrupt date
+    fs.writeFileSync(path.join(tmpDir, '03_invalid_date.json'), JSON.stringify({
+      date: 'NOT_A_DATE',
+      items: [
+        { ticker: 'BBCA', market_cap: 1000000, listed_shares: 100, close: 50 }
+      ]
+    }));
+
+    // Normal order load
+    const map1 = loadMarketCapData(tmpDir);
+    const bbca1 = map1.get('BBCA');
+    assert.ok(bbca1);
+    assert.equal(bbca1.date, '2026-10-05');
+    assert.equal(bbca1.market_cap, 850000000000000);
+
+    // Now test reverse file order in another directory
+    const tmpDirRev = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cuan-mcap-rev-'));
+    try {
+      // Name files so older is read after newer or vice versa
+      fs.writeFileSync(path.join(tmpDirRev, 'a_older.json'), JSON.stringify({
+        date: '2026-09-29',
+        items: [{ ticker: 'BBCA', market_cap: 750000000000000, listed_shares: 122000000000, close: 10000 }]
+      }));
+      fs.writeFileSync(path.join(tmpDirRev, 'z_newer.json'), JSON.stringify({
+        date: '2026-10-05',
+        items: [{ ticker: 'BBCA', market_cap: 850000000000000, listed_shares: 123000000000, close: 10500 }]
+      }));
+      const mapRev = loadMarketCapData(tmpDirRev);
+      const bbcaRev = mapRev.get('BBCA');
+      assert.equal(bbcaRev.date, '2026-10-05');
+      assert.equal(bbcaRev.market_cap, 850000000000000);
+    } finally {
+      try { fs.rmSync(tmpDirRev, { recursive: true, force: true }); } catch (_) {}
+    }
+  } finally {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+  }
 });
 
 test('Batch 2: buildMergedFundamentalRecord strictly preserves market structure invariants', () => {

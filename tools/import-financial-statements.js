@@ -46,7 +46,7 @@ function parseArgs(customArgs) {
     dryRun: hasDryRun || !hasApply,
     statementsDir: DEFAULT_STATEMENTS_DIR,
     marketCapDir: DEFAULT_MARKET_CAP_DIR,
-    dbPath: process.env.AUTO_CUAN_MARKET_DB || null,
+    dbPath: null,
     tickers: null
   };
 
@@ -73,11 +73,25 @@ async function main(customArgs) {
 
   if (options.apply) {
     if (!options.dbPath) {
-      throw new Error('Safety guard: Mode --apply membutuhkan target database eksplisit via --db-path <path-ke-sqlite> untuk mencegah penulisan tidak disengaja.');
+      throw new Error('Safety guard: Mode --apply membutuhkan target database eksplisit via argumen CLI --db-path <path-ke-sqlite>. Pewarisan diam-diam dari environment dilarang.');
     }
-    const resolvedDbPath = path.resolve(options.dbPath);
-    if (resolvedDbPath === path.resolve(PROD_MARKET_DB) && process.env.ALLOW_PROD_DB_WRITE !== '1') {
-      throw new Error('Safety guard: Penulisan langsung ke database produksi (' + PROD_MARKET_DB + ') diblokir. Jalankan hanya pada database pengujian atau staging.');
+    let resolvedDbPath = path.resolve(options.dbPath);
+    try {
+      if (fs.existsSync(resolvedDbPath)) {
+        resolvedDbPath = fs.realpathSync(resolvedDbPath);
+      }
+    } catch (_) {}
+
+    const prodCandidate = path.resolve(PROD_MARKET_DB);
+    const isProd = (resolvedDbPath.toLowerCase() === prodCandidate.toLowerCase()) ||
+                   (/auto-cuan-data[\\/]market\.sqlite$/i.test(resolvedDbPath));
+
+    if (isProd && process.env.ALLOW_PROD_DB_WRITE !== '1') {
+      throw new Error('Safety guard: Penulisan langsung ke database produksi (' + resolvedDbPath + ') diblokir. Jalankan hanya pada database pengujian atau staging.');
+    }
+    const parentDir = path.dirname(resolvedDbPath);
+    if (!fs.existsSync(parentDir)) {
+      throw new Error('Safety guard: Direktori target database tidak ditemukan: ' + parentDir);
     }
   }
 
@@ -119,7 +133,11 @@ async function main(customArgs) {
   // 3. Connect to SQLite store if apply
   let store = null;
   if (options.apply) {
-    store = marketStore.getVpsMarketStore(options.dbPath);
+    try {
+      store = marketStore.getVpsMarketStore(options.dbPath);
+    } catch (err) {
+      throw new Error('Koneksi SQLite market store gagal: ' + (err && err.message || err));
+    }
   }
 
   let countProcessed = 0;

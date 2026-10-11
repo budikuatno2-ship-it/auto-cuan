@@ -197,3 +197,33 @@ test('queryStockFundamentals does not hide real storage errors (network/500/synt
   assert.equal(fundRes.error.code, 'ECONNREFUSED');
   assert.equal(executedSelects.length, 1);
 });
+
+test('handleFinancialSnapshotAction fails closed when VPS SQLite does not exist and never creates empty database', async () => {
+  const path = require('node:path');
+  const origVps = process.env.AUTO_CUAN_MARKET_DATA_VPS;
+  const origDb = process.env.AUTO_CUAN_MARKET_DB;
+  const nonExistentPath = path.join(__dirname, '..', 'tmp_nonexistent_test_' + Date.now() + '.sqlite');
+
+  process.env.AUTO_CUAN_MARKET_DATA_VPS = '1';
+  process.env.AUTO_CUAN_MARKET_DB = nonExistentPath;
+
+  try {
+    const res = {
+      status(n) { this.code = n; return this; },
+      json(body) { this.body = body; return this; }
+    };
+    await handleFinancialSnapshotAction({ method: 'GET', query: { ticker: 'BBCA' } }, res);
+
+    assert.equal(res.code, 503);
+    assert.equal(res.body.success, false);
+    assert.match(res.body.error, /market VPS|VPS market store/i);
+    // CRITICAL: Must not create empty DB file on GET request
+    assert.equal(fs.existsSync(nonExistentPath), false, 'GET endpoint must never create an empty SQLite database');
+  } finally {
+    if (origVps != null) process.env.AUTO_CUAN_MARKET_DATA_VPS = origVps;
+    else delete process.env.AUTO_CUAN_MARKET_DATA_VPS;
+    if (origDb != null) process.env.AUTO_CUAN_MARKET_DB = origDb;
+    else delete process.env.AUTO_CUAN_MARKET_DB;
+    try { if (fs.existsSync(nonExistentPath)) fs.unlinkSync(nonExistentPath); } catch (_) {}
+  }
+});

@@ -91,6 +91,30 @@ test('Batch 4: Signals in WAITING or RUNNING state are ineligible for best_gain 
   assert.equal(data.signals[1].gain_pct, null, 'RUN1 RUNNING signal must have null realized gain_pct');
 });
 
+test('Batch 4: best_gain strictly reflects realized TP profit, never floating MFE', () => {
+  // Reproduction: Entry=100, TP1=110, high=150, outcome=TP1_HIT
+  // gainPct = 10%, MFE = 50%
+  const rows = [
+    {
+      id: 1,
+      ticker: 'TEST',
+      date: '2026-10-10',
+      entry1: 100,
+      tp1: 110,
+      sl: 90,
+      high: 150, // MFE was 50%, but trade exited at TP1 = 110 (+10%)
+      outcome: 'TP1_HIT',
+      category: 'Day Trade'
+    }
+  ];
+
+  const data = buildTrackRecordData(rows);
+  assert.ok(data.summary.best_gain);
+  assert.equal(data.summary.best_gain.gain_pct, 10, 'best_gain must be realized gain 10%, NOT floating MFE 50%');
+  assert.equal(data.signals[0].gain_pct, 10);
+  assert.equal(data.signals[0].mfe_pct, 50, 'MFE must be tracked separately on signal row');
+});
+
 test('Batch 4: WIB time formatting is consistent and valid', () => {
   const iso = '2026-10-09T02:30:00.000Z'; // 09:30 WIB
   const formatted = formatWibTime(iso);
