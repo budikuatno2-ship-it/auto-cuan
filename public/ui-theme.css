@@ -13387,11 +13387,24 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
   position: relative;
 }
 
+#marketStructureTableContainer {
+  max-height: min(65vh, 680px) !important;
+  overflow-y: auto !important;
+  overflow-x: auto !important;
+}
+
 #marketStructureTable thead th {
   position: sticky;
   top: 0;
   z-index: 2;
   background: var(--ac-surface-raised, #0f172a);
+}
+
+#marketStructureTableContainer thead th,
+#marketStructureTable thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
 }
 
 .ac-research-shareholders table {
@@ -13425,6 +13438,16 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
 #panel-tab-market-structure[data-ac-ui="v2"] .ac-market-structure-layout {
   max-width: 1600px !important;
   width: 100% !important;
+}
+
+#page-analisis,
+.unified-cockpit-shell,
+.ac-financial-container,
+.ac-market-structure-layout {
+  max-width: 1600px !important;
+  width: 100% !important;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .ac-split-view.is-card-mode {
