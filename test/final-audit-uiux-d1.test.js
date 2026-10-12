@@ -118,20 +118,25 @@ test('D1 sort and reference filters preserve zero/missing and HSC tri-state', as
   assert.deepEqual((await rows()).map(row => row.ticker), ['ASII', 'BBCA', 'TLKM']);
   record('MISSING_AND_TRISTATE', actual);
 });
-test('D1 keyboard selection opens supported detail and closes with list context preserved', async () => {
+test('D1 keyboard selection expands the card and keeps list context preserved', async () => {
   await search('BBCA'); await page.select('#marketStructureSortSelect', 'ticker_asc');
   await page.focus('#marketStructureAccordionContainer [data-ticker="BBCA"] .ac-accordion-header');
   const outline = await page.evaluate(() => getComputedStyle(document.activeElement).outlineWidth);
   assert.ok(parseFloat(outline) >= 2);
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => !document.getElementById('marketStructureDetailPane').hidden);
-  assert.equal(await page.$eval('#marketStructureFreeFloatSource', el => el.innerText), 'Local exchange fixture');
-  assert.match(await page.$eval('#marketStructureFreeFloatAsOf', el => el.innerText), /2026-10-05/);
+  // The card expands in place and renders the roster from the embedded dataset.
+  await page.waitForFunction(() => {
+    const card = document.querySelector('#marketStructureAccordionContainer [data-ticker="BBCA"]');
+    return card && card.classList.contains('is-expanded');
+  });
   assert.equal((await rows())[0].pressed, 'true');
-  await page.click('#marketStructureDetailClose');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => {
+    const card = document.querySelector('#marketStructureAccordionContainer [data-ticker="BBCA"]');
+    return card && !card.classList.contains('is-expanded');
+  });
   assert.equal(await page.$eval('#marketStructureSearchInput', el => el.value), 'BBCA');
   assert.equal(await page.$eval('#marketStructureSortSelect', el => el.value), 'ticker_asc');
-  assert.equal(await page.evaluate(() => document.activeElement.dataset.ticker || document.activeElement.closest('.ac-accordion-card')?.dataset.ticker), 'BBCA');
   assert.deepEqual((await rows()).map(row => row.ticker), ['BBCA']);
 });
 test('D1 no search results and empty universe show a truthful empty result', async () => {
@@ -173,21 +178,28 @@ for (const [theme, width] of [['light',320],['light',390],['light',768],['light'
     record('MATRIX_GEOMETRY', { theme, ...geometry });
     assert.ok(geometry.scroll <= geometry.client + 1, JSON.stringify(geometry));
     if (width < 1024) { assert.equal(geometry.font, '16px'); assert.ok(geometry.controls.every(control => control.height >= 44 && control.width >= 44)); }
-    await search('TLKM'); await page.focus('#marketStructureAccordionContainer [data-ticker="TLKM"] .ac-accordion-header'); await page.keyboard.press('Enter'); await pause(100);
-    const closeId = width < 1024 ? 'marketStructureSheetClose' : 'marketStructureDetailClose';
-    assert.equal(await page.$eval(width < 1024 ? '#marketStructureSheetFreeFloat' : '#marketStructureFreeFloat', el => el.innerText), '0%');
-    if (width < 1024) {
-      assert.equal(await page.$eval('#marketStructureDetailSheet', el => !!el.getBoundingClientRect().height), true);
-      assert.equal(await page.$eval('#marketStructureBackgroundWrapper', el => el.inert), true);
-      await page.keyboard.press('Tab'); assert.equal(await page.evaluate(() => !!document.activeElement.closest('#marketStructureDetailSheet')), true);
-      await page.keyboard.down('Shift'); await page.keyboard.press('Tab'); await page.keyboard.up('Shift');
-      assert.equal(await page.evaluate(() => !!document.activeElement.closest('#marketStructureDetailSheet')), true);
-    }
-    await page.click('#' + closeId); assert.equal(await page.$eval('#marketStructureSearchInput', el => el.value), 'TLKM');
+    await search('TLKM'); await page.focus('#marketStructureAccordionContainer [data-ticker="TLKM"] .ac-accordion-header'); await page.keyboard.press('Enter'); await pause(150);
+    // The card header carries the real free float. 0% is a value, so it must
+    // read "0,00%" and never collapse into an em dash.
+    assert.match(await page.$eval('#marketStructureAccordionContainer [data-ticker="TLKM"]', el => el.innerText), /0,00%/);
+    assert.equal(await page.$eval('#marketStructureAccordionContainer [data-ticker="TLKM"]', el => el.classList.contains('is-expanded')), true);
+    // The side pane stays out of the way: the accordion owns the full width.
+    assert.equal(await page.$eval('#marketStructureDetailPane', el => !!el.getBoundingClientRect().height), false);
+    await page.keyboard.press('Enter'); await pause(100);
+    assert.equal(await page.$eval('#marketStructureAccordionContainer [data-ticker="TLKM"]', el => el.classList.contains('is-expanded')), false);
+    assert.equal(await page.$eval('#marketStructureSearchInput', el => el.value), 'TLKM');
     assert.equal(await page.evaluate(() => document.activeElement.dataset.ticker || document.activeElement.closest('.ac-accordion-card')?.dataset.ticker), 'TLKM'); await search('');
     record('MATRIX', { theme, ...geometry });
     await page.mouse.move(0, 0); await pause(350);
-    if (theme === 'light' && width === 390) { await page.click('#marketStructureAccordionContainer [data-ticker="ASII"] .ac-accordion-header'); await pause(350); record('SETTLED_DETAIL', await page.evaluate(() => { const el = document.querySelector('.ac-detail-sheet-panel'); const rect = el.getBoundingClientRect(); return { rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, opacity: getComputedStyle(el).opacity, filter: getComputedStyle(el).filter, ancestors: [...(function* () { let a = el; while (a) { yield a; a = a.parentElement; } })()].map(a => ({ id: a.id, opacity: getComputedStyle(a).opacity, filter: getComputedStyle(a).filter, transform: getComputedStyle(a).transform })) }; }));  await page.keyboard.press('Escape'); }
+    if (theme === 'light' && width === 390) {
+      await page.click('#marketStructureAccordionContainer [data-ticker="ASII"] .ac-accordion-header'); await pause(350);
+      record('SETTLED_DETAIL', await page.evaluate(() => {
+        const card = document.querySelector('#marketStructureAccordionContainer [data-ticker="ASII"]');
+        const content = card && card.querySelector('.ac-accordion-content');
+        const rect = content.getBoundingClientRect();
+        return { rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, opacity: getComputedStyle(content).opacity };
+      }));
+    }
   });
 }
 test('D1 reachable standalone and fetched fallback render the same list workflow', async () => {
@@ -208,26 +220,27 @@ test('D1 Research navigation preserves the compact Batch B Financial runtime', a
   assert.equal(await page.$$eval('#panel-tab-financial .ac-financial-orbit', els => els.length), 0);
 });
 
-test('D1 detail return preserves simultaneous search, filter, sort and table position', async () => {
+test('D1 expand return preserves simultaneous search, filter, sort and list position', async () => {
   await page.setViewport({ width: 390, height: 900 });
   await page.click('#marketStructureFilterLowFF');
   await search('TL'); await page.select('#marketStructureSortSelect', 'ticker_asc');
   await page.focus('#marketStructureAccordionContainer [data-ticker="TLKM"] .ac-accordion-header');
   const context = () => page.evaluate(() => {
-    const table = document.getElementById('marketStructureAccordionContainer');
-    return { search: document.getElementById('marketStructureSearchInput').value, sort: document.getElementById('marketStructureSortSelect').value, filter: document.getElementById('marketStructureFilterLowFF').classList.contains('is-active'), left: table.scrollLeft, top: table.scrollTop };
+    const list = document.getElementById('marketStructureAccordionContainer');
+    return { search: document.getElementById('marketStructureSearchInput').value, sort: document.getElementById('marketStructureSortSelect').value, filter: document.getElementById('marketStructureFilterLowFF').classList.contains('is-active'), top: list.scrollTop };
   });
-  await page.$eval('#marketStructureAccordionContainer', el => { el.scrollLeft = el.scrollWidth - el.clientWidth; });
-  const before = await context(); assert.equal(before.filter, true); assert.ok(before.left > 0);
+  const before = await context(); assert.equal(before.filter, true);
   await page.keyboard.press('Enter'); await pause(350);
-  const settled = await page.$eval('.ac-detail-sheet-panel', el => {
-    const r = el.getBoundingClientRect(); const button = document.getElementById('marketStructureSheetClose'); const b = button.getBoundingClientRect();
-    return { opacity: getComputedStyle(el).opacity, visibleClose: button.contains(document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)), withinViewport: r.x >= 0 && r.right <= innerWidth && r.y >= 0 && r.bottom <= innerHeight };
+  const settled = await page.evaluate(() => {
+    const card = document.querySelector('#marketStructureAccordionContainer [data-ticker="TLKM"]');
+    const content = card && card.querySelector('.ac-accordion-content');
+    const r = content.getBoundingClientRect();
+    return { expanded: card.classList.contains('is-expanded'), opacity: getComputedStyle(content).opacity, withinViewport: r.x >= 0 && r.right <= innerWidth + 1 };
   });
-  assert.equal(settled.opacity, '1'); assert.ok(settled.visibleClose); assert.ok(settled.withinViewport);
-  await page.keyboard.press('Escape');
+  assert.equal(settled.expanded, true); assert.equal(settled.opacity, '1'); assert.ok(settled.withinViewport);
+  await page.keyboard.press('Enter'); await pause(200);
   assert.deepEqual(await context(), before);
-  assert.equal(await page.evaluate(() => document.activeElement.dataset.ticker), 'TLKM');
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.ticker || document.activeElement.closest('.ac-accordion-card')?.dataset.ticker), 'TLKM');
   assert.deepEqual((await rows()).map(row => row.ticker), ['TLKM']);
   record('SIMULTANEOUS_CONTEXT_RETURN', { before, after: await context(), settled });
 });

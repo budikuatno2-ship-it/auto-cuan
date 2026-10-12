@@ -1130,20 +1130,25 @@
       var content = card.querySelector('.ac-accordion-content');
       var item = items.find(function(it) { return it.ticker && it.ticker.toUpperCase() === t.toUpperCase(); });
 
+      // The accordion is self-contained: expanding renders the holder table
+      // inside the card and never opens the docked pane or the mobile sheet.
+      // Those two surfaces belong to the retired table-first layout and are
+      // suppressed in CSS so the list can use the full working width.
       function toggleCard() {
         var willExpand = content.hidden;
         if (willExpand) {
           content.hidden = false;
           card.classList.add('is-expanded');
           header.setAttribute('aria-expanded', 'true');
-          selectMarketStructureRow(t, card, false);
+          marketStructureSelectedTicker = t;
           loadAccordionRoster(t, content, item);
         } else {
           content.hidden = true;
           card.classList.remove('is-expanded');
           header.setAttribute('aria-expanded', 'false');
-          closeMarketStructureDetail();
         }
+        // Keyboard users must keep their place in the list after toggling.
+        try { header.focus({ preventScroll: true }); } catch (_) { header.focus(); }
       }
 
       header.addEventListener('click', toggleCard);
@@ -1523,19 +1528,26 @@
     }
 
     try {
+      // An empty array and a failed request are different states. A truthful
+      // "no rows" answer must render the empty list message, not the error
+      // banner, or a genuinely quiet universe would look like an outage.
+      var sawSuccessfulResponse = false;
+
       var response = await fetch('/api/sector-hot?action=market-structure-list', {
         credentials: 'same-origin',
         cache: 'no-store'
       }).catch(function () { return null; });
       var payload = response ? await response.json().catch(function () { return null; }) : null;
+      if (payload && payload.success === true) sawSuccessfulResponse = true;
       var list = payload && (Array.isArray(payload.data) ? payload.data : (Array.isArray(payload.rows) ? payload.rows : null));
 
       if (!list || list.length === 0) {
         response = await fetch('/api/quote?action=daily-market-context-list', {
           credentials: 'same-origin',
           cache: 'no-store'
-        });
-        payload = await response.json().catch(function () { return {}; });
+        }).catch(function () { return null; });
+        payload = response ? await response.json().catch(function () { return {}; }) : {};
+        if (payload && payload.success === true) sawSuccessfulResponse = true;
         list = Array.isArray(payload.data)
           ? payload.data
           : Array.isArray(payload.rows)
@@ -1543,7 +1555,10 @@
             : null;
       }
 
-      if (!list || list.length === 0) {
+      if (!list) {
+        throw new Error((payload && payload.error) || 'Gagal memuat daftar struktur pasar.');
+      }
+      if (list.length === 0 && !sawSuccessfulResponse) {
         throw new Error((payload && payload.error) || 'Gagal memuat daftar struktur pasar.');
       }
 
