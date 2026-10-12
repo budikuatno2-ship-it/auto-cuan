@@ -1388,8 +1388,16 @@
     researchText('financialPeriod', f.fundamental_period || 'Belum tersedia');
     researchText('financialPeriodHero', f.fundamental_period ? 'Periode ' + f.fundamental_period : 'Periode belum tersedia');
     researchText('financialSource', f.fundamental_source || 'Belum tersedia');
-    researchText('financialMarketCapSource', f.market_cap_source || 'Belum tersedia');
-    researchText('financialUpdatedAt', f.fundamental_updated_at || 'Belum tersedia');
+    var rawUpdated = f.fundamental_updated_at || f.updated_at;
+    var formattedUpdated = 'Belum tersedia';
+    if (rawUpdated) {
+      if (typeof rawUpdated === 'string' && (rawUpdated.indexOf('T') !== -1 || rawUpdated.indexOf('Z') !== -1)) {
+        formattedUpdated = formatIndonesianDateWithWib(rawUpdated);
+      } else {
+        formattedUpdated = rawUpdated;
+      }
+    }
+    researchText('financialUpdatedAt', formattedUpdated);
 
     researchText('financialCoverage', coverageCount + ' / 4');
     var coverageBar = byId('financialCoverageBar');
@@ -1402,10 +1410,10 @@
       var hasVerifiedProvenance = Boolean(f.verified || f.provenance_verified);
       if (hasVerifiedProvenance) {
         statusBadge.textContent = 'Snapshot Terverifikasi';
-        statusBadge.className = 'ac-status-badge ac-status-badge--positive';
+        statusBadge.className = 'status-badge status-badge--success ac-status-badge ac-status-badge--positive';
       } else if (coverageCount >= 4) {
-        statusBadge.textContent = 'Data Lengkap 4/4';
-        statusBadge.className = 'ac-status-badge ac-status-badge--positive';
+        statusBadge.textContent = 'Tersedia';
+        statusBadge.className = 'status-badge status-badge--success ac-status-badge ac-status-badge--positive';
       } else if (coverageCount > 0) {
         statusBadge.textContent = 'Sebagian Lengkap ' + coverageCount + '/4';
         statusBadge.className = 'ac-status-badge ac-status-badge--warning';
@@ -1455,6 +1463,9 @@
     var cachedFundamental = financialSnapshotCache[ticker] || financialCache[ticker];
     if (cachedFundamental) {
       renderFinancialFundamental(ticker, cachedFundamental.fundamental || cachedFundamental, cachedFundamental.price);
+      if (root.AutoCuanFinancialStatements && typeof root.AutoCuanFinancialStatements.loadStatements === 'function') {
+        root.AutoCuanFinancialStatements.loadStatements(ticker, cachedFundamental);
+      }
       financialRenderedTicker = ticker;
       if (state) state.hidden = true;
       if (content) content.hidden = false;
@@ -2585,7 +2596,9 @@
       : { get: function () { return null; } };
     var tickerParam = params.get('ticker');
     var tabParam = params.get('tab');
-    var initialTicker = (tickerParam || 'BBCA').trim().toUpperCase().replace(/[^A-Z0-9]/g, '') || 'BBCA';
+    var currentActive = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
+      ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || null);
+    var initialTicker = (tickerParam || currentActive || 'BBCA').trim().toUpperCase().replace(/[^A-Z0-9]/g, '') || 'BBCA';
 
     if (tabParam) {
       switchAnalisisTab(tabParam);
@@ -2594,11 +2607,12 @@
     }
 
     if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
+      var shouldRunAnalysis = Boolean((tickerParam || currentActive) && (!tabParam || tabParam === 'analisis' || tabParam === 'analisis-chart'));
       root.UnifiedCockpit.syncActiveTicker(initialTicker, {
         loadChart: true,
         forceChartReload: true,
-        preserveTab: Boolean(tabParam && tabParam !== 'analisis'),
-        runAnalysis: Boolean(tickerParam && (!tabParam || tabParam === 'analisis'))
+        preserveTab: Boolean(tabParam && tabParam !== 'analisis' && tabParam !== 'analisis-chart'),
+        runAnalysis: shouldRunAnalysis
       });
     }
 

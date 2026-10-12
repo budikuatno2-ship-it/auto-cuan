@@ -13391,6 +13391,15 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
   max-height: min(65vh, 680px) !important;
   overflow-y: auto !important;
   overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y pinch-zoom !important;
+  overscroll-behavior: contain !important;
+}
+
+.ac-market-structure-layout,
+.ac-market-structure-main {
+  overflow: visible !important;
+  min-height: 0 !important;
 }
 
 #marketStructureTable thead th {
@@ -13419,11 +13428,19 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
 /* Track Record Table Layout Alignment (Batch 4) */
 #trTableWrap table {
   table-layout: fixed !important;
-  min-width: 960px;
+  min-width: 1040px !important;
+  width: 100% !important;
 }
 #trTableWrap th,
 #trTableWrap td {
-  box-sizing: border-box;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.tr-subtext-line {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 
@@ -13457,10 +13474,47 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
 .ac-split-view.is-card-mode .ac-split-view__main {
   width: 100% !important;
   max-width: 100% !important;
+  flex: 1 1 100% !important;
 }
 
 .ac-split-view.is-card-mode .ac-split-view__pane {
   display: none !important;
+}
+
+[data-ac-ui="v2"] .ac-split-view.is-card-mode,
+.ac-split-view.is-card-mode {
+  display: block !important;
+  width: 100% !important;
+}
+
+[data-ac-ui="v2"] .ac-split-view.is-card-mode .ac-split-view__main,
+.ac-split-view.is-card-mode .ac-split-view__main {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 100% !important;
+}
+
+[data-ac-ui="v2"] .ac-split-view.is-card-mode .ac-split-view__pane,
+.ac-split-view.is-card-mode .ac-split-view__pane,
+.ac-split-view.is-card-mode #screenerDetailPane,
+.ac-split-view.is-card-mode #dtDetailPane,
+.ac-split-view.is-card-mode #kgSplitPane,
+.ac-split-view.is-card-mode #dtSplitPane,
+.ac-split-view.is-card-mode .ac-detail-pane {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  flex: 0 0 0% !important;
+  visibility: hidden !important;
+}
+
+.ac-split-view.is-card-mode #kgCardGrid,
+.ac-split-view.is-card-mode #nkCardGrid,
+.ac-split-view.is-card-mode #dtCardGrid {
+  width: 100% !important;
+  display: grid !important;
 }
 
 @media (min-width: 1024px) {

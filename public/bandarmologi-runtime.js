@@ -150,7 +150,7 @@
     // caller passes in) must survive untouched — otherwise the dropdown would
     // snap back to the newest day on every re-render and the pinned history
     // could never be read.
-    if (!selectedDate || selectedDate === 'latest') {
+    if (!selectedDate || selectedDate === 'latest' || (dates && dates.length > 0 && !dates.includes(selectedDate))) {
       selectedDate = (dates && dates.length > 0)
         ? dates[0]
         : ((typeof currentBandarDate !== 'undefined' ? currentBandarDate : null) || null);
@@ -192,7 +192,7 @@
     if (!dates) dates = [];
     // Batch 6 F-040: no static date fallback — mirror initBrokerDateSelect.
     if (dates && dates.length > 0) {
-      if (!selectedDate || selectedDate === 'latest' || (selectedDate < dates[0] && (!currentBandarDate || currentBandarDate < dates[0]))) {
+      if (!selectedDate || selectedDate === 'latest' || !dates.includes(selectedDate)) {
         selectedDate = dates[0];
         currentBandarDate = dates[0];
       }
@@ -2014,7 +2014,7 @@
           }
           data.available_dates = combinedDates.sort().reverse();
         }
-        if (!currentBandarDate || currentBandarDate === 'latest' || (data.available_dates.length > 0 && currentBandarDate < data.available_dates[0])) {
+        if (!currentBandarDate || currentBandarDate === 'latest' || (data.available_dates.length > 0 && !data.available_dates.includes(currentBandarDate))) {
           currentBandarDate = data.available_dates[0];
           selectedDate = data.available_dates[0];
         }
