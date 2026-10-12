@@ -1393,6 +1393,7 @@
   }
 
   function closeMarketStructureDetail() {
+    var closedTicker = marketStructureSelectedTicker;
     marketStructureSelectedTicker = null;
     var pane = byId('marketStructureDetailPane');
     if (pane) pane.hidden = true;
@@ -1407,8 +1408,18 @@
       });
     }
 
-    if (marketStructureLastFocusedElement && typeof marketStructureLastFocusedElement.focus === 'function') {
-      try { marketStructureLastFocusedElement.focus(); } catch (_) {}
+    var targetToFocus = marketStructureLastFocusedElement;
+    if (tbody && (!targetToFocus || !tbody.contains(targetToFocus))) {
+      var t = (targetToFocus && targetToFocus.getAttribute) ? targetToFocus.getAttribute('data-ticker') : null;
+      if (!t) t = closedTicker;
+      if (!t && root.activeTicker) t = root.activeTicker;
+      if (t) {
+        targetToFocus = tbody.querySelector('tr[data-ticker="' + t + '"]');
+      }
+    }
+
+    if (targetToFocus && typeof targetToFocus.focus === 'function') {
+      try { targetToFocus.focus(); } catch (_) {}
     }
   }
   root.closeMarketStructureDetail = closeMarketStructureDetail;
@@ -1417,16 +1428,13 @@
     if (marketStructureBoundEvents) return;
     marketStructureBoundEvents = true;
 
-    // Search input (debounce 250ms)
+    // Search input
     var searchInput = byId('marketStructureSearchInput');
     if (searchInput) {
       searchInput.addEventListener('input', function (e) {
         var val = (e && e.target && e.target.value != null ? e.target.value : (searchInput ? searchInput.value : '')) || '';
-        if (marketStructureSearchDebounce) clearTimeout(marketStructureSearchDebounce);
-        marketStructureSearchDebounce = setTimeout(function () {
-          marketStructureSearchQuery = val;
-          renderMarketStructureTable();
-        }, 250);
+        marketStructureSearchQuery = val;
+        renderMarketStructureTable();
       });
     }
 
