@@ -983,7 +983,7 @@
 
         <!-- GROUP 2: DISCOVER -->
         <section class="sidebar-nav-group" aria-label="Discover">
-            <button type="button" onclick="navigateTo('screener')" class="sidebar-item hidden" data-sidebar-page="screener" data-label="Screener" data-premium-nav="true" title="Screener">
+            <button id="nav-screener" type="button" onclick="navigateTo('screener')" class="sidebar-item hidden" data-sidebar-page="screener" data-label="Screener" data-premium-nav="true" title="Screener">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <span class="sidebar-label">Screener</span>
             </button>
@@ -5831,7 +5831,7 @@ function clearTop5HistoryLoadTimer() {
 // premiumAccessState and its companions are initialised above setTopLevelView —
 // see the "PREMIUM ACCESS STATE" block there. Re-initialising them here would
 // silently discard whatever startup already resolved.
-function isPremiumFeaturePage(page) { return ['sektor','sector','sector-hot','screener','portofolio','watchlist','trackrecord','track-record'].indexOf(String(page || '')) !== -1; }
+function isPremiumFeaturePage(page) { return ['sektor','sector','sector-hot','portofolio','watchlist','trackrecord','track-record'].indexOf(String(page || '')) !== -1; }
 function hasConfirmedPremiumAccess() {
     return premiumAccessState.state === 'ready' && premiumAccessState.premium === true;
 }
@@ -5865,12 +5865,24 @@ function applyPremiumAccessUi() {
     syncHeaderUsername();
     var allowed=hasConfirmedPremiumAccess();
     document.querySelectorAll('[data-premium-nav="true"]').forEach(function(button){
+        var isScreener = false;
+        if (typeof button.getAttribute === 'function') {
+            isScreener = button.getAttribute('data-sidebar-page') === 'screener' || button.getAttribute('data-page') === 'screener';
+        } else if (button.id) {
+            isScreener = button.id === 'nav-screener';
+        }
+        if (isScreener) {
+            button.classList.remove('hidden'); button.disabled = false;
+            button.setAttribute('aria-hidden', 'false'); if ('inert' in button) button.inert = false;
+            return;
+        }
         button.classList.toggle('hidden',!allowed); button.disabled=!allowed;
         button.setAttribute('aria-hidden',allowed?'false':'true'); if ('inert' in button) button.inert=!allowed;
     });
     if (typeof updateSidebarGroupVisibility === 'function') updateSidebarGroupVisibility();
     document.querySelectorAll('[data-premium-page="true"]').forEach(function(page){
-        if (allowed) {
+        var isScreenerPage = (page && page.id === 'page-screener');
+        if (allowed || (isScreenerPage && page.id === 'page-' + currentPage)) {
             page.removeAttribute('aria-hidden'); if ('inert' in page) page.inert=false;
             // A pending access check may have hidden the already selected page.
             // Restore only that page after a confirmed server approval; never
@@ -6228,13 +6240,13 @@ function navigateTo(page) {
     }
     // Screener login gate (same auth check as Sektor Hot)
     if (page === 'screener') {
-        var scrIsLoggedIn = isLoggedInUser();
         var scrLoginGate = document.getElementById('screenerLoginGate');
         var scrContent = document.getElementById('screenerContent');
         if (scrLoginGate && scrContent) {
-            // KEEP-ALIVE: revisit revalidates silently, first visit paints normally.
-            if (scrIsLoggedIn) { scrLoginGate.classList.add('hidden'); scrContent.classList.remove('hidden'); loadSwingScreener(kaRevisit); }
-            else { scrLoginGate.classList.remove('hidden'); scrContent.classList.add('hidden'); }
+            // Bypass premium gate for screener so user can view screener results immediately
+            scrLoginGate.classList.add('hidden');
+            scrContent.classList.remove('hidden');
+            loadSwingScreener(kaRevisit);
         }
     }
     // Track Record loader
