@@ -153,27 +153,30 @@ async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
       var marketStore = require("../lib/vps-market-store");
       var vpsDbPath = process.env.AUTO_CUAN_MARKET_DB || '/home/ubuntu/auto-cuan-data/market.sqlite';
       var fs = require("node:fs");
+      if (!fs.existsSync(vpsDbPath)) {
+        return res.status(503).json({ success: false, error: "Data Financial belum tersedia (database market VPS belum diinisialisasi)." });
+      }
+      try {
+        db = marketStore.getVpsMarketStore(vpsDbPath);
+      } catch (err) {
+        return res.status(503).json({ success: false, error: "Koneksi ke VPS market store gagal: " + (err && err.message || err) });
+      }
+    } else if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      var vpsDbPath = process.env.AUTO_CUAN_MARKET_DB || '/home/ubuntu/auto-cuan-data/market.sqlite';
+      var fs = require("node:fs");
       if (fs.existsSync(vpsDbPath)) {
         try {
+          var marketStore = require("../lib/vps-market-store");
           db = marketStore.getVpsMarketStore(vpsDbPath);
         } catch (_) {}
       }
-    }
-    if (!db) {
-      if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        db = hybrid.createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-          auth: { persistSession: false, autoRefreshToken: false }
-        });
-      } else {
-        var vpsDbPath = process.env.AUTO_CUAN_MARKET_DB || '/home/ubuntu/auto-cuan-data/market.sqlite';
-        var fs = require("node:fs");
-        if (fs.existsSync(vpsDbPath)) {
-          var marketStore = require("../lib/vps-market-store");
-          try {
-            db = marketStore.getVpsMarketStore(vpsDbPath);
-          } catch (_) {}
-        }
+      if (!db) {
+        return res.status(503).json({ success: false, error: "Data Financial belum tersedia." });
       }
+    } else {
+      db = hybrid.createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
     }
   }
   if (!db) {

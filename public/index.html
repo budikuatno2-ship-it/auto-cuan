@@ -12288,6 +12288,11 @@ async function loadSwingScreener(silent) {
     var tbody = document.getElementById('screenerTableBody');
     if (!tbody) return;
 
+    // Guard: do not call API if not logged in (same check as Sektor Hot gate)
+    if (getUsername() === 'guest' || localStorage.getItem('autocuan_logged_in') !== 'true') {
+        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
+        return;
+    }
 
     // Send both userId (UUID if available) and username for robust server-side lookup
     var scrUserId = localStorage.getItem('autocuan_user_id') || '';
