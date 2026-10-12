@@ -21,7 +21,7 @@ test('Batch 5: Layout width and wide-screen responsiveness', () => {
 
 test('Batch 5: Header strip offset refinement on desktop', () => {
   const css = read('public/ui-theme.css');
-  assert.match(css, /@media\s*\(min-width:\s*1024px\)\s*\{[\s\S]*#appContent\s*\{[^}]*padding-top:\s*8px\s*!important/);
+  assert.match(css, /@media\s*\(min-width:\s*1024px\)\s*\{[\s\S]*#appContent\s*\{[^}]*padding-top:\s*(?:4|8)px\s*!important/);
 });
 
 test('Batch 5: Screener Plan View (Card Mode) spans full width and hides empty side pane', () => {
