@@ -13,11 +13,15 @@
     return String(val || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   }
 
+  // Returns the ticker the Analisis workspace is currently focused on, or ''
+  // when the user has not chosen one. It deliberately has no BBCA fallback: an
+  // invented default would be written into the URL and would fire per-emiten
+  // requests on pages that never asked for a stock (the Dashboard 504 path).
   function getActiveTicker() {
     var fromWindow = cleanTicker(root.activeTicker);
     var fromInput = byId('analisisInput') ? cleanTicker(byId('analisisInput').value) : '';
     var fromChartInput = byId('chartTickerInput') ? cleanTicker(byId('chartTickerInput').value) : '';
-    return fromWindow || fromInput || fromChartInput || 'BBCA';
+    return fromWindow || fromInput || fromChartInput || '';
   }
 
   function switchAnalysisSubTab(mode) {
@@ -151,12 +155,23 @@
     var msBadge = byId('marketStructureTickerBadge');
     if (msBadge) msBadge.textContent = ticker;
 
-    // URL ticker synchronization (FINAL-RISK-005) - replaceState only, no pushState loop
+    // URL ticker synchronization (FINAL-RISK-005) - replaceState only, no pushState loop.
+    // A ticker belongs in the address bar only while the Analisis workspace is the
+    // active page. On Dashboard and every other route the parameter is removed so
+    // the URL cannot leak a stock symbol (and with it, per-emiten fetches) into a
+    // page that is supposed to load macro data only.
     if (!options.skipUrlSync && typeof window !== 'undefined' && window.location && window.history && window.history.replaceState) {
       try {
         var url = new URL(window.location.href);
-        if (url.searchParams.get('ticker') !== ticker) {
-          url.searchParams.set('ticker', ticker);
+        var onAnalisisPage = document.getElementById('page-analisis') &&
+          !document.getElementById('page-analisis').classList.contains('hidden');
+        if (onAnalisisPage) {
+          if (url.searchParams.get('ticker') !== ticker) {
+            url.searchParams.set('ticker', ticker);
+            window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+          }
+        } else if (url.searchParams.has('ticker')) {
+          url.searchParams.delete('ticker');
           window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
         }
       } catch (_) {}
@@ -181,12 +196,20 @@
       if (inp && inp.value !== ticker) inp.value = ticker;
     });
 
-    // 2c. Update URL query parameter seamlessly
+    // 2c. Second URL pass kept for legacy callers; it follows the same rule as
+    // above so it can never re-introduce the parameter on a non-Analisis page.
     try {
       if (typeof window !== 'undefined' && window.location) {
         var currentUrl = new URL(window.location.href);
-        if (currentUrl.searchParams.get('ticker') !== ticker) {
-          currentUrl.searchParams.set('ticker', ticker);
+        var onAnalisisForUrl = document.getElementById('page-analisis') &&
+          !document.getElementById('page-analisis').classList.contains('hidden');
+        if (onAnalisisForUrl) {
+          if (currentUrl.searchParams.get('ticker') !== ticker) {
+            currentUrl.searchParams.set('ticker', ticker);
+            window.history.replaceState({}, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
+          }
+        } else if (currentUrl.searchParams.has('ticker')) {
+          currentUrl.searchParams.delete('ticker');
           window.history.replaceState({}, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
         }
       }
@@ -361,9 +384,14 @@
       });
     }
 
-    // Read initial ticker from URL parameter if available
+    // The URL ticker is only honoured when the Analisis workspace is the page
+    // that is actually open. On /dashboard?ticker=BBCA (a legacy link) the
+    // parameter is ignored here and the router strips it, so the Dashboard
+    // never adopts a stock context it was not asked to show.
+    var analisisPage = byId('page-analisis');
+    var analisisVisible = analisisPage && !analisisPage.classList.contains('hidden');
     try {
-      if (typeof window !== 'undefined' && window.location) {
+      if (analisisVisible && typeof window !== 'undefined' && window.location) {
         var urlParams = new URLSearchParams(window.location.search);
         var urlTicker = cleanTicker(urlParams.get('ticker'));
         if (urlTicker) {
@@ -371,9 +399,9 @@
         }
       }
     } catch (_) {}
-    // Auto-sync initial ticker if present
+    // Auto-load the chart only for the Analisis workspace.
     var current = getActiveTicker();
-    if (current && byId('page-analisis') && !byId('page-analisis').classList.contains('hidden')) {
+    if (current && analisisVisible) {
       loadUnifiedChart(current);
     }
   }

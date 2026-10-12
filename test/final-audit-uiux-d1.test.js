@@ -82,7 +82,15 @@ beforeEach(async () => {
   await page.evaluate(() => { hideOnboardingGuide(true); setWorkspaceSidebarVisible(true); applyAppTheme('light'); });
   await page.waitForFunction(() => typeof loadStrukturPasarUniverse === 'function' && document.getElementById('marketStructureDataState')?.hidden);
 });
-const rows = () => page.$$eval('#marketStructureTableBody tr[data-ticker]', list => list.map(row => ({ ticker: row.dataset.ticker, text: row.innerText, visible: !!row.getBoundingClientRect().height, pressed: row.getAttribute('aria-pressed') })));
+const rows = () => page.$$eval('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]', list => list.map(card => {
+  const header = card.querySelector('.ac-accordion-header');
+  return {
+    ticker: card.dataset.ticker,
+    text: card.innerText,
+    visible: !!card.getBoundingClientRect().height,
+    pressed: header ? (header.getAttribute('aria-expanded') === 'true' ? 'true' : 'false') : 'false'
+  };
+}));
 const search = async value => { await page.$eval('#marketStructureSearchInput', (input, value) => { input.value = value; input.dispatchEvent(new Event('input', { bubbles: true })); }, value); };
 
 test('D1 successful response displays three selectable records in the actual SPA template', async () => {
@@ -112,7 +120,7 @@ test('D1 sort and reference filters preserve zero/missing and HSC tri-state', as
 });
 test('D1 keyboard selection opens supported detail and closes with list context preserved', async () => {
   await search('BBCA'); await page.select('#marketStructureSortSelect', 'ticker_asc');
-  await page.focus('#marketStructureTableBody [data-ticker="BBCA"]');
+  await page.focus('#marketStructureAccordionContainer [data-ticker="BBCA"] .ac-accordion-header');
   const outline = await page.evaluate(() => getComputedStyle(document.activeElement).outlineWidth);
   assert.ok(parseFloat(outline) >= 2);
   await page.keyboard.press('Enter');
@@ -123,15 +131,15 @@ test('D1 keyboard selection opens supported detail and closes with list context 
   await page.click('#marketStructureDetailClose');
   assert.equal(await page.$eval('#marketStructureSearchInput', el => el.value), 'BBCA');
   assert.equal(await page.$eval('#marketStructureSortSelect', el => el.value), 'ticker_asc');
-  assert.equal(await page.evaluate(() => document.activeElement.dataset.ticker), 'BBCA');
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.ticker || document.activeElement.closest('.ac-accordion-card')?.dataset.ticker), 'BBCA');
   assert.deepEqual((await rows()).map(row => row.ticker), ['BBCA']);
 });
 test('D1 no search results and empty universe show a truthful empty result', async () => {
   await search('ZZZZ'); assert.equal((await rows()).length, 0);
-  assert.match(await page.$eval('#marketStructureTableBody', el => el.innerText), /Tidak ada saham/);
+  assert.match(await page.$eval('#marketStructureAccordionContainer', el => el.innerText), /Tidak ada saham/);
   await search(''); mode = 'empty'; await page.evaluate(() => loadStrukturPasarUniverse());
   assert.equal((await rows()).length, 0);
-  assert.match(await page.$eval('#marketStructureTableBody', el => el.innerText), /Tidak ada saham/);
+  assert.match(await page.$eval('#marketStructureAccordionContainer', el => el.innerText), /Tidak ada saham/);
 });
 test('D1 first request failure is an error, not empty success', async () => {
   mode = 'error'; await page.reload({ waitUntil: 'networkidle0' });
@@ -165,7 +173,7 @@ for (const [theme, width] of [['light',320],['light',390],['light',768],['light'
     record('MATRIX_GEOMETRY', { theme, ...geometry });
     assert.ok(geometry.scroll <= geometry.client + 1, JSON.stringify(geometry));
     if (width < 1024) { assert.equal(geometry.font, '16px'); assert.ok(geometry.controls.every(control => control.height >= 44 && control.width >= 44)); }
-    await search('TLKM'); await page.focus('#marketStructureTableBody [data-ticker="TLKM"]'); await page.keyboard.press('Enter'); await pause(100);
+    await search('TLKM'); await page.focus('#marketStructureAccordionContainer [data-ticker="TLKM"] .ac-accordion-header'); await page.keyboard.press('Enter'); await pause(100);
     const closeId = width < 1024 ? 'marketStructureSheetClose' : 'marketStructureDetailClose';
     assert.equal(await page.$eval(width < 1024 ? '#marketStructureSheetFreeFloat' : '#marketStructureFreeFloat', el => el.innerText), '0%');
     if (width < 1024) {
@@ -176,21 +184,21 @@ for (const [theme, width] of [['light',320],['light',390],['light',768],['light'
       assert.equal(await page.evaluate(() => !!document.activeElement.closest('#marketStructureDetailSheet')), true);
     }
     await page.click('#' + closeId); assert.equal(await page.$eval('#marketStructureSearchInput', el => el.value), 'TLKM');
-    assert.equal(await page.evaluate(() => document.activeElement.dataset.ticker), 'TLKM'); await search('');
+    assert.equal(await page.evaluate(() => document.activeElement.dataset.ticker || document.activeElement.closest('.ac-accordion-card')?.dataset.ticker), 'TLKM'); await search('');
     record('MATRIX', { theme, ...geometry });
     await page.mouse.move(0, 0); await pause(350);
-    if (theme === 'light' && width === 390) { await page.click('#marketStructureTableBody [data-ticker="ASII"]'); await pause(350); record('SETTLED_DETAIL', await page.evaluate(() => { const el = document.querySelector('.ac-detail-sheet-panel'); const rect = el.getBoundingClientRect(); return { rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, opacity: getComputedStyle(el).opacity, filter: getComputedStyle(el).filter, ancestors: [...(function* () { let a = el; while (a) { yield a; a = a.parentElement; } })()].map(a => ({ id: a.id, opacity: getComputedStyle(a).opacity, filter: getComputedStyle(a).filter, transform: getComputedStyle(a).transform })) }; }));  await page.keyboard.press('Escape'); }
+    if (theme === 'light' && width === 390) { await page.click('#marketStructureAccordionContainer [data-ticker="ASII"] .ac-accordion-header'); await pause(350); record('SETTLED_DETAIL', await page.evaluate(() => { const el = document.querySelector('.ac-detail-sheet-panel'); const rect = el.getBoundingClientRect(); return { rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, opacity: getComputedStyle(el).opacity, filter: getComputedStyle(el).filter, ancestors: [...(function* () { let a = el; while (a) { yield a; a = a.parentElement; } })()].map(a => ({ id: a.id, opacity: getComputedStyle(a).opacity, filter: getComputedStyle(a).filter, transform: getComputedStyle(a).transform })) }; }));  await page.keyboard.press('Escape'); }
   });
 }
 test('D1 reachable standalone and fetched fallback render the same list workflow', async () => {
   await page.goto(origin + '/analisis-saham?tab=market-structure', { waitUntil: 'networkidle0' });
   await page.evaluate(() => switchAnalisisTab('market-structure'));
-  await page.waitForFunction(() => document.querySelectorAll('#marketStructureTableBody tr[data-ticker]').length === 3);
+  await page.waitForFunction(() => document.querySelectorAll('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]').length === 3);
   assert.ok((await rows()).every(row => row.visible));
   await page.goto(origin + '/dashboard', { waitUntil: 'networkidle0' });
   await page.evaluate(() => document.getElementById('tpl-analisis-saham').remove());
   await page.evaluate(() => navigateTo('analisis', 'market-structure'));
-  await page.waitForFunction(() => document.querySelectorAll('#marketStructureTableBody tr[data-ticker]').length === 3);
+  await page.waitForFunction(() => document.querySelectorAll('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]').length === 3);
   assert.ok((await rows()).every(row => row.visible));
 });
 test('D1 Research navigation preserves the compact Batch B Financial runtime', async () => {

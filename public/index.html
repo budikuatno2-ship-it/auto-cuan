@@ -4484,6 +4484,10 @@ function getCanonicalRouteUrl(page, subTab) {
     var searchParams = new URLSearchParams(window.location.search);
     searchParams.delete('page');
     searchParams.delete('tab');
+    // ?ticker= is a per-emiten analysis context. It must only survive on the
+    // Analisis tab; every other route drops it so the address bar never carries
+    // a stray stock symbol into Dashboard, Screener, Watchlist and friends.
+    if (page !== 'analisis') searchParams.delete('ticker');
     if (page === 'screener') {
         var qs = searchParams.toString();
         return '/screener' + (qs ? '?' + qs : '');
@@ -5961,6 +5965,23 @@ function showDashboard() {
     scheduleTop5HistoryLoad();
     startDashboardMonitorAutoRefresh();
     checkInitialUrlTargetPage();
+    // Strip any stray ?ticker= left over from a previous Analisis session. A
+    // ticker in the Dashboard URL is a state leak: it makes the page look like
+    // an emiten view, and downstream code would issue per-stock fetches the
+    // Dashboard is not supposed to make.
+    stripTickerFromUrl();
+}
+
+// Removes ?ticker= from the address bar without adding a history entry.
+// Only the Analisis workspace is allowed to carry a ticker.
+function stripTickerFromUrl() {
+    try {
+        if (!window.history || !window.history.replaceState) return;
+        var url = new URL(window.location.href);
+        if (!url.searchParams.has('ticker')) return;
+        url.searchParams.delete('ticker');
+        window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    } catch (_) {}
 }
 
 function checkInitialUrlTargetPage() {
@@ -6323,10 +6344,15 @@ function navigateTo(page) {
     // Show target page
     var target = document.getElementById('page-' + page);
     if (target) { target.classList.remove('hidden'); target.classList.add('flex-1'); }
-    if (window.UnifiedCockpit && typeof window.UnifiedCockpit.syncActiveTicker === 'function') {
+    // Ticker context is an Analisis-workspace concern only. On Dashboard and the
+    // other macro pages this call is skipped entirely, so navigating to the
+    // Dashboard can never fire a quote/candle/fundamental request for an emiten
+    // the user is not looking at. When it does run, loadChart stays false: the
+    // Analisis branch below already decides when a chart is actually needed.
+    if (page === 'analisis' && window.UnifiedCockpit && typeof window.UnifiedCockpit.syncActiveTicker === 'function') {
         var currentActiveTicker = window.UnifiedCockpit.getActiveTicker();
         if (currentActiveTicker) {
-            window.UnifiedCockpit.syncActiveTicker(currentActiveTicker, { skipUrlSync: true });
+            window.UnifiedCockpit.syncActiveTicker(currentActiveTicker, { skipUrlSync: true, loadChart: false });
         }
     }
     if (target && typeof target.animate === 'function' && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {

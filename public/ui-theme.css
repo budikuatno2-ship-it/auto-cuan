@@ -13616,9 +13616,11 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
   -webkit-overflow-scrolling: touch !important;
 }
 
+/* Theme-aware accordion surface: dark mode keeps the graph-paper panel, light
+   mode switches to a raised white surface so badges keep AA contrast. */
 .ac-accordion-card {
-  background: rgba(15, 23, 42, 0.75);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  background: var(--ac-surface-raised, rgba(15, 23, 42, 0.75));
+  border: 1px solid var(--ac-line-hairline, rgba(51, 65, 85, 0.5));
   border-radius: 0.5rem;
   margin-bottom: 0.5rem;
   transition: all 0.15s ease-in-out;
@@ -13626,13 +13628,29 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
 }
 
 .ac-accordion-card:hover {
-  border-color: rgba(71, 85, 105, 0.8);
-  background: rgba(15, 23, 42, 0.9);
+  border-color: var(--ac-line-strong, rgba(71, 85, 105, 0.8));
+  background: var(--ac-surface-raised, rgba(15, 23, 42, 0.9));
 }
 
 .ac-accordion-card.is-expanded {
   border-color: rgba(16, 185, 129, 0.4);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Light mode: the warning badge sits on a near-white card, so the amber tint is
+   reduced to keep the label above the 4.5:1 AA floor. Dark mode is untouched. */
+html.light #marketStructureAccordionContainer .ac-badge-warning,
+[data-theme="light"] #marketStructureAccordionContainer .ac-badge-warning {
+  background: rgba(169, 109, 19, 0.03);
+  border-color: rgba(169, 109, 19, 0.28);
+}
+
+html.light #marketStructureAccordionContainer .ac-badge-neutral,
+html.light #marketStructureAccordionContainer .ac-badge-dim,
+[data-theme="light"] #marketStructureAccordionContainer .ac-badge-neutral,
+[data-theme="light"] #marketStructureAccordionContainer .ac-badge-dim {
+  background: rgba(18, 35, 29, 0.04);
+  border-color: rgba(18, 35, 29, 0.18);
 }
 
 .ac-accordion-header {
@@ -13654,27 +13672,125 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
 }
 
 .ac-accordion-content {
-  border-top: 1px solid rgba(51, 65, 85, 0.4);
-  background: rgba(11, 17, 33, 0.85);
+  border-top: 1px solid var(--ac-line-hairline, rgba(51, 65, 85, 0.4));
+  background: var(--ac-surface, rgba(11, 17, 33, 0.85));
   padding: 0.75rem;
 }
 
-.ac-badge-origin-d {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  font-weight: 700;
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  font-size: 0.6875rem;
+.ac-accordion-empty {
+  color: var(--ac-text-secondary, #94a3b8);
 }
 
-.ac-badge-origin-f {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+/* Roster table inside an expanded card. Sized for a dense financial read and
+   inherits the current theme surface instead of a fixed dark palette. */
+.ac-roster-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--ac-line-hairline, rgba(51, 65, 85, 0.6));
+  border-radius: 0.375rem;
+  margin: 0.5rem 0;
+}
+
+.ac-roster-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12px;
+}
+
+.ac-roster-table thead th {
+  background: var(--ac-surface, rgba(15, 23, 42, 0.95));
+  color: var(--ac-text-muted, #94a3b8);
+  border-bottom: 1px solid var(--ac-line-hairline, rgba(51, 65, 85, 0.8));
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.5rem 0.75rem;
+  white-space: nowrap;
+}
+
+.ac-roster-row {
+  border-bottom: 1px solid var(--ac-line-hairline, rgba(51, 65, 85, 0.35));
+}
+
+.ac-roster-row:last-child {
+  border-bottom: none;
+}
+
+.ac-roster-num,
+.ac-roster-name,
+.ac-roster-type,
+.ac-roster-center,
+.ac-roster-shares,
+.ac-roster-pct {
+  padding: 0.5rem 0.75rem;
+  vertical-align: middle;
+}
+
+.ac-roster-num {
+  color: var(--ac-text-muted, #94a3b8);
+  font-family: var(--ac-font-mono, monospace);
+  font-size: 11px;
+  width: 2.5rem;
+}
+
+.ac-roster-name {
+  color: var(--ac-text-strong, #f1f5f9);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ac-roster-type {
+  color: var(--ac-text, #cbd5e1);
+}
+
+.ac-roster-center {
+  text-align: center;
+}
+
+.ac-roster-shares,
+.ac-roster-pct {
+  text-align: right;
+  font-family: var(--ac-font-mono, monospace);
+  white-space: nowrap;
+}
+
+.ac-roster-shares {
+  color: var(--ac-text, #e2e8f0);
+}
+
+.ac-roster-pct {
+  color: var(--ac-bull, #34d399);
+  font-weight: 700;
+}
+
+.ac-origin-badge {
+  display: inline-block;
   font-weight: 700;
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   font-size: 0.6875rem;
+  line-height: 1.4;
+}
+
+.ac-origin-d {
+  background: rgba(16, 185, 129, 0.15);
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.ac-origin-f {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+html:not(.light) .ac-origin-d,
+html[data-theme="dark"] .ac-origin-d {
+  color: #34d399;
+}
+
+html:not(.light) .ac-origin-f,
+html[data-theme="dark"] .ac-origin-f {
+  color: #fbbf24;
 }

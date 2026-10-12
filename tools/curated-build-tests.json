@@ -204,6 +204,7 @@
   "test/dashboard-account-entry.test.js",
   "test/dashboard-label-helpers.test.js",
   "test/dashboard-loading-guards.test.js",
+  "test/dashboard-no-ticker-leak.test.js",
   "test/dashboard-top5-locked-display.test.js",
   "test/dashboard-top5-monitor-loading.test.js",
   "test/dashboard-top5-note-consistency.test.js",
