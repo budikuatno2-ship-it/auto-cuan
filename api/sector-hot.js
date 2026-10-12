@@ -169,7 +169,7 @@ module.exports = async function handler(req, res) {
     if (action === 'broker-hunter') {
       return await handleBrokerHunter(req, res);
     }
-    if (action === 'bandarmologi-intel') {
+    if (action === 'bandarmologi-intel' || action === 'intel') {
       return await handleBandarmologiIntel(req, res);
     }
     if (action === 'insider-network') {
@@ -212,7 +212,7 @@ module.exports = async function handler(req, res) {
       'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks', 'telegram-daily-recap',
       'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record',
       'watchlist', 'watchlist-alert', 'watchlist-alert-history', 'bandarmologi', 'broker-summary', 'available-dates',
-      'broker-hunter', 'bandarmologi-intel', 'insider-network', 'insider-roster',
+      'broker-hunter', 'bandarmologi-intel', 'intel', 'insider-network', 'insider-roster',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
       'create-screener-share-link', 'public-screener-share', 'refresh', 'debug-members',
@@ -9251,13 +9251,16 @@ async function handleBandarmologiIntel(req, res) {
       } catch (_) {}
     }
 
-    var result = await bandarmologiIntelService.getBandarmologiIntel({
+    var result = await withTimeout(bandarmologiIntelService.getBandarmologiIntel({
       ticker: ticker,
       signal: signal,
       range: range,
       days: days,
       currentPrice: currentPrice
-    });
+    }), 4500);
+    if (!result) {
+      return res.status(504).json({ success: false, error: 'Bandarmologi intel timeout.' });
+    }
     return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });

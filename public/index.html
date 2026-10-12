@@ -6189,16 +6189,32 @@ function navigateTo(page) {
     // Ranking Harian table: fetched independently of the ticker analysis
     // input, loaded once and cached client-side (refresh button reloads it).
     if (page === 'analisis') {
+        var requestedTicker = (typeof options === 'string' && options) ? options : (options && options.ticker ? options.ticker : null);
+        if (!requestedTicker && window.UnifiedCockpit && typeof window.UnifiedCockpit.getActiveTicker === 'function') {
+            requestedTicker = window.UnifiedCockpit.getActiveTicker();
+        }
+        if (!requestedTicker) {
+            try {
+                var urlParams = new URLSearchParams(window.location.search);
+                requestedTicker = urlParams.get('ticker');
+            } catch (_) {}
+        }
         loadTabPartial('analisis-saham', '/partials/analisis-saham.partial.html', '#analisisPartialMount').then(function(loaded) {
             if (!loaded || navigationId !== workspaceNavigationId || currentPage !== 'analisis') return;
             subTab = subTab || 'analisis-chart';
             if (subTab && typeof switchAnalisisTab === 'function') {
                 switchAnalisisTab(subTab);
             }
-            if (subTab === 'ranking' && typeof ensureRankingTableLoaded === 'function') ensureRankingTableLoaded();
-            if (subTab === 'analisis-chart' && window.UnifiedCockpit && typeof window.UnifiedCockpit.getActiveTicker === 'function') {
+            if (requestedTicker && window.UnifiedCockpit && typeof window.UnifiedCockpit.syncActiveTicker === 'function') {
+                window.UnifiedCockpit.syncActiveTicker(requestedTicker, {
+                    loadChart: true,
+                    forceChartReload: true,
+                    runAnalysis: Boolean(subTab === 'analisis' || subTab === 'analisis-chart')
+                });
+            } else if (subTab === 'analisis-chart' && window.UnifiedCockpit && typeof window.UnifiedCockpit.getActiveTicker === 'function') {
                 window.UnifiedCockpit.loadUnifiedChart(window.UnifiedCockpit.getActiveTicker());
             }
+            if (subTab === 'ranking' && typeof ensureRankingTableLoaded === 'function') ensureRankingTableLoaded();
         });
     }
     if (page === 'portofolio') {
@@ -6420,6 +6436,8 @@ function quickAnalisis(ticker) {
         window.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: true, forceChartReload: true, runAnalysis: true });
     }
 }
+window.quickAnalisis = quickAnalisis;
+window.loadStockAnalysis = quickAnalisis;
 // ===== ANALISIS SAHAM: REQUEST GENERATION GUARD =====
 // Every run of runAnalisisFromDashboard() claims the next sequence number. A
 // response may only touch the DOM or the follow-up context while it still holds
@@ -12824,6 +12842,10 @@ var AutoCuanScreener = {
             cardWrap.style.display = 'grid';
             var splitView = document.getElementById(mode === 'daytrade' ? 'dtSplitView' : (mode === 'nonkonglo' ? 'nkSplitView' : 'kgSplitView'));
             if (splitView) splitView.classList.add('is-card-mode');
+            var pane = document.getElementById(mode === 'daytrade' ? 'dtDetailPane' : 'screenerDetailPane');
+            if (pane) pane.style.display = 'none';
+            var splitPane = document.getElementById(mode === 'daytrade' ? 'dtSplitPane' : 'kgSplitPane');
+            if (splitPane) splitPane.style.display = 'none';
             if (btnTable) { btnTable.classList.remove('is-active'); btnTable.setAttribute('aria-pressed', 'false'); }
             if (btnCard) { btnCard.classList.add('is-active'); btnCard.setAttribute('aria-pressed', 'true'); }
         } else {
@@ -12832,6 +12854,10 @@ var AutoCuanScreener = {
             tableWrap.classList.remove('hidden');
             var splitView = document.getElementById(mode === 'daytrade' ? 'dtSplitView' : (mode === 'nonkonglo' ? 'nkSplitView' : 'kgSplitView'));
             if (splitView) splitView.classList.remove('is-card-mode');
+            var pane = document.getElementById(mode === 'daytrade' ? 'dtDetailPane' : 'screenerDetailPane');
+            if (pane) pane.style.display = '';
+            var splitPane = document.getElementById(mode === 'daytrade' ? 'dtSplitPane' : 'kgSplitPane');
+            if (splitPane) splitPane.style.display = '';
             if (btnCard) { btnCard.classList.remove('is-active'); btnCard.setAttribute('aria-pressed', 'false'); }
             if (btnTable) { btnTable.classList.add('is-active'); btnTable.setAttribute('aria-pressed', 'true'); }
         }
