@@ -1580,7 +1580,7 @@
       if (state) state.hidden = true;
       var accordionContainer = byId('marketStructureAccordionContainer');
       if (accordionContainer) accordionContainer.hidden = false;
-      if (container) container.hidden = true;
+      if (container) container.hidden = false;
       if (refreshBanner) refreshBanner.hidden = true;
 
       renderMarketStructureTable();
