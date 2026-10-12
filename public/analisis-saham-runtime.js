@@ -1605,12 +1605,12 @@
     loadStrukturPasarUniverse(marketStructureSelectedTicker);
   };
 
-  function renderFinancialFundamental(ticker, f, price) {
+  function renderFinancialFundamental(ticker, f, price, rootObj) {
     if (!f) return;
     researchText('financialTickerBadge', ticker);
     var companyNameEl = byId('financialCompanyName');
     if (companyNameEl) {
-      companyNameEl.textContent = f.company_name || f.name || ('PT ' + ticker + ' Tbk');
+      companyNameEl.textContent = (f && (f.company_name || f.name)) || (rootObj && (rootObj.company_name || rootObj.name)) || ('PT ' + ticker + ' Tbk');
     }
     var hasPbv = researchHasNumber(f.pbv);
     var hasBvps = researchHasNumber(f.book_value_per_share);
@@ -1705,7 +1705,7 @@
 
     var cachedFundamental = financialSnapshotCache[ticker] || financialCache[ticker];
     if (cachedFundamental) {
-      renderFinancialFundamental(ticker, cachedFundamental.fundamental || cachedFundamental, cachedFundamental.price);
+      renderFinancialFundamental(ticker, cachedFundamental.fundamental || cachedFundamental, cachedFundamental.price, cachedFundamental);
       if (root.AutoCuanFinancialStatements && typeof root.AutoCuanFinancialStatements.loadStatements === 'function') {
         root.AutoCuanFinancialStatements.loadStatements(ticker, cachedFundamental);
       }
@@ -1747,7 +1747,7 @@
       financialSnapshotCache[ticker] = ctx;
       financialCache[ticker] = ctx;
       financialRenderedTicker = ticker;
-      renderFinancialFundamental(ticker, f, ctx.price);
+      renderFinancialFundamental(ticker, f, ctx.price, ctx);
 
       // Load and render multi-period detailed statements (Wave 4B, §79.2, §26)
       if (root.AutoCuanFinancialStatements && typeof root.AutoCuanFinancialStatements.loadStatements === 'function') {
