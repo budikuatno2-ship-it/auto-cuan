@@ -1412,7 +1412,7 @@
         statusBadge.textContent = 'Snapshot Terverifikasi';
         statusBadge.className = 'status-badge status-badge--success ac-status-badge ac-status-badge--positive';
       } else if (coverageCount >= 4) {
-        statusBadge.textContent = 'Tersedia';
+        statusBadge.textContent = 'Data Lengkap 4/4';
         statusBadge.className = 'status-badge status-badge--success ac-status-badge ac-status-badge--positive';
       } else if (coverageCount > 0) {
         statusBadge.textContent = 'Sebagian Lengkap ' + coverageCount + '/4';
