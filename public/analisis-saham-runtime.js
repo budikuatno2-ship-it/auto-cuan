@@ -714,7 +714,7 @@
         if (unavailable) {
           unavailable.hidden = false;
           if (unavailTitle) unavailTitle.textContent = 'Data ' + modeName + ' rinci belum tersedia';
-          if (unavailDesc) unavailDesc.textContent = 'Data laporan keuangan belum dipublikasikan oleh emiten pada feed resmi bursa';
+          if (unavailDesc) unavailDesc.textContent = 'Laporan keuangan kuartalan/tahunan belum dipublikasikan oleh emiten pada feed bursa resmi. Data valuasi dihitung dari harga pasar dan snapshot fundamental terkini.';
         }
         return;
       }
@@ -863,19 +863,57 @@
   var marketStructureUniverseLoaded = false;
   var marketStructureBoundEvents = false;
   var marketStructureDetailToken = 0;
+  var marketStructureSectorFilter = 'all';
+  var marketStructureSearchDebounce = null;
+
+  function formatIndonesianNumber(num) {
+    if (num == null) return '—';
+    var n = Number(num);
+    if (!Number.isFinite(n)) return '—';
+    return n.toLocaleString('id-ID');
+  }
+
+  function matchesSectorFilter(itemSector, targetSector) {
+    if (!targetSector || targetSector === 'all') return true;
+    var sec = String(itemSector || '').trim().toLowerCase();
+    var tgt = String(targetSector).trim().toLowerCase();
+    if (sec === tgt) return true;
+    if (tgt === 'basic materials' && (sec.includes('basic mat') || sec.includes('material'))) return true;
+    if (tgt === 'consumer cyclicals' && (sec === 'cyclical' || (sec.includes('cyclical') && !sec.includes('non')))) return true;
+    if (tgt === 'consumer non-cyclicals' && (sec === 'non-cyclical' || sec.includes('non-cyclical') || sec.includes('non cyclical'))) return true;
+    if (tgt === 'energy' && sec.includes('energy')) return true;
+    if (tgt === 'financials' && (sec === 'finance' || sec.includes('finan'))) return true;
+    if (tgt === 'healthcare' && (sec === 'health' || sec.includes('health'))) return true;
+    if (tgt === 'industrials' && (sec === 'industrial' || sec.includes('industr'))) return true;
+    if (tgt === 'infrastructures' && (sec.includes('infrastruc') || sec.includes('infra'))) return true;
+    if (tgt === 'properties & real estate' && (sec === 'property' || sec.includes('prop') || sec.includes('real estate'))) return true;
+    if (tgt === 'technology' && sec.includes('tech')) return true;
+    if (tgt === 'transportation & logistics' && (sec === 'transport' || sec.includes('transport') || sec.includes('logist'))) return true;
+    return false;
+  }
 
   function getFilteredMarketStructureItems() {
     var items = marketStructureUniverse.slice();
 
-    // 1. Search Query filter
+    // 1. Search Query filter (Ticker or Company Name)
     if (marketStructureSearchQuery) {
       var q = marketStructureSearchQuery.trim().toUpperCase();
       items = items.filter(function (it) {
-        return it.ticker && it.ticker.toUpperCase().includes(q);
+        var tMatch = it.ticker && it.ticker.toUpperCase().includes(q);
+        var nMatch = (it.name && String(it.name).toUpperCase().includes(q)) ||
+          (it.company_name && String(it.company_name).toUpperCase().includes(q));
+        return tMatch || nMatch;
       });
     }
 
-    // 2. Category Chip filter
+    // 2. Sector Dropdown filter
+    if (marketStructureSectorFilter && marketStructureSectorFilter !== 'all') {
+      items = items.filter(function (it) {
+        return matchesSectorFilter(it.sector, marketStructureSectorFilter);
+      });
+    }
+
+    // 3. Category Chip filter
     if (marketStructureFilter === 'low-ff' || marketStructureFilter === 'low_ff') {
       // Strict < reference rule: only valid numbers where free_float_pct < MARKET_STRUCTURE_LOW_FF_REFERENCE_PCT.
       items = items.filter(function (it) {
@@ -896,7 +934,7 @@
       });
     }
 
-    // 3. Sorting
+    // 4. Sorting
     items.sort(function (a, b) {
       if (marketStructureSort === 'free_float_asc') {
         var aHas = researchHasNumber(a.free_float_pct);
@@ -910,7 +948,30 @@
         if (aHas && !bHas) return -1;
         if (!aHas && bHas) return 1;
         return a.ticker.localeCompare(b.ticker);
+      } else if (marketStructureSort === 'free_float_desc') {
+        var aHas2 = researchHasNumber(a.free_float_pct);
+        var bHas2 = researchHasNumber(b.free_float_pct);
+        if (aHas2 && bHas2) {
+          var diff2 = Number(b.free_float_pct) - Number(a.free_float_pct);
+          if (diff2 !== 0) return diff2;
+          return a.ticker.localeCompare(b.ticker);
+        }
+        if (aHas2 && !bHas2) return -1;
+        if (!aHas2 && bHas2) return 1;
+        return a.ticker.localeCompare(b.ticker);
       } else if (marketStructureSort === 'ticker_asc') {
+        return a.ticker.localeCompare(b.ticker);
+      } else if (marketStructureSort === 'ticker_desc') {
+        return b.ticker.localeCompare(a.ticker);
+      } else if (marketStructureSort === 'investor_desc') {
+        var aCount = a.investor_count != null ? Number(a.investor_count) : -1;
+        var bCount = b.investor_count != null ? Number(b.investor_count) : -1;
+        if (aCount !== bCount) return bCount - aCount;
+        return a.ticker.localeCompare(b.ticker);
+      } else if (marketStructureSort === 'investor_asc') {
+        var aCount2 = a.investor_count != null ? Number(a.investor_count) : 999999;
+        var bCount2 = b.investor_count != null ? Number(b.investor_count) : 999999;
+        if (aCount2 !== bCount2) return aCount2 - bCount2;
         return a.ticker.localeCompare(b.ticker);
       } else if (marketStructureSort === 'hsc_first') {
         // Flagged (true) -> 0, Non-flagged (false) -> 1, Unknown (null/other) -> 2
@@ -925,11 +986,178 @@
     return items;
   }
 
+  async function loadAccordionRoster(ticker, contentEl) {
+    if (!ticker || !contentEl) return;
+    var clean = ticker.trim().toUpperCase();
+
+    // Check cache
+    var roster = marketStructureRosterCache[clean];
+    if (roster) {
+      renderAccordionRosterTable(clean, roster, contentEl);
+      return;
+    }
+
+    contentEl.innerHTML = '<div class="py-4 text-center text-xs text-slate-400"><span class="spinner-sm"></span> Memuat rincian pemegang saham ' + escapeHtml(clean) + '…</div>';
+    try {
+      var res = await fetch('/api/sector-hot?action=insider-roster&ticker=' + encodeURIComponent(clean), {
+        credentials: 'same-origin',
+        cache: 'no-store'
+      });
+      if (!res.ok) {
+        contentEl.innerHTML = '<div class="py-3 text-center text-xs text-rose-400">Gagal memuat rincian pemegang saham (HTTP ' + res.status + ')</div>';
+        return;
+      }
+      var data = await res.json().catch(function () { return null; });
+      if (!data || data.success !== true || !Array.isArray(data.roster)) {
+        contentEl.innerHTML = '<div class="py-3 text-center text-xs text-slate-400">Data pemegang saham belum dilaporkan pada feed resmi bursa.</div>';
+        return;
+      }
+      marketStructureRosterCache[clean] = data.roster;
+      renderAccordionRosterTable(clean, data.roster, contentEl);
+    } catch (err) {
+      contentEl.innerHTML = '<div class="py-3 text-center text-xs text-rose-400">Koneksi bermasalah: ' + escapeHtml((err && err.message) || 'Error') + '</div>';
+    }
+  }
+
+  function renderAccordionRosterTable(ticker, roster, contentEl) {
+    if (!contentEl) return;
+    if (!roster || roster.length === 0) {
+      contentEl.innerHTML = '<div class="py-3 text-center text-xs text-slate-400">Data pemegang saham belum dilaporkan pada feed resmi bursa.</div>';
+      return;
+    }
+
+    var rowsHtml = roster.map(function (inv, idx) {
+      var originBadge = inv.origin === 'D' || inv.localForeign === 'D'
+        ? '<span class="ac-badge-origin-d">D</span>'
+        : (inv.origin === 'F' || inv.localForeign === 'F'
+          ? '<span class="ac-badge-origin-f">F</span>'
+          : '<span class="text-slate-400">—</span>');
+
+      var sharesStr = formatIndonesianNumber(inv.shares || inv.totalHoldingShare || 0);
+      var pctStr = inv.percentage_formatted || (inv.percentage != null ? Number(inv.percentage).toFixed(2) + '%' : '—');
+      var changeStr = inv.last_change || (inv.change != null ? (inv.change > 0 ? '+' : '') + inv.change + '%' : '0%');
+      var changeColor = changeStr.startsWith('+') ? 'text-emerald-400' : (changeStr.startsWith('-') ? 'text-rose-400' : 'text-slate-400');
+
+      return '<tr class="border-b border-slate-800/80 hover:bg-slate-800/40 transition">' +
+        '<td class="py-2 px-2.5 text-slate-400 font-mono text-[11px]">' + (idx + 1) + '</td>' +
+        '<td class="py-2 px-2.5 font-bold text-slate-100 text-xs tracking-wide">' + escapeHtml(String(inv.name || inv.investorName || '—').toUpperCase()) + '</td>' +
+        '<td class="py-2 px-2.5 text-slate-300 text-xs">' + escapeHtml(inv.type || inv.investorType || inv.category || '—') + '</td>' +
+        '<td class="py-2 px-2.5 text-center">' + originBadge + '</td>' +
+        '<td class="py-2 px-2.5 text-slate-300 text-xs">' + escapeHtml(inv.domicile || '—') + '</td>' +
+        '<td class="py-2 px-2.5 text-right font-mono text-slate-200 text-xs">' + sharesStr + '</td>' +
+        '<td class="py-2 px-2.5 text-right font-mono font-bold text-emerald-400 text-xs">' + pctStr + '</td>' +
+        '<td class="py-2 px-2.5 text-right font-mono text-xs ' + changeColor + '">' + escapeHtml(changeStr) + '</td>' +
+      '</tr>';
+    }).join('');
+
+    contentEl.innerHTML = '<div class="overflow-x-auto rounded border border-slate-800/90">' +
+      '<table class="w-full text-left text-xs border-collapse">' +
+        '<thead class="bg-slate-900/95 text-slate-400 border-b border-slate-800 uppercase font-semibold text-[10.5px] tracking-wider">' +
+          '<tr>' +
+            '<th scope="col" class="py-2 px-2.5">#</th>' +
+            '<th scope="col" class="py-2 px-2.5">Nama Investor</th>' +
+            '<th scope="col" class="py-2 px-2.5">Tipe</th>' +
+            '<th scope="col" class="py-2 px-2.5 text-center">Asal</th>' +
+            '<th scope="col" class="py-2 px-2.5">Domisili</th>' +
+            '<th scope="col" class="py-2 px-2.5 text-right">Jumlah Saham</th>' +
+            '<th scope="col" class="py-2 px-2.5 text-right">Persentase (%)</th>' +
+            '<th scope="col" class="py-2 px-2.5 text-right">Perubahan</th>' +
+          '</tr>' +
+        '</thead>' +
+        '<tbody>' + rowsHtml + '</tbody>' +
+      '</table>' +
+    '</div>';
+  }
+
+  function renderMarketStructureAccordion(items) {
+    var acc = byId('marketStructureAccordionContainer');
+    if (!acc) return;
+    acc.hidden = false;
+
+    if (items.length === 0) {
+      acc.innerHTML = '<div class="py-12 text-center text-xs text-slate-400">Tidak ada saham yang sesuai dengan filter atau pencarian.</div>';
+      return;
+    }
+
+    var html = items.map(function (item) {
+      var isExpanded = marketStructureSelectedTicker && marketStructureSelectedTicker.toUpperCase() === item.ticker.toUpperCase();
+      var ffStr = researchHasNumber(item.free_float_pct) ? researchNumber(item.free_float_pct, 2) + '%' : '—';
+      var compName = item.company_name || item.name || ('PT ' + item.ticker + ' Tbk');
+      var investorCount = item.investor_count != null ? item.investor_count : '—';
+      var sectorStr = item.sector || 'Sektor -';
+
+      return '<div class="ac-accordion-card' + (isExpanded ? ' is-expanded' : '') + '" data-ticker="' + escapeHtml(item.ticker) + '">' +
+        '<div class="ac-accordion-header" tabindex="0" role="button" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" aria-label="Lihat pemegang saham ' + escapeHtml(item.ticker) + '">' +
+          '<div class="flex items-center gap-2.5 min-w-0 flex-1">' +
+            '<span class="px-2 py-0.5 rounded font-mono font-bold text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">' + escapeHtml(item.ticker) + '</span>' +
+            '<span class="font-bold text-slate-100 text-xs truncate">' + escapeHtml(compName) + '</span>' +
+          '</div>' +
+          '<div class="flex items-center gap-2 ml-auto shrink-0 flex-wrap">' +
+            '<span class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/60">' + investorCount + ' Investor</span>' +
+            '<span class="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/25">Free Float ' + ffStr + '</span>' +
+            '<span class="text-[11px] px-2 py-0.5 rounded bg-slate-800/80 text-slate-400 border border-slate-700/40">' + escapeHtml(sectorStr) + '</span>' +
+            '<svg class="w-4 h-4 text-slate-400 ac-accordion-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>' +
+          '</div>' +
+        '</div>' +
+        '<div class="ac-accordion-content"' + (isExpanded ? '' : ' hidden') + '>' +
+          '<div class="ac-accordion-placeholder py-3 text-center text-xs text-slate-400"><span class="spinner-sm"></span> Memuat…</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    acc.innerHTML = html;
+
+    // Attach click and keydown listeners to each card header
+    var cards = acc.querySelectorAll('.ac-accordion-card');
+    cards.forEach(function (card) {
+      var t = card.getAttribute('data-ticker');
+      var header = card.querySelector('.ac-accordion-header');
+      var content = card.querySelector('.ac-accordion-content');
+
+      function toggleCard() {
+        var willExpand = content.hidden;
+        if (willExpand) {
+          content.hidden = false;
+          card.classList.add('is-expanded');
+          header.setAttribute('aria-expanded', 'true');
+          selectMarketStructureRow(t, card, false);
+          loadAccordionRoster(t, content);
+        } else {
+          content.hidden = true;
+          card.classList.remove('is-expanded');
+          header.setAttribute('aria-expanded', 'false');
+        }
+      }
+
+      header.addEventListener('click', toggleCard);
+      header.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleCard();
+        } else if (e.key === 'Escape') {
+          if (!content.hidden) {
+            e.preventDefault();
+            content.hidden = true;
+            card.classList.remove('is-expanded');
+            header.setAttribute('aria-expanded', 'false');
+          }
+        }
+      });
+
+      if (card.classList.contains('is-expanded')) {
+        loadAccordionRoster(t, content);
+      }
+    });
+  }
+
   function renderMarketStructureTable() {
     var tbody = byId('marketStructureTableBody');
+    var items = getFilteredMarketStructureItems();
+
+    renderMarketStructureAccordion(items);
+
     if (!tbody) return;
 
-    var items = getFilteredMarketStructureItems();
     if (items.length === 0) {
       tbody.innerHTML = '<tr><td colspan="5" class="ac-table-empty text-center py-8 text-xs">Tidak ada saham yang sesuai dengan filter.</td></tr>';
       return;
@@ -1189,11 +1417,24 @@
     if (marketStructureBoundEvents) return;
     marketStructureBoundEvents = true;
 
-    // Search input
+    // Search input (debounce 250ms)
     var searchInput = byId('marketStructureSearchInput');
     if (searchInput) {
       searchInput.addEventListener('input', function (e) {
-        marketStructureSearchQuery = (e && e.target && e.target.value != null ? e.target.value : (searchInput ? searchInput.value : '')) || '';
+        var val = (e && e.target && e.target.value != null ? e.target.value : (searchInput ? searchInput.value : '')) || '';
+        if (marketStructureSearchDebounce) clearTimeout(marketStructureSearchDebounce);
+        marketStructureSearchDebounce = setTimeout(function () {
+          marketStructureSearchQuery = val;
+          renderMarketStructureTable();
+        }, 250);
+      });
+    }
+
+    // Sector select
+    var sectorSelect = byId('marketStructureSectorSelect');
+    if (sectorSelect) {
+      sectorSelect.addEventListener('change', function (e) {
+        marketStructureSectorFilter = (e && e.target && e.target.value ? e.target.value : (sectorSelect ? sectorSelect.value : 'all')) || 'all';
         renderMarketStructureTable();
       });
     }
@@ -1337,7 +1578,9 @@
       marketStructureUniverseLoaded = true;
 
       if (state) state.hidden = true;
-      if (container) container.hidden = false;
+      var accordionContainer = byId('marketStructureAccordionContainer');
+      if (accordionContainer) accordionContainer.hidden = false;
+      if (container) container.hidden = true;
       if (refreshBanner) refreshBanner.hidden = true;
 
       renderMarketStructureTable();
@@ -1367,7 +1610,7 @@
     researchText('financialTickerBadge', ticker);
     var companyNameEl = byId('financialCompanyName');
     if (companyNameEl) {
-      companyNameEl.textContent = f.company_name || ('PT ' + ticker + ' Tbk');
+      companyNameEl.textContent = f.company_name || f.name || ('PT ' + ticker + ' Tbk');
     }
     var hasPbv = researchHasNumber(f.pbv);
     var hasBvps = researchHasNumber(f.book_value_per_share);
@@ -1498,6 +1741,8 @@
 
       var ctx = payload.snapshot;
       var f = ctx.fundamental || {};
+      if (ctx.company_name && !f.company_name) f.company_name = ctx.company_name;
+      if (ctx.name && !f.name) f.name = ctx.name;
 
       financialSnapshotCache[ticker] = ctx;
       financialCache[ticker] = ctx;

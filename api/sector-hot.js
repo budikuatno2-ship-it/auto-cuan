@@ -9293,7 +9293,10 @@ async function handleInsiderRoster(req, res) {
   try {
     var insiderNetworkService = require('../lib/insider-network-service');
     var ticker = (req.query && req.query.ticker) ? String(req.query.ticker).trim().toUpperCase() : 'BBCA';
-    var roster = insiderNetworkService.getRosterForTicker(ticker);
+    var roster = (insiderNetworkService.getRoster30Sep && insiderNetworkService.getRoster30Sep(ticker)) || [];
+    if (!roster || roster.length === 0) {
+      roster = insiderNetworkService.getRosterForTicker(ticker);
+    }
     return res.status(200).json({ success: true, ticker: ticker, count: roster.length, roster: roster });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });

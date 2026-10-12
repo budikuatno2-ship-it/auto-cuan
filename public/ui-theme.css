@@ -13517,8 +13517,118 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
   display: grid !important;
 }
 
+#appContent {
+  padding-top: 4px !important;
+}
+
 @media (min-width: 1024px) {
   #appContent {
-    padding-top: 8px !important;
+    padding-top: 4px !important;
   }
 }
+
+:root {
+  --ac-page-max: 1600px;
+}
+
+#appContent,
+#page-analisis,
+.ac-financial-container,
+.ac-market-structure-layout,
+.unified-cockpit-shell {
+  max-width: 1600px !important;
+}
+
+/* Financial statement table typography */
+.ac-financial-table {
+  font-size: 13px !important;
+}
+.ac-financial-table th,
+.ac-financial-table td {
+  padding-top: 0.625rem !important;
+  padding-bottom: 0.625rem !important;
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+}
+
+/* Risk guard & status badge whitespace fixes */
+.risk-guard-badge,
+.status-struktur-badge {
+  white-space: nowrap !important;
+  letter-spacing: normal !important;
+  word-break: keep-all !important;
+}
+
+/* Market Structure Accordion Card List */
+#marketStructureAccordionContainer {
+  max-height: calc(100vh - 220px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-right: 8px !important;
+  touch-action: pan-y pinch-zoom !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.ac-accordion-card {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+  transition: all 0.15s ease-in-out;
+  overflow: hidden;
+}
+
+.ac-accordion-card:hover {
+  border-color: rgba(71, 85, 105, 0.8);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.ac-accordion-card.is-expanded {
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.ac-accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0.875rem;
+  cursor: pointer;
+  user-select: none;
+  gap: 0.75rem;
+}
+
+.ac-accordion-chevron {
+  transition: transform 0.2s ease;
+}
+
+.ac-accordion-card.is-expanded .ac-accordion-chevron {
+  transform: rotate(180deg);
+}
+
+.ac-accordion-content {
+  border-top: 1px solid rgba(51, 65, 85, 0.4);
+  background: rgba(11, 17, 33, 0.85);
+  padding: 0.75rem;
+}
+
+.ac-badge-origin-d {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-weight: 700;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.6875rem;
+}
+
+.ac-badge-origin-f {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  font-weight: 700;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.6875rem;
+}
+

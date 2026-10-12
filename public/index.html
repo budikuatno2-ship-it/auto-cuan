@@ -2706,7 +2706,7 @@
                     <div class="ac-financial-ticker-context">
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <span id="financialTickerBadge" class="ac-financial-symbol">BBCA</span>
-                            <span id="financialCompanyName" class="ac-financial-company-name">PT Bank Central Asia Tbk</span>
+                            <span id="financialCompanyName" class="ac-financial-company-name">-</span>
                         </div>
                         <div class="ac-provenance-row" style="font-size: 11.5px;">
                             <span class="ac-provenance-item">
@@ -2863,9 +2863,24 @@
                     <!-- List-First Toolbar -->
                     <div class="ac-filter-bar flex flex-wrap items-center justify-between gap-3 p-3 border-b">
                         <div class="flex items-center gap-2 flex-1 min-w-[200px]">
-                            <input id="marketStructureSearchInput" type="text" placeholder="Cari saham..." autocomplete="off" spellcheck="false" class="ac-search-input w-full sm:w-56 px-3 py-1.5 rounded-lg text-xs" aria-label="Cari saham di struktur pasar">
+                            <input id="marketStructureSearchInput" type="text" placeholder="Cari saham / emiten..." autocomplete="off" spellcheck="false" class="ac-search-input w-full sm:w-56 px-3 py-1.5 rounded-lg text-xs" aria-label="Cari saham di struktur pasar">
+                            <select id="marketStructureSectorSelect" class="ac-filter-select text-xs rounded px-2.5 py-1.5" aria-label="Filter sektor struktur pasar">
+                                <option value="all">Semua Sektor (962 Emiten)</option>
+                                <option value="Basic Materials">Basic Materials</option>
+                                <option value="Consumer Cyclicals">Consumer Cyclicals</option>
+                                <option value="Consumer Non-Cyclicals">Consumer Non-Cyclicals</option>
+                                <option value="Energy">Energy</option>
+                                <option value="Financials">Financials</option>
+                                <option value="Healthcare">Healthcare</option>
+                                <option value="Industrials">Industrials</option>
+                                <option value="Infrastructures">Infrastructures</option>
+                                <option value="Properties & Real Estate">Properties & Real Estate</option>
+                                <option value="Technology">Technology</option>
+                                <option value="Transportation & Logistics">Transportation & Logistics</option>
+                            </select>
                         </div>
                         <div class="flex items-center gap-2 flex-wrap">
+                            <span id="marketStructureDataPeriodBadge" class="ac-data-period-badge text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 whitespace-nowrap">DATA PER: 30 September 2026 (Terbaru)</span>
                             <div class="ac-filter-chips flex items-center gap-1.5" role="group" aria-label="Filter status struktur pasar" id="marketStructureFilterGroup">
                                 <button type="button" id="marketStructureFilterAll" class="ac-filter-chip is-active px-2.5 py-1 text-xs rounded-md transition" data-filter="all">[Semua]</button>
                                 <button type="button" id="marketStructureFilterLowFF" class="ac-filter-chip px-2.5 py-1 text-xs rounded-md transition" data-filter="low_ff" data-filter-canonical="low-ff">[FF Rendah &lt;15%]</button>
@@ -2875,8 +2890,12 @@
                             <div class="flex items-center gap-1.5 text-xs ml-auto">
                                 <label for="marketStructureSortSelect" class="text-[11px] ac-label-muted">Urutkan:</label>
                                 <select id="marketStructureSortSelect" class="ac-filter-select text-xs rounded px-2 py-1" aria-label="Urutkan daftar struktur pasar">
-                                    <option value="free_float_asc">Free Float ↑</option>
-                                    <option value="ticker_asc">Ticker</option>
+                                    <option value="free_float_asc">Free Float ↑ (Terendah)</option>
+                                    <option value="free_float_desc">Free Float ↓ (Tertinggi)</option>
+                                    <option value="ticker_asc">Ticker (A-Z)</option>
+                                    <option value="ticker_desc">Ticker (Z-A)</option>
+                                    <option value="investor_desc">Jumlah Investor (Terbanyak)</option>
+                                    <option value="investor_asc">Jumlah Investor (Tersedikit)</option>
                                     <option value="hsc_first">Status HSC</option>
                                 </select>
                                 <button type="button" id="marketStructureRefreshBtn" class="ac-icon-btn p-1.5 rounded-lg transition" title="Muat ulang data" aria-label="Muat ulang data struktur pasar">
@@ -2890,6 +2909,8 @@
                         <!-- Universe List Main Area -->
                         <div id="marketStructureMainRegion" class="ac-market-structure-main">
                             <div id="marketStructureDataState" class="ac-research-state py-8 text-center" role="status" aria-live="polite">Pilih ticker untuk memuat struktur pasar.</div>
+                            <!-- Accordion Card List (Interactive 30 Sep View) -->
+                            <div id="marketStructureAccordionContainer" class="ac-accordion-container" hidden></div>
                             <div id="marketStructureTableContainer" class="ac-table-container overflow-x-auto scrollbar-thin" hidden>
                                 <table id="marketStructureTable" class="ac-table ac-table-dense w-full text-left">
                                     <thead>
