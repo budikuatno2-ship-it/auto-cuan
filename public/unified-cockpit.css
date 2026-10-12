@@ -3,7 +3,7 @@
 /* Main Cockpit Grid */
 .unified-cockpit-shell {
   width: 100%;
-  max-width: 1280px;
+  max-width: 1600px;
   margin: 0 auto;
   box-sizing: border-box;
 }

@@ -714,7 +714,7 @@
         if (unavailable) {
           unavailable.hidden = false;
           if (unavailTitle) unavailTitle.textContent = 'Data ' + modeName + ' rinci belum tersedia';
-          if (unavailDesc) unavailDesc.textContent = 'Belum ada data laporan ' + modeName.toLowerCase() + ' resmi untuk mode ' + periodName.toLowerCase() + '. Data snapshot di atas tetap aktif dan valid.';
+          if (unavailDesc) unavailDesc.textContent = 'Data laporan keuangan belum dipublikasikan oleh emiten pada feed resmi bursa';
         }
         return;
       }
