@@ -239,7 +239,13 @@
       '<div class="ac-profile-hero"><div><p class="ac-section-kicker">Identitas akun</p><p class="ac-big-name">' + esc(p.username) + (p.verified_badge ? ' <span class="ac-badge-verified" title="Akun terverifikasi">&#10003; Terverifikasi</span>' : '') + '</p><p class="ac-muted">ID akun disembunyikan dari tampilan; identitas diverifikasi dari sesi server.</p></div>' + chip(p.is_approved, 'Approved', 'Pending') + '</div>',
       '<dl class="ac-facts">',
       fact('Username', esc(p.username)),
-      fact('Gmail', p.email ? esc(p.email) : '<span class="ac-chip">Akun legacy · belum ada Gmail</span>'),
+      fact('Gmail', '<div class="flex items-center gap-2 flex-wrap">' +
+        '<input type="email" id="acUserEmailInput" class="ac-input-text px-2.5 py-1 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 flex-1 min-w-[180px]" ' +
+        'value="' + esc(p.email || '') + '" ' +
+        'placeholder="(Belum diatur - Wajib diisi)" ' +
+        (p.auth_provider === 'google' ? 'readonly title="Email terverifikasi Google"' : '') + '>' +
+        (!p.email || p.auth_provider !== 'google' ? '<button type="button" class="ac-btn text-[11px] px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition" onclick="saveUserEmail()">Simpan</button>' : '') +
+        '</div>'),
       fact('Status akun', chip(p.is_approved, 'Terverifikasi admin', 'Menunggu approval')),
       fact('Akun dibuat', esc(dateId(p.created_at, true))),
       fact('Login terakhir', esc(dateId(p.last_login_at, true))),
@@ -257,7 +263,7 @@
       fact('Channel', tg.channel_joined ? '<span class="ac-chip ac-chip-ok">Sudah bergabung</span>' : '<span class="ac-chip">Belum tercatat</span>') +
       '</dl></section>',
       '<section class="ac-card"><p class="ac-section-kicker">Subscription</p><h2 class="ac-section-title">Status akses</h2>' + subscriptionMini(ent, sub) + '</section>',
-      '<section class="ac-card ac-card-soft"><p class="ac-section-kicker">Sesi Akun</p><h2 class="ac-section-title">Keluar dari Sesi</h2><p class="ac-muted" style="margin-top:4px">Keluar dari sesi Auto-Cuan pada perangkat ini.</p><button type="button" class="ac-btn ac-btn-danger" id="acCenterLogoutBtn" style="margin-top:10px;width:100%" onclick="if(typeof window.closeAccountCenter===\'function\')window.closeAccountCenter();if(typeof window.logout===\'function\')window.logout();">Logout</button></section>',
+      '<section class="ac-card ac-card-soft"><p class="ac-section-kicker">Sesi Akun</p><h2 class="ac-section-title">Keluar dari Sesi</h2><p class="ac-muted" style="margin-top:4px">Keluar dari sesi Auto-Cuan pada perangkat ini.</p><button type="button" class="ac-btn ac-btn-danger" id="acCenterLogoutBtn" style="margin-top:10px;width:100%" onclick="if(typeof window.closeAccountCenter===\'function\')window.closeAccountCenter();if(typeof window.logout===\'function\')window.logout();">Keluar / Log Out</button></section>',
       p.is_admin ? adminCommandsSectionHtml() : '',
       '</div></div>',
       '<div class="ac-hint">Peraturan &amp; Ketentuan dapat dibuka kapan saja dari tab di atas. Untuk akun baru, persetujuan versi aktif diwajibkan sebelum pendaftaran diproses.</div>'
@@ -550,6 +556,25 @@
     modal.style.display = 'flex';
     modal.hidden = false;
   }
+  async function saveUserEmail() {
+    var input = byId('acUserEmailInput');
+    if (!input) return;
+    var newEmail = input.value.trim().toLowerCase();
+    if (!newEmail || !newEmail.includes('@')) {
+      alert('Masukkan alamat email yang valid.');
+      return;
+    }
+    var res = await request('/api/reset-password', { action: 'update-email', email: newEmail });
+    if (res.ok && res.data && res.data.success) {
+      if (currentProfile) currentProfile.email = newEmail;
+      renderProfile();
+      alert('Email berhasil diperbarui.');
+    } else {
+      alert((res.data && res.data.error) || 'Gagal menyimpan email.');
+    }
+  }
+  window.saveUserEmail = saveUserEmail;
+
   function init() {
     ensureCss(); ensureCenter(); installRegistrationContract(); installHeaderProfileTrigger();
     window.openStandaloneTermsModal = openStandaloneTermsModal;

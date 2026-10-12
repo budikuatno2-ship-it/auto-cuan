@@ -849,7 +849,7 @@ test('state-machine: @Donaldtrumpssss (Telegram ID 6396446903) is recognized as 
     telegram_id: '6396446903',
     username: 'Donaldtrumpssss',
     status: 'approved',
-    email: 'budi@autocuan.com',
+    email: 'donald@autocuan.com',
     byok_active: true
   }]);
   const bot = createInteractiveBot({

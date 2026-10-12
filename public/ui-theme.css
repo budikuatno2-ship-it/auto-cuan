@@ -2040,7 +2040,7 @@ html.light :where([data-ac-ui="v2"], .ac-ui-v2),
 
 
 
----- Table Primitives (§14, §76.9) ------------------------------------- */
+/* ---- Table Primitives (§14, §76.9) ------------------------------------- */
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-container,
 :is([data-ac-ui="v2"], .ac-ui-v2) .ac-table-wrap {
   width: 100%;
@@ -13532,39 +13532,86 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
 }
 
 #appContent,
+#page-dashboard,
+#page-screener,
 #page-analisis,
+#page-financial,
+#page-struktur-pasar,
+#page-track-record,
+#panel-tab-market-structure,
+#panel-tab-financial,
 .ac-financial-container,
 .ac-market-structure-layout,
 .unified-cockpit-shell {
   max-width: 1600px !important;
+  width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
-/* Financial statement table typography */
-.ac-financial-table {
+/* Financial & generic data table typography & padding */
+.ac-financial-table,
+.ac-table,
+.ac-table-dense {
   font-size: 13px !important;
 }
 .ac-financial-table th,
-.ac-financial-table td {
+.ac-financial-table td,
+.ac-table th,
+.ac-table td,
+.ac-table-dense th,
+.ac-table-dense td {
   padding-top: 0.625rem !important;
   padding-bottom: 0.625rem !important;
   padding-left: 0.75rem !important;
   padding-right: 0.75rem !important;
 }
 
-/* Risk guard & status badge whitespace fixes */
+/* Risk guard & status badge whitespace fixes — no broken words */
+.ac-badge,
+.ac-badge-warning,
+.ac-badge-good,
+.ac-badge-neutral,
+.ac-badge-dim,
+#marketStructureGuard,
+#marketStructureSheetGuard,
 .risk-guard-badge,
-.status-struktur-badge {
+.status-struktur-badge,
+.ac-metric-tile strong {
   white-space: nowrap !important;
   letter-spacing: normal !important;
   word-break: keep-all !important;
+  overflow-wrap: normal !important;
 }
 
-/* Market Structure Accordion Card List */
+/* Market Structure Single Accordion Layout (100% width, no side pane collision) */
+#marketStructureDetailPane,
+#marketStructureDetailSheet {
+  display: none !important;
+}
+
+.ac-market-structure-layout {
+  grid-template-columns: 1fr !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: 1600px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.ac-market-structure-main {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
 #marketStructureAccordionContainer {
-  max-height: calc(100vh - 220px) !important;
-  overflow-y: auto !important;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
   overflow-x: hidden !important;
-  padding-right: 8px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  display: block !important;
+  padding-right: 4px !important;
   touch-action: pan-y pinch-zoom !important;
   -webkit-overflow-scrolling: touch !important;
 }

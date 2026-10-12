@@ -9,6 +9,18 @@
   },
   "rewrites": [
     {
+      "source": "/api/auth/logout",
+      "destination": "/api/login-user?action=logout"
+    },
+    {
+      "source": "/api/auth/google",
+      "destination": "/api/login-user?action=google"
+    },
+    {
+      "source": "/api/auth/google-register",
+      "destination": "/api/login-user?action=google-register"
+    },
+    {
       "source": "/api/track-record",
       "destination": "/api/sector-hot?action=track-record"
     },

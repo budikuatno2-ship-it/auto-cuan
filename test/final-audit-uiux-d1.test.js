@@ -204,12 +204,12 @@ test('D1 detail return preserves simultaneous search, filter, sort and table pos
   await page.setViewport({ width: 390, height: 900 });
   await page.click('#marketStructureFilterLowFF');
   await search('TL'); await page.select('#marketStructureSortSelect', 'ticker_asc');
-  await page.focus('#marketStructureTableBody [data-ticker="TLKM"]');
+  await page.focus('#marketStructureAccordionContainer [data-ticker="TLKM"] .ac-accordion-header');
   const context = () => page.evaluate(() => {
-    const table = document.getElementById('marketStructureTableContainer');
+    const table = document.getElementById('marketStructureAccordionContainer');
     return { search: document.getElementById('marketStructureSearchInput').value, sort: document.getElementById('marketStructureSortSelect').value, filter: document.getElementById('marketStructureFilterLowFF').classList.contains('is-active'), left: table.scrollLeft, top: table.scrollTop };
   });
-  await page.$eval('#marketStructureTableContainer', el => { el.scrollLeft = el.scrollWidth - el.clientWidth; });
+  await page.$eval('#marketStructureAccordionContainer', el => { el.scrollLeft = el.scrollWidth - el.clientWidth; });
   const before = await context(); assert.equal(before.filter, true); assert.ok(before.left > 0);
   await page.keyboard.press('Enter'); await pause(350);
   const settled = await page.$eval('.ac-detail-sheet-panel', el => {

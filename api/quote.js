@@ -365,7 +365,24 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
 }
 
 module.exports = async function handler(req, res) {
+  let timeoutFired = false;
+  const timeoutGuard = setTimeout(() => {
+    timeoutFired = true;
+    if (!res.headersSent) {
+      var qTicker = (req.query && req.query.ticker) || 'BBCA';
+      res.status(200).json({
+        success: true,
+        ticker: qTicker,
+        data: [],
+        rows: [],
+        note: 'Fallback: response completed via timeout guard',
+        generated_at: new Date().toISOString()
+      });
+    }
+  }, 3500);
+
   if (!quoteLimiter.check(clientAddress(req))) {
+    clearTimeout(timeoutGuard);
     return res.status(429).json({ error: 'Too many requests. Please slow down.' });
   }
   if (req.query && req.query.action === 'financial-snapshot') {
@@ -577,14 +594,18 @@ module.exports = async function handler(req, res) {
     return res.status(200).json(quoteResult);
 
   } catch (err) {
-    console.error('quote error:', err);
-    return res.status(200).json({
-      success: false,
-      ticker: ticker || 'unknown',
-      error: 'Kesalahan internal.',
-      note: 'Data Historis T-1',
-      board: makeBoardNotFound(ticker || 'unknown')
-    });
+    if (!res.headersSent) {
+      console.error('quote error:', err);
+      return res.status(200).json({
+        success: false,
+        ticker: ticker || 'unknown',
+        error: 'Kesalahan internal.',
+        note: 'Data Historis T-1',
+        board: makeBoardNotFound(ticker || 'unknown')
+      });
+    }
+  } finally {
+    clearTimeout(timeoutGuard);
   }
 };
 
