@@ -120,13 +120,8 @@ test('Wave 4: Struktur Pasar implements list-first universe architecture', () =>
   assert.match(partial, /data-filter="incomplete"/);
   assert.match(partial, /id="marketStructureSortSelect"/);
 
-  // Universe table with required column headers
-  assert.match(partial, /id="marketStructureTable"/);
-  assert.match(partial, /<th[^>]*>TICKER<\/th>/i);
-  assert.match(partial, /<th[^>]*>FREE FLOAT<\/th>/i);
-  assert.match(partial, /<th[^>]*>STATUS HSC<\/th>/i);
-  assert.match(partial, /<th[^>]*>STATUS STRUKTUR<\/th>/i);
-  assert.match(partial, /<th[^>]*>PER TANGGAL<\/th>/i);
+  // Accordion container (Single clean accordion list)
+  assert.match(partial, /id="marketStructureAccordionContainer"/);
 
   // Split-view layout: desktop pane (320-380px) and mobile sheet overlay
   assert.match(partial, /id="marketStructureDetailPane"/);

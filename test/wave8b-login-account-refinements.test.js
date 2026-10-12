@@ -44,20 +44,18 @@ test('login field placeholder no longer says "nama@gmail.com" (login modal)', ()
 
 // ── Google button ─────────────────────────────────────────────────────────────
 
-test('login modal contains Google placeholder button (disabled)', () => {
+test('login modal contains Google sign-in button (active)', () => {
   const loginModalStart = html.indexOf('id="loginModal"');
   // loginModal ends at its closing wrapper div ~2000 chars in
   const loginModalEnd = html.indexOf('<!-- REGISTER MODAL', loginModalStart);
   const loginHtml = html.slice(loginModalStart, loginModalEnd);
   assert.ok(loginHtml.includes('login-google-btn'), 'Google button class must exist in login modal');
-  assert.ok(loginHtml.includes('disabled'), 'Google button must be disabled');
-  assert.ok(loginHtml.includes('Segera tersedia'), '"Segera tersedia" badge must be present');
   assert.ok(loginHtml.includes('Masuk dengan Google'), 'button label must read "Masuk dengan Google"');
+  assert.ok(loginHtml.includes('initiateGoogleAuth'), 'Google button must trigger initiateGoogleAuth()');
 });
 
-test('Google button has aria-disabled and aria-label for accessibility', () => {
-  assert.ok(html.includes('aria-disabled="true"'), 'Google button must have aria-disabled="true"');
-  assert.ok(html.includes('aria-label="Masuk dengan Google - segera tersedia"'),
+test('Google button has aria-label for accessibility', () => {
+  assert.ok(html.includes('aria-label="Masuk dengan Google"'),
     'Google button must have descriptive aria-label');
 });
 
