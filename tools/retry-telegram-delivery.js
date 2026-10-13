@@ -78,6 +78,20 @@ function initEnv() {
     path.join(ROOT, '.env.intraday-runtime'),
     path.join(ROOT, '.env')
   ].forEach(loadEnvFile);
+
+  // BUG-RETRY-VPS-STORE (2026-10-13): the delivery rows live in the VPS SQLite
+  // market store, but AUTO_CUAN_MARKET_DATA_VPS=1 was only exported inside
+  // PM2's process env (pm2 env 0), never in the runner .env or a shell. A
+  // standalone cron invocation therefore talked to the remote Supabase client
+  // and found ZERO stuck rows while 49 sat in the local store. This worker is
+  // VPS-only by definition, so it pins the flag unless the operator
+  // explicitly overrides it.
+  if (process.env.AUTO_CUAN_MARKET_DATA_VPS == null || process.env.AUTO_CUAN_MARKET_DATA_VPS === '') {
+    process.env.AUTO_CUAN_MARKET_DATA_VPS = '1';
+  }
+  if (process.env.AUTO_CUAN_MARKET_DB == null || process.env.AUTO_CUAN_MARKET_DB === '') {
+    process.env.AUTO_CUAN_MARKET_DB = PROD_MARKET_DB;
+  }
 }
 
 function parseArgs(argv) {
