@@ -6347,12 +6347,12 @@ function navigateTo(page) {
     // Ticker context is an Analisis-workspace concern only. On Dashboard and the
     // other macro pages this call is skipped entirely, so navigating to the
     // Dashboard can never fire a quote/candle/fundamental request for an emiten
-    // the user is not looking at. When it does run, loadChart stays false: the
-    // Analisis branch below already decides when a chart is actually needed.
+    // the user is not looking at. The URL write is skipped here (skipUrlSync)
+    // because the canonical route above already owns the address bar.
     if (page === 'analisis' && window.UnifiedCockpit && typeof window.UnifiedCockpit.syncActiveTicker === 'function') {
         var currentActiveTicker = window.UnifiedCockpit.getActiveTicker();
         if (currentActiveTicker) {
-            window.UnifiedCockpit.syncActiveTicker(currentActiveTicker, { skipUrlSync: true, loadChart: false });
+            window.UnifiedCockpit.syncActiveTicker(currentActiveTicker, { skipUrlSync: true });
         }
     }
     if (target && typeof target.animate === 'function' && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
