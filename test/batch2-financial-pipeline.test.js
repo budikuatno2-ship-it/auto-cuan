@@ -438,8 +438,8 @@ test('Batch 2: Isolated SQLite store end-to-end import and buildFinancialSnapsho
     assert.equal(postSnapshot.ticker, 'BBCA');
     assert.equal(postSnapshot.status, 'available');
     assert.equal(postSnapshot.fundamental.equity, 281687555000000);
-    assert.equal(postSnapshot.fundamental.shares_outstanding, 122042299500);
-    assert.equal(postSnapshot.fundamental.market_cap, 750560141925000);
+    assert.equal(postSnapshot.fundamental.market_cap, 1275342029775000);
+    assert.equal(postSnapshot.fundamental.market_cap_source, 'calculated (shares_outstanding * last_price)');
     assert.equal(postSnapshot.fundamental.book_value_per_share, 2308.11);
     // PBV = 10450 / 2308.11 ≈ 4.53
     assert.equal(postSnapshot.fundamental.pbv, 4.53);

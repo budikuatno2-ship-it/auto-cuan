@@ -1073,18 +1073,25 @@ const server = http.createServer(async (req, res) => {
 
           const contextPayload = {
             ticker: ticker || 'BBCA',
-            as_of: '2026-10-07',
+            company_name: isBbca ? 'PT Bank Central Asia Tbk' : 'PT Bank Mandiri (Persero) Tbk',
+            as_of: '2026-10-12',
+            price: {
+              last: isBbca ? 5950 : 1420,
+              last_price_as_of: '2026-10-12',
+              last_price_source: 'daily_candles_flat_file'
+            },
             fundamental: {
-              pbv: isBbca ? 4.82 : 1.35,
-              pbv_as_of_price: isBbca ? 10450 : 1420,
-              book_value_per_share: isBbca ? 2168.05 : 1051.85,
-              shares_outstanding: isBbca ? 123275050000 : 25139000000,
-              market_cap: isBbca ? 1288224272500000 : 35697380000000,
-              market_cap_as_of: '2026-10-07',
-              market_cap_source: 'IDX Trade Data',
-              fundamental_period: 'Q2 2026',
-              fundamental_source: 'IDX Financial Statement',
-              fundamental_updated_at: '2026-09-15 14:30:00 WIB'
+              pbv: isBbca ? 2.80 : 1.35,
+              pbv_as_of_price: isBbca ? 5950 : 1420,
+              book_value_per_share: isBbca ? 2125.15 : 1051.85,
+              shares_outstanding: isBbca ? 122042299500 : 25139000000,
+              market_cap: isBbca ? 726151682025000 : 35697380000000,
+              market_cap_as_of: '2026-10-12',
+              market_cap_source: 'calculated (shares_outstanding * last_price)',
+              fundamental_period: 'Q1 2026',
+              fundamental_source: 'arjum financial-statements',
+              fundamental_updated_at: '2026-10-12 16:15:00 WIB',
+              verified: true
             },
             financial_statements: isBbca ? bbcaStatements : null,
             market_structure: {

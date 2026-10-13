@@ -311,6 +311,7 @@
   "test/final-wave-4b-targeted.test.js",
   "test/final-wave-a-routing.test.js",
   "test/finance-portfolio-consistency.test.js",
+  "test/financial-dynamic-market-cap.test.js",
   "test/financial-market-structure-ui.test.js",
   "test/financial-surface-contract.test.js",
   "test/fix-intel-real-data.test.js",
