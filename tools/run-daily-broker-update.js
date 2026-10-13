@@ -359,6 +359,9 @@ async function run(argv) {
   let errorCount = 0;
   let quotaReached = false;
   let auxiliaryPending = 0;
+  // BUG-INSIDER-STALE-CACHE: count sessions where the insider endpoint returned
+  // no trade newer than the target date (honest "no new trades" accounting).
+  let insiderNoNewTradesCount = 0;
   const retryableTickers = new Set();
   const terminalTickers = new Set();
 
@@ -512,14 +515,41 @@ async function run(argv) {
       if (quotaReached) break;
 
       // Insiders: an empty result is normal, not an error.
+      //
+      // BUG-INSIDER-STALE-CACHE (2026-10-13): audit forensics proved the dated
+      // insider files for AADI/BBCA were byte-identical (same MD5) for 7
+      // consecutive sessions. The vendor's insider endpoint is a rolling
+      // snapshot of the LAST KNOWN trades; when no new insider transaction has
+      // occurred, it keeps returning the same payload and the writer stored a
+      // fresh-looking dated file every day, so downstream freshness checks saw
+      // "fresh data" that was actually months old (latest real trade: 2026-08-19).
+      // The fetcher must compare the payload's newest trade date against the
+      // target trading date and only record a genuine update when a real
+      // insider trade exists on/after that date. Otherwise the dated file is
+      // stamped with an explicit no_new_trades marker so checksums differ per
+      // date and consumers can tell "no new trades" from "new data".
       if (!dryRun && (isFresh || !bandarmologiService.readDiskCache('insiders', ticker, dateArg))) {
         if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
         totalRequested++;
         insiderRequests++;
         const insRes = await arjumClient.fetchInsiders(ticker, 1, 15, { forceLive: true });
         if (insRes.ok && insRes.data && !insRes.from_cache && !insRes.fallback) {
-          bandarmologiService.writeDiskCache('insiders', ticker, 'p1', insRes.data);
-          persistDatedCache('insiders', ticker, dateArg, insRes.data);
+          const latestTradeDate = latestInsiderTradeDate(insRes.data);
+          const hasNewTrades = latestTradeDate != null && latestTradeDate >= dateArg;
+          const stampedInsiderPayload = Object.assign({}, insRes.data, {
+            _cache_meta: {
+              target_date: dateArg,
+              latest_insider_trade_date: latestTradeDate,
+              no_new_insider_trades: !hasNewTrades,
+              fetched_at: new Date().toISOString()
+            }
+          });
+          bandarmologiService.writeDiskCache('insiders', ticker, 'p1', stampedInsiderPayload);
+          persistDatedCache('insiders', ticker, dateArg, stampedInsiderPayload);
+          if (!hasNewTrades) {
+            // Honest accounting: no real trade for this session.
+            insiderNoNewTradesCount++;
+          }
         } else if (checkApiQuota(insRes)) {
           break;
         } else {
@@ -563,6 +593,7 @@ async function run(argv) {
   console.log(`Belum Terbit (Pending Arjum):  ${pendingCount}`);
   console.log(`NO_TRADE (volume nol):         ${noTradeCount}`);
   console.log(`Broker Data Unavailable:       ${brokerDataUnavailableCount}`);
+  console.log(`Insider tanpa trade baru:      ${insiderNoNewTradesCount} (stempel no_new_insider_trades)`);
   console.log(`Error / Gagal:                 ${errorCount}`);
   console.log(`Retryable (bounded window):    ${retryableTickers.size}`);
   console.log(`Terminal (tidak di-retry):     ${terminalTickers.size}`);
@@ -651,6 +682,32 @@ async function run(argv) {
   }
 }
 
+/**
+ * BUG-INSIDER-STALE-CACHE: returns the newest trade date (YYYY-MM-DD) present
+ * in an insider payload, or null when the payload has no parseable trade date.
+ * Accepts the vendor shapes seen in production: { items: [{date}] },
+ * { data: { items: [...] } }, { data: [...] }.
+ */
+function latestInsiderTradeDate(payload) {
+  if (!payload) return null;
+  let items = [];
+  if (Array.isArray(payload)) items = payload;
+  else if (Array.isArray(payload.items)) items = payload.items;
+  else if (payload.data && Array.isArray(payload.data.items)) items = payload.data.items;
+  else if (payload.data && Array.isArray(payload.data)) items = payload.data;
+  if (!items.length) return null;
+
+  let newest = null;
+  for (const item of items) {
+    const raw = item && (item.date || item.trade_date || item.transaction_date);
+    if (!raw) continue;
+    const stamp = String(raw).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(stamp)) continue;
+    if (newest == null || stamp > newest) newest = stamp;
+  }
+  return newest;
+}
+
 function persistDatedCache(endpoint, ticker, date, data) {
   bandarmologiService.writeDiskCache(endpoint, ticker, date, data);
   const saved = bandarmologiService.readDiskCache(endpoint, ticker, date);
@@ -664,4 +721,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { run, getJakartaDateString, getJakartaTimeInfo, resolveTargetDate, markerPath, readMarker, writeMarker, brokerSummaryPayloadDate, shouldAdvanceLatestBrokerSummary, readTargetCandleEvidence };
+module.exports = { run, getJakartaDateString, getJakartaTimeInfo, resolveTargetDate, markerPath, readMarker, writeMarker, brokerSummaryPayloadDate, shouldAdvanceLatestBrokerSummary, readTargetCandleEvidence, latestInsiderTradeDate };

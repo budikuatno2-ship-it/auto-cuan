@@ -293,7 +293,10 @@ test('ANTI-OVERFIX: exported session constants keep their documented values', ()
   assert.equal(guard.SESSION_1_START_MINUTES, 540);
   assert.equal(guard.SESSION_1_END_MINUTES, 718, 'broadcast gate 11:58');
   assert.equal(guard.SESSION_2_START_MINUTES, 810);
-  assert.equal(guard.SESSION_2_END_MINUTES, 945);
+  // BUG-MARKET-CLOSED-PRECLOSING (2026-10-13): the broadcast gate was extended
+  // from 15:45 to 15:50 so the official IDX PRE-CLOSING phase (15:48) is not
+  // misreported as MARKET_CLOSED and blocked.
+  assert.equal(guard.SESSION_2_END_MINUTES, 950, 'pre-closing 15:50');
   assert.equal(guard.FRIDAY_SESSION_1_END_MINUTES, 688, 'Jumat 11:28');
   assert.equal(guard.FRIDAY_SESSION_2_START_MINUTES, 840, 'Jumat 14:00');
   assert.equal(guard.DAYTRADE_RADAR_CUTOFF_MINUTES, 870, 'cutoff 14:30');

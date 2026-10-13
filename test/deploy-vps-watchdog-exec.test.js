@@ -79,7 +79,15 @@ test('RT-01: every directly invoked cron shell script is staged executable (1007
   }
 });
 
-test('RT-01: check-verify-poller.sh is staged 100755 and invoked directly by cron', () => {
+test('RT-01: check-verify-poller.sh is staged 100755 and invoked via /bin/bash by cron', () => {
+  // REVISI 2026-10-13 (audit 1-12 Okt): the original fix made cron invoke the
+  // watchdog DIRECTLY, which kept failing with
+  //   "/bin/sh: 1: check-verify-poller.sh: Permission denied"
+  // The master-repair directive pins the invocation to an explicit interpreter
+  // with the absolute script path:
+  //   */5 * * * * /bin/bash /home/ubuntu/auto-cuan/deploy/vps/check-verify-poller.sh >> ...
+  // Both guards are enforced here: the file must stay executable (defence in
+  // depth) AND the cron line must name /bin/bash explicitly.
   const modes = readIndexModes();
   assert.equal(
     modes.get('deploy/vps/check-verify-poller.sh'),
@@ -87,8 +95,15 @@ test('RT-01: check-verify-poller.sh is staged 100755 and invoked directly by cro
     'the verify-bot watchdog must carry the executable bit in the Git index'
   );
 
-  const direct = directExecTargets().some((t) => t.scriptRel === 'deploy/vps/check-verify-poller.sh');
-  assert.equal(direct, true, 'cron must invoke the watchdog directly (no bash prefix)');
+  const cron = fs.readFileSync(CRON_PATH, 'utf8');
+  const watchdogLines = cron.split('\n')
+    .filter((line) => line.trim() && !line.trim().startsWith('#') && line.includes('check-verify-poller.sh'));
+  assert.equal(watchdogLines.length, 1, 'exactly one watchdog cron line');
+  assert.match(
+    watchdogLines[0],
+    /^\*\/5\s+\*\s+\*\s+\*\s+\*\s+\/bin\/bash\s+\/home\/ubuntu\/auto-cuan\/deploy\/vps\/check-verify-poller\.sh\s+/,
+    'watchdog must be invoked through /bin/bash with the absolute path'
+  );
 });
 
 test('RT-01: bash-wrapped scripts are exempt (invocation form decides)', () => {
