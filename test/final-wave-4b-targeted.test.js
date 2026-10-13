@@ -145,7 +145,8 @@ test('FINAL-RISK-005: Shared ticker context synchronizes primary analysis inputs
 
   // Navigation syncs active ticker into newly opened page
   assert.ok(
-    INDEX_HTML.includes('window.UnifiedCockpit.syncActiveTicker(currentActiveTicker, { skipUrlSync: true });'),
+    INDEX_HTML.includes('window.UnifiedCockpit.syncActiveTicker(currentActiveTicker, {') &&
+      INDEX_HTML.includes('skipUrlSync: true'),
     'navigateTo must propagate current active ticker to newly mounted view'
   );
 

@@ -377,7 +377,7 @@
       root.ensureRankingTableLoaded();
     } else if (parentTab === 'financial') {
       var activeResearchTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
-        ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
+        ? (root.UnifiedCockpit.getActiveTicker() || root.activeTicker || 'BBCA') : (root.activeTicker || 'BBCA');
       root.loadFinancialStructureTab('financial', activeResearchTicker);
     } else if (parentTab === 'market-structure') {
       if (typeof root.loadStrukturPasarUniverse === 'function') {
@@ -396,7 +396,7 @@
       }
       if (typeof root.loadBandarmologiTab === 'function') {
         var bandarTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
-          ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
+          ? (root.UnifiedCockpit.getActiveTicker() || root.activeTicker || 'BBCA') : (root.activeTicker || 'BBCA');
         root.loadBandarmologiTab(bandarTicker);
       }
     } else if (parentTab === 'intel') {
@@ -1394,12 +1394,13 @@
   }
   root.closeMarketStructureDetail = closeMarketStructureDetail;
 
+  var _lastBoundStructureInput = null;
   function bindMarketStructureEventsOnce() {
-    if (marketStructureBoundEvents) return;
-    marketStructureBoundEvents = true;
+    var searchInput = byId('marketStructureSearchInput');
+    if (_lastBoundStructureInput && _lastBoundStructureInput === searchInput && typeof document !== 'undefined' && document.body && document.body.contains(searchInput)) return;
+    _lastBoundStructureInput = searchInput;
 
     // Search input
-    var searchInput = byId('marketStructureSearchInput');
     if (searchInput) {
       searchInput.addEventListener('input', function (e) {
         var val = (e && e.target && e.target.value != null ? e.target.value : (searchInput ? searchInput.value : '')) || '';
@@ -1683,7 +1684,7 @@
 
   async function loadFinancialStructureTab(tabName, rawTicker) {
     var generation = ++researchGeneration;
-    var ticker = researchTicker(rawTicker || (root.UnifiedCockpit && root.UnifiedCockpit.getActiveTicker ? root.UnifiedCockpit.getActiveTicker() : root.activeTicker));
+    var ticker = researchTicker(rawTicker || (root.UnifiedCockpit && root.UnifiedCockpit.getActiveTicker ? root.UnifiedCockpit.getActiveTicker() : root.activeTicker) || 'BBCA');
     if (!ticker) return;
 
     var isFinancial = tabName === 'financial';
@@ -1693,7 +1694,7 @@
 
     root.activeTicker = ticker;
     if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
-      root.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: false, preserveTab: true, runAnalysis: false });
+      root.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: false, preserveTab: true, runAnalysis: false, skipFinancialSync: true });
     }
     var financialInput = byId('financialTickerInput');
     if (financialInput) financialInput.value = ticker;

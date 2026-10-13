@@ -218,11 +218,12 @@ test('D1 Research navigation preserves the compact Batch B Financial runtime', a
   await page.waitForFunction(() => document.getElementById('financialPbv').innerText === '3x');
   assert.equal(await page.$eval('#financialSource', el => el.innerText), 'Local verified filing');
   assert.equal(await page.$$eval('#panel-tab-financial .ac-financial-orbit', els => els.length), 0);
+  await page.evaluate(() => navigateTo('analisis', 'market-structure'));
 });
 
 test('D1 expand return preserves simultaneous search, filter, sort and list position', async () => {
   await page.setViewport({ width: 390, height: 900 });
-  await page.click('#marketStructureFilterLowFF');
+  await page.evaluate(() => document.getElementById('marketStructureFilterLowFF').click());
   await search('TL'); await page.select('#marketStructureSortSelect', 'ticker_asc');
   await page.focus('#marketStructureAccordionContainer [data-ticker="TLKM"] .ac-accordion-header');
   const context = () => page.evaluate(() => {

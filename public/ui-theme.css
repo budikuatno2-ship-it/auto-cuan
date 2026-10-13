@@ -4387,7 +4387,7 @@ button:disabled,
 
 /* A data product should not letterbox itself on a business laptop. */
 @media (min-width: 1280px) {
-  #page-dashboard.page-content { max-width: 100% !important; }
+  #page-dashboard.page-content { max-width: 100%; }
 }
 
 /* ---- 8q. Admin ----------------------------------------------------------
@@ -4483,7 +4483,7 @@ button:disabled,
 
 @media (min-width: 1536px) {
   #page-screener.page-content,
-  #page-sektor.page-content { max-width: 100% !important; }
+  #page-sektor.page-content { max-width: 100%; }
 }
 
 /* =========================================================================

@@ -327,7 +327,7 @@
 
     // 4c. Keep financial and intel in sync if currently viewing those tabs
     var currentSubtab = root.__ACTIVE_ANALISIS_SUBTAB__;
-    if (currentSubtab === 'financial' && typeof root.loadFinancialStructureTab === 'function') {
+    if (!options.preserveTab && !options.skipFinancialSync && currentSubtab === 'financial' && typeof root.loadFinancialStructureTab === 'function') {
       root.loadFinancialStructureTab('financial', ticker);
     } else if (currentSubtab === 'intel' && root.BandarmologiRuntime && typeof root.BandarmologiRuntime.loadBandarmologiIntel === 'function') {
       var intelContainer = byId('bandarmologiIntelContent') || byId('bandarmologiContent');
