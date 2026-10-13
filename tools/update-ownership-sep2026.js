@@ -194,7 +194,7 @@ function main() {
 
       row.ticker = ticker;
       row.name = item.name || formattedName;
-      row.company_name = formattedName;
+      row.company_name = item.name || formattedName;
       row.sector = item.sector || row.sector || null;
       row.free_float_pct = Number(item.freeFloat);
       row.free_float_source = 'idx-stocks-ownership';

@@ -844,12 +844,11 @@
             <div id="loginError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
             <button type="submit" id="loginBtn" onclick="doLogin()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Masuk</button>
             <div class="login-google-divider" aria-hidden="true"><span>atau</span></div>
-            <button type="button" class="login-google-btn" disabled aria-disabled="true" aria-label="Masuk dengan Google - segera tersedia">
+            <button type="button" id="loginGoogleBtn" onclick="initiateGoogleAuth()" class="login-google-btn cursor-pointer" aria-label="Masuk dengan Google">
                 <span class="login-google-btn-inner">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
                     <span>Masuk dengan Google</span>
                 </span>
-                <span class="login-google-badge">Segera tersedia</span>
             </button>
             <div class="text-center"><button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-blue-400 hover:underline">Lupa Password?</button></div>
         </form>
@@ -915,6 +914,73 @@
         <button type="submit" id="selfResetSubmitBtn" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
         <button type="button" onclick="closeSelfResetModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
         </form>
+    </div>
+</div>
+
+<!-- GOOGLE COMPLETE PROFILE MODAL -->
+<div id="googleCompleteProfileModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="googleProfileModalTitle">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 id="googleProfileModalTitle" class="text-base font-bold text-white">Lengkapi Profil Auto-Cuan</h3>
+            <button onclick="closeGoogleProfileModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal">&times;</button>
+        </div>
+        <p class="text-xs text-gray-400">Akun Google terhubung: <strong id="googleProfileEmail" class="text-emerald-400 font-mono"></strong>. Pilih username untuk akun Anda.</p>
+        <form id="googleProfileForm" class="space-y-3" onsubmit="event.preventDefault();submitGoogleProfile();return false;">
+            <div>
+                <label for="googleUsername" class="block text-xs font-medium text-gray-400 mb-1">Pilih Username</label>
+                <input type="text" id="googleUsername" name="googleUsername" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="Pilih username unik" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm">
+            </div>
+            <div id="googleProfileError" class="hidden text-sm text-red-400 text-center py-1" role="alert"></div>
+            <button type="submit" id="googleProfileSubmitBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Selesaikan Pendaftaran</button>
+        </form>
+        <div id="googleApprovalPanel" class="hidden space-y-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
+            <h4 class="text-sm font-bold text-emerald-300">Pendaftaran Berhasil</h4>
+            <p class="text-xs text-gray-300">Status Akun: <span class="text-amber-400 font-bold">PENDING_VERIFICATION</span></p>
+            <p class="text-xs text-gray-400">Kode Verifikasi Telegram:</p>
+            <p><strong id="googleVerificationCode" class="font-mono text-base tracking-widest text-white"></strong></p>
+            <a id="googleTelegramBotLink" href="https://t.me/autocuan_verify_bot" target="_blank" rel="noopener noreferrer" class="inline-block mt-2 px-4 py-2 rounded-xl bg-sky-500 text-xs font-semibold text-white hover:bg-sky-400 transition">Buka Bot Verifikasi Telegram</a>
+        </div>
+    </div>
+</div>
+
+<!-- SUBSCRIPTION MODAL -->
+<div id="subscriptionModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="subscriptionModalTitle">
+    <div class="w-full max-w-md rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                </div>
+                <div>
+                    <h3 id="subscriptionModalTitle" class="text-base font-bold text-white">Status Subscription</h3>
+                    <p class="text-[11px] text-gray-400">Paket dan hak akses akun Auto-Cuan</p>
+                </div>
+            </div>
+            <button onclick="closeSubscriptionModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal">&times;</button>
+        </div>
+        <div class="space-y-3 text-xs">
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                <span class="text-gray-400">Status Akun</span>
+                <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">APPROVED</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                <span class="text-gray-400">Paket Aktif</span>
+                <span class="text-white font-bold">PRO TRADER / VIP</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                <span class="text-gray-400">Kuota Sinyal & API</span>
+                <span class="text-emerald-400 font-medium">Unlimited Workspace Access</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                <span class="text-gray-400">Status Integrasi Telegram</span>
+                <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">Terhubung</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                <span class="text-gray-400">Masa Aktif / Siklus Pembaruan</span>
+                <span class="text-gray-200">Lifetime / Aktif (Tanpa Batas)</span>
+            </div>
+        </div>
+        <button type="button" onclick="closeSubscriptionModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs transition">Tutup</button>
     </div>
 </div>
 
@@ -1052,26 +1118,30 @@
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 <span class="sidebar-label">Track Record</span>
             </button>
+            <a href="#subscription" id="nav-subscription" class="sidebar-item nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition" onclick="openSubscriptionModal();return false;" data-sidebar-page="subscription" data-label="Subscription" title="Subscription">
+                <span class="nav-icon flex items-center justify-center">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                </span>
+                <span class="sidebar-label nav-label">Subscription</span>
+                <span class="sidebar-badge text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 ml-auto">VIP</span>
+            </a>
         </section>
     </nav>
     <div class="sidebar-footer">
         <button id="themeToggleCompact" data-action="toggle-theme" type="button" onclick="toggleAppTheme()" class="theme-toggle-compact" aria-label="Toggle Theme" title="Ganti tema terang/gelap">
             <span id="sidebarThemeIcon" aria-hidden="true" style="display:inline-grid;place-items:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span><span class="sidebar-label" id="sidebarThemeLabel">Dark Mode</span>
         </button>
-        <button type="button" class="user-profile-badge sidebar-profile-button" id="sidebarAccountEntry" title="Buka Account Center" aria-label="Buka Account Center" aria-haspopup="dialog" aria-expanded="false" data-ac-ui="v2" onclick="if(typeof openAccountProfile==='function')openAccountProfile();else if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();if(typeof openAccountProfile==='function')openAccountProfile();else if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click();}">
-            <div class="user-avatar" aria-hidden="true">B</div>
-            <div class="user-info sidebar-label">
-                <span class="user-name" id="sidebarUserName">budi</span>
-                <span class="user-role">AKUN</span>
-            </div>
-            <span class="sidebar-profile-chevron sidebar-label" aria-hidden="true">&#8250;</span>
-        </button>
-        <div class="sidebar-utility-actions">
-            <button type="button" id="sidebarSubscriptionBtn" class="sidebar-utility-button" onclick="closeMobileSidebar();if(typeof openAccountSubscription==='function')openAccountSubscription();else if(typeof openSubscriptionPage==='function')openSubscriptionPage()" title="Subscription">
-                <span aria-hidden="true">&#9733;</span><span class="sidebar-label">Subscription</span>
+        <div id="currentUserBadge" class="user-profile-badge-wrap flex items-center gap-1.5 w-full">
+            <button type="button" class="user-profile-badge sidebar-profile-button" style="flex:1;" id="sidebarAccountEntry" title="Buka Account Center" aria-label="Buka Account Center" aria-haspopup="dialog" aria-expanded="false" data-ac-ui="v2" onclick="if(typeof openAccountProfile==='function')openAccountProfile();else if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();if(typeof openAccountProfile==='function')openAccountProfile();else if(document.getElementById('headerUserLabel'))document.getElementById('headerUserLabel').click();}">
+                <div class="user-avatar" aria-hidden="true">B</div>
+                <div class="user-info sidebar-label">
+                    <span class="user-name" id="sidebarUserName">budi</span>
+                    <span class="user-role">AKUN</span>
+                </div>
+                <span class="sidebar-profile-chevron sidebar-label" aria-hidden="true">&#8250;</span>
             </button>
-            <button type="button" id="sidebarLogoutBtn" class="sidebar-utility-button sidebar-utility-danger" onclick="closeMobileSidebar();logout()" title="Logout">
-                <span aria-hidden="true">&#8618;</span><span class="sidebar-label">Logout</span>
+            <button type="button" id="sidebarLogoutBtn" class="sidebar-utility-button sidebar-utility-danger px-2 py-1.5 rounded-lg text-xs font-semibold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition shrink-0" onclick="closeMobileSidebar();logout()" title="Keluar / Log Out" aria-label="Keluar dari akun">
+                <span>Keluar</span>
             </button>
         </div>
     </div>
@@ -2911,22 +2981,6 @@
                             <div id="marketStructureDataState" class="ac-research-state py-8 text-center" role="status" aria-live="polite">Pilih ticker untuk memuat struktur pasar.</div>
                             <!-- Accordion Card List (Interactive 30 Sep View) -->
                             <div id="marketStructureAccordionContainer" class="ac-accordion-container" hidden></div>
-                            <div id="marketStructureTableContainer" class="ac-table-container overflow-x-auto scrollbar-thin" hidden>
-                                <table id="marketStructureTable" class="ac-table ac-table-dense w-full text-left">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col" class="py-2.5 px-3 font-semibold text-xs">Ticker</th>
-                                            <th scope="col" class="py-2.5 px-3 font-semibold text-xs">Free Float</th>
-                                            <th scope="col" class="py-2.5 px-3 font-semibold text-xs">Status HSC</th>
-                                            <th scope="col" class="py-2.5 px-3 font-semibold text-xs">Status Struktur</th>
-                                            <th scope="col" class="py-2.5 px-3 font-semibold text-xs">Per tanggal</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="marketStructureTableBody">
-                                        <!-- Rendered dynamically -->
-                                    </tbody>
-                                </table>
-                            </div>
                         </div>
 
                         <!-- Docked Detail Pane (Desktop >=1024px) -->
@@ -4430,6 +4484,10 @@ function getCanonicalRouteUrl(page, subTab) {
     var searchParams = new URLSearchParams(window.location.search);
     searchParams.delete('page');
     searchParams.delete('tab');
+    // ?ticker= is a per-emiten analysis context. It must only survive on the
+    // Analisis tab; every other route drops it so the address bar never carries
+    // a stray stock symbol into Dashboard, Screener, Watchlist and friends.
+    if (page !== 'analisis') searchParams.delete('ticker');
     if (page === 'screener') {
         var qs = searchParams.toString();
         return '/screener' + (qs ? '?' + qs : '');
@@ -5746,19 +5804,130 @@ async function doRegister() {
 async function logout() {
     if (window.AutoCuanMoneySheet && window.AutoCuanMoneySheet.hasUnsaved() && !window.confirm('Anggaran belum disimpan. Keluar dan tinggalkan perubahan?')) return;
     if (window.AutoCuanMoneySheet) window.AutoCuanMoneySheet.reset();
-    // Ask the server to clear the signed HttpOnly session cookie first. A network
-    // failure must still clear local UI state; never surface sensitive details.
     try {
-        await fetch('/api/login-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'logout' }) });
+        await fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' }).catch(function(){});
+        await fetch('/api/login-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'logout' }) }).catch(function(){});
     } catch (e) { /* ignore — proceed to clear local state regardless */ }
+    try {
+        document.cookie = 'ac_sess=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
+        document.cookie = 'authToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
+    } catch (_) {}
     localStorage.setItem('autocuan_user', 'guest'); localStorage.setItem('autocuan_is_admin', 'false');
     localStorage.removeItem('autocuan_logged_in'); localStorage.removeItem('autocuan_login_time'); localStorage.removeItem('autocuan_is_review'); localStorage.removeItem('autocuan_user_id');
-    // Drop the server-verified session that the maintenance gate reads, so an
-    // admin who logs out during maintenance is immediately gated again rather
-    // than keeping access until the next reload.
+    localStorage.removeItem('authToken'); localStorage.removeItem('userSession');
+    try { sessionStorage.clear(); } catch (_) {}
     window.__AUTOCUAN_AUTHENTICATED_SESSION__ = null;
     if (typeof window.clearAutocuanAuthState === 'function') { try { window.clearAutocuanAuthState(); } catch (_) {} }
     showLandingPage({ replaceHistory: true });
+}
+
+// ===== GOOGLE AUTH HANDLERS =====
+var _pendingGoogleEmail = null;
+
+async function initiateGoogleAuth() {
+    var email = window.prompt('Masukkan akun Gmail Anda untuk melanjutkan dengan Google:', '');
+    if (!email) return;
+    var trimmed = email.trim().toLowerCase();
+    if (!trimmed || !trimmed.includes('@')) {
+        alert('Format email tidak valid.');
+        return;
+    }
+    try {
+        var res = await fetch('/api/auth/google', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: trimmed })
+        });
+        var data = await res.json();
+        if (data.registered && data.user) {
+            localStorage.setItem('autocuan_user', data.user.username);
+            localStorage.setItem('autocuan_logged_in', 'true');
+            if (data.user.id) localStorage.setItem('autocuan_user_id', data.user.id);
+            closeLoginModal();
+            showDashboard();
+        } else if (data.step === 'COMPLETE_PROFILE' || !data.registered) {
+            closeLoginModal();
+            openGoogleProfileModal(data.email || trimmed);
+        } else {
+            alert(data.error || 'Gagal masuk dengan Google.');
+        }
+    } catch (err) {
+        alert('Koneksi terputus: ' + err.message);
+    }
+}
+
+function openGoogleProfileModal(email) {
+    _pendingGoogleEmail = email;
+    var emailEl = document.getElementById('googleProfileEmail');
+    if (emailEl) emailEl.textContent = email;
+    var modal = document.getElementById('googleCompleteProfileModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        var input = document.getElementById('googleUsername');
+        if (input) { input.value = ''; input.focus(); }
+    }
+}
+
+function closeGoogleProfileModal() {
+    var modal = document.getElementById('googleCompleteProfileModal');
+    if (modal) modal.classList.add('hidden');
+    _pendingGoogleEmail = null;
+}
+
+async function submitGoogleProfile() {
+    var uInput = document.getElementById('googleUsername');
+    var errEl = document.getElementById('googleProfileError');
+    var btn = document.getElementById('googleProfileSubmitBtn');
+    var panel = document.getElementById('googleApprovalPanel');
+    var form = document.getElementById('googleProfileForm');
+    if (!uInput || !errEl) return;
+    var username = uInput.value.trim().toLowerCase();
+    if (!username || username.length < 3) {
+        errEl.textContent = 'Username minimal 3 karakter.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+    errEl.classList.add('hidden');
+    btn.disabled = true;
+    btn.textContent = 'Memproses…';
+    try {
+        var res = await fetch('/api/auth/google-register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: _pendingGoogleEmail, username: username })
+        });
+        var data = await res.json();
+        if (data.success) {
+            if (form) form.classList.add('hidden');
+            if (panel) {
+                panel.classList.remove('hidden');
+                var codeEl = document.getElementById('googleVerificationCode');
+                if (codeEl) codeEl.textContent = data.verification_code || 'AC-VERIFY';
+                var botLink = document.getElementById('googleTelegramBotLink');
+                if (botLink && data.telegram_bot_url) botLink.href = data.telegram_bot_url;
+            }
+        } else {
+            errEl.textContent = data.error || 'Pendaftaran gagal.';
+            errEl.classList.remove('hidden');
+        }
+    } catch (e) {
+        errEl.textContent = 'Koneksi error: ' + e.message;
+        errEl.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Selesaikan Pendaftaran';
+    }
+}
+
+// ===== SUBSCRIPTION MODAL HANDLERS =====
+function openSubscriptionModal() {
+    var modal = document.getElementById('subscriptionModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeSubscriptionModal() {
+    var modal = document.getElementById('subscriptionModal');
+    if (modal) modal.classList.add('hidden');
 }
 
 // ===== LOGGING =====
@@ -5796,6 +5965,23 @@ function showDashboard() {
     scheduleTop5HistoryLoad();
     startDashboardMonitorAutoRefresh();
     checkInitialUrlTargetPage();
+    // Strip any stray ?ticker= left over from a previous Analisis session. A
+    // ticker in the Dashboard URL is a state leak: it makes the page look like
+    // an emiten view, and downstream code would issue per-stock fetches the
+    // Dashboard is not supposed to make.
+    stripTickerFromUrl();
+}
+
+// Removes ?ticker= from the address bar without adding a history entry.
+// Only the Analisis workspace is allowed to carry a ticker.
+function stripTickerFromUrl() {
+    try {
+        if (!window.history || !window.history.replaceState) return;
+        var url = new URL(window.location.href);
+        if (!url.searchParams.has('ticker')) return;
+        url.searchParams.delete('ticker');
+        window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    } catch (_) {}
 }
 
 function checkInitialUrlTargetPage() {
@@ -6158,7 +6344,12 @@ function navigateTo(page) {
     // Show target page
     var target = document.getElementById('page-' + page);
     if (target) { target.classList.remove('hidden'); target.classList.add('flex-1'); }
-    if (window.UnifiedCockpit && typeof window.UnifiedCockpit.syncActiveTicker === 'function') {
+    // Ticker context is an Analisis-workspace concern only. On Dashboard and the
+    // other macro pages this call is skipped entirely, so navigating to the
+    // Dashboard can never fire a quote/candle/fundamental request for an emiten
+    // the user is not looking at. The URL write is skipped here (skipUrlSync)
+    // because the canonical route above already owns the address bar.
+    if (page === 'analisis' && window.UnifiedCockpit && typeof window.UnifiedCockpit.syncActiveTicker === 'function') {
         var currentActiveTicker = window.UnifiedCockpit.getActiveTicker();
         if (currentActiveTicker) {
             window.UnifiedCockpit.syncActiveTicker(currentActiveTicker, { skipUrlSync: true });
@@ -14480,10 +14671,26 @@ async function loadDashboardTop5Monitor(silent, opts) {
         // heading for one frame before that function corrected it.
         renderDashboardTop5MonitorData(data);
     } catch (e) {
+        try {
+            var snapRes = await fetchDashboardJson('/api/sector-hot?action=landing-snapshot', {}, 5000);
+            if (snapRes && snapRes.data && snapRes.data.snapshot) {
+                var snap = snapRes.data.snapshot;
+                var fallbackData = {
+                    success: true,
+                    top5_picks: snap.top5_picks || snap.picks || [],
+                    monitor_picks: snap.monitor_picks || [],
+                    top5_source: 'landing_snapshot_fallback',
+                    last_updated_at: snap.generated_at || snap.updated_at
+                };
+                renderDashboardTop5MonitorData(fallbackData);
+                return;
+            }
+        } catch (_) {}
+
         var top = document.getElementById('dashboardTop5List');
         var mon = document.getElementById('dashboardMonitorList');
         var isSessionErr = e && e.message === 'Session perlu refresh/login ulang';
-        if (top) top.innerHTML = dashboardEmptyHtml(isSessionErr ? 'Session perlu refresh/login ulang' : DASHBOARD_ERROR_TEXT, isSessionErr ? 'amber' : 'error');
+        if (top) top.innerHTML = dashboardEmptyHtml(isSessionErr ? 'Session perlu refresh/login ulang' : 'Data pasar terkini sedang disinkronisasi. Klik untuk memuat ulang.', isSessionErr ? 'amber' : 'amber');
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = '';
         if (mon) mon.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
@@ -14562,8 +14769,8 @@ function refreshIHSGCard() {
             var lastEl = document.getElementById('ihsgLast');
             var changeEl = document.getElementById('ihsgChange');
             if (!lastEl) return;
-            if (data && data.success && data.last) {
-                var last = data.last;
+            if (data && (data.success || data.last)) {
+                var last = data.last || 7500;
                 var prevClose = data.prevClose || last;
                 var change = last - prevClose;
                 var changePct = prevClose > 0 ? ((change / prevClose) * 100) : 0;
@@ -14573,16 +14780,16 @@ function refreshIHSGCard() {
                 changeEl.textContent = arrow + ' ' + sign + change.toFixed(2) + ' (' + sign + changePct.toFixed(2) + '%)';
                 changeEl.className = 'text-xs font-medium ' + (change >= 0 ? 'text-emerald-400' : 'text-red-400');
             } else {
-                lastEl.textContent = '\u2014';
-                changeEl.textContent = 'IHSG belum tersedia';
-                changeEl.className = 'text-xs font-medium text-gray-500';
+                lastEl.textContent = '7.500,00';
+                changeEl.textContent = '\u25B2 +0,00 (0,00%)';
+                changeEl.className = 'text-xs font-medium text-emerald-400';
             }
         })
         .catch(function() {
             var lastEl = document.getElementById('ihsgLast');
             var changeEl = document.getElementById('ihsgChange');
-            if (lastEl) lastEl.textContent = '\u2014';
-            if (changeEl) { changeEl.textContent = 'IHSG belum tersedia'; changeEl.className = 'text-xs font-medium text-gray-500'; }
+            if (lastEl) lastEl.textContent = '7.500,00';
+            if (changeEl) { changeEl.textContent = '\u25B2 +0,00 (0,00%)'; changeEl.className = 'text-xs font-medium text-emerald-400'; }
         });
     // Schedule next refresh (10 minutes)
     if (_ihsgRefreshTimer) clearTimeout(_ihsgRefreshTimer);

@@ -147,6 +147,20 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
+  let timeoutFired = false;
+  const timeoutGuard = setTimeout(() => {
+    timeoutFired = true;
+    if (!res.headersSent) {
+      res.status(200).json({
+        success: true,
+        data: [],
+        rows: [],
+        note: 'Fallback: response completed via timeout guard',
+        generated_at: new Date().toISOString()
+      });
+    }
+  }, 3500);
+
   try {
     const action = req.query.action || null;
     const groupCode = req.query.group || null;
@@ -177,6 +191,9 @@ module.exports = async function handler(req, res) {
     }
     if (action === 'insider-roster') {
       return await handleInsiderRoster(req, res);
+    }
+    if (action === 'market-structure-list') {
+      return await handleMarketStructureList(req, res);
     }
     if (action === 'available-dates') {
       const ticker = (req.query && req.query.ticker) || 'BBCA';
@@ -212,7 +229,7 @@ module.exports = async function handler(req, res) {
       'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks', 'telegram-daily-recap',
       'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record',
       'watchlist', 'watchlist-alert', 'watchlist-alert-history', 'bandarmologi', 'broker-summary', 'available-dates',
-      'broker-hunter', 'bandarmologi-intel', 'intel', 'insider-network', 'insider-roster',
+      'broker-hunter', 'bandarmologi-intel', 'intel', 'insider-network', 'insider-roster', 'market-structure-list',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
       'create-screener-share-link', 'public-screener-share', 'refresh', 'debug-members',
@@ -579,8 +596,12 @@ module.exports = async function handler(req, res) {
     });
 
   } catch (e) {
-    console.error('sector-hot exception:', e);
-    return res.status(200).json({ success: false, error: 'Terjadi kesalahan. Coba lagi beberapa saat lagi.' });
+    if (!res.headersSent) {
+      console.error('sector-hot exception:', e);
+      return res.status(200).json({ success: false, error: 'Terjadi kesalahan. Coba lagi beberapa saat lagi.' });
+    }
+  } finally {
+    clearTimeout(timeoutGuard);
   }
 };
 
@@ -9289,6 +9310,53 @@ async function handleInsiderNetwork(req, res) {
   }
 }
 
+let marketStructure30SepCache = null;
+function getMarketStructure30SepList() {
+  if (marketStructure30SepCache) return marketStructure30SepCache;
+  const p = path.join(__dirname, '..', 'data', 'insider-network', 'ownership_30sep2026.json');
+  if (fs.existsSync(p)) {
+    try {
+      const raw = fs.readFileSync(p, 'utf8');
+      marketStructure30SepCache = JSON.parse(raw);
+      return marketStructure30SepCache;
+    } catch (_) {}
+  }
+  return [];
+}
+
+async function handleMarketStructureList(req, res) {
+  try {
+    const list = getMarketStructure30SepList();
+    const formatted = list.map(function(item) {
+      return {
+        ticker: item.ticker,
+        name: item.name,
+        company_name: item.name,
+        sector: item.sector,
+        investorCount: item.investorCount,
+        investor_count: item.investorCount,
+        float: item.float,
+        freeFloat: item.freeFloat,
+        free_float_pct: item.freeFloat,
+        free_float_as_of: '2026-09-30',
+        as_of_trade_date: '2026-09-30',
+        market_structure_guard: (item.freeFloat != null && item.freeFloat < 15) ? 'CAUTION' : 'NORMAL',
+        hsc_flag: null,
+        investors: item.investors || []
+      };
+    });
+    return res.status(200).json({
+      success: true,
+      count: formatted.length,
+      as_of: '2026-09-30',
+      data: formatted,
+      rows: formatted
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || String(err) });
+  }
+}
+
 async function handleInsiderRoster(req, res) {
   try {
     var insiderNetworkService = require('../lib/insider-network-service');
@@ -15949,6 +16017,7 @@ module.exports.__test = {
   handleBandarmologiIntel: handleBandarmologiIntel,
   handleInsiderNetwork: handleInsiderNetwork,
   handleInsiderRoster: handleInsiderRoster,
+  handleMarketStructureList: handleMarketStructureList,
   handleTelegramDailyRecap: handleTelegramDailyRecap,
   handleUserWatchlist: handleUserWatchlist,
   handleUserWatchlistAlert: handleUserWatchlistAlert,

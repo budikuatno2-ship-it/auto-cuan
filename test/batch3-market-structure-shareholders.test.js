@@ -162,8 +162,7 @@ test('Batch 3: Struktur Pasar markup includes isolated scroll and shareholder ro
   }
 
   const css = read('public/ui-theme.css');
-  assert.match(css, /#marketStructureTableContainer\s*\{[^}]*max-height:\s*min\(65vh,\s*680px\);[^}]*overflow-y:\s*auto;/);
-  assert.match(css, /#marketStructureTable thead th\s*\{[^}]*position:\s*sticky;\s*top:\s*0;/);
+  assert.match(css, /#marketStructureAccordionContainer\s*\{[^}]*max-height:\s*calc\([^}]*overflow-y:\s*auto;/);
 });
 
 test('Batch 3: Runtime controller renders shareholder roster into detail pane', async () => {

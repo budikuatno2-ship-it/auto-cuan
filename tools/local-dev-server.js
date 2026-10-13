@@ -625,6 +625,15 @@ const server = http.createServer(async (req, res) => {
       pathname = '/api/sector-hot';
     }
 
+    // Route /api/auth/* -> lib/auth-service.js
+    if (endpointName.startsWith('auth/') || endpointName === 'auth') {
+      req._authSubPath = endpointName.startsWith('auth/') ? endpointName.slice('auth/'.length) : '';
+      req.query = Object.fromEntries(parsedUrl.searchParams.entries());
+      req.body = await parseBody(req);
+      const authService = require('../lib/auth-service');
+      return await authService(req, res);
+    }
+
     // Detect if this is a preview request or needs mock data.
     // BUG-RT-03: the client-controllable preview signals only count while the
     // development preview boundary is active; in production this is always false.

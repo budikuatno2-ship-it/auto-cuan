@@ -73,7 +73,7 @@ test('Wave 2: Sidebar IA matches direct navigation simplification per Wave 6B', 
   assert.ok(!sidebarHtml.includes('data-sidebar-page="money-management"'), 'Money Management must NOT be in sidebar');
   assert.ok(!sidebarHtml.includes('data-sidebar-page="kelola-keuangan"'), 'Kelola Keuangan must NOT be in sidebar');
   assert.ok(!sidebarHtml.includes('data-sidebar-page="deepscan"'), 'DeepScan must NOT be in sidebar');
-  assert.ok(!sidebarHtml.includes('data-sidebar-page="subscription"'), 'Standalone /subscription must NOT be in sidebar');
+  assert.ok(sidebarHtml.includes('id="nav-subscription"'), 'Subscription menu must be present in sidebar');
 });
 
 test('Wave 2: Single primary signed-in account identity in sidebar footer per DESIGN.md §76.16', () => {

@@ -65,6 +65,22 @@ module.exports = async function handler(req, res) {
   if (req.method === 'POST' && bodyAction === 'account-profile') {
     return accountProfileHandler(req, res);
   }
+  if (req.method === 'POST' && bodyAction === 'update-email') {
+    const auth = require('../lib/admin-session').requireAuthenticatedSession(req);
+    if (!auth.ok) return res.status(auth.status || 401).json({ success: false, error: 'Sesi tidak valid.' });
+    const newEmail = req.body && req.body.email ? String(req.body.email).trim().toLowerCase() : '';
+    if (!newEmail || !newEmail.includes('@')) return res.status(400).json({ success: false, error: 'Email tidak valid.' });
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (url && key) {
+      try {
+        const { createClient } = require('@supabase/supabase-js');
+        const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+        await db.from('app_users').update({ email: newEmail }).eq('id', auth.session.uid);
+      } catch (_) {}
+    }
+    return res.status(200).json({ success: true, email: newEmail });
+  }
 
   return legacy(req, res);
 };

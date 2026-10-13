@@ -492,6 +492,12 @@ module.exports = async function handler(req, res) {
     return await handleMagicLogin(req, res);
   }
 
+  if ((req.query && (req.query.action === 'google' || req.query.action === 'google-register')) ||
+      (req.body && (req.body.action === 'google' || req.body.action === 'google-register'))) {
+    const authService = require('../lib/auth-service');
+    return await authService(req, res);
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
