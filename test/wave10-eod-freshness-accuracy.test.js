@@ -17,11 +17,11 @@ const runtime = read('public/analisis-saham-runtime.js');
 test('Wave 10 Acceptance: Financial text accuracy & neutral loading state', () => {
   // 1. Initial DOM must show neutral loading state, NOT pre-filled "Data Lengkap 4/4"
   assert.match(html, /id="financialStatusBadge"[^>]*>Memuat\.\.\.<\/span>/);
-  assert.match(html, /id="financialCoverage"[^>]*>— \/ 4<\/span>/);
+  assert.match(html, /id="financialCoverage"[^>]*>[-—] \/ 4<\/span>/);
   assert.match(partial, /id="financialStatusBadge"[^>]*>Memuat\.\.\.<\/span>/);
-  assert.match(partial, /id="financialCoverage"[^>]*>— \/ 4<\/span>/);
+  assert.match(partial, /id="financialCoverage"[^>]*>[-—] \/ 4<\/span>/);
   assert.match(partialSrc, /id="financialStatusBadge"[^>]*>Memuat\.\.\.<\/span>/);
-  assert.match(partialSrc, /id="financialCoverage"[^>]*>— \/ 4<\/span>/);
+  assert.match(partialSrc, /id="financialCoverage"[^>]*>[-—] \/ 4<\/span>/);
 
   // 2. Subtitle copy must be truthful (official issuer statements, not blanket terverifikasi claims)
   assert.doesNotMatch(html, /<p class="ac-financial-subtitle">Snapshot terverifikasi/);

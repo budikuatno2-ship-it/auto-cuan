@@ -457,13 +457,13 @@
 
   function researchText(id, value) {
     var el = byId(id);
-    if (el) el.textContent = value == null || value === '' ? '—' : String(value);
+    if (el) el.textContent = value == null || value === '' ? '-' : String(value);
   }
 
   function researchNumber(value, decimals) {
-    if (!researchHasNumber(value)) return '—';
+    if (!researchHasNumber(value)) return '-';
     var n = Number(value);
-    if (!Number.isFinite(n)) return '—';
+    if (!Number.isFinite(n)) return '-';
     try {
       return new Intl.NumberFormat('id-ID', {
         maximumFractionDigits: decimals == null ? 2 : decimals
@@ -474,9 +474,9 @@
   }
 
   function researchIdr(value) {
-    if (!researchHasNumber(value)) return '—';
+    if (!researchHasNumber(value)) return '-';
     var n = Number(value);
-    if (!Number.isFinite(n)) return '—';
+    if (!Number.isFinite(n)) return '-';
     try {
       return new Intl.NumberFormat('id-ID', {
         style: 'currency',
@@ -489,9 +489,9 @@
   }
 
   function researchCompact(value) {
-    if (!researchHasNumber(value)) return '—';
+    if (!researchHasNumber(value)) return '-';
     var n = Number(value);
-    if (!Number.isFinite(n)) return '—';
+    if (!Number.isFinite(n)) return '-';
     try {
       return new Intl.NumberFormat('id-ID', {
         notation: 'compact',
@@ -520,7 +520,7 @@
   };
 
   function formatEnumPresentation(val) {
-    if (!val) return '—';
+    if (!val) return '-';
     var k = String(val).trim().toUpperCase();
     if (Object.prototype.hasOwnProperty.call(ENUM_PRESENTATION_MAP, k)) {
       return ENUM_PRESENTATION_MAP[k];
@@ -528,24 +528,31 @@
     return 'Status belum dikenali';
   }
 
+  var wibZoneOptions = { timeZone: 'Asia/Jakarta' };
+
   function formatIndonesianDateWithWib(isoStr) {
-    if (!isoStr) return '—';
+    if (!isoStr) return '-';
     if (typeof isoStr !== 'string') return String(isoStr);
-    var cleanStr = isoStr.replace(/\s*WIB$/i, '').trim();
-    var d = new Date(cleanStr);
-    if (isNaN(d.getTime())) return isoStr;
+    var cleanStr = String(isoStr).replace(/\s*WIB$/i, '').trim();
+    if (!cleanStr || cleanStr === '-' || cleanStr === '—') return '-';
     var months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-    var day = ('0' + d.getDate()).slice(-2);
-    var month = months[d.getMonth()];
-    var year = d.getFullYear();
-    try {
-      if (isoStr.indexOf('T') !== -1 || isoStr.indexOf(':') !== -1) {
-        return new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(d).replace(/\./g, ':') + ' WIB';
-      }
-      return new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' }).format(d);
-    } catch (_) {
-      return day + ' ' + month + ' ' + year;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
+      var parts = cleanStr.split('-');
+      return parseInt(parts[2], 10) + ' ' + months[parseInt(parts[1], 10) - 1] + ' ' + parts[0];
     }
+    var d = new Date(cleanStr);
+    if (isNaN(d.getTime())) return cleanStr;
+    var wibTime = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+    var day = wibTime.getUTCDate();
+    var month = months[wibTime.getUTCMonth()];
+    var year = wibTime.getUTCFullYear();
+    var hasTime = cleanStr.indexOf('T') !== -1 && !cleanStr.endsWith('T00:00:00.000Z') && !cleanStr.endsWith('T00:00:00Z');
+    if (hasTime || cleanStr.indexOf(':') !== -1) {
+      var hh = ('0' + wibTime.getUTCHours()).slice(-2);
+      var mm = ('0' + wibTime.getUTCMinutes()).slice(-2);
+      return day + ' ' + month + ' ' + year + ', ' + hh + '.' + mm + ' WIB';
+    }
+    return day + ' ' + month + ' ' + year;
   }
 
   function formatSourceLabel(source) {
@@ -571,22 +578,22 @@
   }
 
   function formatIndonesianSharesCount(val) {
-    if (!researchHasNumber(val)) return '—';
+    if (!researchHasNumber(val)) return '-';
     var n = Number(val);
     if (n >= 1e12) {
-      return (n / 1e12).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' triliun lembar';
+      return (n / 1e12).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' T lembar';
     }
     if (n >= 1e9) {
-      return (n / 1e9).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' miliar lembar';
+      return (n / 1e9).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Mrd lembar';
     }
     if (n >= 1e6) {
-      return (n / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' juta lembar';
+      return (n / 1e6).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Jt lembar';
     }
     return n.toLocaleString('id-ID') + ' lembar';
   }
 
   function formatIndonesianMarketCap(val) {
-    if (!researchHasNumber(val)) return '—';
+    if (!researchHasNumber(val)) return '-';
     var n = Number(val);
     if (n >= 1e12) {
       return 'Rp ' + (n / 1e12).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' T';
@@ -730,11 +737,12 @@
       var period = this.activePeriod;
 
       var modeName = mode === 'income' ? 'Laba Rugi' : (mode === 'balance' ? 'Neraca' : (mode === 'cashflow' ? 'Arus Kas' : 'Rasio'));
-      var periodName = period === 'quarterly' ? 'Kuartalan' : 'Tahunan';
+      var natureLabel = mode === 'balance' ? 'Posisi Akhir Periode' : (mode === 'ratios' ? 'Valuasi & Profitabilitas' : (period === 'quarterly' ? 'Kuartal Diskret / Kumulatif Berjalan' : 'Kumulatif 12 Bulan'));
+      var periodName = period === 'quarterly' ? ('Kuartalan (' + natureLabel + ')') : ('Tahunan (' + natureLabel + ')');
 
       if (catLabel) catLabel.textContent = modeName;
       if (freqLabel) freqLabel.textContent = periodName;
-      if (unitLabel) unitLabel.textContent = mode === 'ratios' ? 'Rasio & Kelipatan' : 'Miliar IDR (kecuali rasio & EPS)';
+      if (unitLabel) unitLabel.textContent = mode === 'ratios' ? 'Rasio & Kelipatan (x, %)' : 'Miliar IDR (kecuali rasio & EPS)';
 
       var periodData = this.statementsData ? this.statementsData[period] : null;
       var statementKey = mode === 'income' ? 'income_statement' : (mode === 'balance' ? 'balance_sheet' : (mode === 'cashflow' ? 'cash_flow' : 'ratios'));
@@ -759,7 +767,7 @@
       if (thead) {
         var headerHtml = '<tr><th scope="col" style="text-align: left;">Komponen</th>';
         statement.periods.forEach(function (p) {
-          headerHtml += '<th scope="col">' + escapeHtml(p) + '</th>';
+          headerHtml += '<th scope="col" style="font-variant-numeric: tabular-nums;">' + escapeHtml(p) + '</th>';
         });
         headerHtml += '</tr>';
         thead.innerHTML = headerHtml;
@@ -794,9 +802,13 @@
             for (var i = 0; i < statement.periods.length; i++) {
               var val = values[i];
               var tdVal = document.createElement('td');
+              tdVal.className = 'ac-num ac-fin-cell-num';
+              tdVal.style.fontVariantNumeric = 'tabular-nums';
 
-              if (val == null || val === '—' || val === '') {
-                tdVal.textContent = '—';
+              var isMissing = val == null || val === '—' || val === '-' || val === '';
+              var isFalseZeroEps = val === 0 && row.label && row.label.indexOf('EPS') !== -1;
+              if (isMissing || isFalseZeroEps) {
+                tdVal.textContent = '-';
                 tdVal.style.color = 'var(--ac-text-muted)';
               } else if (typeof val === 'number') {
                 var isNegative = val < 0;
@@ -1645,21 +1657,29 @@
     var hasMarketCap = researchHasNumber(f.market_cap);
     var coverageCount = (hasPbv ? 1 : 0) + (hasBvps ? 1 : 0) + (hasShares ? 1 : 0) + (hasMarketCap ? 1 : 0);
 
-    researchText('financialPbv', hasPbv ? researchNumber(f.pbv, 2) + 'x' : '—');
-    var referencePrice = researchHasNumber(f.pbv_as_of_price) ? 'Harga acuan ' + researchIdr(f.pbv_as_of_price) : 'Harga acuan —';
+    researchText('financialPbv', hasPbv ? researchNumber(f.pbv, 2) + 'x' : '-');
+    var referencePrice = researchHasNumber(f.pbv_as_of_price) ? 'Harga acuan ' + researchIdr(f.pbv_as_of_price) : 'Harga acuan -';
     if (price && price.last_price_as_of) {
-      var priceDate = (typeof price.last_price_as_of === 'string' && (price.last_price_as_of.indexOf('T') !== -1 || price.last_price_as_of.indexOf('Z') !== -1))
-        ? formatIndonesianDateWithWib(price.last_price_as_of)
-        : price.last_price_as_of;
+      var priceDate = formatIndonesianDateWithWib(price.last_price_as_of);
       referencePrice += ' · ' + priceDate;
     }
     if (price && price.last_price_source) referencePrice += ' · ' + formatSourceLabel(price.last_price_source);
     if (price && price.freshness === 'stale') referencePrice += ' · Data historis';
     researchText('financialPbvPrice', referencePrice);
-    researchText('financialBvps', hasBvps ? researchIdr(f.book_value_per_share) : '—');
-    researchText('financialShares', hasShares ? formatIndonesianSharesCount(f.shares_outstanding) : '—');
-    researchText('financialMarketCap', hasMarketCap ? formatIndonesianMarketCap(f.market_cap) : '—');
-    researchText('financialMarketCapAsOf', f.market_cap_as_of ? 'Per ' + f.market_cap_as_of : 'Belum tersedia');
+    researchText('financialBvps', hasBvps ? researchIdr(f.book_value_per_share) : '-');
+    researchText('financialShares', hasShares ? formatIndonesianSharesCount(f.shares_outstanding) : '-');
+    researchText('financialMarketCap', hasMarketCap ? formatIndonesianMarketCap(f.market_cap) : '-');
+    researchText('financialMarketCapAsOf', f.market_cap_as_of ? 'Per ' + formatIndonesianDateWithWib(f.market_cap_as_of) : 'Belum tersedia');
+
+    // Sync header quote price dynamically with current active ticker price
+    var quoteEl = byId('unifiedActiveTickerQuote');
+    if (quoteEl) {
+      var currentLast = (price && typeof price.last === 'number') ? price.last : (f && typeof f.pbv_as_of_price === 'number' ? f.pbv_as_of_price : null);
+      if (currentLast != null) {
+        quoteEl.className = 'text-xs font-mono font-semibold text-emerald-400 tabular-nums ml-1';
+        quoteEl.textContent = 'Rp ' + Number(currentLast).toLocaleString('id-ID') + ' (0.00%)';
+      }
+    }
     researchText('financialPeriod', f.fundamental_period || 'Belum tersedia');
     researchText('financialPeriodHero', f.fundamental_period ? 'Periode ' + f.fundamental_period : 'Periode belum tersedia');
     researchText('financialSource', formatSourceLabel(f.fundamental_source));
@@ -1723,9 +1743,10 @@
       return root.loadStrukturPasarUniverse(ticker);
     }
 
-    root.activeTicker = ticker;
     if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
       root.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: false, preserveTab: true, runAnalysis: false, skipFinancialSync: true });
+    } else {
+      root.activeTicker = ticker;
     }
     var financialInput = byId('financialTickerInput');
     if (financialInput) financialInput.value = ticker;

@@ -576,6 +576,47 @@
   color: #34d399 !important;
 }
 
+@media (max-width: 640px) {
+  .unified-top-bar {
+    padding: 10px 12px !important;
+  }
+  .unified-top-bar .flex-1.flex.flex-wrap {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .unified-top-bar .flex-1.flex.flex-wrap > .relative {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  #analisisInput {
+    width: 100% !important;
+    min-width: 100% !important;
+    min-height: 44px !important;
+    font-size: 15px !important;
+    padding: 10px 14px !important;
+    box-sizing: border-box !important;
+  }
+  #btnJalankanAnalisis {
+    min-height: 44px !important;
+    padding: 10px 16px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 13px !important;
+  }
+  .unified-top-bar button[onclick*="openAiApiKeyModal"] {
+    min-height: 44px !important;
+    padding: 10px 14px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+  }
+}
+
 /* --- PHASE 7: SUB-TAB BANDARMOLOGI & BROKER HUNTER (#panel-tab-bandarmologi, #panel-tab-hunter) --- */
 #panel-tab-bandarmologi .unified-card,
 #panel-tab-hunter .unified-card,

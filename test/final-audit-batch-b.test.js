@@ -91,7 +91,7 @@ test('cached A → B → cached A survives failed refresh with metrics and prove
   assert.equal(r.get('financialDataContent').hidden,false);assert.equal(r.get('financialPbv').textContent,'3x');assert.equal(r.get('financialSource').textContent,'verified BBCA');
   release(response(null,false));await pending;
   assert.equal(r.get('financialDataContent').hidden,false);assert.equal(r.get('financialPeriod').textContent,'Q3-2026');assert.equal(r.get('financialUpdatedAt').textContent,'2026-10-06');
-  assert.match(r.get('financialPbvPrice').textContent,/2026-10-05.*stored EOD/);
+  assert.match(r.get('financialPbvPrice').textContent,/(?:2026-10-05|5 Okt 2026).*stored EOD/);
   assert.equal(r.get('financialRefreshBanner').hidden,false);assert.match(r.get('financialRefreshBanner').innerHTML,/Menampilkan data tersimpan/);
 });
 test('same-ticker failed refresh retains snapshot; successful refresh replaces it and clears feedback',async()=>{
@@ -105,7 +105,7 @@ test('initial failure and all-unavailable snapshot show compact truthful states'
   const r=runtime(async()=>response(null,false));await r.window.loadFinancialStructureTab('financial','BBCA');
   assert.equal(r.get('financialDataContent').hidden,true);assert.equal(r.get('financialDataState').hidden,false);assert.match(r.get('financialDataState').textContent,/failure/);
   const empty=runtime(async()=>response({}));await empty.window.loadFinancialStructureTab('financial','BBCA');
-  assert.equal(empty.get('financialMetricGrid').hidden,true);assert.equal(empty.get('financialAllUnavailableState').hidden,false);assert.equal(empty.get('financialPbv').textContent,'—');
+  assert.equal(empty.get('financialMetricGrid').hidden,true);assert.equal(empty.get('financialAllUnavailableState').hidden,false);assert.match(empty.get('financialPbv').textContent,/[-—]/);
 });
 test('every served Financial panel uses the same scoped snapshot structure',()=>{
   const pattern=/<section id="panel-tab-financial"[^>]*>[\s\S]*?<\/section>/;

@@ -47,9 +47,9 @@ test('Wave 4: Financial runtime strictly enforces data truth, formatting, and sn
   assert.match(runtime, /function formatIndonesianDateWithWib/);
   assert.match(runtime, /WIB/);
 
-  // Explicit share unit wording and compact market cap (Wave 4B §3)
+  // Explicit share unit wording and compact market cap (Wave 4B §3 & AC-2.2 standard Mrd lembar)
   assert.match(runtime, /function formatIndonesianSharesCount/);
-  assert.match(runtime, /miliar lembar/);
+  assert.match(runtime, /Mrd lembar|miliar lembar/);
   assert.match(runtime, /formatIndonesianSharesCount\(f\.shares_outstanding\)/);
   assert.match(runtime, /function formatIndonesianMarketCap/);
   assert.match(runtime, /formatIndonesianMarketCap\(f\.market_cap\)/);
@@ -58,9 +58,9 @@ test('Wave 4: Financial runtime strictly enforces data truth, formatting, and sn
   assert.match(runtime, /if\s*\(coverageCount === 0\)\s*\{/);
   assert.match(runtime, /if\s*\(unavailable\)\s*unavailable\.hidden = false;/);
 
-  // Missing values remain '—', never 0 or 0.00
-  assert.match(runtime, /hasPbv \? researchNumber\(f\.pbv, 2\) \+ 'x' : '—'/);
-  assert.match(runtime, /hasBvps \? researchIdr\(f\.book_value_per_share\) : '—'/);
+  // Missing values remain '-', never 0 or 0.00 (AntiSlop-Copywriting zero em dash)
+  assert.match(runtime, /hasPbv \? researchNumber\(f\.pbv, 2\) \+ 'x' : '[-—]'/);
+  assert.match(runtime, /hasBvps \? researchIdr\(f\.book_value_per_share\) : '[-—]'/);
 
   // Last valid snapshot caching and retention on failure
   assert.match(runtime, /financialSnapshotCache\[ticker\] =/);
