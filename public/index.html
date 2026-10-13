@@ -918,6 +918,19 @@
 </div>
 
 <!-- GOOGLE COMPLETE PROFILE MODAL -->
+<style>
+html.light #googleCompleteProfileModal > div {
+  background: #ffffff !important;
+  color: #17211e !important;
+  border-color: rgba(18,35,29,.10) !important;
+  box-shadow: 0 24px 72px rgba(18,35,29,.16) !important;
+}
+html.light #googleCompleteProfileModal input {
+  background: #ffffff !important;
+  color: #17211e !important;
+  border-color: #d1d5db !important;
+}
+</style>
 <div id="googleCompleteProfileModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="googleProfileModalTitle">
     <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
         <div class="flex items-center justify-between">
@@ -5823,22 +5836,42 @@ async function logout() {
 
 // ===== GOOGLE AUTH HANDLERS =====
 var _pendingGoogleEmail = null;
+var _pendingGoogleId = null;
+var _googleAuthScriptLoading = null;
 
-async function initiateGoogleAuth() {
-    var email = window.prompt('Masukkan akun Gmail Anda untuk melanjutkan dengan Google:', '');
-    if (!email) return;
-    var trimmed = email.trim().toLowerCase();
-    if (!trimmed || !trimmed.includes('@')) {
-        alert('Format email tidak valid.');
+function showLoginError(msg) {
+    var errEl = document.getElementById('loginError');
+    if (errEl) {
+        errEl.textContent = msg;
+        errEl.classList.remove('hidden');
+    }
+}
+
+function clearLoginError() {
+    var errEl = document.getElementById('loginError');
+    if (errEl) {
+        errEl.textContent = '';
+        errEl.classList.add('hidden');
+    }
+}
+
+async function handleGoogleCredentialResponse(response) {
+    clearLoginError();
+    if (!response || !response.credential) {
+        showLoginError('Kredensial Google tidak diterima.');
         return;
     }
     try {
         var res = await fetch('/api/auth/google', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: trimmed })
+            body: JSON.stringify({ credential: response.credential })
         });
         var data = await res.json();
+        if (!res.ok || !data.success) {
+            showLoginError(data.error || 'Gagal masuk dengan akun Google.');
+            return;
+        }
         if (data.registered && data.user) {
             localStorage.setItem('autocuan_user', data.user.username);
             localStorage.setItem('autocuan_logged_in', 'true');
@@ -5847,19 +5880,103 @@ async function initiateGoogleAuth() {
             showDashboard();
         } else if (data.step === 'COMPLETE_PROFILE' || !data.registered) {
             closeLoginModal();
-            openGoogleProfileModal(data.email || trimmed);
-        } else {
-            alert(data.error || 'Gagal masuk dengan Google.');
+            openGoogleProfileModal(data.email, data.google_id);
         }
     } catch (err) {
-        alert('Koneksi terputus: ' + err.message);
+        showLoginError('Terjadi kendala jaringan: ' + (err.message || 'Gagal menghubungi server'));
     }
 }
 
-function openGoogleProfileModal(email) {
-    _pendingGoogleEmail = email;
+function loadGoogleIdentityScript() {
+    if (window.google && window.google.accounts && window.google.accounts.id) {
+        return Promise.resolve();
+    }
+    if (_googleAuthScriptLoading) return _googleAuthScriptLoading;
+    _googleAuthScriptLoading = new Promise(function(resolve, reject) {
+        var existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+        if (existingScript) {
+            existingScript.addEventListener('load', function() { resolve(); });
+            existingScript.addEventListener('error', function() { reject(new Error('Gagal memuat Google Identity Services')); });
+            return;
+        }
+        var script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = function() { resolve(); };
+        script.onerror = function() { reject(new Error('Gagal memuat pustaka Google Identity Services')); };
+        document.head.appendChild(script);
+    });
+    return _googleAuthScriptLoading;
+}
+
+async function initiateGoogleAuth() {
+    clearLoginError();
+    var googleBtn = document.getElementById('loginGoogleBtn');
+    if (googleBtn) googleBtn.disabled = true;
+
+    try {
+        // 1. Cek feature flag dan konfigurasi Client ID dari server
+        var checkRes = await fetch('/api/auth/google');
+        if (checkRes.status === 503) {
+            var errData = {};
+            try { errData = await checkRes.json(); } catch (_) {}
+            showLoginError(errData.error || 'Fitur Masuk dengan Google sedang tidak aktif atau dalam pemeliharaan konfigurasi. Silakan masuk menggunakan username dan password Anda.');
+            return;
+        }
+        if (!checkRes.ok) {
+            showLoginError('Layanan autentikasi Google tidak tersedia saat ini. Silakan gunakan username dan password.');
+            return;
+        }
+        var initData = await checkRes.json();
+        var clientId = initData.client_id;
+        if (!clientId) {
+            showLoginError('Konfigurasi Google Client ID belum lengkap. Silakan masuk menggunakan username dan password.');
+            return;
+        }
+
+        // 2. Muat SDK Google Identity Services
+        await loadGoogleIdentityScript();
+
+        if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+            showLoginError('Gagal menginisialisasi Google Identity Services di peramban ini.');
+            return;
+        }
+
+        // 3. Inisialisasi GIS
+        window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleGoogleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: true
+        });
+
+        // 4. Buka prompt pemilihan akun Google
+        window.google.accounts.id.prompt(function(notification) {
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                var reason = notification.getNotDisplayedReason ? notification.getNotDisplayedReason() : '';
+                if (reason === 'opt_out_or_no_session') {
+                    showLoginError('Tidak ada sesi Google aktif. Silakan masuk ke akun Google Anda terlebih dahulu.');
+                }
+            }
+        });
+    } catch (err) {
+        showLoginError('Gagal memproses autentikasi Google: ' + (err.message || 'Kendala koneksi'));
+    } finally {
+        if (googleBtn) googleBtn.disabled = false;
+    }
+}
+
+function openGoogleProfileModal(email, googleId) {
+    _pendingGoogleEmail = email || '';
+    _pendingGoogleId = googleId || null;
     var emailEl = document.getElementById('googleProfileEmail');
-    if (emailEl) emailEl.textContent = email;
+    if (emailEl) emailEl.textContent = _pendingGoogleEmail;
+    var errEl = document.getElementById('googleProfileError');
+    if (errEl) {
+        errEl.textContent = '';
+        errEl.classList.add('hidden');
+    }
     var modal = document.getElementById('googleCompleteProfileModal');
     if (modal) {
         modal.classList.remove('hidden');
@@ -5872,6 +5989,12 @@ function closeGoogleProfileModal() {
     var modal = document.getElementById('googleCompleteProfileModal');
     if (modal) modal.classList.add('hidden');
     _pendingGoogleEmail = null;
+    _pendingGoogleId = null;
+    var errEl = document.getElementById('googleProfileError');
+    if (errEl) {
+        errEl.textContent = '';
+        errEl.classList.add('hidden');
+    }
 }
 
 async function submitGoogleProfile() {
@@ -5888,13 +6011,19 @@ async function submitGoogleProfile() {
         return;
     }
     errEl.classList.add('hidden');
-    btn.disabled = true;
-    btn.textContent = 'Memproses…';
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Memproses...';
+    }
     try {
         var res = await fetch('/api/auth/google-register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: _pendingGoogleEmail, username: username })
+            body: JSON.stringify({
+                email: _pendingGoogleEmail,
+                username: username,
+                google_id: _pendingGoogleId
+            })
         });
         var data = await res.json();
         if (data.success) {
@@ -5911,11 +6040,13 @@ async function submitGoogleProfile() {
             errEl.classList.remove('hidden');
         }
     } catch (e) {
-        errEl.textContent = 'Koneksi error: ' + e.message;
+        errEl.textContent = 'Koneksi error: ' + (e.message || 'Gagal menghubungi server');
         errEl.classList.remove('hidden');
     } finally {
-        btn.disabled = false;
-        btn.textContent = 'Selesaikan Pendaftaran';
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Selesaikan Pendaftaran';
+        }
     }
 }
 

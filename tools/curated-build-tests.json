@@ -101,6 +101,7 @@
   "test/audit-fase9-fast-watcher-bugs.test.js",
   "test/audit-portfolio-concurrency.test.js",
   "test/audit-regresi-batch3-guards.test.js",
+  "test/auth-google-security.test.js",
   "test/auth-modal-and-ai-analysis-ui.test.js",
   "test/auth-modals-outside-dashboard-screen.test.js",
   "test/auth-recovery-device-retirement.test.js",
