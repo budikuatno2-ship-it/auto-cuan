@@ -1,0 +1,763 @@
+{
+  "timestamp": "2026-10-13T15:41:42.456Z",
+  "viewports": {
+    "desktop_1920x1080": {
+      "windowScrollY": 0,
+      "bodyMarginTop": 0,
+      "bodyPaddingTop": 0,
+      "htmlPaddingTop": 0,
+      "headerVisible": false,
+      "headerTop": 0,
+      "headerHeight": 0,
+      "navTop": 0,
+      "firstContentTop": 0
+    },
+    "laptop_1440x900": {
+      "windowScrollY": 0,
+      "bodyMarginTop": 0,
+      "bodyPaddingTop": 0,
+      "htmlPaddingTop": 0,
+      "headerVisible": false,
+      "headerTop": 0,
+      "headerHeight": 0,
+      "navTop": 0,
+      "firstContentTop": 0
+    },
+    "mobile_390x844": {
+      "windowScrollY": 0,
+      "bodyMarginTop": 0,
+      "bodyPaddingTop": 0,
+      "htmlPaddingTop": 0,
+      "headerVisible": true,
+      "headerTop": 0,
+      "headerHeight": 61,
+      "navTop": 0,
+      "firstContentTop": 0
+    }
+  },
+  "containerWidths": {
+    "dashboard": {
+      "windowWidth": 1920,
+      "shell": {
+        "width": 1905,
+        "height": 1270.515625,
+        "top": 0,
+        "bottom": 1270.515625,
+        "left": 0,
+        "right": 1905,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "1920px",
+        "matchedRules": [
+          {
+            "selector": ".app-layout",
+            "maxWidth": "100vw"
+          },
+          {
+            "selector": "#appShell.app-shell",
+            "maxWidth": "none"
+          }
+        ]
+      },
+      "sidebar": {
+        "width": 240,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 0,
+        "right": 240,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "none",
+        "matchedRules": []
+      },
+      "main": {
+        "width": 1665,
+        "height": 1270.515625,
+        "top": 0,
+        "bottom": 1270.515625,
+        "left": 240,
+        "right": 1905,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "240px",
+        "marginRight": "0px",
+        "maxWidth": "none",
+        "matchedRules": [
+          {
+            "selector": "#appMain.app-main",
+            "maxWidth": "none"
+          },
+          {
+            "selector": "#appMain, #appContent",
+            "maxWidth": "100%"
+          }
+        ]
+      },
+      "content": {
+        "width": 1600,
+        "height": 1270.515625,
+        "top": 0,
+        "bottom": 1270.515625,
+        "left": 272.5,
+        "right": 1872.5,
+        "paddingLeft": "18px",
+        "paddingRight": "18px",
+        "marginLeft": "32.5px",
+        "marginRight": "32.5px",
+        "maxWidth": "1600px",
+        "matchedRules": [
+          {
+            "selector": "#appMain, #appContent",
+            "maxWidth": "100%"
+          },
+          {
+            "selector": "#appContent",
+            "maxWidth": "1600px"
+          }
+        ]
+      },
+      "page": {
+        "width": 1564,
+        "height": 1234.515625,
+        "top": 4,
+        "bottom": 1238.515625,
+        "left": 290.5,
+        "right": 1854.5,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "100%",
+        "matchedRules": [
+          {
+            "selector": ".page-content",
+            "maxWidth": "1180px"
+          },
+          {
+            "selector": ".page-content",
+            "maxWidth": "100%"
+          },
+          {
+            "selector": ".page-content, #page-dashboard, #page-screener, #page-sektor, #page-analisis, #page-chart, #page-news, #page-portofolio, #page-trackrecord, #page-watchlist, #page-subscription, #page-financial, #page-struktur-pasar, #page-track-record, #panel-tab-market-structure, #panel-tab-financial, .ac-financial-container, .ac-market-structure-layout, .unified-cockpit-shell",
+            "maxWidth": "100%"
+          }
+        ]
+      }
+    },
+    "analisis": {
+      "windowWidth": 1920,
+      "shell": {
+        "width": 1905,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 0,
+        "right": 1905,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "1920px",
+        "matchedRules": [
+          {
+            "selector": ".app-layout",
+            "maxWidth": "100vw"
+          },
+          {
+            "selector": "#appShell.app-shell",
+            "maxWidth": "none"
+          }
+        ]
+      },
+      "sidebar": {
+        "width": 240,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 0,
+        "right": 240,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "none",
+        "matchedRules": []
+      },
+      "main": {
+        "width": 1665,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 240,
+        "right": 1905,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "240px",
+        "marginRight": "0px",
+        "maxWidth": "none",
+        "matchedRules": [
+          {
+            "selector": "#appMain.app-main",
+            "maxWidth": "none"
+          },
+          {
+            "selector": "#appMain, #appContent",
+            "maxWidth": "100%"
+          }
+        ]
+      },
+      "content": {
+        "width": 1600,
+        "height": 1070,
+        "top": 0,
+        "bottom": 1070,
+        "left": 272.5,
+        "right": 1872.5,
+        "paddingLeft": "18px",
+        "paddingRight": "18px",
+        "marginLeft": "32.5px",
+        "marginRight": "32.5px",
+        "maxWidth": "1600px",
+        "matchedRules": [
+          {
+            "selector": "#appMain, #appContent",
+            "maxWidth": "100%"
+          },
+          {
+            "selector": "#appContent",
+            "maxWidth": "1600px"
+          }
+        ]
+      },
+      "page": {
+        "width": 1564,
+        "height": 1034,
+        "top": 4,
+        "bottom": 1038,
+        "left": 290.5,
+        "right": 1854.5,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "100%",
+        "matchedRules": [
+          {
+            "selector": ".page-content",
+            "maxWidth": "1180px"
+          },
+          {
+            "selector": ".page-content",
+            "maxWidth": "100%"
+          },
+          {
+            "selector": "#page-analisis, .unified-cockpit-shell",
+            "maxWidth": "1600px"
+          },
+          {
+            "selector": "#page-analisis, .unified-cockpit-shell, .ac-financial-container, .ac-market-structure-layout",
+            "maxWidth": "1600px"
+          },
+          {
+            "selector": ".page-content, #page-dashboard, #page-screener, #page-sektor, #page-analisis, #page-chart, #page-news, #page-portofolio, #page-trackrecord, #page-watchlist, #page-subscription, #page-financial, #page-struktur-pasar, #page-track-record, #panel-tab-market-structure, #panel-tab-financial, .ac-financial-container, .ac-market-structure-layout, .unified-cockpit-shell",
+            "maxWidth": "100%"
+          }
+        ]
+      }
+    },
+    "screener": {
+      "windowWidth": 1920,
+      "shell": {
+        "width": 1905,
+        "height": 1095.828125,
+        "top": 0,
+        "bottom": 1095.828125,
+        "left": 0,
+        "right": 1905,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "1920px",
+        "matchedRules": [
+          {
+            "selector": ".app-layout",
+            "maxWidth": "100vw"
+          },
+          {
+            "selector": "#appShell.app-shell",
+            "maxWidth": "none"
+          }
+        ]
+      },
+      "sidebar": {
+        "width": 240,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 0,
+        "right": 240,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "none",
+        "matchedRules": []
+      },
+      "main": {
+        "width": 1665,
+        "height": 1095.828125,
+        "top": 0,
+        "bottom": 1095.828125,
+        "left": 240,
+        "right": 1905,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "240px",
+        "marginRight": "0px",
+        "maxWidth": "none",
+        "matchedRules": [
+          {
+            "selector": "#appMain.app-main",
+            "maxWidth": "none"
+          },
+          {
+            "selector": "#appMain, #appContent",
+            "maxWidth": "100%"
+          }
+        ]
+      },
+      "content": {
+        "width": 1600,
+        "height": 1095.828125,
+        "top": 0,
+        "bottom": 1095.828125,
+        "left": 272.5,
+        "right": 1872.5,
+        "paddingLeft": "18px",
+        "paddingRight": "18px",
+        "marginLeft": "32.5px",
+        "marginRight": "32.5px",
+        "maxWidth": "1600px",
+        "matchedRules": [
+          {
+            "selector": "#appMain, #appContent",
+            "maxWidth": "100%"
+          },
+          {
+            "selector": "#appContent",
+            "maxWidth": "1600px"
+          }
+        ]
+      },
+      "page": {
+        "width": 1564,
+        "height": 1059.828125,
+        "top": 4,
+        "bottom": 1063.828125,
+        "left": 290.5,
+        "right": 1854.5,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "100%",
+        "matchedRules": [
+          {
+            "selector": ".page-content",
+            "maxWidth": "1180px"
+          },
+          {
+            "selector": ".page-content",
+            "maxWidth": "100%"
+          },
+          {
+            "selector": "#page-screener, #page-watchlist, #page-sektor, #page-trackrecord",
+            "maxWidth": "1320px"
+          },
+          {
+            "selector": ".page-content, #page-dashboard, #page-screener, #page-sektor, #page-analisis, #page-chart, #page-news, #page-portofolio, #page-trackrecord, #page-watchlist, #page-subscription, #page-financial, #page-struktur-pasar, #page-track-record, #panel-tab-market-structure, #panel-tab-financial, .ac-financial-container, .ac-market-structure-layout, .unified-cockpit-shell",
+            "maxWidth": "100%"
+          }
+        ]
+      }
+    },
+    "watchlist": {
+      "windowWidth": 1920,
+      "shell": {
+        "width": 1905,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 0,
+        "right": 1905,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "1920px",
+        "matchedRules": [
+          {
+            "selector": ".app-layout",
+            "maxWidth": "100vw"
+          },
+          {
+            "selector": "#appShell.app-shell",
+            "maxWidth": "none"
+          }
+        ]
+      },
+      "sidebar": {
+        "width": 240,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 0,
+        "right": 240,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "none",
+        "matchedRules": []
+      },
+      "main": {
+        "width": 1665,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 240,
+        "right": 1905,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "240px",
+        "marginRight": "0px",
+        "maxWidth": "none",
+        "matchedRules": [
+          {
+            "selector": "#appMain.app-main",
+            "maxWidth": "none"
+          },
+          {
+            "selector": "#appMain, #appContent",
+            "maxWidth": "100%"
+          }
+        ]
+      },
+      "content": {
+        "width": 1600,
+        "height": 1070,
+        "top": 0,
+        "bottom": 1070,
+        "left": 272.5,
+        "right": 1872.5,
+        "paddingLeft": "18px",
+        "paddingRight": "18px",
+        "marginLeft": "32.5px",
+        "marginRight": "32.5px",
+        "maxWidth": "1600px",
+        "matchedRules": [
+          {
+            "selector": "#appMain, #appContent",
+            "maxWidth": "100%"
+          },
+          {
+            "selector": "#appContent",
+            "maxWidth": "1600px"
+          }
+        ]
+      },
+      "page": {
+        "width": 1564,
+        "height": 1034,
+        "top": 4,
+        "bottom": 1038,
+        "left": 290.5,
+        "right": 1854.5,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "100%",
+        "matchedRules": [
+          {
+            "selector": ".page-content",
+            "maxWidth": "1180px"
+          },
+          {
+            "selector": ".page-content",
+            "maxWidth": "100%"
+          },
+          {
+            "selector": "#page-screener, #page-watchlist, #page-sektor, #page-trackrecord",
+            "maxWidth": "1320px"
+          },
+          {
+            "selector": ".page-content, #page-dashboard, #page-screener, #page-sektor, #page-analisis, #page-chart, #page-news, #page-portofolio, #page-trackrecord, #page-watchlist, #page-subscription, #page-financial, #page-struktur-pasar, #page-track-record, #panel-tab-market-structure, #panel-tab-financial, .ac-financial-container, .ac-market-structure-layout, .unified-cockpit-shell",
+            "maxWidth": "100%"
+          }
+        ]
+      }
+    },
+    "portofolio": {
+      "windowWidth": 1920,
+      "shell": {
+        "width": 1905,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 0,
+        "right": 1905,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "1920px",
+        "matchedRules": [
+          {
+            "selector": ".app-layout",
+            "maxWidth": "100vw"
+          },
+          {
+            "selector": "#appShell.app-shell",
+            "maxWidth": "none"
+          }
+        ]
+      },
+      "sidebar": {
+        "width": 240,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 0,
+        "right": 240,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "none",
+        "matchedRules": []
+      },
+      "main": {
+        "width": 1665,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 240,
+        "right": 1905,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "240px",
+        "marginRight": "0px",
+        "maxWidth": "none",
+        "matchedRules": [
+          {
+            "selector": "#appMain.app-main",
+            "maxWidth": "none"
+          },
+          {
+            "selector": "#appMain, #appContent",
+            "maxWidth": "100%"
+          }
+        ]
+      },
+      "content": {
+        "width": 1600,
+        "height": 1070,
+        "top": 0,
+        "bottom": 1070,
+        "left": 272.5,
+        "right": 1872.5,
+        "paddingLeft": "18px",
+        "paddingRight": "18px",
+        "marginLeft": "32.5px",
+        "marginRight": "32.5px",
+        "maxWidth": "1600px",
+        "matchedRules": [
+          {
+            "selector": "#appMain, #appContent",
+            "maxWidth": "100%"
+          },
+          {
+            "selector": "#appContent",
+            "maxWidth": "1600px"
+          }
+        ]
+      },
+      "page": {
+        "width": 1564,
+        "height": 1034,
+        "top": 4,
+        "bottom": 1038,
+        "left": 290.5,
+        "right": 1854.5,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "100%",
+        "matchedRules": [
+          {
+            "selector": ".page-content",
+            "maxWidth": "1180px"
+          },
+          {
+            "selector": ".page-content",
+            "maxWidth": "100%"
+          },
+          {
+            "selector": ".page-content, #page-dashboard, #page-screener, #page-sektor, #page-analisis, #page-chart, #page-news, #page-portofolio, #page-trackrecord, #page-watchlist, #page-subscription, #page-financial, #page-struktur-pasar, #page-track-record, #panel-tab-market-structure, #panel-tab-financial, .ac-financial-container, .ac-market-structure-layout, .unified-cockpit-shell",
+            "maxWidth": "100%"
+          }
+        ]
+      }
+    },
+    "sektor": {
+      "windowWidth": 1920,
+      "shell": {
+        "width": 1905,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 0,
+        "right": 1905,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "1920px",
+        "matchedRules": [
+          {
+            "selector": ".app-layout",
+            "maxWidth": "100vw"
+          },
+          {
+            "selector": "#appShell.app-shell",
+            "maxWidth": "none"
+          }
+        ]
+      },
+      "sidebar": {
+        "width": 240,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 0,
+        "right": 240,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "none",
+        "matchedRules": []
+      },
+      "main": {
+        "width": 1665,
+        "height": 1080,
+        "top": 0,
+        "bottom": 1080,
+        "left": 240,
+        "right": 1905,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "240px",
+        "marginRight": "0px",
+        "maxWidth": "none",
+        "matchedRules": [
+          {
+            "selector": "#appMain.app-main",
+            "maxWidth": "none"
+          },
+          {
+            "selector": "#appMain, #appContent",
+            "maxWidth": "100%"
+          }
+        ]
+      },
+      "content": {
+        "width": 1600,
+        "height": 1070,
+        "top": 0,
+        "bottom": 1070,
+        "left": 272.5,
+        "right": 1872.5,
+        "paddingLeft": "18px",
+        "paddingRight": "18px",
+        "marginLeft": "32.5px",
+        "marginRight": "32.5px",
+        "maxWidth": "1600px",
+        "matchedRules": [
+          {
+            "selector": "#appMain, #appContent",
+            "maxWidth": "100%"
+          },
+          {
+            "selector": "#appContent",
+            "maxWidth": "1600px"
+          }
+        ]
+      },
+      "page": {
+        "width": 1564,
+        "height": 1034,
+        "top": 4,
+        "bottom": 1038,
+        "left": 290.5,
+        "right": 1854.5,
+        "paddingLeft": "0px",
+        "paddingRight": "0px",
+        "marginLeft": "0px",
+        "marginRight": "0px",
+        "maxWidth": "100%",
+        "matchedRules": [
+          {
+            "selector": ".page-content",
+            "maxWidth": "1180px"
+          },
+          {
+            "selector": ".page-content",
+            "maxWidth": "100%"
+          },
+          {
+            "selector": "#page-screener, #page-watchlist, #page-sektor, #page-trackrecord",
+            "maxWidth": "1320px"
+          },
+          {
+            "selector": ".page-content, #page-dashboard, #page-screener, #page-sektor, #page-analisis, #page-chart, #page-news, #page-portofolio, #page-trackrecord, #page-watchlist, #page-subscription, #page-financial, #page-struktur-pasar, #page-track-record, #panel-tab-market-structure, #panel-tab-financial, .ac-financial-container, .ac-market-structure-layout, .unified-cockpit-shell",
+            "maxWidth": "100%"
+          }
+        ]
+      }
+    }
+  },
+  "partialIntegrity": {
+    "differences": [],
+    "idCollisions": [
+      {
+        "id": "financialStatusBadge",
+        "countInIndexHtml": 1
+      },
+      {
+        "id": "financialCompanyName",
+        "countInIndexHtml": 1
+      },
+      {
+        "id": "financialStatementsTableHead",
+        "countInIndexHtml": 1
+      },
+      {
+        "id": "financialStatementsTableBody",
+        "countInIndexHtml": 1
+      },
+      {
+        "id": "marketStructureAccordionContainer",
+        "countInIndexHtml": 1
+      }
+    ]
+  }
+}

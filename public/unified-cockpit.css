@@ -677,7 +677,7 @@
 #intelCardRitelCutloss,
 #intelCardConcentrationRatio,
 #patternSubTabContainer .rounded-xl {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(11, 15, 25, 0.95)) !important;
+  background: #0f172a !important;
   border: 1px solid rgba(148, 163, 184, 0.18) !important;
   border-radius: 12px !important;
   padding: 16px !important;
@@ -959,4 +959,63 @@ html.light #page-analisis .text-blue-300,
 html.light #page-analisis .text-cyan-400,
 html.light #page-analisis .text-cyan-300 {
   color: #1d4ed8 !important;
+}
+
+/* Multi-Lens Navigation Sub-Bar (9 Analisis Lenses) */
+.analisis-lens-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 4px 2px;
+}
+.analisis-lens-bar::-webkit-scrollbar {
+  display: none;
+}
+.analisis-lens-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  min-height: 36px;
+  box-sizing: border-box;
+}
+.analisis-lens-btn:hover {
+  color: #e2e8f0;
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.analisis-lens-btn.active {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.08);
+}
+html.light .analisis-lens-btn {
+  color: #475569;
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+html.light .analisis-lens-btn:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+html.light .analisis-lens-btn.active {
+  color: #065f46;
+  background: #ecfdf5;
+  border-color: #34d399;
 }

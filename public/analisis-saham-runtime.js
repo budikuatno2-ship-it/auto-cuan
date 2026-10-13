@@ -279,6 +279,12 @@
 
 
     if (typeof document !== 'undefined' && document.querySelectorAll) {
+      document.querySelectorAll('.analisis-lens-btn').forEach(function (btn) {
+        var lens = btn.dataset ? btn.dataset.lens : (btn.getAttribute ? btn.getAttribute('data-lens') : null);
+        var isActive = lens === parentTab;
+        if (btn.classList && btn.classList.toggle) btn.classList.toggle('active', isActive);
+        if (btn.setAttribute) btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
       document.querySelectorAll('.analisis-tab').forEach(function (btn) {
         var btnTab = btn.dataset ? btn.dataset.tab : (btn.getAttribute ? btn.getAttribute('data-tab') : null);
         var isActive = btnTab === parentTab || (parentTab === 'analisis-chart' && (btnTab === 'analisis-chart' || btnTab === 'analisis'));
@@ -288,6 +294,10 @@
     }
 
     var pHeader = byId('analisisChartHeader');
+    var pSubtabWrap = byId('analisisChartSubtabWrap');
+    if (pHeader) pHeader.style.display = 'block';
+    if (pSubtabWrap) pSubtabWrap.style.display = (parentTab === 'analisis-chart') ? 'flex' : 'none';
+
     var pAnalisis = byId('panel-tab-analisis');
     var pChart = byId('panel-tab-chart');
     var pBandarmologi = byId('panel-tab-bandarmologi');
@@ -300,7 +310,6 @@
     var pPattern = byId('panel-tab-pattern');
 
     if (parentTab === 'analisis-chart') {
-      if (pHeader) pHeader.style.display = 'block';
       if (pBandarmologi) pBandarmologi.style.display = 'none';
       if (pIntel) pIntel.style.display = 'none';
       if (pHunter) pHunter.style.display = 'none';
@@ -330,7 +339,6 @@
         }
       }
     } else {
-      if (pHeader) pHeader.style.display = 'none';
       if (pAnalisis) pAnalisis.style.display = 'none';
       if (pChart) pChart.style.display = 'none';
       if (pBandarmologi) pBandarmologi.style.display = (parentTab === 'bandarmologi' ? 'block' : 'none');
@@ -369,7 +377,7 @@
       root.ensureRankingTableLoaded();
     } else if (parentTab === 'financial') {
       var activeResearchTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
-        ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
+        ? (root.UnifiedCockpit.getActiveTicker() || root.activeTicker || 'BBCA') : (root.activeTicker || 'BBCA');
       root.loadFinancialStructureTab('financial', activeResearchTicker);
     } else if (parentTab === 'market-structure') {
       if (typeof root.loadStrukturPasarUniverse === 'function') {
@@ -388,7 +396,7 @@
       }
       if (typeof root.loadBandarmologiTab === 'function') {
         var bandarTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
-          ? root.UnifiedCockpit.getActiveTicker() : (root.activeTicker || 'BBCA');
+          ? (root.UnifiedCockpit.getActiveTicker() || root.activeTicker || 'BBCA') : (root.activeTicker || 'BBCA');
         root.loadBandarmologiTab(bandarTicker);
       }
     } else if (parentTab === 'intel') {
@@ -1386,12 +1394,13 @@
   }
   root.closeMarketStructureDetail = closeMarketStructureDetail;
 
+  var _lastBoundStructureInput = null;
   function bindMarketStructureEventsOnce() {
-    if (marketStructureBoundEvents) return;
-    marketStructureBoundEvents = true;
+    var searchInput = byId('marketStructureSearchInput');
+    if (_lastBoundStructureInput && _lastBoundStructureInput === searchInput && typeof document !== 'undefined' && document.body && document.body.contains(searchInput)) return;
+    _lastBoundStructureInput = searchInput;
 
     // Search input
-    var searchInput = byId('marketStructureSearchInput');
     if (searchInput) {
       searchInput.addEventListener('input', function (e) {
         var val = (e && e.target && e.target.value != null ? e.target.value : (searchInput ? searchInput.value : '')) || '';
@@ -1675,7 +1684,7 @@
 
   async function loadFinancialStructureTab(tabName, rawTicker) {
     var generation = ++researchGeneration;
-    var ticker = researchTicker(rawTicker || (root.UnifiedCockpit && root.UnifiedCockpit.getActiveTicker ? root.UnifiedCockpit.getActiveTicker() : root.activeTicker));
+    var ticker = researchTicker(rawTicker || (root.UnifiedCockpit && root.UnifiedCockpit.getActiveTicker ? root.UnifiedCockpit.getActiveTicker() : root.activeTicker) || 'BBCA');
     if (!ticker) return;
 
     var isFinancial = tabName === 'financial';
@@ -1685,7 +1694,7 @@
 
     root.activeTicker = ticker;
     if (root.UnifiedCockpit && typeof root.UnifiedCockpit.syncActiveTicker === 'function') {
-      root.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: false, preserveTab: true, runAnalysis: false });
+      root.UnifiedCockpit.syncActiveTicker(ticker, { loadChart: false, preserveTab: true, runAnalysis: false, skipFinancialSync: true });
     }
     var financialInput = byId('financialTickerInput');
     if (financialInput) financialInput.value = ticker;
