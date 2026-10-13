@@ -279,6 +279,12 @@
 
 
     if (typeof document !== 'undefined' && document.querySelectorAll) {
+      document.querySelectorAll('.analisis-lens-btn').forEach(function (btn) {
+        var lens = btn.dataset ? btn.dataset.lens : (btn.getAttribute ? btn.getAttribute('data-lens') : null);
+        var isActive = lens === parentTab;
+        if (btn.classList && btn.classList.toggle) btn.classList.toggle('active', isActive);
+        if (btn.setAttribute) btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
       document.querySelectorAll('.analisis-tab').forEach(function (btn) {
         var btnTab = btn.dataset ? btn.dataset.tab : (btn.getAttribute ? btn.getAttribute('data-tab') : null);
         var isActive = btnTab === parentTab || (parentTab === 'analisis-chart' && (btnTab === 'analisis-chart' || btnTab === 'analisis'));
@@ -288,6 +294,10 @@
     }
 
     var pHeader = byId('analisisChartHeader');
+    var pSubtabWrap = byId('analisisChartSubtabWrap');
+    if (pHeader) pHeader.style.display = 'block';
+    if (pSubtabWrap) pSubtabWrap.style.display = (parentTab === 'analisis-chart') ? 'flex' : 'none';
+
     var pAnalisis = byId('panel-tab-analisis');
     var pChart = byId('panel-tab-chart');
     var pBandarmologi = byId('panel-tab-bandarmologi');
@@ -300,7 +310,6 @@
     var pPattern = byId('panel-tab-pattern');
 
     if (parentTab === 'analisis-chart') {
-      if (pHeader) pHeader.style.display = 'block';
       if (pBandarmologi) pBandarmologi.style.display = 'none';
       if (pIntel) pIntel.style.display = 'none';
       if (pHunter) pHunter.style.display = 'none';
@@ -330,7 +339,6 @@
         }
       }
     } else {
-      if (pHeader) pHeader.style.display = 'none';
       if (pAnalisis) pAnalisis.style.display = 'none';
       if (pChart) pChart.style.display = 'none';
       if (pBandarmologi) pBandarmologi.style.display = (parentTab === 'bandarmologi' ? 'block' : 'none');

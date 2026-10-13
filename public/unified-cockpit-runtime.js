@@ -9,6 +9,65 @@
 
   function byId(id) { return document.getElementById(id); }
 
+  var POPULAR_NAMES = {
+    'BBCA': 'Bank Central Asia Tbk.',
+    'BBRI': 'Bank Rakyat Indonesia (Persero) Tbk.',
+    'BMRI': 'Bank Mandiri (Persero) Tbk.',
+    'BBNI': 'Bank Negara Indonesia (Persero) Tbk.',
+    'TLKM': 'Telkom Indonesia (Persero) Tbk.',
+    'ASII': 'Astra International Tbk.',
+    'UNVR': 'Unilever Indonesia Tbk.',
+    'ICBP': 'Indofood CBP Sukses Makmur Tbk.',
+    'INDF': 'Indofood Sukses Makmur Tbk.',
+    'AMMN': 'Amman Mineral Internasional Tbk.',
+    'BREN': 'Barito Renewables Energy Tbk.',
+    'BRPT': 'Barito Pacific Tbk.',
+    'TPIA': 'Chandra Asri Pacific Tbk.',
+    'PGAS': 'Perusahaan Gas Negara Tbk.',
+    'PTBA': 'Bukit Asam Tbk.',
+    'ADRO': 'Alamtri Resources Indonesia Tbk.',
+    'ITMG': 'Indo Tambangraya Megah Tbk.',
+    'MEDC': 'Medco Energi Internasional Tbk.',
+    'ANTM': 'Aneka Tambang Tbk.',
+    'INCO': 'Vale Indonesia Tbk.',
+    'MDKA': 'Merdeka Copper Gold Tbk.',
+    'GOTO': 'GoTo Gojek Tokopedia Tbk.',
+    'KLBF': 'Kalbe Farma Tbk.',
+    'CPIN': 'Charoen Pokphand Indonesia Tbk.',
+    'IHSG': 'Indeks Harga Saham Gabungan'
+  };
+
+  var POPULAR_SECTORS = {
+    'BBCA': 'Financials', 'BBRI': 'Financials', 'BMRI': 'Financials', 'BBNI': 'Financials', 'BBTN': 'Financials', 'BDMN': 'Financials', 'BRIS': 'Financials', 'ARTO': 'Financials',
+    'TLKM': 'Infrastructure', 'ISAT': 'Infrastructure', 'EXCL': 'Infrastructure', 'TOWR': 'Infrastructure', 'TBIG': 'Infrastructure', 'JSMR': 'Infrastructure', 'PGAS': 'Infrastructure',
+    'ASII': 'Industrials', 'UNTR': 'Industrials',
+    'ADRO': 'Energy', 'PTBA': 'Energy', 'ITMG': 'Energy', 'MEDC': 'Energy', 'AKRA': 'Energy', 'ENRG': 'Energy',
+    'ANTM': 'Basic Materials', 'INCO': 'Basic Materials', 'MDKA': 'Basic Materials', 'TPIA': 'Basic Materials', 'BRPT': 'Basic Materials', 'MBMA': 'Basic Materials', 'AMMN': 'Basic Materials', 'INKP': 'Basic Materials', 'TKIM': 'Basic Materials',
+    'UNVR': 'Consumer Non-Cyclical', 'ICBP': 'Consumer Non-Cyclical', 'INDF': 'Consumer Non-Cyclical', 'MYOR': 'Consumer Non-Cyclical', 'CMRY': 'Consumer Non-Cyclical', 'HMSP': 'Consumer Non-Cyclical', 'GGRM': 'Consumer Non-Cyclical', 'CPIN': 'Consumer Non-Cyclical', 'JPFA': 'Consumer Non-Cyclical',
+    'ACES': 'Consumer Cyclical', 'MAPI': 'Consumer Cyclical', 'MAPA': 'Consumer Cyclical', 'ERAA': 'Consumer Cyclical', 'AUTO': 'Consumer Cyclical',
+    'KLBF': 'Healthcare', 'MIKA': 'Healthcare', 'HEAL': 'Healthcare', 'SILO': 'Healthcare', 'SIDO': 'Healthcare',
+    'GOTO': 'Technology', 'BUKA': 'Technology', 'EMTK': 'Technology', 'WIRG': 'Technology',
+    'CTRA': 'Properties', 'BSDE': 'Properties', 'PWON': 'Properties', 'SMRA': 'Properties', 'ASRI': 'Properties',
+    'BIRD': 'Transportation', 'SMDR': 'Transportation', 'ASSA': 'Transportation',
+    'BREN': 'Energy',
+    'IHSG': 'Index'
+  };
+
+  function getCompanyName(ticker) {
+    if (!ticker) return '';
+    if (typeof window !== 'undefined' && window.IDX_TICKERS && window.IDX_TICKERS[ticker]) {
+      return window.IDX_TICKERS[ticker];
+    }
+    if (POPULAR_NAMES[ticker]) return POPULAR_NAMES[ticker];
+    return ticker + ' · IDX';
+  }
+
+  function getCompanySector(ticker) {
+    if (!ticker) return '';
+    if (POPULAR_SECTORS[ticker]) return POPULAR_SECTORS[ticker];
+    return ticker === 'IHSG' ? 'Market Index' : 'IDX Equities';
+  }
+
   function cleanTicker(val) {
     return String(val || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   }
@@ -97,6 +156,23 @@
       }
 
       root._chartPageData = data;
+      if (data && data.candles && data.candles.length > 0) {
+        var lastC = data.candles[data.candles.length - 1];
+        var prevC = data.candles.length > 1 ? data.candles[data.candles.length - 2] : null;
+        var quoteEl = byId('unifiedActiveTickerQuote');
+        if (quoteEl && lastC && Number.isFinite(Number(lastC.close))) {
+          var closePrice = Number(lastC.close);
+          var prevClose = (prevC && Number.isFinite(Number(prevC.close))) ? Number(prevC.close) : closePrice;
+          var diff = closePrice - prevClose;
+          var pct = prevClose > 0 ? (diff / prevClose) * 100 : 0;
+          var sign = diff > 0 ? '+' : '';
+          var colorClass = diff > 0 ? 'text-emerald-400' : (diff < 0 ? 'text-rose-400' : 'text-gray-300');
+          quoteEl.className = 'text-xs font-semibold tabular-nums lining-nums ' + colorClass;
+          var formattedPrice = (typeof root.mktCtxFmtPrice === 'function') ? root.mktCtxFmtPrice(closePrice) : ('Rp ' + closePrice.toLocaleString('id-ID'));
+          quoteEl.textContent = formattedPrice + ' (' + sign + pct.toFixed(2) + '%)';
+        }
+      }
+
       var loadLwc = (typeof root.loadLightweightCharts === 'function') ? root.loadLightweightCharts :
                     (typeof window !== 'undefined' && typeof window.loadLightweightCharts === 'function') ? window.loadLightweightCharts : null;
       var renderLwc = (typeof root.renderLightweightChart === 'function') ? root.renderLightweightChart :
@@ -181,6 +257,19 @@
     var badge = byId('unifiedActiveTickerBadge');
     if (badge) badge.textContent = ticker;
 
+    var compNameEl = byId('unifiedActiveCompanyName');
+    if (compNameEl) {
+      compNameEl.textContent = getCompanyName(ticker);
+    }
+    var compSectorEl = byId('unifiedActiveCompanySector');
+    if (compSectorEl) {
+      compSectorEl.textContent = getCompanySector(ticker);
+    }
+    var quoteEl = byId('unifiedActiveTickerQuote');
+    if (quoteEl && tickerChanged) {
+      quoteEl.textContent = '';
+    }
+
     var chatTag = byId('chatActiveTickerTag');
     if (chatTag) chatTag.textContent = ticker;
 
@@ -234,6 +323,17 @@
     if (loadBandarFn && (_lastBandarSyncTicker !== ticker || options.forceChartReload)) {
       _lastBandarSyncTicker = ticker;
       loadBandarFn(ticker);
+    }
+
+    // 4c. Keep financial and intel in sync if currently viewing those tabs
+    var currentSubtab = root.__ACTIVE_ANALISIS_SUBTAB__;
+    if (currentSubtab === 'financial' && typeof root.loadFinancialStructureTab === 'function') {
+      root.loadFinancialStructureTab('financial', ticker);
+    } else if (currentSubtab === 'intel' && root.BandarmologiRuntime && typeof root.BandarmologiRuntime.loadBandarmologiIntel === 'function') {
+      var intelContainer = byId('bandarmologiIntelContent') || byId('bandarmologiContent');
+      if (intelContainer) {
+        root.BandarmologiRuntime.loadBandarmologiIntel(ticker, intelContainer);
+      }
     }
 
     // 5. Trigger analysis if specified (unless preserveTab is explicitly requested)

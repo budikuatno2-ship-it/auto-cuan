@@ -4387,7 +4387,7 @@ button:disabled,
 
 /* A data product should not letterbox itself on a business laptop. */
 @media (min-width: 1280px) {
-  #page-dashboard.page-content { max-width: 1240px; }
+  #page-dashboard.page-content { max-width: 100% !important; }
 }
 
 /* ---- 8q. Admin ----------------------------------------------------------
@@ -4482,11 +4482,8 @@ button:disabled,
 }
 
 @media (min-width: 1536px) {
-  /* Very wide screens were letterboxing a data product into a 1100px column.
-     Widen the reading measure for the surfaces that benefit from it, and leave
-     prose-width sections alone. */
   #page-screener.page-content,
-  #page-sektor.page-content { max-width: 1320px; }
+  #page-sektor.page-content { max-width: 100% !important; }
 }
 
 /* =========================================================================
@@ -11325,9 +11322,11 @@ html:not(.light),
     padding: 10px 12px !important;
   }
 
-  /* Mobile: Single outer gutter (12px) without nested multiplication *
+  /* Mobile: Single outer gutter (12px) without nested multiplication */
+}
+
 @media (max-width: 767px) {
-/* Screener mobile density (§82 Wave 10, Task 1 & Final Blocker Closure) */
+  /* Screener mobile density (Wave 10, Task 1 and Final Blocker Closure) */
   #page-screener.page-content {
     padding-top: 4px;
   }
@@ -13531,10 +13530,28 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
   --ac-page-max: 1600px;
 }
 
-#appContent,
+#appContent {
+  max-width: 1600px !important;
+  width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: calc(100vh - 10px) !important;
+  box-sizing: border-box !important;
+}
+
+.page-content,
 #page-dashboard,
 #page-screener,
+#page-sektor,
 #page-analisis,
+#page-chart,
+#page-news,
+#page-portofolio,
+#page-trackrecord,
+#page-watchlist,
+#page-subscription,
 #page-financial,
 #page-struktur-pasar,
 #page-track-record,
@@ -13543,10 +13560,17 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
 .ac-financial-container,
 .ac-market-structure-layout,
 .unified-cockpit-shell {
-  max-width: 1600px !important;
+  max-width: 100% !important;
   width: 100% !important;
   margin-left: auto !important;
   margin-right: auto !important;
+  box-sizing: border-box !important;
+}
+
+.page-content {
+  flex: 1 0 auto !important;
+  min-height: calc(100vh - 80px) !important;
+  padding-bottom: 48px !important;
 }
 
 /* Financial & generic data table typography & padding */

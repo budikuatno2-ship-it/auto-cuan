@@ -335,8 +335,10 @@ body {
    ======================================================================== */
 .page-content {
   width: 100%;
-  max-width: var(--pw-page) !important;
-  padding: 20px 20px 28px !important;
+  max-width: 100% !important;
+  min-height: calc(100vh - 80px);
+  padding: 14px 20px 48px !important;
+  box-sizing: border-box;
 }
 
 #page-dashboard,
@@ -1153,6 +1155,12 @@ a:focus-visible {
   border-bottom-color: rgba(148, 163, 184, .075) !important;
   background: linear-gradient(180deg, rgba(6,9,14,.99), rgba(6,9,14,.95));
   backdrop-filter: blur(14px);
+}
+
+@media (min-width: 1024px) {
+  #page-analisis > div:first-child {
+    top: 0 !important;
+  }
 }
 
 #analisisInput {

@@ -23,13 +23,18 @@
 #page-screener,
 #page-sektor,
 #page-chart,
-#page-pattern {
-  max-width: var(--pw-page-wide) !important;
-}
-
+#page-pattern,
 #page-analisis,
-#page-subscription {
-  max-width: var(--pw-page-focus) !important;
+#page-subscription,
+#page-watchlist,
+#page-portofolio,
+#page-trackrecord,
+#page-news,
+#page-financial,
+#page-struktur-pasar {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin-inline: auto !important;
 }
 
 #page-dashboard,
