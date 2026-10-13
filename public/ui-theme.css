@@ -6644,8 +6644,9 @@ html.light .ticker-link:hover {
 #appSidebar .sidebar-brand-text > span { font-size:10px; color:var(--color-text-secondary); }
 #appSidebar .brand-mark { width:32px !important; height:32px !important; flex:0 0 32px; border-radius:9px; color:var(--brand-mark-ink); background:var(--brand-mark-bg) !important; border:1px solid var(--brand-mark-line); box-shadow:none !important; }
 #appSidebar .sidebar-collapse-toggle { display:grid; place-items:center; width:24px; height:30px; flex-shrink:0; padding:0; margin-left:auto; border:0; background:transparent; color:var(--color-text-secondary); }
-#appSidebar > .sidebar-nav { display:block; flex:1 1 0%; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; padding:8px; }
+#appSidebar > .sidebar-nav { display:block; flex:1 1 0%; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; padding:8px 8px 32px 8px; }
 #appSidebar .sidebar-nav-group { padding-bottom:5px; }
+#appSidebar .sidebar-nav-group:last-child { padding-bottom:28px; }
 #appSidebar .sidebar-group-label { color:var(--color-text-secondary); font-size:9px; font-weight:500; line-height:1.5; letter-spacing:.09em; text-transform:uppercase; padding:12px 12px 6px; margin:0; }
 #appSidebar .sidebar-item { position:relative; display:flex; align-items:center; justify-content:flex-start; min-height:35px; width:100%; padding:7px 11px; gap:10px; border:1px solid transparent; border-radius:7px; background:transparent; color:var(--color-text-secondary); font:500 12px/1.45 Inter,system-ui,sans-serif; text-align:left; box-shadow:none; }
 #appSidebar .sidebar-item.hidden { display:none !important; }
@@ -6664,6 +6665,12 @@ html.light .ticker-link:hover {
 #appSidebar .user-role { color:var(--color-text-secondary); font-size:9px; }
 #appSidebar :is(button,[role="button"]):focus-visible { outline:2px solid var(--color-accent); outline-offset:-2px; }
 #sidebarScrim { z-index:74; backdrop-filter:none; background:rgba(3,7,18,.56); }
+@media (max-height: 820px) and (min-width: 1024px) {
+  #appSidebar > .sidebar-brand { min-height: 56px; padding: 12px 14px 10px; }
+  #appSidebar .sidebar-group-label { padding: 4px 12px 2px; }
+  #appSidebar .sidebar-item { min-height: 31px; padding: 4px 10px; font-size: 11.5px; }
+  #appSidebar > .sidebar-footer { padding: 8px 12px; gap: 4px; }
+}
 html.workspace-menu-open { overflow:hidden !important; }
 @media(max-width:1023px) {
   /* The drawer and scrim live in the dashboard's isolated stacking context.
@@ -11805,13 +11812,7 @@ html:not(.light),
 }
 
 [data-ac-ui="v2"] .ac-financial-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--ac-line-hairline);
+  display: none !important;
 }
 
 [data-ac-ui="v2"] .ac-financial-title {
@@ -11881,10 +11882,10 @@ html:not(.light),
   gap: 12px;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1024px) {
   [data-ac-ui="v2"] .ac-financial-metric-strip {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 }
 

@@ -123,7 +123,10 @@ data/fastwatcher-shortlist.json
 # Visual audit & test artifacts
 docs/motion-trace/
 screenshots/
+docs/evidence/**/*.png
+docs/evidence/*.png
 
 # DeepScan weekly full-history cache and generated readiness report
 data/deepscan-history/
 data/reports/deepscan-weekly-preparation-*.json
+data/market-subset-fixture.json

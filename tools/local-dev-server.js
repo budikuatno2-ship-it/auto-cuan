@@ -98,6 +98,7 @@ const {
   MOCK_BANDARMOLOGI,
   generateMockCandles
 } = require('../lib/mock-preview-data');
+const localMarketSubsetStore = require('../lib/local-market-subset-store');
 
 const PREVIEW_MODULE_MAP = {
   'landing': 'landing',
@@ -877,6 +878,10 @@ const server = http.createServer(async (req, res) => {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       const ticker = (req.query.ticker || 'BBCA').toUpperCase();
       if (PREVIEW_MOCKS_ENABLED && (isPreview || !process.env.SUPABASE_URL)) {
+        const realCandles = localMarketSubsetStore.getCandles(ticker);
+        if (realCandles) {
+          return res.status(200).json(realCandles);
+        }
         return res.status(200).json(generateMockCandles(ticker));
       }
     }
@@ -892,7 +897,7 @@ const server = http.createServer(async (req, res) => {
         }
         if (action === 'daily-market-context-list') {
           const universeRows = [
-            { ticker: 'BBCA', company_name: 'Bank Central Asia Tbk', last_price: 10450, change_pct: 2.45, free_float_pct: 41.82, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Free float aman di atas 15%, HSC clear.', as_of_trade_date: '2026-10-07' },
+            { ticker: 'BBCA', company_name: 'Bank Central Asia Tbk', last_price: 5950, change_pct: -1.65, free_float_pct: 41.82, free_float_source: 'IDX ownership', free_float_as_of: '2026-09-30', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'STRUCTURE_VERIFIED', market_structure_guard: 'NORMAL', market_structure_note: 'Free float aman di atas 15%, HSC clear.', as_of_trade_date: '2026-10-13' },
             { ticker: 'BREN', company_name: 'Barito Renewables Energy Tbk', last_price: 6850, change_pct: -1.25, free_float_pct: 11.75, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: true, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'HIGH_SHAREHOLDING_CONCENTRATION', market_structure_guard: 'CAUTION', market_structure_note: 'HSC terverifikasi aktif; free float di bawah ambang referensi 15%.', as_of_trade_date: '2026-10-07' },
             { ticker: 'CUAN', company_name: 'Petrindo Jaya Kreasi Tbk', last_price: 7200, change_pct: 3.60, free_float_pct: 14.10, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'LOW_FREE_FLOAT', market_structure_guard: 'CAUTION', market_structure_note: 'Free float di bawah 15%; tidak flagged HSC.', as_of_trade_date: '2026-10-07' },
             { ticker: 'AMMN', company_name: 'Amman Mineral Internasional Tbk', last_price: 8900, change_pct: 0.56, free_float_pct: 17.30, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: true, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'HIGH_SHAREHOLDING_CONCENTRATION', market_structure_guard: 'CAUTION', market_structure_note: 'HSC terverifikasi aktif oleh bursa.', as_of_trade_date: '2026-10-07' },
@@ -956,171 +961,33 @@ const server = http.createServer(async (req, res) => {
               context: emptyContext
             });
           }
-          const isBbca = ticker === 'BBCA' || !ticker;
-          const isBmri = ticker === 'BMRI';
+          const realSnapshot = localMarketSubsetStore.getFinancialSnapshot(ticker);
+          if (realSnapshot) {
+            return res.status(200).json({
+              success: true,
+              snapshot: realSnapshot,
+              context: realSnapshot
+            });
+          }
 
-          const bbcaStatements = {
-            quarterly: {
-              periods: ['Q2 2026', 'Q1 2026', 'Q4 2025', 'Q3 2025', 'Q2 2025', 'Q1 2025'],
-              income_statement: {
-                periods: ['Q2 2026', 'Q1 2026', 'Q4 2025', 'Q3 2025', 'Q2 2025', 'Q1 2025'],
-                rows: [
-                  { type: 'group', label: 'Pendapatan & Beban Operasional' },
-                  { type: 'item', label: 'Pendapatan Bunga Bersih', values: [19520, 18910, 19240, 18450, 17820, 17150], unit: 'idr' },
-                  { type: 'item', label: 'Pendapatan Operasional Lainnya', values: [6120, 5840, 6310, 5720, 5490, 5210], unit: 'idr' },
-                  { type: 'item', label: 'Beban Operasional Lainnya', values: [-9850, -9420, -10150, -9230, -8950, -8640], unit: 'idr' },
-                  { type: 'total', label: 'Laba Operasional', values: [15790, 15330, 15400, 14940, 14360, 13720], unit: 'idr' },
-                  { type: 'group', label: 'Laba Bersih & Pajak' },
-                  { type: 'item', label: 'Beban Pajak Penghasilan', values: [-3120, -3050, -3080, -2990, -2870, -2740], unit: 'idr' },
-                  { type: 'total', label: 'Laba Bersih Periode Berjalan', values: [12670, 12280, 12320, 11950, 11490, 10980], unit: 'idr' },
-                  { type: 'item', label: 'Laba per Saham (EPS) - IDR', values: [102.78, 99.61, 99.94, 96.94, 93.21, 89.07], unit: 'number' }
-                ]
-              },
-              balance_sheet: {
-                periods: ['Q2 2026', 'Q1 2026', 'Q4 2025', 'Q3 2025', 'Q2 2025', 'Q1 2025'],
-                rows: [
-                  { type: 'group', label: 'Aset' },
-                  { type: 'item', label: 'Kas & Setara Kas', values: [38520, 36410, 39120, 35890, 34210, 32950], unit: 'idr' },
-                  { type: 'item', label: 'Penempatan pada Bank Indonesia', values: [112450, 108320, 115200, 104500, 99800, 95200], unit: 'idr' },
-                  { type: 'item', label: 'Kredit yang Diberikan (Gross)', values: [865400, 842100, 831200, 805400, 782100, 755300], unit: 'idr' },
-                  { type: 'total', label: 'Total Aset', values: [1448200, 1412500, 1408100, 1375400, 1342100, 1305600], unit: 'idr' },
-                  { type: 'group', label: 'Liabilitas' },
-                  { type: 'item', label: 'Dana Pihak Ketiga (CASA)', values: [952400, 931200, 928500, 908100, 885200, 862400], unit: 'idr' },
-                  { type: 'item', label: 'Deposito Berjangka', values: [215600, 212400, 210800, 206500, 201200, 198400], unit: 'idr' },
-                  { type: 'total', label: 'Total Liabilitas', values: [1180900, 1151200, 1147600, 1121500, 1092400, 1062100], unit: 'idr' },
-                  { type: 'group', label: 'Ekuitas' },
-                  { type: 'item', label: 'Modal Saham', values: [1541, 1541, 1541, 1541, 1541, 1541], unit: 'idr' },
-                  { type: 'item', label: 'Saldo Laba Ditahan', values: [265759, 259759, 258959, 252359, 248159, 242059], unit: 'idr' },
-                  { type: 'total', label: 'Total Ekuitas', values: [267300, 261300, 260500, 253900, 249700, 243500], unit: 'idr' }
-                ]
-              },
-              cash_flow: {
-                periods: ['Q2 2026', 'Q1 2026', 'Q4 2025', 'Q3 2025', 'Q2 2025', 'Q1 2025'],
-                rows: [
-                  { type: 'group', label: 'Arus Kas Operasi' },
-                  { type: 'item', label: 'Penerimaan Pendapatan Bunga', values: [22450, 21850, 22100, 21200, 20500, 19800], unit: 'idr' },
-                  { type: 'item', label: 'Pembayaran Beban Operasional', values: [-8420, -8120, -8650, -7950, -7650, -7350], unit: 'idr' },
-                  { type: 'total', label: 'Arus Kas Bersih Aktivitas Operasi', values: [18450, 17820, 18120, 17150, 16420, 15650], unit: 'idr' },
-                  { type: 'group', label: 'Arus Kas Investasi & Pendanaan' },
-                  { type: 'item', label: 'Belanja Modal (Capex)', values: [-1250, -1180, -1450, -1120, -980, -920], unit: 'idr' },
-                  { type: 'item', label: 'Pembayaran Dividen Kas', values: [-6850, 0, -5420, 0, -6150, 0], unit: 'idr' },
-                  { type: 'total', label: 'Kenaikan / (Penurunan) Kas Bersih', values: [10350, 16640, 11250, 16030, 9290, 14730], unit: 'idr' }
-                ]
-              },
-              ratios: {
-                periods: ['Q2 2026', 'Q1 2026', 'Q4 2025', 'Q3 2025', 'Q2 2025', 'Q1 2025'],
-                rows: [
-                  { type: 'group', label: 'Valuasi & Profitabilitas' },
-                  { type: 'item', label: 'Price to Earnings (PER)', values: [25.42, 26.22, 26.14, 26.95, 28.02, 29.32], unit: 'x' },
-                  { type: 'item', label: 'Price to Book Value (PBV)', values: [4.82, 4.93, 4.94, 5.07, 5.16, 5.29], unit: 'x' },
-                  { type: 'item', label: 'Return on Equity (ROE)', values: [18.96, 18.80, 18.91, 18.82, 18.41, 18.03], unit: 'pct' },
-                  { type: 'item', label: 'Return on Assets (ROA)', values: [3.50, 3.48, 3.50, 3.48, 3.42, 3.36], unit: 'pct' },
-                  { type: 'item', label: 'Net Interest Margin (NIM)', values: [5.62, 5.58, 5.55, 5.50, 5.48, 5.42], unit: 'pct' },
-                  { type: 'item', label: 'Non-Performing Loan (NPL Gross)', values: [1.90, 1.92, 1.90, 1.95, 1.98, 2.02], unit: 'pct' },
-                  { type: 'item', label: 'Capital Adequacy Ratio (CAR)', values: [29.10, 28.85, 29.40, 28.60, 28.20, 27.90], unit: 'pct' }
-                ]
-              }
-            },
-            annual: {
-              periods: ['FY 2025', 'FY 2024', 'FY 2023', 'FY 2022'],
-              income_statement: {
-                periods: ['FY 2025', 'FY 2024', 'FY 2023', 'FY 2022'],
-                rows: [
-                  { type: 'group', label: 'Pendapatan & Beban Operasional' },
-                  { type: 'item', label: 'Pendapatan Bunga Bersih', values: [75820, 69540, 64210, 58420], unit: 'idr' },
-                  { type: 'item', label: 'Pendapatan Operasional Lainnya', values: [23850, 21450, 19820, 17950], unit: 'idr' },
-                  { type: 'item', label: 'Beban Operasional Lainnya', values: [-38450, -35210, -32450, -29850], unit: 'idr' },
-                  { type: 'total', label: 'Laba Operasional', values: [61220, 55780, 51580, 46520], unit: 'idr' },
-                  { type: 'group', label: 'Laba Bersih & Pajak' },
-                  { type: 'item', label: 'Beban Pajak Penghasilan', values: [-12410, -11250, -10420, -9450], unit: 'idr' },
-                  { type: 'total', label: 'Laba Bersih Tahun Berjalan', values: [48810, 44530, 41160, 37070], unit: 'idr' },
-                  { type: 'item', label: 'Laba per Saham (EPS) - IDR', values: [396.01, 361.27, 333.92, 300.74], unit: 'number' }
-                ]
-              },
-              balance_sheet: {
-                periods: ['FY 2025', 'FY 2024', 'FY 2023', 'FY 2022'],
-                rows: [
-                  { type: 'group', label: 'Aset' },
-                  { type: 'item', label: 'Total Aset', values: [1408100, 1342100, 1250800, 1165400], unit: 'idr' },
-                  { type: 'group', label: 'Liabilitas' },
-                  { type: 'item', label: 'Total Liabilitas', values: [1147600, 1092400, 1018500, 948200], unit: 'idr' },
-                  { type: 'group', label: 'Ekuitas' },
-                  { type: 'item', label: 'Total Ekuitas', values: [260500, 249700, 232300, 217200], unit: 'idr' }
-                ]
-              },
-              cash_flow: {
-                periods: ['FY 2025', 'FY 2024', 'FY 2023', 'FY 2022'],
-                rows: [
-                  { type: 'group', label: 'Arus Kas' },
-                  { type: 'item', label: 'Arus Kas Bersih Aktivitas Operasi', values: [71250, 65420, 59850, 54210], unit: 'idr' },
-                  { type: 'item', label: 'Arus Kas Bersih Aktivitas Investasi', values: [-5120, -4850, -4320, -3950], unit: 'idr' },
-                  { type: 'item', label: 'Arus Kas Bersih Aktivitas Pendanaan', values: [-24500, -22100, -19800, -17500], unit: 'idr' },
-                  { type: 'total', label: 'Kenaikan Bersih Kas', values: [41630, 38470, 35730, 32760], unit: 'idr' }
-                ]
-              },
-              ratios: {
-                periods: ['FY 2025', 'FY 2024', 'FY 2023', 'FY 2022'],
-                rows: [
-                  { type: 'group', label: 'Rasio Tahunan' },
-                  { type: 'item', label: 'Price to Earnings (PER)', values: [26.39, 28.92, 27.85, 26.50], unit: 'x' },
-                  { type: 'item', label: 'Price to Book Value (PBV)', values: [4.94, 5.16, 4.93, 4.52], unit: 'x' },
-                  { type: 'item', label: 'Return on Equity (ROE)', values: [18.74, 17.83, 17.72, 17.07], unit: 'pct' },
-                  { type: 'item', label: 'Return on Assets (ROA)', values: [3.47, 3.32, 3.29, 3.18], unit: 'pct' }
-                ]
-              }
-            }
+          const emptyFallback = {
+            ticker: ticker || 'UNKNOWN',
+            company_name: 'PT ' + (ticker || 'UNKNOWN') + ' Tbk',
+            as_of: '2026-10-13',
+            price: { last: null, last_price_as_of: null, last_price_source: null },
+            fundamental: { pbv: null, book_value_per_share: null, shares_outstanding: null, market_cap: null, data_available: false },
+            financial_statements: null,
+            market_structure: { data_available: false, market_structure_status: 'DATA_INCOMPLETE', market_structure_guard: 'UNKNOWN' }
           };
-
-          const contextPayload = {
-            ticker: ticker || 'BBCA',
-            company_name: isBbca ? 'PT Bank Central Asia Tbk' : 'PT Bank Mandiri (Persero) Tbk',
-            as_of: '2026-10-12',
-            price: {
-              last: isBbca ? 5950 : 1420,
-              last_price_as_of: '2026-10-12',
-              last_price_source: 'daily_candles_flat_file'
-            },
-            fundamental: {
-              pbv: isBbca ? 2.80 : 1.35,
-              pbv_as_of_price: isBbca ? 5950 : 1420,
-              book_value_per_share: isBbca ? 2125.15 : 1051.85,
-              shares_outstanding: isBbca ? 122042299500 : 25139000000,
-              market_cap: isBbca ? 726151682025000 : 35697380000000,
-              market_cap_as_of: '2026-10-12',
-              market_cap_source: 'calculated (shares_outstanding * last_price)',
-              fundamental_period: 'Q1 2026',
-              fundamental_source: 'arjum financial-statements',
-              fundamental_updated_at: '2026-10-12 16:15:00 WIB',
-              verified: true
-            },
-            financial_statements: isBbca ? bbcaStatements : null,
-            market_structure: {
-              free_float_pct: isBbca ? 41.82 : 48.20,
-              free_float_source: 'IDX ownership',
-              free_float_as_of: '2026-08-31',
-              free_float_available: true,
-              hsc_flag: false,
-              hsc_source: 'IDX HSC',
-              hsc_as_of: '2026-09-01',
-              hsc_available: true,
-              low_free_float_reference_pct: 15,
-              low_free_float_risk: false,
-              regulatory_compliance_status: 'NOT_EVALUATED',
-              market_structure_status: 'STRUCTURE_VERIFIED',
-              market_structure_guard: 'NORMAL',
-              market_structure_note: 'Free float terverifikasi aman di atas referensi 15%; snapshot HSC tidak flagged.',
-              data_available: true
-            }
-          };
-
           return res.status(200).json({
             success: true,
-            snapshot: contextPayload,
-            context: contextPayload
+            snapshot: emptyFallback,
+            context: emptyFallback
           });
         }
         if (ticker) {
-          const base = ticker === 'BBCA' ? 10250 : (ticker === 'MEDC' ? 1420 : (ticker === 'BRPT' ? 1050 : (ticker === 'BMRI' ? 6800 : 5100)));
+          const snap = localMarketSubsetStore.getFinancialSnapshot(ticker);
+          const base = snap && snap.price && snap.price.last ? snap.price.last : (ticker === 'BBCA' ? 5950 : 1420);
           return res.status(200).json({
             success: true,
             ticker: ticker,

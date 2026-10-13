@@ -314,6 +314,7 @@
   "test/financial-dynamic-market-cap.test.js",
   "test/financial-market-structure-ui.test.js",
   "test/financial-surface-contract.test.js",
+  "test/format-wib.test.js",
   "test/fix-intel-real-data.test.js",
   "test/fix-universal-broker-accumulation.test.js",
   "test/foreign-flow-recap.test.js",

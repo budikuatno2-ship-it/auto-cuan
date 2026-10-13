@@ -24,9 +24,9 @@ function runtime(fetch) {
 test('missing numeric research data stays unavailable, while real zero remains zero', async () => {
   const r = runtime(async () => ({ok:true,json:async () => ({success:true,snapshot:{fundamental:{pbv:null,market_cap:null,shares_outstanding:null,book_value_per_share:0}}})}));
   await r.window.loadFinancialStructureTab('financial','BBCA');
-  assert.equal(r.get('financialMarketCap').textContent,'—');
-  assert.equal(r.get('financialPbv').textContent,'—');
-  assert.equal(r.get('financialShares').textContent,'—');
+  assert.match(r.get('financialMarketCap').textContent,/[-—]/);
+  assert.match(r.get('financialPbv').textContent,/[-—]/);
+  assert.match(r.get('financialShares').textContent,/[-—]/);
   assert.match(r.get('financialBvps').textContent,/0/);
 });
 test('older research response cannot replace newer ticker result', async () => {

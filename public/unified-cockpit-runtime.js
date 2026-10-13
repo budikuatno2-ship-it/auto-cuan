@@ -268,6 +268,24 @@
     var quoteEl = byId('unifiedActiveTickerQuote');
     if (quoteEl && tickerChanged) {
       quoteEl.textContent = '';
+      if (!options.loadChart) {
+        fetch('/api/quote?action=financial-snapshot&ticker=' + encodeURIComponent(ticker), {
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data && data.success && data.snapshot && data.snapshot.price && Number.isFinite(Number(data.snapshot.price.last))) {
+              var p = Number(data.snapshot.price.last);
+              var activeBadge = byId('unifiedActiveTickerBadge');
+              if (activeBadge && activeBadge.textContent === ticker) {
+                quoteEl.className = 'text-xs font-mono font-semibold text-emerald-400 tabular-nums ml-1';
+                quoteEl.textContent = 'Rp ' + p.toLocaleString('id-ID') + ' (0.00%)';
+              }
+            }
+          })
+          .catch(function() {});
+      }
     }
 
     var chatTag = byId('chatActiveTickerTag');
