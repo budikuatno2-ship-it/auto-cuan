@@ -40,5 +40,13 @@ fi
 
 cd "$REPO"
 
+# BUG-RETRY-VPS-STORE (2026-10-13): the delivery rows live in the VPS SQLite
+# market store. AUTO_CUAN_MARKET_DATA_VPS=1 was only present inside PM2's
+# process env, so a cron-invoked standalone worker silently talked to the
+# remote Supabase client and found ZERO stuck rows. Pin the store routing here
+# as well so the sweep always sees the local production queue.
 exec /usr/bin/flock -n "$LOCK_FILE" \
-  env ALLOW_PROD_DB_WRITE=1 "$NODE_BIN" "$RETRY_JS" "$@"
+  env ALLOW_PROD_DB_WRITE=1 \
+      AUTO_CUAN_MARKET_DATA_VPS=1 \
+      AUTO_CUAN_MARKET_DB="${AUTO_CUAN_MARKET_DB:-/home/ubuntu/auto-cuan-data/market.sqlite}" \
+      "$NODE_BIN" "$RETRY_JS" "$@"
