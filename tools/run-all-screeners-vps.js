@@ -91,6 +91,21 @@ function describeFetchError(err){
 }
 function makeClient(baseUrl,secret,fetchImpl=fetch){async function call(query){const url=new URL('/api/sector-hot',baseUrl);Object.entries(query).forEach(([k,v])=>url.searchParams.set(k,String(v)));let r;try{r=await fetchImpl(url,{headers:{Authorization:'Bearer '+secret,Accept:'application/json'}});}catch(e){throw new Error('Fetch failed action='+(query.action||'unknown')+' url='+url.toString()+' cause='+describeFetchError(e));}const text=await r.text();let data;try{data=text?JSON.parse(text):{};}catch(e){throw new Error('Invalid JSON action='+(query.action||'unknown')+' url='+url.toString());}if(!r.ok)throw new Error('HTTP '+r.status+' action='+(query.action||'unknown')+' url='+url.toString());return data;}return {call};}
 async function nkStatus(client){return client.call({action:'nk-screener-results'});}
+// BUG-NK-RESUME-STALE-DATE (2026-10-13): the server used to answer
+// step:'start', resumed:true from a stale run_date (production evidence:
+// run_date 2026-10-09 while the runner ran on 2026-10-12). The runner counted
+// that as a valid start, then looped on the same stale plan until
+// --max-attempts (40) without ever scanning today's universe. The server now
+// abandons stale plans on its own; this guard is the belt-and-braces check so
+// a stale resume can never be silently accepted again. When the response
+// carries an outdated run_date, the runner re-issues the call with force=1 to
+// demand a fresh batch plan for today.
+function isStaleResume(response,today=wibDate()){
+  if(!response||String(response.step||'').toLowerCase()!=='start')return false;
+  if(response.resumed!==true)return false;
+  const stamp=String(response.run_date||'').slice(0,10);
+  return !!stamp&&stamp!==today;
+}
 async function runNk(client,opts,log=console.log){
   const startedAt=Date.now();
   let status=await nkStatus(client), meta=status.meta||{};
@@ -114,6 +129,7 @@ async function runNk(client,opts,log=console.log){
       log('Non-Konglo: recovery attempt failed ('+recoveryErr.message+'); continuing with bounded attempts.');
     }
   }
+  let staleResumeForced=false;
   for(let attempt=1;attempt<=opts.maxAttempts;attempt++){
     // Do not short-circuit merely because the cached meta is terminal: it may
     // be from an older trading date (or the operator may have requested --force).
@@ -126,6 +142,21 @@ async function runNk(client,opts,log=console.log){
     // 80 batches on attempt 2 and abort the producer before snapshot materialization.
     if(opts.nkBatchSize!=null)q.batch_size=opts.nkBatchSize;
     const response=await client.call(q);
+    // BUG-NK-RESUME-STALE-DATE: a stale resume must demand a fresh plan.
+    if(isStaleResume(response)&&!staleResumeForced){
+      staleResumeForced=true;
+      log('Non-Konglo: server resumed stale run_date '+(response.run_date||'unknown')+' (today '+wibDate()+'); re-issuing with --force for a fresh plan.');
+      const forced=await client.call({action:'nk-screener-run',force:1,...(opts.nkBatchSize!=null?{batch_size:opts.nkBatchSize}:{})});
+      if(String(forced.step||'').toLowerCase()==='start'){
+        const forcedBatches=Number(forced.batch_count||0);
+        log('Non-Konglo fresh start: universe '+Number(forced.universe_count||0)+', batches '+forcedBatches+', batch_size '+Number(forced.batch_size||opts.nkBatchSize||0)+'.');
+        if(forcedBatches>0&&opts.maxAttempts<forcedBatches+2){
+          throw new Error('Non-Konglo requires at least '+(forcedBatches+2)+' attempts for '+forcedBatches+' batches, but --max-attempts is '+opts.maxAttempts+'. Increase --max-attempts or use --nk-batch-size 25/50.');
+        }
+      }
+      await sleep(opts.sleepMs);
+      continue;
+    }
     if(String(response.step||'').toLowerCase()==='start'){
       const batchCount=Number(response.batch_count||0);
       const requiredAttempts=batchCount>0?batchCount+2:null;
@@ -154,4 +185,4 @@ async function ready(client,action){const data=await client.call({action});retur
 async function runDayTrade(client,opts,log=console.log){log('Day Trade: reading current status...');let status=await ready(client,'daytrade-screener');if(publishedToday(status.meta)&&Number(status.meta.scanned_count||0)>=Number(status.meta.universe_count||0)&&!opts.force)return {skipped:true,status};if(!opts.execute){log('Day Trade: read-only; run endpoint not called.');return {planned:true,status};}for(let batch=0;batch<opts.maxAttempts;batch++){log('Day Trade: requesting batch '+(batch+1)+' (index '+batch+', limit '+opts.limit+')...');const r=await client.call({action:'daytrade-screener-run',batch,limit:opts.limit,...(opts.force&&batch===0?{force:1}:{})});log('Day Trade batch '+(batch+1)+': '+(r.status||r.message||'ok'));if(finalStatus(r.status)||['already_done','completed','published'].includes(String(r.status||'').toLowerCase()))return {finalized:true,response:r};if(String(r.status||'').toLowerCase()!=='running')return {stopped:true,response:r};await sleep(opts.sleepMs);}throw new Error('Day Trade reached --max-attempts without completion; refusing to restart.');}
 async function main(options=parseArgs(process.argv),deps={}){const env=deps.env||loadEnvFiles();env.DAYTRADE_INTRADAY_SCORE_ENABLED='false';if(!env.CRON_SECRET)throw new Error('CRON_SECRET is required.');const base=deps.baseUrl||resolveBaseUrl(env);assertNotServerlessForExecute(base,options.execute);const log=deps.log||console.log;if(options.execute){const mem=assertHeavyScanMemoryHeadroom(env,deps.fs||fs);if(mem.availableMb!=null)log('Memory preflight: '+mem.availableMb.toFixed(1)+' MB available (safety floor '+mem.minMb.toFixed(0)+' MB).');}const client=deps.client||makeClient(base,env.CRON_SECRET,deps.fetch);log('Mode: '+(options.execute?'EXECUTE':'DRY-RUN'));log('Telegram: '+(options.send&&options.execute?'ON':'OFF'));log('Intraday production scoring: OFF');log('App base URL: '+base);if(isServerlessHost(base))log('WARNING: base URL is a serverless host; heavy screener actions will be refused (403 DEPRECATED_ON_SERVERLESS). Run against the VPS daemon instead.');const swing=await ready(client,'screener');log('[Phase 2] Swing Konglo');if(!options.skipSwing&&!options.konglo&&options.execute&&!(publishedToday(swing.meta)&&!options.force)){const swingStarted=Date.now();const swingResponse=await client.call({action:'refresh-screener',ai:0,...(options.force?{force:1}:{})});const sm=swingResponse&&swingResponse.meta?swingResponse.meta:(swingResponse||{});log('Swing Konglo completed in '+((Date.now()-swingStarted)/1000).toFixed(1)+'s | universe '+Number(sm.universe_count||0)+' | scanned '+Number(sm.scanned_count||0)+' | failed '+Number(sm.failed_count||0)+'.');}else log('Skipped/read-only: Swing Konglo.');log('[Phase 3] Swing Non-Konglo');if(!options.skipSwing&&!options.nk)await runNk(client,options,log);else log('Skipped: --skip-swing or --skip-nk.');log('[Phase 4] Day Trade');if(!options.daytrade)await runDayTrade(client,options,log);else log('Skipped: --skip-daytrade.');log('[Phase 5] Top 5');const check=await client.call({action:'telegram-daily-picks',lock_only:1,dry_run:1});const blocked=check.reason==='screeners_not_ready'||check.reason==='not_ready'||check.ready===false||check.status==='scanning';if(!options.top5&&!blocked&&options.execute)await client.call({action:'telegram-daily-picks',...(options.send?{}:{dry_run:1})});else log('Skipped/read-only: Top 5 generation.');log('[Phase 6] Top 5 Progress: '+(options.send&&options.execute?'send permitted':'dry-run only')+'.');if(options.includeIntradayDryRun)log('[Phase 7] Intraday validation: observe/dry-run only; production scoring remains OFF.');log('[Phase 8] Materialize screener snapshot');let snapshotResult=null;try{const buildSnapshot=deps.buildSnapshot||require(path.join(ROOT,'tools','build-screener-snapshot.js')).main;snapshotResult=await buildSnapshot({dryRun:!options.execute,print:false},{baseUrl:base,env,rootDir:ROOT});log('Snapshot materialization: '+(snapshotResult&&snapshotResult.ok?'ok ('+(snapshotResult.rows||0)+' rows)':'skipped/empty'));}catch(snapErr){log('Snapshot materialization warning: '+(snapErr&&snapErr.message?snapErr.message:'failed'));}return {base_url:base,dry_run:!options.execute,snapshot:snapshotResult};}
 if(require.main===module)main().catch(e=>{console.error(e.message);process.exitCode=1;});
-module.exports={ENV_FILES,DEFAULT_LOCAL_BASE_URL,SERVERLESS_HOST_PATTERN,SERVERLESS_REFUSAL,isServerlessHost,resolveBaseUrl,assertNotServerlessForExecute,loadEnvFiles,parseArgs,wibDate,finalStatus,publishedToday,finalizedResponse,staleScanning,readLinuxMemAvailableMb,assertHeavyScanMemoryHeadroom,describeFetchError,makeClient,nkStatus,runNk,runDayTrade,main};
+module.exports={ENV_FILES,DEFAULT_LOCAL_BASE_URL,SERVERLESS_HOST_PATTERN,SERVERLESS_REFUSAL,isServerlessHost,resolveBaseUrl,assertNotServerlessForExecute,loadEnvFiles,parseArgs,wibDate,finalStatus,publishedToday,finalizedResponse,staleScanning,isStaleResume,readLinuxMemAvailableMb,assertHeavyScanMemoryHeadroom,describeFetchError,makeClient,nkStatus,runNk,runDayTrade,main};

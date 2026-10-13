@@ -9,9 +9,16 @@
 #   2. Jika log terakhir lebih tua dari 6 menit -> restart (proses macet).
 #   3. Simpan state PM2 agar tetap hidup setelah reboot.
 #
-# Crontab:
-#   */5 * * * * /home/ubuntu/auto-cuan/deploy/vps/check-verify-poller.sh >> \
+# Crontab (2026-10-13 fix):
+#   */5 * * * * /bin/bash /home/ubuntu/auto-cuan/deploy/vps/check-verify-poller.sh >> \
 #     /home/ubuntu/auto-cuan-runner/logs/verify-poller-watchdog.log 2>&1
+#
+# BUG-VERIFY-POLLER-PERMS (2026-10-13): the previous crontab entry invoked the
+# script directly and cron's /bin/sh logged
+#   "/bin/sh: 1: check-verify-poller.sh: Permission denied"
+# every 5 minutes. The watchdog never ran. Fix: invoke explicitly through
+# /bin/bash with the absolute script path (permissions are also set by the
+# deployment step: chmod +x on this file and tools/check-verify-poller.sh).
 # =============================================================================
 set -uo pipefail
 

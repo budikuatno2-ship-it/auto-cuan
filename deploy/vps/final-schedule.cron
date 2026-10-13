@@ -1,7 +1,16 @@
-# BEGIN AUTO-CUAN FINAL SCHEDULE — 4 PILAR (LIVE vs EOD) — 2026-09-25
+# BEGIN AUTO-CUAN FINAL SCHEDULE — 4 PILAR (LIVE vs EOD) — 2026-10-13
 # Timezone: Asia/Jakarta (WIB = UTC+7). Semua jam di bawah adalah WIB.
 # Live bursa: 09:00-16:00 WIB (02:00-09:00 UTC) — hanya FastWatcher & Daytrade
-# EOD malam: 19:00-19:45 WIB (12:00-12:45 UTC) — Swing Konglo, Swing Non-Konglo, Top5/Broker Recap
+#
+# REVISI 2026-10-13 (audit 1-12 Okt):
+#   * Nightly screener digeser 19:00 -> 21:30 WIB. Data candle EOD T-1 baru
+#     lengkap 962 emiten pada ~21:12 WIB; jam 19:00 memindai data parsial (87%).
+#   * Preflight coverage gate: eksekusi ditunda 15 menit bila cakupan candle
+#     hari-T < 95% (lihat deploy/vps/run-screeners-preflight.sh).
+#   * EOD market data / broksum ingestion dipersempit ke window 16:30-17:30 WIB.
+#   * Kalkulasi akumulasi bandar dijadwalkan tepat 18:00 WIB (setelah broksum).
+#   * Retry worker delivery Telegram berjalan tiap 15 menit (17:00-23:45 WIB).
+#   * Watchdog verify-poller memakai path absolut /bin/bash (fix Permission denied).
 CRON_TZ=Asia/Jakarta
 
 # ── INFRA HARIAN ──────────────────────────────────────────────────────────
@@ -9,13 +18,26 @@ CRON_TZ=Asia/Jakarta
 5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
 # Lifecycle evaluator (sore, setelah bursa tutup)
 30 16 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-lifecycle-evaluator.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
-# EOD queue: starts at 18:00 WIB and retries every 30 minutes until 23:30.
-# Cron is limited to Monday-Friday; the coordinator also checks the IDX 2026
-# holiday calendar, so weekends and exchange holidays send zero EOD requests.
-# Pending dates remain durable and resume at 18:00 on the next trading day.
-# The coordinator uses its terminal --final pass only at 23:30 WIB; real upstream errors remain pending.
-0,30 18-23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
-# Afternoon recap (18:45 WIB)
+
+# ── EOD MARKET DATA / BROKSUM INGESTION (16:30-17:30 WIB) ─────────────────
+# Window optimal: bursa tutup 16:00, KSEI merilis snapshot broker ~16:30-17:30.
+# Tiap 15 menit di dalam window supaya tanggal yang belum lengkap bisa lanjut;
+# coordinator tetap memeriksa kalender libur bursa (0 request saat libur).
+# Pending dates durable dan resume pada hari bursa berikutnya.
+30,45 16 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
+0,15,30,45 17 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
+# Pass final terminal (bila masih ada yang pending) — 23:30 WIB, tetap 1x/hari.
+30 23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh --final >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
+
+# ── KALKULASI AKUMULASI BANDAR (tepat 18:00 WIB) ──────────────────────────
+# Dijadwalkan setelah window broksum 16:30-17:30 selesai, sebelum screener malam,
+# supaya skor bandarmologi sudah tersedia saat screener 21:30 berjalan.
+0 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-broker-accumulation.sh >> /home/ubuntu/auto-cuan-runner/logs/broker-accumulation.log 2>&1
+
+# Afternoon recap (18:45 WIB) — dikirim SETELAH pasar tutup.
+# skip_market_guard=true diteruskan oleh runner supaya recap tidak diblokir
+# market guard (sebelumnya terblokir 20x berturut-turut dengan
+# [MARKET_GUARD_BLOCKED] market_closed).
 45 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-afternoon-recap.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daily-afternoon-recap.log 2>&1
 # Landing refresh (22:15 WIB, harian)
 15 22 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/direct-refresh-landing.js >> /home/ubuntu/auto-cuan-runner/logs/landing-refresh.log 2>&1
@@ -41,21 +63,31 @@ CRON_TZ=Asia/Jakarta
 # duplicate confirmed FastWatcher alerts. run-daytrade.sh remains diagnostic-only.
 
 # ── PRODUCER SCREENER (Full universe sweep via VPS daemon + Snapshot) ────
-# Berjalan 19:00 WIB (selesai ~19:07 WIB) menghasilkan data/screener-latest.json sebelum consumer berjalan
-0 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screeners.sh --execute --send >> /home/ubuntu/auto-cuan-runner/logs/screeners.log 2>&1
+# NIGHTLY SCREENER — 21:30 WIB (Senin-Jumat).
+# Data candle EOD T-1 lengkap 962 emiten tercapai ~21:12 WIB. Menjalankan
+# screener 19:00 memindai data parsial (87%) dan menghasilkan sinyal cacat.
+# Preflight gate: bila cakupan candle hari-T < 95%, eksekusi ditunda 15 menit
+# (maks 4 kali) sebelum menyerah dan mencatat DEFERRED ke log.
+30 21 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screeners-preflight.sh --execute --send >> /home/ubuntu/auto-cuan-runner/logs/screeners.log 2>&1
 
-# ── END-OF-DAY / MALAM (Senin-Jumat, 19:00-19:45 WIB) ─────────────────────
+# ── END-OF-DAY / MALAM (Senin-Jumat, 21:30-22:15 WIB) ────────────────────
 # Swing public delivery is owned by the canonical API finalizers invoked by the
-# 19:00 producer:
+# 21:30 producer:
 #   refresh-screener       -> sendSwingKongloTelegramNotification()
 #   nk-screener finalize   -> sendSwingNkTelegramNotification()
 # Those paths preserve the Swing R/R, freshness, quality, dedupe and cooldown
 # guards. The old 19:15/19:30 generic snapshot cards are intentionally disabled
 # because they bypass those gates and can duplicate the canonical signal.
 #
-# 19:45 stays as READ-ONLY diagnostics only. It must never rebroadcast DayTrade
+# 22:15 stays as READ-ONLY diagnostics only. It must never rebroadcast DayTrade
 # or Swing snapshot cards.
-45 19 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screener-dispatch.sh --dry-run >> /home/ubuntu/auto-cuan-runner/logs/screener-dispatch.log 2>&1
+15 22 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screener-dispatch.sh --dry-run >> /home/ubuntu/auto-cuan-runner/logs/screener-dispatch.log 2>&1
+
+# ── TELEGRAM DELIVERY RETRY WORKER (tiap 15 menit, 17:00-23:45 WIB) ──────
+# Menyapu baris DELIVERY_RETRYABLE dan DELIVERY_PENDING yang tertinggal
+# (produksi: 48 antrean menumpuk + MEDC 2026-10-12 stuck DELIVERY_PENDING).
+# Mengirim dengan skip_market_guard=true karena delivery EOD memang setelah tutup.
+*/15 17-23 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-retry-telegram-delivery.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/retry-telegram-delivery.log 2>&1
 
 # ── HYBRID WEBHOOK FAILOVER — DINONAKTIFKAN (2026-09-25) ────────────────
 # Verifikasi bot sekarang memakai LONG POLLING mandiri via PM2
@@ -77,7 +109,9 @@ CRON_TZ=Asia/Jakarta
 # Sanitasi cache kadaluarsa + hash audit + heartbeat — <1s, <10MB, menjaga CPU p95 >20%
 0 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-keepalive.sh >> /home/ubuntu/auto-cuan-runner/logs/keepalive.log 2>&1
 
-# Watchdog long-polling verifikasi bot (auto-restart bila stall/mati)
-*/5 * * * * /home/ubuntu/auto-cuan/deploy/vps/check-verify-poller.sh >> /home/ubuntu/auto-cuan-runner/logs/verify-poller-watchdog.log 2>&1
+# Watchdog long-polling verifikasi bot (auto-restart bila stall/mati).
+# Path absolut /bin/bash: sebelumnya crontab memanggil skrip langsung dan
+# mencatat "/bin/sh: 1: check-verify-poller.sh: Permission denied" tiap 5 menit.
+*/5 * * * * /bin/bash /home/ubuntu/auto-cuan/deploy/vps/check-verify-poller.sh >> /home/ubuntu/auto-cuan-runner/logs/verify-poller-watchdog.log 2>&1
 
 # END AUTO-CUAN FINAL SCHEDULE

@@ -10572,7 +10572,38 @@ async function handleNkScreenerStart(req, res, supabase) {
       .maybeSingle();
     const resumeMeta = resumeRes && resumeRes.data;
     const targetRunDate = (resumeMeta && resumeMeta.run_date) || runDate;
-    if (resumeMeta && Number(resumeMeta.total_batches) > 0) {
+    // BUG-NK-RESUME-STALE-DATE (2026-10-13): production evidence showed the meta
+    // row frozen at run_date=2026-10-09 (status=scanning, 13/13 batches already
+    // scanned, published_count=20) while every new day's runner call resumed
+    // that ancient plan. The plan "identity intact" check passed forever
+    // because the 2026-10-09 jobs were never deleted, so START returned
+    // resumed=true with stale geometry and the runner looped until
+    // --max-attempts (40) without ever scanning today's universe. A resume is
+    // only legitimate for TODAY's run_date; any older date must be abandoned
+    // and replaced with a fresh plan for the current day.
+    if (resumeMeta && String(resumeMeta.run_date || '') !== runDate) {
+      try {
+        // Clear the abandoned plan so no later call can resurrect it. Latest
+        // published rows (swing_screener_non_konglo_latest) are intentionally
+        // NOT touched here — they are replaced only during a successful
+        // finalize of the new run.
+        await supabase.from('swing_screener_non_konglo_jobs').delete().eq('run_date', targetRunDate);
+        await supabase.from('swing_screener_non_konglo_staging').delete().eq('run_date', targetRunDate);
+        await updateNkMeta(supabase, {
+          status: 'idle',
+          run_date: runDate,
+          total_batches: 0,
+          batch_size: 0,
+          scanned_count: 0,
+          failed_count: 0,
+          published_count: 0,
+          message: 'Abandoned stale batch plan from ' + targetRunDate + '; rebuilding for ' + runDate + '.'
+        });
+      } catch (stalePlanErr) {
+        // Deletion failure must not block the fresh plan: the insert path below
+        // deletes today's jobs/staging again before creating the new batches.
+      }
+    } else if (resumeMeta && Number(resumeMeta.total_batches) > 0) {
       const jobsRes = await supabase
         .from('swing_screener_non_konglo_jobs')
         .select('batch_index,status')
@@ -10585,6 +10616,7 @@ async function handleNkScreenerStart(req, res, supabase) {
           success: true,
           step: 'start',
           resumed: true,
+          run_date: targetRunDate,
           universe_count: Number(resumeMeta.universe_count) || 0,
           batch_count: jobs.length,
           batch_size: Number(resumeMeta.batch_size) || 8
@@ -14581,6 +14613,9 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
 
     await annotateRecentlyFailedSimilarSetups(supabase, finalList, runDate || getJakartaDateString());
 
+    // BUG-TEL-PENDING-STRAND: tracks whether finalize already settled the claim
+    // so the catch block never double-releases a resolved batch.
+    var dtDeliveryFinalized = false;
     var dtDeliveryPrep =
       await telegramDelivery.prepareCandidatesForDelivery({
         supabase: supabase,
@@ -14641,6 +14676,15 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     if (timeGuard.blocked && !options.bypass_time_guard) {
       _dtTelegramLastRunId = runId;
       _dtTelegramLastRunReason = timeGuard.reason;
+      // BUG-TEL-PENDING-STRAND: rows were already claimed by
+      // prepareCandidatesForDelivery above; aborting here without releasing the
+      // claim left them DELIVERY_IN_PROGRESS with first_sent_at=null. Release
+      // the claim so the retry worker can sweep them.
+      await telegramDelivery.releasePreparedDeliveryClaim({
+        supabase: supabase,
+        preparation: dtDeliveryPrep,
+        reason: 'time_guard_blocked'
+      });
       return {
         sent: false,
         skipped: true,
@@ -14679,6 +14723,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
         preparation: dtDeliveryPrep,
         send_result: result
       });
+    dtDeliveryFinalized = true;
 
     telegramDelivery.attachDeliveryTelemetry(
       result,
@@ -14711,6 +14756,15 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
 
     return result;
   } catch (e) {
+    // BUG-TEL-PENDING-STRAND: release the DayTrade claim when an exception
+    // interrupts the prepare -> send -> finalize pipeline.
+    if (typeof dtDeliveryPrep !== 'undefined' && dtDeliveryPrep && dtDeliveryPrep.ready && !dtDeliveryFinalized) {
+      await telegramDelivery.releasePreparedDeliveryClaim({
+        supabase: supabase,
+        preparation: dtDeliveryPrep,
+        reason: 'exception_before_finalize'
+      });
+    }
     return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80), published_count: publishedCount };
   }
 }
@@ -15543,6 +15597,9 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
 
     await annotateRecentlyFailedSimilarSetups(supabase, finalList, getJakartaDateString());
 
+    // BUG-TEL-PENDING-STRAND: tracks whether finalize already settled the claim
+    // so the catch block never double-releases a resolved batch.
+    var skDeliveryFinalized = false;
     var skDeliveryPrep =
       await telegramDelivery.prepareCandidatesForDelivery({
         supabase: supabase,
@@ -15611,6 +15668,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
         preparation: skDeliveryPrep,
         send_result: result
       });
+    skDeliveryFinalized = true;
 
     telegramDelivery.attachDeliveryTelemetry(
       result,
@@ -15637,7 +15695,21 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     }
 
     return result;
-  } catch (e) { return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80) }; }
+  } catch (e) {
+    // BUG-TEL-PENDING-STRAND (2026-10-13): a throw between prepare and finalize
+    // leaves every claimed row stuck at DELIVERY_IN_PROGRESS (no first_sent_at),
+    // which then decays through the pending-recovery window and can strand the
+    // signal. Release the claim as DELIVERY_RETRYABLE so the retry worker can
+    // pick it up.
+    if (typeof skDeliveryPrep !== 'undefined' && skDeliveryPrep && skDeliveryPrep.ready && !skDeliveryFinalized) {
+      await telegramDelivery.releasePreparedDeliveryClaim({
+        supabase: supabase,
+        preparation: skDeliveryPrep,
+        reason: 'exception_before_finalize'
+      });
+    }
+    return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80) };
+  }
 }
 
 // ============================================================
@@ -15755,6 +15827,8 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
 
     await annotateRecentlyFailedSimilarSetups(supabase, finalList, getJakartaDateString());
 
+    // BUG-TEL-PENDING-STRAND: same claim-release guard as the Konglo path.
+    var nkDeliveryFinalized = false;
     var nkDeliveryPrep =
       await telegramDelivery.prepareCandidatesForDelivery({
         supabase: supabase,
@@ -15823,6 +15897,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
         preparation: nkDeliveryPrep,
         send_result: result
       });
+    nkDeliveryFinalized = true;
 
     telegramDelivery.attachDeliveryTelemetry(
       result,
@@ -15849,7 +15924,18 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     }
 
     return result;
-  } catch (e) { return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80) }; }
+  } catch (e) {
+    // BUG-TEL-PENDING-STRAND: release the NK claim when an exception interrupts
+    // the prepare -> send -> finalize pipeline.
+    if (typeof nkDeliveryPrep !== 'undefined' && nkDeliveryPrep && nkDeliveryPrep.ready && !nkDeliveryFinalized) {
+      await telegramDelivery.releasePreparedDeliveryClaim({
+        supabase: supabase,
+        preparation: nkDeliveryPrep,
+        reason: 'exception_before_finalize'
+      });
+    }
+    return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80) };
+  }
 }
 
 // Shared swing Telegram formatter (Konglo + Non-Konglo)
