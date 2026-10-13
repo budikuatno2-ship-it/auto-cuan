@@ -548,6 +548,28 @@
     }
   }
 
+  function formatSourceLabel(source) {
+    if (!source) return 'Belum tersedia';
+    var s = String(source).trim();
+    switch (s) {
+      case 'arjum financial-statements':
+        return 'Laporan Keuangan Resmi BEI';
+      case 'daily_candles_flat_file':
+      case 'daily_candles':
+        return 'Data Harian Penutupan BEI';
+      case 'IDX calculated':
+        return 'Kalkulasi BEI';
+      case 'calculated (shares_outstanding * last_price)':
+        return 'Kalkulasi Otomatis (Saham x Harga Penutupan)';
+      case 'stock_fundamentals':
+        return 'Basis Data Fundamental BEI';
+      case 'KSEI':
+        return 'KSEI';
+      default:
+        return s;
+    }
+  }
+
   function formatIndonesianSharesCount(val) {
     if (!researchHasNumber(val)) return '—';
     var n = Number(val);
@@ -570,7 +592,10 @@
       return 'Rp ' + (n / 1e12).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' T';
     }
     if (n >= 1e9) {
-      return 'Rp ' + (n / 1e9).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' M';
+      return 'Rp ' + (n / 1e9).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Mrd';
+    }
+    if (n >= 1e6) {
+      return 'Rp ' + (n / 1e6).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Jt';
     }
     return 'Rp ' + n.toLocaleString('id-ID');
   }
@@ -1622,17 +1647,23 @@
 
     researchText('financialPbv', hasPbv ? researchNumber(f.pbv, 2) + 'x' : '—');
     var referencePrice = researchHasNumber(f.pbv_as_of_price) ? 'Harga acuan ' + researchIdr(f.pbv_as_of_price) : 'Harga acuan —';
-    if (price && price.last_price_as_of) referencePrice += ' · ' + price.last_price_as_of;
-    if (price && price.last_price_source) referencePrice += ' · ' + price.last_price_source;
+    if (price && price.last_price_as_of) {
+      var priceDate = (typeof price.last_price_as_of === 'string' && (price.last_price_as_of.indexOf('T') !== -1 || price.last_price_as_of.indexOf('Z') !== -1))
+        ? formatIndonesianDateWithWib(price.last_price_as_of)
+        : price.last_price_as_of;
+      referencePrice += ' · ' + priceDate;
+    }
+    if (price && price.last_price_source) referencePrice += ' · ' + formatSourceLabel(price.last_price_source);
     if (price && price.freshness === 'stale') referencePrice += ' · Data historis';
     researchText('financialPbvPrice', referencePrice);
     researchText('financialBvps', hasBvps ? researchIdr(f.book_value_per_share) : '—');
     researchText('financialShares', hasShares ? formatIndonesianSharesCount(f.shares_outstanding) : '—');
     researchText('financialMarketCap', hasMarketCap ? formatIndonesianMarketCap(f.market_cap) : '—');
-    researchText('financialMarketCapAsOf', f.market_cap_as_of ? 'As of ' + f.market_cap_as_of : 'Belum tersedia');
+    researchText('financialMarketCapAsOf', f.market_cap_as_of ? 'Per ' + f.market_cap_as_of : 'Belum tersedia');
     researchText('financialPeriod', f.fundamental_period || 'Belum tersedia');
     researchText('financialPeriodHero', f.fundamental_period ? 'Periode ' + f.fundamental_period : 'Periode belum tersedia');
-    researchText('financialSource', f.fundamental_source || 'Belum tersedia');
+    researchText('financialSource', formatSourceLabel(f.fundamental_source));
+    researchText('financialMarketCapSource', formatSourceLabel(f.market_cap_source));
     var rawUpdated = f.fundamental_updated_at || f.updated_at;
     var formattedUpdated = 'Belum tersedia';
     if (rawUpdated) {

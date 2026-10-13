@@ -10956,10 +10956,14 @@ html.light .sidebar-subgroup-label {
 #panel-tab-financial[data-ac-ui="v2"] #financialTickerInput {
   background: var(--ac-surface);
   color: var(--ac-ink);
-  border: 1px solid var(--ac-text-secondary);
+  border: 1px solid var(--ac-control-border);
+  border-radius: var(--ac-radius-md, 8px);
   width: 104px;
   min-height: 44px;
   font-size: 16px;
+}
+#panel-tab-financial[data-ac-ui="v2"] #financialTickerInput:focus {
+  border-color: var(--ac-brand);
 }
 #panel-tab-financial[data-ac-ui="v2"] .ac-financial-search-label {
   color: var(--ac-text-secondary);
@@ -10969,6 +10973,7 @@ html.light .sidebar-subgroup-label {
   background: var(--ac-brand);
   color: var(--ac-surface);
   border: 1px solid var(--ac-brand);
+  border-radius: var(--ac-radius-md, 8px);
   min-height: 44px;
 }
 #panel-tab-financial[data-ac-ui="v2"] :is(#financialTickerInput, .ac-research-load-btn):focus-visible {
