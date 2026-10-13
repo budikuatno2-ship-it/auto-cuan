@@ -120,12 +120,26 @@ test('F13-05: final-schedule.cron declares CRON_TZ and each command uses node ru
   }
 });
 
-test('F13-05b: EOD retries stay inside trading evenings without a final cutoff', () => {
+test('F13-05b: EOD ingestion stays inside the 16:30-17:30 WIB broker-snapshot window', () => {
+ // REVISI 2026-10-13 (audit 1-12 Okt): the EOD ingestion window moved from
+ // 18:00-23:30 to the broker-snapshot window 16:30-17:30 WIB (KSEI publishes
+ // ~16:30-17:30), plus a single terminal --final pass at 23:30 WIB. Bandar
+ // accumulation moved to its own dedicated 18:00 job (run-broker-accumulation.sh).
  const raw=fs.readFileSync(path.join(__dirname,'..','deploy/vps/final-schedule.cron'),'utf8');
+ const active=raw.split('\n').filter(l=>!l.trim().startsWith('#')).join('\n');
  const lines=raw.split('\n').filter(l=>!l.trim().startsWith('#')&&l.includes('run-daily-market-update.sh'));
- assert.equal(lines.length,1);
- assert.match(lines[0],/^0,30\s+18-23\s+\*\s+\*\s+1-5\s+/);
- assert.doesNotMatch(raw.split('\n').filter(l=>!l.trim().startsWith('#')).join('\n'),/--final|run-daily-broker-update\.sh/);
+
+ const windowLines = lines.filter((l) => !l.includes('--final'));
+ const finalLines = lines.filter((l) => l.includes('--final'));
+ assert.equal(windowLines.length, 2, 'expected two window firings (16:30/16:45 and 17:00/17:15/17:30/17:45)');
+ assert.match(windowLines[0],/^30,45\s+16\s+\*\s+\*\s+1-5\s+/);
+ assert.match(windowLines[1],/^0,15,30,45\s+17\s+\*\s+\*\s+1-5\s+/);
+ assert.equal(finalLines.length, 1, 'exactly one terminal --final pass');
+ assert.match(finalLines[0],/^30\s+23\s+\*\s+\*\s+1-5\s+/);
+
+ // The accumulation job is now its own 18:00 schedule, never a broker-update arg.
+ assert.match(active, /^0\s+18\s+\*\s+\*\s+1-5\s+.*run-broker-accumulation\.sh/m);
+ assert.doesNotMatch(active,/run-daily-broker-update\.sh/);
 });
 
 // ---------------------------------------------------------------------------

@@ -140,12 +140,20 @@ test('NK-02b: updateNkMeta works when no row exists yet (first write)', async ()
 });
 
 test('NK-04/NK-05: START resumes the persisted plan instead of rebuilding with default 8', async () => {
+  // BUG-NK-RESUME-STALE-DATE (2026-10-13): a resume is only legitimate for
+  // TODAY's run_date. Production evidence: meta frozen at 2026-10-09 while the
+  // runner executed on 2026-10-12; every START returned resumed=true with the
+  // stale plan and the runner looped 40x without ever scanning the new day.
+  // This test therefore pins the meta to TODAY so it exercises the resume path
+  // that must keep working, while a sibling test covers the stale-date path.
+  const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
   // Universe 635 @ batch_size 50 => 13 batches, already created.
   const jobs = [];
-  for (let i = 0; i < 13; i++) jobs.push({ id: i + 1, run_date: '2026-10-09', batch_index: i, status: 'pending', tickers: [] });
+  for (let i = 0; i < 13; i++) jobs.push({ id: i + 1, run_date: today, batch_index: i, status: 'pending', tickers: [] });
   const store = makeStore({
     swing_screener_non_konglo_meta: [{
-      id: 'latest', status: 'scanning', run_date: '2026-10-09',
+      id: 'latest', status: 'scanning', run_date: today,
       batch_size: 50, total_batches: 13, universe_count: 635
     }],
     swing_screener_non_konglo_jobs: jobs
@@ -157,11 +165,39 @@ test('NK-04/NK-05: START resumes the persisted plan instead of rebuilding with d
   await sectorHot.__test.handleNkScreenerStart(authedReq(), res, store);
 
   assert.ok(responded, 'handler must respond');
-  assert.equal(responded.resumed, true, 'existing plan must be resumed');
+  assert.equal(responded.resumed, true, 'existing same-day plan must be resumed');
   assert.equal(responded.batch_count, 13, 'plan must stay 13 batches');
   assert.equal(responded.batch_size, 50, 'plan must stay batch_size 50');
+  assert.equal(responded.run_date, today, 'resume response must expose its run_date');
   // No job was deleted or recreated: still exactly 13 rows.
   assert.equal(store.tables.swing_screener_non_konglo_jobs.length, 13);
+});
+
+test('NK-04c: START abandons a STALE run_date and never resumes yesterday plan', async () => {
+  const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const staleDate = '2026-10-09';
+
+  const jobs = [];
+  for (let i = 0; i < 13; i++) jobs.push({ id: i + 1, run_date: staleDate, batch_index: i, status: 'done', tickers: [] });
+  const store = makeStore({
+    swing_screener_non_konglo_meta: [{
+      id: 'latest', status: 'scanning', run_date: staleDate,
+      batch_size: 50, total_batches: 13, universe_count: 635, published_count: 20
+    }],
+    swing_screener_non_konglo_jobs: jobs,
+    swing_screener_non_konglo_staging: []
+  });
+
+  let responded = null;
+  const res = { status() { return res; }, json(body) { responded = body; return res; } };
+
+  await sectorHot.__test.handleNkScreenerStart(authedReq(), res, store);
+
+  assert.ok(responded, 'handler must respond');
+  assert.notEqual(responded.resumed, true, 'a stale plan must NEVER be resumed');
+  // The stale jobs were cleared, so no 2026-10-09 row survives.
+  const staleJobsLeft = store.tables.swing_screener_non_konglo_jobs.filter((j) => j.run_date === staleDate);
+  assert.equal(staleJobsLeft.length, 0, 'stale batch jobs must be deleted');
 });
 
 test('NK-01/NK-15: batch plan formula is ceil(universe/batch_size) — 635 @ 50 => 13, never 80', () => {
