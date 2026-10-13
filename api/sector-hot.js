@@ -85,6 +85,8 @@ const fastWatcherMomentum = require('../lib/intraday-fast-watcher-momentum');
 const marketHoursGuard = require('../lib/market-hours-guard');
 const idxTradingCalendar = require('../lib/idx-trading-calendar');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const fcaTransition2026 = require('../lib/fca-transition-2026');
 const daytradeFcaLiveTradeProof = require('../lib/daytrade-fca-live-trade-proof');
 
