@@ -313,7 +313,7 @@
     var page = $('page-' + name); if (page) page.classList.add('active');
     var mobileSelect = $('pccMobileSectionSelect');
     if (mobileSelect) {
-      var targetVal = name === 'scenarios' ? 'risk' : name;
+      var targetVal = name;
       if (mobileSelect.value !== targetVal) mobileSelect.value = targetVal;
     }
     if (name === 'watch') renderWatch();

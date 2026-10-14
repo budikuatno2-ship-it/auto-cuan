@@ -147,7 +147,7 @@
     // "tanggal belum tersedia" state via formatDateDisplay's empty-input path.
     // Auto-select the NEWEST available date only when the caller has not pinned
     // one. An explicit selection (e.g. a date the operator picked, or a date a
-    // caller passes in) must survive untouched — otherwise the dropdown would
+    // caller passes in) must survive untouched - otherwise the dropdown would
     // snap back to the newest day on every re-render and the pinned history
     // could never be read.
     if (!selectedDate || selectedDate === 'latest' || (dates && dates.length > 0 && !dates.includes(selectedDate))) {
@@ -166,7 +166,7 @@
       var aDt = dates[ad];
       var isCurrentDate = aDt === selectedDate;
       var dateNote = ad === 0 ? ' (Terbaru)' : '';
-      var dispDate = typeof formatDateDisplay === 'function' ? formatDateDisplay(aDt) : aDt;
+      var dispDate = typeof formatDateWibDisplay === 'function' ? formatDateWibDisplay(aDt) : aDt;
       html += '      <option value="' + escapeHtml(aDt) + '"' + (isCurrentDate ? ' selected' : '') + '>' + escapeHtml(dispDate) + dateNote + '</option>';
     }
     html += '    </select>';
@@ -190,7 +190,7 @@
       dates = collectAvailableDateOptions(ticker);
     }
     if (!dates) dates = [];
-    // Batch 6 F-040: no static date fallback — mirror initBrokerDateSelect.
+    // Batch 6 F-040: no static date fallback - mirror initBrokerDateSelect.
     if (dates && dates.length > 0) {
       if (!selectedDate || selectedDate === 'latest' || !dates.includes(selectedDate)) {
         selectedDate = dates[0];
@@ -206,7 +206,7 @@
       for (var ad = 0; ad < dates.length; ad++) {
         var opt = document.createElement('option');
         opt.value = dates[ad];
-        var dispDate = typeof formatDateDisplay === 'function' ? formatDateDisplay(dates[ad]) : dates[ad];
+        var dispDate = typeof formatDateWibDisplay === 'function' ? formatDateWibDisplay(dates[ad]) : dates[ad];
         opt.textContent = dispDate + (ad === 0 ? ' (Terbaru)' : '');
         if (dates[ad] === selectedDate) {
           opt.selected = true;
@@ -236,7 +236,7 @@
     if (val == null) return null;
     if (typeof val === 'number') return isFinite(val) ? val : null;
     var s = String(val).trim();
-    if (!s || s === '—' || s === '-' || s.toLowerCase() === 'nan' || s.toLowerCase() === 'null') return null;
+    if (!s || s === '-' || s === '-' || s.toLowerCase() === 'nan' || s.toLowerCase() === 'null') return null;
 
     var mult = 1;
     var cleanStr = s.replace(/Rp\.?\s*/gi, '').replace(/\s+/g, '');
@@ -279,7 +279,7 @@
 
   function formatBrokerVal(num, includeSign) {
     var n = parseNumericValue(num);
-    if (n == null) return '—';
+    if (n == null) return '-';
     var sign = '';
     if (includeSign) {
       sign = n >= 0 ? '+' : '-';
@@ -291,7 +291,7 @@
       return sign + (abs / 1e12).toFixed(2).replace(/\.00$/, '') + ' T';
     }
     if (abs >= 1e9) {
-      return sign + (abs / 1e9).toFixed(2).replace(/\.00$/, '') + ' M';
+      return sign + (abs / 1e9).toFixed(2).replace(/\.00$/, '') + ' Mrd';
     }
     if (abs >= 1e6) {
       return sign + (abs / 1e6).toFixed(1).replace(/\.0$/, '') + ' Jt';
@@ -304,11 +304,11 @@
 
   function formatIDR(num) {
     var n = parseNumericValue(num);
-    if (n == null) return '—';
+    if (n == null) return '-';
     var abs = Math.abs(n);
     var sign = n < 0 ? '-' : '';
     if (abs >= 1e12) return sign + (abs / 1e12).toFixed(2).replace(/\.00$/, '') + ' T';
-    if (abs >= 1e9) return sign + (abs / 1e9).toFixed(2).replace(/\.00$/, '') + ' M';
+    if (abs >= 1e9) return sign + (abs / 1e9).toFixed(2).replace(/\.00$/, '') + ' Mrd';
     if (abs >= 1e6) return sign + (abs / 1e6).toFixed(1).replace(/\.0$/, '') + ' Jt';
     if (abs >= 1e3) return sign + (abs / 1e3).toFixed(0) + ' Rb';
     return sign + new Intl.NumberFormat('id-ID').format(abs);
@@ -316,7 +316,7 @@
 
   function formatNumber(num) {
     var n = parseNumericValue(num);
-    if (n == null) return '—';
+    if (n == null) return '-';
     return new Intl.NumberFormat('id-ID').format(n);
   }
 
@@ -407,7 +407,7 @@
   };
 
   function getBrokerSecurityName(brokerCode, fallbackName) {
-    if (!brokerCode) return '—';
+    if (!brokerCode) return '-';
     var code = String(brokerCode).trim().toUpperCase();
     if (BROKER_NAMES[code]) {
       return BROKER_NAMES[code];
@@ -689,8 +689,8 @@
 
     var netFlow = summary.net_flow || 0;
     var isPos = netFlow >= 0;
-    var tBuyer = (finalBuyers[0] && (finalBuyers[0].broker || finalBuyers[0].broker_code || finalBuyers[0].code)) || '—';
-    var tSeller = (finalSellers[0] && (finalSellers[0].broker || finalSellers[0].broker_code || finalSellers[0].code)) || '—';
+    var tBuyer = (finalBuyers[0] && (finalBuyers[0].broker || finalBuyers[0].broker_code || finalBuyers[0].code)) || '-';
+    var tSeller = (finalSellers[0] && (finalSellers[0].broker || finalSellers[0].broker_code || finalSellers[0].code)) || '-';
     var top1 = isPos ? tBuyer : tSeller;
     var series = Array.isArray(summary.date_headers) && summary.date_headers.length > 0
       ? summary.date_headers
@@ -1197,7 +1197,7 @@
     html += '      <div class="h-full rounded-r-full bg-rose-500 transition-all duration-300" style="width:' + sellPct + '%"></div>';
     html += '    </div>';
     var totalClusterVal = lastBrokerItems.reduce(function (sum, it) { return sum + (it.txVal || 0); }, 0);
-    var contribPct = totalClusterVal > 0 ? ((broker.txVal / totalClusterVal) * 100).toFixed(1) : '—';
+    var contribPct = totalClusterVal > 0 ? ((broker.txVal / totalClusterVal) * 100).toFixed(1) : '-';
 
     html += '    <div class="flex flex-wrap items-center justify-between text-[10px] text-gray-400 font-mono mt-2 pt-1 border-t border-dark-600/20">';
     html += '      <span>Total Transaksi Gross: <strong class="text-gray-200">' + formatIDR(totalGross) + '</strong></span>';
@@ -1226,11 +1226,11 @@
     html += '    </div>';
     html += '    <div class="p-2.5 rounded-xl bg-dark-700/40 border border-dark-600/30">';
     html += '      <div class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Avg Harga Beli</div>';
-    html += '      <div class="text-gray-200 font-bold text-xs sm:text-sm">' + (broker.avgBuy ? '@ Rp ' + formatNumber(broker.avgBuy) : '—') + '</div>';
+    html += '      <div class="text-gray-200 font-bold text-xs sm:text-sm">' + (broker.avgBuy ? '@ Rp ' + formatNumber(broker.avgBuy) : '-') + '</div>';
     html += '    </div>';
     html += '    <div class="p-2.5 rounded-xl bg-dark-700/40 border border-dark-600/30">';
     html += '      <div class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Avg Harga Jual</div>';
-    html += '      <div class="text-gray-200 font-bold text-xs sm:text-sm">' + (broker.avgSell ? '@ Rp ' + formatNumber(broker.avgSell) : '—') + '</div>';
+    html += '      <div class="text-gray-200 font-bold text-xs sm:text-sm">' + (broker.avgSell ? '@ Rp ' + formatNumber(broker.avgSell) : '-') + '</div>';
     html += '    </div>';
     html += '  </div>';
 
@@ -1715,7 +1715,7 @@
     // PR2 fix: safeTicker MUST be declared before any use. It was previously
     // declared with `var` AFTER the local-fallback branch below, so on that
     // path it hoisted to `undefined` and the request went out as
-    // `?ticker=undefined` — the API then returned an empty date list, which is
+    // `?ticker=undefined` - the API then returned an empty date list, which is
     // why the "Pilih Tanggal" dropdown only ever showed one option.
     var safeTicker = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     var base = getVpsDataApiBase();
@@ -1967,7 +1967,7 @@
       }
       // FIX (stage 1 range param): the ACTIVE range must always reach the API.
       // Previously 1D skipped `range` entirely and relied on the server default,
-      // so the request carried no window at all — a range switch could then be
+      // so the request carried no window at all - a range switch could then be
       // answered from whatever the backend considered current.
       var rangeDaysMap = { '1d': 1, '5d': 5, '7d': 7, '14d': 14, '30d': 30, '60d': 60 };
       if (brokerSummaryRange === 'custom' && customRangeStart && customRangeEnd) {
@@ -2159,7 +2159,7 @@
       // FIX (stage 1 AVG column): the broker payload stores value and volume on a
       // 100x scale relative to the traded price, so the raw quotient overshoots by
       // 100x (2,125,000 instead of 21,250). computeAvgPrice() owns that scale
-      // normalisation — reuse it instead of dividing raw, and fall back to the
+      // normalisation - reuse it instead of dividing raw, and fall back to the
       // opposite side so a one-sided row still resolves a real average.
       var avg = pick(raw, ['avg_price', 'avg', 'avg_buy', 'avgBuy', 'avg_sell', 'avgSell', 'bavg', 'savg', 'broker_avg']);
       if (!(avg > 0)) avg = null;
@@ -2238,7 +2238,7 @@
     }
     if (netVol == null) netVol = 0;
 
-    // FIX (stage 1 AVG = "—"): resolve through computeAvgPrice() so the broker
+    // FIX (stage 1 AVG = "-"): resolve through computeAvgPrice() so the broker
     // value/volume 100x scale is normalised, then fall back to the opposite side
     // and finally to |netVal / netVol| before giving up on the column.
     var avgPrice = num(src.avg != null ? src.avg : (src.avg_price != null ? src.avg_price : (src.avg_buy != null ? src.avg_buy : src.avg_sell)));
@@ -2298,10 +2298,10 @@
       // Top Buyers
       html += '    <section class="broker-summary-panel bg-dark-700/40 border border-dark-600/30 rounded-xl p-3 overflow-hidden" aria-label="Top broker pembeli">';
       html += '      <div class="text-[11px] font-bold text-emerald-400 mb-2 flex items-center justify-between pb-1.5 border-b border-dark-600/40 sticky top-0 bg-slate-900 z-10 p-1" style="position: sticky; top: 0; z-index: 10; background-color: #0f172a;">';
-      html += '        <span>🟢 TOP BUYERS (' + (isGross ? 'FULL / GROSS' : 'NET VALUE &amp; VOL') + ') — ' + buyers.length + ' Broker</span>';
+      html += '        <span>🟢 TOP BUYERS (' + (isGross ? 'FULL / GROSS' : 'NET VALUE &amp; VOL') + ') - ' + buyers.length + ' Broker</span>';
       html += '        <span class="text-[10px] text-gray-400 font-mono">' + (isGross ? 'BUY &amp; SELL VAL' : 'NET VAL') + '</span>';
       html += '      </div>';
-      html += '      <div class="broker-summary-table-wrap overflow-y-auto overflow-x-auto pr-1" style="max-height: 480px; overflow-y: auto; overflow-x: auto;">';
+      html += '      <div class="broker-summary-table-wrap overflow-y-auto overflow-x-auto pr-3" style="max-height: 480px; overflow-y: auto; overflow-x: auto; padding-right: 12px;">';
       if (buyers.length === 0) {
         html += '        <div class="text-gray-500 text-center py-6 text-xs">Tidak ada data buyer</div>';
       } else {
@@ -2329,7 +2329,7 @@
           var sellVol = item.svol != null ? item.svol : (item.sell_vol || 0);
           var buyVal = normalizeBrokerValue(item.bval != null ? item.bval : (item.buy_val || item.val || item.value || 0), buyVol, item.avg_buy || item.avg_price);
           var sellVal = normalizeBrokerValue(item.sval != null ? item.sval : (item.sell_val || 0), sellVol, item.avg_sell || item.avg_price);
-          // FIX: full fallback chain — never render NET VOL: +0 / NET VAL: +0.
+          // FIX: full fallback chain - never render NET VOL: +0 / NET VAL: +0.
           var buyerMetrics = resolveBrokerRowMetrics(item, true);
           var netVal = buyerMetrics.netVal;
           var netVol = buyerMetrics.netVol;
@@ -2342,7 +2342,7 @@
             html += '                <span class="text-gray-400 text-[10px] ml-1.5 truncate max-w-[100px] inline-block align-middle" title="' + escapeHtml(item.broker_name) + '">' + escapeHtml(item.broker_name) + '</span>';
           }
           html += '              </td>';
-          html += '              <td class="py-2 px-2 text-right font-mono text-gray-300 text-[11px]">' + (buyerMetrics.avgPrice > 0 ? formatNumber(buyerMetrics.avgPrice) : '—') + '</td>';
+          html += '              <td class="py-2 px-2 text-right font-mono text-gray-300 text-[11px]">' + (buyerMetrics.avgPrice > 0 ? formatNumber(buyerMetrics.avgPrice) : '-') + '</td>';
           if (isGross) {
             html += '              <td class="py-2 px-2 text-right font-mono text-gray-300 text-[11px]">' + formatNumber(buyVol) + '</td>';
             html += '              <td class="py-2 px-2 text-right font-mono text-emerald-400 font-bold text-[11px]">+' + formatIDR(buyVal) + '</td>';
@@ -2367,10 +2367,10 @@
       // Top Sellers
       html += '    <section class="broker-summary-panel bg-dark-700/40 border border-dark-600/30 rounded-xl p-3 overflow-hidden" aria-label="Top broker penjual">';
       html += '      <div class="text-[11px] font-bold text-rose-400 mb-2 flex items-center justify-between pb-1.5 border-b border-dark-600/40 sticky top-0 bg-slate-900 z-10 p-1" style="position: sticky; top: 0; z-index: 10; background-color: #0f172a;">';
-      html += '        <span>🔴 TOP SELLERS (' + (isGross ? 'FULL / GROSS' : 'NET VALUE &amp; VOL') + ') — ' + sellers.length + ' Broker</span>';
+      html += '        <span>🔴 TOP SELLERS (' + (isGross ? 'FULL / GROSS' : 'NET VALUE &amp; VOL') + ') - ' + sellers.length + ' Broker</span>';
       html += '        <span class="text-[10px] text-gray-400 font-mono">' + (isGross ? 'SELL &amp; BUY VAL' : 'NET VAL') + '</span>';
       html += '      </div>';
-      html += '      <div class="broker-summary-table-wrap overflow-y-auto overflow-x-auto pr-1" style="max-height: 480px; overflow-y: auto; overflow-x: auto;">';
+      html += '      <div class="broker-summary-table-wrap overflow-y-auto overflow-x-auto pr-3" style="max-height: 480px; overflow-y: auto; overflow-x: auto; padding-right: 12px;">';
       if (sellers.length === 0) {
         html += '        <div class="text-gray-500 text-center py-6 text-xs">Tidak ada data seller</div>';
       } else {
@@ -2396,7 +2396,7 @@
           var sItem = sellers[s];
           var sBuyVol = sItem.bvol != null ? sItem.bvol : (sItem.buy_vol || 0);
           var sSellVol = sItem.svol != null ? sItem.svol : (sItem.sell_vol || sItem.vol || sItem.volume || 0);
-          var sBuyVal = normalizeBrokerValue(sItem.bval != null ? sItem.bval : (sItem.buy_val || 0), sBuyVol, sItem.avg_buy || sItem.avg_price);
+          var sBuyVal = normalizeBrokerValue(sItem.bval != null ? sItem.bval : (sItem.buy_val || 0), sBuyVol, sItem.avg_buy || item.avg_price);
           var sSellVal = normalizeBrokerValue(sItem.sval != null ? sItem.sval : (sItem.sell_val || sItem.val || sItem.value || 0), sSellVol, sItem.avg_sell || sItem.avg_price);
           var sellerMetrics = resolveBrokerRowMetrics(sItem, false);
           var sNetVal = sellerMetrics.netVal;
@@ -2410,7 +2410,7 @@
             html += '                <span class="text-gray-400 text-[10px] ml-1.5 truncate max-w-[100px] inline-block align-middle" title="' + escapeHtml(sItem.broker_name) + '">' + escapeHtml(sItem.broker_name) + '</span>';
           }
           html += '              </td>';
-          html += '              <td class="py-2 px-2 text-right font-mono text-gray-300 text-[11px]">' + (sellerMetrics.avgPrice > 0 ? formatNumber(sellerMetrics.avgPrice) : '—') + '</td>';
+          html += '              <td class="py-2 px-2 text-right font-mono text-gray-300 text-[11px]">' + (sellerMetrics.avgPrice > 0 ? formatNumber(sellerMetrics.avgPrice) : '-') + '</td>';
           if (isGross) {
             html += '              <td class="py-2 px-2 text-right font-mono text-gray-300 text-[11px]">' + formatNumber(sSellVol) + '</td>';
             html += '              <td class="py-2 px-2 text-right font-mono text-rose-400 font-bold text-[11px]">-' + formatIDR(sSellVal) + '</td>';
@@ -2474,22 +2474,22 @@
     var insiders = Array.isArray(data.insiders) ? data.insiders : [];
 
     var DEMO_REASON_LABEL = {
-      no_api_key: 'CACHE_OFFLINE — API key belum dikonfigurasi',
-      no_disk_cache: 'CACHE_OFFLINE — belum ada data tersimpan untuk ticker ini',
-      quota_exceeded: 'CACHE_OFFLINE — kuota API harian habis',
-      api_error: 'CACHE_OFFLINE — API sedang tidak tersedia',
-      network_error: 'CACHE_OFFLINE — koneksi ke API gagal',
-      cache_offline: 'CACHE_OFFLINE — offline / disk cache kosong'
+      no_api_key: 'CACHE_OFFLINE - API key belum dikonfigurasi',
+      no_disk_cache: 'CACHE_OFFLINE - belum ada data tersimpan untuk ticker ini',
+      quota_exceeded: 'CACHE_OFFLINE - kuota API harian habis',
+      api_error: 'CACHE_OFFLINE - API sedang tidak tersedia',
+      network_error: 'CACHE_OFFLINE - koneksi ke API gagal',
+      cache_offline: 'CACHE_OFFLINE - offline / disk cache kosong'
     };
     var isDemoBadge = (data.is_empty || data.status === 'NO_DATA')
       ? '<span class="text-[10px] px-2 py-0.5 rounded bg-dark-600/60 border border-dark-500 text-gray-400 font-mono">NO_DATA</span>'
       : ((data.is_offline || data.status === 'CACHE_OFFLINE' || (data.is_demo && !data.from_disk && !data.from_vps_tunnel))
-          ? '<span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-mono" title="' + escapeHtml(data.demo_detail || '') + '">' + escapeHtml(DEMO_REASON_LABEL[data.demo_reason] || 'CACHE_OFFLINE — data tidak tersedia') + '</span>'
+          ? '<span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 font-mono" title="' + escapeHtml(data.demo_detail || '') + '">' + escapeHtml(DEMO_REASON_LABEL[data.demo_reason] || 'CACHE_OFFLINE - data tidak tersedia') + '</span>'
           : (data.from_vps_tunnel
               ? '<span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-300 font-mono">BURSA LIVE FEED</span>'
               : (data.from_disk
                   ? '<span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-mono">DISK CACHE</span>'
-                  : '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">LIVE / BACKFILL</span>')));
+                  : '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono" title="Data diperoleh langsung dari feed bursa atau sinkronisasi backfill berkala.">LIVE / BACKFILL</span>')));
 
     var hasActualData = Boolean(
       (bSum.top_buyers && bSum.top_buyers.length > 0) ||
@@ -2518,17 +2518,18 @@
     var html = '';
 
     // Header info bar
+    var netTitle = String(netLabel).toUpperCase().includes('DIST')
+      ? 'Distribusi: nilai transaksi broker penjual melampaui broker pembeli teratas (>15% selisih untuk Big Distribution).'
+      : 'Akumulasi: nilai transaksi broker pembeli melampaui broker penjual teratas.';
     html += '<div class="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-dark-700/60 border border-dark-600/40 rounded-2xl mb-4">';
     html += '  <div class="flex items-center gap-2">';
     html += '    <span class="text-sm font-bold text-gray-100 font-mono">' + escapeHtml(ticker) + '</span>';
-    html += '    <span class="text-xs px-2.5 py-0.5 rounded-full border font-semibold ' + netStatusTone + ' ' + netStatusBg + '">' + escapeHtml(netLabel) + '</span>';
+    html += '    <span class="text-xs px-2.5 py-0.5 rounded-full border font-semibold ' + netStatusTone + ' ' + netStatusBg + '" title="' + escapeHtml(netTitle) + '">' + escapeHtml(netLabel) + '</span>';
     html += '    ' + isDemoBadge;
     html += '  </div>';
     html += '  <div class="flex items-center gap-3 text-xs font-mono">';
-    html += '    <span class="text-gray-400">Net Flow: <strong class="' + (bSum.net_flow >= 0 ? 'text-emerald-400' : 'text-rose-400') + '">' + (bSum.net_flow >= 0 ? '+' : '') + formatIDR(bSum.net_flow) + '</strong></span>';
-    // Batch 6 F-008: no static date fallback — empty input -> formatDateDisplay
-    // returns "—" via the explicit empty branch added below.
-    html += '    <span class="text-gray-400">Tanggal: <strong class="text-gray-200">' + escapeHtml(formatDateDisplay(bSum.date || currentBandarDate)) + '</strong></span>';
+    html += '    <span class="text-gray-400">Net Flow: <strong class="' + (bSum.net_flow >= 0 ? 'text-emerald-400' : 'text-rose-400') + '" title="Net Flow: Total nilai beli bersih broker pembeli teratas dikurangi nilai jual bersih broker penjual teratas.">' + (bSum.net_flow >= 0 ? '+' : '') + formatIDR(bSum.net_flow) + '</strong></span>';
+    html += '    <span class="text-gray-400">Tanggal: <strong class="text-gray-200">' + escapeHtml(formatDateWibDisplay(bSum.date || currentBandarDate)) + '</strong></span>';
     html += '  </div>';
     html += '</div>';
 
@@ -2591,9 +2592,9 @@
           date: d,
           net_val: net,
           status: net >= 0 ? 'ACC' : 'DIST',
-          top_1_broker: '—',
-          top_buyer: '—',
-          top_seller: '—'
+          top_1_broker: '-',
+          top_buyer: '-',
+          top_seller: '-'
         };
       });
     }
@@ -2621,8 +2622,10 @@
 
     html += '<div class="mb-5">';
     html += '  <div class="flex flex-wrap items-center justify-between gap-2.5 mb-3">';
-    var summaryHeadingDate = bSum.range_label || (bSum.date ? 'Tanggal: ' + bSum.date : (currentBandarDate ? 'Tanggal: ' + currentBandarDate : 'Terbaru'));
-    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📊</span> Broker Summary Detail — <span class="text-emerald-400 font-mono">' + escapeHtml(summaryHeadingDate) + '</span></h3>';
+    var rawDate = bSum.date || currentBandarDate;
+    var dateDisplay = rawDate ? (typeof formatDateWibDisplay === 'function' ? formatDateWibDisplay(rawDate) : rawDate) : 'Terbaru';
+    var summaryHeadingDate = bSum.range_label || ('Tanggal: ' + dateDisplay);
+    html += '    <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">📊</span> Broker Summary Detail - <span class="text-emerald-400 font-mono">' + escapeHtml(summaryHeadingDate) + '</span></h3>';
 
     html += '    <div class="flex flex-wrap items-center gap-2">';
     // Rentang Selector (1D, 5D, 7D, 14D, 30D, 60D, Custom)
@@ -2741,9 +2744,11 @@
 
     // 2A. Header & Controls: Range Selector + Flow Filter
     html += '  <div class="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-dark-600/40">';
-    var accHeadingDate = bSum.range_label || (bSum.date ? 'Rentang: ' + bSum.date : (currentBandarDate ? 'Tanggal: ' + currentBandarDate : 'Historis'));
+    var rawAccDate = bSum.date || currentBandarDate;
+    var accDateDisplay = rawAccDate ? (typeof formatDateWibDisplay === 'function' ? formatDateWibDisplay(rawAccDate) : rawAccDate) : 'Historis';
+    var accHeadingDate = bSum.range_label || ('Tanggal: ' + accDateDisplay);
     html += '    <div>';
-    html += '      <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🎯</span> Dashboard Konsistensi Bandar — <span class="text-emerald-400 font-mono">' + escapeHtml(accHeadingDate) + '</span></h3>';
+    html += '      <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">🎯</span> Dashboard Konsistensi Bandar - <span class="text-emerald-400 font-mono">' + escapeHtml(accHeadingDate) + '</span></h3>';
     html += '      <p class="text-[11px] text-gray-400 mt-0.5">Analisis konsentrasi modal, rasio partisipasi bandar vs ritel, dan konsistensi arah akumulasi/distribusi.</p>';
     html += '    </div>';
 
@@ -3015,7 +3020,7 @@
     // FIX (UI, stage 1): in Akumulasi Broker the bubble cluster is mounted ONLY
     // when the operator explicitly switches to 'Visual Bubble'. The default view
     // is 'table' (Tabel Rinci active), and in that mode the cluster container must
-    // be hidden in FULL — no bubble markup, only the explicit display:none
+    // be hidden in FULL - no bubble markup, only the explicit display:none
     // placeholder plus the detailed Top Buyers / Top Sellers tables.
     var accShowBubbleCluster = (brokerAccumulationView === 'bubble');
     if (accShowBubbleCluster) {
@@ -3088,13 +3093,13 @@
 
         // Top 1 Broker
         var top1Code = dayRow.top_1_broker || dayRow.top1_broker || dayRow.top_broker || (isPositive ? (dayRow.top_buyer || dayRow.buyer1) : (dayRow.top_seller || dayRow.seller1));
-        if (!top1Code || top1Code === '—') {
+        if (!top1Code || top1Code === '-') {
           top1Code = isPositive
-            ? (dayRow.top_buyer || dayRow.buyer1 || (dayRow.top_buyers && dayRow.top_buyers[0] && (dayRow.top_buyers[0].broker || dayRow.top_buyers[0].code)) || '—')
-            : (dayRow.top_seller || dayRow.seller1 || (dayRow.top_sellers && dayRow.top_sellers[0] && (dayRow.top_sellers[0].broker || dayRow.top_sellers[0].code)) || '—');
+            ? (dayRow.top_buyer || dayRow.buyer1 || (dayRow.top_buyers && dayRow.top_buyers[0] && (dayRow.top_buyers[0].broker || dayRow.top_buyers[0].code)) || '-')
+            : (dayRow.top_seller || dayRow.seller1 || (dayRow.top_sellers && dayRow.top_sellers[0] && (dayRow.top_sellers[0].broker || dayRow.top_sellers[0].code)) || '-');
         }
-        if (!top1Code || top1Code === '—') {
-          top1Code = dayRow.top_1_broker || dayRow.top1_broker || dayRow.top_broker || dayRow.top_buyer || dayRow.top_seller || dayRow.buyer1 || dayRow.seller1 || '—';
+        if (!top1Code || top1Code === '-') {
+          top1Code = dayRow.top_1_broker || dayRow.top1_broker || dayRow.top_broker || dayRow.top_buyer || dayRow.top_seller || dayRow.buyer1 || dayRow.seller1 || '-';
         }
         var isTopBuyer = isPositive;
         if (dayRow.top_buyer && dayRow.top_buyer === top1Code) isTopBuyer = true;
@@ -3102,9 +3107,9 @@
         else if (dayRow.buyer1 && dayRow.buyer1 === top1Code) isTopBuyer = true;
         else if (dayRow.seller1 && dayRow.seller1 === top1Code) isTopBuyer = false;
         var top1Color = isTopBuyer ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30' : 'text-rose-300 bg-rose-500/10 border-rose-500/30';
-        var top1Badge = top1Code && top1Code !== '—'
+        var top1Badge = top1Code && top1Code !== '-'
           ? '<span class="px-2 py-0.5 rounded font-mono font-bold text-[10px] border ' + top1Color + '">' + escapeHtml(top1Code) + ' (' + (isTopBuyer ? 'Buy' : 'Sell') + ')</span>'
-          : '<span class="text-gray-500 font-mono">—</span>';
+          : '<span class="text-gray-500 font-mono">-</span>';
 
         // Daily Dominance status
         var dayDomBadge = Math.abs(rowNet) >= 1e10
@@ -3251,41 +3256,41 @@
             actionTag = '<span class="px-2 py-0.5 rounded bg-dark-600/40 text-gray-300 font-bold text-[10px]">' + escapeHtml(actRaw) + '</span>';
           }
 
-          var priceDisplay = '—';
+          var priceDisplay = '-';
           if (row.price != null && Number(row.price) > 0) {
             priceDisplay = 'Rp ' + formatNumber(Number(row.price));
           }
 
-          var brokerDisplay = (row.broker && row.broker !== '—')
+          var brokerDisplay = (row.broker && row.broker !== '-')
             ? '<span class="px-1.5 py-0.5 rounded font-mono font-bold bg-dark-600/60 text-gray-200 border border-dark-500 text-[10px]">' + escapeHtml(row.broker) + '</span>'
-            : '<span class="text-gray-500 font-mono">—</span>';
+            : '<span class="text-gray-500 font-mono">-</span>';
 
           var sharesVal = row.shares_change != null ? row.shares_change : (row.shares != null ? row.shares : row.volume);
           var signStr = isBuy ? '+' : (isSell ? '-' : '');
           // Normalise pct_change: strip leading sign so it never doubles the
           // buy/sell sign already applied to the shares figure (fix --x.xx%).
-          var rawPct = row.pct_change && row.pct_change !== '—' ? String(row.pct_change).replace(/^[+-]/, '') : '';
+          var rawPct = row.pct_change && row.pct_change !== '-' ? String(row.pct_change).replace(/^[+-]/, '') : '';
           var pctStr = rawPct ? ' (' + escapeHtml(rawPct) + ')' : '';
           var changeDisplay = sharesVal != null
             ? (signStr + formatNumber(Math.abs(sharesVal)) + pctStr)
-            : (row.pct_change || '—');
+            : (row.pct_change || '-');
 
-          var afterShares = row.shares_after != null ? formatNumber(row.shares_after) : (row.shares_after === 0 ? '0' : '—');
+          var afterShares = row.shares_after != null ? formatNumber(row.shares_after) : (row.shares_after === 0 ? '0' : '-');
           var rawAfterPct = row.pct_after || row.shares_after_percentage || row.current_percentage || row.percentage_after || row.after_percentage || '';
-          if (rawAfterPct && !String(rawAfterPct).includes('%') && rawAfterPct !== '—') rawAfterPct += '%';
+          if (rawAfterPct && !String(rawAfterPct).includes('%') && rawAfterPct !== '-') rawAfterPct += '%';
           var afterPct = rawAfterPct ? ' (' + escapeHtml(rawAfterPct) + ')' : '';
-          var afterDisplay = afterShares !== '—' ? (afterShares + afterPct) : (rawAfterPct ? escapeHtml(rawAfterPct) : '—');
+          var afterDisplay = afterShares !== '-' ? (afterShares + afterPct) : (rawAfterPct ? escapeHtml(rawAfterPct) : '-');
 
           var sharesBeforeVal = row.shares_before;
           if (sharesBeforeVal == null && row.shares_after != null && sharesVal != null) {
             var signedVal = (isSell && sharesVal > 0) ? -sharesVal : sharesVal;
             sharesBeforeVal = row.shares_after - signedVal;
           }
-          var beforeShares = sharesBeforeVal != null ? formatNumber(sharesBeforeVal) : (sharesBeforeVal === 0 ? '0' : '—');
+          var beforeShares = sharesBeforeVal != null ? formatNumber(sharesBeforeVal) : (sharesBeforeVal === 0 ? '0' : '-');
           var rawBeforePct = row.pct_before || row.shares_before_percentage || row.previous_percentage || row.percentage_before || row.before_percentage || '';
-          if (rawBeforePct && !String(rawBeforePct).includes('%') && rawBeforePct !== '—') rawBeforePct += '%';
+          if (rawBeforePct && !String(rawBeforePct).includes('%') && rawBeforePct !== '-') rawBeforePct += '%';
           var beforePct = rawBeforePct ? ' (' + escapeHtml(rawBeforePct) + ')' : '';
-          var beforeDisplay = beforeShares !== '—' ? (beforeShares + beforePct) : (rawBeforePct ? escapeHtml(rawBeforePct) : '—');
+          var beforeDisplay = beforeShares !== '-' ? (beforeShares + beforePct) : (rawBeforePct ? escapeHtml(rawBeforePct) : '-');
 
           var isForeign = String(row.nationality || '').toLowerCase() === 'foreign';
           var nationalityBadge = isForeign
@@ -3293,11 +3298,11 @@
             : '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-dark-600/40 text-gray-300 border border-dark-500">🇮🇩 Local</span>';
 
           var changeColor = isBuy ? 'text-emerald-400' : (isSell ? 'text-rose-400' : 'text-gray-300');
-          var positionDisplay = row.position || row.jabatan || row.title || row.status || (row.badges && row.badges[0]) || '—';
+          var positionDisplay = row.position || row.jabatan || row.title || row.status || (row.badges && row.badges[0]) || '-';
 
           html += '        <tr class="hover:bg-dark-600/20 transition">';
-          html += '          <td class="py-2.5 px-2.5 font-mono text-[11px] text-gray-300">' + escapeHtml(row.date || '—') + '</td>';
-          html += '          <td class="py-2.5 px-2.5 font-medium text-gray-100">' + escapeHtml(row.name || row.insider_name || '—') + '</td>';
+          html += '          <td class="py-2.5 px-2.5 font-mono text-[11px] text-gray-300">' + escapeHtml(row.date || '-') + '</td>';
+          html += '          <td class="py-2.5 px-2.5 font-medium text-gray-100">' + escapeHtml(row.name || row.insider_name || '-') + '</td>';
           html += '          <td class="py-2.5 px-2.5 text-gray-400 text-[11px]">' + escapeHtml(positionDisplay) + '</td>';
           html += '          <td class="py-2.5 px-2 text-center">' + actionTag + '</td>';
           html += '          <td class="py-2.5 px-2.5 font-mono text-right text-gray-200">' + priceDisplay + '</td>';
@@ -3317,6 +3322,10 @@
 
     if (container && typeof container.innerHTML !== 'undefined') {
       container.innerHTML = html;
+      try {
+        var bWraps = container.querySelectorAll('.broker-summary-table-wrap');
+        bWraps.forEach(function (w) { w.scrollTop = 0; w.scrollLeft = 0; });
+      } catch (_) {}
     }
     return html;
   }
@@ -3628,8 +3637,8 @@
       // Midpoint Broker Chip
       var mx = cpx;
       var my = cpy;
-      var brokerCode = (edge.brokers && edge.brokers.length > 0) ? edge.brokers[0] : (edge.broker || '—');
-      if (brokerCode && brokerCode !== '—') {
+      var brokerCode = (edge.brokers && edge.brokers.length > 0) ? edge.brokers[0] : (edge.broker || '-');
+      if (brokerCode && brokerCode !== '-') {
         svg += '    <g class="broker-chip cursor-pointer" onclick="BandarmologiRuntime.selectInsiderEmitenNode(\'' + escapeHtml(emNode.ticker) + '\')">\n';
         svg += '      <g class="emiten-counter-group" style="transform-origin: ' + mx.toFixed(1) + 'px ' + my.toFixed(1) + 'px;">\n';
         svg += '        <rect x="' + (mx - 18).toFixed(1) + '" y="' + (my - 11).toFixed(1) + '" width="36" height="22" rx="6" fill="#082f49" stroke="#0284c7" stroke-width="1.4"/>\n';
@@ -3652,14 +3661,14 @@
       var nodeStroke = isSelected2 ? '#34d399' : '#10b981';
       var nodeWidth = isSelected2 ? '3.5' : '2.2';
 
-      var pctText = edge2.percentage_raw || (edge2.percentage != null ? edge2.percentage + '%' : '—');
+      var pctText = edge2.percentage_raw || (edge2.percentage != null ? edge2.percentage + '%' : '-');
       var sharesShort = formatIDR(Math.abs(edge2.shares || 0));
-      var brokerCode2 = (edge2.brokers && edge2.brokers.length > 0) ? edge2.brokers[0] : (edge2.broker || '—');
+      var brokerCode2 = (edge2.brokers && edge2.brokers.length > 0) ? edge2.brokers[0] : (edge2.broker || '-');
 
       svg += '    <g class="emiten-node cursor-pointer" onclick="BandarmologiRuntime.selectInsiderEmitenNode(\'' + escapeHtml(emNode2.ticker) + '\')">\n';
 
       // Satellite Broker Orbit around Planet
-      if (brokerCode2 && brokerCode2 !== '—') {
+      if (brokerCode2 && brokerCode2 !== '-') {
         svg += '      <g class="satellite-orbit-group" style="transform-origin: ' + ex2.toFixed(1) + 'px ' + ey2.toFixed(1) + 'px;">\n';
         svg += '        <circle cx="' + ex2.toFixed(1) + '" cy="' + ey2.toFixed(1) + '" r="44" fill="none" stroke="#0284c7" stroke-width="0.9" stroke-dasharray="2 3" opacity="0.45"/>\n';
         svg += '        <g class="satellite-counter-group" style="transform-origin: ' + (ex2 + 44).toFixed(1) + 'px ' + ey2.toFixed(1) + 'px;">\n';
@@ -3718,13 +3727,13 @@
 
     var priceFormatted = (holding.latest_price != null && Number(holding.latest_price) > 0)
       ? 'Rp ' + formatIDR(Number(holding.latest_price))
-      : '—';
+      : '-';
 
     // Kepemilikan Terkini: Always non-negative
     var rawShares = holding.shares_after != null ? holding.shares_after : holding.shares;
     var absShares = Math.abs(rawShares || 0);
-    var sharesFormatted = absShares > 0 ? formatNumber(absShares) + ' lembar' : '—';
-    var pctFormatted = holding.percentage_raw || (holding.percentage != null ? holding.percentage + '%' : '—');
+    var sharesFormatted = absShares > 0 ? formatNumber(absShares) + ' lembar' : '-';
+    var pctFormatted = holding.percentage_raw || (holding.percentage != null ? holding.percentage + '%' : '-');
 
     // Rincian Broker
     var brokersList = holding.brokers || [];
@@ -3735,12 +3744,12 @@
         brokersChipsHtml += '<span class="px-2.5 py-1 rounded-lg font-mono font-bold bg-dark-700/80 text-emerald-300 border border-dark-600 text-xs">' + escapeHtml(bCode) + '</span> ';
       }
     } else {
-      brokersChipsHtml = '<span class="text-gray-500 font-mono text-xs">—</span>';
+      brokersChipsHtml = '<span class="text-gray-500 font-mono text-xs">-</span>';
     }
 
     // Riwayat Aksi Terakhir
     var actionVol = Math.abs(holding.shares_change || holding.shares || 0);
-    var actionVolFormatted = actionVol > 0 ? formatNumber(actionVol) + ' lembar' : '—';
+    var actionVolFormatted = actionVol > 0 ? formatNumber(actionVol) + ' lembar' : '-';
     var actionTitle = isBuy ? 'Akumulasi Beli' : (isSell ? 'Distribusi Jual' : 'Aksi Transaksi');
     var actionColor = isBuy ? 'text-emerald-400' : (isSell ? 'text-rose-400' : 'text-gray-200');
 
@@ -3798,7 +3807,7 @@
     html += '      </div>';
     html += '      <div class="flex items-center justify-between">';
     html += '        <span class="text-gray-400">Tanggal Transaksi:</span>';
-    html += '        <strong class="font-mono text-gray-300">' + escapeHtml(holding.latest_date || '—') + '</strong>';
+    html += '        <strong class="font-mono text-gray-300">' + escapeHtml(holding.latest_date || '-') + '</strong>';
     html += '      </div>';
     html += '    </div>';
     html += '  </div>';
@@ -3867,7 +3876,7 @@
     var html = '';
     for (var i = 0; i < filtered.length; i++) {
       var r = filtered[i];
-      var name = r.name || '—';
+      var name = r.name || '-';
       var isForeign = String(r.nationality || '').toLowerCase() === 'foreign';
       var entityIcon = isForeign ? '🌐' : (String(r.category || '').toLowerCase().includes('pengendali') ? '👑' : '👤');
 
@@ -4373,6 +4382,23 @@
     }
   }
 
+  function formatTradingDateWib(isoDate) {
+    if (!isoDate || typeof isoDate !== 'string') return '-';
+    var parts = isoDate.split('-');
+    if (parts.length !== 3) return isoDate;
+    var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    var day = parseInt(parts[2], 10);
+    var month = months[parseInt(parts[1], 10) - 1] || parts[1];
+    var year = parts[0];
+    return day + ' ' + month + ' ' + year;
+  }
+
+  function formatDateWibDisplay(dateStr) {
+    var iso = formatDateDisplay(dateStr);
+    if (!iso || iso === '-' || iso === '-') return '-';
+    return formatTradingDateWib(iso);
+  }
+
   function renderConfluenceBadgeHtml(badge) {
     var b = String(badge || 'NEUTRAL').toUpperCase();
     if (b === 'STRONG_ACCUMULATION') {
@@ -4627,7 +4653,7 @@
     html += '  <div class="flex flex-wrap items-center justify-between gap-3">';
     html += '    <div>';
     html += '      <h3 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
-    html += '        <span class="text-base">🎯</span> Sinyal Intelijen Bandarmologi — <span class="text-emerald-400 font-mono">' + escapeHtml(currentBandarTicker) + '</span>';
+    html += '        <span class="text-base">🎯</span> Sinyal Intelijen Bandarmologi - <span class="text-emerald-400 font-mono">' + escapeHtml(currentBandarTicker) + '</span>';
     html += '      </h3>';
     html += '      <p class="text-xs text-gray-400 mt-0.5">Deteksi 5 kategori screening (4 pola dasar): modal bandar, akumulasi diam-diam asing, ritel cutloss, distribusi ke ritel, dan rasio konsentrasi (CR3/CR5).</p>';
     html += '    </div>';
@@ -4739,7 +4765,7 @@
       html += '      </div>';
       html += '      <div class="text-[11px] text-gray-400 mt-0.5">';
       html += '        <span>Rentang: <strong class="text-gray-200">' + escapeHtml(bandarIntelRange.toUpperCase()) + '</strong></span> &bull; ';
-      // Batch 6: no static date fallback — empty -> "—" via formatDateDisplay.
+      // Batch 6: no static date fallback - empty -> "-" via formatDateDisplay.
       html += '        <span>Evaluasi: <strong class="text-gray-300 font-mono">' + escapeHtml(formatDateDisplay(intelObj.effective_date || intelObj.evaluated_at)) + '</strong></span>';
       html += '      </div>';
       html += '    </div>';
@@ -4785,8 +4811,8 @@
 
       var discountDisplay = discount >= 0 ? 'Diskon +' + discount + '%' : 'Premium +' + Math.abs(discount) + '%';
       html += '      <div class="grid grid-cols-3 gap-2 text-xs mb-2 bg-dark-800/60 p-2 rounded-lg border border-dark-600/20">';
-      html += '        <div><span class="text-[10px] text-gray-400 block">Harga Sekarang</span><span id="intelCurrentPrice" class="font-mono font-bold text-gray-100">' + (currentPrice > 0 ? 'Rp ' + formatNumber(currentPrice) : '—') + '</span></div>';
-      html += '        <div><span class="text-[10px] text-gray-400 block">Avg Buy Bandar</span><span class="font-mono font-bold text-emerald-300">' + (bandarAvg > 0 ? 'Rp ' + formatNumber(bandarAvg) : '—') + '</span></div>';
+      html += '        <div><span class="text-[10px] text-gray-400 block">Harga Sekarang</span><span id="intelCurrentPrice" class="font-mono font-bold text-gray-100">' + (currentPrice > 0 ? 'Rp ' + formatNumber(currentPrice) : '-') + '</span></div>';
+      html += '        <div><span class="text-[10px] text-gray-400 block">Avg Buy Bandar</span><span class="font-mono font-bold text-emerald-300">' + (bandarAvg > 0 ? 'Rp ' + formatNumber(bandarAvg) : '-') + '</span></div>';
       html += '        <div><span class="text-[10px] text-gray-400 block">Diskon vs Bandar</span><span class="font-mono font-bold ' + (discount > 0 ? 'text-emerald-400' : 'text-gray-400') + '">' + escapeHtml(discountDisplay) + '</span></div>';
       html += '      </div>';
 
@@ -4882,7 +4908,7 @@
       html += '          <span class="text-[10px] text-gray-400 font-semibold w-24">TOP BUYERS:</span>';
       html += '          <div class="flex items-center gap-1.5 flex-wrap justify-end">';
       if (buyersList.length === 0) {
-        html += '            <span class="text-gray-500 text-[11px]">—</span>';
+        html += '            <span class="text-gray-500 text-[11px]">-</span>';
       } else {
         for (var bi = 0; bi < buyersList.length; bi++) {
           var bCode = buyersList[bi];
@@ -4899,7 +4925,7 @@
       html += '          <span class="text-[10px] text-gray-400 font-semibold w-24">TOP SELLERS:</span>';
       html += '          <div class="flex items-center gap-1.5 flex-wrap justify-end">';
       if (sellersList.length === 0) {
-        html += '            <span class="text-gray-500 text-[11px]">—</span>';
+        html += '            <span class="text-gray-500 text-[11px]">-</span>';
       } else {
         for (var si = 0; si < sellersList.length; si++) {
           var sCode = sellersList[si];
@@ -5003,11 +5029,11 @@
       html += '<div id="panel-intel-scanner" class="bg-dark-700/40 border border-dark-600/30 rounded-xl overflow-hidden">';
 
       // PR2 fix: `updated_at` is a WRITE timestamp (when the crawl job ran), not
-      // a trading date — on a weekend it resolves to a non-market Saturday and
+      // a trading date - on a weekend it resolves to a non-market Saturday and
       // leaked "Data per: 2026-09-12". effective_date/date are the canonical
       // trading dates, so they must come first; updated_at is only a last resort
       // and is passed through formatDateDisplay's trading-day guard below.
-      // Batch 6: no static date fallback — empty -> "—" via formatDateDisplay.
+      // Batch 6: no static date fallback - empty -> "-" via formatDateDisplay.
       var activeMarketDate = formatDateDisplay(scanData.effective_date || scanData.date || (lastBandarData && lastBandarData.date) || scanData.updated_at);
       var rangeDaysCount = { '1d': 1, '5d': 5, '7d': 7, '14d': 14, '30d': 30, '60d': 60 }[bandarIntelRange] || (parseInt(bandarIntelRange, 10) || 7);
       var rangeAggLabel = bandarIntelRange === '1d' ? '1D (Harian)' : (rangeDaysCount + ' Hari Bursa (' + escapeHtml(bandarIntelRange.toUpperCase()) + ' Agregat)');
@@ -5040,7 +5066,7 @@
         html += '      <tbody class="divide-y divide-dark-600/20">';
         for (var it = 0; it < currentItems.length; it++) {
           var item = currentItems[it];
-          var itTicker = item.ticker || '—';
+          var itTicker = item.ticker || '-';
           var itModal = Number(item.bandar_avg_cost || item.bandar_avg_buy || item.bandar_avg_price || item.modal || 0);
           var itPrice = Number(item.current_price || item.last_price || item.close_price || item.price || 0);
           if (itModal > 0 && itPrice > 0) {
@@ -5055,7 +5081,7 @@
             itNote = dVal >= 0
               ? 'Harga terkini (' + cPrice + ') berada di bawah modal rata-rata Top 3 Bandar (' + cCost + ') dengan diskon ' + dVal + '%.'
               : 'Harga terkini (' + cPrice + ') berada di atas modal rata-rata Top 3 Bandar (' + cCost + ') (premium +' + Math.abs(dVal) + '%).';
-          } else if (!itNote || itNote === '—') {
+          } else if (!itNote || itNote === '-') {
             if (bandarIntelScannerCategory === 'harga_di_bawah_modal_bandar') {
               var cCost = item.bandar_avg_cost ? 'Rp ' + Number(item.bandar_avg_cost).toLocaleString('id-ID') : '';
               if (item.discount_pct != null) {
@@ -5394,7 +5420,7 @@
         html += '          </td>';
         html += '          <td class="py-2.5 px-2 text-right font-mono font-semibold text-emerald-400">+' + formatIDR(netValA) + '</td>';
         html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-200">+' + formatNumber(netLotA) + '</td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-300">' + (avgBuyA > 0 ? 'Rp ' + formatNumber(avgBuyA) : '—') + '</td>';
+        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-300">' + (avgBuyA > 0 ? 'Rp ' + formatNumber(avgBuyA) : '-') + '</td>';
         html += '          <td class="py-2.5 px-2 text-center">';
         html += '            <div class="flex items-center justify-center gap-1">';
         html += '              <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowA.ticker) + '\', \'bandarmologi\')" title="Buka Bandarmologi" class="px-2 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-semibold transition">Bandar</button>';
@@ -5445,7 +5471,7 @@
         html += '          </td>';
         html += '          <td class="py-2.5 px-2 text-right font-mono font-semibold text-rose-400">-' + formatIDR(Math.abs(netValD)) + '</td>';
         html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-200">-' + formatNumber(Math.abs(netLotD)) + '</td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-300">' + (avgSellD > 0 ? 'Rp ' + formatNumber(avgSellD) : '—') + '</td>';
+        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-300">' + (avgSellD > 0 ? 'Rp ' + formatNumber(avgSellD) : '-') + '</td>';
         html += '          <td class="py-2.5 px-2 text-center">';
         html += '            <div class="flex items-center justify-center gap-1">';
         html += '              <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowD.ticker) + '\', \'bandarmologi\')" title="Buka Bandarmologi" class="px-2 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[10px] font-semibold transition">Bandar</button>';

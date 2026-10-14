@@ -275,8 +275,27 @@
     var workspaceTitle = byId('analysisWorkspaceTitle');
     if (workspaceTitle) workspaceTitle.textContent = ({ 'analisis-chart':'Analisis Saham', bandarmologi:'Bandarmologi', intel:'Sinyal Intelijen', hunter:'Broker Hunter', insider:'Jejaring Insider', ranking:'Ranking Harian', financial:'Financial', 'market-structure':'Struktur Pasar', pattern:'Pattern Radar' })[parentTab];
     var subtitle = workspace && workspace.querySelector && workspace.querySelector('.page-subtitle');
-    if (subtitle) subtitle.textContent = parentTab === 'financial' ? 'Data fundamental, valuasi, dan sumber laporan untuk saham yang dipilih.' : parentTab === 'market-structure' ? 'Free float, status HSC, dan kelengkapan data struktur kepemilikan.' : 'Chart interaktif, analisis teknikal komprehensif, dan pembacaan visual AI.';
-
+    if (subtitle) {
+      if (parentTab === 'bandarmologi') {
+        subtitle.textContent = 'Analisis arus akumulasi dan distribusi broker, deteksi pergerakan smart money, serta struktur volume transaksi emiten.';
+      } else if (parentTab === 'hunter') {
+        subtitle.textContent = 'Lacak pergerakan broker institusi dan aktivitas akumulasi tersembunyi.';
+      } else if (parentTab === 'intel') {
+        subtitle.textContent = 'Peringatan anomali volume, transaksi tak wajar, dan sinyal deteksi dini.';
+      } else if (parentTab === 'insider') {
+        subtitle.textContent = 'Peta kepemilikan saham pengendali, direksi, dan transaksi orang dalam.';
+      } else if (parentTab === 'financial') {
+        subtitle.textContent = 'Data fundamental, valuasi, dan sumber laporan untuk saham yang dipilih.';
+      } else if (parentTab === 'market-structure') {
+        subtitle.textContent = 'Free float, status HSC, dan kelengkapan data struktur kepemilikan.';
+      } else if (parentTab === 'ranking') {
+        subtitle.textContent = 'Peringkat harian saham berdasarkan momentum, likuiditas, dan konteks pasar.';
+      } else if (parentTab === 'pattern') {
+        subtitle.textContent = 'Pemetaan pola teknikal, klaster formasi chart, dan deteksi probabilitas visual.';
+      } else {
+        subtitle.textContent = 'Chart interaktif, analisis teknikal komprehensif, dan pembacaan visual AI.';
+      }
+    }
 
     if (typeof document !== 'undefined' && document.querySelectorAll) {
       document.querySelectorAll('.analisis-lens-btn').forEach(function (btn) {
@@ -295,8 +314,11 @@
 
     var pHeader = byId('analisisChartHeader');
     var pSubtabWrap = byId('analisisChartSubtabWrap');
-    if (pHeader) pHeader.style.display = 'block';
+    if (pHeader) pHeader.style.display = (parentTab === 'market-structure' || parentTab === 'ranking') ? 'none' : 'block';
     if (pSubtabWrap) pSubtabWrap.style.display = (parentTab === 'analisis-chart') ? 'flex' : 'none';
+    if ((parentTab === 'market-structure' || parentTab === 'ranking') && typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
 
     var pAnalisis = byId('panel-tab-analisis');
     var pChart = byId('panel-tab-chart');
@@ -1917,7 +1939,7 @@
     activeFilter: 'all',
     searchQuery: '',
     sectorFilter: 'all',
-    sortKey: 'free_float_asc',
+    sortKey: 'ticker_asc',
     selectedTicker: null,
     lastSelectedRowEl: null,
     isLoading: false,
@@ -2089,7 +2111,7 @@
       var sec = byId('marketStructureSectorSelect');
       if (sec) sec.value = 'all';
       var sel = byId('marketStructureSortSelect');
-      if (sel) sel.value = 'free_float_asc';
+      if (sel) sel.value = 'ticker_asc';
       this.setFilter('all');
     },
 
@@ -2435,7 +2457,7 @@
 
         // 1. Kode (sticky left)
         var tdTicker = document.createElement('td');
-        tdTicker.className = 'py-2 px-3 sticky left-0 z-10 bg-inherit border-r border-slate-700/40';
+        tdTicker.className = 'py-2 px-3 sticky left-0 z-10 bg-[#0f172a] border-r border-slate-700/40 ac-ticker-sticky-cell';
         tdTicker.innerHTML = '<span class="ac-ticker-symbol font-mono font-bold text-emerald-500 dark:text-emerald-400">' + escapeHtml(row.ticker) + '</span>';
         tr.appendChild(tdTicker);
 
@@ -2543,7 +2565,7 @@
       this.selectedTicker = ticker;
 
       // Automatically jump to the page containing this ticker if not on it
-      if (Array.isArray(this.filteredUniverse) && this.filteredUniverse.length > 0) {
+      if (userInitiated && Array.isArray(this.filteredUniverse) && this.filteredUniverse.length > 0) {
         var itemIdx = -1;
         for (var i = 0; i < this.filteredUniverse.length; i++) {
           if (this.filteredUniverse[i].ticker === ticker) {
@@ -2567,7 +2589,16 @@
           if (r.getAttribute('data-ticker') === ticker) {
             r.classList.add('is-selected');
             r.setAttribute('aria-pressed', 'true');
-            try { r.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
+            var container = byId('marketStructureTableContainer');
+            if (container && r) {
+              var cRect = container.getBoundingClientRect();
+              var rRect = r.getBoundingClientRect();
+              if (rRect.top < cRect.top) {
+                container.scrollTop += (rRect.top - cRect.top);
+              } else if (rRect.bottom > cRect.bottom) {
+                container.scrollTop += (rRect.bottom - cRect.bottom);
+              }
+            }
           } else {
             r.classList.remove('is-selected');
             r.setAttribute('aria-pressed', 'false');
@@ -2579,7 +2610,16 @@
       cards.forEach(function (c) {
         if (c.getAttribute('data-ticker') === ticker) {
           c.classList.add('is-selected', 'border-emerald-500/60', 'bg-slate-800/90');
-          try { c.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
+          var cardsWrap = byId('marketStructureCardsContainer');
+          if (cardsWrap && c) {
+            var cwRect = cardsWrap.getBoundingClientRect();
+            var crRect = c.getBoundingClientRect();
+            if (crRect.top < cwRect.top) {
+              cardsWrap.scrollTop += (crRect.top - cwRect.top);
+            } else if (crRect.bottom > cwRect.bottom) {
+              cardsWrap.scrollTop += (crRect.bottom - cwRect.bottom);
+            }
+          }
         } else {
           c.classList.remove('is-selected', 'border-emerald-500/60', 'bg-slate-800/90');
         }

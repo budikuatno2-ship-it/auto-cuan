@@ -13411,18 +13411,39 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
   min-height: 0 !important;
 }
 
-#marketStructureTable thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: var(--ac-surface-raised, #0f172a);
+#marketStructureTable thead,
+#marketStructureTableContainer thead {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 40 !important;
+  background-color: #111827 !important;
 }
 
 #marketStructureTableContainer thead th,
 #marketStructureTable thead th {
   position: sticky !important;
   top: 0 !important;
-  z-index: 2 !important;
+  z-index: 40 !important;
+  background-color: #111827 !important;
+  box-shadow: inset 0 -1px 0 rgba(51, 65, 85, 0.6) !important;
+}
+
+#marketStructureTableContainer thead th:first-child,
+#marketStructureTable thead th:first-child {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 50 !important;
+  background-color: #111827 !important;
+  box-shadow: inset 0 -1px 0 rgba(51, 65, 85, 0.6) !important;
+}
+
+#marketStructureTable tbody td:first-child,
+#marketStructureTable .ac-ticker-sticky-cell {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 10 !important;
+  background-color: #0f172a !important;
 }
 
 .ac-research-shareholders table {
@@ -13527,12 +13548,12 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
 }
 
 #appContent {
-  padding-top: 4px !important;
+  padding-top: 8px !important;
 }
 
 @media (min-width: 1024px) {
   #appContent {
-    padding-top: 4px !important;
+    padding-top: 8px !important;
   }
 }
 
@@ -13581,6 +13602,24 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
   flex: 1 0 auto !important;
   min-height: calc(100vh - 80px) !important;
   padding-bottom: 48px !important;
+  padding-top: 14px !important;
+}
+
+#bandarSearchBarContainer {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  #panel-tab-market-structure .unified-card-header .ac-research-kicker {
+    display: none !important;
+  }
+  #marketStructureDataPeriodBadge {
+    display: inline-flex !important;
+    max-width: 100% !important;
+    font-size: 10.5px !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+  }
 }
 
 /* Financial & generic data table typography & padding */
@@ -13623,13 +13662,7 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
 #marketStructureAccordionContainer {
   max-height: calc(100vh - 200px);
   overflow-y: auto;
-  overflow-x: hidden !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  display: block !important;
-  padding-right: 4px !important;
-  touch-action: pan-y pinch-zoom !important;
-  -webkit-overflow-scrolling: touch !important;
+  display: none !important;
 }
 
 /* Theme-aware accordion surface: dark mode keeps the graph-paper panel, light
@@ -13951,6 +13984,8 @@ html[data-theme="dark"] .ac-origin-f {
 
 /* Table Layout Invariant: Fixed, 100% width, No Column Overflow (Fase 3R Polishing) */
 #marketStructureTable {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
   width: 100% !important;
   max-width: 100% !important;
   table-layout: fixed !important;
@@ -14075,4 +14110,10 @@ html[data-theme="dark"] .ac-origin-f {
 }
 .ac-roster-item-card:hover {
   background-color: rgba(30, 41, 59, 0.5);
+}
+
+/* 7. Hide duplicate horizontal 9-button analysis lens strip (all lenses are now in the left sidebar) */
+#analisisLensesNav,
+.analisis-lens-bar {
+  display: none !important;
 }

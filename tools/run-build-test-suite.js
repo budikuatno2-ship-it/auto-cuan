@@ -16,6 +16,20 @@ if (!process.env.REVIEW_ACCESS_TOKEN) {
 }
 process.env.SECURITY_GUARD_MODE = process.env.SECURITY_GUARD_MODE || 'off';
 
+if (!process.env.CHROMIUM_PATH && process.platform === 'win32') {
+  const winPaths = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
+  ];
+  for (const p of winPaths) {
+    if (fs.existsSync(p)) {
+      process.env.CHROMIUM_PATH = p;
+      break;
+    }
+  }
+}
+
 function sendVercelTelemetry(msg) {
   if (process.env.VERCEL !== '1') return;
   try {

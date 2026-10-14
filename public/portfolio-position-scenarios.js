@@ -1,11 +1,11 @@
 (function () {
   'use strict';
 
-  if (window.__AUTOCUAN_POSITION_SCENARIOS_V2__) return;
-  window.__AUTOCUAN_POSITION_SCENARIOS_V2__ = true;
+  var root = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
+  if (root && root.__AUTOCUAN_POSITION_SCENARIOS_V2__) return;
+  if (root) root.__AUTOCUAN_POSITION_SCENARIOS_V2__ = true;
 
-  var Model = window.AutoCuanPortfolioCommandModel;
-  if (!Model) return;
+  var Model = (root && root.AutoCuanPortfolioCommandModel) || null;
 
   var screenerQuotes = [];
   var screenerLoading = false;
@@ -30,7 +30,7 @@
   function digits(value) { return String(value == null ? '' : value).replace(/[^0-9]/g, ''); }
   function positive(value) { var n = Model.finite(value); return Number.isFinite(n) && n > 0 ? n : null; }
   function money(value) { var n = Number(value); if (!Number.isFinite(n)) return '—'; return (n < 0 ? '−' : '') + 'Rp ' + Math.abs(Math.round(n)).toLocaleString('id-ID'); }
-  function ratio(value) { return Number.isFinite(value) && value > 0 ? value.toFixed(2) + '×' : '—'; }
+  function ratio(value) { return Number.isFinite(value) && value > 0 ? value.toFixed(2) + 'x' : '—'; }
   function readJson(key, fallback) { try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch (_) { return fallback; } }
 
   function userId() {
@@ -105,23 +105,148 @@
     };
   }
 
-  function scenarioFor(plan, prices, tp1Pct) {
+  var Calculator = {
+    calculateScaleOutWithFees: function (params) {
+      params = params || {};
+      var entry = Number(params.entry);
+      var stop = Number(params.stop);
+      var tp1 = Number(params.tp1);
+      var tp2 = Number(params.tp2);
+      var lots = Math.max(0, Math.floor(Number(params.lots) || 0));
+      var tp1Pct = Number.isFinite(Number(params.tp1Pct)) ? Number(params.tp1Pct) : 50;
+      var buyFeePct = Number.isFinite(Number(params.buyFeePct)) ? Number(params.buyFeePct) : 0.15;
+      var sellFeePct = Number.isFinite(Number(params.sellFeePct)) ? Number(params.sellFeePct) : 0.25;
+
+      var totalShares = lots * 100;
+      var invertedStop = !!(entry && stop && stop > entry);
+
+      if (!entry || !lots || totalShares <= 0) {
+        return {
+          valid: false,
+          totalShares: totalShares,
+          buyGross: 0,
+          buyFee: 0,
+          stopResultGross: null,
+          stopResultNet: null,
+          tp1ResultGross: null,
+          tp1ResultNet: null,
+          tp2ResultGross: null,
+          tp2ResultNet: null,
+          partialGross: null,
+          partialNet: null,
+          partialTotalFee: null,
+          breakEvenGross: null,
+          breakEvenNet: null,
+          breakEvenTotalFee: null,
+          tp1Lots: 0,
+          tp2Lots: 0,
+          tp1Shares: 0,
+          tp2Shares: 0
+        };
+      }
+
+      var buyGross = entry * totalShares;
+      var buyFee = buyGross * (buyFeePct / 100);
+
+      var stopResultGross = null;
+      var stopResultNet = null;
+      if (stop && !invertedStop) {
+        stopResultGross = (stop - entry) * totalShares;
+        var stopSellFee = (stop * totalShares) * (sellFeePct / 100);
+        stopResultNet = stopResultGross - (buyFee + stopSellFee);
+      }
+
+      var tp1ResultGross = null;
+      var tp1ResultNet = null;
+      if (tp1) {
+        tp1ResultGross = (tp1 - entry) * totalShares;
+        var tp1SellFee = (tp1 * totalShares) * (sellFeePct / 100);
+        tp1ResultNet = tp1ResultGross - (buyFee + tp1SellFee);
+      }
+
+      var tp2ResultGross = null;
+      var tp2ResultNet = null;
+      if (tp2) {
+        tp2ResultGross = (tp2 - entry) * totalShares;
+        var tp2SellFee = (tp2 * totalShares) * (sellFeePct / 100);
+        tp2ResultNet = tp2ResultGross - (buyFee + tp2SellFee);
+      }
+
+      var tp1Lots = Math.floor(lots * tp1Pct / 100);
+      var tp2Lots = Math.max(0, lots - tp1Lots);
+      var tp1Shares = tp1Lots * 100;
+      var tp2Shares = tp2Lots * 100;
+
+      var partialGross = null;
+      var partialNet = null;
+      var partialTotalFee = null;
+      var breakEvenGross = null;
+      var breakEvenNet = null;
+      var breakEvenTotalFee = null;
+
+      if (tp1 && tp2) {
+        var tp1Revenue = tp1 * tp1Shares;
+        var tp1Fee = tp1Revenue * (sellFeePct / 100);
+        var tp2Revenue = tp2 * tp2Shares;
+        var tp2Fee = tp2Revenue * (sellFeePct / 100);
+
+        partialGross = ((tp1 - entry) * tp1Shares) + ((tp2 - entry) * tp2Shares);
+        partialTotalFee = buyFee + tp1Fee + tp2Fee;
+        partialNet = partialGross - partialTotalFee;
+
+        var beRevenue = entry * tp2Shares;
+        var beSellFee = beRevenue * (sellFeePct / 100);
+        breakEvenGross = (tp1 - entry) * tp1Shares;
+        breakEvenTotalFee = buyFee + tp1Fee + beSellFee;
+        breakEvenNet = breakEvenGross - breakEvenTotalFee;
+      }
+
+      return {
+        valid: true,
+        totalShares: totalShares,
+        buyGross: buyGross,
+        buyFee: buyFee,
+        stopResultGross: stopResultGross,
+        stopResultNet: stopResultNet,
+        tp1ResultGross: tp1ResultGross,
+        tp1ResultNet: tp1ResultNet,
+        tp2ResultGross: tp2ResultGross,
+        tp2ResultNet: tp2ResultNet,
+        tp1Lots: tp1Lots,
+        tp2Lots: tp2Lots,
+        tp1Shares: tp1Shares,
+        tp2Shares: tp2Shares,
+        partialGross: partialGross,
+        partialNet: partialNet,
+        partialTotalFee: partialTotalFee,
+        breakEvenGross: breakEvenGross,
+        breakEvenNet: breakEvenNet,
+        breakEvenTotalFee: breakEvenTotalFee
+      };
+    }
+  };
+
+  function scenarioFor(plan, prices, tp1Pct, buyFeePct, sellFeePct) {
     var current = positive(prices[plan.ticker]);
+    var calc = Calculator.calculateScaleOutWithFees({
+      entry: plan.entry,
+      stop: plan.stop,
+      tp1: plan.tp1,
+      tp2: plan.tp2,
+      lots: plan.lots,
+      tp1Pct: tp1Pct,
+      buyFeePct: buyFeePct,
+      sellFeePct: sellFeePct
+    });
+
     var shares = plan.lots * 100;
-    // BUG-F7-005: stop loss di atas entry adalah setup terbalik. Simulasinya harus
-    // ditandai tidak valid, bukan dihitung sebagai keuntungan.
     var invertedStop = !!(plan.entry && plan.stop && plan.stop > plan.entry);
     var stopResult = plan.entry && plan.stop && shares && !invertedStop ? (plan.stop - plan.entry) * shares : null;
     var tp1Result = plan.entry && plan.tp1 && shares ? (plan.tp1 - plan.entry) * shares : null;
-    var tp2Result = plan.entry && plan.tp2 && shares ? (plan.tp2 - plan.entry) * shares : null;
-    var riskAbs = stopResult != null ? Math.abs(stopResult) : null;
-    var rr1 = riskAbs && tp1Result != null ? tp1Result / riskAbs : null;
-    var rr2 = riskAbs && tp2Result != null ? tp2Result / riskAbs : null;
-    var tp1Lots = Math.floor(plan.lots * tp1Pct / 100);
-    var tp2Lots = Math.max(0, plan.lots - tp1Lots);
-    var partialResult = plan.entry && plan.tp1 && plan.tp2
-      ? ((plan.tp1 - plan.entry) * tp1Lots * 100) + ((plan.tp2 - plan.entry) * tp2Lots * 100)
-      : null;
+    var riskAbs = calc.stopResultGross != null ? Math.abs(calc.stopResultGross) : (stopResult != null ? Math.abs(stopResult) : null);
+    var rr1 = riskAbs && tp1Result != null ? tp1Result / riskAbs : (riskAbs && calc.tp1ResultGross != null ? calc.tp1ResultGross / riskAbs : null);
+    var rr2 = riskAbs && calc.tp2ResultGross != null ? calc.tp2ResultGross / riskAbs : null;
+
     var missing = [];
     if (!plan.entry) missing.push('entry');
     if (!plan.stop) missing.push('stop loss');
@@ -130,7 +255,27 @@
     if (!plan.tp2) missing.push('TP2');
     if (!plan.lots) missing.push('jumlah lot');
     if (!current) missing.push('harga terbaru');
-    return { current:current, stopResult:stopResult, tp1Result:tp1Result, tp2Result:tp2Result, rr1:rr1, rr2:rr2, tp1Lots:tp1Lots, tp2Lots:tp2Lots, partialResult:partialResult, missing:missing };
+
+    return {
+      current: current,
+      stopResult: calc.stopResultGross,
+      stopResultNet: calc.stopResultNet,
+      tp1Result: calc.tp1ResultGross,
+      tp1ResultNet: calc.tp1ResultNet,
+      tp2Result: calc.tp2ResultGross,
+      tp2ResultNet: calc.tp2ResultNet,
+      rr1: rr1,
+      rr2: rr2,
+      tp1Lots: calc.tp1Lots,
+      tp2Lots: calc.tp2Lots,
+      partialResult: calc.partialGross,
+      partialResultNet: calc.partialNet,
+      partialTotalFee: calc.partialTotalFee,
+      breakEvenResult: calc.breakEvenGross,
+      breakEvenResultNet: calc.breakEvenNet,
+      breakEvenTotalFee: calc.breakEvenTotalFee,
+      missing: missing
+    };
   }
 
   function renderScenarios() {
@@ -138,11 +283,15 @@
     if (!host) return;
     var data = stateNow();
     var tp1Pct = Number((byId('scenarioTp1Pct') || {}).value || 50);
-    var rows = data.plans.map(normalizedPlan).filter(Boolean).map(function (plan) { return { plan:plan, scenario:scenarioFor(plan, data.prices, tp1Pct) }; });
+    var buyFeePct = Number((byId('scenarioBuyFeePct') || {}).value || 0.15);
+    var sellFeePct = Number((byId('scenarioSellFeePct') || {}).value || 0.25);
+    var rows = data.plans.map(normalizedPlan).filter(Boolean).map(function (plan) {
+      return { plan: plan, scenario: scenarioFor(plan, data.prices, tp1Pct, buyFeePct, sellFeePct) };
+    });
     var complete = rows.filter(function (row) { return row.scenario.missing.length === 0; }).length;
-    var totalStop = sumOrDash(rows.map(function (row) { return row.scenario.stopResult; }));
-    var totalTp1 = sumOrDash(rows.map(function (row) { return row.scenario.tp1Result; }));
-    var totalPartial = sumOrDash(rows.map(function (row) { return row.scenario.partialResult; }));
+    var totalStop = sumOrDash(rows.map(function (row) { return row.scenario.stopResultNet != null ? row.scenario.stopResultNet : row.scenario.stopResult; }));
+    var totalTp1 = sumOrDash(rows.map(function (row) { return row.scenario.tp1ResultNet != null ? row.scenario.tp1ResultNet : row.scenario.tp1Result; }));
+    var totalPartial = sumOrDash(rows.map(function (row) { return row.scenario.partialResultNet != null ? row.scenario.partialResultNet : row.scenario.partialResult; }));
     if (byId('scenarioCount')) byId('scenarioCount').textContent = String(rows.length);
     if (byId('scenarioComplete')) byId('scenarioComplete').textContent = complete + ' lengkap';
     if (byId('scenarioStopTotal')) byId('scenarioStopTotal').textContent = totalStop;
@@ -158,11 +307,11 @@
       return '<article class="candidate-item" style="display:block">' +
         '<div class="card-head"><div><h3><button class="ticker-link" data-open-ticker="' + escapeHtml(plan.ticker) + '">' + escapeHtml(plan.ticker) + '</button></h3><p>Entry ' + money(plan.entry) + ' · ' + plan.lots + ' lot · Harga ' + money(scenario.current) + '</p></div><button class="btn small" data-journal-ticker="' + escapeHtml(plan.ticker) + '">Catat ke Jurnal</button></div>' +
         '<div class="metric-grid compact">' +
-          '<div class="metric"><span>Jika stop tersentuh</span><b>' + money(scenario.stopResult) + '</b><small>Batas rugi sesuai level tersimpan</small></div>' +
-          '<div class="metric"><span>Jika TP1 tercapai</span><b>' + money(scenario.tp1Result) + '</b><small>Risk–reward ' + ratio(scenario.rr1) + '</small></div>' +
-          '<div class="metric"><span>Jika TP2 tercapai</span><b>' + money(scenario.tp2Result) + '</b><small>Risk–reward ' + ratio(scenario.rr2) + '</small></div>' +
-          '<div class="metric"><span>Simulasi bertahap</span><b>' + money(scenario.partialResult) + '</b><small>' + scenario.tp1Lots + ' lot di TP1 · ' + scenario.tp2Lots + ' lot di TP2</small></div>' +
-        '</div><div class="data-row" style="margin-top:10px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' + completeness + '</div><strong>Simulasi, bukan order otomatis</strong></div></article>';
+          '<div class="metric"><span>Jika stop tersentuh</span><b>' + money(scenario.stopResultNet != null ? scenario.stopResultNet : scenario.stopResult) + '</b><small>Kotor: ' + money(scenario.stopResult) + '</small></div>' +
+          '<div class="metric"><span>Jika TP1 tercapai</span><b>' + money(scenario.tp1ResultNet != null ? scenario.tp1ResultNet : scenario.tp1Result) + '</b><small>Net · R:R ' + ratio(scenario.rr1) + '</small></div>' +
+          '<div class="metric"><span>Simulasi bertahap</span><b>' + money(scenario.partialResultNet != null ? scenario.partialResultNet : scenario.partialResult) + '</b><small>' + scenario.tp1Lots + ' lot TP1 · ' + scenario.tp2Lots + ' lot TP2 (Biaya ' + money(scenario.partialTotalFee) + ')</small></div>' +
+          '<div class="metric"><span>Break-Even Stop</span><b>' + money(scenario.breakEvenResultNet) + '</b><small>TP1 tercapai + sisa di Entry</small></div>' +
+        '</div><div class="data-row" style="margin-top:10px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' + completeness + '</div><strong>Simulasi berlabel, bukan order otomatis</strong></div></article>';
     }).join('');
   }
 
@@ -305,8 +454,10 @@
   function bind() {
     installMoneyInputs();
     installRiskGuard();
-    var selector = byId('scenarioTp1Pct');
-    on(selector, 'change', renderScenarios);
+    ['scenarioTp1Pct', 'scenarioBuyFeePct', 'scenarioSellFeePct'].forEach(function (id) {
+      on(byId(id), 'input', renderScenarios);
+      on(byId(id), 'change', renderScenarios);
+    });
     var refresh = byId('refreshScenarios');
     on(refresh, 'click', renderScenarios);
     var tabs = typeof document.querySelectorAll === 'function' ? document.querySelectorAll('[data-tab="scenarios"]') : [];
@@ -330,6 +481,15 @@
     waitForAccess(0);
   }
 
-  if (document.readyState === 'loading') on(document, 'DOMContentLoaded', init);
-  else init();
+  if (typeof window !== 'undefined') {
+    window.AutoCuanPortfolioScenarioCalculator = Calculator;
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Calculator;
+  }
+
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') on(document, 'DOMContentLoaded', init);
+    else init();
+  }
 })();

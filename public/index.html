@@ -1290,13 +1290,14 @@ html.light #googleCompleteProfileModal input {
         <div id="ihsgSummaryCard" class="market-band-grid" role="group" aria-label="Ringkasan kondisi pasar">
             <div class="market-tile">
                 <div class="market-tile-head">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Koneksi pasar aktif"></span>
                     <span class="market-tile-label">IDX &middot; IHSG</span>
+                    <span class="text-[10px] text-emerald-400 font-medium ml-auto">Normal</span>
                 </div>
                 <div id="ihsgSummaryContent" class="market-tile-body">
                     <div class="flex items-baseline gap-2 flex-wrap">
-                        <span id="ihsgLast" class="market-tile-value">—</span>
-                        <span id="ihsgChange" class="market-tile-delta">—</span>
+                        <span id="ihsgLast" class="market-tile-value">-</span>
+                        <span id="ihsgChange" class="market-tile-delta">-</span>
                     </div>
                 </div>
                 <button onclick="window.location.assign('/analisis-saham?ticker=IHSG')" class="market-tile-link">Buka analisis IHSG &rarr;</button>
@@ -1304,20 +1305,20 @@ html.light #googleCompleteProfileModal input {
             <div class="market-tile">
                 <div class="market-tile-head"><span class="market-tile-label">Radar hari ini</span></div>
                 <div class="market-tile-body">
-                    <span id="dashMarketGate" class="market-tile-value">—</span>
+                    <span id="dashMarketGate" class="market-tile-value">-</span>
                     <span class="market-tile-unit">lolos gate</span>
                 </div>
                 <p id="dashMarketGateNote" class="market-tile-note">Menunggu Top 5 final dikunci.</p>
             </div>
             <div class="market-tile">
-                <div class="market-tile-head"><span class="market-tile-label">Data terakhir</span></div>
+                <div class="market-tile-head"><span class="market-tile-label">Waktu As-Of Pasar</span></div>
                 <div class="market-tile-body">
-                    <span id="dashMarketFreshness" class="market-tile-value is-text">—</span>
+                    <span id="dashMarketFreshness" class="market-tile-value is-text">-</span>
                 </div>
-                <p id="dashMarketFreshnessNote" class="market-tile-note">Semua angka radar memakai candle harian yang sudah selesai (T-1).</p>
+                <p id="dashMarketFreshnessNote" class="market-tile-note">Semua angka radar memakai candle harian yang sudah selesai (T-1, format WIB).</p>
             </div>
         </div>
-        <div class="dash-section-note mt-3">Hindari, AVOID, SELL, LOW_TP dan Very High Risk selalu dipisahkan dari daftar utama, jadi tidak pernah muncul sebagai kandidat yang bisa langsung dieksekusi.</div>
+        <div class="dash-section-note mt-3">Kandidat berstatus Hindari, Jual, Potensi TP Rendah, dan Risiko Sangat Tinggi selalu dipisahkan dari daftar utama, sehingga tidak pernah muncul sebagai kandidat yang bisa langsung dieksekusi.</div>
         </section>
 
         <!-- Compact Top 5 + Monitor -->
@@ -2770,10 +2771,10 @@ html.light #googleCompleteProfileModal input {
                         <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-3 border-b border-dark-600/20 bg-black/10">
                             <div>
                                 <h3 class="text-sm font-semibold text-gray-200">Ranking Harian Pasar</h3>
-                                <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker &mdash; klik ticker untuk memuat analisis &amp; chart.</p>
+                                <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker - klik ticker untuk memuat analisis &amp; chart.</p>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
-                                <div class="flex items-center gap-1.5">
+                                <div class="flex items-center gap-1.5" style="display:none">
                                     <input id="rankingTickerSearchInput" type="text" placeholder="Pilih ticker..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-28 sm:w-32 uppercase font-mono px-2.5 py-1.5 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event))){handleIndependentTabSearch('ranking', this.value)}">
                                     <button type="button" onclick="handleIndependentTabSearch('ranking', document.getElementById('rankingTickerSearchInput').value)" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 text-xs font-semibold transition shrink-0" aria-label="Cari ticker di ranking">Cari</button>
                                 </div>
@@ -3014,8 +3015,8 @@ html.light #googleCompleteProfileModal input {
                             <div class="flex items-center gap-1.5 text-xs shrink-0 sm:ml-auto">
                                 <label for="marketStructureSortSelect" class="text-[11px] ac-label-muted">Urutkan:</label>
                                 <select id="marketStructureSortSelect" class="ac-filter-select text-xs rounded px-2 py-1" aria-label="Urutkan daftar struktur pasar">
-                                    <option value="free_float_asc" selected>Free Float ↑ (Terendah)</option>
-                                    <option value="ticker_asc">Ticker (A-Z)</option>
+                                    <option value="ticker_asc" selected>Ticker (A-Z)</option>
+                                    <option value="free_float_asc">Free Float ↑ (Terendah)</option>
                                     <option value="ticker_desc">Ticker (Z-A)</option>
                                     <option value="free_float_desc">Free Float ↓ (Tertinggi)</option>
                                     <option value="investor_desc">Jumlah Investor (Terbanyak)</option>
@@ -3070,16 +3071,16 @@ html.light #googleCompleteProfileModal input {
                             <!-- Main Scrollable Table (Desktop & Tablet >=640px) -->
                             <div id="marketStructureTableWrap" class="ac-market-structure-table-wrap">
                                 <div id="marketStructureTableContainer" class="ac-market-structure-scroll">
-                                    <table id="marketStructureTable" class="w-full text-left border-collapse text-xs table-fixed">
+                                    <table id="marketStructureTable" class="w-full text-left text-xs table-fixed">
                                         <colgroup>
                                             <col style="width: 75px;">
                                             <col style="width: 19%;">
                                             <col class="col-sektor" style="width: 13%;">
                                             <col style="width: 11%;">
                                             <col style="width: 15%;">
-                                            <col style="width: 22%;">
+                                            <col style="width: 20%;">
                                             <col class="col-kelengkapan" style="width: 11%;">
-                                            <col class="col-as-of" style="width: 85px;">
+                                            <col class="col-as-of" style="width: 110px;">
                                         </colgroup>
                                         <thead class="sticky top-0 bg-slate-900 z-20 border-b border-slate-700/80 text-slate-400 font-semibold">
                                             <tr>
@@ -3227,7 +3228,7 @@ html.light #googleCompleteProfileModal input {
         <section id="panel-tab-bandarmologi" class="analisis-tab-panel" style="display:none">
             <div class="unified-card p-3.5 sm:p-4">
                 <!-- Bandarmologi Search & Sync Bar -->
-                <div class="mb-4 pb-3 border-b border-dark-600/40">
+                <div id="bandarSearchBarContainer" class="mb-4 pb-3 border-b border-dark-600/40">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
                             <div class="relative flex-1 min-w-[200px]">
@@ -3389,6 +3390,7 @@ html.light #googleCompleteProfileModal input {
         <button class="tab" role="tab" aria-selected="false" data-tab="planner"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg><span>Rencana Posisi</span></button>
         <button class="tab" role="tab" aria-selected="false" data-tab="watch"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>Pantauan</span></button>
         <button class="tab" role="tab" aria-selected="false" data-tab="risk"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.002A11.959 11.959 0 0112 2.714zm0 13.036h.008v.008H12v-.008z"/></svg><span>Risiko &amp; Avg Down</span></button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="scenarios"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg><span>Skenario Posisi</span></button>
         <button class="tab" role="tab" aria-selected="false" data-tab="journal"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg><span>Jurnal</span></button>
         <button class="tab" role="tab" aria-selected="false" data-tab="ai"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg><span>Asisten AI</span></button>
       </nav>
@@ -3558,16 +3560,26 @@ html.light #googleCompleteProfileModal input {
             <h2>Lihat dampak stop, TP1, TP2, dan pelepasan bertahap sebelum mengambil keputusan.</h2>
             <p>Semua angka dihitung dari entry, lot, stop loss, dan target yang tersimpan. Ini simulasi lokal, bukan sinyal atau order otomatis.</p>
           </div>
-          <div class="field" style="min-width:210px">
-            <label for="scenarioTp1Pct">Porsi dilepas di TP1</label>
-            <select id="scenarioTp1Pct"><option value="25">25%</option><option value="50" selected>50%</option><option value="75">75%</option></select>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div class="field" style="min-width:130px">
+              <label for="scenarioTp1Pct">Porsi di TP1</label>
+              <select id="scenarioTp1Pct"><option value="25">25%</option><option value="50" selected>50%</option><option value="75">75%</option></select>
+            </div>
+            <div class="field" style="min-width:110px">
+              <label for="scenarioBuyFeePct">Estimasi Fee Beli</label>
+              <input id="scenarioBuyFeePct" type="number" step="0.01" min="0" max="5" value="0.15" style="width:100%" />
+            </div>
+            <div class="field" style="min-width:110px">
+              <label for="scenarioSellFeePct">Estimasi Fee Jual</label>
+              <input id="scenarioSellFeePct" type="number" step="0.01" min="0" max="5" value="0.25" style="width:100%" />
+            </div>
           </div>
         </div>
         <div class="metric-grid">
           <div class="metric"><span>Posisi disimulasikan</span><strong id="scenarioCount">0</strong><small id="scenarioComplete">0 lengkap</small></div>
           <div class="metric"><span>Total jika stop</span><strong id="scenarioStopTotal">Rp 0</strong><small>berdasarkan level tersimpan</small></div>
           <div class="metric"><span>Total jika TP1</span><strong id="scenarioTp1Total">Rp 0</strong><small>semua lot mencapai TP1</small></div>
-          <div class="metric"><span>Total skenario bertahap</span><strong id="scenarioPartialTotal">Rp 0</strong><small>TP1 lalu sisa ke TP2</small></div>
+          <div class="metric"><span>Total skenario bertahap</span><strong id="scenarioPartialTotal">Rp 0</strong><small id="scenarioPartialSub">Net setelah estimasi biaya</small></div>
         </div>
         <article class="card section-gap">
           <div class="card-head"><div><h2>Rincian per Posisi</h2><p>Posisi yang datanya belum lengkap akan ditandai jelas.</p></div><button id="refreshScenarios" class="btn small">Hitung Ulang</button></div>
@@ -10963,18 +10975,27 @@ function patternPersonalityBadgeHtml(r) {
 }
 if (typeof window !== 'undefined') window.patternPersonalityBadgeHtml = patternPersonalityBadgeHtml;
 
+function formatRiskLabelId(label) {
+    var raw = normalizeRiskLabel(label);
+    if (raw === 'Low Risk') return 'Risiko Rendah';
+    if (raw === 'Medium Risk') return 'Risiko Sedang';
+    if (raw === 'High Risk') return 'Risiko Tinggi';
+    if (raw === 'Very High Risk') return 'Risiko Sangat Tinggi';
+    return raw;
+}
+
 function getRiskLabel(r) {
     if (!r) return '';
     var camelRisk = r.riskLabel;
     if (camelRisk && typeof camelRisk === 'object') camelRisk = camelRisk.risk_label_v2 || camelRisk.risk_label || camelRisk.label || camelRisk.risk || '';
-    return normalizeRiskLabel(r.risk_label_v2 || r.verified_risk_label || r.risk_label || camelRisk || r.risk || r.risk_level || '');
+    return formatRiskLabelId(normalizeRiskLabel(r.risk_label_v2 || r.verified_risk_label || r.risk_label || camelRisk || r.risk || r.risk_level || ''));
 }
 function getRiskColor(label) {
     var risk = normalizeRiskLabel(label);
-    if (risk === 'Low Risk') return '#6ee7b7';
-    if (risk === 'Medium Risk') return '#fbbf24';
-    if (risk === 'High Risk') return '#fb923c';
-    if (risk === 'Very High Risk' || risk === 'Hindari') return '#fca5a5';
+    if (risk === 'Low Risk' || risk === 'Risiko Rendah') return '#6ee7b7';
+    if (risk === 'Medium Risk' || risk === 'Risiko Sedang') return '#fbbf24';
+    if (risk === 'High Risk' || risk === 'Risiko Tinggi') return '#fb923c';
+    if (risk === 'Very High Risk' || risk === 'Risiko Sangat Tinggi' || risk === 'Hindari') return '#fca5a5';
     return '#9ca3af';
 }
 function normalizeActionLabel(label) {
@@ -10983,11 +11004,14 @@ function normalizeActionLabel(label) {
     if (!compact) return '';
     if (compact === 'wait pullback' || compact === 'wait pullback valid' || compact === 'tunggu pullback' || compact === 'tunggu pullback valid') return 'Tunggu pullback valid';
     if (compact === 'avoid' || compact === 'avoid dulu' || compact === 'hindari' || compact === 'hindari dulu') return 'Hindari';
+    if (compact === 'sell' || compact === 'jual') return 'Jual';
+    if (compact === 'buy' || compact === 'beli') return 'Beli';
+    if (compact === 'low_tp' || compact === 'low tp' || compact === 'potensi tp rendah') return 'Potensi TP Rendah';
     if (compact === 'watch' || compact === 'watchlist') return 'Watchlist';
     if (compact === 'pantau') return 'Pantau';
     if (compact === 'signal' || compact === 'sinyal') return 'Signal';
     if (compact === 'radar' || compact === 'early radar') return 'Radar';
-    if (compact === 'final' || compact === 'locked' || compact === 'final locked') return 'Final / Locked';
+    if (compact === 'final' || compact === 'locked' || compact === 'final locked' || compact === 'final / locked' || compact === 'top 5 radar final/locked' || compact === 'top 5 radar final locked') return 'Final / Locked';
     if (compact === 'preview' || compact === 'provisional' || compact === 'preview provisional') return 'Preview / Provisional';
     return text.replace(/_/g, ' ');
 }
@@ -14267,11 +14291,11 @@ function dashboardTop5NoteText(data, isAwaiting, gateLabel) {
     var payload = data && typeof data === 'object' ? data : {};
     if (isAwaiting) {
         return payload.web_provisional
-            ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.'
+            ? 'Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.'
             : 'Menunggu Top 5 final dikunci. Monitor aktif setelah penguncian.';
     }
     if (payload.top5_locked) {
-        return 'Top 5 Radar Final/Locked — ' + gateLabel + '. Monitor update tiap 30 menit saat jam bursa.';
+        return 'Top 5 Radar Terkunci (Final/Locked) (' + gateLabel + '). Monitor update tiap 30 menit saat jam bursa.';
     }
     return payload.update_note || 'Top 5 Radar tersedia.';
 }
@@ -14286,7 +14310,7 @@ function renderMarketBand(data, isAwaiting, pickedCount, waitPullbackCount, acti
     var freshness = document.getElementById('dashMarketFreshness');
 
     var dispCount = (waitPullbackCount > 0 && actionableCount != null) ? actionableCount : pickedCount;
-    if (gate) gate.textContent = isAwaiting ? '—' : (dispCount + '/5');
+    if (gate) gate.textContent = isAwaiting ? '-' : (dispCount + '/5');
     if (gateNote) {
         gateNote.textContent = isAwaiting
             ? 'Menunggu Top 5 final dikunci.'
@@ -14475,11 +14499,11 @@ function dashboardExcludedHtml(excluded) {
     if (!excluded || excluded.length === 0) return '';
     return '<details class="dashboard-excluded-disclosure mt-3 rounded-xl border border-dark-600/30 bg-dark-800/40 px-3.5 py-2.5 text-[11px] text-gray-400"><summary class="cursor-pointer font-medium hover:text-gray-200 select-none">Daftar Dikecualikan / Filter Risiko (' + excluded.length + ' saham)</summary><div class="mt-2.5 space-y-1.5 text-gray-300 border-t border-dark-600/30 pt-2">' + excluded.slice(0, 8).map(function(item) {
         var r = item.row || {};
-        var action = getActionLabel(r) || r.action_label || r.status || 'Filtered by safety rules';
-        var risk = getRiskLabel(r) || '—';
+        var action = getActionLabel(r) || r.action_label || r.status || 'Difilter aturan keamanan';
+        var risk = getRiskLabel(r) || '-';
         var reason = getSignalReason(r);
         var reasonHtml = reason ? '<span class="text-gray-400 italic text-[10px]">' + escapeHtml(reason) + '</span>' : '';
-        return '<div class="flex flex-wrap items-center gap-2"><b class="font-mono text-white">' + escapeHtml(r.ticker || '-') + '</b><span class="text-amber-300 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">' + escapeHtml(action) + '</span><span class="text-gray-400">Risk: ' + escapeHtml(risk) + '</span>' + reasonHtml + '</div>';
+        return '<div class="flex flex-wrap items-center gap-2"><b class="font-mono text-white">' + escapeHtml(r.ticker || '-') + '</b><span class="text-amber-300 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">' + escapeHtml(action) + '</span><span class="text-gray-400">Risiko: ' + escapeHtml(risk) + '</span>' + reasonHtml + '</div>';
     }).join('') + '</div></details>';
 }
 // The tone moves from a Tailwind colour class to a data attribute so the level
@@ -14618,7 +14642,7 @@ function renderDashboardTop5(picks) {
     }
     var split = splitDashboardSafeRows(picks);
     if (split.safe.length === 0) {
-        el.innerHTML = dashboardEmptyHtml('No safe candidates right now. Candidates were filtered by safety rules.', 'amber') + dashboardExcludedHtml(split.excluded);
+        el.innerHTML = dashboardEmptyHtml('Belum ada kandidat yang memenuhi kriteria pengaman saat ini. Seluruh kandidat telah difilter oleh aturan keamanan.', 'amber') + dashboardExcludedHtml(split.excluded);
         return;
     }
     var html = '<div class="dashboard-decision-list space-y-2">';
@@ -14626,10 +14650,10 @@ function renderDashboardTop5(picks) {
         var r = normalizeDashboardPick(p);
         _dashboardPickData[r.ticker] = r;
         var sc = Number(r.combined_score || r.telegram_conviction_score || r.daytrade_score || r.score || 0);
-        var grade = getSignalQualityGrade(r) || '—';
-        var risk = getRiskLabel(r) || '—';
+        var grade = getSignalQualityGrade(r) || '-';
+        var risk = getRiskLabel(r) || '-';
         var rr = Number(r.risk_reward || r.rr);
-        var action = getActionLabel(r) || getStatusLabel(r, r.status || r.final_status || '') || '—';
+        var action = getActionLabel(r) || getStatusLabel(r, r.status || r.final_status || '') || '-';
         var rank = p.rank || (idx + 1);
         var tickerJs = escapeHtml(dashJsString(r.ticker));
 

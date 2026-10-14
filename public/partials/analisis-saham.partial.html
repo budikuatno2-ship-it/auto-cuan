@@ -261,10 +261,10 @@
                         <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-3 border-b border-dark-600/20 bg-black/10">
                             <div>
                                 <h3 class="text-sm font-semibold text-gray-200">Ranking Harian Pasar</h3>
-                                <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker &mdash; klik ticker untuk memuat analisis &amp; chart.</p>
+                                <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker - klik ticker untuk memuat analisis &amp; chart.</p>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
-                                <div class="flex items-center gap-1.5">
+                                <div class="flex items-center gap-1.5" style="display:none">
                                     <input id="rankingTickerSearchInput" type="text" placeholder="Pilih ticker..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-28 sm:w-32 uppercase font-mono px-2.5 py-1.5 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event))){handleIndependentTabSearch('ranking', this.value)}">
                                     <button type="button" onclick="handleIndependentTabSearch('ranking', document.getElementById('rankingTickerSearchInput').value)" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 text-xs font-semibold transition shrink-0" aria-label="Cari ticker di ranking">Cari</button>
                                 </div>
@@ -568,9 +568,9 @@
                                             <col class="col-sektor" style="width: 13%;">
                                             <col style="width: 11%;">
                                             <col style="width: 15%;">
-                                            <col style="width: 22%;">
+                                            <col style="width: 20%;">
                                             <col class="col-kelengkapan" style="width: 11%;">
-                                            <col class="col-as-of" style="width: 85px;">
+                                            <col class="col-as-of" style="width: 110px;">
                                         </colgroup>
                                         <thead class="sticky top-0 bg-slate-900 z-20 border-b border-slate-700/80 text-slate-400 font-semibold">
                                             <tr>
@@ -718,7 +718,7 @@
         <section id="panel-tab-bandarmologi" class="analisis-tab-panel" style="display:none">
             <div class="unified-card p-3.5 sm:p-4">
                 <!-- Bandarmologi Search & Sync Bar -->
-                <div class="mb-4 pb-3 border-b border-dark-600/40">
+                <div id="bandarSearchBarContainer" class="mb-4 pb-3 border-b border-dark-600/40">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
                             <div class="relative flex-1 min-w-[200px]">
