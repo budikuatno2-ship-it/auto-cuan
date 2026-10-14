@@ -91,6 +91,12 @@ const fcaTransition2026 = require('../lib/fca-transition-2026');
 const daytradeFcaLiveTradeProof = require('../lib/daytrade-fca-live-trade-proof');
 const { hotMarketStructureCache, hotSectorCache } = require('../lib/in-memory-ttl-cache');
 
+function setHeaderSafe(res, name, value) {
+  if (res && typeof res.setHeader === 'function') {
+    res.setHeader(name, value);
+  }
+}
+
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
 const DAYTRADE_RUNNING_SKIP_MESSAGE = 'Day Trade scan already running; skipped to avoid overlap.';
 
@@ -393,7 +399,7 @@ module.exports = async function handler(req, res) {
       const cacheKey = 'landing-snapshot';
       const cached = hotSectorCache.get(cacheKey);
       if (cached) {
-        res.setHeader('X-Cache', 'HIT');
+        setHeaderSafe(res, 'X-Cache', 'HIT');
         return res.status(200).json(cached);
       }
       try {
@@ -405,7 +411,7 @@ module.exports = async function handler(req, res) {
           updated_at: snap.updated_at || null
         };
         hotSectorCache.set(cacheKey, payload, 30 * 1000);
-        res.setHeader('X-Cache', 'MISS');
+        setHeaderSafe(res, 'X-Cache', 'MISS');
         return res.status(200).json(payload);
       } catch (e) {
         return res.status(200).json({ success: false, snapshot: null, stale: true });
@@ -9342,8 +9348,8 @@ async function handleMarketStructureList(req, res) {
     const cacheKey = 'market-structure-list:30sep';
     const cached = hotMarketStructureCache.get(cacheKey);
     if (cached) {
-      res.setHeader('X-Cache', 'HIT');
-      res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+      setHeaderSafe(res, 'X-Cache', 'HIT');
+      setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
       return res.status(200).json(cached);
     }
     const list = getMarketStructure30SepList();
@@ -9376,8 +9382,8 @@ async function handleMarketStructureList(req, res) {
       rows: formatted
     };
     hotMarketStructureCache.set(cacheKey, payload, 30 * 1000);
-    res.setHeader('X-Cache', 'MISS');
-    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    setHeaderSafe(res, 'X-Cache', 'MISS');
+    setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     return res.status(200).json(payload);
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });

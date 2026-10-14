@@ -19,6 +19,12 @@ var fcaTransition2026 = require('../lib/fca-transition-2026');
 var { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
 var { hotQuoteCache } = require('../lib/in-memory-ttl-cache');
 
+function setHeaderSafe(res, name, value) {
+  if (res && typeof res.setHeader === 'function') {
+    res.setHeader(name, value);
+  }
+}
+
 // This endpoint is unauthenticated and, with includeNews=1, triggers a paid
 // upstream AI news lookup on a cache miss plus a live Yahoo Finance fetch. It
 // had no limit at all, so a scripted ticker sweep could drive unbounded
@@ -149,11 +155,13 @@ async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
   }
 
   var cacheKey = 'financial-snapshot:' + ticker;
-  var cached = hotQuoteCache.get(cacheKey);
-  if (cached) {
-    res.setHeader('X-Cache', 'HIT');
-    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
-    return res.status(200).json(cached);
+  if (!injectedSupabase) {
+    var cached = hotQuoteCache.get(cacheKey);
+    if (cached) {
+      setHeaderSafe(res, 'X-Cache', 'HIT');
+      setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+      return res.status(200).json(cached);
+    }
   }
 
   var db = injectedSupabase;
@@ -195,9 +203,11 @@ async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
   try {
     var snapshot = await buildFinancialSnapshot(db, ticker);
     var payload = { success: true, snapshot: snapshot };
-    hotQuoteCache.set(cacheKey, payload, 30 * 1000);
-    res.setHeader('X-Cache', 'MISS');
-    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    if (!injectedSupabase) {
+      hotQuoteCache.set(cacheKey, payload, 30 * 1000);
+    }
+    setHeaderSafe(res, 'X-Cache', 'MISS');
+    setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     return res.status(200).json(payload);
   } catch (_) {
     var fs = require("node:fs");
@@ -208,9 +218,11 @@ async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
         var localDb = marketStore.getVpsMarketStore(vpsDbPath);
         var fallbackSnapshot = await buildFinancialSnapshot(localDb, ticker);
         var fallbackPayload = { success: true, snapshot: fallbackSnapshot };
-        hotQuoteCache.set(cacheKey, fallbackPayload, 30 * 1000);
-        res.setHeader('X-Cache', 'MISS');
-        res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+        if (!injectedSupabase) {
+          hotQuoteCache.set(cacheKey, fallbackPayload, 30 * 1000);
+        }
+        setHeaderSafe(res, 'X-Cache', 'MISS');
+        setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
         return res.status(200).json(fallbackPayload);
       } catch (_) {}
     }
@@ -231,8 +243,8 @@ async function handleDailyMarketContextAction(req, res) {
   var cacheKey = 'daily-market-context:' + ticker;
   var cached = hotQuoteCache.get(cacheKey);
   if (cached) {
-    res.setHeader('X-Cache', 'HIT');
-    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    setHeaderSafe(res, 'X-Cache', 'HIT');
+    setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     return res.status(200).json(cached);
   }
 
@@ -251,8 +263,8 @@ async function handleDailyMarketContextAction(req, res) {
     var context = await dailyContextBuilder.buildContextForTicker(supabase, ticker, {});
     var payload = { success: true, context: context };
     hotQuoteCache.set(cacheKey, payload, 30 * 1000);
-    res.setHeader('X-Cache', 'MISS');
-    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    setHeaderSafe(res, 'X-Cache', 'MISS');
+    setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     return res.status(200).json(payload);
   } catch (error) {
     console.error('daily-market-context exception:', error);
@@ -319,11 +331,13 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
     }
 
     var cacheKey = 'daily-market-context-list:' + (sortBy || 'default') + ':' + order + ':' + limit;
-    var cached = hotQuoteCache.get(cacheKey);
-    if (cached) {
-      res.setHeader('X-Cache', 'HIT');
-      res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
-      return res.status(200).json(cached);
+    if (!injectedSupabase) {
+      var cached = hotQuoteCache.get(cacheKey);
+      if (cached) {
+        setHeaderSafe(res, 'X-Cache', 'HIT');
+        setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+        return res.status(200).json(cached);
+      }
     }
 
     var featureRows = await dailyHistoryStore.getAllDailyFeatures(supabase, { limit: 1000 });
@@ -392,9 +406,11 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
       excluded_outside_eligible_count: excludedOutsideEligible.length,
       excluded_outside_eligible: excludedOutsideEligible
     };
-    hotQuoteCache.set(cacheKey, payload, 30 * 1000);
-    res.setHeader('X-Cache', 'MISS');
-    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    if (!injectedSupabase) {
+      hotQuoteCache.set(cacheKey, payload, 30 * 1000);
+    }
+    setHeaderSafe(res, 'X-Cache', 'MISS');
+    setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     return res.status(200).json(payload);
   } catch (error) {
     console.error('daily-market-context-list exception:', error);
@@ -476,8 +492,8 @@ module.exports = async function handler(req, res) {
       var cachedQuote = hotQuoteCache.get(quoteCacheKey);
       if (cachedQuote) {
         clearTimeout(timeoutGuard);
-        res.setHeader('X-Cache', 'HIT');
-        res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+        setHeaderSafe(res, 'X-Cache', 'HIT');
+        setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
         return res.status(200).json(cachedQuote);
       }
     }
@@ -648,8 +664,8 @@ module.exports = async function handler(req, res) {
     if (quoteCacheKey && quoteResult && quoteResult.success !== false) {
       hotQuoteCache.set(quoteCacheKey, quoteResult, 30 * 1000);
     }
-    res.setHeader('X-Cache', 'MISS');
-    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    setHeaderSafe(res, 'X-Cache', 'MISS');
+    setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     return res.status(200).json(quoteResult);
 
   } catch (err) {
