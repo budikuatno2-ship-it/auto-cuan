@@ -10842,6 +10842,10 @@ html.light .sidebar-subgroup-label {
   color: var(--color-text-secondary);
 }
 
+#panel-tab-market-structure[data-ac-ui="v2"] p.ac-label-muted {
+  line-height: 1.45 !important;
+}
+
 #panel-tab-market-structure[data-ac-ui="v2"] .ac-section-title,
 #panel-tab-market-structure[data-ac-ui="v2"] .ac-detail-title,
 #panel-tab-market-structure[data-ac-ui="v2"] .ac-sheet-title,
@@ -14072,4 +14076,3 @@ html[data-theme="dark"] .ac-origin-f {
 .ac-roster-item-card:hover {
   background-color: rgba(30, 41, 59, 0.5);
 }
-

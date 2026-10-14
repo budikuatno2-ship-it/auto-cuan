@@ -1235,6 +1235,8 @@
           card.classList.add('is-expanded');
           header.setAttribute('aria-expanded', 'true');
           marketStructureSelectedTicker = t;
+          var pane = byId('marketStructureDetailPane');
+          if (pane) { pane.hidden = true; pane.style.display = 'none'; }
           loadAccordionRoster(t, content, item);
         } else {
           content.hidden = true;
@@ -1569,7 +1571,7 @@
 
   async function loadStrukturPasarUniverse(selectTicker) {
     bindMarketStructureEventsOnce();
-    return AutoCuanMarketStructure.loadUniverse().then(function () {
+    return AutoCuanMarketStructure.loadUniverse(true).then(function () {
       var target = selectTicker || (root.UnifiedCockpit && root.UnifiedCockpit.getActiveTicker ? root.UnifiedCockpit.getActiveTicker() : root.activeTicker) || 'BBCA';
       if (target) {
         AutoCuanMarketStructure.selectRow(target, false);
@@ -1994,7 +1996,7 @@
         var payload = response ? await response.json().catch(function () { return {}; }) : {};
         var list = (payload && Array.isArray(payload.data)) ? payload.data : ((payload && Array.isArray(payload.rows)) ? payload.rows : ((payload && Array.isArray(payload.universe)) ? payload.universe : null));
 
-        if (!response || !response.ok || !payload || !payload.success || list === null) {
+        if (!response || !response.ok || !payload || !payload.success || list === null || list.length === 0) {
           var fb = await fetch('/api/quote?action=daily-market-context-list', {
             credentials: 'same-origin',
             cache: 'no-store'
@@ -2003,7 +2005,9 @@
           if (fb && !fb.ok) {
             throw new Error((fbPayload && fbPayload.error) || 'Gagal memuat daftar fixture.');
           }
-          list = (fbPayload && Array.isArray(fbPayload.data)) ? fbPayload.data : ((fbPayload && Array.isArray(fbPayload.rows)) ? fbPayload.rows : ((fbPayload && Array.isArray(fbPayload.universe)) ? fbPayload.universe : null));
+          if (fbPayload && (fbPayload.success || Array.isArray(fbPayload.data))) {
+            list = (fbPayload && Array.isArray(fbPayload.data)) ? fbPayload.data : ((fbPayload && Array.isArray(fbPayload.rows)) ? fbPayload.rows : ((fbPayload && Array.isArray(fbPayload.universe)) ? fbPayload.universe : null));
+          }
         }
 
         if (list === null) {
@@ -2137,9 +2141,10 @@
         });
       } else if (f === 'incomplete') {
         rows = rows.filter(function (r) {
-          var hasValidFf = r.free_float_pct != null && Number.isFinite(Number(r.free_float_pct));
-          var isComp = hasValidFf && Array.isArray(r.investors) && r.investors.length > 0;
-          return !isComp || r.market_structure_status === 'DATA_INCOMPLETE';
+          if (r.free_float_pct == null || !Number.isFinite(Number(r.free_float_pct))) return true;
+          if (r.market_structure_guard === 'UNKNOWN' || r.market_structure_status === 'DATA_INCOMPLETE') return true;
+          if (Array.isArray(r.investors) && r.investors.length === 0) return true;
+          return false;
         });
       }
 
@@ -2468,7 +2473,7 @@
           : (hscLabel === 'Tidak Terindikasi HSC'
             ? 'ac-status-badge--positive'
             : 'ac-status-badge--neutral');
-        tdHsc.innerHTML = '<span class="ac-badge ac-status-badge ' + hscBadgeClass + '">' + escapeHtml(hscLabel) + '</span>';
+        tdHsc.innerHTML = '<span class="ac-status-badge ' + hscBadgeClass + '">' + escapeHtml(hscLabel) + '</span>';
         tr.appendChild(tdHsc);
 
         // 6. Pemegang Saham Terbesar (Nama + %) & Pemegang Cocok Sub-badge
@@ -2517,12 +2522,12 @@
         tdComp.className = 'py-2 px-3 whitespace-nowrap col-kelengkapan';
         var hasValidFf = row.free_float_pct != null && Number.isFinite(Number(row.free_float_pct));
         var isComp = hasValidFf && Array.isArray(row.investors) && row.investors.length > 0;
-        tdComp.innerHTML = '<span class="ac-badge ac-status-badge ' + (isComp ? 'ac-status-badge--positive' : 'ac-status-badge--neutral') + '">' + (isComp ? 'Lengkap' : 'Belum Lengkap') + '</span>';
+        tdComp.innerHTML = '<span class="ac-status-badge ' + (isComp ? 'ac-status-badge--positive' : 'ac-status-badge--neutral') + '">' + (isComp ? 'Lengkap' : 'Belum Lengkap') + '</span>';
         tr.appendChild(tdComp);
 
         // 8. As-of Date
         var tdDate = document.createElement('td');
-        tdDate.className = 'py-2 px-3 text-[11px] text-slate-400 font-mono whitespace-nowrap col-as-of ac-cell-date';
+        tdDate.className = 'py-2 px-3 text-[11px] text-slate-400 font-mono whitespace-nowrap col-as-of';
         tdDate.textContent = formatIndonesianDateWithWib(row.free_float_as_of || '2026-09-30');
         tr.appendChild(tdDate);
 
