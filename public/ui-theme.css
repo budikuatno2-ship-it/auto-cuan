@@ -13892,6 +13892,10 @@ html[data-theme="dark"] .ac-origin-f {
 }
 
 @media (max-width: 640px) {
+  .maintenance-facts {
+    font-size: 12px;
+    line-height: 1.5;
+  }
   #marketStructureTableWrap,
   .ac-market-structure-table-wrap {
     display: none !important;

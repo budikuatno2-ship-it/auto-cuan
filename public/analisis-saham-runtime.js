@@ -103,7 +103,7 @@
     }
     var raw = row[col.key];
     if (raw === null || raw === undefined || !Number.isFinite(Number(raw))) {
-      return '<span class="text-gray-500">-</span>';
+      return '<span class="text-gray-500">—</span>';
     }
     var num = Number(raw);
     var text = col.fmt(num);
@@ -1180,7 +1180,7 @@
     var html = items.map(function (item) {
       var isExpanded = marketStructureSelectedTicker && marketStructureSelectedTicker.toUpperCase() === item.ticker.toUpperCase();
       var ffVal = item.freeFloat != null ? item.freeFloat : item.free_float_pct;
-      var ffStr = (ffVal != null && Number.isFinite(Number(ffVal))) ? Number(ffVal).toFixed(2).replace('.', ',') + '%' : '-';
+      var ffStr = (ffVal != null && Number.isFinite(Number(ffVal))) ? Number(ffVal).toFixed(2).replace('.', ',') + '%' : '—';
       var compName = item.name || item.company_name || ('PT ' + item.ticker + ' Tbk');
       var invCount = item.investorCount != null ? item.investorCount : (item.investor_count != null ? item.investor_count : (item.investors ? item.investors.length : '-'));
       var sectorStr = item.sector || '-';
@@ -1523,7 +1523,7 @@
     var sortSelect = byId('marketStructureSortSelect');
     if (sortSelect) {
       sortSelect.addEventListener('change', function (e) {
-        var val = (e && e.target && e.target.value ? e.target.value : (sortSelect ? sortSelect.value : 'ticker_asc')) || 'ticker_asc';
+        var val = (e && e.target && e.target.value ? e.target.value : (sortSelect ? sortSelect.value : 'free_float_asc')) || 'free_float_asc';
         AutoCuanMarketStructure.setSort(val);
       });
     }
@@ -1915,7 +1915,7 @@
     activeFilter: 'all',
     searchQuery: '',
     sectorFilter: 'all',
-    sortKey: 'ticker_asc',
+    sortKey: 'free_float_asc',
     selectedTicker: null,
     lastSelectedRowEl: null,
     isLoading: false,
@@ -1970,6 +1970,16 @@
       var wrap = byId('marketStructureTableWrap');
       var errBox = byId('marketStructureTableError');
       var emptyBox = byId('marketStructureTableEmpty');
+      var state = byId('marketStructureDataState');
+      var refreshBanner = byId('marketStructureRefreshBanner');
+
+      if (!this.hasLoaded && state) {
+        state.hidden = false;
+        state.innerHTML = '<span class="spinner-sm"></span> Memuat daftar struktur pasar…';
+      } else if (refreshBanner) {
+        refreshBanner.hidden = false;
+        refreshBanner.innerHTML = '<span class="ac-refresh-banner-text"><span class="spinner-sm"></span> Memperbarui daftar struktur pasar…</span>';
+      }
 
       if (skeleton) skeleton.hidden = false;
       if (wrap) wrap.style.opacity = '0.5';
@@ -1982,23 +1992,31 @@
           cache: 'no-store'
         }).catch(function () { return null; });
         var payload = response ? await response.json().catch(function () { return {}; }) : {};
-        var list = Array.isArray(payload.data) ? payload.data : (Array.isArray(payload.rows) ? payload.rows : (Array.isArray(payload.universe) ? payload.universe : null));
+        var list = (payload && Array.isArray(payload.data)) ? payload.data : ((payload && Array.isArray(payload.rows)) ? payload.rows : ((payload && Array.isArray(payload.universe)) ? payload.universe : null));
 
-        if (!response || !response.ok || !payload.success || !list || list.length === 0) {
+        if (!response || !response.ok || !payload || !payload.success || list === null) {
           var fb = await fetch('/api/quote?action=daily-market-context-list', {
             credentials: 'same-origin',
             cache: 'no-store'
           }).catch(function () { return null; });
           var fbPayload = fb ? await fb.json().catch(function () { return {}; }) : {};
-          list = Array.isArray(fbPayload.universe) ? fbPayload.universe : (Array.isArray(fbPayload.rows) ? fbPayload.rows : (Array.isArray(fbPayload.data) ? fbPayload.data : null));
+          if (fb && !fb.ok) {
+            throw new Error((fbPayload && fbPayload.error) || 'Gagal memuat daftar fixture.');
+          }
+          list = (fbPayload && Array.isArray(fbPayload.data)) ? fbPayload.data : ((fbPayload && Array.isArray(fbPayload.rows)) ? fbPayload.rows : ((fbPayload && Array.isArray(fbPayload.universe)) ? fbPayload.universe : null));
         }
 
-        if (!list) {
+        if (list === null) {
           throw new Error((payload && payload.error) || 'Gagal memuat universe struktur pasar.');
         }
 
         this.universe = list;
         this.hasLoaded = true;
+        marketStructureUniverse = list;
+        marketStructureUniverseLoaded = true;
+        if (state) state.hidden = true;
+        if (refreshBanner) refreshBanner.hidden = true;
+
         this.updateFilterCounts();
         this.applyFilters();
 
@@ -2007,6 +2025,13 @@
           this.selectRow(targetTicker, false);
         }
       } catch (err) {
+        if (!this.hasLoaded && state) {
+          state.hidden = false;
+          state.textContent = (err && err.message) || 'Gagal memuat struktur pasar.';
+        } else if (refreshBanner) {
+          refreshBanner.hidden = false;
+          refreshBanner.innerHTML = '<span class="ac-refresh-banner-text is-error">Gagal memperbarui: ' + escapeHtml((err && err.message) || 'Koneksi terputus') + '</span>';
+        }
         if (errBox) {
           errBox.hidden = false;
           var msg = byId('marketStructureErrorMessage');
@@ -2054,13 +2079,13 @@
       this.searchQuery = '';
       this.activeFilter = 'all';
       this.sectorFilter = 'all';
-      this.sortKey = 'ticker_asc';
+      this.sortKey = 'free_float_asc';
       var inp = byId('marketStructureSearchInput');
       if (inp) inp.value = '';
       var sec = byId('marketStructureSectorSelect');
       if (sec) sec.value = 'all';
       var sel = byId('marketStructureSortSelect');
-      if (sel) sel.value = 'ticker_asc';
+      if (sel) sel.value = 'free_float_asc';
       this.setFilter('all');
     },
 
@@ -2176,6 +2201,7 @@
       if (total === 0) {
         if (tbody) tbody.innerHTML = '';
         if (cardsContainer) cardsContainer.innerHTML = '';
+        renderMarketStructureAccordion([]);
         if (tableWrap) {
           tableWrap.hidden = true;
           tableWrap.classList.add('is-empty-hidden');
@@ -2210,6 +2236,7 @@
         if (paginationControls) paginationControls.innerHTML = '';
         return;
       }
+      renderMarketStructureAccordion(this.filteredUniverse);
       if (tableWrap) {
         tableWrap.hidden = false;
         tableWrap.classList.remove('is-empty-hidden');
@@ -2441,7 +2468,7 @@
           : (hscLabel === 'Tidak Terindikasi HSC'
             ? 'ac-status-badge--positive'
             : 'ac-status-badge--neutral');
-        tdHsc.innerHTML = '<span class="ac-status-badge ' + hscBadgeClass + '">' + escapeHtml(hscLabel) + '</span>';
+        tdHsc.innerHTML = '<span class="ac-badge ac-status-badge ' + hscBadgeClass + '">' + escapeHtml(hscLabel) + '</span>';
         tr.appendChild(tdHsc);
 
         // 6. Pemegang Saham Terbesar (Nama + %) & Pemegang Cocok Sub-badge
@@ -2490,12 +2517,12 @@
         tdComp.className = 'py-2 px-3 whitespace-nowrap col-kelengkapan';
         var hasValidFf = row.free_float_pct != null && Number.isFinite(Number(row.free_float_pct));
         var isComp = hasValidFf && Array.isArray(row.investors) && row.investors.length > 0;
-        tdComp.innerHTML = '<span class="ac-status-badge ' + (isComp ? 'ac-status-badge--positive' : 'ac-status-badge--neutral') + '">' + (isComp ? 'Lengkap' : 'Belum Lengkap') + '</span>';
+        tdComp.innerHTML = '<span class="ac-badge ac-status-badge ' + (isComp ? 'ac-status-badge--positive' : 'ac-status-badge--neutral') + '">' + (isComp ? 'Lengkap' : 'Belum Lengkap') + '</span>';
         tr.appendChild(tdComp);
 
         // 8. As-of Date
         var tdDate = document.createElement('td');
-        tdDate.className = 'py-2 px-3 text-[11px] text-slate-400 font-mono whitespace-nowrap col-as-of';
+        tdDate.className = 'py-2 px-3 text-[11px] text-slate-400 font-mono whitespace-nowrap col-as-of ac-cell-date';
         tdDate.textContent = formatIndonesianDateWithWib(row.free_float_as_of || '2026-09-30');
         tr.appendChild(tdDate);
 

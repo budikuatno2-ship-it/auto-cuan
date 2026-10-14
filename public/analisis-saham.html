@@ -542,7 +542,9 @@
                 <div id="marketStructureBackgroundWrapper" class="ac-market-structure-background">
                     <div class="unified-card-header ac-research-data-head">
                         <div>
-                            <p class="text-[11px] text-slate-400">962 emiten terdaftar · 961 memiliki data pemegang saham &gt;5% (7.154 entitas teridentifikasi) · Data resmi KSEI &amp; BEI</p>
+                            <p class="ac-research-kicker">Struktur Pasar</p>
+                            <p class="ac-label-muted text-xs text-slate-400 mt-0.5">Konteks risiko struktur kepemilikan. Bukan score beli/jual dan bukan penilaian kepatuhan regulasi.</p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">962 emiten terdaftar · 961 memiliki data pemegang saham &gt;5% (7.154 entitas teridentifikasi) · Data resmi KSEI &amp; BEI</p>
                         </div>
                     </div>
 
@@ -571,9 +573,9 @@
                             <div class="flex items-center gap-1.5 text-xs shrink-0 sm:ml-auto">
                                 <label for="marketStructureSortSelect" class="text-[11px] ac-label-muted">Urutkan:</label>
                                 <select id="marketStructureSortSelect" class="ac-filter-select text-xs rounded px-2 py-1" aria-label="Urutkan daftar struktur pasar">
+                                    <option value="free_float_asc" selected>Free Float ↑ (Terendah)</option>
                                     <option value="ticker_asc">Ticker (A-Z)</option>
                                     <option value="ticker_desc">Ticker (Z-A)</option>
-                                    <option value="free_float_asc">Free Float ↑ (Terendah)</option>
                                     <option value="free_float_desc">Free Float ↓ (Tertinggi)</option>
                                     <option value="investor_desc">Jumlah Investor (Terbanyak)</option>
                                     <option value="investor_asc">Jumlah Investor (Tersedikit)</option>
@@ -695,7 +697,7 @@
                                     <div class="ac-metric-grid">
                                         <article class="ac-metric-tile"><span>Free Float</span><strong id="marketStructureFreeFloat">-</strong><small id="marketStructureFreeFloatAsOf">As of -</small></article>
                                         <article class="ac-metric-tile"><span>Status HSC</span><strong id="marketStructureHsc">-</strong><small id="marketStructureHscAsOf">As of -</small></article>
-                                        <article class="ac-metric-tile"><span>Status Risiko</span><strong id="marketStructureGuard">-</strong><small id="marketStructureStatus">-</small></article>
+                                        <article class="ac-metric-tile" title="Risk Guard"><span>Status Risiko</span><strong id="marketStructureGuard">-</strong><small id="marketStructureStatus">-</small></article>
                                     </div>
                                     <div class="ac-research-detail-grid">
                                         <div class="ac-research-detail"><span>Sumber Free Float</span><strong id="marketStructureFreeFloatSource">-</strong></div>
