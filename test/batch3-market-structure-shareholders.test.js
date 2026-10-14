@@ -57,7 +57,7 @@ test('Batch 3: Ownership percentage invariant — Unknown is never 0% or 0.00%',
   // Directly check parsePercentage behavior
   const runtimeSource = read('public/analisis-saham-runtime.js');
   assert.match(runtimeSource, /var pct = \(pctRaw == null \|\| pctRaw === ''\)\s*\?\s*null/);
-  assert.match(runtimeSource, /var pctStr = r\.percentage_formatted \|\| \(pct != null \? pct\.toFixed\(2\) \+ '%' : '—'\)/);
+  assert.match(runtimeSource, /var pctStr = r\.percentage_formatted \|\| \(pct != null \? pct\.toFixed\(2\) \+ '%' : '-'\)/);
 });
 
 test('Batch 3: HSC Status actual rendering is strictly fail-closed when as_of date is missing', () => {

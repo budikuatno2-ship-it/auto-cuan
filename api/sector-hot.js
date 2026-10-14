@@ -9330,19 +9330,22 @@ async function handleMarketStructureList(req, res) {
   try {
     const list = getMarketStructure30SepList();
     const formatted = list.map(function(item) {
+      const hasOwnership = Array.isArray(item.investors) && item.investors.length > 0 && item.investorCount > 0;
+      const ffVal = hasOwnership ? item.freeFloat : null;
       return {
         ticker: item.ticker,
         name: item.name,
         company_name: item.name,
         sector: item.sector,
-        investorCount: item.investorCount,
-        investor_count: item.investorCount,
-        float: item.float,
-        freeFloat: item.freeFloat,
-        free_float_pct: item.freeFloat,
-        free_float_as_of: '2026-09-30',
+        investorCount: item.investorCount || 0,
+        investor_count: item.investorCount || 0,
+        float: hasOwnership ? item.float : null,
+        freeFloat: ffVal,
+        free_float_pct: ffVal,
+        free_float_as_of: hasOwnership ? '2026-09-30' : null,
         as_of_trade_date: '2026-09-30',
-        market_structure_guard: (item.freeFloat != null && item.freeFloat < 15) ? 'CAUTION' : 'NORMAL',
+        data_complete: hasOwnership,
+        market_structure_guard: (ffVal != null && ffVal < 15) ? 'CAUTION' : 'NORMAL',
         hsc_flag: null,
         investors: item.investors || []
       };
@@ -9363,8 +9366,13 @@ async function handleInsiderRoster(req, res) {
   try {
     var insiderNetworkService = require('../lib/insider-network-service');
     var ticker = (req.query && req.query.ticker) ? String(req.query.ticker).trim().toUpperCase() : 'BBCA';
-    var roster = (insiderNetworkService.getRoster30Sep && insiderNetworkService.getRoster30Sep(ticker)) || [];
-    if (!roster || roster.length === 0) {
+    var roster = [];
+    if (insiderNetworkService.hasRoster30Sep && insiderNetworkService.hasRoster30Sep(ticker)) {
+      roster = insiderNetworkService.getRoster30Sep(ticker) || [];
+    } else if (insiderNetworkService.getRoster30Sep) {
+      var sep = insiderNetworkService.getRoster30Sep(ticker);
+      roster = (sep && sep.length > 0) ? sep : insiderNetworkService.getRosterForTicker(ticker);
+    } else {
       roster = insiderNetworkService.getRosterForTicker(ticker);
     }
     return res.status(200).json({ success: true, ticker: ticker, count: roster.length, roster: roster });

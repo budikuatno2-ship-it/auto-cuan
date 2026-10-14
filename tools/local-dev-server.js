@@ -1078,15 +1078,6 @@ const server = http.createServer(async (req, res) => {
             total_stocks_active: 45
           });
         }
-        if (action === 'insider-roster') {
-          return res.status(200).json({
-            success: true,
-            ticker: req.query.ticker || 'BBCA',
-            roster: [
-              { name: 'PT Dwimuria Investama Andalan', shares: '67.729.700.000', pct: 54.94, change: 0, date: '2026-09-01' }
-            ]
-          });
-        }
         if (req.query.group) {
           const rawCode = String(req.query.group).toUpperCase().trim();
           const normCode = rawCode.startsWith('KONGLO_') ? rawCode : ('KONGLO_' + rawCode);
