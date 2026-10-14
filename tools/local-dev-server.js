@@ -449,7 +449,11 @@ const MIME_TYPES = {
   '.xml': 'application/xml; charset=utf-8'
 };
 
-const servePublic = createStaticResponder({ rootDir: PUBLIC_DIR, mimeTypes: MIME_TYPES });
+const servePublic = createStaticResponder({
+  rootDir: PUBLIC_DIR,
+  mimeTypes: MIME_TYPES,
+  cacheControl: 'public, max-age=3600, stale-while-revalidate=86400'
+});
 const serveData = createStaticResponder({ rootDir: DATA_DIR, mimeTypes: MIME_TYPES, maxBytes: 2*1024*1024 });
 
 const ROUTE_REWRITES = {

@@ -1,0 +1,68 @@
+[
+  {
+    "file": "01-fase-4-dashboard-warm-instant-1920x1080.png",
+    "description": "Dashboard dengan in-memory TTL cache aktif, warm render instan tanpa layout shift atau flicker",
+    "hash": "a51c73c0eb019168e6bd3c56622e027f710a947de195f1d2b0cbffd3a3d8761b",
+    "size": 160651
+  },
+  {
+    "file": "02-fase-4-screener-sticky-header-gpu-clean-1920x1080.png",
+    "description": "Screener table scrolled dengan sticky thead bebas backdrop-filter blur (solid dark #0e121a), menghilangkan compositor repaints",
+    "hash": "64a2835598029beb4eff0613c37e8e8eee4a8cfe78337b4ff906a4c88359ab4a",
+    "size": 184751
+  },
+  {
+    "file": "03-fase-4-market-structure-scroll-clean-1920x1080.png",
+    "description": "Struktur Pasar 30 Sep dengan sticky thead opaque, responsif < 50ms warm TTL cache",
+    "hash": "0daa17b242209ab2161bafec8d3eb3b3ef1b1ecadc13b43a4e017eb8b7dad42e",
+    "size": 320674
+  },
+  {
+    "file": "04-fase-4-lifecycle-guard-metrics-hud-1920x1080.png",
+    "description": "Runtime HUD AutoCuanLifecycleGuard membuktikan active tracking, interval pruning, dan AbortController signal",
+    "hash": "d9fd34777cb28fcd1b6f01dc8596f84ff873753687ff28420b6cae34efb9d236",
+    "size": 332840
+  },
+  {
+    "file": "05-fase-4-screener-desktop-1280x800.png",
+    "description": "Screener pada laptop 1280x800 dengan layout proporsional tanpa overhead compositor",
+    "hash": "ea48907110066c92b5c778dad1a8546a9baef6f519306ba55c74e6b6536ec4e9",
+    "size": 164083
+  },
+  {
+    "file": "06-fase-4-dashboard-tablet-768x1024.png",
+    "description": "Dashboard responsif tablet 768x1024 dengan grid 2-kolom rapi dan fast render",
+    "hash": "9b32ca9bd6ec99c9f21f0c799c762d1a97c35f2c232813ace88756ea1fba6112",
+    "size": 77897
+  },
+  {
+    "file": "07-fase-4-screener-tablet-768x1024.png",
+    "description": "Screener tablet 768x1024 horizontal scrolling lancar tanpa frame drop",
+    "hash": "1b8c69b6e50fa36610b1dc2eb9755438ac3b94912a9abee3abc9fb9b4962f6e3",
+    "size": 112478
+  },
+  {
+    "file": "08-fase-4-dashboard-mobile-390x844.png",
+    "description": "Mobile 390x844 dashboard cards tersusun rapi dengan fast touch responsiveness",
+    "hash": "eb720fd60d012c777fb1cff1cea6a59313c2f76c38e46c6114775980ce7d4d40",
+    "size": 40532
+  },
+  {
+    "file": "09-fase-4-screener-mobile-390x844.png",
+    "description": "Mobile 390x844 screener swipeable layout dengan sticky table header",
+    "hash": "ca9da000041aa1ec48ac60afadf42f2226651f0b3b1bfc7af842ec33cd72a99f",
+    "size": 50417
+  },
+  {
+    "file": "10-fase-4-dashboard-mobile-375x667.png",
+    "description": "Mobile compact 375x667 dashboard zero overflow dan zero jank",
+    "hash": "d2bd947d3d8201a2afb9f58a52f4f081e7051c1250917ff3039b1157eb14097b",
+    "size": 32581
+  },
+  {
+    "file": "11-fase-4-market-structure-mobile-375x667.png",
+    "description": "Mobile compact 375x667 struktur pasar dengan bottom sheet detail trigger",
+    "hash": "022abab995e1e4c9c50231a76cb4663c702d4904a7d0fe1f79683e6648918fd6",
+    "size": 53229
+  }
+]
