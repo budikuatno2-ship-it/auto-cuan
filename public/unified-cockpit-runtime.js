@@ -160,16 +160,21 @@
         var lastC = data.candles[data.candles.length - 1];
         var prevC = data.candles.length > 1 ? data.candles[data.candles.length - 2] : null;
         var quoteEl = byId('unifiedActiveTickerQuote');
-        if (quoteEl && lastC && Number.isFinite(Number(lastC.close))) {
-          var closePrice = Number(lastC.close);
-          var prevClose = (prevC && Number.isFinite(Number(prevC.close))) ? Number(prevC.close) : closePrice;
-          var diff = closePrice - prevClose;
-          var pct = prevClose > 0 ? (diff / prevClose) * 100 : 0;
-          var sign = diff > 0 ? '+' : '';
-          var colorClass = diff > 0 ? 'text-emerald-400' : (diff < 0 ? 'text-rose-400' : 'text-gray-300');
-          quoteEl.className = 'text-xs font-semibold tabular-nums lining-nums ' + colorClass;
-          var formattedPrice = (typeof root.mktCtxFmtPrice === 'function') ? root.mktCtxFmtPrice(closePrice) : ('Rp ' + closePrice.toLocaleString('id-ID'));
-          quoteEl.textContent = formattedPrice + ' (' + sign + pct.toFixed(2) + '%)';
+        if (quoteEl) {
+          var closePrice = (lastC && lastC.close != null && lastC.close !== '') ? Number(lastC.close) : null;
+          if (closePrice != null && Number.isFinite(closePrice) && closePrice > 0) {
+            var prevClose = (prevC && prevC.close != null && Number.isFinite(Number(prevC.close)) && Number(prevC.close) > 0) ? Number(prevC.close) : closePrice;
+            var diff = closePrice - prevClose;
+            var pct = prevClose > 0 ? (diff / prevClose) * 100 : 0;
+            var sign = diff > 0 ? '+' : '';
+            var colorClass = diff > 0 ? 'text-emerald-400' : (diff < 0 ? 'text-rose-400' : 'text-gray-300');
+            quoteEl.className = 'text-xs font-semibold tabular-nums lining-nums ' + colorClass;
+            var formattedPrice = (typeof root.mktCtxFmtPrice === 'function') ? root.mktCtxFmtPrice(closePrice) : ('Rp ' + closePrice.toLocaleString('id-ID'));
+            quoteEl.textContent = formattedPrice + ' (' + sign + pct.toFixed(2) + '%)';
+          } else {
+            quoteEl.className = 'text-xs font-mono font-semibold text-gray-400 tabular-nums ml-1';
+            quoteEl.textContent = 'Harga belum tersedia';
+          }
         }
       }
 
@@ -266,7 +271,7 @@
       compSectorEl.textContent = getCompanySector(ticker);
     }
     var quoteEl = byId('unifiedActiveTickerQuote');
-    if (quoteEl && tickerChanged) {
+    if (quoteEl) {
       quoteEl.textContent = '';
       if (!options.loadChart) {
         fetch('/api/quote?action=financial-snapshot&ticker=' + encodeURIComponent(ticker), {
@@ -275,16 +280,22 @@
         })
           .then(function(r) { return r.json(); })
           .then(function(data) {
-            if (data && data.success && data.snapshot && data.snapshot.price && Number.isFinite(Number(data.snapshot.price.last))) {
-              var p = Number(data.snapshot.price.last);
-              var activeBadge = byId('unifiedActiveTickerBadge');
-              if (activeBadge && activeBadge.textContent === ticker) {
-                quoteEl.className = 'text-xs font-mono font-semibold text-emerald-400 tabular-nums ml-1';
-                quoteEl.textContent = 'Rp ' + p.toLocaleString('id-ID') + ' (0.00%)';
-              }
+            var activeBadge = byId('unifiedActiveTickerBadge');
+            if (activeBadge && activeBadge.textContent !== ticker) return;
+            var rawLast = (data && data.success && data.snapshot && data.snapshot.price) ? data.snapshot.price.last : null;
+            if (rawLast != null && rawLast !== '' && Number.isFinite(Number(rawLast)) && Number(rawLast) > 0) {
+              var p = Number(rawLast);
+              quoteEl.className = 'text-xs font-mono font-semibold text-emerald-400 tabular-nums ml-1';
+              quoteEl.textContent = 'Rp ' + p.toLocaleString('id-ID') + ' (0.00%)';
+            } else {
+              quoteEl.className = 'text-xs font-mono font-semibold text-gray-400 tabular-nums ml-1';
+              quoteEl.textContent = 'Harga belum tersedia';
             }
           })
-          .catch(function() {});
+          .catch(function() {
+            quoteEl.className = 'text-xs font-mono font-semibold text-gray-400 tabular-nums ml-1';
+            quoteEl.textContent = 'Harga belum tersedia';
+          });
       }
     }
 
@@ -352,6 +363,12 @@
       if (intelContainer) {
         root.BandarmologiRuntime.loadBandarmologiIntel(ticker, intelContainer);
       }
+    }
+
+    // 4d. Keep market structure tab and detail pane in sync with active ticker
+    var marketStructureCtrl = root.AutoCuanMarketStructure || (typeof window !== 'undefined' ? window.AutoCuanMarketStructure : null);
+    if (marketStructureCtrl && typeof marketStructureCtrl.selectRow === 'function' && marketStructureCtrl.selectedTicker !== ticker) {
+      marketStructureCtrl.selectRow(ticker, false);
     }
 
     // 5. Trigger analysis if specified (unless preserveTab is explicitly requested)

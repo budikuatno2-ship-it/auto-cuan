@@ -13614,25 +13614,7 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
   overflow-wrap: normal !important;
 }
 
-/* Market Structure Single Accordion Layout (100% width, no side pane collision) */
-#marketStructureDetailPane,
-#marketStructureDetailSheet {
-  display: none !important;
-}
 
-.ac-market-structure-layout {
-  grid-template-columns: 1fr !important;
-  display: block !important;
-  width: 100% !important;
-  max-width: 1600px !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-}
-
-.ac-market-structure-main {
-  width: 100% !important;
-  max-width: 100% !important;
-}
 
 #marketStructureAccordionContainer {
   max-height: calc(100vh - 200px);
@@ -13824,3 +13806,266 @@ html:not(.light) .ac-origin-f,
 html[data-theme="dark"] .ac-origin-f {
   color: #fbbf24;
 }
+
+/* ===== FASE 3 REMEDIATION: MARKET STRUCTURE VISUAL & MOBILE FIXES ===== */
+
+/* 1. Mobile Bottom Sheet Stacking Context Fix (Bug #1) */
+#marketStructureDetailSheet {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-end !important;
+  pointer-events: none !important;
+  background: transparent !important;
+}
+
+#marketStructureDetailSheet.is-open {
+  pointer-events: auto !important;
+}
+
+#marketStructureDetailSheet[hidden],
+#marketStructureDetailSheet:not(.is-open) {
+  display: none !important;
+}
+
+#marketStructureDetailSheet #marketStructureSheetBackdrop,
+#marketStructureDetailSheet .ac-sheet-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10 !important;
+  background: rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  touch-action: none !important;
+}
+
+#marketStructureDetailSheet .ac-sheet-content {
+  position: relative !important;
+  z-index: 20 !important;
+  width: 100% !important;
+  max-height: 85vh !important;
+  max-height: 85dvh !important;
+  background: #0b1120 !important;
+  background-color: #0b1120 !important;
+  border-top: 1px solid rgba(51, 65, 85, 0.8) !important;
+  border-radius: 16px 16px 0 0 !important;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+#marketStructureDetailSheet .ac-detail-sheet-body {
+  background: #0b1120 !important;
+  background-color: #0b1120 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* 2. Mobile Emiten Card View <= 640px (Bug #2) */
+.ac-emiten-card {
+  transition: all 0.15s ease-in-out;
+  touch-action: manipulation;
+}
+.ac-emiten-card:hover,
+.ac-emiten-card:focus-visible {
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  outline: none;
+}
+.ac-emiten-card.is-selected {
+  border-color: rgba(16, 185, 129, 0.7) !important;
+  background: rgba(30, 41, 59, 0.95) !important;
+}
+
+/* 3. Responsive Viewport Switch: Desktop Table vs Mobile Cards (Bug #1) */
+@media (min-width: 641px) {
+  #marketStructureTableWrap:not([hidden]):not(.is-empty-hidden),
+  .ac-market-structure-table-wrap:not([hidden]):not(.is-empty-hidden) {
+    display: block !important;
+  }
+  #marketStructureCardsContainer,
+  .ac-market-structure-cards {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  #marketStructureTableWrap,
+  .ac-market-structure-table-wrap {
+    display: none !important;
+  }
+  #marketStructureCardsContainer:not([hidden]):not(.is-empty-hidden),
+  .ac-market-structure-cards:not([hidden]):not(.is-empty-hidden) {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+
+#marketStructureTableWrap.is-empty-hidden,
+#marketStructureCardsContainer.is-empty-hidden,
+#marketStructurePaginationBar.is-empty-hidden {
+  display: none !important;
+}
+
+/* 4. Market Structure Toolbar & Search Input (Bug #4) */
+@media (max-width: 768px) {
+  .ac-filter-bar {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    padding: 10px 12px !important;
+  }
+  .ac-market-structure-search-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  #marketStructureSearchInput,
+  #marketStructureSectorSelect {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+  }
+}
+
+/* Table Layout Invariant: Fixed, 100% width, No Column Overflow (Fase 3R Polishing) */
+#marketStructureTable {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+#marketStructureTable th,
+#marketStructureTable td {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+/* Tablet Responsiveness: Hide secondary columns on tablet <= 1024px to preserve Pemegang Saham Terbesar */
+@media (min-width: 641px) and (max-width: 1024px) {
+  #marketStructureTable colgroup {
+    display: none !important;
+  }
+  #marketStructureTable {
+    width: 100% !important;
+  }
+  #marketStructureTable th.col-sektor,
+  #marketStructureTable td.col-sektor,
+  #marketStructureTable th.col-kelengkapan,
+  #marketStructureTable td.col-kelengkapan,
+  #marketStructureTable th.col-as-of,
+  #marketStructureTable td.col-as-of {
+    display: none !important;
+  }
+  #marketStructureTable th:nth-child(1),
+  #marketStructureTable td:nth-child(1) {
+    width: 75px !important;
+  }
+  #marketStructureTable th:nth-child(2),
+  #marketStructureTable td:nth-child(2) {
+    width: 25% !important;
+  }
+  #marketStructureTable th:nth-child(4),
+  #marketStructureTable td:nth-child(4) {
+    width: 15% !important;
+  }
+  #marketStructureTable th:nth-child(5),
+  #marketStructureTable td:nth-child(5) {
+    width: 18% !important;
+  }
+  #marketStructureTable th:nth-child(6),
+  #marketStructureTable td:nth-child(6) {
+    width: 38% !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .ac-market-structure-search-wrap {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+  #marketStructureSearchInput {
+    min-width: 380px !important;
+    flex: 1 1 380px !important;
+    box-sizing: border-box !important;
+  }
+  #marketStructureSectorSelect {
+    flex-shrink: 0 !important;
+    min-width: 180px !important;
+    box-sizing: border-box !important;
+  }
+}
+
+#marketStructureFilterGroup.ac-filter-chips {
+  width: auto !important;
+}
+
+/* 5. Detail Pane Expansion & Metric Tiles (Bugs #3, #5) */
+#marketStructureDetailPane {
+  width: 440px !important;
+  min-width: 420px !important;
+  max-width: 460px !important;
+  flex: 0 0 440px !important;
+}
+
+#marketStructureDetailPane .ac-metric-tile,
+#marketStructureDetailSheet .ac-metric-tile {
+  padding: 10px 8px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+#marketStructureDetailPane .ac-metric-tile strong,
+#marketStructureDetailSheet .ac-metric-tile strong,
+#marketStructureFreeFloat,
+#marketStructureHsc,
+#marketStructureGuard,
+#marketStructureSheetFreeFloat,
+#marketStructureSheetHsc,
+#marketStructureSheetGuard {
+  font-size: 13px !important;
+  line-height: 1.25 !important;
+  font-weight: 700 !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  word-wrap: normal !important;
+  hyphens: none !important;
+}
+
+/* 6. Shareholder 2-Level Card Rows in Detail Pane & Mobile Sheet (Bug #2) */
+#marketStructureRosterWrap table {
+  width: 100% !important;
+  min-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.ac-roster-item-card {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+  transition: background-color 0.15s ease;
+}
+.ac-roster-item-card:last-child {
+  border-bottom: none;
+}
+.ac-roster-item-card:hover {
+  background-color: rgba(30, 41, 59, 0.5);
+}
+

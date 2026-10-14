@@ -204,11 +204,9 @@ test('Wave 4: AutoCuanMarketStructure controller enforces filter and sort semant
   assert.match(runtime, /f === 'hsc'/);
   assert.match(runtime, /r\.hsc_flag === true/);
 
-  // Invariant 3: Incomplete data catches missing FF or HSC or DATA_INCOMPLETE
+  // Invariant 3: Incomplete data catches missing FF or incomplete data
   assert.match(runtime, /f === 'incomplete'/);
-  assert.match(runtime, /r\.free_float_pct == null/);
-  assert.match(runtime, /r\.hsc_flag == null/);
-  assert.match(runtime, /r\.market_structure_status === 'DATA_INCOMPLETE'/);
+  assert.match(runtime, /!isComp \|\| r\.market_structure_status === 'DATA_INCOMPLETE'/);
 
   // Invariant 4: Missing numeric values sort at the end, never coerced to 0
   assert.match(runtime, /if \(!aHas && !bHas\) return 0;/);
