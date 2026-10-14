@@ -13610,9 +13610,6 @@ html.dark #acAccountCenter .ac-center-tab[aria-selected="true"] {
 }
 
 @media (max-width: 640px) {
-  #panel-tab-market-structure .unified-card-header .ac-research-kicker {
-    display: none !important;
-  }
   #marketStructureDataPeriodBadge {
     display: inline-flex !important;
     max-width: 100% !important;

@@ -1939,7 +1939,7 @@
     activeFilter: 'all',
     searchQuery: '',
     sectorFilter: 'all',
-    sortKey: 'ticker_asc',
+    sortKey: 'free_float_asc',
     selectedTicker: null,
     lastSelectedRowEl: null,
     isLoading: false,
@@ -2111,7 +2111,7 @@
       var sec = byId('marketStructureSectorSelect');
       if (sec) sec.value = 'all';
       var sel = byId('marketStructureSortSelect');
-      if (sel) sel.value = 'ticker_asc';
+      if (sel) sel.value = 'free_float_asc';
       this.setFilter('all');
     },
 

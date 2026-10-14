@@ -136,7 +136,8 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
   const batch = existingFiles.slice(i, i + BATCH_SIZE);
   const res = spawnSync(process.execPath, ['--test', ...batch], {
     cwd: ROOT_DIR,
-    stdio: 'inherit'
+    stdio: 'inherit',
+    env: process.env
   });
 
   if (res.status !== 0) {
@@ -148,7 +149,8 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
       const singleRes = spawnSync(process.execPath, ['--test', testFile], {
         cwd: ROOT_DIR,
         stdio: 'pipe',
-        encoding: 'utf8'
+        encoding: 'utf8',
+        env: process.env
       });
       if (singleRes.status !== 0) {
         console.error(`\n[FAIL] Test file failed in isolation: ${testFile}`);

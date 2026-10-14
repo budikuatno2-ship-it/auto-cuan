@@ -215,6 +215,12 @@ async function run() {
       const btn = document.getElementById('tabMarketStructure');
       if (btn) btn.click();
       else window.navigateTo('analisis', 'market-structure');
+      if (window.AutoCuanMarketStructure) {
+        window.AutoCuanMarketStructure.setSort('ticker_asc');
+        window.AutoCuanMarketStructure.goToPage(1);
+      }
+      const sel = document.getElementById('marketStructureSortSelect');
+      if (sel) sel.value = 'ticker_asc';
     });
     await page.waitForSelector('#marketStructureTable', { timeout: 10000 });
     await new Promise(r => setTimeout(r, 1000));
