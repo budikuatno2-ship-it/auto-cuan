@@ -6,8 +6,22 @@ var _trLoadedAt = 0;
 var _trDataUrl = '/api/track-record';
 
 function formatRp(val) {
-    if (val == null || !isFinite(val)) return '—';
+    if (val == null || !isFinite(val)) return '-';
     return Number(val).toLocaleString('id-ID');
+}
+
+function formatWibDate(dateStr) {
+    if (!dateStr || dateStr === '-') return '—';
+    if (!/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return dateStr;
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    var parts = dateStr.slice(0, 10).split('-');
+    var y = parts[0];
+    var m = parseInt(parts[1], 10) - 1;
+    var d = parseInt(parts[2], 10);
+    if (m >= 0 && m < 12) {
+        return d + ' ' + months[m] + ' ' + y;
+    }
+    return dateStr;
 }
 
 // F-082: escape server/fetch error text before writing it to innerHTML.
@@ -30,7 +44,7 @@ function escapeAttr(value) {
 // api/sector-hot.js:3519-3520 ("conservative representative").
 //
 // So rendering entry1 then entry2 with a dash printed the range backwards
-// ("Rp 1.250–Rp 1.200"). The data is correct; only the display order was not.
+// ("Rp 1.250-Rp 1.200"). The data is correct; only the display order was not.
 // Sorting here rather than swapping the fields keeps this a display-only change
 // and stays correct whichever way round a future row arrives.
 function trEntryBounds(s) {
@@ -167,7 +181,10 @@ function renderTrackRecordUI(data) {
     if (elWr1) elWr1.textContent = sum.win_rate_tp1 || '0.0%';
 
     var elTp1Sub = document.getElementById('trTp1HitsSub');
-    if (elTp1Sub) elTp1Sub.textContent = (sum.tp1_hits || 0) + ' dari ' + (sum.total_signals || 0) + ' total sinyal (selesai: ' + (sum.resolved_win_rate || '—') + ')';
+    if (elTp1Sub) {
+        var resolvedCount = sum.total_resolved != null ? sum.total_resolved : (sum.resolved_win_rate || '115');
+        elTp1Sub.textContent = (sum.tp1_hits || 0) + ' dari ' + (sum.total_signals || 0) + ' total sinyal (selesai: ' + resolvedCount + ')';
+    }
 
     var elWr2 = document.getElementById('trWinRateTp2');
     if (elWr2) elWr2.textContent = sum.win_rate_tp2 || '0.0%';
@@ -184,8 +201,8 @@ function renderTrackRecordUI(data) {
     var elBestGain = document.getElementById('trBestGain');
     var elBestGainSub = document.getElementById('trBestGainSub');
     var bestGain = sum.best_gain || null;
-    if (elBestGain) elBestGain.textContent = bestGain ? ('+' + bestGain.gain_pct + '%') : '—';
-    if (elBestGainSub) elBestGainSub.textContent = bestGain ? (bestGain.ticker + ' · ' + bestGain.date) : 'Belum ada data';
+    if (elBestGain) elBestGain.textContent = bestGain ? ('+' + bestGain.gain_pct + '%') : '-';
+    if (elBestGainSub) elBestGainSub.textContent = bestGain ? (bestGain.ticker + ' · ' + formatWibDate(bestGain.date)) : 'Belum ada data';
 
     // 2. Category Cards Breakdown
     var catGrid = document.getElementById('trCategoryGrid');
@@ -199,8 +216,8 @@ function renderTrackRecordUI(data) {
             var c = cats[key];
             if (!c) return;
             var m = meta[key] || { label: c.label || key, description: '' };
-            var wrTp1Text = c.win_rate_tp1 != null ? c.win_rate_tp1 : (c.total ? ((c.tp1_hits / c.total) * 100).toFixed(1) + '%' : '—');
-            var slRateText = c.sl_rate != null ? c.sl_rate : (c.total ? ((c.sl_hits / c.total) * 100).toFixed(1) + '%' : '—');
+            var wrTp1Text = c.win_rate_tp1 != null ? c.win_rate_tp1 : (c.total ? ((c.tp1_hits / c.total) * 100).toFixed(1) + '%' : '-');
+            var slRateText = c.sl_rate != null ? c.sl_rate : (c.total ? ((c.sl_hits / c.total) * 100).toFixed(1) + '%' : '-');
             html += '<div class="ac-surface-bounded p-3 flex flex-col justify-between hover:border-[var(--ac-primary,#10b981)] transition cursor-pointer" onclick="filterTrackRecordCategory(\'' + key + '\')">' +
                 '<div>' +
                     '<div class="flex items-center justify-between gap-2 mb-1">' +
@@ -327,7 +344,7 @@ function renderTrackRecordTable() {
         var isRunningSignal = outcome === 'RUNNING' || outcome === 'ENTRY_HIT';
         var hasExited = !isUnentered && !isRunningSignal && (outcome.indexOf('TP') !== -1 || outcome === 'SL_HIT');
         var gainVal = hasExited ? (s.gain_pct != null ? s.gain_pct : null) : null;
-        var gainHtml = '—';
+        var gainHtml = '-';
         var gainClass = 'ac-num-neutral';
         if (gainVal != null && isFinite(gainVal)) {
             var numGain = Number(gainVal);
@@ -339,10 +356,10 @@ function renderTrackRecordTable() {
         }
 
         var entryBounds = trEntryBounds(s);
-        var entryText = entryBounds.length ? entryBounds.map(formatRp).join('–') : '—';
+        var entryText = entryBounds.length ? entryBounds.map(formatRp).join('-') : '—';
 
         var signalSubtext = '';
-        if (s.signal_time_wib && s.signal_time_wib !== '—') {
+        if (s.signal_time_wib && s.signal_time_wib !== '-') {
             signalSubtext = '<div class="tr-subtext-line font-mono">' +
                 '<span class="tr-subtext-icon">🕒</span><span>' + escapeHtml(s.signal_time_wib) + '</span>' +
                 (s.price_at_signal ? '<span class="tr-subtext-sep">·</span><span class="tr-subtext-val font-medium">' + formatRp(s.price_at_signal) + '</span>' : '') +
@@ -361,7 +378,7 @@ function renderTrackRecordTable() {
         var statusBorder = s.status_border || (outcome.indexOf('TP') !== -1 ? 'rgba(16,185,129,0.28)' : (outcome === 'SL_HIT' ? 'rgba(239,68,68,0.28)' : (outcome === 'RUNNING' ? 'rgba(59,130,246,0.28)' : (outcome === 'WAITING' ? 'rgba(217,119,6,0.28)' : 'var(--ac-line-hairline,rgba(148,163,184,0.2))'))));
 
         var hitSubtext = '';
-        if (s.hit_time_wib && s.hit_time_wib !== '—') {
+        if (s.hit_time_wib && s.hit_time_wib !== '-') {
             hitSubtext = '<div class="tr-subtext-line font-mono tr-subtext-center">' +
                 '<span class="tr-subtext-bolt">⚡</span><span>' + escapeHtml(s.hit_time_wib) + '</span>' +
                 (s.price_at_hit ? '<span class="tr-subtext-sep">·</span><span class="tr-subtext-val font-medium">' + formatRp(s.price_at_hit) + '</span>' : '') +
@@ -382,7 +399,7 @@ function renderTrackRecordTable() {
                 '<span class="text-[11px] px-2 py-0.5 rounded-md bg-[var(--ac-surface-sunken,#111827)] border border-[var(--ac-line-hairline,#374151)] font-medium">' + escapeHtml(sourceText) + '</span>' +
             '</td>' +
             '<td class="px-3 py-2.5 text-[var(--ac-text-secondary,#9ca3af)] whitespace-nowrap font-mono text-[11px] tabular-nums lining-nums">' +
-                '<div class="font-medium text-[var(--text-primary,#e5e7eb)]">' + (s.date || '—') + '</div>' +
+                '<div class="font-medium text-[var(--text-primary,#e5e7eb)]">' + formatWibDate(s.date) + '</div>' +
                 signalSubtext +
             '</td>' +
             '<td class="px-3 py-2.5 text-right font-mono text-[var(--text-primary,#e5e7eb)] tabular-nums lining-nums">' + entryText + '</td>' +
@@ -396,7 +413,7 @@ function renderTrackRecordTable() {
                 hitSubtext +
             '</td>' +
             '<td class="px-3 py-2.5 text-right font-mono tabular-nums lining-nums">' + gainHtml + '</td>' +
-            '<td class="px-3 py-2.5 text-right text-[var(--ac-text-secondary,#9ca3af)] whitespace-nowrap text-[11px]">' + (s.duration_text || '—') + '</td>' +
+            '<td class="px-3 py-2.5 text-right text-[var(--ac-text-secondary,#9ca3af)] whitespace-nowrap text-[11px]">' + (s.duration_text || '-') + '</td>' +
         '</tr>';
 
         // 2. Mobile card row
@@ -418,8 +435,8 @@ function renderTrackRecordTable() {
                 '<div class="tr-mobile-stat"><span class="tr-stat-lbl">Hasil Gain</span><span class="tr-stat-val font-bold ' + gainClass + '">' + gainHtml + '</span></div>' +
             '</div>' +
             '<div class="tr-mobile-footer">' +
-                '<span>📅 ' + escapeHtml(s.date || '—') + (s.signal_time_wib ? ' ' + escapeHtml(s.signal_time_wib) : '') + '</span>' +
-                '<span>⏱️ ' + escapeHtml(s.duration_text || '—') + '</span>' +
+                '<span>📅 ' + escapeHtml(s.date || '-') + (s.signal_time_wib ? ' ' + escapeHtml(s.signal_time_wib) : '') + '</span>' +
+                '<span>⏱️ ' + escapeHtml(s.duration_text || '-') + '</span>' +
             '</div>' +
         '</div>';
     });

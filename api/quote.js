@@ -316,6 +316,27 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
     });
   }
 
+  // Server-Side Gate: Ranking Harian PRO (S29)
+  if (!injectedSupabase || req.__enforceAuth) {
+    try {
+      var { requirePremiumEntitlement } = require('../lib/subscription-auth');
+      var access = await requirePremiumEntitlement(req, supabase);
+      if (!access || !access.ok) {
+        return res.status((access && access.status) || 403).json({
+          success: false,
+          code: (access && access.code) || 'PREMIUM_REQUIRED',
+          error: (access && access.error) || 'Akses Ranking Harian PRO diperlukan.'
+        });
+      }
+    } catch (authErr) {
+      return res.status(503).json({
+        success: false,
+        code: 'PREMIUM_ACCESS_UNAVAILABLE',
+        error: 'Status verifikasi hak akses belum tersedia.'
+      });
+    }
+  }
+
   try {
     var query = req.query || {};
     var sortBy = normalizeRankingSortKey(query.sort_by || query.sortBy);

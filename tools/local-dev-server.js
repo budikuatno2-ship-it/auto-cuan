@@ -779,13 +779,41 @@ const server = http.createServer(async (req, res) => {
         if (action === 'portfolio-state-load') {
           return res.status(200).json({
             success: true,
+            updated_at: '2026-10-12T08:00:00.000Z',
             state: {
+              plans: [
+                {
+                  id: 'plan-bbca',
+                  ticker: 'BBCA',
+                  entryPriceIdr: 5950,
+                  stopLossIdr: 5750,
+                  tp1Idr: 6250,
+                  tp2Idr: 6500,
+                  entry: 5950,
+                  stop: 5750,
+                  tp1: 6250,
+                  tp2: 6500,
+                  lots: 100,
+                  riskBudgetIdr: 2000000,
+                  estimatedMaxLossIdr: 2000000,
+                  capitalIdr: 59500000,
+                  positionStatus: 'PLANNED',
+                  createdAt: '2026-10-12T08:00:00.000Z'
+                }
+              ],
+              prices: {
+                BBCA: 5950
+              },
               positions: [
-                { ticker: 'BBCA', shares: 5000, avgPrice: 10100, currentPrice: 10250, targetPrice: 10950, stopLoss: 9950, entryDate: '2026-09-20', strategy: 'Swing Konglomerat', notes: 'Kandidat Top 5 Radar' },
-                { ticker: 'MEDC', shares: 15000, avgPrice: 1380, currentPrice: 1420, targetPrice: 1540, stopLoss: 1350, entryDate: '2026-09-24', strategy: 'Day Trade Momentum', notes: 'Akumulasi broker asing' },
-                { ticker: 'TLKM', shares: 8000, avgPrice: 3120, currentPrice: 3150, targetPrice: 3350, stopLoss: 3020, entryDate: '2026-09-22', strategy: 'Swing Non-Konglomerat', notes: 'Undervalued dividend play' }
+                { ticker: 'BBCA', shares: 10000, avgPrice: 5950, currentPrice: 5950, targetPrice: 6500, stopLoss: 5750, entryDate: '2026-10-12', strategy: 'Day Trade Momentum', notes: 'Kandidat Top 5 Radar' }
               ]
             }
+          });
+        }
+        if (action === 'portfolio-state-save') {
+          return res.status(200).json({
+            success: true,
+            updated_at: new Date().toISOString()
           });
         }
       }
@@ -914,14 +942,31 @@ const server = http.createServer(async (req, res) => {
             { ticker: 'TPIA', company_name: 'Chandra Asri Pacific Tbk', last_price: 8800, change_pct: -0.28, free_float_pct: 7.80, free_float_source: 'IDX ownership', free_float_as_of: '2026-08-31', hsc_flag: true, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'HIGH_SHAREHOLDING_CONCENTRATION', market_structure_guard: 'CAUTION', market_structure_note: 'Free float sangat rendah di bawah 10% dan HSC aktif.', as_of_trade_date: '2026-10-07' },
             { ticker: 'WMUU', company_name: 'Widodo Makmur Unggas Tbk', last_price: 50, change_pct: 0.00, free_float_pct: null, free_float_source: null, free_float_as_of: null, hsc_flag: false, hsc_source: 'IDX HSC', hsc_as_of: '2026-09-01', market_structure_status: 'DATA_INCOMPLETE', market_structure_guard: 'UNKNOWN', market_structure_note: 'Free float belum tersedia.', as_of_trade_date: '2026-10-07' }
           ];
+          const storeFeatures = (localMarketSubsetStore.loadStore && localMarketSubsetStore.loadStore().features) || {};
+          const enrichedRows = universeRows.map((r, idx) => {
+            const feat = storeFeatures[r.ticker] || {};
+            const rsiFallback = [48.2, 55.4, 62.1, 41.5, 58.7, 34.2, 51.0, 64.8, 46.3, 53.9, 38.6, 29.5][idx % 12];
+            const distFallback = [-4.2, -12.5, -8.1, -15.3, -6.8, -24.1, -3.5, -9.2, -18.4, -5.7, -31.2, -45.0][idx % 12];
+            const volFallback = [1.25, 0.85, 1.42, 0.95, 2.10, 0.74, 1.15, 1.68, 0.88, 1.05, 0.62, 0.45][idx % 12];
+            const fNetFallback = [25400000000, -14200000000, 38900000000, -5600000000, 52100000000, 1850000000, -8200000000, 14300000000, -2100000000, 48000000000, -19500000000, 0][idx % 12];
+            return {
+              ...r,
+              rsi_14: feat.rsi_14 !== undefined && feat.rsi_14 !== null ? feat.rsi_14 : rsiFallback,
+              week52_high_dist_pct: feat.week52_high_dist_pct !== undefined && feat.week52_high_dist_pct !== null ? feat.week52_high_dist_pct : distFallback,
+              volume_ratio_vs_7d_avg: feat.volume_ratio_vs_7d_avg !== undefined && feat.volume_ratio_vs_7d_avg !== null ? feat.volume_ratio_vs_7d_avg : volFallback,
+              foreign_net_today: feat.foreign_net_today !== undefined && feat.foreign_net_today !== null ? feat.foreign_net_today : fNetFallback,
+              foreign_net_3d: feat.foreign_net_3d !== undefined && feat.foreign_net_3d !== null ? feat.foreign_net_3d : Math.round(fNetFallback * 2.4),
+              foreign_net_7d: feat.foreign_net_7d !== undefined && feat.foreign_net_7d !== null ? feat.foreign_net_7d : Math.round(fNetFallback * 4.8)
+            };
+          });
           return res.status(200).json({
             success: true,
-            count: universeRows.length,
-            universe: universeRows,
-            rows: universeRows,
-            data: universeRows,
-            as_of: '2026-10-07',
-            updated_at: '2026-10-07T15:45:00.000Z'
+            count: enrichedRows.length,
+            universe: enrichedRows,
+            rows: enrichedRows,
+            data: enrichedRows,
+            as_of: '2026-10-13',
+            updated_at: '2026-10-13T16:00:00.000Z'
           });
         }
         if (action === 'daily-market-context' || action === 'financial-snapshot') {
@@ -1019,13 +1064,43 @@ const server = http.createServer(async (req, res) => {
         if (action === 'daytrade-screener') return res.status(200).json(MOCK_DAYTRADE);
         if (action === 'watchlist') return res.status(200).json(MOCK_WATCHLIST);
         if (action === 'track-record') return res.status(200).json(MOCK_TRACK_RECORD);
-        if (action === 'bandarmologi') return res.status(200).json(MOCK_BANDARMOLOGI);
+        if (action === 'bandarmologi') {
+          const ticker = (req.query.ticker || 'BBCA').toUpperCase();
+          const targetDate = req.query.date || (ticker === 'BBCA' ? '2026-10-12' : '');
+          try {
+            const bandarmologiService = require('../lib/bandarmologi-service');
+            const data = await bandarmologiService.getBandarmologiData(ticker, {
+              date: targetDate,
+              range: req.query.range || req.query.days || '1d',
+              days: req.query.days ? Number(req.query.days) : undefined,
+              startDate: req.query.startDate || '',
+              endDate: req.query.endDate || '',
+              flow: req.query.flow || ''
+            });
+            if (data && data.success) return res.status(200).json(data);
+          } catch (_) {}
+          return res.status(200).json(MOCK_BANDARMOLOGI);
+        }
         if (action === 'available-dates') {
+          const ticker = (req.query.ticker || 'BBCA').toUpperCase();
+          try {
+            const bandarmologiService = require('../lib/bandarmologi-service');
+            const dates = await bandarmologiService.getAvailableDates(ticker);
+            if (dates && dates.length) {
+              return res.status(200).json({
+                success: true,
+                ticker: ticker,
+                dates: dates,
+                count: dates.length,
+                cache_hit: true
+              });
+            }
+          } catch (_) {}
           return res.status(200).json({
             success: true,
-            ticker: req.query.ticker || 'BBCA',
-            dates: ['2026-09-25', '2026-09-24', '2026-09-23', '2026-09-22', '2026-09-19'],
-            count: 5,
+            ticker: ticker,
+            dates: ['2026-10-12', '2026-10-09', '2026-10-08'],
+            count: 3,
             cache_hit: true
           });
         }

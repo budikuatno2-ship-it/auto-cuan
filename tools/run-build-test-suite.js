@@ -16,6 +16,35 @@ if (!process.env.REVIEW_ACCESS_TOKEN) {
 }
 process.env.SECURITY_GUARD_MODE = process.env.SECURITY_GUARD_MODE || 'off';
 
+if (!process.env.CHROMIUM_PATH) {
+  if (process.platform === 'win32') {
+    const winPaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
+    ];
+    for (const p of winPaths) {
+      if (fs.existsSync(p)) {
+        process.env.CHROMIUM_PATH = p;
+        break;
+      }
+    }
+  } else {
+    const linuxPaths = [
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser'
+    ];
+    for (const p of linuxPaths) {
+      if (fs.existsSync(p)) {
+        process.env.CHROMIUM_PATH = p;
+        break;
+      }
+    }
+  }
+}
+
 function sendVercelTelemetry(msg) {
   if (process.env.VERCEL !== '1') return;
   try {
@@ -107,7 +136,8 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
   const batch = existingFiles.slice(i, i + BATCH_SIZE);
   const res = spawnSync(process.execPath, ['--test', ...batch], {
     cwd: ROOT_DIR,
-    stdio: 'inherit'
+    stdio: 'inherit',
+    env: process.env
   });
 
   if (res.status !== 0) {
@@ -119,7 +149,8 @@ for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
       const singleRes = spawnSync(process.execPath, ['--test', testFile], {
         cwd: ROOT_DIR,
         stdio: 'pipe',
-        encoding: 'utf8'
+        encoding: 'utf8',
+        env: process.env
       });
       if (singleRes.status !== 0) {
         console.error(`\n[FAIL] Test file failed in isolation: ${testFile}`);

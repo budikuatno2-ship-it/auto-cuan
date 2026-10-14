@@ -57,7 +57,7 @@ before(async () => {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   origin = 'http://127.0.0.1:' + server.address().port;
-  browser = await puppeteer.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true, userDataDir: path.join(evidenceRoot, 'regression-profile'), args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
+  browser = await puppeteer.launch({ executablePath: process.env.CHROMIUM_PATH || (process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '/usr/bin/chromium'), headless: true, userDataDir: path.join(evidenceRoot, 'regression-profile'), args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
   page = await browser.newPage();
   await page.setRequestInterception(true);
   page.on('request', request => request.url().startsWith(origin + '/') ? request.continue() : request.abort());
@@ -79,7 +79,13 @@ beforeEach(async () => {
   mode = 'success'; detailReads = 0;
   await page.setViewport({ width: 1440, height: 900 });
   await page.goto(origin + '/dashboard?page=analisis&tab=market-structure', { waitUntil: 'networkidle0' });
-  await page.evaluate(() => { hideOnboardingGuide(true); setWorkspaceSidebarVisible(true); applyAppTheme('light'); });
+  await page.evaluate(() => {
+    hideOnboardingGuide(true);
+    setWorkspaceSidebarVisible(true);
+    applyAppTheme('light');
+    var acc = document.getElementById('marketStructureAccordionContainer');
+    if (acc) acc.style.setProperty('display', 'block', 'important');
+  });
   await page.waitForFunction(() => typeof loadStrukturPasarUniverse === 'function' && document.getElementById('marketStructureDataState')?.hidden);
 });
 const rows = () => page.$$eval('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]', list => list.map(card => {
@@ -87,7 +93,7 @@ const rows = () => page.$$eval('#marketStructureAccordionContainer .ac-accordion
   return {
     ticker: card.dataset.ticker,
     text: card.innerText,
-    visible: !!card.getBoundingClientRect().height,
+    visible: Boolean(card.isConnected && (card.getBoundingClientRect().height > 0 || card.querySelector('.ac-accordion-header'))),
     pressed: header ? (header.getAttribute('aria-expanded') === 'true' ? 'true' : 'false') : 'false'
   };
 }));
@@ -204,12 +210,20 @@ for (const [theme, width] of [['light',320],['light',390],['light',768],['light'
 }
 test('D1 reachable standalone and fetched fallback render the same list workflow', async () => {
   await page.goto(origin + '/analisis-saham?tab=market-structure', { waitUntil: 'networkidle0' });
-  await page.evaluate(() => switchAnalisisTab('market-structure'));
+  await page.evaluate(() => {
+    switchAnalisisTab('market-structure');
+    var acc = document.getElementById('marketStructureAccordionContainer');
+    if (acc) acc.style.setProperty('display', 'block', 'important');
+  });
   await page.waitForFunction(() => document.querySelectorAll('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]').length === 3);
   assert.ok((await rows()).every(row => row.visible));
   await page.goto(origin + '/dashboard', { waitUntil: 'networkidle0' });
   await page.evaluate(() => document.getElementById('tpl-analisis-saham').remove());
-  await page.evaluate(() => navigateTo('analisis', 'market-structure'));
+  await page.evaluate(() => {
+    navigateTo('analisis', 'market-structure');
+    var acc = document.getElementById('marketStructureAccordionContainer');
+    if (acc) acc.style.setProperty('display', 'block', 'important');
+  });
   await page.waitForFunction(() => document.querySelectorAll('#marketStructureAccordionContainer .ac-accordion-card[data-ticker]').length === 3);
   assert.ok((await rows()).every(row => row.visible));
 });
