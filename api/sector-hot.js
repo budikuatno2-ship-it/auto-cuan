@@ -89,6 +89,13 @@ const fs = require('fs');
 const path = require('path');
 const fcaTransition2026 = require('../lib/fca-transition-2026');
 const daytradeFcaLiveTradeProof = require('../lib/daytrade-fca-live-trade-proof');
+const { hotMarketStructureCache, hotSectorCache } = require('../lib/in-memory-ttl-cache');
+
+function setHeaderSafe(res, name, value) {
+  if (res && typeof res.setHeader === 'function') {
+    res.setHeader(name, value);
+  }
+}
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
 const DAYTRADE_RUNNING_SKIP_MESSAGE = 'Day Trade scan already running; skipped to avoid overlap.';
@@ -389,14 +396,23 @@ module.exports = async function handler(req, res) {
     // No live market data; only reads from kv_store (populated by landing-snapshot-refresh).
     if (action === 'landing-snapshot') {
       res.setHeader('Cache-Control', 'public, max-age=900, s-maxage=900'); // 15 min CDN cache
+      const cacheKey = 'landing-snapshot';
+      const cached = hotSectorCache.get(cacheKey);
+      if (cached) {
+        setHeaderSafe(res, 'X-Cache', 'HIT');
+        return res.status(200).json(cached);
+      }
       try {
         const snap = await landingShowcase.getSnapshot(supabase);
-        return res.status(200).json({
+        const payload = {
           success: true,
           snapshot: snap.snapshot,
           stale: snap.stale,
           updated_at: snap.updated_at || null
-        });
+        };
+        hotSectorCache.set(cacheKey, payload, 30 * 1000);
+        setHeaderSafe(res, 'X-Cache', 'MISS');
+        return res.status(200).json(payload);
       } catch (e) {
         return res.status(200).json({ success: false, snapshot: null, stale: true });
       }
@@ -406,6 +422,7 @@ module.exports = async function handler(req, res) {
     // Rebuilds the snapshot from existing DB data and saves to kv_store.
     if (action === 'landing-snapshot-refresh') {
       if (!verifyCronSecret(req)) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+      hotSectorCache.invalidate('landing-snapshot');
       try {
         const result = await landingShowcase.refreshSnapshot(supabase);
         return res.status(200).json({
@@ -9328,6 +9345,13 @@ function getMarketStructure30SepList() {
 
 async function handleMarketStructureList(req, res) {
   try {
+    const cacheKey = 'market-structure-list:30sep';
+    const cached = hotMarketStructureCache.get(cacheKey);
+    if (cached) {
+      setHeaderSafe(res, 'X-Cache', 'HIT');
+      setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+      return res.status(200).json(cached);
+    }
     const list = getMarketStructure30SepList();
     const formatted = list.map(function(item) {
       const hasOwnership = Array.isArray(item.investors) && item.investors.length > 0 && item.investorCount > 0;
@@ -9350,13 +9374,17 @@ async function handleMarketStructureList(req, res) {
         investors: item.investors || []
       };
     });
-    return res.status(200).json({
+    const payload = {
       success: true,
       count: formatted.length,
       as_of: '2026-09-30',
       data: formatted,
       rows: formatted
-    });
+    };
+    hotMarketStructureCache.set(cacheKey, payload, 30 * 1000);
+    setHeaderSafe(res, 'X-Cache', 'MISS');
+    setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    return res.status(200).json(payload);
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });
   }

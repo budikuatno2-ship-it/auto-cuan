@@ -17,6 +17,13 @@ var dailyHistoryStore = require('../lib/stock-daily-history-store');
 var { buildFinancialSnapshot } = require('../lib/financial-snapshot');
 var fcaTransition2026 = require('../lib/fca-transition-2026');
 var { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+var { hotQuoteCache } = require('../lib/in-memory-ttl-cache');
+
+function setHeaderSafe(res, name, value) {
+  if (res && typeof res.setHeader === 'function') {
+    res.setHeader(name, value);
+  }
+}
 
 // This endpoint is unauthenticated and, with includeNews=1, triggers a paid
 // upstream AI news lookup on a cache miss plus a live Yahoo Finance fetch. It
@@ -146,6 +153,17 @@ async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
   if (!ticker || !/^[A-Z]{1,6}$/.test(ticker)) {
     return res.status(400).json({ success: false, error: 'Parameter ticker wajib diisi dan valid.' });
   }
+
+  var cacheKey = 'financial-snapshot:' + ticker;
+  if (!injectedSupabase) {
+    var cached = hotQuoteCache.get(cacheKey);
+    if (cached) {
+      setHeaderSafe(res, 'X-Cache', 'HIT');
+      setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+      return res.status(200).json(cached);
+    }
+  }
+
   var db = injectedSupabase;
   if (!db) {
     var hybrid = require("../lib/hybrid-supabase-client");
@@ -184,7 +202,13 @@ async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
   }
   try {
     var snapshot = await buildFinancialSnapshot(db, ticker);
-    return res.status(200).json({ success: true, snapshot: snapshot });
+    var payload = { success: true, snapshot: snapshot };
+    if (!injectedSupabase) {
+      hotQuoteCache.set(cacheKey, payload, 30 * 1000);
+    }
+    setHeaderSafe(res, 'X-Cache', 'MISS');
+    setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    return res.status(200).json(payload);
   } catch (_) {
     var fs = require("node:fs");
     var vpsDbPath = process.env.AUTO_CUAN_MARKET_DB || '/home/ubuntu/auto-cuan-data/market.sqlite';
@@ -193,7 +217,13 @@ async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
         var marketStore = require("../lib/vps-market-store");
         var localDb = marketStore.getVpsMarketStore(vpsDbPath);
         var fallbackSnapshot = await buildFinancialSnapshot(localDb, ticker);
-        return res.status(200).json({ success: true, snapshot: fallbackSnapshot });
+        var fallbackPayload = { success: true, snapshot: fallbackSnapshot };
+        if (!injectedSupabase) {
+          hotQuoteCache.set(cacheKey, fallbackPayload, 30 * 1000);
+        }
+        setHeaderSafe(res, 'X-Cache', 'MISS');
+        setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+        return res.status(200).json(fallbackPayload);
       } catch (_) {}
     }
     return res.status(503).json({ success: false, error: 'Data Financial belum dapat dimuat. Coba lagi.' });
@@ -210,6 +240,14 @@ async function handleDailyMarketContextAction(req, res) {
     return res.status(400).json({ success: false, error: 'Parameter ticker wajib diisi dan valid.' });
   }
 
+  var cacheKey = 'daily-market-context:' + ticker;
+  var cached = hotQuoteCache.get(cacheKey);
+  if (cached) {
+    setHeaderSafe(res, 'X-Cache', 'HIT');
+    setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    return res.status(200).json(cached);
+  }
+
   var SUPABASE_URL = process.env.SUPABASE_URL;
   var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -223,7 +261,11 @@ async function handleDailyMarketContextAction(req, res) {
     });
 
     var context = await dailyContextBuilder.buildContextForTicker(supabase, ticker, {});
-    return res.status(200).json({ success: true, context: context });
+    var payload = { success: true, context: context };
+    hotQuoteCache.set(cacheKey, payload, 30 * 1000);
+    setHeaderSafe(res, 'X-Cache', 'MISS');
+    setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    return res.status(200).json(payload);
   } catch (error) {
     console.error('daily-market-context exception:', error);
     return res.status(200).json({
@@ -288,6 +330,16 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
       }
     }
 
+    var cacheKey = 'daily-market-context-list:' + (sortBy || 'default') + ':' + order + ':' + limit;
+    if (!injectedSupabase) {
+      var cached = hotQuoteCache.get(cacheKey);
+      if (cached) {
+        setHeaderSafe(res, 'X-Cache', 'HIT');
+        setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+        return res.status(200).json(cached);
+      }
+    }
+
     var featureRows = await dailyHistoryStore.getAllDailyFeatures(supabase, { limit: 1000 });
 
     // Ranking Harian is a trading-universe view, not a raw cache dump.
@@ -340,7 +392,7 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
       rows = rows.slice(0, limit);
     }
 
-    return res.status(200).json({
+    var payload = {
       success: true,
       count: rows.length,
       data: rows,
@@ -353,7 +405,13 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
       raw_feature_count: rawFeatureCount,
       excluded_outside_eligible_count: excludedOutsideEligible.length,
       excluded_outside_eligible: excludedOutsideEligible
-    });
+    };
+    if (!injectedSupabase) {
+      hotQuoteCache.set(cacheKey, payload, 30 * 1000);
+    }
+    setHeaderSafe(res, 'X-Cache', 'MISS');
+    setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    return res.status(200).json(payload);
   } catch (error) {
     console.error('daily-market-context-list exception:', error);
     return res.status(200).json({
@@ -427,6 +485,18 @@ module.exports = async function handler(req, res) {
     // IHSG/Index: skip board data, use ^JKSE for Yahoo
     var isIndex = (ticker === 'IHSG');
     var portfolioPriceOnly = Boolean(req.query?.portfolio === '1' || req.body?.portfolio === '1' || req.body?.portfolio === true);
+
+    var quoteCacheKey = null;
+    if (req.method === 'GET' && !portfolioPriceOnly) {
+      quoteCacheKey = 'quote:' + ticker + ':' + (includeNews ? '1' : '0') + ':' + (allowAdvancedEntryAnalysis ? '1' : '0');
+      var cachedQuote = hotQuoteCache.get(quoteCacheKey);
+      if (cachedQuote) {
+        clearTimeout(timeoutGuard);
+        setHeaderSafe(res, 'X-Cache', 'HIT');
+        setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+        return res.status(200).json(cachedQuote);
+      }
+    }
 
     // Run Yahoo quote and Supabase board in parallel first
     var baseResults = await Promise.all([
@@ -591,6 +661,11 @@ module.exports = async function handler(req, res) {
     }
 
     if (!allowAdvancedEntryAnalysis) redactAdvancedQuoteFields(quoteResult);
+    if (quoteCacheKey && quoteResult && quoteResult.success !== false) {
+      hotQuoteCache.set(quoteCacheKey, quoteResult, 30 * 1000);
+    }
+    setHeaderSafe(res, 'X-Cache', 'MISS');
+    setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     return res.status(200).json(quoteResult);
 
   } catch (err) {

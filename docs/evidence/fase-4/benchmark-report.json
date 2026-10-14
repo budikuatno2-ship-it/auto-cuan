@@ -1,0 +1,45 @@
+{
+  "timestamp": "2026-10-14T07:01:13.703Z",
+  "criteria": {
+    "AC-4.1": {
+      "name": "In-Memory TTL Cache Server (< 50ms warm, p95 < 300ms)",
+      "quote_endpoint": {
+        "before_fase0_ms": 915,
+        "after_cold_ms": 0.53,
+        "after_warm_p50_ms": 0.11,
+        "after_warm_p95_ms": 0.44,
+        "passed": true
+      },
+      "market_structure_endpoint": {
+        "before_fase0_ms": 78,
+        "after_cold_ms": 0.87,
+        "after_warm_p50_ms": 0.06,
+        "after_warm_p95_ms": 0.08,
+        "passed": true
+      }
+    },
+    "AC-4.2": {
+      "name": "Tab Click-to-Render Latency (warm < 300ms, cold < 1.2s)",
+      "cold_target_ms": 1200,
+      "warm_target_ms": 300,
+      "cold_measured_ms": 45,
+      "warm_measured_ms": 2.1,
+      "passed": true
+    },
+    "AC-4.3": {
+      "name": "Lifecycle Polling Guard (0 executions when hidden)",
+      "hidden_ticks_executed": 0,
+      "hidden_ticks_suppressed": 6,
+      "resume_revalidation_fired": true,
+      "passed": true
+    },
+    "AC-4.4": {
+      "name": "Memory Heap Growth across 3x Tab Cycles (< 10%)",
+      "initial_heap_kb": 20464,
+      "final_heap_kb": 20607,
+      "growth_pct": 0.7,
+      "passed": true
+    }
+  },
+  "overall_status": "PASS"
+}

@@ -129,6 +129,7 @@
 <link rel="stylesheet" href="/number-flow.css?v=20260929-v1">
 <link rel="stylesheet" href="/viewport.css?v=20260929-v1">
 <script src="/viewport-runtime.js?v=20260929-v1" defer></script>
+<script src="/lifecycle-polling-guard.js?v=20261014-v1"></script>
 <link rel="stylesheet" href="/account-hardening.css?v=20261001-v1">
 </head>
 <body class="min-h-screen text-gray-100">
@@ -1418,7 +1419,7 @@ html.light #googleCompleteProfileModal input {
             <!-- Sektor Groups Table (Table-First default) -->
             <div id="sektorTableWrap" class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel peringkat grup konglomerat hot">
                 <table id="sektorGroupsTable" class="w-full text-xs border-collapse min-w-[760px]">
-                    <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
+                    <thead class="sticky top-0 bg-dark-800 z-20 shadow-sm">
                         <tr class="bg-dark-700/80 border-b border-dark-600/40">
                             <th class="px-3 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap w-[48px]">#</th>
                             <th class="px-3 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Grup</th>
@@ -1596,7 +1597,7 @@ html.light #googleCompleteProfileModal input {
                 <!-- Table (Table-First default) -->
                 <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" id="screenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi">
                     <table class="w-full text-xs border-collapse min-w-[1100px]">
-                        <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
+                        <thead class="sticky top-0 bg-dark-800 z-20 shadow-sm">
                             <tr class="scr-cols-17 bg-dark-700/80">
                                 <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/95 z-30">Ticker</th>
                                 <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Group</th>
@@ -1729,7 +1730,7 @@ html.light #googleCompleteProfileModal input {
                 <!-- Table (Table-First default) -->
                 <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" id="nkScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi">
                     <table class="w-full text-xs border-collapse min-w-[1200px]">
-                        <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
+                        <thead class="sticky top-0 bg-dark-800 z-30 shadow-sm">
                             <tr class="scr-cols-18 bg-dark-700/80">
                                 <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap sticky-col-1 sticky left-0 bg-dark-700 z-20 w-[36px] min-w-[36px]">#</th>
                                 <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-700 z-20 min-w-[80px] border-r border-dark-600/30">Ticker</th>
@@ -1882,7 +1883,7 @@ html.light #googleCompleteProfileModal input {
                 <!-- Table (Table-First default) -->
                 <div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" id="dtScreenerTableWrap" tabindex="0" role="region" aria-label="Tabel data day trade screener">
                     <table class="w-full text-xs border-collapse min-w-[1100px]">
-                        <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-30 shadow-sm">
+                        <thead class="sticky top-0 bg-dark-800 z-30 shadow-sm">
                             <tr class="scr-cols-22 bg-dark-700/80">
                                 <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap sticky-col-1 sticky left-0 bg-dark-700 z-20 w-[36px] min-w-[36px]">#</th>
                                 <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-700 z-20 min-w-[80px] border-r border-dark-600/30">Ticker</th>
@@ -2046,7 +2047,7 @@ html.light #googleCompleteProfileModal input {
         <div class="bg-dark-700/30 border border-dark-600/30 rounded-xl overflow-hidden hidden sm:block">
             <div id="portTableWrap" class="overflow-x-auto overflow-y-auto max-h-[520px] scrollbar-thin">
                 <table class="w-full text-xs sm:text-sm">
-                    <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-10 shadow-sm">
+                    <thead class="sticky top-0 bg-dark-800 z-10 shadow-sm">
                         <tr class="text-gray-400 border-b border-dark-600/40 text-left">
                             <th class="px-3 py-2.5 font-medium">Ticker</th>
                             <th class="px-3 py-2.5 font-medium">Lot</th>
@@ -2181,7 +2182,7 @@ html.light #googleCompleteProfileModal input {
         <div class="ac-surface-bounded overflow-hidden">
             <div id="trTableWrap" class="overflow-x-auto overflow-y-auto max-h-[580px] scrollbar-thin focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel riwayat sinyal track record">
                 <table class="w-full text-xs border-collapse min-w-[960px] table-fixed">
-                    <thead class="sticky top-0 bg-[var(--ac-surface,#181d28)]/95 backdrop-blur z-20 shadow-sm">
+                    <thead class="sticky top-0 bg-[var(--ac-surface,#181d28)] z-20 shadow-sm">
                         <tr class="border-b border-[var(--ac-line-hairline,#374151)] text-[var(--ac-text-secondary,#9ca3af)] font-medium text-left">
                             <th class="w-[110px] px-3 py-2.5 sticky left-0 bg-[var(--ac-surface,#181d28)] z-30">Ticker</th>
                             <th class="w-[95px] px-3 py-2.5">Kategori</th>
@@ -2358,7 +2359,7 @@ html.light #googleCompleteProfileModal input {
             </div>
             <div id="trBacktestTradesWrap" class="overflow-x-auto overflow-y-auto max-h-[500px] scrollbar-thin focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel log transaksi hasil simulasi backtest">
                 <table class="w-full text-xs border-collapse min-w-[700px]">
-                    <thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-20 shadow-sm">
+                    <thead class="sticky top-0 bg-dark-800 z-20 shadow-sm">
                         <tr class="bg-dark-700/80 text-gray-400 font-medium border-b border-dark-600/50 text-left">
                             <th class="px-3 py-2.5">Tanggal</th>
                             <th class="px-3 py-2.5">Ticker</th>
@@ -3080,7 +3081,7 @@ html.light #googleCompleteProfileModal input {
                                             <col class="col-kelengkapan" style="width: 11%;">
                                             <col class="col-as-of" style="width: 85px;">
                                         </colgroup>
-                                        <thead class="sticky top-0 bg-slate-900/95 backdrop-blur z-20 border-b border-slate-700/80 text-slate-400 font-semibold">
+                                        <thead class="sticky top-0 bg-slate-900 z-20 border-b border-slate-700/80 text-slate-400 font-semibold">
                                             <tr>
                                                 <th class="py-2.5 px-3 sticky left-0 z-30 bg-slate-900">Kode</th>
                                                 <th class="py-2.5 px-3">Emiten</th>
@@ -3172,7 +3173,7 @@ html.light #googleCompleteProfileModal input {
                                         </div>
                                         <div id="marketStructureRosterWrap" class="overflow-x-auto overflow-y-auto max-h-[320px] scrollbar-thin rounded-lg border border-slate-700/60">
                                             <table class="w-full text-[11px] text-left border-collapse min-w-[300px]">
-                                                <thead class="hidden sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-slate-700 text-slate-400 font-semibold">
+                                                <thead class="hidden sticky top-0 bg-slate-900 z-10 border-b border-slate-700 text-slate-400 font-semibold">
                                                     <tr>
                                                         <th class="py-1.5 px-2">Nama Pemilik</th>
                                                         <th class="py-1.5 px-2">Kategori</th>
@@ -5080,7 +5081,7 @@ function renderShareKonglo(d) {
     var meta = d.meta || {};
     var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
     var html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · ' + d.results.length + ' ticker · Swing 3-7 Hari · Grup Konglomerat</p>';
-    html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
+    html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5 text-left">Grup</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Setup</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
     d.results.forEach(function(r) {
         var chgView = changeDisplay(r.change_pct);
@@ -5145,7 +5146,7 @@ function renderShareNk(d) {
     var meta = d.meta || {};
     var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
     var html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · Top ' + d.results.length + ' · Non-Konglomerat · Papan Utama & Pengembangan</p>';
-    html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
+    html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5">#</th><th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Board</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Setup</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
     d.results.forEach(function(r) {
         var chgView = changeDisplay(r.change_pct);
@@ -5197,7 +5198,7 @@ function renderShareDt(d) {
     // legitimate priority of 0 survives.
     var sorted = d.results.sort(function(a, b) { return (statusPri[a.status] != null ? statusPri[a.status] : 10) - (statusPri[b.status] != null ? statusPri[b.status] : 10) || (b.daytrade_score || 0) - (a.daytrade_score || 0); });
     html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · Mode: ' + (meta.run_mode || '—') + ' · ' + sorted.length + ' kandidat · Intraday Radar</p>';
-    html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel data day trade screener"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
+    html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel data day trade screener"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Setup Score</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Status</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">Vol</th><th class="px-2 py-1.5">PreSpike</th><th class="px-2 py-1.5">Momentum</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th><th class="px-2 py-1.5 text-left">Setup</th><th class="px-2 py-1.5 text-left">Catatan</th></tr></thead><tbody>';
     sorted.forEach(function(r) {
         var chgView = changeDisplay(r.change_pct);
@@ -6587,6 +6588,9 @@ function navigateTo(page) {
     if (page === 'analisis') window.__ACTIVE_ANALISIS_SUBTAB__ = subTab;
     if (typeof closeMobileSidebar === 'function') closeMobileSidebar();
     currentPage = page;
+    if (window.AutoCuanLifecycleGuard && typeof window.AutoCuanLifecycleGuard.onTabSwitch === 'function') {
+        window.AutoCuanLifecycleGuard.onTabSwitch(page, subTab);
+    }
     if (page !== 'screener') stopAllScreenerPolling();
 
     // History & URL update (FINAL-BUG-003)
@@ -7302,7 +7306,7 @@ function renderRankingTable() {
     }
 
     var html = '<table class="w-full text-xs border-collapse">';
-    html += '<thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="border-b border-dark-600/30">';
+    html += '<thead class="sticky top-0 z-10 bg-dark-800"><tr class="border-b border-dark-600/30">';
     RANKING_COLUMNS.forEach(function(col) {
         var active = rankingState.sortKey === col.key;
         var arrow = active ? (rankingState.sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '';
@@ -12499,7 +12503,7 @@ async function showGroupDetail(groupCode) {
             return;
         }
 
-        var tHtml = '<table class="w-full text-xs border-collapse"><thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-10 shadow-sm"><tr class="border-b border-dark-600/50">';
+        var tHtml = '<table class="w-full text-xs border-collapse"><thead class="sticky top-0 bg-dark-800 z-10 shadow-sm"><tr class="border-b border-dark-600/50">';
         tHtml += '<th class="px-2 py-2 text-left text-gray-400 font-medium whitespace-nowrap">Ticker</th>';
         tHtml += '<th class="px-2 py-2 text-left text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Nama</th>';
         tHtml += '<th class="px-2 py-2 text-right text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Last</th>';
@@ -14817,7 +14821,7 @@ function renderTop5History(activeRows, tpRows) {
         return;
     }
     var html = '<div class="overflow-x-auto"><table class="w-full text-xs text-left border-collapse min-w-[700px] tabular-nums lining-nums">';
-    html += '<thead class="sticky top-0 bg-dark-800/95 backdrop-blur z-10"><tr class="border-b border-dark-600/40 text-gray-400 font-semibold text-[11px] uppercase tracking-wider">';
+    html += '<thead class="sticky top-0 bg-dark-800 z-10"><tr class="border-b border-dark-600/40 text-gray-400 font-semibold text-[11px] uppercase tracking-wider">';
     html += '<th class="py-2.5 px-3">Tanggal</th>';
     html += '<th class="py-2.5 px-3">Ticker</th>';
     html += '<th class="py-2.5 px-3">Kategori</th>';

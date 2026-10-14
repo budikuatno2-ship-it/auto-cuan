@@ -205,6 +205,9 @@
     var previousTicker = cleanTicker(root.activeTicker);
     var tickerChanged = previousTicker && previousTicker !== ticker;
     root.activeTicker = ticker;
+    if (tickerChanged && root.AutoCuanLifecycleGuard && typeof root.AutoCuanLifecycleGuard.onTickerSwitch === 'function') {
+      root.AutoCuanLifecycleGuard.onTickerSwitch(ticker);
+    }
 
     // Switching ticker context (without an explicit new AI run) makes the
     // previous ticker's AI result stale — clear it instead of leaving a

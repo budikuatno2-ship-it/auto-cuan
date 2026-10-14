@@ -272,6 +272,7 @@
   "test/eod-session-state.test.js",
   "test/eod-typed-states.test.js",
   "test/fase1-admin-login-and-track-record.test.js",
+  "test/fase4-performance-regressions.test.js",
   "test/fast-watcher-daily-context-flag.test.js",
   "test/fast-watcher-early-watch.test.js",
   "test/fast-watcher-guarded-live-v2.test.js",
