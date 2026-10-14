@@ -26,6 +26,8 @@ permissions:
 jobs:
   build-and-focused-tests:
     runs-on: ubuntu-latest
+    env:
+      CHROMIUM_PATH: /usr/bin/google-chrome
     # The 628-file suite also isolates failed batches; allow that diagnostic
     # pass to finish rather than cancelling before it can report failures.
     timeout-minutes: 30

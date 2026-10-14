@@ -16,16 +16,31 @@ if (!process.env.REVIEW_ACCESS_TOKEN) {
 }
 process.env.SECURITY_GUARD_MODE = process.env.SECURITY_GUARD_MODE || 'off';
 
-if (!process.env.CHROMIUM_PATH && process.platform === 'win32') {
-  const winPaths = [
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
-  ];
-  for (const p of winPaths) {
-    if (fs.existsSync(p)) {
-      process.env.CHROMIUM_PATH = p;
-      break;
+if (!process.env.CHROMIUM_PATH) {
+  if (process.platform === 'win32') {
+    const winPaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
+    ];
+    for (const p of winPaths) {
+      if (fs.existsSync(p)) {
+        process.env.CHROMIUM_PATH = p;
+        break;
+      }
+    }
+  } else {
+    const linuxPaths = [
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser'
+    ];
+    for (const p of linuxPaths) {
+      if (fs.existsSync(p)) {
+        process.env.CHROMIUM_PATH = p;
+        break;
+      }
     }
   }
 }
