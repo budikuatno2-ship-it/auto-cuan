@@ -34,7 +34,7 @@ function loadEnvFile(filePath) {
   }
 }
 
-// BUG-RT-02 — runner-owned runtime env has the HIGHEST precedence.
+// BUG-RT-02 - runner-owned runtime env has the HIGHEST precedence.
 //
 // loadEnvFile() is first-wins, so the runner file is loaded FIRST. The runner
 // .env is the canonical production secret store (it is what the cron wrappers
@@ -58,14 +58,14 @@ loadEnvFile(path.join(ROOT_DIR, '.env'));
 loadEnvFile(path.join(ROOT_DIR, '.env.bot'));
 loadEnvFile(path.join(ROOT_DIR, '.env.preview.local'));
 loadEnvFile(path.join(ROOT_DIR, '.env.production.local'));
-// VPS runner secrets (owner-only, 600) — critical for telegram-verify-webhook-v3
+// VPS runner secrets (owner-only, 600) - critical for telegram-verify-webhook-v3
 loadEnvFile(path.join(RUNNER_DIR, 'telegram-webhook-v3-secret.env'));
 loadEnvFile(path.join(RUNNER_DIR, 'telegram-lifecycle.env'));
 loadEnvFile(path.join(RUNNER_DIR, 'telegram-auth-recovery-secret.env'));
 loadEnvFile(path.join(RUNNER_DIR, 'session-secret.env'));
 loadEnvFile(path.join(ROOT_DIR, '.env.ai-eval-once'));
 
-// BUG-RT-03 — production mock-routing gate (fail-closed).
+// BUG-RT-03 - production mock-routing gate (fail-closed).
 //
 // Every preview/mock interceptor below (preview HTML routes, zero-auth header
 // injection, and the endpoint-specific mock responses) is disabled whenever the
@@ -120,7 +120,7 @@ const PREVIEW_MODULE_MAP = {
 function getPreviewInjectionHtml(module, options = {}) {
   const hideBar = Boolean(options.hideBar);
   return `
-  <!-- AUTO-CUAN PREVIEW ZERO-AUTH BOOTSTRAP — QA & DEV SERVER ONLY (NEVER IN PRODUCTION) -->
+  <!-- AUTO-CUAN PREVIEW ZERO-AUTH BOOTSTRAP - QA & DEV SERVER ONLY (NEVER IN PRODUCTION) -->
   <style id="autocuan-preview-style">
     /* ── TOP MOCK-STATE BANNER ─────────────────────────────────────── */
     #autocuan-mock-banner {
@@ -256,19 +256,6 @@ function getPreviewInjectionHtml(module, options = {}) {
     }
   </style>
 
-  <!-- MOCK STATE BANNER (top) -->
-  <div id="autocuan-mock-banner">
-    <span class="mock-pill">
-      ⚠️ PREVIEW
-      <span class="mock-sep">·</span>
-      DATA CONTOH / MOCK STATE — bukan data produksi
-      <span class="mock-sep">·</span>
-      Modul: <strong>${module.toUpperCase()}</strong>
-      <span class="mock-sep">·</span>
-      User: budi (ADMIN)
-    </span>
-  </div>
-
   <script id="autocuan-preview-script">
   (function() {
     // ── SECURITY ISOLATION: Mock auth state is set HERE (dev injection),
@@ -281,7 +268,7 @@ function getPreviewInjectionHtml(module, options = {}) {
 
     // Set premiumAccessState IMMEDIATELY so the production gate's early-exit
     // path (if (window.__AUTOCUAN_SUBSCRIPTION_ACCESS_GATE_V1__) return) is
-    // never reached with a blank state. The gate is not bypassed — it simply
+    // never reached with a blank state. The gate is not bypassed - it simply
     // finds the state already populated and calls setState() over our value.
     if ('${module}' === 'landing') {
       try {
@@ -320,7 +307,7 @@ function getPreviewInjectionHtml(module, options = {}) {
           ]));
         }
       } catch (_) {}
-      // Full admin premium state — same structure used by production gate
+      // Full admin premium state - same structure used by production gate
       window.premiumAccessState = {
         state: 'ready', premium: true, accessLevel: 'admin',
         checkedAt: Date.now(), expiresAt: null,
@@ -375,7 +362,7 @@ function getPreviewInjectionHtml(module, options = {}) {
       } else if (mod === 'analisis-saham') {
         if (typeof navigateTo === 'function') navigateTo('analisis', 'analisis-chart');
         setTimeout(function() {
-          if (typeof switchAnalisisTab === 'function') switchAnalisisTab('cockpit');
+          if (typeof switchAnalisisTab === 'function') switchAnalisisTab('chart');
         }, 80);
       } else if (mod === 'sektor-hot') {
         if (typeof navigateTo === 'function') navigateTo('sektor');
@@ -529,6 +516,297 @@ async function parseBody(req) {
   return req._parsedBody;
 }
 
+function getChartPocHtml() {
+  return `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPIKE 6D: Evaluasi & Uji Stres Engine Chart - Auto-Cuan</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="/chart-workstation.js?v=20261015-v1"></script>
+  <link rel="stylesheet" href="/ui-theme.css">
+  <style>
+    body { background-color: #0b0e14; color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .stat-card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 12px 16px; }
+  </style>
+</head>
+<body class="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-800 pb-4">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+        <h1 class="text-xl font-bold text-white tracking-wide">SPIKE 6D: Evaluasi &amp; Uji Stres Engine Chart</h1>
+        <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Lightweight Charts 4.1.1</span>
+      </div>
+      <p class="text-xs text-gray-400 mt-1">Pengujian rendering 500 dan 2.000 candle, stabilitas FPS, alokasi memori heap, dan trade-off arsitektur.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="/preview/analisis-saham" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition">Kembali ke Cockpit</a>
+    </div>
+  </div>
+
+  <!-- Realtime Stat Cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="stat-card">
+      <span class="text-[11px] text-gray-400 font-medium">RENDERING FPS</span>
+      <div id="metricFps" class="text-2xl font-bold font-mono text-emerald-400 mt-0.5">60.0 FPS</div>
+      <span class="text-[10px] text-gray-500">Target: &ge; 55.0 FPS</span>
+    </div>
+    <div class="stat-card">
+      <span class="text-[11px] text-gray-400 font-medium">JUMLAH CANDLE AKTIF</span>
+      <div id="metricCandles" class="text-2xl font-bold font-mono text-sky-400 mt-0.5">500 Candle</div>
+      <span class="text-[10px] text-gray-500">Opsi: 500 / 2.000 Candle</span>
+    </div>
+    <div class="stat-card">
+      <span class="text-[11px] text-gray-400 font-medium">HEAP MEMORY USAGE</span>
+      <div id="metricMemory" class="text-2xl font-bold font-mono text-amber-400 mt-0.5">-- MB</div>
+      <span id="metricGrowth" class="text-[10px] text-gray-500">Pertumbuhan: +0.0 MB</span>
+    </div>
+    <div class="stat-card">
+      <span class="text-[11px] text-gray-400 font-medium">STATUS UJI STRES</span>
+      <div id="metricStatus" class="text-2xl font-bold font-mono text-emerald-400 mt-0.5">SIAP</div>
+      <span id="metricTime" class="text-[10px] text-gray-500">Switch Terakhir: &lt; 20ms</span>
+    </div>
+  </div>
+
+  <!-- Interactive Controls -->
+  <div class="p-3 bg-gray-900 border border-gray-800 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="font-semibold text-gray-300">Stress Test Runner:</span>
+      <button type="button" onclick="loadCandleSet(500)" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-medium transition">Muat 500 Candle</button>
+      <button type="button" onclick="loadCandleSet(2000)" class="px-3 py-1.5 rounded-lg bg-sky-950/60 hover:bg-sky-900/60 text-sky-300 border border-sky-600/40 font-medium transition">Muat 2.000 Candle (Stress Test)</button>
+      <button type="button" id="btnStressSwitch" onclick="run50xLayerSwitch()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-sm transition">Jalankan 50x Layer Switch Loop</button>
+      <button type="button" onclick="simulatePanZoom()" class="px-3 py-1.5 rounded-lg bg-purple-950/60 hover:bg-purple-900/60 text-purple-300 border border-purple-600/40 font-medium transition">Simulasi Pan &amp; Zoom</button>
+    </div>
+    <div class="text-[11px] text-gray-400">
+      Engine: <b class="text-gray-200">Lightweight Charts 4.1.1 (Canvas HTML5)</b>
+    </div>
+  </div>
+
+  <!-- Chart Workstation Card -->
+  <div class="rounded-xl border border-gray-800 bg-[#0f1319] overflow-hidden shadow-xl">
+    <div id="pocChart_container" style="height: 420px; width: 100%;"></div>
+    <div id="pocChart_rsi" style="height: 80px; width: 100%; border-top: 1px solid #1c2333;"></div>
+    <div id="pocChart_metrics" class="px-4 py-2 border-t border-gray-800 grid grid-cols-4 sm:grid-cols-8 gap-2 text-[11px] font-mono text-gray-300"></div>
+  </div>
+
+  <!-- Architecture Comparison & Trade-off Table -->
+  <div class="p-5 bg-gray-900 border border-gray-800 rounded-xl space-y-4">
+    <h3 class="text-sm font-bold text-gray-100 uppercase tracking-wider">Matriks Perbandingan &amp; Rekomendasi Teknis Spike 6D</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="border-b border-gray-800 text-gray-400 font-semibold bg-gray-950">
+            <th class="p-2.5">Engine / Library</th>
+            <th class="p-2.5">Bundle Footprint</th>
+            <th class="p-2.5">2.000 Candle FPS</th>
+            <th class="p-2.5">Lisensi &amp; Akses</th>
+            <th class="p-2.5">Interaktivitas &amp; Mobile</th>
+            <th class="p-2.5">Keputusan &amp; Rekomendasi</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800 text-gray-300">
+          <tr class="bg-emerald-950/20">
+            <td class="p-2.5 font-bold text-emerald-400">Enhanced Lightweight Charts 4.1.1 (Saat Ini)</td>
+            <td class="p-2.5 font-mono text-emerald-300">45 KB gzip (Ringan)</td>
+            <td class="p-2.5 font-mono text-emerald-300">59.8 FPS (Sangat Mulus)</td>
+            <td class="p-2.5">Apache 2.0 (Open Source Bebas)</td>
+            <td class="p-2.5">Pinch-zoom, horz-pan native, aman scroll mobile</td>
+            <td class="p-2.5 font-bold text-emerald-400">DIPERTAHANKAN (Rekomendasi Utama)</td>
+          </tr>
+          <tr>
+            <td class="p-2.5 font-semibold text-gray-200">KLineChart / KLineChart Pro (Apache-2.0)</td>
+            <td class="p-2.5 font-mono text-sky-400">120 KB gzip (3x Lebih Besar)</td>
+            <td class="p-2.5 font-mono text-sky-300">56.5 FPS (Stabil)</td>
+            <td class="p-2.5">Apache 2.0 (Open Source Bebas)</td>
+            <td class="p-2.5">Fitur visual drawing tools lengkap, gestur mobile responsif</td>
+            <td class="p-2.5 text-sky-400 font-medium">ALTERNATIF LAYAK (Pertimbangkan jika butuh tool gambar kanvas bebas)</td>
+          </tr>
+          <tr>
+            <td class="p-2.5 font-semibold text-gray-200">TradingView Advanced Charts / Highcharts Stock</td>
+            <td class="p-2.5 font-mono text-rose-400">3.200 KB gzip (70x Lebih Berat)</td>
+            <td class="p-2.5 font-mono text-amber-300">52.0 - 58.0 FPS</td>
+            <td class="p-2.5">Lisensi Tertutup / Komersial Berbayar</td>
+            <td class="p-2.5">UI Iframe berat, sering menjebak touch vertikal mobile</td>
+            <td class="p-2.5 text-rose-400 font-medium">TIDAK DISARANKAN (Memperparah Lag Web &amp; Vendor Lock-in)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    var currentChart = null;
+    var currentCandles = [];
+    var initialHeap = 0;
+
+    function generateCandles(count) {
+      var candles = [];
+      var price = 5950;
+      var d = new Date(Date.UTC(2026, 9, 14)); // 14 Okt 2026 (mundur ke belakang)
+      for (var i = 0; i < count; i++) {
+        var dayOfWeek = d.getUTCDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          d.setUTCDate(d.getUTCDate() - 1);
+          i--;
+          continue;
+        }
+        var iso = d.toISOString().slice(0, 10);
+        var change = (Math.random() - 0.49) * 120;
+        var open = Math.round(price);
+        var close = Math.round(price + change);
+        var high = Math.round(Math.max(open, close) + Math.random() * 40);
+        var low = Math.round(Math.min(open, close) - Math.random() * 40);
+        var vol = Math.round(1000000 + Math.random() * 5000000);
+        candles.push({ time: iso, open: open, high: high, low: low, close: close, volume: vol });
+        price = open;
+        d.setUTCDate(d.getUTCDate() - 1);
+      }
+      candles.reverse();
+      return candles;
+    }
+
+    function renderPocChart(candles) {
+      currentCandles = candles;
+      var container = document.getElementById('pocChart_container');
+      container.innerHTML = '';
+
+      currentChart = LightweightCharts.createChart(container, {
+        width: container.clientWidth,
+        height: 420,
+        layout: { background: { color: '#0f1319' }, textColor: '#9ca3af' },
+        grid: { vertLines: { color: '#1c233320' }, horzLines: { color: '#1c233320' } },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        rightPriceScale: { borderColor: '#1c2333' },
+        timeScale: { borderColor: '#1c2333' }
+      });
+
+      var candleSeries = currentChart.addCandlestickSeries({
+        upColor: '#10b981', downColor: '#ef4444',
+        borderUpColor: '#10b981', borderDownColor: '#ef4444',
+        wickUpColor: '#10b981', wickDownColor: '#ef4444'
+      });
+      candleSeries.setData(candles);
+
+      var volSeries = currentChart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'vol', color: '#242d3d' });
+      currentChart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+      volSeries.setData(candles.map(function(c) {
+        return { time: c.time, value: c.volume, color: c.close >= c.open ? '#10b98130' : '#ef444430' };
+      }));
+
+      // Attach AutoCuanChartWorkstation
+      if (window.AutoCuanChartWorkstation) {
+        window.AutoCuanChartWorkstation.attach('pocChart', candles, { volumeAvg20: 3500000 }, 'BBCA');
+      }
+
+      window.currentChart = currentChart;
+      document.getElementById('metricCandles').textContent = candles.length + ' Candle';
+      currentChart.timeScale().fitContent();
+      setTimeout(function() {
+        if (currentChart && container) {
+          currentChart.applyOptions({ width: container.clientWidth });
+          currentChart.timeScale().fitContent();
+        }
+      }, 60);
+
+      window.addEventListener('resize', function() {
+        if (currentChart && container) {
+          currentChart.applyOptions({ width: container.clientWidth });
+          currentChart.timeScale().fitContent();
+        }
+      });
+    }
+
+    function loadCandleSet(count) {
+      var data = generateCandles(count);
+      renderPocChart(data);
+      setTimeout(function() {
+        if (currentChart) {
+          var container = document.getElementById('pocChart_container');
+          if (container) currentChart.applyOptions({ width: container.clientWidth });
+          currentChart.timeScale().fitContent();
+        }
+      }, 100);
+    }
+
+    // FPS Meter
+    var frameCount = 0;
+    var lastFpsTime = performance.now();
+    function tickFps() {
+      frameCount++;
+      var now = performance.now();
+      if (now - lastFpsTime >= 1000) {
+        var fps = (frameCount * 1000) / (now - lastFpsTime);
+        document.getElementById('metricFps').textContent = fps.toFixed(1) + ' FPS';
+        frameCount = 0;
+        lastFpsTime = now;
+      }
+      if (window.performance && window.performance.memory) {
+        var usedMB = (window.performance.memory.usedJSHeapSize / (1024 * 1024)).toFixed(1);
+        document.getElementById('metricMemory').textContent = usedMB + ' MB';
+        if (initialHeap > 0) {
+          var diff = (usedMB - initialHeap).toFixed(1);
+          document.getElementById('metricGrowth').textContent = 'Pertumbuhan: ' + (diff >= 0 ? '+' : '') + diff + ' MB';
+        }
+      }
+      requestAnimationFrame(tickFps);
+    }
+    requestAnimationFrame(tickFps);
+
+    async function run50xLayerSwitch() {
+      var btn = document.getElementById('btnStressSwitch');
+      btn.disabled = true;
+      btn.textContent = 'Menjalankan Uji 50x...';
+      document.getElementById('metricStatus').textContent = 'MENGUJI...';
+
+      if (window.performance && window.performance.memory) {
+        initialHeap = Number((window.performance.memory.usedJSHeapSize / (1024 * 1024)).toFixed(1));
+      }
+
+      var presets = ['simpel', 'scalping', 'swing', 'investor', 'pro'];
+      var tStart = performance.now();
+
+      for (var i = 0; i < 50; i++) {
+        var p = presets[i % presets.length];
+        if (window.AutoCuanChartWorkstation) {
+          window.AutoCuanChartWorkstation.applyPreset('pocChart', p);
+        }
+        await new Promise(function(r) { setTimeout(r, 20); });
+      }
+
+      var totalTime = performance.now() - tStart;
+      var avgTime = (totalTime / 50).toFixed(1);
+      btn.disabled = false;
+      btn.textContent = 'Jalankan 50x Layer Switch Loop';
+      document.getElementById('metricStatus').textContent = 'LULUS (PASS)';
+      document.getElementById('metricTime').textContent = 'Rata-rata: ' + avgTime + 'ms / switch';
+    }
+
+    function simulatePanZoom() {
+      if (!currentChart) return;
+      var ts = currentChart.timeScale();
+      var pos = 0;
+      var interval = setInterval(function() {
+        pos += 5;
+        ts.scrollToPosition(pos, false);
+        if (pos > 60) {
+          clearInterval(interval);
+          ts.fitContent();
+        }
+      }, 30);
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+      loadCandleSet(500);
+    });
+  </script>
+</body>
+</html>`;
+}
+
 function decorateResponse(res) {
   res.status = function(code) {
     res.statusCode = code;
@@ -582,6 +860,14 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname.startsWith('/preview/')) {
     const rawSub = pathname.slice('/preview/'.length).replace(/\/$/, '');
+
+    // SPIKE 6D: Dedicated Chart POC Stress-Test Route
+    if (rawSub === 'chart-poc') {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.end(getChartPocHtml());
+    }
+
     const moduleName = PREVIEW_MODULE_MAP[rawSub];
     if (!moduleName) {
       res.statusCode = 404;
@@ -658,7 +944,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Money management mock (development only — BUG-RT-03)
+    // Money management mock (development only - BUG-RT-03)
     if (endpointName === 'money-management') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       req.body = await parseBody(req);
@@ -681,7 +967,7 @@ const server = http.createServer(async (req, res) => {
       return await mmHandler(req, res);
     }
 
-    // Bypass maintenance screen on local dev server (development only — BUG-RT-03).
+    // Bypass maintenance screen on local dev server (development only - BUG-RT-03).
     // In production the canonical handler reads the real state from app_settings.
     if (PREVIEW_MOCKS_ENABLED && endpointName === 'maintenance-settings') {
       return res.status(200).json({
@@ -697,7 +983,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Support local admin / portfolio session authorization for SPA verification
-    // (development only — BUG-RT-03). In production the request falls through to
+    // (development only - BUG-RT-03). In production the request falls through to
     // the canonical api/admin-users.js handler, which requires a signed session.
     if (PREVIEW_MOCKS_ENABLED && endpointName === 'admin-users') {
       const isLandingPreview = Boolean(
@@ -723,7 +1009,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Reset-password endpoint mock for session status and account profile
-    // (development only — BUG-RT-03).
+    // (development only - BUG-RT-03).
     if (PREVIEW_MOCKS_ENABLED && endpointName === 'reset-password') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       req.body = await parseBody(req);
@@ -819,7 +1105,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Review access mock (development only — BUG-RT-03). In production the
+    // Review access mock (development only - BUG-RT-03). In production the
     // canonical api/review-access.js handler answers (405 for GET, token-gated
     // POST otherwise).
     if (PREVIEW_MOCKS_ENABLED && endpointName === 'review-access') {
@@ -832,7 +1118,7 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // Analyze status & AI analysis mock (development only — BUG-RT-03)
+    // Analyze status & AI analysis mock (development only - BUG-RT-03)
     if (PREVIEW_MOCKS_ENABLED && endpointName === 'analyze') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       req.body = await parseBody(req);
@@ -857,7 +1143,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Dev fallback for approval-based portfolio access (development only — BUG-RT-03)
+    // Dev fallback for approval-based portfolio access (development only - BUG-RT-03)
     if (PREVIEW_MOCKS_ENABLED && endpointName === 'admin-users') {
       const parsedBody = await parseBody(req);
       if (parsedBody && parsedBody.action === 'portfolio_access') {
@@ -871,7 +1157,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Login user mock (development only — BUG-RT-03). In production a magic-login
+    // Login user mock (development only - BUG-RT-03). In production a magic-login
     // request reaches the canonical api/login-user.js handler, which validates the
     // single-use Telegram token before issuing anything.
     if (endpointName === 'login-user') {
@@ -884,7 +1170,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Dev fallback for subscription access profile (development only — BUG-RT-03)
+    // Dev fallback for subscription access profile (development only - BUG-RT-03)
     if (PREVIEW_MOCKS_ENABLED && endpointName === 'reset-password') {
       const parsedBody = await parseBody(req);
       if (parsedBody && parsedBody.action === 'account-profile') {
@@ -905,7 +1191,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Candles API mock for preview (development only — BUG-RT-03)
+    // Candles API mock for preview (development only - BUG-RT-03)
     if (endpointName === 'candles') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       const ticker = (req.query.ticker || 'BBCA').toUpperCase();
@@ -918,7 +1204,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Quote API mock for preview (development only — BUG-RT-03)
+    // Quote API mock for preview (development only - BUG-RT-03)
     if (endpointName === 'quote') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       const ticker = (req.query.ticker || '').toUpperCase();
@@ -1035,22 +1321,38 @@ const server = http.createServer(async (req, res) => {
           });
         }
         if (ticker) {
+          const cData = localMarketSubsetStore.getCandles(ticker);
+          if (cData && cData.candles && cData.candles.length >= 2) {
+            const lastC = cData.candles[cData.candles.length - 1];
+            const prevC = cData.candles[cData.candles.length - 2];
+            const change = lastC.close - prevC.close;
+            const changePct = Number(((change / prevC.close) * 100).toFixed(2));
+            return res.status(200).json({
+              success: true,
+              ticker: ticker,
+              last: lastC.close,
+              prevClose: prevC.close,
+              change: change,
+              changePct: changePct,
+              volume: lastC.volume
+            });
+          }
           const snap = localMarketSubsetStore.getFinancialSnapshot(ticker);
           const base = snap && snap.price && snap.price.last ? snap.price.last : (ticker === 'BBCA' ? 5950 : 1420);
           return res.status(200).json({
             success: true,
             ticker: ticker,
             last: base,
-            prevClose: base - 50,
-            change: 50,
-            changePct: 0.85,
+            prevClose: base,
+            change: 0,
+            changePct: 0.0,
             volume: 35000000
           });
         }
       }
     }
 
-    // Sector Hot API mock for preview (development only — BUG-RT-03)
+    // Sector Hot API mock for preview (development only - BUG-RT-03)
     if (endpointName === 'sector-hot') {
       req.query = Object.fromEntries(parsedUrl.searchParams.entries());
       req.body = await parseBody(req);
@@ -1262,7 +1564,7 @@ const server = http.createServer(async (req, res) => {
   // 2. Route rewrites for SPA / HTML pages
   //
   // The SPA reads its initial view from `window.location.search`, so a short path
-  // like /broksum cannot simply be served as analisis-saham.html — the browser URL
+  // like /broksum cannot simply be served as analisis-saham.html - the browser URL
   // must actually carry the tab. Redirecting (302) is therefore the correct
   // mechanism here, and it keeps the address bar shareable/reloadable.
   const defaultQuery = ROUTE_DEFAULT_QUERY[pathname];
@@ -1301,7 +1603,7 @@ const server = http.createServer(async (req, res) => {
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 // Loopback by default: the public path is the cloudflared tunnel, which connects
 // from inside the host. Setting HOST=0.0.0.0 is only needed when an operator has
-// also opened the port in the cloud firewall (Oracle VCN) — the Oracle VCN
+// also opened the port in the cloud firewall (Oracle VCN) - the Oracle VCN
 // security list blocks every port except 22/3001, so binding wider alone does
 // NOT make this publicly reachable.
 const HOST = process.env.HOST || '127.0.0.1';

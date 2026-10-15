@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "checks": [
+    {
+      "name": "build",
+      "executable": "node",
+      "args": ["tools/run-build-test-suite.js"],
+      "timeout": 120
+    }
+  ]
+}

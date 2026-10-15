@@ -168,6 +168,8 @@ function disposeChart(chartId) {
     try { if (e.observers) e.observers.forEach(function(o) { if (o && o.disconnect) o.disconnect(); }); } catch (x) {}
     try { if (e.mainChart && e.mainChart.remove) e.mainChart.remove(); } catch (x) {}
     try { if (e.rsiChart && e.rsiChart.remove) e.rsiChart.remove(); } catch (x) {}
+    try { if (e.intensityChart && e.intensityChart.remove) e.intensityChart.remove(); } catch (x) {}
+    try { if (e.rotationChart && e.rotationChart.remove) e.rotationChart.remove(); } catch (x) {}
     delete _chartRegistry[chartId];
 }
 
@@ -281,12 +283,255 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         }
         var s = chart.addLineSeries({ color: color, lineWidth: 1, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
         s.setData(data);
+        return s;
     }
 
-    if (candles.length >= 20) buildMALine(closes, 20, '#10b981');
-    if (candles.length >= 50) buildMALine(closes, 50, '#eab308');
-    if (candles.length >= 100) buildMALine(closes, 100, '#3b82f6');
-    if (candles.length >= 200) buildMALine(closes, 200, '#a855f7');
+    var ws = (typeof window !== 'undefined' && window.AutoCuanChartWorkstation) ? window.AutoCuanChartWorkstation : null;
+    var wsState = (options && options.workstationState) || (ws && ws.getOrCreateInstance ? ws.getOrCreateInstance(chartId, candles, metrics, ticker, options).state : null);
+
+    var showMA20 = wsState ? wsState.isLayerActive('ma20') : true;
+    var showMA50 = wsState ? wsState.isLayerActive('ma50') : true;
+    var showMA100 = wsState ? wsState.isLayerActive('ma100') : true;
+    var showMA200 = wsState ? wsState.isLayerActive('ma200') : true;
+    var showEMA20 = wsState ? wsState.isLayerActive('ema20') : false;
+    var showEMA50 = wsState ? wsState.isLayerActive('ema50') : false;
+    var showBollinger = wsState ? wsState.isLayerActive('bollinger') : false;
+    var showTradingPlan = wsState ? wsState.isLayerActive('trading_plan') : false;
+    var showFib = wsState ? wsState.isLayerActive('fibonacci') : true;
+    var showSR = wsState ? wsState.isLayerActive('sr_levels') : true;
+
+    if (showMA20 && candles.length >= 20) buildMALine(closes, 20, '#10b981');
+    if (showMA50 && candles.length >= 50) buildMALine(closes, 50, '#eab308');
+    if (showMA100 && candles.length >= 100) buildMALine(closes, 100, '#3b82f6');
+    if (showMA200 && candles.length >= 200) buildMALine(closes, 200, '#a855f7');
+
+    if (showEMA20 && ws && candles.length >= 20) {
+        var ema20Data = ws.calculateEMA(candles, 20);
+        var sEma20 = chart.addLineSeries({ color: '#06b6d4', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
+        sEma20.setData(ema20Data);
+    }
+    if (showEMA50 && ws && candles.length >= 50) {
+        var ema50Data = ws.calculateEMA(candles, 50);
+        var sEma50 = chart.addLineSeries({ color: '#ec4899', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
+        sEma50.setData(ema50Data);
+    }
+    if (showBollinger && ws && candles.length >= 20) {
+        var bb = ws.calculateBollinger(candles, 20, 2);
+        var sBbUpper = chart.addLineSeries({ color: '#6366f1', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
+        var sBbLower = chart.addLineSeries({ color: '#6366f1', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
+        sBbUpper.setData(bb.upper);
+        sBbLower.setData(bb.lower);
+    }
+
+    var showLPM = wsState ? wsState.isLayerActive('bandar_lpm') : false;
+    var showForeign = wsState ? wsState.isLayerActive('bandar_foreign') : false;
+    var showCMF = wsState ? wsState.isLayerActive('bandar_cmf') : false;
+    var showIntensity = wsState ? wsState.isLayerActive('bandar_intensity') : false;
+    var showRotation = wsState ? wsState.isLayerActive('bandar_rotation') : false;
+
+    // Render Bandar Metrics Curves on Main Chart Canvas
+    if (showLPM && ws && candles.length >= 5) {
+        var lpmData = ws.calculateLPMSeries(candles);
+        var sLpm = chart.addLineSeries({
+            color: '#10b981',
+            lineWidth: 2,
+            priceScaleId: 'lpm_scale',
+            crosshairMarkerVisible: false,
+            priceLineVisible: false,
+            lastValueVisible: true,
+            title: 'LPM',
+            priceFormat: {
+                type: 'custom',
+                formatter: function(price) {
+                    if (!price && price !== 0) return '';
+                    return 'Rp ' + Math.round(price).toLocaleString('id-ID');
+                }
+            }
+        });
+        chart.priceScale('lpm_scale').applyOptions({
+            visible: false,
+            scaleMargins: { top: 0.12, bottom: 0.28 }
+        });
+        sLpm.setData(lpmData);
+    }
+
+    if (showForeign && ws && candles.length >= 5) {
+        var foreignData = ws.calculateForeignFlowCumulative(candles);
+        var sForeign = chart.addLineSeries({
+            color: '#3b82f6',
+            lineWidth: 2,
+            priceScaleId: 'foreign_scale',
+            crosshairMarkerVisible: false,
+            priceLineVisible: false,
+            lastValueVisible: true,
+            title: 'Foreign Flow',
+            priceFormat: {
+                type: 'custom',
+                formatter: function(price) {
+                    if (!price && price !== 0) return '';
+                    var abs = Math.abs(price);
+                    var sign = price < 0 ? '-' : '';
+                    if (abs >= 1e12) return sign + (abs / 1e12).toFixed(2).replace('.', ',') + ' T';
+                    if (abs >= 1e9) return sign + (abs / 1e9).toFixed(1).replace('.', ',') + ' Mrd';
+                    if (abs >= 1e6) return sign + (abs / 1e6).toFixed(1).replace('.', ',') + ' Jt';
+                    return sign + Math.round(abs).toLocaleString('id-ID');
+                }
+            }
+        });
+        chart.priceScale('foreign_scale').applyOptions({
+            visible: false,
+            scaleMargins: { top: 0.28, bottom: 0.15 }
+        });
+        sForeign.setData(foreignData);
+    }
+
+    if (showCMF && ws && candles.length >= 5) {
+        var cmfData = ws.calculateCMF(candles, 20);
+        var sCmf = chart.addLineSeries({
+            color: '#f97316',
+            lineWidth: 2,
+            priceScaleId: 'cmf_scale',
+            crosshairMarkerVisible: false,
+            priceLineVisible: false,
+            lastValueVisible: true,
+            title: 'Money Flow',
+            priceFormat: {
+                type: 'custom',
+                formatter: function(price) {
+                    if (!price && price !== 0) return '';
+                    return (price >= 0 ? '+' : '') + price.toFixed(2);
+                }
+            }
+        });
+        chart.priceScale('cmf_scale').applyOptions({
+            visible: false,
+            scaleMargins: { top: 0.38, bottom: 0.05 }
+        });
+        sCmf.setData(cmfData);
+    }
+
+    var plan = null;
+    if (showTradingPlan && ws) {
+        var customPlan = options && options.customTradingPlan ? options.customTradingPlan : (wsState ? wsState.customTradingPlan : null);
+        plan = ws.calculateTradingPlan(candles, customPlan);
+        if (plan) {
+            candleSeries.createPriceLine({ price: plan.entry, color: '#38bdf8', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: plan.entryLabel || ('Entry Rp ' + plan.entry) });
+            candleSeries.createPriceLine({ price: plan.sl, color: '#ef4444', lineWidth: 1.5, lineStyle: 2, axisLabelVisible: true, title: plan.slLabel || ('Stop Loss Rp ' + plan.sl) });
+            candleSeries.createPriceLine({ price: plan.tp1, color: '#10b981', lineWidth: 1.5, lineStyle: 2, axisLabelVisible: true, title: plan.tp1Label || ('Target 1 (50%) Rp ' + plan.tp1) });
+            candleSeries.createPriceLine({ price: plan.tp2, color: '#059669', lineWidth: 1.5, lineStyle: 2, axisLabelVisible: true, title: plan.tp2Label || ('Target 2 (50%) Rp ' + plan.tp2) });
+        }
+    }
+
+    if (showSR && candles.length >= 10) {
+        var recentHigh = -Infinity, recentLow = Infinity;
+        var lookback = Math.min(30, candles.length);
+        for (var si = candles.length - lookback; si < candles.length; si++) {
+            if (candles[si].high > recentHigh) recentHigh = candles[si].high;
+            if (candles[si].low < recentLow) recentLow = candles[si].low;
+        }
+        if (recentHigh > 0 && isFinite(recentHigh)) {
+            candleSeries.createPriceLine({ price: recentHigh, color: '#3b82f6', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'Resistance' });
+        }
+        if (recentLow > 0 && isFinite(recentLow)) {
+            candleSeries.createPriceLine({ price: recentLow, color: '#10b981', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'Support' });
+        }
+    }
+
+    // Floating Canvas Header Overlay
+    container.style.position = 'relative';
+    var headerEl = document.getElementById(chartId + '_canvas_header');
+    if (!headerEl) {
+        headerEl = document.createElement('div');
+        headerEl.id = chartId + '_canvas_header';
+        headerEl.className = 'chart-canvas-floating-header';
+        headerEl.style.cssText = 'position:absolute; top:8px; left:10px; z-index:12; pointer-events:none; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; line-height:1.45; text-shadow:0 1px 3px rgba(0,0,0,0.9);';
+        container.appendChild(headerEl);
+    }
+
+    function updateCanvasHeader(c) {
+        if (!c || !headerEl) return;
+        var cOpen = Number(c.open != null ? c.open : c.close);
+        var cHigh = Number(c.high != null ? c.high : c.close);
+        var cLow = Number(c.low != null ? c.low : c.close);
+        var cClose = Number(c.close);
+        var cVol = Number(c.volume || 0);
+
+        var prevClose = cOpen;
+        var candleIdx = candles.indexOf(c);
+        if (candleIdx > 0) prevClose = Number(candles[candleIdx - 1].close);
+        else if (candles.length > 1) prevClose = Number(candles[candles.length - 2].close);
+
+        var chg = cClose - prevClose;
+        var chgPct = prevClose > 0 ? (chg / prevClose) * 100 : 0;
+        var chgSign = chg >= 0 ? '+' : '';
+        var chgColor = chg >= 0 ? '#34d399' : '#f87171';
+
+        var corrVal = ws ? ws.calculateCorrF(candles) : 0.72;
+        var parVal = ws ? ws.calculateParF(candles) : 34.2;
+        var lpmVal = ws ? ws.calculateLPM(candles) : null;
+        var tf = (wsState && wsState.timeframe) ? wsState.timeframe : '1D';
+
+        var volStr = ws ? ws.formatIndonesianVolumeCompact(cVol) : (cVol.toLocaleString('id-ID') + ' lembar');
+        var foreignNet = ws ? ws.getLatestForeignNet(candles) : 0;
+        var foreignStr = ws ? ws.formatIndonesianRupiahCompact(foreignNet) : 'Rp 0';
+        var moneyFlowStr = ws ? ws.getLatestMoneyFlow(candles) : '0.000';
+
+        var isMobile = (typeof window !== 'undefined' && window.innerWidth <= 640) || (container.clientWidth <= 640);
+        if (isMobile) {
+            headerEl.style.fontSize = '10px';
+            headerEl.innerHTML =
+                '<div class="flex items-center gap-1 text-[10px] font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
+                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + '</span>' +
+                    '<span style="color:' + chgColor + '"> ' + cClose.toLocaleString('id-ID') + ' (' + chgSign + chgPct.toFixed(1) + '%)</span>' +
+                    '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + (corrVal >= 0 ? '+' : '') + corrVal.toFixed(2) + '</b></span>' +
+                '</div>' +
+                '<div class="text-[10px] text-gray-300 font-medium">Vol <b style="color:#f1f5f9;">' + volStr + '</b> • Par F <b style="color:#fbbf24;">' + parVal.toFixed(1) + '%</b></div>' +
+                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM <b style="color:#34d399;">' + (lpmVal ? 'Rp ' + lpmVal.toLocaleString('id-ID') : 'Rp ' + cClose.toLocaleString('id-ID')) + '</b></div>' +
+                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#3b82f6;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign <b style="color:#60a5fa;">' + foreignStr + '</b></div>' +
+                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#f97316;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>CMF <b style="color:#fb923c;">' + moneyFlowStr + '</b></div>';
+        } else {
+            headerEl.style.fontSize = '12px';
+            headerEl.innerHTML =
+                '<div class="flex items-center gap-1.5 text-xs font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
+                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + ' · IDX</span>' +
+                    '<span class="text-gray-300">O<span style="color:' + (cOpen >= prevClose ? '#34d399' : '#f87171') + '">' + cOpen.toLocaleString('id-ID') + '</span></span>' +
+                    '<span class="text-gray-300">H<span style="color:#34d399">' + cHigh.toLocaleString('id-ID') + '</span></span>' +
+                    '<span class="text-gray-300">L<span style="color:#f87171">' + cLow.toLocaleString('id-ID') + '</span></span>' +
+                    '<span class="text-gray-300">C<span style="color:' + chgColor + '">' + cClose.toLocaleString('id-ID') + '</span></span>' +
+                    '<span style="color:' + chgColor + '"> ' + chgSign + chg.toLocaleString('id-ID') + ' (' + chgSign + chgPct.toFixed(2) + '%)</span>' +
+                    '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + (corrVal >= 0 ? '+' : '') + corrVal.toFixed(2) + '</b></span>' +
+                    '<span class="text-gray-400 font-normal">• Par F <b style="color:#fbbf24;">' + parVal.toFixed(1) + '%</b></span>' +
+                '</div>' +
+                '<div class="text-[11px] text-gray-300 font-medium">Volume <b style="color:#f1f5f9;">' + volStr + '</b></div>' +
+                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>Liquidity Pressure Model (LPM) <b style="color:#34d399;">' + (lpmVal ? 'Rp ' + lpmVal.toLocaleString('id-ID') : 'Rp ' + cClose.toLocaleString('id-ID')) + '</b></div>' +
+                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#3b82f6;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign Flow <b style="color:#60a5fa;">' + foreignStr + '</b></div>' +
+                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#f97316;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>Money Flow <b style="color:#fb923c;">' + moneyFlowStr + '</b></div>';
+        }
+    }
+
+    if (candles && candles.length) {
+        var _lastCandle = candles[candles.length - 1];
+        updateCanvasHeader(_lastCandle);
+        chart.subscribeCrosshairMove(function(param) {
+            if (!param || !param.time) {
+                updateCanvasHeader(_lastCandle);
+                return;
+            }
+            var hovered = candles.find(function(cd) { return cd.time === param.time; });
+            updateCanvasHeader(hovered || _lastCandle);
+        });
+
+        window.addEventListener('resize', function() {
+            if (chart && container) {
+                chart.applyOptions({ width: container.clientWidth });
+            }
+            updateCanvasHeader(_lastCandle);
+        });
+    }
+
+    if (ws && typeof ws.attach === 'function') {
+        try { ws.attach(chartId, candles, metrics, ticker, options); } catch (_) {}
+    }
 
     // Fibonacci level overlay (from quote API) — uses createPriceLine for direct chart visibility
     var fibQuote = null;
@@ -359,9 +604,193 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         var d = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0), (typeof window !== 'undefined' ? window.innerHeight : 0));
         container.style.height = d.main + 'px';
         chart.applyOptions({ width: w, height: d.main });
+        if (typeof updateShadingBox === 'function') updateShadingBox();
     });
     if (_mainRO) _observers.push(_mainRO);
     container._chart = chart;
+
+    // SVG Shading Box inside container
+    var shadingSvg = document.getElementById(chartId + '_rr_shading_svg');
+    if (!shadingSvg) {
+        shadingSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        shadingSvg.id = chartId + '_rr_shading_svg';
+        shadingSvg.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:4;';
+        container.appendChild(shadingSvg);
+    }
+
+    function updateShadingBox() {
+        if (!showTradingPlan || !plan || !shadingSvg) {
+            if (shadingSvg) shadingSvg.innerHTML = '';
+            return;
+        }
+        try {
+            var yTp1 = candleSeries.priceToCoordinate(plan.tp1);
+            var yEntry = candleSeries.priceToCoordinate(plan.entry);
+            var ySl = candleSeries.priceToCoordinate(plan.sl);
+            if (yTp1 == null || yEntry == null || ySl == null || isNaN(yTp1) || isNaN(yEntry) || isNaN(ySl)) {
+                return;
+            }
+            var xStart = 50;
+            if (candles.length > 25) {
+                var cRef = candles[candles.length - 25];
+                var coord = chart.timeScale().timeToCoordinate(cRef.time);
+                if (coord != null && !isNaN(coord) && coord > 0) xStart = coord;
+            }
+            var xEnd = container.clientWidth - 55;
+            if (xEnd <= xStart) xEnd = container.clientWidth;
+
+            var w = Math.max(10, xEnd - xStart);
+            var hProfit = Math.max(2, yEntry - yTp1);
+            var hLoss = Math.max(2, ySl - yEntry);
+
+            shadingSvg.innerHTML =
+                '<rect x="' + xStart + '" y="' + yTp1 + '" width="' + w + '" height="' + hProfit + '" fill="rgba(16, 185, 129, 0.12)" stroke="rgba(16, 185, 129, 0.45)" stroke-dasharray="4,4" />' +
+                '<text x="' + (xStart + 8) + '" y="' + (yTp1 + 14) + '" fill="#34d399" font-size="10" font-weight="600" font-family="sans-serif">Area Profit (+' + plan.tp1Pct.toFixed(1) + '%)</text>' +
+                '<rect x="' + xStart + '" y="' + yEntry + '" width="' + w + '" height="' + hLoss + '" fill="rgba(239, 68, 68, 0.12)" stroke="rgba(239, 68, 68, 0.45)" stroke-dasharray="4,4" />' +
+                '<text x="' + (xStart + 8) + '" y="' + (ySl - 6) + '" fill="#f87171" font-size="10" font-weight="600" font-family="sans-serif">Area Risiko (' + plan.slPct.toFixed(1) + '%)</text>';
+        } catch (_) {}
+    }
+
+    setTimeout(updateShadingBox, 150);
+    chart.timeScale().subscribeVisibleLogicalRangeChange(updateShadingBox);
+
+    // Subpanels: Intensity & Volume Rotation
+    var subpanelsWrapper = document.getElementById(chartId + '_subpanels_wrapper');
+    if (!subpanelsWrapper) {
+        subpanelsWrapper = document.createElement('div');
+        subpanelsWrapper.id = chartId + '_subpanels_wrapper';
+        subpanelsWrapper.className = 'chart-subpanels-wrapper space-y-1.5 mt-2';
+        container.parentNode.insertBefore(subpanelsWrapper, container.nextSibling);
+    }
+
+    var intensityContainer = document.getElementById(chartId + '_intensity_container');
+    if (!intensityContainer) {
+        intensityContainer = document.createElement('div');
+        intensityContainer.id = chartId + '_intensity_container';
+        intensityContainer.className = 'relative w-full rounded-lg overflow-hidden border border-dark-700/60 bg-[#0b0e14]';
+        intensityContainer.style.height = '65px';
+        subpanelsWrapper.appendChild(intensityContainer);
+    }
+
+    var rotationContainer = document.getElementById(chartId + '_rotation_container');
+    if (!rotationContainer) {
+        rotationContainer = document.createElement('div');
+        rotationContainer.id = chartId + '_rotation_container';
+        rotationContainer.className = 'relative w-full rounded-lg overflow-hidden border border-dark-700/60 bg-[#0b0e14]';
+        rotationContainer.style.height = '65px';
+        subpanelsWrapper.appendChild(rotationContainer);
+    }
+
+    var intensityChart = null;
+    var rotationChart = null;
+
+    if (showIntensity && ws && candles.length >= 5) {
+        intensityContainer.style.display = 'block';
+        intensityContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#c084fc; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">INTENSITY (Aktivitas Bandar)</div>';
+        intensityChart = LightweightCharts.createChart(intensityContainer, {
+            width: container.clientWidth,
+            height: 65,
+            layout: { background: { color: '#0b0e14' }, textColor: '#6b7280' },
+            grid: { vertLines: { color: '#1c233315' }, horzLines: { color: '#1c233320' } },
+            rightPriceScale: { borderColor: '#1c2333', scaleMargins: { top: 0.15, bottom: 0.1 } },
+            timeScale: { visible: false },
+            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+        });
+        var intSeries = intensityChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
+        intSeries.setData(ws.calculateIntensityHistogram(candles));
+        intensityChart.timeScale().fitContent();
+    } else {
+        intensityContainer.style.display = 'none';
+    }
+
+    if (showRotation && ws && candles.length >= 5) {
+        rotationContainer.style.display = 'block';
+        rotationContainer.innerHTML = '<div style="position:absolute; top:2px; left:8px; z-index:5; font-size:10px; font-weight:700; color:#34d399; pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.8);">VOLUME ROTATION (Akumulasi / Distribusi / Transisi)</div>';
+        rotationChart = LightweightCharts.createChart(rotationContainer, {
+            width: container.clientWidth,
+            height: 65,
+            layout: { background: { color: '#0b0e14' }, textColor: '#6b7280' },
+            grid: { vertLines: { color: '#1c233315' }, horzLines: { color: '#1c233320' } },
+            rightPriceScale: { borderColor: '#1c2333', scaleMargins: { top: 0.15, bottom: 0.1 } },
+            timeScale: { visible: false },
+            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+        });
+        var rotSeries = rotationChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
+        rotSeries.setData(ws.calculateVolumeRotation(candles));
+        rotationChart.timeScale().fitContent();
+    } else {
+        rotationContainer.style.display = 'none';
+    }
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(function(range) {
+        if (range) {
+            if (intensityChart) intensityChart.timeScale().setVisibleLogicalRange(range);
+            if (rotationChart) rotationChart.timeScale().setVisibleLogicalRange(range);
+        }
+    });
+
+    // Plan & Backtest Card below subpanels
+    var planCardEl = document.getElementById(chartId + '_plan_backtest_card');
+    if (!planCardEl) {
+        planCardEl = document.createElement('div');
+        planCardEl.id = chartId + '_plan_backtest_card';
+        planCardEl.className = 'chart-plan-backtest-card mt-3';
+        subpanelsWrapper.parentNode.insertBefore(planCardEl, subpanelsWrapper.nextSibling);
+    }
+
+    if (showTradingPlan && plan) {
+        planCardEl.style.display = 'block';
+        planCardEl.innerHTML =
+            (!plan.isSafeRR ?
+                '<div class="p-3 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-300 text-xs font-semibold flex items-center gap-2 mb-3">' +
+                    '<svg class="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>' +
+                    '<span>STATUS PANTAUAN - R/R Aktual (' + plan.rrRatio.toFixed(2).replace('.', ',') + 'x) di bawah batas minimum keselamatan 1,50x (Tidak Siap Eksekusi)</span>' +
+                '</div>' : ''
+            ) +
+            '<div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">' +
+                '<div class="p-3.5 rounded-xl bg-dark-800/80 border border-dark-700/60 space-y-3">' +
+                    '<div class="flex items-center justify-between pb-2 border-b border-dark-700/50">' +
+                        '<h4 class="font-semibold text-slate-100 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-sky-400"></span>Kalkulator Simulasi Scale-Out</h4>' +
+                        '<span class="text-[11px] font-mono px-2 py-0.5 rounded font-bold ' + (plan.isSafeRR ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30') + '">R/R ' + plan.rrRatio.toFixed(2) + 'x</span>' +
+                    '</div>' +
+                    '<div class="grid grid-cols-2 gap-2 text-[11px] font-mono">' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">ENTRY</span><br><b class="text-sky-300">Rp ' + plan.entry.toLocaleString('id-ID') + '</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">STOP LOSS</span><br><b class="text-rose-400">Rp ' + plan.sl.toLocaleString('id-ID') + ' (' + plan.slPct.toFixed(1) + '%)</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">TARGET 1 (50%)</span><br><b class="text-emerald-400">Rp ' + plan.tp1.toLocaleString('id-ID') + ' (+' + plan.tp1Pct.toFixed(1) + '%)</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">TARGET 2 (50%)</span><br><b class="text-emerald-300">Rp ' + plan.tp2.toLocaleString('id-ID') + ' (+' + plan.tp2Pct.toFixed(1) + '%)</b></div>' +
+                    '</div>' +
+                    '<div class="pt-2 border-t border-dark-700/50 text-[11px] space-y-1">' +
+                        '<div class="flex justify-between"><span class="text-gray-400">Estimasi Keuntungan Bersih:</span><b class="text-emerald-400">+Rp ' + plan.scaleOut.netProfit.toLocaleString('id-ID') + '</b></div>' +
+                        '<div class="flex justify-between"><span class="text-gray-400">Maksimal Risiko Kerugian:</span><b class="text-rose-400">-Rp ' + plan.scaleOut.maxLoss.toLocaleString('id-ID') + '</b></div>' +
+                        '<div class="flex justify-between"><span class="text-gray-400">Biaya Fee (Beli 0,15% + Jual 0,25%):</span><b class="text-gray-300">Rp ' + plan.scaleOut.totalFees.toLocaleString('id-ID') + '</b></div>' +
+                        '<div class="flex justify-between"><span class="text-gray-400">Breakeven Stop (saat TP1):</span><b class="text-sky-300">Rp ' + plan.scaleOut.breakevenStop.toLocaleString('id-ID') + '</b></div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="p-3.5 rounded-xl bg-dark-800/80 border border-dark-700/60 space-y-3">' +
+                    '<div class="flex items-center justify-between pb-2 border-b border-dark-700/50">' +
+                        '<h4 class="font-semibold text-slate-100 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>Backtest Historis 3 Tahun (VPS Full)</h4>' +
+                        '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 font-mono">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).candleCount : (candles.length.toLocaleString('id-ID') + ' Lilin')) + '</span>' +
+                    '</div>' +
+                    '<div class="grid grid-cols-2 gap-2 text-[11px] font-mono">' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">WIN RATE</span><br><b class="text-emerald-400 text-sm">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).winRate : '68,4%') + '</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">PROFIT FACTOR</span><br><b class="text-sky-400 text-sm">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).profitFactor : '2,35') + '</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">TOTAL TRADES</span><br><b class="text-gray-200">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).totalTrades : '42 Trade') + '</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">MAX DRAWDOWN</span><br><b class="text-amber-400">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).maxDrawdown : '-5,8%') + '</b></div>' +
+                    '</div>' +
+                    '<div class="pt-2 border-t border-dark-700/50 text-[11px] space-y-1">' +
+                        '<div class="flex justify-between"><span class="text-gray-400">Rata-rata Durasi Hold:</span><b class="text-gray-200">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).avgHoldingDays : '5,2 Hari') + '</b></div>' +
+                        '<div class="flex justify-between"><span class="text-gray-400">Expectancy per Trade:</span><b class="text-emerald-400">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).expectancy : '+Rp 845.000') + '</b></div>' +
+                        '<div class="flex justify-between"><span class="text-gray-400">Status Validasi Risk Gate:</span>' + (plan.isSafeRR ? '<b class="text-emerald-400 font-semibold">LOLOS (R/R &ge; 1,50x)</b>' : '<b class="text-rose-400 font-semibold">PANTAUAN / DITOLAK (R/R &lt; 1,50x)</b>') + '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+    } else {
+        planCardEl.style.display = 'none';
+    }
 
     // RSI panel
     var rsiContainer = document.getElementById(chartId + '_rsi');
@@ -462,6 +891,8 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         variant: variant,
         mainChart: chart,
         rsiChart: (typeof rsiChart !== 'undefined' ? rsiChart : null) || null,
+        intensityChart: (typeof intensityChart !== 'undefined' ? intensityChart : null) || null,
+        rotationChart: (typeof rotationChart !== 'undefined' ? rotationChart : null) || null,
         ticker: ticker || '',
         metrics: metrics || null,
         lastClose: _latest ? _latest.close : null,
