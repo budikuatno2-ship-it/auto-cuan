@@ -14200,6 +14200,10 @@ html[data-theme="dark"] .ac-origin-f {
     font-size: 11px !important;
     white-space: nowrap !important;
   }
+  .maintenance-facts {
+    font-size: 12px;
+    line-height: 1.5;
+  }
 }
 
 /* 1366x768 laptop sidebar alignment */

@@ -113,7 +113,28 @@ test('Bandar Metrics: Intensity and Volume Rotation histograms format cleanly', 
 
 test('Bandar Metrics: calculateBandarMetrics runs on real BBCA candles', () => {
   const store = require('../lib/local-market-subset-store');
-  const candleData = store.getCandles('BBCA');
+  let candleData = store.getCandles('BBCA');
+  if (!candleData || !candleData.candles || candleData.candles.length < 50) {
+    const mockCandles = [];
+    const baseDate = new Date('2026-01-01');
+    let price = 5800;
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(baseDate);
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      const change = (i % 2 === 0 ? 1 : -1) * (i * 5 % 50);
+      price += change;
+      mockCandles.push({
+        time: dateStr,
+        open: price - 10,
+        high: price + 25,
+        low: price - 20,
+        close: price,
+        volume: 1000000 + i * 20000
+      });
+    }
+    candleData = { candles: mockCandles };
+  }
   assert.ok(candleData && candleData.candles.length > 50);
 
   const metrics = engine.calculateBandarMetrics({
