@@ -157,7 +157,7 @@
     }
 
     try {
-      var resp = await fetch('/api/stocks-search?q=' + encodeURIComponent(q) + '&limit=15');
+      var resp = await fetch('/api/sector-hot?action=stocks-search&q=' + encodeURIComponent(q) + '&limit=15');
       var data = await resp.json();
       if (data && data.success && Array.isArray(data.results)) {
         _currentResults = data.results;

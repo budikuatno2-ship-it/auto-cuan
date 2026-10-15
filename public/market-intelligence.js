@@ -43,7 +43,7 @@
       '</div>';
 
     try {
-      var resp = await fetch('/api/market-breadth');
+      var resp = await fetch('/api/sector-hot?action=market-breadth');
       var data = await resp.json();
       if (!data || !data.success) {
         container.innerHTML = '<div class="text-xs text-gray-500 p-4 text-center">Gagal memuat ringkasan pasar.</div>';
@@ -116,7 +116,7 @@
       '</div>';
 
     try {
-      var url = '/api/broker-summary-smart?ticker=' + encodeURIComponent(safeTicker);
+      var url = '/api/sector-hot?action=broker-summary-smart&ticker=' + encodeURIComponent(safeTicker);
       if (date) url += '&date=' + encodeURIComponent(date);
 
       var resp = await fetch(url);
@@ -254,7 +254,7 @@
     if (!container) return;
 
     try {
-      var resp = await fetch('/api/screener-presets');
+      var resp = await fetch('/api/sector-hot?action=screener-presets');
       var data = await resp.json();
       if (!data || !data.success || !Array.isArray(data.presets)) return;
 
@@ -354,7 +354,7 @@
     }
 
     try {
-      var resp = await fetch('/api/screener-presets?preset=' + encodeURIComponent(presetId));
+      var resp = await fetch('/api/sector-hot?action=screener-presets&preset=' + encodeURIComponent(presetId));
       var data = await resp.json();
       if (data && data.success && Array.isArray(data.results)) {
         renderPresetResults(data);

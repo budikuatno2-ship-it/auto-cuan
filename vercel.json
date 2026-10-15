@@ -9,22 +9,6 @@
   },
   "rewrites": [
     {
-      "source": "/api/market-breadth",
-      "destination": "/api/sector-hot?action=market-breadth"
-    },
-    {
-      "source": "/api/broker-summary-smart",
-      "destination": "/api/sector-hot?action=broker-summary-smart"
-    },
-    {
-      "source": "/api/screener-presets",
-      "destination": "/api/sector-hot?action=screener-presets"
-    },
-    {
-      "source": "/api/stocks-search",
-      "destination": "/api/sector-hot?action=stocks-search"
-    },
-    {
       "source": "/api/track-record",
       "destination": "/api/sector-hot?action=track-record"
     },
