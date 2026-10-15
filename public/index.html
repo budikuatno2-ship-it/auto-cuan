@@ -1190,6 +1190,12 @@ html.light #googleCompleteProfileModal input {
                 <span class="header-status-chip warn">Manual Confirm</span>
                 <span class="header-status-chip">Watchlist ≠ BUY</span>
             </div>
+            <!-- Global Ticker Search Command Palette Trigger (Fase 7) -->
+            <button id="globalSearchBtn" type="button" class="ac-top-search-trigger" onclick="if(window.AutoCuanCommandPalette)window.AutoCuanCommandPalette.open()" aria-label="Cari emiten atau perintah (Ctrl+K)">
+                <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <span class="hidden sm:inline text-xs text-gray-300">Cari emiten...</span>
+                <kbd class="hidden md:inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded bg-dark-800 text-gray-400 border border-dark-600">Ctrl K</kbd>
+            </button>
             <div class="header-account ml-auto flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 <span id="wibClock" class="text-[11px] text-gray-500 font-mono tabular-nums hidden sm:inline"></span>
                 <span id="reviewBadge" class="hidden px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">Review</span>
@@ -1320,6 +1326,9 @@ html.light #googleCompleteProfileModal input {
         </div>
         <div class="dash-section-note mt-3">Kandidat berstatus Hindari, Jual, Potensi TP Rendah, dan Risiko Sangat Tinggi selalu dipisahkan dari daftar utama, sehingga tidak pernah muncul sebagai kandidat yang bisa langsung dieksekusi.</div>
         </section>
+
+        <!-- Market Breadth Card (Fase 7) -->
+        <div id="dashboardMarketBreadthWrap" class="mb-4"></div>
 
         <!-- Compact Top 5 + Monitor -->
         <section class="ac-section" aria-labelledby="dashRadarTitle">
@@ -1475,6 +1484,9 @@ html.light #googleCompleteProfileModal input {
             <h1 class="page-title text-2xl font-bold text-[var(--text-primary)]">Screener Saham</h1>
             <p class="page-subtitle text-xs text-[var(--text-secondary)]">Penyaring momentum saham otomatis: Swing Konglomerat, Swing Non-Konglo, dan Day Trade Momentum.</p>
         </div>
+        <!-- 8 Presets Bandar Metrics Quick Filter (Fase 7) -->
+        <div id="screenerPresetsContainer" class="mb-3"></div>
+        <div id="screenerPresetResultsContainer" class="mb-4"></div>
         <!-- Screener type tabs -->
         <!-- Segmented control. These three were previously three independent
              buttons, each carrying its own eight-utility class string, with the
@@ -3264,6 +3276,9 @@ html.light #googleCompleteProfileModal input {
                         <span>Akumulasi Broker</span>
                     </button>
                 </div>
+
+                <!-- Smart Broker Summary 2-Column (Fase 7) -->
+                <div id="smartBrokerSummaryContainer" class="mb-4"></div>
 
                 <div id="bandarmologiContent"></div>
             </div>
@@ -6684,7 +6699,12 @@ function navigateTo(page) {
     if (adminPanel) { if (page === 'dashboard' && isAdmin()) adminPanel.classList.remove('hidden'); else adminPanel.classList.add('hidden'); }
     if (page === 'subscription') loadSubscriptionExperience(false);
     // Sektor Hot login gate
-    if (page === 'dashboard') { loadDashboardTop5Monitor(true, { loadAdminPreview: false }); scheduleTop5HistoryLoad(); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
+    if (page === 'dashboard') {
+        if (window.AutoCuanMarketIntelligence && typeof window.AutoCuanMarketIntelligence.renderMarketBreadth === 'function') {
+            window.AutoCuanMarketIntelligence.renderMarketBreadth('dashboardMarketBreadthWrap');
+        }
+        loadDashboardTop5Monitor(true, { loadAdminPreview: false }); scheduleTop5HistoryLoad(); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh();
+    }
     else { clearTop5HistoryLoadTimer(); stopDashboardMonitorAutoRefresh(); }
     // Ranking Harian table: fetched independently of the ticker analysis
     // input, loaded once and cached client-side (refresh button reloads it).
@@ -6762,6 +6782,9 @@ function navigateTo(page) {
             // Bypass premium gate for screener so user can view screener results immediately
             scrLoginGate.classList.add('hidden');
             scrContent.classList.remove('hidden');
+            if (window.AutoCuanMarketIntelligence && typeof window.AutoCuanMarketIntelligence.render8ScreenerPresets === 'function') {
+                window.AutoCuanMarketIntelligence.render8ScreenerPresets('screenerPresetsContainer');
+            }
             loadSwingScreener(kaRevisit);
         }
     }
@@ -16098,5 +16121,16 @@ function forceNormalizeTechnicalDOM(root) {
 </script>
 <script src="/canonical-motion.js?v=20261006-v1"></script>
 <script src="/landing-experience.js?v=20261001-v4"></script>
+<script src="/command-palette.js?v=20261015-v1"></script>
+<script src="/market-intelligence.js?v=20261015-v1"></script>
+<script>
+// Auto-initialize Market Breadth if on dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    var pDash = document.getElementById('page-dashboard');
+    if (pDash && !pDash.classList.contains('hidden') && window.AutoCuanMarketIntelligence) {
+        window.AutoCuanMarketIntelligence.renderMarketBreadth('dashboardMarketBreadthWrap');
+    }
+});
+</script>
 </body>
 </html>

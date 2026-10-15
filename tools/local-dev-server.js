@@ -99,6 +99,7 @@ const {
   generateMockCandles
 } = require('../lib/mock-preview-data');
 const localMarketSubsetStore = require('../lib/local-market-subset-store');
+const marketIntelligence = require('../lib/market-intelligence-engine');
 
 const PREVIEW_MODULE_MAP = {
   'landing': 'landing',
@@ -1202,6 +1203,41 @@ const server = http.createServer(async (req, res) => {
         }
         return res.status(200).json(generateMockCandles(ticker));
       }
+    }
+
+    // Fase 7: Market Intelligence Endpoints
+    if (endpointName === 'market-breadth') {
+      const data = marketIntelligence.calculateMarketBreadth();
+      return res.status(200).json(data);
+    }
+
+    if (endpointName === 'broker-summary-smart') {
+      req.query = Object.fromEntries(parsedUrl.searchParams.entries());
+      const ticker = (req.query.ticker || 'BBCA').toUpperCase();
+      const date = req.query.date || null;
+      const data = marketIntelligence.getSmartBrokerSummary(ticker, date);
+      return res.status(200).json(data);
+    }
+
+    if (endpointName === 'screener-presets') {
+      req.query = Object.fromEntries(parsedUrl.searchParams.entries());
+      const presetId = req.query.preset;
+      if (presetId) {
+        const data = marketIntelligence.evaluateScreenerPreset(presetId);
+        return res.status(200).json(data);
+      }
+      return res.status(200).json({
+        success: true,
+        presets: marketIntelligence.SCREENER_PRESETS
+      });
+    }
+
+    if (endpointName === 'stocks-search') {
+      req.query = Object.fromEntries(parsedUrl.searchParams.entries());
+      const q = req.query.q || req.query.query || '';
+      const limit = Number(req.query.limit || 20);
+      const data = marketIntelligence.searchStocks(q, limit);
+      return res.status(200).json(data);
     }
 
     // Quote API mock for preview (development only - BUG-RT-03)

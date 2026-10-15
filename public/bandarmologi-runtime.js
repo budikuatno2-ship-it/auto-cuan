@@ -1914,6 +1914,10 @@
     var container = byId('bandarmologiContent');
     if (!container) return;
 
+    if (root.AutoCuanMarketIntelligence && typeof root.AutoCuanMarketIntelligence.renderSmartBrokerSummary === 'function' && byId('smartBrokerSummaryContainer')) {
+      root.AutoCuanMarketIntelligence.renderSmartBrokerSummary('smartBrokerSummaryContainer', clean, date);
+    }
+
     var badgeTicker = byId('bandarActiveTickerTag');
     if (badgeTicker) badgeTicker.textContent = clean;
 
