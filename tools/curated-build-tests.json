@@ -395,6 +395,7 @@
   "test/manual-subscription-review-flow.test.js",
   "test/market-history-routing.test.js",
   "test/market-hours-guard.test.js",
+  "test/market-intelligence-engine.test.js",
   "test/market-regime.test.js",
   "test/market-structure-coverage.test.js",
   "test/market-structure-existing-sync.test.js",
