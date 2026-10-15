@@ -1114,7 +1114,7 @@ html.light #googleCompleteProfileModal input {
 
             <button id="tabAnalisisPattern" type="button" onclick="navigateTo('analisis', 'pattern')" class="sidebar-item hidden" data-sidebar-page="pattern" data-analysis-tab="pattern" data-tab="pattern" data-label="Pattern Radar" title="Pattern Radar">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>
-                <span class="sidebar-label">Pattern Radar</span><span class="sidebar-badge is-admin">ADMIN</span>
+                <span class="sidebar-label">Pattern Radar</span><span class="sidebar-badge">ADMIN</span>
             </button>
         </section>
 
@@ -1519,8 +1519,8 @@ html.light #googleCompleteProfileModal input {
                     <option value="FX_STRONG_BUY">Akumulasi asing kuat (WR 61.2% · PF 1.80)</option>
                     <option value="TECH_ABOVE_MA20">Harga di atas MA20 (WR 60.6% · PF 1.90)</option>
                     <option value="TECH_ABOVE_MA5">Harga di atas MA5 (WR 60.1% · PF 1.89)</option>
-                    <option value="VOL_WARM_1P2_1P5">Volume 1,2-1,5x rata-rata (WR 60.0% · PF 1.46)</option>
-                    <option value="RSI_OVERBOUGHT_65P">Momentum RSI 65-69 (WR 59.8% · PF 1.73)</option>
+                    <option value="VOL_WARM_1P2_1P5">Volume 1,2–1,5× rata-rata (WR 60.0% · PF 1.46)</option>
+                    <option value="RSI_OVERBOUGHT_65P">Momentum RSI 65–69 (WR 59.8% · PF 1.73)</option>
                     <option value="COMBO_BROKER_FX">Akumulasi broker + aliran asing (WR 57.1% · PF 1.71)</option>
                     <option value="COMBO_BROKER_TECH">Akumulasi broker + harga di atas MA (WR 56.1% · PF 1.67)</option>
                     <option value="TRAP_CHG5_VOL3_CLIMAX">Kenaikan ≥5% + volume ≥3× (WR 55.6% · PF 1.84)</option>
@@ -3028,8 +3028,8 @@ html.light #googleCompleteProfileModal input {
                             <div class="flex items-center gap-1.5 text-xs shrink-0 sm:ml-auto">
                                 <label for="marketStructureSortSelect" class="text-[11px] ac-label-muted">Urutkan:</label>
                                 <select id="marketStructureSortSelect" class="ac-filter-select text-xs rounded px-2 py-1" aria-label="Urutkan daftar struktur pasar">
-                                    <option value="ticker_asc" selected>Ticker (A-Z)</option>
-                                    <option value="free_float_asc">Free Float ↑ (Terendah)</option>
+                                    <option value="free_float_asc" selected>Free Float ↑ (Terendah)</option>
+                                    <option value="ticker_asc">Ticker (A-Z)</option>
                                     <option value="ticker_desc">Ticker (Z-A)</option>
                                     <option value="free_float_desc">Free Float ↓ (Tertinggi)</option>
                                     <option value="investor_desc">Jumlah Investor (Terbanyak)</option>
@@ -5137,7 +5137,7 @@ function renderShareKonglo(d) {
         html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + (r.stop_loss || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + (r.tp1 || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + (r.tp2 || '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(1) : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(1) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-[10px] ' + timingColor + '">' + timingLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
         html += '</tr>';
@@ -5206,7 +5206,7 @@ function renderShareNk(d) {
         html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + (r.stop_loss != null ? Number(r.stop_loss).toFixed(0) : '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + (r.tp1 != null ? Number(r.tp1).toFixed(0) : '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + (r.tp2 != null ? Number(r.tp2).toFixed(0) : '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-[10px] ' + timingColor + '">' + timingLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
         html += '</tr>';
@@ -12442,7 +12442,7 @@ async function loadSektorHot(silent) {
                     : '<span class="text-gray-500">-</span>';
                 var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '-';
                 var memberCountVal = g.stock_count != null ? g.stock_count : (g.member_count != null ? g.member_count : (Array.isArray(g.members) ? g.members.length : null));
-                var memberCountDisplay = (memberCountVal != null && !isNaN(Number(memberCountVal))) ? String(memberCountVal) : '-';
+                var memberCountDisplay = (memberCountVal != null && !isNaN(Number(memberCountVal))) ? String(memberCountVal) : '—';
                 tRowsHtml += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="showGroupDetail(\'' + escapeHtml(g.group_code) + '\')">';
                 tRowsHtml += '<td class="px-3 py-2.5 text-center text-gray-500 text-xs">' + (idx + 1) + '</td>';
                 tRowsHtml += '<td class="px-3 py-2.5 font-mono font-semibold text-emerald-400 whitespace-nowrap">' + escapeHtml(g.group_code) + '</td>';
@@ -12465,12 +12465,12 @@ async function loadSektorHot(silent) {
             var chgColor = chgView.cls;
             var avgChgDisplay = chgView.text;
             var memberCountVal = g.stock_count != null ? g.stock_count : (g.member_count != null ? g.member_count : (Array.isArray(g.members) ? g.members.length : null));
-            var memberCountDisplay = (memberCountVal != null && !isNaN(Number(memberCountVal))) ? String(memberCountVal) : '-';
+            var memberCountDisplay = (memberCountVal != null && !isNaN(Number(memberCountVal))) ? String(memberCountVal) : '—';
             html += '<div onclick="showGroupDetail(\'' + g.group_code + '\')" class="sektor-group-card bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 cursor-pointer hover:border-emerald-500/30 hover:bg-dark-700/80 transition-all">';
             html += '<div class="flex items-start justify-between mb-2"><h3 class="text-sm font-semibold text-gray-200 leading-tight">' + escapeHtml(g.group_name || g.group_code) + '</h3>';
             html += '<span class="text-lg font-bold ' + chgColor + ' flex-shrink-0 ml-2">' + avgChgDisplay + '</span></div>';
             html += '<div class="flex items-center gap-3 text-xs text-gray-500">';
-            html += '<span>' + (memberCountDisplay === '-' ? '- saham' : (memberCountDisplay + ' saham')) + '</span>';
+            html += '<span>' + (memberCountDisplay === '—' ? '— saham' : (memberCountDisplay + ' saham')) + '</span>';
             if (g.top_ticker && g.top_change_pct != null) {
                 html += '<span class="' + topChgView.cls + '">Top: ' + escapeHtml(g.top_ticker) + ' ' + topChgView.text + '</span>';
             } else if (g.valid_count === 0 || !g.top_ticker) {
