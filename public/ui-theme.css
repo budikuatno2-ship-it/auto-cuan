@@ -14185,6 +14185,617 @@ html[data-theme="dark"] .ac-origin-f {
   flex-wrap: wrap !important;
 }
 
+/* ==========================================================================
+   FASE 7: COMMAND PALETTE, MARKET BREADTH, SMART BROKSUM, & 8 PRESETS
+   ========================================================================== */
+
+/* Command Palette Floating Modal */
+.ac-command-palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background-color: rgba(3, 7, 18, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 100px 16px 40px;
+}
+
+.ac-command-palette-container {
+  width: 100%;
+  max-width: 680px;
+  background-color: #0b1120;
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(16, 185, 129, 0.2);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: paletteScaleIn 0.15s ease-out;
+}
+
+@keyframes paletteScaleIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.ac-command-palette-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid #1e293b;
+  background-color: #0d1526;
+}
+
+.ac-command-palette-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ac-command-palette-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 15px;
+  outline: none;
+  font-weight: 500;
+}
+
+.ac-command-palette-input::placeholder {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.ac-command-palette-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+.ac-command-palette-close:hover {
+  color: #ffffff;
+}
+
+.ac-command-palette-body {
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+
+.ac-command-palette-hint {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 11px;
+  color: #64748b;
+  padding: 6px 10px 10px;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+}
+
+.ac-command-palette-results {
+  padding-top: 6px;
+}
+
+.ac-palette-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 6px 10px;
+}
+
+.ac-palette-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  margin-bottom: 3px;
+}
+
+.ac-palette-item:hover,
+.ac-palette-item.is-selected {
+  background-color: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.ac-palette-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ac-palette-ticker-badge {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 13px;
+  color: #10b981;
+  background-color: rgba(16, 185, 129, 0.15);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  min-width: 58px;
+  text-align: center;
+}
+
+.ac-palette-item-info {
+  min-width: 0;
+}
+
+.ac-palette-company-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ac-palette-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.ac-palette-board-badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: #1e293b;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.ac-palette-item-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.ac-palette-price {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 12px;
+  color: #38bdf8;
+}
+
+.ac-palette-action-hint {
+  font-size: 11px;
+  color: #10b981;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.ac-palette-item:hover .ac-palette-action-hint,
+.ac-palette-item.is-selected .ac-palette-action-hint {
+  opacity: 1;
+}
+
+.ac-palette-empty {
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.ac-command-palette-footer {
+  padding: 10px 18px;
+  border-top: 1px solid #1e293b;
+  background-color: #0d1526;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Global Top Search Bar Button */
+.ac-top-search-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background-color: #111827;
+  border: 1px solid #1f2937;
+  color: #9ca3af;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 34px;
+}
+
+.ac-top-search-trigger:hover {
+  background-color: #1f2937;
+  border-color: #374151;
+  color: #ffffff;
+}
+
+.ac-top-search-trigger kbd {
+  background-color: #0b0f19;
+  border: 1px solid #374151;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: monospace;
+  color: #cbd5e1;
+}
+
+/* Market Breadth Card */
+.ac-market-breadth-card {
+  background-color: #0b1120;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.ac-breadth-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ac-breadth-sentiment-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  letter-spacing: 0.05em;
+}
+
+.ac-breadth-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ac-breadth-stat-tile {
+  background-color: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.ac-stat-label {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.ac-stat-value {
+  font-family: monospace;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.ac-breadth-bar-wrap {
+  margin-bottom: 10px;
+}
+
+.ac-breadth-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #1e293b;
+}
+
+.ac-bar-gainer {
+  background-color: #10b981;
+  transition: width 0.3s ease;
+}
+
+.ac-bar-flat {
+  background-color: #64748b;
+  transition: width 0.3s ease;
+}
+
+.ac-bar-loser {
+  background-color: #f43f5e;
+  transition: width 0.3s ease;
+}
+
+.ac-breadth-bar-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-size: 11px;
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.ac-breadth-footer-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 11px;
+  color: #94a3b8;
+  border-top: 1px solid rgba(30, 41, 59, 0.6);
+  padding-top: 8px;
+  flex-wrap: wrap;
+}
+
+.ac-breadth-footer-meta strong {
+  color: #ffffff;
+}
+
+/* Smart Broker Summary 2-Column */
+.ac-smart-broksum-wrap {
+  background-color: #0b1120;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.ac-smart-broksum-top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ac-bandar-status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.ac-bandar-status-badge.accum-strong {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.ac-bandar-status-badge.accum-moderate {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.ac-bandar-status-badge.distrib-strong {
+  background-color: rgba(244, 63, 94, 0.2);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.4);
+}
+
+.ac-bandar-status-badge.neutral {
+  background-color: rgba(100, 116, 139, 0.2);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.4);
+}
+
+.ac-broksum-concentration-row {
+  display: grid;
+  grid-template-columns: repeat(3, 140px) 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.ac-conc-tile {
+  background-color: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.ac-conc-tile.is-highlight {
+  border-color: rgba(16, 185, 129, 0.4);
+  background-color: rgba(16, 185, 129, 0.08);
+}
+
+.ac-conc-label {
+  display: block;
+  font-size: 10px;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
+.ac-conc-val {
+  font-family: monospace;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ac-conc-narrative {
+  background-color: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+}
+
+.ac-smart-broksum-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.ac-broksum-column {
+  background-color: #0a0f1d;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ac-broksum-column.is-buyer {
+  border-top: 2px solid #10b981;
+}
+
+.ac-broksum-column.is-seller {
+  border-top: 2px solid #f43f5e;
+}
+
+.ac-col-header {
+  padding: 10px 14px;
+  background-color: #0e1628;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ac-broksum-table-scroll {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.ac-broksum-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ac-broksum-table th {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #64748b;
+  background-color: #0b1120;
+  border-bottom: 1px solid #1e293b;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.ac-broksum-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.4);
+}
+
+.ac-broksum-table tr:hover {
+  background-color: rgba(30, 41, 59, 0.4);
+}
+
+.ac-broker-origin {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.ac-broker-origin.is-foreign {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.ac-broker-origin.is-domestic {
+  background-color: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+}
+
+/* 8 Screener Presets & Popovers */
+.ac-presets-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ac-preset-pill-wrap {
+  display: inline-flex;
+  align-items: center;
+  background-color: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.ac-preset-pill-wrap:hover {
+  border-color: #3b82f6;
+}
+
+.ac-preset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ac-preset-btn.is-active {
+  color: #34d399;
+}
+
+.ac-preset-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.ac-preset-info-btn {
+  background: transparent;
+  border: none;
+  border-left: 1px solid #1e293b;
+  color: #64748b;
+  padding: 6px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.ac-preset-info-btn:hover {
+  color: #38bdf8;
+}
+
+.ac-preset-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 50;
+  width: 320px;
+  background-color: #0b1120;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7);
+  padding: 12px 14px;
+  animation: paletteScaleIn 0.12s ease-out;
+}
+
+.ac-popover-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.ac-preset-results-card {
+  background-color: #0b1120;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 14px;
+}
+
 @media (max-width: 640px) {
   .unified-card-header {
     padding: 8px 10px !important;
@@ -14199,6 +14810,21 @@ html[data-theme="dark"] .ac-origin-f {
     padding: 5px 8px !important;
     font-size: 11px !important;
     white-space: nowrap !important;
+  }
+  .ac-breadth-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .ac-smart-broksum-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .ac-broksum-concentration-row {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+  .ac-conc-narrative {
+    grid-column: span 3 !important;
+  }
+  .ac-command-palette-backdrop {
+    padding: 20px 10px !important;
   }
   .maintenance-facts {
     font-size: 12px;

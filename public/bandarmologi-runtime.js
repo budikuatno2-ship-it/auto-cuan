@@ -1914,6 +1914,10 @@
     var container = byId('bandarmologiContent');
     if (!container) return;
 
+    if (root.AutoCuanMarketIntelligence && typeof root.AutoCuanMarketIntelligence.renderSmartBrokerSummary === 'function' && byId('smartBrokerSummaryContainer')) {
+      root.AutoCuanMarketIntelligence.renderSmartBrokerSummary('smartBrokerSummaryContainer', clean, date);
+    }
+
     var badgeTicker = byId('bandarActiveTickerTag');
     if (badgeTicker) badgeTicker.textContent = clean;
 
@@ -4366,7 +4370,7 @@
   function formatDateDisplay(dateStr) {
     // Batch 6 F-005: when no dynamic date is available, return the explicit
     // "tanggal belum tersedia" marker rather than a stale hardcoded key.
-    if (!dateStr) return '—';
+    if (!dateStr) return '-';
     try {
       if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
         return stepBackToTradingDayIso(dateStr.trim());

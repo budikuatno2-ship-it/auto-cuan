@@ -421,6 +421,11 @@
           ? (root.UnifiedCockpit.getActiveTicker() || root.activeTicker || 'BBCA') : (root.activeTicker || 'BBCA');
         root.loadBandarmologiTab(bandarTicker);
       }
+      if (root.AutoCuanMarketIntelligence && typeof root.AutoCuanMarketIntelligence.renderSmartBrokerSummary === 'function' && byId('smartBrokerSummaryContainer')) {
+        var smartTicker = (root.UnifiedCockpit && typeof root.UnifiedCockpit.getActiveTicker === 'function')
+          ? (root.UnifiedCockpit.getActiveTicker() || root.activeTicker || 'BBCA') : (root.activeTicker || 'BBCA');
+        root.AutoCuanMarketIntelligence.renderSmartBrokerSummary('smartBrokerSummaryContainer', smartTicker);
+      }
     } else if (parentTab === 'intel') {
       if (root.BandarmologiRuntime && typeof root.BandarmologiRuntime.setBandarSection === 'function') {
         root.BandarmologiRuntime.setBandarSection('intel');
