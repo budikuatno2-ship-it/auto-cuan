@@ -1402,6 +1402,29 @@ const server = http.createServer(async (req, res) => {
         if (action === 'daytrade-screener') return res.status(200).json(MOCK_DAYTRADE);
         if (action === 'watchlist') return res.status(200).json(MOCK_WATCHLIST);
         if (action === 'track-record') return res.status(200).json(MOCK_TRACK_RECORD);
+        if (action === 'market-breadth') {
+          return res.status(200).json(marketIntelligence.calculateMarketBreadth());
+        }
+        if (action === 'broker-summary-smart') {
+          const ticker = (req.query.ticker || 'BBCA').toUpperCase();
+          const date = req.query.date || null;
+          return res.status(200).json(marketIntelligence.getSmartBrokerSummary(ticker, date));
+        }
+        if (action === 'screener-presets') {
+          const presetId = req.query.preset;
+          if (presetId) {
+            return res.status(200).json(marketIntelligence.evaluateScreenerPreset(presetId));
+          }
+          return res.status(200).json({
+            success: true,
+            presets: marketIntelligence.SCREENER_PRESETS
+          });
+        }
+        if (action === 'stocks-search') {
+          const q = req.query.q || req.query.query || '';
+          const limit = Number(req.query.limit || 20);
+          return res.status(200).json(marketIntelligence.searchStocks(q, limit));
+        }
         if (action === 'bandarmologi') {
           const ticker = (req.query.ticker || 'BBCA').toUpperCase();
           const targetDate = req.query.date || (ticker === 'BBCA' ? '2026-10-12' : '');

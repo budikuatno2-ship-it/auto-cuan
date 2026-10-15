@@ -221,6 +221,47 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // === FASE 7: MARKET INTELLIGENCE SUITE (STANDALONE - NO SUPABASE REQUIRED) ===
+    if (action === 'market-breadth') {
+      const data = marketIntelligenceEngine.calculateMarketBreadth();
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+      return res.status(200).json(data);
+    }
+
+    if (action === 'broker-summary-smart') {
+      const ticker = String(req.query.ticker || 'BBCA').trim().toUpperCase();
+      const date = req.query.date ? String(req.query.date).trim() : null;
+      const data = marketIntelligenceEngine.getSmartBrokerSummary(ticker, date);
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+      return res.status(200).json(data);
+    }
+
+    if (action === 'screener-presets') {
+      const presetId = req.query.preset ? String(req.query.preset).trim() : null;
+      if (presetId) {
+        const result = marketIntelligenceEngine.evaluateScreenerPreset(presetId);
+        res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300');
+        return res.status(200).json(result);
+      }
+      res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200');
+      return res.status(200).json({
+        success: true,
+        presets: marketIntelligenceEngine.SCREENER_PRESETS
+      });
+    }
+
+    if (action === 'stocks-search') {
+      const q = req.query.q ? String(req.query.q).trim() : '';
+      const limit = parseInt(req.query.limit, 10) || 12;
+      const results = marketIntelligenceEngine.searchStocks(q, limit);
+      res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1200');
+      return res.status(200).json({
+        success: true,
+        total: results.length,
+        results
+      });
+    }
+
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -292,47 +333,6 @@ module.exports = async function handler(req, res) {
 
     if (action === 'web-top5-history-archive') {
       return await handleWebTop5HistoryArchive(req, res, supabase);
-    }
-
-    // === FASE 7: MARKET INTELLIGENCE SUITE ===
-    if (action === 'market-breadth') {
-      const data = marketIntelligenceEngine.calculateMarketBreadth();
-      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
-      return res.status(200).json(data);
-    }
-
-    if (action === 'broker-summary-smart') {
-      const ticker = String(req.query.ticker || 'BBCA').trim().toUpperCase();
-      const date = req.query.date ? String(req.query.date).trim() : null;
-      const data = marketIntelligenceEngine.getSmartBrokerSummary(ticker, date);
-      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
-      return res.status(200).json(data);
-    }
-
-    if (action === 'screener-presets') {
-      const presetId = req.query.preset ? String(req.query.preset).trim() : null;
-      if (presetId) {
-        const result = marketIntelligenceEngine.evaluateScreenerPreset(presetId);
-        res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300');
-        return res.status(200).json(result);
-      }
-      res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200');
-      return res.status(200).json({
-        success: true,
-        presets: marketIntelligenceEngine.SCREENER_PRESETS
-      });
-    }
-
-    if (action === 'stocks-search') {
-      const q = req.query.q ? String(req.query.q).trim() : '';
-      const limit = parseInt(req.query.limit, 10) || 12;
-      const results = marketIntelligenceEngine.searchStocks(q, limit);
-      res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1200');
-      return res.status(200).json({
-        success: true,
-        total: results.length,
-        results
-      });
     }
 
     // === TRACK RECORD (PUBLIC / AUTHED READ-ONLY) ===
