@@ -14114,3 +14114,99 @@ html[data-theme="dark"] .ac-origin-f {
 .analisis-lens-bar {
   display: none !important;
 }
+
+/* ==========================================================================
+   FASE 6: CHART WORKSTATION TOOLBAR & DRAWER STYLING
+   ========================================================================== */
+.chart-workstation-toolbar {
+  background-color: #0f1319;
+  border-bottom: 1px solid #1c2333;
+}
+
+.chart-workstation-toolbar button {
+  min-height: 32px;
+  min-width: 36px;
+  touch-action: manipulation;
+}
+
+@media (max-width: 640px) {
+  .chart-workstation-toolbar {
+    padding: 8px;
+    gap: 6px;
+  }
+  .chart-workstation-toolbar button {
+    min-height: 44px; /* WCAG 44px touch target on mobile */
+    padding: 8px 10px;
+  }
+}
+
+.chart-workstation-drawer {
+  background-color: #0a0d14;
+  border-bottom: 1px solid #1e2638;
+}
+
+.chart-workstation-drawer input[type="checkbox"] {
+  min-width: 16px;
+  min-height: 16px;
+  cursor: pointer;
+}
+
+/* Drawer contrast: Title white, subtitle slate */
+.chart-workstation-drawer h3,
+[id$="_drawer"] h3,
+.chart-workstation-drawer .text-slate-100 {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.chart-workstation-drawer p,
+[id$="_drawer"] p,
+.chart-workstation-drawer .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+/* High contrast for active tab (WCAG AA compliant >= 4.5:1) */
+#tabAnalisisVision.active,
+#tabAnalisisText.active,
+#subTabBtnAnalisisChart.tab-active,
+#subTabBtnAnalisisAI.tab-active,
+.analisis-subtab.active,
+.analisis-subtab.tab-active {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  background-color: #059669 !important;
+}
+
+/* Mobile responsive chart actions wrap and button sizing */
+.unified-card-header,
+.chart-card-actions,
+#analisisChartHeader,
+.chart-header-actions {
+  flex-wrap: wrap !important;
+}
+
+@media (max-width: 640px) {
+  .unified-card-header {
+    padding: 8px 10px !important;
+  }
+  .unified-card-header > div:last-child {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+  .unified-card-header button,
+  .chart-card-actions button,
+  #analisisChartHeader button {
+    padding: 5px 8px !important;
+    font-size: 11px !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* 1366x768 laptop sidebar alignment */
+@media (min-width: 1024px) and (max-width: 1440px) {
+  #appSidebar,
+  .app-sidebar {
+    padding-top: 8px;
+  }
+}
+

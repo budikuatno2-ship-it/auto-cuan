@@ -1,0 +1,158 @@
+[
+  {
+    "filename": "01-fase-6-workstation-simpel-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "63e5cc3ba262181fbb9eb3e8b7a37cb581be99d9e95a9dde426250efe64aab34"
+  },
+  {
+    "filename": "02-fase-6-workstation-scalping-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "558fad10b25a4512a12a6d23de4410a88ee26279f1aa147cf2f8d390c6058715"
+  },
+  {
+    "filename": "03-fase-6-workstation-swing-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "59d737348f7880c45f0ec5e7a292b43c818174c66ca37203ec4a072e48108729"
+  },
+  {
+    "filename": "04-fase-6-workstation-investor-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "ccd37fbd271083047689397521e93049c0f994d79cde149364fb3ff8900bcf84"
+  },
+  {
+    "filename": "05-fase-6-workstation-pro-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "022aa97c372ff4a093df977f358c17311130884810a66b4c59243d961bbd2a63"
+  },
+  {
+    "filename": "06-fase-6-workstation-drawer-open-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "c95d2d74928b15070a02cbf7b29b88246a8b9e2bc2e1ce1945aa6a5a3f97d479"
+  },
+  {
+    "filename": "07-fase-6-trading-plan-visual-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "6de00f0df40b91a62b90420ed38d4b765da78a57a6e79052fbafdc565d3828f4"
+  },
+  {
+    "filename": "08-fase-6-trading-plan-warning-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "9eb7af41ae3f16c0422290fb988d623aac28d037277bafc477777d0abed9c345"
+  },
+  {
+    "filename": "09-fase-6-multi-timeframe-1d-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "de5c936bd10c6dca8c344c2fbd4889b045fa247091fe41b82eb533237e441f87"
+  },
+  {
+    "filename": "10-fase-6-multi-timeframe-1w-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "69be5de417b93306741f8543f073fda25d1fb9f2b39805b21face9121bd11cd6"
+  },
+  {
+    "filename": "11-fase-6-bandar-metrics-overlays-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "8555f00de8cb923e6ebac55839ea70f389632b2eb743aec1029def42c586e950"
+  },
+  {
+    "filename": "12-fase-6-workstation-simpel-1366x768.png",
+    "width": 1366,
+    "height": 768,
+    "hash": "2e19b3cd9436fc28f2d1212907f7fd7d840f9c75971b16cf7ec4ab32f5c37018"
+  },
+  {
+    "filename": "13-fase-6-workstation-pro-1366x768.png",
+    "width": 1366,
+    "height": 768,
+    "hash": "60aecd1fc0cd3b5e4c3d9ad84acfb38da1e42649288fca589800f74946f2a5ed"
+  },
+  {
+    "filename": "14-fase-6-workstation-drawer-1366x768.png",
+    "width": 1366,
+    "height": 768,
+    "hash": "e17be457134726bbc56ccd7c679551d7df9491a6ae07cb75ad0b61a6e2211fd4"
+  },
+  {
+    "filename": "15-fase-6-trading-plan-1366x768.png",
+    "width": 1366,
+    "height": 768,
+    "hash": "6c2322769fd53b15c0cf6d1f16fce8cbfa5aadd83764cb67f6d3eba9d3bd812f"
+  },
+  {
+    "filename": "16-fase-6-workstation-tablet-768x1024.png",
+    "width": 768,
+    "height": 1024,
+    "hash": "a432bdbdf44c52418a2a8260229a1f36afdd091e3d45448d70a835ec34e286e2"
+  },
+  {
+    "filename": "17-fase-6-workstation-drawer-tablet-768x1024.png",
+    "width": 768,
+    "height": 1024,
+    "hash": "71ec79a5085817f605e96e328c85244fe7b072d8e2ac84b62eea232670c9b63c"
+  },
+  {
+    "filename": "18-fase-6-trading-plan-tablet-768x1024.png",
+    "width": 768,
+    "height": 1024,
+    "hash": "c0bb3537d4905148cb02787a1e23ef7ac61a4c2a009793b9790ff4a6e1205268"
+  },
+  {
+    "filename": "19-fase-6-workstation-mobile-390x844.png",
+    "width": 390,
+    "height": 844,
+    "hash": "c1e4185548122eeb7b8d2e76703bae340e1c09b8bf2a0ca2d2483a5c231031f3"
+  },
+  {
+    "filename": "20-fase-6-workstation-drawer-mobile-390x844.png",
+    "width": 390,
+    "height": 844,
+    "hash": "812a8e36cede1aa679f00679af263adcb4b9e01482b272104372daa65e04f462"
+  },
+  {
+    "filename": "21-fase-6-trading-plan-mobile-390x844.png",
+    "width": 390,
+    "height": 844,
+    "hash": "0407c49501e2ff13901cd1cb797d089754e6786d71a994c769c9673d7e76f8ae"
+  },
+  {
+    "filename": "22-fase-6-workstation-mobile-360x780.png",
+    "width": 360,
+    "height": 780,
+    "hash": "737b227e858ae363fe031b53bf2da07026f7ede59203e4679becd1f6d629d6a6"
+  },
+  {
+    "filename": "23-fase-6-trading-plan-mobile-360x780.png",
+    "width": 360,
+    "height": 780,
+    "hash": "ae977b5b2bba5ce89a1f7d3d238eb8ed0581bd63c1d18a2245426b79ab539caf"
+  },
+  {
+    "filename": "24-fase-6-spike-poc-500-candles-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "9f5320266b56aeab75470df7397140357db593a881b7a51d37fcc12f103a431c"
+  },
+  {
+    "filename": "25-fase-6-spike-poc-2000-candles-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "e56742ce7eafe68d1cbabbcfa6938debc5c4fbb22487f796fd0aa8bbde286971"
+  },
+  {
+    "filename": "26-fase-6-spike-poc-50x-switch-pass-1920x1080.png",
+    "width": 1920,
+    "height": 1080,
+    "hash": "910ca6e28eb73d0a71430ef99e71b3f26dc8184972232edf06ddc8c7f84a0e68"
+  }
+]

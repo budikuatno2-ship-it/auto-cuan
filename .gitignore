@@ -130,3 +130,4 @@ docs/evidence/*.png
 data/deepscan-history/
 data/reports/deepscan-weekly-preparation-*.json
 data/market-subset-fixture.json
+.safe-change/
