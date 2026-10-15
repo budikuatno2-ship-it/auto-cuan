@@ -7,19 +7,19 @@ const engine = require('../lib/market-intelligence-engine');
 test('Market Intelligence: 8 official screener presets defined with full contract', () => {
   assert.equal(engine.SCREENER_PRESETS.length, 8);
 
-  const requiredIds = [
-    'silent_accumulation',
-    'big_foreign_inflow',
-    'breakout_high_20d',
-    'pullback_rebound_ma20',
-    'uptrend_momentum_rsi',
-    'scalping_volatilitas_tinggi',
-    'golden_cross_ema',
-    'oversold_reversal_rsi30'
+  const officialIds = [
+    'bullish_lpm_divergence',
+    'intensity_spike',
+    'oversold_reversal_watch',
+    'money_flow_accumulation',
+    'volume_rotation_heating_up',
+    'smart_money_technical',
+    'foreign_accumulation',
+    'technical_breakout'
   ];
 
-  requiredIds.forEach(id => {
-    const p = engine.SCREENER_PRESETS.find(item => item.id === id);
+  officialIds.forEach(id => {
+    const p = engine.SCREENER_PRESETS.find(item => item.id === id || item.alias === id);
     assert.ok(p, `Preset ${id} must exist`);
     assert.ok(p.name, `Preset ${id} must have a name`);
     assert.ok(p.category, `Preset ${id} must have a category`);
@@ -27,6 +27,13 @@ test('Market Intelligence: 8 official screener presets defined with full contrac
     assert.ok(p.formula, `Preset ${id} must have a formula`);
     assert.ok(p.riskGate, `Preset ${id} must have a riskGate definition`);
     assert.ok(!p.description.includes('—'), `Preset ${id} must not contain em-dashes`);
+  });
+
+  const presetsWithCounts = engine.getScreenerPresetsWithCounts();
+  assert.equal(presetsWithCounts.length, 8);
+  presetsWithCounts.forEach(p => {
+    assert.ok(typeof p.count === 'number' && p.count >= 0, `Preset ${p.id} must have non-negative count`);
+    assert.ok(p.nameWithCount.includes(`(${p.count})`), `Preset ${p.id} nameWithCount must contain count`);
   });
 });
 

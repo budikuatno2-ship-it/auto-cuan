@@ -13,7 +13,7 @@
   };
 
   function $(id) { return document.getElementById(id); }
-  function metric(id,value,options) { var el=$(id); if (!el)return; if(root.AutoCuanNumeric) root.AutoCuanNumeric.set(el,finite(value),options); else el.textContent=finite(value)==null?(options.empty||'\u2014'):(options.prefix||'')+Number(value).toLocaleString('id-ID',{minimumFractionDigits:options.digits||0,maximumFractionDigits:options.digits||0})+(options.suffix||''); }
+  function metric(id,value,options) { var el=$(id); if (!el)return; if(root.AutoCuanNumeric) root.AutoCuanNumeric.set(el,finite(value),options); else el.textContent=finite(value)==null?(options.empty||'-'):(options.prefix||'')+Number(value).toLocaleString('id-ID',{minimumFractionDigits:options.digits||0,maximumFractionDigits:options.digits||0})+(options.suffix||''); }
   function portfolioRoot() { return $('portofolioPartialMount') || document; }
   function show(id) { var el = $(id); if (el) el.classList.remove('hidden'); }
   function hide(id) { var el = $(id); if (el) el.classList.add('hidden'); }
@@ -456,7 +456,15 @@
   function renderSectors() {
     if (!state.sectors.length) { $('sectorHotList').innerHTML = '<div class="empty">Cache sektor belum tersedia.</div>'; return; }
     $('sectorHotList').innerHTML = state.sectors.slice(0, 3).map(function (group) {
-      return '<button class="sector-card ticker-link" data-open-ticker="' + escapeHtml(ticker(group.top_ticker) || '') + '"><strong>' + escapeHtml(group.group_name || group.group_code || 'Sektor') + '</strong><span>Avg ' + Number(group.avg_change_pct || 0).toFixed(2) + '% · Top ' + escapeHtml(group.top_ticker || '—') + '</span></button>';
+      var name = group.group_name || group.group_code || 'Sektor';
+      name = name.replace('IDX Sector Energy', 'Sektor Energi BEI')
+                 .replace('IDX Sector Financials', 'Sektor Keuangan BEI')
+                 .replace('IDX Sector Basic Materials', 'Sektor Barang Baku BEI')
+                 .replace('IDX Sector Industrials', 'Sektor Perindustrian BEI');
+      var avgPct = Number(group.avg_change_pct || 0);
+      var sign = avgPct > 0 ? '+' : '';
+      var avgStr = 'Rata-rata ' + sign + avgPct.toFixed(2).replace('.', ',') + '%';
+      return '<button class="sector-card ticker-link" data-open-ticker="' + escapeHtml(ticker(group.top_ticker) || '') + '"><strong>' + escapeHtml(name) + '</strong><span>' + avgStr + ' · Top ' + escapeHtml(group.top_ticker || '-') + '</span></button>';
     }).join('');
   }
 

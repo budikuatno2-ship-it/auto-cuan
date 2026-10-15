@@ -1132,12 +1132,16 @@ const server = http.createServer(async (req, res) => {
           status: 'ready'
         });
       }
-      if (isPreview || !process.env.GEMINI_API_KEY) {
-        const ticker = (req.body && req.body.ticker) || 'BBCA';
+      if (PREVIEW_MOCKS_ENABLED || isPreview || !process.env.GEMINI_API_KEY) {
+        const ticker = (req.body && (req.body.ticker || (req.body.chatMessage && req.body.chatMessage.split('\n')[0]))) || 'BBCA';
+        const cleanTicker = String(ticker).trim().toUpperCase().replace(/[^A-Z0-9]/g, '') || 'BBCA';
+        const analysisText = `<h3>Analisis AI Cockpit: ${cleanTicker}</h3><p><strong>Tren & Struktur</strong>: Uptrend solid, bertahan di atas MA20. Struktur akumulasi konsisten didukung volume stabil.</p><p><strong>Bandarmologi</strong>: Broker summary mencatat Net Accumulation yang kuat dari broker institusi.</p><p><strong>Trading Plan</strong>: Setup Swing menarik dengan Risk/Reward rasio memadai.</p>`;
         return res.status(200).json({
           success: true,
-          analysis: `### Analisis AI Cockpit: ${ticker} (Bank Central Asia Tbk.)\n\n- **Tren & Struktur**: Uptrend solid, bertahan di atas MA20 (10.150). Struktur akumulasi konsisten.\n- **Bandarmologi**: Broker summary mencatat Net Accumulation sebesar Rp 142.5 Miliar (Top Buyer: ZP, CC).\n- **Trading Plan**:\n  - Entry Area: 10.150 - 10.250\n  - Target Price 1: 10.550 (+2.9%)\n  - Target Price 2: 10.950 (+6.8%)\n  - Stop Loss: 9.950 (-2.9%)\n- **Kesimpulan**: Setup Swing Konglomerat menarik dengan Risk/Reward 1:2.3.`,
-          ticker: ticker,
+          analysis: analysisText,
+          reply: analysisText,
+          html: analysisText,
+          ticker: cleanTicker,
           score: 85,
           effectiveKeySource: 'mock_preview'
         });
@@ -1417,7 +1421,7 @@ const server = http.createServer(async (req, res) => {
           }
           return res.status(200).json({
             success: true,
-            presets: marketIntelligence.SCREENER_PRESETS
+            presets: marketIntelligence.getScreenerPresetsWithCounts()
           });
         }
         if (action === 'stocks-search') {

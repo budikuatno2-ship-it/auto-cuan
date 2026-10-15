@@ -112,7 +112,8 @@
     }
   }
 
-  async function loadUnifiedChart(ticker) {
+  async function loadUnifiedChart(ticker, options) {
+    options = options || {};
     var safeTicker = cleanTicker(ticker);
     if (!safeTicker) return;
 
@@ -121,6 +122,18 @@
 
     _lastLoadedChartTicker = safeTicker;
     _loadingChart = true;
+
+    root.activeTicker = safeTicker;
+    var inp = byId('analisisInput');
+    if (inp && inp.value !== safeTicker) inp.value = safeTicker;
+    var badge = byId('unifiedActiveTickerBadge');
+    if (badge) badge.textContent = safeTicker;
+    var sym = byId('unifiedActiveTickerSymbol');
+    if (sym) sym.textContent = safeTicker;
+    var compNameEl = byId('unifiedActiveCompanyName');
+    if (compNameEl) compNameEl.textContent = getCompanyName(safeTicker);
+    var compSectorEl = byId('unifiedActiveCompanySector');
+    if (compSectorEl) compSectorEl.textContent = getCompanySector(safeTicker);
 
     var chartId = 'unifiedchart_' + Date.now();
     var _pd = (typeof root.chartDims === 'function') ? root.chartDims('page') : { main: 340, rsi: 60 };
@@ -176,6 +189,10 @@
             quoteEl.textContent = 'Harga belum tersedia';
           }
         }
+        var activeBadge = byId('unifiedActiveTickerBadge');
+        if (activeBadge) activeBadge.textContent = safeTicker;
+        var activeSym = byId('unifiedActiveTickerSymbol');
+        if (activeSym) activeSym.textContent = safeTicker;
       }
 
       var loadLwc = (typeof root.loadLightweightCharts === 'function') ? root.loadLightweightCharts :
@@ -186,6 +203,9 @@
       if (loadLwc) await loadLwc();
       if (renderLwc) {
         await renderLwc(chartId, data.candles, data.metrics || null, safeTicker, { variant: 'page' });
+        if (options && options.preset && root.AutoCuanChartWorkstation && typeof root.AutoCuanChartWorkstation.applyPreset === 'function') {
+          root.AutoCuanChartWorkstation.applyPreset(chartId, options.preset);
+        }
       } else {
         var errEl2 = byId(chartId + '_container');
         if (errEl2) errEl2.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Modul visual chart sedang disiapkan...</div>';
@@ -264,6 +284,8 @@
     // 2. Update badges & labels
     var badge = byId('unifiedActiveTickerBadge');
     if (badge) badge.textContent = ticker;
+    var sym = byId('unifiedActiveTickerSymbol');
+    if (sym) sym.textContent = ticker;
 
     var compNameEl = byId('unifiedActiveCompanyName');
     if (compNameEl) {

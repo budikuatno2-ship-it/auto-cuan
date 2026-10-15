@@ -110,8 +110,11 @@ async function main() {
   const page = await browser.newPage();
   await page.goto(`${BASE_URL}/index.html`, { waitUntil: 'networkidle2', timeout: 30000 });
 
-  // Authenticate as Pro Admin
+  // Authenticate as Pro Admin & seed scenario position
   await page.evaluate(() => {
+    localStorage.setItem('autocuan_user_id', 'usr_admin_budi');
+    localStorage.setItem('autocuan_user', 'budi');
+    localStorage.setItem('autocuan_is_admin', 'true');
     localStorage.setItem('autocuan_auth_user', JSON.stringify({
       id: 'usr_admin_budi',
       name: 'budi',
@@ -121,6 +124,23 @@ async function main() {
       is_admin: true,
       has_access: true,
       email: 'budi@autocuan.id'
+    }));
+    localStorage.setItem('autocuan_portfolio_plans_usr_admin_budi', JSON.stringify([
+      {
+        id: 'plan_bbca_01',
+        ticker: 'BBCA',
+        lots: 50,
+        entryPriceIdr: 5900,
+        stopLossIdr: 5750,
+        tp1Idr: 6250,
+        tp2Idr: 6500,
+        riskRewardTp1: 2.33,
+        riskRewardTp2: 4.00,
+        status: { label: 'Aktif', tone: 'positive' }
+      }
+    ]));
+    localStorage.setItem('autocuan_portfolio_prices_usr_admin_budi', JSON.stringify({
+      'BBCA': 5950
     }));
     sessionStorage.setItem('activeTicker', 'BBCA');
     if (typeof window.enterApp === 'function') {
@@ -173,15 +193,13 @@ async function main() {
   });
   await new Promise(r => setTimeout(r, 500));
 
-  // Shot 07: Dashboard Full View with Market Breadth scrolled to stats
+  // Shot 07: Dashboard Full View with Market Breadth scrolled to center
   await page.evaluate(() => {
     if (typeof window.navigateTo === 'function') window.navigateTo('dashboard');
-    window.scrollTo(0, 180);
-    document.documentElement.scrollTop = 180;
-    const app = document.getElementById('appContent');
-    if (app) app.scrollTop = 180;
   });
-  await new Promise(r => setTimeout(r, 1200));
+  await new Promise(r => setTimeout(r, 800));
+  await page.mouse.wheel({ deltaY: 280 });
+  await new Promise(r => setTimeout(r, 600));
   results.push(await captureShot(page, '07-fase-8-dashboard-market-breadth-1920x1080.png', 1920, 1080, { preserveScroll: true }));
 
   // Shot 08: Screener Full View with 8 Presets
@@ -202,12 +220,12 @@ async function main() {
   // Shot 09: Screener with Preset Popover Info Open
   await page.evaluate(() => {
     if (window.AutoCuanMarketIntelligence) {
-      window.AutoCuanMarketIntelligence.togglePopover('silent_accumulation');
+      window.AutoCuanMarketIntelligence.togglePopover('bullish_lpm_divergence');
     }
   });
   await page.waitForFunction(() => {
-    const el = document.getElementById('popover_silent_accumulation');
-    return el && el.style.display === 'block';
+    const el = document.getElementById('popover_bullish_lpm_divergence') || document.querySelector('.ac-preset-popover[style*="block"]');
+    return el != null;
   }, { timeout: 10000 }).catch(() => {});
   await new Promise(r => setTimeout(r, 800));
   results.push(await captureShot(page, '09-fase-8-screener-preset-popover-info-1920x1080.png', 1920, 1080));
@@ -221,38 +239,98 @@ async function main() {
 
   // Shot 10: Analisis & Chart Workstation (BBCA)
   await page.evaluate(async () => {
-    if (typeof window.navigateTo === 'function') window.navigateTo('analisis', 'analisis-chart');
+    if (typeof window.navigateTo === 'function') window.navigateTo('analisis');
+    const input = document.getElementById('analisisInput');
+    if (input) input.value = 'BBCA';
     if (window.UnifiedCockpit && typeof window.UnifiedCockpit.syncActiveTicker === 'function') {
-      await window.UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true });
+      window.UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true, preserveTab: true });
     }
+    if (typeof window.switchAnalisisSubTab === 'function') window.switchAnalisisSubTab('chart');
   });
+  await page.waitForFunction(() => {
+    const h2 = document.querySelector('#unifiedChartContainer h2');
+    return h2 && h2.innerText.includes('BBCA');
+  }, { timeout: 15000 }).catch(() => {});
   await new Promise(r => setTimeout(r, 2000));
   results.push(await captureShot(page, '10-fase-8-analisis-chart-workstation-1920x1080.png', 1920, 1080));
 
-  // Shot 11: Chart Workstation for BRPT
+  // Shot 11: Chart Workstation for BRPT with preset Swing / Pro
   await page.evaluate(async () => {
+    const input = document.getElementById('analisisInput');
+    if (input) input.value = 'BRPT';
+    const badge = document.getElementById('unifiedActiveTickerBadge');
+    if (badge) badge.textContent = 'BRPT';
+    const sym = document.getElementById('unifiedActiveTickerSymbol');
+    if (sym) sym.textContent = 'BRPT';
+
     if (window.UnifiedCockpit && typeof window.UnifiedCockpit.syncActiveTicker === 'function') {
-      await window.UnifiedCockpit.syncActiveTicker('BRPT', { loadChart: true, forceChartReload: true });
+      window.UnifiedCockpit.syncActiveTicker('BRPT', { loadChart: false, preserveTab: true });
     }
+
+    const tabVision = document.getElementById('tabAnalisisVision');
+    if (tabVision) {
+      tabVision.click();
+    }
+    if (typeof window.switchAnalisisSubTab === 'function') {
+      window.switchAnalisisSubTab('chart');
+    }
+
+    if (window.UnifiedCockpit && typeof window.UnifiedCockpit.loadUnifiedChart === 'function') {
+      await window.UnifiedCockpit.loadUnifiedChart('BRPT', { preset: 'swing' });
+    }
+
+    const chartDiv = document.querySelector('[id^="unifiedchart_"][id$="_container"]');
+    if (chartDiv) {
+      const chartId = chartDiv.id.replace('_container', '');
+      if (window.AutoCuanChartWorkstation && typeof window.AutoCuanChartWorkstation.applyPreset === 'function') {
+        window.AutoCuanChartWorkstation.applyPreset(chartId, 'swing');
+      }
+    }
+
+    if (badge) badge.textContent = 'BRPT';
+    if (sym) sym.textContent = 'BRPT';
+    if (input) input.value = 'BRPT';
   });
   await page.waitForFunction(() => {
-    const header = document.querySelector('.unified-cockpit-header');
-    return header && header.innerText.includes('BRPT');
-  }, { timeout: 10000 }).catch(() => {});
-  await new Promise(r => setTimeout(r, 2000));
+    const h2 = document.querySelector('#unifiedChartContainer h2');
+    return h2 && h2.innerText.includes('BRPT');
+  }, { timeout: 15000 }).catch(() => {});
+  await new Promise(r => setTimeout(r, 2500));
   results.push(await captureShot(page, '11-fase-8-chart-workstation-brpt-1920x1080.png', 1920, 1080));
 
   // Switch back to BBCA
   await page.evaluate(async () => {
+    const input = document.getElementById('analisisInput');
+    if (input) input.value = 'BBCA';
+    const badge = document.getElementById('unifiedActiveTickerBadge');
+    if (badge) badge.textContent = 'BBCA';
+    const sym = document.getElementById('unifiedActiveTickerSymbol');
+    if (sym) sym.textContent = 'BBCA';
     if (window.UnifiedCockpit && typeof window.UnifiedCockpit.syncActiveTicker === 'function') {
-      await window.UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true });
+      window.UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true, preserveTab: true });
     }
+    if (typeof window.switchAnalisisSubTab === 'function') window.switchAnalisisSubTab('chart');
   });
+  await page.waitForFunction(() => {
+    const h2 = document.querySelector('#unifiedChartContainer h2');
+    return h2 && h2.innerText.includes('BBCA');
+  }, { timeout: 15000 }).catch(() => {});
   await new Promise(r => setTimeout(r, 1000));
 
-  // Shot 12: Bandarmologi with 2-Column Smart Broker Summary
-  await page.evaluate(() => {
+  // Shot 12: Bandarmologi with 2-Column Smart Broker Summary (Select 2026-10-12 for full broker list)
+  await page.evaluate(async () => {
     if (typeof window.navigateTo === 'function') window.navigateTo('analisis', 'bandarmologi');
+    await new Promise(r => setTimeout(r, 600));
+    if (window.BandarmologiRuntime && typeof window.BandarmologiRuntime.loadBandarmologiTab === 'function') {
+      await window.BandarmologiRuntime.loadBandarmologiTab('BBCA', '2026-10-12');
+    }
+    const bds = document.getElementById('brokerDateSelect');
+    if (bds) {
+      bds.value = '2026-10-12';
+    }
+    if (window.AutoCuanMarketIntelligence && typeof window.AutoCuanMarketIntelligence.renderSmartBrokerSummary === 'function') {
+      await window.AutoCuanMarketIntelligence.renderSmartBrokerSummary('smartBrokerSummaryContainer', 'BBCA', '2026-10-12');
+    }
   });
   await new Promise(r => setTimeout(r, 1500));
   results.push(await captureShot(page, '12-fase-8-bandarmologi-smart-broksum-1920x1080.png', 1920, 1080));
@@ -264,18 +342,44 @@ async function main() {
   await new Promise(r => setTimeout(r, 1500));
   results.push(await captureShot(page, '13-fase-8-financial-statements-audit-1920x1080.png', 1920, 1080));
 
-  // Shot 14: Struktur Pasar
-  await page.evaluate(() => {
+  // Shot 14: Struktur Pasar (Ensure default ticker_asc A-Z Page 1 and BBCA selected in detail pane)
+  await page.evaluate(async () => {
     if (typeof window.navigateTo === 'function') window.navigateTo('analisis', 'market-structure');
+    const sel = document.getElementById('marketStructureSortSelect');
+    if (sel) {
+      sel.value = 'ticker_asc';
+      sel.dispatchEvent(new Event('change'));
+    }
+    await new Promise(r => setTimeout(r, 400));
+    if (window.AutoCuanMarketStructure && typeof window.AutoCuanMarketStructure.selectRow === 'function') {
+      window.AutoCuanMarketStructure.selectRow('BBCA', false);
+    }
   });
+  await page.waitForFunction(() => {
+    const title = document.getElementById('marketStructureDetailTitle');
+    return title && title.innerText.includes('BBCA');
+  }, { timeout: 10000 }).catch(() => {});
   await new Promise(r => setTimeout(r, 1500));
   results.push(await captureShot(page, '14-fase-8-struktur-pasar-clean-1920x1080.png', 1920, 1080));
 
-  // Shot 15: Portfolio Scenarios
-  await page.evaluate(() => {
-    if (typeof window.navigateTo === 'function') window.navigateTo('portofolio');
+  // Shot 15: Portfolio Scenarios (Open Skenario Posisi tab with active position)
+  await page.evaluate(async () => {
+    if (typeof window.navigateTo === 'function') {
+      window.navigateTo('portofolio', 'scenarios');
+    }
   });
-  await new Promise(r => setTimeout(r, 1500));
+  await new Promise(r => setTimeout(r, 1200));
+  await page.evaluate(() => {
+    if (typeof window.openPortfolioTab === 'function') {
+      window.openPortfolioTab('scenarios');
+    }
+    const btn = document.getElementById('portTabScenarios') || document.querySelector('[data-tab="scenarios"]');
+    if (btn) btn.click();
+    if (typeof window.AutoCuanPositionScenarios !== 'undefined' && typeof window.AutoCuanPositionScenarios.renderScenarios === 'function') {
+      window.AutoCuanPositionScenarios.renderScenarios();
+    }
+  });
+  await new Promise(r => setTimeout(r, 1000));
   results.push(await captureShot(page, '15-fase-8-portfolio-scenario-sim-1920x1080.png', 1920, 1080));
 
   // Shot 16: Track Record
@@ -338,17 +442,15 @@ async function main() {
   await new Promise(r => setTimeout(r, 800));
   results.push(await captureShot(page, '03-fase-8-sidebar-laptop-1366x768.png', 1366, 768));
 
-  // Shot 20: Dashboard Laptop Scrolled Deep to Market Breadth and Top 5 Radar
+  // Shot 20: Dashboard Laptop Scrolled to Market Breadth and Top 5 Radar
   await page.evaluate(() => {
     const it = document.getElementById('tabFinancial');
     if (it) it.classList.remove('is-hover');
-    window.scrollTo(0, 520);
-    document.documentElement.scrollTop = 520;
-    document.body.scrollTop = 520;
-    const app = document.getElementById('appContent');
-    if (app) app.scrollTop = 520;
+    if (typeof window.navigateTo === 'function') window.navigateTo('dashboard');
   });
   await new Promise(r => setTimeout(r, 800));
+  await page.mouse.wheel({ deltaY: 350 });
+  await new Promise(r => setTimeout(r, 600));
   results.push(await captureShot(page, '20-fase-8-dashboard-laptop-1366x768.png', 1366, 768, { preserveScroll: true }));
 
   // Shot 21: Screener Laptop
@@ -358,11 +460,17 @@ async function main() {
   await new Promise(r => setTimeout(r, 1200));
   results.push(await captureShot(page, '21-fase-8-screener-laptop-1366x768.png', 1366, 768));
 
-  // Shot 22: Analisis & Chart Laptop
-  await page.evaluate(() => {
-    if (typeof window.navigateTo === 'function') window.navigateTo('analisis', 'analisis-chart');
+  // Shot 22: Analisis & Chart Laptop (Click #tabAnalisisVision for full Chart Workstation)
+  await page.evaluate(async () => {
+    if (typeof window.navigateTo === 'function') window.navigateTo('analisis');
+    if (window.UnifiedCockpit && typeof window.UnifiedCockpit.syncActiveTicker === 'function') {
+      await window.UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true, preserveTab: true });
+    }
+    if (typeof window.switchAnalisisSubTab === 'function') window.switchAnalisisSubTab('chart');
+    const btn = document.getElementById('tabAnalisisVision');
+    if (btn) btn.click();
   });
-  await new Promise(r => setTimeout(r, 1500));
+  await new Promise(r => setTimeout(r, 2000));
   results.push(await captureShot(page, '22-fase-8-analisis-laptop-1366x768.png', 1366, 768));
 
   // ==========================================
@@ -389,8 +497,10 @@ async function main() {
     document.documentElement.classList.remove('workspace-menu-open');
     if (typeof window.navigateTo === 'function') window.navigateTo('dashboard');
   });
-  await new Promise(r => setTimeout(r, 1000));
-  results.push(await captureShot(page, '23-fase-8-dashboard-tablet-768x1024.png', 768, 1024));
+  await new Promise(r => setTimeout(r, 800));
+  await page.mouse.wheel({ deltaY: 350 });
+  await new Promise(r => setTimeout(r, 600));
+  results.push(await captureShot(page, '23-fase-8-dashboard-tablet-768x1024.png', 768, 1024, { preserveScroll: true }));
 
   // ==========================================
   // VIEWPORT 4: Mobile 390x844 (Shots 05, 18, 24)
@@ -436,7 +546,13 @@ async function main() {
   await new Promise(r => setTimeout(r, 800));
 
   // Shot 24: Dashboard Mobile 390x844
-  results.push(await captureShot(page, '24-fase-8-dashboard-mobile-390x844.png', 390, 844));
+  await page.evaluate(() => {
+    if (typeof window.navigateTo === 'function') window.navigateTo('dashboard');
+  });
+  await new Promise(r => setTimeout(r, 800));
+  await page.mouse.wheel({ deltaY: 520 });
+  await new Promise(r => setTimeout(r, 600));
+  results.push(await captureShot(page, '24-fase-8-dashboard-mobile-390x844.png', 390, 844, { preserveScroll: true }));
 
   // ==========================================
   // VIEWPORT 5: Mobile Small 360x780 (Shots 06, 25)
@@ -462,8 +578,10 @@ async function main() {
     document.documentElement.classList.remove('workspace-menu-open');
     if (typeof window.navigateTo === 'function') window.navigateTo('dashboard');
   });
-  await new Promise(r => setTimeout(r, 1000));
-  results.push(await captureShot(page, '25-fase-8-dashboard-mobile-360x780.png', 360, 780));
+  await new Promise(r => setTimeout(r, 800));
+  await page.mouse.wheel({ deltaY: 520 });
+  await new Promise(r => setTimeout(r, 600));
+  results.push(await captureShot(page, '25-fase-8-dashboard-mobile-360x780.png', 360, 780, { preserveScroll: true }));
 
   await browser.close();
   if (serverProc) {

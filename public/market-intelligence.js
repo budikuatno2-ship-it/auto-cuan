@@ -50,30 +50,34 @@
         return;
       }
 
+      var narrative = data.narrativeSummary || 'Pasar bergerak cenderung berimbang dengan 301 saham menguat, 337 melemah, dan 324 stagnan (Total nilai transaksi Rp 8,84 T).';
       var html = '<div class="ac-market-breadth-card">' +
         '  <div class="ac-breadth-header">' +
         '    <div class="flex items-center gap-2">' +
         '      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>' +
-        '      <h2 class="text-sm font-bold text-white tracking-wide">Ringkasan Pasar & Market Breadth IDX</h2>' +
+        '      <h2 class="text-sm font-bold tracking-wide" style="color: #f8fafc !important;">Ringkasan Pasar & Market Breadth IDX</h2>' +
         '      <span class="ac-breadth-sentiment-badge" style="background-color: ' + data.sentimentColor + '20; color: ' + data.sentimentColor + '; border: 1px solid ' + data.sentimentColor + '40;">' + escapeHtml(data.sentiment) + '</span>' +
         '    </div>' +
-        '    <div class="text-xs text-gray-400 font-mono">' + escapeHtml(data.asOfDisplay) + '</div>' +
+        '    <div class="text-xs font-mono" style="color: #cbd5e1 !important;">' + escapeHtml(data.asOfDisplay) + '</div>' +
+        '  </div>' +
+        '  <div class="ac-breadth-narrative mt-1 mb-3 p-2.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-xs leading-relaxed font-sans" style="color: #f1f5f9 !important;">' +
+        '    ' + escapeHtml(narrative) +
         '  </div>' +
         '  <div class="ac-breadth-stats-grid">' +
         '    <div class="ac-breadth-stat-tile is-gainer">' +
-        '      <div class="ac-stat-label">Saham Naik (Gainers)</div>' +
+        '      <div class="ac-stat-label" style="color: #cbd5e1 !important;">Saham Naik (Gainers)</div>' +
         '      <div class="ac-stat-value text-emerald-400">' + data.gainers.toLocaleString('id-ID') + ' <span class="text-xs font-normal">(' + data.gainerPct.toFixed(1).replace('.', ',') + '%)</span></div>' +
         '    </div>' +
         '    <div class="ac-breadth-stat-tile is-loser">' +
-        '      <div class="ac-stat-label">Saham Turun (Losers)</div>' +
+        '      <div class="ac-stat-label" style="color: #cbd5e1 !important;">Saham Turun (Losers)</div>' +
         '      <div class="ac-stat-value text-rose-400">' + data.losers.toLocaleString('id-ID') + ' <span class="text-xs font-normal">(' + data.loserPct.toFixed(1).replace('.', ',') + '%)</span></div>' +
         '    </div>' +
         '    <div class="ac-breadth-stat-tile is-flat">' +
-        '      <div class="ac-stat-label">Stagnan / Tetap</div>' +
+        '      <div class="ac-stat-label" style="color: #cbd5e1 !important;">Stagnan / Tetap</div>' +
         '      <div class="ac-stat-value text-slate-300">' + data.unchanged.toLocaleString('id-ID') + ' <span class="text-xs font-normal">(' + data.unchangedPct.toFixed(1).replace('.', ',') + '%)</span></div>' +
         '    </div>' +
         '    <div class="ac-breadth-stat-tile is-turnover">' +
-        '      <div class="ac-stat-label">Total Turnover Harian</div>' +
+        '      <div class="ac-stat-label" style="color: #cbd5e1 !important;">Total Turnover Harian</div>' +
         '      <div class="ac-stat-value text-sky-400">' + escapeHtml(data.totalTurnoverDisplay) + '</div>' +
         '    </div>' +
         '  </div>' +
@@ -89,7 +93,7 @@
         '      <span class="text-rose-400">&bull; Turun ' + data.loserPct.toFixed(1).replace('.', ',') + '%</span>' +
         '    </div>' +
         '  </div>' +
-        '  <div class="ac-breadth-footer-meta">' +
+        '  <div class="ac-breadth-footer-meta" style="color: #cbd5e1 !important;">' +
         '    <span>Volume: <strong>' + escapeHtml(data.totalVolumeDisplay) + '</strong></span>' +
         '    <span>Frekuensi: <strong>' + escapeHtml(data.totalFrequencyDisplay) + '</strong></span>' +
         '    <span>Status Asing: <strong>' + escapeHtml(data.foreignFlowStatus) + '</strong></span>' +
@@ -126,19 +130,24 @@
         return;
       }
 
+      var dateLabel = data.dateDisplay || (data.date ? data.date.replace(/(\d{4})-(\d{2})-(\d{2})/, function(_, y, m, d) {
+        var months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        return d + ' ' + (months[parseInt(m, 10) - 1] || m) + ' ' + y;
+      }) : '14 Okt 2026');
+
       var html = '<div class="ac-smart-broksum-wrap">' +
         '  <div class="ac-smart-broksum-top-header">' +
         '    <div class="flex items-center gap-2 flex-wrap">' +
         '      <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold text-xs border border-emerald-500/30">' + safeTicker + '</span>' +
-        '      <span class="text-sm font-bold text-white">Smart Broker Summary</span>' +
+        '      <span class="text-sm font-bold" style="color: #f8fafc !important;">Smart Broker Summary</span>' +
         '      <span class="ac-bandar-status-badge ' + data.bandarStatusClass + '">' + escapeHtml(data.bandarStatus) + '</span>' +
         '    </div>' +
-        '    <div class="text-xs text-gray-400 font-mono">Snapshot: ' + escapeHtml(data.date) + '</div>' +
+        '    <div class="text-xs text-gray-400 font-mono">Snapshot: ' + escapeHtml(dateLabel) + '</div>' +
         '  </div>' +
         '  <div class="ac-broksum-concentration-row">' +
         '    <div class="ac-conc-tile">' +
         '      <span class="ac-conc-label">Top 1 Buyer Ratio</span>' +
-        '      <span class="ac-conc-val text-white">' + data.top1Ratio.toFixed(1).replace('.', ',') + '%</span>' +
+        '      <span class="ac-conc-val" style="color: #f8fafc !important;">' + data.top1Ratio.toFixed(1).replace('.', ',') + '%</span>' +
         '    </div>' +
         '    <div class="ac-conc-tile is-highlight">' +
         '      <span class="ac-conc-label">Top 3 Concentration</span>' +
@@ -146,10 +155,10 @@
         '    </div>' +
         '    <div class="ac-conc-tile">' +
         '      <span class="ac-conc-label">Top 5 Concentration</span>' +
-        '      <span class="ac-conc-val text-white">' + data.top5Ratio.toFixed(1).replace('.', ',') + '%</span>' +
+        '      <span class="ac-conc-val" style="color: #f8fafc !important;">' + data.top5Ratio.toFixed(1).replace('.', ',') + '%</span>' +
         '    </div>' +
         '    <div class="ac-conc-narrative">' +
-        '      <p class="text-xs text-gray-300">' + escapeHtml(data.bandarSummaryText) + '</p>' +
+        '      <p class="text-xs" style="color: #cbd5e1 !important;">' + escapeHtml(data.bandarSummaryText) + '</p>' +
         '    </div>' +
         '  </div>' +
         '  <div class="ac-smart-broksum-grid">' +
@@ -164,11 +173,11 @@
         '      <div class="ac-broksum-table-scroll">' +
         '        <table class="ac-broksum-table">' +
         '          <thead>' +
-        '            <tr>' +
-        '              <th style="width: 25%;">Broker</th>' +
-        '              <th style="width: 22%;" class="text-right">Lot</th>' +
-        '              <th style="width: 23%;" class="text-right">Avg (Rp)</th>' +
-        '              <th style="width: 30%;" class="text-right">Nilai (Rp)</th>' +
+        '            <tr style="background-color: #1e293b !important;">' +
+        '              <th style="width: 25%; background-color: #1e293b !important; color: #94a3b8 !important;">BROKER</th>' +
+        '              <th style="width: 22%; background-color: #1e293b !important; color: #94a3b8 !important;" class="text-right">LOT</th>' +
+        '              <th style="width: 23%; background-color: #1e293b !important; color: #94a3b8 !important;" class="text-right">AVG</th>' +
+        '              <th style="width: 30%; background-color: #1e293b !important; color: #94a3b8 !important;" class="text-right">NILAI (RP)</th>' +
         '            </tr>' +
         '          </thead>' +
         '          <tbody>';
@@ -180,10 +189,10 @@
             '<span class="ac-broker-origin is-domestic">DOM</span>';
 
           html += '<tr>' +
-            '  <td><div class="flex items-center gap-1.5"><strong class="font-mono text-white text-xs">' + escapeHtml(b.code) + '</strong>' + originBadge + '</div></td>' +
-            '  <td class="text-right font-mono text-xs text-gray-300">' + b.netLot.toLocaleString('id-ID') + '</td>' +
+            '  <td style="color: #f8fafc !important;"><div class="flex items-center gap-1.5"><strong class="font-mono text-xs" style="color: #f8fafc !important;">' + escapeHtml(b.code) + '</strong>' + originBadge + '</div></td>' +
+            '  <td class="text-right font-mono text-xs" style="color: #f8fafc !important;">' + b.netLot.toLocaleString('id-ID') + '</td>' +
             '  <td class="text-right font-mono text-xs text-emerald-400 font-semibold">' + b.avgPrice.toLocaleString('id-ID') + '</td>' +
-            '  <td class="text-right font-mono text-xs text-white font-semibold">' + formatRupiahCompact(b.netValue) + '</td>' +
+            '  <td class="text-right font-mono text-xs font-semibold" style="color: #f8fafc !important;">' + formatRupiahCompact(b.netValue) + '</td>' +
             '</tr>';
         });
       } else {
@@ -205,11 +214,11 @@
         '      <div class="ac-broksum-table-scroll">' +
         '        <table class="ac-broksum-table">' +
         '          <thead>' +
-        '            <tr>' +
-        '              <th style="width: 25%;">Broker</th>' +
-        '              <th style="width: 22%;" class="text-right">Lot</th>' +
-        '              <th style="width: 23%;" class="text-right">Avg (Rp)</th>' +
-        '              <th style="width: 30%;" class="text-right">Nilai (Rp)</th>' +
+        '            <tr style="background-color: #1e293b !important;">' +
+        '              <th style="width: 25%; background-color: #1e293b !important; color: #94a3b8 !important;">BROKER</th>' +
+        '              <th style="width: 22%; background-color: #1e293b !important; color: #94a3b8 !important;" class="text-right">LOT</th>' +
+        '              <th style="width: 23%; background-color: #1e293b !important; color: #94a3b8 !important;" class="text-right">AVG</th>' +
+        '              <th style="width: 30%; background-color: #1e293b !important; color: #94a3b8 !important;" class="text-right">NILAI (RP)</th>' +
         '            </tr>' +
         '          </thead>' +
         '          <tbody>';
@@ -221,10 +230,10 @@
             '<span class="ac-broker-origin is-domestic">DOM</span>';
 
           html += '<tr>' +
-            '  <td><div class="flex items-center gap-1.5"><strong class="font-mono text-white text-xs">' + escapeHtml(s.code) + '</strong>' + originBadge + '</div></td>' +
-            '  <td class="text-right font-mono text-xs text-gray-300">' + s.netLot.toLocaleString('id-ID') + '</td>' +
+            '  <td style="color: #f8fafc !important;"><div class="flex items-center gap-1.5"><strong class="font-mono text-xs" style="color: #f8fafc !important;">' + escapeHtml(s.code) + '</strong>' + originBadge + '</div></td>' +
+            '  <td class="text-right font-mono text-xs" style="color: #f8fafc !important;">' + s.netLot.toLocaleString('id-ID') + '</td>' +
             '  <td class="text-right font-mono text-xs text-rose-400 font-semibold">' + s.avgPrice.toLocaleString('id-ID') + '</td>' +
-            '  <td class="text-right font-mono text-xs text-white font-semibold">' + formatRupiahCompact(s.netValue) + '</td>' +
+            '  <td class="text-right font-mono text-xs font-semibold" style="color: #f8fafc !important;">' + formatRupiahCompact(s.netValue) + '</td>' +
             '</tr>';
         });
       } else {
@@ -266,33 +275,34 @@
         '<div class="ac-presets-container flex items-center gap-2 flex-wrap">';
 
       presets.forEach(function (p) {
+        var displayName = p.nameWithCount || (p.count != null ? (p.name + ' (' + p.count + ')') : p.name);
         html += '<div class="ac-preset-pill-wrap relative">' +
           '  <button type="button" class="ac-preset-btn" data-preset-id="' + escapeHtml(p.id) + '" onclick="AutoCuanMarketIntelligence.applyPreset(\'' + escapeHtml(p.id) + '\')">' +
           '    <span class="ac-preset-badge" style="background-color: ' + p.badgeColor + '25; color: ' + p.badgeColor + ';">' + escapeHtml(p.badge) + '</span>' +
-          '    <span class="ac-preset-name">' + escapeHtml(p.name) + '</span>' +
+          '    <span class="ac-preset-name">' + escapeHtml(displayName) + '</span>' +
           '  </button>' +
           '  <button type="button" class="ac-preset-info-btn" aria-label="Informasi preset ' + escapeHtml(p.name) + '" onclick="AutoCuanMarketIntelligence.togglePopover(\'' + escapeHtml(p.id) + '\', event)">' +
           '    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' +
           '  </button>' +
-          '  <div id="popover_' + escapeHtml(p.id) + '" class="ac-preset-popover" style="display: none;">' +
-          '    <div class="ac-popover-header">' +
+          '  <div id="popover_' + escapeHtml(p.id) + '" class="ac-preset-popover" style="display: none; background-color: #0f172a !important; border: 1px solid #334155 !important;">' +
+          '    <div class="ac-popover-header" style="background-color: #0f172a !important; border-bottom: 1px solid #1e293b !important;">' +
           '      <div>' +
-          '        <div class="text-xs font-bold text-white">' + escapeHtml(p.name) + '</div>' +
+          '        <div class="text-xs font-bold" style="color: #f8fafc !important;">' + escapeHtml(p.name) + '</div>' +
           '        <div class="text-[10px] text-emerald-400 font-semibold">' + escapeHtml(p.category) + ' &bull; ' + escapeHtml(p.timeframe) + '</div>' +
           '      </div>' +
           '      <button type="button" class="text-gray-400 hover:text-white" onclick="AutoCuanMarketIntelligence.closePopovers()">&times;</button>' +
           '    </div>' +
-          '    <div class="ac-popover-body space-y-2 text-xs">' +
+          '    <div class="ac-popover-body space-y-2 text-xs" style="background-color: #0f172a !important;">' +
           '      <div>' +
-          '        <span class="text-gray-400 text-[11px] font-semibold">Tujuan Strategi:</span>' +
-          '        <p class="text-gray-200 mt-0.5">' + escapeHtml(p.description) + '</p>' +
+          '        <span class="text-[11px] font-semibold" style="color: #94a3b8 !important;">Tujuan Strategi:</span>' +
+          '        <p class="mt-0.5" style="color: #e2e8f0 !important;">' + escapeHtml(p.description) + '</p>' +
           '      </div>' +
           '      <div>' +
-          '        <span class="text-gray-400 text-[11px] font-semibold">Formula Filter Kuantitatif:</span>' +
-          '        <p class="text-emerald-300 font-mono text-[11px] mt-0.5 p-1.5 rounded bg-dark-800 border border-dark-600/50">' + escapeHtml(p.formula) + '</p>' +
+          '        <span class="text-[11px] font-semibold" style="color: #94a3b8 !important;">Formula Filter Kuantitatif:</span>' +
+          '        <p class="font-mono text-[11px] mt-0.5 p-1.5 rounded" style="background-color: #1e293b !important; color: #34d399 !important; border: 1px solid #334155 !important;">' + escapeHtml(p.formula) + '</p>' +
           '      </div>' +
           '      <div>' +
-          '        <span class="text-gray-400 text-[11px] font-semibold">Risk Gate Minimum:</span>' +
+          '        <span class="text-[11px] font-semibold" style="color: #94a3b8 !important;">Risk Gate Minimum:</span>' +
           '        <p class="text-amber-300 text-[11px] mt-0.5">' + escapeHtml(p.riskGate) + '</p>' +
           '      </div>' +
           '      <button type="button" class="w-full mt-2 py-1.5 px-3 rounded-lg bg-emerald-500 text-black font-semibold text-xs hover:bg-emerald-400 transition" onclick="AutoCuanMarketIntelligence.applyPreset(\'' + escapeHtml(p.id) + '\')">Terapkan Preset Ini</button>' +
@@ -382,6 +392,8 @@
       '          <th class="py-2 px-3">Nama Perusahaan</th>' +
       '          <th class="py-2 px-3 text-right">Harga (Rp)</th>' +
       '          <th class="py-2 px-3 text-right">Perubahan</th>' +
+      '          <th class="py-2 px-3 text-right">RSI 14</th>' +
+      '          <th class="py-2 px-3 text-right">Vol / Avg20</th>' +
       '          <th class="py-2 px-3 text-right">Turnover</th>' +
       '          <th class="py-2 px-3">Alasan Lolos Filter</th>' +
       '          <th class="py-2 px-3 text-center">Aksi</th>' +
@@ -393,12 +405,16 @@
       data.results.forEach(function (r) {
         var chgColor = r.change > 0 ? 'text-emerald-400' : (r.change < 0 ? 'text-rose-400' : 'text-gray-300');
         var chgSign = r.change > 0 ? '+' : '';
+        var rsiVal = r.rsi14 != null ? Number(r.rsi14).toFixed(1) : (r.rsi != null ? Number(r.rsi).toFixed(1) : '-');
+        var volVal = r.vol_vs_avg20 != null ? Number(r.vol_vs_avg20).toFixed(2) + 'x' : (r.volAvgRatio != null ? Number(r.volAvgRatio).toFixed(2) + 'x' : '-');
 
         html += '<tr class="border-b border-dark-700/20 hover:bg-dark-700/30 transition cursor-pointer" onclick="AutoCuanMarketIntelligence.selectStockRow(\'' + escapeHtml(r.ticker) + '\')">' +
           '  <td class="py-2 px-3 font-mono font-bold text-emerald-400">' + escapeHtml(r.ticker) + '</td>' +
           '  <td class="py-2 px-3 text-gray-300 max-w-[200px] truncate">' + escapeHtml(r.companyName) + '</td>' +
-          '  <td class="py-2 px-3 text-right font-mono font-semibold text-white">' + r.close.toLocaleString('id-ID') + '</td>' +
+          '  <td class="py-2 px-3 text-right font-mono font-semibold text-white">' + (r.last_price != null ? r.last_price.toLocaleString('id-ID') : r.close.toLocaleString('id-ID')) + '</td>' +
           '  <td class="py-2 px-3 text-right font-mono font-semibold ' + chgColor + '">' + chgSign + r.changePct.toFixed(2).replace('.', ',') + '%</td>' +
+          '  <td class="py-2 px-3 text-right font-mono text-gray-200">' + rsiVal + '</td>' +
+          '  <td class="py-2 px-3 text-right font-mono text-gray-200">' + volVal + '</td>' +
           '  <td class="py-2 px-3 text-right font-mono text-gray-300">' + escapeHtml(r.turnoverDisplay) + '</td>' +
           '  <td class="py-2 px-3 text-gray-400 max-w-[260px] truncate">' + escapeHtml(r.matchReason) + '</td>' +
           '  <td class="py-2 px-3 text-center">' +
@@ -407,7 +423,7 @@
           '</tr>';
       });
     } else {
-      html += '<tr><td colspan="7" class="py-6 text-center text-gray-500">Tidak ada saham yang memenuhi kriteria preset ini saat ini.</td></tr>';
+      html += '<tr><td colspan="9" class="py-6 text-center text-gray-500">Tidak ada saham yang memenuhi kriteria preset ini saat ini.</td></tr>';
     }
 
     html += '      </tbody>' +

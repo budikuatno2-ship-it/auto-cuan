@@ -18,19 +18,39 @@
   var _searchDebounceTimer = null;
 
   var POPULAR_DEFAULTS = [
-    { ticker: 'BBCA', name: 'Bank Central Asia Tbk.', sector: 'Financials', board: 'UTAMA' },
-    { ticker: 'BBRI', name: 'Bank Rakyat Indonesia (Persero) Tbk.', sector: 'Financials', board: 'UTAMA' },
-    { ticker: 'BMRI', name: 'Bank Mandiri (Persero) Tbk.', sector: 'Financials', board: 'UTAMA' },
-    { ticker: 'TLKM', name: 'Telkom Indonesia (Persero) Tbk.', sector: 'Infrastructure', board: 'UTAMA' },
-    { ticker: 'ASII', name: 'Astra International Tbk.', sector: 'Industrials', board: 'UTAMA' },
-    { ticker: 'BRPT', name: 'Barito Pacific Tbk.', sector: 'Basic Materials', board: 'UTAMA' },
-    { ticker: 'ANTM', name: 'Aneka Tambang Tbk.', sector: 'Basic Materials', board: 'UTAMA' },
-    { ticker: 'BREN', name: 'Barito Renewables Energy Tbk.', sector: 'Energy', board: 'UTAMA' },
-    { ticker: 'AMMN', name: 'Amman Mineral Internasional Tbk.', sector: 'Basic Materials', board: 'UTAMA' },
-    { ticker: 'ADRO', name: 'Alamtri Resources Indonesia Tbk.', sector: 'Energy', board: 'UTAMA' },
-    { ticker: 'ICBP', name: 'Indofood CBP Sukses Makmur Tbk.', sector: 'Consumer Non-Cyclical', board: 'UTAMA' },
-    { ticker: 'GOTO', name: 'GoTo Gojek Tokopedia Tbk.', sector: 'Technology', board: 'PENGEMBANGAN' }
+    { ticker: 'BBCA', name: 'Bank Central Asia Tbk.', sector: 'Keuangan', board: 'UTAMA', lastPrice: 5950 },
+    { ticker: 'BBRI', name: 'Bank Rakyat Indonesia (Persero) Tbk.', sector: 'Keuangan', board: 'UTAMA', lastPrice: 4850 },
+    { ticker: 'BMRI', name: 'Bank Mandiri (Persero) Tbk.', sector: 'Keuangan', board: 'UTAMA', lastPrice: 6800 },
+    { ticker: 'TLKM', name: 'Telkom Indonesia (Persero) Tbk.', sector: 'Infrastruktur', board: 'UTAMA', lastPrice: 3050 },
+    { ticker: 'ASII', name: 'Astra International Tbk.', sector: 'Perindustrian', board: 'UTAMA', lastPrice: 5100 },
+    { ticker: 'BRPT', name: 'Barito Pacific Tbk.', sector: 'Barang Baku', board: 'UTAMA', lastPrice: 1050 },
+    { ticker: 'ANTM', name: 'Aneka Tambang Tbk.', sector: 'Barang Baku', board: 'UTAMA', lastPrice: 1560 },
+    { ticker: 'BREN', name: 'Barito Renewables Energy Tbk.', sector: 'Energi', board: 'UTAMA', lastPrice: 6850 },
+    { ticker: 'AMMN', name: 'Amman Mineral Internasional Tbk.', sector: 'Barang Baku', board: 'UTAMA', lastPrice: 9250 },
+    { ticker: 'ADRO', name: 'Adaro Energy Indonesia Tbk.', sector: 'Energi', board: 'UTAMA', lastPrice: 3750 },
+    { ticker: 'ICBP', name: 'Indofood CBP Sukses Makmur Tbk.', sector: 'Konsumen Primer', board: 'UTAMA', lastPrice: 11950 },
+    { ticker: 'GOTO', name: 'GoTo Gojek Tokopedia Tbk.', sector: 'Teknologi', board: 'PENGEMBANGAN', lastPrice: 65 }
   ];
+
+  function translateSector(sec) {
+    if (!sec) return 'Keuangan';
+    var map = {
+      'Financials': 'Keuangan',
+      'Finance': 'Keuangan',
+      'Infrastructure': 'Infrastruktur',
+      'Industrials': 'Perindustrian',
+      'Basic Materials': 'Barang Baku',
+      'Energy': 'Energi',
+      'Technology': 'Teknologi',
+      'Consumer Non-Cyclical': 'Konsumen Primer',
+      'Consumer Non-Cyclicals': 'Konsumen Primer',
+      'Consumer Cyclical': 'Konsumen Non-Primer',
+      'Healthcare': 'Kesehatan',
+      'Properties & Real Estate': 'Properti & Real Estat',
+      'Transportation & Logistics': 'Transportasi & Logistik'
+    };
+    return map[sec] || sec;
+  }
 
   function byId(id) { return document.getElementById(id); }
 
@@ -43,6 +63,9 @@
   function ensureModalDom() {
     if (byId('commandPaletteModal')) return;
 
+    var isMobile = typeof window !== 'undefined' && window.innerWidth <= 640;
+    var ph = isMobile ? 'Cari 962 saham BEI...' : 'Cari 962 saham IDX (kode, nama perusahaan, atau sektor)...';
+
     var modalHtml = '<div id="commandPaletteModal" class="ac-command-palette-backdrop" style="display: none;" role="dialog" aria-modal="true" aria-label="Pencarian Saham Global">' +
       '<div class="ac-command-palette-container">' +
       '  <div class="ac-command-palette-header">' +
@@ -50,7 +73,7 @@
       '      <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
       '        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />' +
       '      </svg>' +
-      '      <input type="text" id="commandPaletteInput" class="ac-command-palette-input" placeholder="Cari 962 saham IDX (kode, nama perusahaan, atau sektor)..." autocomplete="off" spellcheck="false" />' +
+      '      <input type="text" id="commandPaletteInput" class="ac-command-palette-input" placeholder="' + ph + '" autocomplete="off" spellcheck="false" style="background-color: #1e293b !important; color: #f8fafc !important; border: 1px solid #334155 !important;" />' +
       '      <button type="button" id="commandPaletteCloseBtn" class="ac-command-palette-close" aria-label="Tutup pencarian">&times;</button>' +
       '    </div>' +
       '  </div>' +
@@ -60,7 +83,7 @@
       '      <span>Pilih: <strong>ENTER</strong></span>' +
       '      <span>Tutup: <strong>ESC</strong></span>' +
       '    </div>' +
-      '    <div id="commandPaletteResults" class="ac-command-palette-results" role="listbox"></div>' +
+      '    <div id="commandPaletteResults" class="ac-command-palette-results" role="listbox" style="padding-bottom: 36px !important;"></div>' +
       '  </div>' +
       '  <div class="ac-command-palette-footer">' +
       '    <span class="text-xs text-gray-400">Tekan <kbd class="px-1.5 py-0.5 rounded bg-dark-700 text-gray-300 font-mono text-[10px]">ESC</kbd> untuk keluar atau klik di luar kotak.</span>' +
@@ -196,7 +219,7 @@
     list.forEach(function (item, idx) {
       var isSelected = idx === _selectedIndex;
       var boardBadge = item.board ? '<span class="ac-palette-board-badge">' + escapeHtml(item.board) + '</span>' : '';
-      var priceDisplay = item.lastPrice ? '<span class="ac-palette-price">Rp ' + item.lastPrice.toLocaleString('id-ID') + '</span>' : '';
+      var priceDisplay = item.lastPrice ? '<span class="ac-palette-price font-mono font-bold" style="color: #f8fafc !important;">Rp ' + item.lastPrice.toLocaleString('id-ID') + '</span>' : '';
 
       html += '<div class="ac-palette-item ' + (isSelected ? 'is-selected' : '') + '" data-ticker="' + escapeHtml(item.ticker) + '" role="option" aria-selected="' + (isSelected ? 'true' : 'false') + '" onclick="AutoCuanCommandPalette.selectTicker(\'' + escapeHtml(item.ticker) + '\')">' +
         '  <div class="ac-palette-item-left">' +
@@ -204,7 +227,7 @@
         '    <div class="ac-palette-item-info">' +
         '      <div class="ac-palette-company-name">' + escapeHtml(item.name) + '</div>' +
         '      <div class="ac-palette-meta">' +
-        '        <span class="ac-palette-sector">' + escapeHtml(item.sector) + '</span>' +
+        '        <span class="ac-palette-sector">' + escapeHtml(translateSector(item.sector)) + '</span>' +
         '        ' + boardBadge +
         '      </div>' +
         '    </div>' +
@@ -234,6 +257,10 @@
     var modal = byId('commandPaletteModal');
     var input = byId('commandPaletteInput');
     if (!modal) return;
+    if (input) {
+      var isMobile = typeof window !== 'undefined' && window.innerWidth <= 640;
+      input.placeholder = isMobile ? 'Cari 962 saham BEI...' : 'Cari 962 saham IDX (kode, nama perusahaan, atau sektor)...';
+    }
 
     _previousActiveElement = document.activeElement;
     _isOpen = true;
@@ -242,6 +269,7 @@
 
     if (input) {
       input.value = '';
+      input.placeholder = (typeof window !== 'undefined' && window.innerWidth <= 640) ? 'Cari 962 saham BEI...' : 'Cari 962 saham IDX (kode, nama perusahaan, atau sektor)...';
       input.focus();
     }
 
