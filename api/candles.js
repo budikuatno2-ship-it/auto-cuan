@@ -269,6 +269,7 @@ module.exports.__test = {
   resetClassicPatternDetector: function() { classicPatternDetector = require('../lib/classic-chart-patterns').detectClassicChartPatterns; },
   hasPatternMapAccess: hasPatternMapAccess,
   responseForRequest: responseForRequest,
+  calcMA: calcMA,
   calcRSI: calcRSI,
   calcVolumeRatio: calcVolumeRatio
 };
@@ -278,30 +279,59 @@ function calcMA(prices, period) {
   var slice = prices.slice(prices.length - period);
   var sum = 0;
   for (var i = 0; i < slice.length; i++) {
-    var p = Number(slice[i]);
-    if (Number.isFinite(p)) sum += p;
+    var raw = slice[i];
+    if (raw == null || raw === '') return null;
+    var p = Number(raw);
+    if (!Number.isFinite(p)) return null;
+    sum += p;
   }
   var ma = sum / period;
   return Number.isFinite(ma) ? Math.round(ma * 100) / 100 : null;
 }
 
+// FIX-19: Wilder's Smoothing (RMA) — exact TradingView / `lib/daily-rsi` parity.
+// The previous SMA-over-window version drifted 3-5 points from the canonical
+// reference used by the daily market-context layer.
 function calcRSI(closes, period) {
-  if (!closes || closes.length < period + 1 || !period || period <= 0) return null;
-  var gains = 0, losses = 0;
-  for (var i = closes.length - period; i < closes.length; i++) {
-    var c1 = Number(closes[i]);
-    var c0 = Number(closes[i - 1]);
-    if (Number.isFinite(c1) && Number.isFinite(c0)) {
-      var diff = c1 - c0;
-      if (diff > 0) gains += diff;
-      else losses -= diff;
-    }
+  var p = Number(period);
+  if (!Array.isArray(closes) || !Number.isFinite(p) || p <= 0) return null;
+  if (closes.length < p + 1) return null;
+
+  var values = new Array(closes.length);
+  for (var i = 0; i < closes.length; i++) {
+    var raw = closes[i];
+    if (raw == null || raw === '') return null;
+    var num = Number(raw);
+    if (!Number.isFinite(num)) return null;
+    values[i] = num;
   }
-  var avgGain = gains / period;
-  var avgLoss = losses / period;
+
+  var gains = [];
+  var losses = [];
+  for (var j = 1; j < values.length; j++) {
+    var delta = values[j] - values[j - 1];
+    gains.push(Math.max(delta, 0));
+    losses.push(Math.max(-delta, 0));
+  }
+
+  var avgGain = 0;
+  var avgLoss = 0;
+  for (var k = 0; k < p; k++) {
+    avgGain += gains[k];
+    avgLoss += losses[k];
+  }
+  avgGain /= p;
+  avgLoss /= p;
+
+  for (var m = p; m < gains.length; m++) {
+    avgGain = (avgGain * (p - 1) + gains[m]) / p;
+    avgLoss = (avgLoss * (p - 1) + losses[m]) / p;
+  }
+
   if (!Number.isFinite(avgGain) || !Number.isFinite(avgLoss)) return null;
   if (avgGain === 0 && avgLoss === 0) return 50;
   if (avgLoss === 0) return 100;
+  if (avgGain === 0) return 0;
   var rs = avgGain / avgLoss;
   if (!Number.isFinite(rs)) return 100;
   var rsi = 100 - (100 / (1 + rs));

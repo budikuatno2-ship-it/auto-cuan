@@ -349,6 +349,11 @@
   async function applyPreset(presetId) {
     closePopovers();
 
+    // FIX-22: remember the active screener preset so the chart handoff can
+    // apply the exact same indicator layer set the trader was screening with.
+    _activeScreenerPreset = String(presetId || 'simpel');
+    root.__acActiveScreenerPreset = _activeScreenerPreset;
+
     // Visual highlight on preset button
     var allBtns = document.querySelectorAll('.ac-preset-btn');
     for (var i = 0; i < allBtns.length; i++) {
@@ -367,6 +372,9 @@
       var resp = await fetch('/api/sector-hot?action=screener-presets&preset=' + encodeURIComponent(presetId));
       var data = await resp.json();
       if (data && data.success && Array.isArray(data.results)) {
+        // FIX-22: keep the last preset payload addressable so the chart handoff
+        // can look up the clicked row without a second network round trip.
+        root.__acLastPresetResults = data.results;
         renderPresetResults(data);
       }
     } catch (_) {}
@@ -437,6 +445,53 @@
   // ============================================================
   // 4. BI-DIRECTIONAL CONTROLLER NETWORK
   // ============================================================
+  var _activeScreenerPreset = 'simpel';
+
+  /**
+   * FIX-22: derive Entry / SL / TP levels from the deterministic row payload
+   * that the screener already computed server side. We never invent numbers:
+   * if the payload has no usable structure we return null so the chart simply
+   * draws no price lines (AntiSlop: null over a fabricated level).
+   */
+  function buildPlanLevelsFromRow(ticker) {
+    var row = null;
+    try {
+      if (root.ScreenerLatestStore && typeof root.ScreenerLatestStore.getRow === 'function') {
+        row = root.ScreenerLatestStore.getRow(ticker);
+      }
+      if (!row && root.__acLastPresetResults) {
+        var list = root.__acLastPresetResults;
+        for (var i = 0; i < list.length; i++) {
+          if (String(list[i] && list[i].ticker || '').toUpperCase() === ticker) { row = list[i]; break; }
+        }
+      }
+    } catch (_) { row = null; }
+
+    if (!row) return null;
+
+    function num() {
+      for (var i = 0; i < arguments.length; i++) {
+        var v = Number(arguments[i]);
+        if (Number.isFinite(v) && v > 0) return v;
+      }
+      return null;
+    }
+
+    // Real screener rows carry entry_low/entry_high/stop_loss/tp1/tp2 (see
+    // api/sector-hot.js) so those names are preferred over any convenience alias.
+    var entryLow = num(row.entry_low, row.entryLow, row.buy_low);
+    var entryHigh = num(row.entry_high, row.entryHigh, row.buy_high);
+    var entry = num(row.entry, row.buyArea, entryHigh, entryLow, row.last_price, row.close);
+    var sl = num(row.sl, row.stopLoss, row.stop_loss);
+    var tp1 = num(row.tp1, row.target1, row.tp1n);
+    var tp2 = num(row.tp2, row.target2, row.tp2n);
+
+    if (!entry || !sl || !tp1) return null;
+    if (!tp2) tp2 = tp1;
+
+    return { entry: entry, sl: sl, tp1: tp1, tp2: tp2 };
+  }
+
   function selectStockRow(ticker) {
     var safeTicker = String(ticker || '').trim().toUpperCase();
     if (!safeTicker) return;
@@ -457,9 +512,30 @@
       });
     }
 
-    // Switch chart workstation
+    // FIX-22: route the trader straight into the dedicated Chart Workstation
+    // lens. Reading the screener row is a chart-intent action, so the shell
+    // must switch tab instead of leaving the user on the AI narrative.
+    var chartPreset = _activeScreenerPreset || 'simpel';
+    var chartPlanLevels = buildPlanLevelsFromRow(safeTicker);
+
+    if (typeof root.navigateTo === 'function') {
+      try { root.navigateTo('analisis', 'chart'); } catch (_) {}
+    }
+    var chartTabBtn = typeof document !== 'undefined' && document
+      ? document.getElementById('tabChartWorkstation')
+      : null;
+    if (chartTabBtn && typeof chartTabBtn.click === 'function' && !chartTabBtn.classList.contains('is-active')) {
+      chartTabBtn.click();
+    }
+
+    // Switch chart workstation with the screener preset + plan levels so the
+    // Entry/SL/TP1/TP2 price lines are drawn immediately (no second click).
     if (root.AutoCuanChartWorkstation && typeof root.AutoCuanChartWorkstation.switchTicker === 'function') {
-      root.AutoCuanChartWorkstation.switchTicker(safeTicker);
+      root.AutoCuanChartWorkstation.switchTicker('mainChart', safeTicker, {
+        preset: chartPreset,
+        planLevels: chartPlanLevels,
+        source: 'screener-row'
+      });
     }
 
     // Update broker summary if present

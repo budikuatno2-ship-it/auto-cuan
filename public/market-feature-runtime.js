@@ -683,6 +683,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
 
     var intensityChart = null;
     var rotationChart = null;
+    var rsiChart = null;
 
     if (showIntensity && ws && candles.length >= 5) {
         intensityContainer.style.display = 'block';
@@ -730,6 +731,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         if (range) {
             if (intensityChart) intensityChart.timeScale().setVisibleLogicalRange(range);
             if (rotationChart) rotationChart.timeScale().setVisibleLogicalRange(range);
+            if (rsiChart) rsiChart.timeScale().setVisibleLogicalRange(range);
         }
     });
 
@@ -797,7 +799,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     if (rsiContainer && candles.length > 15) {
         rsiContainer.innerHTML = '';
         rsiContainer.style.height = dims.rsi + 'px';
-        var rsiChart = LightweightCharts.createChart(rsiContainer, {
+        rsiChart = LightweightCharts.createChart(rsiContainer, {
             width: rsiContainer.clientWidth, height: dims.rsi,
             layout: { background: { color: '#0b0e14' }, textColor: '#6b7280' },
             grid: { vertLines: { color: '#1c233315' }, horzLines: { color: '#1c233320' } },

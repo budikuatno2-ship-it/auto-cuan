@@ -20,9 +20,14 @@ var { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
 var { hotQuoteCache } = require('../lib/in-memory-ttl-cache');
 
 function setHeaderSafe(res, name, value) {
-  if (res && typeof res.setHeader === 'function') {
+  if (!res || res.headersSent || res.writableEnded) return;
+  if (typeof res.setHeader === 'function') {
     res.setHeader(name, value);
   }
+}
+
+function canSendResponse(res) {
+  return Boolean(res && !res.headersSent && !res.writableEnded);
 }
 
 // This endpoint is unauthenticated and, with includeNews=1, triggers a paid
@@ -298,6 +303,84 @@ function normalizeRankingSortKey(raw) {
   return null;
 }
 
+/**
+ * FIX-24: shared payload diet for list responses.
+ *
+ * Two problems on large universes:
+ *  1. `data` and `rows` are frequently the SAME array reference, so the JSON
+ *     body carries every row twice.
+ *  2. Nested evidence arrays (e.g. `investors`) can be hundreds of entries long
+ *     while the UI only renders the head.
+ *
+ * Rules:
+ *  - only collapse `rows` into `data` when they are literally the same array
+ *    (or structurally identical) - never drop a distinct alias;
+ *  - trim deep arrays to a documented head and disclose the original length in
+ *    `<field>_count_total` so nothing is silently lost (AntiSlop);
+ *  - return the SAME object when not compacted so existing callers are byte-for-byte
+ *    unaffected.
+ */
+function applyCompactPayloadDiet(payload, compact) {
+  if (!payload || typeof payload !== 'object' || !compact) return payload;
+
+  var out = payload;
+
+  if (Array.isArray(out.data) && Array.isArray(out.rows)) {
+    var sameRef = out.data === out.rows;
+    var sameContent = false;
+    if (!sameRef &&
+        out.data.length === out.rows.length &&
+        out.data.length > 0 &&
+        out.data[0] && out.rows[0] &&
+        out.data[0].ticker != null &&
+        out.data[0].ticker === out.rows[0].ticker &&
+        out.data[out.data.length - 1] && out.rows[out.rows.length - 1] &&
+        out.data[out.data.length - 1].ticker === out.rows[out.rows.length - 1].ticker) {
+      sameContent = true;
+    }
+
+    if (sameRef || sameContent) {
+      out = Object.assign({}, out);
+      delete out.rows;
+      out.compact = true;
+      out.rows_aliased_to = 'data';
+    }
+  }
+
+  var rowsToTrim = Array.isArray(out.data) ? out.data : out.rows;
+  if (Array.isArray(rowsToTrim)) {
+    var TRIM_KEYS = ['investors'];
+    var TRIM_HEAD = 10;
+    var needsTrim = rowsToTrim.some(function (r) {
+      return r && typeof r === 'object' && TRIM_KEYS.some(function (k) {
+        return Array.isArray(r[k]) && r[k].length > TRIM_HEAD;
+      });
+    });
+
+    if (needsTrim) {
+      var trimmed = rowsToTrim.map(function (r) {
+        if (!r || typeof r !== 'object') return r;
+        var copy = null;
+        TRIM_KEYS.forEach(function (k) {
+          if (Array.isArray(r[k]) && r[k].length > TRIM_HEAD) {
+            if (!copy) copy = Object.assign({}, r);
+            copy[k] = r[k].slice(0, TRIM_HEAD);
+            copy[k + '_count_total'] = r[k].length;
+          }
+        });
+        return copy || r;
+      });
+      if (out === payload) out = Object.assign({}, out);
+      if (Array.isArray(out.data)) out.data = trimmed;
+      if (Array.isArray(out.rows) && out.rows !== out.data) out.rows = trimmed;
+      else if (Array.isArray(out.rows)) out.rows = trimmed;
+      out.compact = true;
+    }
+  }
+
+  return out;
+}
+
 async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
   if (req.method !== 'GET') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
@@ -357,7 +440,10 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
       if (cached) {
         setHeaderSafe(res, 'X-Cache', 'HIT');
         setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
-        return res.status(200).json(cached);
+        if (canSendResponse(res)) {
+          return res.status(200).json(cached);
+        }
+        return;
       }
     }
 
@@ -427,27 +513,39 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
       excluded_outside_eligible_count: excludedOutsideEligible.length,
       excluded_outside_eligible: excludedOutsideEligible
     };
+    // FIX-24: `data` and `rows` are the same array here, so a non-compact
+    // response ships every ranking row twice. ?compact=1 keeps one copy.
+    var wantsCompactList = String((req.query && (req.query.compact || req.query.slim)) || '') === '1';
+    payload = applyCompactPayloadDiet(payload, wantsCompactList);
     if (!injectedSupabase) {
       hotQuoteCache.set(cacheKey, payload, 30 * 1000);
     }
     setHeaderSafe(res, 'X-Cache', 'MISS');
     setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
-    return res.status(200).json(payload);
+    if (canSendResponse(res)) {
+      return res.status(200).json(payload);
+    }
+    return;
   } catch (error) {
     console.error('daily-market-context-list exception:', error);
-    return res.status(200).json({
-      success: false,
-      error: 'Gagal memuat ranking konteks pasar harian.',
-      diagnostic: error && error.message
-    });
+    if (canSendResponse(res)) {
+      return res.status(200).json({
+        success: false,
+        error: 'Gagal memuat ranking konteks pasar harian.',
+        diagnostic: error && error.message
+      });
+    }
+    return;
   }
 }
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
+  if (!canSendResponse(res)) return;
+
   let timeoutFired = false;
   const timeoutGuard = setTimeout(() => {
     timeoutFired = true;
-    if (!res.headersSent) {
+    if (canSendResponse(res)) {
       var qTicker = (req.query && req.query.ticker) || 'BBCA';
       res.status(200).json({
         success: true,
@@ -460,22 +558,23 @@ module.exports = async function handler(req, res) {
     }
   }, 3500);
 
-  if (!quoteLimiter.check(clientAddress(req))) {
-    clearTimeout(timeoutGuard);
-    return res.status(429).json({ error: 'Too many requests. Please slow down.' });
-  }
-  if (req.query && req.query.action === 'financial-snapshot') {
-    return handleFinancialSnapshotAction(req, res);
-  }
-  if (req.query && req.query.action === 'daily-market-context') {
-    return handleDailyMarketContextAction(req, res);
-  }
-  if (req.query && req.query.action === 'daily-market-context-list') {
-    return handleDailyMarketContextListAction(req, res);
-  }
-
   var ticker = null;
   try {
+    if (!quoteLimiter.check(clientAddress(req))) {
+      if (canSendResponse(res)) {
+        return res.status(429).json({ error: 'Too many requests. Please slow down.' });
+      }
+      return;
+    }
+    if (req.query && req.query.action === 'financial-snapshot') {
+      return await handleFinancialSnapshotAction(req, res);
+    }
+    if (req.query && req.query.action === 'daily-market-context') {
+      return await handleDailyMarketContextAction(req, res);
+    }
+    if (req.query && req.query.action === 'daily-market-context-list') {
+      return await handleDailyMarketContextListAction(req, res);
+    }
     var allowAdvancedEntryAnalysis = hasVerifiedSession(req);
     var includeNews = false;
 
@@ -487,10 +586,12 @@ module.exports = async function handler(req, res) {
       ticker = body.ticker;
       includeNews = body.includeNews === '1' || body.includeNews === 1 || body.includeNews === true;
     } else {
+      if (!canSendResponse(res)) return;
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
     if (!ticker) {
+      if (!canSendResponse(res)) return;
       return res.status(400).json({ error: 'Parameter ticker wajib diisi.' });
     }
 
@@ -500,6 +601,7 @@ module.exports = async function handler(req, res) {
     // BUG-QUOTE-05: simbol benchmark resmi BEI memuat angka (LQ45, IDX30).
     // Pola huruf-saja menolaknya dengan 400 padahal itu instrumen perbandingan utama.
     if (!/^[A-Z0-9]{3,6}$/.test(ticker) && ticker !== 'IHSG') {
+      if (!canSendResponse(res)) return;
       return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
     }
 
@@ -515,7 +617,10 @@ module.exports = async function handler(req, res) {
         clearTimeout(timeoutGuard);
         setHeaderSafe(res, 'X-Cache', 'HIT');
         setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
-        return res.status(200).json(cachedQuote);
+        if (canSendResponse(res)) {
+          return res.status(200).json(cachedQuote);
+        }
+        return;
       }
     }
 
@@ -530,6 +635,7 @@ module.exports = async function handler(req, res) {
 
     // Graceful fallback / 502 response if upstream provider failed completely
     if (!quoteResult || typeof quoteResult !== 'object') {
+      if (!canSendResponse(res)) return;
       return res.status(502).json({
         success: false,
         ticker: ticker,
@@ -542,6 +648,7 @@ module.exports = async function handler(req, res) {
     // If upstream Yahoo quote explicitly failed without candles/price
     if (quoteResult.success === false && !quoteResult.last) {
       quoteResult.board = boardResult || makeBoardNotFound(ticker);
+      if (!canSendResponse(res)) return;
       return res.status(502).json(quoteResult);
     }
 
@@ -687,10 +794,13 @@ module.exports = async function handler(req, res) {
     }
     setHeaderSafe(res, 'X-Cache', 'MISS');
     setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
-    return res.status(200).json(quoteResult);
+    if (canSendResponse(res)) {
+      return res.status(200).json(quoteResult);
+    }
+    return;
 
   } catch (err) {
-    if (!res.headersSent) {
+    if (canSendResponse(res)) {
       console.error('quote error:', err);
       return res.status(200).json({
         success: false,
@@ -703,7 +813,13 @@ module.exports = async function handler(req, res) {
   } finally {
     clearTimeout(timeoutGuard);
   }
-};
+}
+
+handler.setHeaderSafe = setHeaderSafe;
+handler.canSendResponse = canSendResponse;
+handler.fetchYahooQuote = fetchYahooQuote;
+handler.calcRSI = calcRSI;
+module.exports = handler;
 
 // ===== YAHOO QUOTE FETCH =====
 async function fetchYahooQuote(ticker) {
@@ -767,10 +883,11 @@ async function fetchYahooQuote(ticker) {
   var candles = [];
   for (var i = 0; i < timestamps.length; i++) {
     var c = closes[i], o = opens[i], h = highs[i], l = lows[i], v = volumes[i];
-    if (c != null && o != null && h != null && l != null && !isNaN(c)) {
+    var oNum = Number(o), hNum = Number(h), lNum = Number(l), cNum = Number(c);
+    if (c != null && o != null && h != null && l != null && Number.isFinite(oNum) && Number.isFinite(hNum) && Number.isFinite(lNum) && Number.isFinite(cNum)) {
       // Jakarta (WIB) session date, never the naive UTC slice (a UTC bar at
       // >=17:00 belongs to the next WIB day). Same label policy as /api/candles.
-      candles.push({ close: Math.round(c * 100) / 100, open: Math.round(o * 100) / 100, high: Math.round(h * 100) / 100, low: Math.round(l * 100) / 100, volume: v || 0, time: t1Policy.formatJakartaDate(new Date(timestamps[i] * 1000)) });
+      candles.push({ close: Math.round(cNum * 100) / 100, open: Math.round(oNum * 100) / 100, high: Math.round(hNum * 100) / 100, low: Math.round(lNum * 100) / 100, volume: v || 0, time: t1Policy.formatJakartaDate(new Date(timestamps[i] * 1000)) });
     }
   }
 
@@ -1713,32 +1830,55 @@ function calcMA(prices, period) {
 // fungsi mengembalikan NaN. NaN itu lalu menular ke seluruh perbandingan
 // momentum di calculateAutoCuanScore/calculateSetupLabel tanpa melempar error
 // (silent failure). Data rusak harus dinyatakan sebagai null, bukan NaN.
+//
+// FIX-19: Wilder's Smoothing (RMA) — exact parity with `lib/daily-rsi` and the
+// TradingView RSI formulation. The previous SMA-over-window form drifted 3-5
+// points from the canonical daily market-context RSI.
 function calcRSI(closes, period) {
-  if (!closes || closes.length < period + 1) return null;
   var p = Number(period);
-  if (!Number.isFinite(p) || p <= 0) return null;
-  var gains = 0, losses = 0;
-  for (var i = closes.length - p; i < closes.length; i++) {
+  if (!Array.isArray(closes) || !Number.isFinite(p) || p <= 0) return null;
+  if (closes.length < p + 1) return null;
+
+  var values = new Array(closes.length);
+  for (var i = 0; i < closes.length; i++) {
     // Number(null) and Number('') are both 0, which would silently turn a
     // missing reading into a real price. Reject the raw shape first.
-    var rawCurrent = closes[i];
-    var rawPrevious = closes[i - 1];
-    if (rawCurrent == null || rawPrevious == null) return null;
-    if (typeof rawCurrent === 'string' && !rawCurrent.trim()) return null;
-    if (typeof rawPrevious === 'string' && !rawPrevious.trim()) return null;
-    var current = Number(rawCurrent);
-    var previous = Number(rawPrevious);
-    if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
-    var diff = current - previous;
-    if (diff > 0) gains += diff;
-    else losses -= diff;
+    var raw = closes[i];
+    if (raw == null) return null;
+    if (typeof raw === 'string' && !raw.trim()) return null;
+    var num = Number(raw);
+    if (!Number.isFinite(num)) return null;
+    values[i] = num;
   }
-  var avgGain = gains / p;
-  var avgLoss = losses / p;
+
+  var gains = [];
+  var losses = [];
+  for (var j = 1; j < values.length; j++) {
+    var delta = values[j] - values[j - 1];
+    gains.push(Math.max(delta, 0));
+    losses.push(Math.max(-delta, 0));
+  }
+
+  var avgGain = 0;
+  var avgLoss = 0;
+  for (var k = 0; k < p; k++) {
+    avgGain += gains[k];
+    avgLoss += losses[k];
+  }
+  avgGain /= p;
+  avgLoss /= p;
+
+  for (var m = p; m < gains.length; m++) {
+    avgGain = (avgGain * (p - 1) + gains[m]) / p;
+    avgLoss = (avgLoss * (p - 1) + losses[m]) / p;
+  }
+
   if (!Number.isFinite(avgGain) || !Number.isFinite(avgLoss)) return null;
   if (avgGain === 0 && avgLoss === 0) return 50;
   if (avgLoss === 0) return 100;
+  if (avgGain === 0) return 0;
   var rs = avgGain / avgLoss;
+  if (!Number.isFinite(rs)) return 100;
   var rsi = 100 - (100 / (1 + rs));
   return Number.isFinite(rsi) ? Math.round(rsi * 100) / 100 : null;
 }
@@ -3044,6 +3184,7 @@ function interpretFibonacciPosition(close, trend, nearest, fibLevels, swingHigh,
 }
 
 module.exports.__test = {
+  applyCompactPayloadDiet: applyCompactPayloadDiet,
   handleFinancialSnapshotAction: handleFinancialSnapshotAction,
   normalizeDailyContextTicker: normalizeDailyContextTicker,
   normalizeRankingSortKey: normalizeRankingSortKey,

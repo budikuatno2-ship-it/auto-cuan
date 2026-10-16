@@ -229,7 +229,7 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ success: false, error: 'Gagal menyimpan pendaftaran. Coba lagi nanti.' });
       }
       try {
-        await supabase.from('app_users').upsert({
+        const appUserUpsert = await supabase.from('app_users').upsert({
           username: username || name,
           email: email,
           password_hash: protectedPassword,
@@ -238,7 +238,12 @@ module.exports = async function handler(req, res) {
           device_id: 'bot_' + telegramId,
           updated_at: new Date().toISOString()
         });
-      } catch (_) {}
+        if (appUserUpsert && appUserUpsert.error) {
+          console.error('Failed to sync bot_user to app_users:', appUserUpsert.error);
+        }
+      } catch (err) {
+        console.error('Exception syncing bot_user to app_users:', err);
+      }
     } catch (_) {
       return res.status(500).json({ success: false, error: 'Gagal menyimpan pendaftaran. Coba lagi nanti.' });
     }

@@ -233,14 +233,28 @@
   // ============================================================
   // INDICATOR CALCULATORS (PURE DETERMINISTIC MATH)
   // ============================================================
+  // FIX-20: every accumulator below skips non-finite closes so a single bad
+  // reading cannot turn the whole indicator series into NaN.
+  function finiteClose(candle) {
+    if (!candle) return null;
+    var raw = candle.close;
+    if (raw == null || raw === '') return null;
+    var num = Number(raw);
+    return Number.isFinite(num) ? num : null;
+  }
+
   function calculateSMA(candles, period) {
     var out = [];
     if (!candles || candles.length < period) return out;
     for (var i = period - 1; i < candles.length; i++) {
       var sum = 0;
+      var skipped = false;
       for (var k = i - period + 1; k <= i; k++) {
-        sum += Number(candles[k].close);
+        var v = finiteClose(candles[k]);
+        if (v == null) { skipped = true; break; }
+        sum += v;
       }
+      if (skipped) continue;
       out.push({ time: candles[i].time, value: Math.round((sum / period) * 100) / 100 });
     }
     return out;
@@ -253,14 +267,18 @@
 
     var initialSum = 0;
     for (var s = 0; s < period; s++) {
-      initialSum += Number(candles[s].close);
+      var seed = finiteClose(candles[s]);
+      if (seed == null) return out;
+      initialSum += seed;
     }
     var prevEma = initialSum / period;
     out.push({ time: candles[period - 1].time, value: Math.round(prevEma * 100) / 100 });
 
     for (var i = period; i < candles.length; i++) {
-      var close = Number(candles[i].close);
+      var close = finiteClose(candles[i]);
+      if (close == null) continue; // skip the bad reading, keep the running mean
       prevEma = (close - prevEma) * kMult + prevEma;
+      if (!Number.isFinite(prevEma)) continue;
       out.push({ time: candles[i].time, value: Math.round(prevEma * 100) / 100 });
     }
     return out;
@@ -274,15 +292,23 @@
 
     for (var i = period - 1; i < candles.length; i++) {
       var sum = 0;
-      for (var k = i - period + 1; k <= i; k++) sum += Number(candles[k].close);
+      var bad = false;
+      for (var k = i - period + 1; k <= i; k++) {
+        var cv = finiteClose(candles[k]);
+        if (cv == null) { bad = true; break; }
+        sum += cv;
+      }
+      if (bad) continue;
       var ma = sum / period;
 
       var varianceSum = 0;
       for (var j = i - period + 1; j <= i; j++) {
-        var diff = Number(candles[j].close) - ma;
+        var jv = finiteClose(candles[j]);
+        var diff = jv - ma;
         varianceSum += diff * diff;
       }
       var stdDev = Math.sqrt(varianceSum / period);
+      if (!Number.isFinite(ma) || !Number.isFinite(stdDev)) continue;
 
       var time = candles[i].time;
       middle.push({ time: time, value: Math.round(ma * 100) / 100 });
@@ -292,22 +318,66 @@
     return { upper: upper, middle: middle, lower: lower };
   }
 
+  // FIX-19: Wilder's Smoothing (RMA) — the exact TradingView/`lib/daily-rsi`
+  // formulation. The previous SMA-over-window version drifted 3-5 points.
+  function wilderRsiFromAverages(avgGain, avgLoss) {
+    if (avgGain === 0 && avgLoss === 0) return 50;
+    if (avgLoss === 0) return 100;
+    if (avgGain === 0) return 0;
+    var rs = avgGain / avgLoss;
+    if (!Number.isFinite(rs)) return 100;
+    return 100 - (100 / (1 + rs));
+  }
+
+  function wilderRsiSeries(closes, period) {
+    var p = Number(period) || 14;
+    var series = new Array(closes.length).fill(null);
+    if (!Array.isArray(closes) || closes.length < p + 1) return series;
+
+    var gains = [];
+    var losses = [];
+    for (var i = 1; i < closes.length; i++) {
+      var delta = closes[i] - closes[i - 1];
+      gains.push(Math.max(delta, 0));
+      losses.push(Math.max(-delta, 0));
+    }
+
+    var avgGain = 0;
+    var avgLoss = 0;
+    for (var j = 0; j < p; j++) {
+      avgGain += gains[j];
+      avgLoss += losses[j];
+    }
+    avgGain /= p;
+    avgLoss /= p;
+    series[p] = wilderRsiFromAverages(avgGain, avgLoss);
+
+    for (var k = p; k < gains.length; k++) {
+      avgGain = (avgGain * (p - 1) + gains[k]) / p;
+      avgLoss = (avgLoss * (p - 1) + losses[k]) / p;
+      series[k + 1] = wilderRsiFromAverages(avgGain, avgLoss);
+    }
+    return series;
+  }
+
   function calculateRSI(candles, period) {
     period = period || 14;
     var out = [];
     if (!candles || candles.length <= period) return out;
 
-    var closes = candles.map(function (c) { return Number(c.close); });
-    for (var i = period; i < closes.length; i++) {
-      var gains = 0, losses = 0;
-      for (var k = i - (period - 1); k <= i; k++) {
-        var d = closes[k] - closes[k - 1];
-        if (d > 0) gains += d; else losses -= d;
-      }
-      var ag = gains / period;
-      var al = losses / period;
-      var rsi = al === 0 ? 100 : Math.round((100 - 100 / (1 + ag / al)) * 100) / 100;
-      out.push({ time: candles[i].time, value: rsi });
+    var closes = [];
+    for (var n = 0; n < candles.length; n++) {
+      var raw = candles[n] && candles[n].close;
+      if (raw == null || raw === '') return out;
+      var num = Number(raw);
+      if (!Number.isFinite(num)) return out;
+      closes.push(num);
+    }
+
+    var series = wilderRsiSeries(closes, period);
+    for (var i = period; i < candles.length; i++) {
+      if (series[i] == null) continue;
+      out.push({ time: candles[i].time, value: Math.round(series[i] * 100) / 100 });
     }
     return out;
   }
@@ -362,21 +432,37 @@
   // ============================================================
   // IDX TICK SIZE & VALIDATION
   // ============================================================
-  function getIdxTickSize(price) {
-    if (!price || isNaN(price) || price < 200) return 1;
-    if (price < 500) return 2;
-    if (price < 2000) return 5;
-    if (price < 5000) return 10;
+  // FIX-20: IDX fractional ladder has a dedicated Rp1 rung for the FCA and
+  // Akselerasi/Pemantauan boards. The ladder must also never return 0 for an
+  // invalid or sub-Rp1 input — 1 is the smallest legal tick.
+  function isFcaBoardTick(board, isFca) {
+    if (isFca === true) return true;
+    var b = String(board || '').toUpperCase();
+    return b.indexOf('AKSELERASI') >= 0 || b.indexOf('PEMANTAUAN') >= 0 || b.indexOf('FCA') >= 0;
+  }
+
+  function getIdxTickSize(price, board, isFca) {
+    if (isFcaBoardTick(board, isFca)) return 1;
+    var p = Number(price);
+    if (!Number.isFinite(p) || p <= 0) return 1;
+    if (p < 200) return 1;
+    if (p < 500) return 2;
+    if (p < 2000) return 5;
+    if (p < 5000) return 10;
     return 25;
   }
 
-  function roundToIdxTick(price, direction) {
-    if (!price || isNaN(price) || price <= 0) return 0;
-    var p = Math.round(price);
-    var tick = getIdxTickSize(p);
-    if (direction === 'up') return Math.ceil(p / tick) * tick;
-    if (direction === 'down') return Math.floor(p / tick) * tick;
-    return Math.round(p / tick) * tick;
+  function roundToIdxTick(price, direction, board, isFca) {
+    var raw = Number(price);
+    if (!Number.isFinite(raw) || raw <= 0) return 0;
+    var p = Math.max(1, Math.round(raw));
+    var tick = getIdxTickSize(p, board, isFca);
+    var snapped;
+    if (direction === 'up') snapped = Math.ceil(p / tick) * tick;
+    else if (direction === 'down') snapped = Math.floor(p / tick) * tick;
+    else snapped = Math.round(p / tick) * tick;
+    // FIX-20: a positive price must never snap below the minimum legal tick.
+    return snapped < 1 ? 1 : snapped;
   }
 
   // ============================================================
@@ -389,11 +475,16 @@
 
     var entry = customPlan && customPlan.entry ? roundToIdxTick(Number(customPlan.entry)) : roundToIdxTick(lastPrice);
 
+    // FIX-20: support is derived from CLOSED bars only. Including the live last
+    // bar let today's still-forming low (possibly a spike) become "support".
     var minLow = Infinity;
-    var lookback = Math.min(20, candles.length);
-    for (var i = candles.length - lookback; i < candles.length; i++) {
-      if (candles[i].low < minLow) minLow = Number(candles[i].low);
+    var closedCandles = candles.length > 1 ? candles.slice(0, candles.length - 1) : candles;
+    var lookback = Math.min(20, closedCandles.length);
+    for (var i = closedCandles.length - lookback; i < closedCandles.length; i++) {
+      var lo = Number(closedCandles[i].low);
+      if (Number.isFinite(lo) && lo < minLow) minLow = lo;
     }
+    if (!Number.isFinite(minLow)) minLow = Number(lastPrice) || 0;
 
     var sl = customPlan && customPlan.sl ? roundToIdxTick(Number(customPlan.sl), 'down') : roundToIdxTick(minLow * 0.98, 'down');
     if (sl >= entry) sl = roundToIdxTick(entry * 0.96, 'down');
@@ -403,8 +494,10 @@
     var tp1 = customPlan && customPlan.tp1 ? roundToIdxTick(Number(customPlan.tp1), 'up') : roundToIdxTick(entry + minReward, 'up');
     var tp2 = customPlan && customPlan.tp2 ? roundToIdxTick(Number(customPlan.tp2), 'up') : roundToIdxTick(entry + Math.round(risk * 2.5), 'up');
 
-    // If explicit unsafe RR flag is set (e.g. for warning test in shot 08)
-    if (customPlan && customPlan.forceUnsafeRR) {
+    // FIX-20: the anonymous `forceUnsafeRR` backdoor is removed — it let any
+    // caller (or a crafted payload) bypass the 1.5 R/R safety gate. A test-only
+    // escape hatch now requires an explicit, namespaced opt-in.
+    if (customPlan && customPlan.__allowTestForceUnsafe === true && customPlan.forceUnsafeRR === true) {
       tp1 = roundToIdxTick(entry + Math.round(risk * 1.49), 'down');
     }
 
@@ -486,10 +579,9 @@
       var mfv = mfm * v;
       mfvList.push(mfv);
       volList.push(v);
-      if (i < period - 1) {
-        results.push({ time: c.time, value: 0.0 });
-        continue;
-      }
+      // FIX-20: no fabricated 0.0 warmup points — the series starts at
+      // period-1, exactly like calculateSMA/calculateEMA/calculateBollinger.
+      if (i < period - 1) continue;
       var sumMfv = 0, sumVol = 0;
       for (var j = i - period + 1; j <= i; j++) {
         sumMfv += mfvList[j];
@@ -517,10 +609,6 @@
       var c = candles[i];
       var key = String(c.time).slice(0, 10);
       var net = mapByDate[key] != null ? mapByDate[key] : Number(c.foreign_net_value || c.foreign_net || 0);
-      if (net === 0 && c.close && c.open) {
-        var dir = Number(c.close) >= Number(c.open) ? 1 : -1;
-        net = Math.round(Number(c.volume || 0) * Number(c.close) * 0.12 * dir);
-      }
       cum += net;
       out.push({ time: c.time, net: net, value: cum });
     }
@@ -640,10 +728,6 @@
 
       var dtStr = String(slice[i].time || slice[i].date).slice(0, 10);
       var net = mapByDate[dtStr] != null ? mapByDate[dtStr] : Number(slice[i].foreign_net_value || slice[i].foreign_net || 0);
-      if (net === 0 && slice[i].close && slice[i].open) {
-        var dir = Number(slice[i].close) >= Number(slice[i].open) ? 1 : -1;
-        net = Number(slice[i].volume || 0) * 0.15 * dir;
-      }
       netFlows.push(net);
     }
 
@@ -679,12 +763,15 @@
       totalVol += v;
       var fv = Number(c.foreign_buy || 0) + Number(c.foreign_sell || 0);
       if (fv === 0 && c.foreign_net != null) {
-        fv = Math.abs(Number(c.foreign_net)) * 1.5;
+        // FIX-20: no magic 1.5 gross-up. When only the net is known, the
+        // absolute net is the honest conservative lower bound on gross volume.
+        fv = Math.abs(Number(c.foreign_net));
+        if (!Number.isFinite(fv)) fv = 0;
       }
       foreignVol += fv;
     }
     if (totalVol <= 0) return 0.0;
-    var ratio = foreignVol > 0 ? (foreignVol / (totalVol * 2)) * 100 : 28.5;
+    var ratio = foreignVol > 0 ? (foreignVol / (totalVol * 2)) * 100 : 0.0;
     if (ratio > 100) ratio = 100;
     return Math.round(ratio * 10) / 10;
   }
@@ -737,10 +824,7 @@
     var latest = candles[candles.length - 1];
     if (latest.foreign_net_value != null) return Number(latest.foreign_net_value);
     if (latest.foreign_net != null) return Number(latest.foreign_net);
-    var close = Number(latest.close || 0);
-    var vol = Number(latest.volume || 0);
-    var dir = Number(latest.close) >= Number(latest.open || latest.close) ? 1 : -1;
-    return Math.round(vol * close * 0.12 * dir);
+    return 0;
   }
 
   function getLatestMoneyFlow(candles) {
@@ -1097,6 +1181,7 @@
   }
 
   function updateToolbarDom(chartId) {
+    if (typeof document === 'undefined') return;
     var inst = _workstationInstances[chartId];
     if (!inst) return;
     var badge = document.getElementById(chartId + '_layer_badge');
@@ -1115,6 +1200,7 @@
   }
 
   function updateDrawerDom(chartId) {
+    if (typeof document === 'undefined') return;
     var drawer = document.getElementById(chartId + '_drawer');
     if (drawer) {
       var isHidden = drawer.classList.contains('hidden');
@@ -1126,6 +1212,121 @@
         parent.replaceChild(temp.firstElementChild, drawer);
       }
     }
+  }
+
+  // ============================================================
+  // FIX-22: TRADING-PLAN PRICE LINES ON THE CANDLE SERIES
+  // ============================================================
+  // Draws Entry/SL/TP1/TP2 as real horizontal price lines on the candlestick
+  // series and clears the previous set first, so switching tickers can never
+  // stack stale levels on top of the new plan.
+  var PLAN_LINE_STYLE = { entry: '#38bdf8', sl: '#f43f5e', tp1: '#10b981', tp2: '#22c55e' };
+  var PLAN_LINE_LABEL = { entry: 'Entry', sl: 'SL', tp1: 'TP1', tp2: 'TP2' };
+  var PLAN_LINE_DASH = { entry: 0, sl: 2, tp1: 2, tp2: 1 };
+
+  function clearPlanPriceLines(series) {
+    if (!series || typeof series.removePriceLine !== 'function') return 0;
+    var store = series.__acPlanPriceLines;
+    if (!Array.isArray(store) || !store.length) return 0;
+    var removed = 0;
+    for (var i = 0; i < store.length; i++) {
+      try {
+        series.removePriceLine(store[i]);
+        removed++;
+      } catch (_) {}
+    }
+    series.__acPlanPriceLines = [];
+    return removed;
+  }
+
+  function applyPlanPriceLines(series, plan) {
+    if (!series || typeof series.createPriceLine !== 'function') return [];
+
+    // Always clear first: a re-apply (ticker switch, preset change, plan edit)
+    // must replace the previous levels rather than stack duplicates.
+    clearPlanPriceLines(series);
+
+    var levels = plan && plan.planLevels ? plan.planLevels : plan;
+    if (!levels || typeof levels !== 'object') return [];
+
+    var created = [];
+    var keys = ['entry', 'sl', 'tp1', 'tp2'];
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      var price = Number(levels[key]);
+      if (!Number.isFinite(price) || price <= 0) continue;
+      try {
+        var line = series.createPriceLine({
+          price: price,
+          color: PLAN_LINE_STYLE[key] || '#94a3b8',
+          lineWidth: 1,
+          lineStyle: PLAN_LINE_DASH[key] != null ? PLAN_LINE_DASH[key] : 0,
+          axisLabelVisible: true,
+          title: PLAN_LINE_LABEL[key] || key.toUpperCase()
+        });
+        if (line) created.push(line);
+      } catch (_) {}
+    }
+
+    series.__acPlanPriceLines = created;
+    return created;
+  }
+
+  // ============================================================
+  // SWITCH TICKER & PRESET/PLAN INTEGRATION
+  // ============================================================
+  function switchTicker(arg1, arg2, arg3) {
+    var chartId = 'mainChart';
+    var ticker = '';
+    var options = {};
+
+    if (arguments.length === 1) {
+      ticker = String(arg1 || '').toUpperCase().trim();
+    } else if (arguments.length === 2) {
+      if (typeof arg2 === 'object') {
+        ticker = String(arg1 || '').toUpperCase().trim();
+        options = arg2 || {};
+      } else {
+        chartId = String(arg1 || 'mainChart');
+        ticker = String(arg2 || '').toUpperCase().trim();
+      }
+    } else {
+      chartId = String(arg1 || 'mainChart');
+      ticker = String(arg2 || '').toUpperCase().trim();
+      options = arg3 || {};
+    }
+
+    if (!ticker) return;
+
+    var inst = _workstationInstances[chartId];
+    if (inst) {
+      inst.ticker = ticker;
+      if (options.preset) {
+        inst.state.applyPreset(options.preset);
+      }
+      if (options.planLevels || options.entry || options.sl || options.tp1 || options.tp2) {
+        inst.options = inst.options || {};
+        inst.options.planLevels = options.planLevels || {
+          entry: options.entry,
+          sl: options.sl,
+          tp1: options.tp1,
+          tp2: options.tp2
+        };
+      }
+      updateToolbarDom(chartId);
+      updateDrawerDom(chartId);
+    }
+
+    if (typeof defaultRoot.loadTickerData === 'function') {
+      defaultRoot.loadTickerData(ticker);
+    } else if (typeof defaultRoot.switchTicker === 'function' && defaultRoot.switchTicker !== switchTicker) {
+      defaultRoot.switchTicker(ticker);
+    } else if (typeof defaultRoot.renderLightweightChart === 'function' && inst) {
+      var activeCandles = (inst.state.timeframe === '1W' && inst.weeklyCandles) ? inst.weeklyCandles : inst.dailyCandles;
+      defaultRoot.renderLightweightChart(chartId, activeCandles, inst.metrics, inst.ticker, Object.assign({}, inst.options, { workstationState: inst.state }));
+    }
+
+    return inst;
   }
 
   // ============================================================
@@ -1146,6 +1347,231 @@
   }
 
   // ============================================================
+  // V3_004: HISTORICAL SIMILARITY (NORMALIZED CROSS-CORRELATION)
+  // ============================================================
+  // Mencari jendela historis yang pergerakannya paling mirip dengan jendela
+  // terakhir (z-score + Pearson rho), lalu membentuk jalur proyeksi konsensus
+  // tertimbang. AntiSlop: data kurang => insufficientData:true, bukan tebakan.
+  function zScoreWindow(values) {
+    var n = values.length;
+    if (!n) return null;
+    var mean = 0;
+    for (var i = 0; i < n; i++) mean += values[i];
+    mean /= n;
+    var varSum = 0;
+    for (var j = 0; j < n; j++) {
+      var d = values[j] - mean;
+      varSum += d * d;
+    }
+    var sd = Math.sqrt(varSum / n);
+    var z = new Array(n);
+    for (var k = 0; k < n; k++) {
+      z[k] = sd > 0 ? (values[k] - mean) / sd : 0;
+    }
+    return { z: z, mean: mean, sd: sd };
+  }
+
+  function pearson(a, b) {
+    var n = Math.min(a.length, b.length);
+    if (!n) return 0;
+    var sa = 0, sb = 0, saa = 0, sbb = 0, sab = 0;
+    for (var i = 0; i < n; i++) {
+      sa += a[i]; sb += b[i];
+      saa += a[i] * a[i]; sbb += b[i] * b[i]; sab += a[i] * b[i];
+    }
+    var dA = n * saa - sa * sa;
+    var dB = n * sbb - sb * sb;
+    if (dA <= 0 || dB <= 0) return 0;
+    var r = (n * sab - sa * sb) / Math.sqrt(dA * dB);
+    if (!Number.isFinite(r)) return 0;
+    return Math.max(-1, Math.min(1, r));
+  }
+
+  function calculateHistoricalSimilarity(candles, options) {
+    var opts = options || {};
+    var windowSize = Math.max(5, Number(opts.windowSize) || 20);
+    var horizon = Math.max(1, Number(opts.horizon) || 10);
+    var maxMatches = Math.max(1, Number(opts.maxMatches) || 5);
+    var minGap = Math.max(1, Math.floor(windowSize / 2));
+
+    var empty = { insufficientData: true, matches: [], consensusPath: [] };
+    if (!Array.isArray(candles) || candles.length < windowSize * 2 + horizon) return empty;
+
+    var closes = [];
+    for (var i = 0; i < candles.length; i++) {
+      var raw = candles[i] && candles[i].close;
+      var num = Number(raw);
+      if (raw == null || raw === '' || !Number.isFinite(num)) return empty;
+      closes.push(num);
+    }
+
+    var queryEnd = closes.length - 1;
+    var queryStart = queryEnd - windowSize + 1;
+    var queryWin = zScoreWindow(closes.slice(queryStart, queryEnd + 1));
+    if (!queryWin) return empty;
+
+    var candidates = [];
+    // The candidate window must end early enough that `horizon` bars exist after it.
+    var latestCandidateEnd = queryStart - horizon - 1;
+    for (var end = windowSize - 1; end <= latestCandidateEnd; end++) {
+      var win = zScoreWindow(closes.slice(end - windowSize + 1, end + 1));
+      if (!win) continue;
+      var rho = pearson(queryWin.z, win.z);
+      if (!Number.isFinite(rho) || rho <= 0) continue;
+      candidates.push({ endIndex: end, rho: rho });
+    }
+
+    if (!candidates.length) {
+      return { insufficientData: false, matches: [], consensusPath: [] };
+    }
+
+    candidates.sort(function (a, b) { return b.rho - a.rho || a.endIndex - b.endIndex; });
+
+    // Non-maximum suppression: reject any candidate closer than windowSize/2
+    // to an already-accepted match (prevents 5 overlapping copies of one move).
+    var accepted = [];
+    for (var c = 0; c < candidates.length && accepted.length < maxMatches; c++) {
+      var cand = candidates[c];
+      var tooClose = false;
+      for (var m = 0; m < accepted.length; m++) {
+        if (Math.abs(accepted[m].endIndex - cand.endIndex) < minGap) { tooClose = true; break; }
+      }
+      if (tooClose) continue;
+      accepted.push(cand);
+    }
+
+    var totalWeight = accepted.reduce(function (s, a) { return s + a.rho; }, 0);
+    var consensusPath = [];
+    for (var h = 1; h <= horizon; h++) {
+      var weightedSum = 0;
+      var weightAcc = 0;
+      for (var a2 = 0; a2 < accepted.length; a2++) {
+        var idx = accepted[a2].endIndex + h;
+        if (idx >= closes.length) continue;
+        var base = closes[accepted[a2].endIndex];
+        if (!Number.isFinite(base) || base <= 0) continue;
+        var projected = closes[idx] * (closes[queryEnd] / base);
+        if (!Number.isFinite(projected)) continue;
+        weightedSum += projected * accepted[a2].rho;
+        weightAcc += accepted[a2].rho;
+      }
+      if (weightAcc <= 0) continue;
+      consensusPath.push({
+        h: h,
+        value: roundToIdxTick(weightedSum / weightAcc),
+        weight: Math.round((weightAcc / (totalWeight || 1)) * 1000) / 1000
+      });
+    }
+
+    return {
+      insufficientData: false,
+      matches: accepted.map(function (a) {
+        return {
+          endIndex: a.endIndex,
+          time: candles[a.endIndex] ? candles[a.endIndex].time : null,
+          rho: Math.round(a.rho * 1000) / 1000,
+          weight: Math.round((a.rho / (totalWeight || 1)) * 1000) / 1000
+        };
+      }),
+      consensusPath: consensusPath
+    };
+  }
+
+  // ============================================================
+  // V3_015: 20-DAY VOLATILITY PROBABILITY CONE
+  // ============================================================
+  // Estimasi sigma harian dari log-return, lalu pita probabilitas sqrt-of-time
+  // (68% z=1.0, 90% z=1.645, 95% z=1.96) yang di-snap ke tick IDX.
+  // AntiSlop: < 30 bar valid => insufficientData:true, dailySigma:null.
+  function calculateVolatilityCone(candles, options) {
+    var opts = options || {};
+    var lookback = Math.max(30, Number(opts.lookback) || 60);
+    var days = Math.max(1, Number(opts.days) || 20);
+    var minBars = Math.max(30, Number(opts.minBars) || 30);
+
+    var empty = { insufficientData: true, dailySigma: null, bands: [] };
+    if (!Array.isArray(candles) || candles.length < minBars) return empty;
+
+    var closes = [];
+    for (var i = 0; i < candles.length; i++) {
+      var raw = candles[i] && candles[i].close;
+      var num = Number(raw);
+      if (raw == null || raw === '' || !Number.isFinite(num) || num <= 0) continue;
+      closes.push(num);
+    }
+    if (closes.length < minBars) return empty;
+
+    var slice = closes.slice(-Math.min(lookback, closes.length));
+    var logReturns = [];
+    for (var j = 1; j < slice.length; j++) {
+      var lr = Math.log(slice[j] / slice[j - 1]);
+      if (Number.isFinite(lr)) logReturns.push(lr);
+    }
+    if (logReturns.length < minBars - 1) return empty;
+
+    var mean = 0;
+    for (var k = 0; k < logReturns.length; k++) mean += logReturns[k];
+    mean /= logReturns.length;
+
+    var varSum = 0;
+    for (var m = 0; m < logReturns.length; m++) {
+      var d = logReturns[m] - mean;
+      varSum += d * d;
+    }
+    var denom = logReturns.length > 1 ? logReturns.length - 1 : 1; // sample stddev
+    var sigma = Math.sqrt(varSum / denom);
+    if (!Number.isFinite(sigma) || sigma <= 0) {
+      return { insufficientData: true, dailySigma: null, bands: [] };
+    }
+
+    var lastClose = closes[closes.length - 1];
+    var Z = { p50: 0, p68: 1.0, p90: 1.645, p95: 1.96 };
+    var bands = [];
+    for (var h = 1; h <= days; h++) {
+      var scale = sigma * Math.sqrt(h);
+      var centre = lastClose * Math.exp(Z.p50 * scale);
+      var up68 = lastClose * Math.exp(Z.p68 * scale);
+      var dn68 = lastClose * Math.exp(-Z.p68 * scale);
+      var up90 = lastClose * Math.exp(Z.p90 * scale);
+      var dn90 = lastClose * Math.exp(-Z.p90 * scale);
+      var up95 = lastClose * Math.exp(Z.p95 * scale);
+      var dn95 = lastClose * Math.exp(-Z.p95 * scale);
+
+      var p50 = roundToIdxTick(centre) || 1;
+      var u68 = roundToIdxTick(up68, 'up') || 1;
+      var l68 = roundToIdxTick(dn68, 'down') || 1;
+      var u90 = roundToIdxTick(up90, 'up') || 1;
+      var l90 = roundToIdxTick(dn90, 'down') || 1;
+      var u95 = roundToIdxTick(up95, 'up') || 1;
+      var l95 = roundToIdxTick(dn95, 'down') || 1;
+
+      // Enforce the monotone envelope after tick snapping.
+      if (l68 > p50) l68 = p50;
+      if (u68 < p50) u68 = p50;
+      if (l90 > l68) l90 = l68;
+      if (u90 < u68) u90 = u68;
+      if (l95 > l90) l95 = l90;
+      if (u95 < u90) u95 = u90;
+
+      bands.push({
+        h: h,
+        p50: p50,
+        upper68: u68, lower68: l68,
+        upper90: u90, lower90: l90,
+        upper95: u95, lower95: l95
+      });
+    }
+
+    return {
+      insufficientData: false,
+      dailySigma: Math.round(sigma * 100000) / 100000,
+      annualizedSigma: Math.round(sigma * Math.sqrt(252) * 10000) / 10000,
+      lastClose: lastClose,
+      bands: bands
+    };
+  }
+
+  // ============================================================
   // HISTORICAL BACKTEST CALCULATOR (PER TICKER)
   // ============================================================
   function calculateHistoricalBacktest(candles, ticker) {
@@ -1153,19 +1579,21 @@
     var count = Array.isArray(candles) ? candles.length : 0;
     if (count < 20) {
       return {
-        candleCount: count + ' Lilin',
-        winRate: '60,0%',
-        profitFactor: '1,80',
-        totalTrades: '12 Trade',
-        maxDrawdown: '-5,0%',
-        avgHoldingDays: '5,0 Hari',
-        expectancy: '+Rp 750.000'
+        insufficientData: true,
+        candleCount: count.toLocaleString('id-ID') + ' Lilin',
+        winRate: '—',
+        profitFactor: '—',
+        totalTrades: '0 Trade',
+        maxDrawdown: '—',
+        avgHoldingDays: '—',
+        expectancy: '—'
       };
     }
 
     var trades = [];
     var currentPos = null;
-    var peak = 50000000;
+    var equity = 50000000;
+    var peak = equity;
     var maxDd = 0;
 
     for (var i = 20; i < count; i++) {
@@ -1200,8 +1628,9 @@
           var fee = currentPos.lots * 100 * (currentPos.entry * 0.0015 + exitPrice * 0.0025);
           var net = gross - fee;
           trades.push({ net: net, isWin: isWin, holdingDays: currentPos.holdingDays });
-          peak = Math.max(peak, peak + net);
-          var dd = ((peak - (peak + net)) / peak) * 100;
+          equity += net;
+          if (equity > peak) peak = equity;
+          var dd = peak > 0 ? ((peak - equity) / peak) * 100 : 0;
           if (dd > maxDd) maxDd = dd;
           currentPos = null;
         }
@@ -1256,30 +1685,21 @@
         winRate: wr.toFixed(1).replace('.', ',') + '%',
         profitFactor: pf.toFixed(2).replace('.', ','),
         totalTrades: trades.length + ' Trade',
-        maxDrawdown: '-' + (maxDd > 0 ? maxDd.toFixed(1).replace('.', ',') : '4,5') + '%',
+        maxDrawdown: maxDd > 0 ? ('-' + maxDd.toFixed(1).replace('.', ',') + '%') : '0,0%',
         avgHoldingDays: avgHold.toFixed(1).replace('.', ',') + ' Hari',
         expectancy: (exp >= 0 ? '+Rp ' : '-Rp ') + Math.abs(Math.round(exp)).toLocaleString('id-ID')
       };
     }
 
-    // Deterministic fallback based on ticker seed and candle length
-    var seed = 0;
-    for (var s = 0; s < sym.length; s++) seed = (seed * 31 + sym.charCodeAt(s)) & 0xffff;
-    var defWr = 58.0 + (seed % 170) / 10;
-    var defPf = 1.85 + (seed % 90) / 100;
-    var defTrades = Math.max(14, Math.round(count / 22));
-    var defDd = 4.2 + (seed % 35) / 10;
-    var defHold = 4.5 + (seed % 20) / 10;
-    var defExp = 680000 + (seed % 420) * 1000;
-
     return {
+      insufficientData: true,
       candleCount: count.toLocaleString('id-ID') + ' Lilin',
-      winRate: defWr.toFixed(1).replace('.', ',') + '%',
-      profitFactor: defPf.toFixed(2).replace('.', ','),
-      totalTrades: defTrades + ' Trade',
-      maxDrawdown: '-' + defDd.toFixed(1).replace('.', ',') + '%',
-      avgHoldingDays: defHold.toFixed(1).replace('.', ',') + ' Hari',
-      expectancy: '+Rp ' + Math.round(defExp).toLocaleString('id-ID')
+      winRate: '—',
+      profitFactor: '—',
+      totalTrades: (trades ? trades.length : 0) + ' Trade',
+      maxDrawdown: '—',
+      avgHoldingDays: '—',
+      expectancy: '—'
     };
   }
 
@@ -1312,6 +1732,10 @@
     formatIndonesianVolumeCompact: formatIndonesianVolumeCompact,
     formatIndonesianRupiahCompact: formatIndonesianRupiahCompact,
     calculateHistoricalBacktest: calculateHistoricalBacktest,
+    calculateHistoricalSimilarity: calculateHistoricalSimilarity,
+    calculateVolatilityCone: calculateVolatilityCone,
+    applyPlanPriceLines: applyPlanPriceLines,
+    clearPlanPriceLines: clearPlanPriceLines,
     createWorkstationState: createWorkstationState,
     getOrCreateInstance: getOrCreateInstance,
     renderToolbarHtml: renderToolbarHtml,
@@ -1323,6 +1747,7 @@
     toggleCollapse: toggleCollapse,
     turnOffAll: turnOffAll,
     reset: reset,
-    attach: attach
+    attach: attach,
+    switchTicker: switchTicker
   };
 });

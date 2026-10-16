@@ -46,7 +46,13 @@ async function requireAnalyzeAccess(req, res, customDb = null) {
   if (!access || !access.ok) {
     if (access && access.code === 'SUBSCRIPTION_REQUIRED') {
       const userId = access.user && access.user.id;
-      const credentials = await resolveAiCredentials(db, userId, access);
+      let credentials;
+      try {
+        credentials = await resolveAiCredentials(db, userId, access);
+      } catch (credErr) {
+        res.status(503).json({ success: false, code: 'CREDENTIALS_UNAVAILABLE', error: 'Gagal memverifikasi kredensial AI.' });
+        return false;
+      }
       if (!credentials.ok) {
         res.status(403).json({
           success: false,
@@ -69,7 +75,13 @@ async function requireAnalyzeAccess(req, res, customDb = null) {
   }
 
   const userId = access.user && access.user.id;
-  const credentials = await resolveAiCredentials(db, userId, access);
+  let credentials;
+  try {
+    credentials = await resolveAiCredentials(db, userId, access);
+  } catch (credErr) {
+    res.status(503).json({ success: false, code: 'CREDENTIALS_UNAVAILABLE', error: 'Gagal memverifikasi kredensial AI.' });
+    return false;
+  }
 
   if (!credentials.ok) {
     res.status(403).json({
@@ -166,6 +178,8 @@ module.exports = async function handler(req, res) {
         req.body.apiKey = allowed.credentials.primaryKey;
         req.body.fallbackApiKey = allowed.credentials.fallbackKey;
       }
+    } else {
+      return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
 
     const source = req && req.method === 'POST' && req.body && req.body.source;

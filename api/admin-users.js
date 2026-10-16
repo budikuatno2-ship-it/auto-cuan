@@ -38,6 +38,22 @@ function requireBudiAdmin(req) {
   return { ok: true, auth };
 }
 
+function isTruthyFlag(val) {
+  if (val === true || val === 1) return true;
+  if (typeof val === 'string') {
+    const s = val.trim().toLowerCase();
+    return s === 'true' || s === '1';
+  }
+  return false;
+}
+
+function formatTokenBudgetMessage(tokenBudget) {
+  const budgetNum = Number(tokenBudget) || AI_EVAL_TOKEN_BUDGET;
+  const budgetMil = Math.round(budgetNum / 1000000);
+  const budgetStr = budgetMil > 0 ? `${budgetMil} juta` : budgetNum.toLocaleString('id-ID');
+  return `Budget ${budgetStr} token sudah habis.`;
+}
+
 // Approval-only access remains for legacy non-premium routes such as analytics.
 // Do not reuse this helper for paid feature authorization.
 async function resolveApprovedAccess(req, res) {
@@ -73,11 +89,11 @@ async function resolveApprovedAccess(req, res) {
     return res.status(401).json({ success: false, error: 'Sesi tidak valid.' });
   }
 
-  if (account.is_blocked === true) {
+  if (isTruthyFlag(account.is_blocked)) {
     return res.status(403).json({ success: false, error: 'Akun sedang diblokir.' });
   }
 
-  if (account.is_approved !== true) {
+  if (!isTruthyFlag(account.is_approved)) {
     return res.status(403).json({ success: false, error: 'Akun belum di-approve admin.' });
   }
 
@@ -211,6 +227,10 @@ async function deleteUser(req, res) {
   }
 
   const supabase = getSupabase();
+  return deleteUserWithSupabase(targetUsername, res, supabase);
+}
+
+async function deleteUserWithSupabase(targetUsername, res, supabase) {
   if (!supabase) {
     return res.status(503).json({ success: false, error: 'Database belum dikonfigurasi.' });
   }
@@ -235,9 +255,16 @@ async function deleteUser(req, res) {
     'app_user_sessions'
   ];
   for (const table of optionalTables) {
-    try {
-      await supabase.from(table).delete().eq('user_id', userId);
-    } catch (_) {}
+    const resDel = await supabase.from(table).delete().eq('user_id', userId);
+    if (resDel && resDel.error) {
+      console.error(`Gagal menghapus data dari ${table}:`, resDel.error);
+      return res.status(500).json({
+        success: false,
+        error: `Gagal menghapus data relasi pada tahap ${table}.`,
+        stage: table,
+        detail: resDel.error.message
+      });
+    }
   }
 
   const removed = await supabase
@@ -248,9 +275,11 @@ async function deleteUser(req, res) {
 
   if (removed.error) {
     console.error('admin delete user error:', removed.error);
-    return res.status(409).json({
+    return res.status(500).json({
       success: false,
-      error: 'Akun belum bisa dihapus karena masih memiliki data terkait.'
+      error: 'Akun belum bisa dihapus karena terjadi kesalahan database.',
+      stage: 'app_users',
+      detail: removed.error.message
     });
   }
 
@@ -340,7 +369,15 @@ async function createAiEvalRun(supabase) {
     })
     .select('*')
     .single();
-  if (result.error) throw result.error;
+  if (result.error) {
+    if (result.error.code === '23505' || String(result.error.message || '').includes('duplicate')) {
+      const error = new Error('Run AI eval sudah ada atau terjadi konflik unik.');
+      error.status = 409;
+      error.code = result.error.code;
+      throw error;
+    }
+    throw result.error;
+  }
   return result.data;
 }
 
@@ -352,7 +389,7 @@ async function setAiEvalState(supabase, row, controlAction) {
       throw error;
     }
     if (Number(row.tokens_used) >= Number(row.token_budget)) {
-      const error = new Error('Budget 50 juta token sudah habis.');
+      const error = new Error(formatTokenBudgetMessage(row.token_budget));
       error.status = 409;
       throw error;
     }
@@ -429,11 +466,12 @@ async function aiEvalControl(req, res, statusOnly) {
     });
   } catch (error) {
     console.error('admin AI eval error:', error && error.message);
-    return res.status(error.status || 500).json({ success: false, error: error.message || 'Kontrol AI evaluation gagal.' });
+    const status = error.status || (error.code === '23505' ? 409 : 500);
+    return res.status(status).json({ success: false, error: error.message || 'Kontrol AI evaluation gagal.' });
   }
 }
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   const action = req && req.body && req.body.action;
 
   if (action === 'portfolio_access') {
@@ -472,4 +510,10 @@ module.exports = async function handler(req, res) {
   }
 
   return originalHandler(req, res);
-};
+}
+
+handler.isTruthyFlag = isTruthyFlag;
+handler.deleteUserWithSupabase = deleteUserWithSupabase;
+handler.formatTokenBudgetMessage = formatTokenBudgetMessage;
+
+module.exports = handler;

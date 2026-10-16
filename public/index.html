@@ -1075,6 +1075,13 @@ html.light #googleCompleteProfileModal input {
 
         <!-- GROUP 3: RESEARCH -->
         <section class="sidebar-nav-group" aria-label="Research">
+            <!-- FIX-22: first-class Chart Workstation destination. Routes into the
+                 analysis shell's dedicated `chart` lens so a trader is not forced
+                 through the AI narrative before dissecting the chart. -->
+            <button id="tabChartWorkstation" type="button" onclick="navigateTo('analisis', 'chart')" class="sidebar-item" data-sidebar-page="chart" data-analysis-tab="chart" data-tab="chart" data-label="Chart Workstation" title="Chart Workstation">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l3-4 3 3 5-7"/></svg>
+                <span class="sidebar-label">Chart Workstation</span>
+            </button>
             <button id="tabAnalisisChart" type="button" onclick="navigateTo('analisis', 'analisis-chart')" class="sidebar-item" data-sidebar-page="analisis" data-analysis-tab="analisis-chart" data-tab="analisis-chart" data-label="Analisis &amp; Chart" title="Analisis &amp; Chart">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17V7m5 10V3m5 14v-5m5 5V8"/></svg>
                 <span class="sidebar-label">Analisis &amp; Chart</span>
@@ -11831,11 +11838,52 @@ function renderScrDetailHtml(r, type) {
     html += '<div style="display:flex;gap:8px;margin-top:4px">';
     html += '<button onclick="closeScrDetail();closeScreenerDetailPane()" class="ac-wave5-detail-btn ac-wave5-detail-btn-muted">Tutup</button>';
     html += '<a href="/analisis-saham?ticker=' + encodeURIComponent(r.ticker) + '" onclick="closeScrDetail();closeScreenerDetailPane();if(window.navigateToPage){navigateToPage(\'analisis\');if(typeof loadStockAnalysis===\'function\'){loadStockAnalysis(\'' + escapeHtml(r.ticker) + '\');}return false;}" class="ac-wave5-detail-btn ac-wave5-detail-btn-research">Riset &rarr;</a>';
-    html += '<button onclick="closeScrDetail();closeScreenerDetailPane();navigateTo(\'chart\');setTimeout(function(){var i=document.getElementById(\'chartTickerInput\');if(i){i.value=\'' + escapeHtml(r.ticker) + '\';loadChartPage();}},200)" class="ac-wave5-detail-btn ac-wave5-detail-btn-chart">Chart</button>';
+    html += '<button id="scrDetailOpenChartBtn" onclick="openScreenerInChartWorkstation(\'' + escapeHtml(r.ticker) + '\',\'' + escapeHtml(type) + '\')" class="ac-wave5-detail-btn ac-wave5-detail-btn-chart">Buka di Chart Workstation</button>';
     html += '</div>';
     return html;
 }
 if (typeof window !== 'undefined') window.renderScrDetailHtml = renderScrDetailHtml;
+
+function openScreenerInChartWorkstation(ticker, type) {
+    if (typeof closeScrDetail === 'function') closeScrDetail();
+    if (typeof closeScreenerDetailPane === 'function') closeScreenerDetailPane();
+    var r = null;
+    if (type === 'konglo' && typeof _kgCardData !== 'undefined') r = _kgCardData[ticker];
+    else if (type === 'nonkonglo' && typeof _nkCardData !== 'undefined') r = _nkCardData[ticker];
+    else if (type === 'daytrade' && typeof _dtCardData !== 'undefined') r = _dtCardData[ticker];
+    if (!r && window._dtCardData) r = window._dtCardData[ticker];
+
+    var preset = (type === 'daytrade') ? 'scalping' : 'swing';
+    var _l = (r && typeof normalizeDisplayLevels === 'function') ? normalizeDisplayLevels(r) : {};
+    var planLevels = {
+        entry: _l.e1,
+        sl: _l.sl,
+        tp1: _l.t1,
+        tp2: _l.t2
+    };
+
+    if (typeof navigateTo === 'function') navigateTo('chart');
+    else if (typeof navigateToPage === 'function') navigateToPage('chart');
+
+    setTimeout(function() {
+        var inp = document.getElementById('chartTickerInput');
+        if (inp) {
+            inp.value = ticker;
+            if (typeof loadChartPage === 'function') loadChartPage();
+        }
+        if (window.AutoCuanChartWorkstation && typeof window.AutoCuanChartWorkstation.switchTicker === 'function') {
+            window.AutoCuanChartWorkstation.switchTicker('mainChart', ticker, {
+                preset: preset,
+                planLevels: planLevels,
+                entry: _l.e1,
+                sl: _l.sl,
+                tp1: _l.t1,
+                tp2: _l.t2
+            });
+        }
+    }, 200);
+}
+if (typeof window !== 'undefined') window.openScreenerInChartWorkstation = openScreenerInChartWorkstation;
 
 function screenerResultActionHtml(ticker, type) {
     return '<button type="button" class="ac-screener-result-action" data-screener-type="' + escapeHtml(type) + '" aria-pressed="false" aria-label="Lihat detail ' + escapeHtml(ticker) + '">' + escapeHtml(ticker) + '</button>';
@@ -12633,12 +12681,19 @@ var _screenerLastCalcAt = null;
 
 function startScreenerPolling() {
     stopScreenerPolling();
-    _screenerPollInterval = setInterval(function() {
+    // FIX-25: register with the keep-alive timer registry so hiding the tab
+    // clears the interval instead of letting it wake up and no-op every 15s.
+    var _screenerPollFn = function() {
         if (document.hidden) return;
         if (_currentScreenerType !== 'konglo') { stopScreenerPolling(); return; }
         // Lightweight check: re-fetch data and compare calculated_at
         loadSwingScreener(true); // silent mode
-    }, 15000);
+    };
+    if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.wrapInterval === 'function') {
+        _screenerPollInterval = window.AutoCuanKeepAlive.wrapInterval('screener-poll', _screenerPollFn, 15000, { page: 'screener' });
+    } else {
+        _screenerPollInterval = setInterval(_screenerPollFn, 15000);
+    }
     // Visibility detection: refresh when page becomes visible and Konglo tab is active
     document.addEventListener('visibilitychange', _onScreenerVisibilityChange);
 }
@@ -12651,6 +12706,11 @@ function _onScreenerVisibilityChange() {
 
 function stopScreenerPolling() {
     if (_screenerPollInterval) { clearInterval(_screenerPollInterval); _screenerPollInterval = null; }
+    // FIX-25: drop the registry entry too, otherwise resume() would re-arm a
+    // poller the user explicitly stopped.
+    if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.unregisterTimer === 'function') {
+        window.AutoCuanKeepAlive.unregisterTimer('screener-poll');
+    }
     document.removeEventListener('visibilitychange', _onScreenerVisibilityChange);
 }
 
@@ -13489,15 +13549,24 @@ function switchScreenerType(type) {
 
 function startNkPolling() {
     stopNkPolling();
-    _nkPollInterval = setInterval(function() {
+    // FIX-25: same registry contract as the Konglo poller.
+    var _nkPollFn = function() {
         if (document.hidden) return;
         if (_currentScreenerType !== 'nonkonglo') { stopNkPolling(); return; }
         loadNkScreenerResults(true); // silent mode — avoid skeleton/spinner flicker on each poll
-    }, 15000);
+    };
+    if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.wrapInterval === 'function') {
+        _nkPollInterval = window.AutoCuanKeepAlive.wrapInterval('nk-poll', _nkPollFn, 15000, { page: 'screener' });
+    } else {
+        _nkPollInterval = setInterval(_nkPollFn, 15000);
+    }
 }
 
 function stopNkPolling() {
     if (_nkPollInterval) { clearInterval(_nkPollInterval); _nkPollInterval = null; }
+    if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.unregisterTimer === 'function') {
+        window.AutoCuanKeepAlive.unregisterTimer('nk-poll');
+    }
 }
 
 async function loadNkScreenerResults(silent) {
@@ -15080,13 +15149,27 @@ function renderDashboardTop5MonitorData(data) {
 
 function startDashboardMonitorAutoRefresh() {
     if (_dashboardMonitorRefreshTimer) clearInterval(_dashboardMonitorRefreshTimer);
+    if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.unregisterTimer === 'function') {
+        window.AutoCuanKeepAlive.unregisterTimer('dashboard-monitor');
+    }
     if (currentPage !== 'dashboard' || !isLoggedInUser()) return;
-    _dashboardMonitorRefreshTimer = setInterval(function() {
+    // FIX-25: this poller is the most expensive one (full monitor reload every
+    // 60s), so it registers with the registry to be genuinely paused while the
+    // document is hidden rather than waking up to no-op.
+    var _dashMonitorFn = function() {
         if (currentPage === 'dashboard' && !document.hidden) loadDashboardTop5Monitor(true, { loadAdminPreview: false });
-    }, 60 * 1000);
+    };
+    if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.wrapInterval === 'function') {
+        _dashboardMonitorRefreshTimer = window.AutoCuanKeepAlive.wrapInterval('dashboard-monitor', _dashMonitorFn, 60 * 1000, { page: 'dashboard' });
+    } else {
+        _dashboardMonitorRefreshTimer = setInterval(_dashMonitorFn, 60 * 1000);
+    }
 }
 function stopDashboardMonitorAutoRefresh() {
     if (_dashboardMonitorRefreshTimer) { clearInterval(_dashboardMonitorRefreshTimer); _dashboardMonitorRefreshTimer = null; }
+    if (window.AutoCuanKeepAlive && typeof window.AutoCuanKeepAlive.unregisterTimer === 'function') {
+        window.AutoCuanKeepAlive.unregisterTimer('dashboard-monitor');
+    }
 }
 
 // ===== IHSG DASHBOARD LIVE INDICATOR =====

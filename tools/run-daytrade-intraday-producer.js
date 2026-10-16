@@ -26,11 +26,13 @@ const runner = require(path.join(ROOT, 'tools', 'run-all-screeners-vps'));
 const snapshotBuilder = require(path.join(ROOT, 'tools', 'build-screener-snapshot'));
 
 function parseArgs(argv) {
-  const opts = { execute: false, maxBatches: 120, sleepMs: 500 };
+  const opts = { execute: false, maxBatches: 120, sleepMs: 500, force: false, syncSnapshot: false };
   for (let i = 2; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--execute') opts.execute = true;
     else if (arg === '--dry-run') opts.execute = false;
+    else if (arg === '--force') opts.force = true;
+    else if (arg === '--sync-snapshot') opts.syncSnapshot = true;
     else if (arg === '--max-batches') opts.maxBatches = Math.max(1, Number(argv[++i]) || opts.maxBatches);
     else if (arg === '--sleep-ms') opts.sleepMs = Math.max(0, Number(argv[++i]) || 0);
     else if (arg === '--help' || arg === '-h') opts.help = true;
@@ -58,15 +60,34 @@ async function run(options, deps) {
   log('  market   : ' + String(market.status || market.session || 'UNKNOWN') +
     ' (' + String(market.reason || '-') + ')');
 
+  const env = deps.env || runner.loadEnvFiles();
+  const baseUrl = deps.baseUrl || runner.resolveBaseUrl(env);
+
   if (!market || market.isOpen !== true) {
     log('  skip     : market session is not open');
+    const fsInstance = deps.fs || require('node:fs');
+    const targetFile = snapshotBuilder.snapshotPath ? snapshotBuilder.snapshotPath(deps.rootDir || ROOT) : path.join(deps.rootDir || ROOT, 'data', 'screener-latest.json');
+    if (!fsInstance.existsSync(targetFile) || opts.force || opts.syncSnapshot) {
+      log('  snapshot : file missing or sync requested at MARKET_CLOSED, synchronizing...');
+      try {
+        const buildSnapshot = deps.buildSnapshot || snapshotBuilder.main;
+        await buildSnapshot(
+          { dryRun: false, print: false },
+          {
+            baseUrl,
+            env,
+            rootDir: deps.rootDir || ROOT,
+            fetchFn: deps.snapshotFetch || deps.fetch
+          }
+        );
+      } catch (err) {
+        log('  snapshot sync warning: ' + (err && err.message ? err.message : String(err)));
+      }
+    }
     return { ok: true, skipped: true, reason: 'MARKET_CLOSED', market };
   }
 
-  const env = deps.env || runner.loadEnvFiles();
   if (!env.CRON_SECRET) throw new Error('CRON_SECRET is required.');
-
-  const baseUrl = deps.baseUrl || runner.resolveBaseUrl(env);
   runner.assertNotServerlessForExecute(baseUrl, opts.execute);
 
   const client = deps.client || runner.makeClient(baseUrl, env.CRON_SECRET, deps.fetch);
