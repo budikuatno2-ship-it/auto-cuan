@@ -15195,3 +15195,51 @@ html.light #marketStructurePaginationBar button {
   color: #f8fafc !important;
   font-weight: 600 !important;
 }
+
+/* 12. Final Polish for Market Structure Detail Boxes & Subtab Active (Shot 11 & 14) */
+#marketStructureDetailPane .ac-research-note,
+#marketStructureDetailPane .ac-research-footnote,
+#marketStructureDetailPane #marketStructureNote,
+#marketStructureDetailPane .mt-3.p-2\.5,
+#marketStructureDetailPane div[class*="bg-slate-800"],
+#marketStructureDetailPane .ac-roster-item-card,
+html.light #marketStructureDetailPane .ac-research-note,
+html.light #marketStructureDetailPane .ac-research-footnote,
+html.light #marketStructureDetailPane #marketStructureNote,
+html.light #marketStructureDetailPane .mt-3.p-2\.5,
+html.light #marketStructureDetailPane div[class*="bg-slate-800"],
+html.light #marketStructureDetailPane .ac-roster-item-card {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+#marketStructureDetailPane #marketStructureInsiderTotal,
+#marketStructureDetailPane #marketStructureMajorHoldingPct,
+#marketStructureDetailPane #marketStructurePublicHoldingPct,
+#marketStructureDetailPane strong,
+html.light #marketStructureDetailPane #marketStructureInsiderTotal,
+html.light #marketStructureDetailPane #marketStructureMajorHoldingPct,
+html.light #marketStructureDetailPane #marketStructurePublicHoldingPct,
+html.light #marketStructureDetailPane strong {
+  color: #f8fafc !important;
+}
+
+#marketStructureDetailPane #marketStructureOwnershipSummaryNote,
+#marketStructureDetailPane span,
+#marketStructureDetailPane p,
+html.light #marketStructureDetailPane #marketStructureOwnershipSummaryNote,
+html.light #marketStructureDetailPane span,
+html.light #marketStructureDetailPane p {
+  color: #94a3b8 !important;
+}
+
+#tabAnalisisVision.active,
+#tabAnalisisVision[aria-selected="true"],
+.analisis-subtab.active#tabAnalisisVision,
+html.light #tabAnalisisVision.active,
+html.light #tabAnalisisVision[aria-selected="true"],
+html.light .analisis-subtab.active#tabAnalisisVision {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
