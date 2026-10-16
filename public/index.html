@@ -2547,6 +2547,7 @@ html.light #googleCompleteProfileModal input {
                     <div class="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40">
                         <span class="text-xs text-gray-400">Aktif:</span>
                         <span id="unifiedActiveTickerBadge" class="unified-ticker-badge font-mono font-bold text-emerald-400">BBCA</span>
+                        <span id="unifiedActiveTickerSymbol" class="hidden">BBCA</span>
                         <span id="unifiedActiveCompanyName" class="text-xs text-gray-300 font-medium hidden sm:inline">Bank Central Asia Tbk</span>
                         <span id="unifiedActiveCompanySector" class="text-[10px] text-gray-400 font-mono hidden md:inline">Finansial</span>
                         <span id="unifiedActiveTickerQuote" class="text-xs font-mono font-semibold text-emerald-400 tabular-nums ml-1"></span>
@@ -3405,6 +3406,7 @@ html.light #googleCompleteProfileModal input {
         <button class="tab" role="tab" aria-selected="false" data-tab="planner"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg><span>Rencana Posisi</span></button>
         <button class="tab" role="tab" aria-selected="false" data-tab="watch"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>Pantauan</span></button>
         <button class="tab" role="tab" aria-selected="false" data-tab="risk"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.002A11.959 11.959 0 0112 2.714zm0 13.036h.008v.008H12v-.008z"/></svg><span>Risiko &amp; Avg Down</span></button>
+        <button id="portTabScenarios" class="tab" role="tab" aria-selected="false" data-tab="scenarios"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.75v15a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V4.5A2.25 2.25 0 016.75 2.25h10.5a2.25 2.25 0 012.25 2.25z"/></svg><span>Skenario Posisi</span></button>
         <button class="tab" role="tab" aria-selected="false" data-tab="journal"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg><span>Jurnal</span></button>
         <button class="tab" role="tab" aria-selected="false" data-tab="ai"><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg><span>Asisten AI</span></button>
       </nav>
@@ -5105,7 +5107,7 @@ function renderShareKonglo(d) {
     var pane = document.getElementById('shareKongloPane');
     if (!d || !d.results || d.results.length === 0) { pane.innerHTML = '<p class="text-sm text-gray-500 py-4">Belum ada data Konglo Screener.</p>'; return; }
     var meta = d.meta || {};
-    var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+    var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-';
     var html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · ' + d.results.length + ' ticker · Swing 3-7 Hari · Grup Konglomerat</p>';
     html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel data screener swing konglomerasi"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5 text-left">Grup</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Setup</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
@@ -5116,25 +5118,25 @@ function renderShareKonglo(d) {
         var confLabel = r.confidence || '-';
         var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-amber-400' : 'text-red-400')));
         var scoreColor = r.score >= 80 ? 'text-emerald-400 font-bold' : (r.score >= 65 ? 'text-blue-400' : (r.score >= 50 ? 'text-amber-400' : 'text-red-400'));
-        var entryStr = (r.entry_low != null && r.entry_high != null) ? r.entry_low + '-' + r.entry_high : '—';
+        var entryStr = (r.entry_low != null && r.entry_high != null) ? r.entry_low + '-' + r.entry_high : '-';
         var timingLabel = r.entry_timing || '-';
         var timingColor = (timingLabel.indexOf('Masih dekat') >= 0) ? 'text-emerald-400' : ((timingLabel.indexOf('breakout') >= 0) ? 'text-blue-400' : ((timingLabel.indexOf('pullback') >= 0) ? 'text-orange-400' : ((timingLabel.indexOf('telat') >= 0 || timingLabel.indexOf('Hindari') >= 0) ? 'text-red-400' : 'text-gray-400')));
         var dirLabel = r.direction || '-';
         var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-gray-400'));
         html += '<tr class="border-b border-dark-700/30 hover:bg-dark-700/20">';
         html += '<td class="px-2 py-1.5 font-medium text-white whitespace-nowrap">' + r.ticker + '</td>';
-        html += '<td class="px-2 py-1.5 text-gray-500 text-[10px] whitespace-nowrap">' + (r.group_code || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-gray-500 text-[10px] whitespace-nowrap">' + (r.group_code || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + '">' + (r.score || 0) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right ' + chgView.cls + '">' + chgView.text + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20).toFixed(2) + 'x' : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20).toFixed(2) + 'x' : '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px] whitespace-nowrap">' + entryStr + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + (r.stop_loss || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + (r.tp1 || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + (r.tp2 || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + (r.stop_loss || '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + (r.tp1 || '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + (r.tp2 || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(1) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-[10px] ' + timingColor + '">' + timingLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
@@ -5170,7 +5172,7 @@ function renderShareNk(d) {
     var pane = document.getElementById('shareNkPane');
     if (!d || !d.results || d.results.length === 0) { pane.innerHTML = '<p class="text-sm text-gray-500 py-4">Belum ada data Non-Konglo Screener.</p>'; return; }
     var meta = d.meta || {};
-    var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+    var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-';
     var html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · Top ' + d.results.length + ' · Non-Konglomerat · Papan Utama & Pengembangan</p>';
     html += '<div class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin rounded-xl border border-dark-600/30 focus:outline-none focus:ring-2 focus:ring-emerald-500" tabindex="0" role="region" aria-label="Tabel data screener swing non-konglomerasi"><table class="w-full text-xs border-collapse"><thead class="sticky top-0 z-10 bg-dark-800"><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5">#</th><th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Board</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Setup</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
@@ -5181,8 +5183,8 @@ function renderShareNk(d) {
         var confLabel = r.confidence || '-';
         var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-amber-400' : 'text-red-400')));
         var scoreColor = r.score >= 80 ? 'text-emerald-400 font-bold' : (r.score >= 65 ? 'text-blue-400' : (r.score >= 50 ? 'text-amber-400' : 'text-gray-400'));
-        var entryStr = (r.entry_low != null && r.entry_high != null) ? Number(r.entry_low).toFixed(0) + '-' + Number(r.entry_high).toFixed(0) : '—';
-        var boardLabel = r.board === 'UTAMA' ? 'Utama' : (r.board === 'PENGEMBANGAN' ? 'Dev' : (r.board || '—'));
+        var entryStr = (r.entry_low != null && r.entry_high != null) ? Number(r.entry_low).toFixed(0) + '-' + Number(r.entry_high).toFixed(0) : '-';
+        var boardLabel = r.board === 'UTAMA' ? 'Utama' : (r.board === 'PENGEMBANGAN' ? 'Dev' : (r.board || '-'));
         var gradeStr = r.grade || '';
         var scoreLabel = (r.score || 0) + (gradeStr ? ' (' + gradeStr + ')' : '');
         var timingLabel = r.entry_timing || '-';
@@ -5190,20 +5192,20 @@ function renderShareNk(d) {
         var dirLabel = r.direction || '-';
         var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-gray-400'));
         html += '<tr class="border-b border-dark-700/30 hover:bg-dark-700/20">';
-        html += '<td class="px-2 py-1.5 text-center text-gray-500">' + (r.rank || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center text-gray-500">' + (r.rank || '-') + '</td>';
         html += '<td class="px-2 py-1.5 font-medium text-white whitespace-nowrap">' + r.ticker + '</td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + boardLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price != null ? Number(r.last_price).toFixed(0) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price != null ? Number(r.last_price).toFixed(0) : '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right ' + chgView.cls + '">' + chgView.text + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20).toFixed(2) + 'x' : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20).toFixed(2) + 'x' : '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px] whitespace-nowrap">' + entryStr + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + (r.stop_loss != null ? Number(r.stop_loss).toFixed(0) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + (r.tp1 != null ? Number(r.tp1).toFixed(0) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + (r.tp2 != null ? Number(r.tp2).toFixed(0) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + (r.stop_loss != null ? Number(r.stop_loss).toFixed(0) : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + (r.tp1 != null ? Number(r.tp1).toFixed(0) : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + (r.tp2 != null ? Number(r.tp2).toFixed(0) : '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-[10px] ' + timingColor + '">' + timingLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
@@ -10945,8 +10947,8 @@ var PATTERN_PERSONALITY_UI_CATALOG = {
     FX_STRONG_BUY: { key: 'FX_STRONG_BUY', label: 'Akumulasi asing kuat', pf: 1.80, wr: 61.2, mfe: 10.8, mae: -5.4, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
     TECH_ABOVE_MA20: { key: 'TECH_ABOVE_MA20', label: 'Harga di atas MA20', pf: 1.90, wr: 60.6, mfe: 11.0, mae: -8.2, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
     TECH_ABOVE_MA5: { key: 'TECH_ABOVE_MA5', label: 'Harga di atas MA5', pf: 1.89, wr: 60.1, mfe: 10.8, mae: -8.0, color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
-    VOL_WARM_1P2_1P5: { key: 'VOL_WARM_1P2_1P5', label: 'Volume 1,2–1,5× rata-rata', pf: 1.46, wr: 60.0, mfe: 11.8, mae: -7.1, color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' },
-    RSI_OVERBOUGHT_65P: { key: 'RSI_OVERBOUGHT_65P', label: 'Momentum RSI 65–69', pf: 1.73, wr: 59.8, mfe: 10.2, mae: -8.7, color: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
+    VOL_WARM_1P2_1P5: { key: 'VOL_WARM_1P2_1P5', label: 'Volume 1,2-1,5x rata-rata', pf: 1.46, wr: 60.0, mfe: 11.8, mae: -7.1, color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' },
+    RSI_OVERBOUGHT_65P: { key: 'RSI_OVERBOUGHT_65P', label: 'Momentum RSI 65-69', pf: 1.73, wr: 59.8, mfe: 10.2, mae: -8.7, color: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
     COMBO_BROKER_FX: { key: 'COMBO_BROKER_FX', label: 'Akumulasi broker + aliran asing', pf: 1.71, wr: 57.1, mfe: 12.3, mae: -5.9, color: 'bg-purple-500/20 text-purple-300 border-purple-500/40' },
     COMBO_BROKER_TECH: { key: 'COMBO_BROKER_TECH', label: 'Akumulasi broker + harga di atas MA', pf: 1.67, wr: 56.1, mfe: 12.6, mae: -9.2, color: 'bg-purple-500/20 text-purple-300 border-purple-500/40' },
     TRAP_CHG5_VOL3_CLIMAX: { key: 'TRAP_CHG5_VOL3_CLIMAX', label: 'Kenaikan ≥5% + volume ≥3×', pf: 1.84, wr: 55.6, mfe: 29.1, mae: -5.9, color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
@@ -11048,8 +11050,8 @@ function normalizeGateScoreDisplay(r) {
     var isHardReject = bucket === 'HARD_REJECT' || hardText.indexOf('hindari') >= 0 || hardText.indexOf('avoid') >= 0 || hardText.indexOf('very high risk') >= 0 || hardText.indexOf('stale') >= 0;
     var isRadar = !isHardReject && (bucket === 'RADAR' || hardText.indexOf('wait_pullback') >= 0 || hardText.indexOf('watch_breakout') >= 0 || hardText.indexOf('wait close') >= 0 || hardText.indexOf('radar') >= 0 || hardText.indexOf('watchlist') >= 0);
     if (isHardReject) return { score: raw == null ? 'Blocked' : Math.min(raw, 60), label: 'Hard Reject / Hindari', reason: reason || 'Blocked by gate', colorClass: 'text-red-300 font-bold', bucket: 'HARD_REJECT', capped: raw != null && raw > 60 };
-    if (isRadar) return { score: raw == null ? '—' : raw, label: 'Radar / Watchlist, bukan Signal', reason: reason || 'Watchlist', colorClass: 'text-violet-300 font-bold', bucket: 'RADAR', capped: false };
-    return { score: raw == null ? '—' : raw, label: 'Signal', reason: reason || 'Signal', colorClass: raw >= 88 ? 'text-emerald-300 font-bold' : (raw >= 82 ? 'text-emerald-400 font-bold' : (raw >= 70 ? 'text-blue-400' : (raw >= 50 ? 'text-amber-400' : 'text-red-400'))), bucket: 'SIGNAL', capped: false };
+    if (isRadar) return { score: raw == null ? '-' : raw, label: 'Radar / Watchlist, bukan Signal', reason: reason || 'Watchlist', colorClass: 'text-violet-300 font-bold', bucket: 'RADAR', capped: false };
+    return { score: raw == null ? '-' : raw, label: 'Signal', reason: reason || 'Signal', colorClass: raw >= 88 ? 'text-emerald-300 font-bold' : (raw >= 82 ? 'text-emerald-400 font-bold' : (raw >= 70 ? 'text-blue-400' : (raw >= 50 ? 'text-amber-400' : 'text-red-400'))), bucket: 'SIGNAL', capped: false };
 }
 
 function fmtForeignFlowVal(v) {
@@ -11340,7 +11342,7 @@ function getRiskReasonFactors(r) {
 function getRiskReasonLine(r) {
     var risk = getRiskLabel(r) || '-';
     var reason = safeDisplayText(r && r.risk_reason, '') || getRiskReasonFactors(r).slice(0, 2).join(' + ');
-    return 'Risk: ' + risk + (reason ? ' — ' + reason : '');
+    return 'Risk: ' + risk + (reason ? ' - ' + reason : '');
 }
 // The grid cards already print the risk label as a coloured badge on the line
 // above, so repeating it here made every card read "Low Risk" twice in two
@@ -11657,16 +11659,16 @@ function renderScrDetailHtml(r, type) {
     var _modalStarClass = _isStarredModal ? 'active' : '';
     html += '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px">' + escapeHtml(r.ticker) + '</span><button class="wl-star-btn ' + _modalStarClass + '" data-ticker="' + escapeHtml(r.ticker) + '" onclick="window.toggleWatchlistTicker(\'' + escapeHtml(r.ticker) + '\', null, event)" style="background:none;border:none;cursor:pointer;font-size:20px;line-height:1;color:' + _modalStarColor + ';padding:0 4px" title="Simpan ke Watchlist">' + _modalStarIcon + '</button><span style="font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;background:' + stBg + ';color:' + stCol + ';white-space:nowrap">' + escapeHtml(getStatusLabel(r, st)) + '</span></div>';
     html += '<span style="font-size:10px;color:#6b7280;background:#1a1f2b;padding:3px 8px;border-radius:6px;white-space:nowrap">' + _catLabel + '</span></div>';
-    html += '<div style="display:flex;align-items:center;gap:14px;font-size:13px;color:#9ca3af"><span style="font-weight:600;color:#e5e7eb">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span class="scr-chg-val" style="color:' + chgView.hex + ';font-weight:500">' + chgView.text + '</span><span>Score <strong style="color:' + scCol + '">' + sc + '</strong></span></div>';
+    html += '<div style="display:flex;align-items:center;gap:14px;font-size:13px;color:#9ca3af"><span style="font-weight:800;font-size:16px;color:#f8fafc;font-family:monospace">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span class="scr-chg-val" style="color:' + chgView.hex + ';font-weight:600">' + chgView.text + '</span><span>Score <strong style="color:' + scCol + '">' + sc + '</strong></span></div>';
     if (freshnessText(r)) html += '<div style="font-size:10px;color:' + freshnessColor(r) + ';margin-top:8px">' + freshnessChipHtml(r) + (r.freshness_reason ? '<span style="color:#6b7280;margin-left:6px">' + escapeHtml(r.freshness_reason) + '</span>' : '') + '</div>';
     html += '</div>';
     // --- METRICS BAR: Grade / Risk / RR / Action ---
     var _actionLabel = getActionLabel(r);
     html += '<div style="display:grid;grid-template-columns:repeat(' + (_actionLabel ? '4' : '3') + ',1fr);gap:6px;margin-bottom:16px">';
-    html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Grade</div><div style="font-size:18px;font-weight:800;color:' + _gCol + '">' + escapeHtml(_grade || '-') + '</div></div>';
-    html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Risk</div><div style="font-size:12px;font-weight:700;color:' + _rlCol + '">' + escapeHtml(_risk || '-') + '</div></div>';
-    html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">R/R</div><div style="font-size:16px;font-weight:800;color:#c4b5fd">' + rrVal + '</div></div>';
-    if (_actionLabel) html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Action</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + escapeHtml(_actionLabel) + '</div></div>';
+    html += '<div style="text-align:center;padding:10px 6px;background:#1e293b;border:1px solid #334155;border-radius:10px"><div style="font-size:9px;color:#94a3b8;font-weight:700;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Grade</div><div style="font-size:18px;font-weight:800;color:' + (_gCol || '#34d399') + '">' + escapeHtml(_grade || '-') + '</div></div>';
+    html += '<div style="text-align:center;padding:10px 6px;background:#1e293b;border:1px solid #334155;border-radius:10px"><div style="font-size:9px;color:#94a3b8;font-weight:700;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Risk</div><div style="font-size:12px;font-weight:700;color:' + (_rlCol || '#38bdf8') + '">' + escapeHtml(_risk || '-') + '</div></div>';
+    html += '<div style="text-align:center;padding:10px 6px;background:#1e293b;border:1px solid #334155;border-radius:10px"><div style="font-size:9px;color:#94a3b8;font-weight:700;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">R/R</div><div style="font-size:16px;font-weight:800;color:#c4b5fd">' + rrVal + '</div></div>';
+    if (_actionLabel) html += '<div style="text-align:center;padding:10px 6px;background:#1e293b;border:1px solid #334155;border-radius:10px"><div style="font-size:9px;color:#94a3b8;font-weight:700;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Action</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + escapeHtml(_actionLabel) + '</div></div>';
     html += '</div>';
     var _riskFactors = getRiskReasonFactors(r).slice(0, 4);
     if (_riskFactors.length) {
@@ -12437,8 +12439,8 @@ async function loadSektorHot(silent) {
                 var avgChgDisplay = chgView.text;
                 var topTickerDisplay = (g.top_ticker && g.top_change_pct != null)
                     ? '<span class="font-mono font-bold text-gray-200">' + escapeHtml(g.top_ticker) + '</span> <span class="' + topChgView.cls + '">' + topChgView.text + '</span>'
-                    : '<span class="text-gray-500">—</span>';
-                var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '—';
+                    : '<span class="text-gray-500">-</span>';
+                var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '-';
                 var memberCountVal = g.stock_count != null ? g.stock_count : (g.member_count != null ? g.member_count : (Array.isArray(g.members) ? g.members.length : null));
                 var memberCountDisplay = (memberCountVal != null && !isNaN(Number(memberCountVal))) ? String(memberCountVal) : '—';
                 tRowsHtml += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="showGroupDetail(\'' + escapeHtml(g.group_code) + '\')">';
@@ -12942,7 +12944,12 @@ async function loadSwingScreener(silent) {
                     badge.textContent = isPreviewRoute ? 'MOCK DATA' : 'STALE';
                     badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25';
                     var staleSub = document.getElementById('screenerSubtitle');
-                    if (staleSub) { staleSub.textContent = '\u26A0 Data stale \u2014 scan terakhir sudah lama (' + (eodResolution.dateStr || 'lama') + '). Refresh wajib sebelum analisis. ' + (staleSub.textContent || ''); }
+                    if (staleSub) {
+                        var _rawD = eodResolution.dateStr || '';
+                        var _pD = _rawD.split('-');
+                        var _wibD = _pD.length === 3 ? (_pD[2] + ' ' + (['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][parseInt(_pD[1], 10) - 1] || _pD[1]) + ' ' + _pD[0]) : (_rawD || 'lama');
+                        staleSub.textContent = '\u26A0 Data stale - scan terakhir sudah lama (' + _wibD + '). Refresh wajib sebelum analisis. ' + (staleSub.textContent || '');
+                    }
                 } else if (eodResolution.badgeCode === 'TODAY') {
                     badge.textContent = isPreviewRoute ? 'MOCK DATA' : 'EOD · TODAY';
                     badge.className = isPreviewRoute
@@ -13703,7 +13710,7 @@ function updateNkScreenerMeta(meta) {
             var nkCalcDate2 = new Date(meta.calculated_at);
             var nkNowWib2 = new Date(Date.now() + 7 * 60 * 60 * 1000);
             if (nkCalcDate2.toISOString().slice(0, 10) !== nkNowWib2.toISOString().slice(0, 10) && nkCalcDate2.toISOString().slice(0, 10) !== new Date(nkNowWib2.getTime() - 86400000).toISOString().slice(0, 10)) {
-                nkSubText = '\u26A0 Data stale \u2014 scan sudah lama. Refresh wajib sebelum analisis. \u00b7 ' + nkSubText;
+                nkSubText = '\u26A0 Data stale - scan sudah lama. Refresh wajib sebelum analisis. \u00b7 ' + nkSubText;
             }
             sub.textContent = nkSubText;
         } else if (meta.status === 'failed') {
@@ -15064,7 +15071,7 @@ function renderDashboardTop5MonitorData(data) {
         var monEl = document.getElementById('dashboardMonitorList');
         if (monEl) monEl.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
         var upd = document.getElementById('dashboardMonitorUpdated');
-        if (upd) upd.textContent = 'Terakhir update: \u2014 WIB';
+        if (upd) upd.textContent = 'Terakhir update: - WIB';
     } else {
         renderDashboardTop5(top5Rows);
         renderDashboardMonitor(monitorRows, data.monitor_last_updated_at || data.last_updated_at, data);

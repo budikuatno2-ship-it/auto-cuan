@@ -6644,18 +6644,23 @@ html.light .ticker-link:hover {
 #appSidebar .sidebar-brand-text > span { font-size:10px; color:var(--color-text-secondary); }
 #appSidebar .brand-mark { width:32px !important; height:32px !important; flex:0 0 32px; border-radius:9px; color:var(--brand-mark-ink); background:var(--brand-mark-bg) !important; border:1px solid var(--brand-mark-line); box-shadow:none !important; }
 #appSidebar .sidebar-collapse-toggle { display:grid; place-items:center; width:24px; height:30px; flex-shrink:0; padding:0; margin-left:auto; border:0; background:transparent; color:var(--color-text-secondary); }
-#appSidebar > .sidebar-nav { display:block; flex:1 1 0%; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; padding:8px 8px 32px 8px; }
+#appSidebar > .sidebar-nav { display:block; flex:1 1 0%; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:rgba(148,163,184,0.2) transparent; padding:8px 8px 32px 8px; }
+#appSidebar > .sidebar-nav::-webkit-scrollbar { width:4px; }
+#appSidebar > .sidebar-nav::-webkit-scrollbar-track { background:transparent; }
+#appSidebar > .sidebar-nav::-webkit-scrollbar-thumb { background:rgba(148,163,184,0.2); border-radius:4px; }
+#appSidebar > .sidebar-nav::-webkit-scrollbar-thumb:hover { background:rgba(148,163,184,0.4); }
 #appSidebar .sidebar-nav-group { padding-bottom:5px; }
 #appSidebar .sidebar-nav-group:last-child { padding-bottom:28px; }
 #appSidebar .sidebar-group-label { color:var(--color-text-secondary); font-size:9px; font-weight:500; line-height:1.5; letter-spacing:.09em; text-transform:uppercase; padding:12px 12px 6px; margin:0; }
-#appSidebar .sidebar-item { position:relative; display:flex; align-items:center; justify-content:flex-start; min-height:35px; width:100%; padding:7px 11px; gap:10px; border:1px solid transparent; border-radius:7px; background:transparent; color:var(--color-text-secondary); font:500 12px/1.45 Inter,system-ui,sans-serif; text-align:left; box-shadow:none; }
+#appSidebar .sidebar-item { position:relative; display:flex; align-items:center; justify-content:flex-start; min-height:36px; width:100%; padding:7px 11px; gap:10px; border:1px solid transparent; border-radius:8px; background:transparent; color:var(--color-text-secondary); font:500 12px/1.45 Inter,system-ui,sans-serif; text-align:left; box-shadow:none; transition:background-color 150ms ease,color 150ms ease,border-color 150ms ease; }
 #appSidebar .sidebar-item.hidden { display:none !important; }
 #appSidebar .sidebar-item > svg { width:16px; height:16px; flex:0 0 16px; }
 #appSidebar .sidebar-item:hover { color:var(--color-text-primary); background:var(--color-bg-hover); }
-#appSidebar .sidebar-item.active { background:var(--color-bg-elevated) !important; color:var(--color-accent) !important; border-color:var(--color-border-default) !important; box-shadow:none !important; }
-#appSidebar .sidebar-item.active::before { content:''; position:absolute; left:-1px; top:10px; bottom:10px; width:2px; background:var(--color-accent); border-radius:2px; }
+#appSidebar .sidebar-item.active { background:var(--color-bg-elevated) !important; color:var(--color-accent) !important; border-color:var(--color-border-default) !important; box-shadow:0 1px 2px rgba(0,0,0,0.2) !important; }
+#appSidebar .sidebar-item.active::before { content:''; position:absolute; left:-1px; top:8px; bottom:8px; width:3px; background:var(--color-accent); border-radius:2px; }
 #appSidebar .sidebar-item:active { transform:none; }
-#appSidebar .sidebar-badge { margin-left:auto; border:1px solid var(--color-border-default); border-radius:4px; padding:1px 4px; font-size:8px; color:var(--color-text-secondary); }
+#appSidebar .sidebar-badge { margin-left:auto; border:1px solid rgba(16,185,129,0.35); background:rgba(16,185,129,0.12); border-radius:4px; padding:1px 5px; font-size:9px; font-weight:700; letter-spacing:.04em; color:#34d399; }
+#appSidebar .sidebar-badge.is-admin { border-color:rgba(244,63,94,0.35); background:rgba(244,63,94,0.12); color:#fb7185; }
 #appSidebar > .sidebar-footer { flex:0 0 auto; display:flex; flex-direction:column; align-items:stretch; gap:8px; margin-top:auto; padding:12px; border-top:1px solid var(--color-border-default); background:var(--color-bg-surface); }
 #appSidebar .theme-toggle-compact { display:flex; align-items:center; justify-content:flex-start; gap:10px; width:100%; min-height:32px; padding:5px 9px; border:0; border-radius:7px; background:transparent; color:var(--color-text-secondary); font-size:11px; }
 #appSidebar .user-profile-badge { display:flex; align-items:center; justify-content:flex-start; gap:10px; min-width:0; width:100%; padding:5px 7px; border:0; border-radius:7px; background:transparent; }
@@ -6666,9 +6671,9 @@ html.light .ticker-link:hover {
 #appSidebar :is(button,[role="button"]):focus-visible { outline:2px solid var(--color-accent); outline-offset:-2px; }
 #sidebarScrim { z-index:74; backdrop-filter:none; background:rgba(3,7,18,.56); }
 @media (max-height: 820px) and (min-width: 1024px) {
-  #appSidebar > .sidebar-brand { min-height: 56px; padding: 12px 14px 10px; }
+  #appSidebar > .sidebar-brand { min-height: 52px; padding: 10px 14px 8px; }
   #appSidebar .sidebar-group-label { padding: 4px 12px 2px; }
-  #appSidebar .sidebar-item { min-height: 31px; padding: 4px 10px; font-size: 11.5px; }
+  #appSidebar .sidebar-item { min-height: 32px; padding: 5px 10px; font-size: 11.5px; }
   #appSidebar > .sidebar-footer { padding: 8px 12px; gap: 4px; }
 }
 html.workspace-menu-open { overflow:hidden !important; }
@@ -14838,4 +14843,355 @@ html[data-theme="dark"] .ac-origin-f {
   .app-sidebar {
     padding-top: 8px;
   }
+}
+
+/* ==========================================================================
+   FASE 8R REMEDIATION: 10 VISUAL BUGS & CONTRAST HARMONIZATION
+   ========================================================================== */
+
+/* 1. Market Breadth High Contrast Force */
+.ac-market-breadth-card {
+  background-color: #0b1120 !important;
+  border: 1px solid #1e293b !important;
+}
+.ac-market-breadth-card h2,
+.ac-breadth-header h2 {
+  color: #f8fafc !important;
+}
+.ac-market-breadth-card .ac-breadth-narrative,
+.ac-market-breadth-card .ac-stat-label,
+.ac-market-breadth-card .ac-breadth-footer-meta,
+.ac-breadth-header .font-mono {
+  color: #cbd5e1 !important;
+}
+.ac-market-breadth-card .ac-breadth-stat-tile {
+  background-color: #0f172a !important;
+  border: 1px solid #1e293b !important;
+}
+
+/* 2. Screener Preset Popover High Contrast */
+.ac-preset-popover {
+  background-color: #0f172a !important;
+  border: 1px solid #334155 !important;
+  color: #f8fafc !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 8px 10px -6px rgba(0, 0, 0, 0.8) !important;
+}
+.ac-preset-popover .text-white,
+.ac-preset-popover h4,
+.ac-preset-popover .ac-popover-title {
+  color: #f8fafc !important;
+}
+.ac-preset-popover p,
+.ac-preset-popover .ac-popover-desc,
+.ac-preset-popover .text-gray-200,
+.ac-preset-popover .text-gray-300 {
+  color: #e2e8f0 !important;
+}
+.ac-preset-popover .ac-popover-formula,
+.ac-preset-popover p.font-mono {
+  background-color: #1e293b !important;
+  color: #34d399 !important;
+  border: 1px solid #334155 !important;
+  padding: 6px 8px !important;
+  border-radius: 6px !important;
+}
+.ac-preset-popover span.font-semibold {
+  color: #94a3b8 !important;
+}
+
+/* 3. Smart Broker Summary High Contrast */
+.ac-smart-broksum-wrap {
+  background-color: #0b1120 !important;
+  border: 1px solid #1e293b !important;
+}
+.ac-smart-broksum-top-header span.text-white,
+.ac-smart-broksum-wrap h3 {
+  color: #f8fafc !important;
+}
+.ac-broksum-table thead,
+.ac-broksum-table th {
+  background-color: #1e293b !important;
+  color: #94a3b8 !important;
+  border-bottom: 1px solid #334155 !important;
+}
+.ac-broksum-table tbody tr td,
+.ac-broksum-table tbody td strong,
+.ac-broksum-table tbody td.text-white,
+.ac-broksum-table tbody td.text-gray-300 {
+  color: #f8fafc !important;
+}
+.ac-conc-tile {
+  background-color: #0f172a !important;
+  border: 1px solid #1e293b !important;
+}
+.ac-conc-tile .ac-conc-val {
+  color: #f8fafc !important;
+}
+.ac-conc-narrative {
+  background-color: #0f172a !important;
+  border: 1px solid #1e293b !important;
+}
+.ac-conc-narrative p {
+  color: #cbd5e1 !important;
+}
+
+/* 4. Struktur Pasar High Contrast Theme Shield */
+#marketStructureTable,
+#marketStructureTableContainer,
+#marketStructureDetailPane,
+#marketStructureDetailSheet {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+#marketStructureTable thead,
+#marketStructureTable thead th {
+  background-color: #1e293b !important;
+  color: #94a3b8 !important;
+  border-bottom: 1px solid #334155 !important;
+}
+#marketStructureTable tbody tr {
+  background-color: #0f172a !important;
+}
+#marketStructureTable tbody tr:hover {
+  background-color: #1e293b !important;
+}
+#marketStructureTable td {
+  color: #f8fafc !important;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.4) !important;
+}
+#marketStructureTable .ac-ticker-symbol {
+  color: #38bdf8 !important;
+}
+#marketStructureTable .ac-company-sub {
+  color: #94a3b8 !important;
+}
+#marketStructureDetailPane {
+  background-color: #0f172a !important;
+  border: 1px solid #1e293b !important;
+  color: #f8fafc !important;
+}
+#marketStructureDetailPane .ac-metric-tile {
+  background-color: #1e293b !important;
+  border: 1px solid #334155 !important;
+  color: #f8fafc !important;
+}
+#marketStructureDetailPane .ac-metric-tile .text-slate-400 {
+  color: #94a3b8 !important;
+}
+#marketStructureRosterWrap {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+#marketStructureRosterWrap .ac-roster-item-card {
+  border-bottom: 1px solid rgba(51, 65, 85, 0.5) !important;
+}
+#marketStructureRosterWrap .ac-roster-item-card strong {
+  color: #f8fafc !important;
+}
+#marketStructureRosterWrap .ac-roster-item-card span {
+  color: #94a3b8 !important;
+}
+
+/* 5. Sidebar Collapsed Cleanup (Shot 02) */
+#appSidebar.is-collapsed #sidebarLogoutBtn,
+.app-sidebar.is-collapsed #sidebarLogoutBtn,
+#appSidebar.is-collapsed .sidebar-utility-button,
+#appSidebar.is-collapsed .user-info {
+  display: none !important;
+}
+#appSidebar.is-collapsed #currentUserBadge {
+  justify-content: center !important;
+  padding: 0 !important;
+}
+#appSidebar.is-collapsed #sidebarAccountEntry {
+  justify-content: center !important;
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+#appSidebar.is-collapsed .user-avatar {
+  margin: 0 auto !important;
+}
+
+/* 6. Mobile Sidebar Compact Scaling (Shots 05 & 06) */
+@media (max-height: 850px) {
+  #appSidebar.mobile-open .sidebar-item {
+    min-height: 28px !important;
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+    gap: 8px !important;
+  }
+  #appSidebar.mobile-open .sidebar-item > svg {
+    width: 14px !important;
+    height: 14px !important;
+    flex: 0 0 14px !important;
+  }
+  #appSidebar.mobile-open .sidebar-group-label {
+    padding: 4px 8px 2px !important;
+    font-size: 8px !important;
+  }
+  #appSidebar.mobile-open .sidebar-nav-group {
+    padding-bottom: 2px !important;
+  }
+  #appSidebar.mobile-open .sidebar-nav-group:last-child {
+    padding-bottom: 6px !important;
+  }
+  #appSidebar.mobile-open > .sidebar-brand {
+    padding: 8px 10px !important;
+  }
+  #appSidebar.mobile-open > .sidebar-footer {
+    padding: 6px 10px !important;
+  }
+}
+
+/* 7. Command Palette Input & Results Styling (Shots 17 & 18) */
+.ac-command-palette-input {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+}
+.ac-command-palette-input::placeholder {
+  color: #94a3b8 !important;
+}
+.ac-command-palette-results {
+  padding-bottom: 36px !important;
+  max-height: 380px !important;
+}
+.ac-palette-item:last-child {
+  margin-bottom: 24px !important;
+}
+
+/* 8. Analisis Subtab Button Padding (Shot 04, 10, 22) */
+.analisis-subtab {
+  padding: 6px 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  white-space: nowrap !important;
+}
+
+/* 9. Trading Plan Detail Pane Dark Shield */
+.ac-detail-pane,
+#screenerDetailPane {
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+  border-left: 1px solid #1e293b !important;
+}
+.ac-detail-pane__header {
+  background-color: #0f172a !important;
+  border-bottom: 1px solid #1e293b !important;
+}
+.ac-detail-pane__title {
+  color: #f8fafc !important;
+}
+.ac-detail-pane__close {
+  color: #94a3b8 !important;
+}
+.ac-detail-pane__body {
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+}
+
+/* 10. Subtab Active Contrast (Shot 10, 11, 22) */
+.analisis-subtab.active,
+#tabAnalisisVision.active,
+#tabAnalisisText.active {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  background-color: #059669 !important;
+}
+.analisis-subtab.active svg,
+#tabAnalisisVision.active svg,
+#tabAnalisisText.active svg {
+  color: #ffffff !important;
+}
+
+/* 11. Market Structure Detail Pane & Pagination Bar Contrast (Shot 14) */
+#marketStructureDetailPane,
+#marketStructureDetailSheet,
+html.light #marketStructureDetailPane,
+html.light #marketStructureDetailSheet {
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+}
+#marketStructureDetailPane #marketStructureDetailTitle,
+#marketStructureDetailPane #marketStructureDetailCompany,
+#marketStructureDetailPane #marketStructureDetailSubtitle,
+#marketStructureDetailPane h3,
+#marketStructureDetailPane h4,
+#marketStructureDetailPane .ac-detail-title,
+html.light #marketStructureDetailPane #marketStructureDetailTitle,
+html.light #marketStructureDetailPane #marketStructureDetailCompany,
+html.light #marketStructureDetailPane #marketStructureDetailSubtitle,
+html.light #marketStructureDetailPane h3,
+html.light #marketStructureDetailPane h4,
+html.light #marketStructureDetailPane .ac-detail-title {
+  color: #f8fafc !important;
+  font-weight: 700 !important;
+}
+#marketStructureDetailPane .ac-detail-sub,
+html.light #marketStructureDetailPane .ac-detail-sub {
+  color: #94a3b8 !important;
+}
+#marketStructureDetailPane .ac-metric-tile,
+#marketStructureDetailPane .ac-research-detail,
+html.light #marketStructureDetailPane .ac-metric-tile,
+html.light #marketStructureDetailPane .ac-research-detail {
+  background-color: #1e293b !important;
+  border: 1px solid #334155 !important;
+}
+#marketStructureDetailPane .ac-metric-tile span,
+#marketStructureDetailPane .ac-metric-tile small,
+#marketStructureDetailPane .ac-research-detail span,
+html.light #marketStructureDetailPane .ac-metric-tile span,
+html.light #marketStructureDetailPane .ac-metric-tile small,
+html.light #marketStructureDetailPane .ac-research-detail span {
+  color: #94a3b8 !important;
+  font-weight: 500 !important;
+}
+#marketStructureDetailPane .ac-metric-tile strong,
+#marketStructureDetailPane #marketStructureFreeFloat,
+#marketStructureDetailPane #marketStructureHscStatus,
+#marketStructureDetailPane #marketStructureDetailGuardBadge,
+#marketStructureDetailPane #marketStructureHsc,
+#marketStructureDetailPane #marketStructureGuard,
+#marketStructureDetailPane .ac-research-detail strong,
+#marketStructureDetailPane #marketStructureNote,
+html.light #marketStructureDetailPane .ac-metric-tile strong,
+html.light #marketStructureDetailPane #marketStructureFreeFloat,
+html.light #marketStructureDetailPane #marketStructureHscStatus,
+html.light #marketStructureDetailPane #marketStructureDetailGuardBadge,
+html.light #marketStructureDetailPane #marketStructureHsc,
+html.light #marketStructureDetailPane #marketStructureGuard,
+html.light #marketStructureDetailPane .ac-research-detail strong,
+html.light #marketStructureDetailPane #marketStructureNote {
+  color: #f8fafc !important;
+  font-weight: 700 !important;
+}
+#marketStructurePaginationBar,
+html.light #marketStructurePaginationBar {
+  background-color: #0f172a !important;
+  border-top: 1px solid #334155 !important;
+  color: #f8fafc !important;
+}
+#marketStructurePaginationBar #marketStructureCountText,
+html.light #marketStructurePaginationBar #marketStructureCountText {
+  color: #f8fafc !important;
+  font-weight: 600 !important;
+}
+#marketStructurePaginationBar .ac-btn-pag,
+html.light #marketStructurePaginationBar .ac-btn-pag {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+}
+#marketStructurePaginationBar span,
+html.light #marketStructurePaginationBar span,
+#marketStructurePaginationBar button,
+html.light #marketStructurePaginationBar button {
+  color: #f8fafc !important;
+  font-weight: 600 !important;
 }

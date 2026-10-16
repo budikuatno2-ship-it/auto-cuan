@@ -588,8 +588,10 @@
     switch (s) {
       case 'arjum financial-statements':
         return 'Laporan Keuangan Resmi BEI';
+      case 'sqlite_market_rows':
       case 'daily_candles_flat_file':
       case 'daily_candles':
+      case 'stock_daily_history':
         return 'Data Harian Penutupan BEI';
       case 'IDX calculated':
         return 'Kalkulasi BEI';
@@ -927,7 +929,7 @@
 
   var marketStructureUniverse = [];
   var marketStructureFilter = 'all';
-  var marketStructureSort = 'free_float_asc';
+  var marketStructureSort = 'ticker_asc';
   var marketStructureSearchQuery = '';
   var marketStructureSelectedTicker = null;
   var marketStructureLoading = false;
@@ -3242,7 +3244,7 @@
       var data = await response.json().catch(function () { return {}; });
       if (isStaleRun()) return;
 
-      var rawOutput = data.html || data.reply || '';
+      var rawOutput = data.html || data.reply || data.analysis || '';
       if (rawOutput) {
         var html = rawOutput.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
         // F-086: index.html always sanitizes AI HTML before the bold transform;
