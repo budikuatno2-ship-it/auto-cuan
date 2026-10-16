@@ -13127,7 +13127,7 @@ var SWING_TIER_COLORS = {
     INVALID: 'bg-red-500/10 text-red-400',
     AVOID: 'bg-red-500/10 text-red-400'
 };
-var SWING_TIER_UNKNOWN_LABEL = 'TIER -';
+var SWING_TIER_UNKNOWN_LABEL = 'TIER —';
 var SWING_TIER_UNKNOWN_COLOR = 'bg-gray-500/10 text-gray-400';
 
 function swingTierShort(tier) {
@@ -14324,7 +14324,7 @@ function dashboardTop5NoteText(data, isAwaiting, gateLabel) {
             : 'Menunggu Top 5 final dikunci. Monitor aktif setelah penguncian.';
     }
     if (payload.top5_locked) {
-        return 'Top 5 Radar Terkunci. Monitor update tiap 30 menit saat jam bursa.';
+        return 'Top 5 Radar Terkunci (Final/Locked) (' + gateLabel + '). Monitor update tiap 30 menit saat jam bursa.';
     }
     return payload.update_note || 'Top 5 Radar tersedia.';
 }

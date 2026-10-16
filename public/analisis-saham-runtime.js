@@ -1946,7 +1946,7 @@
     activeFilter: 'all',
     searchQuery: '',
     sectorFilter: 'all',
-    sortKey: 'ticker_asc',
+    sortKey: 'free_float_asc',
     selectedTicker: null,
     lastSelectedRowEl: null,
     isLoading: false,
@@ -2112,13 +2112,13 @@
       this.searchQuery = '';
       this.activeFilter = 'all';
       this.sectorFilter = 'all';
-      this.sortKey = 'ticker_asc';
+      this.sortKey = 'free_float_asc';
       var inp = byId('marketStructureSearchInput');
       if (inp) inp.value = '';
       var sec = byId('marketStructureSectorSelect');
       if (sec) sec.value = 'all';
       var sel = byId('marketStructureSortSelect');
-      if (sel) sel.value = 'ticker_asc';
+      if (sel) sel.value = 'free_float_asc';
       this.setFilter('all');
     },
 
