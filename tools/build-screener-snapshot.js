@@ -153,8 +153,13 @@ async function fetchAction(baseUrl, secret, action, fetchFn) {
 /**
  * Build the snapshot object. Pure: takes already-fetched payloads so the shape
  * can be unit-tested without a live server.
+ *
+ * FIX-24: this is the public, require-safe builder. Nothing is fetched, nothing
+ * is written, and the input payloads are never mutated - a caller can compose a
+ * snapshot in-process (tests, ad-hoc tooling, a future in-app refresh route)
+ * without spawning the CLI.
  */
-function buildSnapshot(payloads, options) {
+function buildScreenerSnapshot(payloads, options) {
   const opts = options || {};
   const snapshot = {
     updated_at: opts.updatedAt || new Date().toISOString(),
@@ -180,6 +185,9 @@ function buildSnapshot(payloads, options) {
 
   return { snapshot, counts };
 }
+
+// Backwards-compatible alias: the original name stays valid for existing callers.
+const buildSnapshot = buildScreenerSnapshot;
 
 async function main(options, deps) {
   options = options || parseArgs(process.argv);
@@ -274,6 +282,7 @@ module.exports = {
   usableRows,
   extractSourceDate,
   fetchAction,
+  buildScreenerSnapshot,
   buildSnapshot,
   main
 };

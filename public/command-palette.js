@@ -311,9 +311,45 @@
       });
     }
 
-    // 3. Switch Chart Workstation if initialized
+    // 3. FIX-22: jump into the dedicated Chart Workstation lens and hand the
+    // screener preset plus any known trading plan levels to the chart.
+    var chartPreset = root.__acActiveScreenerPreset || 'simpel';
+    var chartPlanLevels = null;
+    try {
+      if (Array.isArray(root.__acLastPresetResults)) {
+        for (var _i = 0; _i < root.__acLastPresetResults.length; _i++) {
+          var _row = root.__acLastPresetResults[_i];
+          if (String(_row && _row.ticker || '').toUpperCase() === safeTicker) {
+            var _eLow = Number(_row.entry_low || _row.entryLow || _row.buy_low);
+            var _eHigh = Number(_row.entry_high || _row.entryHigh || _row.buy_high);
+            var _e = Number(_row.entry || _row.last_price || _row.close || (_eHigh > 0 ? _eHigh : _eLow));
+            var _sl = Number(_row.sl || _row.stop_loss || _row.stopLoss);
+            var _tp1 = Number(_row.tp1 || _row.target1 || _row.tp1n);
+            var _tp2 = Number(_row.tp2 || _row.target2 || _row.tp2n);
+            if (Number.isFinite(_e) && _e > 0 && Number.isFinite(_sl) && _sl > 0 && Number.isFinite(_tp1) && _tp1 > 0) {
+              chartPlanLevels = { entry: _e, sl: _sl, tp1: _tp1, tp2: Number.isFinite(_tp2) && _tp2 > 0 ? _tp2 : _tp1 };
+            }
+            break;
+          }
+        }
+      }
+    } catch (_) { chartPlanLevels = null; }
+
+    if (typeof root.navigateTo === 'function') {
+      try { root.navigateTo('analisis', 'chart'); } catch (_) {}
+    }
+    var chartTab = typeof document !== 'undefined' && document ? document.getElementById('tabChartWorkstation') : null;
+    if (chartTab && typeof chartTab.click === 'function' && !chartTab.classList.contains('is-active')) {
+      chartTab.click();
+    }
+
+    // Switch Chart Workstation with preset + plan levels if initialized
     if (root.AutoCuanChartWorkstation && typeof root.AutoCuanChartWorkstation.switchTicker === 'function') {
-      root.AutoCuanChartWorkstation.switchTicker(safeTicker);
+      root.AutoCuanChartWorkstation.switchTicker('mainChart', safeTicker, {
+        preset: chartPreset,
+        planLevels: chartPlanLevels,
+        source: 'command-palette'
+      });
     }
 
     // 4. Feedback toast

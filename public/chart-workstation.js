@@ -53,7 +53,7 @@
       title: 'Struktur Pasar',
       description: 'Break of Structure dan Zona Likuiditas',
       layers: [
-        { id: 'market_structure', name: 'Break of Structure (BOS)', desc: 'Dalam Riset (Nonaktif)', disabled: true, default: false }
+        { id: 'market_structure', name: 'Break of Structure (BOS)', desc: 'Penembusan Swing High (Bullish BOS) & Swing Low (Bearish BOS)', color: '#06b6d4', default: false }
       ]
     },
     {
@@ -71,7 +71,7 @@
       layers: [
         { id: 'volume_bars', name: 'Bar Volume Transaksi', desc: 'Histogram volume perdagangan per candle', default: true },
         { id: 'vol_avg20', name: 'Volume Rata-rata 20 Hari', desc: 'Garis acuan volume normal', color: '#94a3b8', default: true },
-        { id: 'vol_profile', name: 'Volume Profile', desc: 'Dalam Riset (Nonaktif)', disabled: true, default: false }
+        { id: 'vol_profile', name: 'Volume Profile (POC / VAH / VAL)', desc: 'Point of Control dan Value Area (70% Volume)', color: '#f59e0b', default: false }
       ]
     },
     {
@@ -152,6 +152,78 @@
   };
 
   // ============================================================
+  // 5 DYNAMIC MODE STRATEGY CONFIGURATIONS
+  // ============================================================
+  var MODE_STRATEGY_CONFIG = {
+    simpel: {
+      id: 'simpel',
+      name: 'Simpel (Swing Standar)',
+      lookbackSR: 20,
+      slBufferPct: 0.97,
+      slMaxPct: 0.95,
+      tp1Multiplier: 1.6,
+      tp2Multiplier: 2.8,
+      maxHoldingDays1D: 12,
+      maxHoldingDays1W: 6,
+      volAvgMultiplier: 1.05,
+      strategyType: 'swing'
+    },
+    scalping: {
+      id: 'scalping',
+      name: 'Scalping (Momentum Kilat)',
+      lookbackSR: 8,
+      slBufferPct: 0.985,
+      slMaxPct: 0.975,
+      slTicks: 3,
+      tp1Multiplier: 1.5,
+      tp2Multiplier: 2.5,
+      maxHoldingDays1D: 3,
+      maxHoldingDays1W: 2,
+      volAvgMultiplier: 1.15,
+      strategyType: 'scalping'
+    },
+    swing: {
+      id: 'swing',
+      name: 'Swing (Trend Following)',
+      lookbackSR: 20,
+      slBufferPct: 0.965,
+      slMaxPct: 0.95,
+      tp1Multiplier: 1.6,
+      tp2Multiplier: 2.8,
+      maxHoldingDays1D: 12,
+      maxHoldingDays1W: 6,
+      volAvgMultiplier: 1.05,
+      strategyType: 'swing'
+    },
+    investor: {
+      id: 'investor',
+      name: 'Investor (Posisi Jangka Panjang)',
+      lookbackSR: 60,
+      slBufferPct: 0.92,
+      slMaxPct: 0.90,
+      tp1Multiplier: 1.8,
+      tp2Multiplier: 3.5,
+      maxHoldingDays1D: 45,
+      maxHoldingDays1W: 16,
+      volAvgMultiplier: 1.0,
+      strategyType: 'investor'
+    },
+    pro: {
+      id: 'pro',
+      name: 'Pro (Multi-Factor Kuantitatif)',
+      lookbackSR: 30,
+      slBufferPct: 0.96,
+      slMaxPct: 0.94,
+      tp1Multiplier: 1.75,
+      tp2Multiplier: 3.0,
+      maxHoldingDays1D: 15,
+      maxHoldingDays1W: 8,
+      volAvgMultiplier: 1.05,
+      strategyType: 'pro'
+    }
+  };
+
+  // ============================================================
   // MULTI-TIMEFRAME AGGREGATION (1D -> 1W)
   // ============================================================
   function parseDate(timeVal) {
@@ -195,6 +267,9 @@
 
       var d = parseDate(c.time);
       var mondayKey = getMondayOfDate(d);
+      var fNet = Number(c.foreign_net_value != null ? c.foreign_net_value : (c.foreign_net || 0));
+      var fBuy = Number(c.foreignBuy != null ? c.foreignBuy : (c.foreign_buy || 0));
+      var fSell = Number(c.foreignSell != null ? c.foreignSell : (c.foreign_sell || 0));
 
       if (!weeksMap[mondayKey]) {
         weeksMap[mondayKey] = {
@@ -205,8 +280,12 @@
           close: Number(c.close),
           volume: Number(c.volume || 0),
           candlesCount: 1,
-          foreignBuy: Number(c.foreignBuy || 0),
-          foreignSell: Number(c.foreignSell || 0)
+          foreignBuy: fBuy,
+          foreignSell: fSell,
+          foreign_buy: fBuy,
+          foreign_sell: fSell,
+          foreign_net: fNet,
+          foreign_net_value: fNet
         };
         weekOrder.push(mondayKey);
       } else {
@@ -217,8 +296,12 @@
         if (low < w.low) w.low = low;
         w.close = Number(c.close);
         w.volume += Number(c.volume || 0);
-        w.foreignBuy += Number(c.foreignBuy || 0);
-        w.foreignSell += Number(c.foreignSell || 0);
+        w.foreignBuy += fBuy;
+        w.foreignSell += fSell;
+        w.foreign_buy = w.foreignBuy;
+        w.foreign_sell = w.foreignSell;
+        w.foreign_net = (w.foreign_net || 0) + fNet;
+        w.foreign_net_value = w.foreign_net;
         w.candlesCount++;
       }
     }
@@ -233,14 +316,28 @@
   // ============================================================
   // INDICATOR CALCULATORS (PURE DETERMINISTIC MATH)
   // ============================================================
+  // FIX-20: every accumulator below skips non-finite closes so a single bad
+  // reading cannot turn the whole indicator series into NaN.
+  function finiteClose(candle) {
+    if (!candle) return null;
+    var raw = candle.close;
+    if (raw == null || raw === '') return null;
+    var num = Number(raw);
+    return Number.isFinite(num) ? num : null;
+  }
+
   function calculateSMA(candles, period) {
     var out = [];
     if (!candles || candles.length < period) return out;
     for (var i = period - 1; i < candles.length; i++) {
       var sum = 0;
+      var skipped = false;
       for (var k = i - period + 1; k <= i; k++) {
-        sum += Number(candles[k].close);
+        var v = finiteClose(candles[k]);
+        if (v == null) { skipped = true; break; }
+        sum += v;
       }
+      if (skipped) continue;
       out.push({ time: candles[i].time, value: Math.round((sum / period) * 100) / 100 });
     }
     return out;
@@ -253,14 +350,18 @@
 
     var initialSum = 0;
     for (var s = 0; s < period; s++) {
-      initialSum += Number(candles[s].close);
+      var seed = finiteClose(candles[s]);
+      if (seed == null) return out;
+      initialSum += seed;
     }
     var prevEma = initialSum / period;
     out.push({ time: candles[period - 1].time, value: Math.round(prevEma * 100) / 100 });
 
     for (var i = period; i < candles.length; i++) {
-      var close = Number(candles[i].close);
+      var close = finiteClose(candles[i]);
+      if (close == null) continue; // skip the bad reading, keep the running mean
       prevEma = (close - prevEma) * kMult + prevEma;
+      if (!Number.isFinite(prevEma)) continue;
       out.push({ time: candles[i].time, value: Math.round(prevEma * 100) / 100 });
     }
     return out;
@@ -274,15 +375,23 @@
 
     for (var i = period - 1; i < candles.length; i++) {
       var sum = 0;
-      for (var k = i - period + 1; k <= i; k++) sum += Number(candles[k].close);
+      var bad = false;
+      for (var k = i - period + 1; k <= i; k++) {
+        var cv = finiteClose(candles[k]);
+        if (cv == null) { bad = true; break; }
+        sum += cv;
+      }
+      if (bad) continue;
       var ma = sum / period;
 
       var varianceSum = 0;
       for (var j = i - period + 1; j <= i; j++) {
-        var diff = Number(candles[j].close) - ma;
+        var jv = finiteClose(candles[j]);
+        var diff = jv - ma;
         varianceSum += diff * diff;
       }
       var stdDev = Math.sqrt(varianceSum / period);
+      if (!Number.isFinite(ma) || !Number.isFinite(stdDev)) continue;
 
       var time = candles[i].time;
       middle.push({ time: time, value: Math.round(ma * 100) / 100 });
@@ -292,22 +401,66 @@
     return { upper: upper, middle: middle, lower: lower };
   }
 
+  // FIX-19: Wilder's Smoothing (RMA) — the exact TradingView/`lib/daily-rsi`
+  // formulation. The previous SMA-over-window version drifted 3-5 points.
+  function wilderRsiFromAverages(avgGain, avgLoss) {
+    if (avgGain === 0 && avgLoss === 0) return 50;
+    if (avgLoss === 0) return 100;
+    if (avgGain === 0) return 0;
+    var rs = avgGain / avgLoss;
+    if (!Number.isFinite(rs)) return 100;
+    return 100 - (100 / (1 + rs));
+  }
+
+  function wilderRsiSeries(closes, period) {
+    var p = Number(period) || 14;
+    var series = new Array(closes.length).fill(null);
+    if (!Array.isArray(closes) || closes.length < p + 1) return series;
+
+    var gains = [];
+    var losses = [];
+    for (var i = 1; i < closes.length; i++) {
+      var delta = closes[i] - closes[i - 1];
+      gains.push(Math.max(delta, 0));
+      losses.push(Math.max(-delta, 0));
+    }
+
+    var avgGain = 0;
+    var avgLoss = 0;
+    for (var j = 0; j < p; j++) {
+      avgGain += gains[j];
+      avgLoss += losses[j];
+    }
+    avgGain /= p;
+    avgLoss /= p;
+    series[p] = wilderRsiFromAverages(avgGain, avgLoss);
+
+    for (var k = p; k < gains.length; k++) {
+      avgGain = (avgGain * (p - 1) + gains[k]) / p;
+      avgLoss = (avgLoss * (p - 1) + losses[k]) / p;
+      series[k + 1] = wilderRsiFromAverages(avgGain, avgLoss);
+    }
+    return series;
+  }
+
   function calculateRSI(candles, period) {
     period = period || 14;
     var out = [];
     if (!candles || candles.length <= period) return out;
 
-    var closes = candles.map(function (c) { return Number(c.close); });
-    for (var i = period; i < closes.length; i++) {
-      var gains = 0, losses = 0;
-      for (var k = i - (period - 1); k <= i; k++) {
-        var d = closes[k] - closes[k - 1];
-        if (d > 0) gains += d; else losses -= d;
-      }
-      var ag = gains / period;
-      var al = losses / period;
-      var rsi = al === 0 ? 100 : Math.round((100 - 100 / (1 + ag / al)) * 100) / 100;
-      out.push({ time: candles[i].time, value: rsi });
+    var closes = [];
+    for (var n = 0; n < candles.length; n++) {
+      var raw = candles[n] && candles[n].close;
+      if (raw == null || raw === '') return out;
+      var num = Number(raw);
+      if (!Number.isFinite(num)) return out;
+      closes.push(num);
+    }
+
+    var series = wilderRsiSeries(closes, period);
+    for (var i = period; i < candles.length; i++) {
+      if (series[i] == null) continue;
+      out.push({ time: candles[i].time, value: Math.round(series[i] * 100) / 100 });
     }
     return out;
   }
@@ -362,49 +515,107 @@
   // ============================================================
   // IDX TICK SIZE & VALIDATION
   // ============================================================
-  function getIdxTickSize(price) {
-    if (!price || isNaN(price) || price < 200) return 1;
-    if (price < 500) return 2;
-    if (price < 2000) return 5;
-    if (price < 5000) return 10;
+  // FIX-20: IDX fractional ladder has a dedicated Rp1 rung for the FCA and
+  // Akselerasi/Pemantauan boards. The ladder must also never return 0 for an
+  // invalid or sub-Rp1 input — 1 is the smallest legal tick.
+  function isFcaBoardTick(board, isFca) {
+    if (isFca === true) return true;
+    var b = String(board || '').toUpperCase();
+    return b.indexOf('AKSELERASI') >= 0 || b.indexOf('PEMANTAUAN') >= 0 || b.indexOf('FCA') >= 0;
+  }
+
+  function getIdxTickSize(price, board, isFca) {
+    if (isFcaBoardTick(board, isFca)) return 1;
+    var p = Number(price);
+    if (!Number.isFinite(p) || p <= 0) return 1;
+    if (p < 200) return 1;
+    if (p < 500) return 2;
+    if (p < 2000) return 5;
+    if (p < 5000) return 10;
     return 25;
   }
 
-  function roundToIdxTick(price, direction) {
-    if (!price || isNaN(price) || price <= 0) return 0;
-    var p = Math.round(price);
-    var tick = getIdxTickSize(p);
-    if (direction === 'up') return Math.ceil(p / tick) * tick;
-    if (direction === 'down') return Math.floor(p / tick) * tick;
-    return Math.round(p / tick) * tick;
+  function roundToIdxTick(price, direction, board, isFca) {
+    var raw = Number(price);
+    if (!Number.isFinite(raw) || raw <= 0) return 0;
+    var p = Math.max(1, Math.round(raw));
+    var tick = getIdxTickSize(p, board, isFca);
+    var snapped;
+    if (direction === 'up') snapped = Math.ceil(p / tick) * tick;
+    else if (direction === 'down') snapped = Math.floor(p / tick) * tick;
+    else snapped = Math.round(p / tick) * tick;
+    // FIX-20: a positive price must never snap below the minimum legal tick.
+    return snapped < 1 ? 1 : snapped;
   }
 
   // ============================================================
   // VISUAL TRADING PLAN & SCALE-OUT CALCULATOR
   // ============================================================
-  function calculateTradingPlan(candles, customPlan) {
+  function calculateTradingPlan(candles, customPlan, mode, timeframe) {
     if (!candles || candles.length < 5) return null;
+    mode = (mode || 'swing').toLowerCase();
+    timeframe = timeframe || '1D';
+    var strat = MODE_STRATEGY_CONFIG[mode] || MODE_STRATEGY_CONFIG.swing;
+
     var latest = candles[candles.length - 1];
-    var lastPrice = Number(latest.close);
+    var lastPrice = Number(latest && latest.close);
+
+    // If latest candle has invalid or non-positive close, search backwards for the last valid bar
+    if (!Number.isFinite(lastPrice) || lastPrice <= 0) {
+      for (var ci = candles.length - 2; ci >= 0; ci--) {
+        var candClose = Number(candles[ci] && candles[ci].close);
+        if (Number.isFinite(candClose) && candClose > 0) {
+          latest = candles[ci];
+          lastPrice = candClose;
+          break;
+        }
+      }
+    }
+    if (!Number.isFinite(lastPrice) || lastPrice <= 0) return null;
 
     var entry = customPlan && customPlan.entry ? roundToIdxTick(Number(customPlan.entry)) : roundToIdxTick(lastPrice);
+    if (!entry || entry <= 0) entry = roundToIdxTick(lastPrice);
+    if (!entry || entry <= 0) entry = Math.max(1, Math.round(lastPrice));
 
+    // Support is derived from CLOSED bars only.
     var minLow = Infinity;
-    var lookback = Math.min(20, candles.length);
-    for (var i = candles.length - lookback; i < candles.length; i++) {
-      if (candles[i].low < minLow) minLow = Number(candles[i].low);
+    var closedCandles = candles.length > 1 ? candles.slice(0, candles.length - 1) : candles;
+    var lookback = Math.min(strat.lookbackSR, closedCandles.length);
+    for (var i = closedCandles.length - lookback; i < closedCandles.length; i++) {
+      var lo = Number(closedCandles[i] && closedCandles[i].low);
+      if (Number.isFinite(lo) && lo > 0 && lo < minLow) minLow = lo;
     }
+    if (!Number.isFinite(minLow) || minLow <= 0) minLow = Number(lastPrice) || 1;
 
-    var sl = customPlan && customPlan.sl ? roundToIdxTick(Number(customPlan.sl), 'down') : roundToIdxTick(minLow * 0.98, 'down');
-    if (sl >= entry) sl = roundToIdxTick(entry * 0.96, 'down');
+    var sl;
+    if (customPlan && customPlan.sl) {
+      sl = roundToIdxTick(Number(customPlan.sl), 'down');
+    } else if (strat.slTicks) {
+      var tick = getIdxTickSize(entry);
+      sl = roundToIdxTick(entry - (strat.slTicks * tick), 'down');
+      if (sl > minLow && minLow > 0) sl = roundToIdxTick(minLow, 'down');
+    } else {
+      sl = roundToIdxTick(minLow * strat.slBufferPct, 'down');
+    }
+    if (sl >= entry) sl = roundToIdxTick(entry * (strat.slMaxPct || 0.96), 'down');
+    if (sl <= 0) sl = Math.max(1, entry - getIdxTickSize(entry));
 
     var risk = entry - sl;
-    var minReward = Math.round(risk * 1.5);
-    var tp1 = customPlan && customPlan.tp1 ? roundToIdxTick(Number(customPlan.tp1), 'up') : roundToIdxTick(entry + minReward, 'up');
-    var tp2 = customPlan && customPlan.tp2 ? roundToIdxTick(Number(customPlan.tp2), 'up') : roundToIdxTick(entry + Math.round(risk * 2.5), 'up');
+    if (risk <= 0) risk = getIdxTickSize(entry);
 
-    // If explicit unsafe RR flag is set (e.g. for warning test in shot 08)
-    if (customPlan && customPlan.forceUnsafeRR) {
+    var tp1Mult = strat.tp1Multiplier || 1.5;
+    var tp2Mult = strat.tp2Multiplier || 2.5;
+    var minReward = Math.round(risk * tp1Mult);
+
+    var tp1 = customPlan && customPlan.tp1 ? roundToIdxTick(Number(customPlan.tp1), 'up') : roundToIdxTick(entry + minReward, 'up');
+    var tp2 = customPlan && customPlan.tp2 ? roundToIdxTick(Number(customPlan.tp2), 'up') : roundToIdxTick(entry + Math.round(risk * tp2Mult), 'up');
+    if (tp1 <= entry) tp1 = entry + Math.max(1, Math.round(risk * tp1Mult));
+    if (tp2 <= tp1) tp2 = entry + Math.max(2, Math.round(risk * tp2Mult));
+
+    // FIX-20: the anonymous `forceUnsafeRR` backdoor is removed — it let any
+    // caller (or a crafted payload) bypass the 1.5 R/R safety gate. A test-only
+    // escape hatch now requires an explicit, namespaced opt-in.
+    if (customPlan && customPlan.__allowTestForceUnsafe === true && customPlan.forceUnsafeRR === true) {
       tp1 = roundToIdxTick(entry + Math.round(risk * 1.49), 'down');
     }
 
@@ -486,10 +697,9 @@
       var mfv = mfm * v;
       mfvList.push(mfv);
       volList.push(v);
-      if (i < period - 1) {
-        results.push({ time: c.time, value: 0.0 });
-        continue;
-      }
+      // FIX-20: no fabricated 0.0 warmup points — the series starts at
+      // period-1, exactly like calculateSMA/calculateEMA/calculateBollinger.
+      if (i < period - 1) continue;
       var sumMfv = 0, sumVol = 0;
       for (var j = i - period + 1; j <= i; j++) {
         sumMfv += mfvList[j];
@@ -517,10 +727,6 @@
       var c = candles[i];
       var key = String(c.time).slice(0, 10);
       var net = mapByDate[key] != null ? mapByDate[key] : Number(c.foreign_net_value || c.foreign_net || 0);
-      if (net === 0 && c.close && c.open) {
-        var dir = Number(c.close) >= Number(c.open) ? 1 : -1;
-        net = Math.round(Number(c.volume || 0) * Number(c.close) * 0.12 * dir);
-      }
       cum += net;
       out.push({ time: c.time, net: net, value: cum });
     }
@@ -546,12 +752,24 @@
       var volRatio = vol / avgVol;
       var range = high - low;
       var body = Math.abs(close - open);
-      var bodyRatio = range > 0 ? body / range : 0.5;
-      var direction = close >= open ? 1 : -1;
-      var rawIntensity = volRatio * (0.5 + 0.5 * bodyRatio) * direction;
+      // Activity measurement (always >= 0): volume ratio weighted by candle body dominance
+      // Formula: (volume / volSma20) * (Math.abs(close - open) / (high - low || 1))
+      var bodyRatio = range > 0 ? (body / range) : 0.5;
+      var rawIntensity = volRatio * (0.4 + 0.6 * bodyRatio);
       var score = Math.round(rawIntensity * 100) / 100;
-      var color = '#8b5cf680'; // bar ungu
-      if (Math.abs(score) >= 2.0) color = '#8b5cf6'; // ungu pekat saat lonjakan
+      if (score < 0) score = 0;
+
+      // Color coding according to Auto-Cuan indicator rules:
+      // Hijau jika close >= open (aktivitas didominasi buyer)
+      // Merah jika close < open (aktivitas didominasi seller)
+      // Kuning / oranye jika Intensity >= 2.0 (lonjakan intensitas ekstrem / anomali)
+      var color = '#10b981'; // buyer dominant
+      if (score >= 2.0) {
+        color = '#f59e0b'; // lonjakan intensitas anomali (> 2.0x)
+      } else if (close < open) {
+        color = '#ef4444'; // seller dominant
+      }
+
       results.push({ time: c.time, value: score, color: color });
     }
     return results;
@@ -594,26 +812,276 @@
     windowPeriod = windowPeriod || 20;
     if (!candles || candles.length === 0) return [];
     var out = [];
-    var typicalPrices = candles.map(function(c) {
-      return (Number(c.high || c.close) + Number(c.low || c.close) + Number(c.close)) / 3;
-    });
-    var vols = candles.map(function(c) { return Number(c.volume || 0); });
+    var cumLiq = 0;
+    var cumLiqArr = [];
 
+    // 1. Calculate Money Flow / Liquidity Pressure & accumulate cumLiq
+    for (var i = 0; i < candles.length; i++) {
+      var c = candles[i];
+      var high = Number(c.high != null ? c.high : c.close);
+      var low = Number(c.low != null ? c.low : c.close);
+      var close = Number(c.close);
+      var vol = Number(c.volume || 0);
+      var turnover = vol * close;
+      var range = high - low;
+      // mfMult = ((c - l) - (h - c)) / (h - l || 1)
+      var mfMult = range > 0 ? ((close - low) - (high - close)) / range : 0;
+      var liqPressure = mfMult * turnover;
+      cumLiq += liqPressure;
+      cumLiqArr.push(cumLiq);
+    }
+
+    // 2. Project cumLiq to the running price range of the stock
     for (var i = 0; i < candles.length; i++) {
       var p = Math.min(i + 1, windowPeriod);
-      var totalVol = 0;
-      var weightedSum = 0;
-      for (var j = i - p + 1; j <= i; j++) {
-        var v = vols[j];
-        if (v > 0) {
-          totalVol += v;
-          weightedSum += typicalPrices[j] * v;
-        }
+      var startIdx = i - p + 1;
+
+      var pSum = 0;
+      var pMin = Infinity;
+      var pMax = -Infinity;
+      var clSum = 0;
+      var clMin = Infinity;
+      var clMax = -Infinity;
+
+      for (var j = startIdx; j <= i; j++) {
+        var cj = Number(candles[j].close);
+        var hj = Number(candles[j].high != null ? candles[j].high : cj);
+        var lj = Number(candles[j].low != null ? candles[j].low : cj);
+        pSum += cj;
+        if (lj < pMin) pMin = lj;
+        if (hj > pMax) pMax = hj;
+
+        var cl = cumLiqArr[j];
+        clSum += cl;
+        if (cl < clMin) clMin = cl;
+        if (cl > clMax) clMax = cl;
       }
-      var vwap = totalVol > 0 ? Math.round(weightedSum / totalVol) : Number(candles[i].close);
-      out.push({ time: candles[i].time, value: vwap });
+
+      var pAvg = pSum / p;
+      var clAvg = clSum / p;
+      var halfPriceRange = Math.max((pMax - pMin) / 2, pAvg * 0.02);
+      var clHalfRange = (clMax - clMin) / 2;
+
+      var normPressure = clHalfRange > 0 ? (cumLiqArr[i] - clAvg) / clHalfRange : 0;
+      if (normPressure > 1.5) normPressure = 1.5;
+      if (normPressure < -1.5) normPressure = -1.5;
+
+      // Project into price space: When smart money is heavily buying (cumLiq rising),
+      // LPM line rises sharply above the price candles, creating Bullish LPM Divergence!
+      var lpmValue = Math.round(pAvg + (normPressure * halfPriceRange * 1.35));
+      out.push({ time: candles[i].time, value: lpmValue });
     }
     return out;
+  }
+
+  // ============================================================
+  // PIVOT EXTRACTOR & ADVANCED S/R (FRACTAL 3-BAR/5-BAR)
+  // ============================================================
+  function calculateSwingPivots(candles, lookback) {
+    lookback = Math.min(Number(lookback) || 30, candles.length);
+    if (!candles || candles.length < 5) return { support: null, resistance: null, swingHighs: [], swingLows: [] };
+    var startIdx = Math.max(0, candles.length - lookback);
+    var swingHighs = [];
+    var swingLows = [];
+
+    for (var i = startIdx + 2; i < candles.length - 2; i++) {
+      var c = candles[i];
+      var h = Number(c.high != null ? c.high : c.close);
+      var l = Number(c.low != null ? c.low : c.close);
+
+      // 5-bar Fractal Swing High
+      var hPrev1 = Number(candles[i - 1].high != null ? candles[i - 1].high : candles[i - 1].close);
+      var hPrev2 = Number(candles[i - 2].high != null ? candles[i - 2].high : candles[i - 2].close);
+      var hNext1 = Number(candles[i + 1].high != null ? candles[i + 1].high : candles[i + 1].close);
+      var hNext2 = Number(candles[i + 2].high != null ? candles[i + 2].high : candles[i + 2].close);
+
+      if (h > hPrev1 && h > hPrev2 && h >= hNext1 && h > hNext2) {
+        swingHighs.push({ time: c.time, price: h, index: i });
+      }
+
+      // 5-bar Fractal Swing Low
+      var lPrev1 = Number(candles[i - 1].low != null ? candles[i - 1].low : candles[i - 1].close);
+      var lPrev2 = Number(candles[i - 2].low != null ? candles[i - 2].low : candles[i - 2].close);
+      var lNext1 = Number(candles[i + 1].low != null ? candles[i + 1].low : candles[i + 1].close);
+      var lNext2 = Number(candles[i + 2].low != null ? candles[i + 2].low : candles[i + 2].close);
+
+      if (l < lPrev1 && l < lPrev2 && l <= lNext1 && l < lNext2) {
+        swingLows.push({ time: c.time, price: l, index: i });
+      }
+    }
+
+    var lastClose = Number(candles[candles.length - 1].close);
+    var resPivot = swingHighs.length > 0 ? swingHighs[swingHighs.length - 1].price : null;
+    var supPivot = swingLows.length > 0 ? swingLows[swingLows.length - 1].price : null;
+
+    // Fallback to min/max if no fractals
+    if (!resPivot) {
+      var maxH = -Infinity;
+      for (var hi = startIdx; hi < candles.length; hi++) {
+        var ch = Number(candles[hi].high != null ? candles[hi].high : candles[hi].close);
+        if (ch > maxH) maxH = ch;
+      }
+      resPivot = maxH > 0 && Number.isFinite(maxH) ? maxH : lastClose * 1.05;
+    }
+    if (!supPivot) {
+      var minL = Infinity;
+      for (var li = startIdx; li < candles.length; li++) {
+        var cl = Number(candles[li].low != null ? candles[li].low : candles[li].close);
+        if (cl < minL) minL = cl;
+      }
+      supPivot = minL > 0 && Number.isFinite(minL) ? minL : lastClose * 0.95;
+    }
+
+    return {
+      resistance: roundToIdxTick(resPivot),
+      support: roundToIdxTick(supPivot),
+      swingHighs: swingHighs,
+      swingLows: swingLows
+    };
+  }
+
+  // ============================================================
+  // BREAK OF STRUCTURE (BOS) CALCULATOR
+  // ============================================================
+  function calculateBOS(candles) {
+    if (!candles || candles.length < 15) return { events: [], lines: [], latestStatus: 'NETRAL' };
+    var pivots = calculateSwingPivots(candles, Math.min(60, candles.length));
+    var events = [];
+    var lines = [];
+    var latestClose = Number(candles[candles.length - 1].close);
+
+    // Check for Bullish BOS (Close breaks above recent Swing High)
+    if (pivots.swingHighs.length > 0) {
+      var lastSh = pivots.swingHighs[pivots.swingHighs.length - 1];
+      var isBullishBOS = latestClose > lastSh.price;
+      lines.push({
+        price: lastSh.price,
+        color: '#06b6d4',
+        title: 'BOS High: Rp ' + lastSh.price.toLocaleString('id-ID'),
+        type: 'high'
+      });
+      if (isBullishBOS) {
+        events.push({
+          type: 'BULLISH_BOS',
+          label: 'Bullish BOS Terkonfirmasi',
+          level: lastSh.price,
+          time: candles[candles.length - 1].time
+        });
+      }
+    }
+
+    // Check for Bearish BOS (Close breaks below recent Swing Low)
+    if (pivots.swingLows.length > 0) {
+      var lastSl = pivots.swingLows[pivots.swingLows.length - 1];
+      var isBearishBOS = latestClose < lastSl.price;
+      lines.push({
+        price: lastSl.price,
+        color: '#ec4899',
+        title: 'BOS Low: Rp ' + lastSl.price.toLocaleString('id-ID'),
+        type: 'low'
+      });
+      if (isBearishBOS) {
+        events.push({
+          type: 'BEARISH_BOS',
+          label: 'Bearish BOS Terkonfirmasi',
+          level: lastSl.price,
+          time: candles[candles.length - 1].time
+        });
+      }
+    }
+
+    return {
+      events: events,
+      lines: lines,
+      latestStatus: events.length > 0 ? events[events.length - 1].label : 'Dalam Struktur Konsolidasi'
+    };
+  }
+
+  // ============================================================
+  // VOLUME PROFILE (POC, VAH, VAL) CALCULATOR
+  // ============================================================
+  function calculateVolumeProfile(candles, numBins) {
+    numBins = numBins || 12;
+    if (!candles || candles.length < 5) return null;
+    var lookback = Math.min(60, candles.length);
+    var slice = candles.slice(-lookback);
+
+    var minPrice = Infinity;
+    var maxPrice = -Infinity;
+    for (var i = 0; i < slice.length; i++) {
+      var h = Number(slice[i].high != null ? slice[i].high : slice[i].close);
+      var l = Number(slice[i].low != null ? slice[i].low : slice[i].close);
+      if (h > maxPrice) maxPrice = h;
+      if (l < minPrice) minPrice = l;
+    }
+    if (maxPrice <= minPrice || !Number.isFinite(maxPrice) || !Number.isFinite(minPrice)) return null;
+
+    var binSize = (maxPrice - minPrice) / numBins;
+    var bins = [];
+    for (var b = 0; b < numBins; b++) {
+      bins.push({
+        low: minPrice + b * binSize,
+        high: minPrice + (b + 1) * binSize,
+        mid: minPrice + (b + 0.5) * binSize,
+        volume: 0
+      });
+    }
+
+    var totalVolume = 0;
+    for (var j = 0; j < slice.length; j++) {
+      var c = slice[j];
+      var typical = (Number(c.high || c.close) + Number(c.low || c.close) + Number(c.close)) / 3;
+      var vol = Number(c.volume || 0);
+      totalVolume += vol;
+
+      var binIdx = Math.min(numBins - 1, Math.max(0, Math.floor((typical - minPrice) / binSize)));
+      bins[binIdx].volume += vol;
+    }
+
+    // Find POC (Point of Control = bin with highest volume)
+    var maxBinVol = -1;
+    var pocBinIdx = 0;
+    for (var k = 0; k < numBins; k++) {
+      if (bins[k].volume > maxBinVol) {
+        maxBinVol = bins[k].volume;
+        pocBinIdx = k;
+      }
+    }
+    var poc = roundToIdxTick(bins[pocBinIdx].mid);
+
+    // Value Area (70% of total volume around POC)
+    var targetVA = totalVolume * 0.70;
+    var vaVol = bins[pocBinIdx].volume;
+    var upIdx = pocBinIdx;
+    var dnIdx = pocBinIdx;
+
+    while (vaVol < targetVA && (upIdx < numBins - 1 || dnIdx > 0)) {
+      var nextUpVol = upIdx < numBins - 1 ? bins[upIdx + 1].volume : 0;
+      var nextDnVol = dnIdx > 0 ? bins[dnIdx - 1].volume : 0;
+      if (nextUpVol >= nextDnVol && upIdx < numBins - 1) {
+        upIdx++;
+        vaVol += bins[upIdx].volume;
+      } else if (dnIdx > 0) {
+        dnIdx--;
+        vaVol += bins[dnIdx].volume;
+      } else if (upIdx < numBins - 1) {
+        upIdx++;
+        vaVol += bins[upIdx].volume;
+      } else {
+        break;
+      }
+    }
+
+    var vah = roundToIdxTick(bins[upIdx].high, 'up');
+    var val = roundToIdxTick(bins[dnIdx].low, 'down');
+
+    return {
+      poc: poc,
+      vah: vah,
+      val: val,
+      bins: bins,
+      totalVolume: totalVolume
+    };
   }
 
   function calculateCorrF(candles, foreignFlow, windowPeriod) {
@@ -640,10 +1108,6 @@
 
       var dtStr = String(slice[i].time || slice[i].date).slice(0, 10);
       var net = mapByDate[dtStr] != null ? mapByDate[dtStr] : Number(slice[i].foreign_net_value || slice[i].foreign_net || 0);
-      if (net === 0 && slice[i].close && slice[i].open) {
-        var dir = Number(slice[i].close) >= Number(slice[i].open) ? 1 : -1;
-        net = Number(slice[i].volume || 0) * 0.15 * dir;
-      }
       netFlows.push(net);
     }
 
@@ -679,12 +1143,15 @@
       totalVol += v;
       var fv = Number(c.foreign_buy || 0) + Number(c.foreign_sell || 0);
       if (fv === 0 && c.foreign_net != null) {
-        fv = Math.abs(Number(c.foreign_net)) * 1.5;
+        // FIX-20: no magic 1.5 gross-up. When only the net is known, the
+        // absolute net is the honest conservative lower bound on gross volume.
+        fv = Math.abs(Number(c.foreign_net));
+        if (!Number.isFinite(fv)) fv = 0;
       }
       foreignVol += fv;
     }
     if (totalVol <= 0) return 0.0;
-    var ratio = foreignVol > 0 ? (foreignVol / (totalVol * 2)) * 100 : 28.5;
+    var ratio = foreignVol > 0 ? (foreignVol / (totalVol * 2)) * 100 : 0.0;
     if (ratio > 100) ratio = 100;
     return Math.round(ratio * 10) / 10;
   }
@@ -692,26 +1159,11 @@
   function calculateLPM(candles, brokerSummary, windowPeriod) {
     windowPeriod = windowPeriod || 20;
     if (!candles || candles.length === 0) return null;
-    var p = Math.min(candles.length, windowPeriod);
-    var slice = candles.slice(-p);
-    var totalVol = 0, weightedSum = 0;
-    for (var i = 0; i < slice.length; i++) {
-      var c = slice[i];
-      var vol = Number(c.volume || 0);
-      var typical = (Number(c.high || c.close) + Number(c.low || c.close) + Number(c.close)) / 3;
-      if (vol > 0 && typical > 0) {
-        totalVol += vol;
-        weightedSum += typical * vol;
-      }
+    var series = calculateLPMSeries(candles, windowPeriod);
+    if (series && series.length > 0) {
+      return series[series.length - 1].value;
     }
-    var vwap = totalVol > 0 ? Math.round(weightedSum / totalVol) : null;
-    var topBuyerAvg = null;
-    if (brokerSummary && Array.isArray(brokerSummary.top_buyers) && brokerSummary.top_buyers.length > 0) {
-      var b1 = brokerSummary.top_buyers[0];
-      if (b1.avg_buy && b1.avg_buy > 0) topBuyerAvg = Math.round(b1.avg_buy);
-      else if (b1.avg_price && b1.avg_price > 0) topBuyerAvg = Math.round(b1.avg_price);
-    }
-    return topBuyerAvg || vwap;
+    return Number(candles[candles.length - 1].close);
   }
 
   function formatIndonesianVolumeCompact(v) {
@@ -735,12 +1187,16 @@
   function getLatestForeignNet(candles, foreignFlow) {
     if (!candles || candles.length === 0) return 0;
     var latest = candles[candles.length - 1];
-    if (latest.foreign_net_value != null) return Number(latest.foreign_net_value);
-    if (latest.foreign_net != null) return Number(latest.foreign_net);
-    var close = Number(latest.close || 0);
-    var vol = Number(latest.volume || 0);
-    var dir = Number(latest.close) >= Number(latest.open || latest.close) ? 1 : -1;
-    return Math.round(vol * close * 0.12 * dir);
+    if (latest && latest.foreign_net_value != null && Number.isFinite(Number(latest.foreign_net_value))) return Number(latest.foreign_net_value);
+    if (latest && latest.foreign_net != null && Number.isFinite(Number(latest.foreign_net))) return Number(latest.foreign_net);
+    if (Array.isArray(foreignFlow) && foreignFlow.length > 0) {
+      var latestFf = foreignFlow[foreignFlow.length - 1];
+      if (latestFf) {
+        var val = latestFf.foreign_net != null ? latestFf.foreign_net : (latestFf.net != null ? latestFf.net : latestFf.net_value);
+        if (val != null && Number.isFinite(Number(val))) return Number(val);
+      }
+    }
+    return 0;
   }
 
   function getLatestMoneyFlow(candles) {
@@ -955,7 +1411,7 @@
 
     html += '</div>';
 
-    var plan = calculateTradingPlan(inst ? inst.dailyCandles : []);
+    var plan = calculateTradingPlan(inst ? inst.dailyCandles : [], inst && inst.options ? inst.options.planLevels : null, inst && inst.state ? inst.state.activePreset : 'swing', inst && inst.state ? inst.state.timeframe : '1D');
     if (plan) {
       html += '<div id="' + chartId + '_plan_panel" class="mt-4 p-3 rounded-xl bg-dark-800/90 border border-dark-700 space-y-2">' +
         (plan.isSafeRR ? '' :
@@ -1010,6 +1466,7 @@
       defaultRoot.renderLightweightChart(chartId, activeCandles, inst.metrics, inst.ticker, Object.assign({}, inst.options, { workstationState: inst.state }));
     }
     updateToolbarDom(chartId);
+    updateDrawerDom(chartId);
     var elapsed = ((typeof performance !== 'undefined') ? performance.now() : Date.now()) - t0;
     if (typeof console !== 'undefined' && console.log) {
       console.log('[Workstation] Timeframe switched to ' + tf + ' in ' + elapsed.toFixed(1) + 'ms');
@@ -1097,6 +1554,7 @@
   }
 
   function updateToolbarDom(chartId) {
+    if (typeof document === 'undefined') return;
     var inst = _workstationInstances[chartId];
     if (!inst) return;
     var badge = document.getElementById(chartId + '_layer_badge');
@@ -1115,6 +1573,7 @@
   }
 
   function updateDrawerDom(chartId) {
+    if (typeof document === 'undefined') return;
     var drawer = document.getElementById(chartId + '_drawer');
     if (drawer) {
       var isHidden = drawer.classList.contains('hidden');
@@ -1126,6 +1585,121 @@
         parent.replaceChild(temp.firstElementChild, drawer);
       }
     }
+  }
+
+  // ============================================================
+  // FIX-22: TRADING-PLAN PRICE LINES ON THE CANDLE SERIES
+  // ============================================================
+  // Draws Entry/SL/TP1/TP2 as real horizontal price lines on the candlestick
+  // series and clears the previous set first, so switching tickers can never
+  // stack stale levels on top of the new plan.
+  var PLAN_LINE_STYLE = { entry: '#38bdf8', sl: '#f43f5e', tp1: '#10b981', tp2: '#22c55e' };
+  var PLAN_LINE_LABEL = { entry: 'Entry', sl: 'SL', tp1: 'TP1', tp2: 'TP2' };
+  var PLAN_LINE_DASH = { entry: 0, sl: 2, tp1: 2, tp2: 1 };
+
+  function clearPlanPriceLines(series) {
+    if (!series || typeof series.removePriceLine !== 'function') return 0;
+    var store = series.__acPlanPriceLines;
+    if (!Array.isArray(store) || !store.length) return 0;
+    var removed = 0;
+    for (var i = 0; i < store.length; i++) {
+      try {
+        series.removePriceLine(store[i]);
+        removed++;
+      } catch (_) {}
+    }
+    series.__acPlanPriceLines = [];
+    return removed;
+  }
+
+  function applyPlanPriceLines(series, plan) {
+    if (!series || typeof series.createPriceLine !== 'function') return [];
+
+    // Always clear first: a re-apply (ticker switch, preset change, plan edit)
+    // must replace the previous levels rather than stack duplicates.
+    clearPlanPriceLines(series);
+
+    var levels = plan && plan.planLevels ? plan.planLevels : plan;
+    if (!levels || typeof levels !== 'object') return [];
+
+    var created = [];
+    var keys = ['entry', 'sl', 'tp1', 'tp2'];
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      var price = Number(levels[key]);
+      if (!Number.isFinite(price) || price <= 0) continue;
+      try {
+        var line = series.createPriceLine({
+          price: price,
+          color: PLAN_LINE_STYLE[key] || '#94a3b8',
+          lineWidth: 1,
+          lineStyle: PLAN_LINE_DASH[key] != null ? PLAN_LINE_DASH[key] : 0,
+          axisLabelVisible: true,
+          title: PLAN_LINE_LABEL[key] || key.toUpperCase()
+        });
+        if (line) created.push(line);
+      } catch (_) {}
+    }
+
+    series.__acPlanPriceLines = created;
+    return created;
+  }
+
+  // ============================================================
+  // SWITCH TICKER & PRESET/PLAN INTEGRATION
+  // ============================================================
+  function switchTicker(arg1, arg2, arg3) {
+    var chartId = 'mainChart';
+    var ticker = '';
+    var options = {};
+
+    if (arguments.length === 1) {
+      ticker = String(arg1 || '').toUpperCase().trim();
+    } else if (arguments.length === 2) {
+      if (typeof arg2 === 'object') {
+        ticker = String(arg1 || '').toUpperCase().trim();
+        options = arg2 || {};
+      } else {
+        chartId = String(arg1 || 'mainChart');
+        ticker = String(arg2 || '').toUpperCase().trim();
+      }
+    } else {
+      chartId = String(arg1 || 'mainChart');
+      ticker = String(arg2 || '').toUpperCase().trim();
+      options = arg3 || {};
+    }
+
+    if (!ticker) return;
+
+    var inst = _workstationInstances[chartId];
+    if (inst) {
+      inst.ticker = ticker;
+      if (options.preset) {
+        inst.state.applyPreset(options.preset);
+      }
+      if (options.planLevels || options.entry || options.sl || options.tp1 || options.tp2) {
+        inst.options = inst.options || {};
+        inst.options.planLevels = options.planLevels || {
+          entry: options.entry,
+          sl: options.sl,
+          tp1: options.tp1,
+          tp2: options.tp2
+        };
+      }
+      updateToolbarDom(chartId);
+      updateDrawerDom(chartId);
+    }
+
+    if (typeof defaultRoot.loadTickerData === 'function') {
+      defaultRoot.loadTickerData(ticker);
+    } else if (typeof defaultRoot.switchTicker === 'function' && defaultRoot.switchTicker !== switchTicker) {
+      defaultRoot.switchTicker(ticker);
+    } else if (typeof defaultRoot.renderLightweightChart === 'function' && inst) {
+      var activeCandles = (inst.state.timeframe === '1W' && inst.weeklyCandles) ? inst.weeklyCandles : inst.dailyCandles;
+      defaultRoot.renderLightweightChart(chartId, activeCandles, inst.metrics, inst.ticker, Object.assign({}, inst.options, { workstationState: inst.state }));
+    }
+
+    return inst;
   }
 
   // ============================================================
@@ -1146,32 +1720,269 @@
   }
 
   // ============================================================
+  // V3_004: HISTORICAL SIMILARITY (NORMALIZED CROSS-CORRELATION)
+  // ============================================================
+  // Mencari jendela historis yang pergerakannya paling mirip dengan jendela
+  // terakhir (z-score + Pearson rho), lalu membentuk jalur proyeksi konsensus
+  // tertimbang. AntiSlop: data kurang => insufficientData:true, bukan tebakan.
+  function zScoreWindow(values) {
+    var n = values.length;
+    if (!n) return null;
+    var mean = 0;
+    for (var i = 0; i < n; i++) mean += values[i];
+    mean /= n;
+    var varSum = 0;
+    for (var j = 0; j < n; j++) {
+      var d = values[j] - mean;
+      varSum += d * d;
+    }
+    var sd = Math.sqrt(varSum / n);
+    var z = new Array(n);
+    for (var k = 0; k < n; k++) {
+      z[k] = sd > 0 ? (values[k] - mean) / sd : 0;
+    }
+    return { z: z, mean: mean, sd: sd };
+  }
+
+  function pearson(a, b) {
+    var n = Math.min(a.length, b.length);
+    if (!n) return 0;
+    var sa = 0, sb = 0, saa = 0, sbb = 0, sab = 0;
+    for (var i = 0; i < n; i++) {
+      sa += a[i]; sb += b[i];
+      saa += a[i] * a[i]; sbb += b[i] * b[i]; sab += a[i] * b[i];
+    }
+    var dA = n * saa - sa * sa;
+    var dB = n * sbb - sb * sb;
+    if (dA <= 0 || dB <= 0) return 0;
+    var r = (n * sab - sa * sb) / Math.sqrt(dA * dB);
+    if (!Number.isFinite(r)) return 0;
+    return Math.max(-1, Math.min(1, r));
+  }
+
+  function calculateHistoricalSimilarity(candles, options) {
+    var opts = options || {};
+    var windowSize = Math.max(5, Number(opts.windowSize) || 20);
+    var horizon = Math.max(1, Number(opts.horizon) || 10);
+    var maxMatches = Math.max(1, Number(opts.maxMatches) || 5);
+    var minGap = Math.max(1, Math.floor(windowSize / 2));
+
+    var empty = { insufficientData: true, matches: [], consensusPath: [] };
+    if (!Array.isArray(candles) || candles.length < windowSize * 2 + horizon) return empty;
+
+    var closes = [];
+    for (var i = 0; i < candles.length; i++) {
+      var raw = candles[i] && candles[i].close;
+      var num = Number(raw);
+      if (raw == null || raw === '' || !Number.isFinite(num)) return empty;
+      closes.push(num);
+    }
+
+    var queryEnd = closes.length - 1;
+    var queryStart = queryEnd - windowSize + 1;
+    var queryWin = zScoreWindow(closes.slice(queryStart, queryEnd + 1));
+    if (!queryWin) return empty;
+
+    var candidates = [];
+    // The candidate window must end early enough that `horizon` bars exist after it.
+    var latestCandidateEnd = queryStart - horizon - 1;
+    for (var end = windowSize - 1; end <= latestCandidateEnd; end++) {
+      var win = zScoreWindow(closes.slice(end - windowSize + 1, end + 1));
+      if (!win) continue;
+      var rho = pearson(queryWin.z, win.z);
+      if (!Number.isFinite(rho) || rho <= 0) continue;
+      candidates.push({ endIndex: end, rho: rho });
+    }
+
+    if (!candidates.length) {
+      return { insufficientData: false, matches: [], consensusPath: [] };
+    }
+
+    candidates.sort(function (a, b) { return b.rho - a.rho || a.endIndex - b.endIndex; });
+
+    // Non-maximum suppression: reject any candidate closer than windowSize/2
+    // to an already-accepted match (prevents 5 overlapping copies of one move).
+    var accepted = [];
+    for (var c = 0; c < candidates.length && accepted.length < maxMatches; c++) {
+      var cand = candidates[c];
+      var tooClose = false;
+      for (var m = 0; m < accepted.length; m++) {
+        if (Math.abs(accepted[m].endIndex - cand.endIndex) < minGap) { tooClose = true; break; }
+      }
+      if (tooClose) continue;
+      accepted.push(cand);
+    }
+
+    var totalWeight = accepted.reduce(function (s, a) { return s + a.rho; }, 0);
+    var consensusPath = [];
+    for (var h = 1; h <= horizon; h++) {
+      var weightedSum = 0;
+      var weightAcc = 0;
+      for (var a2 = 0; a2 < accepted.length; a2++) {
+        var idx = accepted[a2].endIndex + h;
+        if (idx >= closes.length) continue;
+        var base = closes[accepted[a2].endIndex];
+        if (!Number.isFinite(base) || base <= 0) continue;
+        var projected = closes[idx] * (closes[queryEnd] / base);
+        if (!Number.isFinite(projected)) continue;
+        weightedSum += projected * accepted[a2].rho;
+        weightAcc += accepted[a2].rho;
+      }
+      if (weightAcc <= 0) continue;
+      consensusPath.push({
+        h: h,
+        value: roundToIdxTick(weightedSum / weightAcc),
+        weight: Math.round((weightAcc / (totalWeight || 1)) * 1000) / 1000
+      });
+    }
+
+    return {
+      insufficientData: false,
+      matches: accepted.map(function (a) {
+        return {
+          endIndex: a.endIndex,
+          time: candles[a.endIndex] ? candles[a.endIndex].time : null,
+          rho: Math.round(a.rho * 1000) / 1000,
+          weight: Math.round((a.rho / (totalWeight || 1)) * 1000) / 1000
+        };
+      }),
+      consensusPath: consensusPath
+    };
+  }
+
+  // ============================================================
+  // V3_015: 20-DAY VOLATILITY PROBABILITY CONE
+  // ============================================================
+  // Estimasi sigma harian dari log-return, lalu pita probabilitas sqrt-of-time
+  // (68% z=1.0, 90% z=1.645, 95% z=1.96) yang di-snap ke tick IDX.
+  // AntiSlop: < 30 bar valid => insufficientData:true, dailySigma:null.
+  function calculateVolatilityCone(candles, options) {
+    var opts = options || {};
+    var lookback = Math.max(30, Number(opts.lookback) || 60);
+    var days = Math.max(1, Number(opts.days) || 20);
+    var minBars = Math.max(30, Number(opts.minBars) || 30);
+
+    var empty = { insufficientData: true, dailySigma: null, bands: [] };
+    if (!Array.isArray(candles) || candles.length < minBars) return empty;
+
+    var closes = [];
+    for (var i = 0; i < candles.length; i++) {
+      var raw = candles[i] && candles[i].close;
+      var num = Number(raw);
+      if (raw == null || raw === '' || !Number.isFinite(num) || num <= 0) continue;
+      closes.push(num);
+    }
+    if (closes.length < minBars) return empty;
+
+    var slice = closes.slice(-Math.min(lookback, closes.length));
+    var logReturns = [];
+    for (var j = 1; j < slice.length; j++) {
+      var lr = Math.log(slice[j] / slice[j - 1]);
+      if (Number.isFinite(lr)) logReturns.push(lr);
+    }
+    if (logReturns.length < minBars - 1) return empty;
+
+    var mean = 0;
+    for (var k = 0; k < logReturns.length; k++) mean += logReturns[k];
+    mean /= logReturns.length;
+
+    var varSum = 0;
+    for (var m = 0; m < logReturns.length; m++) {
+      var d = logReturns[m] - mean;
+      varSum += d * d;
+    }
+    var denom = logReturns.length > 1 ? logReturns.length - 1 : 1; // sample stddev
+    var sigma = Math.sqrt(varSum / denom);
+    if (!Number.isFinite(sigma) || sigma <= 0) {
+      return { insufficientData: true, dailySigma: null, bands: [] };
+    }
+
+    var lastClose = closes[closes.length - 1];
+    var Z = { p50: 0, p68: 1.0, p90: 1.645, p95: 1.96 };
+    var bands = [];
+    for (var h = 1; h <= days; h++) {
+      var scale = sigma * Math.sqrt(h);
+      var centre = lastClose * Math.exp(Z.p50 * scale);
+      var up68 = lastClose * Math.exp(Z.p68 * scale);
+      var dn68 = lastClose * Math.exp(-Z.p68 * scale);
+      var up90 = lastClose * Math.exp(Z.p90 * scale);
+      var dn90 = lastClose * Math.exp(-Z.p90 * scale);
+      var up95 = lastClose * Math.exp(Z.p95 * scale);
+      var dn95 = lastClose * Math.exp(-Z.p95 * scale);
+
+      var p50 = roundToIdxTick(centre) || 1;
+      var u68 = roundToIdxTick(up68, 'up') || 1;
+      var l68 = roundToIdxTick(dn68, 'down') || 1;
+      var u90 = roundToIdxTick(up90, 'up') || 1;
+      var l90 = roundToIdxTick(dn90, 'down') || 1;
+      var u95 = roundToIdxTick(up95, 'up') || 1;
+      var l95 = roundToIdxTick(dn95, 'down') || 1;
+
+      // Enforce the monotone envelope after tick snapping.
+      if (l68 > p50) l68 = p50;
+      if (u68 < p50) u68 = p50;
+      if (l90 > l68) l90 = l68;
+      if (u90 < u68) u90 = u68;
+      if (l95 > l90) l95 = l90;
+      if (u95 < u90) u95 = u90;
+
+      bands.push({
+        h: h,
+        p50: p50,
+        upper68: u68, lower68: l68,
+        upper90: u90, lower90: l90,
+        upper95: u95, lower95: l95
+      });
+    }
+
+    return {
+      insufficientData: false,
+      dailySigma: Math.round(sigma * 100000) / 100000,
+      annualizedSigma: Math.round(sigma * Math.sqrt(252) * 10000) / 10000,
+      lastClose: lastClose,
+      bands: bands
+    };
+  }
+
+  // ============================================================
   // HISTORICAL BACKTEST CALCULATOR (PER TICKER)
   // ============================================================
-  function calculateHistoricalBacktest(candles, ticker) {
+  function calculateHistoricalBacktest(candles, ticker, mode, timeframe) {
     var sym = String(ticker || 'BBCA').toUpperCase().trim();
+    mode = (mode || 'swing').toLowerCase();
+    timeframe = timeframe || '1D';
+    var strat = MODE_STRATEGY_CONFIG[mode] || MODE_STRATEGY_CONFIG.swing;
+    var maxHold = timeframe === '1W' ? strat.maxHoldingDays1W : strat.maxHoldingDays1D;
+
     var count = Array.isArray(candles) ? candles.length : 0;
     if (count < 20) {
       return {
-        candleCount: count + ' Lilin',
-        winRate: '60,0%',
-        profitFactor: '1,80',
-        totalTrades: '12 Trade',
-        maxDrawdown: '-5,0%',
-        avgHoldingDays: '5,0 Hari',
-        expectancy: '+Rp 750.000'
+        insufficientData: true,
+        candleCount: count.toLocaleString('id-ID') + ' Lilin',
+        winRate: '—',
+        profitFactor: '—',
+        totalTrades: '0 Trade',
+        maxDrawdown: '—',
+        avgHoldingDays: '—',
+        expectancy: '—',
+        markers: []
       };
     }
 
     var trades = [];
+    var markers = [];
     var currentPos = null;
-    var peak = 50000000;
+    var equity = 50000000;
+    var peak = equity;
     var maxDd = 0;
+    var buyFeeRate = 0.0015;
+    var sellFeeRate = 0.0025;
 
     for (var i = 20; i < count; i++) {
       var c = candles[i];
       var prev = candles[i - 1];
       var close = Number(c.close);
+      var open = Number(c.open != null ? c.open : c.close);
       var high = Number(c.high != null ? c.high : c.close);
       var low = Number(c.low != null ? c.low : c.close);
       var vol = Number(c.volume || 0);
@@ -1179,29 +1990,78 @@
       if (currentPos) {
         currentPos.holdingDays++;
         var exitPrice = null;
-        var isWin = false;
+        var exitReason = null;
 
+        // 1. Check if price hits TP1 and hasn't hit TP1 yet
+        if (high >= currentPos.tp1 && !currentPos.tp1Hit) {
+          currentPos.tp1Hit = true;
+          currentPos.sl = currentPos.entry; // Move SL for remaining 50% to Breakeven
+          markers.push({
+            time: c.time,
+            position: 'aboveBar',
+            color: '#38bdf8',
+            shape: 'arrowDown',
+            text: 'TP1 50% (Rp ' + currentPos.tp1.toLocaleString('id-ID') + ')'
+          });
+        }
+
+        // 2. Check exit conditions for remaining (or full) position
         if (low <= currentPos.sl) {
           exitPrice = currentPos.sl;
-          isWin = false;
+          exitReason = currentPos.tp1Hit ? 'BEP' : 'SL';
         } else if (high >= currentPos.tp2) {
           exitPrice = currentPos.tp2;
-          isWin = true;
-        } else if (high >= currentPos.tp1 && !currentPos.tp1Hit) {
-          currentPos.tp1Hit = true;
-          currentPos.sl = currentPos.entry;
-        } else if (currentPos.holdingDays >= 12) {
+          exitReason = 'TP2';
+        } else if (currentPos.holdingDays >= maxHold) {
           exitPrice = close;
-          isWin = close > currentPos.entry;
+          exitReason = 'TIME';
         }
 
         if (exitPrice != null) {
-          var gross = currentPos.lots * 100 * (exitPrice - currentPos.entry);
-          var fee = currentPos.lots * 100 * (currentPos.entry * 0.0015 + exitPrice * 0.0025);
-          var net = gross - fee;
-          trades.push({ net: net, isWin: isWin, holdingDays: currentPos.holdingDays });
-          peak = Math.max(peak, peak + net);
-          var dd = ((peak - (peak + net)) / peak) * 100;
+          var totalNet = 0;
+          if (currentPos.tp1Hit) {
+            // Leg 1: 50% lot closed at TP1
+            var lots1 = Math.floor(currentPos.lots * 0.5);
+            var gross1 = lots1 * 100 * (currentPos.tp1 - currentPos.entry);
+            var fee1 = lots1 * 100 * (currentPos.entry * buyFeeRate + currentPos.tp1 * sellFeeRate);
+            var net1 = gross1 - fee1;
+
+            // Leg 2: remaining 50% closed at exitPrice
+            var lots2 = currentPos.lots - lots1;
+            var gross2 = lots2 * 100 * (exitPrice - currentPos.entry);
+            var fee2 = lots2 * 100 * (currentPos.entry * buyFeeRate + exitPrice * sellFeeRate);
+            var net2 = gross2 - fee2;
+
+            totalNet = net1 + net2;
+          } else {
+            // Full position closed at exitPrice
+            var gross = currentPos.lots * 100 * (exitPrice - currentPos.entry);
+            var fee = currentPos.lots * 100 * (currentPos.entry * buyFeeRate + exitPrice * sellFeeRate);
+            totalNet = gross - fee;
+          }
+
+          var isWin = totalNet > 0;
+          trades.push({
+            net: totalNet,
+            isWin: isWin,
+            holdingDays: currentPos.holdingDays,
+            tp1Hit: currentPos.tp1Hit,
+            exitReason: exitReason
+          });
+
+          var markerColor = isWin ? '#10b981' : (exitReason === 'BEP' ? '#eab308' : '#ef4444');
+          var markerText = exitReason === 'TP2' ? 'TP2 WIN' : (exitReason === 'BEP' ? 'BEP 50%' : (exitReason === 'SL' ? 'SL' : 'EXIT'));
+          markers.push({
+            time: c.time,
+            position: 'aboveBar',
+            color: markerColor,
+            shape: 'arrowDown',
+            text: markerText + ' (Rp ' + exitPrice.toLocaleString('id-ID') + ')'
+          });
+
+          equity += totalNet;
+          if (equity > peak) peak = equity;
+          var dd = peak > 0 ? ((peak - equity) / peak) * 100 : 0;
           if (dd > maxDd) maxDd = dd;
           currentPos = null;
         }
@@ -1216,14 +2076,67 @@
         var ma20 = sum20 / 20;
         var volAvg20 = volSum20 / 20;
         var prevClose = Number(prev.close);
+        var isBullish = close >= open;
 
-        if (prevClose <= ma20 && close > ma20 && vol >= volAvg20 * 1.05) {
+        // Moving averages for deeper strategies
+        var ma50 = ma20;
+        if (i >= 49) {
+          var sum50 = 0;
+          for (var k50 = i - 49; k50 <= i; k50++) sum50 += Number(candles[k50].close);
+          ma50 = sum50 / 50;
+        }
+
+        var ma200 = ma50;
+        if (i >= 199) {
+          var sum200 = 0;
+          for (var k200 = i - 199; k200 <= i; k200++) sum200 += Number(candles[k200].close);
+          ma200 = sum200 / 200;
+        }
+
+        var entryTriggered = false;
+
+        if (mode === 'scalping') {
+          var isFastMomentum = (prevClose <= ma20 && close > ma20) || (close > ma20 && isBullish && vol >= volAvg20 * strat.volAvgMultiplier);
+          if (isFastMomentum && vol >= volAvg20 * 1.10) {
+            entryTriggered = true;
+          }
+        } else if (mode === 'investor') {
+          if (close > ma50 && (i < 200 || close > ma200) && isBullish && (prevClose <= ma50 || vol >= volAvg20)) {
+            entryTriggered = true;
+          }
+        } else if (mode === 'pro') {
+          var h_l = high - low;
+          var mfm = h_l > 0 ? ((close - low) - (high - close)) / h_l : 0;
+          if (close > ma20 && vol >= volAvg20 * strat.volAvgMultiplier && isBullish && mfm >= 0) {
+            entryTriggered = true;
+          }
+        } else {
+          // 'swing' or 'simpel' (baseline swing)
+          if ((prevClose <= ma20 && close > ma20 && vol >= volAvg20 * strat.volAvgMultiplier) ||
+              (prevClose >= ma20 && low <= ma20 * 1.015 && close > ma20 && isBullish && vol >= volAvg20 * 1.05)) {
+            entryTriggered = true;
+          }
+        }
+
+        if (entryTriggered) {
           var entry = roundToIdxTick(close);
           var tick = getIdxTickSize(entry);
-          var sl = roundToIdxTick(entry - 3 * tick);
+          var sl;
+          if (strat.slTicks) {
+            sl = roundToIdxTick(entry - (strat.slTicks * tick), 'down');
+          } else {
+            sl = roundToIdxTick(entry * strat.slBufferPct, 'down');
+          }
+          if (sl >= entry) sl = roundToIdxTick(entry * (strat.slMaxPct || 0.96), 'down');
+          if (sl <= 0) sl = Math.max(1, entry - tick);
+
           var risk = entry - sl;
-          var tp1 = roundToIdxTick(entry + 1.5 * risk);
-          var tp2 = roundToIdxTick(entry + 2.5 * risk);
+          if (risk <= 0) risk = tick;
+          var tp1 = roundToIdxTick(entry + strat.tp1Multiplier * risk, 'up');
+          var tp2 = roundToIdxTick(entry + strat.tp2Multiplier * risk, 'up');
+          if (tp1 <= entry) tp1 = entry + Math.max(1, Math.round(risk * strat.tp1Multiplier));
+          if (tp2 <= tp1) tp2 = entry + Math.max(2, Math.round(risk * strat.tp2Multiplier));
+
           var rr = (tp1 - entry) / (entry - sl);
           if (rr >= 1.48) {
             currentPos = {
@@ -1233,8 +2146,16 @@
               tp2: tp2,
               lots: Math.max(1, Math.floor(25000000 / (entry * 100))),
               holdingDays: 0,
-              tp1Hit: false
+              tp1Hit: false,
+              entryTime: c.time
             };
+            markers.push({
+              time: c.time,
+              position: 'belowBar',
+              color: '#10b981',
+              shape: 'arrowUp',
+              text: 'BUY (' + mode.toUpperCase() + ')'
+            });
           }
         }
       }
@@ -1244,9 +2165,9 @@
       var wins = trades.filter(function(t) { return t.isWin; });
       var losses = trades.filter(function(t) { return !t.isWin; });
       var wr = (wins.length / trades.length) * 100;
-      var grossWin = wins.reduce(function(a, t) { return a + t.net; }, 0);
-      var grossLoss = Math.abs(losses.reduce(function(a, t) { return a + t.net; }, 0));
-      var pf = grossLoss > 0 ? (grossWin / grossLoss) : 2.5;
+      var grossWin = wins.reduce(function(a, t) { return a + Math.max(0, t.net); }, 0);
+      var grossLoss = Math.abs(losses.reduce(function(a, t) { return a + Math.min(0, t.net); }, 0));
+      var pf = grossLoss > 0 ? (grossWin / grossLoss) : (grossWin > 0 ? 3.5 : 0.0);
       var avgHold = trades.reduce(function(a, t) { return a + t.holdingDays; }, 0) / trades.length;
       var totalNet = trades.reduce(function(a, t) { return a + t.net; }, 0);
       var exp = totalNet / trades.length;
@@ -1256,30 +2177,25 @@
         winRate: wr.toFixed(1).replace('.', ',') + '%',
         profitFactor: pf.toFixed(2).replace('.', ','),
         totalTrades: trades.length + ' Trade',
-        maxDrawdown: '-' + (maxDd > 0 ? maxDd.toFixed(1).replace('.', ',') : '4,5') + '%',
-        avgHoldingDays: avgHold.toFixed(1).replace('.', ',') + ' Hari',
-        expectancy: (exp >= 0 ? '+Rp ' : '-Rp ') + Math.abs(Math.round(exp)).toLocaleString('id-ID')
+        maxDrawdown: maxDd > 0 ? ('-' + maxDd.toFixed(1).replace('.', ',') + '%') : '0,0%',
+        avgHoldingDays: avgHold.toFixed(1).replace('.', ',') + (timeframe === '1W' ? ' Mgg' : ' Hari'),
+        expectancy: (exp >= 0 ? '+Rp ' : '-Rp ') + Math.abs(Math.round(exp)).toLocaleString('id-ID'),
+        markers: markers,
+        trades: trades
       };
     }
 
-    // Deterministic fallback based on ticker seed and candle length
-    var seed = 0;
-    for (var s = 0; s < sym.length; s++) seed = (seed * 31 + sym.charCodeAt(s)) & 0xffff;
-    var defWr = 58.0 + (seed % 170) / 10;
-    var defPf = 1.85 + (seed % 90) / 100;
-    var defTrades = Math.max(14, Math.round(count / 22));
-    var defDd = 4.2 + (seed % 35) / 10;
-    var defHold = 4.5 + (seed % 20) / 10;
-    var defExp = 680000 + (seed % 420) * 1000;
-
     return {
+      insufficientData: true,
       candleCount: count.toLocaleString('id-ID') + ' Lilin',
-      winRate: defWr.toFixed(1).replace('.', ',') + '%',
-      profitFactor: defPf.toFixed(2).replace('.', ','),
-      totalTrades: defTrades + ' Trade',
-      maxDrawdown: '-' + defDd.toFixed(1).replace('.', ',') + '%',
-      avgHoldingDays: defHold.toFixed(1).replace('.', ',') + ' Hari',
-      expectancy: '+Rp ' + Math.round(defExp).toLocaleString('id-ID')
+      winRate: '—',
+      profitFactor: '—',
+      totalTrades: (trades ? trades.length : 0) + ' Trade',
+      maxDrawdown: '—',
+      avgHoldingDays: '—',
+      expectancy: '—',
+      markers: markers,
+      trades: trades
     };
   }
 
@@ -1290,6 +2206,7 @@
     version: VERSION,
     LAYER_GROUPS: LAYER_GROUPS,
     PRESETS: PRESETS,
+    MODE_STRATEGY_CONFIG: MODE_STRATEGY_CONFIG,
     getIdxTickSize: getIdxTickSize,
     roundToIdxTick: roundToIdxTick,
     aggregateDailyToWeekly: aggregateDailyToWeekly,
@@ -1304,6 +2221,9 @@
     calculateIntensityHistogram: calculateIntensityHistogram,
     calculateVolumeRotation: calculateVolumeRotation,
     calculateLPMSeries: calculateLPMSeries,
+    calculateSwingPivots: calculateSwingPivots,
+    calculateBOS: calculateBOS,
+    calculateVolumeProfile: calculateVolumeProfile,
     calculateCorrF: calculateCorrF,
     calculateParF: calculateParF,
     calculateLPM: calculateLPM,
@@ -1312,6 +2232,10 @@
     formatIndonesianVolumeCompact: formatIndonesianVolumeCompact,
     formatIndonesianRupiahCompact: formatIndonesianRupiahCompact,
     calculateHistoricalBacktest: calculateHistoricalBacktest,
+    calculateHistoricalSimilarity: calculateHistoricalSimilarity,
+    calculateVolatilityCone: calculateVolatilityCone,
+    applyPlanPriceLines: applyPlanPriceLines,
+    clearPlanPriceLines: clearPlanPriceLines,
     createWorkstationState: createWorkstationState,
     getOrCreateInstance: getOrCreateInstance,
     renderToolbarHtml: renderToolbarHtml,
@@ -1323,6 +2247,7 @@
     toggleCollapse: toggleCollapse,
     turnOffAll: turnOffAll,
     reset: reset,
-    attach: attach
+    attach: attach,
+    switchTicker: switchTicker
   };
 });

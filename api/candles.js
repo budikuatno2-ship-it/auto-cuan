@@ -76,12 +76,15 @@ module.exports = async function handler(req, res) {
   }
   try {
     var ticker = null;
+    var reqRange = null;
 
     if (req.method === 'GET') {
       ticker = req.query && req.query.ticker;
+      reqRange = req.query && req.query.range;
     } else if (req.method === 'POST') {
       var body = req.body || {};
       ticker = body.ticker;
+      reqRange = body.range;
     } else {
       return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -99,7 +102,13 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
     }
 
-    var cached = cache[ticker];
+    var validRanges = ['1y', '2y', '3y', '5y', 'max'];
+    var cleanRange = (typeof reqRange === 'string' && validRanges.indexOf(reqRange.toLowerCase().trim()) >= 0)
+      ? reqRange.toLowerCase().trim()
+      : '5y';
+    var cacheKey = ticker + '_' + cleanRange;
+
+    var cached = cache[cacheKey];
     var requestJakartaToday = t1Policy.formatJakartaDate(clock.now());
     if (cached && cached.data && cached.data.jakarta_today === requestJakartaToday && (Date.now() - cached.timestamp < CACHE_TTL)) {
       return res.status(200).json(responseForRequest(cached.data, req));
@@ -112,7 +121,7 @@ module.exports = async function handler(req, res) {
     } else {
       symbol = ticker + '.JK';
     }
-    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?range=1y&interval=1d';
+    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?range=' + cleanRange + '&interval=1d';
 
     var controller = new AbortController();
     var timeout = setTimeout(function() { controller.abort(); }, 10000);
@@ -159,13 +168,17 @@ module.exports = async function handler(req, res) {
     var candles = [];
     for (var i = 0; i < timestamps.length; i++) {
       var c = closes[i], o = opens[i], h = highs[i], l = lows[i], v = volumes[i];
+      // Skip candles that are incomplete, null, or have zero/negative price (e.g. unfinalized day close)
+      if (c == null || o == null || h == null || l == null) continue;
       var timestampSeconds = t1Policy.normalizeUnixTimestampSeconds(timestamps[i]);
       var candleDate = timestampSeconds == null ? null : t1Policy.formatJakartaDate(new Date(timestampSeconds * 1000));
-      // BUG-CAN-02: `!isNaN(c)` meloloskan NaN pada open/high/low (dan menerima
-      // Infinity). Setiap field OHLC harus finite agar tidak ada candle rusak
-      // yang masuk ke indikator.
       var oNum = Number(o), hNum = Number(h), lNum = Number(l), cNum = Number(c);
-      if (candleDate && Number.isFinite(oNum) && Number.isFinite(hNum) && Number.isFinite(lNum) && Number.isFinite(cNum)) {
+      if (candleDate &&
+          Number.isFinite(oNum) && oNum > 0 &&
+          Number.isFinite(hNum) && hNum > 0 &&
+          Number.isFinite(lNum) && lNum >= 0 &&
+          Number.isFinite(cNum) && cNum > 0 &&
+          hNum >= lNum) {
         candles.push({
           time: candleDate,
           open: Math.round(oNum * 100) / 100,
@@ -251,7 +264,7 @@ module.exports = async function handler(req, res) {
     // Cache the complete deterministic result once, then apply the signed-session
     // response policy per request. This prevents a guest/non-admin cache hit from
     // receiving Pattern geometry while keeping Technical Chart caching unchanged.
-    setBoundedCache(ticker, result);
+    setBoundedCache(cacheKey, result);
     return res.status(200).json(responseForRequest(result, req));
 
   } catch (err) {
@@ -269,6 +282,7 @@ module.exports.__test = {
   resetClassicPatternDetector: function() { classicPatternDetector = require('../lib/classic-chart-patterns').detectClassicChartPatterns; },
   hasPatternMapAccess: hasPatternMapAccess,
   responseForRequest: responseForRequest,
+  calcMA: calcMA,
   calcRSI: calcRSI,
   calcVolumeRatio: calcVolumeRatio
 };
@@ -278,30 +292,59 @@ function calcMA(prices, period) {
   var slice = prices.slice(prices.length - period);
   var sum = 0;
   for (var i = 0; i < slice.length; i++) {
-    var p = Number(slice[i]);
-    if (Number.isFinite(p)) sum += p;
+    var raw = slice[i];
+    if (raw == null || raw === '') return null;
+    var p = Number(raw);
+    if (!Number.isFinite(p)) return null;
+    sum += p;
   }
   var ma = sum / period;
   return Number.isFinite(ma) ? Math.round(ma * 100) / 100 : null;
 }
 
+// FIX-19: Wilder's Smoothing (RMA) — exact TradingView / `lib/daily-rsi` parity.
+// The previous SMA-over-window version drifted 3-5 points from the canonical
+// reference used by the daily market-context layer.
 function calcRSI(closes, period) {
-  if (!closes || closes.length < period + 1 || !period || period <= 0) return null;
-  var gains = 0, losses = 0;
-  for (var i = closes.length - period; i < closes.length; i++) {
-    var c1 = Number(closes[i]);
-    var c0 = Number(closes[i - 1]);
-    if (Number.isFinite(c1) && Number.isFinite(c0)) {
-      var diff = c1 - c0;
-      if (diff > 0) gains += diff;
-      else losses -= diff;
-    }
+  var p = Number(period);
+  if (!Array.isArray(closes) || !Number.isFinite(p) || p <= 0) return null;
+  if (closes.length < p + 1) return null;
+
+  var values = new Array(closes.length);
+  for (var i = 0; i < closes.length; i++) {
+    var raw = closes[i];
+    if (raw == null || raw === '') return null;
+    var num = Number(raw);
+    if (!Number.isFinite(num)) return null;
+    values[i] = num;
   }
-  var avgGain = gains / period;
-  var avgLoss = losses / period;
+
+  var gains = [];
+  var losses = [];
+  for (var j = 1; j < values.length; j++) {
+    var delta = values[j] - values[j - 1];
+    gains.push(Math.max(delta, 0));
+    losses.push(Math.max(-delta, 0));
+  }
+
+  var avgGain = 0;
+  var avgLoss = 0;
+  for (var k = 0; k < p; k++) {
+    avgGain += gains[k];
+    avgLoss += losses[k];
+  }
+  avgGain /= p;
+  avgLoss /= p;
+
+  for (var m = p; m < gains.length; m++) {
+    avgGain = (avgGain * (p - 1) + gains[m]) / p;
+    avgLoss = (avgLoss * (p - 1) + losses[m]) / p;
+  }
+
   if (!Number.isFinite(avgGain) || !Number.isFinite(avgLoss)) return null;
   if (avgGain === 0 && avgLoss === 0) return 50;
   if (avgLoss === 0) return 100;
+  if (avgGain === 0) return 0;
   var rs = avgGain / avgLoss;
   if (!Number.isFinite(rs)) return 100;
   var rsi = 100 - (100 / (1 + rs));

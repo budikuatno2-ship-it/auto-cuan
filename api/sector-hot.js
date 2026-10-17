@@ -9385,6 +9385,75 @@ function getMarketStructure30SepList() {
   return [];
 }
 
+/**
+ * FIX-24: shared payload diet for list responses (identical semantics to
+ * api/quote.js#applyCompactPayloadDiet).
+ *
+ * The market-structure list ships an `investors` array per row that the UI only
+ * renders partially; on the full universe this is the single largest body in the
+ * API. `?compact=1` keeps one copy of the row array and trims the nested
+ * evidence to a disclosed head.
+ */
+function applyCompactPayloadDiet(payload, compact) {
+  if (!payload || typeof payload !== 'object' || !compact) return payload;
+
+  var out = payload;
+
+  if (Array.isArray(out.data) && Array.isArray(out.rows)) {
+    var sameRef = out.data === out.rows;
+    var sameContent = false;
+    if (!sameRef &&
+        out.data.length === out.rows.length &&
+        out.data.length > 0 &&
+        out.data[0] && out.rows[0] &&
+        out.data[0].ticker != null &&
+        out.data[0].ticker === out.rows[0].ticker &&
+        out.data[out.data.length - 1] && out.rows[out.rows.length - 1] &&
+        out.data[out.data.length - 1].ticker === out.rows[out.rows.length - 1].ticker) {
+      sameContent = true;
+    }
+
+    if (sameRef || sameContent) {
+      out = Object.assign({}, out);
+      delete out.rows;
+      out.compact = true;
+      out.rows_aliased_to = 'data';
+    }
+  }
+
+  var rowsToTrim = Array.isArray(out.data) ? out.data : out.rows;
+  if (Array.isArray(rowsToTrim)) {
+    var TRIM_KEYS = ['investors'];
+    var TRIM_HEAD = 10;
+    var needsTrim = rowsToTrim.some(function (r) {
+      return r && typeof r === 'object' && TRIM_KEYS.some(function (k) {
+        return Array.isArray(r[k]) && r[k].length > TRIM_HEAD;
+      });
+    });
+
+    if (needsTrim) {
+      var trimmed = rowsToTrim.map(function (r) {
+        if (!r || typeof r !== 'object') return r;
+        var copy = null;
+        TRIM_KEYS.forEach(function (k) {
+          if (Array.isArray(r[k]) && r[k].length > TRIM_HEAD) {
+            if (!copy) copy = Object.assign({}, r);
+            copy[k] = r[k].slice(0, TRIM_HEAD);
+            copy[k + '_count_total'] = r[k].length;
+          }
+        });
+        return copy || r;
+      });
+      if (out === payload) out = Object.assign({}, out);
+      if (Array.isArray(out.data)) out.data = trimmed;
+      if (Array.isArray(out.rows)) out.rows = trimmed;
+      out.compact = true;
+    }
+  }
+
+  return out;
+}
+
 async function handleMarketStructureList(req, res) {
   try {
     const cacheKey = 'market-structure-list:30sep';
@@ -9416,13 +9485,18 @@ async function handleMarketStructureList(req, res) {
         investors: item.investors || []
       };
     });
-    const payload = {
+    var payload = {
       success: true,
       count: formatted.length,
       as_of: '2026-09-30',
       data: formatted,
       rows: formatted
     };
+    // FIX-24: `data` and `rows` point at the same array, and every row carries
+    // the full `investors` list. ?compact=1 removes the duplicate array and
+    // trims the nested evidence to a disclosed head.
+    var wantsCompact = String((req.query && (req.query.compact || req.query.slim)) || '') === '1';
+    payload = applyCompactPayloadDiet(payload, wantsCompact);
     hotMarketStructureCache.set(cacheKey, payload, 30 * 1000);
     setHeaderSafe(res, 'X-Cache', 'MISS');
     setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
@@ -10477,7 +10551,7 @@ async function handleNkScreenerRun(req, res, supabase) {
     // block every future call with "Batch masih dalam status processing" until
     // an operator passed force=1 — a permanent stall. Recover deterministically:
     // stale processing jobs go back to pending and are picked up again.
-    const NK_PROCESSING_STALE_MS = 15 * 60 * 1000;
+    const NK_PROCESSING_STALE_MS = Number(process.env.NK_PROCESSING_STALE_MS) || (5 * 60 * 1000);
     const { data: processingJobs } = await supabase
       .from('swing_screener_non_konglo_jobs')
       .select('id,batch_index,started_at')
@@ -10488,7 +10562,7 @@ async function handleNkScreenerRun(req, res, supabase) {
       const nowMs = Date.now();
       const staleIds = processingJobs.filter(function(job) {
         const started = Date.parse(job && job.started_at || '');
-        return !Number.isFinite(started) || (nowMs - started) > NK_PROCESSING_STALE_MS;
+        return !Number.isFinite(started) || (nowMs - started) > NK_PROCESSING_STALE_MS || forceRun;
       }).map(function(job) { return job.id; });
 
       if (staleIds.length > 0) {
@@ -13104,6 +13178,15 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
 
     var daytradeEntryDisciplineObservability = summarizeDayTradeEntryDiscipline(sortedRows);
 
+    var emptyReason = null;
+    if (!sortedRows || sortedRows.length === 0) {
+      if (!rows || rows.length === 0) {
+        emptyReason = 'no_recent_scan';
+      } else {
+        emptyReason = 'all_filtered_out';
+      }
+    }
+
     var dtUCount = (displayMeta && displayMeta.universe_count) ? displayMeta.universe_count : 760;
     var dtSCount = (displayMeta && displayMeta.scanned_count) ? displayMeta.scanned_count : ((sortedRows && sortedRows.length > 0) ? sortedRows.length : 760);
     var dtPCount = (displayMeta && displayMeta.published_count) ? displayMeta.published_count : ((sortedRows && sortedRows.length > 0) ? sortedRows.length : 0);
@@ -13122,6 +13205,7 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       success: true,
       meta: resDtMeta,
       results: sortedRows,
+      empty_reason: emptyReason,
       updated_at: meta ? meta.calculated_at : null,
       calculated_at: meta ? meta.calculated_at : null,
       status: displayMeta ? displayMeta.status : 'pending',
@@ -13197,6 +13281,17 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
     .maybeSingle();
 
   // 4. Recover a stale batch lock by continuing at durable scanned_count.
+  var isForce = req.query.force === '1' || (req.body && (req.body.force === 1 || req.body.force === '1'));
+  if (isForce && meta && meta.status === 'scanning') {
+    try {
+      await supabase
+        .from('daytrade_screener_runs')
+        .update({ status: 'aborted_by_force' })
+        .in('status', ['running', 'scanning']);
+    } catch (_) {}
+    await updateDtMeta(supabase, { status: 'idle', message: 'Stale run aborted by force parameter.' });
+  }
+
   var runningLockDiagnostics = getDayTradeRunningLockDiagnostics(meta);
   if (batchIndex === 0 && runningLockDiagnostics.running_lock_status === 'stalled' && meta && Number(meta.scanned_count || 0) > 0) {
     batchIndex = Math.floor(Number(meta.scanned_count || 0) / BATCH_SIZE);
@@ -13789,10 +13884,13 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
       ? ''
       : requestFlags.defer_to_fast_watcher
   ).trim().toLowerCase();
+  var isFastWatcherLive = String(process.env.FAST_WATCHER_LIVE_ENABLED || '').toLowerCase() === 'true';
+  var explicitShadow = requestFlags.shadow_test === '1' || requestFlags.shadow_test === 'true' ||
+    requestFlags.suppress_telegram === '1' || requestFlags.suppress_telegram === 'true' ||
+    process.env.NODE_ENV === 'test';
   var deferToFastWatcher =
-    deferValue === '1' ||
-    deferValue === 'true' ||
-    deferValue === 'on';
+    (deferValue === '1' || deferValue === 'true' || deferValue === 'on') &&
+    (isFastWatcherLive || explicitShadow || !process.env.TELEGRAM_BOT_TOKEN);
 
   var telegramResult = await sendDayTradeTelegramNotification(
     supabase,
@@ -16026,6 +16124,7 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 }
 
 module.exports.__test = {
+  applyCompactPayloadDiet: applyCompactPayloadDiet,
   getMinRRForCategory: getMinRRForCategory,
   // BUG-F7-07: publish guard for paused (BREAK/CLOSED) batches.
   shouldSkipDayTradePublish: shouldSkipDayTradePublish,

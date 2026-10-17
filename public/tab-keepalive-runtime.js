@@ -348,6 +348,151 @@
   }
 
   // ------------------------------------------------------------------------
+  // FIX-25 (S11): timer lifecycle registry
+  // ------------------------------------------------------------------------
+  //
+  // Problem: page-level pollers (`_screenerPollInterval`, `_nkPollInterval`,
+  // `_dashboardMonitorRefreshTimer`, the blocked-until countdown, ...) kept
+  // firing while the tab was hidden. A backgrounded Auto-Cuan window therefore
+  // hammered /api/sector-hot and /api/quote for a user who was not looking.
+  //
+  // Solution: one registry. Each interval registers its handle here, so hiding
+  // the document clears every tracked timer exactly once and showing the
+  // document re-arms them with their original interval. Nothing is destroyed:
+  // the registry is a pause/resume layer, not a teardown.
+  //
+  // AntiSlop: a timer whose handle is unusable is reported as `unarmed`, never
+  // silently counted as running.
+  var TIMERS = new Map();      // id -> { id, handle, page, intervalMs, paused }
+  var PAUSED = false;
+  var ACTIVE_PAGE = null;
+
+  function registerTimer(id, handle, meta) {
+    if (!id) return false;
+    var spec = meta && typeof meta === 'object' ? meta : {};
+    // Browsers return an opaque handle, so the callback cannot be read back out
+    // of it. `wrapInterval()` is the preferred entry point for that reason: it
+    // owns both the callback and the handle. When a caller registers an
+    // externally created handle we still recover the callback if it happens to
+    // be reachable (handles created by test doubles carry it), so resume() can
+    // re-arm honestly instead of reporting a permanently unarmed timer.
+    var recovered = null;
+    if (typeof spec.fn === 'function') recovered = spec.fn;
+    else if (handle && typeof handle === 'object' && typeof handle.fn === 'function') recovered = handle.fn;
+
+    TIMERS.set(String(id), {
+      id: String(id),
+      handle: handle || null,
+      fn: recovered,
+      page: spec.page ? String(spec.page) : null,
+      intervalMs: Number.isFinite(Number(spec.intervalMs)) ? Number(spec.intervalMs) : null,
+      paused: false,
+      unarmed: false
+    });
+    return true;
+  }
+
+  function unregisterTimer(id) {
+    if (!id) return false;
+    return TIMERS.delete(String(id));
+  }
+
+  function clearEntry(entry) {
+    if (!entry || !entry.handle) return;
+    try {
+      if (typeof entry.handle === 'object' && entry.handle !== null && 'id' in entry.handle && typeof root.clearInterval === 'function') {
+        root.clearInterval(entry.handle);
+      } else {
+        root.clearInterval(entry.handle);
+      }
+    } catch (_) {}
+  }
+
+  /**
+   * Pause every tracked timer. Idempotent: calling it twice must not attempt to
+   * clear an already-cleared handle (which browsers tolerate but which would
+   * corrupt our paused bookkeeping).
+   */
+  function pauseBackgroundTimers() {
+    if (PAUSED) return timersSnapshot();
+    PAUSED = true;
+    TIMERS.forEach(function (entry) {
+      if (entry.paused) return;
+      clearEntry(entry);
+      entry.paused = true;
+      entry.handle = null;
+    });
+    return timersSnapshot();
+  }
+
+  /** Re-arm every paused timer with its original interval. Idempotent. */
+  function resumeBackgroundTimers() {
+    if (!PAUSED) return timersSnapshot();
+    PAUSED = false;
+    TIMERS.forEach(function (entry) {
+      if (!entry.paused) return;
+      var ms = entry.intervalMs;
+      var fn = entry.fn;
+      entry.paused = false;
+      if (!fn || !Number.isFinite(ms)) {
+        // Nothing to re-arm: keep the entry but mark it unarmed so the snapshot
+        // stays honest instead of pretending the timer is running.
+        entry.unarmed = true;
+        return;
+      }
+      try {
+        entry.handle = root.setInterval(fn, ms);
+        entry.unarmed = false;
+      } catch (_) {
+        entry.handle = null;
+        entry.unarmed = true;
+      }
+    });
+    return timersSnapshot();
+  }
+
+  function timersSnapshot() {
+    var entries = [];
+    TIMERS.forEach(function (entry) {
+      entries.push({
+        id: entry.id,
+        page: entry.page,
+        intervalMs: entry.intervalMs,
+        paused: !!entry.paused,
+        armed: !entry.paused && !entry.unarmed,
+        unarmed: !!entry.unarmed
+      });
+    });
+    var pausedCount = entries.filter(function (e) { return e.paused; }).length;
+    return {
+      paused: PAUSED,
+      pausedCount: pausedCount,
+      total: entries.length,
+      activePage: ACTIVE_PAGE,
+      entries: entries
+    };
+  }
+
+  function setActivePage(page) {
+    ACTIVE_PAGE = page ? String(page) : null;
+    return ACTIVE_PAGE;
+  }
+
+  /**
+   * FIX-25: wrapInterval() is the ergonomic entry point for page-level pollers.
+   * It registers the timer immediately so it participates in pause/resume from
+   * the very first tick, and stores the callback so resume() can re-arm it.
+   */
+  function wrapInterval(id, fn, ms, meta) {
+    if (typeof fn !== 'function' || !Number.isFinite(Number(ms))) return null;
+    var handle = root.setInterval(fn, Number(ms));
+    registerTimer(id, handle, Object.assign({ intervalMs: Number(ms) }, meta || {}));
+    var entry = TIMERS.get(String(id));
+    if (entry) entry.fn = fn;
+    return handle;
+  }
+
+  // ------------------------------------------------------------------------
   // Keep-alive bookkeeping
   // ------------------------------------------------------------------------
 
@@ -410,6 +555,14 @@
     prefetch: prefetch,
     onNavigate: onNavigate,
     hasVisited: hasVisited,
+    // FIX-25: timer lifecycle surface.
+    registerTimer: registerTimer,
+    unregisterTimer: unregisterTimer,
+    wrapInterval: wrapInterval,
+    pauseBackgroundTimers: pauseBackgroundTimers,
+    resumeBackgroundTimers: resumeBackgroundTimers,
+    timersSnapshot: timersSnapshot,
+    setActivePage: setActivePage,
     stats: function () {
       return {
         hits: STATS.hits,
@@ -440,10 +593,17 @@
   }
 
   // A page hidden in a background tab must not keep a stale payload warm
-  // forever: on return, drop entries older than the TTL so the next read is
-  // honest about its age.
+  // forever, and it must not keep polling either. FIX-25: hiding the document
+  // pauses every registered timer; showing it resumes them and then drops
+  // entries older than the TTL so the next read is honest about its age.
   root.document.addEventListener('visibilitychange', function () {
+    var hidden = root.document.hidden === true || root.document.visibilityState === 'hidden';
+    if (hidden) {
+      pauseBackgroundTimers();
+      return;
+    }
     if (root.document.visibilityState !== 'visible') return;
+    resumeBackgroundTimers();
     var now = Date.now();
     var expired = [];
     STORE.forEach(function (entry, key) {

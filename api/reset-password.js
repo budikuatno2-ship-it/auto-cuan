@@ -69,17 +69,26 @@ module.exports = async function handler(req, res) {
     const auth = require('../lib/admin-session').requireAuthenticatedSession(req);
     if (!auth.ok) return res.status(auth.status || 401).json({ success: false, error: 'Sesi tidak valid.' });
     const newEmail = req.body && req.body.email ? String(req.body.email).trim().toLowerCase() : '';
-    if (!newEmail || !newEmail.includes('@')) return res.status(400).json({ success: false, error: 'Email tidak valid.' });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!newEmail || !emailRegex.test(newEmail)) {
+      return res.status(400).json({ success: false, error: 'Email tidak valid.' });
+    }
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (url && key) {
-      try {
-        const { createClient } = require('@supabase/supabase-js');
-        const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-        await db.from('app_users').update({ email: newEmail }).eq('id', auth.session.uid);
-      } catch (_) {}
+    if (!url || !key) {
+      return res.status(503).json({ success: false, error: 'Database belum dikonfigurasi.' });
     }
-    return res.status(200).json({ success: true, email: newEmail });
+    try {
+      const { createClient } = require('@supabase/supabase-js');
+      const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+      const { data, error } = await db.from('app_users').update({ email: newEmail }).eq('id', auth.session.uid).select('id');
+      if (error) {
+        return res.status(500).json({ success: false, error: 'Gagal memperbarui email.' });
+      }
+      return res.status(200).json({ success: true, email: newEmail });
+    } catch (_) {
+      return res.status(500).json({ success: false, error: 'Gagal memperbarui email.' });
+    }
   }
 
   return legacy(req, res);

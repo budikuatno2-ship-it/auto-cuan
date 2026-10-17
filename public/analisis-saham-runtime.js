@@ -230,6 +230,19 @@
       if (typeof btnChart.setAttribute === 'function') btnChart.setAttribute('aria-selected', isChart ? 'true' : 'false');
     }
 
+    // FIX-22: the dedicated "Chart Workstation" lens (added to the analysis
+    // partial) shares the same `chart` subtab state; keep its ARIA/active
+    // styling in lockstep so both entry points stay visually consistent.
+    var btnWorkstationLens = byId('tabChartWorkstationLens');
+    if (btnWorkstationLens) {
+      if (btnWorkstationLens.classList && btnWorkstationLens.classList.toggle) {
+        btnWorkstationLens.classList.toggle('active', isChart);
+      }
+      if (typeof btnWorkstationLens.setAttribute === 'function') {
+        btnWorkstationLens.setAttribute('aria-selected', isChart ? 'true' : 'false');
+      }
+    }
+
     var pAnalisis = byId('panel-tab-analisis');
     var pChart = byId('panel-tab-chart');
 
@@ -250,6 +263,34 @@
     }
   }
   root.switchAnalisisSubTab = switchAnalisisSubTab;
+
+  /**
+   * FIX-22: single public entry point for "open the chart for this ticker".
+   * Combines the navigation hop (analysis shell + chart lens) with the chart
+   * workstation handoff (preset and/or plan levels) so callers - screener rows,
+   * the command palette, deep links - never have to know the shell internals.
+   * Values are forwarded as-is; the workstation itself fails closed when a
+   * level is missing, so no number is ever invented here.
+   */
+  function openChartWorkstation(ticker, options) {
+    var safeTicker = String(ticker || '').trim().toUpperCase();
+    var opts = options && typeof options === 'object' ? options : {};
+
+    try { switchAnalisisTab('chart'); } catch (_) {}
+    try { switchAnalisisSubTab('chart'); } catch (_) {}
+
+    if (!safeTicker) return null;
+
+    var ws = root.AutoCuanChartWorkstation;
+    if (ws && typeof ws.switchTicker === 'function') {
+      var handoff = { source: opts.source || 'analysis-shell' };
+      if (opts.preset) handoff.preset = opts.preset;
+      if (opts.planLevels) handoff.planLevels = opts.planLevels;
+      return ws.switchTicker('mainChart', safeTicker, handoff);
+    }
+    return null;
+  }
+  root.openChartWorkstation = openChartWorkstation;
 
   var _isSwitchingTab = false;
   function switchAnalisisTab(tabName) {
@@ -1621,9 +1662,11 @@
     }
     var hasPbv = researchHasNumber(f.pbv);
     var hasBvps = researchHasNumber(f.book_value_per_share);
+    var hasPer = researchHasNumber(f.per);
+    var hasDer = researchHasNumber(f.der);
     var hasShares = researchHasNumber(f.shares_outstanding);
     var hasMarketCap = researchHasNumber(f.market_cap);
-    var coverageCount = (hasPbv ? 1 : 0) + (hasBvps ? 1 : 0) + (hasShares ? 1 : 0) + (hasMarketCap ? 1 : 0);
+    var coverageCount = (hasPbv ? 1 : 0) + (hasBvps ? 1 : 0) + (hasPer ? 1 : 0) + (hasDer ? 1 : 0) + (hasShares ? 1 : 0) + (hasMarketCap ? 1 : 0);
 
     researchText('financialPbv', hasPbv ? researchNumber(f.pbv, 2) + 'x' : '-');
     var referencePrice = researchHasNumber(f.pbv_as_of_price) ? 'Harga acuan ' + researchIdr(f.pbv_as_of_price) : 'Harga acuan -';
@@ -1635,6 +1678,8 @@
     if (price && price.freshness === 'stale') referencePrice += ' · Data historis';
     researchText('financialPbvPrice', referencePrice);
     researchText('financialBvps', hasBvps ? researchIdr(f.book_value_per_share) : '-');
+    researchText('financialPer', hasPer ? researchNumber(f.per, 2) + 'x' : '-');
+    researchText('financialDer', hasDer ? researchNumber(f.der, 2) + 'x' : '-');
     researchText('financialShares', hasShares ? formatIndonesianSharesCount(f.shares_outstanding) : '-');
     researchText('financialMarketCap', hasMarketCap ? formatIndonesianMarketCap(f.market_cap) : '-');
     researchText('financialMarketCapAsOf', f.market_cap_as_of ? 'Per ' + formatIndonesianDateWithWib(f.market_cap_as_of) : 'Belum tersedia');

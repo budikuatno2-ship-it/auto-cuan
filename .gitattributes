@@ -10,6 +10,11 @@
 # so a local run is a valid signal about CI.
 * text=auto eol=lf
 
+# DESIGN.md relies on Markdown hard line breaks (two trailing spaces) inside its
+# front-matter blockquote and its implementation-class list. Those trailing
+# spaces are semantic, not accidental, so `git diff --check` must not flag them.
+DESIGN.md -whitespace
+
 # Binary assets must never be line-ending normalised.
 *.png binary
 *.jpg binary

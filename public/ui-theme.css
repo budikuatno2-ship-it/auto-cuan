@@ -5127,8 +5127,13 @@ button:disabled,
   overflow: visible !important;
 }
 
+/* Canonical .page-content rule (single source of truth). The previous
+   contradictory `overflow-y: auto !important` here fought the later
+   `overflow-y: visible !important` declaration; the visible value wins for
+   desktop reflow, so the auto rule is removed to eliminate the conflict. */
 .page-content {
-  overflow-y: auto !important;
+  overflow-y: visible !important;
+  overflow-x: clip !important;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -11474,127 +11479,16 @@ html:not(.light),
 }
 
 
-/* Split View Layout & Desktop Detail Pane (320–380px) (§63, §76.12) */
-[data-ac-ui="v2"] .ac-split-view,
-.ac-ui-v2.ac-split-view,
-.ac-ui-v2 .ac-split-view {
-  display: flex;
-  gap: var(--ac-space-4, 16px);
-  align-items: flex-start;
-  width: 100%;
-  min-width: 0;
+/* Screener sticky ticker cell — theme-aware background so the frozen column
+   follows Light/Dark tokens instead of a hardcoded dark surface. */
+.ac-ticker-sticky-cell {
+  background: var(--ac-surface-raised, var(--ac-surface, #ffffff));
+  color: var(--ac-ink, inherit);
 }
 
-[data-ac-ui="v2"] .ac-split-view__main,
-.ac-ui-v2.ac-split-view__main,
-.ac-ui-v2 .ac-split-view__main {
-  flex: 1 1 0%;
-  min-width: 0;
-  width: 100%;
-}
-
-[data-ac-ui="v2"] .ac-split-view__pane,
-.ac-ui-v2.ac-split-view__pane,
-.ac-ui-v2 .ac-split-view__pane {
-  flex: 0 0 clamp(320px, 25vw, 380px);
-  width: clamp(320px, 25vw, 380px);
-  min-width: 320px;
-  max-width: 380px;
-}
-
-[data-ac-ui="v2"] .ac-detail-pane,
-.ac-ui-v2.ac-detail-pane,
-.ac-ui-v2 .ac-detail-pane {
-  width: clamp(320px, 25vw, 380px);
-  min-width: 320px;
-  max-width: 380px;
-  background: var(--ac-surface);
-  border: 1px solid var(--ac-line-hairline);
-  border-radius: var(--ac-radius-lg, 12px);
-  box-shadow: var(--ac-shadow-level-1);
-  display: flex;
-  flex-direction: column;
-  position: sticky;
-  top: calc(var(--ac-topbar-height, 52px) + 16px);
-  max-height: calc(100vh - var(--ac-topbar-height, 52px) - 32px);
-  max-height: calc(100dvh - var(--ac-topbar-height, 52px) - 32px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-}
-
-[data-ac-ui="v2"] .ac-detail-pane__header,
-.ac-ui-v2 .ac-detail-pane__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--ac-space-3, 12px) var(--ac-space-4, 16px);
-  border-bottom: 1px solid var(--ac-line-hairline);
-  background: var(--ac-surface-raised);
-  border-radius: var(--ac-radius-lg, 12px) var(--ac-radius-lg, 12px) 0 0;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-
-[data-ac-ui="v2"] .ac-detail-pane__title,
-.ac-ui-v2 .ac-detail-pane__title {
-  font-family: var(--ac-font-sans);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--ac-ink);
-  line-height: 1.3;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-[data-ac-ui="v2"] .ac-detail-pane__close,
-.ac-ui-v2 .ac-detail-pane__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  color: var(--ac-text-secondary);
-  cursor: pointer;
-  border-radius: var(--ac-radius-sm, 6px);
-  transition: background-color var(--motion-hover, 140ms) var(--ease-standard),
-              color var(--motion-hover, 140ms) var(--ease-standard);
-}
-
-[data-ac-ui="v2"] .ac-detail-pane__close:hover,
-.ac-ui-v2 .ac-detail-pane__close:hover {
-  background: var(--ac-surface-hover);
-  color: var(--ac-ink);
-}
-
-[data-ac-ui="v2"] .ac-detail-pane__close:focus-visible,
-.ac-ui-v2 .ac-detail-pane__close:focus-visible {
-  outline: 2px solid var(--ac-focus);
-}
-
-[data-ac-ui="v2"] .ac-detail-pane__body,
-.ac-ui-v2 .ac-detail-pane__body {
-  padding: var(--ac-space-4, 16px);
-  display: flex;
-  flex-direction: column;
-  gap: var(--ac-space-3, 12px);
-  flex: 1 1 auto;
-}
-
-[data-ac-ui="v2"] .ac-detail-pane__footer,
-.ac-ui-v2 .ac-detail-pane__footer {
-  padding: var(--ac-space-3, 12px) var(--ac-space-4, 16px);
-  border-top: 1px solid var(--ac-line-hairline);
-  background: var(--ac-surface-raised);
-  border-radius: 0 0 var(--ac-radius-lg, 12px) var(--ac-radius-lg, 12px);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: auto;
+html:not(.light) .ac-ticker-sticky-cell {
+  background: var(--ac-surface-raised, #1e293b);
+  color: var(--ac-ink, #e2e8f0);
 }
 
 /* Mobile Detail Sheet (§76.12, §76.13, §49) */

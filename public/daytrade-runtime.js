@@ -34,16 +34,35 @@ async function loadDayTradeScreener() {
     _dtScreenerInFlight = (async function() {
     try {
         var response = await fetch('/api/sector-hot?action=daytrade-screener');
+        if (!response.ok) {
+            var errMsg = 'Gagal memuat Day Trade Screener (HTTP ' + response.status + ').';
+            if (response.status === 401 || response.status === 403) {
+                errMsg = 'Akses Day Trade memerlukan login dan langganan aktif.';
+            } else if (response.status === 429) {
+                errMsg = 'Terlalu banyak permintaan (Rate Limited). Silakan tunggu sebentar.';
+            }
+            tbody.innerHTML = screenerEmptyRowHtml(22, errMsg, 'error', 'loadDayTradeScreener()');
+            var dtCardElEmptyErr = document.getElementById('dtCardGrid');
+            if (dtCardElEmptyErr) {
+                dtCardElEmptyErr.innerHTML = screenerEmptyCardHtml(errMsg);
+            }
+            return;
+        }
         var data = await response.json();
 
         if (!data.success) {
-            tbody.innerHTML = screenerEmptyRowHtml(22, DASHBOARD_ERROR_TEXT, 'error', 'loadDayTradeScreener()');
+            var errText = data.error || DASHBOARD_ERROR_TEXT;
+            if (data.status === 'already_running' || data.running_lock_status === 'stalled') {
+                errText = (data.message || 'Scan Day Trade sedang berjalan atau menggantung.') +
+                    ' <button class="px-2 py-1 ml-2 text-xs bg-amber-600 hover:bg-amber-500 text-white rounded font-medium" onclick="forceResetDaytradeScan()">Reset Lock & Scan Ulang</button>';
+            }
+            tbody.innerHTML = screenerEmptyRowHtml(22, errText, 'error', 'loadDayTradeScreener()');
             var dtCardElEmptyErr = document.getElementById('dtCardGrid');
             if (dtCardElEmptyErr) {
                 if (_dtScreenerCache && _dtScreenerCache.results && _dtScreenerCache.results.length) {
                     renderDtCardGrid(_dtScreenerCache.results, _dtScreenerCache);
                 } else {
-                    dtCardElEmptyErr.innerHTML = screenerEmptyCardHtml(DASHBOARD_ERROR_TEXT);
+                    dtCardElEmptyErr.innerHTML = screenerEmptyCardHtml(errText);
                 }
             }
             return;
@@ -243,8 +262,8 @@ function renderDtTable(results, data) {
         var dtScoreStr = (dtScore != null && !isNaN(Number(dtScore))) ? String(dtScore) : '—';
 
         html += '<tr class="dt-table-row ac-table-row ac-wave5-row cursor-pointer" data-ticker="' + escapeHtml(r.ticker) + '" onclick="if(typeof selectScreenerRow===\'function\'){selectScreenerRow(\'daytrade\',\'' + escapeHtml(r.ticker) + '\',this);}else if(typeof openScrDetail===\'function\'){openScrDetail(window._dtCardData[\'' + escapeHtml(r.ticker) + '\'],\'daytrade\');}">';
-        html += '<td class="px-2 py-2 text-center text-gray-500 sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (i + 1) + '</td>';
-        html += '<td class="px-2 py-2 font-medium text-white sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + screenerResultActionHtml(r.ticker, 'daytrade') + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
+        html += '<td class="px-2 py-2 text-center text-gray-500 sticky-col-1 sticky left-0 ac-ticker-sticky-cell z-10 w-[36px] min-w-[36px]">' + (i + 1) + '</td>';
+        html += '<td class="px-2 py-2 font-medium sticky-col-2 sticky left-[36px] ac-ticker-sticky-cell z-10 min-w-[80px] border-r border-dark-600/30">' + screenerResultActionHtml(r.ticker, 'daytrade') + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px]">' + (r.board || '—') + '</td>';
         html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ' + statusClass + '">' + escapeHtml(getStatusLabel(r, formatDtStatus(r.status))) + '</span></td>';
         var dtBdBadgeHtml = '';
@@ -405,4 +424,19 @@ function exportDayTradePDF() {
         doc.save('Auto-Cuan-Day-Trade-Screener.pdf');
         showToast('PDF berhasil diunduh.', 'success');
     });
+}
+
+async function forceResetDaytradeScan() {
+    try {
+        var res = await fetch('/api/sector-hot?action=daytrade-screener-run&force=1', { method: 'POST' });
+        var json = await res.json();
+        if (json && (json.success || json.status)) {
+            if (typeof showToast === 'function') showToast('Lock scan berhasil di-reset. Memulai scan ulang...', 'info');
+            loadDayTradeScreener();
+        } else {
+            alert('Gagal me-reset lock: ' + (json && (json.error || json.message) || 'Unknown error'));
+        }
+    } catch (e) {
+        alert('Gagal menghubungi server untuk force reset.');
+    }
 }

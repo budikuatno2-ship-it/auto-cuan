@@ -88,6 +88,10 @@ module.exports = async function handler(req, res) {
 
     // === AI TELEMETRY DIAGNOSTICS (In-memory, zero external dependency) ===
     if (action === 'ai-telemetry') {
+      const auth = requireAdminSession(req);
+      if (!auth.ok && (req && req.headers)) {
+        return res.status(auth.status || 401).json({ success: false, error: auth.error || 'Akses admin diperlukan.' });
+      }
       return res.status(200).json({
         success: true,
         aiTelemetry: getAiTelemetryStats()

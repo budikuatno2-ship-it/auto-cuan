@@ -108,10 +108,15 @@ test('application footer is removed without hiding semantic footers by CSS',()=>
  assert.doesNotMatch(read('public/index.html'),/Auto-Cuan &copy; 2024/);
  assert.doesNotMatch(read('public/money-sheet.css'),/^footer\s*\{/m);
 });
-test('analysis has nine unique sidebar destinations and no duplicate strip in partials',()=>{
+test('analysis sidebar destinations are unique and there is no duplicate strip in partials',()=>{
  const html=read('public/index.html');const nav=html.slice(html.indexOf('<aside id="appSidebar"'),html.indexOf('</aside>',html.indexOf('<aside id="appSidebar"')));
- assert.equal((nav.match(/data-analysis-tab=/g)||[]).length,9);
- for(const tab of ['analisis-chart','bandarmologi','intel','hunter','insider','ranking','financial','market-structure','pattern']) {
+ // The invariant is uniqueness, not a magic count: every analysis destination
+ // must appear exactly once so the workspace can never grow a duplicate strip.
+ // FIX-22 added `chart` (Chart Workstation) as a tenth first-class destination,
+ // so the guard asserts "no duplicates" and pins each known tab to exactly one.
+ const dests=(nav.match(/data-analysis-tab="([^"]+)"/g)||[]).map(s=>s.replace(/^data-analysis-tab="|"$/g,''));
+ assert.equal(new Set(dests).size,dests.length,'a duplicated analysis destination would render a duplicate strip');
+ for(const tab of ['chart','analisis-chart','bandarmologi','intel','hunter','insider','ranking','financial','market-structure','pattern']) {
   assert.equal((nav.match(new RegExp('data-analysis-tab="' + tab + '"','g'))||[]).length,1,tab);
  }
  for(const file of ['partials/analisis-saham.partial.html','public/partials/analisis-saham.partial.html']) assert.doesNotMatch(read(file),/class="analisis-tab-strip/);
