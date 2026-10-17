@@ -1,0 +1,53 @@
+=== 1. CANONICAL TRADING DAYS 2026 ===
+Total trading days: 188 from 2026-01-02 to 2026-10-16
+
+=== 2. BROKER-SUMMARY (flow=all) ===
+Total tickers in broker-summary: 970
+Sample file (BRPT 2026-09-08):
+  broker_levels length: 25
+  brokers length: 20
+  all_data present?: false
+Coverage sample:
+  2026-01-02: 957 tickers
+  2026-09-08: 963 tickers
+  2026-10-16: 833 tickers
+
+=== 3. BROKER-ACCUMULATION ===
+Total files/folders in broker-accumulation: 964
+First entry: AADI isDirectory: true
+Sub-files in folder: [
+  '2026-10-01.json',
+  '2026-10-02.json',
+  '2026-10-05.json',
+  '2026-10-06.json',
+  '2026-10-07.json'
+]
+
+=== 4. INSIDERS ===
+Total files/folders in insiders: 964
+First entry: AADI isDirectory: true
+Sample path: /home/ubuntu/auto-cuan/data/arjum-data/insiders/AADI/2026-10-01.json
+Sample keys: [
+  'stock_code',
+  'count',
+  'total',
+  'page',
+  'page_size',
+  'total_pages',
+  'items'
+]
+Sample structure: object
+Sample preview: {"stock_code":"AADI","count":15,"total":47,"page":1,"page_size":15,"total_pages":4,"items":[{"name":"ADARO STRATEGIC INVESTMENTS","date":"2026-08-19","action_type":"transfer","nationality":"local","previous_value":"3,236,597,603","previous_percentage":"41.56","current_value":"3,200,142,830","current
+
+=== 5. OTHER ARJUM DATASETS ===
+Subdirectories in arjum-data:
+  _daily-market-update/ (16 entries)
+  _daily-update-marker/ (31 entries)
+  _quota-state/ (1 entries)
+  bandarmologi-intel/ (31 entries)
+  broker-accumulation/ (964 entries)
+  broker-hunter/ (463 entries)
+  broker-summary/ (970 entries)
+  financial-statements/ (962 entries)
+  insiders/ (964 entries)
+  market-cap/ (20 entries)

@@ -1,0 +1,368 @@
+=== 1. AUDIT PEMANGGIL ARJUM DI CODEBASE VPS ===
+Callers in /home/ubuntu/auto-cuan:
+   /home/ubuntu/auto-cuan/tools/run-daily-broker-update.js:49:const arjumClient = require('../lib/arjum-client');
+   /home/ubuntu/auto-cuan/tools/run-daily-broker-update.js:300:  const dailyLimit = arjumClient.getConfiguredDailyQuota();
+   /home/ubuntu/auto-cuan/tools/run-daily-broker-update.js:309:  console.log(`Daily Quota: ${dailyLimit} | Already used today (cross-process, all scripts): ${arjumClient.getUsedQuotaToday()}`);
+   /home/ubuntu/auto-cuan/tools/run-daily-broker-update.js:342:  if (!dryRun && !arjumClient.hasArjumApiKey()) {
+   /home/ubuntu/auto-cuan/tools/run-daily-broker-update.js:385:      const classified = arjumClient.classifyFailure(res);
+   /home/ubuntu/auto-cuan/tools/run-daily-broker-update.js:434:      if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
+   /home/ubuntu/auto-cuan/tools/run-daily-broker-update.js:437:      const res = await arjumClient.fetchBrokerSummary(ticker, dateArg);
+   /home/ubuntu/auto-cuan/tools/run-daily-broker-update.js:496:        if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
+   /home/ubuntu/auto-cuan/tools/run-daily-broker-update.js:499:        const accRes = await arjumClient.fetchBrokerAccumulation(ticker, { forceLive: true });
+   /home/ubuntu/auto-cuan/tools/run-daily-broker-update.js:532:        if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
+   /home/ubuntu/auto-cuan/tools/run-daily-broker-update.js:535:        const insRes = await arjumClient.fetchInsiders(ticker, 1, 15, { forceLive: true });
+   /home/ubuntu/auto-cuan/tools/run-daily-broker-update.js:590:  console.log(`Total Terpakai Hari Ini (lintas-proses): ${arjumClient.getUsedQuotaToday()} / ${dailyLimit}`);
+   /home/ubuntu/auto-cuan/tools/targeted-september-backfill.js:7: * calling the same arjumClient.fetchBrokerSummary path the daily worker uses,
+   /home/ubuntu/auto-cuan/tools/targeted-september-backfill.js:60:  const arjumClient = require('../lib/arjum-client');
+   /home/ubuntu/auto-cuan/tools/targeted-september-backfill.js:63:  if (!arjumClient.hasArjumApiKey()) {
+   /home/ubuntu/auto-cuan/tools/targeted-september-backfill.js:88:      if (arjumClient.getUsedQuotaToday() >= effective) {
+   /home/ubuntu/auto-cuan/tools/targeted-september-backfill.js:95:          arjumClient.fetchBrokerSummary(ticker, date),
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:14:const arjumClient = require('../lib/arjum-client');
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:141:  let dailyQuota = arjumClient.getConfiguredDailyQuota();
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:180:  const hasDirectKey = arjumClient.hasArjumApiKey();
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:183:  if (typeof arjumClient.getJakartaTime === 'function') {
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:184:    const { dateKey: todayKey, hour: nowHour, minute: nowMinute } = arjumClient.getJakartaTime();
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:198:  console.log(`Max Backfill Budget: ${dailyLimit} | Used Quota Today: ${arjumClient.getUsedQuotaToday()}`);
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:216:    const classified = arjumClient.classifyFailure(res);
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:226:    const circuitTripped = typeof arjumClient.isCircuitBreakerTripped === 'function' && arjumClient.isCircuitBreakerTripped();
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:227:    if (circuitTripped || quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) {
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:239:        if (arjumClient.getUsedQuotaToday() >= dailyLimit) break;
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:241:        const accRes = await arjumClient.fetchBrokerAccumulation(ticker);
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:260:        if (arjumClient.getUsedQuotaToday() >= dailyLimit) break;
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:262:        const insRes = await arjumClient.fetchInsiders(ticker, 1, 15);
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:279:      const circuitTripped = typeof arjumClient.isCircuitBreakerTripped === 'function' && arjumClient.isCircuitBreakerTripped();
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:280:      if (circuitTripped || quotaReached || arjumClient.getUsedQuotaToday() >= dailyLimit) break;
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:296:      const sumRes = await arjumClient.fetchBrokerSummary(ticker, dateStr);
+   /home/ubuntu/auto-cuan/tools/backfill-engine.js:316:  console.log(`Kuota Terpakai Hari Ini   : ${arjumClient.getUsedQuotaToday()} / ${dailyLimit}`);
+   /home/ubuntu/auto-cuan/tools/backfill-arjum-data.js:13:const arjumClient = require('../lib/arjum-client');
+   /home/ubuntu/auto-cuan/tools/backfill-arjum-data.js:146:  let dailyLimit = arjumClient.getConfiguredDailyQuota();
+   /home/ubuntu/auto-cuan/tools/backfill-arjum-data.js:205:  const hasDirectKey = arjumClient.hasArjumApiKey();
+   /home/ubuntu/auto-cuan/tools/backfill-arjum-data.js:209:  console.log(`Connection Source: Direct API (${arjumClient.ARJUM_BASE_URL})`);
+   /home/ubuntu/auto-cuan/tools/backfill-arjum-data.js:211:  console.log(`Already used today (cross-process, all scripts): ${arjumClient.getUsedQuotaToday()}`);
+   /home/ubuntu/auto-cuan/tools/backfill-arjum-data.js:248:    const classified = arjumClient.classifyFailure(res);
+   /home/ubuntu/auto-cuan/tools/backfill-arjum-data.js:269:    const usedToday = arjumClient.getUsedQuotaToday();
+   /home/ubuntu/auto-cuan/tools/backfill-arjum-data.js:311:          resAcc = await arjumClient.fetchBrokerAccumulation(ticker);
+   /home/ubuntu/auto-cuan/tools/backfill-arjum-data.js:338:          resIns = await arjumClient.fetchInsiders(ticker, 1, 15);
+   /home/ubuntu/auto-cuan/tools/backfill-arjum-data.js:366:            resSum = await arjumClient.fetchBrokerSummary(ticker, date);
+   /home/ubuntu/auto-cuan/tools/backfill-arjum-data.js:406:  console.log(`Total Terpakai Hari Ini (lintas-proses): ${arjumClient.getUsedQuotaToday()} / ${dailyLimit}`);
+   /home/ubuntu/auto-cuan/tools/collect-insider-data.js:24:const arjumClient = require('../lib/arjum-client');
+   /home/ubuntu/auto-cuan/tools/collect-insider-data.js:197:    if (!rawData && arjumClient.hasArjumApiKey()) {
+   /home/ubuntu/auto-cuan/tools/collect-insider-data.js:199:        const apiRes = await arjumClient.fetchInsiders(ticker, 1, 15);
+   /home/ubuntu/auto-cuan/lib/bandarmologi-intel-service.js:17:const arjumClient = require('./arjum-client');
+   /home/ubuntu/auto-cuan/lib/bandarmologi-intel-service.js:1510:  const clean = arjumClient.cleanTicker(ticker);
+   /home/ubuntu/auto-cuan/lib/bandarmologi-intel-service.js:1536:  const clean = arjumClient.cleanTicker(ticker);
+   /home/ubuntu/auto-cuan/lib/bandarmologi-intel-service.js:2420:  const ticker = options.ticker ? arjumClient.cleanTicker(options.ticker) : null;
+   /home/ubuntu/auto-cuan/lib/bandarmologi-service.js:10:const arjumClient = require('./arjum-client');
+   /home/ubuntu/auto-cuan/lib/bandarmologi-service.js:2036:  const ticker = arjumClient.cleanTicker(tickerOrQuery);
+   /home/ubuntu/auto-cuan/lib/bandarmologi-service.js:2067:    if (!arjumClient.hasArjumApiKey()) {
+   /home/ubuntu/auto-cuan/lib/bandarmologi-service.js:2072:        arjumClient.fetchBrokerSummary(ticker, targetDate, flow),
+   /home/ubuntu/auto-cuan/lib/bandarmologi-service.js:2073:        arjumClient.fetchBrokerAccumulation(ticker),
+   /home/ubuntu/auto-cuan/lib/bandarmologi-service.js:2074:        arjumClient.fetchInsiders(ticker, 1, 15)
+   /home/ubuntu/auto-cuan/lib/bandarmologi-service.js:2256:    } else if (numDays > 1 && !isCustomRange && !arjumClient.hasArjumApiKey()) {
+   /home/ubuntu/auto-cuan/lib/bandarmologi-service.js:2385:  if (arjumClient.hasArjumApiKey()) {
+   /home/ubuntu/auto-cuan/lib/bandarmologi-service.js:2389:        arjumClient.fetchBrokerSummary(ticker, targetDate),
+   /home/ubuntu/auto-cuan/lib/bandarmologi-service.js:2390:        arjumClient.fetchBrokerAccumulation(ticker),
+   /home/ubuntu/auto-cuan/lib/bandarmologi-service.js:2391:        arjumClient.fetchInsiders(ticker, 1, 15)
+   /home/ubuntu/auto-cuan/lib/bandarmologi-service.js:2448:      const classified = arjumClient.classifyFailure(failed);
+
+=== 2. PEMERIKSAAN LOG 7 HARI TERAKHIR DI /home/ubuntu/auto-cuan-runner/logs/ ===
+Available log files in runner:
+  all-screeners-launch.log (0.0 KB, mtime: 2026-09-25T05:24:00.503Z)
+  all-screeners-manual-20260717-022204.log (0.0 KB, mtime: 2026-09-25T05:24:00.417Z)
+  arjum-annual-2020.log (21.6 KB, mtime: 2026-09-30T04:30:05.259Z)
+  arjum-fundamentals.log (8.3 KB, mtime: 2026-09-30T04:20:01.895Z)
+  backfill-candles.log (5.4 KB, mtime: 2026-10-16T17:05:01.126Z)
+  broker-accumulation.log (9.3 KB, mtime: 2026-10-16T11:00:03.188Z)
+  candle-2020-2025-resume.log (102.6 KB, mtime: 2026-09-29T18:17:50.796Z)
+  candle-backfill-200.log (0.6 KB, mtime: 2026-09-16T01:30:33.732Z)
+  candle-backfill.log (0.6 KB, mtime: 2026-09-16T01:02:56.357Z)
+  candle-refresh-2026-09-29.log (0.6 KB, mtime: 2026-09-29T15:48:42.741Z)
+  candle-refresh-universe962.log (0.3 KB, mtime: 2026-09-29T16:29:09.673Z)
+  cloudflared-web-supervisor.log (50.4 KB, mtime: 2026-10-16T16:44:42.185Z)
+  cloudflared-web-tunnel.log (459.6 KB, mtime: 2026-10-16T16:44:48.237Z)
+  cloudflared-webhook.log (7.1 KB, mtime: 2026-09-25T10:06:37.649Z)
+  daily-afternoon-recap.log (153.7 KB, mtime: 2026-10-16T11:45:04.063Z)
+  daily-broker-update.log (229.1 KB, mtime: 2026-10-01T11:20:24.315Z)
+  daily-market-context.log (12.3 KB, mtime: 2026-09-22T09:16:13.295Z)
+  daily-market-update.log (1749.0 KB, mtime: 2026-10-16T17:23:37.373Z)
+  daytrade-2026-07-03.log (0.0 KB, mtime: 2026-09-25T05:24:00.335Z)
+  daytrade-2026-07-04.log (0.0 KB, mtime: 2026-09-25T05:24:00.522Z)
+  daytrade-2026-07-06.log (0.0 KB, mtime: 2026-09-25T05:24:00.411Z)
+  daytrade-2026-07-07.log (0.0 KB, mtime: 2026-09-25T05:24:00.413Z)
+  daytrade-2026-07-08.log (0.0 KB, mtime: 2026-09-25T05:24:00.426Z)
+  daytrade-2026-07-09.log (0.0 KB, mtime: 2026-09-25T05:24:00.436Z)
+  daytrade-2026-07-10.log (0.0 KB, mtime: 2026-09-25T05:24:00.308Z)
+  daytrade-2026-07-13.log (0.0 KB, mtime: 2026-09-25T05:24:00.319Z)
+  daytrade-2026-07-14.log (0.0 KB, mtime: 2026-09-25T05:24:00.432Z)
+  daytrade-2026-07-15.log (0.0 KB, mtime: 2026-09-25T05:24:00.307Z)
+  daytrade-2026-07-16.log (0.0 KB, mtime: 2026-09-25T05:24:00.328Z)
+  daytrade-2026-07-17.log (0.0 KB, mtime: 2026-09-25T05:24:00.349Z)
+  daytrade-2026-07-20.log (0.0 KB, mtime: 2026-09-25T05:24:00.298Z)
+  daytrade-2026-07-21.log (0.0 KB, mtime: 2026-09-25T05:24:00.359Z)
+  daytrade-2026-07-22.log (0.0 KB, mtime: 2026-09-25T05:24:00.330Z)
+  daytrade-2026-07-23.log (0.0 KB, mtime: 2026-09-25T05:24:00.520Z)
+  daytrade-2026-07-24.log (0.0 KB, mtime: 2026-09-25T05:24:00.354Z)
+  daytrade-2026-07-27.log (0.0 KB, mtime: 2026-09-25T05:24:00.498Z)
+  daytrade-2026-07-28.log (0.0 KB, mtime: 2026-09-25T05:24:00.447Z)
+  daytrade-2026-07-29.log (0.0 KB, mtime: 2026-09-25T05:24:00.467Z)
+  daytrade-2026-07-30.log (0.0 KB, mtime: 2026-09-25T05:24:00.461Z)
+  daytrade-2026-07-31.log (0.0 KB, mtime: 2026-09-25T05:24:00.434Z)
+  daytrade-2026-08-03.log (0.0 KB, mtime: 2026-09-25T05:24:00.303Z)
+  daytrade-2026-08-04.log (0.0 KB, mtime: 2026-09-25T05:24:00.509Z)
+  daytrade-2026-08-05.log (0.0 KB, mtime: 2026-09-25T05:24:00.356Z)
+  daytrade-2026-08-06.log (0.0 KB, mtime: 2026-09-25T05:24:00.403Z)
+  daytrade-2026-08-07.log (0.0 KB, mtime: 2026-09-25T05:24:00.454Z)
+  daytrade-2026-08-10.log (0.0 KB, mtime: 2026-09-25T05:24:00.300Z)
+  daytrade-2026-08-11.log (0.0 KB, mtime: 2026-09-25T05:24:00.362Z)
+  daytrade-2026-08-12.log (0.0 KB, mtime: 2026-09-25T05:24:00.343Z)
+  daytrade-2026-08-13.log (0.0 KB, mtime: 2026-09-25T05:24:00.407Z)
+  daytrade-cron.log (4480.4 KB, mtime: 2026-09-24T14:30:29.053Z)
+  daytrade-last-response.json (24.2 KB, mtime: 2026-09-24T14:30:28.995Z)
+  daytrade-local-exec.log (2174.1 KB, mtime: 2026-09-24T14:30:28.995Z)
+  daytrade-producer.log (120.3 KB, mtime: 2026-10-16T08:47:05.520Z)
+  daytrade.log (89.9 KB, mtime: 2026-10-06T02:15:02.746Z)
+  entry-observability-snapshot.log (13.8 KB, mtime: 2026-09-22T09:50:01.441Z)
+  fast-watcher-final-dry-run.log (0.0 KB, mtime: 2026-09-25T05:24:00.321Z)
+  fast-watcher-guarded-live.log (651.3 KB, mtime: 2026-09-23T08:08:49.710Z)
+  fastwatcher.log (17888.7 KB, mtime: 2026-10-16T08:55:02.514Z)
+  fetch-daily-candles.log (2.3 KB, mtime: 2026-10-01T11:08:09.103Z)
+  historical-backfill.log (986.0 KB, mtime: 2026-09-21T17:20:33.508Z)
+  idx-suspension-guard.log (179.9 KB, mtime: 2026-10-16T13:45:01.508Z)
+  intraday-experimental-2026-07-23-manual-fix.log (0.0 KB, mtime: 2026-09-25T05:24:00.325Z)
+  intraday-experimental-2026-07-23.log (0.0 KB, mtime: 2026-09-25T05:24:00.457Z)
+  intraday-fast-watcher.log (0.0 KB, mtime: 2026-09-25T05:24:00.439Z)
+  intraday-sample-2026-07-24-cron.log (0.0 KB, mtime: 2026-09-25T05:24:00.445Z)
+  intraday-samples-2026-07-24 (4.0 KB, mtime: 2026-07-24T09:00:04.792Z)
+  intraday-shadow-v2-oos (4.0 KB, mtime: 2026-07-27T02:15:01.631Z)
+  intraday-shadow-v2-oos-cron.log (0.0 KB, mtime: 2026-09-25T05:24:00.452Z)
+  keepalive.log (138.8 KB, mtime: 2026-10-17T15:00:04.423Z)
+  landing-refresh.log (3.8 KB, mtime: 2026-10-17T15:15:03.696Z)
+  lifecycle-evaluator.log (7.2 KB, mtime: 2026-10-16T09:30:20.925Z)
+  manual-backfill-augsep.log (0.0 KB, mtime: 2026-09-25T05:24:00.341Z)
+  manual-backfill-junjul.log (0.0 KB, mtime: 2026-09-25T05:24:00.363Z)
+  manual-backfill-tonight.log (0.0 KB, mtime: 2026-09-25T05:24:00.414Z)
+  manual-recovery-2026-09-30.log (1.3 KB, mtime: 2026-10-01T11:22:22.185Z)
+  nk-finish.log (0.0 KB, mtime: 2026-09-25T05:24:00.398Z)
+  nk-top5-auto-once.log (0.0 KB, mtime: 2026-09-25T05:24:00.415Z)
+  recommendation-monitor-dry-2026-07-19.log (0.0 KB, mtime: 2026-09-25T05:24:00.422Z)
+  recommendation-monitor-dry-last-response.json (22.0 KB, mtime: 2026-07-19T07:54:46.647Z)
+  recommendation-monitor-hourly-preview-2026-07-19.log (0.0 KB, mtime: 2026-09-25T05:24:00.317Z)
+  recommendation-monitor-hourly-preview-last-response.json (23.5 KB, mtime: 2026-07-19T08:29:42.251Z)
+  recommendation-monitor-live-summary-2026-07-19.log (0.0 KB, mtime: 2026-09-25T05:24:00.316Z)
+  recommendation-monitor-live-summary-last-response.json (0.4 KB, mtime: 2026-07-19T09:04:42.188Z)
+  recommendation-monitor-live-test-2026-07-19.log (0.0 KB, mtime: 2026-09-25T05:24:00.304Z)
+  recommendation-monitor-live-test-last-response.json (0.5 KB, mtime: 2026-07-19T09:03:38.741Z)
+  recovery-2026-09-28.log (108.8 KB, mtime: 2026-09-29T15:24:35.586Z)
+  recovery-2026-09-29-universe962.log (4.3 KB, mtime: 2026-09-29T16:18:20.094Z)
+  recovery-2026-09-29.log (6.7 KB, mtime: 2026-09-29T15:07:06.929Z)
+  recovery-broker-2026-09-30.log (35.0 KB, mtime: 2026-10-01T11:49:12.160Z)
+  repair-broksum-isolated.log (2.7 KB, mtime: 2026-09-30T04:04:45.888Z)
+  repair-broksum-missing-only.log (53.7 KB, mtime: 2026-09-30T03:52:36.591Z)
+  repair-broksum-recent-2.log (2.2 KB, mtime: 2026-09-29T19:07:04.682Z)
+  repair-broksum-recent-3.log (123.7 KB, mtime: 2026-09-30T02:18:43.222Z)
+  repair-broksum-recent-4.log (7.4 KB, mtime: 2026-09-30T02:21:54.396Z)
+  repair-broksum-recent-5.log (148.5 KB, mtime: 2026-09-30T03:23:59.252Z)
+  repair-broksum-recent.log (128.4 KB, mtime: 2026-09-29T19:25:07.464Z)
+  retry-telegram-delivery.log (46.5 KB, mtime: 2026-10-16T16:45:02.481Z)
+  run-all-screeners-once.log (0.0 KB, mtime: 2026-09-25T05:24:00.516Z)
+  run-nk-dt-once.log (0.0 KB, mtime: 2026-09-25T05:24:00.425Z)
+  screener-dispatch.log (331.1 KB, mtime: 2026-10-16T15:15:08.509Z)
+  screener-preflight.log (1.2 KB, mtime: 2026-10-16T14:30:03.175Z)
+  screeners.log (16.1 KB, mtime: 2026-10-16T14:33:06.253Z)
+  second-chance-admin-pilot (4.0 KB, mtime: 2026-07-30T02:52:01.866Z)
+  second-chance-shadow-cron.log (0.0 KB, mtime: 2026-09-25T05:24:00.405Z)
+  sector-hot-daily (4.0 KB, mtime: 2026-09-22T10:30:01.477Z)
+  sector-hot-daily-cron.log (28.1 KB, mtime: 2026-09-22T10:31:05.929Z)
+  sector-hot.log (1149.9 KB, mtime: 2026-10-16T08:31:01.877Z)
+  swing-konglo-2026-07-03.log (0.0 KB, mtime: 2026-09-25T05:24:00.349Z)
+  swing-konglo-2026-07-04.log (0.0 KB, mtime: 2026-09-25T05:24:00.463Z)
+  swing-konglo-2026-07-06.log (0.0 KB, mtime: 2026-09-25T05:24:00.322Z)
+  swing-konglo-2026-07-07.log (0.0 KB, mtime: 2026-09-25T05:24:00.401Z)
+  swing-konglo-2026-07-08.log (0.0 KB, mtime: 2026-09-25T05:24:00.424Z)
+  swing-konglo-2026-07-09.log (0.0 KB, mtime: 2026-09-25T05:24:00.366Z)
+  swing-konglo-2026-07-10.log (0.0 KB, mtime: 2026-09-25T05:24:00.550Z)
+  swing-konglo-2026-07-11.log (0.0 KB, mtime: 2026-09-25T05:24:00.419Z)
+  swing-konglo-2026-07-13.log (0.0 KB, mtime: 2026-09-25T05:24:00.408Z)
+  swing-konglo-2026-07-14.log (0.0 KB, mtime: 2026-09-25T05:24:00.324Z)
+  swing-konglo-2026-07-15.log (0.0 KB, mtime: 2026-09-25T05:24:00.350Z)
+  swing-konglo-2026-07-16.log (0.0 KB, mtime: 2026-09-25T05:24:00.335Z)
+  swing-konglo-2026-07-17.log (0.0 KB, mtime: 2026-09-25T05:24:00.499Z)
+  swing-konglo-2026-07-20.log (0.0 KB, mtime: 2026-09-25T05:24:00.332Z)
+  swing-konglo-2026-07-21.log (0.0 KB, mtime: 2026-09-25T05:24:00.428Z)
+  swing-konglo-2026-07-22.log (0.0 KB, mtime: 2026-09-25T05:24:00.499Z)
+  swing-konglo-2026-07-23.log (0.0 KB, mtime: 2026-09-25T05:24:00.311Z)
+  swing-konglo-2026-07-24.log (0.0 KB, mtime: 2026-09-25T05:24:00.314Z)
+  swing-konglo-2026-07-27.log (0.0 KB, mtime: 2026-09-25T05:24:00.552Z)
+  swing-konglo-2026-07-28.log (0.0 KB, mtime: 2026-09-25T05:24:00.322Z)
+  swing-konglo-2026-07-29.log (0.0 KB, mtime: 2026-09-25T05:24:00.431Z)
+  swing-konglo-2026-07-30.log (0.0 KB, mtime: 2026-09-25T05:24:00.438Z)
+  swing-konglo-2026-07-31.log (0.0 KB, mtime: 2026-09-25T05:24:00.459Z)
+  swing-konglo-2026-08-03.log (0.0 KB, mtime: 2026-09-25T05:24:00.351Z)
+  swing-konglo-2026-08-04.log (0.0 KB, mtime: 2026-09-25T05:24:00.450Z)
+  swing-konglo-2026-08-05.log (0.0 KB, mtime: 2026-09-25T05:24:00.507Z)
+  swing-konglo-2026-08-06.log (0.0 KB, mtime: 2026-09-25T05:24:00.360Z)
+  swing-konglo-2026-08-07.log (0.0 KB, mtime: 2026-09-25T05:24:00.338Z)
+  swing-konglo-2026-08-10.log (0.0 KB, mtime: 2026-09-25T05:24:00.296Z)
+  swing-konglo-2026-08-11.log (0.0 KB, mtime: 2026-09-25T05:24:00.334Z)
+  swing-konglo-2026-08-12.log (0.0 KB, mtime: 2026-09-25T05:24:00.399Z)
+  swing-konglo-2026-08-13.log (0.0 KB, mtime: 2026-09-25T05:24:00.506Z)
+  swing-konglo-cron.log (157.0 KB, mtime: 2026-09-24T14:32:30.391Z)
+  swing-konglo-last-response.json (20.2 KB, mtime: 2026-09-24T14:32:30.348Z)
+  swing-konglo-local-exec.log (768.9 KB, mtime: 2026-09-24T14:32:30.350Z)
+  swing-konglo.log (32.7 KB, mtime: 2026-10-05T12:15:03.832Z)
+  swing-non-konglo.log (33.9 KB, mtime: 2026-10-05T12:30:02.498Z)
+  swing-nonkonglo-2026-07-03.log (0.0 KB, mtime: 2026-09-25T05:24:00.458Z)
+  swing-nonkonglo-2026-07-04.log (0.0 KB, mtime: 2026-09-25T05:24:00.511Z)
+  swing-nonkonglo-2026-07-06.log (0.0 KB, mtime: 2026-09-25T05:24:00.518Z)
+  swing-nonkonglo-2026-07-07.log (0.0 KB, mtime: 2026-09-25T05:24:00.514Z)
+  swing-nonkonglo-2026-07-08.log (0.0 KB, mtime: 2026-09-25T05:24:00.422Z)
+  swing-nonkonglo-2026-07-09.log (0.0 KB, mtime: 2026-09-25T05:24:00.450Z)
+  swing-nonkonglo-2026-07-10.log (0.0 KB, mtime: 2026-09-25T05:24:00.522Z)
+  swing-nonkonglo-2026-07-11.log (0.0 KB, mtime: 2026-09-25T05:24:00.504Z)
+  swing-nonkonglo-2026-07-13.log (0.0 KB, mtime: 2026-09-25T05:24:00.306Z)
+  swing-nonkonglo-2026-07-14.log (0.0 KB, mtime: 2026-09-25T05:24:00.318Z)
+  swing-nonkonglo-2026-07-15.log (0.0 KB, mtime: 2026-09-25T05:24:00.302Z)
+  swing-nonkonglo-2026-07-16.log (0.0 KB, mtime: 2026-09-25T05:24:00.331Z)
+  swing-nonkonglo-2026-07-17.log (0.0 KB, mtime: 2026-09-25T05:24:00.344Z)
+  swing-nonkonglo-2026-07-20.log (0.0 KB, mtime: 2026-09-25T05:24:00.340Z)
+  swing-nonkonglo-2026-07-21.log (0.0 KB, mtime: 2026-09-25T05:24:00.462Z)
+  swing-nonkonglo-2026-07-22.log (0.0 KB, mtime: 2026-09-25T05:24:00.441Z)
+  swing-nonkonglo-2026-07-23.log (0.0 KB, mtime: 2026-09-25T05:24:00.347Z)
+  swing-nonkonglo-2026-07-24.log (0.0 KB, mtime: 2026-09-25T05:24:00.352Z)
+  swing-nonkonglo-2026-07-27.log (0.0 KB, mtime: 2026-09-25T05:24:00.444Z)
+  swing-nonkonglo-2026-07-28.log (0.0 KB, mtime: 2026-09-25T05:24:00.312Z)
+  swing-nonkonglo-2026-07-29.log (0.0 KB, mtime: 2026-09-25T05:24:00.429Z)
+  swing-nonkonglo-2026-07-30.log (0.0 KB, mtime: 2026-09-25T05:24:00.442Z)
+  swing-nonkonglo-2026-07-31.log (0.0 KB, mtime: 2026-09-25T05:24:00.513Z)
+  swing-nonkonglo-2026-08-03.log (0.0 KB, mtime: 2026-09-25T05:24:00.448Z)
+  swing-nonkonglo-2026-08-04.log (0.0 KB, mtime: 2026-09-25T05:24:00.326Z)
+  swing-nonkonglo-2026-08-05.log (0.0 KB, mtime: 2026-09-25T05:24:00.337Z)
+  swing-nonkonglo-2026-08-06.log (0.0 KB, mtime: 2026-09-25T05:24:00.466Z)
+  swing-nonkonglo-2026-08-07.log (0.0 KB, mtime: 2026-09-25T05:24:00.501Z)
+  swing-nonkonglo-2026-08-10.log (0.0 KB, mtime: 2026-09-25T05:24:00.401Z)
+  swing-nonkonglo-2026-08-11.log (0.0 KB, mtime: 2026-09-25T05:24:00.365Z)
+  swing-nonkonglo-2026-08-12.log (0.0 KB, mtime: 2026-09-25T05:24:00.314Z)
+  swing-nonkonglo-2026-08-13.log (0.0 KB, mtime: 2026-09-25T05:24:00.357Z)
+  swing-nonkonglo-cron.log (2169.7 KB, mtime: 2026-09-24T14:35:11.220Z)
+  swing-nonkonglo-last-response.json (16.6 KB, mtime: 2026-09-24T14:35:11.159Z)
+  swing-nonkonglo-local-exec.log (919.9 KB, mtime: 2026-09-24T14:35:11.161Z)
+  targeted-sept-backfill.log (1.2 KB, mtime: 2026-09-15T18:53:53.249Z)
+  telegram-monitor-local-cron.log (136.4 KB, mtime: 2026-09-11T09:02:25.769Z)
+  top5-dry-run-2026-07-03.log (0.0 KB, mtime: 2026-09-25T05:24:00.364Z)
+  top5-dry-run-2026-07-04.log (0.0 KB, mtime: 2026-09-25T05:24:00.418Z)
+  top5-dry-run-2026-07-06.log (0.0 KB, mtime: 2026-09-25T05:24:00.503Z)
+  top5-dry-run-2026-07-07.log (0.0 KB, mtime: 2026-09-25T05:24:00.358Z)
+  top5-dry-run-2026-07-08.log (0.0 KB, mtime: 2026-09-25T05:24:00.412Z)
+  top5-dry-run-2026-07-09.log (0.0 KB, mtime: 2026-09-25T05:24:00.333Z)
+  top5-dry-run-2026-07-10.log (0.0 KB, mtime: 2026-09-25T05:24:00.430Z)
+  top5-dry-run-2026-07-13.log (0.0 KB, mtime: 2026-09-25T05:24:00.505Z)
+  top5-dry-run-2026-07-14.log (0.0 KB, mtime: 2026-09-25T05:24:00.404Z)
+  top5-dry-run-2026-07-15.log (0.0 KB, mtime: 2026-09-25T05:24:00.405Z)
+  top5-dry-run-2026-07-16.log (0.0 KB, mtime: 2026-09-25T05:24:00.496Z)
+  top5-dry-run-2026-07-17.log (0.0 KB, mtime: 2026-09-25T05:24:00.517Z)
+  top5-dry-run-2026-07-20.log (0.0 KB, mtime: 2026-09-25T05:24:00.309Z)
+  top5-dry-run-2026-07-21.log (0.0 KB, mtime: 2026-09-25T05:24:00.420Z)
+  top5-dry-run-2026-07-22.log (0.0 KB, mtime: 2026-09-25T05:24:00.415Z)
+  top5-dry-run-2026-07-23.log (0.0 KB, mtime: 2026-09-25T05:24:00.427Z)
+  top5-dry-run-2026-07-24.log (0.0 KB, mtime: 2026-09-25T05:24:00.443Z)
+  top5-dry-run-2026-07-27.log (0.0 KB, mtime: 2026-09-25T05:24:00.435Z)
+  top5-dry-run-2026-07-28.log (0.0 KB, mtime: 2026-09-25T05:24:00.323Z)
+  top5-dry-run-2026-07-29.log (0.0 KB, mtime: 2026-09-25T05:24:00.345Z)
+  top5-dry-run-2026-07-30.log (0.0 KB, mtime: 2026-09-25T05:24:00.507Z)
+  top5-dry-run-2026-07-31.log (0.0 KB, mtime: 2026-09-25T05:24:00.513Z)
+  top5-dry-run-2026-08-03.log (0.0 KB, mtime: 2026-09-25T05:24:00.320Z)
+  top5-dry-run-2026-08-04.log (0.0 KB, mtime: 2026-09-25T05:24:00.339Z)
+  top5-dry-run-2026-08-05.log (0.0 KB, mtime: 2026-09-25T05:24:00.409Z)
+  top5-dry-run-2026-08-06.log (0.0 KB, mtime: 2026-09-25T05:24:00.437Z)
+  top5-dry-run-2026-08-07.log (0.0 KB, mtime: 2026-09-25T05:24:00.464Z)
+  top5-dry-run-2026-08-10.log (0.0 KB, mtime: 2026-09-25T05:24:00.409Z)
+  top5-dry-run-2026-08-11.log (0.0 KB, mtime: 2026-09-25T05:24:00.419Z)
+  top5-dry-run-2026-08-12.log (0.0 KB, mtime: 2026-09-25T05:24:00.515Z)
+  top5-dry-run-2026-08-13.log (0.0 KB, mtime: 2026-09-25T05:24:00.315Z)
+  top5-dry-run-last-response.json (12.1 KB, mtime: 2026-09-21T14:15:10.161Z)
+  top5-latest-dry-2026-07-04.log (0.0 KB, mtime: 2026-09-25T05:24:00.495Z)
+  top5-latest-dry-last-response.json (7.4 KB, mtime: 2026-07-04T13:46:41.596Z)
+  top5-latest-send-2026-07-04.log (0.0 KB, mtime: 2026-09-25T05:24:00.455Z)
+  top5-latest-send-last-response.json (33.4 KB, mtime: 2026-07-04T13:47:49.068Z)
+  top5-local-exec.log (380.3 KB, mtime: 2026-09-21T14:15:10.161Z)
+  top5-manual-dry-2026-07-04.log (0.0 KB, mtime: 2026-09-25T05:24:00.456Z)
+  top5-manual-dry-last-response.json (1.3 KB, mtime: 2026-07-04T12:25:26.488Z)
+  top5-night-cron.log (55.3 KB, mtime: 2026-09-21T14:15:10.229Z)
+  top5-prev-dry-2026-07-04.log (0.0 KB, mtime: 2026-09-25T05:24:00.423Z)
+  top5-prev-dry-last-response.json (1.3 KB, mtime: 2026-07-04T12:40:37.627Z)
+  verify-poller-watchdog.log (173.0 KB, mtime: 2026-10-02T15:00:01.601Z)
+  web-top5-check-2026-07-04.log (0.0 KB, mtime: 2026-09-25T05:24:00.455Z)
+  web-top5-check-auth.json (59.8 KB, mtime: 2026-07-04T14:18:37.114Z)
+  web-top5-check-last-response.json (0.6 KB, mtime: 2026-07-04T14:15:37.597Z)
+  webhook-failover.log (8.6 KB, mtime: 2026-09-25T10:00:07.472Z)
+
+Searching log files for request / quota lines:
+Belum Terbit (Pending Arjum):  3
+Status: BELUM LENGKAP — 3 ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya.
+  - broker-summary: 3 | accumulation: 0 | insiders: 0
+Belum Terbit (Pending Arjum):  3
+Status: BELUM LENGKAP — 3 ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya.
+  - broker-summary: 3 | accumulation: 0 | insiders: 0
+Belum Terbit (Pending Arjum):  0
+  - broker-summary: 962 | accumulation: 0 | insiders: 0
+Belum Terbit (Pending Arjum):  962
+Status: BELUM LENGKAP — 962 ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya.
+  - broker-summary: 832 | accumulation: 0 | insiders: 0
+Belum Terbit (Pending Arjum):  832
+Status: BELUM LENGKAP — 832 ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya.
+  - broker-summary: 832 | accumulation: 690 | insiders: 690
+Belum Terbit (Pending Arjum):  142
+Status: BELUM LENGKAP — 142 ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya.
+  - broker-summary: 142 | accumulation: 141 | insiders: 141
+Belum Terbit (Pending Arjum):  0
+Status: BELUM LENGKAP — 1 ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya.
+  - broker-summary: 1 | accumulation: 1 | insiders: 1
+Belum Terbit (Pending Arjum):  0
+  - broker-summary: 962 | accumulation: 830 | insiders: 830
+Belum Terbit (Pending Arjum):  0
+  - broker-summary: 962 | accumulation: 833 | insiders: 833
+Belum Terbit (Pending Arjum):  0
+  - broker-summary: 962 | accumulation: 834 | insiders: 834
+Belum Terbit (Pending Arjum):  0
+  - broker-summary: 962 | accumulation: 833 | insiders: 833
+Belum Terbit (Pending Arjum):  0
+[VPS-FETCHER][WARN] https://wishing-challenged-deeper-crown.trycloudflare.com/api/broker-summary?ticker=LINK&date=latest failed: This operation was aborted
+[BERHENTI: KUOTA API HAMPIR HABIS] Header response Arjum melaporkan sisa kuota 3000 (<= reserve 3000). Worker berhenti rapi.
+Status Berhenti:               BERHENTI: KUOTA API ARJUM HABIS (respons 429/quota dari Arjum)
+Belum Terbit (Pending Arjum):  132
+Status: BELUM LENGKAP — 132 ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya.
+Belum Terbit (Pending Arjum):  0
+[VPS-FETCHER][WARN] https://wishing-challenged-deeper-crown.trycloudflare.com/api/broker-summary?ticker=JELI&date=latest failed: bridge_error
+Belum Terbit (Pending Arjum):  0
+Belum Terbit (Pending Arjum):  131
+Status: BELUM LENGKAP — 131 ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya.
+Belum Terbit (Pending Arjum):  0
+
+=== 3. CRONTAB ACTIVE SCHEDULES ===
+CRON_TZ=Asia/Jakarta
+5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
+30 16 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-lifecycle-evaluator.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
+30,45 16 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
+0,15,30,45 17 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
+30 23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-market-update.sh --final >> /home/ubuntu/auto-cuan-runner/logs/daily-market-update.log 2>&1
+0 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-broker-accumulation.sh >> /home/ubuntu/auto-cuan-runner/logs/broker-accumulation.log 2>&1
+45 18 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daily-afternoon-recap.sh --send >> /home/ubuntu/auto-cuan-runner/logs/daily-afternoon-recap.log 2>&1
+15 22 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/direct-refresh-landing.js >> /home/ubuntu/auto-cuan-runner/logs/landing-refresh.log 2>&1
+*/15 8-20 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-idx-suspension-guard.sh >> /home/ubuntu/auto-cuan-runner/logs/idx-suspension-guard.log 2>&1
+2,17,32,47 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-daytrade-producer.sh --execute >> /home/ubuntu/auto-cuan-runner/logs/daytrade-producer.log 2>&1
+*/5 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-fastwatcher.sh --send >> /home/ubuntu/auto-cuan-runner/logs/fastwatcher.log 2>&1
+30 21 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screeners-preflight.sh --execute --send >> /home/ubuntu/auto-cuan-runner/logs/screeners.log 2>&1
+15 22 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screener-dispatch.sh --dry-run >> /home/ubuntu/auto-cuan-runner/logs/screener-dispatch.log 2>&1
+*/15 17-23 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-retry-telegram-delivery.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/retry-telegram-delivery.log 2>&1
+*/30 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-sector-hot.sh --force-local >> /home/ubuntu/auto-cuan-runner/logs/sector-hot.log 2>&1
+0 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-keepalive.sh >> /home/ubuntu/auto-cuan-runner/logs/keepalive.log 2>&1
+*/5 * * * * /bin/bash /home/ubuntu/auto-cuan/deploy/vps/check-verify-poller.sh >> /home/ubuntu/auto-cuan-runner/logs/verify-poller-watchdog.log 2>&1
+
+=== 4. PM2 LOGS & LIVE CALLS ===
+autocuan-web recent out log (sample):
+2026-10-16T07:54:08:  2. Dashboard:        http://127.0.0.1:3000/preview/dashboard
+2026-10-16T07:54:08:  3. Analisis Saham:   http://127.0.0.1:3000/preview/analisis-saham
+2026-10-16T07:54:08:  4. Sektor Hot:       http://127.0.0.1:3000/preview/sektor-hot
+2026-10-16T07:54:08:  5. Screener:         http://127.0.0.1:3000/preview/screener
+2026-10-16T07:54:08:  6. Watchlist:        http://127.0.0.1:3000/preview/watchlist
+2026-10-16T07:54:08:  7. Track Record:     http://127.0.0.1:3000/preview/track-r

@@ -1,0 +1,14 @@
+=== AUTO-CUAN BROKER SUMMARY BACKFILL WORKER ===
+Mode:            WEEKEND (Reserve Quota: 300)
+Pacing Delay:    180ms
+Execution Limit: 100
+Target Dir:      /home/ubuntu/auto-cuan/data/arjum-data/_staging
+Dry Run:         false
+Trading days in scope: 188 days (2026-01-02 to 2026-10-16)
+Tickers: 2 liquid (turnover >= 1M) + 0 regular = 2 total.
+[LIMIT-REACHED] Batas request 100 tercapai. Berhenti rapi.
+
+=== BACKFILL EXECUTION SUMMARY ===
+Requests Sent: 100
+Tasks Skipped: 2
+Status:        COMPLETED_OR_LIMITED

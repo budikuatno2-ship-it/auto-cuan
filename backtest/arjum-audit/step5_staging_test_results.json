@@ -1,0 +1,112 @@
+[
+  {
+    "ticker": "BRPT",
+    "allBrokersCount": 64,
+    "foreignBrokersCount": 19,
+    "domesticBrokersCount": 60,
+    "totalAllBval": 244446555500,
+    "totalFBval": 94982909000,
+    "totalDBval": 149463646500,
+    "diff": 0,
+    "formulaValid": true
+  },
+  {
+    "ticker": "BBCA",
+    "allBrokersCount": 86,
+    "foreignBrokersCount": 35,
+    "domesticBrokersCount": 84,
+    "totalAllBval": 6474934315000,
+    "totalFBval": 1616461977500,
+    "totalDBval": 4858472337500,
+    "diff": 0,
+    "formulaValid": true
+  },
+  {
+    "ticker": "MEDC",
+    "allBrokersCount": 58,
+    "foreignBrokersCount": 14,
+    "domesticBrokersCount": 57,
+    "totalAllBval": 134835373000,
+    "totalFBval": 57181084500,
+    "totalDBval": 77654288500,
+    "diff": 0,
+    "formulaValid": true
+  },
+  {
+    "ticker": "ADRO",
+    "allBrokersCount": 65,
+    "foreignBrokersCount": 19,
+    "domesticBrokersCount": 63,
+    "totalAllBval": 261206807000,
+    "totalFBval": 107098414000,
+    "totalDBval": 154108393000,
+    "diff": 0,
+    "formulaValid": true
+  },
+  {
+    "ticker": "ASII",
+    "allBrokersCount": 63,
+    "foreignBrokersCount": 22,
+    "domesticBrokersCount": 61,
+    "totalAllBval": 636502866000,
+    "totalFBval": 429873762000,
+    "totalDBval": 206629104000,
+    "diff": 0,
+    "formulaValid": true
+  },
+  {
+    "ticker": "TLKM",
+    "allBrokersCount": 78,
+    "foreignBrokersCount": 28,
+    "domesticBrokersCount": 75,
+    "totalAllBval": 1855341292500,
+    "totalFBval": 1309575411500,
+    "totalDBval": 545765881000,
+    "diff": 0,
+    "formulaValid": true
+  },
+  {
+    "ticker": "BREN",
+    "allBrokersCount": 60,
+    "foreignBrokersCount": 14,
+    "domesticBrokersCount": 56,
+    "totalAllBval": 76207745000,
+    "totalFBval": 30475710500,
+    "totalDBval": 45732034500,
+    "diff": 0,
+    "formulaValid": true
+  },
+  {
+    "ticker": "AMMN",
+    "allBrokersCount": 58,
+    "foreignBrokersCount": 16,
+    "domesticBrokersCount": 56,
+    "totalAllBval": 130865948000,
+    "totalFBval": 28202534000,
+    "totalDBval": 102663414000,
+    "diff": 0,
+    "formulaValid": true
+  },
+  {
+    "ticker": "GOTO",
+    "allBrokersCount": 74,
+    "foreignBrokersCount": 33,
+    "domesticBrokersCount": 71,
+    "totalAllBval": 1026997626200,
+    "totalFBval": 537191163400,
+    "totalDBval": 489806462800,
+    "diff": 0,
+    "formulaValid": true
+  },
+  {
+    "ticker": "CASH",
+    "allBrokersCount": 14,
+    "foreignBrokersCount": 0,
+    "domesticBrokersCount": 14,
+    "totalAllBval": 101955200,
+    "totalFBval": 0,
+    "totalDBval": 101955200,
+    "diff": 0,
+    "formulaValid": true
+  }
+]

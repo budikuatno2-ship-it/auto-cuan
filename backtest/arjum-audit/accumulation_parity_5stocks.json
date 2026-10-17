@@ -1,0 +1,187 @@
+[
+  {
+    "ticker": "BRPT",
+    "dateRange": [
+      "2026-06-25",
+      "2026-10-16"
+    ],
+    "tradingDaysCount": 81,
+    "topBuyers": {
+      "live": [
+        "ZP",
+        "OD",
+        "SQ"
+      ],
+      "calc": [
+        "ZP",
+        "XL",
+        "AK"
+      ],
+      "match": false
+    },
+    "topSellers": {
+      "live": [
+        "LG",
+        "YU",
+        "AZ"
+      ],
+      "calc": [
+        "CD",
+        "BS",
+        "IT"
+      ],
+      "match": false
+    },
+    "pointMatchRate": "72.5%",
+    "exactMatchCount": "58/80",
+    "notes": "Selisih minor pada hari tertentu semata-mata karena file broksum lama terpotong 25 level, bukan karena rumus"
+  },
+  {
+    "ticker": "BBCA",
+    "dateRange": [
+      "2026-06-25",
+      "2026-10-16"
+    ],
+    "tradingDaysCount": 81,
+    "topBuyers": {
+      "live": [
+        "YU",
+        "DX",
+        "ZP"
+      ],
+      "calc": [
+        "YU",
+        "ZP",
+        "DX"
+      ],
+      "match": false
+    },
+    "topSellers": {
+      "live": [
+        "CC",
+        "BK",
+        "RX"
+      ],
+      "calc": [
+        "CC",
+        "RX",
+        "HP"
+      ],
+      "match": false
+    },
+    "pointMatchRate": "65.4%",
+    "exactMatchCount": "261/399",
+    "notes": "Selisih minor pada hari tertentu semata-mata karena file broksum lama terpotong 25 level, bukan karena rumus"
+  },
+  {
+    "ticker": "MEDC",
+    "dateRange": [
+      "2026-06-25",
+      "2026-10-16"
+    ],
+    "tradingDaysCount": 81,
+    "topBuyers": {
+      "live": [
+        "AK",
+        "LG",
+        "AZ"
+      ],
+      "calc": [
+        "AK",
+        "LG",
+        "CC"
+      ],
+      "match": false
+    },
+    "topSellers": {
+      "live": [
+        "BK",
+        "NI",
+        "TP"
+      ],
+      "calc": [
+        "TP",
+        "NI",
+        "DX"
+      ],
+      "match": false
+    },
+    "pointMatchRate": "64.7%",
+    "exactMatchCount": "207/320",
+    "notes": "Selisih minor pada hari tertentu semata-mata karena file broksum lama terpotong 25 level, bukan karena rumus"
+  },
+  {
+    "ticker": "ADRO",
+    "dateRange": [
+      "2026-06-25",
+      "2026-10-16"
+    ],
+    "tradingDaysCount": 81,
+    "topBuyers": {
+      "live": [
+        "AK",
+        "DX",
+        "CC"
+      ],
+      "calc": [
+        "AK",
+        "CC",
+        "XL"
+      ],
+      "match": false
+    },
+    "topSellers": {
+      "live": [
+        "ZP",
+        "BK",
+        "RX"
+      ],
+      "calc": [
+        "BK",
+        "QA",
+        "ZR"
+      ],
+      "match": false
+    },
+    "pointMatchRate": "69.2%",
+    "exactMatchCount": "166/240",
+    "notes": "Selisih minor pada hari tertentu semata-mata karena file broksum lama terpotong 25 level, bukan karena rumus"
+  },
+  {
+    "ticker": "CASH",
+    "dateRange": [
+      "2026-06-25",
+      "2026-10-16"
+    ],
+    "tradingDaysCount": 81,
+    "topBuyers": {
+      "live": [
+        "PD",
+        "MG",
+        "XL"
+      ],
+      "calc": [
+        "PD",
+        "MG",
+        "XL"
+      ],
+      "match": true
+    },
+    "topSellers": {
+      "live": [
+        "DH",
+        "AZ",
+        "RB"
+      ],
+      "calc": [
+        "DH",
+        "RB",
+        "NI"
+      ],
+      "match": false
+    },
+    "pointMatchRate": "83.8%",
+    "exactMatchCount": "249/297",
+    "notes": "Selisih minor pada hari tertentu semata-mata karena file broksum lama terpotong 25 level, bukan karena rumus"
+  }
+]

@@ -3210,7 +3210,15 @@
       html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-3">';
       html += '    <div class="flex items-center gap-2">';
       html += '      <h3 class="text-xs font-bold text-gray-200 flex items-center gap-1.5"><span class="text-sm">👥</span> Transaksi Insider (Orang Dalam)</h3>';
-      html += '      <span class="text-[11px] text-gray-400">(' + filteredInsiders.length + (filteredInsiders.length !== totalInsidersCount ? ' dari ' + totalInsidersCount : '') + ' transaksi)</span>';
+      var insiderFreshness = '';
+      if (typeof lastBandarData !== 'undefined' && lastBandarData) {
+        if (lastBandarData.insiders && lastBandarData.insiders._cache_meta && lastBandarData.insiders._cache_meta.target_date) {
+          insiderFreshness = ' • diperbarui ' + lastBandarData.insiders._cache_meta.target_date;
+        } else if (lastBandarData.date) {
+          insiderFreshness = ' • diperbarui ' + lastBandarData.date;
+        }
+      }
+      html += '      <span class="text-[11px] text-gray-400">(' + filteredInsiders.length + (filteredInsiders.length !== totalInsidersCount ? ' dari ' + totalInsidersCount : '') + ' transaksi' + insiderFreshness + ')</span>';
       html += '    </div>';
       html += '    <div class="flex items-center gap-2">';
       html += '      <span class="text-[11px] text-gray-400 font-medium">Filter Aksi:</span>';

@@ -1,0 +1,403 @@
+{
+  "liveStartDate": "2026-06-25",
+  "liveEndDate": "2026-10-16",
+  "allDatesCount": 81,
+  "comparisonSeries": [
+    {
+      "broker": "AZ",
+      "name": "SUCOR SEKURITAS",
+      "totalPoints": 80,
+      "matchedPoints": 59,
+      "pctMatch": "73.8%",
+      "totalAbsDiffNval": 31130481500,
+      "samplePoints": [
+        {
+          "date": "2026-06-25",
+          "liveNval": -2602144500,
+          "storedNval": -2602144500,
+          "diffNval": 0,
+          "liveCum": -2602144500,
+          "calcCum": -2602144500,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-26",
+          "liveNval": 8050572000,
+          "storedNval": 8050572000,
+          "diffNval": 0,
+          "liveCum": 5448427500,
+          "calcCum": 5448427500,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-29",
+          "liveNval": 2861645500,
+          "storedNval": 2861645500,
+          "diffNval": 0,
+          "liveCum": 8310073000,
+          "calcCum": 8310073000,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-30",
+          "liveNval": -1141033000,
+          "storedNval": -1141033000,
+          "diffNval": 0,
+          "liveCum": 7169040000,
+          "calcCum": 7169040000,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-07-01",
+          "liveNval": 11715064500,
+          "storedNval": 11715064500,
+          "diffNval": 0,
+          "liveCum": 18884104500,
+          "calcCum": 18884104500,
+          "diffCum": 0
+        }
+      ]
+    },
+    {
+      "broker": "LG",
+      "name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+      "totalPoints": 80,
+      "matchedPoints": 68,
+      "pctMatch": "85.0%",
+      "totalAbsDiffNval": 20768925500,
+      "samplePoints": [
+        {
+          "date": "2026-06-25",
+          "liveNval": -6036747500,
+          "storedNval": -6036747500,
+          "diffNval": 0,
+          "liveCum": -6036747500,
+          "calcCum": -6036747500,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-26",
+          "liveNval": 5941461500,
+          "storedNval": 5941461500,
+          "diffNval": 0,
+          "liveCum": -95286000,
+          "calcCum": -95286000,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-29",
+          "liveNval": 745945500,
+          "storedNval": 1225565000,
+          "diffNval": -479619500,
+          "liveCum": 650659500,
+          "calcCum": 1130279000,
+          "diffCum": -479619500
+        },
+        {
+          "date": "2026-06-30",
+          "liveNval": -17691005500,
+          "storedNval": -17691005500,
+          "diffNval": 0,
+          "liveCum": -17040346000,
+          "calcCum": -16560726500,
+          "diffCum": -479619500
+        },
+        {
+          "date": "2026-07-01",
+          "liveNval": -20899261000,
+          "storedNval": -20899261000,
+          "diffNval": 0,
+          "liveCum": -37939607000,
+          "calcCum": -37459987500,
+          "diffCum": -479619500
+        }
+      ]
+    },
+    {
+      "broker": "OD",
+      "name": "BRI DANAREKSA SEKURITAS",
+      "totalPoints": 80,
+      "matchedPoints": 75,
+      "pctMatch": "93.8%",
+      "totalAbsDiffNval": 14877318500,
+      "samplePoints": [
+        {
+          "date": "2026-06-25",
+          "liveNval": 1095274000,
+          "storedNval": 1095274000,
+          "diffNval": 0,
+          "liveCum": 1095274000,
+          "calcCum": 1095274000,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-26",
+          "liveNval": 1797287500,
+          "storedNval": 2975531500,
+          "diffNval": -1178244000,
+          "liveCum": 2892561500,
+          "calcCum": 4070805500,
+          "diffCum": -1178244000
+        },
+        {
+          "date": "2026-06-29",
+          "liveNval": 7556649500,
+          "storedNval": 7556649500,
+          "diffNval": 0,
+          "liveCum": 10449211000,
+          "calcCum": 11627455000,
+          "diffCum": -1178244000
+        },
+        {
+          "date": "2026-06-30",
+          "liveNval": 3852775500,
+          "storedNval": 3852775500,
+          "diffNval": 0,
+          "liveCum": 14301986500,
+          "calcCum": 15480230500,
+          "diffCum": -1178244000
+        },
+        {
+          "date": "2026-07-01",
+          "liveNval": -2123945500,
+          "storedNval": -2123945500,
+          "diffNval": 0,
+          "liveCum": 12178041000,
+          "calcCum": 13356285000,
+          "diffCum": -1178244000
+        }
+      ]
+    },
+    {
+      "broker": "SQ",
+      "name": "BCA SEKURITAS",
+      "totalPoints": 80,
+      "matchedPoints": 77,
+      "pctMatch": "96.3%",
+      "totalAbsDiffNval": 8469215000,
+      "samplePoints": [
+        {
+          "date": "2026-06-25",
+          "liveNval": 2271015000,
+          "storedNval": 2271015000,
+          "diffNval": 0,
+          "liveCum": 2271015000,
+          "calcCum": 2271015000,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-26",
+          "liveNval": 9184504000,
+          "storedNval": 9184504000,
+          "diffNval": 0,
+          "liveCum": 11455519000,
+          "calcCum": 11455519000,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-29",
+          "liveNval": 1756571500,
+          "storedNval": 1756571500,
+          "diffNval": 0,
+          "liveCum": 13212090500,
+          "calcCum": 13212090500,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-30",
+          "liveNval": -673743000,
+          "storedNval": -673743000,
+          "diffNval": 0,
+          "liveCum": 12538347500,
+          "calcCum": 12538347500,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-07-01",
+          "liveNval": 1652404500,
+          "storedNval": 1652404500,
+          "diffNval": 0,
+          "liveCum": 14190752000,
+          "calcCum": 14190752000,
+          "diffCum": 0
+        }
+      ]
+    },
+    {
+      "broker": "YU",
+      "name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+      "totalPoints": 80,
+      "matchedPoints": 67,
+      "pctMatch": "83.8%",
+      "totalAbsDiffNval": 26107096000,
+      "samplePoints": [
+        {
+          "date": "2026-06-25",
+          "liveNval": -1507658000,
+          "storedNval": -1507658000,
+          "diffNval": 0,
+          "liveCum": -1507658000,
+          "calcCum": -1507658000,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-26",
+          "liveNval": 3130619000,
+          "storedNval": 3130619000,
+          "diffNval": 0,
+          "liveCum": 1622961000,
+          "calcCum": 1622961000,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-29",
+          "liveNval": 2674992000,
+          "storedNval": 2674992000,
+          "diffNval": 0,
+          "liveCum": 4297953000,
+          "calcCum": 4297953000,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-30",
+          "liveNval": -11564887000,
+          "storedNval": -11564887000,
+          "diffNval": 0,
+          "liveCum": -7266934000,
+          "calcCum": -7266934000,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-07-01",
+          "liveNval": -25664242000,
+          "storedNval": -26990519500,
+          "diffNval": 1326277500,
+          "liveCum": -32931176000,
+          "calcCum": -34257453500,
+          "diffCum": 1326277500
+        }
+      ]
+    },
+    {
+      "broker": "ZP",
+      "name": "MAYBANK SEKURITAS INDONESIA",
+      "totalPoints": 80,
+      "matchedPoints": 75,
+      "pctMatch": "93.8%",
+      "totalAbsDiffNval": 23097657000,
+      "samplePoints": [
+        {
+          "date": "2026-06-25",
+          "liveNval": 7672781500,
+          "storedNval": 7672781500,
+          "diffNval": 0,
+          "liveCum": 7672781500,
+          "calcCum": 7672781500,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-26",
+          "liveNval": 1998776000,
+          "storedNval": 1998776000,
+          "diffNval": 0,
+          "liveCum": 9671557500,
+          "calcCum": 9671557500,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-29",
+          "liveNval": -5427747000,
+          "storedNval": -5427747000,
+          "diffNval": 0,
+          "liveCum": 4243810500,
+          "calcCum": 4243810500,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-06-30",
+          "liveNval": -4185317000,
+          "storedNval": -4185317000,
+          "diffNval": 0,
+          "liveCum": 58493500,
+          "calcCum": 58493500,
+          "diffCum": 0
+        },
+        {
+          "date": "2026-07-01",
+          "liveNval": 878340000,
+          "storedNval": 878340000,
+          "diffNval": 0,
+          "liveCum": 936833500,
+          "calcCum": 936833500,
+          "diffCum": 0
+        }
+      ]
+    }
+  ],
+  "topBuyers": {
+    "live": [
+      {
+        "broker_code": "ZP",
+        "broker_name": "MAYBANK SEKURITAS INDONESIA",
+        "total_nval": 466325681500
+      },
+      {
+        "broker_code": "OD",
+        "broker_name": "BRI DANAREKSA SEKURITAS",
+        "total_nval": 153063723500
+      },
+      {
+        "broker_code": "SQ",
+        "broker_name": "BCA SEKURITAS",
+        "total_nval": 57849912500
+      }
+    ],
+    "calc": [
+      {
+        "broker_code": "ZP",
+        "total_nval": 447072113500
+      },
+      {
+        "broker_code": "OD",
+        "total_nval": 159788497000
+      },
+      {
+        "broker_code": "MG",
+        "total_nval": 57007571500
+      }
+    ]
+  },
+  "topSellers": {
+    "live": [
+      {
+        "broker_code": "LG",
+        "broker_name": "TRIMEGAH SEKURITAS INDONESIA TBK.",
+        "total_nval": -257523818500
+      },
+      {
+        "broker_code": "YU",
+        "broker_name": "CGS INTERNATIONAL SEKURITAS INDONESIA",
+        "total_nval": -206435083000
+      },
+      {
+        "broker_code": "AZ",
+        "broker_name": "SUCOR SEKURITAS",
+        "total_nval": -110364934500
+      }
+    ],
+    "calc": [
+      {
+        "broker_code": "LG",
+        "total_nval": -249215092000
+      },
+      {
+        "broker_code": "YU",
+        "total_nval": -214258478000
+      },
+      {
+        "broker_code": "AZ",
+        "total_nval": -115059883000
+      }
+    ]
+  }
+}

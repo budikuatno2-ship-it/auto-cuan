@@ -1,0 +1,13 @@
+Testing reading from staging dir: /home/ubuntu/auto-cuan/data/arjum-data/_staging
+Read All from staging:       true Brokers: 64
+Read Foreign from staging:   true Brokers: 19
+Read Domestic from staging:  true Brokers: 60 Computed from: all_minus_foreign
+Bandarmologi service (flow=all): true from_cache: undefined date: Tanggal: 2026-10-16
+Bandarmologi service (flow=F):   true from_cache: true flow: F
+Bandarmologi service (flow=D):   true from_cache: true flow: D
+
+Bval totals:
+  All: Rp 244.446.555.500
+  F:   Rp 94.982.909.000
+  D:   Rp 149.463.646.500
+  F + D === All: true

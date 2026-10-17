@@ -1,0 +1,254 @@
+Calling GET /api/insiders?limit=20
+Calling GET /api/insiders/latest
+Calling GET /api/insiders/BRPT?page=1&limit=5
+__PROBE_INSIDERS_START__
+{
+  "res1": {
+    "status": 403,
+    "byteSize": 184,
+    "json": {
+      "detail": "Akses ditolak. Endpoint ini tidak dibuka untuk pemanggilan API Key. Silakan gunakan endpoint resmi yang ada pada Dokumentasi API publik (https://stock.arjum.com/api-docs)."
+    },
+    "preview": "{\"detail\":\"Akses ditolak. Endpoint ini tidak dibuka untuk pemanggilan API Key. Silakan gunakan endpoint resmi yang ada pada Dokumentasi API publik (https://stock.arjum.com/api-docs).\"}"
+  },
+  "res2": {
+    "status": 200,
+    "byteSize": 94,
+    "json": {
+      "stock_code": "LATEST",
+      "count": 0,
+      "total": 0,
+      "page": 1,
+      "page_size": 10,
+      "total_pages": 1,
+      "items": []
+    },
+    "preview": "{\"stock_code\":\"LATEST\",\"count\":0,\"total\":0,\"page\":1,\"page_size\":10,\"total_pages\":1,\"items\":[]}"
+  },
+  "res3": {
+    "status": 200,
+    "byteSize": 1756,
+    "json": {
+      "stock_code": "BRPT",
+      "count": 5,
+      "total": 307,
+      "page": 1,
+      "page_size": 5,
+      "total_pages": 62,
+      "items": [
+        {
+          "name": "DBS VICKERS SECS SINGAPORE (PTE) LTD A/C CLIENTS",
+          "date": "2026-08-27",
+          "action_type": "cross",
+          "nationality": "foreign",
+          "previous_value": "883,904,940",
+          "previous_percentage": "0.94",
+          "current_value": "0",
+          "current_percentage": "0.00",
+          "changes_value": "-883,904,940",
+          "changes_percentage": "-0.94",
+          "price_formatted": "0",
+          "broker_code": "",
+          "badges": []
+        },
+        {
+          "name": "PRAJOGO PANGESTU",
+          "date": "2026-02-02",
+          "action_type": "buy",
+          "nationality": "local",
+          "previous_value": "66,906,030,165",
+          "previous_percentage": "71.37",
+          "current_value": "66,910,030,165",
+          "current_percentage": "71.37",
+          "changes_value": "+4,000,000",
+          "changes_percentage": "+0.0042",
+          "price_formatted": "0",
+          "broker_code": "DX",
+          "badges": []
+        },
+        {
+          "name": "PRAJOGO PANGESTU",
+          "date": "2026-01-29",
+          "action_type": "buy",
+          "nationality": "local",
+          "previous_value": "66,909,026,965",
+          "previous_percentage": "71.37",
+          "current_value": "66,910,030,165",
+          "current_percentage": "71.37",
+          "changes_value": "+1,003,200",
+          "changes_percentage": "+0.0011",
+          "price_formatted": "2,130",
+          "broker_code": "",
+          "badges": []
+        },
+        {
+          "name": "PRAJOGO PANGESTU",
+          "date": "2026-01-29",
+          "action_type": "buy",
+          "nationality": "local",
+          "previous_value": "66,908,131,365",
+          "previous_percentage": "71.37",
+          "current_value": "66,909,026,965",
+          "current_percentage": "71.37",
+          "changes_value": "+895,600",
+          "changes_percentage": "+0.0009",
+          "price_formatted": "2,150",
+          "broker_code": "",
+          "badges": []
+        },
+        {
+          "name": "PRAJOGO PANGESTU",
+          "date": "2026-01-29",
+          "action_type": "buy",
+          "nationality": "local",
+          "previous_value": "66,907,461,565",
+          "previous_percentage": "71.37",
+          "current_value": "66,908,131,365",
+          "current_percentage": "71.37",
+          "changes_value": "+669,800",
+          "changes_percentage": "+0.0007",
+          "price_formatted": "2,140",
+          "broker_code": "",
+          "badges": []
+        }
+      ]
+    },
+    "preview": "{\"stock_code\":\"BRPT\",\"count\":5,\"total\":307,\"page\":1,\"page_size\":5,\"total_pages\":62,\"items\":[{\"name\":\"DBS VICKERS SECS SINGAPORE (PTE) LTD A/C CLIENTS\",\"date\":\"2026-08-27\",\"action_type\":\"cross\",\"nation"
+  }
+}
+__PROBE_INSIDERS_END__
+
+Analyzing insider changes across all stored tickers on disk...
+__DISK_INSIDER_ANALYSIS_START__
+{
+  "totalTickersChecked": 964,
+  "totalTickersWithInsiders": 962,
+  "totalWithTransactions": 912,
+  "changedBetweenOct01AndOct16": 191,
+  "pctChangedIn2Weeks": "19.81%",
+  "estimatedChangesPerWeek": 96,
+  "pctChangedPerWeek": "9.91%",
+  "sampleChanges": [
+    {
+      "ticker": "ABDA",
+      "firstDate": "2026-10-01",
+      "lastDate": "2026-10-16",
+      "firstCount": 15,
+      "lastCount": 15,
+      "latestTransaction": {
+        "name": "OONA INDONESIA",
+        "date": "2026-10-15",
+        "type": "sell"
+      }
+    },
+    {
+      "ticker": "ABMM",
+      "firstDate": "2026-10-01",
+      "lastDate": "2026-10-16",
+      "firstCount": 15,
+      "lastCount": 15,
+      "latestTransaction": {
+        "name": "LO KHENG HONG",
+        "date": "2026-10-15",
+        "type": "buy"
+      }
+    },
+    {
+      "ticker": "ADMF",
+      "firstDate": "2026-10-01",
+      "lastDate": "2026-10-16",
+      "firstCount": 15,
+      "lastCount": 15,
+      "latestTransaction": {
+        "name": "MUFG BANK",
+        "date": "2026-10-01",
+        "type": "sell"
+      }
+    },
+    {
+      "ticker": "AGAR",
+      "firstDate": "2026-10-01",
+      "lastDate": "2026-10-16",
+      "firstCount": 15,
+      "lastCount": 15,
+      "latestTransaction": {
+        "name": "INDO KREASI PRATAMA",
+        "date": "2026-10-06",
+        "type": "transfer"
+      }
+    },
+    {
+      "ticker": "AHAP",
+      "firstDate": "2026-10-01",
+      "lastDate": "2026-10-16",
+      "firstCount": 15,
+      "lastCount": 15,
+      "latestTransaction": {
+        "name": "SENDRA GUNAWAN",
+        "date": "2026-10-15",
+        "type": "right_issue"
+      }
+    },
+    {
+      "ticker": "AIMS",
+      "firstDate": "2026-10-01",
+      "lastDate": "2026-10-07",
+      "firstCount": 15,
+      "lastCount": 15,
+      "latestTransaction": {
+        "name": "AIMS INDO INVESTAMA",
+        "date": "2026-09-30",
+        "type": "buy"
+      }
+    },
+    {
+      "ticker": "AISA",
+      "firstDate": "2026-10-01",
+      "lastDate": "2026-10-16",
+      "firstCount": 15,
+      "lastCount": 15,
+      "latestTransaction": {
+        "name": "PANGAN SEJAHTERA INVESTAMA",
+        "date": "2026-09-30",
+        "type": "buy"
+      }
+    },
+    {
+      "ticker": "AKPI",
+      "firstDate": "2026-10-01",
+      "lastDate": "2026-10-16",
+      "firstCount": 15,
+      "lastCount": 15,
+      "latestTransaction": {
+        "name": "HENRY LIEM",
+        "date": "2026-10-14",
+        "type": "sell"
+      }
+    },
+    {
+      "ticker": "AMOR",
+      "firstDate": "2026-10-01",
+      "lastDate": "2026-10-16",
+      "firstCount": 8,
+      "lastCount": 15,
+      "latestTransaction": {
+        "name": "IR RONALDUS GANDAHUSADA",
+        "date": "2026-10-08",
+        "type": "cross"
+      }
+    },
+    {
+      "ticker": "APEX",
+      "firstDate": "2026-10-01",
+      "lastDate": "2026-10-16",
+      "firstCount": 15,
+      "lastCount": 15,
+      "latestTransaction": {
+        "name": "ASERRA CAPITAL",
+        "date": "2026-10-07",
+        "type": "buy"
+      }
+    }
+  ]
+}
+__DISK_INSIDER_ANALYSIS_END__

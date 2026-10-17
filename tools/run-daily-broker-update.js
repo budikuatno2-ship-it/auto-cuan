@@ -50,6 +50,7 @@ const arjumClient = require('../lib/arjum-client');
 const bandarmologiService = require('../lib/bandarmologi-service');
 const idxTradingCalendar = require('../lib/idx-trading-calendar');
 const eodSessionState = require('../lib/eod-session-state');
+const brokerAccumulationLocal = require('../lib/broker-accumulation-local');
 
 // Same .env loading convention as tools/backfill-arjum-data.js /
 // tools/run-daily-afternoon-recap.js.
@@ -218,6 +219,44 @@ function readTargetCandleEvidence(ticker, targetDate) {
   return { available: false, volume: null, close: null };
 }
 
+
+function backupBroksum25IfNeeded(ticker, date, newData) {
+  try {
+    const baseDir = process.env.ARJUM_DATA_DIR || path.join(__dirname, '..', 'data', 'arjum-data');
+    const origPath = path.join(baseDir, 'broker-summary', ticker, `${date}.json`);
+    const backupPath = path.join(baseDir, '_backup-broksum-25', ticker, `${date}.json`);
+    if (fs.existsSync(origPath) && !fs.existsSync(backupPath)) {
+      const origContent = fs.readFileSync(origPath, 'utf8');
+      const origObj = JSON.parse(origContent);
+      if (Array.isArray(origObj.broker_levels) && origObj.broker_levels.length <= 25) {
+        fs.mkdirSync(path.dirname(backupPath), { recursive: true });
+        fs.writeFileSync(backupPath, origContent, 'utf8');
+      }
+    }
+  } catch (_) {}
+}
+
+function loadPriorityTickers() {
+  const set = new Set();
+  try {
+    const pTxt = path.join(__dirname, '..', 'data', 'priority.txt');
+    if (fs.existsSync(pTxt)) {
+      fs.readFileSync(pTxt, 'utf8').split(/\r?\n/).forEach(t => {
+        const c = t.trim().toUpperCase();
+        if (c && !c.startsWith('#')) set.add(c);
+      });
+    }
+    const dTxt = path.join(__dirname, '..', 'data', 'daytrade-observe-tickers.txt');
+    if (fs.existsSync(dTxt)) {
+      fs.readFileSync(dTxt, 'utf8').split(/\r?\n/).forEach(t => {
+        const c = t.trim().toUpperCase();
+        if (c && !c.startsWith('#') && set.size < 100) set.add(c);
+      });
+    }
+  } catch (_) {}
+  return set;
+}
+
 function brokerSummaryPayloadDate(payload) {
   if (!payload || typeof payload !== 'object') return null;
   const candidates = [payload.broker_end_date, payload.broker_start_date, payload.trade_date, payload.date];
@@ -256,6 +295,10 @@ async function run(argv) {
   const isFinal = args.includes('--final');
 
   const isFresh = args.includes('--fresh');
+  const accumSource = (args.find(a => a.startsWith('--accum-source=')) || '').replace('--accum-source=', '') || process.env.ACCUM_SOURCE || 'local';
+  const insiderMode = (args.find(a => a.startsWith('--insider-mode=')) || '').replace('--insider-mode=', '') || process.env.INSIDER_MODE || 'priority';
+  const priorityTickers = loadPriorityTickers();
+  let foreignRequests = 0;
   let limit = Infinity;
   const limitIdx = args.indexOf('--limit');
   if (limitIdx >= 0 && args[limitIdx + 1]) {
@@ -434,7 +477,7 @@ async function run(argv) {
       if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
       totalRequested++;
       brokerRequests++;
-      const res = await arjumClient.fetchBrokerSummary(ticker, dateArg);
+      const res = await arjumClient.fetchBrokerSummary(ticker, dateArg, 'all', null, { allData: true });
       if (res.ok && res.data && (!brokerSummaryPayloadDate(res.data) || brokerSummaryPayloadDate(res.data) === dateArg)) {
         const norm = bandarmologiService.normalizeBrokerSummary(res.data, dateArg, ticker, { skipLivePrice: historicalTarget });
         const hasAnyRows = (norm.top_buyers && norm.top_buyers.length > 0) || (norm.top_sellers && norm.top_sellers.length > 0);
@@ -447,12 +490,29 @@ async function run(argv) {
 
         if (state === eodSessionState.EOD_STATES.COMPLETE) {
           const advanceLatest = shouldAdvanceLatestBrokerSummary(ticker, dateArg);
+          backupBroksum25IfNeeded(ticker, dateArg, res.data);
           persistDatedCache('broker-summary', ticker, dateArg, res.data);
           if (advanceLatest) {
             bandarmologiService.writeDiskCache('broker-summary', ticker, 'latest', res.data);
           } else {
             console.log(`[HISTORICAL] ${ticker} ${dateArg} disimpan sebagai dated cache; latest.json yang lebih baru dipertahankan.`);
           }
+
+          // Fetch Foreign Broker Summary (flow=F&all_data=true)
+          try {
+            if (arjumClient.getUsedQuotaToday() < dailyLimit) {
+              totalRequested++;
+              foreignRequests++;
+              const resF = await arjumClient.fetchBrokerSummary(ticker, dateArg, 'F', null, { allData: true });
+              if (resF.ok && resF.data) {
+                persistDatedCache('broker-summary-F', ticker, dateArg, resF.data);
+                if (advanceLatest) {
+                  bandarmologiService.writeDiskCache('broker-summary-F', ticker, 'latest', resF.data);
+                }
+              }
+            }
+          } catch (_) {}
+
           doneCount++;
           newBrokerSummaryCount++;
           terminalTickers.add(ticker);
@@ -493,20 +553,39 @@ async function run(argv) {
     // backfill auxiliary at all (snapshot-only endpoints).
     if (shouldRefreshAuxiliary && !historicalTarget) {
       if (!dryRun && (isFresh || !bandarmologiService.readDiskCache('broker-accumulation', ticker, dateArg))) {
-        if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
-        totalRequested++;
-        accumulationRequests++;
-        const accRes = await arjumClient.fetchBrokerAccumulation(ticker, { forceLive: true });
-        if (accRes.ok && accRes.data && !accRes.from_cache && !accRes.fallback) {
-          bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', accRes.data);
-          persistDatedCache('broker-accumulation', ticker, dateArg, accRes.data);
-        } else if (checkApiQuota(accRes)) {
-          break;
+        if (accumSource === 'local') {
+          // Compute accumulation locally from rolling daily broker-summary without spending API quota
+          try {
+            const dates = bandarmologiService.listDiskDates('broker-summary', ticker) || [];
+            const sortedDates = dates.filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= dateArg).sort();
+            const window80 = sortedDates.slice(-80);
+            const dailySeries = window80.map(d => ({
+              date: d,
+              broksum: bandarmologiService.readDiskCache('broker-summary', ticker, d)
+            })).filter(x => x.broksum != null);
+
+            const localAcc = brokerAccumulationLocal.computeBrokerAccumulation(ticker, dailySeries);
+            if (localAcc) {
+              bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', localAcc);
+              persistDatedCache('broker-accumulation', ticker, dateArg, localAcc);
+            }
+          } catch (_) {}
         } else {
-          auxiliaryPending++; errorCount++;
-          retryableTickers.add(ticker);
+          if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
+          totalRequested++;
+          accumulationRequests++;
+          const accRes = await arjumClient.fetchBrokerAccumulation(ticker, { forceLive: true });
+          if (accRes.ok && accRes.data && !accRes.from_cache && !accRes.fallback) {
+            bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', accRes.data);
+            persistDatedCache('broker-accumulation', ticker, dateArg, accRes.data);
+          } else if (checkApiQuota(accRes)) {
+            break;
+          } else {
+            auxiliaryPending++; errorCount++;
+            retryableTickers.add(ticker);
+          }
+          await sleep(delayMs);
         }
-        await sleep(delayMs);
       } else if (dryRun && !bandarmologiService.readDiskCache('broker-accumulation', ticker, dateArg)) {
         totalRequested++;
         accumulationRequests++;
@@ -528,7 +607,8 @@ async function run(argv) {
       // insider trade exists on/after that date. Otherwise the dated file is
       // stamped with an explicit no_new_trades marker so checksums differ per
       // date and consumers can tell "no new trades" from "new data".
-      if (!dryRun && (isFresh || !bandarmologiService.readDiskCache('insiders', ticker, dateArg))) {
+      const shouldFetchInsider = insiderMode === 'all' || priorityTickers.has(ticker);
+      if (!dryRun && shouldFetchInsider && (isFresh || !bandarmologiService.readDiskCache('insiders', ticker, dateArg))) {
         if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
         totalRequested++;
         insiderRequests++;
