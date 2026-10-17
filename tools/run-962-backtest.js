@@ -124,22 +124,33 @@ function runFull962Backtest() {
       } catch (_) {}
     }
 
-    // Prioritas 2: Baca dari file flat JSON daily-candles
-    if (candles.length < 25) {
-      const jsonPath = path.join(DAILY_CANDLES_DIR, `${ticker}.json`);
-      if (fs.existsSync(jsonPath)) {
-        try {
-          const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-          const arr = Array.isArray(raw) ? raw : (raw.candles || raw.data || []);
-          candles = arr.map(c => ({
-            time: c.date || c.time,
-            open: Number(c.open != null ? c.open : c.close),
-            high: Number(c.high != null ? c.high : c.close),
-            low: Number(c.low != null ? c.low : c.close),
-            close: Number(c.close),
-            volume: Number(c.volume || 0)
-          })).filter(c => c.close > 0 && c.time);
-        } catch (_) {}
+    // Prioritas 2: Baca dari file flat JSON jika candle SQLite < 200 bar
+    if (candles.length < 200) {
+      const candidateDirs = [
+        DAILY_CANDLES_DIR,
+        path.join(__dirname, '..', 'data', 'daytrade-ohlcv-cache'),
+        path.join(process.cwd(), 'data', 'daily-candles')
+      ];
+      for (const cDir of candidateDirs) {
+        const jsonPath = path.join(cDir, `${ticker}.json`);
+        if (fs.existsSync(jsonPath)) {
+          try {
+            const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+            const arr = Array.isArray(raw) ? raw : (raw.candles || raw.data || []);
+            const jsonCandles = arr.map(c => ({
+              time: c.date || c.time,
+              open: Number(c.open != null ? c.open : c.close),
+              high: Number(c.high != null ? c.high : c.close),
+              low: Number(c.low != null ? c.low : c.close),
+              close: Number(c.close),
+              volume: Number(c.volume || 0)
+            })).filter(c => c.close > 0 && c.time);
+            if (jsonCandles.length > candles.length) {
+              candles = jsonCandles;
+              break;
+            }
+          } catch (_) {}
+        }
       }
     }
 
@@ -162,6 +173,18 @@ function runFull962Backtest() {
     }
 
     if (candles.length < 25) continue;
+
+    // Filter likuiditas minimum: abaikan saham tidur dengan turnover < Rp 500 Juta per hari
+    const recent20 = candles.slice(-20);
+    let turnoverSum = 0;
+    for (let ti = 0; ti < recent20.length; ti++) {
+      turnoverSum += Number(recent20[ti].close || 0) * Number(recent20[ti].volume || 0);
+    }
+    const avgDailyTurnover = turnoverSum / (recent20.length || 1);
+    if (avgDailyTurnover < 500000000) { // < Rp 500 Juta per hari (saham tidak likuid)
+      continue;
+    }
+
     totalCandlesLoaded += candles.length;
 
     const res = backtestEngine.runBacktestForTicker(ticker, candles, {
