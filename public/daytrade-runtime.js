@@ -262,8 +262,8 @@ function renderDtTable(results, data) {
         var dtScoreStr = (dtScore != null && !isNaN(Number(dtScore))) ? String(dtScore) : '—';
 
         html += '<tr class="dt-table-row ac-table-row ac-wave5-row cursor-pointer" data-ticker="' + escapeHtml(r.ticker) + '" onclick="if(typeof selectScreenerRow===\'function\'){selectScreenerRow(\'daytrade\',\'' + escapeHtml(r.ticker) + '\',this);}else if(typeof openScrDetail===\'function\'){openScrDetail(window._dtCardData[\'' + escapeHtml(r.ticker) + '\'],\'daytrade\');}">';
-        html += '<td class="px-2 py-2 text-center text-gray-500 sticky-col-1 ac-ticker-sticky-cell sticky left-0 z-10 w-[36px] min-w-[36px]">' + (i + 1) + '</td>';
-        html += '<td class="px-2 py-2 font-medium sticky-col-2 ac-ticker-sticky-cell sticky left-[36px] z-10 min-w-[80px] border-r border-dark-600/30">' + screenerResultActionHtml(r.ticker, 'daytrade') + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
+        html += '<td class="px-2 py-2 text-center text-gray-500 sticky-col-1 sticky left-0 ac-ticker-sticky-cell z-10 w-[36px] min-w-[36px]">' + (i + 1) + '</td>';
+        html += '<td class="px-2 py-2 font-medium sticky-col-2 sticky left-[36px] ac-ticker-sticky-cell z-10 min-w-[80px] border-r border-dark-600/30">' + screenerResultActionHtml(r.ticker, 'daytrade') + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px]">' + (r.board || '—') + '</td>';
         html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ' + statusClass + '">' + escapeHtml(getStatusLabel(r, formatDtStatus(r.status))) + '</span></td>';
         var dtBdBadgeHtml = '';

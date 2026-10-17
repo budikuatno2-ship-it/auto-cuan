@@ -215,21 +215,21 @@ async function handleFinancialSnapshotAction(req, res, injectedSupabase) {
     setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     return res.status(200).json(payload);
   } catch (_) {
-    var fs = require("node:fs");
-    var vpsDbPath = process.env.AUTO_CUAN_MARKET_DB || '/home/ubuntu/auto-cuan-data/market.sqlite';
-    if (fs.existsSync(vpsDbPath)) {
-      try {
-        var marketStore = require("../lib/vps-market-store");
-        var localDb = marketStore.getVpsMarketStore(vpsDbPath);
-        var fallbackSnapshot = await buildFinancialSnapshot(localDb, ticker);
-        var fallbackPayload = { success: true, snapshot: fallbackSnapshot };
-        if (!injectedSupabase) {
+    if (!injectedSupabase) {
+      var fs = require("node:fs");
+      var vpsDbPath = process.env.AUTO_CUAN_MARKET_DB || '/home/ubuntu/auto-cuan-data/market.sqlite';
+      if (fs.existsSync(vpsDbPath)) {
+        try {
+          var marketStore = require("../lib/vps-market-store");
+          var localDb = marketStore.getVpsMarketStore(vpsDbPath);
+          var fallbackSnapshot = await buildFinancialSnapshot(localDb, ticker);
+          var fallbackPayload = { success: true, snapshot: fallbackSnapshot };
           hotQuoteCache.set(cacheKey, fallbackPayload, 30 * 1000);
-        }
-        setHeaderSafe(res, 'X-Cache', 'MISS');
-        setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
-        return res.status(200).json(fallbackPayload);
-      } catch (_) {}
+          setHeaderSafe(res, 'X-Cache', 'MISS');
+          setHeaderSafe(res, 'Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+          return res.status(200).json(fallbackPayload);
+        } catch (_) {}
+      }
     }
     return res.status(503).json({ success: false, error: 'Data Financial belum dapat dimuat. Coba lagi.' });
   }

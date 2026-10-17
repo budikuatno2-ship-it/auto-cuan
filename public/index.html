@@ -2614,12 +2614,18 @@ html.light #googleCompleteProfileModal input {
                 </button>
             </div>
 
-            <!-- Sub-Tab Switcher: [Analisis AI] vs [Chart & AI Vision] (Khusus Lensa Chart & AI) -->
+            <!-- Sub-Tab Switcher: [Analisis AI] vs [Chart Workstation] (FIX-22 lens tabs) -->
             <div id="analisisChartSubtabWrap">
                 <div class="flex items-center gap-1 bg-dark-800 p-1 rounded-xl border border-dark-600/50 text-xs w-fit">
                     <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisSubTab('ai')">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:-2px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                         <span>Analisis AI</span>
+                    </button>
+                    <!-- FIX-22: Chart Workstation is a first-class lens, directly
+                         reachable as /analisis?tab=chart and from the sidebar. -->
+                    <button id="tabChartWorkstationLens" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" data-sidebar-page="chart" onclick="switchAnalisisSubTab('chart')" title="Chart Workstation">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:-2px"><path d="M3 3v18h18"/><path d="M7 15l3-4 3 3 5-7"/></svg>
+                        <span>Chart Workstation</span>
                     </button>
                     <button id="tabAnalisisVision" type="button" class="analisis-subtab hidden" style="display:none" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:-2px"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
@@ -2886,6 +2892,16 @@ html.light #googleCompleteProfileModal input {
                             <span class="ac-financial-metric-label">Nilai Buku / Saham (BVPS)</span>
                             <strong class="ac-financial-metric-num ac-num" id="financialBvps">-</strong>
                             <small class="ac-financial-metric-sub">Nilai buku per saham</small>
+                        </article>
+                        <article class="ac-financial-metric-item">
+                            <span class="ac-financial-metric-label">Price to Earnings (PER)</span>
+                            <strong class="ac-financial-metric-num ac-num" id="financialPer">-</strong>
+                            <small class="ac-financial-metric-sub" id="financialPerSub">Rasio harga terhadap laba</small>
+                        </article>
+                        <article class="ac-financial-metric-item">
+                            <span class="ac-financial-metric-label">Debt to Equity (DER)</span>
+                            <strong class="ac-financial-metric-num ac-num" id="financialDer">-</strong>
+                            <small class="ac-financial-metric-sub" id="financialDerSub">Rasio liabilitas / ekuitas</small>
                         </article>
                         <article class="ac-financial-metric-item">
                             <span class="ac-financial-metric-label">Kapitalisasi Pasar</span>
@@ -3380,7 +3396,7 @@ html.light #googleCompleteProfileModal input {
             <option value="INCO">Vale Indonesia</option>
             <option value="GPRA">Perdana Gapuraprima</option>
     </datalist>
-    </template>
+</template>
 
 <template id="tpl-portfolio-command-center">
 <div class="page-header mb-4">
@@ -15164,9 +15180,6 @@ function startDashboardMonitorAutoRefresh() {
         window.AutoCuanKeepAlive.unregisterTimer('dashboard-monitor');
     }
     if (currentPage !== 'dashboard' || !isLoggedInUser()) return;
-    // FIX-25: this poller is the most expensive one (full monitor reload every
-    // 60s), so it registers with the registry to be genuinely paused while the
-    // document is hidden rather than waking up to no-op.
     var _dashMonitorFn = function() {
         if (currentPage === 'dashboard' && !document.hidden) loadDashboardTop5Monitor(true, { loadAdminPreview: false });
     };

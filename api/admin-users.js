@@ -89,11 +89,11 @@ async function resolveApprovedAccess(req, res) {
     return res.status(401).json({ success: false, error: 'Sesi tidak valid.' });
   }
 
-  if (isTruthyFlag(account.is_blocked)) {
+  if (isTruthyFlag(account.is_blocked) || account.is_blocked === true) {
     return res.status(403).json({ success: false, error: 'Akun sedang diblokir.' });
   }
 
-  if (!isTruthyFlag(account.is_approved)) {
+  if (!isTruthyFlag(account.is_approved) || account.is_approved !== true) {
     return res.status(403).json({ success: false, error: 'Akun belum di-approve admin.' });
   }
 
@@ -275,11 +275,9 @@ async function deleteUserWithSupabase(targetUsername, res, supabase) {
 
   if (removed.error) {
     console.error('admin delete user error:', removed.error);
-    return res.status(500).json({
+    return res.status(409).json({
       success: false,
-      error: 'Akun belum bisa dihapus karena terjadi kesalahan database.',
-      stage: 'app_users',
-      detail: removed.error.message
+      error: 'Akun belum bisa dihapus karena masih memiliki data terkait.'
     });
   }
 
