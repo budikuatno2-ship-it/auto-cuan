@@ -76,12 +76,15 @@ module.exports = async function handler(req, res) {
   }
   try {
     var ticker = null;
+    var reqRange = null;
 
     if (req.method === 'GET') {
       ticker = req.query && req.query.ticker;
+      reqRange = req.query && req.query.range;
     } else if (req.method === 'POST') {
       var body = req.body || {};
       ticker = body.ticker;
+      reqRange = body.range;
     } else {
       return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -99,7 +102,13 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Format ticker tidak valid.' });
     }
 
-    var cached = cache[ticker];
+    var validRanges = ['1y', '2y', '3y', '5y', 'max'];
+    var cleanRange = (typeof reqRange === 'string' && validRanges.indexOf(reqRange.toLowerCase().trim()) >= 0)
+      ? reqRange.toLowerCase().trim()
+      : '5y';
+    var cacheKey = ticker + '_' + cleanRange;
+
+    var cached = cache[cacheKey];
     var requestJakartaToday = t1Policy.formatJakartaDate(clock.now());
     if (cached && cached.data && cached.data.jakarta_today === requestJakartaToday && (Date.now() - cached.timestamp < CACHE_TTL)) {
       return res.status(200).json(responseForRequest(cached.data, req));
@@ -112,7 +121,7 @@ module.exports = async function handler(req, res) {
     } else {
       symbol = ticker + '.JK';
     }
-    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?range=1y&interval=1d';
+    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?range=' + cleanRange + '&interval=1d';
 
     var controller = new AbortController();
     var timeout = setTimeout(function() { controller.abort(); }, 10000);
@@ -159,13 +168,17 @@ module.exports = async function handler(req, res) {
     var candles = [];
     for (var i = 0; i < timestamps.length; i++) {
       var c = closes[i], o = opens[i], h = highs[i], l = lows[i], v = volumes[i];
+      // Skip candles that are incomplete, null, or have zero/negative price (e.g. unfinalized day close)
+      if (c == null || o == null || h == null || l == null) continue;
       var timestampSeconds = t1Policy.normalizeUnixTimestampSeconds(timestamps[i]);
       var candleDate = timestampSeconds == null ? null : t1Policy.formatJakartaDate(new Date(timestampSeconds * 1000));
-      // BUG-CAN-02: `!isNaN(c)` meloloskan NaN pada open/high/low (dan menerima
-      // Infinity). Setiap field OHLC harus finite agar tidak ada candle rusak
-      // yang masuk ke indikator.
       var oNum = Number(o), hNum = Number(h), lNum = Number(l), cNum = Number(c);
-      if (candleDate && Number.isFinite(oNum) && Number.isFinite(hNum) && Number.isFinite(lNum) && Number.isFinite(cNum)) {
+      if (candleDate &&
+          Number.isFinite(oNum) && oNum > 0 &&
+          Number.isFinite(hNum) && hNum > 0 &&
+          Number.isFinite(lNum) && lNum >= 0 &&
+          Number.isFinite(cNum) && cNum > 0 &&
+          hNum >= lNum) {
         candles.push({
           time: candleDate,
           open: Math.round(oNum * 100) / 100,
@@ -251,7 +264,7 @@ module.exports = async function handler(req, res) {
     // Cache the complete deterministic result once, then apply the signed-session
     // response policy per request. This prevents a guest/non-admin cache hit from
     // receiving Pattern geometry while keeping Technical Chart caching unchanged.
-    setBoundedCache(ticker, result);
+    setBoundedCache(cacheKey, result);
     return res.status(200).json(responseForRequest(result, req));
 
   } catch (err) {
