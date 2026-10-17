@@ -1,15 +1,15 @@
 # Auto-Cuan — Master Design Specification & Google Stitch Prompt Catalog
-**Document Version:** 1.0 (Master Compilation)  
-**Target Platform:** Google Stitch (AI Web Prototyping & Visual Generation)  
-**Source Baseline:** [`DESIGN.md`](DESIGN.md:1) v1.1, [`public/index.html`](public/index.html:1), [`public/partials/`](public/partials/), and runtime DOM architecture  
-**Mode:** Continuous Financial Workstation (Anti Card-Wall)  
-**Primary Currency / Tickers:** Indonesian Rupiah (IDR), Indonesia Stock Exchange (IDX: BBCA, BBRI, BMRI, TLKM, ASII, BRPT, MEDC, etc.)  
+**Document Version:** 1.0 (Master Compilation)
+**Target Platform:** Google Stitch (AI Web Prototyping & Visual Generation)
+**Source Baseline:** [`DESIGN.md`](DESIGN.md:1) v1.1, [`public/index.html`](public/index.html:1), [`public/partials/`](public/partials/), and runtime DOM architecture
+**Mode:** Continuous Financial Workstation (Anti Card-Wall)
+**Primary Currency / Tickers:** Indonesian Rupiah (IDR), Indonesia Stock Exchange (IDX: BBCA, BBRI, BMRI, TLKM, ASII, BRPT, MEDC, etc.)
 
 ---
 
 ## 1. Executive Overview & Stitch Generation Guidelines
 
-Auto-Cuan is a calm, high-density, serious financial intelligence workstation for Indonesian equities (IDX). It is **not** a crypto casino, neon terminal, or generic SaaS dashboard cluttered with isolated floating cards ("card wall"). 
+Auto-Cuan is a calm, high-density, serious financial intelligence workstation for Indonesian equities (IDX). It is **not** a crypto casino, neon terminal, or generic SaaS dashboard cluttered with isolated floating cards ("card wall").
 
 ### The Core Paradigm: Continuous Workspace over Card-Wall
 When feeding prompts into Google Stitch, enforce the following fundamental rules:
