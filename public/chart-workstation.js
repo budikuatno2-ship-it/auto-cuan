@@ -1978,6 +1978,10 @@
     var buyFeeRate = 0.0015;
     var sellFeeRate = 0.0025;
 
+    // Precalculate LPM and Intensity series for quant confluences
+    var lpmSeries = calculateLPMSeries(candles, 20);
+    var intensitySeries = calculateIntensityHistogram(candles, 20);
+
     for (var i = 20; i < count; i++) {
       var c = candles[i];
       var prev = candles[i - 1];
@@ -2006,12 +2010,20 @@
         }
 
         // 2. Check exit conditions for remaining (or full) position
+        var curLpm = lpmSeries[i] ? lpmSeries[i].value : close;
+        var curLpmPrev3 = (i >= 3 && lpmSeries[i - 3]) ? lpmSeries[i - 3].value : curLpm;
+        var curIntensity = intensitySeries[i] ? intensitySeries[i].value : 1.0;
+
         if (low <= currentPos.sl) {
           exitPrice = currentPos.sl;
           exitReason = currentPos.tp1Hit ? 'BEP' : 'SL';
         } else if (high >= currentPos.tp2) {
           exitPrice = currentPos.tp2;
           exitReason = 'TP2';
+        } else if (!currentPos.tp1Hit && curLpm < curLpmPrev3 * 0.97 && close < open && curIntensity >= 1.5) {
+          // Smart Exit: early distribution detected before hitting full stop loss
+          exitPrice = close;
+          exitReason = 'SMART_EXIT';
         } else if (currentPos.holdingDays >= maxHold) {
           exitPrice = close;
           exitReason = 'TIME';
@@ -2049,8 +2061,8 @@
             exitReason: exitReason
           });
 
-          var markerColor = isWin ? '#10b981' : (exitReason === 'BEP' ? '#eab308' : '#ef4444');
-          var markerText = exitReason === 'TP2' ? 'TP2 WIN' : (exitReason === 'BEP' ? 'BEP 50%' : (exitReason === 'SL' ? 'SL' : 'EXIT'));
+          var markerColor = isWin ? '#10b981' : (exitReason === 'BEP' ? '#eab308' : (exitReason === 'SMART_EXIT' ? '#f59e0b' : '#ef4444'));
+          var markerText = exitReason === 'TP2' ? 'TP2 WIN' : (exitReason === 'BEP' ? 'BEP 50%' : (exitReason === 'SMART_EXIT' ? 'SMART EXIT' : (exitReason === 'SL' ? 'SL' : 'EXIT')));
           markers.push({
             time: c.time,
             position: 'aboveBar',
@@ -2118,7 +2130,26 @@
           }
         }
 
-        if (entryTriggered) {
+        // Quantitative LPM & Intensity confluences
+        var lpmVal = lpmSeries[i] ? lpmSeries[i].value : close;
+        var lpmPrev3 = (i >= 3 && lpmSeries[i - 3]) ? lpmSeries[i - 3].value : lpmVal;
+        var lpmPrev5 = (i >= 5 && lpmSeries[i - 5]) ? lpmSeries[i - 5].value : lpmPrev3;
+        var intensityVal = intensitySeries[i] ? intensitySeries[i].value : 1.0;
+
+        var hasRecentIntensitySpike = false;
+        for (var ki = Math.max(0, i - 4); ki <= i; ki++) {
+          if (intensitySeries[ki] && intensitySeries[ki].value >= 1.5) {
+            hasRecentIntensitySpike = true;
+            break;
+          }
+        }
+
+        var isLpmAccumulating = (lpmVal >= lpmPrev3) || (lpmVal >= lpmPrev5) || (lpmVal >= close * 0.98);
+        var isLpmDistributing = (lpmVal < lpmPrev3 * 0.94);
+        var isIntensityConfirmed = (intensityVal >= 1.15 || hasRecentIntensitySpike) && isBullish;
+        var quantConfirmed = isLpmAccumulating && !isLpmDistributing && (isIntensityConfirmed || mode === 'investor');
+
+        if (entryTriggered && quantConfirmed) {
           var entry = roundToIdxTick(close);
           var tick = getIdxTickSize(entry);
           var sl;
