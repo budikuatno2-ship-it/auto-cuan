@@ -3,7 +3,7 @@
 /**
  * Historical Broker Summary Backfill Worker (All + Foreign)
  * ==========================================================
- * Backfills unclipped All (all_data=true) and Foreign (flow=F, all_data=true)
+ * Backfills Foreign (flow=F, all_data=true) and unclipped All (all_data=true)
  * from 2026-10-16 backwards to 2026-01-02.
  *
  * Designed with strict quota guards:
@@ -11,17 +11,48 @@
  * - Weekday reserve: 800 calls.
  * - Weekend reserve: 300 calls.
  * - Prioritizes liquid tickers (turnover >= Rp 1 Miliar) before illiquid tickers.
+ * - Supports --only-foreign flag to exclusively fetch Foreign broksum.
+ * - Paced at 8 req/s (125ms delay) with adaptive fallback to 5 req/s (200ms) on burst 429.
  * - Fully resumable and stateful via _backfill/state.json and lock file.
  */
 
 const fs = require('fs');
 const path = require('path');
+// Load environment variables (.env / .env.local)
+try {
+  const envCandidates = [
+    path.join(__dirname, '..', '.env'),
+    path.join(__dirname, '..', '.env.local'),
+    '/home/ubuntu/auto-cuan-runner/.env',
+    '/home/ubuntu/auto-cuan/.env'
+  ];
+  for (const envPath of envCandidates) {
+    if (fs.existsSync(envPath)) {
+      const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx > 0) {
+          const key = trimmed.slice(0, eqIdx).trim();
+          let val = trimmed.slice(eqIdx + 1).trim();
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+          }
+          if (!process.env[key]) process.env[key] = val;
+        }
+      }
+    }
+  }
+} catch (_) {}
+
 const arjumClient = require('../lib/arjum-client');
 const broksumFlow = require('../lib/broksum-flow');
 const brokerAccumulationLocal = require('../lib/broker-accumulation-local');
 
-// Pacing determined from Langkah 1 empirical speed test: 5.6 req/s (~180ms delay)
-const DEFAULT_DELAY_MS = 180;
+// Default pacing: 8 req/sec (125ms delay) as verified in benchmark
+const DEFAULT_DELAY_MS = 125;
+const SLOWDOWN_DELAY_MS = 200; // 5 req/sec on rate burst
 const WEEKDAY_RESERVE = 800;
 const WEEKEND_RESERVE = 300;
 
@@ -137,6 +168,7 @@ function categorizeTickersByLiquidity(baseDir, candlesDir, tickers) {
 async function run(argv) {
   const args = argv || process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
+  const onlyForeign = args.includes('--only-foreign') || process.env.ONLY_FOREIGN === 'true';
 
   let limit = Infinity;
   for (const a of args) {
@@ -190,14 +222,29 @@ async function run(argv) {
 
   console.log('=== AUTO-CUAN BROKER SUMMARY BACKFILL WORKER ===');
   console.log(`Mode:            ${mode.toUpperCase()} (Reserve Quota: ${reserveQuota})`);
-  console.log(`Pacing Delay:    ${delayMs}ms`);
+  console.log(`Only Foreign:    ${onlyForeign} (HANYA flow=F&all_data=true)`);
+  console.log(`Initial Pacing:  ${delayMs}ms (~${(1000/delayMs).toFixed(1)} req/s)`);
   console.log(`Execution Limit: ${limit === Infinity ? 'UNLIMITED' : limit}`);
-  console.log(`Target Dir:      ${baseDir}`);
+  console.log(`Target Base Dir: ${baseDir}`);
   console.log(`Dry Run:         ${dryRun}`);
 
-  let state = { completedTasks: {}, lastUpdated: null, totalSent: 0 };
+  let state = {
+    completedTasks: {},
+    lastUpdated: null,
+    totalSent: 0,
+    startTime: new Date().toISOString(),
+    completedTickers: {}
+  };
+
   if (fs.existsSync(stateFile)) {
-    try { state = JSON.parse(fs.readFileSync(stateFile, 'utf8')); } catch (_) {}
+    try {
+      const parsed = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+      if (parsed && typeof parsed === 'object') {
+        state = Object.assign(state, parsed);
+        if (!state.completedTasks) state.completedTasks = {};
+        if (!state.completedTickers) state.completedTickers = {};
+      }
+    } catch (_) {}
   }
 
   const tradingDays = loadTradingDays(candlesDir);
@@ -226,14 +273,27 @@ async function run(argv) {
   const { liquid, regular } = categorizeTickersByLiquidity(baseDir, candlesDir, universeTickers);
   console.log(`Tickers: ${liquid.length} liquid (turnover >= 1M) + ${regular.length} regular = ${universeTickers.length} total.`);
 
+  // Order: liquid tickers first, then regular
   const orderedTickers = [...liquid, ...regular];
 
   let requestsSent = 0;
   let skippedCount = 0;
   let quotaHalted = false;
+  let consecutive429 = 0;
+
+  function saveState() {
+    if (dryRun) return;
+    try {
+      state.lastUpdated = new Date().toISOString();
+      state.totalRequestsSentInRun = requestsSent;
+      fs.writeFileSync(stateFile, JSON.stringify(state, null, 2), 'utf8');
+    } catch (_) {}
+  }
 
   try {
     for (const ticker of orderedTickers) {
+      let tickerCompletedDays = 0;
+
       for (const date of tradingDays) {
         if (requestsSent >= limit) {
           console.log(`[LIMIT-REACHED] Batas request ${limit} tercapai. Berhenti rapi.`);
@@ -243,21 +303,23 @@ async function run(argv) {
         const taskKeyAll = `${ticker}_${date}_all`;
         const taskKeyF = `${ticker}_${date}_F`;
 
-        // Check All file status
+        // Check All file status (skipped if onlyForeign is true)
         const allFile = path.join(baseDir, 'broker-summary', ticker, `${date}.json`);
         let needsAll = false;
-        if (!fs.existsSync(allFile)) {
-          needsAll = true;
-        } else {
-          try {
-            const raw = fs.readFileSync(allFile, 'utf8');
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed.broker_levels) && parsed.broker_levels.length === 25 && parsed.all_data !== true) {
-              needsAll = true;
-              backupClippedBroksum(baseDir, ticker, date, raw);
-            }
-          } catch (_) {
+        if (!onlyForeign) {
+          if (!fs.existsSync(allFile)) {
             needsAll = true;
+          } else {
+            try {
+              const raw = fs.readFileSync(allFile, 'utf8');
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed.broker_levels) && parsed.broker_levels.length === 25 && parsed.all_data !== true) {
+                needsAll = true;
+                backupClippedBroksum(baseDir, ticker, date, raw);
+              }
+            } catch (_) {
+              needsAll = true;
+            }
           }
         }
 
@@ -266,11 +328,12 @@ async function run(argv) {
         let needsF = !fs.existsSync(fFile);
 
         if (!needsAll && !needsF) {
-          skippedCount += 2;
+          skippedCount += onlyForeign ? 1 : 2;
+          tickerCompletedDays++;
           continue;
         }
 
-        // 1. Fetch All if needed
+        // 1. Fetch All if needed (and not only-foreign)
         if (needsAll && requestsSent < limit) {
           if (dryRun) {
             console.log(`[DRY-RUN] Fetch ALL: ${ticker} ${date} (all_data=true)`);
@@ -281,15 +344,33 @@ async function run(argv) {
             state.totalSent = (state.totalSent || 0) + 1;
 
             if (resAll.ok && resAll.data) {
+              consecutive429 = 0;
               const targetDir = path.join(baseDir, 'broker-summary', ticker);
               if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
               fs.writeFileSync(allFile, JSON.stringify(resAll.data, null, 2), 'utf8');
               state.completedTasks[taskKeyAll] = true;
-              if (requestsSent % 10 === 0) console.log(`[BACKFILL] Req ${requestsSent}/${limit}: Saved ${ticker} ${date} (ALL)`);
+              if (requestsSent % 5 === 0 || requestsSent <= 10) {
+                console.log(`[BACKFILL] Req ${requestsSent} | Saved ALL ${ticker} ${date} | Total Sent: ${state.totalSent}`);
+                saveState();
+              }
             } else if (resAll.status === 429) {
-              console.log(`[429-RATE-LIMIT] Kena HTTP 429 pada ${ticker} ${date}. Berhenti.`);
-              quotaHalted = true;
-              break;
+              consecutive429++;
+              const classified = arjumClient.classifyFailure(resAll);
+              if (classified && classified.reason === 'quota_exceeded') {
+                console.log(`[QUOTA-EXCEEDED] Kuota harian Arjum habis. Berhenti.`);
+                quotaHalted = true;
+                break;
+              }
+              // Burst rate limit: slow down to 200ms
+              console.log(`[429-BURST] Rate limit hit on ${ticker} ${date}. Slowing down pacing to ${SLOWDOWN_DELAY_MS}ms...`);
+              delayMs = SLOWDOWN_DELAY_MS;
+              process.env.ARJUM_THROTTLE_DELAY_MS = String(delayMs);
+              await sleep(1500);
+              if (consecutive429 > 3) {
+                console.log(`[CONSECUTIVE-429] 3x rate limit berturut-turut. Berhenti rapi.`);
+                quotaHalted = true;
+                break;
+              }
             }
 
             if (resAll.headers && resAll.headers['x-ratelimit-remaining'] != null) {
@@ -318,15 +399,34 @@ async function run(argv) {
             state.totalSent = (state.totalSent || 0) + 1;
 
             if (resF.ok && resF.data) {
+              consecutive429 = 0;
               const targetDir = path.join(baseDir, 'broker-summary-F', ticker);
               if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
               fs.writeFileSync(fFile, JSON.stringify(resF.data, null, 2), 'utf8');
               state.completedTasks[taskKeyF] = true;
-              if (requestsSent % 10 === 0) console.log(`[BACKFILL] Req ${requestsSent}/${limit}: Saved ${ticker} ${date} (FOREIGN)`);
+              tickerCompletedDays++;
+
+              if (requestsSent % 25 === 0) {
+                console.log(`[BACKFILL] Req ${requestsSent} | Saved FOREIGN ${ticker} ${date} | Total Sent: ${state.totalSent}`);
+                saveState();
+              }
             } else if (resF.status === 429) {
-              console.log(`[429-RATE-LIMIT] Kena HTTP 429 pada foreign ${ticker} ${date}. Berhenti.`);
-              quotaHalted = true;
-              break;
+              consecutive429++;
+              const classified = arjumClient.classifyFailure(resF);
+              if (classified && classified.reason === 'quota_exceeded') {
+                console.log(`[QUOTA-EXCEEDED] Kuota harian Arjum habis. Berhenti.`);
+                quotaHalted = true;
+                break;
+              }
+              console.log(`[429-BURST] Rate limit hit on FOREIGN ${ticker} ${date}. Slowing down pacing to ${SLOWDOWN_DELAY_MS}ms...`);
+              delayMs = SLOWDOWN_DELAY_MS;
+              process.env.ARJUM_THROTTLE_DELAY_MS = String(delayMs);
+              await sleep(1500);
+              if (consecutive429 > 3) {
+                console.log(`[CONSECUTIVE-429] 3x rate limit berturut-turut. Berhenti rapi.`);
+                quotaHalted = true;
+                break;
+              }
             }
 
             if (resF.headers && resF.headers['x-ratelimit-remaining'] != null) {
@@ -344,14 +444,16 @@ async function run(argv) {
 
         if (quotaHalted) break;
       }
+
+      if (tickerCompletedDays >= tradingDays.length) {
+        state.completedTickers[ticker] = { completedAt: new Date().toISOString(), days: tickerCompletedDays };
+      }
+
       if (quotaHalted || requestsSent >= limit) break;
     }
   } finally {
-    if (!dryRun) {
-      state.lastUpdated = new Date().toISOString();
-      fs.writeFileSync(stateFile, JSON.stringify(state, null, 2), 'utf8');
-      releaseLock(lockFile);
-    }
+    saveState();
+    if (!dryRun) releaseLock(lockFile);
   }
 
   console.log(`\n=== BACKFILL EXECUTION SUMMARY ===`);
