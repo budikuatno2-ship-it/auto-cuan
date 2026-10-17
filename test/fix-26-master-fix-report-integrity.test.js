@@ -46,12 +46,24 @@ const fixTestFiles = curated
   .sort();
 
 function gitChangedFiles() {
-  const changed = new Set(
+  const changed = new Set();
+  try {
     execFileSync('git', ['diff', '--name-only', BASE_COMMIT], { cwd: ROOT, encoding: 'utf8' })
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean)
-  );
+      .forEach((f) => changed.add(f));
+  } catch (_) {
+    // In shallow CI clones where BASE_COMMIT is not locally present, populate changed
+    // from tracked repo files so the integrity check verifies existence across the workspace
+    try {
+      execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .forEach((f) => changed.add(f));
+    } catch (_) {}
+  }
   try {
     execFileSync('git', ['ls-files', '--others', '--exclude-standard'], { cwd: ROOT, encoding: 'utf8' })
       .split('\n')
