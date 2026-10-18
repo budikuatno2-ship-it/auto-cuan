@@ -25,6 +25,14 @@ CRON_TZ=Asia/Jakarta
 # Lifecycle evaluator (sore, setelah bursa tutup)
 30 16 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-lifecycle-evaluator.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
 
+# ── CANDLE HARIAN 962 SAHAM (Yahoo + cek silang Arjum) — 2026-10-18 ───────
+# Bursa tutup 16:00 WIB; bar final Yahoo lengkap ~16:20-16:30.
+# Job ini WAJIB lewat wrapper run-daily-candles.sh (flock + env).
+# IHSG selalu dari Arjum (1 request). Cek silang 20 saham (20 request).
+# Diulang 23:30 WIB untuk menangkap koreksi/revisi bar Yahoo.
+40 16 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-candles.log 2>&1
+30 23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-candles.log 2>&1
+
 # ── EOD MARKET DATA / BROKSUM INGESTION (16:30-17:30 WIB) ─────────────────
 # Window optimal: bursa tutup 16:00, KSEI merilis snapshot broker ~16:30-17:30.
 # Tiap 15 menit di dalam window supaya tanggal yang belum lengkap bisa lanjut;

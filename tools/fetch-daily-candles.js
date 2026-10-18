@@ -21,6 +21,75 @@ const { getVpsMarketStore } = require('../lib/vps-market-store');
 const { createClient: createHybridClient, marketDataVpsEnabled } = require('../lib/hybrid-supabase-client');
 const { isValidIdxTicker } = require('../lib/idx-ticker');
 
+const DEFAULT_CROSSCHECK_TICKERS = [
+  // 10 likuid
+  'BBCA', 'BBRI', 'BMRI', 'BBNI', 'ASII', 'TLKM', 'BUMI', 'BRPT', 'AMMN', 'ADRO',
+  // 10 lainnya
+  'MEDC', 'PGAS', 'PTBA', 'CPIN', 'KLBF', 'ALDO', 'BIKA', 'CITY', 'FISH', 'LIFE'
+];
+
+async function performDailyCrossCheck(targetDate, options = {}) {
+  const sampleTickers = options.tickers || DEFAULT_CROSSCHECK_TICKERS;
+  const maxVariancePct = Number(options.maxVariancePct || 0.5); // 0.5% threshold
+  const details = [];
+  let passedCount = 0;
+  let failedCount = 0;
+
+  for (const ticker of sampleTickers) {
+    // 1. Fetch from Arjum (1 request per sample ticker)
+    const arjumRes = await fetcher.fetchDailyCandles(ticker, { force: true, source: 'arjum' });
+    const arjumCandle = arjumRes.ok && arjumRes.data && Array.isArray(arjumRes.data.candles)
+      ? arjumRes.data.candles.find(c => String(c.date || '').slice(0, 10) === targetDate)
+      : (fetcher.readCache(ticker)?.candles?.find(c => String(c.date || '').slice(0, 10) === targetDate));
+
+    const arjumClose = arjumCandle ? Number(arjumCandle.close) : null;
+
+    // 2. Fetch from Yahoo
+    const yahooRes = await fetcher.fetchDailyCandlesYahoo(ticker, { range: '5d', retries: 2 });
+    const yahooCandle = yahooRes.ok && yahooRes.data && Array.isArray(yahooRes.data.candles)
+      ? yahooRes.data.candles.find(c => String(c.date || '').slice(0, 10) === targetDate)
+      : null;
+
+    if (!arjumCandle) {
+      // Arjum itself has not published EOD candle yet
+      details.push({ ticker, status: 'arjum_not_ready', passed: false });
+      failedCount++;
+      continue;
+    }
+
+    if (!yahooCandle) {
+      details.push({ ticker, status: 'yahoo_missing_bar', passed: false });
+      failedCount++;
+      continue;
+    }
+
+    const aClose = arjumClose;
+    const yClose = Number(yahooCandle.close);
+    const diffPct = aClose > 0 ? (Math.abs(yClose - aClose) / aClose) * 100 : 0;
+    const isOk = diffPct <= maxVariancePct;
+
+    if (isOk) passedCount++;
+    else failedCount++;
+
+    details.push({
+      ticker,
+      arjumClose: aClose,
+      yahooClose: yClose,
+      diffPct: Number(diffPct.toFixed(2)),
+      passed: isOk
+    });
+  }
+
+  const allPassed = failedCount === 0 && passedCount === sampleTickers.length;
+  return {
+    ok: allPassed,
+    total: sampleTickers.length,
+    passed: passedCount,
+    failed: failedCount,
+    details
+  };
+}
+
 function loadEnvFile() {
   const candidates = [path.join(__dirname, '..', '.env.ai-eval-once'), path.join(__dirname, '..', '.env.local'), path.join(__dirname, '..', '.env')];
   for (const file of candidates) {
@@ -161,8 +230,35 @@ async function main(options) {
     stale: 0,
     failed: 0,
     stale_after_fetch: 0,
-    quota_stop: false
+    quota_stop: false,
+    yahoo_fetched: 0,
+    cross_check_failed: false,
+    cross_check: null
   };
+
+  const candleSource = options.source || process.env.CANDLE_SOURCE || 'yahoo';
+  const crossCheckEnabled = options.crossCheck !== false && process.env.CANDLE_CROSSCHECK !== 'false';
+
+  if (candleSource === 'yahoo' && crossCheckEnabled && !dryRun && universe.length > 20 && !options.skipCrossCheck) {
+    try {
+      const check = await performDailyCrossCheck(targetDate, {
+        tickers: options.crossCheckTickers || DEFAULT_CROSSCHECK_TICKERS
+      });
+      summary.cross_check = {
+        total: check.total, passed: check.passed, failed: check.failed, ok: check.ok
+      };
+      if (!check.ok) {
+        summary.cross_check_failed = true;
+        console.warn(`[CROSS-CHECK-FAILED] ${check.failed}/${check.total} sample diffs > 0.5%. Falling back to Arjum for all tickers today.`);
+      } else {
+        console.log(`[CROSS-CHECK-OK] ${check.passed}/${check.total} samples matched <= 0.5%.`);
+      }
+    } catch (err) {
+      summary.cross_check_failed = true;
+      summary.cross_check = { error: err && err.message };
+      console.warn(`[CROSS-CHECK-ERROR] ${err && err.message}. Falling back to Arjum for all tickers today.`);
+    }
+  }
 
   for (const ticker of universe) {
     const hasTarget = () => {
@@ -178,26 +274,51 @@ async function main(options) {
     summary.stale++;
     if (dryRun) continue;
 
-    const res = await fetcher.fetchDailyCandles(ticker, {
-      limit: Number(process.env.CANDLE_LIMIT) || 500,
-      force: true
-    });
-    if (res.ok) {
-      // HTTP/API success is not freshness success. Arjum may answer before the
-      // current EOD candle has been published. Re-read the persisted cache and
-      // only count it complete when the requested date has all OHLCV fields.
+    let res;
+    let usedYahoo = false;
+
+    if (ticker === 'IHSG') {
+      // IHSG is ALWAYS fetched from Arjum canonical benchmark
+      res = await fetcher.fetchDailyCandles(ticker, {
+        limit: Number(process.env.CANDLE_LIMIT) || 500,
+        force: true
+      });
+    } else if (candleSource === 'yahoo' && !summary.cross_check_failed) {
+      res = await fetcher.fetchDailyCandlesYahoo(ticker, { range: '5d', retries: 2 });
+      usedYahoo = Boolean(res && res.ok);
+      if (!res.ok) {
+        // Fallback to Arjum for this ticker
+        console.warn(`[CANDLE-FALLBACK] Yahoo failed for ${ticker} (${res.error}), falling back to Arjum.`);
+        res = await fetcher.fetchDailyCandles(ticker, {
+          limit: Number(process.env.CANDLE_LIMIT) || 500,
+          force: true
+        });
+      }
+    } else {
+      // Direct Arjum fetch
+      res = await fetcher.fetchDailyCandles(ticker, {
+        limit: Number(process.env.CANDLE_LIMIT) || 500,
+        force: true
+      });
+    }
+
+    if (res && res.ok) {
       if (hasTarget()) {
         summary.fetched++;
+        if (usedYahoo) summary.yahoo_fetched++;
       } else {
         summary.failed++;
         summary.stale_after_fetch++;
       }
-    } else if (res.rateLimited) {
+    } else if (res && res.rateLimited) {
       summary.quota_stop = true;
       break;
     } else {
       summary.failed++;
     }
+
+    // Pacing delay (50ms) between remote calls
+    await new Promise(r => setTimeout(r, 50));
     if (summary.fetched % 50 === 0 && summary.fetched > 0) console.log('fetched=' + summary.fetched + ' last=' + ticker);
   }
 
@@ -220,5 +341,7 @@ module.exports = {
   latestCachedDate,
   createCalendarClient,
   resolveTradingDay,
+  performDailyCrossCheck,
+  DEFAULT_CROSSCHECK_TICKERS,
   main
 };
