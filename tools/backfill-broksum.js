@@ -54,12 +54,13 @@ const quotaTracker = require('../lib/arjum-quota-tracker');
 // Default pacing: 8 req/sec (125ms delay) as verified in benchmark
 const DEFAULT_DELAY_MS = 125;
 const SLOWDOWN_DELAY_MS = 200; // 5 req/sec on rate burst
-const WEEKDAY_RESERVE = 800;
+const WEEKDAY_RESERVE = Math.max(800, Number(process.env.BACKFILL_RESERVE_AFTER_EOD) || 800);
 const WEEKEND_RESERVE = 300;
-// 2c: BEFORE the EOD .done sentinel exists for today, reserve enough quota for
-// the production EOD run (J1 + J2) so the 23:30 retry still has room.
-// (avg J1 2.628 + avg J2 962) + 500 headroom = ~4.500.
-const WEEKDAY_RESERVE_BEFORE_EOD = 4500;
+// B1: Cadangan backfill sebelum .done = maks(5.000, (kebutuhan sore tertinggi 7 hari + live website) * 1.12).
+// Puncak 7 hari: J1 All (962) + F (834) + Accum (834) + Ins (834) + J2 Candle (962) = 4.426 req.
+// (4.426 EOD peak + 100 live web) * 1.12 = 5.069,12 -> di-floor ke minimal 5.100 req.
+const DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD = 5100;
+const WEEKDAY_RESERVE_BEFORE_EOD = Math.max(5000, Number(process.env.BACKFILL_RESERVE_BEFORE_EOD) || DEFAULT_WEEKDAY_RESERVE_BEFORE_EOD);
 
 // 2c: read the EOD completion sentinel written by run-daily-market-update.js.
 function eodDoneExists(baseDir, wibDateKey) {
