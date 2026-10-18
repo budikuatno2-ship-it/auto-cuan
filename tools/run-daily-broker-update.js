@@ -295,8 +295,16 @@ async function run(argv) {
   const isFinal = args.includes('--final');
 
   const isFresh = args.includes('--fresh');
-  const accumSource = (args.find(a => a.startsWith('--accum-source=')) || '').replace('--accum-source=', '') || process.env.ACCUM_SOURCE || 'local';
-  const insiderMode = (args.find(a => a.startsWith('--insider-mode=')) || '').replace('--insider-mode=', '') || process.env.INSIDER_MODE || 'priority';
+  // 2a: Parity test (2026-10-18) FAILED while broker-summary is still clipped to
+  // 25 levels, so local accumulation is LESS accurate than Arjum's own API.
+  // Keep /api/broker-accumulation as the SINGLE daily accumulation writer.
+  // ACCUM_SOURCE=local stays available for historical re-derivation once the
+  // all_data=true backfill is complete.
+  const accumSource = (args.find(a => a.startsWith('--accum-source=')) || '').replace('--accum-source=', '') || process.env.ACCUM_SOURCE || 'api';
+  // 2b: Insider stays DAILY for all stocks while the 12.060 quota holds.
+  // weekly = all stocks on Saturday 01:00 + <=100 priority daily (prepared,
+  // NOT enabled). Default is 'daily'.
+  const insiderMode = (args.find(a => a.startsWith('--insider-mode=')) || '').replace('--insider-mode=', '') || process.env.INSIDER_MODE || 'daily';
   const priorityTickers = loadPriorityTickers();
   let foreignRequests = 0;
   let limit = Infinity;

@@ -38,6 +38,21 @@ function loadEnv() {
 }
 
 function stateDir(){return path.join(path.dirname(path.dirname(broker.markerPath('unused'))),'_daily-market-update');}
+// 2c: EOD completion sentinel readable by the backfill worker. Written after
+// broker-summary + foreign + insider + candle all complete for the date.
+function eodDonePath(date, dataDir){
+  const base = dataDir || path.dirname(path.dirname(broker.markerPath('unused')));
+  return path.join(base, '_eod', date + '.done');
+}
+function writeEodDone(date, dataDir, payload){
+  try{
+    const p = eodDonePath(date, dataDir);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    const temp = p + '.' + process.pid + '.tmp';
+    fs.writeFileSync(temp, JSON.stringify(payload, null, 2));
+    fs.renameSync(temp, p);
+  }catch(_){}
+}
 function writeState(date,state){
   const p=path.join(stateDir(),date+'.json');fs.mkdirSync(stateDir(),{recursive:true});
   const temp=p+'.'+process.pid+'.tmp';fs.writeFileSync(temp,JSON.stringify(state,null,2));fs.renameSync(temp,p);
@@ -112,11 +127,20 @@ async function run(options={}){
       }catch(error){console.error('HISTORY_SYNC_RETRY_PENDING',date,error.message);}
     }
     writeState(date,{date,complete:brokerOk&&candleOk&&historyOk,broker_complete:brokerOk,candle_complete:candleOk,history_complete:historyOk,updated_at:new Date().toISOString()});
+    if(brokerOk&&candleOk&&historyOk){
+      writeEodDone(date, null, {
+        date,
+        broker_complete: brokerOk,
+        candle_complete: candleOk,
+        history_complete: historyOk,
+        completed_at: new Date().toISOString()
+      });
+    }
   }
   process.exitCode=undefined;
   if(!dryRun&&pendingDates(options.now).some(date=>{
     try{return JSON.parse(fs.readFileSync(path.join(stateDir(),date+'.json'),'utf8')).complete!==true;}catch(_){return true;}
   }))process.exitCode=3;
 }
-module.exports={run,pendingDates,stateDir,readMarketState,previousDateNeedsWork,loadEnv};
+module.exports={run,pendingDates,stateDir,readMarketState,previousDateNeedsWork,loadEnv,eodDonePath,writeEodDone};
 if(require.main===module)run({dryRun:process.argv.includes('--dry-run')}).catch(error=>{console.error(error.message);process.exitCode=1;});
