@@ -104,9 +104,55 @@ async function run(options={}){
   // recent trading sessions) or lifecycle consumers keep skipping history.
   // Injectable for tests; production uses the real bounded sync.
   const syncHistory=options.syncHistory || historySync.syncRecentHistoryToSqlite;
-  // Fase 5: validasi kewajaran arsip broksum harian J1 sebelum `.done` ditulis.
-  // Memeriksa semua file all & F tanggal itu terhadap candle hari yang sama,
-  // supaya kerusakan (kosong, subset, imbalance) tidak lolos sebagai "selesai".
+  // Fase 5 (diperbaiki 18 Okt 2026): validasi kewajaran arsip broksum harian J1
+  // SEBELUM `.done` ditulis, dengan TOLERANSI supaya satu-dua anomali tidak menahan
+  // seluruh data hari itu.
+  //
+  // Aturan .done baru:
+  //   - .done DITULIS jika  (a) jumlah anomali <= 1% dari total file, DAN
+  //                          (b) tidak ada anomali di 100 saham paling likuid.
+  //   - Jika salah satu dilanggar  -> .done TERTAHAN (butuh investigasi).
+  //   - Daftar anomali selalu ditulis ke _eod/<tanggal>.anomali.json sebagai
+  //     antrean backfill paling depan (dibaca oleh backfill-broksum.js).
+  //
+  // Aturan yang dihitung sebagai anomali KERAS (bukan peringatan):
+  //   - empty_broksum_but_candle_has_volume
+  //   - unclipped_ratio_below
+  //   - unclipped_imbalance (beli != jual > 0.5%)
+  //   - f_empty_but_all_has_value
+  //   - f_buy_exceeds_all / f_sell_exceeds_all
+  //   - parse_error / f_parse_error
+  //
+  // Aturan peringatan (TIDAK menghitung sebagai anomali keras):
+  //   - unclipped_ratio_above (rasio > 1.25 karena transaksi pasar negosiasi)
+  //   - f_broker_missing_in_all (sekarang hanya dijalankan bila all punya all_data === true;
+  //     kalau tidak, di-skip karena padding null pada broker_levels)
+  const ANOMALY_PCT_TOLERANCE = 1.0;
+
+  const HARD_ALL_FLAGS = ['empty_broksum_but_candle_has_volume','unclipped_ratio_below','unclipped_imbalance','parse_error'];
+  const HARD_F_FLAGS = ['f_empty_but_all_has_value','f_buy_exceeds_all','f_sell_exceeds_all','f_parse_error','foreign_buy_exceeds_all','foreign_sell_exceeds_all'];
+
+  function loadTop100LiquidTickers(){
+    try{
+      const candleDir=path.join(ROOT_DIR,'data','daily-candles');
+      if(!fs.existsSync(candleDir))return new Set();
+      const ranking=[];
+      const files=fs.readdirSync(candleDir).filter(f=>f.endsWith('.json')&&f!=='IHSG.json');
+      for(const f of files){
+        const tk=f.replace('.json','');
+        try{
+          const d=JSON.parse(fs.readFileSync(path.join(candleDir,f),'utf8'));
+          const cs=(d.candles||[]).slice(-60);
+          if(cs.length===0)continue;
+          const sum=cs.reduce((a,c)=>a+Number(c.volume||0)*Number(c.close||0),0);
+          ranking.push({ticker:tk,avgTurnover:sum/cs.length});
+        }catch(_){}
+      }
+      ranking.sort((a,b)=>b.avgTurnover-a.avgTurnover);
+      return new Set(ranking.slice(0,100).map(r=>r.ticker));
+    }catch(_){return new Set();}
+  }
+
   function validateDailyBroksumArchive(date){
     try{
       const dataRoot=process.env.ARJUM_DATA_DIR||path.resolve(__dirname,'..','data','arjum-data');
@@ -125,17 +171,19 @@ async function run(options={}){
         }catch(_){}
         return null;
       };
-      const invalidAll=[];const invalidF=[];
+      const invalidAll=[];const invalidF=[];const warnings=[];
       const allByTicker=new Map();
       if(fs.existsSync(allDir)){
         for(const tk of fs.readdirSync(allDir)){
           const f=path.join(allDir,tk,date+'.json');
           if(!fs.existsSync(f))continue;
-          let payload;try{payload=JSON.parse(fs.readFileSync(f,'utf8'));}catch(e){invalidAll.push({ticker:tk,flags:['parse_error']});continue;}
+          let payload;try{payload=JSON.parse(fs.readFileSync(f,'utf8'));}catch(e){invalidAll.push({ticker:tk,flags:['parse_error'],stream:'all'});continue;}
           allByTicker.set(tk,payload);
           const v=broksumValidator.validateBroksumAgainstCandle(payload,readCandle(tk));
-          if(!v.valid&&v.flags.some(fl=>['empty_broksum_but_candle_has_volume','unclipped_ratio_below','unclipped_imbalance','parse_error'].includes(fl))){
-            invalidAll.push({ticker:tk,flags:v.flags,ratio:v.ratio});
+          const hard=v.flags.filter(fl=>HARD_ALL_FLAGS.includes(fl));
+          if(!v.valid){
+            if(hard.length>0) invalidAll.push({ticker:tk,flags:v.flags,ratio:v.ratio,stream:'all'});
+            else warnings.push({ticker:tk,flags:v.flags,ratio:v.ratio,stream:'all'});
           }
         }
       }
@@ -143,17 +191,57 @@ async function run(options={}){
         for(const tk of fs.readdirSync(fDir)){
           const f=path.join(fDir,tk,date+'.json');
           if(!fs.existsSync(f))continue;
-          let fPayload;try{fPayload=JSON.parse(fs.readFileSync(f,'utf8'));}catch(e){invalidF.push({ticker:tk,flags:['parse_error']});continue;}
+          let fPayload;try{fPayload=JSON.parse(fs.readFileSync(f,'utf8'));}catch(e){invalidF.push({ticker:tk,flags:['f_parse_error'],stream:'F'});continue;}
           const aPayload=allByTicker.get(tk);
           if(!aPayload)continue;
           const v=broksumValidator.validateForeignAgainstAll(fPayload,aPayload);
-          if(!v.valid)invalidF.push({ticker:tk,flags:v.flags});
+          const hard=v.flags.filter(fl=>HARD_F_FLAGS.includes(fl));
+          if(!v.valid){
+            if(hard.length>0) invalidF.push({ticker:tk,flags:v.flags,stream:'F'});
+            else warnings.push({ticker:tk,flags:v.flags,stream:'F'});
+          }
         }
       }
-      return{ok:invalidAll.length===0&&invalidF.length===0,invalidAll,invalidF};
+      const totalFiles=allByTicker.size;
+      const totalInvalid=invalidAll.length+invalidF.length;
+      const invalidPct=totalFiles>0?(totalInvalid/totalFiles)*100:0;
+      const top100=loadTop100LiquidTickers();
+      const top100Invalid=[...invalidAll,...invalidF].filter(r=>top100.has(r.ticker));
+      const pctOk=invalidPct<=ANOMALY_PCT_TOLERANCE;
+      const top100Ok=top100Invalid.length===0;
+      return{
+        ok:pctOk&&top100Ok,
+        invalidAll,invalidF,warnings,
+        totalFiles,totalInvalid,invalidPct:Number(invalidPct.toFixed(3)),
+        top100Invalid,
+        rules:{pctTolerance:ANOMALY_PCT_TOLERANCE,pctOk,top100Ok}
+      };
     }catch(e){
-      return{ok:false,error:e.message,invalidAll:[],invalidF:[]};
+      return{ok:false,error:e.message,invalidAll:[],invalidF:[],warnings:[],totalFiles:0,totalInvalid:0,invalidPct:0,top100Invalid:[],rules:{pctTolerance:ANOMALY_PCT_TOLERANCE,pctOk:false,top100Ok:false}};
     }
+  }
+
+  function writeAnomalyFile(date,detail){
+    try{
+      const dataRoot=process.env.ARJUM_DATA_DIR||path.resolve(ROOT_DIR,'data','arjum-data');
+      const eodDir=path.join(dataRoot,'_eod');
+      fs.mkdirSync(eodDir,{recursive:true});
+      const p=path.join(eodDir,date+'.anomali.json');
+      const temp=p+'.'+process.pid+'.tmp';
+      fs.writeFileSync(temp,JSON.stringify({
+        date,
+        generated_at:new Date().toISOString(),
+        total_files:detail.totalFiles,
+        invalid_total:detail.totalInvalid,
+        invalid_pct:detail.invalidPct,
+        last_count:detail.invalidTotal,
+        rules:detail.rules,
+        anomalies:[...detail.invalidAll,...detail.invalidF],
+        warnings:detail.warnings.slice(0,200)
+      },null,2));
+      fs.renameSync(temp,p);
+      return p;
+    }catch(_){return null;}
   }
   for(const date of dates){
     if(!dryRun)writeState(date,{date,complete:false,updated_at:new Date().toISOString()});
@@ -186,13 +274,22 @@ async function run(options={}){
     if(brokerOk&&candleOk){
       archiveDetail=validateDailyBroksumArchive(date);
       archiveOk=Boolean(archiveDetail&&archiveDetail.ok);
+      // Selalu tulis daftar anomali (antrean backfill paling depan), walau .done ditulis.
+      if(archiveDetail&&(archiveDetail.invalidTotal>0||(archiveDetail.warnings&&archiveDetail.warnings.length>0))){
+        const p=writeAnomalyFile(date,archiveDetail);
+        if(p)console.error('BROKSUM_ANOMALY_FILE',date,p,'invalid='+archiveDetail.invalidTotal,'pct='+archiveDetail.invalidPct,'top100='+archiveDetail.top100Invalid.length);
+      }
       if(!archiveOk){
-        const nAll=archiveDetail&&archiveDetail.invalidAll?archiveDetail.invalidAll.length:0;
-        const nF=archiveDetail&&archiveDetail.invalidF?archiveDetail.invalidF.length:0;
-        console.error('BROKSUM_SANITY_PENDING',date,'all_invalid='+nAll,'f_invalid='+nF,(archiveDetail&&archiveDetail.error)?('error='+archiveDetail.error):'');
+        console.error('BROKSUM_SANITY_PENDING',date,
+          'invalid='+archiveDetail.invalidTotal,
+          'pct='+archiveDetail.invalidPct,
+          'top100_invalid='+archiveDetail.top100Invalid.length,
+          'rules='+JSON.stringify(archiveDetail.rules));
+      }else if(archiveDetail&&archiveDetail.invalidTotal>0){
+        console.log('BROKSUM_SANITY_TOLERATED',date,'invalid='+archiveDetail.invalidTotal,'pct='+archiveDetail.invalidPct,'(di dalam toleransi, .done tetap ditulis)');
       }
     }
-    writeState(date,{date,complete:brokerOk&&candleOk&&historyOk&&archiveOk,broker_complete:brokerOk,candle_complete:candleOk,history_complete:historyOk,archive_complete:archiveOk,updated_at:new Date().toISOString()});
+    writeState(date,{date,complete:brokerOk&&candleOk&&historyOk&&archiveOk,broker_complete:brokerOk,candle_complete:candleOk,history_complete:historyOk,archive_complete:archiveOk,anomaly_total:archiveDetail?archiveDetail.invalidTotal:0,anomaly_pct:archiveDetail?archiveDetail.invalidPct:0,anomaly_top100:archiveDetail?archiveDetail.top100Invalid.length:0,warnings_total:archiveDetail&&archiveDetail.warnings?archiveDetail.warnings.length:0,updated_at:new Date().toISOString()});
     if(brokerOk&&candleOk&&historyOk&&archiveOk){
       writeEodDone(date, null, {
         date,

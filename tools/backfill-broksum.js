@@ -187,6 +187,35 @@ function releaseLock(lockFile) {
   } catch (_) {}
 }
 
+/**
+ * Baca antrean prioritas dari _eod/<tanggal>.anomali.json yang ditulis J1.
+ * Pasangan (ticker, date) dari sini dikoreksi lebih dulu oleh backfill.
+ */
+function loadAnomalyQueue(baseDir, maxAgeDays = 7) {
+  const queue = new Map(); // key=ticker|date -> { ticker, date, attempt, stream }
+  try {
+    const eodDir = path.join(baseDir, '_eod');
+    if (!fs.existsSync(eodDir)) return queue;
+    const cutoff = Date.now() - maxAgeDays * 86400000;
+    for (const f of fs.readdirSync(eodDir)) {
+      if (!f.endsWith('.anomali.json')) continue;
+      const full = path.join(eodDir, f);
+      try {
+        if (fs.statSync(full).mtimeMs < cutoff) continue;
+        const parsed = JSON.parse(fs.readFileSync(full, 'utf8'));
+        if (!parsed || !Array.isArray(parsed.anomalies)) continue;
+        const last = Number(parsed.last_count) || 0;
+        for (const it of parsed.anomalies) {
+          if (!it || !it.ticker || !it.date) continue;
+          const key = `${it.ticker}|${it.date}`;
+          queue.set(key, { ticker: it.ticker, date: it.date, attempt: last, stream: it.stream });
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+  return queue;
+}
+
 // Candle lookup cache: Map<ticker, Map<date, {close,volume,value}>>
 const candleCache = new Map();
 function getCandleReference(candlesDir, ticker, date) {
@@ -470,6 +499,14 @@ async function run(argv) {
   // Order: liquid tickers first, then regular
   const orderedTickers = [...liquid, ...regular];
 
+  // Fase 5: antrean prioritas dari J1 (_eod/<tanggal>.anomali.json).
+  // Pasangan (ticker, date) yang ditandai J1 dikoreksi lebih dulu.
+  const anomalyQueue = loadAnomalyQueue(baseDir);
+  if (anomalyQueue.size > 0) {
+    console.log(`[ANOMALY-QUEUE] ${anomalyQueue.size} pasangan di antrean prioritas dari J1.`);
+  }
+  const anomalyKeys = new Set(anomalyQueue.keys());
+
   let requestsSent = 0;
   let skippedCount = 0;
   let syntheticCount = 0;
@@ -574,6 +611,13 @@ async function run(argv) {
           } catch (_) {
             needsF = true;
           }
+        }
+
+        // Fase 5: kalau pasangan ini ada di antrean anomali J1, paksa ambil ulang.
+        const inAnomalyQueue = anomalyKeys.has(`${ticker}|${date}`);
+        if (inAnomalyQueue) {
+          if (!onlyForeign) needsAll = true;
+          needsF = true;
         }
 
         if (!needsAll && !needsF) {

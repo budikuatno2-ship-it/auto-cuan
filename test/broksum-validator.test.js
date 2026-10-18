@@ -106,12 +106,35 @@ test('Validasi arsip broksum: kewajaran terhadap candle & F vs all', async (t) =
     assert.ok(r.flags.includes('foreign_buy_exceeds_all'));
   });
 
-  await t.test('10. F dengan broker tidak ada di all -> tidak wajar', () => {
+  await t.test('10. F dengan broker tidak ada di all -> tidak wajar (HANYA bila all punya all_data === true)', () => {
     const fPayload = { code: 'TEST', flow: 'F', brokers: [{ broker_code: 'ZZ', bval: 1000000, sval: 0 }] };
-    const allPayload = { stock_code: 'TEST', brokers: [{ broker_code: 'AA', bval: 100000000, sval: 100000000 }] };
-    const r = validator.validateForeignAgainstAll(fPayload, allPayload);
+    // all TANPA flag all_data: aturan di-skip (menghindari false positive padding)
+    const allNoFlag = { stock_code: 'TEST', brokers: [{ broker_code: 'AA', bval: 100000000, sval: 100000000 }] };
+    const rSkip = validator.validateForeignAgainstAll(fPayload, allNoFlag);
+    assert.equal(rSkip.valid, true, 'Tanpa all_data flag, aturan broker-hilang di-skip');
+    assert.equal(rSkip.skippedReason, 'all_missing_all_data_flag');
+
+    // all DENGAN flag all_data === true: aturan dijalankan
+    const allWithFlag = { stock_code: 'TEST', all_data: true, brokers: [{ broker_code: 'AA', bval: 100000000, sval: 100000000 }] };
+    const r = validator.validateForeignAgainstAll(fPayload, allWithFlag);
     assert.equal(r.valid, false);
     assert.ok(r.flags.includes('foreign_broker_missing_in_all'));
     assert.equal(r.missingCodes, 1);
+  });
+
+  await t.test('11. Vendor belum publikasi F (broker_date_max < tanggal) -> dianggap VALID', () => {
+    // Skenario nyata KOTA 2026-10-16: F kosong, broker_date_max = 2026-10-15
+    const fPayload = {
+      stock_code: 'KOTA', flow: 'F', brokers: [], broker_levels: [],
+      broker_start_date: '2026-10-16', broker_end_date: '2026-10-16',
+      broker_date_max: '2026-10-15'  // < tanggal yang diminta
+    };
+    const allPayload = {
+      stock_code: 'KOTA', brokers: [{ broker_code: 'SQ', bval: 791197500, sval: 0 }]
+    };
+    const r = validator.validateForeignAgainstAll(fPayload, allPayload);
+    assert.equal(r.valid, true, 'F kosong dengan broker_date_max sebelum tanggal = vendor belum siap, bukan korupsi');
+    assert.ok(r.flags.includes('vendor_foreign_not_yet_published'));
+    assert.equal(r.skippedReason, 'vendor_foreign_pending');
   });
 });
