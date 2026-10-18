@@ -161,15 +161,60 @@ function backupClippedBroksum(baseDir, ticker, date, content) {
 }
 
 function loadTradingDays(candlesDir) {
+  const candidates = ['IHSG.json', 'BBCA.json', 'BRPT.json', 'BMRI.json', 'BBRI.json'];
+  for (const f of candidates) {
+    const p = path.join(candlesDir, f);
+    if (fs.existsSync(p)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+        const list = (data.candles || []).filter(c => c && c.date >= '2026-01-02' && c.date <= '2026-10-16').map(c => c.date);
+        if (list.length > 0) {
+          const unique = Array.from(new Set(list));
+          return unique.sort().reverse(); // newest to oldest
+        }
+      } catch (_) {}
+    }
+  }
+
+  // Fallback: inspect any .json in candlesDir
   try {
-    const brptPath = path.join(candlesDir, 'BRPT.json');
-    if (fs.existsSync(brptPath)) {
-      const data = JSON.parse(fs.readFileSync(brptPath, 'utf8'));
-      const list = (data.candles || []).filter(c => c.date >= '2026-01-02' && c.date <= '2026-10-16').map(c => c.date);
-      if (list.length > 0) return list.sort().reverse(); // newest first
+    const files = fs.readdirSync(candlesDir).filter(f => f.endsWith('.json'));
+    for (const f of files) {
+      const p = path.join(candlesDir, f);
+      try {
+        const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+        const list = (data.candles || []).filter(c => c && c.date >= '2026-01-02' && c.date <= '2026-10-16').map(c => c.date);
+        if (list.length > 0) {
+          const unique = Array.from(new Set(list));
+          return unique.sort().reverse();
+        }
+      } catch (_) {}
     }
   } catch (_) {}
+
   return [];
+}
+
+const tickerCandleCache = new Map();
+
+function getTickerCandleMap(candlesDir, ticker) {
+  if (tickerCandleCache.has(ticker)) return tickerCandleCache.get(ticker);
+  const map = new Map();
+  try {
+    const cFile = path.join(candlesDir, `${ticker}.json`);
+    if (fs.existsSync(cFile)) {
+      const data = JSON.parse(fs.readFileSync(cFile, 'utf8'));
+      if (Array.isArray(data.candles)) {
+        for (const c of data.candles) {
+          if (c && c.date) {
+            map.set(c.date, Number(c.volume != null ? c.volume : 0));
+          }
+        }
+      }
+    }
+  } catch (_) {}
+  tickerCandleCache.set(ticker, map);
+  return map;
 }
 
 function categorizeTickersByLiquidity(baseDir, candlesDir, tickers) {
@@ -265,7 +310,18 @@ async function run(argv) {
     const doneExists = eodDoneExists(baseDir, todayKey);
     reserveQuota = doneExists ? WEEKDAY_RESERVE : WEEKDAY_RESERVE_BEFORE_EOD;
   }
-  const candlesDir = path.join(process.cwd(), 'data', 'daily-candles');
+  let candlesDir = null;
+  for (const a of args) {
+    if (a.startsWith('--candles-dir=')) candlesDir = a.slice(14);
+  }
+  const candlesDirIdx = args.indexOf('--candles-dir');
+  if (candlesDirIdx >= 0 && args[candlesDirIdx + 1]) candlesDir = args[candlesDirIdx + 1];
+
+  if (!candlesDir) {
+    const defaultCandles = path.join(__dirname, '..', 'data', 'daily-candles');
+    candlesDir = fs.existsSync(defaultCandles) ? defaultCandles : path.join(process.cwd(), 'data', 'daily-candles');
+  }
+
   const lockFile = getLockPath(baseDir);
   const stateFile = getStatePath(baseDir);
 
@@ -334,6 +390,7 @@ async function run(argv) {
 
   let requestsSent = 0;
   let skippedCount = 0;
+  let syntheticCount = 0;
   let quotaHalted = false;
   let consecutive429 = 0;
 
@@ -376,7 +433,9 @@ async function run(argv) {
             try {
               const raw = fs.readFileSync(allFile, 'utf8');
               const parsed = JSON.parse(raw);
-              if (Array.isArray(parsed.broker_levels) && parsed.broker_levels.length === 25 && parsed.all_data !== true) {
+              if (parsed.derived === 'no-trade') {
+                needsAll = false;
+              } else if (Array.isArray(parsed.broker_levels) && parsed.broker_levels.length === 25 && parsed.all_data !== true) {
                 needsAll = true;
                 backupClippedBroksum(baseDir, ticker, date, raw);
               }
@@ -388,10 +447,67 @@ async function run(argv) {
 
         // Check Foreign file status
         const fFile = path.join(baseDir, 'broker-summary-F', ticker, `${date}.json`);
-        let needsF = !fs.existsSync(fFile);
+        let needsF = false;
+        if (!fs.existsSync(fFile)) {
+          needsF = true;
+        } else {
+          try {
+            const raw = fs.readFileSync(fFile, 'utf8');
+            const parsed = JSON.parse(raw);
+            if (!parsed || (parsed.flow !== 'F' && parsed.derived !== 'no-trade')) {
+              needsF = true;
+            }
+          } catch (_) {
+            needsF = true;
+          }
+        }
 
         if (!needsAll && !needsF) {
           skippedCount += onlyForeign ? 1 : 2;
+          tickerCompletedDays++;
+          continue;
+        }
+
+        // Check Candle Volume for Zero-Volume Session Optimization
+        const candleMap = getTickerCandleMap(candlesDir, ticker);
+        const hasCandleInfo = candleMap.has(date);
+        const sessionVolume = hasCandleInfo ? candleMap.get(date) : null;
+
+        if (hasCandleInfo && sessionVolume === 0) {
+          // Zero trading volume session: Do NOT call Arjum API! (Quota savings)
+          if (dryRun) {
+            console.log(`[DRY-RUN] [NO-TRADE] ${ticker} ${date} volume=0 -> synthetic no-trade (0 quota)`);
+          } else {
+            if (needsAll && !onlyForeign) {
+              const targetDirAll = path.join(baseDir, 'broker-summary', ticker);
+              if (!fs.existsSync(targetDirAll)) fs.mkdirSync(targetDirAll, { recursive: true });
+              fs.writeFileSync(allFile, JSON.stringify({
+                stock_code: ticker,
+                broker_start_date: date,
+                broker_end_date: date,
+                flow: 'all',
+                brokers: [],
+                broker_levels: [],
+                derived: 'no-trade'
+              }, null, 2), 'utf8');
+              state.completedTasks[taskKeyAll] = true;
+            }
+
+            if (needsF) {
+              const targetDirF = path.join(baseDir, 'broker-summary-F', ticker);
+              if (!fs.existsSync(targetDirF)) fs.mkdirSync(targetDirF, { recursive: true });
+              fs.writeFileSync(fFile, JSON.stringify({
+                stock_code: ticker,
+                broker_start_date: date,
+                broker_end_date: date,
+                flow: 'F',
+                brokers: [],
+                derived: 'no-trade'
+              }, null, 2), 'utf8');
+              state.completedTasks[taskKeyF] = true;
+            }
+          }
+          syntheticCount++;
           tickerCompletedDays++;
           continue;
         }
@@ -539,10 +655,11 @@ async function run(argv) {
   }
 
   console.log(`\n=== BACKFILL EXECUTION SUMMARY ===`);
-  console.log(`Requests Sent: ${requestsSent}`);
-  console.log(`Tasks Skipped: ${skippedCount}`);
-  console.log(`Status:        ${quotaHalted ? 'HALTED_BY_BUDGET_OR_QUOTA' : 'COMPLETED_OR_LIMITED'}`);
-  return { success: true, requestsSent, skippedCount, quotaHalted };
+  console.log(`Requests Sent:       ${requestsSent}`);
+  console.log(`Tasks Skipped:      ${skippedCount}`);
+  console.log(`Synthetic No-Trade: ${syntheticCount}`);
+  console.log(`Status:              ${quotaHalted ? 'HALTED_BY_BUDGET_OR_QUOTA' : 'COMPLETED_OR_LIMITED'}`);
+  return { success: true, requestsSent, skippedCount, syntheticCount, quotaHalted };
 }
 
 if (require.main === module) {
@@ -555,5 +672,6 @@ if (require.main === module) {
 module.exports = {
   run,
   categorizeTickersByLiquidity,
-  loadTradingDays
+  loadTradingDays,
+  getTickerCandleMap
 };

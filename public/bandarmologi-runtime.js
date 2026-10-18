@@ -2476,6 +2476,8 @@
       data.broker_accumulation = bAcc;
     }
     var insiders = Array.isArray(data.insiders) ? data.insiders : [];
+    var isDomIncomplete = (brokerFlowFilter === 'D' || data.flow === 'D' || (bSum && bSum.flow === 'D')) &&
+      (bSum.status === 'incomplete' || bSum.is_complete === false || data.status === 'incomplete' || data.is_complete === false);
 
     var DEMO_REASON_LABEL = {
       no_api_key: 'CACHE_OFFLINE - API key belum dikonfigurasi',
@@ -2689,57 +2691,65 @@
     html += '    </div>';
     html += '  </div>';
 
-    var rawBuyers = isGross
-      ? firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.buyers)
-      : firstNonEmptyList(bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers);
-    var rawSellers = isGross
-      ? firstNonEmptyList(bSum.gross_sellers, bSum.top_sellers, bSum.sellers)
-      : firstNonEmptyList(bSum.net_sellers, bSum.gross_sellers, bSum.top_sellers, bSum.sellers);
-
-    // Fallback: if rawSellers is still empty, ensure it falls back to bSum.gross_sellers
-    if ((!rawSellers || rawSellers.length === 0) && bSum.gross_sellers && bSum.gross_sellers.length > 0) {
-      rawSellers = bSum.gross_sellers;
-    }
-
-    // Partition guard: if rawSellers is empty or rawBuyers has seller items
-    if ((!rawSellers || rawSellers.length === 0) && rawBuyers && rawBuyers.length > 0) {
-      var pbList = [];
-      var psList = [];
-      for (var pbi = 0; pbi < rawBuyers.length; pbi++) {
-        var pIt = rawBuyers[pbi];
-        var pNet = pIt.nval != null ? pIt.nval : (pIt.net_val != null ? pIt.net_val : ((pIt.bval || pIt.buy_val || 0) - (pIt.sval || pIt.sell_val || 0)));
-        if (pNet < 0 || ((pIt.sval || pIt.sell_val || 0) > (pIt.bval || pIt.buy_val || 0))) {
-          psList.push(pIt);
-        } else {
-          pbList.push(pIt);
-        }
-      }
-      if (psList.length > 0) {
-        rawBuyers = pbList;
-        rawSellers = psList;
-      } else {
-        var withSell = rawBuyers.filter(function (b) { return (b.sval || b.sell_val || 0) > 0; });
-        if (withSell.length > 0) {
-          rawSellers = withSell;
-        }
-      }
-    }
-
-    var buyers = filterBrokersByFlow(rawBuyers, brokerFlowFilter);
-    var sellers = filterBrokersByFlow(rawSellers, brokerFlowFilter);
-
-    lastBrokerItems = buildBrokerBubbleItems(buyers, sellers, brokerSummaryMode);
-
-    if (isBubbleView) {
-      // Ensure selectedBrokerCode is valid
-      if (!selectedBrokerCode || !lastBrokerItems.some(function (it) { return it.broker === selectedBrokerCode; })) {
-        selectedBrokerCode = lastBrokerItems.length > 0 ? lastBrokerItems[0].broker : '';
-        selectedBrokerSide = lastBrokerItems.length > 0 ? (lastBrokerItems[0].side || '') : '';
-      }
-      html += renderBrokerBubbleClusterHtml(lastBrokerItems, selectedBrokerCode, brokerSummaryMode, bubbleFilterSide);
+    if (isDomIncomplete) {
+      html += '<div class="py-12 px-4 text-center bg-dark-800/40 rounded-xl border border-amber-500/20 my-4">';
+      html += '  <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 mb-3 text-2xl">⏳</div>';
+      html += '  <h4 class="text-sm font-bold text-amber-300">belum lengkap · menunggu data lengkap</h4>';
+      html += '  <p class="text-xs text-gray-400 mt-1 max-w-md mx-auto">Data broker summary "Semua" pada sesi ini masih terpotong (25 broker). Perhitungan arus Domestik (All − F) ditangguhkan demi menjaga integritas data.</p>';
+      html += '</div>';
     } else {
-      // TABLE VIEW
-      html += renderBrokerSummaryTableHtml(buyers, sellers, isGross, brokerSummaryMode);
+      var rawBuyers = isGross
+        ? firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.buyers)
+        : firstNonEmptyList(bSum.net_buyers, bSum.gross_buyers, bSum.top_buyers, bSum.buyers);
+      var rawSellers = isGross
+        ? firstNonEmptyList(bSum.gross_sellers, bSum.top_sellers, bSum.sellers)
+        : firstNonEmptyList(bSum.net_sellers, bSum.gross_sellers, bSum.top_sellers, bSum.sellers);
+
+      // Fallback: if rawSellers is still empty, ensure it falls back to bSum.gross_sellers
+      if ((!rawSellers || rawSellers.length === 0) && bSum.gross_sellers && bSum.gross_sellers.length > 0) {
+        rawSellers = bSum.gross_sellers;
+      }
+
+      // Partition guard: if rawSellers is empty or rawBuyers has seller items
+      if ((!rawSellers || rawSellers.length === 0) && rawBuyers && rawBuyers.length > 0) {
+        var pbList = [];
+        var psList = [];
+        for (var pbi = 0; pbi < rawBuyers.length; pbi++) {
+          var pIt = rawBuyers[pbi];
+          var pNet = pIt.nval != null ? pIt.nval : (pIt.net_val != null ? pIt.net_val : ((pIt.bval || pIt.buy_val || 0) - (pIt.sval || pIt.sell_val || 0)));
+          if (pNet < 0 || ((pIt.sval || pIt.sell_val || 0) > (pIt.bval || pIt.buy_val || 0))) {
+            psList.push(pIt);
+          } else {
+            pbList.push(pIt);
+          }
+        }
+        if (psList.length > 0) {
+          rawBuyers = pbList;
+          rawSellers = psList;
+        } else {
+          var withSell = rawBuyers.filter(function (b) { return (b.sval || b.sell_val || 0) > 0; });
+          if (withSell.length > 0) {
+            rawSellers = withSell;
+          }
+        }
+      }
+
+      var buyers = filterBrokersByFlow(rawBuyers, brokerFlowFilter);
+      var sellers = filterBrokersByFlow(rawSellers, brokerFlowFilter);
+
+      lastBrokerItems = buildBrokerBubbleItems(buyers, sellers, brokerSummaryMode);
+
+      if (isBubbleView) {
+        // Ensure selectedBrokerCode is valid
+        if (!selectedBrokerCode || !lastBrokerItems.some(function (it) { return it.broker === selectedBrokerCode; })) {
+          selectedBrokerCode = lastBrokerItems.length > 0 ? lastBrokerItems[0].broker : '';
+          selectedBrokerSide = lastBrokerItems.length > 0 ? (lastBrokerItems[0].side || '') : '';
+        }
+        html += renderBrokerBubbleClusterHtml(lastBrokerItems, selectedBrokerCode, brokerSummaryMode, bubbleFilterSide);
+      } else {
+        // TABLE VIEW
+        html += renderBrokerSummaryTableHtml(buyers, sellers, isGross, brokerSummaryMode);
+      }
     }
     html += '</div>';
     } else {
@@ -2808,6 +2818,16 @@
     html += '  </div>';
 
     // 2B. Card Indikator Dominasi (CR3, CR5, Status Dominasi, Rasio Partisipasi Bandar vs Ritel)
+    if (isDomIncomplete) {
+      html += '<div class="py-12 px-4 text-center bg-dark-800/40 rounded-xl border border-amber-500/20 my-4">';
+      html += '  <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 mb-3 text-2xl">⏳</div>';
+      html += '  <h4 class="text-sm font-bold text-amber-300">belum lengkap · menunggu data lengkap</h4>';
+      html += '  <p class="text-xs text-gray-400 mt-1 max-w-md mx-auto">Data broker summary "Semua" pada sesi ini masih terpotong (25 broker). Perhitungan konsistensi Domestik (All − F) ditangguhkan demi menjaga integritas data.</p>';
+      html += '</div></div>';
+      container.innerHTML = html;
+      return;
+    }
+
     var allBuyersList = firstNonEmptyList(bSum.gross_buyers, bSum.top_buyers, bSum.net_buyers, bSum.buyers) || [];
 
     // Calculate true total market buy value across all brokers / emiten turnover
