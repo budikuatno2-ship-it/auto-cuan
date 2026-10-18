@@ -1,11 +1,11 @@
 # LAPORAN IMPLEMENTASI JOB BROKSUM HEMAT (ALL + ASING, DOMESTIK DIHITUNG) & SISTEM BACKFILL
 
-> **Status:** Siap Uji (Stage Selesai) — Menunggu Konfirmasi Pemilik Sebelum Deploy  
-> **Branch Pekerjaan:** `feat/broksum-all-foreign`  
-> **Server Produksi:** VPS Oracle Cloud (`ubuntu@168.110.221.197`)  
-> **Status Produksi Saat Ini:** **TIDAK DIUBAH / TIDAK DI-RESTART (Crontab & PM2 Produksi Tetap Bersih)**  
-> **Dasar:** [`backtest/arjum-audit/REPORT_AUDIT_JOB_HARIAN.md`](backtest/arjum-audit/REPORT_AUDIT_JOB_HARIAN.md)  
-> **Kapasitas Kuota Akun:** **12.060 request/hari** (reset pukul 00:00 WIB)  
+> **Status:** Siap Uji (Stage Selesai) — Menunggu Konfirmasi Pemilik Sebelum Deploy
+> **Branch Pekerjaan:** `feat/broksum-all-foreign`
+> **Server Produksi:** VPS Oracle Cloud (`ubuntu@168.110.221.197`)
+> **Status Produksi Saat Ini:** **TIDAK DIUBAH / TIDAK DI-RESTART (Crontab & PM2 Produksi Tetap Bersih)**
+> **Dasar:** [`backtest/arjum-audit/REPORT_AUDIT_JOB_HARIAN.md`](backtest/arjum-audit/REPORT_AUDIT_JOB_HARIAN.md)
+> **Kapasitas Kuota Akun:** **12.060 request/hari** (reset pukul 00:00 WIB)
 > **Prinsip:** AntiSlop §107 — Verifikasi bukti empiris presisi, tanpa asumsi, paritas bit-exact.
 
 ---
@@ -159,6 +159,6 @@ Dengan batas aman kuota harian:
 
 ---
 
-> **PEMBERITAHUAN:**  
-> Seluruh kode telah diuji secara menyeluruh di unit test dan folder staging VPS. Server produksi, PM2, dan crontab produksi saat ini **tidak diubah sama sekali**.  
+> **PEMBERITAHUAN:**
+> Seluruh kode telah diuji secara menyeluruh di unit test dan folder staging VPS. Server produksi, PM2, dan crontab produksi saat ini **tidak diubah sama sekali**.
 > **Silakan periksa laporan ini. Jika sudah sesuai, tuliskan kata `"deploy"` untuk memasang perubahan ke produksi dan memulai antrean backfill.**
