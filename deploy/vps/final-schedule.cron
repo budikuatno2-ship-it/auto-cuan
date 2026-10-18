@@ -2,7 +2,7 @@
 # Timezone: Asia/Jakarta (WIB = UTC+7). Semua jam di bawah adalah WIB.
 # Live bursa: 09:00-16:00 WIB (02:00-09:00 UTC) — hanya FastWatcher & Daytrade
 #
-# REVISI 2026-10-18 (Deploy branch feat/broksum-all-foreign):
+# REVISI 2026-10-18 (Deploy branch feat/daytrade-screener-v1):
 #   * J1: EOD update memakai --accum-source=api --insider-mode=daily.
 #     Menyimpan broker-summary All (unclipped) + Foreign (F) + kalkulasi Domestik (D=All-F).
 #   * J3: Generator lokal broker-accumulation dinonaktifkan (J1 single writer).

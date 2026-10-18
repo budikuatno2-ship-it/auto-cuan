@@ -1,6 +1,6 @@
 # CHECKLIST OBSERVASI SENIN 19 OKTOBER 2026 & PROSEDUR OPERATOR (V2)
 
-Dokumen ini memuat panduan pemantauan otomatis & manual pasca-deploy branch [`feat/broksum-all-foreign`](deploy/vps/final-schedule.cron) pada Minggu, 18 Oktober 2026, termasuk verifikasi ingesti candle IHSG harian, backfill All unclipped + F, dan kuota 18.080/hari.
+Dokumen ini memuat panduan pemantauan otomatis & manual pasca-deploy branch [`feat/daytrade-screener-v1`](deploy/vps/final-schedule.cron) (merge `feat/broksum-all-foreign`, 18 Oktober 2026), termasuk verifikasi ingesti candle IHSG harian, backfill All unclipped + F, dan kuota 18.080/hari.
 
 ---
 
@@ -90,7 +90,8 @@ Jika ditemukan anomali kritis yang tidak dapat diatasi pada hari Senin:
 ```bash
 # 1. Checkout commit stabil sebelumnya
 cd /home/ubuntu/auto-cuan
-git checkout feat/broksum-all-foreign
+git checkout feat/daytrade-screener-v1   # branch utama operasional
+# (jalur kembali branch fitur: git checkout feat/broksum-all-foreign)
 
 # 2. Pulihkan crontab dari backup Minggu
 crontab /home/ubuntu/crontab.backup-20261018b.txt
