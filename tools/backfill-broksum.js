@@ -50,6 +50,7 @@ const arjumClient = require('../lib/arjum-client');
 const broksumFlow = require('../lib/broksum-flow');
 const brokerAccumulationLocal = require('../lib/broker-accumulation-local');
 const quotaTracker = require('../lib/arjum-quota-tracker');
+const broksumValidator = require('../lib/broksum-validator');
 
 // Default pacing: 8 req/sec (125ms delay) as verified in benchmark
 const DEFAULT_DELAY_MS = 125;
@@ -183,6 +184,58 @@ function acquireLock(lockFile) {
 function releaseLock(lockFile) {
   try {
     if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
+  } catch (_) {}
+}
+
+// Candle lookup cache: Map<ticker, Map<date, {close,volume,value}>>
+const candleCache = new Map();
+function getCandleReference(candlesDir, ticker, date) {
+  let map = candleCache.get(ticker);
+  if (!map) {
+    map = new Map();
+    try {
+      const f = path.join(candlesDir, `${ticker}.json`);
+      if (fs.existsSync(f)) {
+        const d = JSON.parse(fs.readFileSync(f, 'utf8'));
+        for (const c of (d.candles || [])) {
+          const dd = String(c.date || c.time || '').slice(0, 10);
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dd)) {
+            map.set(dd, {
+              close: Number(c.close),
+              volume: Number(c.volume),
+              value: c.value != null ? Number(c.value) : (c.turnover != null ? Number(c.turnover) : null)
+            });
+          }
+        }
+      }
+    } catch (_) {}
+    candleCache.set(ticker, map);
+  }
+  return map.get(date) || null;
+}
+
+/**
+ * Validasi permanen: payload baru harus wajar sebelum dianggap selesai.
+ * Mengembalikan { valid, flags, ratio }.
+ */
+function validateFetchedBroksum(payload, candlesDir, ticker, date) {
+  try {
+    const candle = getCandleReference(candlesDir, ticker, date);
+    return broksumValidator.validateBroksumAgainstCandle(payload, candle);
+  } catch (e) {
+    return { valid: false, flags: ['validator_error:' + e.message], ratio: null };
+  }
+}
+
+function quarantineInvalidBroksum(baseDir, ticker, date, content) {
+  try {
+    const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const qDir = path.join(baseDir, `_quarantine-tidakwajar-${stamp}`, ticker);
+    const qFile = path.join(qDir, `${date}.json`);
+    if (!fs.existsSync(qFile)) {
+      fs.mkdirSync(qDir, { recursive: true });
+      fs.writeFileSync(qFile, content, 'utf8');
+    }
   } catch (_) {}
 }
 
@@ -422,6 +475,7 @@ async function run(argv) {
   let syntheticCount = 0;
   let quotaHalted = false;
   let consecutive429 = 0;
+  const invalidAfterRetry = [];
 
   function saveState() {
     if (dryRun) return;
@@ -453,8 +507,11 @@ async function run(argv) {
         const taskKeyF = `${ticker}_${date}_F`;
 
         // Check All file status (skipped if onlyForeign is true)
+        // Fase validasi permanen: file lama juga diuji kewajarannya terhadap candle.
+        // File tidak wajar (kosong/subset/imbalance) masuk kembali ke antrean.
         const allFile = path.join(baseDir, 'broker-summary', ticker, `${date}.json`);
         let needsAll = false;
+        let allNeedsValidationQuarantine = false;
         if (!onlyForeign) {
           if (!fs.existsSync(allFile)) {
             needsAll = true;
@@ -463,13 +520,41 @@ async function run(argv) {
               const raw = fs.readFileSync(allFile, 'utf8');
               const parsed = JSON.parse(raw);
               if (parsed.derived === 'no-trade') {
-                needsAll = false;
+                // derived no-trade sah hanya bila candle benar-benar tanpa volume
+                const candle = getCandleReference(candlesDir, ticker, date);
+                const v = broksumValidator.validateBroksumAgainstCandle(parsed, candle);
+                if (v.valid) {
+                  needsAll = false;
+                } else {
+                  needsAll = true;
+                  allNeedsValidationQuarantine = true;
+                }
               } else if (Array.isArray(parsed.broker_levels) && parsed.broker_levels.length === 25 && parsed.all_data !== true) {
                 needsAll = true;
                 backupClippedBroksum(baseDir, ticker, date, raw);
+              } else {
+                // Sudah lolos cek 25-level: apakah panjangnya kurang dari volume candle?
+                const trimmed = raw.trim();
+                if (trimmed.length < 512) {
+                  // File sangat kecil (kemungkinan kosong/rusak)
+                  const candle = getCandleReference(candlesDir, ticker, date);
+                  if (candle && Number(candle.volume || 0) > 0) {
+                    needsAll = true;
+                    allNeedsValidationQuarantine = true;
+                  }
+                } else {
+                  // Uji kewajaran penuh (rasio vs candle + keseimbangan)
+                  const candle = getCandleReference(candlesDir, ticker, date);
+                  const v = validateFetchedBroksum(parsed, candlesDir, ticker, date);
+                  if (!v.valid && candle && (v.flags.includes('unclipped_ratio_below') || v.flags.includes('empty_broksum_but_candle_has_volume') || v.flags.includes('parse_error'))) {
+                    needsAll = true;
+                    allNeedsValidationQuarantine = true;
+                  }
+                }
               }
             } catch (_) {
               needsAll = true;
+              allNeedsValidationQuarantine = true;
             }
           }
         }
@@ -579,13 +664,57 @@ async function run(argv) {
 
             if (resAll.ok && isAll200 && isAllLive && isFlowAll && isMatchingTickerAll) {
               consecutive429 = 0;
-              const targetDir = path.join(baseDir, 'broker-summary', ticker);
-              if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-              fs.writeFileSync(allFile, JSON.stringify(resAll.data, null, 2), 'utf8');
-              state.completedTasks[taskKeyAll] = true;
-              if (requestsSent % 5 === 0 || requestsSent <= 10) {
-                console.log(`[BACKFILL] Req ${requestsSent} | Saved ALL ${ticker} ${date} | Total Sent: ${state.totalSent}`);
-                saveState();
+
+              // Fase 5: validasi permanen sebelum disimpan. Retry sekali.
+              let payloadToWrite = resAll.data;
+              let v = validateFetchedBroksum(payloadToWrite, candlesDir, ticker, date);
+              if (!v.valid && (v.flags.includes('empty_broksum_but_candle_has_volume') || v.flags.includes('unclipped_ratio_below') || v.flags.includes('unclipped_imbalance'))) {
+                console.warn(`[VALIDASI-RETRY] ${ticker} ${date} hasil tidak wajar (${v.flags.join(',')} ratio=${v.ratio}). Mengulang sekali.`);
+                try {
+                  const retry = await arjumClient.fetchBrokerSummary(ticker, date, 'all', null, {
+                    allData: true, fresh: true, forceLive: true, noFallback: true, bypassMarketGuard: true
+                  });
+                  requestsSent++;
+                  state.totalSent = (state.totalSent || 0) + 1;
+                  const retryOk = retry && retry.ok && retry.status === 200 && retry.data
+                    && !retry.from_cache && !retry.fallback && retry.data.flow === 'all'
+                    && String(retry.data.stock_code || '').trim().toUpperCase() === ticker.toUpperCase();
+                  if (retryOk) {
+                    const v2 = validateFetchedBroksum(retry.data, candlesDir, ticker, date);
+                    if (v2.valid) {
+                      payloadToWrite = retry.data;
+                      v = v2;
+                    } else {
+                      v = v2;
+                    }
+                  }
+                } catch (e) {
+                  console.warn(`[VALIDASI-RETRY-ERR] ${ticker} ${date}: ${e.message}`);
+                }
+              }
+
+              if (!v.valid && (v.flags.includes('empty_broksum_but_candle_has_volume') || v.flags.includes('unclipped_ratio_below') || v.flags.includes('unclipped_imbalance'))) {
+                console.error(`[VALIDASI-REJECT] ${ticker} ${date}: masih tidak wajar setelah retry (${v.flags.join(',')} ratio=${v.ratio}). Tidak disimpan sebagai selesai.`);
+                invalidAfterRetry.push({ ticker, date, flags: v.flags, ratio: v.ratio });
+                if (fs.existsSync(allFile)) {
+                  try { quarantineInvalidBroksum(baseDir, ticker, date, fs.readFileSync(allFile, 'utf8')); } catch (_) {}
+                  try { fs.unlinkSync(allFile); } catch (_) {}
+                }
+                needsAll = false; // biarkan antrean memungut di run berikutnya
+              } else {
+                const targetDir = path.join(baseDir, 'broker-summary', ticker);
+                if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+                if (allNeedsValidationQuarantine && fs.existsSync(allFile)) {
+                  try { quarantineInvalidBroksum(baseDir, ticker, date, fs.readFileSync(allFile, 'utf8')); } catch (_) {}
+                }
+                fs.writeFileSync(allFile, JSON.stringify(Object.assign({}, payloadToWrite, {
+                  _validated: { at: new Date().toISOString(), ratio: v.ratio, flags: v.flags, validator: 'broksum-validator' }
+                }), null, 2), 'utf8');
+                state.completedTasks[taskKeyAll] = true;
+                if (requestsSent % 5 === 0 || requestsSent <= 10) {
+                  console.log(`[BACKFILL] Req ${requestsSent} | Saved ALL ${ticker} ${date} | ratio=${v.ratio} | Total Sent: ${state.totalSent}`);
+                  saveState();
+                }
               }
             } else {
               console.error(`[BACKFILL-STOP] Respon tidak valid untuk ALL ${ticker} ${date}: status=${resAll.status}, ok=${resAll.ok}, fallback=${resAll.fallback}, flow=${resAll.data && resAll.data.flow}, error=${resAll.error}`);
@@ -701,8 +830,15 @@ async function run(argv) {
   console.log(`Requests Sent:       ${requestsSent}`);
   console.log(`Tasks Skipped:      ${skippedCount}`);
   console.log(`Synthetic No-Trade: ${syntheticCount}`);
+  console.log(`Invalid After Retry: ${invalidAfterRetry.length}`);
   console.log(`Status:              ${quotaHalted ? 'HALTED_BY_BUDGET_OR_QUOTA' : 'COMPLETED_OR_LIMITED'}`);
-  return { success: true, requestsSent, skippedCount, syntheticCount, quotaHalted };
+  if (invalidAfterRetry.length > 0) {
+    console.log('Daftar periksa (perlu investigasi manual):');
+    for (const it of invalidAfterRetry.slice(0, 50)) {
+      console.log(`  - ${it.ticker} ${it.date} flags=${it.flags.join(',')} ratio=${it.ratio}`);
+    }
+  }
+  return { success: true, requestsSent, skippedCount, syntheticCount, invalidAfterRetry, quotaHalted };
 }
 
 if (require.main === module) {

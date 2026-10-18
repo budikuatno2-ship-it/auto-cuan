@@ -2,6 +2,7 @@
 const fs=require('fs'),path=require('path');
 const broker=require('./run-daily-broker-update');
 const candles=require('./fetch-daily-candles');
+const broksumValidator=require('../lib/broksum-validator');
 const calendar=require('../lib/idx-trading-calendar');
 const historySync=require('../lib/daily-history-sqlite-sync');
 
@@ -103,10 +104,61 @@ async function run(options={}){
   // recent trading sessions) or lifecycle consumers keep skipping history.
   // Injectable for tests; production uses the real bounded sync.
   const syncHistory=options.syncHistory || historySync.syncRecentHistoryToSqlite;
+  // Fase 5: validasi kewajaran arsip broksum harian J1 sebelum `.done` ditulis.
+  // Memeriksa semua file all & F tanggal itu terhadap candle hari yang sama,
+  // supaya kerusakan (kosong, subset, imbalance) tidak lolos sebagai "selesai".
+  function validateDailyBroksumArchive(date){
+    try{
+      const dataRoot=process.env.ARJUM_DATA_DIR||path.resolve(__dirname,'..','data','arjum-data');
+      const candleDir=path.join(ROOT_DIR,'data','daily-candles');
+      const allDir=path.join(dataRoot,'broker-summary');
+      const fDir=path.join(dataRoot,'broker-summary-F');
+      const readCandle=(ticker)=>{
+        try{
+          const p=path.join(candleDir,ticker+'.json');
+          if(!fs.existsSync(p))return null;
+          const d=JSON.parse(fs.readFileSync(p,'utf8'));
+          for(const c of (d.candles||[])){
+            const dd=String(c.date||c.time||'').slice(0,10);
+            if(dd===date)return{close:Number(c.close),volume:Number(c.volume),value:c.value!=null?Number(c.value):null};
+          }
+        }catch(_){}
+        return null;
+      };
+      const invalidAll=[];const invalidF=[];
+      const allByTicker=new Map();
+      if(fs.existsSync(allDir)){
+        for(const tk of fs.readdirSync(allDir)){
+          const f=path.join(allDir,tk,date+'.json');
+          if(!fs.existsSync(f))continue;
+          let payload;try{payload=JSON.parse(fs.readFileSync(f,'utf8'));}catch(e){invalidAll.push({ticker:tk,flags:['parse_error']});continue;}
+          allByTicker.set(tk,payload);
+          const v=broksumValidator.validateBroksumAgainstCandle(payload,readCandle(tk));
+          if(!v.valid&&v.flags.some(fl=>['empty_broksum_but_candle_has_volume','unclipped_ratio_below','unclipped_imbalance','parse_error'].includes(fl))){
+            invalidAll.push({ticker:tk,flags:v.flags,ratio:v.ratio});
+          }
+        }
+      }
+      if(fs.existsSync(fDir)){
+        for(const tk of fs.readdirSync(fDir)){
+          const f=path.join(fDir,tk,date+'.json');
+          if(!fs.existsSync(f))continue;
+          let fPayload;try{fPayload=JSON.parse(fs.readFileSync(f,'utf8'));}catch(e){invalidF.push({ticker:tk,flags:['parse_error']});continue;}
+          const aPayload=allByTicker.get(tk);
+          if(!aPayload)continue;
+          const v=broksumValidator.validateForeignAgainstAll(fPayload,aPayload);
+          if(!v.valid)invalidF.push({ticker:tk,flags:v.flags});
+        }
+      }
+      return{ok:invalidAll.length===0&&invalidF.length===0,invalidAll,invalidF};
+    }catch(e){
+      return{ok:false,error:e.message,invalidAll:[],invalidF:[]};
+    }
+  }
   for(const date of dates){
     if(!dryRun)writeState(date,{date,complete:false,updated_at:new Date().toISOString()});
     if(dryRun){console.log('PENDING_MARKET_DATE='+date);continue;}
-    let brokerOk=false,candleOk=false,historyOk=false;
+    let brokerOk=false,candleOk=false,historyOk=false,archiveOk=false,archiveDetail=null;
     try{
       process.exitCode=undefined;
       const brokerArgs=['--date',date];
@@ -130,13 +182,24 @@ async function run(options={}){
         if(!historyOk)console.error('HISTORY_SYNC_RETRY_PENDING',date,'reason='+(result&&result.reason||'unknown'));
       }catch(error){console.error('HISTORY_SYNC_RETRY_PENDING',date,error.message);}
     }
-    writeState(date,{date,complete:brokerOk&&candleOk&&historyOk,broker_complete:brokerOk,candle_complete:candleOk,history_complete:historyOk,updated_at:new Date().toISOString()});
-    if(brokerOk&&candleOk&&historyOk){
+    // Fase 5: cek kewajaran arsip broksum harian sebelum sentinel .done.
+    if(brokerOk&&candleOk){
+      archiveDetail=validateDailyBroksumArchive(date);
+      archiveOk=Boolean(archiveDetail&&archiveDetail.ok);
+      if(!archiveOk){
+        const nAll=archiveDetail&&archiveDetail.invalidAll?archiveDetail.invalidAll.length:0;
+        const nF=archiveDetail&&archiveDetail.invalidF?archiveDetail.invalidF.length:0;
+        console.error('BROKSUM_SANITY_PENDING',date,'all_invalid='+nAll,'f_invalid='+nF,(archiveDetail&&archiveDetail.error)?('error='+archiveDetail.error):'');
+      }
+    }
+    writeState(date,{date,complete:brokerOk&&candleOk&&historyOk&&archiveOk,broker_complete:brokerOk,candle_complete:candleOk,history_complete:historyOk,archive_complete:archiveOk,updated_at:new Date().toISOString()});
+    if(brokerOk&&candleOk&&historyOk&&archiveOk){
       writeEodDone(date, null, {
         date,
         broker_complete: brokerOk,
         candle_complete: candleOk,
         history_complete: historyOk,
+        archive_complete: archiveOk,
         completed_at: new Date().toISOString()
       });
     }
