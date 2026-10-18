@@ -485,8 +485,14 @@ async function run(argv) {
       if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
       totalRequested++;
       brokerRequests++;
-      const res = await arjumClient.fetchBrokerSummary(ticker, dateArg, 'all', null, { allData: true });
-      if (res.ok && res.data && (!brokerSummaryPayloadDate(res.data) || brokerSummaryPayloadDate(res.data) === dateArg)) {
+      const res = await arjumClient.fetchBrokerSummary(ticker, dateArg, 'all', null, {
+        allData: true,
+        fresh: true,
+        forceLive: true,
+        noFallback: true
+      });
+      const isAllValid = res.ok && res.data && !res.from_cache && !res.fallback && res.data.flow === 'all';
+      if (isAllValid && (!brokerSummaryPayloadDate(res.data) || brokerSummaryPayloadDate(res.data) === dateArg)) {
         const norm = bandarmologiService.normalizeBrokerSummary(res.data, dateArg, ticker, { skipLivePrice: historicalTarget });
         const hasAnyRows = (norm.top_buyers && norm.top_buyers.length > 0) || (norm.top_sellers && norm.top_sellers.length > 0);
         const state = eodSessionState.classifyBrokerOutcome({
@@ -506,13 +512,20 @@ async function run(argv) {
             console.log(`[HISTORICAL] ${ticker} ${dateArg} disimpan sebagai dated cache; latest.json yang lebih baru dipertahankan.`);
           }
 
-          // Fetch Foreign Broker Summary (flow=F&all_data=true)
+          // Fetch Foreign Broker Summary (flow=F&all_data=true, strictly live network only)
           try {
             if (arjumClient.getUsedQuotaToday() < dailyLimit) {
               totalRequested++;
               foreignRequests++;
-              const resF = await arjumClient.fetchBrokerSummary(ticker, dateArg, 'F', null, { allData: true });
-              if (resF.ok && resF.data) {
+              const resF = await arjumClient.fetchBrokerSummary(ticker, dateArg, 'F', null, {
+                allData: true,
+                fresh: true,
+                forceLive: true,
+                noFallback: true
+              });
+              const isFValid = resF.ok && resF.data && !resF.from_cache && !resF.fallback && resF.data.flow === 'F' &&
+                String(resF.data.stock_code || resF.data.code || '').trim().toUpperCase() === ticker.toUpperCase();
+              if (isFValid) {
                 persistDatedCache('broker-summary-F', ticker, dateArg, resF.data);
                 if (advanceLatest) {
                   bandarmologiService.writeDiskCache('broker-summary-F', ticker, 'latest', resF.data);
@@ -582,7 +595,7 @@ async function run(argv) {
           if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
           totalRequested++;
           accumulationRequests++;
-          const accRes = await arjumClient.fetchBrokerAccumulation(ticker, { forceLive: true });
+          const accRes = await arjumClient.fetchBrokerAccumulation(ticker, { forceLive: true, noFallback: true });
           if (accRes.ok && accRes.data && !accRes.from_cache && !accRes.fallback) {
             bandarmologiService.writeDiskCache('broker-accumulation', ticker, 'series', accRes.data);
             persistDatedCache('broker-accumulation', ticker, dateArg, accRes.data);
@@ -620,7 +633,7 @@ async function run(argv) {
         if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
         totalRequested++;
         insiderRequests++;
-        const insRes = await arjumClient.fetchInsiders(ticker, 1, 15, { forceLive: true });
+        const insRes = await arjumClient.fetchInsiders(ticker, 1, 15, { forceLive: true, noFallback: true });
         if (insRes.ok && insRes.data && !insRes.from_cache && !insRes.fallback) {
           const latestTradeDate = latestInsiderTradeDate(insRes.data);
           const hasNewTrades = latestTradeDate != null && latestTradeDate >= dateArg;

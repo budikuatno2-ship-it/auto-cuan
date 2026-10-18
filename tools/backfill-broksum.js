@@ -49,6 +49,7 @@ try {
 const arjumClient = require('../lib/arjum-client');
 const broksumFlow = require('../lib/broksum-flow');
 const brokerAccumulationLocal = require('../lib/broker-accumulation-local');
+const quotaTracker = require('../lib/arjum-quota-tracker');
 
 // Default pacing: 8 req/sec (125ms delay) as verified in benchmark
 const DEFAULT_DELAY_MS = 125;
@@ -346,11 +347,18 @@ async function run(argv) {
 
   try {
     for (const ticker of orderedTickers) {
+      if (quotaHalted || arjumClient.isCircuitBreakerTripped()) break;
       let tickerCompletedDays = 0;
 
       for (const date of tradingDays) {
         if (requestsSent >= limit) {
           console.log(`[LIMIT-REACHED] Batas request ${limit} tercapai. Berhenti rapi.`);
+          break;
+        }
+
+        if (arjumClient.isCircuitBreakerTripped()) {
+          console.log(`[CIRCUIT-BREAKER] Circuit breaker aktif. Berhenti total.`);
+          quotaHalted = true;
           break;
         }
 
@@ -393,11 +401,23 @@ async function run(argv) {
             console.log(`[DRY-RUN] Fetch ALL: ${ticker} ${date} (all_data=true)`);
             requestsSent++;
           } else {
-            const resAll = await arjumClient.fetchBrokerSummary(ticker, date, 'all', null, { allData: true, fresh: true });
+            const resAll = await arjumClient.fetchBrokerSummary(ticker, date, 'all', null, {
+              allData: true,
+              fresh: true,
+              forceLive: true,
+              noFallback: true,
+              bypassMarketGuard: true
+            });
             requestsSent++;
             state.totalSent = (state.totalSent || 0) + 1;
 
-            if (resAll.ok && resAll.data) {
+            const isAll200 = resAll && resAll.status === 200;
+            const isAllLive = resAll && !resAll.from_cache && !resAll.fallback;
+            const hasAllData = resAll && resAll.data && typeof resAll.data === 'object';
+            const isFlowAll = hasAllData && resAll.data.flow === 'all';
+            const isMatchingTickerAll = hasAllData && String(resAll.data.stock_code || resAll.data.code || '').trim().toUpperCase() === ticker.toUpperCase();
+
+            if (resAll.ok && isAll200 && isAllLive && isFlowAll && isMatchingTickerAll) {
               consecutive429 = 0;
               const targetDir = path.join(baseDir, 'broker-summary', ticker);
               if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
@@ -407,33 +427,30 @@ async function run(argv) {
                 console.log(`[BACKFILL] Req ${requestsSent} | Saved ALL ${ticker} ${date} | Total Sent: ${state.totalSent}`);
                 saveState();
               }
-            } else if (resAll.status === 429) {
-              consecutive429++;
-              const classified = arjumClient.classifyFailure(resAll);
-              if (classified && classified.reason === 'quota_exceeded') {
-                console.log(`[QUOTA-EXCEEDED] Kuota harian Arjum habis. Berhenti.`);
-                quotaHalted = true;
-                break;
-              }
-              // Burst rate limit: slow down to 200ms
-              console.log(`[429-BURST] Rate limit hit on ${ticker} ${date}. Slowing down pacing to ${SLOWDOWN_DELAY_MS}ms...`);
-              delayMs = SLOWDOWN_DELAY_MS;
-              process.env.ARJUM_THROTTLE_DELAY_MS = String(delayMs);
-              await sleep(1500);
-              if (consecutive429 > 3) {
-                console.log(`[CONSECUTIVE-429] 3x rate limit berturut-turut. Berhenti rapi.`);
-                quotaHalted = true;
-                break;
-              }
+            } else {
+              console.error(`[BACKFILL-STOP] Respon tidak valid untuk ALL ${ticker} ${date}: status=${resAll.status}, ok=${resAll.ok}, fallback=${resAll.fallback}, flow=${resAll.data && resAll.data.flow}, error=${resAll.error}`);
+              quotaHalted = true;
+              break;
             }
 
+            // Quota remaining check
+            let remaining;
             if (resAll.headers && resAll.headers['x-ratelimit-remaining'] != null) {
-              const remaining = parseInt(resAll.headers['x-ratelimit-remaining'], 10);
-              if (Number.isFinite(remaining) && remaining <= reserveQuota) {
-                console.log(`[BUDGET-GUARD] Kuota sisa (${remaining}) <= cadangan (${reserveQuota}). Berhenti.`);
-                quotaHalted = true;
-                break;
-              }
+              remaining = parseInt(resAll.headers['x-ratelimit-remaining'], 10);
+            } else {
+              remaining = quotaTracker.getRemainingToday(arjumClient.getConfiguredDailyQuota());
+            }
+
+            if (!Number.isFinite(remaining)) {
+              console.log(`[BUDGET-GUARD] Kuota sisa tidak dapat ditentukan. Berhenti.`);
+              quotaHalted = true;
+              break;
+            }
+
+            if (remaining <= reserveQuota) {
+              console.log(`[BUDGET-GUARD] Kuota sisa (${remaining}) <= cadangan (${reserveQuota}). Berhenti.`);
+              quotaHalted = true;
+              break;
             }
 
             await sleep(delayMs);
@@ -448,11 +465,23 @@ async function run(argv) {
             console.log(`[DRY-RUN] Fetch FOREIGN: ${ticker} ${date} (flow=F, all_data=true)`);
             requestsSent++;
           } else {
-            const resF = await arjumClient.fetchBrokerSummary(ticker, date, 'F', null, { allData: true, fresh: true });
+            const resF = await arjumClient.fetchBrokerSummary(ticker, date, 'F', null, {
+              allData: true,
+              fresh: true,
+              forceLive: true,
+              noFallback: true,
+              bypassMarketGuard: true
+            });
             requestsSent++;
             state.totalSent = (state.totalSent || 0) + 1;
 
-            if (resF.ok && resF.data) {
+            const isF200 = resF && resF.status === 200;
+            const isFLive = resF && !resF.from_cache && !resF.fallback;
+            const hasFData = resF && resF.data && typeof resF.data === 'object';
+            const isFlowF = hasFData && resF.data.flow === 'F';
+            const isMatchingTickerF = hasFData && String(resF.data.stock_code || resF.data.code || '').trim().toUpperCase() === ticker.toUpperCase();
+
+            if (resF.ok && isF200 && isFLive && isFlowF && isMatchingTickerF) {
               consecutive429 = 0;
               const targetDir = path.join(baseDir, 'broker-summary-F', ticker);
               if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
@@ -464,32 +493,30 @@ async function run(argv) {
                 console.log(`[BACKFILL] Req ${requestsSent} | Saved FOREIGN ${ticker} ${date} | Total Sent: ${state.totalSent}`);
                 saveState();
               }
-            } else if (resF.status === 429) {
-              consecutive429++;
-              const classified = arjumClient.classifyFailure(resF);
-              if (classified && classified.reason === 'quota_exceeded') {
-                console.log(`[QUOTA-EXCEEDED] Kuota harian Arjum habis. Berhenti.`);
-                quotaHalted = true;
-                break;
-              }
-              console.log(`[429-BURST] Rate limit hit on FOREIGN ${ticker} ${date}. Slowing down pacing to ${SLOWDOWN_DELAY_MS}ms...`);
-              delayMs = SLOWDOWN_DELAY_MS;
-              process.env.ARJUM_THROTTLE_DELAY_MS = String(delayMs);
-              await sleep(1500);
-              if (consecutive429 > 3) {
-                console.log(`[CONSECUTIVE-429] 3x rate limit berturut-turut. Berhenti rapi.`);
-                quotaHalted = true;
-                break;
-              }
+            } else {
+              console.error(`[BACKFILL-STOP] Respon tidak valid untuk FOREIGN ${ticker} ${date}: status=${resF.status}, ok=${resF.ok}, fallback=${resF.fallback}, flow=${resF.data && resF.data.flow}, error=${resF.error}`);
+              quotaHalted = true;
+              break;
             }
 
+            // Quota remaining check
+            let remaining;
             if (resF.headers && resF.headers['x-ratelimit-remaining'] != null) {
-              const remaining = parseInt(resF.headers['x-ratelimit-remaining'], 10);
-              if (Number.isFinite(remaining) && remaining <= reserveQuota) {
-                console.log(`[BUDGET-GUARD] Kuota sisa (${remaining}) <= cadangan (${reserveQuota}). Berhenti.`);
-                quotaHalted = true;
-                break;
-              }
+              remaining = parseInt(resF.headers['x-ratelimit-remaining'], 10);
+            } else {
+              remaining = quotaTracker.getRemainingToday(arjumClient.getConfiguredDailyQuota());
+            }
+
+            if (!Number.isFinite(remaining)) {
+              console.log(`[BUDGET-GUARD] Kuota sisa tidak dapat ditentukan. Berhenti.`);
+              quotaHalted = true;
+              break;
+            }
+
+            if (remaining <= reserveQuota) {
+              console.log(`[BUDGET-GUARD] Kuota sisa (${remaining}) <= cadangan (${reserveQuota}). Berhenti.`);
+              quotaHalted = true;
+              break;
             }
 
             await sleep(delayMs);
