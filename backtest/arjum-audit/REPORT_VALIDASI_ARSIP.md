@@ -1,7 +1,7 @@
 # LAPORAN VALIDASI ARSIP BROKSUM TERHADAP NILAI TRANSAKSI CANDLE
 
-**Tanggal:** Minggu, 18 Oktober 2026 (22:25 WIB)  
-**Branch:** `feat/broksum-all-foreign`  
+**Tanggal:** Minggu, 18 Oktober 2026 (22:25 WIB)
+**Branch:** `feat/broksum-all-foreign`
 **Status:** ✅ Validasi selesai · Prioritas backfill dijalankan · Validasi permanen aktif
 
 ---

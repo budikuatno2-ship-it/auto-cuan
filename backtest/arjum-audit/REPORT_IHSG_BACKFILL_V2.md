@@ -1,8 +1,8 @@
 # LAPORAN EKSEKUTIF: KUOTA 18.080/HARI, ONBOARDING IHSG, PENGAMAN DOMESTIK & REFACTOR BACKFILL (V2)
 
-**Tanggal Audit & Eksekusi:** Minggu, 18 Oktober 2026  
-**Status Pipeline:** DEPLOYED & BERJALAN DI PRODUCTION VPS  
-**Branch:** `feat/broksum-all-foreign` (Commit: `24186ac7`)  
+**Tanggal Audit & Eksekusi:** Minggu, 18 Oktober 2026
+**Status Pipeline:** DEPLOYED & BERJALAN DI PRODUCTION VPS
+**Branch:** `feat/broksum-all-foreign` (Commit: `24186ac7`)
 **Lingkungan Production:** VPS `ubuntu@168.110.221.197`
 
 ---
@@ -100,7 +100,7 @@
 3. **Pengaman Tampilan UI di `public/bandarmologi-runtime.js`:**
    - Ketika pengguna memilih toggle **🏠 Domestic** pada tanggal yang belum lengkap:
      * Menampilkan kartu peringatan:
-       > ⏳ **belum lengkap · menunggu data lengkap**  
+       > ⏳ **belum lengkap · menunggu data lengkap**
        > *Data broker summary "Semua" pada sesi ini masih terpotong (25 broker). Perhitungan arus Domestik (All − F) ditangguhkan demi menjaga integritas data.*
      * Menahan render visual bubble dan tabel rinci agar tidak menampilkan angka All − F yang cacat.
    - Ketika pengguna memilih toggle **🌏 Foreign**:

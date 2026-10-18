@@ -1,8 +1,8 @@
 # LAPORAN FASE 2 · UJI KELAYAKAN AKUMULASI LOKAL (BELUM LOLOS)
 
-**Tanggal Uji:** Minggu, 18 Oktober 2026  
-**Status:** ⚠️ **BELUM LOLOS** — match rate 96–97% (di bawah syarat ≥99%)  
-**Keputusan:** `ACCUM_SOURCE=api` **TETAP** (perubahan belum diterapkan)  
+**Tanggal Uji:** Minggu, 18 Oktober 2026
+**Status:** ⚠️ **BELUM LOLOS** — match rate 96–97% (di bawah syarat ≥99%)
+**Keputusan:** `ACCUM_SOURCE=api` **TETAP** (perubahan belum diterapkan)
 **Arjum request terpakai:** 0 (semua pembacaan dari disk lokal)
 
 ---

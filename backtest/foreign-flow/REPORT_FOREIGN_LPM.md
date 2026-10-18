@@ -1,8 +1,8 @@
 # LAPORAN FASE 3 · SIMULASI ALIRAN ASING + LPM (RISET DILEWATI — SYARAT BELUM TERPENUHI)
 
-**Tanggal Audit:** Minggu, 18 Oktober 2026  
-**Status:** ⏭ **DILEWATI** — syarat jalan belum terpenuhi (cakupan F likuid = 13,79%, jauh di bawah 90%)  
-**Arjum request terpakai:** 0 (read-only)  
+**Tanggal Audit:** Minggu, 18 Oktober 2026
+**Status:** ⏭ **DILEWATI** — syarat jalan belum terpenuhi (cakupan F likuid = 13,79%, jauh di bawah 90%)
+**Arjum request terpakai:** 0 (read-only)
 **Perubahan produksi:** Tidak ada
 
 ---
@@ -69,7 +69,7 @@ Worker saat ini berjalan dengan:
 
 Hipotesis yang **akan diuji** ketika syarat terpenuhi:
 
-1. **Asing penggerak utama saham Indonesia.**  
+1. **Asing penggerak utama saham Indonesia.**
    Asing akumulasi lama sambil harga ditekan atau sideways, lalu harga naik.
 2. **Fase akumulasi diam-diam:** Return 20 hari ≤ +2% **dan** CumNFn(20) di atas ambang in-sample.
 3. **Fase distribusi:** Return 20 hari ≥ +5% **dan** CumNFn(20) < 0.

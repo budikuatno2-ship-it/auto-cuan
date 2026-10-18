@@ -1,8 +1,8 @@
 # LAPORAN PERBAIKAN VALIDATOR `.done` J1 & ATURAN TOLERANSI
 
-**Tanggal:** Minggu, 18 Oktober 2026 (23:00 WIB)  
-**Selesai sebelum:** Senin, 19 Oktober 2026, 16:00 WIB ✅  
-**Commit:** [`655894e3`](lib/broksum-validator.js:1)  
+**Tanggal:** Minggu, 18 Oktober 2026 (23:00 WIB)
+**Selesai sebelum:** Senin, 19 Oktober 2026, 16:00 WIB ✅
+**Commit:** [`655894e3`](lib/broksum-validator.js:1)
 **Status:** ✅ Deployed · 23 test pass di VPS · 1x `pm2 restart autocuan-web` · 0 request Arjum
 
 ---
@@ -94,7 +94,7 @@ Dalam semua kasus lain:
 
 ### Detail Commit
 
-**Commit:** [`655894e3`](lib/broksum-validator.js:1)  
+**Commit:** [`655894e3`](lib/broksum-validator.js:1)
 **Message:** `fix(j1): tolerant .done rule (1% + top100), vendor-pending F bypass, anomaly queue for backfill`
 
 **File Berubah (13 file, +882/-25):**

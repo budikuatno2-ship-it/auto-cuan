@@ -37,8 +37,8 @@ for (const tk of testTickers) {
   }
 
   let authentic;
-  try { authentic = JSON.parse(fs.readFileSync(tkAccumFile, 'utf8')); } catch (e) { 
-    results.push({ ticker: tk, status: 'corrupt', daysCoverage: 0 }); continue; 
+  try { authentic = JSON.parse(fs.readFileSync(tkAccumFile, 'utf8')); } catch (e) {
+    results.push({ ticker: tk, status: 'corrupt', daysCoverage: 0 }); continue;
   }
 
   if (!authentic.series || authentic.series.length === 0 || !authentic.series[0].points) {
