@@ -14,7 +14,10 @@ test('dated retries reuse an older complete candle and reject missing volume wit
  fetcher.readCache=()=>({candles:[row,{...row,date:'2026-10-01'}]});
  fetcher.fetchDailyCandles=async()=>{calls++;return {ok:false,rateLimited:false}};
  try{
-  const options={argv:['node','worker'],tickers:['BBCA'],targetDate:'2026-09-30',calendarClient:null};
+  // Pin the Arjum source: this contract stubs fetcher.fetchDailyCandles (the
+  // Arjum fetcher). The production default is Yahoo-first with Arjum fallback,
+  // which would bypass the stub and make the run non-deterministic.
+  const options={argv:['node','worker'],tickers:['BBCA'],targetDate:'2026-09-30',calendarClient:null,source:'arjum'};
   let result=await daily.main(options);assert.equal(result.cached,1);assert.equal(calls,0);
   for(const volume of [null,'']){row={...row,volume};result=await daily.main(options);assert.equal(result.failed,1);assert.equal(result.cached,0);}
   assert.equal(calls,2);
@@ -78,7 +81,9 @@ test('daily candle worker counts fresh only after cache reaches target date', as
       argv: ['node', 'fetch-daily-candles.js'],
       tickers: ['BBCA'],
       now: new Date('2026-10-01T11:30:00+07:00'),
-      calendarClient: null
+      calendarClient: null,
+      // Pin the Arjum source: this contract stubs fetcher.fetchDailyCandles.
+      source: 'arjum'
     });
     assert.equal(out.fetched, 1);
     assert.equal(out.failed, 0);

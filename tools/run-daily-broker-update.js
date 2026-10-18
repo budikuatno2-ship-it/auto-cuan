@@ -628,7 +628,12 @@ async function run(argv) {
       // insider trade exists on/after that date. Otherwise the dated file is
       // stamped with an explicit no_new_trades marker so checksums differ per
       // date and consumers can tell "no new trades" from "new data".
-      const shouldFetchInsider = insiderMode === 'all' || priorityTickers.has(ticker);
+      // daily/all = full universe (documented in the report + cron flags);
+      // weekly = prepared-but-not-enabled mode: priority subset daily, full
+      // universe weekly. The gate below must mirror that intent — the old
+      // `insiderMode === 'all' || priority` form silently degraded the
+      // default 'daily' mode to the priority subset only.
+      const shouldFetchInsider = insiderMode === 'weekly' ? priorityTickers.has(ticker) : true;
       if (!dryRun && shouldFetchInsider && (isFresh || !bandarmologiService.readDiskCache('insiders', ticker, dateArg))) {
         if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
         totalRequested++;

@@ -32,7 +32,12 @@ function withTempEnv(fn) {
     CANDLE_CACHE_DIR: process.env.CANDLE_CACHE_DIR,
     DAYTRADE_OHLCV_DIR: process.env.INTEL_OHLCV_DIR
   };
+  // The dir must EXIST: bandarmologi-service.getStorageDir() ignores
+  // ARJUM_DATA_DIR when it is not an existing directory and falls back to the
+  // repository's data/arjum-data, which would make the tests read/write real
+  // caches instead of the hermetic temp dir.
   process.env.ARJUM_DATA_DIR = path.join(tmpBase, 'arjum-data');
+  fs.mkdirSync(process.env.ARJUM_DATA_DIR, { recursive: true });
   process.env.AUTO_CUAN_EOD_TEST_TODAY = '2026-10-02';
   process.env.INTEL_INDEX_DIR = path.join(tmpBase, 'intel-indexes');
   process.env.INTEL_CACHE_DIR = path.join(tmpBase, 'intel-cache');
@@ -71,7 +76,23 @@ function mockArjum(overrides = {}) {
     fetchInsiders: arjumClient.fetchInsiders
   };
   arjumClient.hasArjumApiKey = () => true;
-  arjumClient.fetchBrokerSummary = overrides.fetchBrokerSummary || (async () => ({ ok: true, data: { top_buyers: [], top_sellers: [] } }));
+  // The REAL arjum-client always returns the vendor payload for the requested
+  // flow (the J1 worker requires data.flow === 'all' / 'F' plus a matching
+  // stock_code as an authenticity guard). Mocks must mirror that contract or
+  // the worker correctly refuses the payload as a non-authentic response.
+  const stampFlow = (result, ticker, flow) => {
+    try {
+      if (result && result.ok && result.data && typeof result.data === 'object' && !Array.isArray(result.data)) {
+        const wantF = String(flow || '').trim().toUpperCase() === 'F';
+        if (result.data.flow == null) result.data.flow = wantF ? 'F' : 'all';
+        if (result.data.stock_code == null) result.data.stock_code = String(ticker || '').toUpperCase();
+      }
+    } catch (_) {}
+    return result;
+  };
+  const baseSummary = overrides.fetchBrokerSummary || (async () => ({ ok: true, data: { top_buyers: [], top_sellers: [] } }));
+  arjumClient.fetchBrokerSummary = async (ticker, date, flow, limits, options) =>
+    stampFlow(await baseSummary(ticker, date, flow, limits, options), ticker, flow);
   arjumClient.fetchBrokerAccumulation = overrides.fetchBrokerAccumulation || (async () => ({ ok: true, data: { series: [] } }));
   arjumClient.fetchInsiders = overrides.fetchInsiders || (async () => ({ ok: true, data: [] }));
   return () => { Object.assign(arjumClient, orig); intel.computeAndSaveIntel = originalCompute; };

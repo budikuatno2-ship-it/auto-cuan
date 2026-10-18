@@ -69,6 +69,17 @@ CRON_TZ=Asia/Jakarta
 # ── TELEGRAM DELIVERY RETRY WORKER (tiap 15 menit, 17:00-23:45 WIB) ──────
 */15 17-23 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-retry-telegram-delivery.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/retry-telegram-delivery.log 2>&1
 
+# ── WEBHOOK FAILOVER (DINONAKTIFKAN — long polling via PM2) ──────────────
+# Verifikasi bot memakai LONG POLLING mandiri via PM2
+# (autocuan-verify-bot, entry: tools/telegram-verify-bot.js). Tidak ada lagi
+# webhook Vercel (HTTP 402) maupun cloudflared tunnel yang bisa mati.
+#
+# PENTING: JANGAN aktifkan kembali baris di bawah. Failover ini akan
+# memasang ulang webhook dan mematikan polling (getUpdates → 409 Conflict).
+# Untuk mengembalikan mode webhook: pm2 delete autocuan-verify-bot lalu
+# buka komentar baris ini.
+# */10 * * * * /home/ubuntu/auto-cuan/deploy/vps/run-webhook-failover.sh >> /home/ubuntu/auto-cuan-runner/logs/webhook-failover.log 2>&1
+
 # ── SECTOR HOT — VPS LOCAL ONLY ──────────────────────────────────────────
 */30 9-15 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-sector-hot.sh --force-local >> /home/ubuntu/auto-cuan-runner/logs/sector-hot.log 2>&1
 

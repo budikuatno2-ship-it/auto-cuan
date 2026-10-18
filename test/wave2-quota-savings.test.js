@@ -75,9 +75,14 @@ test('W2-05/W2-30: 134 zero-volume + 1 traded-empty costs 1 request instead of 4
   }));
 
   arjumClient.hasArjumApiKey = () => true;
-  arjumClient.fetchBrokerSummary = async () => {
-    counts.broker++;
-    return { ok: true, data: { top_buyers: [], top_sellers: [] } };
+  // The REAL arjum-client always returns the requested flow with a matching
+  // stock_code; the J1 worker requires data.flow === 'all' / 'F' as an
+  // authenticity guard. Mocks must mirror that contract, and the broker
+  // counter tracks All-summary work-units only (flow='F' is an intentional
+  // extra fetch that only ever happens for COMPLETE tickers).
+  arjumClient.fetchBrokerSummary = async (ticker, _date, flow) => {
+    if (flow == null || String(flow).toUpperCase() === 'ALL') counts.broker++;
+    return { ok: true, data: { flow: 'all', stock_code: String(ticker || '').toUpperCase(), top_buyers: [], top_sellers: [] } };
   };
   arjumClient.fetchBrokerAccumulation = async () => { counts.accumulation++; return { ok: true, data: { series: [] } }; };
   arjumClient.fetchInsiders = async () => { counts.insider++; return { ok: true, data: [] }; };

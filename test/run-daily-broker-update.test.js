@@ -20,7 +20,10 @@ test('ticker limit never becomes a daily quota ceiling (September 30 regression)
   const quota=arjumClient.getConfiguredDailyQuota,used=arjumClient.getUsedQuotaToday;
   arjumClient.getConfiguredDailyQuota=()=>10000;arjumClient.getUsedQuotaToday=()=>7862;
   let calls=0;
-  const restore=mockArjum({fetchBrokerSummary:async()=>{calls++;return {ok:true,data:{top_buyers:[{broker:'YU',bval:100,bvol:10}],top_sellers:[]}};}});
+  // Count per-ticker All-summary work-units only: the worker intentionally
+  // performs an additional Foreign (flow='F') fetch for every COMPLETE ticker,
+  // which is not a per-ticker summary attempt.
+  const restore=mockArjum({fetchBrokerSummary:async(_t,_d,flow)=>{if(flow==null||String(flow).toUpperCase()==='ALL')calls++;return {ok:true,data:{top_buyers:[{broker:'YU',bval:100,bvol:10}],top_sellers:[]}};}});
   try{await dailyUpdate.run(['--tickers','BBCA','--limit','5000','--date','2026-09-30','--delay','1']);assert.equal(calls,1);assert.equal(dailyUpdate.readMarker('2026-09-30').complete,true);}
   finally{restore();arjumClient.getConfiguredDailyQuota=quota;arjumClient.getUsedQuotaToday=used;}
  });
@@ -59,7 +62,8 @@ test('auxiliary failure remains pending and retries without refetching a valid s
   await withTempDataDir(async () => {
     let summaries=0, accumulations=0, insiders=0;
     const restore=mockArjum({
-      fetchBrokerSummary: async()=> { summaries++; return {ok:true,data:{top_buyers:[{broker:'YU',bval:100,bvol:10}],top_sellers:[]}}; },
+      // Count All-summary work-units only (flow='F' is an intentional extra fetch).
+      fetchBrokerSummary: async(_t,_d,flow)=> { if (flow==null||String(flow).toUpperCase()==='ALL') summaries++; return {ok:true,data:{top_buyers:[{broker:'YU',bval:100,bvol:10}],top_sellers:[]}}; },
       fetchBrokerAccumulation: async()=> { accumulations++; return {ok:true,data:{series:[]}}; },
       fetchInsiders: async()=> { insiders++; return insiders===1 ? {ok:false,status:503,error:'upstream unavailable'} : {ok:true,data:[]}; }
     });
@@ -89,7 +93,11 @@ function withTempDataDir(fn) {
   const origIntelIndex = process.env.INTEL_INDEX_DIR;
   const origIntelCache = process.env.INTEL_CACHE_DIR;
   const origHunterIndex = process.env.BROKER_HUNTER_INDEX_DIR;
+  // The dir must EXIST: bandarmologi-service.getStorageDir() ignores
+  // ARJUM_DATA_DIR when it is not an existing directory and falls back to the
+  // repository's data/arjum-data (polluting/reading real caches).
   process.env.ARJUM_DATA_DIR = tmpBase;
+  fs.mkdirSync(tmpBase, { recursive: true });
   process.env.INTEL_INDEX_DIR = path.join(tmpBase, 'bandarmologi-intel-indexes');
   process.env.INTEL_CACHE_DIR = path.join(tmpBase, 'bandarmologi-intel');
   process.env.BROKER_HUNTER_INDEX_DIR = path.join(tmpBase, 'broker-hunter-indexes');
@@ -121,7 +129,21 @@ function mockArjum(overrides) {
     fetchInsiders: arjumClient.fetchInsiders
   };
   arjumClient.hasArjumApiKey = () => true;
-  arjumClient.fetchBrokerSummary = overrides.fetchBrokerSummary || (async () => ({ ok: true, data: { top_buyers: [], top_sellers: [] } }));
+  // The REAL arjum-client returns the vendor payload for the requested flow and
+  // the J1 worker requires data.flow ('all'/'F') plus a matching stock_code as
+  // an authenticity guard. Mocks must mirror that contract.
+  const stampFlow = (result, ticker, flow) => {
+    try {
+      if (result && result.ok && result.data && typeof result.data === 'object' && !Array.isArray(result.data)) {
+        if (result.data.flow == null) result.data.flow = String(flow || '').trim().toUpperCase() === 'F' ? 'F' : 'all';
+        if (result.data.stock_code == null) result.data.stock_code = String(ticker || '').toUpperCase();
+      }
+    } catch (_) {}
+    return result;
+  };
+  const baseSummary = overrides.fetchBrokerSummary || (async () => ({ ok: true, data: { top_buyers: [], top_sellers: [] } }));
+  arjumClient.fetchBrokerSummary = async (ticker, date, flow, limits, options) =>
+    stampFlow(await baseSummary(ticker, date, flow, limits, options), ticker, flow);
   arjumClient.fetchBrokerAccumulation = overrides.fetchBrokerAccumulation || (async () => ({ ok: true, data: { series: [] } }));
   arjumClient.fetchInsiders = overrides.fetchInsiders || (async () => ({ ok: true, data: [] }));
   return () => { Object.assign(arjumClient, orig); intel.computeAndSaveIntel = originalCompute; };
@@ -257,8 +279,9 @@ test('run-daily-broker-update: complete marker is reopened when active universe 
     });
     let calls = 0;
     const restore = mockArjum({
-      fetchBrokerSummary: async (ticker) => {
-        calls++;
+      fetchBrokerSummary: async (ticker, _date, flow) => {
+        // Count All-summary work-units only (flow='F' is an intentional extra fetch).
+        if (flow == null || String(flow).toUpperCase() === 'ALL') calls++;
         return {
           ok: true,
           data: {

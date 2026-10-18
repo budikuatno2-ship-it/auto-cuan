@@ -114,9 +114,16 @@ test('F15-06: 800-ticker bulk path does not hold unbounded in-memory growth', as
   // daytrade-ohlcv-cache: writeCache trims to last 90, atomic write — no unbounded Map.
   const ohlcvSrc = fs.readFileSync(path.join(__dirname, '..', 'lib/daytrade-ohlcv-cache.js'), 'utf8');
   assert.match(ohlcvSrc, /slice\(-90\)/, 'ohlcv cache must trim to 90 (bounded)');
-  // candle-fetcher: disk cache per ticker, no global Map
+  // candle-fetcher: disk cache per ticker, no global/retained Map. REVISI
+  // 2026-10-18 (broksum deploy): function-LOCAL per-call Maps are allowed
+  // (non-destructive merge of a ticker's own bars, bounded by that ticker's
+  // candle count and released when the call returns). A module-scope Map is
+  // still forbidden.
   const fetcherSrc = fs.readFileSync(path.join(__dirname, '..', 'lib/chart-engine/candle-fetcher.js'), 'utf8');
-  assert.doesNotMatch(fetcherSrc, /new Map\(\)/, 'candle-fetcher must not hold global Map cache (disk only = bounded)');
+  // Module scope = column 0. Function-local declarations are indented, bounded
+  // by the ticker's own candle count and released when the call returns.
+  const moduleScopeMap = fetcherSrc.split('\n').filter((line) => /^const\s+\w+\s*=\s*new Map\(\)/.test(line));
+  assert.equal(moduleScopeMap.length, 0, 'candle-fetcher must not hold a module-scope Map cache (disk only = bounded)');
   // stock-daily-history-store: getLatestSessionsForTickers queries per ticker sequentially, not loading universe * 260 into one Map with unbounded retention
   const storeSrc = fs.readFileSync(path.join(__dirname, '..', 'lib/stock-daily-history-store.js'), 'utf8');
   assert.match(storeSrc, /\.limit\(count\)/, 'store load must bound per ticker via limit(count)');

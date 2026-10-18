@@ -137,8 +137,13 @@ test('F13-05b: EOD ingestion stays inside the 16:30-17:30 WIB broker-snapshot wi
  assert.equal(finalLines.length, 1, 'exactly one terminal --final pass');
  assert.match(finalLines[0],/^30\s+23\s+\*\s+\*\s+1-5\s+/);
 
- // The accumulation job is now its own 18:00 schedule, never a broker-update arg.
- assert.match(active, /^0\s+18\s+\*\s+\*\s+1-5\s+.*run-broker-accumulation\.sh/m);
+ // REVISI 2026-10-18 (broksum deploy): J1 is the SINGLE daily accumulation
+ // writer via the vendor API (--accum-source=api). The local generator
+ // (run-broker-accumulation.sh) is deliberately DISABLED to prevent
+ // race conditions / double-writes, so its 18:00 line must stay commented.
+ assert.doesNotMatch(active, /^\s*0\s+18\s+\*\s+\*\s+1-5\s+.*run-broker-accumulation\.sh/m);
+ assert.match(raw, /#\s*0\s+18\s+\*\s+\*\s+1-5\s+.*run-broker-accumulation\.sh/, 'disabled generator line must stay documented in the cron source');
+ assert.match(active, /run-daily-market-update\.sh --accum-source=api/);
  assert.doesNotMatch(active,/run-daily-broker-update\.sh/);
 });
 
