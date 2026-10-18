@@ -111,6 +111,10 @@ async function run(options={}){
       process.exitCode=undefined;
       const brokerArgs=['--date',date];
       if(hour===23 && minute>=30)brokerArgs.push('--final');
+      const extraArgs = options.argv || process.argv.slice(2);
+      for(const a of extraArgs){
+        if(typeof a === 'string' && (a.startsWith('--accum-source=') || a.startsWith('--insider-mode='))) brokerArgs.push(a);
+      }
       const result=await broker.run(brokerArgs);
       const marker=broker.readMarker(date);
       brokerOk=Boolean(result&&result.skipped || marker&&marker.version===2&&marker.complete);
