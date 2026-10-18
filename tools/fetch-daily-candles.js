@@ -42,20 +42,30 @@ function loadEnvFile() {
 
 function loadTickers() {
   const master = path.join(process.cwd(), 'data', 'daytrade-observe-tickers.txt');
+  let tickers = [];
   try {
     if (fs.existsSync(master)) {
-      return Array.from(new Set(
+      tickers = Array.from(new Set(
         fs.readFileSync(master, 'utf8').split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(isValidIdxTicker)
       )).sort();
     }
   } catch (_) {}
 
-  const idx = path.join(process.cwd(), 'data', 'arjum-data', 'broker-summary');
-  try {
-    const dirs = fs.readdirSync(idx, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name).filter(isValidIdxTicker);
-    if (dirs.length) return dirs.sort();
-  } catch (_) {}
-  return [];
+  if (!tickers.length) {
+    const idx = path.join(process.cwd(), 'data', 'arjum-data', 'broker-summary');
+    try {
+      const dirs = fs.readdirSync(idx, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name).filter(isValidIdxTicker);
+      if (dirs.length) tickers = dirs.sort();
+    } catch (_) {}
+  }
+
+  // Langkah 2: IHSG otomatis masuk cron candle harian jika IHSG_SYMBOL diset
+  const ihsgSymbol = String(process.env.IHSG_SYMBOL || '').trim();
+  if (ihsgSymbol && !tickers.includes('IHSG')) {
+    tickers.push('IHSG');
+  }
+
+  return tickers;
 }
 
 function todayWib(now) {
@@ -111,7 +121,15 @@ async function main(options) {
   const argv = options.argv || process.argv;
   const dryRun = options.dryRun != null ? options.dryRun : argv.includes('--dry-run');
   const limitArg = Number((argv.find(a => a.startsWith('--limit=')) || '').split('=')[1]) || 0;
-  const tickers = options.tickers || loadTickers();
+  let tickers = options.tickers;
+  if (!tickers) {
+    const tickersArg = (argv.find(a => a.startsWith('--tickers=')) || '').slice(10);
+    if (tickersArg) {
+      tickers = tickersArg.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+    } else {
+      tickers = loadTickers();
+    }
+  }
   const universe = limitArg > 0 ? tickers.slice(0, limitArg) : tickers;
 
   const targetDate = options.targetDate || todayWib(options.now);
