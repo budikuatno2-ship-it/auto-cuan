@@ -105,83 +105,125 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(responseForRequest(cached.data, req));
     }
 
-    // Map ticker to Yahoo Finance symbol
-    var symbol;
-    if (ticker === 'IHSG') {
-      symbol = '%5EJKSE'; // ^JKSE (URL-encoded)
-    } else {
-      symbol = ticker + '.JK';
-    }
-    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?range=1y&interval=1d';
-
-    var controller = new AbortController();
-    var timeout = setTimeout(function() { controller.abort(); }, 10000);
-
-    var response;
-    try {
-      response = await fetch(url, {
-        method: 'GET',
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-        signal: controller.signal
-      });
-    } catch (fetchErr) {
-      clearTimeout(timeout);
-      return res.status(502).json({ success: false, ticker: ticker, error: 'Gagal mengambil data.' });
-    }
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      return res.status(502).json({ success: false, ticker: ticker, error: 'HTTP ' + response.status });
-    }
-
-    var json;
-    try { json = await response.json(); } catch (e) {
-      return res.status(502).json({ success: false, ticker: ticker, error: 'Gagal parsing.' });
-    }
-
-    var chartResult = json && json.chart && json.chart.result && json.chart.result[0];
-    if (!chartResult || !chartResult.timestamp) {
-      return res.status(200).json(Object.assign({ success: false, ticker: ticker, error: 'Data tidak ditemukan.' }, t1Policy.buildMetadata(null, clock.now())));
-    }
-
-    var timestamps = chartResult.timestamp || [];
-    var indicators = chartResult.indicators && chartResult.indicators.quote && chartResult.indicators.quote[0];
-    if (!indicators) {
-      return res.status(200).json(Object.assign({ success: false, ticker: ticker, error: 'OHLCV kosong.' }, t1Policy.buildMetadata(null, clock.now())));
-    }
-
-    var opens = indicators.open || [];
-    var highs = indicators.high || [];
-    var lows = indicators.low || [];
-    var closes = indicators.close || [];
-    var volumes = indicators.volume || [];
-
     var candles = [];
-    for (var i = 0; i < timestamps.length; i++) {
-      var c = closes[i], o = opens[i], h = highs[i], l = lows[i], v = volumes[i];
-      var timestampSeconds = t1Policy.normalizeUnixTimestampSeconds(timestamps[i]);
-      var candleDate = timestampSeconds == null ? null : t1Policy.formatJakartaDate(new Date(timestampSeconds * 1000));
-      // BUG-CAN-02: `!isNaN(c)` meloloskan NaN pada open/high/low (dan menerima
-      // Infinity). Setiap field OHLC harus finite agar tidak ada candle rusak
-      // yang masuk ke indikator.
-      var oNum = Number(o), hNum = Number(h), lNum = Number(l), cNum = Number(c);
-      if (candleDate && Number.isFinite(oNum) && Number.isFinite(hNum) && Number.isFinite(lNum) && Number.isFinite(cNum)) {
-        candles.push({
-          time: candleDate,
-          open: Math.round(oNum * 100) / 100,
-          high: Math.round(hNum * 100) / 100,
-          low: Math.round(lNum * 100) / 100,
-          close: Math.round(cNum * 100) / 100,
-          volume: Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : 0
-        });
+    var cutoff = null;
+    var candleSource = 'Data Historis T-1';
+
+    // 1. Primary for IHSG: read local disk cache (data/daily-candles/IHSG.json)
+    if (ticker === 'IHSG') {
+      var fs = require('fs');
+      var path = require('path');
+      var ihsgDiskPath = path.join(process.cwd(), 'data', 'daily-candles', 'IHSG.json');
+      if (fs.existsSync(ihsgDiskPath)) {
+        try {
+          var rawDisk = JSON.parse(fs.readFileSync(ihsgDiskPath, 'utf8'));
+          if (rawDisk && Array.isArray(rawDisk.candles) && rawDisk.candles.length >= 20) {
+            var diskCandles = [];
+            for (var k = 0; k < rawDisk.candles.length; k++) {
+              var dc = rawDisk.candles[k];
+              var dDate = String(dc.date || dc.time || '').slice(0, 10);
+              var dO = Number(dc.open), dH = Number(dc.high), dL = Number(dc.low), dC = Number(dc.close);
+              var dV = Number(dc.volume);
+              if (/^\d{4}-\d{2}-\d{2}$/.test(dDate) && Number.isFinite(dO) && Number.isFinite(dH) && Number.isFinite(dL) && Number.isFinite(dC)) {
+                diskCandles.push({
+                  time: dDate,
+                  open: Math.round(dO * 100) / 100,
+                  high: Math.round(dH * 100) / 100,
+                  low: Math.round(dL * 100) / 100,
+                  close: Math.round(dC * 100) / 100,
+                  volume: Number.isFinite(dV) && dV > 0 ? dV : null,
+                  value: dc.value != null ? Number(dc.value) : null
+                });
+              }
+            }
+            if (diskCandles.length >= 20) {
+              var diskCutoff = t1Policy.retainCompletedCandles(diskCandles, clock.now());
+              if (diskCutoff.candles.length >= 20 && diskCutoff.metadata.t1_status !== 'STALE') {
+                candles = diskCutoff.candles;
+                cutoff = diskCutoff;
+                candleSource = 'Data Historis T-1';
+              }
+            }
+          }
+        } catch (_) {}
       }
     }
 
-    // Enforce the completed-daily-candle policy before latest or any indicator
-    // is calculated. This removes today's partial Jakarta candle and any
-    // future-dated provider rows while preserving the provider's chronology.
-    var cutoff = t1Policy.retainCompletedCandles(candles, clock.now());
-    candles = cutoff.candles;
+    // 2. Fallback to Yahoo Finance if candles not resolved from disk
+    if (!candles || candles.length === 0) {
+      if (ticker === 'IHSG') {
+        candleSource = 'fallback';
+      }
+      var symbol;
+      if (ticker === 'IHSG') {
+        symbol = '%5EJKSE'; // ^JKSE (URL-encoded)
+      } else {
+        symbol = ticker + '.JK';
+      }
+      var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?range=1y&interval=1d';
+
+      var controller = new AbortController();
+      var timeout = setTimeout(function() { controller.abort(); }, 10000);
+
+      var response;
+      try {
+        response = await fetch(url, {
+          method: 'GET',
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+          signal: controller.signal
+        });
+      } catch (fetchErr) {
+        clearTimeout(timeout);
+        return res.status(502).json({ success: false, ticker: ticker, error: 'Gagal mengambil data.' });
+      }
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return res.status(502).json({ success: false, ticker: ticker, error: 'HTTP ' + response.status });
+      }
+
+      var json;
+      try { json = await response.json(); } catch (e) {
+        return res.status(502).json({ success: false, ticker: ticker, error: 'Gagal parsing.' });
+      }
+
+      var chartResult = json && json.chart && json.chart.result && json.chart.result[0];
+      if (!chartResult || !chartResult.timestamp) {
+        return res.status(200).json(Object.assign({ success: false, ticker: ticker, error: 'Data tidak ditemukan.' }, t1Policy.buildMetadata(null, clock.now())));
+      }
+
+      var timestamps = chartResult.timestamp || [];
+      var indicators = chartResult.indicators && chartResult.indicators.quote && chartResult.indicators.quote[0];
+      if (!indicators) {
+        return res.status(200).json(Object.assign({ success: false, ticker: ticker, error: 'OHLCV kosong.' }, t1Policy.buildMetadata(null, clock.now())));
+      }
+
+      var opens = indicators.open || [];
+      var highs = indicators.high || [];
+      var lows = indicators.low || [];
+      var closes = indicators.close || [];
+      var volumes = indicators.volume || [];
+
+      for (var i = 0; i < timestamps.length; i++) {
+        var c = closes[i], o = opens[i], h = highs[i], l = lows[i], v = volumes[i];
+        var timestampSeconds = t1Policy.normalizeUnixTimestampSeconds(timestamps[i]);
+        var candleDate = timestampSeconds == null ? null : t1Policy.formatJakartaDate(new Date(timestampSeconds * 1000));
+        var oNum = Number(o), hNum = Number(h), lNum = Number(l), cNum = Number(c);
+        if (candleDate && Number.isFinite(oNum) && Number.isFinite(hNum) && Number.isFinite(lNum) && Number.isFinite(cNum)) {
+          candles.push({
+            time: candleDate,
+            open: Math.round(oNum * 100) / 100,
+            high: Math.round(hNum * 100) / 100,
+            low: Math.round(lNum * 100) / 100,
+            close: Math.round(cNum * 100) / 100,
+            volume: Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : null
+          });
+        }
+      }
+
+      cutoff = t1Policy.retainCompletedCandles(candles, clock.now());
+      candles = cutoff.candles;
+    }
 
     if (candles.length === 0) {
       return res.status(200).json(Object.assign({ success: false, ticker: ticker, error: 'Tidak ada candle harian selesai sebelum tanggal Jakarta hari ini.' }, cutoff.metadata));
@@ -195,7 +237,7 @@ module.exports = async function handler(req, res) {
     var result = Object.assign({
       success: true,
       ticker: ticker,
-      source: 'Data Historis T-1',
+      source: candleSource,
       totalCandles: candles.length,
       latest: {
         date: latest.time,
