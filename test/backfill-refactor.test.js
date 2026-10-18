@@ -36,7 +36,21 @@ test('Langkah 4: Refactor backfill-broksum.js unit tests', async (t) => {
     assert.equal(map.get('2026-10-16'), 0, 'Should detect zero volume');
   });
 
-  await t.test('2. Zero volume session generates synthetic no-trade without API calls', async () => {
+  await t.test('2. Zero volume session generates synthetic no-trade ONLY when all file confirms no trades', async () => {
+    // Seed existing empty all file for 2026-10-16 and 2026-10-15
+    const dormDir = path.join(targetDir, 'broker-summary', 'DORM');
+    fs.mkdirSync(dormDir, { recursive: true });
+    fs.writeFileSync(path.join(dormDir, '2026-10-16.json'), JSON.stringify({
+      stock_code: 'DORM',
+      brokers: [],
+      broker_levels: [{ buy: null, sell: null }]
+    }));
+    fs.writeFileSync(path.join(dormDir, '2026-10-15.json'), JSON.stringify({
+      stock_code: 'DORM',
+      brokers: [],
+      broker_levels: []
+    }));
+
     // Run backfill worker with target-dir and candles-dir on DORM ticker where volume=0
     const res = await backfillWorker.run([
       `--target-dir=${targetDir}`,
@@ -46,30 +60,53 @@ test('Langkah 4: Refactor backfill-broksum.js unit tests', async (t) => {
     ]);
 
     assert.ok(res.success);
-    // 2026-10-16 and 2026-10-15 have volume=0, so both must generate synthetic no-trade
     const allFile16 = path.join(targetDir, 'broker-summary', 'DORM', '2026-10-16.json');
     const fFile16 = path.join(targetDir, 'broker-summary-F', 'DORM', '2026-10-16.json');
-    const allFile15 = path.join(targetDir, 'broker-summary', 'DORM', '2026-10-15.json');
-    const fFile15 = path.join(targetDir, 'broker-summary-F', 'DORM', '2026-10-15.json');
 
     assert.ok(fs.existsSync(allFile16), 'Synthetic all file (2026-10-16) must exist');
     assert.ok(fs.existsSync(fFile16), 'Synthetic F file (2026-10-16) must exist');
-    assert.ok(fs.existsSync(allFile15), 'Synthetic all file (2026-10-15) must exist');
-    assert.ok(fs.existsSync(fFile15), 'Synthetic F file (2026-10-15) must exist');
-
-    const allData = JSON.parse(fs.readFileSync(allFile16, 'utf8'));
-    assert.equal(allData.derived, 'no-trade');
-    assert.equal(allData.flow, 'all');
-    assert.deepEqual(allData.brokers, []);
-    assert.deepEqual(allData.broker_levels, []);
 
     const fData = JSON.parse(fs.readFileSync(fFile16, 'utf8'));
     assert.equal(fData.derived, 'no-trade');
     assert.equal(fData.flow, 'F');
     assert.deepEqual(fData.brokers, []);
 
-    assert.equal(res.requestsSent, 0, 'Must send 0 API requests for zero volume sessions');
+    assert.equal(res.requestsSent, 0, 'Must send 0 API requests for zero volume sessions with empty all');
     assert.ok(res.syntheticCount >= 2, 'Synthetic count should be >= 2');
+  });
+
+  await t.test('2b. [BUG FIX C1] Volume 0 in candle BUT All file has trades -> NEVER skip as no-trade', () => {
+    const allWithTrades = {
+      stock_code: 'SINI',
+      brokers: [{ broker_code: 'CC', bval: 83000000000, sval: 0 }]
+    };
+    const emptyAll = {
+      stock_code: 'PACK',
+      brokers: [],
+      broker_levels: [{ buy: null, sell: null }]
+    };
+    assert.equal(backfillWorker.brokerSummaryHasTrades(allWithTrades), true, 'Must detect active trades in all file');
+    assert.equal(backfillWorker.brokerSummaryHasTrades(emptyAll), false, 'Empty all has no trades');
+  });
+
+  await t.test('2c. [BUG FIX C4] Dynamic reserve quota computation handles EOD and weekend rollover', () => {
+    // Mode weekend returns 300
+    const weekendReserve = backfillWorker.resolveDynamicReserveQuota(targetDir, 'weekend');
+    assert.equal(weekendReserve, 300, 'Weekend reserve must be 300');
+
+    // Monday morning (weekday before EOD .done) returns 5100
+    const mondayMorning = new Date('2026-10-19T03:00:00.000Z'); // 10:00 WIB
+    const weekdayPreEod = backfillWorker.resolveDynamicReserveQuota(targetDir, 'weekday', mondayMorning);
+    assert.equal(weekdayPreEod, 5100, 'Weekday pre-EOD reserve must be 5100');
+
+    // Seed .done sentinel for 2026-10-19
+    const eodDir = path.join(targetDir, '_eod');
+    fs.mkdirSync(eodDir, { recursive: true });
+    fs.writeFileSync(path.join(eodDir, '2026-10-19.done'), '{}');
+
+    // Weekday after EOD .done sentinel returns 800
+    const weekdayPostEod = backfillWorker.resolveDynamicReserveQuota(targetDir, 'weekday', mondayMorning);
+    assert.equal(weekdayPostEod, 800, 'Weekday post-EOD reserve must be 800');
   });
 
   await t.test('3. Prioritas urutan: likuid duluan, tanggal terbaru ke terlama', () => {

@@ -99,6 +99,43 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function brokerSummaryHasTrades(data) {
+  if (!data || typeof data !== 'object') return false;
+  if (data.derived === 'no-trade') return false;
+  if (Array.isArray(data.brokers) && data.brokers.length > 0) {
+    if (data.brokers.some(b => Number(b.bval || b.sval || b.bvol || b.svol || 0) > 0)) return true;
+  }
+  if (Array.isArray(data.broker_levels) && data.broker_levels.length > 0) {
+    if (data.broker_levels.some(l => (l.buy && Number(l.buy.bval || l.buy.bvol || 0) > 0) || (l.sell && Number(l.sell.sval || l.sell.svol || 0) > 0))) return true;
+  }
+  if (Number(data.total_turnover || 0) > 0 || Number(data.total_volume || 0) > 0) return true;
+  return false;
+}
+
+function resolveDynamicReserveQuota(baseDir, explicitMode = null, now = new Date()) {
+  const todayKey = wibDateKey(now);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Jakarta', weekday: 'short'
+  }).format(now);
+  const isWeekendDay = parts === 'Sun' || parts === 'Sat';
+
+  let currentMode = explicitMode;
+  if (!currentMode) {
+    currentMode = isWeekendDay ? 'weekend' : 'weekday';
+  }
+
+  if (currentMode === 'weekday' && !isTradingDaySafe(todayKey)) {
+    currentMode = 'weekend';
+  }
+
+  if (currentMode === 'weekend') {
+    return WEEKEND_RESERVE;
+  }
+
+  const doneExists = eodDoneExists(baseDir, todayKey);
+  return doneExists ? WEEKDAY_RESERVE : WEEKDAY_RESERVE_BEFORE_EOD;
+}
+
 function getBaseDir(overrideDir) {
   if (overrideDir) return overrideDir;
   return process.env.ARJUM_DATA_DIR || path.join(__dirname, '..', 'data', 'arjum-data');
@@ -300,16 +337,8 @@ async function run(argv) {
     mode = 'weekend';
   }
 
-  // 2c: dynamic weekday reserve. Before the EOD .done sentinel for today exists,
-  // keep a large reserve so the 23:30 production retry can still run. After the
-  // sentinel exists, the small 800 reserve applies.
-  let reserveQuota;
-  if (mode === 'weekend') {
-    reserveQuota = WEEKEND_RESERVE;
-  } else {
-    const doneExists = eodDoneExists(baseDir, todayKey);
-    reserveQuota = doneExists ? WEEKDAY_RESERVE : WEEKDAY_RESERVE_BEFORE_EOD;
-  }
+  const explicitModeArg = modeIdx >= 0 ? mode : null;
+  let reserveQuota = resolveDynamicReserveQuota(baseDir, explicitModeArg);
   let candlesDir = null;
   for (const a of args) {
     if (a.startsWith('--candles-dir=')) candlesDir = a.slice(14);
@@ -468,15 +497,29 @@ async function run(argv) {
           continue;
         }
 
-        // Check Candle Volume for Zero-Volume Session Optimization
+        // Re-evaluate dynamic reserve quota before checking limits (handles 00:00 WIB rollover)
+        reserveQuota = resolveDynamicReserveQuota(baseDir, explicitModeArg);
+
+        // Check Candle Volume & All File for Zero-Trade Session Optimization
+        // Syarat lewat: volume candle 0 DAN file all kosong / tidak ada transaksi
         const candleMap = getTickerCandleMap(candlesDir, ticker);
         const hasCandleInfo = candleMap.has(date);
         const sessionVolume = hasCandleInfo ? candleMap.get(date) : null;
 
-        if (hasCandleInfo && sessionVolume === 0) {
-          // Zero trading volume session: Do NOT call Arjum API! (Quota savings)
+        let allFileHasTrades = false;
+        let allFileExists = fs.existsSync(allFile);
+        if (allFileExists) {
+          try {
+            const rawAll = fs.readFileSync(allFile, 'utf8');
+            const parsedAll = JSON.parse(rawAll);
+            allFileHasTrades = brokerSummaryHasTrades(parsedAll);
+          } catch (_) {}
+        }
+
+        if (hasCandleInfo && sessionVolume === 0 && allFileExists && !allFileHasTrades) {
+          // Zero trading volume session & All file confirms no trades: Do NOT call Arjum API! (Quota savings)
           if (dryRun) {
-            console.log(`[DRY-RUN] [NO-TRADE] ${ticker} ${date} volume=0 -> synthetic no-trade (0 quota)`);
+            console.log(`[DRY-RUN] [NO-TRADE] ${ticker} ${date} volume=0 & all=empty -> synthetic no-trade (0 quota)`);
           } else {
             if (needsAll && !onlyForeign) {
               const targetDirAll = path.join(baseDir, 'broker-summary', ticker);
@@ -673,5 +716,7 @@ module.exports = {
   run,
   categorizeTickersByLiquidity,
   loadTradingDays,
-  getTickerCandleMap
+  getTickerCandleMap,
+  brokerSummaryHasTrades,
+  resolveDynamicReserveQuota
 };
