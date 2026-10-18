@@ -53,7 +53,7 @@
       title: 'Struktur Pasar',
       description: 'Break of Structure dan Zona Likuiditas',
       layers: [
-        { id: 'market_structure', name: 'Break of Structure (BOS)', desc: 'Dalam Riset (Nonaktif)', disabled: true, default: false }
+        { id: 'market_structure', name: 'Break of Structure (BOS)', desc: 'Penembusan Swing High (Bullish BOS) & Swing Low (Bearish BOS)', color: '#06b6d4', default: false }
       ]
     },
     {
@@ -71,7 +71,7 @@
       layers: [
         { id: 'volume_bars', name: 'Bar Volume Transaksi', desc: 'Histogram volume perdagangan per candle', default: true },
         { id: 'vol_avg20', name: 'Volume Rata-rata 20 Hari', desc: 'Garis acuan volume normal', color: '#94a3b8', default: true },
-        { id: 'vol_profile', name: 'Volume Profile', desc: 'Dalam Riset (Nonaktif)', disabled: true, default: false }
+        { id: 'vol_profile', name: 'Volume Profile (POC / VAH / VAL)', desc: 'Point of Control dan Value Area (70% Volume)', color: '#f59e0b', default: false }
       ]
     },
     {
@@ -152,6 +152,78 @@
   };
 
   // ============================================================
+  // 5 DYNAMIC MODE STRATEGY CONFIGURATIONS
+  // ============================================================
+  var MODE_STRATEGY_CONFIG = {
+    simpel: {
+      id: 'simpel',
+      name: 'Simpel (Swing Standar)',
+      lookbackSR: 20,
+      slBufferPct: 0.97,
+      slMaxPct: 0.95,
+      tp1Multiplier: 1.6,
+      tp2Multiplier: 2.8,
+      maxHoldingDays1D: 12,
+      maxHoldingDays1W: 6,
+      volAvgMultiplier: 1.05,
+      strategyType: 'swing'
+    },
+    scalping: {
+      id: 'scalping',
+      name: 'Scalping (Momentum Kilat)',
+      lookbackSR: 8,
+      slBufferPct: 0.985,
+      slMaxPct: 0.975,
+      slTicks: 3,
+      tp1Multiplier: 1.5,
+      tp2Multiplier: 2.5,
+      maxHoldingDays1D: 3,
+      maxHoldingDays1W: 2,
+      volAvgMultiplier: 1.15,
+      strategyType: 'scalping'
+    },
+    swing: {
+      id: 'swing',
+      name: 'Swing (Trend Following)',
+      lookbackSR: 20,
+      slBufferPct: 0.965,
+      slMaxPct: 0.95,
+      tp1Multiplier: 1.6,
+      tp2Multiplier: 2.8,
+      maxHoldingDays1D: 12,
+      maxHoldingDays1W: 6,
+      volAvgMultiplier: 1.05,
+      strategyType: 'swing'
+    },
+    investor: {
+      id: 'investor',
+      name: 'Investor (Posisi Jangka Panjang)',
+      lookbackSR: 60,
+      slBufferPct: 0.92,
+      slMaxPct: 0.90,
+      tp1Multiplier: 1.8,
+      tp2Multiplier: 3.5,
+      maxHoldingDays1D: 45,
+      maxHoldingDays1W: 16,
+      volAvgMultiplier: 1.0,
+      strategyType: 'investor'
+    },
+    pro: {
+      id: 'pro',
+      name: 'Pro (Multi-Factor Kuantitatif)',
+      lookbackSR: 30,
+      slBufferPct: 0.96,
+      slMaxPct: 0.94,
+      tp1Multiplier: 1.75,
+      tp2Multiplier: 3.0,
+      maxHoldingDays1D: 15,
+      maxHoldingDays1W: 8,
+      volAvgMultiplier: 1.05,
+      strategyType: 'pro'
+    }
+  };
+
+  // ============================================================
   // MULTI-TIMEFRAME AGGREGATION (1D -> 1W)
   // ============================================================
   function parseDate(timeVal) {
@@ -195,6 +267,9 @@
 
       var d = parseDate(c.time);
       var mondayKey = getMondayOfDate(d);
+      var fNet = Number(c.foreign_net_value != null ? c.foreign_net_value : (c.foreign_net || 0));
+      var fBuy = Number(c.foreignBuy != null ? c.foreignBuy : (c.foreign_buy || 0));
+      var fSell = Number(c.foreignSell != null ? c.foreignSell : (c.foreign_sell || 0));
 
       if (!weeksMap[mondayKey]) {
         weeksMap[mondayKey] = {
@@ -205,8 +280,12 @@
           close: Number(c.close),
           volume: Number(c.volume || 0),
           candlesCount: 1,
-          foreignBuy: Number(c.foreignBuy || 0),
-          foreignSell: Number(c.foreignSell || 0)
+          foreignBuy: fBuy,
+          foreignSell: fSell,
+          foreign_buy: fBuy,
+          foreign_sell: fSell,
+          foreign_net: fNet,
+          foreign_net_value: fNet
         };
         weekOrder.push(mondayKey);
       } else {
@@ -217,8 +296,12 @@
         if (low < w.low) w.low = low;
         w.close = Number(c.close);
         w.volume += Number(c.volume || 0);
-        w.foreignBuy += Number(c.foreignBuy || 0);
-        w.foreignSell += Number(c.foreignSell || 0);
+        w.foreignBuy += fBuy;
+        w.foreignSell += fSell;
+        w.foreign_buy = w.foreignBuy;
+        w.foreign_sell = w.foreignSell;
+        w.foreign_net = (w.foreign_net || 0) + fNet;
+        w.foreign_net_value = w.foreign_net;
         w.candlesCount++;
       }
     }
@@ -468,31 +551,66 @@
   // ============================================================
   // VISUAL TRADING PLAN & SCALE-OUT CALCULATOR
   // ============================================================
-  function calculateTradingPlan(candles, customPlan) {
+  function calculateTradingPlan(candles, customPlan, mode, timeframe) {
     if (!candles || candles.length < 5) return null;
+    mode = (mode || 'swing').toLowerCase();
+    timeframe = timeframe || '1D';
+    var strat = MODE_STRATEGY_CONFIG[mode] || MODE_STRATEGY_CONFIG.swing;
+
     var latest = candles[candles.length - 1];
-    var lastPrice = Number(latest.close);
+    var lastPrice = Number(latest && latest.close);
+
+    // If latest candle has invalid or non-positive close, search backwards for the last valid bar
+    if (!Number.isFinite(lastPrice) || lastPrice <= 0) {
+      for (var ci = candles.length - 2; ci >= 0; ci--) {
+        var candClose = Number(candles[ci] && candles[ci].close);
+        if (Number.isFinite(candClose) && candClose > 0) {
+          latest = candles[ci];
+          lastPrice = candClose;
+          break;
+        }
+      }
+    }
+    if (!Number.isFinite(lastPrice) || lastPrice <= 0) return null;
 
     var entry = customPlan && customPlan.entry ? roundToIdxTick(Number(customPlan.entry)) : roundToIdxTick(lastPrice);
+    if (!entry || entry <= 0) entry = roundToIdxTick(lastPrice);
+    if (!entry || entry <= 0) entry = Math.max(1, Math.round(lastPrice));
 
-    // FIX-20: support is derived from CLOSED bars only. Including the live last
-    // bar let today's still-forming low (possibly a spike) become "support".
+    // Support is derived from CLOSED bars only.
     var minLow = Infinity;
     var closedCandles = candles.length > 1 ? candles.slice(0, candles.length - 1) : candles;
-    var lookback = Math.min(20, closedCandles.length);
+    var lookback = Math.min(strat.lookbackSR, closedCandles.length);
     for (var i = closedCandles.length - lookback; i < closedCandles.length; i++) {
-      var lo = Number(closedCandles[i].low);
-      if (Number.isFinite(lo) && lo < minLow) minLow = lo;
+      var lo = Number(closedCandles[i] && closedCandles[i].low);
+      if (Number.isFinite(lo) && lo > 0 && lo < minLow) minLow = lo;
     }
-    if (!Number.isFinite(minLow)) minLow = Number(lastPrice) || 0;
+    if (!Number.isFinite(minLow) || minLow <= 0) minLow = Number(lastPrice) || 1;
 
-    var sl = customPlan && customPlan.sl ? roundToIdxTick(Number(customPlan.sl), 'down') : roundToIdxTick(minLow * 0.98, 'down');
-    if (sl >= entry) sl = roundToIdxTick(entry * 0.96, 'down');
+    var sl;
+    if (customPlan && customPlan.sl) {
+      sl = roundToIdxTick(Number(customPlan.sl), 'down');
+    } else if (strat.slTicks) {
+      var tick = getIdxTickSize(entry);
+      sl = roundToIdxTick(entry - (strat.slTicks * tick), 'down');
+      if (sl > minLow && minLow > 0) sl = roundToIdxTick(minLow, 'down');
+    } else {
+      sl = roundToIdxTick(minLow * strat.slBufferPct, 'down');
+    }
+    if (sl >= entry) sl = roundToIdxTick(entry * (strat.slMaxPct || 0.96), 'down');
+    if (sl <= 0) sl = Math.max(1, entry - getIdxTickSize(entry));
 
     var risk = entry - sl;
-    var minReward = Math.round(risk * 1.5);
+    if (risk <= 0) risk = getIdxTickSize(entry);
+
+    var tp1Mult = strat.tp1Multiplier || 1.5;
+    var tp2Mult = strat.tp2Multiplier || 2.5;
+    var minReward = Math.round(risk * tp1Mult);
+
     var tp1 = customPlan && customPlan.tp1 ? roundToIdxTick(Number(customPlan.tp1), 'up') : roundToIdxTick(entry + minReward, 'up');
-    var tp2 = customPlan && customPlan.tp2 ? roundToIdxTick(Number(customPlan.tp2), 'up') : roundToIdxTick(entry + Math.round(risk * 2.5), 'up');
+    var tp2 = customPlan && customPlan.tp2 ? roundToIdxTick(Number(customPlan.tp2), 'up') : roundToIdxTick(entry + Math.round(risk * tp2Mult), 'up');
+    if (tp1 <= entry) tp1 = entry + Math.max(1, Math.round(risk * tp1Mult));
+    if (tp2 <= tp1) tp2 = entry + Math.max(2, Math.round(risk * tp2Mult));
 
     // FIX-20: the anonymous `forceUnsafeRR` backdoor is removed — it let any
     // caller (or a crafted payload) bypass the 1.5 R/R safety gate. A test-only
@@ -634,12 +752,24 @@
       var volRatio = vol / avgVol;
       var range = high - low;
       var body = Math.abs(close - open);
-      var bodyRatio = range > 0 ? body / range : 0.5;
-      var direction = close >= open ? 1 : -1;
-      var rawIntensity = volRatio * (0.5 + 0.5 * bodyRatio) * direction;
+      // Activity measurement (always >= 0): volume ratio weighted by candle body dominance
+      // Formula: (volume / volSma20) * (Math.abs(close - open) / (high - low || 1))
+      var bodyRatio = range > 0 ? (body / range) : 0.5;
+      var rawIntensity = volRatio * (0.4 + 0.6 * bodyRatio);
       var score = Math.round(rawIntensity * 100) / 100;
-      var color = '#8b5cf680'; // bar ungu
-      if (Math.abs(score) >= 2.0) color = '#8b5cf6'; // ungu pekat saat lonjakan
+      if (score < 0) score = 0;
+
+      // Color coding according to Auto-Cuan indicator rules:
+      // Hijau jika close >= open (aktivitas didominasi buyer)
+      // Merah jika close < open (aktivitas didominasi seller)
+      // Kuning / oranye jika Intensity >= 2.0 (lonjakan intensitas ekstrem / anomali)
+      var color = '#10b981'; // buyer dominant
+      if (score >= 2.0) {
+        color = '#f59e0b'; // lonjakan intensitas anomali (> 2.0x)
+      } else if (close < open) {
+        color = '#ef4444'; // seller dominant
+      }
+
       results.push({ time: c.time, value: score, color: color });
     }
     return results;
@@ -682,26 +812,276 @@
     windowPeriod = windowPeriod || 20;
     if (!candles || candles.length === 0) return [];
     var out = [];
-    var typicalPrices = candles.map(function(c) {
-      return (Number(c.high || c.close) + Number(c.low || c.close) + Number(c.close)) / 3;
-    });
-    var vols = candles.map(function(c) { return Number(c.volume || 0); });
+    var cumLiq = 0;
+    var cumLiqArr = [];
 
+    // 1. Calculate Money Flow / Liquidity Pressure & accumulate cumLiq
+    for (var i = 0; i < candles.length; i++) {
+      var c = candles[i];
+      var high = Number(c.high != null ? c.high : c.close);
+      var low = Number(c.low != null ? c.low : c.close);
+      var close = Number(c.close);
+      var vol = Number(c.volume || 0);
+      var turnover = vol * close;
+      var range = high - low;
+      // mfMult = ((c - l) - (h - c)) / (h - l || 1)
+      var mfMult = range > 0 ? ((close - low) - (high - close)) / range : 0;
+      var liqPressure = mfMult * turnover;
+      cumLiq += liqPressure;
+      cumLiqArr.push(cumLiq);
+    }
+
+    // 2. Project cumLiq to the running price range of the stock
     for (var i = 0; i < candles.length; i++) {
       var p = Math.min(i + 1, windowPeriod);
-      var totalVol = 0;
-      var weightedSum = 0;
-      for (var j = i - p + 1; j <= i; j++) {
-        var v = vols[j];
-        if (v > 0) {
-          totalVol += v;
-          weightedSum += typicalPrices[j] * v;
-        }
+      var startIdx = i - p + 1;
+
+      var pSum = 0;
+      var pMin = Infinity;
+      var pMax = -Infinity;
+      var clSum = 0;
+      var clMin = Infinity;
+      var clMax = -Infinity;
+
+      for (var j = startIdx; j <= i; j++) {
+        var cj = Number(candles[j].close);
+        var hj = Number(candles[j].high != null ? candles[j].high : cj);
+        var lj = Number(candles[j].low != null ? candles[j].low : cj);
+        pSum += cj;
+        if (lj < pMin) pMin = lj;
+        if (hj > pMax) pMax = hj;
+
+        var cl = cumLiqArr[j];
+        clSum += cl;
+        if (cl < clMin) clMin = cl;
+        if (cl > clMax) clMax = cl;
       }
-      var vwap = totalVol > 0 ? Math.round(weightedSum / totalVol) : Number(candles[i].close);
-      out.push({ time: candles[i].time, value: vwap });
+
+      var pAvg = pSum / p;
+      var clAvg = clSum / p;
+      var halfPriceRange = Math.max((pMax - pMin) / 2, pAvg * 0.02);
+      var clHalfRange = (clMax - clMin) / 2;
+
+      var normPressure = clHalfRange > 0 ? (cumLiqArr[i] - clAvg) / clHalfRange : 0;
+      if (normPressure > 1.5) normPressure = 1.5;
+      if (normPressure < -1.5) normPressure = -1.5;
+
+      // Project into price space: When smart money is heavily buying (cumLiq rising),
+      // LPM line rises sharply above the price candles, creating Bullish LPM Divergence!
+      var lpmValue = Math.round(pAvg + (normPressure * halfPriceRange * 1.35));
+      out.push({ time: candles[i].time, value: lpmValue });
     }
     return out;
+  }
+
+  // ============================================================
+  // PIVOT EXTRACTOR & ADVANCED S/R (FRACTAL 3-BAR/5-BAR)
+  // ============================================================
+  function calculateSwingPivots(candles, lookback) {
+    lookback = Math.min(Number(lookback) || 30, candles.length);
+    if (!candles || candles.length < 5) return { support: null, resistance: null, swingHighs: [], swingLows: [] };
+    var startIdx = Math.max(0, candles.length - lookback);
+    var swingHighs = [];
+    var swingLows = [];
+
+    for (var i = startIdx + 2; i < candles.length - 2; i++) {
+      var c = candles[i];
+      var h = Number(c.high != null ? c.high : c.close);
+      var l = Number(c.low != null ? c.low : c.close);
+
+      // 5-bar Fractal Swing High
+      var hPrev1 = Number(candles[i - 1].high != null ? candles[i - 1].high : candles[i - 1].close);
+      var hPrev2 = Number(candles[i - 2].high != null ? candles[i - 2].high : candles[i - 2].close);
+      var hNext1 = Number(candles[i + 1].high != null ? candles[i + 1].high : candles[i + 1].close);
+      var hNext2 = Number(candles[i + 2].high != null ? candles[i + 2].high : candles[i + 2].close);
+
+      if (h > hPrev1 && h > hPrev2 && h >= hNext1 && h > hNext2) {
+        swingHighs.push({ time: c.time, price: h, index: i });
+      }
+
+      // 5-bar Fractal Swing Low
+      var lPrev1 = Number(candles[i - 1].low != null ? candles[i - 1].low : candles[i - 1].close);
+      var lPrev2 = Number(candles[i - 2].low != null ? candles[i - 2].low : candles[i - 2].close);
+      var lNext1 = Number(candles[i + 1].low != null ? candles[i + 1].low : candles[i + 1].close);
+      var lNext2 = Number(candles[i + 2].low != null ? candles[i + 2].low : candles[i + 2].close);
+
+      if (l < lPrev1 && l < lPrev2 && l <= lNext1 && l < lNext2) {
+        swingLows.push({ time: c.time, price: l, index: i });
+      }
+    }
+
+    var lastClose = Number(candles[candles.length - 1].close);
+    var resPivot = swingHighs.length > 0 ? swingHighs[swingHighs.length - 1].price : null;
+    var supPivot = swingLows.length > 0 ? swingLows[swingLows.length - 1].price : null;
+
+    // Fallback to min/max if no fractals
+    if (!resPivot) {
+      var maxH = -Infinity;
+      for (var hi = startIdx; hi < candles.length; hi++) {
+        var ch = Number(candles[hi].high != null ? candles[hi].high : candles[hi].close);
+        if (ch > maxH) maxH = ch;
+      }
+      resPivot = maxH > 0 && Number.isFinite(maxH) ? maxH : lastClose * 1.05;
+    }
+    if (!supPivot) {
+      var minL = Infinity;
+      for (var li = startIdx; li < candles.length; li++) {
+        var cl = Number(candles[li].low != null ? candles[li].low : candles[li].close);
+        if (cl < minL) minL = cl;
+      }
+      supPivot = minL > 0 && Number.isFinite(minL) ? minL : lastClose * 0.95;
+    }
+
+    return {
+      resistance: roundToIdxTick(resPivot),
+      support: roundToIdxTick(supPivot),
+      swingHighs: swingHighs,
+      swingLows: swingLows
+    };
+  }
+
+  // ============================================================
+  // BREAK OF STRUCTURE (BOS) CALCULATOR
+  // ============================================================
+  function calculateBOS(candles) {
+    if (!candles || candles.length < 15) return { events: [], lines: [], latestStatus: 'NETRAL' };
+    var pivots = calculateSwingPivots(candles, Math.min(60, candles.length));
+    var events = [];
+    var lines = [];
+    var latestClose = Number(candles[candles.length - 1].close);
+
+    // Check for Bullish BOS (Close breaks above recent Swing High)
+    if (pivots.swingHighs.length > 0) {
+      var lastSh = pivots.swingHighs[pivots.swingHighs.length - 1];
+      var isBullishBOS = latestClose > lastSh.price;
+      lines.push({
+        price: lastSh.price,
+        color: '#06b6d4',
+        title: 'BOS High: Rp ' + lastSh.price.toLocaleString('id-ID'),
+        type: 'high'
+      });
+      if (isBullishBOS) {
+        events.push({
+          type: 'BULLISH_BOS',
+          label: 'Bullish BOS Terkonfirmasi',
+          level: lastSh.price,
+          time: candles[candles.length - 1].time
+        });
+      }
+    }
+
+    // Check for Bearish BOS (Close breaks below recent Swing Low)
+    if (pivots.swingLows.length > 0) {
+      var lastSl = pivots.swingLows[pivots.swingLows.length - 1];
+      var isBearishBOS = latestClose < lastSl.price;
+      lines.push({
+        price: lastSl.price,
+        color: '#ec4899',
+        title: 'BOS Low: Rp ' + lastSl.price.toLocaleString('id-ID'),
+        type: 'low'
+      });
+      if (isBearishBOS) {
+        events.push({
+          type: 'BEARISH_BOS',
+          label: 'Bearish BOS Terkonfirmasi',
+          level: lastSl.price,
+          time: candles[candles.length - 1].time
+        });
+      }
+    }
+
+    return {
+      events: events,
+      lines: lines,
+      latestStatus: events.length > 0 ? events[events.length - 1].label : 'Dalam Struktur Konsolidasi'
+    };
+  }
+
+  // ============================================================
+  // VOLUME PROFILE (POC, VAH, VAL) CALCULATOR
+  // ============================================================
+  function calculateVolumeProfile(candles, numBins) {
+    numBins = numBins || 12;
+    if (!candles || candles.length < 5) return null;
+    var lookback = Math.min(60, candles.length);
+    var slice = candles.slice(-lookback);
+
+    var minPrice = Infinity;
+    var maxPrice = -Infinity;
+    for (var i = 0; i < slice.length; i++) {
+      var h = Number(slice[i].high != null ? slice[i].high : slice[i].close);
+      var l = Number(slice[i].low != null ? slice[i].low : slice[i].close);
+      if (h > maxPrice) maxPrice = h;
+      if (l < minPrice) minPrice = l;
+    }
+    if (maxPrice <= minPrice || !Number.isFinite(maxPrice) || !Number.isFinite(minPrice)) return null;
+
+    var binSize = (maxPrice - minPrice) / numBins;
+    var bins = [];
+    for (var b = 0; b < numBins; b++) {
+      bins.push({
+        low: minPrice + b * binSize,
+        high: minPrice + (b + 1) * binSize,
+        mid: minPrice + (b + 0.5) * binSize,
+        volume: 0
+      });
+    }
+
+    var totalVolume = 0;
+    for (var j = 0; j < slice.length; j++) {
+      var c = slice[j];
+      var typical = (Number(c.high || c.close) + Number(c.low || c.close) + Number(c.close)) / 3;
+      var vol = Number(c.volume || 0);
+      totalVolume += vol;
+
+      var binIdx = Math.min(numBins - 1, Math.max(0, Math.floor((typical - minPrice) / binSize)));
+      bins[binIdx].volume += vol;
+    }
+
+    // Find POC (Point of Control = bin with highest volume)
+    var maxBinVol = -1;
+    var pocBinIdx = 0;
+    for (var k = 0; k < numBins; k++) {
+      if (bins[k].volume > maxBinVol) {
+        maxBinVol = bins[k].volume;
+        pocBinIdx = k;
+      }
+    }
+    var poc = roundToIdxTick(bins[pocBinIdx].mid);
+
+    // Value Area (70% of total volume around POC)
+    var targetVA = totalVolume * 0.70;
+    var vaVol = bins[pocBinIdx].volume;
+    var upIdx = pocBinIdx;
+    var dnIdx = pocBinIdx;
+
+    while (vaVol < targetVA && (upIdx < numBins - 1 || dnIdx > 0)) {
+      var nextUpVol = upIdx < numBins - 1 ? bins[upIdx + 1].volume : 0;
+      var nextDnVol = dnIdx > 0 ? bins[dnIdx - 1].volume : 0;
+      if (nextUpVol >= nextDnVol && upIdx < numBins - 1) {
+        upIdx++;
+        vaVol += bins[upIdx].volume;
+      } else if (dnIdx > 0) {
+        dnIdx--;
+        vaVol += bins[dnIdx].volume;
+      } else if (upIdx < numBins - 1) {
+        upIdx++;
+        vaVol += bins[upIdx].volume;
+      } else {
+        break;
+      }
+    }
+
+    var vah = roundToIdxTick(bins[upIdx].high, 'up');
+    var val = roundToIdxTick(bins[dnIdx].low, 'down');
+
+    return {
+      poc: poc,
+      vah: vah,
+      val: val,
+      bins: bins,
+      totalVolume: totalVolume
+    };
   }
 
   function calculateCorrF(candles, foreignFlow, windowPeriod) {
@@ -779,26 +1159,11 @@
   function calculateLPM(candles, brokerSummary, windowPeriod) {
     windowPeriod = windowPeriod || 20;
     if (!candles || candles.length === 0) return null;
-    var p = Math.min(candles.length, windowPeriod);
-    var slice = candles.slice(-p);
-    var totalVol = 0, weightedSum = 0;
-    for (var i = 0; i < slice.length; i++) {
-      var c = slice[i];
-      var vol = Number(c.volume || 0);
-      var typical = (Number(c.high || c.close) + Number(c.low || c.close) + Number(c.close)) / 3;
-      if (vol > 0 && typical > 0) {
-        totalVol += vol;
-        weightedSum += typical * vol;
-      }
+    var series = calculateLPMSeries(candles, windowPeriod);
+    if (series && series.length > 0) {
+      return series[series.length - 1].value;
     }
-    var vwap = totalVol > 0 ? Math.round(weightedSum / totalVol) : null;
-    var topBuyerAvg = null;
-    if (brokerSummary && Array.isArray(brokerSummary.top_buyers) && brokerSummary.top_buyers.length > 0) {
-      var b1 = brokerSummary.top_buyers[0];
-      if (b1.avg_buy && b1.avg_buy > 0) topBuyerAvg = Math.round(b1.avg_buy);
-      else if (b1.avg_price && b1.avg_price > 0) topBuyerAvg = Math.round(b1.avg_price);
-    }
-    return topBuyerAvg || vwap;
+    return Number(candles[candles.length - 1].close);
   }
 
   function formatIndonesianVolumeCompact(v) {
@@ -822,8 +1187,15 @@
   function getLatestForeignNet(candles, foreignFlow) {
     if (!candles || candles.length === 0) return 0;
     var latest = candles[candles.length - 1];
-    if (latest.foreign_net_value != null) return Number(latest.foreign_net_value);
-    if (latest.foreign_net != null) return Number(latest.foreign_net);
+    if (latest && latest.foreign_net_value != null && Number.isFinite(Number(latest.foreign_net_value))) return Number(latest.foreign_net_value);
+    if (latest && latest.foreign_net != null && Number.isFinite(Number(latest.foreign_net))) return Number(latest.foreign_net);
+    if (Array.isArray(foreignFlow) && foreignFlow.length > 0) {
+      var latestFf = foreignFlow[foreignFlow.length - 1];
+      if (latestFf) {
+        var val = latestFf.foreign_net != null ? latestFf.foreign_net : (latestFf.net != null ? latestFf.net : latestFf.net_value);
+        if (val != null && Number.isFinite(Number(val))) return Number(val);
+      }
+    }
     return 0;
   }
 
@@ -1039,7 +1411,7 @@
 
     html += '</div>';
 
-    var plan = calculateTradingPlan(inst ? inst.dailyCandles : []);
+    var plan = calculateTradingPlan(inst ? inst.dailyCandles : [], inst && inst.options ? inst.options.planLevels : null, inst && inst.state ? inst.state.activePreset : 'swing', inst && inst.state ? inst.state.timeframe : '1D');
     if (plan) {
       html += '<div id="' + chartId + '_plan_panel" class="mt-4 p-3 rounded-xl bg-dark-800/90 border border-dark-700 space-y-2">' +
         (plan.isSafeRR ? '' :
@@ -1094,6 +1466,7 @@
       defaultRoot.renderLightweightChart(chartId, activeCandles, inst.metrics, inst.ticker, Object.assign({}, inst.options, { workstationState: inst.state }));
     }
     updateToolbarDom(chartId);
+    updateDrawerDom(chartId);
     var elapsed = ((typeof performance !== 'undefined') ? performance.now() : Date.now()) - t0;
     if (typeof console !== 'undefined' && console.log) {
       console.log('[Workstation] Timeframe switched to ' + tf + ' in ' + elapsed.toFixed(1) + 'ms');
@@ -1574,8 +1947,13 @@
   // ============================================================
   // HISTORICAL BACKTEST CALCULATOR (PER TICKER)
   // ============================================================
-  function calculateHistoricalBacktest(candles, ticker) {
+  function calculateHistoricalBacktest(candles, ticker, mode, timeframe) {
     var sym = String(ticker || 'BBCA').toUpperCase().trim();
+    mode = (mode || 'swing').toLowerCase();
+    timeframe = timeframe || '1D';
+    var strat = MODE_STRATEGY_CONFIG[mode] || MODE_STRATEGY_CONFIG.swing;
+    var maxHold = timeframe === '1W' ? strat.maxHoldingDays1W : strat.maxHoldingDays1D;
+
     var count = Array.isArray(candles) ? candles.length : 0;
     if (count < 20) {
       return {
@@ -1586,20 +1964,29 @@
         totalTrades: '0 Trade',
         maxDrawdown: '—',
         avgHoldingDays: '—',
-        expectancy: '—'
+        expectancy: '—',
+        markers: []
       };
     }
 
     var trades = [];
+    var markers = [];
     var currentPos = null;
     var equity = 50000000;
     var peak = equity;
     var maxDd = 0;
+    var buyFeeRate = 0.0015;
+    var sellFeeRate = 0.0025;
+
+    // Precalculate LPM and Intensity series for quant confluences
+    var lpmSeries = calculateLPMSeries(candles, 20);
+    var intensitySeries = calculateIntensityHistogram(candles, 20);
 
     for (var i = 20; i < count; i++) {
       var c = candles[i];
       var prev = candles[i - 1];
       var close = Number(c.close);
+      var open = Number(c.open != null ? c.open : c.close);
       var high = Number(c.high != null ? c.high : c.close);
       var low = Number(c.low != null ? c.low : c.close);
       var vol = Number(c.volume || 0);
@@ -1607,28 +1994,84 @@
       if (currentPos) {
         currentPos.holdingDays++;
         var exitPrice = null;
-        var isWin = false;
+        var exitReason = null;
+
+        // 1. Check if price hits TP1 and hasn't hit TP1 yet
+        if (high >= currentPos.tp1 && !currentPos.tp1Hit) {
+          currentPos.tp1Hit = true;
+          currentPos.sl = currentPos.entry; // Move SL for remaining 50% to Breakeven
+          markers.push({
+            time: c.time,
+            position: 'aboveBar',
+            color: '#38bdf8',
+            shape: 'arrowDown',
+            text: 'TP1 50% (Rp ' + currentPos.tp1.toLocaleString('id-ID') + ')'
+          });
+        }
+
+        // 2. Check exit conditions for remaining (or full) position
+        var curLpm = lpmSeries[i] ? lpmSeries[i].value : close;
+        var curLpmPrev3 = (i >= 3 && lpmSeries[i - 3]) ? lpmSeries[i - 3].value : curLpm;
+        var curIntensity = intensitySeries[i] ? intensitySeries[i].value : 1.0;
 
         if (low <= currentPos.sl) {
           exitPrice = currentPos.sl;
-          isWin = false;
+          exitReason = currentPos.tp1Hit ? 'BEP' : 'SL';
         } else if (high >= currentPos.tp2) {
           exitPrice = currentPos.tp2;
-          isWin = true;
-        } else if (high >= currentPos.tp1 && !currentPos.tp1Hit) {
-          currentPos.tp1Hit = true;
-          currentPos.sl = currentPos.entry;
-        } else if (currentPos.holdingDays >= 12) {
+          exitReason = 'TP2';
+        } else if (!currentPos.tp1Hit && curLpm < curLpmPrev3 * 0.97 && close < open && curIntensity >= 1.5) {
+          // Smart Exit: early distribution detected before hitting full stop loss
           exitPrice = close;
-          isWin = close > currentPos.entry;
+          exitReason = 'SMART_EXIT';
+        } else if (currentPos.holdingDays >= maxHold) {
+          exitPrice = close;
+          exitReason = 'TIME';
         }
 
         if (exitPrice != null) {
-          var gross = currentPos.lots * 100 * (exitPrice - currentPos.entry);
-          var fee = currentPos.lots * 100 * (currentPos.entry * 0.0015 + exitPrice * 0.0025);
-          var net = gross - fee;
-          trades.push({ net: net, isWin: isWin, holdingDays: currentPos.holdingDays });
-          equity += net;
+          var totalNet = 0;
+          if (currentPos.tp1Hit) {
+            // Leg 1: 50% lot closed at TP1
+            var lots1 = Math.floor(currentPos.lots * 0.5);
+            var gross1 = lots1 * 100 * (currentPos.tp1 - currentPos.entry);
+            var fee1 = lots1 * 100 * (currentPos.entry * buyFeeRate + currentPos.tp1 * sellFeeRate);
+            var net1 = gross1 - fee1;
+
+            // Leg 2: remaining 50% closed at exitPrice
+            var lots2 = currentPos.lots - lots1;
+            var gross2 = lots2 * 100 * (exitPrice - currentPos.entry);
+            var fee2 = lots2 * 100 * (currentPos.entry * buyFeeRate + exitPrice * sellFeeRate);
+            var net2 = gross2 - fee2;
+
+            totalNet = net1 + net2;
+          } else {
+            // Full position closed at exitPrice
+            var gross = currentPos.lots * 100 * (exitPrice - currentPos.entry);
+            var fee = currentPos.lots * 100 * (currentPos.entry * buyFeeRate + exitPrice * sellFeeRate);
+            totalNet = gross - fee;
+          }
+
+          var isWin = totalNet > 0;
+          trades.push({
+            net: totalNet,
+            isWin: isWin,
+            holdingDays: currentPos.holdingDays,
+            tp1Hit: currentPos.tp1Hit,
+            exitReason: exitReason
+          });
+
+          var markerColor = isWin ? '#10b981' : (exitReason === 'BEP' ? '#eab308' : (exitReason === 'SMART_EXIT' ? '#f59e0b' : '#ef4444'));
+          var markerText = exitReason === 'TP2' ? 'TP2 WIN' : (exitReason === 'BEP' ? 'BEP 50%' : (exitReason === 'SMART_EXIT' ? 'SMART EXIT' : (exitReason === 'SL' ? 'SL' : 'EXIT')));
+          markers.push({
+            time: c.time,
+            position: 'aboveBar',
+            color: markerColor,
+            shape: 'arrowDown',
+            text: markerText + ' (Rp ' + exitPrice.toLocaleString('id-ID') + ')'
+          });
+
+          equity += totalNet;
           if (equity > peak) peak = equity;
           var dd = peak > 0 ? ((peak - equity) / peak) * 100 : 0;
           if (dd > maxDd) maxDd = dd;
@@ -1645,14 +2088,86 @@
         var ma20 = sum20 / 20;
         var volAvg20 = volSum20 / 20;
         var prevClose = Number(prev.close);
+        var isBullish = close >= open;
 
-        if (prevClose <= ma20 && close > ma20 && vol >= volAvg20 * 1.05) {
+        // Moving averages for deeper strategies
+        var ma50 = ma20;
+        if (i >= 49) {
+          var sum50 = 0;
+          for (var k50 = i - 49; k50 <= i; k50++) sum50 += Number(candles[k50].close);
+          ma50 = sum50 / 50;
+        }
+
+        var ma200 = ma50;
+        if (i >= 199) {
+          var sum200 = 0;
+          for (var k200 = i - 199; k200 <= i; k200++) sum200 += Number(candles[k200].close);
+          ma200 = sum200 / 200;
+        }
+
+        var entryTriggered = false;
+
+        if (mode === 'scalping') {
+          var isFastMomentum = (prevClose <= ma20 && close > ma20) || (close > ma20 && isBullish && vol >= volAvg20 * strat.volAvgMultiplier);
+          if (isFastMomentum && vol >= volAvg20 * 1.10) {
+            entryTriggered = true;
+          }
+        } else if (mode === 'investor') {
+          if (close > ma50 && (i < 200 || close > ma200) && isBullish && (prevClose <= ma50 || vol >= volAvg20)) {
+            entryTriggered = true;
+          }
+        } else if (mode === 'pro') {
+          var h_l = high - low;
+          var mfm = h_l > 0 ? ((close - low) - (high - close)) / h_l : 0;
+          if (close > ma20 && vol >= volAvg20 * strat.volAvgMultiplier && isBullish && mfm >= 0) {
+            entryTriggered = true;
+          }
+        } else {
+          // 'swing' or 'simpel' (baseline swing)
+          if ((prevClose <= ma20 && close > ma20 && vol >= volAvg20 * strat.volAvgMultiplier) ||
+              (prevClose >= ma20 && low <= ma20 * 1.015 && close > ma20 && isBullish && vol >= volAvg20 * 1.05)) {
+            entryTriggered = true;
+          }
+        }
+
+        // Quantitative LPM & Intensity confluences
+        var lpmVal = lpmSeries[i] ? lpmSeries[i].value : close;
+        var lpmPrev3 = (i >= 3 && lpmSeries[i - 3]) ? lpmSeries[i - 3].value : lpmVal;
+        var lpmPrev5 = (i >= 5 && lpmSeries[i - 5]) ? lpmSeries[i - 5].value : lpmPrev3;
+        var intensityVal = intensitySeries[i] ? intensitySeries[i].value : 1.0;
+
+        var hasRecentIntensitySpike = false;
+        for (var ki = Math.max(0, i - 4); ki <= i; ki++) {
+          if (intensitySeries[ki] && intensitySeries[ki].value >= 1.5) {
+            hasRecentIntensitySpike = true;
+            break;
+          }
+        }
+
+        var isLpmAccumulating = (lpmVal >= lpmPrev3) || (lpmVal >= lpmPrev5) || (lpmVal >= close * 0.98);
+        var isLpmDistributing = (lpmVal < lpmPrev3 * 0.94);
+        var isIntensityConfirmed = (intensityVal >= 1.15 || hasRecentIntensitySpike) && isBullish;
+        var quantConfirmed = isLpmAccumulating && !isLpmDistributing && (isIntensityConfirmed || mode === 'investor');
+
+        if (entryTriggered && quantConfirmed) {
           var entry = roundToIdxTick(close);
           var tick = getIdxTickSize(entry);
-          var sl = roundToIdxTick(entry - 3 * tick);
+          var sl;
+          if (strat.slTicks) {
+            sl = roundToIdxTick(entry - (strat.slTicks * tick), 'down');
+          } else {
+            sl = roundToIdxTick(entry * strat.slBufferPct, 'down');
+          }
+          if (sl >= entry) sl = roundToIdxTick(entry * (strat.slMaxPct || 0.96), 'down');
+          if (sl <= 0) sl = Math.max(1, entry - tick);
+
           var risk = entry - sl;
-          var tp1 = roundToIdxTick(entry + 1.5 * risk);
-          var tp2 = roundToIdxTick(entry + 2.5 * risk);
+          if (risk <= 0) risk = tick;
+          var tp1 = roundToIdxTick(entry + strat.tp1Multiplier * risk, 'up');
+          var tp2 = roundToIdxTick(entry + strat.tp2Multiplier * risk, 'up');
+          if (tp1 <= entry) tp1 = entry + Math.max(1, Math.round(risk * strat.tp1Multiplier));
+          if (tp2 <= tp1) tp2 = entry + Math.max(2, Math.round(risk * strat.tp2Multiplier));
+
           var rr = (tp1 - entry) / (entry - sl);
           if (rr >= 1.48) {
             currentPos = {
@@ -1662,8 +2177,16 @@
               tp2: tp2,
               lots: Math.max(1, Math.floor(25000000 / (entry * 100))),
               holdingDays: 0,
-              tp1Hit: false
+              tp1Hit: false,
+              entryTime: c.time
             };
+            markers.push({
+              time: c.time,
+              position: 'belowBar',
+              color: '#10b981',
+              shape: 'arrowUp',
+              text: 'BUY (' + mode.toUpperCase() + ')'
+            });
           }
         }
       }
@@ -1673,9 +2196,9 @@
       var wins = trades.filter(function(t) { return t.isWin; });
       var losses = trades.filter(function(t) { return !t.isWin; });
       var wr = (wins.length / trades.length) * 100;
-      var grossWin = wins.reduce(function(a, t) { return a + t.net; }, 0);
-      var grossLoss = Math.abs(losses.reduce(function(a, t) { return a + t.net; }, 0));
-      var pf = grossLoss > 0 ? (grossWin / grossLoss) : 2.5;
+      var grossWin = wins.reduce(function(a, t) { return a + Math.max(0, t.net); }, 0);
+      var grossLoss = Math.abs(losses.reduce(function(a, t) { return a + Math.min(0, t.net); }, 0));
+      var pf = grossLoss > 0 ? (grossWin / grossLoss) : (grossWin > 0 ? 3.5 : 0.0);
       var avgHold = trades.reduce(function(a, t) { return a + t.holdingDays; }, 0) / trades.length;
       var totalNet = trades.reduce(function(a, t) { return a + t.net; }, 0);
       var exp = totalNet / trades.length;
@@ -1686,8 +2209,10 @@
         profitFactor: pf.toFixed(2).replace('.', ','),
         totalTrades: trades.length + ' Trade',
         maxDrawdown: maxDd > 0 ? ('-' + maxDd.toFixed(1).replace('.', ',') + '%') : '0,0%',
-        avgHoldingDays: avgHold.toFixed(1).replace('.', ',') + ' Hari',
-        expectancy: (exp >= 0 ? '+Rp ' : '-Rp ') + Math.abs(Math.round(exp)).toLocaleString('id-ID')
+        avgHoldingDays: avgHold.toFixed(1).replace('.', ',') + (timeframe === '1W' ? ' Mgg' : ' Hari'),
+        expectancy: (exp >= 0 ? '+Rp ' : '-Rp ') + Math.abs(Math.round(exp)).toLocaleString('id-ID'),
+        markers: markers,
+        trades: trades
       };
     }
 
@@ -1699,7 +2224,9 @@
       totalTrades: (trades ? trades.length : 0) + ' Trade',
       maxDrawdown: '—',
       avgHoldingDays: '—',
-      expectancy: '—'
+      expectancy: '—',
+      markers: markers,
+      trades: trades
     };
   }
 
@@ -1710,6 +2237,7 @@
     version: VERSION,
     LAYER_GROUPS: LAYER_GROUPS,
     PRESETS: PRESETS,
+    MODE_STRATEGY_CONFIG: MODE_STRATEGY_CONFIG,
     getIdxTickSize: getIdxTickSize,
     roundToIdxTick: roundToIdxTick,
     aggregateDailyToWeekly: aggregateDailyToWeekly,
@@ -1724,6 +2252,9 @@
     calculateIntensityHistogram: calculateIntensityHistogram,
     calculateVolumeRotation: calculateVolumeRotation,
     calculateLPMSeries: calculateLPMSeries,
+    calculateSwingPivots: calculateSwingPivots,
+    calculateBOS: calculateBOS,
+    calculateVolumeProfile: calculateVolumeProfile,
     calculateCorrF: calculateCorrF,
     calculateParF: calculateParF,
     calculateLPM: calculateLPM,

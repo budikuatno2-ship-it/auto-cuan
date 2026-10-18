@@ -335,7 +335,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         var sLpm = chart.addLineSeries({
             color: '#10b981',
             lineWidth: 2,
-            priceScaleId: 'lpm_scale',
+            priceScaleId: 'right', // Overlay directly on candlestick price scale
             crosshairMarkerVisible: false,
             priceLineVisible: false,
             lastValueVisible: true,
@@ -347,10 +347,6 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                     return 'Rp ' + Math.round(price).toLocaleString('id-ID');
                 }
             }
-        });
-        chart.priceScale('lpm_scale').applyOptions({
-            visible: false,
-            scaleMargins: { top: 0.12, bottom: 0.28 }
         });
         sLpm.setData(lpmData);
     }
@@ -410,10 +406,12 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         sCmf.setData(cmfData);
     }
 
+    var activeMode = (wsState && wsState.activePreset) ? wsState.activePreset : 'swing';
+    var activeTf = (wsState && wsState.timeframe) ? wsState.timeframe : '1D';
     var plan = null;
     if (showTradingPlan && ws) {
         var customPlan = options && options.customTradingPlan ? options.customTradingPlan : (wsState ? wsState.customTradingPlan : null);
-        plan = ws.calculateTradingPlan(candles, customPlan);
+        plan = ws.calculateTradingPlan(candles, customPlan, activeMode, activeTf);
         if (plan) {
             candleSeries.createPriceLine({ price: plan.entry, color: '#38bdf8', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: plan.entryLabel || ('Entry Rp ' + plan.entry) });
             candleSeries.createPriceLine({ price: plan.sl, color: '#ef4444', lineWidth: 1.5, lineStyle: 2, axisLabelVisible: true, title: plan.slLabel || ('Stop Loss Rp ' + plan.sl) });
@@ -422,18 +420,63 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         }
     }
 
+    var btRes = (ws && typeof ws.calculateHistoricalBacktest === 'function')
+        ? ws.calculateHistoricalBacktest(candles, ticker, activeMode, activeTf)
+        : null;
+
     if (showSR && candles.length >= 10) {
-        var recentHigh = -Infinity, recentLow = Infinity;
-        var lookback = Math.min(30, candles.length);
-        for (var si = candles.length - lookback; si < candles.length; si++) {
-            if (candles[si].high > recentHigh) recentHigh = candles[si].high;
-            if (candles[si].low < recentLow) recentLow = candles[si].low;
+        var pivots = (ws && typeof ws.calculateSwingPivots === 'function')
+            ? ws.calculateSwingPivots(candles, 30)
+            : null;
+        var resPrice = pivots && pivots.resistance ? pivots.resistance : null;
+        var supPrice = pivots && pivots.support ? pivots.support : null;
+
+        if (!resPrice || !supPrice) {
+            var recentHigh = -Infinity, recentLow = Infinity;
+            var lookback = Math.min(30, candles.length);
+            for (var si = candles.length - lookback; si < candles.length; si++) {
+                if (candles[si].high > recentHigh) recentHigh = candles[si].high;
+                if (candles[si].low < recentLow) recentLow = candles[si].low;
+            }
+            if (!resPrice && recentHigh > 0 && isFinite(recentHigh)) resPrice = recentHigh;
+            if (!supPrice && recentLow > 0 && isFinite(recentLow)) supPrice = recentLow;
         }
-        if (recentHigh > 0 && isFinite(recentHigh)) {
-            candleSeries.createPriceLine({ price: recentHigh, color: '#3b82f6', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'Resistance' });
+
+        if (resPrice > 0 && isFinite(resPrice)) {
+            candleSeries.createPriceLine({ price: resPrice, color: '#3b82f6', lineWidth: 1.5, lineStyle: 3, axisLabelVisible: true, title: 'Resistance Rp ' + resPrice.toLocaleString('id-ID') });
         }
-        if (recentLow > 0 && isFinite(recentLow)) {
-            candleSeries.createPriceLine({ price: recentLow, color: '#10b981', lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: 'Support' });
+        if (supPrice > 0 && isFinite(supPrice)) {
+            candleSeries.createPriceLine({ price: supPrice, color: '#10b981', lineWidth: 1.5, lineStyle: 3, axisLabelVisible: true, title: 'Support Rp ' + supPrice.toLocaleString('id-ID') });
+        }
+    }
+
+    // Break of Structure (BOS) Layer Rendering
+    var showBOS = wsState ? wsState.isLayerActive('market_structure') : false;
+    if (showBOS && ws && typeof ws.calculateBOS === 'function') {
+        var bosData = ws.calculateBOS(candles);
+        if (bosData && Array.isArray(bosData.lines)) {
+            for (var bi = 0; bi < bosData.lines.length; bi++) {
+                var bl = bosData.lines[bi];
+                candleSeries.createPriceLine({
+                    price: bl.price,
+                    color: bl.color,
+                    lineWidth: 1.5,
+                    lineStyle: 1, // Dotted line
+                    axisLabelVisible: true,
+                    title: bl.title
+                });
+            }
+        }
+    }
+
+    // Volume Profile (POC / VAH / VAL) Layer Rendering
+    var showVolProfile = wsState ? wsState.isLayerActive('vol_profile') : false;
+    if (showVolProfile && ws && typeof ws.calculateVolumeProfile === 'function') {
+        var vp = ws.calculateVolumeProfile(candles, 12);
+        if (vp) {
+            candleSeries.createPriceLine({ price: vp.poc, color: '#f59e0b', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'VP POC: Rp ' + vp.poc.toLocaleString('id-ID') });
+            candleSeries.createPriceLine({ price: vp.vah, color: '#38bdf8', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'VAH (70%): Rp ' + vp.vah.toLocaleString('id-ID') });
+            candleSeries.createPriceLine({ price: vp.val, color: '#818cf8', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'VAL (70%): Rp ' + vp.val.toLocaleString('id-ID') });
         }
     }
 
@@ -472,7 +515,17 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         var tf = (wsState && wsState.timeframe) ? wsState.timeframe : '1D';
 
         var volStr = ws ? ws.formatIndonesianVolumeCompact(cVol) : (cVol.toLocaleString('id-ID') + ' lembar');
-        var foreignNet = ws ? ws.getLatestForeignNet(candles) : 0;
+        var foreignNet = ws ? ws.getLatestForeignNet([c], options && options.foreignFlow) : 0;
+        if (foreignNet === 0 && ws) {
+            var fData = ws.calculateForeignFlowCumulative(candles, options && options.foreignFlow);
+            if (fData && fData.length > 0) {
+                var hoveredFd = fData.find(function(fd) { return fd.time === c.time; });
+                var targetFd = hoveredFd || fData[fData.length - 1];
+                if (targetFd && targetFd.value != null && targetFd.value !== 0) {
+                    foreignNet = targetFd.value;
+                }
+            }
+        }
         var foreignStr = ws ? ws.formatIndonesianRupiahCompact(foreignNet) : 'Rp 0';
         var moneyFlowStr = ws ? ws.getLatestMoneyFlow(candles) : '0.000';
 
@@ -594,9 +647,15 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             });
         } catch (elErr) { /* an overlay must never break the chart */ }
     }
-    var extraMarkers = (options && Array.isArray(options.markers)) ? options.markers : [];
-    if (extraMarkers.length && typeof candleSeries.setMarkers === 'function') {
-        try { candleSeries.setMarkers(extraMarkers); } catch (mkErr) { /* optional */ }
+    var showSignalMarkers = wsState ? wsState.isLayerActive('signal_markers') : false;
+    var markersToApply = [];
+    if (showSignalMarkers && btRes && Array.isArray(btRes.markers) && btRes.markers.length > 0) {
+        markersToApply = btRes.markers;
+    } else if (options && Array.isArray(options.markers) && options.markers.length > 0) {
+        markersToApply = options.markers;
+    }
+    if (typeof candleSeries.setMarkers === 'function') {
+        try { candleSeries.setMarkers(markersToApply); } catch (mkErr) { /* optional */ }
     }
 
     chart.timeScale().fitContent();
@@ -774,18 +833,18 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                 '</div>' +
                 '<div class="p-3.5 rounded-xl bg-dark-800/80 border border-dark-700/60 space-y-3">' +
                     '<div class="flex items-center justify-between pb-2 border-b border-dark-700/50">' +
-                        '<h4 class="font-semibold text-slate-100 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>Backtest Historis 3 Tahun (VPS Full)</h4>' +
-                        '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 font-mono">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).candleCount : (candles.length.toLocaleString('id-ID') + ' Lilin')) + '</span>' +
+                        '<h4 class="font-semibold text-slate-100 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>Backtest Historis (' + activeMode.toUpperCase() + ' · ' + activeTf + ')</h4>' +
+                        '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 font-mono">' + (btRes ? btRes.candleCount : (candles.length.toLocaleString('id-ID') + ' Lilin')) + '</span>' +
                     '</div>' +
                     '<div class="grid grid-cols-2 gap-2 text-[11px] font-mono">' +
-                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">WIN RATE</span><br><b class="text-emerald-400 text-sm">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).winRate : '68,4%') + '</b></div>' +
-                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">PROFIT FACTOR</span><br><b class="text-sky-400 text-sm">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).profitFactor : '2,35') + '</b></div>' +
-                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">TOTAL TRADES</span><br><b class="text-gray-200">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).totalTrades : '42 Trade') + '</b></div>' +
-                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">MAX DRAWDOWN</span><br><b class="text-amber-400">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).maxDrawdown : '-5,8%') + '</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">WIN RATE</span><br><b class="text-emerald-400 text-sm">' + (btRes ? btRes.winRate : '68,4%') + '</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">PROFIT FACTOR</span><br><b class="text-sky-400 text-sm">' + (btRes ? btRes.profitFactor : '2,35') + '</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">TOTAL TRADES</span><br><b class="text-gray-200">' + (btRes ? btRes.totalTrades : '42 Trade') + '</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">MAX DRAWDOWN</span><br><b class="text-amber-400">' + (btRes ? btRes.maxDrawdown : '-5,8%') + '</b></div>' +
                     '</div>' +
                     '<div class="pt-2 border-t border-dark-700/50 text-[11px] space-y-1">' +
-                        '<div class="flex justify-between"><span class="text-gray-400">Rata-rata Durasi Hold:</span><b class="text-gray-200">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).avgHoldingDays : '5,2 Hari') + '</b></div>' +
-                        '<div class="flex justify-between"><span class="text-gray-400">Expectancy per Trade:</span><b class="text-emerald-400">' + ((ws && typeof ws.calculateHistoricalBacktest === 'function') ? ws.calculateHistoricalBacktest(candles, ticker).expectancy : '+Rp 845.000') + '</b></div>' +
+                        '<div class="flex justify-between"><span class="text-gray-400">Rata-rata Durasi Hold:</span><b class="text-gray-200">' + (btRes ? btRes.avgHoldingDays : '5,2 Hari') + '</b></div>' +
+                        '<div class="flex justify-between"><span class="text-gray-400">Expectancy per Trade:</span><b class="text-emerald-400">' + (btRes ? btRes.expectancy : '+Rp 845.000') + '</b></div>' +
                         '<div class="flex justify-between"><span class="text-gray-400">Status Validasi Risk Gate:</span>' + (plan.isSafeRR ? '<b class="text-emerald-400 font-semibold">LOLOS (R/R &ge; 1,50x)</b>' : '<b class="text-rose-400 font-semibold">PANTAUAN / DITOLAK (R/R &lt; 1,50x)</b>') + '</div>' +
                     '</div>' +
                 '</div>' +
@@ -794,71 +853,78 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         planCardEl.style.display = 'none';
     }
 
-    // RSI panel
+    // Legacy RSI & Metrics strip management
     var rsiContainer = document.getElementById(chartId + '_rsi');
-    if (rsiContainer && candles.length > 15) {
-        rsiContainer.innerHTML = '';
-        rsiContainer.style.height = dims.rsi + 'px';
-        rsiChart = LightweightCharts.createChart(rsiContainer, {
-            width: rsiContainer.clientWidth, height: dims.rsi,
-            layout: { background: { color: '#0b0e14' }, textColor: '#6b7280' },
-            grid: { vertLines: { color: '#1c233315' }, horzLines: { color: '#1c233320' } },
-            rightPriceScale: { borderColor: '#1c2333', scaleMargins: { top: 0.1, bottom: 0.1 } },
-            timeScale: { visible: false },
-            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-            // RSI is a read-only strip: don't let it capture touch/scroll gestures.
-            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
-            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
-        });
+    var metricsEl = document.getElementById(chartId + '_metrics');
+    if (ws) {
+        // When Chart Workstation is attached, suppress legacy squeezed subpanels below the plan & backtest card
+        if (rsiContainer) rsiContainer.style.display = 'none';
+        if (metricsEl) metricsEl.style.display = 'none';
+    } else {
+        // RSI panel (for non-workstation legacy views)
+        if (rsiContainer && candles.length > 15) {
+            rsiContainer.innerHTML = '';
+            rsiContainer.style.height = dims.rsi + 'px';
+            rsiChart = LightweightCharts.createChart(rsiContainer, {
+                width: rsiContainer.clientWidth, height: dims.rsi,
+                layout: { background: { color: '#0b0e14' }, textColor: '#6b7280' },
+                grid: { vertLines: { color: '#1c233315' }, horzLines: { color: '#1c233320' } },
+                rightPriceScale: { borderColor: '#1c2333', scaleMargins: { top: 0.1, bottom: 0.1 } },
+                timeScale: { visible: false },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                // RSI is a read-only strip: don't let it capture touch/scroll gestures.
+                handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
+            });
 
-        // RSI data
-        var rsiData = [];
-        for (var i = 14; i < closes.length; i++) {
-            var gains = 0, losses = 0;
-            for (var k = i - 13; k <= i; k++) {
-                var d = closes[k] - closes[k - 1];
-                if (d > 0) gains += d; else losses -= d;
+            // RSI data
+            var rsiData = [];
+            for (var i = 14; i < closes.length; i++) {
+                var gains = 0, losses = 0;
+                for (var k = i - 13; k <= i; k++) {
+                    var d = closes[k] - closes[k - 1];
+                    if (d > 0) gains += d; else losses -= d;
+                }
+                var ag = gains / 14, al = losses / 14;
+                var rsi = al === 0 ? 100 : Math.round((100 - 100 / (1 + ag / al)) * 100) / 100;
+                rsiData.push({ time: candles[i].time, value: rsi });
             }
-            var ag = gains / 14, al = losses / 14;
-            var rsi = al === 0 ? 100 : Math.round((100 - 100 / (1 + ag / al)) * 100) / 100;
-            rsiData.push({ time: candles[i].time, value: rsi });
+
+            var rsiSeries = rsiChart.addLineSeries({ color: '#f97316', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true });
+            rsiSeries.setData(rsiData);
+
+            // Guide levels 70/50/30
+            var guideSeries70 = rsiChart.addLineSeries({ color: '#ef444440', lineWidth: 0.5, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
+            var guideSeries30 = rsiChart.addLineSeries({ color: '#10b98140', lineWidth: 0.5, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
+            var guideData70 = rsiData.map(function(r) { return { time: r.time, value: 70 }; });
+            var guideData30 = rsiData.map(function(r) { return { time: r.time, value: 30 }; });
+            guideSeries70.setData(guideData70);
+            guideSeries30.setData(guideData30);
+
+            rsiChart.timeScale().fitContent();
+            var _rsiRO = observeChartResize(rsiContainer, function(w) {
+                var d = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0), (typeof window !== 'undefined' ? window.innerHeight : 0));
+                rsiContainer.style.height = d.rsi + 'px';
+                rsiChart.applyOptions({ width: w, height: d.rsi });
+            });
+            if (_rsiRO) _observers.push(_rsiRO);
         }
 
-        var rsiSeries = rsiChart.addLineSeries({ color: '#f97316', lineWidth: 1.5, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: true });
-        rsiSeries.setData(rsiData);
-
-        // Guide levels 70/50/30
-        var guideSeries70 = rsiChart.addLineSeries({ color: '#ef444440', lineWidth: 0.5, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
-        var guideSeries30 = rsiChart.addLineSeries({ color: '#10b98140', lineWidth: 0.5, lineStyle: 2, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false });
-        var guideData70 = rsiData.map(function(r) { return { time: r.time, value: 70 }; });
-        var guideData30 = rsiData.map(function(r) { return { time: r.time, value: 30 }; });
-        guideSeries70.setData(guideData70);
-        guideSeries30.setData(guideData30);
-
-        rsiChart.timeScale().fitContent();
-        var _rsiRO = observeChartResize(rsiContainer, function(w) {
-            var d = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0), (typeof window !== 'undefined' ? window.innerHeight : 0));
-            rsiContainer.style.height = d.rsi + 'px';
-            rsiChart.applyOptions({ width: w, height: d.rsi });
-        });
-        if (_rsiRO) _observers.push(_rsiRO);
-    }
-
-    // Metrics panel
-    var metricsEl = document.getElementById(chartId + '_metrics');
-    if (metricsEl && metrics) {
-        var m = metrics;
-        var latest = candles[candles.length - 1];
-        var html = '';
-        html += '<div><span class="text-gray-500">Last</span><br><span class="text-gray-200">' + latest.close + '</span></div>';
-        html += '<div><span class="text-gray-500">Vol</span><br><span class="text-gray-200">' + formatVol(latest.volume) + '</span></div>';
-        if (m.volumeAvg20) html += '<div><span class="text-gray-500">AvgVol20</span><br><span class="text-gray-200">' + formatVol(m.volumeAvg20) + '</span></div>';
-        if (m.volumeVsAvg20) html += '<div><span class="text-gray-500">Vol/Avg</span><br><span class="text-gray-200">' + m.volumeVsAvg20 + 'x</span></div>';
-        if (m.rsi14) html += '<div><span class="text-gray-500">RSI14</span><br><span class="' + (m.rsi14 > 70 ? 'text-red-400' : m.rsi14 < 30 ? 'text-emerald-400' : 'text-gray-200') + '">' + m.rsi14 + '</span></div>';
-        if (m.ma20) html += '<div><span class="text-gray-500">MA20</span><br><span class="text-emerald-400">' + m.ma20 + '</span></div>';
-        if (m.ma50) html += '<div><span class="text-gray-500">MA50</span><br><span class="text-yellow-400">' + m.ma50 + '</span></div>';
-        if (m.ma200) html += '<div><span class="text-gray-500">MA200</span><br><span class="text-purple-400">' + m.ma200 + '</span></div>';
-        metricsEl.innerHTML = html;
+        // Metrics panel
+        if (metricsEl && metrics) {
+            var m = metrics;
+            var latest = candles[candles.length - 1];
+            var html = '';
+            html += '<div><span class="text-gray-500">Last</span><br><span class="text-gray-200">' + latest.close + '</span></div>';
+            html += '<div><span class="text-gray-500">Vol</span><br><span class="text-gray-200">' + formatVol(latest.volume) + '</span></div>';
+            if (m.volumeAvg20) html += '<div><span class="text-gray-500">AvgVol20</span><br><span class="text-gray-200">' + formatVol(m.volumeAvg20) + '</span></div>';
+            if (m.volumeVsAvg20) html += '<div><span class="text-gray-500">Vol/Avg</span><br><span class="text-gray-200">' + m.volumeVsAvg20 + 'x</span></div>';
+            if (m.rsi14) html += '<div><span class="text-gray-500">RSI14</span><br><span class="' + (m.rsi14 > 70 ? 'text-red-400' : m.rsi14 < 30 ? 'text-emerald-400' : 'text-gray-200') + '">' + m.rsi14 + '</span></div>';
+            if (m.ma20) html += '<div><span class="text-gray-500">MA20</span><br><span class="text-emerald-400">' + m.ma20 + '</span></div>';
+            if (m.ma50) html += '<div><span class="text-gray-500">MA50</span><br><span class="text-yellow-400">' + m.ma50 + '</span></div>';
+            if (m.ma200) html += '<div><span class="text-gray-500">MA200</span><br><span class="text-purple-400">' + m.ma200 + '</span></div>';
+            metricsEl.innerHTML = html;
+        }
     }
 
     // Fibonacci levels strip (compact fallback below chart — secondary to in-chart price lines)

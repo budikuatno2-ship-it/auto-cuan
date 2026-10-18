@@ -93,7 +93,7 @@ async function click(s){await page.$eval(config[s].button,e=>e.scrollIntoView({b
 const text=s=>page.$eval(config[s].view,e=>e.innerText);
 beforeEach(async context=>{
  revision=0;failure=context.name.includes('cold failure');delay=0;requests.length=0;
- await page.setViewport({width:1440,height:900});await page.goto(origin+'/dashboard',{waitUntil:'networkidle0'});
+ await page.setViewport({width:1440,height:900});await page.goto(origin+'/dashboard',{waitUntil:'networkidle0',timeout:30000});
  await page.evaluate(()=>{hideOnboardingGuide(true);applyAppTheme('light');});
 });
 for(const surface of Object.keys(config)){

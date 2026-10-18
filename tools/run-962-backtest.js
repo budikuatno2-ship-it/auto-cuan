@@ -13,41 +13,82 @@ const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const backtestEngine = require('../lib/historical-backtest-engine');
 
-const DB_PATH = 'D:\\Auto-Cuan\\data-subset\\market-vps-full.sqlite';
+const POSSIBLE_DB_PATHS = [
+  'D:\\Auto-Cuan\\data-subset\\market-vps-full.sqlite',
+  path.join(__dirname, '..', 'data', 'market.sqlite'),
+  path.join(__dirname, '..', 'data', 'market-vps-full.sqlite')
+];
+const DAILY_CANDLES_DIR = path.join(__dirname, '..', 'data', 'daily-candles');
 const OUTPUT_REPORT_PATH = path.join(__dirname, '..', 'docs', 'evidence', 'fase-6', 'BACKTEST_REPORT.md');
 
 function runFull962Backtest() {
   console.log('=== MEMULAI BACKTEST HISTORIS SELURUH 962 SAHAM BEI ===');
   console.time('Total Backtest Runtime');
 
-  if (!fs.existsSync(DB_PATH)) {
-    console.error(`Database SQLite tidak ditemukan di: ${DB_PATH}`);
-    process.exit(1);
+  let db = null;
+  for (const p of POSSIBLE_DB_PATHS) {
+    if (fs.existsSync(p)) {
+      try {
+        db = new DatabaseSync(p);
+        console.log(`Menggunakan database SQLite: ${p}`);
+        break;
+      } catch (_) {}
+    }
   }
 
-  const db = new DatabaseSync(DB_PATH);
-
-  // Ambil metadata seluruh ticker
-  console.log('Mengambil daftar emiten dan metadata sektor...');
-  const fundRows = db.prepare("SELECT row_key, row_json FROM market_rows WHERE table_name = 'stock_fundamentals' ORDER BY row_key ASC").all();
-
   const tickerMeta = new Map();
-  for (const r of fundRows) {
+  if (db) {
+    console.log('Mengambil daftar emiten dan metadata sektor dari SQLite...');
     try {
-      const json = JSON.parse(r.row_json);
-      tickerMeta.set(r.row_key, {
-        ticker: r.row_key,
-        name: json.company_name || json.name || ('PT ' + r.row_key + ' Tbk'),
-        sector: json.sector || 'Lainnya'
-      });
+      const fundRows = db.prepare("SELECT row_key, row_json FROM market_rows WHERE table_name = 'stock_fundamentals' ORDER BY row_key ASC").all();
+      for (const r of fundRows) {
+        try {
+          const json = JSON.parse(r.row_json);
+          tickerMeta.set(r.row_key, {
+            ticker: r.row_key,
+            name: json.company_name || json.name || ('PT ' + r.row_key + ' Tbk'),
+            sector: json.sector || 'Lainnya'
+          });
+        } catch (_) {}
+      }
     } catch (_) {}
+  }
+
+  // Fallback ke localStore atau data/assets
+  if (tickerMeta.size === 0) {
+    try {
+      const localStore = require('../lib/local-market-subset-store');
+      const store = localStore.loadStore();
+      const allT = localStore.getAllTickers();
+      for (const t of allT) {
+        const fund = (store.fundamentals && store.fundamentals[t]) || {};
+        tickerMeta.set(t, {
+          ticker: t,
+          name: fund.company_name || fund.name || ('PT ' + t + ' Tbk'),
+          sector: fund.sector || 'Lainnya'
+        });
+      }
+    } catch (_) {}
+  }
+
+  // Jika masih kosong, baca daftar dari daily-candles JSON
+  if (tickerMeta.size === 0 && fs.existsSync(DAILY_CANDLES_DIR)) {
+    const files = fs.readdirSync(DAILY_CANDLES_DIR).filter(f => f.endsWith('.json'));
+    for (const f of files) {
+      const t = f.replace('.json', '').toUpperCase();
+      tickerMeta.set(t, { ticker: t, name: 'PT ' + t + ' Tbk', sector: 'Equities' });
+    }
   }
 
   const allTickers = Array.from(tickerMeta.keys()).sort();
   console.log(`Ditemukan ${allTickers.length} emiten terdaftar.`);
 
-  // Statement query candle per ticker menggunakan indeks
-  const candleStmt = db.prepare('SELECT row_json FROM market_rows WHERE table_name = ? AND row_key >= ? AND row_key <= ? ORDER BY row_key ASC');
+  let candleStmt = null;
+  if (db) {
+    try {
+      candleStmt = db.prepare('SELECT row_json FROM market_rows WHERE table_name = ? AND row_key >= ? AND row_key <= ? ORDER BY row_key ASC');
+    } catch (_) {}
+  }
 
   const tickerResults = [];
   let processedCount = 0;
@@ -59,28 +100,92 @@ function runFull962Backtest() {
       console.log(`Memproses emiten ${processedCount}/${allTickers.length} (${ticker})...`);
     }
 
-    const rows = candleStmt.all('stock_daily_history', ticker + '\x1F', ticker + '\x1F\xFF');
-    if (!rows || rows.length < 25) {
+    let candles = [];
+
+    // Prioritas 1: Baca dari SQLite
+    if (candleStmt) {
+      try {
+        const rows = candleStmt.all('stock_daily_history', ticker + '\x1F', ticker + '\x1F\xFF');
+        if (rows && rows.length >= 25) {
+          candles = rows.map(r => {
+            try {
+              const item = JSON.parse(r.row_json);
+              return {
+                time: item.trade_date || item.date,
+                open: Number(item.open != null ? item.open : item.close),
+                high: Number(item.high != null ? item.high : item.close),
+                low: Number(item.low != null ? item.low : item.close),
+                close: Number(item.close),
+                volume: Number(item.volume || 0)
+              };
+            } catch (_) { return null; }
+          }).filter(Boolean);
+        }
+      } catch (_) {}
+    }
+
+    // Prioritas 2: Baca dari file flat JSON jika candle SQLite < 200 bar
+    if (candles.length < 200) {
+      const candidateDirs = [
+        DAILY_CANDLES_DIR,
+        path.join(__dirname, '..', 'data', 'daytrade-ohlcv-cache'),
+        path.join(process.cwd(), 'data', 'daily-candles')
+      ];
+      for (const cDir of candidateDirs) {
+        const jsonPath = path.join(cDir, `${ticker}.json`);
+        if (fs.existsSync(jsonPath)) {
+          try {
+            const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+            const arr = Array.isArray(raw) ? raw : (raw.candles || raw.data || []);
+            const jsonCandles = arr.map(c => ({
+              time: c.date || c.time,
+              open: Number(c.open != null ? c.open : c.close),
+              high: Number(c.high != null ? c.high : c.close),
+              low: Number(c.low != null ? c.low : c.close),
+              close: Number(c.close),
+              volume: Number(c.volume || 0)
+            })).filter(c => c.close > 0 && c.time);
+            if (jsonCandles.length > candles.length) {
+              candles = jsonCandles;
+              break;
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    // Prioritas 3: Baca dari localStore history
+    if (candles.length < 25) {
+      try {
+        const localStore = require('../lib/local-market-subset-store');
+        const store = localStore.loadStore();
+        if (store.historyByTicker && store.historyByTicker[ticker]) {
+          candles = store.historyByTicker[ticker].map(c => ({
+            time: c.date || c.trade_date || c.time,
+            open: Number(c.open != null ? c.open : c.close),
+            high: Number(c.high != null ? c.high : c.close),
+            low: Number(c.low != null ? c.low : c.close),
+            close: Number(c.close),
+            volume: Number(c.volume || 0)
+          })).filter(c => c.close > 0 && c.time);
+        }
+      } catch (_) {}
+    }
+
+    if (candles.length < 25) continue;
+
+    // Filter likuiditas minimum: abaikan saham tidur dengan turnover < Rp 500 Juta per hari
+    const recent20 = candles.slice(-20);
+    let turnoverSum = 0;
+    for (let ti = 0; ti < recent20.length; ti++) {
+      turnoverSum += Number(recent20[ti].close || 0) * Number(recent20[ti].volume || 0);
+    }
+    const avgDailyTurnover = turnoverSum / (recent20.length || 1);
+    if (avgDailyTurnover < 500000000) { // < Rp 500 Juta per hari (saham tidak likuid)
       continue;
     }
 
-    totalCandlesLoaded += rows.length;
-
-    const candles = rows.map(r => {
-      try {
-        const item = JSON.parse(r.row_json);
-        return {
-          time: item.trade_date || item.date,
-          open: Number(item.open != null ? item.open : item.close),
-          high: Number(item.high != null ? item.high : item.close),
-          low: Number(item.low != null ? item.low : item.close),
-          close: Number(item.close),
-          volume: Number(item.volume || 0)
-        };
-      } catch (_) {
-        return null;
-      }
-    }).filter(Boolean);
+    totalCandlesLoaded += candles.length;
 
     const res = backtestEngine.runBacktestForTicker(ticker, candles, {
       initialCapital: 50000000,
@@ -97,7 +202,9 @@ function runFull962Backtest() {
     tickerResults.push(res);
   }
 
-  db.close();
+  if (db) {
+    try { db.close(); } catch (_) {}
+  }
   console.timeEnd('Total Backtest Runtime');
   console.log(`Total candle dianalisis: ${totalCandlesLoaded.toLocaleString('id-ID')} baris pada ${tickerResults.length} saham aktif.`);
 
