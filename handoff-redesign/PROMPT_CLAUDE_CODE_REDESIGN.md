@@ -9,7 +9,7 @@
 > echo "handoff-redesign/" >> .git/info/exclude
 > ```
 > Folder ini **tidak boleh** ikut ter-commit di branch kerja.
-> **Mulai setelah** `feat/broksum-all-foreign` di-merge ke `feat/daytrade-screener-v1` (lihat `PROMPT_MERGE_KE_DAYTRADE.md`).
+> `feat/broksum-all-foreign` (PR #891/#896) dan perbaikan DayTrade (PR #898) **sudah** di-merge ke `feat/daytrade-screener-v1`. Langsung mulai.
 > **Folder `prompts-roo/` bukan untukmu.** Itu tugas Roo Code untuk data dan VPS. Jangan dijalankan.
 
 ---
@@ -48,7 +48,7 @@ Sumber, dari yang paling berwenang:
 ## Skill wajib
 
 - **antislop** (https://github.com/miqdadbadjuber/anti-slop):
-  - Pasang dengan `/plugin marketplace add https://github.com/miqdadbadjuber/anti-slop`, lalu `/plugin install antislop@anti-slop`.
+  - Sudah ada di repo: `.claude/skills/antislop*` (PR #897). **Jangan** pakai `/plugin`; perintah itu tidak tersedia di sesi cloud.
   - Isi dial ENERGY/RHYTHM/MOTION sesuai HANDOFF §1.
   - Setiap halaman ditutup dengan laporan **Delivery Gate PASS/FAIL**.
   - Empat override sudah diputuskan pemilik di HANDOFF §2. Catat sebagai override, jangan ditanyakan lagi.
@@ -74,9 +74,12 @@ Sumber, dari yang paling berwenang:
    - Tidak ada angka karangan. Data kosong ditampilkan "—", bukan 0.
    - Angka contoh di kanvas **tidak boleh** masuk ke produk.
 4. **VPS:**
-   - Audit read-only: `ls`, `cat`, `tail`, `grep`, `sqlite3 -readonly` SELECT, `crontab -l`, `pm2 list`.
-   - Jangan cetak `.env`, `ARJUM_API_KEY`, kunci SSH, atau token.
+   - Sesi cloud **tidak punya** akses SSH ke VPS, dan kunci SSH **tidak boleh** dimasukkan ke sesi ini.
+   - Semua pengecekan yang butuh VPS (file data, SQLite, log, crontab, pm2) ditulis sebagai perintah read-only di `handoff-redesign/CEK_VPS_UNTUK_ROO.md`. Pemilik mengirim file itu ke Roo Code, lalu menempel hasilnya ke sesi ini.
+   - Format setiap item di file itu: nomor, tujuan, perintah read-only (`ls`, `cat`, `tail`, `grep`, `sqlite3 -readonly` SELECT, `crontab -l`, `pm2 list/describe`, `curl -s localhost`), dan hasil yang diharapkan.
+   - Jangan cetak `.env`, `ARJUM_API_KEY`, kunci SSH, token, atau IP VPS.
    - Perubahan data atau konfigurasi produksi hanya lewat langkah "deploy".
+   - **Situs produksi:** kalau sesi ini bisa menjangkau domain produksi, boleh diakses read-only (GET, tanpa mengirim form). Login hanya memakai akun uji dari environment variable `AC_TEST_USER`/`AC_TEST_PASS` (dan `AC_TEST_PENDING_USER`/`AC_TEST_PENDING_PASS` kalau ada). **Jangan pernah** meminta password admin di chat.
 5. **Arjum:**
    - Hanya GET, **maksimal 100 request** untuk seluruh audit.
    - Kuota harian sudah dipakai backfill, jadi utamakan data yang sudah ada di disk.
@@ -146,7 +149,88 @@ Untuk **setiap** halaman di HANDOFF §5, isi satu baris `handoff-redesign/AUDIT_
   - **Data asing yang belum dirilis vendor:** tampilkan "data asing belum dirilis", bukan 0.
   - `autocuan-web-error.log` (`live-price … vps_local_cache_stale`): pastikan sudah diperbaiki. Kalau belum, perbaiki.
 
-Kirim ringkasan audit ke pemilik sebelum lanjut ke Fase 2. Itu cukup **satu tabel**, lalu lanjut tanpa menunggu, kecuali ada temuan yang mengubah logika bisnis.
+Ringkasan audit Fase 1 dikirim bersama Fase 1a (lihat di bawah).
+
+## Fase 1a · Audit mendalam alur publik, akun, dan Telegram
+
+Pemilik minta pemeriksaan **mendalam**, bukan sekilas. Untuk setiap alur di bawah:
+1. Telusuri jalurnya di kode: route, handler, tabel, dan pesan error.
+2. Uji di lokal dengan test otomatis. Pakai mock untuk Google dan Telegram; jangan memanggil layanan asli dari test.
+3. Uji di produksi kalau bisa dan aman (lihat Batas keras 4).
+4. Tulis hasilnya di `handoff-redesign/AUDIT_ALUR.md`, dengan format: alur, langkah, hasil, bug, risiko keamanan, perbaikan, dan apakah butuh "deploy".
+
+**Alur yang wajib dicek:**
+1. **Landing:**
+   - semua tautan dan CTA;
+   - angka yang tampil (asli atau karangan?);
+   - waktu muat dan LCP di 390px;
+   - meta/OG;
+   - halaman 404.
+2. **Masuk:**
+   - email/username + password;
+   - pesan salah password yang tidak membocorkan apakah akun ada;
+   - batas percobaan (rate limit / lockout);
+   - "ingat saya";
+   - logout di semua tab;
+   - sesi kedaluwarsa.
+3. **Daftar:**
+   - validasi field;
+   - aturan password;
+   - email ganda;
+   - verifikasi email (kalau ada);
+   - pesan sukses;
+   - opsi paket/tingkat akun yang tersedia saat daftar.
+4. **Daftar/masuk lewat Google:**
+   - konfigurasi OAuth (client id hanya di server, redirect URI benar);
+   - parameter `state` (anti-CSRF);
+   - email Google yang sama dengan akun email/password yang sudah ada (digabung atau ditolak, dan apakah aman);
+   - aturan "Gmail wajib" (legacy);
+   - batal di tengah jalan;
+   - akun Google tanpa email terverifikasi.
+5. **Menunggu persetujuan admin:**
+   - layar status "menunggu" untuk pengguna;
+   - halaman dan API apa yang bisa diakses akun yang belum disetujui (**dicek di server**, bukan hanya UI);
+   - setujui/tolak dari Admin Console;
+   - notifikasi ke pengguna setelah disetujui atau ditolak;
+   - akun yang ditolak lalu mencoba lagi.
+6. **Bot Telegram:**
+   - menghubungkan akun web ke Telegram (deep link `/start <token>`: token sekali pakai, ada masa berlaku, tidak muncul di log);
+   - memutus hubungan;
+   - perintah bot yang tersedia;
+   - pilihan berlangganan broadcast;
+   - pengguna yang belum disetujui atau masa aktifnya habis **tidak** menerima broadcast berbayar.
+7. **Grup Telegram:**
+   - cara pengguna diundang (link undangan: sekali pakai atau permanen?);
+   - hanya akun yang disetujui yang mendapat link;
+   - anggota yang masa aktifnya habis dikeluarkan atau link-nya dicabut;
+   - link undangan tidak bocor di halaman publik.
+8. **Pemulihan password:**
+   - token sekali pakai dan kedaluwarsa;
+   - tidak membocorkan apakah email terdaftar;
+   - sesi lain keluar setelah password diganti.
+9. **Peran dan akses:**
+   - Admin Console, Pattern Radar, dan semua endpoint tulis (termasuk Catatan Admin §5d) mengembalikan 403 untuk non-admin;
+   - uji dengan request langsung ke API, bukan lewat UI.
+10. **Mode pemeliharaan:** apa yang dilihat pengguna, dan admin tetap bisa masuk.
+
+**Keamanan yang dicek di semua alur:**
+- secret atau token yang ikut ke JavaScript klien;
+- open redirect di parameter `next`/`redirect`;
+- cookie sesi `HttpOnly` + `Secure` + `SameSite`;
+- CSRF di form POST;
+- data pribadi di log;
+- header keamanan dasar (CSP, `X-Frame-Options`/`frame-ancestors`).
+
+**Yang tidak bisa diuji otomatis** (misalnya login Google sungguhan, atau bot Telegram di HP): tulis checklist manual langkah demi langkah di `handoff-redesign/CEK_MANUAL_PEMILIK.md`. Setiap langkah berisi hasil yang diharapkan dan kolom centang.
+
+**Sumber data per tab (bukan hanya per halaman).** Lengkapi tabel Fase 0 sampai tingkat **tab** dan **sub-tab**:
+
+| Halaman | Tab | Endpoint | File/tabel sumber | Job pengisi + jadwal WIB | Data terakhir | Status |
+|---|---|---|---|---|---|---|
+
+Kolom "Data terakhir" diisi dari hasil `CEK_VPS_UNTUK_ROO.md`. Setiap tab yang datanya basi, kosong, atau error masuk `AUDIT_HALAMAN.md`, lengkap dengan penyebabnya.
+
+Kirim ringkasan Fase 1 + 1a ke pemilik sebagai **satu pesan**: tabel temuan diurutkan dari yang paling berbahaya, ditambah file `CEK_VPS_UNTUK_ROO.md` yang siap dikirim. Setelah itu lanjut ke Fase 2 tanpa menunggu, **kecuali** ada temuan keamanan tingkat tinggi. Kalau ada, berhenti dan tunggu pemilik.
 
 ## Fase 2 · Fondasi (sekali, sebelum halaman)
 
