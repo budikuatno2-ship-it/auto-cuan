@@ -269,6 +269,16 @@
       "w": 1440,
       "x": 0,
       "y": 0
+    },
+    "CatatanAdmin.dc.html": {
+      "expand": "fill",
+      "h": 1240,
+      "is_interactive": true,
+      "page": "workspace",
+      "title": "Catatan Admin",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
     }
   },
   "createdOnFiles": {
@@ -291,7 +301,7 @@
     },
     "t2": {
       "kind": "title1",
-      "maxW": 4480,
+      "maxW": 6000,
       "page": "workspace",
       "text": "Overview & Discover — dashboard, screener, sektor hot",
       "x": 0,
@@ -347,6 +357,7 @@
     "Main.dc.html",
     "Screener.dc.html",
     "SektorHot.dc.html",
+    "CatatanAdmin.dc.html",
     "Analisis.dc.html",
     "Bandarmologi.dc.html",
     "SinyalIntelijen.dc.html",

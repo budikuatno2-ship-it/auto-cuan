@@ -179,15 +179,16 @@ Urutan:
 11. Financial
 12. Struktur Pasar
 13. Sektor Hot
-14. Track Record
-15. Kelola Keuangan
-16. Pusat Akun
-17. Landing
-18. Auth (4 halaman)
-19. Ketentuan
-20. Admin Console
-21. Pattern Radar
-22. Pemeliharaan
+14. **Catatan Admin (fitur baru, lihat HANDOFF §5d):** tabel + endpoint + job status + halaman + bagian di Dashboard. Migrasi DB lewat file migrasi; tidak memakai kuota Arjum.
+15. Track Record
+16. Kelola Keuangan
+17. Pusat Akun
+18. Landing
+19. Auth (4 halaman)
+20. Ketentuan
+21. Admin Console
+22. Pattern Radar
+23. Pemeliharaan
 
 Untuk setiap halaman:
 1. Perbaiki bug dan masalah data dari `AUDIT_HALAMAN.md` untuk halaman itu.

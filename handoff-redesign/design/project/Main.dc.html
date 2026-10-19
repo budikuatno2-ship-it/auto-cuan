@@ -31,6 +31,16 @@ body{margin:0}
 @media (max-width:700px){.hrow{grid-template-columns:52px 1fr auto auto;padding:12px 16px}.hrow>:nth-child(3){grid-column:1/-1;order:9;font-size:12px}}
 .oc{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font:600 11px "Geist Mono",monospace}
 .oc.tp2{background:rgba(36,122,67,.14);color:var(--ac-pos)}.oc.tp1{background:var(--ac-pos-soft);color:var(--ac-pos)}.oc.act{background:var(--ac-info-soft);color:var(--ac-info)}
+.ca{display:grid;grid-template-columns:150px minmax(240px,1fr) 200px 110px 80px 96px 130px;align-items:center;gap:0 12px;min-height:60px;padding:8px 20px;border-bottom:1px solid var(--ac-hair);color:inherit;text-decoration:none;transition:background 140ms var(--ease)}
+a.ca:hover{background:var(--ac-hover)}
+.ca.hd{min-height:36px;background:var(--ac-raised);font-size:12px;font-weight:600;color:var(--ac-2);padding-top:0;padding-bottom:0}
+.ca .r{text-align:right}
+.ca-w{font-size:13px;color:var(--ac-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.45}
+.mb{position:relative;height:14px}
+.mb .trk{position:absolute;left:0;right:0;top:6px;height:2px;border-radius:1px;background:var(--ac-hover)}
+.mb .zone{position:absolute;top:3px;height:8px;border-radius:2px;background:var(--ac-brand-soft);box-shadow:inset 0 0 0 1px var(--ac-brand)}
+.mb .e{position:absolute;top:2px;width:2px;height:10px;margin-left:-1px;background:var(--ac-neg)}.mb .e.t{background:var(--ac-pos)}
+.mb .now{position:absolute;top:3px;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:var(--ac-ink);box-shadow:0 0 0 2px var(--ac-surface)}
 @media (max-width:980px){.plan{grid-template-columns:repeat(3,minmax(0,1fr));padding-left:20px;gap:10px 0}}
 </style>
 </helmet>
@@ -42,6 +52,7 @@ body{margin:0}
     <div class="nav-l">Temukan</div>
     <a class="nav" href="Screener.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>Screener</a>
     <a class="nav" href="SektorHot.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>Sektor Hot</a>
+    <a class="nav" href="CatatanAdmin.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h4"/></svg>Catatan Admin<span class="cnt">3</span></a>
     <div class="nav-l">Riset</div>
     <a class="nav" href="Analisis.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Analisis &amp; Chart</a>
     <a class="nav" href="Bandarmologi.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Bandarmologi</a>
@@ -114,7 +125,25 @@ body{margin:0}
         <div class="prov"><span><b>Per tanggal</b> 16 Okt 2026</span><span><b>Sumber</b> IDX · intraday</span><span><b>Diperbarui</b> 14.32 WIB</span><span>Radar memakai candle harian yang sudah selesai (T-1)</span></div>
       </section>
 
-      <section class="sheet rise d2" aria-label="Top 5 radar">
+      <section class="sheet rise d2" aria-label="Catatan Admin">
+        <div class="sec-h"><h2>Catatan Admin</h2><span>Ditulis manual oleh admin, bukan ajakan beli atau jual · <a class="lnk" href="CatatanAdmin.dc.html">Lihat semua &amp; riwayat →</a></span></div>
+        <div class="tw"><div style="min-width:1000px">
+          <div class="ca hd"><span>Ticker</span><span>Alasan</span><span>Status</span><span class="r">Area pantau</span><span class="r">Target</span><span class="r">Batas risiko</span><span>Posisi harga</span></div>
+          <sc-for list="{{ca}}" as="c" hint-placeholder-count="3">
+            <a class="{{c.cls}}" href="CatatanAdmin.dc.html" aria-label="{{c.aria}}">
+              <span><span class="tk mono">{{c.t}}</span> <span class="{{c.gC}}" style="margin-left:4px">{{c.g}}</span><span class="mut" style="display:block;font-size:12px;margin-top:2px">{{c.pub}}</span></span>
+              <span class="ca-w">{{c.why}}</span>
+              <span class="pill-st" style="font-size:12px;white-space:normal"><span class="{{c.dot}}"></span>{{c.st}}</span>
+              <span class="r num mono" style="font-weight:600">{{c.aS}}</span>
+              <span class="r num mono pos" style="font-weight:600">{{c.tpS}}</span>
+              <span class="r num mono neg" style="font-weight:600">{{c.slS}}</span>
+              <span class="mb" role="img" aria-label="{{c.rbA}}"><span class="trk"></span><span class="zone" style="{{c.zS}}"></span><span class="e" style="{{c.slX}}"></span><span class="e t" style="{{c.tpX}}"></span><span class="now" style="{{c.nowX}}"></span></span>
+            </a>
+          </sc-for>
+        </div></div>
+      </section>
+
+      <section class="sheet rise d3" aria-label="Top 5 radar">
         <div class="sec-h"><h2>Top 5 Radar Hari Ini</h2><span>Konsensus teknikal &amp; broker flow · klik baris untuk melihat rencana</span></div>
         <div class="tw"><div style="min-width:1000px">
           <div class="rk hd"><span>#</span><span>Ticker</span><span>Setup</span><span class="r">Harga</span><span class="r">Chg</span><span>Exec</span><span class="r">Vol/Avg</span><span>Status</span><span></span></div>
@@ -148,7 +177,7 @@ body{margin:0}
         </details>
       </section>
 
-      <section class="sheet rise d3" aria-label="Riwayat Top 5">
+      <section class="sheet rise d4" aria-label="Riwayat Top 5">
         <div class="sec-h"><h2>Riwayat Top 5</h2><span>Sinyal terkunci yang masih dipantau dan yang sudah selesai · <a class="lnk" href="TrackRecord.dc.html">Track Record lengkap →</a></span></div>
         <div style="padding:0 20px 12px"><div class="{{hSeg}}"><span class="{{hInd}}"></span><button class="{{hA}}" onClick="{{setA}}">Aktif dipantau</button><button class="{{hB}}" onClick="{{setB}}">Riwayat TP</button></div></div>
         <div class="swap" key="{{hk}}" style="border-top:1px solid var(--ac-hair)">
@@ -185,9 +214,21 @@ class Component extends DCLogic {
         pick:()=>this.setState({sel:on?null:d.t}) }; });
     const A = [{d:'13 Okt',t:'BRPT',x:'Entry 1.045 · menunggu TP1 1.120',r:'+0,00%',o:'AKTIF',k:'act'},{d:'13 Okt',t:'MEDC',x:'Entry 1.380 · menunggu TP1 1.480',r:'+0,00%',o:'AKTIF',k:'act'},{d:'09 Okt',t:'BBCA',x:'Entry 10.150 · menunggu TP1 10.600',r:'+0,99%',o:'AKTIF',k:'act'}];
     const B = [{d:'06 Okt',t:'ADRO',x:'TP1 tersentuh 10 Okt · 4 hari',r:'+4,95%',o:'TP1',k:'tp1'},{d:'03 Okt',t:'PTRO',x:'TP2 tersentuh 08 Okt · 3 hari',r:'+8,52%',o:'TP2',k:'tp2'},{d:'30 Sep',t:'BMRI',x:'TP1 tersentuh 08 Okt · 6 hari',r:'+4,48%',o:'TP1',k:'tp1'}];
+    const PX={BRPT:1045,MEDC:1380,BBCA:10250};
+    const CA=[
+      {t:'BRPT',g:'Swing',pub:'19 Okt, 08.41',lo:1020,hi:1050,tp:1150,sl:980,why:'Volume 2,8× rata-rata 20 hari dan tiga broker besar akumulasi 4 hari beruntun. Diamati selama harga bertahan di atas 1.020.'},
+      {t:'MEDC',g:'DayTrade',pub:'19 Okt, 09.12',lo:1360,hi:1375,tp:1420,sl:1335,why:'Breakout dari konsolidasi 6 hari dengan frekuensi tinggi di sesi 1. Diamati untuk retrace singkat ke area 1.360.'},
+      {t:'BBCA',g:'Swing',pub:'16 Okt, 16.20',lo:10000,hi:10150,tp:10700,sl:9800,why:'Pullback ke MA50 dengan asing masih net buy dua minggu. Menunggu harga turun ke area 10.000.'}
+    ];
+    const ca=CA.map((n,i)=>{ const p=PX[n.t], pad=(n.tp-n.sl)*0.08, mn=n.sl-pad, mx=n.tp+pad, X=v=>Math.max(0,Math.min(100,(v-mn)/(mx-mn)*100)).toFixed(2)+'%';
+      const inA=p>=n.lo&&p<=n.hi, st=p>=n.tp?'Kena target':p<=n.sl?'Kena batas risiko':inA?'Di area pantau':p>n.hi?'Menunggu turun ke area':'Di bawah area';
+      return {...n, cls:'ca rise d'+(i+2), gC:'chip '+(n.g==='DayTrade'?'i':'b'), st, dot:'dot '+(inA?'g':'a'),
+        aS:this.fmt(n.lo)+'–'+this.fmt(n.hi), tpS:this.fmt(n.tp), slS:this.fmt(n.sl), aria:'Catatan admin '+n.t+', '+st,
+        zS:'left:'+X(n.lo)+';width:'+(Math.max(3,(n.hi-n.lo)/(mx-mn)*100)).toFixed(2)+'%', slX:'left:'+X(n.sl), tpX:'left:'+X(n.tp), nowX:'left:'+X(p),
+        rbA:'Harga kini '+this.fmt(p)+', area '+this.fmt(n.lo)+' sampai '+this.fmt(n.hi)+', target '+this.fmt(n.tp)+', batas '+this.fmt(n.sl)}; });
     const a = S.hist==='a';
     return {
-      rows,
+      rows, ca,
       hSeg:'segx n2', hInd:'ind k'+(a?0:1), hA:a?'on':'', hB:a?'':'on', hk:S.hist,
       setA:()=>this.setState({hist:'a'}), setB:()=>this.setState({hist:'b'}),
       hist:(a?A:B).map((h,i)=>({...h, cls:'hrow rise d'+i, rC:'num '+(h.r.indexOf('+0,00')===0?'mut':'pos'), oc:'oc '+h.k}))

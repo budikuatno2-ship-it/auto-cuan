@@ -30,6 +30,29 @@ Fase lain **read-only atau riset saja**.
 
 ---
 
+## Fase 0 · Cek hasil perbaikan 19 Okt (paling dulu, read-only)
+
+Dasar: `REPORT_PERBAIKAN_20261019.md` (PR #898).
+
+1. **J2 Senin 16:40:**
+   - jumlah saham dari Yahoo;
+   - hasil cek silang 20 saham;
+   - sempat fallback ke Arjum atau tidak;
+   - bar IHSG 19 Okt ada;
+   - `.done` 19 Okt tertulis, dan kalau ada, isi `anomali.json`.
+2. **Backfill Senin 19:30 dan Selasa 00:07:**
+   - jumlah request;
+   - alasan berhenti (label baru);
+   - task yang dilewati karena 5xx.
+3. **Swing Phase 2 Senin 21:30:**
+   - universe dan jumlah yang di-scan (harus > 0);
+   - `source_dates['swing-konglo']` = 2026-10-19;
+   - broadcast Telegram swing terkirim atau tidak.
+4. **DayTrade Selasa pagi:** run 09:00–10:00 berstatus `published` dengan jumlah baris > 0, dan tidak ada alarm basi.
+5. **Aksi lain yang mungkin kena guard 3,5 detik:** cari di log 7 hari terakhir semua respons `"Fallback: response completed via timeout guard"` per aksi. Untuk setiap aksi yang pernah kena, tentukan apakah hasil kosong itu merusak fitur. **Jangan perbaiki.** Laporkan sebagai usulan, karena perbaikan butuh persetujuan pemilik.
+
+Kalau ada yang gagal di langkah 1–4, tandai **[DARURAT]** di chat dan tunggu pemilik sebelum lanjut ke fase lain.
+
 ## Fase 1A · Candle 962 saham dari Yahoo, dengan cek silang (sekarang)
 
 Dasar: laporan `REPORT_HEMAT_KUOTA.md`. Hasilnya: 0 hari hilang, selisih OHLC 0,00%, dan bar final tersedia sekitar 16:20–16:30 WIB.

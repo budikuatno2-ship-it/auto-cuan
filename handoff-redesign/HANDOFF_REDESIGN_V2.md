@@ -310,6 +310,83 @@ Aturan:
 - Riwayat aktivitas dihapus otomatis setelah 30 hari.
 - Heartbeat tidak boleh memakai kuota API data.
 
+## 5d. Catatan Admin (fitur baru)
+
+Admin menulis saham yang sedang ia amati secara manual. Setelah disimpan, catatan langsung tampil untuk **semua pengunjung**, termasuk yang belum login. Pengunjung hanya bisa membaca.
+
+Kanvas: `CatatanAdmin.dc.html`, bagian "Catatan Admin" di `Main.dc.html`, dan `Mobile.dc.html`. Screenshot: `CatatanAdmin_d.png`, `_m.png`, dan `_form_admin.png`.
+
+**Tempat**
+- **Dashboard:** bagian "Catatan Admin" di antara Kondisi pasar dan Top 5 Radar. Isinya maksimal 3 catatan aktif terbaru, ditambah tautan "Lihat semua & riwayat". Kalau tidak ada catatan aktif, bagian ini disembunyikan.
+- **Mobile dashboard:** 2 catatan terbaru.
+- **Halaman `/catatan-admin`:** menu "Temukan" → "Catatan Admin", dengan angka jumlah catatan aktif. Halamannya berisi:
+  - ringkasan;
+  - tab Aktif / Riwayat;
+  - filter Semua / DayTrade / Swing;
+  - kartu per catatan;
+  - tabel riwayat.
+- Tanpa Telegram, untuk sekarang.
+
+**Isi satu catatan (tabel `admin_notes`)**
+
+| Kolom | Isi |
+|---|---|
+| `ticker` | 4 huruf, harus ada di master emiten |
+| `style` | `daytrade` / `swing` |
+| `reason` | 20–280 karakter |
+| `zone_lo`, `zone_hi` | area pantau |
+| `target` | harus di atas `zone_hi` |
+| `risk_limit` | harus di bawah `zone_lo` |
+| `valid_days` | DayTrade 1–3, Swing 3/5/10/20 hari bursa |
+| `published_at`, `expires_at` | `expires_at` dihitung dengan kalender bursa IDX, termasuk libur |
+| `status` | lihat aturan status |
+| `entered_at`, `closed_at`, `close_price`, `result_pct` | terisi saat catatan berjalan dan selesai |
+| `author_id` | admin penulis |
+
+Tabel **`admin_note_edits`** bersifat append-only. Isinya:
+- `note_id`, `edited_at`, `editor_id`;
+- `diff` (JSON field lama → baru);
+- `edit_reason` (wajib, minimal 10 karakter, tampil publik).
+
+**Aturan isi (dicek di server, bukan cuma di form)**
+- Angka harus mengikuti fraksi harga (tick size) BEI. Kalau tidak sesuai, server menolak dengan pesan yang jelas, bukan membulatkan diam-diam.
+- Hanya arah naik: target di atas area, batas di bawah area.
+- **Kata janji hasil ditolak:** pasti, dijamin, jaminan, wajib beli, harus beli, tanpa risiko, anti rugi, 100%, all in, hajar.
+- Ticker dan `published_at` tidak bisa diubah setelah tayang.
+- **Catatan tidak bisa dihapus.** Yang bisa dilakukan hanya "Tutup catatan", dengan alasan wajib. Catatan itu pindah ke riwayat sebagai "Ditutup admin".
+
+**Aturan status (dihitung server; job harian setelah candle EOD, plus cek intraday dari cache harga live DayTrade)**
+1. Status awal sesuai posisi harga:
+   - `Di area pantau`: harga di dalam area;
+   - `Menunggu harga turun ke area`: harga di atas area;
+   - `Di bawah area pantau`: harga di bawah area, tapi masih di atas batas.
+2. `entered_at` terisi saat low ≤ `zone_hi` dan high ≥ `zone_lo` pertama kali.
+3. Setelah masuk area:
+   - high ≥ target → `Kena target`;
+   - low ≤ batas → `Kena batas risiko`;
+   - keduanya terjadi di candle yang sama → dicatat **`Kena batas risiko`** (konservatif).
+4. Melewati `expires_at` → `Kedaluwarsa`. Kalau belum pernah masuk area, hasilnya kosong (`—`) dan tidak dihitung.
+5. Kalau target tersentuh sebelum harga pernah masuk area: tetap aktif sampai kedaluwarsa, dan tidak dihitung sebagai kena target.
+6. `result_pct` = (level yang tersentuh − tengah area) / tengah area. Untuk "Ditutup admin", level yang dipakai adalah harga saat ditutup.
+7. Ringkasan "Kena target X dari N" memakai N = catatan selesai yang sempat masuk area. **Semua hasil tampil, termasuk yang meleset.**
+
+**Admin**
+- Tombol "+ Catatan baru", "Edit", dan "Tutup catatan" hanya dirender untuk admin.
+- **Semua endpoint tulis (`POST/PATCH /api/admin-notes`) dicek di server:** sesi harus admin. Pengguna biasa mendapat 403.
+- Endpoint baca bersifat publik dan di-cache 60 detik.
+- Form berbentuk drawer kanan (lembar bawah di HP). Isinya:
+  - pratinjau bar posisi;
+  - persen ke target dan ke batas;
+  - rasio;
+  - status awal.
+- Tombol simpan nonaktif sampai semua aturan lolos, dengan satu kalimat yang menyebut syarat yang belum terpenuhi.
+- Edit wajib disertai alasan perubahan. Riwayat perubahan tampil di kartu ("Diedit N× · lihat perubahan").
+
+**Teks wajib**
+- Label: "Catatan Admin", **bukan** "Rekomendasi".
+- Disclaimer selalu tampil di halaman: "pandangan pribadi admin untuk bahan riset, bukan ajakan atau rekomendasi beli atau jual".
+- Saklar "Pratinjau sebagai Pengunjung/Admin" di kanvas **hanya alat review**. Jangan ikut diimplementasikan.
+
 ## 5c. Teks di dalam gambar SVG
 
 Teks yang isinya berubah (harga, label simpul, label kuartal) **tidak** ditulis sebagai `<text>` SVG di kanvas. Teks itu ditaruh sebagai HTML di atas SVG.

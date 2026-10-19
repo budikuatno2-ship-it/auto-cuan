@@ -28,6 +28,9 @@ body{margin:0}
 .msh{position:absolute;left:0;right:0;bottom:64px;z-index:90;background:var(--ac-surface);border-radius:16px 16px 0 0;box-shadow:0 -12px 32px rgba(0,0,0,.16);padding:8px 16px 16px;max-height:70%;overflow-y:auto}
 .msh-h{font-size:12px;font-weight:600;color:var(--ac-muted);padding:10px 4px 4px}.msh-g{display:grid;grid-template-columns:1fr 1fr;gap:4px}
 .msh-g a{display:flex;align-items:center;min-height:44px;padding:0 12px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:500;color:var(--ac-ink);background:var(--ac-raised)}.msh-g a:active{background:var(--ac-hover)}
+.mca{display:block;padding:12px 16px;border-top:1px solid var(--ac-hair);color:inherit;text-decoration:none}
+.mca:active{background:var(--ac-hover)}
+.mca-w{font-size:12px;color:var(--ac-2);margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.45}
 .grab{width:40px;height:4px;border-radius:2px;background:#CBD3CF;margin:4px auto 8px}
 </style>
 </helmet>
@@ -54,7 +57,12 @@ body{margin:0}
         <div class="bar"><i style="flex:312;background:var(--ac-pos)"></i><i style="flex:185;background:#B7C0BC"></i><i style="flex:218;background:var(--ac-neg)"></i></div>
       </div>
     </section>
-    <section class="sheet rise d2" style="margin:0 16px 16px;overflow:hidden">
+    <section class="sheet rise d2" style="margin:0 16px 16px;overflow:hidden" aria-label="Catatan Admin">
+      <div class="sec-h" style="padding:14px 16px 10px"><h2 style="font-size:16px">Catatan Admin</h2><a class="lnk" href="CatatanAdmin.dc.html" style="font-size:12px">Semua →</a></div>
+      <a class="mca" href="CatatanAdmin.dc.html"><div style="display:flex;align-items:center;gap:8px"><span class="tk mono" style="font-size:15px">BRPT</span><span class="chip b">Swing</span><span style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600"><span class="dot g"></span>Di area pantau</span></div><div class="num mono" style="font-size:12px;margin-top:6px">Area 1.020–1.050 · <span class="pos">T 1.150</span> · <span class="neg">B 980</span></div><div class="mca-w">Volume 2,8× rata-rata 20 hari dan tiga broker besar akumulasi 4 hari beruntun.</div></a>
+      <a class="mca" href="CatatanAdmin.dc.html"><div style="display:flex;align-items:center;gap:8px"><span class="tk mono" style="font-size:15px">MEDC</span><span class="chip i">DayTrade</span><span style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600"><span class="dot a"></span>Menunggu turun ke area</span></div><div class="num mono" style="font-size:12px;margin-top:6px">Area 1.360–1.375 · <span class="pos">T 1.420</span> · <span class="neg">B 1.335</span></div><div class="mca-w">Breakout dari konsolidasi 6 hari dengan frekuensi tinggi di sesi 1.</div></a>
+    </section>
+    <section class="sheet rise d3" style="margin:0 16px 16px;overflow:hidden">
       <div class="sec-h" style="padding:14px 16px 10px"><h2 style="font-size:16px">Top 5 Radar</h2><span>Terkunci · urut skor</span></div>
       <sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
         <div class="{{r.cls}}" onClick="{{r.pick}}">
@@ -76,7 +84,7 @@ body{margin:0}
     <div class="scrim" style="position:absolute;inset:0;z-index:80" onClick="{{toggleMore}}"></div>
     <div class="msh sheetup" id="m-more" role="dialog" aria-modal="true" aria-label="Semua halaman">
       <div class="grab" aria-hidden="true"></div>
-      <div class="msh-h">Temukan</div><div class="msh-g"><a href="Screener.dc.html">Screener</a><a href="SektorHot.dc.html">Sektor Hot</a></div>
+      <div class="msh-h">Temukan</div><div class="msh-g"><a href="Screener.dc.html">Screener</a><a href="SektorHot.dc.html">Sektor Hot</a><a href="CatatanAdmin.dc.html">Catatan Admin</a></div>
       <div class="msh-h">Riset</div><div class="msh-g"><a href="Analisis.dc.html">Analisis &amp; Chart</a><a href="Bandarmologi.dc.html">Bandarmologi</a><a href="SinyalIntelijen.dc.html">Sinyal Intelijen</a><a href="BrokerHunter.dc.html">Broker Hunter</a><a href="Insider.dc.html">Insider</a><a href="Ranking.dc.html">Ranking</a><a href="Financial.dc.html">Financial</a><a href="StrukturPasar.dc.html">Struktur Pasar</a></div>
       <div class="msh-h">Pantau</div><div class="msh-g"><a href="Portfolio.dc.html">Portfolio</a><a href="TrackRecord.dc.html">Track Record</a><a href="KelolaKeuangan.dc.html">Kelola Keuangan</a><a href="AccountCenter.dc.html">Pusat Akun</a></div>
     </div>
