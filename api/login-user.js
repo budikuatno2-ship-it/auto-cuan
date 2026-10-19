@@ -16,6 +16,7 @@ const adminDeviceApproval = require('../lib/admin-device-approval');
 const accountTerms = require('../lib/account-terms');
 const { verifyRecaptcha } = require('../lib/recaptcha-verify');
 const { clientAddress } = require('../lib/request-rate-limit');
+const loginThrottle = require('../lib/login-throttle');
 const telegramMagicToken = require('../lib/telegram-magic-token');
 
 const MAX_DEVICES = 3;
@@ -631,6 +632,18 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Username tidak valid.' });
     }
 
+    // B2 (security): in-application throttle, independent of SECURITY_GUARD_MODE
+    // and reCAPTCHA. Keyed only on server-observed values (client IP + normalized
+    // username). A blocked request is refused BEFORE the credential lookup so a
+    // guessing client never reaches Supabase. The block is temporary and clears
+    // automatically when its window rolls over.
+    const throttleKeys = loginThrottle.keysFor({ ip: clientAddress(req), username: usernameLower });
+    const throttleCheck = loginThrottle.check(throttleKeys);
+    if (throttleCheck.limited) {
+      res.setHeader('Retry-After', String(throttleCheck.retryAfterSeconds || 60));
+      return res.status(429).json({ success: false, error: loginThrottle.PUBLIC_ERROR });
+    }
+
     // Google reCAPTCHA v3 Invisible (threshold 0.5, fail-open, review bypass)
     const recaptchaToken = req.body && (req.body.recaptchaToken || req.body.recaptcha_token);
     const recaptchaResult = await verifyRecaptcha({
@@ -693,6 +706,7 @@ module.exports = async function handler(req, res) {
     // correct password is provided.
     if (!user) {
       await loginGuard.failure('unknown_account');
+      await loginThrottle.registerFailure(throttleKeys);
       console.error('login-user: authentication failed (unknown account)');
       return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
     }
@@ -705,6 +719,7 @@ module.exports = async function handler(req, res) {
     const legacyUsernameAllowed = !gmailBacked || effectiveUsername === 'budi' || effectiveUsername === 'review';
     if (!isEmailInput && !legacyUsernameAllowed) {
       await loginGuard.failure('gmail_identity_required');
+      await loginThrottle.registerFailure(throttleKeys);
       return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
     }
 
@@ -715,6 +730,7 @@ module.exports = async function handler(req, res) {
     // was a backdoor whose accepted value was published in source.
     if (!credentialCheck.ok) {
       await loginGuard.failure('bad_password');
+      await loginThrottle.registerFailure(throttleKeys);
       console.error('login-user: authentication failed (bad password)');
       return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
     }
@@ -740,6 +756,11 @@ module.exports = async function handler(req, res) {
     // Database credentials are valid from here on. Clear account/pair failure
     // state before existing account-state and device rules are evaluated.
     await loginGuard.credentialAccepted('credentials_valid');
+
+    // B2 (security): a verified password clears the temporary throttle for this
+    // (account, IP) and this IP, so a genuine user is not penalized by typos once
+    // they authenticate successfully.
+    loginThrottle.clearFailure(throttleKeys);
 
     // Check if blocked
     if (user.is_blocked) {
