@@ -13296,6 +13296,10 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
   var BATCH_SIZE = isFastMode ? 75 : 50;
   var batchIndex = parseInt(req.query.batch || '0', 10);
   var isFullScanStart = !isFastMode && batchIndex === 0;
+  // Record the requested speed on the meta row so the nightly runner can tell a
+  // FAST publish (258/258 shortlist) apart from a genuine FULL scan (B).
+  var runSpeed = isFastMode ? 'fast' : 'full';
+  var dayTradeRunStartedMs = Date.now();
 
   // 3. Read current meta state
   var { data: meta } = await supabase
@@ -13363,13 +13367,18 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
       });
     }
 
-    // Check if already published today (unless force=1)
-    if (meta && meta.status === 'published' && meta.run_date === runDate && req.query.force !== '1') {
+    // Check if already published today (unless force=1).
+    //
+    // BUG-DAYTRADE-FULL-SCAN-SKIPPED (2026-10-20): this used to fire on ANY
+    // same-day publish, so the 15-minute FAST producer (258/258) blocked the
+    // nightly full ~800-name scan and it froze for weeks. `already_done` may now
+    // only be returned when today's publish was itself a full scan.
+    if (isPublishedFullScan(meta, runDate) && req.query.force !== '1') {
       return res.status(200).json({
         success: true,
         status: 'already_done',
         run_id: meta.run_id,
-        message: 'Day Trade sudah di-publish hari ini (' + runDate + '). Gunakan force=1 untuk refresh.',
+        message: 'Day Trade full scan sudah di-publish hari ini (' + runDate + '). Gunakan force=1 untuk refresh.',
         meta: meta
       });
     }
@@ -13380,6 +13389,7 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
       run_date: runDate,
       run_mode: runMode,
       run_id: runId,
+      run_speed: runSpeed,
       universe_count: 0,
       scanned_count: 0,
       failed_count: 0,
@@ -13593,23 +13603,31 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
 
   var isLastBatch = (endIdx >= universeCount);
 
+  // Carry run speed + this call's duration into finalize so the published meta
+  // records run_speed/duration_ms — the exact values the nightly runner reads.
+  var dtCounters = {
+    scanned_count: totalScanned,
+    failed_count: totalFailed,
+    passed_count: totalPassed,
+    run_speed: runSpeed,
+    duration_ms: Math.max(0, Date.now() - dayTradeRunStartedMs)
+  };
+
   if (isLastBatch) {
     // Finalize: trim to top 50 by score, delete extras
-    return await finalizeDtScreener(req, res, supabase, runId, runDate, runMode, universeCount, batchCount, {
-      scanned_count: totalScanned,
-      failed_count: totalFailed,
-      passed_count: totalPassed
-    });
+    return await finalizeDtScreener(req, res, supabase, runId, runDate, runMode, universeCount, batchCount, dtCounters);
   }
 
   // Update meta with accumulated progress
   await updateDtMeta(supabase, {
     status: 'scanning',
     run_id: runId,
+    run_speed: runSpeed,
     universe_count: universeCount,
     scanned_count: totalScanned,
     failed_count: totalFailed,
     passed_count: totalPassed,
+    duration_ms: Math.max(0, Date.now() - dayTradeRunStartedMs),
     message: 'Batch ' + (batchIndex + 1) + '/' + batchCount + ' done. Scanned ' + totalScanned + '/' + universeCount + '. Passed: ' + totalPassed + '.'
   });
 
@@ -13843,6 +13861,8 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     run_date: runDate,
     run_mode: runMode,
     run_id: runId,
+    run_speed: counters && counters.run_speed ? counters.run_speed : null,
+    duration_ms: counters && counters.duration_ms != null ? counters.duration_ms : null,
     universe_count: universeCount,
     scanned_count: totalScanned,
     failed_count: totalFailed,
@@ -14020,33 +14040,57 @@ function getDtRunningStartedAt(meta) {
   return meta.calculated_at || meta.updated_at || null;
 }
 
+// BUG-DAYTRADE-FULL-SCAN-SKIPPED (2026-10-20): the nightly full DayTrade scan
+// must not be skipped by the 15-minute FAST producer that publishes 258/258.
+// Only a run that explicitly recorded run_speed='full' with full coverage
+// counts as a completed full scan; legacy meta without run_speed is treated as
+// fast so the night scan still executes.
+function isPublishedFullScan(meta, runDate) {
+  if (!meta || meta.status !== 'published') return false;
+  if (String(meta.run_speed || 'fast').toLowerCase() !== 'full') return false;
+  if (runDate && meta.run_date !== runDate) return false;
+  return Number(meta.scanned_count || 0) >= Number(meta.universe_count || 0);
+}
+
 // ============================================================
 // DAY TRADE META HELPER
 // ============================================================
+// Explicit allow-list of daytrade_screener_meta columns the orchestrator writes.
+var DT_META_WRITABLE_FIELDS = ['status', 'run_date', 'run_mode', 'run_id', 'run_speed', 'universe_count', 'scanned_count', 'failed_count', 'passed_count', 'published_count', 'top_count', 'duration_ms', 'message'];
+
 async function updateDtMeta(supabase, fields) {
   var row = {
     id: 'latest',
     updated_at: new Date().toISOString()
   };
-  if (fields.status !== undefined) row.status = fields.status;
-  if (fields.run_date !== undefined) row.run_date = fields.run_date;
-  if (fields.run_mode !== undefined) row.run_mode = fields.run_mode;
-  if (fields.run_id !== undefined) row.run_id = fields.run_id;
-  if (fields.universe_count !== undefined) row.universe_count = fields.universe_count;
-  if (fields.scanned_count !== undefined) row.scanned_count = fields.scanned_count;
-  if (fields.failed_count !== undefined) row.failed_count = fields.failed_count;
-  if (fields.passed_count !== undefined) row.passed_count = fields.passed_count;
-  if (fields.published_count !== undefined) row.published_count = fields.published_count;
-  if (fields.top_count !== undefined) row.top_count = fields.top_count;
-  if (fields.message !== undefined) row.message = fields.message;
+  DT_META_WRITABLE_FIELDS.forEach(function (key) {
+    if (fields[key] !== undefined) row[key] = fields[key];
+  });
   if (fields.status === 'published' || fields.status === 'scanning') {
     row.calculated_at = new Date().toISOString();
   }
 
   try {
-    await supabase.from('daytrade_screener_meta').upsert([row], { onConflict: 'id' });
+    var res = await supabase.from('daytrade_screener_meta').upsert([row], { onConflict: 'id' });
+    if (res && res.error) throw res.error;
   } catch (e) {
-    console.error('updateDtMeta error:', e.message);
+    var msg = String(e && e.message || e || '');
+    // Resilience: if run_speed/duration_ms columns are not migrated yet, retry
+    // the write without them rather than leaving the meta row un-updated.
+    if (/run_speed|duration_ms/i.test(msg)) {
+      try {
+        var fallback = Object.assign({}, row);
+        delete fallback.run_speed;
+        delete fallback.duration_ms;
+        var fallbackRes = await supabase.from('daytrade_screener_meta').upsert([fallback], { onConflict: 'id' });
+        if (fallbackRes && fallbackRes.error) throw fallbackRes.error;
+        return;
+      } catch (e2) {
+        console.error('updateDtMeta fallback error:', e2 && e2.message);
+        return;
+      }
+    }
+    console.error('updateDtMeta error:', msg);
   }
 }
 
@@ -16227,7 +16271,10 @@ module.exports.__test = {
   monitorRowWorthDigest: monitorRowWorthDigest,
   MONITOR_EXPIRED_MAX_DEVIATION: MONITOR_EXPIRED_MAX_DEVIATION,
   handleDayTradeScreenerRead: handleDayTradeScreenerRead,
+  handleDayTradeScreenerRun: handleDayTradeScreenerRun,
   getDayTradeRunningLockDiagnostics: getDayTradeRunningLockDiagnostics,
+  isPublishedFullScan: isPublishedFullScan,
+  shouldSkipDayTradePublish: shouldSkipDayTradePublish,
   diagnosePublicSafetyGateRejection: diagnosePublicSafetyGateRejection,
   candidatePassesTop5WatchlistGate: candidatePassesTop5WatchlistGate,
   candidatePassesPotentialRadarGate: candidatePassesPotentialRadarGate,
