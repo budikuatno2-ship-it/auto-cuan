@@ -328,7 +328,7 @@
   function tapePaused() { return store.get('ac-tape-paused') === '1'; }
   function fillTape(el) {
     var p = tapePaused();
-    el.innerHTML = '<div class="tape-l"><span class="dot g"></span>Likuid<span class="lt-x"> hari ini</span> <small>· tertunda ±1 mnt · 14.32</small></div>' +
+    el.innerHTML = '<span class="tape-l" aria-hidden="true"></span>' +
       '<div class="tape-v"><div class="tape-in">' + tapeHtml() + '<span aria-hidden="true" style="display:contents">' + tapeHtml().replace(/<a /g, '<a tabindex="-1" ') + '</span></div></div>' +
       '<button class="tape-x" type="button" aria-pressed="' + p + '" aria-label="' + (p ? 'Jalankan strip harga' : 'Jeda strip harga') + '" title="' + (p ? 'Jalankan' : 'Jeda') + '">' + (p ? '▶' : '❚❚') + '</button>';
     el.classList.toggle('paused', p);
