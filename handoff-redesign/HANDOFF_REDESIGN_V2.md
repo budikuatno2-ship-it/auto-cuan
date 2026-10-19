@@ -382,6 +382,23 @@ Tabel **`admin_note_edits`** bersifat append-only. Isinya:
 - Tombol simpan nonaktif sampai semua aturan lolos, dengan satu kalimat yang menyebut syarat yang belum terpenuhi.
 - Edit wajib disertai alasan perubahan. Riwayat perubahan tampil di kartu ("Diedit N× · lihat perubahan").
 
+**Tombol "Lihat di chart"**
+- Ada di setiap kartu Catatan Admin, dan sebagai tombol "Chart" di setiap baris bagian Dashboard.
+- Membuka `/analisis?t=<TICKER>&catatan=<id>`, lalu halaman langsung menggulir ke chart. Pakai `scrollIntoView` dengan `scroll-margin-top` setinggi header; kalau pengguna memilih reduced motion, tanpa animasi.
+- **Di chart** (Lightweight Charts, `public/chart-viewer.js`; jangan bikin engine baru):
+  - area pantau sebagai pita hijau sepanjang chart, dengan label kiri "Catatan Admin · area 1.020–1.050";
+  - target dan batas risiko sebagai garis tegas, pakai `createPriceLine`, dengan label sumbu "Target …" (hijau) dan "Batas …" (merah).
+- **Rencana sistem disembunyikan** (garis Entry/SL/TP dan area entry) selama level catatan tampil, supaya dua set level tidak bertumpuk.
+- **Banner "Catatan Admin" tepat di atas chart.** Isinya:
+  - gaya;
+  - status;
+  - level;
+  - alasan;
+  - tombol "Baca catatan" dan "Sembunyikan dari chart" / "Tampilkan di chart".
+- Banner tetap muncul kalau pengguna membuka Analisis langsung dan saham itu punya catatan aktif. Dalam keadaan itu level **tidak** tergambar sampai pengguna menekan "Tampilkan di chart".
+- Skala harga otomatis ikut memasukkan target dan batas risiko, supaya keduanya terlihat tanpa zoom.
+- Screenshot: `Analisis_catatan_admin.png`.
+
 **Teks wajib**
 - Label: "Catatan Admin", **bukan** "Rekomendasi".
 - Disclaimer selalu tampil di halaman: "pandangan pribadi admin untuk bahan riset, bukan ajakan atau rekomendasi beli atau jual".

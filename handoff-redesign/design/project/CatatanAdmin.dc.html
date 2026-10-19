@@ -160,7 +160,7 @@ body:has(.drawer) .mm{opacity:0;visibility:hidden}
                 </div>
               </details>
               <div class="an-f">
-                <a class="btn q sm" href="Analisis.dc.html">Buka chart</a>
+                <a class="btn sm" href="Analisis.dc.html" onClick="{{c.chart}}" aria-label="{{c.chartA}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Lihat di chart</a><span class="mut" style="font-size:12px">area, target, dan batas langsung tergambar</span>
                 <sc-if value="{{isAdmin}}" hint-placeholder-val="{{true}}"><button class="btn sm" style="margin-left:auto" onClick="{{c.edit}}">Edit</button></sc-if>
               </div>
             </article>
@@ -311,6 +311,8 @@ class Component extends DCLogic {
         st:s.st, dot:s.dot, stx:s.x, why:n.why,
         aS:this.fmt(n.lo)+'–'+this.fmt(n.hi), tpS:this.fmt(n.tp), slS:this.fmt(n.sl), tpP:'('+b.tpP+')', slP:'('+b.slP+')',
         log:n.log, logS: n.log.length ? 'Diedit '+n.log.length+'× · lihat perubahan' : 'Belum pernah diedit · lihat riwayat', pub:n.pub, orig:n.orig,
+        chartA:'Lihat '+n.t+' di chart dengan level catatan admin',
+        chart:()=>{ try{ localStorage.setItem('ac-open-note', JSON.stringify({t:n.t, id:n.id})); }catch(e){} },
         edit:()=>this.openForm(n)
       }); });
     const H=S.hist.filter(h=>gOk(h.g));
