@@ -35,10 +35,80 @@ function loadEnvFile() {
 }
 
 function loadTickers() {
-  const idx = path.join(process.cwd(), 'data', 'arjum-data', 'broker-summary');
+  // Resolve the broker-summary directory robustly regardless of cwd.
+  // Strategy: find the repo root by looking for package.json starting from
+  // the script's actual location (using require.main.filename as fallback for __dirname).
+  function findRepoRoot(startDir) {
+    let current = startDir;
+    for (let i = 0; i < 10; i++) {
+      if (fs.existsSync(path.join(current, 'package.json'))) {
+        return current;
+      }
+      const parent = path.dirname(current);
+      if (parent === current) break;
+      current = path.dirname(current);
+    }
+    return null;
+  }
+
+  // Get the script's actual directory, not the cwd.
+  // require.main.filename gives the entry point script path.
+  const scriptDir = path.dirname(require.main.filename || __filename);
+  const repoRoot = findRepoRoot(scriptDir);
+  if (!repoRoot) {
+    // Fallback: try relative to __dirname (legacy behavior)
+    const legacyIdx = path.join(__dirname, '..', 'data', 'arjum-data', 'broker-summary');
+    if (fs.existsSync(legacyIdx)) return legacyIdx;
+    return null;
+  }
+
+  const idx = path.join(repoRoot, 'data', 'arjum-data', 'broker-summary');
+  if (!fs.existsSync(idx)) return null;
+  return idx;
+}
+
+function loadTickers() {
+  const idx = findBrokerSummaryDir();
+  if (!idx) return [];
   try {
-    return fs.readdirSync(idx, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name).filter(isValidIdxTicker).sort();
+    return fs.readdirSync(idx, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => d.name)
+      .filter(isValidIdxTicker)
+      .sort();
   } catch (_) { return []; }
+}
+
+function findBrokerSummaryDir() {
+  // Strategy: walk up from the script's actual directory to find repo root (package.json),
+  // then resolve data/arjum-data/broker-summary from there.
+  function findRepoRoot(startDir) {
+    let current = startDir;
+    for (let i = 0; i < 10; i++) {
+      if (fs.existsSync(path.join(current, 'package.json'))) {
+        return current;
+      }
+      const parent = path.dirname(current);
+      if (parent === current) break;
+      current = path.dirname(current);
+    }
+    return null;
+  }
+
+  // Use require.main.filename to get the actual entry point script directory,
+  // which is stable regardless of how the script is invoked.
+  const scriptDir = path.dirname(require.main.filename || __filename);
+  const repoRoot = findRepoRoot(scriptDir);
+  if (!repoRoot) {
+    // Fallback: try relative to __dirname (legacy behavior)
+    const legacyIdx = path.join(__dirname, '..', 'data', 'arjum-data', 'broker-summary');
+    if (fs.existsSync(legacyIdx)) return legacyIdx;
+    return null;
+  }
+
+  const idx = path.join(repoRoot, 'data', 'arjum-data', 'broker-summary');
+  if (!fs.existsSync(idx)) return null;
+  return idx;
 }
 
 async function main() {

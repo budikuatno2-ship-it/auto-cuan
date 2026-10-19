@@ -121,7 +121,7 @@ function loadTickers() {
   } catch (_) {}
 
   if (!tickers.length) {
-    const idx = path.join(process.cwd(), 'data', 'arjum-data', 'broker-summary');
+    const idx = path.join(__dirname, '..', 'data', 'arjum-data', 'broker-summary');
     try {
       const dirs = fs.readdirSync(idx, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name).filter(isValidIdxTicker);
       if (dirs.length) tickers = dirs.sort();
