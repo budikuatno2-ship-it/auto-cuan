@@ -59,6 +59,7 @@
   "test/ai-ui-failure-states.test.js",
   "test/akumulasi-broker-universal-fallback.test.js",
   "test/analyze-legacy-no-fabricated-defaults.test.js",
+  "test/backfill-provider-retry.test.js",
   "test/analyze-stated-price-extraction.test.js",
   "test/anti-chase-advice-trigger-leak.test.js",
   "test/api-fase7-batch1-bugs.test.js",
