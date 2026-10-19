@@ -100,6 +100,34 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// PROVIDER-ERROR ISOLATION (2026-10-19)
+//
+// The 00:07 run halted after ONE Cloudflare 502 ("origin overloaded") because
+// any invalid response set quotaHalted = true. One bad response is NOT a
+// budget problem. 5xx/timeouts are now retried with backoff, and if they
+// persist the task is SKIPPED (queued for a later run) rather than killing the
+// whole backfill.
+//
+// Hard halts remain ONLY for: quota exhausted / HTTP 429, an active circuit
+// breaker, or N consecutive 5xx (the provider is genuinely down).
+// ─────────────────────────────────────────────────────────────────────────
+const PROVIDER_RETRY_DELAYS_MS = [2000, 8000, 30000];
+const MAX_CONSECUTIVE_5XX = 5;
+
+function isProviderTransient(res) {
+  if (!res) return true;
+  if (res.rateLimited) return false; // 429/quota → caller's hard-stop path
+  const status = Number(res.status);
+  if (Number.isFinite(status) && status >= 500 && status <= 599) return true;
+  if (Number.isFinite(status) && status === 504) return true; // timeout
+  const msg = String(res.error || '').toLowerCase();
+  if (/timeout|timed out|aborted|econnreset|etimedout|eai_again|socket hang up|network/.test(msg)) return true;
+  // Missing/blank status with a transport error is also transient.
+  if (!res.ok && !status && res.error) return true;
+  return false;
+}
+
 function brokerSummaryHasTrades(data) {
   if (!data || typeof data !== 'object') return false;
   if (data.derived === 'no-trade') return false;
@@ -512,6 +540,9 @@ async function run(argv) {
   let syntheticCount = 0;
   let quotaHalted = false;
   let consecutive429 = 0;
+  let consecutive5xx = 0;
+  let haltReason = null; // 'quota' | 'circuit_breaker' | 'provider_error' | null
+  const providerSkipped = []; // tasks deferred due to persistent 5xx/timeout
   const invalidAfterRetry = [];
 
   function saveState() {
@@ -690,15 +721,26 @@ async function run(argv) {
             console.log(`[DRY-RUN] Fetch ALL: ${ticker} ${date} (all_data=true)`);
             requestsSent++;
           } else {
-            const resAll = await arjumClient.fetchBrokerSummary(ticker, date, 'all', null, {
-              allData: true,
-              fresh: true,
-              forceLive: true,
-              noFallback: true,
-              bypassMarketGuard: true
-            });
-            requestsSent++;
-            state.totalSent = (state.totalSent || 0) + 1;
+            // Retry transient provider errors (5xx/timeout) with backoff before
+            // giving up on this task. Quota/429 is NOT retried here.
+            let resAll = null;
+            for (let attempt = 0; attempt <= PROVIDER_RETRY_DELAYS_MS.length; attempt++) {
+              resAll = await arjumClient.fetchBrokerSummary(ticker, date, 'all', null, {
+                allData: true,
+                fresh: true,
+                forceLive: true,
+                noFallback: true,
+                bypassMarketGuard: true
+              });
+              requestsSent++;
+              state.totalSent = (state.totalSent || 0) + 1;
+              if (!isProviderTransient(resAll)) break;
+              if (attempt < PROVIDER_RETRY_DELAYS_MS.length) {
+                const waitMs = PROVIDER_RETRY_DELAYS_MS[attempt];
+                console.warn(`[BACKFILL-RETRY] ALL ${ticker} ${date} provider error (status=${resAll && resAll.status}); retry ${attempt + 1}/${PROVIDER_RETRY_DELAYS_MS.length} in ${waitMs}ms`);
+                await sleep(waitMs);
+              }
+            }
 
             const isAll200 = resAll && resAll.status === 200;
             const isAllLive = resAll && !resAll.from_cache && !resAll.fallback;
@@ -760,8 +802,23 @@ async function run(argv) {
                   saveState();
                 }
               }
+            } else if (isProviderTransient(resAll)) {
+              // Transient provider error (5xx/timeout): retry with backoff, then
+              // SKIP this task instead of killing the whole run.
+              consecutive5xx++;
+              console.warn(`[BACKFILL-PROVIDER] ALL ${ticker} ${date} transient error (status=${resAll.status}, error=${resAll.error}); consecutive5xx=${consecutive5xx}`);
+              if (consecutive5xx >= MAX_CONSECUTIVE_5XX) {
+                console.error(`[BACKFILL-HALT] ${consecutive5xx} consecutive provider errors (>= ${MAX_CONSECUTIVE_5XX}). Provider appears down — stopping for this run.`);
+                haltReason = 'provider_error';
+                quotaHalted = true;
+                break;
+              }
+              providerSkipped.push({ ticker, date, flow: 'all', status: resAll.status, error: resAll.error });
+              needsAll = false;
+              continue; // next date; the task stays queued for a later run
             } else {
               console.error(`[BACKFILL-STOP] Respon tidak valid untuk ALL ${ticker} ${date}: status=${resAll.status}, ok=${resAll.ok}, fallback=${resAll.fallback}, flow=${resAll.data && resAll.data.flow}, error=${resAll.error}`);
+              haltReason = 'provider_error';
               quotaHalted = true;
               break;
             }
@@ -798,15 +855,25 @@ async function run(argv) {
             console.log(`[DRY-RUN] Fetch FOREIGN: ${ticker} ${date} (flow=F, all_data=true)`);
             requestsSent++;
           } else {
-            const resF = await arjumClient.fetchBrokerSummary(ticker, date, 'F', null, {
-              allData: true,
-              fresh: true,
-              forceLive: true,
-              noFallback: true,
-              bypassMarketGuard: true
-            });
-            requestsSent++;
-            state.totalSent = (state.totalSent || 0) + 1;
+            // Same provider-retry policy as the ALL fetch above.
+            let resF = null;
+            for (let attempt = 0; attempt <= PROVIDER_RETRY_DELAYS_MS.length; attempt++) {
+              resF = await arjumClient.fetchBrokerSummary(ticker, date, 'F', null, {
+                allData: true,
+                fresh: true,
+                forceLive: true,
+                noFallback: true,
+                bypassMarketGuard: true
+              });
+              requestsSent++;
+              state.totalSent = (state.totalSent || 0) + 1;
+              if (!isProviderTransient(resF)) break;
+              if (attempt < PROVIDER_RETRY_DELAYS_MS.length) {
+                const waitMs = PROVIDER_RETRY_DELAYS_MS[attempt];
+                console.warn(`[BACKFILL-RETRY] FOREIGN ${ticker} ${date} provider error (status=${resF && resF.status}); retry ${attempt + 1}/${PROVIDER_RETRY_DELAYS_MS.length} in ${waitMs}ms`);
+                await sleep(waitMs);
+              }
+            }
 
             const isF200 = resF && resF.status === 200;
             const isFLive = resF && !resF.from_cache && !resF.fallback;
@@ -826,8 +893,23 @@ async function run(argv) {
                 console.log(`[BACKFILL] Req ${requestsSent} | Saved FOREIGN ${ticker} ${date} | Total Sent: ${state.totalSent}`);
                 saveState();
               }
+            } else if (isProviderTransient(resF)) {
+              // Transient provider error (5xx/timeout): retry with backoff, then
+              // SKIP this task instead of killing the whole run.
+              consecutive5xx++;
+              console.warn(`[BACKFILL-PROVIDER] FOREIGN ${ticker} ${date} transient error (status=${resF.status}, error=${resF.error}); consecutive5xx=${consecutive5xx}`);
+              if (consecutive5xx >= MAX_CONSECUTIVE_5XX) {
+                console.error(`[BACKFILL-HALT] ${consecutive5xx} consecutive provider errors (>= ${MAX_CONSECUTIVE_5XX}). Provider appears down — stopping for this run.`);
+                haltReason = 'provider_error';
+                quotaHalted = true;
+                break;
+              }
+              providerSkipped.push({ ticker, date, flow: 'F', status: resF.status, error: resF.error });
+              needsF = false;
+              continue; // next date; the task stays queued for a later run
             } else {
               console.error(`[BACKFILL-STOP] Respon tidak valid untuk FOREIGN ${ticker} ${date}: status=${resF.status}, ok=${resF.ok}, fallback=${resF.fallback}, flow=${resF.data && resF.data.flow}, error=${resF.error}`);
+              haltReason = 'provider_error';
               quotaHalted = true;
               break;
             }
@@ -870,19 +952,39 @@ async function run(argv) {
     if (!dryRun) releaseLock(lockFile);
   }
 
+  // Distinguish WHY the run stopped. A single provider 5xx must NOT be reported
+  // as a budget/quota halt (that was the 2026-10-19 mislabel).
+  let statusLabel;
+  if (haltReason === 'provider_error') {
+    statusLabel = 'HALTED_BY_PROVIDER_ERROR';
+  } else if (haltReason === 'circuit_breaker') {
+    statusLabel = 'HALTED_BY_CIRCUIT_BREAKER';
+  } else if (quotaHalted) {
+    statusLabel = 'HALTED_BY_BUDGET_OR_QUOTA';
+  } else {
+    statusLabel = 'COMPLETED_OR_LIMITED';
+  }
+
   console.log(`\n=== BACKFILL EXECUTION SUMMARY ===`);
   console.log(`Requests Sent:       ${requestsSent}`);
   console.log(`Tasks Skipped:      ${skippedCount}`);
   console.log(`Synthetic No-Trade: ${syntheticCount}`);
   console.log(`Invalid After Retry: ${invalidAfterRetry.length}`);
-  console.log(`Status:              ${quotaHalted ? 'HALTED_BY_BUDGET_OR_QUOTA' : 'COMPLETED_OR_LIMITED'}`);
+  console.log(`Provider Skipped:   ${providerSkipped.length}`);
+  console.log(`Status:              ${statusLabel}`);
+  if (providerSkipped.length > 0) {
+    console.log('Task ditunda karena error provider (akan dicoba lagi di run berikutnya):');
+    for (const it of providerSkipped.slice(0, 50)) {
+      console.log(`  - ${it.ticker} ${it.date} flow=${it.flow} status=${it.status} error=${it.error}`);
+    }
+  }
   if (invalidAfterRetry.length > 0) {
     console.log('Daftar periksa (perlu investigasi manual):');
     for (const it of invalidAfterRetry.slice(0, 50)) {
       console.log(`  - ${it.ticker} ${it.date} flags=${it.flags.join(',')} ratio=${it.ratio}`);
     }
   }
-  return { success: true, requestsSent, skippedCount, syntheticCount, invalidAfterRetry, quotaHalted };
+  return { success: true, requestsSent, skippedCount, syntheticCount, invalidAfterRetry, quotaHalted, haltReason, providerSkipped };
 }
 
 if (require.main === module) {
@@ -898,5 +1000,8 @@ module.exports = {
   loadTradingDays,
   getTickerCandleMap,
   brokerSummaryHasTrades,
-  resolveDynamicReserveQuota
+  resolveDynamicReserveQuota,
+  isProviderTransient,
+  PROVIDER_RETRY_DELAYS_MS,
+  MAX_CONSECUTIVE_5XX
 };
