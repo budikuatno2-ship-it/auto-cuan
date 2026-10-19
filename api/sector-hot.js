@@ -152,13 +152,34 @@ function evaluateServerlessGuard(action, env) {
   };
 }
 
+/**
+ * Does this action perform a long-running full-universe scan?
+ *
+ * Heavy actions must NEVER be answered by the generic 3.5s timeout fallback:
+ * that fallback omits `status`, so the VPS producer interprets it as an unknown
+ * producer state and aborts before publishing. They are allowed to run to
+ * completion (the VPS daemon is not time-boxed per request).
+ */
+function isHeavyComputeAction(action) {
+  return action != null && HEAVY_COMPUTE_ACTIONS.has(String(action));
+}
+
+/**
+ * The 3.5s guard exists to stop slow *read* requests from hanging the dashboard
+ * (commit 6611c141 fixed a dashboard 504 this way). It must stay for reads, but
+ * heavy scans opt out and are bounded by their own batch/timeout logic.
+ */
+const TIMEOUT_GUARD_MS = 3500;
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   let timeoutFired = false;
-  const timeoutGuard = setTimeout(() => {
+  const actionForGuard = (req.query && req.query.action) || (req.body && req.body.action) || null;
+  const heavyAction = isHeavyComputeAction(actionForGuard);
+  const timeoutGuard = heavyAction ? null : setTimeout(() => {
     timeoutFired = true;
     if (!res.headersSent) {
       res.status(200).json({
@@ -169,7 +190,7 @@ module.exports = async function handler(req, res) {
         generated_at: new Date().toISOString()
       });
     }
-  }, 3500);
+  }, TIMEOUT_GUARD_MS);
 
   try {
     const action = req.query.action || null;
@@ -662,7 +683,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: false, error: 'Terjadi kesalahan. Coba lagi beberapa saat lagi.' });
     }
   } finally {
-    clearTimeout(timeoutGuard);
+    if (timeoutGuard) clearTimeout(timeoutGuard);
   }
 };
 
@@ -673,6 +694,9 @@ module.exports.READ_ONLY_ACTIONS = READ_ONLY_ACTIONS;
 module.exports.DEPRECATED_ON_SERVERLESS_ERROR = DEPRECATED_ON_SERVERLESS_ERROR;
 module.exports.isServerlessRuntime = isServerlessRuntime;
 module.exports.evaluateServerlessGuard = evaluateServerlessGuard;
+// Exported so tests can assert that heavy scans bypass the 3.5s read guard.
+module.exports.isHeavyComputeAction = isHeavyComputeAction;
+module.exports.TIMEOUT_GUARD_MS = TIMEOUT_GUARD_MS;
 
 // ============================================================
 // SCREENER READ — gated by the signed session, upstream

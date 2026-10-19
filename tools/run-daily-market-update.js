@@ -265,7 +265,11 @@ async function run(options={}){
     }catch(error){console.error('CANDLE_RETRY_PENDING',date,error.message);}
     if(candleOk){
       try{
-        const result=await syncHistory({now, env});
+        // Pass the repo-anchored candle dir explicitly: cron invokes this tool
+        // by absolute path with no `cd`, so any process.cwd()-based default
+        // resolves to /home/ubuntu/data/daily-candles (nonexistent) and the
+        // sync silently reports no_candles_found, freezing stock_daily_history.
+        const result=await syncHistory({now, env, candleDir:path.join(ROOT_DIR,'data','daily-candles')});
         historyOk=Boolean(result&&result.ok);
         if(!historyOk)console.error('HISTORY_SYNC_RETRY_PENDING',date,'reason='+(result&&result.reason||'unknown'));
       }catch(error){console.error('HISTORY_SYNC_RETRY_PENDING',date,error.message);}

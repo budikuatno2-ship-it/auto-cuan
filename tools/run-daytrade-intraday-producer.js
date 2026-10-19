@@ -24,6 +24,7 @@ const ROOT = path.resolve(__dirname, '..');
 const guard = require(path.join(ROOT, 'lib', 'market-hours-guard'));
 const runner = require(path.join(ROOT, 'tools', 'run-all-screeners-vps'));
 const snapshotBuilder = require(path.join(ROOT, 'tools', 'build-screener-snapshot'));
+const snapshotAlarm = require(path.join(ROOT, 'lib', 'daytrade-snapshot-alarm'));
 
 function parseArgs(argv) {
   const opts = { execute: false, maxBatches: 120, sleepMs: 500, force: false, syncSnapshot: false };
@@ -47,6 +48,107 @@ function terminalStatus(value) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Retry policy for a MISSING/UNKNOWN producer status.
+//
+// A missing status is almost always a transient transport/shape problem (the
+// dashboard timeout guard used to answer heavy scans with an empty 200 body).
+// Aborting the whole 15-minute cycle on it froze DayTrade for six sessions, so
+// an unknown status now retries with backoff instead of throwing immediately.
+// The whole loop stays bounded by opts.maxBatches and the cron cadence.
+const UNKNOWN_STATUS_RETRY_DELAYS_MS = [1000, 3000, 8000, 15000, 30000];
+
+function isTransientStatus(status) {
+  const s = String(status || '').toLowerCase();
+  return s === '' || s === 'unknown' || s === 'missing' || s === 'undefined' || s === 'null';
+}
+
+function retryDelayFor(attempt) {
+  const idx = Math.min(Math.max(0, attempt), UNKNOWN_STATUS_RETRY_DELAYS_MS.length - 1);
+  return UNKNOWN_STATUS_RETRY_DELAYS_MS[idx];
+}
+
+/**
+ * A snapshot with zero rows must never replace a healthy snapshot file.
+ * `build-screener-snapshot` reports `{ ok:true, rows:0 }` when every upstream
+ * table is empty (exactly what the frozen producer produced), and writing that
+ * over a good file destroys the last usable DayTrade state.
+ */
+function shouldRejectEmptySnapshot(snapshot) {
+  if (!snapshot || snapshot.ok !== true) return false;
+  const rows = Number(snapshot.rows || 0);
+  return !Number.isFinite(rows) || rows <= 0;
+}
+
+/**
+ * Emit ONE Telegram alert per stale-snapshot incident.
+ *
+ * State is persisted in `data/daytrade-snapshot-alarm.json` so the 15-minute
+ * cron cannot spam: an alert is re-armed only after the snapshot becomes fresh
+ * again (or the alarm module's cooldown elapses).
+ */
+async function maybeAlertStaleSnapshot(ctx) {
+  const deps = ctx.deps || {};
+  const log = ctx.log || console.log;
+  const fsInstance = deps.fs || require('node:fs');
+  const rootDir = deps.rootDir || ROOT;
+  const statePath = path.join(rootDir, 'data', 'daytrade-snapshot-alarm.json');
+  const snapshotPath = snapshotBuilder.snapshotPath
+    ? snapshotBuilder.snapshotPath(rootDir)
+    : path.join(rootDir, 'data', 'screener-latest.json');
+
+  let snapshotMtime = null;
+  try {
+    if (fsInstance.existsSync(snapshotPath)) snapshotMtime = fsInstance.statSync(snapshotPath).mtime;
+  } catch (_) {}
+
+  let lastAlertAt = null;
+  let lastReason = null;
+  try {
+    if (fsInstance.existsSync(statePath)) {
+      const raw = JSON.parse(fsInstance.readFileSync(statePath, 'utf8'));
+      lastAlertAt = raw && raw.last_alert_at ? raw.last_alert_at : null;
+      lastReason = raw && raw.last_reason ? raw.last_reason : null;
+    }
+  } catch (_) {}
+
+  const decision = snapshotAlarm.evaluate({
+    snapshotMtime,
+    now: ctx.now,
+    marketOpen: ctx.market && ctx.market.isOpen === true,
+    lastAlertAt,
+    staleMinutes: deps.staleMinutes,
+    cooldownMs: deps.alarmCooldownMs
+  });
+
+  if (!decision.shouldAlert) {
+    if (decision.reason === 'fresh' && lastAlertAt) {
+      // Re-arm for the next incident.
+      try {
+        fsInstance.writeFileSync(statePath, JSON.stringify({ last_alert_at: null, last_reason: null, rearmed_at: new Date().toISOString() }, null, 2));
+      } catch (_) {}
+    }
+    return decision;
+  }
+
+  log('  ALARM    : snapshot stale (' + decision.reason + ', ' + decision.ageMinutes + ' min) — sending Telegram');
+  const sent = await snapshotAlarm.send(
+    { ageMinutes: decision.ageMinutes, reason: decision.reason, staleMinutes: deps.staleMinutes },
+    { notifier: deps.notifier }
+  );
+  log('  ALARM    : ' + (sent.sent ? 'sent' : 'not sent (' + (sent.reason || 'unknown') + ')'));
+
+  if (sent.sent) {
+    try {
+      fsInstance.writeFileSync(statePath, JSON.stringify({
+        last_alert_at: new Date().toISOString(),
+        last_reason: decision.reason,
+        age_minutes: decision.ageMinutes
+      }, null, 2));
+    } catch (_) {}
+  }
+  return Object.assign({}, decision, { sent: sent.sent, sendReason: sent.reason || null });
 }
 
 async function run(options, deps) {
@@ -87,6 +189,11 @@ async function run(options, deps) {
     return { ok: true, skipped: true, reason: 'MARKET_CLOSED', market };
   }
 
+  // Alert once per incident when the snapshot is stale during market hours.
+  // Runs BEFORE the scan so a broken producer still notifies on every firing
+  // (the alarm module applies its own per-episode cooldown).
+  await maybeAlertStaleSnapshot({ deps, log, now, market });
+
   if (!env.CRON_SECRET) throw new Error('CRON_SECRET is required.');
   runner.assertNotServerlessForExecute(baseUrl, opts.execute);
 
@@ -108,6 +215,7 @@ async function run(options, deps) {
 
   let batch = 0;
   let last = null;
+  let unknownStatusRetries = 0;
 
   while (batch < opts.maxBatches) {
     const query = {
@@ -126,6 +234,23 @@ async function run(options, deps) {
       ' scanned=' + Number(last && last.scanned_count || 0) +
       '/' + Number(last && last.universe_count || 0));
 
+    // Missing/unknown status = transient. Retry the SAME batch with backoff
+    // instead of aborting the whole 15-minute cycle (see the 13 Oct outage).
+    if (isTransientStatus(status)) {
+      const retry = unknownStatusRetries;
+      if (retry >= UNKNOWN_STATUS_RETRY_DELAYS_MS.length) {
+        throw new Error('DayTrade producer status stayed unknown after ' +
+          UNKNOWN_STATUS_RETRY_DELAYS_MS.length + ' retries (last note: ' +
+          String(last && last.note || 'none') + ')');
+      }
+      const waitMs = retryDelayFor(retry);
+      log('  retry    : status missing/unknown, waiting ' + waitMs + 'ms (attempt ' + (retry + 1) + '/' + UNKNOWN_STATUS_RETRY_DELAYS_MS.length + ')');
+      unknownStatusRetries += 1;
+      await sleep(waitMs);
+      continue;
+    }
+    unknownStatusRetries = 0;
+
     if (terminalStatus(status)) {
       const buildSnapshot = deps.buildSnapshot || snapshotBuilder.main;
       const snapshot = await buildSnapshot(
@@ -140,6 +265,18 @@ async function run(options, deps) {
       if (!snapshot || snapshot.ok !== true) {
         throw new Error('DayTrade published but snapshot materialization failed: ' +
           String(snapshot && snapshot.reason || 'unknown'));
+      }
+      // Never let an empty snapshot overwrite the last healthy one.
+      if (shouldRejectEmptySnapshot(snapshot)) {
+        log('  snapshot : SKIPPED — producer reported 0 rows, existing file preserved');
+        return {
+          ok: true,
+          status,
+          run_date: last.run_date || null,
+          run_id: last.run_id || null,
+          published_count: Number(last.published_count || 0),
+          snapshot: Object.assign({}, snapshot, { rejected_empty: true })
+        };
       }
       log('  snapshot : materialized (' + Number(snapshot.rows || 0) + ' rows)');
       return {
@@ -190,4 +327,14 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArgs, terminalStatus, run };
+module.exports = {
+  parseArgs,
+  terminalStatus,
+  run,
+  // Exported for unit tests (13 Oct outage regression coverage).
+  isTransientStatus,
+  retryDelayFor,
+  shouldRejectEmptySnapshot,
+  maybeAlertStaleSnapshot,
+  UNKNOWN_STATUS_RETRY_DELAYS_MS
+};
