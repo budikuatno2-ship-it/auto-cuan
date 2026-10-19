@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Bandarmologi</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ac.css">
+<script src="./motion.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+.bt td{height:40px}
+.vbar{position:relative;height:6px;border-radius:3px;background:var(--ac-hover);min-width:80px;overflow:hidden}
+.vbar i{position:absolute;top:0;bottom:0;left:0;border-radius:3px;transform-origin:left;animation:grow 700ms var(--ease-e) both}
+.div{position:relative;height:16px;min-width:120px}
+.div::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--ac-line)}
+.div i{position:absolute;top:4px;height:8px;border-radius:2px;animation:fade 400ms var(--ease) both}
+.verdict{display:grid;grid-template-columns:1.4fr repeat(3,minmax(0,1fr))}
+.verdict>div{padding:16px 20px;border-left:1px solid var(--ac-hair)}
+.verdict>div:first-child{border-left:0}
+.ftool{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+@media (max-width:560px){.verdict{grid-template-columns:1fr!important}.verdict>div{border-left:0!important;border-top:1px solid var(--ac-hair)}.verdict>div:first-child{border-top:0}}
+@media (max-width:980px){.verdict{grid-template-columns:1fr 1fr}.verdict>div:nth-child(3){border-left:0}}
+</style>
+</helmet>
+<input type="checkbox" id="sbx" class="sbx" aria-label="Ciutkan sidebar">
+<div class="app">
+  <nav class="side" aria-label="Navigasi utama">
+    <div class="brand"><i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 8-9"/></svg></i><div class="bt">Auto-Cuan<small>Meja kerja riset IDX</small></div><label for="sbx" class="sbt" title="Ciutkan atau buka sidebar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 10l-2 2 2 2"/></svg></label></div>
+    <a class="nav" href="Main.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z"/></svg>Dashboard</a>
+    <div class="nav-l">Temukan</div>
+    <a class="nav" href="Screener.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>Screener</a>
+    <a class="nav" href="SektorHot.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>Sektor Hot</a>
+    <div class="nav-l">Riset</div>
+    <a class="nav" href="Analisis.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Analisis &amp; Chart</a>
+    <a class="nav on" href="Bandarmologi.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Bandarmologi</a>
+    <a class="nav" href="SinyalIntelijen.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/></svg>Sinyal Intelijen</a>
+    <a class="nav" href="BrokerHunter.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Broker Hunter</a>
+    <a class="nav" href="Insider.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M17 11a3 3 0 000-6M21 20c0-2-1.5-4-4-4.6"/></svg>Insider</a>
+    <a class="nav" href="Ranking.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Ranking</a>
+    <a class="nav" href="Financial.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-6h4v6"/></svg>Financial</a>
+    <a class="nav" href="StrukturPasar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9h9A9 9 0 1112 3z"/></svg>Struktur Pasar</a>
+    <div class="nav-l">Pantau</div>
+    <a class="nav" href="Watchlist.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Watchlist<span class="cnt">8</span></a>
+    <a class="nav" href="Portfolio.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg>Portfolio</a>
+    <a class="nav" href="TrackRecord.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>Track Record</a>
+    <a class="nav" href="KelolaKeuangan.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 14h2"/></svg>Kelola Keuangan</a>
+    <div class="nav-l adm-l">Admin<span>· hanya admin</span></div>
+    <a class="nav" href="PatternRadar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Pattern Radar</a>
+    <a class="nav" href="AdminConsole.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin Console</a>
+    <div class="nav-sp"></div>
+    <a class="acct" href="AccountCenter.dc.html" aria-label="Buka Pusat Akun"><span class="av">B</span><div style="flex:1"><b>budi</b><span>Admin · Pro Trader</span></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+  </nav>
+
+  <div class="main">
+    <header class="top">
+      <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Cari ticker, halaman, atau aksi…</span><kbd>⌘K</kbd></label>
+      <div class="fresh"><span class="dot m"></span>Broker Summary · 13 Okt 2026</div>
+      <button class="thm" style="margin-left:8px" type="button" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    </header>
+
+    <main class="page" style="gap:16px">
+      <div class="ph rise d0">
+        <div><h1>Bandarmologi</h1><p>Siapa yang membeli, siapa yang melepas, dan seberapa terkonsentrasi transaksinya.</p></div>
+        <div class="{{seg}}"><span class="{{ind}}"></span><button class="{{b0}}" onClick="{{go0}}">Broker Summary</button><button class="{{b1}}" onClick="{{go1}}">Akumulasi Broker</button></div>
+      </div>
+
+      <section class="sheet rise d1">
+        <div style="display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair)">
+          <span class="tk mono" style="font-size:20px">BBCA</span><span class="mut">Bank Central Asia Tbk</span>
+          <span class="num mono" style="font-weight:700">Rp 10.250</span><span class="num pos" style="font-weight:600">+0,98%</span>
+          <span style="margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center"><label class="mut" style="font-size:12px" for="dt">Tanggal</label><input id="dt" class="fld" type="date" max="2026-10-16" value="{{dt}}" onInput="{{onDt}}"><button class="btn sm" onClick="{{recalc}}" disabled="{{busy}}">{{recalcText}}</button><span class="{{dtCls}}" role="status" style="font-size:12px">{{dtMsg}}</span><span class="chip i">Data contoh</span></span>
+        </div>
+        <div class="verdict">
+          <div><div class="lbl">Kesimpulan aliran</div><div style="display:flex;align-items:center;gap:10px;margin-top:4px"><span class="chip b" style="height:26px;font-size:12px">AKUMULASI BESAR</span><span class="num" style="font-weight:700;font-size:20px">92<span class="mut" style="font-size:13px">/100</span></span></div><div class="meter" style="margin-top:10px;max-width:260px"><i style="width:92%"></i></div></div>
+          <div><div class="lbl">Net bandar</div><div class="big num pos pop">+Rp 245,0 M</div></div>
+          <div><div class="lbl">Net asing</div><div class="big num pos pop">+Rp 185,0 M</div></div>
+          <div><div class="lbl">Konsentrasi top 3 pembeli</div><div class="big num pop">68,4%</div><div class="sub">sangat terkonsentrasi</div></div>
+        </div>
+      </section>
+
+      <sc-if value="{{isSum}}" hint-placeholder-val="{{true}}">
+        <div class="ftool">
+          <div class="{{fSeg}}" role="group" aria-label="Jenis aliran"><span class="{{fInd}}"></span><button class="{{f0}}" onClick="{{gf0}}" aria-pressed="{{fp0}}">Semua</button><button class="{{f1}}" onClick="{{gf1}}" aria-pressed="{{fp1}}">Asing</button><button class="{{f2}}" onClick="{{gf2}}" aria-pressed="{{fp2}}">Domestik</button></div>
+          <span class="mut" style="font-size:12px">{{fNote}}</span>
+        </div>
+        <div class="grid2 swap" key="{{fKey}}">
+          <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Pembeli terbesar{{fTag}}</h2><span>Volume dalam lot</span></div>
+            <div class="tw"><table class="tbl bt"><thead><tr><th>Broker</th><th>Sekuritas</th><th class="r">Volume</th><th class="r">Nilai</th><th class="r">Rerata</th><th style="width:110px"></th></tr></thead>
+            <tbody><sc-for list="{{buy}}" as="r" hint-placeholder-count="5"><tr class="{{r.cls}}"><td class="tk mono">{{r.b}}</td><td class="mut">{{r.n}}</td><td class="r num">{{r.v}}</td><td class="r num" style="font-weight:600">{{r.val}}</td><td class="r num mono">{{r.avg}}</td><td><div class="vbar"><i style="{{r.bar}}"></i></div></td></tr></sc-for></tbody></table></div>
+          </section>
+          <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Penjual terbesar{{fTag}}</h2><span>Volume dalam lot</span></div>
+            <div class="tw"><table class="tbl bt"><thead><tr><th>Broker</th><th>Sekuritas</th><th class="r">Volume</th><th class="r">Nilai</th><th class="r">Rerata</th><th style="width:110px"></th></tr></thead>
+            <tbody><sc-for list="{{sell}}" as="r" hint-placeholder-count="5"><tr class="{{r.cls}}"><td class="tk mono">{{r.b}}</td><td class="mut">{{r.n}}</td><td class="r num">{{r.v}}</td><td class="r num" style="font-weight:600">{{r.val}}</td><td class="r num mono">{{r.avg}}</td><td><div class="vbar"><i style="{{r.bar}}"></i></div></td></tr></sc-for></tbody></table></div>
+          </section>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isAcc}}" hint-placeholder-val="{{false}}">
+        <section class="sheet swap">
+          <div class="sec-h"><h2 style="font-size:16px">Akumulasi bersih per broker</h2><span>Nilai bersih (beli − jual) · klik periode untuk mengurutkan</span></div>
+          <div style="padding:0 20px 12px"><div class="{{pSeg}}"><span class="{{pInd}}"></span><sc-for list="{{periods}}" as="p" hint-placeholder-count="4"><button class="{{p.cls}}" onClick="{{p.go}}">{{p.l}}</button></sc-for></div></div>
+          <div class="tw"><table class="tbl" style="min-width:860px"><thead><tr><th>Broker</th><th>Sekuritas</th><th class="r">1 hari</th><th class="r">3 hari</th><th class="r">5 hari</th><th class="r">20 hari</th><th style="width:220px">Arah ({{pLbl}})</th></tr></thead>
+          <tbody><sc-for list="{{acc}}" as="r" hint-placeholder-count="8"><tr class="{{r.cls}}"><td class="tk mono">{{r.b}}</td><td class="mut">{{r.n}}</td><td class="{{r.c0}}">{{r.s0}}</td><td class="{{r.c1}}">{{r.s1}}</td><td class="{{r.c2}}">{{r.s2}}</td><td class="{{r.c3}}">{{r.s3}}</td><td><div class="div"><i style="{{r.bar}}"></i></div></td></tr></sc-for></tbody></table></div>
+          <div class="prov"><span>Batang di kanan garis tengah = akumulasi, di kiri = distribusi. Panjang relatif terhadap nilai terbesar di periode terpilih.</span></div>
+        </section>
+      </sc-if>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  constructor(props){ super(props); this.state = { v:0, f:0, p:3, busy:false, dt:'2026-10-13', calc:'2026-10-13', dErr:'' }; }
+  componentWillUnmount(){ clearTimeout(this.t); }
+  dec(n,d){ return n.toFixed(d).replace('.',','); }
+  rpM(n){ return (n>=0?'+':'−')+'Rp '+this.dec(Math.abs(n),1)+' M'; }
+  renderVals() {
+    const S = this.state;
+    const B = [{b:'ZP',n:'Maybank Sekuritas',fr:.58,v:'85.000',val:87.1,avg:'10.250'},{b:'CC',n:'Mandiri Sekuritas',fr:.12,v:'62.000',val:63.4,avg:'10.230'},{b:'AK',n:'UBS Sekuritas',fr:.94,v:'51.000',val:52.3,avg:'10.250'},{b:'BK',n:'J.P. Morgan Sekuritas',fr:.97,v:'34.000',val:34.8,avg:'10.240'},{b:'RX',n:'Macquarie Sekuritas',fr:.9,v:'21.000',val:21.5,avg:'10.245'}];
+    const Sl = [{b:'YP',n:'Mirae Asset Sekuritas',fr:.06,v:'38.000',val:38.9,avg:'10.240'},{b:'PD',n:'Indo Premier Sekuritas',fr:.02,v:'29.000',val:29.7,avg:'10.240'},{b:'XC',n:'Ajaib Sekuritas',fr:0,v:'22.000',val:22.5,avg:'10.235'},{b:'XL',n:'Stockbit Sekuritas',fr:0,v:'18.000',val:18.4,avg:'10.250'},{b:'NI',n:'BNI Sekuritas',fr:.1,v:'11.000',val:11.3,avg:'10.245'}];
+    /* aliran: 0 semua, 1 asing (flow=F), 2 domestik = semua − asing per broker */
+    const F = S.f, part = (r)=>F===0?1:F===1?r.fr:1-r.fr;
+    const lots = (r)=>Math.round(+r.v.replace(/\./g,'')*part(r)/100)*100;
+    const fmtL = (n)=>n.toLocaleString('id-ID');
+    const flowRows = (L)=>L.map(r=>({...r, fv:r.val*part(r), fl:lots(r)})).filter(r=>r.fl>0).sort((a,b)=>b.fv-a.fv);
+    const BF = flowRows(B), SF = flowRows(Sl);
+    const mx = Math.max(...BF.map(x=>x.fv), ...SF.map(x=>x.fv), 0.1);
+    const row = (col)=>(r,i)=>({b:r.b, n:r.n, v:fmtL(r.fl), avg:r.avg, cls:'rise d'+i, val:'Rp '+this.dec(r.fv,1)+' M', bar:'width:'+(r.fv/mx*100).toFixed(0)+'%;background:'+col+';animation-delay:'+(i*60)+'ms'});
+    const buy = BF.map(row('var(--ac-pos)')), sell = SF.map(row('var(--ac-neg)'));
+    const A = [
+      {b:'ZP',n:'Maybank Sekuritas',d:[87.1,184.2,232.5,412.0]},{b:'CC',n:'Mandiri Sekuritas',d:[63.4,98.0,121.7,188.3]},{b:'AK',n:'UBS Sekuritas',d:[52.3,71.6,90.4,154.9]},{b:'BK',n:'J.P. Morgan Sekuritas',d:[34.8,22.1,48.0,96.2]},
+      {b:'XL',n:'Stockbit Sekuritas',d:[-18.4,-41.0,-55.2,-62.7]},{b:'XC',n:'Ajaib Sekuritas',d:[-22.5,-35.7,-48.9,-80.4]},{b:'PD',n:'Indo Premier Sekuritas',d:[-29.7,-52.3,-77.1,-121.6]},{b:'YP',n:'Mirae Asset Sekuritas',d:[-38.9,-70.4,-96.8,-166.2]}
+    ];
+    const p = S.p, amax = Math.max(...A.map(r=>Math.abs(r.d[p])));
+    const acc = A.slice().sort((a,b)=>b.d[p]-a.d[p]).map((r,i)=>{ const v=r.d[p], w=Math.abs(v)/amax*50; const o={b:r.b,n:r.n,cls:'rise d'+i};
+      r.d.forEach((x,j)=>{ o['s'+j]=this.rpM(x); o['c'+j]='r num '+(x>=0?'pos':'neg')+(j===p?'':' ')+(j===p?'" style="font-weight:700':''); o['c'+j]='r num '+(x>=0?'pos':'neg'); });
+      o.bar = v>=0 ? 'left:50%;width:'+w.toFixed(1)+'%;background:var(--ac-pos)' : 'right:50%;width:'+w.toFixed(1)+'%;background:var(--ac-neg)';
+      return o; });
+    const PL = ['1 hari','3 hari','5 hari','20 hari'];
+    const BL=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'], fdt=(d)=>{ const p=d.split('-'); return +p[2]+' '+BL[+p[1]-1]+' '+p[0]; };
+    return {
+      fSeg:'segx n3', fInd:'ind k'+F, f0:F===0?'on':'', f1:F===1?'on':'', f2:F===2?'on':'', fp0:String(F===0), fp1:String(F===1), fp2:String(F===2),
+      gf0:()=>this.setState({f:0}), gf1:()=>this.setState({f:1}), gf2:()=>this.setState({f:2}), fKey:'f'+F,
+      fTag:['',' · asing',' · domestik'][F],
+      fNote:['Semua investor (flow=all).','Investor asing (flow=F). Diarsip sejak 2 Jan 2026, sedang dilengkapi.','Domestik dihitung per broker: semua − asing. Tidak memakai kuota tambahan.'][F],
+      seg:'segx n2', ind:'ind k'+S.v, b0:S.v===0?'on':'', b1:S.v===1?'on':'',
+      go0:()=>this.setState({v:0}), go1:()=>this.setState({v:1}),
+      isSum:S.v===0, isAcc:S.v===1, buy, sell, acc,
+      pSeg:'segx n4', pInd:'ind k'+p, pLbl:PL[p],
+      periods: PL.map((l,j)=>({l, cls:j===p?'on':'', go:()=>this.setState({p:j})})),
+      recalcText: S.busy ? 'Menghitung…' : 'Hitung ulang flow',
+      dt:S.dt, busy:S.busy, onDt:(e)=>this.setState({dt:e.target.value, dErr:''}),
+      dtCls: S.dErr ? 'neg' : 'mut', dtMsg: S.dErr || (S.busy ? '' : 'Flow tanggal '+fdt(S.calc)),
+      recalc: ()=>{ const d=S.dt; if(!d) return this.setState({dErr:'Pilih tanggal dulu.'}); const w=new Date(d+'T12:00:00Z').getUTCDay(); if(w===0||w===6) return this.setState({dErr:fdt(d)+' akhir pekan, bursa tutup.'}); if(d>'2026-10-16') return this.setState({dErr:'Data '+fdt(d)+' belum tersedia.'}); this.setState({busy:true, dErr:''}); clearTimeout(this.t); this.t=setTimeout(()=>this.setState({busy:false, calc:d}),900); }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Pusat Akun</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ac.css">
+<script src="./motion.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+.snav{display:flex;flex-direction:column;gap:2px}
+.snav button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:10px;height:36px;padding:0 12px;border-radius:6px;font-size:13px;font-weight:500;color:var(--ac-2);position:relative;transition:background 140ms var(--ease),color 140ms}
+.snav button:hover{background:var(--ac-hover);color:var(--ac-ink)}
+.snav button.on{background:var(--ac-brand-soft);color:var(--ac-ink);font-weight:600}
+.snav button.on::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--ac-brand);animation:edge 260ms var(--ease-e) both}
+.snav button:focus-visible{outline:2px solid var(--ac-brand);outline-offset:2px}
+.row{display:grid;grid-template-columns:220px 1fr;gap:16px;padding:16px 0;border-bottom:1px solid var(--ac-hair);align-items:center}
+.row:last-child{border-bottom:0}
+.ck{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}.ck input{width:16px;height:16px;accent-color:var(--ac-brand);margin:0}
+.row>span:first-child{font-size:13px;font-weight:600;color:var(--ac-2)}
+@media (max-width:760px){.row{grid-template-columns:1fr;gap:6px}}
+.cl button{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;gap:12px;align-items:center;padding:14px 0;font-weight:600;font-size:14px}
+.cl button:focus-visible{outline:2px solid var(--ac-brand);outline-offset:2px}
+.cl{border-bottom:1px solid var(--ac-hair)}
+.cl .ch{margin-left:auto;transition:transform 190ms var(--ease)}
+.cl.on .ch{transform:rotate(180deg)}
+.spin{width:12px;height:12px;border:2px solid var(--ac-hair);border-top-color:var(--ac-brand);border-radius:50%;animation:rot 700ms linear infinite;display:inline-block}
+@keyframes rot{to{transform:rotate(360deg)}}
+.st{display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:600}
+.st.g{background:var(--ac-pos-soft);color:var(--ac-pos)}.st.a{background:var(--ac-warn-soft);color:var(--ac-warn-t)}.st.r{background:var(--ac-neg-soft);color:var(--ac-neg)}.st.m{background:var(--ac-hover);color:var(--ac-2)}
+</style>
+</helmet>
+<input type="checkbox" id="sbx" class="sbx" aria-label="Ciutkan sidebar">
+<div class="app">
+  <nav class="side" aria-label="Navigasi utama">
+    <div class="brand"><i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 8-9"/></svg></i><div class="bt">Auto-Cuan<small>Meja kerja riset IDX</small></div><label for="sbx" class="sbt" title="Ciutkan atau buka sidebar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 10l-2 2 2 2"/></svg></label></div>
+    <a class="nav" href="Main.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z"/></svg>Dashboard</a>
+    <div class="nav-l">Temukan</div>
+    <a class="nav" href="Screener.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>Screener</a>
+    <a class="nav" href="SektorHot.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>Sektor Hot</a>
+    <div class="nav-l">Riset</div>
+    <a class="nav" href="Analisis.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Analisis &amp; Chart</a>
+    <a class="nav" href="Bandarmologi.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Bandarmologi</a>
+    <a class="nav" href="SinyalIntelijen.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/></svg>Sinyal Intelijen</a>
+    <a class="nav" href="BrokerHunter.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Broker Hunter</a>
+    <a class="nav" href="Insider.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M17 11a3 3 0 000-6M21 20c0-2-1.5-4-4-4.6"/></svg>Insider</a>
+    <a class="nav" href="Ranking.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Ranking</a>
+    <a class="nav" href="Financial.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-6h4v6"/></svg>Financial</a>
+    <a class="nav" href="StrukturPasar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9h9A9 9 0 1112 3z"/></svg>Struktur Pasar</a>
+    <div class="nav-l">Pantau</div>
+    <a class="nav" href="Watchlist.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Watchlist<span class="cnt">8</span></a>
+    <a class="nav" href="Portfolio.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg>Portfolio</a>
+    <a class="nav" href="TrackRecord.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>Track Record</a>
+    <a class="nav" href="KelolaKeuangan.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 14h2"/></svg>Kelola Keuangan</a>
+    <div class="nav-l adm-l">Admin<span>· hanya admin</span></div>
+    <a class="nav" href="PatternRadar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Pattern Radar</a>
+    <a class="nav" href="AdminConsole.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin Console</a>
+    <div class="nav-sp"></div>
+    <a class="acct" href="AccountCenter.dc.html" aria-current="page" style="background:var(--ac-brand-soft)"><span class="av">B</span><div style="flex:1"><b>budi</b><span>Admin · Pro Trader</span></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+  </nav>
+
+  <div class="main">
+    <header class="top">
+      <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Cari ticker, halaman, atau aksi…</span><kbd>⌘K</kbd></label>
+      <button class="thm" style="margin-left:8px" type="button" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    </header>
+
+    <main class="page" style="max-width:1160px">
+      <div class="rise d0" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <span class="av" style="width:56px;height:56px;font-size:20px">BD</span>
+        <div><div class="kick" style="margin:0">Pusat Akun</div><h1 style="margin:2px 0 0;font-size:28px;letter-spacing:-.02em">budi</h1><div class="mut" style="font-size:13px">budi.investor@gmail.com · Admin · Pro Trader</div></div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+        <aside style="flex:0 0 220px" class="rise d1">
+          <div class="snav" role="tablist" aria-orientation="vertical">
+            <sc-for list="{{secs}}" as="s" hint-placeholder-count="6"><button class="{{s.cls}}" onClick="{{s.go}}" role="tab" aria-selected="{{s.on}}">{{s.l}}</button></sc-for>
+          </div>
+          <div style="height:1px;background:var(--ac-hair);margin:12px 0"></div>
+          <a class="btn q" href="AuthLogin.dc.html" style="color:var(--ac-neg);width:100%;justify-content:flex-start;padding:0 12px">Keluar dari sesi</a>
+        </aside>
+
+        <section class="sheet rise d2" style="flex:1 1 560px;min-width:0;padding:4px 24px 20px">
+          <sc-if value="{{s0}}" hint-placeholder-val="{{true}}"><div class="swap">
+            <h2 style="font-size:18px;margin:18px 0 4px">Profil</h2><p class="mut" style="margin:0 0 8px;font-size:13px">Identitas akun yang diverifikasi server.</p>
+            <div class="row"><span>Username</span><b>budi</b></div>
+            <div class="row"><span>Gmail</span><span>budi.investor@gmail.com <span class="st g" style="margin-left:8px">Terverifikasi</span></span></div>
+            <div class="row"><span>Status akun</span><span class="st g" style="width:max-content">Disetujui administrator</span></div>
+            <div class="row"><span>Peran</span><span>Admin · Pro Trader</span></div>
+            <div class="row"><span>Bergabung</span><span>14 Januari 2026</span></div>
+            <div class="row"><span>Login terakhir</span><span>17 Okt 2026, 02.51 WIB · Chrome di Windows</span></div>
+            <h2 style="font-size:18px;margin:26px 0 4px">Tampilan</h2><p class="mut" style="margin:0 0 10px;font-size:13px">Mode warna untuk semua halaman di perangkat ini. Bisa juga diganti lewat tombol bulan/matahari di bilah atas.</p>
+            <div class="{{thSeg}}" role="group" aria-label="Mode warna"><span class="{{thInd}}"></span><sc-for list="{{ths}}" as="t" hint-placeholder-count="3"><button class="{{t.cls}}" onClick="{{t.go}}" aria-pressed="{{t.on}}">{{t.l}}</button></sc-for></div>
+            <p class="mut" style="margin:8px 0 0;font-size:12px">{{thNote}}</p>
+          </div></sc-if>
+
+          <sc-if value="{{s1}}" hint-placeholder-val="{{false}}"><div class="swap">
+            <h2 style="font-size:18px;margin:18px 0 4px">Keamanan &amp; Koneksi</h2><p class="mut" style="margin:0 0 8px;font-size:13px">Telegram dipakai untuk verifikasi, pemulihan password, dan alert.</p>
+            <div class="row"><span>Telegram</span><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="{{tg.cls}}">{{tg.l}}</span><span class="mut" style="font-size:13px">{{tg.d}}</span></div></div>
+            <div class="row"><span></span><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" onClick="{{tg.test}}">{{tg.testL}}</button><button class="btn sm" onClick="{{tg.toggle}}">{{tg.toggleL}}</button></div></div>
+            <div class="row"><span>Password lama</span><input class="inp" type="password" placeholder="Password saat ini" autocomplete="current-password" value="{{pw.old}}" onInput="{{pw.onOld}}" style="max-width:360px"></div>
+            <div class="row"><span>Password baru</span><input class="inp" type="password" placeholder="Minimal 8 karakter, huruf dan angka" autocomplete="new-password" value="{{pw.nw}}" onInput="{{pw.onNew}}" style="max-width:360px"></div>
+            <div class="row"><span></span><div><button class="btn p sm" onClick="{{pw.submit}}" disabled="{{pw.busy}}">{{pw.btn}}</button><div class="{{pw.msgCls}}" role="status">{{pw.msg}}</div></div></div>
+            <div class="row"><span>Sesi aktif</span><div style="display:grid;gap:6px;font-size:13px"><span><b>Chrome · Windows</b> <span class="mut">· sesi ini</span></span><span><b>Safari · iPhone</b> <span class="mut">· 15 Okt, 21.10</span></span></div></div>
+          </div></sc-if>
+
+          <sc-if value="{{s2}}" hint-placeholder-val="{{false}}"><div class="swap">
+            <h2 style="font-size:18px;margin:18px 0 4px">Preferensi Trading</h2><p class="mut" style="margin:0 0 8px;font-size:13px">Dipakai untuk saran ukuran lot di Screener dan Portfolio.</p>
+            <div class="row"><label class="flabel" for="cap" style="margin:0;color:var(--ac-2)">Modal trading (Rp)</label><input id="cap" class="inp num" value="{{pref.cap}}" onInput="{{pref.onCap}}" style="max-width:280px"></div>
+            <div class="row"><label class="flabel" for="rk" style="margin:0;color:var(--ac-2)">Risiko per transaksi (%)</label><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><input id="rk" class="inp num" value="{{pref.r}}" onInput="{{pref.onR}}" style="max-width:120px"><span class="mut num">= {{pref.rAmt}} per posisi</span></div></div>
+            <div class="row"><span>Suara alert</span><div style="display:grid;gap:6px"><label class="ck"><input type="checkbox" checked="{{snd.on}}" onChange="{{snd.toggle}}"> Bunyi singkat saat alert Watchlist atau TP/SL tersentuh</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm" onClick="{{snd.test}}">Tes suara</button><span class="mut" style="font-size:12px">Mati secara bawaan. Hanya berbunyi saat tab Auto-Cuan terbuka.</span></div></div></div>
+            <div class="row"><span>Si Mata</span><label class="ck"><input type="checkbox" checked="{{mata.on}}" onChange="{{mata.toggle}}"> Tampilkan maskot dan sapaannya</label></div>
+            <div class="row"><span></span><div><button class="btn p sm" onClick="{{pref.save}}">{{pref.saveL}}</button></div></div>
+            <p class="help">Hanya preferensi yang sudah didukung sistem yang ditampilkan di sini.</p>
+          </div></sc-if>
+
+          <sc-if value="{{s3}}" hint-placeholder-val="{{false}}"><div class="swap">
+            <h2 style="font-size:18px;margin:18px 0 4px">Pengaturan AI</h2><p class="mut" style="margin:0 0 8px;font-size:13px">Kredensial Gemini milik Anda (BYOK). Kunci tidak pernah ditampilkan ulang secara lengkap.</p>
+            <div class="row"><span>Status</span><span class="{{ai.cls}}" style="width:max-content"><sc-if value="{{ai.busy}}" hint-placeholder-val="{{false}}"><span class="spin"></span></sc-if>{{ai.l}}</span></div>
+            <div class="row"><span>Kredensial</span><span class="mono" style="font-size:13px">{{ai.mask}}</span></div>
+            <sc-if value="{{ai.edit}}" hint-placeholder-val="{{false}}"><div class="row swap"><label class="flabel" for="k" style="margin:0;color:var(--ac-2)">Kredensial baru</label><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="k" class="inp mono" type="password" value="{{ai.draft}}" onInput="{{ai.onDraft}}" placeholder="Tempel kredensial Gemini" style="max-width:360px"><button class="btn p" onClick="{{ai.submit}}" style="height:42px">Validasi &amp; simpan</button></div></div></sc-if>
+            <sc-if value="{{ai.bad}}" hint-placeholder-val="{{false}}"><div class="help neg" style="font-weight:600;margin:8px 0 0">Kredensial ditolak penyedia. Periksa kembali atau buat kunci baru. Data riset tetap bisa diakses.</div></sc-if>
+            <div class="row"><span>Model</span><select class="inp" style="max-width:360px" value="{{ai.tier}}" onChange="{{ai.onTier}}"><option value="auto">Otomatis · model default dari kunci Anda</option><option value="fast">Cepat · jawaban ringkas, kuota lebih hemat</option><option value="deep">Teliti · jawaban lebih panjang</option></select></div>
+            <div class="row"><span></span><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" onClick="{{ai.replace}}">Ganti kredensial</button><button class="btn sm" onClick="{{ai.test}}" disabled="{{ai.none}}">Uji koneksi</button><button class="btn sm" onClick="{{ai.remove}}" disabled="{{ai.none}}" style="color:var(--ac-neg)">Hapus</button></div></div>
+          </div></sc-if>
+
+          <sc-if value="{{s4}}" hint-placeholder-val="{{false}}"><div class="swap">
+            <h2 style="font-size:18px;margin:18px 0 4px">Langganan</h2><p class="mut" style="margin:0 0 8px;font-size:13px">Hak akses akun saat ini.</p>
+            <div style="border:1px solid rgba(15,116,88,.3);border-radius:12px;padding:18px;margin:12px 0;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+              <div style="flex:1;min-width:220px"><div class="kick" style="margin:0">Paket aktif</div><div style="font-size:20px;font-weight:700;letter-spacing:-.02em">Pro Trader · Lifetime</div><div class="mut" style="font-size:13px">Tanpa batas waktu · aktif sejak 14 Jan 2026</div></div>
+              <div style="display:grid;gap:6px;font-size:13px"><span>Screener 3 mode</span><span>Bandarmologi &amp; Broker Hunter</span><span>Asisten AI (kunci sendiri)</span><span>Alert Telegram</span></div>
+            </div>
+            <div class="row"><label class="flabel" for="v" style="margin:0;color:var(--ac-2)">Kode voucher</label><div><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="v" class="inp mono" value="{{v.code}}" onInput="{{v.on}}" placeholder="Contoh: CUAN2026" style="max-width:260px;text-transform:uppercase"><button class="btn p" onClick="{{v.claim}}" style="height:42px">{{v.btn}}</button></div><sc-if value="{{v.err}}" hint-placeholder-val="{{false}}"><div class="help neg" style="font-weight:600">Kode tidak dikenal atau sudah dipakai.</div></sc-if><sc-if value="{{v.ok}}" hint-placeholder-val="{{false}}"><div class="help pos" style="font-weight:600">Voucher diterapkan. Hak akses tidak berubah karena paket Anda sudah Lifetime.</div></sc-if><div class="help">Coba “CUAN2026” untuk melihat status berhasil.</div></div></div>
+          </div></sc-if>
+
+          <sc-if value="{{s5}}" hint-placeholder-val="{{false}}"><div class="swap">
+            <h2 style="font-size:18px;margin:18px 0 4px">Ketentuan</h2><p class="mut" style="margin:0 0 8px;font-size:13px">Disetujui 14 Jan 2026 · versi 2026.1</p>
+            <sc-for list="{{terms}}" as="t" hint-placeholder-count="12"><div class="{{t.cls}}"><button onClick="{{t.go}}" aria-expanded="{{t.on}}"><span class="mono mut" style="width:24px">{{t.n}}</span>{{t.h}}<svg class="ch" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button><sc-if value="{{t.on}}" hint-placeholder-val="{{false}}"><p class="mut swap" style="margin:0 0 14px 36px;font-size:14px;line-height:1.6">{{t.b}}</p></sc-if></div></sc-for>
+          </div></sc-if>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props){ super(props); this.state = { thm:(typeof window!=='undefined'&&window.acTheme)?window.acTheme.get():'auto', s:0, tg:true, tgTest:false, cap:'124500000', r:'1', saved:false, ai:'ok', aiEdit:false, draft:'', pwOld:'', pwNew:'', pwS:'', last4:'x9Qa', vc:'', vs:'', term:0, snd:false, mata:(()=>{ try{ return localStorage.getItem('ac-mata-off')!=='1'; }catch(e){ return true; } })() }; }
+  beep(){ try{ const C=window.AudioContext||window.webkitAudioContext; if(!C) return; const c=this._ac||(this._ac=new C()); const o=c.createOscillator(), g=c.createGain(); o.type='sine'; o.frequency.value=880; g.gain.setValueAtTime(0.0001,c.currentTime); g.gain.exponentialRampToValueAtTime(0.18,c.currentTime+0.02); g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.22); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime+0.25); }catch(e){} }
+  fmt(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+  num(v){ const x=parseFloat(String(v).replace(/\./g,'').replace(',','.')); return isNaN(x)?0:x; }
+  componentDidMount(){ this.onThm=(e)=>this.setState({thm:(e&&e.detail&&e.detail.pref)||'auto'}); window.addEventListener('ac-theme',this.onThm); this._t0=setTimeout(()=>{ if(window.acTheme) this.setState({thm:window.acTheme.get()}); },300); }
+  componentWillUnmount(){ window.removeEventListener('ac-theme',this.onThm); clearTimeout(this._t0); clearTimeout(this.t1); clearTimeout(this.t2); clearTimeout(this.t3); }
+  renderVals() {
+    const S = this.state;
+    const L = ['Profil','Keamanan & Koneksi','Preferensi Trading','Pengaturan AI','Langganan','Ketentuan'];
+    const AI = {none:['st m','Belum diatur'], busy:['st a','Memvalidasi…'], ok:['st g','Terhubung · kuota tersedia'], bad:['st r','Kredensial tidak valid']};
+    const T = [
+      ['Sifat layanan','Auto-Cuan adalah alat riset dan perencanaan. Layanan ini bukan penasihat investasi dan tidak mengeksekusi transaksi.'],
+      ['Tanggung jawab keputusan','Semua keputusan beli atau jual sepenuhnya menjadi tanggung jawab pengguna.'],
+      ['Sumber data','Data berasal dari sumber pihak ketiga dan dapat terlambat, tidak lengkap, atau berubah tanpa pemberitahuan.'],
+      ['Nilai kosong','Data yang tidak tersedia ditampilkan sebagai “—” dan tidak boleh ditafsirkan sebagai nol.'],
+      ['Sinyal & Track Record','Track Record mengaudit sinyal sistem, bukan hasil investasi pengguna.'],
+      ['Asisten AI','Jawaban model adalah interpretasi dan dapat keliru. Kredensial AI adalah milik pengguna.'],
+      ['Akun & identitas','Satu akun untuk satu orang. Gmail dan Telegram dipakai untuk verifikasi dan pemulihan.'],
+      ['Keamanan','Jangan bagikan password atau kode verifikasi. Laporkan aktivitas mencurigakan ke admin.'],
+      ['Langganan','Hak akses mengikuti paket aktif dan voucher yang sah.'],
+      ['Data pribadi','Data anggaran, portofolio, dan jurnal disimpan untuk akun Anda dan tidak dihapus saat fitur berubah.'],
+      ['Penangguhan','Akun dapat ditangguhkan bila melanggar ketentuan, dengan pemberitahuan.'],
+      ['Perubahan ketentuan','Perubahan diumumkan di aplikasi dan berlaku setelah disetujui kembali.']
+    ];
+    const r = this.num(S.r), cap = this.num(S.cap);
+    const setMata=(on)=>{ try{ localStorage.setItem('ac-mata-off', on?'0':'1'); }catch(e){} const mm=document.querySelector('.mm'); if(mm) mm.classList.toggle('off', !on); this.setState({mata:on}); };
+    const TH=[['auto','Otomatis'],['light','Terang'],['dark','Gelap']], thI=Math.max(0,TH.findIndex(x=>x[0]===S.thm));
+    return {
+      thSeg:'segx n3', thInd:'ind k'+thI, thNote: S.thm==='auto' ? 'Mengikuti pengaturan terang/gelap sistem perangkat.' : (S.thm==='dark'?'Selalu gelap, nyaman untuk sesi malam.':'Selalu terang.'),
+      ths: TH.map(([k,l])=>({l, on:String(S.thm===k), cls:S.thm===k?'on':'', go:()=>{ if(window.acTheme) window.acTheme.set(k); this.setState({thm:k}); }})),
+      snd:{on:S.snd, toggle:()=>{ const on=!S.snd; this.setState({snd:on}); if(on) this.beep(); }, test:()=>this.beep()},
+      mata:{on:S.mata, toggle:()=>setMata(!S.mata)},
+      secs: L.map((l,i)=>({l, on:i===S.s, cls:i===S.s?'on':'', go:()=>this.setState({s:i})})),
+      s0:S.s===0, s1:S.s===1, s2:S.s===2, s3:S.s===3, s4:S.s===4, s5:S.s===5,
+      tg: { cls:'st '+(S.tg?'g':'m'), l:S.tg?'Terhubung':'Tidak terhubung', d:S.tg?'@budi_trader · ID 94819284 · sejak 15 Jan 2026':'Hubungkan lewat bot verifikasi [username bot asli]',
+        testL:S.tgTest?'Terkirim ✓':'Uji kirim pesan', test:()=>{ if(!S.tg) return; this.setState({tgTest:true}); clearTimeout(this.t1); this.t1=setTimeout(()=>this.setState({tgTest:false}),2000); },
+        toggleL:S.tg?'Putus koneksi':'Hubungkan', toggle:()=>this.setState({tg:!S.tg}) },
+      pref: { cap:S.cap, r:S.r, onCap:(e)=>this.setState({cap:e.target.value, saved:false}), onR:(e)=>this.setState({r:e.target.value, saved:false}), rAmt:'Rp '+this.fmt(cap*r/100), saveL:S.saved?'Tersimpan ✓':'Simpan preferensi', save:()=>this.setState({saved:true}) },
+      ai: { cls:AI[S.ai][0], l:AI[S.ai][1], busy:S.ai==='busy', none:S.ai==='none', bad:S.ai==='bad', edit:S.aiEdit,
+        mask: S.ai==='none' ? '—' : 'Gemini ••••••••••••••••'+S.last4,
+        tier:S.tier||'auto', onTier:(e)=>this.setState({tier:e.target.value}),
+        draft:S.draft, onDraft:(e)=>this.setState({draft:e.target.value}),
+        replace:()=>this.setState({aiEdit:true}),
+        remove:()=>this.setState({ai:'none', aiEdit:false}),
+        test:()=>{ this.setState({ai:'busy'}); clearTimeout(this.t2); this.t2=setTimeout(()=>this.setState({ai:'ok'}),1200); },
+        submit:()=>{ const d=S.draft.trim(); if(!d) return; this.setState({ai:'busy'}); clearTimeout(this.t2); this.t2=setTimeout(()=>{ const ok=d.length>=20; this.setState({ai:ok?'ok':'bad', aiEdit:!ok, last4:ok?d.slice(-4):S.last4, draft:''}); },1200); } },
+      pw: { old:S.pwOld, nw:S.pwNew, busy:S.pwS==='busy', btn:S.pwS==='busy'?'Memperbarui…':'Perbarui password',
+        onOld:(e)=>this.setState({pwOld:e.target.value, pwS:''}), onNew:(e)=>this.setState({pwNew:e.target.value, pwS:''}),
+        msgCls: S.pwS==='ok'?'help pos':(/^e/.test(S.pwS)?'help neg':'help'),
+        msg: S.pwS==='ok'?'Password diperbarui. Sesi di perangkat lain sudah keluar.':S.pwS==='e-old'?'Isi password lama dulu.':S.pwS==='e-new'?'Password baru minimal 8 karakter dan memuat huruf serta angka.':S.pwS==='e-same'?'Password baru harus berbeda dari yang lama.':'Sesi di perangkat lain akan keluar.',
+        submit:()=>{ const o=S.pwOld, n=S.pwNew; if(!o) return this.setState({pwS:'e-old'}); if(n.length<8||!/[a-z]/i.test(n)||!/\d/.test(n)) return this.setState({pwS:'e-new'}); if(n===o) return this.setState({pwS:'e-same'});
+          this.setState({pwS:'busy'}); clearTimeout(this.t4); this.t4=setTimeout(()=>this.setState({pwS:'ok', pwOld:'', pwNew:''}),900); } },
+      v: { code:S.vc, on:(e)=>this.setState({vc:e.target.value, vs:''}), btn:S.vs==='busy'?'Memeriksa…':'Klaim voucher', err:S.vs==='err', ok:S.vs==='ok',
+        claim:()=>{ if(!S.vc.trim()) return; this.setState({vs:'busy'}); clearTimeout(this.t3); this.t3=setTimeout(()=>this.setState({vs:S.vc.trim().toUpperCase()==='CUAN2026'?'ok':'err'}),900); } },
+      terms: T.map((t,i)=>({n:String(i+1).padStart(2,'0'), h:t[0], b:t[1], on:S.term===i, cls:'cl'+(S.term===i?' on':''), go:()=>this.setState({term:S.term===i?null:i})}))
+    };
+  }
+}
+</script>
+</body>
+</html>

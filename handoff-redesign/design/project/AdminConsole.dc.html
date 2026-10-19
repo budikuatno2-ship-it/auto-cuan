@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Admin Console</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ac.css">
+<script src="./motion.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+.st{display:inline-flex;align-items:center;gap:7px;height:24px;padding:0 9px;border-radius:5px;font-size:12px;font-weight:600;white-space:nowrap}
+.st.g{background:var(--ac-pos-soft);color:var(--ac-pos)}.st.a{background:var(--ac-warn-soft);color:var(--ac-warn-t)}.st.r{background:var(--ac-neg-soft);color:var(--ac-neg)}.st.m{background:var(--ac-hover);color:var(--ac-2)}.st.i{background:var(--ac-info-soft);color:var(--ac-info)}
+.tog{position:relative;width:46px;height:26px;border-radius:13px;background:#C9D1CC;border:0;cursor:pointer;transition:background 190ms var(--ease);flex:none}
+.tog i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--ac-surface);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform 320ms var(--spring)}
+.tog.on{background:var(--ac-warn)}
+.tog.on i{transform:translateX(20px)}
+.banner{display:flex;gap:12px;align-items:center;padding:12px 16px;border-radius:10px;background:var(--ac-warn-soft);border:1px solid rgba(169,109,19,.3);color:var(--ac-warn-t);font-size:13px;font-weight:600}
+.overlay{position:absolute;inset:0;z-index:100;display:grid;place-items:center;padding:24px}
+.dialog{width:100%;max-width:460px;background:var(--ac-surface);border:1px solid var(--ac-hair);border-radius:16px;box-shadow:var(--shadow2);padding:24px;position:relative;z-index:1}
+.prev{border:1px dashed var(--ac-ctl);border-radius:12px;padding:20px;background:var(--ac-raised)}
+.lg{display:grid;grid-template-columns:120px 110px 1fr 160px;gap:12px;padding:11px 20px;border-bottom:1px solid var(--ac-hair);font-size:13px;align-items:center}
+.bad{border-color:var(--ac-neg)!important}
+.live{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2E9B62;margin-right:6px;vertical-align:middle;box-shadow:0 0 0 0 rgba(46,155,98,.5);animation:livePulse 1.8s ease-out infinite}
+.live.lg2{width:10px;height:10px;margin-right:10px}
+@keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(46,155,98,.45)}70%{box-shadow:0 0 0 7px rgba(46,155,98,0)}100%{box-shadow:0 0 0 0 rgba(46,155,98,0)}}
+@media (prefers-reduced-motion:reduce){.live{animation:none}}
+.lnkb{border:0;background:transparent;padding:0;font:inherit;color:var(--ac-brand);font-weight:600;cursor:pointer}
+.lnkb:hover{text-decoration:underline}
+.ofc{height:30px;padding:0 12px;border:1px solid var(--ac-hair);border-radius:999px;background:var(--ac-surface);font-size:12px;font-weight:600;color:var(--ac-2);cursor:pointer}
+.ofc.on{background:var(--ac-inv);border-color:var(--ac-inv);color:#fff}.ofc.on .mut{color:#C9D3CE}
+.odot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:2px}.odot.am{background:#B7791F}.odot.gr{background:#A3ADA8}
+</style>
+</helmet>
+<input type="checkbox" id="sbx" class="sbx" aria-label="Ciutkan sidebar">
+<div class="app" style="position:relative">
+  <nav class="side" aria-label="Navigasi utama">
+    <div class="brand"><i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 8-9"/></svg></i><div class="bt">Auto-Cuan<small>Meja kerja riset IDX</small></div><label for="sbx" class="sbt" title="Ciutkan atau buka sidebar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 10l-2 2 2 2"/></svg></label></div>
+    <a class="nav" href="Main.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z"/></svg>Dashboard</a>
+    <div class="nav-l">Temukan</div>
+    <a class="nav" href="Screener.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>Screener</a>
+    <a class="nav" href="SektorHot.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>Sektor Hot</a>
+    <div class="nav-l">Riset</div>
+    <a class="nav" href="Analisis.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Analisis &amp; Chart</a>
+    <a class="nav" href="Bandarmologi.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Bandarmologi</a>
+    <a class="nav" href="SinyalIntelijen.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/></svg>Sinyal Intelijen</a>
+    <a class="nav" href="BrokerHunter.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Broker Hunter</a>
+    <a class="nav" href="Insider.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M17 11a3 3 0 000-6M21 20c0-2-1.5-4-4-4.6"/></svg>Insider</a>
+    <a class="nav" href="Ranking.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Ranking</a>
+    <a class="nav" href="Financial.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-6h4v6"/></svg>Financial</a>
+    <a class="nav" href="StrukturPasar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9h9A9 9 0 1112 3z"/></svg>Struktur Pasar</a>
+    <div class="nav-l">Pantau</div>
+    <a class="nav" href="Watchlist.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Watchlist<span class="cnt">8</span></a>
+    <a class="nav" href="Portfolio.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg>Portfolio</a>
+    <a class="nav" href="TrackRecord.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>Track Record</a>
+    <a class="nav" href="KelolaKeuangan.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 14h2"/></svg>Kelola Keuangan</a>
+    <div class="nav-l adm-l">Admin<span>· hanya admin</span></div>
+    <a class="nav" href="PatternRadar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Pattern Radar</a>
+    <a class="nav on" href="AdminConsole.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin Console</a>
+    <div class="nav-sp"></div>
+    <a class="acct" href="AccountCenter.dc.html" aria-label="Buka Pusat Akun"><span class="av">B</span><div style="flex:1"><b>budi</b><span>Admin · Pro Trader</span></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+  </nav>
+
+  <div class="main">
+    <header class="top">
+      <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Cari pengguna, job, atau log…</span><kbd>⌘K</kbd></label>
+      <div class="fresh"><span class="{{sysDot}}"></span>{{sysText}}</div>
+      <button class="thm" style="margin-left:8px" type="button" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    </header>
+    <main class="page" style="gap:16px">
+      <div class="ph rise d0">
+        <div><div class="kick" style="color:var(--ac-info)">Admin · akses terbatas</div><h1>Admin Console</h1><p>Operasional Auto-Cuan: persetujuan akun, pengguna, mode maintenance, voucher, job data, dan log audit. Setiap aksi tercatat.</p></div>
+        <span class="chip i">Data contoh</span>
+      </div>
+      <sc-if value="{{mOn}}" hint-placeholder-val="{{false}}"><div class="banner swap" role="status"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9L2 18a2 2 0 001.7 3h16.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg><span>Mode maintenance aktif: {{mScopeL}}. Pengguna non-admin melihat layar maintenance.</span><button class="btn sm" onClick="{{goM}}" style="margin-left:auto">Kelola</button></div></sc-if>
+      <nav class="utabs rise d1" aria-label="Bagian admin"><sc-for list="{{tabs}}" as="t" hint-placeholder-count="7"><button class="{{t.cls}}" onClick="{{t.go}}">{{t.l}}<sc-if value="{{t.hasN}}" hint-placeholder-val="{{false}}"><span class="chip w" style="height:18px;padding:0 6px">{{t.n}}</span></sc-if></button></sc-for></nav>
+
+      <sc-if value="{{t0}}" hint-placeholder-val="{{true}}"><div class="swap" style="display:flex;flex-direction:column;gap:16px">
+        <section class="sheet"><div class="strip">
+          <div><div class="lbl">Pengguna aktif</div><div class="big num pop">1.284</div><div class="sub">7 hari terakhir · <button class="lnkb" onClick="{{goOnline}}"><span class="live"></span>{{onN}} online sekarang</button></div></div>
+          <div><div class="lbl">Menunggu persetujuan</div><div class="big num pop warn">{{pendingN}}</div><div class="sub">terlama 2 hari</div></div>
+          <div><div class="lbl">Kuota API data hari ini</div><div class="big num pop">8.412<span class="mut" style="font-size:14px;font-weight:600"> / 12.060</span></div><div class="meter" style="margin-top:8px"><i style="width:70%"></i></div><div class="sub">reset 00.00 WIB · sisa dipakai isi ulang</div></div>
+          <div><div class="lbl">Status layanan</div><div style="margin-top:6px"><span class="{{sysCls}}">{{sysShort}}</span></div><div class="sub">API p95 320 ms</div></div>
+        </div></section>
+        <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Kesegaran dataset</h2><span>Dibaca dari status job, bukan jam dinding · 1 job perlu dicek</span></div>
+          <div class="tw"><table class="tbl"><thead><tr><th>Dataset</th><th>Terakhir sukses</th><th>Jadwal</th><th>Status</th></tr></thead><tbody>
+            <sc-for list="{{datasets}}" as="d" hint-placeholder-count="6"><tr class="{{d.cls}}"><td style="font-weight:600">{{d.n}}</td><td class="num mut">{{d.t}}</td><td class="mut">{{d.s}}</td><td><span class="{{d.sc}}">{{d.sl}}</span></td></tr></sc-for>
+          </tbody></table></div></section>
+      </div></sc-if>
+
+      <sc-if value="{{t1}}" hint-placeholder-val="{{false}}"><div class="swap" style="display:flex;flex-direction:column;gap:16px">
+        <section class="sheet"><div class="strip">
+          <div><div class="lbl">Online sekarang</div><div class="big num"><span class="live lg2"></span>{{onN}}</div><div class="sub">detak sesi dalam 2 menit terakhir</div></div>
+          <div><div class="lbl">Aktif 15 menit terakhir</div><div class="big num">{{n15}}</div><div class="sub">termasuk yang online</div></div>
+          <div><div class="lbl">Masuk hari ini</div><div class="big num">{{nDay}}</div><div class="sub">sejak 00.00 WIB</div></div>
+          <div><div class="lbl">Tidak aktif lebih dari 7 hari</div><div class="big num warn">{{nIdle}}</div><div class="sub">kandidat ditinjau</div></div>
+        </div></section>
+        <section class="sheet">
+          <div style="display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair)">
+            <sc-for list="{{oFilters}}" as="f" hint-placeholder-count="4"><button class="{{f.cls}}" onClick="{{f.go}}" aria-pressed="{{f.on}}">{{f.l}} <span class="mut num">{{f.n}}</span></button></sc-for>
+            <label class="search" style="width:240px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input aria-label="Cari pengguna" placeholder="Cari pengguna" value="{{oq}}" onInput="{{onOq}}" style="border:0;outline:0;background:transparent;font:inherit;width:100%"></label>
+            <span class="mut" style="margin-left:auto;font-size:12px" role="status"><span class="live"></span>Diperbarui {{agoTxt}} · otomatis tiap 30 detik</span>
+            <span class="chip i">Data contoh</span>
+          </div>
+          <div class="tw"><table class="tbl" style="min-width:900px"><thead><tr><th>Pengguna</th><th>Status</th><th>Halaman</th><th>Perangkat</th><th class="r">Lama sesi</th><th>Masuk terakhir</th></tr></thead><tbody>
+            <sc-for list="{{oRows}}" as="u" hint-placeholder-count="8"><tr class="{{u.cls}}"><td><b>{{u.u}}</b><span class="mut" style="display:block;font-size:12px">{{u.r}}</span></td><td><span class="{{u.sc}}"><span class="{{u.dot}}"></span>{{u.sl}}</span></td><td>{{u.pg}}</td><td class="mut">{{u.dv}}</td><td class="r num">{{u.dur}}</td><td class="num mut">{{u.li}}</td></tr></sc-for>
+          </tbody></table></div>
+          <sc-if value="{{oEmpty}}" hint-placeholder-val="{{false}}"><div class="mut" style="padding:28px 20px;text-align:center">Tidak ada pengguna di filter ini.</div></sc-if>
+          <div class="prov"><span><b>Hanya admin</b></span><span>Online = detak sesi kurang dari 2 menit. Detak dikirim tiap 60 detik saat tab terbuka</span><span>Alamat IP tidak ditampilkan · riwayat disimpan 30 hari</span></div>
+        </section>
+      </div></sc-if>
+
+      <sc-if value="{{t2}}" hint-placeholder-val="{{false}}"><section class="sheet swap">
+        <div class="sec-h"><h2 style="font-size:16px">Persetujuan akun</h2><span>Setujui hanya setelah verifikasi Telegram selesai</span></div>
+        <div class="tw"><table class="tbl" style="min-width:900px"><thead><tr><th>Pengguna</th><th>Gmail</th><th>Daftar</th><th>Telegram</th><th>Status</th><th class="r">Aksi</th></tr></thead><tbody>
+          <sc-for list="{{pending}}" as="p" hint-placeholder-count="5"><tr class="{{p.cls}}"><td style="font-weight:600">{{p.u}}</td><td class="mut">{{p.g}}</td><td class="num mut">{{p.d}}</td><td><span class="{{p.tc}}">{{p.tl}}</span></td><td><span class="{{p.sc}}">{{p.sl}}</span></td>
+            <td class="r" style="white-space:nowrap"><sc-if value="{{p.open}}" hint-placeholder-val="{{true}}"><button class="btn sm" onClick="{{p.reject}}" style="color:var(--ac-neg)">Tolak</button> <button class="btn p sm" onClick="{{p.approve}}" disabled="{{p.noTg}}">Setujui</button></sc-if><sc-if value="{{p.done}}" hint-placeholder-val="{{false}}"><button class="btn q sm" onClick="{{p.undo}}">Urungkan</button></sc-if></td></tr></sc-for>
+        </tbody></table></div>
+        <div class="prov"><span>Tombol Setujui nonaktif bila Telegram belum terverifikasi. Penolakan meminta alasan dan tercatat di log audit.</span></div>
+      </section></sc-if>
+
+      <sc-if value="{{t3}}" hint-placeholder-val="{{false}}"><section class="sheet swap">
+        <div style="display:flex;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair);flex-wrap:wrap"><label class="search" style="width:280px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input aria-label="Cari pengguna" placeholder="Cari username atau Gmail" value="{{uq}}" onInput="{{onUq}}" style="border:0;outline:0;background:transparent;width:100%;font-size:13px"></label><span class="mut num" style="font-size:12px;margin-left:auto">{{usersN}} pengguna</span></div>
+        <div class="tw"><table class="tbl" style="min-width:900px"><thead><tr><th>Pengguna</th><th>Peran</th><th>Paket</th><th>Login terakhir</th><th>Status</th><th class="r">Aksi</th></tr></thead><tbody>
+          <sc-for list="{{users}}" as="u" hint-placeholder-count="6"><tr class="{{u.cls}}"><td><b>{{u.u}}</b><span class="mut" style="display:block;font-size:12px">{{u.g}}</span></td><td>{{u.r}}</td><td class="mut">{{u.p}}</td><td class="num mut">{{u.l}}</td><td><span class="{{u.sc}}">{{u.sl}}</span></td><td class="r"><button class="btn sm" onClick="{{u.act}}" style="{{u.actSt}}">{{u.actL}}</button></td></tr></sc-for>
+        </tbody></table></div>
+      </section></sc-if>
+
+      <sc-if value="{{t4}}" hint-placeholder-val="{{false}}"><div class="swap grid2" style="align-items:start">
+        <section class="sheet card-pad">
+          <div style="display:flex;align-items:center;gap:14px"><div style="flex:1"><h2 style="margin:0;font-size:16px">Mode maintenance</h2><p class="mut" style="margin:4px 0 0;font-size:13px">Saat aktif, pengguna non-admin melihat layar maintenance. Admin tetap bisa masuk.</p></div><button class="{{togCls}}" onClick="{{askToggle}}" role="switch" aria-checked="{{mOn}}" aria-label="Mode maintenance"><i></i></button></div>
+          <div style="height:1px;background:var(--ac-hair);margin:18px 0"></div>
+          <div class="flabel">Cakupan</div>
+          <div style="display:grid;gap:8px;margin-bottom:14px"><sc-for list="{{scopes}}" as="s" hint-placeholder-count="3"><label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;cursor:pointer"><input type="radio" name="sc" checked="{{s.on}}" onChange="{{s.go}}" style="accent-color:var(--ac-brand);margin-top:3px"><span><b>{{s.l}}</b><span class="mut" style="display:block;font-size:12px">{{s.d}}</span></span></label></sc-for></div>
+          <div class="grid2" style="gap:12px"><div><label class="flabel" for="ms">Mulai</label><input id="ms" class="inp" type="datetime-local" value="{{ms}}" onInput="{{onMs}}"></div><div><label class="flabel" for="me">Perkiraan selesai</label><input id="me" class="inp" type="datetime-local" value="{{me}}" onInput="{{onMe}}"></div></div>
+          <div style="height:14px"></div>
+          <label class="flabel" for="mm">Pesan untuk pengguna</label><textarea id="mm" class="inp" style="height:84px;padding:10px 12px;resize:vertical" value="{{msg}}" onInput="{{onMsg}}"></textarea>
+          <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-top:12px;color:var(--ac-2)"><input type="checkbox" checked="{{notify}}" onChange="{{toggleNotify}}" style="accent-color:var(--ac-brand)"> Kirim pemberitahuan Telegram ke pengguna aktif</label>
+        </section>
+        <section class="sheet card-pad">
+          <div class="lbl">Pratinjau yang dilihat pengguna</div>
+          <div class="prev">
+            <span class="st a">Pemeliharaan terjadwal</span>
+            <div style="font-weight:700;font-size:18px;margin:10px 0 6px">Auto-Cuan sedang dalam pemeliharaan</div>
+            <div class="mut" style="font-size:14px;white-space:pre-line">{{msg}}</div>
+            <div class="sub" style="margin-top:10px">{{mWhen}} · Cakupan: {{mScopeL}}</div>
+          </div>
+          <a class="btn" href="Maintenance.dc.html" style="margin-top:12px">Buka layar maintenance penuh</a>
+        </section>
+      </div></sc-if>
+
+      <sc-if value="{{t5}}" hint-placeholder-val="{{false}}"><div class="swap grid2" style="align-items:start">
+        <section class="sheet card-pad">
+          <h2 style="margin:0 0 14px;font-size:16px">Buat voucher</h2>
+          <label class="flabel" for="vc">Kode</label><input id="vc" class="inp mono" value="{{vCode}}" onInput="{{onVCode}}" style="text-transform:uppercase">
+          <div class="grid2" style="gap:12px;margin-top:12px"><div><label class="flabel" for="vp">Paket</label><select id="vp" class="inp" value="{{vp}}" onChange="{{onVp}}"><option>Pro Trader · 30 hari</option><option>Pro Trader · 90 hari</option><option>Lifetime</option></select></div><div><label class="flabel" for="vq">Kuota pemakaian</label><input id="vq" class="inp num" inputmode="numeric" value="{{vq}}" onInput="{{onVq}}"></div></div>
+          <div style="height:12px"></div><label class="flabel" for="vx">Kedaluwarsa</label><input id="vx" class="inp" type="date" value="{{vx}}" onInput="{{onVx}}">
+          <button class="btn p" onClick="{{addV}}" style="margin-top:16px">Buat voucher</button>
+        </section>
+        <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Voucher aktif</h2><span>{{vN}} kode</span></div>
+          <table class="tbl"><thead><tr><th>Kode</th><th>Paket</th><th class="r">Terpakai</th><th>Kedaluwarsa</th></tr></thead><tbody><sc-for list="{{vouchers}}" as="v" hint-placeholder-count="3"><tr class="{{v.cls}}"><td class="mono" style="font-weight:600">{{v.c}}</td><td class="mut">{{v.p}}</td><td class="r num">{{v.u}}</td><td class="num mut">{{v.x}}</td></tr></sc-for></tbody></table></section>
+      </div></sc-if>
+
+      <sc-if value="{{t6}}" hint-placeholder-val="{{false}}"><section class="sheet swap">
+        <div class="sec-h"><h2 style="font-size:16px">Job &amp; data pipeline</h2><span>Jalankan ulang hanya bila sumber sudah pulih</span></div>
+        <div class="tw"><table class="tbl" style="min-width:900px"><thead><tr><th>Job</th><th>Jadwal</th><th>Terakhir jalan</th><th class="r">Durasi</th><th>Status</th><th class="r"></th></tr></thead><tbody>
+          <sc-for list="{{jobs}}" as="j" hint-placeholder-count="6"><tr class="{{j.cls}}"><td class="mono" style="font-weight:600">{{j.n}}</td><td class="mut">{{j.s}}</td><td class="num mut">{{j.t}}</td><td class="r num">{{j.d}}</td><td><span class="{{j.sc}}">{{j.sl}}</span></td><td class="r"><button class="btn sm" onClick="{{j.run}}" disabled="{{j.busy}}">{{j.bl}}</button></td></tr></sc-for>
+        </tbody></table></div>
+      </section></sc-if>
+
+      <sc-if value="{{t7}}" hint-placeholder-val="{{false}}"><section class="sheet swap">
+        <div class="sec-h"><h2 style="font-size:16px">Log audit</h2><span>Tidak dapat diubah · urut terbaru</span></div>
+        <div class="lg" style="font-weight:600;color:var(--ac-2);font-size:12px;background:var(--ac-raised)"><span>Waktu</span><span>Aktor</span><span>Aksi</span><span>Target</span></div>
+        <sc-for list="{{log}}" as="l" hint-placeholder-count="8"><div class="{{l.cls}}"><span class="num mut">{{l.t}}</span><span style="font-weight:600">{{l.a}}</span><span>{{l.x}}</span><span class="mono mut">{{l.g}}</span></div></sc-for>
+      </section></sc-if>
+    </main>
+  </div>
+
+  <sc-if value="{{confirm}}" hint-placeholder-val="{{false}}">
+    <div class="overlay"><div class="scrim" style="position:absolute;inset:0" onClick="{{cancel}}"></div>
+      <div class="dialog dlg" role="alertdialog" aria-modal="true" aria-labelledby="ct">
+        <h2 id="ct" style="margin:0 0 6px;font-size:18px">{{cf.title}}</h2>
+        <p class="mut" style="margin:0 0 14px;font-size:14px">{{cf.body}}</p>
+        <label class="flabel" for="cfi">Ketik <span class="mono">{{cf.word}}</span> untuk konfirmasi</label>
+        <input id="cfi" class="inp mono" value="{{typed}}" onInput="{{onTyped}}" autocomplete="off">
+        <sc-if value="{{cf.needReason}}" hint-placeholder-val="{{false}}"><div style="height:12px"></div><label class="flabel" for="cfr">Alasan</label><input id="cfr" class="inp" placeholder="Wajib diisi" value="{{reason}}" onInput="{{onReason}}"></sc-if>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px"><button class="btn" onClick="{{cancel}}">Batal</button><button class="btn p" onClick="{{doConfirm}}" disabled="{{cfBlocked}}" style="{{cf.btnSt}}">{{cf.btn}}</button></div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{toast}}" hint-placeholder-val="{{false}}"><div style="position:absolute;left:50%;bottom:28px;transform:translateX(-50%);z-index:120"><div class="toast"><svg class="ck" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>{{toast}}</div></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1200}}'>
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.state = { tick:0, of:0, oq:'', tab:0, mOn:false, scope:0, notify:true, msg:'Kami sedang memperbarui data pasar dan server. Posisi di sekuritas Anda tidak terpengaruh. Pantau langsung di aplikasi sekuritas selama pemeliharaan.',
+      decided:{}, blocked:{}, uq:'', vCode:'CUAN2026', vouchers:[{c:'CUAN2026',p:'Pro Trader · 30 hari',u:'12 / 50',x:'31 Des 2026'},{c:'IDX-OKT',p:'Pro Trader · 90 hari',u:'48 / 50',x:'31 Okt 2026'}],
+      ms:'2026-10-18T05:00', me:'2026-10-18T07:00', vp:'Pro Trader · 30 hari', vq:'50', vx:'2026-12-31', jobs:{}, confirm:null, typed:'', reason:'', toast:null, log:[] };
+  }
+  componentDidMount(){ this.iv=setInterval(()=>this.setState({tick:this.state.tick+5}),5000); }
+  componentWillUnmount(){ clearTimeout(this.tt); clearInterval(this.iv); Object.values(this.jt||{}).forEach(clearTimeout); }
+  say(t){ this.setState({toast:t}); clearTimeout(this.tt); this.tt=setTimeout(()=>this.setState({toast:null}),2600); }
+  now(){ return '17 Okt, 10.'+String(20+Math.floor(Math.random()*39)).padStart(2,'0'); }
+  addLog(a,x,g){ return [{t:this.now(),a,x,g}].concat(this.state.log); }
+  renderVals() {
+    const S = this.state;
+    const P = [
+      {u:'rina_swing',g:'rina.swing@gmail.com',d:'15 Okt',tg:true},{u:'andre.idx',g:'andre.idx@gmail.com',d:'15 Okt',tg:true},{u:'trader_pemula',g:'pemula88@gmail.com',d:'16 Okt',tg:false},
+      {u:'siti_cuan',g:'siti.cuan@gmail.com',d:'16 Okt',tg:true},{u:'bayu_konglo',g:'bayu.k@gmail.com',d:'16 Okt',tg:true},{u:'dimas_dt',g:'dimas.dt@gmail.com',d:'17 Okt',tg:false}
+    ];
+    const pendingN = P.filter(p=>!S.decided[p.u]).length;
+    const SC = [{l:'Seluruh aplikasi',d:'Semua halaman diganti layar maintenance.'},{l:'Hanya baca',d:'Pengguna bisa melihat data terakhir; aksi simpan & alert dinonaktifkan.'},{l:'Screener & sinyal saja',d:'Halaman lain tetap berjalan normal.'}];
+    const ask = (cf) => this.setState({confirm:cf, typed:'', reason:''});
+    const BL=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    const fd=(d)=>{ const p=d.split('-'); return +p[2]+' '+BL[+p[1]-1]+' '+p[0]; };
+    const fdt=(d)=>{ const [a,b]=d.split('T'); return fd(a)+', '+(b||'').replace(':','.'); };
+    const L = ['Ringkasan','Online','Persetujuan','Pengguna','Maintenance','Voucher','Job & data','Log audit'];
+    const users = [{u:'budi',g:'budi.investor@gmail.com',r:'Admin',p:'Lifetime',l:'17 Okt, 02.51'},{u:'ayu_trader',g:'ayu.t@gmail.com',r:'Pengguna',p:'Pro · 30 hari',l:'16 Okt, 21.10'},{u:'hendra88',g:'hendra88@gmail.com',r:'Pengguna',p:'Pro · 90 hari',l:'16 Okt, 15.02'},{u:'spam_bot_x',g:'xx1902@gmail.com',r:'Pengguna',p:'Trial',l:'12 Okt, 03.44'},{u:'lina_inv',g:'lina.inv@gmail.com',r:'Pengguna',p:'Pro · 30 hari',l:'15 Okt, 09.31'}]
+      .filter(u=>!S.uq||(u.u+u.g).toLowerCase().indexOf(S.uq.toLowerCase())>=0);
+    const J = [{n:'daily-market-update',s:'Hari bursa 16.30',t:'16 Okt, 17.24',d:'46 m 10 d'},{n:'daily-candles',s:'Hari bursa 16.30',t:'16 Okt, 16.52',d:'21 m 40 d'},{n:'backfill-broksum',s:'Hari kerja 00.07 + 19.30 · akhir pekan 00.07',t:'18 Okt, 01.14',d:'1 j 07 m'},{n:'sector-hot',s:'Hari bursa tiap 30 menit',t:'22 Sep, 15.30',d:'—',fail:true,fl:'Perlu dicek · tanda selesai hilang'},{n:'screeners-preflight',s:'Hari bursa 21.30',t:'16 Okt, 21.31',d:'1 m 12 d'},{n:'ksei-ownership',s:'Bulanan',t:'02 Okt, 08.00',d:'11 m 03 d'}];
+    /* aktivitas: umur detak sesi (detik) saat halaman dibuka, lalu berjalan */
+    const OU = [
+      {u:'budi',r:'Admin',pg:'Admin Console',dv:'Chrome · Windows',age:4,sess:52*60,li:'18 Okt, 09.12',on:true},
+      {u:'ayu_trader',r:'Pro · 30 hari',pg:'Analisis & Chart · BRPT',dv:'Safari · iPhone',age:31,sess:18*60,li:'18 Okt, 10.05',on:true},
+      {u:'hendra88',r:'Pro · 90 hari',pg:'Screener · Day Trade',dv:'Chrome · Android',age:48,sess:7*60,li:'18 Okt, 10.29',on:true},
+      {u:'rizky.swing',r:'Pro · 30 hari',pg:'Bandarmologi · BBCA',dv:'Edge · Windows',age:12*60,sess:25*60,li:'18 Okt, 09.40'},
+      {u:'lina_inv',r:'Pro · 30 hari',pg:'Portfolio',dv:'Chrome · macOS',age:3*3600+600,sess:0,li:'18 Okt, 07.02'},
+      {u:'dimas_ta',r:'Trial',pg:'Landing',dv:'Chrome · Android',age:26*3600,sess:0,li:'17 Okt, 08.15'},
+      {u:'spam_bot_x',r:'Trial',pg:'Masuk',dv:'Tidak dikenal',age:6*86400,sess:0,li:'12 Okt, 03.44'},
+      {u:'yogi.saham',r:'Pro · 30 hari',pg:'Watchlist',dv:'Firefox · Linux',age:9*86400,sess:0,li:'9 Okt, 20.51'}
+    ];
+    const T = S.tick, fmtA=(a)=> a<60?'baru saja':(a<3600?Math.floor(a/60)+' menit lalu':(a<86400?Math.floor(a/3600)+' jam lalu':Math.floor(a/86400)+' hari lalu'));
+    const live = OU.map(o=>{ const age = o.on ? (o.age+T)%60 : o.age+T; const st = age<120?'on':(age<900?'a15':(age<14*3600?'day':(age>7*86400?'idle':'old')));
+      const dur = st==='on'||st==='a15' ? o.sess+T : 0;
+      return {...o, age, st, dur}; });
+    const OF=[{l:'Semua',f:()=>true},{l:'Online',f:x=>x.st==='on'},{l:'Hari ini',f:x=>x.st!=='old'&&x.st!=='idle'},{l:'Tidak aktif > 7 hari',f:x=>x.st==='idle'}];
+    const oRows = live.filter(OF[S.of].f).filter(x=>!S.oq || x.u.toLowerCase().indexOf(S.oq.toLowerCase())>=0).map((x,i)=>({u:x.u, r:x.r, pg:x.pg, dv:x.dv, li:x.li, cls:'rise d'+Math.min(i,5),
+      sc:'st '+(x.st==='on'?'g':(x.st==='a15'?'a':'m')), dot: x.st==='on'?'live':(x.st==='a15'?'odot am':'odot gr'), sl: x.st==='on'?'Online':(x.st==='a15'?'Aktif '+fmtA(x.age):'Terakhir '+fmtA(x.age)),
+      dur: x.dur ? (x.dur>=3600?Math.floor(x.dur/3600)+' j '+Math.floor(x.dur%3600/60)+' m':Math.floor(x.dur/60)+' m') : '—'}));
+    const cf = S.confirm;
+    const out = {
+      onN: live.filter(x=>x.st==='on').length, n15: live.filter(x=>x.st==='on'||x.st==='a15').length, nDay: live.filter(x=>x.st!=='old'&&x.st!=='idle').length, nIdle: live.filter(x=>x.st==='idle').length,
+      oRows, oEmpty: oRows.length===0, oq:S.oq, onOq:(e)=>this.setState({oq:e.target.value}), agoTxt: (T%30)<5?'baru saja':(T%30)+' detik lalu',
+      oFilters: OF.map((f,i)=>({l:f.l, n:live.filter(f.f).length, on:String(i===S.of), cls:'ofc'+(i===S.of?' on':''), go:()=>this.setState({of:i})})),
+      goOnline:()=>this.setState({tab:1, of:1}),
+      tabs: L.map((l,i)=>({l, cls:i===S.tab?'on':'', go:()=>this.setState({tab:i}), hasN:i===2&&pendingN>0, n:pendingN})),
+      mOn:S.mOn, mScopeL:SC[S.scope].l.toLowerCase(), goM:()=>this.setState({tab:4}),
+      sysDot:'dot '+(S.mOn?'a':'g'), sysText:S.mOn?'Maintenance aktif · '+SC[S.scope].l:'Semua layanan normal · 10.20 WIB',
+      sysCls:'st '+(S.mOn?'a':'g'), sysShort:S.mOn?'Maintenance':'Normal', pendingN,
+      datasets:[{n:'Broker summary · semua',t:'16 Okt, 17.12',s:'Hari bursa 16.30',ok:1},{n:'Broker summary · asing',t:'16 Okt, 17.18',s:'Hari bursa 16.30 + isi ulang',ok:2,sl2:'Dilengkapi · sejak 2 Jan'},{n:'Domestik (semua − asing)',t:'16 Okt, 17.18',s:'Dihitung, 0 request',ok:1},{n:'Akumulasi broker',t:'16 Okt, 17.20',s:'Dihitung setelah broksum',ok:1},{n:'Insider',t:'16 Okt, 17.24',s:'Hari bursa 16.30',ok:1},{n:'Candle harian (EOD)',t:'16 Okt, 16.52',s:'Hari bursa 16.30',ok:1},{n:'Sektor Hot',t:'22 Sep, 15.30',s:'Tiap 30 menit, 09.00 sampai 15.30',ok:0,sl2:'Perlu dicek · tanda selesai hilang'},{n:'Kepemilikan KSEI',t:'31 Agu 2026',s:'Bulanan',ok:1},{n:'Fundamental',t:'15 Okt, 09.20',s:'Kuartalan',ok:1}].map((d,i)=>({...d,cls:'rise d'+i,sc:'st '+(d.ok===1?'g':d.ok===2?'a':'r'),sl:d.sl2||'Sesuai jadwal'})),
+      pending: P.map((p,i)=>{ const dec=S.decided[p.u]; return {...p, cls:'rise d'+i, tc:'st '+(p.tg?'g':'a'), tl:p.tg?'Terverifikasi':'Menunggu kode', noTg:!p.tg, open:!dec, done:!!dec,
+        sc:'st '+(dec==='ok'?'g':(dec==='no'?'r':'m')), sl:dec==='ok'?'Disetujui':(dec==='no'?'Ditolak':'Menunggu'),
+        approve:()=>{ this.setState({decided:{...S.decided,[p.u]:'ok'}, log:this.addLog('budi','Menyetujui akun',p.u)}); this.say(p.u+' disetujui'); },
+        reject:()=>ask({kind:'reject',u:p.u,title:'Tolak pendaftaran '+p.u+'?',body:'Pengguna akan diberi tahu lewat Telegram bila terhubung. Tindakan tercatat di log audit.',word:p.u,btn:'Tolak pendaftaran',needReason:true,btnSt:'background:var(--ac-neg);border-color:var(--ac-neg)'}),
+        undo:()=>{ const d={...S.decided}; delete d[p.u]; this.setState({decided:d, log:this.addLog('budi','Membatalkan keputusan',p.u)}); } }; }),
+      uq:S.uq, onUq:(e)=>this.setState({uq:e.target.value}), usersN:users.length,
+      users: users.map((u,i)=>{ const b=!!S.blocked[u.u]; return {...u, cls:'rise d'+i, sc:'st '+(b?'r':'g'), sl:b?'Diblokir':'Aktif', actL:u.r==='Admin'?'—':(b?'Buka blokir':'Blokir'), actSt:b||u.r==='Admin'?'':'color:var(--ac-neg)',
+        act:()=>{ if(u.r==='Admin') return; if(b){ const x={...S.blocked}; delete x[u.u]; this.setState({blocked:x, log:this.addLog('budi','Membuka blokir',u.u)}); this.say(u.u+' dibuka blokirnya'); } else ask({kind:'block',u:u.u,title:'Blokir '+u.u+'?',body:'Semua sesi pengguna ini akan keluar dan login ditolak sampai blokir dibuka.',word:u.u,btn:'Blokir pengguna',needReason:true,btnSt:'background:var(--ac-neg);border-color:var(--ac-neg)'}); } }; }),
+      togCls:'tog'+(S.mOn?' on':''),
+      askToggle:()=> S.mOn ? ask({kind:'moff',title:'Matikan mode maintenance?',body:'Semua pengguna kembali bisa mengakses aplikasi.',word:'SELESAI',btn:'Matikan maintenance',needReason:false,btnSt:''})
+                           : ask({kind:'mon',title:'Aktifkan mode maintenance?',body:'Cakupan: '+SC[S.scope].l+'. Pengguna non-admin akan melihat layar maintenance'+(S.notify?' dan menerima pemberitahuan Telegram.':'.'),word:'MAINTENANCE',btn:'Aktifkan',needReason:false,btnSt:'background:var(--ac-warn);border-color:var(--ac-warn)'}),
+      scopes: SC.map((s,i)=>({...s, on:i===S.scope, go:()=>this.setState({scope:i})})),
+      msg:S.msg, onMsg:(e)=>this.setState({msg:e.target.value}), notify:S.notify, toggleNotify:()=>this.setState({notify:!S.notify}),
+      vp:S.vp, vq:S.vq, vx:S.vx, onVp:(e)=>this.setState({vp:e.target.value}), onVq:(e)=>this.setState({vq:e.target.value.replace(/\D/g,'')}), onVx:(e)=>this.setState({vx:e.target.value}),
+      ms:S.ms, me:S.me, onMs:(e)=>this.setState({ms:e.target.value}), onMe:(e)=>this.setState({me:e.target.value}),
+      mWhen: !S.me ? 'Perkiraan selesai belum diisi' : (S.ms && S.me<=S.ms ? 'Waktu selesai harus setelah waktu mulai' : 'Perkiraan selesai '+fdt(S.me)+' WIB'),
+      vCode:S.vCode, onVCode:(e)=>this.setState({vCode:e.target.value}), vN:S.vouchers.length,
+      vouchers:S.vouchers.map((v,i)=>({...v, cls:'rise d'+i})),
+      addV:()=>{ const c=S.vCode.trim().toUpperCase(); if(!c||S.vouchers.some(v=>v.c===c)){ this.say('Kode kosong atau sudah ada'); return; } const q=parseInt(S.vq,10); if(!(q>0)){ this.say('Kuota harus angka di atas 0'); return; } if(!S.vx){ this.say('Isi tanggal kedaluwarsa'); return; } this.setState({vouchers:[{c,p:S.vp,u:'0 / '+q,x:fd(S.vx)}].concat(S.vouchers), vCode:'', log:this.addLog('budi','Membuat voucher',c)}); this.say('Voucher '+c+' dibuat'); },
+      jobs: J.map((j,i)=>{ const st=S.jobs[j.n]; const busy=st==='run'; const ok=st==='ok'||(!j.fail&&!st); return {...j, cls:'rise d'+i, busy, bl:busy?'Berjalan…':'Jalankan ulang', t:st==='ok'?'17 Okt, 10.2x':j.t, d:st==='ok'?'1 m 02 d':j.d,
+        sc:'st '+(busy?'i':(ok?'g':'r')), sl:busy?'Berjalan':(ok?'Sukses':(j.fl||'Gagal · timeout sumber')),
+        run:()=>ask({kind:'job',n:j.n,title:'Jalankan ulang '+j.n+'?',body:'Job akan membaca ulang sumber data dan menimpa snapshot hari ini.',word:'JALANKAN',btn:'Jalankan',needReason:false,btnSt:''}) }; }),
+      log: (S.log.concat([{t:'17 Okt, 09.12',a:'budi',x:'Mengubah pesan maintenance',g:'system'},{t:'16 Okt, 22.40',a:'budi',x:'Memblokir akun',g:'spam_bot_y'},{t:'16 Okt, 15.31',a:'system',x:'Tanda selesai tidak ditulis',g:'sector-hot'},{t:'16 Okt, 15.45',a:'system',x:'Top 5 dikunci & dikirim',g:'top5-lock-broadcast'},{t:'16 Okt, 10.02',a:'budi',x:'Menyetujui akun',g:'ayu_trader'}])).map((l,i)=>({...l, cls:'lg rise d'+Math.min(i,11)})),
+      confirm: !!cf, cf: cf||{}, typed:S.typed, reason:S.reason,
+      onTyped:(e)=>this.setState({typed:e.target.value}), onReason:(e)=>this.setState({reason:e.target.value}),
+      cfBlocked: !cf || S.typed.trim()!==cf.word || (cf.needReason && !S.reason.trim()),
+      cancel:()=>this.setState({confirm:null}),
+      doConfirm:()=>{ if(!cf) return; if(S.typed.trim()!==cf.word) return;
+        if(cf.kind==='mon'){ this.setState({mOn:true, confirm:null, log:this.addLog('budi','Mengaktifkan maintenance',SC[S.scope].l)}); this.say('Mode maintenance aktif'); }
+        else if(cf.kind==='moff'){ this.setState({mOn:false, confirm:null, log:this.addLog('budi','Mematikan maintenance','system')}); this.say('Mode maintenance dimatikan'); }
+        else if(cf.kind==='reject'){ this.setState({decided:{...S.decided,[cf.u]:'no'}, confirm:null, log:this.addLog('budi','Menolak akun ('+S.reason.trim()+')',cf.u)}); this.say(cf.u+' ditolak'); }
+        else if(cf.kind==='block'){ this.setState({blocked:{...S.blocked,[cf.u]:true}, confirm:null, log:this.addLog('budi','Memblokir akun ('+S.reason.trim()+')',cf.u)}); this.say(cf.u+' diblokir'); }
+        else if(cf.kind==='job'){ const n=cf.n; this.jt=this.jt||{}; this.setState({jobs:{...S.jobs,[n]:'run'}, confirm:null, log:this.addLog('budi','Menjalankan ulang job',n)}); clearTimeout(this.jt[n]); this.jt[n]=setTimeout(()=>{ this.setState({jobs:{...this.state.jobs,[n]:'ok'}}); this.say(n+' selesai'); },1800); } }
+    };
+    L.forEach((l,i)=>{ out['t'+i]=S.tab===i; });
+    return out;
+  }
+}
+</script>
+</body>
+</html>

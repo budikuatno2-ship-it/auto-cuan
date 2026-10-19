@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Portfolio</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ac.css">
+<script src="./motion.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+.rng{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,rgba(193,63,77,.22),var(--ac-hover) 40%,rgba(36,122,67,.22));min-width:120px}
+.rng b{position:absolute;top:-4px;width:3px;height:14px;border-radius:2px;background:var(--ac-inv);transform:translateX(-50%);animation:fade 400ms var(--ease) both}
+.out{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--ac-hair);font-size:14px}
+.out:last-child{border-bottom:0}
+.out>span:first-child{color:var(--ac-2)}
+.verd{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:10px;font-size:13px;font-weight:600}
+.verd.ok{background:var(--ac-pos-soft);color:var(--ac-pos)}
+.verd.no{background:var(--ac-warn-soft);color:var(--ac-warn-t)}
+.tl{position:relative;padding-left:22px}
+.tl::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:1px;background:var(--ac-hair)}
+.tl .it{position:relative;padding:0 0 18px}
+.tl .it::before{content:"";position:absolute;left:-20px;top:5px;width:9px;height:9px;border-radius:50%;background:var(--ac-surface);border:2px solid var(--ac-brand)}
+.act{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--ac-hair);font-size:14px}
+.act:last-child{border-bottom:0}
+</style>
+</helmet>
+<input type="checkbox" id="sbx" class="sbx" aria-label="Ciutkan sidebar">
+<div class="app">
+  <nav class="side" aria-label="Navigasi utama">
+    <div class="brand"><i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 8-9"/></svg></i><div class="bt">Auto-Cuan<small>Meja kerja riset IDX</small></div><label for="sbx" class="sbt" title="Ciutkan atau buka sidebar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 10l-2 2 2 2"/></svg></label></div>
+    <a class="nav" href="Main.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z"/></svg>Dashboard</a>
+    <div class="nav-l">Temukan</div>
+    <a class="nav" href="Screener.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>Screener</a>
+    <a class="nav" href="SektorHot.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>Sektor Hot</a>
+    <div class="nav-l">Riset</div>
+    <a class="nav" href="Analisis.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Analisis &amp; Chart</a>
+    <a class="nav" href="Bandarmologi.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Bandarmologi</a>
+    <a class="nav" href="SinyalIntelijen.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/></svg>Sinyal Intelijen</a>
+    <a class="nav" href="BrokerHunter.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Broker Hunter</a>
+    <a class="nav" href="Insider.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M17 11a3 3 0 000-6M21 20c0-2-1.5-4-4-4.6"/></svg>Insider</a>
+    <a class="nav" href="Ranking.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Ranking</a>
+    <a class="nav" href="Financial.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-6h4v6"/></svg>Financial</a>
+    <a class="nav" href="StrukturPasar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9h9A9 9 0 1112 3z"/></svg>Struktur Pasar</a>
+    <div class="nav-l">Pantau</div>
+    <a class="nav" href="Watchlist.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Watchlist<span class="cnt">8</span></a>
+    <a class="nav on" href="Portfolio.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg>Portfolio</a>
+    <a class="nav" href="TrackRecord.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>Track Record</a>
+    <a class="nav" href="KelolaKeuangan.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 14h2"/></svg>Kelola Keuangan</a>
+    <div class="nav-l adm-l">Admin<span>· hanya admin</span></div>
+    <a class="nav" href="PatternRadar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Pattern Radar</a>
+    <a class="nav" href="AdminConsole.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin Console</a>
+    <div class="nav-sp"></div>
+    <a class="acct" href="AccountCenter.dc.html" aria-label="Buka Pusat Akun"><span class="av">B</span><div style="flex:1"><b>budi</b><span>Admin · Pro Trader</span></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+  </nav>
+
+  <div class="main">
+    <header class="top">
+      <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Cari ticker, halaman, atau aksi…</span><kbd>⌘K</kbd></label>
+      <div class="fresh"><span class="dot g"></span>Harga tersimpan · 13 Okt 2026, 15.42 WIB</div>
+      <button class="thm" style="margin-left:8px" type="button" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    </header>
+
+    <main class="page" style="gap:16px">
+      <div class="ph rise d0">
+        <div><h1>Portfolio</h1><p>Rencana dan posisi mandiri. Tidak ada eksekusi broker otomatis. Semua angka dihitung dari data yang Anda simpan.</p></div>
+        <span class="chip i">Data contoh</span>
+      </div>
+      <nav class="utabs rise d1" aria-label="Bagian portfolio">
+        <sc-for list="{{tabs}}" as="t" hint-placeholder-count="7"><button class="{{t.cls}}" onClick="{{t.go}}" aria-current="{{t.cur}}">{{t.l}}</button></sc-for>
+      </nav>
+
+      <sc-if value="{{t0}}" hint-placeholder-val="{{true}}"><div class="swap" style="display:flex;flex-direction:column;gap:16px">
+        <section class="sheet">
+          <div class="strip">
+            <div><div class="lbl">Modal portofolio</div><div class="big num pop">{{o.cap}}</div><div class="sub">dari Preferensi Trading</div></div>
+            <div><div class="lbl">Eksposur berjalan</div><div class="big num pop">{{o.exp}}</div><div class="sub num">{{o.expPct}} dari modal</div></div>
+            <div><div class="lbl">Unrealized P/L</div><div class="big num pop pos">{{o.pl}}</div><div class="sub num">{{o.plPct}} dari biaya · harga tersimpan</div></div>
+            <div><div class="lbl">Risiko terbuka ke SL</div><div class="big num pop">{{o.risk}}</div><div class="sub num">{{o.riskPct}} dari modal</div></div>
+          </div>
+        </section>
+        <div class="grid2">
+          <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Perlu perhatian</h2><span>Urut dari level terdekat</span></div>
+            <div style="padding:0 20px 8px"><sc-for list="{{near}}" as="a" hint-placeholder-count="4"><div class="act"><span class="tk mono">{{a.t}}</span><span><b class="num">{{a.d}}</b> <span class="mut">ke {{a.lvl}}</span> <span class="mut num">({{a.px}})</span></span><button class="btn sm" onClick="{{a.go}}">Lihat</button></div></sc-for></div>
+          </section>
+          <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Kualitas data</h2><span>Ketahui batasnya sebelum bertindak</span></div>
+            <div style="padding:0 20px 16px">
+              <div class="out"><span>Harga tersedia</span><b class="num">4 / 4 posisi</b></div>
+              <div class="out"><span>Pembaruan harga</span><b>13 Okt, 15.42 WIB</b></div>
+              <div class="out"><span>Sumber harga</span><b>Endpoint Auto-Cuan</b></div>
+              <div class="out"><span>Eksekusi broker</span><b>Tidak ada (mandiri)</b></div>
+            </div>
+          </section>
+        </div>
+      </div></sc-if>
+
+      <sc-if value="{{t1}}" hint-placeholder-val="{{false}}"><div class="swap grid2" style="align-items:start">
+        <section class="sheet card-pad">
+          <h2 style="margin:0 0 4px;font-size:16px">Kalkulator ukuran posisi</h2><p class="mut" style="margin:0 0 16px;font-size:13px">Ubah angka, hasil di kanan ikut berubah.</p>
+          <div class="grid2" style="gap:14px">
+            <div><label class="flabel" for="m">Modal alokasi (Rp)</label><input id="m" class="inp num" value="{{p.m}}" onInput="{{p.onM}}" inputmode="numeric"></div>
+            <div><label class="flabel" for="r">Toleransi risiko (%)</label><input id="r" class="inp num" value="{{p.r}}" onInput="{{p.onR}}" inputmode="decimal"></div>
+            <div><label class="flabel" for="tk">Ticker</label><select id="tk" class="inp" value="{{p.tk}}" onChange="{{p.onT}}"><option>BRPT</option><option>MEDC</option><option>BBCA</option><option>ADRO</option></select></div>
+            <div><label class="flabel" for="b">Harga beli</label><input id="b" class="inp num" value="{{p.b}}" onInput="{{p.onB}}" inputmode="numeric"></div>
+            <div><label class="flabel" for="s">Stop loss</label><input id="s" class="inp num" value="{{p.s}}" onInput="{{p.onS}}" inputmode="numeric"></div>
+            <div><label class="flabel" for="tp">Target 1</label><input id="tp" class="inp num" value="{{p.tp}}" onInput="{{p.onTp}}" inputmode="numeric"></div>
+          </div>
+          <div class="help">Level default diambil dari rencana server untuk ticker terpilih; ubah hanya bila Anda punya rencana sendiri.</div>
+        </section>
+        <section class="sheet card-pad" aria-live="polite">
+          <div class="lbl">Hasil</div>
+          <div class="num" style="font-size:34px;font-weight:700;letter-spacing:-.03em">{{p.lots}}</div>
+          <div class="mut num" style="margin-bottom:12px">{{p.shares}}</div>
+          <div class="out"><span>Modal dibutuhkan</span><b class="num">{{p.cap}}</b></div>
+          <div class="out"><span>Batas risiko</span><b class="num">{{p.riskAmt}}</b></div>
+          <div class="out"><span>Kerugian jika kena SL</span><b class="num neg">{{p.loss}}</b></div>
+          <div class="out"><span>Potensi di TP1</span><b class="num pos">{{p.gain}}</b></div>
+          <div class="out"><span>Risk / Reward</span><b class="num">{{p.rr}}</b></div>
+          <div class="{{p.vCls}}" style="margin-top:12px"><span>{{p.vIcon}}</span>{{p.verdict}}</div>
+          <button class="btn p" style="width:100%;margin-top:14px" disabled="{{p.bad}}" onClick="{{p.save}}">{{p.saveL}}</button><div class="help" role="status">{{p.savedMsg}}</div>
+        </section>
+      </div></sc-if>
+
+      <sc-if value="{{t2}}" hint-placeholder-val="{{false}}"><section class="sheet swap">
+        <div class="sec-h"><h2 style="font-size:16px">Posisi aktif</h2><span>Posisi kini di antara SL dan TP1 ditunjukkan oleh penanda hitam</span></div>
+        <div class="tw"><table class="tbl" style="min-width:1000px"><thead><tr><th>Ticker</th><th class="r">Lot</th><th class="r">Harga beli</th><th class="r">Harga kini</th><th class="r">Nilai posisi</th><th class="r">P/L</th><th class="r">P/L %</th><th>SL → TP1</th><th class="r"></th></tr></thead>
+        <tbody><sc-for list="{{pos}}" as="r" hint-placeholder-count="4"><tr class="{{r.cls}}"><td class="tk mono">{{r.t}}</td><td class="r num">{{r.lot}}</td><td class="r num mono">{{r.bS}}</td><td class="r num mono" style="font-weight:600">{{r.pS}}</td><td class="r num">{{r.val}}</td><td class="{{r.plC}}" style="font-weight:600">{{r.plS}}</td><td class="{{r.plC}}">{{r.pct}}</td><td><div style="display:flex;gap:8px;align-items:center;font-size:11px" class="mono"><span class="neg">{{r.slS}}</span><div class="rng" style="flex:1"><b style="{{r.mk}}"></b></div><span class="pos">{{r.tpS}}</span></div></td><td class="r"><button class="btn sm" onClick="{{r.edit}}" aria-label="Ubah rencana {{r.t}} di Rencana posisi">Ubah rencana</button></td></tr></sc-for></tbody>
+        <tfoot><tr><td style="font-weight:700;padding:0 12px;height:42px">Total</td><td></td><td></td><td></td><td class="r num" style="font-weight:700;padding:0 12px">{{o.exp}}</td><td class="r num pos" style="font-weight:700;padding:0 12px">{{o.pl}}</td><td class="r num pos" style="padding:0 12px">{{o.plPct}}</td><td></td><td></td></tr></tfoot></table></div>
+      </section></sc-if>
+
+      <sc-if value="{{t3}}" hint-placeholder-val="{{false}}"><div class="swap grid2" style="align-items:start">
+        <section class="sheet card-pad">
+          <h2 style="margin:0 0 4px;font-size:16px">Guard average down</h2><p class="mut" style="margin:0 0 16px;font-size:13px">Pemeriksaan matematis: apakah rerata baru dan risiko total masih dalam batas. Bukan saran untuk menambah posisi.</p>
+          <div class="grid2" style="gap:14px">
+            <div><label class="flabel" for="rp">Posisi</label><select id="rp" class="inp" onChange="{{g.onT}}"><option>BBCA</option><option>BRPT</option><option>MEDC</option><option>ADRO</option></select></div>
+            <div><label class="flabel" for="ra">Tambah lot</label><input id="ra" class="inp num" value="{{g.add}}" onInput="{{g.onAdd}}" inputmode="numeric"></div>
+            <div><label class="flabel" for="rpx">Harga tambah</label><input id="rpx" class="inp num" value="{{g.px}}" onInput="{{g.onPx}}" inputmode="numeric"></div>
+            <div><label class="flabel">Stop loss</label><div class="inp num" style="display:flex;align-items:center;background:var(--ac-raised)">{{g.slS}}</div></div>
+          </div>
+        </section>
+        <section class="sheet card-pad">
+          <div class="out"><span>Rerata lama</span><b class="num mono">{{g.oldAvg}}</b></div>
+          <div class="out"><span>Rerata baru</span><b class="num mono">{{g.newAvg}}</b></div>
+          <div class="out"><span>Total lot</span><b class="num">{{g.lots}}</b></div>
+          <div class="out"><span>Risiko ke SL setelah tambah</span><b class="num neg">{{g.risk}}</b></div>
+          <div class="out"><span>Batas risiko per posisi (1,5%)</span><b class="num">{{g.cap}}</b></div>
+          <div class="{{g.vCls}}" style="margin-top:12px">{{g.verdict}}</div>
+          <div class="help">Tinjauan teknikal dan setup tetap wajib sebelum menambah posisi.</div>
+        </section>
+      </div></sc-if>
+
+      <sc-if value="{{t4}}" hint-placeholder-val="{{false}}"><section class="sheet swap">
+        <div class="sec-h"><h2 style="font-size:16px">Skenario posisi</h2><span>P/L per posisi bila harga mencapai level rencana</span></div>
+        <div class="tw"><table class="tbl" style="min-width:760px"><thead><tr><th>Ticker</th><th class="r">Kena SL</th><th class="r">Harga kini</th><th class="r">Capai TP1</th><th class="r">Capai TP2</th></tr></thead>
+        <tbody><sc-for list="{{scen}}" as="r" hint-placeholder-count="4"><tr class="{{r.cls}}"><td class="tk mono">{{r.t}}</td><td class="r num neg">{{r.a}}</td><td class="r num">{{r.b}}</td><td class="r num pos">{{r.c}}</td><td class="r num pos">{{r.d}}</td></tr></sc-for></tbody>
+        <tfoot><tr><td style="font-weight:700;padding:0 12px;height:42px">Total</td><td class="r num neg" style="font-weight:700;padding:0 12px">{{st.a}}</td><td class="r num" style="font-weight:700;padding:0 12px">{{st.b}}</td><td class="r num pos" style="font-weight:700;padding:0 12px">{{st.c}}</td><td class="r num mut" style="padding:0 12px">{{st.d}}</td></tr></tfoot></table></div>
+        <div class="prov"><span>TP2 kosong (—) untuk posisi tanpa target kedua; tidak dihitung sebagai nol pada total.</span></div>
+      </section></sc-if>
+
+      <sc-if value="{{t5}}" hint-placeholder-val="{{false}}"><div class="swap grid2" style="align-items:start">
+        <section class="sheet card-pad">
+          <h2 style="margin:0 0 14px;font-size:16px">Catatan baru</h2>
+          <label class="flabel" for="jt">Ticker</label><select id="jt" class="inp" onChange="{{j.onT}}"><option>BRPT</option><option>MEDC</option><option>BBCA</option><option>ADRO</option></select>
+          <div style="height:12px"></div>
+          <label class="flabel" for="jn">Alasan &amp; refleksi</label><textarea id="jn" class="inp" style="height:96px;padding:10px 12px;resize:vertical" value="{{j.txt}}" onInput="{{j.onTxt}}" placeholder="Kenapa masuk, apa yang dirasakan, apakah sesuai rencana…"></textarea>
+          <div style="display:flex;gap:16px;margin-top:12px;font-size:13px"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" checked="{{j.plan}}" onChange="{{j.onPlan}}" style="accent-color:var(--ac-brand)"> Sesuai rencana</label></div>
+          <button class="btn p" onClick="{{j.add}}" style="margin-top:14px">Simpan catatan</button>
+        </section>
+        <section class="sheet card-pad">
+          <h2 style="margin:0 0 16px;font-size:16px">Jurnal</h2>
+          <div class="tl"><sc-for list="{{j.items}}" as="e" hint-placeholder-count="3"><div class="{{e.cls}}"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b class="mono">{{e.t}}</b><span class="mut num" style="font-size:12px">{{e.d}}</span><span class="{{e.tagC}}">{{e.tag}}</span></div><div style="margin-top:4px;font-size:14px">{{e.x}}</div></div></sc-for></div>
+        </section>
+      </div></sc-if>
+
+      <sc-if value="{{t6}}" hint-placeholder-val="{{false}}"><section class="sheet swap" style="max-width:860px">
+        <div class="sec-h"><h2 style="font-size:16px">Audit portofolio · interpretasi model</h2><span>Konteks: 4 posisi tersimpan · 13 Okt 2026</span></div>
+        <div style="padding:0 20px 20px;display:grid;gap:16px;font-size:15px;line-height:1.6">
+          <div><div class="lbl">Rangkuman</div>Risiko terbuka {{o.riskPct}} dari modal, di bawah batas pribadi 2%. Eksposur terbesar ada di BBCA (43% nilai posisi).</div>
+          <div><div class="lbl">Konsentrasi</div><div style="display:grid;gap:8px;margin-top:6px"><sc-for list="{{conc}}" as="c" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:120px 1fr 56px;gap:10px;align-items:center;font-size:13px"><span>{{c.s}}</span><div class="meter"><i style="{{c.bar}}"></i></div><b class="num" style="text-align:right">{{c.p}}</b></div></sc-for></div></div>
+          <div><div class="lbl">Risiko</div><span class="mut">BRPT dan ADRO sama-sama sensitif terhadap harga komoditas energi; pergerakan searah dapat menggandakan kerugian.</span></div>
+          <div><div class="lbl">Yang perlu dipantau</div><span class="mut">MEDC paling dekat ke TP1; pertimbangkan menaikkan stop setelah TP1 tercapai.</span></div>
+          <div class="help">Interpretasi model adalah pendukung keputusan, bukan perintah beli atau jual.</div>
+        </div>
+      </section></sc-if>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.state = { saved:null, tab:0, m:'50000000', r:'1', tk:'BRPT', b:'1045', s:'995', tp:'1120', gT:'BBCA', gAdd:'10', gPx:'10050',
+      jT:'BRPT', jTxt:'', jPlan:true,
+      journal:[{t:'MEDC',d:'10 Okt, 09.14',x:'Masuk setelah konfirmasi volume 3,2×. Tidak mengejar harga di atas area entry.',plan:true},{t:'BBCA',d:'07 Okt, 13.40',x:'Tambah 10 lot saat pullback, sedikit terburu-buru, belum menunggu closing.',plan:false},{t:'BRPT',d:'03 Okt, 10.02',x:'Entry sesuai rencana di 1.010, SL 995 dicatat sebelum beli.',plan:true}] };
+  }
+  fmt(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+  dec(n,d){ return n.toFixed(d).replace('.',','); }
+  rp(n){ return (n<0?'−':'')+'Rp '+this.fmt(Math.abs(n)); }
+  num(v){ const x=parseFloat(String(v).replace(/\./g,'').replace(',','.')); return isNaN(x)?0:x; }
+  renderVals() {
+    const S = this.state, CAP = 124500000;
+    const P = [
+      {t:'BRPT',lot:100,b:1010,p:1045,sl:995,tp:1120,tp2:1180,sec:'Energi'},
+      {t:'MEDC',lot:80,b:1325,p:1380,sl:1310,tp:1480,tp2:null,sec:'Energi'},
+      {t:'BBCA',lot:20,b:10150,p:10250,sl:9950,tp:10600,tp2:11000,sec:'Perbankan'},
+      {t:'ADRO',lot:15,b:3650,p:3720,sl:3580,tp:3920,tp2:null,sec:'Energi'}
+    ];
+    const sh = (x) => x.lot*100;
+    const exp = P.reduce((a,x)=>a+sh(x)*x.p,0), cost = P.reduce((a,x)=>a+sh(x)*x.b,0), pl = exp-cost, risk = P.reduce((a,x)=>a+sh(x)*(x.p-x.sl),0);
+    const o = {cap:this.rp(CAP), exp:this.rp(exp), expPct:this.dec(exp/CAP*100,1)+'%', pl:'+'+this.rp(pl), plPct:'+'+this.dec(pl/cost*100,2)+'%', risk:this.rp(risk), riskPct:this.dec(risk/CAP*100,2)+'%'};
+    const near = P.map(x=>{ const dT=(x.tp-x.p)/x.p*100, dS=(x.p-x.sl)/x.p*100; return dT<dS ? {t:x.t,dv:dT,lvl:'TP1',px:this.fmt(x.tp)} : {t:x.t,dv:dS,lvl:'SL',px:this.fmt(x.sl)}; }).sort((a,b)=>a.dv-b.dv).map(a=>({...a, d:this.dec(a.dv,2)+'%', go:()=>this.setState({tab:2})}));
+    const pos = P.map((x,i)=>{ const v=sh(x)*x.p, l=sh(x)*(x.p-x.b); return {edit:()=>this.setState({tab:1, tk:x.t, b:String(x.p), s:String(x.sl), tp:String(x.tp), saved:null}), t:x.t, cls:'rise d'+i, lot:x.lot, bS:this.fmt(x.b), pS:this.fmt(x.p), val:this.rp(v), plS:(l>=0?'+':'')+this.rp(l), pct:(l>=0?'+':'−')+this.dec(Math.abs((x.p-x.b)/x.b*100),2)+'%', plC:'r num '+(l>=0?'pos':'neg'), slS:this.fmt(x.sl), tpS:this.fmt(x.tp), mk:'left:'+((x.p-x.sl)/(x.tp-x.sl)*100).toFixed(1)+'%'}; });
+    // planner
+    const m=this.num(S.m), r=this.num(S.r), b=this.num(S.b), s=this.num(S.s), tp=this.num(S.tp);
+    const riskAmt = m*r/100, per = (b-s)*100, lots = per>0 ? Math.floor(riskAmt/per) : 0, rr = b>s && tp>b ? (tp-b)/(b-s) : null;
+    const bad = !(per>0) || lots<1 || rr==null;
+    const presets = {BRPT:[1045,995,1120],MEDC:[1380,1310,1480],BBCA:[10250,9950,10600],ADRO:[3720,3580,3920]};
+    const p = { tk:S.tk, m:S.m, r:S.r, b:S.b, s:S.s, tp:S.tp,
+      onM:(e)=>this.setState({m:e.target.value, saved:null}), onR:(e)=>this.setState({r:e.target.value, saved:null}), onB:(e)=>this.setState({b:e.target.value, saved:null}), onS:(e)=>this.setState({s:e.target.value, saved:null}), onTp:(e)=>this.setState({tp:e.target.value, saved:null}),
+      saveL: S.saved ? 'Tersimpan sebagai rencana' : 'Simpan sebagai rencana',
+      savedMsg: S.saved ? 'Rencana '+S.saved.t+' disimpan: '+S.saved.l+' lot, beli '+S.saved.b+', SL '+S.saved.s+', TP1 '+S.saved.tp+'. Alert Telegram akan memakai level ini.' : '',
+      save:()=>{ if(bad) return; this.setState({saved:{t:S.tk, l:this.fmt(lots), b:this.fmt(b), s:this.fmt(s), tp:this.fmt(tp)}}); },
+      onT:(e)=>{ const v=presets[e.target.value]; this.setState({saved:null, tk:e.target.value, b:String(v[0]), s:String(v[1]), tp:String(v[2])}); },
+      lots: per>0 ? this.fmt(lots)+' lot' : '—', shares: per>0 ? this.fmt(lots*100)+' lembar' : 'Stop loss harus di bawah harga beli',
+      cap: per>0 ? this.rp(lots*100*b) : '—', riskAmt: this.rp(riskAmt), loss: per>0 ? '−'+this.rp(lots*per) : '—', gain: rr!=null ? '+'+this.rp(lots*100*(tp-b)) : '—',
+      rr: rr==null ? '—' : '1 : '+this.dec(rr,2), bad,
+      vCls: 'verd '+(rr!=null && rr>=1.5 && lots>=1 ? 'ok' : 'no'),
+      vIcon: rr!=null && rr>=1.5 && lots>=1 ? '✓' : '!',
+      verdict: per<=0 ? 'Stop loss harus di bawah harga beli.' : (rr==null ? 'Target harus di atas harga beli.' : (lots<1 ? 'Modal/risiko terlalu kecil untuk 1 lot.' : (rr>=1.5 ? 'Lolos batas minimum R/R 1 : 1,5' : 'R/R di bawah batas minimum 1 : 1,5')))
+    };
+    // risk lab
+    const G = P.find(x=>x.t===S.gT), add=this.num(S.gAdd), gpx=this.num(S.gPx);
+    const oldSh = sh(G), newSh = oldSh + add*100, newAvg = newSh>0 ? (oldSh*G.b + add*100*gpx)/newSh : G.b, gRisk = newSh*(newAvg-G.sl), gCap = CAP*0.015;
+    const within = gpx>G.sl && gRisk<=gCap;
+    const g = { onT:(e)=>{ const x=P.find(y=>y.t===e.target.value); this.setState({gT:x.t, gPx:String(Math.round((x.p+x.sl)/2))}); }, add:S.gAdd, px:S.gPx, onAdd:(e)=>this.setState({gAdd:e.target.value}), onPx:(e)=>this.setState({gPx:e.target.value}),
+      slS:this.fmt(G.sl), oldAvg:this.fmt(G.b), newAvg:this.fmt(newAvg), lots:this.fmt(newSh/100)+' lot', risk:'−'+this.rp(gRisk), cap:this.rp(gCap),
+      vCls:'verd '+(within?'ok':'no'), verdict: gpx<=G.sl ? 'Harga tambah berada di bawah stop loss, rencana tidak konsisten.' : (within ? 'Dalam batas guard matematis.' : 'Melewati batas guard: risiko ke SL di atas 1,5% modal.') };
+    // scenarios
+    const sc = P.map((x,i)=>({t:x.t, cls:'rise d'+i, a:this.rp(sh(x)*(x.sl-x.b)), b:(x.p>=x.b?'+':'')+this.rp(sh(x)*(x.p-x.b)), c:'+'+this.rp(sh(x)*(x.tp-x.b)), d: x.tp2 ? '+'+this.rp(sh(x)*(x.tp2-x.b)) : '—'}));
+    const st = {a:this.rp(P.reduce((a,x)=>a+sh(x)*(x.sl-x.b),0)), b:'+'+this.rp(pl), c:'+'+this.rp(P.reduce((a,x)=>a+sh(x)*(x.tp-x.b),0)), d:'sebagian'};
+    // journal
+    const j = { txt:S.jTxt, plan:S.jPlan, onTxt:(e)=>this.setState({jTxt:e.target.value}), onPlan:()=>this.setState({jPlan:!S.jPlan}), onT:(e)=>this.setState({jT:e.target.value}),
+      add:()=>{ if(!S.jTxt.trim()) return; this.setState({journal:[{t:S.jT,d:'Baru saja',x:S.jTxt.trim(),plan:S.jPlan}].concat(S.journal), jTxt:''}); },
+      items: S.journal.map((e,i)=>({...e, cls:'it rise d'+Math.min(i,11), tag:e.plan?'Sesuai rencana':'Menyimpang dari rencana', tagC:e.plan?'chip b':'chip w'})) };
+    const secs = {}; P.forEach(x=>{ secs[x.sec]=(secs[x.sec]||0)+sh(x)*x.p; });
+    const conc = Object.keys(secs).map(k=>({s:k, p:this.dec(secs[k]/exp*100,1)+'%', bar:'width:'+(secs[k]/exp*100).toFixed(1)+'%'}));
+    const L = ['Hari ini','Rencana posisi','Posisi aktif','Risk Lab','Skenario','Jurnal','Asisten AI'];
+    const out = { tabs: L.map((l,i)=>({l, cls:i===S.tab?'on':'', cur:i===S.tab?'page':'false', go:()=>this.setState({tab:i})})), o, near, pos, p, g, scen:sc, st, j, conc };
+    L.forEach((l,i)=>{ out['t'+i] = S.tab===i; });
+    return out;
+  }
+}
+</script>
+</body>
+</html>

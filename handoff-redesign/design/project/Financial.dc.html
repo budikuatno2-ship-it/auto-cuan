@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Financial</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ac.css">
+<script src="./motion.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@500;600&amp;display=swap">
+<style>
+.gw{position:relative;container-type:inline-size}
+.gov{position:absolute;inset:0;pointer-events:none}
+.glb{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;line-height:1.15;text-align:center}
+.fq{font:500 clamp(9px,1.7cqi,11.5px) 'Geist Mono',monospace;color:var(--ac-muted)}
+.fv{font:600 clamp(9px,1.7cqi,11.5px) 'Geist Mono',monospace;color:var(--ac-ink)}
+body{margin:0}
+.tchip{height:28px;padding:0 10px;border:1px solid var(--ac-hair);border-radius:6px;background:var(--ac-surface);font:600 12px "Geist Mono",monospace;cursor:pointer;color:var(--ac-2);transition:background 140ms var(--ease),color 140ms,border-color 140ms}
+.tchip:hover{color:var(--ac-ink);border-color:var(--ac-ctl)}
+.tchip.on{background:var(--ac-brand-soft);border-color:rgba(15,116,88,.35);color:var(--ac-brand)}
+.ax{font:500 11px "Geist Mono",monospace;fill:var(--ac-muted)}
+.ax.vl{font-size:11px;fill:#3F4B46}
+.spin{width:12px;height:12px;border:2px solid var(--ac-hair);border-top-color:var(--ac-brand);border-radius:50%;animation:rot 700ms linear infinite;display:inline-block}
+@keyframes rot{to{transform:rotate(360deg)}}
+/* completeness */
+.cmpl{display:flex;flex-wrap:wrap;gap:8px;padding:14px 20px 0}
+.cmpl>span{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:6px;border:1px solid var(--ac-hair);background:var(--ac-raised);font-size:12px;font-weight:600;color:var(--ac-2)}
+.cmpl>span i{font-style:normal;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:11px;background:var(--ac-brand-soft);color:var(--ac-brand)}
+.cmpl>span.p i{background:var(--ac-warn-soft);color:var(--ac-warn-t)}
+.cmpl>span em{font-style:normal;font-weight:500;color:var(--ac-muted);font-family:"Geist Mono",monospace;font-size:11px}
+/* statements toolbar */
+.fsh{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;padding:14px 16px;border-bottom:1px solid var(--ac-hair)}
+.tg{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid var(--ac-hair);border-radius:8px;background:var(--ac-surface);font-weight:600;font-size:12px;color:var(--ac-2);cursor:pointer;transition:border-color 140ms var(--ease),color 140ms}
+.tg:hover{color:var(--ac-ink);border-color:var(--ac-ctl)}
+.tg .sw{width:26px;height:16px;border-radius:9px;background:#CBD3CC;position:relative;transition:background 190ms var(--ease)}
+.tg .sw i{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--ac-surface);box-shadow:0 1px 2px rgba(0,0,0,.18);transition:transform 320ms var(--spring)}
+.tg.on{color:var(--ac-ink)}.tg.on .sw{background:var(--ac-brand)}.tg.on .sw i{transform:translateX(10px)}
+/* statements table */
+.fsw{overflow-x:auto;contain:layout paint}
+.fs{font-size:13px;min-width:980px}
+.fs th{text-align:right}
+.fs th small{display:block;font-size:11px;font-weight:500;color:var(--ac-muted);margin-top:1px}
+.fs thead th{height:46px;line-height:1.15}
+.fs th:first-child,.fs td:first-child{position:sticky;left:0;text-align:left;min-width:260px;background:var(--ac-surface);z-index:1}
+.fs thead th:first-child{background:var(--ac-raised);z-index:3}
+.fs td{text-align:right;font-variant-numeric:tabular-nums;font-family:"Geist Mono",monospace;font-size:12.5px}
+.fs td:first-child{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:13px;padding-left:28px;color:var(--ac-ink)}
+.fs th.lt,.fs td.lt{background:rgba(19,120,93,.045)}
+.fs td .yy{display:block;font-size:10.5px;font-weight:500;margin-top:1px;color:var(--ac-muted)}
+.fs td .yy.up{color:var(--ac-pos)}.fs td .yy.dn{color:var(--ac-neg)}
+.fs td .yy:empty{display:none}
+.fs.y td{height:50px}
+.fs td.na{color:var(--ac-muted)}
+.fs td.ng{color:var(--ac-neg)}
+.fs .un{margin-left:6px;font-size:11px;color:var(--ac-muted)}
+.fs tbody tr.g{cursor:default}
+.fs tbody tr.g td{height:30px;background:var(--ac-raised);font:700 11px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ac-muted);padding-left:12px;font-size:12px}
+.fs tbody tr.g:hover{background:transparent}
+.fs tbody tr.g td:first-child,.fs tbody tr.g:hover td:first-child{box-shadow:none}
+.fs tbody tr.t td{font-weight:700}
+.fs tbody tr.t td:first-child{font-weight:700}
+.fs tbody tr.nul td,.fs tbody tr.nul td:first-child{color:var(--ac-muted);font-weight:500}
+.fs tbody tr.nul .un{font-style:italic}
+.dq{display:flex;gap:10px;align-items:flex-start;margin:0 20px 16px;padding:10px 12px;border-radius:8px;background:var(--ac-warn-soft);border:1px solid rgba(169,109,19,.22);color:var(--ac-warn-t);font-size:13px;line-height:1.45}
+.dq svg{flex:none;margin-top:1px}
+.noval{display:flex;gap:14px;align-items:flex-start;padding:20px}
+.nv-ic{width:32px;height:32px;border-radius:50%;background:var(--ac-hover);display:grid;place-items:center;flex:none;color:var(--ac-2)}
+.fs tbody tr:hover td:first-child{background:var(--ac-hover)}
+.fs tbody tr.sel td:first-child{background:var(--ac-brand-soft)}
+.fs tbody tr.g td:first-child{background:var(--ac-raised)}
+.fsm{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:10px 16px;border-top:1px solid var(--ac-hair);font-size:12px;color:var(--ac-2);background:var(--ac-raised)}
+.fsm b{color:var(--ac-muted);font-weight:600;margin-right:4px}
+/* trend */
+.trend{display:grid;grid-template-columns:300px 1fr;gap:24px;align-items:center;padding:18px 20px;border-top:1px solid var(--ac-hair)}
+.tst{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tst div{padding:8px 10px;border-radius:8px;background:var(--ac-raised);border:1px solid var(--ac-hair)}
+.tst span{display:block;font-size:11px;color:var(--ac-muted);font-weight:600}
+.tst b{font-size:14px;font-family:"Geist Mono",monospace}
+.bb{transform-box:fill-box;transform-origin:50% 100%;animation:barup 520ms var(--ease-e) both;transition:opacity 140ms}
+.bb.n{transform-origin:50% 0}
+.bb:hover{opacity:.78}
+@keyframes barup{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+/* notes */
+.notes>summary{display:flex;align-items:center;gap:10px;padding:14px 18px;font-size:14px}
+.notes>summary .chev{transition:transform 260ms var(--spring)}
+.notes>summary .mut{font-size:12px}
+.ndef{display:grid;grid-template-columns:repeat(2,1fr);gap:0 28px;padding:0 18px 16px;animation:rise 320ms var(--ease-e) both}
+.ndef div{display:grid;grid-template-columns:170px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--ac-hair);font-size:13px}
+.ndef span{color:var(--ac-2)}
+@media (max-width:900px){.trend{grid-template-columns:1fr}.ndef{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.bb{animation:none}}
+</style>
+</helmet>
+<input type="checkbox" id="sbx" class="sbx" aria-label="Ciutkan sidebar">
+<div class="app">
+  <nav class="side" aria-label="Navigasi utama">
+    <div class="brand"><i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 8-9"/></svg></i><div class="bt">Auto-Cuan<small>Meja kerja riset IDX</small></div><label for="sbx" class="sbt" title="Ciutkan atau buka sidebar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 10l-2 2 2 2"/></svg></label></div>
+    <a class="nav" href="Main.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z"/></svg>Dashboard</a>
+    <div class="nav-l">Temukan</div>
+    <a class="nav" href="Screener.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>Screener</a>
+    <a class="nav" href="SektorHot.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>Sektor Hot</a>
+    <div class="nav-l">Riset</div>
+    <a class="nav" href="Analisis.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Analisis &amp; Chart</a>
+    <a class="nav" href="Bandarmologi.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Bandarmologi</a>
+    <a class="nav" href="SinyalIntelijen.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/></svg>Sinyal Intelijen</a>
+    <a class="nav" href="BrokerHunter.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Broker Hunter</a>
+    <a class="nav" href="Insider.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M17 11a3 3 0 000-6M21 20c0-2-1.5-4-4-4.6"/></svg>Insider</a>
+    <a class="nav" href="Ranking.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Ranking</a>
+    <a class="nav on" href="Financial.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-6h4v6"/></svg>Financial</a>
+    <a class="nav" href="StrukturPasar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9h9A9 9 0 1112 3z"/></svg>Struktur Pasar</a>
+    <div class="nav-l">Pantau</div>
+    <a class="nav" href="Watchlist.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Watchlist<span class="cnt">8</span></a>
+    <a class="nav" href="Portfolio.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg>Portfolio</a>
+    <a class="nav" href="TrackRecord.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>Track Record</a>
+    <a class="nav" href="KelolaKeuangan.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 14h2"/></svg>Kelola Keuangan</a>
+    <div class="nav-l adm-l">Admin<span>· hanya admin</span></div>
+    <a class="nav" href="PatternRadar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Pattern Radar</a>
+    <a class="nav" href="AdminConsole.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin Console</a>
+    <div class="nav-sp"></div>
+    <a class="acct" href="AccountCenter.dc.html" aria-label="Buka Pusat Akun"><span class="av">B</span><div style="flex:1"><b>budi</b><span>Admin · Pro Trader</span></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+  </nav>
+
+  <div class="main">
+    <header class="top">
+      <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Cari ticker, halaman, atau aksi…</span><kbd>⌘K</kbd></label>
+      <div class="fresh"><span class="dot m"></span>Fundamental Q2 2026</div>
+      <button class="thm" style="margin-left:8px" type="button" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    </header>
+
+    <main class="page" style="gap:16px;max-width:1240px">
+      <div class="ph rise d0">
+        <div><h1>Financial</h1><p>Snapshot valuasi dan laporan keuangan per periode. Field yang tidak ada di sumber ditampilkan “—”, bukan nol.</p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <label class="search" style="width:200px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input aria-label="Cari ticker" placeholder="Cari ticker…" value="{{q}}" onInput="{{onQ}}" style="border:0;outline:0;background:transparent;width:100%;font-size:13px;text-transform:uppercase"></label>
+          <span class="mut" style="font-size:12px">Populer</span>
+          <sc-for list="{{chips}}" as="c" hint-placeholder-count="4"><button class="{{c.cls}}" onClick="{{c.go}}">{{c.t}}</button></sc-for>
+        </div>
+      </div>
+      <sc-if value="{{qMiss}}" hint-placeholder-val="{{false}}"><div class="mut swapa" style="font-size:13px;margin-top:-8px">Ticker “{{qUp}}” belum ada di cakupan fundamental. Coba BRPT, BBCA, BBRI, BMRI, atau GOTO.</div></sc-if>
+
+      <section class="sheet rise d1">
+        <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--ac-hair)">
+          <span class="tk mono" style="font-size:22px">{{f.t}}</span><span><b>{{f.name}}</b> <span class="mut">· {{f.sector}}</span></span>
+          <span class="{{cmp.cls}}" title="{{cmp.title}}">{{cmp.txt}}</span>
+          <span style="margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12px" class="mut"><sc-if value="{{busy}}" hint-placeholder-val="{{false}}"><span style="display:inline-flex;gap:6px;align-items:center"><span class="spin"></span>Memperbarui, data sebelumnya tetap tampil</span></sc-if><button class="btn sm" onClick="{{refresh}}">Muat ulang</button></span>
+        </div>
+        <sc-if value="{{has}}" hint-placeholder-val="{{true}}">
+          <div class="{{snapCls}}">
+            <div class="cmpl">
+              <sc-for list="{{cats}}" as="c" hint-placeholder-count="4"><span class="{{c.cls}}"><i aria-hidden="true">{{c.ic}}</i>{{c.t}}<em>{{c.n}}</em></span></sc-for>
+            </div>
+            <div class="strip">
+              <div><div class="lbl">PBV</div><div class="big num pop">{{f.pbv}}</div><div class="sub">{{f.pbvNote}}</div></div>
+              <div><div class="lbl">BVPS</div><div class="big num pop">{{f.bvps}}</div><div class="sub">Nilai buku per saham</div></div>
+              <div><div class="lbl">Kapitalisasi pasar</div><div class="big num pop">{{f.cap}}</div><div class="sub">{{f.capNote}}</div></div>
+              <div><div class="lbl">Saham beredar</div><div class="big num pop">{{f.sh}}</div><div class="sub">lembar</div></div>
+            </div>
+            <div class="prov"><sc-for list="{{f.prov}}" as="p" hint-placeholder-count="4"><span><b>{{p.k}}</b> {{p.v}}</span></sc-for></div>
+            <sc-if value="{{f.hasWarn}}" hint-placeholder-val="{{false}}"><div class="dq"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg><span>{{f.warn}}</span></div></sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{none}}" hint-placeholder-val="{{false}}">
+          <div class="swap" style="padding:28px 20px;display:flex;gap:14px;align-items:flex-start">
+            <span style="width:32px;height:32px;border-radius:50%;background:var(--ac-hover);display:grid;place-items:center;flex:none" class="mut" aria-hidden="true">—</span>
+            <div><div style="font-weight:700">Data fundamental belum tersedia untuk {{f.t}}</div><div class="mut" style="font-size:14px;max-width:640px;margin-top:4px">Sumber belum memuat snapshot maupun laporan keuangan terverifikasi untuk periode terbaru. Nilai tidak ditampilkan agar tidak terbaca sebagai nol. Coba lagi setelah pembaruan berikutnya atau lihat Struktur Pasar untuk data kepemilikan.</div><a class="btn sm" href="StrukturPasar.dc.html" style="margin-top:12px">Buka Struktur Pasar</a></div>
+          </div>
+        </sc-if>
+      </section>
+
+      <sc-if value="{{has}}" hint-placeholder-val="{{true}}">
+        <section class="sheet rise d2">
+          <div class="fsh">
+            <div style="display:flex;flex-direction:column;gap:2px;margin-right:8px"><h2 style="font-size:16px;margin:0">Laporan Keuangan</h2><span class="mut" style="font-size:12px">{{f.name}} · {{perTxt}}</span></div>
+            <div class="{{tabCls}}" role="tablist" aria-label="Kategori laporan"><span class="{{tabInd}}"></span><sc-for list="{{tabs}}" as="b" hint-placeholder-count="4"><button role="tab" class="{{b.cls}}" aria-selected="{{b.on}}" onClick="{{b.go}}">{{b.t}}</button></sc-for></div>
+            <span style="flex:1"></span>
+            <div class="{{frCls}}" role="tablist" aria-label="Frekuensi"><span class="{{frInd}}"></span><sc-for list="{{freqs}}" as="b" hint-placeholder-count="2"><button role="tab" class="{{b.cls}}" aria-selected="{{b.on}}" onClick="{{b.go}}">{{b.t}}</button></sc-for></div>
+            <sc-if value="{{hasNul}}" hint-placeholder-val="{{false}}"><button class="{{nulCls}}" onClick="{{tgNul}}" aria-pressed="{{nulOn}}"><span class="sw" aria-hidden="true"><i></i></span>Pos kosong ({{nulN}})</button></sc-if>
+            <button class="{{yoyCls}}" onClick="{{tgYoy}}" aria-pressed="{{yoy}}"><span class="sw" aria-hidden="true"><i></i></span>Δ YoY</button>
+            <button class="btn sm" onClick="{{csv}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>CSV</button>
+          </div>
+          <div class="{{wrapCls}}">
+            <table class="{{fsCls}}">
+              <thead><tr><th>Pos</th><sc-for list="{{cols}}" as="c" hint-placeholder-count="8"><th class="{{c.cls}}">{{c.t}}<small>{{c.s}}</small></th></sc-for></tr></thead>
+              <tbody><sc-for list="{{rows}}" as="r" hint-placeholder-count="9"><tr class="{{r.cls}}" onClick="{{r.go}}"><td>{{r.label}}<sc-if value="{{r.unit}}" hint-placeholder-val="{{false}}"><span class="un">{{r.unit}}</span></sc-if></td><sc-for list="{{r.cells}}" as="c" hint-placeholder-count="8"><td class="{{c.cls}}" title="{{c.tt}}">{{c.v}}<span class="{{c.yc}}">{{c.y}}</span></td></sc-for></tr></sc-for></tbody>
+            </table>
+          </div>
+          <div class="fsm">
+            <span><b>Kategori</b> {{tabName}}</span><span><b>Frekuensi</b> {{freqName}}</span><span><b>Satuan nilai</b> Miliar IDR (kecuali EPS &amp; rasio)</span><span><b>Angka negatif</b> dalam (kurung)</span><span><b>Sumber</b> {{srcTxt}}</span><span class="{{srcChip.cls}}">{{srcChip.t}}</span>
+          </div>
+          <div class="trend">
+            <div class="{{trCls}}">
+              <div class="lbl" style="margin:0 0 4px">Tren baris terpilih</div>
+              <div style="font-weight:700;font-size:15px">{{tr.label}}</div>
+              <div class="mut" style="font-size:12px;margin-bottom:12px">{{tr.sub}}</div>
+              <div class="tst">
+                <div><span>Terbaru</span><b class="num">{{tr.last}}</b></div>
+                <div><span>{{tr.dl}}</span><b class="{{tr.dc}}">{{tr.d}}</b></div>
+                <div><span>Rata-rata</span><b class="num">{{tr.avg}}</b></div>
+                <div><span>Rentang</span><b class="num">{{tr.rng}}</b></div>
+              </div>
+              <p class="dim" style="font-size:12px;margin:12px 0 0">Klik baris lain di tabel untuk mengganti tren.</p>
+            </div>
+            <div class="gw"><svg viewBox="0 0 640 190" width="100%" role="img" aria-label="{{tr.aria}}" class="{{trCls}}">
+              <line x1="20" x2="630" y1="{{tr.zy}}" y2="{{tr.zy}}" stroke="#C9D0C9"/>
+              <sc-for list="{{tr.bars}}" as="b" hint-placeholder-count="8"><g><rect class="{{b.cls}}" x="{{b.x}}" y="{{b.y}}" width="{{b.w}}" height="{{b.h}}" rx="3" fill="{{b.fill}}" style="{{b.st}}"><title>{{b.tt}}</title></rect></g></sc-for>
+            </svg><div class="gov" aria-hidden="true"><sc-for list="{{tr.bars}}" as="b" hint-placeholder-count="8"><span class="glb fq" style="{{b.qst}}">{{b.q}}</span><span class="glb fv" style="{{b.lst}}">{{b.lv}}</span></sc-for></div></div>
+          </div>
+        </section>
+
+        <sc-if value="{{noVal}}" hint-placeholder-val="{{false}}">
+        <section class="sheet rise d3 noval">
+          <span class="nv-ic" aria-hidden="true">—</span>
+          <div><div style="font-weight:700">Valuasi &amp; pembanding belum bisa dihitung untuk {{f.t}}</div><div class="mut" style="font-size:14px;max-width:760px;margin-top:4px">PBV, BVPS, PER, dan pita deviasi PBV butuh Total Ekuitas, yang kosong di sumber untuk semua periode. Angka tidak diperkirakan. Kapitalisasi pasar tetap tampil dari snapshot IDX. Pembanding sektor Basic Materials muncul setelah minimal tiga emiten punya ekuitas terverifikasi.</div></div>
+        </section>
+        </sc-if>
+        <sc-if value="{{hasVal}}" hint-placeholder-val="{{true}}">
+        <div class="grid2 rise d3">
+          <section class="sheet">
+            <div class="sec-h"><h2 style="font-size:16px">Riwayat PBV &amp; pita deviasi</h2><span>8 kuartal</span></div>
+            <div style="padding:0 16px 8px">
+              <div class="gw"><svg viewBox="0 0 520 220" width="100%" role="img" aria-label="PBV per kuartal dengan rerata dan ±1 deviasi standar">
+                <rect x="40" y="{{band.y}}" width="460" height="{{band.h}}" fill="rgba(49,95,154,.08)"/>
+                <line x1="40" x2="500" y1="{{band.m}}" y2="{{band.m}}" stroke="#315F9A" stroke-dasharray="4 4"/>
+                <text class="ax" x="4" y="{{band.mt}}">rerata</text><text class="ax" x="4" y="{{band.ut}}">+1 SD</text><text class="ax" x="4" y="{{band.lt}}">−1 SD</text>
+                <path class="draw" pathLength="1" d="{{line}}" fill="none" stroke="#17211E" stroke-width="2" stroke-linejoin="round"/>
+                <sc-for list="{{pts}}" as="p" hint-placeholder-count="8"><g><circle cx="{{p.x}}" cy="{{p.y}}" r="3.5" fill="#fff" stroke="#17211E" stroke-width="1.6"/></g></sc-for>
+              </svg><div class="gov" aria-hidden="true"><sc-for list="{{pts}}" as="p" hint-placeholder-count="8"><span class="glb fq" style="{{p.qst}}">{{p.q}}</span></sc-for></div></div>
+            </div>
+            <div class="prov"><span>{{bandNote}}</span></div>
+          </section>
+          <section class="sheet">
+            <div class="sec-h"><h2 style="font-size:16px">Pembanding sektor</h2><span>Q2 2026</span></div>
+            <table class="tbl"><thead><tr><th>Ticker</th><th class="r">PBV</th><th class="r">ROE</th><th style="width:38%"></th></tr></thead>
+              <tbody><sc-for list="{{peers}}" as="p" hint-placeholder-count="4"><tr class="{{p.cls}}" onClick="{{p.go}}"><td class="tk mono">{{p.t}}</td><td class="r num" style="font-weight:700">{{p.v}}</td><td class="r num">{{p.roe}}</td><td><div class="meter"><i style="{{p.bar}}"></i></div></td></tr></sc-for></tbody>
+            </table>
+            <div class="prov"><span>Pembanding hanya emiten dengan snapshot terverifikasi pada periode yang sama. BBNI belum punya laporan per periode di cakupan, ROE “—”.</span></div>
+          </section>
+        </div>
+        </sc-if>
+
+        <details class="sheet rise d4 notes">
+          <summary><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg><b>Catatan metrik</b><span class="mut">Definisi dan cara hitung</span></summary>
+          <div class="ndef">
+            <div><b>Kuartalan</b><span>Nilai 3 bulan berdiri sendiri, bukan kumulatif tahun berjalan. Tahunan = periode 12 bulan yang diaudit.</span></div>
+            <div><b>Pendapatan Usaha</b><span>Sesuai pemetaan pos sumber. Untuk bank: pendapatan bunga bersih + non-bunga. Lonjakan tajam antar-periode (mis. BRPT Q2 2025) bisa karena konsolidasi entitas anak, cek catatan laporan.</span></div>
+            <div><b>Laba Usaha</b><span>Pendapatan Usaha dikurangi Beban Usaha, sebelum pendapatan/beban lain dan pajak.</span></div>
+            <div><b>EPS</b><span>Laba bersih yang diatribusikan ÷ saham beredar akhir periode, dalam Rupiah.</span></div>
+            <div><b>ROE &amp; ROA</b><span>Kuartalan = laba kuartal ÷ ekuitas/aset akhir periode, <b>tidak disetahunkan</b> (sesuai kontrak server). Tahunan = laba setahun ÷ akhir tahun.</span></div>
+            <div><b>PER &amp; PBV</b><span>Harga penutupan akhir periode ÷ EPS 4 kuartal atau BVPS. Butuh ekuitas: bila ekuitas kosong di sumber, PBV, BVPS, dan PER tampil “—”.</span></div>
+            <div><b>Δ YoY</b><span>Kuartal vs kuartal yang sama tahun lalu; tahunan vs tahun sebelumnya. Rasio memakai selisih poin (pp atau ×).</span></div>
+            <div><b>Data hilang</b><span>Ditampilkan “—” dan tidak dihitung dalam rata-rata. Pos yang kosong di semua periode diberi label “tidak ada di sumber” dan bisa disembunyikan lewat tombol Pos kosong.</span></div>
+          </div>
+        </details>
+      </sc-if>
+    </main>
+  </div>
+</div>
+<sc-if value="{{toast}}" hint-placeholder-val="{{false}}"><div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:120"><div class="toast"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6EE7B7" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>{{toast}}</div></div></sc-if>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2000}}'>
+class Component extends DCLogic {
+  constructor(props){ super(props); this.state = { t:'BRPT', q:'', busy:false, flip:false, tab:0, fr:0, yoy:false, sel:{}, flip2:false, toast:'', nul:true }; }
+  /* BRPT: ekspor read-only dari server, sumber laporan keuangan emiten, impor 2026-10-13T03:36Z */
+  fsData(){ if(!this._fs) this._fs = {"quarterly":{"periods":["Q1 2026","Q4 2025","Q3 2025","Q2 2025","Q1 2025","Q4 2024","Q3 2024","Q2 2024"],"income_statement":[{"type":"group","label":"Pendapatan & Beban Usaha"},{"type":"item","label":"Pendapatan Usaha","unit":"idr","values":[43676.21,35256.39,40398.01,39568.43,12834.95,13191.01,6352.17,9228.85]},{"type":"item","label":"Beban Usaha / Beban Pokok","unit":"idr","values":[null,null,null,null,null,null,null,null]},{"type":"total","label":"Laba Usaha / Operasional","unit":"idr","values":[null,null,null,null,null,null,null,null]},{"type":"group","label":"Laba Bersih & Pajak"},{"type":"item","label":"Beban Pajak Penghasilan","unit":"idr","values":[-1094.84,-240.23,-256.02,-159.42,-443.45,-401,-446.23,-505.86]},{"type":"total","label":"Laba Bersih Periode Berjalan","unit":"idr","values":[1537.46,-1490.25,948.31,8493.82,268.06,507.14,-160.7,426.03]},{"type":"item","label":"Laba per Saham (EPS) - IDR","unit":"number","values":[16.41,-15.85,10.11,90.65,2.86,5.36,-1.72,4.55]}],"balance_sheet":[{"type":"group","label":"Aset"},{"type":"item","label":"Kas & Setara Kas","unit":"idr","values":[52944.35,50278.08,49544.08,50486.04,32715.32,25960.42,24024.82,23750.79]},{"type":"item","label":"Aset Lancar","unit":"idr","values":[112652.27,104274.88,107714.81,107046.76,63606,56444.79,47251.73,49617.29]},{"type":"total","label":"Total Aset","unit":"idr","values":[299509.38,290145.69,267274.72,246549.23,180447.74,170174.64,154322.48,163673.55]},{"type":"group","label":"Liabilitas"},{"type":"item","label":"Liabilitas Jangka Pendek","unit":"idr","values":[null,null,null,null,null,null,null,null]},{"type":"total","label":"Total Liabilitas","unit":"idr","values":[null,null,null,null,null,null,null,null]},{"type":"group","label":"Ekuitas"},{"type":"total","label":"Total Ekuitas","unit":"idr","values":[null,null,null,null,null,null,null,null]}],"cash_flow":[{"type":"group","label":"Arus Kas Aktivitas"},{"type":"item","label":"Arus Kas dari Aktivitas Operasi","unit":"idr","values":[-3606.93,4404.96,1621.05,4430.93,-5250.38,5456.7,-1733.23,430.71]},{"type":"item","label":"Arus Kas dari Aktivitas Investasi","unit":"idr","values":[443.18,-25869.77,-8919.3,-4818.21,-993.07,-2320.65,100.33,362.36]},{"type":"item","label":"Arus Kas dari Aktivitas Pendanaan","unit":"idr","values":[4990.42,22118.12,4924.07,18696.27,12349.28,-2807.39,3717.03,-466.06]},{"type":"total","label":"Kenaikan (Penurunan) Kas Bersih","unit":"idr","values":[1826.66,653.31,-2374.18,18308.99,6105.83,328.65,2084.14,327.01]}],"ratios":[{"type":"group","label":"Rasio Profitabilitas"},{"type":"item","label":"Return on Equity (ROE)","unit":"pct","values":[null,null,null,null,null,null,null,null]},{"type":"item","label":"Return on Assets (ROA)","unit":"pct","values":[0.51,-0.51,0.35,3.45,0.15,0.3,-0.1,0.26]}]},"annual":{"periods":["FY 2025","FY 2024","FY 2023","FY 2022"],"income_statement":[{"type":"group","label":"Pendapatan & Beban Usaha"},{"type":"item","label":"Pendapatan Usaha","unit":"idr","values":[128057.77,38578.61,42553.69,46587.86]},{"type":"item","label":"Beban Usaha / Beban Pokok","unit":"idr","values":[null,null,null,null]},{"type":"total","label":"Laba Usaha / Operasional","unit":"idr","values":[null,null,null,null]},{"type":"group","label":"Laba Bersih & Pajak"},{"type":"item","label":"Beban Pajak Penghasilan","unit":"idr","values":[-212.23,-1774.59,-1902.98,-1938.26]},{"type":"total","label":"Laba Bersih Periode Berjalan","unit":"idr","values":[8219.94,912.89,402.6,27.67]},{"type":"item","label":"Laba per Saham (EPS) - IDR","unit":"number","values":[87.77,9.7,4.31,0.31]}],"balance_sheet":[{"type":"group","label":"Aset"},{"type":"item","label":"Kas & Setara Kas","unit":"idr","values":[50278.08,25960.42,27793.77,25540.82]},{"type":"item","label":"Aset Lancar","unit":"idr","values":[104274.88,56444.79,55964.04,44875.68]},{"type":"total","label":"Total Aset","unit":"idr","values":[290145.69,170174.64,156700.69,144198.78]},{"type":"group","label":"Liabilitas"},{"type":"item","label":"Liabilitas Jangka Pendek","unit":"idr","values":[null,null,null,null]},{"type":"total","label":"Total Liabilitas","unit":"idr","values":[null,null,null,null]},{"type":"group","label":"Ekuitas"},{"type":"total","label":"Total Ekuitas","unit":"idr","values":[null,null,null,null]}],"cash_flow":[{"type":"group","label":"Arus Kas Aktivitas"},{"type":"item","label":"Arus Kas dari Aktivitas Operasi","unit":"idr","values":[5195.84,-1780.75,2166.01,-2090.05]},{"type":"item","label":"Arus Kas dari Aktivitas Investasi","unit":"idr","values":[-40850.81,-4480.62,-7587.88,-15680.94]},{"type":"item","label":"Arus Kas dari Aktivitas Pendanaan","unit":"idr","values":[59154.84,3134.49,7921.71,14037.7]},{"type":"total","label":"Kenaikan (Penurunan) Kas Bersih","unit":"idr","values":[23499.87,-3126.88,2499.84,-3733.3]}],"ratios":[{"type":"group","label":"Rasio Profitabilitas"},{"type":"item","label":"Return on Equity (ROE)","unit":"pct","values":[null,null,null,null]},{"type":"item","label":"Return on Assets (ROA)","unit":"pct","values":[2.83,0.54,0.26,0.02]}]}}; return this._fs; }
+  componentWillUnmount(){ clearTimeout(this.tm); clearTimeout(this.tt); }
+  dec(n,d){ return n.toFixed(d).replace('.',','); }
+  grp(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+  fmt(v,k){
+    if (v===null||v===undefined||!isFinite(v)) return '—';
+    if (k==='m'){ const s=this.grp(Math.abs(v)); return v<0?'('+s+')':s; }
+    if (k==='eps'){ const s=this.dec(Math.abs(v),2).replace(/\B(?=(\d{3})+(?!\d))/g,'.'); return v<0?'('+s+')':s; }
+    if (k==='pct') return this.dec(v,2)+'%';
+    return this.dec(v,2)+'×';
+  }
+  /* server data (BRPT) → generic model */
+  real(fr){
+    const src = this.fsData()[fr===0?'quarterly':'annual'];
+    const M = {Q1:'Mar',Q2:'Jun',Q3:'Sep',Q4:'Des'};
+    const per = src.periods.map(p=>{ const a=p.split(' '); return {lab:p, sub: a[0]==='FY' ? 'Des '+a[1]+' · tahunan' : M[a[0]]+' '+a[1]}; });
+    const conv = (rows)=>rows.map(r=>{
+      if (r.type==='group') return {g:r.label};
+      let l=r.label, u='';
+      const m=l.match(/^(.*?)\s*-\s*IDR$/); if (m){ l=m[1]; u='IDR'; }
+      if (r.unit==='pct' && fr===0) u='per kuartal';
+      return {id:r.label, l, u, k: r.unit==='idr'?'m':(r.unit==='number'?'eps':'pct'), tot: r.type==='total', vals:r.values};
+    });
+    const def = {0:'Laba Bersih Periode Berjalan',1:'Total Aset',2:'Arus Kas dari Aktivitas Operasi',3:'Return on Assets (ROA)'};
+    return { per, tabs:[
+      {t:'Laba Rugi', def:def[0], rows:conv(src.income_statement)},
+      {t:'Neraca', def:def[1], rows:conv(src.balance_sheet)},
+      {t:'Arus Kas', def:def[2], rows:conv(src.cash_flow)},
+      {t:'Rasio', def:def[3], rows:conv(src.ratios)} ]};
+  }
+  /* deterministic sample statements, labelled “Data contoh” in UI */
+  sample(t, fr){
+    const P = {
+      BBCA:{R:29800, ox:.42, g:.018, sh:123.2, eq:292230, as:1482000, ln:921000, dpk:1151000, cash:38400, sd:0.4, hist:[3.9,4.05,4.2,3.95,4.1,4.25,4.18,4.32]},
+      BBRI:{R:52100, ox:.58, g:.010, sh:151.6, eq:339890, as:2052000, ln:1398000, dpk:1449000, cash:30600, sd:1.3, hist:[2.6,2.48,2.35,2.2,2.3,2.18,2.1,2.15]},
+      BMRI:{R:46200, ox:.52, g:.020, sh:93.3,  eq:450080, as:2451000, ln:1652000, dpk:1702000, cash:40100, sd:2.1, hist:[1.7,1.65,1.58,1.5,1.46,1.44,1.4,1.42], cfGap:{q:[7], a:[4]}}
+    }[t];
+    const Q = fr===0, N = Q?8:5, per=[], V=[];
+    for (let k=0;k<N;k++){
+      let lab, sub, b, fl, hi;
+      if (Q){ const n=2026*4+1-k, y=Math.floor(n/4), q=n%4+1; lab='Q'+q+' '+y; sub=['Mar','Jun','Sep','Des'][q-1]+' '+y; b=k; fl=1; hi=7-k; }
+      else { const y=2025-k; lab='FY '+y; sub='Des '+y+' · tahunan'; b=2+4*k; fl=4*Math.pow(1+P.g,-1.5); hi=(k===0?5:(k===1?1:-1)); }
+      const gf=Math.pow(1+P.g,-b), s=1+0.025*Math.sin(b*1.7+P.sd);
+      const rev=P.R*gf*s*fl, opx=-rev*(P.ox+0.012*Math.cos(b*1.3+P.sd)), op=rev+opx, oth=rev*0.015, ebt=op+oth, tax=-ebt*0.19, ni=ebt+tax;
+      const eq=P.eq*Math.pow(1+P.g*1.18,-b), as=P.as*gf, ln=P.ln*gf*(1+0.022*Math.sin(b*1.1+P.sd)), dpk=P.dpk*gf, cash=P.cash*gf*(1+0.06*Math.sin(b*2.3)), li=as-eq;
+      const gap = P.cfGap && (Q?P.cfGap.q:P.cfGap.a).indexOf(k)>=0, isQ2 = Q && lab.indexOf('Q2')===0;
+      const cfo= gap?null: ni*(1.15+0.22*Math.sin(b*2.1+P.sd)), cfi= gap?null: -ni*(0.35+0.08*Math.cos(b+P.sd)), cff= gap?null: -ni*(Q?(isQ2?1.75:0.18):0.72);
+      const eps=ni/P.sh, bvps=eq/P.sh, pbv=hi>=0?P.hist[hi]:null, price=pbv===null?null:pbv*bvps;
+      per.push({lab, sub});
+      V.push({rev, opx, op, oth, ebt, tax, ni, eps, as, cash, ln, li, dpk, eq, cfo, cfi, cff, net: gap?null:cfo+cfi+cff,
+        roe: ni/eq*100, roa: ni/as*100, npm: ni/rev*100, cir: -opx/rev*100, der: li/eq, ldr: ln/dpk*100, pbv, per: price===null?null:price/(eps*(Q?4:1))});
+    }
+    const R = (id,l,k,o)=>Object.assign({id,l,k,vals:V.map(v=>v[id])},o||{});
+    const pq = Q?'per kuartal':'';
+    return { per, hist:P.hist, tabs:[
+      {t:'Laba Rugi', def:'ni', rows:[ {g:'Pendapatan & Beban Usaha'}, R('rev','Pendapatan Usaha','m'), R('opx','Beban Usaha / Beban Pokok','m'), R('op','Laba Usaha / Operasional','m',{tot:1}),
+        {g:'Laba Bersih & Pajak'}, R('oth','Pendapatan (Beban) Lain-lain','m'), R('ebt','Laba Sebelum Pajak','m'), R('tax','Beban Pajak Penghasilan','m'), R('ni','Laba Bersih Periode Berjalan','m',{tot:1}), R('eps','Laba per Saham (EPS)','eps',{u:'IDR'}) ]},
+      {t:'Neraca', def:'eq', rows:[ {g:'Aset'}, R('cash','Kas & Setara Kas','m'), R('ln','Kredit yang Diberikan (neto)','m'), R('as','Total Aset','m',{tot:1}),
+        {g:'Liabilitas & Ekuitas'}, R('dpk','Dana Pihak Ketiga','m'), R('li','Total Liabilitas','m',{tot:1}), R('eq','Total Ekuitas','m',{tot:1}) ]},
+      {t:'Arus Kas', def:'cfo', rows:[ {g:'Arus Kas Aktivitas'}, R('cfo','Arus Kas dari Aktivitas Operasi','m'), R('cfi','Arus Kas dari Aktivitas Investasi','m'), R('cff','Arus Kas dari Aktivitas Pendanaan','m'), R('net','Kenaikan (Penurunan) Kas Bersih','m',{tot:1}) ]},
+      {t:'Rasio', def:'roe', rows:[ {g:'Rasio Profitabilitas'}, R('roe','Return on Equity (ROE)','pct',{u:pq}), R('roa','Return on Assets (ROA)','pct',{u:pq}), R('npm','Margin Laba Bersih','pct'), R('cir','Rasio Beban Usaha','pct'),
+        {g:'Struktur & Valuasi'}, R('ldr','LDR','pct'), R('der','Liabilitas / Ekuitas','x'), R('per','PER','x'), R('pbv','PBV','x') ]} ]};
+  }
+  renderVals() {
+    const S = this.state;
+    const META = {
+      BRPT:{real:true, name:'Barito Pacific Tbk', sector:'Basic Materials', bvps:'—', cap:'Rp 135,5 T', capNote:'snapshot IDX · 29 Sep 2026', sh:'93,75 M',
+        prov:[{k:'Periode terbaru',v:'Q1 2026'},{k:'Sumber',v:'laporan keuangan emiten'},{k:'Free float',v:'22,33% · kepemilikan IDX 30 Sep 2026'},{k:'Diimpor',v:'13 Okt 2026, 10.36 WIB'}],
+        warn:'Laporan Q2 2026 belum ada di server, periode terbaru masih Q1 2026. Beban Usaha, Laba Usaha, Liabilitas, Ekuitas, dan ROE kosong di sumber untuk semua periode, sehingga PBV, BVPS, dan PER tidak dihitung.'},
+      BBCA:{name:'Bank Central Asia Tbk',sector:'Perbankan',bvps:'Rp 2.372',cap:'Rp 1.263,5 T',capNote:'#1 di IDX',sh:'123,2 M',px:'Rp 10.250 · 13 Okt'},
+      BBRI:{name:'Bank Rakyat Indonesia Tbk',sector:'Perbankan',bvps:'Rp 2.242',cap:'Rp 730,5 T',capNote:'',sh:'151,6 M',px:'Rp 4.820 · 13 Okt'},
+      BMRI:{name:'Bank Mandiri Tbk',sector:'Perbankan',bvps:'Rp 4.824',cap:'Rp 639,3 T',capNote:'',sh:'93,3 M',px:'Rp 6.850 · 13 Okt'},
+      GOTO:null};
+    const t=S.t, m=META[t], qUp=(S.q||'').trim().toUpperCase();
+    const chips=['BRPT','BBCA','BBRI','BMRI','GOTO'].map(x=>({t:x, cls:'tchip'+(x===t?' on':''), go:()=>this.setState({t:x, q:'', flip:!S.flip, flip2:!S.flip2})}));
+    const onQ=(e)=>{ const v=e.target.value, u=v.trim().toUpperCase(); if (u.length>=4 && META.hasOwnProperty(u)) this.setState({q:'', t:u, flip:!S.flip, flip2:!S.flip2}); else this.setState({q:v}); };
+    const qMiss = qUp.length>=4 && !META.hasOwnProperty(qUp);
+    const toast=S.toast;
+    if (!m) return { chips, q:S.q, onQ, qMiss, qUp, toast, has:false, none:true, busy:S.busy, refresh:()=>{}, f:{t, name:'GoTo Gojek Tokopedia Tbk', sector:'Teknologi'}, cmp:{cls:'chip', txt:'Tidak tersedia · 0/4', title:'Belum ada kategori laporan di sumber'} };
+
+    const D = m.real ? this.real(S.fr) : this.sample(t, S.fr);
+    const per = D.per, Qf = S.fr===0, lag = Qf?4:1;
+    const isNull = (v)=>v===null||v===undefined||!isFinite(v);
+    const rowEmpty = (r)=>!r.g && r.vals.every(isNull);
+    const T = D.tabs[S.tab];
+    // hide empty rows (and groups left without items) when toggle off
+    let vis = T.rows;
+    if (!S.nul){ vis=[]; T.rows.forEach((r,i)=>{ if (r.g){ const nxt=[]; for(let j=i+1;j<T.rows.length&&!T.rows[j].g;j++) nxt.push(T.rows[j]); if (nxt.some(x=>!rowEmpty(x))) vis.push(r); } else if (!rowEmpty(r)) vis.push(r); }); }
+    const nulN = T.rows.filter(rowEmpty).length;
+    let selId = S.sel[S.tab] || T.def;
+    if (!vis.some(r=>r.id===selId)) selId = (vis.find(r=>!r.g&&!rowEmpty(r))||{}).id;
+    const ratio = (k)=>k==='pct'||k==='x';
+    const yoyTxt=(cur,prev,k)=>{
+      if (isNull(cur)||isNull(prev)) return {y:'—', c:''};
+      if (ratio(k)){ const d=cur-prev, s=(d>=0?'+':'−')+this.dec(Math.abs(d),2)+(k==='x'?'×':' pp'); return {y:s, c:Math.abs(d)<1e-9?'':(d>0?'up':'dn')}; }
+      if (prev===0) return {y:'—', c:''};
+      if (cur<0 && prev>0) return {y:'berbalik negatif', c:'dn'};
+      if (cur>0 && prev<0) return {y:'berbalik positif', c:'up'};
+      const g=(cur-prev)/Math.abs(prev)*100; return {y:(g>=0?'+':'−')+this.dec(Math.abs(g),1)+'%', c:g>0?'up':'dn'};
+    };
+    const rows = vis.map(r=>{
+      if (r.g) return {cls:'g', go:()=>{}, label:r.g, unit:'', cells:per.map(()=>({v:'', y:'', yc:'yy', cls:'', tt:''}))};
+      const on = r.id===selId, empty=rowEmpty(r);
+      return {cls:(r.tot?'t':'')+(empty?' nul':'')+(on?' sel':''), go:()=>this.setState({sel:Object.assign({},S.sel,{[S.tab]:r.id})}), label:r.l, unit: empty?'tidak ada di sumber':(r.u||''),
+        cells: per.map((p,i)=>{ const v=r.vals[i], has=i+lag<per.length, yy=S.yoy?(has?yoyTxt(v,r.vals[i+lag],r.k):{y:'—',c:''}):{y:'',c:''};
+          const miss=isNull(v);
+          return {v:this.fmt(v,r.k), y:yy.y, yc:'yy '+yy.c, cls:(i===0?'lt ':'')+(miss?'na':(v<0&&!ratio(r.k)?'ng':'')), tt: miss?'Tidak dilaporkan di sumber untuk periode ini':''}; })};
+    });
+    const cols = per.map((p,i)=>({t:p.lab, s:p.sub, cls:i===0?'lt':''}));
+
+    // trend of selected row (old → new)
+    const R = T.rows.find(r=>r.id===selId) || T.rows.find(r=>!r.g);
+    const vals = R.vals.slice().reverse(), labs = per.map(p=>p.lab).slice().reverse();
+    const ok = vals.filter(v=>!isNull(v));
+    const mx = Math.max(0,...ok), mn = Math.min(0,...ok), span = (mx-mn)||1, H=140, top=16;
+    const zy = top + (mx/span)*H, slot = 610/vals.length, bw = Math.min(46, slot*0.56);
+    const short = (s)=>s.replace('FY ','').replace(' 20',' ’');
+    const bars = vals.map((v,i)=>{ const cx=20+slot*(i+0.5);
+      if (isNull(v)) return {cls:'bb', x:(cx-bw/2).toFixed(1), y:(zy-2).toFixed(1), w:bw.toFixed(1), h:'2', fill:'#C9D0C9', st:'', tt:labs[i]+': tidak dilaporkan', cx:cx.toFixed(1), q:short(labs[i]), lv:'—', ty:(zy-8).toFixed(1)};
+      const h=Math.max(2,Math.abs(v)/span*H), y=v>=0?zy-h:zy, last=i===vals.length-1;
+      return {cls:'bb'+(v<0?' n':''), x:(cx-bw/2).toFixed(1), y:y.toFixed(1), w:bw.toFixed(1), h:h.toFixed(1), fill: v<0?'#B9475A':(last?'#13785D':'#8FB9A6'), st:'animation-delay:'+(i*45)+'ms', tt:labs[i]+': '+this.fmt(v,R.k), cx:cx.toFixed(1), q:short(labs[i]), lv:(last||i===0)?this.fmt(v,R.k):'', ty:(v>=0?y-6:y+h+12).toFixed(1)}; });
+    const lastV = R.vals[0], prevV = R.vals[lag], d = yoyTxt(lastV, prevV, R.k);
+    const avg = ok.length? ok.reduce((a,b)=>a+b,0)/ok.length : null;
+    const unitTxt = R.k==='m'?'Miliar IDR':(R.k==='eps'?'Rupiah per saham':(R.k==='pct'?'persen':'kali'));
+    const tr = { label:R.l, sub: !ok.length ? 'Pos ini tidak tersedia di sumber untuk semua periode' : unitTxt+' · '+vals.length+(Qf?' kuartal':' tahun')+(ok.length<vals.length?' · '+(vals.length-ok.length)+' periode kosong, tidak dihitung':''),
+      last:this.fmt(lastV,R.k), dl: Qf?'Δ YoY (vs '+(per[lag]?per[lag].lab:'—')+')':'Δ vs '+(per[1]?per[1].lab:'—'), d:d.y, dc:'num '+(d.c==='up'?'pos':(d.c==='dn'?'neg':'')),
+      avg:this.fmt(avg,R.k), rng: ok.length?this.fmt(Math.min(...ok),R.k)+' – '+this.fmt(Math.max(...ok),R.k):'—', zy:zy.toFixed(1), bars: bars.map(b=>({...b, qst:'left:'+(b.cx/6.4).toFixed(2)+'%;top:'+(180/1.9).toFixed(2)+'%', lst:'left:'+(b.cx/6.4).toFixed(2)+'%;top:'+((b.ty-4)/1.9).toFixed(2)+'%'})), aria:'Tren '+R.l+' per periode' };
+
+    // completeness per category (quarterly basis): a category is complete when every row has every period
+    const DQ = m.real ? this.real(0) : this.sample(t,0);
+    const cats = DQ.tabs.map(c=>{ const items=c.rows.filter(r=>!r.g), full=items.filter(r=>r.vals.every(v=>!isNull(v))).length, okc=full===items.length;
+      return {t:c.t, n:full+'/'+items.length+' pos', ic:okc?'✓':'!', cls:okc?'':'p'}; });
+    const fullCats = cats.filter(c=>c.cls==='').length;
+    const cmp = fullCats===4 ? {cls:'chip b', txt:'Data Lengkap · 4/4', title:'Semua pos laporan tersedia untuk 8 kuartal'} : {cls:'chip w', txt:'Data Sebagian · '+fullCats+'/4 kategori lengkap', title:'Ada pos atau periode yang kosong di sumber'};
+
+    const common = {
+      chips, q:S.q, onQ, qMiss, qUp, toast, has:true, none:false, busy:S.busy, snapCls:S.flip?'swapa':'swapb',
+      refresh:()=>{ this.setState({busy:true}); clearTimeout(this.tm); this.tm=setTimeout(()=>this.setState({busy:false}),1400); },
+      cmp, cats,
+      perTxt: (Qf? per.length+' kuartal · nilai per kuartal, bukan kumulatif' : per.length+' tahun buku') + ' · '+per[0].lab+' s.d. '+per[per.length-1].lab,
+      tabs: D.tabs.map((x,i)=>({t:x.t, on:String(i===S.tab), cls:i===S.tab?'on':'', go:()=>this.setState({tab:i, flip2:!S.flip2})})), tabCls:'segx n4', tabInd:'ind k'+S.tab,
+      freqs: ['Kuartalan','Tahunan'].map((x,i)=>({t:x, on:String(i===S.fr), cls:i===S.fr?'on':'', go:()=>this.setState({fr:i, flip2:!S.flip2})})), frCls:'segx n2', frInd:'ind k'+S.fr,
+      yoy:String(S.yoy), yoyCls:'tg'+(S.yoy?' on':''), tgYoy:()=>this.setState({yoy:!S.yoy}),
+      hasNul: nulN>0, nulN, nulOn:String(S.nul), nulCls:'tg'+(S.nul?' on':''), tgNul:()=>this.setState({nul:!S.nul}),
+      csv:()=>{ clearTimeout(this.tt); this.setState({toast:'CSV '+T.t+' · '+(Qf?'Kuartalan':'Tahunan')+' disiapkan ('+per.length+' periode, “—” tetap kosong)'}); this.tt=setTimeout(()=>this.setState({toast:''}),2800); },
+      wrapCls:'fsw '+(S.flip2?'swapa':'swapb'), fsCls:'tbl fs'+(S.yoy?' y':''), cols, rows,
+      tabName:T.t, freqName:Qf?'Kuartalan':'Tahunan', tr, trCls:S.flip2?'swapa':'swapb',
+      srcTxt: m.real ? 'Laporan keuangan emiten (tersimpan di server)' : 'Laporan keuangan · keterbukaan IDX',
+      srcChip: m.real ? {cls:'chip b', t:'Data server · impor 13 Okt 2026'} : {cls:'chip i', t:'Data contoh'}
+    };
+
+    if (m.real) return Object.assign(common, {
+      hasVal:false, noVal:true,
+      f:{t, name:m.name, sector:m.sector, pbv:'—', pbvNote:'butuh Total Ekuitas, kosong di sumber', bvps:'—', cap:m.cap, capNote:m.capNote, sh:m.sh, prov:m.prov, warn:m.warn, hasWarn:true},
+      band:{}, line:'', pts:[], bandNote:'', peers:[]
+    });
+
+    // PBV band + peers (sample banks)
+    const h=D.hist, mean=h.reduce((a,b)=>a+b,0)/h.length, sd=Math.sqrt(h.reduce((a,b)=>a+(b-mean)*(b-mean),0)/(h.length-1));
+    const lo=Math.min(...h,mean-sd)*0.96, hi=Math.max(...h,mean+sd)*1.04, Y=(v)=>14+(hi-v)/(hi-lo)*176, X=(i)=>60+i*(430/7);
+    const QL=['Q3 24','Q4 24','Q1 25','Q2 25','Q3 25','Q4 25','Q1 26','Q2 26'], pbv=h[7];
+    const roeOf=(x)=>{ const rr=this.sample(x,0).tabs[3].rows.find(r=>r.id==='roe'); return this.fmt(rr.vals[0],'pct'); };
+    const peersRaw=[{t:'BBCA',v:4.32,r:roeOf('BBCA')},{t:'BBRI',v:2.15,r:roeOf('BBRI')},{t:'BMRI',v:1.42,r:roeOf('BMRI')},{t:'BBNI',v:1.18,r:'—'}];
+    return Object.assign(common, {
+      hasVal:true, noVal:false,
+      f:{t, name:m.name, sector:m.sector, pbv:this.dec(pbv,2)+'×', pbvNote:'rerata 8 kuartal '+this.dec(mean,2)+'×', bvps:m.bvps, cap:m.cap, capNote:m.capNote||'harga × saham beredar', sh:m.sh,
+        prov:[{k:'Periode',v:'Q2 2026 (diaudit)'},{k:'Sumber fundamental',v:'Laporan keuangan · keterbukaan IDX'},{k:'Sumber market cap',v:'Harga penutupan '+m.px},{k:'Diverifikasi',v:'15 Okt 2026, 09.20 WIB'}], warn:'', hasWarn:false},
+      band:{y:Y(mean+sd).toFixed(1), h:(Y(mean-sd)-Y(mean+sd)).toFixed(1), m:Y(mean).toFixed(1), mt:(Y(mean)+4).toFixed(1), ut:(Y(mean+sd)+4).toFixed(1), lt:(Y(mean-sd)+4).toFixed(1)},
+      line:'M'+h.map((v,i)=>X(i).toFixed(1)+' '+Y(v).toFixed(1)).join(' L'),
+      pts:h.map((v,i)=>({x:X(i).toFixed(1), y:Y(v).toFixed(1), q:QL[i], qst:'left:'+(X(i)/5.2).toFixed(2)+'%;top:'+(208/2.2).toFixed(2)+'%'})),
+      bandNote:'PBV saat ini '+this.dec(pbv,2)+'× · rerata '+this.dec(mean,2)+'× · SD '+this.dec(sd,2)+': '+(pbv>mean+sd?'di atas pita +1 SD':(pbv<mean-sd?'di bawah pita −1 SD':'di dalam pita ±1 SD')),
+      peers: peersRaw.map((p,i)=>({t:p.t, v:this.dec(p.v,2)+'×', roe:p.r, go:()=>{ if(META[p.t]) this.setState({t:p.t, flip:!S.flip, flip2:!S.flip2}); }, cls:'rise d'+i+(p.t===t?' sel':''), bar:'width:'+(p.v/4.32*100).toFixed(0)+'%;'+(p.t===t?'':'background:#9AA6A1')}))
+    });
+  }
+}
+</script>
+</body>
+</html>

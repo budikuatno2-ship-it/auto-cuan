@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Daftar akun</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ac.css">
+<script src="./motion.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+.stage{position:relative;min-height:960px;background:#F6F7F5;overflow:hidden}
+.ghost{position:absolute;inset:0;padding:120px 10%;color:#C9D1CD;font-weight:700;font-size:88px;line-height:.95;letter-spacing:-.045em;pointer-events:none;user-select:none}
+.ov{position:absolute;inset:0;display:grid;place-items:center;padding:24px}
+.dialog{width:100%;max-width:480px;background:var(--ac-surface);border:1px solid var(--ac-hair);border-radius:16px;box-shadow:var(--shadow2);padding:28px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:18px 0 22px}
+.steps div{font-size:11px;font-weight:600;color:var(--ac-muted)}
+.steps div i{display:block;height:3px;border-radius:2px;background:var(--ac-hover);margin-bottom:6px;overflow:hidden;position:relative}
+.steps div.on{color:var(--ac-ink)}
+.steps div.on i::after{content:"";position:absolute;inset:0;background:var(--ac-brand);transform-origin:left;animation:grow 420ms var(--ease-e) both}
+.code{font:600 30px "Geist Mono",monospace;letter-spacing:.18em;color:var(--ac-ink)}
+.strength{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px}
+.strength i{height:3px;border-radius:2px;background:var(--ac-hover);transition:background 190ms var(--ease)}
+.strength i.f{background:var(--ac-brand)}
+.statusrow{display:grid;grid-template-columns:22px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--ac-hair);font-size:13px}
+.statusrow:last-child{border-bottom:0}
+</style>
+</helmet>
+<div class="stage">
+  <div class="ghost" aria-hidden="true">Baca pasar.<br>Susun rencana.<br>Jaga konteks.</div>
+  <div class="ov scrim">
+    <div class="dialog dlg" role="dialog" aria-modal="true" aria-labelledby="ttl">
+      <sc-if value="{{isForm}}" hint-placeholder-val="{{true}}">
+        <div class="swap">
+          <div style="display:flex;justify-content:space-between;gap:12px"><div><h1 id="ttl" style="margin:0;font-size:22px;letter-spacing:-.02em">Daftar akun baru</h1><p class="mut" style="margin:4px 0 0">Wajib menyertakan Gmail aktif sebagai identitas akun.</p></div><a class="btn sm" href="Landing.dc.html" aria-label="Tutup" style="width:32px;padding:0">×</a></div>
+          <div class="steps" aria-label="Tahapan"><div class="on"><i></i>1 · Buat akun</div><div><i></i>2 · Verifikasi Telegram</div><div><i></i>3 · Persetujuan admin</div></div>
+          <label class="flabel" for="g">Gmail</label><input id="g" class="inp" placeholder="nama@gmail.com" autocomplete="email" value="{{g}}" onInput="{{onG}}">
+          <div style="height:14px"></div>
+          <label class="flabel" for="un">Username</label><input id="un" class="inp" placeholder="huruf kecil, angka, garis bawah" autocomplete="username" value="{{un}}" onInput="{{onUn}}">
+          <div style="height:14px"></div>
+          <div class="grid2" style="gap:12px">
+            <div><label class="flabel" for="pw">Password</label><input id="pw" class="inp" type="password" placeholder="Min. 8 karakter" onInput="{{onPw}}"><div class="strength" aria-hidden="true"><i class="{{s1}}"></i><i class="{{s2}}"></i><i class="{{s3}}"></i><i class="{{s4}}"></i></div><div class="help">{{pwHint}}</div></div>
+            <div><label class="flabel" for="pw2">Konfirmasi password</label><input id="pw2" class="inp" type="password" placeholder="Ulangi password" autocomplete="new-password" value="{{pw2}}" onInput="{{onPw2}}"></div>
+          </div>
+          <label style="display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-size:13px;color:var(--ac-2)"><input type="checkbox" checked="{{agree}}" onChange="{{toggleAgree}}" style="accent-color:var(--ac-brand);width:18px;height:18px;margin:1px 0 0"><span>Saya menyetujui <a class="lnk" href="Ketentuan.dc.html#ketentuan">Syarat &amp; Ketentuan Layanan</a> Auto-Cuan.</span></label>
+          <sc-if value="{{hasErr}}" hint-placeholder-val="{{false}}"><div class="help neg" role="alert" style="margin-top:14px">{{err}}</div></sc-if>
+          <button class="btn p" onClick="{{submit}}" disabled="{{notAgree}}" style="width:100%;height:44px;margin-top:20px;font-size:14px">Daftar sekarang</button>
+          <p class="mut" style="text-align:center;margin:16px 0 0;font-size:13px">Sudah punya akun? <a class="lnk" href="AuthLogin.dc.html">Masuk</a></p>
+        </div>
+      </sc-if>
+      <sc-if value="{{isDone}}" hint-placeholder-val="{{false}}">
+        <div class="swap">
+          <span style="width:40px;height:40px;border-radius:50%;background:var(--ac-pos-soft);display:grid;place-items:center;margin-bottom:14px"><svg class="ck" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#247A43" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>
+          <h1 style="margin:0;font-size:22px;letter-spacing:-.02em">Akun dibuat</h1>
+          <p class="mut" style="margin:4px 0 0">Dua langkah lagi sebelum workspace bisa dibuka.</p>
+          <div class="steps"><div class="on"><i></i>1 · Buat akun</div><div class="on"><i></i>2 · Verifikasi Telegram</div><div><i></i>3 · Persetujuan admin</div></div>
+          <div style="border:1px solid rgba(49,95,154,.22);background:var(--ac-info-soft);border-radius:12px;padding:18px">
+            <div style="font-size:13px;font-weight:600;color:var(--ac-info)">Kode verifikasi Telegram · sekali pakai</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:10px"><span class="code pop">AC-892415</span><button class="btn sm" onClick="{{copy}}" style="margin-left:auto">{{copyText}}</button></div>
+            <div class="help" style="margin-top:10px">Kirim kode ini ke bot verifikasi Auto-Cuan di Telegram <b>[username bot asli]</b>. Berlaku <b class="num">{{mins}}</b>.</div>
+          </div>
+          <div style="margin-top:16px">
+            <div class="statusrow"><span class="dot g"></span><span>Akun dibuat</span><span class="mut">Selesai</span></div>
+            <div class="statusrow"><span class="dot a"></span><span>Verifikasi Telegram</span><span class="warn" style="font-weight:600">Menunggu kode</span></div>
+            <div class="statusrow"><span class="dot m"></span><span>Persetujuan admin</span><span class="mut">Belum dimulai</span></div>
+          </div>
+          <p class="help" style="margin-top:12px">Menunggu persetujuan bukan berarti pendaftaran gagal. Anda akan menerima notifikasi setelah admin menyetujui.</p>
+          <button class="btn q" onClick="{{back}}" style="margin-top:8px;padding:0">← Kembali ke formulir (demo)</button>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":960}}'>
+class Component extends DCLogic {
+  constructor(props){ super(props); this.state = { step:'form', agree:false, pw:'', pw2:'', g:'', un:'', err:'', copied:false }; }
+  renderVals() {
+    const S = this.state, L = S.pw.length;
+    const score = L===0?0:(L<8?1:(/[0-9]/.test(S.pw)&&/[A-Za-z]/.test(S.pw)?(L>=12?4:3):2));
+    const f = (n) => score>=n ? 'f' : '';
+    return {
+      isForm: S.step==='form', isDone: S.step==='done',
+      agree: S.agree, notAgree: !S.agree,
+      toggleAgree: () => this.setState({agree:!S.agree}),
+      onPw: (e) => this.setState({pw:e.target.value, err:''}), onPw2: (e) => this.setState({pw2:e.target.value, err:''}),
+      g: S.g, un: S.un, pw2: S.pw2, onG: (e) => this.setState({g:e.target.value, err:''}), onUn: (e) => this.setState({un:e.target.value, err:''}),
+      hasErr: !!S.err, err: S.err,
+      s1:f(1), s2:f(2), s3:f(3), s4:f(4),
+      pwHint: ['Minimal 8 karakter, gabungkan huruf dan angka.','Terlalu pendek','Cukup, tambahkan angka','Kuat','Sangat kuat'][score],
+      submit: () => {
+        if (!/^[^@\s]+@gmail\.com$/i.test(S.g.trim())) return this.setState({err:'Pakai alamat Gmail yang valid, contoh nama@gmail.com.'});
+        if (!/^[a-z0-9_]{3,20}$/.test(S.un)) return this.setState({err:'Username 3 sampai 20 karakter: huruf kecil, angka, atau garis bawah.'});
+        if (score < 3) return this.setState({err:'Password minimal 8 karakter dan memuat huruf serta angka.'});
+        if (S.pw !== S.pw2) return this.setState({err:'Konfirmasi password belum sama.'});
+        this.setState({step:'done', err:''});
+      },
+      back: () => this.setState({step:'form'}),
+      copy: () => { try { navigator.clipboard && navigator.clipboard.writeText('AC-892415'); } catch (e) {} this.setState({copied:true}); clearTimeout(this.tc); this.tc = setTimeout(() => this.setState({copied:false}), 2000); },
+      copyText: S.copied ? 'Tersalin ✓' : 'Salin kode',
+      mins: '14:52 menit'
+    };
+  }
+}
+</script>
+</body>
+</html>

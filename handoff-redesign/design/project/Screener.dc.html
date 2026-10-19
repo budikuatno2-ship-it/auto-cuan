@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Screener</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ac.css">
+<script src="./motion.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+.split{display:flex;flex-wrap:wrap;align-items:stretch}
+.pane{flex:0 0 360px;border-left:1px solid var(--ac-hair);background:var(--ac-surface);min-width:0}
+/* panel detail terbuka di layar < 1600px: kolom Setup sudah ada di panel, jadi disembunyikan di tabel supaya tidak terpotong */
+@media (min-width:761px) and (max-width:1599px){.split>.tw table{min-width:0!important}.split>.tw tr>*:last-child,.split>.tw .x{display:none}}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--ac-hair);font-size:13px}
+.kv:last-child{border-bottom:0}
+.kv>span:first-child{color:var(--ac-2)}
+.ph2{font-size:13px;font-weight:600;color:var(--ac-ink);padding:18px 0 4px}
+.gate{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--ac-hair);font-size:13px}
+.gate:last-child{border-bottom:0}
+.gi{width:18px;height:18px;border-radius:50%;flex:none;display:grid;place-items:center;margin-top:1px}
+.gi.y{background:var(--ac-pos-soft)}.gi.n{background:var(--ac-hover);color:var(--ac-muted);font-size:11px;font-weight:700}
+.ladder{position:relative;height:120px;margin:10px 0 4px;border-left:1px dashed var(--ac-hair)}
+.ladder div{position:absolute;left:0;right:0;display:flex;align-items:center;gap:8px;font-size:11px;transform:translateY(-50%)}
+.ladder div i{flex:1;height:0;border-top:1.5px solid currentColor;opacity:.55}
+.th-s{cursor:pointer;user-select:none}
+.th-s:hover{color:var(--ac-ink)}
+.tbl.compact .x{display:none}
+.btn.on-star{color:var(--ac-warn-t);border-color:rgba(169,109,19,.4)}
+</style>
+</helmet>
+<input type="checkbox" id="sbx" class="sbx" aria-label="Ciutkan sidebar">
+<div class="app">
+  <nav class="side" aria-label="Navigasi utama">
+    <div class="brand"><i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 8-9"/></svg></i><div class="bt">Auto-Cuan<small>Meja kerja riset IDX</small></div><label for="sbx" class="sbt" title="Ciutkan atau buka sidebar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 10l-2 2 2 2"/></svg></label></div>
+    <a class="nav" href="Main.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z"/></svg>Dashboard</a>
+    <div class="nav-l">Temukan</div>
+    <a class="nav on" href="Screener.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>Screener</a>
+    <a class="nav" href="SektorHot.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>Sektor Hot</a>
+    <div class="nav-l">Riset</div>
+    <a class="nav" href="Analisis.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Analisis &amp; Chart</a>
+    <a class="nav" href="Bandarmologi.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Bandarmologi</a>
+    <a class="nav" href="SinyalIntelijen.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/></svg>Sinyal Intelijen</a>
+    <a class="nav" href="BrokerHunter.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Broker Hunter</a>
+    <a class="nav" href="Insider.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M17 11a3 3 0 000-6M21 20c0-2-1.5-4-4-4.6"/></svg>Insider</a>
+    <a class="nav" href="Ranking.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Ranking</a>
+    <a class="nav" href="Financial.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-6h4v6"/></svg>Financial</a>
+    <a class="nav" href="StrukturPasar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9h9A9 9 0 1112 3z"/></svg>Struktur Pasar</a>
+    <div class="nav-l">Pantau</div>
+    <a class="nav" href="Watchlist.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Watchlist<span class="cnt">8</span></a>
+    <a class="nav" href="Portfolio.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg>Portfolio</a>
+    <a class="nav" href="TrackRecord.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>Track Record</a>
+    <a class="nav" href="KelolaKeuangan.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 14h2"/></svg>Kelola Keuangan</a>
+    <div class="nav-l adm-l">Admin<span>· hanya admin</span></div>
+    <a class="nav" href="PatternRadar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Pattern Radar</a>
+    <a class="nav" href="AdminConsole.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin Console</a>
+    <div class="nav-sp"></div>
+    <a class="acct" href="AccountCenter.dc.html" aria-label="Buka Pusat Akun"><span class="av">B</span><div style="flex:1"><b>budi</b><span>Admin · Pro Trader</span></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+  </nav>
+
+  <div class="main">
+    <header class="top">
+      <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Cari ticker, halaman, atau aksi…</span><kbd>⌘K</kbd></label>
+      <div class="fresh"><span class="{{freshDot}}"></span>{{fresh}}</div>
+      <button class="thm" style="margin-left:8px" type="button" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    </header>
+
+    <main class="page" style="gap:20px">
+      <div class="ph rise d0">
+        <div>
+          
+          <h1>Screener Saham</h1>
+          <p>{{modeDesc}}</p>
+        </div>
+        <div class="{{segCls}}" role="tablist" aria-label="Mode screener"><span class="{{segInd}}"></span>
+          <button class="{{m0}}" onClick="{{go0}}" role="tab">Konglo</button>
+          <button class="{{m1}}" onClick="{{go1}}" role="tab">Non-Konglo</button>
+          <button class="{{m2}}" onClick="{{go2}}" role="tab">Day Trade</button>
+        </div>
+      </div>
+
+      <section class="sheet rise d1">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px">
+          <label class="search" style="width:240px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input aria-label="Cari ticker" placeholder="Cari ticker…" value="{{q}}" onInput="{{onQ}}" style="border:0;outline:0;background:transparent;width:100%;font-size:13px;text-transform:uppercase"></label>
+          <select class="fld" aria-label="Status" onChange="{{onSt}}"><option value="">Semua status</option><option value="entry">Di area entry</option><option value="wait">Tunggu pullback</option></select>
+          <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ac-2)"><input type="checkbox" checked="{{rrOnly}}" onChange="{{toggleRR}}" style="accent-color:var(--ac-brand);width:16px;height:16px"> R/R minimal 1 : 1,5</label>
+          <span style="margin-left:auto;display:flex;gap:8px"><button class="btn sm" onClick="{{toggleSort}}">Urutkan: {{sortLbl}}</button><button class="btn sm" onClick="{{toggleCols}}" aria-pressed="{{compact}}">Kolom: {{colsLbl}}</button><button class="btn sm" onClick="{{print}}">Cetak / PDF</button></span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px 20px;padding:10px 20px;border-top:1px solid var(--ac-hair);background:var(--ac-raised);font-size:12px;color:var(--ac-2);align-items:center">
+          <span class="num"><b style="color:var(--ac-ink)">{{count}}</b> hasil</span>
+          <span class="num">Universe <b style="color:var(--ac-ink)">{{uni}}</b></span><span class="num">Dipindai <b style="color:var(--ac-ink)">{{scan}}</b></span><span class="num">Terbit <b style="color:var(--ac-ink)">{{pub}}</b></span>
+          <span>{{scope}}</span>
+          <span class="chip i" style="margin-left:auto">Data contoh</span>
+        </div>
+
+        <div class="split">
+          <div style="flex:1 1 560px;min-width:0" class="tw">
+            <table class="{{tblCls}}" style="{{tblStyle}}">
+              <thead><tr><th>Ticker</th><th>{{colB}}</th><th>Tier</th><th>Exec</th><th class="r th-s" onClick="{{sortScore}}">Skor {{arrS}}</th><th class="r">Harga</th><th class="r th-s" onClick="{{sortChg}}">Chg {{arrC}}</th><th class="r x">{{colH}}</th><th class="r x">Vol/Avg20</th><th class="r">R/R</th><th class="x">{{colK}}</th></tr></thead>
+              <tbody>
+                <sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
+                  <tr class="{{r.cls}}" onClick="{{r.pick}}" aria-selected="{{r.on}}">
+                    <td><span class="tk mono">{{r.t}}</span></td>
+                    <td class="mut">{{r.b}}</td>
+                    <td><span class="{{r.tierCls}}">{{r.tier}}</span></td>
+                    <td style="font-weight:600">{{r.exec}}</td>
+                    <td class="r num" style="font-weight:700">{{r.score}}</td>
+                    <td class="r num mono" style="font-weight:600">{{r.priceS}}</td>
+                    <td class="{{r.chgCls}}" style="font-weight:600">{{r.chgS}}</td>
+                    <td class="r num x">{{r.h}}</td>
+                    <td class="r num x">{{r.volS}}</td>
+                    <td class="{{r.rrCls}}">{{r.rrS}}</td>
+                    <td class="mut x">{{r.k}}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            <sc-if value="{{empty}}" hint-placeholder-val="{{false}}"><div style="padding:40px 20px;text-align:center" class="mut">{{emptyMsg}} <button class="btn sm" onClick="{{resetF}}" style="margin-left:8px">Hapus filter</button></div></sc-if>
+          </div>
+
+          <aside class="pane" aria-label="Detail terpilih">
+            <div class="{{paneCls}}" style="padding:18px 20px 24px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+                <div>
+                  <div style="display:flex;align-items:center;gap:10px"><span class="tk mono" style="font-size:20px">{{s.t}}</span><span class="chip b">{{s.tier}} · Exec {{s.exec}}</span></div>
+                  <div class="mut" style="font-size:12px;margin-top:2px">{{s.name}}</div>
+                </div>
+                <button class="{{wlCls}}" aria-label="{{wlLbl}}" aria-pressed="{{wlOn}}" onClick="{{wlGo}}" style="width:32px;padding:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="{{wlFill}}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></button>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:10px;margin-top:12px"><span class="num mono" style="font-size:26px;font-weight:700">Rp {{s.priceS}}</span><span class="{{s.chgCls2}}" style="font-weight:600">{{s.chgS}}</span><span class="mut num" style="margin-left:auto">Skor <b style="color:var(--ac-ink)">{{s.score}}</b></span></div>
+
+              <div class="ph2">Rencana trading <span class="mut" style="font-weight:500">· basis harga terakhir</span></div>
+              <div class="ladder" aria-hidden="true">
+                <div style="top:{{s.yTp2}};color:var(--ac-pos)"><span class="num mono" style="width:56px">{{s.tp2S}}</span><i></i><span>TP2</span></div>
+                <div style="top:{{s.yTp1}};color:var(--ac-pos)"><span class="num mono" style="width:56px">{{s.tp1S}}</span><i></i><span>TP1</span></div>
+                <div style="top:{{s.yPx}};color:var(--ac-ink);font-weight:700"><span class="num mono" style="width:56px">{{s.priceS}}</span><i style="opacity:1;border-top-style:dotted"></i><span>Kini</span></div>
+                <div style="top:{{s.ySl}};color:var(--ac-neg)"><span class="num mono" style="width:56px">{{s.slS}}</span><i></i><span>SL</span></div>
+              </div>
+              <div class="kv"><span>Area entry</span><span class="num mono" style="font-weight:600">{{s.entryS}}</span></div>
+              <div class="kv"><span>Stop loss</span><span class="num mono neg" style="font-weight:600">{{s.slS}} <span style="font-weight:500">({{s.slPct}})</span></span></div>
+              <div class="kv"><span>Target 1</span><span class="num mono pos" style="font-weight:600">{{s.tp1S}} <span style="font-weight:500">({{s.tp1Pct}})</span></span></div>
+              <div class="kv"><span>Target 2</span><span class="num mono pos" style="font-weight:600">{{s.tp2S}}</span></div>
+              <div class="kv"><span>Risk / Reward</span><span class="num" style="font-weight:700">{{s.rrS}}</span></div>
+              <sc-if value="{{s.rrLow}}" hint-placeholder-val="{{false}}"><div class="help warn" style="font-weight:600">R/R di bawah batas minimum 1 : 1,5. Tinjau ulang sebelum entry.</div></sc-if>
+
+              <div class="ph2">Ukuran posisi <span class="mut" style="font-weight:500">· modal Rp 100 jt, risiko 1%</span></div>
+              <div class="kv"><span>Risiko per lot</span><span class="num" style="font-weight:600">{{s.riskLot}}</span></div>
+              <div class="kv"><span>Ukuran maksimal</span><span class="num" style="font-weight:600">{{s.lots}}</span></div>
+              <div class="kv"><span>Modal dibutuhkan</span><span class="num" style="font-weight:600">{{s.cap}}</span></div>
+              <div class="kv"><span>Potensi di TP1</span><span class="num pos" style="font-weight:600">{{s.gain}}</span></div>
+
+              <div class="ph2">Bukti gate</div>
+              <sc-for list="{{s.gates}}" as="g" hint-placeholder-count="3">
+                <div class="gate"><span class="{{g.ic}}"><sc-if value="{{g.ok}}" hint-placeholder-val="{{true}}"><svg class="ck" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#247A43" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></sc-if><sc-if value="{{g.no}}" hint-placeholder-val="{{false}}">—</sc-if></span><div><b>{{g.t}}</b><div class="mut" style="font-size:12px">{{g.d}}</div></div></div>
+              </sc-for>
+
+              <a class="btn p" href="Analisis.dc.html" style="width:100%;margin-top:18px;height:40px">Buka Chart &amp; Analisis</a>
+              <div class="dim" style="font-size:11px;margin-top:10px">Bukan rekomendasi. Konfirmasi manual wajib sebelum eksekusi.</div>
+            </div>
+          </aside>
+        </div>
+        <div class="prov"><span><b>Sumber</b> Screener bandar &amp; teknikal Auto-Cuan</span><span><b>Per tanggal</b> 13 Okt 2026</span><span><b>Diperbarui</b> {{upd}}</span></div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  constructor(props){ super(props); this.state = { mode:0, sel:{0:'BRPT',1:'ACES',2:'PTRO'}, q:'', sort:'score', flip:false, st:'', rrOnly:false, compact:false, wl:{} }; }
+  fmt(n){ return n==null ? '—' : Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+  dec(n,d){ return n==null ? '—' : n.toFixed(d).replace('.',','); }
+  rp(n){ if(n==null) return '—'; const a=Math.abs(n); const s=n<0?'−':''; if(a>=1e9) return s+'Rp '+this.dec(a/1e9,2)+' M'; if(a>=1e6) return s+'Rp '+this.dec(a/1e6,1)+' jt'; return s+'Rp '+this.fmt(a); }
+  renderVals() {
+    const S = this.state, mode = S.mode;
+    const K = [
+      {t:'BRPT',name:'Barito Pacific Tbk',b:'Prajogo Pangestu',tier:'Tier 1',exec:'A+',score:92,price:1045,chg:3.45,h:'62,8',vol:2.8,lo:1030,hi:1050,sl:995,tp1:1120,tp2:1180,k:'Breakout pullback'},
+      {t:'MEDC',name:'Medco Energi Internasional Tbk',b:'Panigoro',tier:'Tier 1',exec:'A+',score:91,price:1380,chg:4.15,h:'66,2',vol:3.2,lo:1360,hi:1385,sl:1310,tp1:1480,tp2:null,k:'Momentum lanjut'},
+      {t:'BBCA',name:'Bank Central Asia Tbk',b:'Djarum',tier:'Tier 2',exec:'A',score:88,price:10250,chg:0.98,h:'58,4',vol:1.4,lo:10150,hi:10250,sl:9950,tp1:10600,tp2:11000,k:'Pullback ke support'},
+      {t:'ADRO',name:'Alamtri Resources Indonesia Tbk',b:'Boy Thohir',tier:'Tier 2',exec:'B',score:84,price:3720,chg:1.64,h:'48,9',vol:1.1,lo:3680,hi:3720,sl:3580,tp1:3920,tp2:null,k:'Support rebound'},
+      {t:'ASII',name:'Astra International Tbk',b:'Astra',tier:'Tier 2',exec:'B',score:82,price:5150,chg:0.49,h:null,vol:0.9,lo:5100,hi:5150,sl:4980,tp1:5350,tp2:null,k:'Rebound'}
+    ];
+    const N = [
+      {t:'ACES',name:'Aspirasi Hidup Indonesia Tbk',b:'Ritel',tier:'Tier 1',exec:'A',score:86,price:785,chg:2.61,h:'61,0',vol:1.9,lo:770,hi:785,sl:745,tp1:840,tp2:880,k:'Breakout volume'},
+      {t:'ERAA',name:'Erajaya Swasembada Tbk',b:'Ritel',tier:'Tier 2',exec:'A',score:83,price:426,chg:1.91,h:'57,3',vol:1.6,lo:418,hi:426,sl:404,tp1:452,tp2:470,k:'Higher low'},
+      {t:'MYOR',name:'Mayora Indah Tbk',b:'Konsumer',tier:'Tier 2',exec:'B',score:81,price:2540,chg:1.20,h:'55,8',vol:1.3,lo:2500,hi:2540,sl:2430,tp1:2680,tp2:2760,k:'Rebound MA20'},
+      {t:'SIDO',name:'Industri Jamu Sido Muncul Tbk',b:'Kesehatan',tier:'Tier 2',exec:'B',score:78,price:610,chg:0.83,h:'52,4',vol:1.2,lo:600,hi:610,sl:585,tp1:645,tp2:660,k:'Akumulasi'}
+    ];
+    const D = [
+      {t:'PTRO',name:'Petrosea Tbk',b:'Utama',tier:'Momentum',exec:'A+',score:90,price:14100,chg:4.83,h:'18.420',vol:3.1,lo:13950,hi:14100,sl:13600,tp1:14700,tp2:15100,k:'09.00–10.30 WIB'},
+      {t:'MEDC',name:'Medco Energi Internasional Tbk',b:'Utama',tier:'Momentum',exec:'A',score:88,price:1380,chg:4.15,h:'12.105',vol:3.2,lo:1360,hi:1385,sl:1310,tp1:1480,tp2:null,k:'09.00–11.00 WIB'},
+      {t:'BREN',name:'Barito Renewables Energy Tbk',b:'Utama',tier:'Lanjutan',exec:'A',score:82,price:6850,chg:2.24,h:'9.870',vol:1.5,lo:6775,hi:6850,sl:6600,tp1:7150,tp2:7300,k:'Sesi 1'},
+      {t:'ANTM',name:'Aneka Tambang Tbk',b:'Utama',tier:'Rebound',exec:'B',score:79,price:1560,chg:1.95,h:'8.344',vol:1.4,lo:1545,hi:1560,sl:1505,tp1:1630,tp2:1665,k:'Sesi 2'}
+    ];
+    const meta = [
+      {desc:'Swing 3–7 hari pada saham grup konglomerat. Klik baris untuk rencana dan bukti gate.',colB:'Grup',colH:'RSI 14',colK:'Setup',uni:840,scan:120,pub:19,scope:'Swing 3–7 hari · grup konglomerat',fresh:'Bursa tutup · EOD / T-1 · 13 Okt 2026, 16.00 WIB',dot:'dot m',upd:'16.00 WIB'},
+      {desc:'Swing saham papan Utama & Pengembangan di luar grup konglomerat.',colB:'Sektor',colH:'RSI 14',colK:'Setup',uni:612,scan:240,pub:24,scope:'Swing · non-grup',fresh:'Bursa tutup · EOD / T-1 · 13 Okt 2026, 16.00 WIB',dot:'dot m',upd:'16.00 WIB'},
+      {desc:'Momentum intraday. Kolom lengkap tersedia lewat tombol Kolom dan panel detail.',colB:'Papan',colH:'Tx hari ini',colK:'Rencana waktu',uni:842,scan:842,pub:11,scope:'Day trade · intraday',fresh:'Sesi 2 · intraday, bukan real-time · 14.32 WIB',dot:'dot g',upd:'14.32 WIB'}
+    ][mode];
+    let data = [K,N,D][mode];
+    const q = S.q.trim().toUpperCase();
+    if (q) data = data.filter(d => d.t.indexOf(q) >= 0);
+    const inEntry = (d) => d.price>=d.lo && d.price<=d.hi;
+    if (S.st) data = data.filter(d => S.st==='entry' ? inEntry(d) : !inEntry(d));
+    if (S.rrOnly) data = data.filter(d => { const r=d.price-d.sl; return r>0 && (d.tp1-d.price)/r>=1.5; });
+    data = data.slice().sort((a,b) => S.sort==='chg' ? b.chg-a.chg : b.score-a.score);
+    const selT = S.sel[mode];
+    const rr = (d) => { const r = d.price - d.sl, w = d.tp1 - d.price; return r>0 ? w/r : null; };
+    const pct = (a,b) => (b>=a?'+':'−') + this.dec(Math.abs((b-a)/a*100),2) + '%';
+    const rows = data.map((d,i) => {
+      const x = rr(d);
+      return {
+        ...d, on: d.t===selT,
+        cls: 'rise d'+(i+1) + (d.t===selT?' sel':''),
+        tierCls: d.tier==='Tier 1' || d.exec==='A+' ? 'chip b' : 'chip',
+        priceS: this.fmt(d.price), chgS: (d.chg>=0?'+':'−') + this.dec(Math.abs(d.chg),2) + '%',
+        chgCls: 'r num ' + (d.chg>=0?'pos':'neg'),
+        h: d.h==null ? '—' : d.h, volS: this.dec(d.vol,1)+'×',
+        rrS: x==null ? '—' : '1 : '+this.dec(x,1), rrCls: 'r num' + (x!=null && x<1.5 ? ' warn' : ''),
+        pick: () => this.setState({sel:{...S.sel,[mode]:d.t}, flip:!S.flip})
+      };
+    });
+    const all = [K,N,D][mode];
+    const d = all.find(z => z.t===selT) || all[0];
+    const x = rr(d), riskLot = (d.price-d.sl)*100, lots = Math.floor(1000000/riskLot);
+    const top = d.tp2 || d.tp1, span = top - d.sl;
+    const y = (v) => (8 + (top - v)/span*104) + 'px';
+    const s = {
+      ...d, priceS:this.fmt(d.price), chgS:(d.chg>=0?'+':'−')+this.dec(Math.abs(d.chg),2)+'%', chgCls2:'num '+(d.chg>=0?'pos':'neg'),
+      entryS: this.fmt(d.lo)+' – '+this.fmt(d.hi), slS:this.fmt(d.sl), tp1S:this.fmt(d.tp1), tp2S:this.fmt(d.tp2),
+      slPct: pct(d.price,d.sl), tp1Pct: pct(d.price,d.tp1),
+      rrS: x==null?'—':'1 : '+this.dec(x,2), rrLow: x!=null && x<1.5,
+      riskLot: this.rp(riskLot), lots: this.fmt(lots)+' lot ('+this.fmt(lots*100)+' lembar)', cap: this.rp(lots*100*d.price), gain: '+'+this.rp(lots*100*(d.tp1-d.price)).replace('+',''),
+      yTp2: d.tp2 ? y(d.tp2) : '-999px', yTp1: y(d.tp1), yPx: y(d.price), ySl: y(d.sl),
+      gates: [
+        {t:'Volume di atas rata-rata 20 hari', d:this.dec(d.vol,1)+'× (minimum 1,0×)', ok:d.vol>=1, no:d.vol<1, ic:'gi '+(d.vol>=1?'y':'n')},
+        {t:'Risk/Reward memenuhi batas', d: x==null?'Data belum tersedia':'1 : '+this.dec(x,2)+' (minimum 1 : 1,5)', ok:x!=null&&x>=1.5, no:!(x!=null&&x>=1.5), ic:'gi '+(x!=null&&x>=1.5?'y':'n')},
+        {t: mode===2?'Frekuensi transaksi':'Momentum RSI 14', d: d.h==null?'Data belum tersedia':d.h+(mode===2?' kali':' · zona sehat'), ok:d.h!=null, no:d.h==null, ic:'gi '+(d.h!=null?'y':'n')},
+        {t:'Akumulasi broker top 3', d:'Data belum tersedia pada snapshot ini', ok:false, no:true, ic:'gi n'}
+      ]
+    };
+    return {
+      modeDesc: meta.desc, colB:meta.colB, colH:meta.colH, colK:meta.colK, uni:meta.uni, scan:meta.scan, pub:meta.pub, scope:meta.scope, fresh:meta.fresh, freshDot:meta.dot, upd:meta.upd,
+      segCls:'segx n3', segInd:'ind k'+mode,
+      m0: mode===0?'on':'', m1: mode===1?'on':'', m2: mode===2?'on':'',
+      go0: () => this.setState({mode:0, flip:!S.flip}), go1: () => this.setState({mode:1, flip:!S.flip}), go2: () => this.setState({mode:2, flip:!S.flip}),
+      q: S.q, onQ: (e) => this.setState({q:e.target.value}),
+      sortLbl: S.sort==='chg' ? 'Perubahan ↓' : 'Skor ↓',
+      toggleSort: () => this.setState({sort: S.sort==='chg'?'score':'chg'}),
+      sortScore: () => this.setState({sort:'score'}), sortChg: () => this.setState({sort:'chg'}),
+      arrS: S.sort==='score'?'↓':'', arrC: S.sort==='chg'?'↓':'',
+      rows, count: rows.length, empty: rows.length===0,
+      emptyMsg: q ? 'Tidak ada ticker yang cocok dengan “'+S.q+'” di mode ini.' : (S.rrOnly ? 'Tidak ada kandidat dengan R/R minimal 1 : 1,5 hari ini. Batas ini sengaja ketat.' : 'Tidak ada kandidat dengan status ini di mode ini.'),
+      resetF: () => this.setState({q:'', st:'', rrOnly:false}),
+      onSt: (e) => this.setState({st:e.target.value}), rrOnly: S.rrOnly, toggleRR: () => this.setState({rrOnly:!S.rrOnly}),
+      compact: S.compact, colsLbl: S.compact ? 'Ringkas' : 'Lengkap', toggleCols: () => this.setState({compact:!S.compact}),
+      tblCls: 'tbl'+(S.compact?' compact':''), tblStyle: S.compact ? 'min-width:620px' : 'min-width:860px',
+      print: () => window.print(),
+      wlOn: !!S.wl[d.t], wlCls: 'btn sm'+(S.wl[d.t]?' on-star':''), wlFill: S.wl[d.t] ? 'currentColor' : 'none', wlLbl: S.wl[d.t] ? d.t+' ada di watchlist, ketuk untuk melepas' : 'Tambah '+d.t+' ke watchlist',
+      wlGo: () => this.setState({wl:{...S.wl,[d.t]:!S.wl[d.t]}}),
+      paneCls: S.flip ? 'swapa' : 'swapb', s
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Ranking</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ac.css">
+<script src="./motion.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+.rt th button{all:unset;cursor:pointer;display:inline-flex;gap:4px;align-items:center}
+.rt th button:hover{color:var(--ac-ink)}
+.rt th button:focus-visible{outline:2px solid var(--ac-brand);outline-offset:2px;border-radius:3px}
+.rt th.act{color:var(--ac-ink)}
+.rt td{height:38px}
+.score{display:inline-flex;align-items:center;gap:8px}
+.score i{display:block;width:46px;height:5px;border-radius:3px;background:var(--ac-hover);overflow:hidden;position:relative}
+.score i b{position:absolute;inset:0 auto 0 0;background:var(--ac-brand);border-radius:3px;transform-origin:left;animation:grow 700ms var(--ease-e) both}
+.os{display:inline-block;padding:0 5px;border-radius:3px;background:var(--ac-info-soft);color:var(--ac-info);font-size:11px;font-weight:700;margin-left:4px}
+.pin{position:sticky;bottom:0;border-top:1px solid var(--ac-line);background:var(--ac-surface);box-shadow:0 -10px 24px -18px rgba(0,0,0,.25)}
+</style>
+</helmet>
+<input type="checkbox" id="sbx" class="sbx" aria-label="Ciutkan sidebar">
+<div class="app">
+  <nav class="side" aria-label="Navigasi utama">
+    <div class="brand"><i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 8-9"/></svg></i><div class="bt">Auto-Cuan<small>Meja kerja riset IDX</small></div><label for="sbx" class="sbt" title="Ciutkan atau buka sidebar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 10l-2 2 2 2"/></svg></label></div>
+    <a class="nav" href="Main.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z"/></svg>Dashboard</a>
+    <div class="nav-l">Temukan</div>
+    <a class="nav" href="Screener.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>Screener</a>
+    <a class="nav" href="SektorHot.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>Sektor Hot</a>
+    <div class="nav-l">Riset</div>
+    <a class="nav" href="Analisis.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Analisis &amp; Chart</a>
+    <a class="nav" href="Bandarmologi.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Bandarmologi</a>
+    <a class="nav" href="SinyalIntelijen.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/></svg>Sinyal Intelijen</a>
+    <a class="nav" href="BrokerHunter.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Broker Hunter</a>
+    <a class="nav" href="Insider.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M17 11a3 3 0 000-6M21 20c0-2-1.5-4-4-4.6"/></svg>Insider</a>
+    <a class="nav on" href="Ranking.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Ranking</a>
+    <a class="nav" href="Financial.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-6h4v6"/></svg>Financial</a>
+    <a class="nav" href="StrukturPasar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9h9A9 9 0 1112 3z"/></svg>Struktur Pasar</a>
+    <div class="nav-l">Pantau</div>
+    <a class="nav" href="Watchlist.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Watchlist<span class="cnt">8</span></a>
+    <a class="nav" href="Portfolio.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg>Portfolio</a>
+    <a class="nav" href="TrackRecord.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>Track Record</a>
+    <a class="nav" href="KelolaKeuangan.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 14h2"/></svg>Kelola Keuangan</a>
+    <div class="nav-l adm-l">Admin<span>· hanya admin</span></div>
+    <a class="nav" href="PatternRadar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Pattern Radar</a>
+    <a class="nav" href="AdminConsole.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin Console</a>
+    <div class="nav-sp"></div>
+    <a class="acct" href="AccountCenter.dc.html" aria-label="Buka Pusat Akun"><span class="av">B</span><div style="flex:1"><b>budi</b><span>Admin · Pro Trader</span></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+  </nav>
+
+  <div class="main">
+    <header class="top">
+      <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Cari ticker, halaman, atau aksi…</span><kbd>⌘K</kbd></label>
+      <div class="fresh"><span class="dot m"></span>EOD / T-1 · 13 Okt 2026, 16.00 WIB</div>
+      <button class="thm" style="margin-left:8px" type="button" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    </header>
+
+    <main class="page" style="gap:16px">
+      <div class="ph rise d0">
+        <div><h1>Ranking Harian</h1><p>Klasemen kuantitatif berdasarkan volume, momentum harga, dan arus modal. Peringkat adalah angka, bukan piala.</p></div>
+      </div>
+      <section class="sheet rise d1" style="overflow:hidden">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair)">
+          <label class="search" style="width:240px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input aria-label="Filter saham" placeholder="Filter saham…" value="{{q}}" onInput="{{onQ}}" style="border:0;outline:0;background:transparent;width:100%;font-size:13px;text-transform:uppercase"></label>
+          <div class="{{pSeg}}"><span class="{{pInd}}"></span><sc-for list="{{presets}}" as="p" hint-placeholder-count="4"><button class="{{p.cls}}" onClick="{{p.go}}">{{p.l}}</button></sc-for></div>
+          <span class="mut num" style="font-size:12px;margin-left:auto">{{count}} emiten · urut {{sortLbl}}</span>
+          <button class="btn sm" onClick="{{csv}}" disabled="{{noRows}}">{{csvL}}</button>
+        </div>
+        <div class="tw" style="max-height:640px;overflow:auto">
+          <table class="tbl rt" style="min-width:1040px">
+            <thead><tr>
+              <th style="width:48px">#</th>
+              <sc-for list="{{cols}}" as="c" hint-placeholder-count="10"><th class="{{c.cls}}"><button onClick="{{c.go}}" aria-label="Urutkan {{c.l}}">{{c.l}} <span>{{c.arr}}</span></button></th></sc-for>
+            </tr></thead>
+            <tbody><sc-for list="{{rows}}" as="r" hint-placeholder-count="12"><tr class="{{r.cls}}" onClick="{{r.go}}">
+              <td class="num mut">{{r.rank}}</td>
+              <td><span class="tk mono">{{r.t}}</span></td>
+              <td class="r num mono">{{r.pS}}</td>
+              <td class="{{r.cC}}" style="font-weight:600">{{r.cS}}</td>
+              <td class="r num">{{r.rsiS}}<sc-if value="{{r.os}}" hint-placeholder-val="{{false}}"><span class="os">OS</span></sc-if></td>
+              <td class="r num neg">{{r.hS}}</td>
+              <td class="r num">{{r.vS}}</td>
+              <td class="{{r.f1C}}">{{r.f1S}}</td>
+              <td class="{{r.f3C}}">{{r.f3S}}</td>
+              <td class="r"><span class="score"><i><b style="{{r.sb}}"></b></i><b class="num">{{r.s}}</b></span></td>
+            </tr></sc-for></tbody>
+          </table>
+        </div>
+        <sc-if value="{{hasPin}}" hint-placeholder-val="{{false}}">
+          <div class="pin swap">
+            <div style="display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;padding:14px 20px">
+              <span class="tk mono" style="font-size:18px">{{pin.t}}</span>
+              <span><span class="lbl" style="display:block;margin:0">Harga</span><b class="num mono">Rp {{pin.pS}}</b> <span class="{{pin.cC2}}">{{pin.cS}}</span></span>
+              <span><span class="lbl" style="display:block;margin:0">RSI 14</span><b class="num">{{pin.rsiS}}</b></span>
+              <span><span class="lbl" style="display:block;margin:0">Asing 3H</span><b class="{{pin.f3C2}}">{{pin.f3S}}</b></span>
+              <span><span class="lbl" style="display:block;margin:0">Skor</span><b class="num">{{pin.s}}</b></span>
+              <span style="margin-left:auto;display:flex;gap:8px"><button class="btn sm" onClick="{{unpin}}">Tutup</button><a class="btn p sm" href="Analisis.dc.html">Buka Chart Workstation</a></span>
+            </div>
+          </div>
+        </sc-if>
+        <div class="prov"><span><b>Sumber</b> Candle harian &amp; foreign flow IDX</span><span><b>Per tanggal</b> 13 Okt 2026</span><span>Nilai kosong diurutkan paling akhir</span><span class="chip i">Data contoh</span></div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props){ super(props); this.state = { sort:'s', dir:-1, q:'', preset:0, pin:null, csvN:null }; }
+  fmt(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+  dec(n,d){ return n.toFixed(d).replace('.',','); }
+  m(v){ if(v==null) return '—'; const a=Math.abs(v); return (v>=0?'+':'−')+(a>=1000?'Rp '+this.dec(a/1000,2)+' T':'Rp '+this.dec(a,1)+' M'); }
+  renderVals() {
+    const S = this.state;
+    const D = [
+      {t:'BBCA',p:10250,c:0.98,rsi:58.4,h:-1.92,v:1.4,f1:185.0,f3:412.5,s:94},
+      {t:'MEDC',p:1380,c:4.15,rsi:66.2,h:-0.72,v:3.2,f1:42.1,f3:89.4,s:91},
+      {t:'BRPT',p:1045,c:3.45,rsi:62.8,h:-4.55,v:2.8,f1:64.8,f3:112.0,s:88},
+      {t:'BBNI',p:5450,c:2.35,rsi:54.1,h:-8.12,v:1.9,f1:28.5,f3:54.2,s:85},
+      {t:'ADRO',p:3720,c:1.64,rsi:48.9,h:-12.4,v:1.1,f1:12.2,f3:20.8,s:82},
+      {t:'TLKM',p:2940,c:-1.01,rsi:34.6,h:-38.1,v:0.9,f1:-15.7,f3:-145.9,s:61},
+      {t:'ASII',p:5150,c:0.49,rsi:null,h:-14.3,v:0.9,f1:8.4,f3:15.1,s:74},
+      {t:'BMRI',p:6850,c:0.74,rsi:41.4,h:-22.6,v:0.87,f1:-168.5,f3:-529.6,s:58},
+      {t:'AMMN',p:8900,c:1.20,rsi:53.8,h:-44.6,v:0.67,f1:67.2,f3:90.4,s:70},
+      {t:'PGAS',p:1610,c:0.62,rsi:50.2,h:-6.9,v:1.2,f1:5.1,f3:null,s:72},
+      {t:'BREN',p:6850,c:2.24,rsi:35.3,h:-71.8,v:0.8,f1:-15.1,f3:29.5,s:55},
+      {t:'GOTO',p:65,c:-1.52,rsi:38.4,h:-31.5,v:0.87,f1:-0.22,f3:-0.03,s:42},
+      {t:'BRMS',p:410,c:1.23,rsi:29.1,h:-65.4,v:1.09,f1:35.3,f3:108.7,s:63},
+      {t:'TPIA',p:7200,c:0.70,rsi:37.1,h:-78.7,v:1.19,f1:-171.9,f3:-248.9,s:40}
+    ];
+    const P = [{l:'Semua',f:()=>true},{l:'Top gainer',f:d=>d.c>=1.5},{l:'Asing beli',f:d=>d.f1>0&&(d.f3||0)>0},{l:'RSI rebound',f:d=>d.rsi!=null&&d.rsi<40}];
+    const q = S.q.trim().toUpperCase();
+    let rows = D.filter(P[S.preset].f).filter(d=>!q||d.t.indexOf(q)>=0);
+    const k = S.sort, dir = S.dir;
+    rows.sort((a,b)=>{ const x=a[k], y=b[k]; if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1; return typeof x==='string' ? dir*x.localeCompare(y) : dir*(x-y); });
+    const C = [{k:'t',l:'Ticker'},{k:'p',l:'Harga',r:1},{k:'c',l:'Chg %',r:1},{k:'rsi',l:'RSI 14',r:1},{k:'h',l:'Jarak 52W tinggi',r:1},{k:'v',l:'Vol vs 7H',r:1},{k:'f1',l:'Asing terakhir',r:1},{k:'f3',l:'Asing 3H',r:1},{k:'s',l:'Skor',r:1}];
+    const sg = (n,d,suf) => n==null?'—':(n>=0?'+':'−')+this.dec(Math.abs(n),d)+(suf||'');
+    const out = rows.map((d,i)=>({...d, rank:i+1, cls:'rise d'+Math.min(i,11)+(S.pin===d.t?' sel':''),
+      pS:this.fmt(d.p), cS:sg(d.c,2,'%'), cC:'r num '+(d.c>=0?'pos':'neg'),
+      rsiS:d.rsi==null?'—':this.dec(d.rsi,1), os:d.rsi!=null&&d.rsi<30,
+      hS:sg(d.h,2,'%'), vS:this.dec(d.v,2)+'×',
+      f1S:this.m(d.f1), f1C:'r num '+(d.f1==null?'mut':(d.f1>=0?'pos':'neg')), f3S:this.m(d.f3), f3C:'r num '+(d.f3==null?'mut':(d.f3>=0?'pos':'neg')),
+      sb:'width:'+d.s+'%;animation-delay:'+(i*30)+'ms',
+      go:()=>this.setState({pin:d.t})}));
+    const pin = out.find(r=>r.t===S.pin) || null;
+    return {
+      cols: C.map(c=>({l:c.l, cls:(c.r?'r':'')+(k===c.k?' act':''), arr:k===c.k?(dir<0?'↓':'↑'):'', go:()=>this.setState(k===c.k?{dir:-dir}:{sort:c.k, dir:c.k==='t'?1:-1})})),
+      noRows: out.length===0, csvL: S.csvN==null ? 'Ekspor CSV' : 'Terunduh · '+S.csvN+' baris',
+      csv: (e) => { const t=e.currentTarget.closest('section').querySelector('table'); const n=window.acCSV?window.acCSV(t,'ranking-harian.csv'):0; this.setState({csvN:n}); clearTimeout(this.ct); this.ct=setTimeout(()=>this.setState({csvN:null}),2400); },
+      rows: out, count: out.length, sortLbl: (C.find(c=>c.k===k)||{}).l + (dir<0?' ↓':' ↑'),
+      q:S.q, onQ:(e)=>this.setState({q:e.target.value}),
+      pSeg:'segx n4', pInd:'ind k'+S.preset,
+      presets: P.map((p,i)=>({l:p.l, cls:i===S.preset?'on':'', go:()=>this.setState({preset:i})})),
+      hasPin: !!pin, pin: pin ? {...pin, cC2:'num '+(pin.c>=0?'pos':'neg'), f3C2:'num '+(pin.f3==null?'':(pin.f3>=0?'pos':'neg'))} : {}, unpin:()=>this.setState({pin:null})
+    };
+  }
+}
+</script>
+</body>
+</html>

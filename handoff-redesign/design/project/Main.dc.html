@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Dashboard</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ac.css">
+<script src="./motion.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+.rk{display:grid;grid-template-columns:36px minmax(190px,1.5fr) minmax(150px,1fr) 90px 80px 60px 76px 150px 90px;align-items:center;gap:0 8px;min-height:58px;padding:0 20px 0 17px;border-bottom:1px solid var(--ac-hair);border-left:3px solid transparent;cursor:pointer;transition:background 140ms var(--ease),border-color 190ms var(--ease)}
+.rk:hover{background:var(--ac-hover)}
+.rk.sel{background:var(--ac-brand-soft);border-left-color:var(--ac-brand)}
+.rk.hd{min-height:36px;background:var(--ac-raised);cursor:default;font-size:12px;font-weight:600;color:var(--ac-2)}
+.rk.hd:hover{background:var(--ac-raised)}
+.rk .r{text-align:right}
+.plan{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:0;align-items:center;padding:12px 20px 14px 56px;background:var(--ac-brand-soft);border-bottom:1px solid var(--ac-hair);border-left:3px solid var(--ac-brand)}
+.plan>div{padding-right:16px}
+.ses{display:grid;grid-template-columns:1fr 2.2fr .6fr 1.8fr .8fr;gap:3px;margin-top:10px}
+.ses div{height:8px;border-radius:3px;background:var(--ac-hover)}
+.ses div.done{background:#CFE6DC}
+.ses div.cur{background:var(--ac-brand);position:relative;overflow:hidden}
+.ses div.cur::after{content:"";position:absolute;inset:0;width:62%;background:rgba(255,255,255,.0)}
+.hrow{display:grid;grid-template-columns:90px 70px 1fr 110px 110px;gap:8px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--ac-hair);font-size:13px}
+@media (max-width:700px){.hrow{grid-template-columns:52px 1fr auto auto;padding:12px 16px}.hrow>:nth-child(3){grid-column:1/-1;order:9;font-size:12px}}
+.oc{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font:600 11px "Geist Mono",monospace}
+.oc.tp2{background:rgba(36,122,67,.14);color:var(--ac-pos)}.oc.tp1{background:var(--ac-pos-soft);color:var(--ac-pos)}.oc.act{background:var(--ac-info-soft);color:var(--ac-info)}
+@media (max-width:980px){.plan{grid-template-columns:repeat(3,minmax(0,1fr));padding-left:20px;gap:10px 0}}
+</style>
+</helmet>
+<input type="checkbox" id="sbx" class="sbx" aria-label="Ciutkan sidebar">
+<div class="app">
+  <nav class="side" aria-label="Navigasi utama">
+    <div class="brand"><i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 8-9"/></svg></i><div class="bt">Auto-Cuan<small>Meja kerja riset IDX</small></div><label for="sbx" class="sbt" title="Ciutkan atau buka sidebar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 10l-2 2 2 2"/></svg></label></div>
+    <a class="nav on" href="Main.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z"/></svg>Dashboard</a>
+    <div class="nav-l">Temukan</div>
+    <a class="nav" href="Screener.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>Screener</a>
+    <a class="nav" href="SektorHot.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>Sektor Hot</a>
+    <div class="nav-l">Riset</div>
+    <a class="nav" href="Analisis.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Analisis &amp; Chart</a>
+    <a class="nav" href="Bandarmologi.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Bandarmologi</a>
+    <a class="nav" href="SinyalIntelijen.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/></svg>Sinyal Intelijen</a>
+    <a class="nav" href="BrokerHunter.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Broker Hunter</a>
+    <a class="nav" href="Insider.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M17 11a3 3 0 000-6M21 20c0-2-1.5-4-4-4.6"/></svg>Insider</a>
+    <a class="nav" href="Ranking.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Ranking</a>
+    <a class="nav" href="Financial.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-6h4v6"/></svg>Financial</a>
+    <a class="nav" href="StrukturPasar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9h9A9 9 0 1112 3z"/></svg>Struktur Pasar</a>
+    <div class="nav-l">Pantau</div>
+    <a class="nav" href="Watchlist.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Watchlist<span class="cnt">8</span></a>
+    <a class="nav" href="Portfolio.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg>Portfolio</a>
+    <a class="nav" href="TrackRecord.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>Track Record</a>
+    <a class="nav" href="KelolaKeuangan.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 14h2"/></svg>Kelola Keuangan</a>
+    <div class="nav-l adm-l">Admin<span>· hanya admin</span></div>
+    <a class="nav" href="PatternRadar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Pattern Radar</a>
+    <a class="nav" href="AdminConsole.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin Console</a>
+    <div class="nav-sp"></div>
+    <a class="acct" href="AccountCenter.dc.html" aria-label="Buka Pusat Akun"><span class="av">B</span><div style="flex:1"><b>budi</b><span>Admin · Pro Trader</span></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+  </nav>
+
+  <div class="main">
+    <header class="top">
+      <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Cari ticker, halaman, atau aksi…</span><kbd>⌘K</kbd></label>
+      <div class="fresh"><span class="dot g"></span>Sesi 2 · intraday, bukan real-time · 14.32 WIB</div>
+      <button class="thm" style="margin-left:8px" type="button" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    </header>
+
+    <main class="page">
+      <div class="ph rise d0">
+        <div>
+          <div class="kick">Jumat, 16 Oktober 2026</div>
+          <h1>Halo, budi</h1>
+          <p>Kondisi pasar, apa yang berubah, dan kandidat yang layak diperiksa. Watchlist dan pantauan bukan rekomendasi beli.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="chip w">Konfirmasi manual wajib</span>
+          <span class="chip i">Data contoh</span>
+          <a class="btn" href="AccountCenter.dc.html">Kredensial AI · terhubung</a>
+        </div>
+      </div>
+
+      <section class="sheet rise d1" aria-label="Kondisi pasar">
+        <div class="strip">
+          <div data-ihsg-chg="0.62">
+            <div class="lbl">IDX Composite · IHSG</div>
+            <div class="big num pop">7.142,85</div>
+            <div class="sub num"><span class="pos" style="font-weight:600">▲ +44,12 (+0,62%)</span> · tren naik</div>
+            <svg viewBox="0 0 120 28" width="100%" height="28" preserveAspectRatio="none" style="margin-top:8px" aria-hidden="true"><path class="draw" pathLength="1" d="M0 22 L12 20 L24 23 L36 17 L48 18 L60 12 L72 14 L84 9 L96 11 L108 6 L120 5" fill="none" stroke="#247A43" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>
+          </div>
+          <div>
+            <div class="lbl">Market breadth</div>
+            <div class="num" style="font-size:14px;font-weight:600;display:flex;gap:12px;flex-wrap:wrap"><span class="pos">312 naik</span><span class="neg">218 turun</span><span class="mut">185 flat</span></div>
+            <div class="bar" role="img" aria-label="312 naik, 185 flat, 218 turun"><i style="flex:312;background:var(--ac-pos)"></i><i style="flex:185;background:#B7C0BC"></i><i style="flex:218;background:var(--ac-neg)"></i></div>
+            <div class="sub num">Nilai transaksi Rp 11,8 T · asing net buy</div>
+          </div>
+          <div>
+            <div class="lbl">Radar hari ini</div>
+            <div class="big num pop">8 <span class="mut" style="font-size:15px;font-weight:600">lolos gate</span></div>
+            <div class="sub num">dari 842 emiten terpindai · Top 5 terkunci</div>
+          </div>
+          <div>
+            <div class="lbl">Sesi bursa</div>
+            <div style="font-weight:700;font-size:20px;letter-spacing:-.01em">Sesi 2</div>
+            <div class="ses" aria-hidden="true"><div class="done"></div><div class="done"></div><div class="done"></div><div class="cur"></div><div></div></div>
+            <div class="sub">Rotasi masuk: Energi &amp; Infrastruktur</div>
+          </div>
+        </div>
+        <div class="prov"><span><b>Per tanggal</b> 16 Okt 2026</span><span><b>Sumber</b> IDX · intraday</span><span><b>Diperbarui</b> 14.32 WIB</span><span>Radar memakai candle harian yang sudah selesai (T-1)</span></div>
+      </section>
+
+      <section class="sheet rise d2" aria-label="Top 5 radar">
+        <div class="sec-h"><h2>Top 5 Radar Hari Ini</h2><span>Konsensus teknikal &amp; broker flow · klik baris untuk melihat rencana</span></div>
+        <div class="tw"><div style="min-width:1000px">
+          <div class="rk hd"><span>#</span><span>Ticker</span><span>Setup</span><span class="r">Harga</span><span class="r">Chg</span><span>Exec</span><span class="r">Vol/Avg</span><span>Status</span><span></span></div>
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
+            <div class="{{r.cls}}" onClick="{{r.pick}}" role="button" aria-expanded="{{r.on}}">
+              <span class="num mut">{{r.rank}}</span>
+              <span><span class="tk mono">{{r.t}}</span> <span class="mut" style="font-size:12px">{{r.name}}</span><span class="mut" style="display:block;font-size:12px">{{r.group}}</span></span>
+              <span>{{r.tier}}</span>
+              <span class="r num mono" style="font-weight:600">{{r.pS}}</span>
+              <span class="r num pos" style="font-weight:600">{{r.cS}}</span>
+              <span style="font-weight:700">{{r.exec}}</span>
+              <span class="r num">{{r.vS}}</span>
+              <span class="pill-st"><span class="{{r.dot}}"></span>{{r.st}}</span>
+              <span style="text-align:right"><a class="btn q sm" href="Analisis.dc.html">Riset</a></span>
+            </div>
+            <sc-if value="{{r.on}}" hint-placeholder-val="{{false}}">
+              <div class="plan swap">
+                <div><div class="lbl" style="margin:0">Area entry</div><b class="num mono">{{r.eS}}</b></div>
+                <div><div class="lbl" style="margin:0">Stop loss</div><b class="num mono neg">{{r.slS}}</b> <span class="mut num" style="font-size:12px">{{r.slP}}</span></div>
+                <div><div class="lbl" style="margin:0">Target 1</div><b class="num mono pos">{{r.tpS}}</b> <span class="mut num" style="font-size:12px">{{r.tpP}}</span></div>
+                <div><div class="lbl" style="margin:0">R/R · basis harga kini</div><b class="{{r.rrC}}">{{r.rrS}}</b></div>
+                <div><div class="lbl" style="margin:0">Catatan</div><span style="font-size:13px">{{r.note}}</span></div>
+                <a class="btn p sm" href="Screener.dc.html">Detail di Screener</a>
+              </div>
+            </sc-if>
+          </sc-for>
+        </div></div>
+        <details style="border-top:1px solid var(--ac-hair)">
+          <summary style="padding:12px 20px;font-size:13px;color:var(--ac-2);display:flex;gap:8px;align-items:center"><span class="chev" aria-hidden="true">▸</span>3 kandidat dikarantina: status Hindari, Potensi TP rendah, atau Risiko sangat tinggi</summary>
+          <div style="padding:0 20px 14px 40px;font-size:13px;color:var(--ac-2);display:grid;gap:6px"><span><b class="mono" style="color:var(--ac-ink)">CUAN</b> · Hindari: distribusi broker, Free Float 9,85%</span><span><b class="mono" style="color:var(--ac-ink)">GOTO</b> · Risiko sangat tinggi: data fundamental belum tersedia</span><span><b class="mono" style="color:var(--ac-ink)">TLKM</b> · Potensi TP rendah: R/R di bawah 1 : 1,0</span></div>
+        </details>
+      </section>
+
+      <section class="sheet rise d3" aria-label="Riwayat Top 5">
+        <div class="sec-h"><h2>Riwayat Top 5</h2><span>Sinyal terkunci yang masih dipantau dan yang sudah selesai · <a class="lnk" href="TrackRecord.dc.html">Track Record lengkap →</a></span></div>
+        <div style="padding:0 20px 12px"><div class="{{hSeg}}"><span class="{{hInd}}"></span><button class="{{hA}}" onClick="{{setA}}">Aktif dipantau</button><button class="{{hB}}" onClick="{{setB}}">Riwayat TP</button></div></div>
+        <div class="swap" key="{{hk}}" style="border-top:1px solid var(--ac-hair)">
+          <sc-for list="{{hist}}" as="h" hint-placeholder-count="3"><div class="{{h.cls}}"><span class="num mut">{{h.d}}</span><span class="tk mono">{{h.t}}</span><span class="mut">{{h.x}}</span><span class="{{h.rC}}" style="text-align:right;font-weight:600">{{h.r}}</span><span style="text-align:right"><span class="{{h.oc}}">{{h.o}}</span></span></div></sc-for>
+        </div>
+      </section>
+
+      <p class="dim" style="margin:0;font-size:12px">Bukan rekomendasi beli atau jual. Keputusan investasi sepenuhnya di tangan pengguna.</p>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  constructor(props){ super(props); this.state = { sel:'BRPT', hist:'a' }; }
+  fmt(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+  dec(n,d){ return n.toFixed(d).replace('.',','); }
+  renderVals() {
+    const S = this.state;
+    const D = [
+      {t:'BRPT',name:'Barito Pacific',group:'Prajogo Pangestu',tier:'Tier 1 · Swing ready',exec:'A+',p:1045,c:3.45,v:2.8,lo:1030,hi:1050,sl:995,tp:1120,note:'Volume 2,8× dan akumulasi top 3 broker.'},
+      {t:'MEDC',name:'Medco Energi',group:'Panigoro',tier:'Tier 1 · Momentum',exec:'A+',p:1380,c:4.15,v:3.2,lo:1360,hi:1385,sl:1310,tp:1480,note:'Momentum kuat; tunggu retrace ke 1.360.'},
+      {t:'BBCA',name:'Bank Central Asia',group:'Djarum',tier:'Tier 2 · Pullback',exec:'A',p:10250,c:0.98,v:1.4,lo:10150,hi:10250,sl:9950,tp:10600,note:'Harga di batas atas area entry.'},
+      {t:'ADRO',name:'Alamtri Resources',group:'Boy Thohir',tier:'Tier 2 · Support',exec:'B',p:3720,c:1.64,v:1.1,lo:3680,hi:3720,sl:3580,tp:3920,note:'Konfirmasi volume masih tipis.'},
+      {t:'ASII',name:'Astra International',group:'Astra',tier:'Tier 2 · Rebound',exec:'B',p:5150,c:0.49,v:0.9,lo:5100,hi:5150,sl:4980,tp:5350,note:'Volume di bawah rata-rata 20 hari.'}
+    ];
+    const rows = D.map((d,i)=>{ const rr=(d.tp-d.p)/(d.p-d.sl), ok=rr>=1.5, on=S.sel===d.t;
+      return {...d, rank:i+1, on, cls:'rk rise d'+(i+3)+(on?' sel':''),
+        pS:this.fmt(d.p), cS:'+'+this.dec(d.c,2)+'%', vS:this.dec(d.v,1)+'×',
+        st: ok ? 'Siap entry' : 'Tunggu pullback', dot:'dot '+(ok?'g':'a'),
+        eS:this.fmt(d.lo)+' – '+this.fmt(d.hi), slS:this.fmt(d.sl), tpS:this.fmt(d.tp),
+        slP:'(−'+this.dec((d.p-d.sl)/d.p*100,2)+'%)', tpP:'(+'+this.dec((d.tp-d.p)/d.p*100,2)+'%)',
+        rrS:'1 : '+this.dec(rr,2), rrC:'num '+(ok?'':'warn'),
+        pick:()=>this.setState({sel:on?null:d.t}) }; });
+    const A = [{d:'13 Okt',t:'BRPT',x:'Entry 1.045 · menunggu TP1 1.120',r:'+0,00%',o:'AKTIF',k:'act'},{d:'13 Okt',t:'MEDC',x:'Entry 1.380 · menunggu TP1 1.480',r:'+0,00%',o:'AKTIF',k:'act'},{d:'09 Okt',t:'BBCA',x:'Entry 10.150 · menunggu TP1 10.600',r:'+0,99%',o:'AKTIF',k:'act'}];
+    const B = [{d:'06 Okt',t:'ADRO',x:'TP1 tersentuh 10 Okt · 4 hari',r:'+4,95%',o:'TP1',k:'tp1'},{d:'03 Okt',t:'PTRO',x:'TP2 tersentuh 08 Okt · 3 hari',r:'+8,52%',o:'TP2',k:'tp2'},{d:'30 Sep',t:'BMRI',x:'TP1 tersentuh 08 Okt · 6 hari',r:'+4,48%',o:'TP1',k:'tp1'}];
+    const a = S.hist==='a';
+    return {
+      rows,
+      hSeg:'segx n2', hInd:'ind k'+(a?0:1), hA:a?'on':'', hB:a?'':'on', hk:S.hist,
+      setA:()=>this.setState({hist:'a'}), setB:()=>this.setState({hist:'b'}),
+      hist:(a?A:B).map((h,i)=>({...h, cls:'hrow rise d'+i, rC:'num '+(h.r.indexOf('+0,00')===0?'mut':'pos'), oc:'oc '+h.k}))
+    };
+  }
+}
+</script>
+</body>
+</html>

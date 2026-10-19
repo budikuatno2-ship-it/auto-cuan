@@ -1,0 +1,401 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "AccountCenter.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "akun",
+      "title": "Pusat Akun",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "AdminConsole.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Admin Console",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Analisis.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "research",
+      "title": "Analisis & Chart Workstation",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "AuthGmail.dc.html": {
+      "expand": "fill",
+      "h": 860,
+      "is_interactive": true,
+      "page": "publik",
+      "title": "Gmail wajib (legacy)",
+      "w": 1280,
+      "x": 2880,
+      "y": 1080
+    },
+    "AuthLogin.dc.html": {
+      "expand": "fill",
+      "h": 860,
+      "is_interactive": true,
+      "page": "publik",
+      "title": "Masuk",
+      "w": 1280,
+      "x": 1520,
+      "y": 0
+    },
+    "AuthRecovery.dc.html": {
+      "expand": "fill",
+      "h": 860,
+      "is_interactive": true,
+      "page": "publik",
+      "title": "Pemulihan password",
+      "w": 1280,
+      "x": 1520,
+      "y": 1080
+    },
+    "AuthRegister.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "is_interactive": true,
+      "page": "publik",
+      "title": "Daftar + status verifikasi",
+      "w": 1280,
+      "x": 2880,
+      "y": 0
+    },
+    "Bandarmologi.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "research",
+      "title": "Bandarmologi",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "BrokerHunter.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "research",
+      "title": "Broker Hunter",
+      "w": 1440,
+      "x": 0,
+      "y": 1600
+    },
+    "Financial.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "research",
+      "title": "Financial",
+      "w": 1440,
+      "x": 0,
+      "y": 2900
+    },
+    "Insider.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "research",
+      "title": "Insider",
+      "w": 1440,
+      "x": 1520,
+      "y": 1600
+    },
+    "KelolaKeuangan.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "monitor",
+      "title": "Kelola Keuangan",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "Ketentuan.dc.html": {
+      "expand": "fill",
+      "h": 1400,
+      "is_interactive": true,
+      "page": "publik",
+      "title": "Ketentuan & Batasan Risiko",
+      "w": 1280,
+      "x": 4240,
+      "y": 0
+    },
+    "Landing.dc.html": {
+      "expand": "fill",
+      "h": 6400,
+      "is_interactive": true,
+      "page": "publik",
+      "title": "Landing",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "workspace",
+      "title": "Dashboard",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Maintenance.dc.html": {
+      "expand": "fill",
+      "h": 860,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Layar maintenance (pengguna)",
+      "w": 1280,
+      "x": 1520,
+      "y": 0
+    },
+    "Mobile.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "page": "mobile",
+      "title": "Mobile · Dashboard",
+      "w": 390,
+      "x": 0,
+      "y": 0
+    },
+    "MobileScreener.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "page": "mobile",
+      "title": "Mobile · Screener + sheet",
+      "w": 390,
+      "x": 470,
+      "y": 0
+    },
+    "PatternRadar.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "research",
+      "title": "Pattern Radar (admin)",
+      "w": 1440,
+      "x": 3040,
+      "y": 2900
+    },
+    "Portfolio.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "monitor",
+      "title": "Portfolio Command Center",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "Ranking.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "research",
+      "title": "Ranking",
+      "w": 1440,
+      "x": 3040,
+      "y": 1600
+    },
+    "Screener.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "workspace",
+      "title": "Screener",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "SektorHot.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "workspace",
+      "title": "Sektor Hot",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "SinyalIntelijen.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "research",
+      "title": "Sinyal Intelijen",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "StrukturPasar.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "research",
+      "title": "Struktur Pasar",
+      "w": 1440,
+      "x": 1520,
+      "y": 2900
+    },
+    "TrackRecord.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "monitor",
+      "title": "Track Record",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "Watchlist.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "monitor",
+      "title": "Watchlist",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-17T03:10:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "page": "publik",
+    "view": "canvas"
+  },
+  "notes": {
+    "t1": {
+      "kind": "title1",
+      "maxW": 4160,
+      "page": "publik",
+      "text": "Publik — landing editorial & alur autentikasi",
+      "x": 0,
+      "y": -300
+    },
+    "t2": {
+      "kind": "title1",
+      "maxW": 4480,
+      "page": "workspace",
+      "text": "Overview & Discover — dashboard, screener, sektor hot",
+      "x": 0,
+      "y": -300
+    },
+    "t3": {
+      "kind": "title1",
+      "maxW": 4480,
+      "page": "research",
+      "text": "Research — satu ticker, banyak lensa",
+      "x": 0,
+      "y": -300
+    },
+    "t4": {
+      "kind": "title1",
+      "maxW": 6000,
+      "page": "monitor",
+      "text": "Monitor & Keuangan Pribadi",
+      "x": 0,
+      "y": -300
+    },
+    "t5": {
+      "kind": "title1",
+      "maxW": 1440,
+      "page": "akun",
+      "text": "Pusat Akun",
+      "x": 0,
+      "y": -300
+    },
+    "t6": {
+      "kind": "title1",
+      "maxW": 860,
+      "page": "mobile",
+      "text": "Mobile 390",
+      "x": 0,
+      "y": -300
+    },
+    "t7": {
+      "kind": "title1",
+      "maxW": 2800,
+      "page": "admin",
+      "text": "Admin & status sistem",
+      "x": 0,
+      "y": -300
+    }
+  },
+  "order": [
+    "Landing.dc.html",
+    "AuthLogin.dc.html",
+    "AuthRegister.dc.html",
+    "AuthRecovery.dc.html",
+    "AuthGmail.dc.html",
+    "Main.dc.html",
+    "Screener.dc.html",
+    "SektorHot.dc.html",
+    "Analisis.dc.html",
+    "Bandarmologi.dc.html",
+    "SinyalIntelijen.dc.html",
+    "BrokerHunter.dc.html",
+    "Insider.dc.html",
+    "Ranking.dc.html",
+    "Financial.dc.html",
+    "StrukturPasar.dc.html",
+    "PatternRadar.dc.html",
+    "Watchlist.dc.html",
+    "Portfolio.dc.html",
+    "TrackRecord.dc.html",
+    "KelolaKeuangan.dc.html",
+    "AccountCenter.dc.html",
+    "Mobile.dc.html",
+    "MobileScreener.dc.html",
+    "AdminConsole.dc.html",
+    "Maintenance.dc.html",
+    "Ketentuan.dc.html"
+  ],
+  "pages": [
+    {
+      "id": "publik",
+      "name": "1 · Publik & Auth"
+    },
+    {
+      "id": "workspace",
+      "name": "2 · Overview & Discover"
+    },
+    {
+      "id": "research",
+      "name": "3 · Research"
+    },
+    {
+      "id": "monitor",
+      "name": "4 · Monitor & Keuangan"
+    },
+    {
+      "id": "akun",
+      "name": "5 · Akun"
+    },
+    {
+      "id": "mobile",
+      "name": "6 · Mobile"
+    },
+    {
+      "id": "admin",
+      "name": "7 · Admin & Sistem"
+    }
+  ],
+  "title": "Auto-Cuan Redesign v2"
+}

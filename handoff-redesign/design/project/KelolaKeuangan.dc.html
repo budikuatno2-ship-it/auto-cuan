@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Kelola Keuangan</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ac.css">
+<script src="./motion.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;min-width:860px}
+.grid th{height:32px;background:var(--ac-raised);border-bottom:1px solid var(--ac-line);border-right:1px solid var(--ac-hair);font-size:12px;font-weight:600;color:var(--ac-2);text-align:left;padding:0 10px;position:sticky;top:0}
+.grid th.ix,.grid td.ix{width:44px;text-align:center;color:var(--ac-muted);background:var(--ac-raised);font-size:12px;font-weight:600;padding:0}
+.grid td{height:40px;border-bottom:1px solid var(--ac-hair);border-right:1px solid var(--ac-hair);padding:0 10px;cursor:cell;transition:background 140ms var(--ease)}
+.grid tr:hover td:not(.ix){background:var(--ac-raised)}
+.grid td.cell-sel{background:var(--ac-brand-soft)!important;box-shadow:inset 0 0 0 2px var(--ac-brand)}
+.grid td.nom input{width:100%;height:100%;border:0;background:transparent;text-align:right;font:600 13px "Geist Mono",monospace;font-variant-numeric:tabular-nums;outline:0;padding:0}
+.grid tr.rowsel td.ix{background:var(--ac-brand-soft);color:var(--ac-brand)}
+.fx{display:flex;align-items:center;gap:0;border:1px solid var(--ac-ctl);border-radius:8px;overflow:hidden;background:var(--ac-surface)}
+.fx b{padding:0 12px;height:34px;display:grid;place-items:center;border-right:1px solid var(--ac-hair);font:600 12px "Geist Mono",monospace;min-width:56px;background:var(--ac-raised)}
+.fx i{padding:0 10px;font:italic 600 13px 'Plus Jakarta Sans',serif;color:var(--ac-muted);border-right:1px solid var(--ac-hair);height:34px;display:grid;place-items:center}
+.fx span{padding:0 12px;font:500 13px "Geist Mono",monospace;color:var(--ac-ink)}
+.tag{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12px}
+.kpi-sub{font-size:12px;color:var(--ac-2);margin-top:6px}
+.grid td.nom:focus-within{box-shadow:inset 0 0 0 2px var(--ac-brand)}
+</style>
+</helmet>
+<input type="checkbox" id="sbx" class="sbx" aria-label="Ciutkan sidebar">
+<div class="app">
+  <nav class="side" aria-label="Navigasi utama">
+    <div class="brand"><i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 8-9"/></svg></i><div class="bt">Auto-Cuan<small>Meja kerja riset IDX</small></div><label for="sbx" class="sbt" title="Ciutkan atau buka sidebar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 10l-2 2 2 2"/></svg></label></div>
+    <a class="nav" href="Main.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z"/></svg>Dashboard</a>
+    <div class="nav-l">Temukan</div>
+    <a class="nav" href="Screener.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>Screener</a>
+    <a class="nav" href="SektorHot.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>Sektor Hot</a>
+    <div class="nav-l">Riset</div>
+    <a class="nav" href="Analisis.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>Analisis &amp; Chart</a>
+    <a class="nav" href="Bandarmologi.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Bandarmologi</a>
+    <a class="nav" href="SinyalIntelijen.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/></svg>Sinyal Intelijen</a>
+    <a class="nav" href="BrokerHunter.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Broker Hunter</a>
+    <a class="nav" href="Insider.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M17 11a3 3 0 000-6M21 20c0-2-1.5-4-4-4.6"/></svg>Insider</a>
+    <a class="nav" href="Ranking.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Ranking</a>
+    <a class="nav" href="Financial.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-6h4v6"/></svg>Financial</a>
+    <a class="nav" href="StrukturPasar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9h9A9 9 0 1112 3z"/></svg>Struktur Pasar</a>
+    <div class="nav-l">Pantau</div>
+    <a class="nav" href="Watchlist.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Watchlist<span class="cnt">8</span></a>
+    <a class="nav" href="Portfolio.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg>Portfolio</a>
+    <a class="nav" href="TrackRecord.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>Track Record</a>
+    <a class="nav on" href="KelolaKeuangan.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 14h2"/></svg>Kelola Keuangan</a>
+    <div class="nav-l adm-l">Admin<span>· hanya admin</span></div>
+    <a class="nav" href="PatternRadar.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Pattern Radar</a>
+    <a class="nav" href="AdminConsole.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin Console</a>
+    <div class="nav-sp"></div>
+    <a class="acct" href="AccountCenter.dc.html" aria-label="Buka Pusat Akun"><span class="av">B</span><div style="flex:1"><b>budi</b><span>Admin · Pro Trader</span></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+  </nav>
+
+  <div class="main">
+    <header class="top">
+      <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Cari ticker, halaman, atau aksi…</span><kbd>⌘K</kbd></label>
+      <div class="fresh"><span class="dot g"></span>{{saveState}}</div>
+      <button class="thm" style="margin-left:8px" type="button" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    </header>
+
+    <main class="page">
+      <div class="ph rise d0">
+        <div>
+          <div class="kick">Keuangan pribadi</div>
+          <h1>Kelola Keuangan</h1>
+          <p>Anggaran bulanan yang bisa Anda atur. Portofolio terhubung, tanpa pencatatan ganda.</p>
+        </div>
+        <label style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600">Bulan<select class="fld" aria-label="Bulan" value="{{m}}" onChange="{{onMonth}}"><option value="2026-10">Oktober 2026</option><option value="2026-09">September 2026</option><option value="2026-08">Agustus 2026</option></select></label>
+      </div>
+
+      <section class="sheet rise d1" aria-label="Ringkasan anggaran">
+        <div class="strip">
+          <div><div class="lbl">Pemasukan</div><div class="big num pos">{{inc}}</div><div class="kpi-sub">Seluruh sumber penghasilan</div></div>
+          <div><div class="lbl">Pengeluaran</div><div class="big num">{{exp}}</div><div class="kpi-sub">Kebutuhan dan pengeluaran pilihan</div></div>
+          <div><div class="lbl">Tabungan &amp; transfer</div><div class="big num">{{sav}}</div><div class="kpi-sub">Alokasi bulan ini, bukan nilai aset</div></div>
+          <div><div class="lbl">Sisa anggaran</div><div class="big num">{{left}}</div><div class="kpi-sub">{{leftNote}}</div></div>
+        </div>
+        <div class="bar" style="margin:0 20px 16px;height:6px" role="img" aria-label="Komposisi pengeluaran, tabungan, dan sisa"><i style="flex:{{bExp}};background:var(--ac-ctl)"></i><i style="flex:{{bSav}};background:var(--ac-brand)"></i><i style="flex:{{bLeft}};background:#CFE6DC"></i></div>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;padding:0 20px 14px;font-size:12px;color:var(--ac-2)"><span class="tag"><span class="dot m"></span>Pengeluaran</span><span class="tag"><span class="dot g"></span>Tabungan &amp; transfer</span><span class="tag"><span class="dot" style="background:#CFE6DC"></span>Sisa</span></div>
+      </section>
+
+      <section class="sheet rise d2" aria-label="Portofolio terhubung" style="display:flex;flex-wrap:wrap;align-items:center;gap:16px 36px;padding:16px 20px">
+        <div style="display:flex;align-items:center;gap:12px;min-width:220px">
+          <span style="width:34px;height:34px;border-radius:8px;background:var(--ac-brand-soft);display:grid;place-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0F7458" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg></span>
+          <div><div style="font-weight:700">Portofolio terhubung</div><div class="mut" style="font-size:12px"><span class="dot g" style="margin-right:6px"></span>Tersinkron · 4 posisi</div></div>
+        </div>
+        <div><div class="lbl" style="margin:0">Eksposur rencana</div><div class="num" style="font-weight:700;font-size:18px">Rp 27.400.000</div></div>
+        <div><div class="lbl" style="margin:0">P/L dari harga tersimpan</div><div class="num pos" style="font-weight:700;font-size:18px">+Rp 1.845.000 <span style="font-size:13px">(+6,73%)</span></div></div>
+        <a class="btn" href="Portfolio.dc.html" style="margin-left:auto">Buka Portofolio</a>
+        <p class="mut" style="margin:0;flex-basis:100%;font-size:12px">Ringkasan mengikuti sumber data Portofolio. Nilai rencana dan P/L bukan arus kas bulan ini; tidak ditambahkan atau dikurangkan otomatis dari anggaran.</p>
+      </section>
+
+      <section class="sheet rise d3" aria-label="Lembar anggaran bulanan">
+        <div class="sec-h"><div><h2>Anggaran bulanan</h2><span>Klik sel untuk memilih · ubah nominal langsung di tabel · total diperbarui otomatis</span></div><span class="tag"><span class="dot g"></span>{{saveState}}</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;padding:0 20px 12px;align-items:center">
+          <button class="btn p sm" onClick="{{addRow}}">+ Tambah baris</button>
+          <button class="btn sm" onClick="{{delRow}}">Hapus baris</button>
+          <label class="search" style="width:220px;height:30px;font-size:12px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Cari pos anggaran</span></label>
+          <select class="fld" style="height:30px;font-size:12px" aria-label="Urutkan baris" value="" onChange="{{sortBy}}"><option value="">Urutkan baris…</option><option value="v">Nominal terbesar</option><option value="n">Nama pos A–Z</option><option value="j">Kelompok jenis</option></select>
+          <span style="margin-left:auto;display:flex;gap:8px"><button class="btn sm" onClick="{{csv}}" disabled="{{empty}}">{{csvL}}</button><button class="btn sm" onClick="{{save}}">Simpan</button></span>
+        </div>
+        <div style="padding:0 20px 12px"><div class="fx"><b>{{addr}}</b><i>fx</i><span>{{formula}}</span></div></div>
+        <div class="tw" style="border-top:1px solid var(--ac-hair)">
+          <table class="grid">
+            <thead><tr><th class="ix">#</th><th style="width:130px">A · Jenis</th><th style="width:170px">B · Kategori</th><th>C · Nama pos</th><th style="width:190px;text-align:right">D · Nominal (Rp)</th><th style="width:240px">E · Catatan</th></tr></thead>
+            <tbody>
+              <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+                <tr class="{{r.rcls}}">
+                  <td class="ix" onClick="{{r.pickRow}}">{{r.n}}</td>
+                  <td class="{{r.cA}}" onClick="{{r.pickA}}"><span class="tag"><span class="{{r.dot}}"></span>{{r.jenis}}</span></td>
+                  <td class="{{r.cB}}" onClick="{{r.pickB}}">{{r.kat}}</td>
+                  <td class="{{r.cC}}" onClick="{{r.pickC}}">{{r.nama}}</td>
+                  <td class="{{r.cD}} nom" onClick="{{r.pickD}}"><input aria-label="Nominal" value="{{r.nomText}}" onChange="{{r.edit}}"></td>
+                  <td class="{{r.cE}} mut" onClick="{{r.pickE}}">{{r.cat}}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <sc-if value="{{empty}}" hint-placeholder-val="{{false}}"><div style="padding:32px 20px;text-align:center"><b style="display:block;font-size:15px">Belum ada anggaran untuk {{mLabel}}</b><p class="mut" style="margin:6px 0 14px;font-size:13px">Mulai dari pos bulan Oktober supaya tidak mengetik ulang, lalu ubah nominalnya.</p><button class="btn p sm" onClick="{{copyPrev}}">Salin pos dari Oktober 2026</button></div></sc-if>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between;padding:12px 20px;border-top:1px solid var(--ac-hair);font-size:12px;color:var(--ac-2)">
+          <span class="num">{{count}} baris · total nominal <b style="color:var(--ac-ink)">{{total}}</b></span><span>Pilih sel untuk mengedit</span>
+        </div>
+        <div style="padding:14px 20px 20px;border-top:1px solid var(--ac-hair)">
+          <label for="cat" style="font-weight:600;font-size:13px;display:block;margin-bottom:6px">Catatan bulan ini</label>
+          <textarea id="cat" class="fld" style="width:100%;height:72px;padding:10px 12px;resize:vertical" placeholder="Refleksi keuangan bulan ini…" value="{{note}}" onInput="{{onNote}}"></textarea>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<sc-if value="{{hasUndo}}" hint-placeholder-val="{{false}}"><div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:120"><div class="toast" role="status">{{undoText}}<button onClick="{{doUndo}}" style="border:0;background:transparent;color:#6EE7B7;font-weight:600;cursor:pointer;margin-left:8px">Urungkan</button></div></div></sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1260}}'>
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.state = {
+      m: '2026-10', store: {}, csvN: null, notes: {},
+      saved: '17.04 WIB', cell: {r:3, c:'D'},
+      rows: [
+        {j:'Pemasukan',k:'Gaji',n:'Gaji bulanan kantor',v:25000000,c:'Transfer tanggal 25'},
+        {j:'Pemasukan',k:'Bisnis',n:'Proyek konsultasi',v:7500000,c:'Klien freelance'},
+        {j:'Pemasukan',k:'Dividen',n:'Dividen interim saham',v:2000000,c:'Masuk RDN'},
+        {j:'Pengeluaran',k:'Kebutuhan',n:'Sewa tempat tinggal & listrik',v:6500000,c:'Rutin awal bulan'},
+        {j:'Pengeluaran',k:'Kebutuhan',n:'Belanja rumah tangga',v:5500000,c:'Supermarket & makan'},
+        {j:'Pengeluaran',k:'Hiburan',n:'Langganan & gym',v:4500000,c:'Streaming dan gym'},
+        {j:'Tabungan',k:'Dana darurat',n:'Setoran rekening khusus',v:5000000,c:'Target 6× pengeluaran'},
+        {j:'Transfer',k:'Investasi',n:'Tambahan modal RDN',v:13000000,c:'Transfer ke sekuritas'}
+      ]
+    };
+  }
+  fmt(n){ return 'Rp ' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+  renderVals() {
+    const S = this.state, rows = S.rows;
+    const sum = (js) => rows.filter(r=>js.indexOf(r.j)>=0).reduce((a,r)=>a+r.v,0);
+    const inc = sum(['Pemasukan']), exp = sum(['Pengeluaran']), sav = sum(['Tabungan','Transfer']);
+    const left = inc - exp - sav;
+    const total = rows.reduce((a,r)=>a+r.v,0);
+    const sel = S.cell, selRow = rows[sel.r-1] || rows[0] || {j:'',k:'',n:'',v:0,c:''};
+    const cls = (r,c) => (S.cell.r===r && S.cell.c===c) ? 'cell-sel' : '';
+    const out = rows.map((r,i)=>{
+      const n = i+1, set = (c) => () => this.setState({cell:{r:n,c}});
+      return {
+        n, jenis:r.j, kat:r.k, nama:r.n, cat:r.c,
+        dot: 'dot ' + (r.j==='Pemasukan'?'g':(r.j==='Pengeluaran'?'r':'i')),
+        nomText: this.fmt(r.v),
+        rcls: (S.cell.r===n?'rowsel ':'') + 'rise d'+Math.min(i,11),
+        cA:cls(n,'A'), cB:cls(n,'B'), cC:cls(n,'C'), cD:cls(n,'D'), cE:cls(n,'E'),
+        pickRow:set('A'), pickA:set('A'), pickB:set('B'), pickC:set('C'), pickD:set('D'), pickE:set('E'),
+        edit: (e) => {
+          const v = parseInt(String(e.target.value).replace(/\D/g,''),10);
+          const next = rows.slice(); next[i] = {...r, v: isNaN(v)?0:v};
+          this.setState({rows:next, saved:'belum disimpan', cell:{r:n,c:'D'}});
+        }
+      };
+    });
+    const colVal = {A:selRow.j,B:selRow.k,C:selRow.n,D:this.fmt(selRow.v),E:selRow.c}[sel.c];
+    const incRows = rows.map((r,i)=>r.j==='Pemasukan'?(i+1):0).filter(x=>x);
+    const formula = sel.c==='D' ? (sel.r<=3 && selRow.j==='Pemasukan' ? '=SUM(D1:D3)  →  ' + this.fmt(inc) : String(selRow.v)) : colVal;
+    const tot = (inc||1);
+    return {
+      rows: out, empty: rows.length===0,
+      note: S.notes[S.m]||'', onNote: (e) => this.setState({notes:{...S.notes,[S.m]:e.target.value}, saved:'belum disimpan'}),
+      m: S.m, mLabel: {'2026-10':'Oktober 2026','2026-09':'September 2026','2026-08':'Agustus 2026'}[S.m],
+      onMonth: (e) => { const nm=e.target.value; if(nm===S.m) return; const store={...S.store,[S.m]:rows}; this.setState({m:nm, store, rows:store[nm]||[], cell:{r:1,c:'A'}, undo:null}); },
+      copyPrev: () => { const src=S.store['2026-10']||[]; this.setState({rows:src.map(r=>({...r})), saved:'belum disimpan', cell:{r:1,c:'D'}}); },
+      sortBy: (e) => { const k=e.target.value; if(!k) return; const next=rows.slice().sort((a,b)=> k==='v' ? b.v-a.v : k==='n' ? a.n.localeCompare(b.n,'id') : ['Pemasukan','Pengeluaran','Tabungan','Transfer'].indexOf(a.j)-['Pemasukan','Pengeluaran','Tabungan','Transfer'].indexOf(b.j)); this.setState({rows:next, saved:'belum disimpan', cell:{r:1,c:'A'}}); e.target.value=''; },
+      csvL: S.csvN==null ? 'Ekspor CSV' : 'Terunduh · '+S.csvN+' baris',
+      csv: (e) => { const t=e.currentTarget.closest('section').querySelector('table'); const n=window.acCSV?window.acCSV(t,'anggaran-'+S.m+'.csv'):0; this.setState({csvN:n}); clearTimeout(this.ct); this.ct=setTimeout(()=>this.setState({csvN:null}),2400); },
+      inc: this.fmt(inc), exp: this.fmt(exp), sav: this.fmt(sav), left: this.fmt(left),
+      leftNote: left===0 ? 'Seluruh pemasukan sudah dialokasikan' : (left>0 ? 'Siap dialokasikan' : 'Melebihi pemasukan, tinjau anggaran'),
+      bExp: Math.max(exp,0), bSav: Math.max(sav,0), bLeft: Math.max(left,0.0001),
+      addr: sel.c + sel.r, formula,
+      total: this.fmt(total), count: rows.length,
+      saveState: S.saved==='belum disimpan' ? 'Perubahan belum disimpan' : 'Tersimpan ' + S.saved,
+      addRow: () => this.setState({rows: rows.concat([{j:'Pengeluaran',k:'Lainnya',n:'Pos baru',v:0,c:''}]), saved:'belum disimpan', cell:{r:rows.length+1,c:'C'}}),
+      delRow: () => { if(rows.length>1){ const next=rows.slice(); const gone=next.splice(sel.r-1,1)[0]; this.setState({rows:next, saved:'belum disimpan', cell:{r:1,c:'A'}, undo:{row:gone, at:sel.r-1}}); clearTimeout(this.ut); this.ut=setTimeout(()=>this.setState({undo:null}),8000); } },
+      hasUndo: !!S.undo, undoText: S.undo ? 'Baris “'+S.undo.row.n+'” dihapus' : '',
+      doUndo: () => { if(!S.undo) return; const next=rows.slice(); next.splice(S.undo.at,0,S.undo.row); clearTimeout(this.ut); this.setState({rows:next, undo:null, cell:{r:S.undo.at+1,c:'C'}}); },
+      save: () => this.setState({saved:'17.09 WIB'})
+    };
+  }
+}
+</script>
+</body>
+</html>
