@@ -95,12 +95,21 @@ test('FUS-04: full mode sends speed=full on every batch and records run meta', a
 });
 
 test('FUS-05: a run over the ceiling aborts cleanly and NEVER publishes a half scan', async () => {
+  // The deadline is checked at the top of the loop, so make the mock client
+  // yield real wall time per batch (a synchronous mock can finish all batches
+  // before the ceiling is ever observed — the exact CI flake this guards).
   let sawPublish = false;
   let buildCalls = 0;
-  const client = { call: async () => { sawPublish = true; return { success: true, status: 'running', next_batch: 1, scanned_count: 50, universe_count: 800 }; } };
+  const client = {
+    call: async () => {
+      sawPublish = true;
+      await new Promise((r) => setTimeout(r, 15));
+      return { success: true, status: 'running', next_batch: 1, scanned_count: 50, universe_count: 800 };
+    }
+  };
 
   const result = await producer.run(
-    { execute: true, maxBatches: 100, sleepMs: 0, speed: 'full', timeoutMs: 50 },
+    { execute: true, maxBatches: 1000, sleepMs: 0, speed: 'full', timeoutMs: 40 },
     liveDeps({ client, buildSnapshot: async () => { buildCalls += 1; return { ok: true, rows: 5 }; } })
   );
 
