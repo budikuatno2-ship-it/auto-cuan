@@ -10,15 +10,16 @@ Sumber temuan: `backtest/arjum-audit/REPORT_CEK_SEMUA_CRON_20261019.md`.
 
 ## 1. Ringkasan Status
 
-| # | Item | Status | Commit | Test |
-|---|------|--------|--------|------|
-| 1 | DayTrade producer mati 6 sesi | **FIXED** | `e84f1260` | 15/15 PASS |
-| 2 | Backfill candle `universe: 0` | **FIXED** | `fd2fc658` | manual: 963 |
-| 3 | Backfill broksum halt karena 1× 502 | **FIXED** | `3100bf3d` | 16/16 PASS |
-| 4 | Swing Konglo/Non-Konglo `STALE_SNAPSHOT` | **DIAGNOSED + FIXED** | `5cdf4fb4` | 7/7 PASS |
-| 5 | J2 candle tidak punya log | **FIXED** | `fd2fc658` | — |
+| # | Item | Status | Commit | Test | Produksi |
+|---|------|--------|--------|------|----------|
+| 1 | DayTrade producer mati 6 sesi | **FIXED** | `e84f1260` | 15/15 PASS | **published 258/258 @15:02 WIB** |
+| 2 | Backfill candle `universe: 0` | **FIXED** | `fd2fc658` | manual: 963 | **universe 963 di VPS** |
+| 3 | Backfill broksum halt karena 1x 502 | **FIXED** | `3100bf3d` | 16/16 PASS | slot 19:30 |
+| 4 | Swing Konglo/Non-Konglo `STALE_SNAPSHOT` | **DIAGNOSED + FIXED** | `5cdf4fb4` | 7/7 PASS | Phase 2 @21:30 |
+| 5 | J2 candle tidak punya log | **FIXED** | `fd2fc658` | - | slot 16:40 |
 
 `npm run test:full`: **705/705 file test PASS**.
+PR **#898 MERGED** -> `672a7557`. VPS fast-forward ke `672a7557`, 1x `pm2 restart`, health **200**.
 
 ---
 
@@ -222,9 +223,109 @@ Suite existing `snapshot-freshness-gate` + `screener-runner` +
 
 ## 8. Verifikasi Produksi
 
-Diisi setelah deploy VPS dan run terjadwal berikutnya:
+### 8a. Deploy
 
-- [ ] Run DayTrade berikutnya: `status=published`, `snapshot: materialized`, `data/screener-latest.json` segar dengan rows > 0
-- [ ] J2 16:40: jumlah saham dari Yahoo, hasil cross-check 20 saham, fallback Arjum, bar IHSG 19 Okt, `.done` 19 Okt
-- [ ] Backfill broksum 19:30: status label dan jumlah task ditunda
-- [ ] Swing: `source_dates['swing-konglo']` = tanggal hari bursa berjalan
+| Langkah | Hasil |
+|---------|-------|
+| `git pull --ff-only` di VPS | `e057953e` -> **`672a7557`** (fast-forward, 15 file, +1373/-38) |
+| Test di VPS (3 file baru) | **38/38 PASS** |
+| `pm2 restart autocuan-web` | **1x** (setelah run 15:02 selesai), status `online` |
+| Health `/` | **HTTP 200** (0.0025 s) |
+
+### 8b. #1 DayTrade - PULIH (TERVERIFIKASI)
+
+Log `daytrade-producer.log` setelah restart:
+
+```
+[2026-10-19 15:02:01 WIB] DayTrade intraday producer --execute
+  market   : LIVE_MARKET (session_2)
+  batch 0: status=running scanned=75/258
+  batch 1: status=running scanned=150/258
+  batch 2: status=running scanned=225/258
+  batch 3: status=published scanned=258/258
+Screener snapshot producer
+  mode     : WRITE
+  wrote /home/ubuntu/auto-cuan/data/screener-latest.json (5562575 bytes)
+  snapshot : materialized (207 rows)
+```
+
+- **Jam DayTrade kembali normal: 15:02 WIB, 19 Oktober 2026.**
+- Mati sejak **13 Okt 09:02** -> 6 hari bursa tanpa sinyal.
+- Snapshot pertama setelah pulih: **207 baris** total
+  (daytrade **12**, swing **165**, swing_non_konglo/nk **30**).
+- Status API: `status=published`, `run_date=2026-10-19`, `scanned 258/258`, `published 12`.
+
+Sebelum restart (masih proses lama), retry loop bekerja sesuai desain -
+tidak abort, tapi memberi diagnosa jelas:
+
+```
+  retry : status missing/unknown, waiting 1000ms (attempt 1/5)
+  ...
+  retry : status missing/unknown, waiting 30000ms (attempt 5/5)
+ERROR: DayTrade producer status stayed unknown after 5 retries
+       (last note: Fallback: response completed via timeout guard)
+```
+
+Alarm Telegram terkirim **sekali**:
+`ALARM: snapshot stale (stale, 3779 min) - sending Telegram` -> `ALARM: sent`.
+
+### 8c. #4 Swing - akar masalah terkonfirmasi di log produksi (TERVERIFIKASI)
+
+Log `screeners.log` (sebelum fix) menunjukkan penyebab persisnya:
+
+```
+[Phase 2] Swing Konglo
+Swing Konglo completed in 3.5s | universe 0 | scanned 0 | failed 0.
+```
+
+**3.5 detik** = `timeoutGuard` menyala. `refresh-screener` **tidak** ada di
+`HEAVY_COMPUTE_ACTIONS` sebelum perbaikan, sehingga guard menjawab
+`{success:true,data:[],rows:[]}` (tanpa `status`) -> `universe 0` -> Swing tidak
+pernah refresh -> `calculated_at` beku di **2026-10-16**.
+
+Setelah perbaikan, di VPS:
+
+```
+refresh-screener         true
+daytrade-screener-run    true
+nk-screener-run          true
+refresh                  true
+screener                 false
+daytrade-screener        false
+```
+
+Status sekarang: `source_dates = { swing-konglo: "2026-10-16",
+swing-non-konglo: "2026-10-16", daytrade: "2026-10-19", top5: null }`.
+Swing akan ter-refresh pada **Phase 2 run 21:30 WIB malam ini**, setelah itu
+`source_dates['swing-konglo']` menjadi `2026-10-19`.
+
+Catatan koreksi: laporan health-check mencatat `snapshot=2026-09-30`. Angka itu
+sudah tidak berlaku; pembacaan langsung di VPS menunjukkan `2026-10-16`
+(`age_sessions=1`). Penyebabnya sama - producer Swing tidak pernah jalan.
+
+### 8d. #2 Backfill candle - terverifikasi di VPS
+
+Dijalankan dari cwd `/home/ubuntu`:
+
+```json
+{ "mode": "DRY_RUN", "quota": 18080, "universe": 963, "budget": 1, "requested": 1 }
+```
+
+`universe: 963` (sebelumnya `0`).
+
+### 8e. #4b Candle dir - terverifikasi di VPS
+
+```
+cwd                : /home/ubuntu
+defaultCandleDir() : /home/ubuntu/auto-cuan/data/daily-candles
+```
+
+Sebelumnya menjadi `/home/ubuntu/data/daily-candles` (tidak ada).
+
+### 8f. Menunggu jadwal berikutnya
+
+| Jam WIB | Job | Yang diverifikasi |
+|---------|-----|-------------------|
+| 16:40 | J2 `run-daily-candles.sh` | Log `[J2-CANDLES] START/END rc=` di `daily-candles.log`; jumlah saham Yahoo; cross-check 20 saham; fallback Arjum; bar IHSG 19 Okt; `.done` 19 Okt |
+| 19:30 | Backfill broksum `--only-foreign` | Label `HALTED_BY_PROVIDER_ERROR` vs `HALTED_BY_BUDGET_OR_QUOTA`; daftar task ditunda |
+| 21:30 | Preflight screener | `COVERAGE_OK` untuk 2026-10-19; Swing Konglo `universe > 0` (bukan `universe 0` dalam 3.5s) |
