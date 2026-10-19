@@ -74,7 +74,13 @@ Sumber, dari yang paling berwenang:
    - Tidak ada angka karangan. Data kosong ditampilkan "—", bukan 0.
    - Angka contoh di kanvas **tidak boleh** masuk ke produk.
 4. **VPS:**
-   - Sesi cloud **tidak punya** akses SSH ke VPS, dan kunci SSH **tidak boleh** dimasukkan ke sesi ini.
+   - **Sesi Local (Claude Desktop / laptop pemilik):**
+     - Boleh SSH ke VPS **read-only**, memakai perintah ssh yang diberikan pemilik saat sesi berjalan. Kunci tetap di laptop.
+     - Jangan menyalin kunci, IP, atau perintah ssh ke file repo, commit, atau laporan.
+     - Jangan pakai `StrictHostKeyChecking=no`.
+     - Perintah yang boleh sama dengan daftar di bawah. Kalau perlu perintah lain, tanya dulu.
+     - Dalam mode ini, `CEK_VPS_UNTUK_ROO.md` tidak perlu dibuat; hasil cek langsung ditulis di laporan.
+   - **Sesi cloud:** tidak punya akses SSH ke VPS, dan kunci SSH **tidak boleh** dimasukkan ke sesi ini.
    - Semua pengecekan yang butuh VPS (file data, SQLite, log, crontab, pm2) ditulis sebagai perintah read-only di `handoff-redesign/CEK_VPS_UNTUK_ROO.md`. Pemilik mengirim file itu ke Roo Code, lalu menempel hasilnya ke sesi ini.
    - Format setiap item di file itu: nomor, tujuan, perintah read-only (`ls`, `cat`, `tail`, `grep`, `sqlite3 -readonly` SELECT, `crontab -l`, `pm2 list/describe`, `curl -s localhost`), dan hasil yang diharapkan.
    - Jangan cetak `.env`, `ARJUM_API_KEY`, kunci SSH, token, atau IP VPS.
