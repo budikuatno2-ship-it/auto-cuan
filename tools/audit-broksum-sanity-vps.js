@@ -156,8 +156,9 @@ function scanF(allIndex) {
 
     for (const f of fs.readdirSync(tkDir)) {
       if (!f.endsWith('.json') || f === 'latest.json') continue;
-      const date = f.replace('.json', '.json');
-      const dKey = f.replace('.json', '');
+      // CodeQL: the previous `f.replace('.json', '.json')` replaced a substring
+      // with itself (dead no-op). Only `dKey` is used below.
+      const dKey = f.replace(/\.json$/, '');
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dKey) || dKey < DATE_FROM || dKey > DATE_TO) continue;
       const fullPath = path.join(tkDir, f);
 
