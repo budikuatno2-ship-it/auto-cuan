@@ -254,6 +254,7 @@
   "test/daytrade-outcome-collector.test.js",
   "test/daytrade-outcome-logging.test.js",
   "test/daytrade-prespike-branch-order.test.js",
+  "test/daytrade-producer-timeout-guard.test.js",
   "test/daytrade-run-mode-window.test.js",
   "test/daytrade-runtime-fields-not-persisted.test.js",
   "test/daytrade-scan-comparison.test.js",
