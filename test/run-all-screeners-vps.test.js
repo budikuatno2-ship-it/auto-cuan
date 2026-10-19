@@ -38,7 +38,10 @@ async function runTop5(options) {
   const calls = [];
   const client = { call: async (query) => {
     calls.push(query);
-    if (query.action === 'screener' || query.action === 'daytrade-screener') return { meta: { status: 'published', run_date: runner.wibDate() } };
+    if (query.action === 'screener') return { meta: { status: 'published', run_date: runner.wibDate() } };
+    // A completed FULL DayTrade scan is required for the night phase to skip;
+    // a fast publish must not short-circuit it (BUG-DAYTRADE-FULL-SCAN-SKIPPED).
+    if (query.action === 'daytrade-screener') return { meta: { status: 'published', run_date: runner.wibDate(), run_speed: 'full', scanned_count: 800, universe_count: 800 } };
     if (query.action === 'nk-screener-results') return { meta: { status: 'published', run_date: runner.wibDate() } };
     if (query.action === 'telegram-daily-picks' && query.lock_only === 1) return { ready: true };
     if (query.action === 'telegram-daily-picks') return { success: true, sent: !query.dry_run };
@@ -68,7 +71,8 @@ test('Top 5 generation is not called when readiness is not ready', async () => {
   const calls = [];
   const client = { call: async (query) => {
     calls.push(query);
-    if (query.action === 'screener' || query.action === 'daytrade-screener' || query.action === 'nk-screener-results') return { meta: { status: 'published', run_date: runner.wibDate() } };
+    if (query.action === 'screener' || query.action === 'nk-screener-results') return { meta: { status: 'published', run_date: runner.wibDate() } };
+    if (query.action === 'daytrade-screener') return { meta: { status: 'published', run_date: runner.wibDate(), run_speed: 'full', scanned_count: 800, universe_count: 800 } };
     if (query.action === 'telegram-daily-picks') return { ready: false, reason: 'screeners_not_ready' };
     throw new Error('Unexpected call');
   } };
