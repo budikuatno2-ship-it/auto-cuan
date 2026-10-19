@@ -301,6 +301,43 @@
     if ('ResizeObserver' in window) { var mEl = document.querySelector('.main'); if (mEl) new ResizeObserver(stPlace).observe(mEl); }
   }
 
+  /* ---------- strip harga saham (ticker tape) ----------
+     Di produk: dari cache harga live server (yang juga dipakai DayTrade), diperbarui tiap 1-2 menit.
+     Isi: IHSG + saham likuid (nilai transaksi >= Rp 5 M) yang naik, urut kenaikan terbesar.
+     Kalau saham hijau kurang dari 8, ditambah saham paling likuid lainnya. Data di kanvas: contoh. */
+  var TAPE = [
+    ['BRPT', 1045, 3.45, 182], ['MEDC', 1380, 4.15, 141], ['BBCA', 10250, 0.98, 1210], ['ADRO', 3720, 1.64, 236], ['ASII', 5150, 0.49, 402],
+    ['BBRI', 4180, 1.21, 988], ['BMRI', 6025, 0.84, 731], ['TLKM', 2960, -0.67, 388], ['GOTO', 72, 2.86, 214], ['ANTM', 1590, 2.25, 167],
+    ['AMMN', 7400, 1.37, 205], ['BUMI', 128, 3.23, 96], ['PGEO', 1195, 2.14, 61], ['BBNI', 4630, -0.43, 352], ['UNVR', 1890, -1.31, 74],
+    ['INCO', 3870, 1.05, 58], ['PTRO', 4350, 5.08, 88], ['CUAN', 9875, 1.80, 64]
+  ];
+  var IHSG_T = ['IHSG', '7.142,85', 0.62];
+  function fmtPx(n) { return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+  function chgTxt(c) { return (c > 0 ? '+' : c < 0 ? '−' : '') + Math.abs(c).toFixed(2).replace('.', ',') + '%'; }
+  function tapeItems() {
+    var liq = TAPE.filter(function (x) { return x[3] >= 5; });
+    var up = liq.filter(function (x) { return x[2] > 0; }).sort(function (a, b) { return b[2] - a[2]; });
+    if (up.length < 8) { var rest = liq.filter(function (x) { return x[2] <= 0; }).sort(function (a, b) { return b[3] - a[3]; }); up = up.concat(rest.slice(0, 8 - up.length)); }
+    return up;
+  }
+  function tapeHtml() {
+    var it = '<a class="tp idx" href="Analisis.dc.html"><b>' + IHSG_T[0] + '</b><span class="px">' + IHSG_T[1] + '</span><span class="ch ' + (IHSG_T[2] >= 0 ? 'pos' : 'neg') + '">' + (IHSG_T[2] >= 0 ? '▲ ' : '▼ ') + chgTxt(IHSG_T[2]) + '</span></a>' +
+      tapeItems().map(function (x) { var c = x[2] > 0 ? 'pos' : x[2] < 0 ? 'neg' : 'flat'; return '<a class="tp" href="Analisis.dc.html" aria-label="' + x[0] + ' ' + fmtPx(x[1]) + ', ' + chgTxt(x[2]) + '"><b>' + x[0] + '</b><span class="px">' + fmtPx(x[1]) + '</span><span class="ch ' + c + '">' + (x[2] > 0 ? '▲ ' : x[2] < 0 ? '▼ ' : '') + chgTxt(x[2]) + '</span></a>'; }).join('');
+    return it;
+  }
+  function tapePaused() { return store.get('ac-tape-paused') === '1'; }
+  function fillTape(el) {
+    var p = tapePaused();
+    el.innerHTML = '<div class="tape-l"><span class="dot g"></span>Likuid<span class="lt-x"> hari ini</span> <small>· tertunda ±1 mnt · 14.32</small></div>' +
+      '<div class="tape-v"><div class="tape-in">' + tapeHtml() + '<span aria-hidden="true" style="display:contents">' + tapeHtml().replace(/<a /g, '<a tabindex="-1" ') + '</span></div></div>' +
+      '<button class="tape-x" type="button" aria-pressed="' + p + '" aria-label="' + (p ? 'Jalankan strip harga' : 'Jeda strip harga') + '" title="' + (p ? 'Jalankan' : 'Jeda') + '">' + (p ? '▶' : '❚❚') + '</button>';
+    el.classList.toggle('paused', p);
+    var inn = el.querySelector('.tape-in');
+    requestAnimationFrame(function () { var w = inn.scrollWidth / 2; inn.style.setProperty('--tape-dur', Math.max(30, Math.round(w / 45)) + 's'); });
+    el.querySelector('.tape-x').addEventListener('click', function () { var np = !tapePaused(); store.set('ac-tape-paused', np ? '1' : '0'); fillTape(el); });
+  }
+  function buildTape() { [].forEach.call(document.querySelectorAll('.tape'), function (el) { if (!el.querySelector('.tape-l')) fillTape(el); }); }
+
   /* ---------- tab bawah untuk layar ponsel (<= 760px) (sama dengan desain Mobile) ---------- */
   function buildTabbar() {
     var side = document.querySelector('.app .side'); if (!side || document.querySelector('.mtab')) return;
@@ -323,6 +360,7 @@
   function start() {
     var tries = 0;
     buildTabbar();
+    buildTape(); setInterval(buildTape, 1500);
     (function waitT(n) { if (!mountThemeBtn() && n < 40) setTimeout(function () { waitT(n + 1); }, 150); })(0);
     (function wait() { if (!buildMascot() && tries++ < 50) setTimeout(wait, 200); else buildStates(); })();
     document.addEventListener('click', function (e) { if (RM) tabTalk(e); }, true);

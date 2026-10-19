@@ -89,6 +89,32 @@ Kalau repo sudah punya `docs/DESIGN-SYSTEM.md` dan `public/ui-theme.css`, petaka
 
 **Bilah atas halaman:** pencarian (⌘K) dan **status kesegaran data**, misalnya "EOD / T-1 · 16 Okt 2026, 16.00 WIB". Status ini **wajib** diambil dari waktu data, bukan jam dinding.
 
+### 4a. Strip harga saham (di bawah bilah atas)
+
+Strip ini tampil di **semua halaman aplikasi** dan di Dashboard HP.
+
+**Isi:**
+- IHSG di posisi paling kiri.
+- Saham **likuid** (nilai transaksi hari ini ≥ Rp 5 M) yang **naik**, diurutkan dari kenaikan terbesar. Maksimal 30 saham.
+- Kalau saham hijau kurang dari 8, tambahkan saham paling likuid lainnya.
+- Tidak ada label rekomendasi.
+
+**Sumber data:**
+- Cache harga live server, yang juga dipakai DayTrade.
+- Satu endpoint ringan (`/api/tape`), di-cache 60 detik.
+- Pengunjung **tidak** memanggil Yahoo langsung.
+- Di luar jam bursa, tampilkan harga penutupan terakhir dengan label "penutupan <tanggal>".
+
+**Gerak:**
+- Bergeser horizontal memakai `transform`, sekitar 45 px per detik.
+- Berhenti saat kursor di atasnya atau saat fokus keyboard.
+- Ada **tombol jeda** (WCAG 2.2.2). Pilihannya diingat per pengguna.
+- `prefers-reduced-motion`: strip diam, tapi bisa digeser manual.
+
+**Interaksi:** klik item membuka Analisis untuk ticker itu.
+
+**Kinerja:** saat diam, halaman tidak boleh menggambar ulang (sudah diuji di kanvas: 0 paint dalam 3 detik).
+
 ## 5. Perilaku per halaman
 
 | Halaman | Isi utama | Interaksi wajib | Data asli (cek di VPS) |

@@ -470,3 +470,29 @@ html.is-dark svg [stroke="#B8A27E"]{stroke:#9C8A6A} html.is-dark svg [fill="#B8A
 html.is-dark svg [stroke="#D9B44A"]{stroke:#E6C66A} html.is-dark svg [fill="#D9B44A"]{fill:#E6C66A}
 html.is-dark .mata .body>path:first-child{fill:#2A3C35;stroke:#48C797;stroke-opacity:.7;stroke-width:2.5} html.is-dark .mata .lid path{fill:#2A3C35}
 html.is-dark .n.on{color:#06140E}
+
+/* ===== strip harga saham (ticker tape) ===== */
+.tape{position:relative;display:flex;align-items:center;height:34px;overflow:hidden;background:var(--ac-raised);border-bottom:1px solid var(--ac-hair);font-size:12.5px;contain:layout paint}
+.tape-l{position:relative;z-index:2;flex:none;display:flex;align-items:center;gap:6px;height:100%;padding:0 12px 0 16px;background:var(--ac-raised);box-shadow:8px 0 10px -6px var(--ac-raised);font-weight:700;color:var(--ac-ink);white-space:nowrap}
+.tape-l small{font-weight:500;color:var(--ac-muted)}
+.tape-l .dot{width:7px;height:7px}
+.tape-v{flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent)}
+.tape-in{display:flex;width:max-content;animation:tapeRun var(--tape-dur,60s) linear infinite;will-change:transform}
+.tape:hover .tape-in,.tape:focus-within .tape-in,.tape.paused .tape-in{animation-play-state:paused}
+@keyframes tapeRun{to{transform:translate3d(-50%,0,0)}}
+.tp{display:inline-flex;align-items:center;gap:7px;height:24px;margin:0 4px;padding:0 10px;border-radius:6px;color:var(--ac-ink);text-decoration:none;white-space:nowrap;font-family:"Geist Mono",ui-monospace,monospace}
+.tp:hover{background:var(--ac-hover)}
+.tp:focus-visible{outline:2px solid var(--ac-brand);outline-offset:-2px}
+.tp b{font-weight:700;letter-spacing:.01em}
+.tp .px{color:var(--ac-2);font-weight:500}
+.tp .ch{font-weight:700}
+.tp .ch.pos{color:var(--ac-pos)}.tp .ch.neg{color:var(--ac-neg)}.tp .ch.flat{color:var(--ac-muted)}
+.tp.idx{background:var(--ac-surface);border:1px solid var(--ac-hair)}
+.tape-x{position:relative;z-index:2;flex:none;width:30px;height:100%;border:0;background:var(--ac-raised);color:var(--ac-muted);cursor:pointer;font-size:12px}
+.tape-x:hover{color:var(--ac-ink)}
+.tape-x:focus-visible{outline:2px solid var(--ac-brand);outline-offset:-3px}
+.tape-m{height:32px;font-size:12px}.tape-m .tape-l small{display:none}
+@media (max-width:760px){.tape-l small,.tape-l .lt-x{display:none}.tape-l{padding-left:12px}}
+.tape-m .tape-l .lt-x{display:none}
+@media (prefers-reduced-motion:reduce){.tape-in{animation:none}.tape-v{overflow-x:auto;scrollbar-width:none}}
+html.is-dark .tape-l,html.is-dark .tape-x,html.is-dark .tape{background:var(--ac-raised)}
