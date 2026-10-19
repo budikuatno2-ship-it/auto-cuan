@@ -4,6 +4,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { createStaticResponder } = require('../lib/static-assets');
+const { isAllowedDataPath } = require('../lib/data-route-allowlist');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
@@ -1654,7 +1655,19 @@ const server = http.createServer(async (req, res) => {
   }
 
   // API/auth handling above never enters the public static cache.
+  // B1 (security): /data/* is DEFAULT-DENY and unauthenticated. Only the
+  // bandarmologi intel "latest_<range>.json" indexes (the sole in-browser
+  // consumer, public/bandarmologi-runtime.js) are served; every other path —
+  // including premium screener / broker-summary exports and any traversal
+  // attempt — answers 404 so the existence of protected files is never
+  // revealed. Premium data stays reachable through authenticated API
+  // endpoints, never through /data/.
   if (pathname.startsWith('/data/')) {
+    if (!isAllowedDataPath(pathname)) {
+      res.statusCode = 404;
+      res.setHeader('Cache-Control', 'no-store');
+      return res.end(req.method === 'HEAD' ? undefined : '404 Not Found');
+    }
     if (await serveData(req,res,pathname.slice('/data'.length),{noStore:true,extensionFallback:false})) return;
   }
   if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern' || pathname === '/screener' || pathname === '/watchlist' || pathname === '/sektor' || pathname === '/trackrecord') pathname = '/index.html';
