@@ -143,7 +143,7 @@ test('D5 refresh feedback preserves layout and keyboard focus in both themes',as
   const focus=await page.$eval(config[surface].button,e=>({visible:e.matches(':focus-visible'),outline:getComputedStyle(e).outlineWidth,color:getComputedStyle(e).color}));assert.ok(focus.visible&&parseFloat(focus.outline)>=2);
   const geometry=()=>page.evaluate(c=>{const r=document.querySelector(c.view).getBoundingClientRect(),s=document.querySelector(c.status).getBoundingClientRect();return {top:r.top+scrollY,height:r.height,statusHeight:s.height};},config[surface]);
   const before=await geometry();delay=350;await page.keyboard.press('Enter');await page.waitForFunction(s=>document.querySelector(s).disabled,{},config[surface].button);
-  const during=await geometry();assert.ok(Math.abs(during.top-before.top)<0.1);assert.ok(Math.abs(during.height-before.height)<0.1);assert.equal(during.statusHeight,before.statusHeight);await settled(surface);
+  const during=await geometry();assert.ok(Math.abs(during.top-before.top)<0.1);assert.ok(Math.abs(during.height-before.height)<0.1);assert.ok(Math.abs(during.statusHeight-before.statusHeight)<0.5,'status bar height must not jump during refresh (sub-pixel tolerant)');await settled(surface);
   record('FEEDBACK_ACCESSIBILITY',{surface,theme,focus,before,during});delay=0;
  }
 });
