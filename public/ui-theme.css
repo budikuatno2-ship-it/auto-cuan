@@ -333,49 +333,84 @@ html, body, #dashboardScreen, .page-content {
 
 /* Canonical Design System V2 Scoped Tokens (DESIGN.md §4, §5, §6, §7, §8, §9, §50, §103) */
 :where([data-ac-ui="v2"], .ac-ui-v2) {
-  /* Ground & Surfaces (§4.1, Light-First Workstation Default) */
-  --ac-canvas: #F3F5F4;
-  --ac-surface: #FFFFFF;
-  --ac-surface-raised: #F8FAF9;
-  --ac-surface-hover: #EEF2F0;
+  /* Ground & Surfaces (§4.1). Values are the redesign v2 canvas `:root` in
+     handoff design/project/ac.css (v2.2 eye-comfort palette), mapped onto the
+     existing v2 names so there is still exactly one token system. */
+  --ac-canvas: #EFF1EC;
+  --ac-surface: #FCFCFA;
+  --ac-surface-raised: #F5F7F3;
+  --ac-surface-hover: #EAEEE8;
 
   /* Typography / Ink Tokens (§4.1) */
-  --ac-ink: #17211E;
-  --ac-text-secondary: #52605B;
-  --ac-text-muted: #5F6C66;
+  --ac-ink: #1D2724;
+  --ac-text-secondary: #535F5A;
+  --ac-text-muted: #5E6A65;
   --ac-text-tertiary: var(--ac-text-muted);
 
-  /* Lines & Borders (§4.1) */
-  --ac-line-hairline: #E2E7E4;
-  --ac-line-default: rgba(18, 35, 29, 0.14);
-  --ac-line-strong: rgba(18, 35, 29, 0.20);
-  --ac-control-border: #7D8683;
-  --ac-control-border-hover: #65726C;
+  /* Lines & Borders (§4.1). The canvas has no strong line; it keeps the
+     previous 0.20 alpha on the canvas ink. */
+  --ac-line-hairline: #DFE4DE;
+  --ac-line-default: rgba(29, 39, 36, 0.13);
+  --ac-line-strong: rgba(29, 39, 36, 0.20);
+  --ac-control-border: #848D88;
+  --ac-control-border-hover: #68746E;
 
   --ac-border: var(--ac-line-default);
   --ac-border-strong: var(--ac-line-strong);
 
   /* Brand Emerald (§4.1) */
-  --ac-brand: #0F7458;
-  --ac-brand-hover: #0B6049;
-  --ac-brand-soft: #E8F3EE;
-  --ac-focus: #0F7458;
+  --ac-brand: #13785D;
+  --ac-brand-hover: #0D634C;
+  --ac-brand-soft: #E3EFE8;
+  --ac-focus: #13785D;
   --ac-focus-ring: 0 0 0 2px var(--ac-surface), 0 0 0 4px var(--ac-focus);
 
-  /* Financial Semantics (§4.1) */
-  --ac-positive: #247A43;
-  --ac-positive-soft: rgba(36, 122, 67, 0.09);
-  --ac-negative: #C13F4D;
-  --ac-negative-soft: rgba(193, 63, 77, 0.09);
+  /* Financial Semantics (§4.1). --ac-negative and --ac-warning-text are the
+     darkened values that pass AA (HANDOFF §3). */
+  --ac-positive: #26734A;
+  --ac-positive-soft: rgba(42, 122, 75, 0.10);
+  --ac-negative: #AD3F52;
+  --ac-negative-soft: rgba(185, 71, 90, 0.10);
   --ac-warning: #A96D13;
-  --ac-warning-text: #96610F;
-  --ac-warning-soft: rgba(169, 109, 19, 0.09);
+  --ac-warning-text: #8A590D;
+  --ac-warning-soft: rgba(169, 109, 19, 0.10);
   --ac-info: #315F9A;
   --ac-info-soft: rgba(49, 95, 154, 0.09);
 
   /* System State Aliases (§4.1) */
-  --ac-success: #247A43;
-  --ac-danger: #C13F4D;
+  --ac-success: #26734A;
+  --ac-danger: #AD3F52;
+
+  /* Inverted surface (active chip, toast, active segment) and the one
+     floating shadow (mascot, bottom sheet, dialog, drawer). HANDOFF §3, §3a. */
+  --ac-inv: #1D2724;
+  --ac-shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.10), 0 8px 10px -6px rgba(0, 0, 0, 0.10);
+  --ease-spring: cubic-bezier(.34, 1.45, .64, 1);
+
+  /* Canvas short names. Pages ported from the canvas read these; they only
+     point at the v2 tokens above, so dark mode follows automatically.
+     --ac-warn is deliberately NOT aliased: legacy rules use --ac-warn as a
+     text colour, while the canvas uses it as an accent. Ported canvas CSS
+     reads --ac-warning for dots/borders and --ac-warn-t for text. */
+  --ac-raised: var(--ac-surface-raised);
+  --ac-hover: var(--ac-surface-hover);
+  --ac-2: var(--ac-text-secondary);
+  --ac-muted: var(--ac-text-muted);
+  --ac-hair: var(--ac-line-hairline);
+  --ac-line: var(--ac-line-default);
+  --ac-ctl: var(--ac-control-border);
+  --ac-ctl-h: var(--ac-control-border-hover);
+  --ac-brand-h: var(--ac-brand-hover);
+  --ac-pos: var(--ac-positive);
+  --ac-pos-soft: var(--ac-positive-soft);
+  --ac-neg: var(--ac-negative);
+  --ac-neg-soft: var(--ac-negative-soft);
+  --ac-warn-t: var(--ac-warning-text);
+  --ac-warn-soft: var(--ac-warning-soft);
+  --shadow2: var(--ac-shadow-float);
+  --ease: var(--ease-standard);
+  --ease-e: var(--ease-emphasized);
+  --spring: var(--ease-spring);
 
   /* Spacing Scale (4px base, §7) */
   --ac-space-1: 4px;
@@ -460,43 +495,48 @@ html, body, #dashboardScreen, .page-content {
 html:not(.light) :where([data-ac-ui="v2"], .ac-ui-v2),
 [data-theme="dark"] :where([data-ac-ui="v2"], .ac-ui-v2),
 :where([data-ac-ui="v2"], .ac-ui-v2)[data-theme="dark"] {
-  --ac-canvas: #090D16;
-  --ac-surface: #10151F;
-  --ac-surface-raised: #161C29;
-  --ac-surface-hover: #19202E;
+  /* Dark block of handoff design/project/ac.css (HANDOFF §3a). */
+  --ac-canvas: #0E1412;
+  --ac-surface: #141C19;
+  --ac-surface-raised: #19231F;
+  --ac-surface-hover: #1F2B27;
 
-  --ac-ink: #F4F6F8;
-  --ac-text-secondary: #9AA4B2;
-  --ac-text-muted: #93a1b5;
+  --ac-ink: #E4EBE7;
+  --ac-text-secondary: #B2BDB8;
+  --ac-text-muted: #9AA7A1;
   --ac-text-tertiary: var(--ac-text-muted);
 
-  --ac-line-hairline: rgba(255, 255, 255, 0.08);
-  --ac-line-default: rgba(148, 163, 184, 0.16);
-  --ac-line-strong: rgba(148, 163, 184, 0.28);
-  --ac-control-border: #475569;
-  --ac-control-border-hover: #64748B;
+  --ac-line-hairline: #26322D;
+  --ac-line-default: rgba(228, 235, 231, 0.13);
+  --ac-line-strong: rgba(228, 235, 231, 0.20);
+  --ac-control-border: #56635D;
+  --ac-control-border-hover: #76847D;
 
   --ac-border: var(--ac-line-default);
   --ac-border-strong: var(--ac-line-strong);
 
-  --ac-brand: #10B981;
-  --ac-brand-hover: #059669;
-  --ac-brand-soft: rgba(16, 185, 129, 0.12);
-  --ac-focus: #10B981;
+  --ac-brand: #48C797;
+  --ac-brand-hover: #63D4A9;
+  --ac-brand-soft: rgba(61, 187, 142, 0.14);
+  --ac-focus: #48C797;
   --ac-focus-ring: 0 0 0 2px var(--ac-surface), 0 0 0 4px var(--ac-focus);
 
-  --ac-positive: #34D399;
-  --ac-positive-soft: rgba(52, 211, 153, 0.12);
-  --ac-negative: #FB7185;
-  --ac-negative-soft: rgba(251, 113, 133, 0.12);
-  --ac-warning: #F59E0B;
-  --ac-warning-text: #FBBF24;
-  --ac-warning-soft: rgba(245, 158, 11, 0.12);
-  --ac-info: #60A5FA;
-  --ac-info-soft: rgba(96, 165, 250, 0.12);
+  --ac-positive: #4FC383;
+  --ac-positive-soft: rgba(79, 195, 131, 0.13);
+  --ac-negative: #F2808F;
+  --ac-negative-soft: rgba(242, 128, 143, 0.13);
+  --ac-warning: #E2A94B;
+  --ac-warning-text: #EBBA66;
+  --ac-warning-soft: rgba(226, 169, 75, 0.13);
+  --ac-info: #86ADE3;
+  --ac-info-soft: rgba(134, 173, 227, 0.13);
 
-  --ac-success: #34D399;
-  --ac-danger: #FB7185;
+  --ac-success: #4FC383;
+  --ac-danger: #F2808F;
+
+  --ac-inv: #2F3D38;
+  --ac-shadow-float: 0 12px 28px -6px rgba(0, 0, 0, 0.55), 0 8px 10px -6px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
 
   /* Categorical Chart Tokens Dark (§103.1) */
   --ac-chart-cat-1-dark: #8BB2E8;
@@ -518,43 +558,47 @@ html:not(.light) :where([data-ac-ui="v2"], .ac-ui-v2),
 html.light :where([data-ac-ui="v2"], .ac-ui-v2),
 [data-theme="light"] :where([data-ac-ui="v2"], .ac-ui-v2),
 :where([data-ac-ui="v2"], .ac-ui-v2)[data-theme="light"] {
-  --ac-canvas: #F3F5F4;
-  --ac-surface: #FFFFFF;
-  --ac-surface-raised: #F8FAF9;
-  --ac-surface-hover: #EEF2F0;
+  --ac-canvas: #EFF1EC;
+  --ac-surface: #FCFCFA;
+  --ac-surface-raised: #F5F7F3;
+  --ac-surface-hover: #EAEEE8;
 
-  --ac-ink: #17211E;
-  --ac-text-secondary: #52605B;
-  --ac-text-muted: #5F6C66;
+  --ac-ink: #1D2724;
+  --ac-text-secondary: #535F5A;
+  --ac-text-muted: #5E6A65;
   --ac-text-tertiary: var(--ac-text-muted);
 
-  --ac-line-hairline: #E2E7E4;
-  --ac-line-default: rgba(18, 35, 29, 0.14);
-  --ac-line-strong: rgba(18, 35, 29, 0.20);
-  --ac-control-border: #7D8683;
-  --ac-control-border-hover: #65726C;
+  --ac-line-hairline: #DFE4DE;
+  --ac-line-default: rgba(29, 39, 36, 0.13);
+  --ac-line-strong: rgba(29, 39, 36, 0.20);
+  --ac-control-border: #848D88;
+  --ac-control-border-hover: #68746E;
 
   --ac-border: var(--ac-line-default);
   --ac-border-strong: var(--ac-line-strong);
 
-  --ac-brand: #0F7458;
-  --ac-brand-hover: #0B6049;
-  --ac-brand-soft: #E8F3EE;
-  --ac-focus: #0F7458;
+  --ac-brand: #13785D;
+  --ac-brand-hover: #0D634C;
+  --ac-brand-soft: #E3EFE8;
+  --ac-focus: #13785D;
   --ac-focus-ring: 0 0 0 2px var(--ac-surface), 0 0 0 4px var(--ac-focus);
 
-  --ac-positive: #247A43;
-  --ac-positive-soft: rgba(36, 122, 67, 0.09);
-  --ac-negative: #C13F4D;
-  --ac-negative-soft: rgba(193, 63, 77, 0.09);
+  --ac-positive: #26734A;
+  --ac-positive-soft: rgba(42, 122, 75, 0.10);
+  --ac-negative: #AD3F52;
+  --ac-negative-soft: rgba(185, 71, 90, 0.10);
   --ac-warning: #A96D13;
-  --ac-warning-text: #96610F;
-  --ac-warning-soft: rgba(169, 109, 19, 0.09);
+  --ac-warning-text: #8A590D;
+  --ac-warning-soft: rgba(169, 109, 19, 0.10);
   --ac-info: #315F9A;
   --ac-info-soft: rgba(49, 95, 154, 0.09);
 
-  --ac-success: #247A43;
-  --ac-danger: #C13F4D;
+  --ac-success: #26734A;
+  --ac-danger: #AD3F52;
+
+  --ac-inv: #1D2724;
+  --ac-shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.10), 0 8px 10px -6px rgba(0, 0, 0, 0.10);
+  color-scheme: light;
 
   --ac-chart-cat-1: #315F9A;
   --ac-chart-cat-2: #7357A6;
@@ -8523,8 +8567,8 @@ details.tr-cat-collapsible > #trCategoryGrid {
 }
 .tr-status-waiting {
   background: var(--ac-warning-soft);
-  color: var(--ac-warn);
-  border-color: var(--ac-warn);
+  color: var(--ac-warning-text, var(--ac-warn));
+  border-color: var(--ac-warning-text, var(--ac-warn));
 }
 .tr-status-expired {
   background: var(--ac-surface-3);

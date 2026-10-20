@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
-    <meta name="theme-color" content="#f3f5f4">
+    <meta name="theme-color" content="#EFF1EC">
     <meta name="description" content="Auto-Cuan IDX Stock Radar — dashboard watchlist, day trade & swing screener, chart, dan portofolio manual. Alat bantu analisis, bukan rekomendasi beli/jual.">
     <meta name="application-name" content="Auto-Cuan">
     <meta name="format-detection" content="telephone=no">
@@ -47,17 +47,21 @@
         // first <script> (a contract enforced by canonical-domain-redirect.test.js)
         // while the saved theme is still applied before anything is painted,
         // which is what prevents a dark flash for Light-mode users.
+        // Preference is auto | light | dark (HANDOFF §3a); auto follows the
+        // device. The resolved mode drives the existing .light class and
+        // data-theme, which the stylesheets already key on; data-theme-pref
+        // keeps what the user chose.
         (function () {
-            try {
-                var saved = localStorage.getItem('autocuan_theme') || 'light';
-                if (saved === 'light') {
-                    document.documentElement.classList.add('light');
-                    document.documentElement.style.background = '#f3f5f4';
-                } else {
-                    document.documentElement.classList.remove('light');
-                    document.documentElement.style.background = '#0b0e14';
-                }
-            } catch (_) {}
+            var pref = 'auto';
+            try { pref = localStorage.getItem('autocuan_theme') || 'auto'; } catch (_) {}
+            if (pref !== 'light' && pref !== 'dark') pref = 'auto';
+            var dark = pref === 'dark' || (pref === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches));
+            var root = document.documentElement;
+            root.classList.toggle('light', !dark);
+            root.classList.toggle('is-dark', dark);
+            root.setAttribute('data-theme', dark ? 'dark' : 'light');
+            root.setAttribute('data-theme-pref', pref);
+            root.style.background = dark ? '#0E1412' : '#EFF1EC';
         })();
     </script>
     <!-- Tailwind is served as a pre-built stylesheet, not as the Play CDN.
@@ -9894,39 +9898,79 @@ function acKeepAliveFetch(url, options) {
     return fetch(url, options);
 }
 
-// ===== THEME SWITCHER (Dark Zinc / Light Clean) =====
+// ===== THEME SWITCHER (Otomatis / Terang / Gelap, HANDOFF §3a) =====
+// `theme` is a preference: 'auto' follows prefers-color-scheme, 'light' and
+// 'dark' pin it. Every caller that passes 'light'/'dark' keeps working.
+var APP_THEME_KEY = 'autocuan_theme';
+function readAppThemePreference() {
+    var pref = 'auto';
+    try { pref = localStorage.getItem(APP_THEME_KEY) || 'auto'; } catch (_) {}
+    return (pref === 'light' || pref === 'dark') ? pref : 'auto';
+}
+function systemPrefersDark() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
 function applyAppTheme(theme) {
-    var isLight = theme === 'light';
+    var pref = (theme === 'light' || theme === 'dark') ? theme : 'auto';
+    var isLight = pref === 'light' || (pref === 'auto' && !systemPrefersDark());
     document.documentElement.classList.toggle('light', isLight);
+    document.documentElement.classList.toggle('is-dark', !isLight);
     document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme-pref', pref);
     if (document.body) document.body.classList.toggle('light', isLight);
-    document.documentElement.style.background = isLight ? '#f8fafc' : '#0b0e14';
+    document.documentElement.style.background = isLight ? '#EFF1EC' : '#0E1412';
     var sunSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
     var moonSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
     var icon = document.getElementById('themeSwitcherIcon');
     var label = document.getElementById('themeSwitcherLabel');
-    if (icon) icon.innerHTML = isLight ? sunSvg : moonSvg;
-    if (label) label.textContent = isLight ? 'Light' : 'Dark';
+    // The icon shows the mode you would switch to, like the canvas .thm button.
+    var actionLabel = isLight ? 'Ganti ke mode gelap' : 'Ganti ke mode terang';
+    if (icon) icon.innerHTML = isLight ? moonSvg : sunSvg;
+    if (label) label.textContent = isLight ? 'Mode gelap' : 'Mode terang';
     var sbIcon = document.getElementById('sidebarThemeIcon');
     var sbLabel = document.getElementById('sidebarThemeLabel');
-    if (sbIcon) sbIcon.innerHTML = isLight ? sunSvg : moonSvg;
-    if (sbLabel) sbLabel.textContent = isLight ? 'Light Mode' : 'Dark Mode';
+    if (sbIcon) sbIcon.innerHTML = isLight ? moonSvg : sunSvg;
+    if (sbLabel) sbLabel.textContent = isLight ? 'Mode gelap' : 'Mode terang';
     var landingIcon = document.getElementById('landingThemeIcon');
     var landingToggle = document.getElementById('landingThemeToggle');
-    if (landingIcon) landingIcon.innerHTML = isLight ? sunSvg : moonSvg;
-    if (landingToggle) landingToggle.setAttribute('aria-label', isLight ? 'Gunakan tema gelap' : 'Gunakan tema terang');
+    if (landingIcon) landingIcon.innerHTML = isLight ? moonSvg : sunSvg;
+    if (landingToggle) landingToggle.setAttribute('aria-label', actionLabel);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-action="toggle-theme"], .theme-toggle-compact, .thm'), function (btn) {
+        btn.setAttribute('aria-label', actionLabel);
+        btn.setAttribute('title', actionLabel);
+        btn.setAttribute('aria-pressed', String(!isLight));
+    });
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', isLight ? '#f3f5f4' : '#0b0e14');
-    try { localStorage.setItem('autocuan_theme', isLight ? 'light' : 'dark'); } catch (_) {}
+    if (meta) meta.setAttribute('content', isLight ? '#EFF1EC' : '#0E1412');
+    try {
+        if (pref === 'auto') localStorage.removeItem(APP_THEME_KEY);
+        else localStorage.setItem(APP_THEME_KEY, pref);
+    } catch (_) {}
+    try { window.dispatchEvent(new CustomEvent('ac-theme', { detail: { pref: pref, dark: !isLight } })); } catch (_) {}
 }
+// The sun/moon buttons flip the visible mode and pin it; choosing Otomatis
+// again happens in Pusat Akun > Profil > Tampilan via setAppThemePreference.
 function toggleAppTheme() {
     var isLight = document.documentElement.classList.contains('light');
     applyAppTheme(isLight ? 'dark' : 'light');
 }
+function setAppThemePreference(pref) {
+    applyAppTheme(pref);
+}
+function getAppThemePreference() {
+    return readAppThemePreference();
+}
 function initAppTheme() {
-    var saved = 'light';
-    try { saved = localStorage.getItem('autocuan_theme') || 'light'; } catch (_) {}
-    applyAppTheme(saved);
+    applyAppTheme(readAppThemePreference());
+    if (window.matchMedia) {
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+        var onSystemChange = function () { if (readAppThemePreference() === 'auto') applyAppTheme('auto'); };
+        if (mq.addEventListener) mq.addEventListener('change', onSystemChange);
+        else if (mq.addListener) mq.addListener(onSystemChange);
+    }
+    window.addEventListener('storage', function (e) {
+        if (e.key === APP_THEME_KEY) applyAppTheme(readAppThemePreference());
+    });
 }
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initAppTheme);

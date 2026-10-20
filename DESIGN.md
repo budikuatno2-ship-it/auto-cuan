@@ -152,46 +152,51 @@ A coding agent must not implement Class C merely because this document describes
 
 Light mode is the canonical Auto-Cuan identity.
 
+Values below are the redesign v2 canvas (`handoff-redesign/design/project/ac.css`, "v2.2 eye-comfort palette", owner-approved 18 Oct 2026). They live in the scoped v2 token block of `public/ui-theme.css`; the canvas short names (`--ac-hair`, `--ac-pos`, `--ac-neg`, `--ac-warn-t`, …) are aliases to these, not a second system.
+
 ```css
 :root {
-  --ac-canvas: #F3F5F4;
-  --ac-surface: #FFFFFF;
-  --ac-surface-raised: #F8FAF9;
-  --ac-surface-hover: #EEF2F0;
+  --ac-canvas: #EFF1EC;
+  --ac-surface: #FCFCFA;
+  --ac-surface-raised: #F5F7F3;
+  --ac-surface-hover: #EAEEE8;
 
-  --ac-ink: #17211E;
-  --ac-text-secondary: #52605B;
-  --ac-text-muted: #5F6C66;
+  --ac-ink: #1D2724;
+  --ac-text-secondary: #535F5A;
+  --ac-text-muted: #5E6A65;
   --ac-text-tertiary: var(--ac-text-muted);
 
-  --ac-line-hairline: #E2E7E4;
-  --ac-line-default: rgba(18, 35, 29, 0.14);
-  --ac-line-strong: rgba(18, 35, 29, 0.20);
-  --ac-control-border: #7D8683;
-  --ac-control-border-hover: #65726C;
+  --ac-line-hairline: #DFE4DE;
+  --ac-line-default: rgba(29, 39, 36, 0.13);
+  --ac-line-strong: rgba(29, 39, 36, 0.20);
+  --ac-control-border: #848D88;
+  --ac-control-border-hover: #68746E;
 
-  --ac-brand: #0F7458;
-  --ac-brand-hover: #0B6049;
-  --ac-brand-soft: #E8F3EE;
-  --ac-focus: #0F7458;
+  --ac-brand: #13785D;
+  --ac-brand-hover: #0D634C;
+  --ac-brand-soft: #E3EFE8;
+  --ac-focus: #13785D;
 
-  --ac-positive: #247A43;
-  --ac-positive-soft: rgba(36, 122, 67, 0.09);
+  --ac-positive: #26734A;
+  --ac-positive-soft: rgba(42, 122, 75, 0.10);
 
-  --ac-negative: #C13F4D;
-  --ac-negative-soft: rgba(193, 63, 77, 0.09);
+  --ac-negative: #AD3F52;
+  --ac-negative-soft: rgba(185, 71, 90, 0.10);
 
   --ac-warning: #A96D13;
-  --ac-warning-text: #96610F;
-  --ac-warning-soft: rgba(169, 109, 19, 0.09);
+  --ac-warning-text: #8A590D;
+  --ac-warning-soft: rgba(169, 109, 19, 0.10);
 
   --ac-info: #315F9A;
   --ac-info-soft: rgba(49, 95, 154, 0.09);
 
   /* System-state aliases keep financial semantics separate in code,
      even when the initial visual value is shared. */
-  --ac-success: #247A43;
-  --ac-danger: #C13F4D;
+  --ac-success: #26734A;
+  --ac-danger: #AD3F52;
+
+  /* Inverted surface: active chip, toast, active segment. */
+  --ac-inv: #1D2724;
 }
 ```
 
@@ -211,9 +216,9 @@ Contrast requirements for text and essential UI are not optional:
 - large text: ≥ 3:1;
 - focus indicators and essential non-text UI boundaries: ≥ 3:1 against adjacent colors.
 
-The earlier tertiary/muted split was not visually meaningful enough and could fall below the normal-text target on selected/hover surfaces. The canonical small-supporting-text token is now `--ac-text-muted: #5F6C66`; `--ac-text-tertiary` is only a compatibility alias to that same token. Evidence metadata uses `--ac-text-secondary`, not muted.
+The earlier tertiary/muted split was not visually meaningful enough and could fall below the normal-text target on selected/hover surfaces. The canonical small-supporting-text token is now `--ac-text-muted: #5E6A65`; `--ac-text-tertiary` is only a compatibility alias to that same token. Evidence metadata uses `--ac-text-secondary`, not muted.
 
-`--ac-positive` is intentionally shifted to `#247A43` so financial-positive meaning is visibly distinct from brand/selection emerald `#0F7458`.
+`--ac-positive` (`#26734A`) stays visibly distinct from brand/selection emerald `#13785D`. `--ac-negative` (`#AD3F52`) and `--ac-warning-text` (`#8A590D`) are the darkened values that pass AA (HANDOFF §3). Red and green mark price direction or value only; brand green marks CTA, active navigation and price levels only.
 
 `--ac-warning` remains an accent/icon/border color; warning body text uses the darker `--ac-warning-text`. Decorative hairlines may be intentionally subtle, but essential interactive boundaries must use `--ac-control-border` (or a stronger semantic/focus boundary), not the low-contrast hairline token.
 
@@ -224,6 +229,20 @@ Focus indicators may use the brand hue, but they must remain visible on brand-fi
 Light mode is the canonical redesign target. Existing dark-theme behavior must not be broken or silently removed during a visual-refactor wave. If dark mode remains supported, treat it as **Night Research Mode**, not the core brand identity. It must remain matte, restrained, low-glow, and data-first. No neon green, purple identity, cyan terminal aesthetics, excessive glow, background grids, or cyberpunk treatment.
 
 Full visual parity for a redesigned dark theme is a separate scope decision; preserving existing theme access is the migration-safety default until explicit product approval says otherwise.
+
+**Redesign v2 (owner-approved, HANDOFF §3a):** dark mode is part of the redesign. Preference is **Otomatis** (follows `prefers-color-scheme`, the first-run default), **Terang** or **Gelap**, stored under `localStorage['autocuan_theme']` (`auto` is stored as "no key"). A script in `<head>` resolves it before first paint and sets the existing `.light` class plus `data-theme="light|dark"` (the resolved mode, because 1,000+ legacy rules key on it), `data-theme-pref="auto|light|dark"` (the choice) and `.is-dark`. The dark values come from the canvas dark block:
+
+```css
+--ac-canvas: #0E1412; --ac-surface: #141C19; --ac-surface-raised: #19231F; --ac-surface-hover: #1F2B27;
+--ac-ink: #E4EBE7; --ac-text-secondary: #B2BDB8; --ac-text-muted: #9AA7A1;
+--ac-line-hairline: #26322D; --ac-line-default: rgba(228, 235, 231, 0.13);
+--ac-control-border: #56635D; --ac-control-border-hover: #76847D;
+--ac-brand: #48C797; --ac-brand-hover: #63D4A9; --ac-brand-soft: rgba(61, 187, 142, 0.14);
+--ac-positive: #4FC383; --ac-negative: #F2808F; --ac-warning: #E2A94B; --ac-warning-text: #EBBA66;
+--ac-info: #86ADE3; --ac-inv: #2F3D38;
+```
+
+Primary buttons in dark mode use dark text on the light green.
 
 ---
 
@@ -266,7 +285,9 @@ Use sparingly for verification codes, IDs, source codes, aligned timestamps, and
 
 ### 5.4 Font Dependency Policy
 
-The existing Inter/system-sans implementation is the baseline. Do not introduce a new webfont merely to make the redesign look different. Landing personality should first come from size, weight, tracking, spacing, and composition. A new display font requires separate approval plus loading/performance and layout-regression review.
+**Redesign v2 (owner-approved, HANDOFF §2.3):** UI text uses **Plus Jakarta Sans** (made for the Jakarta city identity, has tabular figures, not an AI-default face) and ticker, price and lot use **Geist Mono**. Both are self-hosted variable woff2 in `public/fonts/` (Fontsource 5.3.0, OFL-1.1), declared in `public/fonts/ac-fonts.css` with `font-display: swap` and preloaded; there is no runtime dependency on Google Fonts.
+
+Previous policy, kept for context: Inter/system-sans was the baseline, and a new font required separate approval plus loading/performance and layout-regression review. That approval is the HANDOFF decision above.
 
 ---
 
