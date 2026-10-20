@@ -188,14 +188,12 @@ function latestCachedDate(ticker) {
 // it never runs in parallel with J1 or the backfill worker. When J1 itself
 // invokes this in-process (already holding the lock) the lock is reentrant and
 // runs directly.
+//
+// The lock is acquired only AFTER the trading-day check: a market-closed day
+// must stay a pure no-op (MARKET_CLOSED) and must never be reported as
+// "busy" — that would mask the real reason for a skipped run.
 async function main(options) {
-  const arjumSharedLock = require('../lib/arjum-shared-lock');
-  const outcome = await arjumSharedLock.withArjumLock({ job: 'J2-candles', waitMs: 0 }, () => mainUnlocked(options));
-  if (outcome && outcome.skipped) {
-    console.warn('[CANDLE-SKIP] SKIPPED_ARJUM_BUSY: job Arjum lain sedang berjalan; J2 dilewati untuk firing ini.');
-    return { skipped: true, reason: 'SKIPPED_ARJUM_BUSY', universe: 0, target_date: (options && options.targetDate) || todayWib() };
-  }
-  return outcome;
+  return mainUnlocked(options);
 }
 
 async function mainUnlocked(options) {
@@ -252,6 +250,29 @@ async function mainUnlocked(options) {
 
   const candleSource = options.source || process.env.CANDLE_SOURCE || 'yahoo';
   const crossCheckEnabled = options.crossCheck !== false && process.env.CANDLE_CROSSCHECK !== 'false';
+
+  // B3 (2026-10-20): take the shared Arjum lock for the REQUEST phase only.
+  // It is acquired here (after the trading-day check, so a market-closed day
+  // stays MARKET_CLOSED) and released as soon as the pass finishes. J1 invokes
+  // this in-process while already holding the lock — the lock is reentrant, so
+  // the nested pass runs directly.
+  const arjumSharedLock = require('../lib/arjum-shared-lock');
+  const lockOutcome = await arjumSharedLock.withArjumLock({ job: 'J2-candles', waitMs: 0 }, () => runCandlePass({
+    options, universe, targetDate, dryRun, candleSource, crossCheckEnabled, summary, tradingDay
+  }));
+  if (lockOutcome && lockOutcome.skipped) {
+    console.warn('[CANDLE-SKIP] SKIPPED_ARJUM_BUSY: job Arjum lain sedang berjalan; J2 dilewati untuk firing ini.');
+    const busy = { universe: universe.length, target_date: targetDate, skipped: true, reason: 'SKIPPED_ARJUM_BUSY', calendar_source: tradingDay.source, fetched: 0, cached: 0, stale: 0, failed: 0, stale_after_fetch: 0, quota_stop: false };
+    console.log(JSON.stringify({ mode: dryRun ? 'DRY_RUN' : 'LIVE', ...busy }, null, 2));
+    return busy;
+  }
+  return lockOutcome;
+}
+
+// B3: the actual request phase of the daily candle pass (runs under the shared
+// Arjum lock).
+async function runCandlePass(ctx) {
+  const { options, universe, targetDate, dryRun, candleSource, crossCheckEnabled, summary, tradingDay } = ctx;
 
   if (candleSource === 'yahoo' && crossCheckEnabled && !dryRun && universe.length > 20 && !options.skipCrossCheck) {
     try {
