@@ -15131,3 +15131,385 @@ html.is-dark .ac-btn-state:not(.ac-btn-state-quiet) { color: #06140E; }
 @media (prefers-reduced-motion: reduce) {
   .ac-spin, .ac-state-sk i { animation: none; }
 }
+
+/* 9b. App shell (canvas .side / .top / .mtab, HANDOFF §4).
+   Widths: phone <=760px, rail 761-1099px, wide >=1100px. The sidebar stays
+   position:fixed with the document as the scroller, which keeps the canvas
+   result (sidebar never moves, only content scrolls) without breaking code
+   that reads window.scrollY. Selectors are anchored on #appShell so they win
+   over the earlier shell layers, several of which use !important. */
+body #appShell > #appSidebar.app-sidebar {
+  background: var(--ac-surface) !important;
+  border-right: 1px solid var(--ac-line-hairline) !important;
+  padding: 16px 12px 12px;
+  gap: 2px;
+  box-shadow: none;
+  color: var(--ac-ink);
+  font-family: var(--ac-font-sans);
+  transform: none;
+  transition: width 320ms var(--ease-emphasized), padding 320ms var(--ease-emphasized);
+}
+body #appShell > #appSidebar > .sidebar-brand {
+  min-height: 0;
+  padding: 2px 10px 16px !important;
+  border-bottom: 0 !important;
+  gap: 10px;
+}
+body #appShell > #appSidebar .sidebar-brand-lockup { gap: 10px; }
+body #appShell > #appSidebar .brand-mark {
+  width: 26px !important;
+  height: 26px !important;
+  flex: 0 0 26px;
+  border-radius: 7px;
+  border: 0;
+  background: var(--ac-inv) !important;
+  display: grid;
+  place-items: center;
+}
+html.is-dark body #appShell > #appSidebar .brand-mark { background: #24302C !important; }
+body #appShell > #appSidebar .sidebar-brand-text strong {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--ac-ink);
+  line-height: 1.2;
+}
+body #appShell > #appSidebar .sidebar-brand-text > span {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ac-text-muted);
+  letter-spacing: 0;
+}
+body #appShell > #appSidebar .sidebar-collapse-toggle {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  color: var(--ac-text-secondary);
+  background: transparent;
+  transition: background 140ms var(--ease-standard), color 140ms var(--ease-standard);
+}
+body #appShell > #appSidebar .sidebar-collapse-toggle:hover { background: var(--ac-surface-hover); color: var(--ac-ink); }
+body #appShell > #appSidebar .sidebar-collapse-toggle svg { transition: transform 320ms var(--ease-spring); }
+body #appShell > #appSidebar .sidebar-menu-label { display: none; }
+body #appShell > #appSidebar > .sidebar-nav { padding: 0 0 12px; }
+body #appShell > #appSidebar .sidebar-nav-group { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; border: 0; }
+body #appShell > #appSidebar .sidebar-group-label {
+  margin: 0;
+  padding: 12px 10px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ac-text-muted);
+}
+body #appShell > #appSidebar .sidebar-admin-group .sidebar-group-label { color: var(--ac-info); }
+body #appShell > #appSidebar .sidebar-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0 !important;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ac-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 140ms var(--ease-standard), color 140ms var(--ease-standard);
+}
+body #appShell > #appSidebar .sidebar-item svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  stroke: currentColor;
+  transition: transform 320ms var(--ease-spring);
+}
+body #appShell > #appSidebar .sidebar-item:hover { background: var(--ac-surface-hover); color: var(--ac-ink); }
+body #appShell > #appSidebar .sidebar-item:hover svg { transform: translateX(2px) scale(1.08); }
+body #appShell > #appSidebar .sidebar-item.active {
+  background: var(--ac-brand-soft) !important;
+  color: var(--ac-ink) !important;
+  font-weight: 600;
+}
+body #appShell > #appSidebar .sidebar-item.active svg { color: var(--ac-brand); transform: scale(1.06); }
+/* The left bar marks the real active state, not decoration. */
+body #appShell > #appSidebar .sidebar-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--ac-brand);
+  animation: ac-edge 360ms var(--ease-spring) both;
+}
+body #appShell > #appSidebar .sidebar-item:focus-visible { outline: 2px solid var(--ac-brand); outline-offset: 2px; }
+body #appShell > #appSidebar .sidebar-item .nav-icon { display: contents; }
+body #appShell > #appSidebar .sidebar-badge {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ac-text-muted);
+}
+body #appShell > #appSidebar .sidebar-footer {
+  border-top: 1px solid var(--ac-line-hairline);
+  margin: 8px -12px -12px;
+  padding: 12px 22px;
+  background: var(--ac-surface);
+}
+/* The sun/moon switch lives in the top bar on every page (HANDOFF §3a). */
+body #appShell > #appSidebar .sidebar-footer .theme-toggle-compact { display: none !important; }
+body #appShell > #appSidebar .user-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ac-ink);
+  text-align: left;
+}
+body #appShell > #appSidebar .user-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--ac-inv);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex: none;
+}
+html.is-dark body #appShell > #appSidebar .user-avatar { background: #24302C; }
+body #appShell > #appSidebar .user-name { font-size: 13px; font-weight: 700; line-height: 1.2; color: var(--ac-ink); }
+body #appShell > #appSidebar .user-role { font-size: 11px; color: var(--ac-text-muted); letter-spacing: 0; text-transform: none; }
+body #appShell > #appSidebar .sidebar-profile-chevron { color: var(--ac-text-secondary); margin-left: auto; }
+body #appShell > #appSidebar #sidebarLogoutBtn {
+  color: var(--ac-negative);
+  background: transparent;
+  border-color: var(--ac-line-hairline);
+  border-radius: 6px;
+  min-height: 30px;
+}
+body #appShell > #appSidebar #sidebarLogoutBtn:hover { background: var(--ac-negative-soft); }
+
+/* Collapsed rail (wide screens on request, 761-1099px by default). */
+body #appShell > #appSidebar.app-sidebar.is-collapsed { width: 68px !important; padding-left: 10px; padding-right: 10px; }
+body #appShell > #appSidebar.is-collapsed > .sidebar-brand { flex-direction: column; gap: 10px; padding: 2px 0 12px !important; }
+body #appShell > #appSidebar.is-collapsed .sidebar-brand-text,
+body #appShell > #appSidebar.is-collapsed .sidebar-label,
+body #appShell > #appSidebar.is-collapsed .sidebar-badge,
+body #appShell > #appSidebar.is-collapsed .user-info,
+body #appShell > #appSidebar.is-collapsed .sidebar-profile-chevron,
+body #appShell > #appSidebar.is-collapsed #sidebarLogoutBtn { display: none !important; }
+body #appShell > #appSidebar.is-collapsed .sidebar-collapse-toggle { margin: 0; }
+body #appShell > #appSidebar.is-collapsed .sidebar-collapse-icon { transform: scaleX(-1); }
+body #appShell > #appSidebar.is-collapsed .sidebar-item { justify-content: center; padding: 0; gap: 0; height: 38px; }
+body #appShell > #appSidebar.is-collapsed .sidebar-item svg { width: 19px; height: 19px; flex-basis: 19px; }
+body #appShell > #appSidebar.is-collapsed .sidebar-group-label { font-size: 0; height: 1px; padding: 0; margin: 9px 8px; background: var(--ac-line-hairline); }
+body #appShell > #appSidebar.is-collapsed .sidebar-footer { padding: 12px 0; margin: 8px -10px -12px; display: flex; justify-content: center; }
+body #appShell > #appSidebar.is-collapsed .user-profile-badge { justify-content: center; flex: 0 0 auto !important; }
+
+/* Content column offsets follow the rail width. */
+@media (min-width: 761px) {
+  /* The older <=1023px drawer rules hid the rail; from 761px it is always
+     on screen (68px rail or full sidebar). */
+  body #appShell > #appSidebar.app-sidebar:not(.hidden) {
+    display: flex !important;
+    position: fixed !important;
+    transform: none !important;
+    width: 240px;
+    max-width: none !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    box-shadow: none !important;
+  }
+  body #appShell > #appMain { margin-left: 240px !important; width: calc(100% - 240px) !important; }
+  body #appShell[data-sidebar-state="collapsed"] > #appMain { margin-left: 68px !important; width: calc(100% - 68px) !important; }
+}
+
+/* Top bar (canvas .top): search, data freshness, theme switch. */
+body #appShell #appMain > .app-header {
+  display: block !important;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--ac-surface) !important;
+  border-bottom: 1px solid var(--ac-line-hairline);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  color: var(--ac-ink);
+}
+body #appShell #appMain > .app-header > .header-shell { padding: 0 32px; max-width: none; }
+body #appShell #appMain > .app-header > .header-shell > .flex { width: 100%; height: 52px; gap: 16px; }
+body #appShell #appMain > .app-header .workspace-header-brand { display: none !important; }
+body #appShell #appMain > .app-header .desktop-header-chips { display: flex !important; order: 2; margin-left: auto !important; gap: 8px; min-width: 0; }
+body #appShell #appMain > .app-header .desktop-header-chips > .header-status-chip:not(#globalLiveRadarChip) { display: none !important; }
+body #appShell #appMain > .app-header #globalSearchBtn { order: 1; }
+body #appShell #appMain > .app-header #topThemeToggle { order: 3; }
+body #appShell #appMain > .app-header .header-account { order: 4; margin-left: 0 !important; }
+/* Signed in, everything in this cluster is hidden; drop the empty slot so it
+   does not open an extra row on phones. Guests still see Masuk / Daftar. */
+body #appShell #appMain > .app-header .header-account:not(:has(#headerLoginBtn:not(.hidden), #headerRegisterBtn:not(.hidden), #reviewBadge:not(.hidden))) { display: none !important; }
+body #appShell #appMain > .app-header #headerAccountSection,
+body #appShell #appMain > .app-header #wibClock { display: none !important; }
+body #appShell #appMain > .app-header > .mobile-nav-row { display: none !important; }
+body #appShell #appMain > .app-header .ac-top-search-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  width: min(420px, 100%);
+  padding: 0 12px;
+  border: 1px solid var(--ac-control-border);
+  border-radius: 8px;
+  background: var(--ac-surface);
+  color: var(--ac-text-muted);
+  font-size: 13px;
+  transition: border-color 140ms;
+}
+body #appShell #appMain > .app-header .ac-top-search-trigger:hover { border-color: var(--ac-control-border-hover); }
+body #appShell #appMain > .app-header .ac-top-search-trigger svg { width: 15px; height: 15px; color: var(--ac-text-muted); }
+body #appShell #appMain > .app-header .ac-top-search-text { display: inline !important; color: var(--ac-text-muted); font-size: 13px; }
+body #appShell #appMain > .app-header #globalSearchKbd {
+  display: inline-flex !important;
+  margin-left: auto;
+  font: 600 11px var(--ac-font-mono);
+  border: 1px solid var(--ac-line-hairline);
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: transparent;
+  color: var(--ac-text-muted);
+}
+body #appShell #appMain > .app-header #globalLiveRadarChip {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ac-text-secondary) !important;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+body #appShell #appMain > .app-header #globalLiveRadarDot { width: 7px; height: 7px; border-radius: 50%; box-shadow: none !important; }
+.thm {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--ac-line-hairline);
+  background: var(--ac-surface);
+  color: var(--ac-text-secondary);
+  cursor: pointer;
+  flex: none;
+  transition: background 140ms var(--ease-standard), color 140ms;
+}
+.thm:hover { background: var(--ac-surface-hover); color: var(--ac-ink); }
+.thm:focus-visible { outline: 2px solid var(--ac-brand); outline-offset: 2px; }
+.thm svg { width: 16px; height: 16px; }
+.thm .sun { display: none; }
+html.is-dark .thm .sun { display: block; }
+html.is-dark .thm .moon { display: none; }
+
+/* Phone bottom tabs: the existing #acBottomBar (built by mobile-nav.js, with
+   its "Lainnya" sheet) takes the canvas .mtab look. From 761px the rail
+   replaces it, so the bar and its reserved space go away. */
+@media (min-width: 761px) {
+  #acBottomBar[data-ac-ui="v2"], #acMoreSheet, #acMoreSheetBackdrop { display: none !important; }
+  #dashboardScreen #appShell > #appMain { padding-bottom: 0 !important; }
+}
+
+@media (max-width: 760px) {
+  /* The sidebar becomes the compact sticky top bar: logo + "Menu". */
+  #dashboardScreen #appShell { flex-direction: column; }
+  #acBottomBar[data-ac-ui="v2"] {
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
+    z-index: 90;
+    background: var(--ac-surface);
+    border-top: 1px solid var(--ac-line-hairline);
+  }
+  #acBottomBar .ac-bottom-nav-item { font-size: 11px; font-weight: 600; color: var(--ac-text-secondary); gap: 3px; }
+  #acBottomBar .ac-bottom-nav-item svg { width: 20px; height: 20px; stroke-width: 1.7; }
+  #acBottomBar .ac-bottom-nav-item.active,
+  #acBottomBar .ac-bottom-nav-item[aria-current="page"] { color: var(--ac-brand); }
+  #acBottomBar .ac-bottom-nav-item:focus-visible { outline: 2px solid var(--ac-brand); outline-offset: -4px; border-radius: 8px; }
+  /* The full-screen menu covers the tabs, as on the canvas (z 120 over 90).
+     The bar is a <body> child outside the menu's stacking context, so it is
+     taken out while the menu is open. */
+  html.workspace-menu-open #acBottomBar[data-ac-ui="v2"] { visibility: hidden; pointer-events: none; }
+  body #appShell > #appSidebar.app-sidebar:not(.hidden) {
+    display: flex !important;
+    position: sticky !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    z-index: 50;
+    padding: 8px 12px;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--ac-line-hairline);
+    transform: none !important;
+    box-shadow: none;
+  }
+  body #appShell > #appSidebar > .sidebar-brand { padding: 2px 4px !important; }
+  body #appShell > #appSidebar:not(.mobile-open) > .sidebar-nav,
+  body #appShell > #appSidebar:not(.mobile-open) > .sidebar-footer { display: none !important; }
+  body #appShell > #appSidebar .sidebar-collapse-toggle { width: auto; height: auto; min-height: 44px; padding: 0; }
+  body #appShell > #appSidebar .sidebar-collapse-icon { display: none; }
+  body #appShell > #appSidebar .sidebar-menu-label {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ac-ink);
+    padding: 6px 12px;
+    border: 1px solid var(--ac-line-hairline);
+    border-radius: 8px;
+    background: var(--ac-surface-raised);
+  }
+  /* Full-screen menu. */
+  #dashboardScreen #appShell > #appSidebar.app-sidebar.mobile-open {
+    position: fixed !important;
+    inset: 0;
+    height: 100dvh !important;
+    z-index: 120;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: 24px;
+  }
+  body #appShell > #appSidebar.mobile-open .sidebar-item { height: 44px; min-height: 44px; font-size: 15px; }
+  body #appShell > #appSidebar.mobile-open .sidebar-footer { margin: 12px -12px 0; }
+  body #appShell > #appMain { margin-left: 0 !important; width: 100% !important; }
+  #sidebarScrim { display: none !important; }
+  /* Search and freshness scroll away with the page on phones. */
+  body #appShell #appMain > .app-header { position: static; height: auto !important; min-height: 0 !important; }
+  body #appShell #appMain > .app-header > .header-shell { padding: 8px 16px; height: auto !important; align-items: stretch; }
+  body #appShell #appMain > .app-header > .header-shell > .flex { height: auto; min-height: 52px; flex-wrap: wrap; gap: 8px 12px; }
+  body #appShell #appMain > .app-header #globalSearchBtn { order: 3; width: 100%; }
+  body #appShell #appMain > .app-header .desktop-header-chips { order: 1; margin-left: 0; flex: 1 1 160px; min-width: 0; }
+  body #appShell #appMain > .app-header #globalLiveRadarChip { white-space: normal; font-size: 11px; }
+  body #appShell #appMain > .app-header #topThemeToggle { order: 2; }
+}
+
+@keyframes ac-edge { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) {
+  body #appShell > #appSidebar .sidebar-item,
+  body #appShell > #appSidebar .sidebar-item svg,
+  body #appShell > #appSidebar.app-sidebar,
+  body #appShell > #appSidebar .sidebar-collapse-toggle svg { transition: none !important; }
+  body #appShell > #appSidebar .sidebar-item.active::before { animation: none; }
+}

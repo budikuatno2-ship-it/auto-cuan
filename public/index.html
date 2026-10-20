@@ -1035,110 +1035,118 @@ html.light #googleCompleteProfileModal input {
 <aside id="appSidebar" class="app-sidebar hidden" data-ac-ui="v2" aria-label="Navigasi workspace">
     <div class="sidebar-brand">
         <div class="sidebar-brand-lockup">
-            <span class="brand-mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l5-5 4 4 7-8"/></svg></span>
+            <span class="brand-mark" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-6 4 4 8-9"/></svg></span>
             <div class="sidebar-brand-text">
                 <strong>Auto-Cuan</strong>
-                <span>IDX Workspace</span>
+                <span>Meja kerja riset IDX</span>
             </div>
         </div>
-        <button type="button" onclick="toggleSidebarCollapse()" class="sidebar-collapse-toggle" title="Ciutkan sidebar" aria-label="Ciutkan atau bentangkan sidebar navigasi" aria-controls="appSidebar">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 18l-6-6 6-6"/></svg>
+        <!-- One control, three jobs (HANDOFF §4): collapse to the 68px rail at
+             >=1100px, open the full sidebar from the rail at 761-1099px, and
+             open the full-screen menu on phones, where it reads "Menu". -->
+        <button type="button" id="sidebarCollapseToggle" onclick="toggleSidebarCollapse()" class="sidebar-collapse-toggle" title="Ciutkan atau buka sidebar" aria-label="Ciutkan atau buka sidebar navigasi" aria-controls="appSidebar" aria-expanded="true">
+            <svg class="sidebar-collapse-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 10l-2 2 2 2"/></svg>
+            <span class="sidebar-menu-label" aria-hidden="true">Menu</span>
         </button>
     </div>
     <nav class="sidebar-nav" aria-label="Menu utama workspace">
-        <!-- GROUP 1: OVERVIEW -->
-        <section class="sidebar-nav-group" aria-label="Overview">
+        <!-- Groups and order follow HANDOFF §4: Dashboard · Temukan · Riset ·
+             Pantau · Admin. Icons are the canvas set (public/ac-icons.js). -->
+        <section class="sidebar-nav-group" aria-label="Dashboard">
             <button type="button" onclick="navigateTo('dashboard')" class="sidebar-item active" data-sidebar-page="dashboard" data-label="Dashboard" title="Dashboard">
-                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z"/></svg>
                 <span class="sidebar-label">Dashboard</span>
             </button>
         </section>
 
-        <!-- GROUP 2: DISCOVER -->
-        <section class="sidebar-nav-group" aria-label="Discover">
+        <section class="sidebar-nav-group" aria-label="Temukan">
+            <p class="sidebar-group-label" aria-hidden="true">Temukan</p>
             <button id="nav-screener" type="button" onclick="navigateTo('screener')" class="sidebar-item hidden" data-sidebar-page="screener" data-label="Screener" data-premium-nav="true" title="Screener">
-                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>
                 <span class="sidebar-label">Screener</span>
             </button>
             <button id="tabSektorHot" type="button" onclick="navigateTo('sektor')" class="sidebar-item hidden" data-sidebar-page="sektor" data-label="Sektor Hot" data-premium-nav="true" title="Sektor Hot">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>
                 <span class="sidebar-label">Sektor Hot</span>
             </button>
         </section>
 
-        <!-- GROUP 3: RESEARCH -->
-        <section class="sidebar-nav-group" aria-label="Research">
-            <!-- FIX-22: first-class Chart Workstation destination. Routes into the
-                 analysis shell's dedicated `chart` lens so a trader is not forced
-                 through the AI narrative before dissecting the chart. -->
-            <button id="tabChartWorkstation" type="button" onclick="navigateTo('analisis', 'chart')" class="sidebar-item" data-sidebar-page="chart" data-analysis-tab="chart" data-tab="chart" data-label="Chart Workstation" title="Chart Workstation">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l3-4 3 3 5-7"/></svg>
-                <span class="sidebar-label">Chart Workstation</span>
-            </button>
+        <section class="sidebar-nav-group" aria-label="Riset">
+            <p class="sidebar-group-label" aria-hidden="true">Riset</p>
             <button id="tabAnalisisChart" type="button" onclick="navigateTo('analisis', 'analisis-chart')" class="sidebar-item" data-sidebar-page="analisis" data-analysis-tab="analisis-chart" data-tab="analisis-chart" data-label="Analisis &amp; Chart" title="Analisis &amp; Chart">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17V7m5 10V3m5 14v-5m5 5V8"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>
                 <span class="sidebar-label">Analisis &amp; Chart</span>
             </button>
-
+            <!-- FIX-22: first-class Chart Workstation destination (not on the
+                 canvas, kept as an existing feature). Routes into the analysis
+                 shell's dedicated `chart` lens. -->
+            <button id="tabChartWorkstation" type="button" onclick="navigateTo('analisis', 'chart')" class="sidebar-item" data-sidebar-page="chart" data-analysis-tab="chart" data-tab="chart" data-label="Chart Workstation" title="Chart Workstation">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 15l3-4 3 3 4-5"/></svg>
+                <span class="sidebar-label">Chart Workstation</span>
+            </button>
             <button id="tabBandarmologi" type="button" onclick="navigateTo('analisis', 'bandarmologi')" class="sidebar-item" data-sidebar-page="bandarmologi" data-analysis-tab="bandarmologi" data-tab="bandarmologi" data-label="Bandarmologi" title="Bandarmologi">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-10M15 5h6v6"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
                 <span class="sidebar-label">Bandarmologi</span>
             </button>
-            <button id="tabBrokerHunter" type="button" onclick="navigateTo('analisis', 'hunter')" class="sidebar-item" data-sidebar-page="hunter" data-analysis-tab="hunter" data-tab="hunter" data-label="Broker Hunter" title="Broker Hunter">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 21l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0114 0z"/></svg>
-                <span class="sidebar-label">Broker Hunter</span>
-            </button>
-
             <button id="tabSinyalIntelijen" type="button" onclick="navigateTo('analisis', 'intel')" class="sidebar-item" data-sidebar-page="intel" data-analysis-tab="intel" data-tab="intel" data-label="Sinyal Intelijen" title="Sinyal Intelijen">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/></svg>
                 <span class="sidebar-label">Sinyal Intelijen</span>
             </button>
+            <button id="tabBrokerHunter" type="button" onclick="navigateTo('analisis', 'hunter')" class="sidebar-item" data-sidebar-page="hunter" data-analysis-tab="hunter" data-tab="hunter" data-label="Broker Hunter" title="Broker Hunter">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+                <span class="sidebar-label">Broker Hunter</span>
+            </button>
             <button id="tabJejaringInsider" type="button" onclick="navigateTo('analisis', 'insider')" class="sidebar-item" data-sidebar-page="insider" data-analysis-tab="insider" data-tab="insider" data-label="Insider" title="Insider">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l8 4M8 17l8-4M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0M20 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0M8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M17 11a3 3 0 000-6M21 20c0-2-1.5-4-4-4.6"/></svg>
                 <span class="sidebar-label">Insider</span>
             </button>
-
+            <button id="tabRankingHarian" type="button" onclick="navigateTo('analisis', 'ranking')" class="sidebar-item" data-sidebar-page="ranking" data-analysis-tab="ranking" data-tab="ranking" data-label="Ranking" title="Ranking">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+                <span class="sidebar-label">Ranking</span><span id="rankingLockIcon" class="sidebar-badge" aria-label="Akses terbatas">PRO</span>
+            </button>
             <button id="tabFinancial" type="button" onclick="navigateTo('analisis', 'financial')" class="sidebar-item" data-sidebar-page="financial" data-analysis-tab="financial" data-tab="financial" data-label="Financial" title="Financial">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16M6 20V9l6-5 6 5v11M10 20v-6h4v6"/></svg>
                 <span class="sidebar-label">Financial</span>
             </button>
             <button id="tabMarketStructure" type="button" onclick="navigateTo('analisis', 'market-structure')" class="sidebar-item" data-sidebar-page="market-structure" data-analysis-tab="market-structure" data-tab="market-structure" data-label="Struktur Pasar" title="Struktur Pasar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="16" r="3"/><path d="M10.5 10.5l3 3M16 5v5M5 16h5"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v9h9A9 9 0 1112 3z"/></svg>
                 <span class="sidebar-label">Struktur Pasar</span>
-            </button>
-
-            <button id="tabRankingHarian" type="button" onclick="navigateTo('analisis', 'ranking')" class="sidebar-item" data-sidebar-page="ranking" data-analysis-tab="ranking" data-tab="ranking" data-label="Ranking" title="Ranking">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7"/></svg>
-                <span class="sidebar-label">Ranking</span><span id="rankingLockIcon" class="sidebar-badge" aria-label="Akses terbatas">PRO</span>
-            </button>
-
-            <button id="tabAnalisisPattern" type="button" onclick="navigateTo('analisis', 'pattern')" class="sidebar-item hidden" data-sidebar-page="pattern" data-analysis-tab="pattern" data-tab="pattern" data-label="Pattern Radar" title="Pattern Radar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>
-                <span class="sidebar-label">Pattern Radar</span><span class="sidebar-badge">ADMIN</span>
             </button>
         </section>
 
-        <!-- GROUP 4: MONITOR -->
-        <section class="sidebar-nav-group" aria-label="Monitor">
+        <section class="sidebar-nav-group" aria-label="Pantau">
+            <p class="sidebar-group-label" aria-hidden="true">Pantau</p>
             <button type="button" onclick="navigateTo('watchlist')" class="sidebar-item hidden" data-sidebar-page="watchlist" data-label="Watchlist" data-premium-nav="true" title="Watchlist">
-                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>
                 <span class="sidebar-label">Watchlist</span>
             </button>
             <button type="button" onclick="navigateTo('portofolio')" class="sidebar-item hidden" data-sidebar-page="portofolio" data-label="Portfolio" data-premium-nav="true" title="Portfolio">
-                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg>
                 <span class="sidebar-label">Portfolio</span>
             </button>
             <button type="button" onclick="navigateTo('trackrecord')" class="sidebar-item hidden" data-sidebar-page="trackrecord" data-label="Track Record" data-premium-nav="true" title="Track Record">
-                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>
                 <span class="sidebar-label">Track Record</span>
             </button>
             <a href="#subscription" id="nav-subscription" class="sidebar-item nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition" onclick="openSubscriptionModal();return false;" data-sidebar-page="subscription" data-label="Subscription" title="Subscription">
                 <span class="nav-icon flex items-center justify-center">
                     <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                 </span>
-                <span class="sidebar-label nav-label">Subscription</span>
+                <span class="sidebar-label nav-label">Langganan</span>
                 <span class="sidebar-badge text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 ml-auto">VIP</span>
             </a>
+        </section>
+
+        <!-- Admin group (HANDOFF §4). Items stay hidden until the server-verified
+             admin check unhides them; the group label disappears with them via
+             .sidebar-nav-group:not(:has(...)). The data behind these tools is
+             protected on the server, not by this markup. -->
+        <section class="sidebar-nav-group sidebar-admin-group" aria-label="Admin">
+            <p class="sidebar-group-label" aria-hidden="true">Admin</p>
+            <button id="tabAnalisisPattern" type="button" onclick="navigateTo('analisis', 'pattern')" class="sidebar-item hidden" data-sidebar-page="pattern" data-analysis-tab="pattern" data-tab="pattern" data-label="Pattern Radar" title="Pattern Radar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+                <span class="sidebar-label">Pattern Radar</span>
+            </button>
         </section>
     </nav>
     <div class="sidebar-footer">
@@ -1166,7 +1174,7 @@ html.light #googleCompleteProfileModal input {
 <main class="app-main" id="appMain">
 
 <!-- HEADER -->
-<header class="app-header sticky top-0 z-50 backdrop-blur-xl flex-shrink-0">
+<header class="app-header sticky top-0 z-50 backdrop-blur-xl flex-shrink-0" data-ac-ui="v2">
     <div class="header-shell w-full mx-auto px-3 sm:px-5 py-2.5">
         <div class="flex items-center gap-3 lg:gap-4">
             <div class="workspace-header-brand flex items-center gap-3 min-w-0 flex-shrink-0">
@@ -1185,7 +1193,7 @@ html.light #googleCompleteProfileModal input {
                 </div>
             </div>
             <div class="desktop-header-chips items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
-                <span class="header-status-chip" id="globalLiveRadarChip" title="Kesegaran data belum dapat dipastikan." aria-label="Belum pasti. Kesegaran data belum dapat dipastikan." style="color:var(--color-text-secondary)!important;border-color:var(--color-text-secondary)!important;background-color:var(--ac-surface-3)!important"><span class="header-status-dot" id="globalLiveRadarDot" style="background:var(--color-text-secondary);box-shadow:none"></span><span id="globalLiveRadarText">Belum pasti</span></span>
+                <span class="header-status-chip" id="globalLiveRadarChip" title="Kesegaran data belum dapat dipastikan." aria-label="Belum pasti. Kesegaran data belum dapat dipastikan."><span class="header-status-dot" id="globalLiveRadarDot" style="background:var(--ac-control-border, #848D88);box-shadow:none"></span><span id="globalLiveRadarText">Belum pasti</span><span id="globalLiveRadarTime"></span></span>
                 <span class="header-status-chip safe">Safety ON</span>
                 <span class="header-status-chip warn">Manual Confirm</span>
                 <span class="header-status-chip">Watchlist ≠ BUY</span>
@@ -1193,8 +1201,14 @@ html.light #googleCompleteProfileModal input {
             <!-- Global Ticker Search Command Palette Trigger (Fase 7) -->
             <button id="globalSearchBtn" type="button" class="ac-top-search-trigger" onclick="if(window.AutoCuanCommandPalette)window.AutoCuanCommandPalette.open()" aria-label="Cari emiten atau perintah (Ctrl+K)">
                 <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <span class="hidden sm:inline text-xs text-gray-300">Cari emiten...</span>
-                <kbd class="hidden md:inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded bg-dark-800 text-gray-400 border border-dark-600">Ctrl K</kbd>
+                <span class="hidden sm:inline text-xs text-gray-300 ac-top-search-text">Cari ticker, halaman, atau aksi…</span>
+                <kbd id="globalSearchKbd" class="hidden md:inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded bg-dark-800 text-gray-400 border border-dark-600">Ctrl K</kbd>
+            </button>
+            <!-- Sun/moon switch on every app page (HANDOFF §3a). The icon shows
+                 the mode it switches to; applyAppTheme keeps the label honest. -->
+            <button type="button" id="topThemeToggle" class="thm" data-action="toggle-theme" onclick="toggleAppTheme()" aria-label="Ganti ke mode gelap" title="Ganti ke mode gelap" aria-pressed="false">
+                <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg>
+                <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
             </button>
             <div class="header-account ml-auto flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 <span id="wibClock" class="text-[11px] text-gray-500 font-mono tabular-nums hidden sm:inline"></span>
@@ -6894,6 +6908,30 @@ function updateGlobalLiveRadarStatus(metaOrFreshness) {
         var dot = document.getElementById(ids[1]);
         var text = document.getElementById(ids[2]);
         if (!badge || !text) return;
+        // Top bar (redesign v2, HANDOFF §4): plain text in the token colour,
+        // a status dot, and the data timestamp, never the wall clock.
+        if (ids[0] === 'globalLiveRadarChip') {
+            badge.className = ids[3];
+            if (badge.style && typeof badge.style.removeProperty === 'function') {
+                ['color', 'border-color', 'background-color'].forEach(function (prop) { badge.style.removeProperty(prop); });
+            }
+            badge.setAttribute('data-freshness-state', status);
+            text.textContent = label;
+            var stamp = document.getElementById('globalLiveRadarTime');
+            var statesApi = typeof window !== 'undefined' ? window.AutoCuanStates : null;
+            var when = (usableTime && statesApi && typeof statesApi.formatWib === 'function') ? statesApi.formatWib(calcMs) : '';
+            if (stamp) stamp.textContent = when ? ' · ' + when : '';
+            badge.title = tooltip;
+            badge.setAttribute('aria-label', label + (when ? ', data ' + when : '') + '. ' + tooltip);
+            if (dot) {
+                dot.style.background = status === 'live' ? 'var(--ac-brand)' :
+                    (status === 'stale' || status === 'delayed') ? 'var(--ac-warning)' :
+                    status === 'unavailable' ? 'var(--ac-negative)' :
+                    (status === 'eod' || status === 'scanning') ? 'var(--ac-info)' : 'var(--ac-control-border)';
+                dot.style.boxShadow = 'none';
+            }
+            return;
+        }
         badge.className = ids[3];
         if (status === 'live') {
             badge.classList.add('safe');
@@ -9986,11 +10024,29 @@ function isWorkspaceSidebarVisible() {
     var aside = document.getElementById('appSidebar');
     return Boolean(aside && !aside.classList.contains('hidden'));
 }
-function applySidebarCollapse(collapsed) {
+// Shell widths (HANDOFF §4): phone <=760px (compact top bar, full-screen
+// menu, bottom tabs), rail 761-1099px (68px icon rail by default, the toggle
+// opens the full sidebar), wide >=1100px (240px sidebar, collapsible to 68px
+// and remembered).
+var SHELL_PHONE_MAX = 760;
+var SHELL_RAIL_MAX = 1099;
+var shellRailOpen = false;
+function getShellMode() {
+    var w = window.innerWidth;
+    if (w <= SHELL_PHONE_MAX) return 'phone';
+    if (w <= SHELL_RAIL_MAX) return 'rail';
+    return 'wide';
+}
+function readSavedSidebarCollapse() {
+    try { return (localStorage.getItem(SIDEBAR_COLLAPSE_KEY) || '0') === '1'; } catch (_) { return false; }
+}
+// opts.persist === false applies a width-driven state (the rail) without
+// overwriting the wide-screen preference.
+function applySidebarCollapse(collapsed, opts) {
     var aside = document.getElementById('appSidebar');
     var shell = document.getElementById('appShell');
     var toggle = aside && aside.querySelector('.sidebar-collapse-toggle');
-    if (toggle) toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    if (toggle && getShellMode() !== 'phone') toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
     if (aside) {
         aside.classList.toggle('collapsed', Boolean(collapsed));
         aside.classList.toggle('is-collapsed', Boolean(collapsed));
@@ -9999,23 +10055,49 @@ function applySidebarCollapse(collapsed) {
         shell.setAttribute('data-sidebar-state', collapsed ? 'collapsed' : 'expanded');
     }
     if (document.body) document.body.classList.toggle('sidebar-collapsed', Boolean(collapsed));
-    try { localStorage.setItem(SIDEBAR_COLLAPSE_KEY, collapsed ? '1' : '0'); } catch (_) {}
+    if (!opts || opts.persist !== false) {
+        try { localStorage.setItem(SIDEBAR_COLLAPSE_KEY, collapsed ? '1' : '0'); } catch (_) {}
+    }
+}
+function syncShellMode() {
+    var mode = getShellMode();
+    var shell = document.getElementById('appShell');
+    if (shell) shell.setAttribute('data-shell-mode', mode);
+    if (mode !== 'phone') closeMobileSidebar();
+    if (mode !== 'rail') shellRailOpen = false;
+    if (mode === 'wide') applySidebarCollapse(readSavedSidebarCollapse(), { persist: false });
+    else if (mode === 'rail') applySidebarCollapse(!shellRailOpen, { persist: false });
+    else applySidebarCollapse(false, { persist: false });
 }
 var sidebarReturnFocus = null;
 var sidebarMainWasInert = false;
 function toggleSidebarCollapse() {
     var aside = document.getElementById('appSidebar');
     if (!aside) return;
-    if (window.innerWidth < 1024) {
+    var mode = getShellMode();
+    if (mode === 'phone') {
         if (aside.classList.contains('mobile-open')) closeMobileSidebar();
         else openMobileSidebar();
         return;
     }
+    if (mode === 'rail') {
+        shellRailOpen = !shellRailOpen;
+        applySidebarCollapse(!shellRailOpen, { persist: false });
+        return;
+    }
     applySidebarCollapse(!aside.classList.contains('is-collapsed'));
+}
+function setShellMenuControls(open) {
+    var toggle = document.getElementById('sidebarCollapseToggle');
+    if (toggle) {
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        var label = toggle.querySelector('.sidebar-menu-label');
+        if (label) label.textContent = open ? 'Tutup' : 'Menu';
+    }
 }
 function openMobileSidebar() {
     var aside = document.getElementById('appSidebar');
-    if (!aside || aside.classList.contains('hidden') || aside.classList.contains('mobile-open') || window.innerWidth >= 1024) return;
+    if (!aside || aside.classList.contains('hidden') || aside.classList.contains('mobile-open') || getShellMode() !== 'phone') return;
     sidebarReturnFocus = document.activeElement;
     aside.classList.add('mobile-open');
     document.documentElement.classList.add('workspace-menu-open');
@@ -10025,6 +10107,7 @@ function openMobileSidebar() {
     if (main) { sidebarMainWasInert = main.inert; main.inert = true; }
     var trigger = document.getElementById('workspaceSidebarToggle');
     if (trigger) trigger.setAttribute('aria-expanded', 'true');
+    setShellMenuControls(true);
     var focus = aside.querySelector('.sidebar-collapse-toggle');
     if (focus) focus.focus();
 }
@@ -10039,6 +10122,7 @@ function closeMobileSidebar() {
     if (main && wasOpen) main.inert = sidebarMainWasInert;
     var trigger = document.getElementById('workspaceSidebarToggle');
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    setShellMenuControls(false);
     if (wasOpen && sidebarReturnFocus && sidebarReturnFocus.isConnected) sidebarReturnFocus.focus({ preventScroll: true });
     sidebarReturnFocus = null;
 }
@@ -10052,7 +10136,11 @@ document.addEventListener('keydown', function (event) {
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
 });
-window.addEventListener('resize', function () { if (window.innerWidth >= 1024) closeMobileSidebar(); });
+var shellResizeFrame = 0;
+window.addEventListener('resize', function () {
+    if (shellResizeFrame) return;
+    shellResizeFrame = requestAnimationFrame(function () { shellResizeFrame = 0; syncShellMode(); });
+});
 function setWorkspaceSidebarVisible(visible) {
     var aside = document.getElementById('appSidebar');
     if (!aside) return;
@@ -10062,11 +10150,7 @@ function setWorkspaceSidebarVisible(visible) {
         closeMobileSidebar();
         if (document.body) document.body.classList.remove('sidebar-collapsed');
     }
-    if (visible) {
-        var saved = '0';
-        try { saved = localStorage.getItem(SIDEBAR_COLLAPSE_KEY) || '0'; } catch (_) {}
-        applySidebarCollapse(saved === '1');
-    }
+    if (visible) syncShellMode();
 }
 function syncWorkspaceSidebarActive(page) {
     var subTab = window.__ACTIVE_ANALISIS_SUBTAB__ || 'analisis-chart';
@@ -10078,6 +10162,12 @@ function syncWorkspaceSidebarActive(page) {
         else button.removeAttribute('aria-current');
     });
 }
+// ⌘K on Apple keyboards, Ctrl K elsewhere (the command palette accepts both).
+(function () {
+    var kbd = document.getElementById('globalSearchKbd');
+    var mac = /Mac|iPhone|iPad/.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '');
+    if (kbd && mac) kbd.textContent = '⌘K';
+})();
 
 function renderSidebarSessions() {
     var container = document.getElementById('sidebarSessions');
