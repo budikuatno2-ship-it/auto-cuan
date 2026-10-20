@@ -60,6 +60,32 @@ test('B6: daily-job need and retry ratio are the documented values', () => {
   assert.equal(backfill.DAILY_JOB_RETRY_RATIO, 0.10);
 });
 
+test('B6: the reserve floor grows with the OUTSTANDING daily demand (today + H-1 backlog)', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pending-need-'));
+  try {
+    const today = '2026-10-20';
+    const prev = '2026-10-19';
+    const tickers = ['AAA', 'BBB', 'CCC'];
+    // Today: 2 of 3 tickers still missing. Previous day: marker says 871 pending.
+    const dir = path.join(tmp, 'broker-summary', 'AAA');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, today + '.json'), '{}');
+    const markerDir = path.join(tmp, '_daily-update-marker');
+    fs.mkdirSync(markerDir, { recursive: true });
+    fs.writeFileSync(path.join(markerDir, prev + '.json'), JSON.stringify({ pending: 871 }));
+
+    const need = backfill.computePendingDailyNeed(tmp, today, tickers);
+    // today: 2 missing x 4 = 8 ; H-1 backlog: 871 x 4 = 3484
+    assert.equal(need, 8 + 3484);
+    assert.equal(backfill.DAILY_REQUESTS_PER_TICKER, 4);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 test('B6: the reserve floor is the daily-job floor while the EOD work is pending', () => {
   const fs = require('fs');
   const os = require('os');
