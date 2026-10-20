@@ -263,15 +263,48 @@ async function mainUnlocked(options) {
       };
       if (!check.ok) {
         summary.cross_check_failed = true;
-        console.warn(`[CROSS-CHECK-FAILED] ${check.failed}/${check.total} sample diffs > 0.5%. Falling back to Arjum for all tickers today.`);
+        console.warn(`[CROSS-CHECK-FAILED] ${check.failed}/${check.total} sample diffs > 0.5%.`);
       } else {
         console.log(`[CROSS-CHECK-OK] ${check.passed}/${check.total} samples matched <= 0.5%.`);
       }
     } catch (err) {
       summary.cross_check_failed = true;
       summary.cross_check = { error: err && err.message };
-      console.warn(`[CROSS-CHECK-ERROR] ${err && err.message}. Falling back to Arjum for all tickers today.`);
+      console.warn(`[CROSS-CHECK-ERROR] ${err && err.message}.`);
     }
+  }
+
+  // B4 (2026-10-20): a failed cross-check must NOT trigger a mass fallback to
+  // Arjum. On 2026-10-19 the 16:40 run cross-checked 20/20 as "failed" (Arjum's
+  // own EOD candle for today was not published yet), then mass-fell-back to
+  // Arjum for ALL tickers: 943 requests burned, 0 usable bars, exit code 0 and
+  // no alarm. Instead: DEFER to the 23:30 pass, which is what actually
+  // recovers. An explicit override (env CANDLE_ALLOW_MASS_FALLBACK_ON_CROSSCHECK=1
+  // or options.allowMassFallbackOnCrossCheckFail=true) keeps the old behavior
+  // for manual use.
+  const allowMassFallback = options.allowMassFallbackOnCrossCheckFail === true
+    || process.env.CANDLE_ALLOW_MASS_FALLBACK_ON_CROSSCHECK === '1';
+  if (summary.cross_check_failed && !allowMassFallback) {
+    console.warn('[CROSS-CHECK-DEFER] Cross-check gagal; mass fallback ke Arjum DITOLAK untuk menghemat kuota. '
+      + 'Candle hari ini akan dicoba lagi pada pass 23:30 WIB.');
+    // B5 (2026-10-20): IHSG is a 1-request benchmark and must ALWAYS stay fresh,
+    // independent of the per-stock cross-check. Fetch it here (it never uses the
+    // Yahoo path) before bailing out, so a deferred stock pass still leaves the
+    // index bar current.
+    let ihsgOk = summary.ihsg_ok === true;
+    if (universe.includes('IHSG')) {
+      try {
+        const r = await fetcher.fetchDailyCandles('IHSG', { limit: Number(process.env.CANDLE_LIMIT) || 500, force: true });
+        ihsgOk = Boolean(r && r.ok);
+        summary.ihsg_ok = ihsgOk;
+      } catch (e) {
+        console.warn('[IHSG-STANDALONE] gagal:', e && e.message);
+      }
+    }
+    const deferred = Object.assign({}, summary, { deferred: true, reason: 'CROSS_CHECK_FAILED_DEFERRED', ihsg_ok: ihsgOk });
+    console.log(JSON.stringify({ mode: dryRun ? 'DRY_RUN' : 'LIVE', ...deferred }, null, 2));
+    if (!dryRun) process.exitCode = 6;
+    return deferred;
   }
 
   for (const ticker of universe) {
