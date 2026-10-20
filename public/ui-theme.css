@@ -15513,3 +15513,91 @@ html.is-dark .thm .moon { display: none; }
   body #appShell > #appSidebar .sidebar-collapse-toggle svg { transition: none !important; }
   body #appShell > #appSidebar .sidebar-item.active::before { animation: none; }
 }
+
+/* 9c. Motion layer and Si Mata (canvas ac.css "motion layer v1" + "Si Mata
+   mini", HANDOFF §7). Driven by public/ac-motion.js. Only transform and
+   opacity animate; reduced motion turns all of it off. */
+[data-mag] { transition: translate 360ms var(--ease-spring, cubic-bezier(.34,1.45,.64,1)); }
+[data-rip] { position: relative; overflow: hidden; }
+[data-rip]::before {
+  content: "";
+  position: absolute;
+  left: var(--rx, 50%);
+  top: var(--ry, 50%);
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .22;
+  pointer-events: none;
+  animation: ac-rip 620ms var(--ease-emphasized, cubic-bezier(.16,1,.3,1)) forwards;
+  z-index: 0;
+}
+@keyframes ac-rip { from { transform: scale(0); opacity: .28; } to { transform: scale(28); opacity: 0; } }
+/* Number flash: a tinted overlay fades out (canvas animates `color`). */
+[data-ac-flash] { position: relative; }
+[data-ac-flash].ac-flash-up::after,
+[data-ac-flash].ac-flash-dn::after {
+  content: "";
+  position: absolute;
+  inset: -1px -3px;
+  border-radius: 4px;
+  pointer-events: none;
+  animation: ac-flash 900ms var(--ease-standard, ease) forwards;
+}
+[data-ac-flash].ac-flash-up::after { background: var(--ac-positive-soft, rgba(42,122,75,.10)); }
+[data-ac-flash].ac-flash-dn::after { background: var(--ac-negative-soft, rgba(185,71,90,.10)); }
+@keyframes ac-flash { from { opacity: 1; } to { opacity: 0; } }
+
+.mm { position: fixed; right: 20px; bottom: 20px; z-index: 95; display: flex; align-items: flex-end; gap: 10px; flex-direction: row-reverse; pointer-events: none; }
+.mm[hidden] { display: none !important; }
+.mm > * { pointer-events: auto; }
+.mm-eye { width: 62px; height: 62px; padding: 0; border: 0; background: transparent; border-radius: 50%; cursor: pointer; animation: mmIn 700ms var(--ease-spring) 600ms both; filter: drop-shadow(0 10px 18px rgba(14,23,20,.3)); }
+.mm-eye:focus-visible { outline: 2px solid var(--ac-brand); outline-offset: 2px; }
+.mm-eye svg { display: block; width: 100%; height: 100%; }
+.mm-body { transform-origin: 60px 60px; transition: transform 360ms var(--ease-spring); }
+.mm-eye:hover .mm-body { transform: scale(1.08) rotate(-4deg); }
+.mm-lid { transform-origin: 60px 56px; transform: scaleY(0); animation: mmBlink 6.2s infinite 3s; }
+.mm-mouth { opacity: 0; transform-origin: 60px 86px; }
+.mm.talk .mm-smile { opacity: 0; }
+.mm.talk .mm-mouth { opacity: 1; animation: mmTalk 260ms ease-in-out infinite alternate; }
+@keyframes mmTalk { from { transform: scaleY(.35); } to { transform: scaleY(1.1); } }
+.mm-bub { order: 2; }
+.mm.near .mm-lid { animation: none; transform: scaleY(.3); transition: transform 180ms var(--ease-standard); }
+.mm-brow path, .m-big, .m-flat, .m-frown, .m-sweat { opacity: 0; transition: opacity 220ms var(--ease-standard); }
+.mm-brow path { fill: none; stroke: #CFE9DD; stroke-width: 3.2; stroke-linecap: round; }
+.m-big { fill: #34D399; }
+.m-flat, .m-frown { fill: none; stroke: #34D399; stroke-width: 3.5; stroke-linecap: round; }
+.m-sweat { fill: #86ADE3; }
+.mm[data-mood="up2"] .b-up, .mm[data-mood="up2"] .m-big, .mm[data-mood="flat"] .m-flat, .mm[data-mood="down"] .b-wo, .mm[data-mood="down"] .m-frown, .mm[data-mood="down2"] .b-wo, .mm[data-mood="down2"] .m-frown, .mm[data-mood="down2"] .m-sweat { opacity: 1; }
+.mm[data-mood="up2"] .mm-smile, .mm[data-mood="flat"] .mm-smile, .mm[data-mood="down"] .mm-smile, .mm[data-mood="down2"] .mm-smile, .mm.talk .m-big, .mm.talk .m-flat, .mm.talk .m-frown { opacity: 0; }
+.mm-eye.hop { animation: mmHop 820ms var(--ease-spring) 1; }
+@keyframes mmHop { 0% { transform: none; } 28% { transform: translateY(-9px) rotate(-3deg); } 55% { transform: none; } 75% { transform: translateY(-3px); } 100% { transform: none; } }
+.mm-bub { max-width: 240px; background: #0E1714; color: #EAF1EE; font-size: 13px; line-height: 1.45; padding: 10px 12px; border-radius: 12px 12px 4px 12px; box-shadow: 0 14px 30px -12px rgba(14,23,20,.45); opacity: 0; transform: translateY(6px) scale(.96); transform-origin: right bottom; transition: opacity 220ms var(--ease-standard), transform 360ms var(--ease-spring); margin-bottom: 14px; pointer-events: none; }
+.mm-bub.on { opacity: 1; transform: none; pointer-events: auto; }
+.mm-x { position: absolute; right: -4px; top: -8px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--ac-line-hairline); background: var(--ac-surface); color: var(--ac-text-secondary); font-size: 12px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity 180ms; }
+.mm:hover .mm-x, .mm-x:focus-visible { opacity: 1; }
+.mm-x:focus-visible, .mm-mini:focus-visible { outline: 2px solid var(--ac-brand); outline-offset: 2px; }
+.mm-mini { display: none; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--ac-line-hairline); background: var(--ac-surface); font: 600 12px var(--ac-font-sans); color: var(--ac-text-secondary); cursor: pointer; box-shadow: 0 6px 16px -8px rgba(0,0,0,.25); }
+.mm.off .mm-eye, .mm.off .mm-bub, .mm.off .mm-x { display: none; }
+.mm.off .mm-mini { display: inline-flex; align-items: center; }
+@keyframes mmIn { from { opacity: 0; transform: translateY(16px) scale(.6); } to { opacity: 1; transform: none; } }
+@keyframes mmBlink { 0%, 94%, 100% { transform: scaleY(0); } 96% { transform: scaleY(1); } }
+@media (max-width: 760px) { .mm { right: 12px; bottom: 72px; } }
+@media (max-width: 560px) { .mm { right: 12px; bottom: 70px; } .mm-eye { width: 46px; height: 46px; } .mm-bub { max-width: 200px; } }
+/* The blink pauses while the tab is in the background (HANDOFF §2.4). */
+html.ac-tab-hidden .mm-lid, html.ac-tab-hidden .mm.talk .mm-mouth { animation-play-state: paused; }
+/* Not on the auth screens (HANDOFF §2.4): focus stays on the form. */
+body:has(#loginModal:not(.hidden), #registerModal:not(.hidden), #selfResetModal:not(.hidden), #resetPasswordModal:not(.hidden), #googleCompleteProfileModal:not(.hidden), dialog.legacy-gmail-dialog[open]) .mm { display: none !important; }
+html.is-dark .mm-bub { background: #22302B; border: 1px solid #33433D; }
+html.is-dark .mm-body > path:first-child { fill: #2A3C35; stroke: #48C797; stroke-opacity: .7; stroke-width: 2.5; }
+html.is-dark .mm-lid path { fill: #2A3C35; }
+html.is-dark .mm-eye svg [fill="#F6F7F5"] { fill: #EEF3F0; }
+html.is-dark .mm-eye { filter: drop-shadow(0 0 10px rgba(72,199,151,.28)) drop-shadow(0 8px 16px rgba(0,0,0,.55)); }
+@media (prefers-reduced-motion: reduce) {
+  [data-mag] { transition: none; }
+  [data-rip]::before, [data-ac-flash]::after { animation: none; display: none; }
+  .mm-eye, .mm-lid, .mm.talk .mm-mouth, .mm-eye.hop { animation: none !important; }
+  .mm-body, .mm-bub { transition: none; }
+}
