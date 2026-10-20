@@ -730,7 +730,30 @@ async function run(argv) {
     return bandarmologiService.readDiskCache('broker-accumulation', ticker, dateArg) &&
       bandarmologiService.readDiskCache('insiders', ticker, dateArg);
   });
-  const complete = !dryRun && tickers.length > 0 && remaining === 0 && auxiliaryComplete && auxiliaryPending === 0 && errorCount === 0 && !quotaReached && !circuitTripped;
+  // B7 (2026-10-20): a day may only be marked "complete" when the data REALLY
+  // landed on disk. Counting is not enough: a day can be counted as done while
+  // the dated cache file is missing or unreadable (that is exactly how a day
+  // silently looks finished). Verify the dated files before writing the
+  // terminal marker.
+  let persistedCount = 0;
+  let missingPersisted = 0;
+  if (!dryRun) {
+    for (const t of tickers) {
+      const cached = bandarmologiService.readDiskCache('broker-summary', t, dateArg);
+      const normalized = cached && bandarmologiService.normalizeBrokerSummary(cached, dateArg);
+      const cachedDate = cached && brokerSummaryPayloadDate(cached);
+      const ok = normalized && (!cachedDate || cachedDate === dateArg) &&
+        ((normalized.top_buyers || []).length || (normalized.top_sellers || []).length);
+      if (ok) persistedCount++;
+      else if (!noTradeTickers.has(t) && !brokerDataUnavailableTickers.has(t)) missingPersisted++;
+    }
+  }
+  // NOTE: a day whose tickers are ALL terminal NO_TRADE legitimately persists
+  // NO broker-summary file (a no-trade session must never be fabricated into a
+  // cache file). The integrity rule is therefore "no counted-as-done ticker may
+  // be missing from disk", NOT "at least one file must exist".
+  const complete = !dryRun && tickers.length > 0 && remaining === 0 && auxiliaryComplete && auxiliaryPending === 0 &&
+    errorCount === 0 && !quotaReached && !circuitTripped && missingPersisted === 0;
 
   console.log('\n----------------------------------------------------');
   console.log('=== RINGKASAN DAILY BROKER UPDATE ===');
@@ -744,6 +767,7 @@ async function run(argv) {
   console.log(`NO_TRADE (volume nol):         ${noTradeCount}`);
   console.log(`Broker Data Unavailable:       ${brokerDataUnavailableCount}`);
   console.log(`Insider tanpa trade baru:      ${insiderNoNewTradesCount} (stempel no_new_insider_trades)`);
+  console.log(`Tersimpan di disk (verified): ${persistedCount}/${tickers.length}${missingPersisted ? ` (hilang: ${missingPersisted})` : ''}`);
   console.log(`Error / Gagal:                 ${errorCount}`);
   console.log(`Retryable (bounded window):    ${retryableTickers.size}`);
   console.log(`Terminal (tidak di-retry):     ${terminalTickers.size}`);
