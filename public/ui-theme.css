@@ -15033,3 +15033,101 @@ html.light .analisis-subtab.active#tabAnalisisVision {
   color: #ffffff !important;
   font-weight: 700 !important;
 }
+
+/* ---- 9. Redesign v2 foundation -------------------------------------------
+   Shared pieces of the v2 canvas (handoff design/project/ac.css) that every
+   migrated page uses. Values are the canvas values; colours always go
+   through the v2 tokens (fallbacks are the canvas light values for the rare
+   case a state renders outside a v2 scope). */
+
+/* 9a. Data states: empty / loading / error (canvas .stp-box, .stp-load,
+   .spin2, .stp-sk). Rendered in place by public/ac-states.js, not as a
+   fixed overlay. */
+.ac-state {
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 48px 16px;
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+.ac-state svg {
+  width: 40px;
+  height: 40px;
+  stroke: var(--ac-text-muted, #5E6A65);
+  margin-bottom: 6px;
+}
+.ac-state-error svg { stroke: var(--ac-negative, #AD3F52); }
+.ac-state b {
+  font-size: 18px;
+  letter-spacing: -.01em;
+  color: var(--ac-ink, #1D2724);
+}
+.ac-state p {
+  margin: 0 0 10px;
+  color: var(--ac-text-secondary, #535F5A);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.ac-state-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+/* Canvas .btn.p.sm, with the 44px touch floor on coarse pointers. */
+.ac-btn-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--ac-brand, #13785D);
+  background: var(--ac-brand, #13785D);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--motion-hover, 140ms) var(--ease-standard, ease), border-color var(--motion-hover, 140ms);
+}
+.ac-btn-state:hover { background: var(--ac-brand-hover, #0D634C); border-color: var(--ac-brand-hover, #0D634C); }
+.ac-btn-state:focus-visible { outline: 2px solid var(--ac-brand, #13785D); outline-offset: 2px; }
+.ac-btn-state-quiet {
+  background: var(--ac-surface, #FCFCFA);
+  border-color: var(--ac-control-border, #848D88);
+  color: var(--ac-ink, #1D2724);
+}
+.ac-btn-state-quiet:hover { background: var(--ac-surface-hover, #EAEEE8); border-color: var(--ac-control-border-hover, #68746E); }
+html.is-dark .ac-btn-state:not(.ac-btn-state-quiet) { color: #06140E; }
+@media (pointer: coarse) { .ac-btn-state { min-height: 44px; padding: 0 14px; } }
+.ac-state-loading { padding: 24px 0; }
+.ac-state-load {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ac-text-secondary, #535F5A);
+  margin-bottom: 18px;
+}
+.ac-spin {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ac-line-hairline, #DFE4DE);
+  border-top-color: var(--ac-brand, #13785D);
+  border-radius: 50%;
+  animation: ac-rot 700ms linear infinite;
+}
+.ac-state-sk { display: grid; gap: 10px; width: 100%; }
+/* The canvas shimmer animates background-position; the performance budget
+   allows only transform/opacity, so the skeleton breathes with opacity. */
+.ac-state-sk i {
+  display: block;
+  height: 44px;
+  border-radius: 8px;
+  background: var(--ac-surface-hover, #EAEEE8);
+  animation: ac-sk 1.4s ease-in-out infinite alternate;
+}
+.ac-state-sk i:first-child { height: 120px; }
+@keyframes ac-rot { to { transform: rotate(360deg); } }
+@keyframes ac-sk { from { opacity: 1; } to { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) {
+  .ac-spin, .ac-state-sk i { animation: none; }
+}
