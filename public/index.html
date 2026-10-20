@@ -52,16 +52,18 @@
         // data-theme, which the stylesheets already key on; data-theme-pref
         // keeps what the user chose.
         (function () {
-            var pref = 'auto';
-            try { pref = localStorage.getItem('autocuan_theme') || 'auto'; } catch (_) {}
-            if (pref !== 'light' && pref !== 'dark') pref = 'auto';
-            var dark = pref === 'dark' || (pref === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches));
-            var root = document.documentElement;
-            root.classList.toggle('light', !dark);
-            root.classList.toggle('is-dark', dark);
-            root.setAttribute('data-theme', dark ? 'dark' : 'light');
-            root.setAttribute('data-theme-pref', pref);
-            root.style.background = dark ? '#0E1412' : '#EFF1EC';
+            try {
+                var pref = 'auto';
+                try { pref = localStorage.getItem('autocuan_theme') || 'auto'; } catch (_) {}
+                if (pref !== 'light' && pref !== 'dark') pref = 'auto';
+                var dark = pref === 'dark' || (pref === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches));
+                var root = document.documentElement;
+                root.classList.toggle('light', !dark);
+                root.classList.toggle('is-dark', dark);
+                root.setAttribute('data-theme', dark ? 'dark' : 'light');
+                root.setAttribute('data-theme-pref', pref);
+                root.style.background = dark ? '#0E1412' : '#EFF1EC';
+            } catch (_) {}
         })();
     </script>
     <!-- Tailwind is served as a pre-built stylesheet, not as the Play CDN.
