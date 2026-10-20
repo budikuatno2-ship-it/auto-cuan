@@ -19,18 +19,12 @@
     <meta name="twitter:title" content="Auto-Cuan | IDX Stock Radar">
     <meta name="twitter:description" content="Radar saham IDX untuk membantu analisis dan konfirmasi manual.">
     <title>Auto-Cuan | IDX Stock Radar</title>
-    <!-- Premium typography: load Inter (the font-family already referenced below).
-         Non-critical; the system font stack remains a graceful fallback offline. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Loaded non-render-blocking. As a plain stylesheet this handed the whole
-         font-CDN round trip straight to first paint: with a 1200ms font response,
-         measured FCP was ~1420ms blocking vs ~280ms with media="print" + onload.
-         The face is already display=swap, so text was never waiting on the font
-         to become readable — only the paint was. The system stack in the CSS
-         below remains the fallback if the sheet never arrives. -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" media="print" onload="this.media='all';this.onload=null">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"></noscript>
+    <!-- Self-hosted type (HANDOFF §2.3): Plus Jakarta Sans for UI text, Geist Mono
+         for ticker, price and lot. Both are variable woff2, so two preloads cover
+         every weight; font-display:swap keeps text readable before they land. -->
+    <link rel="preload" href="/fonts/plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/geist-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/fonts/ac-fonts.css?v=20261020-v1">
     <script>
         // ===== CANONICAL PRODUCTION DOMAIN REDIRECT =====
         // Browser-page-only redirect: runs before any auth/app-init code below.

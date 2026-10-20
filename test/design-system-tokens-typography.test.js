@@ -9,13 +9,25 @@ const ROOT = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 const theme = fs.readFileSync(path.join(ROOT, 'public', 'ui-theme.css'), 'utf8');
 
-test('PR 3: Monospace font token --ac-font-mono is defined in :root with JetBrains Mono', () => {
-  assert.match(theme, /--ac-font-mono:\s*['"]?JetBrains Mono['"]?/);
-  assert.match(theme, /--ac-font-sans:\s*['"]?Inter['"]?/);
+// Redesign v2 (HANDOFF §2.3): Plus Jakarta Sans for UI text, Geist Mono for
+// ticker/price/lot, self-hosted woff2 with font-display:swap and a preload per
+// family. Runtime Google Fonts is gone.
+test('Redesign v2: font tokens name Plus Jakarta Sans and Geist Mono', () => {
+  assert.match(theme, /--ac-font-mono:\s*['"]?Geist Mono['"]?/);
+  assert.match(theme, /--ac-font-sans:\s*['"]?Plus Jakarta Sans['"]?/);
 });
 
-test('PR 3: Google Fonts in index.html loads both Inter and JetBrains Mono', () => {
-  assert.match(html, /fonts\.googleapis\.com\/css2\?[^"']*family=Inter[^"']*&family=JetBrains\+Mono/);
+test('Redesign v2: index.html self-hosts both faces and no longer calls Google Fonts', () => {
+  assert.doesNotMatch(html, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
+  assert.match(html, /<link rel="preload" href="\/fonts\/plus-jakarta-sans-latin-wght-normal\.woff2" as="font" type="font\/woff2" crossorigin>/);
+  assert.match(html, /<link rel="preload" href="\/fonts\/geist-mono-latin-wght-normal\.woff2" as="font" type="font\/woff2" crossorigin>/);
+  assert.match(html, /href="\/fonts\/ac-fonts\.css/);
+  const faces = fs.readFileSync(path.join(ROOT, 'public', 'fonts', 'ac-fonts.css'), 'utf8');
+  assert.match(faces, /font-family:\s*'Plus Jakarta Sans'[\s\S]*?font-display:\s*swap/);
+  assert.match(faces, /font-family:\s*'Geist Mono'[\s\S]*?font-display:\s*swap/);
+  for (const file of ['plus-jakarta-sans-latin-wght-normal.woff2', 'geist-mono-latin-wght-normal.woff2', 'OFL-plus-jakarta-sans.txt', 'OFL-geist-mono.txt']) {
+    assert.ok(fs.existsSync(path.join(ROOT, 'public', 'fonts', file)), file + ' must ship with the app');
+  }
 });
 
 test('PR 3: Financial typography tabular-nums and mono utilities are present', () => {

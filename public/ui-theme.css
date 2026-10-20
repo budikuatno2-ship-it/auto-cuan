@@ -214,8 +214,9 @@
   --ac-lh-snug: 1.45;
   --ac-lh-normal: 1.55;
 
-  --ac-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --ac-font-mono: 'JetBrains Mono', 'SF Mono', 'Roboto Mono', 'Cascadia Code', ui-monospace, monospace;
+  /* Redesign v2 (HANDOFF §2.3): faces are self-hosted in /fonts/ac-fonts.css. */
+  --ac-font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ac-font-mono: 'Geist Mono', 'SF Mono', 'Roboto Mono', 'Cascadia Code', ui-monospace, monospace;
 
   /* --- Focus: one job per token. See the header note above. */
   --ac-focus-color: #34d399;
@@ -6116,7 +6117,7 @@ input[type="checkbox"] {
 #mmJournalSpreadsheetTable tbody td.font-mono,
 #mmCashflowSpreadsheetTable tfoot td.font-mono,
 #mmJournalSpreadsheetTable tfoot td.font-mono {
-  font-family: var(--ac-font-mono, 'JetBrains Mono', monospace) !important;
+  font-family: var(--ac-font-mono, 'Geist Mono', monospace) !important;
   font-variant-numeric: tabular-nums !important;
 }
 
