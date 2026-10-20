@@ -145,10 +145,15 @@ function brokerSummaryHasTrades(data) {
 //
 // The daily jobs have a hard, non-negotiable quota need for the current
 // trading day (J1 broker summary + F + accumulation + insider, J2 candles,
-// IHSG). The backfill therefore may only use:
-//     remaining quota  -  remaining daily-job need  -  retry buffer
-// instead of a fixed reserve number. The retry buffer is 10% of the daily need
-// (configurable), so a day with many retries still keeps the daily jobs safe.
+// IHSG). The backfill must therefore stop while that need is still covered.
+//
+// IMPORTANT SEMANTICS: `reserveQuota` is a FLOOR on the REMAINING quota — the
+// worker stops as soon as `remaining <= reserveQuota`. So the floor is the
+// amount of quota that must stay untouched, NOT the amount the backfill may
+// spend. Spending capacity is `remaining - reserve`.
+//
+// The floor = remaining daily-job need + a 10% retry buffer, so a day with many
+// retries still keeps the daily jobs safe.
 //
 // Pure function so it is unit-testable without touching the filesystem.
 const DAILY_JOB_BASE_NEED = 4400; // J1 (962+834+834+834) + J2 (962) rounded
@@ -167,13 +172,38 @@ function computeBackfillReserve(options = {}) {
     ? options.retryBuffer
     : Math.ceil(dailyNeed * DAILY_JOB_RETRY_RATIO);
   const mode = options.mode === 'weekend' ? 'weekend' : 'weekday';
-  const floor = mode === 'weekend' ? 0 : 0;
+
+  // The floor: quota that must remain available for the daily jobs.
+  const reserve = Math.max(0, Math.ceil(dailyNeed + retryBuffer));
   if (!Number.isFinite(remaining)) {
     // Unknown remaining quota -> be conservative and keep the old fixed reserve.
-    return { reserve: mode === 'weekend' ? WEEKEND_RESERVE : WEEKDAY_RESERVE, dailyNeed, retryBuffer, remaining: null, mode };
+    return {
+      reserve: Math.max(reserve, mode === 'weekend' ? WEEKEND_RESERVE : WEEKDAY_RESERVE),
+      spendable: 0,
+      dailyNeed, retryBuffer, remaining: null, mode
+    };
   }
-  const reserve = Math.max(floor, Math.ceil(remaining - dailyNeed - retryBuffer));
-  return { reserve, dailyNeed, retryBuffer, remaining, mode };
+  // How much the backfill may still spend before the floor is reached.
+  const spendable = Math.max(0, Math.floor(remaining - reserve));
+  return { reserve, spendable, dailyNeed, retryBuffer, remaining, mode };
+}
+
+// Resolve the reserve FLOOR the backfill must not dip below.
+//
+// While the day's EOD work is still pending, the floor is the daily-job need
+// (J1 + J2 + IHSG) plus a 10% retry buffer, so the backfill can never eat the
+// quota the daily jobs still need. Once today's EOD work is done (.done
+// sentinel) that need is already spent, so the historical fixed reserve applies
+// again and the leftover quota becomes usable by the backfill.
+function resolveBackfillReserveFloor(options = {}) {
+  const baseDir = options.baseDir;
+  const explicitMode = options.explicitModeArg || null;
+  const mode = options.mode || 'weekday';
+  const todayKey = wibDateKey();
+  if (eodDoneExists(baseDir, todayKey)) {
+    return resolveDynamicReserveQuota(baseDir, explicitMode);
+  }
+  return computeBackfillReserve({ remaining: options.remaining, mode }).reserve;
 }
 
 function resolveDynamicReserveQuota(baseDir, explicitMode = null, now = new Date()) {
@@ -496,11 +526,18 @@ async function runUnlocked(argv) {
   }
 
   const explicitModeArg = modeIdx >= 0 ? mode : null;
-  // B6 (2026-10-20): reserve = remaining quota - remaining daily-job need - retry
-  // buffer, so the backfill can never eat the quota the daily jobs still need.
+  // B6 (2026-10-20): the reserve is a FLOOR on the remaining quota. It is the
+  // amount of quota that must stay available for the DAILY jobs (J1 + J2 +
+  // IHSG) plus a retry buffer — so the backfill can never eat the quota the
+  // daily jobs still need. Once today's EOD work is done (.done sentinel) the
+  // daily need is already spent, so the old, smaller reserve applies again.
   const remainingNow = quotaTracker.getRemainingToday(arjumClient.getConfiguredDailyQuota());
-  const budget = computeBackfillReserve({ remaining: remainingNow, mode });
-  let reserveQuota = budget.reserve;
+  let reserveQuota = resolveBackfillReserveFloor({
+    baseDir,
+    explicitModeArg,
+    remaining: remainingNow,
+    mode
+  });
   let candlesDir = null;
   for (const a of args) {
     if (a.startsWith('--candles-dir=')) candlesDir = a.slice(14);
@@ -709,8 +746,15 @@ async function runUnlocked(argv) {
           continue;
         }
 
-        // Re-evaluate dynamic reserve quota before checking limits (handles 00:00 WIB rollover)
-        reserveQuota = resolveDynamicReserveQuota(baseDir, explicitModeArg);
+        // Re-evaluate the reserve floor before checking limits (handles the 00:00
+        // WIB rollover, when the remaining quota resets and the daily jobs are
+        // no longer pending).
+        reserveQuota = resolveBackfillReserveFloor({
+          baseDir,
+          explicitModeArg,
+          remaining: quotaTracker.getRemainingToday(arjumClient.getConfiguredDailyQuota()),
+          mode
+        });
 
         // Check Candle Volume & All File for Zero-Trade Session Optimization
         // Syarat lewat: volume candle 0 DAN file all kosong / tidak ada transaksi
@@ -1057,6 +1101,7 @@ module.exports = {
   getTickerCandleMap,
   brokerSummaryHasTrades,
   resolveDynamicReserveQuota,
+  resolveBackfillReserveFloor,
   computeBackfillReserve,
   DAILY_JOB_BASE_NEED,
   DAILY_JOB_RETRY_RATIO,
