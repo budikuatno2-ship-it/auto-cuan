@@ -184,7 +184,21 @@ function latestCachedDate(ticker) {
   return latest;
 }
 
+// B3 (2026-10-20): the standalone J2 cron run must take the shared Arjum lock so
+// it never runs in parallel with J1 or the backfill worker. When J1 itself
+// invokes this in-process (already holding the lock) the lock is reentrant and
+// runs directly.
 async function main(options) {
+  const arjumSharedLock = require('../lib/arjum-shared-lock');
+  const outcome = await arjumSharedLock.withArjumLock({ job: 'J2-candles', waitMs: 0 }, () => mainUnlocked(options));
+  if (outcome && outcome.skipped) {
+    console.warn('[CANDLE-SKIP] SKIPPED_ARJUM_BUSY: job Arjum lain sedang berjalan; J2 dilewati untuk firing ini.');
+    return { skipped: true, reason: 'SKIPPED_ARJUM_BUSY', universe: 0, target_date: (options && options.targetDate) || todayWib() };
+  }
+  return outcome;
+}
+
+async function mainUnlocked(options) {
   options = options || {};
   loadEnvFile();
   const argv = options.argv || process.argv;

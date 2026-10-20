@@ -396,7 +396,20 @@ function categorizeTickersByLiquidity(baseDir, candlesDir, tickers) {
   };
 }
 
+// B3 (2026-10-20): the backfill worker must yield to the daily jobs. It takes
+// the shared Arjum lock (non-blocking): if J1 or J2 is running, the backfill is
+// SKIPPED for this firing instead of hammering stock.arjum.com in parallel.
 async function run(argv) {
+  const arjumSharedLock = require('../lib/arjum-shared-lock');
+  const outcome = await arjumSharedLock.withArjumLock({ job: 'backfill-broksum', waitMs: 0 }, () => runUnlocked(argv));
+  if (outcome && outcome.skipped) {
+    console.log('[BACKFILL-LOCK] SKIPPED_ARJUM_BUSY: job Arjum harian sedang berjalan; backfill dilewati untuk firing ini.');
+    return { skipped: true, reason: 'SKIPPED_ARJUM_BUSY', requestsSent: 0 };
+  }
+  return outcome;
+}
+
+async function runUnlocked(argv) {
   const args = argv || process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
   const onlyForeign = args.includes('--only-foreign') || process.env.ONLY_FOREIGN === 'true';
