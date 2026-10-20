@@ -51,6 +51,7 @@ const bandarmologiService = require('../lib/bandarmologi-service');
 const idxTradingCalendar = require('../lib/idx-trading-calendar');
 const eodSessionState = require('../lib/eod-session-state');
 const brokerAccumulationLocal = require('../lib/broker-accumulation-local');
+const arjumFailureLog = require('../lib/arjum-failure-log');
 
 // Same .env loading convention as tools/backfill-arjum-data.js /
 // tools/run-daily-afternoon-recap.js.
@@ -416,6 +417,43 @@ async function run(argv) {
   const retryableTickers = new Set();
   const terminalTickers = new Set();
 
+  // B1/B2 (2026-10-20): per-run Arjum failure accounting so an all-failed run is
+  // never again a bare "error 921" with no kind on record. `earlyOutcomes` feeds
+  // the circuit breaker (first-20-all-failed / >50%-of-first-50) so a provider
+  // outage stops the job instead of burning the whole daily quota.
+  const failureSummary = arjumFailureLog.createFailureSummary({ maxSamplesPerKind: 5 });
+  const earlyOutcomes = [];
+  let circuitTripped = false;
+  let circuitReason = '';
+  const CIRCUIT_MIN_FIRST = 20;
+  const CIRCUIT_WINDOW = 50;
+
+  function noteNetworkOutcome(res, ticker) {
+    let kind = null;
+    if (res && res.ok) {
+      earlyOutcomes.push({ kind: null });
+    } else {
+      const classified = failureSummary.recordFailure(res, { ticker });
+      kind = classified.kind;
+      earlyOutcomes.push({ kind });
+    }
+    // Evaluate the breaker after EVERY attempt (success or failure), not only
+    // after failures: rule 2 is a ratio over the first 50 attempts, so it can
+    // only be reached on a call that may itself have succeeded.
+    if (!circuitTripped && earlyOutcomes.length <= CIRCUIT_WINDOW) {
+      const verdict = arjumFailureLog.shouldTripEarly({
+        outcomes: earlyOutcomes,
+        minFirst: CIRCUIT_MIN_FIRST,
+        ratioWindow: CIRCUIT_WINDOW,
+        failureRatio: 0.5
+      });
+      if (verdict.trip) {
+        circuitTripped = true;
+        circuitReason = verdict.reason;
+      }
+    }
+  }
+
   // Terminal sets persisted by an earlier run of the SAME date are honored on
   // every later firing (and reopened only by --fresh or a universe change),
   // so terminal rows are never re-requested (W2-06).
@@ -445,6 +483,7 @@ async function run(argv) {
 
   for (let i = 0; i < tickers.length; i++) {
     if (quotaReached) break;
+    if (circuitTripped) break;
     const ticker = tickers[i];
     let shouldRefreshAuxiliary = false;
 
@@ -492,6 +531,7 @@ async function run(argv) {
         noFallback: true
       });
       const isAllValid = res.ok && res.data && !res.from_cache && !res.fallback && res.data.flow === 'all';
+      noteNetworkOutcome(res, ticker);
       if (isAllValid && (!brokerSummaryPayloadDate(res.data) || brokerSummaryPayloadDate(res.data) === dateArg)) {
         const norm = bandarmologiService.normalizeBrokerSummary(res.data, dateArg, ticker, { skipLivePrice: historicalTarget });
         const hasAnyRows = (norm.top_buyers && norm.top_buyers.length > 0) || (norm.top_sellers && norm.top_sellers.length > 0);
@@ -561,6 +601,10 @@ async function run(argv) {
         if (checkApiQuota(res)) break;
         errorCount++;
         retryableTickers.add(ticker);
+      }
+      if (circuitTripped) {
+        console.log(`\n[CIRCUIT BREAKER] Menghentikan run: ${circuitReason}. Sisa ticker tidak dipanggil untuk menyelamatkan kuota harian.`);
+        break;
       }
       await sleep(delayMs);
     }
@@ -686,7 +730,7 @@ async function run(argv) {
     return bandarmologiService.readDiskCache('broker-accumulation', ticker, dateArg) &&
       bandarmologiService.readDiskCache('insiders', ticker, dateArg);
   });
-  const complete = !dryRun && tickers.length > 0 && remaining === 0 && auxiliaryComplete && auxiliaryPending === 0 && errorCount === 0 && !quotaReached;
+  const complete = !dryRun && tickers.length > 0 && remaining === 0 && auxiliaryComplete && auxiliaryPending === 0 && errorCount === 0 && !quotaReached && !circuitTripped;
 
   console.log('\n----------------------------------------------------');
   console.log('=== RINGKASAN DAILY BROKER UPDATE ===');
@@ -704,6 +748,12 @@ async function run(argv) {
   console.log(`Retryable (bounded window):    ${retryableTickers.size}`);
   console.log(`Terminal (tidak di-retry):     ${terminalTickers.size}`);
   console.log(`Kuota Habis:                   ${quotaReached ? 'YA' : 'TIDAK'}`);
+  if (circuitTripped) {
+    console.log(`Pemutus Sirkuit:               AKTIF (${circuitReason})`);
+  }
+  // B1: always print the failure breakdown by kind, so a future incident has
+  // the failure TYPE on record (not just an aggregate count).
+  console.log(failureSummary.formatSummary());
 
   if (dryRun) {
     console.log('Status: DRY-RUN, tidak ada perubahan disimpan.');
@@ -776,6 +826,16 @@ async function run(argv) {
     ...markerQuality
   });
 
+  if (circuitTripped) {
+    // B2: a systemic provider outage. Do NOT quietly continue; alert and fail
+    // loudly so an operator/alarm sees it (the 2026-10-19 run failed 921/921
+    // and still reported success-like output).
+    console.log(`Status: GAGAL (PEMUTUS SIRKUIT) — ${circuitReason}; ${errorCount} request gagal dari ${totalRequested}. Penyebab: ${JSON.stringify(failureSummary.countsByKind())}.`);
+    await notifyCircuitBreaker(dateArg, failureSummary, circuitReason, errorCount);
+    process.exitCode = 5;
+    return { date: dateArg, circuitTripped: true, circuitReason, errorCount, requested: totalRequested, failures: failureSummary.toJSON() };
+  }
+
   if (isFinal) {
     console.log(`Status: GAGAL — jendela EOD (18:00-23:30 WIB) berakhir dengan ${remaining} ticker belum punya broker summary ${dateArg}.`);
     process.exitCode = 4;
@@ -786,6 +846,27 @@ async function run(argv) {
     console.log(`Status: BELUM LENGKAP — ${remaining} ticker (kemungkinan besar belum dipublish Arjum) akan dicoba lagi di run 30 menit berikutnya.`);
     process.exitCode = 3;
   }
+}
+
+/**
+ * B2 alerting: announce a systemic Arjum outage to the admin console (stderr,
+ * which the runner captures) and Telegram admin. Never throws.
+ */
+async function notifyCircuitBreaker(dateArg, failureSummary, reason, errorCount) {
+  const counts = failureSummary.countsByKind();
+  const line = `[ALERT] Arjum PEMUTUS SIRKUIT ${dateArg}: ${reason}. gagal=${errorCount} jenis=${JSON.stringify(counts)}`;
+  try { console.error(line); } catch (_) {}
+  try {
+    const notifier = require('../lib/telegram-notifier');
+    if (typeof notifier.sendTelegramMessage === 'function') {
+      await notifier.sendTelegramMessage(
+        `🚨 Auto-Cuan: job broker harian ${dateArg} DIHENTIKAN oleh pemutus sirkuit.\n` +
+        `Alasan: ${reason}\nRequest gagal: ${errorCount}\nJenis: ${JSON.stringify(counts)}\n` +
+        `Sisa ticker tidak dipanggil untuk menyelamatkan kuota. Cek penyedia data (Arjum).`,
+        { skip_market_guard: true, alert_key: 'arjum_circuit_breaker_' + dateArg, cooldownMs: 30 * 60 * 1000 }
+      );
+    }
+  } catch (_) {}
 }
 
 /**
