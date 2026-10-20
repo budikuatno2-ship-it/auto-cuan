@@ -141,6 +141,41 @@ function brokerSummaryHasTrades(data) {
   return false;
 }
 
+// B6 (2026-10-20): the backfill must yield to the DAILY jobs.
+//
+// The daily jobs have a hard, non-negotiable quota need for the current
+// trading day (J1 broker summary + F + accumulation + insider, J2 candles,
+// IHSG). The backfill therefore may only use:
+//     remaining quota  -  remaining daily-job need  -  retry buffer
+// instead of a fixed reserve number. The retry buffer is 10% of the daily need
+// (configurable), so a day with many retries still keeps the daily jobs safe.
+//
+// Pure function so it is unit-testable without touching the filesystem.
+const DAILY_JOB_BASE_NEED = 4400; // J1 (962+834+834+834) + J2 (962) rounded
+const DAILY_JOB_RETRY_RATIO = 0.10;
+
+function computeBackfillReserve(options = {}) {
+  // NOTE: Number(null) === 0 and Number(undefined) === NaN, so an explicitly
+  // unknown remaining must be handled BEFORE the numeric coercion.
+  const remaining = (options.remaining === null || options.remaining === undefined)
+    ? null
+    : Number(options.remaining);
+  const dailyNeed = Number.isFinite(options.dailyNeed) && options.dailyNeed > 0
+    ? options.dailyNeed
+    : DAILY_JOB_BASE_NEED;
+  const retryBuffer = Number.isFinite(options.retryBuffer)
+    ? options.retryBuffer
+    : Math.ceil(dailyNeed * DAILY_JOB_RETRY_RATIO);
+  const mode = options.mode === 'weekend' ? 'weekend' : 'weekday';
+  const floor = mode === 'weekend' ? 0 : 0;
+  if (!Number.isFinite(remaining)) {
+    // Unknown remaining quota -> be conservative and keep the old fixed reserve.
+    return { reserve: mode === 'weekend' ? WEEKEND_RESERVE : WEEKDAY_RESERVE, dailyNeed, retryBuffer, remaining: null, mode };
+  }
+  const reserve = Math.max(floor, Math.ceil(remaining - dailyNeed - retryBuffer));
+  return { reserve, dailyNeed, retryBuffer, remaining, mode };
+}
+
 function resolveDynamicReserveQuota(baseDir, explicitMode = null, now = new Date()) {
   const todayKey = wibDateKey(now);
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -396,7 +431,20 @@ function categorizeTickersByLiquidity(baseDir, candlesDir, tickers) {
   };
 }
 
+// B3 (2026-10-20): the backfill worker must yield to the daily jobs. It takes
+// the shared Arjum lock (non-blocking): if J1 or J2 is running, the backfill is
+// SKIPPED for this firing instead of hammering stock.arjum.com in parallel.
 async function run(argv) {
+  const arjumSharedLock = require('../lib/arjum-shared-lock');
+  const outcome = await arjumSharedLock.withArjumLock({ job: 'backfill-broksum', waitMs: 0 }, () => runUnlocked(argv));
+  if (outcome && outcome.skipped) {
+    console.log('[BACKFILL-LOCK] SKIPPED_ARJUM_BUSY: job Arjum harian sedang berjalan; backfill dilewati untuk firing ini.');
+    return { skipped: true, reason: 'SKIPPED_ARJUM_BUSY', requestsSent: 0 };
+  }
+  return outcome;
+}
+
+async function runUnlocked(argv) {
   const args = argv || process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
   const onlyForeign = args.includes('--only-foreign') || process.env.ONLY_FOREIGN === 'true';
@@ -448,7 +496,11 @@ async function run(argv) {
   }
 
   const explicitModeArg = modeIdx >= 0 ? mode : null;
-  let reserveQuota = resolveDynamicReserveQuota(baseDir, explicitModeArg);
+  // B6 (2026-10-20): reserve = remaining quota - remaining daily-job need - retry
+  // buffer, so the backfill can never eat the quota the daily jobs still need.
+  const remainingNow = quotaTracker.getRemainingToday(arjumClient.getConfiguredDailyQuota());
+  const budget = computeBackfillReserve({ remaining: remainingNow, mode });
+  let reserveQuota = budget.reserve;
   let candlesDir = null;
   for (const a of args) {
     if (a.startsWith('--candles-dir=')) candlesDir = a.slice(14);
@@ -817,10 +869,13 @@ async function run(argv) {
               needsAll = false;
               continue; // next date; the task stays queued for a later run
             } else {
-              console.error(`[BACKFILL-STOP] Respon tidak valid untuk ALL ${ticker} ${date}: status=${resAll.status}, ok=${resAll.ok}, fallback=${resAll.fallback}, flow=${resAll.data && resAll.data.flow}, error=${resAll.error}`);
-              haltReason = 'provider_error';
-              quotaHalted = true;
-              break;
+              // B6 (2026-10-20): an invalid/garbled provider response for ONE task
+              // must not kill the whole backfill. Skip the task (it stays queued
+              // for a later run) and CONTINUE with the next task.
+              console.warn(`[BACKFILL-SKIP] Respon tidak valid untuk ALL ${ticker} ${date}: status=${resAll.status}, ok=${resAll.ok}, fallback=${resAll.fallback}, flow=${resAll.data && resAll.data.flow}, error=${resAll.error}`);
+              providerSkipped.push({ ticker, date, flow: 'all', status: resAll.status, error: resAll.error });
+              needsAll = false;
+              continue;
             }
 
             // Quota remaining check
@@ -908,10 +963,11 @@ async function run(argv) {
               needsF = false;
               continue; // next date; the task stays queued for a later run
             } else {
-              console.error(`[BACKFILL-STOP] Respon tidak valid untuk FOREIGN ${ticker} ${date}: status=${resF.status}, ok=${resF.ok}, fallback=${resF.fallback}, flow=${resF.data && resF.data.flow}, error=${resF.error}`);
-              haltReason = 'provider_error';
-              quotaHalted = true;
-              break;
+              // B6 (2026-10-20): skip the task and continue (see ALL branch).
+              console.warn(`[BACKFILL-SKIP] Respon tidak valid untuk FOREIGN ${ticker} ${date}: status=${resF.status}, ok=${resF.ok}, fallback=${resF.fallback}, flow=${resF.data && resF.data.flow}, error=${resF.error}`);
+              providerSkipped.push({ ticker, date, flow: 'F', status: resF.status, error: resF.error });
+              needsF = false;
+              continue;
             }
 
             // Quota remaining check
@@ -1001,6 +1057,9 @@ module.exports = {
   getTickerCandleMap,
   brokerSummaryHasTrades,
   resolveDynamicReserveQuota,
+  computeBackfillReserve,
+  DAILY_JOB_BASE_NEED,
+  DAILY_JOB_RETRY_RATIO,
   isProviderTransient,
   PROVIDER_RETRY_DELAYS_MS,
   MAX_CONSECUTIVE_5XX

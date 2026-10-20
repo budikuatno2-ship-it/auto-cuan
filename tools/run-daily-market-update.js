@@ -5,6 +5,7 @@ const candles=require('./fetch-daily-candles');
 const broksumValidator=require('../lib/broksum-validator');
 const calendar=require('../lib/idx-trading-calendar');
 const historySync=require('../lib/daily-history-sqlite-sync');
+const arjumSharedLock=require('../lib/arjum-shared-lock');
 
 const RUNNER_DIR = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -243,6 +244,11 @@ async function run(options={}){
       return p;
     }catch(_){return null;}
   }
+  // B3 (2026-10-20): hold the shared Arjum lock for the whole EOD Arjum phase
+  // (broker summary + candles + history sync). J2 and the backfill worker use
+  // the same lock file, so they wait/skip instead of running in parallel. The
+  // nested broker/candle calls run in-process and are reentrant (no re-lock).
+  const lockOutcome = await arjumSharedLock.withArjumLock({ job: 'J1', waitMs: 0 }, async () => {
   for(const date of dates){
     if(!dryRun)writeState(date,{date,complete:false,updated_at:new Date().toISOString()});
     if(dryRun){console.log('PENDING_MARKET_DATE='+date);continue;}
@@ -304,6 +310,11 @@ async function run(options={}){
         completed_at: new Date().toISOString()
       });
     }
+  }
+  return { ok: true };
+  });
+  if(lockOutcome && lockOutcome.skipped){
+    console.log('[ARJUM-LOCK] SKIPPED_ARJUM_BUSY: J1 tidak berjalan; job Arjum lain sedang berjalan. Akan dicoba di firing berikutnya.');
   }
   process.exitCode=undefined;
   if(!dryRun&&pendingDates(options.now).some(date=>{
