@@ -33,6 +33,14 @@ CRON_TZ=Asia/Jakarta
 40 16 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-candles.log 2>&1
 30 23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-candles.log 2>&1
 
+# ── IHSG MANDIRI (B5, 2026-10-20) — 1 request/hari, bebas fallback ────────
+# Bar IHSG adalah anchor market-regime/breadth dan TIDAK boleh bergantung pada
+# pass 962 saham (yang bisa bail-out saat cross-check gagal). Job ini terpisah:
+# 1 request Arjum, idempoten (bar yang sudah ada tidak diambil lagi), dan
+# MEMBERI PERINGATAN kalau bar hari bursa belum ada pada 17:30 WIB.
+45 17 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-ihsg-candle.sh >> /home/ubuntu/auto-cuan-runner/logs/ihsg-candle.log 2>&1
+30 23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-ihsg-candle.sh >> /home/ubuntu/auto-cuan-runner/logs/ihsg-candle.log 2>&1
+
 # ── EOD MARKET DATA / BROKSUM INGESTION (16:30-17:30 WIB) ─────────────────
 # Window optimal: bursa tutup 16:00, KSEI merilis snapshot broker ~16:30-17:30.
 # Tiap 15 menit di dalam window supaya tanggal yang belum lengkap bisa lanjut;
