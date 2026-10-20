@@ -112,6 +112,17 @@ data/candle-quota.json
 
 # Local test-runner output artifacts
 test*-out.txt
+
+# Audit helper scripts for the Arjum pipeline audit (contain a local SSH key path
+# and must never be committed). The audit REPORT itself is committed.
+backtest/arjum-audit/roo_ssh.js
+backtest/arjum-audit/rcmd_*.sh
+backtest/arjum-audit/dbg_marker.js
+backtest/arjum-audit/grep_repo.js
+backtest/arjum-audit/grep_bridge.js
+backtest/arjum-audit/read_slice.js
+backtest/arjum-audit/ci_base_check.js
+backtest/arjum-audit/add_curated_tests.js
 testout.txt
 .aider*
 data/bot-registration-tokens-fallback.json
