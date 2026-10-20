@@ -81,6 +81,7 @@ Status: HALTED_BY_PROVIDER_ERROR   (Requests Sent: 1670)
 |---|---|---|---|
 | **#902** | B1–B7 (satu commit per masalah) | `011b116f` | 20 Okt 12:20 WIB |
 | **#903** | perbaikan semantik reserve B6 (lantai kuota = permintaan harian yang masih tertunda) | `acbc401c` | 20 Okt 13:48 WIB |
+| **#904** | laporan audit ini + `.gitignore` skrip audit lokal | `cb36ab95` | 20 Okt 14:03 WIB |
 
 **Tidak ada merge ke `main`.** Keduanya ke `feat/daytrade-screener-v1`.
 
