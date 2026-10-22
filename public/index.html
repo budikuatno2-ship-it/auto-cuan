@@ -124,7 +124,7 @@
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=20260929-v1">
     <link rel="stylesheet" href="/spreadsheet-grade.css?v=20260926-sg1">
-    <link rel="stylesheet" href="/money-sheet.css?v=20260929-v2">
+    <link rel="stylesheet" href="/money-sheet.css?v=20261022-v3">
     <link rel="stylesheet" href="/landing-experience.css?v=20261003-v4">
 <link rel="stylesheet" href="/number-flow.css?v=20260929-v1">
 <link rel="stylesheet" href="/viewport.css?v=20260929-v1">
@@ -1129,6 +1129,10 @@ html.light #googleCompleteProfileModal input {
             <button type="button" onclick="navigateTo('trackrecord')" class="sidebar-item hidden" data-sidebar-page="trackrecord" data-label="Track Record" data-premium-nav="true" title="Track Record">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>
                 <span class="sidebar-label">Track Record</span>
+            </button>
+            <button type="button" id="nav-money-management" onclick="navigateTo('money-management')" class="sidebar-item hidden" data-sidebar-page="money-management" data-label="Kelola Keuangan" data-premium-nav="true" title="Kelola Keuangan">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 7l2-3h12M16 14h2"/></svg>
+                <span class="sidebar-label">Kelola Keuangan</span>
             </button>
             <a href="#subscription" id="nav-subscription" class="sidebar-item nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition" onclick="openSubscriptionModal();return false;" data-sidebar-page="subscription" data-label="Subscription" title="Subscription">
                 <span class="nav-icon flex items-center justify-center">
@@ -2532,6 +2536,62 @@ html.light #googleCompleteProfileModal input {
     </div>
 </section>
 
+<!-- ===== PAGE: KELOLA KEUANGAN (WORKSHEET) =====
+     Restored on the owner's decision of 2026-10-20 (reverses FINAL-BUG-004).
+     Markup and ids are the pre-decommission worksheet, so the existing
+     money-sheet runtime and /api/money-management sheet actions are reused
+     unchanged; the look follows the canvas KelolaKeuangan.dc.html. -->
+<section id="page-money-management" class="page-content money-sheet hidden" data-premium-page="true" data-ac-ui="v2" aria-labelledby="moneySheetTitle">
+  <div class="ms-page-heading">
+    <div><p class="ms-eyebrow">Keuangan pribadi</p><h1 id="moneySheetTitle">Kelola Keuangan</h1><p class="ms-description">Anggaran bulanan yang bisa Anda atur. Portofolio terhubung, tanpa pencatatan ganda.</p></div>
+    <label class="ms-month">Bulan <input id="mmSheetMonth" type="month" min="1900-01" max="2199-12" aria-label="Bulan anggaran"></label>
+  </div>
+  <div class="ms-overview" aria-label="Ringkasan seluruh anggaran">
+    <div class="ms-metric"><span>Pemasukan</span><strong id="mmTotalIncomeDisplay"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></strong><small>Seluruh sumber penghasilan</small></div>
+    <div class="ms-metric"><span>Pengeluaran</span><strong id="mmTotalLivingExpenseDisplay"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></strong><small>Kebutuhan dan pengeluaran pilihan</small></div>
+    <div class="ms-metric"><span>Tabungan &amp; transfer</span><strong id="mmSheetAllocation"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></strong><small>Alokasi bulan ini, bukan nilai aset</small></div>
+    <div class="ms-metric ms-metric-balance"><span>Sisa anggaran</span><strong id="mmRemainingBudgetDisplay"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></strong><small id="mmBudgetSafetyStatus">Menunggu data anggaran</small></div>
+  </div>
+  <section class="ms-portfolio" aria-label="Ringkasan Portofolio terhubung">
+    <div class="ms-portfolio-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg><div><strong>Portofolio terhubung</strong><span id="mmPortfolioStatus" role="status">Belum dimuat</span></div></div>
+    <div class="ms-linked-metric"><span>Eksposur rencana</span><strong id="mmPortfolioExposure"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></strong></div>
+    <div class="ms-linked-metric"><span>P/L dari harga tersimpan</span><strong id="mmPortfolioPnl"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></strong></div>
+    <button type="button" id="mmOpenPortfolio" class="ms-button ms-button-quiet">Buka Portofolio</button>
+    <p class="ms-portfolio-note">Ringkasan mengikuti sumber data Portofolio. Nilai rencana dan P/L bukan arus kas bulan ini; tidak ditambahkan atau dikurangkan otomatis dari anggaran.</p>
+  </section>
+  <section class="ms-workbook" aria-label="Lembar kerja anggaran">
+    <div class="ms-workbook-heading"><div><h2>Anggaran bulanan</h2><p>Klik sel untuk memilih, ubah nominal langsung di tabel, total diperbarui otomatis.</p></div><div class="ms-heading-actions"><button type="button" id="mmExpandSheet" class="ms-button" aria-pressed="false">Fokus lembar</button><span id="mmSheetSaveState" class="ms-save-state" role="status" aria-live="polite">Belum dimuat</span></div></div>
+    <div class="ms-toolbar" role="toolbar" aria-label="Alat lembar kerja">
+      <button type="button" class="ms-button" id="mmAddRow" disabled><span aria-hidden="true">+</span> Tambah baris</button>
+      <div class="ms-history"><button type="button" class="ms-icon-button" id="mmUndo" title="Urungkan (Ctrl+Z)" aria-label="Urungkan perubahan" disabled>&#8630;</button><button type="button" class="ms-icon-button" id="mmRedo" title="Ulangi (Ctrl+Shift+Z)" aria-label="Ulangi perubahan" disabled>&#8631;</button></div>
+      <label class="ms-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="mmSheetSearch" type="search" placeholder="Cari pos anggaran" aria-label="Cari pos anggaran"></label>
+      <label class="ms-sort"><span class="sr-only">Urutkan baris</span><select id="mmSheetSort"><option value="original">Urutan asli</option><option value="amount">Nominal terbesar</option><option value="label">Nama pos A&ndash;Z</option></select></label>
+      <button type="button" class="ms-button ms-button-quiet" id="mmExport" disabled>Ekspor CSV</button>
+      <button type="button" class="ms-button ms-button-quiet" id="mmReload">Muat ulang</button>
+      <button type="button" class="ms-button ms-button-primary" id="mmBtnSaveCashflow" disabled>Simpan</button>
+    </div>
+    <div class="ms-edit-toolbar" role="toolbar" aria-label="Edit rentang">
+      <button type="button" id="mmCopyCells" class="ms-button ms-button-quiet" disabled>Salin</button>
+      <button type="button" id="mmClearCells" class="ms-button ms-button-quiet" disabled>Kosongkan sel</button>
+      <button type="button" id="mmFillDown" class="ms-button ms-button-quiet" title="Isi ke bawah (Ctrl+D)" disabled>Isi ke bawah</button>
+      <button type="button" id="mmInsertRow" class="ms-button ms-button-quiet" disabled>Sisipkan baris</button>
+      <button type="button" id="mmDeleteRows" class="ms-button ms-button-quiet" disabled>Hapus baris</button>
+    </div>
+    <div class="ms-formula-bar"><input class="ms-cell-address" id="mmCellAddress" value="A1" aria-label="Alamat atau rentang sel" title="Ketik D1 atau D1:D4, lalu Enter" autocomplete="off" spellcheck="false"><span class="ms-fx" aria-hidden="true">fx</span><input id="mmFormulaInput" type="text" aria-label="Nilai atau rumus sel aktif" placeholder="Pilih sel. Nominal mendukung =SUM(D1:D3) atau =ROUND(D1*0.1)" autocomplete="off" spellcheck="false" maxlength="500" disabled></div>
+    <details class="ms-help"><summary>Pintasan &amp; rumus</summary><p id="mmSheetHint">Shift + klik atau Shift + panah untuk memilih rentang. Ctrl/Cmd + C untuk salin, + V untuk tempel, + D untuk isi ke bawah, + S untuk simpan. F2 membuka editor sel. Klik judul kolom untuk memilih; seret batasnya untuk mengatur lebar.</p><p>Kolom D mendukung +, -, *, /, SUM, AVERAGE, MIN, MAX, COUNT, dan ROUND. Gunakan angka tanpa pemisah ribuan di dalam rumus. Hasil harus rupiah bulat. Nomor baris tetap sama saat disaring atau diurutkan. Rumus disimpan bersama lembar; bukan mesin Excel lengkap.</p></details>
+    <div id="mmSheetNotice" class="ms-notice" role="status" aria-live="polite">Memuat lembar kerja&hellip;</div>
+    <div id="mmSheetViewport" class="ms-grid-viewport" tabindex="0" role="region" aria-label="Tabel anggaran, dapat digulir" hidden>
+      <table id="mmCashflowSpreadsheetTable" class="ms-grid" role="grid" aria-multiselectable="true" aria-label="Anggaran bulanan">
+        <colgroup><col style="width:44px"><col style="width:148px"><col style="width:146px"><col style="width:248px"><col style="width:160px"><col style="width:250px"><col style="width:44px"></colgroup>
+        <thead><tr><th scope="col" class="ms-row-number">#</th><th scope="col"><span>A</span> Jenis</th><th scope="col"><span>B</span> Kategori</th><th scope="col"><span>C</span> Nama pos</th><th scope="col" class="ms-number"><span>D</span> Nominal (Rp)</th><th scope="col"><span>E</span> Catatan</th><th scope="col"><span class="sr-only">Tindakan</span></th></tr></thead>
+        <tbody id="mmCashflowSpreadsheetBody"></tbody>
+      </table>
+    </div>
+    <div class="ms-grid-status"><span id="mmSheetRowCount">Belum ada data dimuat</span><span id="mmSelectionStats" aria-live="polite">Pilih sel untuk mengedit</span></div>
+    <label class="ms-month-notes" for="mmCashflowNotes">Catatan bulan ini <textarea id="mmCashflowNotes" rows="2" maxlength="500" placeholder="Tujuan, pengingat, atau konteks anggaran (opsional)" disabled></textarea></label>
+  </section>
+</section>
+
 </div><!-- /#appContent -->
 
 <!-- ===== SPA PARTIAL TEMPLATES ===== -->
@@ -3930,7 +3990,7 @@ html.light #googleCompleteProfileModal input {
      `max-age=604800, immutable` behind a Cloudflare edge cache, so an
      unversioned loader URL can keep serving a stale copy for up to 7 days.
      v20261003-fca-stocks-v2 carries the FINAL-HC-001 pattern-extension fix. -->
-<script src="/assets/fca-stocks.js?v=20261003-fca-stocks-v2"></script>
+<script src="/assets/fca-stocks.js?v=20261022-fca-stocks-v3"></script>
 <script>
 // ===== PDF LIBRARY LOADER (multi-CDN fallback, on demand) =====
 // jsPDF + autoTable are ~350KB and are only needed when someone actually
@@ -4630,6 +4690,7 @@ function parseAppRoute() {
     if (path === '/watchlist') return { page: 'watchlist', subTab: null, authRequired: true };
     if (path === '/sektor') return { page: 'sektor', subTab: null, authRequired: true };
     if (path === '/trackrecord') return { page: 'trackrecord', subTab: null, authRequired: true };
+    if (path === '/kelola-keuangan' || path === '/money-management') return { page: 'money-management', subTab: null, authRequired: true };
 
     // Preview routes
     if (path.startsWith('/preview/')) {
@@ -4647,6 +4708,8 @@ function parseAppRoute() {
             'trackrecord': 'trackrecord',
             'portofolio': 'portofolio',
             'portfolio': 'portofolio',
+            'kelola-keuangan': 'money-management',
+            'money-management': 'money-management'
         };
         return { page: prevMap[pMod] || 'dashboard', isPreview: true };
     }
@@ -4666,6 +4729,7 @@ function parseAppRoute() {
         if (target === 'sektor') return { page: 'sektor', subTab: null, authRequired: true };
         if (target === 'trackrecord') return { page: 'trackrecord', subTab: null, authRequired: true };
         if (target === 'portofolio') return { page: 'portofolio', subTab: null, authRequired: true };
+        if (target === 'kelola-keuangan' || target === 'money-management') return { page: 'money-management', subTab: null, authRequired: true };
         return { page: 'dashboard', subTab: null, authRequired: true };
     }
 
@@ -4712,6 +4776,10 @@ function getCanonicalRouteUrl(page, subTab) {
     if (page === 'trackrecord') {
         var qs = searchParams.toString();
         return '/trackrecord' + (qs ? '?' + qs : '');
+    }
+    if (page === 'money-management') {
+        var qs = searchParams.toString();
+        return '/kelola-keuangan' + (qs ? '?' + qs : '');
     }
     if (page === 'news') {
         searchParams.set('page', 'news');
@@ -6361,7 +6429,7 @@ function clearTop5HistoryLoadTimer() {
 // premiumAccessState and its companions are initialised above setTopLevelView —
 // see the "PREMIUM ACCESS STATE" block there. Re-initialising them here would
 // silently discard whatever startup already resolved.
-function isPremiumFeaturePage(page) { return ['sektor','sector','sector-hot','portofolio','watchlist','trackrecord','track-record'].indexOf(String(page || '')) !== -1; }
+function isPremiumFeaturePage(page) { return ['sektor','sector','sector-hot','portofolio','watchlist','trackrecord','track-record','money-management'].indexOf(String(page || '')) !== -1; }
 function hasConfirmedPremiumAccess() {
     return premiumAccessState.state === 'ready' && premiumAccessState.premium === true;
 }
@@ -6604,14 +6672,10 @@ function navigateTo(page) {
     if (page === 'subscription') {
         page = 'dashboard';
     }
-    // FINAL-BUG-004: Money Management / Kelola Keuangan is permanently
-    // decommissioned. A stale bookmark, cached link, or old SPA state must
-    // never blank the workspace - it lands deterministically on Dashboard.
-    if (page === 'money-management' || page === 'kelola-keuangan') {
-        if (typeof showToast === 'function') showToast('Fitur Kelola Keuangan sudah dinonaktifkan permanen.', 'warning');
-        page = 'dashboard';
-        subTab = undefined;
-    }
+    // Kelola Keuangan is back (owner decision 2026-10-20, reversing
+    // FINAL-BUG-004). The public route is /kelola-keuangan; the page id stays
+    // money-management so the existing worksheet runtime keeps working.
+    if (page === 'kelola-keuangan') page = 'money-management';
     if (isPremiumFeaturePage(page) && isDeniedWebsiteAccess()) {
         if (typeof showToast === 'function') showToast('Fitur ini terbuka setelah login dengan akun yang sudah di-approve admin.', 'warning');
         page = 'dashboard';
@@ -6826,6 +6890,11 @@ function navigateTo(page) {
     // Watchlist loader
     if (page === 'watchlist') {
         if (typeof window.loadUserWatchlist === 'function') window.loadUserWatchlist(false);
+    }
+    // Kelola Keuangan worksheet: loads its runtime on first visit; later
+    // visits keep the rows as the user left them.
+    if (page === 'money-management') {
+        if (typeof window.initMoneyManagement === 'function') window.initMoneyManagement();
     }
 }
 
@@ -16325,6 +16394,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/stock-analysis-ai.js?v=20260905-v2"></script>
 <script src="/pattern-map.js?v=20260802-pattern-map-v3"></script>
 <script src="/ui-bugfix-pack-v1.js?v=20260803-v1"></script>
+<script src="/money-sheet-lazy-loader.js?v=20261001-v1"></script>
 <script src="/screener-lifecycle-ui.js?v=20260816-v1"></script>
 <script src="/track-record-runtime.js"></script>
 <script src="/analysis-tools-registry.js?v=20261003-v1"></script>
@@ -16359,7 +16429,7 @@ function forceNormalizeTechnicalDOM(root) {
 })();
 </script>
 <script src="/canonical-motion.js?v=20261006-v1"></script>
-<script src="/ac-motion.js?v=20261020-v1"></script>
+<script src="/ac-motion.js?v=20261022-v1"></script>
 <script src="/landing-experience.js?v=20261001-v4"></script>
 <script src="/command-palette.js?v=20261016-fase8-v1"></script>
 <script src="/market-intelligence.js?v=20261016-fase8-v1"></script>

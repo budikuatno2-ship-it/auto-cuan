@@ -1,121 +1,345 @@
-/* Finance owns this surface only. Portfolio's visual styles are untouched. */
+/* Kelola Keuangan worksheet (redesign v2, canvas KelolaKeuangan.dc.html).
+   Finance owns this surface only. Values are the canvas values; colours go
+   through the v2 tokens (the page carries data-ac-ui="v2"), so light and
+   dark follow the theme. Class names stay the runtime's (ms-*). */
 #page-money-management.money-sheet {
-  --ms-surface: var(--color-bg-surface);
-  --ms-canvas: var(--color-bg-canvas);
-  --ms-raised: var(--color-bg-elevated);
-  --ms-line: var(--color-border-default);
-  --ms-ink: var(--color-text-primary);
-  --ms-muted: var(--color-text-secondary);
-  --ms-accent: var(--color-accent);
-  width: 100%; max-width: 1560px !important; min-width: 0; margin: 0 auto;
-  padding: 28px 32px 40px !important; color: var(--ms-ink);
-  font: 13px/1.5 Inter, system-ui, sans-serif;
+  width: 100%;
+  max-width: 1560px !important;
+  min-width: 0;
+  margin: 0;
+  padding: 28px 32px 48px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  color: var(--ac-ink);
+  background: transparent;
+  font: 14px/1.45 var(--ac-font-sans);
 }
-#page-money-management.money-sheet :is(input,select,textarea) { color:var(--ms-ink) !important; background:var(--ms-surface) !important; border-color:var(--ms-line) !important; }
-#page-money-management.money-sheet :is(input,textarea)::placeholder { color:var(--ms-muted) !important; opacity:1; }
-#page-money-management.money-sheet .ms-grid :is(input,select,textarea) { background:transparent !important; border:0 !important; border-radius:0 !important; box-shadow:none; }
-#page-money-management.money-sheet .ms-grid :is(input,select,textarea):focus { background:var(--ms-raised) !important; box-shadow:none !important; }
+#page-money-management.money-sheet.hidden { display: none !important; }
 .money-sheet [hidden] { display: none !important; }
-.money-sheet button, .money-sheet input, .money-sheet select, .money-sheet textarea { font: inherit; }
-.money-sheet :is(button,input,select,textarea):focus-visible { outline: 2px solid var(--ms-accent); outline-offset: 2px; }
+.money-sheet button, .money-sheet input, .money-sheet select, .money-sheet textarea { font: inherit; color: inherit; }
+.money-sheet :is(button, input, select, textarea, summary, [tabindex="0"]):focus-visible { outline: 2px solid var(--ac-brand); outline-offset: 2px; }
 .money-sheet button:disabled { opacity: .45; cursor: not-allowed; }
 .money-sheet svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
-.ms-page-heading { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-bottom:26px; }
-.ms-eyebrow { color:var(--ms-muted); font-size:10px; font-weight:600; letter-spacing:.12em; margin:0 0 7px; }
-.money-sheet h1 { font-size:28px; font-weight:600; line-height:1.2; letter-spacing:-.035em; margin:0 0 8px; color:var(--ms-ink); }
-.ms-description { color:var(--ms-muted); margin:0; max-width:650px; }
-.ms-month { display:grid; gap:6px; color:var(--ms-muted); font-size:11px; flex-shrink:0; }
-.ms-month input { color:var(--ms-ink); color-scheme:dark; border:1px solid var(--ms-line); border-radius:8px; background:var(--ms-surface); padding:8px 10px; min-height:36px; }
-html.light .ms-month input { color-scheme:light; }
-.ms-overview { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border:1px solid var(--ms-line); border-radius:12px; overflow:hidden; background:var(--ms-surface); margin-bottom:14px; }
-.ms-metric { padding:20px 22px; min-width:0; }
-.ms-metric + .ms-metric { border-left:1px solid var(--ms-line); }
-.ms-metric > span,.ms-linked-metric > span { display:block; font-size:11px; color:var(--ms-muted); margin-bottom:7px; }
-.ms-metric strong { display:block; font-size:clamp(19px,1.8vw,27px); font-weight:600; font-variant-numeric:tabular-nums; line-height:1.3; letter-spacing:-.035em; overflow-wrap:anywhere; }
-.ms-metric small { display:block; font-size:10px; color:var(--ms-muted); margin-top:7px; }
-.ms-metric-balance { background:var(--ms-raised); }
-.money-sheet .ms-negative { color:var(--color-negative); }
-.money-sheet .ms-positive { color:var(--color-positive); }
-.ms-portfolio { display:flex; align-items:center; flex-wrap:wrap; gap:18px 26px; padding:16px 20px 12px; margin-bottom:24px; border:1px solid var(--ms-line); border-radius:10px; }
-.ms-portfolio-label { display:flex; align-items:center; gap:12px; margin-right:auto; min-width:220px; }
-.ms-portfolio-label > svg { color:var(--ms-accent); width:22px; height:22px; }
-.ms-portfolio-label strong { display:block; font-size:12px; font-weight:600; }
-.ms-portfolio-label span { display:block; color:var(--ms-muted); font-size:10px; margin-top:3px; }
-.ms-linked-metric strong { font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; }
-.ms-linked-metric > span { font-size:10px; margin-bottom:3px; }
-.ms-portfolio-note { flex-basis:100%; font-size:10px; color:var(--ms-muted); margin:0; padding-top:10px; border-top:1px solid var(--ms-line); }
-.ms-workbook { border:1px solid var(--ms-line); border-radius:12px; background:var(--ms-surface); min-width:0; overflow:hidden; }
-.ms-workbook-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px 20px; }
-.ms-workbook-heading h2 { font-size:15px; font-weight:600; color:var(--ms-ink); margin:0 0 3px; }
-.ms-workbook-heading p { font-size:11px; color:var(--ms-muted); margin:0; }
-.ms-save-state { flex-shrink:0; font-size:10px; color:var(--ms-muted); display:flex; align-items:center; gap:6px; }
-.ms-save-state::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; }
-.ms-save-state[data-state="dirty"] { color:var(--ms-accent); }
-.ms-save-state[data-state="error"] { color:var(--color-negative); }
-.ms-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:10px 16px; border-top:1px solid var(--ms-line); border-bottom:1px solid var(--ms-line); }
-.money-sheet .ms-button,.money-sheet .ms-icon-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:34px; padding:7px 11px; border:1px solid var(--ms-line); border-radius:7px; color:var(--ms-ink); background:var(--ms-surface); font-size:11px; font-weight:500; white-space:nowrap; cursor:pointer; transition:background-color var(--motion-instant) var(--ease-standard),border-color var(--motion-instant) var(--ease-standard); }
-.money-sheet .ms-button:hover:not(:disabled),.money-sheet .ms-icon-button:hover:not(:disabled) { background:var(--ms-raised); border-color:var(--ms-accent); }
-.money-sheet .ms-button-primary { background:var(--ms-accent); border-color:var(--ms-accent); color:var(--color-on-accent); font-weight:600; min-width:76px; }
-.money-sheet .ms-button-primary:hover:not(:disabled) { background:color-mix(in srgb,var(--ms-accent),#000 14%); }
-.money-sheet .ms-button-quiet { background:transparent; }
-.money-sheet .ms-icon-button { padding:5px; width:32px; font-size:17px; }
-.ms-history { display:flex; gap:3px; border-right:1px solid var(--ms-line); padding-right:8px; }
-.ms-search { display:flex; gap:7px; align-items:center; min-width:130px; flex:1; padding:0 8px; color:var(--ms-muted); }
-.ms-search svg { width:14px; height:14px; }
-.ms-search input { padding:7px 0; min-width:0; width:100%; color:var(--ms-ink); background:transparent; border:0; outline-offset:0; font-size:11px; }
-.ms-sort select { background:var(--ms-surface); border:1px solid var(--ms-line); color:var(--ms-muted); border-radius:6px; padding:7px; font-size:11px; max-width:140px; }
-.ms-formula-bar { display:flex; align-items:center; color:var(--ms-muted); border-bottom:1px solid var(--ms-line); font-size:10px; min-height:30px; }
-.ms-cell-address { display:block; padding:8px 6px; width:100px; min-width:0; flex:0 0 100px; border:0; border-right:1px solid var(--ms-line); border-radius:0; text-align:center; color:var(--ms-ink); font-variant-numeric:tabular-nums; }
-#mmSheetHint { padding:5px 12px; }
-.ms-notice { padding:18px 20px; color:var(--ms-muted); font-size:12px; border-bottom:1px solid var(--ms-line); }
-.ms-notice[data-tone="error"] { color:var(--color-negative); }
-.ms-grid-viewport { overflow:auto; max-height:520px; scrollbar-width:thin; overscroll-behavior:contain; background:var(--ms-surface); }
-#page-money-management #mmCashflowSpreadsheetTable.ms-grid { table-layout:fixed; width:100%; min-width:1060px; border-collapse:separate !important; border-spacing:0; font-variant-numeric:tabular-nums; }
-#page-money-management #mmCashflowSpreadsheetTable.ms-grid th { background:var(--ms-raised) !important; color:var(--ms-muted) !important; position:sticky; top:0; height:36px; padding:0 10px !important; border:0; border-right:1px solid var(--ms-line); border-bottom:1px solid var(--ms-line) !important; font-size:10px !important; font-weight:500 !important; text-transform:none !important; letter-spacing:0 !important; text-align:left; white-space:nowrap; z-index:2; }
-.ms-grid th span:not(.sr-only) { margin-right:9px; opacity:.65; font-size:9px; }
-#page-money-management #mmCashflowSpreadsheetTable.ms-grid td { height:36px; padding:0 !important; border:0; border-right:1px solid var(--ms-line); border-bottom:1px solid var(--ms-line) !important; color:var(--ms-ink) !important; background:transparent !important; position:relative; font-size:12px !important; }
-#page-money-management #mmCashflowSpreadsheetTable.ms-grid tr:hover { background:var(--ms-raised) !important; transform:none !important; }
-#page-money-management #mmCashflowSpreadsheetTable.ms-grid td.ms-row-number { color:var(--ms-muted) !important; background:var(--ms-raised) !important; text-align:center; font-size:10px !important; }
-.ms-grid :is(input,select,textarea) { display:block; width:100%; height:35px; min-height:0; border:0; border-radius:0; background:transparent; padding:0 10px; color:inherit; box-shadow:none; text-overflow:ellipsis; }
-.ms-grid select { font-size:11px; cursor:pointer; }
-.ms-grid option { background:var(--ms-surface); color:var(--ms-ink); }
-.ms-grid input[data-field="amount"] { text-align:right; font-variant-numeric:tabular-nums; }
-.ms-grid :is(input,select,textarea):focus { outline:2px solid var(--ms-accent) !important; outline-offset:-2px !important; background:var(--ms-raised); }
-.ms-grid [aria-invalid="true"] { box-shadow:inset 0 -2px var(--color-negative); }
-.ms-grid .ms-delete { border:0; background:transparent; color:var(--ms-muted); width:100%; height:35px; font-size:18px; cursor:pointer; }
-.ms-grid .ms-delete:hover { color:var(--color-negative); }
-.ms-grid-status { display:flex; flex-wrap:wrap; justify-content:space-between; gap:5px 16px; border-top:1px solid var(--ms-line); padding:8px 16px; font-size:10px; color:var(--ms-muted); background:var(--ms-raised); }
-.ms-month-notes { display:block; padding:14px 18px 16px; font-size:11px; color:var(--ms-muted); }
-.ms-month-notes textarea { display:block; resize:vertical; min-height:52px; width:100%; padding:8px 10px; margin-top:6px; border:1px solid var(--ms-line); border-radius:7px; color:var(--ms-ink); background:transparent; }
-@media(max-width:1200px) { #page-money-management.money-sheet { padding:22px 20px 32px !important; } .ms-metric { padding:17px 16px; } }
-@media(max-width:767px) { #page-money-management.money-sheet { padding:18px 12px 28px !important; } .ms-page-heading { align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:18px; } .money-sheet h1 { font-size:24px; } .ms-description { font-size:12px; } .ms-overview { grid-template-columns:repeat(2,minmax(0,1fr)); } .ms-metric:nth-child(3) { border-left:0; border-top:1px solid var(--ms-line); } .ms-metric:nth-child(4) { border-top:1px solid var(--ms-line); } .ms-metric strong { font-size:21px; } .ms-portfolio { padding:14px; gap:14px 22px; } .ms-portfolio-label { flex-basis:100%; } .ms-portfolio-note { font-size:10px; } .ms-workbook-heading { padding:14px; align-items:flex-start; } .ms-workbook-heading p { max-width:220px; } .ms-toolbar { padding:10px; gap:6px; } .ms-search { flex-basis:160px; } .ms-grid-viewport { max-height:460px; } .money-sheet .ms-button,.money-sheet .ms-icon-button { min-height:40px; } }
-@media(prefers-reduced-motion:reduce) { .money-sheet * { transition:none !important; animation:none !important; } }
+.money-sheet .ms-negative { color: var(--ac-negative); }
+.money-sheet .ms-positive { color: var(--ac-positive); }
 
-/* Grid additions stay in this component, not a site-wide override layer. */
-.ms-edit-toolbar { display:flex; align-items:center; gap:4px; overflow-x:auto; padding:6px 12px; border-bottom:1px solid var(--ms-line); scrollbar-width:thin; }
-.money-sheet .ms-edit-toolbar .ms-button { flex:0 0 auto; font-size:11px; min-height:32px; border-color:transparent; }
-#mmExpandSheet { margin-left:auto; }
-.ms-fx { padding:0 12px; font:italic 14px Georgia,serif; color:var(--ms-muted); }
-#mmFormulaInput { flex:1; min-width:0; padding:8px 10px 8px 0; border:0; border-radius:0; height:36px; }
-.ms-help { padding:8px 16px; font-size:10px; color:var(--ms-muted); border-bottom:1px solid var(--ms-line); }
-.ms-help summary { cursor:pointer; min-height:24px; line-height:24px; }
-.ms-help p { line-height:1.7; margin:8px 0; max-width:950px; }
-#page-money-management #mmCashflowSpreadsheetTable.ms-grid tbody th { position:sticky; left:0; top:auto; z-index:1; width:44px; text-align:center; padding:0 !important; }
-#page-money-management #mmCashflowSpreadsheetTable.ms-grid thead th:first-child { left:0; z-index:4; }
-#page-money-management #mmCashflowSpreadsheetTable.ms-grid thead th { padding:0 !important; }
-.ms-column-select { display:block; width:100%; height:36px; padding:0 10px; text-align:left; color:inherit; font:inherit; background:transparent; border:0; cursor:pointer; }
-.ms-column-select:hover { color:var(--ms-accent); }
-.ms-row-number button { width:100%; min-height:36px; background:none; border:0; color:inherit; cursor:pointer; }
-.ms-resizer { position:absolute; right:-3px; top:0; bottom:0; width:9px; background:transparent; border:0; padding:0; cursor:col-resize; touch-action:none; z-index:3; }
-.ms-resizer:hover, .ms-resizer:focus-visible { background:color-mix(in srgb,var(--ms-accent),transparent 60%); }
-#page-money-management #mmCashflowSpreadsheetTable.ms-grid td.ms-selected { background:color-mix(in srgb,var(--ms-accent),var(--ms-surface) 90%) !important; }
-#page-money-management #mmCashflowSpreadsheetTable.ms-grid td.ms-active-cell { box-shadow:inset 0 0 0 2px var(--ms-accent); }
-.ms-grid input[data-formula]:not([data-formula=""]) { font-style:normal; }
-.ms-grid td:has(input[data-formula]:not([data-formula=""]))::after { content:''; width:0; height:0; border-top:5px solid var(--ms-accent); border-left:5px solid transparent; position:absolute; top:1px; right:1px; pointer-events:none; }
-.money-sheet.ms-expanded > :is(.ms-overview,.ms-portfolio) { display:none; }
-#page-money-management.money-sheet.ms-expanded .ms-grid-viewport { max-height:calc(100dvh - 255px); min-height:220px; }
-@media(max-width:767px) { .money-sheet .ms-edit-toolbar .ms-button { min-height:44px; } .ms-cell-address { width:85px; flex-basis:85px; } .ms-fx { padding:0 8px; } .ms-help summary { min-height:36px;line-height:36px; } .ms-column-select,.ms-row-number button,.ms-grid .ms-delete { min-height:44px; } .ms-workbook-heading { flex-wrap:wrap; } .ms-grid-status { font-size:11px; gap:10px; } }
+/* Page heading (canvas .ph / .kick) */
+.ms-page-heading { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.ms-eyebrow { margin: 0 0 4px; font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--ac-brand); }
+.money-sheet h1 { margin: 0; font-size: 30px; line-height: 1.15; letter-spacing: -.02em; font-weight: 700; color: var(--ac-ink); }
+.ms-description { margin: 6px 0 0; max-width: 640px; color: var(--ac-text-secondary); }
+.ms-month { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--ac-ink); flex-shrink: 0; }
+.ms-month input,
+.ms-sort select {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--ac-control-border);
+  border-radius: 8px;
+  background: var(--ac-surface);
+  color: var(--ac-ink);
+  font-size: 13px;
+}
+.ms-month input:hover, .ms-sort select:hover { border-color: var(--ac-control-border-hover); }
+html.is-dark .ms-month input { color-scheme: dark; }
 
-.money-sheet .ms-grid textarea { display:block; resize:vertical; min-height:34px; max-height:120px; white-space:pre-wrap; }
+/* Summary strip (canvas .sheet + .strip) */
+.ms-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: var(--ac-surface);
+  border: 1px solid var(--ac-line-hairline);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ms-metric { padding: 16px 20px; min-width: 0; border-left: 1px solid var(--ac-line-hairline); container-type: inline-size; }
+.ms-metric:first-child { border-left: 0; }
+.ms-metric > span, .ms-linked-metric > span { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; color: var(--ac-text-secondary); }
+.ms-metric strong {
+  display: block;
+  font-size: clamp(18px, 13cqi, 28px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.ms-metric:first-child strong { color: var(--ac-positive); }
+.ms-metric small { display: block; margin-top: 6px; font-size: 12px; color: var(--ac-text-secondary); }
+.ms-metric-balance { background: transparent; }
 
-.ms-heading-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+/* Linked portfolio (canvas sheet row) */
+.ms-portfolio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 36px;
+  padding: 16px 20px;
+  background: var(--ac-surface);
+  border: 1px solid var(--ac-line-hairline);
+  border-radius: 12px;
+}
+.ms-portfolio-label { display: flex; align-items: center; gap: 12px; min-width: 220px; }
+.ms-portfolio-label > svg {
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--ac-brand-soft);
+  color: var(--ac-brand);
+  stroke-width: 1.8;
+}
+.ms-portfolio-label strong { display: block; font-weight: 700; font-size: 14px; }
+.ms-portfolio-label span { display: block; margin-top: 2px; font-size: 12px; color: var(--ac-text-secondary); }
+.ms-linked-metric > span { margin-bottom: 0; }
+.ms-linked-metric strong { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums lining-nums; }
+#mmOpenPortfolio { margin-left: auto; }
+.ms-portfolio-note { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--ac-text-secondary); }
+
+/* Worksheet (canvas sheet + .sec-h) */
+.ms-workbook { background: var(--ac-surface); border: 1px solid var(--ac-line-hairline); border-radius: 12px; min-width: 0; overflow: hidden; }
+.ms-workbook-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; padding: 16px 20px 12px; }
+.ms-workbook-heading h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em; color: var(--ac-ink); }
+.ms-workbook-heading p { margin: 2px 0 0; font-size: 12px; color: var(--ac-text-secondary); }
+.ms-heading-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.ms-save-state { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--ac-text-secondary); flex-shrink: 0; }
+.ms-save-state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ac-brand); }
+.ms-save-state[data-state="dirty"]::before { background: var(--ac-warning); }
+.ms-save-state[data-state="error"] { color: var(--ac-negative); }
+.ms-save-state[data-state="error"]::before { background: var(--ac-negative); }
+
+/* Buttons (canvas .btn / .btn.sm / .btn.p) */
+.money-sheet .ms-button, .money-sheet .ms-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--ac-control-border);
+  border-radius: 6px;
+  background: var(--ac-surface);
+  color: var(--ac-ink);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 140ms var(--ease-standard), border-color 140ms var(--ease-standard);
+}
+.money-sheet .ms-button:hover:not(:disabled), .money-sheet .ms-icon-button:hover:not(:disabled) { background: var(--ac-surface-hover); border-color: var(--ac-control-border-hover); }
+/* Canvas: "+ Tambah baris" is the primary action of the toolbar. */
+.money-sheet #mmAddRow { background: var(--ac-brand); border-color: var(--ac-brand); color: #fff; }
+.money-sheet #mmAddRow:hover:not(:disabled) { background: var(--ac-brand-hover); border-color: var(--ac-brand-hover); }
+html.is-dark .money-sheet #mmAddRow { color: #06140E; }
+.money-sheet .ms-button-quiet { background: var(--ac-surface); }
+.money-sheet .ms-icon-button { width: 30px; padding: 0; font-size: 15px; }
+.ms-history { display: flex; gap: 4px; }
+
+/* Toolbar */
+.ms-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 20px 12px; }
+.ms-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 150px;
+  max-width: 220px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--ac-control-border);
+  border-radius: 8px;
+  background: var(--ac-surface);
+  color: var(--ac-text-muted);
+  font-size: 12px;
+}
+.ms-search svg { width: 13px; height: 13px; stroke-width: 2; }
+.ms-search input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: var(--ac-ink); font-size: 12px; outline: 0; }
+.ms-search:focus-within { border-color: var(--ac-brand); }
+.ms-search input::placeholder { color: var(--ac-text-muted); opacity: 1; }
+.ms-sort select { height: 30px; font-size: 12px; }
+/* The generic .page-content field rule (38px, filled) loses to these. */
+#page-money-management .ms-search input { min-height: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+#page-money-management .ms-sort select { min-height: 30px; }
+/* Canvas sheets are hairline-only; the legacy light card shadow is !important. */
+#page-money-management .ms-workbook { box-shadow: none !important; }
+#mmExport { margin-left: auto; }
+.ms-edit-toolbar { display: flex; align-items: center; gap: 4px; overflow-x: auto; padding: 0 20px 12px; scrollbar-width: thin; }
+.money-sheet .ms-edit-toolbar .ms-button { border-color: transparent; background: transparent; color: var(--ac-text-secondary); }
+.money-sheet .ms-edit-toolbar .ms-button:hover:not(:disabled) { color: var(--ac-ink); background: var(--ac-surface-hover); }
+
+/* Formula bar (canvas .fx) */
+.ms-formula-bar {
+  display: flex;
+  align-items: center;
+  margin: 0 20px 12px;
+  border: 1px solid var(--ac-control-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--ac-surface);
+}
+.ms-cell-address {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 56px;
+  max-width: 96px;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid var(--ac-line-hairline);
+  background: var(--ac-surface-raised);
+  color: var(--ac-ink);
+  font: 600 12px var(--ac-font-mono);
+  text-align: center;
+}
+.ms-fx {
+  display: grid;
+  place-items: center;
+  height: 34px;
+  padding: 0 10px;
+  border-right: 1px solid var(--ac-line-hairline);
+  font: italic 600 13px var(--ac-font-sans);
+  color: var(--ac-text-muted);
+}
+#mmFormulaInput { flex: 1; min-width: 0; height: 34px; padding: 0 12px; border: 0; background: transparent; color: var(--ac-ink); font: 500 13px var(--ac-font-mono); }
+#mmFormulaInput::placeholder { color: var(--ac-text-muted); font-family: var(--ac-font-sans); }
+.ms-help { padding: 0 20px 12px; font-size: 12px; color: var(--ac-text-secondary); }
+.ms-help summary { cursor: pointer; min-height: 24px; line-height: 24px; font-weight: 600; }
+.ms-help p { margin: 8px 0; max-width: 950px; line-height: 1.6; }
+.ms-notice { padding: 16px 20px; border-top: 1px solid var(--ac-line-hairline); font-size: 13px; color: var(--ac-text-secondary); }
+.ms-notice[data-tone="error"] { color: var(--ac-negative); }
+
+/* Grid (canvas .grid) */
+.ms-grid-viewport { overflow: auto; max-height: 520px; border-top: 1px solid var(--ac-line-hairline); scrollbar-width: thin; overscroll-behavior: contain; background: var(--ac-surface); }
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 860px;
+  border-collapse: separate !important;
+  border-spacing: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 32px;
+  padding: 0 !important;
+  border: 0;
+  border-right: 1px solid var(--ac-line-hairline);
+  border-bottom: 1px solid var(--ac-line-default) !important;
+  background: var(--ac-surface-raised) !important;
+  color: var(--ac-text-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  text-align: left;
+  white-space: nowrap;
+}
+.ms-grid th span:not(.sr-only) { margin-right: 4px; }
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid td {
+  position: relative;
+  height: 40px;
+  padding: 0 !important;
+  border: 0;
+  border-right: 1px solid var(--ac-line-hairline);
+  border-bottom: 1px solid var(--ac-line-hairline) !important;
+  background: transparent !important;
+  color: var(--ac-ink) !important;
+  font-size: 13px !important;
+  cursor: cell;
+  transition: background 140ms var(--ease-standard);
+}
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid tr:hover td:not(.ms-row-number) { background: var(--ac-surface-raised) !important; }
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid tr:hover { transform: none !important; }
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid :is(td.ms-row-number, th.ms-row-number),
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid tbody th {
+  width: 44px;
+  text-align: center;
+  color: var(--ac-text-muted) !important;
+  background: var(--ac-surface-raised) !important;
+  font-size: 12px !important;
+  font-weight: 600;
+}
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid tbody th { position: sticky; left: 0; top: auto; z-index: 1; padding: 0 !important; }
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid thead th:first-child { left: 0; z-index: 4; text-align: center; }
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid td.ms-selected { background: var(--ac-brand-soft) !important; }
+#page-money-management #mmCashflowSpreadsheetTable.ms-grid td.ms-active-cell { box-shadow: inset 0 0 0 2px var(--ac-brand); }
+.ms-grid :is(input, select, textarea) {
+  display: block;
+  width: 100%;
+  height: 39px;
+  min-height: 0;
+  padding: 0 10px;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--ac-ink);
+  box-shadow: none;
+  text-overflow: ellipsis;
+}
+.ms-grid select { font-size: 13px; cursor: pointer; }
+.ms-grid option { background: var(--ac-surface); color: var(--ac-ink); }
+.ms-grid input[data-field="amount"] { text-align: right; font: 600 13px var(--ac-font-mono); font-variant-numeric: tabular-nums; }
+.ms-grid :is(input, select, textarea):focus { outline: 0 !important; box-shadow: inset 0 0 0 2px var(--ac-brand) !important; background: var(--ac-brand-soft) !important; }
+.ms-grid [aria-invalid="true"] { box-shadow: inset 0 -2px var(--ac-negative); }
+.ms-grid .ms-delete { width: 100%; height: 39px; border: 0; background: transparent; color: var(--ac-text-muted); font-size: 18px; cursor: pointer; }
+.ms-grid .ms-delete:hover { color: var(--ac-negative); }
+.ms-grid textarea { display: block; resize: none; min-height: 39px; max-height: 120px; white-space: pre-wrap; }
+.ms-column-select { display: block; width: 100%; height: 32px; padding: 0 10px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ms-column-select:hover { color: var(--ac-ink); }
+.ms-row-number button { width: 100%; min-height: 39px; border: 0; background: none; color: inherit; cursor: pointer; }
+.ms-resizer { position: absolute; right: -3px; top: 0; bottom: 0; z-index: 3; width: 9px; padding: 0; border: 0; background: transparent; cursor: col-resize; touch-action: none; }
+.ms-resizer:hover, .ms-resizer:focus-visible { background: var(--ac-brand-soft); }
+/* A formula cell carries a small corner mark, like a spreadsheet. */
+.ms-grid td:has(input[data-formula]:not([data-formula=""]))::after { content: ""; position: absolute; top: 1px; right: 1px; width: 0; height: 0; border-top: 5px solid var(--ac-brand); border-left: 5px solid transparent; pointer-events: none; }
+
+.ms-grid-status { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; padding: 12px 20px; border-top: 1px solid var(--ac-line-hairline); font-size: 12px; color: var(--ac-text-secondary); }
+.ms-month-notes { display: block; padding: 14px 20px 20px; border-top: 1px solid var(--ac-line-hairline); font-size: 13px; font-weight: 600; color: var(--ac-ink); }
+.ms-month-notes textarea {
+  display: block;
+  width: 100%;
+  height: 72px;
+  min-height: 52px;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--ac-control-border);
+  border-radius: 8px;
+  background: var(--ac-surface);
+  color: var(--ac-ink);
+  font-weight: 400;
+  resize: vertical;
+}
+.ms-month-notes textarea::placeholder { color: var(--ac-text-muted); opacity: 1; }
+
+/* Focus mode keeps only the worksheet. */
+.money-sheet.ms-expanded > :is(.ms-overview, .ms-portfolio) { display: none; }
+#page-money-management.money-sheet.ms-expanded .ms-grid-viewport { max-height: calc(100dvh - 255px); min-height: 220px; }
+
+/* Responsive (canvas: strip 2 columns at 980px, 1 column at 560px) */
+@media (max-width: 980px) {
+  .ms-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ms-metric:nth-child(3) { border-left: 0; }
+  .ms-metric:nth-child(n+3) { border-top: 1px solid var(--ac-line-hairline); }
+}
+@media (max-width: 700px) {
+  .money-sheet h1 { font-size: 24px; }
+  .ms-search { width: 100%; flex-basis: 100%; max-width: none; }
+  #mmExport { margin-left: 0; }
+  #mmOpenPortfolio { margin-left: 0; }
+  .ms-sort { flex: 1 1 140px; min-width: 0; }
+  .ms-sort select { width: 100%; }
+  .ms-heading-actions { width: 100%; justify-content: space-between; }
+}
+@media (max-width: 560px) {
+  #page-money-management.money-sheet { padding: 20px 16px 40px !important; }
+  .ms-overview { grid-template-columns: 1fr; }
+  .ms-metric { border-left: 0; border-top: 1px solid var(--ac-line-hairline); }
+  .ms-metric:first-child { border-top: 0; }
+}
+@media (pointer: coarse) {
+  .money-sheet .ms-button, .money-sheet .ms-icon-button, .ms-search, .ms-sort select, .ms-month input { min-height: 44px; }
+  .ms-column-select, .ms-row-number button, .ms-grid .ms-delete { min-height: 44px; }
+  .ms-help summary { min-height: 44px; line-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { .money-sheet * { transition: none !important; animation: none !important; } }

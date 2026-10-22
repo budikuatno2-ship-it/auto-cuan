@@ -109,11 +109,15 @@ DeepScan is permanently removed from the target product UI. Historical reference
 
 ### 3.2 Kelola Keuangan / Money Management
 
-Kelola Keuangan is **not part of the target Auto-Cuan product experience**.
+**Owner decision, 20 Oct 2026 (redesign v2): Kelola Keuangan is revived.** This reverses the earlier retirement (FINAL-BUG-004).
 
-It must not appear in global navigation, mobile More, command search, landing, account, onboarding, or dashboard shortcuts.
+- It is a premium page at `/kelola-keuangan` (page id `money-management`), listed in the sidebar group Pantau after Track Record and in the phone "Lainnya" sheet. It does not take a phone tab slot.
+- Layout follows the canvas `KelolaKeuangan.dc.html`: summary strip, linked Portfolio summary, and the monthly worksheet.
+- The server keeps the checks in `lib/money-management-handler.js` and `lib/money-sheet-handler.js`: a session or premium entitlement is required, same-origin only, the method is checked per action, the sheet and notes are validated, every query is scoped to the user id, and saves use a revision check (CAS).
+- A month without rows shows "—" in the summary, not Rp 0.
+- Landing and marketing copy still do not advertise it (FINAL-RISK-001 stays).
 
-Existing code, storage, tests, migration artifacts, or database schema may still exist and must be audited before removal. **Visual retirement of this feature must never delete user data or database schema automatically.**
+**Visual retirement of any feature must never delete user data or database schema automatically.**
 
 
 ### 3.3 Deprecated Route Invariant
@@ -123,7 +127,7 @@ Current deprecated/dormant routes must not be revived as a side effect of redesi
 In particular:
 
 - `/subscription` remains non-primary/dormant until a separate product rollout explicitly enables it;
-- `/kelola-keuangan` / Money Management must not be promoted back into active navigation;
+- `/kelola-keuangan` / Money Management is active again by owner decision (§3.2); this is not a side-effect revival;
 - DeepScan must not return as a product destination;
 - obsolete aliases must not be remapped to unrelated new features merely to avoid a 404.
 

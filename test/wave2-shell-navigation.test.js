@@ -74,9 +74,11 @@ test('Wave 2: Sidebar IA follows the redesign v2 groups (HANDOFF §4)', () => {
   assert.ok(sidebarHtml.includes('data-sidebar-page="portofolio"'), 'MONITOR must contain Portfolio');
   assert.ok(sidebarHtml.includes('data-sidebar-page="trackrecord"'), 'MONITOR must contain Track Record');
 
-  // Decommissioned & dormant features must NOT be in the sidebar navigation
-  assert.ok(!sidebarHtml.includes('data-sidebar-page="money-management"'), 'Money Management must NOT be in sidebar');
-  assert.ok(!sidebarHtml.includes('data-sidebar-page="kelola-keuangan"'), 'Kelola Keuangan must NOT be in sidebar');
+  // Kelola Keuangan was revived by the owner (redesign v2) and sits after Track Record
+  assert.ok(sidebarHtml.includes('data-sidebar-page="money-management"'), 'MONITOR must contain Kelola Keuangan');
+  assert.ok(sidebarHtml.indexOf('data-sidebar-page="money-management"') > sidebarHtml.indexOf('data-sidebar-page="trackrecord"'), 'Kelola Keuangan follows Track Record');
+  assert.ok(!sidebarHtml.includes('data-sidebar-page="kelola-keuangan"'), 'Kelola Keuangan uses the money-management page id');
+  // Dormant features must NOT be in the sidebar navigation
   assert.ok(!sidebarHtml.includes('data-sidebar-page="deepscan"'), 'DeepScan must NOT be in sidebar');
   assert.ok(sidebarHtml.includes('id="nav-subscription"'), 'Subscription menu must be present in sidebar');
 });

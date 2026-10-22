@@ -15550,7 +15550,7 @@ html.is-dark .thm .moon { display: none; }
 [data-ac-flash].ac-flash-dn::after { background: var(--ac-negative-soft, rgba(185,71,90,.10)); }
 @keyframes ac-flash { from { opacity: 1; } to { opacity: 0; } }
 
-.mm { position: fixed; right: 20px; bottom: 20px; z-index: 95; display: flex; align-items: flex-end; gap: 10px; flex-direction: row-reverse; pointer-events: none; }
+.mm { position: fixed; right: 20px; bottom: 20px; z-index: 95; background: none; display: flex; align-items: flex-end; gap: 10px; flex-direction: row-reverse; pointer-events: none; }
 .mm[hidden] { display: none !important; }
 .mm > * { pointer-events: auto; }
 .mm-eye { width: 62px; height: 62px; padding: 0; border: 0; background: transparent; border-radius: 50%; cursor: pointer; animation: mmIn 700ms var(--ease-spring) 600ms both; filter: drop-shadow(0 10px 18px rgba(14,23,20,.3)); }

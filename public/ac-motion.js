@@ -106,7 +106,7 @@
   // App routes -> canvas page names (the canvas keyed copy by document.title).
   var PAGE_NAMES = {
     dashboard: 'Dashboard', screener: 'Screener', sektor: 'Sektor Hot', watchlist: 'Watchlist',
-    portofolio: 'Portfolio', trackrecord: 'Track Record', 'kelola-keuangan': 'Kelola Keuangan'
+    portofolio: 'Portfolio', trackrecord: 'Track Record', 'money-management': 'Kelola Keuangan', 'kelola-keuangan': 'Kelola Keuangan'
   };
   var ANALISIS_NAMES = {
     'analisis-chart': 'Analisis & Chart', chart: 'Analisis & Chart', bandarmologi: 'Bandarmologi', intel: 'Sinyal Intelijen',

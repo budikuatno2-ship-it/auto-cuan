@@ -56,6 +56,14 @@
   function updateTotals() {
     totalsFrame = 0;
     if (!sheet || loading) return;
+    // A month without rows has no totals yet: show "—", not Rp 0.
+    if (!sheet.rows.length) {
+      ['mmTotalIncomeDisplay','mmTotalLivingExpenseDisplay','mmSheetAllocation','mmRemainingBudgetDisplay'].forEach(key => { metric(key,null); });
+      $('mmRemainingBudgetDisplay').classList.remove('ms-negative');
+      $('mmBudgetSafetyStatus').textContent = 'Belum ada baris di bulan ini';
+      controls();
+      return;
+    }
     const t = Model.totals(sheet);
     metric('mmTotalIncomeDisplay', t.income);
     metric('mmTotalLivingExpenseDisplay', t.expense);

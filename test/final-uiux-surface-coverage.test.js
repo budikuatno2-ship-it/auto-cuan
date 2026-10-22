@@ -35,7 +35,8 @@ test('mobile polish keeps page content contained and touch-friendly', () => {
 test('core page ids still exist after visual-only changes', () => {
   [
     'page-dashboard', 'page-analisis', 'page-screener', 'page-watchlist',
-    'page-sektor', 'page-portofolio', 'page-trackrecord'
+    'page-sektor', 'page-portofolio', 'page-trackrecord',
+    // Revived by the owner in redesign v2.
+    'page-money-management'
   ].forEach((id) => assert.ok(html.includes('id="' + id + '"'), id + ' must remain in index.html'));
-  assert.equal(html.includes('id="page-money-management"'), false, 'page-money-management must be decommissioned');
 });
