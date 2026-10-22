@@ -508,6 +508,7 @@
   "test/redesign-v2-icons.test.js",
   "test/redesign-v2-kelola.test.js",
   "test/redesign-v2-motion.test.js",
+  "test/redesign-v2-screener.test.js",
   "test/redesign-v2-states.test.js",
   "test/regime-adaptive-and-foreign-confluence.test.js",
   "test/register-monitor.test.js",

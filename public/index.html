@@ -1440,7 +1440,7 @@ html.light #googleCompleteProfileModal input {
 </div>
 
 <!-- ===== PAGE: SCREENER SWING KONGLO 3-7D ===== -->
-<div id="page-screener" class="page-content hidden flex-1 w-full mx-auto" data-premium-page="true" data-ac-ui="v2">
+<div id="page-screener" class="page-content ac-page hidden flex-1 w-full mx-auto" data-premium-page="true" data-ac-ui="v2">
     <!-- Login gate -->
     <div id="screenerLoginGate" class="hidden flex flex-col items-center justify-center py-16 text-center">
         <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
@@ -1455,33 +1455,25 @@ html.light #googleCompleteProfileModal input {
     </div>
     <!-- Content -->
     <div id="screenerContent" class="hidden space-y-4">
-        <!-- Page Header (§1.3 & §2.4) -->
-        <div class="page-header mb-4">
-            <h1 class="page-title text-2xl font-bold text-[var(--text-primary)]">Screener Saham</h1>
-            <p class="page-subtitle text-xs text-[var(--text-secondary)]">Penyaring momentum saham otomatis: Swing Konglomerat, Swing Non-Konglo, dan Day Trade Momentum.</p>
+        <!-- Redesign v2 header (canvas Screener.dc.html): title, mode text, and
+             the three-way mode switch. Ids and switchScreenerType() unchanged. -->
+        <div class="ph rise scr-ph">
+            <div>
+                <h1 class="page-title">Screener Saham</h1>
+                <p id="scrModeDesc">Swing 3&ndash;7 hari pada saham grup konglomerat. Klik baris untuk rencana dan bukti gate.</p>
+            </div>
+            <div class="segx n3 scr-modes" role="group" aria-label="Mode screener"><span class="ind" id="scrTypeInd"></span>
+                <button type="button" onclick="switchScreenerType('konglo')" id="scrTypeKonglo" class="ac-segment is-active on" aria-pressed="true">Konglo</button>
+                <button type="button" onclick="switchScreenerType('nonkonglo')" id="scrTypeNonKonglo" class="ac-segment" aria-pressed="false">Non-Konglo</button>
+                <button type="button" onclick="switchScreenerType('daytrade')" id="scrTypeDayTrade" class="ac-segment" aria-pressed="false">Day Trade</button>
+            </div>
         </div>
         <!-- 8 Presets Bandar Metrics Quick Filter (Fase 7) -->
         <div id="screenerPresetsContainer" class="mb-3"></div>
         <div id="screenerPresetResultsContainer" class="mb-4"></div>
-        <!-- Screener type tabs -->
-        <!-- Segmented control. These three were previously three independent
-             buttons, each carrying its own eight-utility class string, with the
-             selected and unselected appearances written out twice more inside
-             switchScreenerType(). They are now one track with three segments,
-             styled by .ac-segmented / .ac-segment in ui-theme.css. The ids, the
-             onclick handlers and the switching logic are unchanged. -->
-        <!-- aria-pressed, not role="tab". The ARIA tab pattern also requires
-             role="tabpanel" on each pane, aria-controls linking the two, and
-             roving arrow-key focus across the group. None of that exists here,
-             and a half-implemented tablist is worse than none: it promises a
-             screen-reader user an interaction model the widget does not honour.
-             These are three toggle buttons, and aria-pressed says exactly
-             that. -->
-        <div class="ac-segmented mb-3" role="group" aria-label="Jenis screener">
-            <button onclick="switchScreenerType('konglo')" id="scrTypeKonglo" class="ac-segment is-active" aria-pressed="true">Konglo</button>
-            <button onclick="switchScreenerType('nonkonglo')" id="scrTypeNonKonglo" class="ac-segment" aria-pressed="false">Non-Konglo</button>
-            <button onclick="switchScreenerType('daytrade')" id="scrTypeDayTrade" class="ac-segment" aria-pressed="false">Day Trade</button>
-        </div>
+        <!-- One R/R floor for all three modes (canvas toolbar). Off by default:
+             rows without a computed R/R would otherwise disappear unasked. -->
+        <label class="scr-rr-min"><input type="checkbox" id="scrRrMin" onchange="onScreenerRrMinChange()"> R/R minimal 1 : 1,5 <span class="mut">(Day Trade 1 : 1,2)</span></label>
         <!-- Quick Filter Pattern Personality & Win Rate (Day Trade & Swing) -->
         <div id="patternFilterContainer" class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-dark-800/60 border border-dark-600/30 rounded-xl p-2.5 mb-3 shadow-sm">
             <div class="flex items-center gap-2 flex-1 min-w-[260px]">
@@ -1522,9 +1514,9 @@ html.light #googleCompleteProfileModal input {
                 <span id="screenerMetaBadge" class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
                 <div class="ac-segmented text-xs" role="group" aria-label="Tampilan Konglo">
                     <button id="kgBtnTable" onclick="toggleScreenerView('konglo', 'table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
-                    <button id="kgBtnCard" onclick="toggleScreenerView('konglo', 'card')" class="ac-segment" aria-pressed="false">Plan View</button>
+                    <button id="kgBtnCard" onclick="toggleScreenerView('konglo', 'card')" class="ac-segment" aria-pressed="false">Kartu</button>
                 </div>
-                <button onclick="exportKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>PDF</button>
+                <button onclick="exportKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Cetak / PDF</button>
             </div>
         </div>
         <p id="screenerFailedDiag" class="hidden text-[10px] text-red-400/70 mt-1"></p>
@@ -1547,19 +1539,19 @@ html.light #googleCompleteProfileModal input {
                 <p class="text-sm font-bold text-gray-200" id="screenerStatUniverse">—</p>
             </div>
             <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Scanned</p>
+                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Dipindai</p>
                 <p class="text-sm font-bold text-gray-200" id="screenerStatScanned">—</p>
             </div>
             <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Failed</p>
+                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Gagal</p>
                 <p class="text-sm font-bold text-gray-200" id="screenerStatFailed">—</p>
             </div>
         </div>
         <!-- Lightweight result filters -->
         <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
-            <input id="kgTickerSearch" aria-label="Cari ticker swing konglomerasi" oninput="applyScreenerUiFilters('konglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40 col-span-1 sm:col-span-2 lg:col-span-1">
-            <select id="kgStatusFilter" aria-label="Filter status setup swing konglomerasi" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-            <select id="kgRiskFilter" aria-label="Filter profil risiko swing konglomerasi" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+            <input id="kgTickerSearch" aria-label="Cari ticker swing konglomerasi" oninput="applyScreenerUiFilters('konglo')" placeholder="Cari ticker…" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40 col-span-1 sm:col-span-2 lg:col-span-1">
+            <select id="kgStatusFilter" aria-label="Filter status setup swing konglomerasi" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Semua status</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
+            <select id="kgRiskFilter" aria-label="Filter profil risiko swing konglomerasi" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Semua risiko</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
             <details class="col-span-full text-[11px] pt-0.5">
                 <summary class="cursor-pointer text-gray-400 hover:text-gray-300 select-none py-0.5 text-[10px] font-semibold flex items-center gap-1">
                     <svg class="w-3 h-3 text-emerald-400 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
@@ -1589,12 +1581,12 @@ html.light #googleCompleteProfileModal input {
                         <thead class="sticky top-0 bg-dark-800 z-20 shadow-sm">
                             <tr class="scr-cols-17 bg-dark-700/80">
                                 <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/95 z-30">Ticker</th>
-                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Group</th>
+                                <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Grup</th>
                                 <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
                                 <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
                                 <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
-                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
-                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Harga</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg</th>
                                 <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
                                 <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
                                 <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
@@ -1615,8 +1607,8 @@ html.light #googleCompleteProfileModal input {
                 <aside class="ac-detail-pane" id="screenerDetailPane" aria-label="Detail Trading Plan Konglo">
                     <div class="ac-detail-pane__header">
                         <div class="ac-detail-pane__title">
-                            <span id="screenerDetailTicker" style="color: var(--ac-brand, #10b981); font-weight: 700; font-size: 15px;">Trading Plan</span>
-                            <span id="screenerDetailTierBadge" class="ac-status-badge ac-status-badge--neutral" style="font-size: 10px;">Pilih Saham</span>
+                            <span id="screenerDetailTicker" style="color: var(--ac-brand, #10b981); font-weight: 700; font-size: 15px;">Rencana trading</span>
+                            <span id="screenerDetailTierBadge" class="ac-status-badge ac-status-badge--neutral" style="font-size: 10px;">Pilih saham</span>
                         </div>
                         <button type="button" class="ac-detail-pane__close" aria-label="Tutup detail trading plan" onclick="closeScreenerDetailPane(); if(window.AutoCuanScreener) AutoCuanScreener.closeDetail();">&times;</button>
                     </div>
@@ -1646,29 +1638,29 @@ html.light #googleCompleteProfileModal input {
                     <span id="nkScreenerMetaBadge" class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
                     <div class="ac-segmented text-xs" role="group" aria-label="Tampilan Non-Konglo">
                         <button id="nkBtnTable" onclick="toggleScreenerView('nonkonglo', 'table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
-                        <button id="nkBtnCard" onclick="toggleScreenerView('nonkonglo', 'card')" class="ac-segment" aria-pressed="false">Plan View</button>
+                        <button id="nkBtnCard" onclick="toggleScreenerView('nonkonglo', 'card')" class="ac-segment" aria-pressed="false">Kartu</button>
                     </div>
-                    <button onclick="exportNonKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>PDF</button>
+                    <button onclick="exportNonKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Cetak / PDF</button>
                 </div>
             </div>
             <!-- Non-Konglo run summary -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-1.5" id="nkScreenerStats">
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
                     <p class="text-[9px] text-gray-500 uppercase tracking-wide">Universe</p>
-                    <p id="nkUniverseCount" class="text-sm font-bold text-gray-200">-</p>
+                    <p id="nkUniverseCount" class="text-sm font-bold text-gray-200">—</p>
                 </div>
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Scanned</p>
-                    <p id="nkScannedCount" class="text-sm font-bold text-gray-200">-</p>
+                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Dipindai</p>
+                    <p id="nkScannedCount" class="text-sm font-bold text-gray-200">—</p>
                 </div>
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Published / Results</p>
-                    <p id="nkPublishedCount" class="text-sm font-bold text-emerald-400">-</p>
+                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Terbit</p>
+                    <p id="nkPublishedCount" class="text-sm font-bold text-emerald-400">—</p>
                 </div>
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Failed</p>
-                    <p id="nkFailedCount" class="text-sm font-bold text-amber-400">-</p>
-                    <p id="nkStagingCount" class="text-[10px] text-gray-500">Staging: -</p>
+                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Gagal</p>
+                    <p id="nkFailedCount" class="text-sm font-bold text-amber-400">—</p>
+                    <p id="nkStagingCount" class="text-[10px] text-gray-500">Staging: —</p>
                 </div>
             </div>
             <div class="text-[10px] text-gray-500 space-y-0.5">
@@ -1680,7 +1672,7 @@ html.light #googleCompleteProfileModal input {
                 <div class="portfolio-card p-3">
                     <div class="flex items-center gap-2 mb-2">
                         <div class="spinner-sm"></div>
-                        <span class="text-xs text-gray-400" id="nkProgressText">Scanning...</span>
+                        <span class="text-xs text-gray-400" id="nkProgressText">Memindai…</span>
                     </div>
                     <div class="w-full bg-dark-600/50 rounded-full h-1.5">
                         <div id="nkProgressBar" class="bg-emerald-500 h-1.5 rounded-full transition-all" style="width: 0%"></div>
@@ -1691,9 +1683,9 @@ html.light #googleCompleteProfileModal input {
             <div class="scr-info-bar text-amber-400/80 text-[11px]"><strong class="text-amber-400">Disclaimer:</strong> Bukan rekomendasi beli. Watchlist swing trading papan Utama &amp; Pengembangan. Kelola risiko sendiri.</div>
             <!-- Lightweight result filters -->
             <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
-                <input id="nkTickerSearch" aria-label="Cari ticker swing non-konglomerasi" oninput="applyScreenerUiFilters('nonkonglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40 col-span-1 sm:col-span-2 lg:col-span-1">
-                <select id="nkStatusFilter" aria-label="Filter status setup swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-                <select id="nkRiskFilter" aria-label="Filter profil risiko swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+                <input id="nkTickerSearch" aria-label="Cari ticker swing non-konglomerasi" oninput="applyScreenerUiFilters('nonkonglo')" placeholder="Cari ticker…" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40 col-span-1 sm:col-span-2 lg:col-span-1">
+                <select id="nkStatusFilter" aria-label="Filter status setup swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Semua status</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
+                <select id="nkRiskFilter" aria-label="Filter profil risiko swing non-konglomerasi" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Semua risiko</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
                 <details class="col-span-full text-[11px] pt-0.5">
                     <summary class="cursor-pointer text-gray-400 hover:text-gray-300 select-none py-0.5 text-[10px] font-semibold flex items-center gap-1">
                         <svg class="w-3 h-3 text-emerald-400 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
@@ -1727,8 +1719,8 @@ html.light #googleCompleteProfileModal input {
                                 <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
                                 <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
                                 <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
-                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
-                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Harga</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg</th>
                                 <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
                                 <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
                                 <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
@@ -1749,8 +1741,8 @@ html.light #googleCompleteProfileModal input {
                 <aside class="ac-detail-pane" id="nkDetailPane" aria-label="Detail Trading Plan Non-Konglo">
                     <div class="ac-detail-pane__header">
                         <div class="ac-detail-pane__title">
-                            <span id="nkDetailTicker" style="color: var(--ac-brand, #10b981); font-weight: 700; font-size: 15px;">Trading Plan</span>
-                            <span id="nkDetailTierBadge" class="ac-status-badge ac-status-badge--neutral" style="font-size: 10px;">Pilih Saham</span>
+                            <span id="nkDetailTicker" style="color: var(--ac-brand, #10b981); font-weight: 700; font-size: 15px;">Rencana trading</span>
+                            <span id="nkDetailTierBadge" class="ac-status-badge ac-status-badge--neutral" style="font-size: 10px;">Pilih saham</span>
                         </div>
                         <button type="button" class="ac-detail-pane__close" aria-label="Tutup detail trading plan" onclick="AutoCuanScreener && AutoCuanScreener.closeDetail()">&times;</button>
                     </div>
@@ -1780,9 +1772,9 @@ html.light #googleCompleteProfileModal input {
                     <span id="dtMetaBadge" class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
                     <div class="ac-segmented text-xs" role="group" aria-label="Tampilan Day Trade">
                         <button id="dtBtnTable" onclick="toggleScreenerView('daytrade', 'table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
-                        <button id="dtBtnCard" onclick="toggleScreenerView('daytrade', 'card')" class="ac-segment" aria-pressed="false">Plan View</button>
+                        <button id="dtBtnCard" onclick="toggleScreenerView('daytrade', 'card')" class="ac-segment" aria-pressed="false">Kartu</button>
                     </div>
-                    <button onclick="exportDayTradePDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>PDF</button>
+                    <button onclick="exportDayTradePDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Cetak / PDF</button>
                 </div>
             </div>
             <!-- Compact info bars -->
@@ -1804,7 +1796,7 @@ html.light #googleCompleteProfileModal input {
                     <p class="text-sm font-bold text-gray-200" id="dtStatUniverse">&mdash;</p>
                 </div>
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
-                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Scanned</p>
+                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Dipindai</p>
                     <p class="text-sm font-bold text-gray-200" id="dtStatScanned">&mdash;</p>
                 </div>
                 <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
@@ -1820,7 +1812,7 @@ html.light #googleCompleteProfileModal input {
             <div id="dtProgressWrap" class="hidden">
                 <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 space-y-2">
                     <div class="flex items-center justify-between">
-                        <span class="text-xs font-medium text-cyan-400 flex items-center gap-1.5"><svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Scanning...</span>
+                        <span class="text-xs font-medium text-cyan-400 flex items-center gap-1.5"><svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Memindai…</span>
                         <span class="text-[10px] text-gray-500" id="dtProgressLabel">0 / 0</span>
                     </div>
                     <div class="w-full h-2 bg-dark-600/50 rounded-full overflow-hidden">
@@ -1838,9 +1830,9 @@ html.light #googleCompleteProfileModal input {
             </div>
             <!-- Lightweight result filters -->
             <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
-                <input id="dtTickerSearch" aria-label="Cari ticker day trade" oninput="applyScreenerUiFilters('daytrade')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40 col-span-1 sm:col-span-2 lg:col-span-1">
-                <select id="dtStatusFilter" aria-label="Filter status setup day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-                <select id="dtRiskFilter" aria-label="Filter profil risiko day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+                <input id="dtTickerSearch" aria-label="Cari ticker day trade" oninput="applyScreenerUiFilters('daytrade')" placeholder="Cari ticker…" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40 col-span-1 sm:col-span-2 lg:col-span-1">
+                <select id="dtStatusFilter" aria-label="Filter status setup day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Semua status</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
+                <select id="dtRiskFilter" aria-label="Filter profil risiko day trade" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Semua risiko</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
                 <details class="col-span-full text-[11px] pt-0.5">
                     <summary class="cursor-pointer text-gray-400 hover:text-gray-300 select-none py-0.5 text-[10px] font-semibold flex items-center gap-1">
                         <svg class="w-3 h-3 text-emerald-400 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
@@ -1881,8 +1873,8 @@ html.light #googleCompleteProfileModal input {
                                 <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup Score</th>
                                 <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
                                 <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Setup</th>
-                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
-                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Harga</th>
+                                <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg</th>
                                 <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
                                 <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Tx Today</th>
                                 <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Pre-Spike</th>
@@ -1906,8 +1898,8 @@ html.light #googleCompleteProfileModal input {
                 <aside class="ac-detail-pane" id="dtDetailPane" aria-label="Detail Trading Plan Day Trade">
                     <div class="ac-detail-pane__header">
                         <div class="ac-detail-pane__title">
-                            <span id="dtDetailTicker" style="color: var(--ac-brand, #10b981); font-weight: 700; font-size: 15px;">Trading Plan</span>
-                            <span id="dtDetailTierBadge" class="ac-status-badge ac-status-badge--neutral" style="font-size: 10px;">Pilih Saham</span>
+                            <span id="dtDetailTicker" style="color: var(--ac-brand, #10b981); font-weight: 700; font-size: 15px;">Rencana trading</span>
+                            <span id="dtDetailTierBadge" class="ac-status-badge ac-status-badge--neutral" style="font-size: 10px;">Pilih saham</span>
                         </div>
                         <button type="button" class="ac-detail-pane__close" aria-label="Tutup detail trading plan" onclick="AutoCuanScreener && AutoCuanScreener.closeDetail()">&times;</button>
                     </div>
@@ -11483,7 +11475,8 @@ function getScreenerUiFilterValues(type) {
         type: val('TypeFilter', 'all'),
         hideVeryHigh: checked('HideVeryHigh'),
         patternPersonality: patEl ? patEl.value : 'all',
-        highWr: !!(highWrEl && highWrEl.checked)
+        highWr: !!(highWrEl && highWrEl.checked),
+        rrMin: !!(typeof document !== 'undefined' && document.getElementById('scrRrMin') && document.getElementById('scrRrMin').checked)
     };
 }
 function getScreenerTypeLabel(r, fallbackType) {
@@ -11612,6 +11605,10 @@ function applyScreenerUiFilters(type, results) {
         if (f.type !== 'all' && getScreenerTypeLabel(r, type) !== f.type) return false;
         if (!screenerStatusMatches(r, f.status)) return false;
         if (typeof matchesPatternPersonalityFilters === 'function' && !matchesPatternPersonalityFilters(r, f.patternPersonality, f.highWr)) return false;
+        if (f.rrMin) {
+            var rr = Number(normalizeDisplayLevels(r).rr);
+            if (!(isFinite(rr) && rr >= (type === 'daytrade' ? 1.2 : 1.5))) return false;
+        }
         return true;
     });
 }
@@ -11761,14 +11758,14 @@ function getSetupMeaning(status, type) {
     if (!status) return null;
     var s = status.toUpperCase().replace(/[_\s]+/g, '_');
     var map = {
-        'A_PLUS_SETUP': 'Setup A+ — semua konfirmasi terpenuhi. Potensi naik kuat.',
-        'TRADE_CANDIDATE': 'Kandidat trade kuat — butuh konfirmasi chart/orderbook.',
+        'A_PLUS_SETUP': 'Setup A+: semua konfirmasi terpenuhi. Potensi naik kuat.',
+        'TRADE_CANDIDATE': 'Kandidat trade kuat, butuh konfirmasi chart/orderbook.',
         'READY_BREAKOUT': 'Signal terkonfirmasi. Entry hanya jika harga masih dekat area dan belum chase.',
         'READY': 'Siap pantau breakout/reclaim. Entry hanya jika harga dan volume tetap konfirmasi.',
         'PRE_SPIKE_WATCH': 'Radar prioritas sebelum potensi spike. Peluang dapat bergerak lebih dulu, tetapi risikonya lebih tinggi daripada Signal Terkonfirmasi.',
         'PRE_SPIKE': 'Radar awal sebelum potensi spike. Butuh konfirmasi volume dan candle lanjutan.',
         'EARLY_RADAR': 'Radar awal sedang terbentuk. Potensi ada, tetapi belum cukup stabil disebut Signal Terkonfirmasi.',
-        'MOMENTUM_CONTINUATION': 'Momentum sedang berjalan. Jangan mengejar harga — masuk hanya jika masih dekat area entry.',
+        'MOMENTUM_CONTINUATION': 'Momentum sedang berjalan. Jangan mengejar harga; masuk hanya jika masih dekat area entry.',
         'RECLAIM_CANDIDATE': 'Kandidat reclaim level penting. Valid jika harga bertahan di atas level konfirmasi.',
         'WAIT_PULLBACK': 'Setup masih berpotensi, tetapi tunggu harga kembali ke area entry. Jangan chase.',
         'WATCHLIST': 'Masih pantauan. Setup belum cukup kuat untuk agresif entry.',
@@ -11780,7 +11777,7 @@ function getSetupMeaning(status, type) {
         'AVOID': 'Hindari dulu. Setup belum valid atau risiko terlalu tinggi.',
         'INVALID': 'Hindari dulu. Setup belum valid atau risiko terlalu tinggi.',
         'SWING_READY': 'Swing siap pantau. Entry bertahap jika konfirmasi hold di atas support.',
-        'A_PLUS_SWING': 'Swing A+ — setup lengkap, konfirmasi volume dan candle kuat.'
+        'A_PLUS_SWING': 'Swing A+: setup lengkap, konfirmasi volume dan candle kuat.'
     };
     return map[s] || null;
 }
@@ -11793,6 +11790,12 @@ function buildRespectQualityLine(r) {
 }
 
 function renderScrDetailHtml(r, type) {
+    if (!r) return '';
+    if (!window.AutoCuanScreenerV2) return renderScrDetailLegacyHtml(r, type);
+    return window.AutoCuanScreenerV2.summaryHtml(r, type) +
+        '<details class="scr-more"><summary><span class="chev" aria-hidden="true">&#9656;</span>Rincian lengkap</summary><div class="scr-legacy">' + renderScrDetailLegacyHtml(r, type) + '</div></details>';
+}
+function renderScrDetailLegacyHtml(r, type) {
     if (!r) return '';
     var chgView = changeDisplay(r.change_pct, 2);
     var sc = r.daytrade_score || r.score || 0;
@@ -12196,8 +12199,8 @@ function _authoritativeSelectScreenerRow(arg1, arg2, arg3) {
 
     var isDesktop = window.innerWidth >= 1280;
     if (isDesktop) {
-        var pane = document.getElementById('screenerDetailPane');
-        var content = document.getElementById('screenerDetailPaneContent');
+        var pane = document.getElementById(type === 'daytrade' ? 'dtDetailPane' : (type === 'nonkonglo' ? 'nkDetailPane' : 'screenerDetailPane'));
+        var content = document.getElementById(type === 'daytrade' ? 'dtDetailBody' : (type === 'nonkonglo' ? 'nkDetailBody' : 'screenerDetailPaneContent'));
         if (pane && content) {
             content.innerHTML = renderScrDetailHtml(r, type);
             pane.classList.remove('hidden');
@@ -13117,7 +13120,8 @@ async function loadSwingScreener(silent) {
         var data = await response.json();
 
         if (response.status === 403 || !data.success) {
-            if (!silent) tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
+            // 403 is a real denial; any other failure is a failed read, not "access denied".
+            if (!silent) tbody.innerHTML = screenerEmptyRowHtml(17, data.error || (response.status === 403 ? 'Akses ditolak.' : 'Hasil screener gagal dimuat.'), response.status === 403 ? '' : 'error', 'loadSwingScreener()');
             return;
         }
 
@@ -13329,7 +13333,7 @@ function renderScreenerTable(results) {
         html += '</tr>';
     });
     setScreenerResultRows(tbody, html);
-    if (window.innerWidth >= 1024 && filtered.length > 0 && (!window.AutoCuanScreener || !window.AutoCuanScreener.selectedTicker)) {
+    if (window.innerWidth >= 1280 && filtered.length > 0 && (!window.AutoCuanScreener || !window.AutoCuanScreener.selectedTicker)) {
         var firstTr = tbody.querySelector('tr[data-ticker]');
         if (firstTr && window.AutoCuanScreener) {
             window.AutoCuanScreener.selectRow('konglo', filtered[0].ticker, firstTr);
@@ -13675,6 +13679,14 @@ function stopAllScreenerPolling() {
     _currentScreenerType = null;
 }
 
+var SCREENER_MODE_DESC = {
+    konglo: 'Swing 3–7 hari pada saham grup konglomerat. Klik baris untuk rencana dan bukti gate.',
+    nonkonglo: 'Swing 3–7 hari pada saham non-konglomerat papan Utama dan Pengembangan.',
+    daytrade: 'Kandidat Day Trade dari candle harian. Konfirmasi intraday tetap wajib.'
+};
+function onScreenerRrMinChange() {
+    applyScreenerUiFilters(_currentScreenerType || 'konglo');
+}
 function switchScreenerType(type) {
     _currentScreenerType = type;
     var kongloPane = document.getElementById('screenerKongloPane');
@@ -13687,8 +13699,12 @@ function switchScreenerType(type) {
     // The two appearances are one class plus a state, not two hand-written
     // utility strings. Assigning .className still replaces the whole attribute,
     // exactly as before, so the switching behaviour is unchanged.
-    var activeClass = 'ac-segment is-active';
+    var activeClass = 'ac-segment is-active on';
     var inactiveClass = 'ac-segment';
+    var ind = document.getElementById('scrTypeInd');
+    if (ind) ind.className = 'ind' + (type === 'nonkonglo' ? ' k1' : (type === 'daytrade' ? ' k2' : ''));
+    var desc = document.getElementById('scrModeDesc');
+    if (desc) desc.textContent = SCREENER_MODE_DESC[type] || SCREENER_MODE_DESC.konglo;
 
     // Hide all panes
     if (kongloPane) kongloPane.classList.add('hidden');
@@ -13788,7 +13804,7 @@ async function loadNkScreenerResults(silent) {
         var data = await response.json();
 
         if (response.status === 403 || !data.success) {
-            tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
+            tbody.innerHTML = screenerEmptyRowHtml(18, data.error || (response.status === 403 ? 'Akses ditolak.' : 'Hasil screener gagal dimuat.'), response.status === 403 ? '' : 'error', 'loadNkScreenerResults()');
             return;
         }
 
@@ -14062,7 +14078,7 @@ function renderNkScreenerTable(results) {
         html += '</tr>';
     });
     setScreenerResultRows(tbody, html);
-    if (window.innerWidth >= 1024 && filtered.length > 0 && (!window.AutoCuanScreener || !window.AutoCuanScreener.selectedTicker)) {
+    if (window.innerWidth >= 1280 && filtered.length > 0 && (!window.AutoCuanScreener || !window.AutoCuanScreener.selectedTicker)) {
         var firstTr = tbody.querySelector('tr[data-ticker]');
         if (firstTr && window.AutoCuanScreener) {
             window.AutoCuanScreener.selectRow('nonkonglo', filtered[0].ticker, firstTr);
@@ -14489,7 +14505,7 @@ function dashboardEmptyHtml(message, tone) {
 function screenerEmptyRowHtml(colspan, message, tone, retryFn) {
     var color = tone === 'error' ? 'text-red-400' : 'text-gray-400';
     var retryAction = retryFn || 'loadSwingScreener()';
-    var actionBtn = tone === 'error' ? '<br><button onclick="' + retryAction + '" class="ac-btn mt-2" data-size="sm">Coba Lagi</button>' : '<br><button onclick="' + retryAction + '" class="ac-btn mt-2" data-size="sm">Segarkan Data</button>';
+    var actionBtn = tone === 'error' ? '<br><button type="button" onclick="' + retryAction + '" class="ac-btn vbtn sm mt-2" data-size="sm">Coba lagi</button>' : '<br><button type="button" onclick="' + retryAction + '" class="ac-btn vbtn sm mt-2" data-size="sm">Muat ulang data</button>';
     return '<tr><td colspan="' + Number(colspan || 1) + '" class="text-center py-8 ' + color + '">' + escapeHtml(message || STRICT_EMPTY_TEXT) + actionBtn + '</td></tr>';
 }
 function screenerEmptyCardHtml(message, actionLabel, actionFn) {
@@ -15022,7 +15038,7 @@ function renderDashboardTop5(picks) {
         var open = idx === 0;
 
         html += '<div class="rk dashboard-decision-row' + (open ? ' sel' : '') + '" data-ticker="' + escapeHtml(r.ticker || '') + '" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + planId + '" onclick="dashTogglePlan(\'' + tickerJs + '\')" onkeydown="dashPlanKey(event, \'' + tickerJs + '\')">';
-        html += '<span class="num mut">' + escapeHtml(rank) + '</span>';
+        html += '<span class="dash-rank">' + escapeHtml(rank) + '</span>';
         html += '<span class="dash-rk-id"><span class="tk mono">' + escapeHtml(r.ticker || '-') + '</span>' + (name ? ' <span class="mut dash-rk-name">' + escapeHtml(name) + '</span>' : '') + '<span class="mut dash-rk-group">' + escapeHtml(group || r.category || '') + '</span></span>';
         html += '<span class="dash-rk-setup">' + escapeHtml(setup || r.category || '-') + '</span>';
         html += '<span class="r num mono dash-strong">' + dashFmtPrice(r.last_price) + '</span>';
@@ -16373,12 +16389,12 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/track-record-runtime.js"></script>
 <script src="/analysis-tools-registry.js?v=20261003-v1"></script>
 <script src="/track-record-backtest.js"></script>
-<script src="/watchlist-runtime.js"></script>
+<script src="/watchlist-runtime.js?v=20261022-v1"></script>
 <script src="/chart-viewer.js?v=20260905-v1"></script>
 <script src="/chart-analysis-runtime.js?v=20260904-v1"></script>
 <script src="/unified-cockpit-runtime.js?v=20261016-fase8-v1"></script>
 <script src="/position-sizing-calculator.js?v=20260906-e1"></script>
-<script src="/signal-gate-transparency.js?v=20260906-e3"></script>
+<script src="/signal-gate-transparency.js?v=20261022-v1"></script>
 <script src="/number-flow-runtime.js?v=20260929-keyboard-v1"></script>
 <script src="/data-primitives-runtime.js?v=20261007-w3"></script>
 <script src="/analisis-saham-runtime.js?v=20261016-fase8-v1"></script>
@@ -16409,6 +16425,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/market-intelligence.js?v=20261022-v2"></script>
 <script src="/dashboard-v2.js?v=20261022-v1"></script>
 <script src="/ac-tape.js?v=20261022-v1"></script>
+<script src="/screener-v2.js?v=20261022-v1"></script>
 <script>
 // Auto-initialize Market Breadth if on dashboard
 document.addEventListener('DOMContentLoaded', function() {

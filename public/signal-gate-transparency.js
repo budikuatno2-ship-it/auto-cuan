@@ -206,7 +206,7 @@
     var allPassed = passedCount === totalCount;
     var summaryRationale = allPassed
       ? (signal.notes || signal.status_reason || signal.setup || 'Semua kriteria gate terverifikasi terpenuhi.')
-      : (signal.notes || signal.status_reason || signal.setup || (unverifiedCount > 0 ? 'Sebagian data gate belum tersedia — status belum diverifikasi.' : 'Sebagian kriteria gate belum terpenuhi.'));
+      : (signal.notes || signal.status_reason || signal.setup || (unverifiedCount > 0 ? 'Sebagian data gate belum tersedia, jadi statusnya belum diverifikasi.' : 'Sebagian kriteria gate belum terpenuhi.'));
 
     return {
       passedCount: passedCount,

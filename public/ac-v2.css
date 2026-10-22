@@ -290,3 +290,181 @@ html.is-dark #page-dashboard .dash-ses div.done { background: rgba(72, 199, 151,
 #page-dashboard #dashboardTop5List .rk:not(.hd) { font-size: 14px; }
 #page-dashboard #dashboardTop5List .empty-state::before, #page-dashboard #dashboardTop5List .empty-state::after { display: none !important; }
 #page-dashboard #dashboardTop5List .empty-state .vbtn { width: auto !important; margin-top: 10px; }
+
+/* =====================================================================
+   Screener (canvas Screener.dc.html)
+   ===================================================================== */
+html #appContent #page-screener .scr-ph h1.page-title { margin: 0; font-size: 30px !important; line-height: 1.15; letter-spacing: -.02em; font-weight: 700 !important; color: var(--ac-ink) !important; }
+html #appContent #page-screener .scr-ph p { margin: 6px 0 0; color: var(--ac-2); max-width: 640px; line-height: 1.45; }
+html #appContent #page-screener .scr-modes .ac-segment { margin: 0; border: 0 !important; background: transparent !important; box-shadow: none !important; min-width: 0; height: 30px; padding: 0 14px; border-radius: 6px; font: 600 13px var(--ac-font-sans); color: var(--ac-2) !important; }
+html #appContent #page-screener .scr-modes .ac-segment.on { color: var(--ac-ink) !important; }
+html #appContent #page-screener .scr-modes .ind.k1 { transform: translateX(100%); }
+html #appContent #page-screener .scr-modes .ind.k2 { transform: translateX(200%); }
+html #appContent #page-screener #screenerContent { display: flex; flex-direction: column; gap: 16px; }
+html #appContent #page-screener #screenerContent > * { margin: 0 !important; }
+html #appContent #page-screener #screenerContent.hidden { display: none !important; }
+html #appContent #page-screener .scr-rr-min { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ac-2); align-self: flex-start; }
+html #appContent #page-screener .scr-rr-min input { width: 16px; height: 16px; accent-color: var(--ac-brand); }
+
+/* Each mode is one canvas sheet */
+html #appContent #page-screener #screenerKongloPane, html #appContent #page-screener #screenerNonKongloPane, html #appContent #page-screener #screenerDayTradePane { background: var(--ac-surface); border: 1px solid var(--ac-hair); border-radius: 12px; padding: 16px 20px 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+html #appContent #page-screener #screenerKongloPane.hidden, html #appContent #page-screener #screenerNonKongloPane.hidden, html #appContent #page-screener #screenerDayTradePane.hidden { display: none !important; }
+html #appContent #page-screener [id$="Pane"] > * { margin-top: 0 !important; margin-bottom: 0 !important; }
+html #appContent #page-screener [id$="Pane"] h2 { font-size: 18px !important; font-weight: 700 !important; letter-spacing: -.01em; color: var(--ac-ink) !important; }
+html #appContent #page-screener [id$="Pane"] h2 + p { color: var(--ac-2) !important; font-size: 12px !important; }
+html #appContent #page-screener .scr-info-bar { background: var(--ac-raised) !important; border: 1px solid var(--ac-hair) !important; border-radius: 8px !important; color: var(--ac-2) !important; font-size: 12px !important; padding: 8px 12px !important; }
+html #appContent #page-screener .scr-info-bar strong { color: var(--ac-ink) !important; }
+html #appContent #page-screener .scr-info-bar summary { color: var(--ac-brand) !important; }
+
+/* Stats: canvas meta line, not boxes */
+html #appContent #page-screener #screenerStats, html #appContent #page-screener #nkScreenerStats, html #appContent #page-screener #dtScreenerStats { display: flex !important; flex-wrap: wrap; gap: 6px 20px; padding: 10px 20px; margin: 0 -20px !important; border-top: 1px solid var(--ac-hair); border-bottom: 1px solid var(--ac-hair); background: var(--ac-raised); font-size: 12px; color: var(--ac-2); }
+html #appContent #page-screener #screenerStats > div, html #appContent #page-screener #nkScreenerStats > div, html #appContent #page-screener #dtScreenerStats > div { display: inline-flex !important; align-items: baseline; gap: 6px; padding: 0 !important; border: 0 !important; background: transparent !important; text-align: left !important; }
+html #appContent #page-screener #screenerStats p, html #appContent #page-screener #nkScreenerStats p, html #appContent #page-screener #dtScreenerStats p { margin: 0 !important; font-size: 12px !important; letter-spacing: 0 !important; text-transform: none !important; color: var(--ac-2) !important; font-weight: 400 !important; }
+html #appContent #page-screener #screenerStats p + p, html #appContent #page-screener #nkScreenerStats p + p, html #appContent #page-screener #dtScreenerStats p + p { color: var(--ac-ink) !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
+
+/* Filters: one toolbar row */
+html #appContent #page-screener .scr-filter-grid { display: flex !important; flex-wrap: wrap; align-items: center; gap: 10px !important; padding: 0 !important; border: 0 !important; background: transparent !important; }
+html #appContent #page-screener .scr-filter-grid > input, html #appContent #page-screener .scr-filter-grid > select, html #appContent #page-screener #patternFilterContainer select { width: auto !important; min-width: 0; height: 36px; padding: 0 12px !important; border: 1px solid var(--ac-ctl) !important; border-radius: 8px !important; background: var(--ac-surface) !important; color: var(--ac-ink) !important; font-size: 13px !important; }
+html #appContent #page-screener .scr-filter-grid > input { width: 240px !important; text-transform: uppercase; }
+html #appContent #page-screener .scr-filter-grid > input::placeholder { text-transform: none; color: var(--ac-muted); }
+html #appContent #page-screener .scr-filter-grid > details { flex-basis: 100%; }
+html #appContent #page-screener .scr-filter-grid > details summary { color: var(--ac-2) !important; font-size: 12px !important; }
+html #appContent #page-screener #patternFilterContainer { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; }
+html #appContent #page-screener #patternFilterContainer label { color: var(--ac-2) !important; }
+
+/* Status filter tabs: quiet chips */
+html #appContent #page-screener .screener-tab, html #appContent #page-screener [id$="Pane"] .ac-segment { border: 1px solid var(--ac-hair) !important; background: var(--ac-surface) !important; color: var(--ac-2) !important; border-radius: 6px !important; font-weight: 600 !important; box-shadow: none !important; }
+html #appContent #page-screener .screener-tab.active, html #appContent #page-screener [id$="Pane"] .ac-segment.is-active { background: var(--ac-brand-soft) !important; border-color: rgba(15, 116, 88, .3) !important; color: var(--ac-brand) !important; }
+
+/* Tables: canvas .tbl */
+html #appContent #page-screener .ac-split-view { gap: 0 !important; margin: 0 -20px !important; width: auto !important; border-top: 1px solid var(--ac-hair); align-items: stretch !important; }
+html #appContent #page-screener .ac-split-view__main > div[id$="TableWrap"] { border: 0 !important; border-radius: 0 !important; max-height: 640px; background: var(--ac-surface) !important; }
+html #appContent #page-screener [id$="TableWrap"] table { font-size: 13px !important; color: var(--ac-ink); }
+html #appContent #page-screener [id$="TableWrap"] thead, html #appContent #page-screener [id$="TableWrap"] thead tr { background: var(--ac-raised) !important; box-shadow: none !important; }
+html #appContent #page-screener [id$="TableWrap"] th { height: 36px; padding: 0 12px !important; background: var(--ac-raised) !important; border-bottom: 1px solid var(--ac-hair) !important; color: var(--ac-2) !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: 0 !important; text-transform: none !important; }
+html #appContent #page-screener [id$="TableWrap"] td { height: 42px; padding: 0 12px !important; border-bottom: 1px solid var(--ac-hair) !important; background: transparent !important; color: var(--ac-ink) !important; font-size: 13px !important; font-variant-numeric: tabular-nums; }
+html #appContent #page-screener [id$="TableWrap"] td.sticky, html #appContent #page-screener [id$="TableWrap"] th.sticky { background: var(--ac-surface) !important; }
+html #appContent #page-screener [id$="TableWrap"] thead th.sticky { background: var(--ac-raised) !important; }
+html #appContent #page-screener [id$="TableWrap"] tbody tr { transition: background 140ms var(--ease); }
+html #appContent #page-screener [id$="TableWrap"] tbody tr:hover, html #appContent #page-screener [id$="TableWrap"] tbody tr:hover td { background: var(--ac-hover) !important; }
+html #appContent #page-screener [id$="TableWrap"] tbody tr.is-selected td { background: var(--ac-brand-soft) !important; }
+html #appContent #page-screener [id$="TableWrap"] tbody tr.is-selected td:first-child { box-shadow: inset 3px 0 0 var(--ac-brand); }
+html #appContent #page-screener [id$="TableWrap"] .ac-screener-result-action { font: 700 13px var(--ac-font-mono) !important; color: var(--ac-ink) !important; background: none !important; border: 0 !important; padding: 0 !important; letter-spacing: .01em; }
+html #appContent #page-screener [id$="TableWrap"] .text-emerald-300, html #appContent #page-screener [id$="TableWrap"] .text-emerald-400 { color: var(--ac-pos) !important; }
+html #appContent #page-screener [id$="TableWrap"] .text-red-400, html #appContent #page-screener [id$="TableWrap"] .text-rose-400 { color: var(--ac-neg) !important; }
+html #appContent #page-screener [id$="TableWrap"] .text-amber-400, html #appContent #page-screener [id$="TableWrap"] .text-orange-400 { color: var(--ac-warn-t) !important; }
+html #appContent #page-screener [id$="TableWrap"] .text-blue-400, html #appContent #page-screener [id$="TableWrap"] .text-violet-400 { color: var(--ac-info) !important; }
+html #appContent #page-screener [id$="TableWrap"] .text-gray-500, html #appContent #page-screener [id$="TableWrap"] .text-gray-400, html #appContent #page-screener [id$="TableWrap"] .text-gray-300 { color: var(--ac-2) !important; }
+html #appContent #page-screener [id$="TableWrap"] .text-gray-100, html #appContent #page-screener [id$="TableWrap"] .text-gray-200 { color: var(--ac-ink) !important; }
+
+/* Detail pane: canvas aside.pane */
+html #appContent #page-screener .ac-split-view__pane { flex: 0 0 360px !important; width: 360px !important; max-width: 360px !important; min-width: 0 !important; border-left: 1px solid var(--ac-hair); background: var(--ac-surface); }
+html #appContent #page-screener .ac-detail-pane { width: 100% !important; max-width: none !important; min-width: 0 !important; margin: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; position: sticky; top: 0; max-height: none; }
+/* Pane chrome: the canvas pane has no title bar. The close button stays (it
+   returns focus to the row), pinned to the top right; the footer action is
+   replaced by the summary buttons. */
+html #appContent #page-screener .ac-detail-pane { position: relative; }
+html #appContent #page-screener .ac-detail-pane__header { position: absolute !important; top: 14px; right: 14px; z-index: 2; padding: 0 !important; border: 0 !important; background: none !important; min-height: 0 !important; }
+html #appContent #page-screener .ac-detail-pane__title { display: none !important; }
+html #appContent #page-screener .ac-detail-pane__close { width: 30px; height: 30px; border-radius: 6px !important; border: 1px solid var(--ac-ctl) !important; background: var(--ac-surface) !important; color: var(--ac-2) !important; }
+html #appContent #page-screener .ac-detail-pane .scr-sum-head { padding-right: 40px; }
+html #appContent #page-screener .ac-detail-pane__footer { display: none !important; }
+html #appContent #page-screener .ac-detail-pane__body { padding: 18px 20px 24px !important; overflow: visible !important; max-height: none !important; }
+html #appContent #page-screener .ac-detail-pane__body .text-gray-300 { color: var(--ac-ink) !important; }
+html #appContent #page-screener .ac-detail-pane__body .text-gray-500 { color: var(--ac-2) !important; }
+
+
+/* Detail summary (shared by the pane and the phone sheet) */
+.scr-sum[data-ac-ui="v2"] { color: var(--ac-ink); font: 13px/1.45 var(--ac-font-sans); text-align: left; }
+.scr-sum .scr-sum-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.scr-sum .scr-sum-id { display: flex; align-items: center; gap: 10px; }
+.scr-sum .scr-sum-id .tk { font-size: 20px; }
+.scr-sum .scr-sum-name { font-size: 12px; margin-top: 2px; }
+.scr-sum .scr-star { width: 32px; padding: 0; }
+.scr-sum .scr-star.on-star { color: var(--ac-warn-t); border-color: rgba(169, 109, 19, .4); }
+.scr-sum .scr-sum-px { display: flex; align-items: baseline; gap: 10px; margin-top: 12px; }
+.scr-sum .scr-sum-px .mono { font-size: 26px; font-weight: 700; }
+.scr-sum .scr-sum-px .pos, .scr-sum .scr-sum-px .neg { font-weight: 600; }
+.scr-sum .scr-sum-score { margin-left: auto; }
+.scr-sum .scr-sum-score b { color: var(--ac-ink); }
+.scr-sum .ph2 { font-size: 13px; font-weight: 600; color: var(--ac-ink); padding: 18px 0 4px; }
+.scr-sum .ph2 .mut { font-weight: 500; }
+.scr-sum .kv { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--ac-hair); font-size: 13px; }
+.scr-sum .kv > span:first-child { color: var(--ac-2); }
+.scr-sum .kv > span:last-child { font-weight: 600; text-align: right; }
+.scr-sum .kv .scr-pct { font-weight: 500; }
+.scr-sum .scr-strong { font-weight: 700 !important; }
+.scr-sum .scr-help { margin: 8px 0 0; font-size: 12px; font-weight: 600; color: var(--ac-2); }
+.scr-sum .scr-help.warn-t { color: var(--ac-warn-t); }
+.scr-sum .scr-ladder { position: relative; height: 120px; margin: 10px 0 4px; border-left: 1px dashed var(--ac-hair); }
+.scr-sum .scr-ladder div { position: absolute; left: 0; right: 0; display: flex; align-items: center; gap: 8px; font-size: 11px; transform: translateY(-50%); }
+.scr-sum .scr-ladder div i { flex: 1; height: 0; border-top: 1.5px solid currentColor; opacity: .55; }
+.scr-sum .scr-ladder div span:first-child { width: 56px; padding-left: 4px; }
+.scr-sum .scr-ladder .is-pos { color: var(--ac-pos); }
+.scr-sum .scr-ladder .is-neg { color: var(--ac-neg); }
+.scr-sum .scr-ladder .is-now { color: var(--ac-ink); font-weight: 700; }
+.scr-sum .scr-ladder .is-now i { opacity: 1; border-top-style: dotted; }
+.scr-sum .gate { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--ac-hair); font-size: 13px; }
+.scr-sum .gate .mut { font-size: 12px; }
+.scr-sum .gi { width: 18px; height: 18px; border-radius: 50%; flex: none; display: grid; place-items: center; margin-top: 1px; font-size: 11px; font-weight: 700; }
+.scr-sum .gi.y { background: var(--ac-pos-soft); color: var(--ac-pos); }
+.scr-sum .gi.n { background: var(--ac-hover); color: var(--ac-muted); }
+.scr-sum .gi.x { background: var(--ac-neg-soft); color: var(--ac-neg); }
+.scr-sum .scr-open { width: 100%; height: 40px; margin-top: 18px; }
+.scr-sum .scr-open-ws { width: 100%; margin-top: 8px; }
+.scr-sum .scr-disclaimer { margin: 10px 0 0; font-size: 11px; color: var(--ac-muted); }
+.scr-more { margin-top: 16px; border-top: 1px solid var(--ac-hair); text-align: left; }
+.scr-more > summary { display: flex; align-items: center; gap: 8px; padding: 12px 0; font-size: 13px; font-weight: 600; color: var(--ac-2); cursor: pointer; list-style: none; }
+.scr-more > summary::-webkit-details-marker { display: none; }
+.scr-more[open] > summary .chev { transform: rotate(90deg); }
+.scr-more .chev { display: inline-block; transition: transform 190ms var(--ease); }
+
+/* Legacy detail inside "Rincian lengkap": inline dark styles mapped to tokens */
+.scr-legacy { color: var(--ac-ink); }
+.scr-legacy [style*="background"] { background: var(--ac-raised) !important; }
+.scr-legacy [style*="border"] { border-color: var(--ac-hair) !important; }
+.scr-legacy [style*="color:#fff"], .scr-legacy [style*="color:#f8fafc"], .scr-legacy [style*="color:#d1d5db"], .scr-legacy [style*="color:#e5e7eb"] { color: var(--ac-ink) !important; }
+.scr-legacy [style*="color:#6b7280"], .scr-legacy [style*="color:#9ca3af"], .scr-legacy [style*="color:#94a3b8"] { color: var(--ac-2) !important; }
+.scr-legacy [style*="color:#6ee7b7"], .scr-legacy [style*="color:#4ead8a"], .scr-legacy [style*="color:#34d399"], .scr-legacy [style*="color:#10b981"] { color: var(--ac-pos) !important; }
+.scr-legacy [style*="color:#fca5a5"], .scr-legacy [style*="color:#d87171"], .scr-legacy [style*="color:#f87171"] { color: var(--ac-neg) !important; }
+.scr-legacy [style*="color:#fbbf24"], .scr-legacy [style*="color:#fde047"], .scr-legacy [style*="color:#f59e0b"] { color: var(--ac-warn-t) !important; }
+.scr-legacy [style*="color:#60a5fa"], .scr-legacy [style*="color:#93c5fd"], .scr-legacy [style*="color:#6b9fd8"], .scr-legacy [style*="color:#818cf8"], .scr-legacy [style*="color:#a78bfa"] { color: var(--ac-info) !important; }
+
+/* Docked pane from 1280px (the detail opens as a dialog below that). */
+@media (max-width: 1279px) {
+  html #appContent #page-screener .ac-split-view__pane { display: none !important; }
+}
+@media (max-width: 700px) {
+  html #appContent #page-screener .scr-ph { align-items: flex-start; }
+  html #appContent #page-screener .scr-ph h1.page-title { font-size: 24px !important; }
+  html #appContent #page-screener #screenerKongloPane, html #appContent #page-screener #screenerNonKongloPane, html #appContent #page-screener #screenerDayTradePane { padding: 14px 16px 0; }
+  html #appContent #page-screener #screenerStats, html #appContent #page-screener #nkScreenerStats, html #appContent #page-screener #dtScreenerStats, html #appContent #page-screener .ac-split-view { margin: 0 -16px !important; }
+  html #appContent #page-screener .scr-filter-grid > input, html #appContent #page-screener .scr-filter-grid > select { width: 100% !important; }
+}
+
+/* Screener extras: the old "FILTER" tag, preset pills, phone sheet, modal. */
+html #appContent #page-screener .scr-filter-grid::before { display: none !important; content: none !important; }
+html #appContent #page-screener .ac-presets-header { color: var(--ac-2) !important; font-size: 12px !important; }
+html #appContent #page-screener .ac-preset-pill-wrap { display: inline-flex; align-items: center; border: 1px solid var(--ac-hair) !important; border-radius: 8px !important; background: var(--ac-surface) !important; overflow: hidden; }
+html #appContent #page-screener .ac-preset-btn, html #appContent #page-screener .ac-preset-info-btn { background: transparent !important; border: 0 !important; color: var(--ac-ink) !important; box-shadow: none !important; }
+html #appContent #page-screener .ac-preset-btn { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px !important; font: 600 12px var(--ac-font-sans) !important; }
+html #appContent #page-screener .ac-preset-btn:hover, html #appContent #page-screener .ac-preset-info-btn:hover { background: var(--ac-hover) !important; }
+html #appContent #page-screener .ac-preset-badge { background: var(--ac-raised) !important; color: var(--ac-2) !important; border-radius: 4px; padding: 1px 6px; font-size: 11px; }
+html #appContent #page-screener .ac-preset-info-btn { color: var(--ac-muted) !important; border-left: 1px solid var(--ac-hair) !important; width: 30px; height: 32px; }
+html #appContent #page-screener .ac-preset-popover { background: var(--ac-surface) !important; border: 1px solid var(--ac-hair) !important; color: var(--ac-ink) !important; box-shadow: var(--ac-shadow-float) !important; }
+html #appContent #page-screener .ac-preset-popover * { color: inherit !important; }
+
+/* Phone detail sheet and the <1024px detail dialog read as canvas sheets */
+html #scrDetailModal [id="scrDetailContent"], html #screenerMobileSheet [id="screenerSheetBody"] { background: var(--ac-surface) !important; color: var(--ac-ink) !important; }
+html #scrDetailModal > div, html #scrDetailModal .scr-detail-panel { background: var(--ac-surface) !important; border-color: var(--ac-hair) !important; color: var(--ac-ink) !important; }
+html #scrDetailModal > div > button[aria-label] { background: var(--ac-hover) !important; color: var(--ac-ink) !important; border: 0 !important; z-index: 2; }
+html #scrDetailModal > div > div:first-child { background: var(--ac-ctl) !important; }
+html #appContent #page-screener #screenerStats, html #appContent #page-screener #nkScreenerStats, html #appContent #page-screener #dtScreenerStats { width: auto !important; max-width: none !important; grid-template-columns: none !important; border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; }
+html #appContent #page-screener .ac-detail-pane__body, html #appContent #page-screener [id$="DetailBody"], html #appContent #page-screener #screenerDetailPaneContent { background: transparent !important; color: var(--ac-ink) !important; }
+html #appContent #page-screener [id$="DetailBody"].text-center { text-align: left; padding: 0 !important; }
+html #scrDetailModal #scrDetailContent { background: transparent !important; }
+html #scrDetailModal .scr-sum-head { padding-right: 44px; }
+#page-dashboard #dashboardTop5List .rk .dash-rank { all: unset; color: var(--ac-2); font-variant-numeric: tabular-nums; }
+@media (pointer: coarse) {
+  html #appContent #page-screener .scr-filter-grid > input, html #appContent #page-screener .scr-filter-grid > select, html #appContent #page-screener #patternFilterContainer select { height: 44px; font-size: 16px !important; }
+}

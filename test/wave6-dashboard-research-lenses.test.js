@@ -39,7 +39,7 @@ test('Dashboard: renderDashboardTop5 renders compact decision rows with rank, ti
   const body = fnMatch[0];
 
   assert.match(body, /dashboard-decision-row/);
-  assert.match(body, /class="num mut">' \+ escapeHtml\(rank\)/);
+  assert.match(body, /dash-rank/);
   assert.match(body, /dashFmtPrice\(r\.last_price\)/);
   assert.match(body, /getSignalQualityGrade/);
   assert.match(body, /getRiskLabel/);

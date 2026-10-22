@@ -369,6 +369,15 @@
       var clean = t.trim().toUpperCase();
       var active = window.__AUTOCUAN_WATCHLIST_SET__.has(clean);
       btn.classList.toggle('active', active);
+      // Screener v2 detail: an outline/filled star icon instead of a glyph.
+      if (btn.classList.contains('scr-star')) {
+        btn.classList.toggle('on-star', active);
+        btn.setAttribute('aria-pressed', String(active));
+        btn.setAttribute('aria-label', (active ? 'Hapus ' : 'Simpan ') + clean + (active ? ' dari Watchlist' : ' ke Watchlist'));
+        var icon = btn.querySelector('svg');
+        if (icon) icon.setAttribute('fill', active ? 'currentColor' : 'none');
+        return;
+      }
       btn.innerHTML = active ? '★' : '☆';
       btn.style.color = active ? 'var(--ac-warning)' : 'var(--ac-text-dim)';
     });
