@@ -124,7 +124,7 @@
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=20260929-v1">
     <link rel="stylesheet" href="/spreadsheet-grade.css?v=20260926-sg1">
-    <link rel="stylesheet" href="/money-sheet.css?v=20261022-v3">
+    <link rel="stylesheet" href="/money-sheet.css?v=20261022-v4">
     <link rel="stylesheet" href="/landing-experience.css?v=20261003-v4">
 <link rel="stylesheet" href="/number-flow.css?v=20260929-v1">
 <link rel="stylesheet" href="/viewport.css?v=20260929-v1">
@@ -2544,13 +2544,15 @@ html.light #googleCompleteProfileModal input {
 <section id="page-money-management" class="page-content money-sheet hidden" data-premium-page="true" data-ac-ui="v2" aria-labelledby="moneySheetTitle">
   <div class="ms-page-heading">
     <div><p class="ms-eyebrow">Keuangan pribadi</p><h1 id="moneySheetTitle">Kelola Keuangan</h1><p class="ms-description">Anggaran bulanan yang bisa Anda atur. Portofolio terhubung, tanpa pencatatan ganda.</p></div>
-    <label class="ms-month">Bulan <input id="mmSheetMonth" type="month" min="1900-01" max="2199-12" aria-label="Bulan anggaran"></label>
+    <label class="ms-month">Bulan <select id="mmSheetMonth" aria-label="Bulan anggaran"></select></label>
   </div>
   <div class="ms-overview" aria-label="Ringkasan seluruh anggaran">
     <div class="ms-metric"><span>Pemasukan</span><strong id="mmTotalIncomeDisplay"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></strong><small>Seluruh sumber penghasilan</small></div>
     <div class="ms-metric"><span>Pengeluaran</span><strong id="mmTotalLivingExpenseDisplay"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></strong><small>Kebutuhan dan pengeluaran pilihan</small></div>
     <div class="ms-metric"><span>Tabungan &amp; transfer</span><strong id="mmSheetAllocation"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></strong><small>Alokasi bulan ini, bukan nilai aset</small></div>
     <div class="ms-metric ms-metric-balance"><span>Sisa anggaran</span><strong id="mmRemainingBudgetDisplay"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></strong><small id="mmBudgetSafetyStatus">Menunggu data anggaran</small></div>
+    <div class="ms-bar" id="mmCompositionBar" role="img" aria-label="Komposisi pengeluaran, tabungan, dan sisa" hidden><i data-part="expense"></i><i data-part="saving"></i><i data-part="left"></i></div>
+    <div class="ms-legend" id="mmCompositionLegend" hidden><span><i class="ms-dot" data-part="expense"></i>Pengeluaran</span><span><i class="ms-dot" data-part="saving"></i>Tabungan &amp; transfer</span><span><i class="ms-dot" data-part="left"></i>Sisa</span></div>
   </div>
   <section class="ms-portfolio" aria-label="Ringkasan Portofolio terhubung">
     <div class="ms-portfolio-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4zM9 8V5h6v3"/></svg><div><strong>Portofolio terhubung</strong><span id="mmPortfolioStatus" role="status">Belum dimuat</span></div></div>

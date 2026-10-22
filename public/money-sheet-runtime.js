@@ -61,6 +61,7 @@
       ['mmTotalIncomeDisplay','mmTotalLivingExpenseDisplay','mmSheetAllocation','mmRemainingBudgetDisplay'].forEach(key => { metric(key,null); });
       $('mmRemainingBudgetDisplay').classList.remove('ms-negative');
       $('mmBudgetSafetyStatus').textContent = 'Belum ada baris di bulan ini';
+      composition(null);
       controls();
       return;
     }
@@ -71,6 +72,7 @@
     metric('mmRemainingBudgetDisplay', t.remaining);
     $('mmRemainingBudgetDisplay').classList.toggle('ms-negative', t.remaining < 0);
     $('mmBudgetSafetyStatus').textContent = t.remaining < 0 ? 'Alokasi melebihi pemasukan bulan ini' : 'Pemasukan dikurangi semua alokasi';
+    composition(t);
     controls();
   }
   function changed() {
@@ -136,6 +138,7 @@
         else if (force || input !== doc.activeElement) input.value = field === 'amount' ? (input === doc.activeElement && row.formula ? row.formula : format(row.amount)) : row[field];
         if (field === 'amount') { input.dataset.formula = row.formula || ''; input.title = row.formula ? row.formula + ' = Rp ' + format(row.amount) : ''; }
         input.setAttribute('aria-invalid', invalid.has(row.id + ':' + field) ? 'true' : 'false');
+        if (field === 'type') input.parentNode.dataset.type = row.type;
       });
       tr.querySelector('[data-remove]').setAttribute('aria-label', 'Hapus baris ' + physical);
       fragment.appendChild(tr);
@@ -165,14 +168,44 @@
     to.push(encode()); const old = JSON.parse(from.pop()); sheet = old.sheet; notes = old.notes;
     invalid.clear(); $('mmCashflowNotes').value = notes; renderRows(focus, true);
   }
+  // Canvas month picker: a select labelled "Oktober 2026". Five years back and
+  // one ahead; a month outside that range still gets its own option.
+  const monthLabel = value => { const p = value.split('-').map(Number); return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date(p[0], p[1] - 1, 1)); };
+  function monthValue(value) {
+    const select = $('mmSheetMonth');
+    if (!select.options.length) {
+      const now = Model.currentMonth().split('-').map(Number);
+      for (let offset = 12; offset >= -60; offset--) {
+        const d = new Date(now[0], now[1] - 1 + offset, 1), v = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        select.appendChild(new Option(monthLabel(v), v));
+      }
+    }
+    if (value && ![...select.options].some(o => o.value === value)) {
+      const option = new Option(monthLabel(value), value), after = [...select.options].find(o => o.value < value);
+      select.insertBefore(option, after || null);
+    }
+    select.value = value;
+  }
+  function composition(t) {
+    const bar = $('mmCompositionBar'), legend = $('mmCompositionLegend');
+    if (!bar) return;
+    const parts = t ? { expense: Math.max(t.expense, 0), saving: Math.max(t.saving + t.transfer, 0), left: Math.max(t.remaining, 0) } : null;
+    const total = parts ? parts.expense + parts.saving + parts.left : 0;
+    bar.hidden = legend.hidden = !(total > 0);
+    if (!(total > 0)) return;
+    Object.keys(parts).forEach(key => { bar.querySelector('[data-part="' + key + '"]').style.flex = parts[key] + ' 1 0%'; });
+    const pct = v => Math.round(v / total * 100) + '%';
+    bar.setAttribute('aria-label', 'Komposisi: pengeluaran ' + pct(parts.expense) + ', tabungan dan transfer ' + pct(parts.saving) + ', sisa ' + pct(parts.left));
+  }
   function blankOverview() {
+    composition(null);
     ['mmTotalIncomeDisplay','mmTotalLivingExpenseDisplay','mmSheetAllocation','mmRemainingBudgetDisplay'].forEach(key => { metric(key,null); });
     $('mmBudgetSafetyStatus').textContent = 'Menunggu data anggaran';
   }
   async function load(nextMonth, force) {
     if (saving) return;
     nextMonth = String(nextMonth || '');
-    if (!Model.validMonth(nextMonth)) { $('mmSheetMonth').value = month; return; }
+    if (!Model.validMonth(nextMonth)) { monthValue(month); return; }
 
     // A newer month choice supersedes an in-flight read. Abort old reads instead
     // of forcing the user to wait for the timeout.
@@ -184,7 +217,7 @@
     }
 
     commitEdit();
-    if (dirty() && !force && !root.confirm('Perubahan belum disimpan. Tinggalkan perubahan dan muat bulan ini?')) { $('mmSheetMonth').value = month; return; }
+    if (dirty() && !force && !root.confirm('Perubahan belum disimpan. Tinggalkan perubahan dan muat bulan ini?')) { monthValue(month); return; }
 
     const previous = {
       month: loadedMonth || month,
@@ -200,7 +233,7 @@
     const requestMonth = nextMonth;
     month = requestMonth;
     loading = true;
-    $('mmSheetMonth').value = requestMonth;
+    monthValue(requestMonth);
     if (!previous.sheet) $('mmSheetViewport').hidden = true;
     notice('Memuat lembar kerja...'); stateLabel('Memuat'); controls();
     try {
@@ -230,7 +263,7 @@
         saved = previous.saved;
         undo = previous.undo;
         redo = previous.redo;
-        $('mmSheetMonth').value = month;
+        monthValue(month);
         $('mmCashflowNotes').value = notes;
         $('mmSheetViewport').hidden = false;
         renderRows(null, true);
@@ -351,6 +384,7 @@
       Model.setRaw(candidate.rows.find(r => r.id === row.id), input.dataset.field, input.value);
       sheet = Model.normalize(candidate);
       invalid.delete(key); input.setAttribute('aria-invalid','false');
+      if (input.dataset.field === 'type') input.parentNode.dataset.type = input.value;
       if (!invalid.size) notice('');
     } catch (error) { invalid.set(key, { message: error.message, raw: input.value }); input.setAttribute('aria-invalid','true'); notice(error.message,'error'); }
     syncComputedCells(); changed();
@@ -388,8 +422,8 @@
   function bind() {
     if (bound) return; bound = true;
     const page = $('page-money-management');
-    $('mmSheetMonth').value = month;
-    $('mmSheetMonth').addEventListener('change', event => { if (Model.validMonth(event.target.value)) load(event.target.value); else event.target.value = month; });
+    monthValue(month);
+    $('mmSheetMonth').addEventListener('change', event => { if (Model.validMonth(event.target.value)) load(event.target.value); else monthValue(month); });
     $('mmReload').addEventListener('click', () => load(month));
     $('mmBtnSaveCashflow').addEventListener('click', save);
     $('mmAddRow').addEventListener('click', () => { const row = Model.newRow(id()); transact(() => sheet.rows.push(row), {id:row.id,col:2}); });
