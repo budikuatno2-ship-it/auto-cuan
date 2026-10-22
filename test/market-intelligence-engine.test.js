@@ -52,6 +52,16 @@ test('Market Intelligence: isForeignBroker correctly identifies foreign firms an
 test('Market Intelligence: calculateMarketBreadth returns valid ratios and totals', () => {
   const mb = engine.calculateMarketBreadth();
   assert.equal(mb.success, true);
+  if (mb.data_available === false) {
+    // No market store on this machine: every figure is absent, never invented.
+    assert.equal(mb.gainers, null);
+    assert.equal(mb.totalTurnoverDisplay, null);
+    assert.equal(mb.totalFrequencyDisplay, null);
+    assert.equal(mb.foreignFlowStatus, null);
+    assert.equal(mb.asOfDate, null);
+    return;
+  }
+  assert.equal(mb.data_available, true);
   assert.ok(mb.totalStocks > 0);
   assert.ok(mb.gainers >= 0);
   assert.ok(mb.losers >= 0);
