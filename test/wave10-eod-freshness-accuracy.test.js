@@ -153,7 +153,7 @@ test('Wave 10 Acceptance: Screener EOD badge accuracy across all 6 trading calen
 
 test('Wave 10 Acceptance: Dashboard freshness note is conditional on dataset trading date', () => {
   // 1. dashMarketFreshnessNote exists in index.html
-  assert.match(html, /id="dashMarketFreshnessNote"[^>]*class="market-tile-note"/);
+  assert.match(html, /<span id="dashMarketFreshnessNote">/);
 
   // 2. renderMarketBand updates dashMarketFreshnessNote
   assert.match(html, /var freshnessNote = document\.getElementById\('dashMarketFreshnessNote'\);/);

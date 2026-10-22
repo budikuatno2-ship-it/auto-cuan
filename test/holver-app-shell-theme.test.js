@@ -11,7 +11,7 @@ const html = read('public/index.html');
 const theme = read('public/ui-theme.css');
 
 test('dashboard greeting is controlled by the semantic text token', () => {
-  const greeting = html.match(/<h2[^>]*id="dashGreeting"[^>]*>/);
+  const greeting = html.match(/<h1[^>]*id="dashGreeting"[^>]*>/);
   assert.ok(greeting, 'dashGreeting heading must exist');
   assert.doesNotMatch(greeting[0], /\btext-white\b/, 'dashGreeting must not hardcode a white utility');
   assert.match(theme, /#page-dashboard #dashGreeting\s*\{[^}]*color:\s*var\(--color-text-primary\)/s);

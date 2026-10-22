@@ -119,7 +119,8 @@
     <link rel="stylesheet" href="/index-shell.css?v=20260818-v1">
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
-    <link rel="stylesheet" href="/ui-theme.css?v=20261016-fase8-v1">
+    <link rel="stylesheet" href="/ui-theme.css?v=20261022-v2">
+    <link rel="stylesheet" href="/ac-v2.css?v=20261022-v1">
     <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=20260929-v1">
@@ -1270,142 +1271,97 @@ html.light #googleCompleteProfileModal input {
             </div>
     </nav>
 </header>
+<div class="tape" id="acTape" role="region" aria-label="Harga saham likuid, penutupan terakhir" data-ac-ui="v2" hidden></div>
 
 <div class="app-content" id="appContent">
 <!-- ===== PAGE: SUBSCRIPTION ===== -->
 <div id="page-subscription" class="page-content hidden flex-1 w-full mx-auto" aria-labelledby="subscriptionPageTitle"><div class="subscription-hero p-5 sm:p-7"><div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div class="max-w-2xl"><p class="text-xs font-black uppercase tracking-[.16em] text-emerald-300">Paket Langganan Auto-Cuan</p><h1 id="subscriptionPageTitle" class="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Pilih paket yang sesuai dengan ritme trading Anda.</h1><p class="mt-2 text-sm leading-6 text-slate-300">Bandingkan manfaat, harga, dan masa aktif setiap paket secara transparan.</p></div><button onclick="loadSubscriptionExperience(true)" class="nav-btn border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">↻ Muat ulang data</button></div><div id="subscriptionSummary" class="subscription-summary mt-6 p-4 sm:p-5" aria-live="polite">Memuat ringkasan langganan…</div></div><section class="mt-7" aria-labelledby="subscriptionPlansTitle"><div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p class="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Perbandingan paket</p><h2 id="subscriptionPlansTitle" class="mt-1 text-xl font-black text-white">Pilih paket dengan informasi yang jelas.</h2></div><p class="text-xs text-slate-500">Akses tidak pernah diberikan dari halaman ini.</p></div><div id="subscriptionPlans" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">Memuat daftar paket…</div></section></div>
 
 <!-- ===== PAGE: DASHBOARD HOME ===== -->
-<div id="page-dashboard" class="page-content flex-1 w-full mx-auto" data-ac-ui="v2">
+<div id="page-dashboard" class="page-content ac-page flex-1 w-full mx-auto" data-ac-ui="v2">
     <section id="subscriptionIdentityCard" class="hidden dashboard-card p-4 mb-4" aria-label="Identitas langganan" hidden><h2 class="font-black text-white">Identitas Langganan</h2><p id="subscriptionIdentityStatus" class="text-sm text-gray-400 mt-1">Fitur langganan sedang disiapkan.</p><div class="flex flex-wrap gap-2 mt-3"><button id="subscriptionTelegramLink" class="nav-btn" disabled aria-disabled="true">Hubungkan Telegram</button><button id="subscriptionTrialActivate" class="nav-btn hidden" disabled aria-disabled="true">Mulai Trial 10 Hari</button></div><p id="subscriptionTrialStatus" class="text-xs text-gray-500 mt-3">Kontrol trial dan Telegram akan tersedia setelah konfigurasi langganan siap.</p></section>
-    <div class="space-y-4">
-        <!-- Greeting -->
-        <div class="dashboard-hero p-4 sm:p-5">
-            <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div class="dashboard-hero-main">
-                    <div class="flex items-center gap-2 mb-2"><span class="dash-badge" id="heroLiveRadarBadge" title="Kesegaran data belum dapat dipastikan." aria-label="Belum pasti. Kesegaran data belum dapat dipastikan." style="color:var(--color-text-secondary)!important;border-color:var(--color-text-secondary)!important;background-color:var(--ac-surface-3)!important"><span class="header-status-dot" id="heroLiveRadarDot" style="margin-right:3px;background:var(--color-text-secondary);box-shadow:none"></span><span id="heroLiveRadarText">Belum pasti</span></span><span class="dash-badge text-amber-200 border-amber-500/20 bg-amber-500/10">Konfirmasi manual wajib</span></div>
-                    <h2 class="text-2xl sm:text-3xl font-black tracking-tight" id="dashGreeting">Halo, Trader</h2>
-                    <p class="text-sm text-gray-400 mt-1 max-w-2xl">Dashboard ringkas untuk Day Trade, Swing Konglo, dan Swing Non-Konglo. Watchlist/pantau tidak sama dengan BUY agresif.</p>
-                </div>
-                <div class="dashboard-hero-meta flex flex-col sm:items-end gap-2">
-                    <div class="flex items-center gap-2">
-                        <span id="approvedBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">Approved</span>
-                        <button type="button" onclick="openAiApiKeyModal()" class="px-3 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/50 text-gray-300 hover:text-amber-300 hover:border-amber-500/40 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0 shadow-sm" title="Kelola Google Gemini API Key (BYOK)">
-                            <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>
-                            <span>API Key (BYOK)</span>
-                        </button>
-                    </div>
-                    <div class="text-[11px] text-gray-500">Bukan rekomendasi beli/jual.</div>
-                </div>
-            </div>
+    <!-- Redesign v2 Dashboard (canvas Main.dc.html). Element ids are the ones
+         the radar, monitor and history loaders already write to. -->
+    <div class="ph rise">
+        <div>
+            <div class="kick" id="dashKickDate"></div>
+            <h1 id="dashGreeting">Halo, Trader</h1>
+            <p>Kondisi pasar, apa yang berubah, dan kandidat yang layak diperiksa. Watchlist dan pantauan bukan rekomendasi beli.</p>
         </div>
-
-        <!-- Market state band.
-             This position used to hold "Akses Cepat": a five-button grid that
-             navigated to Analisis / Sektor Hot / Screener / Chart / Portofolio —
-             the same five destinations already sitting in the header nav and in
-             the mobile nav, three copies of one control on the most valuable
-             strip of the dashboard. The space now carries state the user cannot
-             get anywhere else: where the index is, how fresh the radar data is,
-             and how many candidates cleared the safety gate today. -->
-        <section class="ac-section market-band" aria-labelledby="dashMarketTitle">
-        <div class="ac-section-head">
-            <h3 id="dashMarketTitle" class="ac-section-title">Kondisi Pasar</h3>
-            <p class="ac-section-hint">Ringkasan sebelum membaca radar</p>
+        <div class="ph-act">
+            <!-- Freshness now lives in the top bar; the hero badge stays for the shared status updater. -->
+            <span class="dash-badge" id="heroLiveRadarBadge" hidden title="Kesegaran data belum dapat dipastikan." aria-label="Belum pasti. Kesegaran data belum dapat dipastikan."><span class="header-status-dot" id="heroLiveRadarDot"></span><span id="heroLiveRadarText">Belum pasti</span></span>
+            <span class="chip w">Konfirmasi manual wajib</span>
+            <span id="approvedBadge" class="hidden chip b">Approved</span>
+            <button type="button" class="vbtn" onclick="openAiApiKeyModal()" title="Kelola kunci AI milik Anda (BYOK)">Kredensial AI</button>
         </div>
-        <div id="ihsgSummaryCard" class="market-band-grid" role="group" aria-label="Ringkasan kondisi pasar">
-            <div class="market-tile">
-                <div class="market-tile-head">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Koneksi pasar aktif"></span>
-                    <span class="market-tile-label">IDX &middot; IHSG</span>
-                    <span class="text-[10px] text-emerald-400 font-medium ml-auto">Normal</span>
-                </div>
-                <div id="ihsgSummaryContent" class="market-tile-body">
-                    <div class="flex items-baseline gap-2 flex-wrap">
-                        <span id="ihsgLast" class="market-tile-value">-</span>
-                        <span id="ihsgChange" class="market-tile-delta">-</span>
-                    </div>
-                </div>
-                <button onclick="window.location.assign('/analisis-saham?ticker=IHSG')" class="market-tile-link">Buka analisis IHSG &rarr;</button>
-            </div>
-            <div class="market-tile">
-                <div class="market-tile-head"><span class="market-tile-label">Radar hari ini</span></div>
-                <div class="market-tile-body">
-                    <span id="dashMarketGate" class="market-tile-value">-</span>
-                    <span class="market-tile-unit">lolos gate</span>
-                </div>
-                <p id="dashMarketGateNote" class="market-tile-note">Menunggu Top 5 final dikunci.</p>
-            </div>
-            <div class="market-tile">
-                <div class="market-tile-head"><span class="market-tile-label">Waktu As-Of Pasar</span></div>
-                <div class="market-tile-body">
-                    <span id="dashMarketFreshness" class="market-tile-value is-text">-</span>
-                </div>
-                <p id="dashMarketFreshnessNote" class="market-tile-note">Semua angka radar memakai candle harian yang sudah selesai (T-1, format WIB).</p>
-            </div>
-        </div>
-        <div class="dash-section-note mt-3">Kandidat berstatus Hindari, Jual, Potensi TP Rendah, dan Risiko Sangat Tinggi selalu dipisahkan dari daftar utama, sehingga tidak pernah muncul sebagai kandidat yang bisa langsung dieksekusi.</div>
-        </section>
-
-        <!-- Market Breadth Card (Fase 7) -->
-        <div id="dashboardMarketBreadthWrap" class="mb-4"></div>
-
-        <!-- Compact Top 5 + Monitor -->
-        <section class="ac-section" aria-labelledby="dashRadarTitle">
-        <div class="ac-section-head">
-            <h3 id="dashRadarTitle" class="ac-section-title">Radar Hari Ini</h3>
-            <p class="ac-section-hint">Watchlist bukan sinyal BUY</p>
-        </div>
-        <div class="dashboard-radar-grid grid grid-cols-1 gap-3 items-start">
-            <section class="radar-panel w-full panel" aria-label="Top 5 Radar">
-                <div class="panel-header" style="min-height:48px;display:flex;align-items:flex-start;justify-content:space-between;">
-                    <div>
-                        <h3 class="panel-title">Top 5 Radar</h3>
-                        <p id="dashboardTop5LockNote" class="panel-subtitle">Belum ada Top 5 final yang terkunci.</p>
-                    </div>
-                </div>
-                <div id="dashboardTop5List" class="dashboard-top5-grid">
-                    <div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</p></div>
-                </div>
-            </section>
-            <aside class="radar-panel panel" aria-label="Auto Monitor" hidden style="display:none !important;" aria-hidden="true">
-                <div class="panel-header" style="min-height:48px;display:flex;align-items:flex-start;justify-content:space-between;">
-                    <div>
-                        <h3 class="panel-title">Auto Monitor</h3>
-                        <p class="panel-subtitle">Update tiap 30 menit saat jam bursa</p>
-                    </div>
-                    <span id="dashboardMonitorUpdated" class="text-[10px] text-gray-500 whitespace-nowrap" aria-live="polite">— WIB</span>
-                </div>
-                <div id="dashboardMonitorList" class="space-y-2">
-                    <div class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Monitor aktif setelah Top 5 dikunci.</p></div>
-                </div>
-            </aside>
-        </div>
-        </section>
-
-        <section class="ac-section" aria-labelledby="dashHistoryTitle">
-        <div class="ac-section-head">
-            <h3 id="dashHistoryTitle" class="ac-section-title">Riwayat</h3>
-            <p class="ac-section-hint">Hasil Top 5 yang sudah dikunci</p>
-        </div>
-        <section class="panel">
-            <div class="panel-header flex-col sm:flex-row sm:items-start">
-                <div>
-                    <h3 class="panel-title">Top 5 History</h3>
-                    <p class="panel-subtitle">Pantau saham Top 5 aktif dan yang sudah kena TP.</p>
-                </div>
-                <button onclick="loadTop5History(true)" class="ac-btn mt-1 sm:mt-0" data-size="sm">Refresh</button>
-            </div>
-            <div class="flex gap-1 mb-2">
-                <button id="top5HistoryTabActive" onclick="setTop5HistoryTab('active')" class="px-2.5 py-1 rounded-lg text-[11px] border border-emerald-500/30 text-emerald-300 bg-emerald-500/10">Aktif Dipantau</button>
-                <button id="top5HistoryTabTp" onclick="setTop5HistoryTab('tp')" class="px-2.5 py-1 rounded-lg text-[11px] border border-dark-600/40 text-gray-400 hover:text-emerald-300">TP History</button>
-            </div>
-            <div id="top5HistoryList" class="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-                <div class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Memuat Top 5 History...</p></div>
-            </div>
-        </section>
-        </section>
     </div>
+
+    <section class="sheet rise d1" aria-labelledby="dashMarketTitle">
+        <h2 id="dashMarketTitle" class="sr-only">Kondisi pasar</h2>
+        <div id="ihsgSummaryCard" class="strip" role="group" aria-label="Ringkasan kondisi pasar">
+            <div id="dashIhsgCell">
+                <div class="lbl">IDX Composite · IHSG</div>
+                <div class="big num pop" id="ihsgLast"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></div>
+                <div class="sub num"><span id="ihsgChange"></span><span id="dashIhsgTrend"></span></div>
+                <svg id="dashIhsgSpark" class="dash-spark" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true" hidden><path class="draw" pathLength="1" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>
+                <button type="button" class="dash-cell-link lnk" onclick="window.location.assign('/analisis-saham?ticker=IHSG')">Buka analisis IHSG</button>
+            </div>
+            <div>
+                <div class="lbl">Market breadth</div>
+                <div class="num dash-breadth" id="dashBreadthCounts"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></div>
+                <div class="vbar" id="dashBreadthBar" role="img" aria-label="Komposisi naik, flat, dan turun" hidden><i data-part="up"></i><i data-part="flat"></i><i data-part="down"></i></div>
+                <div class="sub num" id="dashBreadthSub"></div>
+            </div>
+            <div>
+                <div class="lbl">Radar hari ini</div>
+                <div class="big num"><span id="dashMarketGate"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></span> <span class="dash-unit">lolos gate</span></div>
+                <div class="sub" id="dashMarketGateNote">Menunggu Top 5 final dikunci.</div>
+            </div>
+            <div>
+                <div class="lbl">Sesi bursa</div>
+                <div class="dash-session" id="dashSessionName"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></div>
+                <div class="dash-ses" id="dashSessionBar" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div></div>
+                <div class="sub" id="dashSessionNote"></div>
+            </div>
+        </div>
+        <div class="prov">
+            <span><b>Per tanggal</b> <span id="dashProvDate"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></span></span>
+            <span><b>Sumber</b> candle harian IDX</span>
+            <span><b>Diperbarui</b> <span id="dashMarketFreshness"><span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span></span></span>
+            <span id="dashMarketFreshnessNote">Radar memakai candle harian yang sudah selesai (T-1).</span>
+        </div>
+        <details class="dash-more">
+            <summary><span class="chev" aria-hidden="true">&#9656;</span>Rincian market breadth per sektor</summary>
+            <div id="dashboardMarketBreadthWrap"></div>
+        </details>
+    </section>
+
+    <!-- Compact Top 5 + Monitor -->
+    <section class="sheet rise d3" aria-labelledby="dashRadarTitle">
+        <div class="sec-h"><h2 id="dashRadarTitle">Top 5 Radar Hari Ini</h2><p id="dashboardTop5LockNote" class="sec-h-note">Belum ada Top 5 final yang terkunci.</p></div>
+        <div id="dashboardTop5List" class="dash-top5">
+            <div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</p></div>
+        </div>
+        <!-- Auto Monitor stays wired but is not shown (product decision before v2). -->
+        <aside class="radar-panel panel" aria-label="Auto Monitor" hidden style="display:none !important;" aria-hidden="true">
+            <span id="dashboardMonitorUpdated" aria-live="polite">&mdash; WIB</span>
+            <div id="dashboardMonitorList"></div>
+        </aside>
+    </section>
+
+    <section class="sheet rise d4" aria-labelledby="dashHistoryTitle">
+        <div class="sec-h"><h2 id="dashHistoryTitle">Riwayat Top 5</h2><span>Sinyal terkunci yang masih dipantau dan yang sudah selesai · <a class="lnk" href="/trackrecord" onclick="navigateTo('trackrecord'); return false;">Track Record lengkap</a></span></div>
+        <div class="dash-hist-bar">
+            <div class="segx n2" role="group" aria-label="Pilih riwayat"><span class="ind" id="top5HistoryInd"></span><button type="button" id="top5HistoryTabActive" class="on" aria-pressed="true" onclick="setTop5HistoryTab('active')">Aktif dipantau</button><button type="button" id="top5HistoryTabTp" aria-pressed="false" onclick="setTop5HistoryTab('tp')">Riwayat TP</button></div>
+            <button type="button" class="vbtn sm" onclick="loadTop5History(true)">Muat ulang</button>
+        </div>
+        <div id="top5HistoryList" class="dash-hist">
+            <div class="dash-hist-msg">Memuat riwayat Top 5&hellip;</div>
+        </div>
+    </section>
+
+    <p class="dash-disclaimer">Bukan rekomendasi beli atau jual. Keputusan investasi sepenuhnya di tangan pengguna.</p>
 </div>
 
 <!-- ===== PAGE: ANALISIS SAHAM (Unified AI Cockpit - Full SPA) ===== -->
@@ -2541,7 +2497,7 @@ html.light #googleCompleteProfileModal input {
      Markup and ids are the pre-decommission worksheet, so the existing
      money-sheet runtime and /api/money-management sheet actions are reused
      unchanged; the look follows the canvas KelolaKeuangan.dc.html. -->
-<section id="page-money-management" class="page-content money-sheet hidden" data-premium-page="true" data-ac-ui="v2" aria-labelledby="moneySheetTitle">
+<section id="page-money-management" class="page-content ac-page money-sheet hidden" data-premium-page="true" data-ac-ui="v2" aria-labelledby="moneySheetTitle">
   <div class="ms-page-heading">
     <div><p class="ms-eyebrow">Keuangan pribadi</p><h1 id="moneySheetTitle">Kelola Keuangan</h1><p class="ms-description">Anggaran bulanan yang bisa Anda atur. Portofolio terhubung, tanpa pencatatan ganda.</p></div>
     <label class="ms-month">Bulan <select id="mmSheetMonth" aria-label="Bulan anggaran"></select></label>
@@ -6796,9 +6752,7 @@ function navigateTo(page) {
     if (page === 'subscription') loadSubscriptionExperience(false);
     // Sektor Hot login gate
     if (page === 'dashboard') {
-        if (window.AutoCuanMarketIntelligence && typeof window.AutoCuanMarketIntelligence.renderMarketBreadth === 'function') {
-            window.AutoCuanMarketIntelligence.renderMarketBreadth('dashboardMarketBreadthWrap');
-        }
+        if (window.AutoCuanDashboardV2) window.AutoCuanDashboardV2.loadMarket();
         loadDashboardTop5Monitor(true, { loadAdminPreview: false }); scheduleTop5HistoryLoad(); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh();
     }
     else { clearTop5HistoryLoadTimer(); stopDashboardMonitorAutoRefresh(); }
@@ -14528,7 +14482,7 @@ function dashboardSkeletonHtml(count, label) {
 
 function dashboardEmptyHtml(message, tone) {
     var extraCls = tone === 'error' ? ' empty-state-error' : (tone === 'amber' ? ' empty-state-amber' : '');
-    var retryBtn = tone === 'error' ? '<button onclick="loadDashboardTop5Monitor(false, {loadAdminPreview:false})" class="ac-btn mt-2" data-size="sm">Coba Lagi</button>' : '';
+    var retryBtn = tone === 'error' ? '<button type="button" onclick="loadDashboardTop5Monitor(false, {loadAdminPreview:false})" class="ac-btn vbtn sm mt-2" data-size="sm">Coba lagi</button>' : '';
     var iconPath = tone === 'error' ? 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' : 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
     return '<div class="empty-state' + extraCls + '"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="' + iconPath + '"/></svg><p class="empty-state-text">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</p>' + retryBtn + '</div>';
 }
@@ -14631,7 +14585,7 @@ function renderMarketBand(data, isAwaiting, pickedCount, waitPullbackCount, acti
     var freshness = document.getElementById('dashMarketFreshness');
 
     var dispCount = (waitPullbackCount > 0 && actionableCount != null) ? actionableCount : pickedCount;
-    if (gate) gate.textContent = isAwaiting ? '-' : (dispCount + '/5');
+    if (gate) { if (isAwaiting) gate.innerHTML = '<span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span>'; else gate.textContent = dispCount + '/5'; }
     if (gateNote) {
         gateNote.textContent = isAwaiting
             ? 'Menunggu Top 5 final dikunci.'
@@ -14650,7 +14604,7 @@ function renderMarketBand(data, isAwaiting, pickedCount, waitPullbackCount, acti
                 hour: '2-digit', minute: '2-digit', hour12: false
             }) + ' WIB';
         } else {
-            freshness.textContent = 'Belum tersedia';
+            freshness.innerHTML = '<span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span>';
         }
     }
     var freshnessNote = document.getElementById('dashMarketFreshnessNote');
@@ -14818,13 +14772,16 @@ function splitDashboardSafeRows(rows) {
 }
 function dashboardExcludedHtml(excluded) {
     if (!excluded || excluded.length === 0) return '';
-    return '<details class="dashboard-excluded-disclosure mt-3 rounded-xl border border-dark-600/30 bg-dark-800/40 px-3.5 py-2.5 text-[11px] text-gray-400"><summary class="cursor-pointer font-medium hover:text-gray-200 select-none">Daftar Dikecualikan / Filter Risiko (' + excluded.length + ' saham)</summary><div class="mt-2.5 space-y-1.5 text-gray-300 border-t border-dark-600/30 pt-2">' + excluded.slice(0, 8).map(function(item) {
+    // Canvas: a quiet disclosure under the radar. Same rows and cap of eight.
+    return '<details class="dashboard-excluded-disclosure"><summary><span class="chev" aria-hidden="true">&#9656;</span>' + excluded.length + ' kandidat dikarantina: status Hindari, Potensi TP rendah, atau Risiko sangat tinggi</summary><div class="dash-quarantine">' + excluded.slice(0, 8).map(function(item) {
         var r = item.row || {};
         var action = getActionLabel(r) || r.action_label || r.status || 'Difilter aturan keamanan';
-        var risk = getRiskLabel(r) || '-';
+        var risk = getRiskLabel(r) || '';
         var reason = getSignalReason(r);
-        var reasonHtml = reason ? '<span class="text-gray-400 italic text-[10px]">' + escapeHtml(reason) + '</span>' : '';
-        return '<div class="flex flex-wrap items-center gap-2"><b class="font-mono text-white">' + escapeHtml(r.ticker || '-') + '</b><span class="text-amber-300 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">' + escapeHtml(action) + '</span><span class="text-gray-400">Risiko: ' + escapeHtml(risk) + '</span>' + reasonHtml + '</div>';
+        var parts = [safeDisplayText(action, '')];
+        if (risk) parts.push('Risiko ' + safeDisplayText(risk, ''));
+        if (reason) parts.push(safeDisplayText(reason, ''));
+        return '<span><b class="mono">' + escapeHtml(r.ticker || '-') + '</b> · ' + escapeHtml(parts.filter(Boolean).join(', ')) + '</span>';
     }).join('') + '</div></details>';
 }
 // The tone moves from a Tailwind colour class to a data attribute so the level
@@ -14953,6 +14910,47 @@ function dashboardMarketStructureHtml(row) {
         '>' + escapeHtml(label) + '</div>';
 }
 
+function dashPick(r, keys) {
+    for (var i = 0; i < keys.length; i++) {
+        var v = r[keys[i]];
+        if (v != null && v !== '' && v !== '-') return v;
+    }
+    return null;
+}
+var DASH_NIL = '<span class="nil" title="Tidak tersedia di sumber" aria-label="kosong">&mdash;</span>';
+function dashPctText(v, digits) {
+    var n = Number(v);
+    if (v == null || v === '' || !isFinite(n)) return '';
+    return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n).toLocaleString('id-ID', { minimumFractionDigits: digits, maximumFractionDigits: digits }) + '%';
+}
+// Status words for the row pill. Same decision as before (action label plus
+// the thin-R/R pullback rule); only the wording and the dot are new.
+function dashStatusOf(action) {
+    var a = String(action || '').toUpperCase();
+    if (a === 'BUY' || a.indexOf('BUY') >= 0) return { text: 'Siap entry', dot: 'g' };
+    if (a === 'TUNGGU PULLBACK' || a === 'WAIT_PULLBACK') return { text: 'Tunggu pullback', dot: 'a' };
+    return { text: safeDisplayText(action, '') || '—', dot: 'm' };
+}
+function dashTogglePlan(ticker) {
+    var list = document.getElementById('dashboardTop5List');
+    if (!list) return;
+    var rows = list.querySelectorAll('.rk[data-ticker]');
+    var row = null;
+    rows.forEach(function(candidate) { if (candidate.getAttribute('data-ticker') === ticker) row = candidate; });
+    if (!row) return;
+    var open = row.getAttribute('aria-expanded') !== 'true';
+    rows.forEach(function(other) {
+        var on = open && other === row;
+        other.classList.toggle('sel', on);
+        other.setAttribute('aria-expanded', on ? 'true' : 'false');
+        var plan = document.getElementById(other.getAttribute('aria-controls'));
+        if (plan) plan.hidden = !on;
+    });
+}
+function dashPlanKey(event, ticker) {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); dashTogglePlan(ticker); }
+}
+
 function renderDashboardTop5(picks) {
     var el = document.getElementById('dashboardTop5List');
     if (!el) return;
@@ -14966,15 +14964,16 @@ function renderDashboardTop5(picks) {
         el.innerHTML = dashboardEmptyHtml('Belum ada kandidat yang memenuhi kriteria pengaman saat ini. Seluruh kandidat telah difilter oleh aturan keamanan.', 'amber') + dashboardExcludedHtml(split.excluded);
         return;
     }
-    var html = '<div class="dashboard-decision-list space-y-2">';
+    // Canvas Main.dc.html: one grid row per pick, the plan opens under it.
+    var html = '<div class="tw"><div class="dash-rk-table dashboard-decision-list">';
+    html += '<div class="rk hd" aria-hidden="true"><span>#</span><span>Ticker</span><span>Setup</span><span class="r">Harga</span><span class="r">Chg</span><span>Exec</span><span class="r">Vol/Avg</span><span>Status</span><span></span></div>';
     split.safe.slice(0, 5).forEach(function(p, idx) {
         var r = normalizeDashboardPick(p);
         _dashboardPickData[r.ticker] = r;
         var sc = Number(r.combined_score || r.telegram_conviction_score || r.daytrade_score || r.score || 0);
-        var grade = getSignalQualityGrade(r) || '-';
-        var risk = getRiskLabel(r) || '-';
-        var rr = Number(r.risk_reward || r.rr);
-        var action = getActionLabel(r) || getStatusLabel(r, r.status || r.final_status || '') || '-';
+        var grade = getSignalQualityGrade(r) || '';
+        var risk = getRiskLabel(r) || '';
+        var action = getActionLabel(r) || getStatusLabel(r, r.status || r.final_status || '') || '';
         var rank = p.rank || (idx + 1);
         var tickerJs = escapeHtml(dashJsString(r.ticker));
 
@@ -14982,77 +14981,71 @@ function renderDashboardTop5(picks) {
         var execLine = dashExecutionRealityLine(r);
         var realismLine = dashTpRealismLine(r);
 
-        // R/R: Pisahkan basis kalkulasi sesuai spek finansial
-        var rrAwal = '—', rrSisa = '—', rrSisaWarn = false;
+        // R/R: same two bases as before (from Entry 1, and what is left from the current price).
+        var rrAwal = null, rrSisa = null, rrSisaWarn = false;
         var _e1 = Number(r.entry1), _sl = Number(r.stop_loss), _tp1 = Number(r.tp1), _kini = Number(r.last_price);
         if (isFinite(_e1) && _e1 > 0 && isFinite(_sl) && _sl > 0 && isFinite(_tp1) && _tp1 > 0 && _e1 > _sl) {
             var _rrAwalVal = (_tp1 - _e1) / (_e1 - _sl);
-            rrAwal = isFinite(_rrAwalVal) && _rrAwalVal > 0 ? _rrAwalVal.toFixed(1) : '—';
+            if (isFinite(_rrAwalVal) && _rrAwalVal > 0) rrAwal = _rrAwalVal;
         }
         if (isFinite(_kini) && _kini > 0 && isFinite(_sl) && _sl > 0 && isFinite(_tp1) && _tp1 > 0 && _kini > _sl) {
             var _rrSisaVal = (_tp1 - _kini) / (_kini - _sl);
             if (isFinite(_rrSisaVal) && _rrSisaVal > 0) {
-                rrSisa = _rrSisaVal.toFixed(1);
+                rrSisa = _rrSisaVal;
                 rrSisaWarn = _rrSisaVal < 1.3;
             }
         }
-        if (rrSisaWarn && (action === 'BUY' || String(action).toUpperCase().indexOf('BUY') >= 0)) {
-            action = 'TUNGGU PULLBACK';
-        }
-        if (action === 'WAIT_PULLBACK') {
-            action = 'TUNGGU PULLBACK';
-        }
+        if (rrSisaWarn && (action === 'BUY' || String(action).toUpperCase().indexOf('BUY') >= 0)) action = 'TUNGGU PULLBACK';
+        if (action === 'WAIT_PULLBACK') action = 'TUNGGU PULLBACK';
 
         var caveatNote = '';
-        if (rrSisaWarn) {
-            caveatNote = 'R/R Tipis (' + rrSisa + ') · Tunggu pullback';
-        } else if (execLine) {
-            caveatNote = execLine;
-        } else if (realismLine) {
-            caveatNote = realismLine;
-        } else if (planWarn) {
-            caveatNote = planWarn;
-        }
+        if (rrSisaWarn) caveatNote = 'R/R tipis (' + rrSisa.toLocaleString('id-ID', { maximumFractionDigits: 1 }) + '), tunggu pullback';
+        else if (execLine) caveatNote = execLine;
+        else if (realismLine) caveatNote = realismLine;
+        else if (planWarn) caveatNote = planWarn;
+        var note = caveatNote || safeDisplayText(r.short_reason || r.reason || r.action_reason || '', '');
 
-        var actClass = (action === 'BUY' || String(action).indexOf('BUY') >= 0)
-            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
-            : (action === 'TUNGGU PULLBACK' ? 'bg-amber-500/15 border-amber-500/30 text-amber-300' : 'bg-dark-700/80 border-dark-600/40 text-gray-300');
+        var st = dashStatusOf(action);
+        var chg = dashPick(r, ['change_pct', 'price_change_pct', 'pct_change', 'chg_pct', 'daily_change_pct']);
+        var volRatio = dashPick(r, ['volume_ratio', 'vol_ratio', 'volume_vs_avg20', 'volumeVsAvg20', 'rvol']);
+        var name = dashPick(r, ['company_name', 'name', 'nama_emiten']);
+        var group = dashPick(r, ['konglo_group', 'group_name', 'group', 'conglomerate']);
+        var setup = dashPick(r, ['setup_label', 'swing_tier', 'tier_label', 'setup']);
+        var chgNum = Number(chg);
+        var hasChg = chg != null && isFinite(chgNum);
+        var rrFmt = function(v) { return v == null ? DASH_NIL : '1 : ' + v.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+        var pctFrom = function(target) {
+            var t = Number(target);
+            return (isFinite(t) && t > 0 && isFinite(_kini) && _kini > 0) ? ' <span class="mut num dash-plan-pct">(' + dashPctText((t - _kini) / _kini * 100, 2) + ')</span>' : '';
+        };
+        var planId = 'dashPlan' + idx;
+        var open = idx === 0;
 
-        html += '<article role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + tickerJs + '\')" onkeydown="dashOpenKey(event, \'' + tickerJs + '\')" class="dashboard-decision-row cursor-pointer focus:outline-none transition rounded-xl border border-dark-600/35 bg-dark-800/60 hover:bg-dark-700/50 hover:border-emerald-500/30 p-3 sm:px-4">';
-        html += '<div class="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">';
-
-        // Left: Rank, Ticker, Category tag, Price
-        html += '<div class="flex items-center gap-3 min-w-0">';
-        html += '<div class="dash-rank">' + escapeHtml(rank) + '</div>';
-        html += '<div class="min-w-0">';
-        html += '<div class="flex items-center gap-2 flex-wrap">';
-        html += '<span class="font-mono font-black text-sm text-white tracking-wide">' + escapeHtml(r.ticker || '-') + '</span>';
-        html += '<span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-700 text-gray-300 font-medium">' + escapeHtml(r.category || '-') + '</span>';
-        html += '</div>';
-        html += '<div class="text-[11px] text-gray-400 font-mono tabular-nums mt-0.5">' + dashFmtPrice(r.last_price) + '</div>';
-        html += '</div>';
-        html += '</div>';
-
-        // Center / Metrics: Score, Grade, Risk, R/R
-        html += '<div class="flex items-center gap-3 sm:gap-4 text-xs tabular-nums text-gray-300 font-mono">';
-        html += '<div title="Conviction Score"><span class="text-[10px] text-gray-500 uppercase block font-sans">Score</span><b class="text-white">' + (sc ? sc.toFixed(0) : '—') + '</b></div>';
-        html += '<div title="Signal Grade"><span class="text-[10px] text-gray-500 uppercase block font-sans">Grade</span><b style="color:' + getSignalQualityColor(grade) + '">' + escapeHtml(grade) + '</b></div>';
-        html += '<div title="Risk Profile"><span class="text-[10px] text-gray-500 uppercase block font-sans">Risk</span><b style="color:' + getRiskColor(risk) + '">' + escapeHtml(risk) + '</b></div>';
-        html += '<div title="R/R Awal: ' + rrAwal + (rrSisa !== '—' ? ' | Sisa: ' + rrSisa : '') + '"><span class="text-[10px] text-gray-500 uppercase block font-sans">R/R</span><b class="' + (rrSisaWarn ? 'text-amber-400' : 'text-emerald-400') + '">' + rrAwal + '</b></div>';
+        html += '<div class="rk dashboard-decision-row' + (open ? ' sel' : '') + '" data-ticker="' + escapeHtml(r.ticker || '') + '" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + planId + '" onclick="dashTogglePlan(\'' + tickerJs + '\')" onkeydown="dashPlanKey(event, \'' + tickerJs + '\')">';
+        html += '<span class="num mut">' + escapeHtml(rank) + '</span>';
+        html += '<span class="dash-rk-id"><span class="tk mono">' + escapeHtml(r.ticker || '-') + '</span>' + (name ? ' <span class="mut dash-rk-name">' + escapeHtml(name) + '</span>' : '') + '<span class="mut dash-rk-group">' + escapeHtml(group || r.category || '') + '</span></span>';
+        html += '<span class="dash-rk-setup">' + escapeHtml(setup || r.category || '-') + '</span>';
+        html += '<span class="r num mono dash-strong">' + dashFmtPrice(r.last_price) + '</span>';
+        html += '<span class="r num dash-strong' + (hasChg ? (chgNum > 0 ? ' pos' : chgNum < 0 ? ' neg' : '') : '') + '">' + (hasChg ? dashPctText(chgNum, 2) : DASH_NIL) + '</span>';
+        html += '<span class="dash-exec">' + (grade ? escapeHtml(grade) : DASH_NIL) + '</span>';
+        html += '<span class="r num">' + (volRatio != null && isFinite(Number(volRatio)) ? Number(volRatio).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '×' : DASH_NIL) + '</span>';
+        html += '<span class="pill-st"><span class="dot ' + st.dot + '"></span>' + escapeHtml(st.text) + '</span>';
+        html += '<span class="r"><button type="button" class="vbtn q sm" onclick="event.stopPropagation(); quickAnalisis(\'' + tickerJs + '\')" aria-label="Riset ' + escapeHtml(r.ticker || '') + '">Riset</button></span>';
         html += '</div>';
 
-        // Right: Caveat chip, Action badge, Detail button
-        html += '<div class="flex items-center gap-2 flex-shrink-0">';
-        if (caveatNote) {
-            html += '<span class="hidden md:inline-block text-[10px] px-2 py-0.5 rounded ' + (rrSisaWarn ? 'bg-amber-500/10 border border-amber-500/25 text-amber-300' : 'bg-dark-700 text-gray-300 border border-dark-600/40') + ' max-w-[210px] truncate" title="' + escapeHtml(caveatNote) + '">' + escapeHtml(caveatNote) + '</span>';
-        }
-        html += '<span class="text-[11px] font-bold px-2 py-1 rounded-lg border ' + actClass + '">' + escapeHtml(action) + '</span>';
-        html += '<button type="button" onclick="event.stopPropagation(); openDashboardPickDetail(\'' + tickerJs + '\')" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 transition">Detail &rarr;</button>';
+        var lo = Number(r.entry2), hi = Number(r.entry1);
+        var entryTxt = (isFinite(lo) && lo > 0 && isFinite(hi) && hi > 0 && lo !== hi) ? dashFmtPrice(Math.min(lo, hi)) + ' – ' + dashFmtPrice(Math.max(lo, hi)) : dashFmtPrice(r.entry1);
+        html += '<div class="dash-plan swap" id="' + planId + '"' + (open ? '' : ' hidden') + '>';
+        html += '<div><div class="lbl">Area entry</div><b class="num mono">' + entryTxt + '</b></div>';
+        html += '<div><div class="lbl">Stop loss</div><b class="num mono neg">' + dashFmtPrice(r.stop_loss) + '</b>' + pctFrom(r.stop_loss) + '</div>';
+        html += '<div><div class="lbl">Target 1</div><b class="num mono pos">' + dashFmtPrice(r.tp1) + '</b>' + pctFrom(r.tp1) + '</div>';
+        html += '<div><div class="lbl">R/R · basis harga kini</div><b class="num' + (rrSisaWarn ? ' warn-t' : '') + '" title="R/R dari Entry 1: ' + (rrAwal == null ? '—' : rrAwal.toLocaleString('id-ID', { maximumFractionDigits: 2 })) + '">' + rrFmt(rrSisa) + '</b></div>';
+        html += '<div><div class="lbl">Skor · risiko</div><span class="num dash-plan-meta">' + (sc ? sc.toFixed(0) : '—') + ' · ' + escapeHtml(risk || '—') + '</span></div>';
+        html += '<button type="button" class="vbtn p sm" onclick="openDashboardPickDetail(\'' + tickerJs + '\')">Detail di Screener</button>';
+        if (note) html += '<p class="dash-plan-note"><span class="lbl">Catatan</span>' + escapeHtml(note) + '</p>';
         html += '</div>';
-
-        html += '</div></article>';
     });
-    html += '</div>';
+    html += '</div></div>';
     el.innerHTML = html + dashboardExcludedHtml(split.excluded);
 }
 function dashSignedPct(v) { var n = Number(v); return isFinite(n) ? ((n >= 0 ? '+' : '') + n.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%') : ''; }
@@ -15146,9 +15139,29 @@ function setTop5HistoryTab(tab) {
     _top5HistoryTab = tab === 'tp' ? 'tp' : 'active';
     var a = document.getElementById('top5HistoryTabActive');
     var t = document.getElementById('top5HistoryTabTp');
-    if (a) a.className = _top5HistoryTab === 'active' ? 'px-2.5 py-1 rounded-lg text-[11px] border border-emerald-500/30 text-emerald-300 bg-emerald-500/10' : 'px-2.5 py-1 rounded-lg text-[11px] border border-dark-600/40 text-gray-400 hover:text-emerald-300';
-    if (t) t.className = _top5HistoryTab === 'tp' ? 'px-2.5 py-1 rounded-lg text-[11px] border border-emerald-500/30 text-emerald-300 bg-emerald-500/10' : 'px-2.5 py-1 rounded-lg text-[11px] border border-dark-600/40 text-gray-400 hover:text-emerald-300';
+    var ind = document.getElementById('top5HistoryInd');
+    var isTp = _top5HistoryTab === 'tp';
+    if (a) { a.classList.toggle('on', !isTp); a.setAttribute('aria-pressed', String(!isTp)); }
+    if (t) { t.classList.toggle('on', isTp); t.setAttribute('aria-pressed', String(isTp)); }
+    if (ind) ind.className = 'ind' + (isTp ? ' k1' : '');
     renderTop5History();
+}
+function top5HistoryOutcome(p) {
+    if (p.hit_tp2_at) return { text: 'TP2', cls: 'tp2' };
+    if (p.hit_tp1_at) return { text: 'TP1', cls: 'tp1' };
+    if (p.hit_sl_at) return { text: 'SL', cls: 'sl' };
+    var label = safeDisplayText(p.status_label || p.status || '', '');
+    if (/tp\s*2/i.test(label)) return { text: 'TP2', cls: 'tp2' };
+    if (/tp\s*1|take profit/i.test(label)) return { text: 'TP1', cls: 'tp1' };
+    if (/stop|sl\b/i.test(label)) return { text: 'SL', cls: 'sl' };
+    return { text: 'AKTIF', cls: 'act' };
+}
+function top5HistoryDate(v) {
+    if (!v) return '';
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v));
+    if (!m) return safeDisplayText(v, '');
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return m[3] + ' ' + months[Number(m[2]) - 1];
 }
 function renderTop5History(activeRows, tpRows) {
     if (activeRows) { _top5HistoryActiveRows = activeRows; _top5HistoryLoaded = true; }
@@ -15159,51 +15172,36 @@ function renderTop5History(activeRows, tpRows) {
     _dashboardPickData = _dashboardPickData || {};
     if (!rows || rows.length === 0) {
         if (!_top5HistoryLoaded) {
-            el.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">' + DASHBOARD_LOADING_TEXT + '</div>';
+            el.innerHTML = '<div class="dash-hist-msg">' + DASHBOARD_LOADING_TEXT + '</div>';
             return;
         }
-        el.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">' + (_top5HistoryTab === 'tp' ? 'Belum ada saham Top 5 yang kena TP. TP History terisi otomatis setelah harga menyentuh TP1/TP2.' : 'Belum ada history aktif.') + '</div>';
+        el.innerHTML = '<div class="dash-hist-msg">' + (_top5HistoryTab === 'tp' ? 'Belum ada saham Top 5 yang kena TP. Riwayat TP terisi otomatis setelah harga menyentuh TP1/TP2.' : 'Belum ada riwayat aktif.') + '</div>';
         return;
     }
-    var html = '<div class="overflow-x-auto"><table class="w-full text-xs text-left border-collapse min-w-[700px] tabular-nums lining-nums">';
-    html += '<thead class="sticky top-0 bg-dark-800 z-10"><tr class="border-b border-dark-600/40 text-gray-400 font-semibold text-[11px] uppercase tracking-wider">';
-    html += '<th class="py-2.5 px-3">Tanggal</th>';
-    html += '<th class="py-2.5 px-3">Ticker</th>';
-    html += '<th class="py-2.5 px-3">Kategori</th>';
-    html += '<th class="py-2.5 px-3">Status</th>';
-    html += '<th class="py-2.5 px-3 text-right">Entry Aktif</th>';
-    html += '<th class="py-2.5 px-3 text-right">TP1</th>';
-    html += '<th class="py-2.5 px-3 text-right">Stop Loss</th>';
-    html += '<th class="py-2.5 px-3 text-right">Gain / Distance</th>';
-    html += '<th class="py-2.5 px-3 text-center">Aksi</th>';
-    html += '</tr></thead><tbody class="divide-y divide-dark-600/20">';
-    rows.forEach(function(p) {
+    // Canvas .hrow: date, ticker, what happened, return, outcome. Clicking a
+    // row still opens the same detail sheet; admins keep the archive button.
+    var html = '<div class="swap">';
+    rows.forEach(function(p, i) {
         var r = normalizeDashboardPick(p);
         var historyKey = 'history-' + p.id;
         _dashboardPickData[historyKey] = Object.assign({}, r, p.raw_payload || {}, p);
-        var historyKeyJs = dashJsString(historyKey);
-        var pctText = top5HistoryPctLine(p);
+        var historyKeyJs = escapeHtml(dashJsString(historyKey));
         var pctNum = p.active_entry_price != null ? Number(p.return_from_entry_pct) : Number(p.distance_to_entry1_pct);
-        var pctClass = pctNum >= 0 ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold';
-        var adminBtn = isAdmin() ? '<button type="button" onclick="event.stopPropagation(); archiveTop5History(' + Number(p.id) + ')" class="px-2 py-0.5 rounded text-[10px] text-red-300 border border-red-500/30 hover:bg-red-500/10">Archive</button>' : '';
+        var pctText = top5HistoryPctLine(p);
         var entryUsed = p.entry_used_label || p.active_entry_label || 'Entry 1';
-
-        html += '<tr class="hover:bg-dark-700/40 transition cursor-pointer" onclick="openDashboardPickDetail(\'' + historyKeyJs + '\')">';
-        html += '<td class="py-2.5 px-3 whitespace-nowrap text-gray-400 font-mono text-[11px]">' + escapeHtml(p.date || '-') + '</td>';
-        html += '<td class="py-2.5 px-3 whitespace-nowrap"><span class="font-bold text-white font-mono">' + escapeHtml(r.ticker || '-') + '</span></td>';
-        html += '<td class="py-2.5 px-3 whitespace-nowrap"><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(p.category || r.category || '-') + '</span></td>';
-        html += '<td class="py-2.5 px-3 whitespace-nowrap"><span class="text-blue-300 font-medium">' + escapeHtml(p.status_label || '-') + '</span></td>';
-        html += '<td class="py-2.5 px-3 text-right whitespace-nowrap font-mono text-blue-300" title="' + escapeHtml(entryUsed) + '">' + dashFmtPrice(p.active_entry_price || p.entry1) + '</td>';
-        html += '<td class="py-2.5 px-3 text-right whitespace-nowrap font-mono text-emerald-400">' + dashFmtPrice(p.tp1) + '</td>';
-        html += '<td class="py-2.5 px-3 text-right whitespace-nowrap font-mono text-rose-400">' + dashFmtPrice(p.sl) + '</td>';
-        html += '<td class="py-2.5 px-3 text-right whitespace-nowrap font-mono ' + pctClass + '">' + escapeHtml(pctText) + '</td>';
-        html += '<td class="py-2.5 px-3 text-center whitespace-nowrap">';
-        html += '<div class="inline-flex items-center gap-1.5">';
-        html += '<button type="button" onclick="event.stopPropagation(); openDashboardPickDetail(\'' + historyKeyJs + '\')" class="px-2.5 py-1 rounded text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 font-semibold transition">Detail</button>';
-        html += adminBtn;
-        html += '</div></td></tr>';
+        var oc = top5HistoryOutcome(p);
+        var what = escapeHtml(entryUsed) + ' ' + dashFmtPrice(p.active_entry_price || p.entry1) + ' · TP1 ' + dashFmtPrice(p.tp1) + ' · SL ' + dashFmtPrice(p.sl);
+        if (p.status_label) what += ' · ' + escapeHtml(p.status_label);
+        var adminBtn = isAdmin() ? '<button type="button" onclick="event.stopPropagation(); archiveTop5History(' + Number(p.id) + ')" class="vbtn sm dash-archive">Arsipkan</button>' : '';
+        html += '<div class="hrow" role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + historyKeyJs + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openDashboardPickDetail(\'' + historyKeyJs + '\')}">';
+        html += '<span class="num mut">' + escapeHtml(top5HistoryDate(p.date) || '—') + '</span>';
+        html += '<span class="tk mono">' + escapeHtml(r.ticker || '-') + '</span>';
+        html += '<span class="mut">' + what + '</span>';
+        html += '<span class="num dash-strong' + (isFinite(pctNum) ? (pctNum > 0 ? ' pos' : pctNum < 0 ? ' neg' : ' mut') : ' mut') + '">' + escapeHtml(pctText) + '</span>';
+        html += '<span class="dash-hist-end"><span class="oc ' + oc.cls + '">' + oc.text + '</span>' + adminBtn + '</span>';
+        html += '</div>';
     });
-    html += '</tbody></table></div>';
+    html += '</div>';
     el.innerHTML = html;
 }
 
@@ -15212,11 +15210,11 @@ async function loadTop5History(silent) {
     var el = document.getElementById('top5HistoryList');
     if (_top5HistoryCache.data && Date.now() - _top5HistoryCache.at < 180000) { renderTop5History(_top5HistoryCache.data.active_history || _top5HistoryCache.data.rows || _top5HistoryCache.data.history || [], _top5HistoryCache.data.tp_history || []); return; }
     if (_top5HistoryInFlight) return _top5HistoryInFlight;
-    if (el && !silent) el.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">' + DASHBOARD_LOADING_TEXT + '</div>';
+    if (el && !silent) el.innerHTML = '<div class="dash-hist-msg">' + DASHBOARD_LOADING_TEXT + '</div>';
     // Fallback timeout: never leave History stuck on loading (independent of Top 5/Monitor).
     var _histFallbackTimer = setTimeout(function() {
         var histCheck = document.getElementById('top5HistoryList');
-        if (histCheck && histCheck.innerHTML.indexOf(DASHBOARD_LOADING_TEXT) >= 0) histCheck.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Sedang menyiapkan history... coba Refresh sebentar lagi.</div>';
+        if (histCheck && histCheck.innerHTML.indexOf(DASHBOARD_LOADING_TEXT) >= 0) histCheck.innerHTML = '<div class="dash-hist-msg">Riwayat masih disiapkan. Coba Muat ulang sebentar lagi.</div>';
     }, 8000);
     _top5HistoryInFlight = (async function() {
         try {
@@ -15226,7 +15224,7 @@ async function loadTop5History(silent) {
             _top5HistoryCache = { at: Date.now(), data: data };
             renderTop5History(data.active_history || data.rows || data.history || [], data.tp_history || []);
         } catch (e) {
-            if (el) el.innerHTML = '<div class="py-4 text-center text-xs text-red-400">Gagal memuat Top 5 History. <button onclick="loadTop5History(false)" class="underline text-emerald-300 ml-1">Coba Lagi</button></div>';
+            if (el) el.innerHTML = '<div class="dash-hist-msg is-error">Riwayat Top 5 gagal dimuat. <button type="button" onclick="loadTop5History(false)" class="vbtn sm">Coba lagi</button></div>';
         } finally { clearTimeout(_histFallbackTimer); _top5HistoryInFlight = null; }
     })();
     return _top5HistoryInFlight;
@@ -15312,7 +15310,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
         var top = document.getElementById('dashboardTop5List');
         var mon = document.getElementById('dashboardMonitorList');
         var isSessionErr = e && e.message === 'Session perlu refresh/login ulang';
-        if (top) top.innerHTML = dashboardEmptyHtml(isSessionErr ? 'Session perlu refresh/login ulang' : 'Data pasar terkini sedang disinkronisasi. Klik untuk memuat ulang.', isSessionErr ? 'amber' : 'amber');
+        if (top) top.innerHTML = dashboardEmptyHtml(isSessionErr ? 'Sesi perlu dimuat ulang. Silakan masuk lagi.' : 'Top 5 gagal dimuat. Coba lagi sebentar lagi.', isSessionErr ? 'amber' : 'error');
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = '';
         if (mon) mon.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
@@ -15396,35 +15394,9 @@ function stopDashboardMonitorAutoRefresh() {
 var _ihsgRefreshTimer = null;
 
 function refreshIHSGCard() {
-    fetch('/api/quote?ticker=IHSG', { headers: getAuthHeaders() })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            var lastEl = document.getElementById('ihsgLast');
-            var changeEl = document.getElementById('ihsgChange');
-            if (!lastEl) return;
-            if (data && (data.success || data.last)) {
-                var last = data.last || 7500;
-                var prevClose = data.prevClose || last;
-                var change = last - prevClose;
-                var changePct = prevClose > 0 ? ((change / prevClose) * 100) : 0;
-                lastEl.textContent = Number(last).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                var arrow = change >= 0 ? '\u25B2' : '\u25BC';
-                var sign = change >= 0 ? '+' : '';
-                changeEl.textContent = arrow + ' ' + sign + change.toFixed(2) + ' (' + sign + changePct.toFixed(2) + '%)';
-                changeEl.className = 'text-xs font-medium ' + (change >= 0 ? 'text-emerald-400' : 'text-red-400');
-            } else {
-                lastEl.textContent = '7.500,00';
-                changeEl.textContent = '\u25B2 +0,00 (0,00%)';
-                changeEl.className = 'text-xs font-medium text-emerald-400';
-            }
-        })
-        .catch(function() {
-            var lastEl = document.getElementById('ihsgLast');
-            var changeEl = document.getElementById('ihsgChange');
-            if (lastEl) lastEl.textContent = '7.500,00';
-            if (changeEl) { changeEl.textContent = '\u25B2 +0,00 (0,00%)'; changeEl.className = 'text-xs font-medium text-emerald-400'; }
-        });
-    // Schedule next refresh (10 minutes)
+    // Real quote and closes only (dashboard-v2.js). A failed read shows "—";
+    // the old fallback printed a made-up 7.500,00.
+    if (window.AutoCuanDashboardV2) window.AutoCuanDashboardV2.loadIhsg();
     if (_ihsgRefreshTimer) clearTimeout(_ihsgRefreshTimer);
     _ihsgRefreshTimer = setTimeout(refreshIHSGCard, 10 * 60 * 1000);
 }
@@ -16434,13 +16406,15 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/ac-motion.js?v=20261022-v1"></script>
 <script src="/landing-experience.js?v=20261001-v4"></script>
 <script src="/command-palette.js?v=20261016-fase8-v1"></script>
-<script src="/market-intelligence.js?v=20261016-fase8-v1"></script>
+<script src="/market-intelligence.js?v=20261022-v2"></script>
+<script src="/dashboard-v2.js?v=20261022-v1"></script>
+<script src="/ac-tape.js?v=20261022-v1"></script>
 <script>
 // Auto-initialize Market Breadth if on dashboard
 document.addEventListener('DOMContentLoaded', function() {
     var pDash = document.getElementById('page-dashboard');
-    if (pDash && !pDash.classList.contains('hidden') && window.AutoCuanMarketIntelligence) {
-        window.AutoCuanMarketIntelligence.renderMarketBreadth('dashboardMarketBreadthWrap');
+    if (pDash && !pDash.classList.contains('hidden') && window.AutoCuanDashboardV2) {
+        window.AutoCuanDashboardV2.loadMarket();
     }
 });
 </script>

@@ -85,6 +85,7 @@ const swingNkRrWarning = require('../lib/swing-nk-rr-warning');
 const fastWatcherMomentum = require('../lib/intraday-fast-watcher-momentum');
 const marketHoursGuard = require('../lib/market-hours-guard');
 const idxTradingCalendar = require('../lib/idx-trading-calendar');
+const priceTape = require('../lib/price-tape');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -245,8 +246,28 @@ module.exports = async function handler(req, res) {
     // === FASE 7: MARKET INTELLIGENCE SUITE (STANDALONE - NO SUPABASE REQUIRED) ===
     if (action === 'market-breadth') {
       const data = marketIntelligenceEngine.calculateMarketBreadth();
+      // Read-only calendar facts for the Dashboard "Sesi bursa" cell, so a
+      // holiday is never shown as Sesi 1. The session phase itself is derived
+      // from the WIB clock on the client.
+      try {
+        const todayKey = idxTradingCalendar.toDateKey(new Date());
+        data.market_calendar = { date: todayKey, is_trading_day: idxTradingCalendar.isTradingDay(todayKey, idxTradingCalendar.getSeedHolidaySet()) };
+      } catch (_) {
+        data.market_calendar = null;
+      }
       res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
       return res.status(200).json(data);
+    }
+
+    // Price tape under the top bar (HANDOFF 4a). Last completed session from
+    // the daily-history store; public market data, cached 60 seconds.
+    if (action === 'tape') {
+      res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
+      try {
+        return res.status(200).json(priceTape.getTape());
+      } catch (_) {
+        return res.status(200).json({ success: false, data_available: false, error: 'Strip harga belum tersedia.' });
+      }
     }
 
     if (action === 'broker-summary-smart') {
