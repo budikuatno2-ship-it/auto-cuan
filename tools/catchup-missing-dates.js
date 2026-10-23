@@ -35,6 +35,12 @@ const MAX_FAILURE_RATIO = 0.20;
 const DAILY_JOB_NEED = 4400;
 const RETRY_RATIO = 0.10;
 const WEB_RESERVE = 100;
+// Weekend (Sat/Sun): there is NO J1 and NO J2, so the 4,940 floor does not
+// apply. Only a small reserve for the live website + retries is kept, capped at
+// 1,500 (owner decision, 23 Oct 2026).
+const WEEKEND_RESERVE_CAP = 1500;
+const WEEKEND_RETRY_RATIO = 0.10;
+const WEEKEND_WEB_RESERVE = 100;
 
 function dataDir(env) {
   const e = env || process.env;
@@ -53,11 +59,34 @@ function parseArgs(argv) {
   return opts;
 }
 
-/** Budget the catch-up may spend today, keeping the daily jobs safe. */
-function computeCatchupBudget(limit, used) {
-  const floor = Math.ceil(DAILY_JOB_NEED * (1 + RETRY_RATIO)) + WEB_RESERVE;
+/**
+ * Budget the catch-up may spend today, keeping the daily jobs safe.
+ *
+ * Weekday: floor = J1/J2 need + 10% retry + web (4,940).
+ * Weekend: no J1/J2, so floor = min(1,500, 10% retry + web) — the owner's rule.
+ *
+ * @param {number} limit
+ * @param {number} used
+ * @param {{isWeekend?: boolean}} [options]
+ */
+function computeCatchupBudget(limit, used, options) {
+  const opts = options || {};
+  const isWeekend = opts.isWeekend === true;
+  const floor = isWeekend
+    ? Math.min(WEEKEND_RESERVE_CAP, Math.ceil(Number(limit) * WEEKEND_RETRY_RATIO) + WEEKEND_WEB_RESERVE)
+    : Math.ceil(DAILY_JOB_NEED * (1 + RETRY_RATIO)) + WEB_RESERVE;
   const remaining = Math.max(0, Number(limit) - Number(used));
-  return { limit, used, remaining, floor, spendable: Math.max(0, remaining - floor) };
+  return { limit, used, remaining, floor, spendable: Math.max(0, remaining - floor), isWeekend };
+}
+
+/** Is the given WIB date (YYYY-MM-DD) a Saturday or Sunday? */
+function isWeekendWib(dateKey) {
+  // Parse the calendar date directly: converting a +07:00 midnight to UTC would
+  // shift it to the previous day and report the wrong weekday.
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateKey || ''));
+  if (!m) return false;
+  const day = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).getUTCDay();
+  return day === 0 || day === 6;
 }
 
 function tickerDirs(dir) {
@@ -89,7 +118,12 @@ async function run(argv, deps) {
 
   const limit = client.getConfiguredDailyQuota();
   const used = tracker.getUsedToday();
-  const budget = computeCatchupBudget(limit, used);
+  // Weekend (Sat/Sun) has no J1/J2, so the daily-job floor does not apply.
+  const todayWib = d.todayWib || new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date());
+  const weekend = isWeekendWib(todayWib);
+  const budget = computeCatchupBudget(limit, used, { isWeekend: weekend });
 
   const dates = opts.dates.length ? opts.dates : ['2026-10-22', '2026-10-21', '2026-10-20', '2026-10-19'];
   const plan = dates.map((date) => {
@@ -99,6 +133,8 @@ async function run(argv, deps) {
 
   const summary = {
     dry_run: opts.dryRun,
+    today_wib: todayWib,
+    is_weekend: weekend,
     limit,
     used,
     remaining: budget.remaining,
@@ -159,4 +195,7 @@ if (require.main === module) {
   });
 }
 
-module.exports = { run, parseArgs, computeCatchupBudget, missingForDate, MAX_FAILURE_RATIO, DAILY_JOB_NEED };
+module.exports = {
+  run, parseArgs, computeCatchupBudget, missingForDate, isWeekendWib,
+  MAX_FAILURE_RATIO, DAILY_JOB_NEED, WEEKEND_RESERVE_CAP
+};
