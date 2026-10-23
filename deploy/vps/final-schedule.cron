@@ -74,6 +74,17 @@ CRON_TZ=Asia/Jakarta
 # ── END-OF-DAY / MALAM (Senin-Jumat, 21:30-22:15 WIB) ────────────────────
 15 22 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screener-dispatch.sh --dry-run >> /home/ubuntu/auto-cuan-runner/logs/screener-dispatch.log 2>&1
 
+# BROKER HUNTER INDEX (B1, 2026-10-22) — 22:45 WIB, setelah J1 final.
+# Membangun ulang data/broker-hunter-indexes/ dari broker-summary lokal yang
+# sudah ditulis J1. Tidak memakai kuota Arjum (baca disk saja). Tanpa baris ini
+# index tetap basi sejak 12 Sep, seperti sebelum perbaikan ini.
+45 22 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-broker-hunter-indexer.sh >> /home/ubuntu/auto-cuan-runner/logs/broker-hunter-indexer.log 2>&1
+
+# BACKLOG AGE ALARM (B3, 2026-10-22) — 19:45 WIB, setelah jendela EOD.
+# Kalau antrean isi ulang H-1 lebih tua dari 24 jam DAN tidak berkurang, kirim
+# SATU peringatan/hari ke Telegram admin + tulis state untuk Admin Console.
+45 19 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-backlog-age-alarm.sh >> /home/ubuntu/auto-cuan-runner/logs/backlog-age-alarm.log 2>&1
+
 # ── TELEGRAM DELIVERY RETRY WORKER (tiap 15 menit, 17:00-23:45 WIB) ──────
 */15 17-23 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-retry-telegram-delivery.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/retry-telegram-delivery.log 2>&1
 

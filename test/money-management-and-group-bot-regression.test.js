@@ -6,6 +6,10 @@ const moneyManagementHandler = require('../lib/money-management-handler');
 const { createInteractiveBot } = require('../lib/telegram-interactive-bot');
 
 test('Money Management: calculations for cashflow and trading journal', async () => {
+  // B4: header identity is now gated on an EXPLICIT dev flag (never set in
+  // production), not on NODE_ENV. This test exercises that dev path on purpose.
+  const savedFlag = process.env.ALLOW_DEV_HEADER_IDENTITY;
+  process.env.ALLOW_DEV_HEADER_IDENTITY = '1';
   const mockReqSummary = {
     method: 'GET',
     query: { action: 'summary', dev_user_id: 'test-user-123' },
@@ -27,12 +31,17 @@ test('Money Management: calculations for cashflow and trading journal', async ()
     end() {}
   };
 
-  await moneyManagementHandler(mockReqSummary, mockRes);
-  assert.equal(responseStatus, 200);
-  assert.ok(responseData && responseData.success, 'summary should succeed');
-  assert.ok(responseData.summary != null, 'summary object must exist');
-  assert.equal(typeof responseData.summary.idle_cash_rdl, 'number');
-  assert.equal(typeof responseData.summary.win_rate, 'number');
+  try {
+    await moneyManagementHandler(mockReqSummary, mockRes);
+    assert.equal(responseStatus, 200);
+    assert.ok(responseData && responseData.success, 'summary should succeed');
+    assert.ok(responseData.summary != null, 'summary object must exist');
+    assert.equal(typeof responseData.summary.idle_cash_rdl, 'number');
+    assert.equal(typeof responseData.summary.win_rate, 'number');
+  } finally {
+    if (savedFlag !== undefined) process.env.ALLOW_DEV_HEADER_IDENTITY = savedFlag;
+    else delete process.env.ALLOW_DEV_HEADER_IDENTITY;
+  }
 });
 
 test('Telegram Group Bot: Zero BYOK in group chat for market commands', async () => {
