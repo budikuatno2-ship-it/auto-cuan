@@ -88,7 +88,9 @@ function sameOriginHeaders() {
 
 async function attempt(handler, body) {
   const res = makeRes();
-  await handler({ method: 'POST', headers: sameOriginHeaders(), body }, res);
+  // C1: the client IP is trusted only from a trusted proxy hop. Model the local
+  // nginx peer (127.0.0.1) so the XFF entry is honoured, exactly as in production.
+  await handler({ method: 'POST', headers: sameOriginHeaders(), body, socket: { remoteAddress: '127.0.0.1' } }, res);
   return res;
 }
 
