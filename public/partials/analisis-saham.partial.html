@@ -1,112 +1,54 @@
-<div class="page-header mb-4">
-  <h1 id="analysisWorkspaceTitle" class="page-title text-2xl font-bold text-[var(--text-primary)]">Analisis &amp; Cockpit AI</h1>
-  <p class="page-subtitle text-xs text-[var(--text-secondary)]">Chart interaktif, analisis teknikal komprehensif, dan pembacaan visual AI.</p>
-</div>
-        <!-- Analysis destinations live in the workspace sidebar. -->
-
-
-        <!-- Header / Controls for Analisis & Chart (Global Search + Popular Chips + Subtabs) -->
-        <div id="analisisChartHeader" class="analisis-saham-controls ticker-search-container mb-4">
-            <!-- Top Cockpit Search & Sync Bar -->
-            <div class="unified-top-bar mb-3 flex-shrink-0">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div class="flex-1 flex flex-wrap items-center gap-2 min-w-0">
-                        <div class="relative flex-1 min-w-[200px]">
-                            <input id="analisisInput" type="text" placeholder="Ketik ticker: BBCA, BBRI, TLKM..." class="w-full px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm font-semibold tracking-wide" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229&&!(window.AutoCuanViewport&&window.AutoCuanViewport.isComposing(event)))UnifiedCockpit.handleTickerInputEnter()">
-                        </div>
-                        <button id="btnJalankanAnalisis" type="button" onclick="UnifiedCockpit.handleUnifiedAnalisisSubmit()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all flex items-center gap-1.5 shrink-0" title="Jalankan Analisis Saham">
-                            <span>Analisis Saham</span>
-                        </button>
-                        <button type="button" onclick="openAiApiKeyModal()" class="px-3 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-300 hover:text-amber-300 hover:border-amber-500/40 transition-all text-xs font-semibold flex items-center gap-1.5 shrink-0" title="Kelola Google Gemini API Key (BYOK)">
-                            <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>
-                            <span>API Key</span>
-                        </button>
-                    </div>
-                    <div class="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-xl bg-dark-700/80 border border-dark-600/40">
-                        <span class="text-xs text-gray-400">Aktif:</span>
-                        <span id="unifiedActiveTickerBadge" class="unified-ticker-badge font-mono font-bold text-emerald-400">BBCA</span>
-                        <span id="unifiedActiveTickerSymbol" class="hidden">BBCA</span>
-                        <span id="unifiedActiveCompanyName" class="text-xs text-gray-300 font-medium hidden sm:inline">Bank Central Asia Tbk</span>
-                        <span id="unifiedActiveCompanySector" class="text-[10px] text-gray-400 font-mono hidden md:inline">Finansial</span>
-                        <span id="unifiedActiveTickerQuote" class="text-xs font-mono font-semibold text-emerald-400 tabular-nums ml-1"></span>
-                    </div>
+<h1 id="analysisWorkspaceTitle" class="sr-only">Analisis &amp; Chart</h1>
+        <!-- Redesign v2 (canvas Analisis.dc.html "Konteks ticker"): ticker,
+             name and sector, last price, quick tickers, then the Chart
+             Workstation / Analisis AI switch, data stamp and ticker search.
+             Ids and handlers are the ones the cockpit runtime writes to. -->
+        <div id="analisisChartHeader" class="analisis-saham-controls ticker-search-container sheet ana-ctx" data-ac-ui="v2">
+            <div class="unified-top-bar ana-ctx-row">
+                <span id="unifiedActiveTickerBadge" class="unified-ticker-badge tk mono ana-tk">BBCA</span>
+                <span id="unifiedActiveTickerSymbol" class="hidden">BBCA</span>
+                <span class="ana-name"><b id="unifiedActiveCompanyName">Bank Central Asia Tbk</b> <span class="mut">&middot; <span id="unifiedActiveCompanySector">Finansial</span></span></span>
+                <span id="unifiedActiveTickerQuote" class="ana-quote num mono"></span>
+                <span class="ana-chips" role="group" aria-label="Ticker cepat">
+                    <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('IHSG', { loadChart: true, forceChartReload: true })">IHSG</button>
+                    <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true })">BBCA</button>
+                    <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('BBRI', { loadChart: true, forceChartReload: true })">BBRI</button>
+                    <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('BMRI', { loadChart: true, forceChartReload: true })">BMRI</button>
+                    <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('TLKM', { loadChart: true, forceChartReload: true })">TLKM</button>
+                    <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('ASII', { loadChart: true, forceChartReload: true })">ASII</button>
+                </span>
+            </div>
+            <div class="ana-ctx-row ana-ctx-row2">
+                <div id="analisisChartSubtabWrap" class="segx ana-sub" role="group" aria-label="Tampilan analisis">
+                    <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisSubTab('ai')">Analisis AI</button>
+                    <!-- FIX-22: Chart Workstation is a first-class lens, directly
+                         reachable as /analisis?tab=chart and from the sidebar. -->
+                    <button id="tabChartWorkstationLens" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" data-sidebar-page="chart" onclick="switchAnalisisSubTab('chart')" title="Chart Workstation">Chart Workstation</button>
+                    <button id="tabAnalisisVision" type="button" class="analisis-subtab hidden" style="display:none" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">Chart &amp; AI Vision</button>
                 </div>
-                <!-- Quick Ticker Chips -->
-                <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
-                    <span class="text-[11px] text-gray-400 mr-1">Populer:</span>
-                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('IHSG', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">IHSG</button>
-                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('BBCA', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBCA</button>
-                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('BBRI', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BBRI</button>
-                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('BMRI', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">BMRI</button>
-                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('TLKM', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">TLKM</button>
-                    <button type="button" onclick="UnifiedCockpit.syncActiveTicker('ASII', { loadChart: true, forceChartReload: true })" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-300 bg-dark-700/60 border border-dark-600/40 hover:border-emerald-500/40 hover:text-emerald-400 transition">ASII</button>
-                </div>
+                <span class="chip b ana-stamp">Candle harian EOD</span>
+                <form class="ana-search" role="search" onsubmit="UnifiedCockpit.handleUnifiedAnalisisSubmit(); return false;">
+                    <input id="analisisInput" type="text" placeholder="Ganti ticker, mis. BBCA" aria-label="Ganti ticker" autocomplete="off" spellcheck="false">
+                    <button id="btnJalankanAnalisis" type="submit" class="vbtn p sm">Analisis</button>
+                    <button type="button" class="vbtn sm" onclick="openAiApiKeyModal()" title="Kelola kunci AI milik Anda (BYOK)">Kredensial AI</button>
+                </form>
             </div>
 
             <!-- Multi-Lens Horizontal Sub-Navigation Strip (Workstation Lenses) -->
-            <div id="analisisLensesNav" class="analisis-lens-bar flex flex-wrap items-center gap-1.5 mt-2 mb-3 p-1.5 rounded-xl bg-dark-800/80 border border-dark-600/40 text-xs" role="tablist" aria-label="Lensa Analisis Saham">
-                <button type="button" class="analisis-lens-btn active px-3 py-1.5 rounded-lg text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 font-semibold flex items-center gap-1.5 transition" data-lens="analisis-chart" onclick="switchAnalisisTab('analisis-chart')" role="tab" aria-selected="true">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
-                    <span>Chart &amp; AI</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="bandarmologi" onclick="switchAnalisisTab('bandarmologi')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 17l6-6 4 4 8-10M15 5h6v6"/></svg>
-                    <span>Bandarmologi</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="hunter" onclick="switchAnalisisTab('hunter')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0"/></svg>
-                    <span>Broker Hunter</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="intel" onclick="switchAnalisisTab('intel')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m13 2-9 12h7l-1 8 10-13h-7z"/></svg>
-                    <span>Sinyal Intelijen</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="market-structure" onclick="switchAnalisisTab('market-structure')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="16" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 10.5l3 3M16 5v5M5 16h5"/></svg>
-                    <span>Struktur Pasar</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="financial" onclick="switchAnalisisTab('financial')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/></svg>
-                    <span>Financial</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="insider" onclick="switchAnalisisTab('insider')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7l8 4M8 17l8-4M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0M20 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0M8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0"/></svg>
-                    <span>Insider</span>
-                </button>
-                <button type="button" class="analisis-lens-btn px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="ranking" onclick="switchAnalisisTab('ranking')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7"/></svg>
-                    <span>Ranking</span>
-                    <span class="text-[9px] text-amber-300 font-mono font-bold px-1 py-0.2 rounded bg-amber-500/10 border border-amber-500/30">PRO</span>
-                </button>
-                <button type="button" class="analisis-lens-btn hidden px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-700/60 font-medium flex items-center gap-1.5 transition" data-lens="pattern" onclick="switchAnalisisTab('pattern')" role="tab" aria-selected="false">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3-7 4 14 3-7h4"/></svg>
-                    <span>Pattern Radar</span>
-                    <span class="text-[9px] text-emerald-400 font-mono font-bold px-1 py-0.2 rounded bg-emerald-500/10 border border-emerald-500/30">ADMIN</span>
-                </button>
-            </div>
-
-            <!-- Sub-Tab Switcher: [Analisis AI] vs [Chart Workstation] (FIX-22 lens tabs) -->
-            <div id="analisisChartSubtabWrap">
-                <div class="flex items-center gap-1 bg-dark-800 p-1 rounded-xl border border-dark-600/50 text-xs w-fit">
-                    <button id="tabAnalisisText" type="button" class="analisis-subtab active" data-subtab="ai" data-tab="analisis" onclick="switchAnalisisSubTab('ai')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:-2px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                        <span>Analisis AI</span>
-                    </button>
-                    <!-- FIX-22: Chart Workstation is a first-class lens, directly
-                         reachable as /analisis?tab=chart and from the sidebar. -->
-                    <button id="tabChartWorkstationLens" type="button" class="analisis-subtab" data-subtab="chart" data-tab="chart" data-sidebar-page="chart" onclick="switchAnalisisSubTab('chart')" title="Chart Workstation">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:-2px"><path d="M3 3v18h18"/><path d="M7 15l3-4 3 3 5-7"/></svg>
-                        <span>Chart Workstation</span>
-                    </button>
-                    <button id="tabAnalisisVision" type="button" class="analisis-subtab hidden" style="display:none" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:-2px"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                        <span>Chart &amp; AI Vision</span>
-                    </button>
-                </div>
+            <div id="analisisLensesNav" class="analisis-lens-bar utabs ana-lenses" role="tablist" aria-label="Lensa Analisis Saham">
+                <button type="button" class="analisis-lens-btn active" data-lens="analisis-chart" onclick="switchAnalisisTab('analisis-chart')" role="tab" aria-selected="true">Chart &amp; AI</button>
+                <button type="button" class="analisis-lens-btn" data-lens="bandarmologi" onclick="switchAnalisisTab('bandarmologi')" role="tab" aria-selected="false">Bandarmologi</button>
+                <button type="button" class="analisis-lens-btn" data-lens="hunter" onclick="switchAnalisisTab('hunter')" role="tab" aria-selected="false">Broker Hunter</button>
+                <button type="button" class="analisis-lens-btn" data-lens="intel" onclick="switchAnalisisTab('intel')" role="tab" aria-selected="false">Sinyal Intelijen</button>
+                <button type="button" class="analisis-lens-btn" data-lens="market-structure" onclick="switchAnalisisTab('market-structure')" role="tab" aria-selected="false">Struktur Pasar</button>
+                <button type="button" class="analisis-lens-btn" data-lens="financial" onclick="switchAnalisisTab('financial')" role="tab" aria-selected="false">Financial</button>
+                <button type="button" class="analisis-lens-btn" data-lens="insider" onclick="switchAnalisisTab('insider')" role="tab" aria-selected="false">Insider</button>
+                <button type="button" class="analisis-lens-btn" data-lens="ranking" onclick="switchAnalisisTab('ranking')" role="tab" aria-selected="false">Ranking <span class="ana-tag">PRO</span></button>
+                <button type="button" class="analisis-lens-btn hidden" data-lens="pattern" onclick="switchAnalisisTab('pattern')" role="tab" aria-selected="false">Pattern Radar <span class="ana-tag">ADMIN</span></button>
             </div>
         </div>
 
-        <!-- ===== TAB 1: INDUK ANALISIS & CHART (SUBPANEL AI) ===== -->
+<!-- ===== TAB 1: INDUK ANALISIS & CHART (SUBPANEL AI) ===== -->
         <section id="panel-tab-analisis" class="analisis-tab-panel active">
             <!-- SUB-PANEL 1: ANALISIS AI (Cockpit Grid) -->
             <div id="subPanelAnalisisAI" class="unified-cockpit-grid">

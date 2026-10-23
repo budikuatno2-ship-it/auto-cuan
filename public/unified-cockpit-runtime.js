@@ -179,13 +179,13 @@
             var prevClose = (prevC && prevC.close != null && Number.isFinite(Number(prevC.close)) && Number(prevC.close) > 0) ? Number(prevC.close) : closePrice;
             var diff = closePrice - prevClose;
             var pct = prevClose > 0 ? (diff / prevClose) * 100 : 0;
-            var sign = diff > 0 ? '+' : '';
-            var colorClass = diff > 0 ? 'text-emerald-400' : (diff < 0 ? 'text-rose-400' : 'text-gray-300');
-            quoteEl.className = 'text-xs font-semibold tabular-nums lining-nums ' + colorClass;
-            var formattedPrice = (typeof root.mktCtxFmtPrice === 'function') ? root.mktCtxFmtPrice(closePrice) : ('Rp ' + closePrice.toLocaleString('id-ID'));
-            quoteEl.textContent = formattedPrice + ' (' + sign + pct.toFixed(2) + '%)';
+            // Canvas header: last price without "Rp", then change and percent
+            // (Indonesian decimals, U+2212 minus) coloured by direction.
+            var sign = diff > 0 ? '+' : (diff < 0 ? '\u2212' : '');
+            quoteEl.className = 'ana-quote num mono ' + (diff > 0 ? 'is-up' : (diff < 0 ? 'is-down' : 'is-flat'));
+            quoteEl.innerHTML = '<span class="ana-px">' + closePrice.toLocaleString('id-ID') + '</span><span class="ana-chg">' + sign + Math.abs(diff).toLocaleString('id-ID') + ' (' + sign + Math.abs(pct).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%)</span>';
           } else {
-            quoteEl.className = 'text-xs font-mono font-semibold text-gray-400 tabular-nums ml-1';
+            quoteEl.className = 'ana-quote num mono is-flat';
             quoteEl.textContent = 'Harga belum tersedia';
           }
         }
@@ -310,15 +310,17 @@
             var rawLast = (data && data.success && data.snapshot && data.snapshot.price) ? data.snapshot.price.last : null;
             if (rawLast != null && rawLast !== '' && Number.isFinite(Number(rawLast)) && Number(rawLast) > 0) {
               var p = Number(rawLast);
-              quoteEl.className = 'text-xs font-mono font-semibold text-emerald-400 tabular-nums ml-1';
-              quoteEl.textContent = 'Rp ' + p.toLocaleString('id-ID') + ' (0.00%)';
+              // Price only: the snapshot carries no previous close, so no
+              // change is shown (it used to print a made-up "(0.00%)").
+              quoteEl.className = 'ana-quote num mono is-flat';
+              quoteEl.innerHTML = '<span class="ana-px">' + p.toLocaleString('id-ID') + '</span>';
             } else {
-              quoteEl.className = 'text-xs font-mono font-semibold text-gray-400 tabular-nums ml-1';
+              quoteEl.className = 'ana-quote num mono is-flat';
               quoteEl.textContent = 'Harga belum tersedia';
             }
           })
           .catch(function() {
-            quoteEl.className = 'text-xs font-mono font-semibold text-gray-400 tabular-nums ml-1';
+            quoteEl.className = 'ana-quote num mono is-flat';
             quoteEl.textContent = 'Harga belum tersedia';
           });
       }

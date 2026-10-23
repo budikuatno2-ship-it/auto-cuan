@@ -504,6 +504,7 @@
   "test/ranking-page-scroll.test.js",
   "test/ranking-session-label-regression.test.js",
   "test/recent-failure-cooldown.test.js",
+  "test/redesign-v2-analisis.test.js",
   "test/redesign-v2-dashboard.test.js",
   "test/redesign-v2-icons.test.js",
   "test/redesign-v2-kelola.test.js",

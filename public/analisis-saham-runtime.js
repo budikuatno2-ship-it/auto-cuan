@@ -1689,10 +1689,13 @@
     if (quoteEl) {
       var currentLast = (price && price.last != null && price.last !== '') ? price.last : (f && f.pbv_as_of_price != null && f.pbv_as_of_price !== '' ? f.pbv_as_of_price : null);
       if (currentLast != null && Number.isFinite(Number(currentLast)) && Number(currentLast) > 0) {
-        quoteEl.className = 'text-xs font-mono font-semibold text-emerald-400 tabular-nums ml-1';
-        quoteEl.textContent = 'Rp ' + Number(currentLast).toLocaleString('id-ID') + ' (0.00%)';
-      } else {
-        quoteEl.className = 'text-xs font-mono font-semibold text-gray-400 tabular-nums ml-1';
+        // Price only; the financial snapshot has no previous close (no "(0.00%)").
+        if (typeof quoteEl.querySelector !== 'function' || !quoteEl.querySelector('.ana-chg')) {
+          quoteEl.className = 'ana-quote num mono is-flat';
+          quoteEl.innerHTML = '<span class="ana-px">' + Number(currentLast).toLocaleString('id-ID') + '</span>';
+        }
+      } else if (typeof quoteEl.querySelector !== 'function' || !quoteEl.querySelector('.ana-px')) {
+        quoteEl.className = 'ana-quote num mono is-flat';
         quoteEl.textContent = 'Harga belum tersedia';
       }
     }

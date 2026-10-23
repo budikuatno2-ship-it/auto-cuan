@@ -161,6 +161,50 @@ function chartDims(variant, viewportWidth, viewportHeight) {
     return { main: mobile ? Math.min(320, Math.round(w * 0.92)) : 420, rsi: mobile ? 60 : 64 };
 }
 
+// Chart colours from the redesign v2 theme tokens, read from the chart's own
+// container so light and dark follow the page. The old fixed dark values are
+// the fallback when a token is not defined there.
+function acChartTheme(el) {
+    var cs = (typeof getComputedStyle === 'function' && el) ? getComputedStyle(el) : null;
+    function t(name, fallback) { var v = cs ? String(cs.getPropertyValue(name) || '').trim() : ''; return v || fallback; }
+    return {
+        bg: t('--ac-surface', '#0f1319'),
+        panel: t('--ac-surface', '#0b0e14'),
+        text: t('--ac-2', '#9ca3af'),
+        grid: t('--ac-hair', '#1c233320'),
+        border: t('--ac-hair', '#1c2333'),
+        up: t('--ac-pos', '#10b981'),
+        down: t('--ac-neg', '#ef4444'),
+        vol: t('--ac-ctl', '#242d3d'),
+        font: t('--ac-font-mono', '')
+    };
+}
+function acChartAlpha(color, hexAlpha) {
+    return /^#[0-9a-f]{6}$/i.test(color) ? color + hexAlpha : color;
+}
+function acChartLayout(th) {
+    var layout = { background: { color: th.bg }, textColor: th.text };
+    if (th.font) layout.fontFamily = th.font;
+    return layout;
+}
+// A theme switch repaints every live chart in place (no reload).
+if (typeof window !== 'undefined' && !window.__acChartThemeHook) {
+    window.__acChartThemeHook = true;
+    window.addEventListener('ac-theme', function() {
+        Object.keys(_chartRegistry).forEach(function(id) {
+            var e = _chartRegistry[id];
+            var th = acChartTheme(document.getElementById(id + '_container'));
+            [e.mainChart, e.rsiChart, e.intensityChart, e.rotationChart].forEach(function(ch) {
+                if (!ch) return;
+                try { ch.applyOptions({ layout: acChartLayout(th), grid: { vertLines: { color: th.grid }, horzLines: { color: th.grid } }, rightPriceScale: { borderColor: th.border }, timeScale: { borderColor: th.border } }); } catch (x) {}
+            });
+            if (e.candleSeries) {
+                try { e.candleSeries.applyOptions({ upColor: th.up, downColor: th.down, borderUpColor: th.up, borderDownColor: th.down, wickUpColor: th.up, wickDownColor: th.down }); } catch (x) {}
+            }
+        });
+    });
+}
+
 // Dispose a chart + its observers and drop it from the registry.
 function disposeChart(chartId) {
     var e = _chartRegistry[chartId];
@@ -242,32 +286,45 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     disposeStaleCharts();
     container.innerHTML = '';
     container.style.height = dims.main + 'px';
+    var _th = acChartTheme(container);
 
     // Main chart: candlestick + MA
     var chart = LightweightCharts.createChart(container, {
         width: container.clientWidth, height: dims.main,
-        layout: { background: { color: '#0f1319' }, textColor: '#9ca3af' },
-        grid: { vertLines: { color: '#1c233320' }, horzLines: { color: '#1c233320' } },
+        layout: acChartLayout(_th),
+        grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-        rightPriceScale: { borderColor: '#1c2333' },
-        timeScale: { borderColor: '#1c2333', timeVisible: false },
+        // Indonesian number format on the price axis; stocks trade in whole
+        // rupiah, indices keep two decimals.
+        localization: { locale: 'id-ID', priceFormatter: function(p) { return Number(p).toLocaleString('id-ID', /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30)$/i.test(String(ticker || '')) ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 }); } },
+        rightPriceScale: { borderColor: _th.border },
+        timeScale: { borderColor: _th.border, timeVisible: false },
         // Touch behavior: horizontal drag pans the chart, vertical finger movement is
         // left to the page so mobile page scrolling is never trapped. Pinch zoom kept.
         handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
         handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
     });
 
+    // Keep every series added to this chart so the price-scale buttons can
+    // set one range for all of them (each series otherwise widens autoscale).
+    var _allSeries = [];
+    ['addLineSeries', 'addHistogramSeries', 'addAreaSeries', 'addBaselineSeries'].forEach(function(fn) {
+        if (typeof chart[fn] !== 'function') return;
+        var orig = chart[fn].bind(chart);
+        chart[fn] = function(opts) { var sr = orig(opts); _allSeries.push({ series: sr, scale: (opts && opts.priceScaleId) || 'right' }); return sr; };
+    });
+
     var candleSeries = chart.addCandlestickSeries({
-        upColor: '#10b981', downColor: '#ef4444',
-        borderUpColor: '#10b981', borderDownColor: '#ef4444',
-        wickUpColor: '#10b981', wickDownColor: '#ef4444'
+        upColor: _th.up, downColor: _th.down,
+        borderUpColor: _th.up, borderDownColor: _th.down,
+        wickUpColor: _th.up, wickDownColor: _th.down
     });
     candleSeries.setData(candles);
 
     // Volume
-    var volumeSeries = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'vol', color: '#242d3d' });
+    var volumeSeries = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'vol', color: _th.vol });
     chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
-    var volData = candles.map(function(c) { return { time: c.time, value: c.volume, color: c.close >= c.open ? '#10b98130' : '#ef444430' }; });
+    var volData = candles.map(function(c) { return { time: c.time, value: c.volume, color: c.close >= c.open ? acChartAlpha(_th.up, '30') : acChartAlpha(_th.down, '30') }; });
     volumeSeries.setData(volData);
 
     // Volume Avg 20 line
@@ -509,8 +566,11 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         var chgSign = chg >= 0 ? '+' : '';
         var chgColor = chg >= 0 ? '#34d399' : '#f87171';
 
-        var corrVal = ws ? ws.calculateCorrF(candles) : 0.72;
-        var parVal = ws ? ws.calculateParF(candles) : 34.2;
+        // No workstation module, no Corr F / Par F (the old fallback printed 0.72 and 34.2).
+        var corrVal = ws ? ws.calculateCorrF(candles) : null;
+        var parVal = ws ? ws.calculateParF(candles) : null;
+        var corrTxt = (corrVal == null || !isFinite(corrVal)) ? '—' : ((corrVal >= 0 ? '+' : '') + corrVal.toFixed(2));
+        var parTxt = (parVal == null || !isFinite(parVal)) ? '—' : (parVal.toFixed(1) + '%');
         var lpmVal = ws ? ws.calculateLPM(candles) : null;
         var tf = (wsState && wsState.timeframe) ? wsState.timeframe : '1D';
 
@@ -536,9 +596,9 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                 '<div class="flex items-center gap-1 text-[10px] font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
                     '<span>' + (ticker || 'SAHAM') + ' · ' + tf + '</span>' +
                     '<span style="color:' + chgColor + '"> ' + cClose.toLocaleString('id-ID') + ' (' + chgSign + chgPct.toFixed(1) + '%)</span>' +
-                    '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + (corrVal >= 0 ? '+' : '') + corrVal.toFixed(2) + '</b></span>' +
+                    '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + corrTxt + '</b></span>' +
                 '</div>' +
-                '<div class="text-[10px] text-gray-300 font-medium">Vol <b style="color:#f1f5f9;">' + volStr + '</b> • Par F <b style="color:#fbbf24;">' + parVal.toFixed(1) + '%</b></div>' +
+                '<div class="text-[10px] text-gray-300 font-medium">Vol <b style="color:#f1f5f9;">' + volStr + '</b> • Par F <b style="color:#fbbf24;">' + parTxt + '</b></div>' +
                 '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM <b style="color:#34d399;">' + (lpmVal ? 'Rp ' + lpmVal.toLocaleString('id-ID') : 'Rp ' + cClose.toLocaleString('id-ID')) + '</b></div>' +
                 '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#3b82f6;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign <b style="color:#60a5fa;">' + foreignStr + '</b></div>' +
                 '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#f97316;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>CMF <b style="color:#fb923c;">' + moneyFlowStr + '</b></div>';
@@ -552,8 +612,8 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                     '<span class="text-gray-300">L<span style="color:#f87171">' + cLow.toLocaleString('id-ID') + '</span></span>' +
                     '<span class="text-gray-300">C<span style="color:' + chgColor + '">' + cClose.toLocaleString('id-ID') + '</span></span>' +
                     '<span style="color:' + chgColor + '"> ' + chgSign + chg.toLocaleString('id-ID') + ' (' + chgSign + chgPct.toFixed(2) + '%)</span>' +
-                    '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + (corrVal >= 0 ? '+' : '') + corrVal.toFixed(2) + '</b></span>' +
-                    '<span class="text-gray-400 font-normal">• Par F <b style="color:#fbbf24;">' + parVal.toFixed(1) + '%</b></span>' +
+                    '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + corrTxt + '</b></span>' +
+                    '<span class="text-gray-400 font-normal">• Par F <b style="color:#fbbf24;">' + parTxt + '</b></span>' +
                 '</div>' +
                 '<div class="text-[11px] text-gray-300 font-medium">Volume <b style="color:#f1f5f9;">' + volStr + '</b></div>' +
                 '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>Liquidity Pressure Model (LPM) <b style="color:#34d399;">' + (lpmVal ? 'Rp ' + lpmVal.toLocaleString('id-ID') : 'Rp ' + cClose.toLocaleString('id-ID')) + '</b></div>' +
@@ -574,12 +634,13 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             updateCanvasHeader(hovered || _lastCandle);
         });
 
-        window.addEventListener('resize', function() {
-            if (chart && container) {
-                chart.applyOptions({ width: container.clientWidth });
-            }
+        var _onWinResize = function() {
+            var reg = _chartRegistry[chartId];
+            if (!reg || reg.mainChart !== chart) { window.removeEventListener('resize', _onWinResize); return; }
+            if (container) chart.applyOptions({ width: container.clientWidth });
             updateCanvasHeader(_lastCandle);
-        });
+        };
+        window.addEventListener('resize', _onWinResize);
     }
 
     if (ws && typeof ws.attach === 'function') {
@@ -750,9 +811,9 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         intensityChart = LightweightCharts.createChart(intensityContainer, {
             width: container.clientWidth,
             height: 65,
-            layout: { background: { color: '#0b0e14' }, textColor: '#6b7280' },
-            grid: { vertLines: { color: '#1c233315' }, horzLines: { color: '#1c233320' } },
-            rightPriceScale: { borderColor: '#1c2333', scaleMargins: { top: 0.15, bottom: 0.1 } },
+            layout: acChartLayout(_th),
+            grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.15, bottom: 0.1 } },
             timeScale: { visible: false },
             crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
             handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
@@ -771,9 +832,9 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         rotationChart = LightweightCharts.createChart(rotationContainer, {
             width: container.clientWidth,
             height: 65,
-            layout: { background: { color: '#0b0e14' }, textColor: '#6b7280' },
-            grid: { vertLines: { color: '#1c233315' }, horzLines: { color: '#1c233320' } },
-            rightPriceScale: { borderColor: '#1c2333', scaleMargins: { top: 0.15, bottom: 0.1 } },
+            layout: acChartLayout(_th),
+            grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+            rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.15, bottom: 0.1 } },
             timeScale: { visible: false },
             crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
             handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
@@ -867,9 +928,9 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             rsiContainer.style.height = dims.rsi + 'px';
             rsiChart = LightweightCharts.createChart(rsiContainer, {
                 width: rsiContainer.clientWidth, height: dims.rsi,
-                layout: { background: { color: '#0b0e14' }, textColor: '#6b7280' },
-                grid: { vertLines: { color: '#1c233315' }, horzLines: { color: '#1c233320' } },
-                rightPriceScale: { borderColor: '#1c2333', scaleMargins: { top: 0.1, bottom: 0.1 } },
+                layout: acChartLayout(_th),
+                grid: { vertLines: { color: _th.grid }, horzLines: { color: _th.grid } },
+                rightPriceScale: { borderColor: _th.border, scaleMargins: { top: 0.1, bottom: 0.1 } },
                 timeScale: { visible: false },
                 crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
                 // RSI is a read-only strip: don't let it capture touch/scroll gestures.
@@ -952,12 +1013,29 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         }
     }
 
+    // Default view (HANDOFF 5a): the last ~6 months, 126 sessions on 1D or 26
+    // bars on 1W; double-click returns to it. The subpanels follow through the
+    // logical-range subscription above.
+    var _defaultRange = null;
+    if (candles && candles.length > 30) {
+        var _t = function(c) { var v = c.time; return typeof v === 'number' ? v * 1000 : Date.parse(typeof v === 'string' ? v : (v.year + '-' + v.month + '-' + v.day)); };
+        var _span = (_t(candles[candles.length - 1]) - _t(candles[candles.length - 11])) / 86400000 / 10;
+        var _bars = _span > 3 ? 26 : 126;
+        if (candles.length > _bars) _defaultRange = { from: candles.length - _bars, to: candles.length + 2 };
+    }
+    if (_defaultRange) {
+        try { chart.timeScale().setVisibleLogicalRange(_defaultRange); } catch (_) {}
+        container.addEventListener('dblclick', function() { try { chart.timeScale().setVisibleLogicalRange(_defaultRange); } catch (_) {} });
+    }
+
     // Register instances + metadata for the exporter (scoped, no global loose vars).
     var _latest = (candles && candles.length) ? candles[candles.length - 1] : null;
     _chartRegistry[chartId] = {
         chartId: chartId,
         variant: variant,
         mainChart: chart,
+        candleSeries: candleSeries,
+        allSeries: _allSeries,
         rsiChart: (typeof rsiChart !== 'undefined' ? rsiChart : null) || null,
         intensityChart: (typeof intensityChart !== 'undefined' ? intensityChart : null) || null,
         rotationChart: (typeof rotationChart !== 'undefined' ? rotationChart : null) || null,

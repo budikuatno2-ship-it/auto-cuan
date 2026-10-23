@@ -1328,41 +1328,119 @@
     return _workstationInstances[chartId];
   }
 
+  // Redesign v2 toolbar (canvas Analisis.dc.html mode bar): MODE and TF as
+  // segmented controls, then layers, "Satu layar" and the price-scale
+  // buttons. The handlers are the existing ones.
   function renderToolbarHtml(chartId) {
     var inst = _workstationInstances[chartId];
     var state = inst ? inst.state : createWorkstationState('simpel');
     var tf = state.timeframe || '1D';
     var preset = state.activePreset || 'simpel';
     var count = state.getActiveLayerCount();
+    var q = "'" + chartId + "'";
+    function seg(on, label, call, extra) {
+      return '<button type="button" class="' + (on ? 'on' : '') + '" aria-pressed="' + (on ? 'true' : 'false') + '" onclick="' + call + '"' + (extra || '') + '>' + label + '</button>';
+    }
+    var presets = [['simpel', 'Simpel'], ['scalping', 'Scalping'], ['swing', 'Swing'], ['investor', 'Investor'], ['pro', 'Pro']];
 
-    var html = '<div id="' + chartId + '_workstation_toolbar" class="chart-workstation-toolbar flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-dark-800/80 border-b border-dark-600/30 text-xs">' +
-      '<div class="flex items-center gap-2 flex-wrap">' +
-        '<div class="inline-flex rounded-lg bg-dark-900/80 p-0.5 border border-dark-600/40" role="group" aria-label="Pilih Timeframe">' +
-          '<button type="button" class="px-2.5 py-1 text-xs font-semibold rounded-md transition ' + (tf === '1D' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200') + '" onclick="AutoCuanChartWorkstation.switchTimeframe(\'' + chartId + '\', \'1D\')">1D</button>' +
-          '<button type="button" class="px-2.5 py-1 text-xs font-semibold rounded-md transition ' + (tf === '1W' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200') + '" onclick="AutoCuanChartWorkstation.switchTimeframe(\'' + chartId + '\', \'1W\')">1W</button>' +
+    var html = '<div id="' + chartId + '_workstation_toolbar" class="chart-workstation-toolbar cw-bar" data-ac-ui="v2">' +
+      '<div class="cw-group"><span class="cw-l">Mode</span>' +
+        '<div class="segx cw-seg" role="group" aria-label="Pilih Preset Chart">' +
+          presets.map(function (p) { return seg(preset === p[0], p[1], 'AutoCuanChartWorkstation.applyPreset(' + q + ', \'' + p[0] + '\')'); }).join('') +
         '</div>' +
-        '<div class="inline-flex rounded-lg bg-dark-900/80 p-0.5 border border-dark-600/40 flex-wrap" role="group" aria-label="Pilih Preset Chart">' +
-          '<button type="button" class="px-2 py-1 text-[11px] font-medium rounded-md transition ' + (preset === 'simpel' ? 'bg-dark-700 text-emerald-400 font-semibold' : 'text-gray-400 hover:text-gray-200') + '" onclick="AutoCuanChartWorkstation.applyPreset(\'' + chartId + '\', \'simpel\')">Simpel</button>' +
-          '<button type="button" class="px-2 py-1 text-[11px] font-medium rounded-md transition ' + (preset === 'scalping' ? 'bg-dark-700 text-emerald-400 font-semibold' : 'text-gray-400 hover:text-gray-200') + '" onclick="AutoCuanChartWorkstation.applyPreset(\'' + chartId + '\', \'scalping\')">Scalping</button>' +
-          '<button type="button" class="px-2 py-1 text-[11px] font-medium rounded-md transition ' + (preset === 'swing' ? 'bg-dark-700 text-emerald-400 font-semibold' : 'text-gray-400 hover:text-gray-200') + '" onclick="AutoCuanChartWorkstation.applyPreset(\'' + chartId + '\', \'swing\')">Swing</button>' +
-          '<button type="button" class="px-2 py-1 text-[11px] font-medium rounded-md transition ' + (preset === 'investor' ? 'bg-dark-700 text-emerald-400 font-semibold' : 'text-gray-400 hover:text-gray-200') + '" onclick="AutoCuanChartWorkstation.applyPreset(\'' + chartId + '\', \'investor\')">Investor</button>' +
-          '<button type="button" class="px-2 py-1 text-[11px] font-medium rounded-md transition ' + (preset === 'pro' ? 'bg-dark-700 text-emerald-400 font-semibold' : 'text-gray-400 hover:text-gray-200') + '" onclick="AutoCuanChartWorkstation.applyPreset(\'' + chartId + '\', \'pro\')">Pro</button>' +
+        '<span class="cw-l">TF</span>' +
+        '<div class="segx cw-seg" role="group" aria-label="Pilih Timeframe">' +
+          seg(tf === '1D', '1D', 'AutoCuanChartWorkstation.switchTimeframe(' + q + ', \'1D\')') +
+          seg(tf === '1W', '1W', 'AutoCuanChartWorkstation.switchTimeframe(' + q + ', \'1W\')') +
         '</div>' +
-        '<span id="' + chartId + '_layer_badge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950/60 text-emerald-400 border border-emerald-500/30">' + count + ' Layer Aktif</span>' +
       '</div>' +
-      '<div class="flex items-center gap-1.5 flex-wrap">' +
-        '<button type="button" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-gray-300 bg-dark-700/60 hover:bg-dark-700 border border-dark-600/40 transition" onclick="AutoCuanChartWorkstation.toggleDrawer(\'' + chartId + '\')" aria-label="Buka Pengaturan Mode dan Layer">' +
-          '<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>' +
-          'Mode &amp; Layer' +
-        '</button>' +
-        '<button type="button" id="' + chartId + '_collapse_btn" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-gray-400 hover:text-gray-200 bg-dark-700/40 hover:bg-dark-700 border border-dark-600/30 transition" onclick="AutoCuanChartWorkstation.toggleCollapse(\'' + chartId + '\')">' +
-          'Sembunyikan Chart' +
-        '</button>' +
-        '<button type="button" class="px-2 py-1 rounded-md text-[11px] font-medium text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition" onclick="AutoCuanChartWorkstation.turnOffAll(\'' + chartId + '\')" title="Matikan semua layer opsional">Matikan Semua</button>' +
-        '<button type="button" class="px-2 py-1 rounded-md text-[11px] font-medium text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 transition" onclick="AutoCuanChartWorkstation.reset(\'' + chartId + '\')" title="Kembalikan ke preset Simpel">Reset</button>' +
+      '<div class="cw-group cw-right">' +
+        '<span class="cw-hint">Ctrl + scroll = zoom</span>' +
+        '<button type="button" class="vbtn sm" onclick="AutoCuanChartWorkstation.toggleOneScreen(' + q + ')" title="Satu layar (F, tutup dengan Esc)" aria-keyshortcuts="F">' +
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Satu layar</button>' +
+        '<button type="button" class="vbtn sm" onclick="AutoCuanChartWorkstation.toggleDrawer(' + q + ')" aria-label="Buka pengaturan mode dan layer">' +
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5"/></svg>Mode &amp; Layer ' +
+          '<span id="' + chartId + '_layer_badge" class="cw-count">' + count + ' Layer Aktif</span></button>' +
+        '<span class="cw-scale" role="group" aria-label="Skala harga">' +
+          '<button type="button" class="vbtn sm" onclick="AutoCuanChartWorkstation.scalePrice(' + q + ', \'out\')" aria-label="Perkecil skala harga" title="Perkecil skala harga">&minus;</button>' +
+          '<button type="button" class="vbtn sm" onclick="AutoCuanChartWorkstation.scalePrice(' + q + ', \'in\')" aria-label="Perbesar skala harga" title="Perbesar skala harga">+</button>' +
+          '<button type="button" class="vbtn sm" onclick="AutoCuanChartWorkstation.scalePrice(' + q + ', \'auto\')" aria-label="Skala harga otomatis" title="Skala otomatis">Auto</button>' +
+        '</span>' +
+        '<button type="button" id="' + chartId + '_collapse_btn" class="vbtn sm q" onclick="AutoCuanChartWorkstation.toggleCollapse(' + q + ')">Sembunyikan Chart</button>' +
+        '<button type="button" class="vbtn sm q" onclick="AutoCuanChartWorkstation.turnOffAll(' + q + ')" title="Matikan semua layer opsional">Matikan Semua</button>' +
+        '<button type="button" class="vbtn sm q" onclick="AutoCuanChartWorkstation.reset(' + q + ')" title="Kembalikan ke preset Simpel">Reset</button>' +
       '</div>' +
     '</div>';
     return html;
+  }
+
+  // Price-scale zoom (HANDOFF 5a): + / - narrow or widen the visible price
+  // range around the last close, so the last price stays put; Auto returns
+  // to the library's own autoscale. Ticker/timeframe changes re-create the
+  // series, which drops back to Auto by itself.
+  function scalePrice(chartId, dir) {
+    var reg = defaultRoot && defaultRoot.__chartRegistry ? defaultRoot.__chartRegistry[chartId] : null;
+    var chart = reg && reg.mainChart, series = reg && reg.candleSeries;
+    if (!chart || !series) return;
+    var others = (reg.allSeries || []).filter(function (x) { return x.scale === 'right'; }).map(function (x) { return x.series; });
+    if (dir === 'auto') {
+      // Options merge ignores undefined, so hand back the built-in autoscale.
+      var builtIn = function (base) { return base(); };
+      series.applyOptions({ autoscaleInfoProvider: builtIn });
+      others.forEach(function (sr) { try { sr.applyOptions({ autoscaleInfoProvider: builtIn }); } catch (_) {} });
+      chart.priceScale('right').applyOptions({ autoScale: true });
+      return;
+    }
+    // Visible price span of the pane, minus the scale margins the library
+    // adds around the data range (otherwise each step would widen it again).
+    var el = typeof document !== 'undefined' ? document.getElementById(chartId + '_container') : null;
+    var paneH = (typeof chart.paneSize === 'function' && chart.paneSize().height) || (el ? el.clientHeight - chart.timeScale().height() : 0);
+    if (!(paneH > 0)) return;
+    var visTop = series.coordinateToPrice(0), visBottom = series.coordinateToPrice(paneH);
+    var m = (chart.priceScale('right').options() || {}).scaleMargins || { top: 0.2, bottom: 0.1 };
+    var span = visTop - visBottom;
+    var top = visTop - span * m.top, bottom = visBottom + span * m.bottom;
+    var last = reg.lastClose;
+    if (!(top > 0) || !(bottom > 0) || !(last > 0) || !(top > bottom)) return;
+    var f = dir === 'in' ? 0.8 : 1.25;
+    var minV = last - (last - bottom) * f, maxV = last + (top - last) * f;
+    if (!(maxV > minV)) return;
+    series.applyOptions({ autoscaleInfoProvider: function () { return { priceRange: { minValue: minV, maxValue: maxV } }; } });
+    // Other price-pane series (MA, levels) stop widening the range meanwhile.
+    others.forEach(function (sr) { try { sr.applyOptions({ autoscaleInfoProvider: function () { return null; } }); } catch (_) {} });
+    chart.priceScale('right').applyOptions({ autoScale: true });
+  }
+
+  // "Satu layar" (HANDOFF 5a): the chart card fills the viewport; F opens,
+  // Esc closes. The page behind does not scroll; mascot and tab bar hide.
+  function toggleOneScreen(chartId, force) {
+    if (typeof document === 'undefined') return;
+    var host = document.getElementById(chartId + '_container');
+    var card = host && (host.closest('.unified-card') || host.parentNode);
+    if (!card) return;
+    var on = typeof force === 'boolean' ? force : !card.classList.contains('cw-one-screen');
+    card.classList.toggle('cw-one-screen', on);
+    document.documentElement.classList.toggle('cw-one-screen-open', on);
+    var reg = defaultRoot && defaultRoot.__chartRegistry ? defaultRoot.__chartRegistry[chartId] : null;
+    if (reg && reg.mainChart && host) {
+      var bar = document.getElementById(chartId + '_workstation_toolbar');
+      var avail = on ? Math.max(320, Math.round((defaultRoot.innerHeight || 768) * 0.62)) : (reg.dims && reg.dims.main) || 420;
+      host.style.height = avail + 'px';
+      try { reg.mainChart.applyOptions({ width: host.clientWidth, height: avail }); } catch (_) {}
+      if (bar && on) bar.scrollIntoView({ block: 'nearest' });
+    }
+    _oneScreenId = on ? chartId : null;
+  }
+  var _oneScreenId = null;
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('keydown', function (e) {
+      var t = e.target, typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+      if (e.key === 'Escape' && _oneScreenId) { toggleOneScreen(_oneScreenId, false); return; }
+      if (typing || e.ctrlKey || e.metaKey || e.altKey || (e.key !== 'f' && e.key !== 'F')) return;
+      var ids = defaultRoot && defaultRoot.__chartRegistry ? Object.keys(defaultRoot.__chartRegistry) : [];
+      var visible = ids.filter(function (id) { var el = document.getElementById(id + '_container'); return el && el.getClientRects().length; });
+      if (visible.length) { e.preventDefault(); toggleOneScreen(_oneScreenId || visible[0]); }
+    });
   }
 
   function renderDrawerHtml(chartId) {
@@ -2278,6 +2356,8 @@
     toggleCollapse: toggleCollapse,
     turnOffAll: turnOffAll,
     reset: reset,
+    scalePrice: scalePrice,
+    toggleOneScreen: toggleOneScreen,
     attach: attach,
     switchTicker: switchTicker
   };

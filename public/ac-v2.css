@@ -468,3 +468,93 @@ html #scrDetailModal .scr-sum-head { padding-right: 44px; }
 @media (pointer: coarse) {
   html #appContent #page-screener .scr-filter-grid > input, html #appContent #page-screener .scr-filter-grid > select, html #appContent #page-screener #patternFilterContainer select { height: 44px; font-size: 16px !important; }
 }
+
+/* =====================================================================
+   Analisis & Chart (canvas Analisis.dc.html)
+   ===================================================================== */
+html #appContent #page-analisis #analisisPartialMount { display: flex; flex-direction: column; gap: 14px; }
+html #appContent #page-analisis #analisisPartialMount > * { margin-top: 0 !important; margin-bottom: 0 !important; }
+
+/* Konteks ticker */
+html #appContent #page-analisis .ana-ctx { display: block; padding: 0 !important; margin: 0 !important; background: var(--ac-surface) !important; border: 1px solid var(--ac-hair) !important; border-radius: 12px !important; box-shadow: none !important; }
+html #appContent #page-analisis .ana-ctx-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 14px 20px; }
+html #appContent #page-analisis .ana-ctx-row2 { padding-top: 0; gap: 12px; }
+html #appContent #page-analisis .ana-tk { font-size: 26px !important; font-weight: 700 !important; color: var(--ac-ink) !important; background: none !important; border: 0 !important; padding: 0 !important; letter-spacing: .01em; }
+html #appContent #page-analisis .ana-name { font-size: 14px; color: var(--ac-ink); }
+html #appContent #page-analisis .ana-name b { font-weight: 700; }
+html #appContent #page-analisis #unifiedActiveCompanyName, html #appContent #page-analisis #unifiedActiveCompanySector { display: inline !important; font-size: inherit !important; color: inherit !important; font-family: inherit !important; }
+html #appContent #page-analisis .ana-quote { display: inline-flex; align-items: baseline; gap: 10px; color: var(--ac-ink) !important; }
+html #appContent #page-analisis .ana-quote .ana-px { font-size: 22px; font-weight: 700; }
+html #appContent #page-analisis .ana-quote .ana-chg { font-family: var(--ac-font-sans); font-weight: 600; font-size: 14px; }
+html #appContent #page-analisis .ana-quote.is-up .ana-chg { color: var(--ac-pos); }
+html #appContent #page-analisis .ana-quote.is-down .ana-chg { color: var(--ac-neg); }
+html #appContent #page-analisis .ana-quote.is-flat { color: var(--ac-2) !important; font-size: 13px; }
+html #appContent #page-analisis .ana-quote.is-flat .ana-px { color: var(--ac-ink); }
+html #appContent #page-analisis .ana-chips { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+html #appContent #page-analisis .ana-chips .vbtn { height: 30px; padding: 0 10px; font: 600 12px var(--ac-font-mono); }
+html #appContent #page-analisis .ana-sub { display: inline-grid !important; grid-auto-flow: column; padding: 3px; background: var(--ac-hover); border-radius: 9px; }
+html #appContent #page-analisis .ana-sub .analisis-subtab { height: 30px; padding: 0 14px; border: 0 !important; border-radius: 6px !important; background: transparent !important; box-shadow: none !important; color: var(--ac-2) !important; font: 600 13px var(--ac-font-sans) !important; }
+html #appContent #page-analisis .ana-sub .analisis-subtab.active { background: var(--ac-surface) !important; color: var(--ac-ink) !important; box-shadow: 0 0 0 1px var(--ac-hair), 0 1px 2px rgba(0, 0, 0, .06) !important; }
+html #appContent #page-analisis .ana-sub .analisis-subtab.hidden { display: none !important; }
+html #appContent #page-analisis .ana-search { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+html #appContent #page-analisis .ana-search input { width: 200px; height: 30px; padding: 0 10px; border: 1px solid var(--ac-ctl) !important; border-radius: 6px !important; background: var(--ac-surface) !important; color: var(--ac-ink) !important; font: 600 12px var(--ac-font-mono); text-transform: uppercase; }
+html #appContent #page-analisis .ana-search input::placeholder { text-transform: none; font-family: var(--ac-font-sans); font-weight: 400; color: var(--ac-muted); }
+html #appContent #page-analisis .ana-lenses { display: flex !important; gap: 4px; margin: 0 !important; padding: 0 12px !important; border: 0 !important; border-top: 1px solid var(--ac-hair) !important; border-radius: 0 !important; background: transparent !important; overflow-x: auto; }
+html #appContent #page-analisis .ana-lenses .analisis-lens-btn { position: relative; height: 40px; padding: 0 12px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: var(--ac-2) !important; font: 600 13px var(--ac-font-sans) !important; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; box-shadow: none !important; }
+html #appContent #page-analisis .ana-lenses .analisis-lens-btn:hover { color: var(--ac-ink) !important; }
+html #appContent #page-analisis .ana-lenses .analisis-lens-btn.active { color: var(--ac-ink) !important; }
+html #appContent #page-analisis .ana-lenses .analisis-lens-btn.active::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px; border-radius: 2px; background: var(--ac-brand); }
+html #appContent #page-analisis .ana-lenses .analisis-lens-btn.hidden { display: none !important; }
+html #appContent #page-analisis .ana-tag { font: 700 10px var(--ac-font-mono); color: var(--ac-info); }
+
+/* Panels: canvas sheets */
+html #appContent #page-analisis .unified-card { background: var(--ac-surface) !important; border: 1px solid var(--ac-hair) !important; border-radius: 12px !important; box-shadow: none !important; color: var(--ac-ink); overflow: hidden; }
+html #appContent #page-analisis .unified-card-header { background: transparent !important; border-bottom: 1px solid var(--ac-hair) !important; padding: 14px 20px !important; }
+html #appContent #page-analisis .unified-card-header h2, html #appContent #page-analisis .unified-card-header h3 { color: var(--ac-ink) !important; font-size: 15px !important; font-weight: 700 !important; }
+html #appContent #page-analisis .unified-chart-box { background: var(--ac-surface) !important; }
+
+/* Workstation bar (canvas mode bar) */
+html #appContent #page-analisis .cw-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 16px; border-bottom: 1px solid var(--ac-hair); background: var(--ac-surface); }
+html #appContent #page-analisis .cw-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+html #appContent #page-analisis .cw-right { margin-left: auto; }
+html #appContent #page-analisis .cw-l { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ac-2); }
+html #appContent #page-analisis .cw-seg button { height: 30px; padding: 0 12px; }
+html #appContent #page-analisis .cw-seg button.on { background: var(--ac-surface); box-shadow: 0 0 0 1px var(--ac-hair), 0 1px 2px rgba(0, 0, 0, .06); color: var(--ac-ink); }
+html #appContent #page-analisis .cw-hint { font-size: 12px; color: var(--ac-muted); }
+html #appContent #page-analisis .cw-count { font: 700 11px var(--ac-font-mono); color: var(--ac-brand); }
+html #appContent #page-analisis .cw-scale { display: inline-flex; gap: 4px; }
+html #appContent #page-analisis .cw-scale .vbtn { min-width: 30px; padding: 0 8px; font-family: var(--ac-font-mono); }
+
+/* Chart legend (inline colours were written for a dark chart) */
+html #appContent #page-analisis .chart-canvas-floating-header { text-shadow: none !important; font-family: var(--ac-font-mono) !important; }
+html #appContent #page-analisis .chart-canvas-floating-header, html #appContent #page-analisis .chart-canvas-floating-header .text-gray-300, html #appContent #page-analisis .chart-canvas-floating-header .text-slate-100 { color: var(--ac-ink) !important; }
+html #appContent #page-analisis .chart-canvas-floating-header .text-gray-400 { color: var(--ac-2) !important; }
+html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#f8fafc"], html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#f1f5f9"] { color: var(--ac-ink) !important; }
+html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#34d399"], html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#10b981"] { color: var(--ac-pos) !important; }
+html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#f87171"] { color: var(--ac-neg) !important; }
+html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#fbbf24"], html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#f97316"], html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#fb923c"] { color: var(--ac-warn-t) !important; }
+html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#38bdf8"], html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#3b82f6"], html #appContent #page-analisis .chart-canvas-floating-header [style*="color:#60a5fa"] { color: var(--ac-info) !important; }
+
+/* Satu layar */
+html #appContent #page-analisis .unified-card.cw-one-screen { position: fixed; inset: 0; z-index: 70; border-radius: 0 !important; border: 0 !important; overflow: auto; }
+html.cw-one-screen-open, html.cw-one-screen-open body { overflow: hidden; }
+html.cw-one-screen-open .mm, html.cw-one-screen-open #acBottomBar { display: none !important; }
+
+@media (max-width: 760px) {
+  html #appContent #page-analisis .ana-ctx-row { padding: 12px 16px; gap: 8px 12px; }
+  html #appContent #page-analisis .ana-chips { margin-left: 0; }
+  html #appContent #page-analisis .ana-search { margin-left: 0; width: 100%; }
+  html #appContent #page-analisis .ana-search input { flex: 1; width: auto; }
+  html #appContent #page-analisis .cw-hint { display: none; }
+}
+@media (pointer: coarse) {
+  html #appContent #page-analisis .ana-search input { height: 44px; font-size: 16px; }
+  html #appContent #page-analisis .ana-chips .vbtn, html #appContent #page-analisis .ana-sub .analisis-subtab, html #appContent #page-analisis .cw-seg button { min-height: 44px; }
+}
+/* The partial mount is the first child of the page: drop the legacy framed panel. */
+html #appContent #page-analisis > #analisisPartialMount { margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; background-color: transparent !important; }
+html #appContent #page-analisis #analisisChartHeader button:not(.analisis-lens-btn):not(.analisis-subtab) { min-height: 0; }
+@media (pointer: coarse) { html #appContent #page-analisis #analisisChartHeader button { min-height: 44px; } }
+html #appContent #page-analisis .ana-search { min-width: 0; max-width: 100%; }
+html #appContent #page-analisis .ana-search input { min-width: 0 !important; }
+@media (max-width: 760px) { html #appContent #page-analisis .ana-search input { flex: 1 1 0; width: 0 !important; } }
