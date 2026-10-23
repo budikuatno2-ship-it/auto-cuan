@@ -91,6 +91,12 @@ const path = require('path');
 const fcaTransition2026 = require('../lib/fca-transition-2026');
 const daytradeFcaLiveTradeProof = require('../lib/daytrade-fca-live-trade-proof');
 const { hotMarketStructureCache, hotSectorCache } = require('../lib/in-memory-ttl-cache');
+const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+
+// C4 (22 Oct 2026): the public Bandarmologi endpoint must not let an anonymous
+// visitor drain the shared Arjum quota. Anonymous reads are (a) served from disk
+// only and (b) rate-limited per client IP. Authenticated callers keep live access.
+const bandarmologiPublicLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 30 });
 
 function setHeaderSafe(res, name, value) {
   if (res && typeof res.setHeader === 'function') {
@@ -9281,7 +9287,30 @@ async function handleBandarmologi(req, res) {
     var startDate = (req.query && req.query.startDate) || '';
     var endDate = (req.query && req.query.endDate) || '';
     var flow = (req.query && req.query.flow) || '';
-    var result = await bandarmologiService.getBandarmologiData(ticker, { date: date, range: range, days: days, startDate: startDate, endDate: endDate, flow: flow });
+
+    // C4: only a signed-in caller may spend Arjum quota on a live fetch. Anonymous
+    // visitors read the disk cache only and are rate-limited per client IP, so a
+    // public endpoint cannot exhaust the shared daily Arjum quota.
+    var isAuthed = false;
+    try {
+      var auth = requireAuthenticatedSession(req);
+      isAuthed = Boolean(auth && auth.ok);
+    } catch (_) { isAuthed = false; }
+
+    if (!isAuthed) {
+      if (!bandarmologiPublicLimiter.check(clientAddress(req))) {
+        return res.status(429).json({ success: false, error: 'Terlalu banyak permintaan bandarmologi. Coba lagi sebentar lagi.' });
+      }
+    }
+
+    var result = await bandarmologiService.getBandarmologiData(ticker, {
+      date: date, range: range, days: days, startDate: startDate, endDate: endDate, flow: flow,
+      allowLiveFetch: isAuthed
+    });
+    // Disk reads are safe to cache briefly at the edge; a live fetch is not.
+    if (result && result.from_disk) {
+      setHeaderSafe(res, 'Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+    }
     return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || String(err) });
