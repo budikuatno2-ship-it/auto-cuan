@@ -1,8 +1,9 @@
 'use strict';
 
 // C (23 Oct 2026) — catch-up of the dates J1 missed (20, 21, 22 Oct) plus the
-// 19 Oct remainder. It must be newest-first, budget-guarded, batched, and stop
-// when the provider is failing instead of burning quota.
+// 19 Oct remainder. It must fill ALL FOUR types J1 writes (ALL, F, accumulation,
+// insider), newest-first, budget-guarded, batched, and stop when the provider is
+// failing instead of burning quota.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,6 +12,13 @@ const path = require('node:path');
 const os = require('node:os');
 
 const tool = require('../tools/catchup-missing-dates');
+
+function makeBase(tickers) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'catchup-'));
+  const base = path.join(tmp, 'arjum-data');
+  for (const t of tickers) fs.mkdirSync(path.join(base, 'broker-summary', t), { recursive: true });
+  return { tmp, base };
+}
 
 test('C: the weekday budget keeps the daily jobs safe (J1 + J2 + IHSG + retry + web)', () => {
   const b = tool.computeCatchupBudget(18080, 0);
@@ -21,13 +29,10 @@ test('C: the weekday budget keeps the daily jobs safe (J1 + J2 + IHSG + retry + 
 });
 
 test('C: the WEEKEND budget drops the J1/J2 reserve and caps it at 1,500', () => {
-  // Owner rule (23 Oct): Sat/Sun have no J1/J2, so only a small web+retry
-  // reserve applies, capped at 1,500.
   const b = tool.computeCatchupBudget(18080, 0, { isWeekend: true });
   assert.equal(b.isWeekend, true);
   assert.equal(b.floor, 1500);
   assert.equal(b.spendable, 18080 - 1500);
-  // A small plan still keeps the cap (never more than 1,500).
   const small = tool.computeCatchupBudget(6000, 0, { isWeekend: true });
   assert.equal(small.floor, 700, 'ceil(6000*0.10)+100 = 700, below the cap');
 });
@@ -44,58 +49,91 @@ test('C: an exhausted quota leaves nothing to spend', () => {
   assert.equal(b.spendable, 0);
 });
 
-test('C: dry-run lists missing emiten per date, newest first, and spends nothing', async () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'catchup-'));
-  const base = path.join(tmp, 'arjum-data');
-  for (const t of ['BBCA', 'BBRI', 'TLKM']) fs.mkdirSync(path.join(base, 'broker-summary', t), { recursive: true });
-  // BBCA already has 22 Oct; the rest are missing.
+test('C: missing emiten are counted PER TYPE (ALL, F, AKUMULASI, INSIDER)', () => {
+  const { tmp, base } = makeBase(['BBCA', 'BBRI', 'TLKM']);
+  // BBCA already has ALL for 22 Oct; nothing else exists.
+  fs.writeFileSync(path.join(base, 'broker-summary', 'BBCA', '2026-10-22.json'), '{}');
+  const m = tool.missingForDate(base, '2026-10-22');
+  assert.equal(m.total, 3);
+  assert.equal(m.missing.ALL.length, 2, 'BBCA already has ALL');
+  assert.equal(m.missing.F.length, 3);
+  assert.equal(m.missing.AKUMULASI.length, 3);
+  assert.equal(m.missing.INSIDER.length, 3);
+  assert.equal(m.missingCells, 11);
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('C: dry-run lists missing cells per date, newest first, and spends nothing', async () => {
+  const { tmp, base } = makeBase(['BBCA', 'BBRI', 'TLKM']);
   fs.writeFileSync(path.join(base, 'broker-summary', 'BBCA', '2026-10-22.json'), '{}');
 
   const client = { getConfiguredDailyQuota: () => 18080, fetchBrokerSummary: async () => { throw new Error('must not fetch in dry-run'); } };
   const tracker = { getUsedToday: () => 0 };
-  const summary = await tool.run(['--dry-run', '--dates', '2026-10-22,2026-10-21'], { env: { ARJUM_DATA_DIR: base }, client, tracker });
+  const summary = await tool.run(['--dry-run', '--dates', '2026-10-22,2026-10-21'], { env: { ARJUM_DATA_DIR: base }, client, tracker, todayWib: '2026-10-24' });
 
   assert.equal(summary.dry_run, true);
+  assert.equal(summary.is_weekend, true);
+  assert.equal(summary.floor, 1500);
   assert.equal(summary.plan[0].date, '2026-10-22');
-  assert.equal(summary.plan[0].missing, 2, 'BBCA already has 22 Oct');
+  assert.equal(summary.plan[0].missing.ALL, 2, 'BBCA already has ALL');
+  assert.equal(summary.plan[0].missing.F, 3);
+  assert.equal(summary.plan[0].missing_cells, 11);
   assert.equal(summary.plan[1].date, '2026-10-21');
-  assert.equal(summary.plan[1].missing, 3);
+  assert.equal(summary.plan[1].missing_cells, 12);
+  assert.equal(summary.total_missing_cells, 23);
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
 test('C: a batch with >20% failures stops the run instead of burning quota', async () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'catchup-'));
-  const base = path.join(tmp, 'arjum-data');
-  for (const t of ['A1', 'A2', 'A3', 'A4', 'A5']) fs.mkdirSync(path.join(base, 'broker-summary', t), { recursive: true });
-
+  const { tmp, base } = makeBase(['A1', 'A2', 'A3', 'A4', 'A5']);
   let calls = 0;
   const client = {
     getConfiguredDailyQuota: () => 18080,
-    fetchBrokerSummary: async () => { calls += 1; return { ok: false, status: 502, error: 'bad gateway' }; }
+    fetchBrokerSummary: async () => { calls += 1; return { ok: false, status: 502, error: 'bad gateway' }; },
+    fetchBrokerAccumulation: async () => { calls += 1; return { ok: false, status: 502 }; },
+    fetchInsiders: async () => { calls += 1; return { ok: false, status: 502 }; }
   };
   const tracker = { getUsedToday: () => 0 };
-  const summary = await tool.run(['--dates', '2026-10-22', '--batch', '5'], { env: { ARJUM_DATA_DIR: base }, client, tracker });
+  const summary = await tool.run(['--dates', '2026-10-22', '--batch', '5'], { env: { ARJUM_DATA_DIR: base }, client, tracker, todayWib: '2026-10-24' });
 
   assert.equal(summary.stopped, 'failure_ratio_exceeded');
-  assert.equal(summary.results[0].failed, 5);
+  assert.equal(summary.results[0].failed, 5, 'ALL failed for all 5 -> stop before F/accum/insider');
   assert.equal(calls, 5, 'it must stop after the failing batch, not continue to the next date');
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-test('C: a successful batch writes only the requested date and never overwrites another', async () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'catchup-'));
-  const base = path.join(tmp, 'arjum-data');
-  fs.mkdirSync(path.join(base, 'broker-summary', 'BBCA'), { recursive: true });
+test('C: a successful batch writes all four types and never overwrites another date', async () => {
+  const { tmp, base } = makeBase(['BBCA']);
   fs.writeFileSync(path.join(base, 'broker-summary', 'BBCA', '2026-10-19.json'), '{"keep":true}');
 
   const client = {
     getConfiguredDailyQuota: () => 18080,
-    fetchBrokerSummary: async (ticker, date) => ({ ok: true, data: { stock_code: ticker, date } })
+    fetchBrokerSummary: async (ticker, date, flow) => ({ ok: true, data: { stock_code: ticker, date, flow: flow || 'all' } }),
+    fetchBrokerAccumulation: async (ticker) => ({ ok: true, data: { stock_code: ticker } }),
+    fetchInsiders: async (ticker) => ({ ok: true, data: [{ ticker }] })
   };
   const tracker = { getUsedToday: () => 0 };
-  await tool.run(['--dates', '2026-10-22', '--batch', '10'], { env: { ARJUM_DATA_DIR: base }, client, tracker });
+  const summary = await tool.run(['--dates', '2026-10-22', '--batch', '10'], { env: { ARJUM_DATA_DIR: base }, client, tracker, todayWib: '2026-10-24' });
 
-  assert.ok(fs.existsSync(path.join(base, 'broker-summary', 'BBCA', '2026-10-22.json')));
+  assert.equal(summary.spent, 4, 'ALL + F + accumulation + insider');
+  for (const dir of ['broker-summary', 'broker-summary-F', 'broker-accumulation', 'insiders']) {
+    assert.ok(fs.existsSync(path.join(base, dir, 'BBCA', '2026-10-22.json')), dir + ' must be written');
+  }
   assert.equal(fs.readFileSync(path.join(base, 'broker-summary', 'BBCA', '2026-10-19.json'), 'utf8'), '{"keep":true}');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('C: --skip-f fills three types only', async () => {
+  const { tmp, base } = makeBase(['BBCA']);
+  const client = {
+    getConfiguredDailyQuota: () => 18080,
+    fetchBrokerSummary: async (ticker, date, flow) => ({ ok: true, data: { stock_code: ticker, date, flow: flow || 'all' } }),
+    fetchBrokerAccumulation: async (ticker) => ({ ok: true, data: { stock_code: ticker } }),
+    fetchInsiders: async (ticker) => ({ ok: true, data: [{ ticker }] })
+  };
+  const tracker = { getUsedToday: () => 0 };
+  const summary = await tool.run(['--dates', '2026-10-22', '--batch', '10', '--skip-f'], { env: { ARJUM_DATA_DIR: base }, client, tracker, todayWib: '2026-10-24' });
+  assert.equal(summary.spent, 3);
+  assert.ok(!fs.existsSync(path.join(base, 'broker-summary-F', 'BBCA', '2026-10-22.json')));
   fs.rmSync(tmp, { recursive: true, force: true });
 });
