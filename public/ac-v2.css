@@ -610,3 +610,10 @@ html #appContent #page-analisis .ana-kons .k-b { font: 700 12px var(--ac-font-mo
 html #appContent #page-analisis .ana-kons .k-t { font-weight: 600; color: var(--ac-ink); margin-left: 4px; }
 html #appContent #page-analisis .ana-kons .k-bar { display: inline-block; width: 64px; height: 7px; margin: 0 4px; border-radius: 4px; background: linear-gradient(90deg, var(--k-ink) var(--k), var(--k-track) var(--k)); }
 @media (max-width: 640px) { html #appContent #page-analisis .ana-kons { display: none; } }
+
+/* Watchlist + alert star in the Analisis header (canvas wl button) */
+html #appContent #page-analisis .ana-wl { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; margin-left: 6px; font-size: 12px; }
+html #appContent #page-analisis .ana-wl[hidden] { display: none; }
+html #appContent #page-analisis .ana-wl.on-star { color: var(--ac-warn-t); border-color: rgba(169, 109, 19, .4); }
+@media (max-width: 640px) { html #appContent #page-analisis .ana-wl .ana-wl-l { display: none; } html #appContent #page-analisis .ana-wl { width: 36px; justify-content: center; padding: 0; } }
+@media (pointer: coarse) { html #appContent #page-analisis .ana-wl { height: 44px; min-width: 44px; } }

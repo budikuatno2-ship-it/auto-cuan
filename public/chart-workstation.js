@@ -104,7 +104,7 @@
       title: 'Kuantitatif Bandar Metrics',
       description: 'Metrik Akumulasi, Distribusi, dan Arus Modal Asing',
       layers: [
-        { id: 'bandar_lpm', name: 'Liquidity Pressure Model (LPM)', desc: 'Kurva indeks tekanan likuiditas kumulatif', color: '#10b981', default: false },
+        { id: 'bandar_lpm', name: 'LPM · kurva tekanan candle', desc: 'Dihitung dari candle harian (OHLCV), bukan data transaksi. Tampil bersama Money Flow di legenda; komponen asing belum digabung', color: '#10b981', default: false },
         { id: 'bandar_foreign', name: 'Kumulatif Aliran Asing', desc: 'Akumulasi beli/jual bersih investor asing', color: '#3b82f6', default: false },
         { id: 'bandar_cmf', name: 'Smart Money Flow (CMF)', desc: 'Aliran uang pintar berbasis posisi penutupan', color: '#f97316', default: false },
         { id: 'bandar_intensity', name: 'Histogram Intensitas Bandar', desc: 'Lonjakan intensitas omzet transaksi harian', color: '#8b5cf6', default: false },

@@ -120,7 +120,7 @@
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
     <link rel="stylesheet" href="/ui-theme.css?v=20261022-v2">
-    <link rel="stylesheet" href="/ac-v2.css?v=20261023-v5">
+    <link rel="stylesheet" href="/ac-v2.css?v=20261023-v6">
     <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=20260929-v1">
@@ -2565,6 +2565,7 @@ html.light #googleCompleteProfileModal input {
                     <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('TLKM', { loadChart: true, forceChartReload: true })">TLKM</button>
                     <button type="button" class="vbtn sm mono" onclick="UnifiedCockpit.syncActiveTicker('ASII', { loadChart: true, forceChartReload: true })">ASII</button>
                 </span>
+                <button type="button" id="anaWlStar" class="vbtn sm wl-star-btn scr-star ana-wl" data-ticker="BBCA" aria-pressed="false" aria-label="Simpan BBCA ke Watchlist" title="Simpan ke Watchlist dan pasang alert harga" onclick="AutoCuanAnalisisV2.toggleWatch(event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="ana-wl-l">Watchlist + alert</span></button>
             </div>
             <div class="ana-ctx-row ana-ctx-row2">
                 <div id="analisisChartSubtabWrap" class="segx ana-sub" role="group" aria-label="Tampilan analisis">
@@ -16100,9 +16101,9 @@ function forceNormalizeTechnicalDOM(root) {
 
 </script>
 <script src="/tab-keepalive-runtime.js?v=20260926-ka1"></script>
-<script src="/chart-workstation.js?v=20261023-v6"></script>
-<script src="/market-feature-runtime.js?v=20261023-v6"></script>
-<script src="/analisis-v2.js?v=20261023-v3"></script>
+<script src="/chart-workstation.js?v=20261023-v7"></script>
+<script src="/market-feature-runtime.js?v=20261023-v7"></script>
+<script src="/analisis-v2.js?v=20261023-v4"></script>
 <script src="/daytrade-runtime.js?v=20260818-v1"></script>
 
 <script>

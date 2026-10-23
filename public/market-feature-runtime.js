@@ -447,6 +447,18 @@ function acAttachWheelZoom(chart, container) {
     return { invalidate: function() { rect = null; } };
 }
 
+// Today's bar during the session (HANDOFF 5a): a candle marked provisional
+// by the server carries "sementara · diperbarui hh:mm" (WIB) in the legend.
+function acProvisionalLabel(c) {
+    if (!c || !c.provisional) return '';
+    var at = c.updatedAt || c.updated_at;
+    var d = at ? new Date(at) : null;
+    if (!d || isNaN(d.getTime())) return 'sementara';
+    var wib = new Date(d.getTime() + 7 * 3600000);
+    var p2 = function(n) { return (n < 10 ? '0' : '') + n; };
+    return 'sementara · diperbarui ' + p2(wib.getUTCHours()) + ':' + p2(wib.getUTCMinutes());
+}
+
 async function renderLightweightChart(chartId, candles, metrics, ticker, options) {
     var containerId = chartId + '_container';
     var container = document.getElementById(containerId);
@@ -812,11 +824,13 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         var moneyFlowStr = _m.moneyFlow;
 
         var isMobile = _mob;
+        var _prov = acProvisionalLabel(c);
+        var _provTag = _prov ? '<span class="ac-prov" style="font-weight:600;color:var(--ac-warn-t, #fbbf24)">' + _prov + '</span>' : '';
         if (isMobile) {
             headerEl.style.fontSize = '10px';
             headerEl.innerHTML =
                 '<div class="flex items-center gap-1 text-[10px] font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
-                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + '</span>' +
+                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + '</span>' + _provTag +
                     '<span style="color:' + chgColor + '"> ' + cClose.toLocaleString('id-ID') + ' (' + chgSign + chgPct.toFixed(1) + '%)</span>' +
                     '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + corrTxt + '</b></span>' +
                 '</div>' +
@@ -828,7 +842,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             headerEl.style.fontSize = '12px';
             headerEl.innerHTML =
                 '<div class="flex items-center gap-1.5 text-xs font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
-                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + ' · IDX</span>' +
+                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + ' · IDX</span>' + _provTag +
                     '<span class="text-gray-300">O<span style="color:' + (cOpen >= prevClose ? '#34d399' : '#f87171') + '">' + cOpen.toLocaleString('id-ID') + '</span></span>' +
                     '<span class="text-gray-300">H<span style="color:#34d399">' + cHigh.toLocaleString('id-ID') + '</span></span>' +
                     '<span class="text-gray-300">L<span style="color:#f87171">' + cLow.toLocaleString('id-ID') + '</span></span>' +
@@ -838,14 +852,14 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                     '<span class="text-gray-400 font-normal">• Par F <b style="color:#fbbf24;">' + parTxt + '</b></span>' +
                 '</div>' +
                 '<div class="text-[11px] text-gray-300 font-medium">Volume <b style="color:#f1f5f9;">' + volStr + '</b></div>' +
-                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>Liquidity Pressure Model (LPM) <b style="color:#34d399;">' + (lpmVal ? lpmVal.toLocaleString('id-ID') : '—') + '</b></div>' +
+                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM · kurva tekanan candle · Money Flow <b style="color:#34d399;">' + (lpmVal ? lpmVal.toLocaleString('id-ID') : '—') + '</b><b style="color:#fb923c;">' + moneyFlowStr + '</b></div>' +
                 '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#3b82f6;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign Flow <b style="color:#60a5fa;">' + foreignStr + '</b></div>' +
-                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#f97316;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>Money Flow <b style="color:#fb923c;">' + moneyFlowStr + '</b></div>';
+                '';
         }
         // Indices carry no broker summary: drop the LPM / foreign / money-flow rows.
         if (_isIndexChart) {
             Array.prototype.slice.call(headerEl.children).forEach(function(row) {
-                if (/LPM|Foreign|Money Flow/.test(row.textContent || '')) row.remove();
+                if (/LPM|Foreign|Money Flow|CMF/.test(row.textContent || '')) row.remove();
             });
         }
     }
@@ -1296,7 +1310,26 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         observers: _observers,
         lastLine: _lastLine,
         lastUp: _lp ? _lp.up : true,
-        hiLo: _hiLo
+        hiLo: _hiLo,
+        // Today's bar from the live cache: series.update() instead of a new
+        // setData, last-price tag, legend and high/low follow.
+        updateBar: function(bar) {
+            if (!bar || bar.time == null || !(Number(bar.close) > 0) || !candles.length) return false;
+            var n = candles.length, same = String(candles[n - 1].time) === String(bar.time);
+            try { candleSeries.update(bar); } catch (_) { return false; }
+            try { volumeSeries.update({ time: bar.time, value: Number(bar.volume) || 0, color: bar.close >= bar.open ? acChartAlpha(_th.up, '30') : acChartAlpha(_th.down, '30') }); } catch (_) {}
+            if (same) candles[n - 1] = bar; else candles.push(bar);
+            var reg = _chartRegistry[chartId], lp = acLastPrice(candles);
+            if (lp && _lastLine) { try { _lastLine.applyOptions({ price: lp.price, color: lp.up ? _th.up : _th.down, title: _narrow ? '' : lp.title }); } catch (_) {} }
+            if (reg && lp) { reg.lastUp = lp.up; reg.lastClose = lp.price; }
+            var bp = acTimeParts(bar.time);
+            if (bp && _byDate) _byDate[bp.y + '-' + bp.m + '-' + bp.d] = candles.length - 1;
+            _lastCandle = candles[candles.length - 1];
+            _hdrShown = null;
+            updateCanvasHeader(_lastCandle);
+            if (_hiLo) _hiLo.refresh();
+            return true;
+        }
     };
 
     } catch (renderErr) {

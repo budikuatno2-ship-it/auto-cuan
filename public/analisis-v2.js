@@ -181,6 +181,7 @@
       api.drawIndexOverlay();
       api.applyIndexCopy(isIndex(t));
       api.drawConsistency();
+      api.syncStar();
     });
   }
 
@@ -429,6 +430,36 @@
       var out = konsHtml(d);
       el.innerHTML = out.html;
       el.title = out.title;
+    });
+  };
+
+  /* ---------- Watchlist + alert star in the header (canvas "Watchlist + alert") ----------
+     Saves the ticker through the watchlist API, then opens the price-alert
+     form. Indices cannot be saved, so the star hides for them. */
+  function watched(t) { var set = root.__AUTOCUAN_WATCHLIST_SET__; return Boolean(set && typeof set.has === 'function' && set.has(t)); }
+  api.syncStar = function () {
+    var b = doc.getElementById('anaWlStar'), t = state.ticker;
+    if (!b) return;
+    b.hidden = !t || isIndex(t);
+    if (b.hidden) return;
+    var on = watched(t);
+    b.setAttribute('data-ticker', t);
+    b.setAttribute('aria-pressed', String(on));
+    b.setAttribute('aria-label', (on ? 'Hapus ' : 'Simpan ') + t + (on ? ' dari Watchlist' : ' ke Watchlist dan pasang alert'));
+    b.classList.toggle('on-star', on);
+    b.classList.toggle('active', on);
+    var svg = b.querySelector('svg');
+    if (svg) svg.setAttribute('fill', on ? 'currentColor' : 'none');
+    var l = b.querySelector('.ana-wl-l');
+    if (l) l.textContent = on ? 'Dipantau' : 'Watchlist + alert';
+  };
+  api.toggleWatch = function (e) {
+    var t = state.ticker;
+    if (!t || isIndex(t) || typeof root.toggleWatchlistTicker !== 'function') return Promise.resolve();
+    var was = watched(t);
+    return Promise.resolve(root.toggleWatchlistTicker(t, null, e)).then(function () {
+      api.syncStar();
+      if (!was && watched(t) && typeof root.openCreateAlertModal === 'function') root.openCreateAlertModal(t);
     });
   };
 
