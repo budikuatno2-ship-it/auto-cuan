@@ -110,7 +110,8 @@
         { id: 'bandar_intensity', name: 'Histogram Intensitas Bandar', desc: 'Lonjakan intensitas omzet transaksi harian', color: '#8b5cf6', default: false },
         { id: 'bandar_rotation', name: 'Histogram Rotasi Volume', desc: 'Klasifikasi rotasi 3-warna (Akumulasi / Distribusi / Transisi)', color: '#10b981', default: false },
         { id: 'bandar_corr_f', name: 'Korelasi Harga-Asing (Corr F)', desc: 'Tingkat korelasi harga saham terhadap aliran asing', default: true },
-        { id: 'bandar_par_f', name: 'Partisipasi Asing (Par F)', desc: 'Porsi transaksi asing terhadap total pasar', default: true }
+        { id: 'bandar_par_f', name: 'Partisipasi Asing (Par F)', desc: 'Porsi transaksi asing terhadap total pasar', default: true },
+        { id: 'bandar_kons', name: 'Konsistensi broker', desc: 'Pembeli bersih terbesar 20 hari: hari net buy dari 10 hari terakhir dan hari beruntun', color: '#2C3E8F', default: false }
       ]
     }
   ];
@@ -141,13 +142,13 @@
       id: 'investor',
       name: 'Investor',
       description: 'Orientasi tren jangka panjang: MA 50/200, Support utama, LPM, Foreign Flow, dan Sub-panel Volume Rotation',
-      layers: ['ma50', 'ma200', 'volume_bars', 'sr_levels', 'bandar_lpm', 'bandar_foreign', 'bandar_rotation', 'bandar_corr_f', 'bandar_par_f']
+      layers: ['ma50', 'ma200', 'volume_bars', 'sr_levels', 'bandar_lpm', 'bandar_foreign', 'bandar_rotation', 'bandar_corr_f', 'bandar_par_f', 'bandar_kons']
     },
     pro: {
       id: 'pro',
       name: 'Pro',
       description: 'Analisis mendalam penuh: Semua layer teknikal, osilator, dan seluruh instrumen Bandar Metrics aktif',
-      layers: ['ma20', 'ma50', 'ma100', 'ma200', 'bollinger', 'fibonacci', 'volume_bars', 'sr_levels', 'trading_plan', 'bandar_lpm', 'bandar_foreign', 'bandar_cmf', 'bandar_intensity', 'bandar_rotation', 'bandar_corr_f', 'bandar_par_f']
+      layers: ['ma20', 'ma50', 'ma100', 'ma200', 'bollinger', 'fibonacci', 'volume_bars', 'sr_levels', 'trading_plan', 'bandar_lpm', 'bandar_foreign', 'bandar_cmf', 'bandar_intensity', 'bandar_rotation', 'bandar_corr_f', 'bandar_par_f', 'bandar_kons']
     }
   };
 
@@ -1443,7 +1444,7 @@
     });
   }
 
-  var STOCK_ONLY_LAYERS = { trading_plan: 1, signal_markers: 1, bandar_lpm: 1, bandar_foreign: 1, bandar_cmf: 1, bandar_intensity: 1, bandar_rotation: 1, bandar_corr_f: 1, bandar_par_f: 1 };
+  var STOCK_ONLY_LAYERS = { trading_plan: 1, signal_markers: 1, bandar_lpm: 1, bandar_foreign: 1, bandar_cmf: 1, bandar_intensity: 1, bandar_rotation: 1, bandar_corr_f: 1, bandar_par_f: 1, bandar_kons: 1 };
   function isIndexTicker(t) { return /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30|IDX80|KOMPAS100)$/i.test(String(t || '')); }
 
   function renderDrawerHtml(chartId) {
@@ -2355,6 +2356,7 @@
     clearPlanPriceLines: clearPlanPriceLines,
     createWorkstationState: createWorkstationState,
     getOrCreateInstance: getOrCreateInstance,
+    getInstance: function (chartId) { return _workstationInstances[chartId] || null; },
     renderToolbarHtml: renderToolbarHtml,
     renderDrawerHtml: renderDrawerHtml,
     switchTimeframe: switchTimeframe,

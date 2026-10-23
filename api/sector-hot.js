@@ -215,6 +215,18 @@ module.exports = async function handler(req, res) {
     if (action === 'broker-hunter') {
       return await handleBrokerHunter(req, res);
     }
+    // Chart badge (HANDOFF 5a): broker consistency from the archived summaries
+    // on disk only; no live Arjum request.
+    if (action === 'broker-consistency') {
+      res.setHeader('Cache-Control', 'private, max-age=300');
+      try {
+        const tk = String((req.query && req.query.ticker) || '').trim().toUpperCase();
+        if (!/^[A-Z0-9]{2,8}$/.test(tk)) return res.status(400).json({ success: false, error: 'Ticker tidak valid.' });
+        return res.status(200).json(require('../lib/broker-consistency').computeBrokerConsistency(tk));
+      } catch (_) {
+        return res.status(200).json({ success: false, data_available: false, error: 'Konsistensi bandar belum tersedia.' });
+      }
+    }
     if (action === 'bandarmologi-intel' || action === 'intel') {
       return await handleBandarmologiIntel(req, res);
     }

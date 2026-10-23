@@ -507,6 +507,7 @@
   "test/redesign-v2-analisis-index.test.js",
   "test/redesign-v2-analisis-plan.test.js",
   "test/redesign-v2-analisis.test.js",
+  "test/redesign-v2-broker-consistency.test.js",
   "test/redesign-v2-dashboard.test.js",
   "test/redesign-v2-icons.test.js",
   "test/redesign-v2-kelola.test.js",

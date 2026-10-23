@@ -180,6 +180,7 @@
       render(); drawPlanLines();
       api.drawIndexOverlay();
       api.applyIndexCopy(isIndex(t));
+      api.drawConsistency();
     });
   }
 
@@ -376,6 +377,59 @@
         ? '<button type="button" class="vbtn sm" onclick="switchAnalisisTab(\'market-structure\')">Struktur Pasar</button><button type="button" class="vbtn sm" onclick="navigateTo(\'sektor\')">Sektor Hot</button>'
         : '<button type="button" class="vbtn sm" onclick="switchAnalisisTab(\'bandarmologi\')">Bandarmologi</button><button type="button" class="vbtn sm" onclick="switchAnalisisTab(\'financial\')">Financial</button>';
     }
+  };
+
+  /* ---------- Broker consistency badge (HANDOFF 5a "Lencana konsistensi bandar") ----------
+     The largest net buyer over 20 archived sessions, its net-buy days out of
+     the last 10 and its streak, from /api/sector-hot?action=broker-consistency.
+     Stocks only, behind the "Konsistensi broker" layer; hidden on phones. */
+  var konsCache = {};
+  function chartIdFor(t) {
+    var reg = root.__chartRegistry || {};
+    return Object.keys(reg).find(function (k) { var e = reg[k]; return e && e.candleSeries && String(e.ticker || '').toUpperCase() === t; }) || null;
+  }
+  function konsOn(id) {
+    var ws = root.AutoCuanChartWorkstation, inst = ws && typeof ws.getInstance === 'function' ? ws.getInstance(id) : null;
+    return Boolean(inst && inst.state && inst.state.isLayerActive('bandar_kons'));
+  }
+  function loadConsistency(t) {
+    var c = konsCache[t];
+    if (c && Date.now() - c.at < CACHE_MS) return Promise.resolve(c.d);
+    var headers = typeof root.getAuthHeaders === 'function' ? root.getAuthHeaders() : {};
+    return fetch('/api/sector-hot?action=broker-consistency&ticker=' + encodeURIComponent(t), { headers: headers })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .catch(function () { return null; })
+      .then(function (d) { konsCache[t] = { at: Date.now(), d: d }; return d; });
+  }
+  function konsHtml(d) {
+    if (!d || !d.data_available || !d.top_broker || !(d.of_days > 0)) return { html: 'Konsistensi: belum cukup data', title: 'Butuh minimal 5 hari broker summary tersimpan' };
+    var k = Math.round(d.days_net_buy / d.of_days * 100);
+    return {
+      html: '<span class="k-l">Bandar</span><b class="k-b">' + esc(d.top_broker) + '</b><span class="k-t num">net buy ' + d.days_net_buy + '/' + d.of_days + ' hari</span>' +
+        '<span class="k-bar" style="--k:' + k + '%" aria-hidden="true"></span><span>' + (d.streak > 0 ? 'beruntun ' + d.streak + ' hari' : 'hari ini tidak net buy') + '</span>',
+      title: (d.top_broker_name ? d.top_broker + ' ' + d.top_broker_name + ' · ' : '') + 'pembeli bersih terbesar ' + d.window_days + ' hari · data s.d. ' + d.as_of_date
+    };
+  }
+  api.konsHtml = konsHtml;
+  api.drawConsistency = function () {
+    Array.prototype.forEach.call(doc.querySelectorAll('.ana-kons'), function (n) { n.remove(); });
+    var t = state.ticker;
+    if (!t || isIndex(t)) return Promise.resolve();
+    var id = chartIdFor(t), host = id && doc.getElementById(id + '_container');
+    if (!host || !konsOn(id)) return Promise.resolve();
+    var el = doc.createElement('div');
+    el.className = 'ana-kons';
+    el.setAttribute('role', 'note');
+    el.textContent = 'Konsistensi: memuat…';
+    try { var w = root.__chartRegistry[id].mainChart.priceScale('right').width(); if (w > 0) el.style.right = (w + 6) + 'px'; } catch (_) {}
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    host.appendChild(el);
+    return loadConsistency(t).then(function (d) {
+      if (state.ticker !== t || !el.isConnected) return;
+      var out = konsHtml(d);
+      el.innerHTML = out.html;
+      el.title = out.title;
+    });
   };
 
   root.AutoCuanAnalisisV2 = api;
