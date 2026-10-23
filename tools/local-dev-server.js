@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { createStaticResponder } = require('../lib/static-assets');
 const { isAllowedDataPath } = require('../lib/data-route-allowlist');
-const { applySecurityHeaders } = require('../lib/security-headers');
+const { applySecurityHeaders, handleCspReport } = require('../lib/security-headers');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
@@ -927,6 +927,13 @@ const server = http.createServer(async (req, res) => {
       parsedUrl.searchParams.set('action', 'track-record');
       endpointName = 'sector-hot';
       pathname = '/api/sector-hot';
+    }
+
+    // C2: CSP violation reports are collected by lib/security-headers (not an
+    // api/ file, to respect the 13-function Vercel budget).
+    if (endpointName === 'csp-report') {
+      req.query = Object.fromEntries(parsedUrl.searchParams.entries());
+      return await handleCspReport(req, res);
     }
 
     // Alias: /api/market-breadth -> sector-hot?action=market-breadth. The client

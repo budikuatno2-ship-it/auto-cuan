@@ -607,7 +607,8 @@ test('bandarmologiService: getBandarmologiData(flow=F) fetches foreign-only data
   arjumClient.fetchInsiders = async () => ({ ok: false });
 
   try {
-    const res = await bandarmologiService.getBandarmologiData('BBCA', { flow: 'F' });
+    // C4: live fetch is opt-in; this test exercises the live flow path directly.
+    const res = await bandarmologiService.getBandarmologiData('BBCA', { flow: 'F', allowLiveFetch: true });
     assert.equal(res.success, true);
     assert.equal(res.flow, 'F');
     assert.ok(res.broker_summary.net_flow > 0, 'foreign-buy-heavy summary must report positive net flow');
@@ -643,7 +644,8 @@ test('bandarmologiService: getBandarmologiData(flow=D) fetches domestic-only dat
   arjumClient.fetchInsiders = async () => ({ ok: false });
 
   try {
-    const res = await bandarmologiService.getBandarmologiData('BBCA', { flow: 'D' });
+    // C4: live fetch is opt-in; this test exercises the live flow path directly.
+    const res = await bandarmologiService.getBandarmologiData('BBCA', { flow: 'D', allowLiveFetch: true });
     assert.equal(res.success, true);
     assert.equal(res.flow, 'D');
     assert.ok(res.broker_summary.net_flow < 0, 'domestic-sell-heavy summary must report negative net flow');

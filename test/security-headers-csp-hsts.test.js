@@ -12,7 +12,7 @@ const path = require('node:path');
 const os = require('node:os');
 
 const sh = require('../lib/security-headers');
-const cspHandler = require('../api/csp-report');
+const cspHandler = sh.handleCspReport;
 
 function mockRes() {
   return {
@@ -88,10 +88,12 @@ test('C2: the report endpoint answers 204 and never throws on junk input', async
   assert.equal(res2.statusCode, 405);
 });
 
-test('C2: the server wires security headers for HTML and routes /api/csp-report', () => {
+test('C2: the server wires security headers for HTML and routes /api/csp-report via lib/', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'tools', 'local-dev-server.js'), 'utf8');
   assert.match(src, /applySecurityHeaders\(res,/);
-  assert.ok(fs.existsSync(path.join(__dirname, '..', 'api', 'csp-report.js')));
+  assert.match(src, /handleCspReport\(req, res\)/);
+  // The collector lives in lib/ so the fixed api/ budget is not exceeded.
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'api', 'csp-report.js')));
 });
 
 test('C2: no enforcement CSP header is emitted anywhere yet', () => {
