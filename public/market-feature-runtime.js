@@ -272,6 +272,16 @@ function computeExportBitmapSize(cssWidth, cssHeight, dpr) {
     return { width: Math.max(1, Math.round(cssWidth * r)), height: Math.max(1, Math.round(cssHeight * r)) };
 }
 
+// Number formatters are built once: toLocaleString creates a new Intl
+// formatter on every call, and the price axis formats every label on every
+// crosshair move (it was the largest cost of hovering the chart).
+var AC_NF = {};
+function acNumFmt(min, max) {
+    var k = min + ':' + max;
+    return AC_NF[k] || (AC_NF[k] = new Intl.NumberFormat('id-ID', { minimumFractionDigits: min, maximumFractionDigits: max }));
+}
+function acNum(v) { return acNumFmt(0, 3).format(v); }
+
 // HANDOFF 5a "Harga selalu terbaca". Level titles carry no "Rp" (the axis tag
 // already shows the price) and shorten on phones: T1, T2, En.
 var AC_SHORT_TAGS = { 'Entry': 'En', 'TP1': 'T1', 'TP2': 'T2', 'Resistance': 'R', 'Support': 'S' };
@@ -286,6 +296,15 @@ function acLastPrice(candles) {
     var chg = prev > 0 ? (last - prev) / prev * 100 : null;
     return { price: last, up: chg == null || chg >= 0, title: chg == null ? '' : (chg >= 0 ? '+' : '−') + Math.abs(chg).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' };
 }
+// Overlay writes (legend, cursor box, high/low labels) run just after the
+// frame is painted, not inside requestAnimationFrame: the chart library reads
+// element sizes in its own frame callback, and DOM written before that forced
+// a synchronous style and layout pass of the whole page on every pointer move.
+function acAfterPaint(fn) {
+    if (typeof requestAnimationFrame !== 'function') return setTimeout(fn, 16);
+    return requestAnimationFrame(function() { setTimeout(fn, 0); });
+}
+
 // Highest and lowest bar in the visible range, as indices into candles.
 function acVisibleHiLo(candles, from, to) {
     var a = Math.max(0, Math.ceil(from)), b = Math.min(candles.length - 1, Math.floor(to));
@@ -327,7 +346,7 @@ function acAttachHiLo(chart, series, candles, container, fmt) {
         put(hiEl, hl.hi, Number(candles[hl.hi].high), '▲ ' + fmt(Number(candles[hl.hi].high)), true);
         put(loEl, hl.lo, Number(candles[hl.lo].low), '▼ ' + fmt(Number(candles[hl.lo].low)), false);
     };
-    var schedule = function() { if (!raf) raf = (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : setTimeout)(place); };
+    var schedule = function() { if (!raf) raf = acAfterPaint(place); };
     chart.timeScale().subscribeVisibleLogicalRangeChange(schedule);
     // Price-scale drags and wheel zoom fire no range event in Lightweight Charts 4.
     container.addEventListener('wheel', schedule, { passive: true });
@@ -403,18 +422,24 @@ function acAttachCursorBox(chart, candles, container, fmt, volFmt, byDate) {
         tipW = paneW < 520 ? 150 : 178;
         box.style.width = tipW + 'px';
     };
-    var row = function(k, v, col) { return '<div style="display:flex;justify-content:space-between;gap:10px"><span>' + k + '</span><b style="font-family:var(--ac-font-mono, ui-monospace, monospace);font-weight:700;color:' + (col || 'var(--ac-ink, #e5e7eb)') + '">' + v + '</b></div>'; };
+    // Rows are built once; a new bar only changes their text and colours.
+    var KEYS = ['Buka', 'Tertinggi', 'Terendah', 'Tutup', 'Perubahan', 'Volume'];
+    box.innerHTML = '<div style="font-weight:700;color:var(--ac-ink, #e5e7eb)" data-k="date"></div>' + KEYS.map(function(k) {
+        return '<div style="display:flex;justify-content:space-between;gap:10px"><span>' + k + '</span><b style="font-family:var(--ac-font-mono, ui-monospace, monospace);font-weight:700;color:var(--ac-ink, #e5e7eb)" data-k="' + k + '"></b></div>';
+    }).join('');
+    var cells = {};
+    Array.prototype.forEach.call(box.querySelectorAll('[data-k]'), function(el) { cells[el.getAttribute('data-k')] = el; });
+    tipH = (KEYS.length + 1) * 18 + 16;
+    var put = function(k, text, col) { var el = cells[k]; el.textContent = text; el.style.color = col || 'var(--ac-ink, #e5e7eb)'; };
     var content = function(i) {
         var c = candles[i], prev = i > 0 ? Number(candles[i - 1].close) : null, close = Number(c.close);
         var chg = prev > 0 ? (close - prev) / prev * 100 : null;
         var col = chg == null ? '' : (chg >= 0 ? 'var(--ac-pos, #10b981)' : 'var(--ac-neg, #ef4444)');
         var p = acTimeParts(c.time);
-        var rows = ['<div style="font-weight:700;color:var(--ac-ink, #e5e7eb)">' + (p ? p.d + ' ' + AC_MONTHS[p.m - 1] + ' ' + p.y : '') + '</div>',
-            row('Buka', fmt(c.open)), row('Tertinggi', fmt(c.high)), row('Terendah', fmt(c.low)), row('Tutup', fmt(close), col),
-            row('Perubahan', chg == null ? '—' : (chg >= 0 ? '+' : '−') + Math.abs(chg).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%', col),
-            row('Volume', c.volume > 0 ? volFmt(Number(c.volume)) : '—')];
-        tipH = rows.length * 18 + 16;
-        return rows.join('');
+        cells.date.textContent = p ? p.d + ' ' + AC_MONTHS[p.m - 1] + ' ' + p.y : '';
+        put('Buka', fmt(c.open)); put('Tertinggi', fmt(c.high)); put('Terendah', fmt(c.low)); put('Tutup', fmt(close), col);
+        put('Perubahan', chg == null ? '—' : (chg >= 0 ? '+' : '−') + acNumFmt(2, 2).format(Math.abs(chg)) + '%', col);
+        put('Volume', c.volume > 0 ? volFmt(Number(c.volume)) : '—');
     };
     var draw = function() {
         raf = 0;
@@ -422,14 +447,14 @@ function acAttachCursorBox(chart, candles, container, fmt, volFmt, byDate) {
         var q = pending;
         if (!q || !q.point || q.idx < 0) { box.style.display = 'none'; shown = -1; return; }
         if (!paneW) measure();
-        if (q.idx !== shown) { box.innerHTML = content(q.idx); shown = q.idx; box.style.display = 'grid'; }
+        if (q.idx !== shown) { content(q.idx); shown = q.idx; box.style.display = 'grid'; }
         var tx = q.point.x + 16 + tipW < paneW ? q.point.x + 16 : q.point.x - 16 - tipW;
         var ty = Math.max(4, Math.min(paneH - tipH - 4, q.point.y + 14));
         box.style.transform = 'translate3d(' + Math.round(Math.max(0, tx)) + 'px,' + Math.round(ty) + 'px,0)';
     };
     chart.subscribeCrosshairMove(function(param) {
         pending = { point: param && param.point, idx: acCandleIndex(candles, param, byDate) };
-        if (!raf) raf = (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : setTimeout)(draw);
+        if (!raf) raf = acAfterPaint(draw);
     });
     return { resize: measure };
 }
@@ -489,6 +514,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     var _th = acChartTheme(container);
 
     // Main chart: candlestick + MA
+    var _axisFmt = /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30)$/i.test(String(ticker || '')) ? acNumFmt(2, 2) : acNumFmt(0, 0);
     var chart = LightweightCharts.createChart(container, {
         width: container.clientWidth, height: dims.main,
         layout: acChartLayout(_th),
@@ -496,7 +522,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
         // Indonesian number format on the price axis; stocks trade in whole
         // rupiah, indices keep two decimals.
-        localization: { locale: 'id-ID', timeFormatter: acCrosshairDate, priceFormatter: function(p) { return Number(p).toLocaleString('id-ID', /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30)$/i.test(String(ticker || '')) ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 }); } },
+        localization: { locale: 'id-ID', timeFormatter: acCrosshairDate, priceFormatter: function(p) { return _axisFmt.format(p); } },
         rightPriceScale: { borderColor: _th.border },
         timeScale: { borderColor: _th.border, timeVisible: false, tickMarkFormatter: acTickMark },
         // Touch behavior: horizontal drag pans the chart, vertical finger movement is
@@ -623,7 +649,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                 type: 'custom',
                 formatter: function(price) {
                     if (!price && price !== 0) return '';
-                    return 'Rp ' + Math.round(price).toLocaleString('id-ID');
+                    return 'Rp ' + acNumFmt(0, 0).format(Math.round(price));
                 }
             }
         });
@@ -649,7 +675,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                     if (abs >= 1e12) return sign + (abs / 1e12).toFixed(2).replace('.', ',') + ' T';
                     if (abs >= 1e9) return sign + (abs / 1e9).toFixed(1).replace('.', ',') + ' Mrd';
                     if (abs >= 1e6) return sign + (abs / 1e6).toFixed(1).replace('.', ',') + ' Jt';
-                    return sign + Math.round(abs).toLocaleString('id-ID');
+                    return sign + acNumFmt(0, 0).format(Math.round(abs));
                 }
             }
         });
@@ -787,11 +813,65 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         };
         return _hdrMemo;
     }
-    var _hdrShown = null, _hdrMobile = null;
+    // The legend's rows are built once (and again only when the phone layout
+    // switches); hovering only changes text and colours. Rewriting innerHTML on
+    // every bar re-parsed the markup and woke every DOM observer in the page.
+    var _hdrShown = null, _hdrMobile = null, _hdrEls = null;
+    function buildCanvasHeader(isMobile) {
+        var _m = headerMemo();
+        var tf = (wsState && wsState.timeframe) ? wsState.timeframe : '1D';
+        var corrVal = _m.corr, parVal = _m.par, lpmVal = _m.lpm;
+        // No workstation module, no Corr F / Par F (the old fallback printed 0.72 and 34.2).
+        var corrTxt = (corrVal == null || !isFinite(corrVal)) ? '—' : ((corrVal >= 0 ? '+' : '') + corrVal.toFixed(2));
+        var parTxt = (parVal == null || !isFinite(parVal)) ? '—' : (parVal.toFixed(1) + '%');
+        var lpmTxt = lpmVal ? acNum(lpmVal) : '—';
+        var moneyFlowStr = _m.moneyFlow;
+        var prov = '<span class="ac-prov" data-k="prov" style="font-weight:600;color:var(--ac-warn-t, #fbbf24)"></span>';
+        if (isMobile) {
+            headerEl.style.fontSize = '10px';
+            headerEl.innerHTML =
+                '<div class="flex items-center gap-1 text-[10px] font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
+                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + '</span>' + prov +
+                    '<span data-k="close"></span>' +
+                    '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + corrTxt + '</b></span>' +
+                '</div>' +
+                '<div class="text-[10px] text-gray-300 font-medium">Vol <b style="color:#f1f5f9;" data-k="vol"></b> • Par F <b style="color:#fbbf24;">' + parTxt + '</b></div>' +
+                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#10b981;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM <b style="color:#34d399;">' + lpmTxt + '</b></div>' +
+                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#3b82f6;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign <b style="color:#60a5fa;" data-k="foreign"></b></div>' +
+                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#f97316;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>CMF <b style="color:#fb923c;">' + moneyFlowStr + '</b></div>';
+        } else {
+            headerEl.style.fontSize = '12px';
+            headerEl.innerHTML =
+                '<div class="flex items-center gap-1.5 text-xs font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
+                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + ' · IDX</span>' + prov +
+                    '<span class="text-gray-300">O<span data-k="o"></span></span>' +
+                    '<span class="text-gray-300">H<span style="color:#34d399" data-k="h"></span></span>' +
+                    '<span class="text-gray-300">L<span style="color:#f87171" data-k="l"></span></span>' +
+                    '<span class="text-gray-300">C<span data-k="c"></span></span>' +
+                    '<span data-k="chg"></span>' +
+                    '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + corrTxt + '</b></span>' +
+                    '<span class="text-gray-400 font-normal">• Par F <b style="color:#fbbf24;">' + parTxt + '</b></span>' +
+                '</div>' +
+                '<div class="text-[11px] text-gray-300 font-medium">Volume <b style="color:#f1f5f9;" data-k="vol"></b></div>' +
+                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#10b981;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM · kurva tekanan candle · Money Flow <b style="color:#34d399;">' + lpmTxt + '</b><b style="color:#fb923c;">' + moneyFlowStr + '</b></div>' +
+                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#3b82f6;" data-row="bandar"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign Flow <b style="color:#60a5fa;" data-k="foreign"></b></div>';
+        }
+        // Indices carry no broker summary: drop the LPM / foreign / money-flow rows.
+        if (_isIndexChart) Array.prototype.forEach.call(headerEl.querySelectorAll('[data-row="bandar"]'), function(row) { row.remove(); });
+        _hdrEls = {};
+        Array.prototype.forEach.call(headerEl.querySelectorAll('[data-k]'), function(el) { _hdrEls[el.getAttribute('data-k')] = el; });
+    }
+    function setHdr(k, text, color) {
+        var el = _hdrEls && _hdrEls[k];
+        if (!el) return;
+        if (el.textContent !== text) el.textContent = text;
+        if (color && el.style.color !== color) el.style.color = color;
+    }
     function updateCanvasHeader(c) {
         if (!c || !headerEl) return;
         var _mob = (typeof window !== 'undefined' && window.innerWidth <= 640) || (container.clientWidth <= 640);
         if (c === _hdrShown && _mob === _hdrMobile) return;
+        if (_mob !== _hdrMobile || !_hdrEls) buildCanvasHeader(_mob);
         _hdrShown = c; _hdrMobile = _mob;
         var _m = headerMemo();
         var cOpen = Number(c.open != null ? c.open : c.close);
@@ -810,15 +890,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         var chgSign = chg >= 0 ? '+' : '';
         var chgColor = chg >= 0 ? '#34d399' : '#f87171';
 
-        // No workstation module, no Corr F / Par F (the old fallback printed 0.72 and 34.2).
-        var corrVal = _m.corr;
-        var parVal = _m.par;
-        var corrTxt = (corrVal == null || !isFinite(corrVal)) ? '—' : ((corrVal >= 0 ? '+' : '') + corrVal.toFixed(2));
-        var parTxt = (parVal == null || !isFinite(parVal)) ? '—' : (parVal.toFixed(1) + '%');
-        var lpmVal = _m.lpm;
-        var tf = (wsState && wsState.timeframe) ? wsState.timeframe : '1D';
-
-        var volStr = ws ? ws.formatIndonesianVolumeCompact(cVol) : (cVol.toLocaleString('id-ID') + ' lembar');
+        var volStr = ws ? ws.formatIndonesianVolumeCompact(cVol) : (acNum(cVol) + ' lembar');
         var foreignNet = ws ? ws.getLatestForeignNet([c], options && options.foreignFlow) : 0;
         if (foreignNet === 0 && ws) {
             var fData = _m.fData;
@@ -830,47 +902,17 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                 }
             }
         }
-        var foreignStr = ws ? ws.formatIndonesianRupiahCompact(foreignNet) : 'Rp 0';
-        var moneyFlowStr = _m.moneyFlow;
-
-        var isMobile = _mob;
-        var _prov = acProvisionalLabel(c);
-        var _provTag = _prov ? '<span class="ac-prov" style="font-weight:600;color:var(--ac-warn-t, #fbbf24)">' + _prov + '</span>' : '';
-        if (isMobile) {
-            headerEl.style.fontSize = '10px';
-            headerEl.innerHTML =
-                '<div class="flex items-center gap-1 text-[10px] font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
-                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + '</span>' + _provTag +
-                    '<span style="color:' + chgColor + '"> ' + cClose.toLocaleString('id-ID') + ' (' + chgSign + chgPct.toFixed(1) + '%)</span>' +
-                    '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + corrTxt + '</b></span>' +
-                '</div>' +
-                '<div class="text-[10px] text-gray-300 font-medium">Vol <b style="color:#f1f5f9;">' + volStr + '</b> • Par F <b style="color:#fbbf24;">' + parTxt + '</b></div>' +
-                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM <b style="color:#34d399;">' + (lpmVal ? lpmVal.toLocaleString('id-ID') : '—') + '</b></div>' +
-                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#3b82f6;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign <b style="color:#60a5fa;">' + foreignStr + '</b></div>' +
-                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#f97316;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>CMF <b style="color:#fb923c;">' + moneyFlowStr + '</b></div>';
+        setHdr('prov', acProvisionalLabel(c));
+        setHdr('vol', volStr);
+        setHdr('foreign', ws ? ws.formatIndonesianRupiahCompact(foreignNet) : 'Rp 0');
+        if (_mob) {
+            setHdr('close', ' ' + acNum(cClose) + ' (' + chgSign + chgPct.toFixed(1) + '%)', chgColor);
         } else {
-            headerEl.style.fontSize = '12px';
-            headerEl.innerHTML =
-                '<div class="flex items-center gap-1.5 text-xs font-bold text-slate-100 flex-wrap" style="color:#f8fafc;">' +
-                    '<span>' + (ticker || 'SAHAM') + ' · ' + tf + ' · IDX</span>' + _provTag +
-                    '<span class="text-gray-300">O<span style="color:' + (cOpen >= prevClose ? '#34d399' : '#f87171') + '">' + cOpen.toLocaleString('id-ID') + '</span></span>' +
-                    '<span class="text-gray-300">H<span style="color:#34d399">' + cHigh.toLocaleString('id-ID') + '</span></span>' +
-                    '<span class="text-gray-300">L<span style="color:#f87171">' + cLow.toLocaleString('id-ID') + '</span></span>' +
-                    '<span class="text-gray-300">C<span style="color:' + chgColor + '">' + cClose.toLocaleString('id-ID') + '</span></span>' +
-                    '<span style="color:' + chgColor + '"> ' + chgSign + chg.toLocaleString('id-ID') + ' (' + chgSign + chgPct.toFixed(2) + '%)</span>' +
-                    '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + corrTxt + '</b></span>' +
-                    '<span class="text-gray-400 font-normal">• Par F <b style="color:#fbbf24;">' + parTxt + '</b></span>' +
-                '</div>' +
-                '<div class="text-[11px] text-gray-300 font-medium">Volume <b style="color:#f1f5f9;">' + volStr + '</b></div>' +
-                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM · kurva tekanan candle · Money Flow <b style="color:#34d399;">' + (lpmVal ? lpmVal.toLocaleString('id-ID') : '—') + '</b><b style="color:#fb923c;">' + moneyFlowStr + '</b></div>' +
-                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#3b82f6;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign Flow <b style="color:#60a5fa;">' + foreignStr + '</b></div>' +
-                '';
-        }
-        // Indices carry no broker summary: drop the LPM / foreign / money-flow rows.
-        if (_isIndexChart) {
-            Array.prototype.slice.call(headerEl.children).forEach(function(row) {
-                if (/LPM|Foreign|Money Flow|CMF/.test(row.textContent || '')) row.remove();
-            });
+            setHdr('o', acNum(cOpen), cOpen >= prevClose ? '#34d399' : '#f87171');
+            setHdr('h', acNum(cHigh));
+            setHdr('l', acNum(cLow));
+            setHdr('c', acNum(cClose), chgColor);
+            setHdr('chg', ' ' + chgSign + acNum(chg) + ' (' + chgSign + chgPct.toFixed(2) + '%)', chgColor);
         }
     }
 
@@ -884,9 +926,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             var i = acCandleIndex(candles, param, _byDate);
             _hdrNext = i >= 0 ? candles[i] : _lastCandle;
             if (_hdrRaf) return;
-            _hdrRaf = (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : setTimeout)(function() { _hdrRaf = 0; updateCanvasHeader(_hdrNext); });
+            _hdrRaf = acAfterPaint(function() { _hdrRaf = 0; updateCanvasHeader(_hdrNext); });
         });
-        var _fmtPx = function(v) { return Number(v).toLocaleString('id-ID', _isIdxTicker ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 }); };
+        var _pxFmt = _isIdxTicker ? acNumFmt(2, 2) : acNumFmt(0, 0);
+        var _fmtPx = function(v) { return _pxFmt.format(Number(v)); };
         var _cursorBox = acAttachCursorBox(chart, candles, container, _fmtPx, function(v) { return ws && ws.formatIndonesianVolumeCompact ? String(ws.formatIndonesianVolumeCompact(v)).replace(/ lembar$/, '') : Number(v).toLocaleString('id-ID'); }, _byDate);
 
         var _onWinResize = function() {
@@ -1297,7 +1340,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     }
     var _hiLo = null;
     if (candles && candles.length >= 10) {
-        try { _hiLo = acAttachHiLo(chart, candleSeries, candles, container, function(v) { return Number(v).toLocaleString('id-ID', _isIdxTicker ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 }); }); } catch (_) {}
+        try { var _hlFmt = _isIdxTicker ? acNumFmt(2, 2) : acNumFmt(0, 0); _hiLo = acAttachHiLo(chart, candleSeries, candles, container, function(v) { return _hlFmt.format(Number(v)); }); } catch (_) {}
     }
 
     // Register instances + metadata for the exporter (scoped, no global loose vars).

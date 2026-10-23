@@ -35,7 +35,8 @@ test('provisional label: only for a provisional bar, time in WIB', () => {
 });
 
 test('legend carries the tag; today\'s bar goes through series.update()', () => {
-  assert.equal((runtime.match(/' · ' \+ tf \+ '(?: · IDX)?<\/span>' \+ _provTag \+/g) || []).length, 2, 'desktop and phone legend');
+  assert.equal((runtime.match(/' · ' \+ tf \+ '(?: · IDX)?<\/span>' \+ prov \+/g) || []).length, 2, 'desktop and phone legend');
+  assert.match(runtime, /setHdr\('prov', acProvisionalLabel\(c\)\);/);
   const reg = runtime.slice(runtime.indexOf('updateBar: function(bar)'), runtime.indexOf('updateBar: function(bar)') + 2000);
   assert.match(reg, /candleSeries\.update\(bar\)/);
   assert.match(reg, /volumeSeries\.update\(/);

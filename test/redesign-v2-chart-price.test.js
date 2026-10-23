@@ -24,8 +24,8 @@ function extract(src, signature) {
 function helpers(extra) {
   const src = ["var AC_SHORT_TAGS = { 'Entry': 'En', 'TP1': 'T1', 'TP2': 'T2', 'Resistance': 'R', 'Support': 'S' };",
     extract(runtime, 'function acLevelTitle('), extract(runtime, 'function acLastPrice('),
-    extract(runtime, 'function acVisibleHiLo('), extract(runtime, 'function acAttachHiLo(')].join('\n');
-  const sb = Object.assign({ Math, Number, String, Object }, extra || {});
+    extract(runtime, 'function acVisibleHiLo('), extract(runtime, 'function acAttachHiLo('), extract(runtime, 'function acAfterPaint(')].join('\n');
+  const sb = Object.assign({ Math, Number, String, Object, setTimeout: (f) => { f(); return 0; } }, extra || {});
   vm.createContext(sb);
   vm.runInContext(src + '\nthis.acLevelTitle=acLevelTitle;this.acLastPrice=acLastPrice;this.acVisibleHiLo=acVisibleHiLo;this.acAttachHiLo=acAttachHiLo;', sb);
   return sb;
@@ -60,7 +60,7 @@ test('labels are placed through the chart API once per frame and hide off-pane',
   const made = [], listeners = {};
   let frames = 0, rangeCb = null, priceY = { 999: 30, 1: 500 };
   const doc = { createElement: () => { const el = { style: {}, className: '', textContent: '' }; made.push(el); return el; } };
-  const h = helpers({ document: doc, requestAnimationFrame: (f) => { frames++; f(); return 0; }, setTimeout });
+  const h = helpers({ document: doc, requestAnimationFrame: (f) => { frames++; f(); return 0; }, setTimeout: (f) => { f(); return 0; } });
   const chart = {
     paneSize: () => ({ width: 800, height: 400 }),
     timeScale: () => ({ getVisibleLogicalRange: () => ({ from: 0, to: 39 }), logicalToCoordinate: (i) => i * 20, subscribeVisibleLogicalRangeChange: (cb) => { rangeCb = cb; } })

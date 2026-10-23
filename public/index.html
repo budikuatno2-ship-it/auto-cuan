@@ -119,8 +119,8 @@
     <link rel="stylesheet" href="/index-shell.css?v=20260818-v1">
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
-    <link rel="stylesheet" href="/ui-theme.css?v=20261022-v2">
-    <link rel="stylesheet" href="/ac-v2.css?v=20261023-v9">
+    <link rel="stylesheet" href="/ui-theme.css?v=20261023-v3">
+    <link rel="stylesheet" href="/ac-v2.css?v=20261023-v11">
     <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=20260929-v1">
@@ -1510,7 +1510,7 @@ html.light #googleCompleteProfileModal input {
                 <h2 class="text-base font-bold text-white">Screener Swing Konglo 3&ndash;7D</h2>
                 <p class="text-[11px] text-gray-500 mt-0.5" id="screenerSubtitle">Watchlist high-probability swing setup dari Grup Konglomerat Hot.</p>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 scr-head-act">
                 <span id="screenerMetaBadge" class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
                 <div class="ac-segmented text-xs" role="group" aria-label="Tampilan Konglo">
                     <button id="kgBtnTable" onclick="toggleScreenerView('konglo', 'table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
@@ -1635,7 +1635,7 @@ html.light #googleCompleteProfileModal input {
                     <h2 class="text-base font-bold text-white">Swing Screener Non-Konglo</h2>
                     <p class="text-[11px] text-gray-500 mt-0.5" id="nkScreenerSubtitle">Watchlist swing setup dari saham non-konglomerat (papan Utama &amp; Pengembangan).</p>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 scr-head-act">
                     <span id="nkScreenerMetaBadge" class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
                     <div class="ac-segmented text-xs" role="group" aria-label="Tampilan Non-Konglo">
                         <button id="nkBtnTable" onclick="toggleScreenerView('nonkonglo', 'table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
@@ -1770,7 +1770,7 @@ html.light #googleCompleteProfileModal input {
                     <h2 class="text-base font-bold text-white">Day Trade Screener</h2>
                     <p class="text-[11px] text-gray-500 mt-0.5" id="dtScreenerSubtitle">Intraday momentum &amp; pre-spike radar. Deterministic, no AI.</p>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 scr-head-act">
                     <span id="dtMetaBadge" class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
                     <div class="ac-segmented text-xs" role="group" aria-label="Tampilan Day Trade">
                         <button id="dtBtnTable" onclick="toggleScreenerView('daytrade', 'table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
@@ -16107,7 +16107,7 @@ function forceNormalizeTechnicalDOM(root) {
 </script>
 <script src="/tab-keepalive-runtime.js?v=20260926-ka1"></script>
 <script src="/chart-workstation.js?v=20261023-v8"></script>
-<script src="/market-feature-runtime.js?v=20261023-v8"></script>
+<script src="/market-feature-runtime.js?v=20261023-v11"></script>
 <script src="/analisis-v2.js?v=20261023-v6"></script>
 <script src="/daytrade-runtime.js?v=20260818-v1"></script>
 

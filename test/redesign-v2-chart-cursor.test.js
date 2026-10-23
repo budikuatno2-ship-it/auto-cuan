@@ -22,11 +22,11 @@ function extract(signature) {
   }
   throw new Error('unbalanced ' + signature);
 }
-const NAMES = ['acTimeParts', 'acTickMark', 'acCrosshairDate', 'acDefaultBars', 'acCandleIndex', 'acDateIndex', 'acAttachCursorBox', 'acAttachWheelZoom'];
+const NAMES = ['acTimeParts', 'acTickMark', 'acCrosshairDate', 'acDefaultBars', 'acCandleIndex', 'acDateIndex', 'acAttachCursorBox', 'acAttachWheelZoom', 'acAfterPaint', 'acNumFmt'];
 function helpers(extra) {
-  const src = ["var AC_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];"]
+  const src = ["var AC_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']; var AC_NF = {};"]
     .concat(NAMES.map((n) => extract('function ' + n + '('))).join('\n');
-  const sb = Object.assign({ Math, Number, String, Object, Date }, extra || {});
+  const sb = Object.assign({ Math, Number, String, Object, Date, Intl, Array }, extra || {});
   vm.createContext(sb);
   vm.runInContext(src + '\n' + NAMES.map((n) => 'this.' + n + '=' + n + ';').join(''), sb);
   return sb;
@@ -71,8 +71,15 @@ test('candle under the cursor by logical index, falling back to the date', () =>
 function cursorRig(paneW) {
   const made = [];
   let cb = null, frames = 0;
-  const doc = { createElement: () => { const el = { style: {}, setAttribute() {}, innerHTML: '' }; made.push(el); return el; } };
-  const h = helpers({ document: doc, requestAnimationFrame: (f) => { frames++; f(); return 0; }, setTimeout });
+  // A fake element: the rows are written once, then only their cells change.
+  const doc = { createElement: () => {
+    const el = { style: {}, setAttribute() {}, writes: 0, cells: [] };
+    Object.defineProperty(el, 'innerHTML', { get() { return this._h || ''; }, set(v) { this._h = v; this.writes++; this.cells = [...String(v).matchAll(/data-k="([^"]+)"/g)].map((m) => ({ k: m[1], textContent: '', style: {}, getAttribute: () => m[1] })); } });
+    el.querySelectorAll = () => el.cells;
+    el.cell = (k) => el.cells.find((c) => c.k === k);
+    made.push(el); return el;
+  } };
+  const h = helpers({ document: doc, requestAnimationFrame: (f) => { frames++; f(); return 0; }, setTimeout: (f) => { f(); return 0; } });
   const chart = { paneSize: () => ({ width: paneW, height: 380 }), subscribeCrosshairMove: (f) => { cb = f; } };
   const container = { clientWidth: paneW, clientHeight: 400, appendChild() {} };
   const fmt = (v) => Number(v).toLocaleString('id-ID');
@@ -84,16 +91,17 @@ test('info box: rows, colours, side switch near the right edge, hide on leave', 
   const r = cursorRig(800);
   r.move({ time: candles[10].time, logical: 10, point: { x: 100, y: 50 } });
   assert.equal(r.box.style.display, 'grid');
-  assert.match(r.box.innerHTML, /20 Des 2025/);
+  assert.equal(r.box.cell('date').textContent, '20 Des 2025');
   ['Buka', 'Tertinggi', 'Terendah', 'Tutup', 'Perubahan', 'Volume'].forEach((k) => assert.match(r.box.innerHTML, new RegExp('<span>' + k + '</span>')));
-  assert.match(r.box.innerHTML, /\+0,48%/);
-  assert.match(r.box.innerHTML, /var\(--ac-pos/);
+  assert.equal(r.box.cell('Perubahan').textContent, '+0,48%');
+  assert.match(r.box.cell('Perubahan').style.color, /var\(--ac-pos/);
   assert.match(r.box.style.transform, /translate3d\(116px,64px,0\)/);
   r.move({ time: candles[25].time, logical: 25, point: { x: 760, y: 50 } });
   assert.match(r.box.style.transform, /translate3d\(566px,/, 'box flips to the left of the cursor');
   r.move({ time: candles[0].time, logical: 0, point: { x: 10, y: 50 } });
-  assert.match(r.box.innerHTML, /<span>Perubahan<\/span><b[^>]*>—<\/b>/, 'first bar: no change invented');
-  assert.match(r.box.innerHTML, /<span>Volume<\/span><b[^>]*>—<\/b>/, 'zero volume shows a dash');
+  assert.equal(r.box.cell('Perubahan').textContent, '—', 'first bar: no change invented');
+  assert.equal(r.box.cell('Volume').textContent, '—', 'zero volume shows a dash');
+  assert.equal(r.box.writes, 1, 'rows are built once; moving only changes text');
   r.move({ time: undefined, point: undefined });
   assert.equal(r.box.style.display, 'none');
 });
@@ -102,11 +110,9 @@ test('info box narrows on phones and only rewrites when the bar changes', () => 
   const r = cursorRig(360);
   r.move({ time: candles[3].time, logical: 3, point: { x: 40, y: 40 } });
   assert.equal(r.box.style.width, '150px');
-  const html = r.box.innerHTML;
-  r.box.innerHTML = 'marker';
+  r.box.cell('Tutup').textContent = 'marker';
   r.move({ time: candles[3].time, logical: 3, point: { x: 44, y: 41 } });
-  assert.equal(r.box.innerHTML, 'marker', 'same bar: contents untouched, only moved');
-  assert.ok(html.length > 50);
+  assert.equal(r.box.cell('Tutup').textContent, 'marker', 'same bar: contents untouched, only moved');
   assert.ok(!/getBoundingClientRect|offsetWidth|offsetHeight/.test(extract('function acAttachCursorBox(')), 'no layout reads while the cursor moves');
 });
 
@@ -139,7 +145,9 @@ test('chart options: touch gestures and no wheel capture by the library', () => 
 });
 
 test('legend: written once per frame, heavy values computed once per render', () => {
-  assert.match(runtime, /_hdrRaf = \(typeof requestAnimationFrame === 'function' \? requestAnimationFrame : setTimeout\)\(function\(\) \{ _hdrRaf = 0; updateCanvasHeader\(_hdrNext\); \}\);/);
+  assert.match(runtime, /_hdrRaf = acAfterPaint\(function\(\) \{ _hdrRaf = 0; updateCanvasHeader\(_hdrNext\); \}\);/);
+  assert.match(runtime, /if \(_mob !== _hdrMobile \|\| !_hdrEls\) buildCanvasHeader\(_mob\);/, 'rows built once, hover only sets text');
+  assert.doesNotMatch(extract('function updateCanvasHeader('), /innerHTML/);
   assert.match(runtime, /if \(c === _hdrShown && _mob === _hdrMobile\) return;/);
   const hdr = extract('function updateCanvasHeader(');
   assert.doesNotMatch(hdr, /calculateCorrF|calculateParF|calculateLPM|calculateForeignFlowCumulative|getLatestMoneyFlow/);

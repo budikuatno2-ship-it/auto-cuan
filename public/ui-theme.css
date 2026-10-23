@@ -7463,7 +7463,7 @@ html.light { --brand-mark-bg:#e1f5eb; --brand-mark-ink:#07593f; --brand-mark-lin
 /* Mobile launcher replacement: scoped ONLY when V2 bottom bar is active on the shell */
 #acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden) ~ .ac-launcher,
 .app-shell:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launcher,
-body:has(#acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launcher {
+body:has(> #acBottomBar[data-ac-ui="v2"]:not([hidden]):not(.ac-hidden)) .ac-launcher {
   display: none !important;
 }
 
@@ -15589,7 +15589,10 @@ html.is-dark .thm .moon { display: none; }
 /* The blink pauses while the tab is in the background (HANDOFF §2.4). */
 html.ac-tab-hidden .mm-lid, html.ac-tab-hidden .mm.talk .mm-mouth { animation-play-state: paused; }
 /* Not on the auth screens (HANDOFF §2.4): focus stays on the form. */
-body:has(#loginModal:not(.hidden), #registerModal:not(.hidden), #selfResetModal:not(.hidden), #resetPasswordModal:not(.hidden), #googleCompleteProfileModal:not(.hidden), dialog.legacy-gmail-dialog[open]) .mm { display: none !important; }
+/* Child combinators keep this check off ordinary DOM changes: a body:has() with
+   a descendant argument is re-checked on every mutation in the page (it cost
+   about half of each chart hover frame). Same elements, same meaning. */
+body:has(> #loginModal:not(.hidden), > #registerModal:not(.hidden), > #selfResetModal:not(.hidden), > #dashboardScreen > #resetPasswordModal:not(.hidden), > #googleCompleteProfileModal:not(.hidden), > dialog.legacy-gmail-dialog[open]) .mm { display: none !important; }
 html.is-dark .mm-bub { background: #22302B; border: 1px solid #33433D; }
 html.is-dark .mm-body > path:first-child { fill: #2A3C35; stroke: #48C797; stroke-opacity: .7; stroke-width: 2.5; }
 html.is-dark .mm-lid path { fill: #2A3C35; }

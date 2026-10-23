@@ -277,7 +277,7 @@ html.is-dark #page-dashboard .dash-ses div.done { background: rgba(72, 199, 151,
   .tape[data-ac-ui="v2"] { height: 32px; font-size: 12px; }
   .tape[data-ac-ui="v2"] .tape-l small { display: none; }
   .tape[data-ac-ui="v2"] .tape-x { width: 44px; }
-  body:not(:has(#page-dashboard:not(.hidden))) .tape[data-ac-ui="v2"] { display: none; }
+  body:not(:has(> #dashboardScreen > #appShell > #appMain > #appContent > #page-dashboard:not(.hidden))) .tape[data-ac-ui="v2"] { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .tape[data-ac-ui="v2"] .tape-in { animation: none; }
@@ -637,5 +637,7 @@ html #appContent #page-screener.scr-compact #nkScreenerTableWrap tr > td[colspan
 html #appContent #page-screener.scr-compact #dtScreenerTableWrap tr > td[colspan] { display: table-cell; }
 html #appContent #page-screener .scr-view-btn { white-space: nowrap; }
 /* Mode header actions wrap instead of clipping the view toggle at 1024 px. */
-html #appContent #page-screener div:has(> [data-scr-sort]) { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
-html #appContent #page-screener div:has(> [data-scr-sort]) > * { flex: none; white-space: nowrap; }
+/* A plain class, not :has(): a div:has() rule is re-checked on every DOM
+   change in the page and cost ~65 ms per chart hover frame (CPU 4x). */
+html #appContent #page-screener .scr-head-act { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
+html #appContent #page-screener .scr-head-act > * { flex: none; white-space: nowrap; }
