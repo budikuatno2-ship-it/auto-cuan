@@ -524,11 +524,20 @@ async function run(argv) {
       if (arjumClient.getUsedQuotaToday() >= dailyLimit) { quotaReached = true; break; }
       totalRequested++;
       brokerRequests++;
+      // DARURAT 23 Oct 2026: J1 is an EOD job (16:30-17:45 and 23:30 WIB), i.e.
+      // it ALWAYS runs outside the 09:00-16:00 IDX session. The market-hours
+      // guard in lib/arjum-client.js returns HTTP 400 "Di luar jam operasional
+      // bursa BEI" for any noFallback/forceFresh call outside that window, so
+      // every J1 run since PR #891 (18 Oct) failed with client_4xx and saved
+      // nothing. J1 legitimately fetches POST-session data (KSEI publishes
+      // ~16:30-17:30), so it bypasses the guard explicitly. The guard itself is
+      // unchanged and still protects the web/live paths.
       const res = await arjumClient.fetchBrokerSummary(ticker, dateArg, 'all', null, {
         allData: true,
         fresh: true,
         forceLive: true,
-        noFallback: true
+        noFallback: true,
+        bypassMarketGuard: true
       });
       const isAllValid = res.ok && res.data && !res.from_cache && !res.fallback && res.data.flow === 'all';
       noteNetworkOutcome(res, ticker);
@@ -561,7 +570,8 @@ async function run(argv) {
                 allData: true,
                 fresh: true,
                 forceLive: true,
-                noFallback: true
+                noFallback: true,
+                bypassMarketGuard: true
               });
               const isFValid = resF.ok && resF.data && !resF.from_cache && !resF.fallback && resF.data.flow === 'F' &&
                 String(resF.data.stock_code || resF.data.code || '').trim().toUpperCase() === ticker.toUpperCase();
