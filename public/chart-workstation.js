@@ -1225,6 +1225,7 @@
       activePreset: currentPreset,
       activeLayers: activeSet,
       timeframe: '1D',
+      range: null,
       chartCollapsed: false,
       customTradingPlan: null,
 
@@ -1232,6 +1233,7 @@
         var p = PRESETS[presetName];
         if (!p) return false;
         this.activePreset = presetName;
+        this.range = null;
         this.activeLayers = Object.create(null);
         for (var k = 0; k < p.layers.length; k++) {
           this.activeLayers[p.layers[k]] = true;
@@ -1343,6 +1345,7 @@
       return '<button type="button" class="' + (on ? 'on' : '') + '" aria-pressed="' + (on ? 'true' : 'false') + '" onclick="' + call + '"' + (extra || '') + '>' + label + '</button>';
     }
     var presets = [['simpel', 'Simpel'], ['scalping', 'Scalping'], ['swing', 'Swing'], ['investor', 'Investor'], ['pro', 'Pro']];
+    var range = activeRange(state);
 
     var html = '<div id="' + chartId + '_workstation_toolbar" class="chart-workstation-toolbar cw-bar" data-ac-ui="v2">' +
       '<div class="cw-group"><span class="cw-l">Mode</span>' +
@@ -1353,6 +1356,10 @@
         '<div class="segx cw-seg" role="group" aria-label="Pilih Timeframe">' +
           seg(tf === '1D', '1D', 'AutoCuanChartWorkstation.switchTimeframe(' + q + ', \'1D\')') +
           seg(tf === '1W', '1W', 'AutoCuanChartWorkstation.switchTimeframe(' + q + ', \'1W\')') +
+        '</div>' +
+        '<span class="cw-l">Rentang</span>' +
+        '<div class="segx cw-seg" role="group" aria-label="Pilih rentang">' +
+          RANGES.map(function (r) { return seg(range === r[0], r[1], 'AutoCuanChartWorkstation.setRange(' + q + ', \'' + r[0] + '\')', ' title="' + r[2] + '"'); }).join('') +
         '</div>' +
       '</div>' +
       '<div class="cw-group cw-right">' +
@@ -1558,6 +1565,22 @@
     if (typeof console !== 'undefined' && console.log) {
       console.log('[Workstation] Timeframe switched to ' + tf + ' in ' + elapsed.toFixed(1) + 'ms');
     }
+  }
+
+  // Visible range (HANDOFF 5a): 3 months, 6 months, 1 year or everything.
+  // A mode change goes back to that mode's own default range.
+  var RANGES = [['3b', '3B', '3 bulan'], ['6b', '6B', '6 bulan'], ['1t', '1T', '1 tahun'], ['all', 'Semua', 'Semua data']];
+  var MODE_RANGE = { scalping: '3b', investor: '1t' };
+  function activeRange(state) { return (state && state.range) || MODE_RANGE[state && state.activePreset] || '6b'; }
+  function setRange(chartId, range) {
+    var inst = _workstationInstances[chartId];
+    if (!inst || !RANGES.some(function (r) { return r[0] === range; })) return;
+    inst.state.range = range;
+    var activeCandles = (inst.state.timeframe === '1W' && inst.weeklyCandles) ? inst.weeklyCandles : inst.dailyCandles;
+    if (typeof defaultRoot.renderLightweightChart === 'function') {
+      defaultRoot.renderLightweightChart(chartId, activeCandles, inst.metrics, inst.ticker, Object.assign({}, inst.options, { workstationState: inst.state }));
+    }
+    updateToolbarDom(chartId);
   }
 
   function applyPreset(chartId, presetName) {
@@ -2367,6 +2390,8 @@
     switchTimeframe: switchTimeframe,
     applyPreset: applyPreset,
     toggleLayer: toggleLayer,
+    setRange: setRange,
+    activeRange: activeRange,
     toggleDrawer: toggleDrawer,
     toggleCollapse: toggleCollapse,
     turnOffAll: turnOffAll,

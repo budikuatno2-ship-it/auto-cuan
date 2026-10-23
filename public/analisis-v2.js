@@ -339,7 +339,10 @@
     var id = Object.keys(reg).find(function (k) { var e = reg[k]; return e && e.candleSeries && String(e.ticker || '').toUpperCase() === state.ticker; });
     if (!id) return;
     var e = reg[id], ix = potential(root._chartPageData && root._chartPageData.candles, state.hz);
-    if (!ix || ix.insufficient || !e.mainChart) return;
+    if (!ix || ix.insufficient || !e.mainChart || e.mainChart.__acDead) return;
+    try { drawOverlay(id, e, ix); } catch (_) { /* the chart was replaced mid-draw; the next render draws again */ }
+  };
+  function drawOverlay(id, e, ix) {
     var cs = getComputedStyle(doc.getElementById(id + '_container') || doc.body);
     var info = String(cs.getPropertyValue('--ac-info') || '').trim() || '#315F9A';
     var pos = String(cs.getPropertyValue('--ac-pos') || '').trim() || '#247A43';
@@ -359,9 +362,19 @@
     ix.R.forEach(function (v, i) { line(v, (short ? 'R' : '▲ R') + (i + 1), pos); });
     ix.S.forEach(function (v, i) { line(v, (short ? 'S' : '▼ S') + (i + 1), neg); });
     overlay.id = id;
-    // Show the cone: open the right edge by the projection length.
-    try { var lr = e.mainChart.timeScale().getVisibleLogicalRange(); if (lr) e.mainChart.timeScale().setVisibleLogicalRange({ from: lr.from, to: lr.to + days.length }); } catch (_) {}
-  };
+    // Show the cone: open the right edge to the end of the projection, once
+    // (redraws on horizon change must not keep widening the view).
+    try {
+      var ts = e.mainChart.timeScale(), lr = ts.getVisibleLogicalRange();
+      var n = typeof e.candleSeries.data === 'function' ? e.candleSeries.data().length : (root._chartPageData.candles || []).length;
+      var edge = n - 1 + days.length + 2;
+      // First draw on a new chart: the chosen range plus the cone. Adding the
+      // cone series can land before the chart applied that range.
+      if (!e.mainChart.__acCone && e.defaultRange) ts.setVisibleLogicalRange({ from: e.defaultRange.from, to: Math.max(e.defaultRange.to, edge) });
+      else if (lr && lr.to < edge) ts.setVisibleLogicalRange({ from: lr.from, to: edge });
+      e.mainChart.__acCone = true;
+    } catch (_) {}
+  }
 
   // Index-specific copy: the AI asks where the market goes, not where to buy;
   // header links point to market structure and sector heat.

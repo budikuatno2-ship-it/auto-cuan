@@ -45,7 +45,7 @@ test('no leaked resize listener and no invented legend values', () => {
 
 test('default view is about six months and double-click returns to it', () => {
   // Per-mode lengths (Scalping 3 months, Investor 1 year) are in redesign-v2-chart-cursor.
-  assert.match(runtime, /var _bars = acDefaultBars\(wsState && wsState\.activePreset, _span > 3\);/);
+  assert.match(runtime, /var _bars = acRangeBars\(wsState && wsState\.range, wsState && wsState\.activePreset, _span > 3\);/);
   assert.match(runtime, /container\.addEventListener\('dblclick', function\(\) \{ try \{ chart\.timeScale\(\)\.setVisibleLogicalRange\(_defaultRange\);/);
 });
 

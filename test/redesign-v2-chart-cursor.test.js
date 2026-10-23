@@ -56,7 +56,7 @@ test('default range per mode: Scalping 3 months, Investor 1 year, others 6 month
   assert.equal(h.acDefaultBars('scalping', true), 13);
   assert.equal(h.acDefaultBars('investor', true), 52);
   assert.equal(h.acDefaultBars('swing', true), 26);
-  assert.match(runtime, /var _bars = acDefaultBars\(wsState && wsState\.activePreset, _span > 3\);/);
+  assert.match(runtime, /var _bars = acRangeBars\(wsState && wsState\.range, wsState && wsState\.activePreset, _span > 3\);/);
 });
 
 test('candle under the cursor by logical index, falling back to the date', () => {
@@ -144,4 +144,35 @@ test('legend: written once per frame, heavy values computed once per render', ()
   const hdr = extract('function updateCanvasHeader(');
   assert.doesNotMatch(hdr, /calculateCorrF|calculateParF|calculateLPM|calculateForeignFlowCumulative|getLatestMoneyFlow/);
   assert.doesNotMatch(hdr, /candles\.find\(/);
+});
+
+test('range buttons 3B / 6B / 1T / Semua; a mode change returns to its own range', () => {
+  const sb = { Math, Number, String, Object, Infinity };
+  vm.createContext(sb);
+  vm.runInContext("var AC_RANGE_BARS = { '3b': [63, 13], '6b': [126, 26], '1t': [250, 52] };\n" + extract('function acRangeBars(') + '\n' + extract('function acDefaultBars(') + '\nthis.f=acRangeBars;', sb);
+  assert.equal(sb.f('3b', 'swing', false), 63);
+  assert.equal(sb.f('1t', 'scalping', false), 250);
+  assert.equal(sb.f('6b', 'investor', true), 26);
+  assert.equal(sb.f('all', 'swing', false), Infinity);
+  assert.equal(sb.f(null, 'investor', false), 250, 'no choice: the mode default');
+  const ws = read('public/chart-workstation.js');
+  assert.match(ws, /var RANGES = \[\['3b', '3B', '3 bulan'\], \['6b', '6B', '6 bulan'\], \['1t', '1T', '1 tahun'\], \['all', 'Semua', 'Semua data'\]\];/);
+  assert.match(ws, /aria-label="Pilih rentang"/);
+  assert.match(ws, /this\.activePreset = presetName;\n\s+this\.range = null;/);
+  assert.match(ws, /setRange: setRange,/);
+  const api = new Function('module', 'define', ws.replace(/^[\s\S]*?\}\)\(typeof window/, '(function(r,f){module.exports=f(r);})(typeof window') + '; return module.exports;');
+  const lib = api({}, undefined);
+  const st = lib.createWorkstationState('simpel');
+  assert.equal(lib.activeRange(st), '6b');
+  st.applyPreset('scalping'); assert.equal(lib.activeRange(st), '3b');
+  st.applyPreset('investor'); assert.equal(lib.activeRange(st), '1t');
+  st.range = 'all'; assert.equal(lib.activeRange(st), 'all');
+  st.applyPreset('swing'); assert.equal(lib.activeRange(st), '6b');
+});
+
+test('index cone keeps the chosen range on a new chart', () => {
+  const av = read('public/analisis-v2.js');
+  assert.match(av, /if \(!e\.mainChart\.__acCone && e\.defaultRange\) ts\.setVisibleLogicalRange\(\{ from: e\.defaultRange\.from, to: Math\.max\(e\.defaultRange\.to, edge\) \}\);/);
+  assert.match(runtime, /defaultRange: _defaultRange,/);
+  assert.match(runtime, /if \(chart\.__acDead\) return;/, 'handlers on the reused container skip a disposed chart');
 });

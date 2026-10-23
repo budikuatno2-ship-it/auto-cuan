@@ -211,6 +211,8 @@ function disposeChart(chartId) {
     var e = _chartRegistry[chartId];
     if (!e) return;
     try { if (e.observers) e.observers.forEach(function(o) { if (o && o.disconnect) o.disconnect(); }); } catch (x) {}
+    // Handlers bound to the reused container check this before touching the chart.
+    try { if (e.mainChart) e.mainChart.__acDead = true; } catch (x) {}
     try { if (e.mainChart && e.mainChart.remove) e.mainChart.remove(); } catch (x) {}
     try { if (e.rsiChart && e.rsiChart.remove) e.rsiChart.remove(); } catch (x) {}
     try { if (e.intensityChart && e.intensityChart.remove) e.intensityChart.remove(); } catch (x) {}
@@ -318,6 +320,7 @@ function acAttachHiLo(chart, series, candles, container, fmt) {
     };
     var place = function() {
         raf = 0;
+        if (chart.__acDead) return;
         var lr = chart.timeScale().getVisibleLogicalRange();
         var hl = lr ? acVisibleHiLo(candles, lr.from, lr.to) : null;
         if (!hl) { hiEl.style.display = 'none'; loEl.style.display = 'none'; return; }
@@ -356,6 +359,12 @@ function acCrosshairDate(t) {
 }
 // Default view per chart mode: Scalping 3 months, Investor 1 year, the rest
 // 6 months (sessions on 1D, bars on 1W).
+var AC_RANGE_BARS = { '3b': [63, 13], '6b': [126, 26], '1t': [250, 52] };
+function acRangeBars(range, mode, weekly) {
+    if (range === 'all') return Infinity;
+    var r = AC_RANGE_BARS[range];
+    return r ? r[weekly ? 1 : 0] : acDefaultBars(mode, weekly);
+}
 function acDefaultBars(mode, weekly) {
     if (mode === 'scalping') return weekly ? 13 : 63;
     if (mode === 'investor') return weekly ? 52 : 250;
@@ -409,6 +418,7 @@ function acAttachCursorBox(chart, candles, container, fmt, volFmt, byDate) {
     };
     var draw = function() {
         raf = 0;
+        if (chart.__acDead) return;
         var q = pending;
         if (!q || !q.point || q.idx < 0) { box.style.display = 'none'; shown = -1; return; }
         if (!paneW) measure();
@@ -432,7 +442,7 @@ function acAttachWheelZoom(chart, container) {
     if (typeof window !== 'undefined') window.addEventListener('scroll', function() { rect = null; }, { passive: true });
     container.addEventListener('wheel', function(e) {
         var one = document.documentElement.classList.contains('cw-one-screen-open');
-        if (!(e.ctrlKey || e.metaKey || one)) return;
+        if (chart.__acDead || !(e.ctrlKey || e.metaKey || one)) return;
         e.preventDefault();
         var ts = chart.timeScale(), lr = ts.getVisibleLogicalRange();
         if (!lr) return;
@@ -1278,8 +1288,8 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     if (candles && candles.length > 30) {
         var _t = function(c) { var v = c.time; return typeof v === 'number' ? v * 1000 : Date.parse(typeof v === 'string' ? v : (v.year + '-' + v.month + '-' + v.day)); };
         var _span = (_t(candles[candles.length - 1]) - _t(candles[candles.length - 11])) / 86400000 / 10;
-        var _bars = acDefaultBars(wsState && wsState.activePreset, _span > 3);
-        if (candles.length > _bars) _defaultRange = { from: candles.length - _bars, to: candles.length + 2 };
+        var _bars = acRangeBars(wsState && wsState.range, wsState && wsState.activePreset, _span > 3);
+        _defaultRange = { from: candles.length > _bars ? candles.length - _bars : 0, to: candles.length + 2 };
     }
     if (_defaultRange) {
         try { chart.timeScale().setVisibleLogicalRange(_defaultRange); } catch (_) {}
@@ -1311,6 +1321,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         lastLine: _lastLine,
         lastUp: _lp ? _lp.up : true,
         hiLo: _hiLo,
+        defaultRange: _defaultRange,
         // Today's bar from the live cache: series.update() instead of a new
         // setData, last-price tag, legend and high/low follow.
         updateBar: function(bar) {
