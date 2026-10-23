@@ -184,7 +184,19 @@ function latestCachedDate(ticker) {
   return latest;
 }
 
+// B3 (2026-10-20): the standalone J2 cron run must take the shared Arjum lock so
+// it never runs in parallel with J1 or the backfill worker. When J1 itself
+// invokes this in-process (already holding the lock) the lock is reentrant and
+// runs directly.
+//
+// The lock is acquired only AFTER the trading-day check: a market-closed day
+// must stay a pure no-op (MARKET_CLOSED) and must never be reported as
+// "busy" — that would mask the real reason for a skipped run.
 async function main(options) {
+  return mainUnlocked(options);
+}
+
+async function mainUnlocked(options) {
   options = options || {};
   loadEnvFile();
   const argv = options.argv || process.argv;
@@ -239,6 +251,29 @@ async function main(options) {
   const candleSource = options.source || process.env.CANDLE_SOURCE || 'yahoo';
   const crossCheckEnabled = options.crossCheck !== false && process.env.CANDLE_CROSSCHECK !== 'false';
 
+  // B3 (2026-10-20): take the shared Arjum lock for the REQUEST phase only.
+  // It is acquired here (after the trading-day check, so a market-closed day
+  // stays MARKET_CLOSED) and released as soon as the pass finishes. J1 invokes
+  // this in-process while already holding the lock — the lock is reentrant, so
+  // the nested pass runs directly.
+  const arjumSharedLock = require('../lib/arjum-shared-lock');
+  const lockOutcome = await arjumSharedLock.withArjumLock({ job: 'J2-candles', waitMs: 0 }, () => runCandlePass({
+    options, universe, targetDate, dryRun, candleSource, crossCheckEnabled, summary, tradingDay
+  }));
+  if (lockOutcome && lockOutcome.skipped) {
+    console.warn('[CANDLE-SKIP] SKIPPED_ARJUM_BUSY: job Arjum lain sedang berjalan; J2 dilewati untuk firing ini.');
+    const busy = { universe: universe.length, target_date: targetDate, skipped: true, reason: 'SKIPPED_ARJUM_BUSY', calendar_source: tradingDay.source, fetched: 0, cached: 0, stale: 0, failed: 0, stale_after_fetch: 0, quota_stop: false };
+    console.log(JSON.stringify({ mode: dryRun ? 'DRY_RUN' : 'LIVE', ...busy }, null, 2));
+    return busy;
+  }
+  return lockOutcome;
+}
+
+// B3: the actual request phase of the daily candle pass (runs under the shared
+// Arjum lock).
+async function runCandlePass(ctx) {
+  const { options, universe, targetDate, dryRun, candleSource, crossCheckEnabled, summary, tradingDay } = ctx;
+
   if (candleSource === 'yahoo' && crossCheckEnabled && !dryRun && universe.length > 20 && !options.skipCrossCheck) {
     try {
       const check = await performDailyCrossCheck(targetDate, {
@@ -249,15 +284,48 @@ async function main(options) {
       };
       if (!check.ok) {
         summary.cross_check_failed = true;
-        console.warn(`[CROSS-CHECK-FAILED] ${check.failed}/${check.total} sample diffs > 0.5%. Falling back to Arjum for all tickers today.`);
+        console.warn(`[CROSS-CHECK-FAILED] ${check.failed}/${check.total} sample diffs > 0.5%.`);
       } else {
         console.log(`[CROSS-CHECK-OK] ${check.passed}/${check.total} samples matched <= 0.5%.`);
       }
     } catch (err) {
       summary.cross_check_failed = true;
       summary.cross_check = { error: err && err.message };
-      console.warn(`[CROSS-CHECK-ERROR] ${err && err.message}. Falling back to Arjum for all tickers today.`);
+      console.warn(`[CROSS-CHECK-ERROR] ${err && err.message}.`);
     }
+  }
+
+  // B4 (2026-10-20): a failed cross-check must NOT trigger a mass fallback to
+  // Arjum. On 2026-10-19 the 16:40 run cross-checked 20/20 as "failed" (Arjum's
+  // own EOD candle for today was not published yet), then mass-fell-back to
+  // Arjum for ALL tickers: 943 requests burned, 0 usable bars, exit code 0 and
+  // no alarm. Instead: DEFER to the 23:30 pass, which is what actually
+  // recovers. An explicit override (env CANDLE_ALLOW_MASS_FALLBACK_ON_CROSSCHECK=1
+  // or options.allowMassFallbackOnCrossCheckFail=true) keeps the old behavior
+  // for manual use.
+  const allowMassFallback = options.allowMassFallbackOnCrossCheckFail === true
+    || process.env.CANDLE_ALLOW_MASS_FALLBACK_ON_CROSSCHECK === '1';
+  if (summary.cross_check_failed && !allowMassFallback) {
+    console.warn('[CROSS-CHECK-DEFER] Cross-check gagal; mass fallback ke Arjum DITOLAK untuk menghemat kuota. '
+      + 'Candle hari ini akan dicoba lagi pada pass 23:30 WIB.');
+    // B5 (2026-10-20): IHSG is a 1-request benchmark and must ALWAYS stay fresh,
+    // independent of the per-stock cross-check. Fetch it here (it never uses the
+    // Yahoo path) before bailing out, so a deferred stock pass still leaves the
+    // index bar current.
+    let ihsgOk = summary.ihsg_ok === true;
+    if (universe.includes('IHSG')) {
+      try {
+        const r = await fetcher.fetchDailyCandles('IHSG', { limit: Number(process.env.CANDLE_LIMIT) || 500, force: true });
+        ihsgOk = Boolean(r && r.ok);
+        summary.ihsg_ok = ihsgOk;
+      } catch (e) {
+        console.warn('[IHSG-STANDALONE] gagal:', e && e.message);
+      }
+    }
+    const deferred = Object.assign({}, summary, { deferred: true, reason: 'CROSS_CHECK_FAILED_DEFERRED', ihsg_ok: ihsgOk });
+    console.log(JSON.stringify({ mode: dryRun ? 'DRY_RUN' : 'LIVE', ...deferred }, null, 2));
+    if (!dryRun) process.exitCode = 6;
+    return deferred;
   }
 
   for (const ticker of universe) {

@@ -10,17 +10,32 @@
 CRON_TZ=Asia/Jakarta
 
 # ── INFRA HARIAN ──────────────────────────────────────────────────────────
+# B1 (2026-10-23): BACKFILL DIJEDA. Data harian (J1) lebih penting daripada
+# backfill riwayat. Baris di bawah TIDAK dihapus, hanya dikomentari. Pulihkan
+# dengan menghapus awalan "# " pada baris yang ditandai DIJEDA, setelah bagian C
+# selesai DAN B2-B3 terbukti.
 # Backfill candle historis (tengah malam)
-5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
+# DIJEDA 20261023 sampai J1 terkejar
+# 5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
 
 # Backfill otomatis broker summary asing (Hari kerja slot 1: 00:07 WIB)
-7 0 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
+# DIJEDA 20261023 sampai J1 terkejar
+# 7 0 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
 
 # Backfill otomatis broker summary asing (Hari kerja slot 2: 19:30 WIB)
-30 19 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
+# DIJEDA 20261023 sampai J1 terkejar
+# 30 19 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
 
 # Backfill otomatis broker summary asing (Akhir pekan: Sabtu & Minggu 00:07 WIB)
-7 0 * * 6,0 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekend --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
+# DIJEDA 20261023 sampai J1 terkejar
+# 7 0 * * 6,0 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekend --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
+
+# C (2026-10-23): PENGECORAN TANGGAL BOLONG — Sabtu 24 Okt 00:07 WIB.
+# Tidak ada J1/J2 di akhir pekan, jadi cadangan kecil (maks 1.500) saja.
+# Urutan terbaru dulu (22, 21, 20, lalu sisa 19 Okt), batch 50, berhenti bila
+# >20% gagal. Bila belum tuntas, jalankan lagi Minggu 00:07 (baris di bawah).
+7 0 * * 6 bash /home/ubuntu/auto-cuan/deploy/vps/run-catchup-missing-dates.sh --dates 2026-10-22,2026-10-21,2026-10-20,2026-10-19 --batch 50 >> /home/ubuntu/auto-cuan-runner/logs/catchup-missing-dates.log 2>&1
+7 0 * * 0 bash /home/ubuntu/auto-cuan/deploy/vps/run-catchup-missing-dates.sh --dates 2026-10-22,2026-10-21,2026-10-20,2026-10-19 --batch 50 >> /home/ubuntu/auto-cuan-runner/logs/catchup-missing-dates.log 2>&1
 
 # Lifecycle evaluator (sore, setelah bursa tutup)
 30 16 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-lifecycle-evaluator.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
@@ -32,6 +47,14 @@ CRON_TZ=Asia/Jakarta
 # Diulang 23:30 WIB untuk menangkap koreksi/revisi bar Yahoo.
 40 16 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-candles.log 2>&1
 30 23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-daily-candles.sh >> /home/ubuntu/auto-cuan-runner/logs/daily-candles.log 2>&1
+
+# ── IHSG MANDIRI (B5, 2026-10-20) — 1 request/hari, bebas fallback ────────
+# Bar IHSG adalah anchor market-regime/breadth dan TIDAK boleh bergantung pada
+# pass 962 saham (yang bisa bail-out saat cross-check gagal). Job ini terpisah:
+# 1 request Arjum, idempoten (bar yang sudah ada tidak diambil lagi), dan
+# MEMBERI PERINGATAN kalau bar hari bursa belum ada pada 17:30 WIB.
+45 17 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-ihsg-candle.sh >> /home/ubuntu/auto-cuan-runner/logs/ihsg-candle.log 2>&1
+30 23 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-ihsg-candle.sh >> /home/ubuntu/auto-cuan-runner/logs/ihsg-candle.log 2>&1
 
 # ── EOD MARKET DATA / BROKSUM INGESTION (16:30-17:30 WIB) ─────────────────
 # Window optimal: bursa tutup 16:00, KSEI merilis snapshot broker ~16:30-17:30.
@@ -65,6 +88,17 @@ CRON_TZ=Asia/Jakarta
 
 # ── END-OF-DAY / MALAM (Senin-Jumat, 21:30-22:15 WIB) ────────────────────
 15 22 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-screener-dispatch.sh --dry-run >> /home/ubuntu/auto-cuan-runner/logs/screener-dispatch.log 2>&1
+
+# BROKER HUNTER INDEX (B1, 2026-10-22) — 22:45 WIB, setelah J1 final.
+# Membangun ulang data/broker-hunter-indexes/ dari broker-summary lokal yang
+# sudah ditulis J1. Tidak memakai kuota Arjum (baca disk saja). Tanpa baris ini
+# index tetap basi sejak 12 Sep, seperti sebelum perbaikan ini.
+45 22 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-broker-hunter-indexer.sh >> /home/ubuntu/auto-cuan-runner/logs/broker-hunter-indexer.log 2>&1
+
+# BACKLOG AGE ALARM (B3, 2026-10-22) — 19:45 WIB, setelah jendela EOD.
+# Kalau antrean isi ulang H-1 lebih tua dari 24 jam DAN tidak berkurang, kirim
+# SATU peringatan/hari ke Telegram admin + tulis state untuk Admin Console.
+45 19 * * 1-5 bash /home/ubuntu/auto-cuan/deploy/vps/run-backlog-age-alarm.sh >> /home/ubuntu/auto-cuan-runner/logs/backlog-age-alarm.log 2>&1
 
 # ── TELEGRAM DELIVERY RETRY WORKER (tiap 15 menit, 17:00-23:45 WIB) ──────
 */15 17-23 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-retry-telegram-delivery.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/retry-telegram-delivery.log 2>&1

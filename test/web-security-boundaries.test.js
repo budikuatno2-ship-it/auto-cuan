@@ -133,12 +133,21 @@ test('the limiter actually refuses once the window is full', () => {
 });
 
 test('the limiter key cannot be chosen by the caller', () => {
-  // x-forwarded-for is appended to by the platform edge; the first entry is the
-  // address it observed.
-  assert.equal(clientAddress({ headers: { 'x-forwarded-for': '203.0.113.9, 10.0.0.1' } }), '203.0.113.9');
+  // C1: headers are trusted ONLY behind a trusted proxy hop. A direct caller
+  // (no trusted peer) cannot choose its bucket via X-Forwarded-For.
+  assert.equal(clientAddress({ headers: { 'x-forwarded-for': '203.0.113.9, 10.0.0.1' } }), 'unknown');
   assert.equal(clientAddress({ headers: {} }), 'unknown');
+  // Behind the local nginx hop, the LAST XFF entry (appended by the trusted hop)
+  // is used — never the client-supplied first entry.
+  assert.equal(
+    clientAddress({ headers: { 'x-forwarded-for': '203.0.113.9, 10.0.0.1' }, socket: { remoteAddress: '127.0.0.1' } }),
+    '10.0.0.1'
+  );
   // Control characters cannot be smuggled into the bucket key.
-  assert.doesNotMatch(clientAddress({ headers: { 'x-forwarded-for': 'a\u0000b' } }), /[\u0000-\u001F]/);
+  assert.doesNotMatch(
+    clientAddress({ headers: { 'x-forwarded-for': 'a\u0000b' }, socket: { remoteAddress: '127.0.0.1' } }),
+    /[\u0000-\u001F]/
+  );
 });
 
 test('a stored password hash must look like the digest the client sends', () => {

@@ -141,6 +141,127 @@ function brokerSummaryHasTrades(data) {
   return false;
 }
 
+// B6 (2026-10-20): the backfill must yield to the DAILY jobs.
+//
+// The daily jobs have a hard, non-negotiable quota need for the current
+// trading day (J1 broker summary + F + accumulation + insider, J2 candles,
+// IHSG). The backfill must therefore stop while that need is still covered.
+//
+// IMPORTANT SEMANTICS: `reserveQuota` is a FLOOR on the REMAINING quota — the
+// worker stops as soon as `remaining <= reserveQuota`. So the floor is the
+// amount of quota that must stay untouched, NOT the amount the backfill may
+// spend. Spending capacity is `remaining - reserve`.
+//
+// The floor = remaining daily-job need + a 10% retry buffer, so a day with many
+// retries still keeps the daily jobs safe.
+//
+// Pure function so it is unit-testable without touching the filesystem.
+const DAILY_JOB_BASE_NEED = 4400; // J1 (962+834+834+834) + J2 (962) rounded
+const DAILY_JOB_RETRY_RATIO = 0.10;
+
+function computeBackfillReserve(options = {}) {
+  // NOTE: Number(null) === 0 and Number(undefined) === NaN, so an explicitly
+  // unknown remaining must be handled BEFORE the numeric coercion.
+  const remaining = (options.remaining === null || options.remaining === undefined)
+    ? null
+    : Number(options.remaining);
+  const dailyNeed = Number.isFinite(options.dailyNeed) && options.dailyNeed > 0
+    ? options.dailyNeed
+    : DAILY_JOB_BASE_NEED;
+  const retryBuffer = Number.isFinite(options.retryBuffer)
+    ? options.retryBuffer
+    : Math.ceil(dailyNeed * DAILY_JOB_RETRY_RATIO);
+  const mode = options.mode === 'weekend' ? 'weekend' : 'weekday';
+
+  // The floor: quota that must remain available for the daily jobs.
+  const reserve = Math.max(0, Math.ceil(dailyNeed + retryBuffer));
+  if (!Number.isFinite(remaining)) {
+    // Unknown remaining quota -> be conservative and keep the old fixed reserve.
+    return {
+      reserve: Math.max(reserve, mode === 'weekend' ? WEEKEND_RESERVE : WEEKDAY_RESERVE),
+      spendable: 0,
+      dailyNeed, retryBuffer, remaining: null, mode
+    };
+  }
+  // How much the backfill may still spend before the floor is reached.
+  const spendable = Math.max(0, Math.floor(remaining - reserve));
+  return { reserve, spendable, dailyNeed, retryBuffer, remaining, mode };
+}
+
+// How many requests per ticker the daily job still owes.
+//
+// For a ticker that has no broker summary for the target date yet, the daily
+// worker spends: 1 ALL + 1 F + 1 accumulation + 1 insider = 4 requests.
+// (4 is deliberately an over-estimate for F — only some tickers have foreign
+// flow — because over-reserving is the safe direction.)
+const DAILY_REQUESTS_PER_TICKER = 4;
+
+// Count the universe tickers that still lack a dated broker-summary file.
+function countMissingForDate(baseDir, date, tickers) {
+  if (!tickers || !tickers.length) return 0;
+  let missing = 0;
+  for (const t of tickers) {
+    const p = path.join(baseDir, 'broker-summary', t, date + '.json');
+    if (!fs.existsSync(p)) missing++;
+  }
+  return missing;
+}
+
+// Total daily-job demand that is still outstanding right now:
+//   - today's own session (today minus what J1 already wrote)
+//   - the H-1 backlog (the previous trading day's pending tickers)
+// A ticker's missing day is counted once per date, so a ticker that is missing
+// on both days is counted twice (it really does need two days of data).
+function computePendingDailyNeed(baseDir, todayKey, tickers) {
+  let need = countMissingForDate(baseDir, todayKey, tickers) * DAILY_REQUESTS_PER_TICKER;
+  const prevKey = previousTradingDayKey(todayKey);
+  if (prevKey) {
+    try {
+      const markerPath = path.join(baseDir, '_daily-update-marker', prevKey + '.json');
+      if (fs.existsSync(markerPath)) {
+        const marker = JSON.parse(fs.readFileSync(markerPath, 'utf8'));
+        const pending = Number(marker.pending);
+        if (Number.isFinite(pending) && pending > 0) {
+          need += pending * DAILY_REQUESTS_PER_TICKER;
+        }
+      }
+    } catch (_) {}
+  }
+  return need;
+}
+
+// Previous trading day (weekday-only; the IDX holiday table is not required
+// for a conservative reserve — a holiday only makes the reserve slightly
+// larger, which is the safe direction).
+function previousTradingDayKey(dateKey) {
+  const d = new Date(dateKey + 'T00:00:00Z');
+  if (isNaN(d.getTime())) return null;
+  do { d.setUTCDate(d.getUTCDate() - 1); } while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+  return d.toISOString().slice(0, 10);
+}
+
+// Resolve the reserve FLOOR the backfill must not dip below.
+//
+// While the day's EOD work is still pending, the floor is the OUTSTANDING
+// daily-job demand (today's session + the H-1 backlog) plus a 10% retry
+// buffer, so the backfill can never eat the quota the daily jobs still need.
+// The floor is never below the static daily-job base need. Once today's EOD
+// work is done (.done sentinel) that demand is already spent, so the
+// historical fixed reserve applies again and the leftover becomes usable.
+function resolveBackfillReserveFloor(options = {}) {
+  const baseDir = options.baseDir;
+  const explicitMode = options.explicitModeArg || null;
+  const mode = options.mode || 'weekday';
+  const todayKey = wibDateKey();
+  if (eodDoneExists(baseDir, todayKey)) {
+    return resolveDynamicReserveQuota(baseDir, explicitMode);
+  }
+  const pendingNeed = Number.isFinite(options.pendingDailyNeed) && options.pendingDailyNeed > 0
+    ? options.pendingDailyNeed
+    : DAILY_JOB_BASE_NEED;
+  return computeBackfillReserve({ remaining: options.remaining, mode, dailyNeed: pendingNeed }).reserve;
+}
+
 function resolveDynamicReserveQuota(baseDir, explicitMode = null, now = new Date()) {
   const todayKey = wibDateKey(now);
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -396,7 +517,32 @@ function categorizeTickersByLiquidity(baseDir, candlesDir, tickers) {
   };
 }
 
+// B3 (2026-10-20): the backfill worker must yield to the daily jobs. It takes
+// the shared Arjum lock (non-blocking): if J1 or J2 is running, the backfill is
+// SKIPPED for this firing instead of hammering stock.arjum.com in parallel.
+//
+// B3 (2026-10-23): the lock used to be held for the ENTIRE run (hours), so a
+// long backfill made every J1 firing skip. The lock is now taken per BATCH: the
+// backfill releases it between batches so J1 can start within one batch window.
+// `BACKFILL_BATCH_SIZE` (default 50) controls the batch size.
 async function run(argv) {
+  const arjumSharedLock = require('../lib/arjum-shared-lock');
+  const outcome = await arjumSharedLock.withArjumLock({ job: 'backfill-broksum', waitMs: 0 }, () => runUnlocked(argv));
+  if (outcome && outcome.skipped) {
+    console.log('[BACKFILL-LOCK] SKIPPED_ARJUM_BUSY: job Arjum harian sedang berjalan; backfill dilewati untuk firing ini.');
+    return { skipped: true, reason: 'SKIPPED_ARJUM_BUSY', requestsSent: 0 };
+  }
+  return outcome;
+}
+
+// Batch size for the per-batch lock hand-off. Exported for tests.
+function backfillBatchSize(env) {
+  const e = env || process.env;
+  const n = parseInt(e.BACKFILL_BATCH_SIZE, 10);
+  return Number.isFinite(n) && n > 0 ? n : 50;
+}
+
+async function runUnlocked(argv) {
   const args = argv || process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
   const onlyForeign = args.includes('--only-foreign') || process.env.ONLY_FOREIGN === 'true';
@@ -438,6 +584,30 @@ async function run(argv) {
   // Set Arjum throttle delay in process env so client throttle queue matches worker pacing
   process.env.ARJUM_THROTTLE_DELAY_MS = String(delayMs);
 
+  // B3 (2026-10-23): per-batch lock hand-off so J1 is never starved.
+  const batchSize = backfillBatchSize();
+  let processedTickers = 0;
+  const arjumSharedLock = require('../lib/arjum-shared-lock');
+  // Release the shared lock, then check whether a daily job is waiting for it.
+  // If so, this run stops (state is saved) and resumes on the next firing.
+  async function yieldLockToDailyJobs() {
+    if (arjumSharedLock.hasLockInThisProcess()) {
+      arjumSharedLock.releaseLock(arjumSharedLock.defaultLockFile());
+      arjumSharedLock.__resetReentrancyForTests();
+    }
+    // Give a waiting daily job a moment to take the lock.
+    await sleep(1500);
+    const info = arjumSharedLock.readLockInfo(arjumSharedLock.defaultLockFile());
+    const holder = info && info.job ? String(info.job) : '';
+    if (holder && holder !== 'backfill-broksum') {
+      console.log(`[BACKFILL-LOCK] Lock kini dipegang ${holder}; backfill berhenti agar job harian jalan.`);
+      return true;
+    }
+    // Nobody waiting: take the lock back and continue.
+    const reacquired = await arjumSharedLock.withArjumLock({ job: 'backfill-broksum', waitMs: 0 }, async () => true);
+    return Boolean(reacquired && reacquired.skipped);
+  }
+
   const baseDir = getBaseDir(overrideTargetDir);
 
   // 2c: holiday fallback. On a non-trading weekday, behave like weekend.
@@ -448,7 +618,11 @@ async function run(argv) {
   }
 
   const explicitModeArg = modeIdx >= 0 ? mode : null;
-  let reserveQuota = resolveDynamicReserveQuota(baseDir, explicitModeArg);
+  const remainingNow = quotaTracker.getRemainingToday(arjumClient.getConfiguredDailyQuota());
+  // The reserve floor is resolved LATER (after the universe is known) because it
+  // depends on the OUTSTANDING daily-job demand, which is counted from the
+  // dated broker-summary files on disk.
+  let reserveQuota = 0;
   let candlesDir = null;
   for (const a of args) {
     if (a.startsWith('--candles-dir=')) candlesDir = a.slice(14);
@@ -472,7 +646,7 @@ async function run(argv) {
   }
 
   console.log('=== AUTO-CUAN BROKER SUMMARY BACKFILL WORKER ===');
-  console.log(`Mode:            ${mode.toUpperCase()} (Reserve Quota: ${reserveQuota})`);
+  console.log(`Mode:            ${mode.toUpperCase()}`);
   console.log(`Only Foreign:    ${onlyForeign} (HANYA flow=F&all_data=true)`);
   console.log(`Initial Pacing:  ${delayMs}ms (~${(1000/delayMs).toFixed(1)} req/s)`);
   console.log(`Execution Limit: ${limit === Infinity ? 'UNLIMITED' : limit}`);
@@ -520,6 +694,23 @@ async function run(argv) {
       }
     } catch (_) {}
   }
+
+  // B6 (2026-10-20): the reserve is a FLOOR on the remaining quota. It is the
+  // amount of quota that must stay available for the DAILY jobs still owing
+  // work (today's session + the H-1 backlog) plus a 10% retry buffer — so the
+  // backfill can never eat the quota the daily jobs need. Once today's EOD work
+  // is done (.done sentinel) that demand is already spent, so the historical
+  // fixed reserve applies again and the leftover becomes usable.
+  const pendingDailyNeed = computePendingDailyNeed(baseDir, todayKey, universeTickers);
+  reserveQuota = resolveBackfillReserveFloor({
+    baseDir,
+    explicitModeArg,
+    remaining: remainingNow,
+    mode,
+    pendingDailyNeed
+  });
+  console.log(`[BUDGET] Kebutuhan job harian yang masih tertunda: ${pendingDailyNeed} request; lantai kuota backfill: ${reserveQuota}`);
+  console.log(`Mode:            ${mode.toUpperCase()} (Reserve Quota: ${reserveQuota})`);
 
   const { liquid, regular } = categorizeTickersByLiquidity(baseDir, candlesDir, universeTickers);
   console.log(`Tickers: ${liquid.length} liquid (turnover >= 1M) + ${regular.length} regular = ${universeTickers.length} total.`);
@@ -657,8 +848,16 @@ async function run(argv) {
           continue;
         }
 
-        // Re-evaluate dynamic reserve quota before checking limits (handles 00:00 WIB rollover)
-        reserveQuota = resolveDynamicReserveQuota(baseDir, explicitModeArg);
+        // Re-evaluate the reserve floor before checking limits (handles the 00:00
+        // WIB rollover, when the remaining quota resets and the daily jobs are
+        // no longer pending).
+        reserveQuota = resolveBackfillReserveFloor({
+          baseDir,
+          explicitModeArg,
+          remaining: quotaTracker.getRemainingToday(arjumClient.getConfiguredDailyQuota()),
+          mode,
+          pendingDailyNeed: computePendingDailyNeed(baseDir, todayKey, universeTickers)
+        });
 
         // Check Candle Volume & All File for Zero-Trade Session Optimization
         // Syarat lewat: volume candle 0 DAN file all kosong / tidak ada transaksi
@@ -817,10 +1016,13 @@ async function run(argv) {
               needsAll = false;
               continue; // next date; the task stays queued for a later run
             } else {
-              console.error(`[BACKFILL-STOP] Respon tidak valid untuk ALL ${ticker} ${date}: status=${resAll.status}, ok=${resAll.ok}, fallback=${resAll.fallback}, flow=${resAll.data && resAll.data.flow}, error=${resAll.error}`);
-              haltReason = 'provider_error';
-              quotaHalted = true;
-              break;
+              // B6 (2026-10-20): an invalid/garbled provider response for ONE task
+              // must not kill the whole backfill. Skip the task (it stays queued
+              // for a later run) and CONTINUE with the next task.
+              console.warn(`[BACKFILL-SKIP] Respon tidak valid untuk ALL ${ticker} ${date}: status=${resAll.status}, ok=${resAll.ok}, fallback=${resAll.fallback}, flow=${resAll.data && resAll.data.flow}, error=${resAll.error}`);
+              providerSkipped.push({ ticker, date, flow: 'all', status: resAll.status, error: resAll.error });
+              needsAll = false;
+              continue;
             }
 
             // Quota remaining check
@@ -908,10 +1110,11 @@ async function run(argv) {
               needsF = false;
               continue; // next date; the task stays queued for a later run
             } else {
-              console.error(`[BACKFILL-STOP] Respon tidak valid untuk FOREIGN ${ticker} ${date}: status=${resF.status}, ok=${resF.ok}, fallback=${resF.fallback}, flow=${resF.data && resF.data.flow}, error=${resF.error}`);
-              haltReason = 'provider_error';
-              quotaHalted = true;
-              break;
+              // B6 (2026-10-20): skip the task and continue (see ALL branch).
+              console.warn(`[BACKFILL-SKIP] Respon tidak valid untuk FOREIGN ${ticker} ${date}: status=${resF.status}, ok=${resF.ok}, fallback=${resF.fallback}, flow=${resF.data && resF.data.flow}, error=${resF.error}`);
+              providerSkipped.push({ ticker, date, flow: 'F', status: resF.status, error: resF.error });
+              needsF = false;
+              continue;
             }
 
             // Quota remaining check
@@ -946,6 +1149,21 @@ async function run(argv) {
       }
 
       if (quotaHalted || requestsSent >= limit) break;
+
+      // B3 (2026-10-23): hand the shared Arjum lock back between batches so a
+      // long backfill cannot starve J1. If a daily job is waiting, this run
+      // stops here and resumes on the next firing (state is already saved).
+      processedTickers++;
+      if (processedTickers % batchSize === 0) {
+        saveState();
+        const yielded = await yieldLockToDailyJobs();
+        if (yielded) {
+          console.log(`[BACKFILL-LOCK] Menyerahkan lock setelah ${processedTickers} emiten; job harian menunggu. Berhenti untuk firing ini.`);
+          haltReason = 'yielded_to_daily';
+          quotaHalted = true;
+          break;
+        }
+      }
     }
   } finally {
     saveState();
@@ -1001,7 +1219,16 @@ module.exports = {
   getTickerCandleMap,
   brokerSummaryHasTrades,
   resolveDynamicReserveQuota,
+  resolveBackfillReserveFloor,
+  computeBackfillReserve,
+  computePendingDailyNeed,
+  countMissingForDate,
+  previousTradingDayKey,
+  DAILY_JOB_BASE_NEED,
+  DAILY_JOB_RETRY_RATIO,
+  DAILY_REQUESTS_PER_TICKER,
   isProviderTransient,
   PROVIDER_RETRY_DELAYS_MS,
-  MAX_CONSECUTIVE_5XX
+  MAX_CONSECUTIVE_5XX,
+  backfillBatchSize
 };

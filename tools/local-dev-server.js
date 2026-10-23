@@ -4,6 +4,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { createStaticResponder } = require('../lib/static-assets');
+const { isAllowedDataPath } = require('../lib/data-route-allowlist');
+const { applySecurityHeaders, handleCspReport } = require('../lib/security-headers');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
@@ -834,6 +836,16 @@ const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
   let pathname = parsedUrl.pathname;
 
+  // C2: HSTS + CSP (Report-Only) for the HTML document surface, applied at the
+  // origin so it ships whether or not nginx is in front. Deliberately limited to
+  // navigations: API and static-asset responses keep their existing headers. HSTS
+  // is set on every response (it is origin-wide and harmless on subresources);
+  // CSP is set only on documents so it cannot perturb API/asset contracts.
+  const isDocumentRequest = (req.method === 'GET' || req.method === 'HEAD') &&
+    !pathname.startsWith('/api/') && !pathname.startsWith('/data/') &&
+    !/\.[a-z0-9]{2,5}$/i.test(pathname);
+  applySecurityHeaders(res, { csp: isDocumentRequest, env: process.env });
+
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Telegram-Bot-Api-Secret-Token');
@@ -913,6 +925,23 @@ const server = http.createServer(async (req, res) => {
     // Alias: /api/track-record -> sector-hot?action=track-record.
     if (endpointName === 'track-record') {
       parsedUrl.searchParams.set('action', 'track-record');
+      endpointName = 'sector-hot';
+      pathname = '/api/sector-hot';
+    }
+
+    // C2: CSP violation reports are collected by lib/security-headers (not an
+    // api/ file, to respect the 13-function Vercel budget).
+    if (endpointName === 'csp-report') {
+      req.query = Object.fromEntries(parsedUrl.searchParams.entries());
+      return await handleCspReport(req, res);
+    }
+
+    // Alias: /api/market-breadth -> sector-hot?action=market-breadth. The client
+    // already calls this path, but no api/market-breadth.js file existed, so the
+    // request fell through to the static handler and answered 404 (GET returns
+    // the server-side breadth, so it is reachable directly too).
+    if (endpointName === 'market-breadth') {
+      parsedUrl.searchParams.set('action', 'market-breadth');
       endpointName = 'sector-hot';
       pathname = '/api/sector-hot';
     }
@@ -1654,7 +1683,19 @@ const server = http.createServer(async (req, res) => {
   }
 
   // API/auth handling above never enters the public static cache.
+  // B1 (security): /data/* is DEFAULT-DENY and unauthenticated. Only the
+  // bandarmologi intel "latest_<range>.json" indexes (the sole in-browser
+  // consumer, public/bandarmologi-runtime.js) are served; every other path —
+  // including premium screener / broker-summary exports and any traversal
+  // attempt — answers 404 so the existence of protected files is never
+  // revealed. Premium data stays reachable through authenticated API
+  // endpoints, never through /data/.
   if (pathname.startsWith('/data/')) {
+    if (!isAllowedDataPath(pathname)) {
+      res.statusCode = 404;
+      res.setHeader('Cache-Control', 'no-store');
+      return res.end(req.method === 'HEAD' ? undefined : '404 Not Found');
+    }
     if (await serveData(req,res,pathname.slice('/data'.length),{noStore:true,extensionFallback:false})) return;
   }
   if (pathname === '/dashboard' || pathname === '/review' || pathname === '/pattern' || pathname === '/screener' || pathname === '/watchlist' || pathname === '/sektor' || pathname === '/trackrecord') pathname = '/index.html';

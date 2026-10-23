@@ -5,6 +5,7 @@ const candles=require('./fetch-daily-candles');
 const broksumValidator=require('../lib/broksum-validator');
 const calendar=require('../lib/idx-trading-calendar');
 const historySync=require('../lib/daily-history-sqlite-sync');
+const arjumSharedLock=require('../lib/arjum-shared-lock');
 
 const RUNNER_DIR = process.env.AUTO_CUAN_RUNNER_DIR || '/home/ubuntu/auto-cuan-runner';
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -243,6 +244,18 @@ async function run(options={}){
       return p;
     }catch(_){return null;}
   }
+  // B3 (2026-10-20): hold the shared Arjum lock for the whole EOD Arjum phase
+  // (broker summary + candles + history sync). J2 and the backfill worker use
+  // the same lock file, so they wait/skip instead of running in parallel. The
+  // nested broker/candle calls run in-process and are reentrant (no re-lock).
+  //
+  // B3 (2026-10-23): J1 is the DAILY job and must be prioritized. `waitMs: 0`
+  // meant a single overlapping backfill firing made J1 skip instantly, and on
+  // 20-22 Oct every EOD firing skipped this way (SKIPPED_ARJUM_BUSY), so no
+  // marker was ever written. J1 now WAITS for the lock (bounded), and repeated
+  // skips raise an alarm instead of failing silently.
+  const j1LockWaitMs = Number(process.env.J1_LOCK_WAIT_MS) > 0 ? Number(process.env.J1_LOCK_WAIT_MS) : 10 * 60 * 1000;
+  const lockOutcome = await arjumSharedLock.withArjumLock({ job: 'J1', waitMs: j1LockWaitMs }, async () => {
   for(const date of dates){
     if(!dryRun)writeState(date,{date,complete:false,updated_at:new Date().toISOString()});
     if(dryRun){console.log('PENDING_MARKET_DATE='+date);continue;}
@@ -304,6 +317,24 @@ async function run(options={}){
         completed_at: new Date().toISOString()
       });
     }
+  }
+  return { ok: true };
+  });
+  if(lockOutcome && lockOutcome.skipped){
+    console.log('[ARJUM-LOCK] SKIPPED_ARJUM_BUSY: J1 tidak berjalan; job Arjum lain sedang berjalan. Akan dicoba di firing berikutnya.');
+    // B3: count consecutive skips and alarm on the 3rd (the 20-22 Oct outage was
+    // invisible because each skip was only a log line).
+    try{
+      const alarm = require('../lib/j1-skip-alarm');
+      const outcome = alarm.recordSkip({ statePath: process.env.J1_SKIP_ALARM_STATE || undefined });
+      if(outcome.shouldAlert){
+        await alarm.send(outcome.detail);
+        console.log('[J1-SKIP-ALARM] consecutive_skips=' + outcome.detail.consecutiveSkips + ' alert_sent=' + (outcome.sent === true));
+      }
+    }catch(error){ console.error('J1_SKIP_ALARM_FAILED', error.message); }
+  } else if(lockOutcome && !lockOutcome.skipped){
+    // A successful run clears the consecutive-skip counter.
+    try{ require('../lib/j1-skip-alarm').recordSuccess({ statePath: process.env.J1_SKIP_ALARM_STATE || undefined }); }catch(_){}
   }
   process.exitCode=undefined;
   if(!dryRun&&pendingDates(options.now).some(date=>{

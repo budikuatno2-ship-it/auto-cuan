@@ -20,6 +20,7 @@
  */
 
 const path = require('node:path');
+const os = require('node:os');
 const ROOT = path.resolve(__dirname, '..');
 const guard = require(path.join(ROOT, 'lib', 'market-hours-guard'));
 const runner = require(path.join(ROOT, 'tools', 'run-all-screeners-vps'));
@@ -27,7 +28,7 @@ const snapshotBuilder = require(path.join(ROOT, 'tools', 'build-screener-snapsho
 const snapshotAlarm = require(path.join(ROOT, 'lib', 'daytrade-snapshot-alarm'));
 
 function parseArgs(argv) {
-  const opts = { execute: false, maxBatches: 120, sleepMs: 500, force: false, syncSnapshot: false };
+  const opts = { execute: false, maxBatches: 120, sleepMs: 500, force: false, syncSnapshot: false, speed: 'fast' };
   for (let i = 2; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--execute') opts.execute = true;
@@ -36,6 +37,8 @@ function parseArgs(argv) {
     else if (arg === '--sync-snapshot') opts.syncSnapshot = true;
     else if (arg === '--max-batches') opts.maxBatches = Math.max(1, Number(argv[++i]) || opts.maxBatches);
     else if (arg === '--sleep-ms') opts.sleepMs = Math.max(0, Number(argv[++i]) || 0);
+    else if (arg === '--speed') opts.speed = normalizeSpeed(argv[++i]);
+    else if (arg.indexOf('--speed=') === 0) opts.speed = normalizeSpeed(arg.slice('--speed='.length));
     else if (arg === '--help' || arg === '-h') opts.help = true;
     else throw new Error('Unknown option: ' + arg);
   }
@@ -79,6 +82,46 @@ function shouldRejectEmptySnapshot(snapshot) {
   if (!snapshot || snapshot.ok !== true) return false;
   const rows = Number(snapshot.rows || 0);
   return !Number.isFinite(rows) || rows <= 0;
+}
+
+// ---------------------------------------------------------------------------
+// Run-speed modes.
+//
+// `fast` is the historic 258-name curated shortlist. `full` scans the entire
+// eligible DayTrade universe (~800 names) using the SAME BATCH_SIZE 50 that
+// api/sector-hot.js already applies to full mode. The DEFAULT stays `fast`, so
+// the existing 15-minute cron keeps its exact current behaviour until the
+// schedule is deliberately reviewed (change request A3).
+//
+// A full run must never overrun a single 15-minute slot, so the producer aborts
+// cleanly at the ceiling: the last good snapshot stays on disk, the run is
+// logged as ABORTED_TIMEOUT, and a half-finished scan is never published.
+const RUN_SPEEDS = new Set(['fast', 'full']);
+const DAYTRADE_SPEED_BATCH_SIZE = 50; // mirrors api/sector-hot.js full-mode BATCH_SIZE
+const FULL_RUN_TIMEOUT_MS = 6 * 60 * 1000;
+const FAST_RUN_TIMEOUT_MS = 4 * 60 * 1000;
+
+function normalizeSpeed(value) {
+  const s = String(value == null ? '' : value).toLowerCase().trim();
+  return RUN_SPEEDS.has(s) ? s : 'fast';
+}
+
+function resolveRunTimeoutMs(opts) {
+  const configured = Number(opts && opts.timeoutMs);
+  if (Number.isFinite(configured) && configured > 0) return configured;
+  return (opts && opts.speed === 'full') ? FULL_RUN_TIMEOUT_MS : FAST_RUN_TIMEOUT_MS;
+}
+
+function readPeakRssMb() {
+  try { return Math.round((process.memoryUsage().rss || 0) / (1024 * 1024)); }
+  catch (_) { return null; }
+}
+
+function readLoadAvg1() {
+  try {
+    const l = os.loadavg();
+    return Number.isFinite(l && l[0]) ? Number(l[0].toFixed(2)) : null;
+  } catch (_) { return null; }
 }
 
 /**
@@ -209,30 +252,87 @@ async function run(options, deps) {
     log('  memory   : ' + mem.availableMb.toFixed(1) + ' MB available (floor ' + mem.minMb.toFixed(0) + ' MB)');
   }
 
-  log('  mode     : EXECUTE / FAST');
+  const speed = normalizeSpeed(opts.speed);
+  const timeoutMs = resolveRunTimeoutMs({ speed, timeoutMs: opts.timeoutMs });
+  const startedMs = Date.now();
+  const deadlineMs = startedMs + timeoutMs;
+  const loadStart = readLoadAvg1();
+  let peakRssMb = readPeakRssMb();
+
+  log('  mode     : EXECUTE / ' + speed.toUpperCase());
+  log('  timeout  : ' + Math.round(timeoutMs / 1000) + 's (single run ceiling)');
+  log('  load 1m  : start=' + loadStart + '  rss=' + peakRssMb + 'MB');
   log('  delivery : deferred_to_fast_watcher');
   log('  base URL : ' + baseUrl);
 
   let batch = 0;
   let last = null;
+  let lastGood = null;
   let unknownStatusRetries = 0;
 
+  // Per-run summary. duration_ms is measured producer-side so the 15-minute slot
+  // always records how long the whole run really took, not just one batch.
+  const buildRunMeta = () => ({
+    run_speed: speed,
+    universe_count: Number(lastGood && lastGood.universe_count || 0),
+    scanned_count: Number(lastGood && lastGood.scanned_count || 0),
+    duration_ms: Math.max(0, Date.now() - startedMs),
+    peak_rss_mb: peakRssMb,
+    loadavg1_start: loadStart,
+    loadavg1_end: readLoadAvg1()
+  });
+
+  const logRunSummary = (outcome) => {
+    const meta = buildRunMeta();
+    log('  summary  : ' + outcome +
+      ' mode=' + speed +
+      ' universe=' + meta.universe_count +
+      ' scanned=' + meta.scanned_count +
+      ' duration=' + meta.duration_ms + 'ms' +
+      ' peak_rss=' + meta.peak_rss_mb + 'MB' +
+      ' load1=' + meta.loadavg1_start + '->' + meta.loadavg1_end);
+    return meta;
+  };
+
   while (batch < opts.maxBatches) {
+    // Abort cleanly before spending the next batch if the slot is already spent.
+    // The last good snapshot stays on disk and a half scan is never published.
+    if (Date.now() >= deadlineMs) {
+      const meta = logRunSummary('ABORTED_TIMEOUT');
+      log('  abort    : run exceeded ' + Math.round(timeoutMs / 1000) + 's ceiling; stopping cleanly (no publish, last good snapshot preserved)');
+      return {
+        ok: false,
+        aborted: true,
+        published: false,
+        reason: 'ABORTED_TIMEOUT',
+        run_speed: speed,
+        universe_count: meta.universe_count,
+        scanned_count: meta.scanned_count,
+        duration_ms: meta.duration_ms,
+        peak_rss_mb: meta.peak_rss_mb,
+        loadavg1_start: meta.loadavg1_start,
+        loadavg1_end: meta.loadavg1_end,
+        response: last
+      };
+    }
+
     const query = {
       action: 'daytrade-screener-run',
       force: 1,
       batch,
       mode: 'auto',
-      speed: 'fast',
+      speed,
       send_radar: 0,
       defer_to_fast_watcher: 1
     };
 
     last = await client.call(query);
+    peakRssMb = Math.max(Number(peakRssMb || 0), Number(readPeakRssMb() || 0));
     const status = String(last && last.status || '').toLowerCase();
     log('  batch ' + batch + ': status=' + (status || 'unknown') +
       ' scanned=' + Number(last && last.scanned_count || 0) +
       '/' + Number(last && last.universe_count || 0));
+    if (Number(last && last.universe_count || 0) > 0) lastGood = last;
 
     // Missing/unknown status = transient. Retry the SAME batch with backoff
     // instead of aborting the whole 15-minute cycle (see the 13 Oct outage).
@@ -266,6 +366,7 @@ async function run(options, deps) {
         throw new Error('DayTrade published but snapshot materialization failed: ' +
           String(snapshot && snapshot.reason || 'unknown'));
       }
+      const runMeta = logRunSummary(String(status).toUpperCase());
       // Never let an empty snapshot overwrite the last healthy one.
       if (shouldRejectEmptySnapshot(snapshot)) {
         log('  snapshot : SKIPPED — producer reported 0 rows, existing file preserved');
@@ -275,6 +376,11 @@ async function run(options, deps) {
           run_date: last.run_date || null,
           run_id: last.run_id || null,
           published_count: Number(last.published_count || 0),
+          run_speed: speed,
+          universe_count: runMeta.universe_count,
+          scanned_count: runMeta.scanned_count,
+          duration_ms: runMeta.duration_ms,
+          meta: runMeta,
           snapshot: Object.assign({}, snapshot, { rejected_empty: true })
         };
       }
@@ -285,6 +391,11 @@ async function run(options, deps) {
         run_date: last.run_date || null,
         run_id: last.run_id || null,
         published_count: Number(last.published_count || 0),
+        run_speed: speed,
+        universe_count: runMeta.universe_count,
+        scanned_count: runMeta.scanned_count,
+        duration_ms: runMeta.duration_ms,
+        meta: runMeta,
         snapshot
       };
     }
@@ -296,6 +407,13 @@ async function run(options, deps) {
 
     if (status === 'failed' || last.success === false) {
       throw new Error('DayTrade producer failed: ' + String(last.error || last.error_code || status || 'unknown'));
+    }
+
+    // The API refuses a second concurrent full scan and answers `skipped`. Treat
+    // that as a clean slot skip, not an error: the ongoing run owns this slot.
+    if (status === 'skipped' || last.skipped_due_to_running === true) {
+      log('  skip     : SKIPPED_RUNNING — a previous DayTrade scan is still running.');
+      return { ok: true, skipped: true, reason: 'SKIPPED_RUNNING', run_speed: speed, response: last };
     }
 
     if (status !== 'running') {
@@ -313,7 +431,7 @@ async function run(options, deps) {
 async function main() {
   const opts = parseArgs(process.argv);
   if (opts.help) {
-    console.log('Usage: node tools/run-daytrade-intraday-producer.js [--dry-run|--execute] [--max-batches N] [--sleep-ms N]');
+    console.log('Usage: node tools/run-daytrade-intraday-producer.js [--dry-run|--execute] [--speed fast|full] [--max-batches N] [--sleep-ms N]');
     return;
   }
   const result = await run(opts);
@@ -336,5 +454,14 @@ module.exports = {
   retryDelayFor,
   shouldRejectEmptySnapshot,
   maybeAlertStaleSnapshot,
-  UNKNOWN_STATUS_RETRY_DELAYS_MS
+  UNKNOWN_STATUS_RETRY_DELAYS_MS,
+  // Run-speed contract (full-universe scan feature).
+  normalizeSpeed,
+  resolveRunTimeoutMs,
+  RUN_SPEEDS,
+  DAYTRADE_SPEED_BATCH_SIZE,
+  FULL_RUN_TIMEOUT_MS,
+  FAST_RUN_TIMEOUT_MS,
+  readPeakRssMb,
+  readLoadAvg1
 };
