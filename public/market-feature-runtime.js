@@ -334,6 +334,119 @@ function acAttachHiLo(chart, series, candles, container, fmt) {
     return { refresh: schedule };
 }
 
+// HANDOFF 5a "Kursor" and "Timeframe dan navigasi".
+var AC_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+function acTimeParts(t) {
+    if (t && typeof t === 'object') return { y: t.year, m: t.month, d: t.day };
+    if (typeof t === 'number') { var dt = new Date(t * 1000); return { y: dt.getUTCFullYear(), m: dt.getUTCMonth() + 1, d: dt.getUTCDate() }; }
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(t || ''));
+    return m ? { y: +m[1], m: +m[2], d: +m[3] } : null;
+}
+// Bottom axis: the year shows wherever the year changes ("Jan '26").
+function acTickMark(t, type) {
+    var p = acTimeParts(t);
+    if (!p) return '';
+    if (type === 0) return AC_MONTHS[p.m - 1] + " '" + String(p.y).slice(2);
+    if (type === 1) return AC_MONTHS[p.m - 1];
+    return String(p.d);
+}
+function acCrosshairDate(t) {
+    var p = acTimeParts(t);
+    return p ? p.d + ' ' + AC_MONTHS[p.m - 1] + " '" + String(p.y).slice(2) : '';
+}
+// Default view per chart mode: Scalping 3 months, Investor 1 year, the rest
+// 6 months (sessions on 1D, bars on 1W).
+function acDefaultBars(mode, weekly) {
+    if (mode === 'scalping') return weekly ? 13 : 63;
+    if (mode === 'investor') return weekly ? 52 : 250;
+    return weekly ? 26 : 126;
+}
+// Candle under the crosshair: the logical index when it matches, else by date.
+function acCandleIndex(candles, param, byDate) {
+    if (!param || param.time == null) return -1;
+    var i = param.logical != null ? Math.round(param.logical) : -1;
+    var p = acTimeParts(param.time), key = p ? p.y + '-' + p.m + '-' + p.d : '';
+    if (i >= 0 && i < candles.length) {
+        var q = acTimeParts(candles[i].time);
+        if (q && q.y + '-' + q.m + '-' + q.d === key) return i;
+    }
+    return byDate && key in byDate ? byDate[key] : -1;
+}
+function acDateIndex(candles) {
+    var map = {};
+    for (var i = 0; i < candles.length; i++) { var p = acTimeParts(candles[i].time); if (p) map[p.y + '-' + p.m + '-' + p.d] = i; }
+    return map;
+}
+// Info box next to the cursor: date, open, high, low, close, change, volume.
+// It moves by transform once per frame and switches side near the right edge;
+// its contents change only when the bar under the cursor changes.
+function acAttachCursorBox(chart, candles, container, fmt, volFmt, byDate) {
+    var box = document.createElement('div');
+    box.className = 'ac-xtip';
+    box.setAttribute('aria-hidden', 'true');
+    box.style.cssText = 'position:absolute;left:0;top:0;z-index:13;pointer-events:none;display:none;will-change:transform;box-sizing:border-box;padding:7px 10px;gap:3px;border-radius:8px;background:var(--ac-surface, #0f1319);border:1px solid var(--ac-hair, #1c2333);box-shadow:0 10px 24px -14px rgba(14,23,20,.45);font:500 12px var(--ac-font, system-ui, sans-serif);color:var(--ac-2, #9ca3af);';
+    container.appendChild(box);
+    var pending = null, raf = 0, shown = -1, tipW = 178, tipH = 0, paneW = 0, paneH = 0;
+    var measure = function() {
+        var size = typeof chart.paneSize === 'function' ? chart.paneSize() : null;
+        paneW = size ? size.width : container.clientWidth;
+        paneH = size ? size.height : container.clientHeight;
+        tipW = paneW < 520 ? 150 : 178;
+        box.style.width = tipW + 'px';
+    };
+    var row = function(k, v, col) { return '<div style="display:flex;justify-content:space-between;gap:10px"><span>' + k + '</span><b style="font-family:var(--ac-font-mono, ui-monospace, monospace);font-weight:700;color:' + (col || 'var(--ac-ink, #e5e7eb)') + '">' + v + '</b></div>'; };
+    var content = function(i) {
+        var c = candles[i], prev = i > 0 ? Number(candles[i - 1].close) : null, close = Number(c.close);
+        var chg = prev > 0 ? (close - prev) / prev * 100 : null;
+        var col = chg == null ? '' : (chg >= 0 ? 'var(--ac-pos, #10b981)' : 'var(--ac-neg, #ef4444)');
+        var p = acTimeParts(c.time);
+        var rows = ['<div style="font-weight:700;color:var(--ac-ink, #e5e7eb)">' + (p ? p.d + ' ' + AC_MONTHS[p.m - 1] + ' ' + p.y : '') + '</div>',
+            row('Buka', fmt(c.open)), row('Tertinggi', fmt(c.high)), row('Terendah', fmt(c.low)), row('Tutup', fmt(close), col),
+            row('Perubahan', chg == null ? '—' : (chg >= 0 ? '+' : '−') + Math.abs(chg).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%', col),
+            row('Volume', c.volume > 0 ? volFmt(Number(c.volume)) : '—')];
+        tipH = rows.length * 18 + 16;
+        return rows.join('');
+    };
+    var draw = function() {
+        raf = 0;
+        var q = pending;
+        if (!q || !q.point || q.idx < 0) { box.style.display = 'none'; shown = -1; return; }
+        if (!paneW) measure();
+        if (q.idx !== shown) { box.innerHTML = content(q.idx); shown = q.idx; box.style.display = 'grid'; }
+        var tx = q.point.x + 16 + tipW < paneW ? q.point.x + 16 : q.point.x - 16 - tipW;
+        var ty = Math.max(4, Math.min(paneH - tipH - 4, q.point.y + 14));
+        box.style.transform = 'translate3d(' + Math.round(Math.max(0, tx)) + 'px,' + Math.round(ty) + 'px,0)';
+    };
+    chart.subscribeCrosshairMove(function(param) {
+        pending = { point: param && param.point, idx: acCandleIndex(candles, param, byDate) };
+        if (!raf) raf = (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : setTimeout)(draw);
+    });
+    return { resize: measure };
+}
+// Wheel zooms time only with Ctrl/Cmd, or in "Satu layar" mode, so plain
+// scrolling still scrolls the page. Zoom keeps the bar under the cursor.
+function acAttachWheelZoom(chart, container) {
+    var rect = null;
+    var cacheRect = function() { rect = container.getBoundingClientRect(); };
+    container.addEventListener('pointerenter', cacheRect);
+    if (typeof window !== 'undefined') window.addEventListener('scroll', function() { rect = null; }, { passive: true });
+    container.addEventListener('wheel', function(e) {
+        var one = document.documentElement.classList.contains('cw-one-screen-open');
+        if (!(e.ctrlKey || e.metaKey || one)) return;
+        e.preventDefault();
+        var ts = chart.timeScale(), lr = ts.getVisibleLogicalRange();
+        if (!lr) return;
+        if (!rect) cacheRect();
+        var anchor = ts.coordinateToLogical(e.clientX - rect.left);
+        if (anchor == null) anchor = lr.to;
+        var f = Math.exp(Math.max(-0.5, Math.min(0.5, (e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY) * 0.002)));
+        var from = anchor - (anchor - lr.from) * f, to = anchor + (lr.to - anchor) * f;
+        if (to - from < 10 && f < 1) return;
+        ts.setVisibleLogicalRange({ from: from, to: to });
+    }, { passive: false });
+    return { invalidate: function() { rect = null; } };
+}
+
 async function renderLightweightChart(chartId, candles, metrics, ticker, options) {
     var containerId = chartId + '_container';
     var container = document.getElementById(containerId);
@@ -361,14 +474,20 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
         // Indonesian number format on the price axis; stocks trade in whole
         // rupiah, indices keep two decimals.
-        localization: { locale: 'id-ID', priceFormatter: function(p) { return Number(p).toLocaleString('id-ID', /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30)$/i.test(String(ticker || '')) ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 }); } },
+        localization: { locale: 'id-ID', timeFormatter: acCrosshairDate, priceFormatter: function(p) { return Number(p).toLocaleString('id-ID', /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30)$/i.test(String(ticker || '')) ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 }); } },
         rightPriceScale: { borderColor: _th.border },
-        timeScale: { borderColor: _th.border, timeVisible: false },
+        timeScale: { borderColor: _th.border, timeVisible: false, tickMarkFormatter: acTickMark },
         // Touch behavior: horizontal drag pans the chart, vertical finger movement is
-        // left to the page so mobile page scrolling is never trapped. Pinch zoom kept.
-        handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
-        handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
+        // left to the page so mobile page scrolling is never trapped. Pinch zooms time,
+        // a tap pins the crosshair until the next tap. The wheel is handled by
+        // acAttachWheelZoom (Ctrl/Cmd + scroll, or plain scroll in "Satu layar").
+        handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+        handleScale: { axisPressedMouseMove: { time: true, price: true }, mouseWheel: false, pinch: true },
+        kineticScroll: { touch: true, mouse: false },
+        trackingMode: { exitMode: LightweightCharts.TrackingModeExitMode ? LightweightCharts.TrackingModeExitMode.OnNextTap : 1 }
     });
+    container.style.touchAction = 'pan-y';
+    var _wheel = acAttachWheelZoom(chart, container);
 
     // Keep every series added to this chart so the price-scale buttons can
     // set one range for all of them (each series otherwise widens autoscale).
@@ -633,8 +752,26 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         container.appendChild(headerEl);
     }
 
+    // Values that do not depend on the hovered bar, computed once per render.
+    var _hdrMemo = null;
+    function headerMemo() {
+        if (_hdrMemo) return _hdrMemo;
+        _hdrMemo = {
+            corr: ws && !_isIndexChart ? ws.calculateCorrF(candles) : null,
+            par: ws && !_isIndexChart ? ws.calculateParF(candles) : null,
+            lpm: ws ? ws.calculateLPM(candles) : null,
+            fData: ws ? ws.calculateForeignFlowCumulative(candles, options && options.foreignFlow) : null,
+            moneyFlow: ws ? ws.getLatestMoneyFlow(candles) : '0.000'
+        };
+        return _hdrMemo;
+    }
+    var _hdrShown = null, _hdrMobile = null;
     function updateCanvasHeader(c) {
         if (!c || !headerEl) return;
+        var _mob = (typeof window !== 'undefined' && window.innerWidth <= 640) || (container.clientWidth <= 640);
+        if (c === _hdrShown && _mob === _hdrMobile) return;
+        _hdrShown = c; _hdrMobile = _mob;
+        var _m = headerMemo();
         var cOpen = Number(c.open != null ? c.open : c.close);
         var cHigh = Number(c.high != null ? c.high : c.close);
         var cLow = Number(c.low != null ? c.low : c.close);
@@ -652,18 +789,17 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         var chgColor = chg >= 0 ? '#34d399' : '#f87171';
 
         // No workstation module, no Corr F / Par F (the old fallback printed 0.72 and 34.2).
-        var corrVal = ws ? ws.calculateCorrF(candles) : null;
-        var parVal = ws ? ws.calculateParF(candles) : null;
-        if (_isIndexChart) { corrVal = null; parVal = null; }
+        var corrVal = _m.corr;
+        var parVal = _m.par;
         var corrTxt = (corrVal == null || !isFinite(corrVal)) ? '—' : ((corrVal >= 0 ? '+' : '') + corrVal.toFixed(2));
         var parTxt = (parVal == null || !isFinite(parVal)) ? '—' : (parVal.toFixed(1) + '%');
-        var lpmVal = ws ? ws.calculateLPM(candles) : null;
+        var lpmVal = _m.lpm;
         var tf = (wsState && wsState.timeframe) ? wsState.timeframe : '1D';
 
         var volStr = ws ? ws.formatIndonesianVolumeCompact(cVol) : (cVol.toLocaleString('id-ID') + ' lembar');
         var foreignNet = ws ? ws.getLatestForeignNet([c], options && options.foreignFlow) : 0;
         if (foreignNet === 0 && ws) {
-            var fData = ws.calculateForeignFlowCumulative(candles, options && options.foreignFlow);
+            var fData = _m.fData;
             if (fData && fData.length > 0) {
                 var hoveredFd = fData.find(function(fd) { return fd.time === c.time; });
                 var targetFd = hoveredFd || fData[fData.length - 1];
@@ -673,9 +809,9 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             }
         }
         var foreignStr = ws ? ws.formatIndonesianRupiahCompact(foreignNet) : 'Rp 0';
-        var moneyFlowStr = ws ? ws.getLatestMoneyFlow(candles) : '0.000';
+        var moneyFlowStr = _m.moneyFlow;
 
-        var isMobile = (typeof window !== 'undefined' && window.innerWidth <= 640) || (container.clientWidth <= 640);
+        var isMobile = _mob;
         if (isMobile) {
             headerEl.style.fontSize = '10px';
             headerEl.innerHTML =
@@ -716,21 +852,27 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
 
     if (candles && candles.length) {
         var _lastCandle = candles[candles.length - 1];
+        var _byDate = acDateIndex(candles);
         updateCanvasHeader(_lastCandle);
+        // Legend follows the hovered bar, written at most once per frame.
+        var _hdrNext = _lastCandle, _hdrRaf = 0;
         chart.subscribeCrosshairMove(function(param) {
-            if (!param || !param.time) {
-                updateCanvasHeader(_lastCandle);
-                return;
-            }
-            var hovered = candles.find(function(cd) { return cd.time === param.time; });
-            updateCanvasHeader(hovered || _lastCandle);
+            var i = acCandleIndex(candles, param, _byDate);
+            _hdrNext = i >= 0 ? candles[i] : _lastCandle;
+            if (_hdrRaf) return;
+            _hdrRaf = (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : setTimeout)(function() { _hdrRaf = 0; updateCanvasHeader(_hdrNext); });
         });
+        var _fmtPx = function(v) { return Number(v).toLocaleString('id-ID', _isIdxTicker ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 }); };
+        var _cursorBox = acAttachCursorBox(chart, candles, container, _fmtPx, function(v) { return ws && ws.formatIndonesianVolumeCompact ? String(ws.formatIndonesianVolumeCompact(v)).replace(/ lembar$/, '') : Number(v).toLocaleString('id-ID'); }, _byDate);
 
         var _onWinResize = function() {
             var reg = _chartRegistry[chartId];
             if (!reg || reg.mainChart !== chart) { window.removeEventListener('resize', _onWinResize); return; }
             if (container) chart.applyOptions({ width: container.clientWidth });
+            _hdrShown = null;
             updateCanvasHeader(_lastCandle);
+            _cursorBox.resize();
+            _wheel.invalidate();
         };
         window.addEventListener('resize', _onWinResize);
     }
@@ -1115,14 +1257,14 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         }
     }
 
-    // Default view (HANDOFF 5a): the last ~6 months, 126 sessions on 1D or 26
-    // bars on 1W; double-click returns to it. The subpanels follow through the
+    // Default view (HANDOFF 5a): Scalping 3 months, Investor 1 year, other modes
+    // 6 months; double-click returns to it. The subpanels follow through the
     // logical-range subscription above.
     var _defaultRange = null;
     if (candles && candles.length > 30) {
         var _t = function(c) { var v = c.time; return typeof v === 'number' ? v * 1000 : Date.parse(typeof v === 'string' ? v : (v.year + '-' + v.month + '-' + v.day)); };
         var _span = (_t(candles[candles.length - 1]) - _t(candles[candles.length - 11])) / 86400000 / 10;
-        var _bars = _span > 3 ? 26 : 126;
+        var _bars = acDefaultBars(wsState && wsState.activePreset, _span > 3);
         if (candles.length > _bars) _defaultRange = { from: candles.length - _bars, to: candles.length + 2 };
     }
     if (_defaultRange) {

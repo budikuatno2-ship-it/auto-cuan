@@ -34,7 +34,7 @@ test('chart follows the theme tokens and repaints on a theme switch', () => {
   assert.match(runtime, /window\.addEventListener\('ac-theme', function\(\) \{/);
   assert.doesNotMatch(runtime, /background: \{ color: '#0f1319' \}/);
   assert.doesNotMatch(runtime, /background: \{ color: '#0b0e14' \}/);
-  assert.match(runtime, /localization: \{ locale: 'id-ID', priceFormatter:/);
+  assert.match(runtime, /localization: \{ locale: 'id-ID', timeFormatter: acCrosshairDate, priceFormatter:/);
 });
 
 test('no leaked resize listener and no invented legend values', () => {
@@ -44,7 +44,8 @@ test('no leaked resize listener and no invented legend values', () => {
 });
 
 test('default view is about six months and double-click returns to it', () => {
-  assert.match(runtime, /var _bars = _span > 3 \? 26 : 126;/);
+  // Per-mode lengths (Scalping 3 months, Investor 1 year) are in redesign-v2-chart-cursor.
+  assert.match(runtime, /var _bars = acDefaultBars\(wsState && wsState\.activePreset, _span > 3\);/);
   assert.match(runtime, /container\.addEventListener\('dblclick', function\(\) \{ try \{ chart\.timeScale\(\)\.setVisibleLogicalRange\(_defaultRange\);/);
 });
 
