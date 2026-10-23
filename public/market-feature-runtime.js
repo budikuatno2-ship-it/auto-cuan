@@ -201,6 +201,7 @@ if (typeof window !== 'undefined' && !window.__acChartThemeHook) {
             if (e.candleSeries) {
                 try { e.candleSeries.applyOptions({ upColor: th.up, downColor: th.down, borderUpColor: th.up, borderDownColor: th.down, wickUpColor: th.up, wickDownColor: th.down }); } catch (x) {}
             }
+            if (e.lastLine) { try { e.lastLine.applyOptions({ color: e.lastUp ? th.up : th.down }); } catch (x) {} }
         });
     });
 }
@@ -269,6 +270,70 @@ function computeExportBitmapSize(cssWidth, cssHeight, dpr) {
     return { width: Math.max(1, Math.round(cssWidth * r)), height: Math.max(1, Math.round(cssHeight * r)) };
 }
 
+// HANDOFF 5a "Harga selalu terbaca". Level titles carry no "Rp" (the axis tag
+// already shows the price) and shorten on phones: T1, T2, En.
+var AC_SHORT_TAGS = { 'Entry': 'En', 'TP1': 'T1', 'TP2': 'T2', 'Resistance': 'R', 'Support': 'S' };
+function acLevelTitle(name, narrow) { return narrow && AC_SHORT_TAGS[name] ? AC_SHORT_TAGS[name] : name; }
+// Last-price tag: green when the close is up on the previous close, red when
+// down, with the % change as the line title and a dashed line across the chart.
+function acLastPrice(candles) {
+    var n = candles ? candles.length : 0;
+    if (!n) return null;
+    var last = Number(candles[n - 1].close), prev = n > 1 ? Number(candles[n - 2].close) : null;
+    if (!(last > 0)) return null;
+    var chg = prev > 0 ? (last - prev) / prev * 100 : null;
+    return { price: last, up: chg == null || chg >= 0, title: chg == null ? '' : (chg >= 0 ? '+' : '−') + Math.abs(chg).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' };
+}
+// Highest and lowest bar in the visible range, as indices into candles.
+function acVisibleHiLo(candles, from, to) {
+    var a = Math.max(0, Math.ceil(from)), b = Math.min(candles.length - 1, Math.floor(to));
+    if (b - a < 9) return null;
+    var hi = a, lo = a;
+    for (var i = a + 1; i <= b; i++) {
+        if (Number(candles[i].high) > Number(candles[hi].high)) hi = i;
+        if (Number(candles[i].low) < Number(candles[lo].low)) lo = i;
+    }
+    return { hi: hi, lo: lo };
+}
+// High and low labels over the chart, placed once per frame when the
+// visible range or the price scale moves. No layout reads in the handlers.
+function acAttachHiLo(chart, series, candles, container, fmt) {
+    var mk = function(cls) {
+        var d = document.createElement('div');
+        d.className = 'ac-hilo ' + cls;
+        d.style.cssText = 'position:absolute;left:0;top:0;z-index:5;pointer-events:none;white-space:nowrap;font:600 11px var(--ac-font-mono, ui-monospace, monospace);color:var(--ac-2, #9ca3af);display:none;';
+        container.appendChild(d);
+        return d;
+    };
+    var hiEl = mk('hi'), loEl = mk('lo'), raf = 0;
+    var put = function(el, idx, price, text, above) {
+        var x = chart.timeScale().logicalToCoordinate(idx), y = series.priceToCoordinate(price);
+        var size = typeof chart.paneSize === 'function' ? chart.paneSize() : null;
+        var w = size ? size.width : container.clientWidth, h = size ? size.height : container.clientHeight;
+        if (x == null || y == null || y < 4 || y > h - 4 || x < 0 || x > w) { el.style.display = 'none'; return; }
+        el.textContent = text;
+        el.style.display = 'block';
+        var shift = x > w - 70 ? '-100%' : (x < 50 ? '0' : '-50%');
+        el.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(above ? y - 17 : y + 5) + 'px) translateX(' + shift + ')';
+    };
+    var place = function() {
+        raf = 0;
+        var lr = chart.timeScale().getVisibleLogicalRange();
+        var hl = lr ? acVisibleHiLo(candles, lr.from, lr.to) : null;
+        if (!hl) { hiEl.style.display = 'none'; loEl.style.display = 'none'; return; }
+        put(hiEl, hl.hi, Number(candles[hl.hi].high), '▲ ' + fmt(Number(candles[hl.hi].high)), true);
+        put(loEl, hl.lo, Number(candles[hl.lo].low), '▼ ' + fmt(Number(candles[hl.lo].low)), false);
+    };
+    var schedule = function() { if (!raf) raf = (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : setTimeout)(place); };
+    chart.timeScale().subscribeVisibleLogicalRangeChange(schedule);
+    // Price-scale drags and wheel zoom fire no range event in Lightweight Charts 4.
+    container.addEventListener('wheel', schedule, { passive: true });
+    container.addEventListener('pointerup', schedule);
+    container.addEventListener('pointermove', function(e) { if (e.buttons) schedule(); });
+    schedule();
+    return { refresh: schedule };
+}
+
 async function renderLightweightChart(chartId, candles, metrics, ticker, options) {
     var containerId = chartId + '_container';
     var container = document.getElementById(containerId);
@@ -314,12 +379,25 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         chart[fn] = function(opts) { var sr = orig(opts); _allSeries.push({ series: sr, scale: (opts && opts.priceScaleId) || 'right' }); return sr; };
     });
 
+    // Axis steps follow the IDX price fraction (1/2/5/10/25) of the last close;
+    // indices keep 0,01.
+    var _isIdxTicker = /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30|IDX80|KOMPAS100)$/i.test(String(ticker || ''));
+    var _wsTick = window.AutoCuanChartWorkstation;
+    var _lastClose = candles && candles.length ? Number(candles[candles.length - 1].close) : 0;
+    var _tick = _isIdxTicker ? 0.01 : (_wsTick && typeof _wsTick.getIdxTickSize === 'function' ? _wsTick.getIdxTickSize(_lastClose) : 1);
     var candleSeries = chart.addCandlestickSeries({
         upColor: _th.up, downColor: _th.down,
         borderUpColor: _th.up, borderDownColor: _th.down,
-        wickUpColor: _th.up, wickDownColor: _th.down
+        wickUpColor: _th.up, wickDownColor: _th.down,
+        priceFormat: { type: 'price', precision: _isIdxTicker ? 2 : 0, minMove: _tick },
+        lastValueVisible: false, priceLineVisible: false
     });
     candleSeries.setData(candles);
+    var _narrow = (typeof window !== 'undefined' && window.innerWidth < 520) || container.clientWidth < 520;
+    var _lp = acLastPrice(candles), _lastLine = null;
+    if (_lp) {
+        try { _lastLine = candleSeries.createPriceLine({ price: _lp.price, color: _lp.up ? _th.up : _th.down, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: _narrow ? '' : _lp.title }); } catch (_) {}
+    }
 
     // Volume
     var volumeSeries = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'vol', color: _th.vol });
@@ -477,10 +555,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     if (showTradingPlan && ws && customPlan && customPlan.entry && customPlan.sl) {
         plan = ws.calculateTradingPlan(candles, customPlan, activeMode, activeTf);
         if (plan) {
-            candleSeries.createPriceLine({ price: plan.entry, color: '#38bdf8', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: plan.entryLabel || ('Entry Rp ' + plan.entry) });
-            candleSeries.createPriceLine({ price: plan.sl, color: '#ef4444', lineWidth: 1.5, lineStyle: 2, axisLabelVisible: true, title: plan.slLabel || ('Stop Loss Rp ' + plan.sl) });
-            candleSeries.createPriceLine({ price: plan.tp1, color: '#10b981', lineWidth: 1.5, lineStyle: 2, axisLabelVisible: true, title: plan.tp1Label || ('Target 1 (50%) Rp ' + plan.tp1) });
-            candleSeries.createPriceLine({ price: plan.tp2, color: '#059669', lineWidth: 1.5, lineStyle: 2, axisLabelVisible: true, title: plan.tp2Label || ('Target 2 (50%) Rp ' + plan.tp2) });
+            candleSeries.createPriceLine({ price: plan.entry, color: '#38bdf8', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: acLevelTitle('Entry', _narrow) });
+            candleSeries.createPriceLine({ price: plan.sl, color: '#ef4444', lineWidth: 1.5, lineStyle: 2, axisLabelVisible: true, title: 'SL' });
+            candleSeries.createPriceLine({ price: plan.tp1, color: '#10b981', lineWidth: 1.5, lineStyle: 2, axisLabelVisible: true, title: acLevelTitle('TP1', _narrow) });
+            candleSeries.createPriceLine({ price: plan.tp2, color: '#059669', lineWidth: 1.5, lineStyle: 2, axisLabelVisible: true, title: acLevelTitle('TP2', _narrow) });
         }
     }
 
@@ -507,10 +585,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         }
 
         if (resPrice > 0 && isFinite(resPrice)) {
-            candleSeries.createPriceLine({ price: resPrice, color: '#3b82f6', lineWidth: 1.5, lineStyle: 3, axisLabelVisible: true, title: 'Resistance Rp ' + resPrice.toLocaleString('id-ID') });
+            candleSeries.createPriceLine({ price: resPrice, color: '#3b82f6', lineWidth: 1.5, lineStyle: 3, axisLabelVisible: true, title: acLevelTitle('Resistance', _narrow) });
         }
         if (supPrice > 0 && isFinite(supPrice)) {
-            candleSeries.createPriceLine({ price: supPrice, color: '#10b981', lineWidth: 1.5, lineStyle: 3, axisLabelVisible: true, title: 'Support Rp ' + supPrice.toLocaleString('id-ID') });
+            candleSeries.createPriceLine({ price: supPrice, color: '#10b981', lineWidth: 1.5, lineStyle: 3, axisLabelVisible: true, title: acLevelTitle('Support', _narrow) });
         }
     }
 
@@ -538,9 +616,9 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     if (showVolProfile && ws && typeof ws.calculateVolumeProfile === 'function') {
         var vp = ws.calculateVolumeProfile(candles, 12);
         if (vp) {
-            candleSeries.createPriceLine({ price: vp.poc, color: '#f59e0b', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'VP POC: Rp ' + vp.poc.toLocaleString('id-ID') });
-            candleSeries.createPriceLine({ price: vp.vah, color: '#38bdf8', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'VAH (70%): Rp ' + vp.vah.toLocaleString('id-ID') });
-            candleSeries.createPriceLine({ price: vp.val, color: '#818cf8', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'VAL (70%): Rp ' + vp.val.toLocaleString('id-ID') });
+            candleSeries.createPriceLine({ price: vp.poc, color: '#f59e0b', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'VP POC' });
+            candleSeries.createPriceLine({ price: vp.vah, color: '#38bdf8', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'VAH 70%' });
+            candleSeries.createPriceLine({ price: vp.val, color: '#818cf8', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'VAL 70%' });
         }
     }
 
@@ -680,10 +758,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         if (fibQuote && fibQuote.levels && candles.length >= 10) {
             // Use createPriceLine on candlestick series for reliable horizontal Fib lines
             var fibPriceLines = [
-                { val: fibQuote.levels.fib382, label: 'Fib 38.2', color: '#f59e0b' },
+                { val: fibQuote.levels.fib382, label: 'Fib 38,2', color: '#f59e0b' },
                 { val: fibQuote.levels.fib500, label: 'Fib 50', color: '#fbbf24' },
-                { val: fibQuote.levels.fib618, label: 'Fib 61.8', color: '#d97706' },
-                { val: fibQuote.levels.fib786, label: 'Fib 78.6', color: '#b45309' }
+                { val: fibQuote.levels.fib618, label: 'Fib 61,8', color: '#d97706' },
+                { val: fibQuote.levels.fib786, label: 'Fib 78,6', color: '#b45309' }
             ];
             // Get price range from candles to skip lines far outside visible area
             var priceMin = Infinity, priceMax = -Infinity;
@@ -748,6 +826,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         container.style.height = d.main + 'px';
         chart.applyOptions({ width: w, height: d.main });
         if (typeof updateShadingBox === 'function') updateShadingBox();
+        if (_hiLo) _hiLo.refresh();
     });
     if (_mainRO) _observers.push(_mainRO);
     container._chart = chart;
@@ -1050,6 +1129,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         try { chart.timeScale().setVisibleLogicalRange(_defaultRange); } catch (_) {}
         container.addEventListener('dblclick', function() { try { chart.timeScale().setVisibleLogicalRange(_defaultRange); } catch (_) {} });
     }
+    var _hiLo = null;
+    if (candles && candles.length >= 10) {
+        try { _hiLo = acAttachHiLo(chart, candleSeries, candles, container, function(v) { return Number(v).toLocaleString('id-ID', _isIdxTicker ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 }); }); } catch (_) {}
+    }
 
     // Register instances + metadata for the exporter (scoped, no global loose vars).
     var _latest = (candles && candles.length) ? candles[candles.length - 1] : null;
@@ -1068,7 +1151,10 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         lastVolume: _latest ? _latest.volume : null,
         fibQuote: fibQuote,
         dims: dims,
-        observers: _observers
+        observers: _observers,
+        lastLine: _lastLine,
+        lastUp: _lp ? _lp.up : true,
+        hiLo: _hiLo
     };
 
     } catch (renderErr) {

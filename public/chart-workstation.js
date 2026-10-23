@@ -1390,6 +1390,7 @@
       series.applyOptions({ autoscaleInfoProvider: builtIn });
       others.forEach(function (sr) { try { sr.applyOptions({ autoscaleInfoProvider: builtIn }); } catch (_) {} });
       chart.priceScale('right').applyOptions({ autoScale: true });
+      if (reg.hiLo) reg.hiLo.refresh();
       return;
     }
     // Visible price span of the pane, minus the scale margins the library
@@ -1410,6 +1411,7 @@
     // Other price-pane series (MA, levels) stop widening the range meanwhile.
     others.forEach(function (sr) { try { sr.applyOptions({ autoscaleInfoProvider: function () { return null; } }); } catch (_) {} });
     chart.priceScale('right').applyOptions({ autoScale: true });
+    if (reg.hiLo) reg.hiLo.refresh();
   }
 
   // "Satu layar" (HANDOFF 5a): the chart card fills the viewport; F opens,
@@ -1683,6 +1685,8 @@
   var PLAN_LINE_STYLE = { entry: '#38bdf8', sl: '#f43f5e', tp1: '#10b981', tp2: '#22c55e' };
   var PLAN_LINE_LABEL = { entry: 'Entry', sl: 'SL', tp1: 'TP1', tp2: 'TP2' };
   var PLAN_LINE_DASH = { entry: 0, sl: 2, tp1: 2, tp2: 1 };
+  // Phones get the short tags of HANDOFF 5a.
+  var PLAN_LINE_SHORT = { entry: 'En', tp1: 'T1', tp2: 'T2' };
 
   function clearPlanPriceLines(series) {
     if (!series || typeof series.removePriceLine !== 'function') return 0;
@@ -1710,6 +1714,7 @@
     if (!levels || typeof levels !== 'object') return [];
 
     var created = [];
+    var narrow = Boolean(defaultRoot && defaultRoot.innerWidth > 0 && defaultRoot.innerWidth < 520);
     var keys = ['entry', 'sl', 'tp1', 'tp2'];
     for (var i = 0; i < keys.length; i++) {
       var key = keys[i];
@@ -1722,7 +1727,7 @@
           lineWidth: 1,
           lineStyle: PLAN_LINE_DASH[key] != null ? PLAN_LINE_DASH[key] : 0,
           axisLabelVisible: true,
-          title: PLAN_LINE_LABEL[key] || key.toUpperCase()
+          title: (narrow && PLAN_LINE_SHORT[key]) || PLAN_LINE_LABEL[key] || key.toUpperCase()
         });
         if (line) created.push(line);
       } catch (_) {}
