@@ -256,6 +256,10 @@ async function run(options={}){
   // skips raise an alarm instead of failing silently.
   const j1LockWaitMs = Number(process.env.J1_LOCK_WAIT_MS) > 0 ? Number(process.env.J1_LOCK_WAIT_MS) : 10 * 60 * 1000;
   const lockOutcome = await arjumSharedLock.withArjumLock({ job: 'J1', waitMs: j1LockWaitMs }, async () => {
+  // DARURAT 23 Oct: count what the broker phase actually PERSISTED, so a run
+  // that acquired the lock but saved nothing is not reported as a success.
+  let savedTotal = 0;
+  let attemptedTotal = 0;
   for(const date of dates){
     if(!dryRun)writeState(date,{date,complete:false,updated_at:new Date().toISOString()});
     if(dryRun){console.log('PENDING_MARKET_DATE='+date);continue;}
@@ -271,6 +275,12 @@ async function run(options={}){
       const result=await broker.run(brokerArgs);
       const marker=broker.readMarker(date);
       brokerOk=Boolean(result&&result.skipped || marker&&marker.version===2&&marker.complete);
+      // Persisted evidence: the marker's done count is what actually landed on
+      // disk for this date; errors are what was attempted and failed.
+      if(marker&&marker.version===2){
+        savedTotal+=Number(marker.done)||0;
+        attemptedTotal+=(Number(marker.done)||0)+(Number(marker.errors)||0);
+      }
     }catch(error){console.error('BROKER_RETRY_PENDING',date,error.message);}
     try{
       const result=await candles.main({targetDate:date});
@@ -318,7 +328,7 @@ async function run(options={}){
       });
     }
   }
-  return { ok: true };
+  return { ok: true, saved: savedTotal, attempted: attemptedTotal };
   });
   if(lockOutcome && lockOutcome.skipped){
     console.log('[ARJUM-LOCK] SKIPPED_ARJUM_BUSY: J1 tidak berjalan; job Arjum lain sedang berjalan. Akan dicoba di firing berikutnya.');
@@ -333,8 +343,22 @@ async function run(options={}){
       }
     }catch(error){ console.error('J1_SKIP_ALARM_FAILED', error.message); }
   } else if(lockOutcome && !lockOutcome.skipped){
-    // A successful run clears the consecutive-skip counter.
-    try{ require('../lib/j1-skip-alarm').recordSuccess({ statePath: process.env.J1_SKIP_ALARM_STATE || undefined }); }catch(_){}
+    // DARURAT 23 Oct 2026: a run that acquired the lock but SAVED NOTHING is NOT
+    // a success. On 23 Oct J1 "ran" (lock acquired) yet saved 0 files because
+    // every broker-summary call returned 400; `last_success_at` was still
+    // stamped, which hid the outage. Only a run that actually persisted data
+    // clears the counter; a zero-saved run is treated as a failure and alarms.
+    const saved = Number(lockOutcome && lockOutcome.saved) || 0;
+    const attempted = Number(lockOutcome && lockOutcome.attempted) || 0;
+    try{
+      const alarm = require('../lib/j1-skip-alarm');
+      if(saved > 0){
+        alarm.recordSuccess({ statePath: process.env.J1_SKIP_ALARM_STATE || undefined });
+      }else{
+        const outcome = alarm.recordZeroSaved({ attempted, statePath: process.env.J1_SKIP_ALARM_STATE || undefined });
+        console.log('[J1-ZERO-SAVED] attempted=' + attempted + ' saved=0 alert_sent=' + (outcome.sent === true));
+      }
+    }catch(error){ console.error('J1_ZERO_SAVED_ALARM_FAILED', error.message); }
   }
   process.exitCode=undefined;
   if(!dryRun&&pendingDates(options.now).some(date=>{

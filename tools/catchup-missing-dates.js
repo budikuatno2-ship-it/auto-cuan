@@ -214,7 +214,11 @@ async function run(argv, deps) {
       if (p.missing.ALL.includes(ticker)) {
         attempted += 1;
         try {
-          const res = await client.fetchBrokerSummary(ticker, p.date, 'all', null, { allData: true, fresh: true, forceLive: true, noFallback: true });
+          // bypassMarketGuard: the catch-up runs at 00:07 WIB (outside the IDX
+          // session) and fetches HISTORICAL dates. The guard only applies to
+          // "today", but passing the flag keeps the intent explicit and matches
+          // the backfill worker. The guard itself is unchanged for web/live.
+          const res = await client.fetchBrokerSummary(ticker, p.date, 'all', null, { allData: true, fresh: true, forceLive: true, noFallback: true, bypassMarketGuard: true });
           spent += 1;
           if (res && res.ok && res.data) { writeDated(baseDir, 'broker-summary', ticker, p.date, res.data); perType.ALL.ok += 1; }
           else { perType.ALL.failed += 1; failed += 1; tickerFailed = true; }
@@ -225,7 +229,7 @@ async function run(argv, deps) {
       if (!tickerFailed && !opts.skipF && p.missing.F.includes(ticker)) {
         attempted += 1;
         try {
-          const res = await client.fetchBrokerSummary(ticker, p.date, 'F', null, { allData: true, fresh: true, forceLive: true, noFallback: true });
+          const res = await client.fetchBrokerSummary(ticker, p.date, 'F', null, { allData: true, fresh: true, forceLive: true, noFallback: true, bypassMarketGuard: true });
           spent += 1;
           if (res && res.ok && res.data) { writeDated(baseDir, 'broker-summary-F', ticker, p.date, res.data); perType.F.ok += 1; }
           else { perType.F.failed += 1; failed += 1; tickerFailed = true; }
