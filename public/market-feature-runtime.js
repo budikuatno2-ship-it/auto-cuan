@@ -466,8 +466,12 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     var activeMode = (wsState && wsState.activePreset) ? wsState.activePreset : 'swing';
     var activeTf = (wsState && wsState.timeframe) ? wsState.timeframe : '1D';
     var plan = null;
-    if (showTradingPlan && ws) {
-        var customPlan = options && options.customTradingPlan ? options.customTradingPlan : (wsState ? wsState.customTradingPlan : null);
+    // Plan levels come from the server only (HANDOFF 5a): a plan handed over by
+    // the screener (customTradingPlan) is drawn here; otherwise the selected
+    // horizon's server levels are drawn by analisis-v2.js. No plan is derived
+    // from the candles in the browser any more.
+    var customPlan = options && options.customTradingPlan ? options.customTradingPlan : (wsState ? wsState.customTradingPlan : null);
+    if (showTradingPlan && ws && customPlan && customPlan.entry && customPlan.sl) {
         plan = ws.calculateTradingPlan(candles, customPlan, activeMode, activeTf);
         if (plan) {
             candleSeries.createPriceLine({ price: plan.entry, color: '#38bdf8', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: plan.entryLabel || ('Entry Rp ' + plan.entry) });
@@ -898,14 +902,14 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                         '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 font-mono">' + (btRes ? btRes.candleCount : (candles.length.toLocaleString('id-ID') + ' Lilin')) + '</span>' +
                     '</div>' +
                     '<div class="grid grid-cols-2 gap-2 text-[11px] font-mono">' +
-                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">WIN RATE</span><br><b class="text-emerald-400 text-sm">' + (btRes ? btRes.winRate : '68,4%') + '</b></div>' +
-                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">PROFIT FACTOR</span><br><b class="text-sky-400 text-sm">' + (btRes ? btRes.profitFactor : '2,35') + '</b></div>' +
-                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">TOTAL TRADES</span><br><b class="text-gray-200">' + (btRes ? btRes.totalTrades : '42 Trade') + '</b></div>' +
-                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">MAX DRAWDOWN</span><br><b class="text-amber-400">' + (btRes ? btRes.maxDrawdown : '-5,8%') + '</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">WIN RATE</span><br><b class="text-emerald-400 text-sm">' + (btRes ? btRes.winRate : '—') + '</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">PROFIT FACTOR</span><br><b class="text-sky-400 text-sm">' + (btRes ? btRes.profitFactor : '—') + '</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">TOTAL TRADES</span><br><b class="text-gray-200">' + (btRes ? btRes.totalTrades : '—') + '</b></div>' +
+                        '<div class="p-2 rounded bg-dark-900 border border-dark-700/60"><span class="text-gray-400">MAX DRAWDOWN</span><br><b class="text-amber-400">' + (btRes ? btRes.maxDrawdown : '—') + '</b></div>' +
                     '</div>' +
                     '<div class="pt-2 border-t border-dark-700/50 text-[11px] space-y-1">' +
-                        '<div class="flex justify-between"><span class="text-gray-400">Rata-rata Durasi Hold:</span><b class="text-gray-200">' + (btRes ? btRes.avgHoldingDays : '5,2 Hari') + '</b></div>' +
-                        '<div class="flex justify-between"><span class="text-gray-400">Expectancy per Trade:</span><b class="text-emerald-400">' + (btRes ? btRes.expectancy : '+Rp 845.000') + '</b></div>' +
+                        '<div class="flex justify-between"><span class="text-gray-400">Rata-rata Durasi Hold:</span><b class="text-gray-200">' + (btRes ? btRes.avgHoldingDays : '—') + '</b></div>' +
+                        '<div class="flex justify-between"><span class="text-gray-400">Expectancy per Trade:</span><b class="text-emerald-400">' + (btRes ? btRes.expectancy : '—') + '</b></div>' +
                         '<div class="flex justify-between"><span class="text-gray-400">Status Validasi Risk Gate:</span>' + (plan.isSafeRR ? '<b class="text-emerald-400 font-semibold">LOLOS (R/R &ge; 1,50x)</b>' : '<b class="text-rose-400 font-semibold">PANTAUAN / DITOLAK (R/R &lt; 1,50x)</b>') + '</div>' +
                     '</div>' +
                 '</div>' +

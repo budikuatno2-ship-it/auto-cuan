@@ -1556,6 +1556,8 @@
     if (!inst) return;
     var t0 = (typeof performance !== 'undefined') ? performance.now() : Date.now();
     inst.state.applyPreset(presetName);
+    // HANDOFF 5a: Scalping always reads daily candles.
+    if (presetName === 'scalping') inst.state.setTimeframe('1D');
 
     var activeCandles = (inst.state.timeframe === '1W' && inst.weeklyCandles) ? inst.weeklyCandles : inst.dailyCandles;
     if (typeof defaultRoot.renderLightweightChart === 'function') {
