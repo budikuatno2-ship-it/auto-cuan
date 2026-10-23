@@ -30,6 +30,13 @@ CRON_TZ=Asia/Jakarta
 # DIJEDA 20261023 sampai J1 terkejar
 # 7 0 * * 6,0 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekend --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
 
+# C (2026-10-23): PENGECORAN TANGGAL BOLONG — Sabtu 24 Okt 00:07 WIB.
+# Tidak ada J1/J2 di akhir pekan, jadi cadangan kecil (maks 1.500) saja.
+# Urutan terbaru dulu (22, 21, 20, lalu sisa 19 Okt), batch 50, berhenti bila
+# >20% gagal. Bila belum tuntas, jalankan lagi Minggu 00:07 (baris di bawah).
+7 0 * * 6 bash /home/ubuntu/auto-cuan/deploy/vps/run-catchup-missing-dates.sh --dates 2026-10-22,2026-10-21,2026-10-20,2026-10-19 --batch 50 >> /home/ubuntu/auto-cuan-runner/logs/catchup-missing-dates.log 2>&1
+7 0 * * 0 bash /home/ubuntu/auto-cuan/deploy/vps/run-catchup-missing-dates.sh --dates 2026-10-22,2026-10-21,2026-10-20,2026-10-19 --batch 50 >> /home/ubuntu/auto-cuan-runner/logs/catchup-missing-dates.log 2>&1
+
 # Lifecycle evaluator (sore, setelah bursa tutup)
 30 16 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-lifecycle-evaluator.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1
 

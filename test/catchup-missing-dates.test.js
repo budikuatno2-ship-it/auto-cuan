@@ -12,12 +12,31 @@ const os = require('node:os');
 
 const tool = require('../tools/catchup-missing-dates');
 
-test('C: the budget keeps the daily jobs safe (J1 + J2 + IHSG + retry + web)', () => {
+test('C: the weekday budget keeps the daily jobs safe (J1 + J2 + IHSG + retry + web)', () => {
   const b = tool.computeCatchupBudget(18080, 0);
   assert.equal(b.remaining, 18080);
   // floor = ceil(4400 * 1.10) + 100 = 4940
   assert.equal(b.floor, 4940);
   assert.equal(b.spendable, 18080 - 4940);
+});
+
+test('C: the WEEKEND budget drops the J1/J2 reserve and caps it at 1,500', () => {
+  // Owner rule (23 Oct): Sat/Sun have no J1/J2, so only a small web+retry
+  // reserve applies, capped at 1,500.
+  const b = tool.computeCatchupBudget(18080, 0, { isWeekend: true });
+  assert.equal(b.isWeekend, true);
+  assert.equal(b.floor, 1500);
+  assert.equal(b.spendable, 18080 - 1500);
+  // A small plan still keeps the cap (never more than 1,500).
+  const small = tool.computeCatchupBudget(6000, 0, { isWeekend: true });
+  assert.equal(small.floor, 700, 'ceil(6000*0.10)+100 = 700, below the cap');
+});
+
+test('C: Saturday/Sunday are detected in WIB', () => {
+  assert.equal(tool.isWeekendWib('2026-10-24'), true, 'Sat 24 Oct 2026');
+  assert.equal(tool.isWeekendWib('2026-10-25'), true, 'Sun 25 Oct 2026');
+  assert.equal(tool.isWeekendWib('2026-10-23'), false, 'Fri 23 Oct 2026');
+  assert.equal(tool.isWeekendWib('2026-10-26'), false, 'Mon 26 Oct 2026');
 });
 
 test('C: an exhausted quota leaves nothing to spend', () => {
