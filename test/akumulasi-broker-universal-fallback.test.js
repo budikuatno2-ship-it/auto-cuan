@@ -27,7 +27,8 @@ test('Akumulasi Universal Fallback: getBandarmologiData ensures broker_accumulat
     arjumClient.fetchBrokerAccumulation = async () => ({ ok: false, status: 404 });
     arjumClient.fetchInsiders = async () => ({ ok: true, data: [] });
 
-    const result = await bandarmologiService.getBandarmologiData('GPRA', { forceRefresh: true });
+    // C4: live fetch is opt-in; this test exercises the live path directly.
+    const result = await bandarmologiService.getBandarmologiData('GPRA', { forceRefresh: true, allowLiveFetch: true });
     assert.equal(result.success, true);
     assert.ok(result.broker_accumulation, 'Must have broker_accumulation object');
     assert.ok(Array.isArray(result.broker_accumulation.top_buyers), 'top_buyers must be array');
