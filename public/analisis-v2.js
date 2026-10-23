@@ -178,13 +178,15 @@
       if (state.ticker !== t) return;
       state.plans = plans; state.loading = null;
       render(); drawPlanLines();
+      api.drawIndexOverlay();
+      api.applyIndexCopy(isIndex(t));
     });
   }
 
   function setHorizon(hz) {
     if (!HZ[hz]) return;
     state.hz = hz;
-    render(); drawPlanLines();
+    render(); drawPlanLines(); api.drawIndexOverlay();
     if (typeof api.onHorizon === 'function') api.onHorizon(hz);
   }
 
@@ -213,6 +215,13 @@
       };
       ws.__anaHzWrapped = true;
     }
+    // A ticker switch refreshes the sheet even if its chart fails to load.
+    var uc = root.UnifiedCockpit;
+    if (uc && typeof uc.syncActiveTicker === 'function' && !uc.__anaWrapped) {
+      var origSync = uc.syncActiveTicker;
+      uc.syncActiveTicker = function (t) { var out = origSync.apply(this, arguments); refresh(t); return out; };
+      uc.__anaWrapped = true;
+    }
     // Every chart render (ticker or timeframe change) refreshes plan and lines.
     if (typeof root.renderLightweightChart === 'function' && !root.renderLightweightChart.__anaWrapped) {
       var origRender = root.renderLightweightChart;
@@ -230,6 +239,145 @@
     loadPlans: loadPlans, refresh: refresh, setHorizon: setHorizon, render: render, drawPlanLines: drawPlanLines,
     state: state
   };
+
+  /* ---------- Indices: "Potensi arah" (HANDOFF 5a, IHSG / COMPOSITE) ----------
+     No entry, SL or TP. Bias from price against moving averages per horizon,
+     scenarios to pivot levels, and a volatility range. Computed from the
+     index's own daily candles. */
+  var IHZ = {
+    scalp: { l: 'Harian', h: '1 sampai 5 hari bursa', d: 5, ext: 8, lb: 66, ma: 'MA20' },
+    swing: { l: 'Mingguan', h: '2 sampai 4 minggu', d: 20, ext: 16, lb: 126, ma: 'MA50' },
+    inv: { l: 'Bulanan', h: '1 sampai 3 bulan', d: 60, ext: 24, lb: 250, ma: 'MA200' }
+  };
+  function dec(v, d) { return Number(v).toLocaleString('id-ID', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function idxFmt(v) { return v == null || !isFinite(v) ? NIL : dec(v, 2); }
+
+  function potential(candles, hz) {
+    var O = (candles || []).filter(function (k) { return k && Number(k.close) > 0; }).map(function (k) { return { c: Number(k.close), h: Number(k.high), l: Number(k.low), t: k.time }; });
+    var z = IHZ[hz] || IHZ.swing, L = O.length;
+    if (L < 61) return null;
+    var CL = O.map(function (k) { return k.c; }), c0 = CL[L - 1];
+    var ma = function (p, i) { if (i < p - 1) return null; var s = 0; for (var j = i - p + 1; j <= i; j++) s += CL[j]; return s / p; };
+    var rets = []; for (var i = L - 60; i < L; i++) rets.push(Math.log(CL[i] / CL[i - 1]));
+    var mu = rets.reduce(function (a, b) { return a + b; }, 0) / rets.length;
+    var sd = Math.sqrt(rets.reduce(function (a, b) { return a + (b - mu) * (b - mu); }, 0) / (rets.length - 1));
+    var band = 1.2816 * sd * Math.sqrt(z.d), p90 = c0 * Math.exp(band), p10 = c0 * Math.exp(-band);
+    var ag = 0, al = 0;
+    for (var k = 1; k < L; k++) { var d = CL[k] - CL[k - 1], g = Math.max(d, 0), lo = Math.max(-d, 0); if (k <= 14) { ag += g / 14; al += lo / 14; } else { ag = (ag * 13 + g) / 14; al = (al * 13 + lo) / 14; } }
+    var rsi = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+    var m20 = ma(20, L - 1), m20p = ma(20, L - 6), m50 = ma(50, L - 1), m50p = ma(50, L - 11), m200 = ma(200, L - 1);
+    var chk, inval;
+    if (hz === 'scalp') { chk = [[c0 > m20, 'di atas MA20', 'di bawah MA20'], [m20 > m20p, 'MA20 naik', 'MA20 turun']]; inval = m20; }
+    else if (hz === 'inv') {
+      if (m200 == null) return { insufficient: 'MA200 butuh 200 sesi; riwayat belum cukup' };
+      chk = [[c0 > m200, 'di atas MA200', 'di bawah MA200'], [m50 > m200, 'MA50 di atas MA200', 'MA50 di bawah MA200']]; inval = m200;
+    } else { chk = [[c0 > m50, 'di atas MA50', 'di bawah MA50'], [m20 > m50, 'MA20 di atas MA50', 'MA20 di bawah MA50'], [m50 > m50p, 'MA50 naik', 'MA50 turun']]; inval = m50; }
+    var sc = chk.filter(function (x) { return x[0]; }).length / chk.length;
+    var bias = sc >= 0.66 ? 'up' : (sc <= 0.34 ? 'down' : 'flat');
+    var why = chk.map(function (x) { return x[0] ? x[1] : x[2]; }).concat(['RSI14 ' + dec(rsi, 0) + (rsi < 30 ? ' (jenuh jual)' : (rsi > 70 ? ' (jenuh beli)' : ''))]);
+    var win = O.slice(Math.max(0, L - z.lb));
+    var pv = function (key, pick) { var r = []; for (var i2 = 5; i2 < win.length - 3; i2++) { var w = win.slice(i2 - 5, Math.min(win.length, i2 + 6)).map(function (q) { return q[key]; }); if (win[i2][key] === pick.apply(null, w)) r.push(win[i2][key]); } return r; };
+    var uq = function (arr) { var o = []; arr.forEach(function (v) { if (!o.some(function (x) { return Math.abs(x - v) / v < 0.02; })) o.push(v); }); return o; };
+    var R = uq(pv('h', Math.max).filter(function (v) { return v > c0 * 1.005; }).sort(function (a, b) { return a - b; })).slice(0, 2);
+    var S = uq(pv('l', Math.min).filter(function (v) { return v < c0 * 0.995; }).sort(function (a, b) { return b - a; })).slice(0, 2);
+    var upT = R.length ? { v: R[0], k: 'R1' } : { v: p90, k: 'p90', rng: true };
+    var dnT = S.length ? { v: S[0], k: 'S1' } : { v: p10, k: 'p10', rng: true };
+    return { c0: c0, z: z, sd: sd, p10: p10, p90: p90, rsi: rsi, bias: bias, why: why, R: R, S: S, upT: upT, dnT: dnT, inval: inval, last: O[L - 1] };
+  }
+
+  function pct(to, from) { var p = (to - from) / from * 100; return (p > 0 ? '+' : '−') + dec(Math.abs(p), 2) + '%'; }
+  api.potential = potential;
+  api.renderIndex = function (el, t, hz, bar) {
+    var z = IHZ[hz] || IHZ.swing;
+    var head = '<div class="ana-hzbar"><span class="ana-hzl">Potensi arah</span>' + bar +
+      '<span class="ana-hzm"><b>' + esc(z.h) + '</b> · Indeks tidak dibeli langsung. Ini gambaran arah pasar, bukan sinyal beli atau jual.</span>' +
+      '<span class="ana-hzs">Bias dari posisi harga terhadap rata-rata bergerak · level dari pivot ' + z.lb + ' sesi · rentang dari volatilitas 60 hari</span></div>';
+    var ix = potential(root._chartPageData && root._chartPageData.candles, hz);
+    if (!ix) { el.innerHTML = head + '<div class="ana-plan-empty">Candle indeks belum cukup (butuh minimal 61 sesi) untuk membaca arah.</div>'; return; }
+    if (ix.insufficient) { el.innerHTML = head + '<div class="ana-plan-empty">' + esc(ix.insufficient) + '.</div>'; return; }
+    var biasTxt = ix.bias === 'up' ? 'Cenderung naik' : (ix.bias === 'down' ? 'Cenderung turun' : 'Mendatar');
+    var outUp = ix.upT.v > ix.p90, outDn = ix.dnT.v < ix.p10;
+    var upMain = ix.bias === 'up', dnMain = ix.bias === 'down';
+    var invalTxt = ix.inval == null ? NIL : (ix.bias === 'down' ? 'Tutup di atas ' : 'Tutup di bawah ') + z.ma + ' ' + idxFmt(ix.inval);
+    el.innerHTML = head + '<div class="ana-calc pot">' +
+      '<div><div class="lbl">Bias ' + esc(z.l.toLowerCase()) + '</div><div class="v ' + (ix.bias === 'up' ? 'pos' : ix.bias === 'down' ? 'neg' : '') + '">' + biasTxt + '</div><div class="sub">' + esc(ix.why.join(' · ')) + '</div></div>' +
+      '<div><div class="lbl">Skenario naik' + (upMain ? ' <em class="ana-ptag">Utama</em>' : '') + '</div><div class="v num pos">▲ ' + esc(ix.upT.k) + ' ' + idxFmt(ix.upT.v) + '</div><div class="sub num">' +
+        esc(ix.upT.rng ? 'tidak ada resistance di ' + z.lb + ' sesi terakhir, batas atas rentang' : (ix.R[1] ? 'R2 ' + dec(ix.R[1], 2) + ' bila R1 tembus' : 'belum ada resistance kedua di ' + z.lb + ' sesi')) + ' · ' + pct(ix.upT.v, ix.c0) + (outUp ? ' · di luar rentang, butuh waktu lebih lama' : '') + '</div></div>' +
+      '<div><div class="lbl">Skenario turun' + (dnMain ? ' <em class="ana-ptag">Utama</em>' : '') + '</div><div class="v num neg">▼ ' + esc(ix.dnT.k) + ' ' + idxFmt(ix.dnT.v) + '</div><div class="sub num">' +
+        esc(ix.dnT.rng ? 'tidak ada support di ' + z.lb + ' sesi terakhir, batas bawah rentang' : (ix.S[1] ? 'S2 ' + dec(ix.S[1], 2) + ' bila S1 jebol' : 'belum ada support kedua di ' + z.lb + ' sesi')) + ' · ' + pct(ix.dnT.v, ix.c0) + (outDn ? ' · di luar rentang, butuh waktu lebih lama' : '') + '</div></div>' +
+      '<div><div class="lbl">Rentang ' + esc(z.h) + '</div><div class="v num">' + idxFmt(ix.p10) + ' – ' + idxFmt(ix.p90) + '</div><div class="sub">sekitar 8 dari 10 kemungkinan · volatilitas 60 hari ' + dec(ix.sd * 100, 2) + '% per hari; dihitung dari volatilitas, bukan prediksi arah</div></div>' +
+      '<div><div class="lbl">Bias berubah bila</div><div class="v">' + invalTxt + '</div><div class="sub">Ini gambaran arah pasar, bukan sinyal beli atau jual.</div></div>' +
+      '</div>';
+  };
+
+  // Chart overlay for indices: blue range cone to the right of the last
+  // candle, the main scenario arrow solid and the other dashed, R1/R2/S1/S2.
+  var overlay = { id: null, series: [], lines: [] };
+  function clearOverlay() {
+    var reg = (root.__chartRegistry || {})[overlay.id];
+    if (reg && reg.mainChart) overlay.series.forEach(function (s) { try { reg.mainChart.removeSeries(s); } catch (_) {} });
+    if (reg && reg.candleSeries) overlay.lines.forEach(function (l) { try { reg.candleSeries.removePriceLine(l); } catch (_) {} });
+    overlay = { id: null, series: [], lines: [] };
+  }
+  function futureDays(lastTime, count) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(lastTime || ''));
+    if (!m) return [];
+    var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])), out = [];
+    while (out.length < count) {
+      d.setUTCDate(d.getUTCDate() + 1);
+      var w = d.getUTCDay();
+      if (w !== 0 && w !== 6) out.push(d.toISOString().slice(0, 10));
+    }
+    return out;
+  }
+  api.drawIndexOverlay = function () {
+    clearOverlay();
+    if (!isIndex(state.ticker)) return;
+    var reg = root.__chartRegistry || {};
+    var id = Object.keys(reg).find(function (k) { var e = reg[k]; return e && e.candleSeries && String(e.ticker || '').toUpperCase() === state.ticker; });
+    if (!id) return;
+    var e = reg[id], ix = potential(root._chartPageData && root._chartPageData.candles, state.hz);
+    if (!ix || ix.insufficient || !e.mainChart) return;
+    var cs = getComputedStyle(doc.getElementById(id + '_container') || doc.body);
+    var info = String(cs.getPropertyValue('--ac-info') || '').trim() || '#315F9A';
+    var pos = String(cs.getPropertyValue('--ac-pos') || '').trim() || '#247A43';
+    var neg = String(cs.getPropertyValue('--ac-neg') || '').trim() || '#AD3F52';
+    var days = futureDays(ix.last.t, ix.z.ext);
+    if (!days.length) return;
+    var t0 = ix.last.t, qm = days.length;
+    var path = function (target) { return [{ time: t0, value: ix.c0 }].concat(days.map(function (t, q) { var f = Math.sqrt((q + 1) / qm); return { time: t, value: ix.c0 * Math.exp(Math.log(target / ix.c0) * f) }; })); };
+    var add = function (opts, data) { var s = e.mainChart.addLineSeries(Object.assign({ priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }, opts)); s.setData(data); overlay.series.push(s); return s; };
+    add({ color: info, lineWidth: 1, lineStyle: 2 }, path(ix.p90));
+    add({ color: info, lineWidth: 1, lineStyle: 2 }, path(ix.p10));
+    var upMain = ix.bias === 'up', dnMain = ix.bias === 'down';
+    add({ color: pos, lineWidth: upMain ? 3 : 1, lineStyle: upMain ? 0 : 2 }, [{ time: t0, value: ix.c0 }, { time: days[Math.min(days.length - 1, Math.round(days.length * 0.6))], value: ix.upT.v }]);
+    add({ color: neg, lineWidth: dnMain ? 3 : 1, lineStyle: dnMain ? 0 : 2 }, [{ time: t0, value: ix.c0 }, { time: days[Math.min(days.length - 1, Math.round(days.length * 0.6))], value: ix.dnT.v }]);
+    var short = root.innerWidth < 520;
+    var line = function (price, title, color) { try { overlay.lines.push(e.candleSeries.createPriceLine({ price: price, color: color, lineWidth: 1, lineStyle: 3, axisLabelVisible: true, title: title })); } catch (_) {} };
+    ix.R.forEach(function (v, i) { line(v, (short ? 'R' : '▲ R') + (i + 1), pos); });
+    ix.S.forEach(function (v, i) { line(v, (short ? 'S' : '▼ S') + (i + 1), neg); });
+    overlay.id = id;
+    // Show the cone: open the right edge by the projection length.
+    try { var lr = e.mainChart.timeScale().getVisibleLogicalRange(); if (lr) e.mainChart.timeScale().setVisibleLogicalRange({ from: lr.from, to: lr.to + days.length }); } catch (_) {}
+  };
+
+  // Index-specific copy: the AI asks where the market goes, not where to buy;
+  // header links point to market structure and sector heat.
+  api.applyIndexCopy = function (isIdx) {
+    var chip = Array.prototype.find.call(doc.querySelectorAll('.unified-prompt-chip'), function (b) { return b.hasAttribute('data-entry-chip') || /Entry di mana\?|Ke mana arahnya\?/.test(b.textContent); });
+    if (chip) {
+      if (!chip.hasAttribute('data-entry-chip')) { chip.setAttribute('data-entry-chip', chip.getAttribute('onclick') || ''); }
+      if (isIdx) { chip.textContent = 'Ke mana arahnya?'; chip.setAttribute('onclick', "UnifiedCockpit.sendQuickPrompt('Ke mana arah indeks ini dalam horizon ini, dan level apa yang membatalkan bias?')"); }
+      else { chip.textContent = 'Entry di mana?'; chip.setAttribute('onclick', chip.getAttribute('data-entry-chip')); }
+    }
+    var links = doc.getElementById('anaHeaderLinks');
+    if (links) {
+      links.innerHTML = isIdx
+        ? '<button type="button" class="vbtn sm" onclick="switchAnalisisTab(\'market-structure\')">Struktur Pasar</button><button type="button" class="vbtn sm" onclick="navigateTo(\'sektor\')">Sektor Hot</button>'
+        : '<button type="button" class="vbtn sm" onclick="switchAnalisisTab(\'bandarmologi\')">Bandarmologi</button><button type="button" class="vbtn sm" onclick="switchAnalisisTab(\'financial\')">Financial</button>';
+    }
+  };
+
   root.AutoCuanAnalisisV2 = api;
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', bind); else bind();
 })(window);

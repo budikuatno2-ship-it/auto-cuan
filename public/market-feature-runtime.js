@@ -385,6 +385,9 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     var showCMF = wsState ? wsState.isLayerActive('bandar_cmf') : false;
     var showIntensity = wsState ? wsState.isLayerActive('bandar_intensity') : false;
     var showRotation = wsState ? wsState.isLayerActive('bandar_rotation') : false;
+    // Indices have no plan, no signal markers and no broker summary (HANDOFF 5a).
+    var _isIndexChart = ws && typeof ws.isIndexTicker === 'function' ? ws.isIndexTicker(ticker) : /^IHSG$/i.test(String(ticker || ''));
+    if (_isIndexChart) { showTradingPlan = false; showLPM = false; showForeign = false; showCMF = false; showIntensity = false; showRotation = false; }
 
     // Render Bandar Metrics Curves on Main Chart Canvas
     if (showLPM && ws && candles.length >= 5) {
@@ -573,6 +576,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         // No workstation module, no Corr F / Par F (the old fallback printed 0.72 and 34.2).
         var corrVal = ws ? ws.calculateCorrF(candles) : null;
         var parVal = ws ? ws.calculateParF(candles) : null;
+        if (_isIndexChart) { corrVal = null; parVal = null; }
         var corrTxt = (corrVal == null || !isFinite(corrVal)) ? '—' : ((corrVal >= 0 ? '+' : '') + corrVal.toFixed(2));
         var parTxt = (parVal == null || !isFinite(parVal)) ? '—' : (parVal.toFixed(1) + '%');
         var lpmVal = ws ? ws.calculateLPM(candles) : null;
@@ -603,7 +607,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                     '<span class="text-gray-400 font-normal">• Corr F <b style="color:#38bdf8;">' + corrTxt + '</b></span>' +
                 '</div>' +
                 '<div class="text-[10px] text-gray-300 font-medium">Vol <b style="color:#f1f5f9;">' + volStr + '</b> • Par F <b style="color:#fbbf24;">' + parTxt + '</b></div>' +
-                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM <b style="color:#34d399;">' + (lpmVal ? 'Rp ' + lpmVal.toLocaleString('id-ID') : 'Rp ' + cClose.toLocaleString('id-ID')) + '</b></div>' +
+                '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>LPM <b style="color:#34d399;">' + (lpmVal ? lpmVal.toLocaleString('id-ID') : '—') + '</b></div>' +
                 '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#3b82f6;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign <b style="color:#60a5fa;">' + foreignStr + '</b></div>' +
                 '<div class="text-[10px] font-medium flex items-center gap-1" style="color:#f97316;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>CMF <b style="color:#fb923c;">' + moneyFlowStr + '</b></div>';
         } else {
@@ -620,9 +624,15 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
                     '<span class="text-gray-400 font-normal">• Par F <b style="color:#fbbf24;">' + parTxt + '</b></span>' +
                 '</div>' +
                 '<div class="text-[11px] text-gray-300 font-medium">Volume <b style="color:#f1f5f9;">' + volStr + '</b></div>' +
-                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>Liquidity Pressure Model (LPM) <b style="color:#34d399;">' + (lpmVal ? 'Rp ' + lpmVal.toLocaleString('id-ID') : 'Rp ' + cClose.toLocaleString('id-ID')) + '</b></div>' +
+                '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#10b981;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#10b981;"></span>Liquidity Pressure Model (LPM) <b style="color:#34d399;">' + (lpmVal ? lpmVal.toLocaleString('id-ID') : '—') + '</b></div>' +
                 '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#3b82f6;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#3b82f6;"></span>Foreign Flow <b style="color:#60a5fa;">' + foreignStr + '</b></div>' +
                 '<div class="text-[11px] font-medium flex items-center gap-1" style="color:#f97316;"><span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color:#f97316;"></span>Money Flow <b style="color:#fb923c;">' + moneyFlowStr + '</b></div>';
+        }
+        // Indices carry no broker summary: drop the LPM / foreign / money-flow rows.
+        if (_isIndexChart) {
+            Array.prototype.slice.call(headerEl.children).forEach(function(row) {
+                if (/LPM|Foreign|Money Flow/.test(row.textContent || '')) row.remove();
+            });
         }
     }
 
@@ -651,12 +661,21 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         try { ws.attach(chartId, candles, metrics, ticker, options); } catch (_) {}
     }
 
+    // Register the live chart before waiting on the network, so theme repaint,
+    // price-scale buttons and overlays can reach it even while the quote below
+    // is slow. The full entry is written again at the end.
+    _chartRegistry[chartId] = Object.assign(_chartRegistry[chartId] || {}, { chartId: chartId, variant: variant, mainChart: chart, candleSeries: candleSeries, allSeries: _allSeries, ticker: ticker || '', lastClose: candles && candles.length ? candles[candles.length - 1].close : null, dims: dims, observers: _observers });
+
     // Fibonacci level overlay (from quote API) — uses createPriceLine for direct chart visibility
     var fibQuote = null;
     try {
         var fibTicker = ticker || chartId.replace('ychart_', '').replace(/^\d+$/, '');
         if (fibTicker) {
-        var fibResp = await fetch('/api/quote?ticker=' + encodeURIComponent(fibTicker), { headers: getAuthHeaders() }).then(function(r) { return r.json(); }).catch(function() { return null; });
+        // Bounded wait: a slow quote must not hold the rest of the chart.
+        var _fibAbort = typeof AbortController === 'function' ? new AbortController() : null;
+        var _fibTimer = _fibAbort ? setTimeout(function() { _fibAbort.abort(); }, 5000) : null;
+        var fibResp = await fetch('/api/quote?ticker=' + encodeURIComponent(fibTicker), { headers: getAuthHeaders(), signal: _fibAbort ? _fibAbort.signal : undefined }).then(function(r) { return r.json(); }).catch(function() { return null; });
+        if (_fibTimer) clearTimeout(_fibTimer);
         fibQuote = (fibResp && fibResp.fibonacci) ? fibResp.fibonacci : null;
         if (fibQuote && fibQuote.levels && candles.length >= 10) {
             // Use createPriceLine on candlestick series for reliable horizontal Fib lines
@@ -712,7 +731,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
             });
         } catch (elErr) { /* an overlay must never break the chart */ }
     }
-    var showSignalMarkers = wsState ? wsState.isLayerActive('signal_markers') : false;
+    var showSignalMarkers = wsState && !_isIndexChart ? wsState.isLayerActive('signal_markers') : false;
     var markersToApply = [];
     if (showSignalMarkers && btRes && Array.isArray(btRes.markers) && btRes.markers.length > 0) {
         markersToApply = btRes.markers;

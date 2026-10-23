@@ -598,3 +598,6 @@ html #appContent #page-analisis .ana-ptag { font-style: normal; font-size: 10.5p
 }
 @media (pointer: coarse) { html #appContent #page-analisis .ana-lots input { height: 44px; font-size: 16px; } }
 html #appContent #page-analisis .ana-calc .sub.pos { color: var(--ac-pos); }
+html #appContent #page-analisis .ana-links { display: inline-flex; gap: 6px; }
+html #appContent #page-analisis .ana-links:empty { display: none; }
+.cw-idx-note { font-size: 10px; font-weight: 600; color: var(--ac-info); }

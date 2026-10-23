@@ -1443,6 +1443,9 @@
     });
   }
 
+  var STOCK_ONLY_LAYERS = { trading_plan: 1, signal_markers: 1, bandar_lpm: 1, bandar_foreign: 1, bandar_cmf: 1, bandar_intensity: 1, bandar_rotation: 1, bandar_corr_f: 1, bandar_par_f: 1 };
+  function isIndexTicker(t) { return /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30|IDX80|KOMPAS100)$/i.test(String(t || '')); }
+
   function renderDrawerHtml(chartId) {
     var inst = _workstationInstances[chartId];
     var state = inst ? inst.state : createWorkstationState('simpel');
@@ -1470,14 +1473,17 @@
       for (var l = 0; l < group.layers.length; l++) {
         var layer = group.layers[l];
         var isActive = state.isLayerActive(layer.id);
-        var isDisabled = Boolean(layer.disabled);
+        // Indices: no entry/SL/TP, no signal markers, no broker summary (HANDOFF 5a).
+        var idxOnly = inst && isIndexTicker(inst.ticker) && STOCK_ONLY_LAYERS[layer.id];
+        var isDisabled = Boolean(layer.disabled) || Boolean(idxOnly);
+        if (idxOnly) isActive = false;
         html += '<label class="flex items-start gap-2 p-1 rounded ' + (isDisabled ? 'opacity-60 cursor-not-allowed bg-dark-900/40' : 'cursor-pointer hover:bg-dark-700/30') + '">' +
           '<input type="checkbox" ' + (isDisabled ? 'disabled' : '') + ' class="mt-0.5 rounded border-dark-600 text-emerald-500 focus:ring-0 bg-dark-900 ' + (isDisabled ? 'cursor-not-allowed' : '') + '" ' + (isActive ? 'checked' : '') + ' onchange="AutoCuanChartWorkstation.toggleLayer(\'' + chartId + '\', \'' + layer.id + '\')">' +
           '<div class="min-w-0 flex-1">' +
             '<div class="font-medium text-gray-200 flex items-center gap-1.5 flex-wrap">' +
               (layer.color ? '<span class="w-2 h-2 rounded-full inline-block shrink-0" style="background-color:' + layer.color + '"></span>' : '') +
               '<span>' + layer.name + '</span>' +
-              (isDisabled ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-dark-700 text-amber-400 border border-dark-600 font-normal">Dalam Riset (Nonaktif)</span>' : '') +
+              (idxOnly ? '<span class="cw-idx-note">' + (/^bandar_/.test(layer.id) ? 'Tidak ada broker summary untuk indeks' : 'Khusus saham') + '</span>' : (isDisabled ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-dark-700 text-amber-400 border border-dark-600 font-normal">Dalam Riset (Nonaktif)</span>' : '')) +
             '</div>' +
             '<p class="text-[10px] text-gray-400">' + layer.desc + '</p>' +
           '</div>' +
@@ -2359,6 +2365,8 @@
     turnOffAll: turnOffAll,
     reset: reset,
     scalePrice: scalePrice,
+    isIndexTicker: isIndexTicker,
+    STOCK_ONLY_LAYERS: STOCK_ONLY_LAYERS,
     toggleOneScreen: toggleOneScreen,
     attach: attach,
     switchTicker: switchTicker

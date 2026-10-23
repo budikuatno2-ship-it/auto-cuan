@@ -120,7 +120,7 @@
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
     <link rel="stylesheet" href="/ui-theme.css?v=20261022-v2">
-    <link rel="stylesheet" href="/ac-v2.css?v=20261023-v3">
+    <link rel="stylesheet" href="/ac-v2.css?v=20261023-v4">
     <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=20260929-v1">
@@ -2575,6 +2575,7 @@ html.light #googleCompleteProfileModal input {
                     <button id="tabAnalisisVision" type="button" class="analisis-subtab hidden" style="display:none" data-subtab="chart" data-tab="chart" onclick="switchAnalisisSubTab('chart')">Chart &amp; AI Vision</button>
                 </div>
                 <span class="chip b ana-stamp">Candle harian EOD</span>
+                <span class="ana-links" id="anaHeaderLinks"></span>
                 <form class="ana-search" role="search" onsubmit="UnifiedCockpit.handleUnifiedAnalisisSubmit(); return false;">
                     <input id="analisisInput" type="text" placeholder="Ganti ticker, mis. BBCA" aria-label="Ganti ticker" autocomplete="off" spellcheck="false">
                     <button id="btnJalankanAnalisis" type="submit" class="vbtn p sm">Analisis</button>
@@ -16099,9 +16100,9 @@ function forceNormalizeTechnicalDOM(root) {
 
 </script>
 <script src="/tab-keepalive-runtime.js?v=20260926-ka1"></script>
-<script src="/chart-workstation.js?v=20261023-v3"></script>
-<script src="/market-feature-runtime.js?v=20261023-v3"></script>
-<script src="/analisis-v2.js?v=20261023-v1"></script>
+<script src="/chart-workstation.js?v=20261023-v4"></script>
+<script src="/market-feature-runtime.js?v=20261023-v4"></script>
+<script src="/analisis-v2.js?v=20261023-v2"></script>
 <script src="/daytrade-runtime.js?v=20260818-v1"></script>
 
 <script>
