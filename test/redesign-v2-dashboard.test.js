@@ -94,3 +94,21 @@ test('Dashboard markup follows the canvas and keeps the loader ids', () => {
   // IHSG: no invented fallback value anymore.
   assert.doesNotMatch(html, /'7\.500,00'/);
 });
+
+// Top 5 rows read the field names the production screeners write into
+// raw_payload: Konglo rows carry stock_name, group_code, change_pct and
+// volume_ratio_avg20 (api/sector-hot.js results.push), Day Trade rows
+// volume_ratio_20d, Fusion picks fusion_rvol (lib/top5-fusion-engine.js).
+test('Top 5 columns read the production screener field names', () => {
+  const html = read('public/index.html');
+  assert.match(html, /var volRatio = dashPick\(r, \['volume_ratio_avg20', 'volume_ratio_20d', 'volume_ratio', 'fusion_rvol',/);
+  assert.match(html, /var name = dashPick\(r, \['stock_name', 'company_name',/);
+  assert.match(html, /var group = dashPick\(r, \['group_name', 'group_code',/);
+  assert.match(html, /var chg = dashPick\(r, \['change_pct',/);
+  const api = read('api/sector-hot.js');
+  assert.match(api, /group_code: item\.group_code,\n\s+stock_name: item\.stock_name,/);
+  assert.match(api, /change_pct: analysis\.change_pct,/);
+  assert.match(api, /volume_ratio_avg20: analysis\.volume_ratio_avg20,/);
+  assert.match(api, /raw_payload: candidate/, 'the locked Top 5 row keeps the whole candidate');
+  assert.match(read('lib/top5-fusion-engine.js'), /fusion_rvol: evaluation\.momentum_pillar/);
+});

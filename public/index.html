@@ -14969,9 +14969,9 @@ function renderDashboardTop5(picks) {
 
         var st = dashStatusOf(action);
         var chg = dashPick(r, ['change_pct', 'price_change_pct', 'pct_change', 'chg_pct', 'daily_change_pct']);
-        var volRatio = dashPick(r, ['volume_ratio', 'vol_ratio', 'volume_vs_avg20', 'volumeVsAvg20', 'rvol']);
-        var name = dashPick(r, ['company_name', 'name', 'nama_emiten']);
-        var group = dashPick(r, ['konglo_group', 'group_name', 'group', 'conglomerate']);
+        var volRatio = dashPick(r, ['volume_ratio_avg20', 'volume_ratio_20d', 'volume_ratio', 'fusion_rvol', 'vol_ratio', 'volume_vs_avg20', 'volumeVsAvg20', 'rvol']);
+        var name = dashPick(r, ['stock_name', 'company_name', 'name', 'nama_emiten']);
+        var group = dashPick(r, ['group_name', 'group_code', 'konglo_group', 'group', 'conglomerate']);
         var setup = dashPick(r, ['setup_label', 'swing_tier', 'tier_label', 'setup']);
         var chgNum = Number(chg);
         var hasChg = chg != null && isFinite(chgNum);
