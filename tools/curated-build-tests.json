@@ -687,6 +687,8 @@
   "test/vps-api-bridge-tunnel.test.js",
   "test/vps-data-fetcher-bugs.test.js",
   "test/vps-data-fetcher-per-ticker-cooldown.test.js",
+  "test/dev-header-identity.test.js",
+  "test/rate-limit-xff-spoofing.test.js",
   "test/vps-deploy-preflight.test.js",
   "test/vps-market-data-plane.test.js",
   "test/vps-monitor-local-runner.test.js",
