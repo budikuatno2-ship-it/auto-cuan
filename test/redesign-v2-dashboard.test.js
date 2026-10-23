@@ -112,3 +112,12 @@ test('Top 5 columns read the production screener field names', () => {
   assert.match(api, /raw_payload: candidate/, 'the locked Top 5 row keeps the whole candidate');
   assert.match(read('lib/top5-fusion-engine.js'), /fusion_rvol: evaluation\.momentum_pillar/);
 });
+
+// The IHSG sparkline is an <svg>: SVGElement has no .hidden property, so
+// spark.hidden = false never removed the attribute and the line never showed.
+test('IHSG sparkline toggles the hidden attribute, not a .hidden property', () => {
+  const js = read('public/dashboard-v2.js');
+  assert.match(js, /spark\.removeAttribute\('hidden'\)/);
+  assert.match(js, /spark\.setAttribute\('hidden', ''\)/);
+  assert.doesNotMatch(js, /spark\.hidden\s*=/);
+});

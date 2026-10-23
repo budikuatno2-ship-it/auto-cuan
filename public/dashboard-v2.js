@@ -155,8 +155,8 @@
       var path = spark.querySelector('path');
       path.setAttribute('d', sparkPath(closes));
       path.setAttribute('stroke', closes[closes.length - 1] >= closes[0] ? 'var(--ac-pos)' : 'var(--ac-neg)');
-      spark.hidden = false;
-    }).catch(function () { if (spark) spark.hidden = true; });
+      spark.removeAttribute('hidden'); // an <svg> has no .hidden property
+    }).catch(function () { if (spark) spark.setAttribute('hidden', ''); });
   }
 
   root.AutoCuanDashboardV2 = { loadMarket: loadMarket, loadIhsg: loadIhsg, sessionOf: sessionOf, strongestSector: strongestSector, renderKick: renderKick };
