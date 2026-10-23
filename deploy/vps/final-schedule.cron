@@ -10,17 +10,25 @@
 CRON_TZ=Asia/Jakarta
 
 # ── INFRA HARIAN ──────────────────────────────────────────────────────────
+# B1 (2026-10-23): BACKFILL DIJEDA. Data harian (J1) lebih penting daripada
+# backfill riwayat. Baris di bawah TIDAK dihapus, hanya dikomentari. Pulihkan
+# dengan menghapus awalan "# " pada baris yang ditandai DIJEDA, setelah bagian C
+# selesai DAN B2-B3 terbukti.
 # Backfill candle historis (tengah malam)
-5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
+# DIJEDA 20261023 sampai J1 terkejar
+# 5 0 * * * /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-historical-candles.js --max-requests=2500 >> /home/ubuntu/auto-cuan-runner/logs/backfill-candles.log 2>&1
 
 # Backfill otomatis broker summary asing (Hari kerja slot 1: 00:07 WIB)
-7 0 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
+# DIJEDA 20261023 sampai J1 terkejar
+# 7 0 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
 
 # Backfill otomatis broker summary asing (Hari kerja slot 2: 19:30 WIB)
-30 19 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
+# DIJEDA 20261023 sampai J1 terkejar
+# 30 19 * * 1-5 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekday --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
 
 # Backfill otomatis broker summary asing (Akhir pekan: Sabtu & Minggu 00:07 WIB)
-7 0 * * 6,0 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekend --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
+# DIJEDA 20261023 sampai J1 terkejar
+# 7 0 * * 6,0 /home/ubuntu/.local/node-v22/bin/node /home/ubuntu/auto-cuan/tools/backfill-broksum.js --mode=weekend --only-foreign >> /home/ubuntu/auto-cuan-runner/logs/backfill-broksum-foreign.log 2>&1
 
 # Lifecycle evaluator (sore, setelah bursa tutup)
 30 16 * * 1-5 /home/ubuntu/auto-cuan/deploy/vps/run-lifecycle-evaluator.sh --apply >> /home/ubuntu/auto-cuan-runner/logs/lifecycle-evaluator.log 2>&1

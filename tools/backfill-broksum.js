@@ -520,6 +520,11 @@ function categorizeTickersByLiquidity(baseDir, candlesDir, tickers) {
 // B3 (2026-10-20): the backfill worker must yield to the daily jobs. It takes
 // the shared Arjum lock (non-blocking): if J1 or J2 is running, the backfill is
 // SKIPPED for this firing instead of hammering stock.arjum.com in parallel.
+//
+// B3 (2026-10-23): the lock used to be held for the ENTIRE run (hours), so a
+// long backfill made every J1 firing skip. The lock is now taken per BATCH: the
+// backfill releases it between batches so J1 can start within one batch window.
+// `BACKFILL_BATCH_SIZE` (default 50) controls the batch size.
 async function run(argv) {
   const arjumSharedLock = require('../lib/arjum-shared-lock');
   const outcome = await arjumSharedLock.withArjumLock({ job: 'backfill-broksum', waitMs: 0 }, () => runUnlocked(argv));
@@ -528,6 +533,13 @@ async function run(argv) {
     return { skipped: true, reason: 'SKIPPED_ARJUM_BUSY', requestsSent: 0 };
   }
   return outcome;
+}
+
+// Batch size for the per-batch lock hand-off. Exported for tests.
+function backfillBatchSize(env) {
+  const e = env || process.env;
+  const n = parseInt(e.BACKFILL_BATCH_SIZE, 10);
+  return Number.isFinite(n) && n > 0 ? n : 50;
 }
 
 async function runUnlocked(argv) {
@@ -571,6 +583,30 @@ async function runUnlocked(argv) {
 
   // Set Arjum throttle delay in process env so client throttle queue matches worker pacing
   process.env.ARJUM_THROTTLE_DELAY_MS = String(delayMs);
+
+  // B3 (2026-10-23): per-batch lock hand-off so J1 is never starved.
+  const batchSize = backfillBatchSize();
+  let processedTickers = 0;
+  const arjumSharedLock = require('../lib/arjum-shared-lock');
+  // Release the shared lock, then check whether a daily job is waiting for it.
+  // If so, this run stops (state is saved) and resumes on the next firing.
+  async function yieldLockToDailyJobs() {
+    if (arjumSharedLock.hasLockInThisProcess()) {
+      arjumSharedLock.releaseLock(arjumSharedLock.defaultLockFile());
+      arjumSharedLock.__resetReentrancyForTests();
+    }
+    // Give a waiting daily job a moment to take the lock.
+    await sleep(1500);
+    const info = arjumSharedLock.readLockInfo(arjumSharedLock.defaultLockFile());
+    const holder = info && info.job ? String(info.job) : '';
+    if (holder && holder !== 'backfill-broksum') {
+      console.log(`[BACKFILL-LOCK] Lock kini dipegang ${holder}; backfill berhenti agar job harian jalan.`);
+      return true;
+    }
+    // Nobody waiting: take the lock back and continue.
+    const reacquired = await arjumSharedLock.withArjumLock({ job: 'backfill-broksum', waitMs: 0 }, async () => true);
+    return Boolean(reacquired && reacquired.skipped);
+  }
 
   const baseDir = getBaseDir(overrideTargetDir);
 
@@ -1113,6 +1149,21 @@ async function runUnlocked(argv) {
       }
 
       if (quotaHalted || requestsSent >= limit) break;
+
+      // B3 (2026-10-23): hand the shared Arjum lock back between batches so a
+      // long backfill cannot starve J1. If a daily job is waiting, this run
+      // stops here and resumes on the next firing (state is already saved).
+      processedTickers++;
+      if (processedTickers % batchSize === 0) {
+        saveState();
+        const yielded = await yieldLockToDailyJobs();
+        if (yielded) {
+          console.log(`[BACKFILL-LOCK] Menyerahkan lock setelah ${processedTickers} emiten; job harian menunggu. Berhenti untuk firing ini.`);
+          haltReason = 'yielded_to_daily';
+          quotaHalted = true;
+          break;
+        }
+      }
     }
   } finally {
     saveState();
@@ -1178,5 +1229,6 @@ module.exports = {
   DAILY_REQUESTS_PER_TICKER,
   isProviderTransient,
   PROVIDER_RETRY_DELAYS_MS,
-  MAX_CONSECUTIVE_5XX
+  MAX_CONSECUTIVE_5XX,
+  backfillBatchSize
 };
