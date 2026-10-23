@@ -33,7 +33,8 @@ test('one detail renderer: canvas summary plus the full legacy detail', () => {
   // write into the hidden Konglo pane).
   assert.match(html, /document\.getElementById\(type === 'daytrade' \? 'dtDetailPane' : \(type === 'nonkonglo' \? 'nkDetailPane' : 'screenerDetailPane'\)\)/);
   // Auto-select only where the pane is docked, so no dialog opens on load.
-  assert.equal((html.match(/window\.innerWidth >= 1280 && filtered\.length > 0/g) || []).length, 2);
+  // Docked from 1280 px, or 1024 px with compact columns (AutoCuanScreenerV2.isDocked).
+  assert.equal((html.match(/AutoCuanScreenerV2\.isDocked\(\) : window\.innerWidth >= 1280\) && filtered\.length > 0/g) || []).length, 2);
 });
 
 test('a failed screener read is not reported as "access denied"', () => {
@@ -61,4 +62,43 @@ test('setup meanings and gate summary use no em dash inside sentences', () => {
   const a = html.indexOf('function getSetupMeaning');
   assert.doesNotMatch(html.slice(a, html.indexOf('\n}\n', a)), / — /);
   assert.doesNotMatch(read('public/signal-gate-transparency.js'), /belum tersedia — status/);
+});
+
+// Canvas "Urutkan" and "Kolom ringkas/lengkap".
+function loadView(store) {
+  const sb = { window: { innerWidth: 1440, localStorage: { getItem: (k) => store[k] || null, setItem: (k, v) => { store[k] = v; } } }, Number, String, Array, Object, JSON, isFinite, Event: function () {} };
+  sb.window.window = sb.window;
+  vm.runInNewContext(read('public/screener-v2.js'), sb);
+  return sb.window;
+}
+test('sort is display only: default keeps the screener order, Skor and Perubahan sort, blanks last', () => {
+  const w = loadView({});
+  const api = w.AutoCuanScreenerV2;
+  const rows = [{ ticker: 'A', score: 80, change_pct: 1 }, { ticker: 'B', score: 92, change_pct: null }, { ticker: 'C', score: 85, change_pct: 4 }, { ticker: 'D', score: null, change_pct: 2 }];
+  assert.deepEqual(api.sortRows(rows, 'konglo').map((r) => r.ticker), ['A', 'B', 'C', 'D']);
+  api.view.sort = 'score';
+  assert.deepEqual(api.sortRows(rows, 'konglo').map((r) => r.ticker), ['B', 'C', 'A', 'D']);
+  api.view.sort = 'chg';
+  assert.deepEqual(api.sortRows(rows, 'konglo').map((r) => r.ticker), ['C', 'D', 'A', 'B']);
+  api.view.sort = 'score';
+  assert.deepEqual(api.sortRows([{ ticker: 'X', daytrade_score: 50, score: 99 }, { ticker: 'Y', daytrade_score: 70 }], 'daytrade').map((r) => r.ticker), ['Y', 'X'], 'Day Trade sorts on the score its table shows');
+  assert.equal(rows[0].ticker, 'A', 'the source array is not reordered');
+});
+test('compact columns: dock below 1280 px only where the compact table still fits', () => {
+  const w = loadView({ 'ac-scr-view': '{"sort":"chg","compact":true}' });
+  const api = w.AutoCuanScreenerV2;
+  assert.equal(api.view.sort, 'chg', 'choice is remembered');
+  const split = (width) => { w.document = { querySelectorAll: () => [{ getBoundingClientRect: () => ({ width }) }], getElementById: () => null }; };
+  w.innerWidth = 1100; split(875); assert.equal(api.isDocked(), true, '875 - 360 >= 502');
+  w.innerWidth = 1100; split(779); assert.equal(api.isDocked(), false, 'wide sidebar: 779 - 360 < 502');
+  w.innerWidth = 1000; split(900); assert.equal(api.isDocked(), false, 'never below 1024');
+  api.view.compact = false;
+  w.innerWidth = 1100; assert.equal(api.isDocked(), false);
+  w.innerWidth = 1280; assert.equal(api.isDocked(), true);
+  const css = read('public/ac-v2.css');
+  assert.match(css, /@media \(max-width: 1279px\) \{\n\s+html #appContent #page-screener:not\(\.scr-dock\) \.ac-split-view__pane \{ display: none !important; \}/);
+  assert.match(css, /#page-screener\.scr-compact #screenerTableWrap tr > :nth-child\(n\+8\)/);
+  assert.equal((html.match(/data-scr-sort onclick="AutoCuanScreenerV2\.cycleSort\(\)">Urutkan: Bawaan<\/button>/g) || []).length, 3);
+  assert.equal((html.match(/data-scr-cols aria-pressed="false" onclick="AutoCuanScreenerV2\.toggleCompact\(\)">Kolom: Lengkap<\/button>/g) || []).length, 3);
+  assert.match(html, /return window\.AutoCuanScreenerV2 && typeof window\.AutoCuanScreenerV2\.sortRows === 'function' \? window\.AutoCuanScreenerV2\.sortRows\(rows, type\) : rows;/);
 });

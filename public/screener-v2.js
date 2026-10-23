@@ -106,5 +106,73 @@
     return html;
   }
 
-  root.AutoCuanScreenerV2 = { summaryHtml: summaryHtml };
+  /* ---------- Sort and column density (canvas "Urutkan" and "Kolom") ----------
+     Sorting is display only: the screener's own order ("Bawaan", tier then
+     quality) stays the default; Skor and Perubahan sort the filtered rows,
+     rows without the value go last. "Ringkas" hides the wide columns. */
+  var view = { sort: 'default', compact: false };
+  try { var saved = JSON.parse(root.localStorage.getItem('ac-scr-view') || '{}'); if (saved.sort) view.sort = saved.sort; view.compact = saved.compact === true; } catch (_) {}
+  var SORTS = ['default', 'score', 'chg'];
+  var SORT_LABEL = { default: 'Bawaan', score: 'Skor ↓', chg: 'Perubahan ↓' };
+  function persist() { try { root.localStorage.setItem('ac-scr-view', JSON.stringify(view)); } catch (_) {} }
+  function num(v) { var x = Number(v); return v != null && v !== '' && isFinite(x) ? x : null; }
+  function scoreOf(r, type) {
+    if (type === 'daytrade') return num(r.daytrade_score != null ? r.daytrade_score : (r.score != null ? r.score : (r.unified_score != null ? r.unified_score : r.setup_score)));
+    return num(r.score);
+  }
+  function sortRows(rows, type) {
+    if (!Array.isArray(rows) || view.sort === 'default') return rows;
+    var key = view.sort === 'chg' ? function (r) { return num(r.change_pct); } : function (r) { return scoreOf(r, type); };
+    return rows.map(function (r, i) { return { r: r, i: i, k: key(r) }; }).sort(function (a, b) {
+      if ((a.k == null) !== (b.k == null)) return a.k == null ? 1 : -1;
+      if (a.k != null && a.k !== b.k) return b.k - a.k;
+      return a.i - b.i;
+    }).map(function (o) { return o.r; });
+  }
+  function currentType() { return root._currentScreenerType || 'konglo'; }
+  function syncControls() {
+    var doc = root.document;
+    Array.prototype.forEach.call(doc.querySelectorAll('[data-scr-sort]'), function (b) {
+      b.textContent = 'Urutkan: ' + SORT_LABEL[view.sort];
+      b.setAttribute('aria-label', 'Urutan tabel: ' + SORT_LABEL[view.sort] + '. Ketuk untuk mengganti');
+    });
+    Array.prototype.forEach.call(doc.querySelectorAll('[data-scr-cols]'), function (b) {
+      b.textContent = 'Kolom: ' + (view.compact ? 'Ringkas' : 'Lengkap');
+      b.setAttribute('aria-pressed', String(view.compact));
+    });
+    var page = doc.getElementById('page-screener');
+    if (page) page.classList.toggle('scr-compact', view.compact);
+  }
+  function rerender() { if (typeof root.applyScreenerUiFilters === 'function') root.applyScreenerUiFilters(currentType()); }
+  function setSort(s) { if (SORT_LABEL[s] == null) return; view.sort = s; persist(); syncControls(); rerender(); }
+  function cycleSort() { setSort(SORTS[(SORTS.indexOf(view.sort) + 1) % SORTS.length]); }
+  // Docked detail pane: from 1280 px; with compact columns also below that,
+  // as long as the 502 px compact table still fits beside the 360 px pane
+  // (measured on the canvas rows). Below 1024 px it never fits.
+  var DOCK_FULL = 1280, DOCK_COMPACT = 1024, PANE_W = 360, COMPACT_TABLE_W = 502;
+  function splitWidth() {
+    var list = root.document ? root.document.querySelectorAll('#page-screener .ac-split-view') : [];
+    for (var i = 0; i < list.length; i++) { var w = list[i].getBoundingClientRect().width; if (w > 0) return w; }
+    return 0;
+  }
+  function isDocked() {
+    var w = root.innerWidth || 0, on = w >= DOCK_FULL;
+    if (!on && view.compact && w >= DOCK_COMPACT) on = splitWidth() - PANE_W >= COMPACT_TABLE_W;
+    var page = root.document && root.document.getElementById('page-screener');
+    if (page) page.classList.toggle('scr-dock', on && w < DOCK_FULL);
+    return on;
+  }
+  function setCompact(on) { view.compact = Boolean(on); persist(); syncControls(); isDocked(); }
+  if (typeof root.addEventListener === 'function') {
+    var dockRaf = 0;
+    root.addEventListener('resize', function () { if (dockRaf) return; dockRaf = root.requestAnimationFrame(function () { dockRaf = 0; isDocked(); }); });
+  }
+  if (root.document) {
+    if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', syncControls); else syncControls();
+  }
+
+  root.AutoCuanScreenerV2 = {
+    summaryHtml: summaryHtml, sortRows: sortRows, setSort: setSort, cycleSort: cycleSort,
+    setCompact: setCompact, isDocked: isDocked, DOCK_FULL: DOCK_FULL, DOCK_COMPACT: DOCK_COMPACT, toggleCompact: function () { setCompact(!view.compact); }, view: view, SORT_LABEL: SORT_LABEL
+  };
 })(window);

@@ -120,7 +120,7 @@
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
     <link rel="stylesheet" href="/ui-theme.css?v=20261022-v2">
-    <link rel="stylesheet" href="/ac-v2.css?v=20261023-v6">
+    <link rel="stylesheet" href="/ac-v2.css?v=20261023-v9">
     <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
     <link rel="stylesheet" href="/unified-cockpit.css?v=20260905-v1">
     <link rel="stylesheet" href="/portfolio-spa-scoped.css?v=20260929-v1">
@@ -1516,6 +1516,7 @@ html.light #googleCompleteProfileModal input {
                     <button id="kgBtnTable" onclick="toggleScreenerView('konglo', 'table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
                     <button id="kgBtnCard" onclick="toggleScreenerView('konglo', 'card')" class="ac-segment" aria-pressed="false">Kartu</button>
                 </div>
+                <button type="button" class="vbtn sm scr-view-btn" data-scr-sort onclick="AutoCuanScreenerV2.cycleSort()">Urutkan: Bawaan</button><button type="button" class="vbtn sm scr-view-btn" data-scr-cols aria-pressed="false" onclick="AutoCuanScreenerV2.toggleCompact()">Kolom: Lengkap</button>
                 <button onclick="exportKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Cetak / PDF</button>
             </div>
         </div>
@@ -1640,6 +1641,7 @@ html.light #googleCompleteProfileModal input {
                         <button id="nkBtnTable" onclick="toggleScreenerView('nonkonglo', 'table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
                         <button id="nkBtnCard" onclick="toggleScreenerView('nonkonglo', 'card')" class="ac-segment" aria-pressed="false">Kartu</button>
                     </div>
+                    <button type="button" class="vbtn sm scr-view-btn" data-scr-sort onclick="AutoCuanScreenerV2.cycleSort()">Urutkan: Bawaan</button><button type="button" class="vbtn sm scr-view-btn" data-scr-cols aria-pressed="false" onclick="AutoCuanScreenerV2.toggleCompact()">Kolom: Lengkap</button>
                     <button onclick="exportNonKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Cetak / PDF</button>
                 </div>
             </div>
@@ -1774,6 +1776,7 @@ html.light #googleCompleteProfileModal input {
                         <button id="dtBtnTable" onclick="toggleScreenerView('daytrade', 'table')" class="ac-segment is-active" aria-pressed="true">Tabel</button>
                         <button id="dtBtnCard" onclick="toggleScreenerView('daytrade', 'card')" class="ac-segment" aria-pressed="false">Kartu</button>
                     </div>
+                    <button type="button" class="vbtn sm scr-view-btn" data-scr-sort onclick="AutoCuanScreenerV2.cycleSort()">Urutkan: Bawaan</button><button type="button" class="vbtn sm scr-view-btn" data-scr-cols aria-pressed="false" onclick="AutoCuanScreenerV2.toggleCompact()">Kolom: Lengkap</button>
                     <button onclick="exportDayTradePDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Cetak / PDF</button>
                 </div>
             </div>
@@ -11541,7 +11544,7 @@ function applyScreenerUiFilters(type, results) {
         return;
     }
     var f = getScreenerUiFilterValues(type);
-    return (source || []).filter(function(r) {
+    var rows = (source || []).filter(function(r) {
         if (!r || !r.ticker) return false;
         var ticker = normalizeFilterToken(r.ticker);
         if (f.ticker && ticker.indexOf(f.ticker) === -1) return false;
@@ -11557,6 +11560,8 @@ function applyScreenerUiFilters(type, results) {
         }
         return true;
     });
+    // Display order only (canvas "Urutkan"); the screener's own order is the default.
+    return window.AutoCuanScreenerV2 && typeof window.AutoCuanScreenerV2.sortRows === 'function' ? window.AutoCuanScreenerV2.sortRows(rows, type) : rows;
 }
 
 // ===== DAY TRADE CARD GRID =====
@@ -12143,7 +12148,7 @@ function _authoritativeSelectScreenerRow(arg1, arg2, arg3) {
     if (!r && typeof _dtScreenerCache !== 'undefined' && _dtScreenerCache && _dtScreenerCache.results) r = _dtScreenerCache.results.find(function(x) { return x.ticker === ticker; });
     if (!r) return;
 
-    var isDesktop = window.innerWidth >= 1280;
+    var isDesktop = window.AutoCuanScreenerV2 && typeof window.AutoCuanScreenerV2.isDocked === 'function' ? window.AutoCuanScreenerV2.isDocked() : window.innerWidth >= 1280;
     if (isDesktop) {
         var pane = document.getElementById(type === 'daytrade' ? 'dtDetailPane' : (type === 'nonkonglo' ? 'nkDetailPane' : 'screenerDetailPane'));
         var content = document.getElementById(type === 'daytrade' ? 'dtDetailBody' : (type === 'nonkonglo' ? 'nkDetailBody' : 'screenerDetailPaneContent'));
@@ -13279,7 +13284,7 @@ function renderScreenerTable(results) {
         html += '</tr>';
     });
     setScreenerResultRows(tbody, html);
-    if (window.innerWidth >= 1280 && filtered.length > 0 && (!window.AutoCuanScreener || !window.AutoCuanScreener.selectedTicker)) {
+    if ((window.AutoCuanScreenerV2 && typeof window.AutoCuanScreenerV2.isDocked === 'function' ? window.AutoCuanScreenerV2.isDocked() : window.innerWidth >= 1280) && filtered.length > 0 && (!window.AutoCuanScreener || !window.AutoCuanScreener.selectedTicker)) {
         var firstTr = tbody.querySelector('tr[data-ticker]');
         if (firstTr && window.AutoCuanScreener) {
             window.AutoCuanScreener.selectRow('konglo', filtered[0].ticker, firstTr);
@@ -14024,7 +14029,7 @@ function renderNkScreenerTable(results) {
         html += '</tr>';
     });
     setScreenerResultRows(tbody, html);
-    if (window.innerWidth >= 1280 && filtered.length > 0 && (!window.AutoCuanScreener || !window.AutoCuanScreener.selectedTicker)) {
+    if ((window.AutoCuanScreenerV2 && typeof window.AutoCuanScreenerV2.isDocked === 'function' ? window.AutoCuanScreenerV2.isDocked() : window.innerWidth >= 1280) && filtered.length > 0 && (!window.AutoCuanScreener || !window.AutoCuanScreener.selectedTicker)) {
         var firstTr = tbody.querySelector('tr[data-ticker]');
         if (firstTr && window.AutoCuanScreener) {
             window.AutoCuanScreener.selectRow('nonkonglo', filtered[0].ticker, firstTr);
@@ -16372,7 +16377,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/market-intelligence.js?v=20261022-v2"></script>
 <script src="/dashboard-v2.js?v=20261022-v1"></script>
 <script src="/ac-tape.js?v=20261022-v1"></script>
-<script src="/screener-v2.js?v=20261022-v1"></script>
+<script src="/screener-v2.js?v=20261023-v3"></script>
 <script>
 // Auto-initialize Market Breadth if on dashboard
 document.addEventListener('DOMContentLoaded', function() {

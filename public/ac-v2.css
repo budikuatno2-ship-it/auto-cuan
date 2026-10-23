@@ -430,9 +430,11 @@ html #appContent #page-screener .ac-detail-pane__body .text-gray-500 { color: va
 .scr-legacy [style*="color:#fbbf24"], .scr-legacy [style*="color:#fde047"], .scr-legacy [style*="color:#f59e0b"] { color: var(--ac-warn-t) !important; }
 .scr-legacy [style*="color:#60a5fa"], .scr-legacy [style*="color:#93c5fd"], .scr-legacy [style*="color:#6b9fd8"], .scr-legacy [style*="color:#818cf8"], .scr-legacy [style*="color:#a78bfa"] { color: var(--ac-info) !important; }
 
-/* Docked pane from 1280px (the detail opens as a dialog below that). */
+/* Docked pane from 1280px; below that only with compact columns when the
+   compact table still fits beside it (.scr-dock, set by screener-v2.js). The
+   detail opens as a dialog otherwise. */
 @media (max-width: 1279px) {
-  html #appContent #page-screener .ac-split-view__pane { display: none !important; }
+  html #appContent #page-screener:not(.scr-dock) .ac-split-view__pane { display: none !important; }
 }
 @media (max-width: 700px) {
   html #appContent #page-screener .scr-ph { align-items: flex-start; }
@@ -617,3 +619,23 @@ html #appContent #page-analisis .ana-wl[hidden] { display: none; }
 html #appContent #page-analisis .ana-wl.on-star { color: var(--ac-warn-t); border-color: rgba(169, 109, 19, .4); }
 @media (max-width: 640px) { html #appContent #page-analisis .ana-wl .ana-wl-l { display: none; } html #appContent #page-analisis .ana-wl { width: 36px; justify-content: center; padding: 0; } }
 @media (pointer: coarse) { html #appContent #page-analisis .ana-wl { height: 44px; min-width: 44px; } }
+
+/* Screener "Kolom: Ringkas" (canvas .tbl.compact): keep ticker, group/board,
+   tier, exec, price and change; hide setup, RSI, Vol/Avg20, timing, direction,
+   notes (Day Trade also Tx, pre-spike, momentum, time plan). */
+html #appContent #page-screener.scr-compact #screenerTableWrap table,
+html #appContent #page-screener.scr-compact #nkScreenerTableWrap table,
+html #appContent #page-screener.scr-compact #dtScreenerTableWrap table { min-width: 0 !important; }
+html #appContent #page-screener.scr-compact #screenerTableWrap tr > :nth-child(5),
+html #appContent #page-screener.scr-compact #screenerTableWrap tr > :nth-child(n+8),
+html #appContent #page-screener.scr-compact #nkScreenerTableWrap tr > :nth-child(6),
+html #appContent #page-screener.scr-compact #nkScreenerTableWrap tr > :nth-child(n+9),
+html #appContent #page-screener.scr-compact #dtScreenerTableWrap tr > :nth-child(7),
+html #appContent #page-screener.scr-compact #dtScreenerTableWrap tr > :nth-child(n+10) { display: none; }
+html #appContent #page-screener.scr-compact #screenerTableWrap tr > td[colspan],
+html #appContent #page-screener.scr-compact #nkScreenerTableWrap tr > td[colspan],
+html #appContent #page-screener.scr-compact #dtScreenerTableWrap tr > td[colspan] { display: table-cell; }
+html #appContent #page-screener .scr-view-btn { white-space: nowrap; }
+/* Mode header actions wrap instead of clipping the view toggle at 1024 px. */
+html #appContent #page-screener div:has(> [data-scr-sort]) { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
+html #appContent #page-screener div:has(> [data-scr-sort]) > * { flex: none; white-space: nowrap; }
