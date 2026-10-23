@@ -691,6 +691,8 @@
   "test/rate-limit-xff-spoofing.test.js",
   "test/backlog-age-alarm.test.js",
   "test/broker-hunter-index-and-backlog-cron.test.js",
+  "test/security-headers-csp-hsts.test.js",
+  "test/telegram-member-expiry-audit.test.js",
   "test/vps-deploy-preflight.test.js",
   "test/vps-market-data-plane.test.js",
   "test/vps-monitor-local-runner.test.js",

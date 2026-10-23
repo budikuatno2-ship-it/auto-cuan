@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { createStaticResponder } = require('../lib/static-assets');
 const { isAllowedDataPath } = require('../lib/data-route-allowlist');
+const { applySecurityHeaders } = require('../lib/security-headers');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
@@ -835,6 +836,16 @@ const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
   let pathname = parsedUrl.pathname;
 
+  // C2: HSTS + CSP (Report-Only) for the HTML document surface, applied at the
+  // origin so it ships whether or not nginx is in front. Deliberately limited to
+  // navigations: API and static-asset responses keep their existing headers. HSTS
+  // is set on every response (it is origin-wide and harmless on subresources);
+  // CSP is set only on documents so it cannot perturb API/asset contracts.
+  const isDocumentRequest = (req.method === 'GET' || req.method === 'HEAD') &&
+    !pathname.startsWith('/api/') && !pathname.startsWith('/data/') &&
+    !/\.[a-z0-9]{2,5}$/i.test(pathname);
+  applySecurityHeaders(res, { csp: isDocumentRequest, env: process.env });
+
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Telegram-Bot-Api-Secret-Token');
@@ -914,6 +925,16 @@ const server = http.createServer(async (req, res) => {
     // Alias: /api/track-record -> sector-hot?action=track-record.
     if (endpointName === 'track-record') {
       parsedUrl.searchParams.set('action', 'track-record');
+      endpointName = 'sector-hot';
+      pathname = '/api/sector-hot';
+    }
+
+    // Alias: /api/market-breadth -> sector-hot?action=market-breadth. The client
+    // already calls this path, but no api/market-breadth.js file existed, so the
+    // request fell through to the static handler and answered 404 (GET returns
+    // the server-side breadth, so it is reachable directly too).
+    if (endpointName === 'market-breadth') {
+      parsedUrl.searchParams.set('action', 'market-breadth');
       endpointName = 'sector-hot';
       pathname = '/api/sector-hot';
     }
