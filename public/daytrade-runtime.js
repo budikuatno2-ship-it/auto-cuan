@@ -1,3 +1,25 @@
+function formatDtDisplayTimestamp(meta) {
+    if (!meta) return '—';
+    var tradeDate = meta.as_of_trade_date || meta.trade_date || meta.target_date || meta.as_of_date || null;
+    var tradeDateFormatted = tradeDate ? (function(td) {
+        try {
+            var parts = String(td).slice(0, 10).split('-');
+            if (parts.length === 3) {
+                var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+            }
+            return td;
+        } catch(_) { return td; }
+    })(tradeDate) : null;
+
+    var calcTs = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : null;
+
+    if (tradeDateFormatted) {
+        return 'Data Bursa: ' + tradeDateFormatted + (calcTs ? ' (Dihitung: ' + calcTs + ')' : '');
+    }
+    return calcTs || '—';
+}
+
 // Auto-Cuan Day Trade UI/runtime kept separate from cacheable market/chart bundle.
 // ============================================================
 // DAY TRADE SCREENER — JavaScript Functions
@@ -74,18 +96,17 @@ async function loadDayTradeScreener() {
         var meta = data.meta || {};
         var badge = document.getElementById('dtMetaBadge');
         if (badge) {
-            var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—';
+            var ts = formatDtDisplayTimestamp(meta);
             badge.textContent = ((meta.source === 'latest_completed_snapshot' || meta.status === 'latest_completed_snapshot') ? 'Latest Completed Snapshot' : (meta.freshness_label || meta.snapshot_label || meta.status || 'pending')) + ' · ' + ts;
-            // V2 Freshness label: warn if Day Trade data is not from today
-            if (meta.calculated_at && meta.status !== 'scanning') {
+            // V2 Freshness label: warn if Day Trade data is not from today or yesterday's trading session
+            var effectiveDate = meta.as_of_trade_date || meta.trade_date || meta.target_date || (meta.calculated_at ? new Date(meta.calculated_at).toISOString().slice(0, 10) : null);
+            if (effectiveDate && meta.status !== 'scanning') {
                 var wibOffset = 7 * 60 * 60 * 1000;
-                var dtCalcWib = new Date(new Date(meta.calculated_at).getTime() + wibOffset);
                 var dtNowWib = new Date(Date.now() + wibOffset);
-                var dtCalcDateStr = dtCalcWib.toISOString().slice(0, 10);
                 var dtTodayStr = dtNowWib.toISOString().slice(0, 10);
                 var dtYesterdayStr = new Date(dtNowWib.getTime() - 86400000).toISOString().slice(0, 10);
-                if (dtCalcDateStr !== dtTodayStr && dtCalcDateStr !== dtYesterdayStr) {
-                    badge.textContent = '\u26A0 STALE \u00b7 Data day trade sudah lama (' + dtCalcDateStr + '). Refresh wajib sebelum entry. \u00b7 ' + ts;
+                if (effectiveDate !== dtTodayStr && effectiveDate !== dtYesterdayStr) {
+                    badge.textContent = '\u26A0 STALE \u00b7 Data sesi bursa (' + effectiveDate + '). Refresh wajib sebelum entry. \u00b7 ' + ts;
                     badge.style.color = '#f59e0b';
                 }
             }
@@ -202,7 +223,7 @@ function updateDtMetaUI(meta) {
     if (typeof updateGlobalLiveRadarStatus === 'function') updateGlobalLiveRadarStatus(meta || {});
     var badge = document.getElementById('dtMetaBadge');
     if (badge) {
-        var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—';
+        var ts = formatDtDisplayTimestamp(meta);
         badge.textContent = ((meta.source === 'latest_completed_snapshot' || meta.status === 'latest_completed_snapshot') ? 'Latest Completed Snapshot' : (meta.freshness_label || meta.snapshot_label || meta.status || 'pending')) + ' · ' + ts;
     }
     var statU = document.getElementById('dtStatUniverse');
