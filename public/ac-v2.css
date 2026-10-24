@@ -923,6 +923,44 @@ html #appContent #page-screener .scr-head-act > * { flex: none; white-space: now
 .flow { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12px; }
 @media (max-width: 980px) { .hm { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
+/* ---- Kelompok 5: Catatan Admin (CatatanAdmin.dc.html) ---- */
+.an-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 1180px) { .an-grid { grid-template-columns: 1fr; } }
+.an { padding: 18px 20px 0; display: flex; flex-direction: column; min-width: 0; }
+.an-h { display: flex; align-items: flex-start; gap: 12px; }
+.an-t { font: 700 20px/1.1 "Geist Mono", monospace; letter-spacing: -.01em; }
+.an-m { font-size: 12px; color: var(--ac-2); margin-top: 4px; }
+.an-why { margin: 10px 0 0; font-size: 14px; line-height: 1.55; max-width: 62ch; text-wrap: pretty; }
+.rb { position: relative; height: 42px; margin: 16px 0 4px; }
+.rb .trk { position: absolute; left: 0; right: 0; top: 27px; height: 4px; border-radius: 2px; background: var(--ac-hover); }
+.rb .zone { position: absolute; top: 22px; height: 14px; border-radius: 4px; background: var(--ac-brand-soft); box-shadow: inset 0 0 0 1px var(--ac-brand); }
+.rb .tk-sl, .rb .tk-tp { position: absolute; top: 20px; width: 2px; height: 18px; margin-left: -1px; border-radius: 1px; background: var(--ac-neg); }
+.rb .tk-tp { background: var(--ac-pos); }
+.rb .now { position: absolute; top: 24px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--ac-ink); box-shadow: 0 0 0 3px var(--ac-surface); }
+.rb .nowl { position: absolute; top: 0; transform: translateX(-50%); font: 600 11px/1 "Geist Mono", monospace; background: var(--ac-inv); color: #fff; padding: 3px 6px; border-radius: 4px; white-space: nowrap; }
+.rb-l { position: relative; display: flex; justify-content: space-between; height: 16px; font-size: 11px; font-weight: 600; }
+.rb-l .za { position: absolute; top: 0; transform: translateX(-50%); color: var(--ac-brand); white-space: nowrap; }
+.an-n { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 14px 0 12px; border-top: 1px solid var(--ac-hair); margin-top: 12px; }
+@media (max-width: 560px) { .an-n { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.an-log { border-top: 1px solid var(--ac-hair); }
+.an-log summary { padding: 10px 0; font-size: 12px; color: var(--ac-2); display: flex; gap: 8px; align-items: center; cursor: pointer; list-style: none; }
+.an-log summary::-webkit-details-marker { display: none; }
+.an-logb { display: grid; gap: 10px; padding: 0 0 12px 18px; }
+.an-li { display: grid; gap: 2px; font-size: 12px; border-left: 2px solid var(--ac-hair); padding-left: 10px; }
+.an-li b { font-weight: 600; font-size: 13px; }
+.an-f { display: flex; align-items: center; gap: 8px; padding: 10px 0 12px; border-top: 1px solid var(--ac-hair); }
+.oc { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.oc.hit { background: var(--ac-pos-soft); color: var(--ac-pos); }
+.oc.sl { background: var(--ac-neg-soft); color: var(--ac-neg); }
+.oc.ex { background: var(--ac-hover); color: var(--ac-2); }
+.oc.cl { background: var(--ac-info-soft); color: var(--ac-info); }
+.fl { margin: 14px 0 6px; font-size: 12px; color: var(--ac-2); }
+.hint { font-size: 12px; color: var(--ac-2); margin-top: 6px; }
+.prevbox { margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: var(--ac-raised); border: 1px solid var(--ac-hair); }
+.catatan-chart-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border: 1px solid var(--ac-brand); border-radius: 10px; background: var(--ac-brand-soft); margin-bottom: 12px; }
+.catatan-chart-banner .info { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.catatan-chart-banner .info b { font-weight: 700; color: var(--ac-brand); }
+
 
 
 

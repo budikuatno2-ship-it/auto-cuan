@@ -143,6 +143,19 @@
             <div class="space-y-4">
                 <!-- Redesign v2: plan per horizon (stocks) or "Potensi arah" (indices), filled by analisis-v2.js. -->
                 <section id="anaPlanSheet" class="sheet ana-plan" data-ac-ui="v2" aria-label="Rencana per horizon"></section>
+                <!-- Catatan Admin Banner (HANDOFF §5d) -->
+                <div id="catatanAdminChartBanner" class="catatan-chart-banner" style="display:none">
+                    <div class="info flex-wrap">
+                        <span class="chip b" id="caBannerStyle">Catatan Admin</span>
+                        <span class="oc hit" id="caBannerStatus">Di area pantau</span>
+                        <span id="caBannerLevels" class="font-mono text-xs font-semibold">Area: — · TP: — · SL: —</span>
+                        <span id="caBannerReason" class="mut text-xs truncate max-w-[280px]"></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="btn sm" id="caBannerToggleLinesBtn" onclick="toggleCatatanAdminPriceLines()">Sembunyikan dari chart</button>
+                        <button type="button" class="btn sm q" onclick="navigateTo('catatan-admin')">Baca catatan</button>
+                    </div>
+                </div>
                 <!-- Interactive Candlestick Chart Card -->
                 <div class="unified-card">
                     <div id="unifiedChartContainer" class="unified-chart-box">

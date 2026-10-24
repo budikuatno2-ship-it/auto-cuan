@@ -41,6 +41,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/catatan-admin",
+      "destination": "/index.html"
+    },
+    {
       "source": "/pattern",
       "destination": "/index.html"
     },

@@ -1072,6 +1072,11 @@ html.light #googleCompleteProfileModal input {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></svg>
                 <span class="sidebar-label">Sektor Hot</span>
             </button>
+            <button id="tabCatatanAdmin" type="button" onclick="navigateTo('catatan-admin')" class="sidebar-item" data-sidebar-page="catatan-admin" data-label="Catatan Admin" title="Catatan Admin">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h4"/></svg>
+                <span class="sidebar-label">Catatan Admin</span>
+                <span class="cnt ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--ac-raised)] border border-[var(--ac-hair)]" id="navCatatanAdminCount" style="display:none">3</span>
+            </button>
         </section>
 
         <section class="sidebar-nav-group" aria-label="Riset">
@@ -1337,6 +1342,18 @@ html.light #googleCompleteProfileModal input {
         </details>
     </section>
 
+    <!-- Dashboard Catatan Admin section (§5d: max 3 active notes, between Kondisi pasar and Top 5 Radar) -->
+    <section id="adminNotesDashboardSection" class="sheet rise d2" style="display:none" aria-labelledby="dashAdminNotesTitle">
+        <div class="sec-h">
+            <div>
+                <h2 id="dashAdminNotesTitle">Catatan Admin</h2>
+                <span class="mut" style="font-size:12px">Saham yang sedang diamati admin</span>
+            </div>
+            <a href="#catatan-admin" onclick="navigateTo('catatan-admin')" class="lnk" style="font-size:12px;font-weight:600">Lihat semua &amp; riwayat →</a>
+        </div>
+        <div id="dashAdminNotesList" class="an-grid" style="padding:16px 20px 20px"></div>
+    </section>
+
     <!-- Compact Top 5 + Monitor -->
     <section class="sheet rise d3" aria-labelledby="dashRadarTitle">
         <div class="sec-h"><h2 id="dashRadarTitle">Top 5 Radar Hari Ini</h2><p id="dashboardTop5LockNote" class="sec-h-note">Belum ada Top 5 final yang terkunci.</p></div>
@@ -1466,6 +1483,198 @@ html.light #googleCompleteProfileModal input {
             </section>
         </div>
     </div>
+</div>
+
+<!-- ===== PAGE: CATATAN ADMIN (T3, canvas CatatanAdmin.dc.html) ===== -->
+<div id="page-catatan-admin" class="page-content hidden flex-1 w-full mx-auto space-y-5" data-ac-ui="v2">
+    <!-- Header -->
+    <div class="ph rise d0">
+        <div>
+            <div class="kick">Pantauan manual admin · bahan riset</div>
+            <h1>Catatan Admin</h1>
+            <p>Saham yang sedang diamati admin secara langsung. Lengkap dengan area pantau, target, batas risiko, dan alasan terbuka. Bukan rekomendasi beli atau jual.</p>
+        </div>
+        <div class="ph-act" id="adminNoteHeaderActions">
+            <button type="button" class="btn p" id="btnNewAdminNote" onclick="openNewAdminNoteDrawer()" style="display:none">+ Catatan baru</button>
+        </div>
+    </div>
+
+    <!-- Summary Strip -->
+    <section class="sheet rise d1" aria-label="Ringkasan Catatan Admin">
+        <div class="strip">
+            <div>
+                <div class="lbl">Catatan aktif</div>
+                <div class="big num pop" id="anSummaryActive">3</div>
+            </div>
+            <div>
+                <div class="lbl">Kena target</div>
+                <div class="big num pop pos" id="anSummaryHit">12 <span class="mut" style="font-size:14px;font-weight:600">/ 15 catatan</span></div>
+            </div>
+            <div>
+                <div class="lbl">Rerata hasil selesai</div>
+                <div class="big num pop pos" id="anSummaryAvg">+4,8%</div>
+            </div>
+            <div>
+                <div class="lbl">Masa simpan riwayat</div>
+                <div class="big num pop">90 hari</div>
+            </div>
+        </div>
+        <div class="prov">
+            <span>Hasil dihitung dari tengah area pantau ke level yang tersentuh</span>
+            <span>Semua hasil tampil, termasuk yang meleset</span>
+        </div>
+    </section>
+
+    <!-- Toolbar: Tabs & Filter Chips -->
+    <div class="rise d2 flex flex-wrap items-center justify-between gap-3">
+        <div class="segx n2" role="group" aria-label="Tab Catatan Admin">
+            <span class="ind" id="anTabInd"></span>
+            <button type="button" id="anTabBtnActive" onclick="switchAdminNoteTab('active')" class="ac-segment is-active on" aria-pressed="true">Aktif <span id="anActiveTabCount" class="mut text-xs">(3)</span></button>
+            <button type="button" id="anTabBtnHistory" onclick="switchAdminNoteTab('history')" class="ac-segment" aria-pressed="false">Riwayat <span id="anHistoryTabCount" class="mut text-xs">(6)</span></button>
+        </div>
+        <div class="flex items-center gap-2" role="group" aria-label="Filter gaya">
+            <button type="button" class="fchip on" id="anChipAll" onclick="filterAdminNotesStyle('all')">Semua</button>
+            <button type="button" class="fchip" id="anChipDaytrade" onclick="filterAdminNotesStyle('daytrade')">DayTrade</button>
+            <button type="button" class="fchip" id="anChipSwing" onclick="filterAdminNotesStyle('swing')">Swing</button>
+        </div>
+    </div>
+
+    <!-- Active Notes Container -->
+    <div id="anActiveContainer" class="space-y-4">
+        <div id="anActiveGrid" class="an-grid">
+            <!-- Active cards rendered dynamically -->
+        </div>
+        <div id="anActiveEmpty" class="sheet mut" style="display:none;padding:40px 20px;text-align:center">Belum ada catatan aktif untuk gaya ini.</div>
+    </div>
+
+    <!-- History Notes Container -->
+    <div id="anHistoryContainer" class="sheet" style="display:none">
+        <div class="sec-h">
+            <h2>Riwayat</h2>
+            <span>Hasil dihitung dari tengah area pantau ke level yang tersentuh</span>
+        </div>
+        <div class="tw overflow-x-auto">
+            <table class="tbl w-full text-xs border-collapse min-w-[900px]" id="anHistoryTable">
+                <thead>
+                    <tr>
+                        <th>Tayang</th>
+                        <th>Ticker</th>
+                        <th>Gaya</th>
+                        <th>Hasil akhir</th>
+                        <th class="r">Perubahan</th>
+                        <th>Lama</th>
+                        <th>Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody id="anHistoryTableBody">
+                    <!-- History rows rendered dynamically -->
+                </tbody>
+            </table>
+        </div>
+        <div id="anHistoryEmpty" class="mut" style="display:none;padding:32px 20px;text-align:center">Belum ada riwayat untuk gaya ini.</div>
+        <div class="prov">
+            <span>Catatan yang tidak pernah masuk area pantau sampai kedaluwarsa tidak dihitung sebagai hasil</span>
+            <span>Jika target dan batas tersentuh di hari yang sama, dicatat sebagai batas risiko</span>
+        </div>
+    </div>
+
+    <!-- Mandatory Disclaimer -->
+    <p class="dim" style="margin:0;font-size:12px">Catatan ini adalah pandangan pribadi admin untuk bahan riset, bukan ajakan atau rekomendasi beli atau jual. Harga bisa bergerak di luar area yang ditulis. Keputusan dan risikonya sepenuhnya di tangan masing-masing.</p>
+
+    <!-- Admin Drawer Modal (Form Catatan Baru / Edit) -->
+    <div id="adminNoteDrawerBackdrop" class="scrim" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:90" onclick="closeAdminNoteDrawer()"></div>
+    <aside id="adminNoteDrawer" class="drawer wide" role="dialog" aria-modal="true" aria-labelledby="anDrawerTitle" style="display:none;position:fixed;top:0;right:0;bottom:0;width:480px;max-width:100%;z-index:100">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--ac-hair)">
+            <div>
+                <b id="anDrawerTitle" style="font-size:16px">Catatan baru</b>
+                <div id="anDrawerSub" class="mut" style="font-size:12px;margin-top:2px">Tayang ke semua pengunjung</div>
+            </div>
+            <button type="button" class="btn sm" onclick="closeAdminNoteDrawer()" aria-label="Tutup" style="width:30px;padding:0">×</button>
+        </div>
+        <div style="overflow-y:auto;padding:14px 20px 20px;flex:1" class="space-y-3">
+            <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:12px">
+                <div>
+                    <label class="flabel fl" for="anTickerInput">Kode saham</label>
+                    <input id="anTickerInput" class="inp mono" autocomplete="off" maxlength="4" placeholder="BRPT" style="text-transform:uppercase" oninput="onAdminNoteTickerInput()">
+                    <div id="anTickerName" class="hint">Barito Pacific Tbk</div>
+                </div>
+                <div>
+                    <span class="flabel fl">Gaya</span>
+                    <div class="segx n2" style="width:100%">
+                        <button type="button" id="anDrawerStyleDaytrade" onclick="setAdminNoteDrawerStyle('daytrade')" class="on">DayTrade</button>
+                        <button type="button" id="anDrawerStyleSwing" onclick="setAdminNoteDrawerStyle('swing')">Swing</button>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="flabel fl" for="anReasonInput">Alasan <span class="mut" style="font-weight:500">· tampil ke semua pengunjung</span></label>
+                <textarea id="anReasonInput" class="inp" style="height:92px;padding:10px 12px;resize:vertical;line-height:1.5" maxlength="280" placeholder="Misalnya: volume 2,8× rata-rata 20 hari, tiga broker besar akumulasi 4 hari beruntun." oninput="updateAdminNoteDrawerCalc()"></textarea>
+                <div class="hint" style="display:flex;justify-content:space-between">
+                    <span id="anForbiddenWarning" class="text-amber-400 font-semibold"></span>
+                    <span id="anCharCounter" class="num">0/280</span>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                    <label class="flabel fl" for="anZoneLoInput">Area pantau dari</label>
+                    <input id="anZoneLoInput" class="inp mono" inputmode="numeric" placeholder="1020" oninput="updateAdminNoteDrawerCalc()">
+                </div>
+                <div>
+                    <label class="flabel fl" for="anZoneHiInput">sampai</label>
+                    <input id="anZoneHiInput" class="inp mono" inputmode="numeric" placeholder="1050" oninput="updateAdminNoteDrawerCalc()">
+                </div>
+                <div>
+                    <label class="flabel fl" for="anTargetInput">Target</label>
+                    <input id="anTargetInput" class="inp mono" inputmode="numeric" placeholder="1150" oninput="updateAdminNoteDrawerCalc()">
+                </div>
+                <div>
+                    <label class="flabel fl" for="anRiskLimitInput">Batas risiko</label>
+                    <input id="anRiskLimitInput" class="inp mono" inputmode="numeric" placeholder="980" oninput="updateAdminNoteDrawerCalc()">
+                </div>
+            </div>
+            <div>
+                <label class="flabel fl" for="anValidDaysSelect">Masa berlaku</label>
+                <select id="anValidDaysSelect" class="inp" onchange="updateAdminNoteDrawerCalc()">
+                    <option value="1">1 hari bursa (DayTrade)</option>
+                    <option value="2" selected>2 hari bursa (DayTrade)</option>
+                    <option value="3">3 hari bursa (DayTrade / Swing)</option>
+                    <option value="5">5 hari bursa · 1 minggu (Swing)</option>
+                    <option value="10">10 hari bursa · 2 minggu (Swing)</option>
+                    <option value="20">20 hari bursa · 1 bulan (Swing)</option>
+                </select>
+                <div id="anValidDaysHint" class="hint">Berlaku sampai penutupan bursa</div>
+            </div>
+
+            <!-- Preview box -->
+            <div id="anDrawerPreviewBox" class="prevbox">
+                <div class="lbl" style="margin:0">Pratinjau di web</div>
+                <div class="rb" role="img" aria-label="Visualisasi bar posisi" style="margin-top:10px">
+                    <div class="trk"></div>
+                    <div id="anPrevZone" class="zone" style="left:30%;width:25%"></div>
+                    <div id="anPrevSl" class="tk-sl" style="left:15%"></div>
+                    <div id="anPrevTp" class="tk-tp" style="left:75%"></div>
+                    <div id="anPrevNow" class="now" style="left:40%"></div>
+                    <div id="anPrevNowL" class="nowl" style="left:40%">Kini 1.045</div>
+                </div>
+                <div class="num" style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-top:4px">
+                    <span>Ke target <b id="anPrevToTp" class="pos">+11,1%</b></span>
+                    <span>Ke batas <b id="anPrevToSl" class="neg">−5,3%</b></span>
+                    <span>Rasio <b id="anPrevRatio">1 : 2,1</b></span>
+                    <span class="mut" id="anPrevInitialStatus">Status awal: Di area pantau</span>
+                </div>
+            </div>
+
+            <div id="anEditReasonWrap" style="display:none">
+                <label class="flabel fl" for="anEditReasonInput">Alasan perubahan <span class="mut" style="font-weight:500">· wajib, tampil di riwayat</span></label>
+                <input id="anEditReasonInput" class="inp" placeholder="Misalnya: target dinaikkan karena resistance ditembus." oninput="updateAdminNoteDrawerCalc()">
+            </div>
+        </div>
+        <div style="padding:14px 20px;border-top:1px solid var(--ac-hair);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span id="anDrawerValidationMsg" style="flex:1;min-width:180px;font-size:12px;color:var(--ac-warn-t)"></span>
+            <button type="button" class="btn" id="anDrawerBtnCloseNote" onclick="submitCloseAdminNote()" style="display:none">Tutup catatan</button>
+            <button type="button" class="btn p" id="anDrawerBtnSave" onclick="submitAdminNote()" disabled>Tayangkan catatan</button>
+        </div>
+    </aside>
 </div>
 
 <!-- ===== PAGE: SCREENER SWING KONGLO 3-7D ===== -->
@@ -2752,6 +2961,19 @@ html.light #googleCompleteProfileModal input {
             <div class="space-y-4">
                 <!-- Redesign v2: plan per horizon (stocks) or "Potensi arah" (indices), filled by analisis-v2.js. -->
                 <section id="anaPlanSheet" class="sheet ana-plan" data-ac-ui="v2" aria-label="Rencana per horizon"></section>
+                <!-- Catatan Admin Banner (HANDOFF §5d) -->
+                <div id="catatanAdminChartBanner" class="catatan-chart-banner" style="display:none">
+                    <div class="info flex-wrap">
+                        <span class="chip b" id="caBannerStyle">Catatan Admin</span>
+                        <span class="oc hit" id="caBannerStatus">Di area pantau</span>
+                        <span id="caBannerLevels" class="font-mono text-xs font-semibold">Area: — · TP: — · SL: —</span>
+                        <span id="caBannerReason" class="mut text-xs truncate max-w-[280px]"></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="btn sm" id="caBannerToggleLinesBtn" onclick="toggleCatatanAdminPriceLines()">Sembunyikan dari chart</button>
+                        <button type="button" class="btn sm q" onclick="navigateTo('catatan-admin')">Baca catatan</button>
+                    </div>
+                </div>
                 <!-- Interactive Candlestick Chart Card -->
                 <div class="unified-card">
                     <div id="unifiedChartContainer" class="unified-chart-box">
@@ -4520,6 +4742,7 @@ function parseAppRoute() {
     if (path === '/watchlist') return { page: 'watchlist', subTab: null, authRequired: true };
     if (path === '/sektor') return { page: 'sektor', subTab: null, authRequired: true };
     if (path === '/trackrecord') return { page: 'trackrecord', subTab: null, authRequired: true };
+    if (path === '/catatan-admin') return { page: 'catatan-admin', subTab: null, allowGuest: true };
     if (path === '/kelola-keuangan' || path === '/money-management') return { page: 'money-management', subTab: null, authRequired: true };
 
     // Preview routes
@@ -4536,6 +4759,7 @@ function parseAppRoute() {
             'watchlist': 'watchlist',
             'track-record': 'trackrecord',
             'trackrecord': 'trackrecord',
+            'catatan-admin': 'catatan-admin',
             'portofolio': 'portofolio',
             'portfolio': 'portofolio',
             'kelola-keuangan': 'money-management',
@@ -4558,6 +4782,7 @@ function parseAppRoute() {
         if (target === 'watchlist') return { page: 'watchlist', subTab: null, authRequired: true };
         if (target === 'sektor') return { page: 'sektor', subTab: null, authRequired: true };
         if (target === 'trackrecord') return { page: 'trackrecord', subTab: null, authRequired: true };
+        if (target === 'catatan-admin') return { page: 'catatan-admin', subTab: null, allowGuest: true };
         if (target === 'portofolio') return { page: 'portofolio', subTab: null, authRequired: true };
         if (target === 'kelola-keuangan' || target === 'money-management') return { page: 'money-management', subTab: null, authRequired: true };
         return { page: 'dashboard', subTab: null, authRequired: true };
@@ -4606,6 +4831,10 @@ function getCanonicalRouteUrl(page, subTab) {
     if (page === 'trackrecord') {
         var qs = searchParams.toString();
         return '/trackrecord' + (qs ? '?' + qs : '');
+    }
+    if (page === 'catatan-admin') {
+        var qs = searchParams.toString();
+        return '/catatan-admin' + (qs ? '?' + qs : '');
     }
     if (page === 'money-management') {
         var qs = searchParams.toString();
@@ -6626,6 +6855,7 @@ function navigateTo(page) {
     if (page === 'dashboard') {
         if (window.AutoCuanDashboardV2) window.AutoCuanDashboardV2.loadMarket();
         loadDashboardTop5Monitor(true, { loadAdminPreview: false }); scheduleTop5HistoryLoad(); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh();
+        if (typeof loadDashboardCatatanAdmin === 'function') loadDashboardCatatanAdmin();
     }
     else { clearTop5HistoryLoadTimer(); stopDashboardMonitorAutoRefresh(); }
     // Ranking Harian table: fetched independently of the ticker analysis
@@ -6685,6 +6915,9 @@ function navigateTo(page) {
             if (isLoggedIn) { loginGate.classList.add('hidden'); sektorContent.classList.remove('hidden'); loadSektorHot(kaRevisit); }
             else { loginGate.classList.remove('hidden'); sektorContent.classList.add('hidden'); }
         }
+    }
+    if (page === 'catatan-admin') {
+        if (typeof loadCatatanAdmin === 'function') loadCatatanAdmin(kaRevisit);
     }
     // Portofolio login gate
     if (page === 'portofolio') {
@@ -16396,6 +16629,7 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/pattern-map.js?v=20260802-pattern-map-v3"></script>
 <script src="/ui-bugfix-pack-v1.js?v=20260803-v1"></script>
 <script src="/money-sheet-lazy-loader.js?v=20261001-v1"></script>
+<script src="/catatan-admin-runtime.js?v=20261024-v1"></script>
 <script src="/screener-lifecycle-ui.js?v=20260816-v1"></script>
 <script src="/track-record-runtime.js"></script>
 <script src="/analysis-tools-registry.js?v=20261003-v1"></script>
