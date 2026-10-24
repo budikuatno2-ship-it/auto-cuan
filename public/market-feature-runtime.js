@@ -630,9 +630,45 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     var showCMF = wsState ? wsState.isLayerActive('bandar_cmf') : false;
     var showIntensity = wsState ? wsState.isLayerActive('bandar_intensity') : false;
     var showRotation = wsState ? wsState.isLayerActive('bandar_rotation') : false;
+    var showTekananBroker = wsState ? wsState.isLayerActive('bandar_tekanan_broker') : false;
+    var showBandarAvgPrice = wsState ? wsState.isLayerActive('bandar_avg_price') : false;
     // Indices have no plan, no signal markers and no broker summary (HANDOFF 5a).
     var _isIndexChart = ws && typeof ws.isIndexTicker === 'function' ? ws.isIndexTicker(ticker) : /^IHSG$/i.test(String(ticker || ''));
     if (_isIndexChart) { showTradingPlan = false; showLPM = false; showForeign = false; showCMF = false; showIntensity = false; showRotation = false; }
+    if (_isIndexChart) { showTekananBroker = false; showBandarAvgPrice = false; }
+
+    // Broker pressure & Bandar average price (honest state handling when daily series is incomplete)
+    var brokSeries = (options && options.brokerSummarySeries) || (ws && ws.getBrokerSummarySeries ? ws.getBrokerSummarySeries(ticker) : null);
+    if ((showTekananBroker || showBandarAvgPrice) && (!_isIndexChart)) {
+        if (!brokSeries || !brokSeries.length) {
+            // Honest state: display notice without inventing numbers or breaking chart
+            var noticeBox = document.getElementById(chartId + '_broksum_notice');
+            if (!noticeBox && container) {
+                noticeBox = document.createElement('div');
+                noticeBox.id = chartId + '_broksum_notice';
+                noticeBox.className = 'cw-broksum-notice text-[10.5px] text-amber-300 bg-dark-900/85 px-2.5 py-1 rounded border border-amber-500/30 inline-flex items-center gap-1.5';
+                noticeBox.style.cssText = 'position:absolute;top:38px;left:12px;z-index:5;pointer-events:none;';
+                container.style.position = 'relative';
+                container.appendChild(noticeBox);
+            }
+            if (noticeBox) {
+                var layerLabels = [];
+                if (showTekananBroker) layerLabels.push('Tekanan Broker');
+                if (showBandarAvgPrice) layerLabels.push('Harga rata-rata bandar');
+                noticeBox.textContent = layerLabels.join(' & ') + ': Belum tersedia (menunggu kelengkapan seri broker harian)';
+                noticeBox.style.display = 'inline-flex';
+            }
+        } else {
+            // If full daily broksum series is available, render real series
+            if (showBandarAvgPrice && brokSeries.some(function(b) { return b.avg_price > 0; })) {
+                var sAvg = chart.addLineSeries({ color: '#f59e0b', lineWidth: 1.5, lineStyle: 1, title: 'Avg Bandar', priceLineVisible: false });
+                sAvg.setData(brokSeries.map(function(b) { return { time: b.time, value: b.avg_price }; }));
+            }
+        }
+    } else {
+        var existingNotice = document.getElementById(chartId + '_broksum_notice');
+        if (existingNotice) existingNotice.style.display = 'none';
+    }
 
     // Render Bandar Metrics Curves on Main Chart Canvas
     if (showLPM && ws && candles.length >= 5) {

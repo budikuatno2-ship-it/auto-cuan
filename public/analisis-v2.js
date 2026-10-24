@@ -334,14 +334,75 @@
   }
   api.drawIndexOverlay = function () {
     clearOverlay();
-    if (!isIndex(state.ticker)) return;
     var reg = root.__chartRegistry || {};
     var id = Object.keys(reg).find(function (k) { var e = reg[k]; return e && e.candleSeries && String(e.ticker || '').toUpperCase() === state.ticker; });
     if (!id) return;
-    var e = reg[id], ix = potential(root._chartPageData && root._chartPageData.candles, state.hz);
-    if (!ix || ix.insufficient || !e.mainChart || e.mainChart.__acDead) return;
-    try { drawOverlay(id, e, ix); } catch (_) { /* the chart was replaced mid-draw; the next render draws again */ }
+    var e = reg[id];
+    if (!e || !e.mainChart || e.mainChart.__acDead) return;
+
+    if (isIndex(state.ticker)) {
+      var ix = potential(root._chartPageData && root._chartPageData.candles, state.hz);
+      if (!ix || ix.insufficient) return;
+      try { drawOverlay(id, e, ix); } catch (_) { /* the chart was replaced mid-draw; the next render draws again */ }
+    } else {
+      // Stock chart: 10-day fair range cone ONLY for Scalping and Swing; NOT for Investor
+      if (state.hz === 'scalp' || state.hz === 'swing') {
+        try { drawStockCone(id, e, root._chartPageData && root._chartPageData.candles, state.hz); } catch (_) {}
+      }
+    }
   };
+
+  function drawStockCone(id, e, candles, hz) {
+    if (hz === 'inv') return;
+    var r10 = range10(candles);
+    if (!r10 || !candles || !candles.length) return;
+    var last = candles[candles.length - 1];
+    var c0 = Number(last.close);
+    if (!(c0 > 0)) return;
+
+    var cs = getComputedStyle(doc.getElementById(id + '_container') || doc.body);
+    var info = String(cs.getPropertyValue('--ac-info') || '').trim() || '#315F9A';
+    var days = futureDays(last.time, 10);
+    if (!days.length) return;
+
+    var t0 = last.time, qm = days.length;
+    var path = function (target) {
+      return [{ time: t0, value: c0 }].concat(days.map(function (t, q) {
+        var f = Math.sqrt((q + 1) / qm);
+        return { time: t, value: c0 * Math.exp(Math.log(target / c0) * f) };
+      }));
+    };
+
+    var add = function (opts, data) {
+      var s = e.mainChart.addLineSeries(Object.assign({
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false
+      }, opts));
+      s.setData(data);
+      overlay.series.push(s);
+      return s;
+    };
+
+    // Upper and lower boundary of the 10-day fair range cone
+    add({ color: info, lineWidth: 1, lineStyle: 2, title: 'p90 10H' }, path(r10.p90));
+    add({ color: info, lineWidth: 1, lineStyle: 2, title: 'p10 10H' }, path(r10.p10));
+
+    overlay.id = id;
+
+    // Show the cone: open the right edge to the end of the projection
+    try {
+      var ts = e.mainChart.timeScale(), lr = ts.getVisibleLogicalRange();
+      var n = typeof e.candleSeries.data === 'function' ? e.candleSeries.data().length : candles.length;
+      var edge = n - 1 + days.length + 2;
+      if (!e.mainChart.__acCone && e.defaultRange) {
+        ts.setVisibleLogicalRange({ from: e.defaultRange.from, to: Math.max(e.defaultRange.to, edge) });
+      } else if (lr && lr.to < edge) {
+        ts.setVisibleLogicalRange({ from: lr.from, to: edge });
+      }
+      e.mainChart.__acCone = true;
+    } catch (_) {}
+  }
   function drawOverlay(id, e, ix) {
     var cs = getComputedStyle(doc.getElementById(id + '_container') || doc.body);
     var info = String(cs.getPropertyValue('--ac-info') || '').trim() || '#315F9A';

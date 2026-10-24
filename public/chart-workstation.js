@@ -111,7 +111,9 @@
         { id: 'bandar_rotation', name: 'Histogram Rotasi Volume', desc: 'Klasifikasi rotasi 3-warna (Akumulasi / Distribusi / Transisi)', color: '#10b981', default: false },
         { id: 'bandar_corr_f', name: 'Korelasi Harga-Asing (Corr F)', desc: 'Tingkat korelasi harga saham terhadap aliran asing', default: true },
         { id: 'bandar_par_f', name: 'Partisipasi Asing (Par F)', desc: 'Porsi transaksi asing terhadap total pasar', default: true },
-        { id: 'bandar_kons', name: 'Konsistensi broker', desc: 'Pembeli bersih terbesar 20 hari: hari net buy dari 10 hari terakhir dan hari beruntun', color: '#2C3E8F', default: false }
+        { id: 'bandar_kons', name: 'Konsistensi broker', desc: 'Pembeli bersih terbesar 20 hari: hari net buy dari 10 hari terakhir dan hari beruntun', color: '#2C3E8F', default: false },
+        { id: 'bandar_tekanan_broker', name: 'Tekanan Broker', desc: 'Tekanan akumulasi/distribusi dari broker summary harian', color: '#38bdf8', default: false },
+        { id: 'bandar_avg_price', name: 'Harga rata-rata bandar', desc: 'Volume Weighted Average Price (VWAP) broker pembeli bersih terbesar', color: '#f59e0b', default: false }
       ]
     }
   ];
@@ -1454,6 +1456,8 @@
   }
 
   var STOCK_ONLY_LAYERS = { trading_plan: 1, signal_markers: 1, bandar_lpm: 1, bandar_foreign: 1, bandar_cmf: 1, bandar_intensity: 1, bandar_rotation: 1, bandar_corr_f: 1, bandar_par_f: 1, bandar_kons: 1 };
+  STOCK_ONLY_LAYERS.bandar_tekanan_broker = 1;
+  STOCK_ONLY_LAYERS.bandar_avg_price = 1;
   function isIndexTicker(t) { return /^(IHSG|COMPOSITE|JKSE|LQ45|IDX30|IDX80|KOMPAS100)$/i.test(String(t || '')); }
 
   function renderDrawerHtml(chartId) {
@@ -1485,6 +1489,8 @@
         var isActive = state.isLayerActive(layer.id);
         // Indices: no entry/SL/TP, no signal markers, no broker summary (HANDOFF 5a).
         var idxOnly = inst && isIndexTicker(inst.ticker) && STOCK_ONLY_LAYERS[layer.id];
+        var isBroksumLayer = layer.id === 'bandar_tekanan_broker' || layer.id === 'bandar_avg_price';
+        var broksumMissing = isBroksumLayer && (!inst || !inst.brokerSummarySeries || !inst.brokerSummarySeries.length);
         var isDisabled = Boolean(layer.disabled) || Boolean(idxOnly);
         if (idxOnly) isActive = false;
         html += '<label class="flex items-start gap-2 p-1 rounded ' + (isDisabled ? 'opacity-60 cursor-not-allowed bg-dark-900/40' : 'cursor-pointer hover:bg-dark-700/30') + '">' +
@@ -1493,7 +1499,7 @@
             '<div class="font-medium text-gray-200 flex items-center gap-1.5 flex-wrap">' +
               (layer.color ? '<span class="w-2 h-2 rounded-full inline-block shrink-0" style="background-color:' + layer.color + '"></span>' : '') +
               '<span>' + layer.name + '</span>' +
-              (idxOnly ? '<span class="cw-idx-note">' + (/^bandar_/.test(layer.id) ? 'Tidak ada broker summary untuk indeks' : 'Khusus saham') + '</span>' : (isDisabled ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-dark-700 text-amber-400 border border-dark-600 font-normal">Dalam Riset (Nonaktif)</span>' : '')) +
+              (idxOnly ? '<span class="cw-idx-note">' + (/^bandar_/.test(layer.id) ? 'Tidak ada broker summary untuk indeks' : 'Khusus saham') + '</span>' : (broksumMissing ? '<span class="cw-broksum-state text-[9px] px-1.5 py-0.5 rounded bg-dark-700 text-amber-400 border border-dark-600 font-normal">Belum tersedia (menunggu kelengkapan seri broker harian)</span>' : (isDisabled ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-dark-700 text-amber-400 border border-dark-600 font-normal">Dalam Riset (Nonaktif)</span>' : ''))) +
             '</div>' +
             '<p class="text-[10px] text-gray-400">' + layer.desc + '</p>' +
           '</div>' +
