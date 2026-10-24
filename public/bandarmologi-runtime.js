@@ -556,6 +556,8 @@
   var hunterData = null;
   var hunterLoading = false;
   var hunterError = null;
+  var hunterSelectedStock = '';
+  var hunterFilterText = '';
   var activeHunterAbortController = null;
   var hunterRequestSeq = 0;
 
@@ -5704,6 +5706,30 @@
     }
   }
 
+  function selectHunterStock(ticker) {
+    if (!ticker) return;
+    hunterSelectedStock = String(ticker).trim().toUpperCase();
+    var c = (typeof document !== 'undefined') ? (byId('brokerHunterContent') || byId('bandarmologiContent')) : null;
+    if (c) renderBrokerHunterUI(c);
+  }
+
+  function filterHunterRoster(text) {
+    hunterFilterText = String(text || '').trim().toUpperCase();
+    if (typeof document === 'undefined') return;
+    var rosterEl = byId('hunterRosterList');
+    if (!rosterEl) return;
+    var btns = rosterEl.querySelectorAll('button[data-broker]');
+    for (var i = 0; i < btns.length; i++) {
+      var bCode = (btns[i].getAttribute('data-broker') || '').toUpperCase();
+      var bName = (btns[i].getAttribute('data-name') || '').toUpperCase();
+      if (!hunterFilterText || bCode.includes(hunterFilterText) || bName.includes(hunterFilterText)) {
+        btns[i].style.display = '';
+      } else {
+        btns[i].style.display = 'none';
+      }
+    }
+  }
+
   async function loadBrokerHunter(targetContainer) {
     if (activeHunterAbortController) {
       try { activeHunterAbortController.abort(); } catch (_) {}
@@ -5767,253 +5793,274 @@
     }
   }
 
-  function renderBrokerHunterUI(container) {
+  function renderBrokerHunterUI(container, data) {
     container = container || ((typeof document !== 'undefined') ? (byId('brokerHunterContent') || byId('bandarmologiContent')) : null);
     if (!container) return;
+
+    if (data && typeof data === 'object') {
+      hunterData = data;
+      hunterLoading = false;
+      hunterError = null;
+      if (data.broker) hunterBroker = data.broker;
+    }
 
     if (!hunterData && !hunterLoading && !hunterError && typeof fetch !== 'undefined') {
       loadBrokerHunter(container);
     }
 
+    var rInd = 'k0';
+    if (hunterRange === '7d' || hunterRange === '3d') rInd = 'k1';
+    else if (hunterRange === '30d' || hunterRange === '1w') rInd = 'k2';
+    else if (hunterRange === '1m') rInd = 'k3';
+
+    var rangeLabel = '1 hari';
+    if (hunterRange === '7d' || hunterRange === '3d') rangeLabel = '3 hari';
+    else if (hunterRange === '30d' || hunterRange === '1w') rangeLabel = '1 minggu';
+    else if (hunterRange === '1m') rangeLabel = '1 bulan';
+    else if (hunterRange === 'custom') rangeLabel = 'kustom';
+
     var html = '';
 
-    // HEADER CONTROLS CARD
-    html += '<div class="bg-dark-800/80 border border-dark-600/40 rounded-xl p-4 mb-5 shadow-lg backdrop-blur">';
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">';
-    html += '    <div>';
-    html += '      <h3 class="text-sm font-bold text-gray-100 flex items-center gap-2">';
-    html += '        <span class="text-base">🎯</span> Broker Hunter — Top 10 Saham per Broker';
-    html += '      </h3>';
-    html += '      <p class="text-xs text-gray-400 mt-0.5">Lacak 10 saham paling banyak diakumulasi &amp; didistribusi oleh broker tertentu dari seluruh emiten IHSG.</p>';
-    html += '    </div>';
-    html += '    <button type="button" onclick="BandarmologiRuntime.loadBrokerHunter()" class="px-3 py-1.5 rounded-lg bg-dark-700 hover:bg-dark-600 text-gray-200 border border-dark-600 text-xs font-semibold flex items-center gap-1.5 transition">';
-    html += '      <span>🔄 Refresh Data</span>';
-    html += '    </button>';
+    // TOP HEADER SECTION (Canvas BrokerHunter.dc.html)
+    html += '<div class="ph rise d0">';
+    html += '  <div><h1>Broker Hunter</h1><p>Mulai dari broker, bukan ticker: saham apa yang sedang dikoleksi atau dilepas.</p></div>';
+    html += '  <div class="segx n4"><span class="ind ' + rInd + '"></span>';
+    html += '    <button type="button" class="' + (hunterRange === '1d' ? 'on' : '') + '" onclick="BandarmologiRuntime.setHunterRange(\'1d\')">1 hari</button>';
+    html += '    <button type="button" class="' + (hunterRange === '7d' || hunterRange === '3d' ? 'on' : '') + '" onclick="BandarmologiRuntime.setHunterRange(\'7d\')">3 hari</button>';
+    html += '    <button type="button" class="' + (hunterRange === '30d' || hunterRange === '1w' ? 'on' : '') + '" onclick="BandarmologiRuntime.setHunterRange(\'30d\')">1 minggu</button>';
+    html += '    <button type="button" class="' + (hunterRange === '1m' ? 'on' : '') + '" onclick="BandarmologiRuntime.setHunterRange(\'1m\')">1 bulan</button>';
     html += '  </div>';
+    html += '</div>';
 
-    // Quick Broker Chips
-    var quickBrokers = ['AK', 'BK', 'CC', 'RX', 'DX', 'KZ', 'ZP', 'YP', 'XC', 'PD', 'NI', 'MG', 'SQ'];
-    html += '  <div class="flex flex-wrap items-center gap-2 mb-3">';
-    html += '    <span class="text-xs text-gray-300 font-medium">Pilih Broker Cepat:</span>';
-    html += '    <div class="flex flex-wrap items-center gap-1.5">';
-    for (var bi = 0; bi < quickBrokers.length; bi++) {
-      var qb = quickBrokers[bi];
-      var isQSelected = qb === hunterBroker;
-      var qbForeign = isForeignBroker(qb);
-      var qbClass = isQSelected
-        ? 'bg-emerald-500 text-dark-900 border-emerald-400 font-bold shadow-sm'
-        : (qbForeign
-            ? 'bg-dark-700/80 text-sky-300 border-sky-500/30 hover:bg-sky-500/20'
-            : 'bg-dark-700/80 text-gray-300 border-dark-600 hover:bg-dark-600 hover:text-white');
-      html += '      <button type="button" onclick="BandarmologiRuntime.setHunterBroker(\'' + escapeHtml(qb) + '\')" class="px-2.5 py-1 text-xs rounded-md border font-mono transition ' + qbClass + '">' + escapeHtml(qb) + '</button>';
+    // MAIN LAYOUT FLEX ROW
+    html += '<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-top:16px">';
+
+    // LEFT: BROKER ROSTER (flex: 0 0 300px)
+    var rosterBrokers = ['ZP', 'CC', 'AK', 'YP', 'BK', 'RX', 'DX', 'KZ', 'XC', 'PD', 'NI', 'MG', 'SQ', 'DR', 'LG', 'CP', 'OD', 'AZ', 'CS', 'AI'];
+    if (!rosterBrokers.includes(hunterBroker)) {
+      rosterBrokers.unshift(hunterBroker);
+    }
+
+    html += '  <section class="sheet rise d1" style="flex:0 0 300px;overflow:hidden" aria-label="Pilih broker">';
+    html += '    <div class="card-pad" style="border-bottom:1px solid var(--ac-hair)">';
+    html += '      <label class="search" style="width:100%"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>';
+    html += '        <input type="search" id="hunterBrokerFilterInput" oninput="BandarmologiRuntime.filterHunterRoster(this.value)" value="' + escapeHtml(hunterFilterText) + '" placeholder="Kode atau nama broker" style="all:unset;width:100%;font-size:13px">';
+    html += '      </label>';
+    html += '    </div>';
+    html += '    <div class="ros" id="hunterRosterList">';
+    for (var ri = 0; ri < rosterBrokers.length; ri++) {
+      var rb = rosterBrokers[ri];
+      var rbName = getBrokerSecurityName(rb) || BROKER_NAMES[rb] || rb;
+      var rbIsForeign = isForeignBroker(rb);
+      var rbType = rbIsForeign ? 'Asing / campuran' : (isInstitutionalBroker(rb) ? 'Lokal institusi' : 'Ritel');
+      var rbOn = (rb === hunterBroker);
+      var isVisible = !hunterFilterText || rb.includes(hunterFilterText) || rbName.toUpperCase().includes(hunterFilterText);
+      html += '      <button type="button" class="' + (rbOn ? 'on' : '') + '" data-broker="' + escapeHtml(rb) + '" data-name="' + escapeHtml(rbName) + '" onclick="BandarmologiRuntime.setHunterBroker(\'' + escapeHtml(rb) + '\')" aria-pressed="' + (rbOn ? 'true' : 'false') + '" style="' + (isVisible ? '' : 'display:none') + '">';
+      html += '        <span class="code">' + escapeHtml(rb) + '</span>';
+      html += '        <span><b style="font-size:13px;display:block">' + escapeHtml(rbName) + '</b><span class="mut" style="font-size:12px">' + escapeHtml(rbType) + '</span></span>';
+      html += '        <span class="mut" style="font-size:12px;font-weight:600">' + (rbOn ? 'Aktif' : 'Pilih') + '</span>';
+      html += '      </button>';
     }
     html += '    </div>';
-    html += '  </div>';
+    html += '  </section>';
 
-    // Dropdown + Range Selector Row
-    html += '  <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-dark-700/50">';
-    html += '    <div class="flex items-center gap-2">';
-    html += '      <label for="brokerHunterSelect" class="text-xs text-gray-300 font-medium">Semua Broker:</label>';
-    html += '      <select id="brokerHunterSelect" onchange="BandarmologiRuntime.setHunterBroker(this.value)" class="bg-dark-900 text-gray-200 border border-dark-600 rounded-lg px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-emerald-500">';
-    var allBrokerKeys = Object.keys(BROKER_NAMES).sort();
-    for (var k = 0; k < allBrokerKeys.length; k++) {
-      var bCode = allBrokerKeys[k];
-      var bName = BROKER_NAMES[bCode];
-      var bForeign = isForeignBroker(bCode);
-      var isSel = bCode === hunterBroker;
-      html += '        <option value="' + escapeHtml(bCode) + '" ' + (isSel ? 'selected' : '') + '>';
-      html += escapeHtml(bCode) + ' - ' + escapeHtml(bName) + (bForeign ? ' [Foreign]' : ' [Domestic]');
+    // RIGHT: SUMMARY STRIP, ACC & DIST TABLES, DRILL-DOWN CARD
+    html += '  <div style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:16px">';
+    if (hunterLoading) {
+      html += '    <section class="sheet card-pad" style="text-align:center;padding:48px 20px">';
+      html += '      <div class="spinner mb-3" style="margin:0 auto 12px"></div>';
+      html += '      <p style="font-weight:600;font-size:14px;color:var(--ac-ink)">Memuat data Broker Hunter ' + escapeHtml(hunterBroker) + '...</p>';
+      html += '      <p class="mut" style="font-size:12px;margin-top:4px">Memeriksa database indeks agregasi broker...</p>';
+      html += '    </section>';
+    } else if (hunterError) {
+      html += '    <section class="sheet card-pad" style="text-align:center;padding:36px 20px">';
+      html += '      <span style="font-size:28px;display:block;margin-bottom:8px">⚠️</span>';
+      html += '      <p style="font-weight:600;font-size:14px;color:var(--ac-ink);margin-bottom:4px">Gagal memuat data broker</p>';
+      html += '      <p class="mut" style="font-size:12px;margin-bottom:14px">' + escapeHtml(hunterError) + '</p>';
+      html += '      <button type="button" onclick="BandarmologiRuntime.loadBrokerHunter()" class="btn p">Coba Lagi</button>';
+      html += '    </section>';
+    } else if (!hunterData) {
+      html += '    <section class="sheet card-pad" style="text-align:center;padding:36px 20px">';
+      html += '      <p class="mut" style="font-size:13px">Pilih broker untuk melihat saham yang sedang dikoleksi atau dilepas.</p>';
+      html += '    </section>';
+    } else {
+      var bName = hunterData.broker_name || getBrokerSecurityName(hunterBroker);
+      var topAcc = Array.isArray(hunterData.top_accumulated) ? hunterData.top_accumulated : [];
+      var topDist = Array.isArray(hunterData.top_distributed) ? hunterData.top_distributed : [];
+
+      var totBuy = 0, totSell = 0;
+      var maxVal = 1;
+      for (var ai = 0; ai < topAcc.length; ai++) {
+        var av = Number(topAcc[ai].net_val || topAcc[ai].buy_val || 0);
+        var abuy = Number(topAcc[ai].buy_val || topAcc[ai].net_val || 0);
+        var asell = Number(topAcc[ai].sell_val || 0);
+        totBuy += abuy;
+        totSell += asell;
+        if (Math.abs(av) > maxVal) maxVal = Math.abs(av);
+      }
+      for (var di = 0; di < topDist.length; di++) {
+        var dv = Number(topDist[di].net_val || topDist[di].sell_val || 0);
+        var dbuy = Number(topDist[di].buy_val || 0);
+        var dsell = Number(topDist[di].sell_val || topDist[di].net_val || 0);
+        totBuy += dbuy;
+        totSell += dsell;
+        if (Math.abs(dv) > maxVal) maxVal = Math.abs(dv);
+      }
+      var netVal = totBuy - totSell;
+      if (totBuy === 0 && totSell === 0) {
+        for (var ai2 = 0; ai2 < topAcc.length; ai2++) netVal += Number(topAcc[ai2].net_val || 0);
+        for (var di2 = 0; di2 < topDist.length; di2++) netVal += Number(topDist[di2].net_val || 0);
+        totBuy = Math.max(0, netVal > 0 ? netVal * 1.5 : Math.abs(netVal) * 0.5);
+        totSell = Math.max(0, totBuy - netVal);
+      }
+
+      var formatHunterRp = function(val) {
+        var n = Number(val || 0);
+        if (Math.abs(n) >= 1e9) {
+          return 'Rp ' + (Math.abs(n) / 1e9).toFixed(1).replace('.', ',') + ' M';
+        }
+        return 'Rp ' + (Math.abs(n) / 1e6).toFixed(1).replace('.', ',') + ' jt';
+      };
+
+      if (!hunterSelectedStock) {
+        if (topAcc.length > 0) hunterSelectedStock = topAcc[0].ticker;
+        else if (topDist.length > 0) hunterSelectedStock = topDist[0].ticker;
+        else hunterSelectedStock = 'BBCA';
+      }
+
+      // Summary strip
+      html += '    <section class="sheet">';
+      html += '      <div class="strip">';
+      html += '        <div><div class="lbl">Broker</div><div style="display:flex;gap:10px;align-items:center"><span class="code">' + escapeHtml(hunterBroker) + '</span><b style="font-size:15px">' + escapeHtml(bName) + '</b></div></div>';
+      html += '        <div><div class="lbl">Net ' + escapeHtml(rangeLabel) + '</div><div class="' + (netVal >= 0 ? 'pos' : 'neg') + ' big num pop">' + (netVal >= 0 ? '+' : '−') + formatHunterRp(netVal) + '</div></div>';
+      html += '        <div><div class="lbl">Total beli</div><div class="big num">' + formatHunterRp(totBuy) + '</div></div>';
+      html += '        <div><div class="lbl">Total jual</div><div class="big num">' + formatHunterRp(totSell) + '</div></div>';
+      html += '      </div>';
+      html += '    </section>';
+
+      // Grid2: Sedang dikoleksi & Sedang dilepas
+      html += '    <div class="grid2">';
+
+      // Sedang dikoleksi
+      html += '      <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Sedang dikoleksi</h2><span>Net beli terbesar</span></div>';
+      html += '        <div class="tw" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Ticker</th><th class="r">Net</th><th class="r">Rerata beli</th><th style="width:64px"></th></tr></thead><tbody>';
+      if (topAcc.length === 0) {
+        html += '<tr><td colspan="4" class="mut" style="text-align:center;padding:24px 12px;font-size:13px">Tidak ada saham yang diakumulasi net buy oleh broker ' + escapeHtml(hunterBroker) + '</td></tr>';
+      } else {
+        for (var a = 0; a < topAcc.length; a++) {
+          var ra = topAcc[a];
+          var aNet = Number(ra.net_val || 0);
+          var aAvg = Number(ra.avg_buy_price || ra.avg_buy || 0);
+          var aPct = Math.min(100, Math.max(4, Math.round((Math.abs(aNet) / maxVal) * 100)));
+          var aStatus = (ra.days_active && ra.days_active > 1) ? 'Akumulasi ' + ra.days_active + 'H' : 'Akumulasi';
+          var isSelA = (ra.ticker === hunterSelectedStock);
+          html += '<tr class="rise d' + Math.min(a, 4) + (isSelA ? ' sel' : '') + '" style="cursor:pointer" onclick="BandarmologiRuntime.selectHunterStock(\'' + escapeHtml(ra.ticker) + '\')">';
+          html += '  <td><span class="tk mono">' + escapeHtml(ra.ticker) + '</span> <span class="mut" style="font-size:12px">' + escapeHtml(aStatus) + '</span></td>';
+          html += '  <td class="r num pos" style="font-weight:600">+' + formatHunterRp(aNet) + '</td>';
+          html += '  <td class="r num mono">' + (aAvg > 0 ? aAvg.toLocaleString('id-ID') : '—') + '</td>';
+          html += '  <td><div class="hb"><i style="width:' + aPct + '%;background:var(--ac-pos);animation-delay:' + (a * 60) + 'ms"></i></div></td>';
+          html += '</tr>';
+        }
+      }
+      html += '        </tbody></table></div>';
+      html += '      </section>';
+
+      // Sedang dilepas
+      html += '      <section class="sheet"><div class="sec-h"><h2 style="font-size:16px">Sedang dilepas</h2><span>Net jual terbesar</span></div>';
+      html += '        <div class="tw" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Ticker</th><th class="r">Net</th><th class="r">Rerata jual</th><th style="width:64px"></th></tr></thead><tbody>';
+      if (topDist.length === 0) {
+        html += '<tr><td colspan="4" class="mut" style="text-align:center;padding:24px 12px;font-size:13px">Tidak ada saham yang didistribusi net sell oleh broker ' + escapeHtml(hunterBroker) + '</td></tr>';
+      } else {
+        for (var d = 0; d < topDist.length; d++) {
+          var rd = topDist[d];
+          var dNet = Number(rd.net_val || 0);
+          var dAvg = Number(rd.avg_sell_price || rd.avg_sell || 0);
+          var dPct = Math.min(100, Math.max(4, Math.round((Math.abs(dNet) / maxVal) * 100)));
+          var dStatus = (rd.days_active && rd.days_active > 1) ? 'Distribusi ' + rd.days_active + 'H' : 'Distribusi';
+          var isSelD = (rd.ticker === hunterSelectedStock);
+          html += '<tr class="rise d' + Math.min(d, 4) + (isSelD ? ' sel' : '') + '" style="cursor:pointer" onclick="BandarmologiRuntime.selectHunterStock(\'' + escapeHtml(rd.ticker) + '\')">';
+          html += '  <td><span class="tk mono">' + escapeHtml(rd.ticker) + '</span> <span class="mut" style="font-size:12px">' + escapeHtml(dStatus) + '</span></td>';
+          html += '  <td class="r num neg" style="font-weight:600">−' + formatHunterRp(Math.abs(dNet)) + '</td>';
+          html += '  <td class="r num mono">' + (dAvg > 0 ? dAvg.toLocaleString('id-ID') : '—') + '</td>';
+          html += '  <td><div class="hb"><i style="width:' + dPct + '%;background:var(--ac-neg);animation-delay:' + (d * 60) + 'ms"></i></div></td>';
+          html += '</tr>';
+        }
+      }
+      html += '        </tbody></table></div>';
+      html += '      </section>';
+      html += '    </div>'; // End grid2
+
+      // Drill-down card
+      html += '    <section class="sheet card-pad" style="display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center">';
+      html += '      <div><div class="lbl" style="margin:0">Drill-down</div><div style="font-weight:700"><span class="mono">' + escapeHtml(hunterBroker) + '</span> × <span class="mono" id="hunterDrillTicker">' + escapeHtml(hunterSelectedStock) + '</span></div></div>';
+      html += '      <div class="mut" style="font-size:13px;flex:1;min-width:240px">Lihat transaksi broker ini pada <span id="hunterDrillTickerDesc">' + escapeHtml(hunterSelectedStock) + '</span> di Bandarmologi, lalu bandingkan dengan pembeli dan penjual lain di tanggal yang sama.</div>';
+      html += '      <button type="button" class="btn p" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(hunterSelectedStock) + '\', \'bandarmologi\')">Buka ' + escapeHtml(hunterSelectedStock) + ' di Bandarmologi →</button>';
+      html += '    </section>';
+
+      // Provenance bar
+      var provDate = '8 Sep 2026';
+      if (hunterData.date_range_label) {
+        var dParts = String(hunterData.date_range_label).split('-');
+        if (dParts.length === 3) {
+          var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+          var mIdx = parseInt(dParts[1], 10) - 1;
+          if (mIdx >= 0 && mIdx < 12) {
+            provDate = parseInt(dParts[2], 10) + ' ' + monthNames[mIdx] + ' ' + dParts[0];
+          }
+        }
+      }
+      html += '    <div class="prov" style="border:0;padding:0 4px"><span><b>Sumber</b> Broker Summary IDX</span><span><b>Periode</b> ' + escapeHtml(rangeLabel) + ' s.d. ' + escapeHtml(provDate) + '</span><span class="chip i">' + (hunterData.from_cache ? 'Index terindeks' : 'Kalkulasi dinamis') + '</span></div>';
+    }
+    html += '  </div>'; // End right column
+    html += '</div>'; // End flex wrap
+
+    // Legacy controls preserved in Alat Lanjutan
+    html += '<details class="adv-tools" style="margin-top:20px"><summary>Alat lanjutan</summary>';
+    html += '  <div class="card-pad" style="border-top:1px solid var(--ac-hair);margin-top:12px">';
+    html += '    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+    html += '      <h3>🎯 Broker Hunter — Top 10 Saham per Broker</h3>';
+    html += '      <button type="button" onclick="BandarmologiRuntime.loadBrokerHunter()" class="btn">🔄 Refresh Data</button>';
+    html += '    </div>';
+    html += '    <div style="margin-bottom:10px">';
+    html += '      <span style="font-size:12px;font-weight:600">Pilih Broker Cepat:</span>';
+    html += '      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
+    var legacyQuick = ['AK', 'BK', 'CC', 'RX', 'DX', 'KZ', 'ZP', 'YP', 'XC', 'PD', 'NI', 'MG', 'SQ'];
+    for (var lqi = 0; lqi < legacyQuick.length; lqi++) {
+      var lqb = legacyQuick[lqi];
+      html += '        <button type="button" onclick="BandarmologiRuntime.setHunterBroker(\'' + escapeHtml(lqb) + '\')" class="btn ' + (lqb === hunterBroker ? 'p' : '') + '">' + escapeHtml(lqb) + '</button>';
+    }
+    html += '      </div>';
+    html += '    </div>';
+    html += '    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--ac-hair)">';
+    html += '      <label for="brokerHunterSelect" style="font-size:12px;font-weight:600">Semua Broker:</label>';
+    html += '      <select id="brokerHunterSelect" onchange="BandarmologiRuntime.setHunterBroker(this.value)" style="padding:6px 10px;border-radius:6px;border:1px solid var(--ac-line);background:var(--ac-raised);color:var(--ac-ink);font-family:monospace">';
+    var allKeys = Object.keys(BROKER_NAMES).sort();
+    for (var ki = 0; ki < allKeys.length; ki++) {
+      var bkCode = allKeys[ki];
+      var bkName = BROKER_NAMES[bkCode];
+      html += '        <option value="' + escapeHtml(bkCode) + '" ' + (bkCode === hunterBroker ? 'selected' : '') + '>';
+      html += escapeHtml(bkCode) + ' - ' + escapeHtml(bkName) + (isForeignBroker(bkCode) ? ' [Foreign]' : ' [Domestic]');
       html += '        </option>';
     }
     html += '      </select>';
+    html += '      <div style="display:flex;gap:6px;align-items:center">';
+    html += '        <span style="font-size:12px">Rentang:</span>';
+    html += '        <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'1d\')" class="btn ' + (hunterRange === '1d' ? 'p' : '') + '">1 Hari</button>';
+    html += '        <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'7d\')" class="btn ' + (hunterRange === '7d' ? 'p' : '') + '">7 Hari</button>';
+    html += '        <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'30d\')" class="btn ' + (hunterRange === '30d' ? 'p' : '') + '">30 Hari</button>';
+    html += '        <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'custom\')" class="btn ' + (hunterRange === 'custom' ? 'p' : '') + '">Custom</button>';
+    html += '      </div>';
     html += '    </div>';
-
-    // Range Filter (1d, 7d, 30d, custom)
-    var r1Class = hunterRange === '1d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    var r7Class = hunterRange === '7d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    var r30Class = hunterRange === '30d' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    var rCustomClass = hunterRange === 'custom' ? 'bg-emerald-500 text-dark-900 shadow-sm font-bold' : 'text-gray-400 hover:text-white font-medium';
-    html += '    <div class="flex items-center gap-1 bg-dark-900 p-0.5 rounded-lg border border-dark-600/50 text-[11px]">';
-    html += '      <span class="text-[10px] text-gray-400 font-medium px-1.5 uppercase tracking-wider">Rentang:</span>';
-    html += '      <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'1d\')" class="px-2.5 py-1 rounded-md transition ' + r1Class + '">1 Hari</button>';
-    html += '      <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'7d\')" class="px-2.5 py-1 rounded-md transition ' + r7Class + '">7 Hari</button>';
-    html += '      <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'30d\')" class="px-2.5 py-1 rounded-md transition ' + r30Class + '">30 Hari</button>';
-    html += '      <button type="button" onclick="BandarmologiRuntime.setHunterRange(\'custom\')" class="px-2.5 py-1 rounded-md transition ' + rCustomClass + '">Custom</button>';
-    html += '    </div>';
-    html += '  </div>';
-
-    // Custom date inputs if custom range is selected
     if (hunterRange === 'custom') {
-      html += '  <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-dark-700/50">';
-      html += '    <span class="text-xs text-gray-300 font-medium">Periode Custom:</span>';
-      html += '    <input type="date" id="hunterCustomStartDate" value="' + escapeHtml(hunterStartDate) + '" class="bg-dark-900 text-gray-200 border border-dark-600 rounded px-2 py-1 text-xs">';
-      html += '    <span class="text-xs text-gray-400">s/d</span>';
-      html += '    <input type="date" id="hunterCustomEndDate" value="' + escapeHtml(hunterEndDate) + '" class="bg-dark-900 text-gray-200 border border-dark-600 rounded px-2 py-1 text-xs">';
-      html += '    <button type="button" onclick="BandarmologiRuntime.applyCustomHunterRange(document.getElementById(\'hunterCustomStartDate\').value, document.getElementById(\'hunterCustomEndDate\').value)" class="px-3 py-1 rounded bg-emerald-500 hover:bg-emerald-600 text-dark-900 font-bold text-xs transition">Terapkan</button>';
-      html += '  </div>';
-    }
-    html += '</div>';
-
-    // 3. LOADING / ERROR / CONTENT STATE
-    if (hunterLoading) {
-      html += '<div class="flex flex-col items-center justify-center py-16 bg-dark-800/40 rounded-xl border border-dark-700/30">';
-      html += '  <div class="spinner mb-3"></div>';
-      html += '  <p class="text-xs text-gray-300 font-medium">Mengambil data Broker Hunter ' + escapeHtml(hunterBroker) + '...</p>';
-      html += '  <p class="text-[11px] text-gray-500 mt-1">Memeriksa database indeks agregasi broker...</p>';
-      html += '</div>';
-      container.innerHTML = html;
-      return;
-    }
-
-    if (hunterError) {
-      html += '<div class="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-center my-4">';
-      html += '  <p class="text-xs text-rose-300 font-medium mb-2">⚠️ ' + escapeHtml(hunterError) + '</p>';
-      html += '  <button type="button" onclick="BandarmologiRuntime.loadBrokerHunter()" class="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-200 border border-rose-500/30 text-xs font-semibold hover:bg-rose-500/30 transition">Coba Lagi</button>';
-      html += '</div>';
-      container.innerHTML = html;
-      return;
-    }
-
-    if (!hunterData) {
-      container.innerHTML = html;
-      return;
-    }
-
-    // 4. ACTIVE BROKER SUMMARY BANNER
-    var bName = hunterData.broker_name || getBrokerSecurityName(hunterBroker);
-    var bIsForeign = isForeignBroker(hunterBroker);
-    var topAcc = Array.isArray(hunterData.top_accumulated) ? hunterData.top_accumulated : [];
-    var topDist = Array.isArray(hunterData.top_distributed) ? hunterData.top_distributed : [];
-
-    html += '<div class="bg-dark-700/40 border border-dark-600/30 rounded-xl p-3.5 mb-5 flex flex-wrap items-center justify-between gap-3">';
-    html += '  <div class="flex items-center gap-3">';
-    html += '    <div class="w-10 h-10 rounded-xl flex items-center justify-center font-mono font-bold text-sm ' + (bIsForeign ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40') + '">' + escapeHtml(hunterBroker) + '</div>';
-    html += '    <div>';
-    html += '      <div class="flex items-center gap-2">';
-    html += '        <h4 class="text-sm font-bold text-gray-100">' + escapeHtml(bName) + '</h4>';
-    html += '        <span class="text-[10px] px-2 py-0.5 rounded font-semibold ' + (bIsForeign ? 'ac-hunter-legend ac-hunter-legend-foreign bg-sky-500/10 border border-sky-500/30' : 'ac-hunter-legend ac-hunter-legend-local bg-emerald-500/10 border border-emerald-500/30') + '">' + (bIsForeign ? '🌐 Asing / Foreign' : '🇮🇩 Domestik') + '</span>';
-    html += '      </div>';
-    html += '      <div class="text-[11px] text-gray-400 mt-0.5">';
-    html += '        <span>Periode: <strong class="text-gray-200">' + escapeHtml(hunterData.date_range_label || hunterRange) + '</strong></span> &bull; ';
-    html += '        <span>Saham Aktif: <strong class="text-gray-200">' + formatNumber(hunterData.total_stocks_active || (topAcc.length + topDist.length)) + '</strong></span>';
-    html += '      </div>';
-    html += '    </div>';
-    html += '  </div>';
-    html += '  <div class="flex items-center gap-2">';
-    if (hunterData.from_cache) {
-      html += '    <span class="text-[11px] px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono">⚡ Index Cepat Terindeks</span>';
-    } else {
-      html += '    <span class="text-[11px] px-2.5 py-1 rounded-md bg-dark-700 border border-dark-600 text-gray-300 font-mono">🔍 Query Dinamis</span>';
+      html += '    <div style="display:flex;gap:8px;align-items:center;margin-top:10px">';
+      html += '      <input type="date" id="hunterCustomStartDate" value="' + escapeHtml(hunterStartDate) + '">';
+      html += '      <span>s/d</span>';
+      html += '      <input type="date" id="hunterCustomEndDate" value="' + escapeHtml(hunterEndDate) + '">';
+      html += '      <button type="button" class="btn p" onclick="BandarmologiRuntime.applyCustomHunterRange(document.getElementById(\'hunterCustomStartDate\').value, document.getElementById(\'hunterCustomEndDate\').value)">Terapkan</button>';
+      html += '    </div>';
     }
     html += '  </div>';
-    html += '</div>';
-
-    // 5. TOP 10 AKUMULASI (NET BUY) & TOP 10 DISTRIBUSI (NET SELL) TABLES
-    html += '<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">';
-
-    // --- LEFT COLUMN: TOP 10 AKUMULASI ---
-    html += '<div class="bg-dark-700/40 border border-emerald-500/20 rounded-xl p-4">';
-    html += '  <div class="flex items-center justify-between mb-3">';
-    html += '    <h3 class="text-xs font-bold text-emerald-300 flex items-center gap-1.5"><span class="text-sm">🟢</span> Top 10 Akumulasi (Net Buy)</h3>';
-    html += '    <span class="text-[10px] text-gray-400">' + topAcc.length + ' saham</span>';
-    html += '  </div>';
-
-    if (topAcc.length === 0) {
-      html += '  <div class="text-center py-8 text-xs text-gray-500">Tidak ada saham yang diakumulasi net buy oleh broker ' + escapeHtml(hunterBroker) + ' pada periode ini.</div>';
-    } else {
-      html += '  <div class="overflow-x-auto">';
-      html += '    <table class="w-full text-left text-xs">';
-      html += '      <thead>';
-      html += '        <tr class="text-[10px] text-gray-400 border-b border-dark-600/40 uppercase tracking-wider">';
-      html += '          <th class="py-2 px-2">#</th>';
-      html += '          <th class="py-2 px-2">Ticker</th>';
-      html += '          <th class="py-2 px-2 text-right">Net Value</th>';
-      html += '          <th class="py-2 px-2 text-right">Net Lot</th>';
-      html += '          <th class="py-2 px-2 text-right">Avg Beli</th>';
-      html += '          <th class="py-2 px-2 text-center">Aksi</th>';
-      html += '        </tr>';
-      html += '      </thead>';
-      html += '      <tbody class="divide-y divide-dark-600/20">';
-      for (var a = 0; a < topAcc.length; a++) {
-        var rowA = topAcc[a];
-        var netValA = rowA.net_val || 0;
-        var netLotA = rowA.net_lot != null ? rowA.net_lot : Math.round(rowA.net_vol || 0);
-        var avgBuyA = rowA.avg_buy_price || rowA.avg_buy || 0;
-
-        html += '        <tr class="hover:bg-dark-600/20 transition">';
-        html += '          <td class="py-2.5 px-2 font-mono text-gray-400 text-[11px]">' + (a + 1) + '</td>';
-        html += '          <td class="py-2.5 px-2">';
-        html += '            <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowA.ticker) + '\', \'bandarmologi\')" class="font-bold text-emerald-400 hover:text-emerald-300 font-mono hover:underline">' + escapeHtml(rowA.ticker) + '</button>';
-        html += '          </td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono font-semibold text-emerald-400">+' + formatIDR(netValA) + '</td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-200">+' + formatNumber(netLotA) + '</td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-300">' + (avgBuyA > 0 ? 'Rp ' + formatNumber(avgBuyA) : '-') + '</td>';
-        html += '          <td class="py-2.5 px-2 text-center">';
-        html += '            <div class="flex items-center justify-center gap-1">';
-        html += '              <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowA.ticker) + '\', \'bandarmologi\')" title="Buka Bandarmologi" class="px-2 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-semibold transition">Bandar</button>';
-        html += '              <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowA.ticker) + '\', \'analisis\')" title="Analisis Saham" class="px-2 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-[10px] font-semibold transition">AI</button>';
-        html += '            </div>';
-        html += '          </td>';
-        html += '        </tr>';
-      }
-      html += '      </tbody>';
-      html += '    </table>';
-      html += '  </div>';
-    }
-    html += '</div>';
-
-    // --- RIGHT COLUMN: TOP 10 DISTRIBUSI ---
-    html += '<div class="bg-dark-700/40 border border-rose-500/20 rounded-xl p-4">';
-    html += '  <div class="flex items-center justify-between mb-3">';
-    html += '    <h3 class="text-xs font-bold text-rose-300 flex items-center gap-1.5"><span class="text-sm">🔴</span> Top 10 Distribusi (Net Sell)</h3>';
-    html += '    <span class="text-[10px] text-gray-400">' + topDist.length + ' saham</span>';
-    html += '  </div>';
-
-    if (topDist.length === 0) {
-      html += '  <div class="text-center py-8 text-xs text-gray-500">Tidak ada saham yang didistribusi net sell oleh broker ' + escapeHtml(hunterBroker) + ' pada periode ini.</div>';
-    } else {
-      html += '  <div class="overflow-x-auto">';
-      html += '    <table class="w-full text-left text-xs">';
-      html += '      <thead>';
-      html += '        <tr class="text-[10px] text-gray-400 border-b border-dark-600/40 uppercase tracking-wider">';
-      html += '          <th class="py-2 px-2">#</th>';
-      html += '          <th class="py-2 px-2">Ticker</th>';
-      html += '          <th class="py-2 px-2 text-right">Net Value</th>';
-      html += '          <th class="py-2 px-2 text-right">Net Lot</th>';
-      html += '          <th class="py-2 px-2 text-right">Avg Jual</th>';
-      html += '          <th class="py-2 px-2 text-center">Aksi</th>';
-      html += '        </tr>';
-      html += '      </thead>';
-      html += '      <tbody class="divide-y divide-dark-600/20">';
-      for (var d = 0; d < topDist.length; d++) {
-        var rowD = topDist[d];
-        var netValD = rowD.net_val || 0;
-        var netLotD = rowD.net_lot != null ? rowD.net_lot : Math.round(rowD.net_vol || 0);
-        var avgSellD = rowD.avg_sell_price || rowD.avg_sell || 0;
-
-        html += '        <tr class="hover:bg-dark-600/20 transition">';
-        html += '          <td class="py-2.5 px-2 font-mono text-gray-400 text-[11px]">' + (d + 1) + '</td>';
-        html += '          <td class="py-2.5 px-2">';
-        html += '            <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowD.ticker) + '\', \'bandarmologi\')" class="font-bold text-rose-400 hover:text-rose-300 font-mono hover:underline">' + escapeHtml(rowD.ticker) + '</button>';
-        html += '          </td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono font-semibold text-rose-400">-' + formatIDR(Math.abs(netValD)) + '</td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-200">-' + formatNumber(Math.abs(netLotD)) + '</td>';
-        html += '          <td class="py-2.5 px-2 text-right font-mono text-gray-300">' + (avgSellD > 0 ? 'Rp ' + formatNumber(avgSellD) : '-') + '</td>';
-        html += '          <td class="py-2.5 px-2 text-center">';
-        html += '            <div class="flex items-center justify-center gap-1">';
-        html += '              <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowD.ticker) + '\', \'bandarmologi\')" title="Buka Bandarmologi" class="px-2 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[10px] font-semibold transition">Bandar</button>';
-        html += '              <button type="button" onclick="BandarmologiRuntime.inspectHunterTicker(\'' + escapeHtml(rowD.ticker) + '\', \'analisis\')" title="Analisis Saham" class="px-2 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-[10px] font-semibold transition">AI</button>';
-        html += '            </div>';
-        html += '          </td>';
-        html += '        </tr>';
-      }
-      html += '      </tbody>';
-      html += '    </table>';
-      html += '  </div>';
-    }
-    html += '</div>';
-
-    html += '</div>'; // End grid
+    html += '</details>';
 
     container.innerHTML = html;
   }
@@ -6173,6 +6220,9 @@
       getBubbleFilterSide: function () { return bubbleFilterSide; },
       firstNonEmptyList: firstNonEmptyList,
       setHunterBroker: setHunterBroker,
+      selectHunterStock: selectHunterStock,
+      filterHunterRoster: filterHunterRoster,
+      getHunterSelectedStock: function () { return hunterSelectedStock; },
       setHunterRange: setHunterRange,
       applyCustomHunterRange: applyCustomHunterRange,
       inspectHunterTicker: inspectHunterTicker,

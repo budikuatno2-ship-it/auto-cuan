@@ -792,6 +792,7 @@ html #appContent #page-screener .scr-head-act > * { flex: none; white-space: now
 .code { width: 40px; height: 32px; border-radius: 6px; background: var(--ac-inv); color: #fff; display: grid; place-items: center; font: 600 13px "Geist Mono", monospace; }
 .hb { height: 6px; border-radius: 3px; background: var(--ac-hover); overflow: hidden; min-width: 70px; }
 .hb i { display: block; height: 100%; border-radius: 3px; transform-origin: left; animation: grow 700ms var(--ease-e) both; }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 /* ---- Kelompok 3: Insider (Insider.dc.html) ---- */
 .edge { transition: stroke 190ms var(--ease), stroke-opacity 190ms var(--ease), stroke-width 190ms; }
