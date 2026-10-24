@@ -428,14 +428,33 @@ function backupClippedBroksum(baseDir, ticker, date, content) {
   } catch (_) {}
 }
 
-function loadTradingDays(candlesDir) {
+function resolveMaxTradingDate(options = {}) {
+  if (options && options.maxDate) return String(options.maxDate).trim();
+  if (options && options.endDate) return String(options.endDate).trim();
+  try {
+    const cal = require('../lib/idx-trading-calendar');
+    const now = (options && options.now) || new Date();
+    const todayKey = wibDateKey(now);
+    const holidays = cal.getSeedHolidaySet ? cal.getSeedHolidaySet() : new Set();
+    if (cal.isTradingDay(todayKey, holidays)) {
+      return todayKey;
+    }
+    return cal.previousTradingDay(todayKey, holidays) || todayKey;
+  } catch (_) {
+    return wibDateKey();
+  }
+}
+
+function loadTradingDays(candlesDir, options = {}) {
+  const maxDate = resolveMaxTradingDate(options);
+  const minDate = (options && (options.minDate || options.startDate)) || '2026-01-02';
   const candidates = ['IHSG.json', 'BBCA.json', 'BRPT.json', 'BMRI.json', 'BBRI.json'];
   for (const f of candidates) {
     const p = path.join(candlesDir, f);
     if (fs.existsSync(p)) {
       try {
         const data = JSON.parse(fs.readFileSync(p, 'utf8'));
-        const list = (data.candles || []).filter(c => c && c.date >= '2026-01-02' && c.date <= '2026-10-16').map(c => c.date);
+        const list = (data.candles || []).filter(c => c && c.date >= minDate && c.date <= maxDate).map(c => c.date);
         if (list.length > 0) {
           const unique = Array.from(new Set(list));
           return unique.sort().reverse(); // newest to oldest
@@ -451,7 +470,7 @@ function loadTradingDays(candlesDir) {
       const p = path.join(candlesDir, f);
       try {
         const data = JSON.parse(fs.readFileSync(p, 'utf8'));
-        const list = (data.candles || []).filter(c => c && c.date >= '2026-01-02' && c.date <= '2026-10-16').map(c => c.date);
+        const list = (data.candles || []).filter(c => c && c.date >= minDate && c.date <= maxDate).map(c => c.date);
         if (list.length > 0) {
           const unique = Array.from(new Set(list));
           return unique.sort().reverse();
@@ -485,7 +504,9 @@ function getTickerCandleMap(candlesDir, ticker) {
   return map;
 }
 
-function categorizeTickersByLiquidity(baseDir, candlesDir, tickers) {
+function categorizeTickersByLiquidity(baseDir, candlesDir, tickers, options = {}) {
+  const maxDate = resolveMaxTradingDate(options);
+  const minDate = (options && (options.minDate || options.startDate)) || '2026-01-02';
   const liquid = [];
   const regular = [];
 
@@ -495,7 +516,7 @@ function categorizeTickersByLiquidity(baseDir, candlesDir, tickers) {
       const cFile = path.join(candlesDir, `${tk}.json`);
       if (fs.existsSync(cFile)) {
         const cd = JSON.parse(fs.readFileSync(cFile, 'utf8'));
-        const inRange = (cd.candles || []).filter(c => c.date >= '2026-01-02' && c.date <= '2026-10-16');
+        const inRange = (cd.candles || []).filter(c => c && c.date >= minDate && c.date <= maxDate);
         if (inRange.length > 0) {
           const sum = inRange.reduce((acc, c) => acc + (c.volume * c.close), 0);
           avgTurnover = sum / inRange.length;
@@ -672,7 +693,16 @@ async function runUnlocked(argv) {
     } catch (_) {}
   }
 
-  const tradingDays = loadTradingDays(candlesDir);
+  let startDate = '2026-01-02';
+  for (const a of args) {
+    if (a.startsWith('--start-date=')) startDate = a.slice(13).trim();
+  }
+  let endDate = null;
+  for (const a of args) {
+    if (a.startsWith('--end-date=')) endDate = a.slice(11).trim();
+  }
+  const dateOpts = { startDate, endDate };
+  const tradingDays = loadTradingDays(candlesDir, dateOpts);
   console.log(`Trading days in scope: ${tradingDays.length} days (${tradingDays[tradingDays.length - 1]} to ${tradingDays[0]})`);
 
   let universeTickers = [];
@@ -712,7 +742,7 @@ async function runUnlocked(argv) {
   console.log(`[BUDGET] Kebutuhan job harian yang masih tertunda: ${pendingDailyNeed} request; lantai kuota backfill: ${reserveQuota}`);
   console.log(`Mode:            ${mode.toUpperCase()} (Reserve Quota: ${reserveQuota})`);
 
-  const { liquid, regular } = categorizeTickersByLiquidity(baseDir, candlesDir, universeTickers);
+  const { liquid, regular } = categorizeTickersByLiquidity(baseDir, candlesDir, universeTickers, dateOpts);
   console.log(`Tickers: ${liquid.length} liquid (turnover >= 1M) + ${regular.length} regular = ${universeTickers.length} total.`);
 
   // Order: liquid tickers first, then regular
@@ -1216,6 +1246,7 @@ module.exports = {
   run,
   categorizeTickersByLiquidity,
   loadTradingDays,
+  resolveMaxTradingDate,
   getTickerCandleMap,
   brokerSummaryHasTrades,
   resolveDynamicReserveQuota,
