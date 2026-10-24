@@ -701,6 +701,7 @@
   "test/vps-api-bridge-tunnel.test.js",
   "test/vps-data-fetcher-bugs.test.js",
   "test/j1-quota-limit-and-skip-alarm.test.js",
+  "test/j1-eod-market-guard-bypass.test.js",
   "test/alarm-path-selftest.test.js",
   "test/catchup-missing-dates.test.js",
   "test/vps-data-fetcher-per-ticker-cooldown.test.js",
