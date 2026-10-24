@@ -121,3 +121,12 @@ test('IHSG sparkline toggles the hidden attribute, not a .hidden property', () =
   assert.match(js, /spark\.setAttribute\('hidden', ''\)/);
   assert.doesNotMatch(js, /spark\.hidden\s*=/);
 });
+
+test('SVG elements across public scripts toggle hidden attribute, not .hidden property', () => {
+  const files = fs.readdirSync(path.join(__dirname, '..', 'public')).filter((f) => f.endsWith('.js'));
+  for (const f of files) {
+    const js = fs.readFileSync(path.join(__dirname, '..', 'public', f), 'utf8');
+    assert.doesNotMatch(js, /\b(spark|svg|icon|shadingSvg)\.hidden\s*=/, `${f} must not assign to .hidden on SVG elements`);
+  }
+});
+
