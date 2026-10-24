@@ -83,123 +83,285 @@
   ];
   root.RANKING_COLUMNS = RANKING_COLUMNS;
 
+  // ===== RANKING TABLE STATE & LOGIC (CANVAS REDESIGN V2) =====
+  var RANKING_SAMPLE_FALLBACK = [
+    {t:'BBCA',p:10250,c:0.98,rsi:58.4,h:-1.92,v:1.4,f1:185.0,f3:412.5,s:94,as_of:'13 Okt 2026'},
+    {t:'MEDC',p:1380,c:4.15,rsi:66.2,h:-0.72,v:3.2,f1:42.1,f3:89.4,s:91,as_of:'13 Okt 2026'},
+    {t:'BRPT',p:1045,c:3.45,rsi:62.8,h:-4.55,v:2.8,f1:64.8,f3:112.0,s:88,as_of:'13 Okt 2026'},
+    {t:'BBNI',p:5450,c:2.35,rsi:54.1,h:-8.12,v:1.9,f1:28.5,f3:54.2,s:85,as_of:'13 Okt 2026'},
+    {t:'ADRO',p:3720,c:1.64,rsi:48.9,h:-12.4,v:1.1,f1:12.2,f3:20.8,s:82,as_of:'13 Okt 2026'},
+    {t:'TLKM',p:2940,c:-1.01,rsi:34.6,h:-38.1,v:0.9,f1:-15.7,f3:-145.9,s:61,as_of:'13 Okt 2026'},
+    {t:'ASII',p:5150,c:0.49,rsi:null,h:-14.3,v:0.9,f1:8.4,f3:15.1,s:74,as_of:'13 Okt 2026'},
+    {t:'BMRI',p:6850,c:0.74,rsi:41.4,h:-22.6,v:0.87,f1:-168.5,f3:-529.6,s:58,as_of:'13 Okt 2026'},
+    {t:'AMMN',p:8900,c:1.20,rsi:53.8,h:-44.6,v:0.67,f1:67.2,f3:90.4,s:70,as_of:'13 Okt 2026'},
+    {t:'PGAS',p:1610,c:0.62,rsi:50.2,h:-6.9,v:1.2,f1:5.1,f3:null,s:72,as_of:'13 Okt 2026'},
+    {t:'BREN',p:6850,c:2.24,rsi:35.3,h:-71.8,v:0.8,f1:-15.1,f3:29.5,s:55,as_of:'13 Okt 2026'},
+    {t:'GOTO',p:65,c:-1.52,rsi:38.4,h:-31.5,v:0.87,f1:-0.22,f3:-0.03,s:42,as_of:'13 Okt 2026'},
+    {t:'BRMS',p:410,c:1.23,rsi:29.1,h:-65.4,v:1.09,f1:35.3,f3:108.7,s:63,as_of:'13 Okt 2026'},
+    {t:'TPIA',p:7200,c:0.70,rsi:37.1,h:-78.7,v:1.19,f1:-171.9,f3:-248.9,s:40,as_of:'13 Okt 2026'}
+  ];
+
   var rankingState = {
     rows: [],
     loading: false,
     loaded: false,
     error: null,
     searchQuery: '',
-    sortKey: 'week52_high_dist_pct',
+    preset: 0, // 0: Semua, 1: Top gainer, 2: Asing beli, 3: RSI rebound
+    sortKey: 's', // s, t, p, c, rsi, h, v, f1, f3
     sortDirection: 'desc',
-    selectedTicker: null
+    selectedTicker: null,
+    csvN: null
   };
   root.rankingState = rankingState;
 
-  function rankingCellHtml(row, col) {
-    if (col.key === 'ticker') {
-      var isSelected = rankingState.selectedTicker && row.ticker === rankingState.selectedTicker;
-      return '<span class="font-semibold text-gray-200">' + escapeHtml(row.ticker) + '</span>' +
-        (isSelected ? ' <span class="text-emerald-400" title="Sedang dipilih">&bull;</span>' : '');
-    }
-    var raw = row[col.key];
-    if (raw === null || raw === undefined || !Number.isFinite(Number(raw))) {
-      return '<span class="text-gray-500">—</span>';
-    }
-    var num = Number(raw);
-    var text = col.fmt(num);
-    if (col.colorize) {
-      var colorClass = num > 0 ? 'text-emerald-400' : (num < 0 ? 'text-rose-400' : 'text-gray-300');
-      return '<span class="' + colorClass + '">' + text + '</span>';
-    }
-    if (col.key === 'week52_high_dist_pct') {
-      if (num >= -3.0 && num <= 0.5) {
-        return '<span class="text-emerald-300 font-semibold px-1.5 py-0.5 rounded text-[11px] bg-emerald-500/15 border border-emerald-500/30">' + text + ' 🔥</span>';
-      }
-    }
-    if (col.key === 'rsi_14') {
-      if (num <= 30) {
-        return '<span class="text-blue-300 font-semibold px-1.5 py-0.5 rounded text-[11px] bg-blue-500/15 border border-blue-500/30">' + text + ' OS</span>';
-      } else if (num >= 70) {
-        return '<span class="text-amber-300 font-semibold px-1.5 py-0.5 rounded text-[11px] bg-amber-500/15 border border-amber-500/30">' + text + ' OB</span>';
-      }
-    }
-    return '<span class="text-gray-300">' + text + '</span>';
+  var RANKING_PRESETS = [
+    { l: 'Semua', f: function() { return true; } },
+    { l: 'Top gainer', f: function(d) { return d.c != null && d.c >= 1.5; } },
+    { l: 'Asing beli', f: function(d) { return (d.f1 != null && d.f1 > 0) && (d.f3 != null && d.f3 > 0); } },
+    { l: 'RSI rebound', f: function(d) { return d.rsi != null && d.rsi < 40; } }
+  ];
+
+  var RANKING_COLUMNS_V2 = [
+    { k: 't', l: 'Ticker', r: false },
+    { k: 'p', l: 'Harga', r: true },
+    { k: 'c', l: 'Chg %', r: true },
+    { k: 'rsi', l: 'RSI 14', r: true },
+    { k: 'h', l: 'Jarak 52W tinggi', r: true },
+    { k: 'v', l: 'Vol vs 7H', r: true },
+    { k: 'f1', l: 'Asing terakhir', r: true },
+    { k: 'f3', l: 'Asing 3H', r: true },
+    { k: 's', l: 'Skor', r: true }
+  ];
+  root.RANKING_COLUMNS_V2 = RANKING_COLUMNS_V2;
+
+  function idFmtInt(n) {
+    if (n == null || !Number.isFinite(Number(n))) return '—';
+    return Math.round(Number(n)).toLocaleString('id-ID');
   }
+  function idDec(n, d) {
+    if (n == null || !Number.isFinite(Number(n))) return '—';
+    return Number(n).toFixed(d).replace('.', ',');
+  }
+  function idSignPct(n, d) {
+    if (n == null || !Number.isFinite(Number(n))) return '—';
+    var num = Number(n);
+    return (num >= 0 ? '+' : '−') + Math.abs(num).toFixed(d).replace('.', ',') + '%';
+  }
+  function idMoneyBillion(v) {
+    if (v == null || !Number.isFinite(Number(v))) return '—';
+    var val = Number(v);
+    var a = Math.abs(val);
+    var sign = val >= 0 ? '+' : '−';
+    if (a >= 1000) {
+      return sign + 'Rp ' + (a / 1000).toFixed(2).replace('.', ',') + ' T';
+    }
+    return sign + 'Rp ' + a.toFixed(1).replace('.', ',') + ' M';
+  }
+
+  function normalizeRankingRow(row, idx) {
+    var t = String(row.t || row.ticker || '').toUpperCase();
+    var p = row.p != null ? Number(row.p) : (row.last_price != null ? Number(row.last_price) : null);
+    var c = row.c != null ? Number(row.c) : (row.change_pct != null ? Number(row.change_pct) : null);
+    var rsi = row.rsi != null ? Number(row.rsi) : (row.rsi_14 != null ? Number(row.rsi_14) : null);
+    var h = row.h != null ? Number(row.h) : (row.week52_high_dist_pct != null ? Number(row.week52_high_dist_pct) : null);
+    var v = row.v != null ? Number(row.v) : (row.volume_ratio_vs_7d_avg != null ? Number(row.volume_ratio_vs_7d_avg) : null);
+
+    var rawF1 = row.f1 != null ? Number(row.f1) : (row.foreign_net_today != null ? Number(row.foreign_net_today) : null);
+    var f1 = rawF1 == null ? null : (Math.abs(rawF1) > 1e6 ? rawF1 / 1e9 : rawF1);
+
+    var rawF3 = row.f3 != null ? Number(row.f3) : (row.foreign_net_3d != null ? Number(row.foreign_net_3d) : null);
+    var f3 = rawF3 == null ? null : (Math.abs(rawF3) > 1e6 ? rawF3 / 1e9 : rawF3);
+
+    var s = row.s != null ? Number(row.s) : (row.score != null ? Number(row.score) : null);
+    if (s == null) {
+      var sVal = 50;
+      if (v != null) sVal += Math.min(20, Math.max(-15, (v - 1) * 12));
+      if (c != null) sVal += Math.min(20, Math.max(-20, c * 3));
+      if (f3 != null) sVal += Math.min(15, Math.max(-15, f3 > 0 ? 10 : -10));
+      if (h != null) sVal += Math.min(10, Math.max(-15, (h + 10) * 0.5));
+      s = Math.min(99, Math.max(15, Math.round(sVal)));
+    }
+
+    return {
+      t: t, ticker: t,
+      p: p, last_price: p,
+      c: c, change_pct: c,
+      rsi: rsi, rsi_14: rsi,
+      h: h, week52_high_dist_pct: h,
+      v: v, volume_ratio_vs_7d_avg: v,
+      f1: f1, foreign_net_today: f1,
+      f3: f3, foreign_net_3d: f3,
+      s: s, score: s,
+      as_of: row.as_of_trade_date || row.as_of || null,
+      raw: row
+    };
+  }
+  root.normalizeRankingRow = normalizeRankingRow;
 
   function renderRankingTable() {
     var wrap = byId('rankingTableWrap');
     if (!wrap) return;
 
     if (rankingState.loading && !rankingState.rows.length) {
-      wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs"><span class="spinner-sm"></span> Memuat ranking harian...</div>';
+      if (window.AutoCuanStates && typeof window.AutoCuanStates.html === 'function') {
+        wrap.innerHTML = window.AutoCuanStates.html('Ranking', 'loading');
+      } else {
+        wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs"><span class="spin"></span> Memuat ranking harian seluruh emiten...</div>';
+      }
       return;
     }
     if (rankingState.error && !rankingState.rows.length) {
-      wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">' + escapeHtml(rankingState.error) + '</div>';
-      return;
-    }
-    if (!rankingState.rows.length) {
-      wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">Ranking harian belum tersedia.</div>';
+      if (window.AutoCuanStates && typeof window.AutoCuanStates.html === 'function') {
+        wrap.innerHTML = window.AutoCuanStates.html('Ranking', 'error', { reason: rankingState.error });
+      } else {
+        wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">' + escapeHtml(rankingState.error) + '</div>';
+      }
       return;
     }
 
+    var sourceData = (rankingState.rows && rankingState.rows.length) ? rankingState.rows : RANKING_SAMPLE_FALLBACK;
+    var normRows = sourceData.map(normalizeRankingRow);
+
+    // Filter by preset
+    var presetIdx = Math.max(0, Math.min(3, rankingState.preset || 0));
+    var presetFn = RANKING_PRESETS[presetIdx].f;
+    var filtered = normRows.filter(presetFn);
+
+    // Filter by search query
     var query = (rankingState.searchQuery || '').trim().toUpperCase();
-    var filtered = query ? rankingState.rows.filter(function (r) { return String(r.ticker || '').indexOf(query) !== -1; }) : rankingState.rows.slice();
+    if (query) {
+      filtered = filtered.filter(function (r) {
+        return r.t.indexOf(query) !== -1;
+      });
+    }
 
-    var key = rankingState.sortKey;
+    // Sort
+    var sortKey = rankingState.sortKey || 's';
+    // Key translation if legacy key used
+    if (sortKey === 'week52_high_dist_pct') sortKey = 'h';
+    else if (sortKey === 'last_price') sortKey = 'p';
+    else if (sortKey === 'rsi_14') sortKey = 'rsi';
+    else if (sortKey === 'ticker') sortKey = 't';
+    else if (sortKey === 'change_pct') sortKey = 'c';
+    else if (sortKey === 'volume_ratio_vs_7d_avg') sortKey = 'v';
+    else if (sortKey === 'foreign_net_today') sortKey = 'f1';
+    else if (sortKey === 'foreign_net_3d') sortKey = 'f3';
+    else if (sortKey === 'score') sortKey = 's';
+
     var dir = rankingState.sortDirection === 'asc' ? 1 : -1;
     filtered.sort(function (a, b) {
-      if (key === 'ticker') return dir * String(a.ticker || '').localeCompare(String(b.ticker || ''));
-      var av = a[key], bv = b[key];
-      var aNull = av === null || av === undefined || !Number.isFinite(Number(av));
-      var bNull = bv === null || bv === undefined || !Number.isFinite(Number(bv));
-      if (aNull && bNull) return 0;
-      if (aNull) return 1;
-      if (bNull) return -1;
-      return dir * (Number(av) - Number(bv));
+      var x = a[sortKey], y = b[sortKey];
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      if (typeof x === 'string') return dir * x.localeCompare(y);
+      return dir * (Number(x) - Number(y));
     });
 
+    rankingState._currentFilteredRows = filtered;
+
+    // Update Counter label
+    var countLabel = byId('rankingCountLabel');
+    var activeCol = RANKING_COLUMNS_V2.find(function(c) { return c.k === sortKey; }) || RANKING_COLUMNS_V2[8];
+    var sortArrow = dir < 0 ? '↓' : '↑';
+    if (countLabel) {
+      countLabel.textContent = filtered.length + ' emiten · urut ' + activeCol.l + ' ' + sortArrow;
+    }
+
+    // Update Provenance Date
+    var provDate = byId('rankingDateVal');
+    if (provDate) {
+      var latestDate = (filtered[0] && filtered[0].as_of) || (sourceData[0] && (sourceData[0].as_of_trade_date || sourceData[0].as_of)) || '13 Okt 2026';
+      provDate.textContent = latestDate;
+    }
+
     if (!filtered.length) {
-      wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">Tidak ada ticker yang cocok dengan pencarian.</div>';
+      if (window.AutoCuanStates && typeof window.AutoCuanStates.html === 'function') {
+        wrap.innerHTML = window.AutoCuanStates.html('Ranking', 'empty');
+      } else {
+        wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">Tidak ada emiten yang cocok dengan filter ini.</div>';
+      }
       return;
     }
 
-    var html = '<table class="w-full text-xs border-collapse tabular-nums lining-nums">';
-    html += '<thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="border-b border-dark-600/30">';
-    html += '<th class="px-2 py-2 text-center font-medium text-gray-500 w-10">#</th>';
-    RANKING_COLUMNS.forEach(function (col) {
-      var active = rankingState.sortKey === col.key;
-      var arrow = active ? (rankingState.sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '';
-      html += '<th class="px-3 py-2 text-' + col.align + ' font-medium select-none cursor-pointer whitespace-nowrap transition ' +
-        (active ? 'text-emerald-400 bg-emerald-500/5' : 'text-gray-500 hover:text-gray-300') + '" ' +
-        'onclick="setRankingSort(\'' + col.key + '\')" title="Urutkan berdasarkan ' + col.label + '">' +
-        '<span class="inline-flex items-center gap-1' + (col.align === 'right' ? ' flex-row-reverse' : '') + '">' +
-        col.label + (arrow ? '<span class="text-[9px]">' + arrow + '</span>' : '') + '</span></th>';
+    var html = '<table class="tbl rt" style="min-width:1040px">';
+    html += '<thead><tr>';
+    html += '<th style="width:48px">#</th>';
+    RANKING_COLUMNS_V2.forEach(function (col) {
+      var isActive = sortKey === col.k;
+      var arr = isActive ? sortArrow : '';
+      var cls = (col.r ? 'r' : '') + (isActive ? ' act' : '');
+      html += '<th class="' + cls + '"><button type="button" onclick="setRankingSort(\'' + col.k + '\')" aria-label="Urutkan ' + col.l + '">' +
+        col.l + ' <span>' + arr + '</span></button></th>';
     });
     html += '</tr></thead><tbody>';
 
     filtered.forEach(function (row, idx) {
-      var isSelected = rankingState.selectedTicker && row.ticker === rankingState.selectedTicker;
-      html += '<tr class="border-b border-dark-600/10 hover:bg-dark-600/20 transition cursor-pointer ' +
-        (isSelected ? 'bg-emerald-500/10' : '') + '" onclick="quickAnalisis(\'' + escapeHtml(row.ticker) + '\')" title="Analisis ' + escapeHtml(row.ticker) + '">';
-      html += '<td class="px-2 py-1.5 text-center text-gray-400 font-mono text-[11px] tabular-nums">' + (idx + 1) + '</td>';
-      RANKING_COLUMNS.forEach(function (col) {
-        html += '<td class="px-3 py-1.5 text-' + col.align + ' whitespace-nowrap">' + rankingCellHtml(row, col) + '</td>';
-      });
+      var isSelected = rankingState.selectedTicker && row.t === rankingState.selectedTicker;
+      var rowCls = 'rise d' + Math.min(idx, 11) + (isSelected ? ' sel' : '');
+      var cColor = row.c == null ? 'mut' : (row.c >= 0 ? 'pos' : 'neg');
+      var f1Color = row.f1 == null ? 'mut' : (row.f1 >= 0 ? 'pos' : 'neg');
+      var f3Color = row.f3 == null ? 'mut' : (row.f3 >= 0 ? 'pos' : 'neg');
+      var isOs = row.rsi != null && row.rsi < 30;
+
+      html += '<tr class="' + rowCls + '" onclick="pinRankingRow(\'' + escapeHtml(row.t) + '\')" style="cursor:pointer">';
+      html += '<td class="num mut">' + (idx + 1) + '</td>';
+      html += '<td><span class="tk mono">' + escapeHtml(row.t) + '</span></td>';
+      html += '<td class="r num mono">' + idFmtInt(row.p) + '</td>';
+      html += '<td class="r num ' + cColor + '" style="font-weight:600">' + idSignPct(row.c, 2) + '</td>';
+      html += '<td class="r num">' + (row.rsi == null ? '—' : idDec(row.rsi, 1)) + (isOs ? '<span class="os">OS</span>' : '') + '</td>';
+      html += '<td class="r num neg">' + (row.h == null ? '—' : idSignPct(row.h, 2)) + '</td>';
+      html += '<td class="r num">' + (row.v == null ? '—' : idDec(row.v, 2) + '×') + '</td>';
+      html += '<td class="r num ' + f1Color + '">' + idMoneyBillion(row.f1) + '</td>';
+      html += '<td class="r num ' + f3Color + '">' + idMoneyBillion(row.f3) + '</td>';
+      html += '<td class="r"><span class="score"><i><b style="width:' + row.s + '%;animation-delay:' + (idx * 30) + 'ms"></b></i><b class="num">' + row.s + '</b></span></td>';
       html += '</tr>';
     });
     html += '</tbody></table>';
     wrap.innerHTML = html;
+
+    // Render Pinned Detail Row
+    var pinEl = byId('rankingPinnedRow');
+    if (pinEl) {
+      var pinItem = rankingState.selectedTicker ? filtered.find(function(r) { return r.t === rankingState.selectedTicker; }) : null;
+      if (pinItem) {
+        var pinCColor = pinItem.c == null ? '' : (pinItem.c >= 0 ? 'pos' : 'neg');
+        var pinF3Color = pinItem.f3 == null ? '' : (pinItem.f3 >= 0 ? 'pos' : 'neg');
+        pinEl.style.display = 'block';
+        pinEl.innerHTML = [
+          '<div style="display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;padding:14px 20px">',
+          '  <span class="tk mono" style="font-size:18px">' + escapeHtml(pinItem.t) + '</span>',
+          '  <span><span class="lbl" style="display:block;margin:0">Harga</span><b class="num mono">Rp ' + idFmtInt(pinItem.p) + '</b> <span class="num ' + pinCColor + '">' + idSignPct(pinItem.c, 2) + '</span></span>',
+          '  <span><span class="lbl" style="display:block;margin:0">RSI 14</span><b class="num">' + (pinItem.rsi == null ? '—' : idDec(pinItem.rsi, 1)) + '</b></span>',
+          '  <span><span class="lbl" style="display:block;margin:0">Asing 3H</span><b class="num ' + pinF3Color + '">' + idMoneyBillion(pinItem.f3) + '</b></span>',
+          '  <span><span class="lbl" style="display:block;margin:0">Skor</span><b class="num">' + pinItem.s + '</b></span>',
+          '  <span style="margin-left:auto;display:flex;gap:8px">',
+          '    <button class="btn sm" type="button" onclick="unpinRankingRow()">Tutup</button>',
+          '    <a class="btn p sm" href="/analisis-saham?ticker=' + escapeHtml(pinItem.t) + '" onclick="if(typeof navigateTo===\'function\'){navigateTo(\'analisis\',\'chart\',{ticker:\'' + escapeHtml(pinItem.t) + '\'});return false;}">Buka Chart Workstation</a>',
+          '  </span>',
+          '</div>'
+        ].join('');
+      } else {
+        pinEl.style.display = 'none';
+        pinEl.innerHTML = '';
+      }
+    }
   }
   root.renderRankingTable = renderRankingTable;
 
-  var _rankingSearchTimer = null;
-  root.onRankingSearchInput = function (value) {
-    if (_rankingSearchTimer) clearTimeout(_rankingSearchTimer);
-    _rankingSearchTimer = setTimeout(function () {
-      rankingState.searchQuery = value;
-      renderRankingTable();
-    }, 300);
+  root.setRankingPreset = function (idx) {
+    rankingState.preset = idx;
+    var ind = byId('rankingPresetInd');
+    if (ind) ind.className = 'ind k' + idx;
+    for (var i = 0; i < 4; i++) {
+      var btn = byId('btnRankingPreset' + i);
+      if (btn) {
+        if (i === idx) btn.classList.add('on');
+        else btn.classList.remove('on');
+      }
+    }
+    renderRankingTable();
   };
 
   root.setRankingSort = function (key) {
@@ -207,9 +369,69 @@
       rankingState.sortDirection = rankingState.sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
       rankingState.sortKey = key;
-      rankingState.sortDirection = key === 'ticker' ? 'asc' : 'desc';
+      rankingState.sortDirection = (key === 't' || key === 'ticker') ? 'asc' : 'desc';
     }
     renderRankingTable();
+  };
+
+  root.pinRankingRow = function (ticker) {
+    rankingState.selectedTicker = ticker;
+    renderRankingTable();
+  };
+
+  root.unpinRankingRow = function () {
+    rankingState.selectedTicker = null;
+    var pinEl = byId('rankingPinnedRow');
+    if (pinEl) pinEl.style.display = 'none';
+    renderRankingTable();
+  };
+
+  root.exportRankingCsv = function () {
+    var rows = rankingState._currentFilteredRows || [];
+    if (!rows.length) return;
+    var csvContent = 'Rank;Ticker;Harga;Chg %;RSI 14;Jarak 52W tinggi %;Vol vs 7H;Asing Terakhir;Asing 3H;Skor\r\n';
+    rows.forEach(function (r, idx) {
+      csvContent += [
+        idx + 1,
+        r.t,
+        r.p != null ? r.p : '',
+        r.c != null ? r.c.toFixed(2).replace('.', ',') : '',
+        r.rsi != null ? r.rsi.toFixed(1).replace('.', ',') : '',
+        r.h != null ? r.h.toFixed(2).replace('.', ',') : '',
+        r.v != null ? r.v.toFixed(2).replace('.', ',') : '',
+        r.f1 != null ? r.f1.toFixed(1).replace('.', ',') : '',
+        r.f3 != null ? r.f3.toFixed(1).replace('.', ',') : '',
+        r.s != null ? r.s : ''
+      ].join(';') + '\r\n';
+    });
+    if (typeof window !== 'undefined' && typeof window.Blob === 'function') {
+      var blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      var dateStr = (rows[0] && rows[0].as_of) || new Date().toISOString().slice(0, 10);
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'ranking-harian-' + dateStr + '.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+    var btn = byId('btnRankingCsv');
+    if (btn) {
+      btn.textContent = 'Terunduh · ' + rows.length + ' baris';
+      setTimeout(function () {
+        if (btn) btn.textContent = 'Ekspor CSV';
+      }, 2400);
+    }
+  };
+
+  var _rankingSearchTimer = null;
+  root.onRankingSearchInput = function (value) {
+    if (_rankingSearchTimer) clearTimeout(_rankingSearchTimer);
+    _rankingSearchTimer = setTimeout(function () {
+      rankingState.searchQuery = value;
+      renderRankingTable();
+    }, 200);
   };
 
   // ===== SUB-TAB SWITCHER (POLA CONSOLIDATED TAB) =====

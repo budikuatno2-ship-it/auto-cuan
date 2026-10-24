@@ -303,53 +303,56 @@
             </div>
         </section>
 
-        <!-- SUB-TAB 3: RANKING HARIAN (Tabel Ranking + Paywall Lock untuk Free Users) -->
+        <!-- SUB-TAB 3: RANKING HARIAN -->
         <section id="panel-tab-ranking" class="analisis-tab-panel" style="display:none">
-            <div id="rankingCardOuterWrap" class="ranking-card-wrapper">
-                <div class="unified-card">
-                    <!-- Paywall Gate for Free Users -->
-                    <div id="rankingPaywallGate" class="p-8 sm:p-12 text-center rounded-2xl bg-gradient-to-b from-dark-800/80 to-dark-900/90 border border-dark-600/50 shadow-2xl max-w-xl mx-auto my-8">
-                        <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-2xl text-amber-400">
-                            🔒
-                        </div>
-                        <span class="inline-block px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-amber-500/15 text-amber-300 border border-amber-500/30 mb-3">
-                            Fitur Eksklusif Member Berlangganan
-                        </span>
-                        <h3 class="text-lg sm:text-xl font-bold text-white mb-2">
-                            Ranking Harian Terkunci
-                        </h3>
-                        <p class="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-md mx-auto mb-6">
-                            Akses ranking harian pasar modal, jarak 52W High/Low, net foreign flow 7D, dan status Overbought/Oversold (RSI 14) seluruh emiten IHSG hanya tersedia untuk member berlangganan (Bulanan &amp; Lifetime).
-                        </p>
-                        <p class="text-[11px] text-gray-500 mt-4">
-                            Akses ranking harian terbuka untuk akun dengan otorisasi aktif. Pastikan Anda sudah login dengan akun yang terverifikasi.
-                        </p>
-                    </div>
-
-                    <!-- Ranking Content for Subscribed Users -->
-                    <div id="rankingContentWrap" style="display:none">
-                        <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-3 border-b border-dark-600/20 bg-black/10">
-                            <div>
-                                <h3 class="text-sm font-semibold text-gray-200">Ranking Harian Pasar</h3>
-                                <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker - klik ticker untuk memuat analisis &amp; chart.</p>
-                            </div>
-                            <div class="flex flex-wrap items-center gap-2">
-                                <div class="flex items-center gap-1.5" style="display:none">
-                                    <input id="rankingTickerSearchInput" type="text" placeholder="Pilih ticker..." list="tickerAutocompleteList" maxlength="6" autocomplete="off" spellcheck="false" class="w-28 sm:w-32 uppercase font-mono px-2.5 py-1.5 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key==='Enter'){handleIndependentTabSearch('ranking', this.value)}">
-                                    <button type="button" onclick="handleIndependentTabSearch('ranking', document.getElementById('rankingTickerSearchInput').value)" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 text-xs font-semibold transition shrink-0" aria-label="Cari ticker di ranking">Cari</button>
-                                </div>
-                                <input id="rankingSearchInput" type="text" placeholder="Filter tabel..." aria-label="Filter tabel ranking" class="w-32 sm:w-44 px-2.5 py-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" oninput="onRankingSearchInput(this.value)">
-                                <button type="button" onclick="refreshRankingTable()" class="p-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition flex-shrink-0" title="Muat ulang ranking" aria-label="Muat ulang ranking">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                                </button>
-                            </div>
-                        </div>
-                        <div id="rankingTableWrap" class="overflow-x-auto overflow-y-auto max-h-[560px] scrollbar-thin">
-                            <div class="text-center py-8 text-gray-500 text-xs">Memuat ranking harian...</div>
-                        </div>
-                    </div>
+            <div class="ph rise d0">
+                <div>
+                    <h1>Ranking Harian</h1>
+                    <p>Klasemen kuantitatif berdasarkan volume, momentum harga, dan arus modal. Peringkat adalah angka, bukan piala.</p>
                 </div>
             </div>
+
+            <section class="sheet rise d1" style="overflow:hidden">
+                <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ac-hair)">
+                    <label class="search" style="width:240px">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+                        <input id="rankingSearchInput" aria-label="Filter saham" placeholder="Filter saham…" oninput="onRankingSearchInput(this.value)" style="border:0;outline:0;background:transparent;width:100%;font-size:13px;text-transform:uppercase">
+                    </label>
+                    <div id="rankingPresetSeg" class="segx n4">
+                        <span id="rankingPresetInd" class="ind k0"></span>
+                        <button id="btnRankingPreset0" class="on" onclick="setRankingPreset(0)">Semua</button>
+                        <button id="btnRankingPreset1" onclick="setRankingPreset(1)">Top gainer</button>
+                        <button id="btnRankingPreset2" onclick="setRankingPreset(2)">Asing beli</button>
+                        <button id="btnRankingPreset3" onclick="setRankingPreset(3)">RSI rebound</button>
+                    </div>
+                    <span id="rankingCountLabel" class="mut num" style="font-size:12px;margin-left:auto">— emiten · urut Skor ↓</span>
+                    <button id="btnRankingCsv" class="btn sm" onclick="exportRankingCsv()">Ekspor CSV</button>
+                </div>
+
+                <div id="rankingTableWrap" class="tw" style="max-height:640px;overflow:auto">
+                    <div class="text-center py-8 text-gray-500 text-xs">Memuat ranking harian...</div>
+                </div>
+
+                <div id="rankingPinnedRow" class="pin swap" style="display:none"></div>
+
+                <div class="prov" id="rankingProvenance">
+                    <span><b>Sumber</b> Candle harian &amp; foreign flow IDX</span>
+                    <span><b>Per tanggal</b> <span id="rankingDateVal">—</span></span>
+                    <span>Nilai kosong diurutkan paling akhir</span>
+                </div>
+            </section>
+
+            <!-- Advanced / Legacy Tools Fold -->
+            <details class="adv-tools" style="margin-top:12px">
+                <summary>Alat lanjutan</summary>
+                <div style="padding:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                    <div id="rankingCardOuterWrap" class="ranking-card-wrapper" style="display:none"></div>
+                    <div id="rankingPaywallGate" style="display:none"></div>
+                    <div id="rankingContentWrap" style="display:none"></div>
+                    <input id="rankingTickerSearchInput" type="text" placeholder="Pilih ticker..." style="display:none">
+                    <button type="button" id="btnRefreshRanking" onclick="refreshRankingTable()" class="btn sm">Muat ulang data ranking</button>
+                </div>
+            </details>
         </section>
 
         <!-- ===== FINANCIAL / FUNDAMENTAL ===== -->
